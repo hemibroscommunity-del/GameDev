@@ -1950,3 +1950,151 @@ as the unload had existed. Better still, make the loader idempotent —
 place cannot reproduce this.
 
 **Related:** §21 (an instrument that measures the wrong quantity reports green).
+
+---
+
+## §50 — A derived-geometry reservation outlives the things it reserved (v2.3.2320)
+
+**The plausible move:** widen the dashboard's five nav buttons by raising the
+ceiling in `navButtonSize` (`sheetGeometry.js`), leaving the reservation that
+feeds it alone.
+
+**Why it is wrong, twice over.**
+
+The buttons' width is DERIVED, not chosen: `navButtonSize` takes the row's
+width, subtracts `navGroupLeftLimit` — which is `DASH_GAP + IDENTITY_MIN_LINE`
+— and splits what is left five ways, then clamps. So the ceiling only bites
+when the derivation comes out ABOVE it. At 390px it derived 40 against a 36
+ceiling, so raising the ceiling did something; at 360 it derived 34 and at 320
+it hit the 26 floor, so raising the ceiling did *nothing at all* on the phones
+where the buttons were smallest. A change that reads as "make the buttons
+bigger" would have improved only the widest screens.
+
+`IDENTITY_MIN_LINE` was `40 + 6 + 40 + 6 + 60 /* portrait, XP, gold */` = 152.
+By the time it was touched, the band drew NONE of those three: the portrait
+went at v2.3.1848, the XP pair at v2.3.1853/1857, and the purse moved to the
+zone header at v2.3.2320. 152px of the row was being held back for elements
+that no longer existed. **A reservation constant is a claim about what a row
+contains, and it goes stale silently — nothing fails when the thing it protects
+is deleted.** Grep for a reservation's justification in the render tree before
+trusting the number.
+
+**The second trap, which is the expensive one: reserve for the WORST state, not
+the resting one.** The honest replacement looked like 88 (the CLOSE pill and
+its gap — everything the resting row holds). That derives 44px buttons at both
+390 and 360 and looks strictly better. Measured, it hangs the rail 6px off the
+right edge of a 360px phone whenever a panel is DRILLED, because a drilled row
+also carries a 34px back chip. The reservation has to cover the transient state
+or the transient state overflows; 122 covers it, at the cost of 40px buttons on
+a 360 instead of 44.
+
+**Why nothing caught the pre-existing version of this.** The same row already
+overflowed before any of this: with the purse in it, a drilled 390px phone put
+the "More" button at x 376..412 — its centre 4px past the screen edge. It was
+not clipped (the row is `overflow: visible`), it was simply not there. **An
+off-screen element still reports a perfect `getBoundingClientRect`**, so every
+existing assertion that read a rect stayed green, and `QuestCoach`'s Login Key
+lesson — which hit-tests that exact button and is the only prompt telling a
+player how not to lose their character — retired itself in silence (§41).
+
+**What catches it:** `tools/qa/mp/mp-goldrail.mjs` hit-tests each nav button's
+own centre with `document.elementFromPoint` and requires the button itself to
+answer, at two widths, drilled and not. On the build before the fix it reports
+`more:null [376..412]` — nothing answers — which is the shape of evidence a
+rect check cannot produce.
+
+**Rule to apply next time:** when a layout number is derived, change the
+DERIVATION and prove it at three widths and in every state the row has; a
+ceiling alone helps only the widest screen, and a rect alone cannot tell you
+whether a finger can reach the thing.
+
+**Related:** §41 (a lesson that measures unreachable is skipped in silence),
+§21 (an instrument that measures the wrong quantity reports green).
+
+---
+
+## §51 — "The character looks soft, so give it the higher-res art" (v2.3.2325)
+
+**The report.** The owner, on an iPhone screenshot with the dashboard folded:
+the character "looks soft like the textures are low resolution".
+
+**Two causes, and only one of them is safe to fix.** They look like the same
+bug and they are not.
+
+### Cause A — the armoured bake resampled twice for nothing. FIXED, cheap.
+
+`_maskedBodyFrame` composites at 256 but is FED display textures. At
+`DISPLAY_DS = 2` the body frame is 128px and every jog / stand / hit / fish /
+mine gear sheet has been 128px since v2.3.1434, so all six `drawImage` calls
+into that canvas are an exact 2x pixel-double. **Canvas smoothing defaults
+ON**, so every one of them was bilinear, and the tail resampled the composite
+back down with the wide `'high'` kernel. Exact texels in, two resamples, mush
+out — in the one place BETWEEN the two fixes that removed exactly this
+elsewhere (v2.3.1412 body sheets, v2.3.1434 gear sheets), which is why the
+ARMOURED figure alone still looked soft after both landed.
+
+Fix: `imageSmoothingEnabled = false` on all four canvases, and
+`bakeDisplayCanvas` at the tail instead of `downscaleByFactor` so the halve
+takes the exact-texel branch. **Both ends must move together** — nearest up
+with a smooth down still blurs; smooth up with a nearest down samples the
+blend and smears WORSE than before.
+
+Measured by `tools/qa/bake-identity.mjs`: head-band texels altered vs the raw
+body frame went 651/669 -> 0/669 on jog-south, and the same to zero on five
+other cases. Zero cost, fewer filtered samples per bake.
+
+### Cause B — the native-256 stand art really is being thrown away. DO NOT "just fix" IT.
+
+The premise is TRUE and was verified twice. `stand-*.png` and `dodge-*.png`
+ship 256 NATIVE, `bakeDisplayCanvas`'s exact-texel branch only fires when
+`srcH === round(h / DISPLAY_DS)`, so they fall through to a Lanczos halve.
+That art is not a pixel-double of a 128 original: 0.9–1.7% of opaque aligned
+2x2 blocks are constant (a nearest double reads 100.00%), Nyquist-band energy
+is 3x its own smoothed twin, and `public/sprites/player/stand-*.jpeg` are
+**1024x1024** — the 256 PNGs are genuine 4x downscales of real renders. Real
+detail is being discarded, and the stand frame would go 2.69 -> 1.34 device px
+per texel on a dpr-3 phone. The win is real.
+
+**And the fix is still not contained.** What makes it look contained is that
+NO TUNED CONSTANT CHANGES — hats, beards, weapons, foot rows, waist bands and
+head seats are all 256-space and immune. What makes it wide:
+
+- **A write-order bug.** `entityRenderer.js` sets the body sprite's scale from
+  `DISPLAY_DS` BEFORE it chooses the texture (`:9938` vs `:9999` local,
+  `:8560` vs `:8610` remote). If bare stand is 256 and the masked bake still
+  emits 128, **putting a chest plate on halves the character.**
+- **`_placeBand` draws two different body textures on one transform** (stand
+  rows above the cut, jog rows below, `_placeSouthBlockLegs`). Mixed sizes
+  render the top half at twice the bottom half.
+- 13 `/ DISPLAY_DS` offset expressions across 6 functions, two loaders, and a
+  third filter state inside the bake that Cause A's fix just stabilised.
+- `bake-identity`'s own readback had to stop assuming 128 (done) or the proof
+  of Cause A breaks structurally the moment Cause B lands.
+
+**And the memory is the actual wall.** Only "stand-only, bake left at 128"
+comes in under ~15 MiB — and that is exactly the variant that trips the
+write-order bug and leaves the armoured figure unimproved. The blanket
+`bakeDisplayCanvas` change sweeps `dodge-*` in, and `PREWARM_POSES` includes
+`dodge`, so it costs ~+40 MiB for a 300ms roll. The pickup head is +12.7 MiB
+for a 0.5s loot freeze. Recorded ceilings: `spriteScale.js:43-61` (DS=1 ->
+~245MB and hard Safari OOM page kills), `gearSheets.js:103-118` (frost-zone
+OOM), CLAUDE.md's zone-asset exception (~60MB startup peak already "wonky").
+
+**If it is ever wanted, it is TWO PRs, in this order:**
+1. A no-behaviour-change normalisation: every `/ DISPLAY_DS` on the body path
+   becomes a size-derived factor, the scale writes move AFTER the texture
+   choice, `_placeBand` normalises per texture, the harness reads back at the
+   texture's own size. Prove rendering byte-identical at `DISPLAY_DS = 2`,
+   merge, live with it.
+2. THEN the one-line stand opt-in, revertible on its own.
+
+**Rule to apply next time:** a resolution complaint has a cheap half and an
+expensive half, and they are not distinguishable by looking. Measure which
+pixels are being destroyed and where, ship the half that is a lossless round
+trip, and cost the other half in MiB against this repo's OOM history before
+writing a line of it. "The art is higher-res than what we draw" is a true
+sentence that has already cost this project two OOM incidents.
+
+**Related:** §42 (no CSS filter over the WebGL canvas — the other "it looks
+wrong on iOS" that had a mechanical cause), §21 (an instrument that measures
+the wrong quantity reports green).

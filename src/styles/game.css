@@ -1127,7 +1127,14 @@ input{font-family:inherit}
    on the screen.  The logout chip inside reuses the bt-chisel--chip
    frames — no new button art. */
 .bt-zone-header{position:fixed;top:-4px;left:0;right:0;z-index:20;
-  display:grid;grid-template-columns:38px minmax(0,1fr) 38px;align-items:center;
+  /* v2.3.2320: the right track sizes to the gold readout now (it was a
+     fixed 38px spacer).  `auto` rather than a second fixed width on
+     purpose: the purse is 2 digits on a new character and 7 on a rich
+     one, and a fixed column would either clip the rich case or steal
+     the title's width from the poor one.  The title keeps
+     minmax(0,1fr) + ellipsis, so what gives at seven figures on a
+     390px phone is the tail of a long zone name, not the number. */
+  display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;
   /* v2.3.1333b (owner: "tiny sliver above the bar"): the 9-slice svg
      has a ~1.5px transparent margin + rounded top corners baked into
      its top slice — world art peeked through it.  Pull the rail 4px
@@ -1147,7 +1154,16 @@ input{font-family:inherit}
   font:650 15px/1.1 'Source Sans 3',sans-serif;letter-spacing:.045em;
   text-align:center;text-overflow:ellipsis;white-space:nowrap;
   text-shadow:0 1px 2px rgba(0,0,0,.78)}
-.bt-zone-header__balance{width:38px;height:1px}
+/* v2.3.2320: was `width:38px;height:1px` — a pure optical spacer.  min-width
+   holds the old 38px so the title stays centred on the SCREEN while the
+   purse is narrow, which is the property the spacer existed for. */
+.bt-zone-header__balance{justify-self:end;min-width:38px;
+  display:flex;align-items:center;justify-content:flex-end;gap:4px;
+  color:#D8AA58;font:800 15px/1 'Source Sans 3',sans-serif;
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+  text-shadow:0 1px 2px rgba(0,0,0,.78)}
+.bt-zone-header__balance img{width:18px;height:18px;display:block;
+  image-rendering:pixelated;object-fit:contain}
 /* v2.3.1336: equipped-item marker — a simple green gradient dot (owner:
    replaces the bracketed-checkmark art, which read as UI chrome). */
 .bt-worn-dot{position:absolute;top:3px;right:3px;width:10px;height:10px;

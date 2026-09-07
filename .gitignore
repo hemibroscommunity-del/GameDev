@@ -84,3 +84,11 @@ dist-verify/
 # here, and just as much a build artefact.
 dist-new/
 dist-old/
+# v2.3.2323: ...and any other sibling build. The three names above were added
+# one at a time as somebody needed one, which means the next person to need a
+# second build under a running sweep gets an untracked directory instead of an
+# ignored one -- and it is a whole bundle, so it is loud. Two turned up on one
+# afternoon (dist-a2base, dist-bow2) while three investigations were running
+# side by side, which is exactly the situation QA_DIST exists to serve. The
+# glob covers them and leaves dist/ itself to its own rule at the top.
+dist-*/

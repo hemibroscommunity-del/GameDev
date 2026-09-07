@@ -218,8 +218,57 @@ export async function run({ browser, wsPort, webPort, rec }) {
     + 'not throw the reward away either',
     !!pBand && pBand.tapped === true && (await open()), { band: pBand, open: await open(), face: await face() });
 
+  /* ═══ v2.3.2311: NO iOS LONG-PRESS CALLOUT ON THIS CARD ═══
+     Owner: "remove the long press option on the quest dialog close button."
+     There was no long-press HANDLER to remove -- what he pressed was Safari's
+     own callout, offering to select/copy the control and anchoring a document
+     selection that then drags across the play area. Fourth sighting of one
+     defect (chat v2.3.2039, dashboard v2.3.2268, bag v2.3.2273): user-select
+     and -webkit-touch-callout are INHERITED, .brotown-wrap declares them, and
+     this card portals into document.body so it inherits nothing.
+
+     ASSERTED IN TWO PLACES, because neither alone is enough:
+       - the SHIPPED CSS carries -webkit-touch-callout, read out of the served
+         stylesheet rather than from the browser. Chromium does not implement
+         that property and DROPS it while parsing, so getComputedStyle and the
+         CSSOM rule are both blind to it -- they cannot tell "never written"
+         from "discarded here". The file text can, and it is the thing that
+         actually reaches the phone. (A minifier eating an unknown property
+         would look exactly like this and break nothing in CI.)
+       - the BUTTON inherits it at runtime, which is what proves the class is
+         on the surface and not merely defined in a stylesheet nobody wears. */
+  const noSel = await P.page.evaluate(() => {
+    const x = document.querySelector('[data-qa="dlg-close"]');
+    const scrim = x && x.closest('.bt-npcdlg-scrim');
+    const cs = x ? getComputedStyle(x) : null;
+    return {
+      wears: !!(scrim && scrim.classList.contains('bt-noselect')),
+      button: cs && (cs.webkitUserSelect || cs.userSelect),
+      sheets: [...document.styleSheets].map((sh) => sh.href).filter(Boolean),
+    };
+  });
+  const calloutCss = await P.page.evaluate(async (hrefs) => {
+    for (const h of hrefs) {
+      try {
+        const t = await (await fetch(h)).text();
+        const m = t.match(/\.bt-noselect\{[^}]*\}/);
+        if (m) return m[0];
+      } catch (e) { /* try the next sheet */ }
+    }
+    return null;
+  }, noSel.sheets);
+  rec.ok('E: the quest card wears the no-select shell', noSel.wears, noSel);
+  rec.ok('E: ...so the ✕ refuses text selection', noSel.button === 'none', noSel);
+  rec.ok('E: ...and the iOS long-press callout suppression survives the build '
+    + 'and reaches the phone, though Chromium discards it here',
+    !!calloutCss && /-webkit-touch-callout:\s*none/.test(calloutCss), { calloutCss });
+
   /* The deliberate exit still exists, and a REAL click on it works -- an
-     inert backdrop with no ✕ would just be a modal you cannot leave. */
+     inert backdrop with no ✕ would just be a modal you cannot leave.
+     v2.3.2311: this is now doing double duty. An inherited `none` does not
+     merely stop selection on iOS, it can make a control inert -- so the click
+     below is the guard that the callout fix did not trade a cosmetic bug for
+     a total one. */
   const xBox = await P.page.evaluate(() => {
     const x = document.querySelector('[data-qa="dlg-close"]');
     if (!x) return null;

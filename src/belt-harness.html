@@ -125,8 +125,126 @@ async function board(dir) {
   document.getElementById('boards').appendChild(cv);
 }
 
+/* ═══ v2.3.2325: ?measure=1 — IS THE ARMOURED BAKE LOSSLESS? ═══
+   The owner reported the character reading "soft like the textures are low
+   resolution".  One cause was mechanical and provable: this bake works at 256
+   but is fed 128px DISPLAY textures, so every draw into it was an exact 2x
+   pixel-double -- done BILINEAR, because canvas smoothing defaults on -- and
+   the tail then resampled the whole composite back down to 128.  Exact texels
+   in, two resamples, mush out.
+   Boards answer that by eye, and by eye is how a half-texel blur survives.  So
+   this measures it instead, on the one band where the answer is a clean yes/no:
+   rows above the neck line are drawn from the body, erased, then redrawn
+   VERBATIM under a clip, and the confinement loop below starts at neckY -- so
+   nothing later touches them.  If the round trip is lossless those texels come
+   out byte-identical to the raw body frame.  If anything resamples, they do
+   not.  There is no third answer, and no threshold to argue about.
+   Opaque texels only: source-over onto a partially-erased remnant is not an
+   identity for partial alpha, and getImageData un-premultiplies lossily there
+   -- both true before this change and after it, so they are not what is being
+   measured.  Driven by tools/qa/bake-identity.mjs. */
+async function measure() {
+  const rows = [];
+  /* Sized from the texture's OWN frame, never from a literal 128.  The first
+     cut hardcoded the readback canvas, which made this proof quietly
+     conditional on every body texture being the display size it happens to be
+     today -- and the open question this was written to serve is exactly
+     whether some of them should stop being that size.  A check that breaks
+     structurally the moment its subject changes is not a check. */
+  const read = (tex) => {
+    const src = tex && tex.source && tex.source.resource;
+    if (!src) return null;
+    const f = tex.frame;
+    const n = Math.max(1, Math.round(f.height));
+    const c = document.createElement('canvas'); c.width = n; c.height = n;
+    const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+    x.drawImage(src, f.x, f.y, f.width, f.height, 0, 0, n, n);
+    return { d: x.getImageData(0, 0, n, n).data, n };
+  };
+  const bbox = (d, n) => {
+    let t = n, b = -1, l = n, r = -1;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      if (d[(y * n + x) * 4 + 3] > 0) {
+        if (y < t) t = y; if (y > b) b = y;
+        if (x < l) l = x; if (x > r) r = x;
+      }
+    }
+    return { t, b, l, r };
+  };
+  const CASES = [
+    { pose: 'jog', dir: 'south', f: 0, wear: 'chest' },
+    { pose: 'jog', dir: 'south', f: 3, wear: 'both' },
+    { pose: 'jog', dir: 'east', f: 0, wear: 'chest' },
+    { pose: 'jog', dir: 'northeast', f: 0, wear: 'both' },
+    { pose: 'stand', dir: 'south', f: 0, wear: 'chest' },
+    { pose: 'stand', dir: 'east', f: 0, wear: 'both' },
+  ];
+  for (const c of CASES) {
+    const body = await ready(() => getBodyFrame(SKIN, PANTS, SHOES, c.pose, c.dir, c.f, null, 'none'));
+    const chest = await ready(() => getGearFrame('chest', 'steelplate', c.pose, c.dir, c.f));
+    const legs = c.wear === 'both'
+      ? await ready(() => getGearFrame('legs', 'steelgreaves', c.pose, c.dir, c.f)) : null;
+    if (!body || !chest || (c.wear === 'both' && !legs)) {
+      rows.push({ ...c, err: 'art missing', body: !!body, chest: !!chest, legs: !!legs });
+      continue;
+    }
+    const worn = c.wear === 'both'
+      ? [{ k: 'chest:steelplate', tex: chest }, { k: 'legs:steelgreaves', tex: legs }]
+      : [{ k: 'chest:steelplate', tex: chest }];
+    let masked = null;
+    for (let t = 0; t < 40 && !masked; t++) {
+      try { masked = _maskedBodyFrame(body, worn, 6, { pose: c.pose, dir: c.dir, frameIdx: c.f }); }
+      catch (e) { rows.push({ ...c, err: String(e && e.message || e) }); break; }
+      if (!masked) await wait(50);
+    }
+    if (!masked) { if (!rows.length || rows[rows.length - 1].pose !== c.pose) rows.push({ ...c, err: 'no bake' }); continue; }
+    if (masked === body) { rows.push({ ...c, err: 'bake declined (raw body returned)' }); continue; }
+    const rawR = read(body), bakeR = read(masked);
+    if (!rawR || !bakeR) { rows.push({ ...c, err: 'unreadable' }); continue; }
+    /* A size disagreement is a REPORTABLE RESULT, not a crash.  If the bake
+       ever emits a frame at a different size from the body it was handed, the
+       character halves or doubles the moment armour goes on -- so this says
+       so in one line rather than throwing an index error four loops later. */
+    if (rawR.n !== bakeR.n) {
+      rows.push({ ...c, err: `size mismatch: raw ${rawR.n}px, baked ${bakeR.n}px `
+        + '-- the armoured figure would not match the bare one' });
+      continue;
+    }
+    const A = rawR.d, B = bakeR.d, N = rawR.n;
+    /* The bake finds the neck line in 256-space from alpha>40; mirror it in
+       the frame's own space and then stop TWO rows short, so a rounding
+       difference of one
+       row between the two spaces cannot put the neck restore itself inside
+       the band being measured. */
+    let figTop = N, figBot = -1;
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      if (A[(y * N + x) * 4 + 3] > 40) { if (y < figTop) figTop = y; if (y > figBot) figBot = y; break; }
+    }
+    const band = Math.max(0, Math.round(figTop + 0.33 * (figBot - figTop)) - 2);
+    let opaque = 0, bad = 0, partialA = 0, partialB = 0;
+    for (let p = 0; p < band * N; p++) {
+      const o = p * 4;
+      if (A[o + 3] !== 255) continue;
+      opaque++;
+      if (A[o] !== B[o] || A[o + 1] !== B[o + 1] || A[o + 2] !== B[o + 2] || A[o + 3] !== B[o + 3]) bad++;
+    }
+    for (let p = 0; p < N * N; p++) {
+      if (A[p * 4 + 3] > 0 && A[p * 4 + 3] < 255) partialA++;
+      if (B[p * 4 + 3] > 0 && B[p * 4 + 3] < 255) partialB++;
+    }
+    rows.push({ ...c, px: N, band, opaque, bad, partialA, partialB,
+      bodyBox: bbox(A, N), maskBox: bbox(B, N) });
+  }
+  window.__bandCheck = rows;
+}
+
 (async () => {
   await loadPlayerSprites();
+  if (new URLSearchParams(location.search).get('measure') === '1') {
+    await measure();
+    window.__done = true;
+    return;
+  }
   for (const d of DIRS) await board(d);
   for (const d of Object.keys(MIRROR)) await board(d);
   window.__done = true;

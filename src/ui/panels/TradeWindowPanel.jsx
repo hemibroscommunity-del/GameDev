@@ -530,8 +530,13 @@ function tossToBag(fromNode, toRect, delay) {
 }
 
 /* Where a given line item ends up, as a rect. Items land in the bag tile that
-   now holds them; gold lands on the purse in the identity strip (data-purse,
-   IdentityStrip.jsx); a weapon lands in the loadout. Each falls back to the
+   now holds them; gold lands on the purse (data-purse) -- which since v2.3.2320
+   is in the zone header rail, not the band's identity strip, so the coins fly
+   UP to the top-right rather than down into the band. The `.bt-land-gold`
+   fallback below is dead with the landscape chip that carried it: the rail
+   holds the purse in both orientations now. It stays as the harmless second
+   arm of an `||` rather than being cut, because the next thing to move gold
+   will look for exactly this line; a weapon lands in the loadout. Each falls back to the
    dashboard's own top edge, which is the honest answer to "downward, into your
    stuff" when the specific slot is not on screen -- a bag whose filter is on
    another tab has no tile to fly to, and a toss into nowhere reads worse than

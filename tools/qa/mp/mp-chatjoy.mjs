@@ -100,6 +100,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(1200);
 
+  /* ═══ v2.3.2325: THIS SCENARIO WAS MEASURING A BELL ═══
+     It seeds forty lines and then probes the corner — but since v2.3.2155
+     the feed starts SHUT, and shut it is a 36x36 bell that covers 1.1% of
+     the pad.  So every probe below was answering "does a bell cover the
+     joystick", which it never did and never will, and this file has been
+     green on a question it stopped asking two hundred versions ago.  The
+     joystick-killing panel it exists to catch is the OPEN one.  Open it.
+
+     Guarded, not best-effort: if the toggle ever stops answering, this must
+     go red here rather than quietly go back to measuring a bell. */
+  const chatOpen = await H.openWorldChat(P);
+  rec.ok('the world chat feed is OPEN, so there is a panel to collide with (guard)',
+    chatOpen === true, { chatOpen });
+  await P.page.waitForTimeout(400);
+
   const before = await probe(P);
   console.log('    ' + JSON.stringify(before));
   if (before.err) {

@@ -60,7 +60,7 @@ import { getFacialHair, FACIALHAIR_CATALOG } from '../traits/facialHairCatalog.j
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
-import { DISPLAY_DS, downscaleByFactor } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation */
+import { DISPLAY_DS, bakeDisplayCanvas } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation; v2.3.2325: bakeDisplayCanvas, because the masked bake needs the EXACT-TEXEL 2x inverse, not the smooth one */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
 import { getCapeTexture, getCapeHoodTexture, getCapeHoodMaskTexture } from '../capeSprites.js'; /* v2.3.2023: the cosmetic cape; v2.3.2186: its hood half + the hair clip */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2023 */
@@ -2054,6 +2054,28 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
   try {
     cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
     const ctx = cv.getContext('2d');
+    /* ═══ v2.3.2325: THE ARMOURED FIGURE WAS RESAMPLED TWICE FOR NOTHING ═══
+       Owner: the character "looks soft like the textures are low resolution".
+       This bake works at 256 but is FED DISPLAY textures.  At DISPLAY_DS=2 the
+       body frame is 128px (playerSkins slices FRAME/DS) and every jog / stand /
+       hit / fish / mine gear sheet is 128px too since v2.3.1434 -- so every
+       drawImage below is an exact 2x pixel-double.  Canvas smoothing defaults
+       ON, so those doubles were BILINEAR: each texel came out a blend of itself
+       and its neighbour, and the tail of this function then resampled the whole
+       composite back down to 128.  Exact texels in, two resamples, mush out.
+       It is the SAME double-resample v2.3.1412 took off the body sheets and
+       v2.3.1434 took off the gear sheets -- left standing in the one place
+       BETWEEN them, which is why the armoured figure alone still looked soft
+       after both of those landed.  Nearest here plus the exact-texel inverse at
+       the tail make the round trip lossless.
+       BOTH ENDS MOVE TOGETHER or not at all: nearest up with the old smooth
+       downscale still blurs, and smooth up with a nearest downscale samples
+       that blend and smears WORSE than today.
+       Bonus: the skin/pants/shoes hue scoring and the alpha>40 figure tests
+       further down now read the artist's real colours instead of the in-between
+       shades bilinear invents -- the exact hazard spriteScale's file header
+       warns about for the recolour pipeline. */
+    ctx.imageSmoothingEnabled = false;
     const bf = bodyTex.frame;
     ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, 256, 256);
     /* head+neck must always stay visible -- the chest plate has a neckline
@@ -2086,6 +2108,13 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
        (26 vs 169 at dilate 6). */
     const dilCv = document.createElement('canvas'); dilCv.width = 256; dilCv.height = 256;
     const dilCtx = dilCv.getContext('2d');
+    /* v2.3.2325: same exact 2x pixel-double as the body above.  A bilinear gear
+       edge here smeared the erase mask about half a display texel wider than the
+       art, so the destination-out below partly erased body pixels the plate does
+       not actually cover.  The dilation itself is unchanged: sampling only even
+       positions at the tail, the union over dx in [-6..6] is still exactly a
+       3-display-texel dilation, odd offsets included. */
+    dilCtx.imageSmoothingEnabled = false;
     for (const w of worn) {
       const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
       const gf = gt.frame;
@@ -2329,6 +2358,12 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
     try {
       const sc = document.createElement('canvas'); sc.width = 256; sc.height = 256;
       const sctx = sc.getContext('2d');
+      /* v2.3.2325: exact 2x.  This canvas is immediately thresholded at
+         alpha>30 into `gop`, so with smoothing on the silhouette's edge landed
+         wherever the bilinear ramp happened to cross 30 rather than on the art
+         -- a foot of slop the v2.3.1353 / v2.3.1359 peek-ring tightening then
+         had to fight. */
+      sctx.imageSmoothingEnabled = false;
       let wornChest = false, wornLegs = false;
       for (const w of worn) {
         const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
@@ -2527,6 +2562,10 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
             } else {
               const bcv = document.createElement('canvas'); bcv.width = 256; bcv.height = 256;
               const bctx = bcv.getContext('2d');
+              /* v2.3.2325: exact 2x.  These pixels are COPIED VERBATIM into the
+                 waist band below (d2[o] = bd[o]), so a bilinear belt sheet
+                 painted bilinear chain straight into the finished frame. */
+              bctx.imageSmoothingEnabled = false;
               const bfr = bt.frame;
               bctx.drawImage(br, bfr.x, bfr.y, bfr.width, bfr.height, 0, 0, 256, 256);
               const bd = bctx.getImageData(0, 0, 256, 256).data;
@@ -2650,8 +2689,19 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
      via bakeDisplayCanvas (the treatment the DS=2 'high' downscale, v2.3.1121,
      used to apply), so the visible bare-skin/shoe edges in the composite are
      smooth; the gear sheets were never display-downscaled in either era, so
-     their edges are unchanged by the DS flip and stay as-is. */
-  const t = Texture.from(downscaleByFactor(cv, DISPLAY_DS));
+     their edges are unchanged by the DS flip and stay as-is.
+     v2.3.2325: that v2.3.1237 premise went STALE the day v2.3.1412 landed.  At
+     DS=2 playerSkins' bakeDisplayCanvas now takes the exact-texel NEAREST
+     branch for the 128px-on-disk sheets, so the body pixels arriving here are
+     the artist's raw texels and the ONLY thing softening them was this bake's
+     own bilinear 2x up plus this 'high' 2x down.  bakeDisplayCanvas with
+     srcH = 256/DISPLAY_DS takes that same exact-texel branch (256 -> 128 is
+     every second texel, untouched), the exact inverse of the nearest draws
+     above: what the artist drew is what the armoured player wears.  At
+     DISPLAY_DS=1 it falls through to antialiasUpscaledCanvas with srcH >= h,
+     a pass-through -- byte-identical to the old downscaleByFactor(cv, 1)
+     no-op, so the documented rollback still behaves. */
+  const t = Texture.from(bakeDisplayCanvas(cv, Math.round(256 / DISPLAY_DS)));
   /* v2.3.1121: mipmaps on the masked (armoured) body too, so the shoe outline /
      bare-skin edges don't crawl while jogging in armour (same fix as the bare
      body sheets). Cheap on the downscaled texture. */
@@ -4040,6 +4090,63 @@ const MONSTER_HP_NUM_STYLE = {
  * paths.  Was previously allocated as a `const` inside each per-frame
  * loop, which produced a small but recurring GC pressure source. */
 const SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
+
+/* ═══ v2.3.2322: A HELD BOW GOES BEHIND THE BODY ON THE NEAR DIAGONALS ═══
+ *
+ * Owner: "Southwest and southeast bow idle position don't have the correct
+ * layer placement for weapon relative to body", and on what correct means:
+ * "the correct look should be partial occlusion of the weapon behind the
+ * players body ... Southwest the upper handle of the bow should be behind the
+ * body."
+ *
+ * MEASURED BEFORE THE CHANGE — the weaponContainer's child index in the player
+ * display, idle, bow equipped, one reading per facing:
+ *
+ *     E 11   SE 11   S 11   SW 11   W 3   NW 3   N 3   NE 11
+ *
+ * so the bow drew fully in front on all four near facings.  SE and SW got
+ * there for two DIFFERENT reasons, and both are inherited rather than chosen:
+ *
+ *   - SE is in `inFrontInHand` (0,1,2,7), the set written for a SWORD, which
+ *     swings across the upper body and has to be seen doing it.
+ *   - SW was added by `|| facingIdx === 3` at v2.3.1787, and that commit says
+ *     exactly why: the GREATSWORD "is carried point-up (v2.3.1786) so its
+ *     blade rises clear of the torso rather than lying across it".  It then
+ *     scoped the exception to "held weapons" — which swept the bow in with it.
+ *
+ * A bow is not carried point-up.  It hangs from the hand across the hip, so
+ * the one property that earned the greatsword its exception is the property
+ * the bow does not have.  This is the shape of mistake docs/TRAPS.md keeps
+ * recording: a rule that was right for the thing it was written about,
+ * generalised by category to a thing it was never measured against.
+ *
+ * BEHIND is drawn before `_spriteBody`, and every layer you can actually see
+ * is added after that reference (v2.3.608) — so the span of the bow that
+ * overlaps the figure is hidden and the span outside the silhouette still
+ * reads.  That is the partial occlusion the owner asked for, and it needs no
+ * second sprite: the bow's upper limb is what crosses the torso at SW, so
+ * hiding the overlap hides the upper handle and leaves the lower limb showing.
+ *
+ * ONLY E AND S KEEP THE IN-FRONT ORDER.  The report arrived in three passes —
+ * SW and SE, then "Southwest the upper handle of the bow should be behind the
+ * body", then "Also northeast the body should mostly hide the bow" — and the
+ * three named facings are exactly the near diagonals, where the limb lies across
+ * the figure.  E and W are side-on and S holds the bow clear in the near hand,
+ * so those are left alone rather than swept along by the pattern.
+ *
+ * Shared by the local player and the peer path deliberately: they used to
+ * carry the same expression twice, and a rule copied into two renderers is
+ * one that drifts (the note at the top of backShield.js is the same lesson).
+ */
+function heldWeaponInFront(wpnType, facingIdx, inFrontBase) {
+  /* Bow: E and S only.  SE, SW and NE are all near-diagonals where the limb
+     lies across the figure, and the owner named each of them in turn — SW and
+     SE first ("partial occlusion of the weapon behind the players body"), then
+     NE ("the body should mostly hide the bow").  E and W are side-on and S
+     holds it clear in the near hand, so those keep the in-front order. */
+  if (wpnType === 'bow') return facingIdx === 0 || facingIdx === 2;
+  return inFrontBase || facingIdx === 3;   /* greatsword: point-up, clears the torso */
+}
 
 /* Weapon swing animation — matches the Canvas 2D drawSpriteCharacter
  * timing (BroTown.jsx:3352).  250ms quadratic-ease-out rotation around
@@ -6412,6 +6519,18 @@ export class EntityRenderer {
                the hole, while "sprite dark and body lit" is merely the wrong
                art, which is a different bug with the same first symptom. */
             bodyVisible: !!(d._body && d._body.visible),
+            /* v2.3.2313: where the drawn body actually IS, in screen px.
+               Marks above a monster's head are placed from a per-archetype
+               table of hit offsets, which is not the same thing as the drawn
+               height -- so "is the chip clear of the sprite" cannot be
+               answered from the table, only from the bounds. */
+            bounds: (function () {
+              try {
+                const b = d._spriteBody.getBounds();
+                return { top: Math.round(b.y), bottom: Math.round(b.y + b.height),
+                  h: Math.round(b.height) };
+              } catch (e) { return null; }
+            })(),
           };
         };
       }
@@ -7438,7 +7557,26 @@ export class EntityRenderer {
            the same move: it was compensating for the missing 1.5x, and left
            as-is would fling popups ~50px too high on slimes. */
         const _uiScale = (display._hpUi && display._hpUi.scale && display._hpUi.scale.y) || MONSTER_SIZE_MULT;
-        m._popupTopOff = (barY - MONSTER_HPBAR_H / 2) * _uiScale - POPUP_BAR_CLEAR;
+        /* ═══ v2.3.2313: THE BAND TOP, IN WORLD UNITS, FOR EVERYONE ═══
+           The same quantity display._markTopY holds locally, converted once
+           here into the world space that consumers outside this file live in.
+           v2.3.2295 stashed the local copy "for anything that has to sit ABOVE
+           the monster rather than on it" and warned in the same breath that
+           "anything drawn from outside it was guessing" -- and the target chip,
+           added in that very version, was drawn from effectsRenderer and did
+           guess: it placed itself from monsterBodyOffsetY, a per-archetype HIT
+           offset, using `offset x 2` as a stand-in for the drawn height.
+           That holds for the shapes whose offset IS half their height (mummy,
+           skeleton, and the liveScalePx rule) and fails on the snowman, whose
+           19 is a hand-tuned aim point for an oddly-anchored sprite, not half
+           of the ~96 world px he is drawn at. Measured: the chip's tip landed
+           3 screen px BELOW the top of his sprite -- on his head, which is
+           exactly what the owner reported.
+           Publishing the band means the chip stops guessing. It is the same
+           local-vs-world mistake v2.3.1638 records for the damage popup one
+           line below, in a second consumer. */
+        m._bandTopOff = (barY - MONSTER_HPBAR_H / 2) * _uiScale;
+        m._popupTopOff = m._bandTopOff - POPUP_BAR_CLEAR;
         display._hpHeart.width = MONSTER_HPBAR_W;
         display._hpHeart.height = MONSTER_HPBAR_H;
         display._hpHeart.x = 0;  /* anchor already centered at creation */
@@ -8751,9 +8889,13 @@ export class EntityRenderer {
            Scoped to held types so a peer's bamboo/staff keeps that behaviour. */
         const _oHeldInHand = oWpnType === 'greatsword' || oWpnType === 'bow';
         const _oInFrontBase = facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 7;
+        /* v2.3.2322: through the SAME helper the local player uses, so a peer's
+           bow is occluded on the near diagonals exactly as your own is.  This
+           expression was a second copy of the rule and would have kept the old
+           behaviour for everyone else on screen. */
         const inFront = oIsShielding
           ? (facingIdx >= 0 && facingIdx <= 3)
-          : (_oHeldInHand ? (_oInFrontBase || facingIdx === 3) : _oInFrontBase);
+          : (_oHeldInHand ? heldWeaponInFront(oWpnType, facingIdx, _oInFrontBase) : _oInFrontBase);
         const bodyIdx = display.getChildIndex(oSpriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
         /* "In front" is measured against the topmost VISIBLE worn layer, not
@@ -10322,7 +10464,25 @@ export class EntityRenderer {
             const WOOD_NUDGE_X = [-8, 0, -8, 0, 8, 8, 0, -8];
             /* v2.3.208: SW idle only, +3 px right (user reset). */
             const SW_IDLE_NUDGE = (facingIdx === 3 && pose === 'stand') ? 3 : 0;
-            const wpnNudgeX = isWoodSwordNudge ? ((WOOD_NUDGE_X[facingIdx] || 0) + SW_IDLE_NUDGE) : 0;
+            /* ═══ v2.3.2322: THE OCCLUDED BOW NEEDS TO CLEAR THE SILHOUETTE ═══
+               Sending the bow behind the body on the near diagonals
+               (heldWeaponInFront, top of this file) is what the owner asked
+               for, but on its own it does not give PARTIAL occlusion -- it
+               gives total. Measured: at SW and NE the hand anchor sits well
+               inside the figure, so a bow drawn behind it disappears
+               completely, which is not "the upper handle behind the body" or
+               "mostly hide the bow", it is hide the bow.
+               SE needs nothing: its anchor is already 11.8px out, so the limb
+               clears the shoulder on its own and reads exactly right.
+               So the two that vanish get pushed a few px further OUT along the
+               axis they already lean on -- away from the body's centre, in the
+               same direction the sprite already sits -- until a strip of limb
+               shows past the silhouette. It stays in the hand: this is smaller
+               than the wood-sword nudges above it. */
+            const BOW_OCCLUDE_NUDGE_X = [0, 0, 0, -6, 0, 0, 0, 6];
+            const bowNudgeX = (wpn.type === 'bow') ? (BOW_OCCLUDE_NUDGE_X[facingIdx] || 0) : 0;
+            const wpnNudgeX = (isWoodSwordNudge ? ((WOOD_NUDGE_X[facingIdx] || 0) + SW_IDLE_NUDGE) : 0)
+              + bowNudgeX;
             /* v2.3.946: stabilize the held weapon.  The per-frame jog hand
                anchors are hand-tapped (a few px of noise each frame) and the
                arm swings, so pinning hard makes the weapon jitter in the hand.
@@ -10886,7 +11046,10 @@ export class EntityRenderer {
            across it, and that reasoning no longer applies to it.  Scoped to
            held weapons so the bamboo/staff keep the v2.3.199 behaviour their
            incident is about. */
-        const inFrontHeld = inFrontInHand || facingIdx === 3;
+        /* v2.3.2322: the bow parts company with the greatsword here — see
+           heldWeaponInFront at the top of this file for the measurements and
+           for why the v2.3.1787 exception does not transfer to it. */
+        const inFrontHeld = heldWeaponInFront(wpn && wpn.type, facingIdx, inFrontInHand);
         const inFront = _heldInHand ? inFrontHeld : (sheathed ? !inFrontInHand : inFrontInHand);
         const bodyIdx = display.getChildIndex(display._spriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);

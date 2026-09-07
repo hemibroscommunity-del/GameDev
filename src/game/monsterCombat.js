@@ -1526,10 +1526,15 @@ export function updateMonsterCombat(S, deps) {
                    steering right now; it is the STALE read of it that was wrong,
                    not the fresh one. */
                 /* v2.3.2307: the five branches that used to be written out here
-                   are now rangedAimAngle (combatHelpers), because the HUD aim
-                   arrow has to read the SAME ladder -- an arrow with its own
-                   copy would be right the day it shipped and wrong the next
-                   time one branch changed, which is v2.3.2254-2262 verbatim.
+                   are now rangedAimAngle (combatHelpers).
+                   v2.3.2317: the HUD aim arrow it was extracted for is GONE
+                   (owner: "remove the arrow pointing idea on the right
+                   joystick"), so the second reader has gone with it -- but the
+                   extraction STAYS. It is the aim ladder written down once
+                   instead of inline, which is what v2.3.2254-2262 cost five
+                   versions to learn, and inlining it again to undo a HUD
+                   change would put the same trap back for the next feature
+                   that needs to know where a shot is going.
                    Behaviour is unchanged: same order, same origin. */
                 arrAngle = rangedAimAngle(S, _shotX, _shotY).ang;
                 if (!S.arrows) S.arrows = [];

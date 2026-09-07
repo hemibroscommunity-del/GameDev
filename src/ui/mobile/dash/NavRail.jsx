@@ -161,7 +161,27 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                 ? `linear-gradient(0deg, ${COL.accentFill}, ${COL.accentFill}), ${COL.wellSoft}`
                 : COL.wellSoft,
               border: `1px solid ${on ? COL.accent : COL.tileBor}`,
-              borderRadius: 999,
+              /* ═══ v2.3.2321: ROUNDED RECTANGLES, NOT CIRCLES ═══
+                 Owner: "I want to see what rectangular shaped buttons with
+                 rounded edges looks like for the navigation buttons instead of
+                 the current circular ones.  The circular ones can't take
+                 advantage of the extra space afforded by moving the gold to
+                 the top bar."
+
+                 He is right, and it is not a matter of taste: CSS
+                 border-radius CLIPS HIT-TESTING, so a circle's corners are not
+                 merely unpainted, they are dead.  Measured on a 390px phone,
+                 elementFromPoint 6px in from a button's own top-left corner
+                 returns the ROW, not the button.  At 999 on a 44x44 box that
+                 is pi*22^2 = 1521px^2 of live target inside a 1936px^2 box --
+                 21% of every button thrown away, and thrown away at the edges,
+                 which is exactly where a thumb aiming at a neighbour lands.
+
+                 11px is the house button radius (docs/LANTERN-SLATE-SPEC.md's
+                 --radius-button, and the same 11 its 44px primary button
+                 uses), so this is the scale the rest of the UI already wears
+                 rather than a number picked to look right in one screenshot. */
+              borderRadius: 11,
               cursor: 'pointer', touchAction: 'manipulation',
             }}>
             {/* The Hero button is the player's own bust when it has

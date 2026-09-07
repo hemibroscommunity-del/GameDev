@@ -101,7 +101,33 @@ export const NpcDialogue = (props) => {
        the XP skill, because that choice is deliberately panel-local.
 
        So the caller decides, per screen, and only the claim face locks it. */
-    <div className="bt-npcdlg-scrim" onClick={lockScrim ? undefined : onClose}>
+    /* ═══ v2.3.2311: THE FOURTH SIGHTING OF ONE DEFECT ═══
+       Owner: "remove the long press option on the quest dialog close button."
+
+       There is no long-press HANDLER to remove -- neither panel has one. What
+       he is pressing is iOS Safari's own callout: press and hold a control and
+       the system offers to select/copy/share it, anchoring a document
+       selection that then drags across the play area.
+
+       This is the same defect as chat (v2.3.2039), the dashboard (v2.3.2268)
+       and the bag (v2.3.2273), and the same cause every time: `user-select`
+       and `-webkit-touch-callout` are INHERITED, .brotown-wrap declares them,
+       and this card is not inside it -- both quest panels createPortal into
+       document.body, so they are siblings of the wrap and inherit nothing.
+
+       v2.3.2273 turned that recipe into the named class `.bt-noselect`
+       precisely so "the next fixed sibling someone adds is one className, not
+       another incident". This is that next sibling, so it is one className.
+       NOT an inline style: -webkit-touch-callout does not exist in desktop
+       Chromium, so React's inline style drops it silently, and an
+       unobservable property cannot be tested. The class also carries the
+       field exception, so any input a quest screen grows stays editable.
+
+       ON THE WHOLE CARD, not just the button. The button is what he pressed,
+       but the callout answers a long press ANYWHERE on the surface -- the
+       quest text most of all -- and fixing only the corner control would send
+       the same report back about the paragraph beside it. */
+    <div className="bt-npcdlg-scrim bt-noselect" onClick={lockScrim ? undefined : onClose}>
       <div className="bt-npcdlg" style={{ position: 'relative' }} onClick={(e) => { e.stopPropagation(); advance(); }}>
         {lockScrim && (
           /* v2.3.2289: the deliberate exit that replaces the accidental one.

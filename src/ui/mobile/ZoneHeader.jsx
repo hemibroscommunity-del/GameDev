@@ -68,6 +68,14 @@ export const ZoneHeader = ({ onExit }) => {
   const S = getState();
   if (!S) return null;
 
+  /* v2.3.2320: the same field, read the same way as every other readout in
+     the game — `S.rpg.coins`, live, never cached here.  Under protocol v2
+     `coins` arrives only in the ticks where it CHANGED (wsClient's
+     present-gated write), so a component that kept its own copy would show a
+     stale purse forever.  The 500ms force-render above already repaints this
+     rail, so the number is at most half a second behind settlement. */
+  const gold = (S.rpg && (S.rpg.coins || 0)) || 0;
+
   const doExit = () => {
     /* v2.3.785/786 lineage (moved from the retired bt-exit-fab):
        full-screen dim + spinner appended OUTSIDE the React tree so
@@ -110,7 +118,48 @@ export const ZoneHeader = ({ onExit }) => {
           onContextMenu={(e) => e.preventDefault()}
           style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
         >{zoneTitle(S)}</div>
-        <div className="bt-zone-header__balance" aria-hidden="true" />
+        {/* ═══ v2.3.2320: THE PURSE LIVES HERE NOW ═══
+            Owner: "Move gold amount display to very top right on the top bar
+            that lists the zone name."
+
+            This column was an EMPTY 38px spacer whose only job was optical —
+            match the logout chip so the title centred on the SCREEN rather
+            than in the leftover (the v2.3.1333 note above).  It is named
+            `__balance` because a balance is what it was always for; it just
+            never held one.  Now it does, and the symmetry it was protecting
+            is spent on the thing it was reserved for.
+
+            THIS IS A MOVE, NOT A COPY.  The band purse (IdentityStrip) and
+            the landscape chip (BottomDashboard's LandGoldChip) both retire in
+            the same change — the one-count rule that killed the v2.3.1563
+            floating chip ("two live gold counts on one screen disagree the
+            moment one of them lags") applies to this one exactly as hard, and
+            it is why the readout could not simply be added here.
+
+            NO `.bt-coin-glimmer` ON THIS COPY.  The band's number wore it and
+            the Hero strip still names it, and it is `background-clip:text` +
+            `-webkit-text-fill-color: transparent` under a 2.8s infinite
+            animation.  That was written for an opaque surface (the character
+            card), and every surface it has run on since has been opaque too.
+            This rail is `position:fixed` directly over the live WebGL canvas,
+            which is the compositing arrangement TRAPS §42 records as the iOS
+            grain hazard (the v2.3.948 charge pie, the v2.3.1236 joystick
+            bases).  A flat gold fill costs one shimmer and buys the primary
+            platform out of a known trap.
+
+            `data-purse` travels with the number, so the trade receipt's gold
+            toss still finds it (TradeWindowPanel's landingRect).  It flies UP
+            to the rail now instead of down into the band — the coins go to
+            where the coins are, which is the promise that animation makes.
+
+            pointer-events stays inherited-`none` from the rail: this is a
+            readout over the world, and anything here that took a touch would
+            steal it from the game underneath. */}
+        <div className="bt-zone-header__balance" data-purse="1"
+          aria-label={`${gold} gold`}>
+          <img src="/icons/popups/gold.webp" alt="" draggable={false} />
+          <span>{Number(gold).toLocaleString()}</span>
+        </div>
       </header>
 
       {showDev && DevPanelC && <DevPanelC onClose={() => setShowDev(false)} />}

@@ -166,9 +166,36 @@ function measure(anchors, L, S) {
    full-height [data-joyzone] layer underneath (TouchControls) — so the
    honest answer to "what would a finger hit here" is the zone, not the
    disc, and that still means the control is reachable. */
+/* ═══ v2.3.2312: THE HIT-TEST IGNORES THE COACH'S OWN CHROME ═══
+   This function is what enforces "a lesson never draws unless the real
+   control answers at the anchor point", and until now that property rested
+   on the whole overlay being pointerEvents:'none' -- so nothing the coach
+   drew could ever answer.  The card is interactive now (see the card), which
+   would otherwise let a card overlapping an anchor hit-test as itself and
+   silently retire the lesson it belongs to.  That is TRAPS 41 exactly: a
+   lesson that measures unreachable is skipped in silence.
+
+   So the question becomes "what answers here, NOT counting the coach", which
+   elementsFromPoint can express and elementFromPoint cannot.  The coach root
+   carries data-coach, so one closest() per candidate settles it.
+   elementFromPoint stays as the fallback: if the plural form is missing the
+   old behaviour is exactly what it was. */
+function _topBelowCoach(x, y) {
+  try {
+    if (typeof document.elementsFromPoint === 'function') {
+      const stack = document.elementsFromPoint(x, y) || [];
+      for (const node of stack) {
+        if (!node || (node.closest && node.closest('[data-coach]'))) continue;
+        return node;
+      }
+      return null;
+    }
+  } catch (_e) { /* fall through to the single-element form */ }
+  try { return document.elementFromPoint(x, y); } catch (_e) { return null; }
+}
+
 function reachable(el, r, reach) {
-  let top = null;
-  try { top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); } catch (_e) {}
+  const top = _topBelowCoach(r.left + r.width / 2, r.top + r.height / 2);
   if (!top) return false;
   /* v2.3.2306: `el` is guarded because a world-anchored lesson can call this
      with none. The try/catch above wraps only elementFromPoint, so
@@ -889,6 +916,22 @@ export function QuestCoach(props) {
      which is precisely the "text above the right joystick" the owner
      asked for, and the bag button is down there too. */
   const above = r.top > 108;
+  /* v2.3.2312: ONE dismiss, worn by the X and by the card body alike.  Both
+     mark the lesson done in the same localStorage record the gesture would
+     have -- a card you have explicitly put down, which then returns on the
+     next zone change, is the same complaint again.  stopPropagation matters
+     now that two nested elements carry this: the X sits inside the card, so
+     without it a tap on the X would run the handler twice. */
+  const _dismiss = function (e) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    try {
+      const d = doneRef.current;
+      d[view.id] = true;
+      saveDone(d);
+    } catch (_e) { /* the card must still close */ }
+    viewRef.current = null;
+    setView(null);
+  };
   return React.createElement('div', {
     'data-coach': view.id,
     style: {
@@ -958,9 +1001,39 @@ export function QuestCoach(props) {
            line and a future tidy-up that removes it would send the button to
            the screen's corner. */
         boxShadow: '0 10px 24px rgba(3,8,10,.45)',
-        pointerEvents: 'none',
+        /* ═══ v2.3.2312: TAP THE MESSAGE ITSELF ═══
+           Owner: "the save your login key pop up needs to be layered in front
+           so I can tap it to dismiss.  Right now it just swings the weapon
+           attack by activating the right joystick."
+
+           Both halves of that are exact.  The card floats where it is told to
+           -- the passkey lesson anchors to the bottom nav rail, so its card
+           lands in the lower half of the screen, which is where the right
+           touch zone lives -- and the card was pointerEvents:'none', so a
+           finger aimed at it went THROUGH to the zone underneath and started
+           a swing.  Worse than a card that ignores you: one that does
+           something else instead.
+
+           This is the third time the ask has been made.  v2.3.2123 added a
+           22px dismiss; v2.3.2284 grew it to 44 after three demo reviewers
+           said the tips "just won't go away no matter what I do".  Both kept
+           the CARD inert because reachable() hit-tested straight through this
+           overlay, and an interactive card would have hidden the control a
+           lesson points at and retired the lesson in silence (TRAPS 41).
+           That constraint is gone: reachable() now skips anything under
+           [data-coach], so what the coach draws cannot answer its own
+           hit-test.  With the reason removed, the answer is the one he asked
+           for the first time -- tap the message, the message goes away.
+
+           The X stays.  It is what a card SAYS is tappable, and it is the
+           only affordance a player who has not tried tapping the body will
+           see. */
+        pointerEvents: 'auto',
+        cursor: 'pointer',
+        WebkitTapHighlightColor: 'transparent',
         fontFamily: 'Source Sans 3,sans-serif',
       },
+      onPointerUp: _dismiss,
     },
       /* ═══ v2.3.2123: A WAY OUT OF THE LESSON ═══
          Demo feedback, three reviewers.  Excalibur: the tips and the chat
@@ -987,16 +1060,7 @@ export function QuestCoach(props) {
          again. */
       React.createElement('button', {
         'data-coach-dismiss': view.id,
-        onPointerUp: function (e) {
-          e.stopPropagation();
-          try {
-            const d = doneRef.current;
-            d[view.id] = true;
-            saveDone(d);
-          } catch (_e) { /* the card must still close */ }
-          viewRef.current = null;
-          setView(null);
-        },
+        onPointerUp: _dismiss,
         'aria-label': 'Dismiss tip',
         /* ═══ v2.3.2284: HALF A TOUCH TARGET IS WHY IT "WOULD NOT GO AWAY" ═══
            Owner: "allow the user to just tap on the messages to dismiss it" --

@@ -41,6 +41,7 @@ import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.176
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
 import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
+import { rangedAimAngle } from '@/game/combatHelpers.js'; /* v2.3.2320: the bow sight line uses the SAME ladder the arrow does */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon */
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js'; /* v2.3.1864 */
@@ -1186,6 +1187,25 @@ function _trimBakeCache(cache) {
     } catch (e) { /* a cache entry that will not free is still evicted */ }
   }
 }
+
+/* ═══ v2.3.2316: GROUND LOOT AT TWICE THE SIZE ═══
+ * Owner: "sprite size for monster loot while on the ground increase by 2x
+ * (includes coin too)."
+ *
+ * ONE multiplier at module scope rather than five edited numbers, because the
+ * sizes it scales live in five branches -- the slime splat, a variant's own
+ * remnantsScalePx, the snowman's remnants, the standalone coin pile, and the
+ * coin that rides ON a monster's remnants (this method). That last one is the
+ * one a hunt-and-edit pass misses: it is in a different method from the other
+ * four, and it is the coin the owner actually sees on a monster drop.
+ *
+ * PURELY VISUAL, checked rather than assumed: the pickup radius is a
+ * hard-coded 20 world px in groundLoot.js (`lDist < 20`) and the magnet range
+ * 50, neither derived from these numbers. So nothing here moves collection
+ * range -- the one way a size change could quietly become a gameplay change.
+ * WORLD px, like everything on the loot layer, so it scales with zoom exactly
+ * as the old size did. */
+const LOOT_SCALE = 2;
 
 export class EffectsRenderer {
   constructor(layers) {
@@ -4074,7 +4094,24 @@ export class EffectsRenderer {
              it did not reach the carets. Not fixing theirs here: it is a
              separate mark with its own tuning and this change has no business
              moving it. */
-          const _cbob = Math.sin(now / 320) * 3 * _ck;
+          /* ═══ v2.3.2314: A BOB YOU CAN ACTUALLY SEE ═══
+             Owner: "make the orange chip cue bob up and down while over the
+             monsters head."
+
+             It already bobbed -- 3 CSS px at a ~2s period, which on a phone,
+             against a chip 11px tall, is a wobble you have to be told about
+             to notice. He was asking for it after v2.3.2313 finally lifted
+             the chip off the snowman's head, i.e. the first time it was
+             somewhere he could watch it. So this is an amplitude change, not
+             a new mechanic: 3 -> 6 px, and the period down from ~2010ms to
+             ~1260ms so the motion reads as alive rather than as drift.
+
+             SCREEN px (_ck), like every other measurement in this region: a
+             bob in world units breathes by a third of its size at one zoom
+             and a fifth at another, which is the correction v2.3.2263 made
+             to the old reticle's pulse. */
+          const CHIP_BOB = 6;
+          const _cbob = Math.sin(now / 200) * CHIP_BOB * _ck;
           /* 16.4 CSS px across, 11 tall, plus a 2.6px rim -- so ~19 overall.
              mp-arrowshot already fixes a numeric meaning for "small/medium" on
              the target's mark: it measures the mark by frame-differencing a
@@ -4085,7 +4122,58 @@ export class EffectsRenderer {
              failure that bound exists to catch, and it caught it. */
           const _chw = 7.2 * _ck;
           const _chh = 11 * _ck;
-          const _ctop = _cyp - _coff * 2 - 42 + _cbob;
+          /* ═══ v2.3.2313: HUNG FROM THE BAND, NOT FROM A HIT OFFSET ═══
+             Owner: "the locked on orange monster chip needs to be moved a
+             little higher, it's on the head of the snowman."
+
+             It was, and the arithmetic below says why. `_coff * 2 - 42` treats
+             a per-archetype HIT offset as if it were half the drawn height --
+             true for the shapes whose table entry is exactly that, and false
+             for the snowman, whose 19 is a hand-tuned aim point rather than
+             half of the ~96 world px he is actually drawn at. Measured on a
+             real client: the chip's tip sat 3 screen px BELOW the top of his
+             sprite.
+
+             The renderer that draws him already knows where he ends and now
+             publishes it (m._bandTopOff, entityRenderer) -- the top of the
+             above-head band, in world units, from the one place that has the
+             per-archetype maths. Hanging the chip's TIP there puts it just
+             clear of the art on every shape instead of on one of them:
+             measured 8 px of daylight over the snowman and 4 over a slime,
+             where before it overlapped both and only showed on the snowman
+             because his art fills his frame.
+             It also keeps the documented ordering with the "!" notice, which
+             rises from the same band top upward -- the chip hangs below it,
+             so the two still never touch.
+             The old formula stays as the FALLBACK for the frame before the
+             stamp exists (a monster's first frame, or one with no display
+             yet); it is what shipped, so falling back cannot be a regression. */
+          /* THE BOB IS PAID FOR OUT OF HEADROOM, NOT OUT OF THE CLEARANCE.
+             v2.3.2313 hung the chip's TIP at the band top; adding a bigger
+             swing to that would push the tip BELOW the band on every down
+             stroke and put it straight back on the snowman's head -- the bug
+             that version just fixed, reintroduced by the polish on top of it.
+             So the rest position rises by the amplitude: at the BOTTOM of the
+             swing the tip sits exactly where v2.3.2313 put it, and the whole
+             bob happens in the empty space above. Worst case is unchanged by
+             construction rather than by luck. */
+          /* Plus a 2px standoff so the tip never sits flush against the band
+             even at the bottom of the swing. Measured across runs, the flush
+             version came out between 6 and 9 px clear of the sprite depending
+             on which phase the sampler caught -- fine to look at, but it left
+             mp-lockchip's floor a couple of pixels from tripping on nothing.
+             Two pixels of daylight is cheap and makes the margin real rather
+             than lucky. */
+          /* +5, not +2. Measured per frame across runs, a 2px standoff left the
+             chip 4-6px clear of a SLIME at its worst -- and a slime's bounds
+             move too (it squashes through its idle), so that margin was thin
+             enough to be luck. 5 puts the tightest shape at ~8px and the
+             snowman at ~18, which is daylight on both without the mark
+             drifting away from the head it belongs to. */
+          const _cstand = (CHIP_BOB + 5) * _ck;
+          const _ctop = (_lockChip._bandTopOff != null
+            ? _cyp + _lockChip._bandTopOff - _chh - _cstand
+            : _cyp - _coff * 2 - 42 - _cstand) + _cbob;
           const _cpoly = [
             _cxp - _chw, _ctop,
             _cxp + _chw, _ctop,
@@ -4175,16 +4263,20 @@ export class EffectsRenderer {
        no circle on the target, exactly one chip. */
     if (_ringProbeRestore) _ringProbeRestore();
 
-    /* Bow / staff / melee line of sight — a beam-shaped ribbon (filled
-       polygon) running along the aim direction, drawn while a weapon is
-       equipped AND the player is aiming, locked on, or auto-attacking.
+    /* Bow / melee line of sight — a beam-shaped ribbon (filled polygon)
+       running along the aim direction.  WHEN it is drawn is not one rule:
+       melee draws it while aiming, locked on, auto-attacking or mid-swing;
+       the bow draws it only while ATTACKING (v2.3.2320); magic never draws
+       it at all (v2.3.2258).  The gate below is the authority — this
+       sentence has been wrong twice by being edited later than the code.
        The two long edges are sine-wavy and the wave PHASE shifts with
        `now`, so the borders shimmer + drift along the beam — reads like
        a flowing energy stream rather than a hard hitscan line.  Top and
        bottom edges run 180° out of phase so the beam pulses width-wise.
-       Melee uses the same shape, shorter length (sword/shield needed a
-       forward-sense affordance per user request — same visual language
-       as bow/staff, just compressed to roughly the attack range). */
+       Melee no longer uses this shape at all — v2.3.940 replaced its reach
+       beam with the wild-swing AoE (a core circle plus a forward half-disc)
+       so the indicator matches the hit test exactly.  What is left in the
+       ranged arm below is the beam proper, and only the bow reaches it. */
     {
       const slot = S.rpg && S.rpg.activeSlot;
       const isRanged = slot === 'ranged' || slot === 'staff';
@@ -4214,8 +4306,49 @@ export class EffectsRenderer {
          (v2.3.940) whose whole contract is preview-matches-damage -- it is the
          hit test drawn, not a sight line down the range, and it was itself
          asked for as a "forward-sense affordance". */
-      const shouldDraw = !isRanged
-        && (aimState || meleeSwinging)
+      /* ═══ v2.3.2320: THE BOW GETS ITS SIGHT LINE BACK — WHILE ATTACKING ═══
+         Owner: "I want to give archers a little buff by restoring the previous
+         line of site visual only with now.  Slight wavy line one while
+         attacking one."
+
+         CALLING IT A BUFF IS THE ONE THING TO BE STRAIGHT ABOUT: it is not
+         one, and it cannot be.  Read v2.3.2258 above — this beam is drawn and
+         nothing else, no hit test reads it and no aim assist sits behind it,
+         so what comes back is legibility, not power.  If the owner wants
+         archers actually stronger that is damage, cadence or range, and it
+         should be asked for out loud rather than arrive inside a visual.
+
+         WHAT CHANGED FROM THE OLD BEHAVIOUR, deliberately, twice:
+
+         1. BOW ONLY.  v2.3.2258 turned this off for magic AND bow, and only
+            the bow half is being reversed.  `isStaff` is tested EXPLICITLY
+            rather than left to the `!isRanged` short-circuit that used to
+            protect magic — v2.3.2260's note called that "safe by operator
+            precedence ... the kind of thing a later edit reorders without
+            noticing", and re-admitting one of the two ranged slots is exactly
+            such an edit.
+
+         2. WHILE ATTACKING, not while aiming.  The old gate was `aimState`,
+            which also drew on a bare lock or a bare drag.  "While attacking"
+            is `S.autoAttack` — the fire control held down — plus a BOW_SHOT_MS
+            tail off the last arrow so the line does not strobe off between
+            shots in a volley.  This is narrower than what was removed, which
+            is what he asked for.
+
+         AND IT MUST BE A REAL BOW.  The block header used to claim it drew
+         "while a weapon is equipped"; the code only ever tested the SLOT (the
+         header is rewritten above, and this is the line that makes the old
+         claim true rather than merely deleting it).  monsterCombat
+         refuses to fire with an empty slot (`_eqWpn`), so without this a
+         player holding the button with slot 'ranged' and nothing in it would
+         get a line of sight down which no arrow ever travels. */
+      const isStaff = slot === 'staff';
+      const isBow = slot === 'ranged';
+      const hasBow = !!(S.rpg && S.rpg.rangedWeapon);
+      const bowFiring = isBow && hasBow && (!!S.autoAttack
+        || (S._bowShotAt && (now - S._bowShotAt) < BOW_SHOT_MS));
+      const shouldDraw = !isStaff
+        && (bowFiring || (isMelee && (aimState || meleeSwinging)))
         && S.player
         && !S._shieldUp; /* shield arc has its own indicator; don't overlap */
       /* ═══ v2.3.2260: THE PROBE, BECAUSE THE FIX NEXT DOOR THREATENS THIS ═══
@@ -4228,9 +4361,67 @@ export class EffectsRenderer {
          noticing.  Asserted from outside now (mp-aimpath), in the house style
          (__btAtkMark, __btPlayerDrawn): a scenario cannot look at a polygon
          that was never drawn, so the renderer reports whether it drew it. */
+      /* ═══ v2.3.2320: ONE AIM LADDER FOR THE BOW, AND IT IS THE ARROW'S ═══
+         Hoisted above the probe so the probe can report it, and rewritten for
+         the bow because the fire site moved out from under this block while
+         the beam was dark.
+
+         The old ladder here was FOUR branches measured from the player's FEET:
+         `atan2(lt.y - P.y, lt.x - P.x)` on a lock, then a bare `_aimAngle`,
+         then `_facingAngle`, then 0.  Since v2.3.2258 the shot goes through
+         `rangedAimAngle` (combatHelpers) — FIVE branches from the GRIP, with
+         the lock resolved through `lockAimPoint`.  Restoring the old ladder
+         would have drawn a line that disagrees with the arrow in three
+         separately-documented ways:
+
+           - the lock branch aimed at the target's FEET from the player's
+             FEET, which is the parallel-lines geometry v2.3.1979 fixed, and
+             `(lt.x || 0)` aims at the world ORIGIN when a coordinate is NaN;
+           - `_aimAngle` with no `_aiming` guard is the stale read v2.3.2262
+             fixed, and `_lastAimAngle` — a thumb-set heading the shot honours
+             — was not in this ladder at all;
+           - the final `aimA = 0` is due EAST, the v2.3.2254-2262 failure
+             itself.
+
+         And the beam DRAWS from the grip while computing its angle from the
+         feet, so it was internally inconsistent as well.  combatHelpers' own
+         comment says the extraction stays because "inlining it again would put
+         the same trap back for the next feature that needs to know where a
+         shot is going".  This is that feature, so it calls the function.
+
+         MELEE IS UNTOUCHED and keeps its own ladder below: that branch is not
+         a sight line, it is the wild-swing AoE drawn (v2.3.940), and its
+         contract is preview-matches-DAMAGE, against a different hit test. */
+      const _useGrip = isBow && S._bowGripDX != null && S._bowGripDY != null;
+      const _beamOrigin = S.player
+        ? { x: _useGrip ? S.player.x + S._bowGripDX : S.player.x,
+          y: _useGrip ? S.player.y + S._bowGripDY : S.player.y }
+        : null;
+      let _beamAng = null, _beamSrc = null;
+      if (shouldDraw && _beamOrigin) {
+        if (isBow) {
+          const _ra = rangedAimAngle(S, _beamOrigin.x, _beamOrigin.y);
+          _beamAng = _ra.ang; _beamSrc = _ra.src;
+        } else if (S.lockedTarget && S.lockedTarget.ref) {
+          const lt = S.lockedTarget.ref;
+          _beamAng = Math.atan2((lt.y || 0) - S.player.y, (lt.x || 0) - S.player.x);
+          _beamSrc = 'melee-lock';
+        } else if (S._aimAngle != null) { _beamAng = S._aimAngle; _beamSrc = 'melee-aim'; }
+        else if (S._facingAngle != null) { _beamAng = S._facingAngle; _beamSrc = 'melee-facing'; }
+        else { _beamAng = 0; _beamSrc = 'melee-zero'; }
+      }
       if (typeof window !== 'undefined') {
         window.__btSightBeam = function () {
-          return { visible: !!shouldDraw, ranged: !!isRanged, aimState: !!aimState, slot: slot || null };
+          /* v2.3.2320: `angle` and `origin` join the probe.  "The beam is
+             drawn" and "the beam points where the arrow goes" are different
+             claims, and only the second one is what a sight line is FOR — a
+             line that disagrees with the shot is worse than no line.  A
+             scenario cannot read a polygon, so the renderer reports the
+             heading it drew and where it drew it from. */
+          return { visible: !!shouldDraw, ranged: !!isRanged, aimState: !!aimState,
+            slot: slot || null, firing: !!bowFiring,
+            angle: _beamAng, src: _beamSrc,
+            origin: _beamOrigin ? { x: _beamOrigin.x, y: _beamOrigin.y } : null };
         };
       }
       /* v2.3.940: melee shows its wild-swing AoE shape (a 360° core circle + a
@@ -4240,17 +4431,7 @@ export class EffectsRenderer {
          type 'sword' so it never showed -- all melee uses the wild swing.) */
       if (shouldDraw) {
         const P = S.player;
-        let aimA;
-        if (isLocked) {
-          const lt = S.lockedTarget.ref;
-          aimA = Math.atan2((lt.y || 0) - P.y, (lt.x || 0) - P.x);
-        } else if (S._aimAngle != null) {
-          aimA = S._aimAngle;
-        } else if (S._facingAngle != null) {
-          aimA = S._facingAngle;   // tap-swing with no active aim: use body facing
-        } else {
-          aimA = 0;
-        }
+        const aimA = _beamAng;   /* v2.3.2320: computed above, so the probe sees it */
         if (isMelee) {
           /* v2.3.1134: Cleave widens the preview exactly like the hit test in
              monsterCombat — preview-matches-damage is the v2.3.939 contract. */
@@ -4305,8 +4486,12 @@ export class EffectsRenderer {
           gfx.closePath();
           gfx.stroke({ color: AIM_CARET_EDGE, width: 1.5, alpha: 0.6 });
         } else {
-        /* Ranged / staff: the reach beam (melee now uses the AoE shape above).
-           The `: 95` fallback is retained for any non-ranged that reaches here. */
+        /* Ranged: the reach beam (melee uses the AoE shape above).  Since
+           v2.3.2320 only the BOW reaches here — staff is excluded at the gate
+           and melee takes the branch above — so the `: 95` arm is unreachable
+           today.  It stays anyway: collapsing it to a bare 280 would silently
+           hand melee a 280px beam the day anything else falls through, and the
+           v2.3.940 contract for that branch is a 95px hit shape. */
         const lineLen = isRanged ? 280 : 95;
         const halfW = 2;          // half-width of beam at neutral
         const waveAmp = 1.6;      // edge wave amplitude in px
@@ -4321,9 +4506,12 @@ export class EffectsRenderer {
            player's feet, so the arrow flies down the MIDDLE of the line of
            sight rather than parallel-and-offset to it.  Staff/melee keep the
            feet origin; if no grip has been published yet, fall back to feet. */
-        const _useGrip = slot === 'ranged' && S._bowGripDX != null && S._bowGripDY != null;
-        const originX = _useGrip ? P.x + S._bowGripDX : P.x;
-        const originY = _useGrip ? P.y + S._bowGripDY : P.y;
+        /* v2.3.2320: the origin is the one hoisted above the probe — the same
+           point the angle was measured from, and the same point the probe
+           reports.  It used to be recomputed here, which is how the beam came
+           to draw from the grip along an angle taken from the feet. */
+        const originX = _beamOrigin.x;
+        const originY = _beamOrigin.y;
         const top = [];
         const bot = [];
         for (let i = 0; i <= segments; i++) {
@@ -4864,7 +5052,7 @@ export class EffectsRenderer {
       l._pixiCoinSprite.y = anchorY;
       l._pixiCoinSprite.alpha = (owned ? 1 : 0.4) * alpha;
       l._pixiCoinSprite.tint = owned ? 0xffffff : 0x555555;
-      l._pixiCoinSprite.scale.set(12 / (l._pixiCoinSprite.texture.width || 12));
+      l._pixiCoinSprite.scale.set((12 * LOOT_SCALE) / (l._pixiCoinSprite.texture.width || 12));
       l._pixiCoinSprite.visible = true;
     }
     if (owned) {
@@ -4888,6 +5076,59 @@ export class EffectsRenderer {
     const gfx = this.lootGfx;
     gfx.clear();
 
+    /* ═══ v2.3.2316: GROUND LOOT AT TWICE THE SIZE ═══
+       Owner: "sprite size for monster loot while on the ground increase by 2x
+       (includes coin too)."
+
+       ONE multiplier rather than four edited numbers, because the sizes it
+       scales live in four different branches (the slime splat, a variant's
+       own remnantsScalePx, the snowman's remnants, and the coin) and a later
+       "make it a bit smaller" should be one number, not a hunt.
+
+       PURELY VISUAL, and that was checked rather than assumed: the pickup
+       radius is a hard-coded 20 world px in groundLoot.js (`lDist < 20`) and
+       the magnet range 50, neither derived from these draw sizes. So nothing
+       here moves collection range, which is the one way a size change could
+       have quietly become a gameplay change.
+       WORLD px, like everything on the loot layer -- so it scales with zoom
+       exactly as the old size did, which is what makes it read as "2x" from
+       the seat rather than 2x at one zoom and 1.2x at another. */
+    this._lootProbeScale = S._worldScaleX || 1;   /* v2.3.2316: for the probe below */
+    /* Dev probe, house style (cf. window.__btAtkMark, __btSlimeProj): how big
+       is each ground pile ACTUALLY drawn, in world px and on screen. The ask
+       was a SIZE, and nothing in the tree could report one -- the scale is
+       chosen in four branches from three different constants, so a test that
+       read a constant would not be reading what the player sees.
+       tools/qa/mp/mp-lootsize.mjs reads this. v2.3.2316. */
+    if (typeof window !== 'undefined' && !window.__btLootSprites) {
+      const _selfL = this;
+      /* The world scale is captured per call from the live state the render
+         loop hands in, not stored -- _updateGroundLoot receives S every
+         frame and a probe holding a stale copy would report last frame's
+         zoom. */
+      window.__btLootSprites = function () {
+        const sx = _selfL._lootProbeScale || 1;
+        const out = [];
+        const add = (e, sp, kind) => {
+          if (!sp || sp.destroyed || !sp.visible) return;
+          const texW = (sp.texture && (sp.texture.frame ? sp.texture.frame.width : sp.texture.width)) || 0;
+          const world = texW * Math.abs(sp.scale.x);
+          out.push({ kind, skull: e.skull || null,
+            worldPx: +world.toFixed(1), screenPx: +(world * sx).toFixed(1) });
+        };
+        for (const e of (_selfL._knownLoot || [])) {
+          if (!e) continue;
+          /* BOTH pooled sprites. _pixiSprite is the pile's own art (a remnant,
+             or the coin when there is no remnant); _pixiCoinSprite is the coin
+             that rides on TOP of a remnant, drawn by a different method. A
+             probe that reported only the first would have been blind to the
+             very sprite the owner called out. */
+          add(e, e._pixiSprite, e.skull ? 'remnant' : 'coin');
+          add(e, e._pixiCoinSprite, 'coinOnPile');
+        }
+        return out;
+      };
+    }
     const loot = S.groundLoot || [];
     /* Track which loot entries we've created Pixi children for so we
        can dispose orphans.  When the player picks loot up, BroTown
@@ -4909,7 +5150,14 @@ export class EffectsRenderer {
       }
       activeLoot.add(l);
       this._knownLoot.add(l);
-      /* Fodder + variant loot has no bob; it's a settled puddle/pile. */
+      /* ═══ v2.3.2318: EVERYTHING ON THE GROUND BOBS ═══
+         Owner: "make the monster loot while on the ground slightly bob up and
+         down."  It did not: remnants were explicitly excluded here as "a
+         settled puddle/pile", which is every monster drop in the game -- so
+         the one category he was looking at was the one category holding
+         still. The exclusion goes; the amplitude stays small, because
+         "slightly" is the word he used and a pile that swings reads as a
+         floating pickup rather than something lying on the floor. */
       const isFodder = l.skull === 'fodder' || !!MONSTER_VARIANTS[l.skull];
       /* v2.3.190: visual pile offset.  Shifts every l.y+bob reference
          (gold glow, icon, count, etc) down by 18 px (was 8 in v2.3.190;
@@ -4918,8 +5166,33 @@ export class EffectsRenderer {
          center.  Pickup hit detection in BroTown is unaffected --
          this is purely a visual offset. */
       const PILE_Y_OFFSET = 38;
-      const bob = (isFodder ? 0 : Math.sin(age * 3) * 2) + PILE_Y_OFFSET;
-      const alpha = age > 25 ? (30 - age) / 5 : 1;
+      const bob = Math.sin(age * 3) * 2.5 + PILE_Y_OFFSET;
+      /* ═══ v2.3.2318: A LAST CALL, NOT A QUIET FADE ═══
+         Owner: "monster loot that's almost timing out and disappearing make it
+         fade then show full opacity for about the last 10 seconds before it
+         disappears."
+
+         Read as a PULSE over the final stretch -- fade down, come back to
+         full, repeat -- rather than the old monotone ramp, which was the
+         single linear fade over the last five seconds below. A pile that
+         simply gets dimmer is easy to stop noticing at exactly the moment it
+         most needs noticing; one that keeps returning to full opacity keeps
+         catching the eye. The pulse also QUICKENS as the clock runs out, so
+         the cue says how long is left rather than just "soon".
+
+         It never reaches zero before the pile actually goes: the floor is
+         0.35, so the thing you are being warned about stays visible for the
+         whole warning. Life is 30s (the despawn a few lines above), so the
+         last ten is age 20 onward. */
+      const LOOT_LIFE = 30;
+      const LOOT_FLASH_S = 10;
+      const _leftS = LOOT_LIFE - age;
+      let alpha = 1;
+      if (_leftS <= LOOT_FLASH_S) {
+        const _urg = Math.max(0, Math.min(1, 1 - _leftS / LOOT_FLASH_S));
+        const _rate = 3 + _urg * 9;
+        alpha = 0.35 + 0.65 * (0.5 + 0.5 * Math.cos(age * _rate));
+      }
 
       if (l.isDeathDrop) {
         /* Pulsing red-orange aura that gets faster + brighter as the
@@ -5137,7 +5410,7 @@ export class EffectsRenderer {
           l._pixiSprite.alpha = alpha;
           /* Slime splat renders at 48 px on-screen; variant remnants
              use their own remnantsScalePx (default 48). */
-          const targetPx = variantRemnTex ? (variant.remnantsScalePx || 48) : 48;
+          const targetPx = (variantRemnTex ? (variant.remnantsScalePx || 48) : 48) * LOOT_SCALE;
           l._pixiSprite.scale.set(targetPx / (l._pixiSprite.texture.width || targetPx));
           l._pixiSprite.visible = true;
           /* Coin sits ON TOP of the remnants when gold rides on this drop.
@@ -5174,7 +5447,7 @@ export class EffectsRenderer {
            to be applied explicitly. */
         l._pixiSprite.y = l.y + 38;
         l._pixiSprite.alpha = 1;
-        l._pixiSprite.scale.set(48 / (l._pixiSprite.texture.width || 128));
+        l._pixiSprite.scale.set((48 * LOOT_SCALE) / (l._pixiSprite.texture.width || 128));
         l._pixiSprite.visible = true;
         /* Coin sits on top of the wreck when gold rides on this drop. */
         const snOwn = !l.recipients || !S.myId || l.recipients.includes(S.myId);
@@ -5215,7 +5488,7 @@ export class EffectsRenderer {
           l._pixiSprite.y = l.y + 3 + bob;
           l._pixiSprite.alpha = (ownsThis ? 1 : 0.5) * alpha;
           l._pixiSprite.tint = ownsThis ? 0xffffff : 0x555555;
-          l._pixiSprite.scale.set(14 / (l._pixiSprite.texture.width || 14));
+          l._pixiSprite.scale.set((14 * LOOT_SCALE) / (l._pixiSprite.texture.width || 14));
           l._pixiSprite.visible = true;
         } else {
           gfx.circle(l.x - 3, l.y + 2 + bob, 4);

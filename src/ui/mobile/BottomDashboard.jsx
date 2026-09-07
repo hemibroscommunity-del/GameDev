@@ -30,7 +30,10 @@ import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { bagUnseen, bagEntryKey } from './sheet/bagUnseenModel.js'; /* v2.3.1312 */
 import { COMBAT_SKILLS, unspentPointsTotal } from './sheet/heroModel.js'; /* v2.3.1311: hero toolbar badge; v2.3.1635: shared unspent total */
-import { IdentityStrip } from './sheet/IdentityStrip.jsx';      /* v2.3.1635: persistent identity row */
+/* v2.3.1635 -> v2.3.2320: IdentityStrip's band import is gone with the band
+   purse (see the row below).  The component's other branch has no caller in
+   src/ either -- that predates this change -- so the file is now reference
+   material rather than live code, and it says so at its top. */
 import { HeroExpanded } from './sheet/HeroExpanded.jsx';        /* v2.3.1286 */
 import { InventoryPanel }              from './dash/InventoryPanel.jsx';
 import { ItemDetailPopup }             from './dash/ItemDetailPopup.jsx';
@@ -1041,7 +1044,14 @@ export const BottomDashboard = () => {
           band that carried the other one no longer renders), so the
           v2.3.1563 one-count rule holds by construction.  pointer-events
           none: it is a readout over the touch zones, never a control. */}
-      {land ? <LandGoldChip /> : null}
+      {/* v2.3.2320: the landscape gold chip retires with the band purse.
+          Sideways the count sat at the world's bottom centre because the band
+          does not exist there and the top rail had nowhere to put it; the
+          rail has a purse column now, and it spans the world's width in
+          landscape too (game.css's html[data-orient="landscape"] block), so
+          the same readout serves both orientations from the same place.  One
+          count, one code path, and the one-count rule holds without a
+          second component to keep in step. */}
 
       {/* ═══ v2.3.2166: THE LANDSCAPE NAV DOCK ═══
           Owner: "the dashboard buttons (for dashboard bag view, character
@@ -1286,6 +1296,53 @@ export const BottomDashboard = () => {
               a new road: 34px of dead space above every panel on an
               installed phone, and 34px of panel falling off the bottom. */}
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginTop: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px) - var(--sab, 0px))' }}>
+            {/* ═══ v2.3.2320b: THE DRILL TITLE COMES BACK DOWN HERE ═══
+                v2.3.1922 moved it UP into the toolbar row, and its reasoning
+                was sound at the time: the 44px header it replaced sat in the
+                flex flow ABOVE the row's reservation and was therefore drawn
+                UNDERNEATH the toolbar, which is what produced "the gold amount
+                is over the back button".
+
+                What changed is that the toolbar row ran out of width.  Drilled
+                on a 390px phone it carries the CLOSE pill (76), the back chip
+                (34) and five nav buttons (244 at the width the owner asked
+                for) — 354 of 382 before the title gets a pixel.  There is no
+                button width that fits a nine-character title beside those:
+                even the 36px buttons this replaced needed 29, and what
+                actually happened at 36 was that the row silently overflowed
+                and the "More" button left the screen.
+
+                And the title is not decoration.  mp-loginkey asserts BOTH that
+                the drilled panel is named and that its name renders WHOLE —
+                "a title that renames itself longer fails by silently becoming
+                LOGIN K... rather than by throwing".  Hiding it, or letting it
+                ellipsise, breaks a promise somebody wrote a test for.
+
+                So it comes back down — but INSIDE the reservation, not above
+                it, which is the specific mistake v2.3.1922 fixed.  This div
+                already carries the toolbar's full height as marginTop, so
+                anything in it starts below the toolbar and cannot be drawn
+                under it.  And it costs 24px of panel height rather than the
+                44px header that left: one line of caption type, not a bar.
+
+                The back chip stays in the toolbar row.  It is a control you
+                aim at, it has lived at that spot since v2.3.1922, and moving
+                it would be the thing the one-position rule (v2.3.1637b) exists
+                to prevent. */}
+            {drill && (
+              <div style={{
+                flex: 'none',
+                padding: '0 2px 6px',
+                fontSize: 13,
+                fontWeight: 700,
+                letterSpacing: '.10em',
+                textTransform: 'uppercase',
+                color: COL.text2,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}>{active ? active.title : ''}</div>
+            )}
             {Active && <Active />}
           </div>
         </>
@@ -1465,32 +1522,33 @@ export const BottomDashboard = () => {
         )}
         {/* v2.3.692: the LOADOUT / BUILD ColHeader treatment (13px, .10em
             tracking, uppercase) so every open panel title reads the same.
-            v2.3.1922: it sits NEXT TO the back chip and takes its natural
-            width, rather than centring in the row on flex:1.
+            v2.3.1922: the title sat HERE, next to the back chip, taking its
+            natural width.
+            v2.3.2320b: it is gone from this row — see the note in the panel
+            body, which is where it went and why.  The short version is that
+            with five 44px buttons this row has 28px left over on a 390px
+            phone after CLOSE and the back chip, and the title has to render
+            whole (mp-loginkey asserts it). */}
+        {/* v2.3.2320b: the title is NOT in this row any more — it moved into
+            the panel body just above (full reasoning there).  What stays here
+            is the back chip, which is a control rather than a label, and the
+            row's width now goes to the buttons the owner asked to widen. */}
+        {/* v2.3.2320: the identity strip is GONE from this row.  Its last
+            content was the gold purse and the purse moved to the zone header
+            rail (owner: "very top right on the top bar that lists the zone
+            name"); IdentityStrip's band branch now returns null and the file
+            carries the full reasoning.  What that buys is this row's middle,
+            which is what the same message asked for — "make the 5 dashboard
+            navigation buttons wider to increase tap surface".
 
-            Centred was what the old standalone header could afford; in a
-            shared row it is not.  Measured: between the gold readout's right
-            edge (111) and the nav group's left (185) there is ~62px, and
-            IdentityStrip flexes into the same leftover — so a centred title
-            rendered "BUILD" as "B U...".  Beside the chip it has ~145px and
-            needs about 50, and back-chip-then-label is the pattern a phone
-            user already reads as "where this goes back to".  maxWidth keeps a
-            long drill title from ever pushing the gold off its own row; the
-            ellipsis is the backstop, not the plan. */}
-        {drill && (
-          <div style={{
-            flex: 'none', minWidth: 0, maxWidth: 132,
-            fontSize: 13,
-            fontWeight: 700,
-            letterSpacing: '.10em',
-            textTransform: 'uppercase',
-            color: COL.text,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}>{active ? active.title : ''}</div>
-        )}
-        <IdentityStrip band />
+            It also fixes a real defect nobody had reported: with the purse in
+            here the row's children measured 486px inside 382, and the purse
+            was the ONLY flexible one, so it collapsed to zero and the rail
+            still overflowed — on a drilled screen the "More" button's centre
+            sat 22px OFF the right edge of a 390px phone.  Nothing clipped it
+            (the row is overflow:visible), it was simply unreachable, which is
+            TRAPS 41's silent failure: QuestCoach's Login Key lesson measures
+            that button and skips itself when it cannot be reached. */}
         {/* Track 3, right-aligned.  The group is WIDER than the narrow
             track (132 vs 90 at 390w) and deliberately overflows it to the
             LEFT: track 2 holds only the DPS anchor box, which is pinned to
@@ -1550,47 +1608,17 @@ export const BottomDashboard = () => {
 };
 
 /* v2.3.1332: frame via .bt-chisel — layout only here. */
-/* v2.3.2168: the landscape gold chip (see the render-site comment).  Reads
-   the same R.coins IdentityStrip reads and ticks itself once a second —
-   gold moves on server settlement, not per frame, and a 1s readout lag on
-   a coin count is invisible while a live subscription here would be a new
-   wire into a component that renders four elements. */
-const LandGoldChip = () => {
-  const [, force] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => force((v) => (v + 1) % 1000000), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const R = (window._gameState && window._gameState.current && window._gameState.current.rpg) || {};
-  const gold = R.coins || R.gold || 0;
-  return (
-    <div className="bt-land-gold" aria-label={`${gold} gold`} style={{
-      position: 'fixed',
-      /* v2.3.2174: centred over the WORLD, wherever the world starts.
-         --world-x is the world's left edge (0 whenever the panel is on the
-         right), so this needs no knowledge of the side — the same stamp
-         that offsets the wrap re-centres the chip. */
-      left: 'calc(var(--world-x, 0px) + var(--play-w, 100%) / 2)',
-      transform: 'translateX(-50%)',
-      bottom: 'calc(var(--sab, 0px) + 6px)',
-      zIndex: 30,
-      display: 'flex', alignItems: 'center', gap: 5,
-      padding: '4px 10px',
-      background: 'rgba(13,22,27,.78)',
-      border: '1px solid rgba(229,237,233,.16)',
-      borderRadius: 999,
-      pointerEvents: 'none',
-    }}>
-      <img src="/icons/popups/gold.webp" alt="" draggable={false}
-        style={{ width: 16, height: 16, objectFit: 'contain' }} />
-      <span className="bt-coin-glimmer" style={{
-        color: COL.gold, fontSize: 14, fontWeight: 800,
-        fontVariantNumeric: 'tabular-nums', lineHeight: 1,
-      }}>{Number(gold).toLocaleString()}</span>
-    </div>
-  );
-};
-
+/* v2.3.2168 -> RETIRED v2.3.2320: the landscape gold chip (`.bt-land-gold`)
+   drew the count at the world's bottom centre, because sideways there is no
+   band to carry it (sheetGeometry: "the ONLY count on a landscape screen") and
+   the zone rail had only an empty spacer at its right.  That spacer is the
+   purse now, in both orientations — the rail narrows to the world's width in
+   landscape and takes the Island's inset as padding — so this component would
+   be the second live count on the screen, which is the thing the one-count
+   rule exists to prevent.  TradeWindowPanel's gold toss kept a
+   `.bt-land-gold` fallback behind `[data-purse]`; the rail carries
+   `data-purse` in both orientations, so the fallback is dead and the toss
+   still lands. */
 const chipStyle = {
   width: 34, height: 34,
   display: 'flex',

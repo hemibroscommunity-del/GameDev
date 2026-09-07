@@ -288,10 +288,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
       Math.abs(after.ang - before.ang) > 0.2, { before, after, want: -2.2 });
   }
 
-  /* ── 5. AND THE SIGHT BEAM IS STILL GONE ──
-     The owner keeps it that way deliberately.  Turning the aim back on for
-     ranged is exactly the change that could bring it back, so it is asserted
-     in the same file as the change that threatens it. */
+  /* ── 5. MAGIC STAYS DARK ──
+     v2.3.2258 turned the sight beam off for BOTH ranged slots and the owner
+     keeps magic that way.  Turning the aim back on for ranged is exactly the
+     change that could bring it back, so it is asserted in the same file as the
+     change that threatens it.
+
+     ═══ v2.3.2320: THIS BLOCK USED TO LIE ═══
+     Its message read "the sight beam stays hidden for magic AND BOW", but it
+     inherited block 4's staff arm and never re-armed — so it only ever tested
+     magic, and would have stayed green through a bow restore while its own
+     text said it had checked one.  A green assertion whose sentence is false
+     is worse than a missing one: it is a claim CI certifies.  The arm is
+     explicit now, and the bow has its own block below. */
+  await armRanged(P, 'staff');
   const beam = await P.page.evaluate(() => {
     const S = window._gameState.current;
     S._aimAngle = 0.9; S._aiming = true; S.autoAttack = true;
@@ -303,13 +313,134 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S.autoAttack = false; S._aiming = false;
     return (window.__btSightBeam ? window.__btSightBeam() : { unavailable: true });
   });
-  console.log(`    beam: ${JSON.stringify(beam)} ${JSON.stringify(beamSeen)}`);
+  console.log(`    beam(staff): ${JSON.stringify(beam)} ${JSON.stringify(beamSeen)}`);
   if (beamSeen && beamSeen.unavailable) {
-    rec.skip('the sight beam stays hidden for magic and bow', 'no __btSightBeam probe');
+    rec.skip('the sight beam stays hidden for MAGIC', 'no __btSightBeam probe');
   } else {
-    rec.ok('the sight beam stays hidden for magic and bow, aim or no aim',
-      beamSeen && beamSeen.visible === false, beamSeen);
+    rec.ok('the sight beam stays hidden for MAGIC, aim or no aim, firing or not',
+      beamSeen && beamSeen.visible === false && beamSeen.slot === 'staff', beamSeen);
   }
+
+  /* ── 6. THE BOW'S SIGHT LINE IS BACK, AND ONLY WHILE ATTACKING (v2.3.2320) ──
+     Owner: "I want to give archers a little buff by restoring the previous line
+     of site visual only with now.  Slight wavy line one while attacking one."
+
+     Three separate claims, and each needs its own state, because a build that
+     simply reverted v2.3.2258 wholesale would pass the middle one alone:
+       (a) aiming is NOT attacking — a bare aim draws nothing;
+       (b) attacking draws it;
+       (c) and it points where the ARROW goes, which is the only thing a sight
+           line is for.  (c) is the one with teeth: the beam kept a four-branch
+           ladder measured from the player's FEET while the fire site moved to
+           combatHelpers' five-branch ladder from the GRIP, so a faithful
+           restore draws a line the arrow does not follow. */
+  await armRanged(P, 'ranged');
+  const aimOnly = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S._aimAngle = 0.9; S._aiming = true; S.autoAttack = false;
+    S._bowShotAt = 0;
+    return { slot: S.rpg.activeSlot, aiming: !!S._aiming, auto: !!S.autoAttack };
+  });
+  await P.page.waitForTimeout(400);
+  const bowIdle = await P.page.evaluate(() =>
+    (window.__btSightBeam ? window.__btSightBeam() : { unavailable: true }));
+  console.log(`    beam(bow, aiming only): ${JSON.stringify(aimOnly)} ${JSON.stringify(bowIdle)}`);
+  rec.ok('a bow merely AIMING draws no sight line — "while attacking" is narrower',
+    !bowIdle.unavailable && bowIdle.visible === false, bowIdle);
+
+  /* Firing, at a real locked monster, so the angle has something to agree
+     with.  Straight DOWN-LEFT from the player — a direction no other block in
+     this file uses, and not a multiple of pi/4. */
+  const firing = await P.page.evaluate(() => {
+    const S = window._gameState.current, F = window._gameFns || {};
+    S._serverMonsters = false;
+    const m = F.createMonster('beam-1', 'fodder', 2, S.player.x - 210, S.player.y + 150, null);
+    m.alive = true; m.curHp = m.maxHp = 9000; m.spd = 0; m.vx = 0; m.vy = 0;
+    m.renderX = m.x; m.renderY = m.y;
+    S.monsters = [m];
+    S.lockedTarget = { type: 'monster', id: 'beam-1', ref: m, src: 'tap' };
+    S.arrows = [];
+    S.swingTimer = 0;
+    S.autoAttack = true;
+    return { mx: Math.round(m.x), my: Math.round(m.y),
+      px: Math.round(S.player.x), py: Math.round(S.player.y) };
+  });
+  /* ═══ THE FIRST ARROW IS NOT THE ONE TO MEASURE ═══
+     Both the shot and the beam launch from the bow's teal GRIP -- but the grip
+     is published by the renderer while it draws the bow stand-in, so before the
+     first shot animation has painted a frame there is no grip and BOTH fall
+     back to the player's feet.  That fallback is deliberate and documented at
+     the draw site.  What it does to a test is subtler: the first arrow can be
+     fired from the FEET on one frame and the beam sampled from the GRIP two
+     frames later, and the two disagree by ~0.15 rad for a completely legitimate
+     reason.  Measured, exactly that: arrow 2.613 (feet + the fodder body offset)
+     against beam 2.464 (grip + the same offset), on a loaded machine where the
+     renderer had not yet painted a bow frame.  It passed on an idle one, which
+     is the worst kind of green.
+     So: wait for the grip to exist, THEN clear the arrows and measure the next
+     shot.  If it never publishes, say so -- a silent comparison of two
+     different origins is what produced the false reading in the first place. */
+  const gripUp = await P.page.evaluate(() => new Promise((resolve) => {
+    const S = window._gameState.current;
+    const t0 = Date.now();
+    const iv = setInterval(() => {
+      if (S._bowGripDX != null && S._bowGripDY != null) {
+        clearInterval(iv);
+        S.arrows = [];          /* discard everything fired before the grip */
+        resolve({ dx: S._bowGripDX, dy: S._bowGripDY });
+      } else if (Date.now() - t0 > 6000) {
+        clearInterval(iv);
+        resolve({ dx: null, dy: null, timeout: true });
+      }
+    }, 16);
+  }));
+  rec.ok('the bow has published its grip, so shot and beam share an origin (guard)',
+    gripUp.dx != null, gripUp);
+  /* Stamp the arrow's heading and the beam's in the SAME tick.  Both are
+     recomputed every frame off a lock whose ref moves, so two reads separated
+     by a wait compare two different frames -- the mistake the phantom block
+     above records having made once already. */
+  const agree = await P.page.evaluate(() => new Promise((resolve) => {
+    const S = window._gameState.current;
+    const t0 = Date.now();
+    const iv = setInterval(() => {
+      const a = (S.arrows || [])[0];
+      const b = window.__btSightBeam ? window.__btSightBeam() : null;
+      if (a && b) {
+        clearInterval(iv);
+        resolve({ arrow: a.ang, beam: b.angle, src: b.src, visible: b.visible,
+          firing: b.firing, origin: b.origin, grip: S._bowGripDX });
+      } else if (Date.now() - t0 > 4000) {
+        clearInterval(iv);
+        resolve({ arrow: a ? a.ang : null, beam: b ? b.angle : null,
+          src: b ? b.src : null, visible: b ? b.visible : null,
+          firing: b ? b.firing : null, origin: b ? b.origin : null,
+          grip: S._bowGripDX, timeout: true });
+      }
+    }, 16);
+  }));
+  await P.page.evaluate(() => { window._gameState.current.autoAttack = false; });
+  console.log(`    beam(bow, firing): ${JSON.stringify(firing)} -> ${JSON.stringify(agree)}`);
+  rec.ok('a bow that IS attacking draws its sight line again',
+    agree.visible === true && agree.firing === true, agree);
+  rec.ok('an arrow actually left, to compare the line against (guard)',
+    agree.arrow != null, agree);
+  if (agree.arrow != null && agree.beam != null) {
+    /* The epsilon is small on purpose.  The two ladders disagree by ~0.1-0.4
+       rad in the cases that matter (feet-vs-grip origin, feet-vs-body-centre
+       target), so a loose bound would pass on exactly the bug this catches. */
+    const d = Math.abs(Math.atan2(Math.sin(agree.arrow - agree.beam),
+      Math.cos(agree.arrow - agree.beam)));
+    rec.ok(`...and it points where the ARROW goes (${agree.arrow.toFixed(3)} vs ${agree.beam.toFixed(3)} rad)`,
+      d < 0.02, { ...agree, delta: d });
+    rec.ok('...off the same lock the shot resolved, from the bow grip',
+      agree.src === 'lock' && !!agree.origin, agree);
+  }
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.lockedTarget = null; S.monsters = []; S.arrows = [];
+    S._aiming = false; S.autoAttack = false;
+  });
 
   await P.ctx.close().catch(() => {});
 }

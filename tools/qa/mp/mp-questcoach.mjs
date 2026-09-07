@@ -173,9 +173,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
      of it were hit-testable, the one control the player has just been told to
      press would stop responding.  That is the worst possible bug for this
      feature, so it is checked on every layer of it. */
-  rec.ok('the coach layer is not hit-testable',
-    !!(c1 && c1.layerPE === 'none' && c1.ringPE === 'none' && c1.cardPE === 'none'),
-    { layer: c1 && c1.layerPE, ring: c1 && c1.ringPE, card: c1 && c1.cardPE });
+  /* ═══ v2.3.2312: THE RING STAYS BLIND, THE CARD NO LONGER DOES ═══
+     This used to demand that all three layers were untouchable, and the
+     paragraph above says why: the mark must not eat the tap it is asking for.
+     That reason applies to the RING, which sits directly on the control, and
+     to the full-viewport layer. It never applied to the CARD, which is drawn
+     somewhere else on the screen entirely -- and the card being untouchable is
+     what made the owner's tap fall through to the joystick underneath and
+     swing his weapon.
+     So the guarantee is split rather than dropped: the two layers that overlap
+     the control stay blind, the card takes its tap, and the tile-still-works
+     proof below is what shows the guarantee survived in the only form that
+     matters -- by use. */
+  rec.ok('the coach layer and its ring stay blind to hit-testing, so the mark '
+    + 'cannot eat the tap it is asking for',
+    !!(c1 && c1.layerPE === 'none' && c1.ringPE === 'none'),
+    { layer: c1 && c1.layerPE, ring: c1 && c1.ringPE });
+  rec.ok('...while the card itself DOES take a tap, so it can be dismissed',
+    !!(c1 && c1.cardPE === 'auto'), { card: c1 && c1.cardPE });
   /* ...and proven by USE: the tile it rings still takes the tap, and the
      item popup opens through the mark. */
   await P.page.evaluate(() => {
@@ -404,6 +419,46 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and it says to use whichever you like best',
     !!(cC && /like best/i.test(cC.text)), cC && cC.text);
   await P.page.screenshot({ path: 'tools/qa/mp/out/coach-5-cycle.png' });
+
+  /* ═══ v2.3.2319: THE SWAP-WEAPONS MESSAGE IS THE ONE HE NAMED ═══
+     Owner: "the swap weapons message in tutorial needs layer change so it can
+     be tap to dismiss."
+
+     This lesson IS that message -- its label is literally "Swap weapons" -- and
+     v2.3.2312 already made every coach card take a tap, so no code changed for
+     this ask. Worth checking on THIS lesson rather than arguing "the card
+     component is shared, so it must hold here too": that is reasoning of
+     exactly the kind this repo keeps being wrong about.
+
+     THE LAYER IS WHAT IS ASSERTED, which is also what he asked for. His card
+     rings the LEFT joystick, so the fall-through that swung a weapon on the
+     login-key card applies here -- and "what answers a finger at the card's
+     centre" is the whole of that bug.
+     NOT the tap itself: dismissing retires the lesson, and three assertions
+     further down still need it up (the cycle counter, the single-swap check,
+     and the retire-on-third-slot check, which a premature dismissal would make
+     pass vacuously). The dismissal MECHANISM is proven on the guard lesson in
+     this same file, on the same shared card. */
+  const cycleCard = await rectOf(P, '[data-coach-card]');
+  rec.ok('the swap-weapons card is on screen (guard)', !!cycleCard, cycleCard);
+  if (cycleCard) {
+    const layer = await P.page.evaluate((b) => {
+      const el = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+      const card = document.querySelector('[data-coach-card]');
+      return {
+        answers: el ? (el.closest('[data-coach]') ? 'coach'
+          : (el.closest('[data-joyzone]') ? 'joyzone' : el.tagName)) : null,
+        cardPE: card ? getComputedStyle(card).pointerEvents : null,
+        id: card ? card.getAttribute('data-coach-card') : null,
+      };
+    }, cycleCard);
+    console.log('    SWAP-WEAPONS LAYER -> ' + JSON.stringify(layer));
+    rec.ok('...and it is the swap-weapons lesson being measured (guard)',
+      layer.id === 'cycle', layer);
+    rec.ok('a finger on the swap-weapons message lands on the MESSAGE, not the '
+      + 'joystick underneath it', layer.answers === 'coach', layer);
+    rec.ok('...so it can take the tap that dismisses it', layer.cardPE === 'auto', layer);
+  }
   const lJoy = await rectOf(P, '.bt-joystick-zone');
   rec.ok('the left joystick is on screen at this viewport (guard)', !!lJoy, lJoy);
   if (lJoy && cC && cC.ring) {
@@ -481,6 +536,64 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and it teaches the DOUBLE TAP, not the old shield button',
     !!(g1 && /double.?tap/i.test(g1.text) && !/shield button/i.test(g1.text)), g1 && g1.text);
   await P.page.screenshot({ path: 'tools/qa/mp/out/coach-3-guard.png' });
+
+  /* ═══ v2.3.2312: TAP THE MESSAGE, AND DO NOT SWING ═══
+     Owner: "the save your login key pop up needs to be layered in front so I
+     can tap it to dismiss.  Right now it just swings the weapon attack by
+     activating the right joystick."
+
+     THE GUARD LESSON IS THE RIGHT PLACE TO PROVE IT.  Its card is the one the
+     file header calls "the message above the attack stick" -- it sits in the
+     lower half of the screen, which is exactly where the right touch zone
+     lives. The equip lesson's card is over the dashboard instead, so the
+     no-swing half would be vacuous there: nothing underneath it starts an
+     attack whatever the card does.
+     So: check what actually answers at the card's centre, then land a REAL
+     touch on it and read both outcomes. */
+  const cardBox = await rectOf(P, '[data-coach-card]');
+  rec.ok('the guard card is on screen to tap (guard)', !!cardBox, cardBox);
+  if (cardBox) {
+    const under = await P.page.evaluate((b) => {
+      const el = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+      if (!el) return null;
+      return { tag: el.tagName, coach: !!el.closest('[data-coach]'),
+        joyzone: !!el.closest('[data-joyzone]') };
+    }, cardBox);
+    console.log('    UNDER THE CARD -> ' + JSON.stringify(under));
+    /* The whole bug in one read: before this version the answer here was the
+       touch zone, which is why a finger aimed at the message swung a sword. */
+    rec.ok('a finger on the message lands on the MESSAGE, not the touch zone '
+      + 'underneath it', !!(under && under.coach === true), under);
+
+    await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      S.autoAttack = false; S.isSwinging = false; S.swingTimer = 0;
+      S.arrows = []; S._rTapAt = 0;
+    });
+    await P.page.touchscreen.tap(cardBox.left + cardBox.width / 2, cardBox.top + cardBox.height / 2);
+    await P.page.waitForTimeout(700);
+    const after = await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      const card = document.querySelector('[data-coach-card]');
+      const t = (window.__btCoach && window.__btCoach()) || {};
+      return { auto: !!S.autoAttack, swinging: !!S.isSwinging,
+        arrows: (S.arrows || []).length, rTap: S._rTapAt || 0,
+        card: !!card,
+        cardId: card ? card.getAttribute('data-coach-card') : null,
+        doneGuard: !!(t.done && t.done.blockRanged) };
+    });
+    console.log('    AFTER THE TAP -> ' + JSON.stringify(after));
+    /* THE LESSON THAT WAS TAPPED is what must go -- not "no card anywhere".
+       Putting the guard lesson down can reveal the NEXT one immediately (the
+       login-key card is gated on owning a shield, which this character now
+       does), and a bare "no card" assertion would read that correct handover
+       as a failure. So: this lesson is recorded done, and whatever is on
+       screen now is not it. */
+    rec.ok('tapping the message puts THAT lesson down for good',
+      !!(after && after.doneGuard === true && after.cardId !== 'blockRanged'), after);
+    rec.ok('...and does NOT swing the weapon, which is what it used to do',
+      !!(after && !after.auto && !after.swinging && after.arrows === 0 && !after.rTap), after);
+  }
 
   /* A MELEE raise must not count.  Done first, so the pass below cannot be the
      residue of this. */

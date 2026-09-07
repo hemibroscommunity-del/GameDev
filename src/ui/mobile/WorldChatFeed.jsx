@@ -116,6 +116,10 @@ export function WorldChatFeed() {
      React error #310 (a hook behind a conditional return), which took the
      whole feed off the screen.  Handlers may live anywhere; hooks may not. */
   const tapRef = useRef(null);
+  /* v2.3.2325: the shell's box, for the window-level tap classifier below.
+     A ref rather than a querySelector in the handler: this runs on every
+     pointerdown in the game while the feed is open. */
+  const shellRef = useRef(null);
 
   useEffect(() => chatLogBus.subscribe(() => setV((n) => n + 1)), []);
   /* v2.3.2145: and repaint when the silence control or a trade guard flips,
@@ -194,6 +198,97 @@ export function WorldChatFeed() {
     if (!shut && newestTs) seenRef.current = Math.max(seenRef.current, newestTs);
   }, [shut, newestTs]);
 
+  const toggle = () => {
+    setShut((wasShut) => {
+      const next = !wasShut;
+      /* Opening clears the badge in the same act that reveals the lines. */
+      if (!next && newestTs) seenRef.current = Math.max(seenRef.current, newestTs);
+      writeShut(next);
+      return next;
+    });
+  };
+
+  /* ═══ v2.3.2325: TAP THE FEED ANYWHERE TO PUT IT AWAY ═══
+     Owner: "Make it so touching the world chat window once just closes it
+     (minimized into the just the bell alert button) and you can remove the
+     tiny down arrow minimizing button."
+
+     The obvious implementation is the one this file may not have.  Putting
+     an onPointerUp on the message list means giving the list back
+     pointerEvents:'auto', and that is precisely the bug v2.3.2123 was
+     written to kill: this panel is 226x150 in the LOWER LEFT, the left
+     joystick's touch zone is the whole left half of the world, and
+     BroTown's stick listens on the pad ELEMENT (BroTown.jsx:8771, :9492)
+     rather than on the document -- so anything painted over the pad that
+     answers a hit-test does not merely sit on top of the joystick, it stops
+     the joystick's touchstart from ever running.  All four demo reviewers
+     reported that ("unable to move jotstick").  An interactive list would
+     hand back 24% of the pad including the entire visible disc.
+
+     So the list stays inert and the TAP is classified at the window
+     instead, where it arrives no matter which element the browser gave the
+     touch to.  The finger still reaches the joystick underneath -- which is
+     the point; a tap that steers nowhere costs nothing, and a DRAG that
+     starts on the feed must still steer, so the same 12px tap-vs-drag split
+     the bell uses (below) decides it here.
+
+     DISTANCE ONLY, no clock.  The first cut also required the finger up
+     within 260ms, on the theory that a long press is not a tap.  Measured
+     with real CDP touch events, one ordinary tap took 441ms from pointerdown
+     to pointerup -- so the gate rejected every tap there was, and the panel
+     never closed.  A duration ceiling was answering a question nobody asked:
+     what separates "close the chat" from "walk" is whether the finger MOVED,
+     which is the only thing the bell has ever tested either.
+
+     BUBBLE phase, not capture: the header button's own onTapUp calls
+     stopPropagation, and a capture-phase listener would run first and
+     toggle twice back to where it started.  The closest() check below says
+     the same thing again without depending on React's event plumbing to
+     say it.
+
+     Mounted only while OPEN, so the shut bell costs the window no listener
+     at all, and stood down under a panel or a guard for the same reason the
+     header does -- an invisible control that still takes the tap is worse
+     than a visible one (v2.3.2280). */
+  useEffect(() => {
+    if (shut || busy || typeof window === 'undefined') return undefined;
+    let from = null;
+    const inShell = (x, y) => {
+      const el = shellRef.current;
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    };
+    const down = (e) => {
+      const t = e.target;
+      /* The header runs its own handler; let it, or the two cancel out. */
+      if (t && t.closest && t.closest('[data-world-chat-toggle]')) { from = null; return; }
+      from = inShell(e.clientX, e.clientY) ? { x: e.clientX, y: e.clientY } : null;
+    };
+    const up = (e) => {
+      const s = from;
+      from = null;
+      if (!s) return;                                     /* began elsewhere */
+      const dx = e.clientX - s.x, dy = e.clientY - s.y;
+      if ((dx * dx + dy * dy) > (12 * 12)) return;        /* a drag: the pad's */
+      if (!inShell(e.clientX, e.clientY)) return;         /* finished off the feed */
+      if (guardActive()) return;
+      toggle();
+    };
+    const off = () => { from = null; };
+    window.addEventListener('pointerdown', down);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', off);
+    return () => {
+      window.removeEventListener('pointerdown', down);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', off);
+    };
+    /* Deps are [shut, busy] on purpose: `toggle` and guardActive() are read
+       when the finger lifts, not when the listener is bound, so re-binding
+       on every chat line would be churn for nothing. */
+  }, [shut, busy]);
+
   /* Quiet when empty (see header) — but the ticket chip may stand alone
      during an event.  One 20px line in an otherwise clear corner is the
      thing the owner asked for; the 260px board it replaces is the thing
@@ -231,18 +326,9 @@ export function WorldChatFeed() {
     toggle();
   };
 
-  const toggle = () => {
-    setShut((wasShut) => {
-      const next = !wasShut;
-      /* Opening clears the badge in the same act that reveals the lines. */
-      if (!next && newestTs) seenRef.current = Math.max(seenRef.current, newestTs);
-      writeShut(next);
-      return next;
-    });
-  };
-
   return (
     <div
+      ref={shellRef}
       data-world-chat=""
       style={{
         position: 'fixed',
@@ -357,6 +443,11 @@ export function WorldChatFeed() {
         onPointerDown={onTapDown}
         onPointerUp={onTapUp}
         onPointerCancel={() => { tapRef.current = null; }}
+        /* v2.3.2325: ...and the keyboard, which produces a click with no
+           pointer behind it (detail 0) and therefore never reaches the two
+           handlers above.  Guarded on detail so a mouse, which fires both a
+           pointerup AND a click, still toggles exactly once. */
+        onClick={(e) => { if (e.detail === 0) toggle(); }}
         style={{
           /* The wrapper is pointerEvents:none so the world stays draggable
              around the feed; this control opts back in. 'none' while a panel
@@ -492,24 +583,34 @@ export function WorldChatFeed() {
               {unread > 99 ? '99+' : unread}
             </span>
           ) : null}
-          {/* The chevron is the affordance: it says this folds, which a bare
-              label never did. Inline, because it is two lines of SVG and a
-              texture that loads on first use is the regression CLAUDE.md names. */}
-          {/* ═══ v2.3.2266: IT POINTED THE WRONG WAY ═══
-              Owner: "the down arrow makes me think it expands it."  It did,
-              and the convention it was breaking is universal -- a chevron
-              points the way the content is about to GO.  Open, this feed folds
-              UPWARD into its own one-line header, so the arrow has to point up;
-              shut, tapping brings the messages back DOWN, so it points down.
-              It was exactly inverted: the rotation was keyed to `shut` when the
-              glyph's resting direction is already down.  Dropping the rotation
-              on `shut` and applying it while OPEN swaps the pair, which is one
-              character of change and the whole of the complaint. */}
-          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"
-            style={{ flex: '0 0 auto', transform: shut ? 'none' : 'rotate(180deg)' }}>
-            <path d="M1 3.5 L5 7 L9 3.5" fill="none" stroke="#8FA3A0"
-              strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          {/* ═══ v2.3.2325: THE ARROW IS GONE, THE WHOLE PANEL IS THE BUTTON ═══
+              Owner: "you can remove the tiny down arrow minimizing button."
+              He is right that it had stopped earning its 10px.  The chevron
+              was the affordance for a fold you could only reach by hitting
+              that one header strip; now a tap anywhere on the feed folds it
+              (see the classifier above), so the arrow points at a target that
+              is no longer special.  Two versions were spent getting its
+              direction right (v2.3.2266: "the down arrow makes me think it
+              expands it") -- a glyph nobody needs to aim at cannot point the
+              wrong way.
+              Words in its place, because the new gesture is the one thing
+              here a player cannot guess by looking: a panel that closes when
+              you touch it is not a convention, so it says so. */}
+          <span
+            data-world-chat-hint=""
+            style={{
+              flex: '0 0 auto',
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: '.06em',
+              textTransform: 'uppercase',
+              color: '#6E817E',
+              textShadow: '0 1px 2px rgba(4,7,9,.9)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Tap to close
+          </span>
           </>
         )}
       </button>

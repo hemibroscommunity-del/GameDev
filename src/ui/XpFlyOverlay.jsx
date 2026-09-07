@@ -9,7 +9,8 @@ import { xpCardPoint, holdXp, landXp } from '@/ui/xpLanding.js'; /* v2.3.1874 */
    S._hudPopups by the combat-XP and gold-drop paths.
    Each entry has { id, target, text, color, ts }.
      target = 'xpBar'    -> the combat-XP message + progress bar (below)
-     target = 'goldIcon' -> the gold pickup number, at the coin chip
+     target = 'goldIcon' -> the gold pickup number, under the purse in the
+                            zone rail (v2.3.2320; it was the band's coin chip)
    Mounted once from GameApp.jsx.  z-index 90 (see src/ui/zLayers.js).
 
    ═══ v2.3.1638 (owner: "there's also no XP gain message after a
@@ -456,12 +457,25 @@ const HudPopup = ({ pop, stackIdx }) => {
     <div
       style={{
         position: 'fixed',
-        left: 8,
-        bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--dash-h, 135px) + 20px + '
+        /* ═══ v2.3.2320: THE GAIN FOLLOWS THE COUNTER ═══
+           This sat at the band's bottom-left, and its own note said why:
+           "rises out of the chip and fades — a gain moving up off the counter
+           it just incremented".  The counter moved to the zone rail's
+           top-right (owner: "move gold amount display to very top right on the
+           top bar that lists the zone name"), so left where it was, the note
+           would have become false and the "+120 G" would have floated up out
+           of an empty corner of the screen.  Feedback that does not point at
+           the number it changed is worse than none — it teaches the wrong
+           place to look.
+
+           So it hangs just under the rail at the same right margin, and keeps
+           the upward drift, which now reads as the coins going INTO the purse
+           rather than off a chip.  Anchored in env() like the rail itself
+           (game.css .bt-zone-header) so both clear the notch together. */
+        right: 10,
+        top: 'calc(env(safe-area-inset-top, 0px) + 52px + '
           + (stackIdx * STACK_SPACING_PX) + 'px)',
-        textAlign: 'left',
-        /* Rises out of the chip and fades — a gain moving up off the
-           counter it just incremented. */
+        textAlign: 'right',
         transform: 'translateY(' + (phase === 1 ? -14 : 0) + 'px)',
         opacity: phase === 1 ? 0 : 1,
         /* v2.3.1233: Lantern Slate semantic fallback — coin gold #D8A94D. */

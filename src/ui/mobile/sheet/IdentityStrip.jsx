@@ -153,64 +153,41 @@ export const IdentityStrip = ({ band = false, gutter = 0, trackW = null }) => {
      * nearest weapon is to its next level.  Everything cut is one tap away.
      */
 
-    return (
-      <div
-        role="button" aria-label="Hero" title="Hero"
-        onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.open('hero'); }}
-        style={{
-          flex: '1 1 auto', minWidth: 0, marginRight: gutter,
-          display: 'flex', flexDirection: 'column', justifyContent: 'center',
-          cursor: 'pointer', touchAction: 'manipulation',
-          fontFamily: 'Source Sans 3, sans-serif',
-        }}>
-        {/* ═══ v2.3.1853: THE BAND IS THE PURSE ═══
-            Owner: "actually just put the coins there.  The dashboard menu
-            has the 3 skills on it already for xp."
-
-            And it does — the three combat pills a few pixels below this row
-            carry the XP now, one bar per skill (v2.3.1853, DashColumns), so
-            a fourth XP readout up here would be the same information a
-            third time.  This strip has shed, in order: the portrait, the
-            stat row, the name and level, and now the XP pair — each because
-            something else on screen already said it.  What is left is the
-            one number nothing else on the resting screen shows.
-
-            The 6px presence dot stays.  It is not a readout — it is the
-            only thing on the resting screen that says whether a 100%-server
-            game is still talking to its server. */}
-        {/* v2.3.1857 (owner: "center the coins within that extra space,
-            remove the dot to the left of it").  The presence dot is gone
-            with it — it was the last thing on the resting screen that said
-            whether a 100%-server game was still connected, so noting where
-            that signal now lives: nowhere on the band.  The reconnect
-            overlay still fires on a real drop, which is the loud half of
-            what the dot did; the quiet half — "yes, still fine" — is what
-            this trades away for a centred purse. */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          minWidth: 0,
-        }}>
-          {/* v2.3.2297: `data-purse` is a TARGET, not a style hook. The trade
-              receipt tosses the gold you were just paid toward the place it
-              lands, and "the place it lands" has to be findable from another
-              file without guessing at a class or matching on a number that
-              changes every second. One attribute, read by
-              TradeWindowPanel's tossToBag. */}
-          <span data-purse="1" style={{
-            flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
-          }}>
-            <img src="/icons/popups/gold.webp" alt="" draggable={false} style={{
-              width: 20, height: 20, imageRendering: 'pixelated', display: 'block',
-              pointerEvents: 'none',
-            }} />
-            <span className="bt-coin-glimmer" style={{
-              fontSize: 17, fontWeight: 800, color: COL.gold,
-              fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-            }}>{Number(gold).toLocaleString()}</span>
-          </span>
-        </div>
-      </div>
-    );
+    /* ═══ v2.3.2320: THE BAND IS NO LONGER THE PURSE — AND SO IS NO LONGER ═══
+     * Owner: "Move gold amount display to very top right on the top bar that
+     * lists the zone name."  It went to the zone header rail (ZoneHeader.jsx,
+     * the `__balance` column), and it MOVED rather than copied: the one-count
+     * rule this strip inherited from the retired v2.3.1563 floating chip
+     * ("two live gold counts on one screen disagree the moment one of them
+     * lags") forbids the alternative.
+     *
+     * The purse was the last thing in here.  Read the sequence above — the
+     * portrait (v2.3.1848), the stat row (v2.3.1849), the name and level and
+     * the XP pair (v2.3.1853/1857) — each shed because something else on
+     * screen already said it.  This is that argument one final time, and it
+     * empties the block.
+     *
+     * WHAT ELSE THIS BLOCK WAS, and where it goes: it was the HERO BUTTON
+     * (the whole summary was one big target, v2.3.1848).  An empty
+     * `role="button"` filling the middle of the band would be a control with
+     * no face — nobody aims at a blank — so it retires with its content, and
+     * the nav rail's Character button (which is right there, and which this
+     * message also asked to make BIGGER) is the visible way to Hero.
+     *
+     * The width this was holding is exactly what pays for those wider
+     * buttons: BottomDashboard no longer mounts the strip in band mode, and
+     * sheetGeometry's IDENTITY_MIN_LINE drops from a reservation for a
+     * portrait + XP bar + purse that nothing has drawn since v2.3.1857.
+     *
+     * THE NON-BAND BRANCH BELOW IS UNTOUCHED AND ALSO HAS NO CALLER.  That
+     * is not something this change did: a grep of src/ for `<IdentityStrip`
+     * finds exactly one use, the band one in BottomDashboard, and Hero's
+     * sheet has drawn its own header for a long time.  It is left in place
+     * rather than deleted because the comments above it are the only written
+     * record of why the band shed what it shed, and that record is worth
+     * more than the twenty lines it is attached to.  Anyone reviving this
+     * component should know they are reviving it, not editing it. */
+    return null;
   }
 
   return (
