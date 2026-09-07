@@ -1,23 +1,24 @@
 /* webp_convert.mjs — in-session image compressor (v2.3.1103).
  *
- * ═══ v2.3.2328: THIS TOOL CANNOT PRODUCE A LOSSLESS WEBP. EVER. ═══
- * It encodes through a Chromium <canvas>, and Chromium's canvas WebP encoder is
- * lossy at every quality including 1.0 — measured: a sprite sheet round-tripped
- * at q=1.0 came back with 16,352 pixels changed and a worst channel delta of 63,
- * while the SAME canvas round-tripped through PNG was exact, so this is the WebP
- * encoder, not the canvas.
+ * ═══ v2.3.2328: THIS TOOL CANNOT ROUND-TRIP A SPRITE UNCHANGED ═══
+ * Not because of its --q default, though that matters too -- because it draws
+ * every image through a <canvas>, and a 2D canvas backing store is
+ * PREMULTIPLIED.  RGB is multiplied by alpha on the way in and divided back out
+ * on the way out, and that is lossy for every pixel with partial alpha.
+ * Measured on one sheet: 8,345 pixels come back changed, and they come back
+ * changed even when the canvas writes a PNG out, so this is the canvas, not the
+ * codec.  (Chromium's WebP encoder at q=1.0 adds nothing on top of it; at the
+ * q=80 default it adds a great deal more.)
  *
- * That is not a footnote, it is the tool's blast radius. Every .webp under
- * public/sprites had been made here rather than by the CI converter, and the
- * client's loadWebpOrPng() prefers .webp — so 78 of 118 sheets shipped drifted
- * pixels, and 331 of them crossed the exact-RGB thresholds the player recolor
- * uses to tell skin from pants. They were deleted in v2.3.2328.
+ * Sprite sheets are mostly transparent with antialiased edges, so "pixels with
+ * partial alpha" is very nearly "the whole silhouette" -- and the player recolor
+ * classifies skin, pants and shoes by exact RGB, right there on the edge.
  *
- * DO NOT point this at public/sprites/player or public/sprites/gear. Those go
- * through tools/optimize-sprites.mjs on CI, which uses sharp, is genuinely
- * lossless, and now verifies each file before keeping it. This tool remains fine
- * for what it was written for: UI art, backdrops, screenshots and other places
- * where a lossy re-encode is invisible and nothing samples exact RGB.
+ * DO NOT point this at public/sprites/player or public/sprites/gear.  Those go
+ * through tools/optimize-sprites.mjs on CI, which uses sharp's straight-alpha
+ * decode, is genuinely lossless, and now verifies each file before keeping it.
+ * This tool remains fine for what it was written for: UI art, backdrops,
+ * screenshots and other places where nothing samples exact RGB.
  * The gate is tools/qa/qa-webp-lossless.mjs; precheck runs it.
  *
  * WHY this exists: this sandbox can't install image tooling (npm + PyPI are

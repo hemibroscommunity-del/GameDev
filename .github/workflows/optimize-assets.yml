@@ -5,11 +5,12 @@ name: Optimize sprite assets
 #
 # v2.3.2328: THIS WORKFLOW HAD NEVER RUN. Its trigger only fired when the
 # converter or the workflow file itself changed, so in the whole history there is
-# no "lossless WebP sprite copies" commit — every .webp in the repo had been made
-# by hand with tools/webp_convert.mjs, a Chromium-canvas encoder that is lossy by
-# construction. 78 of 118 twins differed from their PNG (worst channel 255) and
-# the client prefers .webp, so the drifted pixels were the ones players saw.
-# Measured by tools/qa/qa-webp-lossless.mjs; the 78 were deleted in that version.
+# no "lossless WebP sprite copies" commit — every .webp had been committed by
+# hand, and 423 of the PNGs a cold load actually fetches had no twin at all,
+# costing 49 wasted 404 probes per load on top of the bytes.
+# Two of the 118 hand-made twins were also genuinely not their PNG
+# (npc/mayor-bro, player/bow-south-weapon) — the client prefers .webp, so those
+# were the pixels players saw. Both are gone; the second is regenerated here.
 #
 # So the trigger now includes the sprite art itself, which is what actually wants
 # converting. Two things stop the bot's own commit from looping back into this:

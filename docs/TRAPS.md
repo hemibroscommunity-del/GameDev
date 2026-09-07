@@ -2149,3 +2149,74 @@ not. And measure a preload's effect rather than assuming it helped.
 **Related:** §21 (an instrument that measures the wrong quantity reports green —
 here the instrument did not exist at all until v2.3.2328), §51 (the other "the
 art is bigger than what we draw" finding from the same measurement pass).
+
+---
+
+## §53 — Measuring image fidelity through a `<canvas>` invents a catastrophe (v2.3.2328)
+
+**What I claimed, with numbers, and was wrong about.** That 78 of 118 sprite
+WebP twins had drifted from their PNGs, with a worst channel delta of 255; that
+331 pixels across 38 player sheets consequently changed what the recolor's
+`_isSkin`/`_isPants` decide; and that the v2.3.2174 de-fringe sweep had cleaned
+speckles out of the PNGs and put them back via the lossy `.webp` the client
+actually loads. It was a coherent story with a plausible villain and a
+measurement behind every sentence.
+
+**The true number was two.** `npc/mayor-bro.webp` (58 px, worst 152) and
+`player/bow-south-weapon.webp` (3,721 px, worst 97). The other 76 files were
+pixel-identical to their PNGs and I deleted them for nothing.
+
+**The mechanism.** The harness decoded each file by drawing it into a `<canvas>`
+and reading `getImageData`. **A 2D canvas backing store is premultiplied.**
+`drawImage` multiplies RGB by alpha going in; `getImageData` divides it back out;
+that round trip cannot be exact for any pixel with partial alpha, and how
+inexact depends on the decode path the pixels arrived by. So the PNG and the
+WebP hand the canvas identical pixels and it hands back different ones.
+
+Sprite sheets are mostly transparent with antialiased edges. "Pixels with
+partial alpha" is very nearly "the entire silhouette" — so the fake drift landed
+precisely where a real problem would have, on the outline, which is also exactly
+where the recolor is looking. Every part of the false story reinforced the rest.
+
+**The tell was in my own output and I nearly walked past it.** Not one FULLY
+OPAQUE pixel ever differed, in any of the 78 files. A lossy encoder does not
+politely confine itself to the antialiased fringe. `alpha` differences were
+likewise always zero — alpha survives the round trip; only the colour that was
+divided by it does not. Two columns that were flat zero across 78 rows were the
+entire disproof, sitting in the table the whole time.
+
+**What actually caught it** was a second, unrelated check: after the fixed CI
+workflow minted 183 twins with sharp, the harness reported the *same* files
+drifting by the *same* pixel counts as before. Two independent generators
+producing byte-identical error is not a coincidence, it is an instrument
+reading. The confirmation was WebCodecs `ImageDecoder` — raw RGBA frames
+straight from the codec, no canvas anywhere — which reported 0, 0, 0.
+
+**The rules.**
+- **To compare two encodings of an image, never let a 2D canvas touch it.** Use
+  `ImageDecoder` in a browser (`tools/qa/qa-webp-lossless.mjs`) or
+  `sharp(...).ensureAlpha().raw()` in node (`tools/optimize-sprites.mjs`). Those
+  two now agree, which is the point of having both.
+- **A control that shares the flaw proves nothing.** I ran controls — PNG vs
+  itself, WebP vs itself, PNG round-tripped through the canvas — and all three
+  returned a clean zero, which is exactly what a premultiply artefact does when
+  both sides take the same path. A control has to differ from the measurement in
+  the way you are actually worried about.
+- **When a finding is confined to one class of pixel, suspect the instrument
+  before the data.** Ask what those pixels share with the apparatus, not just
+  with each other.
+- This also corrects a claim about `tools/webp_convert.mjs`: its problem is not
+  that Chromium's WebP encoder is lossy at q=1.0 (measured, it is not — it adds
+  nothing over a PNG written from the same canvas). Its problem is that it draws
+  through a canvas at all, so it destroys partially-transparent RGB whatever it
+  writes out. Same trap, one layer down.
+
+**What survived, and is why the work still landed.** The workflow that was
+supposed to mint these had genuinely never run — no such commit exists in the
+history — 423 of the PNGs a cold load fetches had no twin at all, and 49 WebP
+probes 404'd on every load. Those were measured with request counts, not with a
+canvas, and they were all real.
+
+**Related:** §21 (an instrument that measures the wrong quantity reports green —
+this is its evil twin: one that reports red), §51 (the same measurement pass, a
+finding that survived).

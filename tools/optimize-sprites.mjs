@@ -12,24 +12,29 @@
  * no image tooling (sharp/cwebp absent, npm registry blocked).
  *
  * ═══ v2.3.2328: THE PARAGRAPH ABOVE WAS A CLAIM, NOT A CHECK ═══
- * Until now nothing verified it, and it was false in production.  This workflow
- * had NEVER RUN -- there is no "lossless WebP sprite copies" commit in the
- * history -- so every .webp in the repo had been made by hand with the OTHER
- * converter, tools/webp_convert.mjs, which encodes through a Chromium canvas at
- * `--q 80` by default.  Measured (tools/qa/qa-webp-lossless.mjs): 78 of 118
- * twins differed from their PNG, worst channel delta 255, and 331 pixels across
- * 38 player sheets changed what _isSkin/_isPants decide -- stray recoloured
- * specks, which is exactly the "ghost pixels / stray boot-colour speckles" class
- * the owner has reported.  The commit that introduced the worst of them was
- * v2.3.2174, the de-fringe sweep: the speckles were cleaned out of the PNG and
- * put back by the lossy .webp the client actually loads.
+ * Until now nothing verified it, and this workflow had NEVER RUN -- there is no
+ * "lossless WebP sprite copies" commit anywhere in the history.  So no twin in
+ * the repo had been minted here; they were committed by hand, most of them by
+ * tools/webp_convert.mjs, and 423 of the PNGs a cold load actually fetches had
+ * no twin at all.
  *
- * Chromium's canvas CANNOT fix this -- measured, `toBlob('image/webp', 1.0)`
- * still drifts by up to 63 per channel, while a PNG round-trip through the same
- * canvas is exact.  So sharp, here, on CI, is the only route to a lossless twin,
- * and this script now PROVES each one instead of asserting it: every file is
- * decoded back and compared pixel for pixel, and a twin that differs, or that
- * is not actually smaller, is deleted rather than shipped.
+ * Measured with tools/qa/qa-webp-lossless.mjs, TWO of the 118 twins that
+ * existed were genuinely not their PNG: public/sprites/npc/mayor-bro.webp
+ * (58 px, worst channel 152) and public/sprites/player/bow-south-weapon.webp
+ * (3,721 px, worst 97).  Small, but the client PREFERS the .webp, so those were
+ * the pixels players saw.
+ *
+ * Two is also a correction.  The first pass of that harness compared the files
+ * through a <canvas> and reported 78 of 118 drifting at up to 255 -- all of it
+ * an artefact of the canvas's premultiplied backing store mangling partially
+ * transparent pixels, not a property of the files.  See docs/TRAPS.md section
+ * 53; the short version is that a measurement of image fidelity must not go
+ * near a 2D canvas.
+ *
+ * Which is exactly why this script now PROVES each twin rather than asserting
+ * it, and does so with sharp's straight-alpha raw decode: every file is decoded
+ * back and compared pixel for pixel, and one that differs, or that is not
+ * actually smaller, is deleted rather than shipped.
  */
 import { readdirSync, statSync, existsSync, unlinkSync } from 'node:fs';
 import { join, extname } from 'node:path';

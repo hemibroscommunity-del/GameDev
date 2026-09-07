@@ -3,17 +3,33 @@
  * .github/workflows/optimize-assets.yml generates a .webp beside each sprite
  * .png, and the client's loadWebpOrPng() asks for the .webp first.  The whole
  * scheme rests on ONE property: lossless means the decoded pixels are exactly
- * the PNG's.  That is not cosmetic here.  The runtime recolor classifies skin,
- * pants and shoes by EXACT RGB (playerSkins._isSkin and friends) and the
- * masked-body bake keys on alpha edges, so a single channel of drift does not
- * make the art slightly worse -- it makes the recolor pick the wrong region and
- * paint a player's trousers onto their arm.
+ * the PNG's.  That is not cosmetic -- the runtime recolor classifies skin,
+ * pants and shoes by EXACT RGB (playerSkins._isSkin and friends), so drift does
+ * not make the art slightly worse, it makes the recolor pick the wrong region.
  *
- * Until v2.3.2328 that property was asserted only by a comment.  This measures
- * it: decode both files in a real browser, compare every pixel, and fail on any
- * difference.  Fully-transparent pixels are skipped on RGB (their colour is
- * undefined once alpha is 0 and encoders are free to change it) but their ALPHA
- * is still compared, because the bake reads alpha edges.
+ * ═══ HOW YOU MUST MEASURE IT, AND HOW I GOT IT WRONG FIRST ═══
+ * The obvious method is wrong, and it is wrong in the direction that invents a
+ * catastrophe.  Drawing each file into a <canvas> and diffing getImageData
+ * reported 78 of 118 twins as drifting, with a worst channel delta of 255.
+ * The real number was TWO.
+ *
+ * A 2D canvas backing store is PREMULTIPLIED.  drawImage multiplies RGB by
+ * alpha going in and getImageData divides it back out, and that round trip is
+ * lossy for every pixel with partial alpha -- the fewer the alpha bits, the
+ * coarser the recovered colour.  The PNG and WebP decoders hand the canvas the
+ * same pixels and it hands back slightly different ones.  Sprite sheets are
+ * mostly transparent with antialiased edges, so almost every pixel that differs
+ * is an edge pixel, which is exactly where the eye and the recolor both look.
+ *
+ * The tell was in the data and I nearly walked past it: `rgbAtFullAlpha` was 0
+ * in every single case.  Not one opaque pixel ever differed.  A lossy encoder
+ * does not politely restrict itself to the antialiased fringe.
+ *
+ * So this decodes with WebCodecs `ImageDecoder` instead -- raw RGBA frames
+ * straight from the codec, no canvas, no premultiply -- and the 78 became 2.
+ * `sharp(...).ensureAlpha().raw()` in tools/optimize-sprites.mjs is the same
+ * measurement by a different route, which is why the two now agree.
+ * See docs/TRAPS.md section 53.
  *
  * Runs standalone, no worker and no game:
  *   node tools/qa/qa-webp-lossless.mjs
@@ -77,35 +93,38 @@ const BATCH = 40;
 for (let i = 0; i < pairs.length; i += BATCH) {
   const slice = pairs.slice(i, i + BATCH);
   const part = await page.evaluate(async ({ slice, port }) => {
-    const load = (u) => new Promise((res, rej) => {
-      const im = new Image();
-      im.onload = () => res(im);
-      im.onerror = () => rej(new Error('load failed'));
-      im.src = `http://127.0.0.1:${port}${u}`;
-    });
-    const pix = async (u) => {
-      const im = await load(u);
-      const c = new OffscreenCanvas(im.naturalWidth, im.naturalHeight);
-      const x = c.getContext('2d', { willReadFrequently: true });
-      x.clearRect(0, 0, c.width, c.height);
-      x.drawImage(im, 0, 0);
-      return { d: x.getImageData(0, 0, c.width, c.height).data, w: c.width, h: c.height };
+    if (typeof ImageDecoder === 'undefined') {
+      return slice.map(([png]) => ({ png, err: 'no WebCodecs ImageDecoder in this browser' }));
+    }
+    /* Raw RGBA from the codec. NOT via a canvas -- see the header. */
+    const pix = async (u, type) => {
+      const buf = await (await fetch(`http://127.0.0.1:${port}${u}`)).arrayBuffer();
+      const dec = new ImageDecoder({ data: buf, type });
+      const { image } = await dec.decode();
+      const out = new Uint8ClampedArray(image.allocationSize({ format: 'RGBA' }));
+      await image.copyTo(out, { format: 'RGBA' });
+      return out;
     };
     const out = [];
     for (const [png, webp] of slice) {
       try {
-        const a = await pix(png), b = await pix(webp);
-        if (a.w !== b.w || a.h !== b.h) { out.push({ png, dim: [a.w, a.h, b.w, b.h] }); continue; }
-        let rgbDiff = 0, alphaDiff = 0, maxc = 0;
-        for (let k = 0; k < a.d.length; k += 4) {
-          const da = Math.abs(a.d[k + 3] - b.d[k + 3]);
+        const a = await pix(png, 'image/png'), b = await pix(webp, 'image/webp');
+        if (a.length !== b.length) { out.push({ png, dim: [a.length, b.length] }); continue; }
+        let rgbDiff = 0, alphaDiff = 0, maxc = 0, opaqueDiff = 0;
+        for (let k = 0; k < a.length; k += 4) {
+          const da = Math.abs(a[k + 3] - b[k + 3]);
           if (da) { alphaDiff++; maxc = Math.max(maxc, da); }
-          if (a.d[k + 3] === 0 && b.d[k + 3] === 0) continue;  /* colour undefined */
-          const dr = Math.abs(a.d[k] - b.d[k]), dg = Math.abs(a.d[k + 1] - b.d[k + 1]),
-                db = Math.abs(a.d[k + 2] - b.d[k + 2]);
-          if (dr || dg || db) { rgbDiff++; maxc = Math.max(maxc, dr, dg, db); }
+          /* A fully transparent pixel's colour is undefined; encoders may
+             rewrite it. Alpha itself is never exempt -- the bake reads edges. */
+          if (a[k + 3] === 0 && b[k + 3] === 0) continue;
+          const dr = Math.abs(a[k] - b[k]), dg = Math.abs(a[k + 1] - b[k + 1]),
+                db = Math.abs(a[k + 2] - b[k + 2]);
+          if (dr || dg || db) {
+            rgbDiff++; maxc = Math.max(maxc, dr, dg, db);
+            if (a[k + 3] === 255 && b[k + 3] === 255) opaqueDiff++;
+          }
         }
-        out.push({ png, rgbDiff, alphaDiff, maxc, px: a.d.length / 4 });
+        out.push({ png, rgbDiff, alphaDiff, maxc, opaqueDiff, px: a.length / 4 });
       } catch (e) { out.push({ png, err: String(e).slice(0, 90) }); }
     }
     return out;
@@ -117,10 +136,14 @@ for (let i = 0; i < pairs.length; i += BATCH) {
 let clean = 0, bad = 0;
 for (const r of results) {
   if (r.err) { bad++; console.log(`ERR    ${r.png}  ${r.err}`); continue; }
-  if (r.dim) { bad++; console.log(`SIZE   ${r.png}  png ${r.dim[0]}x${r.dim[1]} vs webp ${r.dim[2]}x${r.dim[3]}`); continue; }
+  if (r.dim) { bad++; console.log(`SIZE   ${r.png}  decoded ${r.dim[0]} vs ${r.dim[1]} bytes`); continue; }
   if (!r.rgbDiff && !r.alphaDiff) { clean++; continue; }
   bad++;
-  console.log(`DRIFT  ${r.png}  rgb ${r.rgbDiff}/${r.px} px, alpha ${r.alphaDiff} px, worst channel ${r.maxc}`);
+  /* `opaqueDiff` is printed because it is the discriminator: a real lossy
+     encode hits opaque pixels too. If it is 0 and the rest is edge pixels,
+     suspect the measurement before the file (TRAPS section 53). */
+  console.log(`DRIFT  ${r.png}  rgb ${r.rgbDiff}/${r.px} px (${r.opaqueDiff} of them OPAQUE), `
+    + `alpha ${r.alphaDiff} px, worst channel ${r.maxc}`);
 }
 console.log(`\n${clean} pixel-identical, ${bad} NOT identical, of ${results.length} pairs`);
 await browser.close(); srv.close();
