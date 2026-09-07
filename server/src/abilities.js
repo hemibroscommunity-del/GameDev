@@ -169,7 +169,18 @@ export const STAM_ABILITIES = {
     reach: 240,
   },
   whirl: {
-    minLevel: 8,          /* MILESTONES[8] */
+    /* ═══ v2.3.2327: NO LEVEL GATE (owner) ═══
+       "Change whirlwind so ... begins as an option immediately (no level
+       gating)."  Mirrored from src/data/abilities.js, which the assertion in
+       test/abilities.test.mjs pins -- a drifted number here is a client button
+       the worker refuses with 'locked'.
+       The companion half of the ask, "only for the melee character (sword
+       equipped)", is deliberately NOT enforced here: which slot a client says
+       it is holding is client-supplied on every packet, so a server gate on it
+       would be forgeable and lag-fragile -- exactly the reasoning bash's
+       needsHeldShield carries. `needs: 'weapon'` remains the authoritative
+       requirement; the slot rule is a client-side visibility rule. */
+    minLevel: 0,
     blocks: 1,            /* ONE block, at every count -- v2.3.2302 */
     cooldownMs: 6000,
     dmgMult: 1.00,
@@ -199,6 +210,14 @@ export const STAM_ABILITIES = {
        impulses. */
     pullTo: 34,
     needs: 'weapon',
+    /* v2.3.2327: the melee weapon must be the ACTIVE one for the button to
+       appear (client rule; the server's authoritative requirement stays
+       `needs`, because which slot a client says it is holding is
+       client-supplied on every packet and a server gate on it would be
+       forgeable and lag-fragile).  Mirrored here rather than left client-only
+       because the mirror assertion is a strict deep-equality -- the same
+       reason bash carries needsHeldShield on both sides. */
+    needsMeleeActive: true,
     /* v2.3.1738: 8 -> 16 with the radius.  Still bounded — the cap exists so
        one cast cannot walk an unbounded list — but 8 would have quietly
        dropped half a swarm inside the new reach, which is exactly the "it has
@@ -235,7 +254,14 @@ export const MILESTONES = {
   4:  { label: 'Sturdy Arm' },
   5:  { points: 1,     label: 'Bonus stat point' },
   6:  { burst: true,   label: 'Element Burst' },
-  8:  { kind: 'whirl', label: 'Whirlwind' },
+  /* v2.3.2327: rung 8 stops naming an ability, for the reason rung 4 did at
+     v2.3.2252 -- Whirlwind is ungated now, and leaving `kind: 'whirl'` here
+     would have the level-up celebration announce "Whirlwind unlocked!" for a
+     move the player has had since level 1 (prog3.js reads
+     MILESTONES[level].label for exactly that).  It also has to go for a
+     harder reason: milestoneAbilityLevels() asserts every kind the ladder
+     names agrees with its minLevel, and 8 !== 0. */
+  8:  { label: 'Storm Footing' },
   10: { stamMult: 1.25, label: 'Second Wind' },
 };
 
@@ -387,8 +413,12 @@ export const abilityMethods = {
 
     const level = this._abilCharLevel(ps);
     /* v2.3.2252: `cfg.minLevel &&` so an ungated ability (minLevel 0) never
-       takes this branch.  Whirlwind still carries 8 and still gates -- the
-       ladder gates per rung, it just no longer has a rung at 4. */
+       takes this branch.
+       v2.3.2327: ...which is now EVERY ability -- whirl went 8 -> 0 with the
+       owner's "no level gating", so this branch is currently unreachable. It
+       stays because the gate is data, not policy: the next ability to arrive
+       with a minLevel gets it for free, and deleting it would have to be
+       re-derived. */
     if (cfg.minLevel && level < cfg.minLevel) return reject('locked', { need: cfg.minLevel, have: level });
 
     /* Equipment gates, the v2.3.1682 lesson: a bash with no shield and a

@@ -209,12 +209,19 @@ const setCharLevel = (lvl) => {
   check('...and the hit is tagged as the ability (the client needs it for the popup)',
     hits()[0] && hits()[0].payload.ability === 'bash', hits()[0] && hits()[0].payload);
 
-  /* Whirlwind is two rungs higher — level 4 must NOT unlock it. */
+  /* ═══ v2.3.2327: WHIRLWIND IS NO LONGER LOCKED AT ALL ═══
+     Owner: "begins as an option immediately (no level gating)."  This block
+     used to assert the opposite -- that level 4 could not cast it -- and it
+     was right until minLevel went 8 -> 0.  Inverted rather than deleted: the
+     claim worth keeping is that a low-level character CAN cast it, which is
+     the whole of what was asked for, and a test that merely stopped
+     mentioning whirl would leave the change unpinned. */
   readyPlayer();
+  const m2 = arm(meadow[1] || meadow[0], psA.x + 20, psA.y);
   await cast('whirl');
-  const rw = rejects()[0];
-  check('char 4: Whirlwind is still locked (each rung gates independently)',
-    !!rw && rw.reason === 'locked' && rw.need === STAM_ABILITIES.whirl.minLevel, rw);
+  check('char 4: Whirlwind casts — it is ungated now, at every level',
+    rejects().length === 0 && hits().length >= 1,
+    { rejects: rejects(), hits: hits().length, hp: m2 && m2.hp });
 }
 
 // ── 3. Cost, cooldown, equipment ──

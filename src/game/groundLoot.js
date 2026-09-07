@@ -139,7 +139,11 @@ export function updateGroundLootPickup(S, deps) {
               if (loot._pickupPending && loot._pickupSentAt && Date.now() - loot._pickupSentAt > 5000) {
                 loot._pickupPending = false;
               }
-              if (!loot._pickupPending) {
+              /* v2.3.2327: ...and honour the fast re-arm an out-of-range
+                 refusal sets (wsClient's loot_pickup_rejected).  Without this
+                 the flag cleared but the very next tick re-sent instantly,
+                 which is a send loop rather than a retry. */
+              if (!loot._pickupPending && Date.now() >= (loot._pickupRetryAt || 0)) {
                 loot._pickupPending = true;
                 loot._pickupSentAt = Date.now();
                 if (S.channel) {

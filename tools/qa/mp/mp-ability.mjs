@@ -96,22 +96,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the client tried to send `ability`', (wire.ability || 0) >= 1, wire);
 
   const popups = await P.page.evaluate(() => (window.__popups || []).slice());
-  /* ONLY the worker knows the unlock level — the client-side refusal path
-     never produces this string, so seeing it proves the round trip. */
+  /* ═══ v2.3.2327: THE REFUSAL IS NO LONGER "LOCKED" ═══
+     This asserted /unlocks at level 8/, which was the right string while
+     Whirlwind gated at level 8.  The owner has since asked for it to "begin as
+     an option immediately (no level gating)", so nothing on this screen is
+     level-locked any more and the worker has no 'locked' to answer with.  What
+     it DOES still refuse is a cast with no weapon in hand, which is the
+     `needs: 'weapon'` requirement it has always owned.
+     The proof of the round trip survives the swap, and for a better reason
+     than the old comment gave: the client CAN produce this same string itself
+     (game/abilities.js:256), but only from castAbility -- and this send was
+     RAW, straight down the channel, so castAbility never ran.  A popup here
+     can only have come off the wire. */
   rec.ok('the worker refused it and the client SAID SO (ability_rejected has a handler now)',
-    popups.some((t) => typeof t === 'string' && /unlocks at level 8/i.test(t)), popups);
+    popups.some((t) => typeof t === 'string' && /No weapon equipped/i.test(t)), popups);
 
   const stam1 = await H.adminPlayer(wsPort, myId).then((a) => a?.live?.stamina ?? null).catch(() => null);
   rec.ok('a locked cast spends no stamina on the worker', stam1 === stam0, { before: stam0, after: stam1 });
 
-  /* ── 5. a client that FAKES its level still gets nothing ──
-     The button's visibility is derived from the client's own copy of the
-     prog3 blob, so forging that copy is the cheapest possible cheat: edit
-     one number and the ability appears.  Doing exactly that here proves two
-     things at once — that the button really is level-driven (it appears the
-     moment the number changes, which is what a real level-up will do), and
-     that appearing buys nothing, because the worker computes the level from
-     ITS OWN blob and refuses anyway. */
+  /* ── 5. the client's own visibility rules are NOT the worker's rules ──
+     ═══ v2.3.2327: THIS SECTION LOST ITS SUBJECT, AND GAINED A BETTER ONE ═══
+     It used to forge a level so a level-gated button would appear, then show
+     that appearing bought nothing.  With Whirlwind ungated (owner: "begins as
+     an option immediately") there is no level-gated ability left to forge, and
+     v2.3.2252 had already retired bash from the same role for the same reason.
+
+     What replaces it is the rule that DID arrive with that change: Whirlwind's
+     button is visible only while the melee weapon is the one in your hands.
+     That is a CLIENT rule on purpose -- which slot a client claims to be
+     holding is client-supplied on every packet, so a server gate on it would
+     be forgeable and lag-fragile, exactly the reasoning bash's needsHeldShield
+     carries.  So the honest claim, and the one worth pinning, is that the two
+     halves disagree BY DESIGN: swapping to a bow takes the button away, and
+     the worker does not care, because what the worker checks is `needs`. */
   /* A shield first: the CLIENT-side gate refuses a bash without one before
      anything reaches the wire (correctly — that refusal is instant feedback,
      not a rule).  The mayor's first quest is what hands one out (v2.3.1676),
@@ -126,40 +143,64 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState && window._gameState.current;
     if (!S || !S.rpg || !S.rpg.prog3) return;
     if (!S.rpg.shield && (S.rpg.shieldStash || []).length) S.rpg.shield = S.rpg.shieldStash.shift();
-    S.rpg.prog3.sk.sword.level = 8;   /* char level = 8 + 1 + 1 = 10 locally */
+    /* A SWORD, not a forged level: whirl is ungated now, and what decides
+       whether its button exists is whether the melee weapon is drawn. */
+    S.rpg.weapon = { type: 'sword', name: 'Copper Sword', gearBase: 'copper', dmg: 3 };
+    S.rpg.rangedWeapon = { type: 'bow', name: 'Pine Bow', gearBase: 'wood', dmg: 3 };
+    S.rpg.activeSlot = 'melee';
     window.__popups = [];
   });
   await P.page.waitForTimeout(700);
-  /* v2.3.2252: WHIRLWIND is the forged-level subject now.  Bash is ungated, so
-     forging a level cannot conjure its button -- and its real requirement, a
-     RAISED shield, is a stance the client owns by design rather than a cheat
-     the worker must refuse.  Whirl still gates at 8, so it is the one that
-     still proves "appearing buys nothing".
-     The count is 1, not 2: whirl renders on the forged level, and bash is
-     absent because the shield is equipped but not RAISED. */
+  /* The count is 1, not 2: whirl renders because the sword is drawn, and bash
+     is absent because the shield is equipped but not RAISED. */
   const fakeButtons = await P.page.evaluate(() => document.querySelectorAll('[data-ability]').length);
-  rec.ok('with the forged level present, the gated ability button renders', fakeButtons === 1, fakeButtons);
+  rec.ok('at base level, with a sword drawn, Whirlwind is on screen — it is ungated now',
+    fakeButtons === 1, fakeButtons);
   rec.ok('...and it is WHIRL — bash is absent because the shield is not raised',
     (await P.page.evaluate(() => !!document.querySelector('[data-ability="whirl"]')
       && !document.querySelector('[data-ability="bash"]'))) === true);
-  /* Sent RAW rather than by clicking the button, and the reason matters: the
-     client's own gate refuses a whirlwind with no weapon ("No weapon
-     equipped!") before anything reaches the wire, and that string is one the
-     client can produce by itself -- so a click would prove nothing about the
-     worker, which is this section's whole claim.  The raw send skips the local
-     prediction and lands on the worker's own level check, which is the thing
-     under test.  (The section above already proved the BUTTON renders on a
-     forged level; this proves that renders buy nothing.) */
+  /* Swap to the bow: the button goes, and it GOES rather than greying out --
+     a control that can never fire is worse than no control. */
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.rpg) S.rpg.activeSlot = 'ranged';
+  });
+  await P.page.waitForTimeout(500);
+  rec.ok('...and drawing the BOW takes it away entirely, not merely greys it',
+    (await P.page.evaluate(() => !document.querySelector('[data-ability="whirl"]'))) === true);
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.rpg) S.rpg.activeSlot = 'melee';
+    window.__popups = [];
+  });
+  await P.page.waitForTimeout(400);
+  /* ═══ v2.3.2327: FORGING THE CLIENT'S LOADOUT STILL BUYS NOTHING ═══
+     The weapon and the slot set above were written straight into the page's
+     own state object -- the client's PREDICTION of its loadout.  The worker
+     never saw them: its gate is `!ps.weapon` against its own stored blob
+     (server/src/abilities.js:425), which is exactly the v2.3.1682 lesson that
+     a client's copy of the loadout is not evidence.
+
+     So the raw cast is refused, and the refusal is the ORIGINAL claim of this
+     section in a form that survives the ability becoming ungated: editing your
+     own state to make a button appear does not make the cast land.  Only the
+     subject moved -- from a forged level to a forged weapon -- because a
+     forged level has nothing left to unlock.
+
+     (What is NOT provable from here: that the worker ignores the *slot*.  That
+     would need a weapon equipped server-side, which this harness has no route
+     to, and asserting it from a client-side mutation would be asserting the
+     mutation rather than the worker.) */
   await P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
     if (S && S.channel) S.channel.send({ type: 'ability', payload: { kind: 'whirl' } });
   });
   await P.page.waitForTimeout(1500);
   const fakePopups = await P.page.evaluate(() => (window.__popups || []).slice());
-  rec.ok('...but the worker still refuses it (the level it checks is its own)',
-    fakePopups.some((t) => typeof t === 'string' && /unlocks at level 8/i.test(t)), fakePopups);
+  rec.ok('...but the worker still refuses it — the loadout it checks is its own',
+    fakePopups.some((t) => typeof t === 'string' && /No weapon equipped/i.test(t)), fakePopups);
   const stamFake = await H.adminPlayer(wsPort, myId).then((a) => a?.live?.stamina ?? null).catch(() => null);
-  rec.ok('...and the forged level costs the worker nothing', stamFake === stam0,
+  rec.ok('...and the forged loadout costs the worker nothing', stamFake === stam0,
     { before: stam0, after: stamFake });
 
   /* An unknown kind must be inert on the same path — the handler indexes its
