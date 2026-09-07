@@ -73,7 +73,7 @@ const cdp = await P.page.context().newCDPSession(P.page);
 await cdp.send('Network.enable');
 const open = new Map();
 const reqs = [];
-cdp.on('Network.requestWillBeSent', (e) => open.set(e.requestId, { url: e.request.url }));
+cdp.on('Network.requestWillBeSent', (e) => open.set(e.requestId, { url: e.request.url, t: e.timestamp }));
 cdp.on('Network.responseReceived', (e) => { const r = open.get(e.requestId); if (r) r.status = e.response.status; });
 cdp.on('Network.loadingFinished', (e) => {
   const r = open.get(e.requestId); if (!r) return;
@@ -135,7 +135,7 @@ if (probes.length) console.log(`\n${probes.length} .webp probes 404'd (missing t
 
 if (jsonOut) {
   writeFileSync(jsonOut, JSON.stringify({
-    marks, total, reqs: reqs.map((r) => ({ u: r.url.replace(/^https?:\/\/[^/]+/, ''), b: r.bytes, s: r.status })),
+    marks, total, reqs: reqs.map((r) => ({ u: r.url.replace(/^https?:\/\/[^/]+/, ''), b: r.bytes, s: r.status, t: r.t })),
   }, null, 1));
   console.log(`\nfull request log -> ${jsonOut}`);
 }

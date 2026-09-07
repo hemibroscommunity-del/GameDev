@@ -273,6 +273,17 @@ import { wireOrientationSync } from '@/game/orientationSync.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
 import { releasePeerDamage, addBuildProg, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822: stuck-dead watchdog */
+/* v2.3.2330: the SFX manifest loads once the loading gate has what it was
+   waiting for -- see BT_AUDIO.unlock for why it no longer loads at the login
+   door.  Called at EVERY site that arms the gate: the first cut hung it off the
+   rejoin road's spinner chain only, and a brand-new character never loaded the
+   manifest at all (measured: 0 of 37 files on the cold load, every first sound
+   a one-off silence). */
+function kickSfxAtGate(gate) {
+  Promise.resolve(gate).catch(function () {}).then(function () {
+    try { BT_AUDIO.loadSfxManifest(); } catch (e) {}
+  });
+}
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
 import { sendChatMessage } from '@/game/chat.js';
 import { subscribeMutes } from '@/game/chatMute.js'; /* v2.3.1981 */
@@ -9421,6 +9432,7 @@ export var BroTown = function BroTown(_ref0) {
     /* Kick off the full avatar-asset preload now (equip is finalized at this
        point) so the intro overlay can hold until it's flicker-free. */
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e) { introWaitRef.current = null; }
+    kickSfxAtGate(introWaitRef.current);
     if (!_skipIntro) setShowIntro(true);
     else {
       /* v2.3.831: no IntroVideo to hand the theme off, so stop it here;
@@ -9481,6 +9493,7 @@ export var BroTown = function BroTown(_ref0) {
     BT_AUDIO.init();
     BT_AUDIO.join();
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e2) { introWaitRef.current = null; }
+    kickSfxAtGate(introWaitRef.current);
     setShowWelcome(false); /* straight in -- no intro video on a resume */
     /* v2.3.833: a resume skips the intro loading screen and drops straight
        into the world while the avatar's gear sheets are still baking, which
@@ -9499,11 +9512,6 @@ export var BroTown = function BroTown(_ref0) {
     } catch (e4) {}
     var _clearSpin = function () { try { if (_rejoinSpin) { _rejoinSpin.remove(); _rejoinSpin = null; } } catch (e5) {} };
     Promise.resolve(introWaitRef.current).catch(function () {}).then(_clearSpin);
-    /* v2.3.2330: the SFX manifest loads once the gate has what it was waiting
-       for -- see BT_AUDIO.unlock for why it no longer loads at the login door. */
-    Promise.resolve(introWaitRef.current).catch(function () {}).then(function () {
-      try { BT_AUDIO.loadSfxManifest(); } catch (e) {}
-    });
     setTimeout(_clearSpin, 20000);
   }, []); /* mount-only by design: resumes happen once per page load */
 
