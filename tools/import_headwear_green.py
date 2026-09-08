@@ -180,6 +180,7 @@ OUTLINE_PERIM = 0.25 # strip only when near-black traces this much of the perime
 OUTLINE_SPECK = 0.03 # after stripping, drop piece parts under this share of the biggest
 LENS_PAD = 4         # v2.3.2363: 256-space px the eye box grows by before the lens is flattened
 SEAT_EYES_MAX = 8    # v2.3.2365: 256-space px a face-worn piece may be moved to sit on the eyes
+CLEAR_PAD = 2        # v2.3.2366: tighter than LENS_PAD -- an erased lens must leave its frame
 DARK = 90            # per-channel ceiling for "near-black"
 # v2.3.2361: categories worn ON THE FACE, placed by the head rather than the
 # shoulders (see the EYEWEAR section of the header).  A future facial-hair
@@ -441,6 +442,36 @@ def seat_eyes(frame, d, crown, anchor, nudge):
     return best[1], before, best[2]
 
 
+def clear_lens(frame, d, crown, anchor, nudge):
+    """ERASE the lens over the eyes, leaving the frame (v2.3.2366).
+
+    The White Glass sheet came back with its lenses drawn as a TRANSPARENCY
+    CHECKERBOARD -- literal white-and-grey squares in an RGB file with no alpha
+    channel, which is how an image editor DRAWS "nothing here".  Shipping that
+    pattern would be shipping a screenshot of an editor, so the sheet has to be
+    read as one of two intents: a solid lens (--flatten-lens) or a clear one
+    (this).
+
+    Erases the piece's non-near-black pixels inside the eye boxes, padded by
+    CLEAR_PAD rather than LENS_PAD: the box is the EYE and the frame sits just
+    outside it, so a tighter pad is what keeps the rims and leaves a hole.
+    """
+    boxes = eye_boxes(d)
+    if not boxes:
+        return 0, None
+    dx, dy = crown[0] + nudge[0] - anchor[0], crown[1] + nudge[1] - anchor[1]
+    region = np.zeros(frame.shape[:2], bool)
+    for (x0, x1, y0, y1) in boxes:
+        region[max(0, y0 - dy - CLEAR_PAD):y1 - dy + CLEAR_PAD,
+               max(0, x0 - dx - CLEAR_PAD):x1 - dx + CLEAR_PAD] = True
+    rgb = frame[:, :, :3].astype(int)
+    sel = region & (frame[:, :, 3] > ALPHA_T) & ~((rgb[:, :, 0] < DARK)
+                                                  & (rgb[:, :, 1] < DARK) & (rgb[:, :, 2] < DARK))
+    n = int(sel.sum())
+    frame[sel] = 0
+    return n, None
+
+
 def flatten_lens(frame, d, crown, anchor, nudge):
     """Repaint the piece where it covers the EYES, to one flat tint (v2.3.2363).
 
@@ -593,6 +624,9 @@ def main():
     # which folder they land in and the category recorded in meta -- and hair is
     # the thing that gets CLIPPED by a hat, so it never sets clipsHair.
     ap.add_argument('--category', default='headwear', choices=['headwear', 'hair', 'eyewear'])   # v2.3.2361: + eyewear
+    ap.add_argument('--clear-lens', action='store_true',
+                    help='ERASE the lens over the eyes, leaving the frame (v2.3.2366): a '
+                         'sheet whose lenses came back as a transparency checkerboard')
     ap.add_argument('--flatten-lens', action='store_true',
                     help='repaint the piece over the eyes to one flat tint, removing an '
                          'eye the generator drew through the lens (v2.3.2363)')
@@ -834,6 +868,9 @@ def main():
         if args.flatten_lens:
             _n, _tint = flatten_lens(out, d, crown, anchor, nudges[d])
             _flat[d] = (_n, _tint)
+        if args.clear_lens:
+            _n, _ = clear_lens(out, d, crown, anchor, nudges[d])
+            _flat[d] = (_n, 'erased')
         Image.fromarray(out).save(f'{outdir}/{d}.png')
         # A low fit is a SHEET problem, not a tool problem: the generator
         # redrew that figure's torso off-model, so nothing lines up against the
@@ -851,6 +888,11 @@ def main():
                 print(f'{"":<10} seated onto the eyes by ({_sx:+d}, {_sy:+d})px{_lim}: coverage '
                       + ' / '.join(f'{c * 100:.0f}%' for c in _c0) + ' -> '
                       + ' / '.join(f'{c * 100:.0f}%' for c in _c1))
+            if args.clear_lens:
+                # v2.3.2366: the coverage number means the opposite here -- the lens
+                # is a HOLE on purpose, so a low reading is the feature working.
+                print(f'{"":<10} eyes: the lens is erased over the eyes, so the coverage below '
+                      f'reads LOW by design')
             _eyes = eye_boxes(d)
             # a face-worn piece is a fraction of the head; a "pair of glasses"
             # taller than most of it means something else was keyed with it
@@ -943,6 +985,12 @@ def main():
                          + ') -- every eyewear sheet so far has drawn the southwest cell low, '
                          'and this moves each facing onto the eye row the game actually paints; '
                          'bounded and reported by seat_eyes().')
+    if args.clear_lens:
+        meta['note'] += (' v2.3.2366: the lens is ERASED over the eyes ('
+                         + ', '.join(f'{k} {v[0]}px' for k, v in _flat.items() if v[0])
+                         + ') -- the sheet drew its lenses as a transparency checkerboard, '
+                         'which is an editor drawing "nothing here", so the frame ships with '
+                         'a hole in it and the face shows through.')
     if args.flatten_lens:
         _done = {k: v for k, v in _flat.items() if v[0]}
         meta['note'] += (' v2.3.2363: the lens is flattened over the eyes ('

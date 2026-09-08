@@ -1,7 +1,7 @@
 # Eyewear (v2.3.2361; art from v2.3.2362)
 
 **Shipped:** 3D Glasses (v2.3.2362), Goggles (v2.3.2363, see-through),
-Laser Glasses (v2.3.2364), Thug Life (v2.3.2365).
+Laser Glasses (v2.3.2364), Thug Life (v2.3.2365), White Glass (v2.3.2366).
 
 Owner: *"I want to start adding eyewear options to my Hemi bros (see the first
 image of the 3d glasses). I previously had this mannequin view ... Is this
@@ -247,7 +247,7 @@ for a hat.
 
 ---
 
-## 3. Three things the generator does anyway (v2.3.2362-2365)
+## 3. Four things the generator does anyway (v2.3.2362-2366)
 
 ### The person's own outline
 
@@ -309,6 +309,22 @@ proxy that genuinely varies with perspective, so a per-direction fix would
 encode perspective as error. The reference here is the eyes — an exact landmark
 the game paints on each facing — so aligning every facing to its own eyes is
 the definition of consistent.
+
+### A lens drawn as a transparency checkerboard
+
+The White Glass sheet came back with its lenses drawn as **literal white-and-
+grey squares** — a transparency checkerboard, in an RGB file with no alpha
+channel. That is an image editor drawing "nothing here", and shipping it would
+be shipping a screenshot of the editor. So a sheet like this has to be read as
+one of two intents:
+
+- **A solid lens** — `--flatten-lens`, which repaints the checkerboard to its
+  own median. This is what White Glass ships as, and it reads cleanly.
+- **A clear lens** — `--clear-lens`, which erases the lens and leaves the
+  frame. It exists, and nothing ships with it, because the hole is cut to the
+  **eye box** rather than to the lens outline, so the frame comes out
+  fragmented. Doing it properly means detecting the drawn lens shape, which is
+  worth building the day a pair actually wants clear lenses.
 
 ### The eyes, painted into the lens
 
@@ -392,8 +408,8 @@ From the Hemi Bros catalogue spreadsheet, how many Bros wear each:
 | Golden Monocle | 48 |
 | Vision Pro | 45 |
 
-3D Glasses, Goggles and Laser Glasses are in. Eye Patch and Golden Monocle are
-the asymmetric ones (see section 1).
+3D Glasses, Goggles, Laser Glasses, Thug Life and White Glass are in. Eye Patch
+and Golden Monocle are the asymmetric ones (see section 1).
 
 ---
 

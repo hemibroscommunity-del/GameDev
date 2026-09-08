@@ -81,6 +81,14 @@ export const EYEWEAR_CATALOG = [
      its eye coverage instead of nothing.  seat_eyes() in the importer now moves
      each facing onto the eye row the game paints; all four pairs cover 100%. */
   { id: 'thug-life', name: 'Thug Life' },
+  /* v2.3.2366: white frames with a solid white lens.  The sheet drew its lenses
+     as a TRANSPARENCY CHECKERBOARD -- literal white-and-grey squares in an RGB
+     file with no alpha channel, an editor drawing "nothing here" -- so it had
+     to be read as one intent or the other.  Shipped solid (--flatten-lens);
+     --clear-lens renders the same sheet with the lens erased, and it reads
+     worse today because the hole is cut to the eye box rather than to the lens
+     outline.  Nothing ships with it. */
+  { id: 'white-glass', name: 'White Glass' },
 ];
 
 /** TRUE once there is something to pick.  The creator's Eyewear tab is gated
