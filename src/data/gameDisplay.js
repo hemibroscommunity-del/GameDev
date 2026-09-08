@@ -1312,6 +1312,38 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   _zoneMusicBuffers: {}, /* { [trackUrl]: AudioBuffer } cache — BUDGETED, see below */
   _zoneMusicUrl: null,   /* current track url; abandons stale fetches */
   _zoneMusicLru: [],     /* trackUrls, most-recently-used first */
+  /* v2.3.2334: the zone track's FETCH waits for the loading gate.  Measured on
+     a cold load: village.mp3 (2.2 MB) started 1.3 s into the 3.3 s sprite
+     burst the intro overlay was waiting on, with 482 sprite requests still
+     queued behind it -- the largest single thing competing with the preload
+     for the connection.  So startZoneAmbient marks the start in flight as
+     before (the v2.3.1597 watchdog guard is untouched) but parks the fetch
+     itself until the LOADING GATE has settled -- the preloadPlayerAssets()
+     promise the intro overlay waits on, handed in by BroTown at the same two
+     sites that hand it to kickSfxAtGate.  The FULL gate, network and bake,
+     on purpose: a first cut waited only for the sprite manifest so the track
+     would download during the bake, and on a loaded 4-core box the decode
+     then competed with the bake for so long that the watchdog's 8 s
+     staleness expiry fired and fetched the track a second time -- the
+     v2.3.1597 double-start, back by another road.  After the full gate the
+     connection AND the CPU are idle, and the intro clip still has seconds
+     to run.  Open by default: nothing is held until holdZoneMusicFor() arms
+     a gate, and once it has settled every later zone change takes the
+     synchronous path -- no await, not even a microtask, so mid-game
+     crossfades are exactly what they were. */
+  _zoneMusicGate: null,      /* the promise handed in by holdZoneMusicFor */
+  _zoneMusicGateOpen: true,  /* false only while an armed gate is pending */
+  _zoneMusicHeld: null,      /* the ONE fetch to run when it opens (latest zone wins) */
+  _zoneMusicHoldTimer: null, /* the bound below, armed on the first hold */
+  /* Bound on the hold, from the first held start.  The intro overlay's own
+     safety net lifts it 20 s after mount whatever the preload does
+     (IntroVideo.jsx hardCap), so the two agree: the moment the game stops
+     waiting for the preload is the moment the music stops waiting too.
+     Without it a gate that never settles -- the v2.3.1599 shape, a fetch
+     that dies without rejecting on a frozen page -- would put the player in
+     a silent world.  Past this the music simply competes with the tail of
+     the preload, which is what it always did. */
+  ZONE_MUSIC_HOLD_MAX_MS: 20000,
   /* v2.3.1577: GLOBAL music — one track that starts on the login screen and
      plays unbroken for the whole session.  Deliberately NOT a ZONE_MUSIC
      entry: that map is per-zone and startZoneAmbient stops the old track and
@@ -2297,8 +2329,16 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   var trackUrl = this.ZONE_MUSIC && this.ZONE_MUSIC[zoneId];
   /* v2.3.1581: hand over between the session track and a zone track.  Decided
      BEFORE the fetch below so the duck rides the same 600 ms as the crossfade
-     rather than waiting on a download. */
-  this.duckGlobalMusic(!!trackUrl);
+     rather than waiting on a download.
+     v2.3.2334: the duck DOWN now travels with the fetch (fetchTrack and the
+     cache-hit branch below).  Same instant on every zone change, because
+     fetchTrack runs synchronously once the loading gate is open -- but on a
+     cold load the fetch is HELD behind that gate, and ducking at join would
+     have silenced the login theme under the whole loading screen.  The theme
+     plays on until the town track is actually on its way, which is the
+     v2.3.831 handover IntroVideo was built around.  Entering a zone with no
+     track still un-ducks at once. */
+  if (!trackUrl) this.duckGlobalMusic(false);
   if (trackUrl) {
     var self = this;
     self._zoneMusicUrl = trackUrl;
@@ -2389,6 +2429,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       });
     };
     if (self._zoneMusicBuffers && self._zoneMusicBuffers[trackUrl]) {
+      self.duckGlobalMusic(true);       /* v2.3.2334: see the duck note above */
       self._touchZoneMusic(trackUrl);   /* a cache HIT is a use — keep it warm */
       startWithBuffer(self._zoneMusicBuffers[trackUrl]);
     } else {
@@ -2403,16 +2444,36 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
          zone music simply never had a caller impatient enough to need one. */
       self._zoneMusicStarting = true;
       self._zoneMusicStartingAt = Date.now();   /* v2.3.1599: staleness clock */
-      try {
-        fetch(trackUrl)
-          .then(function (r) { return r.ok ? r.arrayBuffer() : Promise.reject(new Error('http ' + r.status)); })
-          .then(function (ab) { return self.ctx.decodeAudioData(ab); })
-          .then(function (buf) {
-            self._rememberZoneMusic(trackUrl, buf);
-            startWithBuffer(buf);        /* clears _zoneMusicStarting */
-          })
-          .catch(function () { self._zoneMusicStarting = false; /* fetch / decode failure — silent */ });
-      } catch (e) { self._zoneMusicStarting = false; }
+      /* v2.3.2334: the fetch is a closure so it can be HELD behind the loading
+         gate on a cold load (see _zoneMusicGate above).  The in-flight flag is
+         set BEFORE the hold, above, so the watchdog sees a start in progress
+         and does not request another; if the hold outlasts the watchdog's 8 s
+         staleness expiry it re-requests this zone, and that lands here again
+         as a fresh closure that REPLACES the held one -- one fetch runs when
+         the gate opens, never two.  Every failure path still clears the flag. */
+      var fetchTrack = function () {
+        /* The zone changed while we were held: stopAmbient nulled
+           _zoneMusicUrl (and cleared the flag) on the way out, or a newer
+           start owns it now.  Nothing to fetch, and the flag is not ours. */
+        if (self._zoneMusicUrl !== trackUrl) return;
+        self.duckGlobalMusic(true);      /* v2.3.2334: see the duck note above */
+        /* Re-stamp: the v2.3.1599 clock times the FETCH ("anything still in
+           flight after 8 s is not coming back"), not the wait for the gate,
+           which is legitimately longer than that on a slow phone. */
+        self._zoneMusicStartingAt = Date.now();
+        try {
+          fetch(trackUrl)
+            .then(function (r) { return r.ok ? r.arrayBuffer() : Promise.reject(new Error('http ' + r.status)); })
+            .then(function (ab) { return self.ctx.decodeAudioData(ab); })
+            .then(function (buf) {
+              self._rememberZoneMusic(trackUrl, buf);
+              startWithBuffer(buf);        /* clears _zoneMusicStarting */
+            })
+            .catch(function () { self._zoneMusicStarting = false; /* fetch / decode failure — silent */ });
+        } catch (e) { self._zoneMusicStarting = false; }
+      };
+      if (self._zoneMusicGateOpen) fetchTrack();
+      else self._holdZoneMusic(fetchTrack);
     }
     return;
   }
@@ -2788,7 +2849,19 @@ BT_AUDIO.loadSample = function (key, url) {
     });
 };
 BT_AUDIO.loadSfxManifest = function () {
-  if (this._loadedManifest || !this.ctx) return;
+  if (this._loadedManifest) return;
+  /* v2.3.2349: REMEMBER that the gate asked, even when we cannot serve it.
+     The manifest needs an AudioContext, and the ctx is only born in a user
+     GESTURE (unlock).  v2.3.2330 moved this call from unlock() to the
+     loading gate to get 1.1 MB out of the sprite burst -- which quietly
+     assumed the gesture always comes first.  It does not: on a slow cold
+     start the gate can resolve BEFORE the player touches anything (measured
+     in the cold-load recorder on a loaded box -- gate at 40.6 s, zero of the
+     41 SFX files ever requested, silently, for the whole session).  So the
+     ask is recorded here and unlock() replays it the moment a ctx exists;
+     the burst is long over by then either way. */
+  this._sfxGateOpen = true;
+  if (!this.ctx) return;
   this._loadedManifest = true;
   var m = this.SFX_MANIFEST;
   for (var k in m) this.loadSample(k, m[k]);
@@ -2909,11 +2982,53 @@ BT_AUDIO.startGlobalMusic = function () {
   this._globalMusicStarting = true;
   this._globalMusicStartingAt = Date.now();     /* v2.3.1599: staleness clock */
   try {
-    fetch(url).then(function (r) { return r.arrayBuffer(); })
+    /* v2.3.2334: LOW fetch priority.  This is 1.6 MB requested on the login
+       screen by design (v2.3.1577), and on a cold load it overlaps the sprite
+       preload that follows PLAY; the hint lets the browser schedule it behind
+       the art on the same connection.  A browser that does not know the
+       option ignores it. */
+    fetch(url, { priority: 'low' }).then(function (r) { return r.arrayBuffer(); })
       .then(function (ab) { return self.ctx.decodeAudioData(ab); })
       .then(function (buf) { self._globalMusicBuffer = buf; self._globalMusicStarting = false; play(buf); })
       .catch(function () { self._globalMusicStarting = false; /* no music beats a broken boot */ });
   } catch (e) { this._globalMusicStarting = false; }
+};
+
+/* v2.3.2334: arm the loading gate the zone track's fetch waits behind.
+   Called by BroTown at every site that arms the gate itself, with the
+   preloadPlayerAssets() promise -- the same one IntroVideo and kickSfxAtGate
+   wait on; idempotent for the same promise.  Any settle (resolve or reject)
+   opens it. */
+BT_AUDIO.holdZoneMusicFor = function (gate) {
+  if (!gate || typeof gate.then !== 'function' || gate === this._zoneMusicGate) return;
+  var self = this;
+  this._zoneMusicGate = gate;
+  this._zoneMusicGateOpen = false;
+  var open = function () { self._openZoneMusicGate(); };
+  gate.then(open, open);
+};
+/* Open for good and run the one held fetch, if any.  Idempotent: the bound
+   timer and the gate's own settle both land here, in either order. */
+BT_AUDIO._openZoneMusicGate = function () {
+  this._zoneMusicGateOpen = true;
+  if (this._zoneMusicHoldTimer) { clearTimeout(this._zoneMusicHoldTimer); this._zoneMusicHoldTimer = null; }
+  var f = this._zoneMusicHeld;
+  this._zoneMusicHeld = null;
+  if (f) { try { f(); } catch (e) {} }
+};
+/* Park a zone-track fetch until the gate opens.  Latest wins: a zone change
+   (or a watchdog re-request) while held simply replaces the closure, so
+   exactly one fetch runs when the gate opens, for the zone the player is in
+   then -- the closure re-checks _zoneMusicUrl before it fetches. */
+BT_AUDIO._holdZoneMusic = function (fn) {
+  var self = this;
+  this._zoneMusicHeld = fn;
+  if (!this._zoneMusicHoldTimer) {
+    this._zoneMusicHoldTimer = setTimeout(function () {
+      self._zoneMusicHoldTimer = null;
+      self._openZoneMusicGate();
+    }, this.ZONE_MUSIC_HOLD_MAX_MS);
+  }
 };
 
 /* v2.3.1581: duck the session track under a zone track.
@@ -2953,7 +3068,19 @@ BT_AUDIO.unlock = function () {
   this._wakeCtx();
   this._unlocked = true;
   if (firstUnlock) this.fadeIn(1.2);
-  this.loadSfxManifest();
+  /* v2.3.2330: the SFX manifest no longer loads HERE.  unlock() runs on the
+     first gesture at the login door, so the manifest's 37 files (~1.1 MB)
+     all started within 7ms of each other, 1.6s after PLAY -- in the middle
+     of the sprite preload the loading gate was waiting on, competing with
+     it for the same connection.  BroTown kicks loadSfxManifest() the moment
+     the gate resolves instead (the intro clip then plays for ~4s, which is
+     more than the manifest needs).  The function is idempotent and every
+     player path kicks loadSample for a sample it finds missing, so a sound
+     asked for early is a one-off silence, never an error.
+     v2.3.2349: ...but if the GATE already passed while there was no context
+     to load into, this gesture is the first moment the manifest can be
+     fetched, so replay the ask here (idempotent via _loadedManifest). */
+  if (this._sfxGateOpen) { try { this.loadSfxManifest(); } catch (e) {} }
   /* v2.3.1577: the session track starts here — this is the first gesture on
      the LOGIN screen (GameApp registers the handler at app level), so the
      music is playing before the player ever enters the world, and nothing

@@ -165,6 +165,20 @@ export function processGameEvent(type, payload, S, deps) {
                  also includes new piles in state_sync / zone_loot for
                  joiners, so the same id may arrive twice. */
               if (!payload || !payload.pile || !S.groundLoot) break;
+              /* v2.3.2342: ONLY YOUR OWN ZONE'S PILES.  loot_drop rides the
+                 room-wide `events` buffer (tick.js: "NOT scoped: events"),
+                 so a kill or a death pile in Ember reached every client in
+                 the room and was pushed here at its raw world coordinates --
+                 a stranger's pile drawn in Frost, and a free-for-all death
+                 pile that B walked into fired loot_pickup requests the
+                 worker can never grant (the pile is in another zone's
+                 list).  _serializePile sends `zone` precisely so the
+                 receiver can filter, and every OTHER loot entry already
+                 does (_applyZoneLootMsg drops a foreign msg.zone;
+                 _peerInZone gates player_died_to_monster).  A pile with NO
+                 zone -- an older worker that pre-dates the field -- still
+                 applies, so this is deploy-order safe in both directions. */
+              if (payload.pile.zone && payload.pile.zone !== S.currentZone) break;
               var _existing = S.groundLoot.find(function (l) { return l.lootId === payload.pile.lootId; });
               if (_existing) break;
               S.groundLoot.push(_buildServerPile(payload.pile, S.myId));
@@ -1625,13 +1639,36 @@ export function processGameEvent(type, payload, S, deps) {
                        truth, on the same schedule the HP bar already used.
                        A number half a round-trip late beats a number that
                        is wrong. */
-                    pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20),
-                      '-' + payload.dmg, payload.isCrit ? DMG_CRIT_COLOR : '#ffd08a',
-                      /* v2.3.2232: the weapon that dealt it, not a flat sword.
-                         v2.3.2233: ...and that now includes the crit, which
-                         carried a bladed burst on bow and staff hits alike. */
-                      { crit: !!payload.isCrit, iconKey: dmgIconForSlot(S, payload, true),
-                        special: !!S._ownSpecialRecent });  /* v2.3.2211; v2.3.2220 */
+                    /* v2.3.2350: a COLLISION hit is not an ordinary hit.  The
+                       worker marks it (`collision: col.id`, combat.js since
+                       v2.3.1114) and, now that the local burst number is gated
+                       off in server zones, this is the only number the player
+                       gets for it -- so it arrives wearing the burst's own
+                       name, colour and higher line, not a plain '-dmg' in
+                       weapon colours.  The styling comes from the local roll
+                       that ran moments ago for the same collision id (the
+                       client still resolves its own for status bookkeeping);
+                       if that memory is missing or stale -- 1.5 s is many
+                       round trips -- the name still reads, in a neutral
+                       burst colour.  The ID is checked, so a burst cannot
+                       borrow a different collision's colours. */
+                    var _colId = payload.collision;
+                    var _colMem = _colId && S._ownCollisionRecent;
+                    var _colFresh = _colMem && _colMem.id === _colId && (Date.now() - _colMem.at) < 1500;
+                    if (_colId) {
+                      pushDmgPopup(S, (hitM.x || hitM.renderX) + 8, monsterPopupY(hitM, -35),
+                        (_colFresh ? _colMem.prefix : '') + '-' + payload.dmg
+                          + (_colFresh && _colMem.name ? ' ' + _colMem.name : ''),
+                        _colFresh ? _colMem.color : '#fffbb0');
+                    } else {
+                      pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20),
+                        '-' + payload.dmg, payload.isCrit ? DMG_CRIT_COLOR : '#ffd08a',
+                        /* v2.3.2232: the weapon that dealt it, not a flat sword.
+                           v2.3.2233: ...and that now includes the crit, which
+                           carried a bladed burst on bow and staff hits alike. */
+                        { crit: !!payload.isCrit, iconKey: dmgIconForSlot(S, payload, true),
+                          special: !!S._ownSpecialRecent });  /* v2.3.2211; v2.3.2220 */
+                    }
                   } else if (payload.thorns) {
                     /* v2.3.1137: Thorns reflect is SERVER-rolled with no
                        local prediction (unlike swings), so our own thorns

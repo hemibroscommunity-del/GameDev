@@ -20,6 +20,7 @@
    drifting apart would be a half-respawn, which is worse than either. */
 
 import { BT_AUDIO, ZONES, TILE, generateZoneMap, updateZoneDimensions } from '@/data/index.js';
+import { releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.2328: dying is leaving a zone */
 
 /**
  * Put the player back on their feet in `zone`.  Idempotent enough to call
@@ -43,7 +44,16 @@ export function applyLocalRespawn(S, zone) {
   S._customDungeonConfig = null;
   S._dungeonComplete = false;
   S._dungeonBossSpawned = false;
+  /* v2.3.2328: release the art of the zone we are leaving BY DYING.  Every
+     other exit from a combat zone frees its map and its monster variant
+     sheets; this one never did, so the zone you died in stayed resident for
+     the life of the page -- ~36.5 MB for a death in ember, and permanently,
+     because a map left in _residentZoneMaps never re-arms the entry gate that
+     would have freed it later.  See releaseLeftZoneArt for why both halves are
+     deferred here when the walk-out frees the map immediately. */
+  var _diedIn = S.currentZone;
   S.currentZone = zone || 'town';
+  try { releaseLeftZoneArt(_diedIn, S.currentZone); } catch (e) {}
   updateZoneDimensions(S.currentZone);
   try { BT_AUDIO.startZoneAmbient(S.currentZone); } catch (e) {}
   S.map = generateZoneMap(S.currentZone);

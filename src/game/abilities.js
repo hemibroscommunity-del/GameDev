@@ -399,6 +399,18 @@ export function applyAbilityStrike(S, kind, targetId) {
   var cfg = abilityCfg(kind);
   if (!R || !cfg) return false;
   var now = Date.now();
+  /* ═══ v2.3.2352: THE CLOCK STARTS WHEN THE WORKER'S DOES ═══
+     castAbility stamps this cooldown at the PRESS (kept -- it is what holds
+     a re-press off while the dash travels).  But for a sworddash with a lock
+     the `ability` message is DEFERRED to arrival (see the header note and
+     S._dashStrike), up to a dash window later, and the worker stamps its own
+     readyAt when the message lands.  So the two clocks disagreed by the
+     travel time plus latency, and a press inside that gap played the whole
+     lunge locally -- suppressing the ordinary swing with it -- while the
+     worker answered 'cooldown' and nothing was hit.  Re-stamping here costs
+     the player nothing (the press stamp was never earlier than this one) and
+     makes the client's idea of ready never earlier than the worker's. */
+  cdMap(S)[kind] = now + cfg.cooldownMs;
   try {
     S.channel && S.channel.send({ type: 'ability',
       payload: targetId != null ? { kind: kind, targetId: targetId } : { kind: kind } });

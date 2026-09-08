@@ -9,6 +9,15 @@
  *      pixels (a few px) so the legs' own outlines aren't eaten.
  * Output jog-<dir>-legs.png keeps recolour-compatibility (the renderer recolours
  * these to the player combo).  Run: node tools/build_jog_legs.mjs
+ *
+ * v2.3.2355: DO NOT RERUN AS-IS.  Like tools/build_jog_waist.mjs (see the note
+ * in src/rendering/jogWaist.js), this still slices its source at a hard-coded
+ * 256px frame while every public/sprites/player/jog-<dir>.png has been 128px
+ * since the v2.3.1434 re-cut -- it would read frame 1 as half of frame 0 and
+ * corrupt all five sheets.  Fix the frame stride (and the jogWaistRow rows it
+ * indexes with, which are 256-space) before running it again.  The shipped
+ * jog-<dir>-legs.png files are correct and were not touched by P7 item 5: that
+ * change is entirely in how the renderer LOADS them.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { decode, encode } from './png.mjs';

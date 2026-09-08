@@ -664,7 +664,15 @@ export function updateArrows(S, deps) {
                   /* §5.7 Resonance — bright readout + ring on resonance-timed projectile collisions. */
                   var _arPrefix = arrowCollision.resonating ? '🎯💥' : '💥';
                   var _arColor = arrowCollision.resonating ? '#fffbb0' : elemCol;
-                  pushDmgPopup(S, m.x + 8, monsterPopupY(m, -30), _arPrefix + arrowCollision.damage + ' ' + coll.name, _arColor);
+                  /* v2.3.2350: the ranged twin of the melee gate -- see the
+                     long note at the collision burst in monsterCombat.js.  In
+                     a server zone the worker owns this number; the local roll
+                     only leaves its styling behind for the echo to wear. */
+                  if (!S._serverMonsters) {
+                    pushDmgPopup(S, m.x + 8, monsterPopupY(m, -30), _arPrefix + arrowCollision.damage + ' ' + coll.name, _arColor);
+                  } else {
+                    S._ownCollisionRecent = { id: coll.id, name: coll.name, color: _arColor, prefix: _arPrefix, at: Date.now() };
+                  }
                   if (arrowCollision.resonating) {
                     var _arRingR = 28 + arrowCollision.resonanceDepth * 14;
                     for (var _arrp = 0; _arrp < 24; _arrp++) {

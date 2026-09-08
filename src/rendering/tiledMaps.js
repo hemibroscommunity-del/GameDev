@@ -236,6 +236,22 @@ export async function preloadStartZoneMap(zoneId = 'town') {
   const { Assets } = await import('pixi.js');
   try { Assets.setPreferences({ preferCreateImageBitmap: false }); } catch (e) { /* older pixi */ }
   return Assets.load(url).then((tex) => {
+    /* v2.3.2344: a freeZoneMap that lands while THIS load is still in flight
+       does not miss it -- Pixi's Loader.unload awaits the pending load and
+       destroys the texture it resolves with, and then this continuation ran
+       anyway: the zone went into the resident set (so the gate never re-armed)
+       and Assets.load had already Cache.set the destroyed texture (so every
+       later entry drew a husk).  Reachable from the farm (its warm-up is kicked
+       un-awaited and the return tile frees it within the download window) and
+       from any spoke entered under the gate's 15s cap.  Reproduced against the
+       real Loader in tools/qa/qa-mapfree-race.mjs.  A destroyed texture is a
+       MISS: drop the cache entry the free could not (its Cache.remove ran
+       before the load landed) and resolve undefined, so the next entry arms
+       the overlay and fetches a live one. */
+    if (!tex || tex.destroyed) {
+      try { if (Assets.cache.has(url)) Assets.cache.remove(url); } catch (e) { /* already gone */ }
+      return undefined;
+    }
     _residentZoneMaps.add(zoneId); /* v2.3.1405: mirror the async cache for the sync gate */
     return tex;
   }).catch((e) => {
@@ -266,7 +282,27 @@ export async function freeZoneMap(zoneId) {
  *  for walkable, false for blocked.  Failures are logged and skipped
  *  rather than rejecting — the caller falls back to procedural
  *  walkability when a zone's mask isn't available. */
+/* v2.3.2328: the in-flight promise, memoised.  This function had NO cache, and
+   two callers await it on the same boot — preloadAnimations.js:188 and
+   spriteSheets.js:63 — so the mask went over the wire once per caller.  Measured
+   on a cold load (tools/qa/mp/mp-coldload.mjs): worldview_v4.walk.json fetched
+   THREE times, 371 KB of the 33.30 MB total spent re-downloading 185 KB the
+   client already had.  The HTTP cache cannot help here because the requests
+   overlap — nothing has landed yet when the second one starts.
+   A stale comment in spriteSheets.js asserted this was already cached, which is
+   presumably why nobody looked; it is corrected in the same version.
+   Memoising the PROMISE (not the result) is the idiom this file already uses for
+   `_tilesetPromises` and `_mapPromises` two functions below, and it is the shape
+   that actually collapses concurrent callers rather than only sequential ones. */
+let _walkPromise = null;
+
 export async function loadWalkabilityMaps() {
+  if (_walkPromise) return _walkPromise;
+  _walkPromise = _loadWalkabilityMapsOnce();
+  return _walkPromise;
+}
+
+async function _loadWalkabilityMapsOnce() {
   const out = {};
   /* v2.3.1693: masks disabled by the owner (see WALK_MASKS_ENABLED above).
      Returning the empty map here — rather than editing the table or the

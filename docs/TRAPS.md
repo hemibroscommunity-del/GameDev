@@ -2098,3 +2098,153 @@ sentence that has already cost this project two OOM incidents.
 **Related:** §42 (no CSS filter over the WebGL canvas — the other "it looks
 wrong on iOS" that had a mechanical cause), §21 (an instrument that measures
 the wrong quantity reports green).
+
+---
+
+## §52 — A CSS mask does not share the `<img>`'s download (v2.3.2328)
+
+**The shape.** Three of the six duplicate fetches on a cold load were the same
+file pulled twice, and all three had the same structure: an `<img src>` showing
+the art, and a CSS `mask`/`-webkit-mask` of the SAME URL sitting on top of it to
+confine a shimmer to the lettering.
+
+| art | shown by | masked by | wasted |
+|---|---|---|---|
+| `title/logo-plain.png` | `LoginScreen.jsx:206` | `--lg-logo` at `:218` | 373 KB |
+| `logo-brotown.webp` | `NameModal.jsx:638` | `game.css:1890` | 85 KB |
+| `sword.webp` | `NameModal.jsx:634` | `game.css:1891` | 31 KB |
+
+**Why it is a trap rather than an obvious bug.** Every instinct says one URL is
+one download — the second consumer should hit the memory cache. It does not: the
+mask is fetched as a different resource destination from the image, so it gets
+its own entry and its own request. Two of the three are ALREADY in the
+`<link rel="preload" as="image">` block in `index.html`, and were still fetched
+twice, which is the tell: the preload matched the `<img>` and did nothing for
+the mask. **A preload that does not match its consumer does not save a request,
+it adds one** — so "just preload it" is the wrong fix here and would have made
+the untouched third case worse.
+
+**How it was found.** Not by reading. `tools/qa/mp/mp-coldload.mjs` counts
+exact-URL duplicates on a real cold load; the three fell out of one table, and
+their shared cause was only visible because all three were listed together.
+
+**What it costs.** 0.48 MB per cold load at v2.3.2328, and it scales with the
+design: the shimmer is a house pattern, so every future one doubles its art.
+
+**The fix, if it is wanted.** Not a preload. A mask only reads ALPHA — the RGB
+is thrown away — so the mask URL should point at a small dedicated silhouette,
+not at the full-colour artwork. `logo-plain.png` is 373 KB of gold lettering
+being downloaded a second time so that a highlight can find out where the
+letters are. A white-on-transparent cut of the same silhouette is a fraction of
+that, and lossy is fine for it (nothing samples a mask's RGB) — which is exactly
+the job `tools/webp_convert.mjs` is still the right tool for, and the one place
+its Chromium-canvas lossiness genuinely does not matter (§ see the header of
+that file, and `optimize-sprites.mjs`, for where it is NOT).
+
+**Fixed, v2.3.2333.** The three masks now point at `*-mask.webp` silhouettes
+beside the art (white RGB, the source's alpha copied exactly, lossy WebP:
+38 KB / 45 KB / 13 KB). `mp-coldload` after: each of the three art URLs
+fetched once, each silhouette once, 0.38 MB less in the `/ui/welcome` family,
+and the shimmer photographed on the lettering with the mask swapped.
+
+**Rule to apply next time:** when the same URL appears twice in a load, do not
+assume the browser will collapse it — check whether the two consumers are the
+same KIND of resource. `<img>` and CSS `background-image` share; a mask does
+not. And measure a preload's effect rather than assuming it helped.
+
+**Related:** §21 (an instrument that measures the wrong quantity reports green —
+here the instrument did not exist at all until v2.3.2328), §51 (the other "the
+art is bigger than what we draw" finding from the same measurement pass).
+
+---
+
+## §53 — Measuring image fidelity through a `<canvas>` invents a catastrophe (v2.3.2328)
+
+**What I claimed, with numbers, and was wrong about.** That 78 of 118 sprite
+WebP twins had drifted from their PNGs, with a worst channel delta of 255; that
+331 pixels across 38 player sheets consequently changed what the recolor's
+`_isSkin`/`_isPants` decide; and that the v2.3.2174 de-fringe sweep had cleaned
+speckles out of the PNGs and put them back via the lossy `.webp` the client
+actually loads. It was a coherent story with a plausible villain and a
+measurement behind every sentence.
+
+**The true number was two.** `npc/mayor-bro.webp` (58 px, worst 152) and
+`player/bow-south-weapon.webp` (3,721 px, worst 97). The other 76 files were
+pixel-identical to their PNGs and I deleted them for nothing.
+
+**And one of the two was the PNG's fault, not the WebP's (v2.3.2336).** The
+Mayor's `.webp` is the v2.3.1829 hat-fixed art; his `.png` is the stale
+pre-fix source. "Differs from its PNG" was read as "the twin is bad" and the
+twin was deleted — while `NPC_DATA` still named it and `npcSprites.js` loads
+NPC art with a bare `Assets.load` (no `.png` fallback), so after merge the
+only quest giver would have rendered as an emoji on a procedural body. A
+whole-PR adversarial review caught it; `mp-mayorart` (status 200 + "his art is
+painted") is the pin. Rule: a twin that differs from its source is a QUESTION
+("which one is current?"), not a verdict — check which file the last art fix
+wrote to (`git log -- both`) before deleting either.
+
+**And then RESOLVE the question rather than leaving it standing (v2.3.2357).**
+Restoring the `.webp` put the pair back in front of
+`tools/qa/qa-webp-lossless.mjs`, which went red on it — correctly, and
+permanently, for a difference that was intended. That is the worst state a
+gate can be in: red for a good reason teaches its readers to ignore it, or
+invites the "fix" of overwriting the good art with the stale file, which is
+this very incident a third time. So the stale `.png` was regenerated FROM the
+`.webp` (decode, re-encode lossless, 0 differing bytes of RGBA) and the pair
+is identical again — 189/189, exit 0. Delete an exception in preference to
+documenting one.
+
+**The mechanism.** The harness decoded each file by drawing it into a `<canvas>`
+and reading `getImageData`. **A 2D canvas backing store is premultiplied.**
+`drawImage` multiplies RGB by alpha going in; `getImageData` divides it back out;
+that round trip cannot be exact for any pixel with partial alpha, and how
+inexact depends on the decode path the pixels arrived by. So the PNG and the
+WebP hand the canvas identical pixels and it hands back different ones.
+
+Sprite sheets are mostly transparent with antialiased edges. "Pixels with
+partial alpha" is very nearly "the entire silhouette" — so the fake drift landed
+precisely where a real problem would have, on the outline, which is also exactly
+where the recolor is looking. Every part of the false story reinforced the rest.
+
+**The tell was in my own output and I nearly walked past it.** Not one FULLY
+OPAQUE pixel ever differed, in any of the 78 files. A lossy encoder does not
+politely confine itself to the antialiased fringe. `alpha` differences were
+likewise always zero — alpha survives the round trip; only the colour that was
+divided by it does not. Two columns that were flat zero across 78 rows were the
+entire disproof, sitting in the table the whole time.
+
+**What actually caught it** was a second, unrelated check: after the fixed CI
+workflow minted 183 twins with sharp, the harness reported the *same* files
+drifting by the *same* pixel counts as before. Two independent generators
+producing byte-identical error is not a coincidence, it is an instrument
+reading. The confirmation was WebCodecs `ImageDecoder` — raw RGBA frames
+straight from the codec, no canvas anywhere — which reported 0, 0, 0.
+
+**The rules.**
+- **To compare two encodings of an image, never let a 2D canvas touch it.** Use
+  `ImageDecoder` in a browser (`tools/qa/qa-webp-lossless.mjs`) or
+  `sharp(...).ensureAlpha().raw()` in node (`tools/optimize-sprites.mjs`). Those
+  two now agree, which is the point of having both.
+- **A control that shares the flaw proves nothing.** I ran controls — PNG vs
+  itself, WebP vs itself, PNG round-tripped through the canvas — and all three
+  returned a clean zero, which is exactly what a premultiply artefact does when
+  both sides take the same path. A control has to differ from the measurement in
+  the way you are actually worried about.
+- **When a finding is confined to one class of pixel, suspect the instrument
+  before the data.** Ask what those pixels share with the apparatus, not just
+  with each other.
+- This also corrects a claim about `tools/webp_convert.mjs`: its problem is not
+  that Chromium's WebP encoder is lossy at q=1.0 (measured, it is not — it adds
+  nothing over a PNG written from the same canvas). Its problem is that it draws
+  through a canvas at all, so it destroys partially-transparent RGB whatever it
+  writes out. Same trap, one layer down.
+
+**What survived, and is why the work still landed.** The workflow that was
+supposed to mint these had genuinely never run — no such commit exists in the
+history — 423 of the PNGs a cold load fetches had no twin at all, and 49 WebP
+probes 404'd on every load. Those were measured with request counts, not with a
+canvas, and they were all real.
+
+**Related:** §21 (an instrument that measures the wrong quantity reports green —
+this is its evil twin: one that reports red), §51 (the same measurement pass, a
+finding that survived).

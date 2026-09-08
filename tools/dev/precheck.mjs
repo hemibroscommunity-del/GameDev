@@ -860,6 +860,46 @@ if (changedServer.length) {
   } else add('PASS', 'hairmask-rule', 'no headwear art / hairmask / generator changes — check skipped');
 }
 
+/* ---- 11. hand-committed sprite WebP ----------------------------------
+   v2.3.2328.  Every .webp under sprites/player and sprites/gear is supposed to
+   be MINTED BY CI (.github/workflows/optimize-assets.yml -> optimize-sprites.mjs,
+   sharp, lossless, self-verifying).  For a year none were: that workflow had
+   never run, so all of them had been committed by hand, mostly via
+   tools/webp_convert.mjs — which draws through a PREMULTIPLIED canvas and so
+   cannot round-trip a partially transparent pixel whatever codec it writes out
+   (see that file's header).  Two of the 118 were genuinely not their PNG, and
+   because loadWebpOrPng() PREFERS the .webp those were the pixels players saw.
+   Nothing on the push path could have noticed either those two or the 423 PNGs
+   that had no twin at all.
+   This is the cheap static half of that gate: a .webp appearing under those two
+   folders in a human's diff is, by construction, one CI did not make.  The
+   expensive half — decoding every twin against its PNG — is
+   tools/qa/qa-webp-lossless.mjs, which is worth running whenever sprite art
+   moves but is too slow (a browser, ~2 min) for every push. */
+{
+  /* CI's own commits reach a branch through a merge, so the file being in the
+     diff is not enough — ask git WHO last wrote each one. A twin the bot minted
+     is exactly what is supposed to be there; only a human's is a finding. */
+  const isBotFile = (f) => /github-actions/.test(
+    git(['log', '-1', '--format=%an <%ae>', '--', f], { cwd: root }) || '');
+  const webpInDiff = changed.filter((f) => /^public\/sprites\/(player|gear)\/.*\.webp$/.test(f));
+  const handWebp = webpInDiff.filter((f) => !isBotFile(f));
+  const botCount = webpInDiff.length - handWebp.length;
+  if (!handWebp.length) {
+    add('PASS', 'sprite-webp', botCount
+      ? `no hand-committed .webp under sprites/player or sprites/gear (${botCount} in this diff, all minted by CI)`
+      : 'no hand-committed .webp under sprites/player or sprites/gear');
+  } else {
+    add('FAIL', 'sprite-webp',
+      `${handWebp.length} .webp under sprites/player|gear in this diff — these are CI's to mint, not yours.\n`
+      + `    tools/webp_convert.mjs CANNOT make them lossless (Chromium canvas, lossy at q=1.0) and the\n`
+      + `    client prefers .webp over .png, so a drifted twin silently replaces the artist's art.\n`
+      + `    Commit the .png only; optimize-assets.yml mints the twin and verifies it pixel for pixel.\n`
+      + `    Verify locally with: node tools/qa/qa-webp-lossless.mjs\n`
+      + '    ' + handWebp.slice(0, 8).join('\n    ') + (handWebp.length > 8 ? `\n    …and ${handWebp.length - 8} more` : ''));
+  }
+}
+
 /* ---- report -------------------------------------------------------- */
 console.log(`precheck vs ${baseRef} (merge-base ${mergeBase.slice(0, 8)}) — ${changed.length} changed file(s)\n`);
 for (const r of results) console.log(`${r.level.padEnd(4)} [${r.check}] ${r.msg}`);

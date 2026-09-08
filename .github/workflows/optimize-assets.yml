@@ -2,13 +2,31 @@ name: Optimize sprite assets
 
 # Converts sprite-sheet PNGs to LOSSLESS WebP (smaller downloads) and commits the
 # .webp next to the .png. Runs on CI because the dev sandbox has no image tooling.
-# Triggered when the converter/workflow changes (push) or manually. The commit it
-# makes only touches public/sprites (not the path-filtered files), so it does not
-# re-trigger itself.
+#
+# v2.3.2328: THIS WORKFLOW HAD NEVER RUN. Its trigger only fired when the
+# converter or the workflow file itself changed, so in the whole history there is
+# no "lossless WebP sprite copies" commit — every .webp had been committed by
+# hand, and 423 of the PNGs a cold load actually fetches had no twin at all,
+# costing 49 wasted 404 probes per load on top of the bytes.
+# Two of the 118 hand-made twins also differed from their PNG. One
+# (player/bow-south-weapon) was a stale lossy encode and is regenerated here.
+# The other (npc/mayor-bro) is the hat-fixed art whose PNG is the stale file —
+# it is kept, and sprites/npc is deliberately NOT in the converter's ROOTS
+# (v2.3.2336; see tools/optimize-sprites.mjs).
+#
+# So the trigger now includes the sprite art itself, which is what actually wants
+# converting. Two things stop the bot's own commit from looping back into this:
+# GitHub does not start a workflow run for a push authored with the repo's
+# GITHUB_TOKEN (documented), and the job-level `if` below refuses a bot actor
+# anyway. What it deliberately does NOT use is a [skip ci] marker in the commit
+# message: Cloudflare Pages honours that marker too, so the regenerated art would
+# land in git and never reach the site until somebody else happened to push.
 on:
   workflow_dispatch:
   push:
     paths:
+      - 'public/sprites/player/**'
+      - 'public/sprites/gear/**'
       - 'tools/optimize-sprites.mjs'
       - '.github/workflows/optimize-assets.yml'
 
@@ -17,6 +35,8 @@ permissions:
 
 jobs:
   optimize:
+    # Belt and braces against a loop; the GITHUB_TOKEN rule above already covers it.
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +45,10 @@ jobs:
           node-version: '20'
       - name: Install sharp
         run: npm i --no-save sharp@0.33.5
-      - name: Convert PNG -> lossless WebP
+      # The converter verifies every twin against its source and deletes any that
+      # is not pixel-identical or is not smaller, so a lossy or useless file can
+      # no longer reach the repo. It exits non-zero only if EVERY file failed.
+      - name: Convert PNG -> lossless WebP (verified)
         run: node tools/optimize-sprites.mjs
       - name: Commit WebP copies
         run: |

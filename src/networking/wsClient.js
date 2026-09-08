@@ -24,7 +24,7 @@ import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking
 import { peerCosmeticsFromWire, peerPassthroughFromWire, applyPeerCosmetics } from '@/networking/peerCosmetics.js';
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -118,6 +118,7 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
   } catch (e) { /* never let this break the state echo */ }
 }
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
+import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
 /* Tick arrival timestamps — module-level so the buffer survives
  * WebSocket reconnects and can be sampled by the FPS/NET overlay.
  * performance.now() values, capped at ~5 minutes of history.  Bytes-per-tick
@@ -614,7 +615,27 @@ export function setupWebSocket(ctx) {
                   var _evt = msg.events[ei];
                   var payload = _evt.payload || _evt;
                   payload.id = payload.id || _evt.from;
-                  processGameEvent(_evt.type, payload, S, _gameEventDeps);
+                  /* v2.3.2330: one throwing handler used to abandon the rest of
+                     this tick's batch AND the monster/node deltas below it --
+                     up to EVENTS_PER_TICK_CAP events plus a 22ms tick of world
+                     state, for one bad payload.  A non-throwing try costs
+                     nothing on V8/JSC. */
+                  try { processGameEvent(_evt.type, payload, S, _gameEventDeps); }
+                  catch (_evErr) {
+                    if (!S._evErrLogged || Date.now() - S._evErrLogged > 5000) {
+                      S._evErrLogged = Date.now();
+                      console.warn('[events] handler threw for', _evt.type, _evErr && _evErr.message);
+                      /* v2.3.2336: the catch must not erase its own evidence
+                         (the v2.3.1866 rule).  Before v2.3.2330 the throw
+                         reached window 'error' and crashTrap's ring buffer;
+                         a console.warn is invisible on the phone, where nobody
+                         has devtools.  Same 5s throttle; the message is built
+                         SYNCHRONOUSLY because _evt is the loop's var and the
+                         import resolves after the loop has moved on. */
+                      var _evMsg = _evt.type + ': ' + ((_evErr && (_evErr.stack || _evErr.message)) || _evErr);
+                      try { import('../debug/crashTrap.js').then(function (ct) { ct.recordCrash('event-handler', _evMsg); }).catch(function () {}); } catch (e) {}
+                    }
+                  }
                 }
               }
               // Server gather-node state deltas (alive/respawnAt only;
@@ -901,7 +922,10 @@ export function setupWebSocket(ctx) {
                   } catch (e2) {}
                   localStorage.setItem('bt_passphrase', _newPf);
                   /* The old character is unreachable under the new id --
-                     drop the stale cache so the rejoin starts clean. */
+                     drop the stale cache so the rejoin starts clean.
+                     v2.3.2336: and cancel the pending debounced flush, or it
+                     writes the old blob straight back 50-800ms from now. */
+                  cancelRpgSave();
                   localStorage.removeItem('bt_rpg');
                   S.myId = passphraseToId(_newPf);
                 } else {
@@ -930,6 +954,7 @@ export function setupWebSocket(ctx) {
                  social keys (bt_friends / bt_clan / bt_blocked /
                  bt_muted); the character restarts, the account doesn't. */
               S._characterReset = true; /* onclose 4005 guard: no reconnect race */
+              cancelRpgSave(); /* v2.3.2336: a pending flush would re-create bt_rpg before the reload */
               try {
                 ['bt_rpg', 'bt_stats', 'bt_codex', 'bt_bestiary', 'bt_materials', 'bt_zones', 'bt_resume'].forEach(function (k) {
                   localStorage.removeItem(k);
@@ -1043,7 +1068,11 @@ export function setupWebSocket(ctx) {
                 setBlockScaleEnabled(!!(S._serverCaps && S._serverCaps.blockScale));
                 if (S.rpg) recalcDerived(S.rpg);
               } catch (e) {}
-              var others = {};
+              /* v2.3.2330: null-prototype.  Keyed by wire-supplied peer ids -- the
+                 TRAPS section 6 shape, fixed three times in one day elsewhere.  A
+                 plain {} silently no-ops on '__proto__'; nothing reads a prototype
+                 method off this map (Object.keys / for-in / direct index only). */
+              var others = Object.create(null);
               for (var _i34 = 0, _Object$entries6 = Object.entries(msg.players); _i34 < _Object$entries6.length; _i34++) {
                 var _Object$entries6$_i = _slicedToArray(_Object$entries6[_i34], 2),
                   _pid = _Object$entries6$_i[0],
@@ -1798,7 +1827,14 @@ export function setupWebSocket(ctx) {
                 if (_poolsFromServer[_pk] !== null) S.rpg[_pk] = _poolsFromServer[_pk];
               }
               setRpgState(_objectSpread({}, S.rpg));
-              try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
+              /* v2.3.2330: through the debouncer, not inline.  This case runs
+                 1.5-5 times a second through combat (every player_state echo),
+                 and each inline write was a full JSON.stringify of S.rpg (~4.5 KB
+                 mid-game) plus a synchronous main-thread disk write -- the exact
+                 shape rpgSave.js was written to stop on the kill path, still
+                 running on the most frequent message in the protocol.  bt_rpg is
+                 a warm-start cache; the worker blob is authoritative. */
+              saveRpgSoon();
               break;
             }
           case 'player_died':
@@ -1820,19 +1856,15 @@ export function setupWebSocket(ctx) {
               if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
               S.rpg._compStats.deaths++;
               S._deathStart = Date.now();
-              /* Gold penalty mirrors the legacy local-death path
-                 (worker doesn't apply this yet; client is still the
-                 source for R.coins this slice will not change). */
-              var _goldLost3 = Math.floor((S.rpg.coins || 0) * DEATH_GOLD_PENALTY);
-              if (_goldLost3 > 0 && S.channel) {
-                /* Client still mutates R.coins for the gold-loss popup;
-                   server tracks coins via the loot path, so its view
-                   will drift on death until coins-on-death migrates.
-                   Note: the player_state on respawn does NOT re-apply
-                   this penalty, so the cheat surface here is the same
-                   as it was before this slice. */
-                S.rpg.coins = Math.max(0, S.rpg.coins - _goldLost3);
-              }
+              /* v2.3.2343: NO local gold penalty.  The worker owns coins
+                 (_handlePlayerDeath never touches ps.coins -- there is no
+                 death penalty server-side today), and under protocol v2 an
+                 UNCHANGED field is never re-sent, so the 10% this handler
+                 used to subtract here was never corrected by the echo: the
+                 HUD under-reported gold until the next coin change, when the
+                 "lost" gold silently came back.  The echo is the truth; the
+                 '-NG' popup went with the mutation.  Making the penalty REAL
+                 is a server change in _handlePlayerDeath, not a client one. */
               /* Death particles + audio + popup. */
               for (var _dp3 = 0; _dp3 < 25; _dp3++) {
                 var _dpA3 = _dp3 / 25 * Math.PI * 2;
@@ -1845,7 +1877,6 @@ export function setupWebSocket(ctx) {
               }
               S.screenShake = 10;
               pushDmgPopup(S, S.player.x, S.player.y - 40, 'YOU DIED', '#ff5e6c');
-              if (_goldLost3 > 0) pushDmgPopup(S, S.player.x, S.player.y - 55, '-' + _goldLost3 + 'G', '#fbbf24');
               BT_AUDIO.deathBoom();
               /* Tell the room we died so remote clients render a dead
                  pose at our last position.  Server already knows. */
@@ -2154,6 +2185,25 @@ export function setupWebSocket(ctx) {
                  authoritative pools still ride player_state. */
               S._lastAbilityReject = { kind: msg.payload.kind || null,
                 reason: msg.payload.reason || null, at: Date.now() };
+              /* v2.3.2352: a 'cooldown' refusal carries the worker's REMAINING
+                 ms, so take it -- the local clock is what disagreed, and
+                 guessing again would just re-run the same argument on the next
+                 press.  And give the ordinary swing back: castAbility suppressed
+                 the damage sweep for the ability window (_abilitySwingUntil),
+                 which is right for a strike the worker BILLED and wrong for one
+                 it refused -- otherwise the refusal costs a second hit too.
+                 Display/prediction state only; the pools still ride
+                 player_state. */
+              if (msg.payload.reason === 'cooldown' && typeof msg.payload.ms === 'number'
+                  && msg.payload.kind) {
+                try {
+                  if (!S._abilCd) S._abilCd = {};
+                  var _cdKey = msg.payload.kind;
+                  var _cdUntil = Date.now() + Math.max(0, msg.payload.ms);
+                  if (!(S._abilCd[_cdKey] > _cdUntil)) S._abilCd[_cdKey] = _cdUntil;
+                } catch (e) {}
+              }
+              if (msg.payload.reason) { S._abilitySwingUntil = 0; }
               try {
                 pushDmgPopup(S, S.player.x, S.player.y - 30,
                   abilityRejectText(msg.payload), '#F2C14E', { ts: Date.now() });
@@ -2373,6 +2423,11 @@ export function setupWebSocket(ctx) {
         var isDeath = !!p.isDeathDrop;
         return {
           lootId: p.lootId,
+          /* v2.3.2342: carry the worker's zone (null from an older worker
+             that does not send it) so the ground-loot loop can tell a
+             straggler from a pile that belongs here -- the loot_drop
+             handler (gameEvents.js) now filters on it before the push. */
+          zone: p.zone || null,
           x: isFinite(p.x) ? p.x : 0, y: isFinite(p.y) ? p.y : 0,
           coins: Math.round((p.coins || 0) * myShare),
           xp: 0,

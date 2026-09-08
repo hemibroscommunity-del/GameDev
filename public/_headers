@@ -1,0 +1,12 @@
+# v2.3.2330: cache headers for Cloudflare Pages.  Vite copies public/ into
+# dist/ verbatim, which is where Pages reads this from; there was no _headers
+# file anywhere before, so every one of the ~700 assets on a repeat load was
+# revalidated -- bytes saved, round trips not.
+#
+# ONLY the content-hashed tree.  /assets/* filenames carry a build hash, so a
+# changed file is a new URL and "immutable" can never serve a stale one.  The
+# sprite and audio trees are NOT here: many of their URLs are cache-busted by a
+# ?v= that the code appends, but not all of them are, and a year of immutable
+# on a file that quietly changes is the "it looks fine for me" bug.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

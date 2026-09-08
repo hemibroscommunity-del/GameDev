@@ -27,12 +27,15 @@ import { chromium } from 'playwright-core';
 
 const EXE = process.env.QA_CHROME
   || '/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell';
+/* v2.3.2338: the twins the placer now draws from (effectsRenderer
+   NODE_SPRITE_SOURCES); the alpha is sampled on a proportional grid, so the
+   size is irrelevant and the SOURCE must be what is on screen. */
 const CASES = [
-  { type: 'oreVein', lvl: 1, art: '/sprites/world/ore-vein.webp' },
-  { type: 'oreVein', lvl: 91, art: '/sprites/world/ore-vein.webp' },
-  { type: 'tree', lvl: 1, art: '/sprites/trees/tree-pine.webp' },
-  { type: 'tree', lvl: 91, art: '/sprites/trees/tree-pine.webp' },
-  { type: 'fishSpot', lvl: 1, art: '/sprites/world/fish-spot.webp' },
+  { type: 'oreVein', lvl: 1, art: '/sprites/world/ore-vein-627.webp' },
+  { type: 'oreVein', lvl: 91, art: '/sprites/world/ore-vein-627.webp' },
+  { type: 'tree', lvl: 1, art: '/sprites/trees/tree-pine-940.webp' },
+  { type: 'tree', lvl: 91, art: '/sprites/trees/tree-pine-940.webp' },
+  { type: 'fishSpot', lvl: 1, art: '/sprites/world/fish-spot-627.webp' },
 ];
 const N = 19;          // grid resolution across the sprite box
 const SETTLE = 90;     // ms of push per cell

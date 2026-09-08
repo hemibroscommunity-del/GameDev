@@ -2017,8 +2017,30 @@ export function updateMonsterCombat(S, deps) {
                     _bPrefix = 'CRIT ';
                     _bColor = '#fffbb0'; /* near-white shimmer per §5.7.3 */
                   }
-                  /* Collision burst damage number */
-                  pushDmgPopup(S, m.x + 8, monsterPopupY(m, -35), _bPrefix + collisionResult.damage + ' ' + coll.name, _bColor);
+                  /* Collision burst damage number.
+                     ═══ v2.3.2350: NOT IN A SERVER ZONE ═══
+                     Same rule the main hit number learned in v2.3.2220, three
+                     screens down, and for the same reason: in a server zone
+                     the WORKER resolves the collision (combat.js
+                     resolveElementCollision) off its own status clocks and
+                     emits the real number on monster_hit with `collision`
+                     set.  This local roll is an independent second one -- so
+                     the player saw TWO numbers per collision, e.g. a local
+                     'CRIT 34 Steam' and then the worker's '-21' a round trip
+                     later, with only the second one moving the HP bar.  Worse,
+                     the client's status clocks can resolve a collision the
+                     worker never did, printing a burst for nothing.
+                     Everything else here stays local and instant -- the certs,
+                     the ring, the particles, the sound: only the NUMBER waits
+                     for the truth.  The styling this roll would have used is
+                     handed to gameEvents so the authoritative number arrives
+                     wearing the collision's own name and colour instead of a
+                     plain '-dmg'. */
+                  if (!S._serverMonsters) {
+                    pushDmgPopup(S, m.x + 8, monsterPopupY(m, -35), _bPrefix + collisionResult.damage + ' ' + coll.name, _bColor);
+                  } else {
+                    S._ownCollisionRecent = { id: coll.id, name: coll.name, color: _bColor, prefix: _bPrefix, at: Date.now() };
+                  }
                   /* §5.7.3 Resonance ring — brighter ground burst when the
                      consumed status was timed inside its resonance window. */
                   if (collisionResult.resonating) {

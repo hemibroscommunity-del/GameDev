@@ -62,6 +62,12 @@ preview/
 # v2.3.1979: mp-lockon writes a debug screenshot next to itself on every run.
 tools/qa/mp/.last-*.png
 
+# v2.3.2337: tex-attrib.mjs (the resident-texture probe) writes its dump next
+# to itself.  Same rule as the screenshots above -- it is a measurement, taken
+# fresh against the build you are measuring; a stale one in the tree is worse
+# than none, because it looks like evidence.
+tools/qa/mp/tex-attrib.json
+
 # v2.3.1997 / v2.3.2002: QA scenarios drop debug screenshots in tools/maps as
 # dotfiles, and three of them were TRACKED — .cc.png (mp-ccload), .hero.png
 # (mp-heroview) and .blade.png.  So any QA run left phantom "modified" files in

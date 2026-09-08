@@ -1,11 +1,11 @@
 {
   "sword": [
-    75,
-    1180
+    15.311,
+    240.893
   ],
   "sword:wood": [
-    75,
-    1030
+    15.311,
+    210.271
   ],
   "bow": [
     44,
@@ -15,14 +15,44 @@
     28,
     40
   ],
-  "greatsword-south": [72, 24],
-  "greatsword-southwest": [63, 24],
-  "greatsword-east": [25, 24],
-  "greatsword-northeast": [23, 23],
-  "greatsword-north": [33, 21],
-  "bow-south": [13, 113],
-  "bow-southwest": [9, 117],
-  "bow-east": [43, 101],
-  "bow-northeast": [28, 112],
-  "bow-north": [17, 104]
+  "greatsword-south": [
+    72,
+    24
+  ],
+  "greatsword-southwest": [
+    63,
+    24
+  ],
+  "greatsword-east": [
+    25,
+    24
+  ],
+  "greatsword-northeast": [
+    23,
+    23
+  ],
+  "greatsword-north": [
+    33,
+    21
+  ],
+  "bow-south": [
+    13,
+    113
+  ],
+  "bow-southwest": [
+    9,
+    117
+  ],
+  "bow-east": [
+    43,
+    101
+  ],
+  "bow-northeast": [
+    28,
+    112
+  ],
+  "bow-north": [
+    17,
+    104
+  ]
 }

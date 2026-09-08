@@ -162,3 +162,323 @@ was built BEFORE the risky slices — do not reorder those steps.
   room egress at the cap **24.5 → 4.0 MB/s**, for ~15% more tick CPU.
   Lesson for the next perf pass: measure bytes AND cycles — this repo's
   harness measured only cycles for a year, and the answer was in the bytes.
+
+## P6 — Server hot path, re-measured 2026-09-07 (v2.3.2335) — NOT YET SHIPPED
+
+A second in-process pass on the real GameRoom (mocked DO storage, virtual
+clock advancing 22 ms/tick so the 10 s save coalescer actually elapses;
+60 players / 175 mummies, moves at ~30 Hz, swings at the real 600 ms
+cadence, once spread over 7 zones and once all in one zone). CPU stays
+closed: **0.56 ms avg / 1.20 ms p95 / 4.3 ms max per tick**, every
+post-v2.3.1465 subsystem (fire trail, telegraph, burrow, burst,
+spawn-scale, threats, dungeons, parties, trades2) ≤ 0.01 ms/tick. What
+the pass DID find is on the wire and in storage, and it is deliberately
+held out of the client-only PR that recorded it (a worker deploy is a
+live-player disconnect; the owner prefers server merges at quiet hours).
+Ship these as ONE server-only PR, each with its suite extended:
+
+1. **Kill-path save is ~10× the regen storage floor** —
+   `server/src/combat.js` (`this._saveRpg(rid, recipPs)` in the kill
+   resolution, near the `_gemRawOnKill` call). Every kill is a full
+   `_saveRpg` (a `storage.put` of the whole blob) per recipient, so a
+   party farming at cadence writes an order of magnitude more than the
+   regen tick's coalesced saves. The pattern to copy is the v2.3.1619b
+   pool coalescer in `persistence.js` (`_saveRpgPools` /
+   `_saveRpgVitals`): a SHORT window (≈2 s, not the regen 10 s — a kill
+   carries loot/XP/coins, and a DO restart inside the window loses them),
+   with the vitals coalescer's "near death → persist now" escape hatch
+   kept for the same reason. Pin it in `test/combat-lifecycle` by
+   counting `put` calls per N kills.
+2. **Room-wide events are ~34% of tick egress** — `server/src/tick.js`
+   `buildFor(zone, pv, muted)`: the `events` buffer is the room's, so a
+   recipient in `frost` receives every `monster_hit` / loot / fx event
+   from `ember`. v2.3.1575 zone-scoped monsters and peers but not
+   events. Filter by `payload.zone` ONLY for event types that carry a
+   zone (combat fx, loot, monster events); anything without one (world
+   chat, party vitals, trade/duel invites, system notices) MUST stay
+   room-wide — those are the cross-zone features. Pin it in
+   `test/tick.test.mjs` next to the §10 overflow test with a byte count
+   per recipient, the way v2.3.1575 was measured (bytes, not calls — the
+   whole lesson of P5).
+3. **Same-zone peer fan-out is O(n²) in BYTES in the crowd case** —
+   `server/src/tick.js` `buildFor`: serialisation is already shared per
+   (zone, protocolVersion) group, so CPU is flat, but every one of N
+   recipients in a zone receives all N dirty peer records — 60 players
+   in one zone is 3,600 peer records per tick at 45 Hz, and it is the one
+   term that scales with the SQUARE of the crowd (the spread case above
+   never shows it). The mitigation is a per-frame peer budget: each tick
+   send the nearest K peers' deltas in full and round-robin the rest
+   (positions are dead-reckoned client-side already, so a peer updated
+   every 2nd–3rd tick at distance is not visible). Pin it with a bytes-
+   per-recipient assertion at 60-in-one-zone in `test/tick.test.mjs`.
+4. **`_tickParties` runs outside the v2.3.1562 `guard`** —
+   `server/src/tick.js`, the bare `this._tickParties(Date.now())` between
+   `guard('trades2', …)` and the regen block. Every other subsystem is
+   wrapped so a throw is counted and logged once instead of aborting the
+   tick; parties is the one that is not. One-line fix:
+   `guard('parties', () => this._tickParties(Date.now()))`. Trivial, but
+   it is the difference between "a party bug logs" and "a party bug
+   freezes the room".
+5. **`_economySnapshot` lists every rpg blob unbounded** —
+   `server/src/liveops.js`: `storage.list({ prefix: 'rpg:' })` with no
+   `limit`, walked into an array and sorted, on the daily metrics writer
+   AND the admin `/economy` endpoint. At today's population it is fine;
+   at a few thousand accounts it is a multi-MB read on the DO input gate
+   (rule 9). Paginate with `limit` + `startAfter`, and keep only the
+   top-N by coins as you go instead of materialising every player.
+
+Not in this list because they were checked and are healthy: no `await`
+in the tick body, per-tick allocation ~5N+40 short-lived objects with
+nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
+`_dungeonZonePlayers` ≤ 8 instances × N.
+
+---
+
+## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
+### Items 1, 3, 4, 5, 6 and 9 SHIPPED (v2.3.2337-2355); the rest is the ranked backlog
+
+What this is, in plain language: the game keeps a lot of decoded artwork in
+the phone's graphics memory, and iPhone Safari kills the tab somewhere north
+of ~250 MB of it (that is the v2.3.1408 / gearSheets OOM history). We now have
+an instrument for it — `window.__btTex()` (pixiApp.js, v2.3.2272) counts
+decoded width × height × 4 bytes of everything Pixi is holding, which is the
+number that matters and is NOT the file size (a 12 KB heart icon is 6 MB
+decoded). Sampled on a 390×844 phone viewport with the v2.3.2328 harness:
+**town 423.3 MB, ember 463.8 MB**. Two attribution passes over that dump
+were re-checked against the code, file by file; what follows is what
+survived. Line numbers are "near here".
+
+Two rules govern every item, so nobody re-litigates them:
+
+- **Preloading is LAW** (CLAUDE.md). Anything a player OR A PEER can show
+  anywhere stays on the loading-screen gate. "Make it lazy" is never an
+  answer. The only residency lever is the v2.3.1405 per-zone pattern —
+  `preloadZoneAssets(zoneId)` awaited behind the zone overlay, freed on exit
+  by `freeZoneAssets` / `freeZoneMap` (v2.3.2272 added the exit half for
+  variants, v2.3.2328 for deaths). The other lever is TRAPS §51: upload a
+  smaller texture when the art is larger than what is drawn — and §51 also
+  says to MEASURE whether a halve is lossless before calling it cheap.
+- **A `Texture.from(canvas)` bake is cached under the canvas object**, not a
+  URL (Pixi 8.17 `textureFrom.mjs`), so `__btTex(true)` lists the sword/bow
+  stand-in bakes as `[object HTMLCanvasElement]` rows. Pin those by MB delta;
+  pin URL-loaded art by key name.
+
+Ranked by megabytes saved × (1 / risk), effort as tiebreak:
+
+1. ~~**Dead sword/bow fallback strips — 26.7 MB in every zone**~~
+   **SHIPPED, v2.3.2353** (measured: town 394.2 → 367.5 MB, ember 434.7 →
+   408.0 — exactly the 26.7 predicted).  What it took, for the next one of
+   these: the loader skips `url`/`armorUrl` when `bodyUrl` is set (the
+   fallback still loads for a cfg that ever ships without one), and the two
+   places that read the plain map for a FRAME COUNT — the sword draw path and
+   the bow's `S._bowArtReady` — now count the strip that is actually drawn.
+   That second half is the one that would have broken something: reading a
+   sheet that is no longer loaded would have left `_bowArtReady` false
+   forever, and entityRenderer would have hidden the real body for a block
+   pose the bow renderer never drew.  mp-southsword 7/7, mp-peersword 12/12,
+   mp-bowside 14/14, mp-swordcarry 44/44, mp-standinskin 19/19,
+   mp-arrowshot 10/10 unchanged.  ORIGINAL FINDING: `effectsRenderer.js` loads a plain AND an armoured sheet for
+   every sword facing (`_loadSwordStrip(this._swordFrames, …)` /
+   `_swordArmorFrames`, loader loop ~:1858) and a plain sheet for every bow
+   facing (~:1974). They were the v2.3.948 / v2.3.954 fallbacks ("Falls back
+   to armorUrl/bald if bodyUrl missing"); every cfg now ships `bodyUrl`, so
+   the `else if (armorFrames…)` / `else { sp.texture = frames[fi] }`
+   branches (~:8048-8054) never run, the only live read is `frames.length`
+   (~:7907, and `S._bowArtReady` ~:8272), and peers never touch either map
+   (`_remoteBodyFramesFor` bakes from `cfg.bodyUrl`). Because south/east are
+   stored half-res and NN-upscaled to `cfg.fh` (v2.3.1112) each family is
+   5.47 + 4.15 + 2.65 = 12.27 MB, ×2 for sword, +2.16 for the bow. Fix: skip
+   `cfg.url` / `cfg.armorUrl` when `cfg.bodyUrl` is set, take `n` from the
+   body frames, leave the fallback branches as tombstones. Pin: a new
+   `mp-deadstrips` scenario asserting the town total ≥ 24 MB under 423.3, and
+   mp-peersword / mp-southsword / mp-swordcarry / mp-blockstance / mp-bowside
+   unchanged.
+2. **Town NPC walk strips + town props, held in every field zone — 25.3 MB
+   in ember (0 in town), medium risk, medium.** `npcSprites.js
+   loadNpcSprites()` is on the GLOBAL manifest under the v2.3.1672 note
+   that predicted this exactly: "If NPC art ever grows past a handful of
+   figures, move it to preloadZoneAssets and free it on exit." It has: 16
+   walk strips (v2.3.2045, 1024×256 each = 16 MB) plus the props
+   (v2.3.1775/2061; fountain alone 3.4 MB). All of it is town-only in code
+   — `S.npcs` is set only by `_spawnTownNpcs()` and nulled on every zone
+   change, every `NPC_DATA` row is `canFollow:false`, every `worldProps` row
+   is `zone:'town'`. The pattern to copy is the frost snowman block in
+   `preloadAnimations.js`: load via `loadTracked('town-scenery', url)`
+   (zoneTextures.js), call it from `preloadZoneAssets('town')` (and still
+   on the intro gate — town is the start zone), `unloadBundle` + clear the
+   `_walk`/`_propAnim` slices in `freeZoneAssets` on town→elsewhere. The
+   catch that makes it medium: town is a resident hub, so FOUR entry paths
+   skip the overlay today — the exits gate (`isZoneMapResident('town')` is
+   always true), the spoke→hub return (`_retHub`, zoneTransitions.js ~:1008),
+   death respawn (respawn.js ~:55) and the farm_home return — and each must
+   arm when `!bundleLoaded('town-scenery')`, or the first frames back in town
+   draw emoji stand-ins, which v2.3.1672 calls "the louder failure". Pin:
+   extend mp-texdrift with `__btBundles()` (no `town-scenery` in ember; back
+   in town `hasNpcWalk('lil_bro')` true on the first frame) and repeat after
+   a death via the mp-deathtex path.
+3. ~~**HUD-bar heart copies nobody reads — 12.0 MB in every zone**~~
+   **SHIPPED, v2.3.2337** (with item 9, as one change). `entityRenderer.js _ensureHudBarTextures()`
+   loads `/icons/popups/heart.webp?v=2.3.68` and `heart-white.webp?v=2.3.68`
+   (v2.3.107 / v2.3.214 "white-fill heart for the player HP indicator so we
+   can tint by HP tier"). Both are 1254×1254 = 6 MB decoded, and
+   `_hudBarTex.heart` / `.heartWhite` are written there and read NOWHERE —
+   the indicator they fed became the owner's bar art (v2.3.1273
+   `barFrame`/`barFull`) and v2.3.1895 keeps the legacy pill off. The
+   `?v=2.3.68` key also makes heart.webp decode a second time beside the
+   damage-popup copy (`?v=2.3.2201`) — the v2.3.107 "reuse the same ?v="
+   comment is true of the HTTP cache and false of the texture cache. Delete
+   the two loads and two fields; no free-on-exit hook, nothing to scope. Pin:
+   `mp-hudheart` — `__btTex(true)` in town lists no `heart-white` key and
+   exactly one `heart.webp` key (`?v=2.3.2201`), summed ≤ 6.1 MB (was 18.0);
+   mp-hpbar / mp-resbars unchanged. Expected: town 423.3 → ~411, ember 463.8
+   → ~452.
+4. ~~**Sword1 / Bamboo held-weapon art at 1254×1254 — 11.5 MB**~~
+   **SHIPPED, v2.3.2354** (measured: town 367.5 → 356.0 MB, ember 408.0 →
+   396.5 — the 11.5 predicted).  The handles.json trap below was real and is
+   the reason this needed care: the two rows are rescaled by the same
+   256/1254 and kept as FLOATS, so the anchor fraction is identical to six
+   decimal places, and HANDLES_URL is bumped v8 → v9 because a cached v8
+   against the new art would fling the blade off the hand.  mp-blockweapon
+   99/99, mp-swordcarry 44/44, mp-previewweapon 4/4, mp-southsword 7/7,
+   mp-peersword 12/12; photographed before/after in tools/qa/shots/
+   weapon-twin-*.png (indistinguishable).  ORIGINAL FINDING: Drawn at ≤ 48 world px (`fitScale = targetH / th`,
+   entityRenderer ~:10527); `greatsword-south.webp` at 97×200 proves the
+   slot's size. 256×256 twins + SPRITE_VERSION bump in `weaponSprites.js`.
+   The one dependency: `public/sprites/weapons/handles.json` stores the grips
+   in 1254-space (`sword: [75,1180]`, `sword:wood: [75,1030]`) and both anchor
+   sites divide by the live texture size — rewrite those two rows into the
+   twin's space or the blade floats. Pin: mp-previewweapon / mp-swordcarry /
+   mp-blockweapon unchanged.
+5. ~~**Jog legs baked at 256 from 128-on-disk sheets — 22.7 MB locally, plus
+   the same again per distinct peer skin**~~
+   **SHIPPED, v2.3.2355** (measured: town 356.0 → 333.3 MB, ember 396.5 →
+   373.8 — the 22.7 predicted, in both zones, with exactly ten keys moved: the
+   five `[canvas …x256 from jog-<dir>-legs.webp]` rows gone, five `…x128` rows
+   in their place, 30.25 → 7.57 MB, and NOT ONE other key changed).  No art
+   file was touched — the whole change is how the renderer LOADS them.
+   What it took: the frame size is no longer asserted beside the loader at all.
+   `_bakeBodyStrip` takes a `square: true` cfg and reads the size off the image;
+   `_remoteSheetFramesFor` does the same when its fw/fh are omitted (that is the
+   peer half, which had the literal 256 twice); and `_placeJogLegs` derives
+   `_lf = texFrameH / 256` and its reciprocal, so the 256-space waist table is
+   divided into the texture's own space and the sprite is scaled back up — the
+   identical `_gn` term v2.3.1453 had already given the leg-ARMOUR frame one
+   branch below, whose comment claiming the bare legs "never shrank" was the
+   thing that had to be retired.  `jogWaist.js` was deliberately NOT converted;
+   it stays 256-space with a header saying so.
+   Proven, not asserted: a `__btProbe`-gated probe reports where the legs were
+   drawn in 256-frame px relative to the foot-plant, so it is position- and
+   perspective-independent.  Matched frames before vs after, local and peer:
+   the waist seam (`waistF`) and the feet (`botF`) are IDENTICAL to three
+   decimals; only `topF` — how far the leg art rides up hidden under the torso —
+   moves, by the one 256-space px the crop row rounds by, exactly as the
+   arithmetic predicts.  Photographed at real size (Playwright device-scale clip
+   at dpr 3, framed on the hip/waist junction) jogging south, east and west,
+   bare-legged and in steel greaves, plus a PEER seen from a second client:
+   indistinguishable.  mp-jogsides 13/13, mp-questlegs 17/17, mp-peersword
+   12/12, mp-bodysize 6/6, mp-coppergear 6/6, mp-standinskin 19/19,
+   mp-arrowshot 10/10.  ORIGINAL FINDING: Every
+   `jog-<dir>-legs.webp` is 128 tall, loaded with `{fw:256, fh:256}`
+   (effectsRenderer ~:1988, and the two remote sites ~:7534/:7692), so
+   `recolorBodyToCanvas` NN-doubles it (v2.3.1108) — an exact pixel-double,
+   lossless to undo, but `_placeJogLegs` and `jogWaist.js` are 256-space and
+   the v2.3.1453 comment says out loud that the bare legs are the one path
+   that "never shrank". Size-derived factor per TRAPS §51/§15, proven with
+   `tools/qa/bake-identity.mjs`, then mp-questlegs / mp-jogsides / mp-peersword.
+6. ~~**Node stills at 1254×1254 (fish-spot, ore-vein, tree-pine) — ~11 MB**~~
+   **SHIPPED, v2.3.2338.** Drawn by `NODE_SPRITE_HEIGHT_BASE` (~:905) at 264-396
+   device px for tier-1 fish/ore, so 627 twins are lossless through tier ~7;
+   the tree reaches ~975 device px at tier 10, so take a 940 twin (6 → 3.4
+   MB) rather than half. Per-zone is NOT the lever — nodes never spawn in
+   town but appear in every field zone.
+7. ~~**Chop gear layers at 2× (5760×440 ×3) — 21.75 MB**~~ **BUILT, v2.3.2356,
+   AND WAITING ON THE OWNER'S EYES** (measured: town 356.0 → 334.3 MB, ember
+   396.5 → 374.8 — exactly the 21.75 predicted, and the ONLY other rows that
+   moved are the whole gear set changing `?v=1035` to `?v=1036`, same MB each).
+   The three `chop-west.png` sheets are gone from the dump; three
+   `chop-west-220.png` at 2.42 MB stand where they were.
+   What it took: `tools/build_chop_half.mjs` mints the twins (`tools/png_raw.mjs`
+   inflates and deflates the IDAT so no canvas ever touches the pixels — TRAPS
+   §53; sharp is not installed in the sandbox and a native codec's kernel choice
+   is not something to take on trust here anyway); `GEAR_STRIP_TWIN` in
+   effectsRenderer says which pose has a twin and how many frames it is cut
+   into, so the FILE and the SLICING can never move one without the other; and
+   both placers now derive the layer's scale from `texture.height` — the local
+   one inside `placeChopLayer`, the peer one as `spec.fh / tex.height`, which is
+   1 for cook and leaves it byte-identical. The measurement that decided the
+   filter is in the tool's header: only 0.05% (chest) / 0.11% (greaves) of
+   aligned 2×2 blocks touching an opaque pixel are constant, so this art is NOT
+   a 2× pixel-double and the v2.3.1412 nearest inverse would have thrown real
+   texels away; a box average in PREMULTIPLIED space (straight RGBA pulls the
+   transparent side's black into every edge) is what the GPU's own minification
+   approximates when it samples this sheet at ~0.71 device px per texel.
+   THE LOOK CALL IS THE OWNER'S. Photographed armoured at dpr 3, on the same
+   swing frame (gear index 4), local and peer, before vs after —
+   `tools/qa/shots/chopgear-{local,peer}-{before,after}.png` at real phone size
+   (Playwright device-scale clip at dpr 3, NOT a CDP `captureScreenshot` clip,
+   which comes back blurred for WebGL on a software-GL box) and
+   `chopgear-{local,peer}-zoom4x.png` for the same pair magnified — and to my
+   eye, at real size and at 4× magnification, the plate is the same shape, the
+   same size, the same crispness and on the same body. Nothing was found to fix, so
+   nothing was; the photographs are the evidence, not the claim.
+   A whole-frame pixel diff of those shots is NOT evidence and is left out on
+   purpose: a control pair from two runs of the SAME build differs by 44% of
+   pixels with a worst channel of 255, because the fountain, the gesture
+   chevrons and a one-pixel camera drift are all in frame (TRAPS §21).
+   Pinned by mp-cookpeer, extended with the assertion that actually bites: the
+   armour's DRAWN height equals the body's, on the peer AND on his own screen,
+   read from the new `gearDrawnH` probes. Verified failing on the old literal
+   (`gearDrawnH` 52.25 against a body of 104.5) before it was left passing.
+   VERIFIED: mp-cookpeer 16/16, mp-wvscale 13/13, lifeskill 4/4, harvest 30/30
+   (including the firemaking section that is known-flaky on this box — it
+   passed), chopyield 10/10.
+8. **Sword south/east live layers NN-upscaled 4× — 21.7 MB after item 1,
+   HIGH risk, large.** Body/torso/weapon are restored to 320/246 from
+   half-res on disk; feetY, `cfg.fw`, crowns.json and the NATIVE-1× swing
+   gear strips all share one transform, which is the §51 `_placeBand` trap.
+   Only as §51's two PRs: normalise the placers to `cfg.fh / tex.height`
+   (byte-identical, bake-identity), THEN `bakeDisplayCanvas(cv, cfg.fh/2)`.
+   Listed so nobody "just removes the upscale".
+9. ~~**Popup heart at 1254×1254 — 5.75 MB**~~ **SHIPPED, v2.3.2337.** Paired with item 3: a
+   256 twin via `POPUP_ICON_SRC.heart` (the v2.3.2211 override map). Drawn at
+   ≤ 44 world px.
+
+Checked and found LAW-REQUIRED (or already correct), so they are not items:
+fire-goblin (30.5 MB in ember, 0 in town) is per-zone already and freed by
+v2.3.2272/2328 — its exit half is the control that proves the instrument;
+the ember map likewise. The skills strips (chop/cook/fire + legless twins,
+24 MB) are drawn at 0.54-1.17 of native and peers use them at any node. The
+jog bodies/heads, fullset figures, headwear/hair/capes (v2.3.2023 "a cape is
+worn everywhere"), the fx strips, arrow-blast (v2.3.2279 "a bow goes
+everywhere its owner does"), tool gestures, slime, shard/UI icons, and the
+bow's own four layers (native 642×241, drawn ~1×) are global by law and
+right-sized. `sword-north` is native 3060×227 drawn ~1× — leave it. The
+gear swing/fire/cook sheets are 1× with their bodies; their waste is
+PADDING (7-17% opaque), a crop-with-offset renderer change, not a file swap.
+**The town map (11.3 MB, the single largest texture in the ember steady
+state) and worldview (4 MB) are hub-resident by owner directive**
+(CLAUDE.md ZONE-ASSET EXCEPTION, v2.3.1405 "cheap to hold" — written when
+town was ~4 MB). Mechanically it is one early-return in `freeZoneMap`
+(tiledMaps.js ~:256) and the existing `!isZoneMapResident` gate would arm a
+brief overlay on every return to town; that visible cost is the owner's
+call, not a bug fix, and is recorded here so the question is asked once.
+
+What shipped here, and what is next. Items 3 + 9 (the three heart decodes,
+one 256 twin) and item 6 (the node twins) landed in this PR. Re-measured on
+the integrated branch, not composed from the two separate runs: **town 423.3
+→ 394.2 MB, ember 463.8 → 434.7 MB — −29.1 MB in every zone**, for no
+visible change (mp-dmgicon 16/16 and mp-pine 7/7 unchanged).  Item 1 landed
+next, and item 4 after it: **town 356.0 MB, ember 396.5 MB — 67.3 MB below
+where this measurement started**, still with nothing looking different.
+Item 7 came next and is the first one that is BUILT BUT NOT DECIDED: **town
+356.0 -> 334.3 MB, ember 396.5 -> 374.8 -- 89.0 MB below where this
+measurement started**, a fifth of everything the phone was holding, and the
+only one of the five so far whose art a player can in principle see change.
+Nothing about it looked different to the person who made it, at real size or
+at 4x, but that is a look call and the photographs are attached to the PR so
+it can be made by the owner rather than argued from megabytes.
+Five of the nine are done; the four that remain each need a renderer change,
+an owner's eye, or both. Next, in order: items 2 and 5, each with the named
+scenario extended BEFORE the change lands; 8 is the two-PR normalisation and
+waits for someone with an appetite for it; the town-map question at the end of
+this list is the owner's to answer, not a task.

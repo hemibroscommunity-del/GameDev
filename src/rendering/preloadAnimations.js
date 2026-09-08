@@ -39,7 +39,7 @@ import { loadPlayerDeathSprites } from './playerDeathSprites.js';
 import { preloadStartZoneMap, loadWalkabilityMaps } from './tiledMaps.js';
 import { effectsAnimationsReady, ensureImpactTex, ensureSnowballBurstTex, freeFrostImpactTex, ensureArrowBlastTex } from './systems/effectsRenderer.js'; /* v2.3.2272: the frost-only sheets get an exit */
 import { fxStripsReady } from './fxStrips.js'; /* v2.3.1735: stun ring + whirl vortex (preloading is law) */
-import { preloadTraits } from './systems/entityRenderer.js';
+import { preloadTraits, preloadBroBadge } from './systems/entityRenderer.js'; /* v2.3.2345: + the verified-Bro plate badge */
 import { preloadCapes } from './capeSprites.js'; /* v2.3.2023: cosmetic capes are GLOBAL, not per-zone */
 import { preloadFullsetFigures } from './gearSheets.js'; /* v2.3.1376: fullset knight figures */
 import { preloadJogHeadOverlays } from './playerSkins.js'; /* v2.3.1376: their head overlays */
@@ -219,6 +219,14 @@ export async function preloadWorldAnimations() {
        failure of the two.  If NPC art ever grows past a handful of figures,
        move it to preloadZoneAssets and free it on zone exit. */
     npcArt: loadNpcSprites(),
+    /* v2.3.2345: the verified-Bro badge on the name plate.  One 64px webp,
+       GLOBAL: a badged player can stand in any zone, so there is no zone to
+       scope it to.  Registered HERE because the renderer's lookup is
+       cache-only by design -- Texture.from(string) is Cache.get in Pixi 8,
+       never a fetch -- and from v2.3.1576 until now nothing loaded it at
+       all, so the badge never once rendered.  Remove this line and it goes
+       blank again, quietly. */
+    broBadge: preloadBroBadge(),
   };
 
   const names = Object.keys(groups);

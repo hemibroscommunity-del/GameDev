@@ -134,7 +134,7 @@ import { MINE_SPOT_R, WORLD_ZOOM, FARM_BED_TILE } from '@/data/constants.js';
    at boot; the only reader is the NPC wander clamp, dormant while
    NPC_DATA is empty. */
 import { CLAN_WAR_REWARDS, PET_LOOT_RADIUS, TOWN_W, TOWN_H, calcDisplayHeal,
-  hasGatherTool} from '@/data/index.js';
+  hasGatherTool } from '@/data/index.js';
 import { IntroVideo } from './IntroVideo.jsx';
 /* v2.3.1593: mayorWelcomeSeen dropped — its only caller was the greeting
    trigger the owner asked to remove.  MayorGreeting itself stays imported
@@ -273,6 +273,32 @@ import { wireOrientationSync } from '@/game/orientationSync.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
 import { releasePeerDamage, addBuildProg, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822: stuck-dead watchdog */
+/* v2.3.2330: the SFX manifest loads once the loading gate has what it was
+   waiting for -- see BT_AUDIO.unlock for why it no longer loads at the login
+   door.  Called at EVERY site that arms the gate: the first cut hung it off the
+   rejoin road's spinner chain only, and a brand-new character never loaded the
+   manifest at all (measured: 0 of 37 files on the cold load, every first sound
+   a one-off silence). */
+function kickSfxAtGate(gate) {
+  Promise.resolve(gate).catch(function () {}).then(function () {
+    try { BT_AUDIO.loadSfxManifest(); } catch (e) {}
+  });
+}
+/* v2.3.2334: the ZONE track (village.mp3, 2.2 MB in town) is the other download
+   that used to race the sprite preload -- it started 1.3 s into the burst with
+   482 sprite requests still queued behind it.  Its fetch now waits for the
+   SAME gate as the SFX manifest above: the full preloadPlayerAssets() promise,
+   network and bake, so the download and the decode land in the intro clip's
+   remaining seconds with an idle connection and an idle CPU.  (Waiting for
+   only the network half was tried first and put the decode under the bake,
+   where a slow box tripped the watchdog's 8 s staleness expiry into a second
+   fetch -- see the _zoneMusicGate note in gameDisplay.js.)  Called at every
+   site that arms the gate, like kickSfxAtGate.  The session track is
+   deliberately not here -- it belongs on the login screen (v2.3.1577) and
+   asks for low fetch priority instead. */
+function holdZoneMusicAtGate(gate) {
+  try { BT_AUDIO.holdZoneMusicFor(gate); } catch (e) {}
+}
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
 import { sendChatMessage } from '@/game/chat.js';
 import { subscribeMutes } from '@/game/chatMute.js'; /* v2.3.1981 */
@@ -728,16 +754,9 @@ export var BroTown = function BroTown(_ref0) {
   /* Player sprite sheets — 5 directional poses (east/north/northeast/south/
      southwest) × 2 modes (jog 8-frame, stand 1-frame). West/NW/SE are rendered
      by horizontal mirror at draw time. Map<key, {img, frames, w}> when loaded. */
-  var playerSpritesRef = useRef(null);
   /* Slime monster sprite sheets — idle bob (6 × 128×128 = 768×128) and
      death splash (8 × 128×128 = 1024×128). Loaded once on mount, used
      in the fodder render branch + the death-effect renderer. */
-  var slimeIdleImgRef = useRef(null);
-  var slimeDeathImgRef = useRef(null);
-  var slimeShootImgRef = useRef(null);
-  var slimeHitImgRef = useRef(null);
-  var slimeProjectileImgRef = useRef(null);
-  var slimeRemnantsImgRef = useRef(null);
   /* Web Audio buffer + nodes for the slime proximity loop.  Created
      lazily on first need; gain scales with distance to nearest slime,
      gain goes to 0 when none in range.  Moved off HTMLAudio in v2.1.68
@@ -758,16 +777,13 @@ export var BroTown = function BroTown(_ref0) {
   var slimeDeathAudioRef = useRef(null);
   /* Weapon sprite icons — sword / bow / staff. Drawn next to the character
      scaled down from the 64×64 source. Map<weapon-type, HTMLImageElement>. */
-  var weaponSpritesRef = useRef(null);
   /* Per-frame right-hand anchor coords (0..64 in source-pixel space).
      Annotated via public/tools/anchor.html. Lets the weapon track the hand
      frame-by-frame instead of using a fixed facing-based offset. */
-  var handAnchorsRef = useRef(null);
   /* Per-weapon handle pixel in the source weapon image (0..64).
      Annotated via public/tools/weapon-anchor.html. Without this we'd
      assume the handle is at bottom-center of the weapon image, which is
      wrong for diagonally-drawn sources. */
-  var weaponHandlesRef = useRef(null);
   var stateRef = useRef({
     player: {
       /* v2.3.1347: first spawn at the fountain plaza (24,24) — same spot
@@ -780,7 +796,7 @@ export var BroTown = function BroTown(_ref0) {
       vy: 0,
       dir: 'down'
     },
-    others: {},
+    others: Object.create(null), /* v2.3.2330: keyed by peer ids -- never a plain {} (TRAPS section 6) */
     camera: {
       x: 0,
       y: 0
@@ -1359,6 +1375,10 @@ export var BroTown = function BroTown(_ref0) {
     _useState8 = _slicedToArray(_useState7, 2),
     showPlayerList = _useState8[0],
     setShowPlayerList = _useState8[1];
+  /* v2.3.2330: a ref mirror, so the 2 Hz roster interval (which has [] deps) can
+     see whether the panel is open without being re-subscribed on every toggle. */
+  var showPlayerListRef = useRef(false);
+  useEffect(function () { showPlayerListRef.current = !!showPlayerList; }, [showPlayerList]);
   var _useState9 = useState(null),
     _useState0 = _slicedToArray(_useState9, 2),
     inspectPlayer = _useState0[0],
@@ -2629,12 +2649,11 @@ export var BroTown = function BroTown(_ref0) {
   useEffect(function () {
     return wireTownMusic(showNameModal, showLogin);
   }, [showNameModal, showLogin, bootPhase]);   /* v2.3.1869 */
-  /* Load player sprite sheets once, on mount. Per-direction frame counts
-     and cycle durations differ — east source video is ~1 s, north/south
-     ~2 s. Storing intervalMs per sheet lets each direction animate at its
-     native speed instead of forcing a uniform tick. */
+  /* Load the walkability grids once, on mount.  v2.3.2328: the ten sprite
+     refs this used to hand over are gone with the Canvas 2D path that read
+     them — see the tombstone in game/spriteSheets.js. */
   useEffect(function () {
-    return wireSpriteSheets(stateRef, { handAnchorsRef: handAnchorsRef, playerSpritesRef: playerSpritesRef, slimeDeathImgRef: slimeDeathImgRef, slimeHitImgRef: slimeHitImgRef, slimeIdleImgRef: slimeIdleImgRef, slimeProjectileImgRef: slimeProjectileImgRef, slimeRemnantsImgRef: slimeRemnantsImgRef, slimeShootImgRef: slimeShootImgRef, weaponHandlesRef: weaponHandlesRef, weaponSpritesRef: weaponSpritesRef });
+    return wireSpriteSheets(stateRef);
   }, []);
 
   /* Slime proximity-audio loop.  Tick every 80 ms: find nearest alive
@@ -3899,518 +3918,26 @@ export var BroTown = function BroTown(_ref0) {
     /* Preload own avatar */
     if (S.myAvatar) loadAvatarImg(S.myAvatar);
 
-    /* ═══ NFT 360° DIRECTIONAL SPRITE SYSTEM — V2 ═══ */
-    /* "Volumetric sprite" technique: contrast-based face masking, hue-shift depth, ghost parallax */
-    var _nftDirCache = {};
-    function getNftDirectional(processedImg, url) {
-      if (_nftDirCache[url]) return _nftDirCache[url];
-      var sz = 28;
-      /* FRONT — full processed NFT */
-      var fC = document.createElement('canvas');
-      fC.width = sz;
-      fC.height = sz;
-      var fX = fC.getContext('2d');
-      fX.imageSmoothingEnabled = false;
-      fX.drawImage(processedImg, 0, 0, sz, sz);
-      var sd = fX.getImageData(0, 0, sz, sz).data;
+    /* ═══ v2.3.2328: THE CANVAS 2D CHARACTER PATH IS GONE ═══
+       Deleted here: the NFT 360° directional sprite system
+       (_nftDirCache + getNftDirectional), drawSpriteCharacter and its
+       SPRITE_DIR_MAP/SWING_ANIM_MS tuning, and drawNft360 — 512 lines that
+       drew the player with ctx.drawImage() before the Pixi renderer existed.
+       Every one of them was already ABSENT FROM THE SHIPPED BUNDLE: Rollup
+       tree-shook them years ago because nothing calls them (the markers
+       `isBackpedaling`, `SWING_ANIM_MS`, `0.88:1.06`, `topCol` and
+       `ghost parallax` all return zero hits in dist/assets/index-*.js).
+       Their live replacements are entityRenderer.js (the character) and
+       entityRenderer.js:3957 (the NFT traits), both on Pixi.
 
-      /* ── Adaptive Head Bounds Detection ── */
-      var centerX = Math.floor(sz / 2);
-      var headTop = sz,
-        headBot = 0;
-      for (var y = 0; y < sz; y++) {
-        var i = (y * sz + centerX) * 4;
-        if (sd[i + 3] > 80) {
-          headTop = Math.min(headTop, y);
-          headBot = Math.max(headBot, y);
-        }
-      }
-      var headH = headBot - headTop;
-      /* Face zone: middle portion of detected head (where eyes/mouth/glasses live) */
-      var faceTop = headTop + Math.round(headH * 0.25);
-      var faceBot = headTop + Math.round(headH * 0.75);
-
-      /* Find left/right head bounds per row */
-      var rowBounds = [];
-      for (var _y10 = 0; _y10 < sz; _y10++) {
-        var left = sz,
-          right = 0;
-        for (var x = 0; x < sz; x++) {
-          if (sd[(_y10 * sz + x) * 4 + 3] > 80) {
-            left = Math.min(left, x);
-            right = Math.max(right, x);
-          }
-        }
-        rowBounds.push({
-          left: left,
-          right: right
-        });
-      }
-
-      /* ── BACK — Contrast-Based Feature Removal ──
-         Instead of painting over a fixed rectangle, detect actual facial features
-         (eyes, glasses, mouth) by their high contrast/saturation vs surrounding skin.
-         Only those pixels get replaced with sampled skin color. */
-      var bC = document.createElement('canvas');
-      bC.width = sz;
-      bC.height = sz;
-      var bX = bC.getContext('2d');
-      bX.imageSmoothingEnabled = false;
-      bX.drawImage(fC, 0, 0);
-      var imgData = bX.getImageData(0, 0, sz, sz);
-      var d = imgData.data;
-
-      /* Sample skin color from left & right edges of the face zone rows */
-      var sr = 0,
-        sg = 0,
-        sb = 0,
-        sn = 0;
-      for (var _y11 = faceTop; _y11 < faceBot; _y11++) {
-        var rb = rowBounds[_y11];
-        if (rb.left >= rb.right) continue;
-        /* Left 2 columns */
-        for (var _x12 = rb.left; _x12 < Math.min(rb.left + 3, rb.right); _x12++) {
-          var _i35 = (_y11 * sz + _x12) * 4;
-          if (d[_i35 + 3] > 80) {
-            sr += d[_i35];
-            sg += d[_i35 + 1];
-            sb += d[_i35 + 2];
-            sn++;
-          }
-        }
-        /* Right 2 columns */
-        for (var _x13 = Math.max(rb.right - 2, rb.left); _x13 <= rb.right; _x13++) {
-          var _i36 = (_y11 * sz + _x13) * 4;
-          if (d[_i36 + 3] > 80) {
-            sr += d[_i36];
-            sg += d[_i36 + 1];
-            sb += d[_i36 + 2];
-            sn++;
-          }
-        }
-      }
-      /* Fallback: sample from upper head if edges were empty */
-      if (sn < 6) {
-        for (var _y12 = headTop; _y12 < faceTop; _y12++) {
-          for (var _x14 = Math.round(sz * 0.3); _x14 < Math.round(sz * 0.7); _x14++) {
-            var _i37 = (_y12 * sz + _x14) * 4;
-            if (sd[_i37 + 3] > 80) {
-              sr += sd[_i37];
-              sg += sd[_i37 + 1];
-              sb += sd[_i37 + 2];
-              sn++;
-            }
-          }
-        }
-      }
-      var skinR = sn > 0 ? Math.round(sr / sn) : 128;
-      var skinG = sn > 0 ? Math.round(sg / sn) : 128;
-      var skinB = sn > 0 ? Math.round(sb / sn) : 128;
-      var skinBri = (skinR + skinG + skinB) / 3;
-
-      /* Per-pixel contrast check in face zone:
-         High saturation or outlier brightness = facial feature → replace with skin.
-         Low saturation + similar brightness to skin = actual skin/hat → keep. */
-      for (var _y13 = faceTop; _y13 < faceBot; _y13++) {
-        var _rb = rowBounds[_y13];
-        if (_rb.left >= _rb.right) continue;
-        /* Only check inner 70% of head width (skip edges which are outline/hat) */
-        var span = _rb.right - _rb.left;
-        var innerL = _rb.left + Math.round(span * 0.15);
-        var innerR = _rb.right - Math.round(span * 0.15);
-        for (var _x15 = innerL; _x15 <= innerR; _x15++) {
-          var _i38 = (_y13 * sz + _x15) * 4;
-          if (d[_i38 + 3] < 40) continue;
-          var r = d[_i38],
-            g = d[_i38 + 1],
-            b = d[_i38 + 2];
-          var brightness = (r + g + b) / 3;
-          var saturation = Math.max(r, g, b) - Math.min(r, g, b);
-          var briDiff = Math.abs(brightness - skinBri);
-
-          /* Feature detection: high saturation (colored glasses, red eyes, etc.)
-             OR brightness very different from skin (white of eyes, dark pupils, bright teeth) */
-          var isFeature = saturation > 35 || briDiff > 45;
-          if (isFeature) {
-            /* Replace with skin, slight 5% darken for back-of-head shading */
-            d[_i38] = Math.round(skinR * 0.95);
-            d[_i38 + 1] = Math.round(skinG * 0.95);
-            d[_i38 + 2] = Math.round(skinB * 0.95);
-          }
-        }
-      }
-
-      /* Hue-shift depth: shift all visible pixels toward cool blue/purple.
-         Shadows in pixel art are cool-toned, not flat black. */
-      for (var _i39 = 0; _i39 < d.length; _i39 += 4) {
-        if (d[_i39 + 3] < 40) continue;
-        d[_i39] = Math.round(d[_i39] * 0.90);
-        d[_i39 + 1] = Math.round(d[_i39 + 1] * 0.93);
-        d[_i39 + 2] = Math.min(255, Math.round(d[_i39 + 2] * 1.04 + 4));
-      }
-      bX.putImageData(imgData, 0, 0);
-
-      /* Sample region colors for reference */
-      function regionCol(y1, y2) {
-        var r = 0,
-          g = 0,
-          b = 0,
-          n = 0;
-        for (var _y14 = y1; _y14 < y2; _y14++) for (var _x16 = Math.round(sz * 0.15); _x16 < Math.round(sz * 0.85); _x16++) {
-          var _i40 = (_y14 * sz + _x16) * 4;
-          if (sd[_i40 + 3] > 80) {
-            r += sd[_i40];
-            g += sd[_i40 + 1];
-            b += sd[_i40 + 2];
-            n++;
-          }
-        }
-        return n > 0 ? "rgb(".concat(Math.round(r / n), ",").concat(Math.round(g / n), ",").concat(Math.round(b / n), ")") : '#555';
-      }
-      var topCol = regionCol(0, Math.round(sz * 0.3));
-      var midCol = regionCol(Math.round(sz * 0.3), Math.round(sz * 0.6));
-      var botCol = regionCol(Math.round(sz * 0.6), sz);
-      _nftDirCache[url] = {
-        front: fC,
-        back: bC,
-        size: sz,
-        topCol: topCol,
-        midCol: midCol,
-        botCol: botCol
-      };
-      return _nftDirCache[url];
-    }
-
-    /* ── V2 Render: Single-matrix transform with cross-fade and ghost depth ── */
-    /* Sprite-sheet player draw — replaces the procedural body when sheets
-       are loaded and window.__broUseSprites !== false. Returns true when it
-       drew, so the caller can skip the legacy body code. footY = where the
-       feet should land in CSS pixels; sprite is bottom-anchored there. */
-    var SPRITE_DIR_MAP = [
-      { name: 'east',      mirror: false }, /* 0 = E   */
-      { name: 'southwest', mirror: true  }, /* 1 = SE  → mirror SW */
-      { name: 'south',     mirror: false }, /* 2 = S   */
-      { name: 'southwest', mirror: false }, /* 3 = SW  */
-      { name: 'east',      mirror: true  }, /* 4 = W   → mirror E  */
-      { name: 'northeast', mirror: true  }, /* 5 = NW  → mirror NE */
-      { name: 'north',     mirror: false }, /* 6 = N   */
-      { name: 'northeast', mirror: false }, /* 7 = NE  */
-    ];
-    /* Swing animation tuning. SWING_ARC is imported from gameSystems.js
-       (the same arc used by hit-detection). Visual rotation runs over
-       SWING_ANIM_MS regardless of swing cooldown so combos still feel
-       responsive. The arc starts slightly cocked back (-30%) and sweeps
-       through to +70% of SWING_ARC, biasing the visual toward forward. */
-    var SWING_ANIM_MS = 250;
-    function drawSpriteCharacter(ctx, screenX, footY, facingAngle, isMoving, now, drawSize, weaponType, swingProgress, isBackpedaling, hitProgress) {
-      if (window.__broUseSprites === false) return false;
-      var sheets = playerSpritesRef.current;
-      if (!sheets) return false;
-      var tau = Math.PI * 2;
-      var a = ((facingAngle % tau) + tau) % tau;
-      var idx = Math.round(a / (Math.PI / 4)) % 8;
-      var info = SPRITE_DIR_MAP[idx];
-      /* Hit-react preempts jog/stand. Plays once across 0→1 progress
-         and clamps to the final frame when progress >= 1 (caller
-         normally stops passing hitProgress past that point, but the
-         clamp keeps the render stable on edge frames). */
-      var pose = (hitProgress != null) ? 'hit' : (isMoving ? 'jog' : 'stand');
-      var sheet = sheets[pose + '-' + info.name];
-      if (!sheet) return false;
-      /* Stale-cache clamp on frame count. */
-      var maxFrames = sheet.img && sheet.img.naturalWidth
-        ? Math.max(1, Math.floor(sheet.img.naturalWidth / sheet.w))
-        : sheet.frames;
-      var effFrames = Math.min(sheet.frames, maxFrames);
-      var ivl = sheet.intervalMs || 90;
-      var frame;
-      if (pose === 'hit') {
-        var clamped = Math.max(0, Math.min(0.9999, hitProgress));
-        frame = Math.min(effFrames - 1, Math.floor(clamped * effFrames));
-      } else {
-        frame = effFrames > 1 ? Math.floor(now / ivl) % effFrames : 0;
-      }
-      /* Reverse the cycle when backpedaling so legs appear to move in the
-         opposite direction of forward jogging — same frames played in
-         reverse, no separate sheet needed. */
-      if (isBackpedaling && effFrames > 1) frame = (effFrames - 1) - frame;
-      var srcX = frame * sheet.w;
-      /* East source video framed the character slightly smaller. Bump 6%
-         (was 18% — user fed back that 18% was too large). The hit pose's
-         east source frames the character much larger (~67% of frame
-         vs the jog/stand source's ~94%), so it needs the OPPOSITE
-         adjustment — shrink to 0.88× to match the apparent size of
-         the other directions in-game. */
-      var sizeMul = info.name === 'east'
-        ? (pose === 'hit' ? 0.88 : 1.06)
-        : 1.0;
-      var w = drawSize * sizeMul, h = drawSize * sizeMul;
-
-      /* === WEAPON SETUP ===
-         Per-frame hand anchor pins the handle to the actual hand pixel
-         in each source frame. Mirror weapon image for facings 2..6
-         (S, SW, W, NW, N) so the blade angles NW; E / SE / NE keep the
-         source NE direction. Z-order: weapon drawn IN FRONT for facings
-         0..3 (E, SE, S, SW), BEHIND for 4..7 (W, NW, N, NE) so the
-         sword sits in front of the body for forward/east poses and
-         behind for back-facing poses. */
-      var doWeaponDraw = null;
-      var wsheets = weaponSpritesRef.current;
-      var wImg = wsheets && weaponType ? wsheets[weaponType] : null;
-      if (wImg) {
-        var wSize = Math.round(drawSize * 0.45);
-        var handleX, handleY;
-        var anchors = handAnchorsRef.current;
-        var anchorList = anchors && anchors[pose + '-' + info.name];
-        var anchor = anchorList && anchorList[Math.min(frame, anchorList.length - 1)];
-        if (anchor && anchor.length === 2) {
-          var ax = info.mirror ? (sheet.w - anchor[0]) : anchor[0];
-          var ay = anchor[1];
-          handleX = screenX - w / 2 + (ax / sheet.w) * w;
-          handleY = footY - h + (ay / sheet.w) * h;
-        } else {
-          var handAng = facingAngle + Math.PI / 2;
-          var armLen = drawSize * 0.28;
-          var bodyCenterY = footY - drawSize * 0.40;
-          handleX = screenX + Math.cos(handAng) * armLen;
-          handleY = bodyCenterY + Math.sin(handAng) * armLen * 0.35;
-        }
-        var whandles = weaponHandlesRef.current;
-        var srcW = wImg.naturalWidth || 64;
-        var srcH = wImg.naturalHeight || 64;
-        /* Runtime override (debug command `hpx <weapon> X Y`) wins over the
-           handles.json file so the user can iterate the source-pixel handle
-           position live until the pivot dot lands on the visible handle. */
-        var rtHpxAll = (typeof window !== 'undefined' && window.__broWeaponHpxOverride) || {};
-        var hpx = rtHpxAll[weaponType] || (whandles && whandles[weaponType]) || [srcW / 2, srcH];
-        /* Per-weapon, per-direction pixel nudge.
-           Mirror flipping handedness across facings means a single nudge
-           value can't fit all 8 directions, so each weapon stores 8
-           overrides (one per facing index 0..7 = E, SE, S, SW, W, NW, N,
-           NE) plus a `_default` fallback. Applied to handleX/handleY
-           (the mirror pivot) so the offset is screen-space-consistent
-           regardless of mirror flag.
-           Tune live with `nudge X Y` (applies to current facing + current
-           weapon) — see GameApp.jsx debugBus.cmd('nudge', ...). Bake the
-           values you find into DEFAULT_WEAPON_NUDGE below. */
-        var DIR_NAMES = ['E','SE','S','SW','W','NW','N','NE'];
-        var DEFAULT_WEAPON_NUDGE = {
-          sword: {
-            E:  { x:  5, y: 6 },
-            SE: { x:  5, y: 6 },
-            S:  { x:  5, y: 6 },
-            SW: { x: -5, y: 6 },
-            W:  { x: -5, y: 6 },
-            NW: { x: -5, y: 6 },
-            N:  { x: -5, y: 6 },
-            NE: { x:  5, y: 6 },
-          },
-          bow: { _default: { x: -2, y: 7 } },
-          staff: {
-            E:  { x:  5, y: 8 },
-            SE: { x:  5, y: 8 },
-            S:  { x:  5, y: 8 },
-            SW: { x: -5, y: 8 },
-            W:  { x: -5, y: 8 },
-            NW: { x: -5, y: 8 },
-            N:  { x: -5, y: 8 },
-            NE: { x:  5, y: 8 },
-          },
-        };
-        var dirName = DIR_NAMES[idx];
-        var allNudges = (typeof window !== 'undefined' && window.__broWeaponNudge) || {};
-        var rtBucket = allNudges[weaponType] || {};
-        var dfBucket = DEFAULT_WEAPON_NUDGE[weaponType] || {};
-        var nudge = rtBucket[dirName] || rtBucket._default
-          || dfBucket[dirName] || dfBucket._default
-          || allNudges._default || { x: 0, y: 0 };
-        handleX += nudge.x;
-        handleY += nudge.y;
-        var dx = handleX - (hpx[0] / srcW) * wSize;
-        var dy = handleY - (hpx[1] / srcH) * wSize;
-        /* idx: 0=E, 1=SE, 2=S, 3=SW, 4=W, 5=NW, 6=N, 7=NE.
-           Mirror weapon on SW, W, NW, N (idx 3..6). E / SE / S / NE keep
-           the source NE blade direction. */
-        var weaponMirror = idx >= 3 && idx <= 6;
-        /* Swing rotation. Sweep is centered on the aim direction so the
-           blade slashes toward where the player is auto-attacking,
-           matching the hit-detection arc. Source weapon images have a
-           "rest blade direction" (sword's blade rests pointing NE in
-           its source); we rotate the image by (aimAngle - restBlade)
-           plus a swing-offset that sweeps -SWING_ARC/2 → +SWING_ARC/2. */
-        var REST_BLADE_CANVAS = {
-          sword:      -Math.PI / 4, /* NE — blade goes from grip (lower-left) to tip (upper-right) */
-          greatsword: -Math.PI / 4,
-          bow:         0,           /* east — bow sits horizontal */
-          staff:      -Math.PI / 2, /* north — staff stands vertical */
-        };
-        var restAng = REST_BLADE_CANVAS[weaponType] != null
-          ? REST_BLADE_CANVAS[weaponType]
-          : -Math.PI / 4;
-        /* SWING_ARC is the hit-detection arc (~153°). Visual swing is
-           70% of that (~107°) per user feedback — slightly less wild
-           than the full hit arc while still reading as a strong slash. */
-        var SWING_FULL_ARC = ((typeof SWING_ARC === 'number' && SWING_ARC) ? SWING_ARC : Math.PI * 0.85) * 0.70;
-        var swingAng = 0;
-        var swingOffset = 0;
-        var swingActive = swingProgress != null && swingProgress < 1;
-        /* Pull live aim from window state — facingAngle tracks movement
-           direction in non-attack motion, but aim is what we want here. */
-        var liveS = (typeof window !== 'undefined' && window._gameState) ? window._gameState.current : null;
-        var aimAngle = (liveS && liveS._aimAngle != null) ? liveS._aimAngle : facingAngle;
-        if (swingActive) {
-          var eased = 1 - Math.pow(1 - swingProgress, 2);
-          swingOffset = -SWING_FULL_ARC / 2 + eased * SWING_FULL_ARC;
-          swingAng = (aimAngle - restAng) + swingOffset;
-        }
-        /* Local image-space offsets — relative to the grip pixel pivot. */
-        var dxLocal = -(hpx[0] / srcW) * wSize;
-        var dyLocal = -(hpx[1] / srcH) * wSize;
-        doWeaponDraw = function () {
-          /* Phase B: arc trail centered on the aim direction. Spans
-             up to SWING_FULL_ARC across the course of the swing. */
-          if (swingActive) {
-            ctx.save();
-            ctx.translate(handleX, handleY);
-            var trailReach = wSize * 1.47; /* 2.10 * 0.7 — shrunk 30% with the arc */
-            var startCanvas = aimAngle - SWING_FULL_ARC / 2;
-            var nowCanvas   = aimAngle + swingOffset;
-            var trailAlpha = (1 - swingProgress) * 0.35;
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.arc(0, 0, trailReach, Math.min(startCanvas, nowCanvas), Math.max(startCanvas, nowCanvas));
-            ctx.closePath();
-            ctx.fillStyle = 'rgba(255, 255, 255, ' + trailAlpha + ')';
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(255, 250, 200, ' + (trailAlpha * 1.2) + ')';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(0, 0, trailReach, Math.min(startCanvas, nowCanvas), Math.max(startCanvas, nowCanvas));
-            ctx.stroke();
-            ctx.restore();
-          }
-          /* Sword image draw. Idle: apply weaponMirror so the blade
-             flips to the body side that holds the grip. Active swing:
-             skip mirror — rotation alone aims the blade at the swing
-             target, and mirroring during rotation would invert the
-             sweep direction visually. */
-          ctx.save();
-          ctx.translate(handleX, handleY);
-          if (weaponMirror && !swingActive) ctx.scale(-1, 1);
-          ctx.rotate(swingAng);
-          ctx.drawImage(wImg, dxLocal, dyLocal, wSize, wSize);
-          ctx.restore();
-          /* DEBUG PIVOT DOT — yellow dot rendered at (handleX, handleY).
-             This is also the canvas position of the sword's grip pixel
-             (verified mathematically — drawImage with the offset I use
-             puts the user-clicked grip pixel exactly at this point).
-             If the dot isn't on the visible hand even when standing
-             still, the nudge values are off — the user's calibration
-             aligned the sword grip with the dot, but the dot itself
-             isn't where the visible hand is rendered. */
-          if (typeof window !== 'undefined' && window.__broShowPivot) {
-            ctx.save();
-            ctx.fillStyle = '#ffd700';
-            ctx.beginPath();
-            ctx.arc(handleX, handleY, 4, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-            ctx.restore();
-          }
-        };
-      }
-
-      /* idx 0..3 = E / SE / S / SW → sword IN FRONT (drawn after body).
-         idx 4..7 = W / NW / N / NE → sword BEHIND (drawn before body). */
-      var swordInFront = idx <= 3;
-
-      if (doWeaponDraw && !swordInFront) doWeaponDraw();
-
-      /* === CHARACTER DRAW === */
-      ctx.save();
-      if (info.mirror) {
-        ctx.translate(screenX, 0);
-        ctx.scale(-1, 1);
-        ctx.drawImage(sheet.img, srcX, 0, sheet.w, sheet.w, -w / 2, footY - h, w, h);
-      } else {
-        ctx.drawImage(sheet.img, srcX, 0, sheet.w, sheet.w, screenX - w / 2, footY - h, w, h);
-      }
-      ctx.restore();
-
-      if (doWeaponDraw && swordInFront) doWeaponDraw();
-      return true;
-    }
-
-    function drawNft360(ctx, nftDir, cx, cy, facingAngle, nftSize) {
-      /* turnFromCam: 0=facing camera, π=facing away */
-      var rawTurn = facingAngle - Math.PI / 2;
-      var turnFromCam = Math.abs((rawTurn % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
-      var isFacingRight = Math.cos(facingAngle) > 0;
-      var sinTurn = Math.sin(turnFromCam);
-      var halfSz = nftSize / 2;
-
-      /* sx: Width compression — 0.5 at pure side, 1.0 at front/back */
-      var sx = 0.5 + 0.5 * Math.abs(Math.cos(turnFromCam));
-
-      /* kx: Shear factor — peaks at 90°, gives the "3D lean" */
-      var kx = sinTurn * 0.25 * (isFacingRight ? -1 : 1);
-
-      /* Cross-fade: blend front↔back between 70°–110° (1.22–1.92 rad) */
-      var fadeStart = 1.22,
-        fadeEnd = 1.92;
-      var frontAlpha, backAlpha;
-      if (turnFromCam < fadeStart) {
-        frontAlpha = 1;
-        backAlpha = 0;
-      } else if (turnFromCam > fadeEnd) {
-        frontAlpha = 0;
-        backAlpha = 1;
-      } else {
-        var t = (turnFromCam - fadeStart) / (fadeEnd - fadeStart);
-        frontAlpha = 1 - t;
-        backAlpha = t;
-      }
-      ctx.save();
-      ctx.translate(cx, cy + nftSize); /* pivot at feet (bottom-center) */
-
-      /* Single matrix: scale (with mirror baked in), shear, no separate calls */
-      ctx.transform(isFacingRight ? -sx : sx, /* a: horizontal scale + mirror */
-      0, /* b: no vertical skew */
-      kx, /* c: the "3D lean" shear */
-      1, /* d: keep height constant */
-      0, 0);
-
-      /* Ghost depth — 1px parallax shadow at high side amounts */
-      if (sinTurn > 0.7) {
-        ctx.globalAlpha = 0.4;
-        var ghostTex = frontAlpha > backAlpha ? nftDir.front : nftDir.back;
-        ctx.drawImage(ghostTex, -halfSz + 1, -nftSize, nftSize, nftSize);
-        ctx.globalAlpha = 1;
-      }
-
-      /* Draw front layer */
-      if (frontAlpha > 0.01) {
-        ctx.globalAlpha = frontAlpha;
-        ctx.drawImage(nftDir.front, -halfSz, -nftSize, nftSize, nftSize);
-      }
-      /* Draw back layer */
-      if (backAlpha > 0.01) {
-        ctx.globalAlpha = backAlpha;
-        ctx.drawImage(nftDir.back, -halfSz, -nftSize, nftSize, nftSize);
-      }
-
-      /* Cool-toned depth overlay */
-      var depthAmt = sinTurn * 0.07 + (backAlpha > 0 ? 0.03 : 0);
-      if (depthAmt > 0.01) {
-        ctx.globalAlpha = depthAmt;
-        ctx.fillStyle = 'rgba(20,15,50,1)';
-        ctx.fillRect(-halfSz, -nftSize, nftSize, nftSize);
-      }
-      ctx.globalAlpha = 1;
-      ctx.restore();
-    }
+       What the shake could NOT remove is the LOADER that fed them —
+       wireSpriteSheets in game/spriteSheets.js — because a network fetch is
+       a side effect a bundler must preserve. So the game went on downloading
+       1.21 MB across 26 requests on every cold load to populate refs that no
+       surviving code reads. That is the real cost this deletion pays back;
+       see the tombstone in spriteSheets.js. Measured before and after with
+       tools/qa/mp/mp-coldload.mjs, and the bundle shrank by 1.15 kB — proof
+       that the JS was already gone and only the fetches were ever real. */
     /* The duplicate resize() block that used to live here has been
        deleted — it called ctx.setTransform(dpr, 0, 0, dpr) UNGUARDED.
        During Pixi's async init window, ctx is null (we deferred the
@@ -5545,14 +5072,26 @@ export var BroTown = function BroTown(_ref0) {
               /* r = 40% of the box: circumference in the SVG's own units --
                  the box is square, so a percentage radius resolves against
                  its width; stamp the dash as a fraction of 2*pi*r in px. */
-              var _rpx = (_ring.clientWidth || 96) * 0.4;
+              /* v2.3.2330: clientWidth is a forced style recalc (on some frames a
+                 layout flush), and this ran every frame of every harvest after
+                 style writes on the ring's siblings, for a box whose size only
+                 changes on resize.  Re-read at most once a second. */
+              var _rnow = Date.now();
+              /* v2.3.2336: show the ring BEFORE measuring it.  The v2.3.2330
+                 1s cache read clientWidth while the ring was still
+                 display:none from the idle frame before -- 0 -- so the 96
+                 fallback was cached for the first second of every harvest
+                 (landscape's 108px box drew an ~11% short pie).  One forced
+                 layout on the first frame of a harvest is the intended cost. */
+              if (_ring.style.display !== 'block') _ring.style.display = 'block';
+              if (!_ring._rpxW || (_rnow - (_ring._rpxAt || 0)) > 1000) { _ring._rpxW = _ring.clientWidth || 96; _ring._rpxAt = _rnow; }
+              var _rpx = _ring._rpxW * 0.4;
               var _circ = 2 * Math.PI * _rpx;
               if (_c) {
                 var _dash = (_circ * _frac).toFixed(1) + ' 9999';
                 if (_c.getAttribute('stroke-dasharray') !== _dash) _c.setAttribute('stroke-dasharray', _dash);
                 if (_c.getAttribute('stroke') !== _col) _c.setAttribute('stroke', _col);
               }
-              if (_ring.style.display !== 'block') _ring.style.display = 'block';
             } else if (_ring.style.display !== 'none') _ring.style.display = 'none';
           }
 
@@ -7447,7 +6986,14 @@ export var BroTown = function BroTown(_ref0) {
           stats: o.stats
         };
       });
-      setPlayerList(list);
+      /* v2.3.2330: only while the panel that reads it is open.  This runs
+         twice a second for the life of the session, and setPlayerList with a
+         freshly-built array re-rendered the ENTIRE BroTown tree each time --
+         ~167 createElement calls and 113 inline style objects, standing still
+         in town, for a list nobody was looking at.  The panel reads it on open
+         within the same half-second, so it is never more than one tick stale.
+         The achievement check below still runs every tick as it always did. */
+      if (showPlayerListRef.current) setPlayerList(list);
       /* Check achievements */
       var S2 = stateRef.current;
       if (S2.stats) {
@@ -9907,6 +9453,8 @@ export var BroTown = function BroTown(_ref0) {
     /* Kick off the full avatar-asset preload now (equip is finalized at this
        point) so the intro overlay can hold until it's flicker-free. */
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e) { introWaitRef.current = null; }
+    kickSfxAtGate(introWaitRef.current);
+    holdZoneMusicAtGate(introWaitRef.current);   /* v2.3.2334 */
     if (!_skipIntro) setShowIntro(true);
     else {
       /* v2.3.831: no IntroVideo to hand the theme off, so stop it here;
@@ -9967,6 +9515,8 @@ export var BroTown = function BroTown(_ref0) {
     BT_AUDIO.init();
     BT_AUDIO.join();
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e2) { introWaitRef.current = null; }
+    kickSfxAtGate(introWaitRef.current);
+    holdZoneMusicAtGate(introWaitRef.current);   /* v2.3.2334 */
     setShowWelcome(false); /* straight in -- no intro video on a resume */
     /* v2.3.833: a resume skips the intro loading screen and drops straight
        into the world while the avatar's gear sheets are still baking, which

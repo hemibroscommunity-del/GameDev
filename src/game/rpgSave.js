@@ -26,6 +26,16 @@ const MIN_GAP_MS = 800;
 let _timer = null;
 let _lastWrite = 0;
 
+/* v2.3.2336: the two bt_rpg WIPES (join-reject passphrase regen, character
+   reset -> reload) call this first.  Since v2.3.2330 the player_state echo
+   arms the timer 1.5-5x/s, so a flush was almost always pending at the wipe
+   and fired 50-800ms later reading the PRE-reset S.rpg -- re-creating the
+   cache the wipe existed to remove, and warm-starting the rejoin on the old
+   level/inventory until state_sync overwrote it. */
+export function cancelRpgSave() {
+  if (_timer) { clearTimeout(_timer); _timer = null; }
+}
+
 export function saveRpgSoon() {
   if (_timer) return; /* a flush is already scheduled — it will read the latest state */
   const wait = Math.max(50, MIN_GAP_MS - (Date.now() - _lastWrite));

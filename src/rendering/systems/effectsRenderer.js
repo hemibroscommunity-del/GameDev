@@ -23,6 +23,7 @@ import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */ } from '@/data/index.js';
 import { gesturePose01 } from '@/game/gesturePose.js'; /* v2.3.2245 */
+import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from '../snowmanSprites.js'; /* v2.3.2217 */
@@ -76,11 +77,43 @@ const STANDIN_REF_BODY_H = 84;
  * person to remember; a shared constant means they do not have to.
  *
  * Everything on the figure derives from this one number -- the body scale
- * (h/220), the 2x gear-layer scale (h/440) and the head traits, which read
- * |sprite.scale.y| -- so armour and hat keep their proportions for free.
+ * (h/220), the gear-layer scale (h/<the layer texture's own height>) and the
+ * head traits, which read |sprite.scale.y| -- so armour and hat keep their
+ * proportions for free.
  * COOK_H and the firemaking FH are deliberately NOT folded in: the owner asked
  * for woodcutting only, and those two are already independent. */
 export const CHOP_STANDIN_H = 104.5;
+
+/* ═══ v2.3.2356: THE CHOP LAYERS SHIP AT THE SIZE THEY ARE DRAWN ═══
+ *
+ * docs/OPTIMIZATION-ROADMAP.md P7 item 7.  chest/steelplate, legs/steelgreaves
+ * and shirt/tshirt `chop-west.png` are 5760x440 each -- 9.67 MB of decoded
+ * RGBA apiece, 29 MB resident in EVERY zone, and the three largest single
+ * sprite keys the phone holds.  They are drawn over a body strip that is
+ * 5760x220 and, per v2.3.1131, at half the body's scale factor to reach the
+ * same on-screen height: ~0.24 world px per texel, ~0.71 device px per texel
+ * on a dpr-3 phone.  Three of every four texels never reached a pixel.
+ *
+ * The twins are exact 2x box downscales minted by tools/build_chop_half.mjs
+ * (no canvas anywhere -- TRAPS §53), which is also where the measurement
+ * behind the choice of filter is written down: this art is NOT a 2x
+ * pixel-double, so the v2.3.1412 nearest inverse would have thrown real texels
+ * away, while the box average is what the GPU's own minification approximates
+ * when it samples this sheet at that density.
+ *
+ * `suffix` is the file, `frames` is how it is cut.  Both live here so a pose's
+ * art size and its slicing can never be changed one without the other -- the
+ * TRAPS §51 failure is exactly a transform that mixes a resized sheet with an
+ * unresized one.  Every consumer of these frames now derives its scale from
+ * `texture.height`, so the ONE literal left in the system is this table. */
+const GEAR_STRIP_TWIN = { chop: { suffix: '-220', frames: 12 } };
+
+/* The chop layers' frame width, 2880 / 12.  It is the argument _gearStripFrame
+   IGNORES while chop has a twin (it cuts that pose by frame count instead), and
+   it is written here as 240 rather than left at the old 480 so it cannot
+   mislead the next reader, and so the no-twin fallback would still slice
+   correctly if the entry above were ever removed together with the art. */
+const CHOP_GEAR_FW = 240;
 import { cycleMs as jogCycleMs, frameCount as jogFrameCount, resolveDirection } from '../playerSprites.js';
 import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
@@ -356,7 +389,16 @@ const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit
    Reusing the Hero screen's own crit icon rather than copying it to a second
    path -- one asset, one meaning, and no chance of the two drifting apart
    the next time either is redrawn. */
-const POPUP_ICON_SRC = { crit: '/icons/ui/hero/crit.webp' };
+/* v2.3.2337: 'heart' loads a 256x256 TWIN of heart.webp.  The original is
+   1254x1254 -- 6 MB decoded, resident all session -- for a mark drawn at
+   21 px (44 on a crit) in the world layer, i.e. never more than ~110 device
+   px tall; every sibling in this table is 164-189 px and the crit mark is
+   256, so 256 is the size the table was designed for, and the twin still
+   holds 2.3x the largest height it is ever drawn at.  The ORIGINAL stays
+   in place because StatDemo's DOM <img> (which shares this URL so the
+   browser cache is warm) and combatHelpers' BUILD_ICONS name it; a twin
+   under its own name changes only the two readers that were measured. */
+const POPUP_ICON_SRC = { crit: '/icons/ui/hero/crit.webp', heart: '/icons/popups/heart-256.webp' };
 /* v2.3.1403 (owner: "the damage bow icon did not work" while damage
    numbers still showed): the icon load was one-shot — a single flaked
    fetch (common right after a deploy) left that icon undefined for the
@@ -708,6 +750,41 @@ function debrisDotTex() {
   return _DEBRIS_DOT_TEX;
 }
 
+/* ═══ v2.3.2331: PARTICLES ARE SPRITES, NOT POLYGONS ═══
+ * _updateParticles used to draw every hit particle, death-explosion particle
+ * and dust puff into ONE Graphics with circle()+fill(), and clear() it every
+ * frame.  In Pixi 8 clear() calls onUpdate(), so the context is dirty every
+ * frame and buildContextBatches re-tessellates from scratch: each 2-3px dot
+ * becomes a 40-56 point polygon (buildCircle: n = ceil(2.3*sqrt(rx+ry)),
+ * m = n*8), fan-triangulated, with a fresh points array per shape -- and past
+ * ~4 dots the whole Graphics is over the 400-vertex isBatchable threshold and
+ * takes the slow path too.  ~360-500 array writes per particle per frame;
+ * at the 400-particle cap, 90k-200k writes a frame.  (Audit, verified against
+ * node_modules/pixi.js@8.17.1: GraphicsContext.mjs:662, buildContextBatches.mjs:90,
+ * buildCircle.mjs:46.)
+ *
+ * The same file already had the cheap idiom two methods away: ground splatter
+ * is a POOL OF SPRITES over one minted texture (_updateGroundSplatter).  Those
+ * three particle kinds do the same now.  This texture is HARD-EDGED on purpose
+ * -- the soft radial debris dot above would change how the dots look, and the
+ * point is a cheaper frame, not a different game.  One texture, so the whole
+ * field is one batch.  Module-scope and never freed, which TRAPS section 49
+ * says is right for anything that is not zone art.  The ring, arc and
+ * telegraph shapes stay on the Graphics: they are single digits a frame and
+ * genuinely need geometry. */
+let _HARD_DOT_TEX = null;
+const HARD_DOT_R = 7;
+function hardDotTex() {
+  if (_HARD_DOT_TEX) return _HARD_DOT_TEX;
+  const c = document.createElement('canvas');
+  c.width = 16; c.height = 16;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(8, 8, HARD_DOT_R, 0, Math.PI * 2); ctx.fill();
+  _HARD_DOT_TEX = Texture.from(c);
+  return _HARD_DOT_TEX;
+}
+
 /* Minted ground-decal texture: three overlapping soft blobs, white so the
    splat entry's material color tints it.  Optional art upgrade:
    ground-splat-atlas-v1.webp (manifest) replaces this via the same tint
@@ -856,10 +933,32 @@ function drawFingerStreak(gfx, x, y, angle, length, width, alpha) {
   gfx.stroke({ color: 0xffffff, width, alpha });
 }
 
+/* v2.3.2338: the three still node sprites were shipped at 1254x1254 -- 6 MB
+   of decoded RGBA EACH, 18 MB resident in every zone including town (they
+   are global, not per-zone) -- and drawn at a fraction of it: the placer
+   below normalises by texture height (baseScale = targetH / tex.height), so
+   a tier-1 tree is 168 world px and a tier-1 pond 132, i.e. ~415 / ~325
+   device px on a dpr-3 phone in a combat zone (world scale 0.824 on a
+   390x844 canvas, worldViewport.js).  The 1254 frame was 3x oversampled
+   for what is on screen and, with no mipmaps on these sources, bilinear
+   minification of a 3x-oversampled texture is what sparkles.
+   Build-time twins (sharp, lanczos3, WebP q90 / alphaQuality 100; the
+   1254 originals stay in place, untouched):
+     fish-spot-627 / ore-vein-627 -- the tier formula tops out at tierStep
+       10 (x2.35, 310 world px, ~767 device px): 1.22x magnification at the
+       very top, lossless through tier ~7, and every LIVE node is tier 1
+       (server gathering.js pins tierLvl = 1), so today they are 0.52x.
+     tree-pine-940 -- a tier-10 tree is 395 world px, ~976 device px at max
+       zoom; a 627 twin would magnify 1.56x there, 940 magnifies 1.04x.
+   Sizes: 6+6+6 MB -> 1.5+1.5+3.4 MB, ~12.5 MB freed everywhere.
+   Nothing reads texture pixels for placement or hit-tests: the anchors are
+   fractional, nodeWorldBox (BroTown) reads sprite.width/height (already
+   scale-normalised), and the ore-break strip is its own 256-tall sheet.
+   TRAPS §15 audit: `grep -n NODE_SPRITE_TEX` -- one placer, one consumer. */
 const NODE_SPRITE_SOURCES = {
-  tree:     '/sprites/trees/tree-pine.webp',
-  fishSpot: '/sprites/world/fish-spot.webp',
-  oreVein:  '/sprites/world/ore-vein.webp',
+  tree:     '/sprites/trees/tree-pine-940.webp',
+  fishSpot: '/sprites/world/fish-spot-627.webp',
+  oreVein:  '/sprites/world/ore-vein-627.webp',
 };
 const NODE_SPRITE_TEX = {};
 /* Target render heights in world px at tierStep 1, scaled up with tier.
@@ -1128,11 +1227,30 @@ const LABEL_STYLE_EMOJI = new TextStyle({
   align: 'center',
 });
 
+/* v2.3.2328: memoised, because five of its sixteen call sites are inside
+   per-frame draw loops -- the hit particles (2299), death explosions (2316),
+   telegraph zones (2333), impact rings (2369) and ambient motes (2394) all
+   convert a colour string that was fixed when the particle was SPAWNED, once
+   per particle per frame for the ~25 frames it lives.  Each call allocated a
+   string (`.replace`) and ran `parseInt`; at the 400-particle cap that is
+   24,000 throwaway strings a second in the hottest loop in the renderer.
+   Memoising the function rather than caching on each particle (the shape used
+   at 5582 for ground splatter) covers all sixteen sites in one place and cannot
+   go stale if something ever does mutate a `.color` mid-life.
+   A MAP, not a plain object: the keys are colour strings that arrive from data
+   tables and from the wire, and a plain {} silently no-ops on '__proto__' --
+   fixed three times in one day in this repo (duel.away v2.3.1175, party meta
+   v2.3.1185, amulet tiers v2.3.1192).  The cap is a belt-and-braces bound on a
+   key space that is finite in practice (palette literals and ELEMENTS colours). */
+const _hexMemo = new Map();
 function cssToHex(css) {
   if (typeof css !== 'string') return 0xffffff;
+  const hit = _hexMemo.get(css);
+  if (hit !== undefined) return hit;
   const clean = css.replace('#', '');
-  if (clean.length === 6) return parseInt(clean, 16) || 0xffffff;
-  return 0xffffff;
+  const val = clean.length === 6 ? (parseInt(clean, 16) || 0xffffff) : 0xffffff;
+  if (_hexMemo.size < 512) _hexMemo.set(css, val);
+  return val;
 }
 
 /**
@@ -1256,6 +1374,16 @@ export class EffectsRenderer {
     // Pooled graphics
     this.particleGfx = new Graphics();
     this.particleLayer.addChild(this.particleGfx);
+    /* v2.3.2336: the pooled dots get their OWN container, created here before
+       any burst exists, so it sits at index 1 -- above the Graphics, below
+       every impact / debris / snowball / arrow sprite that is appended to
+       particleLayer at spawn.  v2.3.2331 parented each dot straight into
+       particleLayer at the moment its pool slot was first needed, which put a
+       slot minted mid-burst ABOVE that burst and below the next one: the
+       stacking flickered between hits (review, v2.3.2336).  One container,
+       one texture, still one batch. */
+    this._dotLayer = new Container();
+    this.particleLayer.addChild(this._dotLayer);
 
     this.projectileGfx = new Graphics();
     this.projectileLayer.addChild(this.projectileGfx);
@@ -1453,9 +1581,12 @@ export class EffectsRenderer {
 
     /* v2.3.1131: gear layers for the woodcutting chopper (mirror of the cook
        stand-in).  Shirt / leg-armour / chest-plate drawn over the lumberjack when
-       equipped.  Layers are 12-frame 480x440 (2x) strips at
-       /sprites/gear/<slot>/<item>/chop-west.png, pixel-aligned to the chop body's
-       frames 12-23.  Added AFTER chopSprite so they composite on top.
+       equipped.  Layers are 12-frame 240x220 strips at
+       /sprites/gear/<slot>/<item>/chop-west-220.png, pixel-aligned to the chop
+       body's frames 12-23.  (v2.3.2356: they WERE 480x440 -- 2x the body, and
+       the largest single textures in the whole resident dump.  The twins are 1x
+       and every placer derives its scale from the texture now, so do not
+       reintroduce the 0.5 factor that sentence used to justify.)  Added AFTER chopSprite so they composite on top.
        v2.3.1710: body, then LEGS, then shirt, then chest — this is the exact
        pose the owner named ("while woodcutting ... the shirt should be layered
        in front of the leg armor"): the greaves' waistband was cutting across
@@ -1709,7 +1840,20 @@ export class EffectsRenderer {
        image, and rebake whenever the player changes their combo. */
     this._bodyStrips = [];      // [{ target, dir, url, cfg, ver }]
     this._bodyImgCache = {};    // url -> HTMLImageElement
-    const _loadImg = (u) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = u; });
+    /* v2.3.2328: WebP-first, exactly like the other three sprite loaders.
+       This one fed the sword (SWORD_ART_VERSION 1101), the bow (BOW_ART_VERSION
+       963) and the jog legs (JOG_LEGS_VERSION 8) -- 4.32 MB of the cold load --
+       through a bare `new Image()`, so it was the only player-art path that
+       never asked for the smaller file.  Its siblings playerSprites.js,
+       playerSkins.js and gearSheets.js have used loadWebpOrPng since v2.3.1122;
+       measured, the sheets this loader pulls arrived as PNG while the SAME art
+       was arriving as WebP for the loader next door (jog-south twice, in two
+       formats, decoded twice).
+       Safe for the recolor _bakeBodyStrip runs on it: a twin only exists if
+       optimize-sprites.mjs proved it pixel-identical to the PNG, and the
+       build-time set in webpImage.js means a sheet without one loads its PNG
+       directly rather than probing for a file that is not there. */
+    const _loadImg = (u) => loadWebpOrPng(u);
     this._bakeBodyStrip = (rec) => {
       const img = this._bodyImgCache[rec.url];
       if (!img) return;
@@ -1743,12 +1887,24 @@ export class EffectsRenderer {
          no reported problem. */
       const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
       const pantsT = pantsTarget(getPants()), shoesT = shoesTarget(getShoes());
-      const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, rec.cfg.fh);
+      /* v2.3.2355: `square: true` means "this sheet's frames are as tall as the
+         art is, and as wide as they are tall" -- the frame size is READ from the
+         image instead of asserted by a literal beside the loader.  The jog-legs
+         sheets are the only user: they ship 128px on disk (the v2.3.1434 re-cut)
+         and were declared {fw:256, fh:256}, which made recolorBodyToCanvas
+         nearest-DOUBLE all five of them into 7168x256-class canvases -- 30.25 MB
+         of bake for pixels that carry no more detail than the 128 art (P7 item
+         5).  Deriving it means a future re-cut at any height needs no edit here
+         and cannot desync from the file, which is the TRAPS §51 rule. */
+      const _srcH = img.naturalHeight || img.height || 0;
+      const _fw = (rec.cfg.square && _srcH) ? _srcH : rec.cfg.fw;
+      const _fh = (rec.cfg.square && _srcH) ? _srcH : rec.cfg.fh;
+      const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, _fh);
       const source = Texture.from(cv).source;
       source.scaleMode = 'linear';
-      const n = Math.max(1, Math.round(cv.width / rec.cfg.fw));
+      const n = Math.max(1, Math.round(cv.width / _fw));
       const arr = [];
-      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * rec.cfg.fw, 0, rec.cfg.fw, rec.cfg.fh) }));
+      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * _fw, 0, _fw, _fh) }));
       rec.target[rec.dir] = arr;
       /* v2.3.1788 QA probe: the mean skin RGB of the BAKED sheet, so
          mp-standinskin can assert the stand-ins land on the same palette as
@@ -1789,8 +1945,24 @@ export class EffectsRenderer {
     onSkinChange(this._rebakeBodies); onPantsChange(this._rebakeBodies); onShoesChange(this._rebakeBodies);
     for (const dir of Object.keys(this._swordCfg)) {
       const cfg = this._swordCfg[dir];
-      _loadSwordStrip(this._swordFrames, dir, cfg.url, cfg);
-      if (cfg.armorUrl)  _loadSwordStrip(this._swordArmorFrames, dir, cfg.armorUrl, cfg);
+      /* ═══ v2.3.2353: THE FALLBACKS ARE NOT LOADED WHEN NOTHING CAN REACH THEM ═══
+         `url` (the bald stand-in) and `armorUrl` (the pre-layer armoured one)
+         are the v2.3.948 / v2.3.954 fallbacks -- "Falls back to armorUrl/bald
+         if bodyUrl missing".  Every shipped facing has had `bodyUrl` for a
+         long time, so the draw path takes the layered branch every frame and
+         the two `else` arms below it are unreachable; the only live read of
+         the plain map was its frame COUNT, which now comes from the body
+         strip it is counting anyway.  They were not free to keep: south and
+         east are stored half-res and nearest-upscaled to cfg.fh in the loader
+         (v2.3.1112), so each family decoded to 12.27 MB of RGBA that no
+         player has ever seen -- 24.5 MB resident in every zone, on the
+         platform whose texture budget the whole P7 list is about.
+         Loaded still if a cfg ever ships WITHOUT bodyUrl, which is exactly
+         what the fallback was written for. */
+      if (!cfg.bodyUrl) {
+        _loadSwordStrip(this._swordFrames, dir, cfg.url, cfg);
+        if (cfg.armorUrl) _loadSwordStrip(this._swordArmorFrames, dir, cfg.armorUrl, cfg);
+      }
       if (cfg.weaponUrl) _loadSwordStrip(this._swordWeaponFrames, dir, cfg.weaponUrl, cfg);
       if (cfg.bodyUrl)   _loadRecoloredBody(this._swordBodyFrames, dir, cfg.bodyUrl, cfg, SWORD_ART_VERSION);
       if (cfg.torsoUrl)  _loadRecoloredBody(this._swordTorsoFrames, dir, cfg.torsoUrl, cfg, SWORD_ART_VERSION);
@@ -1903,8 +2075,14 @@ export class EffectsRenderer {
     };
     for (const dir of Object.keys(this._bowCfg)) {
       const cfg = this._bowCfg[dir];
-      _loadBowStrip(this._bowFrames, dir, cfg.url, cfg);
-      if (cfg.armorUrl)  _loadBowStrip(this._bowArmorFrames, dir, cfg.armorUrl, cfg);
+      /* v2.3.2353: the bow twin of the sword gate above.  Every bow facing
+         ships bodyUrl too, and no bow cfg has ever had an armorUrl -- the
+         armour map below has always been empty, and its branch in the draw
+         path dead with it. */
+      if (!cfg.bodyUrl) {
+        _loadBowStrip(this._bowFrames, dir, cfg.url, cfg);
+        if (cfg.armorUrl) _loadBowStrip(this._bowArmorFrames, dir, cfg.armorUrl, cfg);
+      }
       if (cfg.weaponUrl) _loadBowStrip(this._bowWeaponFrames, dir, cfg.weaponUrl, cfg);
       if (cfg.bodyUrl)   _loadRecoloredBody(this._bowBodyFrames, dir, cfg.bodyUrl, cfg, BOW_ART_VERSION);
       if (cfg.torsoUrl)  _loadRecoloredBody(this._bowTorsoFrames, dir, cfg.torsoUrl, cfg, BOW_ART_VERSION);
@@ -1917,7 +2095,11 @@ export class EffectsRenderer {
     this._bowJogLegFrames = {};
     const JOG_LEGS_VERSION = 8;   /* v2.3.2174: de-fringe sweep, see playerSprites VERSION 101. */   // 7: v2.3.2144 pinhole fill -- the v2.3.1456 pass below left specks behind on every jog-legs sheet. 6: v2.3.1456 pinhole fill (enclosed transparent speckles inpainted); 5: drop the synthetic pants-fill rectangle (lift + real pants cover the seam)
     for (const dir of ['south', 'east', 'north', 'northeast', 'southwest']) {
-      _loadRecoloredBody(this._bowJogLegFrames, dir, '/sprites/player/jog-' + dir + '-legs.png', { fw: 256, fh: 256 }, JOG_LEGS_VERSION);
+      /* v2.3.2355: `square` instead of {fw:256, fh:256} -- these sheets are
+         3584x128-class on disk and the 256 declaration was upscaling every one
+         of them to a 7 MB canvas.  See _bakeBodyStrip; the placement side reads
+         the same size back off the texture in _placeJogLegs. */
+      _loadRecoloredBody(this._bowJogLegFrames, dir, '/sprites/player/jog-' + dir + '-legs.png', { square: true }, JOG_LEGS_VERSION);
     }
 
     /* v2.3.867: the player's traits (hat / beard / hair) composited onto
@@ -2008,7 +2190,7 @@ export class EffectsRenderer {
        as above these three items are the only ones with sheets, so nothing is
        guessed.  Recolours (copperplate, ironplate...) resolve through gearArt()
        to the same steel art, so they are covered by these. */
-    for (const [pose, dir, fw] of [['cook', 'south', 213], ['chop', 'west', 480]]) {
+    for (const [pose, dir, fw] of [['cook', 'south', 213], ['chop', 'west', CHOP_GEAR_FW]]) {
       this._gearStripFrame('shirt', 'tshirt', pose, dir, fw, 0);
       this._gearStripFrame('chest', 'steelplate', pose, dir, fw, 0);
       this._gearStripFrame('legs', 'steelgreaves', pose, dir, fw, 0);
@@ -2231,6 +2413,7 @@ export class EffectsRenderer {
        checking a list. */
     this._selfCorpse = selfCorpseUp(S);
     this._updateParticles(S, now);
+    this._hideSpareDots();   /* v2.3.2331: park the pool's unused sprites */
     this._updateDamageNumbers(S, now);
     this._updateCatchFlights(S, viewW, viewH, now);
     this._updateFxBursts(S, now);   /* v2.3.1443 */
@@ -2265,9 +2448,61 @@ export class EffectsRenderer {
   }
 
   /* ── Particles ── */
+  /* v2.3.2331: one dot from the sprite pool.  Sprites are created on demand,
+     parented to _dotLayer (v2.3.2336, see the constructor), and never destroyed
+     -- hidden when unused (see _hideSpareDots).  The cap is above the 400
+     hit-particle ceiling plus a few explosions' worth; past it a dot is simply
+     not drawn, which is what the old Graphics cap did too. */
+  _dot(x, y, r, tint, alpha) {
+    if (!this._dotPool) this._dotPool = [];
+    if (this._dotUsed >= 700) return;
+    const pool = this._dotPool;
+    let sp = pool[this._dotUsed];
+    if (!sp || sp.destroyed) {
+      sp = new Sprite(hardDotTex());
+      sp.anchor.set(0.5, 0.5);
+      this._dotLayer.addChild(sp);
+      pool[this._dotUsed] = sp;
+    }
+    this._dotUsed++;
+    sp.x = x; sp.y = y;
+    const sc = r / HARD_DOT_R;
+    sp.scale.set(sc, sc);
+    if (sp.tint !== tint) sp.tint = tint;
+    sp.alpha = alpha;
+    if (!sp.visible) sp.visible = true;
+  }
+
+  _hideSpareDots() {
+    const pool = this._dotPool;
+    if (!pool) return;
+    const used = this._dotUsed || 0;
+    for (let i = used; i < pool.length; i++) {
+      const sp = pool[i];
+      if (sp && !sp.destroyed && sp.visible) sp.visible = false;
+    }
+    /* QA probe (tools/qa/mp/mp-partpool.mjs): what the field cost this frame.
+       Gated like every other per-frame probe (v2.3.2272) so a player never
+       pays for it; the accessor is defined once, unguarded, so a scenario
+       that forgot to arm reads null rather than "the feature is broken". */
+    if (typeof window !== 'undefined') {
+      if (!window.__btParticleStats) window.__btParticleStats = () => window.__btParticles || null;
+      if (window.__btProbe) {
+        const ctx = this.particleGfx && this.particleGfx.context;
+        let vis = 0;
+        for (let i = 0; i < pool.length; i++) if (pool[i] && pool[i].visible) vis++;
+        window.__btParticles = {
+          dots: used, pool: pool.length, visible: vis,
+          gfxInstr: ctx && ctx.instructions ? ctx.instructions.length : -1,
+        };
+      }
+    }
+  }
+
   _updateParticles(S, now) {
     const gfx = this.particleGfx;
     gfx.clear();
+    this._dotUsed = 0;   /* v2.3.2331: the pool starts every frame empty */
 
     /* v2.3.1674 (owner: "remove the glowing ring around the character").
        The World View player beacon is GONE.  History, so nobody re-adds it by
@@ -2295,8 +2530,7 @@ export class EffectsRenderer {
       p.vy += 0.15;
       p.life -= 0.04;
       if (p.life <= 0) { parts.splice(i, 1); continue; }
-      gfx.circle(p.x, p.y, (p.size || 2) * Math.min(1, p.life * 3));
-      gfx.fill({ color: cssToHex(p.color), alpha: Math.min(1, p.life * 2) });
+      this._dot(p.x, p.y, (p.size || 2) * Math.min(1, p.life * 3), cssToHex(p.color), Math.min(1, p.life * 2));
     }
 
     // Death explosion particles
@@ -2312,8 +2546,7 @@ export class EffectsRenderer {
         const py = exp.y + p.vy * age * 60 + age * age * 30;
         const pAlpha = Math.max(0, 1 - age / (p.life || 1));
         if (pAlpha <= 0) continue;
-        gfx.circle(px, py, (p.size || 2) * pAlpha);
-        gfx.fill({ color: cssToHex(p.color), alpha: pAlpha });
+        this._dot(px, py, (p.size || 2) * pAlpha, cssToHex(p.color), pAlpha);
       }
     }
 
@@ -2378,8 +2611,7 @@ export class EffectsRenderer {
       d.x += d.vx; d.y += d.vy;
       d.life -= d.decay;
       if (d.life <= 0) { dust.splice(i, 1); continue; }
-      gfx.circle(d.x, d.y, d.life * 3);
-      gfx.fill({ color: 0xb4aa8c, alpha: d.life * 0.4 });
+      this._dot(d.x, d.y, d.life * 3, 0xb4aa8c, d.life * 0.4);
     }
 
     // Ambient particles (zone-specific)
@@ -5432,9 +5664,23 @@ export class EffectsRenderer {
       const snowmanRemnantsTex = l.skull === 'snowman' ? getSnowmanRemnantsTex() : null;
       if (snowmanRemnantsTex) {
         /* Snowman death-scene sprite (pooled per loot).  Larger than the
-           slime splat — the art is a full broken-snowman scene.  No
-           bob and no expiry-fade: the art reads as a settled wreck on
-           the ground, not a hovering pickup. */
+           slime splat — the art is a full broken-snowman scene.
+
+           ═══ v2.3.2329: THE SNOWMAN BOBS TOO ═══
+           Owner: "The snowman remnants and coins don't have that subtle
+           floating effect when the loot is on the ground though.  Make sure
+           all monster remnants and loot has that effect."
+           v2.3.2318 made "everything on the ground bobs" true by removing
+           the exclusion from the variant branch above -- which is where the
+           mummy's remnants live, so the mummy was fine.  The snowman never
+           went through that branch.  It has had its own since v2.3.191, and
+           that one still said "no bob and no expiry-fade: a settled wreck,
+           not a hovering pickup" and pinned the wreck, its coin and its
+           shard at a flat +38 with alpha 1.  Same offset, no sine: exactly
+           the one pile in the game holding still.  The wreck, the coin on
+           it and the shard above it now ride the same `bob` and the same
+           last-call `alpha` as every other drop, so a snowman's loot warns
+           before it goes like everyone else's does. */
         if (!l._pixiSprite || l._pixiSprite.destroyed) {
           const sp = new Sprite(snowmanRemnantsTex);
           sp.anchor.set(0.5, 0.5);
@@ -5442,17 +5688,14 @@ export class EffectsRenderer {
           l._pixiSprite = sp;
         }
         l._pixiSprite.x = l.x;
-        /* v2.3.191: +18 to match the PILE_Y_OFFSET in the non-snowman
-           branch.  Snowman wrecks don't use `bob` so the offset has
-           to be applied explicitly. */
-        l._pixiSprite.y = l.y + 38;
-        l._pixiSprite.alpha = 1;
+        l._pixiSprite.y = l.y + bob;   /* bob already carries PILE_Y_OFFSET */
+        l._pixiSprite.alpha = alpha;
         l._pixiSprite.scale.set((48 * LOOT_SCALE) / (l._pixiSprite.texture.width || 128));
         l._pixiSprite.visible = true;
         /* Coin sits on top of the wreck when gold rides on this drop. */
         const snOwn = !l.recipients || !S.myId || l.recipients.includes(S.myId);
-        if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 14 + 38, alpha, snOwn);
-        if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 28 : 14) + 38, alpha);
+        if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 14 + bob, alpha, snOwn);
+        if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 28 : 14) + bob, alpha);
         this._renderOwnerLabel(l, snOwn, alpha);
         continue;
       }
@@ -6747,7 +6990,7 @@ export class EffectsRenderer {
          reproduces the exact artefact those two versions exist to prevent.
          `gear` is the strip geometry for this pose -- pose/dir/frame-width --
          so the placer below reads one table instead of three literals. */
-      chop: { frames: this._chopFrames, legless: this._chopLeglessFrames, h: CHOP_STANDIN_H, fh: 220, ms: 45, traitDir: 'east', from: 12, count: 12, gear: { pose: 'chop', dir: 'west', fw: 480 } },
+      chop: { frames: this._chopFrames, legless: this._chopLeglessFrames, h: CHOP_STANDIN_H, fh: 220, ms: 45, traitDir: 'east', from: 12, count: 12, gear: { pose: 'chop', dir: 'west', fw: CHOP_GEAR_FW } },
       cook: { frames: this._cookFrames, legless: this._cookLeglessFrames, h: 62, fh: 220, ms: 60, traitDir: 'south', gear: { pose: 'cook', dir: 'south', fw: 213 } },
       /* v2.3.1749: `once` marks a strip that tells a STORY rather than
          cycling.  The firemaking frames run stand -> crouch -> spark -> flame
@@ -6928,14 +7171,21 @@ export class EffectsRenderer {
             spr.x = sp.x + off[0] * sp.scale.x;
             spr.y = sp.y + off[1] * sp.scale.y;
           } else {
-            /* v2.3.2303: chop's layer strips are 2x (480x440) against a 220
-               body, so they render at HALF the body factor to reach the same
-               on-screen height -- the local placer's sL, derived here from the
-               body scale rather than re-stated as a constant.  Cook's strips
-               are 1:1 with its body, so it copies the transform outright.
-               Both inherit sp.scale.x's SIGN, which is what makes the armour
-               flip with the chopper instead of against him. */
-            const lk = (code === 'chop') ? 0.5 : 1;
+            /* v2.3.2303: a layer strip need not share the body strip's frame
+               height, so it renders at a factor of the body's scale to reach
+               the same on-screen height -- the local placer's sL, derived here
+               from the body scale rather than re-stated as a constant.  Both
+               inherit sp.scale.x's SIGN, which is what makes the armour flip
+               with the chopper instead of against him.
+               v2.3.2356: and that factor is now READ OFF THE TEXTURE instead of
+               being the literal 0.5 that chop's 2x art earned it.  The chop
+               layers ship half-res twins (GEAR_STRIP_TWIN) and this is the peer
+               twin of the local placer's change -- the two must move together
+               or a peer's armour renders at half his body's size, which is the
+               v2.3.1710 drift with the sign reversed.  Cook's strips are 1:1
+               with its body, so spec.fh / tex.height is 1 and it copies the
+               transform outright exactly as before. */
+            const lk = spec.fh / (tex.height || spec.fh);
             spr.scale.set(sp.scale.x * lk, sp.scale.y * lk);
             spr.x = sp.x;
             spr.y = sp.y;
@@ -7071,10 +7321,20 @@ export class EffectsRenderer {
     let e = this._gearStrips[key];
     if (e === undefined) {
       this._gearStrips[key] = 'loading';
-      _fxLoad('/sprites/gear/' + slot + '/' + item + '/' + pose + '-' + dir + '.png?v=' + GEARLAYER_VER).then((tex) => {
-        const n = Math.max(1, Math.round(tex.width / fw));
+      /* v2.3.2356: a pose whose art ships a smaller twin loads the twin, and
+         cuts it by FRAME COUNT rather than by frame width.  See GEAR_STRIP_TWIN
+         for why chop has one; the reason the count is the number that moves
+         here is that a strip's frame count is a property of the ANIMATION and
+         survives any change of art resolution, while its frame width is a
+         property of the FILE and does not.  Poses without a twin keep the
+         caller's `fw` verbatim, so their slices are byte-identical. */
+      const _twin = GEAR_STRIP_TWIN[pose];
+      const _file = pose + '-' + dir + (_twin ? _twin.suffix : '');
+      _fxLoad('/sprites/gear/' + slot + '/' + item + '/' + _file + '.png?v=' + GEARLAYER_VER).then((tex) => {
+        const n = _twin ? _twin.frames : Math.max(1, Math.round(tex.width / fw));
+        const w = _twin ? Math.round(tex.width / n) : fw;
         const arr = [];
-        for (let i = 0; i < n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.height) }));
+        for (let i = 0; i < n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * w, 0, w, tex.height) }));
         this._gearStrips[key] = arr;
       }).catch(() => { this._gearStrips[key] = []; });
       return null;
@@ -7170,11 +7430,18 @@ export class EffectsRenderer {
     const img = this._bodyImgCache[url];
     if (!img) return null;
     try {
-      const cv = recolorBodyToCanvas(img, skinTarget(o.skin), pantsTarget(o.pants), shoesTarget(o.shoes), null, fh);
+      /* v2.3.2355: omit fw/fh for a SQUARE sheet and the frame size is read off
+         the art, the same rule _bakeBodyStrip's `square` cfg follows.  The two
+         jog-legs callers below used to pass a literal 256 for 128px sheets, so
+         every distinct peer skin combo paid the same 4x bake the local player
+         did (P7 item 5). */
+      const _sq = (fw == null || fh == null) ? (img.naturalHeight || img.height || 0) : 0;
+      const _fw = _sq || fw, _fh = _sq || fh;
+      const cv = recolorBodyToCanvas(img, skinTarget(o.skin), pantsTarget(o.pants), shoesTarget(o.shoes), null, _fh);
       const source = Texture.from(cv).source; source.scaleMode = 'linear';
-      const n = Math.max(1, Math.round(cv.width / fw));
+      const n = Math.max(1, Math.round(cv.width / _fw));
       arr = [];
-      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * fw, 0, fw, fh) }));
+      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * _fw, 0, _fw, _fh) }));
       this._remoteSheetCache.set(key, arr);
       _trimBakeCache(this._remoteSheetCache);
       return arr;
@@ -7213,7 +7480,26 @@ export class EffectsRenderer {
     const _legDX = mir * _legNudgeX * _legScale;
     const _waist = jogWaistRow(jdir, jfr);
     if (legTex && jl && !hasLegArmour) {
-      const TOP = Math.max(0, _waist - _ov);
+      /* ═══ v2.3.2355: the waist table stays in 256-space; the TEXTURE speaks for
+         itself (P7 item 5, TRAPS §51) ═══
+         jogWaist.js is authored in 256-space rows and its header says so, so the
+         table is NOT converted -- every 256-space row is divided into the
+         texture's own space by a factor derived from the texture, and the
+         sprite is scaled back up by the reciprocal.  `_lf` is 1 for a 256-native
+         sheet (byte-identical to the old arithmetic) and 0.5 for the 128px
+         sheets the loader now bakes at their real size.  This is the same
+         normalisation v2.3.1453 gave the leg-ARMOUR frame one branch below,
+         whose comment used to say the bare legs "never shrank" -- they have now,
+         so they need the term too, or the legs render at half size with the feet
+         floating (exactly the v2.3.1453 incident).
+         `_ov`/`_waist` are 256-space, so both are scaled together; only the crop
+         row is rounded, which moves the amount of leg HIDDEN under the torso by
+         at most half a texel and leaves the waist pivot itself exact. */
+      const _legFrameH = (legTex.frame && legTex.frame.height) || 256;
+      const _lf = _legFrameH / 256;             // 256-space row -> texture row
+      const _ln = 256 / _legFrameH;             // texture px -> 256-space px (the v2.3.1453 _gn term)
+      const _waistTex = _waist * _lf;
+      const TOP = Math.max(0, Math.round((_waist - _ov) * _lf));
       let cache = this._legSubCache || (this._legSubCache = new WeakMap());
       let cropped = cache.get(legTex);
       if (!cropped) {
@@ -7222,8 +7508,27 @@ export class EffectsRenderer {
         cache.set(legTex, cropped);
       }
       jl.texture = cropped;
-      jl.anchor.set(0.5, (_waist - TOP) / (256 - TOP));
-      jl.scale.set(mir * _legScale, _legScale); jl.x = x + _legDX + legShiftX; jl.y = _yMeet + legShiftY; jl.tint = 0xffffff; jl.visible = true;
+      jl.anchor.set(0.5, (_waistTex - TOP) / (_legFrameH - TOP));
+      jl.scale.set(mir * _legScale * _ln, _legScale * _ln); jl.x = x + _legDX + legShiftX; jl.y = _yMeet + legShiftY; jl.tint = 0xffffff; jl.visible = true;
+      /* v2.3.2355 QA probe: WHERE the bare legs were actually drawn, expressed in
+         256-frame px above/below the foot-plant, so the numbers do not move when
+         the figure does (`s` is perspective-based -- see §3 of
+         docs/specs/jog-legs-attack-composite.md).  This is what makes the
+         256->128 swap checkable rather than assertable: waistF (the seam) and
+         botF (the feet) must be IDENTICAL before and after, and topF -- how far
+         the leg art rides up under the torso -- may move by at most the half
+         texel the crop row rounds by.  Gated on __btProbe (v2.3.2272) so a real
+         player never pays for it. */
+      if (typeof window !== 'undefined' && window.__btProbe && s) {
+        const _dispH = Math.abs(_legScale * _ln) * ((cropped.frame && cropped.frame.height) || (_legFrameH - TOP));
+        const _wy = _yMeet + legShiftY;
+        _standInTints[weapon + 'JogBareLegs'] = {
+          visible: true, jfr, waist: _waist, texH: _legFrameH, top: TOP,
+          waistF: +(((_wy) - footY) / s).toFixed(3),
+          topF: +(((_wy) - jl.anchor.y * _dispH - footY) / s).toFixed(3),
+          botF: +(((_wy) + (1 - jl.anchor.y) * _dispH - footY) / s).toFixed(3),
+        };
+      }
     } else if (jl) { jl.visible = false; }
     if (gearFrame && jg) {
       /* v2.3.1453 (owner: "jog while swinging makes the leg armor
@@ -7240,8 +7545,10 @@ export class EffectsRenderer {
          frame size, the same _gnorm pattern: identity for 256-native
          sheets, ×2 for the 128 generation — covers all four call
          sites (sword+bow, local+remote) through this one helper.
-         legTex needs no term: the jog-<dir>-legs.png bare-leg sheets
-         load at an explicit {fw:256, fh:256} and never shrank. */
+         v2.3.2355: the bare legs HAVE now shrunk too (they loaded at an
+         explicit {fw:256, fh:256} against 128px art until P7 item 5),
+         so the branch above carries the identical term, derived the
+         same way — off the texture, never off a literal. */
       const _gn = 256 / ((gearFrame.frame && gearFrame.frame.width) || 256);
       /* v2.3.1772: ...and it keeps its METAL.  This layer draws real art (the
          jog sheets resolve their own variant inside getGearFrame), so unlike
@@ -7402,7 +7709,7 @@ export class EffectsRenderer {
       const _rd = resolveDirection(dir4);
       const _jdir = _rd.dir, _rmir = _rd.mirror ? -1 : 1;
       const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh) : null;
-      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', 256, 256);
+      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', null, null);   /* v2.3.2355: square -- size read off the 128px sheet, not asserted as 256 */
       const _jog = !!(_moving && _torsoFrames && _torsoFrames[fi] && _legArr && _legArr.length);
       sp.anchor.set(0.5, anchorY);
       sp.texture = _jog ? _torsoFrames[fi] : bodyFrames[fi];
@@ -7560,7 +7867,7 @@ export class EffectsRenderer {
       const _rd = resolveDirection(dir8);
       const _jdir = _rd.dir, _rmir = _rd.mirror ? -1 : 1;
       const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh) : null;
-      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', 256, 256);
+      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', null, null);   /* v2.3.2355: square -- size read off the 128px sheet, not asserted as 256 */
       const _jog = !!(_moving && _torsoFrames && _torsoFrames[fi] && _legArr && _legArr.length);
       sp.anchor.set(0.5, anchorY);
       sp.texture = _jog ? _torsoFrames[fi] : bodyFrames[fi];
@@ -7775,7 +8082,14 @@ export class EffectsRenderer {
     if (!fmap) return;
     const cfg = this._swordCfg[fmap[0]];
     const mirror = fmap[1];
-    const frames = cfg && this._swordFrames[fmap[0]];
+    /* v2.3.2353: count the strip that is DRAWN.  This used to read the plain
+       stand-in, which is no longer loaded when a body strip exists (see the
+       loader) -- and counting it was always the odd choice, since the body
+       strip is what every frame after the first branch actually samples.
+       Both are cut from the same art at the same frame width, so the count is
+       the same number; this just stops it coming from a sheet nobody draws. */
+    const _swBody = this._swordBodyFrames[fmap[0]];
+    const frames = cfg && ((_swBody && _swBody.length) ? _swBody : this._swordFrames[fmap[0]]);
     if (!cfg || !frames || !frames.length) return;
     const n = frames.length;
     const elapsed = now - (S.swingTimer || now);
@@ -8139,8 +8453,13 @@ export class EffectsRenderer {
        it also goes false if a zone change ever evicts the sheets. */
     if (S) {
       const _rf = this._bowFacing[S._bowDir || 'east'];
+      /* v2.3.2353: ready when the strip that is DRAWN is in -- the body one.
+         Reading the plain stand-in here would report "not ready" forever now
+         that it is not loaded, and entityRenderer would never hand the body
+         over to this renderer: the block pose would leave the player
+         invisible, which is the exact failure v2.3.1800 wrote this for. */
       S._bowArtReady = !!(this.bowSprite && _rf && this._bowCfg[_rf[0]]
-        && (this._bowFrames[_rf[0]] || []).length);
+        && ((this._bowBodyFrames[_rf[0]] || this._bowFrames[_rf[0]] || []).length));
     }
     if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
     if (this._selfCorpse) return;   /* v2.3.2281 */
@@ -8148,7 +8467,9 @@ export class EffectsRenderer {
     if (!fmap) return;
     const cfg = this._bowCfg[fmap[0]];
     const mirror = fmap[1];
-    const frames = cfg && this._bowFrames[fmap[0]];
+    /* v2.3.2353: the drawn strip is the counted strip -- see the sword. */
+    const _bwBody = this._bowBodyFrames[fmap[0]];
+    const frames = cfg && ((_bwBody && _bwBody.length) ? _bwBody : this._bowFrames[fmap[0]]);
     if (!cfg || !frames || !frames.length) return;
     const n = frames.length;
     const elapsed = now - (S._bowShotAt || now);
@@ -8519,7 +8840,7 @@ export class EffectsRenderer {
          legs being equipped, as cook does): a legs item with no chop
          art, or a sheet still loading, would otherwise render a
          legless lumberjack with nothing drawn over the gap. */
-      const _chopLegsTex = this._gearStripFrame('legs', getEquip('legs'), 'chop', 'west', 480, k);
+      const _chopLegsTex = this._gearStripFrame('legs', getEquip('legs'), 'chop', 'west', CHOP_GEAR_FW, k);
       const _chopLegsOn = !!_chopLegsTex
         && this._chopLeglessFrames.length === this._chopFrames.length;
       sp.texture = (_chopLegsOn ? this._chopLeglessFrames : this._chopFrames)[fi];
@@ -8535,28 +8856,36 @@ export class EffectsRenderer {
       sp.y = _cy + 6 * pscale;
       sp.visible = true;
       /* v2.3.1131: gear layers over the lumberjack (mirror of the cook stand-in),
-         gated on equipped gear and copying the body transform.  The layer strips
-         are 2x (480x440), so they render at half the body's scale factor to reach
-         the same on-screen height, and use the SAME flip sign as the body. */
+         gated on equipped gear and copying the body transform, with the SAME
+         flip sign as the body. */
       /* v2.3.2287: MANDATORY, not optional. This is the one local gear placer
          that does not derive from sp.scale -- it has its own factor because
-         the layer strips are 2x. Curving the body and not this leaves a
-         full-size breastplate standing over a speck-sized lumberjack, which
-         is a worse artefact than the bug being fixed. */
-      const sL = (CHOP_H / 440) * pscale;
+         the layer strips need not be the body's frame height. Curving the body
+         and not this leaves a full-size breastplate standing over a
+         speck-sized lumberjack, which is a worse artefact than the bug being
+         fixed. */
+      /* ═══ v2.3.2356: THE LAYER'S SCALE COMES FROM THE LAYER ═══
+         This factor was `CHOP_H / 440`, a literal that silently asserted the
+         art was 2x the body.  The half-res twins (GEAR_STRIP_TWIN) make that
+         false, and TRAPS §51 is precisely the transform that mixes a resized
+         sheet with an unresized one -- so it is derived per texture instead,
+         inside the placer where the texture is known.  Each layer is drawn
+         CHOP_H tall whatever height its own sheet ships at; if one slot's art
+         is ever re-cut on its own, it still lands on the same body. */
       const placeChopLayer = (spr, t) => {
         if (!spr) return;
         if (!t) { spr.visible = false; return; }
         spr.anchor.set(0.5, 1); spr.texture = t;
+        const sL = (CHOP_H / (t.height || 220)) * pscale;
         spr.scale.set(chopSign < 0 ? -sL : sL, sL);
         spr.x = sp.x; spr.y = sp.y; spr.visible = true;
       };
       /* Shirt: paper-doll recolour -- the chop shirt art is a grayscale base, so
          _placeSwingShirt tints it to the player's chosen shirt colour (and hides
          it when a chest plate is worn, which replaces it). */
-      this._placeSwingShirt(this.chopShirtSprite, placeChopLayer, this._shirtId(), getEquip('chest'), 'chop', 'west', 480, k, getShirtColor(), getShirt());
+      this._placeSwingShirt(this.chopShirtSprite, placeChopLayer, this._shirtId(), getEquip('chest'), 'chop', 'west', CHOP_GEAR_FW, k, getShirtColor(), getShirt());
       placeChopLayer(this.chopLegsSprite,  _chopLegsTex);
-      placeChopLayer(this.chopChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'chop', 'west', 480, k));
+      placeChopLayer(this.chopChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'chop', 'west', CHOP_GEAR_FW, k));
       this._tintGearSprite(this.chopLegsSprite, getEquip('legs'), 'chopLegs');   /* v2.3.1764 */
       this._tintGearSprite(this.chopChestSprite, getEquip('chest'), 'chopChest');
       /* v2.3.847: chop hit sfx on the swing's strike frame (woodcutting had
@@ -8598,6 +8927,15 @@ export class EffectsRenderer {
           scaleY: sp.scale.y,
           drawnH: +(Math.abs(sp.scale.y) * 220).toFixed(2),
           gearScaleY: _cg ? _cg.scale.y : null,
+          /* v2.3.2356: the armour's DRAWN height, which is the number that has
+             to match the body's -- `gearScaleY` on its own cannot say so, and
+             it deliberately changed when the layers moved to half-res twins
+             (the same figure at twice the factor).  This is what a test asserts
+             against drawnH so that a transform mixing a resized sheet with an
+             unresized one (TRAPS §51) fails loudly instead of shipping a
+             half-size breastplate. */
+          gearDrawnH: (_cg && _cg.texture && _cg.texture.height)
+            ? +(Math.abs(_cg.scale.y) * _cg.texture.height).toFixed(2) : null,
           x: sp.x, y: sp.y,
         });
       }

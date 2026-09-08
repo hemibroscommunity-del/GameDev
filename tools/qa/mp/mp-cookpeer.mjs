@@ -157,6 +157,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && chop.probe.gearIx === chop.probe.frame - 12,
       { frame: chop.probe.frame, base: chop.probe.base, gearIx: chop.probe.gearIx });
     rec.ok('...and the chopper is still on screen', !!chop.probe.visible, chop.probe);
+
+    /* ═══ v2.3.2356: THE ARMOUR IS THE SAME SIZE AS THE MAN WEARING IT ═══
+       The chop layer sheets were 2x the body's frame height and both placers
+       carried a literal that said so -- the local one `CHOP_H / 440`, the peer
+       one a bare `0.5`. P7 item 7 halved the art to 2880x220, which is TRAPS
+       §51's exact shape: art that is safe to shrink only if EVERY consumer's
+       placement math derives from the texture's own size. Miss one and that
+       figure wears armour at half or twice his own height, which single-client
+       QA cannot see -- the v2.3.1710 drift, where the peer's chopper was 18%
+       larger than yours for ~230 versions, is the precedent.
+       Both figures are checked against the SAME constant they are drawn from,
+       and against each other, because "both wrong by the same factor" is the
+       failure a one-sided assertion would pass. */
+    const CHOP_H = 104.5;   /* CHOP_STANDIN_H (effectsRenderer) */
+    rec.ok('a chopping PEER\'s armour is drawn the same height as his body '
+      + '(the layer scale comes off the layer texture, not a literal)',
+      typeof chop.probe.gearDrawnH === 'number'
+        && Math.abs(chop.probe.gearDrawnH - CHOP_H) < 0.5,
+      { gearDrawnH: chop.probe.gearDrawnH, bodyH: CHOP_H, scaleY: chop.probe.scaleY });
+    const own = await B.page.evaluate(() => (window.__btChopFigure ? window.__btChopFigure() : null));
+    rec.ok('...and so is the chopper on his OWN screen, to the same number',
+      !!own && typeof own.gearDrawnH === 'number'
+        && Math.abs(own.gearDrawnH - CHOP_H) < 0.5
+        && Math.abs(own.gearDrawnH - own.drawnH) < 0.5,
+      own);
   }
 
   /* ══ v2.3.2304: THE SLUNG SHIELD'S GATE WAS DEAD ══

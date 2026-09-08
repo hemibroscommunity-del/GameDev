@@ -545,6 +545,7 @@ export const ItemDetailPopup = () => {
       if (!R2.weaponStash) R2.weaponStash = [];
       const mkRow = (w, on) => {
         const dr = weaponDmgRange(R2, w); /* v2.3.1206: R2 = live S.rpg */
+        const wIdx = R2.weaponStash.indexOf(w); /* v2.3.2341: the row's own bag index, for resolveStashIdx */
         const base = [tierLabel(w), (WEAPON_TYPES[w.type] && WEAPON_TYPES[w.type].label) || w.type].filter(Boolean).join(' ');
         return {
           key: 'w' + (w.name || w.type || '') + R2.weaponStash.indexOf(w) + (on ? 'E' : ''),
@@ -588,14 +589,24 @@ export const ItemDetailPopup = () => {
               const destProp = slotFor(w.type);
               const destActive = destProp === 'rangedWeapon' ? 'ranged'
                 : destProp === 'staffWeapon' ? 'staff' : 'melee';
-              const i = R2.weaponStash.indexOf(w); if (i >= 0) R2.weaponStash.splice(i, 1);
+              /* v2.3.2341: same hole as onEquipStashWeapon -- `w` is the
+                 object this row was BUILT from, and a full player_state
+                 echo since then replaced the array under it.  Resolve by
+                 identity, then by the row's index + signature; a row that
+                 resolves to nothing only redraws the picker off the live
+                 bag instead of arming a stale copy the worker never hears
+                 about. */
+              const i = resolveStashIdx(R2.weaponStash, w, wIdx);
+              if (i < 0) { refresh(); return; }
+              const live = R2.weaponStash[i];
+              R2.weaponStash.splice(i, 1);
               if (R2[destProp]) R2.weaponStash.push(R2[destProp]);
-              R2[destProp] = w; R2.activeSlot = destActive;
+              R2[destProp] = live; R2.activeSlot = destActive;
               /* v2.3.1159: pre-splice stash index, InventoryPanel's
                  equip_request convention — the worker swaps its own
                  stash entry and the player_state echo reconciles any
                  order drift. */
-              if (i >= 0) syncWeaponSlot({ type: 'equip_request', payload: { stashIdx: i, slot: destProp } });
+              syncWeaponSlot({ type: 'equip_request', payload: { stashIdx: i, slot: destProp } });
               /* The worker resolves damage from ITS activeSlot, so a swap
                  that only moved the slot locally would keep swinging the
                  old weapon server-side. */
@@ -1111,11 +1122,29 @@ export const ItemDetailPopup = () => {
     const slot = slotFor(target.wpn.type);
     /* Move target out of stash; swap any equipped weapon back into stash. */
     if (!R.weaponStash) R.weaponStash = [];
-    const idx = R.weaponStash.indexOf(target.wpn);
-    if (idx >= 0) R.weaponStash.splice(idx, 1);
+    /* ═══ v2.3.2341: A STALE POPUP MUST NOT EQUIP A WEAPON IT CANNOT FIND ═══
+       Owner: "I selected a weapon and nothing happened / it reverted."
+       This resolved the bag entry by OBJECT IDENTITY only, and wsClient.js
+       replaces the whole weaponStash array on any player_state that carries
+       one -- every rejoin (join.js sends the bootstrap sync in full), weapon
+       loot, quest mint, inbox claim, market return -- while this popup stays
+       open (only a dashboard mode change closes it).  After any of those the
+       indexOf was -1, the equip_request below was gated off, and EVERYTHING
+       ELSE still ran: the slot took the stale copy, activeSlot flipped, the
+       set_active_slot went out and persisted.  Bow in hand AND in the bag on
+       the client; on the worker activeSlot 'ranged' pointing at an EMPTY
+       rangedWeapon (its _handleSetActiveSlot has no null check -- that
+       belt-and-braces half belongs to a server PR), so the player swung
+       fists.  Now: identity first, then the tile's own index checked against
+       the weapon's signature (order survives a full echo), and if neither
+       resolves the popup just closes -- BEFORE any local mutation or send. */
+    const idx = resolveStashIdx(R.weaponStash, target.wpn, target.index);
+    if (idx < 0) { itemDetailBus.close(); return; }
+    const live = R.weaponStash[idx];
+    R.weaponStash.splice(idx, 1);
     const cur = R[slot];
     if (cur) R.weaponStash.push(cur);
-    R[slot] = target.wpn;
+    R[slot] = live;
     /* Activate this slot so the player swings the equipped weapon. */
     R.activeSlot = slot === 'rangedWeapon' ? 'ranged'
                  : slot === 'staffWeapon'  ? 'staff'
@@ -1123,7 +1152,7 @@ export const ItemDetailPopup = () => {
     /* v2.3.1159: server-sync — pre-splice index, InventoryPanel
        convention; the slot activation must reach the worker too or its
        _computeAttackDamage keeps resolving the previous slot. */
-    if (idx >= 0) syncWeaponSlot({ type: 'equip_request', payload: { stashIdx: idx, slot } });
+    syncWeaponSlot({ type: 'equip_request', payload: { stashIdx: idx, slot } });
     syncWeaponSlot({ type: 'set_active_slot', payload: { slot: R.activeSlot } });
     persist(R);
     itemDetailBus.close();
@@ -1376,5 +1405,31 @@ function syncWeaponSlot(msg) {
   if (S && S.channel) {
     try { S.channel.send(msg); } catch (e) {}
   }
+}
+
+/* ═══ v2.3.2341: FIND A BAG WEAPON AFTER THE ARRAY WAS REPLACED UNDER IT ═══
+   Every player_state that carries weaponStash replaces the client array
+   wholesale (wsClient.js), so an object a popup or picker row captured on
+   open stops being IN the bag by identity the moment one lands -- even
+   though the weapon itself is still sitting there at the same index.
+   Identity first (the common case, nothing arrived); then the index the
+   tile was opened from, accepted only if the entry there is the same
+   weapon by signature -- name/type/gearBase/quality are the fields a
+   minted weapon carries (quests.js _grantQuestItem) and the ones its art,
+   tier label and stats are read from.  Anything else is -1: the caller
+   must then do NOTHING, because the equip_request is what moves the
+   weapon on the worker, and a local move without it is the "in hand and
+   in the bag" duplicate the owner saw. */
+function sameWeapon(a, b) {
+  return !!a && !!b && a.name === b.name && a.type === b.type
+    && a.gearBase === b.gearBase && a.quality === b.quality;
+}
+function resolveStashIdx(stash, wpn, hintIdx) {
+  if (!Array.isArray(stash) || !wpn) return -1;
+  const byRef = stash.indexOf(wpn);
+  if (byRef >= 0) return byRef;
+  const i = Number.isInteger(hintIdx) ? hintIdx : -1;
+  if (i >= 0 && i < stash.length && sameWeapon(stash[i], wpn)) return i;
+  return -1;
 }
 

@@ -1047,6 +1047,39 @@ input{font-family:inherit}
 @keyframes bt-arrive-pulse{0%{box-shadow:0 0 0 0 rgba(216,168,95,.75);filter:brightness(1.45)}100%{box-shadow:0 0 0 6px rgba(216,168,95,0);filter:brightness(1)}}
 .bt-arrive-pulse{animation:bt-arrive-pulse 480ms ease-out 1;border-radius:8px}
 .bt-build-flash{animation:bt-build-flash 1.2s ease-in-out infinite}
+/* v2.3.2329: THE POINT-LANDED ORB (HeroExpanded statRow).  Persistent 7px dot
+   beside each Build row's count: dim by default, solid when the stat is
+   capped, and it FLARES once when that row's count goes up -- which only the
+   worker's echo can cause, so the flare means "it took", not "I heard you".
+   A +1 floats off it for under a second.  The gold is Lantern Slate's accent
+   (216,168,95), the same the arrival pulse above uses.  The land animation
+   ends back at the dim state and fills nothing, so a capped orb settles to
+   solid on its own class afterwards. */
+.bt-pt-orb{display:inline-block;flex:none;width:7px;height:7px;border-radius:999px;
+  background:rgba(216,168,95,.28);box-shadow:inset 0 0 0 1px rgba(216,168,95,.55);transform-origin:center}
+.bt-pt-orb-full{background:rgba(216,168,95,.85);box-shadow:none}
+/* The ring is still visible at the peak (photographed: the first cut faded it
+   to zero at exactly the frame it reached full spread, so no frame ever showed
+   a ring) and the +1 holds at full opacity through its rise before it fades. */
+@keyframes bt-pt-land{0%{transform:scale(1);background:rgba(216,168,95,1);box-shadow:0 0 0 0 rgba(216,168,95,.9)}
+  55%{transform:scale(2.1);background:rgba(232,196,128,1);box-shadow:0 0 0 6px rgba(216,168,95,.45)}
+  100%{transform:scale(1);background:rgba(216,168,95,.28);box-shadow:0 0 0 12px rgba(216,168,95,0)}}
+.bt-pt-orb-land{animation:bt-pt-land 720ms cubic-bezier(.2,.8,.3,1) 1}
+/* Outward along the count's own baseline, not upward: the label above is
+   always wider than "1 / 66", so a rising +1 lands on its last letters
+   (photographed). Sideways it only ever crosses empty row. */
+@keyframes bt-pt-plus{0%{opacity:0;transform:translate(-4px,0)}15%{opacity:1;transform:translate(0,0)}65%{opacity:1;transform:translate(5px,-1px)}100%{opacity:0;transform:translate(12px,-2px)}}
+.bt-pt-plus{position:absolute;left:100%;margin-left:5px;top:-1px;font-size:12px;font-weight:900;line-height:1;
+  color:#F0C77A;text-shadow:0 1px 2px rgba(0,0,0,.7);pointer-events:none;
+  animation:bt-pt-plus 1100ms ease-out 1 forwards}
+/* Reduced motion: the same information with nothing moving -- the orb holds
+   solid gold for the flare's duration, the +1 shows still and then goes. */
+@keyframes bt-pt-land-still{0%,99%{background:rgba(216,168,95,1)}100%{background:rgba(216,168,95,.28)}}
+@keyframes bt-pt-plus-still{0%,99%{opacity:1;transform:none}100%{opacity:0}}
+@media (prefers-reduced-motion: reduce){
+  .bt-pt-orb-land{animation:bt-pt-land-still 720ms steps(1,end) 1}
+  .bt-pt-plus{animation:bt-pt-plus-still 1100ms steps(1,end) 1 forwards}
+}
 .bt-plist{position:absolute;top:46px;left:8px;z-index:25;width:200px;max-height:260px;
   background:rgba(17,25,29,.94);border:1px solid rgba(255,255,255,.15);border-radius:10px;
   overflow-y:auto}
@@ -1887,8 +1920,16 @@ input{font-family:inherit}
    the shorter cycle; sword offset half a cycle (5s) so the two alternate
    roughly every 5s. */
 .bt-cc-logo-shine,.bt-cc-sword-shine{pointer-events:none;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.85) 50%,transparent 60%);background-size:220% 100%;background-repeat:no-repeat;mix-blend-mode:screen;animation:bt-cc-shine 10s ease-in-out infinite}
-.bt-cc-logo-shine{position:absolute;inset:0;z-index:2;-webkit-mask:url('/ui/welcome/logo-brotown.webp') center/contain no-repeat;mask:url('/ui/welcome/logo-brotown.webp') center/contain no-repeat}
-.bt-cc-sword-shine{position:absolute;left:63.5%;top:19%;height:115%;aspect-ratio:185/480;z-index:0;-webkit-mask:url('/ui/welcome/sword.webp') center/contain no-repeat;mask:url('/ui/welcome/sword.webp') center/contain no-repeat;animation-delay:5s}
+/* v2.3.2333 (docs/TRAPS.md §52): the masks point at *-mask.webp SILHOUETTES,
+   not at the art the <img> beside them shows.  A CSS mask is a different
+   resource destination from an image and does not share its cache entry, so
+   masking with the same URL fetched logo-brotown.webp (85 KB) and sword.webp
+   (31 KB) TWICE per cold load -- the index.html preloads matched the <img>
+   and did nothing for the mask.  A mask reads only alpha, so each silhouette
+   is white RGB + the source's alpha, lossy WebP (alpha kept exact).  No
+   preload for these: a preload that misses its consumer adds a request. */
+.bt-cc-logo-shine{position:absolute;inset:0;z-index:2;-webkit-mask:url('/ui/welcome/logo-brotown-mask.webp') center/contain no-repeat;mask:url('/ui/welcome/logo-brotown-mask.webp') center/contain no-repeat}
+.bt-cc-sword-shine{position:absolute;left:63.5%;top:19%;height:115%;aspect-ratio:185/480;z-index:0;-webkit-mask:url('/ui/welcome/sword-mask.webp') center/contain no-repeat;mask:url('/ui/welcome/sword-mask.webp') center/contain no-repeat;animation-delay:5s}
 @keyframes bt-cc-shine{0%{background-position:220% 0}13%{background-position:-120% 0}100%{background-position:-120% 0}}
 @media (prefers-reduced-motion:reduce){.bt-cc-logo-shine,.bt-cc-sword-shine{animation:none;opacity:0}}
 
