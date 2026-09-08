@@ -772,10 +772,12 @@ export function NameModal(props) {
        cluster instead. The caps were already there (textTransform); what was
        missing was the size, the centring and a colour that belongs to the
        screen's primary action rather than to its captions. */
-    style: { display: 'block', fontSize: 15, fontWeight: 800, letterSpacing: '.20em',
-      color: '#EAC675', fontFamily: 'Source Sans 3, sans-serif',
-      textTransform: 'uppercase', padding: '0 2px 5px', textAlign: 'center',
-      textShadow: '0 1px 0 rgba(0,0,0,.55)' }
+    /* v2.3.2359: the inline face moved to .bt-cc-namehead in game.css.  It
+       had to: the heading is flanked by the owner's sparkles now, which
+       needs display:flex, and an inline `display:block` beats any stylesheet
+       that tries.  Same size, weight, tracking and caps as v2.3.2151 set
+       them -- only the paint and the ornaments are new. */
+    className: "bt-cc-namehead"
   }, "Bro Name"), /*#__PURE__*/React.createElement("input", {
     id: 'bt-cc-name-input',
     value: nameInput,
@@ -937,7 +939,10 @@ export function NameModal(props) {
      static one on the plate beside it. */
   /*#__PURE__*/React.createElement("img", {
     className: "bt-cc-play-icon",
-    src: '/ui/welcome/cc/cc-enter-town.png?v=' + BUILD_INFO.version,
+    /* v2.3.2359: the crest from the owner's gold sheet, which is what the
+       mockup puts here.  cc-enter-town.png (the painted gate) stays on disk
+       -- this is a swap of which emblem the plate wears, not a deletion. */
+    src: '/ui/welcome/title/crest.webp?v=2.3.2359',
     alt: '', draggable: false, "aria-hidden": true
   }),
   /*#__PURE__*/React.createElement("span", { className: "bt-cc-play-label" }, "Enter Bro Town")),
