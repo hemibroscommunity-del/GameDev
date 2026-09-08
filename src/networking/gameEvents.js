@@ -1639,13 +1639,36 @@ export function processGameEvent(type, payload, S, deps) {
                        truth, on the same schedule the HP bar already used.
                        A number half a round-trip late beats a number that
                        is wrong. */
-                    pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20),
-                      '-' + payload.dmg, payload.isCrit ? DMG_CRIT_COLOR : '#ffd08a',
-                      /* v2.3.2232: the weapon that dealt it, not a flat sword.
-                         v2.3.2233: ...and that now includes the crit, which
-                         carried a bladed burst on bow and staff hits alike. */
-                      { crit: !!payload.isCrit, iconKey: dmgIconForSlot(S, payload, true),
-                        special: !!S._ownSpecialRecent });  /* v2.3.2211; v2.3.2220 */
+                    /* v2.3.2350: a COLLISION hit is not an ordinary hit.  The
+                       worker marks it (`collision: col.id`, combat.js since
+                       v2.3.1114) and, now that the local burst number is gated
+                       off in server zones, this is the only number the player
+                       gets for it -- so it arrives wearing the burst's own
+                       name, colour and higher line, not a plain '-dmg' in
+                       weapon colours.  The styling comes from the local roll
+                       that ran moments ago for the same collision id (the
+                       client still resolves its own for status bookkeeping);
+                       if that memory is missing or stale -- 1.5 s is many
+                       round trips -- the name still reads, in a neutral
+                       burst colour.  The ID is checked, so a burst cannot
+                       borrow a different collision's colours. */
+                    var _colId = payload.collision;
+                    var _colMem = _colId && S._ownCollisionRecent;
+                    var _colFresh = _colMem && _colMem.id === _colId && (Date.now() - _colMem.at) < 1500;
+                    if (_colId) {
+                      pushDmgPopup(S, (hitM.x || hitM.renderX) + 8, monsterPopupY(hitM, -35),
+                        (_colFresh ? _colMem.prefix : '') + '-' + payload.dmg
+                          + (_colFresh && _colMem.name ? ' ' + _colMem.name : ''),
+                        _colFresh ? _colMem.color : '#fffbb0');
+                    } else {
+                      pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20),
+                        '-' + payload.dmg, payload.isCrit ? DMG_CRIT_COLOR : '#ffd08a',
+                        /* v2.3.2232: the weapon that dealt it, not a flat sword.
+                           v2.3.2233: ...and that now includes the crit, which
+                           carried a bladed burst on bow and staff hits alike. */
+                        { crit: !!payload.isCrit, iconKey: dmgIconForSlot(S, payload, true),
+                          special: !!S._ownSpecialRecent });  /* v2.3.2211; v2.3.2220 */
+                    }
                   } else if (payload.thorns) {
                     /* v2.3.1137: Thorns reflect is SERVER-rolled with no
                        local prediction (unlike swings), so our own thorns

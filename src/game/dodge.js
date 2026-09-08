@@ -119,12 +119,36 @@ export var doLunge = function (S, R, ang) {
     setTimeout(function () {
       if (!lt.alive) return;
       var hitEl = activeWpn.element1;
-      lt.curHp = (lt.curHp || lt.hp) - lDmg;
-      if (hitEl) {
-        var sid = (ELEMENTS[hitEl] || {}).status;
-        if (sid) applyStatus(lt, sid, S.player, Date.now());
+      /* ═══ v2.3.2351: THE LUNGE STOPS BILLING DAMAGE IT NEVER DEALT ═══
+         In a server zone the worker owns monster HP, and it never hears
+         about this hit: doLunge sends `ability_use {type:'lunge'}`, whose
+         handler deals no damage, and no monster_damage goes out.  So the
+         three lines below were a private fiction -- a number over the
+         monster's head and an HP bar that dipped and then snapped back on
+         the next authoritative tick, for damage the monster never took.
+         (Found by a client-vs-worker sweep; the same class as the main hit
+         number in v2.3.2220 and the collision burst in v2.3.2350.)
+
+         Gated rather than deleted: the client-authoritative zones (town,
+         and any pre-caps worker) still resolve the lunge locally and are
+         unchanged.  The hit sound and the i-frames stay on BOTH paths --
+         the lunge is a real mobility move either way, and its feel does
+         not depend on the number.
+
+         SERVER HALF, deliberately not here (this PR deploys no worker):
+         making the lunge actually hit is not a matter of sending
+         monster_damage from here -- the worker would roll a FULL swing for
+         a move designed at LUNGE_DAMAGE_MULT (0.6), which is a balance
+         change nobody asked for.  It wants a lunge-aware roll server-side,
+         next to the ability handler that already sees `ability_use`. */
+      if (!S._serverMonsters) {
+        lt.curHp = (lt.curHp || lt.hp) - lDmg;
+        if (hitEl) {
+          var sid = (ELEMENTS[hitEl] || {}).status;
+          if (sid) applyStatus(lt, sid, S.player, Date.now());
+        }
+        pushDmgPopup(S, lt.x, lt.y - 18, String(lDmg), '#fffbb0');
       }
-      pushDmgPopup(S, lt.x, lt.y - 18, String(lDmg), '#fffbb0');
       BT_AUDIO.swordHit({ vol: 0.5 });
       /* v2.3.1747: a lunge hit used to advance the combo chain; chain removed. */
     }, 160);

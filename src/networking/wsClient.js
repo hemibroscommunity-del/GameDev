@@ -2185,6 +2185,25 @@ export function setupWebSocket(ctx) {
                  authoritative pools still ride player_state. */
               S._lastAbilityReject = { kind: msg.payload.kind || null,
                 reason: msg.payload.reason || null, at: Date.now() };
+              /* v2.3.2352: a 'cooldown' refusal carries the worker's REMAINING
+                 ms, so take it -- the local clock is what disagreed, and
+                 guessing again would just re-run the same argument on the next
+                 press.  And give the ordinary swing back: castAbility suppressed
+                 the damage sweep for the ability window (_abilitySwingUntil),
+                 which is right for a strike the worker BILLED and wrong for one
+                 it refused -- otherwise the refusal costs a second hit too.
+                 Display/prediction state only; the pools still ride
+                 player_state. */
+              if (msg.payload.reason === 'cooldown' && typeof msg.payload.ms === 'number'
+                  && msg.payload.kind) {
+                try {
+                  if (!S._abilCd) S._abilCd = {};
+                  var _cdKey = msg.payload.kind;
+                  var _cdUntil = Date.now() + Math.max(0, msg.payload.ms);
+                  if (!(S._abilCd[_cdKey] > _cdUntil)) S._abilCd[_cdKey] = _cdUntil;
+                } catch (e) {}
+              }
+              if (msg.payload.reason) { S._abilitySwingUntil = 0; }
               try {
                 pushDmgPopup(S, S.player.x, S.player.y - 30,
                   abilityRejectText(msg.payload), '#F2C14E', { ts: Date.now() });
