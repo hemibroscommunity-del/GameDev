@@ -1,5 +1,8 @@
 # Eyewear (v2.3.2361; art from v2.3.2362)
 
+**Shipped:** 3D Glasses (v2.3.2362), Goggles (v2.3.2363, see-through),
+Laser Glasses (v2.3.2364).
+
 Owner: *"I want to start adding eyewear options to my Hemi bros (see the first
 image of the 3d glasses). I previously had this mannequin view ... Is this
 still the best way to create new eyewear features?"*
@@ -344,8 +347,8 @@ From the Hemi Bros catalogue spreadsheet, how many Bros wear each:
 | Golden Monocle | 48 |
 | Vision Pro | 45 |
 
-The 3D Glasses are in (v2.3.2362). Eye Patch and Golden Monocle are the
-asymmetric ones (see section 1).
+3D Glasses, Goggles and Laser Glasses are in. Eye Patch and Golden Monocle are
+the asymmetric ones (see section 1).
 
 ---
 

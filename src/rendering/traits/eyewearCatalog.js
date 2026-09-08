@@ -69,6 +69,12 @@ export const EYEWEAR_CATALOG = [
      at import (--flatten-lens), because a semi-transparent piece must not carry
      a painted-on eye in front of the real one. */
   { id: 'goggles', name: 'Goggles' },
+  /* v2.3.2364: a solid visor -- no alpha and no lens flattening, because the
+     red bar IS the design rather than something drawn through it.  Imported
+     from a sheet whose figure was outlined like the two above; the strip took
+     35458px of that outline off the piece and the visor came through whole,
+     which is the case the v2.3.2362 gate was built for. */
+  { id: 'laser-glasses', name: 'Laser Glasses' },
 ];
 
 /** TRUE once there is something to pick.  The creator's Eyewear tab is gated
