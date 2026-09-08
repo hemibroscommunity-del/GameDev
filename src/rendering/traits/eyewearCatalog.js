@@ -97,6 +97,14 @@ export const EYEWEAR_CATALOG = [
      eyes when the character faces west; that is the five-direction mirroring,
      not a bug in the art. */
   { id: 'golden-monocle', name: 'Golden Monocle' },
+  /* v2.3.2368: gold frames with tan lenses, imported AS DRAWN.  --flatten-lens
+     was tried and rejected on the render: the eye-box region spans lens and
+     frame both, so its median came out gold and the flatten turned the glasses
+     into a solid bar.  The faint band the generator left inside each lens is a
+     pixel wide at game size and reads as lens shading, so the art is better
+     untouched -- which is why that flag is a judgement per sheet and not
+     something the importer decides for you. */
+  { id: 'golden-glasses', name: 'Golden Glasses' },
 ];
 
 /** TRUE once there is something to pick.  The creator's Eyewear tab is gated
