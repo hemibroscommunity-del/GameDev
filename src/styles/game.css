@@ -2670,8 +2670,8 @@ input{font-family:inherit}
 
    The frame is two gradients, not a nine-slice -- padding-box for the navy
    well, border-box for the metal -- so it stays resolution-free and costs no
-   art.  The only baked asset added is the sparkle beside the title, which is
-   the owner's own ornament. */
+   art.  v2.3.2360: it costs no art at all now -- the sparkles that flanked
+   the title are gone at the owner's word, so the whole pane is CSS. */
 .bt-cc-panel{position:relative;z-index:1;flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;gap:7px;padding:9px 8px 8px;
   border:2px solid transparent;border-radius:16px;
   background:
@@ -2682,14 +2682,18 @@ input{font-family:inherit}
     inset 0 14px 26px rgba(4,10,18,.34),
     0 4px 16px rgba(3,8,12,.46);
   box-sizing:border-box;overflow:hidden}
-/* v2.3.2358: the title is gold leaf between two of the owner's sparkles.
-   The gradient is clipped to the glyphs (-webkit-background-clip:text, which
-   is what iOS Safari supports); deliberately NO filter: drop-shadow -- the
-   creator stage is a live canvas one flex sibling away and CLAUDE.md's
-   standing suspicion about filters compositing near WebGL is not worth
-   testing for a shadow nobody asked for.  The sparkle is a real <img>-free
-   background so it cannot be dragged or long-pressed on iOS. */
-.bt-cc-panel-title{flex:0 0 auto;margin:0;padding:1px 2px 4px;display:flex;align-items:center;justify-content:center;gap:5px;
+/* v2.3.2358: the title is gold leaf -- the gradient clipped to the glyphs
+   (-webkit-background-clip:text, which is what iOS Safari supports);
+   deliberately NO filter: drop-shadow -- the creator stage is a live canvas
+   one flex sibling away and CLAUDE.md's standing suspicion about filters
+   compositing near WebGL is not worth testing for a shadow nobody asked for.
+   v2.3.2360 (owner: "you can remove the sparkles framing TRAIT PICKER too"):
+   the two ornaments are gone, and with them the flex row that existed only to
+   seat them -- a plain centred block, which is also the arrangement
+   background-clip:text is least surprising on.  BRO NAME keeps its pair; the
+   owner named this heading, not that one.  sparkle.webp stays on disk and in
+   use there. */
+.bt-cc-panel-title{flex:0 0 auto;margin:0;padding:1px 2px 4px;display:block;
   font-family:'Source Sans 3',sans-serif;font-size:clamp(11px,3vw,14px);font-weight:800;letter-spacing:.11em;text-transform:uppercase;text-align:center;white-space:nowrap;
   color:#F7EFDD;
   background:linear-gradient(180deg,#FFFFFF 0%,#F6EAD2 46%,#E4D0A6 100%);
@@ -2700,11 +2704,6 @@ input{font-family:inherit}
 @supports not ((-webkit-background-clip:text) or (background-clip:text)){
   .bt-cc-panel-title{-webkit-text-fill-color:#F7EFDD;background:none}
 }
-.bt-cc-panel-title::before,.bt-cc-panel-title::after{
-  content:'';flex:0 0 auto;width:clamp(15px,5.6vw,26px);height:11px;
-  background:url('/ui/welcome/title/sparkle.webp?v=2.3.2358') center/contain no-repeat;
-  /* the sparkle is its own art: keep the text gradient off it */
-  -webkit-background-clip:border-box;background-clip:border-box}
 /* v2.3.1272: the two creator media blocks moved BELOW every base rule
    they override — they sat earlier in the file, so equal-specificity
    base declarations silently won and the 690/359 fallbacks were dead
@@ -2769,10 +2768,6 @@ input{font-family:inherit}
      112px.  No !important needed -- NameModal pins the icon's width/height
      inline, not its display. */
   .bt-cc-randomize .bt-cc-action-icon{display:none}
-  /* v2.3.2358: at 320-class the pane is ~155px and the sparkles end up
-     flush against the gold frame with the title touching both.  The words
-     are the content; the ornaments are decoration, so the ornaments go. */
-  .bt-cc-panel-title::before,.bt-cc-panel-title::after{display:none}
 }
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
