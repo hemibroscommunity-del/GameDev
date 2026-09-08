@@ -1311,6 +1311,16 @@ export class EffectsRenderer {
     // Pooled graphics
     this.particleGfx = new Graphics();
     this.particleLayer.addChild(this.particleGfx);
+    /* v2.3.2336: the pooled dots get their OWN container, created here before
+       any burst exists, so it sits at index 1 -- above the Graphics, below
+       every impact / debris / snowball / arrow sprite that is appended to
+       particleLayer at spawn.  v2.3.2331 parented each dot straight into
+       particleLayer at the moment its pool slot was first needed, which put a
+       slot minted mid-burst ABOVE that burst and below the next one: the
+       stacking flickered between hits (review, v2.3.2336).  One container,
+       one texture, still one batch. */
+    this._dotLayer = new Container();
+    this.particleLayer.addChild(this._dotLayer);
 
     this.projectileGfx = new Graphics();
     this.projectileLayer.addChild(this.projectileGfx);
@@ -2335,7 +2345,7 @@ export class EffectsRenderer {
 
   /* ── Particles ── */
   /* v2.3.2331: one dot from the sprite pool.  Sprites are created on demand,
-     parented to the particle layer beside the Graphics, and never destroyed
+     parented to _dotLayer (v2.3.2336, see the constructor), and never destroyed
      -- hidden when unused (see _hideSpareDots).  The cap is above the 400
      hit-particle ceiling plus a few explosions' worth; past it a dot is simply
      not drawn, which is what the old Graphics cap did too. */
@@ -2347,7 +2357,7 @@ export class EffectsRenderer {
     if (!sp || sp.destroyed) {
       sp = new Sprite(hardDotTex());
       sp.anchor.set(0.5, 0.5);
-      this.particleLayer.addChild(sp);
+      this._dotLayer.addChild(sp);
       pool[this._dotUsed] = sp;
     }
     this._dotUsed++;

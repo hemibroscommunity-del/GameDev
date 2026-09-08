@@ -8,9 +8,11 @@ name: Optimize sprite assets
 # no "lossless WebP sprite copies" commit — every .webp had been committed by
 # hand, and 423 of the PNGs a cold load actually fetches had no twin at all,
 # costing 49 wasted 404 probes per load on top of the bytes.
-# Two of the 118 hand-made twins were also genuinely not their PNG
-# (npc/mayor-bro, player/bow-south-weapon) — the client prefers .webp, so those
-# were the pixels players saw. Both are gone; the second is regenerated here.
+# Two of the 118 hand-made twins also differed from their PNG. One
+# (player/bow-south-weapon) was a stale lossy encode and is regenerated here.
+# The other (npc/mayor-bro) is the hat-fixed art whose PNG is the stale file —
+# it is kept, and sprites/npc is deliberately NOT in the converter's ROOTS
+# (v2.3.2336; see tools/optimize-sprites.mjs).
 #
 # So the trigger now includes the sprite art itself, which is what actually wants
 # converting. Two things stop the bot's own commit from looping back into this:

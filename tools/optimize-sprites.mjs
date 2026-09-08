@@ -19,10 +19,17 @@
  * no twin at all.
  *
  * Measured with tools/qa/qa-webp-lossless.mjs, TWO of the 118 twins that
- * existed were genuinely not their PNG: public/sprites/npc/mayor-bro.webp
- * (58 px, worst channel 152) and public/sprites/player/bow-south-weapon.webp
- * (3,721 px, worst 97).  Small, but the client PREFERS the .webp, so those were
- * the pixels players saw.
+ * existed differed from their PNG: public/sprites/npc/mayor-bro.webp (58 px,
+ * worst channel 152) and public/sprites/player/bow-south-weapon.webp (3,721
+ * px, worst 97).  The bow one was a stale lossy encode and is regenerated.
+ * The Mayor is the OPPOSITE case (v2.3.2336, caught in review): the .webp is
+ * the v2.3.1829 hat-fixed art (tools/gear/fix-mayor-hat.mjs) and the PNG is
+ * the stale pre-fix source -- "differs from its PNG" meant the PNG was wrong.
+ * v2.3.2328 deleted the .webp on that reading, and because npcSprites.js
+ * loads NPC art with a bare Assets.load (no .png fallback) the only quest
+ * giver would have drawn as an emoji on every phone after merge.  Restored;
+ * ROOTS deliberately does not cover sprites/npc, so nothing here will ever
+ * regenerate it from the PNG.
  *
  * Two is also a correction.  The first pass of that harness compared the files
  * through a <canvas> and reported 78 of 118 drifting at up to 255 -- all of it

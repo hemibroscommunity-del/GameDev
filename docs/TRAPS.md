@@ -2141,6 +2141,12 @@ the job `tools/webp_convert.mjs` is still the right tool for, and the one place
 its Chromium-canvas lossiness genuinely does not matter (§ see the header of
 that file, and `optimize-sprites.mjs`, for where it is NOT).
 
+**Fixed, v2.3.2333.** The three masks now point at `*-mask.webp` silhouettes
+beside the art (white RGB, the source's alpha copied exactly, lossy WebP:
+38 KB / 45 KB / 13 KB). `mp-coldload` after: each of the three art URLs
+fetched once, each silhouette once, 0.38 MB less in the `/ui/welcome` family,
+and the shimmer photographed on the lettering with the mask swapped.
+
 **Rule to apply next time:** when the same URL appears twice in a load, do not
 assume the browser will collapse it — check whether the two consumers are the
 same KIND of resource. `<img>` and CSS `background-image` share; a mask does
@@ -2165,6 +2171,17 @@ measurement behind every sentence.
 **The true number was two.** `npc/mayor-bro.webp` (58 px, worst 152) and
 `player/bow-south-weapon.webp` (3,721 px, worst 97). The other 76 files were
 pixel-identical to their PNGs and I deleted them for nothing.
+
+**And one of the two was the PNG's fault, not the WebP's (v2.3.2336).** The
+Mayor's `.webp` is the v2.3.1829 hat-fixed art; his `.png` is the stale
+pre-fix source. "Differs from its PNG" was read as "the twin is bad" and the
+twin was deleted — while `NPC_DATA` still named it and `npcSprites.js` loads
+NPC art with a bare `Assets.load` (no `.png` fallback), so after merge the
+only quest giver would have rendered as an emoji on a procedural body. A
+whole-PR adversarial review caught it; `mp-mayorart` (status 200 + "his art is
+painted") is the pin. Rule: a twin that differs from its source is a QUESTION
+("which one is current?"), not a verdict — check which file the last art fix
+wrote to (`git log -- both`) before deleting either.
 
 **The mechanism.** The harness decoded each file by drawing it into a `<canvas>`
 and reading `getImageData`. **A 2D canvas backing store is premultiplied.**

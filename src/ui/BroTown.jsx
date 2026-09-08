@@ -284,6 +284,21 @@ function kickSfxAtGate(gate) {
     try { BT_AUDIO.loadSfxManifest(); } catch (e) {}
   });
 }
+/* v2.3.2334: the ZONE track (village.mp3, 2.2 MB in town) is the other download
+   that used to race the sprite preload -- it started 1.3 s into the burst with
+   482 sprite requests still queued behind it.  Its fetch now waits for the
+   SAME gate as the SFX manifest above: the full preloadPlayerAssets() promise,
+   network and bake, so the download and the decode land in the intro clip's
+   remaining seconds with an idle connection and an idle CPU.  (Waiting for
+   only the network half was tried first and put the decode under the bake,
+   where a slow box tripped the watchdog's 8 s staleness expiry into a second
+   fetch -- see the _zoneMusicGate note in gameDisplay.js.)  Called at every
+   site that arms the gate, like kickSfxAtGate.  The session track is
+   deliberately not here -- it belongs on the login screen (v2.3.1577) and
+   asks for low fetch priority instead. */
+function holdZoneMusicAtGate(gate) {
+  try { BT_AUDIO.holdZoneMusicFor(gate); } catch (e) {}
+}
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
 import { sendChatMessage } from '@/game/chat.js';
 import { subscribeMutes } from '@/game/chatMute.js'; /* v2.3.1981 */
@@ -5062,6 +5077,13 @@ export var BroTown = function BroTown(_ref0) {
                  style writes on the ring's siblings, for a box whose size only
                  changes on resize.  Re-read at most once a second. */
               var _rnow = Date.now();
+              /* v2.3.2336: show the ring BEFORE measuring it.  The v2.3.2330
+                 1s cache read clientWidth while the ring was still
+                 display:none from the idle frame before -- 0 -- so the 96
+                 fallback was cached for the first second of every harvest
+                 (landscape's 108px box drew an ~11% short pie).  One forced
+                 layout on the first frame of a harvest is the intended cost. */
+              if (_ring.style.display !== 'block') _ring.style.display = 'block';
               if (!_ring._rpxW || (_rnow - (_ring._rpxAt || 0)) > 1000) { _ring._rpxW = _ring.clientWidth || 96; _ring._rpxAt = _rnow; }
               var _rpx = _ring._rpxW * 0.4;
               var _circ = 2 * Math.PI * _rpx;
@@ -5070,7 +5092,6 @@ export var BroTown = function BroTown(_ref0) {
                 if (_c.getAttribute('stroke-dasharray') !== _dash) _c.setAttribute('stroke-dasharray', _dash);
                 if (_c.getAttribute('stroke') !== _col) _c.setAttribute('stroke', _col);
               }
-              if (_ring.style.display !== 'block') _ring.style.display = 'block';
             } else if (_ring.style.display !== 'none') _ring.style.display = 'none';
           }
 
@@ -9433,6 +9454,7 @@ export var BroTown = function BroTown(_ref0) {
        point) so the intro overlay can hold until it's flicker-free. */
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e) { introWaitRef.current = null; }
     kickSfxAtGate(introWaitRef.current);
+    holdZoneMusicAtGate(introWaitRef.current);   /* v2.3.2334 */
     if (!_skipIntro) setShowIntro(true);
     else {
       /* v2.3.831: no IntroVideo to hand the theme off, so stop it here;
@@ -9494,6 +9516,7 @@ export var BroTown = function BroTown(_ref0) {
     BT_AUDIO.join();
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e2) { introWaitRef.current = null; }
     kickSfxAtGate(introWaitRef.current);
+    holdZoneMusicAtGate(introWaitRef.current);   /* v2.3.2334 */
     setShowWelcome(false); /* straight in -- no intro video on a resume */
     /* v2.3.833: a resume skips the intro loading screen and drops straight
        into the world while the avatar's gear sheets are still baking, which

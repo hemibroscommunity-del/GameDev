@@ -118,7 +118,7 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
   } catch (e) { /* never let this break the state echo */ }
 }
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
-import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer */
+import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
 /* Tick arrival timestamps — module-level so the buffer survives
  * WebSocket reconnects and can be sampled by the FPS/NET overlay.
  * performance.now() values, capped at ~5 minutes of history.  Bytes-per-tick
@@ -625,6 +625,15 @@ export function setupWebSocket(ctx) {
                     if (!S._evErrLogged || Date.now() - S._evErrLogged > 5000) {
                       S._evErrLogged = Date.now();
                       console.warn('[events] handler threw for', _evt.type, _evErr && _evErr.message);
+                      /* v2.3.2336: the catch must not erase its own evidence
+                         (the v2.3.1866 rule).  Before v2.3.2330 the throw
+                         reached window 'error' and crashTrap's ring buffer;
+                         a console.warn is invisible on the phone, where nobody
+                         has devtools.  Same 5s throttle; the message is built
+                         SYNCHRONOUSLY because _evt is the loop's var and the
+                         import resolves after the loop has moved on. */
+                      var _evMsg = _evt.type + ': ' + ((_evErr && (_evErr.stack || _evErr.message)) || _evErr);
+                      try { import('../debug/crashTrap.js').then(function (ct) { ct.recordCrash('event-handler', _evMsg); }).catch(function () {}); } catch (e) {}
                     }
                   }
                 }
@@ -913,7 +922,10 @@ export function setupWebSocket(ctx) {
                   } catch (e2) {}
                   localStorage.setItem('bt_passphrase', _newPf);
                   /* The old character is unreachable under the new id --
-                     drop the stale cache so the rejoin starts clean. */
+                     drop the stale cache so the rejoin starts clean.
+                     v2.3.2336: and cancel the pending debounced flush, or it
+                     writes the old blob straight back 50-800ms from now. */
+                  cancelRpgSave();
                   localStorage.removeItem('bt_rpg');
                   S.myId = passphraseToId(_newPf);
                 } else {
@@ -942,6 +954,7 @@ export function setupWebSocket(ctx) {
                  social keys (bt_friends / bt_clan / bt_blocked /
                  bt_muted); the character restarts, the account doesn't. */
               S._characterReset = true; /* onclose 4005 guard: no reconnect race */
+              cancelRpgSave(); /* v2.3.2336: a pending flush would re-create bt_rpg before the reload */
               try {
                 ['bt_rpg', 'bt_stats', 'bt_codex', 'bt_bestiary', 'bt_materials', 'bt_zones', 'bt_resume'].forEach(function (k) {
                   localStorage.removeItem(k);

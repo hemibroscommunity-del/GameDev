@@ -1920,8 +1920,16 @@ input{font-family:inherit}
    the shorter cycle; sword offset half a cycle (5s) so the two alternate
    roughly every 5s. */
 .bt-cc-logo-shine,.bt-cc-sword-shine{pointer-events:none;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.85) 50%,transparent 60%);background-size:220% 100%;background-repeat:no-repeat;mix-blend-mode:screen;animation:bt-cc-shine 10s ease-in-out infinite}
-.bt-cc-logo-shine{position:absolute;inset:0;z-index:2;-webkit-mask:url('/ui/welcome/logo-brotown.webp') center/contain no-repeat;mask:url('/ui/welcome/logo-brotown.webp') center/contain no-repeat}
-.bt-cc-sword-shine{position:absolute;left:63.5%;top:19%;height:115%;aspect-ratio:185/480;z-index:0;-webkit-mask:url('/ui/welcome/sword.webp') center/contain no-repeat;mask:url('/ui/welcome/sword.webp') center/contain no-repeat;animation-delay:5s}
+/* v2.3.2333 (docs/TRAPS.md §52): the masks point at *-mask.webp SILHOUETTES,
+   not at the art the <img> beside them shows.  A CSS mask is a different
+   resource destination from an image and does not share its cache entry, so
+   masking with the same URL fetched logo-brotown.webp (85 KB) and sword.webp
+   (31 KB) TWICE per cold load -- the index.html preloads matched the <img>
+   and did nothing for the mask.  A mask reads only alpha, so each silhouette
+   is white RGB + the source's alpha, lossy WebP (alpha kept exact).  No
+   preload for these: a preload that misses its consumer adds a request. */
+.bt-cc-logo-shine{position:absolute;inset:0;z-index:2;-webkit-mask:url('/ui/welcome/logo-brotown-mask.webp') center/contain no-repeat;mask:url('/ui/welcome/logo-brotown-mask.webp') center/contain no-repeat}
+.bt-cc-sword-shine{position:absolute;left:63.5%;top:19%;height:115%;aspect-ratio:185/480;z-index:0;-webkit-mask:url('/ui/welcome/sword-mask.webp') center/contain no-repeat;mask:url('/ui/welcome/sword-mask.webp') center/contain no-repeat;animation-delay:5s}
 @keyframes bt-cc-shine{0%{background-position:220% 0}13%{background-position:-120% 0}100%{background-position:-120% 0}}
 @media (prefers-reduced-motion:reduce){.bt-cc-logo-shine,.bt-cc-sword-shine{animation:none;opacity:0}}
 

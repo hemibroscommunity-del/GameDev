@@ -168,6 +168,17 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
      built by tools/ui/clean-title-marks.mjs from the slicer's own output. The
      original names stay free for the slicer; see that tool's header. */
   const art = (n) => `/ui/welcome/title/${n}.png?v=${BUILD_INFO.version}`;
+  /* v2.3.2333 (docs/TRAPS.md §52): the shimmer's mask must NOT reuse the
+     <img>'s URL.  A CSS mask is a different resource destination from an
+     image, so it never shares the <img>'s cache entry -- logo-plain.png
+     (373 KB of gold lettering) was downloaded a SECOND time on every cold
+     load so a highlight could learn where the letters are.  A mask only
+     reads alpha, so it points at a white-on-transparent silhouette cut of
+     the same art (tools: sharp, alpha copied verbatim, lossy RGB is
+     irrelevant) -- 38 KB instead of 373 KB, and one request instead of two.
+     Not a <link rel=preload>: a preload that does not match its consumer
+     adds a request rather than saving one (§52 again). */
+  const mask = (n) => `/ui/welcome/title/${n}-mask.webp?v=${BUILD_INFO.version}`;
 
   return (
     <div className="bt-name-modal bt-login-modal">
@@ -208,14 +219,15 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
               draggable={false}
               className="bt-login-logo"
             />
-            {/* The shimmer uses the logo as its own mask, so the highlight
-                can only ever fall on the lettering.  The URL goes in as a
-                custom property because a CSS mask cannot read an <img>'s
-                src; the BOX now comes from the wrapper above. */}
+            {/* The shimmer uses the logo's SILHOUETTE as its mask, so the
+                highlight can only ever fall on the lettering.  The URL goes
+                in as a custom property because a CSS mask cannot read an
+                <img>'s src; the BOX now comes from the wrapper above.
+                v2.3.2333: mask() not art() -- see the helper. */}
             <div
               className="bt-login-shine"
               aria-hidden
-              style={{ '--lg-logo': `url("${art('logo-plain')}")` }}
+              style={{ '--lg-logo': `url("${mask('logo-plain')}")` }}
             />
           </span>
           <img

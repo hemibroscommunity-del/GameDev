@@ -1367,9 +1367,16 @@ export const HeroExpanded = () => {
               const nowMs = Date.now();
               const seen = ptLandRef.current.get(lk);
               if (!seen) ptLandRef.current.set(lk, { pts, at: 0 });
-              else if (pts > seen.pts) ptLandRef.current.set(lk, { pts, at: nowMs });
-              else if (pts !== seen.pts) ptLandRef.current.set(lk, { pts, at: seen.at });
+              else if (pts > seen.pts) ptLandRef.current.set(lk, { pts, at: nowMs, delta: pts - seen.pts });
+              /* v2.3.2336: a DECREASE (a refund echo) inside the 1300ms window
+                 must clear the flare, not inherit it -- the orb is keyed on
+                 the count, so 5 -> 6 -> 5 remounted 'orb5' with the land
+                 class and floated a "+1" for a loss.  And the label is the
+                 echo's real delta, not a literal, for the day an allocate
+                 batches more than one point. */
+              else if (pts !== seen.pts) ptLandRef.current.set(lk, { pts, at: 0 });
               const landAt = ptLandRef.current.get(lk).at;
+              const landDelta = ptLandRef.current.get(lk).delta || 1;
               const landed = landAt > 0 && (nowMs - landAt) < 1300;
               return (
                 <div key={lk}
@@ -1443,7 +1450,7 @@ export const HeroExpanded = () => {
                           data-landed={landed ? '1' : undefined}
                           className={'bt-pt-orb' + (landed ? ' bt-pt-orb-land' : '') + (pts >= cap ? ' bt-pt-orb-full' : '')} />
                         {landed && (
-                          <span aria-hidden="true" key={'plus' + pts} className="bt-pt-plus">+1</span>
+                          <span aria-hidden="true" key={'plus' + pts} className="bt-pt-plus">{'+' + landDelta}</span>
                         )}
                       </span>
                     </div>
