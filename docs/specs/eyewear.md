@@ -106,7 +106,8 @@ Draw the [3D glasses] on each of the five heads, in the direction each cell is
 labelled: front, three-quarter, side, three-quarter back, back. From the back
 draw nothing (glasses are not visible from behind).
 Paint the entire person, head and shoulders, flat solid green #00FF00 with no
-shading. Keep the magenta background and the labels. Do not resize or
+shading. (Any flat saturated colour works — cyan reads better under gold or
+yellow art. The importer finds the person's colour rather than assuming green.) Keep the magenta background and the labels. Do not resize or
 re-lay-out the sheet.
 Draw the glasses at the size they would be on this head, resting on the nose
 with the lenses over the eyes, in the same pixel style as the head. Draw only
@@ -247,7 +248,7 @@ for a hat.
 
 ---
 
-## 3. Four things the generator does anyway (v2.3.2362-2366)
+## 3. Five things a sheet can do (v2.3.2362-2367)
 
 ### The person's own outline
 
@@ -301,6 +302,14 @@ maximises the **worst** eye's coverage rather than the total, so a pair cannot
 buy one eye by abandoning the other, and ties go to the smallest move — a pair
 already on the eyes is left exactly where it is. It runs automatically.
 
+**A one-lens piece is judged on the eye it covers.** A monocle or an eye patch
+must leave the other eye bare, and the worst-eye rule does exactly the wrong
+thing with that: the Golden Monocle's south cell was drawn at a perfect
+0% / 100% and got dragged 8 px to a compromise 40% / 83%. So the objective is
+chosen from what the piece was *drawn* covering — if one eye is under half the
+other, the **best** eye is maximised instead, and ties still keep it on the eye
+the generator chose.
+
 **Per facing**, which is a real difference from the hat seat pass
 (`tools/seat_headwear.py`) and worth understanding. That one insists on one
 correction for the whole hat, because seating each direction separately would
@@ -309,6 +318,26 @@ proxy that genuinely varies with perspective, so a per-direction fix would
 encode perspective as error. The reference here is the eyes — an exact landmark
 the game paints on each facing — so aligning every facing to its own eyes is
 the definition of consistent.
+
+### A person who is not green
+
+The mannequin paints the person `#00FF00` and the prompt asks for it back, but
+green is a poor backdrop for gold or yellow art — which is why the Golden
+Monocle sheet came back with the person in **cyan**. The keying rule tested for
+greenness specifically (`g - max(r, b) > 120`), which cyan fails outright, so
+the whole body would have keyed as the piece.
+
+The importer now *finds* the person: the modal non-backdrop colour, quantised
+to 8 levels per channel because resampling leaves no two interior pixels equal.
+The person is the largest flat thing on a sheet by a wide margin — 13% of that
+one, against 0.2% for the outline — so the mode is the person. It is a
+fallback, tried only when the green test plainly misses (under 2% of the
+panel), so every sheet imported before takes exactly the path it always did.
+
+Two downstream guards had the same assumption baked in and were fixed with it:
+the speckle guard on the finished frame and the last-ditch "nothing that ships
+should still BE the key colour" test. Both now measure distance to whatever the
+person's colour actually is.
 
 ### A lens drawn as a transparency checkerboard
 

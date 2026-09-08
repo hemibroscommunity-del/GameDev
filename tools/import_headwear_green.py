@@ -170,6 +170,8 @@ ALPHA_T = 16
 TOP_MARGIN = 6       # where the hat's top sits inside its own frame
 OVERSHOOT = 60       # 256-space rows sampled ABOVE the cell, for tall hats
 KEY_TOL = 60         # how far a green region may sit from the key and still be head
+PERSON_TOL = 70      # v2.3.2367: how far a pixel may sit from a NON-green person key
+PERSON_MIN = 0.02    # below this share of the panel, the green key has plainly missed
 TEXT_DROP = 0.30     # a real hat reaches at least this far down toward the crown
 # v2.3.2362: the person's own outline (see the header).  Sheet px, at the ~5x
 # the mannequin is drawn at, so one art pixel of outline is ~5 of these.
@@ -241,8 +243,39 @@ def eye_boxes(d):
     return out
 
 
-def keys(rgb):
-    """(magenta backdrop, green-ish, everything else).
+def person_key(rgb, mag):
+    """The flat colour the generator painted the PERSON, found rather than assumed
+    (v2.3.2367).
+
+    Owner: "I reported this mannequin to cyan since it was hard to see against
+    the green."  Which is a fair call on the art -- a gold monocle on a green
+    head is poor contrast -- and it breaks a keying rule that tests for
+    GREENNESS specifically: cyan fails `g - max(r, b) > 120` outright, so the
+    whole body would have keyed as the piece.
+
+    The person is the largest flat thing on the sheet by a wide margin (13% of
+    this one, against 0.2% for the outline), so the modal non-backdrop colour
+    IS the person.  Quantised to 8 levels per channel first, because the
+    generator's resampling means no two interior pixels are exactly equal.
+    """
+    sel = ~mag
+    if sel.sum() < 100:
+        return None
+    q = (rgb[sel] // 32).astype(np.int32)
+    codes = q[:, 0] * 64 + q[:, 1] * 8 + q[:, 2]
+    vals, cnt = np.unique(codes, return_counts=True)
+    top = vals[np.argmax(cnt)]
+    bucket = sel.copy()
+    bucket[sel] = codes == top
+    return np.median(rgb[bucket], axis=0).round().astype(int)
+
+
+def keys(rgb, key=None):
+    """(magenta backdrop, the person, everything else).
+
+    With no `key` this is the original GREEN test, unchanged, which is what the
+    prompt asks for and what every sheet before v2.3.2367 used.  Given a `key`
+    (see person_key) the person is keyed by distance to that colour instead.
 
     Green is keyed on DOMINANCE -- how much greener than either other channel --
     rather than on absolute values, because a hat is allowed to be green too.
@@ -254,7 +287,10 @@ def keys(rgb):
     cannot be done here."""
     r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
     mag = (r > 150) & (b > 150) & (g < 90) & (np.abs(r - b) < 60)
-    grn = (g > 150) & ((g - np.maximum(r, b)) > 120)
+    if key is None:
+        grn = (g > 150) & ((g - np.maximum(r, b)) > 120)
+    else:
+        grn = (np.abs(rgb - np.asarray(key)).max(axis=2) <= PERSON_TOL) & ~mag
     return mag, grn, ~(mag | grn)
 
 
@@ -329,8 +365,8 @@ def split_green(rgb, grn):
     5x5 block averaging gap-green with hair no longer matches the key."""
     lab, k = ndi.label(grn, np.ones((3, 3)))
     if k < 5:
-        raise SystemExit(f'found {k} green regions, expected at least 5 — did the '
-                         'generator paint the person flat #00FF00?')
+        raise SystemExit(f'found {k} person-coloured regions, expected at least 5 — is the '
+                         'person painted one flat colour on the magenta backdrop?')
     sizes = np.array(ndi.sum(grn, lab, range(1, k + 1)))
     objs = ndi.find_objects(lab)
     bodies = sorted(np.argsort(sizes)[::-1][:5], key=lambda i: objs[i][1].start)
@@ -426,20 +462,31 @@ def seat_eyes(frame, d, crown, anchor, nudge):
     The search maximises the WORST eye's coverage rather than the total, so a
     pair cannot buy one eye by abandoning the other, and ties go to the
     smallest move -- a piece already on the eyes is left exactly where it is.
+
+    UNLESS THE PIECE ONLY HAS ONE LENS (v2.3.2367).  A monocle covers one eye
+    and must: judged on the worst eye, the Golden Monocle's south cell was
+    dragged 8px off a perfect 0%/100% to a compromise 40%/83%, which is the
+    rule doing exactly what it says and the wrong thing.  So the objective is
+    chosen from what the piece was DRAWN covering -- if one eye is under half
+    the other, this is a monocle or a patch and the BEST eye is what gets
+    maximised.  Ties still go to the smallest move, so it stays on the eye the
+    generator put it on rather than hopping to the other one.
     """
     boxes = eye_boxes(d)
     if not boxes:
-        return (0, 0), None, None
+        return (0, 0), None, None, False
     drawn = frame[:, :, 3] > ALPHA_T
     before = eye_cover(drawn, boxes, crown, anchor, nudge)
+    one_eye = len(before) >= 2 and min(before) < 0.5 * max(before)
+    score = max if one_eye else min
     best = None
     for ddy in range(-SEAT_EYES_MAX, SEAT_EYES_MAX + 1):
         for ddx in range(-SEAT_EYES_MAX, SEAT_EYES_MAX + 1):
             cov = eye_cover(drawn, boxes, crown, anchor, nudge, ddx, ddy)
-            key = (-min(cov), abs(ddx) + abs(ddy), abs(ddx))
+            key = (-score(cov), abs(ddx) + abs(ddy), abs(ddx))
             if best is None or key < best[0]:
                 best = (key, (ddx, ddy), cov)
-    return best[1], before, best[2]
+    return best[1], before, best[2], one_eye
 
 
 def clear_lens(frame, d, crown, anchor, nudge):
@@ -640,7 +687,19 @@ def main():
     args = ap.parse_args()
 
     rgb = np.array(Image.open(args.art).convert('RGB')).astype(int)
+    _pkey = None
     mag, grn, ink = keys(rgb)
+    # v2.3.2367: the person need not be green.  The green test is tried first so
+    # every sheet imported before this one takes exactly the path it always did;
+    # only a sheet it plainly misses goes looking for the colour actually used.
+    if grn.mean() < PERSON_MIN:
+        _pk = person_key(rgb, mag)
+        if _pk is not None:
+            _pkey = _pk
+            mag, grn, ink = keys(rgb, key=_pk)
+            print(f'note: the person is not green on this sheet — keyed on '
+                  f'rgb{tuple(int(v) for v in _pk)} instead, which covers '
+                  f'{grn.mean() * 100:.0f}% of it')
     px0, py0, px1, py1 = panel_of(mag)
     rgb, grn = (a[py0:py1, px0:px1] for a in (rgb, grn))
     heads, figs, extra, reclaimed = split_green(rgb, grn)
@@ -717,7 +776,7 @@ def main():
             print(f'{c["dir"]:<10} could not be fitted — using the sheet\'s own '
                   f'scale {borrow:.3f} and this cell\'s green for position')
 
-    bboxes, anchors, nudges, scales, _flat, _seated = {}, {}, {}, {}, {}, {}
+    bboxes, anchors, nudges, scales, _flat, _seated, _oneeye = {}, {}, {}, {}, {}, {}, set()
     for (c, (fg, sl)), fit in zip(zip(cells, figs), fits):
         d = c['dir']
         if d in omit:
@@ -806,7 +865,16 @@ def main():
         _m0 = art256[:, :, 3] > ALPHA_T
         if _m0.sum() > 40:
             _rr, _gg, _bb = (art256[:, :, i].astype(int) for i in range(3))
-            _dom = _gg - np.maximum(_rr, _bb)
+            # v2.3.2367: "how much like the PERSON KEY is this pixel", where the
+            # key used to be assumed green.  On a cyan sheet the greenness
+            # measure below reads a cyan speckle as ordinary colour and leaves
+            # it on the piece, which is how the first Golden Monocle import
+            # kept cyan pixels along its chain.  For a green sheet `_pkey` is
+            # None and this is character for character the v2.3.1506 test.
+            if _pkey is None:
+                _dom = _gg - np.maximum(_rr, _bb)
+            else:
+                _dom = 255 - np.abs(np.stack([_rr, _gg, _bb], axis=2) - _pkey).max(axis=2)
             # MEDIAN, not a high percentile: speckles sit inside the top 1% and
             # would set their own threshold, which is why a p99 cut removed none
             # of them.  The median is the hat's bulk colour and cannot be moved
@@ -824,8 +892,12 @@ def main():
         # hair) where a block's majority vote lands on blend pixels; drop them
         # here rather than hope the earlier stages caught everything.
         _r, _g, _b = art256[:, :, 0].astype(int), art256[:, :, 1].astype(int), art256[:, :, 2].astype(int)
-        _key = ((_g > 150) & ((_g - np.maximum(_r, _b)) > 120)) | \
-               ((_r > 150) & (_b > 150) & (_g < 90) & (np.abs(_r - _b) < 60))
+        _key = ((_r > 150) & (_b > 150) & (_g < 90) & (np.abs(_r - _b) < 60))
+        if _pkey is None:
+            _key |= (_g > 150) & ((_g - np.maximum(_r, _b)) > 120)
+        else:
+            # v2.3.2367: the person's own colour, whatever it is.
+            _key |= np.abs(np.stack([_r, _g, _b], axis=2) - _pkey).max(axis=2) <= 40
         art256[_key] = 0
 
         m = art256[:, :, 3] > ALPHA_T
@@ -858,10 +930,12 @@ def main():
         # the placement -- the lens flattening below and the coverage report
         # further down both have to describe the frame as it will SHIP.
         if face_worn:
-            (_sx, _sy), _cov0, _cov1 = seat_eyes(out, d, crown, anchor, nudges[d])
+            (_sx, _sy), _cov0, _cov1, _one = seat_eyes(out, d, crown, anchor, nudges[d])
             if (_sx or _sy):
                 nudges[d] = [nudges[d][0] + _sx, nudges[d][1] + _sy]
-                _seated[d] = (_sx, _sy, _cov0, _cov1)
+                _seated[d] = (_sx, _sy, _cov0, _cov1, _one)
+            if _one:
+                _oneeye.add(d)
         # v2.3.2363: flatten what the generator drew THROUGH the lens, before the
         # frame is written -- it needs the placement above to know where the eyes
         # are.  Only with --flatten-lens; see flatten_lens().
@@ -883,9 +957,10 @@ def main():
         if args.category in FACE_WORN:
             # v2.3.2361: the check that would have caught the 5-6px lift.
             if d in _seated:
-                _sx, _sy, _c0, _c1 = _seated[d]
+                _sx, _sy, _c0, _c1, _one = _seated[d]
                 _lim = ' (AT THE LIMIT -- regenerate this cell)' if max(abs(_sx), abs(_sy)) >= SEAT_EYES_MAX else ''
-                print(f'{"":<10} seated onto the eyes by ({_sx:+d}, {_sy:+d})px{_lim}: coverage '
+                print(f'{"":<10} seated onto the {"covered eye" if _one else "eyes"} by '
+                      f'({_sx:+d}, {_sy:+d})px{_lim}: coverage '
                       + ' / '.join(f'{c * 100:.0f}%' for c in _c0) + ' -> '
                       + ' / '.join(f'{c * 100:.0f}%' for c in _c1))
             if args.clear_lens:
@@ -927,7 +1002,8 @@ def main():
                     box = _drawn[sy0:sy1, sx0:sx1]
                     cov.append(float(box.mean()) if box.size else 0.0)
                 _rows = ', '.join(f'{c * 100:.0f}%' for c in cov)
-                _worst = min(cov) if cov else 0.0
+                # v2.3.2367: a one-lens piece is judged on the eye it covers.
+                _worst = (max(cov) if d in _oneeye else min(cov)) if cov else 0.0
                 print(f'{"":<10} eyes: the piece covers {_rows} of {"each eye" if len(cov) > 1 else "the eye"} '
                       f'(whole eye, black top edge to pupil)'
                       + ('' if _worst >= 0.9 else '   <-- LOW: the lenses are not over the eyes'))

@@ -1,0 +1,128 @@
+{
+  "category": "eyewear",
+  "fullFrame": true,
+  "note": "Imported by tools/import_headwear_green.py from a sheet whose person was painted flat #00FF00. The hat is simply everything that is neither the magenta backdrop nor the green person, so no head can leak into the frame and no colour heuristic can eat a hat pixel. The green silhouette also registers the cell against the mannequin on the WHOLE body rather than the torso alone. anchors are the hat bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. v2.3.2365: seated onto the eyes (southwest +0,-1px, east -5,+1px) -- every eyewear sheet so far has drawn the southwest cell low, and this moves each facing onto the eye row the game actually paints; bounded and reported by seat_eyes(). v2.3.2361: placed BY THE HEAD -- the vertical axis is calibrated on the drawn crown and cut line against the mannequin's, so a sheet returned at a different aspect still lands the piece where it was drawn on the face; the horizontal axis and the width come from the shoulder fit. Checked against the iris row the game paints (eyeMask.json). v2.3.2361: north, northeast omitted on purpose -- the eyewear is not visible from there. No png and no anchor for that facing, so the renderer hides the piece on it (the beard precedent, v2.3.1530). jog fitted by tools/tune_headwear.py --fit-pose jog: the jog sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(jog)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. mine fitted by tools/tune_headwear.py --fit-pose mine: the mine sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(mine)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. fish fitted by tools/tune_headwear.py --fit-pose fish: the fish sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(fish)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. hit fitted by tools/tune_headwear.py --fit-pose hit: the hit sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(hit)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. pickup fitted by tools/tune_headwear.py --fit-pose pickup: the pickup sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(pickup)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face.",
+  "bboxes": {
+    "south": [
+      118,
+      6,
+      20,
+      28
+    ],
+    "southwest": [
+      113,
+      6,
+      31,
+      28
+    ],
+    "east": [
+      113,
+      6,
+      31,
+      23
+    ]
+  },
+  "anchors": {
+    "south": [
+      128,
+      6
+    ],
+    "southwest": [
+      129,
+      6
+    ],
+    "east": [
+      129,
+      6
+    ]
+  },
+  "crownNudge": {
+    "south": [
+      11,
+      14
+    ],
+    "southwest": [
+      9,
+      19
+    ],
+    "east": [
+      8,
+      14
+    ]
+  },
+  "scale": {
+    "south": 1,
+    "southwest": 1,
+    "east": 1
+  },
+  "poseFit": true,
+  "scaleByPose": {
+    "jog": {
+      "south": 1.07,
+      "southwest": 0.923,
+      "east": 0.889
+    },
+    "mine": {
+      "south": 1.116
+    },
+    "fish": {
+      "south": 1.07
+    },
+    "hit": {
+      "south": 1.233,
+      "southwest": 0.942,
+      "east": 1.022
+    },
+    "pickup": {
+      "south": 1.07
+    }
+  },
+  "poseNudge": {
+    "jog": {
+      "south": [
+        0,
+        1
+      ],
+      "southwest": [
+        0,
+        -1
+      ],
+      "east": [
+        0,
+        -2
+      ]
+    },
+    "mine": {
+      "south": [
+        0,
+        2
+      ]
+    },
+    "fish": {
+      "south": [
+        0,
+        1
+      ]
+    },
+    "hit": {
+      "south": [
+        0,
+        3
+      ],
+      "southwest": [
+        0,
+        -1
+      ],
+      "east": [
+        0,
+        0
+      ]
+    },
+    "pickup": {
+      "south": [
+        0,
+        1
+      ]
+    }
+  }
+}

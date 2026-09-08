@@ -89,6 +89,14 @@ export const EYEWEAR_CATALOG = [
      worse today because the hole is cut to the eye box rather than to the lens
      outline.  Nothing ships with it. */
   { id: 'white-glass', name: 'White Glass' },
+  /* v2.3.2367: the first ONE-LENS piece, and the first from a sheet whose
+     person was not green -- the owner repainted the mannequin cyan for
+     contrast, so the importer now finds the person's colour instead of
+     assuming it.  Ships THREE facings: no north and no northeast, because a
+     monocle is not visible from behind on either.  ASYMMETRIC, so it swaps
+     eyes when the character faces west; that is the five-direction mirroring,
+     not a bug in the art. */
+  { id: 'golden-monocle', name: 'Golden Monocle' },
 ];
 
 /** TRUE once there is something to pick.  The creator's Eyewear tab is gated
