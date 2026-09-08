@@ -96,7 +96,10 @@ const SHOT = {
    icon and is cached under that row's URL). */
 const ICON = {
   crit:   '/icons/ui/hero/crit.webp?v=2.3.1694',
-  heart:  '/icons/popups/heart.webp?v=2.3.2201',
+  /* v2.3.2337: the renderer's heart is the 256 twin now (effectsRenderer
+     POPUP_ICON_SRC); same URL here for the same warm-cache reason, and a
+     21 px <img> has no use for the 1254 original either. */
+  heart:  '/icons/popups/heart-256.webp?v=2.3.2201',
   shield: '/icons/popups/shield-defense.webp?v=2.3.2201',
 };
 

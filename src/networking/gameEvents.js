@@ -165,6 +165,20 @@ export function processGameEvent(type, payload, S, deps) {
                  also includes new piles in state_sync / zone_loot for
                  joiners, so the same id may arrive twice. */
               if (!payload || !payload.pile || !S.groundLoot) break;
+              /* v2.3.2342: ONLY YOUR OWN ZONE'S PILES.  loot_drop rides the
+                 room-wide `events` buffer (tick.js: "NOT scoped: events"),
+                 so a kill or a death pile in Ember reached every client in
+                 the room and was pushed here at its raw world coordinates --
+                 a stranger's pile drawn in Frost, and a free-for-all death
+                 pile that B walked into fired loot_pickup requests the
+                 worker can never grant (the pile is in another zone's
+                 list).  _serializePile sends `zone` precisely so the
+                 receiver can filter, and every OTHER loot entry already
+                 does (_applyZoneLootMsg drops a foreign msg.zone;
+                 _peerInZone gates player_died_to_monster).  A pile with NO
+                 zone -- an older worker that pre-dates the field -- still
+                 applies, so this is deploy-order safe in both directions. */
+              if (payload.pile.zone && payload.pile.zone !== S.currentZone) break;
               var _existing = S.groundLoot.find(function (l) { return l.lootId === payload.pile.lootId; });
               if (_existing) break;
               S.groundLoot.push(_buildServerPile(payload.pile, S.myId));

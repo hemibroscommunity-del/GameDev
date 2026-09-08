@@ -23,6 +23,9 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  brobadge: () => import('./mp-brobadge.mjs'), /* v2.3.2345: the verified-Bro badge has art in it -- Texture.from is a lookup, so the icon rides the manifest */
+  equipstale: () => import('./mp-equipstale.mjs'), /* v2.3.2341: Equip from a popup that outlived its bag must reach the worker or do nothing */
+  lootzone: () => import('./mp-lootzone.mjs'), /* v2.3.2342: a loot pile dropped in Ember does not land on Frost's ground */
   partpool: () => import('./mp-partpool.mjs'), /* v2.3.2331: the particle field is pooled sprites, not re-tessellated polygons */
   lootbob: () => import('./mp-lootbob.mjs'), /* v2.3.2329: the snowman's wreck, coin and shard bob + pulse like every other pile */
   ptorb: () => import('./mp-ptorb.mjs'), /* v2.3.2329: a Build point landing flares its row's orb, and only its row */
@@ -233,6 +236,7 @@ const SCENARIOS = {
   deathshield: () => import('./mp-deathshield.mjs'),
   wvscale: () => import('./mp-wvscale.mjs'), /* v2.3.2287: your own art shrinks on the vista, and nothing changes off it */
   tapswing: () => import('./mp-tapswing.mjs'), /* v2.3.2285: tap a monster, walk there -- does the swing ever start? */
+  deathgold: () => import('./mp-deathgold.mjs'), /* v2.3.2343: dying charges no gold, and the HUD agrees with the worker */
   deathstrip: () => import('./mp-deathstrip.mjs'), /* v2.3.2281: what is painted ON the corpse, from the screen's side rather than the display's */
   questprox: () => import('./mp-questprox.mjs'), /* v2.3.1701: the giver's dialogue opens on approach */
   questlegs: () => import('./mp-questlegs.mjs'), /* v2.3.1701: the quest greaves equip to the LEGS */

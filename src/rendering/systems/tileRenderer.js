@@ -622,6 +622,14 @@ export class TileRenderer {
         reload = !!cachedTex;
         cachedTex = null;
       }
+      /* v2.3.2344: a texture that a mid-load freeZoneMap destroyed (see
+         tiledMaps.preloadStartZoneMap) is a miss too -- unload-then-load
+         below, exactly like the GL-loss husk above, so the ground never
+         paints from a destroyed source even if the cache still holds one. */
+      if (cachedTex && cachedTex.destroyed) {
+        reload = true;
+        cachedTex = null;
+      }
       if (cachedTex && cachedTex.source) cachedTex.source.scaleMode = 'nearest';
       const sprite = new Sprite(cachedTex || Texture.EMPTY);
       sprite.x = 0;

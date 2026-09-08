@@ -86,8 +86,11 @@ export function BankPanel(props) {
         }
       }, React.createElement("span", { style: { fontSize: 13 /* v2.3.1235: batch-3 rollout — body 13, no half-sizes */, color: LS.txt2 } }, "Gold"),
       lsGold(rpgState.coins, 18)),
+      /* v2.3.2343: the worker owns coins and charges no death penalty, so
+         the "10% is lost on death" line promised a loss that never happened
+         (the client used to subtract it locally and the echo put it back). */
       React.createElement("div", { style: { fontSize: 11, color: LS.txt3, marginBottom: 12 } },
-        "Only 10% of carried gold is lost on death."),
+        "Carried gold stays with you on death."),
       React.createElement("div", { style: LS_MOD }, "Equipped"),
       React.createElement("div", {
         style: { borderRadius: 8, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }

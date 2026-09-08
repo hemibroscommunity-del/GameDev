@@ -109,7 +109,7 @@ const SKULL_RED_TINT = 0xff5e6c;
    the DOM dashboard also uses -- reuse the same `?v=` cache key so
    the browser hits the warm cache instead of issuing a fresh request. */
 const HUD_BAR_VER = '2.3.68';
-const _hudBarTex = { hp: null, mp: null, stam: null, heart: null, heartWhite: null, barFrame: null, barFull: null };
+const _hudBarTex = { hp: null, mp: null, stam: null, barFrame: null, barFull: null };
 let _hudBarLoadStarted = false;
 function _ensureHudBarTextures() {
   if (_hudBarLoadStarted) return;
@@ -117,11 +117,18 @@ function _ensureHudBarTextures() {
   Assets.load(`/icons/ui/bar-hp.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.hp = t; }).catch(() => {});
   Assets.load(`/icons/ui/bar-mp.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.mp = t; }).catch(() => {});
   Assets.load(`/icons/ui/bar-stam.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.stam = t; }).catch(() => {});
-  Assets.load(`/icons/popups/heart.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heart = t; }).catch(() => {});
-  /* v2.3.214: white-fill heart for the player HP indicator so we can
-     tint by HP tier (red asset can't be tinted to green/yellow because
-     tint multiplies). */
-  Assets.load(`/icons/popups/heart-white.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heartWhite = t; }).catch(() => {});
+  /* v2.3.2337: the two HEART loads that used to sit here are gone.
+     v2.3.107 loaded /icons/popups/heart.webp as the above-head HP glyph and
+     v2.3.214 added heart-white.webp so that glyph could be tinted by HP
+     tier; v2.3.458 replaced the heart with the HP ring, v2.3.1273 replaced
+     the ring with the owner's bar art (barFrame/barFull below), and
+     v2.3.1895's MP-bar return left the "prefer white-fill heart" binding in
+     _updatePlayerHud as a comment with no code under it.  Nothing read
+     `_hudBarTex.heart` or `.heartWhite` after that, but both files are
+     1254x1254 -- 6 MB of decoded texture EACH, resident for the whole
+     session (measured by __btTex: 12 MB in town at rest), for a sprite that
+     was never bound.  The bar-hp/mp/stam loads above and the bar art below
+     are the ones that are actually drawn. */
   /* v2.3.1273: owner's health-bar art (sheet sliced to TWO sprites —
      empty frame + full red fill; the fill is CROPPED at runtime to the
      hp fraction, the standard smooth-bar technique).  Replaces the
@@ -4719,15 +4726,41 @@ function _attachNamePill(container, nameSize, sizeMult, host) {
 }
 
 /* v2.3.1576: the verified-Bro badge texture, loaded once and shared by every
-   plate on screen.  Loaded lazily rather than through the preload manifest on
-   purpose: this is a single 64px icon, not an animation, and the
-   animation-preloading law (CLAUDE.md) is about frames that hitch mid-play.
-   Until it resolves the sprite simply stays untextured, so a slow fetch
-   delays a badge rather than stalling the loading screen. */
+   plate on screen.
+
+   ═══ v2.3.2345: THE BADGE NEVER LOADED ═══
+   The v2.3.1576 version called Texture.from(url) here, "lazily", and its
+   comment assumed that started a fetch.  It does not: in Pixi 8,
+   Texture.from(string) is Cache.get(id) -- a cache LOOKUP, never a load
+   (textureFrom.mjs).  Nothing else in the client ever loaded this URL, so
+   the lookup missed every time, the Sprite setter turned the undefined into
+   Texture.EMPTY, every badged player's plate stayed blank for the life of the
+   game, and each miss logged "[Assets] Asset id ... was not found in the
+   Cache" until Pixi's 500-warning cutoff.  npcSprites.js hit the identical
+   wall in v2.3.1672 and says so in its header.
+
+   The fix is the one CLAUDE.md's preloading law already prescribes: the icon
+   is known at load time, so preloadBroBadge() below is registered in the
+   global manifest (preloadWorldAnimations, preloadAnimations.js) and the
+   texture is warm before the intro overlay lifts.  The loader keeps the
+   Texture the load RESOLVED (as npcSprites does -- Pixi keys its cache by
+   its own resolved id, so holding the object beats guessing the key), and
+   the lookup below falls back to the cache only when that entry is present,
+   so a miss returns EMPTY quietly instead of re-flooding the console.
+   Deliberately NO first-use Assets.load here -- that is the pattern the law
+   calls a bug.  No _pillKey re-key is needed either: the plate is rebuilt
+   when `bro` first arrives on the peer, and by then the texture is cached,
+   so the first build already carries the art. */
+const BRO_BADGE_URL = '/icons/ui/verified-bro-small.webp';
 let _broBadgeTex = null;
+export function preloadBroBadge() {
+  return Assets.load(BRO_BADGE_URL).then((t) => { if (t) _broBadgeTex = t; return t; });
+}
 function _broBadgeTexture() {
-  if (!_broBadgeTex) _broBadgeTex = Texture.from('/icons/ui/verified-bro-small.webp');
-  return _broBadgeTex;
+  if (_broBadgeTex) return _broBadgeTex;
+  if (!Assets.cache.has(BRO_BADGE_URL)) return Texture.EMPTY;
+  _broBadgeTex = Texture.from(BRO_BADGE_URL) || null;
+  return _broBadgeTex || Texture.EMPTY;
 }
 
 /* ═══ v2.3.2262: IN-WORLD TEXT IS A SCREEN MEASUREMENT ═══
@@ -9010,6 +9043,23 @@ export class EntityRenderer {
          peers lose it so it doesn't hover over a prone body — the same
          rule the local player follows. */
       _updateNamePill(display, nextName, other.rpgLv || 1, !other._isDead, other.bro);
+      /* v2.3.2345: QA probe (mp-brobadge) -- did the badge sprite actually get
+         ART, not merely a `visible` flag.  Reads the texture off the sprite
+         rather than the module cache: the bug this pins was a plate that
+         "showed" a badge with nothing in it.  Armed only, null-prototype, as
+         __btPeerShield / __btPeerSword. */
+      try {
+        if (window.__btProbe) {
+          if (!window.__btPeerBadge) window.__btPeerBadge = Object.create(null);
+          const _bb = display._broBadge;
+          window.__btPeerBadge[id] = {
+            bro: !!other.bro,
+            visible: !!(_bb && _bb.visible),
+            empty: !_bb || !_bb.texture || _bb.texture === Texture.EMPTY,
+            texW: _bb && _bb.texture ? _bb.texture.width : 0,
+          };
+        }
+      } catch (e) { /* never breaks the frame */ }
 
       /* v2.3.1193: threat skull above the nameplate — same change-cache
          pattern as the party marker.  S._threatMarks is written by
@@ -12221,8 +12271,10 @@ export class EntityRenderer {
     /* Bind textures the first time they resolve. */
     if (_hudBarTex.mp    && d._hudMpSprite.texture   !== _hudBarTex.mp)    d._hudMpSprite.texture   = _hudBarTex.mp;
     if (_hudBarTex.stam  && d._hudStamSprite.texture !== _hudBarTex.stam)  d._hudStamSprite.texture = _hudBarTex.stam;
-    /* v2.3.214: prefer white-fill heart so we can tint by HP tier;
-       fall back to the red one until heart-white resolves. */
+    /* v2.3.214's "prefer white-fill heart so we can tint by HP tier" binding
+       stood here until v2.3.458 (HP ring) / v2.3.1273 (bar art) took the
+       heart off the head; v2.3.2337 dropped its two orphaned loads -- see
+       _ensureHudBarTextures. */
 
     const HOLD_MS = 2500;
     const FADE_STEP = 16.7 / 300; /* ~300 ms fade-in / fade-out */

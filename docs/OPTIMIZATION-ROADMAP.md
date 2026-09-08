@@ -231,3 +231,167 @@ Not in this list because they were checked and are healthy: no `await`
 in the tick body, per-tick allocation ~5N+40 short-lived objects with
 nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
 `_dungeonZonePlayers` ≤ 8 instances × N.
+
+---
+
+## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
+### Items 3, 6 and 9 SHIPPED (v2.3.2337-2338); the rest is the ranked backlog
+
+What this is, in plain language: the game keeps a lot of decoded artwork in
+the phone's graphics memory, and iPhone Safari kills the tab somewhere north
+of ~250 MB of it (that is the v2.3.1408 / gearSheets OOM history). We now have
+an instrument for it — `window.__btTex()` (pixiApp.js, v2.3.2272) counts
+decoded width × height × 4 bytes of everything Pixi is holding, which is the
+number that matters and is NOT the file size (a 12 KB heart icon is 6 MB
+decoded). Sampled on a 390×844 phone viewport with the v2.3.2328 harness:
+**town 423.3 MB, ember 463.8 MB**. Two attribution passes over that dump
+were re-checked against the code, file by file; what follows is what
+survived. Line numbers are "near here".
+
+Two rules govern every item, so nobody re-litigates them:
+
+- **Preloading is LAW** (CLAUDE.md). Anything a player OR A PEER can show
+  anywhere stays on the loading-screen gate. "Make it lazy" is never an
+  answer. The only residency lever is the v2.3.1405 per-zone pattern —
+  `preloadZoneAssets(zoneId)` awaited behind the zone overlay, freed on exit
+  by `freeZoneAssets` / `freeZoneMap` (v2.3.2272 added the exit half for
+  variants, v2.3.2328 for deaths). The other lever is TRAPS §51: upload a
+  smaller texture when the art is larger than what is drawn — and §51 also
+  says to MEASURE whether a halve is lossless before calling it cheap.
+- **A `Texture.from(canvas)` bake is cached under the canvas object**, not a
+  URL (Pixi 8.17 `textureFrom.mjs`), so `__btTex(true)` lists the sword/bow
+  stand-in bakes as `[object HTMLCanvasElement]` rows. Pin those by MB delta;
+  pin URL-loaded art by key name.
+
+Ranked by megabytes saved × (1 / risk), effort as tiebreak:
+
+1. **Dead sword/bow fallback strips — 26.7 MB in every zone, low risk,
+   small.** `effectsRenderer.js` loads a plain AND an armoured sheet for
+   every sword facing (`_loadSwordStrip(this._swordFrames, …)` /
+   `_swordArmorFrames`, loader loop ~:1858) and a plain sheet for every bow
+   facing (~:1974). They were the v2.3.948 / v2.3.954 fallbacks ("Falls back
+   to armorUrl/bald if bodyUrl missing"); every cfg now ships `bodyUrl`, so
+   the `else if (armorFrames…)` / `else { sp.texture = frames[fi] }`
+   branches (~:8048-8054) never run, the only live read is `frames.length`
+   (~:7907, and `S._bowArtReady` ~:8272), and peers never touch either map
+   (`_remoteBodyFramesFor` bakes from `cfg.bodyUrl`). Because south/east are
+   stored half-res and NN-upscaled to `cfg.fh` (v2.3.1112) each family is
+   5.47 + 4.15 + 2.65 = 12.27 MB, ×2 for sword, +2.16 for the bow. Fix: skip
+   `cfg.url` / `cfg.armorUrl` when `cfg.bodyUrl` is set, take `n` from the
+   body frames, leave the fallback branches as tombstones. Pin: a new
+   `mp-deadstrips` scenario asserting the town total ≥ 24 MB under 423.3, and
+   mp-peersword / mp-southsword / mp-swordcarry / mp-blockstance / mp-bowside
+   unchanged.
+2. **Town NPC walk strips + town props, held in every field zone — 25.3 MB
+   in ember (0 in town), medium risk, medium.** `npcSprites.js
+   loadNpcSprites()` is on the GLOBAL manifest under the v2.3.1672 note
+   that predicted this exactly: "If NPC art ever grows past a handful of
+   figures, move it to preloadZoneAssets and free it on exit." It has: 16
+   walk strips (v2.3.2045, 1024×256 each = 16 MB) plus the props
+   (v2.3.1775/2061; fountain alone 3.4 MB). All of it is town-only in code
+   — `S.npcs` is set only by `_spawnTownNpcs()` and nulled on every zone
+   change, every `NPC_DATA` row is `canFollow:false`, every `worldProps` row
+   is `zone:'town'`. The pattern to copy is the frost snowman block in
+   `preloadAnimations.js`: load via `loadTracked('town-scenery', url)`
+   (zoneTextures.js), call it from `preloadZoneAssets('town')` (and still
+   on the intro gate — town is the start zone), `unloadBundle` + clear the
+   `_walk`/`_propAnim` slices in `freeZoneAssets` on town→elsewhere. The
+   catch that makes it medium: town is a resident hub, so FOUR entry paths
+   skip the overlay today — the exits gate (`isZoneMapResident('town')` is
+   always true), the spoke→hub return (`_retHub`, zoneTransitions.js ~:1008),
+   death respawn (respawn.js ~:55) and the farm_home return — and each must
+   arm when `!bundleLoaded('town-scenery')`, or the first frames back in town
+   draw emoji stand-ins, which v2.3.1672 calls "the louder failure". Pin:
+   extend mp-texdrift with `__btBundles()` (no `town-scenery` in ember; back
+   in town `hasNpcWalk('lil_bro')` true on the first frame) and repeat after
+   a death via the mp-deathtex path.
+3. ~~**HUD-bar heart copies nobody reads — 12.0 MB in every zone**~~
+   **SHIPPED, v2.3.2337** (with item 9, as one change). `entityRenderer.js _ensureHudBarTextures()`
+   loads `/icons/popups/heart.webp?v=2.3.68` and `heart-white.webp?v=2.3.68`
+   (v2.3.107 / v2.3.214 "white-fill heart for the player HP indicator so we
+   can tint by HP tier"). Both are 1254×1254 = 6 MB decoded, and
+   `_hudBarTex.heart` / `.heartWhite` are written there and read NOWHERE —
+   the indicator they fed became the owner's bar art (v2.3.1273
+   `barFrame`/`barFull`) and v2.3.1895 keeps the legacy pill off. The
+   `?v=2.3.68` key also makes heart.webp decode a second time beside the
+   damage-popup copy (`?v=2.3.2201`) — the v2.3.107 "reuse the same ?v="
+   comment is true of the HTTP cache and false of the texture cache. Delete
+   the two loads and two fields; no free-on-exit hook, nothing to scope. Pin:
+   `mp-hudheart` — `__btTex(true)` in town lists no `heart-white` key and
+   exactly one `heart.webp` key (`?v=2.3.2201`), summed ≤ 6.1 MB (was 18.0);
+   mp-hpbar / mp-resbars unchanged. Expected: town 423.3 → ~411, ember 463.8
+   → ~452.
+4. **Sword1 / Bamboo held-weapon art at 1254×1254 — 11.5 MB, low risk,
+   small.** Drawn at ≤ 48 world px (`fitScale = targetH / th`,
+   entityRenderer ~:10527); `greatsword-south.webp` at 97×200 proves the
+   slot's size. 256×256 twins + SPRITE_VERSION bump in `weaponSprites.js`.
+   The one dependency: `public/sprites/weapons/handles.json` stores the grips
+   in 1254-space (`sword: [75,1180]`, `sword:wood: [75,1030]`) and both anchor
+   sites divide by the live texture size — rewrite those two rows into the
+   twin's space or the blade floats. Pin: mp-previewweapon / mp-swordcarry /
+   mp-blockweapon unchanged.
+5. **Jog legs baked at 256 from 128-on-disk sheets — 22.7 MB locally, plus
+   the same again per distinct peer skin, medium risk, medium.** Every
+   `jog-<dir>-legs.webp` is 128 tall, loaded with `{fw:256, fh:256}`
+   (effectsRenderer ~:1988, and the two remote sites ~:7534/:7692), so
+   `recolorBodyToCanvas` NN-doubles it (v2.3.1108) — an exact pixel-double,
+   lossless to undo, but `_placeJogLegs` and `jogWaist.js` are 256-space and
+   the v2.3.1453 comment says out loud that the bare legs are the one path
+   that "never shrank". Size-derived factor per TRAPS §51/§15, proven with
+   `tools/qa/bake-identity.mjs`, then mp-questlegs / mp-jogsides / mp-peersword.
+6. ~~**Node stills at 1254×1254 (fish-spot, ore-vein, tree-pine) — ~11 MB**~~
+   **SHIPPED, v2.3.2338.** Drawn by `NODE_SPRITE_HEIGHT_BASE` (~:905) at 264-396
+   device px for tier-1 fish/ore, so 627 twins are lossless through tier ~7;
+   the tree reaches ~975 device px at tier 10, so take a 940 twin (6 → 3.4
+   MB) rather than half. Per-zone is NOT the lever — nodes never spawn in
+   town but appear in every field zone.
+7. **Chop gear layers at 2× (5760×440 ×3) — 21.75 MB, medium risk (a look
+   change), medium.** The largest sprite keys in the dump. v2.3.1131: "the
+   layer strips are 2x (480x440), so they render at half the body's scale
+   factor" — drawn at 0.47-0.71 device px per texel over a 1× body. BOTH
+   finders called a halve lossless; measured, it is not: chest 0.05% and
+   greaves 0.11% of aligned 2×2 blocks are constant, i.e. real 2× renders.
+   What bounds it is that the halved plate draws at the SAME density as the
+   lumberjack it sits on. Owner sign-off on a side-by-side BEFORE merge (the
+   v2.3.1236 "soft" rejection is the precedent); then 2880×220 twins,
+   GEARLAYER_VER bump, the three literal 480s → 240 and `sL` derived from
+   `t.height`.
+8. **Sword south/east live layers NN-upscaled 4× — 21.7 MB after item 1,
+   HIGH risk, large.** Body/torso/weapon are restored to 320/246 from
+   half-res on disk; feetY, `cfg.fw`, crowns.json and the NATIVE-1× swing
+   gear strips all share one transform, which is the §51 `_placeBand` trap.
+   Only as §51's two PRs: normalise the placers to `cfg.fh / tex.height`
+   (byte-identical, bake-identity), THEN `bakeDisplayCanvas(cv, cfg.fh/2)`.
+   Listed so nobody "just removes the upscale".
+9. ~~**Popup heart at 1254×1254 — 5.75 MB**~~ **SHIPPED, v2.3.2337.** Paired with item 3: a
+   256 twin via `POPUP_ICON_SRC.heart` (the v2.3.2211 override map). Drawn at
+   ≤ 44 world px.
+
+Checked and found LAW-REQUIRED (or already correct), so they are not items:
+fire-goblin (30.5 MB in ember, 0 in town) is per-zone already and freed by
+v2.3.2272/2328 — its exit half is the control that proves the instrument;
+the ember map likewise. The skills strips (chop/cook/fire + legless twins,
+24 MB) are drawn at 0.54-1.17 of native and peers use them at any node. The
+jog bodies/heads, fullset figures, headwear/hair/capes (v2.3.2023 "a cape is
+worn everywhere"), the fx strips, arrow-blast (v2.3.2279 "a bow goes
+everywhere its owner does"), tool gestures, slime, shard/UI icons, and the
+bow's own four layers (native 642×241, drawn ~1×) are global by law and
+right-sized. `sword-north` is native 3060×227 drawn ~1× — leave it. The
+gear swing/fire/cook sheets are 1× with their bodies; their waste is
+PADDING (7-17% opaque), a crop-with-offset renderer change, not a file swap.
+**The town map (11.3 MB, the single largest texture in the ember steady
+state) and worldview (4 MB) are hub-resident by owner directive**
+(CLAUDE.md ZONE-ASSET EXCEPTION, v2.3.1405 "cheap to hold" — written when
+town was ~4 MB). Mechanically it is one early-return in `freeZoneMap`
+(tiledMaps.js ~:256) and the existing `!isZoneMapResident` gate would arm a
+brief overlay on every return to town; that visible cost is the owner's
+call, not a bug fix, and is recorded here so the question is asked once.
+
+What shipped here, and what is next. Items 3 + 9 (the three heart decodes,
+one 256 twin) and item 6 (the node twins) landed in this PR. Re-measured on
+the integrated branch, not composed from the two separate runs: **town 423.3
+→ 394.2 MB, ember 463.8 → 434.7 MB — −29.1 MB in every zone**, for no
+visible change (mp-dmgicon 16/16 and mp-pine 7/7 unchanged). Next, in order: item 1 (dead stand-in strips, the largest low-risk
+one left), then item 4's re-export. Items 2, 5 and 7 each want their own PR
+with the named scenario extended BEFORE the change lands; 7 wants the
+owner's eyes on a side-by-side first; 8 waits for 1.

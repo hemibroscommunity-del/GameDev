@@ -236,6 +236,22 @@ export async function preloadStartZoneMap(zoneId = 'town') {
   const { Assets } = await import('pixi.js');
   try { Assets.setPreferences({ preferCreateImageBitmap: false }); } catch (e) { /* older pixi */ }
   return Assets.load(url).then((tex) => {
+    /* v2.3.2344: a freeZoneMap that lands while THIS load is still in flight
+       does not miss it -- Pixi's Loader.unload awaits the pending load and
+       destroys the texture it resolves with, and then this continuation ran
+       anyway: the zone went into the resident set (so the gate never re-armed)
+       and Assets.load had already Cache.set the destroyed texture (so every
+       later entry drew a husk).  Reachable from the farm (its warm-up is kicked
+       un-awaited and the return tile frees it within the download window) and
+       from any spoke entered under the gate's 15s cap.  Reproduced against the
+       real Loader in tools/qa/qa-mapfree-race.mjs.  A destroyed texture is a
+       MISS: drop the cache entry the free could not (its Cache.remove ran
+       before the load landed) and resolve undefined, so the next entry arms
+       the overlay and fetches a live one. */
+    if (!tex || tex.destroyed) {
+      try { if (Assets.cache.has(url)) Assets.cache.remove(url); } catch (e) { /* already gone */ }
+      return undefined;
+    }
     _residentZoneMaps.add(zoneId); /* v2.3.1405: mirror the async cache for the sync gate */
     return tex;
   }).catch((e) => {

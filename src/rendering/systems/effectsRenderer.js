@@ -357,7 +357,16 @@ const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit
    Reusing the Hero screen's own crit icon rather than copying it to a second
    path -- one asset, one meaning, and no chance of the two drifting apart
    the next time either is redrawn. */
-const POPUP_ICON_SRC = { crit: '/icons/ui/hero/crit.webp' };
+/* v2.3.2337: 'heart' loads a 256x256 TWIN of heart.webp.  The original is
+   1254x1254 -- 6 MB decoded, resident all session -- for a mark drawn at
+   21 px (44 on a crit) in the world layer, i.e. never more than ~110 device
+   px tall; every sibling in this table is 164-189 px and the crit mark is
+   256, so 256 is the size the table was designed for, and the twin still
+   holds 2.3x the largest height it is ever drawn at.  The ORIGINAL stays
+   in place because StatDemo's DOM <img> (which shares this URL so the
+   browser cache is warm) and combatHelpers' BUILD_ICONS name it; a twin
+   under its own name changes only the two readers that were measured. */
+const POPUP_ICON_SRC = { crit: '/icons/ui/hero/crit.webp', heart: '/icons/popups/heart-256.webp' };
 /* v2.3.1403 (owner: "the damage bow icon did not work" while damage
    numbers still showed): the icon load was one-shot — a single flaked
    fetch (common right after a deploy) left that icon undefined for the
@@ -892,10 +901,32 @@ function drawFingerStreak(gfx, x, y, angle, length, width, alpha) {
   gfx.stroke({ color: 0xffffff, width, alpha });
 }
 
+/* v2.3.2338: the three still node sprites were shipped at 1254x1254 -- 6 MB
+   of decoded RGBA EACH, 18 MB resident in every zone including town (they
+   are global, not per-zone) -- and drawn at a fraction of it: the placer
+   below normalises by texture height (baseScale = targetH / tex.height), so
+   a tier-1 tree is 168 world px and a tier-1 pond 132, i.e. ~415 / ~325
+   device px on a dpr-3 phone in a combat zone (world scale 0.824 on a
+   390x844 canvas, worldViewport.js).  The 1254 frame was 3x oversampled
+   for what is on screen and, with no mipmaps on these sources, bilinear
+   minification of a 3x-oversampled texture is what sparkles.
+   Build-time twins (sharp, lanczos3, WebP q90 / alphaQuality 100; the
+   1254 originals stay in place, untouched):
+     fish-spot-627 / ore-vein-627 -- the tier formula tops out at tierStep
+       10 (x2.35, 310 world px, ~767 device px): 1.22x magnification at the
+       very top, lossless through tier ~7, and every LIVE node is tier 1
+       (server gathering.js pins tierLvl = 1), so today they are 0.52x.
+     tree-pine-940 -- a tier-10 tree is 395 world px, ~976 device px at max
+       zoom; a 627 twin would magnify 1.56x there, 940 magnifies 1.04x.
+   Sizes: 6+6+6 MB -> 1.5+1.5+3.4 MB, ~12.5 MB freed everywhere.
+   Nothing reads texture pixels for placement or hit-tests: the anchors are
+   fractional, nodeWorldBox (BroTown) reads sprite.width/height (already
+   scale-normalised), and the ore-break strip is its own 256-tall sheet.
+   TRAPS §15 audit: `grep -n NODE_SPRITE_TEX` -- one placer, one consumer. */
 const NODE_SPRITE_SOURCES = {
-  tree:     '/sprites/trees/tree-pine.webp',
-  fishSpot: '/sprites/world/fish-spot.webp',
-  oreVein:  '/sprites/world/ore-vein.webp',
+  tree:     '/sprites/trees/tree-pine-940.webp',
+  fishSpot: '/sprites/world/fish-spot-627.webp',
+  oreVein:  '/sprites/world/ore-vein-627.webp',
 };
 const NODE_SPRITE_TEX = {};
 /* Target render heights in world px at tierStep 1, scaled up with tier.

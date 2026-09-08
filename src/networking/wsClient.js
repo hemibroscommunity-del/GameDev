@@ -24,7 +24,7 @@ import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking
 import { peerCosmeticsFromWire, peerPassthroughFromWire, applyPeerCosmetics } from '@/networking/peerCosmetics.js';
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -1856,19 +1856,15 @@ export function setupWebSocket(ctx) {
               if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
               S.rpg._compStats.deaths++;
               S._deathStart = Date.now();
-              /* Gold penalty mirrors the legacy local-death path
-                 (worker doesn't apply this yet; client is still the
-                 source for R.coins this slice will not change). */
-              var _goldLost3 = Math.floor((S.rpg.coins || 0) * DEATH_GOLD_PENALTY);
-              if (_goldLost3 > 0 && S.channel) {
-                /* Client still mutates R.coins for the gold-loss popup;
-                   server tracks coins via the loot path, so its view
-                   will drift on death until coins-on-death migrates.
-                   Note: the player_state on respawn does NOT re-apply
-                   this penalty, so the cheat surface here is the same
-                   as it was before this slice. */
-                S.rpg.coins = Math.max(0, S.rpg.coins - _goldLost3);
-              }
+              /* v2.3.2343: NO local gold penalty.  The worker owns coins
+                 (_handlePlayerDeath never touches ps.coins -- there is no
+                 death penalty server-side today), and under protocol v2 an
+                 UNCHANGED field is never re-sent, so the 10% this handler
+                 used to subtract here was never corrected by the echo: the
+                 HUD under-reported gold until the next coin change, when the
+                 "lost" gold silently came back.  The echo is the truth; the
+                 '-NG' popup went with the mutation.  Making the penalty REAL
+                 is a server change in _handlePlayerDeath, not a client one. */
               /* Death particles + audio + popup. */
               for (var _dp3 = 0; _dp3 < 25; _dp3++) {
                 var _dpA3 = _dp3 / 25 * Math.PI * 2;
@@ -1881,7 +1877,6 @@ export function setupWebSocket(ctx) {
               }
               S.screenShake = 10;
               pushDmgPopup(S, S.player.x, S.player.y - 40, 'YOU DIED', '#ff5e6c');
-              if (_goldLost3 > 0) pushDmgPopup(S, S.player.x, S.player.y - 55, '-' + _goldLost3 + 'G', '#fbbf24');
               BT_AUDIO.deathBoom();
               /* Tell the room we died so remote clients render a dead
                  pose at our last position.  Server already knows. */
@@ -2409,6 +2404,11 @@ export function setupWebSocket(ctx) {
         var isDeath = !!p.isDeathDrop;
         return {
           lootId: p.lootId,
+          /* v2.3.2342: carry the worker's zone (null from an older worker
+             that does not send it) so the ground-loot loop can tell a
+             straggler from a pile that belongs here -- the loot_drop
+             handler (gameEvents.js) now filters on it before the push. */
+          zone: p.zone || null,
           x: isFinite(p.x) ? p.x : 0, y: isFinite(p.y) ? p.y : 0,
           coins: Math.round((p.coins || 0) * myShare),
           xp: 0,
