@@ -265,8 +265,19 @@ Two rules govern every item, so nobody re-litigates them:
 
 Ranked by megabytes saved × (1 / risk), effort as tiebreak:
 
-1. **Dead sword/bow fallback strips — 26.7 MB in every zone, low risk,
-   small.** `effectsRenderer.js` loads a plain AND an armoured sheet for
+1. ~~**Dead sword/bow fallback strips — 26.7 MB in every zone**~~
+   **SHIPPED, v2.3.2353** (measured: town 394.2 → 367.5 MB, ember 434.7 →
+   408.0 — exactly the 26.7 predicted).  What it took, for the next one of
+   these: the loader skips `url`/`armorUrl` when `bodyUrl` is set (the
+   fallback still loads for a cfg that ever ships without one), and the two
+   places that read the plain map for a FRAME COUNT — the sword draw path and
+   the bow's `S._bowArtReady` — now count the strip that is actually drawn.
+   That second half is the one that would have broken something: reading a
+   sheet that is no longer loaded would have left `_bowArtReady` false
+   forever, and entityRenderer would have hidden the real body for a block
+   pose the bow renderer never drew.  mp-southsword 7/7, mp-peersword 12/12,
+   mp-bowside 14/14, mp-swordcarry 44/44, mp-standinskin 19/19,
+   mp-arrowshot 10/10 unchanged.  ORIGINAL FINDING: `effectsRenderer.js` loads a plain AND an armoured sheet for
    every sword facing (`_loadSwordStrip(this._swordFrames, …)` /
    `_swordArmorFrames`, loader loop ~:1858) and a plain sheet for every bow
    facing (~:1974). They were the v2.3.948 / v2.3.954 fallbacks ("Falls back
@@ -391,7 +402,9 @@ What shipped here, and what is next. Items 3 + 9 (the three heart decodes,
 one 256 twin) and item 6 (the node twins) landed in this PR. Re-measured on
 the integrated branch, not composed from the two separate runs: **town 423.3
 → 394.2 MB, ember 463.8 → 434.7 MB — −29.1 MB in every zone**, for no
-visible change (mp-dmgicon 16/16 and mp-pine 7/7 unchanged). Next, in order: item 1 (dead stand-in strips, the largest low-risk
+visible change (mp-dmgicon 16/16 and mp-pine 7/7 unchanged).  Item 1 landed
+next, in the commit after: **town 367.5 MB, ember 408.0 MB — 55.8 MB below
+where this measurement started**, still with nothing looking different. Next, in order: item 1 (dead stand-in strips, the largest low-risk
 one left), then item 4's re-export. Items 2, 5 and 7 each want their own PR
 with the named scenario extended BEFORE the change lands; 7 wants the
 owner's eyes on a side-by-side first; 8 waits for 1.

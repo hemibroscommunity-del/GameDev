@@ -1898,8 +1898,24 @@ export class EffectsRenderer {
     onSkinChange(this._rebakeBodies); onPantsChange(this._rebakeBodies); onShoesChange(this._rebakeBodies);
     for (const dir of Object.keys(this._swordCfg)) {
       const cfg = this._swordCfg[dir];
-      _loadSwordStrip(this._swordFrames, dir, cfg.url, cfg);
-      if (cfg.armorUrl)  _loadSwordStrip(this._swordArmorFrames, dir, cfg.armorUrl, cfg);
+      /* ═══ v2.3.2353: THE FALLBACKS ARE NOT LOADED WHEN NOTHING CAN REACH THEM ═══
+         `url` (the bald stand-in) and `armorUrl` (the pre-layer armoured one)
+         are the v2.3.948 / v2.3.954 fallbacks -- "Falls back to armorUrl/bald
+         if bodyUrl missing".  Every shipped facing has had `bodyUrl` for a
+         long time, so the draw path takes the layered branch every frame and
+         the two `else` arms below it are unreachable; the only live read of
+         the plain map was its frame COUNT, which now comes from the body
+         strip it is counting anyway.  They were not free to keep: south and
+         east are stored half-res and nearest-upscaled to cfg.fh in the loader
+         (v2.3.1112), so each family decoded to 12.27 MB of RGBA that no
+         player has ever seen -- 24.5 MB resident in every zone, on the
+         platform whose texture budget the whole P7 list is about.
+         Loaded still if a cfg ever ships WITHOUT bodyUrl, which is exactly
+         what the fallback was written for. */
+      if (!cfg.bodyUrl) {
+        _loadSwordStrip(this._swordFrames, dir, cfg.url, cfg);
+        if (cfg.armorUrl) _loadSwordStrip(this._swordArmorFrames, dir, cfg.armorUrl, cfg);
+      }
       if (cfg.weaponUrl) _loadSwordStrip(this._swordWeaponFrames, dir, cfg.weaponUrl, cfg);
       if (cfg.bodyUrl)   _loadRecoloredBody(this._swordBodyFrames, dir, cfg.bodyUrl, cfg, SWORD_ART_VERSION);
       if (cfg.torsoUrl)  _loadRecoloredBody(this._swordTorsoFrames, dir, cfg.torsoUrl, cfg, SWORD_ART_VERSION);
@@ -2012,8 +2028,14 @@ export class EffectsRenderer {
     };
     for (const dir of Object.keys(this._bowCfg)) {
       const cfg = this._bowCfg[dir];
-      _loadBowStrip(this._bowFrames, dir, cfg.url, cfg);
-      if (cfg.armorUrl)  _loadBowStrip(this._bowArmorFrames, dir, cfg.armorUrl, cfg);
+      /* v2.3.2353: the bow twin of the sword gate above.  Every bow facing
+         ships bodyUrl too, and no bow cfg has ever had an armorUrl -- the
+         armour map below has always been empty, and its branch in the draw
+         path dead with it. */
+      if (!cfg.bodyUrl) {
+        _loadBowStrip(this._bowFrames, dir, cfg.url, cfg);
+        if (cfg.armorUrl) _loadBowStrip(this._bowArmorFrames, dir, cfg.armorUrl, cfg);
+      }
       if (cfg.weaponUrl) _loadBowStrip(this._bowWeaponFrames, dir, cfg.weaponUrl, cfg);
       if (cfg.bodyUrl)   _loadRecoloredBody(this._bowBodyFrames, dir, cfg.bodyUrl, cfg, BOW_ART_VERSION);
       if (cfg.torsoUrl)  _loadRecoloredBody(this._bowTorsoFrames, dir, cfg.torsoUrl, cfg, BOW_ART_VERSION);
@@ -7945,7 +7967,14 @@ export class EffectsRenderer {
     if (!fmap) return;
     const cfg = this._swordCfg[fmap[0]];
     const mirror = fmap[1];
-    const frames = cfg && this._swordFrames[fmap[0]];
+    /* v2.3.2353: count the strip that is DRAWN.  This used to read the plain
+       stand-in, which is no longer loaded when a body strip exists (see the
+       loader) -- and counting it was always the odd choice, since the body
+       strip is what every frame after the first branch actually samples.
+       Both are cut from the same art at the same frame width, so the count is
+       the same number; this just stops it coming from a sheet nobody draws. */
+    const _swBody = this._swordBodyFrames[fmap[0]];
+    const frames = cfg && ((_swBody && _swBody.length) ? _swBody : this._swordFrames[fmap[0]]);
     if (!cfg || !frames || !frames.length) return;
     const n = frames.length;
     const elapsed = now - (S.swingTimer || now);
@@ -8309,8 +8338,13 @@ export class EffectsRenderer {
        it also goes false if a zone change ever evicts the sheets. */
     if (S) {
       const _rf = this._bowFacing[S._bowDir || 'east'];
+      /* v2.3.2353: ready when the strip that is DRAWN is in -- the body one.
+         Reading the plain stand-in here would report "not ready" forever now
+         that it is not loaded, and entityRenderer would never hand the body
+         over to this renderer: the block pose would leave the player
+         invisible, which is the exact failure v2.3.1800 wrote this for. */
       S._bowArtReady = !!(this.bowSprite && _rf && this._bowCfg[_rf[0]]
-        && (this._bowFrames[_rf[0]] || []).length);
+        && ((this._bowBodyFrames[_rf[0]] || this._bowFrames[_rf[0]] || []).length));
     }
     if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
     if (this._selfCorpse) return;   /* v2.3.2281 */
@@ -8318,7 +8352,9 @@ export class EffectsRenderer {
     if (!fmap) return;
     const cfg = this._bowCfg[fmap[0]];
     const mirror = fmap[1];
-    const frames = cfg && this._bowFrames[fmap[0]];
+    /* v2.3.2353: the drawn strip is the counted strip -- see the sword. */
+    const _bwBody = this._bowBodyFrames[fmap[0]];
+    const frames = cfg && ((_bwBody && _bwBody.length) ? _bwBody : this._bowFrames[fmap[0]]);
     if (!cfg || !frames || !frames.length) return;
     const n = frames.length;
     const elapsed = now - (S._bowShotAt || now);
