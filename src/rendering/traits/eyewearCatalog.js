@@ -61,6 +61,14 @@ export const EYEWEAR_CATALOG = [
      precedent, v2.3.1530).  Measured at import: the lenses cover 100% / 100% /
      96% of the eye the game paints on south / southwest / east. */
   { id: '3d-glasses', name: '3D Glasses' },
+  /* v2.3.2363: the second pair, and the first that is SEE-THROUGH.  Its meta
+     carries `alpha: 0.5`, which the two placement paths and the portrait apply,
+     so the character's own eyes -- painted into the body sheets, and recoloured
+     by the Eyes tab -- show through the pane instead of being hidden behind it.
+     The generator had drawn eyes INTO the lens as well; those are flattened out
+     at import (--flatten-lens), because a semi-transparent piece must not carry
+     a painted-on eye in front of the real one. */
+  { id: 'goggles', name: 'Goggles' },
 ];
 
 /** TRUE once there is something to pick.  The creator's Eyewear tab is gated

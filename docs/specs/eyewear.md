@@ -1,4 +1,4 @@
-# Eyewear (v2.3.2361; the first pair, v2.3.2362)
+# Eyewear (v2.3.2361; art from v2.3.2362)
 
 Owner: *"I want to start adding eyewear options to my Hemi bros (see the first
 image of the 3d glasses). I previously had this mannequin view ... Is this
@@ -66,6 +66,14 @@ five cells.
 
 **No recolour.** A pair is the colour it was drawn. The tab has no colour row.
 
+**It may be see-through.** `alpha` in a pair's `meta.json` (set at import with
+`--alpha`) renders it at that opacity, so the character's own eyes — painted
+into the body sheets, and recoloured by the Eyes tab — show through a tinted
+pane. The Goggles ship at `0.5`. It is applied by the renderer rather than
+baked into the art, in all three places a trait is drawn (both placement paths
+and the portrait compositor), which keeps the picker thumbnail readable and
+lets the level be re-tuned without re-importing.
+
 ---
 
 ## 2. The art pipeline, in order
@@ -102,6 +110,13 @@ with the lenses over the eyes, in the same pixel style as the head. Draw only
 the glasses in colour; do not draw eyes, skin or hair.
 ```
 
+**Expect the eyes to be drawn anyway.** The goggles sheet came back with the
+character's eyes painted into the lens despite that last sentence, which for a
+see-through pane means a fake eye sitting in front of the real one.
+`--flatten-lens` repaints the piece over the eye boxes to that region's own
+median tint, which removes it; section 3 says why it is targeted at the eye
+boxes rather than at the colours.
+
 For an eye patch or an eye mask, replace the "from the back draw nothing"
 sentence with "from the back draw the strap around the head".
 
@@ -124,6 +139,14 @@ direction.
 
 ```
 python3 tools/import_headwear_green.py --art sheet.png --category eyewear --id 3d-glasses --name "3D Glasses" --omit north
+```
+
+Add `--flatten-lens` when the generator has drawn the eyes through the lens,
+and `--alpha 0.5` for a pane you should see through. The Goggles used both:
+
+```
+python3 tools/import_headwear_green.py --art sheet.png --category eyewear \
+  --id goggles --name "Goggles" --omit north --flatten-lens --alpha 0.5
 ```
 
 Writes `public/sprites/traits/eyewear/3d-glasses/{south,southwest,east,northeast}.png`,
@@ -212,7 +235,9 @@ for a hat.
 
 ---
 
-## 3. The person's own outline (v2.3.2362)
+## 3. Two things the generator does anyway (v2.3.2362-2363)
+
+### The person's own outline
 
 The keying rule is "the piece is everything that is neither the magenta
 backdrop nor the green person". A black outline round the person is neither,
@@ -241,6 +266,26 @@ this from re-cutting the 39 hats and 8 hairstyles already imported.
 The case this trims is a piece drawn *entirely* in near-black at the very edge
 of the silhouette: its blobs survive on thickness, its outermost edge does not.
 No such piece has come through yet, and the numbers will say so if one does.
+
+### The eyes, painted into the lens
+
+The goggles sheet came back with the character's eyes drawn *through* the
+tinted pane — two pale blocks inside the lens — which the prompt's "do not draw
+eyes" did not prevent. On an opaque lens that would merely be extra detail; on
+a pane rendered at `alpha 0.5` it is a painted-on eye sitting in front of the
+real one.
+
+`--flatten-lens` repaints the piece where it covers the eyes to one flat tint.
+It is targeted at the **eye boxes**, not at the colours, and that is the whole
+design decision: once the generator has resampled the sheet, the pale blocks
+are neither a separable colour cluster nor an enclosed island. Measured on this
+sheet, one 50×22 piece held **132 colour clusters**, and a 2-means split
+separated antialiasing from everything else rather than pane from rim. What is
+known exactly is where the game paints the eyes, and the piece covers them by
+construction — the coverage check says 100%. So the region to flatten is the
+eye boxes, padded, and the tint is that region's own median, because the
+drawn-on eye is a minority of it. Near-black is left alone, so the piece's own
+outline survives.
 
 ---
 

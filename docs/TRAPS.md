@@ -2316,3 +2316,37 @@ has no such bias: 100% / 100% / 96% on the shipped pair.
 
 **Related:** §55 (the same import, the axis it is calibrated on), §21 (an
 instrument that measures the wrong quantity reports green).
+
+## 57. Separating drawn detail by colour after a generator has resampled (v2.3.2363)
+
+**Tempting:** the goggles came back with the character's eyes painted *through*
+the tinted lens, and they are visibly a different shade from the pane around
+them — so separate them by colour. Cluster the piece's palette, find the pale
+blocks, repaint them with the surrounding tint. Every step of that is a
+one-liner with `scipy.ndimage`. **Wrong:** the generator does not return your
+sheet, it returns a *resampled* one, and resampling turns every flat block into
+a gradient. Measured on one 50x22 imported piece: **132 distinct colour
+clusters** at a 10-unit tolerance. Three separate rules were tried and all
+three failed on it — an enclosed-island test (the blur breaks the "surrounded
+by one colour" purity check), the same test run in sheet space before the
+downscale (151 clusters there), and a 2-means split (which separates
+antialiasing from everything else, not pane from rim).
+
+**The fix was to stop asking the picture and use what the game already knows.**
+The eye positions are not a guess: `src/rendering/eyeMask.json` is a reviewed
+mask, and the coverage check already proves the piece sits over them. So
+`--flatten-lens` repaints the piece *within the padded eye boxes* to that
+region's own median colour — the drawn-on eye is a minority of the region, so
+the median is the pane tint. Near-black is excluded, so the piece's own outline
+survives. One region, one statistic, no clustering.
+
+**The general lesson:** when a generated asset has to be edited
+programmatically, prefer a rule anchored to **data the repo owns** over one
+that re-derives structure from the returned pixels. The pixels have been
+through a resampler; the eye mask has not.
+
+**Receipt:** v2.3.2363 — `flatten_lens()` in `tools/import_headwear_green.py`,
+and the Goggles' `meta.json` records what it repainted per facing.
+
+**Related:** §56 (the same sheet's other surprise), §17 (sharpening art that is
+about to be minified).

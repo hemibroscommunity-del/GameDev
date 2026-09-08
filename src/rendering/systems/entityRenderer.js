@@ -1173,6 +1173,13 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
      refit.  Defaults to 1, so every other trait is untouched. */
   headwear.scale.x = m * absBodyScale * dscale * norm * ((tune && tune.mulX) || 1);
   headwear.scale.y = absBodyScale * dscale * norm;
+  /* v2.3.2363: `alpha` in the trait's meta -- a tinted pane you see the real
+     eyes through (the goggles).  Written every frame rather than once, because
+     these sprites are REUSED across selections: swapping goggles for an opaque
+     pair must put the opacity back, and `|| 1` is what does that for the other
+     three trait categories, none of which sets it.  It multiplies with the
+     container fades (death, respawn) rather than fighting them. */
+  headwear.alpha = (meta.alpha != null) ? meta.alpha : 1;
   headwear.visible = true;
 }
 
@@ -3500,6 +3507,13 @@ function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal, l
      the quarter-second of every swing, chop and cook. */
   sprite.scale.x = m * scaleVal * dscale * norm * (mulX || 1);
   sprite.scale.y = scaleVal * dscale * norm;
+  /* v2.3.2363: the SECOND placement path gets the meta's alpha too.  TRAPS #15
+     is the receipt for what happens when a trait property lands in only one of
+     these two -- the attack stand-ins composite through here, so without this
+     the goggles would snap to fully opaque for the quarter-second of every
+     swing, shot, chop and cook.  A hair-clip MASK also comes through this
+     function carrying its HAT's meta; no hat sets alpha, so masks stay at 1. */
+  sprite.alpha = (meta.alpha != null) ? meta.alpha : 1;
   sprite.visible = true;
 }
 

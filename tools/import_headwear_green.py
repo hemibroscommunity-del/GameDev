@@ -178,6 +178,7 @@ OUTLINE_REACH = 14   # how far the piece may grow back from a seed, along the in
 OUTLINE_EDGE = 5     # within this of BOTH keys, near-black is the silhouette edge
 OUTLINE_PERIM = 0.25 # strip only when near-black traces this much of the perimeter
 OUTLINE_SPECK = 0.03 # after stripping, drop piece parts under this share of the biggest
+LENS_PAD = 4         # v2.3.2363: 256-space px the eye box grows by before the lens is flattened
 DARK = 90            # per-channel ceiling for "near-black"
 # v2.3.2361: categories worn ON THE FACE, placed by the head rather than the
 # shoulders (see the EYEWEAR section of the header).  A future facial-hair
@@ -384,6 +385,46 @@ def despeckle(piece):
     return np.isin(lab, 1 + np.nonzero(sizes >= OUTLINE_SPECK * sizes.max())[0])
 
 
+def flatten_lens(frame, d, crown, anchor, nudge):
+    """Repaint the piece where it covers the EYES, to one flat tint (v2.3.2363).
+
+    Owner, on the first goggles sheet: "These are goggles but kept their old eye
+    effect in the glasses. These should be removed."  The generator drew the
+    character's eyes showing THROUGH the tinted pane -- two pale blocks inside
+    the lens -- and a piece that renders semi-transparent (see `alpha`) must not
+    carry a painted-on eye as well as the real one behind it.
+
+    Why this is targeted at the eye boxes rather than at the colours: the pale
+    blocks are neither a separable cluster nor an enclosed island once the
+    generator's resampling has blurred every edge (measured on this sheet: 132
+    colour clusters in one 50x22 piece, and a 2-means split that separates
+    antialiasing from everything else rather than pane from rim).  What IS known
+    exactly is where the game paints the eyes, and the piece is over them by
+    construction -- the coverage check above says 100%.  So the region to flatten
+    is the eye boxes, padded, and the tint to flatten it to is that region's own
+    MEDIAN, which is the pane: the drawn-on eye is a minority of it.
+
+    Near-black is left alone, so the piece's own outline survives.
+    """
+    boxes = eye_boxes(d)
+    if not boxes:
+        return 0, None
+    dx, dy = crown[0] + nudge[0] - anchor[0], crown[1] + nudge[1] - anchor[1]
+    region = np.zeros(frame.shape[:2], bool)
+    for (x0, x1, y0, y1) in boxes:
+        region[max(0, y0 - dy - LENS_PAD):y1 - dy + LENS_PAD,
+               max(0, x0 - dx - LENS_PAD):x1 - dx + LENS_PAD] = True
+    rgb = frame[:, :, :3].astype(int)
+    sel = region & (frame[:, :, 3] > ALPHA_T) & ~((rgb[:, :, 0] < DARK)
+                                                  & (rgb[:, :, 1] < DARK) & (rgb[:, :, 2] < DARK))
+    if sel.sum() < 8:
+        return 0, None
+    tint = np.median(rgb[sel], axis=0).round().astype(np.uint8)
+    changed = int((np.abs(rgb[sel] - tint).max(axis=1) > 3).sum())
+    frame[sel, 0], frame[sel, 1], frame[sel, 2] = tint
+    return changed, tuple(int(v) for v in tint)
+
+
 def hat_of(ink, sl, top=None):
     """The hat belonging to one figure: ink near this cell that reaches down
     toward the head.  That last test is what drops the sheet's own title and
@@ -484,6 +525,12 @@ def main():
     # which folder they land in and the category recorded in meta -- and hair is
     # the thing that gets CLIPPED by a hat, so it never sets clipsHair.
     ap.add_argument('--category', default='headwear', choices=['headwear', 'hair', 'eyewear'])   # v2.3.2361: + eyewear
+    ap.add_argument('--flatten-lens', action='store_true',
+                    help='repaint the piece over the eyes to one flat tint, removing an '
+                         'eye the generator drew through the lens (v2.3.2363)')
+    ap.add_argument('--alpha', type=float, default=None,
+                    help='render the piece at this opacity, 0-1 (v2.3.2363): a tinted '
+                         'pane you see the real eyes through')
     ap.add_argument('--omit', default='',
                     help='comma list of directions the piece is not visible from, '
                          'e.g. north for glasses (v2.3.2361): no png, no anchor')
@@ -568,7 +615,7 @@ def main():
             print(f'{c["dir"]:<10} could not be fitted — using the sheet\'s own '
                   f'scale {borrow:.3f} and this cell\'s green for position')
 
-    bboxes, anchors, nudges, scales = {}, {}, {}, {}
+    bboxes, anchors, nudges, scales, _flat = {}, {}, {}, {}, {}
     for (c, (fg, sl)), fit in zip(zip(cells, figs), fits):
         d = c['dir']
         if d in omit:
@@ -695,7 +742,6 @@ def main():
                 x2 = u + off_x
                 if 0 <= x2 < FRAME and art256[v, u, 3] > ALPHA_T:
                     out[t2, x2] = art256[v, u]
-        Image.fromarray(out).save(f'{outdir}/{d}.png')
 
         crown = tops[f'stand-{d}-0']
         crown_in_frame = [int(crown[0] - bx0 + off_x),
@@ -706,6 +752,13 @@ def main():
         anchors[d] = anchor
         nudges[d] = [int(anchor[0] - crown_in_frame[0]), int(anchor[1] - crown_in_frame[1])]
         scales[d] = 1
+        # v2.3.2363: flatten what the generator drew THROUGH the lens, before the
+        # frame is written -- it needs the placement above to know where the eyes
+        # are.  Only with --flatten-lens; see flatten_lens().
+        if args.flatten_lens:
+            _n, _tint = flatten_lens(out, d, crown, anchor, nudges[d])
+            _flat[d] = (_n, _tint)
+        Image.fromarray(out).save(f'{outdir}/{d}.png')
         # A low fit is a SHEET problem, not a tool problem: the generator
         # redrew that figure's torso off-model, so nothing lines up against the
         # real body.  Reported per cell so the owner can see which directions
@@ -793,6 +846,22 @@ def main():
     }
     if args.clips_hair and args.category == 'headwear':
         meta['clipsHair'] = True
+    if args.alpha is not None:
+        if not 0 < args.alpha <= 1:
+            raise SystemExit('--alpha must be greater than 0 and at most 1')
+        meta['alpha'] = round(float(args.alpha), 3)
+        meta['note'] += (f' v2.3.2363: renders at alpha {meta["alpha"]} -- a tinted pane the '
+                         f'real eyes show through, applied by the renderer (both placement '
+                         f'paths) and the portrait rather than baked into the art, so the '
+                         f'picker thumbnail stays readable and the level can be re-tuned '
+                         f'without re-importing.')
+    if args.flatten_lens:
+        _done = {k: v for k, v in _flat.items() if v[0]}
+        meta['note'] += (' v2.3.2363: the lens is flattened over the eyes ('
+                         + ', '.join(f'{k} {v[0]}px -> rgb{v[1]}' for k, v in _done.items())
+                         + ') -- the generator drew the eyes through the pane and a '
+                         'semi-transparent piece must not carry a painted-on eye behind '
+                         'the real one.')
     if args.category in FACE_WORN:
         meta['note'] += (' v2.3.2361: placed BY THE HEAD -- the vertical axis is calibrated on the '
                          'drawn crown and cut line against the mannequin\'s, so a sheet returned '
