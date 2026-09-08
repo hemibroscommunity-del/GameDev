@@ -179,6 +179,7 @@ OUTLINE_EDGE = 5     # within this of BOTH keys, near-black is the silhouette ed
 OUTLINE_PERIM = 0.25 # strip only when near-black traces this much of the perimeter
 OUTLINE_SPECK = 0.03 # after stripping, drop piece parts under this share of the biggest
 LENS_PAD = 4         # v2.3.2363: 256-space px the eye box grows by before the lens is flattened
+SEAT_EYES_MAX = 8    # v2.3.2365: 256-space px a face-worn piece may be moved to sit on the eyes
 DARK = 90            # per-channel ceiling for "near-black"
 # v2.3.2361: categories worn ON THE FACE, placed by the head rather than the
 # shoulders (see the EYEWEAR section of the header).  A future facial-hair
@@ -385,6 +386,61 @@ def despeckle(piece):
     return np.isin(lab, 1 + np.nonzero(sizes >= OUTLINE_SPECK * sizes.max())[0])
 
 
+def eye_cover(drawn, boxes, crown, anchor, nudge, ddx=0, ddy=0):
+    """Per-eye share of the eye box that the piece covers, at a trial nudge."""
+    dx = crown[0] + nudge[0] + ddx - anchor[0]
+    dy = crown[1] + nudge[1] + ddy - anchor[1]
+    out = []
+    for (x0, x1, y0, y1) in boxes:
+        sy0, sy1, sx0, sx1 = y0 - dy, y1 - dy, x0 - dx, x1 - dx
+        if sy0 < 0 or sx0 < 0 or sy1 > FRAME or sx1 > FRAME:
+            out.append(0.0)
+            continue
+        box = drawn[sy0:sy1, sx0:sx1]
+        out.append(float(box.mean()) if box.size else 0.0)
+    return out
+
+
+def seat_eyes(frame, d, crown, anchor, nudge):
+    """Move a face-worn piece onto the eyes (v2.3.2365).
+
+    tools/seat_headwear.py exists because generators draw a HAT at inconsistent
+    heights and the fit score does not predict it; this is the same job for a
+    piece whose landmark is better.  Measured across the first four eyewear
+    sheets, every one of them drew the SOUTHWEST cell low -- +2.5%, +2.5%,
+    +2.6% and +6.1% of the crown-to-shoulder span -- so it is a bias of the
+    generator, not a bad sheet.  The first three absorbed it because their
+    lenses are deep (19-22px in the 256 frame); the Thug Life lenses are 13,
+    and the same offset dropped their eye coverage to 25%.
+
+    PER FACING, and that is a real difference from the hat pass, which insists
+    on ONE correction for the whole hat because seating each direction
+    separately would make it jump as you turn.  A hat's reference is contact
+    with the skull, a proxy that genuinely varies with perspective, so a
+    per-direction fix would encode perspective as error.  The reference here is
+    the EYES -- an exact landmark the game paints on each facing -- so aligning
+    every facing to its own eyes is the definition of consistent, not a source
+    of jitter.
+
+    The search maximises the WORST eye's coverage rather than the total, so a
+    pair cannot buy one eye by abandoning the other, and ties go to the
+    smallest move -- a piece already on the eyes is left exactly where it is.
+    """
+    boxes = eye_boxes(d)
+    if not boxes:
+        return (0, 0), None, None
+    drawn = frame[:, :, 3] > ALPHA_T
+    before = eye_cover(drawn, boxes, crown, anchor, nudge)
+    best = None
+    for ddy in range(-SEAT_EYES_MAX, SEAT_EYES_MAX + 1):
+        for ddx in range(-SEAT_EYES_MAX, SEAT_EYES_MAX + 1):
+            cov = eye_cover(drawn, boxes, crown, anchor, nudge, ddx, ddy)
+            key = (-min(cov), abs(ddx) + abs(ddy), abs(ddx))
+            if best is None or key < best[0]:
+                best = (key, (ddx, ddy), cov)
+    return best[1], before, best[2]
+
+
 def flatten_lens(frame, d, crown, anchor, nudge):
     """Repaint the piece where it covers the EYES, to one flat tint (v2.3.2363).
 
@@ -404,7 +460,14 @@ def flatten_lens(frame, d, crown, anchor, nudge):
     is the eye boxes, padded, and the tint to flatten it to is that region's own
     MEDIAN, which is the pane: the drawn-on eye is a minority of it.
 
-    Near-black is left alone, so the piece's own outline survives.
+    Near-black is left alone, so the piece's own outline survives -- UNLESS the
+    lens is itself that dark (v2.3.2365).  The Thug Life sunglasses are near-
+    black by the same test that finds an outline, so protecting near-black left
+    only the drawn-on eye whites in the region and their median was WHITE: the
+    flatten repainted white with white and reported success.  So the protection
+    is decided by what the region actually holds -- if the piece there is
+    predominantly near-black there is no outline to tell apart from the lens,
+    and everything is flattened.
     """
     boxes = eye_boxes(d)
     if not boxes:
@@ -415,8 +478,13 @@ def flatten_lens(frame, d, crown, anchor, nudge):
         region[max(0, y0 - dy - LENS_PAD):y1 - dy + LENS_PAD,
                max(0, x0 - dx - LENS_PAD):x1 - dx + LENS_PAD] = True
     rgb = frame[:, :, :3].astype(int)
-    sel = region & (frame[:, :, 3] > ALPHA_T) & ~((rgb[:, :, 0] < DARK)
-                                                  & (rgb[:, :, 1] < DARK) & (rgb[:, :, 2] < DARK))
+    drawn = region & (frame[:, :, 3] > ALPHA_T)
+    if drawn.sum() < 8:
+        return 0, None
+    near_black = ((rgb[:, :, 0] < DARK) & (rgb[:, :, 1] < DARK) & (rgb[:, :, 2] < DARK))
+    whole = np.median(rgb[drawn], axis=0).round().astype(int)
+    # A lens that is itself near-black leaves no outline to protect (see above).
+    sel = drawn if (whole < DARK).all() else (drawn & ~near_black)
     if sel.sum() < 8:
         return 0, None
     tint = np.median(rgb[sel], axis=0).round().astype(np.uint8)
@@ -615,7 +683,7 @@ def main():
             print(f'{c["dir"]:<10} could not be fitted — using the sheet\'s own '
                   f'scale {borrow:.3f} and this cell\'s green for position')
 
-    bboxes, anchors, nudges, scales, _flat = {}, {}, {}, {}, {}
+    bboxes, anchors, nudges, scales, _flat, _seated = {}, {}, {}, {}, {}, {}
     for (c, (fg, sl)), fit in zip(zip(cells, figs), fits):
         d = c['dir']
         if d in omit:
@@ -752,6 +820,14 @@ def main():
         anchors[d] = anchor
         nudges[d] = [int(anchor[0] - crown_in_frame[0]), int(anchor[1] - crown_in_frame[1])]
         scales[d] = 1
+        # v2.3.2365: seat the piece on the eyes before anything downstream reads
+        # the placement -- the lens flattening below and the coverage report
+        # further down both have to describe the frame as it will SHIP.
+        if face_worn:
+            (_sx, _sy), _cov0, _cov1 = seat_eyes(out, d, crown, anchor, nudges[d])
+            if (_sx or _sy):
+                nudges[d] = [nudges[d][0] + _sx, nudges[d][1] + _sy]
+                _seated[d] = (_sx, _sy, _cov0, _cov1)
         # v2.3.2363: flatten what the generator drew THROUGH the lens, before the
         # frame is written -- it needs the placement above to know where the eyes
         # are.  Only with --flatten-lens; see flatten_lens().
@@ -769,6 +845,12 @@ def main():
               f'bbox {bb}  crownNudge {nudges[d]}')
         if args.category in FACE_WORN:
             # v2.3.2361: the check that would have caught the 5-6px lift.
+            if d in _seated:
+                _sx, _sy, _c0, _c1 = _seated[d]
+                _lim = ' (AT THE LIMIT -- regenerate this cell)' if max(abs(_sx), abs(_sy)) >= SEAT_EYES_MAX else ''
+                print(f'{"":<10} seated onto the eyes by ({_sx:+d}, {_sy:+d})px{_lim}: coverage '
+                      + ' / '.join(f'{c * 100:.0f}%' for c in _c0) + ' -> '
+                      + ' / '.join(f'{c * 100:.0f}%' for c in _c1))
             _eyes = eye_boxes(d)
             # a face-worn piece is a fraction of the head; a "pair of glasses"
             # taller than most of it means something else was keyed with it
@@ -855,6 +937,12 @@ def main():
                          f'paths) and the portrait rather than baked into the art, so the '
                          f'picker thumbnail stays readable and the level can be re-tuned '
                          f'without re-importing.')
+    if _seated:
+        meta['note'] += (' v2.3.2365: seated onto the eyes ('
+                         + ', '.join(f'{k} {v[0]:+d},{v[1]:+d}px' for k, v in _seated.items())
+                         + ') -- every eyewear sheet so far has drawn the southwest cell low, '
+                         'and this moves each facing onto the eye row the game actually paints; '
+                         'bounded and reported by seat_eyes().')
     if args.flatten_lens:
         _done = {k: v for k, v in _flat.items() if v[0]}
         meta['note'] += (' v2.3.2363: the lens is flattened over the eyes ('

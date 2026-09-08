@@ -75,6 +75,12 @@ export const EYEWEAR_CATALOG = [
      35458px of that outline off the piece and the visor came through whole,
      which is the case the v2.3.2362 gate was built for. */
   { id: 'laser-glasses', name: 'Laser Glasses' },
+  /* v2.3.2365: the pair that paid for the eye-seating pass.  Its lenses are 13px
+     deep in the 256 frame where the three above are 19-22, so the southwest
+     cell's low draw -- a bias every eyewear sheet has shown -- cost it 75% of
+     its eye coverage instead of nothing.  seat_eyes() in the importer now moves
+     each facing onto the eye row the game paints; all four pairs cover 100%. */
+  { id: 'thug-life', name: 'Thug Life' },
 ];
 
 /** TRUE once there is something to pick.  The creator's Eyewear tab is gated

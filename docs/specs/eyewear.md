@@ -1,7 +1,7 @@
 # Eyewear (v2.3.2361; art from v2.3.2362)
 
 **Shipped:** 3D Glasses (v2.3.2362), Goggles (v2.3.2363, see-through),
-Laser Glasses (v2.3.2364).
+Laser Glasses (v2.3.2364), Thug Life (v2.3.2365).
 
 Owner: *"I want to start adding eyewear options to my Hemi bros (see the first
 image of the 3d glasses). I previously had this mannequin view ... Is this
@@ -118,7 +118,10 @@ character's eyes painted into the lens despite that last sentence, which for a
 see-through pane means a fake eye sitting in front of the real one.
 `--flatten-lens` repaints the piece over the eye boxes to that region's own
 median tint, which removes it; section 3 says why it is targeted at the eye
-boxes rather than at the colours.
+boxes rather than at the colours. It has caught two shapes of the same
+mistake so far: eyes drawn *inside* a tinted pane (Goggles) and eyes drawn
+*over* an opaque lens (Thug Life). Both land inside the eye boxes, so both
+flatten away.
 
 For an eye patch or an eye mask, replace the "from the back draw nothing"
 sentence with "from the back draw the strap around the head".
@@ -238,7 +241,7 @@ for a hat.
 
 ---
 
-## 3. Two things the generator does anyway (v2.3.2362-2363)
+## 3. Three things the generator does anyway (v2.3.2362-2365)
 
 ### The person's own outline
 
@@ -270,6 +273,37 @@ The case this trims is a piece drawn *entirely* in near-black at the very edge
 of the silhouette: its blobs survive on thickness, its outermost edge does not.
 No such piece has come through yet, and the numbers will say so if one does.
 
+### The piece is drawn low, and the southwest cell most of all
+
+Measured on the first four sheets, as a fraction of the crown-to-shoulder span,
+the generator draws the piece **below** the eye row the game paints — and it is
+worst on southwest every single time:
+
+| sheet | south | southwest | east |
+|---|---|---|---|
+| 3D Glasses | +0.1% | +2.6% | −1.8% |
+| Goggles | +1.5% | +2.5% | −1.3% |
+| Laser Glasses | −0.1% | +2.5% | −1.8% |
+| Thug Life | +2.4% | **+6.1%** | +0.2% |
+
+That is a bias of the generator, not a bad sheet. The first three absorbed it
+because their lenses are deep (19-22 px in the 256 frame); the Thug Life lenses
+are 13, and the same offset dropped their eye coverage to 25%.
+
+`seat_eyes()` moves each facing onto the eyes, bounded to 8 px and reported. It
+maximises the **worst** eye's coverage rather than the total, so a pair cannot
+buy one eye by abandoning the other, and ties go to the smallest move — a pair
+already on the eyes is left exactly where it is. It runs automatically.
+
+**Per facing**, which is a real difference from the hat seat pass
+(`tools/seat_headwear.py`) and worth understanding. That one insists on one
+correction for the whole hat, because seating each direction separately would
+make the hat jump as you turn: a hat's reference is contact with the skull, a
+proxy that genuinely varies with perspective, so a per-direction fix would
+encode perspective as error. The reference here is the eyes — an exact landmark
+the game paints on each facing — so aligning every facing to its own eyes is
+the definition of consistent.
+
 ### The eyes, painted into the lens
 
 The goggles sheet came back with the character's eyes drawn *through* the
@@ -288,7 +322,12 @@ known exactly is where the game paints the eyes, and the piece covers them by
 construction — the coverage check says 100%. So the region to flatten is the
 eye boxes, padded, and the tint is that region's own median, because the
 drawn-on eye is a minority of it. Near-black is left alone, so the piece's own
-outline survives.
+outline survives — unless the lens is itself that dark. The Thug Life
+sunglasses are near-black by the same test that finds an outline, so protecting
+near-black left only the drawn-on eye whites in the region and their median came
+out **white**: the flatten repainted white with white and reported success. The
+protection is now decided by what the region actually holds, so a predominantly
+near-black lens is flattened whole.
 
 ---
 
