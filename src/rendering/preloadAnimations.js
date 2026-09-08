@@ -23,7 +23,7 @@
  *               shard icons, node/ore sheets, magic bolt, snowman
  *               ice-burst impact (was: ctor-kicked unawaited or first
  *               snowman sighting)
- *  - traits:    all headwear/hair/facialhair base art + the local
+ *  - traits:    all headwear/hair/facialhair/eyewear base art + the local
  *               player's recolors, hair-clip mask, NFT face, HUD bars
  *               (was: first render of a wearer)
  *  - world:     every zone map image + walkability grids (was: on

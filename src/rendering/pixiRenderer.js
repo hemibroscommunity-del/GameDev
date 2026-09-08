@@ -598,6 +598,13 @@ export async function initPixiRenderer(canvas) {
           ? +(Math.abs(pd._headwearSprite.scale.y) / Math.abs(sb.scale.y)).toFixed(5) : 0,
         beardScaleRatio: pd._facialHairSprite && pd._facialHairSprite.visible && sb.scale.y
           ? +(Math.abs(pd._facialHairSprite.scale.y) / Math.abs(sb.scale.y)).toFixed(5) : 0,
+        /* v2.3.2361: the eyewear, by the same two measures -- it is the most
+           placement-sensitive head trait there is (two pixels off reads as
+           "on the forehead"), so a scenario has to be able to read it. */
+        eyewearPx: pd._eyewearSprite && pd._eyewearSprite.visible
+          ? +(pd._eyewearSprite.getBounds().height).toFixed(2) : 0,
+        eyewearScaleRatio: pd._eyewearSprite && pd._eyewearSprite.visible && sb.scale.y
+          ? +(Math.abs(pd._eyewearSprite.scale.y) / Math.abs(sb.scale.y)).toFixed(5) : 0,
       };
     },
     /* v2.3.1882: where the block pieces sit in the PLAYER DISPLAY'S OWN local

@@ -226,7 +226,8 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
       tf: 'e'.repeat(256), tm: 'f'.repeat(256) /* v2.3.1949: face + arm tattoos */,
       sp: 'check:7', pp: 'dots:2' /* v2.3.1941: clothing patterns */,
       fp: 'stripe-h:4' /* v2.3.1944: shoes */,
-      hg: 'short', fr: 'thin' /* v2.3.1953: height + frame */ },
+      hg: 'short', fr: 'thin' /* v2.3.1953: height + frame */,
+      ew: 'nerd' /* v2.3.2361: eyewear */ },
   }));
   const charF = state._store.get('char:bp_finn');
   check('char record stamped in its own storage key on first join',
@@ -244,6 +245,12 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
      here is exactly how the feature would silently not persist. */
   check('...including the eye colour (v2.3.1930)',
     !!(charF && charF.look.ec === 'violet'), charF && charF.look);
+  /* v2.3.2361: eyewear joins the permanent look by the same road as the eye
+     colour above -- `ew` is in the look only because JOIN_COSMETIC_KEYS admits
+     it, and an unlisted key is dropped silently, so this line is the one that
+     would catch a pair of glasses that never persisted. */
+  check('...including the eyewear (v2.3.2361)',
+    !!(charF && charF.look.ew === 'nerd'), charF && charF.look);
   /* v2.3.1939: a drawn shirt survives the join path AT FULL LENGTH.  Cosmetics
      are truncated at 64 by default and this one is 256, so without its own
      larger bound (alongside `avatar`) the drawing would arrive invalid and the

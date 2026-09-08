@@ -3,12 +3,13 @@
  * <img src=/sprites/traits/<cat>/<id>/thumb.png?v=BUILD_INFO.version> on demand
  * (BroTown _thumbTile); we kick the same URLs into the browser cache up front
  * via new Image() while the welcome modal is showing, so the tiles are instant.
- * Only the four thumb categories (the rest are color swatches). */
+ * Only the thumb categories (the rest are color swatches). */
 
 import { HEADWEAR_CATALOG } from './traits/headwearCatalog.js';
 import { HAIR_CATALOG } from './traits/hairCatalog.js';
 import { FACIALHAIR_CATALOG } from './traits/facialHairCatalog.js';
 import { SHIRT_CATALOG } from './traits/shirtCatalog.js';
+import { EYEWEAR_CATALOG } from './traits/eyewearCatalog.js';   /* v2.3.2361 */
 import { BUILD_INFO } from '../ui/BuildBadge.jsx';
 
 /* sprite folder -> catalog (matches the grid's spriteCat keys). */
@@ -17,6 +18,7 @@ const THUMB_CATS = [
   ['hair', HAIR_CATALOG],
   ['facialhair', FACIALHAIR_CATALOG],
   ['shirt', SHIRT_CATALOG],
+  ['eyewear', EYEWEAR_CATALOG],   /* v2.3.2361: nothing to warm until the first pair lands; 'none' is skipped below */
 ];
 
 let _warmed = false;

@@ -14,6 +14,7 @@ import { getHatColor, hatColorTarget, onHatColorChange } from '../../rendering/t
 import { getFacialHair, onFacialHairChange } from '../../rendering/traits/facialHairCatalog.js'; /* v2.3.1835: the beard STYLE was never subscribed */
 import { getFacialHairColor, facialHairColorTarget, onFacialHairColorChange } from '../../rendering/traits/facialHairColorCatalog.js';
 import { getHeadwear, onHeadwearChange } from '../../rendering/traits/headwearCatalog.js';
+import { getEyewear, onEyewearChange } from '../../rendering/traits/eyewearCatalog.js';   /* v2.3.2361 */
 import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js';
 import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rendering/traits/shirtColorCatalog.js';
 import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
@@ -807,6 +808,7 @@ export const BottomDashboard = () => {
         facialHair: getFacialHair(), facialHairColor: facialHairColorTarget(getFacialHairColor()),
         headwear: getHeadwear(), hatColor: hatColorTarget(getHatColor(), getHeadwear()), /* v2.3.1927 */
         eyeColor: getEyeColor(),
+        eyewear: getEyewear(),   /* v2.3.2361 */
         shirt: getShirt(), shirtColor: shirtColorTarget(getShirtColor()),
       }, true).then(url => { if (alive && url && mine === seq) setProfilePortrait(url); });
     };
@@ -815,6 +817,7 @@ export const BottomDashboard = () => {
       onHeadwearChange(regen), onHatColorChange(regen),
       onFacialHairChange(regen), onFacialHairColorChange(regen),
       onShirtChange(regen), onShirtColorChange(regen), onEyeColorChange(regen), /* v2.3.1928 */
+      onEyewearChange(regen), /* v2.3.2361: subscribed in the same change that added the read -- the v2.3.1835 lesson */
       onPantsChange(regen), onShoesChange(regen)];
     return () => { alive = false; unsubs.forEach(u => u && u()); };
   }, []);

@@ -585,6 +585,14 @@ export const TRACK_COSMETIC_KEYS = new Set([
      select a colour that catalog already contains -- it cannot paint an
      arbitrary RGB, and it reaches nothing but a canvas. */
   'ec',
+  /* v2.3.2361: 'ew' is the eyewear id, a short catalog id exactly like 'hw'
+     and 'fh' beside it.  Display-only: the receiving client asks its own
+     EYEWEAR_CATALOG folder for the art and a forged id loads no texture and
+     paints nothing.  Added to BOTH gates in the same change -- this list and
+     JOIN_COSMETIC_KEYS in join.js -- because a key on one gate and not the
+     other is the v2.3.1939 shape: glasses that appear on join and vanish on
+     the first two-second relay. */
+  'ew',
   /* v2.3.1939: the drawn shirt, front and back.  Display-only like every
      cosmetic here: the receiving client rejects anything that is not exactly
      256 hex characters, so a forged value paints nothing rather than something

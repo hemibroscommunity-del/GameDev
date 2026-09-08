@@ -11,6 +11,7 @@ import { BUILD_INFO } from '../BuildBadge.jsx';
    pressing PLAY (which would start binding progress to the fresh one). */
 import { PANTS_CATALOG, SHOES_CATALOG, SKIN_CATALOG, setPants, setShoes, setSkin } from '@/rendering/playerSkins.js';
 import { FACIALHAIR_CATALOG, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
+import { EYEWEAR_CATALOG, setEyewear, eyewearHasOptions } from '@/rendering/traits/eyewearCatalog.js';   /* v2.3.2361 */
 import { FACIALHAIR_COLOR_CATALOG, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
 import { HAIR_CATALOG, setHair } from '@/rendering/traits/hairCatalog.js';
 import { HAIR_COLOR_CATALOG, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
@@ -108,6 +109,7 @@ export function NameModal(props) {
     eyeColorSel = props.eyeColorSel,
     setEyeColorSel = props.setEyeColorSel,
     headwearSel = props.headwearSel,
+    eyewearSel = props.eyewearSel,          /* v2.3.2361 */
     joinTown = props.joinTown,
     nameInput = props.nameInput,
     pantsSel = props.pantsSel,
@@ -124,6 +126,7 @@ export function NameModal(props) {
     setHairSel = props.setHairSel,
     setHatColorSel = props.setHatColorSel,
     setHeadwearSel = props.setHeadwearSel,
+    setEyewearSel = props.setEyewearSel,   /* v2.3.2361 */
     setNameInput = props.setNameInput,
     setPantsSel = props.setPantsSel,
     setShirtColorSel = props.setShirtColorSel,
@@ -158,6 +161,12 @@ export function NameModal(props) {
          offer -- the crown's yellow, which is the colour it already is. */
       colors: (recolorEnabled('hat') && (!SOLID_ONLY_HAT_COLOR || headwearIsSolid(headwearSel))) ? hatColorsFor(headwearSel) : null,
       colorSel: hatColorSel, setColor: function (id) { setHatColor(id); setHatColorSel(id); } },
+    /* v2.3.2361: eyewear.  A thumb category like Hats with no colour row --
+       a pair of glasses is the colour it was drawn.  Deleted a few lines
+       down while the catalog holds nothing but 'none', so it costs nothing
+       on screen until the first pair is imported. */
+    eyewear: { label: 'Eyewear', kind: 'thumb', spriteCat: 'eyewear', catalog: EYEWEAR_CATALOG, sel: eyewearSel,
+      set: function (id) { setEyewear(id); setEyewearSel(id); }, colors: null },
     /* v2.3.1928: eye colour.  A swatch-only category like Skin Tone -- there is
        no sprite to pick, only a colour, and the iris it paints is found from a
        reviewed mask rather than searched for at runtime.
@@ -227,6 +236,14 @@ export function NameModal(props) {
   ['skin', 'pants', 'shoes', 'eyes'].forEach(function (t) {
     if (!recolorEnabled(t)) delete _typeDefs[t];
   });
+  /* v2.3.2361: no Eyewear tab until there is eyewear to pick.  A tab whose
+     only option is the one already selected is worse than no tab (the
+     v2.3.2268 reasoning that removed Build), so the def goes the same way the
+     disabled recolor types do: _TABS ends in `.filter(!!_typeDefs[x.t])`, and
+     a remembered activeCat of 'eyewear' falls back to 'hair' through
+     _activeType below.  Importing the first pair is what brings the tab in --
+     eyewearHasOptions reads the catalog, so no second switch to remember. */
+  if (!eyewearHasOptions()) delete _typeDefs.eyewear;
   /* v2.3.1525: the tabs are FLAT (owner). Head was a container for four
      subtypes and nothing else -- one tap to open it, a second to pick what you
      actually wanted -- so it is gone and Hair, Hats, Skin and Beard are tabs in
@@ -268,6 +285,10 @@ export function NameModal(props) {
     /* v2.3.1929: Eyes sits with the face traits, and lands the row at a clean
        four-and-four in the 4-column grid rather than the old 4+3. */
     { t: 'eyes', label: 'Eyes', img: _TAB_ICON('eyes') },
+    /* v2.3.2361: eyewear, beside Eyes.  Inline glyph (like Build's was) until a
+       painted cc-tab-eyewear.png exists -- the icon prompt is in
+       docs/specs/eyewear.md.  Nine tabs is the clean 3x3 again. */
+    { t: 'eyewear', label: 'Eyewear', img: null, glyph: 'eyewear' },
     { t: 'beard', label: 'Beard', img: _TAB_ICON('beard') },
     { t: 'shirt', label: 'Shirt', img: _TAB_ICON('shirt') },
     { t: 'pants', label: 'Pants', img: _TAB_ICON('pants') },
@@ -1032,6 +1053,17 @@ export function NameModal(props) {
       /*#__PURE__*/React.createElement("rect", { x: 5.5, y: 15, width: 7, height: 11, rx: 2.4 }),
       /*#__PURE__*/React.createElement("circle", { cx: 21, cy: 6.5, r: 3.4 }),
       /*#__PURE__*/React.createElement("rect", { x: 17, y: 11, width: 8, height: 15, rx: 2.6 }))
+    ) : x.glyph === 'eyewear' ? /*#__PURE__*/React.createElement("svg", {
+      /* v2.3.2361: a pair of frames -- two rims, a bridge, two temples.  Inline
+         for the reason the build glyph was: no painted icon exists for the tab
+         yet.  currentColor, so it dims and brightens with the tab exactly as
+         the painted icons' opacity does. */
+      className: "bt-cc-tab-icon", viewBox: '0 0 30 30', "aria-hidden": true, focusable: 'false'
+    },
+    /*#__PURE__*/React.createElement("g", { fill: 'none', stroke: 'currentColor', strokeWidth: 2.4, strokeLinecap: 'round', strokeLinejoin: 'round' },
+      /*#__PURE__*/React.createElement("circle", { cx: 9, cy: 16.5, r: 5.2 }),
+      /*#__PURE__*/React.createElement("circle", { cx: 21, cy: 16.5, r: 5.2 }),
+      /*#__PURE__*/React.createElement("path", { d: 'M14.2 16.5h1.6M1.6 13.6l2.3 1.2M28.4 13.6l-2.3 1.2' }))
     ) : x.img ? /*#__PURE__*/React.createElement("img", {
       /* v2.3.1308: the owner's painted category art.
          v2.3.1931: one sheet for all eight, and no per-tab pixel flag — the
@@ -1174,6 +1206,7 @@ export function NameModal(props) {
       hairSel: hairSel, hairColorSel: hairColorSel,
       facialHairSel: facialHairSel, beardColorSel: beardColorSel,
       headwearSel: headwearSel, hatColorSel: hatColorSel, eyeColor: eyeColorSel,
+      eyewearSel: eyewearSel,   /* v2.3.2361 */
       shirtSel: shirtSel, shirtColorSel: shirtColorSel,
       buildHeight: heightSel, buildFrame: frameSel   /* v2.3.1953 */
     }),

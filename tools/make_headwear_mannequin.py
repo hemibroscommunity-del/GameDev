@@ -36,8 +36,15 @@ be drawn (see resolveDirection in playerSprites.js).
 Pass --rows N to stack N copies, one row per hat, for generating several hats
 on one sheet.
 
+v2.3.2361: the same grid serves EVERY head trait, not only hats -- hair went
+through it (v2.3.1495) and eyewear does now.  --title changes only the text
+across the top ("EYEWEAR REFERENCE  -  draw the glasses ON each head"), so the
+generator is told what it is placing; the cell layout is untouched, which is
+what lets import_headwear_green.py rebuild this sheet and register against it
+whatever the title said.
+
 Run from the repo root:
-    python3 tools/make_headwear_mannequin.py [--rows N] [--out PATH]
+    python3 tools/make_headwear_mannequin.py [--rows N] [--out PATH] [--title TEXT]
 """
 import argparse
 import json
@@ -112,6 +119,9 @@ def main():
     ap.add_argument('--rows', type=int, default=1,
                     help='one row per hat you want generated on this sheet')
     ap.add_argument('--out', default='headwear-mannequin.png')
+    ap.add_argument('--title', default='HEADWEAR REFERENCE  -  draw the hat ON each head',
+                    help='the caption across the top, e.g. "EYEWEAR REFERENCE  -  '
+                         'draw the glasses ON each head" (v2.3.2361)')
     args = ap.parse_args()
 
     heads = json.load(open(ANCHORS))
@@ -122,7 +132,7 @@ def main():
 
     W = pad + len(DIRS) * (cw + pad)
     H = head_h + args.rows * (chh + cap + pad + (rowlab if args.rows > 1 else 0)) + pad
-    title = 'HEADWEAR REFERENCE  -  draw the hat ON each head'
+    title = args.title
     probe = ImageDraw.Draw(Image.new('RGB', (8, 8)))
     W = max(W, int(probe.textlength(title, font=FT)) + 2 * pad)
 
