@@ -3,7 +3,7 @@
 **Shipped:** 3D Glasses (v2.3.2362), Goggles (v2.3.2363, see-through),
 Laser Glasses (v2.3.2364), Thug Life (v2.3.2365), White Glass (v2.3.2366),
 Golden Monocle (v2.3.2367, one lens, three facings), Golden Glasses
-(v2.3.2368), Eye Patch (v2.3.2369, all five facings).
+(v2.3.2368), Eye Patch (v2.3.2369, all five facings; shine removed v2.3.2370).
 
 Owner: *"I want to start adding eyewear options to my Hemi bros (see the first
 image of the 3d glasses). I previously had this mannequin view ... Is this
@@ -58,9 +58,35 @@ over them). This is one decision, made once, in the sprites' child order
 
 **Five directions, not eight.** West, northwest and southeast are runtime
 mirrors of east, northeast and south. Do not draw them. Consequence worth
-knowing before choosing what to build: an **asymmetric** piece (a patch over
+knowing before choosing what to build, and the Eye Patch is the worked example
+(see below): an **asymmetric** piece (a patch over
 one eye, a monocle) swaps eyes when the character faces west. That is a
 property of the five-direction system, not of this slot.
+
+**And the sheet can swap it too** (owner, on the Eye Patch: *"I noticed south
+and southwest switch eyes"*). The mannequin's heads have no eyes drawn on them,
+so the generator has nothing to aim at and picks a side per cell: that sheet put
+the patch on the character's **right** eye in the south cell and their **left**
+in the southwest one. Measured, south covers eye 0 at 100% and southwest covers
+eye 1 at 100%.
+
+**No bounded placement fixes that**, and it is worth knowing why before
+reaching for one. Moving the southwest patch onto eye 0 is an 18 px sideways
+move; the piece would then span 78-135 against a head spanning 92-166, hanging
+14 px of strap off the face. The seat pass is capped at 8 px for exactly this
+reason — it corrects where a piece sits, it does not relocate it. **The fix is
+to redraw that cell**, asking for the patch on the eye further from the viewer:
+
+```
+In the SOUTHWEST cell, put the patch on the character's other eye — the one
+further from the viewer, on the same side of the face as in the SOUTH cell.
+Keep the strap where it is.
+```
+
+Even then the three mirrored facings (west, northwest, southeast) still show it
+on the opposite eye. Full consistency is not available for a one-eye piece in a
+five-direction mirrored system; the best achievable is that the five **drawn**
+facings agree.
 
 **Not every direction ships.** Glasses are invisible from behind. The beard
 precedent (v2.3.1530) is to omit BOTH the png and the `meta.anchors` entry for

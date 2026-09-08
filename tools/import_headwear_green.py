@@ -528,7 +528,7 @@ def clear_lens(frame, d, crown, anchor, nudge):
     return n, None
 
 
-def flatten_lens(frame, d, crown, anchor, nudge):
+def flatten_lens(frame, d, crown, anchor, nudge, pad=None):
     """Repaint the piece where it covers the EYES, to one flat tint (v2.3.2363).
 
     Owner, on the first goggles sheet: "These are goggles but kept their old eye
@@ -560,10 +560,11 @@ def flatten_lens(frame, d, crown, anchor, nudge):
     if not boxes:
         return 0, None
     dx, dy = crown[0] + nudge[0] - anchor[0], crown[1] + nudge[1] - anchor[1]
+    pad = LENS_PAD if pad is None else pad
     region = np.zeros(frame.shape[:2], bool)
     for (x0, x1, y0, y1) in boxes:
-        region[max(0, y0 - dy - LENS_PAD):y1 - dy + LENS_PAD,
-               max(0, x0 - dx - LENS_PAD):x1 - dx + LENS_PAD] = True
+        region[max(0, y0 - dy - pad):y1 - dy + pad,
+               max(0, x0 - dx - pad):x1 - dx + pad] = True
     rgb = frame[:, :, :3].astype(int)
     drawn = region & (frame[:, :, 3] > ALPHA_T)
     if drawn.sum() < 8:
@@ -683,6 +684,10 @@ def main():
     ap.add_argument('--clear-lens', action='store_true',
                     help='ERASE the lens over the eyes, leaving the frame (v2.3.2366): a '
                          'sheet whose lenses came back as a transparency checkerboard')
+    ap.add_argument('--flatten-pad', type=int, default=None,
+                    help=f'256-space px the eye box grows by before --flatten-lens works on it '
+                         f'(default {LENS_PAD}; v2.3.2370).  The Eye Patch needed 6: its shine '
+                         f'sits between the eyes, one pixel outside the default region')
     ap.add_argument('--flatten-lens', action='store_true',
                     help='repaint the piece over the eyes to one flat tint, removing an '
                          'eye the generator drew through the lens (v2.3.2363)')
@@ -953,7 +958,7 @@ def main():
         # frame is written -- it needs the placement above to know where the eyes
         # are.  Only with --flatten-lens; see flatten_lens().
         if args.flatten_lens:
-            _n, _tint = flatten_lens(out, d, crown, anchor, nudges[d])
+            _n, _tint = flatten_lens(out, d, crown, anchor, nudges[d], pad=args.flatten_pad)
             _flat[d] = (_n, _tint)
         if args.clear_lens:
             _n, _ = clear_lens(out, d, crown, anchor, nudges[d])

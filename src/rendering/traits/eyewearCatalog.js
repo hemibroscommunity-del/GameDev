@@ -112,7 +112,18 @@ export const EYEWEAR_CATALOG = [
      it reads 100%/22% on south, which is unmistakable, and 56%/78% on
      southwest, where the strap crosses the free eye -- so southwest alone
      would have called it a pair and balanced the patch between both eyes.
-     ASYMMETRIC: swaps eyes when the character faces west. */
+     ASYMMETRIC, and more so than the note above admits (v2.3.2370, owner: "I
+     noticed south and southwest switch eyes"): the sheet drew the patch on the
+     character's RIGHT eye in the south cell and their LEFT in the southwest
+     one, so it swaps between two DRAWN facings, not merely the mirrored ones.
+     Measured: south covers eye 0 at 100%, southwest covers eye 1 at 100%, and
+     putting southwest on eye 0 is an 18px sideways move that would hang 14px
+     of the strap off the head.  It needs the southwest cell redrawn; no
+     bounded placement fixes it.  Shipped as-is meanwhile.
+     v2.3.2370: the shine is gone (--flatten-lens --flatten-pad 6; the default
+     pad of 4 missed it by one pixel on southwest, where it sits between the
+     eyes).  The white on the northeast strap is left alone -- it is a shaded,
+     outlined buckle rather than a specular dot. */
   { id: 'eye-patch', name: 'Eye Patch' },
 ];
 
