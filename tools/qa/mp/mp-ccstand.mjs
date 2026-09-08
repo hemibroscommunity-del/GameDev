@@ -179,9 +179,41 @@ export async function run({ browser, wsPort, webPort, rec }) {
      deliberately: swept across 390 / 402 / 430 at dpr 3 the gap GROWS with
      width (the logo is capped at 168px while the stage scales with the
      column), so the narrowest phone is the worst case and this number is
-     the smallest any device sees. */
+     the smallest any device sees.
+
+     ═══ v2.3.2361: 50 -> -12, AND THIS IS A REVERSAL, NOT A DRIFT ═══
+     The carved lion backplate (.bt-cc-cluster) is 323.8px tall in a column
+     that has 385.3px of slack to divide, and .bt-cc-stage's margin-block:auto
+     splits what is left -- so the plate pushes the character UP into the
+     logo. Measured at 390x844 dpr3, one lever at a time:
+         no plate                    +59   (and candidate B, a flat plate: +58)
+         lion frame, as first built   -3
+         lion frame + the icon fix    -8
+         + character 25% smaller     +28
+         + logo 22% smaller          +11
+         + character 38% smaller     +42, and smaller stops moving
+     No lever reaches 50. The frame is not too heavy, it is too TALL, and the
+     geometry is irreducible: an ornate cap either takes layout height (and
+     pushes the head into the sword) or overhangs (and covers the pedestal).
+     There is no third place for it to go.
+
+     So this bar is not a number I lowered to get green. It is the owner's
+     choice between the two, made with those measurements in front of them:
+     asked to pick, they kept the frame and accepted the overlap.
+
+     READ THE THREE ENTRIES ABOVE BEFORE TOUCHING THIS AGAIN. The owner
+     raised this bar three times -- 12, then 28, then 50 -- each time after
+     looking at a screenshot and saying "the character is up against the
+     logo". This entry runs against all three, which is exactly why it is
+     spelled out rather than quietly retuned: if the tallest hats look wrong
+     on a real phone, the frame is the thing to reconsider, NOT this number.
+
+     -12 rather than "delete the check": the guard still has a job. It now
+     pins the overlap at what was actually accepted, so a later change that
+     makes the head sink further into the sword still fails here instead of
+     passing unnoticed. */
   rec.ok(`the tallest head the game can build clears the logo's sword (${gap}px)`,
-    gap !== null && gap >= 50, { gap, head: worst && worst.pageTop, swordBottom: sword, hair, hats, build });
+    gap !== null && gap >= -12, { gap, head: worst && worst.pageTop, swordBottom: sword, hair, hats, build });
 
   /* ═══ v2.3.2202: THE MEASURED FIGURE IS THE BODY, NOT ITS SHADOW ═══
      Owner, twice: "the shoes are transparent" / "Shoes appear semi
