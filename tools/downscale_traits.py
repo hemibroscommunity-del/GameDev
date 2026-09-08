@@ -32,7 +32,18 @@ Run from the repo root:
     python3 tools/downscale_traits.py            # report only
     python3 tools/downscale_traits.py --apply
     [--to 128]        target edge, default 128
-    [--cats headwear,hair,facialhair,shirt]
+    [--cats headwear,hair,facialhair,shirt,eyewear]
+    [--stash-hi]      keep the 256 original in hi/ before halving (see below)
+
+v2.3.2361: --stash-hi, and eyewear in the default list.  The importers write
+NEW art at 256, and the login portrait prefers a `hi/` 256 copy over the 128
+frame (v2.3.1579: the portrait is a 2D-canvas compositor that CSS-upscales,
+so a 128 hat next to a 256 body reads visibly worse).  For the art that was
+halved in place back in v2.3.1526 the 256 originals were recovered from git
+(tools/restore-trait-hires.mjs); for anything imported since, THIS is where
+they come from: with --stash-hi each direction frame that is about to be
+halved is first copied to hi/<dir>.png, only if no hi/ copy exists yet.  The
+hair-clip masks are never stashed -- nothing reads a hi/ mask.
 """
 import argparse
 import os
@@ -45,12 +56,15 @@ DIRS = ['south', 'southwest', 'east', 'northeast', 'north']
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--to', type=int, default=128)
-    ap.add_argument('--cats', default='headwear,hair,facialhair,shirt')
+    ap.add_argument('--cats', default='headwear,hair,facialhair,shirt,eyewear')   # v2.3.2361: + eyewear
     ap.add_argument('--apply', action='store_true')
+    ap.add_argument('--stash-hi', action='store_true',
+                    help='copy each 256 direction frame to hi/ before halving it, '
+                         'unless hi/ already has one (v2.3.2361)')
     args = ap.parse_args()
 
     before = after = 0
-    frames = skipped = 0
+    frames = skipped = stashed = 0
     for cat in args.cats.split(','):
         base = f'{TRAITS}/{cat}'
         if not os.path.isdir(base):
@@ -76,11 +90,22 @@ def main():
                 nw, nh = args.to, round(h * args.to / w)
                 after += nw * nh * 4
                 frames += 1
+                # v2.3.2361: the 256 original goes to hi/ for the portrait before
+                # it is halved here -- direction frames only, never a hairmask.
+                if args.stash_hi and '/hairmask/' not in p:
+                    hi = f'{os.path.dirname(p)}/hi/{os.path.basename(p)}'
+                    if not os.path.isfile(hi):
+                        stashed += 1
+                        if args.apply:
+                            os.makedirs(os.path.dirname(hi), exist_ok=True)
+                            im.save(hi)
                 if args.apply:
                     im.resize((nw, nh), Image.BOX).save(p)
 
     print(f'{frames} frame(s) {"resized" if args.apply else "would resize"} to '
           f'{args.to}px, {skipped} already at or under it')
+    if args.stash_hi:
+        print(f'{stashed} original(s) {"stashed" if args.apply else "would be stashed"} in hi/')
     print(f'texture memory {before / 1e6:.1f}MB -> {after / 1e6:.1f}MB '
           f'({before / max(after, 1):.1f}x saving)')
 

@@ -539,6 +539,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
       hg: 'tall', fr: 'large',   /* v2.3.1953: height + frame */
       eqc: 'steelplate', eql: 'steelgreaves', eqs: 'none',   /* v2.3.599: worn armour */
       eqst: 'tshirt',   /* v2.3.2084: the under-shirt slot */
+      ew: 'shades',   /* v2.3.2361: eyewear */
     },
   }));
 
@@ -572,6 +573,12 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      list never reaches playerState.  Value safety is the client's: it maps `ec`
      through EYE_COLOR_CATALOG and answers null for anything unknown. */
   check('track: eye colour is relayed as a cosmetic (v2.3.1930)', psT.ec === 'ice', psT.ec);
+  /* v2.3.2361: eyewear rides the same allowlist, asserted for the reason `ec`
+     is: relaying it means adding a key to TRACK_COSMETIC_KEYS, and a key on
+     the join gate alone is the v2.3.1939 shape -- glasses that appear on join
+     and vanish on the first two-second relay.  Value safety is the client's:
+     an id its EYEWEAR_CATALOG lacks loads no texture and paints nothing. */
+  check('track: eyewear is relayed as a cosmetic (v2.3.2361)', psT.ew === 'shades', psT.ew);
   /* ═══ v2.3.2084: EVERY EQUIPMENT SLOT, NOT THREE OF THE FOUR ═══
      `eqst` was on JOIN_COSMETIC_KEYS from v2.3.756 and never on this gate, so
      a peer's shirt arrived with the join frame and was dropped by the first

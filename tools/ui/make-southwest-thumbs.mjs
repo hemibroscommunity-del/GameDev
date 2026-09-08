@@ -35,8 +35,9 @@ import { decode, encode } from '../png.mjs';
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const ROOT = path.join(REPO, 'public/sprites/traits');
-/* The four the picker renders as thumbnails — _typeDefs' `spriteCat` values. */
-const CATS = ['hair', 'headwear', 'facialhair', 'shirt'];
+/* The categories the picker renders as thumbnails — _typeDefs' `spriteCat`
+   values.  v2.3.2361: + eyewear (an empty folder is simply nothing to cut). */
+const CATS = ['hair', 'headwear', 'facialhair', 'shirt', 'eyewear'];
 const CHECK = process.argv.includes('--check');
 
 function bbox(p) {

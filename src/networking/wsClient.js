@@ -30,6 +30,7 @@ import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVari
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
 import { getHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { getFacialHair } from '@/rendering/traits/facialHairCatalog.js';
+import { getEyewear } from '@/rendering/traits/eyewearCatalog.js';   /* v2.3.2361 */
 import { getHair } from '@/rendering/traits/hairCatalog.js';
 import { getSkin, getPants, getShoes } from '@/rendering/playerSkins.js';
 import { getHairColor } from '@/rendering/traits/hairColorCatalog.js';
@@ -333,6 +334,7 @@ export function setupWebSocket(ctx) {
             hc: getHairColor(),
             htc: getHatColor(),
             fhc: getFacialHairColor(),
+            ew: getEyewear(),   /* v2.3.2361: eyewear.  An old worker drops the key at its join gate, which is the intended degrade: peers just see no glasses until the worker carries it */
             st: getShirt(),
             stc: getShirtColor(),
             ec: getEyeColor(),   /* v2.3.1930: eye colour, so peers draw your eyes */

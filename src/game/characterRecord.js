@@ -25,6 +25,7 @@
 import { setPants, setShoes, setSkin } from '@/rendering/playerSkins.js';
 import { setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
+import { setEyewear } from '@/rendering/traits/eyewearCatalog.js';   /* v2.3.2361 */
 import { setHair } from '@/rendering/traits/hairCatalog.js';
 import { setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { setHatColor } from '@/rendering/traits/hatColorCatalog.js';
@@ -45,6 +46,7 @@ const LOOK_SETTERS = {
   hc: setHairColor,
   htc: setHatColor,
   fhc: setFacialHairColor,
+  ew: setEyewear,   /* v2.3.2361: the setter refuses an id its catalog lacks, so a retired pair falls back to none */
   st: setShirt,
   stc: setShirtColor,
   pt: setPants,

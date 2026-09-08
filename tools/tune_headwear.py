@@ -24,6 +24,14 @@ symmetrically about it.
 
 Scales compose, so this is safe to run twice; the tool reads the current scale
 and rebases the nudge from the ORIGINAL geometry each time.
+
+v2.3.2361: --category picks the trait folder (default headwear), so the pose
+fit serves eyewear too:
+
+    python3 tools/tune_headwear.py --category eyewear --id nerd --fit-pose jog
+
+A direction the item does not ship (no png, no meta.anchors entry -- glasses
+from behind) is skipped, not fitted.
 """
 import argparse
 import json
@@ -32,7 +40,7 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 
-META = 'public/sprites/traits/headwear/{id}/meta.json'
+META = 'public/sprites/traits/{cat}/{id}/meta.json'   # v2.3.2361: {cat} was a fixed 'headwear'
 BODY = 'public/sprites/player/{pose}-{dir}.png'
 DIRS = ['south', 'southwest', 'east', 'northeast', 'north']
 
@@ -129,6 +137,11 @@ def fit_pose(meta, pose, path):
     sbp = meta.setdefault('scaleByPose', {}).setdefault(pose, {})
     pn = meta.setdefault('poseNudge', {}).setdefault(pose, {})
     for d in DIRS:
+        # v2.3.2361: an item ships only the directions its meta has anchors for
+        # (the beard has no north; glasses have none either).  Nothing to fit.
+        if d not in (meta.get('anchors') or {}):
+            print(f'  {d:<11} not shipped by this item — skipped')
+            continue
         try:
             ws, wp = sheet_head('stand', d), sheet_head(pose, d)
         except FileNotFoundError:
@@ -166,6 +179,9 @@ def fit_pose(meta, pose, path):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--id', required=True)
+    ap.add_argument('--category', default='headwear',
+                    choices=['headwear', 'hair', 'eyewear'],
+                    help='which trait folder holds --id (v2.3.2361)')
     ap.add_argument('--scale',
                     help='comma list, e.g. "southwest=0.85,east=1.30" '
                          '(absolute multiplier, not relative to the current one)')
@@ -177,9 +193,9 @@ def main():
     if not args.scale and not args.fit_pose:
         raise SystemExit('give --scale or --fit-pose')
 
-    path = META.format(id=args.id)
+    path = META.format(cat=args.category, id=args.id)
     if not os.path.exists(path):
-        raise SystemExit(f'no such hat: {path}')
+        raise SystemExit(f'no such item: {path}')
     meta = json.load(open(path))
 
     if args.fit_pose:
@@ -192,6 +208,8 @@ def main():
         d = d.strip()
         if d not in DIRS:
             raise SystemExit(f'unknown direction {d!r}; expected one of {DIRS}')
+        if d not in (meta.get('anchors') or {}):
+            raise SystemExit(f'{args.id} ships no {d} frame — nothing to scale there')   # v2.3.2361
         want[d] = float(v)
 
     for d, s in want.items():

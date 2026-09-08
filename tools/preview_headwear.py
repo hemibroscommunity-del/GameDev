@@ -25,6 +25,11 @@ Run from the repo root:
     python3 tools/preview_headwear.py --ids wizard-hat,mickey-ears --out sheet.png
     [--pose stand|jog]  which pose's bodies to stand the hat on (default both)
     [--frame N]         which frame of that pose (default 0)
+    [--category headwear|hair|eyewear]  which trait folder (v2.3.2361)
+
+v2.3.2361: a direction the item does not ship (no png, no anchor -- glasses
+from behind) is drawn as the bare body, so the omission is visible as such
+rather than crashing the preview.
 """
 import argparse
 import json
@@ -35,7 +40,7 @@ from PIL import Image, ImageDraw, ImageFont
 DIRS = ['south', 'southwest', 'east', 'northeast', 'north']
 BODY = 'public/sprites/player/{pose}-{dir}.png'
 TOPS = 'public/sprites/player/body-tops.json'
-HAT = 'public/sprites/traits/headwear/{id}'
+HAT = 'public/sprites/traits/{cat}/{id}'   # v2.3.2361: {cat} was a fixed 'headwear'
 FRAME = 256
 UP = 3
 PAD = 8
@@ -71,6 +76,11 @@ def place(hat, meta, tops, pose, d, frame, hid=None):
     key = f'{pose}-{d}-{frame}'
     if key not in tops:
         return None
+    if d not in meta.get('anchors', {}) or hat.get(d) is None:   # v2.3.2361: not shipped -> bare body
+        strip0 = Image.open(BODY.format(pose=pose, dir=d)).convert('RGBA')
+        fw0 = strip0.height
+        bare = strip0.crop((frame * fw0, 0, (frame + 1) * fw0, fw0))
+        return bare if fw0 == FRAME else bare.resize((FRAME, FRAME), Image.NEAREST)
     strip = Image.open(BODY.format(pose=pose, dir=d)).convert('RGBA')
     # v2.3.1408 stores the walk/action poses at 128 (DISPLAY_DS=2) while stand
     # is still 256; body-tops.json is in 256-space for BOTH, so the small
@@ -116,6 +126,7 @@ def main():
     ap.add_argument('--out', default='headwear-preview.png')
     ap.add_argument('--pose', default='stand,jog')
     ap.add_argument('--frame', type=int, default=0)
+    ap.add_argument('--category', default='headwear', choices=['headwear', 'hair', 'eyewear'])   # v2.3.2361
     args = ap.parse_args()
 
     ids = [i.strip() for i in args.ids.split(',') if i.strip()]
@@ -130,9 +141,9 @@ def main():
     dr = ImageDraw.Draw(img)
 
     for r, (hid, pose) in enumerate(rows):
-        folder = HAT.format(id=hid)
+        folder = HAT.format(cat=args.category, id=hid)
         meta = json.load(open(f'{folder}/meta.json'))
-        hat = {d: Image.open(f'{folder}/{d}.png').convert('RGBA') for d in DIRS}
+        hat = {d: (Image.open(f'{folder}/{d}.png').convert('RGBA') if os.path.isfile(f'{folder}/{d}.png') else None) for d in DIRS}   # v2.3.2361: a missing facing is allowed
         y = PAD + r * (chh + LAB + PAD)
         dr.text((PAD, y), f'{hid}  —  {pose}', font=F, fill=(235, 226, 210))
         for c, d in enumerate(DIRS):

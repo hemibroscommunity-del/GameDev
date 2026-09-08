@@ -119,14 +119,20 @@
  * call — this mode exists to RANK them, not to fix them.  --write is refused
  * deliberately; the numbers are the deliverable.
  *
- *   node tools/fit-headwear-scale.mjs [--seat] [--write]
+ *   node tools/fit-headwear-scale.mjs [--seat] [--write] [--category=headwear]
+ *
+ * v2.3.2361: --category picks the trait folder (default headwear).  Eyewear is
+ * sized by the head exactly as a hat is -- the width of a pair of frames
+ * against the width of the face -- so the same pass, guards included, applies
+ * to public/sprites/traits/eyewear.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { decode } from './png.mjs';
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const HW = path.join(REPO, 'public/sprites/traits/headwear');
+const CAT = (process.argv.find((a) => a.startsWith('--category=')) || '--category=headwear').slice('--category='.length);   /* v2.3.2361 */
+const HW = path.join(REPO, 'public/sprites/traits', CAT);
 const DIRS = ['south', 'southwest', 'east', 'northeast', 'north'];
 const DEPTHS = [6, 10, 14, 18, 22];
 const ASPECT_TOL = 0.30;   /* |log(aspect / median aspect)|; 0.30 ~ 35% off */

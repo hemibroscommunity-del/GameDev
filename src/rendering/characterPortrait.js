@@ -283,12 +283,13 @@ function renderTraitCanvas(traitImg, meta, crown, dir, liftY, mulX) {
 }
 
 /** Composite the portrait into `canvas` (sized to FRAME).  Layers, in
- *  order: skin-recolored body, hair (recolored), facial hair, headwear.
+ *  order: skin-recolored body, hair (recolored), facial hair, eyewear
+ *  (v2.3.2361), headwear.
  *  Unknown / 'none' / 'default' selections are skipped.  Resolves when the
  *  draw completes (after async asset loads).  Safe to call repeatedly. */
 export async function drawCharacterPortrait(canvas, opts) {
   if (!canvas) return;
-  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, shirt, shirtColor, dir, gear, weapon, shield } = opts || {};
+  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, eyewear, shirt, shirtColor, dir, gear, weapon, shield } = opts || {};   /* v2.3.2361: + eyewear */
   /* v2.3.1580 (owner: traits still soft after the v2.3.1579 re-bake).
      OPT-IN supersampling.  This canvas has always composited at a fixed
      256 with no devicePixelRatio scaling -- the WORLD canvas is DPR-aware
@@ -341,6 +342,7 @@ export async function drawCharacterPortrait(canvas, opts) {
   const wantHair = hair && hair !== 'none';
   const wantFh = facialHair && facialHair !== 'none';
   const wantHw = headwear && headwear !== 'none';
+  const wantEw = eyewear && eyewear !== 'none';   /* v2.3.2361 */
   /* ═══ v2.3.1815: WORN ARMOUR ═══
      Owner: "Should show armor worn etc if player is wearing it."
 
@@ -364,7 +366,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      stages (body-tops -> body sprite -> traits), so on a cold load the preview
      sat blank-white for ~3 network round-trips; now it's one.  All loads are
      cached after the first draw, so later redraws/rotations are instant. */
-  const [bodyTops, bodyImg, shirtImg, legsImg, chestImg, shouldersImg, hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg, hatRef] = await Promise.all([
+  const [bodyTops, bodyImg, shirtImg, legsImg, chestImg, shouldersImg, hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg, hatRef, ewImg, ewMeta] = await Promise.all([
     loadBodyTops(),
     loadImage(`/sprites/player/stand-${DIR}.png?v=${SPRITE_VERSION}`),
     /* v2.3.757: the LAYERED shirt sheet (white-base, tinted below) -- the
@@ -389,6 +391,10 @@ export async function drawCharacterPortrait(canvas, opts) {
     /* v2.3.1109: one shared recolour reference across the hat's facings so the
        preview's hat shade is identical per angle AND matches the in-game hat. */
     (wantHw && hatColor && (!SOLID_ONLY_HAT_COLOR || headwearIsSolid(headwear))) ? getHatRef(headwear).catch(() => 0) : 0,
+    /* v2.3.2361: eyewear, in the same concurrent batch -- hi/ 256 art first,
+       the 128 frame as fallback, exactly like the beard above it. */
+    wantEw ? loadTraitBest('eyewear', eyewear, DIR) : null,
+    wantEw ? loadMeta('eyewear', eyewear) : null,
   ]);
   const crown = (bodyTops && bodyTops[`stand-${DIR}-0`]) || [FRAME / 2, 33];
 
@@ -744,6 +750,12 @@ export async function drawCharacterPortrait(canvas, opts) {
     }
     ctx.drawImage(hairCv, 0, 0);
   }
+  /* v2.3.2361: eyewear -- after the hair (frames sit in front of a fringe) and
+     before the hat (a brim crosses the top of the frames), the same order the
+     world renderer builds its sprites in.  Plain placeTrait: no recolour, no
+     hair-dependent fit, and it draws on facings its meta has an anchor for
+     (a pair that ships no north frame is simply skipped from behind). */
+  if (ewImg && ewMeta) placeTrait(ctx, ewImg, ewMeta, crown, DIR);
   /* v2.3.1493: same `solid` gate as getColoredHatTextures -- without it the
      creator preview would still show a recolored hat the game refuses to
      render, which is worse than not offering the color at all. */
@@ -771,12 +783,13 @@ export async function drawCharacterPortrait(canvas, opts) {
  *  wait on the network.  The promise caches above make the subsequent draws
  *  hit memory; expected misses (e.g. hairmask 404s) are harmless. */
 export function prewarmPortraitDirs(opts) {
-  const { hair, facialHair, headwear } = opts || {};
+  const { hair, facialHair, headwear, eyewear } = opts || {};   /* v2.3.2361: + eyewear */
   loadBodyTops();
   for (const DIR of ['east', 'north', 'south', 'northeast', 'southwest']) {
     loadImage(`/sprites/player/stand-${DIR}.png?v=${SPRITE_VERSION}`).catch(() => {});
     if (hair && hair !== 'none') loadTraitBest('hair', hair, DIR);
     if (facialHair && facialHair !== 'none') loadTraitBest('facialhair', facialHair, DIR);
+    if (eyewear && eyewear !== 'none') loadTraitBest('eyewear', eyewear, DIR);   /* v2.3.2361 */
     if (headwear && headwear !== 'none') {
       loadTraitBest('headwear', headwear, DIR);
       loadImage(`/sprites/traits/headwear/${headwear}/hairmask/${DIR}.png?v=${TRAIT_VER}`).catch(() => {});
@@ -847,6 +860,7 @@ export function portraitOptsFromPeer(o) {
     facialHairColor: facialHairColorTarget(c.facialHairColor),
     headwear: c.headwear,
     hatColor: hatColorTarget(c.hatColor, c.headwear),          /* v2.3.1927 */
+    eyewear: c.eyewear,                                        /* v2.3.2361 */
     shirt: c.shirt,
     shirtColor: shirtColorTarget(c.shirtColor),
     eyeColor: c.eyeColor,                                      /* v2.3.1930 */

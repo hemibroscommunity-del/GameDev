@@ -2248,3 +2248,27 @@ canvas, and they were all real.
 **Related:** §21 (an instrument that measures the wrong quantity reports green —
 this is its evil twin: one that reports red), §51 (the same measurement pass, a
 finding that survived).
+
+## 55. Registering a face-worn piece by the shoulders (v2.3.2361)
+
+**Tempting:** eyewear is "just another head trait", so import a pair of
+glasses through `tools/import_headwear_green.py` exactly as a hat: fit each
+cell's green silhouette on the bottom 45% of the figure with one uniform
+scale, bottom-anchored, and let the piece land wherever that puts it. The fit
+scores come back 0.98 and the meta looks right. **Wrong:** generators return
+sheets resized NON-uniformly (a real cape sheet came back 0.66 across by 0.75
+down; the eyewear test sheet 0.71 by 0.76), so a width-matched scale carries an
+aspect error that grows with distance from the shoulders. At the eye line that
+was 5 to 6 px of lift on every facing, which reads as glasses on the forehead.
+A hat never showed this because the seat pass measures its contact with the
+skull and drops it back; a piece inside the head touches nothing, so nothing
+caught it, and the owner did. **Receipt:** a face-worn category is placed BY
+THE HEAD: the drawn crown and the cut line, both visible when the piece is on
+the face, map onto the mannequin's, the piece search starts at that crown
+(the reach a tall hat needs let the sheet's TITLE into the tallest cell as
+part of the glasses), and every import prints the piece's centre against the
+eyes the game paints, row and column (`src/rendering/eyeMask.json`). Same
+sheet after the fix: within 0.5 px in both axes on all three facings that
+paint eyes. The general rule: **calibrate an axis on landmarks in that axis**,
+as close to the thing being placed as the picture allows, and check the result
+against a measurement the game already owns rather than against a screenshot.

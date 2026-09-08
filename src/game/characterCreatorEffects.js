@@ -45,6 +45,7 @@ export function portraitLook(sel) {
     hair: sel.hairSel, hairColor: sel.hairSel === 'long' ? null : hairColorTarget(sel.hairColorSel),
     facialHair: sel.facialHairSel, facialHairColor: facialHairColorTarget(sel.beardColorSel),
     headwear: sel.headwearSel, hatColor: hatColorTarget(sel.hatColorSel, sel.headwearSel), /* v2.3.1927 */
+    eyewear: sel.eyewearSel,   /* v2.3.2361 */
     shirt: sel.shirtSel, shirtColor: shirtColorTarget(sel.shirtColorSel),
     eyeColor: sel.eyeColor,   /* v2.3.1930: the creator's own live selection */
     /* v2.3.1953: height + frame.  Passed EXPLICITLY rather than left to the
@@ -244,7 +245,7 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
   /* v2.3.1947: only the three the PREWARM needs are unpacked now; everything
      else the draw wants goes through portraitLook(sel). */
   var hairSel = sel.hairSel, facialHairSel = sel.facialHairSel,
-    headwearSel = sel.headwearSel;
+    headwearSel = sel.headwearSel, eyewearSel = sel.eyewearSel;   /* v2.3.2361: + eyewear */
   if (!previewCanvasRef.current) return;
   var visible = previewCanvasRef.current;
   /* v2.3.1951: the figure is composited HERE and blitted, cropped, into the
@@ -271,7 +272,7 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
   })).then(function () {
     /* v2.3.715: warm the other 7 angles for whatever is selected NOW, so
        rotating never waits on the network. */
-    prewarmPortraitDirs({ hair: hairSel, facialHair: facialHairSel, headwear: headwearSel });
+    prewarmPortraitDirs({ hair: hairSel, facialHair: facialHairSel, headwear: headwearSel, eyewear: eyewearSel });
     _figBounds = measureFigure(off);
     blit();
   });

@@ -60,6 +60,7 @@ const JOIN_COSMETIC_KEYS = [
   'name', 'color', 'avatar',
   'bt', 'bl', 'hw', 'fh', 'hr', 'sk', 'hc', 'htc', 'fhc', 'st', 'stc',
   'ec',   /* v2.3.1930: eye colour -- see the note in index.js */
+  'ew',   /* v2.3.2361: eyewear -- a short catalog id like hw/fh; see the note in index.js */
   /* v2.3.1939: the player's drawn shirt, front and back.  Exactly 256 hex
      characters each (16x16, one char per cell) -- see the cap below, which has
      to admit them: the flat 64 would truncate a drawing into an invalid string
