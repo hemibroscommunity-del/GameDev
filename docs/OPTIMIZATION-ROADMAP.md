@@ -332,8 +332,16 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    exactly one `heart.webp` key (`?v=2.3.2201`), summed ≤ 6.1 MB (was 18.0);
    mp-hpbar / mp-resbars unchanged. Expected: town 423.3 → ~411, ember 463.8
    → ~452.
-4. **Sword1 / Bamboo held-weapon art at 1254×1254 — 11.5 MB, low risk,
-   small.** Drawn at ≤ 48 world px (`fitScale = targetH / th`,
+4. ~~**Sword1 / Bamboo held-weapon art at 1254×1254 — 11.5 MB**~~
+   **SHIPPED, v2.3.2354** (measured: town 367.5 → 356.0 MB, ember 408.0 →
+   396.5 — the 11.5 predicted).  The handles.json trap below was real and is
+   the reason this needed care: the two rows are rescaled by the same
+   256/1254 and kept as FLOATS, so the anchor fraction is identical to six
+   decimal places, and HANDLES_URL is bumped v8 → v9 because a cached v8
+   against the new art would fling the blade off the hand.  mp-blockweapon
+   99/99, mp-swordcarry 44/44, mp-previewweapon 4/4, mp-southsword 7/7,
+   mp-peersword 12/12; photographed before/after in tools/qa/shots/
+   weapon-twin-*.png (indistinguishable).  ORIGINAL FINDING: Drawn at ≤ 48 world px (`fitScale = targetH / th`,
    entityRenderer ~:10527); `greatsword-south.webp` at 97×200 proves the
    slot's size. 256×256 twins + SPRITE_VERSION bump in `weaponSprites.js`.
    The one dependency: `public/sprites/weapons/handles.json` stores the grips
@@ -403,8 +411,10 @@ one 256 twin) and item 6 (the node twins) landed in this PR. Re-measured on
 the integrated branch, not composed from the two separate runs: **town 423.3
 → 394.2 MB, ember 463.8 → 434.7 MB — −29.1 MB in every zone**, for no
 visible change (mp-dmgicon 16/16 and mp-pine 7/7 unchanged).  Item 1 landed
-next, in the commit after: **town 367.5 MB, ember 408.0 MB — 55.8 MB below
-where this measurement started**, still with nothing looking different. Next, in order: item 1 (dead stand-in strips, the largest low-risk
+next, and item 4 after it: **town 356.0 MB, ember 396.5 MB — 67.3 MB below
+where this measurement started**, still with nothing looking different.
+Four of the nine are done; the five that remain are the ones that need a
+renderer change, an owner's eye, or both. Next, in order: item 1 (dead stand-in strips, the largest low-risk
 one left), then item 4's re-export. Items 2, 5 and 7 each want their own PR
 with the named scenario extended BEFORE the change lands; 7 wants the
 owner's eyes on a side-by-side first; 8 waits for 1.

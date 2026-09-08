@@ -37,7 +37,7 @@
  */
 
 const ANCHORS_URL = '/sprites/player/anchors.json?v=16'; /* v16: hands re-tapped after the animation re-cut (idle + jog); jog frame counts corrected */
-const HANDLES_URL = '/sprites/weapons/handles.json?v=8'; /* v8: metal greatsword art re-grip (re-pinned for new sprites) */
+const HANDLES_URL = '/sprites/weapons/handles.json?v=9'; /* v8: metal greatsword art re-grip (re-pinned for new sprites); v9 (v2.3.2354): sword + sword:wood grips rescaled into the 256px twins' space -- a cached v8 against the new art would fling the blade off the hand */
 
 /* v2.3.174: session-2 sprite pipeline shipped 256-px frames and the
    per-direction size bumps meant the old 64-px anchor JSON no longer

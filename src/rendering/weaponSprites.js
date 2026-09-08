@@ -19,7 +19,7 @@ import { Assets } from 'pixi.js';
    are WebP and there is no WebP encoder in this sandbox, so a regenerated file
    can only come out as PNG.  Version bumped or every CDN edge keeps serving
    the brown art. */
-const SPRITE_VERSION = '2.3.1763';   // 1073: re-added black outline to all bow art (recolor had stripped it)
+const SPRITE_VERSION = '2.3.2354';   // 1073: re-added black outline to all bow art (recolor had stripped it); 2354: the two 1254px sword icons became 256px twins
 
 /* v2.3.172: per-gearBase variants. Keys are `${type}:${gearBase}`;
    the bare type key is the fallback for any unmapped gearBase. wood-
@@ -28,10 +28,26 @@ const SPRITE_VERSION = '2.3.1763';   // 1073: re-added black outline to all bow 
    v2.3.942: the greatsword has per-FACING held art (owner-drawn, grip
    pinned via handles.json greatsword-<dir>).  Keys `greatsword-<dir>`
    for the 5 canonical facings; the other 3 mirror in entityRenderer. */
+/* ═══ v2.3.2354: THE HELD SWORD ICONS ARE 256, NOT 1254 ═══
+   Sword1.webp and Bamboo.webp are 1254x1254 -- 6 MB of decoded RGBA each,
+   12 MB resident in every zone -- and they are drawn as the held weapon at
+   `fitScale = targetH / th` with targetH 26 (chrome sword), 45 (bamboo) or
+   48 (greatsword) world px: at most ~119 device px on a dpr-3 phone with the
+   dashboard folded, so a 256 twin is still twice the resolution anything
+   samples.  The per-facing greatsword art beside them was already ~100px,
+   which is what the slot's real size looks like (P7 item 4).
+   THE TRAP, and why handles.json changed with them: every grip anchor is
+   `handle[0] / tex.width` (entityRenderer, effectsRenderer, the portrait),
+   so the numbers in that file live in EACH sprite's own pixel space.  Left
+   alone, a 1180-of-1254 grip against a 256px texture would put the anchor at
+   4.6 -- the blade would fly off the hand entirely.  The two rows are scaled
+   by the same 256/1254 and kept as floats so the ANCHOR FRACTION is
+   identical to six decimal places; the tip is not stored anywhere (only the
+   -45 degree axis in blockArm.js, which a proportional resize cannot move). */
 const SHEETS = {
-  sword:        { url: `/sprites/weapons/swords/Sword1.webp?v=${SPRITE_VERSION}`,          tex: null },
-  'sword:wood': { url: `/sprites/weapons/swords/Bamboo.webp?v=${SPRITE_VERSION}`,          tex: null },
-  greatsword:   { url: `/sprites/weapons/swords/Sword1.webp?v=${SPRITE_VERSION}`,          tex: null },
+  sword:        { url: `/sprites/weapons/swords/Sword1-256.webp?v=${SPRITE_VERSION}`,      tex: null },
+  'sword:wood': { url: `/sprites/weapons/swords/Bamboo-256.webp?v=${SPRITE_VERSION}`,      tex: null },
+  greatsword:   { url: `/sprites/weapons/swords/Sword1-256.webp?v=${SPRITE_VERSION}`,      tex: null },
   'greatsword-south':     { url: `/sprites/weapons/swords/greatsword-south.webp?v=${SPRITE_VERSION}`,     tex: null },
   'greatsword-southwest': { url: `/sprites/weapons/swords/greatsword-southwest.webp?v=${SPRITE_VERSION}`, tex: null },
   'greatsword-east':      { url: `/sprites/weapons/swords/greatsword-east.webp?v=${SPRITE_VERSION}`,      tex: null },
