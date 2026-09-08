@@ -1852,12 +1852,24 @@ export class EffectsRenderer {
          no reported problem. */
       const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
       const pantsT = pantsTarget(getPants()), shoesT = shoesTarget(getShoes());
-      const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, rec.cfg.fh);
+      /* v2.3.2355: `square: true` means "this sheet's frames are as tall as the
+         art is, and as wide as they are tall" -- the frame size is READ from the
+         image instead of asserted by a literal beside the loader.  The jog-legs
+         sheets are the only user: they ship 128px on disk (the v2.3.1434 re-cut)
+         and were declared {fw:256, fh:256}, which made recolorBodyToCanvas
+         nearest-DOUBLE all five of them into 7168x256-class canvases -- 30.25 MB
+         of bake for pixels that carry no more detail than the 128 art (P7 item
+         5).  Deriving it means a future re-cut at any height needs no edit here
+         and cannot desync from the file, which is the TRAPS §51 rule. */
+      const _srcH = img.naturalHeight || img.height || 0;
+      const _fw = (rec.cfg.square && _srcH) ? _srcH : rec.cfg.fw;
+      const _fh = (rec.cfg.square && _srcH) ? _srcH : rec.cfg.fh;
+      const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, _fh);
       const source = Texture.from(cv).source;
       source.scaleMode = 'linear';
-      const n = Math.max(1, Math.round(cv.width / rec.cfg.fw));
+      const n = Math.max(1, Math.round(cv.width / _fw));
       const arr = [];
-      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * rec.cfg.fw, 0, rec.cfg.fw, rec.cfg.fh) }));
+      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * _fw, 0, _fw, _fh) }));
       rec.target[rec.dir] = arr;
       /* v2.3.1788 QA probe: the mean skin RGB of the BAKED sheet, so
          mp-standinskin can assert the stand-ins land on the same palette as
@@ -2048,7 +2060,11 @@ export class EffectsRenderer {
     this._bowJogLegFrames = {};
     const JOG_LEGS_VERSION = 8;   /* v2.3.2174: de-fringe sweep, see playerSprites VERSION 101. */   // 7: v2.3.2144 pinhole fill -- the v2.3.1456 pass below left specks behind on every jog-legs sheet. 6: v2.3.1456 pinhole fill (enclosed transparent speckles inpainted); 5: drop the synthetic pants-fill rectangle (lift + real pants cover the seam)
     for (const dir of ['south', 'east', 'north', 'northeast', 'southwest']) {
-      _loadRecoloredBody(this._bowJogLegFrames, dir, '/sprites/player/jog-' + dir + '-legs.png', { fw: 256, fh: 256 }, JOG_LEGS_VERSION);
+      /* v2.3.2355: `square` instead of {fw:256, fh:256} -- these sheets are
+         3584x128-class on disk and the 256 declaration was upscaling every one
+         of them to a 7 MB canvas.  See _bakeBodyStrip; the placement side reads
+         the same size back off the texture in _placeJogLegs. */
+      _loadRecoloredBody(this._bowJogLegFrames, dir, '/sprites/player/jog-' + dir + '-legs.png', { square: true }, JOG_LEGS_VERSION);
     }
 
     /* v2.3.867: the player's traits (hat / beard / hair) composited onto
@@ -7362,11 +7378,18 @@ export class EffectsRenderer {
     const img = this._bodyImgCache[url];
     if (!img) return null;
     try {
-      const cv = recolorBodyToCanvas(img, skinTarget(o.skin), pantsTarget(o.pants), shoesTarget(o.shoes), null, fh);
+      /* v2.3.2355: omit fw/fh for a SQUARE sheet and the frame size is read off
+         the art, the same rule _bakeBodyStrip's `square` cfg follows.  The two
+         jog-legs callers below used to pass a literal 256 for 128px sheets, so
+         every distinct peer skin combo paid the same 4x bake the local player
+         did (P7 item 5). */
+      const _sq = (fw == null || fh == null) ? (img.naturalHeight || img.height || 0) : 0;
+      const _fw = _sq || fw, _fh = _sq || fh;
+      const cv = recolorBodyToCanvas(img, skinTarget(o.skin), pantsTarget(o.pants), shoesTarget(o.shoes), null, _fh);
       const source = Texture.from(cv).source; source.scaleMode = 'linear';
-      const n = Math.max(1, Math.round(cv.width / fw));
+      const n = Math.max(1, Math.round(cv.width / _fw));
       arr = [];
-      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * fw, 0, fw, fh) }));
+      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * _fw, 0, _fw, _fh) }));
       this._remoteSheetCache.set(key, arr);
       _trimBakeCache(this._remoteSheetCache);
       return arr;
@@ -7405,7 +7428,26 @@ export class EffectsRenderer {
     const _legDX = mir * _legNudgeX * _legScale;
     const _waist = jogWaistRow(jdir, jfr);
     if (legTex && jl && !hasLegArmour) {
-      const TOP = Math.max(0, _waist - _ov);
+      /* ═══ v2.3.2355: the waist table stays in 256-space; the TEXTURE speaks for
+         itself (P7 item 5, TRAPS §51) ═══
+         jogWaist.js is authored in 256-space rows and its header says so, so the
+         table is NOT converted -- every 256-space row is divided into the
+         texture's own space by a factor derived from the texture, and the
+         sprite is scaled back up by the reciprocal.  `_lf` is 1 for a 256-native
+         sheet (byte-identical to the old arithmetic) and 0.5 for the 128px
+         sheets the loader now bakes at their real size.  This is the same
+         normalisation v2.3.1453 gave the leg-ARMOUR frame one branch below,
+         whose comment used to say the bare legs "never shrank" -- they have now,
+         so they need the term too, or the legs render at half size with the feet
+         floating (exactly the v2.3.1453 incident).
+         `_ov`/`_waist` are 256-space, so both are scaled together; only the crop
+         row is rounded, which moves the amount of leg HIDDEN under the torso by
+         at most half a texel and leaves the waist pivot itself exact. */
+      const _legFrameH = (legTex.frame && legTex.frame.height) || 256;
+      const _lf = _legFrameH / 256;             // 256-space row -> texture row
+      const _ln = 256 / _legFrameH;             // texture px -> 256-space px (the v2.3.1453 _gn term)
+      const _waistTex = _waist * _lf;
+      const TOP = Math.max(0, Math.round((_waist - _ov) * _lf));
       let cache = this._legSubCache || (this._legSubCache = new WeakMap());
       let cropped = cache.get(legTex);
       if (!cropped) {
@@ -7414,8 +7456,27 @@ export class EffectsRenderer {
         cache.set(legTex, cropped);
       }
       jl.texture = cropped;
-      jl.anchor.set(0.5, (_waist - TOP) / (256 - TOP));
-      jl.scale.set(mir * _legScale, _legScale); jl.x = x + _legDX + legShiftX; jl.y = _yMeet + legShiftY; jl.tint = 0xffffff; jl.visible = true;
+      jl.anchor.set(0.5, (_waistTex - TOP) / (_legFrameH - TOP));
+      jl.scale.set(mir * _legScale * _ln, _legScale * _ln); jl.x = x + _legDX + legShiftX; jl.y = _yMeet + legShiftY; jl.tint = 0xffffff; jl.visible = true;
+      /* v2.3.2355 QA probe: WHERE the bare legs were actually drawn, expressed in
+         256-frame px above/below the foot-plant, so the numbers do not move when
+         the figure does (`s` is perspective-based -- see §3 of
+         docs/specs/jog-legs-attack-composite.md).  This is what makes the
+         256->128 swap checkable rather than assertable: waistF (the seam) and
+         botF (the feet) must be IDENTICAL before and after, and topF -- how far
+         the leg art rides up under the torso -- may move by at most the half
+         texel the crop row rounds by.  Gated on __btProbe (v2.3.2272) so a real
+         player never pays for it. */
+      if (typeof window !== 'undefined' && window.__btProbe && s) {
+        const _dispH = Math.abs(_legScale * _ln) * ((cropped.frame && cropped.frame.height) || (_legFrameH - TOP));
+        const _wy = _yMeet + legShiftY;
+        _standInTints[weapon + 'JogBareLegs'] = {
+          visible: true, jfr, waist: _waist, texH: _legFrameH, top: TOP,
+          waistF: +(((_wy) - footY) / s).toFixed(3),
+          topF: +(((_wy) - jl.anchor.y * _dispH - footY) / s).toFixed(3),
+          botF: +(((_wy) + (1 - jl.anchor.y) * _dispH - footY) / s).toFixed(3),
+        };
+      }
     } else if (jl) { jl.visible = false; }
     if (gearFrame && jg) {
       /* v2.3.1453 (owner: "jog while swinging makes the leg armor
@@ -7432,8 +7493,10 @@ export class EffectsRenderer {
          frame size, the same _gnorm pattern: identity for 256-native
          sheets, ×2 for the 128 generation — covers all four call
          sites (sword+bow, local+remote) through this one helper.
-         legTex needs no term: the jog-<dir>-legs.png bare-leg sheets
-         load at an explicit {fw:256, fh:256} and never shrank. */
+         v2.3.2355: the bare legs HAVE now shrunk too (they loaded at an
+         explicit {fw:256, fh:256} against 128px art until P7 item 5),
+         so the branch above carries the identical term, derived the
+         same way — off the texture, never off a literal. */
       const _gn = 256 / ((gearFrame.frame && gearFrame.frame.width) || 256);
       /* v2.3.1772: ...and it keeps its METAL.  This layer draws real art (the
          jog sheets resolve their own variant inside getGearFrame), so unlike
@@ -7594,7 +7657,7 @@ export class EffectsRenderer {
       const _rd = resolveDirection(dir4);
       const _jdir = _rd.dir, _rmir = _rd.mirror ? -1 : 1;
       const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh) : null;
-      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', 256, 256);
+      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', null, null);   /* v2.3.2355: square -- size read off the 128px sheet, not asserted as 256 */
       const _jog = !!(_moving && _torsoFrames && _torsoFrames[fi] && _legArr && _legArr.length);
       sp.anchor.set(0.5, anchorY);
       sp.texture = _jog ? _torsoFrames[fi] : bodyFrames[fi];
@@ -7752,7 +7815,7 @@ export class EffectsRenderer {
       const _rd = resolveDirection(dir8);
       const _jdir = _rd.dir, _rmir = _rd.mirror ? -1 : 1;
       const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh) : null;
-      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', 256, 256);
+      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', null, null);   /* v2.3.2355: square -- size read off the 128px sheet, not asserted as 256 */
       const _jog = !!(_moving && _torsoFrames && _torsoFrames[fi] && _legArr && _legArr.length);
       sp.anchor.set(0.5, anchorY);
       sp.texture = _jog ? _torsoFrames[fi] : bodyFrames[fi];

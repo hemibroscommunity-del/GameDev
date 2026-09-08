@@ -4,6 +4,12 @@
  * 128px sheet (2x nearest upscale first).  The tool itself still assumes
  * 256px frames (stale since the v2.3.1434 128px re-cut), so a full regen
  * would silently corrupt every direction -- fix the tool before rerunning.
+ * v2.3.2355: STILL 256-SPACE, deliberately.  The jog-legs sheets the composite
+ * crops are now baked at their real 128px on-disk size (P7 item 5), and
+ * _placeJogLegs divides these rows by a factor it derives from the texture it
+ * was handed rather than converting the table -- one authored space, one
+ * conversion, at the single place that owns the geometry.  Do not "helpfully"
+ * halve these numbers: every consumer expects 256-space.
  * Per-frame waist (pants-top) row in the 256px jog body frame, per facing.
  * The bow-attack jog-legs composite crops the legs sprite at this row so the
  * lower torso never bleeds onto the legs as the run cycle bobs the body. */

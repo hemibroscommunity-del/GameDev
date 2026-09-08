@@ -235,7 +235,7 @@ nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
 ---
 
 ## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
-### Items 3, 6 and 9 SHIPPED (v2.3.2337-2338); the rest is the ranked backlog
+### Items 1, 3, 4, 5, 6 and 9 SHIPPED (v2.3.2337-2355); the rest is the ranked backlog
 
 What this is, in plain language: the game keeps a lot of decoded artwork in
 the phone's graphics memory, and iPhone Safari kills the tab somewhere north
@@ -349,8 +349,35 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    sites divide by the live texture size — rewrite those two rows into the
    twin's space or the blade floats. Pin: mp-previewweapon / mp-swordcarry /
    mp-blockweapon unchanged.
-5. **Jog legs baked at 256 from 128-on-disk sheets — 22.7 MB locally, plus
-   the same again per distinct peer skin, medium risk, medium.** Every
+5. ~~**Jog legs baked at 256 from 128-on-disk sheets — 22.7 MB locally, plus
+   the same again per distinct peer skin**~~
+   **SHIPPED, v2.3.2355** (measured: town 356.0 → 333.3 MB, ember 396.5 →
+   373.8 — the 22.7 predicted, in both zones, with exactly ten keys moved: the
+   five `[canvas …x256 from jog-<dir>-legs.webp]` rows gone, five `…x128` rows
+   in their place, 30.25 → 7.57 MB, and NOT ONE other key changed).  No art
+   file was touched — the whole change is how the renderer LOADS them.
+   What it took: the frame size is no longer asserted beside the loader at all.
+   `_bakeBodyStrip` takes a `square: true` cfg and reads the size off the image;
+   `_remoteSheetFramesFor` does the same when its fw/fh are omitted (that is the
+   peer half, which had the literal 256 twice); and `_placeJogLegs` derives
+   `_lf = texFrameH / 256` and its reciprocal, so the 256-space waist table is
+   divided into the texture's own space and the sprite is scaled back up — the
+   identical `_gn` term v2.3.1453 had already given the leg-ARMOUR frame one
+   branch below, whose comment claiming the bare legs "never shrank" was the
+   thing that had to be retired.  `jogWaist.js` was deliberately NOT converted;
+   it stays 256-space with a header saying so.
+   Proven, not asserted: a `__btProbe`-gated probe reports where the legs were
+   drawn in 256-frame px relative to the foot-plant, so it is position- and
+   perspective-independent.  Matched frames before vs after, local and peer:
+   the waist seam (`waistF`) and the feet (`botF`) are IDENTICAL to three
+   decimals; only `topF` — how far the leg art rides up hidden under the torso —
+   moves, by the one 256-space px the crop row rounds by, exactly as the
+   arithmetic predicts.  Photographed at real size (Playwright device-scale clip
+   at dpr 3, framed on the hip/waist junction) jogging south, east and west,
+   bare-legged and in steel greaves, plus a PEER seen from a second client:
+   indistinguishable.  mp-jogsides 13/13, mp-questlegs 17/17, mp-peersword
+   12/12, mp-bodysize 6/6, mp-coppergear 6/6, mp-standinskin 19/19,
+   mp-arrowshot 10/10.  ORIGINAL FINDING: Every
    `jog-<dir>-legs.webp` is 128 tall, loaded with `{fw:256, fh:256}`
    (effectsRenderer ~:1988, and the two remote sites ~:7534/:7692), so
    `recolorBodyToCanvas` NN-doubles it (v2.3.1108) — an exact pixel-double,
