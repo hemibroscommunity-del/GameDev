@@ -2183,6 +2183,17 @@ painted") is the pin. Rule: a twin that differs from its source is a QUESTION
 ("which one is current?"), not a verdict — check which file the last art fix
 wrote to (`git log -- both`) before deleting either.
 
+**And then RESOLVE the question rather than leaving it standing (v2.3.2357).**
+Restoring the `.webp` put the pair back in front of
+`tools/qa/qa-webp-lossless.mjs`, which went red on it — correctly, and
+permanently, for a difference that was intended. That is the worst state a
+gate can be in: red for a good reason teaches its readers to ignore it, or
+invites the "fix" of overwriting the good art with the stale file, which is
+this very incident a third time. So the stale `.png` was regenerated FROM the
+`.webp` (decode, re-encode lossless, 0 differing bytes of RGBA) and the pair
+is identical again — 189/189, exit 0. Delete an exception in preference to
+documenting one.
+
 **The mechanism.** The harness decoded each file by drawing it into a `<canvas>`
 and reading `getImageData`. **A 2D canvas backing store is premultiplied.**
 `drawImage` multiplies RGB by alpha going in; `getImageData` divides it back out;
