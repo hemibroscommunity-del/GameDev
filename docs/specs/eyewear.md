@@ -208,7 +208,13 @@ frame into `hi/` before halving it.
 
 ```
 node tools/ui/make-southwest-thumbs.mjs
+node tools/ui/make-southwest-thumbs.mjs --check
 ```
+
+Run the check. Re-importing a pair means deleting its folder first, and the
+importer writes `thumb.png` but not `thumb-sw.png` — which is the one the
+picker shows. Two pairs shipped a commit without theirs before the check
+caught it.
 
 ### Step 8: the catalog line
 
