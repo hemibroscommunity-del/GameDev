@@ -438,7 +438,7 @@ def eye_cover(drawn, boxes, crown, anchor, nudge, ddx=0, ddy=0):
     return out
 
 
-def seat_eyes(frame, d, crown, anchor, nudge):
+def seat_eyes(frame, d, crown, anchor, nudge, one_eye=None):
     """Move a face-worn piece onto the eyes (v2.3.2365).
 
     tools/seat_headwear.py exists because generators draw a HAT at inconsistent
@@ -471,13 +471,22 @@ def seat_eyes(frame, d, crown, anchor, nudge):
     the other, this is a monocle or a patch and the BEST eye is what gets
     maximised.  Ties still go to the smallest move, so it stays on the eye the
     generator put it on rather than hopping to the other one.
+
+    DECIDED ONCE FOR THE ITEM, not per facing (v2.3.2369).  Whether a piece has
+    one lens is a fact about the OBJECT, and the per-facing reading is not
+    reliable enough to keep re-asking: the Eye Patch reads 100%/22% on south,
+    which is unmistakable, and 56%/78% on southwest, where the strap crosses
+    the free eye and the patch is drawn off-centre -- so southwest alone would
+    have called it a pair and balanced the patch between both eyes.  The caller
+    passes the answer from south, the one facing that shows both eyes squarely.
     """
     boxes = eye_boxes(d)
     if not boxes:
         return (0, 0), None, None, False
     drawn = frame[:, :, 3] > ALPHA_T
     before = eye_cover(drawn, boxes, crown, anchor, nudge)
-    one_eye = len(before) >= 2 and min(before) < 0.5 * max(before)
+    if one_eye is None:
+        one_eye = len(before) >= 2 and min(before) < 0.5 * max(before)
     score = max if one_eye else min
     best = None
     for ddy in range(-SEAT_EYES_MAX, SEAT_EYES_MAX + 1):
@@ -777,6 +786,7 @@ def main():
                   f'scale {borrow:.3f} and this cell\'s green for position')
 
     bboxes, anchors, nudges, scales, _flat, _seated, _oneeye = {}, {}, {}, {}, {}, {}, set()
+    _item_one_eye = None   # v2.3.2369: settled once, on south -- see seat_eyes()
     for (c, (fg, sl)), fit in zip(zip(cells, figs), fits):
         d = c['dir']
         if d in omit:
@@ -930,7 +940,10 @@ def main():
         # the placement -- the lens flattening below and the coverage report
         # further down both have to describe the frame as it will SHIP.
         if face_worn:
-            (_sx, _sy), _cov0, _cov1, _one = seat_eyes(out, d, crown, anchor, nudges[d])
+            (_sx, _sy), _cov0, _cov1, _one = seat_eyes(out, d, crown, anchor, nudges[d],
+                                                       one_eye=_item_one_eye)
+            if _item_one_eye is None and _cov0 is not None and len(_cov0) >= 2:
+                _item_one_eye = _one     # settled on south; every later facing follows it
             if (_sx or _sy):
                 nudges[d] = [nudges[d][0] + _sx, nudges[d][1] + _sy]
                 _seated[d] = (_sx, _sy, _cov0, _cov1, _one)

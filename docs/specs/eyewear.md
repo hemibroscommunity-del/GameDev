@@ -1,7 +1,9 @@
 # Eyewear (v2.3.2361; art from v2.3.2362)
 
 **Shipped:** 3D Glasses (v2.3.2362), Goggles (v2.3.2363, see-through),
-Laser Glasses (v2.3.2364), Thug Life (v2.3.2365), White Glass (v2.3.2366).
+Laser Glasses (v2.3.2364), Thug Life (v2.3.2365), White Glass (v2.3.2366),
+Golden Monocle (v2.3.2367, one lens, three facings), Golden Glasses
+(v2.3.2368), Eye Patch (v2.3.2369, all five facings).
 
 Owner: *"I want to start adding eyewear options to my Hemi bros (see the first
 image of the 3d glasses). I previously had this mannequin view ... Is this
@@ -310,6 +312,13 @@ chosen from what the piece was *drawn* covering — if one eye is under half the
 other, the **best** eye is maximised instead, and ties still keep it on the eye
 the generator chose.
 
+That question is asked **once per item, on south**, not per facing. Whether a
+piece has one lens is a fact about the object, and the per-facing reading is
+not reliable enough to keep re-asking: the Eye Patch reads 100% / 22% on south,
+which is unmistakable, and 56% / 78% on southwest, where the strap crosses the
+free eye — so southwest alone would have called it a pair and balanced the
+patch between both eyes. South is the facing that shows both eyes squarely.
+
 **Per facing**, which is a real difference from the hat seat pass
 (`tools/seat_headwear.py`) and worth understanding. That one insists on one
 correction for the whole hat, because seating each direction separately would
@@ -364,6 +373,13 @@ a pane rendered at `alpha 0.5` it is a painted-on eye sitting in front of the
 real one.
 
 `--flatten-lens` repaints the piece where it covers the eyes to one flat tint.
+**It is a judgement per sheet, never automatic.** The region it works on is
+defined by where the *eyes* are, which spans lens and frame both — so when
+those are different colours the median can come out as the frame. On the
+Golden Glasses it flattened tan lenses to gold and turned the pair into a solid
+bar, and the faint band it would have removed is one pixel at game size. Render
+both and look before using it.
+
 It is targeted at the **eye boxes**, not at the colours, and that is the whole
 design decision: once the generator has resampled the sheet, the pale blocks
 are neither a separable colour cluster nor an enclosed island. Measured on this

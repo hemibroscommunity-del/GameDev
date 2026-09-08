@@ -105,6 +105,15 @@ export const EYEWEAR_CATALOG = [
      untouched -- which is why that flag is a judgement per sheet and not
      something the importer decides for you. */
   { id: 'golden-glasses', name: 'Golden Glasses' },
+  /* v2.3.2369: the first piece that ships ALL FIVE facings -- the strap goes
+     round the head, so it is visible from behind where every pair of glasses
+     before it was omitted on north.  One-lens like the monocle, and the piece
+     that made one-lens-ness a property of the ITEM rather than of a facing:
+     it reads 100%/22% on south, which is unmistakable, and 56%/78% on
+     southwest, where the strap crosses the free eye -- so southwest alone
+     would have called it a pair and balanced the patch between both eyes.
+     ASYMMETRIC: swaps eyes when the character faces west. */
+  { id: 'eye-patch', name: 'Eye Patch' },
 ];
 
 /** TRUE once there is something to pick.  The creator's Eyewear tab is gated
