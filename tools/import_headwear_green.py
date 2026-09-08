@@ -94,10 +94,11 @@ height is resampled by the vertical scale so the aspect comes out right too.
 The seat pass is skipped.  The piece search starts at the drawn crown rather
 than at the sheet's edge (hat_of), because the reach a tall hat needs is
 exactly what let the sheet's title into the tallest cell.  And every facing
-that paints eyes is CHECKED: the piece's centre is printed against the iris
-row the game actually draws on that facing, and against the midpoint between
-the eyes where both are painted (eyeMask.json, measured offline by
-tools/eyes/extract-eye-mask.mjs), so an import that puts glasses on the
+that paints eyes is CHECKED: the piece's centre is printed against the centre
+row of the eyes the game actually draws on that facing, and against the
+midpoint between the two eyes where both are painted -- the WHOLE eye, its
+black top edge to its pupil (eye_centres below), not the pupil, which sits
+2.5px toward one side of the eye -- so an import that puts glasses on the
 forehead or beside the eyes says so in numbers before anyone looks at a
 screenshot.  A piece taller than most of the head is flagged as well.
 
@@ -143,20 +144,56 @@ FACE_WORN = ('eyewear',)
 EYE_MASK = 'src/rendering/eyeMask.json'
 
 
-def iris_centre(d):
-    """Where the game's own eyes are in stand-<d> frame 0 (256-space): the
-    mean iris column and row from the reviewed eye mask, i.e. the midpoint
-    between the two eyes on a facing that paints both.  None where that
-    facing paints no eyes (northeast, north)."""
+def eye_centres(d):
+    """Where the game's own eyes are in stand-<d> frame 0 (256-space), as a
+    list of (cx, cy) left to right; None where the facing paints no eyes
+    (northeast, north).
+
+    THE WHOLE EYE, NOT THE PUPIL.  An eye on these sheets is a 7-column box:
+    a solid near-black TOP EDGE three rows deep, then rows of white, a blend
+    column and the pupil (WWW+###).  The white sits on ONE side of the pupil
+    only, so the pupil is not the middle of the eye -- it is 2.5px toward one
+    side of it.  eyeMask.json records the PUPILS, because that is what the eye
+    colour recolours (tools/eyes/extract-eye-mask.mjs), and the first cut of
+    this check centred on them: every lens came out 2.5px toward the pupil
+    side, which the owner saw at once ("too far to the right ... they should
+    be centered on the width of each eye. The top of the eye is all black").
+    So this walks UP from each pupil over the black top edge and takes that
+    edge's run as the eye's width, and the top edge to the last pupil row as
+    its height."""
     try:
         runs = json.load(open(EYE_MASK)).get(f'stand-{d}', [[]])[0]
+        im = np.array(Image.open(_man.BODY.format(dir=d)).convert('RGBA')).astype(int)
     except (OSError, ValueError):
         return None
     if not runs:
         return None
-    xs = sorted(r[0] + r[2] / 2 for r in runs)
-    two = any(b - a > 4 for a, b in zip(xs, xs[1:]))    # a gap between two eyes, or one eye in profile
-    return (float(np.mean(xs)), float(np.mean([r[1] + r[3] / 2 for r in runs])), two)
+    fw = im.shape[0]
+    fr = im[:, :fw]                                   # frame 0; stand is a 256 frame
+    dark = (fr[:, :, 3] > 40) & (fr[:, :, 0] < 70) & (fr[:, :, 1] < 70) & (fr[:, :, 2] < 70)
+    runs = sorted(runs)
+    eyes, cur = [], [runs[0]]
+    for q in runs[1:]:
+        if q[0] - cur[-1][0] > 4:                     # a gap in x: the other eye
+            eyes.append(cur)
+            cur = [q]
+        else:
+            cur.append(q)
+    eyes.append(cur)
+    out = []
+    for e in eyes:
+        xa, xb = min(q[0] for q in e), max(q[0] + q[2] for q in e)     # pupil cols [xa, xb)
+        ya, yb = min(q[1] for q in e), max(q[1] + q[3] for q in e)     # pupil rows [ya, yb)
+        top = ya
+        while top - 1 >= 0 and dark[top - 1, xa:xb].all():             # up over the black top edge
+            top -= 1
+        x0, x1 = xa, xb
+        while x0 - 1 >= 0 and dark[top, x0 - 1]:                       # the edge's full run = the eye's width
+            x0 -= 1
+        while x1 < fw and dark[top, x1]:
+            x1 += 1
+        out.append(((x0 + x1) / 2, (top + yb) / 2))
+    return out
 
 
 def keys(rgb):
@@ -595,7 +632,7 @@ def main():
               f'bbox {bb}  crownNudge {nudges[d]}')
         if args.category in FACE_WORN:
             # v2.3.2361: the check that would have caught the 5-6px lift.
-            _iris = iris_centre(d)
+            _eyes = eye_centres(d)
             # a face-worn piece is a fraction of the head; a "pair of glasses"
             # taller than most of it means something else was keyed with it
             # (a label, a stray outline) -- say so, loudly, next to the numbers.
@@ -606,21 +643,23 @@ def main():
             if head_map is not None and abs(sy / scale - 1) > 0.03:
                 print(f'{"":<10} the sheet came back at a different aspect (vertical scale '
                       f'{sy:.3f}x vs horizontal {scale:.3f}x); placed by the head, so fine')
-            if _iris is not None:
-                # the piece's centre against the eyes the game paints: the row
-                # (vertical) and the midpoint between the eyes (horizontal).
+            if _eyes:
+                # the piece's centre against the eyes the game paints -- the
+                # WHOLE eye, black top edge to pupil (see eye_centres): the
+                # centre row, and the midpoint between the two eyes across.
                 cy_l = crown[1] + nudges[d][1] + (bb[1] + bb[3] / 2 - anchor[1])
                 cx_l = crown[0] + nudges[d][0] + (bb[0] + bb[2] / 2 - anchor[0])
-                if _iris[2]:
-                    print(f'{"":<10} eyes: the piece\'s centre sits {cy_l - _iris[1]:+.1f}px from the iris '
-                          f'row and {cx_l - _iris[0]:+.1f}px across from the eyes\' midpoint '
-                          f'(eyeMask.json; both near 0 for a two-lens piece, across = half the '
-                          f'eye spacing for a patch or a monocle)')
+                ex, ey = float(np.mean([e[0] for e in _eyes])), float(np.mean([e[1] for e in _eyes]))
+                if len(_eyes) >= 2:
+                    print(f'{"":<10} eyes: the piece\'s centre sits {cy_l - ey:+.1f}px from the eyes\' centre '
+                          f'row and {cx_l - ex:+.1f}px across from the midpoint between the two eyes '
+                          f'(whole eye, top edge to pupil; both near 0 for a two-lens piece, across = '
+                          f'half the eye spacing for a patch or a monocle)')
                 else:
                     # a profile paints one eye, and the temple runs back from it,
                     # so only the row means anything here
-                    print(f'{"":<10} eyes: the piece\'s centre sits {cy_l - _iris[1]:+.1f}px from the iris '
-                          f'row (eyeMask.json; one eye in profile, so no across check)')
+                    print(f'{"":<10} eyes: the piece\'s centre sits {cy_l - ey:+.1f}px from the eye\'s centre '
+                          f'row (whole eye, top edge to pupil; one eye in profile, so no across check)')
 
         if args.clips_hair:
             mm = out[:, :, 3] > ALPHA_T

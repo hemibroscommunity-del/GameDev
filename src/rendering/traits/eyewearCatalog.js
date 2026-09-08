@@ -18,8 +18,9 @@
  * nudge off the mannequin the glasses were drawn on -- BY THE HEAD, not by the
  * shoulders as it does a hat (a face-worn piece leaves the crown visible, and
  * a generator's squashed return lifted the test pair 5-6px off the eyes when
- * it was registered like a hat) -- and checks the result against the iris row
- * the game paints (eyeMask.json), so there is no by-eye tuning round.
+ * it was registered like a hat) -- and checks the result against the eyes the
+ * game paints, measured whole (black top edge to pupil, not the pupil, which
+ * sits to one side of the eye), so there is no by-eye tuning round.
  *
  * WHERE IT DRAWS.  Above the hair and below the hat.  A brim or a helmet's
  * guard crosses the top of a pair of frames (the 3D-glasses Bro wears his hat

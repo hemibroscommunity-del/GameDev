@@ -38,10 +38,13 @@ figure's crown and cut line onto the mannequin's, which fixes the vertical
 axis by construction, keeps the shoulder fit for the horizontal axis,
 starts the piece search at the drawn crown (the sheet's title once got keyed
 into the tallest cell as part of the "glasses"), and prints each facing's
-offset from the eyes the game actually paints, row and column
-(`src/rendering/eyeMask.json`). After the fix a test pair drawn over the
-mannequin's eyes lands within half a pixel of them in both axes on every
-facing that paints eyes.
+offset from the eyes the game actually paints, row and column. The reference
+is the **whole eye**, its black top edge and the white-plus-pupil under it,
+not the pupil: the white sits on one side of the pupil only, so the pupil is
+2.5 px off the eye's centre, and a check centred on it put every lens that far
+toward the pupil side (the owner saw it as "too far to the right"). After the
+fix a test pair drawn over the mannequin's eyes lands within half a pixel of
+them in both axes on every facing that paints eyes.
 
 **Where it draws.** Above the hair, above a cape's hood, below the hat. Frames
 sit on the face in front of a fringe and in front of a hood's edge; a brim or a
@@ -123,10 +126,10 @@ Writes `public/sprites/traits/eyewear/3d-glasses/{south,southwest,east,northeast
 report: the fit score says how faithfully the figure was redrawn, the aspect
 line says whether the sheet came back squashed (harmless, it is placed by the
 head), and the **eyes** figures are the ones that matter. They are the piece's
-centre against the row the game paints the irises on, and against the midpoint
-between the two eyes where both are painted, for the three facings that paint
-eyes. A pair of glasses drawn over the eyes reads within a pixel or two on
-both; a bigger number means the generator drew the piece somewhere else on
+centre against the centre row of the eyes the game paints, and against the
+midpoint between the two eyes where both are painted, for the three facings
+that paint eyes; the eye is measured whole, black top edge to pupil. A pair of
+glasses drawn over the eyes reads within a pixel or two on both; a bigger number means the generator drew the piece somewhere else on
 the face, and the cell should be regenerated rather than nudged. A warning
 that the piece is taller than most of the head means something else was keyed
 with it; `--debug DIR` shows what.

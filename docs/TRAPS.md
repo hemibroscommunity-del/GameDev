@@ -2269,6 +2269,12 @@ the face, map onto the mannequin's, the piece search starts at that crown
 part of the glasses), and every import prints the piece's centre against the
 eyes the game paints, row and column (`src/rendering/eyeMask.json`). Same
 sheet after the fix: within 0.5 px in both axes on all three facings that
-paint eyes. The general rule: **calibrate an axis on landmarks in that axis**,
-as close to the thing being placed as the picture allows, and check the result
-against a measurement the game already owns rather than against a screenshot.
+paint eyes. And the measurement itself had a trap: the reviewed eye mask
+records the PUPILS (that is what the eye colour recolours), and the white sits
+on one side of the pupil only, so a check centred on the pupil was 2.5 px off
+the eye's centre and reported zero for lenses the owner could see were shifted
+toward the pupil side. The reference is the whole eye, black top edge to
+pupil. The general rule: **calibrate an axis on landmarks in that axis**, as
+close to the thing being placed as the picture allows, and check the result
+against a measurement the game already owns rather than against a screenshot;
+and make sure the measurement measures the thing the eye judges.
