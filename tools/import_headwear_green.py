@@ -102,6 +102,40 @@ black top edge to its pupil (eye_centres below), not the pupil, which sits
 forehead or beside the eyes says so in numbers before anyone looks at a
 screenshot.  A piece taller than most of the head is flagged as well.
 
+THE PERSON'S OWN OUTLINE (v2.3.2362)
+------------------------------------
+The first real sheet came back with the green person OUTLINED IN BLACK -- which
+is how pixel art is drawn, and which the prompt asking for a flat silhouette
+did not prevent.  That outline is neither magenta nor green, so the keying
+above took the whole head-and-shoulders outline as part of the glasses: the
+"piece" measured 97-101% of the figure's height and its centre landed 14-26px
+below the eyes.  Both numbers were printed by the checks below, which is the
+only reason it did not ship.
+
+An outline is separated from a piece by two facts, and it takes both:
+
+  * IT IS THIN.  The outline is one art pixel; a lens, a frame, a brim is a
+    blob.  So the piece is SEEDED on local thickness (OUTLINE_CORE) and grown
+    back a bounded distance (OUTLINE_REACH) to recover its own thin parts --
+    the nose bridge, a temple arm.  Bounded, because the outline TOUCHES the
+    glasses where they cross the silhouette, so an unbounded flood would walk
+    straight out of the piece and around the whole head.
+  * IT HUGS THE SILHOUETTE.  The outline is the black BETWEEN the green and
+    the backdrop; the piece's own outline is between the piece and the green.
+    So near-black within OUTLINE_EDGE of BOTH keys is dropped, which also
+    clears the stubs the bounded regrowth leaves where the two meet.
+
+Both run only when an outline is actually THERE -- measured as the share of the
+green silhouette's perimeter that near-black ink traces (OUTLINE_PERIM).  A
+sheet whose person really is flat green has nothing to strip and takes exactly
+the path it always did, which is what keeps this from re-cutting the 39 hats
+and 8 hairstyles already imported.
+
+A piece drawn ENTIRELY in near-black, at the very edge of the silhouette, is
+the case this trims: its blobs survive on thickness, its outermost edge does
+not.  No such piece has come through yet; the numbers below will say so if one
+does.
+
 The other addition is --omit.  Glasses are invisible from behind, and a cell with
 nothing drawn on it used to abort the import ("no hat found beside the
 silhouette") -- rightly, for a hat.  --omit names the directions the piece
@@ -137,6 +171,14 @@ TOP_MARGIN = 6       # where the hat's top sits inside its own frame
 OVERSHOOT = 60       # 256-space rows sampled ABOVE the cell, for tall hats
 KEY_TOL = 60         # how far a green region may sit from the key and still be head
 TEXT_DROP = 0.30     # a real hat reaches at least this far down toward the crown
+# v2.3.2362: the person's own outline (see the header).  Sheet px, at the ~5x
+# the mannequin is drawn at, so one art pixel of outline is ~5 of these.
+OUTLINE_CORE = 6     # local half-thickness at or above which ink SEEDS the piece
+OUTLINE_REACH = 14   # how far the piece may grow back from a seed, along the ink
+OUTLINE_EDGE = 5     # within this of BOTH keys, near-black is the silhouette edge
+OUTLINE_PERIM = 0.25 # strip only when near-black traces this much of the perimeter
+OUTLINE_SPECK = 0.03 # after stripping, drop piece parts under this share of the biggest
+DARK = 90            # per-channel ceiling for "near-black"
 # v2.3.2361: categories worn ON THE FACE, placed by the head rather than the
 # shoulders (see the EYEWEAR section of the header).  A future facial-hair
 # import through this tool belongs here too: the crown is visible under a beard.
@@ -144,10 +186,10 @@ FACE_WORN = ('eyewear',)
 EYE_MASK = 'src/rendering/eyeMask.json'
 
 
-def eye_centres(d):
-    """Where the game's own eyes are in stand-<d> frame 0 (256-space), as a
-    list of (cx, cy) left to right; None where the facing paints no eyes
-    (northeast, north).
+def eye_boxes(d):
+    """The game's own eyes in stand-<d> frame 0 (256-space), as a list of
+    (x0, x1, y0, y1) left to right, each the WHOLE eye; None where the facing
+    paints no eyes (northeast, north).
 
     THE WHOLE EYE, NOT THE PUPIL.  An eye on these sheets is a 7-column box:
     a solid near-black TOP EDGE three rows deep, then rows of white, a blend
@@ -192,7 +234,7 @@ def eye_centres(d):
             x0 -= 1
         while x1 < fw and dark[top, x1]:
             x1 += 1
-        out.append(((x0 + x1) / 2, (top + yb) / 2))
+        out.append((x0, x1, top, yb))
     return out
 
 
@@ -306,6 +348,40 @@ def split_green(rgb, grn):
             rejected += int(sizes[i])
     heads = np.isin(lab, [i + 1 for i in keep]) & grn
     return heads, [((lab == i + 1), objs[i]) for i in bodies], len(keep) - 5, rejected
+
+
+def strip_figure_outline(ink, rgb, mag, grn):
+    """Drop the PERSON'S drawn outline from the keyed ink (v2.3.2362).
+
+    Returns (ink, stripped_px, traced) -- `traced` is the share of the green
+    silhouette's perimeter that near-black ink follows, and it is 0 for the
+    flat-green sheets every earlier import was cut from, where this is a no-op.
+    The header says why it takes both a thickness test and an edge test."""
+    dark = ink & (rgb[:, :, 0] < DARK) & (rgb[:, :, 1] < DARK) & (rgb[:, :, 2] < DARK)
+    if not dark.any():
+        return ink, 0, 0.0
+    d_grn = ndi.distance_transform_edt(~grn)
+    d_mag = ndi.distance_transform_edt(~mag)
+    edge = dark & (d_grn <= OUTLINE_EDGE) & (d_mag <= OUTLINE_EDGE)
+    # the silhouette's perimeter: green pixels with a non-green neighbour
+    perim = grn & ~ndi.binary_erosion(grn, np.ones((3, 3)))
+    traced = float(edge.sum()) / max(1, int(perim.sum()))
+    if traced < OUTLINE_PERIM:
+        return ink, 0, traced          # no outline drawn: leave the keying alone
+    thick = ndi.distance_transform_edt(ink) >= OUTLINE_CORE
+    kept = ink & (ndi.distance_transform_edt(~thick) <= OUTLINE_REACH) if thick.any() else ink
+    kept = kept & ~edge
+    return kept, int(ink.sum() - kept.sum()), traced
+
+
+def despeckle(piece):
+    """Drop the outline stubs left where the piece crossed the silhouette
+    (v2.3.2362).  Only ever called on a sheet whose outline was stripped."""
+    lab, k = ndi.label(piece, np.ones((3, 3)))
+    if k <= 1:
+        return piece
+    sizes = np.array(ndi.sum(piece, lab, range(1, k + 1)))
+    return np.isin(lab, 1 + np.nonzero(sizes >= OUTLINE_SPECK * sizes.max())[0])
 
 
 def hat_of(ink, sl, top=None):
@@ -424,6 +500,12 @@ def main():
               f'head (a scalp above a band, or gaps between hair spikes)')
     pmag = mag[py0:py1, px0:px1]
     ink = dekey_fringe(rgb, ~(pmag | heads), pmag, heads)
+    # v2.3.2362: the person may be drawn WITH an outline, which keys as piece.
+    ink, _stripped, _traced = strip_figure_outline(ink, rgb, pmag, heads)
+    outlined = _stripped > 0
+    if outlined:
+        print(f'note: the person is drawn with an outline (near-black traces {_traced * 100:.0f}% '
+              f'of the silhouette); {_stripped}px of it stripped off the piece')
     if reclaimed:
         print(f'note: {reclaimed}px of green did not match the key colour — '
               f'returned to the hat (the hat itself is green)')
@@ -510,6 +592,8 @@ def main():
         gy0 = int(gys.min()) if len(gys) else int(fy0)
         face_worn = args.category in FACE_WORN
         hat = hat_of(ink, sl, top=(gy0 - max(2, int(0.02 * (fy1 - gy0)))) if face_worn else None)
+        if outlined:
+            hat = despeckle(hat)   # v2.3.2362: the stubs where the piece met the outline
         ys, xs = np.nonzero(hat)
         if not len(ys):
             raise SystemExit(f'{d}: no hat found beside the silhouette')
@@ -632,7 +716,7 @@ def main():
               f'bbox {bb}  crownNudge {nudges[d]}')
         if args.category in FACE_WORN:
             # v2.3.2361: the check that would have caught the 5-6px lift.
-            _eyes = eye_centres(d)
+            _eyes = eye_boxes(d)
             # a face-worn piece is a fraction of the head; a "pair of glasses"
             # taller than most of it means something else was keyed with it
             # (a label, a stray outline) -- say so, loudly, next to the numbers.
@@ -644,22 +728,32 @@ def main():
                 print(f'{"":<10} the sheet came back at a different aspect (vertical scale '
                       f'{sy:.3f}x vs horizontal {scale:.3f}x); placed by the head, so fine')
             if _eyes:
-                # the piece's centre against the eyes the game paints -- the
-                # WHOLE eye, black top edge to pupil (see eye_centres): the
-                # centre row, and the midpoint between the two eyes across.
-                cy_l = crown[1] + nudges[d][1] + (bb[1] + bb[3] / 2 - anchor[1])
-                cx_l = crown[0] + nudges[d][0] + (bb[0] + bb[2] / 2 - anchor[0])
-                ex, ey = float(np.mean([e[0] for e in _eyes])), float(np.mean([e[1] for e in _eyes]))
-                if len(_eyes) >= 2:
-                    print(f'{"":<10} eyes: the piece\'s centre sits {cy_l - ey:+.1f}px from the eyes\' centre '
-                          f'row and {cx_l - ex:+.1f}px across from the midpoint between the two eyes '
-                          f'(whole eye, top edge to pupil; both near 0 for a two-lens piece, across = '
-                          f'half the eye spacing for a patch or a monocle)')
-                else:
-                    # a profile paints one eye, and the temple runs back from it,
-                    # so only the row means anything here
-                    print(f'{"":<10} eyes: the piece\'s centre sits {cy_l - ey:+.1f}px from the eye\'s centre '
-                          f'row (whole eye, top edge to pupil; one eye in profile, so no across check)')
+                # ═══ v2.3.2362: DOES THE PIECE COVER THE EYES? ═══
+                # The first cut compared the piece's bbox centre with the
+                # midpoint between the eyes, and that is only meaningful for a
+                # SYMMETRIC piece: the southwest 3D glasses carry a temple arm
+                # down one side, which drags the bbox centre 5px toward it and
+                # reads as a placement error that is not there.  So ask the
+                # question the eye asks -- how much of each eye is behind the
+                # piece -- by walking the finished frame through _placeTrait's
+                # own arithmetic (anchor pixel onto crown + crownNudge).
+                _dx = crown[0] + nudges[d][0] - anchor[0]
+                _dy = crown[1] + nudges[d][1] - anchor[1]
+                _drawn = out[:, :, 3] > ALPHA_T
+                cov = []
+                for (x0, x1, y0, y1) in _eyes:
+                    sy0, sy1 = int(y0 - _dy), int(y1 - _dy)
+                    sx0, sx1 = int(x0 - _dx), int(x1 - _dx)
+                    if sy0 < 0 or sx0 < 0 or sy1 > FRAME or sx1 > FRAME:
+                        cov.append(0.0)
+                        continue
+                    box = _drawn[sy0:sy1, sx0:sx1]
+                    cov.append(float(box.mean()) if box.size else 0.0)
+                _rows = ', '.join(f'{c * 100:.0f}%' for c in cov)
+                _worst = min(cov) if cov else 0.0
+                print(f'{"":<10} eyes: the piece covers {_rows} of {"each eye" if len(cov) > 1 else "the eye"} '
+                      f'(whole eye, black top edge to pupil)'
+                      + ('' if _worst >= 0.9 else '   <-- LOW: the lenses are not over the eyes'))
 
         if args.clips_hair:
             mm = out[:, :, 3] > ALPHA_T

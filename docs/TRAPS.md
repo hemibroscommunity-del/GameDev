@@ -2278,3 +2278,41 @@ pupil. The general rule: **calibrate an axis on landmarks in that axis**, as
 close to the thing being placed as the picture allows, and check the result
 against a measurement the game already owns rather than against a screenshot;
 and make sure the measurement measures the thing the eye judges.
+
+## 56. Keying a piece as "everything that is not a key colour" (v2.3.2362)
+
+**Tempting:** the green-silhouette import is built on one clean rule — the
+person is `#00FF00`, the backdrop is magenta, so the piece is *everything
+else*. It needs no colour heuristics, which is exactly the property
+`tools/import_headwear_green.py`'s header argues for at length, and it had
+worked for 39 hats and 8 hairstyles. So send the sheet out, key it, ship it.
+**Wrong:** the rule assumes the person is *only* green, and the first real
+eyewear sheet came back with the green figure **outlined in black** — which is
+how pixel art is drawn, and which the prompt's "paint the person flat green
+including the black outline" did not prevent. That outline is neither key
+colour, so the whole head-and-shoulders outline keyed as part of the glasses:
+the piece measured **97-101% of the figure's height** and its centre landed
+**14-26 px below the eyes**.
+
+**What saved it** was not noticing in a screenshot — it was that v2.3.2361 had
+already added two checks that print a number per facing: the piece's size
+against the head, and how much of the eye the piece covers. Both screamed. The
+lesson is the one §21 states from the other direction: **a keying rule that
+enumerates what something is NOT inherits every surprise the source can
+produce**, so pair it with a check that measures what the result should BE.
+
+**Receipt:** v2.3.2362 — `strip_figure_outline()` removes the person's outline
+using the two facts that separate it from a piece (it is *thin*, so the piece
+is seeded on local thickness and grown back a bounded distance; it *hugs the
+silhouette*, so near-black close to both keys is dropped), and it only runs
+when near-black actually traces a quarter of the green perimeter, so
+flat-green sheets take the path they always did and no shipped trait is
+re-cut. The eye check became a **coverage** measure in the same version: the
+first cut compared the piece's bbox centre with the midpoint between the eyes,
+which is only meaningful for a symmetric piece — the southwest 3D glasses
+carry a temple arm down one side that drags the centre 5 px and reads as a
+placement error that is not there. "How much of each eye is behind the piece"
+has no such bias: 100% / 100% / 96% on the shipped pair.
+
+**Related:** §55 (the same import, the axis it is calibrated on), §21 (an
+instrument that measures the wrong quantity reports green).

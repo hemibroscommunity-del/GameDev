@@ -54,6 +54,13 @@
  */
 export const EYEWEAR_CATALOG = [
   { id: 'none', name: 'None' },
+  /* v2.3.2362: the first pair through the pipeline, and the piece the owner
+     asked for by name.  Drawn on the mannequin and imported by
+     tools/import_headwear_green.py --category eyewear --omit north: it ships
+     four facings, because glasses are not visible from behind (the beard
+     precedent, v2.3.1530).  Measured at import: the lenses cover 100% / 100% /
+     96% of the eye the game paints on south / southwest / east. */
+  { id: '3d-glasses', name: '3D Glasses' },
 ];
 
 /** TRUE once there is something to pick.  The creator's Eyewear tab is gated

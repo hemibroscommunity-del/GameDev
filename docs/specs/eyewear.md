@@ -1,16 +1,14 @@
-# Eyewear (v2.3.2361)
+# Eyewear (v2.3.2361; the first pair, v2.3.2362)
 
 Owner: *"I want to start adding eyewear options to my Hemi bros (see the first
 image of the 3d glasses). I previously had this mannequin view ... Is this
 still the best way to create new eyewear features?"*
 
 Yes. The mannequin sheet is still the reference grid, and this change makes the
-rest of the hat pipeline serve eyewear too. **This PR ships the slot with no
-art in it**: the catalog, the renderer layer, the creator tab, the wire key,
-the stored-look key and the tool flags all land now, so the first pair of
-glasses is one import command and one catalog line. Until that line exists a
-player sees nothing new. The Eyewear tab appears by itself the day the catalog
-holds a real option.
+rest of the hat pipeline serve eyewear too. The slot shipped first with no art
+in it (v2.3.2361) — catalog, renderer layer, creator tab, wire key, stored-look
+key, tool flags — and the **3D Glasses** are the first pair through it
+(v2.3.2362). Adding the next pair is one import command and one catalog line.
 
 ---
 
@@ -96,9 +94,9 @@ at 0.95 to 0.97. Send this with the sheet:
 Draw the [3D glasses] on each of the five heads, in the direction each cell is
 labelled: front, three-quarter, side, three-quarter back, back. From the back
 draw nothing (glasses are not visible from behind).
-Paint the entire person, head and shoulders including the black outline, flat
-solid green #00FF00 with no shading. Keep the magenta background and the
-labels. Do not resize or re-lay-out the sheet.
+Paint the entire person, head and shoulders, flat solid green #00FF00 with no
+shading. Keep the magenta background and the labels. Do not resize or
+re-lay-out the sheet.
 Draw the glasses at the size they would be on this head, resting on the nose
 with the lenses over the eyes, in the same pixel style as the head. Draw only
 the glasses in colour; do not draw eyes, skin or hair.
@@ -107,9 +105,16 @@ the glasses in colour; do not draw eyes, skin or hair.
 For an eye patch or an eye mask, replace the "from the back draw nothing"
 sentence with "from the back draw the strap around the head".
 
-What a good sheet looks like: the person is one flat green shape, the glasses
-are the only coloured thing, and the five figures are roughly the size they
-were sent at. The generator usually returns the sheet resized; the importer
+**It does not matter whether the person comes back outlined.** The first real
+sheet returned the green figure with a black outline round it, which is how
+pixel art is drawn and which no wording reliably prevents. The importer strips
+the person's own outline (section 3), so both kinds of sheet import correctly.
+An earlier version of this prompt asked for the outline to be painted green as
+well; that clause is gone because it was ignored and is no longer needed.
+
+What a good sheet looks like: the person is one flat green shape (outlined or
+not), the glasses are the only coloured thing, and the five figures are roughly
+the size they were sent at. The generator usually returns the sheet resized; the importer
 registers each cell against the real body, so that is fine. A figure drawn
 **narrow and tall** is the failure that matters. The importer reports a fit
 score per direction; 0.95 and above is good, under 0.90 says regenerate that
@@ -146,16 +151,19 @@ for p in jog mine fish hit pickup; do python3 tools/tune_headwear.py --category 
 A direction the pair does not ship is skipped. Once `poseFit` is set the
 renderer uses these numbers instead of its blanket by-eye corrections.
 
-### Step 5: even out the size per facing (optional, measure first)
+### Step 5: even out the size per facing (report only, for eyewear)
 
 ```
 node tools/fit-headwear-scale.mjs --category=eyewear
-node tools/fit-headwear-scale.mjs --category=eyewear --write
 ```
 
-The five idle sheets draw the head at five different widths; this brings the
-facings that disagree onto the pair's own median, the same pass every hat had
-in v2.3.1925. Read the report before writing.
+The pass normalises drawn width against head width, which is the right measure
+for a hat and the wrong one for a pair of glasses: the front view shows two
+lenses side by side and the profile shows one lens plus a temple arm, so the
+two widths are not the same quantity. On the 3D glasses it asked for east +15%,
+which would have inflated a lens that already reads correctly. **Run it to see
+the numbers, do not pass `--write`** unless a facing is visibly wrong in the
+preview from step 9.
 
 ### Step 6: halve the art, keeping the 256 original for the login portrait
 
@@ -204,7 +212,39 @@ for a hat.
 
 ---
 
-## 3. What is wired where
+## 3. The person's own outline (v2.3.2362)
+
+The keying rule is "the piece is everything that is neither the magenta
+backdrop nor the green person". A black outline round the person is neither,
+so on the first real sheet the whole head-and-shoulders outline came through as
+part of the glasses: the piece measured 97-101% of the figure's height and its
+centre sat 14-26 px below the eyes. The import checks printed both numbers,
+which is the only reason it did not ship.
+
+An outline is separated from a piece by two facts, and it takes both:
+
+- **It is thin.** One art pixel, where a lens or a brim is a blob. So the piece
+  is seeded on local thickness and grown back a bounded distance to recover its
+  own thin parts (the nose bridge, a temple arm). Bounded, because the outline
+  *touches* the glasses where they cross the silhouette, and an unbounded flood
+  would walk straight out of the piece and around the whole head.
+- **It hugs the silhouette.** The person's outline is the black *between* the
+  green and the backdrop; the piece's own outline is between the piece and the
+  green. So near-black close to both keys is dropped, which also clears the
+  stubs the bounded regrowth leaves where the two meet.
+
+Both run only when an outline is actually there, measured as the share of the
+green silhouette's perimeter that near-black ink traces. A sheet whose person
+really is flat green takes exactly the path it always did, which is what keeps
+this from re-cutting the 39 hats and 8 hairstyles already imported.
+
+The case this trims is a piece drawn *entirely* in near-black at the very edge
+of the silhouette: its blobs survive on thickness, its outermost edge does not.
+No such piece has come through yet, and the numbers will say so if one does.
+
+---
+
+## 4. What is wired where
 
 | surface | file | what |
 |---|---|---|
@@ -227,7 +267,7 @@ would rebroadcast as an unknown type.
 
 ---
 
-## 4. The one thing this does not solve
+## 5. The one thing this does not solve
 
 **Looks are permanent.** Since v2.3.1814 a character's look is stored on the
 worker against its identity and the stored record wins over the join payload;
@@ -239,7 +279,7 @@ traits, whether the record is rewritten or versioned). Not built here.
 
 ---
 
-## 5. The NFT eyewear, for a catalog
+## 6. The NFT eyewear, for a catalog
 
 From the Hemi Bros catalogue spreadsheet, how many Bros wear each:
 
@@ -259,12 +299,12 @@ From the Hemi Bros catalogue spreadsheet, how many Bros wear each:
 | Golden Monocle | 48 |
 | Vision Pro | 45 |
 
-The owner's pilot is the 3D glasses. Eye Patch and Golden Monocle are the
+The 3D Glasses are in (v2.3.2362). Eye Patch and Golden Monocle are the
 asymmetric ones (see section 1).
 
 ---
 
-## 6. A painted tab icon (optional)
+## 7. A painted tab icon (optional)
 
 The Eyewear tab draws an inline glyph today. To replace it with a painted icon
 in the style of the other eight, generate `public/ui/welcome/cc/cc-tab-eyewear.png`
