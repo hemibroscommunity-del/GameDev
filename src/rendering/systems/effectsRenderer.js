@@ -77,11 +77,43 @@ const STANDIN_REF_BODY_H = 84;
  * person to remember; a shared constant means they do not have to.
  *
  * Everything on the figure derives from this one number -- the body scale
- * (h/220), the 2x gear-layer scale (h/440) and the head traits, which read
- * |sprite.scale.y| -- so armour and hat keep their proportions for free.
+ * (h/220), the gear-layer scale (h/<the layer texture's own height>) and the
+ * head traits, which read |sprite.scale.y| -- so armour and hat keep their
+ * proportions for free.
  * COOK_H and the firemaking FH are deliberately NOT folded in: the owner asked
  * for woodcutting only, and those two are already independent. */
 export const CHOP_STANDIN_H = 104.5;
+
+/* ═══ v2.3.2356: THE CHOP LAYERS SHIP AT THE SIZE THEY ARE DRAWN ═══
+ *
+ * docs/OPTIMIZATION-ROADMAP.md P7 item 7.  chest/steelplate, legs/steelgreaves
+ * and shirt/tshirt `chop-west.png` are 5760x440 each -- 9.67 MB of decoded
+ * RGBA apiece, 29 MB resident in EVERY zone, and the three largest single
+ * sprite keys the phone holds.  They are drawn over a body strip that is
+ * 5760x220 and, per v2.3.1131, at half the body's scale factor to reach the
+ * same on-screen height: ~0.24 world px per texel, ~0.71 device px per texel
+ * on a dpr-3 phone.  Three of every four texels never reached a pixel.
+ *
+ * The twins are exact 2x box downscales minted by tools/build_chop_half.mjs
+ * (no canvas anywhere -- TRAPS §53), which is also where the measurement
+ * behind the choice of filter is written down: this art is NOT a 2x
+ * pixel-double, so the v2.3.1412 nearest inverse would have thrown real texels
+ * away, while the box average is what the GPU's own minification approximates
+ * when it samples this sheet at that density.
+ *
+ * `suffix` is the file, `frames` is how it is cut.  Both live here so a pose's
+ * art size and its slicing can never be changed one without the other -- the
+ * TRAPS §51 failure is exactly a transform that mixes a resized sheet with an
+ * unresized one.  Every consumer of these frames now derives its scale from
+ * `texture.height`, so the ONE literal left in the system is this table. */
+const GEAR_STRIP_TWIN = { chop: { suffix: '-220', frames: 12 } };
+
+/* The chop layers' frame width, 2880 / 12.  It is the argument _gearStripFrame
+   IGNORES while chop has a twin (it cuts that pose by frame count instead), and
+   it is written here as 240 rather than left at the old 480 so it cannot
+   mislead the next reader, and so the no-twin fallback would still slice
+   correctly if the entry above were ever removed together with the art. */
+const CHOP_GEAR_FW = 240;
 import { cycleMs as jogCycleMs, frameCount as jogFrameCount, resolveDirection } from '../playerSprites.js';
 import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
@@ -1549,9 +1581,12 @@ export class EffectsRenderer {
 
     /* v2.3.1131: gear layers for the woodcutting chopper (mirror of the cook
        stand-in).  Shirt / leg-armour / chest-plate drawn over the lumberjack when
-       equipped.  Layers are 12-frame 480x440 (2x) strips at
-       /sprites/gear/<slot>/<item>/chop-west.png, pixel-aligned to the chop body's
-       frames 12-23.  Added AFTER chopSprite so they composite on top.
+       equipped.  Layers are 12-frame 240x220 strips at
+       /sprites/gear/<slot>/<item>/chop-west-220.png, pixel-aligned to the chop
+       body's frames 12-23.  (v2.3.2356: they WERE 480x440 -- 2x the body, and
+       the largest single textures in the whole resident dump.  The twins are 1x
+       and every placer derives its scale from the texture now, so do not
+       reintroduce the 0.5 factor that sentence used to justify.)  Added AFTER chopSprite so they composite on top.
        v2.3.1710: body, then LEGS, then shirt, then chest — this is the exact
        pose the owner named ("while woodcutting ... the shirt should be layered
        in front of the leg armor"): the greaves' waistband was cutting across
@@ -2155,7 +2190,7 @@ export class EffectsRenderer {
        as above these three items are the only ones with sheets, so nothing is
        guessed.  Recolours (copperplate, ironplate...) resolve through gearArt()
        to the same steel art, so they are covered by these. */
-    for (const [pose, dir, fw] of [['cook', 'south', 213], ['chop', 'west', 480]]) {
+    for (const [pose, dir, fw] of [['cook', 'south', 213], ['chop', 'west', CHOP_GEAR_FW]]) {
       this._gearStripFrame('shirt', 'tshirt', pose, dir, fw, 0);
       this._gearStripFrame('chest', 'steelplate', pose, dir, fw, 0);
       this._gearStripFrame('legs', 'steelgreaves', pose, dir, fw, 0);
@@ -6955,7 +6990,7 @@ export class EffectsRenderer {
          reproduces the exact artefact those two versions exist to prevent.
          `gear` is the strip geometry for this pose -- pose/dir/frame-width --
          so the placer below reads one table instead of three literals. */
-      chop: { frames: this._chopFrames, legless: this._chopLeglessFrames, h: CHOP_STANDIN_H, fh: 220, ms: 45, traitDir: 'east', from: 12, count: 12, gear: { pose: 'chop', dir: 'west', fw: 480 } },
+      chop: { frames: this._chopFrames, legless: this._chopLeglessFrames, h: CHOP_STANDIN_H, fh: 220, ms: 45, traitDir: 'east', from: 12, count: 12, gear: { pose: 'chop', dir: 'west', fw: CHOP_GEAR_FW } },
       cook: { frames: this._cookFrames, legless: this._cookLeglessFrames, h: 62, fh: 220, ms: 60, traitDir: 'south', gear: { pose: 'cook', dir: 'south', fw: 213 } },
       /* v2.3.1749: `once` marks a strip that tells a STORY rather than
          cycling.  The firemaking frames run stand -> crouch -> spark -> flame
@@ -7136,14 +7171,21 @@ export class EffectsRenderer {
             spr.x = sp.x + off[0] * sp.scale.x;
             spr.y = sp.y + off[1] * sp.scale.y;
           } else {
-            /* v2.3.2303: chop's layer strips are 2x (480x440) against a 220
-               body, so they render at HALF the body factor to reach the same
-               on-screen height -- the local placer's sL, derived here from the
-               body scale rather than re-stated as a constant.  Cook's strips
-               are 1:1 with its body, so it copies the transform outright.
-               Both inherit sp.scale.x's SIGN, which is what makes the armour
-               flip with the chopper instead of against him. */
-            const lk = (code === 'chop') ? 0.5 : 1;
+            /* v2.3.2303: a layer strip need not share the body strip's frame
+               height, so it renders at a factor of the body's scale to reach
+               the same on-screen height -- the local placer's sL, derived here
+               from the body scale rather than re-stated as a constant.  Both
+               inherit sp.scale.x's SIGN, which is what makes the armour flip
+               with the chopper instead of against him.
+               v2.3.2356: and that factor is now READ OFF THE TEXTURE instead of
+               being the literal 0.5 that chop's 2x art earned it.  The chop
+               layers ship half-res twins (GEAR_STRIP_TWIN) and this is the peer
+               twin of the local placer's change -- the two must move together
+               or a peer's armour renders at half his body's size, which is the
+               v2.3.1710 drift with the sign reversed.  Cook's strips are 1:1
+               with its body, so spec.fh / tex.height is 1 and it copies the
+               transform outright exactly as before. */
+            const lk = spec.fh / (tex.height || spec.fh);
             spr.scale.set(sp.scale.x * lk, sp.scale.y * lk);
             spr.x = sp.x;
             spr.y = sp.y;
@@ -7279,10 +7321,20 @@ export class EffectsRenderer {
     let e = this._gearStrips[key];
     if (e === undefined) {
       this._gearStrips[key] = 'loading';
-      _fxLoad('/sprites/gear/' + slot + '/' + item + '/' + pose + '-' + dir + '.png?v=' + GEARLAYER_VER).then((tex) => {
-        const n = Math.max(1, Math.round(tex.width / fw));
+      /* v2.3.2356: a pose whose art ships a smaller twin loads the twin, and
+         cuts it by FRAME COUNT rather than by frame width.  See GEAR_STRIP_TWIN
+         for why chop has one; the reason the count is the number that moves
+         here is that a strip's frame count is a property of the ANIMATION and
+         survives any change of art resolution, while its frame width is a
+         property of the FILE and does not.  Poses without a twin keep the
+         caller's `fw` verbatim, so their slices are byte-identical. */
+      const _twin = GEAR_STRIP_TWIN[pose];
+      const _file = pose + '-' + dir + (_twin ? _twin.suffix : '');
+      _fxLoad('/sprites/gear/' + slot + '/' + item + '/' + _file + '.png?v=' + GEARLAYER_VER).then((tex) => {
+        const n = _twin ? _twin.frames : Math.max(1, Math.round(tex.width / fw));
+        const w = _twin ? Math.round(tex.width / n) : fw;
         const arr = [];
-        for (let i = 0; i < n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.height) }));
+        for (let i = 0; i < n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * w, 0, w, tex.height) }));
         this._gearStrips[key] = arr;
       }).catch(() => { this._gearStrips[key] = []; });
       return null;
@@ -8788,7 +8840,7 @@ export class EffectsRenderer {
          legs being equipped, as cook does): a legs item with no chop
          art, or a sheet still loading, would otherwise render a
          legless lumberjack with nothing drawn over the gap. */
-      const _chopLegsTex = this._gearStripFrame('legs', getEquip('legs'), 'chop', 'west', 480, k);
+      const _chopLegsTex = this._gearStripFrame('legs', getEquip('legs'), 'chop', 'west', CHOP_GEAR_FW, k);
       const _chopLegsOn = !!_chopLegsTex
         && this._chopLeglessFrames.length === this._chopFrames.length;
       sp.texture = (_chopLegsOn ? this._chopLeglessFrames : this._chopFrames)[fi];
@@ -8804,28 +8856,36 @@ export class EffectsRenderer {
       sp.y = _cy + 6 * pscale;
       sp.visible = true;
       /* v2.3.1131: gear layers over the lumberjack (mirror of the cook stand-in),
-         gated on equipped gear and copying the body transform.  The layer strips
-         are 2x (480x440), so they render at half the body's scale factor to reach
-         the same on-screen height, and use the SAME flip sign as the body. */
+         gated on equipped gear and copying the body transform, with the SAME
+         flip sign as the body. */
       /* v2.3.2287: MANDATORY, not optional. This is the one local gear placer
          that does not derive from sp.scale -- it has its own factor because
-         the layer strips are 2x. Curving the body and not this leaves a
-         full-size breastplate standing over a speck-sized lumberjack, which
-         is a worse artefact than the bug being fixed. */
-      const sL = (CHOP_H / 440) * pscale;
+         the layer strips need not be the body's frame height. Curving the body
+         and not this leaves a full-size breastplate standing over a
+         speck-sized lumberjack, which is a worse artefact than the bug being
+         fixed. */
+      /* ═══ v2.3.2356: THE LAYER'S SCALE COMES FROM THE LAYER ═══
+         This factor was `CHOP_H / 440`, a literal that silently asserted the
+         art was 2x the body.  The half-res twins (GEAR_STRIP_TWIN) make that
+         false, and TRAPS §51 is precisely the transform that mixes a resized
+         sheet with an unresized one -- so it is derived per texture instead,
+         inside the placer where the texture is known.  Each layer is drawn
+         CHOP_H tall whatever height its own sheet ships at; if one slot's art
+         is ever re-cut on its own, it still lands on the same body. */
       const placeChopLayer = (spr, t) => {
         if (!spr) return;
         if (!t) { spr.visible = false; return; }
         spr.anchor.set(0.5, 1); spr.texture = t;
+        const sL = (CHOP_H / (t.height || 220)) * pscale;
         spr.scale.set(chopSign < 0 ? -sL : sL, sL);
         spr.x = sp.x; spr.y = sp.y; spr.visible = true;
       };
       /* Shirt: paper-doll recolour -- the chop shirt art is a grayscale base, so
          _placeSwingShirt tints it to the player's chosen shirt colour (and hides
          it when a chest plate is worn, which replaces it). */
-      this._placeSwingShirt(this.chopShirtSprite, placeChopLayer, this._shirtId(), getEquip('chest'), 'chop', 'west', 480, k, getShirtColor(), getShirt());
+      this._placeSwingShirt(this.chopShirtSprite, placeChopLayer, this._shirtId(), getEquip('chest'), 'chop', 'west', CHOP_GEAR_FW, k, getShirtColor(), getShirt());
       placeChopLayer(this.chopLegsSprite,  _chopLegsTex);
-      placeChopLayer(this.chopChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'chop', 'west', 480, k));
+      placeChopLayer(this.chopChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'chop', 'west', CHOP_GEAR_FW, k));
       this._tintGearSprite(this.chopLegsSprite, getEquip('legs'), 'chopLegs');   /* v2.3.1764 */
       this._tintGearSprite(this.chopChestSprite, getEquip('chest'), 'chopChest');
       /* v2.3.847: chop hit sfx on the swing's strike frame (woodcutting had
@@ -8867,6 +8927,15 @@ export class EffectsRenderer {
           scaleY: sp.scale.y,
           drawnH: +(Math.abs(sp.scale.y) * 220).toFixed(2),
           gearScaleY: _cg ? _cg.scale.y : null,
+          /* v2.3.2356: the armour's DRAWN height, which is the number that has
+             to match the body's -- `gearScaleY` on its own cannot say so, and
+             it deliberately changed when the layers moved to half-res twins
+             (the same figure at twice the factor).  This is what a test asserts
+             against drawnH so that a transform mixing a resized sheet with an
+             unresized one (TRAPS §51) fails loudly instead of shipping a
+             half-size breastplate. */
+          gearDrawnH: (_cg && _cg.texture && _cg.texture.height)
+            ? +(Math.abs(_cg.scale.y) * _cg.texture.height).toFixed(2) : null,
           x: sp.x, y: sp.y,
         });
       }

@@ -391,17 +391,47 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    the tree reaches ~975 device px at tier 10, so take a 940 twin (6 → 3.4
    MB) rather than half. Per-zone is NOT the lever — nodes never spawn in
    town but appear in every field zone.
-7. **Chop gear layers at 2× (5760×440 ×3) — 21.75 MB, medium risk (a look
-   change), medium.** The largest sprite keys in the dump. v2.3.1131: "the
-   layer strips are 2x (480x440), so they render at half the body's scale
-   factor" — drawn at 0.47-0.71 device px per texel over a 1× body. BOTH
-   finders called a halve lossless; measured, it is not: chest 0.05% and
-   greaves 0.11% of aligned 2×2 blocks are constant, i.e. real 2× renders.
-   What bounds it is that the halved plate draws at the SAME density as the
-   lumberjack it sits on. Owner sign-off on a side-by-side BEFORE merge (the
-   v2.3.1236 "soft" rejection is the precedent); then 2880×220 twins,
-   GEARLAYER_VER bump, the three literal 480s → 240 and `sL` derived from
-   `t.height`.
+7. ~~**Chop gear layers at 2× (5760×440 ×3) — 21.75 MB**~~ **BUILT, v2.3.2356,
+   AND WAITING ON THE OWNER'S EYES** (measured: town 356.0 → 334.3 MB, ember
+   396.5 → 374.8 — exactly the 21.75 predicted, and the ONLY other rows that
+   moved are the whole gear set changing `?v=1035` to `?v=1036`, same MB each).
+   The three `chop-west.png` sheets are gone from the dump; three
+   `chop-west-220.png` at 2.42 MB stand where they were.
+   What it took: `tools/build_chop_half.mjs` mints the twins (`tools/png_raw.mjs`
+   inflates and deflates the IDAT so no canvas ever touches the pixels — TRAPS
+   §53; sharp is not installed in the sandbox and a native codec's kernel choice
+   is not something to take on trust here anyway); `GEAR_STRIP_TWIN` in
+   effectsRenderer says which pose has a twin and how many frames it is cut
+   into, so the FILE and the SLICING can never move one without the other; and
+   both placers now derive the layer's scale from `texture.height` — the local
+   one inside `placeChopLayer`, the peer one as `spec.fh / tex.height`, which is
+   1 for cook and leaves it byte-identical. The measurement that decided the
+   filter is in the tool's header: only 0.05% (chest) / 0.11% (greaves) of
+   aligned 2×2 blocks touching an opaque pixel are constant, so this art is NOT
+   a 2× pixel-double and the v2.3.1412 nearest inverse would have thrown real
+   texels away; a box average in PREMULTIPLIED space (straight RGBA pulls the
+   transparent side's black into every edge) is what the GPU's own minification
+   approximates when it samples this sheet at ~0.71 device px per texel.
+   THE LOOK CALL IS THE OWNER'S. Photographed armoured at dpr 3, on the same
+   swing frame (gear index 4), local and peer, before vs after —
+   `tools/qa/shots/chopgear-{local,peer}-{before,after}.png` at real phone size
+   (Playwright device-scale clip at dpr 3, NOT a CDP `captureScreenshot` clip,
+   which comes back blurred for WebGL on a software-GL box) and
+   `chopgear-{local,peer}-zoom4x.png` for the same pair magnified — and to my
+   eye, at real size and at 4× magnification, the plate is the same shape, the
+   same size, the same crispness and on the same body. Nothing was found to fix, so
+   nothing was; the photographs are the evidence, not the claim.
+   A whole-frame pixel diff of those shots is NOT evidence and is left out on
+   purpose: a control pair from two runs of the SAME build differs by 44% of
+   pixels with a worst channel of 255, because the fountain, the gesture
+   chevrons and a one-pixel camera drift are all in frame (TRAPS §21).
+   Pinned by mp-cookpeer, extended with the assertion that actually bites: the
+   armour's DRAWN height equals the body's, on the peer AND on his own screen,
+   read from the new `gearDrawnH` probes. Verified failing on the old literal
+   (`gearDrawnH` 52.25 against a body of 104.5) before it was left passing.
+   VERIFIED: mp-cookpeer 16/16, mp-wvscale 13/13, lifeskill 4/4, harvest 30/30
+   (including the firemaking section that is known-flaky on this box — it
+   passed), chopyield 10/10.
 8. **Sword south/east live layers NN-upscaled 4× — 21.7 MB after item 1,
    HIGH risk, large.** Body/torso/weapon are restored to 320/246 from
    half-res on disk; feetY, `cfg.fw`, crowns.json and the NATIVE-1× swing
@@ -440,8 +470,15 @@ the integrated branch, not composed from the two separate runs: **town 423.3
 visible change (mp-dmgicon 16/16 and mp-pine 7/7 unchanged).  Item 1 landed
 next, and item 4 after it: **town 356.0 MB, ember 396.5 MB — 67.3 MB below
 where this measurement started**, still with nothing looking different.
-Four of the nine are done; the five that remain are the ones that need a
-renderer change, an owner's eye, or both. Next, in order: item 1 (dead stand-in strips, the largest low-risk
-one left), then item 4's re-export. Items 2, 5 and 7 each want their own PR
-with the named scenario extended BEFORE the change lands; 7 wants the
-owner's eyes on a side-by-side first; 8 waits for 1.
+Item 7 came next and is the first one that is BUILT BUT NOT DECIDED: **town
+356.0 -> 334.3 MB, ember 396.5 -> 374.8 -- 89.0 MB below where this
+measurement started**, a fifth of everything the phone was holding, and the
+only one of the five so far whose art a player can in principle see change.
+Nothing about it looked different to the person who made it, at real size or
+at 4x, but that is a look call and the photographs are attached to the PR so
+it can be made by the owner rather than argued from megabytes.
+Five of the nine are done; the four that remain each need a renderer change,
+an owner's eye, or both. Next, in order: items 2 and 5, each with the named
+scenario extended BEFORE the change lands; 8 is the two-PR normalisation and
+waits for someone with an appetite for it; the town-map question at the end of
+this list is the owner's to answer, not a task.

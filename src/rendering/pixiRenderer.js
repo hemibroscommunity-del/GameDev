@@ -944,6 +944,15 @@ export async function initPixiRenderer(canvas) {
           shirt: { visible: !!ent.gear.shirt.visible, hasTex: !!(ent.gear.shirt.texture && ent.gear.shirt.texture.frame), tint: ent.gear.shirt.tint },
           chest: { visible: !!ent.gear.chest.visible, hasTex: !!(ent.gear.chest.texture && ent.gear.chest.texture.frame), tint: ent.gear.chest.tint },
         } : null,
+        /* v2.3.2356: the armour's DRAWN height on the peer figure, the twin of
+           __btChopFigure's gearDrawnH.  The chop layers now ship half-res
+           (GEAR_STRIP_TWIN, effectsRenderer) and BOTH placers had to stop
+           assuming the old size in the same edit; a scale factor alone cannot
+           show that they agree, a drawn height can.  Read off the legs sprite,
+           which is the one slot the chopper always resolves when greaves are
+           worn (the plate is a fine second, the shirt hides under it). */
+        gearDrawnH: (ent.gear && ent.gear.legs && ent.gear.legs.texture && ent.gear.legs.texture.height)
+          ? +(Math.abs(ent.gear.legs.scale.y) * ent.gear.legs.texture.height).toFixed(2) : null,
         /* The body sprite's own flip, so a test can pin that a peer chopping a
            tree on their left faces it (v2.3.2303) rather than away from it. */
         /* v2.3.2303: the index handed to the GEAR loader, which is NOT the
