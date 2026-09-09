@@ -30,16 +30,38 @@
  */
 import * as H from './harness.mjs';
 
-const holdTitle = (P, ms) => P.page.evaluate(async (hold) => {
-  const el = document.querySelector('.bt-zone-header__title');
-  if (!el) return 'no title element';
-  const r = el.getBoundingClientRect();
-  const opts = { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1, pointerType: 'touch' };
-  el.dispatchEvent(new PointerEvent('pointerdown', opts));
-  await new Promise((res) => setTimeout(res, hold));
-  el.dispatchEvent(new PointerEvent('pointerup', opts));
+/* ═══ v2.3.2413: PRESS IT WHERE A FINGER WOULD ═══
+   This used to be el.dispatchEvent(new PointerEvent('pointerdown')) + a sleep
+   + a pointerup.  That synthesises the EVENTS but skips the HIT TEST, and
+   skipping the hit test is what let this suite stay green through a title
+   that was `pointer-events:none` and could therefore not be pressed at all --
+   the exact "perfect and unreachable" failure this file's header says it
+   exists to catch.  See TRAPS section 67.
+
+   Now: move to the element's real centre, hold the button down past the
+   1200ms threshold, release.  Chromium hit-tests that press like any other,
+   so a target the player cannot reach delivers the event to whatever is
+   underneath instead and the panel never opens -- which is what the
+   assertions on the OUTCOME (not on this helper) then catch.
+
+   Deliberately NOT locator.click({delay}): measured at both 390x844 and the
+   harness's default 1000x780, that form reported success while the handler
+   never ran, so it would have re-introduced a press that passes without
+   pressing anything.  The outcome is the assertion; this is just the finger. */
+const holdTitle = async (P, ms) => {
+  const at = await P.page.evaluate(() => {
+    const el = document.querySelector('.bt-zone-header__title');
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  });
+  if (!at) return 'no title element';
+  await P.page.mouse.move(at.x, at.y);
+  await P.page.mouse.down();
+  await P.page.waitForTimeout(ms);
+  await P.page.mouse.up();
   return 'ok';
-}, ms);
+};
 
 const tap = (P, text) => P.page.evaluate((t) => {
   const b = Array.from(document.querySelectorAll('button')).find((n) => (n.textContent || '').indexOf(t) >= 0);
@@ -62,6 +84,20 @@ const warning = (P) => P.page.evaluate(() => {
   return n ? (n.parentElement.textContent || '').replace(/\s+/g, ' ').trim() : null;
 });
 
+/* The panel is a LAZY import, so "pressed" and "open" are different moments:
+   the chunk is requested at the 1200ms threshold and paints a few hundred ms
+   later.  Poll for it rather than sleeping a guessed interval -- a fixed wait
+   here was passing on a warm chunk and failing on a cold one, which is a
+   flake dressed as a bug. */
+const waitPanel = async (P, ms = 8000) => {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) {
+    if (await P.page.evaluate(() => !!Array.from(document.querySelectorAll('strong')).find((n) => n.textContent === 'Test panel'))) return true;
+    await P.page.waitForTimeout(250);
+  }
+  return false;
+};
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const admin = async (path, init) => (await (await fetch(
     'http://127.0.0.1:' + wsPort + '/api/admin' + path,
@@ -77,8 +113,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const f0 = await admin('/flags');
   rec.ok('control: no live flags are set to begin with', f0.ok === true && Object.keys(f0.flags || {}).length === 0, f0);
 
-  await holdTitle(P, 1500);
-  await P.page.waitForTimeout(900);
+  /* 2000ms, not 1500: the 1200ms threshold is a setTimeout competing with the
+     game loop, so it DRIFTS under a heavy frame -- measured here, a 1500ms
+     hold releases before it fires at the harness's 1000x780 default (bigger
+     canvas, heavier frames) while 2200ms does not.  The gesture is "hold past
+     the threshold", so the test holds past it with margin.  The short-tap
+     assertion above still guards the other side. */
+  const held = await holdTitle(P, 2000);
+  const opened = await waitPanel(P);
+  /* The OUTCOME is the assertion.  The helper returning 'ok' only means the
+     press was delivered; whether a player can actually reach this panel is
+     whether it OPENED.  It could not until v2.3.2413 -- the title was
+     pointer-events:none, so the press landed on the world behind it. */
+  rec.ok('a real hit-tested press on the zone title opens the panel (it was '
+       + 'unreachable until v2.3.2413)', opened === true, { held, opened });
   await P.page.evaluate((k) => {
     const inp = document.querySelector('input[type="password"]');
     const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
