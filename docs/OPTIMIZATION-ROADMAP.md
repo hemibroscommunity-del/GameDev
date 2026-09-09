@@ -470,14 +470,28 @@ the integrated branch, not composed from the two separate runs: **town 423.3
 visible change (mp-dmgicon 16/16 and mp-pine 7/7 unchanged).  Item 1 landed
 next, and item 4 after it: **town 356.0 MB, ember 396.5 MB — 67.3 MB below
 where this measurement started**, still with nothing looking different.
-Item 7 came next and is the first one that is BUILT BUT NOT DECIDED: **town
-356.0 -> 334.3 MB, ember 396.5 -> 374.8 -- 89.0 MB below where this
-measurement started**, a fifth of everything the phone was holding, and the
-only one of the five so far whose art a player can in principle see change.
-Nothing about it looked different to the person who made it, at real size or
-at 4x, but that is a look call and the photographs are attached to the PR so
-it can be made by the owner rather than argued from megabytes.
-Five of the nine are done; the four that remain each need a renderer change,
+Item 7 came next: **town 356.0 -> 334.3 MB, ember 396.5 -> 374.8 -- 89.0 MB
+below where this measurement started**, a fifth of everything the phone was
+holding, and the only one of the five so far whose art a player can in
+principle see change. It was held as BUILT BUT NOT DECIDED, because that is a
+look call and no megabyte count settles it.
+
+**DECIDED, v2.3.2375, 2026-09-09 (owner), and not the answer this paragraph
+was braced for:** shown the before/after at real size and at 4x, the owner
+said they were happy with it and that it "looks better". So the chop layers
+stay at native size and this item is closed. Do not revert it on the
+suspicion that a smaller texture must be a softer one.
+
+A plausible mechanism for "better", offered as a hypothesis and NOT as a
+measurement, because nobody has instrumented it: the 2x sheet was being
+minified by the GPU at sample time, while the twin is a box average computed
+offline by tools/build_chop_half.mjs. An offline box average over the whole
+2x2 is not what a runtime bilinear tap does, and on a sheet with no mip chain
+the runtime version aliases where the offline one does not. If anyone ever
+wants the real answer, that is the thing to measure -- but the owner's eye is
+what closed this item, and it does not need a theory to stand.
+
+Six of the nine are done; the three that remain each need a renderer change,
 an owner's eye, or both. Next, in order: items 2 and 5, each with the named
 scenario extended BEFORE the change lands; 8 is the two-PR normalisation and
 waits for someone with an appetite for it; the town-map question at the end of
