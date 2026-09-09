@@ -23,8 +23,13 @@
  * needs (TRAPS #18).
  */
 import { GameRoom } from '../src/index.js';
-import { STAM_ABILITIES, MILESTONES, staminaMilestoneMult, milestonePointsThrough,
+import { STAM_ABILITIES, MILESTONES, LUNGE, staminaMilestoneMult, milestonePointsThrough,
   milestoneAbilityLevels } from '../src/abilities.js';
+/* v2.3.2361: the contextual lunge's weight is a CLIENT design constant the
+   worker now has to honour, so the suite imports the client's own copy rather
+   than restating 0.6 (a test that copies a value out of the game stops testing
+   the game -- TRAPS #35).  Plain-node importable, like the ability mirror. */
+import { LUNGE_DAMAGE_MULT } from '../../src/data/gameSystems.js';
 import { STAM_ABILITIES as CLIENT_ABILITIES, MILESTONES as CLIENT_MILESTONES,
   staminaMilestoneMult as clientStamMult } from '../../src/data/abilities.js';
 /* v2.3.1734: the ladder's rung 6 and the burst's actual level gate live in
@@ -546,8 +551,15 @@ const setCharLevel = (lvl) => {
     { owed, pool: vet.prog3.pool });
 }
 
-/* ═══ v2.3.2266: THE LUNGE REACHES AS FAR AS IT CAN CLOSE, AND THE WORKER
+/* ═══ v2.3.2266: SWORDDASH REACHES AS FAR AS IT CAN CLOSE, AND THE WORKER
    MOVES THE PLAYER THERE ═══
+ *
+ * v2.3.2361: the four check names in this block used to call sworddash "a
+ * lunge", which was fine while it was the only thing here by that name.  It
+ * is not any more -- the §5.8 contextual lunge landed a real damage leg in
+ * the section below -- and two different moves sharing one word in the test
+ * output is the single most likely source of a wrong future edit.  Renamed;
+ * nothing else in the block changed.
  *
  * Owner: "dash damage using the tap to lock on a far away monster gives an
  * 'out of range' error."  Two halves, both pinned here:
@@ -585,10 +597,10 @@ const setCharLevel = (lvl) => {
   await room.webSocketMessage(wsA, JSON.stringify({
     type: 'ability', kind: 'sworddash', targetId: String(far.id),
   }));
-  check('a lunge at a monster 700px away LANDS (it was refused at reach 240)',
+  check('a SWORDDASH at a monster 700px away LANDS (it was refused at reach 240)',
     far.hp < hp0, { before: hp0, after: far.hp });
   const gap = Math.round(Math.hypot(mx0 - psA.x, my0 - psA.y));
-  check(`...and the worker MOVED the player to contact, so its copy is where the lunge ended (${gap}px)`,
+  check(`...and the worker MOVED the player to contact, so its copy is where the sworddash ended (${gap}px)`,
     gap >= 44 && gap <= 48, { gap, ps: { x: Math.round(psA.x), y: Math.round(psA.y) } });
   check('...and the next move is treated as a first move, so the jump it just made is not read as a teleport',
     psA.lastMoveAt === undefined, { lastMoveAt: psA.lastMoveAt });
@@ -602,9 +614,9 @@ const setCharLevel = (lvl) => {
   await room.webSocketMessage(wsA, JSON.stringify({
     type: 'ability', kind: 'sworddash', targetId: String(far.id),
   }));
-  check('a lunge at 1400px is STILL refused -- the bound moved, it did not go away',
+  check('a SWORDDASH at 1400px is STILL refused -- the bound moved, it did not go away',
     far.hp === hp1, { before: hp1, after: far.hp });
-  check('...and a refused lunge does not move the player either',
+  check('...and a refused sworddash does not move the player either',
     psA.y === beforeY, { y: psA.y, was: beforeY });
 
   /* BASH is deliberately not moved: it strikes on the PRESS, while the player
@@ -620,6 +632,489 @@ const setCharLevel = (lvl) => {
   }));
   check('BASH does not move the player -- it strikes on the press, not on arrival',
     psA.y === bashY, { y: psA.y, was: bashY });
+}
+
+
+/* === v2.3.2361: THE CONTEXTUAL LUNGE DEALS DAMAGE ===
+ *
+ * Owner, answering the question doLunge left in the code at v2.3.2352: "Yes
+ * lunge damage should take effect."  Until now `ability_use {type:'lunge'}`
+ * spent a stamina block and did nothing in a server zone.
+ *
+ * DO NOT CONFUSE THIS WITH THE SECTION ABOVE.  That one is `sworddash`, the
+ * melee opener cast through `ability {kind}`.  This is the section 5.8
+ * swipe-toward-your-lock dodge, which has its own wire message, its own
+ * handler and its own (lighter) weight, and is deliberately NOT a
+ * STAM_ABILITIES row -- see the LUNGE block in server/src/abilities.js for the
+ * four reasons.
+ *
+ * What is worth pinning is not "it does damage" but the properties that make
+ * it a SERVER-REFEREED hit rather than a client claim, and the one property
+ * that makes it deployable in either order: the declared targetId is REQUIRED,
+ * because a client old enough to lack it is also a client that still applies
+ * its own lunge number locally, and two numbers over one monster is the exact
+ * bug v2.3.2350-2352 spent three versions killing.
+ */
+{
+  const lunge = async (targetId) => {
+    wsA.sent.length = 0;
+    room.eventBuffer.length = 0;
+    const payload = { type: 'lunge' };
+    if (targetId !== undefined) payload.targetId = targetId;
+    await room.webSocketMessage(wsA, JSON.stringify({ type: 'ability_use', payload }));
+  };
+  /* readyPlayer() does not know about the cadence floor; every case that is
+     not ABOUT the floor has to clear it or it tests the floor by accident. */
+  /* v2.3.2373: ...and it clears the live harvest signal, which readyPlayer()
+     does not know about either.  Without this the harvest section leaks `ex`
+     into whatever runs after it and every later case tests the harvest gate by
+     accident. */
+  const readyLunge = () => { readyPlayer(); psA._lungeAt = 0; psA.ex = null; };
+
+  setCharLevel(60);
+  parkAll();
+
+  // -- the weight --
+  {
+    check("the lunge is rolled at the CLIENT's own LUNGE_DAMAGE_MULT, not a full swing",
+      LUNGE.dmgMult === LUNGE_DAMAGE_MULT && LUNGE_DAMAGE_MULT === 0.6,
+      { server: LUNGE.dmgMult, client: LUNGE_DAMAGE_MULT });
+
+    /* MEASURED through the real strike path, not re-derived from the formula:
+       stub the roll to a known number for one block and watch what comes out
+       the other end.  Two different multipliers through ONE code path is what
+       proves the cfg field is doing the scaling rather than luck. */
+    readyLunge();
+    const m = arm(meadow[0], psA.x + 20, psA.y);
+    const ceiling = room._maxDmgForAttacker(psA, false);
+    const realCompute = room._computeAttackDamage;
+    room._computeAttackDamage = () => ({ dmg: 100, isCrit: false });
+    let lungeDmg = null; let bashDmg = null;
+    try {
+      await lunge(String(m.id));
+      lungeDmg = hits()[0] && hits()[0].payload.dmg;
+      readyLunge();
+      arm(m, psA.x + 20, psA.y);
+      await cast('bash');
+      bashDmg = hits()[0] && hits()[0].payload.dmg;
+    } finally { room._computeAttackDamage = realCompute; }
+    check('...and 60% of a roll really is what lands (bash 75% through the same path)',
+      ceiling >= 100 && lungeDmg === 60 && bashDmg === 75,
+      { lungeDmg, bashDmg, ceiling });
+  }
+
+  // -- it lands, tagged, and the price does not move --
+  {
+    readyLunge();
+    parkAll();
+    const m = arm(meadow[0], psA.x + 20, psA.y);
+    const hp0 = m.hp;
+    const stam0 = psA.stamina;
+    await lunge(String(m.id));
+    check('a lunge at a named, in-range monster LANDS (it dealt nothing before v2.3.2361)',
+      hits().length === 1 && m.hp < hp0, { hits: hits().length, hp: m.hp, hp0, rejects: rejects() });
+    check('...tagged `ability: lunge`, which is what makes the client paint the number',
+      hits()[0] && hits()[0].payload.ability === 'lunge', hits()[0] && hits()[0].payload);
+    /* The price is the ONE thing this change must not move: it is what
+       index.js:_abilityCost has charged since v2.3.2302. */
+    check('...for exactly the one stamina block it always cost, charged once',
+      psA.stamina === stam0 - room._blockCost(psA, 'stamina', 1),
+      { spent: stam0 - psA.stamina, expected: room._blockCost(psA, 'stamina', 1) });
+    check('...through the ordinary melee ceiling, on a roll that is a FRACTION of one',
+      hits()[0].payload.dmg <= room._maxDmgForAttacker(psA, false) && LUNGE.dmgMult < 1,
+      { dmg: hits()[0].payload.dmg, ceiling: room._maxDmgForAttacker(psA, false) });
+  }
+
+  // -- THE DEPLOY-ORDER PROPERTY.  Nothing else pins this. --
+  {
+    readyLunge();
+    parkAll();
+    const m = arm(meadow[0], psA.x + 10, psA.y);
+    const hp0 = m.hp;
+    await lunge(undefined);
+    check('an UNNAMED lunge deals nothing even with a monster 10px away',
+      hits().length === 0 && m.hp === hp0, { hits: hits().length, hp: m.hp, hp0 });
+    /* This is the assertion that must survive: bash and sworddash fall back to
+       a 70px anonymous scan for exactly this case, and copying that here would
+       hand a pre-v2.3.2351 client -- which still paints its OWN lunge number in
+       a server zone -- a second, server-rolled number for the same swing.  The
+       field is the opt-in handshake, which is also why no caps flag exists. */
+    check('...and the block was still spent, so no deploy order gets a free lunge',
+      psA.stamina === psA.maxStamina - room._blockCost(psA, 'stamina', 1),
+      { stamina: psA.stamina, max: psA.maxStamina });
+  }
+
+  // -- zone: the server's own copy, never the wire --
+  {
+    readyLunge();
+    parkAll();
+    const m = arm(meadow[0], psA.x + 20, psA.y);
+    const hp0 = m.hp;
+    psA.z = 'frost';
+    await lunge(String(m.id));
+    check('a lunge from a zone you are not in touches nothing (v2.3.1628 by construction)',
+      hits().length === 0 && m.hp === hp0, { hp: m.hp, hp0, hits: hits().length });
+    psA.z = 'meadow';
+  }
+
+  /* -- reach: the move's OWN, bracketed round LUNGE.reach --
+     v2.3.2372: these two used to bracket room.PVE_MELEE_RANGE, because
+     _lungeStrike measured against it directly.  That number is the anticheat
+     TOLERANCE for a client-claimed swing (sized for iPhone-over-cellular
+     position lag on top of a swing's real reach), not a reach any honest swing
+     has, so borrowing it handed this move a ~400px damage lane that nothing
+     else in the attack model has.  Bracketed round the move's own 220 now, with
+     a third case that fails if anyone puts the tolerance back. */
+  {
+    const reach = LUNGE.reach;
+    readyLunge();
+    parkAll();
+    const m = arm(meadow[0], psA.x + (reach - 20), psA.y);
+    const hp0 = m.hp;
+    await lunge(String(m.id));
+    check('a lunge just inside its own reach lands (' + (reach - 20) + 'px of ' + reach + ')',
+      m.hp < hp0, { hp: m.hp, hp0, rejects: rejects() });
+    /* The refusal half matters as much as the acceptance half -- a reach that
+       accepts everything passes the first assertion and is strictly worse than
+       no reach at all (the sworddash block's own argument, v2.3.2266). */
+    readyLunge();
+    arm(m, psA.x + (reach + 20), psA.y);
+    const hp1 = m.hp;
+    await lunge(String(m.id));
+    check('...and one just outside it does not (' + (reach + 20) + "px) -- the lunge is NOT sworddash's 900",
+      m.hp === hp1 && hits().length === 0, { hp: m.hp, hp1, hits: hits().length });
+    /* THE ASSERTION THAT CATCHES THE REGRESSION THIS BLOCK EXISTS FOR: 380px is
+       comfortably inside PVE_MELEE_RANGE and must still be refused. */
+    readyLunge();
+    arm(m, psA.x + (room.PVE_MELEE_RANGE - 20), psA.y);
+    const hp2 = m.hp;
+    await lunge(String(m.id));
+    check('...and it does NOT borrow the anticheat tolerance as a reach ('
+      + (room.PVE_MELEE_RANGE - 20) + 'px is inside PVE_MELEE_RANGE and still refused)',
+      m.hp === hp2 && hits().length === 0, { hp: m.hp, hp2, hits: hits().length });
+    /* ...and the tolerance is still the outer backstop, not a thing the table
+       can raise past: Math.min, so a LUNGE.reach edit can only tighten. */
+    check('...with PVE_MELEE_RANGE still the outer bound the table cannot exceed',
+      LUNGE.reach < room.PVE_MELEE_RANGE, { reach: LUNGE.reach, bound: room.PVE_MELEE_RANGE });
+    /* ═══ v2.3.2373: AN ABSOLUTE BOUND, BECAUSE THE TWO ABOVE ARE RELATIVE ═══
+       Both bracketing cases are written as LUNGE.reach +/- 20, so they TRACK
+       the constant: set LUNGE.reach to 900 and every one of them still passes
+       while the move quietly becomes sworddash.  These two do not read it.
+       260 is the first round number past the derivation in the LUNGE block
+       (58 px of roll travel + 122 px of ordinary swing reach + 40 px of lag =
+       ~220), so a widening has to argue with a literal instead of dragging the
+       assertions along behind it. */
+    readyLunge();
+    arm(m, psA.x + 260, psA.y);
+    const hp3 = m.hp;
+    await lunge(String(m.id));
+    check('a lunge at 260px is refused -- an ABSOLUTE bound, one that does not track the constant',
+      m.hp === hp3 && hits().length === 0, { hp: m.hp, hp3, hits: hits().length });
+    check('...and LUNGE.reach itself is <= 220 (58 roll travel + 122 swing reach + 40 lag)',
+      LUNGE.reach <= 220, LUNGE.reach);
+  }
+
+  // -- damageability --
+  {
+    readyLunge();
+    parkAll();
+    const m = arm(meadow[0], psA.x + 20, psA.y);
+    m._invulnUntil = Date.now() + 5000;
+    const hp0 = m.hp;
+    await lunge(String(m.id));
+    check('an invulnerable monster takes nothing from a lunge (v2.3.2221)',
+      m.hp === hp0 && hits().length === 0, { hp: m.hp, hp0 });
+    /* ...and the refusal is CHEAP.  _abilityStrikeMonster re-checks
+       damageability, so the gate inside _lungeStrike looks redundant -- it is
+       not, and this is what says so: it sits ahead of the cadence stamp and
+       _endExtraction, so a lunge into an invulnerable phase must not eat your
+       next 175ms or break a harvest you are standing in.  (Found by the
+       mutation run: deleting that gate left every other assertion green.) */
+    check('...and refusing it costs the player nothing -- no cadence burned, no harvest broken',
+      (psA._lungeAt || 0) === 0 && !room.extractions.pa,
+      { lungeAt: psA._lungeAt, extraction: room.extractions.pa });
+    m._invulnUntil = 0;
+    readyLunge();
+    m.alive = false;
+    const hp1 = m.hp;
+    await lunge(String(m.id));
+    check('...nor does a dead one', m.hp === hp1 && hits().length === 0, { hp: m.hp, hp1 });
+    m.alive = true;
+  }
+
+  // -- the weapon gate (v2.3.1682, "the first swing is free" in a new costume) --
+  {
+    readyLunge();
+    parkAll();
+    const m = arm(meadow[0], psA.x + 20, psA.y);
+    const hp0 = m.hp;
+    const savedWeapon = psA.weapon;
+    psA.weapon = null;
+    await lunge(String(m.id));
+    check('a bare-handed lunge deals nothing (no greatsword fallback roll)',
+      m.hp === hp0 && hits().length === 0, { hp: m.hp, hp0 });
+    psA.weapon = savedWeapon;
+  }
+
+  // -- the cadence floor: NEW, because ability_use has never had one --
+  {
+    readyLunge();
+    parkAll();
+    const m = arm(meadow[0], psA.x + 20, psA.y);
+    await lunge(String(m.id));
+    const hpAfterFirst = m.hp;
+    const stamAfterFirst = psA.stamina;
+    await lunge(String(m.id));
+    check('a second lunge inside the cadence floor deals nothing',
+      m.hp === hpAfterFirst && hits().length === 0, { hp: m.hp, was: hpAfterFirst });
+    /* The floor gates the DAMAGE, not the pool -- a spammer still burns
+       stamina for nothing, which is the right direction. */
+    check('...but it still paid, so spamming the wire is never free',
+      psA.stamina < stamAfterFirst, { stamina: psA.stamina, was: stamAfterFirst });
+    /* ═══ v2.3.2374: THIS ASSERTION USED TO SAY THE OPPOSITE ═══
+       It read "the floor is below the client's own 250ms roll window, so
+       nothing honest is refused", pinning cooldownMs < 250.  That premise is
+       gone: the owner was shown the measured rates and chose "about 1 second",
+       accepting that a player CAN out-lunge the floor and that the extra ones
+       land no damage (they are still dodges -- i-frames, travel and sound are
+       on the mobility path).
+
+       What replaces it is the property they actually bought.  The stamina pool
+       cannot bound this lane -- staminaSalts is a shop item, so a player is
+       MEANT to refill it -- which means the cooldown is the only bound, and the
+       number that matters is what a client with an infinite bar extracts:
+           1000 / cooldownMs * dmgMult  full-swing-equivalents per second.
+       At 1000ms that is 0.6/s, which is what a MEASURED honest fresh character
+       already gets (0.600 lunges/s, pool-bound).  So cheating buys nothing here.
+       Lower the cooldown and nothing downstream catches it -- three rounds of
+       this change tried to make the pool catch it and could not. */
+    check('the cheat ceiling sits at or below an honest rate (the cooldown is the only bound)',
+      (1000 / LUNGE.cooldownMs) * LUNGE.dmgMult <= 0.6 + 1e-9,
+      { swingEquivPerSec: (1000 / LUNGE.cooldownMs) * LUNGE.dmgMult, cooldownMs: LUNGE.cooldownMs });
+    psA._lungeAt = 0;
+    psA.stamina = psA.maxStamina;
+    await lunge(String(m.id));
+    check('...once the floor expires it fires again (the refusal was the clock)',
+      hits().length === 1, { hits: hits().length, rejects: rejects() });
+  }
+
+  // -- the element, from the server's own weapon; status only, never a collision --
+  {
+    readyLunge();
+    parkAll();
+    const m = arm(meadow[0], psA.x + 20, psA.y);
+    psA.weapon = { type: 'sword', tierMult: 1, element1: 'flame' };
+    await lunge(String(m.id));
+    check('a flame weapon burns what it lunges into, credited to the luncher',
+      !!(m.statuses && m.statuses.burn) && m.statuses.burn.sourceId === 'pa',
+      m.statuses && m.statuses.burn);
+    /* The collision lane bypasses dmgCap entirely (COLLISION_BURST_CAP), and
+       the client-authoritative lunge this mirrors never resolves one.  A
+       second, cheaper door onto that lane is not what the owner approved. */
+    readyLunge();
+    /* readyPlayer() re-stamps a PLAIN sword, so the element has to be put back
+       or this sub-case silently asserts that a weapon with no element fails to
+       detonate -- which is true of any build and tests nothing.  (Caught by the
+       mutation run: injecting a resolveElementCollision call here left the
+       suite green.) */
+    psA.weapon = { type: 'sword', tierMult: 1, element1: 'flame' };
+    arm(m, psA.x + 20, psA.y);
+    m.statuses = { freeze: { id: 'freeze', element: 'frost', remaining: 5, maxDur: 5, stacks: 1, sourceId: 'pa', power: 1, appliedAt: Date.now(), lastTick: Date.now() } };
+    await lunge(String(m.id));
+    check('...but it never DETONATES one: no collision hit, and the old status survives',
+      hits().every((h) => !h.payload.collision) && !!m.statuses.freeze,
+      { collisions: hits().filter((h) => h.payload.collision).length, statuses: Object.keys(m.statuses) });
+    readyLunge();
+    arm(m, psA.x + 20, psA.y);
+    psA.weapon = { type: 'sword', tierMult: 1 };
+    await lunge(String(m.id));
+    check('...and a plain weapon applies no status at all',
+      Object.keys(m.statuses || {}).length === 0, m.statuses);
+  }
+
+  // -- ONE credit pipeline: a killing lunge is indistinguishable from a swing --
+  {
+    readyLunge();
+    parkAll();
+    const m = arm(meadow[0], psA.x + 20, psA.y);
+    m.hp = 3; m.maxHp = 5000;
+    m._burstDone = true;   /* skip the v2.3.2224 slime-burst deferral */
+    /* An ELEMENTAL weapon, or the corpse-guard assertion below passes for the
+       trivial reason that there was no element to apply. */
+    psA.weapon = { type: 'sword', tierMult: 1, element1: 'flame' };
+    await lunge(String(m.id));
+    const hit = hits()[0];
+    check('a lunge that overkills is clamped to the hp that was actually there',
+      !!hit && hit.payload.dmg === 3 && m.hp === 0, { dmg: hit && hit.payload.dmg, hp: m.hp });
+    /* The credit map itself is asserted on a NON-lethal lunge below: the kill
+       path resets dmgByPlayer for the respawn (combat.js v2.3.1202), so asking
+       the corpse what it was credited is asking a moving value about a past
+       event (TRAPS #44).  The PROTOTYPE survives that reset and is checked
+       here anyway, since a plain {} would come back through it. */
+    check('...on a map that is still null-prototype after the kill resets it',
+      !!m.dmgByPlayer && Object.getPrototypeOf(m.dmgByPlayer) === null,
+      { proto: m.dmgByPlayer && Object.getPrototypeOf(m.dmgByPlayer) });
+    const kills = room.eventBuffer.filter((e) => e.type === 'monster_kill');
+    check('...and it resolves through the ONE kill path, so xp/gold/loot credit cannot diverge',
+      kills.length === 1 && kills[0].payload.killerId === 'pa'
+        && kills[0].payload.recipients.indexOf('pa') >= 0,
+      kills[0] && kills[0].payload);
+    /* A corpse must not catch a burn -- the m.hp > 0 guard, same rule the
+       inline copy in _handleMonsterDamage plays by. */
+    check('...and a lethal lunge applies no status to the corpse',
+      !(m.statuses && Object.keys(m.statuses).length), m.statuses);
+  }
+
+  // -- ...and the contribution credit itself, on a monster that survives it --
+  {
+    readyLunge();
+    parkAll();
+    const m = arm(meadow[0], psA.x + 20, psA.y);
+    await lunge(String(m.id));
+    const dealt = hits()[0] && hits()[0].payload.dmg;
+    check('a lunge credits the luncher its exact damage, on a null-prototype map',
+      !!dealt && m.dmgByPlayer && m.dmgByPlayer.pa === dealt
+        && Object.getPrototypeOf(m.dmgByPlayer) === null,
+      { dealt, dmgByPlayer: m.dmgByPlayer && Object.assign({}, m.dmgByPlayer) });
+    /* Sticky aggro, exactly as a swing does it -- hitting something has to
+       pull it onto you or the lunge is a way to farm without consequence. */
+    check('...and pulls the monster onto them, so a lunge is not free farming',
+      m._aggroOverrideTarget === 'pa' && m._aggroOverrideUntil > Date.now(),
+      { target: m._aggroOverrideTarget, until: m._aggroOverrideUntil - Date.now() });
+  }
+
+  // -- the things a targetId must never reach --
+  {
+    readyLunge();
+    parkAll();
+    const m = arm(meadow[0], psA.x + 20, psA.y);
+    const hp0 = m.hp;
+    let threw = false;
+    try { await lunge('__proto__'); } catch { threw = true; }
+    check("a '__proto__' targetId neither throws nor hits, and leaves the zone list a list",
+      !threw && hits().length === 0 && m.hp === hp0 && Array.isArray(room.monsters.meadow),
+      { threw, hits: hits().length });
+    /* PvP fails closed by construction: the lookup runs over the monster list
+       only.  This IS reachable from an unmodified client -- a duel lock and a
+       tapped player both write S.lockedTarget with type 'player' -- so it is a
+       real path, not a hypothetical. */
+    readyLunge();
+    threw = false;
+    try { await lunge('pa'); } catch { threw = true; }
+    const pvp = room.eventBuffer.filter((e) => e.type === 'pvp_hit');
+    check('a PLAYER id as the target hits nothing and opens no PvP door',
+      !threw && hits().length === 0 && pvp.length === 0, { threw, hits: hits().length, pvp: pvp.length });
+  }
+
+  // -- the damage leg is lunge-only --
+  {
+    readyLunge();
+    parkAll();
+    const m = arm(meadow[0], psA.x + 20, psA.y);
+    const hp0 = m.hp;
+    for (const t of ['dodge', 'retreat']) {
+      wsA.sent.length = 0; room.eventBuffer.length = 0;
+      psA.stamina = psA.maxStamina; psA._lungeAt = 0;
+      await room.webSocketMessage(wsA, JSON.stringify({
+        type: 'ability_use', payload: { type: t, targetId: String(m.id) },
+      }));
+    }
+    check('a dodge or a retreat carrying a targetId still deals nothing',
+      m.hp === hp0, { hp: m.hp, hp0 });
+  }
+
+  /* ══ a harvest refuses the lunge (v2.3.2372), on the LIVE signal (v2.3.2373) ══
+     This used to assert the opposite: that a landed lunge called
+     _endExtraction, on v2.3.1704's "swinging ends an extraction".  That is
+     server-side truth and it made the two halves disagree -- the client
+     refuses an ATTACK mid-harvest (playerActions.js: `if (S._extraction)
+     return;` at the top of swingAttack and specialAttack) but has no such gate
+     on the dodge path, and the desktop Space-bar route into
+     triggerContextualDodge has none either.  So a desktop player could lunge
+     mid-harvest and silently lose the harvest while their client kept painting
+     it.  The worker plays by the client's own rule now.
+
+     v2.3.2373: AND IT READS ps.ex, NOT this.extractions.  The first draft of
+     that rule gated on the extraction RECORD and called it "the server's exact
+     mirror of the client's S._extraction".  It is a lazily-swept ledger: there
+     is no extraction_cancel message type in this repo, so a player who taps a
+     node and walks away leaves the record standing for EXTRACTION_TIMEOUT_MS
+     -- ten minutes -- and every lunge in those ten minutes silently dealt
+     nothing while still charging the block.  The abandoned-harvest case below
+     is that regression, written down. */
+  {
+    readyLunge();
+    parkAll();
+    const m = arm(meadow[0], psA.x + 20, psA.y);
+    const hp0 = m.hp;
+    const startedAt = Date.now();
+    room.extractions.pa = { nodeId: 'n1', zone: 'meadow', skill: 'wood', startedAt };
+    psA._exAt = startedAt;
+    psA.ex = 'chop';           /* the live signal, as movement.js stamps it */
+    await lunge(String(m.id));
+    check('a lunge mid-harvest deals nothing -- the same rule the client applies to attacks',
+      m.hp === hp0 && hits().length === 0, { hp: m.hp, hp0, hits: hits().length });
+    check('...and the harvest it interrupted is still running, not silently voided',
+      !!room.extractions.pa && room.extractions.pa.startedAt === startedAt && psA._exAt === startedAt,
+      { extraction: room.extractions.pa, exAt: psA._exAt });
+    /* Cheap refusal, ahead of the cadence stamp -- the invulnerable case's
+       argument, and the reason the gate sits where it sits. */
+    check('...and it burned no cadence, so the lunge after the harvest is not on a clock',
+      (psA._lungeAt || 0) === 0, { lungeAt: psA._lungeAt });
+
+    /* ═══ THE ABANDONED HARVEST.  THIS IS THE CASE THAT WENT RED. ═══
+       Record still present -- nothing deletes it for ten minutes -- but the
+       player has moved on, so the next move packet already cleared ps.ex.
+       Gating on the record muted the lunge for all ten of those minutes;
+       gating on the live signal does not.  The record is asserted STILL
+       PRESENT so this cannot pass for the trivial reason that something
+       swept it. */
+    readyLunge();
+    psA.ex = null;
+    arm(m, psA.x + 20, psA.y);
+    const hp1 = m.hp;
+    await lunge(String(m.id));
+    check('...but an ABANDONED harvest does NOT block it (record still there, player walked off)',
+      m.hp < hp1 && hits().length === 1 && !!room.extractions.pa,
+      { hp: m.hp, hp1, hits: hits().length, stillRecorded: !!room.extractions.pa, rejects: rejects() });
+
+    /* ...and the live signal covers what the ledger never held: cooking has no
+       server node and is in this.extractions for nobody (v2.3.1765), while the
+       client's own `if (S._extraction) return;` refuses an attack during it.
+
+       v2.3.2374: FIREMAKING IS THE EXCEPTION, and the sentence that used to sit
+       here said the opposite -- it claimed the client refuses an attack during
+       firemaking too.  It does not.  BroTown.jsx builds the code as
+       `S._firemaking ? 'fire' : <_exSkill-derived>`, and only the second half
+       requires S._extraction; every other code (mine/chop/fish/cook) implies it.
+       So during firemaking the client swings happily while a bare `if (ps.ex)`
+       gate had the server refusing the lunge -- the two halves disagreeing,
+       which is the exact bug this whole harvest gate exists to avoid. */
+    readyLunge();
+    delete room.extractions.pa;
+    psA.ex = 'cook';
+    arm(m, psA.x + 20, psA.y);
+    const hp2 = m.hp;
+    await lunge(String(m.id));
+    check('...and a COOK refuses it too, though the extraction ledger never held cooking',
+      m.hp === hp2 && hits().length === 0, { hp: m.hp, hp2, hits: hits().length });
+
+    readyLunge();
+    psA.ex = 'fire';
+    arm(m, psA.x + 20, psA.y);
+    const hpF = m.hp;
+    await lunge(String(m.id));
+    check("...but FIREMAKING does not -- the client swings during it, so the server must let the lunge land",
+      m.hp < hpF && hits().length === 1, { hp: m.hp, hpF, hits: hits().length, rejects: rejects() });
+
+    readyLunge();
+    arm(m, psA.x + 20, psA.y);
+    const hp3 = m.hp;
+    await lunge(String(m.id));
+    check('...and once the harvest is over the same lunge lands',
+      m.hp < hp3 && hits().length === 1,
+      { hp: m.hp, hp3, hits: hits().length, rejects: rejects() });
+  }
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

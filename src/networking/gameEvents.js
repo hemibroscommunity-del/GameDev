@@ -1540,6 +1540,42 @@ export function processGameEvent(type, payload, S, deps) {
                      Clobbering it made curHp == hp on every hit, which
                      locked the bar percentage at 100%. */
                   hitM.curHp = Math.round(payload.hpPct * hitM.maxHp);
+                  /* ═══ v2.3.2372: THE LUNGE'S ELEMENT PIP RIDES THE REAL HIT ═══
+                     The server owns statuses and never syncs them, so the
+                     coloured pip and the ambient element particles are drawn
+                     from the LOCAL m.statuses copy -- which is why dodge.js has
+                     always called applyStatus for its own lunge, and why the
+                     element_nova case below does the same thing for Element
+                     Burst.  When v2.3.2361 gave the lunge a server damage leg,
+                     the first draft simply moved dodge.js's call out of its
+                     `!_serverMonsters` gate so a server zone would get a pip
+                     too.  That painted one on EVERY lunge the client fired:
+                     the ones the worker refuses (reach, cadence floor, an
+                     invulnerable phase, a dead target, a harvest in progress)
+                     and every lunge sent to a worker too old to have
+                     _lungeStrike -- the same local fiction v2.3.2351 deleted
+                     the local NUMBER for.
+                     So it is painted here instead, off the one thing that only
+                     exists when the worker actually landed one: monster_hit
+                     tagged `ability: 'lunge'`.  OUR OWN hits only (a peer's
+                     statuses were never painted locally and are not ours to
+                     guess), and only in a server zone, where dodge.js's gate is
+                     shut -- so the two paths are mutually exclusive by
+                     construction and one lunge can never paint twice.
+                     THE MELEE WEAPON'S element, not the active slot's:
+                     _lungeStrike rolls it off ps.weapon and a lunge only fires
+                     with melee equipped (resolveDodgeContext), so both halves
+                     read the same field.  hitM.curHp > 0 mirrors the worker's
+                     own m.hp > 0 guard -- a corpse catches no burn.
+                     DEPLOY-ORDER (rule 19): an older worker sends no `ability`
+                     tag, so this never fires against one -- and that worker
+                     applies no status either, so nothing is lost. */
+                  if (S._serverMonsters && payload.ability === 'lunge'
+                      && payload.attackerId === S.myId) {
+                    var _lgEl = S.rpg && S.rpg.weapon && S.rpg.weapon.element1;
+                    var _lgSid = _lgEl && (ELEMENTS[_lgEl] || {}).status;
+                    if (_lgSid && hitM.curHp > 0) applyStatus(hitM, _lgSid, S.player, Date.now());
+                  }
                   /* ═══ v2.3.2200: EVERY HIT VISIBLY LANDS ("floaty" #3) ═══
                      _hitFlash was written for years and read by nothing
                      (entityRenderer now renders it as a brief brightness
