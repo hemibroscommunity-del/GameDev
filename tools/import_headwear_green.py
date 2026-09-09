@@ -180,6 +180,7 @@ OUTLINE_REACH = 14   # how far the piece may grow back from a seed, along the in
 OUTLINE_EDGE = 5     # within this of BOTH keys, near-black is the silhouette edge
 OUTLINE_PERIM = 0.25 # strip only when near-black traces this much of the perimeter
 OUTLINE_SPECK = 0.03 # after stripping, drop piece parts under this share of the biggest
+FACE_STUB_GAP = 4    # v2.3.2371: blank rows below a face-worn piece past which a loose part is the face
 LENS_PAD = 4         # v2.3.2363: 256-space px the eye box grows by before the lens is flattened
 SEAT_EYES_MAX = 8    # v2.3.2365: 256-space px a face-worn piece may be moved to sit on the eyes
 CLEAR_PAD = 2        # v2.3.2366: tighter than LENS_PAD -- an erased lens must leave its frame
@@ -413,14 +414,43 @@ def strip_figure_outline(ink, rgb, mag, grn):
     return kept, int(ink.sum() - kept.sum()), traced
 
 
-def despeckle(piece):
+def despeckle(piece, face_worn=False):
     """Drop the outline stubs left where the piece crossed the silhouette
-    (v2.3.2362).  Only ever called on a sheet whose outline was stripped."""
+    (v2.3.2362).  Only ever called on a sheet whose outline was stripped.
+    Returns (piece, dropped_below), the second being px the face-worn rule
+    took -- the caller prints it, because a silent drop is how a real part of
+    a piece would go missing without anyone noticing.
+
+    v2.3.2371: SIZE ALONE DOES NOT SEPARATE A STUB FROM A PIECE.  The second
+    eye-patch sheet left 32px of the drawn CHIN behind: 7.5% of the patch, so
+    many times over the speck threshold, and sitting 24 rows below a patch it
+    touches nowhere.  For a FACE-WORN piece POSITION settles what size cannot.
+    Eyewear is one thing worn on the eyes, so a fragment that touches it
+    nowhere and lies wholly BELOW it is the face the generator drew -- a chin,
+    a jaw, a mouth -- and not the eyewear.
+
+    Two deliberate limits.  It is gated on face_worn, because a HAT may
+    legitimately carry a detached piece below its brim (a chinstrap), and a
+    hat is fitted by the shoulders with the whole figure in reach.  And it
+    wants a clear gap rather than mere non-overlap, because a dangling element
+    hangs just under the thing it hangs from: the shipped monocle\'s chain is
+    joined to its ring and so is one component, but a sheet that draws the
+    links detached should keep them."""
     lab, k = ndi.label(piece, np.ones((3, 3)))
     if k <= 1:
-        return piece
+        return piece, 0
     sizes = np.array(ndi.sum(piece, lab, range(1, k + 1)))
-    return np.isin(lab, 1 + np.nonzero(sizes >= OUTLINE_SPECK * sizes.max())[0])
+    live = list(1 + np.nonzero(sizes >= OUTLINE_SPECK * sizes.max())[0])
+    dropped = 0
+    if face_worn and len(live) > 1:
+        main = 1 + int(np.argmax(sizes))
+        floor = int(np.nonzero((lab == main).any(axis=1))[0].max()) + FACE_STUB_GAP
+        below = [i for i in live if i != main
+                 and int(np.nonzero((lab == i).any(axis=1))[0].min()) > floor]
+        if below:
+            dropped = int(sum(sizes[i - 1] for i in below))
+            live = [i for i in live if i not in below]
+    return np.isin(lab, live), dropped
 
 
 def eye_cover(drawn, boxes, crown, anchor, nudge, ddx=0, ddy=0):
@@ -791,6 +821,7 @@ def main():
                   f'scale {borrow:.3f} and this cell\'s green for position')
 
     bboxes, anchors, nudges, scales, _flat, _seated, _oneeye = {}, {}, {}, {}, {}, {}, set()
+    _stubbed = {}   # v2.3.2371: px despeckle dropped below a face-worn piece, per facing
     _item_one_eye = None   # v2.3.2369: settled once, on south -- see seat_eyes()
     for (c, (fg, sl)), fit in zip(zip(cells, figs), fits):
         d = c['dir']
@@ -816,7 +847,10 @@ def main():
         face_worn = args.category in FACE_WORN
         hat = hat_of(ink, sl, top=(gy0 - max(2, int(0.02 * (fy1 - gy0)))) if face_worn else None)
         if outlined:
-            hat = despeckle(hat)   # v2.3.2362: the stubs where the piece met the outline
+            # v2.3.2362: the stubs where the piece met the outline
+            hat, _stub = despeckle(hat, face_worn=face_worn)
+            if _stub:
+                _stubbed[d] = _stub
         ys, xs = np.nonzero(hat)
         if not len(ys):
             raise SystemExit(f'{d}: no hat found beside the silhouette')
@@ -994,6 +1028,13 @@ def main():
             if _hb and bb[3] > 0.6 * (_hb['bottom'][1] - _hb['top'][1]):
                 print(f'{"":<10} WARNING: the piece is {bb[3]}px tall against a {_hb["bottom"][1] - _hb["top"][1]}px '
                       f'head -- more than glasses; check --debug for what else was keyed')
+            if d in _stubbed:
+                # v2.3.2371: say what was thrown away and why, next to the
+                # numbers -- if this ever eats a real part of a piece (a
+                # monocle chain drawn detached), this line is how it is caught
+                # at import instead of in the game.
+                print(f'{"":<10} {_stubbed[d]}px dropped below the piece: a loose scrap of the '
+                      f'drawn face (a chin or a jaw the outline strip missed), not eyewear')
             if head_map is not None and abs(sy / scale - 1) > 0.03:
                 print(f'{"":<10} the sheet came back at a different aspect (vertical scale '
                       f'{sy:.3f}x vs horizontal {scale:.3f}x); placed by the head, so fine')

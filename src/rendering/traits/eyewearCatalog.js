@@ -112,18 +112,22 @@ export const EYEWEAR_CATALOG = [
      it reads 100%/22% on south, which is unmistakable, and 56%/78% on
      southwest, where the strap crosses the free eye -- so southwest alone
      would have called it a pair and balanced the patch between both eyes.
-     ASYMMETRIC, and more so than the note above admits (v2.3.2370, owner: "I
-     noticed south and southwest switch eyes"): the sheet drew the patch on the
-     character's RIGHT eye in the south cell and their LEFT in the southwest
-     one, so it swaps between two DRAWN facings, not merely the mirrored ones.
-     Measured: south covers eye 0 at 100%, southwest covers eye 1 at 100%, and
-     putting southwest on eye 0 is an 18px sideways move that would hang 14px
-     of the strap off the head.  It needs the southwest cell redrawn; no
-     bounded placement fixes it.  Shipped as-is meanwhile.
-     v2.3.2370: the shine is gone (--flatten-lens --flatten-pad 6; the default
-     pad of 4 missed it by one pixel on southwest, where it sits between the
-     eyes).  The white on the northeast strap is left alone -- it is a shaded,
-     outlined buckle rather than a specular dot. */
+     ASYMMETRIC, and the piece that proved a DRAWING fault is not a placement
+     fault (v2.3.2370, owner: "I noticed south and southwest switch eyes").
+     The first sheet drew the patch on the character's RIGHT eye in the south
+     cell and their LEFT in the southwest one -- a swap between two DRAWN
+     facings, not the mirrored ones.  Measured at 100% on eye 0 for south and
+     100% on eye 1 for southwest, and moving southwest onto eye 0 was an 18px
+     sideways move against the 8px seat bound that would have hung 14px of
+     strap off the head.  So it was reported rather than forced, and the owner
+     redrew that cell.
+     v2.3.2371: imported from the REDRAWN sheet, which also arrived with no
+     shine on it, so the flatten flags the first one needed are gone.  Both
+     front facings now put the patch on eye 0 -- south 100%/33%, southwest
+     100%/51%, the second figure being the strap crossing the free eye, which
+     is the strap doing its job.  Still asymmetric, so it still shows on the
+     other eye when the character faces west / northwest / southeast: those
+     three are runtime mirrors, which no sheet can change. */
   { id: 'eye-patch', name: 'Eye Patch' },
 ];
 

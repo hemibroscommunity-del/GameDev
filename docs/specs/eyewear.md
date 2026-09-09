@@ -3,7 +3,8 @@
 **Shipped:** 3D Glasses (v2.3.2362), Goggles (v2.3.2363, see-through),
 Laser Glasses (v2.3.2364), Thug Life (v2.3.2365), White Glass (v2.3.2366),
 Golden Monocle (v2.3.2367, one lens, three facings), Golden Glasses
-(v2.3.2368), Eye Patch (v2.3.2369, all five facings; shine removed v2.3.2370).
+(v2.3.2368), Eye Patch (v2.3.2369, all five facings; re-imported v2.3.2371
+from a redrawn sheet that fixed the south/southwest eye swap).
 
 Owner: *"I want to start adding eyewear options to my Hemi bros (see the first
 image of the 3d glasses). I previously had this mannequin view ... Is this
@@ -65,17 +66,18 @@ property of the five-direction system, not of this slot.
 
 **And the sheet can swap it too** (owner, on the Eye Patch: *"I noticed south
 and southwest switch eyes"*). The mannequin's heads have no eyes drawn on them,
-so the generator has nothing to aim at and picks a side per cell: that sheet put
-the patch on the character's **right** eye in the south cell and their **left**
-in the southwest one. Measured, south covers eye 0 at 100% and southwest covers
-eye 1 at 100%.
+so the generator has nothing to aim at and picks a side per cell: the first
+Eye Patch sheet put the patch on the character's **right** eye in the south
+cell and their **left** in the southwest one. Measured, south covered eye 0 at
+100% and southwest covered eye 1 at 100%.
 
 **No bounded placement fixes that**, and it is worth knowing why before
-reaching for one. Moving the southwest patch onto eye 0 is an 18 px sideways
-move; the piece would then span 78-135 against a head spanning 92-166, hanging
-14 px of strap off the face. The seat pass is capped at 8 px for exactly this
-reason — it corrects where a piece sits, it does not relocate it. **The fix is
-to redraw that cell**, asking for the patch on the eye further from the viewer:
+reaching for one. Moving that southwest patch onto eye 0 was an 18 px sideways
+move; the piece would then have spanned 78-135 against a head spanning 92-166,
+hanging 14 px of strap off the face. The seat pass is capped at 8 px for
+exactly this reason — it corrects where a piece sits, it does not relocate it.
+So the swap was **measured and reported, not forced**, and the fix was to
+redraw the cell:
 
 ```
 In the SOUTHWEST cell, put the patch on the character's other eye — the one
@@ -83,10 +85,17 @@ further from the viewer, on the same side of the face as in the SOUTH cell.
 Keep the strap where it is.
 ```
 
-Even then the three mirrored facings (west, northwest, southeast) still show it
-on the opposite eye. Full consistency is not available for a one-eye piece in a
-five-direction mirrored system; the best achievable is that the five **drawn**
-facings agree.
+That is what shipped (v2.3.2371): the redrawn sheet reads **south 100% / 33%
+and southwest 100% / 51%**, both on eye 0, the second figure in each pair being
+the strap crossing the free eye. The lesson to carry: when a piece lands on the
+wrong feature, first measure whether it is *drawn* wrong or *placed* wrong. A
+placement error is the tool's to fix; a drawing error is one cell to redraw,
+and forcing the tool at it only breaks the placement that works.
+
+Even so, the three mirrored facings (west, northwest, southeast) still show an
+asymmetric piece on the opposite eye. Full consistency is not available for a
+one-eye piece in a five-direction mirrored system; the best achievable is that
+the five **drawn** facings agree, which is now the case.
 
 **Not every direction ships.** Glasses are invisible from behind. The beard
 precedent (v2.3.1530) is to omit BOTH the png and the `meta.anchors` entry for
@@ -233,6 +242,17 @@ Trait textures are stored at 128 for phone memory (v2.3.1526); the login
 portrait prefers a `hi/` 256 copy (v2.3.1579). `--stash-hi` copies each 256
 frame into `hi/` before halving it.
 
+**On a RE-import it overwrites (v2.3.2371).** It used to stash only when `hi/`
+held nothing, which quietly kept the *previous* sheet's original: the world got
+the new art and the login portrait — the one thing that reads `hi/` — went on
+rendering the old one. Caught re-importing the Eye Patch from the redrawn
+sheet, where the stale copy would have shown the patch on the wrong eye in the
+portrait alone. Read the tool's last line: it now says how many originals it
+replaced, and `N replacing an older original — a re-import` is the expected
+line the second time you import a pair. (The old guard was protecting nothing:
+a frame already at 128 is skipped by the size test before the stash is
+reached, so an original can never be overwritten by its own halved copy.)
+
 ### Step 7: picker thumbnails
 
 ```
@@ -276,7 +296,7 @@ for a hat.
 
 ---
 
-## 3. Five things a sheet can do (v2.3.2362-2367)
+## 3. Six things a sheet can do (v2.3.2362-2371)
 
 ### The person's own outline
 
@@ -307,6 +327,36 @@ this from re-cutting the 39 hats and 8 hairstyles already imported.
 The case this trims is a piece drawn *entirely* in near-black at the very edge
 of the silhouette: its blobs survive on thickness, its outermost edge does not.
 No such piece has come through yet, and the numbers will say so if one does.
+
+### A scrap of the face the outline strip missed
+
+The strip above clears the outline it can identify; what survives is dropped by
+a speck rule, "under 3% of the biggest part goes". The redrawn Eye Patch sheet
+found the hole in that: **32 px of the drawn chin** came through on southwest —
+7.5% of the patch, so many times over the threshold, and sitting 24 rows below
+a patch it touches nowhere. It made the piece 49 px tall against a 71 px head,
+which the height warning duly shouted about.
+
+Size cannot separate that from a real part of a piece. Position can, for a
+**face-worn** piece specifically: eyewear is one thing worn on the eyes, so a
+fragment that touches it nowhere and lies wholly *below* it is the face the
+generator drew — a chin, a jaw, a mouth — and not the eyewear. That rule now
+runs after the strip, and the import report names what it dropped:
+
+```
+389px dropped below the piece: a loose scrap of the drawn face
+(a chin or a jaw the outline strip missed), not eyewear
+```
+
+Two deliberate limits, both worth keeping if you touch this. It is gated on the
+eyewear category, because a **hat** may legitimately carry a detached part
+below its brim — a chinstrap — and a hat is fitted with the whole figure in
+reach. And it wants a clear gap below the piece rather than mere non-overlap,
+because a dangling element hangs just under the thing it dangles from: the
+Golden Monocle's chain is joined to its ring and so is one part, but a sheet
+that draws the links detached should keep them. It prints what it drops for
+exactly that case — if it ever eats something real, the report is where you
+catch it, not the game.
 
 ### The piece is drawn low, and the southwest cell most of all
 
@@ -340,10 +390,17 @@ the generator chose.
 
 That question is asked **once per item, on south**, not per facing. Whether a
 piece has one lens is a fact about the object, and the per-facing reading is
-not reliable enough to keep re-asking: the Eye Patch reads 100% / 22% on south,
-which is unmistakable, and 56% / 78% on southwest, where the strap crosses the
-free eye — so southwest alone would have called it a pair and balanced the
-patch between both eyes. South is the facing that shows both eyes squarely.
+not reliable enough to keep re-asking: the first Eye Patch sheet read
+100% / 22% on south, which is unmistakable, and 56% / 78% on southwest, where
+the strap crosses the free eye — so southwest alone would have called it a pair
+and balanced the patch between both eyes. South is the facing that shows both
+eyes squarely.
+
+The redrawn sheet (v2.3.2371) makes the same point twice over: it reads
+100% / 33% on south and **100% / 51%** on southwest. That 51% is a hair over
+half, so southwest *still* reads as a pair on its own — a different sheet, a
+different strap angle, the same wrong answer. Settling it on south is what
+makes both sheets import correctly.
 
 **Per facing**, which is a real difference from the hat seat pass
 (`tools/seat_headwear.py`) and worth understanding. That one insists on one
@@ -479,8 +536,10 @@ From the Hemi Bros catalogue spreadsheet, how many Bros wear each:
 | Golden Monocle | 48 |
 | Vision Pro | 45 |
 
-3D Glasses, Goggles, Laser Glasses, Thug Life and White Glass are in. Eye Patch
-and Golden Monocle are the asymmetric ones (see section 1).
+Eight are in: Thug Life, Eye Patch, White Glass, 3D Glasses, Golden Glasses,
+Laser Glasses, Golden Monocle and Goggles. Eye Patch and Golden Monocle are the
+asymmetric ones (see section 1). Six of the catalogue remain: Nerd, Flattened,
+Dbz Glass, Eye Mask, Gojo Satoru and Vision Pro.
 
 ---
 

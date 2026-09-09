@@ -2350,3 +2350,49 @@ and the Goggles' `meta.json` records what it repainted per facing.
 
 **Related:** §56 (the same sheet's other surprise), §17 (sharpening art that is
 about to be minified).
+
+---
+
+## 58. A "don't clobber the original" guard that keeps the wrong original (v2.3.2371)
+
+**Tempting:** `tools/downscale_traits.py --stash-hi` copies each 256px trait
+frame into `hi/` before halving it, because the login portrait renders from
+`hi/` (v2.3.1579) and the world renders from the 128. Copying is destructive if
+it runs twice — the second run would stash the already-halved frame over the
+good original and the portrait would render a 128 upscaled. So guard it:
+`if not os.path.isfile(hi)`. Stash only when nothing is there. **Wrong**, in
+both directions at once.
+
+**It guards nothing.** The loop skips any frame already at or under the target
+size several lines earlier (`if w <= args.to ... continue`), so an already-
+halved frame never reaches the stash at all. The hazard the guard was written
+for cannot happen.
+
+**And it breaks the re-import.** Importing a trait a second time — from a
+redrawn sheet, which is the normal way art gets fixed — writes fresh 256 art
+that the guard then refuses to stash, because `hi/` already holds the *previous
+sheet's* frames. The halve overwrites the new 256 art with its own 128 copy,
+the old original stays in `hi/`, and the result is a trait that is **correct in
+the world and wrong in the login portrait**. Caught re-importing the Eye Patch
+from a sheet redrawn to fix which eye the patch covers: the world would have
+shown the corrected patch and the portrait the old one, on the same character,
+in the same session.
+
+**The fix** is one line — stash unconditionally — plus a count of how many
+stashes replaced an existing original, printed so a re-import announces itself:
+`5 original(s) stashed in hi/ (5 replacing an older original — a re-import)`.
+
+**The general lesson:** an idempotence guard is a claim about which of two
+copies is authoritative. Here the frame on disk at full size *is* the current
+original, always — so "already exists" was never the right question. Before
+writing `if not exists`, say out loud which copy you are protecting and from
+what; if the answer is a case another check already excludes, the guard is not
+protecting the file, it is pinning it.
+
+**Receipt:** v2.3.2371 — the stash block in `tools/downscale_traits.py`, and
+the Eye Patch's five `hi/` frames in that commit.
+
+**Related:** §55-§57 (the eyewear import pipeline), and the same shape of bug
+in the picker thumbnails — a re-import deletes the trait folder and the
+importer writes `thumb.png` but not `thumb-sw.png`, which is why
+`make-southwest-thumbs.mjs --check` is step 7 of `docs/specs/eyewear.md`.

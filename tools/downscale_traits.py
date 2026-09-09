@@ -64,7 +64,7 @@ def main():
     args = ap.parse_args()
 
     before = after = 0
-    frames = skipped = stashed = 0
+    frames = skipped = stashed = replaced = 0
     for cat in args.cats.split(','):
         base = f'{TRAITS}/{cat}'
         if not os.path.isdir(base):
@@ -94,18 +94,29 @@ def main():
                 # it is halved here -- direction frames only, never a hairmask.
                 if args.stash_hi and '/hairmask/' not in p:
                     hi = f'{os.path.dirname(p)}/hi/{os.path.basename(p)}'
-                    if not os.path.isfile(hi):
-                        stashed += 1
-                        if args.apply:
-                            os.makedirs(os.path.dirname(hi), exist_ok=True)
-                            im.save(hi)
+                    # v2.3.2371: OVERWRITE.  This used to stash only when hi/ held
+                    # nothing, which silently kept the PREVIOUS sheet's original
+                    # across a re-import: the world got the new art and the login
+                    # portrait -- the one thing that reads hi/ -- kept rendering the
+                    # old one.  Caught re-importing the eye patch from a redrawn
+                    # sheet.  The guard was protecting nothing either: a frame
+                    # already at 128 is skipped by the size test above and never
+                    # reaches here, so an original can never be overwritten by its
+                    # own halved copy.  The frame about to be halved IS the current
+                    # original, by definition.
+                    replaced += os.path.isfile(hi)
+                    stashed += 1
+                    if args.apply:
+                        os.makedirs(os.path.dirname(hi), exist_ok=True)
+                        im.save(hi)
                 if args.apply:
                     im.resize((nw, nh), Image.BOX).save(p)
 
     print(f'{frames} frame(s) {"resized" if args.apply else "would resize"} to '
           f'{args.to}px, {skipped} already at or under it')
     if args.stash_hi:
-        print(f'{stashed} original(s) {"stashed" if args.apply else "would be stashed"} in hi/')
+        print(f'{stashed} original(s) {"stashed" if args.apply else "would be stashed"} in hi/'
+              + (f' ({replaced} replacing an older original — a re-import)' if replaced else ''))
     print(f'texture memory {before / 1e6:.1f}MB -> {after / 1e6:.1f}MB '
           f'({before / max(after, 1):.1f}x saving)')
 
