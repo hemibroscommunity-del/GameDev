@@ -218,14 +218,52 @@ export const gridMethods = {
     walk(ps.enduranceSpec, ENDURANCE_CHANNEL_KEYS);
     return total;
   },
-  _sanitizeWeaponSkills(src) {
+  /* ═══ v2.3.2373: MONOTONIC IN `level`, AND THAT IS A RATE LIMIT ═══
+     `prev` is the stored track this payload is replacing, and every reported
+     level is floored at what is already banked.  Without it these two
+     sanitizers were the third writer on the stamina pool and the widest one:
+     _handleStatsUpdate FULL-RESTORES hp, stamina AND mana whenever a reported
+     weapon or defense skill level exceeds the stored one (the v2.3.1414
+     "restore on level up of any combat skill" rule), and both sanitizers
+     clamped to [0,100] while refusing nothing -- DECREASES INCLUDED.  So
+     alternating the reported level up, down, up was an unbounded, unrated,
+     on-demand full refill of all three pools, which removes the pool as a rate
+     limit on everything that spends it (as of v2.3.2361 that includes the
+     contextual lunge's damage leg).  Pinned in grids.test.mjs.
+
+     OMISSION IS A DECREASE TOO, so `prev` is carried forward for a category
+     the payload leaves out.  Before this, a payload naming only `sword`
+     dropped bow and staff from ps.weaponSkills outright, and the next payload
+     that mentioned bow at level 1 read as 0 -> 1 and re-armed the restore --
+     the same refill through a side door, which a level-only floor would not
+     have closed.
+
+     LEVEL ONLY.  xp legitimately falls (awardWeaponXp subtracts the
+     requirement on a level-up and zeroes it at the cap), so flooring it would
+     freeze every capped track at its last pre-cap value.
+
+     This is the rule the T1 stat loop below has enforced since v2.3.1634
+     (`if (payload[s] < (ps[s] || 0)) continue;` -- "T1 stats only grow"), and
+     the join paths call these with no `prev` on purpose: stored-wins already
+     ran there, and a first connect has nothing to be monotonic against. */
+  _sanitizeWeaponSkills(src, prev) {
     const out = {};
-    if (!src || typeof src !== 'object') return out;
+    const _p = (prev && typeof prev === 'object') ? prev : null;
+    const _src = (src && typeof src === 'object') ? src : null;
+    if (!_src && !_p) return out;
     for (const cat of WEAPON_SKILL_CATS) {
-      const s = src[cat];
-      if (!s || typeof s !== 'object') continue;
+      const was = _p && _p[cat];
+      const floor = (was && typeof was === 'object')
+        ? Math.max(0, Math.min(100, Math.floor(Number(was.level) || 0))) : 0;
+      const s = _src && _src[cat];
+      if (!s || typeof s !== 'object') {
+        if (was && typeof was === 'object') {
+          out[cat] = { level: floor, xp: Math.max(0, Math.min(1e8, Number(was.xp) || 0)) };
+        }
+        continue;
+      }
       out[cat] = {
-        level: Math.max(0, Math.min(100, Math.floor(Number(s.level) || 0))),
+        level: Math.max(floor, Math.max(0, Math.min(100, Math.floor(Number(s.level) || 0)))),
         xp: Math.max(0, Math.min(1e8, Number(s.xp) || 0)),
       };
     }
@@ -239,10 +277,17 @@ export const gridMethods = {
     }
     return out;
   },
-  _sanitizeDefenseSkill(src) {
-    if (!src || typeof src !== 'object') return { level: 0, xp: 0 };
+  /* v2.3.2373: monotonic in `level`, the same door and the same argument as
+     _sanitizeWeaponSkills above -- a reported defense-level DECREASE re-arms
+     the same full pool restore. */
+  _sanitizeDefenseSkill(src, prev) {
+    const was = (prev && typeof prev === 'object') ? prev : null;
+    const floor = was ? Math.max(0, Math.min(100, Math.floor(Number(was.level) || 0))) : 0;
+    if (!src || typeof src !== 'object') {
+      return { level: floor, xp: was ? Math.max(0, Math.min(1e8, Number(was.xp) || 0)) : 0 };
+    }
     return {
-      level: Math.max(0, Math.min(100, Math.floor(Number(src.level) || 0))),
+      level: Math.max(floor, Math.max(0, Math.min(100, Math.floor(Number(src.level) || 0)))),
       xp: Math.max(0, Math.min(1e8, Number(src.xp) || 0)),
     };
   },
@@ -713,11 +758,27 @@ export const gridMethods = {
        this makes it authoritative.  Level DECREASES (sanitizer clamps,
        stale reconnect echoes) never trigger it, and the restore itself
        is capped at the maxes, so the forgeable-report class stays as
-       harmless as the skill fields themselves (v2.3.1021 posture). */
+       harmless as the skill fields themselves (v2.3.1021 posture).
+
+       v2.3.2373: THAT LAST SENTENCE WAS FALSE, AND IT IS THE REASON THE
+       STAMINA POOL WAS NOT A RATE LIMIT.  A decrease did not trigger the
+       restore, but nothing REFUSED one either -- both sanitizers clamped
+       to [0,100] and stored whatever arrived, downwards included -- so
+       reporting level 40, then 39, then 40 fired this block on every
+       third message.  That is an on-demand full refill of hp, stamina
+       AND mana, with no cost and no rate limit, which takes the pool out
+       as a bound on everything that spends it (the stamina abilities,
+       and as of v2.3.2361 the contextual lunge's damage leg).  Both
+       sanitizers are MONOTONIC in `level` now, so a decrease cannot land
+       and therefore cannot be re-reported as an increase.  The restore
+       itself is unchanged.  Pinned in grids.test.mjs. */
     let _skillLeveledUp = false;
     if (payload.weaponSkills && typeof payload.weaponSkills === 'object') {
       const _oldWs = ps.weaponSkills || {};
-      ps.weaponSkills = this._sanitizeWeaponSkills(payload.weaponSkills);
+      /* v2.3.2373: the stored track is the FLOOR -- see the sanitizer.  Without
+         it a reported decrease landed, and the very next report of the original
+         level read as a level-up and full-restored all three pools. */
+      ps.weaponSkills = this._sanitizeWeaponSkills(payload.weaponSkills, _oldWs);
       for (const cat of Object.keys(ps.weaponSkills)) {
         const nl = (ps.weaponSkills[cat] && ps.weaponSkills[cat].level) || 0;
         const ol = (_oldWs[cat] && _oldWs[cat].level) || 0;
@@ -729,7 +790,7 @@ export const gridMethods = {
     }
     if (payload.defenseSkill && typeof payload.defenseSkill === 'object') {
       const _oldDl = (ps.defenseSkill && ps.defenseSkill.level) || 0;
-      ps.defenseSkill = this._sanitizeDefenseSkill(payload.defenseSkill);
+      ps.defenseSkill = this._sanitizeDefenseSkill(payload.defenseSkill, ps.defenseSkill); // v2.3.2373: monotonic
       if (((ps.defenseSkill && ps.defenseSkill.level) || 0) > _oldDl) _skillLeveledUp = true;
     }
     if (_skillLeveledUp) {

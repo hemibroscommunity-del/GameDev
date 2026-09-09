@@ -83,6 +83,40 @@ export const combatMethods = {
      function itself is in elemental.js beside the table it reads. */
   _fractureDmgMult(m) { return fractureDmgMult(m); },
 
+  /* ═══ v2.3.2361: THE STATUS HALF OF AN ELEMENTAL HIT, ON THE PROTOTYPE ═══
+     The owner's answer ("Yes lunge damage should take effect") made a SECOND
+     damage site need the weapon's element_1 status, and _abilityStrikeMonster
+     — the one credit pipeline every server-rolled strike goes through — has
+     never applied one.  Same shape and same reason as _fractureDmgMult above:
+     a thin wrapper so a site in another mixin reaches it as `this._…` rather
+     than importing elemental.js itself.  abilities.js in particular CANNOT
+     import it — elemental.js imports prog3.js and prog3.js imports
+     abilities.js, so the direct import would close the module cycle that
+     file's header warns about (a TDZ ReferenceError at worker boot, green in
+     whichever unit test happens to import the pair in the lucky order).
+
+     The STATUS ONLY, deliberately.  _handleMonsterDamage inlines this and
+     then resolves a COLLISION after it; collision damage is the one lane in
+     the game that bypasses dmgCap (bounded only by COLLISION_BURST_CAP), and
+     the client-authoritative lunge this mirrors calls plain applyStatus and
+     never resolves one either.  A second, cheaper door onto that lane is not
+     something the owner asked for.
+
+     `element` is validated HERE, not by the caller: ELEMENT_STATUS is a plain
+     object literal, so a bare truthiness test passes for 'constructor' and
+     '__proto__' — both happen to die one line later on the STATUS_DEFS lookup,
+     i.e. today it is safe by luck, and CLAUDE.md's rule 4 exists because that
+     assumption keeps breaking (three incidents in one day).
+     m.hp > 0 so a corpse never catches a burn, matching the guard on the
+     inline copy below. */
+  _applyWeaponElementStatus(m, element, sourceId, attackerPs, now) {
+    if (!m || !attackerPs || !(m.hp > 0)) return false;
+    if (typeof element !== 'string') return false;
+    if (!Object.prototype.hasOwnProperty.call(ELEMENT_STATUS, element)) return false;
+    return applyElementStatus(m, element, sourceId, elemAttackStat(attackerPs, 'power'),
+      now || Date.now(), this._attuneMult(attackerPs));
+  },
+
   // ═══ HP store + damage application (server-authoritative) ═══
   //
   // Server owns current hp; clamps to [0, maxHp].  Damage flows through

@@ -2731,6 +2731,21 @@ export class GameRoom {
     } else {
       ps.stamina = Math.max(0, have - cost);
     }
+    /* ═══ v2.3.2361: THE LUNGE STOPS BEING THE ONE ABILITY THAT ONLY BILLS ═══
+       Owner, answering the question doLunge left in the code at v2.3.2352:
+       "Yes lunge damage should take effect."  The whole roll, the reach, the
+       cadence floor and the element live in abilities.js beside
+       _abilityStrikeMonster -- the one credit pipeline every server-rolled
+       strike shares -- which is what the note asked for ("a lunge-aware roll
+       next to the ability handler").  Read _lungeStrike's header before
+       changing anything here; in particular the declared targetId is REQUIRED
+       and that is what makes both deploy orders safe.
+
+       AFTER the pool has been charged, deliberately: the `have < cost` gate
+       above short-circuits first, so a spammer with an empty bar never reaches
+       the monster list.  It costs the pool nothing extra -- the price is
+       unchanged at one block (_abilityCost) and is charged exactly once. */
+    if (type === 'lunge') this._lungeStrike(session, ps, payload && payload.targetId);
     /* v2.3.1619b: the ONLY durable change here is a pool number, so it
        coalesces (see _saveRpgPools).  Ability use is one of the highest-
        frequency events in the game -- dodge, lunge, retreat and swipe

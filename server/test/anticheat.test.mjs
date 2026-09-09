@@ -441,6 +441,13 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
       rpgUnspentT2: 999,
       rpgBuildPointsThisLvl: 99,
       rpgInventory: bigInv,
+      /* v2.3.2372: the two amulet regen mults ride this same payload. */
+      rpgAmuletHpRegen: 999999,
+      rpgAmuletStaminaRegen: 999999,
+      /* v2.3.2373: ...and so do the raw T1 stats, whose ceiling is derived
+         from the claimed rpgLevel above. */
+      rpgEndurance: 999999,
+      rpgPower: 999999,
     },
   }));
   room.state.storage.put = origPutN;
@@ -458,6 +465,39 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   check('bootstrap: live xp/unspentT2/buildPoints hold the clamped values',
     psN.xp === 50000 && psN.unspentT2 === 75 && psN.buildPointsThisLvl === 4,
     { xp: psN.xp, ut2: psN.unspentT2, bp: psN.buildPointsThisLvl });
+  /* ═══ v2.3.2372: THE TWO REGEN MULTS HAD A FLOOR AND NO CEILING ═══
+     grids.js's stats_update has clamped both to [0,100] since v2.3.1182; this
+     path only ever did Math.max(0, ...), so a client that simply never sends
+     stats_update kept whatever it claimed on join -- forever, since these are
+     re-read from the payload on every connect.  It matters because index.js's
+     regen tick multiplies the stamina refill by (1 + amuletStaminaRegen/100)
+     every 670 ms: at a forged mult the bar refills whole on every tick and the
+     stamina pool stops rate-limiting anything that spends it, which as of
+     v2.3.2361 includes the contextual lunge's damage leg.
+     Live state, not the bootstrap blob: these are session-only equipment-
+     derived values and _saveRpg does not carry them. */
+  check('bootstrap: amulet regen mults clamp to 100, same ceiling as stats_update',
+    psN.amuletHpRegen === 100 && psN.amuletStaminaRegen === 100,
+    { hp: psN.amuletHpRegen, stam: psN.amuletStaminaRegen });
+  /* ═══ v2.3.2373: THE CLAIMED LEVEL WAS ALSO A STAT CAP ═══
+     The raw T1 stats are seeded at _clampStat(payload, level) and _statCap is
+     level*10+20, so the rpgLevel 9999 above used to buy a per-stat ceiling of
+     _statCap(BOOTSTRAP_LEVEL_CAP=1000) = 10020 -- and index.js's regen tick
+     multiplies the stamina refill by (1 + endurance*0.002), i.e. 21x, from a
+     number the client picked.  join.js caps the level USED AS A STAT CAP at
+     100 now (_statCap(100) = 1020).
+     THIS IS THE ONLY BOUND THERE IS, which is why it is asserted here and not
+     left to a live re-clamp: this join installs prog3, and
+     _handleStatsUpdate's T1 loop is `for (const s of (ps.prog3 ? [] :
+     T1_STATS))` -- skipped for every prog3 player -- so nothing writes
+     ps.endurance again for the life of the character.
+     Asserted on the LIVE state, not on bootN: the raw-stat block runs AFTER
+     the bootstrap _saveRpg this section's put-intercept captures, so the first
+     blob legitimately has no stats in it at all. */
+  check('bootstrap: raw T1 stats clamp to _statCap(100) = 1020, not _statCap(1000) = 10020',
+    psN.endurance === 1020 && psN.power === 1020, { end: psN.endurance, pow: psN.power });
+  check('bootstrap: ...which bounds the regen mult the tick reads at 1 + 1020*0.002 = 3.04x',
+    1 + (psN.endurance || 0) * 0.002 <= 3.04, 1 + (psN.endurance || 0) * 0.002);
   const invKeys = Object.keys(psN.inventory || {});
   check('bootstrap: inventory truncated to 100 keys', invKeys.length === 100, invKeys.length);
   check('bootstrap: every inventory quantity clamped to 50 per item',

@@ -89,8 +89,24 @@ export var doLunge = function (S, R, ang) {
     R.stamina -= lungeCost;
     /* v2.3.1702: see the note in playerActions.js — `_serverMonsters` is
        false in town, so the worker never saw this spend and refunded it. */
+    /* ═══ v2.3.2361: NAME THE MONSTER, SO THE WORKER CAN HIT IT ═══
+       One optional field on a message this function has always sent.  The
+       worker's lunge deals damage ONLY when it is named (server/src/abilities.js
+       _lungeStrike), which is what keeps a pre-v2.3.2351 tab — one that still
+       applies its own lunge number in a server zone — from being handed a
+       second, server-rolled number for the same swing.  So this field is the
+       opt-in handshake, and it is why no caps flag is involved: an old worker
+       ignores it, a new worker does nothing without it.
+       MONSTER LOCKS ONLY.  `lt` is S.lockedTarget.ref read directly, and that
+       lock is a PLAYER during a duel (game/duelLock.js) or after tapping
+       somebody (BroTown.jsx) — so without the type check this would ship a
+       player id on a monster field.  The worker resolves it against the monster
+       list alone and fails closed either way; sending it anyway would just be a
+       lie about what the field means. */
     if (S.channel) {
-      try { S.channel.send({ type: 'ability_use', payload: { type: 'lunge' } }); } catch (e) {}
+      var _lockIsMonster = !!(S.lockedTarget && S.lockedTarget.type === 'monster');
+      var _lungeTargetId = (_lockIsMonster && lt.id != null) ? String(lt.id) : null;
+      try { S.channel.send({ type: 'ability_use', payload: { type: 'lunge', targetId: _lungeTargetId } }); } catch (e) {}
     }
     addBuildUse(R, 'endurance', lungeCost);
     addBuildUse(R, 'agility', lungeCost);
@@ -119,28 +135,41 @@ export var doLunge = function (S, R, ang) {
     setTimeout(function () {
       if (!lt.alive) return;
       var hitEl = activeWpn.element1;
-      /* ═══ v2.3.2351: THE LUNGE STOPS BILLING DAMAGE IT NEVER DEALT ═══
-         In a server zone the worker owns monster HP, and it never hears
-         about this hit: doLunge sends `ability_use {type:'lunge'}`, whose
-         handler deals no damage, and no monster_damage goes out.  So the
-         three lines below were a private fiction -- a number over the
-         monster's head and an HP bar that dipped and then snapped back on
-         the next authoritative tick, for damage the monster never took.
-         (Found by a client-vs-worker sweep; the same class as the main hit
-         number in v2.3.2220 and the collision burst in v2.3.2350.)
+      /* ═══ v2.3.2361: THE OWNER ANSWERED, AND THE WORKER ROLLS IT NOW ═══
+         The note this replaces asked whether the lunge should deal damage at
+         all; the answer was "Yes lunge damage should take effect", so
+         server/src/abilities.js _lungeStrike now rolls it at this move's own
+         0.6 next to _abilityStrikeMonster — which is what that note predicted
+         it would take, and the reason it could not be done by sending
+         monster_damage from here (the worker would have rolled a FULL swing).
 
-         Gated rather than deleted: the client-authoritative zones (town,
-         and any pre-caps worker) still resolve the lunge locally and are
-         unchanged.  The hit sound and the i-frames stay on BOTH paths --
-         the lunge is a real mobility move either way, and its feel does
-         not depend on the number.
+         THE GATE BELOW STAYS, and it stays for the ORIGINAL reason, not
+         because the lunge does nothing any more.  The worker's number and a
+         local guess are two different numbers: they are two independent
+         Math.random() rolls of the same formula, so they agree only by luck
+         (v2.3.2220 for the main hit, v2.3.2350 for the collision burst,
+         v2.3.2351 for this one).  In a server zone the worker rolls, the
+         monster_hit echo displays — gameEvents.js has painted own server-rolled
+         NUMBERS since v2.3.1733/v2.3.2220, and that half needed no change (the
+         STATUS half did; see below) — and this function predicts NOTHING.  lDmg is computed above and, in a server zone,
+         deliberately goes nowhere.
+         Client-authoritative zones (town, and any pre-caps worker) are
+         untouched: there the three lines below are still the only writer.
 
-         SERVER HALF, deliberately not here (this PR deploys no worker):
-         making the lunge actually hit is not a matter of sending
-         monster_damage from here -- the worker would roll a FULL swing for
-         a move designed at LUNGE_DAMAGE_MULT (0.6), which is a balance
-         change nobody asked for.  It wants a lunge-aware roll server-side,
-         next to the ability handler that already sees `ability_use`. */
+         AND THE STATUS IS INSIDE THE GATE WITH THEM (v2.3.2372).  A draft of
+         this change put the applyStatus call OUTSIDE, so a server zone would
+         still get the coloured pip and the ambient element particles the
+         server owns statuses for but never syncs.  The pip then painted on
+         EVERY lunge this function fired -- including every one the worker
+         refuses (out of reach, inside the cadence floor, an invulnerable
+         phase, a dead target, a harvest in progress) and every one sent to a
+         worker too old to have _lungeStrike at all.  That is the same local
+         fiction v2.3.2351 deleted the local NUMBER for, one field over.
+         The pip now rides the truth the number already rides: the worker tags
+         its monster_hit `ability: 'lunge'`, and gameEvents.js paints the
+         status off that echo for our own hits in a server zone.  Here it stays
+         gated, so the two are mutually exclusive by construction and one lunge
+         can never paint twice. */
       if (!S._serverMonsters) {
         lt.curHp = (lt.curHp || lt.hp) - lDmg;
         if (hitEl) {

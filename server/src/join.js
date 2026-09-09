@@ -841,8 +841,28 @@ export const joinMethods = {
       // PVP_TUNING.DEF_CAP in combat.js is the real bound; this is
       // belt-and-braces so no unbounded number sits in playerState.
       this.playerState[msg.id].def = (msg.data && typeof msg.data.rpgDef === 'number') ? Math.max(0, Math.min(2100, msg.data.rpgDef)) : 0;
-      this.playerState[msg.id].amuletHpRegen = (msg.data && typeof msg.data.rpgAmuletHpRegen === 'number') ? Math.max(0, msg.data.rpgAmuletHpRegen) : 0;
-      this.playerState[msg.id].amuletStaminaRegen = (msg.data && typeof msg.data.rpgAmuletStaminaRegen === 'number') ? Math.max(0, msg.data.rpgAmuletStaminaRegen) : 0;
+      /* v2.3.2372: ...and the two amulet regen mults get the SAME treatment,
+         from the same argument one line up.  They had a floor and no ceiling,
+         while grids.js's stats_update has clamped both to [0,100] since
+         v2.3.1182 ("real amulets cap around 30% per tier; 100% is double, well
+         above any realistic stack") -- so the whole bound was reachable simply
+         by never sending stats_update and setting it once, on join.  That is
+         not a theoretical gap: index.js's regen tick multiplies the stamina
+         refill by (1 + amuletStaminaRegen/100) every 670 ms, so a large enough
+         claim refills the WHOLE bar every tick and the pool stops being a rate
+         limit at all.  It bought free dodges before v2.3.2361; with the lunge's
+         damage leg landing it buys a sustained damage lane instead.  Same
+         ceiling as the stats_update path on purpose -- two doors onto one field
+         that disagree is how the ceiling gets forgotten.
+         v2.3.2373: the ~0.4 lunges/s this comment used to quote for an honest
+         bar was never measured.  Measured now, against a real GameRoom on a
+         virtual clock: an honest fresh character sustains 0.600 lunges/s, and
+         with amuletStaminaRegen at this clamped 100 AND endurance at its
+         (also newly clamped) 1020, 3.367 lunges/s.  The clamp on this line was
+         NOT what closed the lane -- see the measured table on LUNGE.cooldownMs
+         in abilities.js for the two doors that actually did. */
+      this.playerState[msg.id].amuletHpRegen = (msg.data && typeof msg.data.rpgAmuletHpRegen === 'number') ? Math.max(0, Math.min(100, msg.data.rpgAmuletHpRegen)) : 0;
+      this.playerState[msg.id].amuletStaminaRegen = (msg.data && typeof msg.data.rpgAmuletStaminaRegen === 'number') ? Math.max(0, Math.min(100, msg.data.rpgAmuletStaminaRegen)) : 0;
       this.playerState[msg.id].lastDamageAt = 0;
       this.playerState[msg.id].dying = false;
       this.playerState[msg.id].respawnAt = 0;
@@ -853,7 +873,47 @@ export const joinMethods = {
       // level * 10 + 20 -- bounded forever after, even on reconnect.
       {
         const _ps = this.playerState[msg.id];
-        const _lvl = _ps.level || 1;
+        /* ═══ v2.3.2373: THE BOOTSTRAP LEVEL IS ALSO A STAT CAP ═══
+           This one line is the whole of the bug.  BOOTSTRAP_LEVEL_CAP (1000,
+           owner directive v2.3.1342) reads like a cap on a NUMBER; used here
+           it is also a cap on a MULTIPLIER, because _statCap is level*10+20
+           (grids.js).  A join claiming rpgLevel 9999 therefore bought a
+           per-raw-stat ceiling of _statCap(1000) = 10020, and index.js's regen
+           tick multiplies the stamina refill by (1 + endurance * 0.002) -- a
+           21x refill mult chosen by the client, on a field that then never
+           moves again.  Same shape as the amulet mults below: a bound that
+           reads like a bound and is not one, because the number it feeds is
+           consumed in another file.
+
+           AND NOTHING DOWNSTREAM RE-CLAMPS IT.  Measured, not assumed: this
+           branch installs prog3 on every first connect (prog3FromLegacy,
+           below), and _handleStatsUpdate's T1 loop is `for (const s of
+           (ps.prog3 ? [] : T1_STATS))` -- SKIPPED for a prog3 player, on
+           purpose (v2.3.1659 froze the legacy stats rather than let a re-report
+           clamp them down).  So for every character created from here on, this
+           seeding is the ONLY writer ps.endurance ever has.  A cap applied here
+           is the entire bound; a cap NOT applied here is never applied.
+
+           100, and it is a raw-T1-stat ceiling rather than a level.  The
+           legacy T1 track's own design ceiling is 100 -- combatHelpers.js pays
+           endurance grid points only `if ((R.endurance || 0) <= 100)` -- and
+           _statCap's comment describes its formula as "~2x the realistic
+           per-stat ceiling", so _statCap(100) = 1020 leaves 10x headroom over
+           anything a migrating character can honestly carry.
+           NOT PROG3.CHAR_LEVEL_CAP (300): that is the ceiling on a prog3
+           CHARACTER LEVEL, which is not what this number is, and it would
+           leave _statCap at 3020 -- a 7.04x refill mult, still enough for the
+           pool to stop being the thing that limits the lunge lane (see the
+           measured table on LUNGE.cooldownMs in abilities.js).  A cap chosen
+           because a constant was nearby, rather than because it bounds the
+           thing being bounded, is how this got missed the first time.
+           Applied to ps.level with Math.min rather than by lowering
+           BOOTSTRAP_LEVEL_CAP: the level field itself is an owner directive
+           and is re-derived by the _recomputeMaxes at the end of this join
+           anyway, so narrowing it would move a number nobody keeps while
+           leaving the one that matters wherever it was. */
+        const BOOTSTRAP_STAT_CAP_LEVEL = 100;
+        const _lvl = Math.min(BOOTSTRAP_STAT_CAP_LEVEL, _ps.level || 1);
         // v2.3.1155: T1 only.  The five retired T2 stats are gone
         // from this fallback — this line was the re-injection path
         // migrations.md warned about (a spoofed rpgFerocity in the

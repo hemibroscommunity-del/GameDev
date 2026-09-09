@@ -226,6 +226,208 @@ export const STAM_ABILITIES = {
   },
 };
 
+/* ═══ v2.3.2361: THE CONTEXTUAL LUNGE FINALLY LANDS ═══
+ *
+ * Owner, asked the question v2.3.2350-2352 left in doLunge: "Yes lunge damage
+ * should take effect."
+ *
+ * TWO DIFFERENT THINGS IN THIS REPO ARE CALLED A LUNGE.  `sworddash` above is
+ * one -- the melee opener, a full-weight declared-target dash with a stun, cast
+ * through `ability {kind}`.  THIS is the other: the §5.8 contextual dodge,
+ * swiped toward a locked monster.  It has sent an `ability_use` naming the
+ * kind lunge since long before STAM_ABILITIES existed, and until now that
+ * spent a stamina block and did nothing.  Client-authoritative zones (town)
+ * resolved it locally at LUNGE_DAMAGE_MULT; a server zone got the i-frames,
+ * the sound and no hit, and v2.3.2351 stopped the client billing a number for
+ * damage the monster never took.  This is the server half that note said it
+ * was leaving.
+ * (The paragraph above spells the payload out in words rather than as an
+ * object literal on purpose: wire-audit.test.mjs extracts emitted event types
+ * by regex over the raw source, comments included, so writing the INBOUND
+ * shape literally would register a phantom outbound type and fail CI.)
+ *
+ * DELIBERATELY NOT A STAM_ABILITIES ROW, and the absence is the design.
+ * Putting it in that table would have been less code -- _handleAbility already
+ * owns cost, cooldown, equipment, zone, reach and whiff -- and it was the other
+ * candidate.  Four reasons it is not:
+ *
+ *   1. IT WOULD OPEN A SECOND WIRE DOOR TO ONE MOVE.  _handleAbility accepts
+ *      any own-property key of STAM_ABILITIES off `ability {kind}`, so the row
+ *      itself makes `{kind:'lunge'}` a legal cast: a lunge with no dodge roll,
+ *      no i-frames and no player_dodge broadcast.  Not a damage exploit (same
+ *      gates, same cost) -- but two doors to one move with different client
+ *      halves is exactly the confusion the paragraph above exists to prevent.
+ *   2. THE MIRROR IS A HARD CONTRACT.  abilities.test.mjs asserts
+ *      JSON.stringify(server) === JSON.stringify(client), so the row would
+ *      also ship in src/data/abilities.js -- a table read by the ability
+ *      BUTTONS -- and land in _abilityUnlockList, which rides every
+ *      player_state.  v2.3.2252 and v2.3.2327 both had to unwind ladder rows
+ *      that made the level-up celebration announce a move every player already
+ *      had; a third would be self-inflicted.
+ *   3. THE WHIFF WOULD SHOUT.  _handleAbility answers reject('whiff') on zero
+ *      hits and the client floats "Missed!" (abilityRejectText).  A swipe fires
+ *      this move in EVERY zone, including town, where this.monsters['town'] is
+ *      never populated (_activeZones excludes it) -- so every town lunge would
+ *      say "Missed!" while the client landed it locally.
+ *   4. THE REJECTION SHAPE WOULD CHANGE under existing clients:
+ *      _handleAbilityUse answers {type, pool, cost, have}, _handleAbility
+ *      answers {kind, reason}.
+ *
+ * What IS reused is the only part that matters for correctness:
+ * _abilityStrikeMonster, the same helper bash/whirl/sworddash strike through --
+ * roll -> _maxDmgForAttacker clamp -> overkill clamp -> dmgByPlayer ->
+ * _prog3AwardXp -> sticky aggro -> _markMonsterDirty -> monster_hit ->
+ * _resolveMonsterKill.  A second copy of that pipeline is precisely how kill
+ * credit silently diverges (_applyMonsterDot's own comment says so).
+ *
+ * WHY THE NUMBERS ARE THESE NUMBERS -- see _lungeStrike for the gates:
+ *   dmgMult 0.6   = the client's LUNGE_DAMAGE_MULT (src/data/gameSystems.js).
+ *                   The whole reason this could not be fixed from the client
+ *                   by sending monster_damage: the worker would have rolled a
+ *                   FULL swing for a move designed at 60%.  Pinned to the
+ *                   client constant by the suite, which imports both.
+ *   cooldownMs 1000 = THE OWNER'S CALL, and the only bound on this lane that
+ *                   actually holds.  Shown the numbers, they picked "about 1
+ *                   second".
+ *
+ *                   WHY NOT THE STAMINA POOL, which three rounds of this change
+ *                   tried to make into the bound and could not.  The pool is
+ *                   REFILLABLE BY DESIGN: staminaSalts is a shop item (12 coins
+ *                   for 60 stamina, cooking.js _applyShopItem) reachable from
+ *                   inside a combat zone with no cooldown, by purchase or by
+ *                   drinking from the bag.  That is a feature, not a hole.  A
+ *                   quantity a player is MEANT to be able to top up cannot rate-
+ *                   limit anything that spends it, so every "the pool bounds the
+ *                   sustain" sentence written here was false the moment it was
+ *                   written -- twice, in two different rounds, which is why this
+ *                   block now says it plainly.  Four other writers were found
+ *                   and closed on the way (join amulet mults, the skill-level
+ *                   full-restore, the bootstrap raw-stat cap); they are worth
+ *                   having, but they were never going to be sufficient.
+ *
+ *                   THE ARITHMETIC AT 1000ms.  A scripted client with an
+ *                   infinite bar gets 1.0 lunge/s = 0.6 full-swing-equivalents/s
+ *                   (dmgMult 0.6).  A measured honest fresh character gets 0.600
+ *                   lunges/s, pool-bound.  So the ceiling now SITS ON the honest
+ *                   rate rather than 5.7x over it, and cheating buys nothing on
+ *                   this path.  That is the property to preserve: if this number
+ *                   ever moves down, the pool will not catch what comes through.
+ *
+ *                   COST TO HONEST PLAY, stated rather than waved at: the
+ *                   shortest roll window is 250ms, so a player CAN lunge faster
+ *                   than once a second and the extra ones land no damage.  They
+ *                   are still dodges -- the i-frames, the travel and the sound
+ *                   are on the mobility path and untouched -- which is what the
+ *                   move was before this change shipped at all.  It is NEW:
+ *                   ability_use had no cooldown of any kind (checked, not
+ *                   assumed) and its `case` sits above the relay token bucket.
+ *                   THE POOL IS ONLY A RATE LIMIT FOR AN HONEST CLIENT, and an
+ *                   earlier draft of this paragraph said flatly that the
+ *                   "sustained rate was already stamina-bound (~0.5 lunges/s)".
+ *                   That arithmetic is right for an honest bar -- one block is
+ *                   maxStamina/5 (blockSize) against a ~670ms regen tick paying
+ *                   ~7 x its mults (index.js _tickPlayerRegen) -- and wrong as
+ *                   a bound, because one of those mults is amuletStaminaRegen
+ *                   and join.js took it from the join payload with a floor and
+ *                   NO ceiling.  A client that simply never sent stats_update
+ *                   (where grids.js has clamped the same field to [0,100] since
+ *                   v2.3.1182) could refill the whole bar on every tick and
+ *                   hold this lane at the 175ms floor for as long as it liked.
+ *                   v2.3.2372 clamps the join path to the same [0,100], pinned
+ *                   in anticheat.test.mjs §8.
+ *                   ═══ v2.3.2373: THAT CLAMP ALONE STILL BOUNDED NOTHING ═══
+ *                   The sentence that stood here said "the cooldown bounds the
+ *                   burst, the CLAMPED pool bounds the sustain".  It was false
+ *                   when written, because two more doors opened onto the same
+ *                   refill and neither went through amuletStaminaRegen:
+ *                     - grids.js _handleStatsUpdate FULL-RESTORES hp, stamina
+ *                       and mana on any reported weapon/defense SKILL LEVEL
+ *                       increase, and its sanitizers stored DECREASES just as
+ *                       happily -- so reporting 40, 39, 40 was an unrated,
+ *                       on-demand refill of every pool;
+ *                     - join.js seeded the T1 raw stats at _clampStat(payload,
+ *                       claimed level), which under BOOTSTRAP_LEVEL_CAP put
+ *                       endurance at _statCap(1000) = 10020 and this tick's
+ *                       (1 + endurance * 0.002) at 21x -- on a field that,
+ *                       under prog3, nothing ever writes again.
+ *                   Both are shut in v2.3.2373 (monotonic skill sanitizers; a
+ *                   raw-stat cap level of 100).  What follows is MEASURED, on a
+ *                   real GameRoom driven over a virtual clock by a scripted
+ *                   client that sends only when the pool can pay and the floor
+ *                   has expired -- because _handleAbilityUse charges the block
+ *                   on every message, so flooding the wire only starves you.
+ *                   The worst case is a FRESH character, not a big one: the
+ *                   cost is maxStamina/blocks and the refill is not, so the
+ *                   smallest bar is the attacker's best bar (maxStamina 100,
+ *                   5 blocks, 20 a lunge; the same 60-second run on a
+ *                   100-point stamina build measures 1.767/s).
+ *                     honest (endurance 0, amulet 0)          0.600 lunges/s
+ *                     post-fix, both surviving mults at their
+ *                       clamp (endurance 1020, amulet 100)    3.367 lunges/s
+ *                     PRE-fix, the skill-level flip-flop
+ *                       alone, with honest stats             5.717 lunges/s
+ *                     PRE-fix, endurance 10020 + amulet 100  5.717 lunges/s
+ *                   So the claim is true NOW, and only just: 3.367/s is the
+ *                   pool paying a measured 43 stamina per 660 ms tick against a
+ *                   20-per-lunge cost, which is 5.6x the honest rate and sits
+ *                   under the cadence ceiling of 1000/175 = 5.714/s.  That gap
+ *                   is the whole of the bound.  NAMED RATHER THAN IMPLIED: the
+ *                   3.367 row is still bought with a forged join payload, and
+ *                   what would have to move to close it further is the amulet
+ *                   ceiling and the raw-stat cap, not this table.
+ *   stun/knockback/pullTo 0 -- a lunge is a dodge, and shoving the target back
+ *                   would undo the gap it just closed (sworddash's reasoning).
+ *                   Zeroed rather than omitted so _abilityStrikeMonster's
+ *                   displacement and stun blocks stay provably inert and the
+ *                   helper is byte-unchanged for the three kinds already on it.
+ *   reach 220       is the move's OWN reach, and it is in this table because an
+ *                   earlier draft had _lungeStrike measure against
+ *                   this.PVE_MELEE_RANGE (400) directly -- on the argument that
+ *                   reusing the melee bound meant the lunge could claim nothing
+ *                   an ordinary swing could not.  That argument is backwards
+ *                   (v2.3.2372).  400 is the ANTICHEAT TOLERANCE for a client-
+ *                   CLAIMED swing: index.js sizes it for "client/server
+ *                   position lag on iPhone Safari over cellular" ON TOP of the
+ *                   swing's own reach.  It is not a reach any honest swing has,
+ *                   so borrowing it made the lunge a ~400px melee damage source
+ *                   -- roughly three times the ground the move actually covers.
+ *                   220 is measured off the client instead:
+ *                     58  the roll's travel by the time it strikes.  The roll
+ *                         steps 6px per 60Hz-equivalent frame (BroTown.jsx,
+ *                         `6 * S._dtScale`, _dtScale clamped to [0.2,3]) = 360
+ *                         px/s, and dodge.js swings at +160ms.
+ *                    122  an ordinary swing's own reach from where that lands:
+ *                         GS_OUTER_RADIUS 72 + the largest melee body radius in
+ *                         monsterMeleeHitRadius (skeleton, 50).
+ *                     40  lag.  ability_use does NOT flush the held move --
+ *                         wsClient.js's flushPendingMoveNow is wired to
+ *                         `ability` only (v2.3.1765) -- so ps.x/ps.y can be a
+ *                         MOVE_GAP_SOLO_MS 66ms batch plus a hop behind, and
+ *                         that file's measured table puts a 198ms gap at a
+ *                         38.5px peak.
+ *                   ~220 in total, which is also TARGET_PERIMETER_PX, the ring
+ *                   inside which the client acquires the lock at all: an
+ *                   independent cross-check, not the source of the number.
+ *                   A FLOOR UNDER THE BACKSTOP, NOT A REPLACEMENT FOR IT --
+ *                   _lungeStrike takes Math.min(PVE_MELEE_RANGE, reach), so the
+ *                   anticheat bound still caps this lane if either ever moves.
+ *                   WHAT IT DELIBERATELY REFUSES: the auto lock is HELD out to
+ *                   TARGET_PERIMETER_PX x TARGET_HYST = 275px, a tapped lock has
+ *                   no range bound at all, and the client's own 160ms hit does
+ *                   no distance test -- so a swipe at a monster 275px away still
+ *                   rolls, still spends its block, and now lands nothing.  That
+ *                   is the intended shape: at 275px the roll closes 58 and
+ *                   leaves ~217, about 95px past the reach of the swing this
+ *                   move is meant to be.  Past 220, a lunge is a dodge. */
+export const LUNGE = {
+  dmgMult: 0.6,        /* === client LUNGE_DAMAGE_MULT, pinned by the suite */
+  cooldownMs: 1000,       /* v2.3.2374: the owner's number -- see the block above */
+  reach: 220,          /* v2.3.2372: the move's own reach -- see the block above */
+  stunMs: 0,
+  knockback: 0,
+  pullTo: 0,
+};
+
 /* ═══ THE MILESTONE LADDER — char level -> what it unlocks ═══
    `kind` names an ability in STAM_ABILITIES; `points` is a one-off bonus
    allocation point; `stamMult` multiplies max stamina from here on.
@@ -680,6 +882,187 @@ export const abilityMethods = {
        pays melee lifesteal like any other melee kill (_applyMeleeLifesteal). */
     if (m.hp <= 0) this._resolveMonsterKill(zoneId, m, pid, ps, 'melee');
     return true;
+  },
+
+  /* ═══ v2.3.2361: THE CONTEXTUAL LUNGE'S DAMAGE LEG ═══
+     Called from _handleAbilityUse (index.js) AFTER the pool has been charged,
+     so a spammer with an empty bar is short-circuited before any monster work.
+     Returns true when the monster took damage.  See the LUNGE block above for
+     why this is not a STAM_ABILITIES row.
+
+     THE DECLARED TARGET IS REQUIRED, AND THAT IS THE DEPLOY-ORDER MECHANISM.
+     bash and sworddash fall back to an anonymous 70px radius scan when no
+     targetId is named "which is what an older client sends" (v2.3.2252).
+     Copying that here would be actively WRONG.  A client from before v2.3.2351
+     still applies its OWN lunge damage in a server zone -- that is the bug
+     v2.3.2351 fixed -- and it also paints server-rolled own-hits (the
+     `payload.ability || S._serverMonsters` branch, gameEvents.js, since
+     v2.3.1733/v2.3.2220).  So a worker that landed a lunge for a client which
+     had not asked for one would produce TWO numbers over one monster and an HP
+     bar that dips and snaps back: exactly the double-numbering v2.3.2350-2352
+     spent three versions killing.  Requiring the field makes that state
+     unreachable, because only a client new enough to carry the v2.3.2351 gate
+     sends it.  Both deploy orders therefore charge one block and show one
+     number, and NO caps flag is needed -- the field itself is the handshake.
+     ANYONE ADDING A RADIUS FALLBACK "so old clients work too" REOPENS IT.
+
+     Every gate below, and why it is here rather than assumed:
+       targetId  the opt-in above.  Compared with String(), never used as a
+                 key, so '__proto__' is a string that matches no monster.
+       weapon    _computeAttackDamage falls back to a greatsword at tierMult 1
+                 for a bare-handed attacker -- the v2.3.1682 "first swing is
+                 free" bug in a new costume, and the reason cfg.needs exists.
+                 Rejects nothing honest: doLunge already falls back to a plain
+                 dodge when !R.weapon.
+       harvest   v2.3.2372 -- see the block at the gate itself.  The client
+                 refuses an ATTACK mid-harvest and the worker now refuses the
+                 lunge's damage leg on the same rule, instead of ending the
+                 harvest under a player who is still watching it run.
+                 v2.3.2373: read off ps.ex, the LIVE harvest signal stamped by
+                 every move packet -- NOT this.extractions, a lazily-swept
+                 ledger that outlives a walk-away by ten minutes and so muted
+                 the move for ten minutes with it.
+       cadence   see LUNGE.cooldownMs.  In-memory scratch, underscore-prefixed
+                 and absent from _saveRpg's fixed field list (handoff rule 1 /
+                 rule 11), so a deploy re-arms it and no storage key is
+                 involved.  A single timestamp, not a client-keyed map, so
+                 CLAUDE.md rule 4 does not even arise.
+       zone      ps.z, the SERVER's copy of where the player is standing.
+                 There is no `zone` on this wire path at all, so v2.3.1628's
+                 hole ("a player standing in town kills monsters in any zone,
+                 including inside another player's live dungeon instance") is
+                 closed by construction rather than by comparison.  this.monsters
+                 is Object.create(null) and ps.z passes _validZone on every
+                 write path, so '__proto__' is closed on both halves.
+       reach     LUNGE.reach (220), floored under this.PVE_MELEE_RANGE and
+                 measured from the server's own ps.x/ps.y.  See the LUNGE table
+                 for the arithmetic behind 220.  Deliberately NOT sworddash's
+                 900 -- that is the distance THAT move closes (the client's
+                 DASH_MAX_REACH_PX), while a contextual lunge travels 6px/frame
+                 ~= 360px/s and strikes 160ms in, i.e. ~58px.  And no longer the
+                 bare 400 either (v2.3.2372): an earlier draft of this list
+                 claimed that reusing the melee bound "means the lunge cannot
+                 claim a target an ordinary swing could not already claim: the
+                 attack model gains no range surface."  That was false.  400 is
+                 the tolerance for a client-CLAIMED swing, sized for position
+                 lag on top of a swing's real reach -- so borrowing it DID open
+                 a range surface: a ~400px melee damage lane on a 175ms floor,
+                 which nothing else in the attack model has.  The Math.min
+                 leaves 400 as the outer backstop, so this gate can only ever be
+                 the tighter of the two.
+       damageable  _monsterDamageable -- dead, hp<=0, and v2.3.2221's
+                 _invulnUntil phase.  Re-checked inside _abilityStrikeMonster.
+       PvP       structurally impossible: the lookup runs over this.monsters
+                 only, so a player id matches nothing and the lunge does
+                 nothing.  This IS reachable from an unmodified client -- a
+                 duel lock (game/duelLock.js) and a tapped player (BroTown.jsx)
+                 both write S.lockedTarget with type 'player', and doLunge reads
+                 .ref directly rather than through monsterLock -- so it is a
+                 real path, not a hypothetical, and it fails closed.  No PvP
+                 branch: PvP has exactly one door, _resolvePvPAttack behind
+                 _pvpAllowed (handoff rule 17).
+       ceiling   inside _abilityStrikeMonster: _maxDmgForAttacker on a roll that
+                 is 0.6 of an ordinary melee roll.  Needs no new headroom -- the
+                 module header's ANTICHEAT LOCKSTEP argument, and combat.js's
+                 comboBoost comment has named "lunge mult" since before this
+                 was true. */
+  _lungeStrike(session, ps, targetId) {
+    if (!session || !session.id || !ps) return false;
+    if (targetId === undefined || targetId === null || targetId === '') return false;
+    if (!ps.weapon) return false;
+    /* ═══ v2.3.2372: A HARVEST REFUSES THE LUNGE, NOT THE OTHER WAY ROUND ═══
+       An earlier draft called _endExtraction on the strike instead, on the
+       v2.3.1704 rule that swinging ends an extraction and a landed lunge is a
+       swing.  Server-side that is true, and it made the two halves disagree.
+       The client refuses an ATTACK mid-harvest -- playerActions.js opens both
+       swingAttack and specialAttack with `if (S._extraction) return;` -- but
+       nothing on the dodge path does, and the desktop Space-bar route into
+       triggerContextualDodge has no _extraction gate at all.  So an honest
+       desktop player could lunge mid-harvest and silently lose the harvest,
+       with no feedback: their client is still painting the extraction it
+       believes it has.
+       The lunge now plays by the rule the client already applies to the other
+       two attacks.  It closes v2.3.1704's hole HARDER than _endExtraction did
+       ("tank a pack for free while still attacking" is unreachable if you
+       cannot attack at all), and it is a cheap refusal ahead of the cadence
+       stamp -- exactly like the invulnerable case -- so a refused lunge burns
+       no cadence.  The roll, the i-frames and the stamina block are the
+       client's and are untouched; only the damage leg is refused.
+
+       ═══ v2.3.2373: ...AND IT READS THE LIVE SIGNAL, NOT THE LEDGER ═══
+       v2.3.2372 gated on `this.extractions[session.id]` and called that map
+       "the server's exact mirror of the client's S._extraction".  IT IS NOT,
+       and gathering.js says so in as many words (the note inside
+       _extractionShielded): there is no extraction_cancel message type
+       anywhere in this repo, so a player who taps a node and walks away leaves
+       that record in place until the LAZY sweep at EXTRACTION_TIMEOUT_MS --
+       ten minutes (index.js, whose own comment reads "walk-away cancel is
+       silent").  For those ten minutes every lunge silently dealt nothing: no
+       damage, no ability_rejected, and the stamina block charged anyway.  The
+       _endExtraction draft self-healed that by deleting the record on the
+       strike; the gate that replaced it did not, so a bookkeeping map became a
+       ten-minute mute on the move this whole PR exists to make work.
+
+       ps.ex IS the live signal, and the true mirror: movement.js stamps it
+       from every move packet and clears it on the very edge the client's own
+       harvest ends (BroTown.jsx derives _exCode from S._extraction's
+       waiting/ready status, and _exChanged forces the packet that carries the
+       null).  gathering.js's own list calls it "ps.ex went null -- THE FAST
+       ONE", null "within one move throttle (~22 ms) of EVERY client-side
+       cancel".  So an ABANDONED harvest stops refusing on the next packet,
+       while an ACTIVE one still refuses -- which is what "the rule the client
+       applies to its own attacks" actually means.  It also now covers cooking and
+       firemaking, which the extraction record never held (v2.3.1765) and which
+       the client's own `if (S._extraction) return;` does.
+
+       CHOSEN OVER this._extractionShielded(session.id, now), the other
+       candidate.  That predicate is strictly NARROWER -- it reads ps.ex first,
+       then demands a live node, a matching zone, a drift range and a 120s
+       ceiling -- and those extra clauses are anticheat bounds on a DAMAGE
+       SHIELD, not answers to "is this player harvesting".  Binding the refusal
+       to them would make the lunge quietly start landing mid-harvest at
+       t=120s, or the instant a node despawned under a fishing spot: the same
+       two-halves-disagree bug in a subtler form.  It is also a linear node-list
+       scan per lunge on a 175ms floor, where this is a field read.
+       Client-supplied, and harmless in this direction: forging `ex` only
+       refuses your own damage.  It does not reopen v2.3.1704's hole either --
+       holding `ex` up forever is precisely what keeps _extractionShielded
+       true, and now you cannot lunge while you do it. */
+    /* v2.3.2374: ...EXCEPT FIREMAKING.  BroTown.jsx builds this code as
+       `S._firemaking ? 'fire' : <_exSkill-derived>` and only the second half
+       requires S._extraction -- so the client's own `if (S._extraction) return;`
+       does NOT refuse a swing while a fire burns, and a bare `if (ps.ex)` had
+       the server refusing a lunge the client was happy to throw.  Two halves
+       disagreeing is the whole failure this gate exists to prevent, so 'fire'
+       is excluded by name rather than by a broader predicate. */
+    if (ps.ex && ps.ex !== 'fire') return false;
+    const now = Date.now();
+    if (now < (ps._lungeAt || 0)) return false;
+    const zone = ps.z;
+    const monsters = (zone && this.monsters[zone]) || [];
+    const want = String(targetId);
+    let target = null;
+    for (const m of monsters) { if (String(m.id) === want) { target = m; break; } }
+    if (!target) return false;
+    if (!this._monsterDamageable(target, now)) return false;
+    const dx = (target.x || 0) - (ps.x || 0);
+    const dy = (target.y || 0) - (ps.y || 0);
+    const reach = Math.min(this.PVE_MELEE_RANGE, LUNGE.reach);
+    if (dx * dx + dy * dy > reach * reach) return false;
+
+    ps._lungeAt = now + LUNGE.cooldownMs;
+    const hit = this._abilityStrikeMonster(zone, target, session.id, ps, 'lunge', LUNGE);
+    /* The element, from the server's OWN equipped weapon -- nothing about it
+       rides the wire.  This is the one thing _abilityStrikeMonster does not do
+       and the client-authoritative path does (dodge.js applyStatus), so
+       without it the two lunges would apply different effects.  Status only,
+       no collision resolve: see _applyWeaponElementStatus. */
+    /* `ps.weapon &&` even though the gate above already proved it: a throw here
+       is a throw inside the DO's message handler, and the mutation run showed
+       that removing the gate turned a clean refusal into a crash rather than a
+       no-op.  Cheap insurance against a future edit that moves the gate. */
+    if (hit) this._applyWeaponElementStatus(target, ps.weapon && ps.weapon.element1, session.id, ps, now);
+    return hit;
   },
 
   /* ═══ MILESTONE GRANTS (the non-ability rungs) ═══

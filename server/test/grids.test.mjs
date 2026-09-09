@@ -451,5 +451,83 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
   check('legs: an explicit null unequips', psL.legsArmor === null, psL.legsArmor);
 }
 
+/* ══ v2.3.2373: THE SKILL TRACKS ARE MONOTONIC, AND THAT IS A RATE LIMIT ══
+ *
+ * _handleStatsUpdate FULL-RESTORES hp, stamina AND mana whenever a reported
+ * weapon or defense SKILL LEVEL exceeds the stored one (v2.3.1414, owner:
+ * "make all combat resources restore on level up of any combat skill").  That
+ * is fine on its own.  What was not fine is that _sanitizeWeaponSkills and
+ * _sanitizeDefenseSkill clamped the reported level to [0,100] and refused
+ * NOTHING -- decreases included -- so a client reporting 40, then 39, then 40
+ * fired the restore on every third message, with no cost and no rate limit.
+ * That takes the pool out as a bound on everything that spends it: the stamina
+ * abilities, and as of v2.3.2361 the contextual lunge's damage leg.  Measured
+ * against a real GameRoom: the flip-flop alone, with entirely honest stats,
+ * held the lunge lane at 5.717 lunges/s against an honest 0.600.
+ *
+ * Omission is a decrease too, and it is the door a level-only floor leaves
+ * open: a payload naming only `sword` used to DROP bow and staff from
+ * ps.weaponSkills outright, and the next payload that mentioned bow at level 1
+ * then read as 0 -> 1 and re-armed the restore.  Both halves are pinned. */
+{
+  const wsM = fakeWs('mono');
+  await join(wsM, 'bp_gr_mono');
+  const psM = room.playerState['bp_gr_mono'];
+  const sessM = [...room.sessions.values()].find((x) => x.id === 'bp_gr_mono');
+  /* A real bar to drain: the restore is only observable if the pools are not
+     already full. */
+  psM.maxHp = 200; psM.maxStamina = 200; psM.maxMana = 200;
+
+  room._handleStatsUpdate(sessM, { weaponSkills: { sword: { level: 40, xp: 5 }, bow: { level: 12, xp: 1 } },
+    defenseSkill: { level: 30, xp: 3 } });
+  check('monotonic: the first honest report lands as reported',
+    psM.weaponSkills.sword.level === 40 && psM.weaponSkills.bow.level === 12
+      && psM.defenseSkill.level === 30,
+    { ws: psM.weaponSkills, ds: psM.defenseSkill });
+
+  psM.hp = 1; psM.stamina = 1; psM.mana = 1;
+  room._handleStatsUpdate(sessM, { weaponSkills: { sword: { level: 39, xp: 5 }, bow: { level: 12, xp: 1 } },
+    defenseSkill: { level: 29, xp: 3 } });
+  check('monotonic: a reported weapon-skill DECREASE does not lower the stored level',
+    psM.weaponSkills.sword.level === 40, psM.weaponSkills.sword);
+  check('monotonic: ...nor a reported defense-skill decrease',
+    psM.defenseSkill.level === 30, psM.defenseSkill);
+  check('monotonic: ...and the decrease did not restore the pools',
+    psM.hp === 1 && psM.stamina === 1 && psM.mana === 1,
+    { hp: psM.hp, stam: psM.stamina, mana: psM.mana });
+
+  /* THE EXPLOIT ITSELF: re-report the ORIGINAL level.  Pre-v2.3.2373 the
+     decrease above had landed, so this read as 39 -> 40 and full-restored
+     every pool.  It must now be a no-op, because 40 never left. */
+  room._handleStatsUpdate(sessM, { weaponSkills: { sword: { level: 40, xp: 5 }, bow: { level: 12, xp: 1 } },
+    defenseSkill: { level: 30, xp: 3 } });
+  check('monotonic: re-reporting the original level is NOT a level-up, so no refill',
+    psM.hp === 1 && psM.stamina === 1 && psM.mana === 1,
+    { hp: psM.hp, stam: psM.stamina, mana: psM.mana });
+
+  /* OMISSION IS A DECREASE.  A payload naming only sword must not drop bow. */
+  room._handleStatsUpdate(sessM, { weaponSkills: { sword: { level: 40, xp: 5 } } });
+  check('monotonic: a category the payload omits is carried forward, not dropped',
+    psM.weaponSkills.bow && psM.weaponSkills.bow.level === 12, psM.weaponSkills);
+  room._handleStatsUpdate(sessM, { weaponSkills: { sword: { level: 40, xp: 5 }, bow: { level: 1, xp: 0 } } });
+  check('monotonic: ...so re-adding it at level 1 is still not a level-up, and still no refill',
+    psM.weaponSkills.bow.level === 12 && psM.hp === 1 && psM.stamina === 1 && psM.mana === 1,
+    { bow: psM.weaponSkills.bow, hp: psM.hp, stam: psM.stamina, mana: psM.mana });
+
+  /* The restore itself is UNCHANGED -- a genuine level-up still fills the
+     bars, or this pin would be asserting the feature away. */
+  room._handleStatsUpdate(sessM, { weaponSkills: { sword: { level: 41, xp: 0 }, bow: { level: 12, xp: 1 } } });
+  check('monotonic: a genuine INCREASE still full-restores all three pools (v2.3.1414 intact)',
+    psM.weaponSkills.sword.level === 41 && psM.hp === psM.maxHp
+      && psM.stamina === psM.maxStamina && psM.mana === psM.maxMana,
+    { lvl: psM.weaponSkills.sword.level, hp: psM.hp, stam: psM.stamina, mana: psM.mana });
+
+  /* xp is NOT floored: awardWeaponXp subtracts the requirement on a level-up
+     and zeroes it at the cap, so a monotonic xp would freeze every capped
+     track at its last pre-cap value. */
+  check('monotonic: xp still falls freely -- only `level` is floored',
+    psM.weaponSkills.sword.xp === 0, psM.weaponSkills.sword);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
