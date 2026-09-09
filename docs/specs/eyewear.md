@@ -1,10 +1,42 @@
 # Eyewear (v2.3.2361; art from v2.3.2362)
 
-**Shipped:** 3D Glasses (v2.3.2362), Goggles (v2.3.2363, see-through),
-Laser Glasses (v2.3.2364), Thug Life (v2.3.2365), White Glass (v2.3.2366),
-Golden Monocle (v2.3.2367, one lens, three facings), Golden Glasses
-(v2.3.2368), Eye Patch (v2.3.2369, all five facings; re-imported v2.3.2371
-from a redrawn sheet that fixed the south/southwest eye swap).
+**Shipped:** 3D Glasses, Goggles (see-through), Laser Glasses, Thug Life,
+White Glass, Golden Monocle (one lens), Golden Glasses, Eye Patch (all five
+facings).
+
+**v2.3.2379 — seven of the eight were redrawn and re-imported.** The owner sent
+new mannequin sheets: *"I added the upgraded eyewear here."* Every pair except
+the Goggles is now the second drawing of itself. Goggles was NOT re-imported:
+the owner said *"You can just remove goggles for now. Those didn't turn out
+well"* and then corrected themselves — *"Actually keep the goggles those are
+fine"* — so it keeps its v2.3.2363 art and its `alpha: 0.5`, byte for byte.
+
+What the round bought, measured by the importer's own eye check (the whole eye,
+black top edge to pupil):
+
+| pair | south | southwest | east | note |
+|---|---|---|---|---|
+| 3D Glasses | 100 / 100 | 100 / 100 | 100 | |
+| Laser Glasses | 100 / 100 | 100 / 100 | 100 | |
+| Thug Life | 100 / 100 | 100 / 100 | 100 | east seat hit the 8px limit |
+| White Glass | 100 / 100 | 100 / 100 | 100 | |
+| Golden Glasses | 100 / 100 | 100 / 100 | 100 | |
+| Golden Monocle | 100 / 0 | 100 / 0 | 100 | **gained northeast** |
+| Eye Patch | 100 / 38 | 100 / 63 | 100 | the second figure is the strap |
+
+The Golden Monocle is the structural change: it shipped with three facings
+because the first sheet drew nothing on northeast, and the redrawn one draws
+the ring's chain hanging behind the ear. It has four now. Nothing needed a code
+change for that — the renderer reads `meta.anchors`, so a facing appearing is
+data, exactly as a facing disappearing is (`--omit`).
+
+The old art's failure was not placement, it was drawing: at 128px the first
+round's lenses were flat filled rectangles, so Thug Life and White Glass read
+as dark and light smudges and the Eye Patch's strap read as a second pair of
+sunglasses. The redrawn sheets carry frames, a bridge, temple arms and a shine
+streak, and leave the character's own eyes visible beside the piece instead of
+painting fake ones over them — which is why none of the seven needed
+`--flatten-lens` this time and the first round needed it twice.
 
 Owner: *"I want to start adding eyewear options to my Hemi bros (see the first
 image of the 3d glasses). I previously had this mannequin view ... Is this

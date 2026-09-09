@@ -1,37 +1,37 @@
 {
   "category": "eyewear",
   "fullFrame": true,
-  "note": "Imported by tools/import_headwear_green.py from a sheet whose person was painted flat #00FF00. The hat is simply everything that is neither the magenta backdrop nor the green person, so no head can leak into the frame and no colour heuristic can eat a hat pixel. The green silhouette also registers the cell against the mannequin on the WHOLE body rather than the torso alone. anchors are the hat bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. v2.3.2365: seated onto the eyes (southwest +0,-2px, east +0,+1px) -- every eyewear sheet so far has drawn the southwest cell low, and this moves each facing onto the eye row the game actually paints; bounded and reported by seat_eyes(). v2.3.2361: placed BY THE HEAD -- the vertical axis is calibrated on the drawn crown and cut line against the mannequin's, so a sheet returned at a different aspect still lands the piece where it was drawn on the face; the horizontal axis and the width come from the shoulder fit. Checked against the iris row the game paints (eyeMask.json). jog fitted by tools/tune_headwear.py --fit-pose jog: the jog sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(jog)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. mine fitted by tools/tune_headwear.py --fit-pose mine: the mine sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(mine)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. fish fitted by tools/tune_headwear.py --fit-pose fish: the fish sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(fish)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. hit fitted by tools/tune_headwear.py --fit-pose hit: the hit sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(hit)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. pickup fitted by tools/tune_headwear.py --fit-pose pickup: the pickup sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(pickup)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face.",
+  "note": "Imported by tools/import_headwear_green.py from a sheet whose person was painted flat #00FF00. The hat is simply everything that is neither the magenta backdrop nor the green person, so no head can leak into the frame and no colour heuristic can eat a hat pixel. The green silhouette also registers the cell against the mannequin on the WHOLE body rather than the torso alone. anchors are the hat bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. v2.3.2365: seated onto the eyes (southwest +0,-2px) -- every eyewear sheet so far has drawn the southwest cell low, and this moves each facing onto the eye row the game actually paints; bounded and reported by seat_eyes(). v2.3.2361: placed BY THE HEAD -- the vertical axis is calibrated on the drawn crown and cut line against the mannequin's, so a sheet returned at a different aspect still lands the piece where it was drawn on the face; the horizontal axis and the width come from the shoulder fit. Checked against the iris row the game paints (eyeMask.json). jog fitted by tools/tune_headwear.py --fit-pose jog: the jog sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(jog)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. mine fitted by tools/tune_headwear.py --fit-pose mine: the mine sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(mine)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. fish fitted by tools/tune_headwear.py --fit-pose fish: the fish sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(fish)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. hit fitted by tools/tune_headwear.py --fit-pose hit: the hit sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(hit)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. pickup fitted by tools/tune_headwear.py --fit-pose pickup: the pickup sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(pickup)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face.",
   "bboxes": {
     "south": [
-      104,
+      103,
       6,
-      49,
-      18
+      50,
+      26
     ],
     "southwest": [
-      99,
+      97,
       6,
-      58,
-      23
+      62,
+      28
     ],
     "east": [
       101,
       6,
       54,
-      18
+      27
     ],
     "northeast": [
-      102,
-      6,
-      52,
-      20
-    ],
-    "north": [
       105,
       6,
-      46,
-      7
+      47,
+      19
+    ],
+    "north": [
+      106,
+      6,
+      45,
+      10
     ]
   },
   "anchors": {
@@ -48,7 +48,7 @@
       6
     ],
     "northeast": [
-      128,
+      129,
       6
     ],
     "north": [
@@ -58,23 +58,23 @@
   },
   "crownNudge": {
     "south": [
-      0,
-      14
+      -1,
+      10
     ],
     "southwest": [
-      1,
-      13
+      0,
+      12
     ],
     "east": [
-      2,
-      15
+      3,
+      10
     ],
     "northeast": [
-      2,
-      20
+      0,
+      12
     ],
     "north": [
-      1,
+      0,
       17
     ]
   },
@@ -123,7 +123,7 @@
       ],
       "east": [
         0,
-        -2
+        -1
       ],
       "northeast": [
         0,
@@ -137,7 +137,7 @@
     "mine": {
       "south": [
         0,
-        2
+        1
       ]
     },
     "fish": {
@@ -149,7 +149,7 @@
     "hit": {
       "south": [
         0,
-        3
+        2
       ],
       "southwest": [
         0,
