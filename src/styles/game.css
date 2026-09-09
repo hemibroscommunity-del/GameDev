@@ -1324,7 +1324,7 @@ input{font-family:inherit}
    screen was slow to dress) and the sky darkened so the card pops. */
 /* v2.3.791: flex-direction:column — the full-bleed banner strip stacks
    above the card (card stays centered via its margin:auto). */
-.bt-name-modal{position:fixed;inset:0;z-index:9999;background:url('/ui/welcome/bg.webp') center/cover no-repeat,#0d0a1d;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;touch-action:none}
+.bt-name-modal{position:fixed;inset:0;z-index:9999;background:url('/ui/welcome/bg.webp') center/cover no-repeat,#0d0a1d;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;overflow:clip;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;touch-action:none}
 /* v2.3.824: animated vista loop fills the modal behind everything; the
    modal's bg.webp stays the under-layer fallback.
    v2.3.826: z-index:0 -> -1 (owner: objects still hidden).  A <video> gets
@@ -1398,6 +1398,48 @@ input{font-family:inherit}
 /* v2.3.1527: the cap also has to leave room for the 2x. On a wide desktop the
    column is 360px, and 720px of pedestal reached down over the name field. */
 .bt-name-box.bt-cc-box>.bt-cc-stage{flex:1 1 auto;min-height:110px;max-height:min(var(--cc-leftw),34vh,420px);margin-block:auto}
+/* ═══ v2.3.2391: WHILE THE KEYBOARD IS UP, THE BRO GIVES UP THE ROOM ═══
+   The v2.3.1307 reservation pads the column's bottom by the keyboard's height,
+   but the padding never reached the name field: this stage is flex:1 with a
+   110px floor and .bt-cc-namewrap has margin-top:auto, so once the stage hit
+   110 the column bottomed out and the field stuck at 428px — measurably below
+   the keyboard line on a 390x745 Safari tab, which is why Safari panned the
+   whole screen anyway and the owner saw it shift.
+   Dropping the floor to 0 and capping the stage lets the column actually
+   collapse upward.  The character is the right thing to sacrifice here: while
+   you are typing your name you are looking at the field, not at the bro, and
+   he comes straight back when the keyboard closes.
+   Scoped to [data-kb] so it exists only for the moments the keyboard does. */
+.bt-name-box.bt-cc-box[data-kb]>.bt-cc-stage{
+  /* A FIXED 96px, not a smaller flexible band, for two measured reasons.
+     Flexible (min-height:0 + a vh cap) collapsed the stage to ZERO on the
+     390px phones -- the bro vanished outright while typing, which is not
+     "give up some room", it is give up all of it.  And it did nothing at all
+     on a 375x553 SE, because @media (max-height:690px) further down sets
+     `min-height:96px!important` on .bt-cc-stage and an !important floor beats
+     a plain zero.  Pinning both ends at that same 96px agrees with the rule
+     instead of losing to it, and lands every phone on one predictable number.
+     The stage carries scale(2) (see .bt-cc-col-left>.bt-cc-stage), so 96px of
+     layout is ~192px of painted bro: he is smaller while you type, not gone.
+     flex:0 0 auto so nothing can stretch or crush it back. */
+  flex:0 0 auto;
+  min-height:96px;
+  max-height:96px;
+}
+/* ...AND SO DOES THE TITLE.  The stage alone was not enough, measured: at
+   390x745 it only had 128px to give and its own floor is 96, so collapsing it
+   bought 32px and left the field's bottom at 414 against a keyboard line of
+   409 -- five pixels short, which is still a pan.  The BRO TOWN logo is
+   another 99px sitting above it doing nothing for someone who is typing their
+   name, and it is the honest thing to spend: it is decoration at that moment,
+   and it comes back the instant the keyboard closes.
+   Scoped to .bt-cc-title, the wrapper -- .bt-cc-logo itself is two levels down
+   inside .bt-cc-logo-wrap, so a child selector aimed at the logo matches
+   nothing at all.  It did, silently, in the first cut of this rule: the
+   measurement came back byte-identical and only saying so out loud caught it. */
+.bt-name-box.bt-cc-box[data-kb]>.bt-cc-title{
+  display:none;
+}
 /* v2.3.1524: the hero cluster's margin-top:auto would put ALL the slack above
    the name field, leaving the character pinned to the top of a tall empty
    column. The stage's own auto margins split the slack instead, so it sits in
@@ -2971,6 +3013,30 @@ input{font-family:inherit}
    The picker pane sits on a higher layer, so where the two meet the picker
    wins and the bro passes behind it. */
 .bt-cc-col-left>.bt-cc-stage{transform:translateX(7%) scale(2);transform-origin:50% 50%;pointer-events:auto}
+/* ═══ v2.3.2391: THE DRAG-TO-SPIN CUE ═══
+   Anchored to the SAME contact line the boots stand on -- the platform line
+   sits at ~24.2% of stage height (v2.3.799 algebra, re-stated by the contact
+   shadow's bottom:22.4% just above it in NameModal), so the cue is hung just
+   under it and reads as lying on the pedestal at his feet rather than
+   floating.
+   WIDTH IS A PERCENTAGE OF THE STAGE, not px: .bt-cc-col-left>.bt-cc-stage
+   carries `scale(2)`, so any px size written here would paint at double on
+   the phone and at something else again on the desktop layout, which does not
+   take that transform.  A percentage rides the scale correctly on both.
+   pointer-events:none is load-bearing, not hygiene: the canvas underneath is
+   what the drag is captured on (NameModal's onPointerDown/Move), so a cue
+   that took the press would swallow the gesture it exists to advertise. */
+.bt-cc-spincue{
+  position:absolute;left:50%;bottom:12%;
+  width:35%;height:auto;
+  transform:translateX(-50%);
+  pointer-events:none;
+  image-rendering:pixelated;
+  /* .18s to match the contact shadow and the frame transition it shares a
+     trigger with, so the two never disagree mid-move. */
+  transition:opacity .18s ease;
+  will-change:opacity;
+}
 /* The rotate circles ride inside the stage, so the 2x doubled both their size
    AND their distance from its centre — they ended up half off the screen. They
    are pulled in and counter-scaled, which lands them back on the pedestal at

@@ -23,6 +23,8 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  ccspin: () => import('./mp-ccspin.mjs'), /* v2.3.2391: the drag-to-spin cue, and that it does not eat the drag */
+  cckb: () => import('./mp-cckb.mjs'), /* v2.3.2391: the iOS keyboard no longer shoves the creator */
   ccshades: () => import('./mp-ccshades.mjs'), /* v2.3.2390: the Thug Life south frame does not bow upward at the temples */
   ccjoin: () => import('./mp-ccjoin.mjs'), /* v2.3.2388: the join button explains its refusal; the diamond rail is gone */
   orbrange: () => import('./mp-orbrange.mjs'), /* v2.3.2387: a magic orb reaches as far as an arrow (675px, was 340) */

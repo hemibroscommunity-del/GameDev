@@ -468,6 +468,11 @@ export function NameModal(props) {
      that wiring lives up there beside activeCat. */
   var previewZoom = props.previewZoom, setPreviewZoom = props.setPreviewZoom;
   var _dragMoved = React.useRef(false);
+  /* v2.3.2391: has this player turned the bro yet?  State, not a ref, because
+     the spin cue below has to REPAINT when it flips -- a ref would flip
+     silently and the cue would sit there after the thing it teaches has been
+     learned.  One-way: it never comes back within a session. */
+  var _spunS = React.useState(false), _hasSpun = _spunS[0], _setHasSpun = _spunS[1];
   /* v2.3.1308: category-aware framing — while the drawer is open the
      preview frames the region being edited (round-7 §preview).  Tap
      zoom overrides to close-up; everything transitions in ~180ms.
@@ -614,24 +619,85 @@ export function NameModal(props) {
   var _nameFieldRef = React.useRef(null);
   /* v2.3.1307: iOS keyboard — reserve its height at the bottom of the
      box (visualViewport), so the name field + validation and the
-     controls stay visible while typing. */
+     controls stay visible while typing.
+
+     ═══ v2.3.2391: TWO BUGS IN THAT RESERVATION, AND THE REASON IT NEVER WORKED ═══
+     Owner: "Can you make it so the name input doesn't shift the screen down to
+     the keyboard when you put the cursor there (this is an IOS issue)."
+
+     This effect was ALREADY here and already meant to prevent exactly that.
+     Measured against the built client, it moved the name field 18px at
+     390x745 — the commonest real Safari viewport — leaving its bottom edge
+     below the keyboard line, so Safari panned the page anyway and the owner
+     saw the shove. Three separate faults:
+
+     1. `- (vv.offsetTop || 0)` made it fight itself.  offsetTop is how far
+        Safari has ALREADY panned; subtracting it means the more the screen
+        shifts, the LESS padding this asks for.  A negative feedback loop
+        against its own purpose.  The keyboard's height is innerHeight minus
+        visualViewport.height, full stop.
+     2. It listened to `resize` only.  The pan is delivered as a visualViewport
+        `scroll` event, so once Safari panned, the correction never re-ran.
+        BroTown.jsx's own resizer (v2.3.1533) takes both events; this is that
+        omission fixed, and the two screens now agree.
+     3. Even corrected, the padding could not REACH the field: .bt-cc-stage is
+        flex:1 with min-height:110px and .bt-cc-namewrap has margin-top:auto,
+        so the column bottomed out at a hard floor of 428px however much
+        padding it was given.  The stage now yields while the keyboard is up
+        (see .bt-name-box[data-kb] in game.css) — the bro gives up the room,
+        which is the right thing to give up while you are typing your name.
+
+     NOT DONE, and deliberately: setting the modal's height to
+     visualViewport.height.  It looks like the obvious fix and it re-flows the
+     column beautifully, but .bt-name-modal is overflow:hidden, and an
+     overflow:hidden box whose content no longer fits becomes a real scroll
+     container.  Shrinking it to 400px makes the modal scrollable by 228px, and
+     a plain focus() on a below-the-fold control then scrolls the entire
+     creator off the top — logo at -218px — with no way back, because the same
+     rule sets touch-action:none and overscroll-behavior:none.  That is a
+     WORSE version of the reported bug, reachable from the home-screen install
+     where iOS really does resize the layout viewport.  The overflow:clip and
+     the scrollTop guard below exist to make that unreachable at all. */
   var _kbS = React.useState(0), kbPad = _kbS[0], setKbPad = _kbS[1];
   React.useEffect(function () {
     var vv = window.visualViewport;
     if (!vv) return undefined;
     var onR = function () {
-      var kb = Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0));
+      var kb = Math.max(0, window.innerHeight - vv.height);
       setKbPad(kb > 100 ? kb : 0);
     };
+    onR();
     vv.addEventListener('resize', onR);
-    return function () { vv.removeEventListener('resize', onR); };
+    vv.addEventListener('scroll', onR);
+    return function () {
+      vv.removeEventListener('resize', onR);
+      vv.removeEventListener('scroll', onR);
+    };
+  }, []);
+  /* v2.3.2391: the belt to overflow:clip's braces.  `overflow:clip` makes the
+     modal un-scrollable outright, but it is Safari 16+, and this game's floor
+     is iOS 14 (see the WebP note in BroTown.jsx).  On 14 and 15 the rule falls
+     back to overflow:hidden, which IS programmatically scrollable, so a focus()
+     can still shove the screen off the top there.  Putting it straight back is
+     one line and costs nothing on the browsers that never scroll at all. */
+  var _modalRef = React.useRef(null);
+  React.useEffect(function () {
+    var el = _modalRef.current;
+    if (!el) return undefined;
+    var onScroll = function () {
+      if (el.scrollTop) el.scrollTop = 0;
+      if (el.scrollLeft) el.scrollLeft = 0;
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return function () { el.removeEventListener('scroll', onScroll); };
   }, []);
   /* v2.3.1576: the v2.3.1235 inline-SVG die is retired — its last caller
      (the name-reroll button) now renders the owner's painted
      cc-random-name.webp, matching cc-random-look.webp on the Randomize
      button below it. */
   return /*#__PURE__*/React.createElement("div", {
-    className: "bt-name-modal"
+    className: "bt-name-modal",
+    ref: _modalRef   /* v2.3.2391: the keyboard-height effect writes to this */
   }, /*#__PURE__*/React.createElement("video", {
     /* v2.3.824: animated splash backdrop — the owner's painted vista as a
        seamless 4.5s crossfade loop (built from the 6s source so its end
@@ -660,7 +726,10 @@ export function NameModal(props) {
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-name-box bt-cc-box bt-cc-col-left",
     /* v2.3.1307: keyboard reservation — the column gives up its bottom to the
-       iOS keyboard so the name field + hint stay visible. */
+       iOS keyboard so the name field + hint stay visible.
+       v2.3.2391: and says so in an attribute, so the stage can shrink with it
+       — reserving the room is useless if nothing above it will yield. */
+    "data-kb": kbPad ? '1' : undefined,
     style: kbPad ? { paddingBottom: kbPad } : undefined
   }, /*#__PURE__*/React.createElement("div", {
     /* v2.3.1527: the logo sits over the CHARACTER column now (owner) rather
@@ -735,7 +804,7 @@ export function NameModal(props) {
        when the finger drifts off the canvas mid-swipe.  v2.3.1307: a
        pointer journey with no rotation is a TAP — toggles the zoom. */
     onPointerDown: function (e) { _dragRotX.current = e.clientX; _dragMoved.current = false; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} },
-    onPointerMove: function (e) { if (_dragRotX.current === null) return; var dx = e.clientX - _dragRotX.current; if (Math.abs(dx) >= 26) { _dragMoved.current = true; rotatePreview(dx > 0 ? 1 : -1); _dragRotX.current = e.clientX; } },
+    onPointerMove: function (e) { if (_dragRotX.current === null) return; var dx = e.clientX - _dragRotX.current; if (Math.abs(dx) >= 26) { _dragMoved.current = true; _setHasSpun(true); /* v2.3.2391: the cue has done its job */ rotatePreview(dx > 0 ? 1 : -1); _dragRotX.current = e.clientX; } },
     onPointerUp: function () { _dragRotX.current = null; if (!_dragMoved.current) setPreviewZoom(function (z) { return !z; }); },
     onPointerCancel: function () { _dragRotX.current = null; },
     /* No width/height attributes: drawCharacterPortrait force-sets the
@@ -772,6 +841,48 @@ export function NameModal(props) {
          residue that any dark backdrop would expose.  No z-index: DOM
          order stacks pillars < canvas < rotate buttons. */
       background: 'transparent'
+    }
+  }),
+  /* ═══ v2.3.2391: THE SPIN CUE ═══
+     Owner: "Can you put a little white arc with two dots at the end as a
+     visual cue that the character can spin around if you drag your finger on
+     him?", with the art attached and a sketch of it drawn at the bro's feet.
+
+     v2.3.2006 removed the two rotate CIRCLES, correctly -- they were 50px
+     targets sitting on top of the character.  But they were also the only
+     thing that said the drag existed, and the note there admits as much
+     ("the circles were the discoverability crutch for it").  This is that
+     crutch put back as a PICTURE rather than a control: no hit target, no
+     pixels over his face, and it leaves once it has been read.
+
+     LAST CHILD of the stage, so it paints in FRONT of the boots the way the
+     owner drew it, and pointerEvents:none so the drag it advertises still
+     lands on the canvas underneath -- an affordance that eats the gesture it
+     teaches is worse than none.
+
+     It stands down once the player has actually turned him (_hasSpun),
+     because a cue that outlives its lesson is clutter on the character, and
+     it is hidden from a screen reader, which has the drag described in words.
+
+     IT DOES NOT COPY THE CONTACT SHADOW'S GATE, though that was the first
+     thing I wrote.  That shadow is drawn only while `_frame.h === 54.5`,
+     and 54.5 is the CATEGORY-CROP frame -- measured, not read off the
+     v2.3.1307 comment, which describes the numbers the other way round and
+     is stale.  The frame the player actually ARRIVES on is h:76 (Hair is
+     the opening tab and has no crops), so borrowing that condition hid the
+     cue in the one state it exists for.  The two frames put the boot
+     contact line at 26.4% and 24.2% of stage height respectively -- 2.2%
+     apart, about 7px here -- so one anchor serves both and the cue simply
+     stays up until it is earned. */
+  /*#__PURE__*/React.createElement("img", {
+    src: '/ui/welcome/cc/cc-spin-cue.png',
+    alt: '',
+    "aria-hidden": true,
+    draggable: false,
+    className: "bt-cc-spincue",
+    "data-spun": _hasSpun ? '1' : undefined,
+    style: {
+      opacity: _hasSpun ? 0 : 1
     }
   })),
   /* ═══ v2.3.2006: THE ROTATE CIRCLES ARE GONE — DRAG THE BRO ═══
