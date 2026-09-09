@@ -101,7 +101,7 @@ function proposedExtraBase(weaponType) {
 }
 /* variance bounds per type — used only to scale the flat layer delta the
    same way calcWeaponDmg scales its base (SYNC: gameSystems.js variance). */
-const VARIANCE = { staff: [0.5, 1.5], bow: [0.6, 0.8], greatsword: [0.75, 1.25], sword: [0.75, 1.25] };
+const VARIANCE = { staff: [0.5, 1.65], bow: [0.6, 0.8], greatsword: [0.75, 1.25], sword: [0.75, 1.25] };
 function sampleProposed(weaponType, build) {
   const [vLo, vHi] = VARIANCE[weaponType];
   const v = vLo + Math.random() * (vHi - vLo);

@@ -767,7 +767,7 @@ const psA = room.playerState.pa;
     staffWeapon: { type: 'staff', tierMult: 2 },
   };
   /* The band ceilings the roll actually uses (combat.js VAR). */
-  const BAND_TOP = { melee: 1.25, ranged: 0.8, staff: 1.5 };
+  const BAND_TOP = { melee: 1.25, ranged: 0.8, staff: 1.65 };
   const TYPE = { melee: 'sword', ranged: 'bow', staff: 'staff' };
   for (const slot of ['melee', 'ranged', 'staff']) {
     const w = slot === 'melee' ? ps.weapon : slot === 'ranged' ? ps.rangedWeapon : ps.staffWeapon;
@@ -788,6 +788,51 @@ const psA = room.playerState.pa;
         hit.dmg >= Math.round(rangeTop * 2) - 1,
         { dmg: hit.dmg, rangeTop: Math.round(rangeTop), need: Math.round(rangeTop * 2) });
     }
+  }
+
+  /* ═══ v2.3.2383: AND THE STAFF'S BAND IS 0.5 - 1.65, BY VALUE ═══
+     Owner: "For magic it's a bit underpowered so make the base attacks have a
+     higher upper damage range."
+
+     The BAND_TOP loop above would pass with ANY self-consistent band -- it
+     asserts the crit anchor AGAINST the band, so moving both together keeps it
+     green.  That is the right shape for what it guards and the wrong shape for
+     what this change is, so the numbers get pinned here by value, from both
+     ends.  Six copies of this band exist (combat.js, gameSystems.js x3,
+     balance-sim.mjs, BAND_TOP above); this is the one that fails if the
+     authority drifts from the rest.
+
+     Read off a rigged Math.random rather than by arithmetic: the roll is
+     `VAR[0] + rand * (VAR[1] - VAR[0])`, so rand 0 gives the floor and rand
+     ~1 the ceiling, and dividing the returned damage by the pre-variance base
+     recovers the multiplier the code actually used. */
+  {
+    const w = ps.staffWeapon;
+    const preVar = (room._weaponEffBase('staff', w) + PROG3.DMG_PER_LEVEL.staff) * 2;
+    /* crit would multiply on top and hide the band, so the second draw is
+       forced to 1 -- above any crit chance -- exactly as the loop above
+       forces 0.0 to guarantee one. */
+    const roll = (r) => {
+      const seq = [r, 1]; let n = 0;
+      Math.random = () => seq[Math.min(n++, seq.length - 1)];
+      const hit = room._computeAttackDamage(ps, 'staff', false);
+      Math.random = origRandom;
+      return hit;
+    };
+    const lo = roll(0.0), hi = roll(0.999999);
+    check('staff: the band FLOOR is still 0.5 -- the swingy feel is kept',
+      !lo.isCrit && Math.abs(lo.dmg / preVar - 0.5) < 0.02,
+      { dmg: lo.dmg, preVar, mult: +(lo.dmg / preVar).toFixed(3) });
+    check('staff: the band CEILING is 1.65, not the old 1.5',
+      !hi.isCrit && Math.abs(hi.dmg / preVar - 1.65) < 0.02,
+      { dmg: hi.dmg, preVar, mult: +(hi.dmg / preVar).toFixed(3) });
+    /* The ceiling that actually bounds how far this could go: a top roll must
+       still sit UNDER the anticheat cap, or the server truncates damage the
+       player earned and never sees.  Same attacker, so this is the cap the
+       real hit would be measured against. */
+    const cap = room._maxDmgForAttacker(ps, false);
+    check('staff: ...and a top roll still fits under the anticheat ceiling',
+      hi.dmg <= cap, { dmg: hi.dmg, cap });
   }
   Math.random = origRandom;
 }
