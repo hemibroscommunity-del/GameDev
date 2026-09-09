@@ -771,6 +771,15 @@ export function NameModal(props) {
   /* v2.3.1276: the always-visible sheet (.bt-cc-menu) was retired for a
      slide-up drawer.  v2.3.1524: the drawer is retired in turn — the pickers
      are the permanent right-hand column (.bt-cc-panel) further down. */
+  /* v2.3.2361: the name block and the two action buttons are ONE thing now --
+     they share the carved backplate the owner mocked up, so they share a
+     wrapper.  Exactly these two: ENTER BRO TOWN is the next sibling and stays
+     OUTSIDE the frame, which is how the mockup draws it and also what keeps
+     the screen's one gold plate from being swallowed by a gold frame.
+     .bt-cc-cluster in game.css paints the frame; the two `>` rules up in the
+     v2.3.1527 block had to follow this nesting or the sprite draws over the
+     controls again. */
+  /*#__PURE__*/React.createElement("div", { className: "bt-cc-cluster" },
   /*#__PURE__*/React.createElement("div", {
     /* Name row — the dice ICON rerolls the NAME only.  .bt-cc-namewrap's
        margin-top:auto pins the whole control cluster to the bottom, so
@@ -793,10 +802,12 @@ export function NameModal(props) {
        cluster instead. The caps were already there (textTransform); what was
        missing was the size, the centring and a colour that belongs to the
        screen's primary action rather than to its captions. */
-    style: { display: 'block', fontSize: 15, fontWeight: 800, letterSpacing: '.20em',
-      color: '#EAC675', fontFamily: 'Source Sans 3, sans-serif',
-      textTransform: 'uppercase', padding: '0 2px 5px', textAlign: 'center',
-      textShadow: '0 1px 0 rgba(0,0,0,.55)' }
+    /* v2.3.2359: the inline face moved to .bt-cc-namehead in game.css.  It
+       had to: the heading is flanked by the owner's sparkles now, which
+       needs display:flex, and an inline `display:block` beats any stylesheet
+       that tries.  Same size, weight, tracking and caps as v2.3.2151 set
+       them -- only the paint and the ornaments are new. */
+    className: "bt-cc-namehead"
   }, "Bro Name"), /*#__PURE__*/React.createElement("input", {
     id: 'bt-cc-name-input',
     value: nameInput,
@@ -917,8 +928,16 @@ export function NameModal(props) {
        stated HERE rather than on .bt-cc-action-icon: that class is shared with
        the name-reroll die above, which the owner did not ask to change and
        which pins its own 22px inline.  Sizing the shared class appeared to
-       work only because that inline style masked it. */
-    style: { width: 30, height: 30, objectFit: 'contain' } }),
+       work only because that inline style masked it.
+       v2.3.2361: 30 -> 28, which is the whole of what the carved backplate
+       took from this icon.  The frame's rails cost the row ~36px and the
+       ledger in game.css spends the button's border, its side padding, the
+       icon gap, the plate's own margin and a bleed past the column to get it
+       back; 28 is the last 2px of a 157.9px row that has 160.3px to sit in.
+       It is still the size mp-ccsize guards, and still 8px up on the icon the
+       owner asked to grow -- hiding it, which is what a frame with generous
+       rails wants you to do, would have reversed that ask outright. */
+    style: { width: 28, height: 28, objectFit: 'contain' } }),
   /*#__PURE__*/React.createElement("span", null, "Randomize Look")),
   /* ═══ v2.3.2036: RESET ═══
      Owner: "add a reset button so you can make the character back to the
@@ -932,7 +951,7 @@ export function NameModal(props) {
        escape hatch below it. */
     type: 'button', className: "bt-cc-btn bt-cc-reset", 'data-tut': 'cc-reset',   /* v2.3.2114 */
     onClick: resetLook, title: 'Back to the look you started with'
-  }, /*#__PURE__*/React.createElement("span", null, "Reset"))),
+  }, /*#__PURE__*/React.createElement("span", null, "Reset")))),
   /*#__PURE__*/React.createElement("button", {
     onClick: function () { if (_nameValid) joinTown(); },
     disabled: !_nameValid,
@@ -958,7 +977,10 @@ export function NameModal(props) {
      static one on the plate beside it. */
   /*#__PURE__*/React.createElement("img", {
     className: "bt-cc-play-icon",
-    src: '/ui/welcome/cc/cc-enter-town.png?v=' + BUILD_INFO.version,
+    /* v2.3.2359: the crest from the owner's gold sheet, which is what the
+       mockup puts here.  cc-enter-town.png (the painted gate) stays on disk
+       -- this is a swap of which emblem the plate wears, not a deletion. */
+    src: '/ui/welcome/title/crest.webp?v=2.3.2359',
     alt: '', draggable: false, "aria-hidden": true
   }),
   /*#__PURE__*/React.createElement("span", { className: "bt-cc-play-label" }, "Enter Bro Town")),

@@ -12,7 +12,30 @@ field kit** — dark mineral structure, precise spacing, warm storybook
 cues, almost no decoration. ~85% neutral / ~10% content color / ~5%
 brass accent.
 
+## Scope: IN-GAME ONLY (v2.3.2359, owner directive)
+
+Everything in this document — the hard locks below, the token blocks, the
+do-not-drift list — governs the **in-game** interface: the 33dvh band, the
+toolbar, the world HUD, the dashboard, and the panels that open over the
+world. That interface has one job, stated in the north star below: stay
+quieter than the world.
+
+It does **not** govern the **pre-game title flow** — the login screen and
+the character creator. That flow has always been the opposite and is meant
+to be: a painterly backdrop, the gold BRO TOWN logo, the gold login plate.
+Judging it against "no filigree" or "brass is never a default border" reads
+its intent backwards, and left the trait picker (v2.3.2358) and the name
+cluster (v2.3.2359) dressed as field kit on a title card.
+
+The boundary is the door. Once the world is on screen, this document is in
+force with no exceptions beyond the four documented below. Before that, the
+title flow's own gold vocabulary applies — and it stays there: the creator's
+gold is scoped to `.bt-cc-*` and `.bt-login-*`, and nothing in it is a
+shared token that could drift inward.
+
 ## Hard locks
+
+*(In-game, per the scope note above.)*
 
 - The painterly world stays the brightest, most saturated thing on
   screen. The band is a neutral slate tray with deep, quiet wells.

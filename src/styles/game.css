@@ -1402,12 +1402,23 @@ input{font-family:inherit}
    the name field, leaving the character pinned to the top of a tall empty
    column. The stage's own auto margins split the slack instead, so it sits in
    the middle of the space between the title and the controls. */
-.bt-cc-col-left>.bt-cc-namewrap{margin-top:0}
+/* v2.3.2361: the name field and the two action buttons are wrapped in
+   .bt-cc-cluster now (the carved backplate), so both of the rules below had
+   to follow the nesting up a level -- a `>` selector that no longer matches
+   fails SILENTLY, and each of these two is load-bearing. Without the first,
+   .bt-cc-namewrap's own margin-top:auto returns and the slack goes back above
+   the name field; without the second, the cluster drops to z-index auto and
+   the 2x character sprite draws straight over the controls (v2.3.1527's
+   incident). The namewrap's auto margin is neutralised INSIDE the cluster
+   too: block layout resolves auto to 0 by itself, but the cluster is one
+   `display:flex` away from pinning the field to its own bottom edge, and that
+   is not a trap worth leaving armed. */
+.bt-cc-col-left>.bt-cc-cluster,
+.bt-cc-cluster>.bt-cc-namewrap{margin-top:0}
 /* v2.3.1527: the bro is behind the PICKER, but he must not end up behind his
    own controls either — at 2x he reaches down over them. Everything below the
    stage in this column is lifted one layer so he passes behind it as well. */
-.bt-cc-col-left>.bt-cc-namewrap,
-.bt-cc-col-left>.bt-cc-actions,
+.bt-cc-col-left>.bt-cc-cluster,
 .bt-cc-col-left>.bt-cc-play,
 .bt-cc-col-left>.bt-cc-login,
 .bt-cc-col-left>div:last-child{position:relative;z-index:1}
@@ -1957,6 +1968,325 @@ input{font-family:inherit}
      anything smaller makes iOS Safari zoom the page on focus (v2.3.710). */
   text-align:left!important;padding:0 46px 0 11px!important;text-overflow:ellipsis}
 .bt-cc-name::placeholder{color:#B6C1BE;opacity:1} /* v2.3.1235: Checkpoint B — placeholder muted → secondary (too faint on the dark well) */
+
+/* ══════ v2.3.2359: THE NAME CLUSTER JOINS THE GOLD ══════
+   Owner, after the picker landed: "the left column should come across into
+   the fold too", against the same mockup.
+
+   The picker (v2.3.2358) put the right-hand pane in the title screen's gold
+   and left this column in slate -- a green Randomize, a brown Reset and a
+   slate name well sitting under a gold logo, beside a gold pane.  Same
+   vocabulary as .bt-cc-panel, so the two halves read as one screen: a navy
+   well behind a gold frame, drawn with two gradients (padding-box for the
+   well, border-box for the metal) rather than baked plate art, so nothing
+   here is a fixed-size image that has to be re-cut per breakpoint.
+
+   docs/LANTERN-SLATE-SPEC.md is scoped IN-GAME as of v2.3.2359 (owner), so
+   the gold on this screen is in-system rather than an exception -- and it is
+   scoped to .bt-cc-* selectors, so it cannot leak past the door.
+
+   SPECIFICITY: .bt-cc-btn sits later in this file than .bt-cc-btn--hero and
+   wins the cascade (see the v2.3.2009 note above it), so every rule below
+   that has to beat it carries a doubled class.  mp-ccbuttons compares each
+   against a plain .bt-cc-btn, so a rule that loses the cascade FAILS the
+   scenario rather than quietly looking applied. */
+
+/* The heading, flanked by the owner's sparkles -- the picker's title
+   treatment at the cluster's scale.  Ornaments are pseudo-elements, so the
+   label keeps exactly one text node for the `for=` association. */
+.bt-cc-namehead{display:flex;align-items:center;justify-content:center;gap:8px;
+  font-family:'Source Sans 3',sans-serif;font-size:15px;font-weight:800;letter-spacing:.20em;
+  text-transform:uppercase;padding:0 2px 5px;text-align:center;white-space:nowrap;
+  color:#F4E4B8;text-shadow:0 1px 0 rgba(0,0,0,.55)}
+.bt-cc-namehead::before,.bt-cc-namehead::after{
+  content:'';flex:0 1 auto;width:clamp(18px,7vw,46px);height:12px;min-width:0;
+  background:url('/ui/welcome/title/sparkle.webp?v=2.3.2358') center/contain no-repeat}
+
+/* The name well: navy behind gold, with the caret and placeholder tuned to
+   sit on it.  border-box/padding-box needs a transparent border to paint
+   through, so the 1px --ui-line hairline becomes the 2px frame. */
+.bt-cc-name.bt-cc-name{
+  border:2px solid transparent;border-radius:12px;
+  background:
+    linear-gradient(180deg,#16293C 0%,#101F2F 100%) padding-box,
+    linear-gradient(180deg,#F8EAB8 0%,#DDB668 30%,#A9822F 66%,#EDD293 100%) border-box;
+  box-shadow:inset 0 2px 6px rgba(3,8,16,.46),inset 0 1px 0 rgba(255,255,255,.04);
+  color:#F2EDE0}
+.bt-cc-name.bt-cc-name::placeholder{color:#9FB0C2;opacity:1}
+
+/* Randomize: the name well's frame at button weight. */
+.bt-cc-btn.bt-cc-randomize{
+  border:2px solid transparent;border-radius:12px;
+  background:
+    linear-gradient(180deg,#1C3149 0%,#122334 100%) padding-box,
+    linear-gradient(180deg,#F8EAB8 0%,#DDB668 30%,#A9822F 66%,#EDD293 100%) border-box;
+  box-shadow:inset 0 1px 0 rgba(255,240,205,.10),inset 0 -5px 10px rgba(3,8,16,.34),0 3px 8px rgba(3,8,12,.40);
+  color:#F4E4B8}
+.bt-cc-btn.bt-cc-randomize:active{
+  background:
+    linear-gradient(180deg,#15263A 0%,#0D1A28 100%) padding-box,
+    linear-gradient(180deg,#C9A455 0%,#8C6526 100%) border-box}
+/* The name-reroll button is INSIDE the well, so it gets a divider and not a
+   frame of its own.  The first cut gave it the same gold rim as Randomize and
+   the result was two gold borders 2px apart -- the button's rim and the well's
+   -- which reads as a seam in the field rather than as a control in it.  The
+   mockup draws a hairline and the icon, which is also the cheaper affordance:
+   the 40px target is unchanged either way.  Divider as a pseudo-element
+   because the button carries an inline border-radius (layout, NameModal.jsx)
+   and a lone border-left would curve with it. */
+.bt-cc-namewrap>.bt-cc-btn.bt-cc-btn{
+  background:none;border:none;box-shadow:none;color:#F4E4B8}
+.bt-cc-namewrap>.bt-cc-btn.bt-cc-btn::before{
+  content:'';position:absolute;left:0;top:9px;bottom:9px;width:1px;
+  background:rgba(216,180,110,.38)}
+.bt-cc-namewrap>.bt-cc-btn.bt-cc-btn:active{background:rgba(247,226,163,.10)}
+
+/* Reset stays the odd one out ON PURPOSE: it is the only destructive control
+   in the column, so it keeps red ink and does NOT get the gold frame -- a
+   gold rim would file it with the two actions you are meant to take.  The
+   mockup agrees: a quiet dark chip with red lettering. */
+.bt-cc-reset.bt-cc-reset{
+  font-size:clamp(13px,3.9vw,16px);letter-spacing:.04em;
+  background:linear-gradient(180deg,#1B2A3A 0%,#101C28 100%);
+  border:1px solid rgba(206,120,104,.42);color:#F2907E;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 3px 0 rgba(0,0,0,.30),0 6px 14px rgba(5,8,10,.45)}
+.bt-cc-reset.bt-cc-reset:active{transform:translateY(2px);background:linear-gradient(180deg,#152130 0%,#0B141D 100%)}
+
+/* ══════ v2.3.2361: THE CARVED BACKPLATE (candidate) ══════
+   Owner, with a new mockup and a 1448x1086 asset sheet: "try making a
+   backplate design like this to consider as one of the candidates."  The name
+   field, Randomize and Reset sit inside one painted frame -- lion medallion at
+   top centre, teal banners, scroll corners, a bottom bar with a diamond -- and
+   ENTER BRO TOWN stays OUTSIDE it, exactly as the mockup draws it.
+
+   WHY NOT border-image.  A 9-slice repeats or stretches the top edge, and this
+   art's top edge is a LION'S HEAD at dead centre; the bottom edge has a
+   diamond in the same place.  Either would be smeared along the rail.  So the
+   art is cut into CAP / BODY / CAP: two full-width ornate ends drawn at their
+   own aspect ratio, and one full-width horizontal slice of the plain middle
+   stretched between them.  All three are cuts of the SAME 524px-wide column of
+   the sheet, so at `100%` width their rails land on the same pixels.
+
+   THE CUTS (sheet rows, frame column x=10..534):
+     top   0..215   ends below the two hanging diamonds (their last lit row is
+                    ~197); alpha ramps to 0 over rows 200..215.
+     mid   457..473 the band the RIVETS allow.  The rails carry periodic studs
+                    -- ~217, 270, 295, 335, 412, 426, 477, 553 -- and a band
+                    holding one stretches it into an oval smear, so this is the
+                    quietest 17-row window between two of them (mean per-row
+                    deviation from the rails' median profile 6.5 vs 9.0 for the
+                    strip as a whole).  It also has no interior diagonal: the
+                    two obvious alternatives, 369..389 and 503..552, both catch
+                    one of the panel's chamfer lines and stretch it into a
+                    slanted scar.
+     bot   535..709 alpha ramps up over rows 535..550, so it is fully opaque
+                    well before the rail's collar at ~565.
+   The two ramps are why there is no seam: the interior is a faint vertical
+   gradient (rgb 26,43,46 at the top cap's cut down to 21,38,41 at the band),
+   and a hard join reads as a line across a flat field.  Each cap cross-fades
+   into the band over ~5px on screen instead.
+
+   THE THIRD LAYER PAINTS LAST, i.e. BEHIND the caps -- but it is NOT sized to
+   the whole box.  It is inset to the top of each cap's ramp, because the caps'
+   silhouettes are not rectangles: above the corner scrolls the top cap is
+   transparent, and a full-height band would poke two gold stubs up through
+   those corners.  The insets are fractions of the PLATE's own width rather
+   than percentages because background-position/size resolve vertical
+   percentages against HEIGHT, and every number here is a fraction of the
+   art's WIDTH.
+
+   --cc-plate IS THAT WIDTH, and it is not the column.  The plate bleeds past
+   both edges of .bt-cc-col-left (see the ledger below), so a fraction of
+   --cc-leftw is no longer a fraction of the art: at the bleed shipped here it
+   would land every rail inset, every cap join and the band's own top 11% short
+   of where the art actually draws them.  One variable, derived from the same
+   two bleed fractions the margin uses, keeps the whole block honest -- change
+   a bleed and the caps, the band and the padding all follow it. */
+.bt-cc-cluster{
+  /* .095 + .035 of the column, the two numbers in margin-inline below. */
+  --cc-plate:calc(var(--cc-leftw)*1.13);
+  position:relative;display:block;box-sizing:border-box;
+  /* THE BLEED.  No `width` on purpose: this is a cross-axis stretch item in a
+     flex column, so leaving width auto lets the negative margins WIDEN it --
+     `width:100%` would pin it to the column and merely shove it sideways.
+     Left .095 and right .035 of the column (16.3px / 6.0px at 390) because the
+     two edges are not the same kind of space.  On the right there is only the
+     8px .bt-cc-cols gap before .bt-cc-panel, and the picker must not be
+     touched: .035 leaves 2.0px of it.  On the left there is the modal's 10px
+     of padding and then the screen edge, and running a frame off the screen
+     edge costs nothing -- the mockup draws it doing exactly that.  Left
+     overflow also cannot open a scrollbar in LTR the way right overflow can. */
+  margin-inline:calc(var(--cc-leftw)*-.095) calc(var(--cc-leftw)*-.035);
+  /* padding = what the art occupies, plus the margin the art needs to read as
+     a frame rather than as a channel.  The first cut used the bare minimums --
+     .086 sides (the rails' inner shadow line, sheet x 55) and .157 bottom (the
+     ornate bar's first lit row, 628) -- and the screenshot said no: the
+     buttons' rims ran parallel to the rails with ~2px between them, which
+     reads as a second frame, and Reset's bottom edge sat ON the bottom bar.
+     .105 sides and .225 bottom (row 592, just clear of the corner scrolls) put
+     real dark between the controls and the carving.  Top stays at the
+     ornament's own limit -- the hanging diamonds' last lit row, 197.
+     v2.3.2361b: the sides go back to .086 and the bleed buys the difference
+     back -- .105 of a plate wide enough to hold the icon does not exist on a
+     390 screen (the ledger below does that arithmetic).  The complaint .105
+     answered is a DISTANCE, not a fraction: at .086 of the widened plate the
+     button rim clears the beam's inner edge by 3.4px, where the .086 that was
+     rejected cleared it by 2.9px on the un-bled plate.
+
+     AND THE BOTTOM GIVES BACK WHAT THE WIDTH TOOK, .225 -> .20.  Every one of
+     these fractions is of the plate's WIDTH, so widening the plate makes it
+     TALLER too -- +16.9px at 390 -- and height on this screen belongs to the
+     character.  It comes off the pedestal the plate already crops and off the
+     head's clearance under the logo's sword, both measured in the note at the
+     end of this block.  A horizontal fix has no business spending vertical, so
+     .20 here and .14 on the divider below hand 8.7px of that 16.9 straight
+     back.  .20 still leaves 6.9px of dark under Reset before the ornate bar's
+     first lit row (.157): the "Reset sat ON the bar" complaint that pushed
+     this to .225 was against .157 itself, with nothing tried in between. */
+  padding:calc(var(--cc-plate)*.376) calc(var(--cc-plate)*.086) calc(var(--cc-plate)*.20);
+  /* below .685 the band's height would go negative and the caps would overlap
+     each other; the real content is ~2x this, so it is a guard, not a layout. */
+  min-height:calc(var(--cc-plate)*.72);
+  background:
+    url('/ui/welcome/cc/cc-frame-top.webp?v=2.3.2361') center top/100% auto no-repeat,
+    url('/ui/welcome/cc/cc-frame-bot.webp?v=2.3.2361') center bottom/100% auto no-repeat,
+    url('/ui/welcome/cc/cc-frame-mid.webp?v=2.3.2361') center calc(var(--cc-plate)*.382)/100% calc(100% - var(--cc-plate)*.685) no-repeat;
+}
+/* The divider rail from the sheet's loose pieces (ball ends, centre diamond),
+   between the name block and the buttons as the mockup has it.  It rides on
+   .bt-cc-actions' own padding rather than on a pseudo-element: that element is
+   a grid, and a ::before inside it becomes a grid ITEM and takes a row. */
+.bt-cc-cluster>.bt-cc-actions{
+  /* .16 -> .14 for the reason the bottom padding gives above.  The divider art
+     draws at 100% of THIS row, so the wider plate already draws a taller rule
+     (19.5px -> 23.1px at 390) and the gap under it does not need scaling
+     twice.  .14 of the widened plate is 27.1px, within half a pixel of the
+     27.5px candidate D reserved, so the rule keeps its distance from the name
+     block above and gives its own extra height to the buttons below. */
+  padding-top:calc(var(--cc-plate)*.14);
+  background:url('/ui/welcome/cc/cc-frame-rule.webp?v=2.3.2361') center top/100% auto no-repeat;
+}
+/* ── WHAT THE RAILS COST, AND WHO PAID ──────────────────────────────────
+   Measured at 390x844 dpr3, where the column is 171.6px.  A frame with .105
+   of margin per side leaves 135.6px of interior -- and "Randomize Look" alone
+   needs 125.9px at its 15.21px type (nowrap clone, not derived).  The button's
+   own chrome was 2px of border and 8px of padding per side plus a 30px icon
+   and a 6px gap: 56px, for a total of 181.9px in 135.6px.  It was already over
+   its own padding BEFORE the frame existed and survived only because a nowrap
+   label spills into the padding rather than wrapping, so there was nothing
+   spare to absorb this.
+
+   THE FIRST CUT PAID WITH THE ICON, AND THAT WAS THE WRONG POCKET.  Hiding it
+   fits the label with 9.7px to spare and silently reverses the owner's own
+   "make the randomize look icon larger" (v2.3.2035, 20 -> 30) -- mp-ccsize has
+   guarded that icon at >= 28px ever since, and a test that goes red because
+   the thing it guards was removed is the test doing its job.  So the icon
+   stays and the frame pays.  Line by line, at 390:
+
+     start   button interior, .105 plate, own border+padding      115.6px
+     need    28px icon + 4px gap + 125.9px label                  157.9px
+   +  4.0    the button's 1px gold border, both sides.  A gold rim 2px inside a
+             carved gold frame is a frame inside a frame anyway; it comes back
+             as an INSET ring, which paints on the same pixel and consumes zero
+             layout.  Flat gold, not the 2359 gradient -- box-shadow cannot
+             take one, and at 1.5px against this backplate you cannot see it.
+   + 16.0    the button's 8px side padding.  The plate's own margin is the
+             breathing room now; a second one inside it is just narrower.
+   +  2.0    the icon/label gap, 6 -> 4.
+   +  6.5    the plate's side padding, .105 -> .086 -- the rails' own inner
+             shadow line (sheet x 55).  Not a squeeze onto the carving: at the
+             bled width below it still leaves 3.4px of dark between the beam's
+             inner edge and the button rim, which is MORE than the .086 that
+             was rejected on the un-bled plate gave (2.9px).
+   + 20.2    the bleed, .095/.035 of the column past its two edges.
+     ----
+     160.3   interior, against 157.9 needed: 2.4px of slack, and the label
+             measures 125.9 unwrapped with the icon on screen at 28x28.
+
+   The two levers NOT pulled, because 1-5 reached 28px without them: the
+   label's clamp(13px,3.9vw,16px) is the owner's copy at the owner's size, and
+   --cc-leftw is the character's column before it is the button's.  Both would
+   be owner calls, not fixes.
+
+   WHY 28 AND NOT 30.  30 needs 159.9px and the plate can only reach it by
+   bleeding a further ~2.4px left, which puts the gold beam's outer half off
+   the screen instead of its outer 2.3px.  Two device pixels of icon against
+   half a rail is not a trade worth taking, and 28 is still 8px up on the size
+   the owner asked to grow.
+
+   The BRO NAME sparkles still go, and for a reason of their own: the lion
+   medallion is the heading's ornament now, and the mockup draws the heading
+   plain under it. */
+.bt-cc-cluster .bt-cc-btn.bt-cc-randomize{
+  border:0;padding-inline:0;gap:4px;
+  box-shadow:
+    inset 0 0 0 1.5px #C9A45C,
+    inset 0 1px 0 rgba(255,240,205,.10),
+    inset 0 -5px 10px rgba(3,8,16,.34),
+    0 3px 8px rgba(3,8,12,.40);
+}
+/* The icon is the flex item that must NOT give: with 2.4px of slack the row
+   never shrinks at 390, but a font that falls back wider on some phone would
+   otherwise take it out of the picture the owner asked to enlarge, and shrink
+   it silently -- an img flex item is shrinkable by default.  Pinned, the label
+   is what creeps instead, which is visible and recoverable. */
+.bt-cc-cluster .bt-cc-randomize .bt-cc-action-icon{flex:0 0 auto}
+.bt-cc-cluster .bt-cc-namehead::before,
+.bt-cc-cluster .bt-cc-namehead::after{display:none}
+/* Reset keeps its hairline: it fits with room to spare, and the red chip is
+   the one thing on this column that is meant NOT to read as gold (v2.3.2359). */
+
+/* ── WHAT THE PLATE COSTS THE CHARACTER, MEASURED AND LEFT ALONE ──────────
+   Not a to-do and not a defect of this change; it is the price of the design
+   the owner chose, written down so the next reader does not have to rediscover
+   it with a screenshot.  All of it at 390x844 dpr3.
+
+   THE PEDESTAL IS CROPPED.  The plate is opaque and sits over the bottom of
+   the 2x stage, so the disc's front face runs behind it: 40.8px of a 116.7px
+   pedestal here, 38.3px of 65.3px at 320x568.  The column has slack that the
+   stage's auto margins split, so the crop tracks plate height at almost
+   exactly half a pixel per pixel -- 282.1px of plate crops 20.0, 301.1 crops
+   29.5, the 323.8 shipped here crops 40.8.  Zero crop wants the plate at
+   242px, and the controls inside it are 212.1px on their own, so the whole
+   frame -- both ornate caps -- would have to fit in 30px.  It does not; the
+   caps alone are 111.7.  Trimming padding cannot reach this.
+
+   THE HEAD IS UNDER THE LOGO'S SWORD, which mp-ccstand has guarded at 50px
+   since v2.3.2204 (the owner looked at 37 and asked for another 10% off).  It
+   was +59px before any plate, -3px with the plate as the owner first saw it,
+   -8px here.  That is one assertion this candidate cannot make green: driving
+   .bt-cc-stage's max-height down from var(--cc-leftw) tops out at +42px,
+   because its own min-height:110px floors the stage before the gap gets there
+   (0.746 of the column -> +28, 0.618 -> +42, and smaller stops moving).
+
+   BOTH OF THEM ARE THE SAME ONE LINE -- .bt-cc-stage's `max-height:min(
+   var(--cc-leftw),34vh,420px)` at the top of this file -- and that line is the
+   size of the character.  "The character is the star" is an owner call made
+   twice (v2.3.798, v2.3.1524), so this change does not take it: 0.746 of the
+   column zeroes the crop and costs a quarter of him.  It is the owner's
+   trade to make, with the numbers already taken. */
+
+/* ═══ v2.3.2359: NO CHEVRON ON THE ENTER PLATE, AND THE MEASUREMENT WHY ═══
+   The mockup draws one at the trailing edge, and the first cut of this change
+   added it as a ::after.  It wrapped "ENTER BRO TOWN" onto two lines on the
+   phone, which is a worse plate than a plate without an arrow on it.
+
+   Not a tuning problem -- the ratio does not move with the viewport.  The
+   column is --cc-leftw = clamp(150px,44vw,360px) and the plate's type is
+   clamp(12px,3.3vw,18px), so between 341px and 545px of viewport BOTH track
+   vw and their ratio is fixed: the label needs ~0.74x the column's width and
+   the ornaments (1.9em icon + two .55em gaps + a .85em chevron) cost ~0.30x,
+   which is more than the whole column.  Measured at 390px (nowrap clone --
+   see the trap in the 359 block below): the label wants 127.4px, the row
+   without a chevron leaves 140.1px, and the chevron takes 19.3px of that.
+   Shrinking the icon or the gaps buys single-digit pixels against a 19px
+   bill, and absolute-positioning it at the rim only moves the collision --
+   the label would have to come down to ~101px, i.e. a 10px plate.
+
+   So the arrow is dropped rather than shrunk, and chev.webp is not shipped.
+   It comes back only if the label does -- do not re-add it "just for wide
+   screens": at >=545px the type caps at 18px while the column keeps growing,
+   so it would appear on desktop and vanish on the primary platform. */
 /* v2.3.797: the two-pane grid (.bt-cc-main/.bt-cc-left/.bt-cc-rail*) is
    retired with the rail.  Text-only category TABS fused to ONE drawer
    replace the pill stack (spec §5: the active tab and the panel read as
@@ -2013,6 +2343,28 @@ input{font-family:inherit}
 /* selected: raised off the row + brass edge, so the pair reads as
    pressed-in siblings around one lifted member. */
 .bt-cc-tab--on{background:var(--ui-brass-soft);color:var(--ui-text);border-color:var(--ui-brass);box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 2px 6px rgba(5,8,10,.26)}
+/* ═══ v2.3.2358: the picker's category tiles, in the title screen's gold ═══
+   SCOPED TO .bt-cc-panel ON PURPOSE.  The same .bt-cc-tab class dresses the
+   tattoo/shoe DRAWING screen (.bt-cc-draw), which is not part of this ask and
+   keeps the slate treatment above -- restyling the bare class would have taken
+   it too.  Everything below is one specificity step up, so the rules above
+   stay the base and the short-viewport media queries further down still win.
+
+   Resting tiles carry a dim gold rim, which the in-game spec forbids
+   ("brass is never a default border colour") and this screen's mockup
+   requires; see the note on .bt-cc-panel for why the title flow is outside
+   that lock.  Selection still has to out-shout it, so the selected tile gets
+   BOTH a brighter rim and a warm lit fill rather than rim alone. */
+.bt-cc-panel .bt-cc-tab{
+  border-radius:11px;color:#D6E0EA;
+  background:linear-gradient(180deg,#1C3149 0%,#122334 100%);
+  border-color:rgba(206,170,104,.30);
+  box-shadow:inset 0 2px 5px rgba(3,8,16,.46),inset 0 1px 0 rgba(255,255,255,.045)}
+.bt-cc-panel .bt-cc-tab:active{background:linear-gradient(180deg,#16273A 0%,#0E1C2A 100%)}
+.bt-cc-panel .bt-cc-tab--on{
+  background:linear-gradient(180deg,#4A3620 0%,#2C1F12 100%);
+  border-color:#EBCB77;color:var(--ui-text);
+  box-shadow:inset 0 1px 0 rgba(255,240,205,.22),0 0 0 1px rgba(216,170,88,.30),0 2px 8px rgba(3,8,12,.44)}
 /* ═══ v2.3.1946: THE WAY IN TO THE DESIGNER, MADE OBVIOUS ═══
    Owner: "Make it more noticeable to go into the new editor.  Make the button
    large with a pencil icon next to it."
@@ -2526,8 +2878,57 @@ input{font-family:inherit}
 .bt-cc-rot--l{left:0}
 .bt-cc-rot--r{right:0}
 .bt-cc-rot img{width:64%;height:64%;object-fit:contain;pointer-events:none}
-.bt-cc-panel{position:relative;z-index:1;flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;gap:7px;padding:8px;background:var(--ui-sheet);border:1px solid var(--ui-line-strong);border-radius:14px;box-shadow:0 2px 10px rgba(3,8,12,.28);box-sizing:border-box;overflow:hidden}
-.bt-cc-panel-title{flex:0 0 auto;margin:0;padding:1px 2px 3px;font-family:'Source Sans 3',sans-serif;font-size:clamp(11px,3vw,14px);font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ui-text-secondary);text-align:center}
+/* ═══ v2.3.2358: THE TRAIT PICKER WEARS THE TITLE SCREEN'S GOLD ═══
+   Owner, with a mockup and the gold asset sheet: make the trait picker look
+   like this.  The panel was --ui-sheet behind a 1px --ui-line-strong hairline:
+   correct Lantern Slate, and completely mute next to the painted BRO TOWN
+   logo and the cliff behind it.
+
+   WHY THIS IS NOT A SPEC VIOLATION.  docs/LANTERN-SLATE-SPEC.md's hard locks
+   ("all chrome is CSS, no filigree", "brass is selection-only, never a default
+   border") govern the IN-GAME field kit -- the 33dvh band, the toolbar, the
+   world HUD -- whose job is to stay quieter than the world.  This is the
+   pre-game title flow, which has always been the opposite: a painterly
+   backdrop, the gold BRO TOWN logo, the gold login button (btn-continue.png).
+   The picker was the one panel on that screen still dressed as in-game chrome.
+   The gold stops at the door: nothing here leaks past .bt-cc-panel.
+
+   The frame is two gradients, not a nine-slice -- padding-box for the navy
+   well, border-box for the metal -- so it stays resolution-free and costs no
+   art.  v2.3.2360: it costs no art at all now -- the sparkles that flanked
+   the title are gone at the owner's word, so the whole pane is CSS. */
+.bt-cc-panel{position:relative;z-index:1;flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;gap:7px;padding:9px 8px 8px;
+  border:2px solid transparent;border-radius:16px;
+  background:
+    linear-gradient(180deg,#1B3047 0%,#152B40 42%,#101F2F 100%) padding-box,
+    linear-gradient(180deg,#F8EAB8 0%,#DDB668 30%,#A9822F 66%,#EDD293 100%) border-box;
+  box-shadow:
+    inset 0 0 0 1px rgba(247,226,163,.22),
+    inset 0 14px 26px rgba(4,10,18,.34),
+    0 4px 16px rgba(3,8,12,.46);
+  box-sizing:border-box;overflow:hidden}
+/* v2.3.2358: the title is gold leaf -- the gradient clipped to the glyphs
+   (-webkit-background-clip:text, which is what iOS Safari supports);
+   deliberately NO filter: drop-shadow -- the creator stage is a live canvas
+   one flex sibling away and CLAUDE.md's standing suspicion about filters
+   compositing near WebGL is not worth testing for a shadow nobody asked for.
+   v2.3.2360 (owner: "you can remove the sparkles framing TRAIT PICKER too"):
+   the two ornaments are gone, and with them the flex row that existed only to
+   seat them -- a plain centred block, which is also the arrangement
+   background-clip:text is least surprising on.  BRO NAME keeps its pair; the
+   owner named this heading, not that one.  sparkle.webp stays on disk and in
+   use there. */
+.bt-cc-panel-title{flex:0 0 auto;margin:0;padding:1px 2px 4px;display:block;
+  font-family:'Source Sans 3',sans-serif;font-size:clamp(11px,3vw,14px);font-weight:800;letter-spacing:.11em;text-transform:uppercase;text-align:center;white-space:nowrap;
+  color:#F7EFDD;
+  background:linear-gradient(180deg,#FFFFFF 0%,#F6EAD2 46%,#E4D0A6 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  /* the fill is transparent, so a UA that ignores background-clip:text would
+     render nothing at all -- @supports keeps the flat gold for those. */
+}
+@supports not ((-webkit-background-clip:text) or (background-clip:text)){
+  .bt-cc-panel-title{-webkit-text-fill-color:#F7EFDD;background:none}
+}
 /* v2.3.1272: the two creator media blocks moved BELOW every base rule
    they override — they sat earlier in the file, so equal-specificity
    base declarations silently won and the 690/359 fallbacks were dead
@@ -2554,6 +2955,59 @@ input{font-family:inherit}
   .bt-cc-strip{gap:4px}
   .bt-cc-colors-row{gap:4px}
   .bt-cc-subtab{min-width:40px;padding:3px 7px;font-size:12px}
+  /* v2.3.2359: at the 320 class the left column is 132px and "ENTER BRO TOWN"
+     wrapped to two lines.  PRE-EXISTING, not this change's doing -- the 1.9em
+     plate icon arrived in v2.3.2008 and the column narrowed to 132px in
+     v2.3.1524, and the two have not fitted together since; it surfaced here
+     only because the chevron measurement above made me instrument the label.
+     Measured at 320 (nowrap clone, see the trap below): the label wants
+     115.5px, and a 22.8px crest plus its 6.6px gap left 102.6px.  The label
+     IS the plate's job, so the ornament gives ground -- crest hidden, tracking
+     eased to .03em -- and the row goes to 124px of room for 115.5px of label.
+     The 4px of side padding is not a saving (the plate's padding is 0 above
+     this breakpoint); it is there so the type does not touch the rim, and the
+     8.5px of slack pays for it.
+
+     THE TRAP, because it cost a cycle: shrinking the crest instead (1.4em icon,
+     .3em gap, .02em tracking) looked sufficient and was not.  The first
+     measurement read the label's WRAPPED bounding width -- 103.2px -- as the
+     requirement, but a flex item that has already wrapped reports the width of
+     its widest LINE, not of its content.  The number to measure is the width
+     of a `white-space:nowrap` CLONE of the label, off-screen.  (mp-ccbuttons
+     already does exactly this for the Randomize label -- copy that probe
+     rather than trusting a bounding box.)  Every other ornament here gives ground
+     at 320 (22px tab icons, 9px tab labels, the picker's sparkles hidden a few
+     lines down); the crest joins them. */
+  .bt-cc-play{letter-spacing:.03em;padding-inline:4px}
+  .bt-cc-play-icon{display:none}
+  /* The Randomize plate has the same 132px and the same answer.  Measured at
+     320: the row is a 30px icon + a 6px gap + a 107.7px nowrap label = 143.7px
+     of content in a button that offers 112px (132 less 16px of padding and 4px
+     of frame), so the icon hung 5px OUTSIDE the left rim and the label 5px past
+     the right one.  Pre-existing -- v2.3.2035 took the icon to 30px and
+     v2.3.1524 narrowed the column, and the pair has not fitted at 320 since --
+     though this change's 2px frame (was 1px on .bt-cc-btn) made it 2px worse,
+     which is why it is fixed here rather than filed.  The arithmetic leaves no
+     third option: with the icon at ANY size the label would have to drop to
+     ~10.4px to fit, so the icon goes and the 13px label stays at 107.7px in
+     112px.  No !important needed -- NameModal pins the icon's width/height
+     inline, not its display.
+     v2.3.2361: the numbers above moved but the answer did not.  Inside the
+     backplate the button gives up its padding and frame and the icon is 28px,
+     so the row is 28 + a 4px gap + 107.7 = 139.7px in the 123.5px the plate
+     leaves at 320 -- 16.2px over, where any icon at all still costs more than
+     is there.  This rule stays. */
+  .bt-cc-randomize .bt-cc-action-icon{display:none}
+  /* v2.3.2361: NOTHING FOR THE BACKPLATE TO GIVE HERE, which is worth saying
+     because the first cut of it took two things.  The plate bleeds past both
+     edges of the column at every width, so in this class it is 149px of art
+     across a 132px column: .086 of THAT leaves 123.3px of interior against a
+     107.7px label (measured at 320x568), 15.6px of slack.  The earlier squeeze
+     to .072 and the 13px font pin were both paying off a deficit the bleed had
+     already cleared, and the pin was the one place in the change where the
+     owner's type moved -- so both are gone rather than left as free damage.
+     The icon stays hidden here by the v2.3.2359 rule above; that is this
+     class's own arithmetic, not the plate's. */
 }
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
