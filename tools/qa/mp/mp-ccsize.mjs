@@ -67,6 +67,47 @@ export async function run({ browser, wsPort, webPort, rec }) {
        + '(guard: "bigger" must not mean "the layout moved")',
     !!heroBtn && heroBtn.h <= 60, { heroBtn, rnd });
 
+  /* ── 1b. EVERY TAB WEARS ART THAT ACTUALLY DECODED (v2.3.2389) ──
+     The Eyewear tab drew an inline SVG glyph as a placeholder from v2.3.2361
+     until the owner sent art for it.  Swapping a glyph for an <img> introduces
+     a failure this file's other assertions cannot see: a wrong path gives a
+     BROKEN image, and a broken image occupies its CSS box, keeps its class and
+     reports a perfectly ordinary getBoundingClientRect.  Every measurement in
+     this file would still pass over a tab showing nothing at all.
+
+     naturalWidth is the only honest question -- it is 0 until the bytes are
+     decoded.  Asked of all nine tabs rather than of eyewear alone, because the
+     same typo is available in any of them and none was covered before. */
+  const tabArt = await P.page.evaluate(() => {
+    const out = [];
+    document.querySelectorAll('.bt-cc-tabs .bt-cc-tab').forEach((b) => {
+      const label = (b.querySelector('.bt-cc-tab-label') || {}).textContent || '?';
+      const img = b.querySelector('img.bt-cc-tab-icon');
+      const svg = b.querySelector('svg.bt-cc-tab-icon');
+      out.push({ label: label.trim(), kind: img ? 'img' : svg ? 'svg' : 'none',
+        nat: img ? img.naturalWidth : null, src: img ? img.getAttribute('src') : null });
+    });
+    return out;
+  });
+  const painted = tabArt.filter((t) => t.kind === 'img');
+  rec.ok(`all nine creator tabs have an icon of some kind (${tabArt.length} found)`,
+    tabArt.length === 9 && tabArt.every((t) => t.kind !== 'none'), tabArt);
+  /* NINE painted, not eight.  _TABS still carries a tenth entry with an inline
+     `build` glyph, but v2.3.2268 deleted Build from _typeDefs and the list ends
+     in `.filter(!!_typeDefs[x.t])`, so that tab has not rendered since -- the
+     branch is kept deliberately as the restoration path.  The first cut of this
+     assertion expected 8 + 1 glyph from reading _TABS, and the browser said
+     otherwise; the browser is right. */
+  rec.ok(`...and every one of them is painted art, no glyphs left on screen -- ${painted.length}/9`,
+    painted.length === tabArt.length, tabArt.map((t) => t.label + ':' + t.kind));
+  rec.ok('...and every one actually decoded its bytes (naturalWidth > 0)',
+    painted.length > 0 && painted.every((t) => t.nat > 0),
+    painted.filter((t) => !(t.nat > 0)));
+  /* The one the owner asked for, named, so a regression says which tab. */
+  const eyewear = tabArt.find((t) => t.label === 'Eyewear');
+  rec.ok('the Eyewear tab is painted art now, not the placeholder glyph',
+    !!eyewear && eyewear.kind === 'img' && eyewear.nat > 0, eyewear);
+
   /* ── 2. the tattoo icon — only on the Skin tab ── */
   const toSkin = await P.page.evaluate(() => {
     const b = [...document.querySelectorAll('button')]

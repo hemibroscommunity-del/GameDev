@@ -286,10 +286,13 @@ export function NameModal(props) {
     /* v2.3.1929: Eyes sits with the face traits, and lands the row at a clean
        four-and-four in the 4-column grid rather than the old 4+3. */
     { t: 'eyes', label: 'Eyes', img: _TAB_ICON('eyes') },
-    /* v2.3.2361: eyewear, beside Eyes.  Inline glyph (like Build's was) until a
-       painted cc-tab-eyewear.png exists -- the icon prompt is in
-       docs/specs/eyewear.md.  Nine tabs is the clean 3x3 again. */
-    { t: 'eyewear', label: 'Eyewear', img: null, glyph: 'eyewear' },
+    /* v2.3.2361: eyewear, beside Eyes.  Nine tabs is the clean 3x3 again.
+       v2.3.2389: the owner drew the icon ("Use this for the eyewear thumbnail
+       for the trait picker category"), so the placeholder inline glyph this
+       tab shipped with is gone and it wears painted art like the other eight.
+       Section 7 of docs/specs/eyewear.md, which held the recipe for making
+       one, is closed by this. */
+    { t: 'eyewear', label: 'Eyewear', img: _TAB_ICON('eyewear') },
     { t: 'beard', label: 'Beard', img: _TAB_ICON('beard') },
     { t: 'shirt', label: 'Shirt', img: _TAB_ICON('shirt') },
     { t: 'pants', label: 'Pants', img: _TAB_ICON('pants') },
@@ -1137,17 +1140,12 @@ export function NameModal(props) {
       /*#__PURE__*/React.createElement("rect", { x: 5.5, y: 15, width: 7, height: 11, rx: 2.4 }),
       /*#__PURE__*/React.createElement("circle", { cx: 21, cy: 6.5, r: 3.4 }),
       /*#__PURE__*/React.createElement("rect", { x: 17, y: 11, width: 8, height: 15, rx: 2.6 }))
-    ) : x.glyph === 'eyewear' ? /*#__PURE__*/React.createElement("svg", {
-      /* v2.3.2361: a pair of frames -- two rims, a bridge, two temples.  Inline
-         for the reason the build glyph was: no painted icon exists for the tab
-         yet.  currentColor, so it dims and brightens with the tab exactly as
-         the painted icons' opacity does. */
-      className: "bt-cc-tab-icon", viewBox: '0 0 30 30', "aria-hidden": true, focusable: 'false'
-    },
-    /*#__PURE__*/React.createElement("g", { fill: 'none', stroke: 'currentColor', strokeWidth: 2.4, strokeLinecap: 'round', strokeLinejoin: 'round' },
-      /*#__PURE__*/React.createElement("circle", { cx: 9, cy: 16.5, r: 5.2 }),
-      /*#__PURE__*/React.createElement("circle", { cx: 21, cy: 16.5, r: 5.2 }),
-      /*#__PURE__*/React.createElement("path", { d: 'M14.2 16.5h1.6M1.6 13.6l2.3 1.2M28.4 13.6l-2.3 1.2' }))
+    /* v2.3.2389: the eyewear branch that stood here is gone with the tab's
+       placeholder glyph -- it drew two stroked rims in currentColor, and the
+       owner's painted frames replace it.  Every tab that RENDERS is painted
+       art now; the build branch above outlives its tab on purpose (v2.3.2268
+       dropped Build from _typeDefs, so the filter never emits it) and stays as
+       the restoration path, same as _buildTile and HEIGHT_CATALOG. */
     ) : x.img ? /*#__PURE__*/React.createElement("img", {
       /* v2.3.1308: the owner's painted category art.
          v2.3.1931: one sheet for all eight, and no per-tab pixel flag — the

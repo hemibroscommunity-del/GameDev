@@ -690,10 +690,32 @@ Dbz Glass, Eye Mask, Gojo Satoru and Vision Pro.
 
 ---
 
-## 7. A painted tab icon (optional)
+## 7. The painted tab icon — DONE (v2.3.2389)
 
-The Eyewear tab draws an inline glyph today. To replace it with a painted icon
-in the style of the other eight, generate `public/ui/welcome/cc/cc-tab-eyewear.png`
-with the UI-BIBLE icon recipe and the subject "a pair of round glasses, front
-view", then in `NameModal.jsx` change the tab's entry from
-`img: null, glyph: 'eyewear'` to `img: _TAB_ICON('eyewear')`.
+This section used to be a recipe: generate `cc-tab-eyewear.png` with the
+UI-BIBLE icon prompt, then swap the tab's `img: null, glyph: 'eyewear'` for
+`img: _TAB_ICON('eyewear')`. The owner supplied the art instead — *"Use this
+for the eyewear thumbnail for the trait picker category"* — so the swap is
+made and the inline glyph branch is deleted from `NameModal.jsx`. Build is
+the only tab still drawing its own glyph.
+
+The source is a 1254×1254 transparent PNG of gold-and-cream frames with pale
+blue lenses. It was trimmed to its content bounding box (1168×553, taken at
+alpha > 8 — there is a haze of near-zero alpha across most of the canvas that
+makes a plain `getbbox()` return almost the whole image), the haze zeroed so
+it could not smear into the resample, then LANCZOS'd to **176×83** — the same
+width as `cc-tab-hat.png`, the widest of the eight siblings.
+
+**Not quantized, deliberately.** Palette-reducing it to 16–32 colours takes
+the file from 20.6 KB to ~5.5 KB, which is tempting for a 30×30 icon, but
+both levels drop the black keyline around the frame and the icon loses the
+edge that separates it from the tab. The siblings are hand-drawn pixel art
+with hard edges and ~150 colours; this is a soft render with ~5 000, and the
+honest trade at this display size is to keep the art and pay the 20 KB.
+
+Its aspect ratio (2.1:1) is wider than any sibling, so `object-fit:contain` in
+the 30×30 slot paints it 30×14 where the eye icon gets 30×21. It reads as
+glasses at that size — checked against the siblings on the tab's own dark
+ground — but it does carry less visual weight than its neighbours. If that
+ever reads as wrong, the fix is to crop the swept-up temple arms rather than
+to scale the art past its slot.
