@@ -779,7 +779,14 @@ export function NameModal(props) {
      .bt-cc-cluster in game.css paints the frame; the two `>` rules up in the
      v2.3.1527 block had to follow this nesting or the sprite draws over the
      controls again. */
-  /*#__PURE__*/React.createElement("div", { className: "bt-cc-cluster" },
+  /*#__PURE__*/React.createElement("div", {
+    className: "bt-cc-cluster",
+    /* v2.3.2378: the validation line borrows the divider's slot rather than
+       taking a row of its own (see .bt-cc-namewrap>[aria-live] in game.css).
+       While it has something to say, the rail steps aside; the flag says so
+       in one place so the CSS can do it without a second state. */
+    "data-msg": _trimmedName.length === 0 ? undefined : '1'
+  },
   /*#__PURE__*/React.createElement("div", {
     /* Name row — the dice ICON rerolls the NAME only.  .bt-cc-namewrap's
        margin-top:auto pins the whole control cluster to the bottom, so
@@ -892,9 +899,8 @@ export function NameModal(props) {
        so the cluster never jumps.  (Names are not unique server-side,
        so length is the honest contract — no availability check.) */
     "aria-live": 'polite',
-    style: { height: 15, fontSize: 11, fontFamily: 'Source Sans 3, sans-serif',
-      textAlign: 'center', paddingTop: 2,
-      color: _nameValid ? '#55B98A' : '#8D9B98' }
+    className: "bt-cc-namemsg",
+    style: { color: _nameValid ? '#55B98A' : '#8D9B98' }
   }, _trimmedName.length === 0 ? '' : _nameValid ? '✓ Ready to go' : 'At least 2 characters')), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1524: one action left. "Customize Appearance" opened the drawer,
        and the drawer is now a permanent column, so the button had nothing to
@@ -1004,7 +1010,14 @@ export function NameModal(props) {
     onClick: onBack,
     "aria-label": 'Back to the main menu',
     style: {
-      display: 'block', margin: '10px auto 0', minHeight: 34, padding: 0,
+      /* v2.3.2378: the 10px top margin is gone.  It sat on top of the
+         column's own 4-6px gap, so Back was the one child with two spacings
+         above it, and those 10px are the other half of what pays for the
+         plate's new top margin (game.css, .bt-cc-col-left>.bt-cc-cluster) --
+         a pixel taken from a gap nobody was reading is a pixel of his boots
+         back.  The gap alone still separates it from ENTER BRO TOWN, and the
+         34px target is untouched. */
+      display: 'block', margin: '0 auto', minHeight: 34, padding: 0,
       background: 'none', border: 'none', cursor: 'pointer',
       fontSize: 14, fontWeight: 700, color: '#8B9895',
       fontFamily: 'Source Sans 3, sans-serif',

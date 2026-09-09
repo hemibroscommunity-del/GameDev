@@ -2440,3 +2440,51 @@ per column, and prints every cell's size so a straddle is visible in the log.
 `laser-glasses` and `golden-monocle` thumbnails in that commit.
 
 **Related:** §55-§58 (the rest of the eyewear import pipeline).
+
+---
+
+## 60. Freeing height to move the thing below it down (v2.3.2378)
+
+**The move that looks right:** a panel at the bottom of a full flex column is
+covering the art above it. There is dead space inside that panel. Delete the
+dead space, the panel gets shorter, and — since it is pinned near the bottom —
+its top edge drops. Problem solved.
+
+It is not. In a column with no slack, every pixel you free is immediately taken
+by the flexible items ABOVE the panel, so the element above and the panel move
+down *together* and the overlap is exactly what it was. In the creator's left
+column it is worse than neutral: `.bt-cc-stage` is the one flex-shrinkable
+child, and it grows into the freed pixels — its `scale(2)` visual box hangs
+half its layout height below its layout box, so a taller stage means a *longer*
+overhang. Measured at 390x664, freeing 15px moved both edges down 15px and left
+the boots covered by the same 28.7px.
+
+**What actually moves them apart is space BETWEEN them** — `margin-top` on the
+lower element. And that margin is not free either: it is taken from the same
+flexible items, so on a short screen the character shrinks and on a tall one he
+slides up into the logo. Spending it without funding it just moves the cost
+somewhere the owner cares about more.
+
+**The rule, for a full flex column:**
+
+- freeing height changes the column's *total*, never the *gap* between two
+  siblings;
+- a margin changes the gap and charges the total;
+- so do both, equal and opposite: reclaim N pixels of genuinely dead height,
+  spend N as margin. The arithmetic cancels, nothing else moves, and the gap
+  opens by N. Reclaim less than you spend and the flexible child pays the
+  difference — quietly.
+
+**How to tell you have got it right:** assert the thing you were protecting,
+not just the thing you were fixing. `mp-ccfeet` checks the boots are clear AND
+that the character did not get smaller AND that he was not pushed into the
+logo, because a fix that pays out of either of those pockets turns the first
+assertion green on its own.
+
+**Receipt:** v2.3.2378 — the `.bt-cc-col-left>.bt-cc-cluster` margin block in
+`src/styles/game.css` and `tools/qa/mp/mp-ccfeet.mjs`.
+
+**Related:** the same file's v2.3.2361 note on a `>` selector that stops
+matching and fails silently — the margin here had to be declared on
+`.bt-cc-col-left>.bt-cc-cluster` (0,2,0) rather than `.bt-cc-cluster` (0,1,0)
+for exactly that reason.

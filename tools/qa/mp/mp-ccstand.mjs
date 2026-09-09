@@ -152,15 +152,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const hats = await tallestIn('Hats');
   /* v2.3.2203: BUILD TOO.  v2.3.2201 walked hair and hats, called the
      remaining gap comfortable, and shipped -- and the owner's next
-     screenshot was a TALL bro back up against the wordmark.  Build is a
+     screenshot was a TALL bro back up against the wordmark.  Build was a
      third height multiplier (heightMul) sitting in the same picker, worth
      30px on its own: it took the worst hair-and-hat pair from 51px under
      the sword to 21.  A "tallest head the game can build" check that skips
-     one of the three things that make a head tall is not that check. */
-  const build = await tallestIn('Build');
-  rec.ok('every hair, hat and build could be tried (guard)',
-    !!hair && !!hats && !!build && hair.n > 1 && hats.n > 1 && build.n > 1,
-    { hair, hats, build });
+     one of the three things that make a head tall is not that check.
+
+     ═══ v2.3.2378: AND THERE IS NO BUILD TAB ANY MORE ═══
+     Owner, at v2.3.2268: "I changed my mind on the build sizes during the
+     create a character. It looks bad. Use the medium (default) character
+     only. Remove it as an option in the trait picker and remove the tall and
+     short build from the game."  HEIGHT_CATALOG is locked to average and the
+     `build` entry is gone from _typeDefs, so the tab filters itself out of
+     the strip -- and `tallestIn('Build')` has returned null ever since, which
+     means THIS GUARD HAS BEEN RED SINCE v2.3.2268 and nobody noticed, because
+     it is the guard rather than the assertion it guards.
+
+     Removing it is not lowering the bar: the two remaining axes ARE every
+     axis the game still has, so "the tallest head the game can build" is
+     hair-and-hat now, exactly and completely. If a height axis ever comes
+     back, the walk comes back with it -- `kind: 'build'` and _buildTile were
+     deliberately left in place in NameModal for that. */
+  rec.ok('every hair and hat could be tried (guard)',
+    !!hair && !!hats && hair.n > 1 && hats.n > 1, { hair, hats });
   const worst = await inkSpan(P);
   const sword = await swordBottom();
   const gap = worst && worst.pageTop ? Math.round(worst.pageTop - sword) : null;
@@ -213,7 +227,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      makes the head sink further into the sword still fails here instead of
      passing unnoticed. */
   rec.ok(`the tallest head the game can build clears the logo's sword (${gap}px)`,
-    gap !== null && gap >= -12, { gap, head: worst && worst.pageTop, swordBottom: sword, hair, hats, build });
+    gap !== null && gap >= -12, { gap, head: worst && worst.pageTop, swordBottom: sword, hair, hats });
 
   /* ═══ v2.3.2202: THE MEASURED FIGURE IS THE BODY, NOT ITS SHADOW ═══
      Owner, twice: "the shoes are transparent" / "Shoes appear semi

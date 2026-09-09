@@ -82,6 +82,7 @@ const SCENARIOS = {
   potions: () => import('./mp-potions.mjs'), /* v2.3.2062: the mana + speed draughts */
   drinkcrash: () => import('./mp-drinkcrash.mjs'), /* v2.3.2151: drinking must not take the app down */
   ccstand: () => import('./mp-ccstand.mjs'), /* v2.3.2151: the bro stands mid-pedestal */
+  ccfeet: () => import('./mp-ccfeet.mjs'), /* v2.3.2378: the lion backplate does not cover his boots, on the phone-with-toolbars viewport */
   ccbuttons: () => import('./mp-ccbuttons.mjs'), /* v2.3.2151: the name label + the two action buttons */
   townhill: () => import('./mp-townhill.mjs'), /* v2.3.2061: the fountain + the house on the hill */
   questxp: () => import('./mp-questxp.mjs'), /* v2.3.2154: the XP chooser's type, and your own plate */
