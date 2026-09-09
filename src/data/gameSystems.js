@@ -2695,6 +2695,62 @@ export const WEAPON_TYPES = {
   }
 };
 
+/* ═══ v2.3.2387: HOW FAR A MAGIC ORB FLIES ═══
+ *
+ * Owner: "extend magic projectile range to what it was before (should be same
+ * as arrow).  It just needs to travel further."
+ *
+ * WHY IT FELT SHORT, and it is not the number you would first reach for.
+ * `staff.range` above is already 200, the bow's, and has been since v2.3.2243
+ * ("Magic attack radius will be nerfed to be same as bow").  That field is the
+ * PvP reach CLAIM; it has nothing to do with how far a projectile flies.  The
+ * flight distance lives in projectiles.js, and the two weapons are bounded
+ * there by DIFFERENT MECHANISMS, which is how they drifted apart unnoticed:
+ *
+ *   ARROW  8 px/frame, and it plants when it passes 675 px OR nears the screen
+ *          edge -- `if (!a.isStaff && _released)`.
+ *   STAFF  5 px/frame, and that guard EXCLUDES it, so nothing bounds an orb but
+ *          running out of `life`.  At the v2.3.1335 value of 68 that is
+ *          68 x 5 = 340 px, in every direction.
+ *
+ * 340 px does not reach the screen.  Measured on a 390x844 phone in a combat
+ * zone (worldViewport at WORLD_ZOOM 3: scale 0.601, world view 649x1024):
+ *   player -> side edge    301 px    (the arrow's real horizontal reach; the
+ *                                     675 cap never binds on a phone)
+ *   player -> top edge     488 px
+ *   player -> CORNER       573 px    <- an orb died 233 px short of this
+ * So you could see a monster, fire at it, and watch the orb expire in open
+ * ground before arriving.  HORIZONTALLY magic already out-ranged the bow
+ * (340 vs 301) -- the shortfall is vertical and diagonal, which is exactly
+ * what "it just needs to travel further" feels like from the thumb.
+ *
+ * 675 IS THE ARROW'S OWN CAP, so "same as arrow" is literal rather than
+ * approximate, and it clears the 573 px corner with room on every phone.
+ *
+ * SPEED IS DELIBERATELY UNTOUCHED.  An orb still flies at 5 px/frame against
+ * the arrow's 8 -- magic drifts, and the special's three orbs are fast/medium/
+ * slow by the owner's own request (v2.3.2262).  The ask was distance, so only
+ * distance moved.  The cost is flight TIME: 675 px now takes 135 frames,
+ * ~2.25 s at 60fps, against the arrow's ~1.4 s to the same distance.  If that
+ * reads as floaty in the hand, the lever is the 5, not this.
+ *
+ * NO SERVER CHANGE, and that is checked rather than assumed: the worker's PvE
+ * proximity gate is melee-only (`_effSlot === 'melee'`, combat.js, against
+ * PVE_MELEE_RANGE 400) and its own comment says "Ranged/staff therefore get no
+ * proximity gate at all"; PvP's RANGE_CAP already allows staff 950.  A longer
+ * orb reports hits the worker was always willing to settle.
+ *
+ * FOUR CALL SITES SHARE THIS, and they are in four different modules -- the
+ * basic shot (monsterCombat), the retreat shot (dodge), the special
+ * (playerActions) and THE PEER MIRROR (networking/gameEvents).  That last one
+ * is the one a change like this forgets: it is what YOU see of someone ELSE's
+ * orb, so leaving it at 68 would have made a remote caster's orb die at 340 px
+ * on your screen while it flew 675 on theirs.  One constant, so the next
+ * retune cannot half-land. */
+export const STAFF_RANGE_PX = 675;
+export const STAFF_ORB_SPEED_PX = 5;      /* projectiles.js: a.isStaff ? 5 : 8 */
+export const STAFF_LIFE = Math.round(STAFF_RANGE_PX / STAFF_ORB_SPEED_PX);  /* 135 */
+
 /* ═══ Tier-2 per-weapon-CATEGORY builds ═══
    Each item-level WEAPON_TYPES key maps to a category.  A category owns
    one skill level + one point pool shared by every weapon type inside it,
