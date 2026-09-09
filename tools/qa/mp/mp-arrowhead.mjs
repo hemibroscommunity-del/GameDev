@@ -47,8 +47,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
      absent `_isStaffProj` defaults the arrow into the magic-bolt branch and
      draws no arrow at all, which cost mp-proj a round of "the probe reports
      zero arrows"; an absent `_renderX` is nulled by the tick and skipped. */
-  const pin = (mode) => P.page.evaluate((m) => {
+  /* v2.3.2381: `sp:` prefixes a mode to fire the BOW SPECIAL instead of a
+     plain arrow -- `isSpecial` with `_isStaffProj` and `ice` both false is
+     exactly the isBowHeavy test in effectsRenderer, so it takes the painted
+     branch. Everything else about the fixture is unchanged, which is the
+     point: the same three states, the other draw path. */
+  const pin = (mode) => P.page.evaluate((m0) => {
     try { clearInterval(window.__pin); } catch (e) {}
+    const special = m0.startsWith('sp:');
+    const m = special ? m0.slice(3) : m0;
     window.__pin = setInterval(() => {
       const S = window._gameState && window._gameState.current;
       if (!S || !S.player) return;
@@ -58,7 +65,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         ang: 0, life: 60, dist: 46, _released: true,
         planted: false, planting: false, stuckIn: false, plantedAt: Date.now(),
         _plantX: px, _plantY: py, _plantStartY: py,
-        _isStaffProj: false, isSpecial: false, ice: false,
+        _isStaffProj: false, isSpecial: special, ice: false,
       };
       if (m === 'planting') { a.planting = true; a._fallVy = 0; }
       if (m === 'planted') { a.planted = true; }
@@ -87,6 +94,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const landed = await read('planted');
   rec.ok('...and only a LANDED arrow loses it', !!landed && landed.arrows > 0 && landed.heads === 0, landed);
+
+  /* ── v2.3.2381: AND THE BOW SPECIAL, WHICH NEVER DID ──
+     Owner: "For the bow special arrow make it so the tip of the arrow
+     disappears when it terminates."
+
+     The three assertions above have held since v2.3.1879 and were never
+     about this arrow.  The special takes a different draw branch entirely --
+     _placeSpecialFx, a pooled Sprite from a painted sheet, where the other
+     three are a Graphics polygon from _drawArrow -- so `arrows` and `heads`
+     could not see it and the rule simply did not apply to it.  It kept its
+     golden head in the monster for the whole four-second terminal state.
+
+     Same three states, read through the probe's own `specials` pair.  The
+     first two are what make the fix surgical rather than "the special is
+     headless now": a charged arrow in flight is the shot the player paid
+     for, and the spent drop is v2.3.1879's distinction, which must survive
+     on this path too.  Run against the pre-fix build, exactly the third
+     one fails. */
+  const spFly = await read('sp:flying');
+  rec.ok('the fixture paints a bow SPECIAL (guard)', !!spFly && spFly.specials > 0, spFly);
+  if (spFly && spFly.specials > 0) {
+    rec.ok('a charged arrow in flight keeps its tip', spFly.specialHeads > 0, spFly);
+    const spFall = await read('sp:planting');
+    rec.ok('a SPENT charged arrow still falling keeps its tip',
+      !!spFall && spFall.specials > 0 && spFall.specialHeads > 0, spFall);
+    const spLand = await read('sp:planted');
+    rec.ok('...and only a LANDED charged arrow loses it',
+      !!spLand && spLand.specials > 0 && spLand.specialHeads === 0, spLand);
+  }
 
   await P.page.evaluate(() => { try { clearInterval(window.__pin); } catch (e) {} });
   /* ── v2.3.1915: A SPENT ARROW DRAWS UNDER THE PLAYER ──

@@ -494,6 +494,12 @@ export async function initPixiRenderer(canvas) {
       ground: effectsRenderer._groundArrowsDrawn || 0,
       groundLayer: effectsRenderer.groundArrowLayer && effectsRenderer.groundArrowLayer.label || null,
       flyingLayer: effectsRenderer.projectileLayer && effectsRenderer.projectileLayer.label || null,
+      /* v2.3.2381: the BOW SPECIAL's own pair.  It is a pooled Sprite from a
+         painted sheet, not a Graphics polygon, so `arrows`/`heads` above --
+         which _drawArrow owns -- can never see it, and three shipped
+         assertions read those two. Separate fields keep both readable. */
+      specials: effectsRenderer._specialArrowsDrawn || 0,
+      specialHeads: effectsRenderer._specialArrowHeads || 0,
     }),
     /* v2.3.1765: read-only probe of the name plate's position relative to the
        character, for the QA harness.  Owner: "Move the standing nameplate down
