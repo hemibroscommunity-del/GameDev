@@ -49,8 +49,16 @@
  *   2. python3 tools/tune_headwear.py --category eyewear --id <id> --fit-pose jog
  *        (and mine, fish, hit, pickup)
  *   3. python3 tools/downscale_traits.py --cats eyewear --stash-hi --apply
- *   4. node tools/ui/make-southwest-thumbs.mjs
+ *   4. python3 tools/ui/slice_eyewear_thumbs.py        <- NOT make-southwest-thumbs
  *   5. Add one { id, name } entry to EYEWEAR_CATALOG below.
+ *
+ * v2.3.2386: step 4 used to read `node tools/ui/make-southwest-thumbs.mjs`,
+ * and following it does NOTHING for eyewear -- that tool's CATS list dropped
+ * 'eyewear' on purpose (see its own comment) because the picker tiles are the
+ * owner's hand-drawn icons and deriving them would overwrite eight files he
+ * drew, silently.  A recipe that names a no-op command is worse than no recipe:
+ * it reads as done.  The tool that DOES rebuild these tiles cuts them from the
+ * owner's contact sheet, and `--check` byte-compares them (TRAPS 59).
  */
 export const EYEWEAR_CATALOG = [
   { id: 'none', name: 'None' },

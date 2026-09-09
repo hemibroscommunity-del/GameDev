@@ -24,6 +24,17 @@ black top edge to pupil):
 | Golden Monocle | 100 / 0 | 100 / 0 | 100 | **gained northeast** |
 | Eye Patch | 100 / 38 | 100 / 63 | 100 | the second figure is the strap |
 
+**This table is an IDLE-BODY measurement, and it should not be read as more.**
+The importer's check runs against the `stand` frames, which is where placement
+is authored; the pose passes (`--fit-pose jog|mine|fish|hit|pickup`) then carry
+each facing onto bodies whose heads are drawn at a different size, and they get
+close rather than exact. Measured on the jog southwest body, Thug Life still
+leaves ~12% of each eye showing under its lens — better than the ~33% the
+previous art left there, but not the zero the table above reports for standing.
+An adversarial audit of this round raised that as a contradiction of the "100%
+on every facing" claim; it is not a regression (the number improved), but the
+claim needed the qualifier, so here it is.
+
 The Golden Monocle is the structural change: it shipped with three facings
 because the first sheet drew nothing on northeast, and the redrawn one draws
 the ring's chain hanging behind the ear. It has four now. Nothing needed a code
