@@ -58,8 +58,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* naturalWidth is the only honest "it is really there": a wrong path leaves a
      broken <img> that still keeps its class and still reports a box. */
   rec.ok('...and its art actually decoded, not a broken image', a.natural > 0, a);
-  rec.ok('...and it is showing on arrival, before anything has been taught',
-    a.opacity === '1', a);
+  /* HALF OPACITY, the owner's number: "make the new touch spin art 50%
+     transparent though so it doesn't take up too much attention" (v2.3.2393).
+     Asserted exactly rather than as a band -- it is a value someone chose, and
+     a band would let it drift back to full without anyone noticing. */
+  rec.ok(`...and it is showing on arrival at half opacity (${a.opacity})`,
+    Math.abs(parseFloat(a.opacity) - 0.5) < 0.01, a);
   rec.ok('...and it is hidden from a screen reader', a.ariaHidden === 'true', a);
 
   /* At the bro's FEET, where the owner drew it -- centred on him, and low. */

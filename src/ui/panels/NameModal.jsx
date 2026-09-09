@@ -467,6 +467,9 @@ export function NameModal(props) {
   /* v2.3.1951: lifted to BroTown — it now also drives the preview camera, and
      that wiring lives up there beside activeCat. */
   var previewZoom = props.previewZoom, setPreviewZoom = props.setPreviewZoom;
+  /* v2.3.2393: the spin cue's resting opacity, named because two places care
+     -- the style below, and tools/qa/mp/mp-ccspin.mjs, which pins it. */
+  var SPIN_CUE_OPACITY = 0.5;
   var _dragMoved = React.useRef(false);
   /* v2.3.2391: has this player turned the bro yet?  State, not a ref, because
      the spin cue below has to REPAINT when it flips -- a ref would flip
@@ -882,7 +885,13 @@ export function NameModal(props) {
     className: "bt-cc-spincue",
     "data-spun": _hasSpun ? '1' : undefined,
     style: {
-      opacity: _hasSpun ? 0 : 1
+      /* v2.3.2393 (owner: "make the new touch spin art 50% transparent though
+         so it doesn't take up too much attention").  Half opacity, not a
+         redraw of the art at half alpha: the cue has to be able to go to 0
+         when it is earned, and one property doing both keeps the fade it
+         already has honest.  It sits over his boots, so at 0.5 he reads
+         through it and the arrows stay legible against the pedestal. */
+      opacity: _hasSpun ? 0 : SPIN_CUE_OPACITY
     }
   })),
   /* ═══ v2.3.2006: THE ROTATE CIRCLES ARE GONE — DRAG THE BRO ═══
