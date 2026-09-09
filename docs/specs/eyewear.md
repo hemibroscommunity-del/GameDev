@@ -255,6 +255,34 @@ reached, so an original can never be overwritten by its own halved copy.)
 
 ### Step 7: picker thumbnails
 
+**v2.3.2376 — eyewear no longer takes its thumbnails from this generator.**
+Owner, on the derived ones: *"the eyewear icons look pretty bad. Use these
+instead"*, with a sheet of nine hand-drawn icons. All eight pairs now ship the
+owner's drawings as both `thumb.png` and `thumb-sw.png`, and `eyewear` has been
+removed from `CATS` in `tools/ui/make-southwest-thumbs.mjs` so a routine run
+cannot recompute them from `southwest.png` and silently overwrite the art.
+
+Why the drawings win at 44px: a cut from the worn southwest frame is a
+three-quarter view of a small object, drawn to sit on a face and lit for the
+world — off-axis, unoutlined, and only a few dozen pixels of actual lens. The
+owner's icons are front-facing, outlined, and fill the tile. That is a
+readability difference, not a taste one.
+
+Consequences to respect:
+
+- Do not put `eyewear` back in `CATS`. `--check` still reports the folder as
+  complete (49 present, 0 missing) because the files exist — it checks presence,
+  not provenance, so it will not warn you.
+- `import_headwear_green.py` DOES write `thumb.png`. Re-importing a pair
+  therefore clobbers the owner's icon for that pair — recut it from the sheet
+  in the same commit, or the picker goes back to a dim off-axis crop for one
+  item and nobody notices until it ships.
+- `none` is not one of the eight: that tile renders the shared
+  `/ui/welcome/cc/cc-no-hair.webp` for every category, so the sheet's slash
+  cell was deliberately not cut.
+
+For every OTHER category the generator is still the source:
+
 ```
 node tools/ui/make-southwest-thumbs.mjs
 node tools/ui/make-southwest-thumbs.mjs --check
@@ -493,7 +521,7 @@ near-black lens is flattened whole.
 | other portraits | `CharacterView.jsx`, `BottomDashboard.jsx`, `friendPortraits.js`, `LoginScreen.jsx` | read + subscribe |
 | wire | `wsClient.js` (join), `BroTown.jsx` (track), `peerCosmetics.js` | key `ew` |
 | stored look | `characterRecord.js`, `server/src/join.js`, `server/src/index.js` | `ew` on both gates and in the character record |
-| thumbnails | `traitThumbs.js`, `tools/ui/make-southwest-thumbs.mjs` | category listed |
+| thumbnails | `traitThumbs.js` | v2.3.2376: the owner's hand-drawn icons, checked in — `make-southwest-thumbs.mjs` deliberately does NOT list the category |
 | tools | `import_headwear_green.py`, `tune_headwear.py`, `seat_headwear.py`, `fit-headwear-scale.mjs`, `downscale_traits.py`, `make_headwear_mannequin.py`, `preview_headwear.py` | `--category eyewear`, `--omit`, `--title`, `--stash-hi`, head-relative placement + the eye-line check |
 | QA probe | `src/rendering/pixiRenderer.js` | `bodyFigureProbe` reports `eyewearPx` and `eyewearScaleRatio` beside the hat and beard |
 
