@@ -177,3 +177,33 @@ assertion first read *backwards* for exactly that reason.
 `mp-aimpath` block 6 is inverted rather than deleted — it used to assert the
 beam was drawn while attacking. A test that once claimed the reverse is the
 clearest record that this is a decision and not an accident.
+
+## What it looks like
+
+All four shot by `mp-jetstream` at 390×844 / 390×664 on town's sand — the
+brightest, least forgiving ground in the game.
+
+### Before → after, mid-volley
+
+| before (the sight beam) | after (the jet stream) |
+|---|---|
+| ![before](img/bow-jet-stream/before-844-volley.png) | ![after](img/bow-jet-stream/after-844-volley.png) |
+
+The difference is where the line *is*. The beam ran **forward** from the bow
+along the live aim, 280 px of it, whether or not an arrow was ever there. The
+jet stream runs **backward** from each arrow, over ground the shot has already
+crossed, and three of them chain into one line down the flight path.
+
+### The linger, and the shorter phone
+
+| after the arrows are gone (390×844) | mid-volley at 390×664 |
+|---|---|
+| ![linger](img/bow-jet-stream/after-844-linger.png) | ![short phone](img/bow-jet-stream/after-664-volley.png) |
+
+The left-hand shot is taken after every arrow has been deleted from the
+simulation: the line is still there, holding where it was laid and fading. That
+is the whole request — a guide that dies with its arrow is not a guide.
+
+**It is deliberately faint.** Judged against sand at `JET_ALPHA = 0.55`, which
+measures a ~5 px readable core on screen; a stronger value was tried and the
+owner preferred this one.
