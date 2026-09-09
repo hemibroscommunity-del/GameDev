@@ -336,12 +336,12 @@ importer writes `thumb.png` but not `thumb-sw.png` — which is the one the
 picker shows. Two pairs shipped a commit without theirs before the check
 caught it.
 
-### Step 7b: the two hand corrections, which a re-import undoes
+### Step 7b: the three hand corrections, which a re-import undoes
 
-Two pairs carry a change that is NOT in their sheet, so the sheet and the
+Three pairs carry a change that is NOT in their sheet, so the sheet and the
 shipped frames disagree by exactly these operations. **A re-import silently
-reverts both** — the same shape as the thumbnail hazard above, and the reason
-each one is a command rather than a memory.
+reverts all three** — the same shape as the thumbnail hazard above, and the
+reason each one is a command rather than a memory.
 
 **Golden Monocle — the claw is flipped on the two front facings** (v2.3.2380).
 Owner: *"Can you flip the golden monocle so the claw side faces the other way?"*
@@ -377,6 +377,29 @@ glasses. The same pass asks east for +15% and must not get it.
 itself would write. The pass holds the piece's **bottom** edge, which is right
 for a hat sitting on a skull and wrong here: it would drop the lenses off the
 eye row by half the height they just lost. Holding the centre keeps them on it.
+
+**Golden Glasses — the northeast facing is the PREVIOUS art** (v2.3.2385).
+
+```
+git show 68897ae4^:public/sprites/traits/eyewear/golden-glasses/northeast.png \
+  > public/sprites/traits/eyewear/golden-glasses/northeast.png
+git show 68897ae4^:public/sprites/traits/eyewear/golden-glasses/hi/northeast.png \
+  > public/sprites/traits/eyewear/golden-glasses/hi/northeast.png
+# and in meta.json:  bboxes.northeast = [120, 6, 17, 19],  crownNudge.northeast = [20, 20]
+```
+
+Northeast is the three-quarter-BACK view. Every other pair of glasses draws only
+the temple arm at the ear there — 17–19px wide in the 256 frame, measured across
+3D Glasses, Laser Glasses, White Glass and Thug Life. The redrawn Golden Glasses
+sheet drew a **full face-on lens with a shine streak**, 38px wide: from behind it
+reads as a gold slab floating beside the head rather than as glasses seen from
+behind. The previous sheet had drawn the hook correctly, so that one cell is kept.
+
+This is a **drawing** fault, not a placement one, which is why no importer flag
+fixes it — the same distinction the Eye Patch established at v2.3.2369. The
+lasting fix is a redrawn northeast cell on the source sheet; until then, the four
+lines above go with any re-import of this pair. The other three facings are the
+redraw and should stay that way.
 
 ### Step 8: the catalog line
 
