@@ -924,54 +924,17 @@ for (const cfg of Object.values(GESTURE_TOOLS)) {
    below. Source PNGs are ~1000-1250 px; in-game node footprints are
    tier-sized (tier.size ≈ 6-12 px), so each sprite is scaled to a target
    pixel height tuned to feel right next to the player sprite. */
-/* ═══ v2.3.1667: ONE finger cue, and it POINTS WHERE IT IS GOING ═══
- *
- * Owner: "the lifeskills movement cues should replace the simple white blob
- * with a finger icon that moves in the direction of where the blob moved."
- *
- * The cue was already finger-SHAPED in all four skills, but only fishing
- * actually rotated: it derives a tangent from its orbit, so its finger
- * sweeps around pointing along the path.  Mining, cooking and woodcutting
- * drew axis-aligned `roundRect` capsules that TRANSLATED without ever
- * turning, so on the up-stroke the finger slid backwards — which is what
- * read as a blob drifting rather than a hand making a gesture.
- *
- * These two helpers take an ANGLE, so every skill can point its finger
- * along its own direction of travel.  The construction is fishing's
- * (stroke with a round cap + a tip circle + a knuckle dot), because that
- * one is already rotation-general — this generalises the version that
- * worked instead of inventing a new one.
- *
- * Deliberately procedural, not a sprite: no finger/hand asset exists in
- * the repo, and a Graphics draw costs no load, no cache-bust and no
- * per-zone preload registration (the animation-preloading law).  If a
- * painted finger is ever authored, swap these two bodies for a rotated
- * Sprite and every call site keeps working.
- */
-/* The shared size sheet (v2.3.1435/1436 sizing, owner-tuned frame by frame
-   with headless screenshots).  Module scope so the helper and the cue code
-   read the SAME numbers — duplicating them is how a retune silently applies
-   to three skills and not the fourth. */
-export const CUE_FINGER_LEN = 30, CUE_FINGER_W = 19;
-function drawFingerCue(gfx, x, y, angle, alpha, scale) {
-  const s = scale || 1;
-  const len = CUE_FINGER_LEN * s, w = CUE_FINGER_W * s;
-  const dx = Math.cos(angle), dy = Math.sin(angle);
-  /* Body trails BACK from the fingertip at (x,y) along -angle. */
-  gfx.moveTo(x - dx * len, y - dy * len);
-  gfx.lineTo(x, y);
-  gfx.stroke({ color: 0xffffff, width: w, cap: 'round', alpha });
-  gfx.circle(x, y, w / 2 + 0.5);
-  gfx.fill({ color: 0xffffff, alpha });
-  gfx.circle(x - dx * (len + 4 * s), y - dy * (len + 4 * s), 8 * s);
-  gfx.fill({ color: 0xe6e6ee, alpha });
-}
-/* The motion streak, trailing the fingertip along -angle. */
-function drawFingerStreak(gfx, x, y, angle, length, width, alpha) {
-  gfx.moveTo(x - Math.cos(angle) * length, y - Math.sin(angle) * length);
-  gfx.lineTo(x, y);
-  gfx.stroke({ color: 0xffffff, width, alpha });
-}
+/* v2.3.2384: the procedural white finger cue (drawFingerCue /
+   drawFingerStreak / CUE_FINGER_LEN / CUE_FINGER_W, v2.3.1435-1667) is GONE
+   from here.  Its last caller went with the world cue at v2.3.2245 when the
+   harvest moved onto the right button, and it has been dead code since -- 45
+   lines a reader had to rule out.  The cue itself is not gone: the owner asked
+   for it back ("Add the old gesture cues on top of the right joystick when
+   it's time to extract the resource") and it now lives where the harvest does,
+   as SVG on the button face (gestureCue01 in src/game/gesturePose.js, drawn by
+   TouchControls' rHintRef).  It had to change medium as well as address --
+   this is the Pixi stage, the button is DOM -- but the motion curves that
+   moved over are the owner's own. */
 
 /* v2.3.2338: the three still node sprites were shipped at 1254x1254 -- 6 MB
    of decoded RGBA EACH, 18 MB resident in every zone including town (they

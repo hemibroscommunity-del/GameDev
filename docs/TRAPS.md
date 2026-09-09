@@ -2488,3 +2488,66 @@ assertion green on its own.
 matching and fails silently — the margin here had to be declared on
 `.bt-cc-col-left>.bt-cc-cluster` (0,2,0) rather than `.bt-cc-cluster` (0,1,0)
 for exactly that reason.
+
+---
+
+## 61. A still-frame assertion cannot see a frozen animation (v2.3.2384)
+
+**The move that looks right:** the harvest button has coverage. `mp-harvest`
+asserts the gesture window opens, that the button reads `CHOP`, that the
+painted axe strip is on its face with the right URL, and that no tool floats
+in the world any more. Four assertions, all green, all about the thing that
+was broken.
+
+**Why it is wrong:** every one of them reads **one frame**. The defect was
+that there is only ever one — `ex.cueFrame01` is written in exactly one place
+(`ExtractionSwipeLayer`'s `onPointerMove`), so with no thumb on the glass the
+tool strip sat on cell 0 forever and the character froze with it. A frozen
+animation passes every single-frame check ever written about it, because each
+frame it shows is a legal frame. The suite was not weak about the wrong thing;
+it was measuring a property (which cell, which URL, is it visible) that is
+true of both the working and the broken build.
+
+**The tell:** an assertion about something that is supposed to MOVE, whose
+evidence is a value read once. If you cannot say which two readings would
+differ, the check cannot see motion.
+
+**Do instead:** sample over time with nothing touching the page, and assert on
+the DIFFERENCE — how many distinct values appeared, and over what range. Both
+halves matter and they fail separately: `mp-gcue` asserts the strip takes at
+least three distinct positions AND that it reaches cell 5+, because a strip
+clamped to its first four cells (the real, separate `Math.min(3, …)` bug next
+door) is perfectly distinct while still unable to show the strike land.
+
+**Related:** §52's lesson in the same shape — a check that passes on both the
+fixed and the broken build is not coverage, whatever it is named.
+
+---
+
+## 62. Sizing a moving glyph's travel by its anchor point (v2.3.2384)
+
+**The move that looks right:** the finger cue is placed by a transform, so its
+position is `(x, y)`. Keep `(x, y)` inside the disc across the whole cycle —
+`hypot(x - 50, y - 50) <= 40` at 64 sampled phases, green — and the cue stays
+on the button.
+
+**Why it is wrong:** `(x, y)` is the glyph's ORIGIN, not the glyph. This one
+is a round-capped stroke running back from the origin with a knuckle dot
+behind that: about 14 units of the drawing live on the far side of the point
+being measured, and it ROTATES, so which side that is changes every
+half-cycle. The capture showed a third of the finger hanging off the rim at
+ten o'clock while the assertion said it was 4 units inside.
+
+**The tell:** a containment check whose only term is the transform's
+translation. Anchors, `text-anchor`, `dominant-baseline`, a sprite's
+`anchor.set`, an SVG `<g transform>` — all of them mean the coordinate you
+placed is not the extent you get.
+
+**Do instead:** export the glyph's own reach as a named constant next to the
+geometry (`CUE_REACH`), size the tracks against it, and have the pin add the
+same term. One number, two readers, so a redrawn glyph cannot make the layout
+maths quietly wrong. And LOOK at a real capture: the arithmetic said this was
+fine and a 340x380 screenshot said it was not, in about a second.
+
+**Related:** §60 — same session, same lesson. Reasoning about layout without
+measuring the rendered result is how both of these shipped.
