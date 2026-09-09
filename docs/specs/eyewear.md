@@ -258,9 +258,19 @@ reached, so an original can never be overwritten by its own halved copy.)
 **v2.3.2376 — eyewear no longer takes its thumbnails from this generator.**
 Owner, on the derived ones: *"the eyewear icons look pretty bad. Use these
 instead"*, with a sheet of nine hand-drawn icons. All eight pairs now ship the
-owner's drawings as both `thumb.png` and `thumb-sw.png`, and `eyewear` has been
-removed from `CATS` in `tools/ui/make-southwest-thumbs.mjs` so a routine run
-cannot recompute them from `southwest.png` and silently overwrite the art.
+owner's drawings as both `thumb.png` and `thumb-sw.png`, cut from the sheet by
+a tool of their own:
+
+```
+python3 tools/ui/slice_eyewear_thumbs.py          # re-cut all eight
+python3 tools/ui/slice_eyewear_thumbs.py --check  # verify, write nothing
+```
+
+The sheet itself is checked in at `assets/icons-source/sheet-eyewear-icons.png`,
+so a redraw is one command away and nothing has to be re-eyeballed.  `eyewear`
+has also been removed from `CATS` in `tools/ui/make-southwest-thumbs.mjs` so a
+routine run of THAT generator cannot recompute them from `southwest.png` and
+silently overwrite the art.
 
 Why the drawings win at 44px: a cut from the worn southwest frame is a
 three-quarter view of a small object, drawn to sit on a face and lit for the
@@ -274,9 +284,10 @@ Consequences to respect:
   complete (49 present, 0 missing) because the files exist — it checks presence,
   not provenance, so it will not warn you.
 - `import_headwear_green.py` DOES write `thumb.png`. Re-importing a pair
-  therefore clobbers the owner's icon for that pair — recut it from the sheet
-  in the same commit, or the picker goes back to a dim off-axis crop for one
-  item and nobody notices until it ships.
+  therefore clobbers the owner's icon for that pair — run
+  `slice_eyewear_thumbs.py` again in the same commit, or the picker goes back
+  to a dim off-axis crop for one item and nobody notices until it ships.
+  `slice_eyewear_thumbs.py --check` is what catches it.
 - `none` is not one of the eight: that tile renders the shared
   `/ui/welcome/cc/cc-no-hair.webp` for every category, so the sheet's slash
   cell was deliberately not cut.

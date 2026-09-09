@@ -2396,3 +2396,47 @@ the Eye Patch's five `hi/` frames in that commit.
 in the picker thumbnails — a re-import deletes the trait folder and the
 importer writes `thumb.png` but not `thumb-sw.png`, which is why
 `make-southwest-thumbs.mjs --check` is step 7 of `docs/specs/eyewear.md`.
+
+---
+
+## 59. Slicing a contact sheet on an even grid it only looks like (v2.3.2377)
+
+**The move that looks right:** the owner hands you a square sheet of nine icons
+in three neat rows and columns. You divide the side by three and cut.
+
+**Why it is wrong:** an artist draws to the art, not to a grid. Eight of the
+nine cells came out perfect, which is exactly what makes this ship — the ninth
+was the golden monocle, the only icon on the sheet with a hanging bead chain
+under it, so it is 371px tall where its two neighbours are 175 and 199. Its art
+runs y 818..1188 and the even boundary lands at y=836, eighteen rows inside it:
+
+    laser-glasses   true y 534..691    sliced y 536..835   <- gained the
+                                                              monocle's gold
+                                                              top edge
+    golden-monocle  true y 818..1188   sliced y 836..1186  <- lost the top of
+                                                              its ring
+
+Shipped, and the owner saw it before the tests did: *"the monocle got cut off
+and is in the square above it a bit."* Note the failure is silent in both
+directions — a tight alpha bbox inside the wrong cell still produces a
+plausible PNG at a plausible size, and `make-southwest-thumbs.mjs --check`
+reported "49 present, 0 missing" the whole time, because presence is not
+provenance.
+
+**The fix** is to derive the grid from the sheet's own transparent gutters
+rather than assume it: fully-empty columns give the vertical strips, and then
+each strip is split into rows by ITS OWN empty rows. Per-strip is the part that
+matters — a global row scan unions all three columns and re-merges the very
+rows a tall icon reaches across.
+
+**The general lesson:** when a layout is *inferred* from an image, infer it
+from the image. A number you typed because the picture looked regular is an
+assumption with no error bar, and the one cell that breaks it is the one the
+artist cared enough to draw bigger. If you must hardcode, assert: this tool
+refuses to run unless the gutters yield exactly 3 columns and exactly 3 rows
+per column, and prints every cell's size so a straddle is visible in the log.
+
+**Receipt:** v2.3.2377 — `tools/ui/slice_eyewear_thumbs.py`, and the recut
+`laser-glasses` and `golden-monocle` thumbnails in that commit.
+
+**Related:** §55-§58 (the rest of the eyewear import pipeline).
