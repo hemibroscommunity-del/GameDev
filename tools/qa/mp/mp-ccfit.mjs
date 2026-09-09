@@ -173,6 +173,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`...but still span most of the face (${Math.round(100 * g.piece.w / g.head.w)}% of its width)`,
     g.piece.w >= g.head.w * 0.6, { piece: g.piece.w, head: g.head.w });
 
+  /* ── THE MONOCLE, SOUTH (v2.3.2411) ──────────────────────────────────────
+     Owner: "The south facing monocle needs to be nudged a bit to the right
+     too" -- "too" because v2.3.2395 had just moved the SOUTHWEST one for the
+     same complaint.  crownNudge.south x went -12 -> -8.
+
+     Both assertions are expressed against the HEAD SILHOUETTE rather than in
+     canvas pixels, because canvas size follows the viewport (782px at 390x844,
+     546px at 390x664) and a pixel threshold would pin the wrong thing.
+
+     The two properties bracket the answer from opposite sides, which is what
+     makes them worth having: at the old -12 the lens hung PAST the head and
+     sat on the temple with the eye buried at its inner edge, and going too far
+     the other way the rim crosses the face and covers the FAR eye.  -8 is the
+     only value that satisfies both, and it was picked from a rendered
+     ten-value sweep, not from arithmetic (see the note in the monocle's
+     meta.json for the measured table). */
+  const gotMS = await pickTile(P, 'Golden Monocle');
+  rec.ok('Golden Monocle is in the catalogue (guard)', gotMS.ok === true, gotMS);
+  await P.page.waitForTimeout(1800);
+  const wornMS = await grab(P);
+  const ms = measure(bareS, wornMS);
+  const msInFrac = (ms.piece.l - ms.head.l) / ms.head.w;   /* + = inboard of the head edge */
+  const msRightFrac = (ms.piece.r - ms.head.l) / ms.head.w; /* how far across the face the rim reaches */
+  console.log('    monocle S: ' + JSON.stringify({ ...ms, msInFrac: +msInFrac.toFixed(3), msRightFrac: +msRightFrac.toFixed(3) }));
+
+  rec.ok(`putting the monocle on changed the picture (guard: ${ms.piece.n}px)`, ms.piece.n > 150, ms);
+  /* SIDE ONE: it is ON the face, not hanging off the temple.  At the rejected
+     -12 the lens edge sat 2px OUTSIDE the silhouette, so this flips sign. */
+  rec.ok(`the south monocle sits inboard of the head edge (piece ${ms.piece.l} vs face ${ms.head.l}, ${Math.round(msInFrac * 100)}% in)`,
+    msInFrac > 0.02, { msInFrac, piece: ms.piece.l, head: ms.head.l });
+  /* SIDE TWO: it has not crossed to the OTHER eye.  Measured: the far eye
+     begins ~61% across the head at the eye row; -8 puts the rim at 59% and the
+     rejected -6 at 63%, where it visibly clips the far eye's white. */
+  rec.ok(`...and its rim stops short of the far eye (${Math.round(msRightFrac * 100)}% across, must stay under 61%)`,
+    msRightFrac < 0.61, { msRightFrac, piece: ms.piece.r, head: ms.head });
+
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/ccfit.png` }).catch(() => {});
   await P.ctx.close().catch(() => {});
 }

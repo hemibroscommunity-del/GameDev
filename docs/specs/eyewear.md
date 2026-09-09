@@ -876,3 +876,68 @@ by at least **25%** of the piece". This file shipped for one run with a 12%
 floor, and the mutation check showed the rejected placement already managed
 14% — so the assertion passed the very state the fix exists to leave behind.
 The fix measures 40%; 25% clears both.
+
+## 10. The monocle's SOUTH placement (v2.3.2411)
+
+Owner: *"The south facing monocle needs to be nudged a bit to the right too"* —
+"too" because §9 had just moved the **southwest** one for the same complaint.
+
+`crownNudge.south.x` **−12 → −8**.
+
+### How it was chosen
+
+A rendered sweep of ten values (−16 −12 −10 −8 −6 −4 −2 0 +4 +12), injected by
+fulfilling the runtime `meta.json` fetch per candidate with a modified copy — the
+repo was never touched. One fresh browser context per candidate, because
+`_metaCache` in `characterPortrait.js` only fetches once per page load.
+
+Three things were **rendered rather than reasoned**, each because reasoning about
+one of them has gone wrong here before:
+
+- **The sign.** x −12 puts the lens left edge at canvas 308, x +12 puts it at
+  386. Increasing x moves the lens **right**. Confirmed by picture, not by
+  reading `_placeTrait` (§9 records two failed attempts to compute placement
+  analytically).
+- **The facing.** The creator opens on southwest (TRAPS §63), so south was
+  proved every run from the *bare* body's own head-band symmetry — 0.022 at
+  390×844, 0.029 at 390×664, both under the 0.06 face-on threshold. One run was
+  lost before this to a subtler version of the same trap: clicking the **Eyes**
+  tab swaps the stage to a zoomed head-only canvas (782→561px), which silently
+  corrupts a bare-vs-worn diff. Take the bare capture on the *eyewear* tab.
+- **The eye row**, off a bare render of the bald default character (no hair to
+  confuse the silhouette). The covered eye spans canvas 355–374, centre 364.5.
+  Cross-checked twice: mirroring the far eye about the head centre gives 363,
+  and `eyeMask.json`'s stand-south iris rects are 3px in 256-space = 9.75 canvas
+  px, exactly the width of the measured dark runs.
+
+### Why −8, and why it is also the limit
+
+At the shipped −12 the lens centre sat at 350.5 — **14 canvas px (4.3 meta px)
+left of the eye**, on the temple, tangent to the head silhouette, with the eye
+buried at the lens's inner edge. That is precisely the "too far" the owner saw.
+At −8 the lens centre is 363.5 against an eye centre of 364.5: one canvas pixel,
+0.3 meta px. Four meta px of travel is 15% of the lens width — a nudge.
+
+**The failure going further is not the southwest one.** There, −26 was rejected
+because the lens left the face and read as floating beside the head. Here the
+lens is travelling *inward*, so the failure is the opposite: the rim crosses the
+face and reaches the **other eye**. Far-eye clearance is +4px at −8 and −3px at
+−6, where the rim visibly clips the far eye's sclera; by −4 it covers it
+outright. **−8 is both the best value and the last safe one.** −7 lands the rim
+at 409–410, exactly touching.
+
+Proportions hold at 390×664 (overhang −11px vs −14px), so this is not
+viewport-specific.
+
+### The pin
+
+`mp-ccfit.mjs`, two assertions, expressed against the **head silhouette** rather
+than in canvas pixels — canvas size follows the viewport (782px at 390×844,
+546px at 390×664) and a pixel threshold would pin the wrong thing. They bracket
+the answer from opposite sides:
+
+- the lens sits **inboard** of the head edge (>2% of head width in),
+- its rim **stops short of the far eye** (<61% across the head).
+
+Mutation-tested: restoring −12 puts the lens edge 1% *outside* the silhouette
+and the first assertion goes red. 17/17 with the fix in place.
