@@ -719,3 +719,88 @@ glasses at that size — checked against the siblings on the tab's own dark
 ground — but it does carry less visual weight than its neighbours. If that
 ever reads as wrong, the fix is to crop the swept-up temple arms rather than
 to scale the art past its slot.
+
+
+---
+
+## 8. The Thug Life south frame stops bowing upward (v2.3.2390)
+
+Owner: *"The current south idle black glasses view (I think thug life glasses)
+doesn't look correct the lenses look bent upward."*
+
+### The lenses were not bent
+
+Measured off `hi/south.png`, both lens rectangles run dead level — top at bbox
+row 9, bottom at row 22, across both — and they still do. Nothing in the art
+tilts.
+
+What bowed was the **silhouette**. The two temple arms sat as short fat wedges
+**fused to the frame's outer top corners**, nine rows tall against a fourteen-row
+lens. A stubby triangle welded to the corner of a lens is not read as an arm
+going back over the ear; it is read as *that corner lifting*. Two raised corners
+over a level bridge is an upward bow, which is exactly what was reported.
+
+### Why the wedges were there
+
+The owner's sheet (`assets/icons-source/eyewear-sheets/thug-life.png`) draws the
+arms as long thin diagonal strokes — about 2% of the piece's width at the tip,
+opening to 12% at the hinge, over **53 rows**. The v2.3.2379 import kept that
+taper but compressed it into **nine**. Same shape, two and a half times too
+short for its width, which turns a sweep into a wedge.
+
+Two independent references say nine rows is wrong:
+
+* **Every other pair in the catalogue** draws this hinge as a 2-row stub above
+  the frame — golden-glasses and goggles and 3d-glasses at rows 0–1,
+  white-glass at 0–2.
+* **Thug Life's own southwest facing**, which was never complained about,
+  tapers from 2px.
+
+### The change
+
+256-space rows 6–14 of `hi/south.png` are cleared; `south.png` is regenerated
+from it (a 2×2 box average — the regeneration reproduces the committed file
+byte-for-byte, which is how we know the downscale matches the pipeline). The
+frame keeps its own end-caps, so the temple is still there; only the raised
+wing is gone.
+
+**`anchors` and `crownNudge` are deliberately untouched** even though the art's
+bbox top moved from 6 to 15. The anchor is a coordinate, not a measurement, so
+holding it renders every remaining pixel in exactly the place the owner already
+approved in v2.3.2380 — no re-seating, no compensating nudge to get wrong. That
+is proven rather than assumed: a pixel diff of `preview_headwear.py` before and
+after changes only rows 99–113 of the south cell and nothing else in the sheet.
+
+`bboxes.south` **is** updated, to `[99, 15, 58, 17]`, because that one is a
+measurement. Nothing reads it for this item — `hatHairFit` consults it only for
+`floatsAboveHair` pieces, which this is not — so it stays honest for tooling
+without moving anything.
+
+`scale.south` stays at 0.912: that number came from a **width** fit, and the
+width is unchanged, the arms having lived inside the lens block's own column
+range.
+
+`TRAIT_VER` moves 2.3.2386 → 2.3.2390 in all six copies. This is the second time
+it has ever had to move, and for the same reason as the first: art *and*
+`meta.json` changed under paths already on main, so a returning player would
+otherwise keep the frame the owner asked us to fix.
+
+### The pin
+
+`tools/qa/mp/mp-ccshades.mjs`, 11 assertions. It measures a **top-edge profile**
+across the frame rather than looking for a tilt — a test that asked "are the two
+lenses level with each other" would have been green throughout the entire
+defect.
+
+It isolates the glasses by capturing the same character with and without the
+eyewear and subtracting, rather than by any colour threshold: the head outline
+is near-black too, and so are hair and beards.
+
+And it turns the figure to south first, then proves it turned, from the bare
+body's own symmetry. See **§63 of `docs/TRAPS.md`** — the creator opens on
+*southwest*, and the first cut of this scenario failed four assertions against
+art that was already fixed.
+
+Mutation-tested: 4 red against the pre-fix art (ends 18px and 16px above the
+middle in canvas pixels), 0 red after. The whole creator suite — ccshades,
+ccjoin, ccsize, ccbuttons, ccstand, ccfeet, ccload — is 115/115.

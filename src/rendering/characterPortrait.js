@@ -84,7 +84,7 @@ const WORLD_WEAPON_PX = { greatsword: 48, sword: 26, 'sword:wood': 45, bow: 52, 
    shadow below uses, and the same rows entityRenderer's BODY_ROWS carries. */
 const FOOT_ROW = { south: 221, north: 219, east: 223, northeast: 227, southwest: 234 };
 const DEFAULT_LIT_LUM = 149;            // default lit-skin luminance (see playerSkins)
-const TRAIT_VER = '2.3.2386';   /* v2.3.2174: de-fringe sweep across the trait sheets (tools/sprite-defringe.py); see playerSprites VERSION 101.
+const TRAIT_VER = '2.3.2390';   /* v2.3.2174: de-fringe sweep across the trait sheets (tools/sprite-defringe.py); see playerSprites VERSION 101.
                                    v2.3.2386: BUMPED FOR THE EYEWEAR REDRAW, and this is the first time it has HAD to move.
                                    Every earlier eyewear commit ADDED art -- new URLs, nothing cached to go stale.  v2.3.2379 is the
                                    first that CHANGED art already on main: seven pairs redrawn under their existing paths, plus
@@ -93,7 +93,10 @@ const TRAIT_VER = '2.3.2386';   /* v2.3.2174: de-fringe sweep across the trait s
                                    owner replaced for looking bad.  Worse, meta.json rides the SAME key: art and meta can go stale
                                    independently, and new anchors over old art put the piece somewhere else on the face.
                                    The cost is one re-download of every trait sheet, once, for everyone -- which is what this
-                                   constant is for.  Six copies, all six move together (grep TRAIT_VER). */            // cache-bust for body-tops.json (matches entityRenderer)
+                                   constant is for.  Six copies, all six move together (grep TRAIT_VER).
+                                   v2.3.2390: moved again, for the same reason and the second time it has ever had to.  The Thug Life
+                                   south frame lost its raised temple wedges and its meta.json bbox changed with them, both under paths
+                                   already on main -- exactly the shape of change this key exists for. */            // cache-bust for body-tops.json (matches entityRenderer)
 /* v2.3.1815: matches gearSheets.js GEAR_VERSION so the portrait and the world
    pull the SAME cached bytes rather than a second copy under a different
    query string. */

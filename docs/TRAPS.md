@@ -2551,3 +2551,37 @@ fine and a 340x380 screenshot said it was not, in about a second.
 
 **Related:** §60 — same session, same lesson. Reasoning about layout without
 measuring the rendered result is how both of these shipped.
+
+## 63. Measuring "the south view" in a creator that opens on southwest (v2.3.2390)
+
+The owner reported the **south idle** Thug Life glasses looking wrong. The
+obvious way to check it headlessly is to open the character creator, put the
+glasses on and measure the preview canvas.
+
+That measures the **southwest** 3/4 view. `characterPortrait.js`'s `_DMAP`
+falls back to `southwest`, and `BroTown.jsx` initialises `previewDir` to
+`'southwest'` — the creator has never opened face-on.
+
+This is worse than measuring nothing, because a 3/4 view of a pair of glasses
+is *legitimately* asymmetric: the near temple arm is drawn long and the far one
+short. `mp-ccshades`' first run reported the frame bowing up at both ends, with
+the left end 13px higher than the middle — against art whose wedges had already
+been removed. Two of the four failures were the art being fine and the view
+being wrong.
+
+**The tell** was that the "before" and "after" numbers were asymmetric (left
+119, right 127) for a piece that is mirror-symmetric by construction. A
+front-view measurement that comes back lopsided is measuring something other
+than the front view.
+
+**What to do.** `_PREVIEW_DIRS` is clockwise from `south`, and the preview
+starts on its last entry, so exactly one forward drag step lands on south.
+Then *prove* it landed there from evidence independent of the thing under
+test — `mp-ccshades` measures the **bare body's** own left/right symmetry over
+the head band, which has nothing to do with eyewear and reads 0.025 face-on
+against a much larger number in any 3/4 view. Turning and asserting you turned
+are two different steps, and skipping the second is how the first cut of this
+shipped confident and wrong.
+
+Related: §57 (a preview that does not reproduce every term of the placement
+arithmetic is a second opinion, not a check).
