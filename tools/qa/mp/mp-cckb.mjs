@@ -18,6 +18,16 @@
  *      line on a 390x745 Safari tab -- and the v2.3.1307 reservation only
  *      moved it to 428, still under.  That 18px was the whole bug.
  *
+ *      AND THE COMPONENT'S OWN HANDLER MUST BE WHAT DOES IT.  The first cut of
+ *      this file set `paddingBottom` and `data-kb` with its own hands and then
+ *      measured the result -- which is a test of the stylesheet that cannot
+ *      fail, because deleting NameModal's visualViewport effect outright left
+ *      every assertion green.  It now installs the keyboard stub mp-firstrun
+ *      uses (visualViewport.height shrinks while a text field holds focus, and
+ *      a `resize` is dispatched), FOCUSES the field for real, and lets the
+ *      component do the work.  Mutation-checked: with the effect's body
+ *      short-circuited the file goes red.
+ *
  *   2. WHETHER A FOCUS CAN SHOVE THE SCREEN DIRECTLY.  This one IS reproducible
  *      and it is a real, separate defect: .bt-name-modal is overflow:hidden,
  *      and an overflow:hidden box whose content stops fitting becomes a genuine
@@ -39,43 +49,82 @@ const CASES = [
   { w: 375, h: 553, kb: 260, tag: 'iPhone SE, toolbars showing' },
 ];
 
+/* ═══ A PHONE KEYBOARD, WHICH PLAYWRIGHT DOES NOT EMULATE ═══
+   Lifted from mp-firstrun (v2.3.1998), which established the shape: on iOS the
+   keyboard shrinks visualViewport.height while innerHeight stays put, and that
+   GAP is the keyboard.  Tying it to "is a text field focused" makes it open
+   when the player taps the name box and close when they leave, and dispatching
+   `resize` on the visualViewport is how the app hears about it -- which is
+   precisely the event NameModal's effect subscribes to. */
+/* A STRING, not a function, because the harness's `init` hook forwards a single
+   argument-less script and each viewport needs its own keyboard height baked
+   in.  This is the use `init` is documented for -- "stand in for a BROWSER API
+   the sandbox cannot provide" -- and visualViewport's response to a soft
+   keyboard is exactly that.  It stubs a platform API, never our own code. */
+const keyboardStub = (kb) => `
+  (() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const typing = () => {
+      const a = document.activeElement;
+      return !!(a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable));
+    };
+    try {
+      Object.defineProperty(vv, 'height', {
+        get: () => window.innerHeight - (typing() ? ${kb} : 0),
+        configurable: true,
+      });
+    } catch (e) { return; }
+    const kick = () => { try { vv.dispatchEvent(new Event('resize')); } catch (e) {} };
+    document.addEventListener('focusin', () => setTimeout(kick, 16), true);
+    document.addEventListener('focusout', () => setTimeout(kick, 16), true);
+  })();
+`;
+
 export async function run({ browser, wsPort, webPort, rec }) {
   for (const c of CASES) {
     const P = await H.newPlayer(browser, { name: 'Kb', wsPort, webPort,
-      viewport: { width: c.w, height: c.h }, touch: true, dpr: 3 });
+      viewport: { width: c.w, height: c.h }, touch: true, dpr: 3,
+      init: keyboardStub(c.kb) });
     await P.page.waitForSelector('[data-tut="login-create"]', { timeout: 30000 });
     await P.page.click('[data-tut="login-create"]');
     await P.page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
     await P.page.waitForTimeout(1200);
 
-    /* Apply exactly what the component applies when visualViewport reports a
-       keyboard: the v2.3.1307 padding, and the v2.3.2391 flag beside it.  The
-       React state drives nothing else, so this is the real rendered state and
-       not a mock of it. */
-    const m = await P.page.evaluate((kb) => {
+    const read = () => P.page.evaluate(() => {
       const col = document.querySelector('.bt-name-box.bt-cc-col-left');
-      const bot = () => Math.round(document.querySelector('input.bt-cc-name').getBoundingClientRect().bottom);
-      const stage = () => document.querySelector('.bt-cc-stage');
-      const rest = bot();
-      col.style.paddingBottom = kb + 'px';
-      void col.offsetHeight;
-      const padOnly = bot();
-      col.setAttribute('data-kb', '1');
-      void col.offsetHeight;
+      const title = document.querySelector('.bt-cc-title');
       return {
-        rest, padOnly, fixed: bot(),
-        stageLayoutH: stage().offsetHeight,
-        titleShown: !!(document.querySelector('.bt-cc-title')
-          && getComputedStyle(document.querySelector('.bt-cc-title')).display !== 'none'),
+        bottom: Math.round(document.querySelector('input.bt-cc-name').getBoundingClientRect().bottom),
+        stageLayoutH: document.querySelector('.bt-cc-stage').offsetHeight,
+        dataKb: col.getAttribute('data-kb'),
+        pad: Math.round(parseFloat(getComputedStyle(col).paddingBottom) || 0),
+        titleShown: !!(title && getComputedStyle(title).display !== 'none'),
+        vvGap: Math.round(window.innerHeight - window.visualViewport.height),
       };
-    }, c.kb);
-    const line = c.h - c.kb;
-    console.log(`    ${c.tag}: line ${line}, field ${m.rest} -> ${m.padOnly} (pad) -> ${m.fixed} (v2.3.2391)`);
+    });
 
-    rec.ok(`${c.tag}: the field was BELOW the keyboard before this (guard: ${m.rest} > ${line})`,
-      m.rest > line, m);
-    rec.ok(`${c.tag}: the name field now clears the keyboard (${m.fixed} <= ${line})`,
-      m.fixed <= line, { ...m, line });
+    const rest = await read();
+    /* A REAL tap on the field, which raises the stubbed keyboard, which fires
+       the resize NameModal listens for.  Nothing here touches the styles. */
+    await P.page.click('input.bt-cc-name');
+    await P.page.waitForTimeout(700);
+    const typing = await read();
+
+    const line = c.h - c.kb;
+    const m = { rest: rest.bottom, fixed: typing.bottom, ...typing };
+    console.log(`    ${c.tag}: line ${line}, field ${rest.bottom} -> ${typing.bottom}, gap ${typing.vvGap}, pad ${typing.pad}`);
+
+    rec.ok(`${c.tag}: the stubbed keyboard really came up (guard: ${typing.vvGap}px gap)`,
+      typing.vvGap === c.kb, typing);
+    /* The COMPONENT reacted -- not this file.  If NameModal's visualViewport
+       effect is gone or broken, this is the assertion that says so. */
+    rec.ok(`${c.tag}: ...and NameModal's own handler reserved room for it (pad ${typing.pad}px)`,
+      typing.dataKb === '1' && typing.pad >= c.kb - 1, typing);
+    rec.ok(`${c.tag}: the field was BELOW the keyboard before this (guard: ${rest.bottom} > ${line})`,
+      rest.bottom > line, m);
+    rec.ok(`${c.tag}: the name field now clears the keyboard (${typing.bottom} <= ${line})`,
+      typing.bottom <= line, { ...m, line });
     /* The stage yields, but is not annihilated: it collapsed to ZERO in an
        earlier cut of the CSS, which is not "the bro makes room", it is the bro
        disappearing.  96px of layout is ~192px painted (the stage carries
@@ -84,10 +133,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
       m.stageLayoutH >= 90, m);
     rec.ok(`${c.tag}: ...with the title standing down to pay for it`, m.titleShown === false, m);
 
-    /* ── the reproducible one ── */
+    /* ── the reproducible one ──
+       Run with the field BLURRED and anchored on the trait picker, not on the
+       title.  Both matter: while the name field holds focus the keyboard is up,
+       which is exactly when the title is display:none, so anchoring there
+       measures the title coming BACK and calls it a scroll.  It did, and the
+       assertion failed with the property under test perfectly intact
+       (scrollTop 0, anchor 0 -> 10).  .bt-cc-panel is on screen in every
+       state this screen has. */
+    await P.page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
+    await P.page.waitForTimeout(500);
     const mover = await P.page.evaluate(() => {
       const mo = document.querySelector('.bt-name-modal');
-      const anchor = document.querySelector('.bt-cc-logo') || document.querySelector('.bt-cc-title');
+      const anchor = document.querySelector('.bt-cc-panel');
       mo.style.height = '400px';
       void mo.offsetHeight;
       const overflowing = mo.scrollHeight - mo.clientHeight;

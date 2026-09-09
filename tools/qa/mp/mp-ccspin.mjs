@@ -65,8 +65,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* At the bro's FEET, where the owner drew it -- centred on him, and low. */
   rec.ok(`the cue is centred on the character (cue ${a.cue.cx} vs canvas ${a.canvas.cx})`,
     Math.abs(a.cue.cx - a.canvas.cx) <= 3, { cue: a.cue.cx, canvas: a.canvas.cx });
-  rec.ok('...and sits in the lower part of him, at the boots rather than his face',
-    a.cue.y > a.canvas.y + a.canvas.h * 0.55, { cueY: a.cue.y, canvas: a.canvas });
+  /* AGAINST HIS INK, NOT HIS BOX.  The canvas is a 261px square and his drawn
+     figure occupies rather less of it, so "below 55% of the canvas box" passes
+     with ~65px of slack while the cue sits on his shins.  The alpha scan below
+     is the same method mp-ccstand and mp-ccfeet use to find the figure, and it
+     is the only way to say anything true about where the cue is ON HIM. */
+  const ink = await P.page.evaluate(() => {
+    const c = document.querySelector('.bt-cc-stage canvas');
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let top = c.height, bot = -1;
+    for (let y = 0; y < c.height; y++) {
+      for (let x = 0; x < c.width; x += 2) {
+        if (d[(y * c.width + x) * 4 + 3] > 40) { if (y < top) top = y; bot = y; break; }
+      }
+    }
+    const r = c.getBoundingClientRect();
+    const s = r.height / c.height;
+    return { top: Math.round(r.top + top * s), bottom: Math.round(r.top + bot * s) };
+  });
+  const inkMid = (ink.top + ink.bottom) / 2;
+  console.log('    figure ink: ' + JSON.stringify(ink) + '  mid ' + Math.round(inkMid));
+  rec.ok(`the cue sits on his LOWER half, at the boots rather than his face `
+       + `(cue centre ${Math.round(a.cue.y + a.cue.h / 2)}, his ink runs ${ink.top}-${ink.bottom})`,
+    (a.cue.y + a.cue.h / 2) > inkMid, { cue: a.cue, ink });
+  /* And it does not run off him into the gold plate below.  mp-ccfeet buys the
+     boots only ~4px of air over that plate at 390x664, so a cue that hangs is
+     the same defect that file was written for (v2.3.2378). */
+  const plate = await P.page.evaluate(() => {
+    const e = document.querySelector('.bt-cc-cluster');
+    return e ? Math.round(e.getBoundingClientRect().top) : null;
+  });
+  rec.ok(`...without hanging into the name plate below (cue bottom ${a.cue.bottom}, plate top ${plate})`,
+    plate === null || a.cue.bottom <= plate, { cueBottom: a.cue.bottom, plate });
   /* "a little arc" -- not a banner across the stage. */
   rec.ok(`...and it is little (${a.cue.w}px against a ${a.canvas.w}px character)`,
     a.cue.w < a.canvas.w, { cue: a.cue.w, canvas: a.canvas.w });
@@ -95,4 +125,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/ccspin.png` }).catch(() => {});
   await P.ctx.close().catch(() => {});
+
+  /* ── AND AGAIN ON THE SHORT PHONE ──
+     390x664 is the same handset with the browser toolbars showing, and it is
+     the tight one: the stage keeps its width but loses a third of its height
+     (343x240 against 343x343), so anything sized off stage WIDTH grows against
+     a character sized off stage HEIGHT.  mp-ccfeet measures only ~4px of air
+     between the boots and the gold plate here, which is the budget the cue has
+     to live inside. */
+  const Q = await H.newPlayer(browser, { name: 'Spin2', wsPort, webPort,
+    viewport: { width: 390, height: 664 }, touch: true, dpr: 2 });
+  await Q.page.waitForSelector('[data-tut="login-create"]', { timeout: 30000 });
+  await Q.page.click('[data-tut="login-create"]');
+  await Q.page.waitForSelector('.bt-cc-stage canvas', { timeout: 30000 });
+  await Q.page.waitForTimeout(2000);
+  const q = await Q.page.evaluate(() => {
+    const g = (s) => { const e = document.querySelector(s); if (!e) return null;
+      const b = e.getBoundingClientRect();
+      return { w: Math.round(b.width), h: Math.round(b.height), bottom: Math.round(b.bottom),
+        cx: Math.round(b.x + b.width / 2) }; };
+    return { cue: g('.bt-cc-spincue'), canvas: g('.bt-cc-stage canvas'),
+      stage: g('.bt-cc-stage'), plate: g('.bt-cc-cluster') };
+  });
+  console.log('    390x664: ' + JSON.stringify(q));
+  rec.ok('390x664: the cue is there too (guard)', !!q.cue, q);
+  rec.ok(`390x664: it shrank with the character rather than with the column `
+       + `(${q.cue.w}px cue against a ${q.canvas.w}px character)`,
+    q.cue.w < q.canvas.w, q);
+  rec.ok(`390x664: ...and still clears the name plate (${q.cue.bottom} vs ${q.plate.bottom - q.plate.h})`,
+    q.cue.bottom <= (q.plate.bottom - q.plate.h), q);
+  rec.ok('390x664: ...and stays centred on him', Math.abs(q.cue.cx - q.canvas.cx) <= 3, q);
+  await Q.ctx.close().catch(() => {});
 }
