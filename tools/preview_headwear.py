@@ -111,6 +111,17 @@ def place(hat, meta, tops, pose, d, frame, hid=None):
     h = h.resize((w2, w2), Image.NEAREST)
     ax, ay = ax * s, ay * s
     out = body.copy()
+    # v2.3.2363: meta['alpha'] -- the renderer sets sprite.alpha from it, so a
+    # preview that skipped it would draw a see-through pane as solid and hide
+    # exactly the thing it exists to check (the tool's own header: a preview
+    # that does not reproduce every term of _placeTrait is a second opinion,
+    # not a check).
+    _a = meta.get('alpha')
+    if _a is not None and _a < 1:
+        h = h.copy()
+        _px = np.array(h)
+        _px[:, :, 3] = (_px[:, :, 3] * float(_a)).round().astype(np.uint8)
+        h = Image.fromarray(_px)
     # anchor pixel of the hat lands on the body crown + nudges
     dy256 = tune_dy / (JOG_EAST_BODY_SCALE if (pose == 'jog' and d == 'east') else 1.0)
     ox, oy = int(round(cx + nx + px - ax)), int(round(cy + ny + py - ay + dy256))

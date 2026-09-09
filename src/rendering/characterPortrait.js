@@ -262,6 +262,12 @@ function placeTrait(ctx, traitImg, meta, crown, dir, liftY, mulX) {
      itself displayed smaller than this canvas, so a smoothed 2x upscale here
      only softens edges that the display-side downscale would have kept. */
   ctx.imageSmoothingEnabled = norm <= 1;
+  /* v2.3.2363: the THIRD place a trait is drawn, and the third that has to read
+     meta.alpha -- the login preview, the equip screen, the profile tile, the
+     friends list and the inspect card all composite through here, so a pane the
+     world draws at half opacity must not be solid on every portrait in the
+     game.  ctx.save/restore above and below scope it to this one trait. */
+  if (meta.alpha != null) ctx.globalAlpha = meta.alpha;
   ctx.translate(tx, ty);
   ctx.scale(dscaleX * norm, dscale * norm);
   ctx.drawImage(traitImg, -anchor[0] / norm, -anchor[1] / norm);

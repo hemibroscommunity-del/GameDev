@@ -102,6 +102,40 @@ black top edge to its pupil (eye_centres below), not the pupil, which sits
 forehead or beside the eyes says so in numbers before anyone looks at a
 screenshot.  A piece taller than most of the head is flagged as well.
 
+THE PERSON'S OWN OUTLINE (v2.3.2362)
+------------------------------------
+The first real sheet came back with the green person OUTLINED IN BLACK -- which
+is how pixel art is drawn, and which the prompt asking for a flat silhouette
+did not prevent.  That outline is neither magenta nor green, so the keying
+above took the whole head-and-shoulders outline as part of the glasses: the
+"piece" measured 97-101% of the figure's height and its centre landed 14-26px
+below the eyes.  Both numbers were printed by the checks below, which is the
+only reason it did not ship.
+
+An outline is separated from a piece by two facts, and it takes both:
+
+  * IT IS THIN.  The outline is one art pixel; a lens, a frame, a brim is a
+    blob.  So the piece is SEEDED on local thickness (OUTLINE_CORE) and grown
+    back a bounded distance (OUTLINE_REACH) to recover its own thin parts --
+    the nose bridge, a temple arm.  Bounded, because the outline TOUCHES the
+    glasses where they cross the silhouette, so an unbounded flood would walk
+    straight out of the piece and around the whole head.
+  * IT HUGS THE SILHOUETTE.  The outline is the black BETWEEN the green and
+    the backdrop; the piece's own outline is between the piece and the green.
+    So near-black within OUTLINE_EDGE of BOTH keys is dropped, which also
+    clears the stubs the bounded regrowth leaves where the two meet.
+
+Both run only when an outline is actually THERE -- measured as the share of the
+green silhouette's perimeter that near-black ink traces (OUTLINE_PERIM).  A
+sheet whose person really is flat green has nothing to strip and takes exactly
+the path it always did, which is what keeps this from re-cutting the 39 hats
+and 8 hairstyles already imported.
+
+A piece drawn ENTIRELY in near-black, at the very edge of the silhouette, is
+the case this trims: its blobs survive on thickness, its outermost edge does
+not.  No such piece has come through yet; the numbers below will say so if one
+does.
+
 The other addition is --omit.  Glasses are invisible from behind, and a cell with
 nothing drawn on it used to abort the import ("no hat found beside the
 silhouette") -- rightly, for a hat.  --omit names the directions the piece
@@ -136,7 +170,21 @@ ALPHA_T = 16
 TOP_MARGIN = 6       # where the hat's top sits inside its own frame
 OVERSHOOT = 60       # 256-space rows sampled ABOVE the cell, for tall hats
 KEY_TOL = 60         # how far a green region may sit from the key and still be head
+PERSON_TOL = 70      # v2.3.2367: how far a pixel may sit from a NON-green person key
+PERSON_MIN = 0.02    # below this share of the panel, the green key has plainly missed
 TEXT_DROP = 0.30     # a real hat reaches at least this far down toward the crown
+# v2.3.2362: the person's own outline (see the header).  Sheet px, at the ~5x
+# the mannequin is drawn at, so one art pixel of outline is ~5 of these.
+OUTLINE_CORE = 6     # local half-thickness at or above which ink SEEDS the piece
+OUTLINE_REACH = 14   # how far the piece may grow back from a seed, along the ink
+OUTLINE_EDGE = 5     # within this of BOTH keys, near-black is the silhouette edge
+OUTLINE_PERIM = 0.25 # strip only when near-black traces this much of the perimeter
+OUTLINE_SPECK = 0.03 # after stripping, drop piece parts under this share of the biggest
+FACE_STUB_GAP = 4    # v2.3.2371: blank rows below a face-worn piece past which a loose part is the face
+LENS_PAD = 4         # v2.3.2363: 256-space px the eye box grows by before the lens is flattened
+SEAT_EYES_MAX = 8    # v2.3.2365: 256-space px a face-worn piece may be moved to sit on the eyes
+CLEAR_PAD = 2        # v2.3.2366: tighter than LENS_PAD -- an erased lens must leave its frame
+DARK = 90            # per-channel ceiling for "near-black"
 # v2.3.2361: categories worn ON THE FACE, placed by the head rather than the
 # shoulders (see the EYEWEAR section of the header).  A future facial-hair
 # import through this tool belongs here too: the crown is visible under a beard.
@@ -144,10 +192,10 @@ FACE_WORN = ('eyewear',)
 EYE_MASK = 'src/rendering/eyeMask.json'
 
 
-def eye_centres(d):
-    """Where the game's own eyes are in stand-<d> frame 0 (256-space), as a
-    list of (cx, cy) left to right; None where the facing paints no eyes
-    (northeast, north).
+def eye_boxes(d):
+    """The game's own eyes in stand-<d> frame 0 (256-space), as a list of
+    (x0, x1, y0, y1) left to right, each the WHOLE eye; None where the facing
+    paints no eyes (northeast, north).
 
     THE WHOLE EYE, NOT THE PUPIL.  An eye on these sheets is a 7-column box:
     a solid near-black TOP EDGE three rows deep, then rows of white, a blend
@@ -192,12 +240,43 @@ def eye_centres(d):
             x0 -= 1
         while x1 < fw and dark[top, x1]:
             x1 += 1
-        out.append(((x0 + x1) / 2, (top + yb) / 2))
+        out.append((x0, x1, top, yb))
     return out
 
 
-def keys(rgb):
-    """(magenta backdrop, green-ish, everything else).
+def person_key(rgb, mag):
+    """The flat colour the generator painted the PERSON, found rather than assumed
+    (v2.3.2367).
+
+    Owner: "I reported this mannequin to cyan since it was hard to see against
+    the green."  Which is a fair call on the art -- a gold monocle on a green
+    head is poor contrast -- and it breaks a keying rule that tests for
+    GREENNESS specifically: cyan fails `g - max(r, b) > 120` outright, so the
+    whole body would have keyed as the piece.
+
+    The person is the largest flat thing on the sheet by a wide margin (13% of
+    this one, against 0.2% for the outline), so the modal non-backdrop colour
+    IS the person.  Quantised to 8 levels per channel first, because the
+    generator's resampling means no two interior pixels are exactly equal.
+    """
+    sel = ~mag
+    if sel.sum() < 100:
+        return None
+    q = (rgb[sel] // 32).astype(np.int32)
+    codes = q[:, 0] * 64 + q[:, 1] * 8 + q[:, 2]
+    vals, cnt = np.unique(codes, return_counts=True)
+    top = vals[np.argmax(cnt)]
+    bucket = sel.copy()
+    bucket[sel] = codes == top
+    return np.median(rgb[bucket], axis=0).round().astype(int)
+
+
+def keys(rgb, key=None):
+    """(magenta backdrop, the person, everything else).
+
+    With no `key` this is the original GREEN test, unchanged, which is what the
+    prompt asks for and what every sheet before v2.3.2367 used.  Given a `key`
+    (see person_key) the person is keyed by distance to that colour instead.
 
     Green is keyed on DOMINANCE -- how much greener than either other channel --
     rather than on absolute values, because a hat is allowed to be green too.
@@ -209,7 +288,10 @@ def keys(rgb):
     cannot be done here."""
     r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
     mag = (r > 150) & (b > 150) & (g < 90) & (np.abs(r - b) < 60)
-    grn = (g > 150) & ((g - np.maximum(r, b)) > 120)
+    if key is None:
+        grn = (g > 150) & ((g - np.maximum(r, b)) > 120)
+    else:
+        grn = (np.abs(rgb - np.asarray(key)).max(axis=2) <= PERSON_TOL) & ~mag
     return mag, grn, ~(mag | grn)
 
 
@@ -284,8 +366,8 @@ def split_green(rgb, grn):
     5x5 block averaging gap-green with hair no longer matches the key."""
     lab, k = ndi.label(grn, np.ones((3, 3)))
     if k < 5:
-        raise SystemExit(f'found {k} green regions, expected at least 5 — did the '
-                         'generator paint the person flat #00FF00?')
+        raise SystemExit(f'found {k} person-coloured regions, expected at least 5 — is the '
+                         'person painted one flat colour on the magenta backdrop?')
     sizes = np.array(ndi.sum(grn, lab, range(1, k + 1)))
     objs = ndi.find_objects(lab)
     bodies = sorted(np.argsort(sizes)[::-1][:5], key=lambda i: objs[i][1].start)
@@ -306,6 +388,227 @@ def split_green(rgb, grn):
             rejected += int(sizes[i])
     heads = np.isin(lab, [i + 1 for i in keep]) & grn
     return heads, [((lab == i + 1), objs[i]) for i in bodies], len(keep) - 5, rejected
+
+
+def strip_figure_outline(ink, rgb, mag, grn):
+    """Drop the PERSON'S drawn outline from the keyed ink (v2.3.2362).
+
+    Returns (ink, stripped_px, traced) -- `traced` is the share of the green
+    silhouette's perimeter that near-black ink follows, and it is 0 for the
+    flat-green sheets every earlier import was cut from, where this is a no-op.
+    The header says why it takes both a thickness test and an edge test."""
+    dark = ink & (rgb[:, :, 0] < DARK) & (rgb[:, :, 1] < DARK) & (rgb[:, :, 2] < DARK)
+    if not dark.any():
+        return ink, 0, 0.0
+    d_grn = ndi.distance_transform_edt(~grn)
+    d_mag = ndi.distance_transform_edt(~mag)
+    edge = dark & (d_grn <= OUTLINE_EDGE) & (d_mag <= OUTLINE_EDGE)
+    # the silhouette's perimeter: green pixels with a non-green neighbour
+    perim = grn & ~ndi.binary_erosion(grn, np.ones((3, 3)))
+    traced = float(edge.sum()) / max(1, int(perim.sum()))
+    if traced < OUTLINE_PERIM:
+        return ink, 0, traced          # no outline drawn: leave the keying alone
+    thick = ndi.distance_transform_edt(ink) >= OUTLINE_CORE
+    kept = ink & (ndi.distance_transform_edt(~thick) <= OUTLINE_REACH) if thick.any() else ink
+    kept = kept & ~edge
+    return kept, int(ink.sum() - kept.sum()), traced
+
+
+def despeckle(piece, face_worn=False):
+    """Drop the outline stubs left where the piece crossed the silhouette
+    (v2.3.2362).  Only ever called on a sheet whose outline was stripped.
+    Returns (piece, dropped_below), the second being px the face-worn rule
+    took -- the caller prints it, because a silent drop is how a real part of
+    a piece would go missing without anyone noticing.
+
+    v2.3.2371: SIZE ALONE DOES NOT SEPARATE A STUB FROM A PIECE.  The second
+    eye-patch sheet left 32px of the drawn CHIN behind: 7.5% of the patch, so
+    many times over the speck threshold, and sitting 24 rows below a patch it
+    touches nowhere.  For a FACE-WORN piece POSITION settles what size cannot.
+    Eyewear is one thing worn on the eyes, so a fragment that touches it
+    nowhere and lies wholly BELOW it is the face the generator drew -- a chin,
+    a jaw, a mouth -- and not the eyewear.
+
+    Two deliberate limits.  It is gated on face_worn, because a HAT may
+    legitimately carry a detached piece below its brim (a chinstrap), and a
+    hat is fitted by the shoulders with the whole figure in reach.  And it
+    wants a clear gap rather than mere non-overlap, because a dangling element
+    hangs just under the thing it hangs from: the shipped monocle\'s chain is
+    joined to its ring and so is one component, but a sheet that draws the
+    links detached should keep them."""
+    lab, k = ndi.label(piece, np.ones((3, 3)))
+    if k <= 1:
+        return piece, 0
+    sizes = np.array(ndi.sum(piece, lab, range(1, k + 1)))
+    live = list(1 + np.nonzero(sizes >= OUTLINE_SPECK * sizes.max())[0])
+    dropped = 0
+    if face_worn and len(live) > 1:
+        main = 1 + int(np.argmax(sizes))
+        floor = int(np.nonzero((lab == main).any(axis=1))[0].max()) + FACE_STUB_GAP
+        below = [i for i in live if i != main
+                 and int(np.nonzero((lab == i).any(axis=1))[0].min()) > floor]
+        if below:
+            dropped = int(sum(sizes[i - 1] for i in below))
+            live = [i for i in live if i not in below]
+    return np.isin(lab, live), dropped
+
+
+def eye_cover(drawn, boxes, crown, anchor, nudge, ddx=0, ddy=0):
+    """Per-eye share of the eye box that the piece covers, at a trial nudge."""
+    dx = crown[0] + nudge[0] + ddx - anchor[0]
+    dy = crown[1] + nudge[1] + ddy - anchor[1]
+    out = []
+    for (x0, x1, y0, y1) in boxes:
+        sy0, sy1, sx0, sx1 = y0 - dy, y1 - dy, x0 - dx, x1 - dx
+        if sy0 < 0 or sx0 < 0 or sy1 > FRAME or sx1 > FRAME:
+            out.append(0.0)
+            continue
+        box = drawn[sy0:sy1, sx0:sx1]
+        out.append(float(box.mean()) if box.size else 0.0)
+    return out
+
+
+def seat_eyes(frame, d, crown, anchor, nudge, one_eye=None):
+    """Move a face-worn piece onto the eyes (v2.3.2365).
+
+    tools/seat_headwear.py exists because generators draw a HAT at inconsistent
+    heights and the fit score does not predict it; this is the same job for a
+    piece whose landmark is better.  Measured across the first four eyewear
+    sheets, every one of them drew the SOUTHWEST cell low -- +2.5%, +2.5%,
+    +2.6% and +6.1% of the crown-to-shoulder span -- so it is a bias of the
+    generator, not a bad sheet.  The first three absorbed it because their
+    lenses are deep (19-22px in the 256 frame); the Thug Life lenses are 13,
+    and the same offset dropped their eye coverage to 25%.
+
+    PER FACING, and that is a real difference from the hat pass, which insists
+    on ONE correction for the whole hat because seating each direction
+    separately would make it jump as you turn.  A hat's reference is contact
+    with the skull, a proxy that genuinely varies with perspective, so a
+    per-direction fix would encode perspective as error.  The reference here is
+    the EYES -- an exact landmark the game paints on each facing -- so aligning
+    every facing to its own eyes is the definition of consistent, not a source
+    of jitter.
+
+    The search maximises the WORST eye's coverage rather than the total, so a
+    pair cannot buy one eye by abandoning the other, and ties go to the
+    smallest move -- a piece already on the eyes is left exactly where it is.
+
+    UNLESS THE PIECE ONLY HAS ONE LENS (v2.3.2367).  A monocle covers one eye
+    and must: judged on the worst eye, the Golden Monocle's south cell was
+    dragged 8px off a perfect 0%/100% to a compromise 40%/83%, which is the
+    rule doing exactly what it says and the wrong thing.  So the objective is
+    chosen from what the piece was DRAWN covering -- if one eye is under half
+    the other, this is a monocle or a patch and the BEST eye is what gets
+    maximised.  Ties still go to the smallest move, so it stays on the eye the
+    generator put it on rather than hopping to the other one.
+
+    DECIDED ONCE FOR THE ITEM, not per facing (v2.3.2369).  Whether a piece has
+    one lens is a fact about the OBJECT, and the per-facing reading is not
+    reliable enough to keep re-asking: the Eye Patch reads 100%/22% on south,
+    which is unmistakable, and 56%/78% on southwest, where the strap crosses
+    the free eye and the patch is drawn off-centre -- so southwest alone would
+    have called it a pair and balanced the patch between both eyes.  The caller
+    passes the answer from south, the one facing that shows both eyes squarely.
+    """
+    boxes = eye_boxes(d)
+    if not boxes:
+        return (0, 0), None, None, False
+    drawn = frame[:, :, 3] > ALPHA_T
+    before = eye_cover(drawn, boxes, crown, anchor, nudge)
+    if one_eye is None:
+        one_eye = len(before) >= 2 and min(before) < 0.5 * max(before)
+    score = max if one_eye else min
+    best = None
+    for ddy in range(-SEAT_EYES_MAX, SEAT_EYES_MAX + 1):
+        for ddx in range(-SEAT_EYES_MAX, SEAT_EYES_MAX + 1):
+            cov = eye_cover(drawn, boxes, crown, anchor, nudge, ddx, ddy)
+            key = (-score(cov), abs(ddx) + abs(ddy), abs(ddx))
+            if best is None or key < best[0]:
+                best = (key, (ddx, ddy), cov)
+    return best[1], before, best[2], one_eye
+
+
+def clear_lens(frame, d, crown, anchor, nudge):
+    """ERASE the lens over the eyes, leaving the frame (v2.3.2366).
+
+    The White Glass sheet came back with its lenses drawn as a TRANSPARENCY
+    CHECKERBOARD -- literal white-and-grey squares in an RGB file with no alpha
+    channel, which is how an image editor DRAWS "nothing here".  Shipping that
+    pattern would be shipping a screenshot of an editor, so the sheet has to be
+    read as one of two intents: a solid lens (--flatten-lens) or a clear one
+    (this).
+
+    Erases the piece's non-near-black pixels inside the eye boxes, padded by
+    CLEAR_PAD rather than LENS_PAD: the box is the EYE and the frame sits just
+    outside it, so a tighter pad is what keeps the rims and leaves a hole.
+    """
+    boxes = eye_boxes(d)
+    if not boxes:
+        return 0, None
+    dx, dy = crown[0] + nudge[0] - anchor[0], crown[1] + nudge[1] - anchor[1]
+    region = np.zeros(frame.shape[:2], bool)
+    for (x0, x1, y0, y1) in boxes:
+        region[max(0, y0 - dy - CLEAR_PAD):y1 - dy + CLEAR_PAD,
+               max(0, x0 - dx - CLEAR_PAD):x1 - dx + CLEAR_PAD] = True
+    rgb = frame[:, :, :3].astype(int)
+    sel = region & (frame[:, :, 3] > ALPHA_T) & ~((rgb[:, :, 0] < DARK)
+                                                  & (rgb[:, :, 1] < DARK) & (rgb[:, :, 2] < DARK))
+    n = int(sel.sum())
+    frame[sel] = 0
+    return n, None
+
+
+def flatten_lens(frame, d, crown, anchor, nudge, pad=None):
+    """Repaint the piece where it covers the EYES, to one flat tint (v2.3.2363).
+
+    Owner, on the first goggles sheet: "These are goggles but kept their old eye
+    effect in the glasses. These should be removed."  The generator drew the
+    character's eyes showing THROUGH the tinted pane -- two pale blocks inside
+    the lens -- and a piece that renders semi-transparent (see `alpha`) must not
+    carry a painted-on eye as well as the real one behind it.
+
+    Why this is targeted at the eye boxes rather than at the colours: the pale
+    blocks are neither a separable cluster nor an enclosed island once the
+    generator's resampling has blurred every edge (measured on this sheet: 132
+    colour clusters in one 50x22 piece, and a 2-means split that separates
+    antialiasing from everything else rather than pane from rim).  What IS known
+    exactly is where the game paints the eyes, and the piece is over them by
+    construction -- the coverage check above says 100%.  So the region to flatten
+    is the eye boxes, padded, and the tint to flatten it to is that region's own
+    MEDIAN, which is the pane: the drawn-on eye is a minority of it.
+
+    Near-black is left alone, so the piece's own outline survives -- UNLESS the
+    lens is itself that dark (v2.3.2365).  The Thug Life sunglasses are near-
+    black by the same test that finds an outline, so protecting near-black left
+    only the drawn-on eye whites in the region and their median was WHITE: the
+    flatten repainted white with white and reported success.  So the protection
+    is decided by what the region actually holds -- if the piece there is
+    predominantly near-black there is no outline to tell apart from the lens,
+    and everything is flattened.
+    """
+    boxes = eye_boxes(d)
+    if not boxes:
+        return 0, None
+    dx, dy = crown[0] + nudge[0] - anchor[0], crown[1] + nudge[1] - anchor[1]
+    pad = LENS_PAD if pad is None else pad
+    region = np.zeros(frame.shape[:2], bool)
+    for (x0, x1, y0, y1) in boxes:
+        region[max(0, y0 - dy - pad):y1 - dy + pad,
+               max(0, x0 - dx - pad):x1 - dx + pad] = True
+    rgb = frame[:, :, :3].astype(int)
+    drawn = region & (frame[:, :, 3] > ALPHA_T)
+    if drawn.sum() < 8:
+        return 0, None
+    near_black = ((rgb[:, :, 0] < DARK) & (rgb[:, :, 1] < DARK) & (rgb[:, :, 2] < DARK))
+    whole = np.median(rgb[drawn], axis=0).round().astype(int)
+    # A lens that is itself near-black leaves no outline to protect (see above).
+    sel = drawn if (whole < DARK).all() else (drawn & ~near_black)
+    if sel.sum() < 8:
+        return 0, None
+    tint = np.median(rgb[sel], axis=0).round().astype(np.uint8)
+    changed = int((np.abs(rgb[sel] - tint).max(axis=1) > 3).sum())
+    frame[sel, 0], frame[sel, 1], frame[sel, 2] = tint
+    return changed, tuple(int(v) for v in tint)
 
 
 def hat_of(ink, sl, top=None):
@@ -408,6 +711,19 @@ def main():
     # which folder they land in and the category recorded in meta -- and hair is
     # the thing that gets CLIPPED by a hat, so it never sets clipsHair.
     ap.add_argument('--category', default='headwear', choices=['headwear', 'hair', 'eyewear'])   # v2.3.2361: + eyewear
+    ap.add_argument('--clear-lens', action='store_true',
+                    help='ERASE the lens over the eyes, leaving the frame (v2.3.2366): a '
+                         'sheet whose lenses came back as a transparency checkerboard')
+    ap.add_argument('--flatten-pad', type=int, default=None,
+                    help=f'256-space px the eye box grows by before --flatten-lens works on it '
+                         f'(default {LENS_PAD}; v2.3.2370).  The Eye Patch needed 6: its shine '
+                         f'sits between the eyes, one pixel outside the default region')
+    ap.add_argument('--flatten-lens', action='store_true',
+                    help='repaint the piece over the eyes to one flat tint, removing an '
+                         'eye the generator drew through the lens (v2.3.2363)')
+    ap.add_argument('--alpha', type=float, default=None,
+                    help='render the piece at this opacity, 0-1 (v2.3.2363): a tinted '
+                         'pane you see the real eyes through')
     ap.add_argument('--omit', default='',
                     help='comma list of directions the piece is not visible from, '
                          'e.g. north for glasses (v2.3.2361): no png, no anchor')
@@ -415,7 +731,19 @@ def main():
     args = ap.parse_args()
 
     rgb = np.array(Image.open(args.art).convert('RGB')).astype(int)
+    _pkey = None
     mag, grn, ink = keys(rgb)
+    # v2.3.2367: the person need not be green.  The green test is tried first so
+    # every sheet imported before this one takes exactly the path it always did;
+    # only a sheet it plainly misses goes looking for the colour actually used.
+    if grn.mean() < PERSON_MIN:
+        _pk = person_key(rgb, mag)
+        if _pk is not None:
+            _pkey = _pk
+            mag, grn, ink = keys(rgb, key=_pk)
+            print(f'note: the person is not green on this sheet — keyed on '
+                  f'rgb{tuple(int(v) for v in _pk)} instead, which covers '
+                  f'{grn.mean() * 100:.0f}% of it')
     px0, py0, px1, py1 = panel_of(mag)
     rgb, grn = (a[py0:py1, px0:px1] for a in (rgb, grn))
     heads, figs, extra, reclaimed = split_green(rgb, grn)
@@ -424,6 +752,12 @@ def main():
               f'head (a scalp above a band, or gaps between hair spikes)')
     pmag = mag[py0:py1, px0:px1]
     ink = dekey_fringe(rgb, ~(pmag | heads), pmag, heads)
+    # v2.3.2362: the person may be drawn WITH an outline, which keys as piece.
+    ink, _stripped, _traced = strip_figure_outline(ink, rgb, pmag, heads)
+    outlined = _stripped > 0
+    if outlined:
+        print(f'note: the person is drawn with an outline (near-black traces {_traced * 100:.0f}% '
+              f'of the silhouette); {_stripped}px of it stripped off the piece')
     if reclaimed:
         print(f'note: {reclaimed}px of green did not match the key colour — '
               f'returned to the hat (the hat itself is green)')
@@ -486,7 +820,9 @@ def main():
             print(f'{c["dir"]:<10} could not be fitted — using the sheet\'s own '
                   f'scale {borrow:.3f} and this cell\'s green for position')
 
-    bboxes, anchors, nudges, scales = {}, {}, {}, {}
+    bboxes, anchors, nudges, scales, _flat, _seated, _oneeye = {}, {}, {}, {}, {}, {}, set()
+    _stubbed = {}   # v2.3.2371: px despeckle dropped below a face-worn piece, per facing
+    _item_one_eye = None   # v2.3.2369: settled once, on south -- see seat_eyes()
     for (c, (fg, sl)), fit in zip(zip(cells, figs), fits):
         d = c['dir']
         if d in omit:
@@ -510,6 +846,11 @@ def main():
         gy0 = int(gys.min()) if len(gys) else int(fy0)
         face_worn = args.category in FACE_WORN
         hat = hat_of(ink, sl, top=(gy0 - max(2, int(0.02 * (fy1 - gy0)))) if face_worn else None)
+        if outlined:
+            # v2.3.2362: the stubs where the piece met the outline
+            hat, _stub = despeckle(hat, face_worn=face_worn)
+            if _stub:
+                _stubbed[d] = _stub
         ys, xs = np.nonzero(hat)
         if not len(ys):
             raise SystemExit(f'{d}: no hat found beside the silhouette')
@@ -573,7 +914,16 @@ def main():
         _m0 = art256[:, :, 3] > ALPHA_T
         if _m0.sum() > 40:
             _rr, _gg, _bb = (art256[:, :, i].astype(int) for i in range(3))
-            _dom = _gg - np.maximum(_rr, _bb)
+            # v2.3.2367: "how much like the PERSON KEY is this pixel", where the
+            # key used to be assumed green.  On a cyan sheet the greenness
+            # measure below reads a cyan speckle as ordinary colour and leaves
+            # it on the piece, which is how the first Golden Monocle import
+            # kept cyan pixels along its chain.  For a green sheet `_pkey` is
+            # None and this is character for character the v2.3.1506 test.
+            if _pkey is None:
+                _dom = _gg - np.maximum(_rr, _bb)
+            else:
+                _dom = 255 - np.abs(np.stack([_rr, _gg, _bb], axis=2) - _pkey).max(axis=2)
             # MEDIAN, not a high percentile: speckles sit inside the top 1% and
             # would set their own threshold, which is why a p99 cut removed none
             # of them.  The median is the hat's bulk colour and cannot be moved
@@ -591,8 +941,12 @@ def main():
         # hair) where a block's majority vote lands on blend pixels; drop them
         # here rather than hope the earlier stages caught everything.
         _r, _g, _b = art256[:, :, 0].astype(int), art256[:, :, 1].astype(int), art256[:, :, 2].astype(int)
-        _key = ((_g > 150) & ((_g - np.maximum(_r, _b)) > 120)) | \
-               ((_r > 150) & (_b > 150) & (_g < 90) & (np.abs(_r - _b) < 60))
+        _key = ((_r > 150) & (_b > 150) & (_g < 90) & (np.abs(_r - _b) < 60))
+        if _pkey is None:
+            _key |= (_g > 150) & ((_g - np.maximum(_r, _b)) > 120)
+        else:
+            # v2.3.2367: the person's own colour, whatever it is.
+            _key |= np.abs(np.stack([_r, _g, _b], axis=2) - _pkey).max(axis=2) <= 40
         art256[_key] = 0
 
         m = art256[:, :, 3] > ALPHA_T
@@ -611,7 +965,6 @@ def main():
                 x2 = u + off_x
                 if 0 <= x2 < FRAME and art256[v, u, 3] > ALPHA_T:
                     out[t2, x2] = art256[v, u]
-        Image.fromarray(out).save(f'{outdir}/{d}.png')
 
         crown = tops[f'stand-{d}-0']
         crown_in_frame = [int(crown[0] - bx0 + off_x),
@@ -622,6 +975,29 @@ def main():
         anchors[d] = anchor
         nudges[d] = [int(anchor[0] - crown_in_frame[0]), int(anchor[1] - crown_in_frame[1])]
         scales[d] = 1
+        # v2.3.2365: seat the piece on the eyes before anything downstream reads
+        # the placement -- the lens flattening below and the coverage report
+        # further down both have to describe the frame as it will SHIP.
+        if face_worn:
+            (_sx, _sy), _cov0, _cov1, _one = seat_eyes(out, d, crown, anchor, nudges[d],
+                                                       one_eye=_item_one_eye)
+            if _item_one_eye is None and _cov0 is not None and len(_cov0) >= 2:
+                _item_one_eye = _one     # settled on south; every later facing follows it
+            if (_sx or _sy):
+                nudges[d] = [nudges[d][0] + _sx, nudges[d][1] + _sy]
+                _seated[d] = (_sx, _sy, _cov0, _cov1, _one)
+            if _one:
+                _oneeye.add(d)
+        # v2.3.2363: flatten what the generator drew THROUGH the lens, before the
+        # frame is written -- it needs the placement above to know where the eyes
+        # are.  Only with --flatten-lens; see flatten_lens().
+        if args.flatten_lens:
+            _n, _tint = flatten_lens(out, d, crown, anchor, nudges[d], pad=args.flatten_pad)
+            _flat[d] = (_n, _tint)
+        if args.clear_lens:
+            _n, _ = clear_lens(out, d, crown, anchor, nudges[d])
+            _flat[d] = (_n, 'erased')
+        Image.fromarray(out).save(f'{outdir}/{d}.png')
         # A low fit is a SHEET problem, not a tool problem: the generator
         # redrew that figure's torso off-model, so nothing lines up against the
         # real body.  Reported per cell so the owner can see which directions
@@ -632,7 +1008,19 @@ def main():
               f'bbox {bb}  crownNudge {nudges[d]}')
         if args.category in FACE_WORN:
             # v2.3.2361: the check that would have caught the 5-6px lift.
-            _eyes = eye_centres(d)
+            if d in _seated:
+                _sx, _sy, _c0, _c1, _one = _seated[d]
+                _lim = ' (AT THE LIMIT -- regenerate this cell)' if max(abs(_sx), abs(_sy)) >= SEAT_EYES_MAX else ''
+                print(f'{"":<10} seated onto the {"covered eye" if _one else "eyes"} by '
+                      f'({_sx:+d}, {_sy:+d})px{_lim}: coverage '
+                      + ' / '.join(f'{c * 100:.0f}%' for c in _c0) + ' -> '
+                      + ' / '.join(f'{c * 100:.0f}%' for c in _c1))
+            if args.clear_lens:
+                # v2.3.2366: the coverage number means the opposite here -- the lens
+                # is a HOLE on purpose, so a low reading is the feature working.
+                print(f'{"":<10} eyes: the lens is erased over the eyes, so the coverage below '
+                      f'reads LOW by design')
+            _eyes = eye_boxes(d)
             # a face-worn piece is a fraction of the head; a "pair of glasses"
             # taller than most of it means something else was keyed with it
             # (a label, a stray outline) -- say so, loudly, next to the numbers.
@@ -640,26 +1028,44 @@ def main():
             if _hb and bb[3] > 0.6 * (_hb['bottom'][1] - _hb['top'][1]):
                 print(f'{"":<10} WARNING: the piece is {bb[3]}px tall against a {_hb["bottom"][1] - _hb["top"][1]}px '
                       f'head -- more than glasses; check --debug for what else was keyed')
+            if d in _stubbed:
+                # v2.3.2371: say what was thrown away and why, next to the
+                # numbers -- if this ever eats a real part of a piece (a
+                # monocle chain drawn detached), this line is how it is caught
+                # at import instead of in the game.
+                print(f'{"":<10} {_stubbed[d]}px dropped below the piece: a loose scrap of the '
+                      f'drawn face (a chin or a jaw the outline strip missed), not eyewear')
             if head_map is not None and abs(sy / scale - 1) > 0.03:
                 print(f'{"":<10} the sheet came back at a different aspect (vertical scale '
                       f'{sy:.3f}x vs horizontal {scale:.3f}x); placed by the head, so fine')
             if _eyes:
-                # the piece's centre against the eyes the game paints -- the
-                # WHOLE eye, black top edge to pupil (see eye_centres): the
-                # centre row, and the midpoint between the two eyes across.
-                cy_l = crown[1] + nudges[d][1] + (bb[1] + bb[3] / 2 - anchor[1])
-                cx_l = crown[0] + nudges[d][0] + (bb[0] + bb[2] / 2 - anchor[0])
-                ex, ey = float(np.mean([e[0] for e in _eyes])), float(np.mean([e[1] for e in _eyes]))
-                if len(_eyes) >= 2:
-                    print(f'{"":<10} eyes: the piece\'s centre sits {cy_l - ey:+.1f}px from the eyes\' centre '
-                          f'row and {cx_l - ex:+.1f}px across from the midpoint between the two eyes '
-                          f'(whole eye, top edge to pupil; both near 0 for a two-lens piece, across = '
-                          f'half the eye spacing for a patch or a monocle)')
-                else:
-                    # a profile paints one eye, and the temple runs back from it,
-                    # so only the row means anything here
-                    print(f'{"":<10} eyes: the piece\'s centre sits {cy_l - ey:+.1f}px from the eye\'s centre '
-                          f'row (whole eye, top edge to pupil; one eye in profile, so no across check)')
+                # ═══ v2.3.2362: DOES THE PIECE COVER THE EYES? ═══
+                # The first cut compared the piece's bbox centre with the
+                # midpoint between the eyes, and that is only meaningful for a
+                # SYMMETRIC piece: the southwest 3D glasses carry a temple arm
+                # down one side, which drags the bbox centre 5px toward it and
+                # reads as a placement error that is not there.  So ask the
+                # question the eye asks -- how much of each eye is behind the
+                # piece -- by walking the finished frame through _placeTrait's
+                # own arithmetic (anchor pixel onto crown + crownNudge).
+                _dx = crown[0] + nudges[d][0] - anchor[0]
+                _dy = crown[1] + nudges[d][1] - anchor[1]
+                _drawn = out[:, :, 3] > ALPHA_T
+                cov = []
+                for (x0, x1, y0, y1) in _eyes:
+                    sy0, sy1 = int(y0 - _dy), int(y1 - _dy)
+                    sx0, sx1 = int(x0 - _dx), int(x1 - _dx)
+                    if sy0 < 0 or sx0 < 0 or sy1 > FRAME or sx1 > FRAME:
+                        cov.append(0.0)
+                        continue
+                    box = _drawn[sy0:sy1, sx0:sx1]
+                    cov.append(float(box.mean()) if box.size else 0.0)
+                _rows = ', '.join(f'{c * 100:.0f}%' for c in cov)
+                # v2.3.2367: a one-lens piece is judged on the eye it covers.
+                _worst = (max(cov) if d in _oneeye else min(cov)) if cov else 0.0
+                print(f'{"":<10} eyes: the piece covers {_rows} of {"each eye" if len(cov) > 1 else "the eye"} '
+                      f'(whole eye, black top edge to pupil)'
+                      + ('' if _worst >= 0.9 else '   <-- LOW: the lenses are not over the eyes'))
 
         if args.clips_hair:
             mm = out[:, :, 3] > ALPHA_T
@@ -699,6 +1105,34 @@ def main():
     }
     if args.clips_hair and args.category == 'headwear':
         meta['clipsHair'] = True
+    if args.alpha is not None:
+        if not 0 < args.alpha <= 1:
+            raise SystemExit('--alpha must be greater than 0 and at most 1')
+        meta['alpha'] = round(float(args.alpha), 3)
+        meta['note'] += (f' v2.3.2363: renders at alpha {meta["alpha"]} -- a tinted pane the '
+                         f'real eyes show through, applied by the renderer (both placement '
+                         f'paths) and the portrait rather than baked into the art, so the '
+                         f'picker thumbnail stays readable and the level can be re-tuned '
+                         f'without re-importing.')
+    if _seated:
+        meta['note'] += (' v2.3.2365: seated onto the eyes ('
+                         + ', '.join(f'{k} {v[0]:+d},{v[1]:+d}px' for k, v in _seated.items())
+                         + ') -- every eyewear sheet so far has drawn the southwest cell low, '
+                         'and this moves each facing onto the eye row the game actually paints; '
+                         'bounded and reported by seat_eyes().')
+    if args.clear_lens:
+        meta['note'] += (' v2.3.2366: the lens is ERASED over the eyes ('
+                         + ', '.join(f'{k} {v[0]}px' for k, v in _flat.items() if v[0])
+                         + ') -- the sheet drew its lenses as a transparency checkerboard, '
+                         'which is an editor drawing "nothing here", so the frame ships with '
+                         'a hole in it and the face shows through.')
+    if args.flatten_lens:
+        _done = {k: v for k, v in _flat.items() if v[0]}
+        meta['note'] += (' v2.3.2363: the lens is flattened over the eyes ('
+                         + ', '.join(f'{k} {v[0]}px -> rgb{v[1]}' for k, v in _done.items())
+                         + ') -- the generator drew the eyes through the pane and a '
+                         'semi-transparent piece must not carry a painted-on eye behind '
+                         'the real one.')
     if args.category in FACE_WORN:
         meta['note'] += (' v2.3.2361: placed BY THE HEAD -- the vertical axis is calibrated on the '
                          'drawn crown and cut line against the mannequin\'s, so a sheet returned '

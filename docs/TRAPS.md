@@ -2278,3 +2278,121 @@ pupil. The general rule: **calibrate an axis on landmarks in that axis**, as
 close to the thing being placed as the picture allows, and check the result
 against a measurement the game already owns rather than against a screenshot;
 and make sure the measurement measures the thing the eye judges.
+
+## 56. Keying a piece as "everything that is not a key colour" (v2.3.2362)
+
+**Tempting:** the green-silhouette import is built on one clean rule — the
+person is `#00FF00`, the backdrop is magenta, so the piece is *everything
+else*. It needs no colour heuristics, which is exactly the property
+`tools/import_headwear_green.py`'s header argues for at length, and it had
+worked for 39 hats and 8 hairstyles. So send the sheet out, key it, ship it.
+**Wrong:** the rule assumes the person is *only* green, and the first real
+eyewear sheet came back with the green figure **outlined in black** — which is
+how pixel art is drawn, and which the prompt's "paint the person flat green
+including the black outline" did not prevent. That outline is neither key
+colour, so the whole head-and-shoulders outline keyed as part of the glasses:
+the piece measured **97-101% of the figure's height** and its centre landed
+**14-26 px below the eyes**.
+
+**What saved it** was not noticing in a screenshot — it was that v2.3.2361 had
+already added two checks that print a number per facing: the piece's size
+against the head, and how much of the eye the piece covers. Both screamed. The
+lesson is the one §21 states from the other direction: **a keying rule that
+enumerates what something is NOT inherits every surprise the source can
+produce**, so pair it with a check that measures what the result should BE.
+
+**Receipt:** v2.3.2362 — `strip_figure_outline()` removes the person's outline
+using the two facts that separate it from a piece (it is *thin*, so the piece
+is seeded on local thickness and grown back a bounded distance; it *hugs the
+silhouette*, so near-black close to both keys is dropped), and it only runs
+when near-black actually traces a quarter of the green perimeter, so
+flat-green sheets take the path they always did and no shipped trait is
+re-cut. The eye check became a **coverage** measure in the same version: the
+first cut compared the piece's bbox centre with the midpoint between the eyes,
+which is only meaningful for a symmetric piece — the southwest 3D glasses
+carry a temple arm down one side that drags the centre 5 px and reads as a
+placement error that is not there. "How much of each eye is behind the piece"
+has no such bias: 100% / 100% / 96% on the shipped pair.
+
+**Related:** §55 (the same import, the axis it is calibrated on), §21 (an
+instrument that measures the wrong quantity reports green).
+
+## 57. Separating drawn detail by colour after a generator has resampled (v2.3.2363)
+
+**Tempting:** the goggles came back with the character's eyes painted *through*
+the tinted lens, and they are visibly a different shade from the pane around
+them — so separate them by colour. Cluster the piece's palette, find the pale
+blocks, repaint them with the surrounding tint. Every step of that is a
+one-liner with `scipy.ndimage`. **Wrong:** the generator does not return your
+sheet, it returns a *resampled* one, and resampling turns every flat block into
+a gradient. Measured on one 50x22 imported piece: **132 distinct colour
+clusters** at a 10-unit tolerance. Three separate rules were tried and all
+three failed on it — an enclosed-island test (the blur breaks the "surrounded
+by one colour" purity check), the same test run in sheet space before the
+downscale (151 clusters there), and a 2-means split (which separates
+antialiasing from everything else, not pane from rim).
+
+**The fix was to stop asking the picture and use what the game already knows.**
+The eye positions are not a guess: `src/rendering/eyeMask.json` is a reviewed
+mask, and the coverage check already proves the piece sits over them. So
+`--flatten-lens` repaints the piece *within the padded eye boxes* to that
+region's own median colour — the drawn-on eye is a minority of the region, so
+the median is the pane tint. Near-black is excluded, so the piece's own outline
+survives. One region, one statistic, no clustering.
+
+**The general lesson:** when a generated asset has to be edited
+programmatically, prefer a rule anchored to **data the repo owns** over one
+that re-derives structure from the returned pixels. The pixels have been
+through a resampler; the eye mask has not.
+
+**Receipt:** v2.3.2363 — `flatten_lens()` in `tools/import_headwear_green.py`,
+and the Goggles' `meta.json` records what it repainted per facing.
+
+**Related:** §56 (the same sheet's other surprise), §17 (sharpening art that is
+about to be minified).
+
+---
+
+## 58. A "don't clobber the original" guard that keeps the wrong original (v2.3.2371)
+
+**Tempting:** `tools/downscale_traits.py --stash-hi` copies each 256px trait
+frame into `hi/` before halving it, because the login portrait renders from
+`hi/` (v2.3.1579) and the world renders from the 128. Copying is destructive if
+it runs twice — the second run would stash the already-halved frame over the
+good original and the portrait would render a 128 upscaled. So guard it:
+`if not os.path.isfile(hi)`. Stash only when nothing is there. **Wrong**, in
+both directions at once.
+
+**It guards nothing.** The loop skips any frame already at or under the target
+size several lines earlier (`if w <= args.to ... continue`), so an already-
+halved frame never reaches the stash at all. The hazard the guard was written
+for cannot happen.
+
+**And it breaks the re-import.** Importing a trait a second time — from a
+redrawn sheet, which is the normal way art gets fixed — writes fresh 256 art
+that the guard then refuses to stash, because `hi/` already holds the *previous
+sheet's* frames. The halve overwrites the new 256 art with its own 128 copy,
+the old original stays in `hi/`, and the result is a trait that is **correct in
+the world and wrong in the login portrait**. Caught re-importing the Eye Patch
+from a sheet redrawn to fix which eye the patch covers: the world would have
+shown the corrected patch and the portrait the old one, on the same character,
+in the same session.
+
+**The fix** is one line — stash unconditionally — plus a count of how many
+stashes replaced an existing original, printed so a re-import announces itself:
+`5 original(s) stashed in hi/ (5 replacing an older original — a re-import)`.
+
+**The general lesson:** an idempotence guard is a claim about which of two
+copies is authoritative. Here the frame on disk at full size *is* the current
+original, always — so "already exists" was never the right question. Before
+writing `if not exists`, say out loud which copy you are protecting and from
+what; if the answer is a case another check already excludes, the guard is not
+protecting the file, it is pinning it.
+
+**Receipt:** v2.3.2371 — the stash block in `tools/downscale_traits.py`, and
+the Eye Patch's five `hi/` frames in that commit.
+
+**Related:** §55-§57 (the eyewear import pipeline), and the same shape of bug
+in the picker thumbnails — a re-import deletes the trait folder and the
+importer writes `thumb.png` but not `thumb-sw.png`, which is why
+`make-southwest-thumbs.mjs --check` is step 7 of `docs/specs/eyewear.md`.
