@@ -475,7 +475,7 @@ export const combatMethods = {
    *
    * ANTICHEAT: checked, and it does NOT move.  The ceiling is
    * maxWpn x critMult x comboBoost(5) x specialMult, all off the
-   * PRE-variance base.  The loosest new crit is base x VAR_max(1.5, staff)
+   * PRE-variance base.  The loosest new crit is base x VAR_max(1.65, staff)
    * x 2 = 3x base, against a ceiling of at least base x 1.5 x 5 = 7.5x
    * base.  The anchor cannot reach it, so no legit hit starts being
    * rejected -- the handoff's "ceilings move with any reprice" rule is
@@ -606,7 +606,58 @@ export const combatMethods = {
        once for the crit anchor below.  Two literals would have drifted the
        first time anyone retuned a band, and the anchor would then be
        promising a "double the top of the range" that is not the range. */
-    const VAR = type === 'staff' ? [0.5, 1.5]
+    /* ═══ v2.3.2383: THE STAFF'S CEILING GOES UP, 1.5 -> 1.65 ═══
+       Owner: "For magic it's a bit underpowered so make the base attacks have
+       a higher upper damage range."
+
+       They are right, and it is worse than "a bit" the more you invest.
+       Measured live against a real worker on the starting kit, prog3 active,
+       skill 1 -- Copper Great Sword 21.470 DPS, Pine Bow 22.255, Pine Staff
+       16.898, so magic is 78.7% of melee.  But the gap WIDENS with every
+       point spent, because the staff's premium and its penalty are not the
+       same size: +1.8 damage per level over melee's +1.5 is x1.2, while the
+       +300ms cadence against a 600ms swing is x1.5.
+
+           skill   1   staff 78.9% of melee
+           skill  10   74.9%
+           skill  50   72.4%
+           skill 100   72.0%      asymptote (1.8/0.9)/(1.68/0.6) = 71.4%
+
+       And attack speed makes it worse again, because the +300 sits OUTSIDE
+       the multiplier: at the prog3 aspd cap melee swings at 390ms and the
+       staff at 690, so a maxed build reads staff 61.0% of melee.  That is
+       the real shape of the complaint and the band cannot fix it -- see
+       docs/specs/magic-damage-band.md, which writes the cadence finding down
+       as the owner's next decision rather than quietly making it here.
+
+       WHY 1.65 AND NOT MORE.  Two ceilings, both measured, and the tighter
+       one wins by a wide margin:
+
+         mp-orbline pins the owner's own "roughly 20% lower than melee"
+         decision (v2.3.2259) at ratio 0.74-0.86.  New ratio is
+         0.787 x (0.5 + X)/2, so X <= 1.685.  1.65 lands 0.846; 1.70 lands
+         0.866 and turns that assertion red.
+
+         The anticheat ceiling has room but not unlimited room.  200,000
+         rolls at the worst legitimate build (skill 100, crit/critDmg/dmg at
+         cap, tierMult 3.0 volatile flame staff, godly flame amulet) against
+         _maxDmgForAttacker: 1.65 peaks at 90.5% of the cap even under the
+         2.0x Fury Tonic, with zero truncated hits.  2.00 would reach 109.7%
+         and silently truncate 3.66% of staff hits -- damage the player
+         earned and never sees.
+
+       So 1.65 is the largest raise that keeps a shipped owner decision green
+       and the anticheat honest.  Mean goes 1.000 -> 1.075 (+7.5%), the
+       ceiling +10%, and the FLOOR is untouched at 0.5: the staff stays the
+       swingy weapon, which v2.3.2259 called its feel and deliberately kept.
+
+       SIX COPIES MOVE TOGETHER.  This one (the authority), the client's two
+       rolls and its displayed range in gameSystems.js, tools/balance-sim.mjs,
+       and BAND_TOP in server/test/prog3.test.mjs.  A one-sided edit shows a
+       card the roll cannot produce, or a client popup the server's
+       monster_hit contradicts -- the class of bug v2.3.2220 and
+       v2.3.2350-2352 each fixed once. */
+    const VAR = type === 'staff' ? [0.5, 1.65]
               : type === 'bow'   ? [0.6, 0.8]
               :                    [0.75, 1.25];
     const v = VAR[0] + Math.random() * (VAR[1] - VAR[0]);

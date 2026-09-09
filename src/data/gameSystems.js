@@ -2642,7 +2642,8 @@ export const WEAPON_TYPES = {
          TIER      greatsword is copper (tierMult 1.12); both pine are 1.00.
          VARIANCE  calcWeaponDmg's per-type band is not centred on 1 for
                    every weapon.  Melee rolls 0.75-1.25 (mean 1.00) and
-                   staff 0.5-1.5 (mean 1.00), but BOW rolls 0.6-0.8 -- mean
+                   staff 0.5-1.65 (mean 1.075 since v2.3.2383), but BOW
+                   rolls 0.6-0.8 -- mean
                    0.70.  That 30% haircut is deliberate (v2.3.109 folded
                    the old flat 0.7x bow multiplier into the band) and it is
                    invisible in the table, so a bow "base" is not comparable
@@ -4882,7 +4883,7 @@ export function calcWeaponDmg(weaponType, statValOrRpg, tierMult, wpn) {
     ? t2WpnBankedFlat(statValOrRpg, weaponType, 'damage')
     : t2Accel(dmgChannel, T2_UNITS.damage);
   /* Per-type variance: staff widest, melee mid, bow tightest. */
-  if (weaponType === 'staff')  return base * (0.5  + Math.random() * 1.0) + flat;
+  if (weaponType === 'staff')  return base * (0.5  + Math.random() * 1.15) + flat;
   if (weaponType === 'bow')    return base * (0.6  + Math.random() * 0.2) + flat;
   return base * (0.75 + Math.random() * 0.5) + flat;
 }
@@ -4960,7 +4961,7 @@ export function getWeaponCritFlat(rpg) {
    bug).  These two helpers are that dashboard math, extracted verbatim:
 
      base   = (weaponEffBase + stat×0.1667) × (1 + dmgPts×0.005) × tierMult
-     range  = per-type variance band (bow 0.6-0.8, staff 0.5-1.5,
+     range  = per-type variance band (bow 0.6-0.8, staff 0.5-1.65,
               melee 0.75-1.25 — mirrors calcWeaponDmg)
      period = SWING_COOLDOWN × Tempo mult (+300ms staff cast penalty,
               added AFTER the mult — matches monsterCombat's
@@ -5016,7 +5017,7 @@ export function calcDisplayDmgRange(rpg, wpn) {
      the auto-attack gate. */
   var dmgMin, dmgMax, cdMs = SWING_COOLDOWN * swingCooldownMultFor(rpg, wpn.type) * weaponSwingMult(wpn.type);   /* v2.3.2265: the bow's 25% */
   if (wpn.type === 'bow')        { dmgMin = base * 0.6 + flat;  dmgMax = base * 0.8 + flat;  }
-  else if (wpn.type === 'staff') { dmgMin = base * 0.5 + flat;  dmgMax = base * 1.5 + flat;  cdMs += 300; }
+  else if (wpn.type === 'staff') { dmgMin = base * 0.5 + flat;  dmgMax = base * 1.65 + flat;  cdMs += 300; }
   else                           { dmgMin = base * 0.75 + flat; dmgMax = base * 1.25 + flat; }
   dmgMin = Math.round(dmgMin); dmgMax = Math.round(dmgMax);
   return {
@@ -5147,7 +5148,7 @@ export function calcSpecialDmg(weaponType, rpg, tierMult, wpn) {
   var _p3s = (rpg && prog3Live(rpg)) ? rpg : null;
   var _term = _p3s ? prog3DmgTerm(_p3s, weaponType) : mind * 0.1667;
   var base = (weaponEffBase(w.base, wpn) + _term) * (tierMult || 1); // baseline-10: 0.8 ÷ 4.8
-  if (weaponType === 'staff') return base * (0.5 + Math.random() * 1.0);
+  if (weaponType === 'staff') return base * (0.5 + Math.random() * 1.15);
   if (weaponType === 'bow')   return base * (0.6 + Math.random() * 0.2);
   return base * (0.75 + Math.random() * 0.5);
 }
