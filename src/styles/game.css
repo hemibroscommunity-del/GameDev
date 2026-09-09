@@ -1324,7 +1324,7 @@ input{font-family:inherit}
    screen was slow to dress) and the sky darkened so the card pops. */
 /* v2.3.791: flex-direction:column — the full-bleed banner strip stacks
    above the card (card stays centered via its margin:auto). */
-.bt-name-modal{position:fixed;inset:0;z-index:9999;background:url('/ui/welcome/bg.webp') center/cover no-repeat,#0d0a1d;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;overflow:clip;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;touch-action:none}
+.bt-name-modal{position:fixed;inset:0;z-index:9999;background:url('/ui/welcome/bg.webp') center/cover no-repeat,#0d0a1d;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;touch-action:none}
 /* v2.3.824: animated vista loop fills the modal behind everything; the
    modal's bg.webp stays the under-layer fallback.
    v2.3.826: z-index:0 -> -1 (owner: objects still hidden).  A <video> gets
@@ -3026,6 +3026,27 @@ input{font-family:inherit}
    pointer-events:none is load-bearing, not hygiene: the canvas underneath is
    what the drag is captured on (NameModal's onPointerDown/Move), so a cue
    that took the press would swallow the gesture it exists to advertise. */
+/* ═══ v2.3.2394: overflow:clip, BUT ONLY ON A TOUCH DEVICE ═══
+   v2.3.2391 put `overflow:clip` on .bt-name-modal unconditionally, to close
+   the focus-shove of TRAPS section 64 (an overflow:hidden box whose content
+   stops fitting is a real scroll container, and a .focus() on anything below
+   the fold scrolls the whole creator off the top).  That was right about the
+   bug and wrong about the scope, and CI caught what I did not: at the DESKTOP
+   layout the creator legitimately overflows -- 919px of column in a 780px
+   modal at 1000x780 -- and ENTER BRO TOWN sits at y 812, eighty-eight pixels
+   BELOW the fold.  overflow:hidden still lets a wheel reach it.  clip does
+   not, so the button became unclickable, and mp-questline said so by timing
+   out on the hit-target check with the element "visible, enabled and stable".
+
+   The shove is an iOS soft-keyboard phenomenon: it needs a viewport that
+   shrinks under a keyboard, which is a touch device.  Scoping the cure there
+   leaves the desktop with the scrolling it has always depended on to reach its
+   own primary button.  Not a workaround for the test -- reaching ENTER BRO
+   TOWN by wheel is how that layout has worked all along, and taking it away
+   was the regression. */
+@media (pointer:coarse){
+  .bt-name-modal{overflow:clip}
+}
 .bt-cc-spincue{
   position:absolute;left:50%;bottom:12%;
   /* SIZED BY THE STAGE'S HEIGHT, not its width.  The stage is only square on a

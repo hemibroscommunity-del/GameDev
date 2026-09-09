@@ -169,4 +169,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     await P.ctx.close().catch(() => {});
   }
+
+  /* ═══ AND THE DESKTOP MUST STILL BE ABLE TO REACH ITS OWN BUTTON ═══
+     v2.3.2391 closed the focus-shove by making .bt-name-modal overflow:clip
+     for everyone.  On the DESKTOP layout the creator column legitimately
+     overflows -- 919px of content in a 780px modal at 1000x780 -- and ENTER
+     BRO TOWN sits at y 812, eighty-eight pixels below the fold, reachable only
+     because overflow:hidden still scrolls to a wheel.  clip took that away and
+     the button became unclickable.  Nothing in the creator suite noticed: every
+     scenario in it runs on a phone viewport where the column fits.  mp-questline
+     found it, in CI, after the push.
+
+     So this asserts the property directly, at the viewport where it broke, by
+     CLICKING the thing.  A geometry check would not do: the button was visible,
+     enabled and stable throughout -- what it had stopped being was hittable. */
+  const D = await H.newPlayer(browser, { name: 'Desk', wsPort, webPort });
+  await D.page.waitForSelector('[data-tut="login-create"]', { timeout: 30000 });
+  await D.page.click('[data-tut="login-create"]');
+  await D.page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
+  await D.page.fill('input.bt-cc-name', 'Desker');
+  await D.page.waitForTimeout(900);
+  const geo = await D.page.evaluate(() => {
+    const b = document.querySelector('button.bt-cc-play').getBoundingClientRect();
+    const m = document.querySelector('.bt-name-modal');
+    return { playTop: Math.round(b.top), vh: window.innerHeight,
+      overflowY: getComputedStyle(m).overflowY,
+      overflowing: m.scrollHeight - m.clientHeight };
+  });
+  console.log('    desktop: ' + JSON.stringify(geo));
+  rec.ok(`desktop: ENTER really is below the fold here (guard: top ${geo.playTop} vs ${geo.vh}px tall)`,
+    geo.playTop > geo.vh, geo);
+  let clicked = true;
+  try {
+    await D.page.click('button.bt-cc-play', { timeout: 8000 });
+  } catch (e) { clicked = false; }
+  rec.ok('desktop: ...and it can still be clicked anyway', clicked, geo);
+  await D.ctx.close().catch(() => {});
 }
