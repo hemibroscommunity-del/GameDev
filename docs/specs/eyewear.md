@@ -336,6 +336,48 @@ importer writes `thumb.png` but not `thumb-sw.png` — which is the one the
 picker shows. Two pairs shipped a commit without theirs before the check
 caught it.
 
+### Step 7b: the two hand corrections, which a re-import undoes
+
+Two pairs carry a change that is NOT in their sheet, so the sheet and the
+shipped frames disagree by exactly these operations. **A re-import silently
+reverts both** — the same shape as the thumbnail hazard above, and the reason
+each one is a command rather than a memory.
+
+**Golden Monocle — the claw is flipped on the two front facings** (v2.3.2380).
+Owner: *"Can you flip the golden monocle so the claw side faces the other way?"*
+
+```
+python3 tools/ui/flip_eyewear_piece.py --id golden-monocle --facings south,southwest
+python3 tools/ui/flip_eyewear_piece.py --id golden-monocle --facings south,southwest --check
+```
+
+It mirrors the pixels inside the piece's own alpha bounding box, so the box does
+not move and `bboxes`, `anchors` and `crownNudge` stay valid — the ring keeps its
+eye and the claw swaps sides. Both the 128 world frame and its 256 `hi/` original
+are flipped, because a piece that disagrees between them is the v2.3.2371 bug
+wearing a different hat.
+
+Only south and southwest. "The other way" is not one direction: on those two the
+claw hooked inward toward the nose, while on east and northeast it already hooks
+back past the eye toward the ear, which is the outer side on a profile. Flipping
+those as well would hang the claw off the front of the face. The rule the two
+arguments encode is *the claw is on the outer side of the face*.
+
+**Thug Life — the south facing is scaled to 0.912** (v2.3.2380). Owner: *"the
+south black glasses need to be shrunk a bit"*. That number is
+`fit-headwear-scale.mjs`'s own measurement for that facing (−8.8%, drawn width
+against a 43px head), and it lives in `meta.scale.south`, so it survives
+everything except a re-import — which rewrites `meta.json` whole.
+
+Only south takes it, and step 5 explains why: that pass measures *width*, and the
+front view is the one facing where width is the right quantity for a pair of
+glasses. The same pass asks east for +15% and must not get it.
+
+`crownNudge.south` y moves by `bboxH * (s − s') / 2`, half of what the pass
+itself would write. The pass holds the piece's **bottom** edge, which is right
+for a hat sitting on a skull and wrong here: it would drop the lenses off the
+eye row by half the height they just lost. Holding the centre keeps them on it.
+
 ### Step 8: the catalog line
 
 In `src/rendering/traits/eyewearCatalog.js`:
