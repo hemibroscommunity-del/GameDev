@@ -804,3 +804,75 @@ art that was already fixed.
 Mutation-tested: 4 red against the pre-fix art (ends 18px and 16px above the
 middle in canvas pixels), 0 red after. The whole creator suite — ccshades,
 ccjoin, ccsize, ccbuttons, ccstand, ccfeet, ccload — is 115/115.
+
+---
+
+## 9. Two placements the owner corrected by eye (v2.3.2395)
+
+> "In southwest view the eyeglass needs to hang off the eye more it's too far
+> in the middle of the face"
+>
+> "Shrink the south view golden glasses a bit too"
+
+Both are `meta.json` numbers. No art changed.
+
+### The monocle, southwest: `crownNudge.southwest.x` −14 → −22
+
+At −14 the lens sat almost entirely inside the face, immediately beside the
+near eye — which is exactly the "middle of the face" reading. The **south**
+facing is the one the owner is happy with, and it hangs roughly half the lens
+past the head's left silhouette. −22 reproduces that proportion in the 3/4
+view: measured in the running client, the piece now sits **40%** outside the
+head's edge, against **14%** before.
+
+−26 was also rendered and is too far: the lens leaves the eye and the piece
+reads as floating beside the head rather than clamped on it.
+
+### The golden glasses, south: `scale.south` 1 → 0.912
+
+The same number Thug Life's south took at v2.3.2380 for the same request,
+which keeps the two front views the owner has asked to shrink consistent with
+each other. At 1.0 the frame reached **past the head on both sides** (piece
+206–318 against a face of 207–316); at 0.912 it sits inside on both
+(211–313), still spanning 94% of the face width, lenses still on the eyes.
+0.88 was rendered too and is a step too far.
+
+`crownNudge.south.y` moves by `bboxH*(1−s)/2` = `23 × 0.088 / 2` = **+1.012**,
+holding the **centre**. Holding the bottom edge is right for a hat on a skull
+and would lift these off the eye row (the v2.3.2380 note says the same).
+
+`TRAIT_VER` moves 2.3.2390 → 2.3.2395. Third time it has had to move, and the
+first for `meta.json` **alone** — placement rides the same cache key as the
+art, so a returning player holding the old meta would wear the current art at
+the old anchors.
+
+### How this was measured, after three failures
+
+You cannot find the face's silhouette in a picture where the eyewear is
+covering it. Three static attempts failed on that, or a cousin of it:
+
+* one re-implemented `_placeTrait`'s arithmetic by hand and got a different
+  answer from the renderer — which is exactly what `preview_headwear.py`'s own
+  header warns a hand-rolled preview is worth ("not a check, a second opinion
+  from a different function");
+* one keyed on skin colour, and since the monocle *covers* the skin at the
+  face edge, it found the first skin pixel to the **right** of the piece;
+* one took the head's edge from rows above and below the piece and caught the
+  **skull's widest point**, above the brow, reporting a piece that visibly sat
+  inside the face as sticking out of it.
+
+`mp-ccfit` captures the character **bare**, captures him **wearing** the piece,
+and subtracts. The difference is the piece exactly, with no threshold to tune,
+and the bare capture still holds the face edge the piece is now hiding.
+
+### The pin
+
+`tools/qa/mp/mp-ccfit.mjs`, 13 assertions, mutation-tested **per change**:
+reverting the monocle nudge turns its assertion red alone; reverting the
+glasses scale turns the two overhang assertions red.
+
+One number in it is load-bearing and worth stating: the monocle's "hangs off
+by at least **25%** of the piece". This file shipped for one run with a 12%
+floor, and the mutation check showed the rejected placement already managed
+14% — so the assertion passed the very state the fix exists to leave behind.
+The fix measures 40%; 25% clears both.

@@ -96,7 +96,7 @@ export function onHatColorChange(fn) {
 
 /* ── in-game recolored hat textures ── */
 const DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
-const TRAIT_VER = '2.3.2390';   /* v2.3.2174: de-fringe sweep across the trait sheets (tools/sprite-defringe.py); see playerSprites VERSION 101.
+const TRAIT_VER = '2.3.2395';   /* v2.3.2174: de-fringe sweep across the trait sheets (tools/sprite-defringe.py); see playerSprites VERSION 101.
                                    v2.3.2386: BUMPED FOR THE EYEWEAR REDRAW, and this is the first time it has HAD to move.
                                    Every earlier eyewear commit ADDED art -- new URLs, nothing cached to go stale.  v2.3.2379 is the
                                    first that CHANGED art already on main: seven pairs redrawn under their existing paths, plus
@@ -108,7 +108,11 @@ const TRAIT_VER = '2.3.2390';   /* v2.3.2174: de-fringe sweep across the trait s
                                    constant is for.  Six copies, all six move together (grep TRAIT_VER).
                                    v2.3.2390: moved again, for the same reason and the second time it has ever had to.  The Thug Life
                                    south frame lost its raised temple wedges and its meta.json bbox changed with them, both under paths
-                                   already on main -- exactly the shape of change this key exists for. */
+                                   already on main -- exactly the shape of change this key exists for.
+                                   v2.3.2395: and again, for meta.json ALONE this time -- no art byte changed.  The monocle's southwest
+                                   nudge and the golden glasses' south scale are both placement numbers, and placement rides this same
+                                   key: a returning player holding the old meta.json would wear the new art at the old anchors, which is
+                                   the failure mode the v2.3.2386 note above already calls out. */
 /* `${hatId}/${colorId}` -> { east:Texture, ... } | 'loading' */
 const _cache = {};
 
