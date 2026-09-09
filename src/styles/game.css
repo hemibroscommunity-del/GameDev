@@ -1808,9 +1808,15 @@ input{font-family:inherit}
    v2.3.1578 (owner: "make the breathing a little more obvious"): 3.5%
    → 6%, and 2600ms → 2200ms.  Amplitude is the direct answer, but a
    larger scale held at the old slow tempo starts to read as a wobble
-   rather than a breath, so the cycle tightens with it. */
+   rather than a breath, so the cycle tightens with it.
+   v2.3.2388: the gate is now :not([aria-disabled]) because the button
+   stopped carrying the native `disabled` attribute — it has to take the
+   press in order to answer it (see joinGate.js).  The selector had to
+   move with it or the readiness cue would invert: a blocked button would
+   breathe "you're good, go" at a player who cannot go, which is the one
+   thing the v2.3.1577 note above says it must never do. */
 .bt-cc-play-label{display:inline-block;will-change:transform}
-.bt-cc-play:not(:disabled) .bt-cc-play-label{animation:bt-cc-breathe 2200ms ease-in-out infinite}
+.bt-cc-play:not([aria-disabled]) .bt-cc-play-label{animation:bt-cc-breathe 2200ms ease-in-out infinite}
 @keyframes bt-cc-breathe{
   0%,100%{transform:scale(1)}
   50%{transform:scale(1.06)}
@@ -1820,7 +1826,7 @@ input{font-family:inherit}
    triggers vestibular discomfort, so it goes away entirely rather than
    merely slowing down. */
 @media (prefers-reduced-motion:reduce){
-  .bt-cc-play:not(:disabled) .bt-cc-play-label{animation:none}
+  .bt-cc-play:not([aria-disabled]) .bt-cc-play-label{animation:none}
 }
 /* v2.3.1254: creator slate buttons (dice, Randomize) share one class
    carrying the v2.3.1241 edge-parity MICRO-BEVEL — a hairline top
@@ -2205,10 +2211,23 @@ input{font-family:inherit}
     url('/ui/welcome/cc/cc-frame-bot.webp?v=2.3.2361') center bottom/100% auto no-repeat,
     url('/ui/welcome/cc/cc-frame-mid.webp?v=2.3.2361') center calc(var(--cc-plate)*.382)/100% calc(100% - var(--cc-plate)*.685) no-repeat;
 }
-/* The divider rail from the sheet's loose pieces (ball ends, centre diamond),
-   between the name block and the buttons as the mockup has it.  It rides on
-   .bt-cc-actions' own padding rather than on a pseudo-element: that element is
-   a grid, and a ::before inside it becomes a grid ITEM and takes a row. */
+/* ═══ v2.3.2388: THE DIVIDER RAIL IS GONE, ITS SLOT IS NOT ═══
+   Owner, on a screenshot of it: "Remove this diamond separator thing."
+
+   The art goes (cc-frame-rule.webp, ball ends and centre diamond, from the
+   sheet's loose pieces).  THE PADDING STAYS, and that is not laziness: since
+   v2.3.2378 this row's padding-top is where the validation line lives --
+   .bt-cc-namewrap>.bt-cc-namemsg is absolute at top:100% with exactly this
+   fraction for its height.  Deleting the padding with the picture would drop
+   the message onto the buttons, and v2.3.2388 gives it more to say than it
+   ever had (the ENTER BRO TOWN refusal reasons), so the slot is now doing
+   more work rather than less.
+   The gap is therefore unchanged and nothing in the column reflows -- the
+   character keeps the size the owner signed off at v2.3.2378, which cost
+   real arithmetic to arrive at.  If the space itself should close up too,
+   that is a second change and a second look at that ledger.
+   The file stays on disk: this is a decision about what the plate wears, not
+   a deletion of the art. */
 .bt-cc-cluster>.bt-cc-actions{
   /* .16 -> .14 for the reason the bottom padding gives above.  The divider art
      draws at 100% of THIS row, so the wider plate already draws a taller rule
@@ -2217,7 +2236,6 @@ input{font-family:inherit}
      27.5px candidate D reserved, so the rule keeps its distance from the name
      block above and gives its own extra height to the buttons below. */
   padding-top:calc(var(--cc-plate)*.14);
-  background:url('/ui/welcome/cc/cc-frame-rule.webp?v=2.3.2361') center top/100% auto no-repeat;
 }
 /* ═══ v2.3.2378: THE VALIDATION LINE BORROWS THE DIVIDER'S SLOT ═══
    It used to be a 15px row of its own between the name field and the rail,
@@ -2237,22 +2255,32 @@ input{font-family:inherit}
    edge, so an 11px line centred in that 27.9px slot cannot avoid it, and the
    text came out crossed through.
 
-   So the rail steps aside instead.  While the cluster carries data-msg the
-   background image is dropped and the message has the slot to itself: no
+   So the rail stepped aside instead.  While the cluster carried data-msg the
+   background image was dropped and the message had the slot to itself: no
    layout jump (it never had a row to grow), nothing overlapping, and the
-   information wins over the decoration for as long as there is information.
-   With the field empty the rail is back and the plate looks exactly as the
-   owner approved it. */
+   information winning over the decoration for as long as there was
+   information.
+
+   v2.3.2388: PAST TENSE ON THAT LAST PARAGRAPH -- the owner has since asked
+   for the rail itself to go ("Remove this diamond separator thing"), so there
+   is nothing left to step aside and the message has the slot unconditionally.
+   Everything ABOVE this note still holds and is why the padding stayed when
+   the picture went: the 15px row is still out of the flow, the character is
+   still the size that bought, and top:100% still lands here. */
 .bt-cc-namewrap>.bt-cc-namemsg{
   position:absolute;left:0;right:0;top:100%;
   /* the same fraction .bt-cc-actions reserves above, so the message is
-     centred in the rail's own slot rather than in a box of its own. */
+     centred in that slot rather than in a box of its own.  (It was the
+     divider rail's slot until v2.3.2388; the reservation outlived the rail.) */
   height:calc(var(--cc-plate)*.14);
   display:flex;align-items:center;justify-content:center;
   font-size:11px;font-family:'Source Sans 3',sans-serif;text-align:center;
   pointer-events:none;
 }
-.bt-cc-cluster[data-msg]>.bt-cc-actions{background-image:none}
+/* v2.3.2388: the rule that hid the rail while the message was showing is gone
+   with the rail.  data-msg itself is NOT dead -- NameModal still sets it, and
+   v2.3.2388 widened it to cover the button's refusal reasons; it is simply no
+   longer the CSS that reads it. */
 /* ── WHAT THE RAILS COST, AND WHO PAID ──────────────────────────────────
    Measured at 390x844 dpr3, where the column is 171.6px.  A frame with .105
    of margin per side leaves 135.6px of interior -- and "Randomize Look" alone

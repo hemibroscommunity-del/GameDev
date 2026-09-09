@@ -5,6 +5,7 @@ import { PlayerPaint } from './PlayerPaint.jsx';   /* v2.3.1938; v2.3.1940 pants
    the look from the one function that builds it, not a second copy. */
 import { portraitLook, categoryCrops } from '@/game/characterCreatorEffects.js';
 import { BUILD_INFO } from '../BuildBadge.jsx';
+import { joinBlockReason } from '@/data/joinGate.js';   /* v2.3.2388 */
 /* v2.3.1143: account login -- "Already have a character?" entry point
    for a player on a NEW device, who lands on this splash with a fresh
    silent identity and needs a way in with their saved Login Key before
@@ -591,6 +592,23 @@ export function NameModal(props) {
      check to run — trimmed length is the honest contract. */
   var _trimmedName = (nameInput || '').trim();
   var _nameValid = _trimmedName.length >= 2;
+  /* ═══ v2.3.2388: THE BUTTON SAYS WHY IT WILL NOT GO ═══
+     Owner: "if someone tries to press the shared 'join brotown button' make it
+     give the reason it can't join (need name first) etc."
+     `_blockReason` is null when the player may enter; the string otherwise.
+     It comes from data/joinGate.js so the button explains the SAME rule
+     joinTown enforces -- including the pinch-zoom one, which used to reach the
+     player only as a window.alert() and only after the name was already valid.
+     `_pressMsg` holds it once they have actually pressed, so the screen stays
+     quiet until they ask. */
+  var _blockReason = joinBlockReason(nameInput);
+  var _pressS = React.useState(''), _pressMsg = _pressS[0], _setPressMsg = _pressS[1];
+  /* Clear the moment the reason stops being true -- a stale "name your bro
+     first" sitting under a filled field is worse than nothing. */
+  React.useEffect(function () {
+    if (!_blockReason && _pressMsg) _setPressMsg('');
+  }, [_blockReason, _pressMsg]);
+  var _nameFieldRef = React.useRef(null);
   /* v2.3.1307: iOS keyboard — reserve its height at the bottom of the
      box (visualViewport), so the name field + validation and the
      controls stay visible while typing. */
@@ -785,7 +803,10 @@ export function NameModal(props) {
        taking a row of its own (see .bt-cc-namewrap>[aria-live] in game.css).
        While it has something to say, the rail steps aside; the flag says so
        in one place so the CSS can do it without a second state. */
-    "data-msg": _trimmedName.length === 0 ? undefined : '1'
+    /* v2.3.2388: ...or while the button is answering a press.  Without this
+       the flag stayed undefined with an empty field -- exactly the state the
+       owner pressed in -- so the slot the message needs was not claimed. */
+    "data-msg": (_trimmedName.length === 0 && !_pressMsg) ? undefined : '1'
   },
   /*#__PURE__*/React.createElement("div", {
     /* Name row — the dice ICON rerolls the NAME only.  .bt-cc-namewrap's
@@ -817,6 +838,7 @@ export function NameModal(props) {
     className: "bt-cc-namehead"
   }, "Bro Name"), /*#__PURE__*/React.createElement("input", {
     id: 'bt-cc-name-input',
+    ref: _nameFieldRef,   /* v2.3.2388: the blocked button focuses this */
     value: nameInput,
     onChange: function onChange(e) {
       return setNameInput(e.target.value);
@@ -898,10 +920,18 @@ export function NameModal(props) {
        clears the local rules, quiet guidance otherwise.  Fixed height
        so the cluster never jumps.  (Names are not unique server-side,
        so length is the honest contract — no availability check.) */
-    "aria-live": 'polite',
+    /* v2.3.2388: assertive while it is answering a press.  'polite' waits for
+       a pause in the screen reader's queue, which is right for guidance that
+       appeared on its own and wrong for a direct reply to a button the player
+       just pushed. */
+    "aria-live": _pressMsg ? 'assertive' : 'polite',
     className: "bt-cc-namemsg",
-    style: { color: _nameValid ? '#55B98A' : '#8D9B98' }
-  }, _trimmedName.length === 0 ? '' : _nameValid ? '✓ Ready to go' : 'At least 2 characters')), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.2388: the pressed reason is amber -- it is neither the green all-
+       clear nor the grey hint that was already sitting there, and the change
+       of colour is part of what makes it register as a REPLY. */
+    style: { color: _pressMsg ? '#E5B45C' : (_nameValid ? '#55B98A' : '#8D9B98') }
+  }, _pressMsg
+      || (_trimmedName.length === 0 ? '' : _nameValid ? '✓ Ready to go' : 'At least 2 characters'))), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1524: one action left. "Customize Appearance" opened the drawer,
        and the drawer is now a permanent column, so the button had nothing to
        open. Randomize rerolls the whole look. */
@@ -959,16 +989,35 @@ export function NameModal(props) {
     onClick: resetLook, title: 'Back to the look you started with'
   }, /*#__PURE__*/React.createElement("span", null, "Reset")))),
   /*#__PURE__*/React.createElement("button", {
-    onClick: function () { if (_nameValid) joinTown(); },
-    disabled: !_nameValid,
+    /* ═══ v2.3.2388: IT TAKES THE PRESS SO IT CAN ANSWER IT ═══
+       `disabled` is gone and aria-disabled takes its place.  That is the
+       whole mechanism: a natively disabled button fires NO click event, so
+       there was never a moment at which the screen could explain itself --
+       the button dimmed and that was the entire answer.  aria-disabled keeps
+       the state announced to screen readers and keeps it out of nothing else,
+       while letting the press through to be answered.
+       Still visibly not-ready (0.55, no pointer cursor): the press is for
+       asking why, not a hidden way in.  joinTown is only ever called when
+       there is no reason not to. */
+    onClick: function () {
+      if (!_blockReason) { joinTown(); return; }
+      _setPressMsg(_blockReason);
+      /* Put them where the fix is.  The name is the step they control from
+         this screen, and focusing the field also raises the keyboard on a
+         phone -- so the answer and the means to act on it arrive together. */
+      if (!_trimmedName && _nameFieldRef.current) {
+        try { _nameFieldRef.current.focus(); } catch (e) {}
+      }
+    },
+    "aria-disabled": _blockReason ? 'true' : undefined,
     /* v2.3.1251: PLAY → ENTER BRO TOWN, the screen's one dominant gold
        action.  v2.3.1307: gated on a valid name (round-7). */
     className: "bt-cc-play",
     "aria-label": 'Enter Bro Town',
     style: {
       width: '100%',
-      cursor: _nameValid ? 'pointer' : 'default',
-      opacity: _nameValid ? 1 : 0.55
+      cursor: _blockReason ? 'default' : 'pointer',
+      opacity: _blockReason ? 0.55 : 1
     }
     /* v2.3.1577 (owner: "make the Enter Bro Town text subtly grow and
        shrink").  The label is wrapped so the breath animates the TEXT

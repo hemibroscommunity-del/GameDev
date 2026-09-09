@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  ccjoin: () => import('./mp-ccjoin.mjs'), /* v2.3.2388: the join button explains its refusal; the diamond rail is gone */
   orbrange: () => import('./mp-orbrange.mjs'), /* v2.3.2387: a magic orb reaches as far as an arrow (675px, was 340) */
   fakenum: () => import('./mp-fakenum.mjs'), /* v2.3.2350-2352: the client stops billing damage the worker never dealt */
   brobadge: () => import('./mp-brobadge.mjs'), /* v2.3.2345: the verified-Bro badge has art in it -- Texture.from is a lookup, so the icon rides the manifest */
