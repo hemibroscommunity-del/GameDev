@@ -49,8 +49,16 @@
  *   2. python3 tools/tune_headwear.py --category eyewear --id <id> --fit-pose jog
  *        (and mine, fish, hit, pickup)
  *   3. python3 tools/downscale_traits.py --cats eyewear --stash-hi --apply
- *   4. node tools/ui/make-southwest-thumbs.mjs
+ *   4. python3 tools/ui/slice_eyewear_thumbs.py        <- NOT make-southwest-thumbs
  *   5. Add one { id, name } entry to EYEWEAR_CATALOG below.
+ *
+ * v2.3.2386: step 4 used to read `node tools/ui/make-southwest-thumbs.mjs`,
+ * and following it does NOTHING for eyewear -- that tool's CATS list dropped
+ * 'eyewear' on purpose (see its own comment) because the picker tiles are the
+ * owner's hand-drawn icons and deriving them would overwrite eight files he
+ * drew, silently.  A recipe that names a no-op command is worse than no recipe:
+ * it reads as done.  The tool that DOES rebuild these tiles cuts them from the
+ * owner's contact sheet, and `--check` byte-compares them (TRAPS 59).
  */
 export const EYEWEAR_CATALOG = [
   { id: 'none', name: 'None' },
@@ -58,8 +66,11 @@ export const EYEWEAR_CATALOG = [
      asked for by name.  Drawn on the mannequin and imported by
      tools/import_headwear_green.py --category eyewear --omit north: it ships
      four facings, because glasses are not visible from behind (the beard
-     precedent, v2.3.1530).  Measured at import: the lenses cover 100% / 100% /
-     96% of the eye the game paints on south / southwest / east. */
+     precedent, v2.3.1530).  v2.3.2379: RE-IMPORTED from the owner's second
+     drawing -- frames, a bridge and temple arms instead of flat filled
+     rectangles, which is what the first round read as at 128px.  The lenses
+     now cover 100% / 100% / 100% of the eye the game paints on south /
+     southwest / east (the first round measured 96% on east). */
   { id: '3d-glasses', name: '3D Glasses' },
   /* v2.3.2363: the second pair, and the first that is SEE-THROUGH.  Its meta
      carries `alpha: 0.5`, which the two placement paths and the portrait apply,
@@ -79,23 +90,43 @@ export const EYEWEAR_CATALOG = [
      deep in the 256 frame where the three above are 19-22, so the southwest
      cell's low draw -- a bias every eyewear sheet has shown -- cost it 75% of
      its eye coverage instead of nothing.  seat_eyes() in the importer now moves
-     each facing onto the eye row the game paints; all four pairs cover 100%. */
+     each facing onto the eye row the game paints; all four pairs cover 100%.
+     v2.3.2379: re-imported from the owner's second drawing (the flat dark
+     rectangle became a real frame); its southwest cell still needed the full
+     8px of seat correction to land, and says so in the import log.
+     v2.3.2380: the owner asked for the south pair to come down a size, so
+     meta.scale.south is 0.912 -- fit-headwear-scale.mjs's own measurement for
+     that facing, applied to that facing ONLY because the pass measures WIDTH
+     and the front view is the one where width is the right quantity for
+     glasses.  The art is untouched; crownNudge.south y carries half the pass's
+     own correction, because holding the piece's CENTRE keeps the lenses on the
+     eye row where holding its bottom edge would drop them off it.  A re-import
+     rewrites meta.json whole and reverts this -- docs/specs/eyewear.md
+     step 7b. */
   { id: 'thug-life', name: 'Thug Life' },
   /* v2.3.2366: white frames with a solid white lens.  The sheet drew its lenses
      as a TRANSPARENCY CHECKERBOARD -- literal white-and-grey squares in an RGB
      file with no alpha channel, an editor drawing "nothing here" -- so it had
-     to be read as one intent or the other.  Shipped solid (--flatten-lens);
-     --clear-lens renders the same sheet with the lens erased, and it reads
-     worse today because the hole is cut to the eye box rather than to the lens
-     outline.  Nothing ships with it. */
+     to be read as one intent or the other.  It shipped solid, via
+     --flatten-lens, until v2.3.2379.  THAT IS HISTORY NOW: the owner's second
+     drawing paints a real white lens with a frame and a shine, so the sheet is
+     imported AS DRAWN and no lens flag is passed.  --clear-lens still renders
+     the ORIGINAL sheet with the lens erased and still reads worse; nothing
+     ships with it. */
   { id: 'white-glass', name: 'White Glass' },
   /* v2.3.2367: the first ONE-LENS piece, and the first from a sheet whose
      person was not green -- the owner repainted the mannequin cyan for
      contrast, so the importer now finds the person's colour instead of
-     assuming it.  Ships THREE facings: no north and no northeast, because a
-     monocle is not visible from behind on either.  ASYMMETRIC, so it swaps
-     eyes when the character faces west; that is the five-direction mirroring,
-     not a bug in the art. */
+     assuming it.  v2.3.2379: the REDRAWN sheet hangs the chain behind the ear,
+     so it ships FOUR facings now -- south, southwest, east and northeast; only
+     north is omitted, because a monocle is not visible from straight behind.
+     (It shipped three until then, and this comment said so for one commit
+     after it stopped being true.)  ASYMMETRIC, so it swaps eyes when the
+     character faces west; that is the five-direction mirroring, not a bug in
+     the art.  v2.3.2380: the owner asked for the claw to face the other way,
+     so south and southwest are MIRRORED inside their own alpha bbox by
+     tools/ui/flip_eyewear_piece.py -- a re-import reverts that, see
+     docs/specs/eyewear.md step 7b. */
   { id: 'golden-monocle', name: 'Golden Monocle' },
   /* v2.3.2368: gold frames with tan lenses, imported AS DRAWN.  --flatten-lens
      was tried and rejected on the render: the eye-box region spans lens and
@@ -103,7 +134,16 @@ export const EYEWEAR_CATALOG = [
      into a solid bar.  The faint band the generator left inside each lens is a
      pixel wide at game size and reads as lens shading, so the art is better
      untouched -- which is why that flag is a judgement per sheet and not
-     something the importer decides for you. */
+     something the importer decides for you.  (That trial was on the FIRST
+     sheet; the v2.3.2379 redraw is also imported as drawn, and no eyewear in
+     the second round needed a lens flag at all.)
+     v2.3.2385: SOUTH, SOUTHWEST AND EAST are the redraw -- NORTHEAST IS NOT.
+     The redrawn sheet gave that three-quarter-BACK cell a full face-on lens
+     with a shine streak, 38px wide against 17-19 for every other pair of
+     glasses, all of which draw only the temple arm at the ear there; from
+     behind it reads as a gold slab floating beside the head.  That one cell
+     and its bbox/crownNudge are the pre-redraw art, restored deliberately.  A
+     re-import brings the slab back. */
   { id: 'golden-glasses', name: 'Golden Glasses' },
   /* v2.3.2369: the first piece that ships ALL FIVE facings -- the strap goes
      round the head, so it is visible from behind where every pair of glasses

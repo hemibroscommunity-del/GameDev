@@ -1,10 +1,53 @@
 # Eyewear (v2.3.2361; art from v2.3.2362)
 
-**Shipped:** 3D Glasses (v2.3.2362), Goggles (v2.3.2363, see-through),
-Laser Glasses (v2.3.2364), Thug Life (v2.3.2365), White Glass (v2.3.2366),
-Golden Monocle (v2.3.2367, one lens, three facings), Golden Glasses
-(v2.3.2368), Eye Patch (v2.3.2369, all five facings; re-imported v2.3.2371
-from a redrawn sheet that fixed the south/southwest eye swap).
+**Shipped:** 3D Glasses, Goggles (see-through), Laser Glasses, Thug Life,
+White Glass, Golden Monocle (one lens), Golden Glasses, Eye Patch (all five
+facings).
+
+**v2.3.2379 — seven of the eight were redrawn and re-imported.** The owner sent
+new mannequin sheets: *"I added the upgraded eyewear here."* Every pair except
+the Goggles is now the second drawing of itself. Goggles was NOT re-imported:
+the owner said *"You can just remove goggles for now. Those didn't turn out
+well"* and then corrected themselves — *"Actually keep the goggles those are
+fine"* — so it keeps its v2.3.2363 art and its `alpha: 0.5`, byte for byte.
+
+What the round bought, measured by the importer's own eye check (the whole eye,
+black top edge to pupil):
+
+| pair | south | southwest | east | note |
+|---|---|---|---|---|
+| 3D Glasses | 100 / 100 | 100 / 100 | 100 | |
+| Laser Glasses | 100 / 100 | 100 / 100 | 100 | |
+| Thug Life | 100 / 100 | 100 / 100 | 100 | east seat hit the 8px limit |
+| White Glass | 100 / 100 | 100 / 100 | 100 | |
+| Golden Glasses | 100 / 100 | 100 / 100 | 100 | |
+| Golden Monocle | 100 / 0 | 100 / 0 | 100 | **gained northeast** |
+| Eye Patch | 100 / 38 | 100 / 63 | 100 | the second figure is the strap |
+
+**This table is an IDLE-BODY measurement, and it should not be read as more.**
+The importer's check runs against the `stand` frames, which is where placement
+is authored; the pose passes (`--fit-pose jog|mine|fish|hit|pickup`) then carry
+each facing onto bodies whose heads are drawn at a different size, and they get
+close rather than exact. Measured on the jog southwest body, Thug Life still
+leaves ~12% of each eye showing under its lens — better than the ~33% the
+previous art left there, but not the zero the table above reports for standing.
+An adversarial audit of this round raised that as a contradiction of the "100%
+on every facing" claim; it is not a regression (the number improved), but the
+claim needed the qualifier, so here it is.
+
+The Golden Monocle is the structural change: it shipped with three facings
+because the first sheet drew nothing on northeast, and the redrawn one draws
+the ring's chain hanging behind the ear. It has four now. Nothing needed a code
+change for that — the renderer reads `meta.anchors`, so a facing appearing is
+data, exactly as a facing disappearing is (`--omit`).
+
+The old art's failure was not placement, it was drawing: at 128px the first
+round's lenses were flat filled rectangles, so Thug Life and White Glass read
+as dark and light smudges and the Eye Patch's strap read as a second pair of
+sunglasses. The redrawn sheets carry frames, a bridge, temple arms and a shine
+streak, and leave the character's own eyes visible beside the piece instead of
+painting fake ones over them — which is why none of the seven needed
+`--flatten-lens` this time and the first round needed it twice.
 
 Owner: *"I want to start adding eyewear options to my Hemi bros (see the first
 image of the 3d glasses). I previously had this mannequin view ... Is this
@@ -255,6 +298,45 @@ reached, so an original can never be overwritten by its own halved copy.)
 
 ### Step 7: picker thumbnails
 
+**v2.3.2376 — eyewear no longer takes its thumbnails from this generator.**
+Owner, on the derived ones: *"the eyewear icons look pretty bad. Use these
+instead"*, with a sheet of nine hand-drawn icons. All eight pairs now ship the
+owner's drawings as both `thumb.png` and `thumb-sw.png`, cut from the sheet by
+a tool of their own:
+
+```
+python3 tools/ui/slice_eyewear_thumbs.py          # re-cut all eight
+python3 tools/ui/slice_eyewear_thumbs.py --check  # verify, write nothing
+```
+
+The sheet itself is checked in at `assets/icons-source/sheet-eyewear-icons.png`,
+so a redraw is one command away and nothing has to be re-eyeballed.  `eyewear`
+has also been removed from `CATS` in `tools/ui/make-southwest-thumbs.mjs` so a
+routine run of THAT generator cannot recompute them from `southwest.png` and
+silently overwrite the art.
+
+Why the drawings win at 44px: a cut from the worn southwest frame is a
+three-quarter view of a small object, drawn to sit on a face and lit for the
+world — off-axis, unoutlined, and only a few dozen pixels of actual lens. The
+owner's icons are front-facing, outlined, and fill the tile. That is a
+readability difference, not a taste one.
+
+Consequences to respect:
+
+- Do not put `eyewear` back in `CATS`. `--check` still reports the folder as
+  complete (49 present, 0 missing) because the files exist — it checks presence,
+  not provenance, so it will not warn you.
+- `import_headwear_green.py` DOES write `thumb.png`. Re-importing a pair
+  therefore clobbers the owner's icon for that pair — run
+  `slice_eyewear_thumbs.py` again in the same commit, or the picker goes back
+  to a dim off-axis crop for one item and nobody notices until it ships.
+  `slice_eyewear_thumbs.py --check` is what catches it.
+- `none` is not one of the eight: that tile renders the shared
+  `/ui/welcome/cc/cc-no-hair.webp` for every category, so the sheet's slash
+  cell was deliberately not cut.
+
+For every OTHER category the generator is still the source:
+
 ```
 node tools/ui/make-southwest-thumbs.mjs
 node tools/ui/make-southwest-thumbs.mjs --check
@@ -264,6 +346,71 @@ Run the check. Re-importing a pair means deleting its folder first, and the
 importer writes `thumb.png` but not `thumb-sw.png` — which is the one the
 picker shows. Two pairs shipped a commit without theirs before the check
 caught it.
+
+### Step 7b: the three hand corrections, which a re-import undoes
+
+Three pairs carry a change that is NOT in their sheet, so the sheet and the
+shipped frames disagree by exactly these operations. **A re-import silently
+reverts all three** — the same shape as the thumbnail hazard above, and the
+reason each one is a command rather than a memory.
+
+**Golden Monocle — the claw is flipped on the two front facings** (v2.3.2380).
+Owner: *"Can you flip the golden monocle so the claw side faces the other way?"*
+
+```
+python3 tools/ui/flip_eyewear_piece.py --id golden-monocle --facings south,southwest
+python3 tools/ui/flip_eyewear_piece.py --id golden-monocle --facings south,southwest --check
+```
+
+It mirrors the pixels inside the piece's own alpha bounding box, so the box does
+not move and `bboxes`, `anchors` and `crownNudge` stay valid — the ring keeps its
+eye and the claw swaps sides. Both the 128 world frame and its 256 `hi/` original
+are flipped, because a piece that disagrees between them is the v2.3.2371 bug
+wearing a different hat.
+
+Only south and southwest. "The other way" is not one direction: on those two the
+claw hooked inward toward the nose, while on east and northeast it already hooks
+back past the eye toward the ear, which is the outer side on a profile. Flipping
+those as well would hang the claw off the front of the face. The rule the two
+arguments encode is *the claw is on the outer side of the face*.
+
+**Thug Life — the south facing is scaled to 0.912** (v2.3.2380). Owner: *"the
+south black glasses need to be shrunk a bit"*. That number is
+`fit-headwear-scale.mjs`'s own measurement for that facing (−8.8%, drawn width
+against a 43px head), and it lives in `meta.scale.south`, so it survives
+everything except a re-import — which rewrites `meta.json` whole.
+
+Only south takes it, and step 5 explains why: that pass measures *width*, and the
+front view is the one facing where width is the right quantity for a pair of
+glasses. The same pass asks east for +15% and must not get it.
+
+`crownNudge.south` y moves by `bboxH * (s − s') / 2`, half of what the pass
+itself would write. The pass holds the piece's **bottom** edge, which is right
+for a hat sitting on a skull and wrong here: it would drop the lenses off the
+eye row by half the height they just lost. Holding the centre keeps them on it.
+
+**Golden Glasses — the northeast facing is the PREVIOUS art** (v2.3.2385).
+
+```
+git show 68897ae4^:public/sprites/traits/eyewear/golden-glasses/northeast.png \
+  > public/sprites/traits/eyewear/golden-glasses/northeast.png
+git show 68897ae4^:public/sprites/traits/eyewear/golden-glasses/hi/northeast.png \
+  > public/sprites/traits/eyewear/golden-glasses/hi/northeast.png
+# and in meta.json:  bboxes.northeast = [120, 6, 17, 19],  crownNudge.northeast = [20, 20]
+```
+
+Northeast is the three-quarter-BACK view. Every other pair of glasses draws only
+the temple arm at the ear there — 17–19px wide in the 256 frame, measured across
+3D Glasses, Laser Glasses, White Glass and Thug Life. The redrawn Golden Glasses
+sheet drew a **full face-on lens with a shine streak**, 38px wide: from behind it
+reads as a gold slab floating beside the head rather than as glasses seen from
+behind. The previous sheet had drawn the hook correctly, so that one cell is kept.
+
+This is a **drawing** fault, not a placement one, which is why no importer flag
+fixes it — the same distinction the Eye Patch established at v2.3.2369. The
+lasting fix is a redrawn northeast cell on the source sheet; until then, the four
+lines above go with any re-import of this pair. The other three facings are the
+redraw and should stay that way.
 
 ### Step 8: the catalog line
 
@@ -493,7 +640,7 @@ near-black lens is flattened whole.
 | other portraits | `CharacterView.jsx`, `BottomDashboard.jsx`, `friendPortraits.js`, `LoginScreen.jsx` | read + subscribe |
 | wire | `wsClient.js` (join), `BroTown.jsx` (track), `peerCosmetics.js` | key `ew` |
 | stored look | `characterRecord.js`, `server/src/join.js`, `server/src/index.js` | `ew` on both gates and in the character record |
-| thumbnails | `traitThumbs.js`, `tools/ui/make-southwest-thumbs.mjs` | category listed |
+| thumbnails | `traitThumbs.js` | v2.3.2376: the owner's hand-drawn icons, checked in — `make-southwest-thumbs.mjs` deliberately does NOT list the category |
 | tools | `import_headwear_green.py`, `tune_headwear.py`, `seat_headwear.py`, `fit-headwear-scale.mjs`, `downscale_traits.py`, `make_headwear_mannequin.py`, `preview_headwear.py` | `--category eyewear`, `--omit`, `--title`, `--stash-hi`, head-relative placement + the eye-line check |
 | QA probe | `src/rendering/pixiRenderer.js` | `bodyFigureProbe` reports `eyewearPx` and `eyewearScaleRatio` beside the hat and beard |
 

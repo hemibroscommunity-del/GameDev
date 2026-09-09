@@ -36,8 +36,23 @@ import { decode, encode } from '../png.mjs';
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const ROOT = path.join(REPO, 'public/sprites/traits');
 /* The categories the picker renders as thumbnails — _typeDefs' `spriteCat`
-   values.  v2.3.2361: + eyewear (an empty folder is simply nothing to cut). */
-const CATS = ['hair', 'headwear', 'facialhair', 'shirt', 'eyewear'];
+   values.  v2.3.2361: + eyewear (an empty folder is simply nothing to cut).
+
+   ═══ v2.3.2376: EYEWEAR IS OUT, AND PUTTING IT BACK REVERTS THE OWNER'S ART ═══
+   Owner: "the eyewear icons look pretty bad. Use these instead", with a sheet
+   of nine hand-drawn icons.  So eyewear's thumb.png / thumb-sw.png are no
+   longer CUT FROM the worn sprite — they are the owner's own drawings, front-
+   facing and outlined, which is exactly why they read at 44px where a tight
+   three-quarter crop of the worn art did not.
+
+   That makes this generator their enemy rather than their source: a run with
+   'eyewear' in this list would recompute them from southwest.png and silently
+   overwrite eight files the owner drew, with no error and nothing in the diff
+   to explain it.  The category is removed for that reason and not for a
+   technical one, so do not "fix" it back when the folder is obviously
+   non-empty.  If eyewear ever needs derived thumbs again, delete the owner's
+   icons deliberately in the same commit that re-adds it here. */
+const CATS = ['hair', 'headwear', 'facialhair', 'shirt'];
 const CHECK = process.argv.includes('--check');
 
 function bbox(p) {

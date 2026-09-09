@@ -94,6 +94,7 @@ export function TouchControls(props) {
     rLabelRef = props.rLabelRef,
     rCueRef = props.rCueRef,     /* v2.3.2245: the harvest tool frame on the button face */
     rRingRef = props.rRingRef,   /* v2.3.2245: the wind-up / reps ring around the rim */
+    rHintRef = props.rHintRef,   /* v2.3.2384: the finger demonstrating the gesture */
     /* v2.3.2258: the rod and knob are BACK -- the right control is a joystick
        again (see the aim block in BroTown's bM). */
     rStickRef = props.rStickRef,
@@ -520,5 +521,78 @@ export function TouchControls(props) {
       letterSpacing: '0.08em',
       textTransform: 'uppercase',
     }
-  }, 'Attack'))));
+  }, 'Attack'), /*#__PURE__*/React.createElement("svg", {
+    /* ═══ v2.3.2384: THE OLD FINGER CUE, BACK, ON THE BUTTON ═══
+       Owner: "Add the old gesture cues on top of the right joystick when it's
+       time to extract the resource."
+
+       This is the cue that was deleted whole at v2.3.2245 (commit 2deb56a)
+       when the harvest moved off the world and onto this button -- a white
+       finger tracing the motion the player has to make, with a streak behind
+       it while it is moving fast.  The four motions are the SAME curves the
+       world cue used (v2.3.843 chop, v2.3.853 cook flip, v2.3.1442 mine
+       pump, v2.3.1442/1449 reel orbit); only the frame changed, from the
+       node to the disc.
+
+       It is an <svg>, not a div, and that is load-bearing twice over: a
+       Graphics draw is impossible here (this is DOM, not the Pixi stage), and
+       mp-harvest.mjs scans this button's DIVs for a /gesture/ background to
+       find the tool strip -- a div here would be a second match and break
+       that assertion.
+
+       viewBox 0..100 IS the disc (96px portrait, 108 landscape), so every
+       length below is a percentage of the button and the cue scales with it.
+       The tracks deliberately sit OFF-CENTRE -- vertical down the left,
+       horizontal across the top, the reel orbit ringing the middle -- because
+       the painted tool strip owns the centre and the label owns the bottom.
+       Inside r=40 everywhere, which is where the wind-up ring is drawn.
+
+       BroTown's harvest face stamps the transform per frame off the SAME
+       phase as the tool strip and the character (gesturePose01), so finger,
+       tool and body are all on one clock; hidden when no gesture window is
+       open. */
+    ref: rHintRef,
+    viewBox: '0 0 100 100',
+    style: {
+      position: 'absolute', inset: 0, width: '100%', height: '100%',
+      pointerEvents: 'none', zIndex: 4, display: 'none', overflow: 'visible',
+    },
+  },
+    /* THE TRACK, TWICE: a dark under-stroke and the light one over it.  The
+       cue crosses both the near-black joystick knob and the bright brass rim
+       within one cycle, so a single white line disappears against the rim and
+       a single dark line disappears against the knob.  Painting both is the
+       same trick the button's label uses (a dark halo under warm-white ink,
+       v2.3.2251) rather than a new idea. */
+    React.createElement('path', {
+      'data-cue': 'track',
+      fill: 'none', stroke: 'rgba(12,16,26,.55)', strokeWidth: 4.5,
+      strokeLinecap: 'round', d: '',
+    }),
+    React.createElement('path', {
+      'data-cue': 'track',
+      fill: 'none', stroke: '#FFFFFF', strokeWidth: 1.8, strokeLinecap: 'round',
+      opacity: 0.3, d: '',
+    }), React.createElement('g', { 'data-cue': 'finger' },
+    /* The motion streak, trailing the finger.  Opacity stamped. */
+    React.createElement('line', {
+      x1: -19, y1: 0, x2: 4, y2: 0, stroke: '#FFFFFF', strokeWidth: 4.5,
+      strokeLinecap: 'round', opacity: 0,
+    }),
+    /* The finger: a round-capped stroke with a knuckle dot behind it --
+       drawFingerCue's construction, in SVG, over its own dark halo.  CENTRED
+       on the origin, not tip-anchored: gestureCue01's tracks are sized against
+       CUE_REACH, the glyph's own overhang, and a tip-anchored glyph put a
+       third of itself outside the disc (measured on a real capture). */
+    React.createElement('line', {
+      x1: -7, y1: 0, x2: 7, y2: 0, stroke: 'rgba(12,16,26,.6)', strokeWidth: 12,
+      strokeLinecap: 'round',
+    }),
+    React.createElement('line', {
+      x1: -7, y1: 0, x2: 7, y2: 0, stroke: '#FFFFFF', strokeWidth: 8,
+      strokeLinecap: 'round',
+    }),
+    React.createElement('circle', { cx: -10.5, cy: 0, r: 3.2, fill: '#E6E6EE',
+      stroke: 'rgba(12,16,26,.6)', strokeWidth: 1.6 })
+  )))));
 }

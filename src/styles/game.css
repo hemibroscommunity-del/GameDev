@@ -1413,8 +1413,61 @@ input{font-family:inherit}
    too: block layout resolves auto to 0 by itself, but the cluster is one
    `display:flex` away from pinning the field to its own bottom edge, and that
    is not a trap worth leaving armed. */
-.bt-cc-col-left>.bt-cc-cluster,
 .bt-cc-cluster>.bt-cc-namewrap{margin-top:0}
+/* ═══ v2.3.2378: THE PLATE STARTS BELOW HIS BOOTS ═══
+   Owner: "Can you just remove this little spacer and move the whole lion
+   backdrop down so it doesn't cover his feet?"
+
+   THE SPACER IS REAL AND IT IS THE VALIDATION LINE.  With the name field
+   empty -- which is how this screen opens -- the 15px `aria-live` row under
+   it renders as a blank strip between the field and the divider rail.  It is
+   the only gap on the plate that holds nothing, and it is what "this little
+   spacer" is.  It is reclaimed below, in the .bt-cc-namemsg block.
+
+   AND THE BACKDROP MOVES DOWN BY EXACTLY WHAT THE SPACER GAVE UP, WHICH IS
+   THE PART THAT IS NOT OBVIOUS.  Freeing height anywhere in this column does
+   NOT on its own uncover him: the column is full, so the freed pixels are
+   taken by the flexible items ABOVE the plate (the title, and .bt-cc-stage's
+   own auto margins), and the stage's bottom edge and the plate's top edge
+   move down together.  The overlap is unchanged, or worse -- a taller stage
+   has a taller overhang, since the platform's bottom sits at
+   `stage layout bottom + 0.44 x stage height`.
+
+   The only thing that changes the plate-vs-character relationship is space
+   BETWEEN them.  So the reclaimed height is spent HERE, as margin, and the
+   two cancel in the column's arithmetic: the character neither shrinks nor
+   moves, and the plate lands lower by the amount reclaimed.  Spend more than
+   you reclaim and the stage pays (it is the only flex-shrinkable child);
+   reclaim more than you spend and the character grows.  Keep them equal.
+
+   WHY THE OVERHANG EXISTS AT ALL.  .bt-cc-stage is `scale(2)` about its
+   CENTRE, so its visual box hangs half its layout height BELOW its layout
+   box, and the plate -- the next child in the flex column -- is drawn over
+   exactly that.  That trick is what lets a 2x character live in a column
+   that could not afford him at 1x; the plate was simply put in the space he
+   was already borrowing.
+
+   .16 OF THE PLATE'S WIDTH, WITH A 28px FLOOR.  Measured boot coverage
+   before this change, on the built client:
+
+       390x664   28.7px  <- an iPhone with Safari's toolbars showing
+       390x700   29.0px
+       320x568   25.1px
+       375x812   12.7px
+       390x844    5.0px  <- the same phone with the toolbars hidden
+       430x932    clear
+
+   .16 lands 31.0px at 390 and clears every one of them.  The floor is there
+   because --cc-leftw stops scaling with the viewport at its clamp (132px at
+   320) while the stage's overhang does not, so the fraction alone runs 2.6px
+   short on the smallest screen -- the floor is the difference, not a guess.
+
+   AND IT GOES ON THIS SELECTOR, NOT ON .bt-cc-cluster.  `.bt-cc-col-left>
+   .bt-cc-cluster` (0,2,0) is what used to zero this margin, and it beats a
+   bare `.bt-cc-cluster` (0,1,0): declaring it there would have been dead on
+   arrival, silently, which is the same trap the note directly above warns
+   about one rule earlier. */
+.bt-cc-col-left>.bt-cc-cluster{margin-top:max(28px,calc(var(--cc-plate)*.16))}
 /* v2.3.1527: the bro is behind the PICKER, but he must not end up behind his
    own controls either — at 2x he reaches down over them. Everything below the
    stage in this column is lifted one layer so he passes behind it as well. */
@@ -2143,7 +2196,7 @@ input{font-family:inherit}
      back.  .20 still leaves 6.9px of dark under Reset before the ornate bar's
      first lit row (.157): the "Reset sat ON the bar" complaint that pushed
      this to .225 was against .157 itself, with nothing tried in between. */
-  padding:calc(var(--cc-plate)*.376) calc(var(--cc-plate)*.086) calc(var(--cc-plate)*.20);
+  padding:calc(var(--cc-plate)*.376) calc(var(--cc-plate)*.086) calc(var(--cc-plate)*.18);
   /* below .685 the band's height would go negative and the caps would overlap
      each other; the real content is ~2x this, so it is a guard, not a layout. */
   min-height:calc(var(--cc-plate)*.72);
@@ -2166,6 +2219,40 @@ input{font-family:inherit}
   padding-top:calc(var(--cc-plate)*.14);
   background:url('/ui/welcome/cc/cc-frame-rule.webp?v=2.3.2361') center top/100% auto no-repeat;
 }
+/* ═══ v2.3.2378: THE VALIDATION LINE BORROWS THE DIVIDER'S SLOT ═══
+   It used to be a 15px row of its own between the name field and the rail,
+   with `height:15` so the cluster could never jump as the message came and
+   went.  Empty -- which is how the screen opens, the field showing only its
+   placeholder -- that row is a blank strip, and it is the "little spacer" the
+   owner asked to remove.  Its 15px is what pays for the plate's new top
+   margin (see the .bt-cc-col-left>.bt-cc-cluster block above); giving it back
+   costs 21px of the character at 390x664, measured -- a 14% smaller bro --
+   which is a standing owner call ("the character is the star", v2.3.798 and
+   v2.3.1524).  So it has to come out of the flow.
+
+   WHERE IT GOES, AND WHY NOT SIMPLY ON TOP.  Absolute at `top:100%` lands it
+   in .bt-cc-actions' padding-top -- the divider rail's slot -- and the first
+   cut left it painting straight across the rail's solid bar.  Not a near
+   miss: cc-frame-rule.webp is 333x48 and its bar fills rows 17-31 edge to
+   edge, so an 11px line centred in that 27.9px slot cannot avoid it, and the
+   text came out crossed through.
+
+   So the rail steps aside instead.  While the cluster carries data-msg the
+   background image is dropped and the message has the slot to itself: no
+   layout jump (it never had a row to grow), nothing overlapping, and the
+   information wins over the decoration for as long as there is information.
+   With the field empty the rail is back and the plate looks exactly as the
+   owner approved it. */
+.bt-cc-namewrap>.bt-cc-namemsg{
+  position:absolute;left:0;right:0;top:100%;
+  /* the same fraction .bt-cc-actions reserves above, so the message is
+     centred in the rail's own slot rather than in a box of its own. */
+  height:calc(var(--cc-plate)*.14);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-family:'Source Sans 3',sans-serif;text-align:center;
+  pointer-events:none;
+}
+.bt-cc-cluster[data-msg]>.bt-cc-actions{background-image:none}
 /* ── WHAT THE RAILS COST, AND WHO PAID ──────────────────────────────────
    Measured at 390x844 dpr3, where the column is 171.6px.  A frame with .105
    of margin per side leaves 135.6px of interior -- and "Randomize Look" alone

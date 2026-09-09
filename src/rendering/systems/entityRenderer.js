@@ -466,7 +466,16 @@ const TRAIT_NFT_ID = 'test-1';
    v2.3.1561: bumped — halo gains floatsAboveHair in meta.json.  A meta-only
    change still needs the bust, or a returning browser serves the cached
    meta and the halo goes on placing itself flat on the hair. */
-const TRAIT_VER = '2.3.2174';   /* v2.3.2174: de-fringe sweep across the trait sheets (tools/sprite-defringe.py); see playerSprites VERSION 101. */
+const TRAIT_VER = '2.3.2386';   /* v2.3.2174: de-fringe sweep across the trait sheets (tools/sprite-defringe.py); see playerSprites VERSION 101.
+                                   v2.3.2386: BUMPED FOR THE EYEWEAR REDRAW, and this is the first time it has HAD to move.
+                                   Every earlier eyewear commit ADDED art -- new URLs, nothing cached to go stale.  v2.3.2379 is the
+                                   first that CHANGED art already on main: seven pairs redrawn under their existing paths, plus
+                                   v2.3.2380's flip/scale and v2.3.2385's northeast restore.  A returning player holds
+                                   `<id>/south.png?v=2.3.2174` in their browser cache, so without this they keep the exact art the
+                                   owner replaced for looking bad.  Worse, meta.json rides the SAME key: art and meta can go stale
+                                   independently, and new anchors over old art put the piece somewhere else on the face.
+                                   The cost is one re-download of every trait sheet, once, for everyone -- which is what this
+                                   constant is for.  Six copies, all six move together (grep TRAIT_VER). */
 
 /* v2.3.377 hid the on-back (sheathed) shield behind SHOW_BACK_SHIELD=false:
    "purely cosmetic and a persistent source of per-facing z-order issues vs

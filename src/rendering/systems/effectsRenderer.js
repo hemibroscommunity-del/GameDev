@@ -462,8 +462,36 @@ _fxLoad('/sprites/projectiles/magic-bolt-v1.webp?v=2.3.1334').then((tex) => {
 /* v2.3.1425 (owner): both special-projectile sprites 50% smaller
    (0.34 -> 0.17 arrow, 0.60 -> 0.30 orb).  Hit radii are untouched --
    this is a visual-size change only. */
+/* ═══ v2.3.2381: THE CHARGED ARROW LOSES ITS TIP WHEN IT LANDS ═══
+   Owner: "For the bow special arrow make it so the tip of the arrow disappears
+   when it terminates."
+
+   A plain arrow has done this since v2.3.1765 -- ARROW_PINE.noHead, a
+   right-trimmed cut of the same texture, swapped in by _drawArrow when the
+   shot is `planted || stuckIn`.  The special never did, because it takes a
+   different branch entirely (_placeSpecialFx, below) which had no cropped
+   family to swap to, so the whole golden arrowhead sat in the monster for the
+   four seconds of the terminal state, still flicker-animating.
+
+   headFrac 0.79 is MEASURED, not chosen, and it could not be measured the way
+   the pine arrow's was.  This art has no alpha discontinuity at the head --
+   the flame wrap runs past the tip to x/fw 0.99 on every frame -- so an
+   alpha-coverage scan finds the end of the FLAME and lands ~0.74, which eats
+   the copper collar and part of the shaft.  The boundary is a SATURATION one:
+   the steel head is the only neutral-grey region in a golden image.  Scanning
+   each frame for the first column with >=3 opaque pixels at sat < 0.20 and
+   max > 110, right of 0.55:
+
+       frame 0  col 251  0.799      frame 2  col 249  0.793
+       frame 1  col 253  0.806      frame 3  col 251  0.799
+
+   Conservative minimum, 0.79.  Rendered side by side against 0.83 (leaves
+   half the head) and 0.742 (eats the collar): 0.79 cuts at the collar and
+   leaves shaft plus collar, which is what a spent arrow buried in something
+   should look like. */
 const ARROW_SPECIAL = {
-  frames: [], anchor: { x: 0.460, y: 0.580 }, frameMs: 90, scale: 0.17,
+  frames: [], noHead: [], headFrac: 0.79,
+  anchor: { x: 0.460, y: 0.580 }, frameMs: 90, scale: 0.17,
 };
 const MAGIC_SPECIAL = {
   frames: [], anchor: { x: 0.639, y: 0.536 }, frameMs: 90, scale: 0.30,
@@ -570,6 +598,18 @@ for (const [cfg, url] of [
         source: tex.source,
         frame: new Rectangle(i * fw, 0, fw, tex.source.height),
       }));
+      /* v2.3.2381: and a headless twin for any cfg that declares headFrac
+         (today: ARROW_SPECIAL).  A FRAME of the same source, not a second
+         file -- so the crop follows the art if the sheet is ever re-cut, one
+         copy cannot go stale against the other, and there is no second
+         network fetch to register in preloadWorldAnimations.  The animation-
+         preloading law is untouched: this is the same download, framed twice. */
+      if (cfg.headFrac) {
+        cfg.noHead.push(new Texture({
+          source: tex.source,
+          frame: new Rectangle(i * fw, 0, Math.max(1, Math.round(fw * cfg.headFrac)), tex.source.height),
+        }));
+      }
     }
   }).catch((err) => console.warn('[special-fx] load failed', url, err));
 }
@@ -884,54 +924,17 @@ for (const cfg of Object.values(GESTURE_TOOLS)) {
    below. Source PNGs are ~1000-1250 px; in-game node footprints are
    tier-sized (tier.size ≈ 6-12 px), so each sprite is scaled to a target
    pixel height tuned to feel right next to the player sprite. */
-/* ═══ v2.3.1667: ONE finger cue, and it POINTS WHERE IT IS GOING ═══
- *
- * Owner: "the lifeskills movement cues should replace the simple white blob
- * with a finger icon that moves in the direction of where the blob moved."
- *
- * The cue was already finger-SHAPED in all four skills, but only fishing
- * actually rotated: it derives a tangent from its orbit, so its finger
- * sweeps around pointing along the path.  Mining, cooking and woodcutting
- * drew axis-aligned `roundRect` capsules that TRANSLATED without ever
- * turning, so on the up-stroke the finger slid backwards — which is what
- * read as a blob drifting rather than a hand making a gesture.
- *
- * These two helpers take an ANGLE, so every skill can point its finger
- * along its own direction of travel.  The construction is fishing's
- * (stroke with a round cap + a tip circle + a knuckle dot), because that
- * one is already rotation-general — this generalises the version that
- * worked instead of inventing a new one.
- *
- * Deliberately procedural, not a sprite: no finger/hand asset exists in
- * the repo, and a Graphics draw costs no load, no cache-bust and no
- * per-zone preload registration (the animation-preloading law).  If a
- * painted finger is ever authored, swap these two bodies for a rotated
- * Sprite and every call site keeps working.
- */
-/* The shared size sheet (v2.3.1435/1436 sizing, owner-tuned frame by frame
-   with headless screenshots).  Module scope so the helper and the cue code
-   read the SAME numbers — duplicating them is how a retune silently applies
-   to three skills and not the fourth. */
-export const CUE_FINGER_LEN = 30, CUE_FINGER_W = 19;
-function drawFingerCue(gfx, x, y, angle, alpha, scale) {
-  const s = scale || 1;
-  const len = CUE_FINGER_LEN * s, w = CUE_FINGER_W * s;
-  const dx = Math.cos(angle), dy = Math.sin(angle);
-  /* Body trails BACK from the fingertip at (x,y) along -angle. */
-  gfx.moveTo(x - dx * len, y - dy * len);
-  gfx.lineTo(x, y);
-  gfx.stroke({ color: 0xffffff, width: w, cap: 'round', alpha });
-  gfx.circle(x, y, w / 2 + 0.5);
-  gfx.fill({ color: 0xffffff, alpha });
-  gfx.circle(x - dx * (len + 4 * s), y - dy * (len + 4 * s), 8 * s);
-  gfx.fill({ color: 0xe6e6ee, alpha });
-}
-/* The motion streak, trailing the fingertip along -angle. */
-function drawFingerStreak(gfx, x, y, angle, length, width, alpha) {
-  gfx.moveTo(x - Math.cos(angle) * length, y - Math.sin(angle) * length);
-  gfx.lineTo(x, y);
-  gfx.stroke({ color: 0xffffff, width, alpha });
-}
+/* v2.3.2384: the procedural white finger cue (drawFingerCue /
+   drawFingerStreak / CUE_FINGER_LEN / CUE_FINGER_W, v2.3.1435-1667) is GONE
+   from here.  Its last caller went with the world cue at v2.3.2245 when the
+   harvest moved onto the right button, and it has been dead code since -- 45
+   lines a reader had to rule out.  The cue itself is not gone: the owner asked
+   for it back ("Add the old gesture cues on top of the right joystick when
+   it's time to extract the resource") and it now lives where the harvest does,
+   as SVG on the button face (gestureCue01 in src/game/gesturePose.js, drawn by
+   TouchControls' rHintRef).  It had to change medium as well as address --
+   this is the Pixi stage, the button is DOM -- but the motion curves that
+   moved over are the owner's own. */
 
 /* v2.3.2338: the three still node sprites were shipped at 1254x1254 -- 6 MB
    of decoded RGBA EACH, 18 MB resident in every zone including town (they
@@ -3167,6 +3170,11 @@ export class EffectsRenderer {
        polygon that replaced it. */
     this._resetArrowSprites();
     this._arrowHeadsDrawn = 0;
+    /* v2.3.2381: the painted charged arrow keeps its own pair, reset in the
+       same place for the same reason -- a stale count outliving the frame
+       that produced it is exactly what the v2.3.1825 note above guards. */
+    this._specialArrowsDrawn = 0;
+    this._specialArrowHeads = 0;
 
     /* Track aim rotation rate for the mid-flight arrow bend.  Arrows
        lean slightly in the direction the player is currently rotating
@@ -3263,7 +3271,12 @@ export class EffectsRenderer {
       if (isBowHeavy && ARROW_SPECIAL.frames.length) {
         /* v2.3.1396: painted charged arrow (owner sheet) — golden flame
            wrap baked into the art, so the halo circles retire. */
-        this._placeSpecialFx(ARROW_SPECIAL, a, a._renderX, a._renderY, _angB, fadeA, now, _liveBolts, _pk);
+        /* v2.3.2381: ...and hand it the same `_headless` the plain-arrow
+           branch below has used since v2.3.1765.  It is `planted || stuckIn`,
+           so the special keeps its tip through flight AND through the spent
+           `planting` drop -- v2.3.1879's distinction between those two is
+           untouched -- and loses it the moment it is actually in something. */
+        this._placeSpecialFx(ARROW_SPECIAL, a, a._renderX, a._renderY, _angB, fadeA, now, _liveBolts, _pk, _headless);
       } else if (isBowHeavy) {
         /* Heavy bow shot — draw the arrow normally with a bright
            element-tinted halo around it.  Reads as a powered shot
@@ -3651,20 +3664,49 @@ export class EffectsRenderer {
    *  sprite — charged bow arrow or charged staff orb (cfg =
    *  ARROW_SPECIAL / MAGIC_SPECIAL).  Same flicker + anchor + reap
    *  contract as _placeMagicBolt; shared by local and remote. */
-  _placeSpecialFx(cfg, p, x, y, ang, alpha, now, liveSet, pk) {
+  /* v2.3.2381: `headless` is TRAILING on purpose -- three other call sites
+     (MAGIC_SPECIAL twice, the remote ARROW_SPECIAL once) pass nine arguments
+     and keep working untouched. */
+  _placeSpecialFx(cfg, p, x, y, ang, alpha, now, liveSet, pk, headless) {
     let sprite = p._fxSprite;
     if (!sprite || sprite.destroyed) {
       sprite = new Sprite(cfg.frames[0]);
-      sprite.anchor.set(cfg.anchor.x, cfg.anchor.y);
       if (p._fxPhase == null) p._fxPhase = Math.floor(Math.random() * 4);
       this.projectileLayer.addChild(sprite);
       p._fxSprite = sprite;
       this.specialFxSprites.push({ proj: p, sprite });
     }
-    const frame = cfg.frames[
-      (Math.floor(now / cfg.frameMs) + (p._fxPhase || 0)) % cfg.frames.length
+    /* v2.3.2381: the headless swap, and the two guards it needs.
+       `noHead.length === frames.length` because both families are pushed
+       inside the same async _fxLoad().then() -- indexing a half-built array
+       would blank a live special mid-flight.  `!!headless` because the caller
+       passes `a.planted || a.stuckIn`, and stuckIn is a MONSTER OBJECT, not a
+       boolean; _drawArrow coerces it the same way at its own call site. */
+    const hn = !!headless && cfg.noHead && cfg.noHead.length === cfg.frames.length;
+    const fam = hn ? cfg.noHead : cfg.frames;
+    const frame = fam[
+      (Math.floor(now / cfg.frameMs) + (p._fxPhase || 0)) % fam.length
     ];
     if (sprite.texture !== frame) sprite.texture = frame;
+    /* v2.3.2381: the anchor moves to the PER-FRAME path, out of the
+       construction block above.  The sprite is pooled on p._fxSprite and
+       survives the flying -> stuck transition, so an anchor set once at
+       construction never updates: the swap would look right on a fresh spawn
+       and wrong on every real shot.  Same reasoning that moved scale here at
+       v2.3.2287.  x rescales because a point at anchor.x of the FULL width
+       sits at anchor.x / headFrac of the cropped one; y is unchanged, the
+       crop is horizontal. */
+    sprite.anchor.set(hn ? cfg.anchor.x / cfg.headFrac : cfg.anchor.x, cfg.anchor.y);
+    /* v2.3.2381: its own tally, NOT _arrowsDrawn/_arrowHeadsDrawn.  Those two
+       are incremented inside _drawArrow and read by three shipped assertions
+       in mp-arrowhead; folding a second, differently-drawn projectile into
+       them would move numbers those assertions depend on.  Only a cfg that
+       HAS a headless family counts, so the magic orb and the sword slash --
+       which have no tip to lose -- stay out of it. */
+    if (cfg.headFrac) {
+      this._specialArrowsDrawn = (this._specialArrowsDrawn || 0) + 1;
+      if (!hn) this._specialArrowHeads = (this._specialArrowHeads || 0) + 1;
+    }
     sprite.scale.set(cfg.scale * (pk || 1));   /* v2.3.2287: per frame, see _placeMagicBolt */
     sprite.x = x;
     sprite.y = y;

@@ -237,6 +237,18 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
         ex._gesture.dir = 0;
       }
       ex._gestureDownAt = performance.now();   /* v2.3.2245: the button face reads this */
+      /* v2.3.2384: A THUMB THAT IS DOWN OWNS THE PHASE, FULL STOP.
+         The idle demo (gestureDemo01) stands down for HOLD_MS after the last
+         movement, and on its own that is a TIMER -- so one frame longer than
+         HOLD_MS between two pointermoves (a GC pause, a zone load, a slow
+         first frame after a texture upload) and the demo blinks in on top of
+         a gesture the player is in the middle of making.  Measured in the
+         headless harness, where the main thread stalls for over a second at a
+         time: the display phase jumped off the thumb's value and back twice in
+         four seconds.  This flag makes the common case a FACT rather than an
+         inference -- while the finger is on the glass there is no demo, no
+         matter how long the frame took. */
+      ex._gestureDown = true;
       swipeRef.current = { startX: x, startY: y, samples: [{ x, y, t: performance.now() }] };
     };
 
@@ -392,6 +404,13 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       /* Pause: drop the active press but keep ex._gesture so a re-press resumes
          and the cue meter holds its progress. */
       swipeRef.current = null;
+      /* v2.3.2384: the finger is off the glass, so the demo may come back --
+         but not instantly.  Stamping the movement clock HERE starts the same
+         HOLD_MS the demo already waits after the last move, so a player who
+         lifts between strokes gets their own pose held for a beat rather than
+         the demo cutting in on the pause. */
+      const ex = readyExtraction();
+      if (ex) { ex._gestureDown = false; ex._gestureMovedAt = performance.now(); }
     };
 
     /* v2.3.2245 QA probe (house style): is a gesture live, and where does the
@@ -419,6 +438,11 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       target.removeEventListener('pointermove', onPointerMove);
       target.removeEventListener('pointerup', onPointerUp);
       target.removeEventListener('pointercancel', onPointerUp);
+      /* v2.3.2384: with the listeners gone nothing can ever clear the flag,
+         so a record that outlived this layer with a thumb "down" would sit
+         with its demo suppressed forever.  Clear it on the way out. */
+      const ex = readyExtraction();
+      if (ex) ex._gestureDown = false;
     };
   }, [stateRef, onSuccess]);
 

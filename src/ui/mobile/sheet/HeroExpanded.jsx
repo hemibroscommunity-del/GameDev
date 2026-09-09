@@ -23,7 +23,7 @@ import { useScrollTap } from './scrollTap.js';                                  
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
 import { heroSectionBus } from './heroSectionBus.js';                            /* v2.3.1668 */
 import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
-import { playIsLandscape } from '../playViewport.js';                            /* v2.3.2171: the sideways pane stacks */
+import { playIsLandscape, panelVw } from '../playViewport.js';                    /* v2.3.2171: the sideways pane stacks; panelVw v2.3.2382 */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
    v2.3.1295 (ChatGPT round-4, owner-approved): no longer one long
@@ -454,6 +454,47 @@ export const HeroExpanded = () => {
      the vitals (and the item card) alone.  Read per render: rotation
      closes the sheet (v2.3.2157), so this cannot flip under an open pane. */
   const landPane = playIsLandscape();
+  /* ═══ v2.3.2382: THE POINT ROWS GO TWO ABREAST ═══
+     Owner: "On the stat point application menu make it so that whatever
+     primary combat skill you're on it's divided into two columns: on the left
+     is the attack (offensive) points and on the right are the global (mostly
+     defensive) points.  Right now it Seems like each row has a lot of room and
+     could be split into two."
+
+     They are right, and the split they describe is already the data: four
+     PROG3_ATK_META rows against five PROG3_BODY_META ones, rendered as two
+     consecutive GROUPS a few hundred lines below.  Turning consecutive into
+     side-by-side is a flex direction; the work is making the row survive half
+     the width.
+
+     MEASURED, in a real browser at the live font, not eyeballed.  The body is
+     panelVw - 12 (the panel's own 6px padding), so 378px at 390.  Today's row
+     spends 122px of that on chrome (icon 26 + info 34 + plus 38 + three 8px
+     gaps) and gives the label column the other 240 -- against ELEM POWER, the
+     longest label, at 97.33px.  That is the 142.67px per row the owner can see.
+
+     Halved, the arithmetic stops being generous.  A column is (378-4)/2 = 187,
+     and the row needs border 2 + padding 11 + two 6px gaps + icon 22 + info 30
+     = 77 of it, leaving 110 for a label that wants 97.33.  It fits -- but only
+     with the [+] gone: at 30px wide plus its gap it costs 36, and 110-36 = 74
+     is under ELEM POWER by 23px.  So the [+] is dropped in this mode and
+     nothing else is.  Defensible on this file's own terms, and only barely:
+     the span is marked `aria-hidden` and commented "Decorative: the ROW is the
+     button", and COL.accentFill on the row is the real spendable cue.  It is
+     still the visible affordance, so it goes in front of the owner with a shot
+     rather than quietly.
+
+     THE 375px FLOOR IS WHERE THE LABEL RUNS OUT, computed rather than picked:
+     label = (panelVw - 16)/2 - 77 >= 97.33 gives panelVw >= 364.7.  375 is the
+     narrowest iPhone (SE) and leaves 5.2px of slack there; below it -- 320x568,
+     which this repo tests -- the label column drops to 75px and all three long
+     labels clip, so that width keeps the single column it has today.  A layout
+     that only fits the big phone is not shipped (the same rule the creator's
+     390x664 case just taught).
+
+     Landscape is untouched: landPane already stacks these full-width beneath
+     the figure row for its own reasons (v2.3.2171). */
+  const prog3TwoCol = !landPane && panelVw() >= 375;
   /* v2.3.1660: one definition (heroModel) — under prog3 this is THE
      pool, so the tab badge and the points chip both show it. */
   const totalUnspent = unspentPointsTotal(R);
@@ -1408,8 +1449,12 @@ export const HeroExpanded = () => {
                   })}
                   style={{
                     minWidth: 0, height: ROW_H, flex: 'none', boxSizing: 'border-box',
-                    padding: landPane ? '0 5px 0 6px' : '0 6px 0 8px',
-                    display: 'flex', alignItems: 'center', gap: landPane ? 6 : 8,
+                    /* v2.3.2382: a half-width row borrows landscape's tighter
+                       padding and gap.  Not new numbers -- the ones the
+                       sideways pane has shipped with since v2.3.2171, which
+                       is the other place this row is squeezed. */
+                    padding: (landPane || st.half) ? '0 5px 0 6px' : '0 6px 0 8px',
+                    display: 'flex', alignItems: 'center', gap: (landPane || st.half) ? 6 : 8,
                     background: canSpend ? COL.accentFill : COL.wellSoft,
                     border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
                     borderRadius: 10,
@@ -1418,7 +1463,7 @@ export const HeroExpanded = () => {
                     touchAction: 'manipulation',
                   }}>
                   <img src={st.iconSrc} alt="" draggable={false}
-                    style={{ width: ICON, height: ICON, objectFit: 'contain', flex: 'none', pointerEvents: 'none',
+                    style={{ width: st.half ? 22 : ICON, height: st.half ? 22 : ICON, objectFit: 'contain', flex: 'none', pointerEvents: 'none',
                       filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.45))' }} />
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
                     {/* Sideways the pane is ~200px and "ELEM POWER" does not fit
@@ -1465,7 +1510,7 @@ export const HeroExpanded = () => {
                       {...scrollTap(() => openStatInfo(st), { inner: true })}
                       onClick={(e) => e.stopPropagation()}
                       style={{
-                        flex: 'none', width: INFO_W, height: INFO_W, borderRadius: 999, padding: 0,
+                        flex: 'none', width: st.half ? 30 : INFO_W, height: st.half ? 30 : INFO_W, borderRadius: 999, padding: 0,
                         background: 'transparent', border: `1.5px solid ${COL.borderStrong}`,
                         color: COL.text2, fontSize: landPane ? 13 : 15, fontWeight: 900,
                         fontFamily: 'Georgia, "Times New Roman", serif', fontStyle: 'italic', lineHeight: 1,
@@ -1473,7 +1518,13 @@ export const HeroExpanded = () => {
                         cursor: 'pointer', touchAction: 'manipulation',
                       }}>i</button>
                   )}
-                  {/* Decorative: the ROW is the button (see the note above). */}
+                  {/* Decorative: the ROW is the button (see the note above).
+                      v2.3.2382: and the one thing a half-width row cannot
+                      afford -- 30px plus its gap is 36 of a 110px label
+                      column that ELEM POWER already wants 97.33 of.  It is
+                      `aria-hidden` and it spends nothing; COL.accentFill on
+                      the row is the cue that survives. */}
+                  {!st.half && (
                   <span aria-hidden="true" style={{
                     flex: 'none', width: PLUS_W, height: PLUS_W, borderRadius: 9,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1482,6 +1533,7 @@ export const HeroExpanded = () => {
                     color: canSpend ? '#20170D' : COL.muted,
                     fontSize: landPane ? 20 : 23, fontWeight: 900, lineHeight: 1,
                   }}>+</span>
+                  )}
                 </div>
               );
             };
@@ -1779,15 +1831,51 @@ export const HeroExpanded = () => {
                     the caption was 14px this screen cannot spare. */}
                 {!laneClosed && (
                   <div id="bt-prog3-body" style={{
-                    display: 'flex', flexDirection: 'column', gap: LANE_GAP,
+                    display: 'flex',
+                    /* v2.3.2382: a row of two columns instead of one column of
+                       rows -- see prog3TwoCol at the top of this component for
+                       the arithmetic and the 375px floor.  The id stays on THIS
+                       element: the selector's aria-controls points at it and
+                       mp-prog3 resolves the body through it. */
+                    flexDirection: prog3TwoCol ? 'row' : 'column',
+                    alignItems: prog3TwoCol ? 'flex-start' : 'stretch',
+                    gap: prog3TwoCol ? 4 : LANE_GAP,
                     /* Flush with the tabs and the selector, not inset inside a
                        lane box that no longer exists: 362 -> 378px of row at
                        390, which is free label headroom. */
                     padding: '2px 0 7px',
                   }}>
-                    {prog3AtkMeta().map((m) => statRow({ ...m, atk: true }))}
-                    <div style={{ marginTop: 5 }}>{groupHead2('Character', 'Shared')}</div>
-                    {prog3BodyMeta().map((m) => statRow({ ...m, atk: false }))}
+                    {prog3TwoCol ? (
+                      <>
+                        {/* ATTACK STAYS FIRST IN DOCUMENT ORDER.  Several
+                            scenarios take the first
+                            `[role="button"][aria-label*=" of "]` and expect an
+                            attack row; column order and DOM order agree here,
+                            so left-is-offence reads the same to the eye and to
+                            the harness. */}
+                        <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', gap: LANE_GAP }}>
+                          {/* The caption comes BACK on this side.  v2.3.2176
+                              dropped `${sk.label} Attack` because the lit
+                              column above already named the weapon and the
+                              screen could not spare 14px -- but with two
+                              columns the right one is captioned and an
+                              uncaptioned left one reads as a stray list, and
+                              the layout just gave back four rows of height. */}
+                          {groupHead2('Attack')}
+                          {prog3AtkMeta().map((m) => statRow({ ...m, atk: true, half: true }))}
+                        </div>
+                        <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', gap: LANE_GAP }}>
+                          {groupHead2('Character', 'Shared')}
+                          {prog3BodyMeta().map((m) => statRow({ ...m, atk: false, half: true }))}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {prog3AtkMeta().map((m) => statRow({ ...m, atk: true }))}
+                        <div style={{ marginTop: 5 }}>{groupHead2('Character', 'Shared')}</div>
+                        {prog3BodyMeta().map((m) => statRow({ ...m, atk: false }))}
+                      </>
+                    )}
                   </div>
                 )}
 

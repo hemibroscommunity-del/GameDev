@@ -2396,3 +2396,158 @@ the Eye Patch's five `hi/` frames in that commit.
 in the picker thumbnails — a re-import deletes the trait folder and the
 importer writes `thumb.png` but not `thumb-sw.png`, which is why
 `make-southwest-thumbs.mjs --check` is step 7 of `docs/specs/eyewear.md`.
+
+---
+
+## 59. Slicing a contact sheet on an even grid it only looks like (v2.3.2377)
+
+**The move that looks right:** the owner hands you a square sheet of nine icons
+in three neat rows and columns. You divide the side by three and cut.
+
+**Why it is wrong:** an artist draws to the art, not to a grid. Eight of the
+nine cells came out perfect, which is exactly what makes this ship — the ninth
+was the golden monocle, the only icon on the sheet with a hanging bead chain
+under it, so it is 371px tall where its two neighbours are 175 and 199. Its art
+runs y 818..1188 and the even boundary lands at y=836, eighteen rows inside it:
+
+    laser-glasses   true y 534..691    sliced y 536..835   <- gained the
+                                                              monocle's gold
+                                                              top edge
+    golden-monocle  true y 818..1188   sliced y 836..1186  <- lost the top of
+                                                              its ring
+
+Shipped, and the owner saw it before the tests did: *"the monocle got cut off
+and is in the square above it a bit."* Note the failure is silent in both
+directions — a tight alpha bbox inside the wrong cell still produces a
+plausible PNG at a plausible size, and `make-southwest-thumbs.mjs --check`
+reported "49 present, 0 missing" the whole time, because presence is not
+provenance.
+
+**The fix** is to derive the grid from the sheet's own transparent gutters
+rather than assume it: fully-empty columns give the vertical strips, and then
+each strip is split into rows by ITS OWN empty rows. Per-strip is the part that
+matters — a global row scan unions all three columns and re-merges the very
+rows a tall icon reaches across.
+
+**The general lesson:** when a layout is *inferred* from an image, infer it
+from the image. A number you typed because the picture looked regular is an
+assumption with no error bar, and the one cell that breaks it is the one the
+artist cared enough to draw bigger. If you must hardcode, assert: this tool
+refuses to run unless the gutters yield exactly 3 columns and exactly 3 rows
+per column, and prints every cell's size so a straddle is visible in the log.
+
+**Receipt:** v2.3.2377 — `tools/ui/slice_eyewear_thumbs.py`, and the recut
+`laser-glasses` and `golden-monocle` thumbnails in that commit.
+
+**Related:** §55-§58 (the rest of the eyewear import pipeline).
+
+---
+
+## 60. Freeing height to move the thing below it down (v2.3.2378)
+
+**The move that looks right:** a panel at the bottom of a full flex column is
+covering the art above it. There is dead space inside that panel. Delete the
+dead space, the panel gets shorter, and — since it is pinned near the bottom —
+its top edge drops. Problem solved.
+
+It is not. In a column with no slack, every pixel you free is immediately taken
+by the flexible items ABOVE the panel, so the element above and the panel move
+down *together* and the overlap is exactly what it was. In the creator's left
+column it is worse than neutral: `.bt-cc-stage` is the one flex-shrinkable
+child, and it grows into the freed pixels — its `scale(2)` visual box hangs
+half its layout height below its layout box, so a taller stage means a *longer*
+overhang. Measured at 390x664, freeing 15px moved both edges down 15px and left
+the boots covered by the same 28.7px.
+
+**What actually moves them apart is space BETWEEN them** — `margin-top` on the
+lower element. And that margin is not free either: it is taken from the same
+flexible items, so on a short screen the character shrinks and on a tall one he
+slides up into the logo. Spending it without funding it just moves the cost
+somewhere the owner cares about more.
+
+**The rule, for a full flex column:**
+
+- freeing height changes the column's *total*, never the *gap* between two
+  siblings;
+- a margin changes the gap and charges the total;
+- so do both, equal and opposite: reclaim N pixels of genuinely dead height,
+  spend N as margin. The arithmetic cancels, nothing else moves, and the gap
+  opens by N. Reclaim less than you spend and the flexible child pays the
+  difference — quietly.
+
+**How to tell you have got it right:** assert the thing you were protecting,
+not just the thing you were fixing. `mp-ccfeet` checks the boots are clear AND
+that the character did not get smaller AND that he was not pushed into the
+logo, because a fix that pays out of either of those pockets turns the first
+assertion green on its own.
+
+**Receipt:** v2.3.2378 — the `.bt-cc-col-left>.bt-cc-cluster` margin block in
+`src/styles/game.css` and `tools/qa/mp/mp-ccfeet.mjs`.
+
+**Related:** the same file's v2.3.2361 note on a `>` selector that stops
+matching and fails silently — the margin here had to be declared on
+`.bt-cc-col-left>.bt-cc-cluster` (0,2,0) rather than `.bt-cc-cluster` (0,1,0)
+for exactly that reason.
+
+---
+
+## 61. A still-frame assertion cannot see a frozen animation (v2.3.2384)
+
+**The move that looks right:** the harvest button has coverage. `mp-harvest`
+asserts the gesture window opens, that the button reads `CHOP`, that the
+painted axe strip is on its face with the right URL, and that no tool floats
+in the world any more. Four assertions, all green, all about the thing that
+was broken.
+
+**Why it is wrong:** every one of them reads **one frame**. The defect was
+that there is only ever one — `ex.cueFrame01` is written in exactly one place
+(`ExtractionSwipeLayer`'s `onPointerMove`), so with no thumb on the glass the
+tool strip sat on cell 0 forever and the character froze with it. A frozen
+animation passes every single-frame check ever written about it, because each
+frame it shows is a legal frame. The suite was not weak about the wrong thing;
+it was measuring a property (which cell, which URL, is it visible) that is
+true of both the working and the broken build.
+
+**The tell:** an assertion about something that is supposed to MOVE, whose
+evidence is a value read once. If you cannot say which two readings would
+differ, the check cannot see motion.
+
+**Do instead:** sample over time with nothing touching the page, and assert on
+the DIFFERENCE — how many distinct values appeared, and over what range. Both
+halves matter and they fail separately: `mp-gcue` asserts the strip takes at
+least three distinct positions AND that it reaches cell 5+, because a strip
+clamped to its first four cells (the real, separate `Math.min(3, …)` bug next
+door) is perfectly distinct while still unable to show the strike land.
+
+**Related:** §52's lesson in the same shape — a check that passes on both the
+fixed and the broken build is not coverage, whatever it is named.
+
+---
+
+## 62. Sizing a moving glyph's travel by its anchor point (v2.3.2384)
+
+**The move that looks right:** the finger cue is placed by a transform, so its
+position is `(x, y)`. Keep `(x, y)` inside the disc across the whole cycle —
+`hypot(x - 50, y - 50) <= 40` at 64 sampled phases, green — and the cue stays
+on the button.
+
+**Why it is wrong:** `(x, y)` is the glyph's ORIGIN, not the glyph. This one
+is a round-capped stroke running back from the origin with a knuckle dot
+behind that: about 14 units of the drawing live on the far side of the point
+being measured, and it ROTATES, so which side that is changes every
+half-cycle. The capture showed a third of the finger hanging off the rim at
+ten o'clock while the assertion said it was 4 units inside.
+
+**The tell:** a containment check whose only term is the transform's
+translation. Anchors, `text-anchor`, `dominant-baseline`, a sprite's
+`anchor.set`, an SVG `<g transform>` — all of them mean the coordinate you
+placed is not the extent you get.
+
+**Do instead:** export the glyph's own reach as a named constant next to the
+geometry (`CUE_REACH`), size the tracks against it, and have the pin add the
+same term. One number, two readers, so a redrawn glyph cannot make the layout
+maths quietly wrong. And LOOK at a real capture: the arithmetic said this was
+fine and a 340x380 screenshot said it was not, in about a second.
+
+**Related:** §60 — same session, same lesson. Reasoning about layout without
+measuring the rendered result is how both of these shipped.
