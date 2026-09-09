@@ -521,4 +521,54 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('coming back to Hats starts at the top of the list, not where you '
        + 'left it', !!reopened && reopened.top === 0, reopened);
   rec.ok('...with the cue showing again', !!reopened && reopened.on, reopened);
+
+  /* ── 5. THE COLOUR ROW DOES NOT HIDE COLOURS IT HAS ROOM FOR (v2.3.2396) ──
+     Owner, with a screenshot of the Hair tab: "For some reason the color
+     picker is dimming the colors even when there's more room to display."
+
+     The cue above is honest; the CAP was not.  .bt-cc-colors-row was a fixed
+     two rows on every tab, so Hair -- fourteen colours, four rows of content --
+     hid 75px of swatches behind the fade while 261px of panel sat EMPTY below
+     the Design button.
+
+     THE TRAP THIS SECTION IS BUILT AROUND: the colour row is EMPTY until a
+     trait is actually picked.  A fresh character is 'None' on every tab, so a
+     probe that just opens a tab and measures reports "13 swatches" as one
+     child and no overflow, on all eight tabs, and tells you the bug is not
+     there.  It cost me a wrong diagnosis before the numbers made sense.  So
+     each tab here PICKS its first real option first. */
+  const colourFit = async (tab) => P.page.evaluate(async (t) => {
+    const b = [...document.querySelectorAll('.bt-cc-tab')].find((x) => (x.textContent || '').trim() === t);
+    if (!b) return null;
+    b.click();
+    await new Promise((r) => setTimeout(r, 400));
+    const tiles = [...document.querySelectorAll('.bt-cc-strip > *')];
+    if (tiles.length > 1) { tiles[1].click(); await new Promise((r) => setTimeout(r, 600)); }
+    const row = document.querySelector('.bt-cc-colors-row');
+    if (!row) return null;
+    const wrap = row.parentElement;
+    const more = wrap && wrap.querySelector('.bt-cc-more');
+    const panel = document.querySelector('.bt-cc-panel');
+    const draw = document.querySelector('.bt-cc-draw');
+    const pr = panel.getBoundingClientRect();
+    const dr = draw ? draw.getBoundingClientRect() : null;
+    return { t, swatches: row.children.length,
+      clientH: row.clientHeight, scrollH: row.scrollHeight,
+      hidden: row.scrollHeight - row.clientHeight,
+      cue: !!(more && more.classList.contains('bt-cc-more--on')),
+      drawBottom: dr ? Math.round(dr.bottom) : null, panelBottom: Math.round(pr.bottom) };
+  }, tab);
+
+  for (const tab of ['Hair', 'Shirt']) {
+    const f = await colourFit(tab);
+    console.log(`    ${tab} colours: ` + JSON.stringify(f));
+    rec.ok(`${tab}: its colour swatches are actually rendered (guard: ${f && f.swatches})`,
+      !!f && f.swatches > 6, f);
+    rec.ok(`${tab}: the colour row hides none of them (${f && f.scrollH}px of swatches in a ${f && f.clientH}px box)`,
+      !!f && f.hidden <= 2, f);
+    rec.ok(`${tab}: ...so nothing is dimmed behind a fade`, !!f && f.cue === false, f);
+    /* The room it grew into was real spare space, not the Design button's. */
+    rec.ok(`${tab}: ...and the Design button is still inside the panel`,
+      !!f && f.drawBottom <= f.panelBottom, f);
+  }
 }

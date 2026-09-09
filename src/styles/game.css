@@ -2911,7 +2911,38 @@ input{font-family:inherit}
   box-shadow:0 0 0 2px var(--ui-brass),0 2px 7px rgba(5,8,10,.38);
 }
 .bt-cc-defcolor:active{transform:scale(.97)}
-.bt-cc-colors-row{display:grid;grid-template-columns:repeat(auto-fill,var(--cc-swatch));grid-auto-rows:var(--cc-swatch);gap:5px;justify-content:center;align-content:start;height:calc(var(--cc-swatch)*2 + 9px);min-width:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;padding:2px;scrollbar-width:none;box-sizing:border-box}
+.bt-cc-colors-row{display:grid;grid-template-columns:repeat(auto-fill,var(--cc-swatch));grid-auto-rows:var(--cc-swatch);gap:5px;justify-content:center;align-content:start;flex:0 1 auto;height:auto;min-height:calc(var(--cc-swatch)*2 + 9px);max-height:calc(var(--cc-swatch)*4 + 19px);min-width:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;padding:2px;scrollbar-width:none;box-sizing:border-box}
+/* === v2.3.2396: THE COLOUR ROW STOPS HIDING COLOURS IT HAS ROOM FOR ===
+   Owner, with a screenshot of the Hair tab: "For some reason the color picker
+   is dimming the colors even when there's more room to display."
+
+   They are right, and the cue was not lying -- the CAP was.  This row was a
+   fixed height:calc(var(--cc-swatch)*2 + 9px): exactly two rows, on every tab,
+   whatever the catalogue and whatever the space.  Measured at 390x844 with a
+   trait actually PICKED (the row is empty until then, which is what made the
+   first probe of this report say "no overflow" on all eight tabs and nearly
+   sent me after the wrong bug):
+
+     Hair    13 swatches, 150px of content in a 75px box -- 75px hidden,
+             with 261px of EMPTY PANEL below the Design button
+     Shirt   12 swatches,  37px hidden, 374px free
+     Hats    11 swatches,  37px hidden, but only 2px free -- its own option
+             strip legitimately wants that room
+
+   So on Hair the picker hid half its colours behind a fade while a third of
+   the panel sat empty underneath.
+
+   height:auto with a two-row FLOOR and a four-row CEILING.  The floor keeps
+   v2.3.1252's constant-size guarantee: every tab reserves the same block, so
+   the stage and the character never move when you switch tabs -- which is the
+   whole reason this row is rendered, and ghosted, on tabs with no colours at
+   all.  The ceiling is four rows because the longest catalogue is hair's, and
+   hair puts THIRTEEN swatches in this row -- the fourteenth, Default, is a
+   text button in .bt-cc-colors-head above it -- which is exactly four rows at
+   the four columns 390px gives.  Past four it scrolls and the cue means
+   something again.
+   flex:0 1 auto, with the wrap's own min-height:0 (.bt-cc-panel>.bt-cc-scroll),
+   is what lets the row give the room back on a tab like Hats. */
 .bt-cc-colors-row::-webkit-scrollbar{display:none}
 .bt-cc-colors-row>*{flex:none!important;width:var(--cc-swatch)!important;height:var(--cc-swatch)!important}
 /* v2.3.1254: scroll affordance (owner: indicate there are more items) —

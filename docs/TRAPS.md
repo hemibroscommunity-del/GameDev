@@ -2640,3 +2640,37 @@ sees. They are different questions and on this stage they differ by 2×.
 
 Related: §62 (sizing a moving glyph's travel by its anchor point) — the same
 family of error, a number that is real but is not the one the question needs.
+
+## 66. Probing a creator control that is empty until a trait is picked (v2.3.2396)
+
+The owner reported the character creator's colour picker "dimming the colors
+even when there's more room to display". The first probe written for it did
+the obvious thing: open each of the eight trait tabs, measure
+`scrollHeight - clientHeight` on `.bt-cc-colors-row`, report the overflow.
+
+It came back **no overflow on any tab**, and that was very nearly the end of
+a real bug.
+
+`.bt-cc-colors-row` renders as `_colors || <div/>`. A fresh character is
+`None` on every tab — there is no trait to recolour, so there are no
+swatches, so the row holds a single empty `div` and cannot overflow anything.
+The probe measured eight empty boxes and truthfully reported that none of
+them was too small.
+
+Pick a real option first (click `.bt-cc-strip > *[1]`, wait for the recolour)
+and the numbers arrive: Hair, 13 swatches, 150px of content in a 75px box —
+**75px hidden, with 261px of empty panel below it.**
+
+The general shape: **a UI probe that finds nothing has two explanations, and
+"the bug is not there" is only one of them.** The other is that the probe
+never got the control into the state the bug lives in. When a report comes
+with a screenshot, the screenshot is a state description — match it before
+believing a null result. This one showed a *chosen* hairstyle with its
+colours under it; the probe was looking at 'None'.
+
+Guard for it in the test, not just in the probe: `mp-ccsize.mjs` §5 asserts
+`swatches > 6` **before** it asserts `hidden <= 2`, so an empty row can never
+pass the overflow check by having nothing to overflow with.
+
+Related: §61 (a still-frame assertion cannot see a frozen animation) — the
+same family, a measurement taken in a state that cannot show the defect.
