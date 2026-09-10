@@ -2147,10 +2147,29 @@ input{font-family:inherit}
 /* The heading, flanked by the owner's sparkles -- the picker's title
    treatment at the cluster's scale.  Ornaments are pseudo-elements, so the
    label keeps exactly one text node for the `for=` association. */
+/* ═══ v2.3.2457: ONE CAPITALS TREATMENT ON THIS SCREEN ═══
+   Owner: "Do proper uppercase for Bro Name to match convention of other words
+   on menu."  Two headings sat side by side in capitals and agreed on nothing
+   else -- TRAIT PICKER at .11em in the title's gold gradient, BRO NAME at
+   .20em in flat cream, which is what made this one read as a different KIND
+   of label rather than the same one over a different column.  It takes the
+   panel title's spacing and its gradient, so the pair now differ only in the
+   size the plate gives them.
+   THE @supports FALLBACK COMES WITH IT, below: -webkit-text-fill-color is
+   transparent here now, so a browser that ignores background-clip:text would
+   render nothing at all -- the same trap the panel title's own note records,
+   and the reason that rule is copied rather than the gradient alone.
+   The sparkle ornaments stay: v2.3.2360 took them off TRAIT PICKER because
+   the owner named that heading, and left this pair standing. */
 .bt-cc-namehead{display:flex;align-items:center;justify-content:center;gap:8px;
-  font-family:'Source Sans 3',sans-serif;font-size:15px;font-weight:800;letter-spacing:.20em;
+  font-family:'Source Sans 3',sans-serif;font-size:15px;font-weight:800;letter-spacing:.11em;
   text-transform:uppercase;padding:0 2px 5px;text-align:center;white-space:nowrap;
-  color:#F4E4B8;text-shadow:0 1px 0 rgba(0,0,0,.55)}
+  color:#F7EFDD;
+  background:linear-gradient(180deg,#FFFFFF 0%,#F6EAD2 46%,#E4D0A6 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+@supports not ((-webkit-background-clip:text) or (background-clip:text)){
+  .bt-cc-namehead{-webkit-text-fill-color:#F7EFDD;background:none}
+}
 .bt-cc-namehead::before,.bt-cc-namehead::after{
   content:'';flex:0 1 auto;width:clamp(18px,7vw,46px);height:12px;min-width:0;
   background:url('/ui/welcome/title/sparkle.webp?v=2.3.2358') center/contain no-repeat}

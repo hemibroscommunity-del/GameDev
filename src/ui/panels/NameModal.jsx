@@ -1152,7 +1152,14 @@ export function NameModal(props) {
        that tries.  Same size, weight, tracking and caps as v2.3.2151 set
        them -- only the paint and the ornaments are new. */
     className: "bt-cc-namehead"
-  }, "Bro Name"), /*#__PURE__*/React.createElement("input", {
+    /* v2.3.2457 (owner): "Do proper uppercase for Bro Name to match convention
+       of other words on menu."  Typed in capitals rather than left to
+       text-transform, so the label IS what it reads as -- the same way ENTER
+       BRO TOWN's aria-label spells the words the plate shows.  The CSS
+       transform stays for the same reason it did on Trait Picker: it is what
+       keeps the two headings' rule identical rather than one of them relying
+       on how its string happens to be typed. */
+  }, "BRO NAME"), /*#__PURE__*/React.createElement("input", {
     id: 'bt-cc-name-input',
     ref: _nameFieldRef,   /* v2.3.2388: the blocked button focuses this */
     value: nameInput,
