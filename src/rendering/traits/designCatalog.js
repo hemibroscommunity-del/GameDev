@@ -1,4 +1,4 @@
-/* ═══ v2.3.2442: READY-MADE DESIGNS ═══
+/* ═══ v2.3.2444: READY-MADE DESIGNS ═══
  *
  * Owner: "Can you make some pre-done tattoo designs to choose from?", and,
  * when the three design SLOTS were mistaken for this: "Like I'm looking for a
@@ -819,7 +819,7 @@ const CATALOG = [
    thing playerArt's codec is written to make impossible.
 
    ── WHY THE SHAPE CHECK COMES BEFORE THE JOIN ──
-   v2.3.2443, from a pre-merge review.  This used to `.map()` the join and
+   v2.3.2445, from a pre-merge review.  This used to `.map()` the join and
    then `.filter()` the result -- the same two steps in the one order that
    cannot work.  `d.rows.join('')` ran on EVERY authored entry before anything
    was validated, so `rows` missing, null, or pasted back as one flat

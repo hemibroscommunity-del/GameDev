@@ -20,6 +20,13 @@
  * they touch is money.
  */
 import { GameRoom, CHAT_RELAY } from '../src/index.js';
+import { DRAWING_KEYS } from '../src/join.js';   /* v2.3.2445: assert the gate's own set, not a copy of it */
+
+/* v2.3.2445: driven off the gate, so a drawing key added tomorrow is covered
+   the day it is added rather than the day somebody notices it was missed. */
+const DRAW = [...DRAWING_KEYS];
+const DRAWING_FILL = Object.fromEntries(DRAW.map((k, i) => [k, '0123456789abcdef'[i % 16].repeat(256)]));
+const CAPPED = [...DRAW, 'sp', 'pp', 'fp', 'ec'];
 
 const mockState = {
   storage: {
@@ -606,10 +613,12 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
       // honest cosmetics riding along must still land
       name: 'Tracker', color: '#abc', rpgLv: 500,
       ec: 'ice',   /* v2.3.1930: eye colour, relayed to peers */
-      sa: 'a'.repeat(256),   /* v2.3.1939: a drawn shirt */
-      pa: 'b'.repeat(256), ta: 'c'.repeat(256),   /* v2.3.1940: pants print + tattoo */
-      tf: 'd'.repeat(256), tm: 'e'.repeat(256),   /* v2.3.1949: face + arm tattoos */
-      tb: 'f'.repeat(256),   /* v2.3.2043: the back-of-head drawing */
+      /* v2.3.2445: EVERY drawing key the gate admits, each with a DIFFERENT
+         fill, so a key relayed under the wrong name fails too.  It was six
+         literals here and six in the assertion below, which is why sb/tr/pb
+         went unasserted -- widening only the assertion would have compared
+         undefined to undefined and still passed. */
+      ...DRAWING_FILL,
       sp: 'stripe-v:3', pp: 'camo:6',   /* v2.3.1941: clothing patterns */
       fp: 'check:9',   /* v2.3.1944: shoes */
       hg: 'tall', fr: 'large',   /* v2.3.1953: height + frame */
@@ -641,8 +650,13 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      watched prints appear and vanish.  Asserting the whole set, rather than
      the newest member, is what stops the next key repeating it. */
   check('track: every drawing key survives at its full 256 chars (v2.3.1939 incident)',
-    ['sa', 'pa', 'ta', 'tf', 'tm', 'tb'].every((k) => typeof psT[k] === 'string' && psT[k].length === 256),
-    Object.fromEntries(['sa', 'pa', 'ta', 'tf', 'tm', 'tb'].map((k) => [k, psT[k] && psT[k].length])));
+    DRAW.every((k) => typeof psT[k] === 'string' && psT[k].length === 256),
+    Object.fromEntries(DRAW.map((k) => [k, psT[k] && psT[k].length])));
+  /* v2.3.2445: and under its OWN name.  A gate that relayed every drawing but
+     swapped two of them would pass the length check above. */
+  check('track: ...each under its own key, not another drawing\'s',
+    DRAW.every((k) => psT[k] === DRAWING_FILL[k]),
+    DRAW.filter((k) => psT[k] !== DRAWING_FILL[k]));
   /* v2.3.1930: `ec` rides the SAME allowlist as every other cosmetic.  It is in
      this suite rather than a new one because the property under test is the
      allowlist itself: relaying eye colour means adding a key to
@@ -684,21 +698,21 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      and a truncated drawing is not a smaller drawing -- the client rejects any
      string that is not exactly 256, so a silent cut means no print at all. */
   check('track: a drawn shirt is relayed whole (v2.3.1939)',
-    psT.sa === 'a'.repeat(256), psT.sa && psT.sa.length);
+    psT.sa === DRAWING_FILL.sa, psT.sa && psT.sa.length);
   /* v2.3.1940: the pants print and the tattoo travel the same way and are
      asserted separately -- they were added a version later, so an allowlist or
      cap that only remembered the shirt would still pass the line above. */
   check('track: a drawn pants print is relayed whole (v2.3.1940)',
-    psT.pa === 'b'.repeat(256), psT.pa && psT.pa.length);
+    psT.pa === DRAWING_FILL.pa, psT.pa && psT.pa.length);
   check('track: a tattoo is relayed whole (v2.3.1940)',
-    psT.ta === 'c'.repeat(256), psT.ta && psT.ta.length);
+    psT.ta === DRAWING_FILL.ta, psT.ta && psT.ta.length);
   /* v2.3.2043: `tb` by name, not only through the loop above. The v2.3.1939
      incident was one key present in the join sanitiser and missing from this
      gate, and the failure mode is specific: the drawing appears when a peer
      joins and vanishes on the first two-second relay. A key checked only as
      part of a list is a key whose absence reads as "the list is shorter". */
   check('track: the back-of-head drawing survives intact (v2.3.2043)',
-    psT.tb === 'f'.repeat(256), psT.tb && psT.tb.length);
+    psT.tb === DRAWING_FILL.tb, psT.tb && psT.tb.length);
   /* v2.3.1953: the build rides the same allowlist as every other cosmetic.
      It is asserted here for the reason `ec` is: relaying it means adding two
      keys to TRACK_COSMETIC_KEYS, and §7's whole property is that a key not on
@@ -775,8 +789,8 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   check('track: ...and an oversized one is refused, leaving the old value',
     !!(psH.rpgData && psH.rpgData.level === 12 && psH.rpgData.pad === undefined), psH.rpgData);
   check('track: every stored cosmetic stays inside the cap',
-    ['sa','sb','pa','ta','tf','tm','sp','pp','fp','ec'].every((k) => typeof psH[k] !== 'string' || psH[k].length <= 512),
-    Object.fromEntries(['sa','sb','pa','ta','tf','tm','sp','pp','fp','ec'].map((k) => [k, typeof psH[k] === 'string' ? psH[k].length : typeof psH[k]])));
+    CAPPED.every((k) => typeof psH[k] !== 'string' || psH[k].length <= 512),
+    Object.fromEntries(CAPPED.map((k) => [k, typeof psH[k] === 'string' ? psH[k].length : typeof psH[k]])));
   check('track: an ARRAY under a drawing key is dropped, never relayed',
     psH.tm === undefined, psH.tm);
   check('track: no cosmetic key reached Object.prototype',
