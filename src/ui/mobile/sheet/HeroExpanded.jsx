@@ -1764,7 +1764,17 @@ export const HeroExpanded = () => {
                              one in the PR rather than buried here.
                              What does NOT weaken: the PRIMARY action (spending
                              the point) is the whole 91.5x48 cell. */
-                          position: 'absolute', top: 1, right: 1, zIndex: 1,
+                          /* NO z-index.  A first cut had `zIndex: 1` here as
+                             idle defensiveness, and it was a real bug: the
+                             sticky weapon-tab row is ALSO zIndex 1 (two
+                             declarations above), and the cells come after it in
+                             the DOM -- so equal z-index resolves on document
+                             order and every info button painted ON TOP of the
+                             MELEE/BOW/MAGIC tabs while the panel scrolled.
+                             Photographed.  Positioned elements already paint
+                             above the cell's own in-flow content, so the
+                             property bought nothing and cost that. */
+                          position: 'absolute', top: 1, right: 1,
                           width: 22, height: 22, borderRadius: 999, padding: 0,
                           background: 'transparent', border: `1px solid ${COL.borderStrong}`,
                           color: COL.muted, fontSize: 11, fontWeight: 900,
