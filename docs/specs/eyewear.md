@@ -910,7 +910,7 @@ one of them has gone wrong here before:
   and `eyeMask.json`'s stand-south iris rects are 3px in 256-space = 9.75 canvas
   px, exactly the width of the measured dark runs.
 
-### Why −8, and why it is also the limit
+### Why −8, and how far right it may go
 
 At the shipped −12 the lens centre sat at 350.5 — **14 canvas px (4.3 meta px)
 left of the eye**, on the temple, tangent to the head silhouette, with the eye
@@ -921,10 +921,16 @@ At −8 the lens centre is 363.5 against an eye centre of 364.5: one canvas pixe
 **The failure going further is not the southwest one.** There, −26 was rejected
 because the lens left the face and read as floating beside the head. Here the
 lens is travelling *inward*, so the failure is the opposite: the rim crosses the
-face and reaches the **other eye**. Far-eye clearance is +4px at −8 and −3px at
-−6, where the rim visibly clips the far eye's sclera; by −4 it covers it
-outright. **−8 is both the best value and the last safe one.** −7 lands the rim
-at 409–410, exactly touching.
+face and reaches the **other eye**. At −6 the rim visibly clips the far eye's
+sclera and by −4 it covers it outright, so **−8 is the rightmost value this pass
+would ship.**
+
+> **v2.3.2417 — correction.** An earlier draft of this section put far-eye
+> clearance at −8 at **+4px**. It is about **2px**. The +4 compared a lens rim
+> located by *differencing* two renders against an eye located by *brightness
+> threshold* — two different edges, so the gap was measured between marks made
+> by different rulers. The direction of the failure is unchanged and −6 still
+> clips; the margin at −8 is one rim's width, not four.
 
 Proportions hold at 390×664 (overhang −11px vs −14px), so this is not
 viewport-specific.
@@ -941,3 +947,10 @@ the answer from opposite sides:
 
 Mutation-tested: restoring −12 puts the lens edge 1% *outside* the silhouette
 and the first assertion goes red. 17/17 with the fix in place.
+
+**These two assertions do not pin −8 uniquely, and must not be read as if they
+did.** −10 passes both (inFrac 0.024 > 0.02, rightFrac 0.549 < 0.61). They bound
+the piece to the face from either side; what *chooses* −8 inside that band is
+the eye-centre measurement above, and −10 is the conservative neighbour if the
+far eye ever reads tight on a head this pass did not render. An earlier draft's
+claim that −8 was the only value satisfying both was false.
