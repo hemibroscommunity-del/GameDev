@@ -91,12 +91,17 @@ export const DevPanel = ({ onClose }) => {
   const S = getState();
   const myId = S && S.myId;
 
-  const call = useCallback(async (path, body) => {
+  /* v2.3.2412: `method` added so the flags section can DELETE.  Defaulted
+     from `body` exactly as before, so every existing call site is unchanged
+     -- the alternative was a second fetch helper that would have drifted from
+     this one's 401/404 handling, which is the part worth having. */
+  const call = useCallback(async (path, body, method) => {
     if (!key) { setMsg('Enter your admin key first.'); return null; }
     setBusy(true);
     try {
+      const _m = method || (body ? 'POST' : 'GET');
       const res = await fetch(BT_API_BASE + '/api/admin' + path, {
-        method: body ? 'POST' : 'GET',
+        method: _m,
         headers: Object.assign({ Authorization: 'Bearer ' + key },
           body ? { 'Content-Type': 'application/json' } : {}),
         body: body ? JSON.stringify(body) : undefined,
@@ -152,6 +157,40 @@ export const DevPanel = ({ onClose }) => {
   }, [call, key, myId]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  /* ═══ v2.3.2412: LIVE FLAGS, BECAUSE ONE OF THEM CAN BREAK THE GAME ═══
+     Owner, 2026-09-09, on production: combat levels reading 0 on the Points
+     screen while the panel behind it read Lv 1 for the same character.  That
+     pair is diagnostic -- the grid is gated on prog3Live (worker cap AND
+     blob) and the panel on prog3HasSkills (blob only) -- so the blob was fine
+     and `caps.prog3` was false.  A clean worker built from this source
+     advertises 42 caps with prog3 true, so the source was never the problem.
+
+     The mechanism is in liveops.js's own header: the `liveflags` map is
+     spread over the state_sync caps literal LAST, so a flag named after a
+     capability overrides the baked-in `true`, and its warning says exactly
+     what that costs -- "overriding a cap to false ... can re-enable legacy
+     client-side fallback paths for some systems".  The legacy path is the one
+     that prints Lv 0.
+
+     The routes to read and clear that map have existed since v2.3.1150.  What
+     did not exist was any way to reach them without a computer, and the owner
+     runs this game from a phone.  So a flag set months ago in an emergency
+     can sit in Durable Object storage indefinitely, silently disabling a
+     system, with no surface anywhere that says so.  That is the actual bug
+     this section fixes; the flags themselves are working as designed.
+
+     Loaded on demand rather than with the state refresh: it is one more admin
+     round trip on every panel open, and most opens are not about flags. */
+  const [flags, setFlags] = useState(null);
+  const loadFlags = useCallback(async () => {
+    const j = await call('/flags');
+    if (j) { setFlags(j.flags || {}); setMsg(''); }
+  }, [call]);
+  const clearFlag = useCallback(async (name) => {
+    const j = await call('/flags?name=' + encodeURIComponent(name), null, 'DELETE');
+    if (j) { setFlags(j.flags || {}); setMsg('Cleared "' + name + '". Reload the game to pick it up.'); }
+  }, [call]);
 
   const saveKey = () => {
     const k = draft.trim();
@@ -321,6 +360,79 @@ export const DevPanel = ({ onClose }) => {
                   refresh();
                 }
               }}>Finish all quests (no rewards)</button>
+
+            {/* ═══ v2.3.2412: LIVE FLAGS ═══
+                See the note by loadFlags for why this exists.  Two jobs, and
+                the second is the one that matters: list the map, and SAY OUT
+                LOUD when a flag is overriding a server capability, because
+                that is the case that silently breaks a system and it is
+                indistinguishable from a bug unless something names it. */}
+            <div style={label}>Live flags</div>
+            <button type="button" style={btn(false)} disabled={busy}
+              onClick={loadFlags}>
+              {flags ? 'Reload live flags' : 'Show live flags'}
+            </button>
+
+            {flags && Object.keys(flags).length === 0 && (
+              <div style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }}>
+                No flags set. Every capability is whatever the deployed worker bakes in.
+              </div>
+            )}
+
+            {flags && Object.keys(flags).length > 0 && (() => {
+              /* A flag is OVERRIDING a capability when its name is also a caps
+                 key -- because that is precisely what the spread does.  Value
+                 false is the harmful direction: it tells the client "this
+                 worker has not claimed the job", and the client falls back to
+                 a legacy path.  `disable_*` kill switches are server-side and
+                 never collide with a cap name, so they list as ordinary. */
+              const caps = (S && S._serverCaps) || {};
+              const names = Object.keys(flags).sort();
+              const overriding = names.filter((n) => (n in caps) && flags[n] === false);
+              return (
+                <>
+                  {overriding.length > 0 && (
+                    <div style={{
+                      background: COL.accentFill, border: '1px solid ' + COL.accent,
+                      color: COL.accent, borderRadius: 9, padding: '10px 11px',
+                      fontSize: 12.5, lineHeight: 1.4, marginBottom: 9,
+                    }}>
+                      <b>{overriding.length === 1 ? 'This flag is' : 'These flags are'} switching a
+                      system off:</b> {overriding.join(', ')}.<br />
+                      The game falls back to its old behaviour for {overriding.length === 1 ? 'it' : 'them'},
+                      which usually looks like wrong numbers rather than a missing feature.
+                      Clear {overriding.length === 1 ? 'it' : 'them'} unless you set {overriding.length === 1 ? 'it' : 'them'} on purpose.
+                    </div>
+                  )}
+                  {names.map((n) => {
+                    const isOverride = (n in caps) && flags[n] === false;
+                    return (
+                      <div key={n} style={{
+                        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6,
+                        background: COL.raised, borderRadius: 8, padding: '8px 9px',
+                        border: '1px solid ' + (isOverride ? COL.accent : COL.border),
+                      }}>
+                        <span style={{ flex: 1, minWidth: 0, font: '600 13px system-ui, sans-serif',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {n}
+                        </span>
+                        <span style={{
+                          font: '600 12px system-ui, sans-serif',
+                          color: flags[n] === false ? COL.danger : COL.text2,
+                          fontVariantNumeric: 'tabular-nums',
+                        }}>{String(flags[n])}</span>
+                        <button type="button" style={{ ...chip, minHeight: 34, flex: 'none' }}
+                          disabled={busy}
+                          onClick={() => clearFlag(n)}>Clear</button>
+                      </div>
+                    );
+                  })}
+                  <div style={{ color: COL.muted, fontSize: 12, marginBottom: 2 }}>
+                    Clearing takes effect on your next join — reload the game to see it.
+                  </div>
+                </>
+              );
+            })()}
 
             <button type="button" style={{ ...btn(false), borderColor: COL.danger, color: COL.danger }} onClick={forgetKey}>
               Forget key on this device

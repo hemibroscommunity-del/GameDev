@@ -2551,3 +2551,66 @@ fine and a 340x380 screenshot said it was not, in about a second.
 
 **Related:** §60 — same session, same lesson. Reasoning about layout without
 measuring the rendered result is how both of these shipped.
+
+## 67. A synthesised gesture proves the handler, not the reachability (v2.3.2413)
+
+The owner, trying to open the test panel: *"The long press on zone name to open
+admin key isn't working."* It could not work, and never had — the gesture
+shipped broken at v2.3.2240 and stayed broken for 173 versions with a green
+test asserting it worked.
+
+```css
+.bt-zone-header        { … pointer-events:none }   /* so the world stays touchable */
+.bt-zone-header__logout{ … pointer-events:auto }   /* re-enabled */
+.bt-zone-header__title { … }                        /* NEVER re-enabled */
+```
+
+The title was not hit-testable, so a finger's press landed on the world behind
+it, `onPointerDown` never fired, and **the only door to the owner's test panel
+did not exist.**
+
+### Why the test could not see it
+
+`mp-devpanel.mjs` asserts *"a 1.2s press opens the test panel"* and was green
+throughout. It pressed like this:
+
+```js
+el.dispatchEvent(new PointerEvent('pointerdown', {...}));
+await sleep(1200);
+el.dispatchEvent(new PointerEvent('pointerup', {...}));
+```
+
+**`dispatchEvent` does not hit-test.** It hands the event straight to the
+target, so `pointer-events:none`, an overlay, a zero-size box, `visibility:hidden`
+— none of them can stop it. The test proved the *handler* was wired. It could
+not prove the *element was reachable*, which was the only thing in doubt.
+
+The bitter part: that file's own header says it exists to catch "a panel that
+is perfect and unreachable — the same class as an ability whose client
+whitelist has no entry, which this repo has shipped four times." It was written
+for precisely this bug and was structurally blind to it.
+
+### The rule
+
+**A gesture test must go through hit testing.** Drive it with real input at
+real coordinates (`page.mouse.move` / `.down` / `.up`, or `page.touchscreen`),
+and assert **the outcome** — did the panel open — not that the helper returned
+without throwing. `dispatchEvent` is for unit-testing a handler, never for
+proving a control is usable.
+
+### Two measured things worth keeping
+
+**The threshold drifts.** The 1.2s is a `setTimeout` competing with the game
+loop, so a heavier frame delays it: at the harness's 1000x780 default a 1500ms
+hold releases *before* it fires, while 2200ms does not. Tests hold 2000ms.
+On a real phone this means the hold needed can exceed the nominal 1.2s — worth
+remembering the next time a hold-to-open "doesn't work".
+
+**"Pressed" and "open" are different moments.** The panel is a lazy `import()`,
+requested at the threshold and painted a few hundred ms later (~2.5s under a
+heavy frame). Poll for the panel; a fixed sleep passes on a warm chunk and
+fails on a cold one.
+
+Related: §61 (a still-frame assertion cannot see a frozen animation) and §66 (a
+probe measuring a control in a state that cannot show the defect) — all three
+are tests that ran, passed, and never touched the thing that was broken.

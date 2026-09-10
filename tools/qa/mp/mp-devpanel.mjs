@@ -16,16 +16,38 @@
  */
 import * as H from './harness.mjs';
 
-const holdTitle = (P, ms) => P.page.evaluate(async (hold) => {
-  const el = document.querySelector('.bt-zone-header__title');
-  if (!el) return 'no title element';
-  const r = el.getBoundingClientRect();
-  const opts = { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1, pointerType: 'touch' };
-  el.dispatchEvent(new PointerEvent('pointerdown', opts));
-  await new Promise((res) => setTimeout(res, hold));
-  el.dispatchEvent(new PointerEvent('pointerup', opts));
+/* ═══ v2.3.2413: PRESS IT WHERE A FINGER WOULD ═══
+   This used to be el.dispatchEvent(new PointerEvent('pointerdown')) + a sleep
+   + a pointerup.  That synthesises the EVENTS but skips the HIT TEST, and
+   skipping the hit test is what let this suite stay green through a title
+   that was `pointer-events:none` and could therefore not be pressed at all --
+   the exact "perfect and unreachable" failure this file's header says it
+   exists to catch.  See TRAPS section 67.
+
+   Now: move to the element's real centre, hold the button down past the
+   1200ms threshold, release.  Chromium hit-tests that press like any other,
+   so a target the player cannot reach delivers the event to whatever is
+   underneath instead and the panel never opens -- which is what the
+   assertions on the OUTCOME (not on this helper) then catch.
+
+   Deliberately NOT locator.click({delay}): measured at both 390x844 and the
+   harness's default 1000x780, that form reported success while the handler
+   never ran, so it would have re-introduced a press that passes without
+   pressing anything.  The outcome is the assertion; this is just the finger. */
+const holdTitle = async (P, ms) => {
+  const at = await P.page.evaluate(() => {
+    const el = document.querySelector('.bt-zone-header__title');
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  });
+  if (!at) return 'no title element';
+  await P.page.mouse.move(at.x, at.y);
+  await P.page.mouse.down();
+  await P.page.waitForTimeout(ms);
+  await P.page.mouse.up();
   return 'ok';
-}, ms);
+};
 
 const panelUp = (P) => P.page.evaluate(() =>
   !!Array.from(document.querySelectorAll('strong')).find((n) => n.textContent === 'Test panel'));
@@ -36,6 +58,20 @@ const tap = (P, text) => P.page.evaluate((t) => {
   b.click();
   return true;
 }, text);
+
+/* The panel is a LAZY import, so "pressed" and "open" are different moments:
+   the chunk is requested at the 1200ms threshold and paints a few hundred ms
+   later.  Poll for it rather than sleeping a guessed interval -- a fixed wait
+   here was passing on a warm chunk and failing on a cold one, which is a
+   flake dressed as a bug. */
+const waitPanel = async (P, ms = 8000) => {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) {
+    if (await P.page.evaluate(() => !!Array.from(document.querySelectorAll('strong')).find((n) => n.textContent === 'Test panel'))) return true;
+    await P.page.waitForTimeout(250);
+  }
+  return false;
+};
 
 export async function run({ browser, wsPort, webPort, rec }) {
   /* The admin /player summary carries no `z` (it never has -- an earlier
@@ -59,10 +95,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('a short tap on the zone name does NOT open the panel', !(await panelUp(P)), {});
 
   /* ── 2. THE LONG PRESS OPENS IT ── */
-  const held = await holdTitle(P, 1500);
-  await P.page.waitForTimeout(900);          /* the panel is lazily imported */
+  /* 2000ms, not 1500: the 1200ms threshold is a setTimeout competing with the
+     game loop, so it DRIFTS under a heavy frame -- measured here, a 1500ms
+     hold releases before it fires at the harness's 1000x780 default (bigger
+     canvas, heavier frames) while 2200ms does not.  The gesture is "hold past
+     the threshold", so the test holds past it with margin.  The short-tap
+     assertion above still guards the other side. */
+  const held = await holdTitle(P, 2000);
+  const panelOpened = await waitPanel(P);    /* the panel is lazily imported */
   rec.ok('the zone-name element exists to press', held === 'ok', { held });
-  rec.ok('a 1.2s press opens the test panel', await panelUp(P), {});
+  rec.ok('a 1.2s press opens the test panel', panelOpened === true, { panelOpened });
 
   /* ── 3. IT ASKS FOR A KEY, AND DOES NOTHING WITHOUT ONE ── */
   const asksForKey = await P.page.evaluate(() => !!document.querySelector('input[type="password"]'));
