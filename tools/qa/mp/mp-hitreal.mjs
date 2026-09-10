@@ -126,7 +126,21 @@ const STEP_PX = 70;
 const STEP_MS = 300;
 const DESYNC_PX = 70;           /* client-vs-worker gap that means a step was refused */
 const PLACE_TRIES = 14;
-const TARGET_WAIT_MS = 26000;   /* > the 18.75s monster respawn (RESPAWN_TIME) */
+/* ═══ EVERY WAIT IN THIS FILE IS BOUNDED, AND THE ROW IS BOUNDED TOO ═══
+   A monster respawns on an 18.75s clock (RESPAWN_TIME) and there are six in a
+   zone, so something is nearly always alive and a long wait is the exception.
+   But the exceptions compound: an attempt can wait for a target, walk up to
+   PLACE_TRIES steps, re-sync twice, and poll a settle -- and a row may take
+   TRIES * 3 attempts to collect TRIES fair ones.  Multiply that by 24 rows and
+   an unlucky run does not fail, it HANGS: the eighth run of this file ran out
+   its 30-minute wall clock in frost and produced no table at all, which is
+   worse than a red row because it says nothing.
+   So the wait is shorter than a respawn (a timeout is a void, and the next
+   attempt tries again) and the ROW carries a deadline.  A row that runs out of
+   budget reports fewer fair attempts than TRIES and fails its own guard --
+   loudly, with its numbers, instead of silently eating the run. */
+const TARGET_WAIT_MS = 14000;
+const ROW_BUDGET_MS = 150000;   /* 2.5 min: ~4x what a healthy row costs */
 
 /* Three zones, and they are chosen for their HIT RADII rather than the scenery
    -- one 'fodder' fixture is what mp-hitmatrix already has.  The radius is
@@ -326,8 +340,9 @@ async function resync(P, wsPort, id) {
   /* Let the walk's last `move` reach the worker before asking it where we
      are.  Without this the read lands mid-flight and reports a divergence of
      one or two steps that is simply the packet still on the wire -- which is
-     not a desync, and voiding an attempt for it throws away a fair shot. */
-  await P.page.waitForTimeout(450);
+     not a desync, and voiding an attempt for it throws away a fair shot.
+     One move gap plus a little (the client sends at >=1 Hz, ~198ms solo). */
+  await P.page.waitForTimeout(320);
   const sp = await H.serverPlayer(wsPort, id).catch(() => null);
   if (!sp || typeof sp.x !== 'number') return { ok: false, why: 'no server view' };
   const cli = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y, z: S.currentZone }));
@@ -560,7 +575,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
          row of five tries that voids three has measured two things.  So the
          row runs until it has TRIES FAIR attempts, with a hard ceiling so a
          zone that will not cooperate ends rather than hangs. */
-      for (let i = 0; i < TRIES * 3 && row.fairs < TRIES; i++) {
+      const rowUntil = Date.now() + ROW_BUDGET_MS;
+      for (let i = 0; i < TRIES * 3 && row.fairs < TRIES && Date.now() < rowUntil; i++) {
         await P.page.evaluate(() => { const S = window._gameState.current; S.autoAttack = false; });
         const pick = await waitForTarget(P, TARGET_WAIT_MS);
         if (!pick) { row.void++; continue; }
@@ -641,6 +657,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
       }
       await P.page.evaluate(() => { const S = window._gameState.current; S.autoAttack = false; S._aiming = false; });
+      row.secs = Math.round((Date.now() - (rowUntil - ROW_BUDGET_MS)) / 1000);
       rows.push(row);
     }
   }
@@ -655,7 +672,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     console.log(`    ${r.zone.padEnd(8)} ${r.key.padEnd(15)} ${String(r.fairs).padStart(8)} `
       + `${String(r.sent + r.blast).padStart(12)} ${String(r.landed).padStart(7)}  `
       + `${(Math.round((r.landed / Math.max(1, r.fairs)) * 100) + '%').padStart(5)}  `
-      + `${String(r.kills).padStart(6)}  ${gaps}`
+      + `${String(r.kills).padStart(6)}  ${gaps}  ${r.secs}s`
       + `${r.blast ? `   (+${r.blast} blast)` : ''}`
       + `${r.void ? `   (${r.void} void: ${r.dug} burrowed, ${r.neverFired} never fired, gaps ${JSON.stringify(r.skipGaps)})` : ''}`);
     if (r.missed.length) console.log(`      missed: ${JSON.stringify(r.missed)}`);
