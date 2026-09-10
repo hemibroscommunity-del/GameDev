@@ -58,6 +58,7 @@ import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear, HEADWEAR_CATALOG, headwearUnderHair, headwearBehindBeard } from '../traits/headwearCatalog.js'; /* v2.3.1764: hair over headphones; v2.3.1934: beard over a drape */
 import { getFacialHair, FACIALHAIR_CATALOG } from '../traits/facialHairCatalog.js';
 import { getEyewear, EYEWEAR_CATALOG } from '../traits/eyewearCatalog.js';   /* v2.3.2361: the eyewear slot */
+import { getEyewearColor, getColoredEyewearTextures } from '../traits/eyewearColorCatalog.js';   /* v2.3.2424 */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
@@ -1242,8 +1243,16 @@ function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx,
    The slot's draw order (above hair, below the hat) is the sprites' child
    order in createPlayerDisplay / the remote display -- see eyewearCatalog.js
    for why. */
-function _placeEyewear(display, ewId, pose, dir, mirror, frameIdx, bodyScale) {
-  const entry = _ensureEyewearLoaded(ewId);
+function _placeEyewear(display, ewId, ewColorId, pose, dir, mirror, frameIdx, bodyScale) {
+  const baseEntry = _ensureEyewearLoaded(ewId);
+  /* v2.3.2424: retint to the selected colour, exactly as _placeHeadwear does.
+     The recoloured textures reuse the BASE meta -- the anchors, crownNudge and
+     scaleByPose are properties of the art's geometry and a retint changes no
+     pixel's position -- and fallbackTex keeps the native art on screen while
+     the bake is in flight, so a colour change never blanks the piece. */
+  let entry = baseEntry;
+  const colored = getColoredEyewearTextures(ewId, ewColorId);
+  if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta, fallbackTex: baseEntry.tex };
   const tune = (entry && entry.meta && entry.meta.poseFit) ? null : hairPoseTune(pose, dir);
   _placeTrait(display._eyewearSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale, tune);
 }
@@ -8770,7 +8779,7 @@ export class EntityRenderer {
           _placeCape(display, other.cape, pose, dir, mirror, frameIdx);   /* v2.3.2023 */
           _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul, other.hair); /* v2.3.1561: hair id for the floating halo */
           _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
-          _placeEyewear(display, other.eyewear, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2361 */
+          _placeEyewear(display, other.eyewear, other.eyewearColor, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2361; v2.3.2424 + colour */
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
           _crownOverride = null;
         } else {
@@ -10254,7 +10263,7 @@ export class EntityRenderer {
         _placeCape(display, getCape(), pose, dir, mirror, frameIdx);   /* v2.3.2023 */
         _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale, getHair()); /* v2.3.1561: hair id for the floating halo */
         _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
-        _placeEyewear(display, getEyewear(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2361 */
+        _placeEyewear(display, getEyewear(), getEyewearColor(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2361; v2.3.2424 + colour */
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
         _crownOverride = null;
 
