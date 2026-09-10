@@ -1453,7 +1453,20 @@ export const combatMethods = {
        greatsword's PI*0.85 base + the old +45° Cleave cap; the
        kid-simple reprice raises Cleave to +100° (253° ≈ PI*1.406). */
     const arc = Math.max(0.1, Math.min(Math.PI * 1.41, payload.arc || 1.2));
-    const angle = payload.angle || 0;
+    /* v2.3.2445: FINITE, OR ZERO.  JSON.parse turns the literal 1e999 into
+       Infinity, and `Infinity || 0` is Infinity.  The arc normalisation
+       below used to be two `while` loops stepping by 2*PI, and neither
+       terminates once the number is +/-Infinity -- or, less obviously, any
+       finite value past ~2^50, where adding 6.28 to it is a no-op in a
+       double.  One such frame from any client parked the DO's thread in
+       that loop for good: every socket in the room went silent until the
+       runtime killed the object (the 2026-09-10 stall hunt, wf_b7119833).
+       Both client emitters send Math.atan2 output (monsterCombat.js,
+       projectiles.js), so a radian value within one turn is the whole
+       legitimate range; like range/arc/dmgBase/critChance above, anything
+       outside what a client can honestly claim is not honoured. */
+    const angle = (typeof payload.angle === 'number' && Number.isFinite(payload.angle)
+      && Math.abs(payload.angle) <= Math.PI * 2 + 1e-6) ? payload.angle : 0;
     // Weapon-aware cap (slice 16) -- mirrors monster_damage cap above.
     // Server now owns the weapon table so the bound is tighter than
     // the previous level-only formula.  Pass payload.special if the
@@ -1492,9 +1505,9 @@ export const combatMethods = {
 
       // Arc check
       const targetAngle = Math.atan2(dy, dx);
-      let angleDiff = targetAngle - angle;
-      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      /* v2.3.2445: normalised to (-PI, PI] arithmetically -- there is no
+         loop left to spin, whatever the inputs are (see `angle` above). */
+      const angleDiff = Math.atan2(Math.sin(targetAngle - angle), Math.cos(targetAngle - angle));
       if (Math.abs(angleDiff) > arc / 2) continue;
 
       /* v2.3.1306: per-(attacker,target) hit-cadence floor — mirrors
