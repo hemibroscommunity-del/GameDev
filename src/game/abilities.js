@@ -518,7 +518,15 @@ export function applyAbilityStrike(S, kind, targetId) {
        like the swing it is.  meleeSwingSfx is the same per-weapon rotation the
        ordinary swing and the tapped swing both use (v2.3.1798), so a lunge with
        a greatsword and a swing with a greatsword cannot drift apart. */
-    try { BT_AUDIO.play(meleeSwingSfx(R), { vol: 0.9 }); } catch (e) {}
+    /* v2.3.2450: through swordSwing, not play.  The comment above has always
+       claimed this uses "the same per-weapon rotation the ordinary swing and
+       the tapped swing both use" -- and it did not: play() takes the key
+       verbatim, so meleeSwingSfx's generic 'sword-swing' reached the OLD
+       fallback sample, skipping the rotation, the gain table and (now) the
+       alternating detune.  The lunge opens most engagements, so this was a
+       third sword sound, louder and un-normalised, on the blow you hear first.
+       One word; the claim is true now. */
+    try { BT_AUDIO.swordSwing(meleeSwingSfx(R), { vol: 0.9 }); } catch (e) {}
   } else {
     /* v2.3.1738: the owner's wind-impact sample, same shape as bash above —
        fired on the cast, with the synth stand-in kept as the fallback for the

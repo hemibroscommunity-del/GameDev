@@ -134,6 +134,7 @@ const SCENARIOS = {
   chatfeed: () => import('./mp-chatfeed.mjs'), /* v2.3.1980: players-online count + the world chat feed */
   lockaim: () => import('./mp-lockaim.mjs'), /* v2.3.1979: a locked-on bow shot has to actually hit */
   bowshield: () => import('./mp-bowshield.mjs'), /* v2.3.2446: a bow has no shield button; the guard is a held, rotatable gesture */
+  swingsfx: () => import('./mp-swingsfx.mjs'), /* v2.3.2450: one whoosh leading the blade, one hit on contact, alternating pitch */
   rbutton: () => import('./mp-rbutton.mjs'), /* v2.3.2242: the right control is a button — hold to attack, swipe for special, a shield toggle beneath it */
   target: () => import('./mp-target.mjs'), /* v2.3.2243: the targeting perimeter, the lock that holds, the switch arrows, magic splash = arrow */
   tattoos: () => import('./mp-tattoos.mjs'), /* v2.3.1949: face + arm tattoos survive both server gates, end to end */

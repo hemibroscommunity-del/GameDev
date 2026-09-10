@@ -1598,9 +1598,9 @@ export function updateMonsterCombat(S, deps) {
                 S._swingBcastPending = true;
                 /* v2.3.1798: same rotation as the manual swing — one helper, so
                    the auto-attack and the tapped swing cannot drift apart.
-                   v2.3.2202: deferred to the contact frame like the tap path
-                   (see playerActions.swingAttack) — the sweep below plays it
-                   when the MELEE_CONTACT_MS gate opens. */
+                   v2.3.2450: played on the first tick after the swing starts,
+                   like the tap path (see playerActions.swingAttack) — the
+                   sweep below fires this flag as soon as it sees it. */
                 S._swingSfxKey = meleeSwingSfx(S.rpg);
                 S._swingSfxPending = true;
               }
@@ -1685,15 +1685,33 @@ export function updateMonsterCombat(S, deps) {
                Dedup is untouched: _hitThisSwing clears per swing, and the
                fastest legal swing cadence (200ms) is longer than the
                contact delay, so no swing loses its window. */
-            var _contactOpen = Date.now() - S.swingTimer >= MELEE_CONTACT_MS;
-            /* v2.3.2202: the deferred swing whoosh plays the frame the
-               contact gate opens — hit or whiff — so it stacks with the
-               alternating hit thunk exactly as it did before contact
-               sync, just at the moment the blade visually arrives. */
-            if (_contactOpen && S._swingSfxPending) {
+            /* ═══ v2.3.2450: THE WHOOSH LEADS THE BLADE AGAIN ═══
+               Owner: "the timing is off.  It plays the sound after the hit so
+               it's delayed ... need just a whoosh and a hit sound synced upon
+               contact."
+
+               v2.3.2202 moved this to the CONTACT frame so the swing and the
+               hit stacked, and that was the right fix for the wrong problem:
+               with two percussive metallic samples, splitting them 120ms apart
+               did sound like a gallop.  But a whoosh is the sound of the blade
+               TRAVELLING -- its energy is at the start of the arc -- so
+               starting one at the moment of contact puts its body after the
+               impact you already watched.  That is the delay being reported;
+               the sample was never late, it was started late.
+
+               So it fires on the first tick after the swing begins, and the hit
+               keeps the contact frame (MELEE_CONTACT_MS below).  Whoosh then
+               thunk, which is the pairing the owner asked for and auditioned.
+
+               Still through the PENDING flag rather than played at the press:
+               raising the shield cancels the swing (v2.3.2246) and clears this
+               flag, so a guard raised in the same frame still silences a whoosh
+               that has not been heard yet. */
+            if (S._swingSfxPending) {
               S._swingSfxPending = false;
               BT_AUDIO.swordSwing(S._swingSfxKey, { vol: 0.55 });
             }
+            var _contactOpen = Date.now() - S.swingTimer >= MELEE_CONTACT_MS;
             /* Hit monsters */
             S.monsters.forEach(function (m) {
               if (!_contactOpen) return; /* v2.3.2200: blade not at target yet */

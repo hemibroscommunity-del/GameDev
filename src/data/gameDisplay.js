@@ -2741,25 +2741,64 @@ BT_AUDIO.SFX_MANIFEST = {
    swing-1's loudness even though swing-1 no longer plays: that is deliberate,
    because the vol:0.55 call sites were tuned against it, so the pair keep both
    their match to each other AND their absolute level. */
-BT_AUDIO.SWING_ROTATION = ['sword-swing-3', 'sword-swing-2'];
+/* ═══ v2.3.2450: ONE WHOOSH, NOT A METALLIC ALTERNATION ═══
+   Owner: "I don't really like one of the two sword sounds ... Too harsh like
+   too metallic.  After the 100th time it's like nails on a chalk board.  Need
+   just a whoosh and a hit sound synced upon contact."
+
+   The rotation was two samples and the owner could hear which one: MEASURED
+   against each other (brightness as RMS of the first difference over RMS of
+   the signal -- spectral slope, which is what "metallic" means; ring as peak
+   down to 10%):
+
+     sword-swing-3 (swing-c)   bright 0.392   ring 0.120s   gain 2.12
+     sword-swing-2 (swing-b)   bright 0.107   ring 0.040s   gain 0.70
+
+   So every OTHER swing was 3.7x brighter, rang 3x longer, and was played at
+   three times the level of its neighbour -- the gain table was amplifying the
+   harsher sample, which is why it dominated the loop rather than blending
+   into it.  swing-b is already a genuine whoosh, so the fix is to stop
+   alternating and keep it.  swing-3 stays in the manifest and in this table:
+   it is still a real file some later thing may want, and deleting it would
+   only move the decision somewhere harder to find. */
+BT_AUDIO.SWING_ROTATION = ['sword-swing-2'];
 BT_AUDIO.SWING_GAIN = {
   'sword-swing-1': 1.00,   /* out of rotation since v2.3.1810b; kept as the reference the other two are normalised to */
-  'sword-swing-2': 0.70,
-  'sword-swing-3': 2.12,
+  /* v2.3.2450: 0.70 -> 0.95.  It no longer sits next to a 2.12 neighbour, so
+     matching the level the owner auditioned costs a lift rather than a cut. */
+  'sword-swing-2': 0.95,
+  'sword-swing-3': 2.12,   /* v2.3.2450: out of rotation -- the harsh one */
 };
+/* ═══ v2.3.2450: ALTERNATING, NOT RANDOM ═══
+   Owner, on one sample every 600ms: "add an alternating slight pitch
+   variation."  Alternating rather than play()'s default random pitchVar
+   because random wander is what a sample-starved loop sounds like, while a
+   strict two-step reads as a left-right rhythm -- and it can never, by
+   accident, play the same detune three times running the way random can.
+   +-1.5% is under a quarter-semitone: audible as variety, not as tuning. */
+BT_AUDIO.SWING_DETUNE = [0.985, 1.015];
 BT_AUDIO._swingIdx = 0;
 /* `key` is whatever meleeSwingSfx() decided.  Only the generic sword key is
    rotated: 'bamboo-swing' is the wood-tier stick's own airier whoosh
    (v2.3.254) and is a different weapon's sound, not a variant of this one. */
 BT_AUDIO.swordSwing = function (key, opts) {
   var k = key;
+  /* v2.3.2450: the step advances for EVERY swing, not only the rotated ones.
+     It used to move only inside the branch below, so with one entry left in
+     the rotation it would still alternate -- but the bamboo stick, which takes
+     the other branch, would have been left on one fixed detune forever, and it
+     is heard as often as the sword. */
+  var step = this._swingIdx++;
   if (!k || k === 'sword-swing') {
-    k = this.SWING_ROTATION[this._swingIdx++ % this.SWING_ROTATION.length];
+    k = this.SWING_ROTATION[step % this.SWING_ROTATION.length];
   }
   var base = (opts && opts.vol != null) ? opts.vol : 0.6;
   var o = {};
   for (var q in opts) o[q] = opts[q];
   o.vol = base * (this.SWING_GAIN[k] || 1);
+  /* An explicit rate beats play()'s random pitchVar (see play(): opts.rate
+     wins), and a caller that wants its own rate still overrides this. */
+  if (o.rate == null) o.rate = this.SWING_DETUNE[step % this.SWING_DETUNE.length];
   return this.play(k, o);
 };
 /* v2.3.1798: the special's own sound.  Quietest of the four uploads by a wide
@@ -2769,10 +2808,25 @@ BT_AUDIO.specialSwipe = function (opts) {
   var base = (opts && opts.vol != null) ? opts.vol : 0.6;
   return this.play('special-swipe', { vol: base * 4.6, pitchVar: 0.04 });
 };
+/* ═══ v2.3.2450: ONE HIT, FOR THE SAME REASON AS ONE WHOOSH ═══
+   The alternation had the same shape as the swing's and the same fault.
+   Measured: sword-hit2 is bright 0.549 and rings 0.100s; sword-hit3 is 0.353
+   and rings 0.030s -- so one of the pair was again the brighter, longer-ringing
+   one, landing on every other blow.  The owner asked for "a hit sound",
+   singular; hit3 is the one that is not a clang.
+   Its level is lifted to the balance the owner auditioned: the hit is the
+   accent now that the whoosh leads rather than collides with it. */
+BT_AUDIO.HIT_GAIN = 1.7;
+BT_AUDIO.SWORD_HIT_DETUNE = [1.015, 0.985];   /* opposite phase to the swing's */
 BT_AUDIO._swordHitToggle = 0;
 BT_AUDIO.swordHit = function (opts) {
-  var key = (this._swordHitToggle++ & 1) ? 'sword-hit3' : 'sword-hit2';
-  this.play(key, opts);
+  var step = this._swordHitToggle++;
+  var base = (opts && opts.vol != null) ? opts.vol : 0.6;
+  var o = {};
+  for (var q in opts) o[q] = opts[q];
+  o.vol = base * this.HIT_GAIN;
+  if (o.rate == null) o.rate = this.SWORD_HIT_DETUNE[step % this.SWORD_HIT_DETUNE.length];
+  this.play('sword-hit3', o);
 };
 /* Magic-hit alternation — same pattern as sword. Cycles magic-hit and
    magic-hit2 so staff-projectile hits don't repeat the same waveform. */

@@ -75,13 +75,15 @@ export function swingAttack(S) {
     clearSwingHitFlags(S); /* v2.3.1421: fresh dedup per swing (quick re-tap fix) */
     /* v2.3.1798: rotate the owner's three swing samples (level-matched in
        BT_AUDIO.swordSwing); bamboo keeps its own.
-       v2.3.2202: the whoosh is DEFERRED to the blade's contact frame
-       (monsterCombat plays it when the MELEE_CONTACT_MS gate opens).
-       v2.3.2200 moved the hit thunk to contact but left the whoosh at
-       press, splitting the owner's alternating swing/hit pairs into a
-       gallop — owner: the alternating sounds "don't sound quite right
-       anymore".  Deferring the whoosh re-stacks the pair at the moment
-       the swing visually lands; the rotation itself is untouched. */
+       v2.3.2450: the whoosh fires on the first tick of the swing, not at
+       contact — monsterCombat plays the pending flag as soon as it sees it.
+       v2.3.2202 had deferred it to the contact frame to re-stack it with the
+       hit, which was right while both were percussive metallic samples and
+       wrong once one of them is a whoosh: the sound of a blade travelling
+       has to start when the blade starts, or its body lands after the
+       impact (owner: "it plays the sound after the hit so it's delayed").
+       The flag is still a flag rather than a play() here, so raising the
+       shield in the same frame can still cancel it. */
     S._swingSfxKey = meleeSwingSfx(S.rpg);
     S._swingSfxPending = true;
 }
