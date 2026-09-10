@@ -149,6 +149,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...still without entering the world', await P.page.evaluate(
     () => !!document.querySelector('input.bt-cc-name')), {});
 
+  /* ════════════ 2b. THE REFUSAL DOES NOT GO STALE WHILE THEY TYPE ════════════
+     v2.3.2425, found by an adversarial pre-merge review of v2.3.2388 itself.
+
+     The press stored the reason as a STRING and cleared it only when the
+     block disappeared entirely.  There are THREE reasons, so a reason that
+     CHANGED left the previous one on screen: press with an empty field --
+     the exact state the owner pressed in -- then type one letter, and the
+     amber line still read "Name your bro first -- tap the field above." over
+     a field that visibly contained a letter.  Worse, `_pressMsg` takes
+     precedence over the live hint, so the ACCURATE "At least 2 characters"
+     was suppressed underneath it until the second keystroke.
+
+     Section 3 below could not see this: it presses AGAIN after typing, which
+     re-reads the reason and repairs the display.  The defect only exists in
+     the gap between one press and the next, so this section deliberately does
+     not press -- it types, and looks. */
+  await P.page.fill('input.bt-cc-name', 'J');
+  await P.page.waitForTimeout(350);
+  const midType = await readMsg(P);
+  console.log('    one letter typed, no second press: ' + JSON.stringify(midType));
+  rec.ok('typing a letter after a refusal does not leave "name your bro first" '
+    + 'sitting over a field that has a name in it',
+    !/name your bro/i.test(midType.text || ''), midType);
+  rec.ok('...and the accurate hint is no longer suppressed by the stale one',
+    /at least 2|2 letters|short/i.test(midType.text || ''), midType);
+
   /* ════════════ 3. A TOO-SHORT NAME IS A DIFFERENT REASON ════════════
      Two rules, two answers -- a single generic "can't join" would pass a
      weaker version of this test and teach the player nothing. */
