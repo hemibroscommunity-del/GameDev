@@ -9323,8 +9323,10 @@ export var BroTown = function BroTown(_ref0) {
         try {
           var _p = getBtPassphrase();
           if (_p) {
+            try { window.__btDoorCheck = { done: false }; } catch (e) {}   /* v2.3.2444: see the default road */
             checkAccountLogin(_p).then(function (res) {
               if (!alive) return;
+              try { window.__btDoorCheck = { done: true, hasChar: !!(res && res.ok && res.exists && res.preview && res.preview.hasChar) }; } catch (e) {}
               if (res && res.ok && res.exists && res.preview && res.preview.hasChar) {
                 /* v2.3.1923: the roster self-heals here.  This is the answer
                    to "does the key on this device have a character", asked on
@@ -9335,7 +9337,9 @@ export var BroTown = function BroTown(_ref0) {
                    playing, and the list is sorted by when you last played. */
                 try { ensureChar(_p, { name: res.preview.name || '', level: res.preview.level || 0 }); } catch (e2) {}
               }
-            }).catch(function () {});
+            }).catch(function () {
+              try { window.__btDoorCheck = { done: true, hasChar: false, failed: true }; } catch (e) {}
+            });
           }
         } catch (e) {}
         return;
@@ -9379,17 +9383,25 @@ export var BroTown = function BroTown(_ref0) {
         if (alive) setBootPhase('login');
         try { window.__btBootRoute = 'login'; } catch (e) {}
         /* The door paints immediately; the worker is asked in the background
-           so the roster self-heals (v2.3.1923) -- same as the ?login=1 road. */
+           so the roster self-heals (v2.3.1923) -- same as the ?login=1 road.
+           window.__btDoorCheck is the QA probe for that answer: a fresh
+           browser mints a silent key before anything else happens, so "has
+           a key" cannot tell the harness whether Continue leads anywhere. */
+        try { window.__btDoorCheck = { done: false }; } catch (e) {}
         checkAccountLogin(phrase).then(function (res) {
           if (!alive) return;
-          if (res && res.ok && res.exists && res.preview && res.preview.hasChar) {
+          var _has = !!(res && res.ok && res.exists && res.preview && res.preview.hasChar);
+          try { window.__btDoorCheck = { done: true, hasChar: _has }; } catch (e) {}
+          if (_has) {
             /* Same seed as the straight-in road: Continue on this key ends
                in joinTown, whose `nameInput.trim() || 'Anon'` would
                otherwise stamp Anon until state_sync corrects it. */
             if (res.preview.name) setNameInput(res.preview.name);
             try { ensureChar(phrase, { name: res.preview.name || '', level: res.preview.level || 0 }); } catch (e2) {}
           }
-        }).catch(function () {});
+        }).catch(function () {
+          try { window.__btDoorCheck = { done: true, hasChar: false, failed: true }; } catch (e) {}
+        });
         return;
       }
       checkAccountLogin(phrase).then(function (res) {

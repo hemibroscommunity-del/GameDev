@@ -314,8 +314,19 @@ export async function enterWorld(P, timeout = 90000) {
     let returning = P.seeded;
     if (!returning) {
       /* A scenario that reloads mid-run (mp-switchbro) is the same device
-         coming back: it holds a key, so the door is what it sees now. */
-      try { returning = await page.evaluate(() => !!localStorage.getItem('bt_passphrase')); } catch (e) { returning = false; }
+         coming back.  "Holds a key" is not the test -- a fresh browser mints
+         a silent key before it has a character -- so ask the door's own
+         background account check (window.__btDoorCheck, BroTown boot check)
+         whether this key has a character behind it, and fall back to "the
+         roster lists someone" if the check never answers. */
+      const chk = await page.waitForFunction(() => {
+        const d = window.__btDoorCheck;
+        return d && d.done ? d : null;
+      }, null, { timeout: 8000, polling: 200 }).then((h) => h.jsonValue()).catch(() => null);
+      returning = !!(chk && chk.hasChar);
+      if (!returning && !chk) {
+        try { returning = await page.evaluate(() => (window.__btRoster.read() || []).length > 0); } catch (e) { returning = false; }
+      }
     }
     let tookRow = false;
     if (returning) {
