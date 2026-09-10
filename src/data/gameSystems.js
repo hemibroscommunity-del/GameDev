@@ -5537,7 +5537,24 @@ export const SWING_COOLDOWN = 600;
  * is 210ms per (player, monster), and 450ms clears it with room to spare, so
  * the worker accepts the faster shots without a mirrored table.  Client-only,
  * safe in either deploy order. */
-export const BOW_SWING_MULT = 0.75;
+/* ═══ v2.3.2449: -10% ATTACK SPEED ═══
+   Owner: "Also slow bow attack speed 10%."  0.75 -> 0.825 is a 450ms period
+   becoming 495ms: ten percent longer between shots, which is what "10% slower
+   attack speed" means on a cadence.  The bow is still the fastest weapon in
+   the game (17.5% under the universal 600ms rather than 25%).
+
+   IT IS A REAL NERF AND THE CARD WILL SAY SO.  This multiplier is read by the
+   DPS the item card promises as well as by the two fire gates, so a bow's
+   listed damage per second drops ~9% with it and the card stays honest --
+   which is the whole reason v2.3.2265 put the cadence here instead of
+   hard-coding it in the loops.  Base bow DPS was tuned to ~80% of melee
+   (v2.3.2262); it now sits near 73%, and if the owner wants that back it is
+   damage, not cadence, that should move.
+
+   STILL NO SERVER CHANGE: combat.js's hit-cadence floor is 210ms per
+   (player, monster) and this is a SLOWER shot, so it clears the floor by more
+   than before.  Client-only, safe in either deploy order. */
+export const BOW_SWING_MULT = 0.825;
 export function weaponSwingMult(slotOrType) {
   return (slotOrType === 'ranged' || slotOrType === 'bow') ? BOW_SWING_MULT : 1;
 }
