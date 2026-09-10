@@ -59,6 +59,7 @@ const SCENARIOS = {
   snowburrow: () => import('./mp-snowburrow.mjs'), /* v2.3.2309: the burrowing snowman is still drawn on the second visit to frost */
   devwarp: () => import('./mp-devwarp.mjs'), /* v2.3.2308: the test panel's zone chips, pressed for real, from anywhere */
   devpanel: () => import('./mp-devpanel.mjs'), /* v2.3.2240: the owner's test panel */
+  devflags: () => import('./mp-devflags.mjs'), /* v2.3.2412: live flags in that panel -- the operator surface that needed a computer */
   firetrail: () => import('./mp-firetrail.mjs'), /* v2.3.2238: the fire goblin's burning ground, drawn and felt */
   burstdmg: () => import('./mp-burstdmg.mjs'), /* v2.3.2235: the slime blast floats a damage number on YOU */
   bowmark: () => import('./mp-bowmark.mjs'), /* v2.3.2234: a REAL bow shot, and the mark on its number */
