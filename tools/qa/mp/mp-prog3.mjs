@@ -962,6 +962,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return ws;
       };
       window.WebSocket.prototype = RealWS.prototype;
+      /* AND THE STATICS.  Not decoration: wsClient guards every send with
+         `ws.readyState !== WebSocket.OPEN`, eight sites, and OPEN is a static
+         on the CONSTRUCTOR -- which this wrapper replaces.  Omit it and the
+         guard reads `undefined`, is true forever, and EVERY client->server
+         message is dropped in silence while incoming traffic carries on, so
+         the page joins and paints and looks perfectly healthy.  Cost a round
+         in mp-dashreal before it was spotted; see TRAPS 69. */
+      for (const k of ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED']) {
+        window.WebSocket[k] = RealWS[k];
+      }
     },
   });
   await H.enterWorld(OLD);
