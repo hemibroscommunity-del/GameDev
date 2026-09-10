@@ -7825,6 +7825,13 @@ export var BroTown = function BroTown(_ref0) {
        and the name popup for a swap that did not happen off the screen. */
     if (nextSlot === (S2.rpg.activeSlot || 'melee')) return;
     S2.rpg.activeSlot = nextSlot;
+    /* v2.3.2446: a guard raised on melee comes DOWN on the way to a bow.
+       The button is the only way to lower a toggled shield and v2.3.2446 takes
+       it away on the two-handed weapons, so without this the swap strands the
+       shield up with nothing on screen to drop it -- exactly the failure the
+       button's own "a RAISED shield keeps its button" note was written for,
+       arriving through a different door. */
+    if ((nextSlot === 'ranged' || nextSlot === 'staff') && S2._shieldUp) dropShield(S2, 'weapon-swap');
     /* Mark the session as having an explicit cycle so the player_state
        handler stops accepting the server's persisted activeSlot
        (defense in depth: if set_active_slot never reaches the worker
@@ -7848,6 +7855,8 @@ export var BroTown = function BroTown(_ref0) {
     var _S2$rpg$weapon2, _S2$rpg$rangedWeapon2;
     var S2 = stateRef.current;
     if (!S2.rpg || S2.rpg.activeSlot === slot) return;
+    /* v2.3.2446: the desktop's direct pick, same rule as the cycle above. */
+    if ((slot === 'ranged' || slot === 'staff') && S2._shieldUp) dropShield(S2, 'weapon-swap');
     S2.rpg.activeSlot = slot;
     setRpgState(_objectSpread({}, S2.rpg));
     var wpnName = slot === 'melee' ? (_S2$rpg$weapon2 = S2.rpg.weapon) === null || _S2$rpg$weapon2 === void 0 ? void 0 : _S2$rpg$weapon2.name : slot === 'ranged' ? (_S2$rpg$rangedWeapon2 = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon2 === void 0 ? void 0 : _S2$rpg$rangedWeapon2.name : 'Staff';
@@ -8172,7 +8181,20 @@ export var BroTown = function BroTown(_ref0) {
           if (_live) S.lockedTarget = _lw;
         }
         S._rTapLockWas = null;
-        try { raiseShieldToggle(S); } catch (e) { /* refused: no shield, or on cooldown */ }
+        /* ═══ v2.3.2446: THE SECOND TAP OPENS A HOLD, NOT A LATCH ═══
+           Owner: "double tap and hold the right joystick to rotate shield
+           (with the arc included)", which is the gesture v2.3.2242 removed
+           and v2.3.2271 half-restored -- it raised the guard and left it up,
+           steered by the locked target rather than by the thumb.
+           The flag is what makes it a hold: the release handler below lowers
+           the guard, and the move handlers steer _shieldAngle from the drag
+           while it is set.  Only armed when the raise actually took, so a
+           refusal (no shield, or the stamina cooldown) leaves an ordinary
+           press behind rather than a finger that lowers a shield that never
+           went up. */
+        var _up = false;
+        try { _up = raiseShieldToggle(S); } catch (e) { /* refused: no shield, or on cooldown */ }
+        S._rShieldHold = !!_up;
         return true;
       }
     }
@@ -8251,6 +8273,16 @@ export var BroTown = function BroTown(_ref0) {
     S._lastAimAngle = angle;
     S.autoAttack = true;
   }, []);
+  /* v2.3.2446: end a held guard, wherever the touch ended.  One copy, because
+     three surfaces can end one (the zone's rE, the disc's bE, and bE's two
+     early returns) and three copies of a broadcast-and-clear would drift. */
+  var _endShieldHold = useCallback(function () {
+    var S = stateRef.current;
+    if (!S || !S._rShieldHold) return;
+    S._rShieldHold = false;
+    if (!S._shieldAutoReleased) { try { dropShield(S, 'hold-release'); } catch (e) { /* display only */ } }
+    S._shieldAutoReleased = false;
+  }, []);
   var handleRBtnRelease = useCallback(function () {
     rJoyActive.current = false;
     /* v2.3.2258: the stick returns to centre.  Same three writes the pre-2242
@@ -8267,6 +8299,14 @@ export var BroTown = function BroTown(_ref0) {
        release would have un-lit the button mid-fight for a frame. */
     var S = stateRef.current;
     if (!S) return;
+    /* v2.3.2446: the guard lasts exactly as long as the finger.  Here rather
+       than in the zone's rE because the disc presses through the same
+       handler, and a hold that could only be released on the surface it
+       started on would strand the shield on the other one.  `_shieldAutoReleased`
+       is respected the way the pre-2242 gesture respected it: a guard the
+       stamina loop already dropped is not dropped again, which would send a
+       second player_shield broadcast for one release. */
+    _endShieldHold();
     S.autoAttack = false;
     setAutoAttack(false);
     S._aiming = false;
@@ -8838,6 +8878,18 @@ export var BroTown = function BroTown(_ref0) {
            fields bE keeps (bSwipe.lx/ly/lt) so the two surfaces classify the
            same gesture the same way. */
         rts2.lx = t.clientX; rts2.ly = t.clientY; rts2.lt = Date.now();
+        /* ═══ v2.3.2446: WHILE THE GUARD IS HELD, THE DRAG IS THE ARC ═══
+           The angle is taken RAW from the touch origin rather than through
+           rJoyAim, whose 4-way quantisation is right for a body facing and
+           wrong for a block arc -- the server measures a hit against
+           _shieldAngle itself (_blockArcCovers), so snapping it to 45 degrees
+           would widen or narrow the real cover by up to half a sector.
+           rJoyAim still runs underneath, so the body keeps turning to look
+           where the shield points. */
+        var _Ssh = stateRef.current;
+        if (_Ssh && _Ssh._rShieldHold) {
+          _Ssh._shieldAngle = Math.atan2(t.clientY - rts2.startY, t.clientX - rts2.startX);
+        }
         /* THE ROTATION.  v2.3.2242's deleted handleRJoyMove, restored from
            588cf49: deflection from the touch ORIGIN (v2.3.949's relative drag),
            an 8px dead zone, the 4-way _facing quantisation, and the rod + knob
@@ -9009,6 +9061,21 @@ export var BroTown = function BroTown(_ref0) {
       if (t) {
         e.preventDefault();
         bSwipe.lx = t.clientX; bSwipe.ly = t.clientY; bSwipe.lt = Date.now();
+        /* ═══ v2.3.2446: THE DISC STEERS THE ARC TOO ═══
+           The gesture is raised in handleRBtnPress, which BOTH surfaces press
+           through, so a hold begun on the disc has to be steerable on the
+           disc -- the first cut only taught the ZONE to rotate, and the arc
+           simply kept whatever raiseShieldToggle seeded, which is the locked
+           target or the body facing.  Caught by mp-bowshield: a drag due LEFT
+           reported the seed angle rather than pi, and the drag-down assertion
+           next to it passed only because the seed happened to equal it.
+           Same raw atan2 from the press origin as rM's, for the same reason:
+           _blockArcCovers measures the real angle, so quantising it would
+           move the cover the player actually gets. */
+        var _Sbs = stateRef.current;
+        if (_Sbs && _Sbs._rShieldHold) {
+          _Sbs._shieldAngle = Math.atan2(t.clientY - bSwipe.sy, t.clientX - bSwipe.sx);
+        }
         /* ═══ v2.3.2254: SLIDE DOWN FROM ATTACK ONTO THE SHIELD ═══
            Owner: "I'd like it if I can just slide my finger down from the
            attack button to the shield button and have it activate.  Right now
@@ -9101,6 +9168,12 @@ export var BroTown = function BroTown(_ref0) {
       bTouchId.current = null;
       /* v2.3.2245: a harvest press is not a swing and its release is not a
          flick -- a fast chop on the button must never fire the special. */
+      /* v2.3.2446: whatever else a release is, it ends a held guard.  These
+         two early returns skip handleRBtnRelease, which is where the hold is
+         normally dropped, so without this a press that began as the second
+         tap of the gesture and ended as one of these would strand the shield
+         up -- and on a bow there is no button left to lower it with. */
+      if (bSwipe.harvest || bSwipe.toShield) _endShieldHold();
       if (bSwipe.harvest) { bSwipe.harvest = false; rJoyActive.current = false; return; }
       /* v2.3.2254: ...and neither is a slide onto the shield.  Same reasoning
          one more time: the gesture that raised the guard must not also spend

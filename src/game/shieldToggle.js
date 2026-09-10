@@ -109,6 +109,25 @@ export function toggleShield(S) {
    and a button that refuses is worse than no button. */
 export function shieldButtonLive(S, perimeterPx) {
   if (!S || !S.rpg || !S.rpg.shield) return false;
+  /* ═══ v2.3.2446: NO BUTTON ON A BOW OR A STAFF ═══
+     Owner: "When you use bow or staff there should be no shield button.  You
+     should be able to double tap and hold the right joystick to rotate shield
+     (with the arc included)."
+     A shield is its own equipment slot, so it stays equipped when you swap to
+     a two-handed weapon and this predicate -- which only ever asked whether
+     one was owned -- kept offering the button.  On those weapons the guard is
+     the HOLD gesture instead, which the button cannot express: it has no
+     direction, and the whole point of the gesture is that the thumb steers
+     the arc.
+     Ahead of the raised-shield escape below on purpose.  That escape exists so
+     a shield you TOGGLED on always has something to tap off, and under the
+     hold the shield lasts exactly as long as the finger does -- so there is
+     nothing to strand, and a button appearing under the thumb mid-block is
+     the thing the owner asked to be rid of.  The other way a raised shield
+     could meet this line -- raising it on melee and then swapping -- is closed
+     at the swap itself (BroTown's cycle and _desktopSelectSlot). */
+  var _slot = S.rpg.activeSlot || 'melee';
+  if (_slot === 'ranged' || _slot === 'staff') return false;
   /* v2.3.2242 (post-review): a RAISED shield keeps its button.  The first
      cut showed the button only "during combat", so a lock dropping or the
      last monster dying while the shield was up took the button away and
