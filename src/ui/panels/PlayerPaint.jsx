@@ -1644,7 +1644,14 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        putting anything down.  A tap on nothing clears the selection, which is
        the only way to say "never mind" without moving something. */
     if (tdef.drag === 'pick') {
-      const c = cellAt(e, false);
+      /* v2.3.2460: CLAMPED, but only for the off-grid grab.  A press meant to
+         pick a held piece up can land outside the grid -- that is the whole
+         point of the change in BodyInk's `down` -- and an unclamped read
+         answers "nowhere" for exactly those presses, so the drag would have
+         nothing to measure from.  Every OTHER press keeps the unclamped read
+         it has always had: on the flat grid a tap beside the squares must
+         still mean "never mind", not "pick up whatever is nearest". */
+      const c = cellAt(e, !!(info && info.held));
       /* ═══ v2.3.2455: YOU GRAB WHAT YOU ARE HOLDING BY ITS BOX ═══
          A design is mostly transparent -- that is what makes it a design and
          not a rectangle -- so hit-testing its INK would mean the only way to
@@ -1654,7 +1661,14 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
          held: the tap picks up whatever ink is under it, exactly as before. */
       const cur = selRef.current;
       const held = cur >= 0 ? docRef.current.ops[cur] : null;
-      const inHeld = !!(c && held && Array.isArray(held.a)
+      /* v2.3.2460: the surface can say this press missed every region while
+         the panel was holding something (BodyInk's `down`).  There is no box
+         test to make in that case -- the point is not on the grid at all --
+         and the answer must not be "you tapped nothing, so let go": that is
+         the deselect that made the owner's drag do nothing.  A held grab is a
+         grab. */
+      const offGrid = !!(info && info.held && held && Array.isArray(held.a));
+      const inHeld = offGrid || !!(c && held && Array.isArray(held.a)
         && c[0] >= Math.min(held.a[0], held.a[2]) && c[0] <= Math.max(held.a[0], held.a[2])
         && c[1] >= Math.min(held.a[1], held.a[3]) && c[1] <= Math.max(held.a[1], held.a[3]));
       const idx = inHeld ? cur : (c ? hitTest(c[0], c[1]) : -1);
@@ -2014,7 +2028,11 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
               onRegion={bodyRegion} onDown={down} onMove={move} onUp={up}
               overlayCells={(liveIdx >= 0 && liveIdx < painted.cells.length) ? painted.cells[liveIdx] : null}
               selCells={(sel >= 0 && sel < painted.cells.length) ? painted.cells[sel] : null}
-              handleCell={selHandle} />
+              handleCell={selHandle}
+              /* v2.3.2460: what is in the panel's hand, so a press that lands
+                 off the grid can still grab it (see BodyInk's `down`).  Only
+                 ops with a BOX -- those are the ones a drag can translate. */
+              heldTarget={(selOp && Array.isArray(selOp.a)) ? artId : null} />
           ) : (
             /* v2.3.1967: a class, so a headless scenario can aim at the flat
                grid without guessing which canvas in the panel it is (the panel

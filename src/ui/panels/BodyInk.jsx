@@ -210,6 +210,10 @@ export default function BodyInk({
      that the region you are touching is now the one you are inking. */
   backSide = false,
   overlayCells = null, selCells = null, handleCell = null,
+  /* v2.3.2460: the canvas the panel's held op lives on, or null when it holds
+     nothing.  A target rather than a boolean: the grab has to lock the gesture
+     to the RIGHT canvas, and the panel is the only one that knows which. */
+  heldTarget = null,
 }) {
   const boxRef = React.useRef(null);
   const offRef = React.useRef(null);
@@ -814,6 +818,29 @@ export default function BodyInk({
     if (onH) gestureRef.current = activeTarget;
     else {
       const c = cellFor(e, false, null);
+      /* ═══ v2.3.2460: A HELD PIECE CAN BE GRABBED OFF THE GRID ═══
+         Owner: "I just highlighted the screen by accident trying to move a
+         design I just placed.  Right after placing a design you should be able
+         to move it around with your finger.  I haven't been able to do that
+         yet."
+
+         Both halves of that are this branch.  A press that resolves to no
+         region returned here WITHOUT telling the panel -- correct for drawing
+         (there is nothing under your finger to draw on) and wrong for MOVING,
+         because a design covers a body part and the space around it, and the
+         obvious place to grab a picture is the middle of the picture, which
+         may be over the arm, the background or the gap between the legs.
+         So when the panel says it is holding something (`heldTarget`), the
+         gesture locks to THAT canvas and goes through: cellFor's `lock` arm
+         returns the nearest grid piece for a point outside it, which is what
+         the drag needs, and the region is NOT re-targeted -- the same rule the
+         handle above has had since v2.3.1994, for the same reason. */
+      if (!c && heldTarget) {
+        gestureRef.current = heldTarget;
+        try { window.__btInkDown = { target: heldTarget, held: true, back: !!backSide }; } catch (_e) { /* ignore */ }
+        if (onDown) onDown(e, { handle: false, held: true });
+        return;
+      }
       if (!c) {
         try {
           const g = gridsRef.current;
