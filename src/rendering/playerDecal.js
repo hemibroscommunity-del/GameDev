@@ -43,10 +43,30 @@ import { patternInk } from './traits/patternCatalog.js';   /* v2.3.1941 */
    INSIDE the shirt with fabric visible around it, which is what reads as a
    print on a tee rather than a re-textured shirt. */
 const FILL_W = 0.72;
-const FILL_H = 0.58;
+/* ═══ v2.3.2461: THE SHIRT GRID RUNS FURTHER DOWN ═══
+   Owner: "I think the squares (usable grid space) on the shirt front and back
+   should be longer downwards."
+
+   MEASURED on the shipped tee before changing anything (the per-cell probe
+   below): the sprite runs rows 88-141 of its frame and the grid covered
+   97-128, so a QUARTER of the shirt -- 13 of its 54 rows -- sat under no
+   square at all.  Only 8 of the 256 cells had no fabric under them, which
+   says the grid was not too big for the garment; it simply stopped early.
+
+   The top edge does not move.  0.58 x 0.46 put it at row 97 and 0.76 x 0.547
+   keeps it there (88 + 54 x (0.547 - 0.38) = 97), so a print already on a
+   shirt keeps its shoulder line and gains room below it rather than sliding
+   up.  The new bottom is row 138, three rows shy of the hem -- the same sliver
+   of bare fabric the sides keep, which is what reads as a print on a tee
+   rather than a re-textured shirt.
+   WHAT IT COSTS, stated rather than found later: an existing drawing keeps its
+   cells and each cell is now 1.3x taller, so a print stretches downward.  That
+   is unavoidable while the ask is "more room below" -- the cells are the
+   drawing's coordinate system. */
+const FILL_H = 0.76;
 /* Chest centre, as a fraction down the torso box: a print sits on the chest,
    not the belly. */
-const CHEST_Y = 0.46;
+const CHEST_Y = 0.547;
 
 /** The chest box of one frame, or null if the frame has no shirt in it. */
 export function chestBox(data, W, H, x0, fw) {
@@ -106,6 +126,25 @@ export function stampShirtArt(sheet, art, frameH, mirror, clip, report) {
   const octx = ov.getContext('2d');
   octx.imageSmoothingEnabled = false;
 
+  /* v2.3.2461: the same per-cell coverage the body regions report (see
+     stampRegion), for the one grid that is fitted to a BOX rather than to a
+     mask.  What gates the paint here is the `destination-in` below, so the
+     thing to count is the CLIP's alpha, not the sheet's -- on a shirt with a
+     dark outline those differ by exactly the rim v2.3.1942 protects.
+     Behind window.__btGridProbe: one getImageData when a QA probe asks and
+     none in the game. */
+  let clipA = null;
+  if (report && typeof window !== 'undefined' && window.__btGridProbe) {
+    try {
+      const cc = document.createElement('canvas');
+      cc.width = W; cc.height = H;
+      const cx2 = cc.getContext('2d');
+      cx2.imageSmoothingEnabled = false;
+      cx2.drawImage(clip || sheet, 0, 0);
+      clipA = cx2.getImageData(0, 0, W, H).data;
+    } catch (e) { clipA = null; }
+  }
+
   for (let f = 0; f < frames; f++) {
     const box = chestBox(src, W, H, f * fh, fh);
     if (!box) continue;
@@ -132,8 +171,29 @@ export function stampShirtArt(sheet, art, frameH, mirror, clip, report) {
        which is a mask the grid is fitted to, this grid is fitted to the chest
        and the print is whatever falls inside it. */
     if (report) {
+      let cellN = null;
+      if (clipA) {
+        cellN = new Array(ART_W * ART_H).fill(0);
+        for (let gy = 0; gy < ART_H; gy++) {
+          for (let gx = 0; gx < ART_W; gx++) {
+            const cpx = Math.round(ox + gx * cw), cpy = Math.round(oy + gy * ch);
+            const cpw = Math.round(ox + (gx + 1) * cw) - cpx;
+            const cph = Math.round(oy + (gy + 1) * ch) - cpy;
+            let n = 0;
+            for (let y = cpy; y < cpy + cph; y++) {
+              if (y < 0 || y >= H) continue;
+              for (let x = cpx; x < cpx + cpw; x++) {
+                if (x < f * fh || x >= Math.min(W, f * fh + fh)) continue;
+                if (clipA[(y * W + x) * 4 + 3] > 24) n++;
+              }
+            }
+            cellN[gy * ART_W + (mirror ? (ART_W - 1 - gx) : gx)] = n;
+          }
+        }
+      }
       report.push({ ox, oy, cw, ch,
-        lx: ox, rx: ox + ART_W * cw - 1, ty: oy, by: oy + ART_H * ch - 1, frame: f });
+        lx: ox, rx: ox + ART_W * cw - 1, ty: oy, by: oy + ART_H * ch - 1, frame: f,
+        cellN, box: { x0: box.x0, x1: box.x1, top: box.top, bot: box.bot } });
     }
     for (let gy = 0; gy < ART_H; gy++) {
       for (let gx = 0; gx < ART_W; gx++) {
@@ -444,9 +504,43 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
        far too noisy to measure ink drift against (tools/dev/pattern-drift.py
        has both numbers).  sqrt(fn) is the scale that goes with the centroid --
        an area is much steadier than a width for the same reason. */
+    /* ═══ v2.3.2461: HOW MUCH GARMENT IS UNDER EACH CELL ═══
+       Owner: "The pants area on the editor doesn't let you put your design all
+       the way to the edge of the squares."  From outside, a cell that paints
+       nothing and a cell that was never reached are the same picture -- an
+       empty square -- and the difference decides which knob is wrong: the grid
+       is too big for the region (cells hang off the garment) or too small (you
+       run out of squares before you run out of trousers).  Only the stamp can
+       tell them apart, because only the stamp holds `confine`.
+       So under the probe each cell reports how many of its pixels pass the
+       mask.  Zero means unusable: draw there and nothing appears, ever.
+       Indexed in ART space (mirrored back), so a reader compares it against
+       the drawing rather than against the screen.
+       Diagnostic only, behind the same window.__btGridProbe gate as the
+       histograms: one extra pass over the region when asked, none when not. */
+    let cellN = null;
+    if (profile) {
+      cellN = new Array(ART_W * ART_H).fill(0);
+      for (let gy = 0; gy < ART_H; gy++) {
+        for (let gx = 0; gx < ART_W; gx++) {
+          const cpx = Math.round(ox + gx * cw), cpy = Math.round(oy + gy * ch);
+          const cpw = Math.round(ox + (gx + 1) * cw) - cpx;
+          const cph = Math.round(oy + (gy + 1) * ch) - cpy;
+          let n = 0;
+          for (let y = cpy; y < cpy + cph; y++) {
+            if (y < 0 || y >= h) continue;
+            for (let x = cpx; x < cpx + cpw; x++) {
+              if (x < x0 || x >= x1) continue;
+              if (confine[y * w + x]) n++;
+            }
+          }
+          cellN[gy * ART_W + (mirror ? (ART_W - 1 - gx) : gx)] = n;
+        }
+      }
+    }
     if (report) report.push(profile
       ? { ox, oy, cw, ch, lx, rx, ty, by, frame: f, fx0, fx1, fy0, fy1,
-          fcx, fcy, fn, fw: frameW,
+          fcx, fcy, fn, fw: frameW, cellN,
           rowN: Array.from(rowN), colN: Array.from(colN) }
       : { ox, oy, cw, ch, lx, rx, ty, by, frame: f });
     for (let gy = 0; gy < ART_H; gy++) {
@@ -514,7 +608,28 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
    so a small print sat on the waistband where the leg gap ate half of it.  These
    numbers fill the shorts and sit just below the belt line.  The chest box is
    the same idea one region up. */
-export const PANTS_BOX = { fillW: 0.78, fillH: 0.62, cy: 0.45 };   /* across the shorts */
+/* ═══ v2.3.2461: AND THE TROUSERS COVER THEIRS ═══
+   Owner: "The pants area on the editor doesn't let you put your design all the
+   way to the edge of the squares."
+
+   This is the note two paragraphs down ("PANTS_BOX is deliberately NOT
+   changed") coming back.  v2.3.1994 gave the three SKIN grids their whole
+   region because an inset rectangle inside a framed region is invisible -- the
+   editor draws the region, you draw anywhere in it, and the ink outside the
+   rectangle silently does nothing.  Trousers were left out because nobody had
+   reported them and the print had been tuned against the leg gap.  Since
+   v2.3.2416 the pants editor frames the actual trousers, so the mismatch is
+   now on screen: measured on the shipped shorts, the region is 38 x 54 px and
+   0.78 x 0.62 made the grid 30 x 33 -- a four-pixel margin of undrawable
+   fabric each side and roughly ten above and below.
+
+   So the trousers now match the skin: the grid IS the region the editor
+   frames, and what you can see is what you can ink.  The mask still confines
+   the paint, so the cells that now sit over the gap between the legs paint
+   nothing there -- they simply stop being cells you cannot reach.  Same two
+   costs v2.3.1994 named: a cell is coarser, and an existing pants drawing
+   keeps its cells and therefore spreads outward. */
+export const PANTS_BOX = { fillW: 1, fillH: 1, cy: 0.50 };   /* the whole garment */
 /* ═══ v2.3.1994: EVERY SKIN PIXEL IS TATTOOABLE ═══
  *
  * Owner: "Can you just make anywhere where skin is showing be tattooable?
@@ -546,8 +661,10 @@ export const PANTS_BOX = { fillW: 0.78, fillH: 0.62, cy: 0.45 };   /* across the
  * that now sit over the crown, the ears or a shoulder seam paint nothing
  * there — they simply stop being cells you cannot reach.
  *
- * PANTS_BOX is deliberately NOT changed: trousers are not skin, the print
- * there was tuned against the leg gap (see above), and nobody reported it.
+ * PANTS_BOX was deliberately NOT changed here: trousers are not skin, the
+ * print there was tuned against the leg gap (see above), and nobody had
+ * reported it.  v2.3.2461: somebody did, and it now covers its region too --
+ * see the note on PANTS_BOX itself.
  */
 export const TATTOO_BOX = { fillW: 1, fillH: 1, cy: 0.50 };  /* the whole bare torso */
 /* v2.3.1949 (owner: "Allow tattoos on the face and arms too").
