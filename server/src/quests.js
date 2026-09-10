@@ -355,16 +355,48 @@ export const questMethods = {
      Awaits are STORAGE awaits only (_opSeen, _opStamp, _inboxAppend), which
      hold the input gate closed (rule 9) -- no other event interleaves here,
      so this cannot land between a validation and the commit that depends
-     on it. */
+     on it.
+
+     ═══ v2.3.2421: THE opId NAMES THE WEAPON, NOT ITS ARRAY INDEX ═══
+     The first cut keyed on the loop counter -- `...:<tag>:<i>`. Two ways that
+     is wrong, and both end in the SILENT LOSS this whole change exists to
+     stop, because a deduped credit returns 'dup' and drops the weapon:
+
+       1. The index means nothing about WHICH weapon it is. Change the reward
+          list (tut_1 already pays two, and its staff moved here from tut_2 at
+          v2.3.1692) and index 0 now names a different weapon than the stamp
+          in oplog: was written for. The new weapon is refused as a duplicate
+          of the old one.
+       2. A weapon can only fit some of the time. Grant it with a FULL stash
+          and it inboxes at index 0; free a slot, and the next quest's first
+          unfit weapon takes index 0 too.
+
+     So the key is the weapon's own identity -- type plus the gearBase the
+     tier is minted into -- with an occurrence counter scoped WITHIN that
+     identity, which is the only thing the index was ever legitimately for
+     (two identical weapons in one reward, where the second must not dedup
+     against the first). Content first means a shifted position is harmless:
+     a moved weapon carries its own key with it. */
+  _questWeaponOpKey(w) {
+    /* Mirrors the minted shape in _grantQuestItem. Sanitised because it lands
+       in a storage KEY: anything outside [A-Za-z0-9_-] could collide two
+       different weapons onto one key, which is the bug this replaced. */
+    const part = (v) => String(v == null ? '' : v).replace(/[^A-Za-z0-9_-]/g, '');
+    return part(w && w.type) + '.' + part(w && w.gearBase);
+  },
+
   async _questDrainUnfitWeapons(playerId, ps, tag) {
     const unfit = Array.isArray(ps._questWeaponUnfit) ? ps._questWeaponUnfit : null;
     ps._questWeaponUnfit = null;
     if (!unfit || !unfit.length) return 0;
     let n = 0;
+    const seen = Object.create(null);   /* rule 4: never a plain {} for a keyed map */
     for (let i = 0; i < unfit.length; i++) {
+      const key = this._questWeaponOpKey(unfit[i]);
+      const nth = (seen[key] = (seen[key] || 0) + 1);
       try {
         await this._creditPlayer(playerId, {
-          opId: 'questitem:' + playerId + ':' + tag + ':' + i,
+          opId: 'questitem:' + playerId + ':' + tag + ':' + key + '#' + nth,
           source: 'quest',
           kind: 'weapon',
           payload: { weapon: unfit[i] },

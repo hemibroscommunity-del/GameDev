@@ -121,3 +121,92 @@ before zeroing the purse so the coins measured are the quest's and nothing
 else's — under either branch. Worth knowing generally: **an absolute-value
 assertion in this suite is fragile**, because the room credits in the
 background and any new await moves where that lands.
+
+---
+
+# v2.3.2421 — three defects an adversarial pre-merge review found in the above
+
+The v2.3.2420 change was green, mutation-tested, and about to auto-deploy to the
+live worker. Two independent review lenses, given different briefs, found the
+same two defects; a third fell out of writing the pins. All three are corrected
+here.
+
+## 1. The opId named an array index, not a weapon (high)
+
+```js
+opId: 'questitem:' + playerId + ':' + tag + ':' + i    // i = the loop counter
+```
+
+A deduped credit returns `'dup'` and **drops the weapon** — the exact silent
+loss this whole change exists to stop. The index says nothing about *which*
+weapon it is, so:
+
+- change the reward list and index 0 names a different weapon than the stamp in
+  `oplog:` was written for. **tut_1's staff already moved here from tut_2** at
+  v2.3.1692, so this is not hypothetical.
+- a weapon only fails to fit *sometimes*. Granted with a full stash it inboxes
+  at index 0; free a slot, and the next quest's first unfit weapon takes 0 too.
+
+Now the key is the weapon's own identity — `type.gearBase` — with an occurrence
+counter scoped **within** that identity, which is the only thing the index was
+ever legitimately for (two identical weapons in one reward, where the second
+must not dedup against the first). Content first means a shifted position is
+harmless: a moved weapon carries its key with it. Sanitised, because it lands in
+a storage key.
+
+## 2. The stamp outlived the character (high)
+
+Stamps are keyed by **player id**, and a restart does not change it — the
+passphrase *is* the character. So a restarted character walks the tutorial
+again, turns tut_1 in, and the credit finds its own stamp from the **previous
+life**, returns `'dup'`, and the bow and staff vanish.
+
+That is the original bug, reintroduced for precisely the player who already hit
+it hard enough to restart — **which is the owner**, and which is how the
+severity was judged.
+
+`_resetCharacterData` now sweeps `oplog:questitem:<pid>:`. Deleting is the
+honest repair rather than adding a generation counter: a restarted character
+*has* received nothing, so the correct state of its payout journal is empty.
+Scoped to that prefix and that pid, so no other producer's idempotency is
+touched. Best-effort — a failed sweep must not block the wipe, since a stamp
+only ever causes a re-grant to be skipped, never a double-pay.
+
+## 3. The dev kit left a loaded gun on the scratch (medium)
+
+`devtools.js` calls `_grantQuestItem` directly and is not a quest handler, so it
+never drains. On a full stash its rejects sat on `ps._questWeaponUnfit` until
+the player's **next quest turn-in** drained them and paid them out as that
+quest's reward, under that quest's opIds — a debug tool minting real weapons
+into a real inbox, and shifting the quest's own occurrence counters while it
+did. It clears the scratch now; the kit's existing contract is already "a full
+stash is not fatal", and a debug affordance has no business writing to the
+journal real payouts converge on.
+
+## And a test-infrastructure defect underneath all of it
+
+`storage.list` in three suites was `async () => new Map(store)` — **it ignored
+the prefix and returned the whole store**. Any code scoping a sweep by prefix
+was untested there and behaved differently than against real DO storage;
+**twelve-plus production call sites pass a prefix**. It surfaced when the reset
+sweep deleted every key in the mock and the scoping assertions failed against a
+mock that cannot express scoping.
+
+`tutorial`, `chainscore` and `hiscores` now use the same faithful implementation
+the other suites already had. **The full suite still passes**, so this revealed
+no other latent bug — but it means the sweep's scoping is now actually proven
+rather than assumed.
+
+## Pins
+
+Seven more assertions. Each mutation-tested **individually**: restore the index
+opId, or the reset sweep, or the devtools clear, and exactly one assertion goes
+red — its own — with everything else still green.
+
+The devtools pin runs against a stash **already at cap**, which is the only
+state where the leak exists; §8 above it runs on an empty stash and could not
+see this however many assertions it grew.
+
+The restart pin runs on a **throwaway id**: `_resetCharacterData` deletes
+`playerState[pid]`, and the first cut ran it on the shared fixture, detaching
+the `ps` four later sections still held.

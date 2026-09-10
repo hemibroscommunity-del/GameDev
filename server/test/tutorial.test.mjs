@@ -66,7 +66,19 @@ function makeState() {
     storage: {
       get: async (k) => store.get(k),
       put: async (k, v) => { store.set(k, v); },
-      list: async () => new Map(store),
+      list: async (opts) => {
+        /* v2.3.2421: HONOUR THE PREFIX, like every other suite's mock.
+           This was `async () => new Map(store)` -- it handed back the WHOLE
+           store whatever you asked for, so any code that scopes a sweep by
+           prefix was untested here and behaved differently than it does
+           against real DO storage. Caught when a reset sweep scoped to
+           `oplog:questitem:<pid>:` deleted every key in the store and the
+           scoping assertions failed against a mock that cannot express
+           scoping. Twelve-plus production call sites pass a prefix. */
+        const out = new Map();
+        for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, v);
+        return out;
+      },
       delete: async (k) => { store.delete(k); },
     },
     getWebSockets: () => [],
@@ -426,6 +438,59 @@ const sess = { id: 'bp_t' };
        rides on must never reach the saved blob. */
     check('...while the scratch it travelled on never reaches the saved blob',
       ps._questWeaponUnfit == null, ps._questWeaponUnfit);
+
+    /* ═══ v2.3.2421: THE opId NAMES THE WEAPON, NOT ITS POSITION ═══
+       Found by an adversarial pre-merge review, and it is the same silent
+       loss v2.3.2420 exists to stop: a deduped credit returns 'dup' and the
+       weapon is dropped. Keyed on the loop index, a reward list that changes
+       (tut_1's staff MOVED here from tut_2 at v2.3.1692) makes index 0 name a
+       different weapon than the stamp was written for. */
+    check('the opId identifies the WEAPON, so a reordered reward cannot dedup '
+      + 'against a stamp written for a different one',
+      wpns.every((e) => {
+        const w = e.payload.weapon;
+        return e.opId.includes(':' + w.type + '.' + w.gearBase + '#');
+      }), wpns.map((e) => e.opId));
+    check('...and two different weapons never share an opId',
+      new Set(wpns.map((e) => e.opId)).size === wpns.length, wpns.map((e) => e.opId));
+  }
+
+  /* ═══ v2.3.2421: A RESTARTED CHARACTER IS NOT ITS PREVIOUS LIFE ═══
+     The stamps are keyed by PLAYER ID, and a restart does not change it --
+     the passphrase IS the character. So the second life turns tut_1 in, the
+     credit finds the FIRST life's stamp, returns 'dup', and the bow and staff
+     vanish again: the original bug, reintroduced for precisely the player who
+     already restarted to escape it.
+
+     On a THROWAWAY id. _resetCharacterData deletes playerState[pid], and the
+     first cut ran it on `sess` -- which detached the ps every later section
+     of this file is still holding, and turned four unrelated checks red. The
+     sweep is what is under test here, not how the stamps got written, so
+     writing them directly is both sufficient and isolated. */
+  {
+    const victim = 'bp_resetme';
+    const keep = [
+      ['oplog:questitem:bp_other:turnin:tut_1:bow.ww_pine#1', 1],  /* another PLAYER */
+      ['oplog:duelpot:' + victim + ':x', 1],                        /* another PRODUCER */
+      ['rpg:' + victim, { coins: 1 }],
+    ];
+    for (const [k, v] of keep) await room.state.storage.put(k, v);
+    for (const w of ['bow.ww_pine#1', 'staff.ww_pine#1', 'greatsword.copper#1']) {
+      await room.state.storage.put('oplog:questitem:' + victim + ':turnin:tut_1:' + w, Date.now());
+    }
+    const before = await room.state.storage.list({ prefix: 'oplog:questitem:' + victim + ':' });
+    check('the first life left questitem stamps behind (guard)', before.size === 3, before.size);
+
+    await room._resetCharacterData(victim);
+
+    const after = await room.state.storage.list({ prefix: 'oplog:questitem:' + victim + ':' });
+    check('restarting the character clears ITS quest-reward stamps, so the '
+      + 'second life is paid its bow and staff instead of being deduped',
+      after.size === 0, after.size);
+    check('...and leaves another PRODUCER\'s idempotency alone',
+      (await room.state.storage.get('oplog:duelpot:' + victim + ':x')) != null);
+    check('...and does not reach into another PLAYER\'s stamps',
+      (await room.state.storage.get('oplog:questitem:bp_other:turnin:tut_1:bow.ww_pine#1')) != null);
   }
 }
 
