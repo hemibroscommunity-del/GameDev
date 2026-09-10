@@ -93,12 +93,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* the shirt opens on PATTERN; its modes are pattern / front / back, so the
        front drawing grid is the second tab -- the same position pants used. */
     await page.click('.bt-paint-tabs button:nth-child(2)');
-    await page.waitForSelector('canvas.bt-paint-grid', { timeout: 20000 });
-    await page.waitForTimeout(400);
+    /* ═══ v2.3.2426: THE SHIRT IS ON THE CHARACTER NOW ═══
+       Owner: "The shirt canvas should be a preview of the shirt you're drawing
+       on (not just the blank drawing canvas)."  So the last flat 16x16 grid is
+       gone and this scenario -- which is about the SHAPE AND LAYER TOOLS, not
+       about which surface they run on -- moves to the body surface with them.
+       That is the second move for this file (v2.3.2416 brought it here from the
+       pants) and both times for the same reason: it follows whichever designer
+       still exists.
+       Everything below it is unchanged, because the tools genuinely are the
+       same code on both surfaces (v2.3.1994) -- only the two helpers that turn
+       a CELL into a screen point had to learn the new mapping. */
+    await page.waitForSelector('.bt-bodyink-cv', { timeout: 20000 });
+    await page.waitForTimeout(2200);
     return true;
   };
   const opened = await openGrid();
-  rec.ok('a garment designer has a flat grid with the shape tools on it', !!opened);
+  rec.ok('a garment designer has a grid with the shape tools on it', !!opened);
   if (!opened) return;
 
   /* MEASURED PER GESTURE, not once.  The designer's panel is wider than the
@@ -109,15 +120,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
      change's scope, but a scenario that cached one bounding box would aim every
      tap after the first tool click at the wrong cell and report a broken
      editor.  Re-reading the box is both correct and cheap. */
-  const gridBox = () => page.$eval('canvas.bt-paint-grid', (c) => {
+  /* v2.3.2426: the grid is no longer the canvas box -- it is the rectangle the
+     shirt print occupies ON the figure, which the surface reports as
+     `__btInkAim.shirt` (in the canvas's own backing pixels) and which moves
+     with the zoom.  Read per gesture for the same reason the box was:
+     everything here can shift under a control click. */
+  const gridBox = () => page.evaluate(() => {
+    const c = document.querySelector('.bt-bodyink-cv');
+    const a = c && c.__btInkAim && c.__btInkAim.shirt;
+    if (!a || !c.width) return null;
     const r = c.getBoundingClientRect();
-    return { x: r.x, y: r.y, w: r.width, h: r.height };
+    const k = r.width / c.width;                  /* backing store -> CSS px */
+    return { x: r.x + a.gx0 * k, y: r.y + a.gy0 * k, w: a.gw * k, h: a.gh * k };
   });
   let box = await gridBox();
-  rec.ok('the grid has a real on-screen size to aim at (guard)', box.w > 100 && box.h > 100, box);
-  if (box.w <= 100) return;
+  rec.ok('the print area has a real on-screen size to aim at (guard)',
+    !!box && box.w > 100 && box.h > 100, box);
+  if (!box || box.w <= 100) return;
 
-  /* Cell -> client px.  The grid is exactly 16x16 over the canvas box, so this
+  /* Cell -> client px.  The grid is exactly 16x16 over the reported box, so this
      is arithmetic rather than a guess — and the assertions below are about
      WHICH CELL took ink, so a mis-aimed tap shows up as a failure, not as a
      silent pass. */
@@ -409,6 +430,68 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await page.waitForTimeout(350);
   const cleared = await art();
   rec.ok('Clear empties the drawing (and the list under it)', inked(cleared) === 0, { n: inked(cleared) });
+
+  /* ═══ v2.3.2423: A LETTER IS A SHAPE NOW ═══
+     Owner: "The letters aren't working correctly (not pasting onto the
+     character and not scaling/resizing"; "Letters need to default smaller on
+     the pants they get cut off"; "You should be able to select something and
+     recolor it."
+     Three complaints, one missing property: a letter op was {g,x,y} with no
+     size, so there was nothing to resize and the panel's own resize handler
+     said so in a comment.  It carries a box now -- same handle, same drag, same
+     ratio lock as a rectangle -- and it stays selected when placed, which is
+     what "not pasting" turned out to be: it DID paste (16 cells, measured) and
+     was let go of in the same frame, leaving nothing to adjust and no visible
+     sign anything had happened. */
+  const LETTERS_TOOL = 6;
+  const opList = () => page.evaluate(([k, id]) => {
+    try { const p = JSON.parse(localStorage.getItem(k) || '{}'); return (p[id] && p[id].o) || []; }
+    catch (e) { return null; }
+  }, [OPS_KEY, DOC_ID]);
+  const layerText = () => page.$eval('.bt-paint-layer-at', (e) => e.textContent.trim()).catch(() => null);
+
+  await btn('Clear');
+  await page.waitForTimeout(300);
+  await tool(LETTERS_TOOL);
+  const strip = await page.$('.bt-paint-letters');
+  rec.ok('the Letters tool offers an alphabet (guard)', !!strip);
+  if (strip) {
+    await page.click('.bt-paint-letter[aria-label="Letter A"]');
+    await page.waitForTimeout(200);
+    await colour(9);                    /* palette index 8 -- a blue */
+    await tap(8, 8);
+    const placed = (await opList()).slice(-1)[0];
+    rec.ok('a placed letter lands as an op with a BOX, not a bare point',
+      !!placed && placed.k === 't' && Array.isArray(placed.a) && placed.a.length === 4, placed);
+    rec.ok('...and stays picked up, so there is something to adjust',
+      /letter a/i.test(await layerText() || ''), { layer: await layerText() });
+
+    /* RESIZE.  The handle is the box's far corner; dragging it out has to
+       change the box, which is the property that did not exist at all. */
+    if (placed && placed.a) {
+      const a0 = placed.a.slice();
+      await drag(a0[2], a0[3], Math.min(15, a0[2] + 3), Math.min(15, a0[3] + 3));
+      const grown = (await opList()).slice(-1)[0];
+      rec.ok(`a letter RESIZES from its handle (${a0.join(',')} -> ${grown && grown.a && grown.a.join(',')})`,
+        !!grown && grown.a && (grown.a[2] > a0[2] || grown.a[3] > a0[3]),
+        { before: a0, after: grown && grown.a });
+      /* And the glyph follows the box: bigger box, more inked cells.  Without
+         this, "the box changed" could be true of a number nothing reads. */
+      const bigInk = [...(await art())].filter((c) => c !== '0').length;
+      rec.ok(`...and the drawing grows with it (${bigInk} cells inked)`, bigInk > 0, { bigInk });
+    }
+
+    /* RECOLOUR.  With something picked up, the palette repaints IT rather than
+       only arming the next mark -- which is what it did for every version
+       before this one. */
+    const beforeInk = (await opList()).slice(-1)[0];
+    await colour(4);                    /* palette index 3 -- a red */
+    const after = (await opList()).slice(-1)[0];
+    rec.ok(`picking a colour with a letter held RECOLOURS it (${beforeInk && beforeInk.i} -> ${after && after.i})`,
+      !!after && after.i !== (beforeInk && beforeInk.i), { before: beforeInk && beforeInk.i, after: after && after.i });
+    rec.ok('...and does not add an op -- it changes the one you are holding',
+      (await opList()).length === 1, { ops: (await opList()).length });
+  }
 
   const errs = A.logs.filter((l) => String(l).startsWith('pageerror'));
   rec.ok('no page errors while shaping and re-layering', errs.length === 0, errs.slice(0, 3));

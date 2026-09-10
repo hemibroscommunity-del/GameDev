@@ -648,11 +648,26 @@ export async function drawCharacterPortrait(canvas, opts) {
        They used to: this file tinted then stamped (right), while the renderer
        stamped then applied a sprite tint over the whole texture (which
        multiplied the print by the shirt colour). */
+    /* v2.3.2426: the SHIRT reports its grid too, when the designer asks for
+       grids.  It goes into the same `__btGrids` object the body regions use and
+       in the same coordinate space: the shirt sheet is upscaled to FRAME above,
+       and this layer is drawn through the identical ctx transform the body was,
+       so `__btGridXform` maps both without a second matrix.
+       Only frame 0 is on this canvas (the source rect below is one frame), and
+       the other frames' boxes sit past its right edge, so they cannot be
+       touched -- the same arrangement the body regions have. */
+    const _shirtRep = (opts && opts.reportGrids) ? [] : null;
     const layer = composeShirt(shirtUp, FRAME, {
       tint: shirtColor || null, pattern: parsePattern(_shirtPat, 'shirt'),
-      art: _art, mirror: false,
+      art: _art, mirror: false, report: _shirtRep,
     });
     ctx.drawImage(layer, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
+    if (_shirtRep && _shirtRep.length) {
+      try {
+        if (!canvas.__btGrids) canvas.__btGrids = {};
+        canvas.__btGrids.shirt = _shirtRep;
+      } catch (e) { /* frozen element: no probe, no harm */ }
+    }
   }
   /* ═══ v2.3.1815: THE ARMOUR, in the renderer's own slot order ═══
      legs -> chest -> shoulders (entityRenderer's _GEAR_SLOTS, minus the

@@ -2,6 +2,13 @@ import React from 'react';
 import { ART_W, ART_H, ART_PALETTE } from '@/rendering/traits/playerArt.js';
 import { cellAt } from '@/rendering/playerDecal.js';   /* v2.3.1962 */
 import { drawCharacterPortrait } from '@/rendering/characterPortrait.js';
+import { SHIRT_CATALOG } from '@/rendering/traits/shirtCatalog.js';   /* v2.3.2426 */
+
+/* v2.3.2426: the first shirt that is not "none" -- read from the catalogue
+   rather than hard-coded, so importing a second shirt cannot leave this
+   pointing at one that was removed.  The same rule PlayerPaint's worn preview
+   uses (v2.3.2416); one more caller, not a second policy. */
+const DEFAULT_SHIRT = (SHIRT_CATALOG.find((o) => o && o.id !== 'none') || {}).id || 'none';
 
 /* ═══ v2.3.1965: TATTOO THE BODY, NOT A GRID ═══
  *
@@ -109,14 +116,31 @@ const REGIONS = [
      pants bbox does not overlap any skin region, so its position only decides
      ties that cannot happen. */
   { key: 'pants',  target: 'pants',      label: 'Pants' },
+  /* v2.3.2426: THE SHIRT.  Owner: "The shirt canvas should be a preview of the
+     shirt you're drawing on (not just the blank drawing canvas)."  The reason
+     it was not, given at v2.3.2416, was that "a shirt print is stamped on a
+     different sheet with no region to hit-test against" -- true of the code as
+     it stood and not of the sheet: stampShirtArt already computed the exact box
+     it fits the grid into and simply never reported it.  It does now, into the
+     same `__btGrids` object under the key `shirt`, so this row is all the
+     surface needs.
+     Last in the list, after `pants`: the shirt grid sits over the CHEST, which
+     is also the tattoo region, so on a screen that could reach both the
+     more-specific one has to win.  No screen reaches both today (TAB_REGIONS
+     fences the shirt alone), so this only decides a tie that cannot happen --
+     which is exactly what was said of `pants` when it was added. */
+  { key: 'shirt',  target: 'shirtFront', label: 'Shirt' },
 ];
 /* v2.3.2150: front canvas -> its back counterpart, and back -> the front
    REGION it is drawn on. Both directions are needed and they are not the same
    question: the first is "which canvas does this touch write to", the second is
    "which part of the figure is that canvas drawn over". */
-/* v2.3.2424: +the trousers, whose two sides work exactly like the torso's. */
-const BACK_TARGET = { tattoo: 'tattooBack', tattooFace: 'tattooHeadBack', pants: 'pantsBack' };
-const FRONT_OF = { tattooBack: 'tattoo', tattooHeadBack: 'tattooFace', pantsBack: 'pants' };
+/* v2.3.2424: +the trousers, whose two sides work exactly like the torso's.
+   v2.3.2426: +the shirt, which has had two sides since v2.3.1939 -- it reaches
+   them through the MODE strip rather than the Front/Back switch, but by the
+   time it gets here the answer is the same one word: which side is showing. */
+const BACK_TARGET = { tattoo: 'tattooBack', tattooFace: 'tattooHeadBack', pants: 'pantsBack', shirtFront: 'shirtBack' };
+const FRONT_OF = { tattooBack: 'tattoo', tattooHeadBack: 'tattooFace', pantsBack: 'pants', shirtBack: 'shirtFront' };
 const keyForTarget = (t) => {
   /* A back canvas has no region OF ITS OWN NAME: the grid report is keyed by
      body region (`tattoo`, `face`, `arms`, `pants`) and says nothing about
@@ -158,6 +182,10 @@ const TAB_REGIONS = {
      this one really is a fence -- and it needs to be, because the legs sit
      directly under a torso whose skin IS inkable on another screen. */
   pants: ['pants'],
+  /* v2.3.2426: the shirt screen frames the garment and nothing else.  A fence
+     like the pants one and for the same reason: the print sits directly over a
+     chest whose skin IS inkable on another screen. */
+  shirt: ['shirt'],
 };
 
 /** Invert a 2D affine matrix applied as x' = a·x + c·y + e. */
@@ -611,7 +639,19 @@ export default function BodyInk({
          opposite is true: the trousers are the thing being drawn on, so
          stripping the shirt would only take away the context that tells you
          where the waistband is.  Whatever the player is actually wearing. */
-      const bareSkin = region !== 'pants';
+      /* v2.3.2426: three regions, three answers about what stays ON.
+         SKIN: strip the shirt and the hat -- this surface exists so you can
+         move between chest, face and arms without changing screens, and a
+         covered region you cannot ink reads as broken rather than as covered.
+         PANTS: keep everything -- the trousers are the thing being drawn on and
+         the shirt is the context that says where the waistband is.
+         SHIRT: keep everything AND make sure a shirt is on, which is the whole
+         of the owner's note.  A print needs something to print on, and with
+         nothing worn this surface would frame a bare chest and report no grid
+         at all -- the same case the creator's ink card answers by putting the
+         catalogue's first shirt on (v2.3.2416). */
+      const onShirt = region === 'shirt';
+      const bareSkin = region !== 'pants' && !onShirt;
       /* ═══ v2.3.2422: THE SURFACE TURNS ROUND WITH THE SWITCH ═══
          Owner: "the back button does not make the large canvas rotate to the
          back.  Also the front copies its drawings onto the back (these should
@@ -657,7 +697,15 @@ export default function BodyInk({
         pantsArt: (backSide ? A.pantsBack : A.pants) || '',
         reportGrids: true,
         scale: Math.min(2, Math.round((typeof window !== 'undefined' && window.devicePixelRatio) || 1)),
-      }, bareSkin ? { shirt: 'none', headwear: 'none' } : null);
+      }, bareSkin ? { shirt: 'none', headwear: 'none' } : null,
+      onShirt ? {
+        shirtArt: (backSide ? A.shirtBack : A.shirtFront) || '',
+        /* The garment, when one is worn; the catalogue's first otherwise.
+           Without this the surface reports no shirt grid and the screen is
+           un-drawable for every player who has not picked a shirt -- which is
+           every new one. */
+        shirt: (look && look.shirt && look.shirt !== 'none') ? look.shirt : DEFAULT_SHIRT,
+      } : null);
       return drawCharacterPortrait(offRef.current, opts).then(() => {
         const off = offRef.current;
         gridsRef.current = (off && off.__btGrids) || null;

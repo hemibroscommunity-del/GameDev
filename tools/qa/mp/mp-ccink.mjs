@@ -578,7 +578,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const P3 = await H.newPlayer(browser, { name: 'Ed', wsPort, webPort,
     viewport: { width: 390, height: 844 }, touch: true });
   await openCreator(P3);
-  for (const [tab, wantTitle, wantSurface] of [['Skin', 'Tattoos', 'body'], ['Pants', 'Pants design', 'body'], ['Shoes', 'Shoe pattern', null]]) {
+  /* v2.3.2426: the SHIRT joins the loop, and it is the interesting one -- it
+     was the last editor working on a bare 16x16 grid, on the stated reasoning
+     that its print "is stamped on a different sheet with no region to hit-test
+     against".  Owner: "The shirt canvas should be a preview of the shirt you're
+     drawing on (not just the blank drawing canvas)." */
+  for (const [tab, wantTitle, wantSurface] of [['Skin', 'Tattoos', 'body'], ['Shirt', 'Shirt design', 'body'], ['Pants', 'Pants design', 'body'], ['Shoes', 'Shoe pattern', null]]) {
     rec.ok(`editors: the ${tab} tab opened (guard)`, await pickTab(P3, tab), null);
     await P3.page.waitForTimeout(1100);
     await P3.page.click('button.bt-cc-ink-pane');
@@ -671,6 +676,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
         });
         await P3.page.waitForTimeout(2000);
       }
+      /* v2.3.2426: the shirt opens on its PATTERN screen; `front` is where the
+         drawing is made, so that is the one to look at. */
+      if (tab === 'Shirt') {
+        await P3.page.evaluate(() => {
+          const b = [...document.querySelectorAll('.bt-paint-tabs .bt-cc-tab')]
+            .find((x) => /front/i.test(x.textContent || ''));
+          if (b) b.click();
+        });
+        await P3.page.waitForTimeout(2400);
+      }
       const surf = await P3.page.evaluate(() => {
         const cv = document.querySelector('.bt-bodyink-cv');
         const aim = cv && cv.__btInkAim;
@@ -679,6 +694,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
       });
       rec.ok(`editors: ${tab} draws on the CHARACTER, not on a bare 16x16 grid`,
         surf.body && !surf.flatGrid, surf);
+      if (tab === 'Shirt') {
+        rec.ok(`editors: ...and the surface reports where the PRINT sits on the `
+          + `garment (${surf.regions.join(',')})`, surf.regions.indexOf('shirt') >= 0, surf);
+        /* End to end, and the half that a region report alone cannot prove: a
+           touch on the shirt has to write the SHIRT canvas.  A surface that
+           framed the garment and wrote the chest tattoo underneath it would
+           satisfy every assertion above -- and the tattoo canvas is genuinely
+           there, directly beneath this one, which is why it is the control. */
+        const aim = await P3.page.evaluate(() => {
+          const c = document.querySelector('.bt-bodyink-cv');
+          const a = c && c.__btInkAim && c.__btInkAim.shirt;
+          return a ? { x: a.x, y: a.y, w: c.width } : null;
+        });
+        rec.ok('editors: the shirt print has a point to aim at (guard)', !!aim, aim);
+        if (aim) {
+          const b = await (await P3.page.$('.bt-bodyink-cv')).boundingBox();
+          const px = b.x + (aim.x / aim.w) * b.width, py = b.y + (aim.y / aim.w) * b.height;
+          await P3.page.mouse.move(px, py);
+          await P3.page.mouse.down();
+          await P3.page.mouse.move(px + 1, py + 1);
+          await P3.page.mouse.up();
+          await P3.page.waitForTimeout(800);
+          const landed = await P3.page.evaluate(() => {
+            const ink = (k) => { const v = localStorage.getItem(k) || ''; return [...v].filter((c) => c !== '0').length; };
+            return { shirt: ink('bt-shirtart'), chest: ink('bt-tattooart') };
+          });
+          rec.ok(`editors: a touch on the shirt inks the SHIRT and not the chest `
+            + `under it (${landed.shirt} / ${landed.chest})`,
+            landed.shirt > 0 && landed.chest === 0, landed);
+        }
+      }
       if (tab === 'Pants') {
         rec.ok(`editors: ...and the surface reports where the trousers are `
           + `(${surf.regions.join(',')})`, surf.regions.indexOf('pants') >= 0, surf);

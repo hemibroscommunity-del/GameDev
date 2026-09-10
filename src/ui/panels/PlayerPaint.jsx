@@ -719,7 +719,16 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      the renderer reports a grid for pants, the tattoo canvases and the face,
      but a shirt print is stamped on a different sheet with no region report, so
      there is nothing for a touch to hit-test against there yet. */
-  const onBody = isTattoo || target === 'pants';
+  /* v2.3.2426: THE SHIRT DRAWS ON THE SHIRT.  Owner: "The shirt canvas should
+     be a preview of the shirt you're drawing on (not just the blank drawing
+     canvas)."  The note left at v2.3.2416 said this could not be done because
+     the shirt print "is stamped on a different sheet with no region to
+     hit-test against" -- which was true of the code and never of the sheet.
+     stampShirtArt has always computed the exact box it fits the grid into; it
+     reports it now (playerDecal, v2.3.2426) and the surface hit-tests it with
+     the code it already had.
+     `onPattern` still forks before this, so the pattern screen is untouched. */
+  const onBody = isTattoo || target === 'pants' || isShirt;
   /* ═══ v2.3.1994: THE TAB FRAMES, THE FINGER CHOOSES ═══
      Owner: "Can you just make anywhere where skin is showing be tattooable?"
 
@@ -1073,6 +1082,10 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        is a canvas whose every touch reports a MISS and drops the stroke.
        v2.3.2424: both sides of them. */
     pants: liveArt('pants'), pantsBack: liveArt('pantsBack'),
+    /* v2.3.2426: and the shirt's two sides, now that the print is made on the
+       garment.  Same rule as every canvas above -- one missing from here is one
+       whose every touch reports a MISS and drops the stroke. */
+    shirtFront: liveArt('shirtFront'), shirtBack: liveArt('shirtBack'),
     /* liveArt reads only `art`/`artId` and the store; bodyTick is the store's
        own change signal.  (No react-hooks plugin in this repo's flat config —
        the deps are stated by hand and checked by hand.) */
@@ -1784,7 +1797,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                same things the flat grid draws on itself (what is selected,
                where its handle is, and the ink that has not been baked yet). */
             <BodyInk look={look} arts={bodyArts} ink={ink}
-              region={isPants ? 'pants' : (mode === 'face' ? 'face' : 'tattoo')}
+              region={isShirt ? 'shirt' : (isPants ? 'pants' : (mode === 'face' ? 'face' : 'tattoo'))}
               apiRef={bodyApiRef} activeTarget={artId}
               /* v2.3.2422: the big canvas faces the side being inked, exactly as
                  the little worn preview beside it has since v2.3.2150.  Owner:
@@ -1794,7 +1807,13 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                  read one value.  (`side` is 'front' on the pants screen, which
                  has no switch, so nothing there changes.) */
               dir={side === 'back' ? 'north' : 'south'}
-              backSide={inkBack}
+              /* v2.3.2426: `side`, not `inkBack`.  The tattoo and pants screens
+                 reach their far side through the Front/Back switch and the SHIRT
+                 reaches its own through the mode strip (v2.3.1939), and `side`
+                 is where those two already agree -- so the surface is told
+                 which way round the character is, once, by the value both
+                 controls resolve to. */
+              backSide={side === 'back'}
               onRegion={bodyRegion} onDown={down} onMove={move} onUp={up}
               overlayCells={(liveIdx >= 0 && liveIdx < painted.cells.length) ? painted.cells[liveIdx] : null}
               selCells={(sel >= 0 && sel < painted.cells.length) ? painted.cells[sel] : null}
@@ -1802,7 +1821,19 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
           ) : (
             /* v2.3.1967: a class, so a headless scenario can aim at the flat
                grid without guessing which canvas in the panel it is (the panel
-               holds a worn preview and, on the body tab, the figure). */
+               holds a worn preview and, on the body tab, the figure).
+               ═══ v2.3.2426: NOTHING ROUTES HERE ANY MORE ═══
+               The shirt was the last target that drew on a flat 16x16 grid and
+               it moved onto the garment in this version, so every drawable
+               target is now a body target and this branch has no way to be
+               reached.  It is left standing rather than deleted, and that is a
+               judgement call worth stating rather than hiding: it is the `else`
+               of a two-branch ternary, it costs nothing to keep, and the next
+               drawable surface that CANNOT report a region on the figure -- a
+               garment with no sprite, an accessory drawn as a separate layer --
+               needs exactly this.  Flagged for the owner rather than removed
+               quietly; if drawing on the character is the answer everywhere,
+               this and its paint effect above are a clean deletion. */
             <canvas ref={cvRef} width={size} height={size} className="bt-paint-grid"
               onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
               style={{ width: '100%', aspectRatio: '1 / 1',

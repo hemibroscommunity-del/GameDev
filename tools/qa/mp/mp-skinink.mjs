@@ -154,6 +154,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     ui.mirror && ui.tools.some((t) => /fill/i.test(t)), ui);
   rec.ok('the pan button is a picture of panning, not the word "Move"',
     ui.panIcon && !ui.panWord, ui);
+  /* v2.3.2423: still 100% AT REST -- the editor opens fitted, and that is the
+     number this asserts.  What changed is that it no longer stays 100% when
+     the view does not; see the readout assertions further down. */
   rec.ok('"Fit" is now "100%"', ui.zoomBack.includes('100%') && !ui.zoomBack.includes('Fit'), ui.zoomBack);
   rec.ok('Clear is a trash can icon with the sentence on its label',
     ui.clearIcon && !ui.clearWord, ui);
@@ -360,12 +363,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!z2 && Math.abs(z2.z - z1.z) < 0.01, { beforeStroke: z1 && z1.z, afterStroke: z2 && z2.z });
   await page.screenshot({ path: SHOTS + '/skinink-editor-zoomed.png' });
 
-  /* ...and 100% is still the way back. */
-  const fitBtn = await page.$('.bt-bodyink-bar button:has-text("100%")');
+  /* ═══ v2.3.2423: ...AND THE CORNER BUTTON IS A READOUT NOW ═══
+     Owner: "The zoom in and zoom out percentage doesn't change despite zooming
+     and out."  It said "100%" as a fixed string, which reads as a readout
+     sitting between a minus and a plus and was not one.  So it states the live
+     zoom against the fitted one, and it is still the button that puts the view
+     back: it reads 471%, you tap it, it reads 100%.
+     Selected by `data-zoom-pct` rather than by its text, which is the whole
+     point of the change -- this scenario's own `:has-text("100%")` stopped
+     matching the moment the label started telling the truth, found nothing,
+     clicked nothing, and reported that 100% no longer worked. */
+  const pctLabel = () => page.$eval('.bt-bodyink-bar button[data-zoom-pct]',
+    (b) => b.textContent.trim()).catch(() => null);
+  const zoomedPct = await pctLabel();
+  rec.ok(`the corner readout follows the zoom (${zoomedPct} after four taps of +)`,
+    !!zoomedPct && zoomedPct !== '100%', { zoomedPct, z: z1 && z1.z });
+  const fitBtn = await page.$('.bt-bodyink-bar button[data-zoom-pct]');
   if (fitBtn) await fitBtn.click();
   await page.waitForTimeout(400);
   const z3 = await viewOf(page);
   rec.ok('100% puts the whole area back', !!z3 && z3.z < z1.z - 0.01, { zoomed: z1 && z1.z, back: z3 && z3.z });
+  rec.ok('...and says so afterwards', (await pctLabel()) === '100%', { after: await pctLabel() });
 
   /* ═══ THE FACE, INCLUDING THE PARTS THAT WERE OUT OF REACH ═════════════ */
   const faceTab = await page.$('.bt-paint-tabs .bt-cc-tab:nth-child(2)');

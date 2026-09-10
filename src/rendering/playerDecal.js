@@ -81,7 +81,7 @@ export function chestBox(data, W, H, x0, fw) {
  *        draws mirrored — so the print still reads the right way round
  * @returns {HTMLCanvasElement} a NEW canvas; the input is never mutated
  */
-export function stampShirtArt(sheet, art, frameH, mirror, clip) {
+export function stampShirtArt(sheet, art, frameH, mirror, clip, report) {
   const W = sheet.naturalWidth || sheet.width;
   const H = sheet.naturalHeight || sheet.height;
   const cv = document.createElement('canvas');
@@ -89,7 +89,11 @@ export function stampShirtArt(sheet, art, frameH, mirror, clip) {
   const ctx = cv.getContext('2d');
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(sheet, 0, 0);
-  if (!artHasInk(art)) return cv;
+  /* v2.3.2426: `report` keeps the measuring pass alive for a BLANK drawing --
+     the same rule the body regions have had since v2.3.1965, and for the same
+     reason: keyed on ink alone, a player who has drawn nothing gets no grid, so
+     the FIRST mark on a shirt could never be made. */
+  if (!artHasInk(art) && !report) return cv;
 
   const fh = frameH || H;
   const frames = Math.max(1, Math.round(W / fh));
@@ -114,6 +118,23 @@ export function stampShirtArt(sheet, art, frameH, mirror, clip) {
     const ox = Math.round(cx - dw / 2);
     const oy = Math.round(cy - dh / 2);
     const cw = dw / ART_W, ch = dh / ART_H;
+    /* ═══ v2.3.2426: WHERE THE PRINT LANDED, FOR THE DESIGNER ═══
+       Owner: "The shirt canvas should be a preview of the shirt you're drawing
+       on (not just the blank drawing canvas)."  The shirt was the last editor
+       still working on a bare 16x16 abstraction, and the reason given at
+       v2.3.2416 was that "a shirt print is stamped on a different sheet with no
+       region report, so there is nothing for a touch to hit-test against".
+       That was a description of this function, not a law: it already computes
+       the exact box it fits the grid into, and simply never said so.
+       Same record shape stampRegion uses (`{ox, oy, cw, ch, lx, rx, ty, by,
+       frame}`), so the body-ink surface can hit-test a shirt with the code it
+       already has.  The mask box IS the grid box here -- unlike a skin region,
+       which is a mask the grid is fitted to, this grid is fitted to the chest
+       and the print is whatever falls inside it. */
+    if (report) {
+      report.push({ ox, oy, cw, ch,
+        lx: ox, rx: ox + ART_W * cw - 1, ty: oy, by: oy + ART_H * ch - 1, frame: f });
+    }
     for (let gy = 0; gy < ART_H; gy++) {
       for (let gx = 0; gx < ART_W; gx++) {
         /* read the drawing flipped; the sprite's own mirror undoes it */
@@ -1003,10 +1024,12 @@ export function composeShirt(sheet, frameH, opts) {
     ctx.putImageData(id, 0, 0);
   }
 
-  if (o.art && artHasInk(o.art)) {
+  if ((o.art && artHasInk(o.art)) || o.report) {
     /* The print is clipped to the same lit fabric, so it stops at the outline
-       and at the seam lines rather than erasing them. */
-    return stampShirtArt(cv, o.art, frameH, !!o.mirror, _maskCanvas(lit, W, H));
+       and at the seam lines rather than erasing them.
+       v2.3.2426: `o.report` takes the same path with no ink, so the designer
+       gets the grid it needs to place a FIRST mark -- see stampShirtArt. */
+    return stampShirtArt(cv, o.art, frameH, !!o.mirror, _maskCanvas(lit, W, H), o.report);
   }
   return cv;
 }
