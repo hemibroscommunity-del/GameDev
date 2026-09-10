@@ -5,6 +5,7 @@ import { PlayerPaint } from './PlayerPaint.jsx';   /* v2.3.1938; v2.3.1940 pants
    the look from the one function that builds it, not a second copy. */
 import { portraitLook, categoryCrops } from '@/game/characterCreatorEffects.js';
 import { BUILD_INFO } from '../BuildBadge.jsx';
+import { joinBlockReason } from '@/data/joinGate.js';   /* v2.3.2388 */
 /* v2.3.1143: account login -- "Already have a character?" entry point
    for a player on a NEW device, who lands on this splash with a fresh
    silent identity and needs a way in with their saved Login Key before
@@ -285,10 +286,13 @@ export function NameModal(props) {
     /* v2.3.1929: Eyes sits with the face traits, and lands the row at a clean
        four-and-four in the 4-column grid rather than the old 4+3. */
     { t: 'eyes', label: 'Eyes', img: _TAB_ICON('eyes') },
-    /* v2.3.2361: eyewear, beside Eyes.  Inline glyph (like Build's was) until a
-       painted cc-tab-eyewear.png exists -- the icon prompt is in
-       docs/specs/eyewear.md.  Nine tabs is the clean 3x3 again. */
-    { t: 'eyewear', label: 'Eyewear', img: null, glyph: 'eyewear' },
+    /* v2.3.2361: eyewear, beside Eyes.  Nine tabs is the clean 3x3 again.
+       v2.3.2389: the owner drew the icon ("Use this for the eyewear thumbnail
+       for the trait picker category"), so the placeholder inline glyph this
+       tab shipped with is gone and it wears painted art like the other eight.
+       Section 7 of docs/specs/eyewear.md, which held the recipe for making
+       one, is closed by this. */
+    { t: 'eyewear', label: 'Eyewear', img: _TAB_ICON('eyewear') },
     { t: 'beard', label: 'Beard', img: _TAB_ICON('beard') },
     { t: 'shirt', label: 'Shirt', img: _TAB_ICON('shirt') },
     { t: 'pants', label: 'Pants', img: _TAB_ICON('pants') },
@@ -463,7 +467,15 @@ export function NameModal(props) {
   /* v2.3.1951: lifted to BroTown — it now also drives the preview camera, and
      that wiring lives up there beside activeCat. */
   var previewZoom = props.previewZoom, setPreviewZoom = props.setPreviewZoom;
+  /* v2.3.2393: the spin cue's resting opacity, named because two places care
+     -- the style below, and tools/qa/mp/mp-ccspin.mjs, which pins it. */
+  var SPIN_CUE_OPACITY = 0.5;
   var _dragMoved = React.useRef(false);
+  /* v2.3.2391: has this player turned the bro yet?  State, not a ref, because
+     the spin cue below has to REPAINT when it flips -- a ref would flip
+     silently and the cue would sit there after the thing it teaches has been
+     learned.  One-way: it never comes back within a session. */
+  var _spunS = React.useState(false), _hasSpun = _spunS[0], _setHasSpun = _spunS[1];
   /* v2.3.1308: category-aware framing — while the drawer is open the
      preview frames the region being edited (round-7 §preview).  Tap
      zoom overrides to close-up; everything transitions in ~180ms.
@@ -591,26 +603,104 @@ export function NameModal(props) {
      check to run — trimmed length is the honest contract. */
   var _trimmedName = (nameInput || '').trim();
   var _nameValid = _trimmedName.length >= 2;
+  /* ═══ v2.3.2388: THE BUTTON SAYS WHY IT WILL NOT GO ═══
+     Owner: "if someone tries to press the shared 'join brotown button' make it
+     give the reason it can't join (need name first) etc."
+     `_blockReason` is null when the player may enter; the string otherwise.
+     It comes from data/joinGate.js so the button explains the SAME rule
+     joinTown enforces -- including the pinch-zoom one, which used to reach the
+     player only as a window.alert() and only after the name was already valid.
+     `_pressMsg` holds it once they have actually pressed, so the screen stays
+     quiet until they ask. */
+  var _blockReason = joinBlockReason(nameInput);
+  var _pressS = React.useState(''), _pressMsg = _pressS[0], _setPressMsg = _pressS[1];
+  /* Clear the moment the reason stops being true -- a stale "name your bro
+     first" sitting under a filled field is worse than nothing. */
+  React.useEffect(function () {
+    if (!_blockReason && _pressMsg) _setPressMsg('');
+  }, [_blockReason, _pressMsg]);
+  var _nameFieldRef = React.useRef(null);
   /* v2.3.1307: iOS keyboard — reserve its height at the bottom of the
      box (visualViewport), so the name field + validation and the
-     controls stay visible while typing. */
+     controls stay visible while typing.
+
+     ═══ v2.3.2391: TWO BUGS IN THAT RESERVATION, AND THE REASON IT NEVER WORKED ═══
+     Owner: "Can you make it so the name input doesn't shift the screen down to
+     the keyboard when you put the cursor there (this is an IOS issue)."
+
+     This effect was ALREADY here and already meant to prevent exactly that.
+     Measured against the built client, it moved the name field 18px at
+     390x745 — the commonest real Safari viewport — leaving its bottom edge
+     below the keyboard line, so Safari panned the page anyway and the owner
+     saw the shove. Three separate faults:
+
+     1. `- (vv.offsetTop || 0)` made it fight itself.  offsetTop is how far
+        Safari has ALREADY panned; subtracting it means the more the screen
+        shifts, the LESS padding this asks for.  A negative feedback loop
+        against its own purpose.  The keyboard's height is innerHeight minus
+        visualViewport.height, full stop.
+     2. It listened to `resize` only.  The pan is delivered as a visualViewport
+        `scroll` event, so once Safari panned, the correction never re-ran.
+        BroTown.jsx's own resizer (v2.3.1533) takes both events; this is that
+        omission fixed, and the two screens now agree.
+     3. Even corrected, the padding could not REACH the field: .bt-cc-stage is
+        flex:1 with min-height:110px and .bt-cc-namewrap has margin-top:auto,
+        so the column bottomed out at a hard floor of 428px however much
+        padding it was given.  The stage now yields while the keyboard is up
+        (see .bt-name-box[data-kb] in game.css) — the bro gives up the room,
+        which is the right thing to give up while you are typing your name.
+
+     NOT DONE, and deliberately: setting the modal's height to
+     visualViewport.height.  It looks like the obvious fix and it re-flows the
+     column beautifully, but .bt-name-modal is overflow:hidden, and an
+     overflow:hidden box whose content no longer fits becomes a real scroll
+     container.  Shrinking it to 400px makes the modal scrollable by 228px, and
+     a plain focus() on a below-the-fold control then scrolls the entire
+     creator off the top — logo at -218px — with no way back, because the same
+     rule sets touch-action:none and overscroll-behavior:none.  That is a
+     WORSE version of the reported bug, reachable from the home-screen install
+     where iOS really does resize the layout viewport.  The overflow:clip and
+     the scrollTop guard below exist to make that unreachable at all. */
   var _kbS = React.useState(0), kbPad = _kbS[0], setKbPad = _kbS[1];
   React.useEffect(function () {
     var vv = window.visualViewport;
     if (!vv) return undefined;
     var onR = function () {
-      var kb = Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0));
+      var kb = Math.max(0, window.innerHeight - vv.height);
       setKbPad(kb > 100 ? kb : 0);
     };
+    onR();
     vv.addEventListener('resize', onR);
-    return function () { vv.removeEventListener('resize', onR); };
+    vv.addEventListener('scroll', onR);
+    return function () {
+      vv.removeEventListener('resize', onR);
+      vv.removeEventListener('scroll', onR);
+    };
+  }, []);
+  /* v2.3.2391: the belt to overflow:clip's braces.  `overflow:clip` makes the
+     modal un-scrollable outright, but it is Safari 16+, and this game's floor
+     is iOS 14 (see the WebP note in BroTown.jsx).  On 14 and 15 the rule falls
+     back to overflow:hidden, which IS programmatically scrollable, so a focus()
+     can still shove the screen off the top there.  Putting it straight back is
+     one line and costs nothing on the browsers that never scroll at all. */
+  var _modalRef = React.useRef(null);
+  React.useEffect(function () {
+    var el = _modalRef.current;
+    if (!el) return undefined;
+    var onScroll = function () {
+      if (el.scrollTop) el.scrollTop = 0;
+      if (el.scrollLeft) el.scrollLeft = 0;
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return function () { el.removeEventListener('scroll', onScroll); };
   }, []);
   /* v2.3.1576: the v2.3.1235 inline-SVG die is retired — its last caller
      (the name-reroll button) now renders the owner's painted
      cc-random-name.webp, matching cc-random-look.webp on the Randomize
      button below it. */
   return /*#__PURE__*/React.createElement("div", {
-    className: "bt-name-modal"
+    className: "bt-name-modal",
+    ref: _modalRef   /* v2.3.2391: the keyboard-height effect writes to this */
   }, /*#__PURE__*/React.createElement("video", {
     /* v2.3.824: animated splash backdrop — the owner's painted vista as a
        seamless 4.5s crossfade loop (built from the 6s source so its end
@@ -639,7 +729,10 @@ export function NameModal(props) {
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-name-box bt-cc-box bt-cc-col-left",
     /* v2.3.1307: keyboard reservation — the column gives up its bottom to the
-       iOS keyboard so the name field + hint stay visible. */
+       iOS keyboard so the name field + hint stay visible.
+       v2.3.2391: and says so in an attribute, so the stage can shrink with it
+       — reserving the room is useless if nothing above it will yield. */
+    "data-kb": kbPad ? '1' : undefined,
     style: kbPad ? { paddingBottom: kbPad } : undefined
   }, /*#__PURE__*/React.createElement("div", {
     /* v2.3.1527: the logo sits over the CHARACTER column now (owner) rather
@@ -714,7 +807,7 @@ export function NameModal(props) {
        when the finger drifts off the canvas mid-swipe.  v2.3.1307: a
        pointer journey with no rotation is a TAP — toggles the zoom. */
     onPointerDown: function (e) { _dragRotX.current = e.clientX; _dragMoved.current = false; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} },
-    onPointerMove: function (e) { if (_dragRotX.current === null) return; var dx = e.clientX - _dragRotX.current; if (Math.abs(dx) >= 26) { _dragMoved.current = true; rotatePreview(dx > 0 ? 1 : -1); _dragRotX.current = e.clientX; } },
+    onPointerMove: function (e) { if (_dragRotX.current === null) return; var dx = e.clientX - _dragRotX.current; if (Math.abs(dx) >= 26) { _dragMoved.current = true; _setHasSpun(true); /* v2.3.2391: the cue has done its job */ rotatePreview(dx > 0 ? 1 : -1); _dragRotX.current = e.clientX; } },
     onPointerUp: function () { _dragRotX.current = null; if (!_dragMoved.current) setPreviewZoom(function (z) { return !z; }); },
     onPointerCancel: function () { _dragRotX.current = null; },
     /* No width/height attributes: drawCharacterPortrait force-sets the
@@ -752,6 +845,54 @@ export function NameModal(props) {
          order stacks pillars < canvas < rotate buttons. */
       background: 'transparent'
     }
+  }),
+  /* ═══ v2.3.2391: THE SPIN CUE ═══
+     Owner: "Can you put a little white arc with two dots at the end as a
+     visual cue that the character can spin around if you drag your finger on
+     him?", with the art attached and a sketch of it drawn at the bro's feet.
+
+     v2.3.2006 removed the two rotate CIRCLES, correctly -- they were 50px
+     targets sitting on top of the character.  But they were also the only
+     thing that said the drag existed, and the note there admits as much
+     ("the circles were the discoverability crutch for it").  This is that
+     crutch put back as a PICTURE rather than a control: no hit target, no
+     pixels over his face, and it leaves once it has been read.
+
+     LAST CHILD of the stage, so it paints in FRONT of the boots the way the
+     owner drew it, and pointerEvents:none so the drag it advertises still
+     lands on the canvas underneath -- an affordance that eats the gesture it
+     teaches is worse than none.
+
+     It stands down once the player has actually turned him (_hasSpun),
+     because a cue that outlives its lesson is clutter on the character, and
+     it is hidden from a screen reader, which has the drag described in words.
+
+     IT DOES NOT COPY THE CONTACT SHADOW'S GATE, though that was the first
+     thing I wrote.  That shadow is drawn only while `_frame.h === 54.5`,
+     and 54.5 is the CATEGORY-CROP frame -- measured, not read off the
+     v2.3.1307 comment, which describes the numbers the other way round and
+     is stale.  The frame the player actually ARRIVES on is h:76 (Hair is
+     the opening tab and has no crops), so borrowing that condition hid the
+     cue in the one state it exists for.  The two frames put the boot
+     contact line at 26.4% and 24.2% of stage height respectively -- 2.2%
+     apart, about 7px here -- so one anchor serves both and the cue simply
+     stays up until it is earned. */
+  /*#__PURE__*/React.createElement("img", {
+    src: '/ui/welcome/cc/cc-spin-cue.png',
+    alt: '',
+    "aria-hidden": true,
+    draggable: false,
+    className: "bt-cc-spincue",
+    "data-spun": _hasSpun ? '1' : undefined,
+    style: {
+      /* v2.3.2393 (owner: "make the new touch spin art 50% transparent though
+         so it doesn't take up too much attention").  Half opacity, not a
+         redraw of the art at half alpha: the cue has to be able to go to 0
+         when it is earned, and one property doing both keeps the fade it
+         already has honest.  It sits over his boots, so at 0.5 he reads
+         through it and the arrows stay legible against the pedestal. */
+      opacity: _hasSpun ? 0 : SPIN_CUE_OPACITY
+    }
   })),
   /* ═══ v2.3.2006: THE ROTATE CIRCLES ARE GONE — DRAG THE BRO ═══
      Owner: "Remove the two buttons for turning the bro on trait picker page
@@ -785,7 +926,10 @@ export function NameModal(props) {
        taking a row of its own (see .bt-cc-namewrap>[aria-live] in game.css).
        While it has something to say, the rail steps aside; the flag says so
        in one place so the CSS can do it without a second state. */
-    "data-msg": _trimmedName.length === 0 ? undefined : '1'
+    /* v2.3.2388: ...or while the button is answering a press.  Without this
+       the flag stayed undefined with an empty field -- exactly the state the
+       owner pressed in -- so the slot the message needs was not claimed. */
+    "data-msg": (_trimmedName.length === 0 && !_pressMsg) ? undefined : '1'
   },
   /*#__PURE__*/React.createElement("div", {
     /* Name row — the dice ICON rerolls the NAME only.  .bt-cc-namewrap's
@@ -817,6 +961,7 @@ export function NameModal(props) {
     className: "bt-cc-namehead"
   }, "Bro Name"), /*#__PURE__*/React.createElement("input", {
     id: 'bt-cc-name-input',
+    ref: _nameFieldRef,   /* v2.3.2388: the blocked button focuses this */
     value: nameInput,
     onChange: function onChange(e) {
       return setNameInput(e.target.value);
@@ -898,10 +1043,18 @@ export function NameModal(props) {
        clears the local rules, quiet guidance otherwise.  Fixed height
        so the cluster never jumps.  (Names are not unique server-side,
        so length is the honest contract — no availability check.) */
-    "aria-live": 'polite',
+    /* v2.3.2388: assertive while it is answering a press.  'polite' waits for
+       a pause in the screen reader's queue, which is right for guidance that
+       appeared on its own and wrong for a direct reply to a button the player
+       just pushed. */
+    "aria-live": _pressMsg ? 'assertive' : 'polite',
     className: "bt-cc-namemsg",
-    style: { color: _nameValid ? '#55B98A' : '#8D9B98' }
-  }, _trimmedName.length === 0 ? '' : _nameValid ? '✓ Ready to go' : 'At least 2 characters')), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.2388: the pressed reason is amber -- it is neither the green all-
+       clear nor the grey hint that was already sitting there, and the change
+       of colour is part of what makes it register as a REPLY. */
+    style: { color: _pressMsg ? '#E5B45C' : (_nameValid ? '#55B98A' : '#8D9B98') }
+  }, _pressMsg
+      || (_trimmedName.length === 0 ? '' : _nameValid ? '✓ Ready to go' : 'At least 2 characters'))), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1524: one action left. "Customize Appearance" opened the drawer,
        and the drawer is now a permanent column, so the button had nothing to
        open. Randomize rerolls the whole look. */
@@ -959,16 +1112,35 @@ export function NameModal(props) {
     onClick: resetLook, title: 'Back to the look you started with'
   }, /*#__PURE__*/React.createElement("span", null, "Reset")))),
   /*#__PURE__*/React.createElement("button", {
-    onClick: function () { if (_nameValid) joinTown(); },
-    disabled: !_nameValid,
+    /* ═══ v2.3.2388: IT TAKES THE PRESS SO IT CAN ANSWER IT ═══
+       `disabled` is gone and aria-disabled takes its place.  That is the
+       whole mechanism: a natively disabled button fires NO click event, so
+       there was never a moment at which the screen could explain itself --
+       the button dimmed and that was the entire answer.  aria-disabled keeps
+       the state announced to screen readers and keeps it out of nothing else,
+       while letting the press through to be answered.
+       Still visibly not-ready (0.55, no pointer cursor): the press is for
+       asking why, not a hidden way in.  joinTown is only ever called when
+       there is no reason not to. */
+    onClick: function () {
+      if (!_blockReason) { joinTown(); return; }
+      _setPressMsg(_blockReason);
+      /* Put them where the fix is.  The name is the step they control from
+         this screen, and focusing the field also raises the keyboard on a
+         phone -- so the answer and the means to act on it arrive together. */
+      if (!_trimmedName && _nameFieldRef.current) {
+        try { _nameFieldRef.current.focus(); } catch (e) {}
+      }
+    },
+    "aria-disabled": _blockReason ? 'true' : undefined,
     /* v2.3.1251: PLAY → ENTER BRO TOWN, the screen's one dominant gold
        action.  v2.3.1307: gated on a valid name (round-7). */
     className: "bt-cc-play",
     "aria-label": 'Enter Bro Town',
     style: {
       width: '100%',
-      cursor: _nameValid ? 'pointer' : 'default',
-      opacity: _nameValid ? 1 : 0.55
+      cursor: _blockReason ? 'default' : 'pointer',
+      opacity: _blockReason ? 0.55 : 1
     }
     /* v2.3.1577 (owner: "make the Enter Bro Town text subtly grow and
        shrink").  The label is wrapped so the breath animates the TEXT
@@ -1088,17 +1260,12 @@ export function NameModal(props) {
       /*#__PURE__*/React.createElement("rect", { x: 5.5, y: 15, width: 7, height: 11, rx: 2.4 }),
       /*#__PURE__*/React.createElement("circle", { cx: 21, cy: 6.5, r: 3.4 }),
       /*#__PURE__*/React.createElement("rect", { x: 17, y: 11, width: 8, height: 15, rx: 2.6 }))
-    ) : x.glyph === 'eyewear' ? /*#__PURE__*/React.createElement("svg", {
-      /* v2.3.2361: a pair of frames -- two rims, a bridge, two temples.  Inline
-         for the reason the build glyph was: no painted icon exists for the tab
-         yet.  currentColor, so it dims and brightens with the tab exactly as
-         the painted icons' opacity does. */
-      className: "bt-cc-tab-icon", viewBox: '0 0 30 30', "aria-hidden": true, focusable: 'false'
-    },
-    /*#__PURE__*/React.createElement("g", { fill: 'none', stroke: 'currentColor', strokeWidth: 2.4, strokeLinecap: 'round', strokeLinejoin: 'round' },
-      /*#__PURE__*/React.createElement("circle", { cx: 9, cy: 16.5, r: 5.2 }),
-      /*#__PURE__*/React.createElement("circle", { cx: 21, cy: 16.5, r: 5.2 }),
-      /*#__PURE__*/React.createElement("path", { d: 'M14.2 16.5h1.6M1.6 13.6l2.3 1.2M28.4 13.6l-2.3 1.2' }))
+    /* v2.3.2389: the eyewear branch that stood here is gone with the tab's
+       placeholder glyph -- it drew two stroked rims in currentColor, and the
+       owner's painted frames replace it.  Every tab that RENDERS is painted
+       art now; the build branch above outlives its tab on purpose (v2.3.2268
+       dropped Build from _typeDefs, so the filter never emits it) and stays as
+       the restoration path, same as _buildTile and HEIGHT_CATALOG. */
     ) : x.img ? /*#__PURE__*/React.createElement("img", {
       /* v2.3.1308: the owner's painted category art.
          v2.3.1931: one sheet for all eight, and no per-tab pixel flag — the

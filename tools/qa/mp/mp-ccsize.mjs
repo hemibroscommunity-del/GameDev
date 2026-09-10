@@ -67,6 +67,47 @@ export async function run({ browser, wsPort, webPort, rec }) {
        + '(guard: "bigger" must not mean "the layout moved")',
     !!heroBtn && heroBtn.h <= 60, { heroBtn, rnd });
 
+  /* ── 1b. EVERY TAB WEARS ART THAT ACTUALLY DECODED (v2.3.2389) ──
+     The Eyewear tab drew an inline SVG glyph as a placeholder from v2.3.2361
+     until the owner sent art for it.  Swapping a glyph for an <img> introduces
+     a failure this file's other assertions cannot see: a wrong path gives a
+     BROKEN image, and a broken image occupies its CSS box, keeps its class and
+     reports a perfectly ordinary getBoundingClientRect.  Every measurement in
+     this file would still pass over a tab showing nothing at all.
+
+     naturalWidth is the only honest question -- it is 0 until the bytes are
+     decoded.  Asked of all nine tabs rather than of eyewear alone, because the
+     same typo is available in any of them and none was covered before. */
+  const tabArt = await P.page.evaluate(() => {
+    const out = [];
+    document.querySelectorAll('.bt-cc-tabs .bt-cc-tab').forEach((b) => {
+      const label = (b.querySelector('.bt-cc-tab-label') || {}).textContent || '?';
+      const img = b.querySelector('img.bt-cc-tab-icon');
+      const svg = b.querySelector('svg.bt-cc-tab-icon');
+      out.push({ label: label.trim(), kind: img ? 'img' : svg ? 'svg' : 'none',
+        nat: img ? img.naturalWidth : null, src: img ? img.getAttribute('src') : null });
+    });
+    return out;
+  });
+  const painted = tabArt.filter((t) => t.kind === 'img');
+  rec.ok(`all nine creator tabs have an icon of some kind (${tabArt.length} found)`,
+    tabArt.length === 9 && tabArt.every((t) => t.kind !== 'none'), tabArt);
+  /* NINE painted, not eight.  _TABS still carries a tenth entry with an inline
+     `build` glyph, but v2.3.2268 deleted Build from _typeDefs and the list ends
+     in `.filter(!!_typeDefs[x.t])`, so that tab has not rendered since -- the
+     branch is kept deliberately as the restoration path.  The first cut of this
+     assertion expected 8 + 1 glyph from reading _TABS, and the browser said
+     otherwise; the browser is right. */
+  rec.ok(`...and every one of them is painted art, no glyphs left on screen -- ${painted.length}/9`,
+    painted.length === tabArt.length, tabArt.map((t) => t.label + ':' + t.kind));
+  rec.ok('...and every one actually decoded its bytes (naturalWidth > 0)',
+    painted.length > 0 && painted.every((t) => t.nat > 0),
+    painted.filter((t) => !(t.nat > 0)));
+  /* The one the owner asked for, named, so a regression says which tab. */
+  const eyewear = tabArt.find((t) => t.label === 'Eyewear');
+  rec.ok('the Eyewear tab is painted art now, not the placeholder glyph',
+    !!eyewear && eyewear.kind === 'img' && eyewear.nat > 0, eyewear);
+
   /* ── 2. the tattoo icon — only on the Skin tab ── */
   const toSkin = await P.page.evaluate(() => {
     const b = [...document.querySelectorAll('button')]
@@ -480,4 +521,54 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('coming back to Hats starts at the top of the list, not where you '
        + 'left it', !!reopened && reopened.top === 0, reopened);
   rec.ok('...with the cue showing again', !!reopened && reopened.on, reopened);
+
+  /* ── 5. THE COLOUR ROW DOES NOT HIDE COLOURS IT HAS ROOM FOR (v2.3.2396) ──
+     Owner, with a screenshot of the Hair tab: "For some reason the color
+     picker is dimming the colors even when there's more room to display."
+
+     The cue above is honest; the CAP was not.  .bt-cc-colors-row was a fixed
+     two rows on every tab, so Hair -- fourteen colours, four rows of content --
+     hid 75px of swatches behind the fade while 261px of panel sat EMPTY below
+     the Design button.
+
+     THE TRAP THIS SECTION IS BUILT AROUND: the colour row is EMPTY until a
+     trait is actually picked.  A fresh character is 'None' on every tab, so a
+     probe that just opens a tab and measures reports "13 swatches" as one
+     child and no overflow, on all eight tabs, and tells you the bug is not
+     there.  It cost me a wrong diagnosis before the numbers made sense.  So
+     each tab here PICKS its first real option first. */
+  const colourFit = async (tab) => P.page.evaluate(async (t) => {
+    const b = [...document.querySelectorAll('.bt-cc-tab')].find((x) => (x.textContent || '').trim() === t);
+    if (!b) return null;
+    b.click();
+    await new Promise((r) => setTimeout(r, 400));
+    const tiles = [...document.querySelectorAll('.bt-cc-strip > *')];
+    if (tiles.length > 1) { tiles[1].click(); await new Promise((r) => setTimeout(r, 600)); }
+    const row = document.querySelector('.bt-cc-colors-row');
+    if (!row) return null;
+    const wrap = row.parentElement;
+    const more = wrap && wrap.querySelector('.bt-cc-more');
+    const panel = document.querySelector('.bt-cc-panel');
+    const draw = document.querySelector('.bt-cc-draw');
+    const pr = panel.getBoundingClientRect();
+    const dr = draw ? draw.getBoundingClientRect() : null;
+    return { t, swatches: row.children.length,
+      clientH: row.clientHeight, scrollH: row.scrollHeight,
+      hidden: row.scrollHeight - row.clientHeight,
+      cue: !!(more && more.classList.contains('bt-cc-more--on')),
+      drawBottom: dr ? Math.round(dr.bottom) : null, panelBottom: Math.round(pr.bottom) };
+  }, tab);
+
+  for (const tab of ['Hair', 'Shirt']) {
+    const f = await colourFit(tab);
+    console.log(`    ${tab} colours: ` + JSON.stringify(f));
+    rec.ok(`${tab}: its colour swatches are actually rendered (guard: ${f && f.swatches})`,
+      !!f && f.swatches > 6, f);
+    rec.ok(`${tab}: the colour row hides none of them (${f && f.scrollH}px of swatches in a ${f && f.clientH}px box)`,
+      !!f && f.hidden <= 2, f);
+    rec.ok(`${tab}: ...so nothing is dimmed behind a fade`, !!f && f.cue === false, f);
+    /* The room it grew into was real spare space, not the Design button's. */
+    rec.ok(`${tab}: ...and the Design button is still inside the panel`,
+      !!f && f.drawBottom <= f.panelBottom, f);
+  }
 }

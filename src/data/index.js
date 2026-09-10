@@ -7,6 +7,7 @@ export * from './lifeSkills.js';
 export * from './effects.js';
 export * from './items.js';
 export * from './gameSystems.js';
+export * from './joinGate.js';   /* v2.3.2388: why Enter Bro Town is refusing */
 export * from './prog3.js'; /* v2.3.1660: trained-skill combat rebuild mirror */
 export * from './abilities.js'; /* v2.3.1733: stamina abilities + milestone ladder mirror */
 export * from './shards.js';
