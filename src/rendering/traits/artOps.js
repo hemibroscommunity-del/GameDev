@@ -106,7 +106,7 @@ export function opCells(op, art) {
   if (op.k === 's') {
     return mirrorCells(expandCells(shapeCells(op.t, op.a[0], op.a[1], op.a[2], op.a[3]), op.b), !!op.m);
   }
-  /* v2.3.2426: a letter carries a BOX now (artTools letterBoxCells).  The
+  /* v2.3.2427: a letter carries a BOX now (artTools letterBoxCells).  The
      legacy form -- x/y and no `a` -- is still stamped by the old centred
      5x7 path, so a drawing made before this version replays byte-identically
      rather than quietly resizing itself under a player who never asked. */
@@ -176,7 +176,7 @@ export function sanitizeOp(op) {
   }
   if (op.k === 't') {
     if (!LETTER_SET.has(op.g) || !okInt(op.x, 0, ART_W - 1) || !okInt(op.y, 0, ART_H - 1)) return null;
-    /* v2.3.2426: the box, when there is one.  Checked cell by cell like a
+    /* v2.3.2427: the box, when there is one.  Checked cell by cell like a
        shape's `a` -- this blob is hand-editable, and a letter box with a
        non-integer or off-grid corner would sample outside the grid. */
     if (op.a !== undefined) {

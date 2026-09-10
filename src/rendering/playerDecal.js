@@ -89,7 +89,7 @@ export function stampShirtArt(sheet, art, frameH, mirror, clip, report) {
   const ctx = cv.getContext('2d');
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(sheet, 0, 0);
-  /* v2.3.2429: `report` keeps the measuring pass alive for a BLANK drawing --
+  /* v2.3.2430: `report` keeps the measuring pass alive for a BLANK drawing --
      the same rule the body regions have had since v2.3.1965, and for the same
      reason: keyed on ink alone, a player who has drawn nothing gets no grid, so
      the FIRST mark on a shirt could never be made. */
@@ -118,7 +118,7 @@ export function stampShirtArt(sheet, art, frameH, mirror, clip, report) {
     const ox = Math.round(cx - dw / 2);
     const oy = Math.round(cy - dh / 2);
     const cw = dw / ART_W, ch = dh / ART_H;
-    /* ═══ v2.3.2429: WHERE THE PRINT LANDED, FOR THE DESIGNER ═══
+    /* ═══ v2.3.2430: WHERE THE PRINT LANDED, FOR THE DESIGNER ═══
        Owner: "The shirt canvas should be a preview of the shirt you're drawing
        on (not just the blank drawing canvas)."  The shirt was the last editor
        still working on a bare 16x16 abstraction, and the reason given at
@@ -1027,7 +1027,7 @@ export function composeShirt(sheet, frameH, opts) {
   if ((o.art && artHasInk(o.art)) || o.report) {
     /* The print is clipped to the same lit fabric, so it stops at the outline
        and at the seam lines rather than erasing them.
-       v2.3.2429: `o.report` takes the same path with no ink, so the designer
+       v2.3.2430: `o.report` takes the same path with no ink, so the designer
        gets the grid it needs to place a FIRST mark -- see stampShirtArt. */
     return stampShirtArt(cv, o.art, frameH, !!o.mirror, _maskCanvas(lit, W, H), o.report);
   }

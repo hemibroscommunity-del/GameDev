@@ -130,7 +130,7 @@ import { HEIGHT_CATALOG } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1
    understood the row above has understood this one. */
 var _INK_SOURCES = {
   shirt: { canvases: ['shirtFront', 'shirtBack'], pattern: 'shirt' },
-  pants: { canvases: ['pants', 'pantsBack'], pattern: 'pants' },   /* v2.3.2427: two sides */
+  pants: { canvases: ['pants', 'pantsBack'], pattern: 'pants' },   /* v2.3.2428: two sides */
   tattoo: { canvases: ['tattoo', 'tattooBack', 'tattooFace', 'tattooArm', 'tattooHeadBack'], pattern: null },
   shoes: { canvases: [], pattern: 'shoes' },
 };

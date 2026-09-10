@@ -187,7 +187,7 @@ if (typeof window !== 'undefined') {
       const a = localBodyArt(false);
       if (!a) return null;
       const r = artForFacing(a, dir);
-      /* v2.3.2427: the TROUSERS join it, for exactly the reason this probe was
+      /* v2.3.2428: the TROUSERS join it, for exactly the reason this probe was
          written -- "does facing away pick the back canvas?" has no other exact
          answer from a test, and a mutation that made the pants keep their front
          print on a back facing passed every existing assertion. */
@@ -1048,7 +1048,7 @@ export function artForFacing(art, dir) {
      is exactly how the head and the shirt already behave. The ARM canvas still
      stays put: an arm is the same arm from behind. */
   const bodyBack = art.tattooBack;
-  /* v2.3.2427: the TROUSERS do it too.  Owner: "Do front and back on the pants
+  /* v2.3.2428: the TROUSERS do it too.  Owner: "Do front and back on the pants
      and make sure they're separate."  The pants print was the last drawn
      surface still wrapping one design all the way round -- the same complaint
      v2.3.2042 fixed for the face and v2.3.2148 for the torso, left unfixed for
@@ -1083,7 +1083,7 @@ export function bodyArtSeg(art) {
      artForFacing has already picked WHICH torso drawing this bake uses, so this
      only has to stop two different back drawings sharing one sheet. */
   const tb2 = artHasInk(art.tattooBack) ? artHash(art.tattooBack) : '';
-  /* v2.3.2427: and the back of the trousers, same reasoning again --
+  /* v2.3.2428: and the back of the trousers, same reasoning again --
      artForFacing has already chosen WHICH leg drawing this bake uses, so this
      only has to stop two different back prints sharing one sheet.  Anyone who
      has not drawn one keeps the exact key they had. */
@@ -1105,7 +1105,7 @@ export function localBodyArt(mirror) {
   const ft = getArt('tattooFace'), at = getArt('tattooArm');   /* v2.3.1949 */
   const hb = getArt('tattooHeadBack');   /* v2.3.2043 */
   const tbk = getArt('tattooBack');       /* v2.3.2148 */
-  const pbk = getArt('pantsBack');        /* v2.3.2427 */
+  const pbk = getArt('pantsBack');        /* v2.3.2428 */
   const q = getPattern('pants'), f = getPattern('shoes');   /* v2.3.1944 */
   if (!artHasInk(p) && !artHasInk(t) && !artHasInk(ft) && !artHasInk(at) && !artHasInk(hb)
     && !artHasInk(tbk) && !artHasInk(pbk)

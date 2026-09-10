@@ -1,4 +1,4 @@
-/* THE STAND-INS WEAR YOUR DRAWINGS (v2.3.2428).
+/* THE STAND-INS WEAR YOUR DRAWINGS (v2.3.2429).
  *
  * Owner: "make sure during shield block (I noticed tattoos and other custom
  * designs weren't there) etc that the custom designs show up."
@@ -84,7 +84,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* WAS THE BAKE EVEN TOLD.  The weaker of the two readings and the one that
      localises a failure: told-and-not-landed is a stamping problem, not-told
-     is the v2.3.2428 defect itself. */
+     is the v2.3.2429 defect itself. */
   const told = urls.filter((u) => inked[u].art);
   rec.ok(`the inked player's stand-in bakes were handed a drawing (${told.length}/${urls.length})`,
     told.length === urls.length, { told: told.length, of: urls.length });

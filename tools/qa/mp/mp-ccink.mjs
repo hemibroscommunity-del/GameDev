@@ -578,7 +578,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const P3 = await H.newPlayer(browser, { name: 'Ed', wsPort, webPort,
     viewport: { width: 390, height: 844 }, touch: true });
   await openCreator(P3);
-  /* v2.3.2429: the SHIRT joins the loop, and it is the interesting one -- it
+  /* v2.3.2430: the SHIRT joins the loop, and it is the interesting one -- it
      was the last editor working on a bare 16x16 grid, on the stated reasoning
      that its print "is stamped on a different sheet with no region to hit-test
      against".  Owner: "The shirt canvas should be a preview of the shirt you're
@@ -676,7 +676,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         });
         await P3.page.waitForTimeout(2000);
       }
-      /* v2.3.2429: the shirt opens on its PATTERN screen; `front` is where the
+      /* v2.3.2430: the shirt opens on its PATTERN screen; `front` is where the
          drawing is made, so that is the one to look at. */
       if (tab === 'Shirt') {
         await P3.page.evaluate(() => {
@@ -757,7 +757,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
             + `(${cells.pants} cells) and not on the chest (${cells.tattoo})`,
             cells.pants > 0 && cells.tattoo === 0, cells);
         }
-        /* ═══ v2.3.2427: AND THE TROUSERS HAVE TWO SIDES ═══
+        /* ═══ v2.3.2428: AND THE TROUSERS HAVE TWO SIDES ═══
            Owner: "Do front and back on the pants and make sure they're
            separate."  Three claims, and each needs its own assertion because
            each can hold while the others fail: the switch is THERE, a stroke

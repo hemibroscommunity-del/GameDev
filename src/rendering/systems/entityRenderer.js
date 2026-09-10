@@ -1429,7 +1429,7 @@ function _remoteBodyArt(other, mirror) {
   /* v2.3.2148: and the back of their body, through the same sanitiser -- peers
      resolve it via artForFacing exactly as the local player does. */
   const bb = sanitizeShirtArt(other.bodyBackTattooArt);
-  /* v2.3.2427: and the back of their trousers, through the same sanitiser --
+  /* v2.3.2428: and the back of their trousers, through the same sanitiser --
      peers resolve it via artForFacing exactly as the local player does, so a
      remote who walks away shows THEIR back print rather than their front one
      wrapped round. */

@@ -93,7 +93,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* the shirt opens on PATTERN; its modes are pattern / front / back, so the
        front drawing grid is the second tab -- the same position pants used. */
     await page.click('.bt-paint-tabs button:nth-child(2)');
-    /* ═══ v2.3.2429: THE SHIRT IS ON THE CHARACTER NOW ═══
+    /* ═══ v2.3.2430: THE SHIRT IS ON THE CHARACTER NOW ═══
        Owner: "The shirt canvas should be a preview of the shirt you're drawing
        on (not just the blank drawing canvas)."  So the last flat 16x16 grid is
        gone and this scenario -- which is about the SHAPE AND LAYER TOOLS, not
@@ -120,7 +120,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      change's scope, but a scenario that cached one bounding box would aim every
      tap after the first tool click at the wrong cell and report a broken
      editor.  Re-reading the box is both correct and cheap. */
-  /* v2.3.2429: the grid is no longer the canvas box -- it is the rectangle the
+  /* v2.3.2430: the grid is no longer the canvas box -- it is the rectangle the
      shirt print occupies ON the figure, which the surface reports as
      `__btInkAim.shirt` (in the canvas's own backing pixels) and which moves
      with the zoom.  Read per gesture for the same reason the box was:
@@ -431,7 +431,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const cleared = await art();
   rec.ok('Clear empties the drawing (and the list under it)', inked(cleared) === 0, { n: inked(cleared) });
 
-  /* ═══ v2.3.2426: A LETTER IS A SHAPE NOW ═══
+  /* ═══ v2.3.2427: A LETTER IS A SHAPE NOW ═══
      Owner: "The letters aren't working correctly (not pasting onto the
      character and not scaling/resizing"; "Letters need to default smaller on
      the pants they get cut off"; "You should be able to select something and

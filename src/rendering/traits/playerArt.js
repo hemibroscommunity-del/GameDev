@@ -162,7 +162,7 @@ export function artWithCells(s, cells, idx) {
    halves (tattooFace / tattooHeadBack, v2.3.2043) and the shirt has had them
    since v2.3.1939; the torso was the one surface still showing its FRONT
    drawing to someone standing behind you. */
-/* v2.3.2427: `pantsBack` joins them.  Owner: "Do front and back on the pants
+/* v2.3.2428: `pantsBack` joins them.  Owner: "Do front and back on the pants
    and make sure they're separate."  It is the same idea a fourth time -- the
    shirt has had two sides since v2.3.1939, the face since v2.3.2043, the torso
    since v2.3.2148 -- and the trousers were the last drawn surface that wrapped
@@ -179,7 +179,7 @@ export function sideForDir(dir) {
 /* ── selection store (localStorage) ── */
 const STORAGE_KEY = {
   shirtFront: 'bt-shirtart', shirtBack: 'bt-shirtart-back',
-  pants: 'bt-pantsart', pantsBack: 'bt-pantsart-back',   /* v2.3.2427 */
+  pants: 'bt-pantsart', pantsBack: 'bt-pantsart-back',   /* v2.3.2428 */
   tattoo: 'bt-tattooart',
   tattooBack: 'bt-tattooart-back',   /* v2.3.2148 */
   tattooFace: 'bt-facetattoo', tattooArm: 'bt-armtattoo',   /* v2.3.1949 */

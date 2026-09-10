@@ -2947,7 +2947,7 @@ measurement that is not of the thing you think it is).
 
 ---
 
-## 72. "There is no region to hit-test against" — said of code, believed of the art (v2.3.2429)
+## 72. "There is no region to hit-test against" — said of code, believed of the art (v2.3.2430)
 
 **Tempting:** the body's drawn regions come from `recolorBodyToCanvas`, which
 classifies skin, torso and trousers out of the sheet's own pixels and reports a
@@ -2986,7 +2986,7 @@ Related: §70 (the portrait does not apply the game's facing rule) — the same
 family, a claim about the renderer that was true of one path and assumed of all
 of them.
 
-## 73. A second bake site does not inherit the first one's arguments (v2.3.2428)
+## 73. A second bake site does not inherit the first one's arguments (v2.3.2429)
 
 **Tempting:** the player's drawings are handed to `recolorBodyToCanvas` by
 `getBodyFrame`, which every pose goes through. So a tattoo is on the body in

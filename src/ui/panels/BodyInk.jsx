@@ -2,9 +2,9 @@ import React from 'react';
 import { ART_W, ART_H, ART_PALETTE } from '@/rendering/traits/playerArt.js';
 import { cellAt } from '@/rendering/playerDecal.js';   /* v2.3.1962 */
 import { drawCharacterPortrait } from '@/rendering/characterPortrait.js';
-import { SHIRT_CATALOG } from '@/rendering/traits/shirtCatalog.js';   /* v2.3.2429 */
+import { SHIRT_CATALOG } from '@/rendering/traits/shirtCatalog.js';   /* v2.3.2430 */
 
-/* v2.3.2429: the first shirt that is not "none" -- read from the catalogue
+/* v2.3.2430: the first shirt that is not "none" -- read from the catalogue
    rather than hard-coded, so importing a second shirt cannot leave this
    pointing at one that was removed.  The same rule PlayerPaint's worn preview
    uses (v2.3.2416); one more caller, not a second policy. */
@@ -116,7 +116,7 @@ const REGIONS = [
      pants bbox does not overlap any skin region, so its position only decides
      ties that cannot happen. */
   { key: 'pants',  target: 'pants',      label: 'Pants' },
-  /* v2.3.2429: THE SHIRT.  Owner: "The shirt canvas should be a preview of the
+  /* v2.3.2430: THE SHIRT.  Owner: "The shirt canvas should be a preview of the
      shirt you're drawing on (not just the blank drawing canvas)."  The reason
      it was not, given at v2.3.2416, was that "a shirt print is stamped on a
      different sheet with no region to hit-test against" -- true of the code as
@@ -135,8 +135,8 @@ const REGIONS = [
    REGION it is drawn on. Both directions are needed and they are not the same
    question: the first is "which canvas does this touch write to", the second is
    "which part of the figure is that canvas drawn over". */
-/* v2.3.2427: +the trousers, whose two sides work exactly like the torso's.
-   v2.3.2429: +the shirt, which has had two sides since v2.3.1939 -- it reaches
+/* v2.3.2428: +the trousers, whose two sides work exactly like the torso's.
+   v2.3.2430: +the shirt, which has had two sides since v2.3.1939 -- it reaches
    them through the MODE strip rather than the Front/Back switch, but by the
    time it gets here the answer is the same one word: which side is showing. */
 const BACK_TARGET = { tattoo: 'tattooBack', tattooFace: 'tattooHeadBack', pants: 'pantsBack', shirtFront: 'shirtBack' };
@@ -182,7 +182,7 @@ const TAB_REGIONS = {
      this one really is a fence -- and it needs to be, because the legs sit
      directly under a torso whose skin IS inkable on another screen. */
   pants: ['pants'],
-  /* v2.3.2429: the shirt screen frames the garment and nothing else.  A fence
+  /* v2.3.2430: the shirt screen frames the garment and nothing else.  A fence
      like the pants one and for the same reason: the print sits directly over a
      chest whose skin IS inkable on another screen. */
   shirt: ['shirt'],
@@ -572,7 +572,7 @@ export default function BodyInk({
      not exist yet at mount, and a tab change). The 100% button passes `force`
      and is now the only thing that can move a view you set yourself. */
   const fittedRef = React.useRef('');
-  /* ═══ v2.3.2426: WHAT 100% IS A PERCENTAGE OF ═══
+  /* ═══ v2.3.2427: WHAT 100% IS A PERCENTAGE OF ═══
      Owner: "The zoom in and zoom out percentage doesn't change despite zooming
      and out."  It could not: the corner button was LABELLED "100%" as a fixed
      string.  v2.3.1994 named it that on purpose -- "'Fit' named the mechanism;
@@ -639,7 +639,7 @@ export default function BodyInk({
          opposite is true: the trousers are the thing being drawn on, so
          stripping the shirt would only take away the context that tells you
          where the waistband is.  Whatever the player is actually wearing. */
-      /* v2.3.2429: three regions, three answers about what stays ON.
+      /* v2.3.2430: three regions, three answers about what stays ON.
          SKIN: strip the shirt and the hat -- this surface exists so you can
          move between chest, face and arms without changing screens, and a
          covered region you cannot ink reads as broken rather than as covered.
@@ -693,7 +693,7 @@ export default function BodyInk({
         armTattooArt: A.tattooArm || '',
         /* The pants drawing, live, for the same reason the three skin ones are
            here: the surface IS the preview while you are drawing on it.
-           v2.3.2427: and its own two sides, on the same rule as the torso. */
+           v2.3.2428: and its own two sides, on the same rule as the torso. */
         pantsArt: (backSide ? A.pantsBack : A.pants) || '',
         reportGrids: true,
         scale: Math.min(2, Math.round((typeof window !== 'undefined' && window.devicePixelRatio) || 1)),
@@ -923,7 +923,7 @@ export default function BodyInk({
             v2.3.1994 (owner: "Change 'fit' to just '100%'"): "Fit" named the
             mechanism; "100%" names the view you get back, which is the one the
             editor opens on.
-            v2.3.2426: and it is the LIVE number now -- see fitZ above.  It is
+            v2.3.2427: and it is the LIVE number now -- see fitZ above.  It is
             still the button that puts the view back, so the label and the
             action agree: it reads 240%, you tap it, it reads 100%. */}
         <button type="button" className="bt-paint-size" onClick={() => fitRegion(true)}

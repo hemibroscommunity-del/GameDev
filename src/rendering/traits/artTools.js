@@ -250,7 +250,7 @@ export function letterCells(ch, x, y) {
   return out;
 }
 
-/* ═══ v2.3.2426: A LETTER HAS A SIZE ═══
+/* ═══ v2.3.2427: A LETTER HAS A SIZE ═══
  * Owner: "The letters aren't working correctly (not pasting onto the character
  * and not scaling/resizing" and "Letters need to default smaller on the pants
  * they get cut off."
