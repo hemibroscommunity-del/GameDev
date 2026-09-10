@@ -296,7 +296,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the attacker sees a real number (or Blocked/Dodged), never "Hit!"',
     (numeric.length > 0 || outcome.length > 0) && saidHit.length === 0, { texts });
 
-  /* ═══ v2.3.2421: ...AND NOT WHEN THE OPPONENT'S CLIENT IS OLD ═══
+  /* ═══ v2.3.2423: ...AND NOT WHEN THE OPPONENT'S CLIENT IS OLD ═══
      Owner, a third time: "Sometimes during duels it just says 'hit' instead of
      the damage HP amount."  SOMETIMES is the whole clue, and the assertion
      above cannot see it: both browsers in this suite are built from the same

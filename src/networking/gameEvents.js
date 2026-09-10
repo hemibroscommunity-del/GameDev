@@ -109,7 +109,7 @@ import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
    invite, which is the failure worth avoiding). */
 var PARTY_INVITE_TTL_MS = 60000;
 
-/* v2.3.2421: how long the attacker remembers that the SERVER resolved a PvP
+/* v2.3.2423: how long the attacker remembers that the SERVER resolved a PvP
    exchange against a given opponent -- see the stamp in the pvp_hit handler
    and the read in pvp_confirmed.
 
@@ -2642,7 +2642,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.target !== S.myId) {
                 // Not targeted at us — if we're the attacker, show hit confirmation
                 if (payload.attacker === S.myId) {
-                  /* ═══ v2.3.2421: REMEMBER THAT THE SERVER RESOLVED THIS ═══
+                  /* ═══ v2.3.2423: REMEMBER THAT THE SERVER RESOLVED THIS ═══
                      Owner, a THIRD time: "Sometimes during duels it just says
                      'hit' instead of the damage HP amount."
 
@@ -2890,7 +2890,7 @@ export function processGameEvent(type, payload, S, deps) {
                  there is no pvp_hit, the defender sends no `srv`, and this
                  popup remains the attacker's only feedback — so it still
                  shows, exactly as before. */
-              /* ═══ v2.3.2421: OUR OWN MEMORY DECIDES, NOT THE PEER'S FLAG ═══
+              /* ═══ v2.3.2423: OUR OWN MEMORY DECIDES, NOT THE PEER'S FLAG ═══
                  `payload.srv` stays as the fast path and the deploy-order
                  handshake it was built to be (v2.3.1612), but it is no longer
                  the only way to know: an opponent who never sends it can no
