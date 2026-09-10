@@ -536,10 +536,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
          reading it HERE is that a logged-out client fires nothing, lands
          nothing, and reports it as six rows of a broken weapon. */
       const link = await H.readState(P, (S) => S._realtimeStatus || 'unknown');
-      row.link = link;
-      const row = { zone: stop.zone, key: atk.key, eq: !!(eq && eq.ok),
+      const row = { zone: stop.zone, key: atk.key, eq: !!(eq && eq.ok), link,
         fired: 0, fairs: 0, landed: 0, sent: 0, blast: 0, void: 0, neverFired: 0, dug: 0,
-        gaps: [], skipGaps: [], missed: [], desync: [], kills: 0, arch: null, link: null };
+        gaps: [], skipGaps: [], missed: [], desync: [], kills: 0, arch: null };
       const reach = REACH[atk.slot];
       /* Attempts that could not be PLACED (out of the weapon's reach, nothing
          alive to shoot at) or that the monster burrowed under are void, and a
