@@ -296,6 +296,73 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the attacker sees a real number (or Blocked/Dodged), never "Hit!"',
     (numeric.length > 0 || outcome.length > 0) && saidHit.length === 0, { texts });
 
+  /* ═══ v2.3.2423: ...AND NOT WHEN THE OPPONENT'S CLIENT IS OLD ═══
+     Owner, a third time: "Sometimes during duels it just says 'hit' instead of
+     the damage HP amount."  SOMETIMES is the whole clue, and the assertion
+     above cannot see it: both browsers in this suite are built from the same
+     dist, so the pair always agree about the wire.
+
+     What v2.3.1612 actually shipped is a suppression driven by the OTHER
+     player.  The attacker draws the legacy amber "Hit! -N" unless the
+     pvp_confirmed it receives carries `srv: true` — and that flag is set by
+     the DEFENDER, in their pvp_hit handler.  So the attacker's own screen is
+     correct only if the person they are fighting is running a client new
+     enough to send it.  An opponent on a tab opened before v2.3.1612, or any
+     client mid-deploy, sends the same bookkeeping message without the flag and
+     the word comes back — on the attacker's screen, for a reason that has
+     nothing to do with the attacker.  That is exactly "sometimes".
+
+     Reproduced by sending the legacy-shaped message: same event, same fields,
+     no `srv`.  This is not a synthetic shape — it is byte-for-byte what the
+     defender's own pvp_hit handler sent before v2.3.1612 (see the git history
+     of gameEvents.js), and it arrives AFTER a real server-resolved hit, which
+     is the ordering a real duel produces. */
+  const legacySeen = [];
+  await B.page.evaluate((atkId) => {
+    const S = window._gameState.current;
+    if (S && S.channel) S.channel.send({ type: 'broadcast', event: 'pvp_confirmed',
+      payload: { target: atkId, from: S.myId, dmg: 7, isCrit: false, died: false, name: S.myName } });
+  }, aId);
+  for (let i = 0; i < 12; i++) {
+    for (const t of await H.readState(A, (S) => (S.dmgNumbers || []).map((p) => String(p.text)))) legacySeen.push(t);
+    await A.page.waitForTimeout(90);
+  }
+  const legacyTexts = [...new Set(legacySeen)];
+  rec.ok('an opponent on an OLD client cannot put "Hit!" on your screen',
+    legacyTexts.filter((t) => /Hit!/.test(t)).length === 0, { legacyTexts });
+
+  /* ═══ ...AND THE LEGACY POPUP IS STILL THERE WHEN IT IS THE ONLY FEEDBACK ═══
+     The assertion above is only half a claim.  "Never draw the word" is
+     trivially satisfiable by deleting the popup, and deleting it would break
+     the case v2.3.1612 deliberately kept it for: against a worker that
+     resolves no PvP there is no pvp_hit at all, so the attacker gets no
+     number from anywhere and this amber line is the only sign the swing
+     landed.  Rule 19 (both deploy orders keep working) is the property, and a
+     one-directional test would let the next reader "simplify" it away.
+
+     A legacy WORKER is simulated the only way a client can tell the
+     difference: no pvp_hit ever arrived for this opponent, so nothing stamped
+     _pvpSrvHits.  Clearing it is exactly that state, and it is also what the
+     map looks like PVP_SRV_HIT_MS after a fight ends. */
+  await A.page.evaluate(() => {
+    const S = window._gameState.current;
+    if (S._pvpSrvHits && S._pvpSrvHits.clear) S._pvpSrvHits.clear();
+    S.dmgNumbers = [];
+  });
+  const legacyOnly = [];
+  await B.page.evaluate((atkId) => {
+    const S = window._gameState.current;
+    if (S && S.channel) S.channel.send({ type: 'broadcast', event: 'pvp_confirmed',
+      payload: { target: atkId, from: S.myId, dmg: 9, isCrit: false, died: false, name: S.myName } });
+  }, aId);
+  for (let i = 0; i < 12; i++) {
+    for (const t of await H.readState(A, (S) => (S.dmgNumbers || []).map((p) => String(p.text)))) legacyOnly.push(t);
+    await A.page.waitForTimeout(90);
+  }
+  const legacyOnlyTexts = [...new Set(legacyOnly)];
+  rec.ok('...but against a worker that resolves no PvP, it is still the attacker\'s one signal',
+    legacyOnlyTexts.some((t) => /Hit! -9/.test(t)), { legacyOnlyTexts });
+
   /* …and it has to be ANCHORED TO THE OPPONENT, not to the attacker.
      Checking "closer to them than to me" is meaningless here — duellists stand
      almost on top of each other, so both distances come out similar and the

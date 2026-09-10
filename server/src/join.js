@@ -61,6 +61,9 @@ const JOIN_COSMETIC_KEYS = [
   'bt', 'bl', 'hw', 'fh', 'hr', 'sk', 'hc', 'htc', 'fhc', 'st', 'stc',
   'ec',   /* v2.3.1930: eye colour -- see the note in index.js */
   'ew',   /* v2.3.2361: eyewear -- a short catalog id like hw/fh; see the note in index.js */
+  'ewc',  /* v2.3.2424: the eyewear COLOUR.  On this gate AND TRACK_COSMETIC_KEYS in
+             index.js, together: one without the other is the v2.3.1939 shape, and here
+             it would be glasses that join the right colour and revert on the first relay. */
   /* v2.3.1939: the player's drawn shirt, front and back.  Exactly 256 hex
      characters each (16x16, one char per cell) -- see the cap below, which has
      to admit them: the flat 64 would truncate a drawing into an invalid string
