@@ -140,6 +140,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
       iconW: icon ? icon.getBoundingClientRect().width : 0,
       pad: getComputedStyle(b).padding, gap: getComputedStyle(b).gap };
   });
-  rec.ok('"Randomize Look" still fits on one line at the bigger size',
+  rec.ok('"Randomize Bro" still fits on one line at the bigger size',   /* v2.3.2456: relabelled */
     !!lines && lines.h < lines.lh * 1.7, lines);
 }

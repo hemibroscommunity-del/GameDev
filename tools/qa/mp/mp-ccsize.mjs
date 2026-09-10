@@ -54,13 +54,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the Randomize Look icon is on screen (guard)', !!rnd, rnd);
   rec.ok('...and it is bigger than the 20px it used to be',
     !!rnd && rnd.w >= 28 && rnd.h >= 28, rnd);
-  /* And the OTHER user of that class is untouched: the owner asked for the
-     randomize icon, not the name die.  Sizing the shared class would have
-     passed the assertion above and quietly changed a control nobody
-     mentioned. */
+  /* ═══ v2.3.2456: THE DIE HAS SINCE BEEN ASKED FOR TOO ═══
+     This asserted the die stayed at 22 -- "one icon was asked for, not two"
+     (v2.3.2035) -- and the owner asked for the other one at v2.3.2453:
+     "randomize button for name needs to be larger it looks small and awkward".
+     So the claim inverts, and what survives it is the mechanism that made the
+     first version safe: the two icons share .bt-cc-action-icon and each states
+     its OWN size inline, so they can be moved independently.  Asserting they
+     are DIFFERENT is what keeps that true -- if a later edit sizes the shared
+     class, both land on one number and this goes red. */
   const die = await box(P, '.bt-cc-namewrap .bt-cc-action-icon');
-  rec.ok('the name-reroll die is NOT enlarged — one icon was asked for, not two',
-    !!die && die.w <= 24, die);
+  rec.ok('the name-reroll die is enlarged too (owner, v2.3.2453)',
+    !!die && die.w >= 28, die);
+  rec.ok('...and the two icons still carry their own sizes rather than one '
+    + `shared class value (die ${die && die.w}, randomize ${rnd && rnd.w})`,
+    !!die && !!rnd && die.w !== rnd.w, { die: die && die.w, rnd: rnd && rnd.w });
 
   const heroBtn = await box(P, '.bt-cc-btn--hero');
   rec.ok('...without pushing its button taller than the 52px minimum '
@@ -353,9 +361,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
         .find((x) => (x.textContent || '').trim() === label);
       if (b) b.click();
       await new Promise((r) => setTimeout(r, 300));
+      /* v2.3.2456: which tile is PICKED.  This used to count children -- the
+         picked tile was the one carrying a second child, the cc-selected.webp
+         badge -- and v2.3.2454 put the owner's painted frames on the tiles,
+         which draw the check INSIDE the selected art.  There is no extra
+         element to count any more; the mark is the tile's own background, and
+         reading that is also closer to what the player sees. */
       const t = [...document.querySelectorAll('.bt-cc-strip > *')]
-        .find((el) => el.children.length > 1);      /* the check badge */
-      return t ? (t.getAttribute('title') || '?') : null;
+        .find((el) => /cc-tile-on/.test(getComputedStyle(el.querySelector('button') || el).backgroundImage || ''));
+      return t ? (t.getAttribute('title') || (t.querySelector('button') || {}).title || '?') : null;
     };
     const ticks = {};
     for (const l of ['Hair', 'Shirt', 'Hats', 'Beard']) ticks[l] = await tickOf(l);
