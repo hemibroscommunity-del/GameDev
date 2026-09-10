@@ -311,11 +311,27 @@ export async function enterWorld(P, timeout = 90000) {
        player has ALREADY tapped: the picker's Play, and the key-login reload).
        A seeded scenario therefore lands on the door like a returning player
        and takes the road they take — Continue, then the character's row. */
-    if (P.seeded) {
-      if (!(await openPicker(page))) throw new Error('seeded device: Continue did not open the character list');
-      await page.waitForSelector('[data-tut="char-row"]', { timeout: 20000 });
-      await page.click('[data-tut="char-row"]');
-    } else {
+    let returning = P.seeded;
+    if (!returning) {
+      /* A scenario that reloads mid-run (mp-switchbro) is the same device
+         coming back: it holds a key, so the door is what it sees now. */
+      try { returning = await page.evaluate(() => !!localStorage.getItem('bt_passphrase')); } catch (e) { returning = false; }
+    }
+    let tookRow = false;
+    if (returning) {
+      if (!(await openPicker(page))) throw new Error('returning device: Continue did not open the character list');
+      /* ITS row, not the first one: seeded extras (mp-switchbro) can sort
+         above the bro who is actually playing, and tapping one of those
+         switches keys.  The roster self-heals from the worker a beat after
+         the door paints (v2.3.1923), so the row may take a moment to appear;
+         a key with no character behind it never gets one, and falls through
+         to Create below. */
+      const mine = '[data-tut="char-row"][data-char-active="1"]';
+      const row = await page.waitForSelector(mine, { timeout: 10000 }).catch(() => null);
+      if (row) { await row.click(); tookRow = true; }
+      else await uncoverDoor(page);
+    }
+    if (!tookRow) {
       if (await page.$('[data-tut="login-create"]')) {
         await page.click('[data-tut="login-create"]');
         await page.waitForSelector('input.bt-cc-name', { timeout: 30000 });

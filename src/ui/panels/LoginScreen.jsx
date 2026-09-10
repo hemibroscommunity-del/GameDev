@@ -105,7 +105,17 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
      above is kept because it is still true of what the list IS; what changed
      is who opens it.  (Straight-in on load went the same way in BroTown's
      boot check, same version.) */
-  const [showPicker, setShowPicker] = React.useState(false);
+  const [showPicker, setShowPicker] = React.useState(function () {
+    /* One exception, one-shot: the in-world "Switch Bro" button promises the
+       list (ZoneHeader sets bt_open_list before it navigates here).  Consumed
+       on read so the next plain landing is the plain door again. */
+    var note = false;
+    try {
+      note = sessionStorage.getItem('bt_open_list') === '1';
+      sessionStorage.removeItem('bt_open_list');
+    } catch (e) { note = false; }
+    try { return note && rosterCount() > 0; } catch (e) { return false; }
+  });
   /* v2.3.1923: the "this device is full" gate — see the Create button. */
   const [warnFull, setWarnFull] = React.useState(false);
   /* No roster count is held here on purpose.  The picker owns the list while

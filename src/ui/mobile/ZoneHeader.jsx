@@ -134,6 +134,13 @@ export const ZoneHeader = ({ onExit }) => {
       dim.appendChild(lbl);
       document.body.appendChild(dim);
     } catch (e) {}
+    /* v2.3.2444: the door no longer opens the character list by itself
+       (owner: "Player should need to tap continue or create a character").
+       This button, when it reads "Switch Bro", promises "You'll go to your
+       list of bros" -- and the tap on it IS the tap.  So it hands the door a
+       one-shot note to open the list; "Log Out" (one bro, nothing to switch
+       to) lands on the plain door.  LoginScreen consumes the note on mount. */
+    if (_many) { try { sessionStorage.setItem('bt_open_list', '1'); } catch (e) {} }
     requestAnimationFrame(() => setTimeout(onExit, 30));
   };
 
