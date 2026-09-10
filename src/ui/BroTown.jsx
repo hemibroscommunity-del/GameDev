@@ -6722,10 +6722,31 @@ export var BroTown = function BroTown(_ref0) {
            mouse plugged in. */
         if (S._shieldUp && S._shieldKb && typeof S._mouseAimAngle === 'number') {
           S._shieldAngle = S._mouseAimAngle;
-        } else if (S._shieldUp && S.lockedTarget && S.lockedTarget.ref) {
+        } else if (S._shieldUp && S.lockedTarget && S.lockedTarget.ref && !S._rShieldSteered) {
           /* v2.3.2242: a raised shield faces the locked target every frame --
              BlockRing's lerp used to do this; the toggle button has no
              finger on it to steer, so the lock is the only steer there is. */
+          /* ═══ v2.3.2451: ...UNLESS A THUMB IS ACTUALLY STEERING IT ═══
+             The premise above is quoted exactly: "the toggle button has no
+             finger on it to steer".  v2.3.2446's hold gesture put a finger on
+             it, so this line became the SECOND half of the owner's report --
+             and the half that would have survived fixing the first.  With the
+             drop cured in rJoyAim the guard now stays up while you rotate, and
+             this branch would have spent every frame putting the arc straight
+             back on the locked monster, so the shield still would not turn.
+
+             A LOCK IS USUALLY PRESENT FOR THIS GESTURE, not rarely: the
+             double-tap branch in handleRBtnPress deliberately RESTORES the
+             lock its first tap took (v2.3.2271), so the common path into a
+             hold arrives holding one.
+
+             `_rShieldSteered` rather than `_rShieldHold`, so the two readings
+             of the gesture both get what they want: a hold with a MOTIONLESS
+             thumb keeps tracking the locked monster as it moves (the arc was
+             seeded from the lock by raiseShieldToggle, and this keeps it
+             there), and the first real drag hands the arc to the thumb for the
+             rest of the hold.  Set where _shieldAngle is written -- once on
+             each surface -- and cleared with the hold itself. */
           S._shieldAngle = shieldAimAngle(S);
         }
         if (S._shieldUp && S.rpg) {
@@ -8195,6 +8216,13 @@ export var BroTown = function BroTown(_ref0) {
         var _up = false;
         try { _up = raiseShieldToggle(S); } catch (e) { /* refused: no shield, or on cooldown */ }
         S._rShieldHold = !!_up;
+        /* v2.3.2451: every hold opens on the SEED angle raiseShieldToggle just
+           computed (the locked target, else the body facing) and only hands the
+           arc to the thumb once the thumb has actually dragged.  Cleared here
+           as well as on release so a hold can never inherit the previous one's
+           claim -- release clears it, but a raise that lands with the flag
+           somehow set would otherwise ignore the lock for its whole life. */
+        S._rShieldSteered = false;
         return true;
       }
     }
@@ -8264,13 +8292,50 @@ export var BroTown = function BroTown(_ref0) {
     }
     S._facing = best;
     S._aimAngle = angle;
-    S._aiming = true;
-    S._aimSrc = 'stick';   /* v2.3.2261: the player's own aim, not a lock's */
     S._rJoyLiveUntil = Date.now() + JOY_FADE_MS;   /* v2.3.2260: steering is input */
     /* v2.3.2258: _lastAimAngle has had no writer since PR #546 removed this
        function -- abilities and the renderer have been reading a permanently
        undefined field ever since.  Restored with the rest of it. */
     S._lastAimAngle = angle;
+    /* ═══ v2.3.2451: STEERING A HELD GUARD IS NOT A REQUEST TO ATTACK ═══
+       Owner: "It holds the shield after double tapping until you rotate
+       directionally (right joystick) and it immediately drops the shield.
+       This is not the correct behavior.  You should be able to rotate the
+       shield while it's held."
+
+       THIS LINE WAS THE DROP.  monsterCombat's auto-attack loop reads
+       `if (S.autoAttack && S._shieldUp) dropShield(S, 'attack')` -- v2.3.2248,
+       "asking to attack breaks the hold" -- and the safety argument for it is
+       written out beside it: "raiseShieldToggle clears autoAttack on the way
+       up, so the flag can only be true again because the player pressed AFTER
+       raising, which is exactly the intent this is reading."
+
+       That was true when it was written and v2.3.2446 falsified it.  The hold
+       gesture made the STICK a steering control for the arc, and rJoyAim runs
+       on every move of the stick -- so the drag that aims the shield re-armed
+       autoAttack with no new press anywhere, and the loop read a rotation as a
+       request to attack on the very next tick.  Hence the owner's word
+       "immediately": the guard survived exactly until the thumb moved.
+
+       `_aiming` goes with it.  raiseShieldToggle clears that too (v2.3.2246),
+       and it is the flag the aim reticle (effectsRenderer) and the free-aim
+       projectile angle (projectiles.js) both key on -- so leaving it live
+       would put an aim back up behind a raised shield even once the attack
+       itself was suppressed.
+
+       EVERYTHING ABOVE THIS LINE STILL RUNS, deliberately: the rod and knob
+       follow the thumb, and `_facing` keeps turning the body to look where the
+       shield points, which is what rM's own v2.3.2446 note promised ("rJoyAim
+       still runs underneath, so the body keeps turning to look where the
+       shield points").  Only the two attack flags are withheld.
+
+       MELEE IS UNTOUCHED.  A shield raised by the BUTTON never sets
+       `_rShieldHold` -- the flag is armed in one place, the double-tap branch
+       of handleRBtnPress -- so the melee toggle reaches this line with the
+       flag false and behaves exactly as it did. */
+    if (S._rShieldHold) return;
+    S._aiming = true;
+    S._aimSrc = 'stick';   /* v2.3.2261: the player's own aim, not a lock's */
     S.autoAttack = true;
   }, []);
   /* v2.3.2446: end a held guard, wherever the touch ended.  One copy, because
@@ -8280,6 +8345,7 @@ export var BroTown = function BroTown(_ref0) {
     var S = stateRef.current;
     if (!S || !S._rShieldHold) return;
     S._rShieldHold = false;
+    S._rShieldSteered = false;   /* v2.3.2451: the thumb's claim on the arc ends with the thumb */
     if (!S._shieldAutoReleased) { try { dropShield(S, 'hold-release'); } catch (e) { /* display only */ } }
     S._shieldAutoReleased = false;
   }, []);
@@ -8886,9 +8952,18 @@ export var BroTown = function BroTown(_ref0) {
            would widen or narrow the real cover by up to half a sector.
            rJoyAim still runs underneath, so the body keeps turning to look
            where the shield points. */
+        /* v2.3.2451: past the surface's own drag threshold, not on the first
+           stray pixel.  The angle is an atan2 of the deflection, so a thumb
+           resting still on the glass emits jitter with a MEANINGLESS direction
+           -- and now that a steer outranks the lock (see the loop's
+           `_rShieldSteered` note) that jitter would have taken the arc off the
+           monster and pointed it nowhere.  TAP_MAX_MOVE_SQ_PX is this
+           surface's existing "this is a drag, not a tap" line, reused rather
+           than a second threshold that can drift away from it. */
         var _Ssh = stateRef.current;
-        if (_Ssh && _Ssh._rShieldHold) {
-          _Ssh._shieldAngle = Math.atan2(t.clientY - rts2.startY, t.clientX - rts2.startX);
+        if (_Ssh && _Ssh._rShieldHold && dxs * dxs + dys * dys > TAP_MAX_MOVE_SQ_PX) {
+          _Ssh._shieldAngle = Math.atan2(dys, dxs);
+          _Ssh._rShieldSteered = true;
         }
         /* THE ROTATION.  v2.3.2242's deleted handleRJoyMove, restored from
            588cf49: deflection from the touch ORIGIN (v2.3.949's relative drag),
@@ -9073,8 +9148,10 @@ export var BroTown = function BroTown(_ref0) {
            _blockArcCovers measures the real angle, so quantising it would
            move the cover the player actually gets. */
         var _Sbs = stateRef.current;
-        if (_Sbs && _Sbs._rShieldHold) {
-          _Sbs._shieldAngle = Math.atan2(t.clientY - bSwipe.sy, t.clientX - bSwipe.sx);
+        var _bsdx = t.clientX - bSwipe.sx, _bsdy = t.clientY - bSwipe.sy;   /* v2.3.2451: see rM's threshold note */
+        if (_Sbs && _Sbs._rShieldHold && _bsdx * _bsdx + _bsdy * _bsdy > TAP_MAX_MOVE_SQ_PX) {
+          _Sbs._shieldAngle = Math.atan2(_bsdy, _bsdx);
+          _Sbs._rShieldSteered = true;
         }
         /* ═══ v2.3.2254: SLIDE DOWN FROM ATTACK ONTO THE SHIELD ═══
            Owner: "I'd like it if I can just slide my finger down from the
