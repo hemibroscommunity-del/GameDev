@@ -1029,10 +1029,30 @@ export function NameModal(props) {
       display: 'block',
       touchAction: 'none',
       cursor: 'grab',
-      /* v2.3.744/745: per-angle drop — SW/E source frames sit higher in
-         their 256 box than the others.  v2.3.1276b: px offsets halve
-         with the bitmap's on-screen scale. */
-      transform: 'translateX(-50%) translateY(' + ({ southwest: 8, southeast: 8, east: 5, west: 5, northeast: 3, northwest: 3 }[previewDir] || 0) + 'px)',
+      /* ═══ v2.3.2459: THE SPIN STOPPED BOBBING ═══
+         Owner: "When you spin the bro around in the create character screen
+         it looks like north and south jump up on the platform (not consistent
+         all the way around for positioning)."
+
+         MEASURED, and he is right: the boots landed on six different lines
+         across the eight facings, 15px apart end to end, with NORTH and SOUTH
+         the highest of them.  The cause was this table, not the art.
+
+         v2.3.744/745 wrote it when the frames genuinely sat at very different
+         heights in their box, and v2.3.1276b halved the character (97% ->
+         48.5%) with a note that "px offsets halve with the bitmap's on-screen
+         scale" -- but the numbers themselves never followed, and the art has
+         been re-cut since.  What the composite actually hands us now is
+         near-aligned: the lowest inked row is 521 of 522 for six facings and
+         519 for southwest/southeast, a two-row difference that is ONE CSS
+         pixel at the size this draws at.  The table was adding eight.
+
+         So it carries the measured difference and nothing else -- and in
+         PERCENT, not px, because a percentage translate is a share of the
+         element's own height: the tap-to-zoom preset changes that height, and
+         a px nudge tuned at one size is wrong at the other, which is the trap
+         v2.3.1276b's note describes and did not close.  2/522 = 0.383%. */
+      transform: 'translateX(-50%) translateY(' + ({ southwest: 0.383, southeast: 0.383 }[previewDir] || 0) + '%)',
       /* v2.3.717: transparent — trait sprites carry white extraction
          residue that any dark backdrop would expose.  No z-index: DOM
          order stacks pillars < canvas < rotate buttons. */
