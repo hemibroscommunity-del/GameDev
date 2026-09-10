@@ -1,5 +1,5 @@
 /* DOES THE EYEWEAR SWATCH PAINT THE RIGHT PART, AND DOES THE FIGURE CHANGE?
- * (v2.3.2422)
+ * (v2.3.2424)
  *
  * Owner: "Do you think recolor options would work well for the glasses?  I
  * like how you recolored the hats."

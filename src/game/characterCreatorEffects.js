@@ -3,7 +3,7 @@ import { prewarmBaseSheets } from '@/rendering/pixiRenderer.js';
 import { preloadTraitThumbs } from '@/rendering/traitThumbs.js';
 import { setHairColor, hairColorTarget } from '@/rendering/traits/hairColorCatalog.js';
 import { hatColorTarget } from '@/rendering/traits/hatColorCatalog.js';
-import { eyewearColorTarget } from '@/rendering/traits/eyewearColorCatalog.js';   /* v2.3.2422 */
+import { eyewearColorTarget } from '@/rendering/traits/eyewearColorCatalog.js';   /* v2.3.2424 */
 import { facialHairColorTarget } from '@/rendering/traits/facialHairColorCatalog.js';
 import { shirtColorTarget } from '@/rendering/traits/shirtColorCatalog.js';
 import { onArtChange } from '@/rendering/traits/playerArt.js';   /* v2.3.1938; v2.3.1940 renamed — it covers pants and tattoos too */
@@ -47,7 +47,7 @@ export function portraitLook(sel) {
     facialHair: sel.facialHairSel, facialHairColor: facialHairColorTarget(sel.beardColorSel),
     headwear: sel.headwearSel, hatColor: hatColorTarget(sel.hatColorSel, sel.headwearSel), /* v2.3.1927 */
     eyewear: sel.eyewearSel,   /* v2.3.2361 */
-    /* v2.3.2422: the eyewear's chosen colour, resolved to a target the same
+    /* v2.3.2424: the eyewear's chosen colour, resolved to a target the same
        way the hat's is one line up.  Resolved HERE rather than in the portrait
        so an unlisted pair, an excluded colour, or the whole category switched
        off in recolorOptions all arrive as a plain null and the preview simply

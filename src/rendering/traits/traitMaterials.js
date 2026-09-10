@@ -194,7 +194,7 @@ MAIN_MATERIAL['bucket-hat'] = 'all';     /* re-rendered on hue44 too: its dark h
                                             brim's shadow, and sparing it leaves the hat
                                             two-tone in a way the art never was */
 
-/* ═══ v2.3.2422: EYEWEAR ═══
+/* ═══ v2.3.2424: EYEWEAR ═══
  * Measured the same way as the hats above (segmentMaterials over all four
  * facings, pooled).  PINNED rather than left to "biggest wins", so the choice
  * survives an art edit -- the gold rim stays the gold rim even if the dark

@@ -28,7 +28,7 @@ import { getPattern, parsePattern, sanitizePattern } from './traits/patternCatal
 import { composeShirt } from './playerDecal.js';   /* v2.3.1938; v2.3.1941 one compositor for colour + pattern + print */
 import { SPRITE_VERSION } from './playerSprites.js';
 import { getHatRef } from './traits/hatColorCatalog.js';
-import { eyewearColorTarget, getEyewearRef } from './traits/eyewearColorCatalog.js';   /* v2.3.2422 */
+import { eyewearColorTarget, getEyewearRef } from './traits/eyewearColorCatalog.js';   /* v2.3.2424 */
 import { materialIndex } from './traits/traitMaterials.js'; /* v2.3.1926 */
 import { headwearIsSolid, headwearBehindBeard } from './traits/headwearCatalog.js';   /* v2.3.1934 */
 import { hatHairFit } from './traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
@@ -312,7 +312,7 @@ function renderTraitCanvas(traitImg, meta, crown, dir, liftY, mulX) {
  *  draw completes (after async asset loads).  Safe to call repeatedly. */
 export async function drawCharacterPortrait(canvas, opts) {
   if (!canvas) return;
-  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, eyewear, eyewearColor, shirt, shirtColor, dir, gear, weapon, shield } = opts || {};   /* v2.3.2361: + eyewear; v2.3.2422: + eyewearColor */
+  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, eyewear, eyewearColor, shirt, shirtColor, dir, gear, weapon, shield } = opts || {};   /* v2.3.2361: + eyewear; v2.3.2424: + eyewearColor */
   /* v2.3.1580 (owner: traits still soft after the v2.3.1579 re-bake).
      OPT-IN supersampling.  This canvas has always composited at a fixed
      256 with no devicePixelRatio scaling -- the WORLD canvas is DPR-aware
@@ -418,7 +418,7 @@ export async function drawCharacterPortrait(canvas, opts) {
        the 128 frame as fallback, exactly like the beard above it. */
     wantEw ? loadTraitBest('eyewear', eyewear, DIR) : null,
     wantEw ? loadMeta('eyewear', eyewear) : null,
-    /* v2.3.2422: one shared recolour reference across the pair's facings, the
+    /* v2.3.2424: one shared recolour reference across the pair's facings, the
        same pooling the hat gets two entries up (v2.3.1109) and for the same
        reason -- keyed per facing the chosen colour lands on a different tone
        per angle, so the glasses would change shade as the preview rotates. */
@@ -783,7 +783,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      world renderer builds its sprites in.  Plain placeTrait: no recolour, no
      hair-dependent fit, and it draws on facings its meta has an anchor for
      (a pair that ships no north frame is simply skipped from behind).
-     v2.3.2422: no longer "no recolour" -- the same recolorHairToCanvas pass
+     v2.3.2424: no longer "no recolour" -- the same recolorHairToCanvas pass
      the hat gets below.  Without this the swatch row lights up and the figure
      it is drawn beside does not change, which is the exact failure the part
      label was added to avoid: a control that says what it paints and then
@@ -894,7 +894,7 @@ export function portraitOptsFromPeer(o) {
     headwear: c.headwear,
     hatColor: hatColorTarget(c.hatColor, c.headwear),          /* v2.3.1927 */
     eyewear: c.eyewear,                                        /* v2.3.2361 */
-    eyewearColor: eyewearColorTarget(c.eyewearColor, c.eyewear),   /* v2.3.2422 */
+    eyewearColor: eyewearColorTarget(c.eyewearColor, c.eyewear),   /* v2.3.2424 */
     shirt: c.shirt,
     shirtColor: shirtColorTarget(c.shirtColor),
     eyeColor: c.eyeColor,                                      /* v2.3.1930 */

@@ -228,7 +228,7 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
       fp: 'stripe-h:4' /* v2.3.1944: shoes */,
       hg: 'short', fr: 'thin' /* v2.3.1953: height + frame */,
       ew: 'nerd', /* v2.3.2361: eyewear */
-      ewc: 'teal' /* v2.3.2422: its colour */ },
+      ewc: 'teal' /* v2.3.2424: its colour */ },
   }));
   const charF = state._store.get('char:bp_finn');
   check('char record stamped in its own storage key on first join',
@@ -252,11 +252,11 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
      would catch a pair of glasses that never persisted. */
   check('...including the eyewear (v2.3.2361)',
     !!(charF && charF.look.ew === 'nerd'), charF && charF.look);
-  /* v2.3.2422: the eyewear's COLOUR is a SECOND key on the same gate, and one
+  /* v2.3.2424: the eyewear's COLOUR is a SECOND key on the same gate, and one
      of a pair being added is the failure this whole block keeps catching --
      the glasses would persist across a new-device login in the native paint
      and the player would report that their colour "reset itself". */
-  check('...including the eyewear COLOUR (v2.3.2422)',
+  check('...including the eyewear COLOUR (v2.3.2424)',
     !!(charF && charF.look.ewc === 'teal'), charF && charF.look);
   /* v2.3.1939: a drawn shirt survives the join path AT FULL LENGTH.  Cosmetics
      are truncated at 64 by default and this one is 256, so without its own

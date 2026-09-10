@@ -12,8 +12,8 @@
  *
  * WHY THIS FILE EXISTS RATHER THAN A SCREENSHOT.  A size bump is trivially
  * "done" in CSS and trivially wrong on a phone: the two buttons these icons
- * sit in have SMALLER minimums under `max-height:720px` (game.css: .bt-cc-draw
- * drops 54px -> 44px), so an icon chosen against a desktop button can crush
+ * sit in have SMALLER minimums under a short viewport, so an icon chosen
+ * against a desktop button can crush
  * the control on an iPhone SE and nobody notices until a player says the
  * screen looks broken. The viewport here is 390x844 and every assertion is a
  * MEASUREMENT of the rendered box, not of the stylesheet.
@@ -118,20 +118,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the Skin tab could be opened (guard)', toSkin === true, { toSkin });
   await P.page.waitForTimeout(900);
 
-  const tat = await box(P, 'img.bt-cc-draw-icon');
-  rec.ok('the tattoo icon is the painted art, not the fallback pencil (guard)',
-    !!tat, tat);
-  rec.ok('...and it is bigger than the 26px it used to be',
-    !!tat && tat.w >= 32 && tat.h >= 32, tat);
+  /* ═══ v2.3.2415: THE ICON MOVED, AND THE NUMBER MOVED WITH IT ═══
+     v2.3.2035 took this icon 26 -> 34 inside a 54px button whose other half was
+     a sentence.  The owner then asked for that sentence to be replaced by the
+     tattoo tools ("Instead of using space for 'tattoo your body or face' I'd
+     rather you just have the tools for tattooing right there beneath the
+     character"), so there is no label bar left to size it against: it is a
+     badge on the picture now, .bt-cc-ink-badge, at 28.
+     28, not 34, and that is a judgement rather than a measurement -- on a
+     170px-wide picture 34px reads as a sticker stuck on the character.  It is
+     still above the 26 the owner asked it to grow from, which is the property
+     this assertion was written to hold; if it now reads too small on a real
+     phone, this is the number to change and this note is why. */
+  const tat = await box(P, 'img.bt-cc-ink-badge');
+  rec.ok('the tattoo icon survived the label bar it used to live in, and is '
+       + 'still the painted art (guard)', !!tat, tat);
+  rec.ok('...and it is still bigger than the 26px the owner asked it to grow '
+       + 'from', !!tat && tat.w >= 28 && tat.h >= 28, tat);
 
-  /* THE ONE THAT WOULD BITE ON A PHONE.  .bt-cc-draw is min-height 44px at
-     this viewport height, not 54 -- an icon sized against the desktop button
-     would overflow it here and nowhere else. */
-  const drawBtn = await box(P, '.bt-cc-draw');
-  rec.ok('...and it still FITS its button on a phone-sized screen, with the '
-       + 'icon inside the box rather than setting its height',
-    !!(drawBtn && tat) && tat.h < drawBtn.h && drawBtn.h >= 44,
-    { drawBtn, tat });
+  /* THE ONE THAT WOULD BITE ON A PHONE.  A badge has to stay a badge: it sits
+     over the one thing this pane exists to show, so an icon that grew to fill
+     the picture would pass "bigger than 26" and hide the character. */
+  const pane = await box(P, '.bt-cc-ink-pane');
+  rec.ok('...and it is a badge ON the picture rather than a sticker OVER it -- '
+       + 'under a third of the pane in both directions',
+    !!(pane && tat) && tat.h < pane.h / 3 && tat.w < pane.w / 3,
+    { pane, tat });
 
   /* ── 3. the Default colour button ──
      A COLOUR ROW ONLY EXISTS ONCE AN ITEM IS PICKED (`_def.sel !== 'none'`,
@@ -549,7 +561,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const wrap = row.parentElement;
     const more = wrap && wrap.querySelector('.bt-cc-more');
     const panel = document.querySelector('.bt-cc-panel');
-    const draw = document.querySelector('.bt-cc-draw');
+    const draw = document.querySelector('.bt-cc-ink');   /* v2.3.2414 */
     const pr = panel.getBoundingClientRect();
     const dr = draw ? draw.getBoundingClientRect() : null;
     return { t, swatches: row.children.length,
@@ -567,8 +579,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${tab}: the colour row hides none of them (${f && f.scrollH}px of swatches in a ${f && f.clientH}px box)`,
       !!f && f.hidden <= 2, f);
     rec.ok(`${tab}: ...so nothing is dimmed behind a fade`, !!f && f.cue === false, f);
-    /* The room it grew into was real spare space, not the Design button's. */
-    rec.ok(`${tab}: ...and the Design button is still inside the panel`,
-      !!f && f.drawBottom <= f.panelBottom, f);
+    /* The room it grew into was real spare space, not the ink card's.
+       v2.3.2414: Hair has no drawing, so it has no card -- the assertion is
+       about the tabs that DO carry one, and `drawBottom === null` is the
+       honest reading of "there is nothing here to push out" rather than a
+       silent pass. */
+    rec.ok(`${tab}: ...and the ink card, where there is one, is still inside `
+       + `the panel (${f && f.drawBottom === null ? 'no card on this tab' : 'card present'})`,
+      !!f && (f.drawBottom === null || f.drawBottom <= f.panelBottom), f);
   }
 }

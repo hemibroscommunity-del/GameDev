@@ -95,6 +95,20 @@ const REGIONS = [
   { key: 'face',   target: 'tattooFace', label: 'Face' },
   { key: 'arms',   target: 'tattooArm',  label: 'Arms' },
   { key: 'tattoo', target: 'tattoo',     label: 'Chest' },
+  /* v2.3.2416: PANTS.  Owner: "On pants editor show the actual pants where
+     you drawing drawing in the editor (similar to how the other editors
+     work)."  The pants print was the last drawing still made on a bare 16x16
+     grid, so you drew a shape in the abstract and found out where it landed
+     afterwards.
+     It costs one row here because the renderer was already reporting a pants
+     grid: playerSkins bakes `{ pants, tattoo, face, arms }` and stamps the
+     pants region whenever a report is asked for -- `wantPantsArt` is
+     `artHasInk(art.pants) || wantReport` -- so an EMPTY pants canvas still
+     hit-tests, which is the case that matters for a first drawing.
+     Last in the list on purpose: priority is most-specific-first, and the
+     pants bbox does not overlap any skin region, so its position only decides
+     ties that cannot happen. */
+  { key: 'pants',  target: 'pants',      label: 'Pants' },
 ];
 /* v2.3.2150: front canvas -> its back counterpart, and back -> the front
    REGION it is drawn on. Both directions are needed and they are not the same
@@ -103,12 +117,16 @@ const REGIONS = [
 const BACK_TARGET = { tattoo: 'tattooBack', tattooFace: 'tattooHeadBack' };
 const FRONT_OF = { tattooBack: 'tattoo', tattooHeadBack: 'tattooFace' };
 const keyForTarget = (t) => {
-  /* A back canvas has NO region of its own -- the surface frames a
-     front-facing figure and there is no back to hit-test -- so it borrows the
-     grid of the part it covers. Without this fold, keyForTarget answered null
-     for 'tattooBack', gridFor found no grid, and every stroke on the back was
+  /* A back canvas has no region OF ITS OWN NAME: the grid report is keyed by
+     body region (`tattoo`, `face`, `arms`, `pants`) and says nothing about
+     which way the sheet faces, so 'tattooBack' has to borrow the key of the
+     part it covers. Without this fold, keyForTarget answered null for
+     'tattooBack', gridFor found no grid, and every stroke on the back was
      silently DROPPED: mp-bodyink saw the chest correctly left alone and the
-     back never written, which reads as "the switch does nothing". */
+     back never written, which reads as "the switch does nothing".
+     v2.3.2422: still exactly right now that the surface turns round -- the
+     north sheet reports `tattoo` for the back of the torso, because it is the
+     torso region of the sheet being baked. */
   const key = FRONT_OF[t] || t;
   const r = REGIONS.find((q) => q.target === key);
   return r ? r.key : null;
@@ -134,6 +152,11 @@ const keyForTarget = (t) => {
 const TAB_REGIONS = {
   tattoo: ['arms', 'tattoo'],
   face: ['face'],
+  /* v2.3.2416: the pants screen frames the trousers and nothing else.  There
+     is no second canvas for a finger to stray onto, so unlike the Body tab
+     this one really is a fence -- and it needs to be, because the legs sit
+     directly under a torso whose skin IS inkable on another screen. */
+  pants: ['pants'],
 };
 
 /** Invert a 2D affine matrix applied as x' = a·x + c·y + e. */
@@ -149,11 +172,13 @@ export default function BodyInk({
   /* v2.3.1994: the panel drives the tools; this surface reports cells. */
   apiRef = null, activeTarget = 'tattoo',
   onRegion, onDown, onMove, onUp,
-  /* v2.3.2150: true while the panel is drawing on the character's BACK. The
-     surface still frames a front-facing figure -- there is no back-view art to
-     paint on -- so the touch REGIONS are unchanged and only the canvas each one
-     writes to moves. That is the whole reason a back canvas needed a switch
-     rather than a place to touch. */
+  /* v2.3.2150: true while the panel is drawing on the character's BACK, which
+     moves the canvas each touch WRITES to (regionAt, through BACK_TARGET).
+     v2.3.2422: and, with `dir`, which way the figure this surface composites is
+     facing and which drawing is stamped on it -- see the composite. The touch
+     REGIONS are still keyed the same way (`tattoo` / `face` / `arms`) whichever
+     side is showing, so the remap here stays exactly as it was; what changed is
+     that the region you are touching is now the one you are inking. */
   backSide = false,
   overlayCells = null, selCells = null, handleCell = null,
 }) {
@@ -563,18 +588,59 @@ export default function BodyInk({
     const draw = () => {
       if (!offRef.current) offRef.current = document.createElement('canvas');
       const A = artsRef.current || {};
+      /* v2.3.2416: whether to strip what is WORN.  On a skin region it must be
+         stripped -- this surface exists so you can move between chest, face and
+         arms without changing screens, and a covered region you cannot ink
+         reads as broken rather than as covered.  On the PANTS region the
+         opposite is true: the trousers are the thing being drawn on, so
+         stripping the shirt would only take away the context that tells you
+         where the waistband is.  Whatever the player is actually wearing. */
+      const bareSkin = region !== 'pants';
+      /* ═══ v2.3.2422: THE SURFACE TURNS ROUND WITH THE SWITCH ═══
+         Owner: "the back button does not make the large canvas rotate to the
+         back.  Also the front copies its drawings onto the back (these should
+         be separate)."  Both halves of that are this one object.
+
+         v2.3.2150 shipped the switch as a REMAP ONLY -- the touch wrote to the
+         back canvas while the figure stayed facing the camera -- on the
+         reasoning that "there is no back-view art to paint on".  That was
+         wrong twice over.  There IS a back view (`north` is a real sheet, not
+         a mirrored one: playerSprites SOURCE_DIRS), and the drawing you were
+         looking at while inking the back was `A.tattoo`, THE FRONT ONE.  So
+         the two canvases the whole feature exists to keep apart appeared to be
+         one: draw a cross on your chest, flip to Back, and there was the cross
+         again, on a chest that was still a chest.
+
+         Note the arts are re-pointed HERE rather than relying on the swap the
+         game does. `artForFacing` (playerSkins v2.3.2148) is applied inside
+         bodySheetKey/buildBodySheet, which is the IN-GAME path;
+         drawCharacterPortrait hands its `_bodyArt` straight to
+         recolorBodyToCanvas and never calls it, so a portrait facing north
+         stamps whatever the caller put in `tattooArt` -- the front drawing,
+         unless the caller says otherwise.  Saying otherwise IS this table, and
+         it deliberately mirrors artForFacing's own mapping (torso -> tattooBack,
+         face -> tattooHeadBack, ARM untouched because an arm is the same arm
+         from behind) so the surface and the walking character agree.
+
+         The hit-testing needs no change at all: the grids come back keyed by
+         REGION (`tattoo` / `face` / `arms` / `pants`) whichever way the sheet
+         faces, and regionAt already remaps the region it hit onto the back
+         canvas through BACK_TARGET. The region masks are measured on the sheet
+         being baked, so with this dir they are the back of the torso and the
+         back of the head -- which is exactly where those drawings are stamped.
+         The finger is on the pixel it inks, which is the whole premise of this
+         surface (v2.3.1965) finally applied to the far side. */
       const opts = Object.assign({}, look, {
         dir,
-        /* Every skin canvas at once, and nothing worn that would hide one:
-           this surface exists so you can move between chest, face and arms
-           without changing screens, and a covered region you cannot ink reads
-           as broken rather than as covered. The panel's caption says what a
-           shirt and a hat hide in play. */
-        shirt: 'none', headwear: 'none',
-        tattooArt: A.tattoo || '', faceTattooArt: A.tattooFace || '', armTattooArt: A.tattooArm || '',
+        tattooArt: (backSide ? A.tattooBack : A.tattoo) || '',
+        faceTattooArt: (backSide ? A.tattooHeadBack : A.tattooFace) || '',
+        armTattooArt: A.tattooArm || '',
+        /* The pants drawing, live, for the same reason the three skin ones are
+           here: the surface IS the preview while you are drawing on it. */
+        pantsArt: A.pants || '',
         reportGrids: true,
         scale: Math.min(2, Math.round((typeof window !== 'undefined' && window.devicePixelRatio) || 1)),
-      });
+      }, bareSkin ? { shirt: 'none', headwear: 'none' } : null);
       return drawCharacterPortrait(offRef.current, opts).then(() => {
         const off = offRef.current;
         gridsRef.current = (off && off.__btGrids) || null;
@@ -605,7 +671,12 @@ export default function BodyInk({
       if (raf) cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
     };
-  }, [look, dir, arts, blit, fitRegion]);
+  /* v2.3.2422: `backSide` is a DEPENDENCY here for the same reason it is one
+     on regionAt -- the composite reads it to choose which drawing to stamp,
+     and `dir` changing alongside it is a coincidence of the current caller,
+     not a guarantee.  (No react-hooks plugin in this repo's flat config; the
+     deps are stated by hand and checked by hand.) */
+  }, [look, dir, backSide, arts, region, blit, fitRegion]);
 
   /* View changes need no new composite, only a re-blit — and so do the three
      overlays, which is what makes the ink appear under the finger a frame

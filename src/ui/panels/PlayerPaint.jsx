@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   ART_W, ART_H, ART_PALETTE, emptyArt, artColorAt,
-  getArt, getSlots, setSlot, SLOT_COUNT,
+  getArt,
 } from '@/rendering/traits/playerArt.js';
 import {
   TOOLS, toolById, lineCells, expandCells, mirrorCells,
@@ -14,6 +14,10 @@ import {
   patternsFor, getPattern, setPattern, parsePattern, formatPattern, patternInk,
 } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 import { drawCharacterPortrait } from '@/rendering/characterPortrait.js';   /* v2.3.1947 */
+import { SHIRT_CATALOG } from '@/rendering/traits/shirtCatalog.js';   /* v2.3.2416 */
+/* v2.3.2414: the ink colour and the brush width are shared with the creator's
+   inline tool row -- see paintTools.js for why they live outside this panel. */
+import { getInk as getToolInk, getBrush as getToolBrush, setInk as setToolInk, setBrush as setToolBrush } from './paintTools.js';
 import BodyInk from '@/ui/panels/BodyInk.jsx';   /* v2.3.1965 */
 import { heightMul, PORTRAIT_FIT, getBuildHeight } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1953 */
 
@@ -55,8 +59,16 @@ const CELL_PX = 18;            /* on-screen size of one cell at rest */
 
 /* Per-target copy.  `note` is the one thing a player cannot work out by looking
    at the grid: WHERE the drawing ends up and what can hide it. */
+/* v2.3.2416: `title` names the SCREEN.  Owner: "Once in the editors find room
+   to make a title label somewhere so users know what editor they're in."
+   Distinct from `label`, which is a noun dropped into a sentence ("a shirt
+   covers it") and reads wrong as a heading.  Only the four targets the creator
+   can actually open need one; the back/face/arm entries are reached by the
+   mode strip INSIDE a screen, not by opening one, so they inherit the title of
+   the screen that reaches them (see `cfg` below). */
 const TARGETS = {
   shirt: {
+    title: 'Shirt design',
     label: 'shirt',
     /* v2.3.1941: `pattern` names the garment slot this target can pattern, or
        null when it cannot be patterned (a tattoo is not clothing). */
@@ -64,11 +76,13 @@ const TARGETS = {
     note: 'Front and back are separate — the back shows when you walk away.',
   },
   pants: {
+    title: 'Pants design',
     label: 'pants',
     pattern: 'pants',
     note: 'Sits on the upper leg. Leg armour covers it.',
   },
   tattoo: {
+    title: 'Tattoos',
     label: 'tattoo',
     pattern: null,
     /* v2.3.1994: the Body screen reaches the arms as well now, so the caption
@@ -111,6 +125,7 @@ const TARGETS = {
      there is nothing to draw on -- and the four tiles offered are the ones that
      survive at that size (see patternCatalog). */
   shoes: {
+    title: 'Shoe pattern',
     label: 'shoes',
     pattern: 'shoes',
     drawing: false,
@@ -247,51 +262,34 @@ const LAYER_MOVES = [
   { k: 'ff', d: 'front', label: 'To front', tip: 'Bring it in front of everything else' },
 ];
 
-/* ── a saved design ──
-   v2.3.1950 (owner: "Design slots, so you can try something without losing what
-   you had.")
+/* ═══ v2.3.2416: THE THREE DESIGN SLOTS AND THEIR SAVE BUTTON ARE GONE ═══
+   Owner: "Remove the 'save' with the 4 slots everywhere: too confusing between
+   saving load out vs saving your current work."
 
-   ONE control does both jobs, and which one it does is never ambiguous: an
-   EMPTY slot has nothing to load, so tapping it saves; a FULL slot has
-   something to load, so tapping it loads.  Only overwriting needs a second
-   step, and that is the rare case — the Save button below arms it.
+   The confusion was real and it was this panel's fault.  Save here meant
+   "stash a copy of this drawing in one of three lockers", a few inches from a
+   game whose other Save means "keep what I am wearing".  Two different
+   promises behind one word, and nothing on the button to tell them apart.
 
-   Drawn from the same codec the grid draws from, so a thumbnail can never
-   disagree with what the slot actually holds. */
-function SlotChip({ art, on, arming, onPick }) {
-  const ref = React.useRef(null);
-  React.useEffect(() => {
-    const cv = ref.current;
-    if (!cv) return;
-    const ctx = cv.getContext('2d');
-    const S = cv.width / ART_W;
-    ctx.clearRect(0, 0, cv.width, cv.height);
-    ctx.fillStyle = '#243039';
-    ctx.fillRect(0, 0, cv.width, cv.height);
-    if (!art) return;
-    for (let y = 0; y < ART_H; y++) {
-      for (let x = 0; x < ART_W; x++) {
-        const c = artColorAt(art, x, y);
-        if (c) { ctx.fillStyle = c; ctx.fillRect(x * S, y * S, S, S); }
-      }
-    }
-  }, [art]);
-  const label = arming ? 'Save here' : (art ? 'Load this design' : 'Empty — tap to save this design here');
-  return (
-    <button type="button" onClick={onPick} title={label} aria-label={label}
-      className={'bt-paint-slot' + (on ? ' bt-paint-slot--on' : '')}>
-      <canvas ref={ref} width={ART_W * 3} height={ART_H * 3} />
-      {!art && !arming && <span className="bt-paint-slot-plus">+</span>}
-    </button>
-  );
-}
+   Nothing that mattered is lost: the drawing itself persists on EVERY stroke
+   (the store effect below), Undo and Redo walk its history, and the copy
+   button still moves a design between front and back.  What went is the stash,
+   which is the part nobody could name.
+
+   The slot STORE (playerArt's getSlots / setSlot / SLOT_COUNT) is deliberately
+   left in place with no caller: it lives in src/rendering/traits, it costs
+   nothing unused, and anything a player already stashed stays readable in
+   localStorage if the feature is ever wanted back. */
 
 /* ── the pattern swatch ──
    Drawn rather than shipped as art: the tile IS the picture, so rendering it
    here from the same table the character is patterned from means a swatch can
    never drift from what the garment actually shows.  Scaled up so a 4-cell tile
    reads at thumbnail size (the character wears it at 2-3px a cell). */
-function PatternSwatch({ tile, color, on, onPick }) {
+/* v2.3.2414: exported for the creator's shoes card, which shows these tiles
+   inline -- shoes are pattern-only (v2.3.1944), so the tiles ARE that tab's
+   drawing tools and a colour palette would be the wrong row entirely. */
+export function PatternSwatch({ tile, color, on, onPick }) {
   const ref = React.useRef(null);
   const S = 6, N = 8;                          /* px per cell, cells shown */
   React.useEffect(() => {
@@ -369,6 +367,10 @@ function PatternSwatch({ tile, color, on, onPick }) {
    and putting a hat on would swing the camera a tenth of a frame.
 
    `cy`/`h` are the window's centre and height as canvas fractions. */
+/* v2.3.2416: the first shirt that is not "none".  Read from the catalogue
+   rather than hard-coding 'tshirt' so importing a second shirt cannot leave
+   this pointing at one that was removed. */
+const DEFAULT_SHIRT = (SHIRT_CATALOG.find((o) => o && o.id !== 'none') || {}).id || 'none';
 const FIG_CX = 0.4975;
 const FOCUS = {
   /* The shirt frame keeps the HEAD in shot on purpose: the figure stays
@@ -403,14 +405,44 @@ const FOCUS = {
    uses: move the window's centre with the figure and scale the window by the
    same factor.  0.977 is the measured foot line quoted above. */
 const FIG_BOT = 0.977;
-function focusFor(target, heightId) {
-  const f = FOCUS[target] || FOCUS.shirt;
+/* v2.3.2414: `override` lets a caller supply its own {cy,h} window and still get
+   the build correction below applied to it.  It exists for the creator's ink
+   card, which is roughly twice the linear size of .bt-paint-pv: a frame chosen
+   to fill a 125px square becomes a 2.5x blow-up of eight pixels of boot in a
+   170x214 one.  The override is a WINDOW, not a zoom factor, so it goes through
+   exactly the same feet-anchored scaling every entry in FOCUS does -- a raw
+   window applied after the correction would point at a tall bro's shins. */
+function focusFor(target, heightId, override) {
+  const f = override || FOCUS[target] || FOCUS.shirt;
   const k = PORTRAIT_FIT * heightMul(heightId);
   if (k === 1) return f;
   return { cy: FIG_BOT + (f.cy - FIG_BOT) * k, h: f.h * k };
 }
 
-function WornPreview({ look, target, side, art, pat }) {
+/* ═══ v2.3.2414: EXPORTED, BECAUSE THE CREATOR NEEDS THIS EXACT PANE ═══
+   The creator's Design button is retired for a live preview card that IS the
+   way in (NameModal, .bt-cc-ink).  That card wants precisely what this pane
+   already does -- composite the player, point the camera at the garment being
+   edited, nearest-neighbour on the way up -- so it takes this component rather
+   than growing a second one that would drift from it the first time the camera
+   table changed.
+
+   Two props are new and both are for the card, not for this panel:
+     `className`  the card's canvas is not square (.bt-paint-pv hard-codes
+                  aspect-ratio:1/1), and blit() already derives its window from
+                  cssW/cssH, so a different box needs nothing but a class.
+     `label`      null makes the canvas aria-hidden.  In the card the canvas is
+                  INSIDE a <button> that carries the accessible name, and a
+                  role="img" with its own label there would announce twice.
+   Callers that pass neither get byte-identical behaviour to v2.3.1947.
+
+   Note `art`/`pat` are OPTIONAL for the card and must stay that way:
+   drawCharacterPortrait's contract is `opts.tattooArt !== undefined ? ... :
+   inkedArt('tattoo')` (characterPortrait.js:575), so leaving them undefined
+   falls back to the LIVE STORE -- which is what the card wants and what the
+   editor cannot use (a child's effects run before its parent's, so the panel's
+   own persist-to-store effect has not run yet; see the header note above). */
+function WornPreview({ look, target, side, art, pat, className, label, fit, focus }) {
   const boxRef = React.useRef(null);
   const offRef = React.useRef(null);
   const busyRef = React.useRef(false);
@@ -432,12 +464,39 @@ function WornPreview({ look, target, side, art, pat }) {
     const ctx = box.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, w, h);
-    const f = focusFor(target, buildH);
+    const f = focusFor(target, buildH, focus);
     const S = off.width;                       /* the composite is square */
-    const winH = f.h * S;
-    const winW = winH * (cssW / cssH);
+    /* ── how the frame meets a box that is not square ──
+       Every window in FOCUS was measured as f.h TALL against .bt-paint-pv,
+       which is aspect-ratio:1/1 -- so the window it describes is f.h x f.h.
+       This pins the HEIGHT and derives the width from the box.  That is right
+       for a square box and for any box WIDER than it is tall (the window simply
+       opens sideways and shows more ground either side of the figure).
+       It is wrong for a box TALLER than it is wide: the window narrows, and on
+       the tattoo frame that crops the arms -- which are part of that canvas.
+       `fit:'contain'` keeps the whole designed square in shot whatever the
+       box's aspect, by growing the window on the box's LONG axis only.  A
+       square box takes the identical path either way (both maxes are 1), so
+       THIS panel is unchanged by it: the option exists for the creator's ink
+       card, and specifically for that card's SHOES tab.
+       Which tab needs it is not obvious and is worth writing down, because
+       getting it wrong nearly deleted the option.  It turns on how tall the
+       tab's tool block is: Skin, Shirt and Pants carry three rows of palette
+       plus the brush widths, so their pane is about 168x169 -- square, where
+       the two rules agree exactly.  Shoes carries one row of pattern tiles, so
+       its pane is 168x247, firmly portrait.  Measured there: 13.4% of the
+       canvas clear either side of the figure with contain, 0% without -- legs
+       jammed edge to edge.
+       A first mutation run reported this option dead, because the framing
+       assertion only looked at the Skin tab where it genuinely changes
+       nothing.  mp-ccink checks Shoes too now, which is what makes it
+       testable. */
+    const base = f.h * S;
+    const contain = fit === 'contain';
+    const winH = contain ? base * Math.max(1, cssH / cssW) : base;
+    const winW = contain ? base * Math.max(1, cssW / cssH) : base * (cssW / cssH);
     ctx.drawImage(off, FIG_CX * S - winW / 2, f.cy * S - winH / 2, winW, winH, 0, 0, w, h);
-  }, [target, buildH]);
+  }, [target, buildH, fit, focus]);
 
   React.useEffect(() => {
     if (!look) return undefined;
@@ -453,7 +512,20 @@ function WornPreview({ look, target, side, art, pat }) {
            composite cost is paid on every stroke. */
         scale: Math.min(2, Math.round((typeof window !== 'undefined' && window.devicePixelRatio) || 1)),
       });
-      if (target === 'shirt') { opts.shirtArt = art; opts.shirtPattern = pat; }
+      if (target === 'shirt') {
+        opts.shirtArt = art; opts.shirtPattern = pat;
+        /* v2.3.2416: A PRINT NEEDS SOMETHING TO PRINT ON.  Owner: "Add shirt
+           editor under shirt" -- on a fresh character no shirt is worn, so the
+           Shirt tab had no card at all and the editor had no door.
+           It has one now, and this is what makes it useful when it opens: with
+           nothing worn, the preview puts the catalogue's first real shirt on so
+           the design has a garment to sit on.  Otherwise this pane is a bare
+           chest and every stroke you make lands nowhere visible, which reads as
+           a broken editor rather than as "you are not wearing one".
+           Exactly the mirror of the tattoo branch below, which takes a shirt
+           OFF for the same reason -- each screen shows the surface it draws on. */
+        if (!opts.shirt || opts.shirt === 'none') opts.shirt = DEFAULT_SHIRT;
+      }
       else if (target === 'pants') { opts.pantsArt = art; opts.pantsPattern = pat; }
       else if (target === 'shoes') { opts.shoesPattern = pat; }
       else if (target === 'tattoo') {
@@ -467,10 +539,57 @@ function WornPreview({ look, target, side, art, pat }) {
         /* v2.3.1949: a hat hides a face tattoo the same way, so the pane takes
            it off while you work.  The caption says so. */
         opts.headwear = 'none';
+      } else if (target === 'tattooBack') {
+        /* ═══ v2.3.2422: THE BACK SHOWS THE BACK'S OWN DRAWING ═══
+           Owner: "the front copies its drawings onto the back (these should be
+           separate)."  They ARE separate in the store and separate on the
+           walking character (artForFacing, v2.3.2148) -- they were one only
+           here, in the pane that is supposed to prove the difference.
+           The two back canvases had no branch in this table, so `opts.tattooArt`
+           was never set, and drawCharacterPortrait's caller contract
+           (characterPortrait.js:575) reads an ABSENT value as "this device's
+           own": inkedArt('tattoo'), the FRONT chest drawing.  Turned to face
+           north by `side` above, the pane then stamped the front drawing on the
+           back and never once showed a back stroke.  Every mark you made
+           vanished and a mark you had made on the other side stared back.
+           It is `tattooArt`, not some back-specific option, because the portrait
+           path does not run artForFacing at all (see BodyInk's composite): the
+           slot means "the drawing to stamp on this sheet's torso", and on a
+           north sheet that torso is the back. */
+        opts.tattooArt = art;
+        /* Same reason as the chest: a shirt covers a back tattoo, and a pane
+           showing a shirt while you draw under it reads as broken. */
+        opts.shirt = 'none';
+      } else if (target === 'tattooHeadBack') {
+        /* v2.3.2422: and the back of the head, the same fix -- the face slot is
+           where a north sheet's head drawing goes (artForFacing swaps the same
+           way round). Without this the pane showed your FACE tattoo, mirrored
+           onto the back of your head. */
+        opts.faceTattooArt = art;
+        opts.headwear = 'none';
       } else if (target === 'tattooArm') {
         opts.armTattooArt = art;
         /* Sleeves cover the upper arm; bare-chested you see the whole limb. */
         opts.shirt = 'none';
+      }
+      /* ═══ v2.3.2422: A NORTH-FACING PANE SHOWS NORTH-FACING DRAWINGS ═══
+         The branches above set the ONE canvas this pane is editing.  Every
+         other drawing on the figure is left undefined on purpose, because
+         drawCharacterPortrait then reads it from the live store for free
+         (characterPortrait.js:575) -- which is right facing south and wrong
+         facing north, where the store's `tattoo` and `tattooFace` are the two
+         drawings that specifically do NOT show.
+         Without this the leak survives the branches above wherever the edited
+         canvas is a THIRD one: with Back selected and an arm chosen (the Body
+         screen lets your finger move the canvas, v2.3.1994), the pane turned
+         round and stamped the front chest drawing on the back.
+         It is the same swap artForFacing makes for the walking character
+         (playerSkins v2.3.2148/2043) -- torso and head take their back canvas,
+         the ARM is left alone because an arm is the same arm from behind -- and
+         it is made here because the portrait path never calls that function. */
+      if (side === 'back') {
+        if (opts.tattooArt === undefined) opts.tattooArt = getArt('tattooBack');
+        if (opts.faceTattooArt === undefined) opts.faceTattooArt = getArt('tattooHeadBack');
       }
       return drawCharacterPortrait(offRef.current, opts);
     };
@@ -500,11 +619,15 @@ function WornPreview({ look, target, side, art, pat }) {
   }, [look, target, side, art, pat, blit]);
 
   if (!look) return null;
+  const decorative = label === null;
   return (
-    <canvas ref={boxRef} className="bt-paint-pv"
-      aria-label="Preview on your character" role="img" />
+    <canvas ref={boxRef} className={className || 'bt-paint-pv'}
+      aria-hidden={decorative ? true : undefined}
+      aria-label={decorative ? undefined : (label || 'Preview on your character')}
+      role={decorative ? undefined : 'img'} />
   );
 }
+export { WornPreview };
 
 export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const cfg = TARGETS[target] || TARGETS.shirt;
@@ -554,7 +677,16 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      caption, the preview's camera and the Clear button all follow it. */
   /* Both tattoo screens are the draw-on-your-character surface now; the tab
      only says WHICH region it is framed on. */
-  const onBody = isTattoo;
+  /* v2.3.2416: PANTS DRAW ON THE PANTS.  Owner: "On pants editor show the
+     actual pants where you drawing drawing in the editor (similar to how the
+     other editors work)."  The pants print was the last drawing still made on
+     a bare 16x16 grid.
+     `onPattern` forks BEFORE this, so the pattern screen is unaffected -- this
+     only moves the DRAW screen onto the figure.  Shirts stay on the flat grid:
+     the renderer reports a grid for pants, the tattoo canvases and the face,
+     but a shirt print is stamped on a different sheet with no region report, so
+     there is nothing for a touch to hit-test against there yet. */
+  const onBody = isTattoo || target === 'pants';
   /* ═══ v2.3.1994: THE TAB FRAMES, THE FINGER CHOOSES ═══
      Owner: "Can you just make anywhere where skin is showing be tattooable?"
 
@@ -628,12 +760,25 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      ref).  Assigned during render, so they are never stale. */
   const docRef = React.useRef(doc); docRef.current = doc;
   const paintedRef = React.useRef(painted); paintedRef.current = painted;
-  const [ink, setInk] = React.useState(1);        /* palette index; 0 = eraser */
+  /* v2.3.2414: seeded FROM the shared store, so the colour the player tapped
+     under the character in the creator is the colour this panel opens armed
+     with.  The write-back effect below keeps the inline row honest the other
+     way round.  Lazy initialiser, not `useState(getToolInk())`: the argument
+     form would call the getter on every render for a value only the first one
+     uses. */
+  const [ink, setInk] = React.useState(() => getToolInk());        /* palette index; 0 = eraser */
   /* v2.3.1948 (owner: "any drawing tools like lines, shapes, eraser, fill?",
      then "a small eraser for erasing areas ... different brush size options ...
      perhaps letters you can place?"). */
   const [tool, setTool] = React.useState('pen');
-  const [brush, setBrush] = React.useState(1);
+  const [brush, setBrush] = React.useState(() => getToolBrush());
+  /* Write-back.  An effect rather than wrapping the setters: `setInk` and
+     `setBrush` have a dozen call sites between them (the palette, the tools
+     row, the shape ops, the eraser shortcut), and a wrapper is one call site
+     away from being bypassed by the next one added.  The store's own setters
+     no-op on an unchanged value, so this costs nothing on unrelated renders. */
+  React.useEffect(() => { setToolInk(ink); }, [ink]);
+  React.useEffect(() => { setToolBrush(brush); }, [brush]);
   const [letter, setLetter] = React.useState('A');
   /* ═══ v2.3.2004: MIRROR IS BACK, ALONGSIDE FILL ═══
      Owner: "Mirror is actually a nice feature if you have room in ui add it
@@ -677,10 +822,6 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   /* A copy changes the side you are NOT looking at, so without a word of
      feedback the button appears to do nothing at all. */
   const [copied, setCopied] = React.useState(false);
-  /* The slots for THIS canvas, mirrored into state so a save repaints the row.
-     `arming` is the overwrite step: tap Save, then tap the slot to replace. */
-  const [slots, setSlots] = React.useState([]);
-  const [arming, setArming] = React.useState(false);
   /* ═══ v2.3.1951: A SHAPE YOU CAN STILL RESIZE ═══
      Owner: "For shapes in editor it's helpful to have a drag handle on the
      corner so you can size it how you want (default is to keep shape ratio so
@@ -762,8 +903,6 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     setUndoN(0);
     setRedoN(0);
     setCopied(false);
-    setSlots(getSlots(artId));
-    setArming(false);
     pendRef.current = null;
     strokeRef.current = null;
     setSel(-1);
@@ -864,24 +1003,6 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const setOp = (i, next) => setDoc((d) => ({ ...d, ops: d.ops.map((o, k) => (k === i ? next : o)) }));
   const dropOp = (i) => setDoc((d) => ({ ...d, ops: d.ops.filter((o, k) => k !== i) }));
 
-  const saveToSlot = (i) => {
-    setSlot(artId, i, art);
-    setSlots(getSlots(artId));
-    setArming(false);
-  };
-  const loadSlot = (i) => {
-    const v = slots[i];
-    if (!v) { saveToSlot(i); return; }   /* empty: the only sensible action */
-    pushHist(docRef.current);             /* so a mis-tap is one Undo away */
-    /* A loaded design arrives FLAT: a slot holds 256 characters, so we know its
-       pixels and not its pieces.  It becomes the base with nothing selectable
-       on top of it — the same rule artOps applies to any drawing it cannot
-       account for. */
-    setDoc({ id: artId, base: v, ops: [] });
-    pendRef.current = null;
-    setSel(-1);
-  };
-
   /* Persist as you draw: the character updates live behind the panel, which is
      the whole point of drawing on a character rather than in a vacuum.
      v2.3.1967: through saveDoc, which stores the op list AND the 256-character
@@ -913,6 +1034,10 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        stale -- every touch then reported a MISS and the stroke was dropped
        silently. The switch looked like it did nothing at all. */
     tattooBack: liveArt('tattooBack'), tattooHeadBack: liveArt('tattooHeadBack'),
+    /* v2.3.2416: and the pants, for the same reason -- the surface builds its
+       per-region grids from what it is handed, so a canvas missing from here
+       is a canvas whose every touch reports a MISS and drops the stroke. */
+    pants: liveArt('pants'),
     /* liveArt reads only `art`/`artId` and the store; bodyTick is the store's
        own change signal.  (No react-hooks plugin in this repo's flat config —
        the deps are stated by hand and checked by hand.) */
@@ -1412,6 +1537,36 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
         style={{ background: 'var(--ui-panel, #16202a)', border: '1px solid rgba(229,237,233,.26)',
           borderRadius: 12, maxHeight: '96vh', maxWidth: '98vw', overflow: 'auto' }}>
 
+        {/* ═══ v2.3.2414: THE HEAD IS ONE GRID CELL, NOT TWO SIBLINGS ═══
+            The tabs and the front/back switch are one block of "which screen,
+            which way round", and until now only the tabs had a `grid-area`.
+            .bt-paint is a GRID, so a child with no area auto-places into an
+            IMPLICIT row after every named one -- measured at 390x664, the
+            switch rendered at offsetTop 708 in a 738px content box: below the
+            tool rows, below the palette, below DONE, and entirely below the
+            panel's own 635px fold.  The control the owner asked for by name
+            ("I don't see a menu option that toggles tattooing the back") was
+            reachable only by discovering that the panel scrolls.
+            Its own comment three lines down has always said it "sits under the
+            tabs"; this is the markup finally doing that.  A wrapper rather than
+            a fifth grid row because an empty declared row still costs its gaps
+            on the three screens that have no switch (the v2.3.1950 finding),
+            and because the two really are one control group.
+            It also takes 36px + a 10px gap out of the panel, which is the whole
+            of the landscape overflow. */}
+        <div className="bt-paint-head">
+        {/* ═══ v2.3.2416: WHICH EDITOR AM I IN ═══
+            Owner: "Once in the editors find room to make a title label
+            somewhere so users know what editor they're in."
+            The panel had no heading at all: you arrived from a card, and once
+            the card was behind the scrim the only clue was the shape of the
+            thing in the preview.  A shirt print and a chest tattoo are the same
+            16x16 grid beside the same palette.
+            It goes in the head cell with the tabs rather than in a bar of its
+            own -- "find room" is the ask, and a row costs 30px on a phone that
+            is already tight -- so it is one line above the mode strip, in the
+            same cell, and adds only its own text height. */}
+        <h2 className="bt-paint-title">{cfg.title || 'Design'}</h2>
         {MODES && (
           <div className="bt-paint-tabs" style={{ display: 'flex', gap: 6 }}>
             {MODES.map((m) => (
@@ -1449,8 +1604,12 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             Sharing it would make this switch look like two more screens, both
             to that test and to anyone reading the DOM. */}
         {isTattoo && (
+          /* marginTop retired with v2.3.2414's wrapper -- .bt-paint-head's own
+             gap is what separates it from the tabs now, and a margin on top of
+             that would double the space when both are present and leave a
+             stray 6px when the tabs are not. */
           <div className="bt-paint-sideswitch" data-ink-side={inkBack ? 'back' : 'front'}
-            style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+            style={{ display: 'flex', gap: 6 }}>
             {[['front', false], ['back', true]].map((opt) => (
               <button key={opt[0]} type="button"
                 data-ink-side-btn={opt[0]}
@@ -1463,6 +1622,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             ))}
           </div>
         )}
+        </div>
 
         {/* v2.3.1947: the character wearing what you are making. */}
         <div className="bt-paint-side">
@@ -1519,8 +1679,16 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                same things the flat grid draws on itself (what is selected,
                where its handle is, and the ink that has not been baked yet). */
             <BodyInk look={look} arts={bodyArts} ink={ink}
-              region={mode === 'face' ? 'face' : 'tattoo'}
+              region={target === 'pants' ? 'pants' : (mode === 'face' ? 'face' : 'tattoo')}
               apiRef={bodyApiRef} activeTarget={artId}
+              /* v2.3.2422: the big canvas faces the side being inked, exactly as
+                 the little worn preview beside it has since v2.3.2150.  Owner:
+                 "the back button does not make the large canvas rotate to the
+                 back."  It is `side` rather than `inkBack` so the two panes can
+                 never disagree about which way round the character is -- they
+                 read one value.  (`side` is 'front' on the pants screen, which
+                 has no switch, so nothing there changes.) */
+              dir={side === 'back' ? 'north' : 'south'}
               backSide={inkBack}
               onRegion={bodyRegion} onDown={down} onMove={move} onUp={up}
               overlayCells={(liveIdx >= 0 && liveIdx < painted.cells.length) ? painted.cells[liveIdx] : null}
@@ -1752,23 +1920,6 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                   border: ink === i ? '2px solid #D8AA58' : '1px solid rgba(0,0,0,.4)',
                   boxSizing: 'border-box' }} />
             ))}
-          </div>
-        )}
-
-        {!onPattern && (
-          <div className="bt-paint-slots">
-            {Array.from({ length: SLOT_COUNT }, (_, i) => (
-              <SlotChip key={i} art={slots[i] || ''} arming={arming}
-                on={arming && !!slots[i]}
-                onPick={() => (arming ? saveToSlot(i) : loadSlot(i))} />
-            ))}
-            <button type="button"
-              className={'bt-paint-save' + (arming ? ' bt-paint-save--on' : '')}
-              aria-pressed={arming}
-              onClick={() => setArming((a) => !a)}
-              title={arming ? 'Now tap the slot to replace' : 'Save this design over one of the slots'}>
-              {arming ? 'Tap a slot' : 'Save'}
-            </button>
           </div>
         )}
 

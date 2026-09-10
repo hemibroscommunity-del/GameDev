@@ -1,4 +1,4 @@
-/* ═══ v2.3.2422: EYEWEAR RECOLOUR ═══
+/* ═══ v2.3.2424: EYEWEAR RECOLOUR ═══
  *
  * Owner: "Do you think recolor options would work well for the glasses?  I
  * like how you recolored the hats."
@@ -231,7 +231,7 @@ export function getColoredEyewearTextures(id, colorId) {
   return e;
 }
 
-/* QA hook, same shape as eyewearCatalog's __btSetEyewear (v2.3.2422).  The
+/* QA hook, same shape as eyewearCatalog's __btSetEyewear (v2.3.2424).  The
    claim worth pinning is not "a swatch lit up" -- it is that the bake produces
    a real texture per facing, for the facings the art HAS, and that an excluded
    or unlisted pair falls back to native art instead.  None of that is visible

@@ -593,7 +593,7 @@ export const TRACK_COSMETIC_KEYS = new Set([
      other is the v2.3.1939 shape: glasses that appear on join and vanish on
      the first two-second relay. */
   'ew',
-  /* v2.3.2422: 'ewc' is the eyewear COLOUR, and it goes on both gates for the
+  /* v2.3.2424: 'ewc' is the eyewear COLOUR, and it goes on both gates for the
      exact reason the paragraph above gives for 'ew' -- a key on one gate and
      not the other is the v2.3.1939 shape, which here would be glasses that
      arrive the right colour on join and revert to their native art on the

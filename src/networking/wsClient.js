@@ -35,7 +35,7 @@ import { getHair } from '@/rendering/traits/hairCatalog.js';
 import { getSkin, getPants, getShoes } from '@/rendering/playerSkins.js';
 import { getHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { getHatColor } from '@/rendering/traits/hatColorCatalog.js';
-import { getEyewearColor } from '@/rendering/traits/eyewearColorCatalog.js';   /* v2.3.2422 */
+import { getEyewearColor } from '@/rendering/traits/eyewearColorCatalog.js';   /* v2.3.2424 */
 import { getFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
 import { getShirt } from '@/rendering/traits/shirtCatalog.js';
 import { getShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
@@ -334,7 +334,7 @@ export function setupWebSocket(ctx) {
             sk: getSkin(),
             hc: getHairColor(),
             htc: getHatColor(),
-            ewc: getEyewearColor(),   /* v2.3.2422 */
+            ewc: getEyewearColor(),   /* v2.3.2424 */
             fhc: getFacialHairColor(),
             ew: getEyewear(),   /* v2.3.2361: eyewear.  An old worker drops the key at its join gate, which is the intended degrade: peers just see no glasses until the worker carries it */
             st: getShirt(),
