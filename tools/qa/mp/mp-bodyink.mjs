@@ -82,6 +82,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const skinTab = await page.$('button:has-text("Skin")');
   rec.ok('the creator has a skin tab to reach the designer from', !!skinTab, { found: !!skinTab });
   if (!skinTab) return;
+  /* ═══ v2.3.2421: PUT A SHIRT ON HIM FIRST ═══
+     Everything below is about a drawing that a shirt COVERS, and this scenario
+     has always run on a fresh character, who wears none.  That made a whole
+     rule untestable: each tattoo screen takes off what hides the canvas it is
+     pointed at (a shirt for the chest and the back, a hat for the face), and
+     with nothing worn, "take the shirt off" and "do nothing" are the same
+     picture.  A back tattoo under a shirt is also simply the normal case --
+     most players are wearing one by the time they open this.
+     The tab is put back to Skin afterwards: the editor is reached from the ink
+     card on Skin, and the pick persists across tabs. */
+  const shirtTab = await page.$('button:has-text("Shirt")');
+  rec.ok('the creator has a shirt tab (guard)', !!shirtTab);
+  if (shirtTab) {
+    await shirtTab.click();
+    await page.waitForTimeout(700);
+    const wore = await page.evaluate(() => {
+      const t = [...document.querySelectorAll('.bt-cc-strip button')]
+        .find((x) => (x.getAttribute('title') || '').toLowerCase() !== 'none');
+      if (!t) return null;
+      t.click();
+      return t.getAttribute('title');
+    });
+    await page.waitForTimeout(900);
+    /* Clicking a tile is not the same as wearing what it shows, and a scenario
+       that assumes it would report on a bare chest while claiming a shirt. The
+       creator marks the pick with a painted badge; that badge is the proof. */
+    const worn = await page.evaluate(() => {
+      const t = [...document.querySelectorAll('.bt-cc-strip button')]
+        .find((x) => x.querySelector('img[src*="cc-selected"]'));
+      return t ? (t.getAttribute('title') || '?') : null;
+    });
+    rec.ok(`the character is actually WEARING a shirt now ("${worn}") -- without `
+      + 'one, "the editor takes off what covers the drawing" is untestable',
+      !!worn && (worn || '').toLowerCase() !== 'none', { picked: wore, worn });
+    await skinTab.click();
+    await page.waitForTimeout(700);
+  }
+
   await skinTab.click();
   await page.waitForTimeout(300);
   await page.click('button.bt-cc-ink-pane');   /* v2.3.2414: the Design button is the ink CARD now */
