@@ -928,4 +928,74 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !fitPhone.err && fitPhone.minRow >= 44, fitPhone);
     await M.ctx.close().catch(() => {});
   }
+
+  /* ── THE POINTS SCREEN WITH THE CAP ABSENT (v2.3.2414) ───────────────────
+     Owner, on production: combat levels reading 0 while the panel one tap
+     behind them read Lv 1 for the same character in the same second.
+
+     prog3Live is cap AND blob; prog3HasSkills is blob only.  v2.3.1901,
+     v2.3.1902 and v2.3.1922 each moved ONE readout onto the blob-only gate.
+     HeroExpanded's Build tab was missed all three times, and it does not
+     merely print a wrong number -- it swaps the WHOLE SCREEN to a legacy
+     six-tile grid whose levels come from R[key] || 0, the three T1 stats
+     v2.3.1659 froze at 0 for every prog3 character.  So that grid cannot
+     print anything but Lv 0.
+
+     Driven by stripping caps.prog3 out of state_sync in an init script -- a
+     legitimate rule-19 deploy state (new client, old worker), and the state
+     the owner was in.  The blob is untouched throughout, which is the point:
+     the server knows the level, the screen refuses to read it. */
+  const OLD = await H.newPlayer(browser, {
+    name: 'CapOff', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true,
+    init: () => {
+      const RealWS = window.WebSocket;
+      window.WebSocket = function (...a) {
+        const ws = new RealWS(...a);
+        ws.addEventListener('message', (e) => {
+          try {
+            const m = JSON.parse(e.data);
+            if (m && m.type === 'state_sync' && m.caps) delete m.caps.prog3;
+            else return;
+            Object.defineProperty(e, 'data', { value: JSON.stringify(m) });
+          } catch (err) { /* not ours */ }
+        }, true);
+        return ws;
+      };
+      window.WebSocket.prototype = RealWS.prototype;
+    },
+  });
+  await H.enterWorld(OLD);
+  await OLD.page.waitForTimeout(3000);
+
+  const capOff = await H.readState(OLD, (S) => ({
+    cap: !!((S._serverCaps || {}).prog3),
+    sk: (S.rpg && S.rpg.prog3 && S.rpg.prog3.sk && S.rpg.prog3.sk.sword && S.rpg.prog3.sk.sword.level) || null,
+  }));
+  rec.ok('cap-off client: the worker capability really is absent (guard)', capOff.cap === false, capOff);
+  rec.ok('cap-off client: ...while the BLOB still carries the trained level (guard: '
+       + 'if this were missing the screen would be right to fall back)', capOff.sk === 1, capOff);
+
+  await H.openDest(OLD, 'Character');
+  await OLD.page.waitForTimeout(700);
+  await H.clickSel(OLD, '[aria-label="Points"]').catch(() => {});
+  await OLD.page.waitForTimeout(1200);
+
+  const tiles = await OLD.page.evaluate(() => {
+    const out = [];
+    for (const el of document.querySelectorAll('div')) {
+      const t = (el.textContent || '').trim();
+      const m = /^(Melee|Bow|Magic)\s*Lv\s*(\d+)/.exec(t);
+      if (m && el.querySelectorAll('div').length < 6) out.push({ name: m[1], lv: Number(m[2]) });
+    }
+    return out.filter((v, i, a) => a.findIndex((x) => x.name === v.name) === i);
+  });
+  console.log('    cap-off Points tiles: ' + JSON.stringify(tiles));
+  rec.ok(`cap-off: the three combat tiles render (guard: ${tiles.length})`, tiles.length === 3, tiles);
+  /* THE ASSERTION.  prog3SkillLevel floors at Math.max(1, ...) and cannot
+     return 0, so a rendered 0 could only ever have come from the legacy
+     read this fix replaced. */
+  rec.ok('cap-off: no combat tile reads Lv 0 — the level comes from the blob, not the cap',
+    tiles.length === 3 && tiles.every((t) => t.lv >= 1), tiles);
+
+  await OLD.ctx.close().catch(() => {});
 }

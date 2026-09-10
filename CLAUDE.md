@@ -59,6 +59,29 @@ your topic first. Run `node tools/dev/precheck.mjs` before EVERY push —
 it is the fast local gate (syntax, dup switch cases, tag collisions,
 storage-key registry, server suite).
 
+**AGENTS AND WORKFLOWS DIE SILENTLY. CHECKPOINT OR LOSE IT (owner
+directive, 2026-09-10).** On 2026-09-09 four investigation workflows stopped
+at ~22:47 and were reported as "still running" for three more hours. Two of
+them had produced NOTHING and their work was lost entirely — the owner paid
+for it twice. Rules, because this is money and time:
+
+- **Never infer liveness from output.** A journal with no new results looks
+  identical whether the agent is thinking or dead. Check the **mtime** of
+  `subagents/workflows/<run>/agent-*.jsonl`; if nothing has been written in
+  ~15 minutes, it is dead, not busy. Say so.
+- **Make agents checkpoint.** Long investigations must write findings to a
+  scratch file **as they go**, not only in a final structured return. A dead
+  agent's return value is lost; a file on disk is not.
+- **Run ONE heavy workflow at a time.** This box has 4 vCPUs and every UI
+  scenario spawns a wrangler worker plus a Chromium. Four concurrent hunts
+  plus local test runs is what killed them, and they left **48 orphaned
+  chromium/workerd processes** behind.
+- **Reap stragglers** (`pkill -f workerd; pkill -f chromium`) after any
+  workflow that drove browsers, and check `ps` before starting another.
+- **Resume, don't restart.** `Workflow({scriptPath, resumeFromRunId})`
+  replays completed agents from cache. Read `journal.jsonl` first to see what
+  actually returned before re-running anything.
+
 **`npm install` WORKS in this sandbox (verified 2026-08-03).** This file
 said for a long time that it was blocked, and that claim was load-bearing
 in the wrong direction: it is why client changes were treated as
