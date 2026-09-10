@@ -37,6 +37,7 @@ import {
   monsterBodyOffsetY, monsterMeleeHitRadius, monsterProceduralRadius, TOWN_SPAWN /* v2.3.1777 */
 } from '@/data/index.js';
 import { prog3Live, prog3CatFor, prog3CritPct, prog3CritMult, prog3CritFlat } from '@/data/prog3.js'; /* v2.3.2218 */
+import { STAFF_LIFE } from '@/data/gameSystems.js'; /* v2.3.2387: one staff range for all four spawn sites */
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
@@ -1552,9 +1553,16 @@ export function updateMonsterCombat(S, deps) {
                   dmg: Math.round(pDmg),
                   /* v2.3.1335 (owner): bow/staff range -25% — staff 90->68
                      ticks (450->340px at 5px/tick); bow 120->90 ticks (the
-                     675px plant cap in projectiles.js governs the real reach). */
-                  life: isStaff ? 68 : 90,
-                  maxLife: isStaff ? 68 : 90,
+                     675px plant cap in projectiles.js governs the real reach).
+                     v2.3.2387 (owner: "should be same as arrow"): the staff's
+                     68 becomes STAFF_LIFE (135 = 675px at 5px/tick), the
+                     arrow's own cap.  340px could not reach the screen corner
+                     (573px on a 390x844 phone) -- see the derivation on
+                     STAFF_RANGE_PX in gameSystems.js.  The bow's 90 is
+                     untouched: its reach is governed by the plant cap, not by
+                     life (90 x 8 = 720 > 675). */
+                  life: isStaff ? STAFF_LIFE : 90,
+                  maxLife: isStaff ? STAFF_LIFE : 90,
                   hitIds: new Set(),
                   isStaff: isStaff,
                   /* v2.3.1135: Piercing/Longshot channels — finite pierce

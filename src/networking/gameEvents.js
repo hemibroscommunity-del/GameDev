@@ -22,7 +22,7 @@ import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is 
    monster objects (the server owns statuses and never syncs them) — see
    the element_nova case. */
 import { ELEMENTS } from '@/data/elements.js';
-import { STATUS_DEFS, applyStatus } from '@/data/gameSystems.js';
+import { STATUS_DEFS, applyStatus, STAFF_LIFE /* v2.3.2387 */ } from '@/data/gameSystems.js';
 import { rollMonsterShard } from '@/data/shards.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armoured-hit SFX check */
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
@@ -1333,7 +1333,11 @@ export function processGameEvent(type, payload, S, deps) {
               S._remoteProjectiles.push({
                 x: payload.x, y: payload.y, ang: payload.ang,
                 isStaff: payload.isStaff, isSpecial: !!payload.isSpecial, dist: 14,
-                life: payload.isStaff ? 68 : 90, /* v2.3.1335: mirror the -25% range */
+                /* v2.3.1335: mirror the -25% range.  v2.3.2387: and mirror the
+                   staff's extension too -- this is what YOU see of someone
+                   ELSE's orb, so a stale 68 here would kill a remote caster's
+                   orb at 340px on your screen while it flew 675 on theirs. */
+                life: payload.isStaff ? STAFF_LIFE : 90,
                 /* v2.3.2259: the staff special's three orbs share one ray and
                    are spaced in TIME (playerActions.js), so a peer needs the
                    same stagger or all three draw on top of each other and read
