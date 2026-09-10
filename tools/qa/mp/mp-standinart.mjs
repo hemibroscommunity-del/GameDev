@@ -39,7 +39,18 @@ import * as H from './harness.mjs';
    baked" into "the right side of the character got the right drawing". */
 const TATTOO_KEY = 'bt-tattooart';
 const TATTOO_BACK_KEY = 'bt-tattooart-back';
+/* ═══ v2.3.2431: THE BLOCK IS OFF-CENTRE ON PURPOSE ═══
+   A pre-flipped twin sheet is only baked when flipping would actually change
+   the picture (effectsRenderer's _twinWouldDiffer), so a test drawing that is
+   its own mirror image proves nothing about the twins.  x 2..9 in a 16-wide
+   grid is not centred, so it is asymmetric; `sym` is the same block centred,
+   for the player who must NOT get a twin. */
 const solid = (ch) => {
+  let s = '';
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) s += (y >= 4 && y <= 11 && x >= 2 && x <= 9) ? ch : '0';
+  return s;
+};
+const sym = (ch) => {
   let s = '';
   for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) s += (y >= 4 && y <= 11 && x >= 4 && x <= 11) ? ch : '0';
   return s;
@@ -68,14 +79,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
       localStorage.setItem(${JSON.stringify(TATTOO_BACK_KEY)}, ${JSON.stringify(solid('6'))});
     } catch (e) {}` });
   const B = await H.newPlayer(browser, { name: 'Plain', wsPort, webPort, guest: true });
+  /* v2.3.2431: a THIRD player whose drawing is its own mirror image.  Without
+     one, "a twin is baked when it is needed" and "no twin is baked when it is
+     not" cannot both be asserted, and the second is the one holding ~29 MB of
+     RGBA off a phone. */
+  const C = await H.newPlayer(browser, { name: 'Symm', wsPort, webPort, guest: true,
+    init: `try { localStorage.setItem(${JSON.stringify(TATTOO_KEY)}, ${JSON.stringify(sym('8'))}); } catch (e) {}` });
 
   await H.enterWorld(A);
   await H.enterWorld(B);
+  await H.enterWorld(C);
   await A.page.waitForTimeout(2500);
   await B.page.waitForTimeout(2500);
+  await C.page.waitForTimeout(2500);
 
   const inked = await standInArt(A.page);
   const plain = await standInArt(B.page);
+  const symm = await standInArt(C.page);
 
   const urls = Object.keys(inked).filter((u) => /bow-|sword-/.test(u));
   rec.ok(`both players baked the same stand-in sheets (guard: ${urls.length} of them)`,
@@ -127,6 +147,65 @@ export async function run({ browser, wsPort, webPort, rec }) {
     back.every((u) => inked[u].ink.blue <= plain[u].ink.blue + 40),
     { per: back.map((u) => ({ u: u.split('/').pop(), inked: inked[u].ink.blue, plain: plain[u].ink.blue })) });
 
+  /* ═══ v2.3.2431: ON WHICH FRAME ═══
+     The assertions above ask whether ink reached the SHEET.  That is what let a
+     bake which mis-sliced the sheet pass this file completely: recolorBodyToCanvas
+     did all of its per-frame work with a hard-coded 256px frame, and these sheets
+     are 122-402px, so `frames` was floor(w/256) and the stamp windows straddled
+     whichever figures fell in them.  Measured at the time:
+
+       bow-north-body      3 frames, ink [407, 0, 0]
+       bow-northwest-body  3 frames, ink [1095, 1, 0]
+       bow-southwest-body  3 frames, ink [439, 0, 0]
+       jog-east-legs      28 frames, ink [31, 0, 82, 0, 102, 0, ...]
+
+     A raised shield draws frame 1 (BLOCK_POSE_FRAME), so on three of the five
+     bow facings the block pose carried NO tattoo -- the exact thing this whole
+     change exists to fix -- and the trouser print flickered on alternate jog
+     frames.  Every one of those sheets satisfied "the drawing is in the baked
+     pixels".  So: every frame, and the block frame by name. */
+  const BLOCK_FRAME = 1;
+  const framed = urls.filter((u) => Array.isArray(inked[u].perFrame) && inked[u].perFrame.length > 1);
+  rec.ok(`the probe reports ink per FRAME on multi-frame sheets (guard: ${framed.length})`,
+    framed.length >= 6, { framed: framed.length, of: urls.length });
+
+  const gaps = framed.filter((u) => inked[u].perFrame.some((n) => n === 0));
+  rec.ok('no frame of any stand-in sheet is left without ink -- the sheet is sliced '
+    + 'on its OWN frame width, not on a constant',
+    gaps.length === 0,
+    { gaps: gaps.map((u) => ({ u: u.split('/').pop(), fw: inked[u].fw, perFrame: inked[u].perFrame })) });
+
+  /* The one a player actually looks at.  Named separately from the sweep above
+     because it is the reported symptom rather than a general property, and a
+     future art change that legitimately occludes some other frame must not be
+     able to quietly take this one with it. */
+  const blockSheets = framed.filter((u) => /bow-/.test(u));
+  const blockBlank = blockSheets.filter((u) => !(inked[u].perFrame[BLOCK_FRAME] > 0));
+  rec.ok(`the BLOCK POSE frame carries ink on every bow sheet (${blockSheets.length} of them) `
+    + '-- this is the frame a raised shield draws',
+    blockSheets.length > 0 && blockBlank.length === 0,
+    { blank: blockBlank.map((u) => u.split('/').pop()),
+      perFrame: blockSheets.map((u) => ({ u: u.split('/').pop(), f1: inked[u].perFrame[BLOCK_FRAME] })) });
+
+  /* And the sweep has to be measuring the DRAWING rather than the artwork.  A
+     first cut asserted the plain player's frames were empty and three sword
+     sheets failed it: sword-east-body reads [68, 204, 112, 292, ...] with nothing
+     drawn at all, because that art has its own blue-leading pixels.  The
+     whole-canvas assertions above already knew this and compare against the
+     plain player; the per-frame ones have to do the same, or they measure the
+     sheet.  So: every frame gains ink, frame by frame, over the same frame of
+     the same sheet baked for someone who drew nothing. */
+  const deltas = framed.map((u) => {
+    const a = inked[u].perFrame, b = plain[u].perFrame || [];
+    const per = a.map((n, i) => n - (b[i] || 0));
+    return { u, min: Math.min(...per), per };
+  });
+  const thin = deltas.filter((d) => d.min < 20);
+  rec.ok('...and every frame GAINED that ink -- measured against the same frame '
+    + `of the same sheet with nothing drawn (thinnest gain ${Math.min(...deltas.map((d) => d.min))})`,
+    thin.length === 0,
+    { thin: thin.map((d) => ({ u: d.u.split('/').pop(), per: d.per })) });
+
   /* THE MIRRORED TWIN.  Three of the eight facings are drawn by flipping a
      base-dir sheet, and a drawing baked straight in reads backwards there --
      the owner's own report on the shirt (v2.3.1938, "Your smiley face rotated
@@ -140,6 +219,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     mirrored.every((u) => inked[u].twin), { without: mirrored.filter((u) => !inked[u].twin).map((u) => u.split('/').pop()) });
   rec.ok('...and NONE of them costs the plain player a twin, who has nothing to flip',
     urls.every((u) => !plain[u].twin), { with: urls.filter((u) => plain[u].twin).map((u) => u.split('/').pop()) });
+  /* ═══ v2.3.2431: NOR THE PLAYER WHOSE DRAWING IS ITS OWN MIRROR ═══
+     MEASURED: the twins are 28.78 MB of RGBA, which is the same order as the
+     single biggest memory win this repo has shipped.  v2.3.2429 charged that to
+     anyone who had inked one cell.  A symmetric drawing bakes to a
+     pixel-identical twin, so it is 28.78 MB of duplicate -- and the designer's
+     Mirror tool produces symmetric drawings, so this is a common player, not a
+     corner case. */
+  const symTwins = mirrored.filter((u) => symm[u] && symm[u].twin);
+  rec.ok('a drawing that is its own mirror image is baked ONCE -- flipping it '
+    + 'cannot change it, so the twin would be ~29 MB of duplicate',
+    symTwins.length === 0, { with: symTwins.map((u) => u.split('/').pop()) });
+  rec.ok('...and that player still gets the drawing itself (guard: this is a '
+    + 'skipped TWIN, not a skipped bake)',
+    mirrored.every((u) => symm[u] && symm[u].art),
+    { without: mirrored.filter((u) => !(symm[u] && symm[u].art)).map((u) => u.split('/').pop()) });
   const unmirrored = urls.filter((u) => !inked[u].mirrored);
   rec.ok(`...nor is one baked for a direction that is never flipped (${unmirrored.length} such)`,
     unmirrored.every((u) => !inked[u].twin), { with: unmirrored.filter((u) => inked[u].twin).map((u) => u.split('/').pop()) });
@@ -157,5 +251,5 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const errs = A.logs.filter((l) => String(l).startsWith('pageerror'));
   rec.ok('no page errors while baking the stand-ins', errs.length === 0, errs.slice(0, 3));
-  await A.ctx.close(); await B.ctx.close();
+  await A.ctx.close(); await B.ctx.close(); await C.ctx.close();
 }

@@ -37,8 +37,8 @@ import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings */
-import { onArtChange } from '../traits/playerArt.js';   /* v2.3.2429 */
-import { onPatternChange } from '../traits/patternCatalog.js';   /* v2.3.2429 */
+import { onArtChange, artHasInk, artIsSymmetric } from '../traits/playerArt.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
+import { onPatternChange, parsePattern } from '../traits/patternCatalog.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { getGearFrame } from '../gearSheets.js';
 import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
@@ -1985,6 +1985,17 @@ export class EffectsRenderer {
        lookup written out at each of the seven draw sites, because "or the plain
        one" is the half that would get forgotten at the eighth. */
     this._standInStrip = (map, dir, mirror) => (mirror && map && map[dir + '|m']) || (map && map[dir]);
+    /* Would the pre-flipped bake of this sheet differ from the plain one?  Asked
+       of the art AFTER artForFacing, because that is what actually gets stamped:
+       a north sheet stamps the BACK canvases, so the front ones' symmetry is not
+       the question. */
+    const _twinWouldDiffer = (art, dir) => {
+      if (!art) return false;
+      if (parsePattern(art.pantsPattern, 'pants') || parsePattern(art.shoesPattern, 'shoes')) return true;
+      const a = artForFacing(art, dir);
+      return ['pants', 'tattoo', 'tattooFace', 'tattooArm']
+        .some((k) => artHasInk(a[k]) && !artIsSymmetric(a[k]));
+    };
     this._bakeBodyStrip = (rec) => {
       const img = this._bodyImgCache[rec.url];
       if (!img) return;
@@ -2060,7 +2071,13 @@ export class EffectsRenderer {
            back canvases rather than wrapping the front ones round (v2.3.2148 /
            v2.3.2428). */
         const a = _art ? artForFacing({ ..._art, mirror }, rec.dir) : null;
-        const cv2 = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, _fh, null, null, a);
+        /* v2.3.2431: `_fw` -- the sheet's OWN frame width.  Without it the bake
+           sliced every stand-in into 256px windows (playerSkins' FRAME_W), which
+           is what these sheets are NOT: 122 to 402px.  Measured before the fix,
+           the block pose (frame 1) carried no ink at all on three of the five
+           bow facings, and the trouser print landed on every other jog-leg
+           frame.  See the note on recolorBodyToCanvas. */
+        const cv2 = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, _fh, null, null, a, _fw);
         const src = Texture.from(cv2).source;
         src.scaleMode = 'linear';
         const cnt = Math.max(1, Math.round(cv2.width / _fw));
@@ -2085,7 +2102,26 @@ export class EffectsRenderer {
          Built UP FRONT rather than on first sight, because a bake in the middle
          of a fight is the first-use hitch the animation-preload law exists to
          prevent (CLAUDE.md). */
-      rec.target[rec.dir + '|m'] = (_art && rec.mirrored) ? _bake(true).arr : null;
+      /* ═══ v2.3.2431: AND ONLY WHEN THE FLIP WOULD CHANGE ANYTHING ═══
+         MEASURED: the twins are 28.78 MB of RGBA across the six mirrored
+         families (sword-south 11.47, sword-east 8.70, sword-north 5.56, and
+         1.24 / 0.86 / 0.95 for the three bow ones) -- the same order as the
+         single largest memory win this codebase has shipped (P7 item 1,
+         v2.3.2353, 26.7 MB), handed straight back. v2.3.2429 charged that to
+         anyone who had inked one cell OR picked a shoes pattern, which is far
+         too broad.
+         `mirror` reaches exactly two places in the bake -- stampRegion's and
+         stampPattern's flip flags -- so if every drawing that gets stamped is
+         its own mirror image, the twin is pixel-identical to the plain bake and
+         is 28.78 MB of duplicate. The Mirror tool in the designer produces
+         precisely those drawings, so this is the common case, not a corner.
+         PATTERNS are treated as always-differing on purpose: stampPattern
+         mirrors the tile LOOKUP (`sx = frameW - 1 - fx`), so whether a given
+         tile survives that depends on the tile's own symmetry and on where its
+         anchor phases -- provable per tile, not worth proving here, and being
+         wrong means a garment that reads backwards. */
+      rec.target[rec.dir + '|m'] = (_art && rec.mirrored && _twinWouldDiffer(_art, rec.dir))
+        ? _bake(true).arr : null;
       /* v2.3.1788 QA probe: the mean skin RGB of the BAKED sheet, so
          mp-standinskin can assert the stand-ins land on the same palette as
          the walking body.  Measuring the baked canvas is the only honest
@@ -2116,15 +2152,32 @@ export class EffectsRenderer {
            and a probe that only checked the argument would have passed
            throughout.  Measured on the baked canvas rather than on a
            screenshot, for the reason stated above the skin measurement. */
+        /* ═══ v2.3.2431: PER FRAME, NOT PER SHEET ═══
+           The v2.3.2429 probe counted over the WHOLE canvas, and that is how a
+           bake that mis-sliced the sheet passed its own test: ink landed
+           SOMEWHERE, so the count was non-zero, while frames 1 and 2 of three
+           bow sheets held none of it -- and a raised shield draws frame 1.  The
+           count is per frame as well now, so a scenario can assert the frame the
+           pose actually shows.
+           Counted in the SAME pass as the totals rather than a second one: the
+           frame is just x / _fw, so this costs an integer divide per opaque
+           pixel and no extra walk of a multi-megapixel canvas on a phone. */
+        const _nf = Math.max(1, Math.round(cv.width / _fw));
+        const _perFrame = new Array(_nf).fill(0);
         let _bl = 0, _gr = 0;
         for (let _i = 0; _i < _d.length; _i += 4) {
           if (_d[_i + 3] < 40) continue;
-          if (_d[_i + 2] - _d[_i] >= 30 && _d[_i + 2] - _d[_i + 1] >= 20) _bl++;
-          else if (_d[_i + 1] - _d[_i] >= 30 && _d[_i + 1] - _d[_i + 2] >= 20) _gr++;
+          const _isB = _d[_i + 2] - _d[_i] >= 30 && _d[_i + 2] - _d[_i + 1] >= 20;
+          const _isG = !_isB && _d[_i + 1] - _d[_i] >= 30 && _d[_i + 1] - _d[_i + 2] >= 20;
+          if (!_isB && !_isG) continue;
+          if (_isB) _bl++; else _gr++;
+          const _f = Math.min(_nf - 1, Math.floor(((_i >> 2) % cv.width) / _fw));
+          _perFrame[_f]++;
         }
         if (!window.__btStandInArt) window.__btStandInArt = {};
         window.__btStandInArt[rec.url] = { art: _art ? '1' : '', mirrored: !!rec.mirrored,
-          twin: !!rec.target[rec.dir + '|m'], ink: { blue: _bl, green: _gr } };
+          twin: !!rec.target[rec.dir + '|m'], ink: { blue: _bl, green: _gr },
+          w: cv.width, fw: _fw, frames: _nf, perFrame: _perFrame };
       } catch (e) { /* never breaks a bake */ }
       /* v2.3.1785: hand the BOW body frames to blockArm.js, which cuts the
          outstretched arm out of them for the raised-shield pose.  Done here

@@ -746,8 +746,14 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const [bodySpot, setBodySpot] = React.useState('tattoo');
   const tabSpot = isTattoo
     ? ((inkBack ? TATTOO_SPOT_BACK : TATTOO_SPOT)[mode] || 'tattoo')
-    /* v2.3.2428: the trousers pick a side the same way, off the same switch. */
-    : (isPants ? (PANTS_SPOT[inkBack ? 'back' : 'front'] || 'pants') : target);
+    /* v2.3.2428: the trousers pick a side the same way, off the same switch.
+       v2.3.2431: ...but only on a screen that HAS the switch.  `hasSides` hides
+       it on the pattern screen (a pattern tiles the whole garment and has no
+       sides), and this line went on reading `inkBack` anyway -- so drawing on
+       the back and then tapping `pattern` left the panel pointed at pantsBack
+       with `side` resolved to 'front', and the preview stamped the BACK print
+       on a front-facing bro: a garment that does not exist. */
+    : (isPants ? (PANTS_SPOT[(hasSides && inkBack) ? 'back' : 'front'] || 'pants') : target);
   const reachable = isTattoo ? ((inkBack ? TAB_SPOTS_BACK : TAB_SPOTS)[mode] || []) : [];
   const spot = (isTattoo && reachable.indexOf(bodySpot) >= 0) ? bodySpot : tabSpot;
   const scfg = TARGETS[spot] || cfg;
@@ -1167,6 +1173,9 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   /* v2.3.2427: can the thing you are holding be RESIZED, as opposed to only
      moved or re-layered?  A shape always can; a letter can once it has a box. */
   const selResizable = !!(selOp && (selOp.k === 's' || (selOp.k === 't' && selOp.a)));
+  /* v2.3.2431: is the options row the ALPHABET right now?  True whenever the
+     letter tool is chosen, held letter or not -- see the note on the row. */
+  const onLetterStrip = tool === 'letter';
 
   /* v2.3.1941: `onPattern` is a DEPENDENCY, not decoration.  The grid canvas is
      unmounted on the pattern screen, so coming back to a drawing re-creates it
@@ -1440,6 +1449,20 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     if (!op || op.i === idx) return false;
     bankPend();
     setOp(i, { ...op, i: idx });
+    return true;
+  };
+
+  /* v2.3.2431: change the GLYPH of the letter you are holding, the exact twin
+     of recolorSel above.  Without it the alphabet is visible while a letter is
+     held (which it must be, or you cannot spell) but tapping a key would only
+     arm the next stamp, so the letter under your finger would be the one thing
+     on screen the strip could not change. */
+  const reletterSel = (ch) => {
+    const i = selRef.current;
+    const op = i >= 0 ? docRef.current.ops[i] : null;
+    if (!op || op.k !== 't' || op.g === ch) return false;
+    bankPend();
+    setOp(i, { ...op, g: ch });
     return true;
   };
 
@@ -1894,7 +1917,19 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
              the row keeps its height either way, so nothing below it jumps when
              you change tool. */
           <div className="bt-paint-opts">
-            {selOp ? (   /* v2.3.1994: a shape picked up on the body adjusts the same way */
+            {/* ═══ v2.3.2431: A HELD LETTER KEEPS ITS ALPHABET ═══
+                v2.3.2427 made a placed letter STAY selected, which is what gave
+                it a handle to resize by -- and took the A-Z strip off the screen
+                in the same stroke, because this row belongs to the selection the
+                moment there is one.  So spelling "BRO" was: tap B, B lands and
+                the alphabet vanishes, tap again for R and you get a second B,
+                because there was no longer any way to say R.  One fix for one
+                regression: while the LETTER tool is active the row stays the
+                alphabet, and tapping a letter with one held re-stamps the held
+                one rather than arming the next -- the same rule the palette
+                follows for colour (recolorSel).  Place and Cancel are not lost:
+                starting the next gesture places, and Undo takes it back. */}
+            {(selOp && !onLetterStrip) ? (   /* v2.3.1994: a shape picked up on the body adjusts the same way */
               /* v2.3.1951: while a shape is pending the row belongs to IT.
                  Contextual rather than three more permanent buttons: the row
                  already swaps for the letter tool, the controls only mean
@@ -1940,10 +1975,10 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                   </button>
                 )}
               </div>
-            ) : tool === 'letter' ? (   /* v2.3.1994 (owner: "Add the letters back") */
+            ) : onLetterStrip ? (   /* v2.3.1994 (owner: "Add the letters back") */
               <div className="bt-paint-letters" ref={stripRef}>
                 {LETTERS.map((ch) => (
-                  <button key={ch} type="button" onClick={() => setLetter(ch)}
+                  <button key={ch} type="button" onClick={() => { reletterSel(ch); setLetter(ch); }}
                     data-on={letter === ch ? '1' : undefined}
                     className={'bt-paint-letter' + (letter === ch ? ' bt-paint-letter--on' : '')}
                     aria-pressed={letter === ch} aria-label={'Letter ' + ch}>{ch}</button>
@@ -2073,7 +2108,13 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                    The ink is set either way, so the colour you just chose is
                    also the one you carry on drawing in -- which is what a
                    palette tap means everywhere else. */
-                onClick={() => { recolorSel(i); setInk(i); }}
+                /* v2.3.2431: `i > 0`.  Index 0 is the ERASER, not a colour --
+                   this button's own title has always said so -- and recolouring
+                   a held shape TO the eraser turns it into a hole punched
+                   through everything under it.  Reaching for the eraser to
+                   change tool is the ordinary way to hit that, and the shape it
+                   destroys is the one you just drew. */
+                onClick={() => { if (i > 0) recolorSel(i); setInk(i); }}
                 style={{ aspectRatio: '1 / 1', minHeight: 26, borderRadius: 6, cursor: 'pointer',
                   background: c || 'transparent',
                   /* the eraser reads as a hole, not as a colour */
