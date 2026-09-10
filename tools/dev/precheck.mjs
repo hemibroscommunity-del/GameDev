@@ -80,6 +80,14 @@
  *                      (tools/dev/check-hairmask-rule.mjs). Catches both
  *                      an edit to the rule and art recut without a
  *                      rebuild — neither of which anything else sees.
+ *  13. ready-caps     — FAIL: every name in SERVER_READY_CAPS
+ *                      (src/networking/serverReady.js) must ALREADY be in
+ *                      the state_sync caps literal on the base branch's
+ *                      server/src/join.js. The client refuses to show the
+ *                      world without those caps, and Pages deploys before
+ *                      the worker does: a cap required in the same PR that
+ *                      introduces it locks every player out until the
+ *                      worker catches up (v2.3.2439).
  *
  * Output is terse and actionable on purpose — the reader is usually an
  * AI session deciding whether it may push.
@@ -897,6 +905,50 @@ if (changedServer.length) {
       + `    Commit the .png only; optimize-assets.yml mints the twin and verifies it pixel for pixel.\n`
       + `    Verify locally with: node tools/qa/qa-webp-lossless.mjs\n`
       + '    ' + handWebp.slice(0, 8).join('\n    ') + (handWebp.length > 8 ? `\n    …and ${handWebp.length - 8} more` : ''));
+  }
+}
+
+/* ---- 13. ready-caps --------------------------------------------------
+   v2.3.2439.  The client now holds the loading screen until state_sync
+   advertises every name in SERVER_READY_CAPS (serverReady.js).  That is the
+   owner's online-only rule, and it has one sharp edge: the client and the
+   worker deploy from the same merge on separate pipelines, Pages first.  A
+   name added to that list in the same PR that adds it to the worker means a
+   client that is live before its worker -- and every player stuck at
+   "connecting" until the worker deploy lands, or forever if it failed.
+   So the list is a registry: each name must already be advertised by the
+   BASE branch's worker.  Checked against both the base and the working tree
+   so a rename cannot slip past either side. */
+{
+  let req = null;
+  try {
+    const m = read('src/networking/serverReady.js').match(/SERVER_READY_CAPS\s*=\s*\[([\s\S]*?)\]/);
+    if (m) req = [...m[1].matchAll(/'([A-Za-z0-9_]+)'/g)].map((x) => x[1]);
+  } catch { /* handled below */ }
+  const capsOf = (src) => {
+    const m = src && src.match(/caps:\s*\{([\s\S]*?)\.\.\._liveFlags/);
+    return m ? new Set([...m[1].matchAll(/\b([A-Za-z0-9_]+):\s*true/g)].map((x) => x[1])) : null;
+  };
+  if (!req) {
+    add('WARN', 'ready-caps', 'SERVER_READY_CAPS not found in src/networking/serverReady.js — check skipped');
+  } else {
+    let local = null, base = null;
+    try { local = capsOf(read('server/src/join.js')); } catch { /* below */ }
+    try { base = capsOf(git(['show', `${baseRef}:server/src/join.js`], { cwd: root })); } catch { /* below */ }
+    if (!local || !base) {
+      add('WARN', 'ready-caps', `could not parse the caps literal (${!local ? 'working tree' : baseRef}) — check skipped`);
+    } else {
+      const missingBase = req.filter((c) => !base.has(c));
+      const missingLocal = req.filter((c) => !local.has(c));
+      if (!missingBase.length && !missingLocal.length) {
+        add('PASS', 'ready-caps', `every required cap (${req.join(', ')}) is already advertised by ${baseRef}'s worker`);
+      } else {
+        add('FAIL', 'ready-caps',
+          (missingBase.length ? `${missingBase.join(', ')} required by the client but NOT advertised by ${baseRef}'s worker — ` +
+            'a client that ships before its worker would keep every player at the loading screen. Ship the worker cap first, in its own PR.\n' : '')
+          + (missingLocal.length ? `    ${missingLocal.join(', ')} required by the client but not in the working tree's caps literal at all.` : ''));
+      }
+    }
   }
 }
 
