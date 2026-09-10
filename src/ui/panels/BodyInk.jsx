@@ -713,6 +713,7 @@ export default function BodyInk({
       return drawCharacterPortrait(offRef.current, opts).then(() => {
         const off = offRef.current;
         gridsRef.current = (off && off.__btGrids) || null;
+        try { if (window.__btGridProbe) window.__btInkGrids = gridsRef.current; } catch (_e) { /* ignore */ }
         xformRef.current = (off && off.__btGridXform) || null;
         /* v2.3.1994: AUTOMATIC, so it only lands the first time this region is
            framed. See fitRegion — this call is why the zoom used to snap back. */
