@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { getServerReadyState, serverHoldText } from '@/networking/serverReady.js'; /* v2.3.2437 */
 
 /* Bro Town intro overlay — shown once after character creation.
    Plays the intro clip, then fades to reveal the game world.
@@ -19,9 +20,22 @@ import React, { useEffect, useRef, useState } from 'react';
 const MIN_MS = 3000;     // minimum clip display before we even consider fading
 const FADE_MS = 1000;    // opacity fade duration
 
-export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
+export const IntroVideo = ({ onComplete, waitFor, waitForServer, themeAudio }) => {
   const [fading, setFading] = useState(false);
   const [waiting, setWaiting] = useState(false);   // assets still loading past MIN_MS
+  /* ═══ v2.3.2437: THE SECOND GATE, AND IT HAS NO CAP ═══
+     `waitFor` is the asset gate (v2.3.591).  `waitForServer` is the server
+     gate (serverReady.js): the first state_sync that advertises the caps the
+     game is built on.  The asset gate keeps its 20s safety cap -- a stuck
+     preload should not trap anyone -- but that cap must NEVER stand in for
+     the server.  Before this, it did exactly that: twenty seconds after a
+     join the room never answered, the overlay came off and the player was
+     standing in the client-local legacy game with combat levels of 0.  The
+     owner's rule is that the world does not appear without the server, so
+     this ref has no timer behind it at all.  What the player sees instead is
+     `holdMsg`: the screen says it is waiting, and for what. */
+  const serverRef = useRef(false);
+  const [holdMsg, setHoldMsg] = useState('');
   /* v2.3.1868: the clip failed to load/decode.  Tracked so the overlay can
      paint something instead of a black rectangle — with the caption baked
      into the video art (v2.3.1220), a failed video leaves this screen with
@@ -86,13 +100,13 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
     let cancelled = false;
     const maybeFinish = () => {
       if (cancelled || finishedRef.current) return;
-      if (minDoneRef.current && readyRef.current) {
+      if (minDoneRef.current && readyRef.current && serverRef.current) {
         setWaiting(false);
         beginTransition();
         setFading(true);
         setTimeout(finish, FADE_MS);
-      } else if (minDoneRef.current && !readyRef.current) {
-        setWaiting(true);   // clip done but assets not ready -> hold
+      } else if (minDoneRef.current) {
+        setWaiting(true);   // clip done but assets or the server not ready -> hold
       }
     };
 
@@ -107,6 +121,22 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
     /* Safety net: never trap the player on the overlay forever if a preload
        somehow never settles (network stall). */
     const hardCap = setTimeout(() => { readyRef.current = true; maybeFinish(); }, 20000);
+    /* v2.3.2437: the server gate.  No cap -- see serverRef above.  A missing
+       prop resolves at once so any other caller keeps the old behaviour. */
+    Promise.resolve(waitForServer).catch(() => {}).then(() => {
+      if (cancelled) return;
+      serverRef.current = true;
+      setHoldMsg('');
+      maybeFinish();
+    });
+    /* While the server gate holds, say so.  Polled rather than subscribed:
+       the message also depends on how long we have been waiting, and half a
+       second is well inside how fast a person reads a loading screen. */
+    const mountedAt = Date.now();
+    const statusTimer = setInterval(() => {
+      if (cancelled || finishedRef.current || serverRef.current) return;
+      setHoldMsg(serverHoldText(getServerReadyState(), Date.now() - mountedAt));
+    }, 500);
 
     return () => {
       /* An UNMOUNT here is the interesting case: the overlay disappearing
@@ -120,6 +150,7 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
       cancelled = true;
       clearTimeout(minTimer);
       clearTimeout(hardCap);
+      clearInterval(statusTimer);   /* v2.3.2437 */
     };
   }, []);
 
@@ -199,6 +230,9 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
           maybeFinishRef.current && maybeFinishRef.current();
         }}
       />
+      {/* v2.3.2437: the server gate's own words.  Empty while the clip's baked
+          caption is all that is needed; appears once the wait is the server's. */}
+      {holdMsg && <div className="bt-intro-status" data-intro-status="1">{holdMsg}</div>}
     </div>
   );
 };

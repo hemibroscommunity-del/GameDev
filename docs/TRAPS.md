@@ -3086,3 +3086,43 @@ these lines; `server/src/arrowblast.js`; `server/src/telegraph.js` `_startBurrow
 fixture answers "does the hit test work", a live zone answers "did this attempt
 land", and every mechanic the worker owns sits between the two. Each of these
 failures looked exactly like the bug being hunted.
+
+## 75. A gate that waits for the assets is not a gate that waits for the server (v2.3.2437)
+
+**Tempting:** the loading screen already holds until everything is ready —
+`IntroVideo` awaits `preloadPlayerAssets()` and only then lifts. CLAUDE.md
+calls this the animation-preloading law. So by the time a player sees the
+world, the game is ready.
+
+**It waited for the art. It never waited for the server.** Nothing between
+page load and the world being on screen checked that a `state_sync` had
+arrived, and the overlay carried a 20-second safety cap that lifted it even
+when nothing at all had loaded. So when the game room stopped answering joins
+in September 2026, every player still walked into a world — the client-local
+remnant, with no capabilities, local monsters, the legacy six-tile Points grid
+and combat levels reading 0. The owner reported "zeros for combat primary
+skills", "old menus" and "offline legacy stuff", and a full day went into
+chasing a capability *flag*, because a missing `caps.prog3` and a missing
+server look identical from inside the client. The room was simply not there
+and the client had covered for it.
+
+**The tell was in the report all along.** "Old menus" — plural. One flag
+switches off one system. Every system at once is not a flag; it is no
+`state_sync`. The second tell was the admin panel's own request to the same
+Durable Object timing out: two unrelated things not answering is the thing
+they share not answering.
+
+**The rule:** an online-only game reveals its world on exactly one signal —
+the server saying it is ready — and covers it again the moment that stops
+being true. `serverReady.js` is that signal: the loading screen awaits it
+beside the assets with NO cap of its own; a `state_sync` without the required
+caps is retried rather than obeyed; a dropped socket veils the world after a
+short grace. The legacy client-local paths are still in the tree, but a player
+can no longer be standing in them.
+
+**And the sharp edge, which is why the required list is a registry.** Pages
+deploys the client before the worker deploys. A cap that the client *requires*
+in the same PR that *introduces* it keeps every player at "connecting" until
+the worker catches up — or forever, if that deploy failed. precheck's
+`ready-caps` check refuses the push unless every required name is already in
+the base branch's caps literal. Never require a cap you just added.
