@@ -142,11 +142,18 @@ const TARGET_WAIT_MS = 26000;   /* > the 18.75s monster respawn (RESPAWN_TIME) *
    These four are the live doors on the World View map (effects.js
    WORLDVIEW_EXITS); hollows, thunder, tidal and mist are commented out up
    there, so their archetypes cannot be reached by walking at all. */
+/* `body` is that archetype's hit radius from the table above, and it is used
+   for ONE thing: deciding whether a miss is explained (see the assertions).
+   Not to reimplement the hit test -- a scenario that recomputed the game's own
+   geometry would be checking its own arithmetic (TRAPS #35) -- but as the
+   natural bar for "did the target move far enough sideways to be somewhere
+   else when the shot arrived".  sky takes the mummy's 40 rather than the
+   skeleton's 50, because the smaller number is the stricter test. */
 const ROSTER = [
-  { zone: 'verdant', what: 'blue slimes (r=27)' },
-  { zone: 'ember',   what: 'fire goblins (r=26)' },
-  { zone: 'frost',   what: 'snowmen (r=32, and they burrow)' },
-  { zone: 'sky',     what: 'mummies (r=40) that shed into skeletons (r=50)' },
+  { zone: 'verdant', body: 27, what: 'blue slimes (r=27)' },
+  { zone: 'ember',   body: 26, what: 'fire goblins (r=26)' },
+  { zone: 'frost',   body: 32, what: 'snowmen (r=32, and they burrow)' },
+  { zone: 'sky',     body: 40, what: 'mummies (r=40) that shed into skeletons (r=50)' },
 ];
 
 const ATTACKS = [
@@ -544,7 +551,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          reading it HERE is that a logged-out client fires nothing, lands
          nothing, and reports it as six rows of a broken weapon. */
       const link = await H.readState(P, (S) => S._realtimeStatus || 'unknown');
-      const row = { zone: stop.zone, key: atk.key, eq: !!(eq && eq.ok), link,
+      const row = { zone: stop.zone, key: atk.key, slot: atk.slot, eq: !!(eq && eq.ok), link, body: stop.body,
         fired: 0, fairs: 0, landed: 0, sent: 0, blast: 0, void: 0, neverFired: 0, dug: 0,
         gaps: [], skipGaps: [], missed: [], desync: [], kills: 0, arch: null };
       const reach = REACH[atk.slot];
@@ -690,8 +697,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const swallowed = r.missed.filter((m) => m.said && (m.said.dmg > 0 || m.said.blast > 0));
     rec.ok(`${r.zone} ${r.key}: no attempt the client registered was dropped by the worker (${swallowed.length})`,
       swallowed.length === 0, { swallowed, sent: r.sent, blast: r.blast, fairs: r.fairs });
-    rec.ok(`${r.zone} ${r.key}: the WORKER settles every attempt (${r.landed}/${r.fairs})`,
-      r.fairs > 0 && r.landed === r.fairs, r);
+    /* ═══ 100%, OR A MISS THE TARGET VISIBLY GOT OUT OF THE WAY OF ═══
+       Against mp-hitmatrix's pinned fixture the bar is simply 100%: a target
+       that cannot move cannot dodge.  These monsters move, and a projectile
+       fired at where one IS can arrive where it is NOT -- that is the game
+       working, not the hit test failing, and asserting 100% here would fail a
+       correct engine roughly once a run.
+
+       So a miss is excused only when the target crossed the line of fire by at
+       least its own body radius while the shot was in the air: it was
+       somewhere else by the time the shot got there.  Measured across the shot
+       axis rather than as raw distance, because a monster charging straight at
+       the shooter closes fast and dodges nothing.  Anything else -- a miss on
+       a target that stayed put, or any melee miss at all, since an arc is
+       evaluated instantly and has nothing to outrun -- is unexplained and
+       fails the row. */
+    const dodged = (m) => r.slot !== 'melee' && m.across >= r.body;
+    const unexplained = r.missed.filter((m) => !dodged(m));
+    rec.ok(`${r.zone} ${r.key}: every attempt lands, or the target moved out of the shot `
+      + `(${r.landed}/${r.fairs}${r.missed.length ? `, ${r.missed.length - unexplained.length} dodged` : ''})`,
+      r.fairs > 0 && r.landed + r.missed.filter(dodged).length === r.fairs && unexplained.length === 0,
+      Object.assign({ unexplained }, r));
   }
 
   stopAlive = true;

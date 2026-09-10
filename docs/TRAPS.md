@@ -3021,3 +3021,68 @@ design reads backwards there — the owner's own report on the shirt at v2.3.193
 players who have actually drawn something and to directions the facing map
 actually mirrors, or it is memory nobody can see on the platform this game is
 built for.
+
+## 74. Reading a live server monster's health as the whole answer (v2.3.2435)
+
+**Tempting:** in a server zone the client never touches monster health — every
+`m.curHp -= dmg` in `projectiles.js` and `monsterCombat.js` sits behind
+`if (!S._serverMonsters)`, and the number is written only by the tick
+(`wsClient` `localM.curHp = md.hp`) or by `monster_hit`'s authoritative hpPct.
+So a fall in `curHp` is the worker's own word that the hit landed, and no fall
+means it did not. The first half is right — it is what `mp-hitreal` scores on,
+and it is a far stronger signal than a local fixture's HP. Reading the second
+half as its inverse is wrong three separate ways.
+
+**A refusal the game is supposed to make reads exactly like a dropped hit.**
+The snowman's burrow is started by the WORKER's own AI mid-fight (`index.js`
+v2.3.2221 `_startBurrow`), and while he is a `pile` the server denies all
+damage (`_monsterDamageable`) and the client's own test treats him as
+intangible. A monster that was a fair target when the shot left can be
+untouchable when it arrives: the row reads `hp 24 -> 24` with every orb
+registered client-side, which looks precisely like a worker dropping
+legitimate damage. Read `m._burPhase` (from the tick's `ph`) at SETTLE time,
+not only when the target is picked. Note the phase: `dig` is deliberately NOT
+invulnerable — "entering has to cost something" — only `pile` is.
+
+**And the client can land a hit without sending `monster_damage`.** The bow
+special has two damage paths: the planted arrow's 500 ms client timer, which
+sends ordinary `monster_damage`, and then the detonation — `arrow_blast`
+(`arrowblast.js` v2.3.2279), the one damage message on this worker that carries
+a COORDINATE instead of a monster id, precisely because the moment it settles
+exists only in the browser. Elemental hits add a second door: the status they
+leave keeps ticking server-side with nothing further on the wire. So "every
+attempt sends one message" is not a sound assertion and fails working weapons —
+three rows of `mp-hitreal` settled five hits against four sends. The sound
+assertion is the inverse: no attempt where the client registered a hit and the
+worker settled **nothing**.
+
+**A moving target is allowed to be somewhere else.** Against a pinned fixture
+100% is the only correct answer. Against a monster the worker moves, a
+projectile fired at where one IS can arrive where it is NOT — measured at 41 px
+of purely sideways travel on a 27 px slime during a 190 px bow shot. Asserting
+100% there fails a correct engine about once a run. Excuse a miss only when the
+target crossed the LINE OF FIRE by at least its own body radius (a monster
+charging straight at you closes fast and dodges nothing), and never for melee,
+whose arc resolves instantly and has nothing to outrun.
+
+**Two more in the same family, both of which cost this file a whole run.**
+`S.currentZone === z` is the START of a zone transition, not a populated zone —
+the monsters arrive on a snapshot after it, so waiting for the name and then
+sleeping finds an empty world (`srv:true, n:0`) and reads it as a zone with no
+monsters in it. And a headless client **logs itself out after two idle
+minutes**: `wsClient.idleLogout` (v2.3.1913) measures idleness from
+`_lastInputAt`, stamped by real window-capture touchstart/pointerdown/keydown/
+wheel, and a scenario driven through `page.evaluate` stamps none of them however
+busy it looks. At 120 s the page closes its own socket with code 4006 and stops.
+From the inside that is not an error: the player freezes, `fire` reports "never
+fired", the worker releases the playerState so every hit is refused, and three
+zones read as broken weapons. Press a real key on a loop, and READ
+`S._realtimeStatus` per row rather than inferring it from the zeros.
+
+**Receipt:** `tools/qa/mp/mp-hitreal.mjs` and the notes it carries at each of
+these lines; `server/src/arrowblast.js`; `server/src/telegraph.js` `_startBurrow`;
+`server/src/combat.js` `_monsterDamageable`; `src/networking/wsClient.js`
+`idleLogout`. The general shape, and the reason all six landed in one file: a
+fixture answers "does the hit test work", a live zone answers "did this attempt
+land", and every mechanic the worker owns sits between the two. Each of these
+failures looked exactly like the bug being hunted.
