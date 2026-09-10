@@ -2121,6 +2121,15 @@ export var BroTown = function BroTown(_ref0) {
     if (i < 0) i = 0;
     setPreviewDir(_PREVIEW_DIRS[(i + step + _PREVIEW_DIRS.length) % _PREVIEW_DIRS.length]);
   };
+  /* v2.3.2459: WHICH WAY THE PREVIEW IS FACING, for a scenario to read.
+     mp-spinfeet asserts that the boots land on one line at every facing, and
+     it names two of them (the owner reported north and south).  Without this
+     it had to INFER the facing from the drag order -- so a change to the 26px
+     step threshold would have relabelled every row while the assertions went
+     on passing, which is the quiet kind of wrong.  Stamped the way
+     __btBootRoute and __btInkAim are, and for the same reason: a probe cannot
+     ask a ref. */
+  try { if (typeof window !== 'undefined') window.__btPreviewDir = previewDir; } catch (e) {}
   useEffect(function () {
     return wireCharacterPortrait(previewCanvasRef, {
       previewDir: previewDir,
