@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  ccink: () => import('./mp-ccink.mjs'), /* v2.3.2414: the inline ink card replaces the Design button nobody noticed */
   ccfit: () => import('./mp-ccfit.mjs'), /* v2.3.2395: the monocle hangs off the eye in SW; the golden glasses stop overhanging the head in S */
   switchbro: () => import('./mp-switchbro.mjs'), /* v2.3.2421: the door says what it does, in both directions */
   ccspin: () => import('./mp-ccspin.mjs'), /* v2.3.2391: the drag-to-spin cue, and that it does not eat the drag */

@@ -2674,6 +2674,7 @@ pass the overflow check by having nothing to overflow with.
 
 Related: §61 (a still-frame assertion cannot see a frozen animation) — the
 same family, a measurement taken in a state that cannot show the defect.
+
 ## 67. A synthesised gesture proves the handler, not the reachability (v2.3.2413)
 
 The owner, trying to open the test panel: *"The long press on zone name to open
@@ -2736,6 +2737,57 @@ fails on a cold one.
 Related: §61 (a still-frame assertion cannot see a frozen animation) and §66 (a
 probe measuring a control in a state that cannot show the defect) — all three
 are tests that ran, passed, and never touched the thing that was broken.
+
+## 68. "An ancestor's `touch-action:none` blocks a descendant scroller" (v2.3.2414)
+
+**Tempting:** `.bt-paint` is `overflow:auto` with no `touch-action`, sitting
+inside `.bt-name-modal{touch-action:none}` (game.css). At 390x664 its content is
+728px in a 635px box with **Done below the fold**. Every sibling scroller in
+that modal — `.bt-cc-strip`, `.bt-cc-colors-row` — explicitly re-allows `pan-y`,
+and the modal's own rule says why (v2.3.738: "the rail and sheet re-allow pan-y;
+everything else is taps"). So the panel is unpannable and Done is unreachable on
+the primary platform. That reads as an airtight chain, and it was written up as
+a confirmed live bug in a session brief.
+
+**Wrong.** The intersection walk for a pan stops at the **scroll container that
+will perform it**; elements above that container are never consulted. Measured
+with real `Input.dispatchTouchEvent` drags against the built client: a drag on
+`.bt-paint-note` takes `.bt-paint.scrollTop` from 0 to 102 of a possible 103,
+with `.bt-paint`, `.bt-name-modal`, `body` **and** `html` in the chain and three
+of those four set to `touch-action:none`. The panel pans fine.
+
+**The tell** was that the two facts never actually met: "the ancestor says none"
+and "the box overflows" are both true and neither implies the other. Nothing in
+the chain had been tested against a finger. A rule about gestures is testable
+with gestures — `Input.dispatchTouchEvent` through CDP goes through the same
+compositor logic a device does. (Do NOT reach for
+`Input.synthesizeScrollGesture`: it scrolls nothing in this headless build, so a
+probe built on it passes while proving nothing.)
+
+**The corollary, which is the useful half.** The only places a `none` can kill a
+pan are the scroll container itself and the elements *between it and the
+finger*. That is why `.bt-bodyink-cv` and `.bt-paint-grid` carry
+`touchAction:'none'` inline and it works — they are under the finger — and it is
+why `PlayerPaint.jsx`'s header note about touch-action is describing the
+**canvas**, not the panel. A reader who applies that sentence to `.bt-paint`
+ships the bug this entry is about.
+
+**What was actually wrong in that panel**, found while disproving the above:
+`.bt-paint-sideswitch` — the Front/Back control the owner asked for by name —
+had **no `grid-area` at all**. `.bt-paint` is a grid, so it auto-placed into an
+implicit row after every named one: measured `offsetTop` 708 in a 738px content
+box, below the tool rows, below the palette, below Done, and off the panel's own
+fold. Its own comment had said "it sits under the tabs" since v2.3.2150.
+Wrapping it and the tabs in one `.bt-paint-head` cell fixed it and took the
+landscape overflow from 24px to 0.
+
+**Receipt:** the drag matrix and the v2.3.2414 note on `.bt-paint` in game.css;
+`mp-ccink.mjs` §7 (which says out loud that its Chromium drag pins the *wrong*
+direction rather than proving an iOS fix).
+
+Related: §64 (an `overflow:hidden` box that stops fitting is a scroll
+container) — the same panel, the same family of error: a scrolling behaviour
+inferred from a declaration instead of measured.
 
 ---
 
@@ -2804,3 +2856,91 @@ identically is the tell.
 
 Related: §67 (the test ran, passed, and never touched the thing that was
 broken) — same family, one layer down.
+
+---
+
+## 70. The portrait does not apply the game's facing rule (v2.3.2422)
+
+**Tempting:** `artForFacing` (playerSkins) is the single place that decides
+which drawing a facing shows — chest for south, `tattooBack` for north, face
+for south, `tattooHeadBack` for north, the arm always. Its own comment says it
+lives inside `bodySheetKey` and `buildBodySheet` "rather than at the call
+sites", so that the key and the bake cannot disagree. So a preview only has to
+say `dir:'north'` and the right drawings come with it.
+
+**Wrong, and it fails silently in the one direction nobody checks.**
+`drawCharacterPortrait` builds its `_bodyArt` inline and hands it straight to
+`recolorBodyToCanvas`. It never calls `artForFacing`. A portrait facing north
+stamps whatever the caller put in `tattooArt` on the back of the torso — and
+what the caller usually put there is the FRONT drawing.
+
+**Which is worse than it sounds, because "unset" is not "nothing."** The caller
+contract is `opts.tattooArt !== undefined ? sanitize(opts.tattooArt) :
+inkedArt('tattoo')` (characterPortrait.js:575). Leaving a slot out means "read
+this device's own store", so a pane that names only the canvas it is editing
+gets every OTHER canvas from the live store — correct facing south, and facing
+north the two canvases that specifically do not show. That is exactly how the
+tattoo editor came to paint a chest tattoo on a back for two versions: `side`
+turned the little worn preview round from v2.3.2150, `tattooBack` had no branch
+in its table, and so the preview stamped `inkedArt('tattoo')` on the back and
+never once showed a back stroke.
+
+**The fix has to be a rule, not more rows.** Naming the two back canvases in the
+table is not enough: the leak returns whenever a THIRD canvas is being edited.
+On the Body screen your finger moves the canvas (v2.3.1994), so with Back
+selected and an ARM chosen, neither back branch fires and the torso slot falls
+back to the store again. What closes it is a facing rule applied after the
+table — if this pane faces north, any torso/head slot still unset takes its
+back canvas — which is `artForFacing`'s own mapping, restated where the portrait
+can see it. Removing just that rule, with both back branches intact, is a
+mutation the arm assertion in `mp-bodyink` catches and nothing else does.
+
+**The tell:** two things that are separate everywhere else — the store, the
+walking character, the wire — were identical in exactly one place. When a pane
+is the only surface that fails to distinguish two values, suspect the pane's
+inputs, not the values.
+
+**Receipt:** `PlayerPaint.jsx` `WornPreview`'s branch table and the `side ===
+'back'` rule under it; `BodyInk.jsx`'s composite; `mp-bodyink.mjs`, which inks
+front canvases blue, back-only canvases green and the arm pink so that a pixel
+says whose drawing it is.
+
+## 71. Counting a stamped colour by how close it is to the palette (v2.3.2422)
+
+**Tempting:** to prove a drawing is on screen, pick palette index 5, stamp it,
+and count pixels near `#f2c94c`. The palette is exact and the canvas is
+nearest-neighbour, so the ink should arrive as itself.
+
+**Wrong: the stamp is modulated by the sheet underneath it.** The same
+`#f2c94c` (242,201,76) stroke lands as anything from 240,190,78 in the light to
+197,128,73 in shadow. A tolerance wide enough to hold that range also holds
+SKIN — 197,128,73 is a skin tone — and a tolerance narrow enough to exclude skin
+loses most of the stroke. Measured: on the front the near-match found 291 of
+755 changed pixels; on the shaded back it found **0 of 1149**, and reported a
+drawing that was plainly there as absent.
+
+**Choose a colour by what the figure cannot be, not by what the palette says.**
+Blue (`#3f7fd0`) shades down to a third of its value and the blue channel still
+leads, which no skin tone does. Pink (`#d76ba8`) survives as "green is the
+lowest of the three", which is likewise not a skin ordering. That gives a test
+that can name WHOSE drawing a pixel is rather than only that something is
+painted — front canvases blue, back-only canvases green, the arm pink — and
+each assertion then separates one thing.
+
+**Related, and the same mistake in a different coat:** an assertion that reads
+0 against a baseline of 0 passes and proves nothing (§66). Both halves of this
+scenario hit it — once when the "back" reading was 0 because the counting was
+broken, and once when the face section's separation check compared 0 blue
+against 0 blue because the palette had been left on green from the section
+above. Print both numbers in the assertion text. `(0 before, 0 after)` is
+visible in a passing run; `passed` is not.
+
+**One more, for anything that aims at a canvas:** an aim captured before a
+click can be stale in X as well as Y, because Playwright scrolls a control into
+view before clicking it and `.bt-paint` scrolls horizontally. Measured: clicking
+the Back switch slid `.bt-bodyink-cv` 67px left, so a tap aimed at an arm landed
+on the torso and reported the wrong canvas — which reads exactly like "the back
+view cannot reach the arms", and is not. Re-read the box after any click.
+
+Related: §66 (a probe that finds nothing has two explanations) and §65 (a
+measurement that is not of the thing you think it is).
