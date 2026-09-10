@@ -389,14 +389,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
        a claim about a rotation cannot be made from a stored string: the whole
        failure is that the DRAWING moved and the PICTURE did not.  Front and
        back of the same character share a silhouette and a palette, so this
-       number is not near 100 even when it works -- it was 75% measured, and a
-       surface that never turned would be at 0 but for the ink. */
+       number is not near 100 even when it works -- but it is high: 98% measured
+       over opaque pixels, because the shading of every limb moves.
+       The bar is 60% rather than something near either end, and that is a
+       measured choice: with the composite left facing south the same run
+       reports 22-25%, NOT 0, because the drawings still swap under it and the
+       chest piece vanishing is itself a difference.  A bar just above the
+       broken reading would be one drawing-size away from passing on a figure
+       that never turned. */
     const backFrame = await frame();
     const turned = framesDiffer(frontFrame, backFrame);
     rec.ok('the Back switch turns the LARGE canvas round -- '
       + `${turned == null ? '?' : Math.round(turned * 100)}% of the figure's own `
       + 'pixels are a different picture, not just a different label',
-      turned != null && turned >= 0.25, { turned });
+      turned != null && turned >= 0.6, { turned });
 
     /* ═══ ...AND THE FRONT'S DRAWING STAYS ON THE FRONT ═══
        Owner: "the front copies its drawings onto the back (these should be
@@ -560,7 +566,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const faceTurned = framesDiffer(faceFrontFrame, await frame());
     rec.ok('the head turns round too -- '
       + `${faceTurned == null ? '?' : Math.round(faceTurned * 100)}% of it is a `
-      + 'different picture', faceTurned != null && faceTurned >= 0.25, { faceTurned });
+      + 'different picture', faceTurned != null && faceTurned >= 0.6, { faceTurned });
     const headBackBlue = await blue();
     rec.ok('...and nothing drawn on a FRONT canvas comes round with it '
       + `(${faceFrontBlue} blue pixels on the face, ${headBackBlue} on the back `
