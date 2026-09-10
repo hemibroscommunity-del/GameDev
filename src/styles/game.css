@@ -1183,9 +1183,34 @@ input{font-family:inherit}
   padding:0;pointer-events:auto}
 .bt-zone-header__logout img{width:26px;height:26px;object-fit:contain;display:block;
   pointer-events:none} /* v2.3.1333c: 21 -> 26 + svg viewBox tightened (owner: icon read tiny) */
+/* ═══ v2.3.2413: THE TITLE HAS TO RECEIVE THE PRESS ═══
+   Owner, trying to open the test panel: "The long press on zone name to open
+   admin key isn't working."  It could not work, and had not since v2.3.2240
+   shipped the gesture.
+
+   The rail above is pointer-events:none so the world underneath stays
+   touchable, and every child that wants input re-enables it -- __logout says
+   pointer-events:auto one rule up.  This one never did.  So the title was
+   not hit-testable, onPointerDown never fired for a finger, and the ONLY
+   door to the owner's test panel did not exist.
+
+   WHY THE TEST DID NOT CATCH IT, which is the part worth writing down:
+   mp-devpanel asserts "a 1.2s press opens the test panel" and has been green
+   the whole time.  It synthesises the gesture with
+   el.dispatchEvent(new PointerEvent('pointerdown')) -- and programmatic
+   dispatch does NOT hit-test, so pointer-events:none cannot stop it.  The
+   file's own header says it exists to catch "a panel that is perfect and
+   unreachable" and it was blind to precisely that.  Both scenarios now press
+   through Playwright's hit-tested input instead (see TRAPS section 67).
+
+   The cost is that a ~50px band of title at the top of the screen stops
+   passing touches to the world.  Accepted: the rail is DRAWN over that band
+   anyway, __logout already does the same beside it, and a short tap here is
+   asserted to do nothing -- only the 1.2s hold acts. */
 .bt-zone-header__title{min-width:0;overflow:hidden;color:#F4F5F3;
   font:650 15px/1.1 'Source Sans 3',sans-serif;letter-spacing:.045em;
   text-align:center;text-overflow:ellipsis;white-space:nowrap;
+  pointer-events:auto;
   text-shadow:0 1px 2px rgba(0,0,0,.78)}
 /* v2.3.2320: was `width:38px;height:1px` — a pure optical spacer.  min-width
    holds the old 38px so the title stays centred on the SCREEN while the
@@ -2805,7 +2830,7 @@ input{font-family:inherit}
      before this line was written: a real touch drag takes this panel's
      scrollTop from 0 to 102 of 103 with .bt-name-modal, body and html all
      `touch-action:none`, because the intersection walk for a pan stops at the
-     scroll container that will perform it.  That is docs/TRAPS.md 67.  This
+     scroll container that will perform it.  That is docs/TRAPS.md 68.  This
      sandbox has no WebKit build, so whether iOS Safari agrees cannot be settled
      here either way.
 

@@ -308,7 +308,7 @@ panning a descendant scroller — is **false**, and was measured false before th
 line was written: a real touch drag takes this panel's `scrollTop` from 0 to
 102 of 103 with `.bt-paint`, `.bt-name-modal`, `body` and `html` in the chain
 and three of those four set to `none`. The walk for a pan stops at the scroll
-container that will perform it. That is now `docs/TRAPS.md` §67, because it is
+container that will perform it. That is now `docs/TRAPS.md` §68, because it is
 plausible-but-wrong in the confident direction and it nearly sent this change
 after the wrong thing.
 

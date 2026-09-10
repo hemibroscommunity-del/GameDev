@@ -124,3 +124,81 @@ write-through cache; `xp_mult` write- and read-clamps plus a real
 reaching two live sockets, sticky MOTD on join, delete, and the forged
 `server_announce` dropped by the deny-list; metrics once-daily
 idempotency, `/economy` history/delta/alert math, ring prune.
+
+## Live flags in the owner's panel (v2.3.2412)
+
+The FLAGS primitive above has had read, write and clear routes since
+v2.3.1150. This adds the only thing that was missing: **a way to reach them
+without a computer.**
+
+### The incident that forced it
+
+2026-09-09, production. The owner reported combat levels reading 0. Two
+screenshots settled it in one step: Character → Points showed
+**Melee/Bow/Magic at Lv 0**, and tapping into that same tile read
+**"Melee skill · Lv 1"** for the same character in the same second.
+
+That pair is a diagnosis, not a symptom. The tile grid is gated on
+`prog3Live` (worker cap **AND** blob); the panel behind it on
+`prog3HasSkills` (blob only). So the character's trained-skill blob was
+healthy and **`caps.prog3` was false**. A clean worker built from the same
+commit advertises 42 caps with `prog3: true`, measured — so the source was
+never wrong.
+
+The mechanism is the one this file's own header warns about: the `liveflags`
+map is spread over the `state_sync` caps literal **last**, so a flag named
+after a capability overrides the baked-in `true`, and *"overriding a cap to
+false … can re-enable legacy client-side fallback paths for some systems."*
+The legacy path is the one that prints Lv 0.
+
+**So the flags were working exactly as designed, and the defect was
+operational**: the repair needed `curl` and an admin key, the owner runs this
+game from a phone, and a flag set once in an emergency can sit in Durable
+Object storage indefinitely — silently disabling a system, with no surface
+anywhere that says so. Three separate rounds of investigation have now been
+spent on a symptom whose cause was one unreadable line of stored config.
+
+### What was added
+
+**Client only.** No server change: `GET`, `POST` and `DELETE
+/api/admin/flags` all already existed. That matters — it ships through Pages
+without a worker deploy, so it cannot disturb live players.
+
+`src/ui/panels/DevPanel.jsx`, a **Live flags** section in the existing
+admin-key-gated panel (1.2s press on the zone name). It lists the map, and
+for each flag offers **Clear**. `call()` gained a `method` argument so the
+section can `DELETE`; the default is derived from `body` exactly as before,
+so every existing call site is untouched.
+
+**The warning line is the actual feature.** A list of twelve flags with
+`prog3  false` among them is not a diagnosis. So a flag is detected as
+**overriding a capability** when its name is also a key in the client's
+`_serverCaps` — which is precisely what the spread does — *and* its value is
+`false`, the harmful direction. Those get named in an amber banner that says
+the game has fallen back to its old behaviour, and that this usually looks
+like **wrong numbers rather than a missing feature**.
+
+`disable_*` kill switches are server-side and never collide with a cap name,
+so they list as ordinary. Keeping them out of the warning is deliberate: a
+banner that fires on every routine kill switch is a banner the owner learns
+to ignore.
+
+Loaded on demand rather than with the panel's state refresh — it is another
+admin round trip and most panel opens are not about flags.
+
+### The pin
+
+`tools/qa/mp/mp-devflags.mjs`, **19 assertions**. Controls first (the worker
+starts with `caps.prog3` true and no flags at all, so the test cannot pass by
+measuring a broken baseline), then: an empty map says so in words rather than
+rendering blank; a cap-named flag and a `disable_*` switch set together are
+both listed; the warning names the first and **not** the second; and Clear
+reaches the **worker**, verified by an independent admin `GET`, not by
+reading the screen it just updated.
+
+Mutation-tested twice, because the two failure modes are different:
+
+- make nothing detectable as an override → **3 red** (the warning vanishes)
+- drop the `n in caps` test so kill switches count too → **2 red**, isolating
+  the discriminator assertion while the other two stay green
+
