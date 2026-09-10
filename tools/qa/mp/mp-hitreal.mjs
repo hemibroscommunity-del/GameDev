@@ -106,8 +106,25 @@ const REACH = {
   ranged: { want: 185, lo: 70, hi: 240 },
   staff:  { want: 185, lo: 70, hi: 240 },
 };
-const STEP_PX = 90;             /* 90px / 240ms = 375 px/s, under movement.js's 500 cap */
-const STEP_MS = 240;
+/* ═══ WALK SLOWLY ENOUGH THAT THE WORKER NEVER REFUSES A STEP ═══
+   movement.js caps a move at `500 * dt + 80` px and REJECTS anything over it
+   -- and a rejection is not a dropped frame, it is a fork: `ps.x/y` keep the
+   old values, `ps.z` is inside the same `if (accept)` so the ZONE does not
+   change either, and `ps.lastMoveAt` advances anyway.  So the client walks on,
+   the worker's copy stays where it was, and every following move is measured
+   from the stale point -- a bigger delta, rejected harder.  That is the whole
+   of "movement.js rejects a teleport and then rejects everything after it".
+
+   It cost this file two zones and a row before it was found.  A frozen `ps.z`
+   means the worker never spawns or sends the zone you walked into (`srv:true`
+   with an empty monster list, twice), and a frozen `ps.x/y` means
+   `_handleMonsterDamage`'s `attackerPs.z !== zone` gate silently denies every
+   hit -- which reads as a worker dropping legitimate damage.
+   70px / 300ms is 233 px/s against a budget that is ~179px per 198ms move, so
+   even two bunched steps in one message clear it. */
+const STEP_PX = 70;
+const STEP_MS = 300;
+const DESYNC_PX = 70;           /* client-vs-worker gap that means a step was refused */
 const PLACE_TRIES = 14;
 const TARGET_WAIT_MS = 26000;   /* > the 18.75s monster respawn (RESPAWN_TIME) */
 
@@ -286,6 +303,30 @@ async function placeAt(P, id, reach) {
   return g;
 }
 
+/* ═══ DID THE WORKER COME WITH US? ═══
+   Read after every walk, because a refused step is invisible from the browser:
+   the client draws the player exactly where it put them and the game feels
+   fine.  Only the worker's own copy says otherwise, and every gate that
+   matters here -- the zone the hit is claimed in, the 400px melee proximity
+   bound -- is measured against that copy.  On a divergence the client is
+   SNAPPED BACK to the worker's position: agreeing with the server is the only
+   move guaranteed to be accepted next, and leaving the two forked is how one
+   refused step becomes a run that never lands another hit. */
+async function resync(P, wsPort, id) {
+  const sp = await H.serverPlayer(wsPort, id).catch(() => null);
+  if (!sp || typeof sp.x !== 'number') return { ok: false, why: 'no server view' };
+  const cli = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y, z: S.currentZone }));
+  const gap = Math.round(Math.hypot(sp.x - cli.x, sp.y - cli.y));
+  const zoneSplit = sp.zone !== cli.z;
+  if (gap <= DESYNC_PX && !zoneSplit) return { ok: true, gap };
+  await P.page.evaluate(({ x, y }) => {
+    const S = window._gameState.current;
+    S.player.x = x; S.player.y = y; S.player.vx = 0; S.player.vy = 0;
+  }, { x: sp.x, y: sp.y });
+  await P.page.waitForTimeout(400);
+  return { ok: false, gap, zoneSplit, srvZone: sp.zone, cliZone: cli.z };
+}
+
 /* Something alive and hittable to shoot at.  Six rows of five attempts empties
    a six-monster zone, and the worker brings them back on an 18.75s clock
    (RESPAWN_TIME) -- so "no target" is nearly always "wait", not "broken".  The
@@ -334,6 +375,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
   const id = await H.readState(P, (S) => S.myId);
+
+  /* ═══ THE CLIENT HANGS ITSELF UP AFTER TWO IDLE MINUTES ═══
+     Owner, v2.3.1913: "Sometimes I login to the game and see characters I
+     played in separate window hours ago just idle."  So wsClient now calls
+     `idleLogout()` at exactly two minutes -- and it measures those minutes
+     from `_lastInputAt`, stamped by REAL window-capture touchstart /
+     pointerdown / keydown / wheel.  A scenario that drives the game through
+     page.evaluate stamps none of them, however busy it looks: it walks, aims,
+     fires and kills with no input event anywhere, and at 120s the page closes
+     its own socket with code 4006, shows the resume banner and STOPS.
+
+     That is what took the fourth run of this file apart, and it does not look
+     like a disconnect from the inside.  The client simply froze -- the player
+     stuck at one coordinate, `fire` reporting "never fired" eight times, every
+     hit refused because the worker had released the playerState -- and the
+     three zones after it read as an empty world with a broken weapon.  Six
+     rows of zeros that said nothing whatever about hit detection.
+
+     So: a real keystroke, on a loop, for as long as the run lasts.  It is the
+     same remedy mp-hitmatrix uses to keep its duel target present, and it is
+     honest -- a human standing there testing weapons has a thumb on the glass.
+     Shift, because it is real input to the window and nothing in the game. */
+  let stopAlive = false;
+  (async () => {
+    while (!stopAlive) {
+      await P.page.keyboard.press('Shift').catch(() => {});
+      for (let i = 0; i < 40 && !stopAlive; i++) await P.page.waitForTimeout(500).catch(() => {});
+    }
+  })();
 
   const quests = await H.devOp(wsPort, 'quests', id);
   const kit = await H.devOp(wsPort, 'kit', id, { what: 'weapons' });
@@ -418,7 +488,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       full = arrived && await populated(25000);
     }
     await P.page.waitForTimeout(800);
-    const srvZone = await H.serverPlayer(wsPort, id).then((p) => (p || {}).z).catch(() => null);
+    /* `zone`, not `z`: /api/admin/player's `live` view renames it (admin.js).
+       Reading `.z` gives undefined, JSON.stringify drops the key, and the
+       diagnostic that was added to answer "does the worker agree we are in
+       this zone" silently answered nothing at all -- for a whole run. */
+    const srvZone = await H.serverPlayer(wsPort, id).then((p) => (p || {}).zone || null).catch(() => null);
     const world = await P.page.evaluate(() => {
       const S = window._gameState.current;
       return { zone: S.currentZone, srv: !!S._serverMonsters,
@@ -456,9 +530,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const atk of ATTACKS) {
       const eq = await H.equipWeapon(P, atk.type, atk.stash, atk.slot);
       await P.page.waitForTimeout(900);
+      /* ═══ IS THE SOCKET STILL UP? ═══
+         Read before the row rather than inferred from its zeros.  See the
+         keepalive in run() for what takes it down and why; the point of
+         reading it HERE is that a logged-out client fires nothing, lands
+         nothing, and reports it as six rows of a broken weapon. */
+      const link = await H.readState(P, (S) => S._realtimeStatus || 'unknown');
+      row.link = link;
       const row = { zone: stop.zone, key: atk.key, eq: !!(eq && eq.ok),
         fired: 0, fairs: 0, landed: 0, sent: 0, blast: 0, void: 0, neverFired: 0, dug: 0,
-        gaps: [], skipGaps: [], missed: [], kills: 0, arch: null };
+        gaps: [], skipGaps: [], missed: [], desync: [], kills: 0, arch: null, link: null };
       const reach = REACH[atk.slot];
       /* Attempts that could not be PLACED (out of the weapon's reach, nothing
          alive to shoot at) or that the monster burrowed under are void, and a
@@ -472,6 +553,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
         /* Walk to this weapon's range of the monster we picked, then re-read
            it: the placer walks for real and both of us move while it does. */
         await placeAt(P, pick.id, reach);
+        let sync = await resync(P, wsPort, id);
+        if (!sync.ok && sync.why !== 'no server view') {
+          /* The snap moved us, so the range this attempt was walked to is
+             gone with it -- walk it again from where the worker agrees we
+             are, and only give up if the second one will not take either. */
+          await placeAt(P, pick.id, reach);
+          sync = await resync(P, wsPort, id);
+        }
+        if (!sync.ok) { row.desync.push(sync); row.void++; continue; }
         /* Re-read the game's own lock rather than insisting on `pick`: the walk
            takes a second or two and the auto-target may legitimately have moved
            on (targeting.js).  Whatever it holds NOW is what the shot will fly
@@ -506,7 +596,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
         row.gaps.push(g.gap);
         if (after.gone || !after.alive) { row.landed++; row.kills++; }
         else if (landed) row.landed++;
-        else row.missed.push({ gap: g.gap, hp: g.hp, after: after.hp, said, via: g.via });
+        else {
+          /* A miss is recorded with the WORKER's own view of the attacker, so
+             "the shot missed" and "the worker was looking at a player standing
+             somewhere else" are never confused for one another again. */
+          const sp = await H.serverPlayer(wsPort, id).catch(() => null);
+          row.missed.push({ id: g.id, gap: g.gap, hp: g.hp, after: after.hp, said, via: g.via,
+            srv: sp ? { zone: sp.zone, x: Math.round(sp.x), y: Math.round(sp.y) } : null,
+            cli: { x: g.px, y: g.py } });
+        }
       }
       await P.page.evaluate(() => { const S = window._gameState.current; S.autoAttack = false; S._aiming = false; });
       rows.push(row);
@@ -527,6 +625,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       + `${r.blast ? `   (+${r.blast} blast)` : ''}`
       + `${r.void ? `   (${r.void} void: ${r.dug} burrowed, ${r.neverFired} never fired, gaps ${JSON.stringify(r.skipGaps)})` : ''}`);
     if (r.missed.length) console.log(`      missed: ${JSON.stringify(r.missed)}`);
+    if (r.desync.length) console.log(`      the worker did not follow the walk ${r.desync.length}x: ${JSON.stringify(r.desync)}`);
   }
   console.log('');
 
@@ -540,11 +639,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const r of rows) {
     rec.ok(`${r.zone} ${r.key}: the weapon is equipped, and every attempt was fought at its reach (guard)`,
       r.eq && r.fairs === TRIES, r);
+    rec.ok(`${r.zone} ${r.key}: the attacker was still logged in when the row ran (guard)`,
+      r.link === 'connected', r);
+    rec.ok(`${r.zone} ${r.key}: the worker agreed where the attacker was standing, every attempt (guard)`,
+      r.desync.length === 0, r);
     rec.ok(`${r.zone} ${r.key}: the client registers every attempt as a hit (${r.sent + r.blast}/${r.fairs})`,
       r.fairs > 0 && r.sent + r.blast >= r.fairs, r);
     rec.ok(`${r.zone} ${r.key}: the WORKER settles every attempt (${r.landed}/${r.fairs})`,
       r.fairs > 0 && r.landed === r.fairs, r);
   }
 
+  stopAlive = true;
   await P.ctx.close().catch(() => {});
 }
