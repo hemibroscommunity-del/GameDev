@@ -248,7 +248,7 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      scenario pass by replacing the thing it claims to test. */
   if (init) await page.addInitScript(init);
   await page.goto(`http://localhost:${webPort}/${guest ? '?guest=1' : ''}`, { waitUntil: 'domcontentloaded' });
-  return { ctx, page, logs, name };
+  return { ctx, page, logs, name, seeded: !!phrase };
 }
 
 /** Drive character creation and wait until the world is live. */
@@ -304,12 +304,52 @@ export async function enterWorld(P, timeout = 90000) {
   const resumed = await page.evaluate(() => window.__btBootRoute === 'resume');
   if (!resumed) {
     await uncoverDoor(page);   /* v2.3.2111 — see uncoverDoor */
-    if (await page.$('[data-tut="login-create"]')) {
-      await page.click('[data-tut="login-create"]');
-      await page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
+    /* ═══ v2.3.2447: NOBODY WALKS IN BY THEMSELVES ANY MORE ═══
+       Owner: "Player should need to tap continue or create a character."
+       A device that already has a character used to skip the door entirely
+       (the 'resume' road above still exists, but only for the two moments a
+       player has ALREADY tapped: the picker's Play, and the key-login reload).
+       A seeded scenario therefore lands on the door like a returning player
+       and takes the road they take — Continue, then the character's row. */
+    let returning = P.seeded;
+    if (!returning) {
+      /* A scenario that reloads mid-run (mp-switchbro) is the same device
+         coming back.  "Holds a key" is not the test -- a fresh browser mints
+         a silent key before it has a character -- so ask the door's own
+         background account check (window.__btDoorCheck, BroTown boot check)
+         whether this key has a character behind it, and fall back to "the
+         roster lists someone" if the check never answers. */
+      const chk = await page.waitForFunction(() => {
+        const d = window.__btDoorCheck;
+        return d && d.done ? d : null;
+      }, null, { timeout: 8000, polling: 200 }).then((h) => h.jsonValue()).catch(() => null);
+      returning = !!(chk && chk.hasChar);
+      if (!returning && !chk) {
+        try { returning = await page.evaluate(() => (window.__btRoster.read() || []).length > 0); } catch (e) { returning = false; }
+      }
     }
-    await page.fill('input.bt-cc-name', name);
-    await page.click('button.bt-cc-play');
+    let tookRow = false;
+    if (returning) {
+      if (!(await openPicker(page))) throw new Error('returning device: Continue did not open the character list');
+      /* ITS row, not the first one: seeded extras (mp-switchbro) can sort
+         above the bro who is actually playing, and tapping one of those
+         switches keys.  The roster self-heals from the worker a beat after
+         the door paints (v2.3.1923), so the row may take a moment to appear;
+         a key with no character behind it never gets one, and falls through
+         to Create below. */
+      const mine = '[data-tut="char-row"][data-char-active="1"]';
+      const row = await page.waitForSelector(mine, { timeout: 10000 }).catch(() => null);
+      if (row) { await row.click(); tookRow = true; }
+      else await uncoverDoor(page);
+    }
+    if (!tookRow) {
+      if (await page.$('[data-tut="login-create"]')) {
+        await page.click('[data-tut="login-create"]');
+        await page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
+      }
+      await page.fill('input.bt-cc-name', name);
+      await page.click('button.bt-cc-play');
+    }
   }
   /* The loading screen preloads every global animation before the intro lifts
      (the animation-preloading law), so this legitimately takes a while. */

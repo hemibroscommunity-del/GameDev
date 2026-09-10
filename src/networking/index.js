@@ -175,6 +175,11 @@ export function applyAccountLogin(phrase) {
      flag — both describe what a fresh, deliberate navigation should do, and
      this is the end of one, not the start of another.  ?guest=1 is carried
      because it identifies WHICH browser identity this tab is. */
+  /* v2.3.2447: typing a key IS the tap.  The landing page no longer walks a
+     stored key in by itself (BroTown's boot check), so this reload marks
+     itself as an explicit continuation or the player would type their key
+     and land back on the door. */
+  try { sessionStorage.setItem('bt_play_now', '1'); } catch (e) {}
   try {
     var _g = /[?&]guest=1\b/.test(window.location.search) ? '?guest=1' : '';
     window.location.replace(window.location.pathname + _g);

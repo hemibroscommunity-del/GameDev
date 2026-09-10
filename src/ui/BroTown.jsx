@@ -9274,6 +9274,7 @@ export var BroTown = function BroTown(_ref0) {
      who has to tap "Log in with your Key" once, rather than one who gets
      dropped into the creator and makes a second character by accident. */
   var _bootRan = useRef(false);
+  var _straightInRef = useRef(false);   /* v2.3.2447: the boot check's decision, for the resume effect */
   useEffect(function () {
     if (_bootRan.current) return;
     _bootRan.current = true;
@@ -9322,8 +9323,10 @@ export var BroTown = function BroTown(_ref0) {
         try {
           var _p = getBtPassphrase();
           if (_p) {
+            try { window.__btDoorCheck = { done: false }; } catch (e) {}   /* v2.3.2447: see the default road */
             checkAccountLogin(_p).then(function (res) {
               if (!alive) return;
+              try { window.__btDoorCheck = { done: true, hasChar: !!(res && res.ok && res.exists && res.preview && res.preview.hasChar) }; } catch (e) {}
               if (res && res.ok && res.exists && res.preview && res.preview.hasChar) {
                 /* v2.3.1923: the roster self-heals here.  This is the answer
                    to "does the key on this device have a character", asked on
@@ -9334,7 +9337,9 @@ export var BroTown = function BroTown(_ref0) {
                    playing, and the list is sorted by when you last played. */
                 try { ensureChar(_p, { name: res.preview.name || '', level: res.preview.level || 0 }); } catch (e2) {}
               }
-            }).catch(function () {});
+            }).catch(function () {
+              try { window.__btDoorCheck = { done: true, hasChar: false, failed: true }; } catch (e) {}
+            });
           }
         } catch (e) {}
         return;
@@ -9342,13 +9347,71 @@ export var BroTown = function BroTown(_ref0) {
       var phrase = null;
       try { phrase = getBtPassphrase(); } catch (e) { phrase = null; }
       if (!phrase) { if (alive) setBootPhase('login'); return; }
+      /* ═══ v2.3.2447: THE PLAYER OPENS THE DOOR ═══
+         Owner: "change the behavior of trying to boot the player list
+         automatically upon joining the landing page.  Player should need to
+         tap continue or create a character."
+
+         Until now a device whose key had a character walked STRAIGHT IN on
+         every load -- the boot check below answered "has a character" and
+         set bootPhase null, which auto-joins -- and the door, when it did
+         show, opened the character list by itself (LoginScreen, v2.3.2111).
+         Neither is a tap the player made.  Landing on brotown.net now always
+         paints the door with its two buttons; Continue opens the list, Create
+         makes a character.  This is the same road `?login=1` has taken since
+         v2.3.1840, made the default.
+
+         The straight-in road survives for exactly the moments the player
+         HAS already chosen and a reload is only the mechanism:
+           - a row played from the picker (onPlay below sets bt_play_now,
+             because switching keys reloads -- v2.3.1923),
+           - a Login Key typed at the door (applyAccountLogin sets it too),
+           - the black-screen watchdog's recovery reload (bt_resume_now,
+             v2.3.777 -- crash recovery is not a landing).
+         Read synchronously HERE: the check below is asynchronous, and the
+         resume effect further down consumes bt_resume_now on its own mount.
+         The 10-minute "fresh snapshot" heuristic in that effect no longer
+         walks anyone in by itself -- it only pre-seeds identity; the door is
+         still the door. */
+      var _straightIn = false;
+      try {
+        _straightIn = sessionStorage.getItem('bt_resume_now') === '1' || sessionStorage.getItem('bt_play_now') === '1';
+        sessionStorage.removeItem('bt_play_now');
+      } catch (e) { _straightIn = false; }
+      _straightInRef.current = _straightIn;   /* read by the resume effect below */
+      if (!_straightIn) {
+        if (alive) setBootPhase('login');
+        try { window.__btBootRoute = 'login'; } catch (e) {}
+        /* The door paints immediately; the worker is asked in the background
+           so the roster self-heals (v2.3.1923) -- same as the ?login=1 road.
+           window.__btDoorCheck is the QA probe for that answer: a fresh
+           browser mints a silent key before anything else happens, so "has
+           a key" cannot tell the harness whether Continue leads anywhere. */
+        try { window.__btDoorCheck = { done: false }; } catch (e) {}
+        checkAccountLogin(phrase).then(function (res) {
+          if (!alive) return;
+          var _has = !!(res && res.ok && res.exists && res.preview && res.preview.hasChar);
+          try { window.__btDoorCheck = { done: true, hasChar: _has }; } catch (e) {}
+          if (_has) {
+            /* Same seed as the straight-in road: Continue on this key ends
+               in joinTown, whose `nameInput.trim() || 'Anon'` would
+               otherwise stamp Anon until state_sync corrects it. */
+            if (res.preview.name) setNameInput(res.preview.name);
+            try { ensureChar(phrase, { name: res.preview.name || '', level: res.preview.level || 0 }); } catch (e2) {}
+          }
+        }).catch(function () {
+          try { window.__btDoorCheck = { done: true, hasChar: false, failed: true }; } catch (e) {}
+        });
+        return;
+      }
       checkAccountLogin(phrase).then(function (res) {
         if (!alive) return;
         if (res && res.ok && res.exists && res.preview && res.preview.hasChar) {
-          /* Straight in.  The NAME comes from the record via state_sync a
-             moment later (wsClient applies it); nameInput is seeded here so
-             joinTown's `nameInput.trim() || 'Anon'` cannot stamp 'Anon'
-             over a real character in the window before that arrives. */
+          /* Straight in -- only on an explicit continuation, see above.  The
+             NAME comes from the record via state_sync a moment later (wsClient
+             applies it); nameInput is seeded here so joinTown's
+             `nameInput.trim() || 'Anon'` cannot stamp 'Anon' over a real
+             character in the window before that arrives. */
           if (res.preview.name) setNameInput(res.preview.name);
           /* v2.3.1923: same self-heal as the forced-login road above, on the
              road most players actually take — straight in.  Also ensureChar:
@@ -9601,7 +9664,15 @@ export var BroTown = function BroTown(_ref0) {
     } catch (e) {}
     if (!snap || !snap.name) return;
     var fresh = Date.now() - (snap.t || 0) < 10 * 60 * 1000;
-    if (!wanted && !fresh) return;
+    /* v2.3.2447: a fresh snapshot alone no longer starts this road.  The
+       landing page is the door now (boot check above), and everything below
+       is for a page that is about to be IN THE WORLD: it pre-seeds the
+       avatar, kicks the asset preload with a rejoin spinner, and installs
+       the connect veil (v2.3.2439) -- on a door that is waiting for a tap,
+       that veil covers the buttons within seconds and the spinner sits over
+       them for up to 20s.  So it runs only when the boot check walked the
+       player in: a recovery reload (wanted) or a row/key they just chose. */
+    if (!wanted && !(fresh && _straightInRef.current)) return;
     var S = stateRef.current;
     S.myName = snap.name;
     if (snap.avatar) S.myAvatar = snap.avatar;
@@ -9709,6 +9780,9 @@ export var BroTown = function BroTown(_ref0) {
              (v2.3.1840).  Reloading with those still on would land the
              player back on the door they just chose a character from. */
           var _gp = /[?&]guest=1\b/.test(window.location.search) ? '/?guest=1' : '/';
+          /* v2.3.2447: the player just chose this row; the reload must not
+             land them on the door again.  See the boot check. */
+          try { sessionStorage.setItem('bt_play_now', '1'); } catch (e2) {}
           window.location.href = _gp;
         } catch (e) { setBootPhase(null); }
       },

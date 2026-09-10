@@ -73,14 +73,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   await A.ctx.close().catch(() => {});
 
-  /* ── 3. the same key walks straight in ── */
+  /* ── 3. the same key lands on the door, and Continue shows its character ──
+     v2.3.2447: a device holding the key used to walk straight in (route
+     'resume').  Owner: "Player should need to tap continue or create a
+     character" — so it now stops at the door, the list does NOT open by
+     itself, and Continue shows the character by name (the roster self-heal
+     on this fresh device is what puts it there). */
   const B = await H.newPlayer(browser, { name: 'ignored', wsPort, webPort, phrase: key });
   await B.page.waitForTimeout(3000);
   const r1 = await route(B);
-  rec.ok('a device holding the key skips the login screen entirely',
-    r1 === 'resume', { route: r1 });
-  rec.ok('...and shows no pre-game screen at all',
-    !(await visible(B, '.bt-name-modal')), {});
+  rec.ok('a device holding the key stops at the login door, it does not walk in',
+    r1 === 'login', { route: r1 });
+  rec.ok('...and the character list is NOT open until the player taps',
+    !(await B.page.$('[data-tut="char-picker"]')), {});
+  /* v2.3.2447: the DOOR is the expected screen now, and it is itself a
+     .bt-name-modal (LoginScreen wears that class) -- so the old "no pre-game
+     screen at all" check would assert the change away.  What must still be
+     absent is the CREATOR: a key with a character must never be walked into
+     making a second one. */
+  rec.ok('...and does not drop into the character creator',
+    !(await visible(B, '.bt-cc-shell')), {});
+  rec.ok('Continue opens the character list', await H.openPicker(B.page), {});
+  let rowName = null;
+  try {
+    await B.page.waitForSelector('[data-tut="char-row"]', { timeout: 20000 });
+    rowName = await B.page.$eval('[data-tut="char-row"]', (el) => el.textContent || '');
+  } catch (e) { rowName = null; }
+  rec.ok('...listing the character this key made, by name',
+    !!(rowName && made && made.name && rowName.indexOf(made.name) !== -1),
+    { row: rowName, expected: made && made.name });
+  await B.page.click('[data-tut="char-row"]');
+  await B.page.waitForFunction(() => {
+    const S = window._gameState && window._gameState.current;
+    return !!(S && S.myId && S.currentZone);
+  }, null, { timeout: 90000, polling: 500 }).catch(() => {});
+  rec.ok('tapping the row walks in', !!(await B.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    return !!(S && S.myId && S.currentZone);
+  })), {});
 
   /* ── 4. and it arrives wearing its own face on a device that never made it ──
      B has its own storage and never ran the trait picker, so anything it is
