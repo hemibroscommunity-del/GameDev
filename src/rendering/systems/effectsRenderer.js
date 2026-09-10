@@ -585,6 +585,77 @@ _fxLoad('/sprites/projectiles/arrow-pine.png?v=2.3.1881').then((tex) => {
     frame: new Rectangle(0, 0, Math.max(1, Math.round(w * ARROW_PINE.headFrac)), h),
   });
 }).catch((err) => console.warn('[pine-arrow] load failed', err));
+/* ═══════════════════════════════════════════════════════════════════════════
+ * v2.3.2398: THE BOW'S JET STREAM — the aim line an arrow leaves behind it
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Owner: "Instead of the aim tool (curvy line) for the bow I want to try to add
+ * a jet stream to each arrow. ... For bro town I'm wanting to make a jet stream
+ * after each arrow so that way the player can use it as a visual guide to aim
+ * each successive arrow (like making a line out of it to aim better).  I need
+ * just the jet stream effect (should be thin and long) to almost connect each
+ * successive arrow."
+ *
+ * ═══ IT REPLACES THE SIGHT BEAM, AND THAT IS A REDUCTION IN AIM HELP ═══
+ * Worth stating plainly, because the beam's own history is about exactly how
+ * much an archer should be given (read the block at the draw site: v2.3.2258
+ * removed it for bow and staff — "too much of an advantage" — and v2.3.2320
+ * restored the bow's while attacking).  The beam was PREDICTIVE: a line drawn
+ * down the range before the shot.  This is RETROSPECTIVE: it is exhaust.  It
+ * exists only where an arrow has already been, and there is no arrow until you
+ * fire.  So the gate v2.3.2320 had to write by hand ("while attacking, not
+ * while aiming") is not a gate here at all — it falls out of there being
+ * nothing to trail.  The archer ends up with less forward information than the
+ * beam gave and better feedback about where the last few shots actually went.
+ *
+ * MAGIC GETS NOTHING, as it has since v2.3.2258.  The owner has taken a sight
+ * aid off magic twice now.  _noteJetStream tests the staff flags EXPLICITLY
+ * rather than leaning on a short-circuit somewhere up the chain, for the reason
+ * v2.3.2260 wrote down about the beam: "safe by operator precedence ... the
+ * kind of thing a later edit reorders without noticing".
+ *
+ * ═══ WHY 190 px IS THE NUMBER THAT MAKES THE FEATURE WORK ═══
+ * "Almost connect each successive arrow" is measurable, not a mood:
+ *   – the bow's cadence is SWING_COOLDOWN * BOW_SWING_MULT = 600 * 0.75 =
+ *     450 ms (gameSystems.js; attack speed only shortens it, floor 200 ms);
+ *   – an arrow advances 8 px per 60fps-frame (projectiles.js) = 480 px/s;
+ * so consecutive arrows in a held volley sit 480 * 0.45 ≈ 216 px apart.  A
+ * 190 px streak trailing each head reaches back to within ~26 px of the arrow
+ * behind it — almost touching, which is the ask — and if attack speed pulls the
+ * cadence in, they overlap into a denser line rather than falling apart.  Bow
+ * range is 675 px, so a held volley has three of these down the shot path at
+ * once and they read as one dashed line you can sight along.
+ *
+ * ═══ AND IT HAS TO OUTLIVE ITS ARROW ═══
+ * An arrow crosses its range in ~1.4 s.  A trail that died with it would be
+ * gone before it was any use as a guide, which is the whole point of the
+ * request — so a spent streak hangs for JET_LINGER_MS and fades on (1 - t²), a
+ * ramp that holds near full through the first half and drops away at the end.
+ * It stays readable while it is useful instead of dissolving from the moment
+ * it lands.
+ *
+ * The art is the owner's own (assets/icons-source/jet-stream-source.png, cut to
+ * 512x39 here): a pale blue wisp with sparkle points, tapering to nothing at
+ * BOTH ends — which is what lets two streaks meet without a visible butt joint.
+ * Registered on the preload gate through _fxLoad like every other texture in
+ * this file; see the note beside the fx group in preloadWorldAnimations. */
+const JET_STREAM = { tex: null };
+_fxLoad('/sprites/effects/jet-stream-v1.png?v=2.3.2398').then((tex) => {
+  if (tex && tex.source) JET_STREAM.tex = tex;
+}).catch((err) => console.warn('[jet-stream] load failed', err));
+/* Trailing length in world px — derived above; NOT a whole-flight streak.  One
+   that spanned launch-to-head would grow to the full 675 px range, and then
+   every arrow in a volley would paint the same solid band: the failure mode is
+   a smear that reads as clutter rather than as a line. */
+const JET_LEN_PX = 190;
+const JET_LINGER_MS = 1100;
+/* Tuned so overlapping streaks build toward a brighter line without saturating
+   (two at 0.55 compose to ~0.80, not white) — the fast-cadence case where they
+   stop almost-touching and start stacking. */
+const JET_ALPHA = 0.55;
+/* A ceiling nothing legitimate reaches (~7 arrows can be airborne at the
+   200 ms floor, plus ~5 more still fading), so a stalled tab that resumes with
+   a backlog cannot grow the list without limit. */
+const JET_MAX = 24;
 for (const [cfg, url] of [
   [ARROW_SPECIAL, '/sprites/projectiles/arrow-special-v1.webp?v=2.3.1396'],
   [MAGIC_SPECIAL, '/sprites/projectiles/magic-special-v1.webp?v=2.3.1396'],
@@ -1387,6 +1458,56 @@ export class EffectsRenderer {
        one texture, still one batch. */
     this._dotLayer = new Container();
     this.particleLayer.addChild(this._dotLayer);
+
+    /* ═══ v2.3.2398: THE JET STREAM'S CONTAINER, AND WHY IT IS BUILT FIRST ═══
+       Parented to the projectile layer HERE, at construction, ahead of
+       projectileGfx and ahead of every sprite pool in this file — all of which
+       are created lazily, on whichever frame first needs them.  Pixi depth is
+       child order, so a pool built on a later frame lands on top of one built
+       earlier: leave this to be created on the first shot and an arrow could
+       end up under its own exhaust, or not, depending on when the player first
+       fired.  Vapour goes beneath every solid thing in the layer, always. */
+    this.jetStreamLayer = new Container();
+    this.projectileLayer.addChild(this.jetStreamLayer);
+    /* Flat, index-pooled sprites refilled from zero every frame — the
+       v2.3.1825 arrowSprites pattern, for the reason v2.3.2331 converted the
+       particle field off polygons: re-tessellation was the single biggest
+       frame cost, and a stretched sprite is one quad that never re-tessellates
+       however long it is drawn. */
+    this.jetSprites = [];
+    this._jetSpriteN = 0;
+    /* THE STREAKS OUTLIVE THE ARROWS THAT LAY THEM, which is the whole feature
+       — so they cannot hang off the arrow records the way _trail does
+       (_updateProjectileTrail).  S.arrows drops a spent arrow and the guide
+       would go with it, ~1.4 s after the shot and long before you could sight
+       along it.  The renderer owns them; an arrow only feeds one while it is
+       alive, and stops being able to the moment it is not. */
+    this.jetStreaks = [];
+    /* Dev probe, house style (cf. __btSlimeProj, __btSightBeam): a scenario
+       cannot read a stretched sprite, so the renderer reports the geometry it
+       drew.  mp-jetstream asserts off this that the streak lies on the arrow's
+       real flight line — which is the property v2.3.2320 gave the sight beam
+       ("it points where the ARROW goes"), the half of that feature worth
+       keeping, and it belongs to this one now. */
+    if (typeof window !== 'undefined') {
+      const _jsSelf = this;
+      window.__btJetStream = function () {
+        return {
+          n: _jsSelf.jetStreaks.length,
+          sprites: _jsSelf._jetSpriteN,
+          pooled: _jsSelf.jetSprites.length,
+          tex: !!JET_STREAM.tex,
+          lenCap: JET_LEN_PX,
+          lingerMs: JET_LINGER_MS,
+          streaks: _jsSelf.jetStreaks.map(function (st) {
+            return { id: st.id, x: +st.x.toFixed(2), y: +st.y.toFixed(2),
+              ang: +st.ang.toFixed(4), len: +st.len.toFixed(2),
+              alpha: +st.alpha.toFixed(4), spent: !!st.spent,
+              ageMs: Date.now() - st.born, zone: st.zone || null };
+          }),
+        };
+      };
+    }
 
     this.projectileGfx = new Graphics();
     this.projectileLayer.addChild(this.projectileGfx);
@@ -3264,7 +3385,22 @@ export class EffectsRenderer {
          skip the line trail exactly like the basic bolt's art does. */
       const _paintedSpecial = (isBowHeavy && ARROW_SPECIAL.frames.length)
         || (_isStaffSpecial && MAGIC_SPECIAL.frames.length);
-      if (!_stuckPose && !(_isBasicStaffBolt && MAGIC_BOLT_FRAMES.length) && !_paintedSpecial) {
+      /* ═══ v2.3.2398: THE JET STREAM, AND WHY THE BROWN SMEAR STANDS DOWN ═══
+         Fed here while the arrow flies, drawn once at the end of the pass —
+         see _noteJetStream for the geometry and _drawJetStreams for the fade.
+
+         The motion-blur trail on the next line is the SAME IDEA at a twentieth
+         of the scale: an 8-sample ring buffer of recent positions stroked as
+         dark brown segments, i.e. about 130 ms of smear right behind the head.
+         Drawing both would run a brown line down the middle of the pale blue
+         one and muddy the exact thing the owner wants to sight along, so a bow
+         arrow that HAS a streak does not also get the smear.  This is the "do
+         not add a second parallel mechanism" call made deliberately: the two
+         answer the same question and the longer-lived one wins.  Nothing else
+         moves — staff bolts, ice, the charged shots and every remote
+         projectile keep _updateProjectileTrail exactly as it was. */
+      const _jetOn = this._noteJetStream(a, now, _pk, S.currentZone);
+      if (!_stuckPose && !_jetOn && !(_isBasicStaffBolt && MAGIC_BOLT_FRAMES.length) && !_paintedSpecial) {
         this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.ice, _pk);
       }
 
@@ -3580,6 +3716,13 @@ export class EffectsRenderer {
         sprite.rotation = projBaseAng !== 0 ? (sp.ang || 0) - projBaseAng : 0;
       }
     }
+
+    /* v2.3.2398: LAST, and unconditionally.  The arrow loop above has fed
+       every streak whose arrow is still flying; anything it did not touch has
+       no arrow any more, and that is exactly the moment a streak starts to
+       fade.  Outside the loop because it has to keep running with S.arrows
+       empty — a guide that vanished with the last arrow would be no guide. */
+    this._drawJetStreams(now, S.currentZone);
   }
 
   /** v2.3.1334: place (create/update) one painted magic-bolt sprite.
@@ -3859,6 +4002,161 @@ export class EffectsRenderer {
     sprite.y = cy;
     sprite.rotation = ang || 0;
     sprite.alpha = alpha;
+    sprite.visible = true;
+  }
+
+  /** v2.3.2398: feed the jet stream of one LOCAL arrow that is still flying.
+   *  Returns true when this arrow has a streak, which is what stands the brown
+   *  motion-blur smear down at the call site.
+   *
+   *  ═══ IT NEEDS NOTHING NEW STORED ON THE ARROW ═══
+   *  A released bow arrow already carries its own frozen launch point:
+   *  projectiles.js stamps _pathX/_pathY in absolute world coords on the first
+   *  frame after release, because "a path is an origin AND a direction; both
+   *  have to be stamped at release" (v2.3.2258).  And the bow flies STRAIGHT —
+   *  magic steers mid-flight, the bow deliberately does not (v2.3.2261) — so
+   *  launch to (_renderX, _renderY) IS the whole path, and one sprite stretched
+   *  between two points is the whole trail.  No polyline, no ribbon mesh, and
+   *  no second copy of the launch point to drift out of step with the one the
+   *  simulation is actually flying along.
+   */
+  _noteJetStream(a, now, pk, zone) {
+    if (!JET_STREAM.tex) return false;
+    /* MAGIC IS EXCLUDED EXPLICITLY, not by falling off the end of a chain —
+       see the header block.  All three flags, because they are three different
+       ways to be a staff projectile: `isStaff` is set at the spawn,
+       `_isStaffProj` is projectiles.js re-deriving it from the live weapon,
+       and `ice` is the legacy "draw as orb" toggle every staff special still
+       carries (v2.3.1396). */
+    if (a.isStaff || a._isStaffProj || a.ice) return false;
+    /* The charged bow shot keeps its own golden flame wrap (ARROW_SPECIAL).  It
+       is fired one at a time off a swipe, so it never forms the LINE this is
+       for, and pale blue vapour over that art would only fight it. */
+    if (a.isSpecial) return false;
+    /* v2.3.1095's three states under one idea: a spent arrow falling through
+       open air (`planting`), one lying in the ground (`planted`) and the
+       special embedded in a monster (`stuckIn`) are all done flying.  A
+       planted arrow must not GROW a streak — the one it laid on the way stays
+       where it was laid and fades on its own. */
+    if (a.planted || a.planting || a.stuckIn) return false;
+    /* Still nocked: `fromGrip` holds a bow arrow at the grip for
+       BOW_RELEASE_MS before it flies, and _pathX is stamped at release.  No
+       path yet means nothing to trail. */
+    if (a._pathX == null || a._pathY == null) return false;
+    if (a._renderX == null || a._renderY == null) return false;
+    const dx = a._renderX - a._pathX, dy = a._renderY - a._pathY;
+    const travelled = Math.sqrt(dx * dx + dy * dy);
+    if (!(travelled > 1)) return false;
+    /* The heading comes from the PATH, never from `a.ang`: the drawn arrow
+       takes a live aim-bend (`_angB` above) and rotates toward straight-down
+       as it plants, and neither of those is the line the shot was taken on. */
+    const ang = Math.atan2(dy, dx);
+    /* Start the streak at the arrow's TAIL, or the vapour paints over its own
+       shaft.  Written as the fraction the sprite is anchored by rather than as
+       a pixel count, so it follows if the arrow is ever resized again — the
+       v2.3.1881 rule, "keeping the RATIO is what keeps the two reading as one
+       missile" (that version tripled lenPx and every hard-coded px went wrong). */
+    const inset = ARROW_PINE.lenPx * ARROW_PINE.anchor.x * (pk || 1);
+    let st = a._jet;
+    if (!st || st.dead) {
+      /* Alternating vertical flip.  Two streaks laid along the same ray from
+         one texture are pixel-identical and stack into a hard-edged band; a
+         mirrored twin costs one sign and breaks that up, which is the cheapest
+         defence there is against the smear failure mode. */
+      this._jetFlip = -(this._jetFlip || -1);
+      /* A stable identity for the probe.  Streaks compact out of the list as
+         they expire, so `streaks[0]` is a different streak from one frame to
+         the next and a scenario that watched an INDEX would compare two
+         different objects -- which is exactly how mp-jetstream's fade
+         assertion first read backwards.  Renderer-minted, never client-supplied,
+         so it is a counter and not a key anyone can steer. */
+      st = { id: (this._jetSeq = (this._jetSeq || 0) + 1),
+        x: a._renderX, y: a._renderY, ang, len: 0, pk: pk || 1, zone: zone || null,
+        flip: this._jetFlip, born: now, seen: now, alpha: 0, spent: false, dead: false };
+      a._jet = st;
+      this.jetStreaks.push(st);
+      while (this.jetStreaks.length > JET_MAX) {
+        const old = this.jetStreaks.shift();
+        if (old) old.dead = true;   /* so its arrow, if any, lays a fresh one */
+      }
+    }
+    st.x = a._renderX - Math.cos(ang) * inset;
+    st.y = a._renderY - Math.sin(ang) * inset;
+    st.ang = ang;
+    st.len = Math.min(travelled, JET_LEN_PX);
+    st.pk = pk || 1;
+    st.zone = zone || null;
+    st.seen = now;
+    return true;
+  }
+
+  /** v2.3.2398: draw every live streak and age the spent ones.  Called once at
+   *  the end of the projectile pass — see the note at the call site for why
+   *  "was I fed this frame" is the whole liveness test. */
+  _drawJetStreams(now, zone) {
+    const tex = JET_STREAM.tex;
+    /* Refilled from zero every frame, the _resetArrowSprites contract — except
+       that this pool is filled in exactly one place, so it resets here rather
+       than at the top of the pass.  Nothing else can light a jet sprite. */
+    this._jetSpriteN = 0;
+    const texW = (tex && (tex.frame ? tex.frame.width : tex.width)) || 1;
+    const keep = [];
+    for (const st of this.jetStreaks) {
+      if (st.dead) continue;
+      /* A streak is a span between two points in ONE zone's world coordinates.
+         Walk through a door and it would hang over the new zone's ground at
+         numbers that mean nothing there, so a zone change drops it outright —
+         the same class of guard as _updateProjectileTrail's teleport check. */
+      if (zone && st.zone && st.zone !== zone) { st.dead = true; continue; }
+      const spentFor = now - st.seen;
+      st.spent = spentFor > 0;
+      const t = spentFor <= 0 ? 0 : spentFor / JET_LINGER_MS;
+      if (t >= 1) { st.dead = true; continue; }
+      /* Holds near full through the first half, drops away at the end.  A
+         linear ramp starts dimming the instant the arrow is spent, which is
+         precisely when the guide has just become useful. */
+      st.alpha = JET_ALPHA * (1 - t * t);
+      keep.push(st);
+      if (!tex || !(st.len > 1) || st.alpha <= 0.004) continue;
+      this._placeJetSprite(tex, texW, st);
+    }
+    this.jetStreaks = keep;
+    /* Hide whatever a busier frame lit and this one did not, rather than
+       destroying it — a volley must not churn the GPU (v2.3.1825). */
+    for (let i = this._jetSpriteN; i < this.jetSprites.length; i++) {
+      if (this.jetSprites[i].visible) this.jetSprites[i].visible = false;
+    }
+  }
+
+  /** v2.3.2398: one pooled, stretched sprite for one streak. */
+  _placeJetSprite(tex, texW, st) {
+    let sprite = this.jetSprites[this._jetSpriteN];
+    if (!sprite) {
+      sprite = new Sprite(tex);
+      /* Right edge, vertically centred: (st.x, st.y) is the HEAD of the streak
+         — the arrow's tail — and the art runs backwards down the flight line
+         from there, so rotation is the path heading with no offset.  The art
+         tapers to nothing at both ends, so which end leads does not matter and
+         the joins between successive streaks stay soft. */
+      sprite.anchor.set(1, 0.5);
+      this.jetStreamLayer.addChild(sprite);
+      this.jetSprites.push(sprite);
+    }
+    this._jetSpriteN++;
+    if (sprite.texture !== tex) sprite.texture = tex;
+    /* ONE scale drives both axes, so the streak keeps the aspect it was drawn
+       at (the owner's wisp is ~15:1 inside its frame; squashing it to force a
+       thickness would just make it a different streak).  The zone's
+       perspective curve rides the THICKNESS only, because `len` is the span
+       between two world points and zonePlayerScale sizes SPRITES, not spans —
+       and it is literally 1 on every zone but worldview, so on everything you
+       actually fight in the two axes are equal and the aspect is exact. */
+    const k = st.len / texW;
+    sprite.scale.set(k, k * (st.pk || 1) * st.flip);
+    sprite.x = st.x;
+    sprite.y = st.y;
+    sprite.rotation = st.ang;
+    sprite.alpha = st.alpha;
     sprite.visible = true;
   }
 
@@ -4621,8 +4919,37 @@ export class EffectsRenderer {
       const hasBow = !!(S.rpg && S.rpg.rangedWeapon);
       const bowFiring = isBow && hasBow && (!!S.autoAttack
         || (S._bowShotAt && (now - S._bowShotAt) < BOW_SHOT_MS));
+      /* ═══ v2.3.2398: THE BEAM IS OFF FOR THE BOW — ITS ARROWS DRAW THE LINE ═══
+         Owner: "Instead of the aim tool (curvy line) for the bow I want to try
+         to add a jet stream to each arrow ... so that way the player can use it
+         as a visual guide to aim each successive arrow (like making a line out
+         of it to aim better)."
+
+         "INSTEAD OF" is the whole instruction.  This beam and the jet stream
+         are two answers to one question, and running both would put a wavy
+         filled polygon straight down the middle of the trail that replaced it.
+         The successor is _noteJetStream (module header there); read it for why
+         a trail hands the archer LESS forward information than this beam did,
+         not more — it is exhaust, so it only marks where arrows have already
+         been, and it cannot be on while you are merely aiming because there is
+         nothing in the air to trail.
+
+         A FLAG RATHER THAN A DELETION, the SHIELD_CONE_ENABLED pattern below.
+         The owner has moved this line three times now — off for both ranged
+         slots (v2.3.2258), back for the bow while attacking (v2.3.2320), off
+         again here — and the reasoning above each of those moves is worth more
+         in place than in a git log.  Flip this to true and the beam is exactly
+         what v2.3.2320 shipped, jet stream and all.
+
+         WHAT IS DELIBERATELY UNTOUCHED: melee, which is not a sight line at all
+         but the wild-swing AoE drawn (v2.3.940) under a preview-matches-DAMAGE
+         contract; and magic, dark since v2.3.2258 and staying that way.
+         `bowFiring` itself is left computed so __btSightBeam keeps reporting
+         it — "the bow IS firing and the beam is STILL dark" is a stronger thing
+         for mp-aimpath to assert than a bare invisible. */
+      const BOW_SIGHT_BEAM_ENABLED = false;
       const shouldDraw = !isStaff
-        && (bowFiring || (isMelee && (aimState || meleeSwinging)))
+        && ((BOW_SIGHT_BEAM_ENABLED && bowFiring) || (isMelee && (aimState || meleeSwinging)))
         && S.player
         && !S._shieldUp; /* shield arc has its own indicator; don't overlap */
       /* ═══ v2.3.2260: THE PROBE, BECAUSE THE FIX NEXT DOOR THREATENS THIS ═══

@@ -186,6 +186,16 @@ export async function preloadWorldAnimations() {
     slime: loadSlimeSprites(),
     playerDeath: loadPlayerDeathSprites(),
     walkability: loadWalkabilityMaps(),
+    /* v2.3.2398: the bow's jet stream (jet-stream-v1.png) rides THIS group.
+       It is loaded through effectsRenderer's _fxLoad, which is a drop-in for
+       Assets.load that pushes into the list effectsAnimationsReady() awaits —
+       so the preloading LAW is satisfied by the line below and the streak
+       needs no entry of its own.  Said out loud, exactly as v2.3.2070 did for
+       the portal beam: a texture with no name in this manifest is the kind of
+       thing a later reader assumes was forgotten and "fixes" with a lazy
+       first-use load, which is the regression the law exists to stop.  It is
+       GLOBAL rather than per-zone — a bow goes everywhere its owner does, so
+       there is no zone to scope it to (30 KB, 512x39). */
     fx: effectsAnimationsReady(),
     /* v2.3.1735: the shared owner FX strips.  Registered HERE, in the same PR
        that adds them, per CLAUDE.md's animation-preloading law — a first-use

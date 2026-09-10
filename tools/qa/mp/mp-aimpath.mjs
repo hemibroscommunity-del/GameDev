@@ -321,7 +321,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
       beamSeen && beamSeen.visible === false && beamSeen.slot === 'staff', beamSeen);
   }
 
-  /* ── 6. THE BOW'S SIGHT LINE IS BACK, AND ONLY WHILE ATTACKING (v2.3.2320) ──
+  /* ── 6. THE BOW'S SIGHT LINE IS OFF AGAIN — ITS ARROWS DRAW THE LINE ──
+     ═══ v2.3.2398: INVERTED ON PURPOSE, THE SECOND TIME IN THIS FILE ═══
+     Owner: "Instead of the aim tool (curvy line) for the bow I want to try to
+     add a jet stream to each arrow ... so that way the player can use it as a
+     visual guide to aim each successive arrow."
+
+     "Instead of" retires the beam.  This block used to assert the opposite and
+     is kept rather than deleted, exactly as block 4 above was when magic's
+     mid-flight steering came back: a test that once claimed the reverse is the
+     clearest record that this is a DECISION and not an accident, and the third
+     time someone is asked to move this line they should be able to read all
+     three moves in one place.
+
+     WHAT SURVIVED THE MOVE, and where it went.  v2.3.2320's third claim was the
+     one with teeth — the line must point where the ARROW goes, because a guide
+     that disagrees with the shot is worse than no guide.  That property did not
+     die with the beam; it belongs to the jet stream now and mp-jetstream
+     asserts it against the simulation's own frozen launch point (which is a
+     stronger check than this file could make: it compares against where the
+     arrow IS, not against a second copy of the aim ladder).
+
+     THE AIM LADDER ITSELF IS STILL TESTED, and by the blocks above rather than
+     by this one — 1, 2 and 3b all assert on the angle the SHOT comes out at,
+     which is what v2.3.2260 was ever about.  Nothing is left uncovered by
+     turning the drawing off.
+
+     BEAM STAYS DARK WHILE FIRING, which is the assertion below and is
+     deliberately narrower than "invisible": the beam was only ever drawn while
+     attacking, so a test that checked an idle bow would pass on a build that
+     had not changed at all.  __btSightBeam still reports `firing`, so this can
+     demand the hard case — the fire control is held, arrows are leaving, and
+     the beam is STILL not drawn. */
+  /* (kept for the record — the block this replaced)
+     THE BOW'S SIGHT LINE IS BACK, AND ONLY WHILE ATTACKING (v2.3.2320)
      Owner: "I want to give archers a little buff by restoring the previous line
      of site visual only with now.  Slight wavy line one while attacking one."
 
@@ -345,7 +378,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const bowIdle = await P.page.evaluate(() =>
     (window.__btSightBeam ? window.__btSightBeam() : { unavailable: true }));
   console.log(`    beam(bow, aiming only): ${JSON.stringify(aimOnly)} ${JSON.stringify(bowIdle)}`);
-  rec.ok('a bow merely AIMING draws no sight line — "while attacking" is narrower',
+  rec.ok('a bow merely AIMING draws no sight line',
     !bowIdle.unavailable && bowIdle.visible === false, bowIdle);
 
   /* Firing, at a real locked monster, so the angle has something to agree
@@ -421,21 +454,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }));
   await P.page.evaluate(() => { window._gameState.current.autoAttack = false; });
   console.log(`    beam(bow, firing): ${JSON.stringify(firing)} -> ${JSON.stringify(agree)}`);
-  rec.ok('a bow that IS attacking draws its sight line again',
-    agree.visible === true && agree.firing === true, agree);
-  rec.ok('an arrow actually left, to compare the line against (guard)',
+  rec.ok('an arrow actually left, so the bow is genuinely mid-volley (guard)',
     agree.arrow != null, agree);
-  if (agree.arrow != null && agree.beam != null) {
-    /* The epsilon is small on purpose.  The two ladders disagree by ~0.1-0.4
-       rad in the cases that matter (feet-vs-grip origin, feet-vs-body-centre
-       target), so a loose bound would pass on exactly the bug this catches. */
-    const d = Math.abs(Math.atan2(Math.sin(agree.arrow - agree.beam),
-      Math.cos(agree.arrow - agree.beam)));
-    rec.ok(`...and it points where the ARROW goes (${agree.arrow.toFixed(3)} vs ${agree.beam.toFixed(3)} rad)`,
-      d < 0.02, { ...agree, delta: d });
-    rec.ok('...off the same lock the shot resolved, from the bow grip',
-      agree.src === 'lock' && !!agree.origin, agree);
-  }
+  rec.ok('the renderer agrees the fire control is held (guard)',
+    agree.firing === true, agree);
+  /* v2.3.2398: THE HARD CASE.  Attacking, at a real lock, with arrows in the
+     air — the exact state v2.3.2320 drew the beam in — and it is dark. */
+  rec.ok('a bow that IS attacking draws no sight line either: the jet stream replaced it',
+    agree.visible === false, agree);
+  rec.ok('...and with nothing drawn there is no heading to disagree with the shot',
+    agree.beam == null, agree);
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     S.lockedTarget = null; S.monsters = []; S.arrows = [];
