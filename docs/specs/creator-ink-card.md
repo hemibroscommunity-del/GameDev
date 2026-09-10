@@ -1,4 +1,4 @@
-# The tattoo editor's door becomes you, and your tools (v2.3.2399)
+# The tattoo editor's door becomes you, and your tools (v2.3.2414)
 
 **Owner, first:**
 
@@ -382,7 +382,7 @@ tested nothing.
 
 ---
 
-# Second round: the tools, the editors, and the name cluster (v2.3.2401)
+# Second round: the tools, the editors, and the name cluster (v2.3.2416)
 
 Five owner notes after testing the preview build, and what each turned into.
 

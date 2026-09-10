@@ -1602,7 +1602,7 @@ input{font-family:inherit}
   color:var(--ui-text-dim,#96A2A0);box-shadow:none;
 }
 .bt-cc-reset:active{transform:scale(.98);background:rgba(255,255,255,.09)}
-/* v2.3.2401: gap 6 -> 4 and side padding 8 -> 5, which is where the randomize
+/* v2.3.2416: gap 6 -> 4 and side padding 8 -> 5, which is where the randomize
    icon's extra 6px came from (28 -> 34, owner: "Icon too small").  Spent on the
    picture rather than taken from the label: "Randomize Look" has to stay on one
    line at this column width and mp-ccbuttons 3 fails if it does not -- v2.3.2036
@@ -1979,7 +1979,7 @@ input{font-family:inherit}
 .bt-cc-login:focus-visible,
 .bt-cc-play:focus-visible,
 .bt-cc-tab:focus-visible,
-/* v2.3.2399: the ink card's picture and its inline tools join the list.  A
+/* v2.3.2414: the ink card's picture and its inline tools join the list.  A
    pre-existing gap rather than a regression -- .bt-cc-draw was never in here
    either, so the way in to the designer has always fallen back to the UA's own
    thin orange outline while every other control on this screen wore the brass
@@ -2101,7 +2101,7 @@ input{font-family:inherit}
    floor still lives inline in NameModal.jsx (iOS zoom gate, v2.3.710). */
 /* v2.3.1272: 38 → 44px (touch-comfort floor); the 16px font stays (iOS
    zoom gate, v2.3.710). */
-/* v2.3.2401: the field grows to fill its plate.  Owner: "Make name larger to
+/* v2.3.2416: the field grows to fill its plate.  Owner: "Make name larger to
    fill the space."  44px tall with 16px text was sized for the v2.3.1524
    full-width well; in this column, under a gold plate and above a 48px button,
    it read as the smallest thing in the cluster when it is the most important.
@@ -2323,7 +2323,7 @@ input{font-family:inherit}
      twice.  .14 of the widened plate is 27.1px, within half a pixel of the
      27.5px candidate D reserved, so the rule keeps its distance from the name
      block above and gives its own extra height to the buttons below. */
-  /* v2.3.2401: .14 -> .10.  Owner: "panel behind name too much space between
+  /* v2.3.2416: .14 -> .10.  Owner: "panel behind name too much space between
      name and randomize."  Measured, that gap was 27.1px against the 8px
      between Randomize and Reset -- more than three times its neighbour, which
      is what read as a hole rather than as spacing.
@@ -2374,7 +2374,7 @@ input{font-family:inherit}
   /* the same fraction .bt-cc-actions reserves above, so the message is
      centred in that slot rather than in a box of its own.  (It was the
      divider rail's slot until v2.3.2388; the reservation outlived the rail.) */
-  height:calc(var(--cc-plate)*.10);   /* v2.3.2401: pairs with .bt-cc-actions' padding-top -- keep them equal */
+  height:calc(var(--cc-plate)*.10);   /* v2.3.2416: pairs with .bt-cc-actions' padding-top -- keep them equal */
   display:flex;align-items:center;justify-content:center;
   font-size:11px;font-family:'Source Sans 3',sans-serif;text-align:center;
   pointer-events:none;
@@ -2563,7 +2563,7 @@ input{font-family:inherit}
 /* ═══ v2.3.2358: the picker's category tiles, in the title screen's gold ═══
    SCOPED TO .bt-cc-panel ON PURPOSE.  The same .bt-cc-tab class dresses the
    DRAWING panel's own mode strip (PlayerPaint's .bt-paint-tabs) and the label
-   inside the ink card (.bt-cc-ink .bt-cc-tab-label, v2.3.2399 -- v2.3.1946's
+   inside the ink card (.bt-cc-ink .bt-cc-tab-label, v2.3.2414 -- v2.3.1946's
    .bt-cc-draw before it), neither of which is part of this ask; both keep the
    slate treatment above, and restyling the bare class would have taken them.  Everything below is one specificity step up, so the rules above
    stay the base and the short-viewport media queries further down still win.
@@ -2594,7 +2594,7 @@ input{font-family:inherit}
    strongest treatment short of the gold face.
    Press is the spec's 90ms / scale .98.
 
-   ═══ v2.3.2399: AND IT IS A CARD NOW, NOT A BUTTON ═══
+   ═══ v2.3.2414: AND IT IS A CARD NOW, NOT A BUTTON ═══
    Owner: "I'd rather make the tattoo editor simplified, just a preview of the
    body you'd be editing right there in the panel.  I don't really want a button
    to launch the editor anymore.  Every time somebody playtests the game they
@@ -2630,7 +2630,7 @@ input{font-family:inherit}
    being a picture of anyone.  The ceiling is 290px, which is where the card
    stops growing on a tall phone -- past it the card starts to look like the
    point of the screen, and the character on the pedestal is the point of the
-   screen.  Both numbers went UP at v2.3.2400, when the sentence in the footer
+   screen.  Both numbers went UP at v2.3.2415, when the sentence in the footer
    became the palette: a label costs 44px and a tool row costs more. */
 .bt-cc-ink{
   /* flex-basis:0, NOT auto, and this is the line that decides how the card and
@@ -2652,7 +2652,7 @@ input{font-family:inherit}
   background:var(--ui-brass-soft);border:1px solid var(--ui-brass);
   color:var(--ui-text);border-radius:11px;
 }
-/* v2.3.2400: the card is a CONTAINER now, not one button -- it holds the
+/* v2.3.2415: the card is a CONTAINER now, not one button -- it holds the
    palette's buttons, and a button inside a button is markup browsers un-nest
    unpredictably.  So the press lives on the picture, and pressing a colour
    chip must not shrink the whole card under the finger. */
@@ -2683,7 +2683,7 @@ input{font-family:inherit}
    on from.  The plus is an invitation, and it means "add" in every app a
    player has already used.
    pointer-events:none: the picture behind it is the button. */
-/* v2.3.2400: the painted icon that used to sit in the label bar, as a badge.
+/* v2.3.2415: the painted icon that used to sit in the label bar, as a badge.
    28px, not the bar's 34: it is over the picture now rather than beside a
    sentence, so it has to read as a mark on the pane and not as a sticker.
    Still comfortably above the 26 the owner asked it to grow from (v2.3.2035).
@@ -2700,7 +2700,7 @@ input{font-family:inherit}
   font:400 44px/1 'Source Sans 3',sans-serif;
   color:rgba(238,242,235,.44);text-shadow:0 1px 3px rgba(0,0,0,.55);
 }
-/* ═══ v2.3.2400: THE TOOLS, WHERE THE LABEL WAS ═══
+/* ═══ v2.3.2415: THE TOOLS, WHERE THE LABEL WAS ═══
    Owner: "Instead of using space for 'tattoo your body or face' I'd rather you
    just have the tools for tattooing right there beneath the character."
 
@@ -2814,7 +2814,7 @@ input{font-family:inherit}
    tall the row is. */
 .bt-paint{
   --paint-size:min(52vw,52vh,288px);
-  /* ═══ v2.3.2399: THE PANEL DECLARES WHAT IT ALLOWS, LIKE ITS SIBLINGS ═══
+  /* ═══ v2.3.2414: THE PANEL DECLARES WHAT IT ALLOWS, LIKE ITS SIBLINGS ═══
      PlayerPaint gives this box `maxHeight:96vh; overflow:auto` inline, so it IS
      a scroll container, and at 390x664 it needs to be: measured, its content is
      728px in a 635px client box, with DONE below the fold.  It sits inside
@@ -2866,13 +2866,13 @@ input{font-family:inherit}
     "note main"
     "ctl  ctl";
 }
-/* v2.3.2399: the tabs and the front/back switch, as one cell.  See the note in
+/* v2.3.2414: the tabs and the front/back switch, as one cell.  See the note in
    PlayerPaint.jsx: the switch had no grid-area at all, so it auto-placed into
    an implicit row BELOW everything -- offsetTop 708 in a 738px content box at
    390x664, under the Done button and off the panel's fold.  `gap` rather than a
    margin on the switch, so the space exists only when both children do. */
 .bt-paint-head{grid-area:tabs;display:flex;flex-direction:column;gap:6px;min-width:0}
-/* v2.3.2401: the screen's name.  Owner: "Once in the editors find room to make
+/* v2.3.2416: the screen's name.  Owner: "Once in the editors find room to make
    a title label somewhere so users know what editor they're in."
    Sized and coloured off .bt-cc-panel-title's family rather than inventing a
    heading style, and deliberately quiet: it is a signpost, not the thing you
@@ -2983,7 +2983,7 @@ input{font-family:inherit}
 
 /* v2.3.1950: the saved-design row.  Three thumbnails and an arming button, on
    one line, sized so a slot stays a comfortable target on a phone. */
-/* v2.3.2401: .bt-paint-slots / -slot / -slot-plus / -save retired with the
+/* v2.3.2416: .bt-paint-slots / -slot / -slot-plus / -save retired with the
    design-slot feature (owner: the word Save meant two different things on
    this screen).  See the note in PlayerPaint.jsx. */
 /* v2.3.1951: the pending-shape controls borrow the brush-size chip so the row
@@ -3142,7 +3142,7 @@ input{font-family:inherit}
    pad that grew with them would take the room back off the tiles every time
    you changed category. Anything past two rows scrolls within the pad. */
 .bt-cc-colors{flex:0 0 auto;display:flex;flex-direction:column;min-width:0}
-/* ═══ v2.3.2399: THE GHOST BAND GIVES ITS ROOM TO THE INK CARD ═══
+/* ═══ v2.3.2414: THE GHOST BAND GIVES ITS ROOM TO THE INK CARD ═══
    `--yield` is set (NameModal) only where this block is a GHOST *and* the ink
    card below is live -- which is Skin, Pants and Shoes, the three tabs whose
    `colors` is null unconditionally (their swatch row IS their option strip).

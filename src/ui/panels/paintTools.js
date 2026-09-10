@@ -1,4 +1,4 @@
-/* ═══ v2.3.2399: THE DRAWING TOOLS, HELD OUTSIDE THE EDITOR ═══
+/* ═══ v2.3.2414: THE DRAWING TOOLS, HELD OUTSIDE THE EDITOR ═══
  *
  * Owner, on the creator's ink card: "Instead of using space for 'tattoo your
  * body or face' I'd rather you just have the tools for tattooing right there

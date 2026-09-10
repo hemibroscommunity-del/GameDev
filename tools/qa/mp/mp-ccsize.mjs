@@ -118,7 +118,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the Skin tab could be opened (guard)', toSkin === true, { toSkin });
   await P.page.waitForTimeout(900);
 
-  /* ═══ v2.3.2400: THE ICON MOVED, AND THE NUMBER MOVED WITH IT ═══
+  /* ═══ v2.3.2415: THE ICON MOVED, AND THE NUMBER MOVED WITH IT ═══
      v2.3.2035 took this icon 26 -> 34 inside a 54px button whose other half was
      a sentence.  The owner then asked for that sentence to be replaced by the
      tattoo tools ("Instead of using space for 'tattoo your body or face' I'd
@@ -561,7 +561,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const wrap = row.parentElement;
     const more = wrap && wrap.querySelector('.bt-cc-more');
     const panel = document.querySelector('.bt-cc-panel');
-    const draw = document.querySelector('.bt-cc-ink');   /* v2.3.2399 */
+    const draw = document.querySelector('.bt-cc-ink');   /* v2.3.2414 */
     const pr = panel.getBoundingClientRect();
     const dr = draw ? draw.getBoundingClientRect() : null;
     return { t, swatches: row.children.length,
@@ -580,7 +580,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!f && f.hidden <= 2, f);
     rec.ok(`${tab}: ...so nothing is dimmed behind a fade`, !!f && f.cue === false, f);
     /* The room it grew into was real spare space, not the ink card's.
-       v2.3.2399: Hair has no drawing, so it has no card -- the assertion is
+       v2.3.2414: Hair has no drawing, so it has no card -- the assertion is
        about the tabs that DO carry one, and `drawBottom === null` is the
        honest reading of "there is nothing here to push out" rather than a
        silent pass. */

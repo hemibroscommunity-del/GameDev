@@ -14,8 +14,8 @@ import {
   patternsFor, getPattern, setPattern, parsePattern, formatPattern, patternInk,
 } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 import { drawCharacterPortrait } from '@/rendering/characterPortrait.js';   /* v2.3.1947 */
-import { SHIRT_CATALOG } from '@/rendering/traits/shirtCatalog.js';   /* v2.3.2401 */
-/* v2.3.2399: the ink colour and the brush width are shared with the creator's
+import { SHIRT_CATALOG } from '@/rendering/traits/shirtCatalog.js';   /* v2.3.2416 */
+/* v2.3.2414: the ink colour and the brush width are shared with the creator's
    inline tool row -- see paintTools.js for why they live outside this panel. */
 import { getInk as getToolInk, getBrush as getToolBrush, setInk as setToolInk, setBrush as setToolBrush } from './paintTools.js';
 import BodyInk from '@/ui/panels/BodyInk.jsx';   /* v2.3.1965 */
@@ -59,7 +59,7 @@ const CELL_PX = 18;            /* on-screen size of one cell at rest */
 
 /* Per-target copy.  `note` is the one thing a player cannot work out by looking
    at the grid: WHERE the drawing ends up and what can hide it. */
-/* v2.3.2401: `title` names the SCREEN.  Owner: "Once in the editors find room
+/* v2.3.2416: `title` names the SCREEN.  Owner: "Once in the editors find room
    to make a title label somewhere so users know what editor they're in."
    Distinct from `label`, which is a noun dropped into a sentence ("a shirt
    covers it") and reads wrong as a heading.  Only the four targets the creator
@@ -262,7 +262,7 @@ const LAYER_MOVES = [
   { k: 'ff', d: 'front', label: 'To front', tip: 'Bring it in front of everything else' },
 ];
 
-/* ═══ v2.3.2401: THE THREE DESIGN SLOTS AND THEIR SAVE BUTTON ARE GONE ═══
+/* ═══ v2.3.2416: THE THREE DESIGN SLOTS AND THEIR SAVE BUTTON ARE GONE ═══
    Owner: "Remove the 'save' with the 4 slots everywhere: too confusing between
    saving load out vs saving your current work."
 
@@ -286,7 +286,7 @@ const LAYER_MOVES = [
    here from the same table the character is patterned from means a swatch can
    never drift from what the garment actually shows.  Scaled up so a 4-cell tile
    reads at thumbnail size (the character wears it at 2-3px a cell). */
-/* v2.3.2399: exported for the creator's shoes card, which shows these tiles
+/* v2.3.2414: exported for the creator's shoes card, which shows these tiles
    inline -- shoes are pattern-only (v2.3.1944), so the tiles ARE that tab's
    drawing tools and a colour palette would be the wrong row entirely. */
 export function PatternSwatch({ tile, color, on, onPick }) {
@@ -367,7 +367,7 @@ export function PatternSwatch({ tile, color, on, onPick }) {
    and putting a hat on would swing the camera a tenth of a frame.
 
    `cy`/`h` are the window's centre and height as canvas fractions. */
-/* v2.3.2401: the first shirt that is not "none".  Read from the catalogue
+/* v2.3.2416: the first shirt that is not "none".  Read from the catalogue
    rather than hard-coding 'tshirt' so importing a second shirt cannot leave
    this pointing at one that was removed. */
 const DEFAULT_SHIRT = (SHIRT_CATALOG.find((o) => o && o.id !== 'none') || {}).id || 'none';
@@ -405,7 +405,7 @@ const FOCUS = {
    uses: move the window's centre with the figure and scale the window by the
    same factor.  0.977 is the measured foot line quoted above. */
 const FIG_BOT = 0.977;
-/* v2.3.2399: `override` lets a caller supply its own {cy,h} window and still get
+/* v2.3.2414: `override` lets a caller supply its own {cy,h} window and still get
    the build correction below applied to it.  It exists for the creator's ink
    card, which is roughly twice the linear size of .bt-paint-pv: a frame chosen
    to fill a 125px square becomes a 2.5x blow-up of eight pixels of boot in a
@@ -419,7 +419,7 @@ function focusFor(target, heightId, override) {
   return { cy: FIG_BOT + (f.cy - FIG_BOT) * k, h: f.h * k };
 }
 
-/* ═══ v2.3.2399: EXPORTED, BECAUSE THE CREATOR NEEDS THIS EXACT PANE ═══
+/* ═══ v2.3.2414: EXPORTED, BECAUSE THE CREATOR NEEDS THIS EXACT PANE ═══
    The creator's Design button is retired for a live preview card that IS the
    way in (NameModal, .bt-cc-ink).  That card wants precisely what this pane
    already does -- composite the player, point the camera at the garment being
@@ -514,7 +514,7 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
       });
       if (target === 'shirt') {
         opts.shirtArt = art; opts.shirtPattern = pat;
-        /* v2.3.2401: A PRINT NEEDS SOMETHING TO PRINT ON.  Owner: "Add shirt
+        /* v2.3.2416: A PRINT NEEDS SOMETHING TO PRINT ON.  Owner: "Add shirt
            editor under shirt" -- on a fresh character no shirt is worn, so the
            Shirt tab had no card at all and the editor had no door.
            It has one now, and this is what makes it useful when it opens: with
@@ -630,7 +630,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      caption, the preview's camera and the Clear button all follow it. */
   /* Both tattoo screens are the draw-on-your-character surface now; the tab
      only says WHICH region it is framed on. */
-  /* v2.3.2401: PANTS DRAW ON THE PANTS.  Owner: "On pants editor show the
+  /* v2.3.2416: PANTS DRAW ON THE PANTS.  Owner: "On pants editor show the
      actual pants where you drawing drawing in the editor (similar to how the
      other editors work)."  The pants print was the last drawing still made on
      a bare 16x16 grid.
@@ -713,7 +713,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      ref).  Assigned during render, so they are never stale. */
   const docRef = React.useRef(doc); docRef.current = doc;
   const paintedRef = React.useRef(painted); paintedRef.current = painted;
-  /* v2.3.2399: seeded FROM the shared store, so the colour the player tapped
+  /* v2.3.2414: seeded FROM the shared store, so the colour the player tapped
      under the character in the creator is the colour this panel opens armed
      with.  The write-back effect below keeps the inline row honest the other
      way round.  Lazy initialiser, not `useState(getToolInk())`: the argument
@@ -987,7 +987,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        stale -- every touch then reported a MISS and the stroke was dropped
        silently. The switch looked like it did nothing at all. */
     tattooBack: liveArt('tattooBack'), tattooHeadBack: liveArt('tattooHeadBack'),
-    /* v2.3.2401: and the pants, for the same reason -- the surface builds its
+    /* v2.3.2416: and the pants, for the same reason -- the surface builds its
        per-region grids from what it is handed, so a canvas missing from here
        is a canvas whose every touch reports a MISS and drops the stroke. */
     pants: liveArt('pants'),
@@ -1490,7 +1490,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
         style={{ background: 'var(--ui-panel, #16202a)', border: '1px solid rgba(229,237,233,.26)',
           borderRadius: 12, maxHeight: '96vh', maxWidth: '98vw', overflow: 'auto' }}>
 
-        {/* ═══ v2.3.2399: THE HEAD IS ONE GRID CELL, NOT TWO SIBLINGS ═══
+        {/* ═══ v2.3.2414: THE HEAD IS ONE GRID CELL, NOT TWO SIBLINGS ═══
             The tabs and the front/back switch are one block of "which screen,
             which way round", and until now only the tabs had a `grid-area`.
             .bt-paint is a GRID, so a child with no area auto-places into an
@@ -1508,7 +1508,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             It also takes 36px + a 10px gap out of the panel, which is the whole
             of the landscape overflow. */}
         <div className="bt-paint-head">
-        {/* ═══ v2.3.2401: WHICH EDITOR AM I IN ═══
+        {/* ═══ v2.3.2416: WHICH EDITOR AM I IN ═══
             Owner: "Once in the editors find room to make a title label
             somewhere so users know what editor they're in."
             The panel had no heading at all: you arrived from a card, and once
@@ -1557,7 +1557,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             Sharing it would make this switch look like two more screens, both
             to that test and to anyone reading the DOM. */}
         {isTattoo && (
-          /* marginTop retired with v2.3.2399's wrapper -- .bt-paint-head's own
+          /* marginTop retired with v2.3.2414's wrapper -- .bt-paint-head's own
              gap is what separates it from the tabs now, and a margin on top of
              that would double the space when both are present and leave a
              stray 6px when the tabs are not. */

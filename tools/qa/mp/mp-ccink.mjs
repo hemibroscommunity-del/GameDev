@@ -1,4 +1,4 @@
-/* ═══ THE INK CARD IS THE WAY IN NOW (v2.3.2399) ═══
+/* ═══ THE INK CARD IS THE WAY IN NOW (v2.3.2414) ═══
  *
  * Owner: "I'd rather make the tattoo editor simplified, just a preview of the
  * body you'd be editing right there in the panel.  I don't really want a button
@@ -19,7 +19,7 @@
  *      be no fix at all.
  *   2. THE CHARACTER MUST NOT MOVE.  v2.3.1938 ghosted this control on all
  *      eight tabs to hold the sheet's height constant (v2.3.1252), and
- *      v2.3.2399 stops doing that.  Section 3 asserts the property that rule
+ *      v2.3.2414 stops doing that.  Section 3 asserts the property that rule
  *      was protecting -- the stage is the same height on every tab -- rather
  *      than the mechanism, which the v2.3.1524 two-column split had already
  *      made redundant.
@@ -168,7 +168,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!L.card) { await P.ctx.close().catch(() => {}); continue; }
     /* It has to BE a control, not a picture with a handler bolted on: a <button>
        is what gives it the keyboard, the focus ring and the announcement. */
-    /* v2.3.2400: the CARD is a container and the PICTURE is the button -- the
+    /* v2.3.2415: the CARD is a container and the PICTURE is the button -- the
        card holds the palette's buttons now, and nesting them would be invalid
        markup.  Both halves are asserted. */
     rec.ok(`${tag}: the picture is a real <button> with an accessible name `
@@ -195,7 +195,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${tag}: so the dead height around the way-in is ${Math.round(dead)}px, `
       + `down from 270.1 at 390x844 / 102.5 at 390x664`,
       dead <= 90, { dead, gapAbove: L.gapAbove, freeBelow: L.freeBelow });
-    /* ── THE OWNER'S SECOND ASK, AS THREE NUMBERS (v2.3.2400) ──
+    /* ── THE OWNER'S SECOND ASK, AS THREE NUMBERS (v2.3.2415) ──
        "Instead of using space for 'tattoo your body or face' I'd rather you
        just have the tools for tattooing right there beneath the character."
        So: there IS a tool block, it is BELOW the picture, and the picture is
@@ -340,7 +340,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${tag}: ${t} has no card -- nothing on that tab can be drawn on`,
         perTab[t] === null, perTab);
     }
-    /* v2.3.2401 REVERSED THIS ONE, and it is worth saying why rather than
+    /* v2.3.2416 REVERSED THIS ONE, and it is worth saying why rather than
        just moving the expectation.  v2.3.1938's rule was "a print with nothing
        to print on is a dead button", so the Shirt tab withheld its control
        until a shirt was worn -- and a fresh character wears none, which left
@@ -495,7 +495,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     + 'in it is HIS, not a stock figure',
     !!afterSkin && !!before && afterSkin.h !== before.h, { before, afterSkin });
 
-  /* ═══ THE TOOLS UNDER HIM ARE THE EDITOR'S TOOLS (v2.3.2400) ═══
+  /* ═══ THE TOOLS UNDER HIM ARE THE EDITOR'S TOOLS (v2.3.2415) ═══
      This is the assertion the whole shared store exists for, and it is written
      end-to-end on purpose.  Checking that the inline chip LOOKS selected, or
      that the editor's matching swatch has a ring, would both pass against two
@@ -571,7 +571,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   }
 
-  /* ════ 9. THE EDITORS THEMSELVES (v2.3.2401) ════
+  /* ════ 9. THE EDITORS THEMSELVES (v2.3.2416) ════
      Three owner asks in one pass over the panel, checked on the two screens
      that differ most: the tattoo one (a body surface) and the pants one (which
      only just became a body surface). */
@@ -688,7 +688,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   await P3.ctx.close().catch(() => {});
 
-  /* ════ 7. THE PAINT PANEL CAN BE PANNED (v2.3.2399) ════
+  /* ════ 7. THE PAINT PANEL CAN BE PANNED (v2.3.2414) ════
      Stated honestly: the failure is an iOS Safari one and Chromium cannot
      reproduce it.  What IS provable here is that the condition exists -- the
      panel overflows on a 664-tall phone and Done is below its fold -- and that
@@ -737,7 +737,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`paint panel: ...and does not chain a drag past its own ends into the `
       + `creator behind it (overscroll-behavior "${pan.overscroll}")`,
       pan.overscroll === 'contain', pan);
-    /* ── THE CONTROL THAT WAS ACTUALLY LOST IN HERE (v2.3.2399) ──
+    /* ── THE CONTROL THAT WAS ACTUALLY LOST IN HERE (v2.3.2414) ──
        .bt-paint-sideswitch carried no grid-area, and .bt-paint is a GRID, so it
        auto-placed into an implicit row after every named one: measured
        offsetTop 708 in a 738px content box, below the tool rows, below the

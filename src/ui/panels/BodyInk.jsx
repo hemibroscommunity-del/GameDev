@@ -95,7 +95,7 @@ const REGIONS = [
   { key: 'face',   target: 'tattooFace', label: 'Face' },
   { key: 'arms',   target: 'tattooArm',  label: 'Arms' },
   { key: 'tattoo', target: 'tattoo',     label: 'Chest' },
-  /* v2.3.2401: PANTS.  Owner: "On pants editor show the actual pants where
+  /* v2.3.2416: PANTS.  Owner: "On pants editor show the actual pants where
      you drawing drawing in the editor (similar to how the other editors
      work)."  The pants print was the last drawing still made on a bare 16x16
      grid, so you drew a shape in the abstract and found out where it landed
@@ -148,7 +148,7 @@ const keyForTarget = (t) => {
 const TAB_REGIONS = {
   tattoo: ['arms', 'tattoo'],
   face: ['face'],
-  /* v2.3.2401: the pants screen frames the trousers and nothing else.  There
+  /* v2.3.2416: the pants screen frames the trousers and nothing else.  There
      is no second canvas for a finger to stray onto, so unlike the Body tab
      this one really is a fence -- and it needs to be, because the legs sit
      directly under a torso whose skin IS inkable on another screen. */
@@ -582,7 +582,7 @@ export default function BodyInk({
     const draw = () => {
       if (!offRef.current) offRef.current = document.createElement('canvas');
       const A = artsRef.current || {};
-      /* v2.3.2401: whether to strip what is WORN.  On a skin region it must be
+      /* v2.3.2416: whether to strip what is WORN.  On a skin region it must be
          stripped -- this surface exists so you can move between chest, face and
          arms without changing screens, and a covered region you cannot ink
          reads as broken rather than as covered.  On the PANTS region the

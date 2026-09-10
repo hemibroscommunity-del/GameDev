@@ -33,7 +33,7 @@
  */
 import * as H from './harness.mjs';
 
-const ART_KEY = 'bt-shirtart';   /* v2.3.2401: the shirt FRONT grid — see openGrid */
+const ART_KEY = 'bt-shirtart';   /* v2.3.2416: the shirt FRONT grid — see openGrid */
 /* The canvas id the op list is filed under inside the bt-artops blob.  Not the
    same string as the storage key and easy to miss: playerArt maps the canvas
    `shirtFront` to the key `bt-shirtart`, and artOps files ops by the CANVAS. */
@@ -77,7 +77,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        v2.3.1978 picked PANTS over the shirt for one reason: "the shirt's Design
        button is dead until a shirt is actually worn, and this scenario is about
        shapes, not about getting dressed first."  Both halves of that changed in
-       v2.3.2401.  Pants moved ONTO the character (owner: "On pants editor show
+       v2.3.2416.  Pants moved ONTO the character (owner: "On pants editor show
        the actual pants where you drawing"), so it has no flat grid left either;
        and the shirt's card is live with nothing worn (owner: "Add shirt editor
        under shirt"), so the reason to avoid it is gone.  Shirt is now the only
@@ -88,7 +88,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!tab) return false;
     await tab.click();
     await page.waitForTimeout(300);
-    await page.click('button.bt-cc-ink-pane');   /* v2.3.2399: the Design button is the ink CARD now */
+    await page.click('button.bt-cc-ink-pane');   /* v2.3.2414: the Design button is the ink CARD now */
     await page.waitForSelector('.bt-paint-tabs', { timeout: 20000 });
     /* the shirt opens on PATTERN; its modes are pattern / front / back, so the
        front drawing grid is the second tab -- the same position pants used. */
@@ -279,7 +279,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     try { return localStorage.getItem(k) || ''; } catch (e) { return ''; }
   }, OPS_KEY);
   let ops = null;
-  try { ops = JSON.parse(stored)[DOC_ID]; } catch (e) { ops = null; }   /* v2.3.2401 */
+  try { ops = JSON.parse(stored)[DOC_ID]; } catch (e) { ops = null; }   /* v2.3.2416 */
   rec.ok('the op list is stored beside the drawing, not on the wire',
     !!ops && Array.isArray(ops.o) && ops.o.length === 2,
     { kinds: ops && ops.o && ops.o.map((o) => o.k), len: stored.length });
@@ -337,7 +337,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        purpose (a pen stroke stores the cells it FINISHED with, already
        mirrored), so a freehand op is not the one that can regress here. The
        three ops that carry a live `m` are the shape, the letter and the fill. */
-    /* v2.3.2401: the row is keyed by CANVAS id, and this scenario moved from
+    /* v2.3.2416: the row is keyed by CANVAS id, and this scenario moved from
        the pants grid to the shirt's when pants went onto the character.  It was
        a literal `pants:` here, which meant the injected op landed on a canvas
        the panel no longer opens -- the drawing replayed flat and the assertion
@@ -398,7 +398,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await page.waitForTimeout(250);
   }
 
-  /* v2.3.2401: the three design slots and their Save button are gone (owner:
+  /* v2.3.2416: the three design slots and their Save button are gone (owner:
      the word Save meant two different things on this screen), so the round trip
      that used to be asserted here -- stash a design, clear, load it back -- has
      no control to drive.  Clear itself is untouched and still worth pinning;

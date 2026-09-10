@@ -2738,7 +2738,7 @@ Related: §61 (a still-frame assertion cannot see a frozen animation) and §66 (
 probe measuring a control in a state that cannot show the defect) — all three
 are tests that ran, passed, and never touched the thing that was broken.
 
-## 68. "An ancestor's `touch-action:none` blocks a descendant scroller" (v2.3.2399)
+## 68. "An ancestor's `touch-action:none` blocks a descendant scroller" (v2.3.2414)
 
 **Tempting:** `.bt-paint` is `overflow:auto` with no `touch-action`, sitting
 inside `.bt-name-modal{touch-action:none}` (game.css). At 390x664 its content is
@@ -2781,7 +2781,7 @@ fold. Its own comment had said "it sits under the tabs" since v2.3.2150.
 Wrapping it and the tabs in one `.bt-paint-head` cell fixed it and took the
 landscape overflow from 24px to 0.
 
-**Receipt:** the drag matrix and the v2.3.2399 note on `.bt-paint` in game.css;
+**Receipt:** the drag matrix and the v2.3.2414 note on `.bt-paint` in game.css;
 `mp-ccink.mjs` §7 (which says out loud that its Chromium drag pins the *wrong*
 direction rather than proving an iOS fix).
 

@@ -1,15 +1,15 @@
 import React from 'react';
-import { PlayerPaint, WornPreview, PatternSwatch } from './PlayerPaint.jsx';   /* v2.3.1938; v2.3.1940 pants + tattoos; v2.3.2399 WornPreview + PatternSwatch for the inline tools */
-/* v2.3.2399: the ink card reads the drawing stores directly.  It shows what
+import { PlayerPaint, WornPreview, PatternSwatch } from './PlayerPaint.jsx';   /* v2.3.1938; v2.3.1940 pants + tattoos; v2.3.2414 WornPreview + PatternSwatch for the inline tools */
+/* v2.3.2414: the ink card reads the drawing stores directly.  It shows what
    you ALREADY wear, so it has to repaint when the editor closes having changed
    it -- `onArtChange`/`onPatternChange` are the stores' own subscriptions
    (playerArt.js:287, patternCatalog.js:206) and returning their unsubscribers
    is the whole of the wiring.  `artHasInk` answers the other question the card
    asks: is this a blank body, which is the state the empty-state hint is for. */
 import { artHasInk, getArt, onArtChange, ART_PALETTE } from '@/rendering/traits/playerArt.js';
-import { BRUSH_SIZES } from '@/rendering/traits/artTools.js';   /* v2.3.2400: the inline width row offers the editor's own three */
+import { BRUSH_SIZES } from '@/rendering/traits/artTools.js';   /* v2.3.2415: the inline width row offers the editor's own three */
 import { getPattern, onPatternChange, patternsFor, formatPattern, parsePattern, setPattern } from '@/rendering/traits/patternCatalog.js';
-/* v2.3.2399: the inline tool row and the editor share one ink/brush store, so
+/* v2.3.2414: the inline tool row and the editor share one ink/brush store, so
    a colour picked under the character is the colour the editor opens with. */
 import { getInk, getBrush, setInk, setBrush, onToolsChange } from './paintTools.js';
 /* v2.3.1947: the designer shows the character wearing what you are making, and
@@ -104,7 +104,7 @@ import { HEIGHT_CATALOG } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1
    row as a fifth beveled die cell.  Every control returns to ≥32px
    with the primary ones at 44px+; the sheet ends up SHORTER than
    v2.3.1257 anyway (three rows removed vs one control-height added). */
-/* ═══ v2.3.2399: TWO CONSTANT TABLES, AT MODULE SCOPE ═══
+/* ═══ v2.3.2414: TWO CONSTANT TABLES, AT MODULE SCOPE ═══
    Both were written inside the component and BOTH had to come out, for the
    same reason the look is memoised a few hundred lines down: NameModal is an
    unmemoised function component that re-renders on every keystroke in the name
@@ -116,7 +116,7 @@ import { HEIGHT_CATALOG } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1
    today and is hoisted beside it anyway, so that adding one later cannot
    quietly reintroduce the same bug.
    Neither closes over anything, which is what makes this a pure move. */
-/* ═══ v2.3.2399: WHICH DRAWINGS EACH CARD IS SHOWING YOU ═══
+/* ═══ v2.3.2414: WHICH DRAWINGS EACH CARD IS SHOWING YOU ═══
    The card's empty state (see .bt-cc-ink below) turns on "do you already
    wear anything here", and that is a question about the STORES, not about
    this tab: one target can span several canvases.  A tattoo spans five
@@ -134,7 +134,7 @@ var _INK_SOURCES = {
   shoes: { canvases: [], pattern: 'shoes' },
 };
 
-/* ═══ v2.3.2399: THE CARD IS NOT THE EDITOR'S PREVIEW PANE'S SIZE ═══
+/* ═══ v2.3.2414: THE CARD IS NOT THE EDITOR'S PREVIEW PANE'S SIZE ═══
    Every window in PlayerPaint's FOCUS table was measured against
    .bt-paint-pv, which is square and about 126px wide at 390 (it is
    `--paint-size * .62` and moves with the viewport, so that is one screen's
@@ -325,7 +325,7 @@ export function NameModal(props) {
     /* v2.3.1941: "Design" rather than "Draw" for the two garments -- the panel
        behind this button now offers ready-made patterns as well as freehand
        drawing, and most people will want the patterns. */
-    /* ═══ v2.3.2399: `noun` IS WHAT THE CARD SHOWS; `label` IS WHAT IT SAYS ═══
+    /* ═══ v2.3.2414: `noun` IS WHAT THE CARD SHOWS; `label` IS WHAT IT SAYS ═══
        These sentences were written for a lone button with a whole row to
        itself.  In the card's footer -- 109px of usable width -- they wrap to
        three lines and eat the picture: measured at 390x664 on Pants, a 54px
@@ -356,7 +356,7 @@ export function NameModal(props) {
        be a lie on this tab. */
     shoes: { target: 'shoes', label: 'Pattern these shoes', icon: 'cc-draw-shoes' },
   };
-  /* v2.3.2400: the pattern currently on a slot, parsed.  patternCatalog
+  /* v2.3.2415: the pattern currently on a slot, parsed.  patternCatalog
      stores "<id>:<colourIndex>" as one string and the shoes tool row needs
      both halves -- which tile is lit, and what colour to draw the others in. */
   var _patNow = function (slot) {
@@ -443,12 +443,12 @@ export function NameModal(props) {
      The row's height is fixed in game.css (v2.3.1253's constant-height rule),
      and it already scrolls horizontally, so one more tile cannot move the
      stage -- which was the whole reason the tile was dropped. */
-  /* v2.3.2399: is the ink card live on this tab?  Computed HERE, above the
+  /* v2.3.2414: is the ink card live on this tab?  Computed HERE, above the
      render, because two places need the same answer: the card itself, and the
      colour block, which gives its reserved height to the card on a tab that
      has no colours to put in it (see .bt-cc-colors--yield below). */
   var _cardDef = _PAINT_FROM_TAB[_activeType] || null;
-  /* v2.3.2401: EVERY paint tab has a card now.  Owner: "Add shirt editor under
+  /* v2.3.2416: EVERY paint tab has a card now.  Owner: "Add shirt editor under
      shirt."  Until now the Shirt tab withheld it while no shirt was worn --
      v2.3.1938's rule that "a print with nothing to print on is a dead button"
      -- and since a fresh character wears none, the tab that most obviously
@@ -500,7 +500,7 @@ export function NameModal(props) {
      drawer's height is fixed by the constant-size guarantee (v2.3.1252). */
   /* v2.3.1940: which designer is open ('shirt' | 'pants' | 'tattoo'), or null. */
   var _paintState = React.useState(null), showPaint = _paintState[0], setShowPaint = _paintState[1];
-  /* ═══ v2.3.2399: THE CARD HAS TO HEAR THE EDITOR IT OPENED ═══
+  /* ═══ v2.3.2414: THE CARD HAS TO HEAR THE EDITOR IT OPENED ═══
      The card draws the player's CURRENT drawings, which it gets for free --
      drawCharacterPortrait falls back to the live store for any drawing the
      caller omits (characterPortrait.js:574-580) and the card omits all of
@@ -518,13 +518,13 @@ export function NameModal(props) {
     var bump = function () { setInkRev(function (n) { return n + 1; }); };
     var offArt = onArtChange(bump);
     var offPat = onPatternChange(bump);
-    /* v2.3.2399: and the TOOL store, so the inline row shows the colour and
+    /* v2.3.2414: and the TOOL store, so the inline row shows the colour and
        width the editor is actually armed with -- change them in there, close
        it, and the row under the character agrees. */
     var offTools = onToolsChange(bump);
     return function () { offArt(); offPat(); offTools(); };
   }, []);
-  /* v2.3.2399: ONE look object for the card and the editor, memoised.
+  /* v2.3.2414: ONE look object for the card and the editor, memoised.
      It was built inline at the PlayerPaint call site, which handed a fresh
      object identity to WornPreview on every render of this component -- fine
      for a modal that opens over a frozen screen, wrong for a card that lives
@@ -1249,7 +1249,7 @@ export function NameModal(props) {
        It is still the size mp-ccsize guards, and still 8px up on the icon the
        owner asked to grow -- hiding it, which is what a frame with generous
        rails wants you to do, would have reversed that ask outright.
-       v2.3.2401: 28 -> 34 (owner, on the name cluster: "Icon too small").  The
+       v2.3.2416: 28 -> 34 (owner, on the name cluster: "Icon too small").  The
        binding constraint has always been the ROW, not the button's height: the
        label has to stay on one line beside it, which is what mp-ccbuttons 3
        pins.  The 6px comes off the button's own side padding and its icon gap
@@ -1453,7 +1453,7 @@ export function NameModal(props) {
        plus the ghost subtabs makes the sheet height IDENTICAL across
        every category and pick, so the stage — and the character — never
        change size. */
-    /* v2.3.2399: `--yield` on a tab where this block is a GHOST and the ink
+    /* v2.3.2414: `--yield` on a tab where this block is a GHOST and the ink
        card below is live.  The band is 100.5px of `visibility:hidden` nothing
        on Skin, Pants and Shoes -- all three have `colors: null` unconditionally
        (their swatch row IS their option strip), so it is not empty because of
@@ -1522,7 +1522,7 @@ export function NameModal(props) {
      tattoo).  The shirt's is live only when a shirt is actually worn -- a print
      with nothing to print on is a dead button -- and it ghosts the same way.
 
-     ═══ v2.3.2399: THE BUTTON IS THE CARD NOW ═══
+     ═══ v2.3.2414: THE BUTTON IS THE CARD NOW ═══
      Owner: "I'd rather make the tattoo editor simplified, just a preview of the
      body you'd be editing right there in the panel.  I don't really want a
      button to launch the editor anymore.  Every time somebody playtests the
@@ -1584,7 +1584,7 @@ export function NameModal(props) {
     var _inked = _wearsInk(_p.target);
     var _toolInk = getInk();
     var _toolBrush = getBrush();
-    /* ═══ v2.3.2400: THE TOOLS SIT UNDER HIM, NOT A LABEL ═══
+    /* ═══ v2.3.2415: THE TOOLS SIT UNDER HIM, NOT A LABEL ═══
        Owner, on the first cut of this card: "Instead of using space for
        'tattoo your body or face' I'd rather you just have the tools for
        tattooing right there beneath the character."
@@ -1657,14 +1657,14 @@ export function NameModal(props) {
          this shipped with for an afternoon) is only a report, and it needs no
          string that has to be true on four different tabs.  (It was also the
          mark the editor's design slots drew for an empty one; those went at
-         v2.3.2401, so this is the only place it appears now.)
+         v2.3.2416, so this is the only place it appears now.)
          It goes the moment there is a single inked cell anywhere on this
          target's canvases -- which is also the moment the picture starts
          speaking for itself. */
       _inked ? null : /*#__PURE__*/React.createElement("span", {
         className: 'bt-cc-ink-empty', "aria-hidden": true
       }, '+'),
-      /* ── v2.3.2400: the owner's painted icon, kept ──
+      /* ── v2.3.2415: the owner's painted icon, kept ──
          It was the label bar's icon (v2.3.2008 painted it; v2.3.2035 took it
          26 -> 34 because the owner asked for it bigger), and the label bar is
          gone.  Deleting an asset the owner asked for twice to make room for
@@ -1743,7 +1743,7 @@ export function NameModal(props) {
     target: showPaint,
     /* v2.3.1947: no `previewDir` -- the designer points the figure itself (a
        shirt BACK has to face away), so it supplies its own facing. */
-    /* v2.3.2399: the same memoised object the card draws from, so the panel
+    /* v2.3.2414: the same memoised object the card draws from, so the panel
        and the card behind it can never disagree about who they are showing. */
     look: _paintLook,
     onClose: function () { setShowPaint(null); }
