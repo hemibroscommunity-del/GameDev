@@ -203,6 +203,34 @@ async function newRoom(key) {
   }
 }
 
+/* ── 8b. v2.3.2421: THE KIT MUST NOT LEAVE A LOADED GUN ON THE SCRATCH ──
+   v2.3.2420 made _grantQuestItem park a weapon it cannot place on
+   ps._questWeaponUnfit, for the QUEST handlers to drain through
+   _creditPlayer. The kit calls _grantQuestItem directly and never drains --
+   so on a FULL stash its rejects would sit there until the player's next
+   quest turn-in picked them up and paid them out as that quest's reward,
+   under that quest's opIds. A debug tool minting real weapons into a real
+   inbox, and shifting the quest's own occurrence counters on the way.
+
+   Run against a stash that is ALREADY at cap, which is the only state where
+   the leak can happen -- section 8 above runs on an empty one, so it cannot
+   see this no matter how many assertions it grows. */
+{
+  const { room, ps } = await newRoom(KEY);
+  ps.weaponStash = new Array(room.WEAPON_STASH_CAP).fill(0).map(() => ({ type: 'sword', tierMult: 1 }));
+  const r = await room._adminFetch(authed('/dev/kit', { playerId: 'p1' }));
+  const body = await r.json();
+  check('kit at a FULL stash: still answers 200 (a full stash is not fatal)',
+    r.status === 200 && body.ok, body);
+  check('kit at a FULL stash: ...and grants no weapon, because there is no room',
+    body.weapons === 0, body);
+  check('kit at a FULL stash: ...and leaves NOTHING on the quest scratch for a '
+    + 'later turn-in to pay out as its own reward',
+    ps._questWeaponUnfit == null, ps._questWeaponUnfit);
+  check('kit at a FULL stash: ...and the stash is still exactly at cap (rule 3)',
+    ps.weaponStash.length === room.WEAPON_STASH_CAP, ps.weaponStash.length);
+}
+
 // ── 9. STATE REPORTS THE TRUTH ──
 {
   const { room, ps } = await newRoom(KEY);

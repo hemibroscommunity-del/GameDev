@@ -125,6 +125,21 @@ export const devToolsMethods = {
       for (const w of DEVKIT.WEAPONS) {
         try { if (this._grantQuestItem(ps, w)) out.weapons++; } catch (e) { /* a full stash is not fatal */ }
       }
+      /* ═══ v2.3.2421: AND CLEAR WHAT DID NOT FIT ═══
+         v2.3.2420 made _grantQuestItem park a weapon it cannot place on
+         ps._questWeaponUnfit for the QUEST handlers to drain through
+         _creditPlayer. This caller is not a quest handler and never drains,
+         so on a full stash the dev kit would leave its rejects sitting on the
+         scratch -- and the player's NEXT quest turn-in would drain them and
+         pay them out as that quest's reward, under that quest's opIds. A dev
+         tool would be minting real weapons into a real inbox, and shifting
+         the quest's own occurrence counters while it did.
+
+         Cleared rather than drained on purpose: "a full stash is not fatal"
+         is this kit's existing contract, an operator can simply ask again
+         after freeing a slot, and a debug affordance has no business writing
+         to the idempotency journal that real payouts converge on. */
+      ps._questWeaponUnfit = null;
     }
     if (want === 'all' || want === 'levels') {
       /* Only for a prog3 character; a legacy save has no trained skills to

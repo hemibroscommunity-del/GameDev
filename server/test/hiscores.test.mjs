@@ -31,7 +31,19 @@ function makeState() {
     storage: {
       get: async (k) => store.get(k),
       put: async (k, v) => { store.set(k, v); },
-      list: async () => new Map(store),
+      list: async (opts) => {
+        /* v2.3.2421: HONOUR THE PREFIX, like every other suite's mock.
+           This was `async () => new Map(store)` -- it handed back the WHOLE
+           store whatever you asked for, so any code that scopes a sweep by
+           prefix was untested here and behaved differently than it does
+           against real DO storage. Caught when a reset sweep scoped to
+           `oplog:questitem:<pid>:` deleted every key in the store and the
+           scoping assertions failed against a mock that cannot express
+           scoping. Twelve-plus production call sites pass a prefix. */
+        const out = new Map();
+        for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, v);
+        return out;
+      },
       delete: async (k) => { store.delete(k); },
     },
   };
