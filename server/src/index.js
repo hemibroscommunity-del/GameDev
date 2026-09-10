@@ -593,6 +593,15 @@ export const TRACK_COSMETIC_KEYS = new Set([
      other is the v2.3.1939 shape: glasses that appear on join and vanish on
      the first two-second relay. */
   'ew',
+  /* v2.3.2422: 'ewc' is the eyewear COLOUR, and it goes on both gates for the
+     exact reason the paragraph above gives for 'ew' -- a key on one gate and
+     not the other is the v2.3.1939 shape, which here would be glasses that
+     arrive the right colour on join and revert to their native art on the
+     first two-second relay.  Display-only like 'htc' and 'stc': the receiving
+     client maps it through its own catalog and answers null for anything it
+     does not recognise, so a forged value can only select a colour that
+     catalog already holds -- it cannot paint an arbitrary RGB. */
+  'ewc',
   /* v2.3.1939: the drawn shirt, front and back.  Display-only like every
      cosmetic here: the receiving client rejects anything that is not exactly
      256 hex characters, so a forged value paints nothing rather than something

@@ -17,6 +17,7 @@ import { FACIALHAIR_COLOR_CATALOG, setFacialHairColor } from '@/rendering/traits
 import { HAIR_CATALOG, setHair } from '@/rendering/traits/hairCatalog.js';
 import { HAIR_COLOR_CATALOG, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, hatColorsFor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
+import { eyewearColorsFor, eyewearPaints, setEyewearColor } from '@/rendering/traits/eyewearColorCatalog.js';   /* v2.3.2422 */
 import { EYE_COLOR_CATALOG, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { HEADWEAR_CATALOG, headwearIsSolid, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
@@ -111,6 +112,7 @@ export function NameModal(props) {
     setEyeColorSel = props.setEyeColorSel,
     headwearSel = props.headwearSel,
     eyewearSel = props.eyewearSel,          /* v2.3.2361 */
+    eyewearColorSel = props.eyewearColorSel,   /* v2.3.2422 */
     joinTown = props.joinTown,
     nameInput = props.nameInput,
     pantsSel = props.pantsSel,
@@ -128,6 +130,7 @@ export function NameModal(props) {
     setHatColorSel = props.setHatColorSel,
     setHeadwearSel = props.setHeadwearSel,
     setEyewearSel = props.setEyewearSel,   /* v2.3.2361 */
+    setEyewearColorSel = props.setEyewearColorSel,   /* v2.3.2422 */
     setNameInput = props.setNameInput,
     setPantsSel = props.setPantsSel,
     setShirtColorSel = props.setShirtColorSel,
@@ -166,8 +169,20 @@ export function NameModal(props) {
        a pair of glasses is the colour it was drawn.  Deleted a few lines
        down while the catalog holds nothing but 'none', so it costs nothing
        on screen until the first pair is imported. */
+    /* v2.3.2422: ...and it has a colour row now.  Owner: "Do you think recolor
+       options would work well for the glasses?  I like how you recolored the
+       hats."  Measured yes, but per PIECE: the hat rule paints the biggest
+       material, and on eyewear that is the FRAME on four pairs and the LENS on
+       three, so `colorLabel` says which -- a swatch row that does not name the
+       part is lying about what it does.  eyewearColorsFor returns null for a
+       pair with no decided answer (3d-glasses), which deletes the row the same
+       way `colors: null` did for all of them until now.  See
+       eyewearColorCatalog.js for the decomposition behind each choice. */
     eyewear: { label: 'Eyewear', kind: 'thumb', spriteCat: 'eyewear', catalog: EYEWEAR_CATALOG, sel: eyewearSel,
-      set: function (id) { setEyewear(id); setEyewearSel(id); }, colors: null },
+      set: function (id) { setEyewear(id); setEyewearSel(id); },
+      colors: recolorEnabled('eyewear') ? eyewearColorsFor(eyewearSel) : null,
+      colorLabel: eyewearPaints(eyewearSel),
+      colorSel: eyewearColorSel, setColor: function (id) { setEyewearColor(id); setEyewearColorSel(id); } },
     /* v2.3.1928: eye colour.  A swatch-only category like Skin Tone -- there is
        no sprite to pick, only a colour, and the iris it paints is found from a
        reviewed mask rather than searched for at runtime.
@@ -1334,7 +1349,24 @@ export function NameModal(props) {
       "aria-checked": _colors ? (!_def.colorSel || _def.colorSel === 'default') : undefined,
       tabIndex: _colors ? 0 : -1,
       onClick: function () { if (_colors) _def.setColor('default'); }
-    }, "Default")),
+    }, "Default"),
+    /* ═══ v2.3.2422: THE ROW SAYS WHICH PART IT PAINTS ═══
+       Only eyewear sets colorLabel, and only because eyewear is the one
+       category where the answer VARIES between items: the recolour paints the
+       biggest material, which is the FRAME on the golden pair, the monocle and
+       the Thug Lifes, and the LENS on the goggles, the lasers and the white
+       glass (measured -- see eyewearColorCatalog.js).  Without this the same
+       swatch does two different things on two tabs of the same picker and
+       never says so.
+
+       In the EXISTING head row beside Default, deliberately: that row is
+       always rendered on every tab, so this costs no height and the
+       constant-sheet-height guarantee (v2.3.1252/1253) is untouched.  A
+       category that sets no label renders nothing here and is byte-identical
+       to before. */
+    _def.colorLabel ? /*#__PURE__*/React.createElement("span", {
+      className: "bt-cc-colors-part", "aria-hidden": true
+    }, _def.colorLabel) : null),
   /*#__PURE__*/React.createElement("div", { className: "bt-cc-scroll" },
   /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-colors-row", ref: _colorRowRef, onScroll: _measureMore, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? _def.label + ' colors' : undefined
@@ -1409,6 +1441,7 @@ export function NameModal(props) {
       facialHairSel: facialHairSel, beardColorSel: beardColorSel,
       headwearSel: headwearSel, hatColorSel: hatColorSel, eyeColor: eyeColorSel,
       eyewearSel: eyewearSel,   /* v2.3.2361 */
+      eyewearColorSel: eyewearColorSel,   /* v2.3.2422 */
       shirtSel: shirtSel, shirtColorSel: shirtColorSel,
       buildHeight: heightSel, buildFrame: frameSel   /* v2.3.1953 */
     }),

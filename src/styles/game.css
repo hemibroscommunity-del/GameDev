@@ -2897,6 +2897,26 @@ input{font-family:inherit}
    the absence of a colour choice, and anything square-and-coloured here would
    claim to BE a colour. */
 .bt-cc-colors-head{flex:0 0 auto;height:22px;display:flex;align-items:center;justify-content:center;margin:0 0 4px}
+
+/* v2.3.2422: the eyewear colour row names the part it paints (Frame / Lens /
+   Patch).  Quiet by design -- it is a clarification of the control beside it,
+   not a heading, so it sits at the far end of the head row in the muted ink
+   the panel uses for secondary text. */
+.bt-cc-colors-part {
+  /* NOT margin-left:auto.  The head row is justify-content:center, and an auto
+     margin there absorbs the free space -- which would shove Default to the
+     left edge on the eyewear tab and leave it centred on every other one.  A
+     plain gap keeps the pair centred together, so the only visible difference
+     between tabs is the extra word. */
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: rgba(244, 240, 231, .55);
+  align-self: center;
+  padding-right: 2px;
+}
 /* v2.3.2090: IT WEARS THE PICKER'S OWN WELL.  Owner: "make the default button
    more obvious for color picker (maybe a different background color)".
 

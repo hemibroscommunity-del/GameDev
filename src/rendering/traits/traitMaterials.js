@@ -194,6 +194,23 @@ MAIN_MATERIAL['bucket-hat'] = 'all';     /* re-rendered on hue44 too: its dark h
                                             brim's shadow, and sparing it leaves the hat
                                             two-tone in a way the art never was */
 
+/* ═══ v2.3.2422: EYEWEAR ═══
+ * Measured the same way as the hats above (segmentMaterials over all four
+ * facings, pooled).  PINNED rather than left to "biggest wins", so the choice
+ * survives an art edit -- the gold rim stays the gold rim even if the dark
+ * keyline grows past it.  What each pair paints, and why, is recorded in
+ * eyewearColorCatalog.js; 3d-glasses is deliberately absent from both.
+ *
+ * Note these split by PART, which hats never do: four pin the frame and three
+ * the lens, because that is where the art puts the mass. */
+MAIN_MATERIAL['golden-glasses'] = 49;      /* gold frame, 80% -- the biggest anyway; pinned so it stays the frame */
+MAIN_MATERIAL['golden-monocle'] = 45;      /* gold rim, 46% against a 37% dark keyline: too close to leave to "biggest" */
+MAIN_MATERIAL['thug-life'] = 'dark';       /* black frame, 84% */
+MAIN_MATERIAL['eye-patch'] = 'all';        /* one material at 100%: every pixel is the patch */
+MAIN_MATERIAL['goggles'] = 202;            /* the LENS, 80% -- a coloured lens is the look here, not a coloured strap */
+MAIN_MATERIAL['laser-glasses'] = 237;      /* the LENS, 43%, over a 34% frame and a 20% red accent that must survive */
+MAIN_MATERIAL['white-glass'] = 'light';    /* the LENS, 60% -- the dark 40% is the frame and keeps its colour */
+
 /** Which material index recolours for this trait; -1 means recolour everything. */
 export function mainMaterial(traitId, mats) {
   const want = MAIN_MATERIAL[traitId];
