@@ -97,6 +97,15 @@ const TARGETS = {
      back now").  The torso's other side, worded like the shirt's and the back
      of the head's -- it is the same idea a third time, and a player who has met
      either of those should recognise this one. */
+  /* v2.3.2424 (owner: "Do front and back on the pants and make sure they're
+     separate").  The trousers were the last drawn surface still wrapping one
+     design all the way round -- the fourth instance of the same idea, worded
+     like the other three so a player who has met any of them recognises it. */
+  pantsBack: {
+    label: 'back of the pants',
+    pattern: null,
+    note: 'Shows when you walk away. Separate from the front — leg armour covers it.',
+  },
   tattooBack: {
     label: 'back tattoo',
     pattern: null,
@@ -158,6 +167,10 @@ const TARGETS = {
    times two sides reach all four canvases without a four-tab strip. */
 const TATTOO_SPOT = { body: 'tattoo', face: 'tattooFace' };
 const TATTOO_SPOT_BACK = { body: 'tattooBack', face: 'tattooHeadBack' };
+/* v2.3.2424: the trousers' two sides.  A table rather than a ternary at the use
+   site, so the pants read like the tattoo screens above and a fifth surface
+   with two sides has somewhere obvious to go. */
+const PANTS_SPOT = { front: 'pants', back: 'pantsBack' };
 /* v2.3.1994: and which canvases each of those two screens can REACH — the tab
    frames a view now rather than fencing one canvas off, so Body covers the
    torso and both arms.  Beside TATTOO_SPOT because the two are one table read
@@ -393,6 +406,7 @@ const FOCUS = {
   /* Trousers, plus the boot tops.  Centring higher put a third of the pane on
      shirt hem. */
   pants: { cy: 0.69, h: 0.35 },
+  pantsBack: { cy: 0.69, h: 0.35 },   /* v2.3.2424: same legs, other side */
   /* Down to 1.0, not to the boots: the feet sit at 0.977 and a frame that
      stopped at 0.947 sliced the soles off. */
   shoes: { cy: 0.865, h: 0.27 },
@@ -527,6 +541,11 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
         if (!opts.shirt || opts.shirt === 'none') opts.shirt = DEFAULT_SHIRT;
       }
       else if (target === 'pants') { opts.pantsArt = art; opts.pantsPattern = pat; }
+      /* v2.3.2424: the back of the trousers goes in the SAME slot -- the
+         portrait path never runs artForFacing (TRAPS §70), so `pantsArt` means
+         "the print to stamp on this sheet's legs", and on a north sheet those
+         legs are the back ones. */
+      else if (target === 'pantsBack') { opts.pantsArt = art; opts.pantsPattern = pat; }
       else if (target === 'shoes') { opts.shoesPattern = pat; }
       else if (target === 'tattoo') {
         opts.tattooArt = art;
@@ -590,6 +609,7 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
       if (side === 'back') {
         if (opts.tattooArt === undefined) opts.tattooArt = getArt('tattooBack');
         if (opts.faceTattooArt === undefined) opts.faceTattooArt = getArt('tattooHeadBack');
+        if (opts.pantsArt === undefined) opts.pantsArt = getArt('pantsBack');   /* v2.3.2424 */
       }
       return drawCharacterPortrait(offRef.current, opts);
     };
@@ -657,6 +677,10 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
       ? (isShirt ? ['pattern', 'front', 'back'] : ['pattern', 'drawing'])
       : null;
   const [mode, setMode] = React.useState(isTattoo ? 'body' : (cfg.pattern ? 'pattern' : 'draw'));
+  /* Read before `side` below, which is why it is not simply `mode ===
+     'pattern'` inline down there -- see the temporal-dead-zone note on
+     `inkBack`, which is the same hazard one variable over. */
+  const onPatternMode = mode === 'pattern';
   /* Which skin canvas the body surface last touched.  It drives `spot`, so the
      palette, Undo, Clear and the caption all follow your finger from the chest
      to the face without you telling them you moved. */
@@ -668,10 +692,19 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      "Cannot access 'inkBack' before initialization" and the designer simply
      never opened. mp-bodyink caught it as a timeout waiting for the canvas. */
   const [inkBack, setInkBack] = React.useState(false);
+  /* v2.3.2424: which screens have a SIDE of their own -- a Front/Back switch
+     rather than a mode in the strip.  The shirt does it with modes because its
+     two sides are two whole screens with their own patterns; the tattoo screens
+     and now the trousers do it with a switch, because the side applies to
+     whichever region the tab is framed on.
+     The PATTERN screen is excluded on purpose: a pattern tiles the entire
+     garment, so it has no front and no back to choose between. */
+  const isPants = target === 'pants';
+  const hasSides = isTattoo || (isPants && !onPatternMode);
   /* The tattoo screens carry their own side, so the worn preview turns round
      with the switch (WornPreview already faces north for 'back'). */
-  const side = isTattoo ? (inkBack ? 'back' : 'front') : (mode === 'back' ? 'back' : 'front');
-  const onPattern = mode === 'pattern';
+  const side = hasSides ? (inkBack ? 'back' : 'front') : (mode === 'back' ? 'back' : 'front');
+  const onPattern = onPatternMode;
   /* WHERE on the body this panel is currently painting.  For everything but a
      tattoo that is just the target; for a tattoo the mode picks it, and the
      caption, the preview's camera and the Clear button all follow it. */
@@ -704,7 +737,8 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const [bodySpot, setBodySpot] = React.useState('tattoo');
   const tabSpot = isTattoo
     ? ((inkBack ? TATTOO_SPOT_BACK : TATTOO_SPOT)[mode] || 'tattoo')
-    : target;
+    /* v2.3.2424: the trousers pick a side the same way, off the same switch. */
+    : (isPants ? (PANTS_SPOT[inkBack ? 'back' : 'front'] || 'pants') : target);
   const reachable = isTattoo ? ((inkBack ? TAB_SPOTS_BACK : TAB_SPOTS)[mode] || []) : [];
   const spot = (isTattoo && reachable.indexOf(bodySpot) >= 0) ? bodySpot : tabSpot;
   const scfg = TARGETS[spot] || cfg;
@@ -1036,8 +1070,9 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     tattooBack: liveArt('tattooBack'), tattooHeadBack: liveArt('tattooHeadBack'),
     /* v2.3.2416: and the pants, for the same reason -- the surface builds its
        per-region grids from what it is handed, so a canvas missing from here
-       is a canvas whose every touch reports a MISS and drops the stroke. */
-    pants: liveArt('pants'),
+       is a canvas whose every touch reports a MISS and drops the stroke.
+       v2.3.2424: both sides of them. */
+    pants: liveArt('pants'), pantsBack: liveArt('pantsBack'),
     /* liveArt reads only `art`/`artId` and the store; bodyTick is the store's
        own change signal.  (No react-hooks plugin in this repo's flat config —
        the deps are stated by hand and checked by hand.) */
@@ -1673,7 +1708,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             am I on" and mp-bodyink asserts there are exactly two of them.
             Sharing it would make this switch look like two more screens, both
             to that test and to anyone reading the DOM. */}
-        {isTattoo && (
+        {hasSides && (
           /* marginTop retired with v2.3.2414's wrapper -- .bt-paint-head's own
              gap is what separates it from the tabs now, and a margin on top of
              that would double the space when both are present and leave a
@@ -1749,7 +1784,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                same things the flat grid draws on itself (what is selected,
                where its handle is, and the ink that has not been baked yet). */
             <BodyInk look={look} arts={bodyArts} ink={ink}
-              region={target === 'pants' ? 'pants' : (mode === 'face' ? 'face' : 'tattoo')}
+              region={isPants ? 'pants' : (mode === 'face' ? 'face' : 'tattoo')}
               apiRef={bodyApiRef} activeTarget={artId}
               /* v2.3.2422: the big canvas faces the side being inked, exactly as
                  the little worn preview beside it has since v2.3.2150.  Owner:

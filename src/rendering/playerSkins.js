@@ -1043,9 +1043,22 @@ export function artForFacing(art, dir) {
      is exactly how the head and the shirt already behave. The ARM canvas still
      stays put: an arm is the same arm from behind. */
   const bodyBack = art.tattooBack;
+  /* v2.3.2424: the TROUSERS do it too.  Owner: "Do front and back on the pants
+     and make sure they're separate."  The pants print was the last drawn
+     surface still wrapping one design all the way round -- the same complaint
+     v2.3.2042 fixed for the face and v2.3.2148 for the torso, left unfixed for
+     the legs because nothing had asked yet.
+     An undrawn back canvas falls through to emptyArt exactly as the other two
+     do, so a player who has only ever drawn a front print now shows PLAIN
+     trousers from behind rather than their print wrapped round -- which is the
+     separation being asked for.  The trouser PATTERN is deliberately not
+     touched: a pattern is a property of the garment (it tiles the whole thing),
+     not a design with a front and a back. */
+  const legsBack = art.pantsBack;
   return { ...art,
     tattooFace: artHasInk(back) ? back : emptyArt(),
-    tattoo: artHasInk(bodyBack) ? bodyBack : emptyArt() };
+    tattoo: artHasInk(bodyBack) ? bodyBack : emptyArt(),
+    pants: artHasInk(legsBack) ? legsBack : emptyArt() };
 }
 
 export function bodyArtSeg(art) {
@@ -1065,14 +1078,20 @@ export function bodyArtSeg(art) {
      artForFacing has already picked WHICH torso drawing this bake uses, so this
      only has to stop two different back drawings sharing one sheet. */
   const tb2 = artHasInk(art.tattooBack) ? artHash(art.tattooBack) : '';
+  /* v2.3.2424: and the back of the trousers, same reasoning again --
+     artForFacing has already chosen WHICH leg drawing this bake uses, so this
+     only has to stop two different back prints sharing one sheet.  Anyone who
+     has not drawn one keeps the exact key they had. */
+  const pb = artHasInk(art.pantsBack) ? artHash(art.pantsBack) : '';
   /* v2.3.1941: the trouser pattern joins the same segment.  It is already a
      short string ("stripe-v:3"), so it goes in whole rather than hashed. */
   const q = parsePattern(art.pantsPattern, 'pants') ? patternKey(art.pantsPattern, 'pants') : '';
   const f = parsePattern(art.shoesPattern, 'shoes') ? patternKey(art.shoesPattern, 'shoes') : '';   /* v2.3.1944 */
-  if (!p && !t && !q && !f && !ft && !at && !hb && !tb2) return '';
+  if (!p && !t && !q && !f && !ft && !at && !hb && !tb2 && !pb) return '';
   /* '#' is the marker: no catalog id contains one, so _dropArtSheets can find
      every drawn bake by substring without matching e.g. '/default/'. */
-  return '/#art' + p + '.' + t + '.' + q + '.' + f + '.' + ft + '.' + at + '.' + hb + '.' + tb2 + (art.mirror ? 'm' : 'n');
+  return '/#art' + p + '.' + t + '.' + q + '.' + f + '.' + ft + '.' + at + '.' + hb + '.' + tb2
+    + '.' + pb + (art.mirror ? 'm' : 'n');
 }
 /** The local player's own drawings, in the shape the bake wants.  `mirror` is
  *  per-facing, so callers that know the facing pass it in. */
@@ -1081,11 +1100,12 @@ export function localBodyArt(mirror) {
   const ft = getArt('tattooFace'), at = getArt('tattooArm');   /* v2.3.1949 */
   const hb = getArt('tattooHeadBack');   /* v2.3.2043 */
   const tbk = getArt('tattooBack');       /* v2.3.2148 */
+  const pbk = getArt('pantsBack');        /* v2.3.2424 */
   const q = getPattern('pants'), f = getPattern('shoes');   /* v2.3.1944 */
   if (!artHasInk(p) && !artHasInk(t) && !artHasInk(ft) && !artHasInk(at) && !artHasInk(hb)
-    && !artHasInk(tbk)
+    && !artHasInk(tbk) && !artHasInk(pbk)
     && !parsePattern(q, 'pants') && !parsePattern(f, 'shoes')) return null;
-  return { pants: p, tattoo: t, tattooFace: ft, tattooArm: at, tattooHeadBack: hb,
+  return { pants: p, pantsBack: pbk, tattoo: t, tattooFace: ft, tattooArm: at, tattooHeadBack: hb,
     tattooBack: tbk,
     pantsPattern: q, shoesPattern: f, mirror: !!mirror };
 }

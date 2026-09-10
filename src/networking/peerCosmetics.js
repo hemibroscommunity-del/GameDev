@@ -79,6 +79,7 @@ export const PEER_COSMETIC_FIELDS = Object.freeze({
   sa: 'shirtArtFront',       /* v2.3.1939 */
   sb: 'shirtArtBack',        /* v2.3.1939 */
   pa: 'pantsArt',            /* v2.3.1940 */
+  pb: 'pantsBackArt',        /* v2.3.2424 */
   ta: 'tattooArt',           /* v2.3.1940 */
   tf: 'faceTattooArt',       /* v2.3.1949 */
   tm: 'armTattooArt',        /* v2.3.1949 */

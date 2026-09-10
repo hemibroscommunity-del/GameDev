@@ -114,8 +114,9 @@ const REGIONS = [
    REGION it is drawn on. Both directions are needed and they are not the same
    question: the first is "which canvas does this touch write to", the second is
    "which part of the figure is that canvas drawn over". */
-const BACK_TARGET = { tattoo: 'tattooBack', tattooFace: 'tattooHeadBack' };
-const FRONT_OF = { tattooBack: 'tattoo', tattooHeadBack: 'tattooFace' };
+/* v2.3.2424: +the trousers, whose two sides work exactly like the torso's. */
+const BACK_TARGET = { tattoo: 'tattooBack', tattooFace: 'tattooHeadBack', pants: 'pantsBack' };
+const FRONT_OF = { tattooBack: 'tattoo', tattooHeadBack: 'tattooFace', pantsBack: 'pants' };
 const keyForTarget = (t) => {
   /* A back canvas has no region OF ITS OWN NAME: the grid report is keyed by
      body region (`tattoo`, `face`, `arms`, `pants`) and says nothing about
@@ -651,8 +652,9 @@ export default function BodyInk({
         faceTattooArt: (backSide ? A.tattooHeadBack : A.tattooFace) || '',
         armTattooArt: A.tattooArm || '',
         /* The pants drawing, live, for the same reason the three skin ones are
-           here: the surface IS the preview while you are drawing on it. */
-        pantsArt: A.pants || '',
+           here: the surface IS the preview while you are drawing on it.
+           v2.3.2424: and its own two sides, on the same rule as the torso. */
+        pantsArt: (backSide ? A.pantsBack : A.pants) || '',
         reportGrids: true,
         scale: Math.min(2, Math.round((typeof window !== 'undefined' && window.devicePixelRatio) || 1)),
       }, bareSkin ? { shirt: 'none', headwear: 'none' } : null);

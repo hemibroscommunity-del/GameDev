@@ -1429,10 +1429,15 @@ function _remoteBodyArt(other, mirror) {
   /* v2.3.2148: and the back of their body, through the same sanitiser -- peers
      resolve it via artForFacing exactly as the local player does. */
   const bb = sanitizeShirtArt(other.bodyBackTattooArt);
+  /* v2.3.2424: and the back of their trousers, through the same sanitiser --
+     peers resolve it via artForFacing exactly as the local player does, so a
+     remote who walks away shows THEIR back print rather than their front one
+     wrapped round. */
+  const pb = sanitizeShirtArt(other.pantsBackArt);
   const q = sanitizePattern(other.pantsPattern, 'pants');   /* v2.3.1941 */
   const f = sanitizePattern(other.shoesPattern, 'shoes');   /* v2.3.1944 */
-  return (p || t || ft || at || hb || bb || q || f)
-    ? { pants: p || '', tattoo: t || '', tattooFace: ft || '', tattooArm: at || '',
+  return (p || t || ft || at || hb || bb || pb || q || f)
+    ? { pants: p || '', pantsBack: pb || '', tattoo: t || '', tattooFace: ft || '', tattooArm: at || '',
       tattooHeadBack: hb || '', tattooBack: bb || '',
       pantsPattern: q, shoesPattern: f, mirror: !!mirror }
     : null;
