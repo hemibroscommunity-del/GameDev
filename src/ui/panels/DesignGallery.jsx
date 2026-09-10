@@ -117,7 +117,7 @@ export default function DesignGallery({ onPick, onClose, label = 'design' }) {
          dispatched at the nearest common ancestor of its down and up targets,
          so a drag that starts on the card and lifts over the scrim fires here
          -- and threw away the player's category and scroll position in a
-         37-tile grid.  Comparing target to currentTarget is not enough on its
+         grid of tiles.  Comparing target to currentTarget is not enough on its
          own for a drag, so the press is recorded on pointerdown. */
       onPointerDown={(e) => { downOnScrim.current = e.target === e.currentTarget; }}
       onClick={(e) => { if (e.target === e.currentTarget && downOnScrim.current) onClose(); }}

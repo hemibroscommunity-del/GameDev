@@ -23,7 +23,7 @@
  *   5. it survives closing and reopening the panel
  *   6. Cancel changes nothing
  */
-import { DESIGN_CATALOG, DESIGN_COUNT_AUTHORED } from '../../../src/rendering/traits/designCatalog.js';
+import { DESIGN_CATALOG, DESIGN_COUNT_AUTHORED, DESIGN_CATEGORIES } from '../../../src/rendering/traits/designCatalog.js';
 
 const openCreator = async (P) => {
   await P.page.waitForSelector('[data-tut="login-create"]', { timeout: 30000 });
@@ -67,7 +67,34 @@ const ops = (P) => P.page.evaluate(() => {
   return (b.tattoo && b.tattoo.o) || [];
 });
 
+/* The gate's guarantees, checked against the module the client bundles.  These
+   need no browser -- they are what stops a pasted-in design shipping broken,
+   and v2.3.2437 found the gate joining rows BEFORE validating them, which
+   turned a malformed paste into a blank screen at boot rather than a drop. */
+function catalogueInvariants(rec, tag) {
+  const ids = new Set(), names = new Set();
+  const cats = new Set(DESIGN_CATEGORIES.map((c) => c.id));
+  let dupId = 0, dupName = 0, orphanCat = 0, unfrozen = 0, badArt = 0;
+  for (const d of DESIGN_CATALOG) {
+    if (ids.has(d.id)) dupId++; ids.add(d.id);
+    if (names.has(d.name)) dupName++; names.add(d.name);
+    if (!cats.has(d.cat)) orphanCat++;
+    if (!Object.isFrozen(d) || !Object.isFrozen(d.rows)) unfrozen++;
+    if (d.art.length !== 256 || d.rows.join('') !== d.art) badArt++;
+  }
+  rec.ok(`${tag}: every design id is unique -- a duplicate is a duplicate React `
+    + `key, and reconciliation stops being reliable across a filter change`, dupId === 0);
+  rec.ok(`${tag}: every design name is unique -- this scenario picks its tile by `
+    + `visible text, so a duplicate would assert against the wrong design`, dupName === 0);
+  rec.ok(`${tag}: every design's category is one a filter chip offers -- an orphan `
+    + `category is reachable only under All, which looks like nothing is wrong`, orphanCat === 0);
+  rec.ok(`${tag}: catalogue entries are frozen, so a consumer cannot mutate the `
+    + `table and leave rows disagreeing with art`, unfrozen === 0);
+  rec.ok(`${tag}: every entry's rows still join to exactly its art string`, badArt === 0);
+}
+
 export async function run({ browser, wsPort, webPort, rec }) {
+  catalogueInvariants(rec, 'designs');
   const P = await (await import('./harness.mjs')).newPlayer(browser, {
     name: 'Ink', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true,
   });

@@ -813,12 +813,30 @@ const CATALOG = [
   },];
 
 /* ── the derived flat form, and the gate ──
-   Every entry is joined once and then CHECKED, with anything malformed left
-   out rather than shipped: a design whose rows are the wrong length would put
-   an invalid 256-char string on a character and onto the wire, which is the
-   one thing playerArt's codec is written to make impossible.  Dropping is
-   silent here on purpose -- the count is asserted by the QA scenario, so a
-   broken entry fails a test rather than the game. */
+   Every entry is CHECKED and then joined, with anything malformed left out
+   rather than shipped: a design whose rows are the wrong length would put an
+   invalid 256-char string on a character and onto the wire, which is the one
+   thing playerArt's codec is written to make impossible.
+
+   ── WHY THE SHAPE CHECK COMES BEFORE THE JOIN ──
+   v2.3.2437, from a pre-merge review.  This used to `.map()` the join and
+   then `.filter()` the result -- the same two steps in the one order that
+   cannot work.  `d.rows.join('')` ran on EVERY authored entry before anything
+   was validated, so `rows` missing, null, or pasted back as one flat
+   256-character string threw a TypeError; and this module is a static import
+   all the way up to main.jsx, so that throw is a BLANK SCREEN AT BOOT for
+   every player -- the precise opposite of what the paragraph above promises.
+   Not an exotic mistake either: the spec asks a commissioner for "16 strings"
+   and prints its own worked example as a bare indented block, so handing one
+   back as anything but an array of 16 is the likely slip.
+
+   The gate checks the fields AROUND the picture too, because a malformed one
+   is silent in ways that bite later: a `cat` outside DESIGN_CATEGORIES leaves
+   a design no filter chip can reach (it still shows under All, so nothing
+   looks wrong); a duplicate `id` is a duplicate React key, which makes
+   reconciliation unreliable across a filter change; a duplicate `name` makes
+   the QA scenario -- which picks its tile by visible text -- assert against
+   the wrong design. */
 /* How many designs were AUTHORED, before the validity gate below.  Exported
    for one reason: the gate drops a malformed entry silently, and a test that
    only ever sees the filtered list cannot tell a drop from a catalogue that
@@ -827,12 +845,31 @@ const CATALOG = [
    quietly shipping 36 designs where 37 were written. */
 export const DESIGN_COUNT_AUTHORED = CATALOG.length;
 
+const CAT_IDS = DESIGN_CATEGORIES.map((c) => c.id);
+const _seenId = new Set();      /* CLAUDE.md rule 4: a Set, never a plain {} */
+const _seenName = new Set();
+
 export const DESIGN_CATALOG = CATALOG
-  .map((d) => ({ id: d.id, name: d.name, cat: d.cat, rows: d.rows, art: d.rows.join('') }))
-  .filter((d) => d.rows.length === ART_H
-    && d.rows.every((r) => r.length === ART_W)
-    && isValidArt(d.art)
-    && artHasInk(d.art));
+  .filter((d) => {
+    if (!d || typeof d.id !== 'string' || !d.id) return false;
+    if (typeof d.name !== 'string' || !d.name) return false;
+    if (CAT_IDS.indexOf(d.cat) < 0) return false;
+    if (!Array.isArray(d.rows) || d.rows.length !== ART_H) return false;
+    if (!d.rows.every((r) => typeof r === 'string' && r.length === ART_W)) return false;
+    const a = d.rows.join('');
+    if (!isValidArt(a) || !artHasInk(a)) return false;
+    if (_seenId.has(d.id) || _seenName.has(d.name)) return false;
+    _seenId.add(d.id); _seenName.add(d.name);
+    return true;
+  })
+  /* Frozen on the way out, for the reason artOps copies its op arrays out:
+     these are the module's own data, and a consumer that reversed `rows` for
+     a flip preview would corrupt the catalogue for the rest of the session
+     and leave `rows` disagreeing with `art`. */
+  .map((d) => Object.freeze({
+    id: d.id, name: d.name, cat: d.cat,
+    rows: Object.freeze(d.rows.slice()), art: d.rows.join(''),
+  }));
 
 /** A design by id, or null. */
 export function designById(id) {

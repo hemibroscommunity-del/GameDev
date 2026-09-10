@@ -1084,9 +1084,16 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        nothing you can see, so it must not cost a tap of Undo that visibly does
        nothing -- the same standard `unbank` above holds the shape tools to. */
     if (d.art === art) { setShowDesigns(false); return; }
+    /* v2.3.2437: no pieces means no ink, and writing that would REPLACE the
+       player's drawing with a blank canvas rather than refuse.  The catalogue
+       gate makes it unreachable today; the guard is here because the caller a
+       share code or a "last design" restore would add is the one that could
+       hand this an unvetted string. */
+    const ops = designOps(d.art);
+    if (!ops.length) { setShowDesigns(false); return; }
     const cur = docRef.current.id === id ? docRef.current : { id, ...getDoc(id) };
     pushHist(cur);
-    const nd = { id, base: emptyArt(), ops: designOps(d.art) };
+    const nd = { id, base: emptyArt(), ops };
     /* v2.3.2437: the reset effect clears BOTH of these together, and for the
        same reason it does: each one holds an INDEX into the op list that is
        being replaced.  A stroke still under a finger when the design lands
