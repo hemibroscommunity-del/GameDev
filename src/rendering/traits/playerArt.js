@@ -73,6 +73,27 @@ export function isValidArt(s) {
  *  hand-edited or from a peer -- which is exactly the input that has to be
  *  checked.  Now a cell counts only if the palette actually has a colour for
  *  it, which is the same rule artColorAt paints by. */
+/* ═══ v2.3.2431: IS THIS DRAWING UNCHANGED BY A HORIZONTAL FLIP ═══
+   Three of the eight screen facings are drawn by flipping a base-dir sheet, so
+   anything stamped into a sheet has to be pre-flipped for those or it reads
+   backwards (the owner, on the shirt: "Your smiley face rotated the opposite
+   direction") -- which means a SECOND baked sheet.  A drawing that is its own
+   mirror image needs no such sheet, and the Mirror tool in the designer
+   produces exactly those, so this is not a rare case.
+   Exact rather than a heuristic: it is a 128-character comparison on a string
+   that is already in memory, and it decides whether ~29 MB of RGBA gets baked
+   on a phone (see the stand-in bake in effectsRenderer). Answers true for an
+   invalid or blank drawing, which is correct -- there is nothing to flip. */
+export function artIsSymmetric(s) {
+  if (!isValidArt(s)) return true;
+  for (let y = 0; y < ART_H; y++) {
+    for (let x = 0; x < (ART_W >> 1); x++) {
+      if (s[y * ART_W + x] !== s[y * ART_W + (ART_W - 1 - x)]) return false;
+    }
+  }
+  return true;
+}
+
 export function artHasInk(s) {
   if (!isValidArt(s)) return false;
   for (let i = 0; i < s.length; i++) {
@@ -162,7 +183,12 @@ export function artWithCells(s, cells, idx) {
    halves (tattooFace / tattooHeadBack, v2.3.2043) and the shirt has had them
    since v2.3.1939; the torso was the one surface still showing its FRONT
    drawing to someone standing behind you. */
-export const CANVASES = ['shirtFront', 'shirtBack', 'pants', 'tattoo', 'tattooBack', 'tattooFace', 'tattooArm', 'tattooHeadBack'];
+/* v2.3.2428: `pantsBack` joins them.  Owner: "Do front and back on the pants
+   and make sure they're separate."  It is the same idea a fourth time -- the
+   shirt has had two sides since v2.3.1939, the face since v2.3.2043, the torso
+   since v2.3.2148 -- and the trousers were the last drawn surface that wrapped
+   the same design all the way round. */
+export const CANVASES = ['shirtFront', 'shirtBack', 'pants', 'pantsBack', 'tattoo', 'tattooBack', 'tattooFace', 'tattooArm', 'tattooHeadBack'];
 export const SHIRT_SIDES = ['front', 'back'];
 
 
@@ -174,7 +200,8 @@ export function sideForDir(dir) {
 /* ── selection store (localStorage) ── */
 const STORAGE_KEY = {
   shirtFront: 'bt-shirtart', shirtBack: 'bt-shirtart-back',
-  pants: 'bt-pantsart', tattoo: 'bt-tattooart',
+  pants: 'bt-pantsart', pantsBack: 'bt-pantsart-back',   /* v2.3.2428 */
+  tattoo: 'bt-tattooart',
   tattooBack: 'bt-tattooart-back',   /* v2.3.2148 */
   tattooFace: 'bt-facetattoo', tattooArm: 'bt-armtattoo',   /* v2.3.1949 */
   tattooHeadBack: 'bt-headbackart',   /* v2.3.2043 */

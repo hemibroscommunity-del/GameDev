@@ -3,7 +3,7 @@ import {
   getArt, setArt, onArtChange, CANVASES,
 } from './playerArt.js';
 import {
-  shapeCells, expandCells, mirrorCells, fillCells, letterCells, LETTERS,
+  shapeCells, expandCells, mirrorCells, fillCells, letterCells, letterBoxCells, LETTERS,
 } from './artTools.js';
 
 /* ═══ v2.3.1967: THE DRAWING REMEMBERS WHAT IT IS MADE OF ═══
@@ -106,7 +106,15 @@ export function opCells(op, art) {
   if (op.k === 's') {
     return mirrorCells(expandCells(shapeCells(op.t, op.a[0], op.a[1], op.a[2], op.a[3]), op.b), !!op.m);
   }
-  if (op.k === 't') return mirrorCells(letterCells(op.g, op.x, op.y), !!op.m);
+  /* v2.3.2427: a letter carries a BOX now (artTools letterBoxCells).  The
+     legacy form -- x/y and no `a` -- is still stamped by the old centred
+     5x7 path, so a drawing made before this version replays byte-identically
+     rather than quietly resizing itself under a player who never asked. */
+  if (op.k === 't') {
+    return mirrorCells(op.a
+      ? letterBoxCells(op.g, op.a[0], op.a[1], op.a[2], op.a[3])
+      : letterCells(op.g, op.x, op.y), !!op.m);
+  }
   if (op.k === 'f') return mirrorCells(fillCells(art, op.x, op.y), !!op.m);
   return [];
 }
@@ -168,6 +176,14 @@ export function sanitizeOp(op) {
   }
   if (op.k === 't') {
     if (!LETTER_SET.has(op.g) || !okInt(op.x, 0, ART_W - 1) || !okInt(op.y, 0, ART_H - 1)) return null;
+    /* v2.3.2427: the box, when there is one.  Checked cell by cell like a
+       shape's `a` -- this blob is hand-editable, and a letter box with a
+       non-integer or off-grid corner would sample outside the grid. */
+    if (op.a !== undefined) {
+      if (!Array.isArray(op.a) || op.a.length !== 4) return null;
+      for (let n = 0; n < 4; n++) if (!okInt(op.a[n], 0, (n % 2) ? ART_H - 1 : ART_W - 1)) return null;
+      return { k: 't', g: op.g, x: op.x, y: op.y, a: op.a.slice(), i, m };
+    }
     return { k: 't', g: op.g, x: op.x, y: op.y, i, m };
   }
   if (op.k === 'f') {

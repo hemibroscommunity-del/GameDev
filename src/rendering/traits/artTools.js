@@ -250,6 +250,61 @@ export function letterCells(ch, x, y) {
   return out;
 }
 
+/* ═══ v2.3.2427: A LETTER HAS A SIZE ═══
+ * Owner: "The letters aren't working correctly (not pasting onto the character
+ * and not scaling/resizing" and "Letters need to default smaller on the pants
+ * they get cut off."
+ *
+ * Both are the same missing property. A letter op was `{g,x,y}` and nothing
+ * else, so `letterCells` stamped a fixed 5x7 and the panel's own resize handler
+ * had a comment explaining that "a letter has no size, so its handle MOVES it".
+ * That is true of the data and was never true of the ask: a 7-cell-tall glyph
+ * is 44% of a 16-cell canvas, and on the trousers -- whose grid is stretched
+ * over a narrow, tapering region -- the outer columns of it land off the
+ * garment and are simply not painted. There is no size to reduce.
+ *
+ * So a letter is a BOX now, exactly like a rectangle or an ellipse: the same
+ * corner handle, the same drag, the same ratio lock, the same Place/Cancel.
+ * The glyph is sampled into whatever box it is given.
+ *
+ * SAMPLING IS BY COVERAGE, NOT BY POINT. Shrinking 5x7 by nearest-neighbour
+ * drops whole columns, and the column it drops from an 'E' is its stem. A
+ * target cell is on if ANY glyph pixel inside its footprint is on, so a
+ * shrunken letter thickens and stays connected rather than falling apart --
+ * which is the failure mode that matters at the sizes this exists for.
+ * Growing is unaffected: every target cell has exactly one source pixel.
+ */
+export function letterBoxCells(ch, x0, y0, x1, y1) {
+  const g = FONT[ch];
+  if (!g) return [];
+  const rows = g.split(' ');
+  const lx = Math.min(x0, x1), rx = Math.max(x0, x1);
+  const ty = Math.min(y0, y1), by = Math.max(y0, y1);
+  const w = rx - lx + 1, h = by - ty + 1;
+  const seen = new Uint8Array(ART_W * ART_H);
+  const out = [];
+  for (let r = 0; r < LETTER_H; r++) {
+    for (let c = 0; c < LETTER_W; c++) {
+      if (rows[r][c] !== '1') continue;
+      /* The target cells this glyph pixel covers.  Half-open on the far edge so
+         neighbouring pixels share a boundary and never both claim a cell. */
+      const cx0 = lx + Math.floor((c * w) / LETTER_W);
+      const cx1 = lx + Math.ceil(((c + 1) * w) / LETTER_W) - 1;
+      const cy0 = ty + Math.floor((r * h) / LETTER_H);
+      const cy1 = ty + Math.ceil(((r + 1) * h) / LETTER_H) - 1;
+      for (let ny = cy0; ny <= cy1; ny++) {
+        for (let nx = cx0; nx <= cx1; nx++) {
+          if (nx < 0 || ny < 0 || nx >= ART_W || ny >= ART_H) continue;
+          const k = ny * ART_W + nx;
+          if (seen[k]) continue;
+          seen[k] = 1; out.push([nx, ny]);
+        }
+      }
+    }
+  }
+  return out;
+}
+
 /* ── mirror ──
    v2.3.1949: symmetry, which is what most face and chest designs actually want
    and what is hardest to do by hand on a grid this small.  It is a modifier on

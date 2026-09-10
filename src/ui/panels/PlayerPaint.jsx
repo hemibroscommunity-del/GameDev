@@ -5,7 +5,7 @@ import {
 } from '@/rendering/traits/playerArt.js';
 import {
   TOOLS, toolById, lineCells, expandCells, mirrorCells,
-  BRUSH_SIZES, LETTERS,
+  BRUSH_SIZES, LETTERS, LETTER_W, LETTER_H,
 } from '@/rendering/traits/artTools.js';   /* v2.3.1948; v2.3.1949 mirror, back v2.3.2004 */
 import {
   getDoc, saveDoc, appendToDoc, copyDoc, replay,
@@ -97,6 +97,15 @@ const TARGETS = {
      back now").  The torso's other side, worded like the shirt's and the back
      of the head's -- it is the same idea a third time, and a player who has met
      either of those should recognise this one. */
+  /* v2.3.2428 (owner: "Do front and back on the pants and make sure they're
+     separate").  The trousers were the last drawn surface still wrapping one
+     design all the way round -- the fourth instance of the same idea, worded
+     like the other three so a player who has met any of them recognises it. */
+  pantsBack: {
+    label: 'back of the pants',
+    pattern: null,
+    note: 'Shows when you walk away. Separate from the front — leg armour covers it.',
+  },
   tattooBack: {
     label: 'back tattoo',
     pattern: null,
@@ -158,6 +167,10 @@ const TARGETS = {
    times two sides reach all four canvases without a four-tab strip. */
 const TATTOO_SPOT = { body: 'tattoo', face: 'tattooFace' };
 const TATTOO_SPOT_BACK = { body: 'tattooBack', face: 'tattooHeadBack' };
+/* v2.3.2428: the trousers' two sides.  A table rather than a ternary at the use
+   site, so the pants read like the tattoo screens above and a fifth surface
+   with two sides has somewhere obvious to go. */
+const PANTS_SPOT = { front: 'pants', back: 'pantsBack' };
 /* v2.3.1994: and which canvases each of those two screens can REACH — the tab
    frames a view now rather than fencing one canvas off, so Body covers the
    torso and both arms.  Beside TATTOO_SPOT because the two are one table read
@@ -201,7 +214,7 @@ const TOOL_HINT = {
   /* v2.3.1967 (owner: "add a hand shape to tap the existing shape to reselect
      and edit it").  The hint says TAP, because nothing about a hand icon tells
      you that the thing under it is still an object rather than pixels. */
-  select: 'Tap something you already drew to pick it up again',
+  select: 'Tap something you already drew to pick it up — recolour, resize or re-layer it',   /* v2.3.2427 */
 };
 
 function ToolIcon({ id }) {
@@ -393,6 +406,7 @@ const FOCUS = {
   /* Trousers, plus the boot tops.  Centring higher put a third of the pane on
      shirt hem. */
   pants: { cy: 0.69, h: 0.35 },
+  pantsBack: { cy: 0.69, h: 0.35 },   /* v2.3.2428: same legs, other side */
   /* Down to 1.0, not to the boots: the feet sit at 0.977 and a frame that
      stopped at 0.947 sliced the soles off. */
   shoes: { cy: 0.865, h: 0.27 },
@@ -527,6 +541,11 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
         if (!opts.shirt || opts.shirt === 'none') opts.shirt = DEFAULT_SHIRT;
       }
       else if (target === 'pants') { opts.pantsArt = art; opts.pantsPattern = pat; }
+      /* v2.3.2428: the back of the trousers goes in the SAME slot -- the
+         portrait path never runs artForFacing (TRAPS §70), so `pantsArt` means
+         "the print to stamp on this sheet's legs", and on a north sheet those
+         legs are the back ones. */
+      else if (target === 'pantsBack') { opts.pantsArt = art; opts.pantsPattern = pat; }
       else if (target === 'shoes') { opts.shoesPattern = pat; }
       else if (target === 'tattoo') {
         opts.tattooArt = art;
@@ -590,6 +609,7 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
       if (side === 'back') {
         if (opts.tattooArt === undefined) opts.tattooArt = getArt('tattooBack');
         if (opts.faceTattooArt === undefined) opts.faceTattooArt = getArt('tattooHeadBack');
+        if (opts.pantsArt === undefined) opts.pantsArt = getArt('pantsBack');   /* v2.3.2428 */
       }
       return drawCharacterPortrait(offRef.current, opts);
     };
@@ -657,6 +677,10 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
       ? (isShirt ? ['pattern', 'front', 'back'] : ['pattern', 'drawing'])
       : null;
   const [mode, setMode] = React.useState(isTattoo ? 'body' : (cfg.pattern ? 'pattern' : 'draw'));
+  /* Read before `side` below, which is why it is not simply `mode ===
+     'pattern'` inline down there -- see the temporal-dead-zone note on
+     `inkBack`, which is the same hazard one variable over. */
+  const onPatternMode = mode === 'pattern';
   /* Which skin canvas the body surface last touched.  It drives `spot`, so the
      palette, Undo, Clear and the caption all follow your finger from the chest
      to the face without you telling them you moved. */
@@ -668,10 +692,19 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      "Cannot access 'inkBack' before initialization" and the designer simply
      never opened. mp-bodyink caught it as a timeout waiting for the canvas. */
   const [inkBack, setInkBack] = React.useState(false);
+  /* v2.3.2428: which screens have a SIDE of their own -- a Front/Back switch
+     rather than a mode in the strip.  The shirt does it with modes because its
+     two sides are two whole screens with their own patterns; the tattoo screens
+     and now the trousers do it with a switch, because the side applies to
+     whichever region the tab is framed on.
+     The PATTERN screen is excluded on purpose: a pattern tiles the entire
+     garment, so it has no front and no back to choose between. */
+  const isPants = target === 'pants';
+  const hasSides = isTattoo || (isPants && !onPatternMode);
   /* The tattoo screens carry their own side, so the worn preview turns round
      with the switch (WornPreview already faces north for 'back'). */
-  const side = isTattoo ? (inkBack ? 'back' : 'front') : (mode === 'back' ? 'back' : 'front');
-  const onPattern = mode === 'pattern';
+  const side = hasSides ? (inkBack ? 'back' : 'front') : (mode === 'back' ? 'back' : 'front');
+  const onPattern = onPatternMode;
   /* WHERE on the body this panel is currently painting.  For everything but a
      tattoo that is just the target; for a tattoo the mode picks it, and the
      caption, the preview's camera and the Clear button all follow it. */
@@ -686,7 +719,16 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      the renderer reports a grid for pants, the tattoo canvases and the face,
      but a shirt print is stamped on a different sheet with no region report, so
      there is nothing for a touch to hit-test against there yet. */
-  const onBody = isTattoo || target === 'pants';
+  /* v2.3.2430: THE SHIRT DRAWS ON THE SHIRT.  Owner: "The shirt canvas should
+     be a preview of the shirt you're drawing on (not just the blank drawing
+     canvas)."  The note left at v2.3.2416 said this could not be done because
+     the shirt print "is stamped on a different sheet with no region to
+     hit-test against" -- which was true of the code and never of the sheet.
+     stampShirtArt has always computed the exact box it fits the grid into; it
+     reports it now (playerDecal, v2.3.2430) and the surface hit-tests it with
+     the code it already had.
+     `onPattern` still forks before this, so the pattern screen is untouched. */
+  const onBody = isTattoo || target === 'pants' || isShirt;
   /* ═══ v2.3.1994: THE TAB FRAMES, THE FINGER CHOOSES ═══
      Owner: "Can you just make anywhere where skin is showing be tattooable?"
 
@@ -704,7 +746,14 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const [bodySpot, setBodySpot] = React.useState('tattoo');
   const tabSpot = isTattoo
     ? ((inkBack ? TATTOO_SPOT_BACK : TATTOO_SPOT)[mode] || 'tattoo')
-    : target;
+    /* v2.3.2428: the trousers pick a side the same way, off the same switch.
+       v2.3.2431: ...but only on a screen that HAS the switch.  `hasSides` hides
+       it on the pattern screen (a pattern tiles the whole garment and has no
+       sides), and this line went on reading `inkBack` anyway -- so drawing on
+       the back and then tapping `pattern` left the panel pointed at pantsBack
+       with `side` resolved to 'front', and the preview stamped the BACK print
+       on a front-facing bro: a garment that does not exist. */
+    : (isPants ? (PANTS_SPOT[(hasSides && inkBack) ? 'back' : 'front'] || 'pants') : target);
   const reachable = isTattoo ? ((inkBack ? TAB_SPOTS_BACK : TAB_SPOTS)[mode] || []) : [];
   const spot = (isTattoo && reachable.indexOf(bodySpot) >= 0) ? bodySpot : tabSpot;
   const scfg = TARGETS[spot] || cfg;
@@ -1036,8 +1085,13 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     tattooBack: liveArt('tattooBack'), tattooHeadBack: liveArt('tattooHeadBack'),
     /* v2.3.2416: and the pants, for the same reason -- the surface builds its
        per-region grids from what it is handed, so a canvas missing from here
-       is a canvas whose every touch reports a MISS and drops the stroke. */
-    pants: liveArt('pants'),
+       is a canvas whose every touch reports a MISS and drops the stroke.
+       v2.3.2428: both sides of them. */
+    pants: liveArt('pants'), pantsBack: liveArt('pantsBack'),
+    /* v2.3.2430: and the shirt's two sides, now that the print is made on the
+       garment.  Same rule as every canvas above -- one missing from here is one
+       whose every touch reports a MISS and drops the stroke. */
+    shirtFront: liveArt('shirtFront'), shirtBack: liveArt('shirtBack'),
     /* liveArt reads only `art`/`artId` and the store; bodyTick is the store's
        own change signal.  (No react-hooks plugin in this repo's flat config —
        the deps are stated by hand and checked by hand.) */
@@ -1090,10 +1144,38 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const handleCell = (op) => {
     if (!op) return null;
     if (op.k === 's') return [op.a[2], op.a[3]];
-    if (op.k === 't') return [op.x, op.y];
+    /* v2.3.2427: a letter's handle is its box corner, like a shape's.  The
+       legacy form (no box) keeps the centre it has always had, so a drawing
+       made before this version still picks up where it always did. */
+    if (op.k === 't') return op.a ? [op.a[2], op.a[3]] : [op.x, op.y];
     return null;
   };
+  /* ═══ v2.3.2427: HOW BIG A LETTER LANDS ═══
+     Owner: "Letters need to default smaller on the pants they get cut off."
+     The glyph is 5x7 and the canvas is 16x16, so a letter has always taken 44%
+     of the height it is dropped into.  On the skin that is a chest piece and
+     roughly what you want; on the TROUSERS the grid is stretched over a narrow,
+     tapering region, so the outer columns of a 5-wide glyph land off the
+     garment and are never painted -- "cut off", exactly as reported, with no
+     size to reduce because a letter had no size.
+     4x6 rather than 3x5: measured against the pants region, 3 columns loses the
+     stem of an 'E' even with coverage sampling, and the point of shrinking it
+     is that the letter still reads.  Anything can be resized from the handle
+     afterwards, which is the real fix -- this is only where it starts. */
+  const letterBox = (cx, cy) => {
+    const isPants = artIdRef.current === 'pants' || artIdRef.current === 'pantsBack';
+    const w = isPants ? 4 : LETTER_W, h = isPants ? 6 : LETTER_H;
+    const x0 = Math.max(0, Math.min(ART_W - w, cx - (w >> 1)));
+    const y0 = Math.max(0, Math.min(ART_H - h, cy - (h >> 1)));
+    return [x0, y0, x0 + w - 1, y0 + h - 1];
+  };
   const selHandle = React.useMemo(() => handleCell(selOp), [selOp]);   /* v2.3.1994 */
+  /* v2.3.2427: can the thing you are holding be RESIZED, as opposed to only
+     moved or re-layered?  A shape always can; a letter can once it has a box. */
+  const selResizable = !!(selOp && (selOp.k === 's' || (selOp.k === 't' && selOp.a)));
+  /* v2.3.2431: is the options row the ALPHABET right now?  True whenever the
+     letter tool is chosen, held letter or not -- see the note on the row. */
+  const onLetterStrip = tool === 'letter';
 
   /* v2.3.1941: `onPattern` is a DEPENDENCY, not decoration.  The grid canvas is
      unmounted on the pattern screen, so coming back to a drawing re-creates it
@@ -1262,7 +1344,10 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
       isNew: false,
       orig: op,
       hist: null,
-      ratio: op.k === 's'
+      /* v2.3.2427: `op.a` rather than `op.k === 's'` -- a letter has a box now,
+         and picking one up has to restore the proportions it was placed at or
+         the ratio lock would square it up the first time you touched it. */
+      ratio: op.a
         ? (Math.abs(op.a[2] - op.a[0]) + 1) / (Math.abs(op.a[3] - op.a[1]) + 1)
         : 1,
     };
@@ -1346,6 +1431,41 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     if (pendRef.current) pendRef.current.hist = null;
   };
 
+  /* ═══ v2.3.2427: PICK IT UP, THEN CHANGE ITS COLOUR ═══
+     Owner: "You should be able to select something and recolor it. I wasn't
+     able to do this from the pants editor on a letter."
+     You could not, anywhere: the palette set `ink`, which is the colour the
+     NEXT mark is made in, and nothing ever re-read a mark that was already
+     down.  Every other property of a selected op could be changed -- its size,
+     its position, its layer -- and the one you can see from across the room
+     could not.
+     One undo step per selection, banked the same way a resize is, so picking a
+     letter up and trying three colours costs one tap of Undo rather than three.
+     `i` is the whole change: the cells are re-derived from the op on every
+     replay, so a colour swap is a one-field edit and the drawing follows. */
+  const recolorSel = (idx) => {
+    const i = selRef.current;
+    const op = i >= 0 ? docRef.current.ops[i] : null;
+    if (!op || op.i === idx) return false;
+    bankPend();
+    setOp(i, { ...op, i: idx });
+    return true;
+  };
+
+  /* v2.3.2431: change the GLYPH of the letter you are holding, the exact twin
+     of recolorSel above.  Without it the alphabet is visible while a letter is
+     held (which it must be, or you cannot spell) but tapping a key would only
+     arm the next stamp, so the letter under your finger would be the one thing
+     on screen the strip could not change. */
+  const reletterSel = (ch) => {
+    const i = selRef.current;
+    const op = i >= 0 ? docRef.current.ops[i] : null;
+    if (!op || op.k !== 't' || op.g === ch) return false;
+    bankPend();
+    setOp(i, { ...op, g: ch });
+    return true;
+  };
+
   /* Resize to a new far corner, honouring the ratio lock.  The lock keeps the
      aspect the shape was DRAWN at rather than forcing a square: a 2:1 oval
      stays a 2:1 oval at every size, which is what "proportions are consistent"
@@ -1360,14 +1480,15 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     setDoc((d) => {
       const op = d.ops[i];
       if (!op) return d;
-      /* A letter has no size, so its handle MOVES it.  That is the only edit a
-         letter has, and giving it to the same handle keeps one gesture for
-         "adjust the thing you picked up". */
-      if (op.k === 't') {
+      /* v2.3.2427: a letter WITH a box resizes exactly as a shape does -- it
+         falls through to the shared code below.  Only the legacy form, which
+         has no box to resize, keeps the v2.3.1967 behaviour where the handle
+         moves it: there is nothing else its handle could do. */
+      if (op.k === 't' && !op.a) {
         if (op.x === cx && op.y === cy) return d;
         return { ...d, ops: d.ops.map((o, k) => (k === i ? { ...o, x: cx, y: cy } : o)) };
       }
-      if (op.k !== 's') return d;
+      if (op.k !== 's' && op.k !== 't') return d;
       const x0 = op.a[0], y0 = op.a[1];
       let nx = cx, ny = cy;
       if (lockRatio && pend.ratio > 0) {
@@ -1422,9 +1543,29 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
          above it genuinely changes what it fills. */
       const c = cellAt(e, false);
       if (!c) return;
-      setLiveIdx(addOp(tool === 'fill'
-        ? { k: 'f', x: c[0], y: c[1], i: ink, m: mirror ? 1 : 0 }
-        : { k: 't', g: letter, x: c[0], y: c[1], i: ink, m: mirror ? 1 : 0 }));   /* v2.3.2004 */
+      if (tool === 'fill') {
+        setLiveIdx(addOp({ k: 'f', x: c[0], y: c[1], i: ink, m: mirror ? 1 : 0 }));   /* v2.3.2004 */
+        return;
+      }
+      /* ═══ v2.3.2427: A PLACED LETTER STAYS IN YOUR HAND ═══
+         Owner: "The letters aren't working correctly (not pasting onto the
+         character and not scaling/resizing)."  It WAS pasting -- measured, 16
+         cells landed in the store on the first tap -- and then it was let go
+         of, immediately, because this branch never selected what it had just
+         made.  So there was no handle to drag, no Place/Cancel, and no way to
+         move it a cell over: the whole adjustment vocabulary the shapes have,
+         missing on the one tool where you cannot preview the result before you
+         commit it.
+         It is set up exactly as a dragged shape is (see `drag === 'shape'`
+         below) -- same pend record, same selection, same handle -- so a letter
+         and a box are now adjusted with one gesture rather than two rules. */
+      const box = letterBox(c[0], c[1]);
+      const li = addOp({ k: 't', g: letter, x: c[0], y: c[1], a: box, i: ink, m: mirror ? 1 : 0 });
+      setLiveIdx(li);
+      pendRef.current = { isNew: true, orig: null,
+        ratio: (Math.abs(box[2] - box[0]) + 1) / (Math.abs(box[3] - box[1]) + 1),
+        hist: histRef.current[histRef.current.length - 1] };
+      setSel(li);
       return;
     }
     paintingRef.current = true;
@@ -1603,7 +1744,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             am I on" and mp-bodyink asserts there are exactly two of them.
             Sharing it would make this switch look like two more screens, both
             to that test and to anyone reading the DOM. */}
-        {isTattoo && (
+        {hasSides && (
           /* marginTop retired with v2.3.2414's wrapper -- .bt-paint-head's own
              gap is what separates it from the tabs now, and a margin on top of
              that would double the space when both are present and leave a
@@ -1679,7 +1820,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                same things the flat grid draws on itself (what is selected,
                where its handle is, and the ink that has not been baked yet). */
             <BodyInk look={look} arts={bodyArts} ink={ink}
-              region={target === 'pants' ? 'pants' : (mode === 'face' ? 'face' : 'tattoo')}
+              region={isShirt ? 'shirt' : (isPants ? 'pants' : (mode === 'face' ? 'face' : 'tattoo'))}
               apiRef={bodyApiRef} activeTarget={artId}
               /* v2.3.2422: the big canvas faces the side being inked, exactly as
                  the little worn preview beside it has since v2.3.2150.  Owner:
@@ -1689,7 +1830,13 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                  read one value.  (`side` is 'front' on the pants screen, which
                  has no switch, so nothing there changes.) */
               dir={side === 'back' ? 'north' : 'south'}
-              backSide={inkBack}
+              /* v2.3.2430: `side`, not `inkBack`.  The tattoo and pants screens
+                 reach their far side through the Front/Back switch and the SHIRT
+                 reaches its own through the mode strip (v2.3.1939), and `side`
+                 is where those two already agree -- so the surface is told
+                 which way round the character is, once, by the value both
+                 controls resolve to. */
+              backSide={side === 'back'}
               onRegion={bodyRegion} onDown={down} onMove={move} onUp={up}
               overlayCells={(liveIdx >= 0 && liveIdx < painted.cells.length) ? painted.cells[liveIdx] : null}
               selCells={(sel >= 0 && sel < painted.cells.length) ? painted.cells[sel] : null}
@@ -1697,7 +1844,19 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
           ) : (
             /* v2.3.1967: a class, so a headless scenario can aim at the flat
                grid without guessing which canvas in the panel it is (the panel
-               holds a worn preview and, on the body tab, the figure). */
+               holds a worn preview and, on the body tab, the figure).
+               ═══ v2.3.2430: NOTHING ROUTES HERE ANY MORE ═══
+               The shirt was the last target that drew on a flat 16x16 grid and
+               it moved onto the garment in this version, so every drawable
+               target is now a body target and this branch has no way to be
+               reached.  It is left standing rather than deleted, and that is a
+               judgement call worth stating rather than hiding: it is the `else`
+               of a two-branch ternary, it costs nothing to keep, and the next
+               drawable surface that CANNOT report a region on the figure -- a
+               garment with no sprite, an accessory drawn as a separate layer --
+               needs exactly this.  Flagged for the owner rather than removed
+               quietly; if drawing on the character is the answer everywhere,
+               this and its paint effect above are a clean deletion. */
             <canvas ref={cvRef} width={size} height={size} className="bt-paint-grid"
               onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
               style={{ width: '100%', aspectRatio: '1 / 1',
@@ -1758,7 +1917,19 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
              the row keeps its height either way, so nothing below it jumps when
              you change tool. */
           <div className="bt-paint-opts">
-            {selOp ? (   /* v2.3.1994: a shape picked up on the body adjusts the same way */
+            {/* ═══ v2.3.2431: A HELD LETTER KEEPS ITS ALPHABET ═══
+                v2.3.2427 made a placed letter STAY selected, which is what gave
+                it a handle to resize by -- and took the A-Z strip off the screen
+                in the same stroke, because this row belongs to the selection the
+                moment there is one.  So spelling "BRO" was: tap B, B lands and
+                the alphabet vanishes, tap again for R and you get a second B,
+                because there was no longer any way to say R.  One fix for one
+                regression: while the LETTER tool is active the row stays the
+                alphabet, and tapping a letter with one held re-stamps the held
+                one rather than arming the next -- the same rule the palette
+                follows for colour (recolorSel).  Place and Cancel are not lost:
+                starting the next gesture places, and Undo takes it back. */}
+            {(selOp && !onLetterStrip) ? (   /* v2.3.1994: a shape picked up on the body adjusts the same way */
               /* v2.3.1951: while a shape is pending the row belongs to IT.
                  Contextual rather than three more permanent buttons: the row
                  already swaps for the letter tool, the controls only mean
@@ -1771,8 +1942,13 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                  those get one wide Done rather than a Cancel with nothing to
                  cancel. */
               <div className="bt-paint-opts-main bt-paint-shapeops"
-                style={{ gridTemplateColumns: 'repeat(' + (selOp.k === 's' ? 3 : selOp.k === 't' ? 2 : 1) + ', 1fr)' }}>
-                {selOp.k === 's' && (
+                /* v2.3.2427: a letter with a box is resizable, so it takes the
+                   same three controls a shape does.  `selResizable` rather than
+                   a key test, because the legacy letter form is NOT resizable
+                   and would otherwise be offered a lock over a handle that only
+                   moves it. */
+                style={{ gridTemplateColumns: 'repeat(' + (selResizable ? 3 : selOp.k === 't' ? 2 : 1) + ', 1fr)' }}>
+                {selResizable && (
                   <button type="button" onClick={() => setLockRatio((v) => !v)}
                     aria-pressed={lockRatio}
                     className={'bt-paint-size' + (lockRatio ? ' bt-paint-size--on' : '')}
@@ -1799,10 +1975,10 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                   </button>
                 )}
               </div>
-            ) : tool === 'letter' ? (   /* v2.3.1994 (owner: "Add the letters back") */
+            ) : onLetterStrip ? (   /* v2.3.1994 (owner: "Add the letters back") */
               <div className="bt-paint-letters" ref={stripRef}>
                 {LETTERS.map((ch) => (
-                  <button key={ch} type="button" onClick={() => setLetter(ch)}
+                  <button key={ch} type="button" onClick={() => { reletterSel(ch); setLetter(ch); }}
                     data-on={letter === ch ? '1' : undefined}
                     className={'bt-paint-letter' + (letter === ch ? ' bt-paint-letter--on' : '')}
                     aria-pressed={letter === ch} aria-label={'Letter ' + ch}>{ch}</button>
@@ -1878,7 +2054,21 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             <div className="bt-paint-layer-at">
               {selOp
                 ? ('Layer ' + (sel + 1) + ' of ' + doc.ops.length + ' \u00b7 ' + selName(selOp))
-                : 'Layers: pick the hand, tap something you drew'}
+                /* v2.3.2427: it says SELECT, because that is what the button
+                   says.  Owner: "The select button doesn't seem to work on what
+                   you've drawn" -- and it does work, on every surface, measured
+                   both on the body and on the flat grid.  What did not work was
+                   this sentence: the tool was renamed from the hand to Select at
+                   v2.3.1967 and the only line on screen that tells you the
+                   feature exists went on naming a control that is not there.
+                   Someone who read it looked for a hand, found none, and
+                   concluded the feature was broken -- which is the correct
+                   conclusion from what the screen said.
+                   It also names what picking something up is FOR, since the
+                   answers are now recolour and resize as well as re-layer. */
+                : (tool === 'select'
+                  ? 'Tap something you drew to pick it up — then recolour, resize or re-layer it'
+                  : 'Pick Select, then tap something you drew to change it')}
             </div>
             <div className="bt-paint-layer-btns">
               {LAYER_MOVES.map((m) => {
@@ -1909,9 +2099,22 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
         ) : (
           <div className="bt-paint-pal" style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 5 }}>
             {ART_PALETTE.map((c, i) => (
-              <button key={i} type="button" title={i === 0 ? 'Eraser — works with every tool' : 'Colour'}
+              <button key={i} type="button"
+                title={i === 0 ? 'Eraser — works with every tool'
+                  : (selOp ? 'Recolour what you picked up' : 'Colour')}
                 aria-label={i === 0 ? 'Eraser' : 'Colour ' + i}
-                onClick={() => setInk(i)}
+                /* v2.3.2427: with something picked up this repaints IT; with
+                   nothing picked up it arms the next mark, as it always has.
+                   The ink is set either way, so the colour you just chose is
+                   also the one you carry on drawing in -- which is what a
+                   palette tap means everywhere else. */
+                /* v2.3.2431: `i > 0`.  Index 0 is the ERASER, not a colour --
+                   this button's own title has always said so -- and recolouring
+                   a held shape TO the eraser turns it into a hole punched
+                   through everything under it.  Reaching for the eraser to
+                   change tool is the ordinary way to hit that, and the shape it
+                   destroys is the one you just drew. */
+                onClick={() => { if (i > 0) recolorSel(i); setInk(i); }}
                 style={{ aspectRatio: '1 / 1', minHeight: 26, borderRadius: 6, cursor: 'pointer',
                   background: c || 'transparent',
                   /* the eraser reads as a hole, not as a colour */

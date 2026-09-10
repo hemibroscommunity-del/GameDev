@@ -36,7 +36,9 @@ import { WHIRL_VORTEX, WHIRL_FX_MS, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_
 import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook) */
+import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings */
+import { onArtChange, artHasInk, artIsSymmetric } from '../traits/playerArt.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
+import { onPatternChange, parsePattern } from '../traits/patternCatalog.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { getGearFrame } from '../gearSheets.js';
 import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
@@ -1978,6 +1980,22 @@ export class EffectsRenderer {
        build-time set in webpImage.js means a sheet without one loads its PNG
        directly rather than probing for a file that is not there. */
     const _loadImg = (u) => loadWebpOrPng(u);
+    /* v2.3.2429: the strip to SAMPLE for a facing -- the mirrored twin when
+       there is one, the plain bake otherwise.  A function rather than the
+       lookup written out at each of the seven draw sites, because "or the plain
+       one" is the half that would get forgotten at the eighth. */
+    this._standInStrip = (map, dir, mirror) => (mirror && map && map[dir + '|m']) || (map && map[dir]);
+    /* Would the pre-flipped bake of this sheet differ from the plain one?  Asked
+       of the art AFTER artForFacing, because that is what actually gets stamped:
+       a north sheet stamps the BACK canvases, so the front ones' symmetry is not
+       the question. */
+    const _twinWouldDiffer = (art, dir) => {
+      if (!art) return false;
+      if (parsePattern(art.pantsPattern, 'pants') || parsePattern(art.shoesPattern, 'shoes')) return true;
+      const a = artForFacing(art, dir);
+      return ['pants', 'tattoo', 'tattooFace', 'tattooArm']
+        .some((k) => artHasInk(a[k]) && !artIsSymmetric(a[k]));
+    };
     this._bakeBodyStrip = (rec) => {
       const img = this._bodyImgCache[rec.url];
       if (!img) return;
@@ -2023,13 +2041,87 @@ export class EffectsRenderer {
       const _srcH = img.naturalHeight || img.height || 0;
       const _fw = (rec.cfg.square && _srcH) ? _srcH : rec.cfg.fw;
       const _fh = (rec.cfg.square && _srcH) ? _srcH : rec.cfg.fh;
-      const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, _fh);
-      const source = Texture.from(cv).source;
-      source.scaleMode = 'linear';
-      const n = Math.max(1, Math.round(cv.width / _fw));
-      const arr = [];
-      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * _fw, 0, _fw, _fh) }));
+      /* ═══ v2.3.2429: THE STAND-INS WEAR YOUR DRAWINGS TOO ═══
+         Owner: "make sure during shield block (I noticed tattoos and other
+         custom designs weren't there) etc that the custom designs show up."
+
+         Correct, and it was every stand-in, not only the block: a raised shield
+         swaps the whole figure to the bow art (entityRenderer, v2.3.1800) and a
+         swing swaps it to the sword art, and this bake -- the one both of those
+         sample -- passed skin, pants and shoes to recolorBodyToCanvas and
+         stopped there. The ninth argument is the drawings. So a chest tattoo, a
+         face tattoo, an arm tattoo, a trouser print and both garment patterns
+         were on the walking body and gone the instant you raised a shield or
+         swung, which is exactly when somebody is looking at you.
+
+         It is the same shape of omission v2.3.1788 found one argument over
+         ("the attack stand-ins wear the WALKING skin"): these sheets are baked
+         by their own loader rather than by getBodyFrame, so every property the
+         body picks up has to be handed to them a second time, and the ones that
+         arrived later were the ones that got missed.
+
+         COSTS NOTHING FOR A PLAYER WHO HAS NOT DRAWN. localBodyArt answers null
+         when every canvas is blank and no pattern is set -- the default and the
+         overwhelming majority -- and recolorBodyToCanvas takes the same early
+         exits it always did. */
+      const _art = localBodyArt(false);
+      const _bake = (mirror) => {
+        /* artForFacing per SHEET direction, exactly as getBodyFrame does: the
+           north and northwest stand-ins are back views, so they must take the
+           back canvases rather than wrapping the front ones round (v2.3.2148 /
+           v2.3.2428). */
+        const a = _art ? artForFacing({ ..._art, mirror }, rec.dir) : null;
+        /* v2.3.2431: `_fw` -- the sheet's OWN frame width.  Without it the bake
+           sliced every stand-in into 256px windows (playerSkins' FRAME_W), which
+           is what these sheets are NOT: 122 to 402px.  Measured before the fix,
+           the block pose (frame 1) carried no ink at all on three of the five
+           bow facings, and the trouser print landed on every other jog-leg
+           frame.  See the note on recolorBodyToCanvas. */
+        const cv2 = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, _fh, null, null, a, _fw);
+        const src = Texture.from(cv2).source;
+        src.scaleMode = 'linear';
+        const cnt = Math.max(1, Math.round(cv2.width / _fw));
+        const out = [];
+        for (let i = 0; i < cnt; i++) out.push(new Texture({ source: src, frame: new Rectangle(i * _fw, 0, _fw, _fh) }));
+        return { arr: out, cv: cv2 };
+      };
+      const _plain = _bake(false);
+      const cv = _plain.cv;
+      const arr = _plain.arr;
       rec.target[rec.dir] = arr;
+      /* ═══ THE MIRRORED TWIN, AND ONLY WHEN IT CAN BE SEEN ═══
+         Three of the eight facings are drawn by flipping a base-dir sheet
+         (scale.x -1), so a drawing baked straight in reads BACKWARDS there --
+         the owner's own report on the shirt, v2.3.1938: "Your smiley face
+         rotated the opposite direction". The walking body solves this by baking
+         two sheets and putting `mirror` in the cache key; this does the same.
+         Bounded on both sides. It is built only when there is a drawing to
+         flip, and only for the directions this family's facing map actually
+         mirrors -- so the default player pays nothing, and a player who has
+         drawn pays for the flipped views that exist rather than for all five.
+         Built UP FRONT rather than on first sight, because a bake in the middle
+         of a fight is the first-use hitch the animation-preload law exists to
+         prevent (CLAUDE.md). */
+      /* ═══ v2.3.2431: AND ONLY WHEN THE FLIP WOULD CHANGE ANYTHING ═══
+         MEASURED: the twins are 28.78 MB of RGBA across the six mirrored
+         families (sword-south 11.47, sword-east 8.70, sword-north 5.56, and
+         1.24 / 0.86 / 0.95 for the three bow ones) -- the same order as the
+         single largest memory win this codebase has shipped (P7 item 1,
+         v2.3.2353, 26.7 MB), handed straight back. v2.3.2429 charged that to
+         anyone who had inked one cell OR picked a shoes pattern, which is far
+         too broad.
+         `mirror` reaches exactly two places in the bake -- stampRegion's and
+         stampPattern's flip flags -- so if every drawing that gets stamped is
+         its own mirror image, the twin is pixel-identical to the plain bake and
+         is 28.78 MB of duplicate. The Mirror tool in the designer produces
+         precisely those drawings, so this is the common case, not a corner.
+         PATTERNS are treated as always-differing on purpose: stampPattern
+         mirrors the tile LOOKUP (`sx = frameW - 1 - fx`), so whether a given
+         tile survives that depends on the tile's own symmetry and on where its
+         anchor phases -- provable per tile, not worth proving here, and being
+         wrong means a garment that reads backwards. */
+      rec.target[rec.dir + '|m'] = (_art && rec.mirrored && _twinWouldDiffer(_art, rec.dir))
+        ? _bake(true).arr : null;
       /* v2.3.1788 QA probe: the mean skin RGB of the BAKED sheet, so
          mp-standinskin can assert the stand-ins land on the same palette as
          the walking body.  Measuring the baked canvas is the only honest
@@ -2049,6 +2141,43 @@ export class EffectsRenderer {
         window.__btStandInSkin[rec.url] = _n
           ? { n: _n, rgb: [Math.round(_r / _n), Math.round(_g / _n), Math.round(_b / _n)] }
           : { n: 0 };
+        /* ═══ v2.3.2429 QA probe: DID THE DRAWINGS REACH THIS BAKE ═══
+           Two readings, because either alone can lie.  `art` is what the bake
+           was TOLD (bodyArtSeg's own segment, empty when nothing is drawn), and
+           `ink` counts what actually landed in the PIXELS -- strongly
+           blue-leading and strongly green-leading pixels, two families the
+           figure has none of by itself, so a scenario can ink in one of them
+           and read it back here.  Told-and-not-landed is the failure this
+           whole change is about: the ninth argument was simply never passed,
+           and a probe that only checked the argument would have passed
+           throughout.  Measured on the baked canvas rather than on a
+           screenshot, for the reason stated above the skin measurement. */
+        /* ═══ v2.3.2431: PER FRAME, NOT PER SHEET ═══
+           The v2.3.2429 probe counted over the WHOLE canvas, and that is how a
+           bake that mis-sliced the sheet passed its own test: ink landed
+           SOMEWHERE, so the count was non-zero, while frames 1 and 2 of three
+           bow sheets held none of it -- and a raised shield draws frame 1.  The
+           count is per frame as well now, so a scenario can assert the frame the
+           pose actually shows.
+           Counted in the SAME pass as the totals rather than a second one: the
+           frame is just x / _fw, so this costs an integer divide per opaque
+           pixel and no extra walk of a multi-megapixel canvas on a phone. */
+        const _nf = Math.max(1, Math.round(cv.width / _fw));
+        const _perFrame = new Array(_nf).fill(0);
+        let _bl = 0, _gr = 0;
+        for (let _i = 0; _i < _d.length; _i += 4) {
+          if (_d[_i + 3] < 40) continue;
+          const _isB = _d[_i + 2] - _d[_i] >= 30 && _d[_i + 2] - _d[_i + 1] >= 20;
+          const _isG = !_isB && _d[_i + 1] - _d[_i] >= 30 && _d[_i + 1] - _d[_i + 2] >= 20;
+          if (!_isB && !_isG) continue;
+          if (_isB) _bl++; else _gr++;
+          const _f = Math.min(_nf - 1, Math.floor(((_i >> 2) % cv.width) / _fw));
+          _perFrame[_f]++;
+        }
+        if (!window.__btStandInArt) window.__btStandInArt = {};
+        window.__btStandInArt[rec.url] = { art: _art ? '1' : '', mirrored: !!rec.mirrored,
+          twin: !!rec.target[rec.dir + '|m'], ink: { blue: _bl, green: _gr },
+          w: cv.width, fw: _fw, frames: _nf, perFrame: _perFrame };
       } catch (e) { /* never breaks a bake */ }
       /* v2.3.1785: hand the BOW body frames to blockArm.js, which cuts the
          outstretched arm out of them for the raised-shield pose.  Done here
@@ -2057,9 +2186,17 @@ export class EffectsRenderer {
          both stay in step. */
       if (rec.target === this._bowBodyFrames) registerBowBodyFrames(rec.dir, arr);
     };
-    const _loadRecoloredBody = (target, dir, url, cfg, ver) => {
+    /* Which base directions this family ever draws flipped -- read off the
+       facing map itself rather than restated, so a new facing cannot arrive
+       with its mirror silently un-baked. */
+    const _mirroredDirs = (facing) => {
+      const out = new Set();
+      for (const k of Object.keys(facing || {})) { const f = facing[k]; if (f && f[1]) out.add(f[0]); }
+      return out;
+    };
+    const _loadRecoloredBody = (target, dir, url, cfg, ver, mirrored) => {
       target[dir] = [];
-      const rec = { target, dir, url, cfg, ver };
+      const rec = { target, dir, url, cfg, ver, mirrored: !!mirrored };
       this._bodyStrips.push(rec);
       if (this._bodyImgCache[url]) { this._bakeBodyStrip(rec); return; }
       _loadImg(url + '?v=' + ver).then((img) => { this._bodyImgCache[url] = img; this._bakeBodyStrip(rec); })
@@ -2067,6 +2204,11 @@ export class EffectsRenderer {
     };
     this._rebakeBodies = () => { for (const rec of this._bodyStrips) this._bakeBodyStrip(rec); };
     onSkinChange(this._rebakeBodies); onPantsChange(this._rebakeBodies); onShoesChange(this._rebakeBodies);
+    /* v2.3.2429: and when a DRAWING or a pattern changes, for the same reason
+       the three above exist -- these strips are baked once and sampled for the
+       rest of the session, so without this a tattoo drawn mid-session appears
+       on the walking body immediately and never on a swing or a block. */
+    onArtChange(this._rebakeBodies); onPatternChange(this._rebakeBodies);
     for (const dir of Object.keys(this._swordCfg)) {
       const cfg = this._swordCfg[dir];
       /* ═══ v2.3.2353: THE FALLBACKS ARE NOT LOADED WHEN NOTHING CAN REACH THEM ═══
@@ -2088,8 +2230,9 @@ export class EffectsRenderer {
         if (cfg.armorUrl) _loadSwordStrip(this._swordArmorFrames, dir, cfg.armorUrl, cfg);
       }
       if (cfg.weaponUrl) _loadSwordStrip(this._swordWeaponFrames, dir, cfg.weaponUrl, cfg);
-      if (cfg.bodyUrl)   _loadRecoloredBody(this._swordBodyFrames, dir, cfg.bodyUrl, cfg, SWORD_ART_VERSION);
-      if (cfg.torsoUrl)  _loadRecoloredBody(this._swordTorsoFrames, dir, cfg.torsoUrl, cfg, SWORD_ART_VERSION);
+      const _swMirror = _mirroredDirs(this._swordFacing).has(dir);   /* v2.3.2429 */
+      if (cfg.bodyUrl)   _loadRecoloredBody(this._swordBodyFrames, dir, cfg.bodyUrl, cfg, SWORD_ART_VERSION, _swMirror);
+      if (cfg.torsoUrl)  _loadRecoloredBody(this._swordTorsoFrames, dir, cfg.torsoUrl, cfg, SWORD_ART_VERSION, _swMirror);
     }
 
     /* v2.3.925: bow-shoot stand-in -- same self-contained pattern as the sword
@@ -2208,8 +2351,9 @@ export class EffectsRenderer {
         if (cfg.armorUrl) _loadBowStrip(this._bowArmorFrames, dir, cfg.armorUrl, cfg);
       }
       if (cfg.weaponUrl) _loadBowStrip(this._bowWeaponFrames, dir, cfg.weaponUrl, cfg);
-      if (cfg.bodyUrl)   _loadRecoloredBody(this._bowBodyFrames, dir, cfg.bodyUrl, cfg, BOW_ART_VERSION);
-      if (cfg.torsoUrl)  _loadRecoloredBody(this._bowTorsoFrames, dir, cfg.torsoUrl, cfg, BOW_ART_VERSION);
+      const _bwMirror = _mirroredDirs(this._bowFacing).has(dir);   /* v2.3.2429 */
+      if (cfg.bodyUrl)   _loadRecoloredBody(this._bowBodyFrames, dir, cfg.bodyUrl, cfg, BOW_ART_VERSION, _bwMirror);
+      if (cfg.torsoUrl)  _loadRecoloredBody(this._bowTorsoFrames, dir, cfg.torsoUrl, cfg, BOW_ART_VERSION, _bwMirror);
     }
     /* v2.3.1080: arm-erased jog LEG sheets (jog-<dir>-legs.png) for the jog-legs
        composite -- the jog fists swung below the waist and showed as ghost hands
@@ -2223,7 +2367,20 @@ export class EffectsRenderer {
          3584x128-class on disk and the 256 declaration was upscaling every one
          of them to a 7 MB canvas.  See _bakeBodyStrip; the placement side reads
          the same size back off the texture in _placeJogLegs. */
-      _loadRecoloredBody(this._bowJogLegFrames, dir, '/sprites/player/jog-' + dir + '-legs.png', { square: true }, JOG_LEGS_VERSION);
+      /* v2.3.2431: these strips carry the trouser print now (v2.3.2429 handed
+         the drawings to every stand-in bake), so they need the same mirrored
+         twin the body and torso strips get -- and the same reason: three of the
+         eight screen facings are drawn by flipping a source-dir sheet, so a
+         print baked straight in reads BACKWARDS there.  The mirrored source
+         dirs come from resolveDirection (playerSprites): west -> east, southeast
+         -> southwest, northwest -> northeast; south and north are never
+         flipped, so they get no twin.
+         Without this the pants print was the one drawing on the figure that
+         still reversed itself when you jogged west mid-swing, while the very
+         same print on the walking body read correctly -- the v2.3.1938 "your
+         smiley face rotated the opposite direction" report, on the legs only. */
+      const _jogMirror = dir === 'east' || dir === 'northeast' || dir === 'southwest';
+      _loadRecoloredBody(this._bowJogLegFrames, dir, '/sprites/player/jog-' + dir + '-legs.png', { square: true }, JOG_LEGS_VERSION, _jogMirror);
     }
 
     /* v2.3.867: the player's traits (hat / beard / hair) composited onto
@@ -8460,7 +8617,7 @@ export class EffectsRenderer {
        strip is what every frame after the first branch actually samples.
        Both are cut from the same art at the same frame width, so the count is
        the same number; this just stops it coming from a sheet nobody draws. */
-    const _swBody = this._swordBodyFrames[fmap[0]];
+    const _swBody = this._standInStrip(this._swordBodyFrames, fmap[0], fmap[1]);   /* v2.3.2429 */
     const frames = cfg && ((_swBody && _swBody.length) ? _swBody : this._swordFrames[fmap[0]]);
     if (!cfg || !frames || !frames.length) return;
     const n = frames.length;
@@ -8524,7 +8681,7 @@ export class EffectsRenderer {
     const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgnT, sT); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
     const armorFrames = this._swordArmorFrames[fmap[0]];
     const weaponFrames = this._swordWeaponFrames[fmap[0]];
-    const bodyFrames = this._swordBodyFrames[fmap[0]];
+    const bodyFrames = this._standInStrip(this._swordBodyFrames, fmap[0], fmap[1]);   /* v2.3.2429 */
     if (bodyFrames && bodyFrames[fi]) {
       /* v2.3.954: layered gear path -- bald body + equipped chest/legs armour +
          the recolorable weapon.  The helmet rides in the chest piece, so skip the
@@ -8533,7 +8690,7 @@ export class EffectsRenderer {
       /* v2.3.1088: jogging-legs composite while MOVING -- swap to the leg-erased
          torso strip and draw animated jog legs under it (same _placeJogLegs helper
          + sheets as the bow).  Restricted to facings that have a torso strip. */
-      const _torsoFrames = this._swordTorsoFrames[fmap[0]];
+      const _torsoFrames = this._standInStrip(this._swordTorsoFrames, fmap[0], fmap[1]);   /* v2.3.2429 */
       const _jog = !!S._swordJogLegs && _torsoFrames && _torsoFrames[fi];
       sp.texture = _jog ? _torsoFrames[fi] : bodyFrames[fi];
       const gp = cfg.gearPose || 'swing';
@@ -8594,7 +8751,9 @@ export class EffectsRenderer {
         if (S._aimAngle != null && S.player) { const _d = (S.player.vx || 0) * Math.cos(S._aimAngle) + (S.player.vy || 0) * Math.sin(S._aimAngle); _back = _d < 0; }
         const _jfr = _back ? ((_fc - 1) - _raw) : _raw;
         const _mir = _rd.mirror ? -1 : 1;
-        const _legArr = this._bowJogLegFrames[_jdir];
+        /* v2.3.2431: through the picker, so a mirrored facing takes the
+           pre-flipped twin rather than the plain bake drawn through scale.x -1. */
+        const _legArr = this._standInStrip(this._bowJogLegFrames, _jdir, _rd.mirror);
         const legTex = (_legArr && _legArr.length) ? _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length] : null;
         this._placeJogLegs(this.swordJogLegsSprite, this.swordJogLegsGearSprite, {
           legTex, gearFrame: getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr),
@@ -8831,7 +8990,7 @@ export class EffectsRenderer {
          over to this renderer: the block pose would leave the player
          invisible, which is the exact failure v2.3.1800 wrote this for. */
       S._bowArtReady = !!(this.bowSprite && _rf && this._bowCfg[_rf[0]]
-        && ((this._bowBodyFrames[_rf[0]] || this._bowFrames[_rf[0]] || []).length));
+        && ((this._standInStrip(this._bowBodyFrames, _rf[0], _rf[1]) || this._bowFrames[_rf[0]] || []).length));   /* v2.3.2429 */
     }
     if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
     if (this._selfCorpse) return;   /* v2.3.2281 */
@@ -8840,7 +8999,7 @@ export class EffectsRenderer {
     const cfg = this._bowCfg[fmap[0]];
     const mirror = fmap[1];
     /* v2.3.2353: the drawn strip is the counted strip -- see the sword. */
-    const _bwBody = this._bowBodyFrames[fmap[0]];
+    const _bwBody = this._standInStrip(this._bowBodyFrames, fmap[0], fmap[1]);   /* v2.3.2429 */
     const frames = cfg && ((_bwBody && _bwBody.length) ? _bwBody : this._bowFrames[fmap[0]]);
     if (!cfg || !frames || !frames.length) return;
     const n = frames.length;
@@ -8862,7 +9021,7 @@ export class EffectsRenderer {
     sp.anchor.set(0.5, anchorY);
     const armorFrames = this._bowArmorFrames[fmap[0]];
     const weaponFrames = this._bowWeaponFrames[fmap[0]];
-    const bodyFrames = this._bowBodyFrames[fmap[0]];
+    const bodyFrames = this._standInStrip(this._bowBodyFrames, fmap[0], fmap[1]);   /* v2.3.2429 */
     const bodyH = (S._swordBodyH != null) ? S._swordBodyH : 84;
     const s = bodyH / 188;
     const sgn = mirror ? -s : s;
@@ -8961,7 +9120,7 @@ export class EffectsRenderer {
          jog legs UNDER a leg-erased torso strip so the feet stride instead of
          sliding.  Same foot-plant + scale as the stand-in => aligns by
          construction; the legs sprite anchors at the 256-frame's feet row (221). */
-      const _torsoFrames = this._bowTorsoFrames[fmap[0]];
+      const _torsoFrames = this._standInStrip(this._bowTorsoFrames, fmap[0], fmap[1]);   /* v2.3.2429 */
       const _jogLegs = !!S._bowJogLegs && _torsoFrames && _torsoFrames[fi];
       if (_jogLegs) {
         /* v2.3.1093: the legs face the SAME direction as the torso (the aim
@@ -8993,7 +9152,9 @@ export class EffectsRenderer {
         const _mir = _rd.mirror ? -1 : 1;
         /* Align + size the legs via the shared helper (same code path remote
            players use, so they look identical). */
-        const _legArr = this._bowJogLegFrames[_jdir];
+        /* v2.3.2431: through the picker, so a mirrored facing takes the
+           pre-flipped twin rather than the plain bake drawn through scale.x -1. */
+        const _legArr = this._standInStrip(this._bowJogLegFrames, _jdir, _rd.mirror);
         const legTex = (_legArr && _legArr.length) ? _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length] : null;
         this._placeJogLegs(this.bowJogLegsSprite, this.bowJogLegsGearSprite, {
           legTex, gearFrame: getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr),
