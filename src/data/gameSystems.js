@@ -2748,6 +2748,18 @@ export const WEAPON_TYPES = {
  * on your screen while it flew 675 on theirs.  One constant, so the next
  * retune cannot half-land. */
 export const STAFF_RANGE_PX = 675;
+/* ═══ v2.3.2448: THE ARROW'S OWN CAP, NAMED ═══
+   675 has been a literal in projectiles.js since v2.3.1335 ("bow range -25%,
+   900 -> 675") and the paragraph above already leans on it ("675 IS THE
+   ARROW'S OWN CAP, so 'same as arrow' is literal").  The bow's sight stream
+   is now drawn to exactly this distance (owner: "lengthen it to how far the
+   arrow shoots"), which makes a second copy of the number a promise waiting
+   to break: retune the arrow, and a stale beam would point players at range
+   they no longer have.  One constant, both call sites.
+   PER-PLAYER REACH IS A MULTIPLIER ON TOP, not part of this: bowRangeMult
+   (the bow's `range` channel, +1%/pt to +100%) scales the arrow's cap, so
+   anything drawing the reach must apply it too. */
+export const BOW_RANGE_PX = 675;
 export const STAFF_ORB_SPEED_PX = 5;      /* projectiles.js: a.isStaff ? 5 : 8 */
 export const STAFF_LIFE = Math.round(STAFF_RANGE_PX / STAFF_ORB_SPEED_PX);  /* 135 */
 
@@ -5525,7 +5537,24 @@ export const SWING_COOLDOWN = 600;
  * is 210ms per (player, monster), and 450ms clears it with room to spare, so
  * the worker accepts the faster shots without a mirrored table.  Client-only,
  * safe in either deploy order. */
-export const BOW_SWING_MULT = 0.75;
+/* ═══ v2.3.2449: -10% ATTACK SPEED ═══
+   Owner: "Also slow bow attack speed 10%."  0.75 -> 0.825 is a 450ms period
+   becoming 495ms: ten percent longer between shots, which is what "10% slower
+   attack speed" means on a cadence.  The bow is still the fastest weapon in
+   the game (17.5% under the universal 600ms rather than 25%).
+
+   IT IS A REAL NERF AND THE CARD WILL SAY SO.  This multiplier is read by the
+   DPS the item card promises as well as by the two fire gates, so a bow's
+   listed damage per second drops ~9% with it and the card stays honest --
+   which is the whole reason v2.3.2265 put the cadence here instead of
+   hard-coding it in the loops.  Base bow DPS was tuned to ~80% of melee
+   (v2.3.2262); it now sits near 73%, and if the owner wants that back it is
+   damage, not cadence, that should move.
+
+   STILL NO SERVER CHANGE: combat.js's hit-cadence floor is 210ms per
+   (player, monster) and this is a SLOWER shot, so it clears the floor by more
+   than before.  Client-only, safe in either deploy order. */
+export const BOW_SWING_MULT = 0.825;
 export function weaponSwingMult(slotOrType) {
   return (slotOrType === 'ranged' || slotOrType === 'bow') ? BOW_SWING_MULT : 1;
 }

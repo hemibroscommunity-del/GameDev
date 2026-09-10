@@ -153,6 +153,7 @@ import {
   discoverCollision, getActiveWeapon, getCollisionDeathFX, getElementDeathFX, recalcDerived,
   getEvasionPts, resolveCollision, rollPassiveDodge, spawnWeaponHitFX, staffAoeMult,
   monsterBodyOffsetY, monsterProceduralRadius, trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
+  BOW_RANGE_PX, /* v2.3.2448: the arrow's plant cap, shared with the sight stream */
 } from '@/data/index.js';
 import { baseArchetypeOf, hitShapeOf, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
@@ -568,7 +569,7 @@ export function updateArrows(S, deps) {
                      || a._renderY < S.camera.y + _em || a._renderY > S.camera.y + S._viewH - _em;
               }
               /* v2.3.1335 (owner): bow range -25% (900 -> 675). */
-              if (_edge || a.dist > 675 * (a._rangeMult || 1)) {
+              if (_edge || a.dist > BOW_RANGE_PX * (a._rangeMult || 1)) {   /* v2.3.2448: named, and the sight stream draws to the same number */
                 a.planting = true;
                 a._plantX = a._renderX;
                 a._plantStartY = a._renderY;

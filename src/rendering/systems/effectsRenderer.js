@@ -21,7 +21,7 @@ export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload)
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */ } from '@/data/index.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */ } from '@/data/index.js';
 import { gesturePose01 } from '@/game/gesturePose.js'; /* v2.3.2245 */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
@@ -618,7 +618,10 @@ _fxLoad('/sprites/projectiles/arrow-pine.png?v=2.3.1881').then((tex) => {
  * ═══ WHY 190 px IS THE NUMBER THAT MAKES THE FEATURE WORK ═══
  * "Almost connect each successive arrow" is measurable, not a mood:
  *   – the bow's cadence is SWING_COOLDOWN * BOW_SWING_MULT = 600 * 0.75 =
- *     450 ms (gameSystems.js; attack speed only shortens it, floor 200 ms);
+ *     450 ms (gameSystems.js; attack speed only shortens it, floor 200 ms) --
+ *     v2.3.2449 slowed that to 0.825 / 495 ms, which spreads the arrows in a
+ *     volley ~238 px apart rather than ~216; the arithmetic below is left at
+ *     the numbers this feature was tuned against, since it is off;
  *   – an arrow advances 8 px per 60fps-frame (projectiles.js) = 480 px/s;
  * so consecutive arrows in a held volley sit 480 * 0.45 ≈ 216 px apart.  A
  * 190 px streak trailing each head reaches back to within ~26 px of the arrow
@@ -649,6 +652,21 @@ _fxLoad('/sprites/effects/jet-stream-v1.png?v=2.3.2398').then((tex) => {
    every arrow in a volley would paint the same solid band: the failure mode is
    a smear that reads as clutter rather than as a line. */
 const JET_LEN_PX = 190;
+/* ═══ v2.3.2448: THE JET STREAM IS OFF ═══
+   Owner: "Disable the new jet stream effect" -- in the same breath as asking
+   for the sight stream back at the arrow's full length, which is the trade
+   this header predicted: the trail is exhaust (retrospective, only where an
+   arrow has already been) and the beam is predictive, and the owner has now
+   seen both and picked the one that points down the range before the shot.
+
+   A FLAG, NOT A DELETION, exactly as the beam itself was flagged off in
+   v2.3.2398 -- and this is the version that proves the pattern was worth it:
+   that beam came back today for one boolean.  Everything below stays live and
+   tested (the texture still rides the preload gate, the geometry still has its
+   probe), so flipping this to true restores what v2.3.2398 shipped.  If both
+   are ever on at once the trail runs down the middle of the beam, which is the
+   one combination neither version wanted. */
+const JET_STREAM_ENABLED = false;
 const JET_LINGER_MS = 1100;
 /* Tuned so overlapping streaks build toward a brighter line without saturating
    (two at 0.55 compose to ~0.80, not white) — the fast-cadence case where they
@@ -1499,6 +1517,7 @@ export class EffectsRenderer {
           sprites: _jsSelf._jetSpriteN,
           pooled: _jsSelf.jetSprites.length,
           tex: !!JET_STREAM.tex,
+          enabled: JET_STREAM_ENABLED,   /* v2.3.2448 */
           lenCap: JET_LEN_PX,
           lingerMs: JET_LINGER_MS,
           streaks: _jsSelf.jetStreaks.map(function (st) {
@@ -4178,6 +4197,11 @@ export class EffectsRenderer {
    *  simulation is actually flying along.
    */
   _noteJetStream(a, now, pk, zone) {
+    /* v2.3.2448: off -- see JET_STREAM_ENABLED.  Returning false here (rather
+       than gating the draw) is what hands the arrow back to
+       _updateProjectileTrail at the call site, so bow arrows get their motion
+       smear again instead of flying with nothing behind them. */
+    if (!JET_STREAM_ENABLED) return false;
     if (!JET_STREAM.tex) return false;
     /* MAGIC IS EXCLUDED EXPLICITLY, not by falling off the end of a chain —
        see the header block.  All three flags, because they are three different
@@ -5104,7 +5128,18 @@ export class EffectsRenderer {
          `bowFiring` itself is left computed so __btSightBeam keeps reporting
          it — "the bow IS firing and the beam is STILL dark" is a stronger thing
          for mp-aimpath to assert than a bare invisible. */
-      const BOW_SIGHT_BEAM_ENABLED = false;
+      /* ═══ v2.3.2448: AND BACK ON, AT THE ARROW'S OWN REACH ═══
+         Owner: "changing the bow back to the old stream but lengthen it to how
+         far the arrow shoots.  Disable the new jet stream effect."
+
+         The fourth move of this line, and the flag above is why it costs one
+         boolean instead of a re-implementation -- v2.3.2398 wrote "flip this
+         to true and the beam is exactly what v2.3.2320 shipped", so that is
+         what this is, plus the length the owner asked for.  The jet stream is
+         off in the same version (JET_STREAM_ENABLED, module header there):
+         "instead of" ran in both directions, and running both at once would
+         put a wavy polygon down the middle of the trail either way. */
+      const BOW_SIGHT_BEAM_ENABLED = true;
       const shouldDraw = !isStaff
         && ((BOW_SIGHT_BEAM_ENABLED && bowFiring) || (isMelee && (aimState || meleeSwinging)))
         && S.player
@@ -5156,6 +5191,12 @@ export class EffectsRenderer {
           y: _useGrip ? S.player.y + S._bowGripDY : S.player.y }
         : null;
       let _beamAng = null, _beamSrc = null;
+      /* v2.3.2448: the LENGTH is hoisted beside the angle for the same reason
+         v2.3.2320 hoisted the angle -- "the stream reaches as far as the arrow
+         shoots" is the owner's whole ask here, and a scenario cannot measure a
+         polygon.  Computed for the bow whether or not it is drawn, so a test
+         can compare it against an arrow's real plant distance. */
+      const _beamLen = isRanged ? BOW_RANGE_PX * bowRangeMult(S.rpg) : 95;
       if (shouldDraw && _beamOrigin) {
         if (isBow) {
           const _ra = rangedAimAngle(S, _beamOrigin.x, _beamOrigin.y);
@@ -5178,7 +5219,7 @@ export class EffectsRenderer {
              heading it drew and where it drew it from. */
           return { visible: !!shouldDraw, ranged: !!isRanged, aimState: !!aimState,
             slot: slot || null, firing: !!bowFiring,
-            angle: _beamAng, src: _beamSrc,
+            angle: _beamAng, src: _beamSrc, len: _beamLen,   /* v2.3.2448 */
             origin: _beamOrigin ? { x: _beamOrigin.x, y: _beamOrigin.y } : null };
         };
       }
@@ -5250,12 +5291,28 @@ export class EffectsRenderer {
            today.  It stays anyway: collapsing it to a bare 280 would silently
            hand melee a 280px beam the day anything else falls through, and the
            v2.3.940 contract for that branch is a 95px hit shape. */
-        const lineLen = isRanged ? 280 : 95;
+        /* ═══ v2.3.2448: AS FAR AS THE ARROW ACTUALLY SHOOTS ═══
+           Owner: "lengthen it to how far the arrow shoots."  280 px was a
+           number chosen when the beam was a reach hint; the arrow plants at
+           BOW_RANGE_PX * bowRangeMult (projectiles.js, the same constant),
+           which is 675 px at zero points and up to 1350 px at the `range`
+           channel cap.  So the stream now ends where the arrow ends -- for
+           THIS player, because a fixed 675 would under-draw the reach of
+           anyone who spent points on range and the whole value of the line is
+           that it tells you what you can hit.
+           The `: 95` arm stays unreachable-but-honest, as it was. */
+        const lineLen = _beamLen;   /* hoisted above the probe -- v2.3.2448 */
         const halfW = 2;          // half-width of beam at neutral
         const waveAmp = 1.6;      // edge wave amplitude in px
         const waveLen = 42;       // px per wave cycle along the beam
         const phase = (now / 600) * Math.PI * 2;  // ~600 ms per wave-shift
-        const segments = 24;
+        /* v2.3.2448: SEGMENTS FOLLOW THE LENGTH.  24 of them over 280 px was
+           ~12 px per step, comfortably inside the 42 px wave cycle.  Left
+           fixed over 675+ px each step spans ~28 px -- two thirds of a cycle --
+           and the sine is sampled so coarsely that the edges read as a zigzag
+           of straight chords instead of a flowing stream.  Same ~12 px step at
+           any length, floored at the old count so nothing shortens. */
+        const segments = Math.max(24, Math.round(lineLen / 12));
         const cosA = Math.cos(aimA), sinA = Math.sin(aimA);
         // Perpendicular unit vector (rotate aim by +90°).
         const perpX = -sinA, perpY = cosA;
