@@ -1310,7 +1310,13 @@ export function NameModal(props) {
        shrinking the words to grow the picture would have traded one half of
        this control for the other. */
     style: { width: 34, height: 34, objectFit: 'contain' } }),
-  /*#__PURE__*/React.createElement("span", null, "Randomize Look")),
+  /* v2.3.2456 (owner): "Randomize Look" -> "Randomize Bro".  It rerolls the
+     whole figure -- traits, colours, build -- and "look" reads as the narrower
+     of the two.  A character in this game is a bro, which is the word the rest
+     of this screen already uses (Switch Bro, ENTER BRO TOWN, BRO NAME).
+     One character shorter, so the one-line fit mp-ccbuttons pins only gets
+     easier; the tests find this button by its data-tut handle, not its text. */
+  /*#__PURE__*/React.createElement("span", null, "Randomize Bro")),
   /* ═══ v2.3.2036: RESET ═══
      Owner: "add a reset button so you can make the character back to the
      default" -- and, asked which default, "the look you opened with".
