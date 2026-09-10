@@ -110,11 +110,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const px = cv.getBoundingClientRect();
     return { height: cv.style.height, w: Math.round(px.width), h: Math.round(px.height) };
   });
-  /* Verified in BOTH directions: this reads "54.5%" on the unfixed build
-     (activeCat opens on 'hair' and v2.3.1951 points the camera at the open
-     category) and "92%" once the camera starts pulled back. */
-  rec.ok('the creator opens on the whole character, not a close-up of the hair',
-    !!camWide && camWide.height === '92%', camWide);
+  /* ═══ v2.3.2462: MEASURED AGAINST THE OTHER FRAME, NOT AGAINST A NUMBER ═══
+     This used to require the literal "92%", which was the rest frame's height
+     when the assertion was written.  It is not a constant: the frame is solved
+     against the pedestal geometry and has been retuned since (v2.3.2151 moved
+     the character onto the disc rather than in front of it, and the follow-up
+     step took the rest height to 76%).  So the assertion started FAILING on a
+     build that does exactly what the owner asked for -- it was pinning an
+     implementation detail of a camera it does not own.
+
+     What the owner actually asked for -- "have the character zoomed out
+     normally instead of zooming in by default for his hair" -- is a
+     COMPARISON, and NameModal still has the two frames to compare: the rest
+     one, and the short one paired with the close-up crop that only the Eyes
+     category still uses (characterCreatorEffects' CAT_FOCUS).  So: open the
+     creator, read the frame, switch to Eyes, read it again.  Opening must give
+     the taller of the two.  That goes red on the bug it was written for (a
+     creator that opens on the cropped camera reads the same height in both
+     places) and survives any future retune of either frame. */
+  const camCrop = await (async () => {
+    const eyes = await page.$('button:has-text("Eyes")');
+    if (!eyes) return null;
+    await eyes.click();
+    await page.waitForTimeout(900);
+    const out = await page.evaluate(() => {
+      const cv = document.querySelector('canvas[title^="Live preview"]');
+      return cv ? { height: cv.style.height, h: Math.round(cv.getBoundingClientRect().height) } : null;
+    });
+    /* back to where it opened, so nothing below sees a different tab */
+    const hair = await page.$('button:has-text("Hair")');
+    if (hair) { await hair.click(); await page.waitForTimeout(700); }
+    return out;
+  })();
+  rec.ok('the creator offers the cropped camera to compare against (guard)',
+    !!camCrop && !!camCrop.height, camCrop);
+  rec.ok('the creator opens on the whole character, not a close-up of the hair '
+    + `(${camWide && camWide.height} at rest vs ${camCrop && camCrop.height} on the cropped tab)`,
+    !!camWide && !!camCrop && camWide.h > camCrop.h + 4
+    && camWide.height !== camCrop.height, { camWide, camCrop });
 
   /* v2.3.2078: `[data-cc-tab]` has never existed in src/ — see mp-bodyink. */
   const skinTab = await page.$('button:has-text("Skin")');
