@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  devstall: () => import('./mp-devstall.mjs'), /* v2.3.2440: the panel answers even when the admin surface never does -- and names an off capability with no key at all */
   joingate: () => import('./mp-joingate.mjs'), /* v2.3.2439: the world waits for the server -- a dead room, a not-ready room and a dropped socket all hold the player out */
   hitreal: () => import('./mp-hitreal.mjs'), /* v2.3.2435: every weapon and special against the monsters the WORKER owns, moves and settles */
   hitmatrix: () => import('./mp-hitmatrix.mjs'), /* v2.3.2435: does EVERY weapon and special register its hits, on a PINNED monster (the control for hitreal) and in a duel */
