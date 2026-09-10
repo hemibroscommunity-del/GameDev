@@ -24,6 +24,16 @@
  * Callers must keep the discipline rule: no cross-DO await between a
  * validation and the commit that depends on it. */
 
+/* v2.3.2438: one page of the oplog sweep per tick slot.  PAGE is sized so a
+   page is one small list() plus at most four batched delete()s; the slot
+   cadence (tick.js) sets the sweep's throughput, ~10k keys a minute. */
+export const OP_PRUNE = {
+  PAGE: 500,
+  TTL_MS: 172800000,     // 48h, unchanged
+  INTERVAL_MS: 3600000,  // one full sweep per hour, unchanged
+  SLOT_MS: 3000,         // one page every 3s while the room is occupied
+};
+
 export const inboxMethods = {
   /* ═══ v2.3.1971: HOW MANY OF `k` DOES THIS PLAYER ACTUALLY HOLD ═══
    *
@@ -59,19 +69,76 @@ export const inboxMethods = {
     if (opId) await this.state.storage.put('oplog:' + opId, Date.now());
   },
 
-  // Lazy prune, piggybacked on inbox drains and rate-limited to one
-  // sweep per hour per DO lifetime -- there is no storage TTL, and 48h
-  // is far beyond any legitimate retry window.
-  async _opPruneMaybe() {
-    const now = Date.now();
-    if (this._lastOpPrune && now - this._lastOpPrune < 3600000) return;
-    this._lastOpPrune = now;
+  /* ═══ v2.3.2438: THE PRUNE THAT STOPPED THE ROOM ═══
+   *
+   * This used to be one call: list EVERY `oplog:` stamp ever written, then
+   * `await storage.delete(k)` one key at a time, awaited on the JOIN path
+   * before state_sync, on the first inbox drain after every deploy and
+   * hourly after that.  Every one of those awaits is a storage await, and
+   * a storage await keeps the Durable Object's input gate CLOSED (handoff
+   * rule 9) -- so for as long as the sweep ran, the room answered nothing:
+   * not the join that triggered it, not the next player's join, not the
+   * admin HTTP surface.  On 2026-09-10, after four deploys in a day and
+   * months of stamps (every credit, refund, daily reward, trade, duel,
+   * arena payout), that was long enough that the owner's client gave up
+   * waiting for state_sync and fell into its client-local legacy game --
+   * reported as "zeros for combat primary skills" and "old menus" -- while
+   * the test panel's flags request timed out against the same object,
+   * repeatedly.  A restart mid-sweep loses the progress and the next join
+   * starts the whole list again, so it survived redeploys.
+   *
+   * Now the sweep is a JOB, not a call: one bounded page per tick slot
+   * (tick.js), a cursor carried in memory, stale keys deleted in one
+   * batched call per page.  No single event holds the gate for more than
+   * two small storage operations, and the join path never waits on it at
+   * all -- `_drainInbox` no longer calls it.  A page that comes back short
+   * ends the sweep and arms the hourly anchor; a restart forgets the
+   * cursor and simply starts a fresh sweep, which is now harmless.
+   *
+   * `_opPruneMaybe()` keeps its name and its contract for callers and for
+   * the suite: it runs ONE page.  Everything the old comment said still
+   * holds -- there is no storage TTL, and 48h is far beyond any legitimate
+   * retry window. */
+  async _opPruneMaybe(now) {
+    now = now || Date.now();
+    if (!this._opPrune) {
+      // Idle between sweeps: honour the hourly anchor.
+      if (this._lastOpPrune && now - this._lastOpPrune < OP_PRUNE.INTERVAL_MS) return false;
+      this._opPrune = { after: null, pages: 0, deleted: 0 };
+    }
+    const job = this._opPrune;
     try {
-      const entries = await this.state.storage.list({ prefix: 'oplog:' });
+      const opts = { prefix: 'oplog:', limit: OP_PRUNE.PAGE };
+      if (job.after) opts.startAfter = job.after;
+      const entries = await this.state.storage.list(opts);
+      const stale = [];
+      let last = null;
       for (const [k, ts] of entries) {
-        if (typeof ts !== 'number' || now - ts > 172800000) await this.state.storage.delete(k);
+        last = k;
+        if (typeof ts !== 'number' || now - ts > OP_PRUNE.TTL_MS) stale.push(k);
       }
-    } catch (e) { /* prune is best-effort */ }
+      /* Batched: the runtime takes up to 128 keys per delete(). */
+      for (let i = 0; i < stale.length; i += 128) {
+        await this.state.storage.delete(stale.slice(i, i + 128));
+      }
+      job.pages++;
+      job.deleted += stale.length;
+      if (entries.size < OP_PRUNE.PAGE || !last) {
+        // Sweep complete.
+        this._lastOpPrune = now;
+        this._opPruneLast = { pages: job.pages, deleted: job.deleted, at: now };
+        this._opPrune = null;
+        return false;
+      }
+      job.after = last;
+      return true; // more to do
+    } catch (e) {
+      /* Best-effort, but a page that throws must not spin the slot: end
+         the sweep and let the hourly anchor try again later. */
+      this._lastOpPrune = now;
+      this._opPrune = null;
+      return false;
+    }
   },
 
   /* Credit a player.  entry = { opId, source, kind, payload, note }:
@@ -172,7 +239,8 @@ export const inboxMethods = {
   // Weapons that don't fit the stash stay queued for a later join.
   async _drainInbox(playerId, ws) {
     try {
-      await this._opPruneMaybe();
+      /* v2.3.2438: the oplog prune is NOT here any more -- see
+         _opPruneMaybe.  A join must never wait on housekeeping. */
       const key = 'inbox:' + playerId;
       const box = await this.state.storage.get(key);
       if (!box || !box.length) return;

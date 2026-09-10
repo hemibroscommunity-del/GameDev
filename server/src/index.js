@@ -4202,7 +4202,19 @@ export class GameRoom {
         // Hoisted to join.js _handleJoin (v2.3.1173, byte-identical
         // body; the awaits keep the input gate closed exactly as
         // before -- rule 9).
-        await this._handleJoin(session, ws, msg);
+        /* v2.3.2438: a join that THROWS used to leave the socket open with
+           no state_sync and nothing else ever answering it -- to the client
+           that is a room that never replied, and it sat on the loading
+           screen (or, before v2.3.2437, walked into the offline legacy
+           game).  Close it with a code instead: the client's onclose sees
+           an unknown code and reconnects on its own backoff, and the
+           failure is in the log where it can be found. */
+        try {
+          await this._handleJoin(session, ws, msg);
+        } catch (e) {
+          try { console.error('[join] threw for ' + (msg && msg.id) + ':', e && e.message); } catch {}
+          try { ws.close(4010, 'join failed'); } catch {}
+        }
         // v2.3.1177: the v2.3.1173 hoist dropped this break, so every
         // join fell through into case 'move'.  Benign only because
         // _handleMove early-returns on non-numeric top-level msg.x/y --

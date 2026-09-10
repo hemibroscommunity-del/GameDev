@@ -1267,6 +1267,12 @@ input{font-family:inherit}
    is indistinguishable from the black screen this whole change is fixing. */
 .bt-intro-fallback{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;pointer-events:none}
 .bt-intro-fallback-text{font-size:13px;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.85);font-family:'Source Sans 3',sans-serif}
+/* v2.3.2439: the loading screen's own words while it waits for the SERVER (serverReady.js).  Bottom of the clip, under the art's baked caption, safe-area aware. */
+.bt-intro-status{position:absolute;left:0;right:0;bottom:22px;bottom:max(22px,env(safe-area-inset-bottom));text-align:center;font-size:13px;font-weight:700;letter-spacing:.08em;line-height:1.4;color:rgba(255,255,255,.88);font-family:'Source Sans 3',sans-serif;padding:0 26px;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.85)}
+/* v2.3.2439: the hold over a world already on screen (resume, ?debug=1, a dropped socket).  Same veil as the per-zone load, one layer above it. */
+.bt-connect-veil{z-index:100002}
+.bt-connect-veil-text{font-size:15px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,.9);font-family:'Source Sans 3',sans-serif;text-align:center;max-width:80vw}
+.bt-connect-veil-sub{font-size:12px;line-height:1.4;color:rgba(255,255,255,.55);font-family:'Source Sans 3',sans-serif;text-align:center;max-width:78vw}
 .bt-chat-input::placeholder{color:rgba(255,255,255,.3)}
 .bt-chat-input:focus{border-color:var(--pop)}
 .bt-joystick-zone{z-index:30;display:block;
