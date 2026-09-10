@@ -10,7 +10,7 @@ import {
 import {
   getDoc, saveDoc, appendToDoc, copyDoc, replay,
 } from '@/rendering/traits/artOps.js';   /* v2.3.1967: the canvas is an op list */
-/* v2.3.2442: the ready-made designs, and the gallery that picks one. */
+/* v2.3.2444: the ready-made designs, and the gallery that picks one. */
 import { designOps } from '@/rendering/traits/designCatalog.js';
 import DesignGallery from '@/ui/panels/DesignGallery.jsx';
 import {
@@ -760,7 +760,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const reachable = isTattoo ? ((inkBack ? TAB_SPOTS_BACK : TAB_SPOTS)[mode] || []) : [];
   const spot = (isTattoo && reachable.indexOf(bodySpot) >= 0) ? bodySpot : tabSpot;
   const scfg = TARGETS[spot] || cfg;
-  /* v2.3.2443: what the gallery and its button CALL the thing they write.
+  /* v2.3.2445: what the gallery and its button CALL the thing they write.
      `cfg` is the SCREEN (Tattoos) and `scfg` is the canvas actually being
      inked (back of head, arm tattoo, back of the pants) -- and the Clear
      button two rows down already names the canvas.  Naming the screen instead
@@ -883,7 +883,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   /* A copy changes the side you are NOT looking at, so without a word of
      feedback the button appears to do nothing at all. */
   const [copied, setCopied] = React.useState(false);
-  const [showDesigns, setShowDesigns] = React.useState(false);   /* v2.3.2442 */
+  const [showDesigns, setShowDesigns] = React.useState(false);   /* v2.3.2444 */
   /* ═══ v2.3.1951: A SHAPE YOU CAN STILL RESIZE ═══
      Owner: "For shapes in editor it's helpful to have a drag handle on the
      corner so you can size it how you want (default is to keep shape ratio so
@@ -1065,7 +1065,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const setOp = (i, next) => setDoc((d) => ({ ...d, ops: d.ops.map((o, k) => (k === i ? next : o)) }));
   const dropOp = (i) => setDoc((d) => ({ ...d, ops: d.ops.filter((o, k) => k !== i) }));
 
-  /* ═══ v2.3.2442: PUTTING A READY-MADE DESIGN ON THE GRID ═══
+  /* ═══ v2.3.2444: PUTTING A READY-MADE DESIGN ON THE GRID ═══
      One op per colour on an empty base (designCatalog's designOps explains why
      that and not a flat base), banked as ONE undo entry -- pushHist snapshots
      the whole doc, so the count of ops it replaces never costs the player a
@@ -1080,11 +1080,11 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      carrying either across would point them at someone else's cells. */
   const applyDesign = (d) => {
     const id = artIdRef.current;
-    /* v2.3.2443: tapping the design that is ALREADY on the canvas changes
+    /* v2.3.2445: tapping the design that is ALREADY on the canvas changes
        nothing you can see, so it must not cost a tap of Undo that visibly does
        nothing -- the same standard `unbank` above holds the shape tools to. */
     if (d.art === art) { setShowDesigns(false); return; }
-    /* v2.3.2443: no pieces means no ink, and writing that would REPLACE the
+    /* v2.3.2445: no pieces means no ink, and writing that would REPLACE the
        player's drawing with a blank canvas rather than refuse.  The catalogue
        gate makes it unreachable today; the guard is here because the caller a
        share code or a "last design" restore would add is the one that could
@@ -1094,7 +1094,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     const cur = docRef.current.id === id ? docRef.current : { id, ...getDoc(id) };
     pushHist(cur);
     const nd = { id, base: emptyArt(), ops };
-    /* v2.3.2443: the reset effect clears BOTH of these together, and for the
+    /* v2.3.2445: the reset effect clears BOTH of these together, and for the
        same reason it does: each one holds an INDEX into the op list that is
        being replaced.  A stroke still under a finger when the design lands
        would go on appending cells into one of the design's colour layers, and
@@ -1853,7 +1853,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
               {copied ? 'Copied \u2713' : ('Copy to ' + (side === 'front' ? 'back' : 'front'))}
             </button>
           )}
-          {/* v2.3.2442 (owner: "a catalog of pre done designs to choose from").
+          {/* v2.3.2444 (owner: "a catalog of pre done designs to choose from").
               Here rather than in the button row for the reason the copy button
               gives just above: that row is Undo/Redo/Clear/Done, and picking a
               ready-made design is a once-per-design action, not one you reach
