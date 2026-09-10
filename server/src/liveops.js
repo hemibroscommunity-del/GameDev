@@ -43,6 +43,15 @@
  *   metrics:<yyyymmdd>   {totalGold, playerBlobs, escrowedGold,
  *                         pendingEntries, ts}                        */
 
+/* v2.3.2438: the daily metric walks the player table one page per tick
+   slot (see _metricsMaybe).  A throw waits RETRY_MS before trying again
+   instead of every slot. */
+export const METRICS = {
+  PAGE: 200,
+  SLOT_MS: 3000,
+  RETRY_MS: 3600000,
+};
+
 export const LIVEOPS = {
   XP_MULT_MIN: 1,
   XP_MULT_MAX: 4,
@@ -75,19 +84,54 @@ export const liveopsMethods = {
     return Math.max(lo, Math.min(hi, v));
   },
 
-  // The /economy aggregation, factored out of admin.js so the daily
-  // metrics writer and the endpoint share one implementation.  All
-  // awaits are storage awaits (input gate stays closed, rule 9).
-  async _economySnapshot() {
-    const blobs = await this.state.storage.list({ prefix: 'rpg:' });
-    let totalGold = 0;
+  /* ═══ v2.3.2438: THE SNAPSHOT THAT FROZE THE ROOM EVERY MINUTE ═══
+   *
+   * _economySnapshot listed EVERY `rpg:` blob -- values included, one per
+   * id that ever joined, guests and throwaways too, never pruned -- in one
+   * storage.list().  _metricsMaybe ran it once a day... and on every join,
+   * and every 60s from the tick, and again every 60s after a throw, because
+   * _lastMetricsDay was only set on success.  A room whose player table
+   * had grown past what one list() returns comfortably therefore held its
+   * input gate for the length of that list, every minute, forever, and
+   * every join paid it too.  See inbox.js _opPruneMaybe for the day that
+   * found this; this was the second gate-holder on the same join.
+   *
+   * The daily metric is now an incremental JOB driven from the tick slot:
+   * one bounded page of `rpg:` per slot, totals carried in memory, the
+   * record written when the last page comes back short.  No event holds
+   * the gate for more than one small list().  The join path no longer
+   * touches it (join.js) -- a join starts the tick, and the slot follows
+   * within a minute, which is all the "lazy on join" clause of rule 12
+   * ever needed here.
+   *
+   * _economySnapshot itself is kept for the owner's /economy endpoint,
+   * paged the same way so its memory is bounded; it is an explicit
+   * operator request and may take as long as the table is large. */
+  async _economyPage(after) {
+    const opts = { prefix: 'rpg:', limit: METRICS.PAGE };
+    if (after) opts.startAfter = after;
+    const blobs = await this.state.storage.list(opts);
+    let gold = 0, last = null;
     const players = [];
     for (const [k, b] of blobs) {
+      last = k;
       const coins = (b && b.coins) || 0;
-      totalGold += coins;
+      gold += coins;
       players.push({ id: k.slice(4), coins, level: (b && b.level) || 1 });
     }
-    players.sort((a, b) => b.coins - a.coins);
+    return { gold, players, count: blobs.size, last, done: blobs.size < METRICS.PAGE || !last };
+  },
+
+  async _economySnapshot() {
+    let totalGold = 0, playerBlobs = 0, after = null;
+    let top = [];
+    for (;;) {
+      const pg = await this._economyPage(after);
+      totalGold += pg.gold; playerBlobs += pg.count;
+      top = top.concat(pg.players).sort((a, b) => b.coins - a.coins).slice(0, 10);
+      if (pg.done) break;
+      after = pg.last;
+    }
     const orders = await this.state.storage.list({ prefix: 'mkt_order:' });
     let escrowedGold = 0;
     for (const [, o] of orders) {
@@ -99,9 +143,9 @@ export const liveopsMethods = {
     const h5log = (await this.state.storage.get('harden_h5_log')) || [];
     const jackpot = (await this.state.storage.get('jackpot:draw')) || null;
     return {
-      playerBlobs: blobs.size,
+      playerBlobs,
       totalGold,
-      top10: players.slice(0, 10),
+      top10: top,
       market: { openOrders: orders.size, escrowedGold },
       inbox: { inboxes: inboxes.size, pendingEntries },
       hardenH5Mints: h5log.length,
@@ -110,35 +154,56 @@ export const liveopsMethods = {
     };
   },
 
-  // Once-daily economy snapshot.  Key-existence idempotent (the cheap
-  // wall); this._lastMetricsDay is just the fast path.  Never throws
-  // out of a join or tick.
+  /* Once-daily economy snapshot, one page per call.  Key-existence
+     idempotent (the cheap wall); this._lastMetricsDay is the fast path.
+     Never throws out of a tick.  Returns true while there is more to do. */
   async _metricsMaybe(now) {
     try {
+      now = now || Date.now();
       const ymd = this._cadencePeriodDaily(now);
-      if (this._lastMetricsDay === ymd) return;
-      const key = 'metrics:' + ymd;
-      if (await this.state.storage.get(key)) { this._lastMetricsDay = ymd; return; }
-      const s = await this._economySnapshot();
-      await this.state.storage.put(key, {
-        totalGold: s.totalGold,
-        playerBlobs: s.playerBlobs,
-        escrowedGold: s.market.escrowedGold,
-        pendingEntries: s.inbox.pendingEntries,
-        ts: now || Date.now(),
+      if (this._lastMetricsDay === ymd) return false;
+      let job = this._metricsJob;
+      if (!job || job.ymd !== ymd) {
+        // A throw backs off for a while rather than retrying every slot.
+        if (this._metricsRetryAt && now < this._metricsRetryAt) return false;
+        const key = 'metrics:' + ymd;
+        if (await this.state.storage.get(key)) { this._lastMetricsDay = ymd; this._metricsJob = null; return false; }
+        job = this._metricsJob = { ymd, after: null, totalGold: 0, playerBlobs: 0, pages: 0 };
+      }
+      const pg = await this._economyPage(job.after);
+      job.totalGold += pg.gold; job.playerBlobs += pg.count; job.pages++;
+      if (!pg.done) { job.after = pg.last; return true; }
+      // Last page: the cheap tails, then the record.
+      const orders = await this.state.storage.list({ prefix: 'mkt_order:' });
+      let escrowedGold = 0;
+      for (const [, o] of orders) if (o && o.side === 'buy') escrowedGold += (o.price || 0) * (o.qty || 1);
+      const inboxes = await this.state.storage.list({ prefix: 'inbox:' });
+      let pendingEntries = 0;
+      for (const [, box] of inboxes) pendingEntries += Array.isArray(box) ? box.length : 0;
+      await this.state.storage.put('metrics:' + ymd, {
+        totalGold: job.totalGold,
+        playerBlobs: job.playerBlobs,
+        escrowedGold,
+        pendingEntries,
+        ts: now,
       });
       this._lastMetricsDay = ymd;
+      this._metricsJob = null;
       // Prune the ring.  yyyymmdd keys sort lexicographically =
       // chronologically, so dropping the smallest keys is dropping the
       // oldest days.
       const all = await this.state.storage.list({ prefix: 'metrics:' });
       if (all.size > LIVEOPS.METRICS_KEEP) {
         const keys = [...all.keys()].sort();
-        for (const k of keys.slice(0, all.size - LIVEOPS.METRICS_KEEP)) {
-          await this.state.storage.delete(k);
-        }
+        await this.state.storage.delete(keys.slice(0, all.size - LIVEOPS.METRICS_KEEP));
       }
-    } catch (e) { /* metrics must never block a join/tick */ }
+      return false;
+    } catch (e) {
+      /* metrics must never block a tick -- and must not spin one either. */
+      this._metricsJob = null;
+      this._metricsRetryAt = (now || Date.now()) + METRICS.RETRY_MS;
+      return false;
+    }
   },
 
   async _announce(text, sticky) {
