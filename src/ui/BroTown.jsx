@@ -2212,19 +2212,42 @@ export var BroTown = function BroTown(_ref0) {
        narrow one floated in the middle — the tiles read as different sizes.
        Padding is a share of the tile, not a fixed 2px, so the inset stays
        proportional as --cc-tile changes with the viewport. */
-    return { width: size, height: size, flex: '0 0 auto', padding: '9%', cursor: 'pointer', boxSizing: 'border-box',
-      position: 'relative', borderRadius: 8,
-      background: 'linear-gradient(180deg,#f4f5f8,#cdd2dc)',
-      border: sel ? '2px solid #D8AA58' : '1px solid rgba(238,242,235,.28)',
+    /* ═══ v2.3.2454: THE OWNER'S PAINTED TILE, IN TWO STATES ═══
+       Owner, with both frames: "use these instead of the plain white cards
+       (backgrounds for trait items) ... for default vs selected (checkmark)".
+
+       So the tile IS the art now: cc-tile.png is the resting card (thin dark
+       gold rim, navy bezel, pale panel) and cc-tile-on.png is the picked one
+       (bright thick gold, and the check badge painted into its bottom-right
+       corner).  Everything the CSS used to say about selection goes with it --
+       the 2px brass ring (v2.3.1307) and the separate check badge (v2.3.711 /
+       v2.3.1307) are both drawn INSIDE the selected art, and running either
+       alongside it would double the mark.
+
+       BOTH FILES WERE CUT ON ONE SHARED CROP BOX, so the frame does not shift
+       or resize between states -- only its metal changes.  Their ink is
+       trimmed to the tile's own edges (the sources carried ~11% of
+       transparent margin), which is why this needs no background-size fudge.
+
+       PADDING 9% -> 14%: the old flat card had a 1px border and the art
+       could run to its edge; this frame is real, and 9% put a wide hat's
+       silhouette on top of the gold.  14% seats the thumbnail inside the
+       pale panel, which is the point of a frame. */
+    return { width: size, height: size, flex: '0 0 auto', padding: '14%', cursor: 'pointer', boxSizing: 'border-box',
+      position: 'relative',
+      background: 'url(/ui/welcome/cc/' + (sel ? 'cc-tile-on.png' : 'cc-tile.png') + '?v=' + BUILD_INFO.version + ') center/100% 100% no-repeat',
+      border: 'none',
       display: 'flex', alignItems: 'center', justifyContent: 'center' };
   };
   /* v2.3.711: explicit checkmark badge on the picked tile.
      v2.3.1307: the owner's painted gold-coin check replaces the flat
-     purple disc (round-7 icon set). */
-  var _checkBadge = function () {
-    return /*#__PURE__*/React.createElement("img", { key: 'ck', src: '/ui/welcome/cc/cc-selected.webp?v=' + BUILD_INFO.version, alt: '',
-      style: { position: 'absolute', right: -4, bottom: -4, width: 17, height: 17, pointerEvents: 'none' } });
-  };
+     purple disc (round-7 icon set).
+     ═══ v2.3.2454: RETIRED -- THE CHECK IS PAINTED INTO THE TILE ═══
+     cc-tile-on.png carries its own check in the bottom-right corner, so this
+     overlay would put a second one beside it.  The helper goes rather than
+     being left unused: an unused overlay is the kind of thing a later edit
+     re-adds "because it exists".  cc-selected.webp stays on disk -- this is a
+     decision about what the picked tile wears, not a deletion of the art. */
   /* ═══ v2.3.1932: THE OPTION TILES SHOW THE THREE-QUARTER VIEW ═══
    *
    * Owner: "For the trait picker option previews (options within each trait
@@ -2268,7 +2291,7 @@ export var BroTown = function BroTown(_ref0) {
     return /*#__PURE__*/React.createElement("button", {
       key: 'c_' + opt.id, type: 'button', title: opt.id === 'default' ? 'Original color' : opt.name,
       onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, size || 32)
-    }, inner, sel ? _checkBadge() : null);
+    }, inner);   /* v2.3.2454: the check is painted into cc-tile-on.png */
   };
   /* ═══ v2.3.1953: THE BUILD TILE ═══
      Height and frame have no sprite to show and no colour to swatch — they are
@@ -2330,7 +2353,7 @@ export var BroTown = function BroTown(_ref0) {
          its head floated above the real figure's, reading as a second head.
          Three tiles in a row ARE the comparison. */
       _figure())),
-    sel ? _checkBadge() : null);
+    null);   /* v2.3.2454: the check is painted into cc-tile-on.png */
   };
   var _thumbTile = function (cat, opt, selId, onSet, size) {
     var sz = size || 50;
@@ -2348,7 +2371,7 @@ export var BroTown = function BroTown(_ref0) {
       : /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',
           onError: function (e) { _thumbFallback(e, cat, opt.id); },
           style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
-    sel ? _checkBadge() : null);
+    null);   /* v2.3.2454: the check is painted into cc-tile-on.png */
   };
   /* v2.3.797: the collapsed-pill kit (_swOf/_miniThumb/_miniSwatch summary
      previews, _chevron, _pillBox/_pillLabel chrome and the _apPill
