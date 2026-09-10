@@ -345,7 +345,7 @@ import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl } from '
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
-import { waitForServerReady, installWorldHold } from '@/networking/serverReady.js'; /* v2.3.2437: the world waits for the server */
+import { waitForServerReady, installWorldHold } from '@/networking/serverReady.js'; /* v2.3.2439: the world waits for the server */
 import { MONSTER_VARIANTS, isIntangible } from '@/data/monsterVariants.js'; /* isIntangible: v2.3.2244 */
 import { shardByKey } from '@/data/shards.js';
 
@@ -745,7 +745,7 @@ export var BroTown = function BroTown(_ref0) {
      fully baked.  The intro overlay holds until this settles so the player
      never sees the armour->unarmoured flicker on first turn. */
   var introWaitRef = useRef(null);
-  var introServerRef = useRef(null);   /* v2.3.2437: the server gate the loading screen awaits beside the assets */
+  var introServerRef = useRef(null);   /* v2.3.2439: the server gate the loading screen awaits beside the assets */
   /* v2.3.831: the splash theme Audio lives in a ref (not a per-effect
      local) so it survives the splash->loading-screen transition and the
      IntroVideo can crossfade it into the town ambience. */
@@ -4608,7 +4608,7 @@ export var BroTown = function BroTown(_ref0) {
            behind the loading overlay (zoneTransitions.js), freeze the
            player at the hub exit so the proximity trigger stays armed and
            the entry runs the instant the load resolves. */
-        if (S._zoneLoading || S._netHold) finalSpd = 0;   /* v2.3.2437: _netHold — veiled, waiting for the server (serverReady.js) */
+        if (S._zoneLoading || S._netHold) finalSpd = 0;   /* v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js) */
 
         /* Auto-attack movement: 50% speed across the board while
            S.autoAttack is on. Backpedal flag still tracks "moving
@@ -9564,7 +9564,7 @@ export var BroTown = function BroTown(_ref0) {
     /* Kick off the full avatar-asset preload now (equip is finalized at this
        point) so the intro overlay can hold until it's flicker-free. */
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e) { introWaitRef.current = null; }
-    /* ═══ v2.3.2437: AND THE SERVER ═══
+    /* ═══ v2.3.2439: AND THE SERVER ═══
        Owner: "don't let the player in at all unless it's ready to go".  The
        loading screen now awaits this beside the assets, and installWorldHold
        veils the world on every road that has no loading screen (?debug=1
@@ -9635,7 +9635,7 @@ export var BroTown = function BroTown(_ref0) {
     BT_AUDIO.init();
     BT_AUDIO.join();
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e2) { introWaitRef.current = null; }
-    installWorldHold();   /* v2.3.2437: no loading screen on this road, so the veil is the gate */
+    installWorldHold();   /* v2.3.2439: no loading screen on this road, so the veil is the gate */
     kickSfxAtGate(introWaitRef.current);
     holdZoneMusicAtGate(introWaitRef.current);   /* v2.3.2334 */
     setShowWelcome(false); /* straight in -- no intro video on a resume */
@@ -9808,7 +9808,7 @@ export var BroTown = function BroTown(_ref0) {
   }
   return /*#__PURE__*/React.createElement(React.Fragment, null, /* v2.3.1925: the mystery-reveal ceremony.  Mounted at the top of the in-world fragment and ALWAYS mounted — it renders null until a hidden grade arrives on the loot credit, and mounting it conditionally would mean the queue it subscribes to could fill before anyone was listening. */ /*#__PURE__*/React.createElement(RevealOverlay, null), showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,
-    waitForServer: introServerRef.current,   /* v2.3.2437 */
+    waitForServer: introServerRef.current,   /* v2.3.2439 */
     themeAudio: themeAudioRef,
     /* v2.3.1219: when the loading intro fades, greet a brand-new player with
        the Mayor's welcome (once per browser).  Returning players — whose

@@ -87,7 +87,7 @@
  *                      world without those caps, and Pages deploys before
  *                      the worker does: a cap required in the same PR that
  *                      introduces it locks every player out until the
- *                      worker catches up (v2.3.2437).
+ *                      worker catches up (v2.3.2439).
  *
  * Output is terse and actionable on purpose — the reader is usually an
  * AI session deciding whether it may push.
@@ -909,7 +909,7 @@ if (changedServer.length) {
 }
 
 /* ---- 13. ready-caps --------------------------------------------------
-   v2.3.2437.  The client now holds the loading screen until state_sync
+   v2.3.2439.  The client now holds the loading screen until state_sync
    advertises every name in SERVER_READY_CAPS (serverReady.js).  That is the
    owner's online-only rule, and it has one sharp edge: the client and the
    worker deploy from the same merge on separate pipelines, Pages first.  A

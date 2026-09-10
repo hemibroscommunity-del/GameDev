@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { getServerReadyState, serverHoldText } from '@/networking/serverReady.js'; /* v2.3.2437 */
+import { getServerReadyState, serverHoldText } from '@/networking/serverReady.js'; /* v2.3.2439 */
 
 /* Bro Town intro overlay — shown once after character creation.
    Plays the intro clip, then fades to reveal the game world.
@@ -23,7 +23,7 @@ const FADE_MS = 1000;    // opacity fade duration
 export const IntroVideo = ({ onComplete, waitFor, waitForServer, themeAudio }) => {
   const [fading, setFading] = useState(false);
   const [waiting, setWaiting] = useState(false);   // assets still loading past MIN_MS
-  /* ═══ v2.3.2437: THE SECOND GATE, AND IT HAS NO CAP ═══
+  /* ═══ v2.3.2439: THE SECOND GATE, AND IT HAS NO CAP ═══
      `waitFor` is the asset gate (v2.3.591).  `waitForServer` is the server
      gate (serverReady.js): the first state_sync that advertises the caps the
      game is built on.  The asset gate keeps its 20s safety cap -- a stuck
@@ -121,7 +121,7 @@ export const IntroVideo = ({ onComplete, waitFor, waitForServer, themeAudio }) =
     /* Safety net: never trap the player on the overlay forever if a preload
        somehow never settles (network stall). */
     const hardCap = setTimeout(() => { readyRef.current = true; maybeFinish(); }, 20000);
-    /* v2.3.2437: the server gate.  No cap -- see serverRef above.  A missing
+    /* v2.3.2439: the server gate.  No cap -- see serverRef above.  A missing
        prop resolves at once so any other caller keeps the old behaviour. */
     Promise.resolve(waitForServer).catch(() => {}).then(() => {
       if (cancelled) return;
@@ -150,7 +150,7 @@ export const IntroVideo = ({ onComplete, waitFor, waitForServer, themeAudio }) =
       cancelled = true;
       clearTimeout(minTimer);
       clearTimeout(hardCap);
-      clearInterval(statusTimer);   /* v2.3.2437 */
+      clearInterval(statusTimer);   /* v2.3.2439 */
     };
   }, []);
 
@@ -230,7 +230,7 @@ export const IntroVideo = ({ onComplete, waitFor, waitForServer, themeAudio }) =
           maybeFinishRef.current && maybeFinishRef.current();
         }}
       />
-      {/* v2.3.2437: the server gate's own words.  Empty while the clip's baked
+      {/* v2.3.2439: the server gate's own words.  Empty while the clip's baked
           caption is all that is needed; appears once the wait is the server's. */}
       {holdMsg && <div className="bt-intro-status" data-intro-status="1">{holdMsg}</div>}
     </div>

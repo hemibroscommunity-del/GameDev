@@ -23,7 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  joingate: () => import('./mp-joingate.mjs'), /* v2.3.2437: the world waits for the server -- a dead room, a not-ready room and a dropped socket all hold the player out */
+  joingate: () => import('./mp-joingate.mjs'), /* v2.3.2439: the world waits for the server -- a dead room, a not-ready room and a dropped socket all hold the player out */
   hitreal: () => import('./mp-hitreal.mjs'), /* v2.3.2435: every weapon and special against the monsters the WORKER owns, moves and settles */
   hitmatrix: () => import('./mp-hitmatrix.mjs'), /* v2.3.2435: does EVERY weapon and special register its hits, on a PINNED monster (the control for hitreal) and in a duel */
   hitsweep: () => import('./mp-hitsweep.mjs'), /* v2.3.2426: how accurate IS ranged hit detection -- measured hit rate vs the real per-frame step */

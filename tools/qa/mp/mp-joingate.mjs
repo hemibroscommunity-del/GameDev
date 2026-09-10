@@ -1,4 +1,4 @@
-/* THE WORLD WAITS FOR THE SERVER (v2.3.2437).
+/* THE WORLD WAITS FOR THE SERVER (v2.3.2439).
  *
  * Owner, 2026-09-10, twice: "THIS IS AN ONLINE GAME ONLY. Just don't let the
  * player in if there's no online connection" / "don't let the player in at

@@ -3087,7 +3087,7 @@ fixture answers "does the hit test work", a live zone answers "did this attempt
 land", and every mechanic the worker owns sits between the two. Each of these
 failures looked exactly like the bug being hunted.
 
-## 75. A gate that waits for the assets is not a gate that waits for the server (v2.3.2437)
+## 75. A gate that waits for the assets is not a gate that waits for the server (v2.3.2439)
 
 **Tempting:** the loading screen already holds until everything is ready —
 `IntroVideo` awaits `preloadPlayerAssets()` and only then lifts. CLAUDE.md

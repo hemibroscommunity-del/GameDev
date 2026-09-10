@@ -48,7 +48,7 @@ import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 /* v2.3.1982: the "the world is full" screen — plain DOM, see its header
    for why it is not a React boot phase. */
 import { showRoomFull, hideRoomFull, roomFullOpen } from '@/ui/RoomFullScreen.js';
-import { markServerReady, resetServerReady, serverReadyReason } from '@/networking/serverReady.js'; /* v2.3.2437: the world waits for the server */
+import { markServerReady, resetServerReady, serverReadyReason } from '@/networking/serverReady.js'; /* v2.3.2439: the world waits for the server */
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 
@@ -258,7 +258,7 @@ export function setupWebSocket(ctx) {
       _rfAttempts = 0;
       if (roomFullOpen()) hideRoomFull();
     }
-    /* ═══ v2.3.2437: A SERVER THAT IS NOT READY IS RETRIED, NOT OBEYED ═══
+    /* ═══ v2.3.2439: A SERVER THAT IS NOT READY IS RETRIED, NOT OBEYED ═══
        state_sync arrived but without the caps the game is built on (an old
        worker, or a live flag switching one off).  The old behaviour was to
        take that as instructions and run the legacy client-local paths --
@@ -1030,7 +1030,7 @@ export function setupWebSocket(ctx) {
                  the legacy client-side credit paths stay in place but
                  only run when the server hasn't claimed the job. */
               S._serverCaps = msg.caps || {};
-              /* v2.3.2437: is this a server the game can be shown on?  The
+              /* v2.3.2439: is this a server the game can be shown on?  The
                  loading screen and the in-world veil both key off this
                  (serverReady.js).  Not ready -> the world stays covered and
                  _rejoinForReadiness asks again in a few seconds.  The rest
@@ -2930,7 +2930,7 @@ export function setupWebSocket(ctx) {
           showResumeBanner('This account connected from another window.', 'Play here instead');
           return;
         }
-        /* v2.3.2437: an ordinary drop -- the one road above that comes back
+        /* v2.3.2439: an ordinary drop -- the one road above that comes back
            on its own.  The world is veiled after a short grace (a cellular
            blip reconnects inside it and never shows a thing) and stays
            veiled until the next state_sync says the server is back.  Every
