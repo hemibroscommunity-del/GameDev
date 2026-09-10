@@ -73,6 +73,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
         overflowX: +(b.scrollWidth - b.clientWidth).toFixed(1),
         rows: rows.length,
         rowW: rows.length ? +rows[0].getBoundingClientRect().width.toFixed(1) : 0,
+        /* v2.3.2432: how many cells share the first band's y. */
+        bandN: rows.length
+          ? rows.filter((r) => Math.abs(r.getBoundingClientRect().top
+              - rows[0].getBoundingClientRect().top) < 2).length
+          : 0,
         firstRow: rows.length ? rows[0].getAttribute('aria-label') : null,
         clipped,
       };
@@ -82,9 +87,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !m.err && m.rows === 9, m);
     if (m.err || m.rows !== 9) { await P.ctx.close().catch(() => {}); continue; }
 
-    rec.ok(`${tag}: the rows run ${S.cols === 2 ? 'in two columns' : 'in ONE column (below the 375px floor)'} `
-         + `(flex-direction ${m.dir}, rows ${m.rowW}px of ${m.w})`,
-      S.cols === 2 ? m.dir === 'row' : m.dir === 'column', m);
+    /* ═══ v2.3.2432: THE TWO-COLUMN CLAIM IS RETIRED ═══
+       v2.3.2382 made this a ROW of two columns on the owner's ask; v2.3.2432
+       makes it a COLUMN of three bands (4 across, then 3, then 2) on the
+       owner's mockup.  So the flex-direction this file was built to pin has
+       flipped BY INSTRUCTION, and asserting `row` would now be asserting the
+       previous design against the current one.
+       What the file is really for survives untouched and is the rest of this
+       loop: at three widths, in the layout that is actually shipping, nothing
+       clips and nothing scrolls sideways.  That is the property that caught
+       real bugs (a 2px crop of "150%" at 375 during this very change), and it
+       is width-dependent, which is why this file exists separately from
+       mp-prog3 at all. */
+    rec.ok(`${tag}: the stats are laid out in bands, top to bottom `
+         + `(flex-direction ${m.dir}, first band ${m.rowW}px of ${m.w})`,
+      m.dir === 'column', m);
+    /* The BAND SHAPE, per width -- 4 across above 375, and the narrow fallback
+       below it.  Asserted from the measured x/width of the cells rather than
+       from a constant, so a change to the gap or the padding is visible here. */
+    rec.ok(`${tag}: the attack band runs ${S.cols === 2 ? 'FOUR' : 'fewer'} across`
+         + ` (${m.bandN} cells on the first row)`,
+      S.cols === 2 ? m.bandN === 4 : m.bandN >= 1, m);
 
     /* The whole reason the layout is allowed to change: nothing may clip. */
     rec.ok(`${tag}: ...and no label, count or caption is cut off`,

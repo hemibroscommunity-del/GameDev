@@ -217,7 +217,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       lastAtMax = Math.round(Math.min(b.bottom, floor()) - Math.max(b.top, ceiling()));   /* px of it still showing */
     }
     el.scrollTop = 0;
-    return { cells: all.length, firstIn, lastIn, lastAtMax, minRow: Math.min(...heights), minInfo: Math.min(...targets.filter((t) => t != null)),
+    return { cells: all.length, firstIn, lastIn, lastAtMax, minRow: Math.min(...heights),
+      minInfo: Math.min(...targets.filter((t) => t != null)),
+      /* v2.3.2432: how many cells actually HAVE one.  minInfo is Math.min of a
+         filtered list, so it answers Infinity -- and passes any floor -- for a
+         screen with no info buttons at all.  This is the count that makes the
+         floor mean something. */
+      infoCount: targets.filter((t) => t != null).length,
       panel: Math.round(box().height), over: Math.max(0, el.scrollHeight - el.clientHeight) };
   });
   rec.ok('every one of the open lane\'s controls is rendered (present at once)',
@@ -235,8 +241,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !laneFit.err && laneFit.lastAtMax >= laneFit.minRow - 1, laneFit);
   rec.ok('...every row clears the 44pt line, which is what "twice as large" bought',
     !laneFit.err && laneFit.minRow >= 44, laneFit);
-  rec.ok('...and every ℹ️ is a real thumb target, not a glyph',
-    !laneFit.err && laneFit.minInfo >= 30, laneFit);
+  /* ═══ v2.3.2432: 30 ON A ROW, 22 IN A COMPACT CELL ═══
+     v2.3.2222 set 30 against a FULL-WIDTH row, where a 30px secondary control
+     sat beside a 26px icon, a label and a 38px [+] with room to spare.  The
+     owner's v2.3.2432 mockup puts four cells across 378px, and a 91.5px cell
+     cannot hold a 30px info button, an icon, a value AND a [+] without the
+     number losing.  So the floor is 22 where the cells are compact.
+
+     THIS IS A WEAKENING and is flagged as one in the PR rather than hidden
+     here.  Two things stop it being a quiet regression:
+       - 22 is still a real target, not the 13px glyph a first cut shipped
+         (which this assertion caught, doing exactly its job);
+       - the PRIMARY action did not shrink at all.  Spending a point is the
+         whole 91.5x48 cell, which is a bigger target than the [+] on the old
+         row ever was, and the row's own 48px height is unchanged.
+     Note the vacuity trap this assertion has: `Math.min()` of an empty list is
+     Infinity, so a screen with NO info buttons at all passes it.  The count
+     below is what stops that. */
+  rec.ok('...and every ℹ️ is a real thumb target, not a glyph (30 on a row, 22 in a compact cell)',
+    !laneFit.err && laneFit.minInfo >= 22, laneFit);
+  rec.ok('...and there is one on EVERY stat, so the floor above is not measuring an empty set',
+    !laneFit.err && laneFit.infoCount === laneFit.cells,
+    { infoCount: laneFit.infoCount, cells: laneFit.cells });
 
   /* ═══ v2.3.2326: AND FOR EVERY LANE, NOT JUST THE ONE WE LANDED ON ═══
      The laneFit block above measures whichever lane prog3ActiveCat happens to
@@ -508,12 +534,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const spans = [...lane.querySelectorAll('span')];
     const arrow = spans.find((x) => /[\u25B2\u25BC]/.test(x.textContent || ''));
     const lv = spans.find((x) => /^LV\s/.test((x.textContent || '').trim()));
+    /* v2.3.2432: the PORTRAIT tab's second line is the lane's remaining
+       points now, not its level. */
+    const pts = spans.find((x) => /^\d+\s+PTS$/.test((x.textContent || '').trim()));
     const px = (el) => (el ? parseFloat(getComputedStyle(el).fontSize) : null);
-    return { arrow: px(arrow), lv: px(lv),
+    return { arrow: px(arrow), lv: px(lv), pts: px(pts),
       arrowColor: arrow ? getComputedStyle(arrow).color : null };
   });
-  rec.ok('the expand/collapse arrow is big enough to read', !!legibility && legibility.arrow >= 13, legibility);
-  rec.ok('...and the level label with it', !!legibility && legibility.lv >= 12, legibility);
+  /* ═══ v2.3.2432: THE SAME FLOOR, ON WHICHEVER LINE IS THERE ═══
+     v2.3.2315 set these because the owner asked twice: "the expand and unexpand
+     up/down arrows and level label needs to increase in size for legibility."
+     The owner's v2.3.2432 mockup then replaced the portrait tab's second line
+     with "3 PTS" and dropped the caret, so on that branch there is no arrow and
+     no "LV n" left to measure -- and an assertion measuring a deleted element
+     reports `null >= 13`, which is a FAILURE that says nothing about
+     legibility.
+     So the PROPERTY survives and the element it is read off does not: whatever
+     the branch renders as the tab's second line must clear the same floor.
+     Landscape still stacks accordions and still has both, so both are still
+     checked there.  What is NOT weakened: the floor is still 12/13 and still
+     read off the RENDERED style. */
+  const secondLine = legibility && (legibility.pts != null ? legibility.pts : legibility.lv);
+  rec.ok('the weapon tab\'s second line is big enough to read (LV n in landscape, N PTS in portrait)',
+    !!legibility && secondLine != null && secondLine >= 12, legibility);
+  rec.ok('...and where a collapse caret exists, it is legible too',
+    !!legibility && (legibility.arrow == null || legibility.arrow >= 13), legibility);
 
   /* The three lanes are the navigation, so they must never scroll away. */
   /* ═══ v2.3.2326: THE PROPERTY, NOT THE DECLARATION ═══
@@ -621,22 +666,52 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const box = pills.map((p) => {
       const r = p.getBoundingClientRect();
       return { w: Math.round(r.width), h: Math.round(r.height),
+        /* v2.3.2432: `y` is what makes "one size per band" a real check.
+           Without it every cell groups under `undefined`, the whole grid reads
+           as one band of mixed widths, and the assertion fails for a layout
+           that is correct. */
+        y: Math.round(r.top),
         stat: (p.getAttribute('aria-label') || '').split(',')[0] };
     });
+    /* v2.3.2432: `div, span` here too, and for the same reason -- the cell's
+       title and value are spans, and they are exactly the text most at risk of
+       cropping in a quarter-width cell. */
     const clipped = pills
-      .flatMap((p) => [...p.querySelectorAll('div')])
+      .flatMap((p) => [...p.querySelectorAll('div, span')])
       .filter((t) => t.children.length === 0 && t.scrollWidth > t.clientWidth + 1)
       .map((t) => t.textContent.trim());
+    /* v2.3.2432: `div, span`, not `div`.  The compact cell's title is a
+       <span>, so a div-only walk returned NOTHING for it -- `minFont` came back
+       null and the check failed for the right answer's sake but the wrong
+       reason, and would have passed VACUOUSLY the moment a null guard was
+       loosened.  A floor that cannot see the smallest text on the screen is
+       not a floor. */
     const fonts = pills
-      .flatMap((p) => [...p.querySelectorAll('div')])
-      .filter((t) => t.children.length === 0)
+      .flatMap((p) => [...p.querySelectorAll('div, span')])
+      .filter((t) => t.children.length === 0 && (t.textContent || '').trim())
       .map((t) => parseFloat(getComputedStyle(t).fontSize));
     return { box, clipped, minFont: fonts.length ? Math.min(...fonts) : null };
   });
-  const widths = [...new Set((pillGeom.box || []).map((b) => b.w))];
   const heights = [...new Set((pillGeom.box || []).map((b) => b.h))];
-  rec.ok('every allocation pill is exactly one size',
-    pillGeom.box.length === STAT_ROWS && widths.length === 1 && heights.length === 1, pillGeom.box);
+  /* ═══ v2.3.2432: ONE SIZE PER BAND, NOT ONE SIZE OVERALL ═══
+     v2.3.1710 wrote this from the owner's own words -- "Character build stat
+     allocation pills should all be the same size" -- against a layout that was
+     one column of identical rows.  The owner's v2.3.2432 mockup is deliberately
+     three bands of different widths (four across, then three, then two), so the
+     literal reading of that sentence and the drawing the same owner supplied
+     now contradict each other.  THIS IS AN OWNER-VISIBLE REVERSAL and is called
+     out as one in the PR; it is not a test quietly relaxed to go green.
+     What the assertion protects is unchanged and is what actually went wrong in
+     v2.3.1710 -- a ragged grid where cells that sit side by side are different
+     sizes.  So: every cell in a ROW is identical, and every cell is the same
+     HEIGHT as every other, which is the part that keeps the grid a grid. */
+  const byBand = {};
+  for (const b of (pillGeom.box || [])) (byBand[b.y] = byBand[b.y] || []).push(b);
+  const bands = Object.values(byBand);
+  const bandsUniform = bands.every((row) => [...new Set(row.map((b) => b.w))].length === 1);
+  rec.ok('every allocation pill in a given row is exactly one size',
+    pillGeom.box.length === STAT_ROWS && bandsUniform && heights.length === 1,
+    { bands: bands.map((r) => ({ y: r[0].y, n: r.length, w: r[0].w })), heights });
   rec.ok('...with no label cropped to buy that uniformity',
     (pillGeom.clipped || []).length === 0, pillGeom.clipped);
   /* The 10px floor is this project's own (v2.3.1239), and v2.3.1703 exists
@@ -791,13 +866,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
             why: !badge ? 'no badge (empty pool?)' : `no span reading "${name}"` };
         }
         const b = badge.getBoundingClientRect(), l = label.getBoundingClientRect();
+        /* ═══ v2.3.2432: TWO-DIMENSIONAL, NOT HORIZONTAL-ONLY ═══
+           This measured x-overlap alone, which was right while the count was a
+           pill in the tab's top-right CORNER: same row, so an x-overlap was
+           the whole story.  The count is now a centred line UNDER the centred
+           weapon name, and two centred boxes in one column intersect on x by
+           definition -- so the old expression reports ~26-32px of "overlap" for
+           a layout in which nothing overlaps anything.  The bug it was written
+           to catch (a number sitting ON the word) is a box intersection, so it
+           is measured as one. */
+        const ox = Math.max(0, Math.min(b.right, l.right) - Math.max(b.left, l.left));
+        const oy = Math.max(0, Math.min(b.bottom, l.bottom) - Math.max(b.top, l.top));
         return { k: c.getAttribute('data-prog3-lane'), text: label.textContent.trim(),
-          overlap: Math.round(Math.max(0, Math.min(b.right, l.right) - Math.max(b.left, l.left))) };
+          overlap: Math.round(ox > 0 && oy > 0 ? ox * oy : 0) };
       }));
     console.log(`    ${w}x${h} badge vs label: ${JSON.stringify(badgeFit)}`);
     rec.ok(`${w}x${h}: all three columns were actually measurable (guard)`,
       badgeFit.every((b) => !b.skip), badgeFit);
-    rec.ok(`${w}x${h}: the points badge does not sit on top of the weapon's name`,
+    rec.ok(`${w}x${h}: the points readout does not sit on top of the weapon's name`,
       badgeFit.every((b) => b.skip || b.overlap === 0), badgeFit);
 
     /* And the reason the whole change exists: the first spendable stat is
