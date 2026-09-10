@@ -212,6 +212,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the opposite direction").  So the flipped directions get a second bake,
      and only those: a twin for a direction that is never mirrored is memory
      nobody can see, on the platform this game is built for. */
+  /* v2.3.2431: the JOG-LEG strips are in this sweep too.  They carry the
+     trouser print since v2.3.2429 and were loaded without the `mirrored`
+     argument, so they never got a twin while their two draw sites drew them
+     through scale.x -1 -- the one drawing on the figure that still reversed
+     itself when you jogged west mid-swing.  `urls` is filtered to bow/sword
+     above, so they need naming explicitly. */
+  const jog = Object.keys(inked).filter((u) => /jog-.*-legs/.test(u));
+  const jogMirrored = jog.filter((u) => inked[u].mirrored);
+  rec.ok(`the jog-leg strips know which of them are drawn flipped `
+    + `(${jogMirrored.length} of ${jog.length}: east, northeast, southwest)`,
+    jog.length === 5 && jogMirrored.length === 3,
+    { jog: jog.map((u) => u.split('/').pop()), mirrored: jogMirrored.length });
+  rec.ok('...and each of those has a twin for a player whose print would flip',
+    jogMirrored.length > 0 && jogMirrored.every((u) => inked[u].twin),
+    { without: jogMirrored.filter((u) => !inked[u].twin).map((u) => u.split('/').pop()) });
+
   const mirrored = urls.filter((u) => inked[u].mirrored);
   rec.ok(`some stand-in sheets are drawn flipped and are known to be (guard: ${mirrored.length})`,
     mirrored.length > 0, { mirrored: mirrored.length });

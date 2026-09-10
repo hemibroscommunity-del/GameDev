@@ -2367,7 +2367,20 @@ export class EffectsRenderer {
          3584x128-class on disk and the 256 declaration was upscaling every one
          of them to a 7 MB canvas.  See _bakeBodyStrip; the placement side reads
          the same size back off the texture in _placeJogLegs. */
-      _loadRecoloredBody(this._bowJogLegFrames, dir, '/sprites/player/jog-' + dir + '-legs.png', { square: true }, JOG_LEGS_VERSION);
+      /* v2.3.2431: these strips carry the trouser print now (v2.3.2429 handed
+         the drawings to every stand-in bake), so they need the same mirrored
+         twin the body and torso strips get -- and the same reason: three of the
+         eight screen facings are drawn by flipping a source-dir sheet, so a
+         print baked straight in reads BACKWARDS there.  The mirrored source
+         dirs come from resolveDirection (playerSprites): west -> east, southeast
+         -> southwest, northwest -> northeast; south and north are never
+         flipped, so they get no twin.
+         Without this the pants print was the one drawing on the figure that
+         still reversed itself when you jogged west mid-swing, while the very
+         same print on the walking body read correctly -- the v2.3.1938 "your
+         smiley face rotated the opposite direction" report, on the legs only. */
+      const _jogMirror = dir === 'east' || dir === 'northeast' || dir === 'southwest';
+      _loadRecoloredBody(this._bowJogLegFrames, dir, '/sprites/player/jog-' + dir + '-legs.png', { square: true }, JOG_LEGS_VERSION, _jogMirror);
     }
 
     /* v2.3.867: the player's traits (hat / beard / hair) composited onto
@@ -8738,7 +8751,9 @@ export class EffectsRenderer {
         if (S._aimAngle != null && S.player) { const _d = (S.player.vx || 0) * Math.cos(S._aimAngle) + (S.player.vy || 0) * Math.sin(S._aimAngle); _back = _d < 0; }
         const _jfr = _back ? ((_fc - 1) - _raw) : _raw;
         const _mir = _rd.mirror ? -1 : 1;
-        const _legArr = this._bowJogLegFrames[_jdir];
+        /* v2.3.2431: through the picker, so a mirrored facing takes the
+           pre-flipped twin rather than the plain bake drawn through scale.x -1. */
+        const _legArr = this._standInStrip(this._bowJogLegFrames, _jdir, _rd.mirror);
         const legTex = (_legArr && _legArr.length) ? _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length] : null;
         this._placeJogLegs(this.swordJogLegsSprite, this.swordJogLegsGearSprite, {
           legTex, gearFrame: getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr),
@@ -9137,7 +9152,9 @@ export class EffectsRenderer {
         const _mir = _rd.mirror ? -1 : 1;
         /* Align + size the legs via the shared helper (same code path remote
            players use, so they look identical). */
-        const _legArr = this._bowJogLegFrames[_jdir];
+        /* v2.3.2431: through the picker, so a mirrored facing takes the
+           pre-flipped twin rather than the plain bake drawn through scale.x -1. */
+        const _legArr = this._standInStrip(this._bowJogLegFrames, _jdir, _rd.mirror);
         const legTex = (_legArr && _legArr.length) ? _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length] : null;
         this._placeJogLegs(this.bowJogLegsSprite, this.bowJogLegsGearSprite, {
           legTex, gearFrame: getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr),
