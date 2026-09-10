@@ -473,16 +473,28 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
     /* ── how the frame meets a box that is not square ──
        Every window in FOCUS was measured as f.h TALL against .bt-paint-pv,
        which is aspect-ratio:1/1 -- so the window it describes is f.h x f.h.
-       The rule below pins the HEIGHT and derives the width from the box, which
-       is right for a square box and for this panel, and wrong for the creator's
-       ink card: that card is 170x214 at 390x844, so deriving the width gives
-       0.79 x the designed window and the arms -- which the tattoo canvas
-       covers -- are cropped off both sides.  It is wrong the other way at
-       390x664, where the card is 170x99 and the window opens to 1.7x.
-       `fit: 'contain'` keeps the whole designed square in shot whatever the
+       This pins the HEIGHT and derives the width from the box.  That is right
+       for a square box and for any box WIDER than it is tall (the window simply
+       opens sideways and shows more ground either side of the figure).
+       It is wrong for a box TALLER than it is wide: the window narrows, and on
+       the tattoo frame that crops the arms -- which are part of that canvas.
+       `fit:'contain'` keeps the whole designed square in shot whatever the
        box's aspect, by growing the window on the box's LONG axis only.  A
        square box takes the identical path either way (both maxes are 1), so
-       this panel is unchanged by it. */
+       THIS panel is unchanged by it: the option exists for the creator's ink
+       card, and specifically for that card's SHOES tab.
+       Which tab needs it is not obvious and is worth writing down, because
+       getting it wrong nearly deleted the option.  It turns on how tall the
+       tab's tool block is: Skin, Shirt and Pants carry three rows of palette
+       plus the brush widths, so their pane is about 168x169 -- square, where
+       the two rules agree exactly.  Shoes carries one row of pattern tiles, so
+       its pane is 168x247, firmly portrait.  Measured there: 13.4% of the
+       canvas clear either side of the figure with contain, 0% without -- legs
+       jammed edge to edge.
+       A first mutation run reported this option dead, because the framing
+       assertion only looked at the Skin tab where it genuinely changes
+       nothing.  mp-ccink checks Shoes too now, which is what makes it
+       testable. */
     const base = f.h * S;
     const contain = fit === 'contain';
     const winH = contain ? base * Math.max(1, cssH / cssW) : base;

@@ -1611,10 +1611,24 @@ export function NameModal(props) {
       /*#__PURE__*/React.createElement(WornPreview, {
         look: _paintLook, target: _p.target, side: 'front',
         className: 'bt-cc-ink-pv', label: null,
-        /* The card is never the square .bt-paint-pv the FOCUS windows were
-           measured against, so it asks for the whole designed frame to stay in
-           shot rather than for the height to be pinned and the arms cropped.
-           See blit(). */
+        /* ── `contain`, AND WHICH TAB IT IS ACTUALLY FOR ──
+           WornPreview pins the window's HEIGHT and derives its width from the
+           box.  For a box that is square or WIDER than tall that is fine -- the
+           window just opens sideways.  For a PORTRAIT box it narrows, and on a
+           figure that means slicing the sides off.
+           Which tab is portrait is not obvious and is worth writing down,
+           because getting it wrong nearly deleted this prop.  It depends on how
+           tall that tab's TOOL block is: Skin, Shirt and Pants carry three rows
+           of palette plus the brush widths, so their pane comes out about
+           168x169 at 390x844 -- square, where the two rules agree exactly.
+           SHOES carries one row of pattern tiles, so its pane is 168x247 --
+           firmly portrait, and it is the tab this option is really for.
+           Measured on the Shoes card, with and without: 13.4% of the canvas
+           clear either side of him against 0%, i.e. legs jammed edge to edge.
+           A first mutation run reported this prop as dead because the framing
+           assertion only ever looked at the SKIN tab, where it genuinely
+           changes nothing.  mp-ccink checks Shoes now too, which is what makes
+           the claim testable. */
         fit: 'contain',
         focus: _CARD_FOCUS[_p.target]
       }),

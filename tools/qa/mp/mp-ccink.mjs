@@ -224,13 +224,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const shot = await cardHash(P);
     rec.ok(`${tag}: the card actually painted a figure (guard: ${shot && shot.ink} opaque px)`,
       !!shot && !shot.err && shot.ink > 400, shot);
-    /* THE THRESHOLD IS A FRACTION, AND IT HAS TO BE THIS BIG.  The first cut
-       asked for "> 3px" of margin and PASSED against the broken framing: a
-       height-pinned window still leaves about 3.9% of the canvas clear either
-       side, so 3px of 336 separated nothing.  Mutation-testing it is what found
-       that -- dropping `fit:'contain'` left all 89 assertions green.
-       Measured, contain gives 19% at 390x844 and 32% at 390x664; without it,
-       3.9%.  10% sits clear of both. */
+    /* A FRACTION, NOT A PIXEL COUNT.  The first cut asked for "> 3px" of
+       margin, which separated nothing on a 336px canvas.
+       NOTE HONESTLY WHAT THIS ONE DOES AND DOES NOT PIN.  Skin's pane is
+       SQUARE (about 168x169 at 390x844) because its tool block is three
+       palette rows plus the widths, and for a square box `fit:'contain'` and
+       the default height-pinned rule are the same arithmetic -- measured 18%
+       against 19%.  So this assertion guards the framing OUTCOME on the tab
+       most people will look at; the tab that actually pins `contain` is Shoes,
+       in section 6b, whose pane is portrait. */
     const marginFrac = shot && shot.w
       ? Math.min(shot.leftMargin, shot.rightMargin) / shot.w : 0;
     rec.ok(`${tag}: ...and he is framed rather than cropped -- there is ground `
@@ -383,6 +385,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${tag}: ...whose tools are PATTERN TILES, not an ink palette -- `
       + `there is nothing to draw on a boot (${SO.pats} tiles, ${SO.chips} chips)`,
       SO.pats === 5 && SO.chips === 0, SO);
+
+    /* ── AND THE ONE TAB WHOSE PANE IS PORTRAIT ──
+       One row of pattern tiles instead of three palette rows leaves Shoes a
+       168x247 pane where the other three get 168x169.  That is the only place
+       `fit:'contain'` changes anything: the default rule pins the window's
+       height and derives its width, which in a portrait box narrows it and
+       jams the legs against both edges.  Measured with and without: 13.4% of
+       the canvas clear either side against 0%.  8% separates them.
+       This assertion exists because the first mutation run reported `contain`
+       DEAD -- the framing check only looked at Skin, where it genuinely does
+       nothing, so breaking it left every assertion green and very nearly got
+       a live option deleted as dead code. */
+    const shoeShot = await cardHash(P);
+    rec.ok(`${tag}: the Shoes card painted a figure (guard: ${shoeShot && shoeShot.ink} px)`,
+      !!shoeShot && !shoeShot.err && shoeShot.ink > 400, shoeShot);
+    const shoeFrac = shoeShot && shoeShot.w
+      ? Math.min(shoeShot.leftMargin, shoeShot.rightMargin) / shoeShot.w : 0;
+    rec.ok(`${tag}: ...and his legs are framed rather than jammed edge to edge `
+      + `(${Math.round(shoeFrac * 100)}% clear either side; a height-pinned `
+      + `window in this portrait pane leaves 0%)`,
+      shoeFrac >= 0.08, { shoeShot, shoeFrac, pane: SO.pane });
 
     await P.ctx.close().catch(() => {});
   }
