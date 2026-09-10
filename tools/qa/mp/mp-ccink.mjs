@@ -597,15 +597,50 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (!t) return null;
       const r = t.getBoundingClientRect();
       const p = document.querySelector('.bt-paint').getBoundingClientRect();
+      /* v2.3.2421: where the WORD is painted, not where its block is.  An h2 in
+         a column flex fills the cell whatever its text-align, so the element's
+         own box says nothing about centring; a Range around the text node is
+         the inline box the eye actually sees. */
+      let ink = null;
+      try {
+        const rng = document.createRange();
+        rng.selectNodeContents(t);
+        const b = rng.getBoundingClientRect();
+        if (b.width) ink = { x: b.x, w: b.width, mid: b.x + b.width / 2 };
+      } catch (e) { /* no Range: the assertion guards on ink being null */ }
+      const cs = getComputedStyle(t);
       return { text: (t.textContent || '').trim(), h: +r.height.toFixed(1),
         onScreen: r.top >= p.top - 0.5 && r.bottom <= p.bottom + 0.5,
-        atTop: r.top - p.top < 60 };
+        atTop: r.top - p.top < 60,
+        ink, cellMid: r.x + r.width / 2, cellW: +r.width.toFixed(1),
+        size: parseFloat(cs.fontSize), weight: cs.fontWeight, colour: cs.color };
     });
     rec.ok(`editors: ${tab} names its screen ("${head && head.text}")`,
       !!head && head.text === wantTitle, { head, wantTitle });
     /* A title below the fold is a title nobody reads. */
     rec.ok(`editors: ...at the top of the panel and inside its fold`,
       !!head && head.onScreen && head.atTop, head);
+
+    /* ═══ v2.3.2421: CENTRED AND BOLD ═══
+       Owner: "Center and bold the 'TATTOOS' label."
+       CENTRED is measured off the painted word: the heading BLOCK fills the
+       head cell either way, so only the inline box moves.  Left-aligned it sits
+       at the cell's left edge, which on a 390px phone is 60-90px out -- 4px of
+       tolerance separates the two without pinning sub-pixel text metrics.
+       BOLD is measured as SIZE, not as weight, and that is the part worth
+       writing down: Source Sans 3 is loaded at 400/600/700 only (src/index.html),
+       so the 800 already declared here resolves to the 700 face and 900 would
+       resolve to the same one.  Asserting `fontWeight >= 800` would therefore
+       pass on a change that alters not one pixel.  What makes it read bolder is
+       15px against 13 and the primary text colour against the secondary, so
+       those are what this asks for. */
+    const offCentre = head && head.ink ? Math.abs(head.ink.mid - head.cellMid) : null;
+    rec.ok(`editors: ${tab}'s title is CENTRED over the panel `
+      + `(${offCentre == null ? '?' : offCentre.toFixed(1)}px off centre)`,
+      offCentre != null && offCentre <= 4, head);
+    rec.ok(`editors: ...and set bold enough to read as a heading `
+      + `(${head && head.size}px, ${head && head.colour})`,
+      !!head && head.size >= 15 && head.colour === 'rgb(244, 240, 231)', head);
 
     /* (b) NO SAVE, NO SLOTS.  Owner: "Remove the 'save' with the 4 slots
        everywhere: too confusing between saving load out vs saving your current

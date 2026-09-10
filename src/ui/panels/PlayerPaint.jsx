@@ -539,10 +539,57 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
         /* v2.3.1949: a hat hides a face tattoo the same way, so the pane takes
            it off while you work.  The caption says so. */
         opts.headwear = 'none';
+      } else if (target === 'tattooBack') {
+        /* ═══ v2.3.2421: THE BACK SHOWS THE BACK'S OWN DRAWING ═══
+           Owner: "the front copies its drawings onto the back (these should be
+           separate)."  They ARE separate in the store and separate on the
+           walking character (artForFacing, v2.3.2148) -- they were one only
+           here, in the pane that is supposed to prove the difference.
+           The two back canvases had no branch in this table, so `opts.tattooArt`
+           was never set, and drawCharacterPortrait's caller contract
+           (characterPortrait.js:575) reads an ABSENT value as "this device's
+           own": inkedArt('tattoo'), the FRONT chest drawing.  Turned to face
+           north by `side` above, the pane then stamped the front drawing on the
+           back and never once showed a back stroke.  Every mark you made
+           vanished and a mark you had made on the other side stared back.
+           It is `tattooArt`, not some back-specific option, because the portrait
+           path does not run artForFacing at all (see BodyInk's composite): the
+           slot means "the drawing to stamp on this sheet's torso", and on a
+           north sheet that torso is the back. */
+        opts.tattooArt = art;
+        /* Same reason as the chest: a shirt covers a back tattoo, and a pane
+           showing a shirt while you draw under it reads as broken. */
+        opts.shirt = 'none';
+      } else if (target === 'tattooHeadBack') {
+        /* v2.3.2421: and the back of the head, the same fix -- the face slot is
+           where a north sheet's head drawing goes (artForFacing swaps the same
+           way round). Without this the pane showed your FACE tattoo, mirrored
+           onto the back of your head. */
+        opts.faceTattooArt = art;
+        opts.headwear = 'none';
       } else if (target === 'tattooArm') {
         opts.armTattooArt = art;
         /* Sleeves cover the upper arm; bare-chested you see the whole limb. */
         opts.shirt = 'none';
+      }
+      /* ═══ v2.3.2421: A NORTH-FACING PANE SHOWS NORTH-FACING DRAWINGS ═══
+         The branches above set the ONE canvas this pane is editing.  Every
+         other drawing on the figure is left undefined on purpose, because
+         drawCharacterPortrait then reads it from the live store for free
+         (characterPortrait.js:575) -- which is right facing south and wrong
+         facing north, where the store's `tattoo` and `tattooFace` are the two
+         drawings that specifically do NOT show.
+         Without this the leak survives the branches above wherever the edited
+         canvas is a THIRD one: with Back selected and an arm chosen (the Body
+         screen lets your finger move the canvas, v2.3.1994), the pane turned
+         round and stamped the front chest drawing on the back.
+         It is the same swap artForFacing makes for the walking character
+         (playerSkins v2.3.2148/2043) -- torso and head take their back canvas,
+         the ARM is left alone because an arm is the same arm from behind -- and
+         it is made here because the portrait path never calls that function. */
+      if (side === 'back') {
+        if (opts.tattooArt === undefined) opts.tattooArt = getArt('tattooBack');
+        if (opts.faceTattooArt === undefined) opts.faceTattooArt = getArt('tattooHeadBack');
       }
       return drawCharacterPortrait(offRef.current, opts);
     };
@@ -1634,6 +1681,14 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             <BodyInk look={look} arts={bodyArts} ink={ink}
               region={target === 'pants' ? 'pants' : (mode === 'face' ? 'face' : 'tattoo')}
               apiRef={bodyApiRef} activeTarget={artId}
+              /* v2.3.2421: the big canvas faces the side being inked, exactly as
+                 the little worn preview beside it has since v2.3.2150.  Owner:
+                 "the back button does not make the large canvas rotate to the
+                 back."  It is `side` rather than `inkBack` so the two panes can
+                 never disagree about which way round the character is -- they
+                 read one value.  (`side` is 'front' on the pants screen, which
+                 has no switch, so nothing there changes.) */
+              dir={side === 'back' ? 'north' : 'south'}
               backSide={inkBack}
               onRegion={bodyRegion} onDown={down} onMove={move} onUp={up}
               overlayCells={(liveIdx >= 0 && liveIdx < painted.cells.length) ? painted.cells[liveIdx] : null}

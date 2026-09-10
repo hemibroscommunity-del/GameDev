@@ -2875,15 +2875,27 @@ input{font-family:inherit}
 /* v2.3.2416: the screen's name.  Owner: "Once in the editors find room to make
    a title label somewhere so users know what editor they're in."
    Sized and coloured off .bt-cc-panel-title's family rather than inventing a
-   heading style, and deliberately quiet: it is a signpost, not the thing you
-   came to look at.  No margin -- .bt-paint-head's own gap spaces it, so it
-   costs exactly its text height and nothing else on a panel that is already
-   tight at 390x664. */
+   heading style.  No margin -- .bt-paint-head's own gap spaces it, so it costs
+   exactly its text height and nothing else on a panel that is already tight at
+   390x664.  (v2.3.2416 also made it deliberately quiet; v2.3.2421 undid that
+   half on the owner's word -- see below.) */
+/* v2.3.2421: CENTRED, AND AS BOLD AS THIS FAMILY GOES.  Owner: "Center and
+   bold the 'TATTOOS' label."  Centred over the head cell, which is the tabs'
+   own width, so it caps the strip it names instead of hanging off its left
+   edge.
+   Bold is the half worth writing down, because the obvious move does nothing:
+   Source Sans 3 is loaded at 400/600/700 ONLY (src/index.html), so the 800 that
+   was already here resolves to the 700 face and 900 would resolve to the same
+   one -- raising the number is a no-op you can stare at for a while.  What
+   makes it read bolder is size and contrast: 13 -> 15px, and the primary text
+   colour instead of the secondary, which is what "deliberately quiet" below had
+   been costing it.  Still one line in an existing cell, so it still costs only
+   its own text height on a panel that is tight at 390x664. */
 .bt-paint-title{
   margin:0;padding:0 2px;flex:0 0 auto;
-  font:800 13px/1.2 'Source Sans 3',sans-serif;
-  letter-spacing:.06em;text-transform:uppercase;
-  color:var(--ui-text-secondary);
+  font:800 15px/1.2 'Source Sans 3',sans-serif;
+  letter-spacing:.08em;text-transform:uppercase;text-align:center;
+  color:var(--ui-text);
 }
 .bt-paint-tabs{min-width:0}
 .bt-paint-side{grid-area:side;width:calc(var(--paint-size) * .62)}
