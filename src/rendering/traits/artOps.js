@@ -1,5 +1,5 @@
 import {
-  ART_W, ART_H, ART_LEN, emptyArt, isValidArt, artWithCells,
+  ART_W, ART_H, ART_LEN, ART_PALETTE, emptyArt, isValidArt, artWithCells,
   getArt, setArt, onArtChange, CANVASES,
 } from './playerArt.js';
 import {
@@ -68,6 +68,7 @@ import {
  *   { k:'s', t:'line'|'rect'|'ellipse', a:[x0,y0,x1,y1], i, b:brush, m:mirror }
  *   { k:'t', g:'A', x, y, i, m }                       a placed letter
  *   { k:'f', x, y, i, m }                              a bucket fill
+ *   { k:'d', art, a:[x0,y0,x1,y1] }                    a placed design
  *
  * A freehand stroke stores the cells it FINISHED with (already widened by the
  * brush and already mirrored) rather than the path plus the settings: the pen
@@ -89,6 +90,60 @@ const LETTER_SET = new Set(LETTERS);
    pieces is spent — the same trade the drop rule above makes. */
 export const MAX_OPS = 120;
 const COLLAPSE = 40;
+
+/* ═══ v2.3.2455: A PLACED DESIGN IS ONE OP, NOT A PILE OF THEM ═══
+   Owner: "after first placing the predesigns it's still selected (you can move
+   it around) and also resize it with the corner grab handle."
+
+   v2.3.2442 wrote a ready-made design in as one op PER COLOUR, which is why
+   neither was possible: there was no single thing to select, the pieces had no
+   box between them, and dragging one colour's handle would have torn the
+   picture apart.  A design op carries its own art plus the box it is drawn
+   into, so it moves and resizes exactly like a shape or a letter -- one op,
+   one selection, one handle.
+
+   IT IS THE ONE OP THAT PAINTS MORE THAN ONE COLOUR, and that is why `replay`
+   has a branch for it: every other op ends in `artWithCells(a, cells, op.i)`,
+   a single ink.  This one hands back its colours in palette order and the
+   replay lays them down in that order.
+
+   SAMPLING IS NEAREST-NEIGHBOUR, deliberately: the source is a 16x16 pixel
+   drawing and the destination is the same grid, so anything smoother would
+   invent colours that are not in the palette and could not be stored in the
+   256-character string.  Cells are addressed from the box's own top-left, so
+   dragging the box moves the picture rather than re-sampling it differently.
+
+   THE ART STRING TRAVELS IN THE OP.  The op list is editor-only scaffolding
+   (see the header), so this costs nothing on the wire; the alternative -- an
+   id into the catalogue -- would break the day a catalogue entry is retuned,
+   and silently change a drawing the player already made. */
+export function designGroups(op) {
+  if (!op || !isValidArt(op.art) || !Array.isArray(op.a)) return [];
+  const x0 = Math.min(op.a[0], op.a[2]), x1 = Math.max(op.a[0], op.a[2]);
+  const y0 = Math.min(op.a[1], op.a[3]), y1 = Math.max(op.a[1], op.a[3]);
+  const w = x1 - x0 + 1, h = y1 - y0 + 1;
+  if (w < 1 || h < 1) return [];
+  /* Keyed by a palette index that comes off a hand-editable string -- a Map,
+     never a plain object (CLAUDE.md rule 4). */
+  const byInk = new Map();
+  for (let y = 0; y < h; y++) {
+    const sy = Math.min(ART_H - 1, Math.floor((y * ART_H) / h));
+    for (let x = 0; x < w; x++) {
+      const sx = Math.min(ART_W - 1, Math.floor((x * ART_W) / w));
+      const v = parseInt(op.art[sy * ART_W + sx], 16);
+      /* index 0 is transparent, and a digit past the palette paints nothing --
+         designOps' rule (designCatalog), applied to the same strings here. */
+      if (!(v > 0 && v < ART_PALETTE.length)) continue;
+      let cells = byInk.get(v);
+      if (!cells) byInk.set(v, (cells = []));
+      cells.push([x0 + x, y0 + y]);
+    }
+  }
+  /* Palette order, so a replay of the same op always lays the colours down the
+     same way -- Map order would follow whichever colour the scan met first,
+     which changes with the box. */
+  return [...byInk.keys()].sort((p, q) => p - q).map((ink) => ({ ink, cells: byInk.get(ink) }));
+}
 
 /** The cells one op paints, given the art built up to just before it.
  *  `art` matters only to the bucket fill, which is the one op whose result
@@ -116,6 +171,18 @@ export function opCells(op, art) {
       : letterCells(op.g, op.x, op.y), !!op.m);
   }
   if (op.k === 'f') return mirrorCells(fillCells(art, op.x, op.y), !!op.m);
+  /* v2.3.2455: the union of the design's colours.  This is what the hit test
+     and the selection outline read, and both want "where is it", not "what
+     colour is each cell" -- the colours are `replay`'s business below. */
+  if (op.k === 'd') {
+    const out = [];
+    const groups = designGroups(op);
+    for (let g = 0; g < groups.length; g++) {
+      const cells = groups[g].cells;
+      for (let n = 0; n < cells.length; n++) out.push(cells[n]);
+    }
+    return out;
+  }
   return [];
 }
 
@@ -128,6 +195,18 @@ export function replay(base, ops, outCells) {
   let a = isValidArt(base) ? base : emptyArt();
   if (!ops || !ops.length) return a;
   for (let i = 0; i < ops.length; i++) {
+    /* v2.3.2455: a design paints several inks in one op, so it lays its own
+       colours down; everything else is one ink and takes the shared path. */
+    if (ops[i].k === 'd') {
+      const groups = designGroups(ops[i]);
+      const all = [];
+      for (let g = 0; g < groups.length; g++) {
+        a = artWithCells(a, groups[g].cells, groups[g].ink);
+        for (let n = 0; n < groups[g].cells.length; n++) all.push(groups[g].cells[n]);
+      }
+      if (outCells) outCells.push(all);
+      continue;
+    }
     const cells = opCells(ops[i], a);
     if (outCells) outCells.push(cells);
     a = artWithCells(a, cells, ops[i].i);
@@ -189,6 +268,16 @@ export function sanitizeOp(op) {
   if (op.k === 'f') {
     if (!okInt(op.x, 0, ART_W - 1) || !okInt(op.y, 0, ART_H - 1)) return null;
     return { k: 'f', x: op.x, y: op.y, i, m };
+  }
+  /* v2.3.2455: a placed design.  The art string is checked with the same
+     isValidArt every stored drawing goes through -- this blob is hand-editable
+     and the sampler indexes straight into the string, so a short or non-hex one
+     would read undefined and paint nothing at best.  No `i`: the design brings
+     its own colours (designGroups). */
+  if (op.k === 'd') {
+    if (!isValidArt(op.art) || !Array.isArray(op.a) || op.a.length !== 4) return null;
+    for (let n = 0; n < 4; n++) if (!okInt(op.a[n], 0, (n % 2) ? ART_H - 1 : ART_W - 1)) return null;
+    return { k: 'd', art: op.art, a: op.a.slice() };
   }
   return null;
 }
