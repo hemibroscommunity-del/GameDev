@@ -1,4 +1,4 @@
-# Commissioning designs for the catalogue (v2.3.2436)
+# Commissioning designs for the catalogue (v2.3.2442)
 
 The spec for producing new ready-made designs — for a person, or to hand to
 another tool. It is written to be pasted whole.

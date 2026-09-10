@@ -3044,7 +3044,7 @@ input{font-family:inherit}
      are shorter than the grid, and stretching them would strand each one at the
      top of an oversized row. */
   .bt-paint-ctl{gap:8px;align-self:start}
-  /* v2.3.2437: THE CAPTION GETS THE SPARE WIDTH, BECAUSE HEIGHT IS WHAT IS
+  /* v2.3.2443: THE CAPTION GETS THE SPARE WIDTH, BECAUSE HEIGHT IS WHAT IS
      SCARCE.  Adding the Designs button to the caption cell cost column 1 about
      37px in a column that had ~31px of headroom -- measured as 6px of overflow
      by mp-ccink's landscape assertion, which is pinned at exactly 0 because

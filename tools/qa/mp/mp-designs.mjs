@@ -1,4 +1,4 @@
-/* READY-MADE DESIGNS, AND WHAT PICKING ONE ACTUALLY DOES (v2.3.2436).
+/* READY-MADE DESIGNS, AND WHAT PICKING ONE ACTUALLY DOES (v2.3.2442).
  *
  * Owner: "Can you make some pre-done tattoo designs to choose from? ... (launch
  * its own window to choose from within the editor)".
@@ -69,7 +69,7 @@ const ops = (P) => P.page.evaluate(() => {
 
 /* The gate's guarantees, checked against the module the client bundles.  These
    need no browser -- they are what stops a pasted-in design shipping broken,
-   and v2.3.2437 found the gate joining rows BEFORE validating them, which
+   and v2.3.2443 found the gate joining rows BEFORE validating them, which
    turned a malformed paste into a blank screen at boot rather than a drop. */
 function catalogueInvariants(rec, tag) {
   const ids = new Set(), names = new Set();
@@ -191,7 +191,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     + `-- no new op kind reached the store`, o.every((x) => x.k === 'c'));
 
   /* ── 3b. re-applying the SAME design must bank nothing ──
-     v2.3.2437: a pre-merge review found applyDesign always banked a history
+     v2.3.2443: a pre-merge review found applyDesign always banked a history
      entry, so an accidental double-tap on a tile left one tap of Undo that
      visibly did nothing -- what `unbank` exists to prevent for the shape
      tools.  The proof is the Undo assertion immediately below: if this second
@@ -241,7 +241,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     (await art(P)) === target.art);
 
   /* ── 7. the gallery names the CANVAS it writes, not the screen ──
-     v2.3.2437: it named the screen, so on Face + Back the Clear button said
+     v2.3.2443: it named the screen, so on Face + Back the Clear button said
      "the whole back of head" while the gallery offered to ink "your tattoo" --
      two controls on one screen giving different answers. */
   await P.page.evaluate(() => {

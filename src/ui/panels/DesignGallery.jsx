@@ -1,4 +1,4 @@
-/* ═══ v2.3.2436: THE DESIGN GALLERY ═══
+/* ═══ v2.3.2442: THE DESIGN GALLERY ═══
  *
  * Owner: "Can you make some pre-done tattoo designs to choose from? ... (launch
  * its own window to choose from within the editor)".
@@ -37,7 +37,7 @@ import { ART_W, ART_H, artColorAt } from '@/rendering/traits/playerArt.js';
 import { DESIGN_CATALOG, DESIGN_CATEGORIES } from '@/rendering/traits/designCatalog.js';
 import { SKIN_CATALOG, getSkin } from '@/rendering/playerSkins.js';
 
-/* v2.3.2437: THE GROUND UNDER A THUMBNAIL IS THE PLAYER'S OWN SKIN.
+/* v2.3.2443: THE GROUND UNDER A THUMBNAIL IS THE PLAYER'S OWN SKIN.
    This said "what you see is what lands on you" while painting every tile on
    the DEFAULT tan, which for a player on the palest or darkest skin is a lie
    about the one property that decides whether a design reads at all --
@@ -72,7 +72,7 @@ function DesignSwatch({ art, px = 4, tile = DEFAULT_TILE }) {
       }
     }
   }, [art, px, tile]);
-  /* v2.3.2437: `pixelated`, like every other pixel-art canvas in this UI
+  /* v2.3.2443: `pixelated`, like every other pixel-art canvas in this UI
      (PatternSwatch, .bt-paint-pv, .bt-cc-ink-pv, BodyInk).  The backing store
      is 1:1 with the CSS box, so on a phone at DPR 2-3 the compositor
      bilinearly upsamples it -- and the first thing a bilinear upsample smears
@@ -101,7 +101,7 @@ export default function DesignGallery({ onPick, onClose, label = 'design' }) {
     return () => window.removeEventListener('keydown', k, true);
   }, [onClose]);
 
-  /* v2.3.2437: 32px and a pill, which is what LANTERN-SLATE gives a chip, and
+  /* v2.3.2443: 32px and a pill, which is what LANTERN-SLATE gives a chip, and
      tokens rather than literals so a theme change reaches this screen too. */
   const chip = (on) => ({
     minHeight: 32, padding: '0 12px', borderRadius: 999, cursor: 'pointer',
@@ -113,7 +113,7 @@ export default function DesignGallery({ onPick, onClose, label = 'design' }) {
 
   return (
     <div className="bt-modal-scrim" role="dialog" aria-modal="true" aria-label="Ready-made designs"
-      /* v2.3.2437: only a click that BEGAN on the scrim dismisses.  A click is
+      /* v2.3.2443: only a click that BEGAN on the scrim dismisses.  A click is
          dispatched at the nearest common ancestor of its down and up targets,
          so a drag that starts on the card and lifts over the scrim fires here
          -- and threw away the player's category and scroll position in a
@@ -123,7 +123,7 @@ export default function DesignGallery({ onPick, onClose, label = 'design' }) {
       onClick={(e) => { if (e.target === e.currentTarget && downOnScrim.current) onClose(); }}
       style={{
         position: 'fixed', inset: 0,
-        /* v2.3.2437: the LIGHT scrim token, not another copy of the panel's own.
+        /* v2.3.2443: the LIGHT scrim token, not another copy of the panel's own.
            Two at rgba(6,10,14,.72) composite to .92 and the character behind --
            the thing the editor exists to show -- goes effectively black. */
         background: 'var(--ui-modal-scrim, rgba(4,9,12,.38))',
@@ -151,7 +151,7 @@ export default function DesignGallery({ onPick, onClose, label = 'design' }) {
 
         {/* the filter row scrolls sideways rather than wrapping: wrapping costs
             a second 30px line on a phone, and this row is already optional */}
-        {/* v2.3.2437: overscroll-behavior on BOTH new scrollers.  .bt-paint got
+        {/* v2.3.2443: overscroll-behavior on BOTH new scrollers.  .bt-paint got
             this at v2.3.2414 with TRAPS #64 cited by name: without it a drag
             past either end chains outward into .bt-name-modal, which on iOS 14
             still leaves a scroll container that can be shoved with no finger
