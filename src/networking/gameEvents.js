@@ -109,6 +109,18 @@ import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
    invite, which is the failure worth avoiding). */
 var PARTY_INVITE_TTL_MS = 60000;
 
+/* v2.3.2423: how long the attacker remembers that the SERVER resolved a PvP
+   exchange against a given opponent -- see the stamp in the pvp_hit handler
+   and the read in pvp_confirmed.
+
+   It only has to outlive ONE round trip: pvp_confirmed is the defender's
+   answer to the same pvp_hit that set the stamp, so the two are separated by
+   client->worker->client and nothing else.  5s is far longer than that on any
+   connection worth playing on, and short enough that it cannot silently
+   suppress a genuinely legacy popup in a later fight.  In a sustained duel it
+   never lapses at all -- hits land every ~450ms and each one re-stamps. */
+var PVP_SRV_HIT_MS = 5000;
+
 function _setThreatMark(S, pid, type, until) {
   if (!pid || typeof pid !== 'string' || pid === S.myId) return;
   if (!S._threatMarks) S._threatMarks = {};
@@ -2630,6 +2642,49 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.target !== S.myId) {
                 // Not targeted at us — if we're the attacker, show hit confirmation
                 if (payload.attacker === S.myId) {
+                  /* ═══ v2.3.2423: REMEMBER THAT THE SERVER RESOLVED THIS ═══
+                     Owner, a THIRD time: "Sometimes during duels it just says
+                     'hit' instead of the damage HP amount."
+
+                     SOMETIMES was the whole clue.  v2.3.1612 suppressed the
+                     legacy amber popup on a flag -- `srv` -- that the OTHER
+                     PLAYER sets, in their pvp_hit handler, on the
+                     pvp_confirmed they send back.  So this screen was correct
+                     only when the person being fought was running a client new
+                     enough to send it: an opponent on a tab opened before
+                     v2.3.1612, or anyone mid-deploy, sends the same bookkeeping
+                     message without the flag and the word comes back -- on the
+                     ATTACKER's screen, for a reason that has nothing to do with
+                     the attacker and that they cannot do anything about.  That
+                     is exactly "sometimes", and it is why two fixes did not
+                     hold: both trusted the peer.
+
+                     The attacker does not need to be told.  Receiving this
+                     event at all IS the fact -- pvp_hit is server-emitted
+                     (PRIVILEGED_EVENTS, server/src/index.js) and carries the
+                     resolved number this branch is about to draw.  So stamp it
+                     here and let pvp_confirmed read our own memory instead of
+                     the peer's word.
+
+                     STAMPED BEFORE THE OUTCOME BRANCHES ON PURPOSE: a dodge or
+                     a block is just as resolved as a damaging hit, and the
+                     legacy "Hit! -N" is just as wrong on top of "Dodged".
+
+                     A Map, not a plain object: the key is a player id off the
+                     wire, and CLAUDE.md rule 4 is the standing scar -- a plain
+                     {} silently no-ops on '__proto__' (three incidents in one
+                     day, v2.3.1175/1185/1192). */
+                  if (!(S._pvpSrvHits instanceof Map)) S._pvpSrvHits = new Map();
+                  S._pvpSrvHits.set(String(payload.target), Date.now());
+                  /* Bounded: one entry per opponent fought, pruned when it
+                     grows past a crowd.  Nothing here is load-bearing after
+                     PVP_SRV_HIT_MS, so dropping stale rows can only restore
+                     the legacy popup for a worker that is not sending pvp_hit
+                     anyway -- which is the behaviour it is there for. */
+                  if (S._pvpSrvHits.size > 32) {
+                    var _pvpCut = Date.now() - PVP_SRV_HIT_MS;
+                    S._pvpSrvHits.forEach(function (t, k) { if (t < _pvpCut) S._pvpSrvHits.delete(k); });
+                  }
                   /* v2.3.1605 (owner: "all it says is hit when I hit the other
                      player ... needs to actually show HP damage numbers").
                      This used to float the literal word "Hit!" over the
@@ -2835,7 +2890,30 @@ export function processGameEvent(type, payload, S, deps) {
                  there is no pvp_hit, the defender sends no `srv`, and this
                  popup remains the attacker's only feedback — so it still
                  shows, exactly as before. */
-              if (!payload.srv) {
+              /* ═══ v2.3.2423: OUR OWN MEMORY DECIDES, NOT THE PEER'S FLAG ═══
+                 `payload.srv` stays as the fast path and the deploy-order
+                 handshake it was built to be (v2.3.1612), but it is no longer
+                 the only way to know: an opponent who never sends it can no
+                 longer put this word on our screen.  See the stamp in pvp_hit
+                 above for why the peer was the wrong authority.
+
+                 THE LEGACY POPUP IS STILL HERE, and still shows, for the case
+                 it was kept for: against a worker that resolves no PvP there is
+                 no pvp_hit, so nothing stamps `_pvpSrvHits`, nothing sets
+                 `srv`, and this remains the attacker's only feedback -- exactly
+                 as before, in both deploy orders (rule 19).  The suppression
+                 got STRICTER, never wider: every path that drew nothing before
+                 still draws nothing.
+
+                 `from` is the defender -- the player we hit -- which is the
+                 same id pvp_hit carried as `target`, so the two agree on the
+                 key without either of them having to say so. */
+              var _pvpSrvSeen = false;
+              if (S._pvpSrvHits instanceof Map) {
+                var _pvpWhen = S._pvpSrvHits.get(String(payload.from));
+                if (_pvpWhen && Date.now() - _pvpWhen < PVP_SRV_HIT_MS) _pvpSrvSeen = true;
+              }
+              if (!payload.srv && !_pvpSrvSeen) {
                 pushDmgPopup(S, S.player.x + 20, S.player.y - 20, 'Hit! -' + Math.ceil(payload.dmg), '#fbbf24');
               }
               if (payload.died) {

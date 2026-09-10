@@ -580,6 +580,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
       eqc: 'steelplate', eql: 'steelgreaves', eqs: 'none',   /* v2.3.599: worn armour */
       eqst: 'tshirt',   /* v2.3.2084: the under-shirt slot */
       ew: 'shades',   /* v2.3.2361: eyewear */
+      ewc: 'red',    /* v2.3.2424: the eyewear's colour */
     },
   }));
 
@@ -619,6 +620,14 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      and vanish on the first two-second relay.  Value safety is the client's:
      an id its EYEWEAR_CATALOG lacks loads no texture and paints nothing. */
   check('track: eyewear is relayed as a cosmetic (v2.3.2361)', psT.ew === 'shades', psT.ew);
+  /* v2.3.2424: and its COLOUR, asserted on its own line rather than folded
+     into the one above.  `ew` and `ewc` are two keys on two gates, and the
+     v2.3.1939 shape is exactly one of a pair being added -- glasses that
+     relay in the right shape and the wrong colour look like a recolour bug in
+     the renderer, not a missing allowlist entry.  Value safety is the
+     client's: eyewearColorTarget answers null for a colour the pair does not
+     offer, so a forged value paints the native art. */
+  check('track: the eyewear COLOUR is relayed too (v2.3.2424)', psT.ewc === 'red', psT.ewc);
   /* ═══ v2.3.2084: EVERY EQUIPMENT SLOT, NOT THREE OF THE FOUR ═══
      `eqst` was on JOIN_COSMETIC_KEYS from v2.3.756 and never on this gate, so
      a peer's shirt arrived with the join frame and was dropped by the first

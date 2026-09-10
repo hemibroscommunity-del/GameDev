@@ -41,6 +41,12 @@ export const RECOLOR_ENABLED = {
      turned off.  It paints a masked iris on the REAL head, so if the baked-head
      hats above ever come back it is in the same exposure class as `skin`. */
   eyes: true,
+  /* v2.3.2424: eyewear.  Listed so it has the same one-word off switch as
+     every other colour category.  It paints a sticker that sits ON the face
+     but is not the face, so unlike `skin` and `eyes` it is NOT in the
+     baked-head exposure class the header above describes -- if those hats ever
+     come back, this one can stay on. */
+  eyewear: true,
 };
 
 /* v2.3.1499: whether hat color is restricted to hats flagged `solid`.

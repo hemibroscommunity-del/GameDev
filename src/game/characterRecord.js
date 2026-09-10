@@ -29,6 +29,7 @@ import { setEyewear } from '@/rendering/traits/eyewearCatalog.js';   /* v2.3.236
 import { setHair } from '@/rendering/traits/hairCatalog.js';
 import { setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { setHatColor } from '@/rendering/traits/hatColorCatalog.js';
+import { setEyewearColor } from '@/rendering/traits/eyewearColorCatalog.js';   /* v2.3.2424 */
 import { setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
@@ -47,6 +48,7 @@ const LOOK_SETTERS = {
   htc: setHatColor,
   fhc: setFacialHairColor,
   ew: setEyewear,   /* v2.3.2361: the setter refuses an id its catalog lacks, so a retired pair falls back to none */
+  ewc: setEyewearColor,   /* v2.3.2424: beside htc, its exact counterpart -- a colour the pair no longer offers renders native (eyewearColorTarget), so a retired swatch cannot show a look the picker refuses */
   st: setShirt,
   stc: setShirtColor,
   pt: setPants,
