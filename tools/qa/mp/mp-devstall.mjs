@@ -1,4 +1,4 @@
-/* A PANEL THAT ANSWERS, EVEN WHEN THE SERVER DOES NOT (v2.3.2436).
+/* A PANEL THAT ANSWERS, EVEN WHEN THE SERVER DOES NOT (v2.3.2440).
  *
  * Owner, on a phone, against production: "I tapped the flags button and
  * nothing was happening."  The screenshot showed the test panel with
@@ -106,11 +106,18 @@ const blackhole = (page, pattern) => page.route(pattern, () => { /* deliberately
 
 export async function run({ browser, wsPort, webPort, rec }) {
   /* ══ 1. THE KEYLESS READOUT, in the owner's exact situation ══
-     A cap-named live flag is how caps.prog3 goes false on a healthy worker
-     (liveops.js spreads the flag map over the caps literal LAST). */
-  const set = await setFlag(wsPort, 'prog3', false);
-  rec.ok('setup: a cap-named flag switches prog3 off on this worker',
-    set.ok === true && set.flags.prog3 === false, set);
+     A cap-named live flag is how a capability goes false on a healthy worker
+     (liveops.js spreads the flag map over the caps literal LAST).
+     v2.3.2440: the flag is `abil`, not `prog3`.  Since the entry gate
+     (v2.3.2439, serverReady.js) a player is HELD OUT of the world while
+     prog3 is off -- which is the right thing, and also means the zone title
+     this scenario long-presses is under the loading screen and the panel
+     can never open.  `abil` is a capability the client gates a system on
+     (the special moves) that the gate does not require, so the player is
+     admitted and the readout has something true to say. */
+  const set = await setFlag(wsPort, 'abil', false);
+  rec.ok('setup: a cap-named flag switches abil off on this worker',
+    set.ok === true && set.flags.abil === false, set);
 
   const A = await H.newPlayer(browser, { name: 'CapReader', wsPort, webPort, touch: true, viewport: { width: 390, height: 844 } });
   await H.enterWorld(A);
@@ -118,8 +125,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* CONTROL: without this the section below could "pass" against a worker
      that never switched anything off. */
-  const capA = await H.readState(A, (S) => ({ prog3: (S._serverCaps || {}).prog3, trade: (S._serverCaps || {}).trade }));
-  rec.ok('control: the client really did receive prog3 as off', capA.prog3 === false, capA);
+  const capA = await H.readState(A, (S) => ({ abil: (S._serverCaps || {}).abil, trade: (S._serverCaps || {}).trade }));
+  rec.ok('control: the client really did receive abil as off', capA.abil === false, capA);
   rec.ok('control: ...and trade as on, so "off" is not just an empty caps map', capA.trade === true, capA);
 
   rec.ok('the panel opens on a long press', await (async () => { await holdTitle(A, 2000); return waitPanel(A); })(), {});
@@ -135,26 +142,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const off1 = await capsOff(A);
   console.log('    caps off: ' + JSON.stringify(off1));
   rec.ok('with NO key and NO admin request, the panel names the switched-off system',
-    Array.isArray(off1) && off1.indexOf('prog3') >= 0, { off1 });
+    Array.isArray(off1) && off1.indexOf('abil') >= 0, { off1 });
   /* The discriminator: a readout that flagged everything would be useless. */
   rec.ok('...and does not accuse a capability this worker did claim',
     Array.isArray(off1) && off1.indexOf('trade') < 0, { off1 });
   const txt1 = await panelText(A);
   rec.ok('...and says in words what that costs the player',
-    /Points screen/.test(txt1) && /falls back to its old behaviour/.test(txt1), { txt1: txt1.slice(0, 240) });
+    /special moves/.test(txt1) && /falls back to its old behaviour/.test(txt1), { txt1: txt1.slice(0, 240) });
 
   await A.ctx.close().catch(() => {});
 
   /* ══ 2. AN AUTOMATIC REQUEST MUST NOT DISABLE A BUTTON NOBODY PRESSED ══
      The owner's device already had a key saved, so the panel's own state
      refresh fires the moment it opens.  Hang it. */
-  await admin(wsPort, '/flags?name=prog3', { method: 'DELETE' });
+  await admin(wsPort, '/flags?name=abil', { method: 'DELETE' });
   const B = await H.newPlayer(browser, { name: 'StallTest', wsPort, webPort, touch: true, viewport: { width: 390, height: 844 } });
   await H.enterWorld(B);
   await B.page.waitForTimeout(2000);
 
-  const capB = await H.readState(B, (S) => (S._serverCaps || {}).prog3);
-  rec.ok('control: with the flag cleared this worker claims prog3 again', capB === true, { capB });
+  const capB = await H.readState(B, (S) => (S._serverCaps || {}).abil);
+  rec.ok('control: with the flag cleared this worker claims abil again', capB === true, { capB });
 
   await B.page.evaluate((k) => { localStorage.setItem('bt_dev_key', k); }, H.ADMIN_KEY);
   await blackhole(B.page, '**/api/admin/dev/state*');

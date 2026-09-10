@@ -3158,7 +3158,7 @@ The second thing to check when the room "isn't answering" is how big the
 prefixes have grown since the code was written: the code was months old; the
 data was new.
 
-## 77. A `busy` flag over a fetch with no timeout is a dead panel (v2.3.2436)
+## 77. A `busy` flag over a fetch with no timeout is a dead panel (v2.3.2440)
 
 **Tempting:** the operator panel disables its buttons while a request is in
 flight (`disabled={busy}`), and clears the flag in the fetch's `finally` so it

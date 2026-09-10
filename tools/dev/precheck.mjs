@@ -86,7 +86,7 @@
  *                      test panel checks to tell the owner which systems a
  *                      worker has NOT claimed — a cap missing from it makes
  *                      the panel report "all clear" over the exact system
- *                      being chased (v2.3.2436).
+ *                      being chased (v2.3.2440).
  *  13. ready-caps     — FAIL: every name in SERVER_READY_CAPS
  *                      (src/networking/serverReady.js) must ALREADY be in
  *                      the state_sync caps literal on the base branch's
@@ -916,7 +916,7 @@ if (changedServer.length) {
 }
 
 /* ---- 12. cap-registry ------------------------------------------------
-   v2.3.2436.  The test panel's "This worker" section lists the capabilities
+   v2.3.2440.  The test panel's "This worker" section lists the capabilities
    this worker did NOT claim, and it does that by walking CAP_GATES in
    src/ui/panels/DevPanel.jsx.  A cap the client gates on but that is missing
    from that array reads as "fine" forever: the panel prints "all N systems

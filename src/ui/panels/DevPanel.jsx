@@ -53,7 +53,7 @@ import { WORLDVIEW_EXITS } from '../../data/index.js';
 
 const KEY_LS = 'bt_dev_key';
 
-/* ═══ v2.3.2436: AN ADMIN CALL THAT NEVER ANSWERS ═══
+/* ═══ v2.3.2440: AN ADMIN CALL THAT NEVER ANSWERS ═══
  *
  * Owner, on a phone, against production: "I tapped the flags button and
  * nothing was happening."  The panel said "Working…" and stayed there.
@@ -123,7 +123,7 @@ const chip = {
 };
 const label = { color: COL.muted, font: '600 11px system-ui, sans-serif', letterSpacing: '.06em', textTransform: 'uppercase', margin: '14px 0 7px' };
 
-/* ═══ v2.3.2436: WHAT THIS WORKER SAYS IT CAN DO ═══
+/* ═══ v2.3.2440: WHAT THIS WORKER SAYS IT CAN DO ═══
  *
  * The live-flags rail below answers "WHY is a system off".  It needs the
  * admin key, a network round trip and a working admin surface — and when
@@ -184,7 +184,7 @@ export const DevPanel = ({ onClose }) => {
      -- the alternative was a second fetch helper that would have drifted from
      this one's 401/404 handling, which is the part worth having. */
   const call = useCallback(async (path, body, method, opts) => {
-    /* v2.3.2436: `quiet` is for calls the owner did not make — see the
+    /* v2.3.2440: `quiet` is for calls the owner did not make — see the
        header.  It suppresses BOTH halves of the feedback (busy + message),
        because a background probe that disables buttons or writes errors is
        reporting on a request nobody asked for. */
@@ -222,7 +222,7 @@ export const DevPanel = ({ onClose }) => {
            key is good and the worker is simply behind.  Deliberately not
            solved by making the fail-closed 404 distinguishable — that would
            trade away the security property on purpose. */
-        if (quiet) return null;   /* v2.3.2436: no second round trip for a call nobody made */
+        if (quiet) return null;   /* v2.3.2440: no second round trip for a call nobody made */
         try {
           const probe = await fetchWithTimeout(BT_API_BASE + '/api/admin/overview', { headers: { Authorization: 'Bearer ' + key } });
           if (probe.ok) {
@@ -240,7 +240,7 @@ export const DevPanel = ({ onClose }) => {
       if (!res.ok || !j.ok) { say('Failed: ' + (j.error || res.status)); return null; }
       return j;
     } catch (e) {
-      /* v2.3.2436: an abort is OUR timeout, not the network refusing —
+      /* v2.3.2440: an abort is OUR timeout, not the network refusing —
          calling it a network error sends the owner to check their wifi when
          the request was simply never answered. */
       say(isAbort(e) ? TIMEOUT_MSG : 'Network error: ' + String(e).slice(0, 80));
@@ -254,7 +254,7 @@ export const DevPanel = ({ onClose }) => {
     if (j) { setState(j); if (!quiet) setMsg(''); }
   }, [call, key, myId]);
 
-  /* v2.3.2436: quiet — nobody pressed this.  See the header. */
+  /* v2.3.2440: quiet — nobody pressed this.  See the header. */
   useEffect(() => { refresh(true); }, [refresh]);
 
   /* ═══ v2.3.2412: LIVE FLAGS, BECAUSE ONE OF THEM CAN BREAK THE GAME ═══
@@ -340,7 +340,7 @@ export const DevPanel = ({ onClose }) => {
           Owner tools. Everything here needs your admin key.
         </div>
 
-        {/* ═══ v2.3.2436: THE KEYLESS ANSWER ═══
+        {/* ═══ v2.3.2440: THE KEYLESS ANSWER ═══
             See the note by CAP_GATES.  This reads the caps the client
             already received on join, so it works with no admin key, no
             network and no worker cooperation -- which is precisely when the
