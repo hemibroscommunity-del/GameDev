@@ -33,6 +33,12 @@ import { setEyewearColor } from '@/rendering/traits/eyewearColorCatalog.js';   /
 import { setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
+/* v2.3.2444: the drawings, the garment patterns and the eye colour.  All
+   three stores are localStorage-backed and seed themselves at module boot, so
+   on a new device they start blank -- which is the whole bug this adds. */
+import { setArt, sanitizeArt } from '@/rendering/traits/playerArt.js';
+import { setPattern, sanitizePattern } from '@/rendering/traits/patternCatalog.js';
+import { setEyeColor } from '@/rendering/traits/eyeColorCatalog.js';
 
 /* Wire key -> setter.  The keys are the join.data cosmetic abbreviations
    (JOIN_COSMETIC_KEYS in server/src/join.js) because the record is built
@@ -53,6 +59,89 @@ const LOOK_SETTERS = {
   stc: setShirtColor,
   pt: setPants,
   sh: setShoes,
+
+  /* ═══ v2.3.2444: THE DRAWINGS, THE PATTERNS AND THE EYES ═══
+     Measured: the worker keeps 38 keys in the permanent look and this table
+     restored 13 of them, so twenty were read off the wire and thrown away --
+     and every one of those twenty is a thing PEERS still see, because the
+     stored look is forced onto the join frame (join.js) and the 2s relay is a
+     delta MERGE that never clears what the new device omits.  That is the
+     precise failure this file's header says it exists to prevent, and it had
+     been true of every drawing since drawings shipped.
+
+     Sharpest demonstration, inside one client and with no second player: the
+     Continue screen paints its portrait from the stored look, so you can SEE
+     your tattoo on the card, tap it, and walk into the world without it.
+
+     Each value arrives over the wire, so each goes through the validator the
+     PEER path already uses for the same key -- not through the raw setter.
+     sanitizeArt is stricter than setArt's own guard in the way that matters:
+     setArt accepts any well-formed 256-char string, and a string of 256 'f's
+     is well-formed but paints nothing (the v2.3.1945 hazard), so the raw
+     setter would persist an inkless drawing into this device's storage. */
+  sa: (v) => _art('shirtFront', v),
+  sb: (v) => _art('shirtBack', v),
+  pa: (v) => _art('pants', v),
+  pb: (v) => _art('pantsBack', v),
+  ta: (v) => _art('tattoo', v),
+  tr: (v) => _art('tattooBack', v),
+  tf: (v) => _art('tattooFace', v),
+  tm: (v) => _art('tattooArm', v),
+  tb: (v) => _art('tattooHeadBack', v),
+
+  sp: (v) => _pat('shirt', v),
+  pp: (v) => _pat('pants', v),
+  fp: (v) => _pat('shoes', v),
+
+  ec: setEyeColor,
+};
+
+/* Restore one drawing, or leave the canvas alone.  Never CLEARS on a missing
+   or invalid value: an absent key means "this character has no such drawing",
+   and the canvas is already blank on the device this runs on. */
+function _art(canvasId, v) {
+  const a = sanitizeArt(v);
+  if (a) setArt(canvasId, a);
+}
+function _pat(slot, v) {
+  const p = sanitizePattern(v, slot);
+  if (p) setPattern(slot, p);
+}
+
+/* ═══ v2.3.2444: THE KEYS THAT ARE STORED AND DELIBERATELY NOT RESTORED ═══
+   The gap above was invisible because "not in LOOK_SETTERS" and "decided not
+   to restore" looked identical.  They are different, so they are written down
+   differently: this table is the second answer, with the reason, and
+   precheck's look-parity check reads it -- a key that is on the worker's gate
+   and in neither table now FAILS a push rather than quietly going missing.
+
+   None of these is an oversight, and restoring any of them would be a bug:
+
+   eqc/eql/eqs/eqst -- equipment layers are DERIVED, not chosen.  chest and
+     legs are a pure function of the worn armour (gearCatalog's
+     syncArmorLayers, from S.rpg.armor / legsArmor, which the rpg blob
+     restores authoritatively), shoulders has only 'none' in its catalog, and
+     shirt follows `st`, which IS restored above.  Replaying a look frozen at
+     character creation over live gear would overwrite what the player is
+     actually wearing.
+
+   bs -- body size is a MenuBar toggle, not a creator trait, and it rides the
+     2s relay from the owner's own store, so peers converge on the owner
+     within one relay.  Restoring a frozen copy would fight the live toggle.
+
+   hg/fr -- build height and frame are retired: both catalogs were emptied to
+     a single entry (v2.3.1996, v2.3.2268), wireHeight/wireFrame answer
+     undefined so no new record can carry them, and heightMul answers 1 for
+     any id at all.  A legacy record's value renders identically for owner and
+     peer, so there is nothing asymmetric left to fix. */
+export const LOOK_UNRESTORED = {
+  eqc: 'derived from worn armour (rpg blob restores it)',
+  eql: 'derived from worn armour (rpg blob restores it)',
+  eqs: 'catalog has only none',
+  eqst: 'follows st, which is restored',
+  bs: 'live MenuBar toggle, converges via the 2s relay',
+  hg: 'retired axis, renders identically for everyone',
+  fr: 'retired axis, renders identically for everyone',
 };
 
 /** True when the worker both supports permanent characters AND has one for
