@@ -1,4 +1,4 @@
-/* HOW ACCURATE IS RANGED HIT DETECTION? (v2.3.2424)
+/* HOW ACCURATE IS RANGED HIT DETECTION? (v2.3.2426)
  *
  * Owner: "Also check hit detection I'm not sure it's accurate."
  *

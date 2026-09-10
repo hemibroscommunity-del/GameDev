@@ -1,4 +1,65 @@
 /* ═══ PROJECTILES — arrow + slime projectile simulation ═══ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   v2.3.2426: A PROJECTILE HITS WHAT ITS PATH CROSSES, NOT WHAT IT LANDS ON
+   ═══════════════════════════════════════════════════════════════════════════
+   Owner: "Also check hit detection I'm not sure it's accurate."  It was not.
+
+   Both impact tests below used to measure from the arrow's CURRENT position
+   only, once per frame:  dist(target, a._renderX/Y) < radius.  But an arrow
+   advances  8 * bowRangeMult * _dtScale  px between frames — _dtScale is
+   clamped to 3 (BroTown.jsx) and bowRangeMult caps at 2.0 ("arrows fly twice
+   as far/fast at the cap", gameSystems.js) — so the step runs from 8px to
+   48px against a 22px PvP radius and an 18px default monster radius.  Once
+   the step is longer than the chord the path cuts through the hitbox, the
+   arrow is sampled on ONE SIDE of the target and then the other, and the hit
+   is simply never seen.
+
+   MEASURED before this changed (tools/qa/mp/mp-hitsweep.mjs, ten shots per
+   cell, every shot aimed so its flight line passes inside the 22px hitbox so
+   that 100% is the correct answer): 101/150.  Traced frame by frame, the
+   clearest were shots whose line passed 0px from the centre — dead through
+   the middle — whose nearest frame sample was 24.6px away.  Grazing shots
+   failed first and at half the step, which is the "I clipped them and nothing
+   happened" report exactly.
+
+   IT MATTERS MOST FOR PvP, where there is no second chance: a ranged PvP hit
+   is decided ENTIRELY here.  This test is what emits player_attack at all,
+   and the worker only CLAMPS that claim (_resolvePvPAttack's range/arc caps)
+   — it never re-simulates the projectile.  A miss here is final.
+
+   So the question becomes the honest one: how close did the arrow's PATH come
+   this frame, not how close did it happen to be sampled.  That is the segment
+   from where it was last frame to where it is now.
+
+   THIS IS NOT A RANGE OR SIZE BUFF.  Radii are untouched; a shot that never
+   entered the hitbox still misses.  What changes is only that a shot which
+   went through it is no longer lost to the frame clock — so hit rates rise
+   for FAST arrows and on LOW frame rates, and are unchanged at 60fps with a
+   plain bow, where the 8px step never straddled anything. */
+/* Where the closest approach happened, written by _segGap so a caller can put
+   the impact at the point the arrow actually crossed rather than at wherever
+   the frame clock left it.  Module scope, overwritten per call: this runs per
+   arrow per monster per frame and an allocation here is the kind of per-frame
+   garbage v2.3.2331 spent a version removing. */
+var _segHitX = 0, _segHitY = 0;
+function _segGap(px, py, ax, ay, bx, by) {
+  var dx = bx - ax, dy = by - ay;
+  var L = dx * dx + dy * dy;
+  /* No movement recorded yet (first frame after release, or a pose that
+     freezes the arrow): fall back to the point test, which is what it was. */
+  if (!(L > 0)) { _segHitX = bx; _segHitY = by; return Math.sqrt((px - bx) * (px - bx) + (py - by) * (py - by)); }
+  /* A step this long is not flight.  The fastest legitimate advance is
+     8 * 2.0 * 3 = 48px; anything past this cap is a zone change, a respawn or
+     a tab that was backgrounded and resumed, and sweeping across it would
+     award hits along a line the arrow never travelled — the same class of
+     guard _updateProjectileTrail uses (its 80px teleport check). */
+  if (L > 200 * 200) { _segHitX = bx; _segHitY = by; return Math.sqrt((px - bx) * (px - bx) + (py - by) * (py - by)); }
+  var t = ((px - ax) * dx + (py - ay) * dy) / L;
+  if (t < 0) t = 0; else if (t > 1) t = 1;
+  var cx = ax + t * dx, cy = ay + t * dy;
+  _segHitX = cx; _segHitY = cy;
+  return Math.sqrt((px - cx) * (px - cx) + (py - cy) * (py - cy));
+}
 /* v2.3.813: moved verbatim from the game loop in src/ui/BroTown.jsx
    (REBUILD-PLAN Phase 8, slice 5; behavior-frozen). Two adjacent
    per-frame blocks:
@@ -410,6 +471,14 @@ export function updateArrows(S, deps) {
             }
             var _bx = a._pathX != null ? a._pathX : P.x + _ox;
             var _by = a._pathY != null ? a._pathY : P.y + _oy;
+            /* v2.3.2426: last frame's drawn position, kept BEFORE this frame's
+               is written, so the two hit tests below can measure the segment
+               the arrow actually travelled rather than the point it stopped
+               at.  Stamped here rather than at the top of the update because
+               this is the only branch that FLIES — the stuck, held and
+               planting branches above all freeze _renderX, and a segment
+               built from one of those is not a flight path. */
+            a._prevX = a._renderX; a._prevY = a._renderY;
             a._renderX = _bx + Math.cos(a.ang) * a.dist;
             a._renderY = _by + Math.sin(a.ang) * a.dist;
             if (a.life <= 0) return false;
@@ -536,7 +605,24 @@ export function updateArrows(S, deps) {
               var _hitX = (typeof m.renderX === 'number') ? m.renderX : m.x;
               var _hitBaseY = (typeof m.renderY === 'number') ? m.renderY : m.y;
               var _mProjY = _hitBaseY - monsterBodyOffsetY(_archProj);
-              if (Math.sqrt(Math.pow(_hitX - a._renderX, 2) + Math.pow(_mProjY - a._renderY, 2)) < _hitR) {
+              /* v2.3.2426: the SEGMENT this frame, not the endpoint — see the
+                 header.  a._prevX is undefined on the first flight frame and
+                 _segGap falls back to the point test there. */
+              var _segD = _segGap(_hitX, _mProjY, a._prevX, a._prevY, a._renderX, a._renderY);
+              if (_segD < _hitR) {
+                /* ═══ PUT THE IMPACT WHERE IT HAPPENED ═══
+                   Only in the case the old test would have MISSED, which keeps
+                   every previously-landing shot byte-identical: there the point
+                   was already inside and nothing moves.  For a newly-caught
+                   shot the arrow's drawn position is wherever the frame clock
+                   left it — one whole step past the target, up to 48px — and
+                   spawning the impact FX there (and letting the arrow die
+                   there) reads as an arrow that vanished before it arrived or
+                   burst in mid-air behind its target.  The crossing point lies
+                   ON this frame's segment, so this never moves the arrow
+                   backwards past where it already was. */
+                var _pointD = Math.sqrt(Math.pow(_hitX - a._renderX, 2) + Math.pow(_mProjY - a._renderY, 2));
+                if (_pointD >= _hitR) { a._renderX = _segHitX; a._renderY = _segHitY; }
                 a.hitIds.add(m.id);
                 if (a.volleyHitIds) a.volleyHitIds.add(m.id);   /* v2.3.1435: claim for the whole cone */
                 var arrowElem = a.isSpecial ? activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element2 : activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1;
@@ -1069,7 +1155,14 @@ export function updateArrows(S, deps) {
                    as monsterBodyOffsetY; player sprites are fodder-scale. */
                 var _pvpHitR = a.isStaff ? 34 : 22;
                 if (a.isSpecial) _pvpHitR *= 1.5;
-                var _pvpGap = Math.sqrt(Math.pow(_pvpX - a._renderX, 2) + Math.pow(_pvpY - 24 - a._renderY, 2));
+                /* v2.3.2426: the SEGMENT this frame, not the endpoint.  This is
+                   the one with no safety net — the worker never re-simulates a
+                   projectile, so whatever this line decides is final. */
+                var _pvpPointGap = Math.sqrt(Math.pow(_pvpX - a._renderX, 2) + Math.pow(_pvpY - 24 - a._renderY, 2));
+                var _pvpGap = _segGap(_pvpX, _pvpY - 24, a._prevX, a._prevY, a._renderX, a._renderY);
+                /* Impact FX go where the path crossed, and only for a shot the
+                   old point test would have missed — see the monster branch. */
+                if (_pvpGap < _pvpHitR && _pvpPointGap >= _pvpHitR) { a._renderX = _segHitX; a._renderY = _segHitY; }
                 if (typeof window !== 'undefined' && window.__btPvpProj) {
                   window.__btPvpProj.tested++;
                   if (_pvpGap < window.__btPvpProj.closest) window.__btPvpProj.closest = Math.round(_pvpGap);
