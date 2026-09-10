@@ -27,7 +27,7 @@ code disagree, trust the code and fix the doc.
 
 ## Transport and connection lifecycle
 
-- **Endpoint:** `wss://brotown-server.hemibroscommunity.workers.dev`
+- **Endpoint:** `wss://api.brotown.net` (v2.3.2446; the worker's original `wss://brotown-server.hemibroscommunity.workers.dev` address still answers, but `workers.dev` is on common DNS block lists -- see `server/wrangler.toml`)
   (overridable via `window.BROTOWN_WS_URL`). Server is a Cloudflare Worker
   with Durable Objects (`GameRoom` per room).
 - **Room resolution** (BroTown.jsx ~1851+): a `?room=` URL param or

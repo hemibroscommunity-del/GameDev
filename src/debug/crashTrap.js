@@ -37,7 +37,7 @@ let _flushAt = 0;
 let _lastSentLen = -1;
 function _apiBase() {
   try {
-    return (window.BROTOWN_WS_URL || 'wss://brotown-server.hemibroscommunity.workers.dev')
+    return (window.BROTOWN_WS_URL || 'wss://api.brotown.net')
       .replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
   } catch (e) { return ''; }
 }

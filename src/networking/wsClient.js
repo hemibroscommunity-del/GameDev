@@ -179,7 +179,8 @@ export function setupWebSocket(ctx) {
        all full), else fall back to brotown-1 if the lobby fetch
        fails.  Resolved once on initial connect, cached for reconnects
        so we don't bounce between rooms mid-session. */
-    var WS_BASE = window.BROTOWN_WS_URL || 'wss://brotown-server.hemibroscommunity.workers.dev';
+    /* v2.3.2446: api.brotown.net -- see networking/index.js for why. */
+    var WS_BASE = window.BROTOWN_WS_URL || 'wss://api.brotown.net';
     var API_BASE = WS_BASE.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
     var WS_URL = null;
     async function resolveRoom() {
