@@ -48,6 +48,7 @@ import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 /* v2.3.1982: the "the world is full" screen — plain DOM, see its header
    for why it is not a React boot phase. */
 import { showRoomFull, hideRoomFull, roomFullOpen } from '@/ui/RoomFullScreen.js';
+import { markServerReady, resetServerReady, serverReadyReason } from '@/networking/serverReady.js'; /* v2.3.2439: the world waits for the server */
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 
@@ -256,6 +257,39 @@ export function setupWebSocket(ctx) {
       _rfPending = null;
       _rfAttempts = 0;
       if (roomFullOpen()) hideRoomFull();
+    }
+    /* ═══ v2.3.2439: A SERVER THAT IS NOT READY IS RETRIED, NOT OBEYED ═══
+       state_sync arrived but without the caps the game is built on (an old
+       worker, or a live flag switching one off).  The old behaviour was to
+       take that as instructions and run the legacy client-local paths --
+       which is how the owner ended up in a world with combat levels of 0.
+       Now the loading screen holds (serverReady.js) and this re-joins on a
+       fixed cadence until a state_sync carries the caps.  Same socket
+       surgery as the resume-resync road: detach the handlers first so the
+       old socket's close cannot fire the reconnect twice. */
+    var READY_RETRY_MS = 5000;
+    var _readyRejoinTimer = null;
+    function _rejoinForReadiness(reason) {
+      if (_readyRejoinTimer) return;
+      try {
+        import('../debug/crashTrap.js').then(function (ct) {
+          ct.recordCrash('server-not-ready', String(reason || ''));
+        }).catch(function () {});
+      } catch (e) {}
+      _readyRejoinTimer = setTimeout(function () {
+        _readyRejoinTimer = null;
+        var _old = ws;
+        ws = null;
+        try {
+          if (_old) {
+            _old.onclose = null; _old.onmessage = null; _old.onerror = null;
+            _old.close(1000, 'server not ready');
+          }
+        } catch (e) {}
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectDelay = 1000;
+        connect();
+      }, READY_RETRY_MS);
     }
     function connect() {
       if (!WS_URL) {
@@ -996,6 +1030,18 @@ export function setupWebSocket(ctx) {
                  the legacy client-side credit paths stay in place but
                  only run when the server hasn't claimed the job. */
               S._serverCaps = msg.caps || {};
+              /* v2.3.2439: is this a server the game can be shown on?  The
+                 loading screen and the in-world veil both key off this
+                 (serverReady.js).  Not ready -> the world stays covered and
+                 _rejoinForReadiness asks again in a few seconds.  The rest
+                 of the sync still applies -- state is harmless to hold, it
+                 is SHOWING it that the owner's rule forbids. */
+              if (markServerReady(S._serverCaps)) {
+                S._netHold = false;
+              } else {
+                S._netHold = true;
+                _rejoinForReadiness(serverReadyReason(S._serverCaps));
+              }
               /* v2.3.1982: we are IN.  state_sync is the first message
                  that only exists for an admitted session, so this is the
                  exact moment the "world is full" screen stops being true.
@@ -2884,6 +2930,14 @@ export function setupWebSocket(ctx) {
           showResumeBanner('This account connected from another window.', 'Play here instead');
           return;
         }
+        /* v2.3.2439: an ordinary drop -- the one road above that comes back
+           on its own.  The world is veiled after a short grace (a cellular
+           blip reconnects inside it and never shows a thing) and stays
+           veiled until the next state_sync says the server is back.  Every
+           deliberate stop above (frozen, full, reset, rejected, idle,
+           superseded) has its own screen and returns before this line. */
+        resetServerReady('lost');
+        S._netHold = true;
         scheduleReconnect();
       };
       ws.onerror = function () {

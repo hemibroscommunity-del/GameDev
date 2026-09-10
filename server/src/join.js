@@ -1067,7 +1067,10 @@ export const joinMethods = {
       if (_motd && _motd.text) {
         try { ws.send(JSON.stringify({ type: 'server_announce', payload: { text: _motd.text, motd: true, ts: _motd.ts } })); } catch (e) {}
       }
-      this._metricsMaybe(Date.now()).catch(() => {});
+      /* v2.3.2438: the daily metric is NOT kicked here any more -- it is a
+         paged job on the tick's housekeeping slot (liveops.js), and this
+         join has just made sure the tick is running.  Fired from here it
+         listed every rpg: blob, values included, inside the join. */
     }
     // v2.3.1121: duel bookkeeping on (re)join -- clear a reconnect
     // grace window if this player dropped mid-duel, and kick the

@@ -3021,3 +3021,178 @@ design reads backwards there — the owner's own report on the shirt at v2.3.193
 players who have actually drawn something and to directions the facing map
 actually mirrors, or it is memory nobody can see on the platform this game is
 built for.
+
+## 74. Reading a live server monster's health as the whole answer (v2.3.2435)
+
+**Tempting:** in a server zone the client never touches monster health — every
+`m.curHp -= dmg` in `projectiles.js` and `monsterCombat.js` sits behind
+`if (!S._serverMonsters)`, and the number is written only by the tick
+(`wsClient` `localM.curHp = md.hp`) or by `monster_hit`'s authoritative hpPct.
+So a fall in `curHp` is the worker's own word that the hit landed, and no fall
+means it did not. The first half is right — it is what `mp-hitreal` scores on,
+and it is a far stronger signal than a local fixture's HP. Reading the second
+half as its inverse is wrong three separate ways.
+
+**A refusal the game is supposed to make reads exactly like a dropped hit.**
+The snowman's burrow is started by the WORKER's own AI mid-fight (`index.js`
+v2.3.2221 `_startBurrow`), and while he is a `pile` the server denies all
+damage (`_monsterDamageable`) and the client's own test treats him as
+intangible. A monster that was a fair target when the shot left can be
+untouchable when it arrives: the row reads `hp 24 -> 24` with every orb
+registered client-side, which looks precisely like a worker dropping
+legitimate damage. Read `m._burPhase` (from the tick's `ph`) at SETTLE time,
+not only when the target is picked. Note the phase: `dig` is deliberately NOT
+invulnerable — "entering has to cost something" — only `pile` is.
+
+**And the client can land a hit without sending `monster_damage`.** The bow
+special has two damage paths: the planted arrow's 500 ms client timer, which
+sends ordinary `monster_damage`, and then the detonation — `arrow_blast`
+(`arrowblast.js` v2.3.2279), the one damage message on this worker that carries
+a COORDINATE instead of a monster id, precisely because the moment it settles
+exists only in the browser. Elemental hits add a second door: the status they
+leave keeps ticking server-side with nothing further on the wire. So "every
+attempt sends one message" is not a sound assertion and fails working weapons —
+three rows of `mp-hitreal` settled five hits against four sends. The sound
+assertion is the inverse: no attempt where the client registered a hit and the
+worker settled **nothing**.
+
+**A moving target is allowed to be somewhere else.** Against a pinned fixture
+100% is the only correct answer. Against a monster the worker moves, a
+projectile fired at where one IS can arrive where it is NOT — measured at 41 px
+of purely sideways travel on a 27 px slime during a 190 px bow shot. Asserting
+100% there fails a correct engine about once a run. Excuse a miss only when the
+target crossed the LINE OF FIRE by at least its own body radius (a monster
+charging straight at you closes fast and dodges nothing), and never for melee,
+whose arc resolves instantly and has nothing to outrun.
+
+**Two more in the same family, both of which cost this file a whole run.**
+`S.currentZone === z` is the START of a zone transition, not a populated zone —
+the monsters arrive on a snapshot after it, so waiting for the name and then
+sleeping finds an empty world (`srv:true, n:0`) and reads it as a zone with no
+monsters in it. And a headless client **logs itself out after two idle
+minutes**: `wsClient.idleLogout` (v2.3.1913) measures idleness from
+`_lastInputAt`, stamped by real window-capture touchstart/pointerdown/keydown/
+wheel, and a scenario driven through `page.evaluate` stamps none of them however
+busy it looks. At 120 s the page closes its own socket with code 4006 and stops.
+From the inside that is not an error: the player freezes, `fire` reports "never
+fired", the worker releases the playerState so every hit is refused, and three
+zones read as broken weapons. Press a real key on a loop, and READ
+`S._realtimeStatus` per row rather than inferring it from the zeros.
+
+**Receipt:** `tools/qa/mp/mp-hitreal.mjs` and the notes it carries at each of
+these lines; `server/src/arrowblast.js`; `server/src/telegraph.js` `_startBurrow`;
+`server/src/combat.js` `_monsterDamageable`; `src/networking/wsClient.js`
+`idleLogout`. The general shape, and the reason all six landed in one file: a
+fixture answers "does the hit test work", a live zone answers "did this attempt
+land", and every mechanic the worker owns sits between the two. Each of these
+failures looked exactly like the bug being hunted.
+
+## 75. A gate that waits for the assets is not a gate that waits for the server (v2.3.2439)
+
+**Tempting:** the loading screen already holds until everything is ready —
+`IntroVideo` awaits `preloadPlayerAssets()` and only then lifts. CLAUDE.md
+calls this the animation-preloading law. So by the time a player sees the
+world, the game is ready.
+
+**It waited for the art. It never waited for the server.** Nothing between
+page load and the world being on screen checked that a `state_sync` had
+arrived, and the overlay carried a 20-second safety cap that lifted it even
+when nothing at all had loaded. So when the game room stopped answering joins
+in September 2026, every player still walked into a world — the client-local
+remnant, with no capabilities, local monsters, the legacy six-tile Points grid
+and combat levels reading 0. The owner reported "zeros for combat primary
+skills", "old menus" and "offline legacy stuff", and a full day went into
+chasing a capability *flag*, because a missing `caps.prog3` and a missing
+server look identical from inside the client. The room was simply not there
+and the client had covered for it.
+
+**The tell was in the report all along.** "Old menus" — plural. One flag
+switches off one system. Every system at once is not a flag; it is no
+`state_sync`. The second tell was the admin panel's own request to the same
+Durable Object timing out: two unrelated things not answering is the thing
+they share not answering.
+
+**The rule:** an online-only game reveals its world on exactly one signal —
+the server saying it is ready — and covers it again the moment that stops
+being true. `serverReady.js` is that signal: the loading screen awaits it
+beside the assets with NO cap of its own; a `state_sync` without the required
+caps is retried rather than obeyed; a dropped socket veils the world after a
+short grace. The legacy client-local paths are still in the tree, but a player
+can no longer be standing in them.
+
+**And the sharp edge, which is why the required list is a registry.** Pages
+deploys the client before the worker deploys. A cap that the client *requires*
+in the same PR that *introduces* it keeps every player at "connecting" until
+the worker catches up — or forever, if that deploy failed. precheck's
+`ready-caps` check refuses the push unless every required name is already in
+the base branch's caps literal. Never require a cap you just added.
+
+## 76. "It's wrapped in try/catch and fire-and-forget, so it can't block anything" (v2.3.2438)
+
+**Tempting:** the daily economy snapshot is kicked from the join handler as
+`this._metricsMaybe(now).catch(() => {})` — not awaited, errors swallowed —
+and the oplog prune is "best-effort" inside its own try/catch. Neither can
+fail a join, so neither can hurt one.
+
+**Neither can fail a join. Both can stop the room.** A Durable Object holds
+its input gate closed for the whole time any handler is awaiting storage
+(handoff rule 9). "Fire-and-forget" only means the *caller* stops waiting;
+the object still runs every storage await in that chain before it delivers
+another event. So `_economySnapshot`'s single `storage.list({prefix:'rpg:'})`
+— every player blob ever written, values included, guests and throwaways
+too, never pruned — and `_opPruneMaybe`'s list-everything-then-delete-one-
+at-a-time both froze the room for as long as they took, and nothing they
+were wrapped in could shorten that. Worse, the snapshot only marked itself
+done on success, so a table that had grown past what one `list()` returns
+comfortably retried every 60 seconds, forever. The owner's flags request
+timed out "several times"; their join never got its `state_sync`; the client
+fell into the offline legacy game and the day went to chasing a flag.
+
+**The rule:** on any path the room serves from — a join, a message, a tick
+slot — an unbounded `storage.list()` is a stall, whatever it is wrapped in.
+Housekeeping that walks a prefix is a *job*: one bounded page per tick slot,
+a cursor carried in memory, deletes batched (the runtime takes up to 128
+keys per call), and a throw that backs off rather than retrying next slot.
+Never on the join path at all — a join starts the tick, and the slot follows.
+The second thing to check when the room "isn't answering" is how big the
+prefixes have grown since the code was written: the code was months old; the
+data was new.
+
+## 77. A `busy` flag over a fetch with no timeout is a dead panel (v2.3.2440)
+
+**Tempting:** the operator panel disables its buttons while a request is in
+flight (`disabled={busy}`), and clears the flag in the fetch's `finally` so it
+can never be left set. Every failure the surface can produce — 401, 404, no key
+configured, an old worker — has its own message. Nothing is silent.
+
+**Except that `fetch` has no timeout.** A request the network swallows never
+settles, so the `finally` never runs, so `busy` stays true forever — and
+because `disabled={busy}` is on EVERY control, one stalled call takes the whole
+panel down behind the single word "Working…", with no error and no way out but
+closing it. The owner reported it as "I tapped the flags button and nothing was
+happening", and they were right: the button was disabled. The careful set of
+messages covered every case except the one where nothing comes back, which is
+the case a phone on mobile data actually hits.
+
+**And the request that killed it was not one they made.** The panel fires a
+state refresh by itself on open. That automatic call shared the same `busy`, so
+a round trip nobody asked for disabled a button somebody was pressing — and
+wrote its own failure into the status line, greeting an owner who had just
+opened the panel with "this worker does not have the test routes yet" about a
+request they never made.
+
+**The rule, in two parts.** Any fetch whose result gates a control needs a
+timeout (`AbortController` + `setTimeout`; the point is not the duration, it is
+that the promise ALWAYS settles). And a call the user did not initiate must not
+be able to disable a control or write a message — give it a `quiet` path, or a
+background probe becomes an unexplained dead UI. Report a timeout as a timeout,
+too: "network error" sends someone to check their wifi over a request the
+server simply never answered.
+
+**Why the existing coverage missed it.** `mp-devflags` drives that same rail
+end to end and is green — list, warn, clear, worker agreeing — because its
+worker always replies. A hang is not a failure any real server hands you on
+demand; the pin (`mp-devstall`) has to manufacture it with a route that accepts
+the request and never answers. Twelve of its twenty-three assertions go red
+against the pre-fix panel, and its captured panel text is character for
+character the owner's screenshot.

@@ -1,4 +1,4 @@
-/* DOES EVERY WEAPON REGISTER ITS HITS? (v2.3.2433)
+/* DOES EVERY WEAPON REGISTER ITS HITS? (v2.3.2435)
  *
  * Owner: "Test the arrow special attack, magic, magic special attack, sword,
  * and sword special attack too in a duel setting for hitbox registry.  Also
@@ -63,36 +63,30 @@ const ATTACKS = [
   { key: 'magic special',  type: 'staff',      slot: 'staff',  special: true,  range: RANGED_RANGE },
 ];
 
-/* ═══ EQUIPPING TAKES IT OUT OF THE STASH ═══
-   So the second time a row asks for a weapon it is no longer there to find,
-   and a helper that only searches the stash bails -- WITHOUT setting the
-   active slot, leaving whatever the previous row was holding.  The first
-   working run of this file did that: by the PvP half the sword rows were
-   swinging a STAFF, which reported "PvP sword never reaches the wire" and
-   looks exactly like a broken melee gate.  It was mislabelled rows.
-   Already-equipped is therefore success, not failure. */
-const equipFromStash = (P, wantType, slot, activeSlot) => P.page.evaluate(({ wantType, slot, activeSlot }) => {
-  const S = window._gameState && window._gameState.current, R = S && S.rpg;
-  if (!R || !S.channel) return { ok: false, why: 'no state' };
-  const held = slot === 'weapon' ? R.weapon : slot === 'rangedWeapon' ? R.rangedWeapon : R.staffWeapon;
-  if (held && held.type === wantType) {
-    S.channel.send({ type: 'set_active_slot', payload: { slot: activeSlot } });
-    R.activeSlot = activeSlot; S._userCycledSlot = true;
-    return { ok: true, already: true };
-  }
-  const i = (R.weaponStash || []).findIndex((w) => w && w.type === wantType);
-  if (i < 0) return { ok: false, why: 'not in stash', stash: (R.weaponStash || []).map((w) => w && w.type) };
-  S.channel.send({ type: 'equip_request', payload: { stashIdx: i, slot } });
-  S.channel.send({ type: 'set_active_slot', payload: { slot: activeSlot } });
-  R.activeSlot = activeSlot;
-  S._userCycledSlot = true;
-  return { ok: true, idx: i };
-}, { wantType, slot, activeSlot });
+/* Equipping moved to H.equipWeapon (harness.mjs), and the long note about why
+   already-equipped counts as SUCCESS went with it.  mp-hitreal drives the same
+   six weapon rows, and a second copy of a helper whose whole purpose is to
+   avoid one specific mislabelling bug is how that bug comes back in the file
+   that did not get the fix. */
 
 /* Put a stationary monster at a known bearing and range, and point the player
    at it.  Local (_serverMonsters false) so its HP is the truth rather than a
    round trip -- the CLIENT's hit test is the subject here, and the worker's
-   PvE range gate is 400px, which nothing in this file approaches. */
+   PvE range gate is 400px, which nothing in this file approaches.
+
+   ═══ v2.3.2435: THIS IS A CONTROL, AND IT IS NOT THE GAME ═══
+   Owner, asked whether the monster half was tested: "Yes test against real
+   server monsters that's the only way the game is going to be played
+   everything is server side."  He is right.  Pinned, 500000 HP, spd 0,
+   renderX nailed to the logic position, one archetype -- it isolates the hit
+   test so that a failure here can ONLY be the hit test, and that is worth
+   keeping.  It is also blind to everything the live path adds: interpolation
+   lag on a MOVING monster (renderX/renderY is what the hit test reads), the
+   worker's own gates, and the other body radii.
+   mp-hitreal.mjs owns that question -- every weapon against monsters the
+   WORKER owns and moves, in three zones, scored on the server's own HP.  The
+   two are meant to be read together: a row that fails there and passes here
+   is a server gate or a moving target, not the hit test. */
 const seedMonster = (P, range) => P.page.evaluate(({ range, bearing }) => {
   const S = window._gameState.current, F = window._gameFns || {};
   const P0 = S.player;
@@ -235,7 +229,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── PvE: every attack against a stationary monster ───────────────────── */
   const pve = [];
   for (const atk of ATTACKS) {
-    const eq = await equipFromStash(A, atk.type, atk.slot === 'staff' ? 'staffWeapon'
+    const eq = await H.equipWeapon(A, atk.type, atk.slot === 'staff' ? 'staffWeapon'
       : atk.slot === 'ranged' ? 'rangedWeapon' : 'weapon', atk.slot);
     await A.page.waitForTimeout(1000);
     const seed = await seedMonster(A, atk.range);
@@ -295,7 +289,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const pvp = [];
   if (duelOn) {
     for (const atk of PVP_ORDER) {
-      await equipFromStash(A, atk.type, atk.slot === 'staff' ? 'staffWeapon'
+      await H.equipWeapon(A, atk.type, atk.slot === 'staff' ? 'staffWeapon'
         : atk.slot === 'ranged' ? 'rangedWeapon' : 'weapon', atk.slot);
       await A.page.waitForTimeout(1000);
       /* Stand at this row's range from the opponent.  hopTo walks for real --
