@@ -59,7 +59,15 @@ import * as H from './harness.mjs';
 const SHOTS = 10;                     /* phase samples per cell */
 const SPEEDS = [8, 16, 24, 32, 48];   /* nominal px/frame before _dtScale */
 const OFFSETS = [0, 12, 18];          /* px perpendicular: centre -> grazing */
-const R_PVP = 22;                     /* projectiles.js, non-staff PvP radius */
+const R_PVP = 22;                     /* the PLAYER body radius (projectiles.js) */
+/* v2.3.2431: the arrow drawn half-thickness, so its effective radius is
+   22 + 6.6 = 28.6.  These two bracket it: a shot 26px off centre is inside the
+   drawn arrow reach and must land; one 34px off is outside it and must not.
+   BOTH are needed -- a hitbox that should match the sprite is satisfiable by
+   making the hitbox enormous, and only the second assertion forbids that. */
+const ARROW_HALF = 6.6;
+const HIT_BAND = 26;                  /* > 22, < 28.6: lands only since v2.3.2431 */
+const MISS_BAND = 34;                 /* > 28.6: must still miss */
 
 /* Fire a batch and sample every arrow's real position on every frame. */
 const volley = (P, opts) => P.page.evaluate(({ tid, speed, offset, shots, frames }) => new Promise((resolve) => {
@@ -208,6 +216,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     console.log('');
   }
+
+  /* ═══ v2.3.2431: THE HITBOX IS THE SPRITE, AND ONLY THE SPRITE ═══
+     Two bands either side of the drawn arrow's edge, fired at a step slow
+     enough that tunnelling cannot be what decides either one. */
+  const band = async (offset) => {
+    const r = await volley(A, { tid: bId, speed: 8, offset, shots: SHOTS, frames: 90 });
+    if (r.error) return null;
+    /* volley already waits out the flight and reports the renderer probe. */
+    return { offset, hits: r.probeHits, of: SHOTS, step: r.stepMean };
+  };
+  const inBand = await band(HIT_BAND);
+  const outBand = await band(MISS_BAND);
+  console.log('\n    sprite band: ' + HIT_BAND + 'px off -> ' + (inBand ? inBand.hits : '?') + '/' + SHOTS
+    + '    ' + MISS_BAND + 'px off -> ' + (outBand ? outBand.hits : '?') + '/' + SHOTS);
+  console.log('    (the drawn arrow is 52.5 x 13.1px, so its reach is '
+    + R_PVP + ' + ' + ARROW_HALF + ' = ' + (R_PVP + ARROW_HALF).toFixed(1) + 'px)\n');
+  rec.ok('a shot ' + HIT_BAND + 'px off centre lands — the drawn arrow reaches that far ('
+    + (inBand ? inBand.hits : '?') + '/' + SHOTS + ')',
+    !!inBand && inBand.hits === SHOTS, inBand);
+  rec.ok('...and one ' + MISS_BAND + 'px off still MISSES — the hitbox grew to the sprite, not past it ('
+    + (outBand ? outBand.hits : '?') + '/' + SHOTS + ')',
+    !!outBand && outBand.hits === 0, outBand);
 
   rec.ok('there were shots through the hitbox to judge (guard)', crossed > 0, { crossed });
   /* THE ONLY ASSERTION.  Where the hitbox should sit is a design call; whether

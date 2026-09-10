@@ -42,6 +42,80 @@
    arrow per monster per frame and an allocation here is the kind of per-frame
    garbage v2.3.2331 spent a version removing. */
 var _segHitX = 0, _segHitY = 0;
+/* ═══════════════════════════════════════════════════════════════════════════
+   v2.3.2431: THE HITBOX IS THE SPRITE YOU CAN SEE
+   ═══════════════════════════════════════════════════════════════════════════
+   Owner: "I do think you should change the arrow hitbox to match the px sprite
+   size.  Same with magic projectiles (if there's any difference there)."
+
+   There is a difference, and MEASURED, it is the arrow alone.  Every impact
+   test here treats the projectile as a POINT at its anchor and compares that
+   against a radius standing for the TARGET.  Resolve what each projectile is
+   actually drawn at (frame size x the renderer's own scale) and the radii
+   already in the file line up almost exactly with "the player's body, 22px,
+   plus the projectile's drawn half-THICKNESS":
+
+     projectile        drawn WxH     half-thick   radius here   22 + half
+     arrow (pine)      52.5 x 13.1          6.6            22        28.6
+     magic bolt        39.1 x 23.0         11.5            34        33.5
+     bow special       53.4 x 21.8         10.9            33        32.9
+
+   Magic is within half a pixel.  The bow special is within a tenth.  The plain
+   arrow is the one that never had its own size added -- and it is the one the
+   owner has been shooting.  So this is not a new rule being invented, it is
+   the rule the other three already follow, applied to the fourth.
+
+   AND THE BIGGER MISS IS LENGTH, which none of them had.  An arrow is drawn
+   52.5px long: its tip leads the tested point by 28.5px and its tail trails it
+   by 24px, and not one of those pixels was ever tested.  A shot whose drawn
+   arrowhead visibly buried itself in a monster missed if the ANCHOR had not
+   arrived yet.  A circle cannot express that -- the arrow is 4:1 -- so the
+   projectile becomes a CAPSULE: its drawn body, swept along the segment it
+   travelled this frame (v2.3.2426), against the target's circle.
+
+   RADII NEVER SHRINK.  The effective radius is max(what it was, 22 + half),
+   so magic and both specials keep the exact numbers they have today and only
+   the arrow moves (22 -> 28.6).  The ×1.5 special allowance (v2.3.222) is
+   untouched.  Nothing here is a stealth rebalance in the quiet direction.
+
+   LITERALS, NOT IMPORTS.  These numbers are the renderer's (ARROW_PINE.lenPx
+   and .anchor, MAGIC_BOLT_ANCHOR and its 0.18, ARROW_SPECIAL/MAGIC_SPECIAL
+   .scale and .anchor, all in effectsRenderer.js) resolved against the sheets
+   in public/sprites/projectiles/.  They are copied rather than imported for
+   the reason BOW_RELEASE_MS is (see the nock comment below): game/ does not
+   import from rendering/.  IF THE ART IS RECUT OR RESCALED, THESE MOVE WITH
+   IT -- that is the standing cost of the copy, and it is written here so the
+   next person re-cutting a sheet knows to look. */
+var PROJ_BODY = {
+  /* back = anchor.x * drawnW, front = (1 - anchor.x) * drawnW, half = drawnH / 2 */
+  arrow:        { back: 24.0, front: 28.5, half: 6.6 },   /* 128x32  @ 52.5/128, anchor .457 */
+  magicBolt:    { back: 26.9, front: 12.2, half: 11.5 },  /* 217x128 @ 0.18,     anchor .688 */
+  arrowSpecial: { back: 24.6, front: 28.8, half: 10.9 },  /* 314x128 @ 0.17,     anchor .460 */
+  magicSpecial: { back: 42.6, front: 24.0, half: 19.2 },  /* 222x128 @ 0.30,     anchor .639 */
+};
+/* Which body a projectile is drawn with.  Mirrors the branch order in
+   effectsRenderer's projectile pass: special first, then staff-vs-bow.  `ice`
+   rides with staff because it is the legacy "draw as orb" toggle every staff
+   special carries (v2.3.1396). */
+function _projBody(a) {
+  var staff = !!(a.isStaff || a._isStaffProj || a.ice);
+  if (a.isSpecial) return staff ? PROJ_BODY.magicSpecial : PROJ_BODY.arrowSpecial;
+  return staff ? PROJ_BODY.magicBolt : PROJ_BODY.arrow;
+}
+/* The capsule this projectile swept this frame: its drawn body (back..front
+   along its heading) carried from last frame's anchor to this one's.  Written
+   into module scope for the same no-allocation-per-frame reason as _segHit. */
+var PVP_BODY_R = 22;
+var _capAx = 0, _capAy = 0, _capBx = 0, _capBy = 0;
+function _projCapsule(a) {
+  var bd = _projBody(a);
+  var c = Math.cos(a.ang), s2 = Math.sin(a.ang);
+  var px = (a._prevX != null ? a._prevX : a._renderX);
+  var py = (a._prevY != null ? a._prevY : a._renderY);
+  _capAx = px - c * bd.back;  _capAy = py - s2 * bd.back;
+  _capBx = a._renderX + c * bd.front;  _capBy = a._renderY + s2 * bd.front;
+  return bd.half;
+}
 function _segGap(px, py, ax, ay, bx, by) {
   var dx = bx - ax, dy = by - ay;
   var L = dx * dx + dy * dy;
@@ -607,9 +681,17 @@ export function updateArrows(S, deps) {
               var _mProjY = _hitBaseY - monsterBodyOffsetY(_archProj);
               /* v2.3.2426: the SEGMENT this frame, not the endpoint — see the
                  header.  a._prevX is undefined on the first flight frame and
-                 _segGap falls back to the point test there. */
-              var _segD = _segGap(_hitX, _mProjY, a._prevX, a._prevY, a._renderX, a._renderY);
-              if (_segD < _hitR) {
+                 _segGap falls back to the point test there.
+                 v2.3.2431: ...and the segment now carries the projectile's own
+                 drawn BODY, so what is tested is the sprite the player can see
+                 rather than a point at its anchor.  `_hitR` here is the
+                 MONSTER's radius with no projectile allowance baked into it
+                 (unlike the PvP numbers next door -- see the header), so the
+                 half-thickness is a straight capsule-vs-circle sum. */
+              var _hitHalf = _projCapsule(a);
+              var _segD = _segGap(_hitX, _mProjY, _capAx, _capAy, _capBx, _capBy);
+              var _hitRE = _hitR + _hitHalf;
+              if (_segD < _hitRE) {
                 /* ═══ PUT THE IMPACT WHERE IT HAPPENED ═══
                    Only in the case the old test would have MISSED, which keeps
                    every previously-landing shot byte-identical: there the point
@@ -622,7 +704,7 @@ export function updateArrows(S, deps) {
                    ON this frame's segment, so this never moves the arrow
                    backwards past where it already was. */
                 var _pointD = Math.sqrt(Math.pow(_hitX - a._renderX, 2) + Math.pow(_mProjY - a._renderY, 2));
-                if (_pointD >= _hitR) { a._renderX = _segHitX; a._renderY = _segHitY; }
+                if (_pointD >= _hitRE) { a._renderX = _segHitX; a._renderY = _segHitY; }
                 a.hitIds.add(m.id);
                 if (a.volleyHitIds) a.volleyHitIds.add(m.id);   /* v2.3.1435: claim for the whole cone */
                 var arrowElem = a.isSpecial ? activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element2 : activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1;
@@ -1153,13 +1235,25 @@ export function updateArrows(S, deps) {
                 var _pvpY = (typeof _pvpO.renderY === 'number') ? _pvpO.renderY : _pvpO.y;
                 /* Body centre sits above the feet anchor — same intuition
                    as monsterBodyOffsetY; player sprites are fodder-scale. */
-                var _pvpHitR = a.isStaff ? 34 : 22;
+                /* v2.3.2431: 22 is the PLAYER's body; the staff's 34 is that
+                   plus a bolt's half-thickness, added by hand long ago.  Named
+                   so the generalisation below reads as the same idea. */
+                var _pvpHitR = a.isStaff ? 34 : PVP_BODY_R;
                 if (a.isSpecial) _pvpHitR *= 1.5;
                 /* v2.3.2426: the SEGMENT this frame, not the endpoint.  This is
                    the one with no safety net — the worker never re-simulates a
                    projectile, so whatever this line decides is final. */
+                /* v2.3.2431: the drawn body, swept — see the header.  The
+                   radius is max(what it was, the player's 22px body + this
+                   projectile's drawn half-thickness), so magic and both
+                   specials keep the exact numbers they have today (34, 33, 51
+                   against 33.5, 32.9, 41.2) and only the plain arrow moves,
+                   22 -> 28.6.  A floor rather than a replacement precisely so
+                   this cannot quietly shrink anything. */
+                var _pvpHalf = _projCapsule(a);
+                _pvpHitR = Math.max(_pvpHitR, PVP_BODY_R + _pvpHalf);
                 var _pvpPointGap = Math.sqrt(Math.pow(_pvpX - a._renderX, 2) + Math.pow(_pvpY - 24 - a._renderY, 2));
-                var _pvpGap = _segGap(_pvpX, _pvpY - 24, a._prevX, a._prevY, a._renderX, a._renderY);
+                var _pvpGap = _segGap(_pvpX, _pvpY - 24, _capAx, _capAy, _capBx, _capBy);
                 /* Impact FX go where the path crossed, and only for a shot the
                    old point test would have missed — see the monster branch. */
                 if (_pvpGap < _pvpHitR && _pvpPointGap >= _pvpHitR) { a._renderX = _segHitX; a._renderY = _segHitY; }
