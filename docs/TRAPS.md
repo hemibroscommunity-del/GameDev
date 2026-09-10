@@ -2736,3 +2736,71 @@ fails on a cold one.
 Related: §61 (a still-frame assertion cannot see a frozen animation) and §66 (a
 probe measuring a control in a state that cannot show the defect) — all three
 are tests that ran, passed, and never touched the thing that was broken.
+
+---
+
+## 69. A WebSocket wrapper that drops the statics silences every send (v2.3.2418)
+
+### The move that looks right
+
+To test a client against a worker that does **not** advertise some capability,
+the honest way is to strip it off the wire rather than poke a client field — an
+init script wraps `window.WebSocket`, deletes the key from `state_sync`, and
+hands the message on:
+
+```js
+const RealWS = window.WebSocket;
+window.WebSocket = function (...a) {
+  const ws = new RealWS(...a);
+  ws.addEventListener('message', (e) => { /* rewrite e.data */ }, true);
+  return ws;
+};
+window.WebSocket.prototype = RealWS.prototype;
+```
+
+Incoming messages arrive rewritten. The page joins, draws, and reports the caps
+you expect. It looks like it works.
+
+### What actually happens
+
+`wsClient` guards **every single send** with
+
+```js
+if (!ws || ws.readyState !== WebSocket.OPEN) return;
+```
+
+— eight sites. `WebSocket.OPEN` is a **static on the constructor**, and the
+wrapper above is a fresh function that has none. So it reads `undefined`, the
+guard is true forever, and **every client→server message is dropped in
+silence**. Nothing throws. Nothing logs.
+
+The failure is worse than a dead page, because the page is not dead: incoming
+traffic is untouched, so the bro joins, the world paints, monsters move, caps
+arrive. Only what the *test* tries to do — accept a quest, walk to a zone,
+forge a weapon — goes nowhere. It reads as "the fixture is flaky", and the
+round quietly skips itself instead of answering the question it was written to
+ask.
+
+### The rule
+
+**A constructor wrapper must carry the constructor's statics.** One line:
+
+```js
+for (const k of ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED']) {
+  window.WebSocket[k] = RealWS[k];
+}
+```
+
+More generally: `prototype` covers what instances can do; it says nothing about
+what the constructor itself carries, and a guard reading `Ctor.SOMETHING` is
+looking at the half you replaced.
+
+### How to notice it in one step
+
+A scenario using this pattern that ends up somewhere it did not ask to be —
+still in town, no weapon, `serverDriven: false` — has a send problem, not a
+timing problem. Adding retries will not fix it, and six retries that all fail
+identically is the tell.
+
+Related: §67 (the test ran, passed, and never touched the thing that was
+broken) — same family, one layer down.
