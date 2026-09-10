@@ -1,35 +1,38 @@
-/* ═══ THE BOW'S JET STREAM IS THE AIM LINE NOW (v2.3.2398) ═══
+/* ═══ THE BOW'S SIGHT STREAM IS BACK, AT THE ARROW'S RANGE (v2.3.2448) ═══
  *
- * Owner: "Instead of the aim tool (curvy line) for the bow I want to try to add
- * a jet stream to each arrow. ... so that way the player can use it as a visual
- * guide to aim each successive arrow (like making a line out of it to aim
- * better).  I need just the jet stream effect (should be thin and long) to
- * almost connect each successive arrow."
+ * Owner: "changing the bow back to the old stream but lengthen it to how far
+ * the arrow shoots.  Disable the new jet stream effect."
  *
- * FOUR CLAIMS, and the middle two are the ones with teeth:
+ * THIS FILE ONCE ASSERTED THE EXACT OPPOSITE, and it is rewritten rather than
+ * deleted for the reason mp-aimpath gives about the same line: a test that
+ * once claimed the reverse is the clearest record that a MOVE was made, and
+ * this line has now moved four times.  In order:
  *
- *   1. a flying bow arrow lays a streak, and magic lays none — the owner has
- *      taken a sight aid off magic twice (v2.3.2258, and again by asking for
- *      this one on the bow alone), so it is asserted rather than assumed;
- *   2. THE STREAK LIES ON THE ARROW'S REAL FLIGHT LINE.  This is v2.3.2320's
- *      property ("it points where the ARROW goes") moved to the feature that
- *      does the job now: a guide that disagrees with the shot is worse than no
- *      guide.  Checked against the simulation's OWN frozen launch point, not
- *      against a second copy of the aim ladder;
- *   3. IT OUTLIVES ITS ARROW.  An arrow crosses its range in ~1.4 s; a trail
- *      that died with it could never be sighted along, so this is not polish,
- *      it is the request.  Asserted by deleting every arrow outright and
- *      demanding the streaks stay, hold still, and fade;
- *   4. SUCCESSIVE STREAKS ALMOST CONNECT.  "Almost connect each successive
- *      arrow" is a measurable claim about a distance, and it is the one number
- *      that decides whether the feature works: cadence 450 ms x 480 px/s puts
- *      consecutive arrows ~216 px apart, so a 190 px streak leaves a ~26 px
- *      gap.  Shorten JET_LEN_PX and this goes red — which is the point.
+ *   v2.3.2258  off for bow AND staff -- "too much of an advantage";
+ *   v2.3.2320  back for the bow, while ATTACKING only;
+ *   v2.3.2398  off again, replaced by a jet stream trailing each arrow;
+ *   v2.3.2448  the jet stream off, the stream back, and now as long as the
+ *              arrow actually flies.
  *
- * AND THE THING IT REPLACED IS DARK.  The sight beam stayed on for the bow
- * while attacking (v2.3.2320); "instead of" means it stops, and the assertion
- * is deliberately made WHILE FIRING so it cannot pass by the player merely not
- * shooting.
+ * WHAT THE FOUR CLAIMS ARE NOW:
+ *
+ *   1. NO ARROW CARRIES A STREAK and the renderer draws none -- asserted while
+ *      a volley is in the air, not on an idle bow, so it cannot pass by the
+ *      player simply not shooting;
+ *   2. THE STREAM IS DRAWN WHILE FIRING.  Same hard case, opposite verdict to
+ *      the block this replaced;
+ *   3. AND ONLY WHILE FIRING.  v2.3.2320's gate ("while attacking, not while
+ *      aiming") survives the reversal, so releasing the control puts it out;
+ *   4. IT REACHES AS FAR AS THE ARROW SHOOTS.  This is the owner's actual ask
+ *      and the one number that decides whether it worked.  Measured against a
+ *      LIVE ARROW's own range multiplier rather than against a constant this
+ *      file also writes down: beam length must equal 675 * that arrow's
+ *      _rangeMult, which is the plant cap projectiles.js enforces.  The old
+ *      280 px beam fails this by a factor of 2.4.
+ *
+ * MAGIC STILL GETS NOTHING, as since v2.3.2258 -- the owner has taken a sight
+ * aid off magic twice, and a reversal for the bow is exactly the edit that
+ * could hand it back by accident.
  *
  * A CAMERA TOO.  The owner judges this by eye, so the same volley is shot at
  * both iPhone viewports.  BT_JET_SHOT names the run (before/after).
@@ -97,6 +100,9 @@ const snap = (P) => P.page.evaluate(() => new Promise((resolve) => {
       ry: a._renderY == null ? null : +a._renderY.toFixed(2),
       ang: +a.ang.toFixed(4),
       dist: +a.dist.toFixed(2),
+      /* v2.3.2448: the arrow's OWN cap multiplier, so the length claim is made
+         against the shot rather than against a second copy of the number. */
+      rangeMult: a._rangeMult == null ? null : +a._rangeMult.toFixed(4),
       staff: !!(a.isStaff || a._isStaffProj || a.ice),
       stuck: !!(a.planted || a.planting || a.stuckIn),
       /* THE PAIRING IS EXACT, not matched by proximity: the renderer hangs the
@@ -188,156 +194,68 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${vp.height}: holding the attack actually put arrows in the air (guard)`,
       fired.length > 3, { framesWithArrows: fired.length, of: samples.length });
 
-    /* ── 1. A FLYING BOW ARROW LAYS A STREAK ──────────────────────────── */
+    /* ── 1. NOTHING TRAILS THE ARROWS ANY MORE ────────────────────────── */
+    rec.ok(`${vp.height}: the renderer reports the jet stream disabled`,
+      probed.every((s) => s.probe.enabled === false), probed[0].probe);
     const flying = samples.filter((s) => s.arrows.some((a) => !a.stuck && a.pathX != null));
-    rec.ok(`${vp.height}: every airborne arrow carries a streak`,
-      flying.length > 0 && flying.every((s) =>
-        s.arrows.filter((a) => !a.stuck && a.pathX != null && a.dist > 2)
-          .every((a) => a.jet && !a.jet.dead)),
-      { frames: flying.length, worst: flying.find((s) =>
-        s.arrows.some((a) => !a.stuck && a.pathX != null && a.dist > 2 && !a.jet)) || null });
+    rec.ok(`${vp.height}: there are airborne arrows to check (guard)`, flying.length > 0,
+      { frames: flying.length, of: samples.length });
+    rec.ok(`${vp.height}: no airborne arrow carries a streak`,
+      flying.every((s) => s.arrows.every((a) => a.jet == null)),
+      flying.find((s) => s.arrows.some((a) => a.jet)) || { checked: flying.length });
+    rec.ok(`${vp.height}: ...and the renderer is drawing none at all`,
+      probed.every((s) => s.probe.n === 0),
+      probed.find((s) => s.probe.n !== 0) || { checked: probed.length });
 
-    /* ── 2. AND IT LIES ON THE ARROW'S REAL FLIGHT LINE ───────────────── */
-    const geo = [];
-    for (const s of samples) {
-      for (const a of s.arrows) {
-        if (!a.jet || a.stuck || a.pathX == null || a.dist < 40) continue;
-        const pathAng = Math.atan2(a.ry - a.pathY, a.rx - a.pathX);
-        geo.push({
-          dAng: wrap(a.jet.ang - pathAng),
-          off: offLine(a.pathX, a.pathY, pathAng, a.jet.x, a.jet.y),
-          /* The head sits one arrow-tail-inset behind the drawn arrow, so the
-             vapour starts where the shaft ends instead of painting over it. */
-          behind: Math.hypot(a.rx - a.jet.x, a.ry - a.jet.y),
-          len: a.jet.len,
-          travelled: Math.hypot(a.rx - a.pathX, a.ry - a.pathY),
-        });
-      }
-    }
-    rec.ok(`${vp.height}: there are mid-flight samples to measure (guard)`, geo.length > 4, { n: geo.length });
-    if (geo.length) {
-      const worstAng = Math.max(...geo.map((g) => g.dAng));
-      const worstOff = Math.max(...geo.map((g) => g.off));
-      rec.ok(`${vp.height}: the streak points down the arrow's own path (worst ${worstAng.toFixed(4)} rad)`,
-        worstAng < 0.01, { worstAng, n: geo.length });
-      rec.ok(`${vp.height}: ...and sits ON that path, not parallel to it (worst ${worstOff.toFixed(2)} px off)`,
-        worstOff < 1.0, { worstOff, n: geo.length });
-      /* ARROW_PINE.lenPx 52.5 * anchor.x 0.457 = 24.0 px, and it is expressed
-         as that product in the renderer so a resized arrow carries it. */
-      const behind = geo.map((g) => g.behind);
-      rec.ok(`${vp.height}: it starts at the arrow's TAIL, not over its shaft (${Math.min(...behind).toFixed(1)}-${Math.max(...behind).toFixed(1)} px behind)`,
-        behind.every((b) => b > 20 && b < 28), { min: Math.min(...behind), max: Math.max(...behind) });
-      /* ── 3. THIN AND LONG, AND CAPPED ─────────────────────────────── */
-      const cap = probed[0].probe.lenCap;
-      rec.ok(`${vp.height}: no streak is longer than the ${cap}px cap`,
-        geo.every((g) => g.len <= cap + 0.5), { cap, worst: Math.max(...geo.map((g) => g.len)) });
-      const grown = geo.filter((g) => g.travelled > cap + 30);
-      rec.ok(`${vp.height}: past ${cap}px of flight it trails at full length rather than spanning the whole shot`,
-        grown.length > 0 && grown.every((g) => Math.abs(g.len - cap) < 0.5),
-        { n: grown.length, sample: grown[0] || null });
-    }
-
-    /* ── 4. SUCCESSIVE STREAKS ALMOST CONNECT ─────────────────────────── */
-    /* Projected onto the aim ray from the player, each streak is the interval
-       [head - len, head].  The claim is about the GAP between one interval and
-       the next, which is the distance the eye has to jump to read them as one
-       line. */
-    const gapsPerFrame = samples.map((s) => {
-      const st = (s.probe && s.probe.streaks) || [];
-      if (st.length < 2) return null;
-      const ux = Math.cos(AIM), uy = Math.sin(AIM);
-      const spans = st.map((k) => {
-        const d = (k.x - s.px) * ux + (k.y - s.py) * uy;
-        return [d - k.len, d];
-      }).sort((p, q) => q[1] - p[1]);      /* furthest first */
-      const gaps = [];
-      for (let i = 1; i < spans.length; i++) gaps.push(spans[i - 1][0] - spans[i][1]);
-      return Math.max(...gaps);
-    }).filter((g) => g != null);
-    rec.ok(`${vp.height}: a held volley has two or more streaks down the line at once (guard)`,
-      gapsPerFrame.length > 2, { frames: gapsPerFrame.length });
-    if (gapsPerFrame.length) {
-      /* The arithmetic says ~26 px (216 px pitch less a 190 px streak), and a
-         trained character fires faster than base so the pitch is tighter still.
-         MEASURED, shipped: -22 px at 844, +50 px at 664 — the streaks overlap or
-         very nearly touch.  MEASURED, mutated to JET_LEN_PX = 60: 84 px and
-         108 px, both red.  The bound is 80: loose enough that a slow sample
-         cannot fail it, tight enough that a streak which has stopped reaching
-         the arrow behind it does.  Those four numbers are the headroom, written
-         down so the next person retuning JET_LEN_PX knows what this costs. */
-      const worst = Math.max(...gapsPerFrame);
-      rec.ok(`${vp.height}: consecutive streaks ALMOST CONNECT (worst gap ${worst.toFixed(1)} px)`,
-        worst < 80, { worst, gaps: gapsPerFrame.map((g) => +g.toFixed(1)) });
-    }
-
-    /* ── 5. THE BEAM IT REPLACED IS DARK, WHILE FIRING ────────────────── */
+    /* ── 2. THE STREAM IS DRAWN WHILE FIRING ──────────────────────────── */
     const beamOn = samples.filter((s) => s.beam && s.beam.firing);
     rec.ok(`${vp.height}: the renderer agrees the bow is firing (guard)`, beamOn.length > 2,
       { firingFrames: beamOn.length, of: samples.length });
-    rec.ok(`${vp.height}: the old sight beam stays dark even mid-volley — the arrows draw the line now`,
-      beamOn.length > 0 && beamOn.every((s) => s.beam.visible === false),
-      beamOn.find((s) => s.beam.visible !== false) || { checked: beamOn.length });
+    rec.ok(`${vp.height}: the sight stream is drawn through the volley`,
+      beamOn.length > 0 && beamOn.every((s) => s.beam.visible === true),
+      beamOn.find((s) => s.beam.visible !== true) || { checked: beamOn.length });
+    rec.ok(`${vp.height}: ...pointing down the aim the shots are taking`,
+      beamOn.every((s) => s.beam.angle != null && wrap(s.beam.angle - AIM) < 0.02),
+      beamOn.find((s) => s.beam.angle == null || wrap(s.beam.angle - AIM) >= 0.02) || { checked: beamOn.length });
 
-    /* ── 6. IT OUTLIVES ITS ARROW ─────────────────────────────────────── */
-    /* Every arrow is deleted outright.  A trail hung off the arrow record (the
-       way _updateProjectileTrail hangs _trail) vanishes on this line; the whole
-       request is that this one does not. */
-    await hold(P, false);
-    const killed = await P.page.evaluate(() => {
-      const S = window._gameState.current;
-      const had = (S.arrows || []).length;
-      S.arrows = [];
-      S.autoAttack = false;
-      return { had };
-    });
-    rec.ok(`${vp.height}: there were arrows to take away (guard)`, killed.had > 0, killed);
-    const after0 = await snap(P);
-    rec.ok(`${vp.height}: the streaks survive their arrows being deleted`,
-      after0.probe.n > 0 && after0.arrows.length === 0,
-      { streaks: after0.probe.n, arrows: after0.arrows.length });
-    await P.page.waitForTimeout(220);
-    const after1 = await snap(P);
-    /* ═══ FOLLOW ONE STREAK, NOT ONE INDEX ═══
-       Read as streaks[0] this compared two DIFFERENT streaks: the list compacts
-       as they expire, so slot 0 gets younger over time.  It reported a streak
-       getting BRIGHTER (0.164 -> 0.316) and the geometry check beside it passed
-       on a coincidence -- consecutive arrows all plant at the same screen edge,
-       so two different streaks really did share an x, y and length. */
-    const sameId = after0.probe.streaks.map((k) => k.id)
-      .filter((id) => after1.probe.streaks.some((k) => k.id === id));
-    rec.ok(`${vp.height}: a streak from before the arrows died is still listed (guard)`,
-      sameId.length > 0, { before: after0.probe.streaks.map((k) => k.id), after: after1.probe.streaks.map((k) => k.id) });
-    if (sameId.length) {
-      const a0 = after0.probe.streaks.find((k) => k.id === sameId[0]);
-      const a1 = after1.probe.streaks.find((k) => k.id === sameId[0]);
-      rec.ok(`${vp.height}: ...and hold still where they were laid, rather than drifting`,
-        Math.abs(a0.x - a1.x) < 0.01 && Math.abs(a0.y - a1.y) < 0.01
-        && Math.abs(a0.len - a1.len) < 0.01, { a0, a1 });
-      rec.ok(`${vp.height}: ...fading as they go (${a0.alpha.toFixed(3)} -> ${a1.alpha.toFixed(3)})`,
-        a1.alpha < a0.alpha && a1.spent === true, { a0, a1 });
+    /* ── 3. IT REACHES AS FAR AS THE ARROW SHOOTS ─────────────────────── */
+    /* Against a LIVE arrow's own multiplier -- projectiles.js plants at
+       BOW_RANGE_PX * _rangeMult and the renderer draws BOW_RANGE_PX *
+       bowRangeMult(rpg), so this compares the two ends of the shared constant.
+       NOT against the distance an arrow travels on screen: a phone viewport is
+       844 px tall and an arrow plants at the screen EDGE long before its own
+       cap, which would measure the window rather than the weapon. */
+    const withArrow = samples.find((s) => s.beam && s.beam.len != null
+      && s.arrows.some((a) => a.rangeMult != null));
+    rec.ok(`${vp.height}: a live arrow published its range multiplier (guard)`, !!withArrow,
+      { sample: samples.find((s) => s.arrows.length) || null });
+    if (withArrow) {
+      const mult = withArrow.arrows.find((a) => a.rangeMult != null).rangeMult;
+      const want = 675 * mult;
+      rec.ok(`${vp.height}: the stream is exactly the arrow's own reach (${withArrow.beam.len.toFixed(0)} px vs ${want.toFixed(0)} px)`,
+        Math.abs(withArrow.beam.len - want) < 0.5, { beam: withArrow.beam.len, want, mult });
+      /* The number this replaced, written down so a silent revert is loud:
+         280 px was under half the arrow's reach. */
+      rec.ok(`${vp.height}: ...which is far past the old 280 px stub`,
+        withArrow.beam.len > 600, { len: withArrow.beam.len });
     }
-    await shoot(P, out, `${tag}-linger`);
-    /* And they do go.  A guide that never cleared would be a permanent smear
-       down every line the player has ever fired along. */
-    await P.page.waitForTimeout(probed[0].probe.lingerMs + 400);
-    const gone = await snap(P);
-    rec.ok(`${vp.height}: they clear after the ${probed[0].probe.lingerMs}ms linger, rather than piling up`,
-      gone.probe.n === 0, gone.probe);
+    await shoot(P, out, `${tag}-volley-stream`);
 
-    /* ── 7. POOLED, NOT ALLOCATED PER FRAME ───────────────────────────── */
-    const pooled = probed.map((s) => s.probe.pooled);
-    const lit = probed.map((s) => s.probe.sprites);
-    /* The pool is a HIGH-WATER MARK across every frame, and a sample only sees
-       the frames it lands on -- so it can legitimately sit one above the
-       busiest LIT count observed here (measured: 7 pooled, 6 seen lit).  What
-       is worth pinning is that it stays small: a volley is a handful of
-       streaks, so a pool in the dozens would mean something is minting a sprite
-       per shot instead of reusing one. */
-    rec.ok(`${vp.height}: the sprite pool stays small — ${Math.max(...pooled)} sprites for ${Math.max(...lit)} lit`,
-      Math.max(...pooled) <= 12 && Math.max(...pooled) >= Math.max(...lit),
-      { pooled: Math.max(...pooled), lit: Math.max(...lit) });
-    rec.ok(`${vp.height}: ...and it never shrinks or churns between frames`,
-      pooled.every((p, i) => i === 0 || p >= pooled[i - 1]), { pooled });
+    /* ── 4. AND ONLY WHILE FIRING ─────────────────────────────────────── */
+    /* v2.3.2320's gate survives the reversal: aiming is not attacking.  The
+       wait clears the BOW_SHOT_MS tail that keeps the line from strobing
+       between shots in a volley. */
+    await hold(P, false);
+    await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      S.autoAttack = false; S._bowShotAt = 0; S.arrows = [];
+    });
+    await P.page.waitForTimeout(700);
+    const idle = await snap(P);
+    rec.ok(`${vp.height}: releasing the fire control puts the stream out`,
+      idle.beam && idle.beam.visible === false && idle.beam.firing === false, idle.beam);
+    rec.ok(`${vp.height}: ...and no streak was left behind to linger`,
+      idle.probe.n === 0, idle.probe);
 
     /* ── 8. MAGIC LAYS NOTHING ────────────────────────────────────────── */
     const staffArmed = await armStaff(P);
@@ -354,6 +272,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const magicFlew = magic.filter((s) => s.arrows.length > 0);
     rec.ok(`${vp.height}: the staff actually cast (guard)`, magicFlew.length > 2,
       { frames: magicFlew.length, of: magic.length });
+    rec.ok(`${vp.height}: MAGIC gets no sight stream either — the reversal is bow-only`,
+      magicFlew.every((s) => s.beam && s.beam.visible === false),
+      magicFlew.find((s) => !s.beam || s.beam.visible !== false) || { checked: magicFlew.length });
     rec.ok(`${vp.height}: MAGIC gets no jet stream — no bolt carries one`,
       magic.every((s) => s.arrows.every((a) => a.jet == null)),
       magic.find((s) => s.arrows.some((a) => a.jet)) || { checked: magic.length });

@@ -2748,6 +2748,18 @@ export const WEAPON_TYPES = {
  * on your screen while it flew 675 on theirs.  One constant, so the next
  * retune cannot half-land. */
 export const STAFF_RANGE_PX = 675;
+/* ═══ v2.3.2448: THE ARROW'S OWN CAP, NAMED ═══
+   675 has been a literal in projectiles.js since v2.3.1335 ("bow range -25%,
+   900 -> 675") and the paragraph above already leans on it ("675 IS THE
+   ARROW'S OWN CAP, so 'same as arrow' is literal").  The bow's sight stream
+   is now drawn to exactly this distance (owner: "lengthen it to how far the
+   arrow shoots"), which makes a second copy of the number a promise waiting
+   to break: retune the arrow, and a stale beam would point players at range
+   they no longer have.  One constant, both call sites.
+   PER-PLAYER REACH IS A MULTIPLIER ON TOP, not part of this: bowRangeMult
+   (the bow's `range` channel, +1%/pt to +100%) scales the arrow's cap, so
+   anything drawing the reach must apply it too. */
+export const BOW_RANGE_PX = 675;
 export const STAFF_ORB_SPEED_PX = 5;      /* projectiles.js: a.isStaff ? 5 : 8 */
 export const STAFF_LIFE = Math.round(STAFF_RANGE_PX / STAFF_ORB_SPEED_PX);  /* 135 */
 

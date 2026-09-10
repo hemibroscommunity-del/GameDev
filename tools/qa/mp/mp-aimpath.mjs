@@ -458,12 +458,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
     agree.arrow != null, agree);
   rec.ok('the renderer agrees the fire control is held (guard)',
     agree.firing === true, agree);
-  /* v2.3.2398: THE HARD CASE.  Attacking, at a real lock, with arrows in the
-     air — the exact state v2.3.2320 drew the beam in — and it is dark. */
-  rec.ok('a bow that IS attacking draws no sight line either: the jet stream replaced it',
-    agree.visible === false, agree);
-  rec.ok('...and with nothing drawn there is no heading to disagree with the shot',
-    agree.beam == null, agree);
+  /* ═══ v2.3.2448: AND BACK ON, WHICH IS THE FOURTH MOVE OF THIS LINE ═══
+     Owner: "changing the bow back to the old stream but lengthen it to how far
+     the arrow shoots.  Disable the new jet stream effect."  The block above
+     records why it went dark; this is the state it is in now, asserted in the
+     same hard case: attacking, at a real lock, with arrows in the air.
+
+     THE CLAIM WITH TEETH IS THE SECOND ONE, and it is v2.3.2320's: a guide
+     that disagrees with the shot is worse than no guide.  It is measured
+     against the arrow's own heading in the SAME tick (the `agree` block
+     above), not against a second copy of the aim ladder.  Its LENGTH is
+     mp-jetstream's to check, against a live arrow's range multiplier. */
+  rec.ok('a bow that IS attacking draws its sight stream again',
+    agree.visible === true, agree);
+  rec.ok('...and the stream points where the arrow is actually going',
+    agree.beam != null && agree.arrow != null
+    && Math.abs(Math.atan2(Math.sin(agree.beam - agree.arrow), Math.cos(agree.beam - agree.arrow))) < 0.01,
+    agree);
+  /* The source names are rangedAimAngle's own (combatHelpers): lock / aiming /
+     last / facing.  Naming them rather than checking "not null" is what makes
+     a beam that fell back to the old due-EAST zero (the v2.3.2254-2262 bug)
+     fail here instead of passing as "some angle". */
+  rec.ok('...off the shot\'s own aim ladder, not a second copy of it',
+    ['lock', 'aiming', 'last', 'facing'].indexOf(agree.src) !== -1, agree);
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     S.lockedTarget = null; S.monsters = []; S.arrows = [];
