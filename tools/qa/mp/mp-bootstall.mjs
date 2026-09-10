@@ -25,7 +25,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      nothing.  newPlayer's `phrase` option exists for exactly that reason and
      writes it in an init script, which is the only moment early enough: the
      boot check runs on mount. */
-  /* v2.3.2444: a stored key no longer walks in by itself -- the landing page
+  /* v2.3.2447: a stored key no longer walks in by itself -- the landing page
      is the door, and the account check runs BEHIND it, where a hang strands
      nobody.  The checking road is now taken only on an explicit continuation
      (a row tapped in the picker, a key typed at the door), which both mark

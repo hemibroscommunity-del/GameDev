@@ -9274,7 +9274,7 @@ export var BroTown = function BroTown(_ref0) {
      who has to tap "Log in with your Key" once, rather than one who gets
      dropped into the creator and makes a second character by accident. */
   var _bootRan = useRef(false);
-  var _straightInRef = useRef(false);   /* v2.3.2444: the boot check's decision, for the resume effect */
+  var _straightInRef = useRef(false);   /* v2.3.2447: the boot check's decision, for the resume effect */
   useEffect(function () {
     if (_bootRan.current) return;
     _bootRan.current = true;
@@ -9323,7 +9323,7 @@ export var BroTown = function BroTown(_ref0) {
         try {
           var _p = getBtPassphrase();
           if (_p) {
-            try { window.__btDoorCheck = { done: false }; } catch (e) {}   /* v2.3.2444: see the default road */
+            try { window.__btDoorCheck = { done: false }; } catch (e) {}   /* v2.3.2447: see the default road */
             checkAccountLogin(_p).then(function (res) {
               if (!alive) return;
               try { window.__btDoorCheck = { done: true, hasChar: !!(res && res.ok && res.exists && res.preview && res.preview.hasChar) }; } catch (e) {}
@@ -9347,7 +9347,7 @@ export var BroTown = function BroTown(_ref0) {
       var phrase = null;
       try { phrase = getBtPassphrase(); } catch (e) { phrase = null; }
       if (!phrase) { if (alive) setBootPhase('login'); return; }
-      /* ═══ v2.3.2444: THE PLAYER OPENS THE DOOR ═══
+      /* ═══ v2.3.2447: THE PLAYER OPENS THE DOOR ═══
          Owner: "change the behavior of trying to boot the player list
          automatically upon joining the landing page.  Player should need to
          tap continue or create a character."
@@ -9664,7 +9664,7 @@ export var BroTown = function BroTown(_ref0) {
     } catch (e) {}
     if (!snap || !snap.name) return;
     var fresh = Date.now() - (snap.t || 0) < 10 * 60 * 1000;
-    /* v2.3.2444: a fresh snapshot alone no longer starts this road.  The
+    /* v2.3.2447: a fresh snapshot alone no longer starts this road.  The
        landing page is the door now (boot check above), and everything below
        is for a page that is about to be IN THE WORLD: it pre-seeds the
        avatar, kicks the asset preload with a rejoin spinner, and installs
@@ -9780,7 +9780,7 @@ export var BroTown = function BroTown(_ref0) {
              (v2.3.1840).  Reloading with those still on would land the
              player back on the door they just chose a character from. */
           var _gp = /[?&]guest=1\b/.test(window.location.search) ? '/?guest=1' : '/';
-          /* v2.3.2444: the player just chose this row; the reload must not
+          /* v2.3.2447: the player just chose this row; the reload must not
              land them on the door again.  See the boot check. */
           try { sessionStorage.setItem('bt_play_now', '1'); } catch (e2) {}
           window.location.href = _gp;

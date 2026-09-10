@@ -122,7 +122,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   };
 
-  /* v2.3.2444: the door no longer opens the list by itself — owner: "Player
+  /* v2.3.2447: the door no longer opens the list by itself — owner: "Player
      should need to tap continue or create a character".  So the FIRST thing
      asserted is that nothing opened, and the second is that Continue does. */
   const autoOpen = !!(await P.page.$('[data-tut="char-picker"]'));

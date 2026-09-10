@@ -74,7 +74,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.ctx.close().catch(() => {});
 
   /* ── 3. the same key lands on the door, and Continue shows its character ──
-     v2.3.2444: a device holding the key used to walk straight in (route
+     v2.3.2447: a device holding the key used to walk straight in (route
      'resume').  Owner: "Player should need to tap continue or create a
      character" — so it now stops at the door, the list does NOT open by
      itself, and Continue shows the character by name (the roster self-heal
@@ -86,8 +86,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     r1 === 'login', { route: r1 });
   rec.ok('...and the character list is NOT open until the player taps',
     !(await B.page.$('[data-tut="char-picker"]')), {});
-  rec.ok('...and shows no pre-game screen at all',
-    !(await visible(B, '.bt-name-modal')), {});
+  /* v2.3.2447: the DOOR is the expected screen now, and it is itself a
+     .bt-name-modal (LoginScreen wears that class) -- so the old "no pre-game
+     screen at all" check would assert the change away.  What must still be
+     absent is the CREATOR: a key with a character must never be walked into
+     making a second one. */
+  rec.ok('...and does not drop into the character creator',
+    !(await visible(B, '.bt-cc-shell')), {});
   rec.ok('Continue opens the character list', await H.openPicker(B.page), {});
   let rowName = null;
   try {

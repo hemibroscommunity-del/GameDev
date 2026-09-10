@@ -304,7 +304,7 @@ export async function enterWorld(P, timeout = 90000) {
   const resumed = await page.evaluate(() => window.__btBootRoute === 'resume');
   if (!resumed) {
     await uncoverDoor(page);   /* v2.3.2111 — see uncoverDoor */
-    /* ═══ v2.3.2444: NOBODY WALKS IN BY THEMSELVES ANY MORE ═══
+    /* ═══ v2.3.2447: NOBODY WALKS IN BY THEMSELVES ANY MORE ═══
        Owner: "Player should need to tap continue or create a character."
        A device that already has a character used to skip the door entirely
        (the 'resume' road above still exists, but only for the two moments a

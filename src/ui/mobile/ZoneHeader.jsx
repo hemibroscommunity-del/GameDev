@@ -134,7 +134,7 @@ export const ZoneHeader = ({ onExit }) => {
       dim.appendChild(lbl);
       document.body.appendChild(dim);
     } catch (e) {}
-    /* v2.3.2444: the door no longer opens the character list by itself
+    /* v2.3.2447: the door no longer opens the character list by itself
        (owner: "Player should need to tap continue or create a character").
        This button, when it reads "Switch Bro", promises "You'll go to your
        list of bros" -- and the tap on it IS the tap.  So it hands the door a

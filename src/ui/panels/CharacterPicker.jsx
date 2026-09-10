@@ -368,7 +368,7 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
                      assert the ORDER against the numbers that produced it
                      rather than against a fixture it also wrote. */
                   data-char-level={e.level || 0}
-                  /* v2.3.2444: which row is the key this device is already
+                  /* v2.3.2447: which row is the key this device is already
                      on.  Tapping it continues in place (activateChar returns
                      false -- no reload); the harness uses it to take the
                      returning player's road as that player, not as whichever

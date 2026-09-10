@@ -97,7 +97,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
      Once, tracked on a ref: a player who taps Back wanted this screen, and
      re-opening the list under them on the next render would be the screen
      arguing with them. */
-  /* ═══ v2.3.2444: ...AND NOW THE LIST WAITS FOR CONTINUE ═══
+  /* ═══ v2.3.2447: ...AND NOW THE LIST WAITS FOR CONTINUE ═══
      Owner: "Player should need to tap continue or create a character."
      v2.3.2111 above opened the list by itself whenever the device had
      characters; the owner has since asked for the opposite -- the door is
