@@ -24,7 +24,7 @@
  *   6.  Metrics: once-daily key-existence idempotency; /economy
  *       history/delta/alert math; ring prunes to METRICS_KEEP.       */
 import { GameRoom } from '../src/index.js';
-import { LIVEOPS } from '../src/liveops.js';
+import { LIVEOPS, METRICS } from '../src/liveops.js';
 
 function makeState() {
   const store = new Map();
@@ -32,12 +32,24 @@ function makeState() {
     storage: {
       get: async (k) => store.get(k),
       put: async (k, v) => { store.set(k, v); },
+      /* v2.3.2438: faithful to the runtime -- keys come back SORTED, `limit`
+         bounds the page, `startAfter` resumes past a key, and delete()
+         takes one key or an array.  The incremental housekeeping jobs
+         depend on all four; a mock that ignored `limit` would let a sweep
+         "finish" in one page and prove nothing about the paging. */
       list: async (opts) => {
         const out = new Map();
-        for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, v);
+        const keys = [...store.keys()].filter((k) => !opts?.prefix || k.startsWith(opts.prefix)).sort();
+        let n = 0;
+        for (const k of keys) {
+          if (opts?.startAfter && k <= opts.startAfter) continue;
+          if (opts?.limit && n >= opts.limit) break;
+          out.set(k, store.get(k)); n++;
+        }
+        if (store._listLog) store._listLog.push({ prefix: opts?.prefix, limit: opts?.limit, startAfter: opts?.startAfter, size: out.size });
         return out;
       },
-      delete: async (k) => { store.delete(k); },
+      delete: async (k) => { for (const x of (Array.isArray(k) ? k : [k])) store.delete(x); },
     },
     getWebSockets: () => [],
     acceptWebSocket: () => {},
@@ -234,6 +246,43 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   await room._metricsMaybe(T0 + DAY);
   const pruned = [...state._store.keys()].filter((k) => k.startsWith('metrics:'));
   check('metrics ring prunes to METRICS_KEEP', pruned.length === LIVEOPS.METRICS_KEEP, pruned.length);
+}
+
+// ── 7. v2.3.2438: the daily metric is a PAGED JOB ──
+// One page of rpg: per call, totals carried, the record written on the last
+// (short) page.  A throw backs off instead of retrying every slot.
+{
+  const s7 = makeState();
+  const r7 = new GameRoom(s7, mockEnv);
+  const T7 = Date.UTC(2031, 0, 5, 12, 0, 0);
+  const N = METRICS.PAGE * 2 + 50;                     // three pages
+  for (let i = 0; i < N; i++) s7._store.set('rpg:bp_m' + String(i).padStart(4, '0'), { coins: 3, level: 1 });
+  s7._store._listLog = [];
+  const p1 = await r7._metricsMaybe(T7);
+  check('metrics page 1: more to do, nothing written yet', p1 === true && ![...s7._store.keys()].some((k) => k.startsWith('metrics:')), p1);
+  const rpgLists = () => s7._store._listLog.filter((l) => l.prefix === 'rpg:');
+  check('metrics page 1 listed one bounded page', rpgLists().length === 1 && rpgLists()[0].limit === METRICS.PAGE && rpgLists()[0].size === METRICS.PAGE, rpgLists());
+  const p2 = await r7._metricsMaybe(T7 + 3000);
+  const p3 = await r7._metricsMaybe(T7 + 6000);
+  check('metrics page 2 more to do, page 3 done', p2 === true && p3 === false, { p2, p3 });
+  const rec7 = s7._store.get('metrics:' + r7._cadencePeriodDaily(T7));
+  check('the record is written on the last page with the FULL totals', rec7 && rec7.playerBlobs === N && rec7.totalGold === N * 3, rec7);
+  check('every rpg: page carried the limit and a cursor after the first', rpgLists().every((l, i) => l.limit === METRICS.PAGE && (i === 0 ? !l.startAfter : !!l.startAfter)), rpgLists());
+  check('a fourth call the same day does nothing (fast path)', (await r7._metricsMaybe(T7 + 9000)) === false && rpgLists().length === 3, rpgLists().length);
+  // Backoff: a throw must not be retried on the very next slot.
+  const s8 = makeState();
+  const r8 = new GameRoom(s8, mockEnv);
+  s8._store.set('rpg:bp_x', { coins: 1 });
+  const realList = s8.storage.list;
+  let calls = 0;
+  s8.storage.list = async (o) => { calls++; throw new Error('boom'); };
+  check('a throwing page returns false', (await r8._metricsMaybe(T7)) === false);
+  const c1 = calls;
+  await r8._metricsMaybe(T7 + 3000);
+  await r8._metricsMaybe(T7 + 60000);
+  check('...and is not retried within RETRY_MS (no further list calls)', calls === c1, { c1, calls });
+  s8.storage.list = realList;
+  check('...but runs again after RETRY_MS', (await r8._metricsMaybe(T7 + METRICS.RETRY_MS + 1)) === false && s8._store.has('metrics:' + r8._cadencePeriodDaily(T7)));
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

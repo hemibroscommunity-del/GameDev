@@ -3126,3 +3126,34 @@ in the same PR that *introduces* it keeps every player at "connecting" until
 the worker catches up — or forever, if that deploy failed. precheck's
 `ready-caps` check refuses the push unless every required name is already in
 the base branch's caps literal. Never require a cap you just added.
+
+## 76. "It's wrapped in try/catch and fire-and-forget, so it can't block anything" (v2.3.2438)
+
+**Tempting:** the daily economy snapshot is kicked from the join handler as
+`this._metricsMaybe(now).catch(() => {})` — not awaited, errors swallowed —
+and the oplog prune is "best-effort" inside its own try/catch. Neither can
+fail a join, so neither can hurt one.
+
+**Neither can fail a join. Both can stop the room.** A Durable Object holds
+its input gate closed for the whole time any handler is awaiting storage
+(handoff rule 9). "Fire-and-forget" only means the *caller* stops waiting;
+the object still runs every storage await in that chain before it delivers
+another event. So `_economySnapshot`'s single `storage.list({prefix:'rpg:'})`
+— every player blob ever written, values included, guests and throwaways
+too, never pruned — and `_opPruneMaybe`'s list-everything-then-delete-one-
+at-a-time both froze the room for as long as they took, and nothing they
+were wrapped in could shorten that. Worse, the snapshot only marked itself
+done on success, so a table that had grown past what one `list()` returns
+comfortably retried every 60 seconds, forever. The owner's flags request
+timed out "several times"; their join never got its `state_sync`; the client
+fell into the offline legacy game and the day went to chasing a flag.
+
+**The rule:** on any path the room serves from — a join, a message, a tick
+slot — an unbounded `storage.list()` is a stall, whatever it is wrapped in.
+Housekeeping that walks a prefix is a *job*: one bounded page per tick slot,
+a cursor carried in memory, deletes batched (the runtime takes up to 128
+keys per call), and a throw that backs off rather than retrying next slot.
+Never on the join path at all — a join starts the tick, and the slot follows.
+The second thing to check when the room "isn't answering" is how big the
+prefixes have grown since the code was written: the code was months old; the
+data was new.
