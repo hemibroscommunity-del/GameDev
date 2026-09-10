@@ -766,12 +766,32 @@ export function NameModal(props) {
      `_pressMsg` holds it once they have actually pressed, so the screen stays
      quiet until they ask. */
   var _blockReason = joinBlockReason(nameInput);
-  var _pressS = React.useState(''), _pressMsg = _pressS[0], _setPressMsg = _pressS[1];
-  /* Clear the moment the reason stops being true -- a stale "name your bro
-     first" sitting under a filled field is worse than nothing. */
+  /* ═══ v2.3.2425: THE LINE TRACKS THE LIVE REASON, NOT A SNAPSHOT OF IT ═══
+     v2.3.2388 stored the reason STRING at the moment of the press and cleared
+     it only when `_blockReason` went null.  There are three reasons, not one,
+     so a reason that CHANGED left the old string on screen: press with an
+     empty field (the state the owner pressed in), type one letter, and the
+     amber line still read "Name your bro first -- tap the field above." over a
+     field that visibly contained a letter, with the accurate "At least 2
+     characters" hint suppressed beneath it.  Exactly what the old comment here
+     said must not happen -- "a stale 'name your bro first' sitting under a
+     filled field is worse than nothing" -- and worse in the zoom case, where
+     fixing the name left the screen naming the name as the blocker while the
+     zoom silently held the button shut.
+
+     So the state is now a LATCH ("have they asked?") and the message is
+     derived from the live reason.  Every downstream use gets the fix for free:
+     the amber colour, the assertive aria-live and the `data-msg` slot all key
+     off `_pressMsg`, and it is now empty exactly when there is nothing to say.
+
+     The latch drops when the block clears, which is what keeps the original
+     design intact: the screen stays quiet until they ask, and a NEW block that
+     appears later is quiet again until they ask again. */
+  var _pressS = React.useState(false), _pressed = _pressS[0], _setPressed = _pressS[1];
+  var _pressMsg = _pressed ? (_blockReason || '') : '';
   React.useEffect(function () {
-    if (!_blockReason && _pressMsg) _setPressMsg('');
-  }, [_blockReason, _pressMsg]);
+    if (!_blockReason && _pressed) _setPressed(false);
+  }, [_blockReason, _pressed]);
   var _nameFieldRef = React.useRef(null);
   /* v2.3.1307: iOS keyboard — reserve its height at the bottom of the
      box (visualViewport), so the name field + validation and the
@@ -1284,7 +1304,7 @@ export function NameModal(props) {
        there is no reason not to. */
     onClick: function () {
       if (!_blockReason) { joinTown(); return; }
-      _setPressMsg(_blockReason);
+      _setPressed(true);   /* v2.3.2425: latch, not a snapshot -- see above */
       /* Put them where the fix is.  The name is the step they control from
          this screen, and focusing the field also raises the keyboard on a
          phone -- so the answer and the means to act on it arrive together. */
