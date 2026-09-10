@@ -2109,13 +2109,15 @@ export function updateMonsterCombat(S, deps) {
                   }
                 }
                 /* Real WAV — replaces the old synth material thump.
-                   Alternates between sword-hit2 / sword-hit3; the original
-                   sword-hit sample is reserved for grand-slam hits.
                    Snowman gets its own snowball-thud snowman-hit (played
                    in the hit-reaction block above) instead — the metallic
-                   sword wav is wrong for a snow body. */
+                   sword wav is wrong for a snow body.
+                   v2.3.2452: and every OTHER body picks its sample by what
+                   it is made of, off the same HIT_MATERIALS table that
+                   already chooses this hit's debris and ground decal —
+                   flesh thuds, bone cracks, stone clangs. */
                 if ((m.archetype || m.type) !== 'snowman') {
-                  BT_AUDIO.swordHit({ vol: 0.55 });
+                  BT_AUDIO.swordHit({ vol: 0.55 }, hitMaterialOf(m.archetype || m.type).kind);
                 }
 
                 /* §19.1 Quest tracking — combat flags */
@@ -2697,7 +2699,7 @@ export function updateMonsterCombat(S, deps) {
                   npc._hitThisSwing = true;
                   var npcDmg = pDmg;
                   npc.hp -= npcDmg;
-                  BT_AUDIO.swordHit({ vol: 0.55 });
+                  BT_AUDIO.swordHit({ vol: 0.55 }, 'flesh');  /* v2.3.2452 */
                   var nkbA2 = Math.atan2(npc.y - P.y, npc.x - P.x);
                   npc.x += Math.cos(nkbA2) * 4;   /* v2.3.1402: knockback -50% (8 -> 4) */
                   npc.y += Math.sin(nkbA2) * 4;
@@ -2866,7 +2868,7 @@ export function updateMonsterCombat(S, deps) {
               while (aDiff < -Math.PI) aDiff += Math.PI * 2;
               if (Math.abs(aDiff) < SWING_ARC / 2) {
                 o._hitThisSwing = true;
-                BT_AUDIO.swordHit({ vol: 0.55 });
+                BT_AUDIO.swordHit({ vol: 0.55 }, 'flesh');  /* v2.3.2452 */
                 var pvpKbA = Math.atan2(o.y - P.y, o.x - P.x);
                 for (var _pp = 0; _pp < 12; _pp++) S.hitParticles.push({
                   x: o.x + (Math.random() - .5) * 6,
