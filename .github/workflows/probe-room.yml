@@ -24,6 +24,9 @@ on:
       seconds:
         description: 'How long to wait for the room to answer the join'
         default: '30'
+      base:
+        description: 'Worker origin to probe (v2.3.2443: e.g. https://api.brotown.net)'
+        default: 'https://brotown-server.hemibroscommunity.workers.dev'
 jobs:
   probe:
     runs-on: ubuntu-latest
@@ -35,4 +38,5 @@ jobs:
       - name: Probe the worker, the room, and a join
         env:
           PROBE_SECONDS: ${{ github.event.inputs.seconds || '30' }}
+          PROBE_BASE: ${{ github.event.inputs.base || 'https://brotown-server.hemibroscommunity.workers.dev' }}
         run: node tools/qa/probe-room.mjs
