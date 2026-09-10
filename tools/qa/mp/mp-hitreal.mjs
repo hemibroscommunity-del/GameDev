@@ -237,7 +237,10 @@ const targetById = (P, id) => P.page.evaluate((mid) => {
      first cut returned null here and the caller scored a clean kill as an
      attempt that could not be measured. */
   if (!m) return { id: mid, gone: true, alive: false, hp: 0 };
+  const rx = typeof m.renderX === 'number' ? m.renderX : m.x;
+  const ry = typeof m.renderY === 'number' ? m.renderY : m.y;
   return { id: mid, gone: false, alive: !!m.alive, hp: m.curHp,
+    x: Math.round(rx), y: Math.round(ry),
     burrow: m._burPhase || null, invuln: !!m._invulnerable };
 }, id);
 
@@ -313,6 +316,11 @@ async function placeAt(P, id, reach) {
    move guaranteed to be accepted next, and leaving the two forked is how one
    refused step becomes a run that never lands another hit. */
 async function resync(P, wsPort, id) {
+  /* Let the walk's last `move` reach the worker before asking it where we
+     are.  Without this the read lands mid-flight and reports a divergence of
+     one or two steps that is simply the packet still on the wire -- which is
+     not a desync, and voiding an attempt for it throws away a fair shot. */
+  await P.page.waitForTimeout(450);
   const sp = await H.serverPlayer(wsPort, id).catch(() => null);
   if (!sp || typeof sp.x !== 'number') return { ok: false, why: 'no server view' };
   const cli = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y, z: S.currentZone }));
@@ -596,11 +604,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
         if (after.gone || !after.alive) { row.landed++; row.kills++; }
         else if (landed) row.landed++;
         else {
-          /* A miss is recorded with the WORKER's own view of the attacker, so
-             "the shot missed" and "the worker was looking at a player standing
-             somewhere else" are never confused for one another again. */
+          /* ═══ A MISS IS ONLY USEFUL IF IT SAYS WHY ═══
+             Two facts, because they separate the two answers that matter.
+
+             The WORKER's own view of the attacker: "the shot missed" and "the
+             worker was looking at a player standing somewhere else" produce
+             identical rows otherwise, and the second is a harness fault.
+
+             And how far the TARGET travelled while the shot was in the air,
+             split across and along the line of fire.  A monster that stepped
+             most of its own body sideways got out of the way, which is a
+             moving target behaving like one; a monster that barely moved and
+             was still missed is a hit test to go and look at.  Without the
+             number there is no way to tell those apart, and calling either
+             one by the other's name is how a real defect gets shrugged off --
+             or a working game gets "fixed". */
           const sp = await H.serverPlayer(wsPort, id).catch(() => null);
+          const mdx = (after.x != null ? after.x : g.x) - g.x;
+          const mdy = (after.y != null ? after.y : g.y) - g.y;
+          const ang = Math.atan2(g.aimY - g.py, g.x - g.px);
           row.missed.push({ id: g.id, gap: g.gap, hp: g.hp, after: after.hp, said, via: g.via,
+            /* along = toward or away from the shooter, across = sideways out
+               of the shot.  Only `across` can dodge a projectile. */
+            moved: Math.round(Math.hypot(mdx, mdy)),
+            across: Math.round(Math.abs(-mdx * Math.sin(ang) + mdy * Math.cos(ang))),
+            along: Math.round(mdx * Math.cos(ang) + mdy * Math.sin(ang)),
             srv: sp ? { zone: sp.zone, x: Math.round(sp.x), y: Math.round(sp.y) } : null,
             cli: { x: g.px, y: g.py } });
         }
@@ -642,8 +670,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
       r.link === 'connected', r);
     rec.ok(`${r.zone} ${r.key}: the worker agreed where the attacker was standing, every attempt (guard)`,
       r.desync.length === 0, r);
-    rec.ok(`${r.zone} ${r.key}: the client registers every attempt as a hit (${r.sent + r.blast}/${r.fairs})`,
-      r.fairs > 0 && r.sent + r.blast >= r.fairs, r);
+    /* ═══ WHAT THE SEND COUNT MAY AND MAY NOT BE ASSERTED ON ═══
+       Not "every attempt sends one".  The client can land a hit through more
+       than one message -- the bow special's arrow_blast carries a coordinate
+       rather than a monster id, and an elemental hit leaves a server-side
+       status that keeps ticking with nothing further on the wire -- so rows
+       legitimately settle more attempts than they sent, and a run measured
+       four sends against five landed hits on three separate rows.  Asserting
+       a floor there fails working weapons.
+
+       What IS sound, and is the defect class this file exists to catch: an
+       attempt where the CLIENT registered a hit and the worker settled
+       NOTHING.  That is damage silently dropped between the two, and it is
+       exactly what a broken gate looks like -- v2.3.2435's first four-zone
+       run showed it on three consecutive attempts (three orbs registered,
+       health unmoved) and it turned out to be the worker holding a stale
+       position for the attacker.  Every miss must therefore be a miss the
+       client agrees with. */
+    const swallowed = r.missed.filter((m) => m.said && (m.said.dmg > 0 || m.said.blast > 0));
+    rec.ok(`${r.zone} ${r.key}: no attempt the client registered was dropped by the worker (${swallowed.length})`,
+      swallowed.length === 0, { swallowed, sent: r.sent, blast: r.blast, fairs: r.fairs });
     rec.ok(`${r.zone} ${r.key}: the WORKER settles every attempt (${r.landed}/${r.fairs})`,
       r.fairs > 0 && r.landed === r.fairs, r);
   }
