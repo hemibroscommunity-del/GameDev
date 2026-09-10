@@ -648,7 +648,7 @@ export async function drawCharacterPortrait(canvas, opts) {
        They used to: this file tinted then stamped (right), while the renderer
        stamped then applied a sprite tint over the whole texture (which
        multiplied the print by the shirt colour). */
-    /* v2.3.2426: the SHIRT reports its grid too, when the designer asks for
+    /* v2.3.2429: the SHIRT reports its grid too, when the designer asks for
        grids.  It goes into the same `__btGrids` object the body regions use and
        in the same coordinate space: the shirt sheet is upscaled to FRAME above,
        and this layer is drawn through the identical ctx transform the body was,

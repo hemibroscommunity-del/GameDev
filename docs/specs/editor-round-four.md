@@ -1,4 +1,4 @@
-# The designer's fourth round (v2.3.2423–2426)
+# The designer's fourth round (v2.3.2426–2429)
 
 Nine notes from the owner after testing the tattoo editor, taken in one pass.
 Seven were defects, one was a sentence that lied, and one was a feature.
@@ -14,7 +14,7 @@ Seven were defects, one was a sentence that lied, and one was a feature.
 | 7 | "do front and back on the pants" | the fourth surface to need it; three already had it |
 | 8 | "during shield block ... custom designs weren't there" | a second bake site that never got the drawings |
 
-## 1. The zoom readout (v2.3.2423)
+## 1. The zoom readout (v2.3.2426)
 
 The corner control was `<span>100%</span>` — a literal. v2.3.1994 named it that
 deliberately (*"'Fit' named the mechanism; '100%' names the view you get
@@ -31,7 +31,7 @@ telling the truth the selector matched nothing, clicked nothing, and reported
 that 100% had stopped working — a scenario failing because the thing it tested
 got fixed. It selects by `data-zoom-pct` now and asserts the readout.
 
-## 2. The select tool (v2.3.2423)
+## 2. The select tool (v2.3.2426)
 
 Measured on both surfaces before changing anything: tapping a drawn stroke with
 Select picks it up, on the body and on the flat grid, and reports *"Layer 1 of 1
@@ -47,7 +47,7 @@ feature did not work — which is the correct conclusion from what the screen
 said. It now names the button that is there and what picking something up is
 for, which is a longer list than it was: recolour, resize, re-layer.
 
-## 3 & 5. Letters have a size (v2.3.2423)
+## 3 & 5. Letters have a size (v2.3.2426)
 
 A letter op was `{k:'t', g, x, y, i, m}`. `letterCells` stamped a fixed 5×7
 centred on the tap, and `resizeTo` carried a comment explaining that *"a letter
@@ -76,7 +76,7 @@ target cell has exactly one source pixel.
 centred 5×7 path, so nothing made before this version resizes itself under a
 player who never asked.
 
-## 6. Recolour what you picked up (v2.3.2423)
+## 6. Recolour what you picked up (v2.3.2426)
 
 The palette set `ink`, the colour of the *next* mark, and nothing ever re-read a
 mark already down. Every other property of a selected op could be changed — size,
@@ -86,7 +86,7 @@ Tapping a colour with something held repaints it, one undo step per selection,
 and still arms the next mark. `i` is the whole edit: cells are re-derived from
 the op on every replay, so a colour swap is a one-field change.
 
-## 7. The trousers get a back (v2.3.2424)
+## 7. The trousers get a back (v2.3.2427)
 
 The fourth instance of one idea — the shirt has had two sides since v2.3.1939,
 the face since v2.3.2042, the back of the head since v2.3.2043, the torso since
@@ -107,7 +107,7 @@ on join then vanished on the first two-second relay; v2.3.2043 and v2.3.2084
 each re-learned it. Display-only at the far end, through the same sanitiser as
 the other six drawings, and safe in either deploy order.
 
-## 4. The shirt is designed on the shirt (v2.3.2426)
+## 4. The shirt is designed on the shirt (v2.3.2429)
 
 The shirt was the last editor working on a bare 16×16 grid. The reason was in
 the code, at v2.3.2416:
@@ -138,7 +138,7 @@ that *cannot* report a region on the figure needs exactly it. Said out loud in
 the code and flagged here rather than deleted quietly — if drawing on the
 character is the answer everywhere, it and its paint effect are a clean removal.
 
-## 8. A swing and a raised shield wear your drawings (v2.3.2425)
+## 8. A swing and a raised shield wear your drawings (v2.3.2428)
 
 Raising a shield swaps the whole figure to the **bow** art (v2.3.1800) and a
 swing swaps it to the **sword** art. Those sheets are baked by their own loader

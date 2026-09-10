@@ -154,7 +154,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     ui.mirror && ui.tools.some((t) => /fill/i.test(t)), ui);
   rec.ok('the pan button is a picture of panning, not the word "Move"',
     ui.panIcon && !ui.panWord, ui);
-  /* v2.3.2423: still 100% AT REST -- the editor opens fitted, and that is the
+  /* v2.3.2426: still 100% AT REST -- the editor opens fitted, and that is the
      number this asserts.  What changed is that it no longer stays 100% when
      the view does not; see the readout assertions further down. */
   rec.ok('"Fit" is now "100%"', ui.zoomBack.includes('100%') && !ui.zoomBack.includes('Fit'), ui.zoomBack);
@@ -363,7 +363,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!z2 && Math.abs(z2.z - z1.z) < 0.01, { beforeStroke: z1 && z1.z, afterStroke: z2 && z2.z });
   await page.screenshot({ path: SHOTS + '/skinink-editor-zoomed.png' });
 
-  /* ═══ v2.3.2423: ...AND THE CORNER BUTTON IS A READOUT NOW ═══
+  /* ═══ v2.3.2426: ...AND THE CORNER BUTTON IS A READOUT NOW ═══
      Owner: "The zoom in and zoom out percentage doesn't change despite zooming
      and out."  It said "100%" as a fixed string, which reads as a readout
      sitting between a minus and a plus and was not one.  So it states the live

@@ -613,7 +613,7 @@ export const TRACK_COSMETIC_KEYS = new Set([
      sanitiser and not here, and the result was a print that appeared on
      join and vanished on the first two-second relay. See DRAWING_KEYS. */
   /* v2.3.2148: +`tr`, the back-of-body drawing -- see join.js for why not `tb`. */
-  /* v2.3.2424: +`pb`, the back-of-trousers drawing -- see join.js. */
+  /* v2.3.2427: +`pb`, the back-of-trousers drawing -- see join.js. */
   'sa', 'sb', 'pa', 'pb', 'ta', 'tf', 'tm', 'tb', 'tr', 'sp', 'pp', 'fp',   /* v2.3.1949: +face/arm tattoos */
   /* v2.3.1953: 'hg' is the height and 'fr' the frame -- two short catalog ids
      ('tall', 'large'), relayed so peers see the build you picked.  Display-only

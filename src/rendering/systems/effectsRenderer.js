@@ -36,9 +36,9 @@ import { WHIRL_VORTEX, WHIRL_FX_MS, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_
 import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2425: + the player's own drawings */
-import { onArtChange } from '../traits/playerArt.js';   /* v2.3.2425 */
-import { onPatternChange } from '../traits/patternCatalog.js';   /* v2.3.2425 */
+import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2428: + the player's own drawings */
+import { onArtChange } from '../traits/playerArt.js';   /* v2.3.2428 */
+import { onPatternChange } from '../traits/patternCatalog.js';   /* v2.3.2428 */
 import { getGearFrame } from '../gearSheets.js';
 import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
@@ -1980,7 +1980,7 @@ export class EffectsRenderer {
        build-time set in webpImage.js means a sheet without one loads its PNG
        directly rather than probing for a file that is not there. */
     const _loadImg = (u) => loadWebpOrPng(u);
-    /* v2.3.2425: the strip to SAMPLE for a facing -- the mirrored twin when
+    /* v2.3.2428: the strip to SAMPLE for a facing -- the mirrored twin when
        there is one, the plain bake otherwise.  A function rather than the
        lookup written out at each of the seven draw sites, because "or the plain
        one" is the half that would get forgotten at the eighth. */
@@ -2030,7 +2030,7 @@ export class EffectsRenderer {
       const _srcH = img.naturalHeight || img.height || 0;
       const _fw = (rec.cfg.square && _srcH) ? _srcH : rec.cfg.fw;
       const _fh = (rec.cfg.square && _srcH) ? _srcH : rec.cfg.fh;
-      /* ═══ v2.3.2425: THE STAND-INS WEAR YOUR DRAWINGS TOO ═══
+      /* ═══ v2.3.2428: THE STAND-INS WEAR YOUR DRAWINGS TOO ═══
          Owner: "make sure during shield block (I noticed tattoos and other
          custom designs weren't there) etc that the custom designs show up."
 
@@ -2058,7 +2058,7 @@ export class EffectsRenderer {
         /* artForFacing per SHEET direction, exactly as getBodyFrame does: the
            north and northwest stand-ins are back views, so they must take the
            back canvases rather than wrapping the front ones round (v2.3.2148 /
-           v2.3.2424). */
+           v2.3.2427). */
         const a = _art ? artForFacing({ ..._art, mirror }, rec.dir) : null;
         const cv2 = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, _fh, null, null, a);
         const src = Texture.from(cv2).source;
@@ -2105,7 +2105,7 @@ export class EffectsRenderer {
         window.__btStandInSkin[rec.url] = _n
           ? { n: _n, rgb: [Math.round(_r / _n), Math.round(_g / _n), Math.round(_b / _n)] }
           : { n: 0 };
-        /* ═══ v2.3.2425 QA probe: DID THE DRAWINGS REACH THIS BAKE ═══
+        /* ═══ v2.3.2428 QA probe: DID THE DRAWINGS REACH THIS BAKE ═══
            Two readings, because either alone can lie.  `art` is what the bake
            was TOLD (bodyArtSeg's own segment, empty when nothing is drawn), and
            `ink` counts what actually landed in the PIXELS -- strongly
@@ -2151,7 +2151,7 @@ export class EffectsRenderer {
     };
     this._rebakeBodies = () => { for (const rec of this._bodyStrips) this._bakeBodyStrip(rec); };
     onSkinChange(this._rebakeBodies); onPantsChange(this._rebakeBodies); onShoesChange(this._rebakeBodies);
-    /* v2.3.2425: and when a DRAWING or a pattern changes, for the same reason
+    /* v2.3.2428: and when a DRAWING or a pattern changes, for the same reason
        the three above exist -- these strips are baked once and sampled for the
        rest of the session, so without this a tattoo drawn mid-session appears
        on the walking body immediately and never on a swing or a block. */
@@ -2177,7 +2177,7 @@ export class EffectsRenderer {
         if (cfg.armorUrl) _loadSwordStrip(this._swordArmorFrames, dir, cfg.armorUrl, cfg);
       }
       if (cfg.weaponUrl) _loadSwordStrip(this._swordWeaponFrames, dir, cfg.weaponUrl, cfg);
-      const _swMirror = _mirroredDirs(this._swordFacing).has(dir);   /* v2.3.2425 */
+      const _swMirror = _mirroredDirs(this._swordFacing).has(dir);   /* v2.3.2428 */
       if (cfg.bodyUrl)   _loadRecoloredBody(this._swordBodyFrames, dir, cfg.bodyUrl, cfg, SWORD_ART_VERSION, _swMirror);
       if (cfg.torsoUrl)  _loadRecoloredBody(this._swordTorsoFrames, dir, cfg.torsoUrl, cfg, SWORD_ART_VERSION, _swMirror);
     }
@@ -2298,7 +2298,7 @@ export class EffectsRenderer {
         if (cfg.armorUrl) _loadBowStrip(this._bowArmorFrames, dir, cfg.armorUrl, cfg);
       }
       if (cfg.weaponUrl) _loadBowStrip(this._bowWeaponFrames, dir, cfg.weaponUrl, cfg);
-      const _bwMirror = _mirroredDirs(this._bowFacing).has(dir);   /* v2.3.2425 */
+      const _bwMirror = _mirroredDirs(this._bowFacing).has(dir);   /* v2.3.2428 */
       if (cfg.bodyUrl)   _loadRecoloredBody(this._bowBodyFrames, dir, cfg.bodyUrl, cfg, BOW_ART_VERSION, _bwMirror);
       if (cfg.torsoUrl)  _loadRecoloredBody(this._bowTorsoFrames, dir, cfg.torsoUrl, cfg, BOW_ART_VERSION, _bwMirror);
     }
@@ -8551,7 +8551,7 @@ export class EffectsRenderer {
        strip is what every frame after the first branch actually samples.
        Both are cut from the same art at the same frame width, so the count is
        the same number; this just stops it coming from a sheet nobody draws. */
-    const _swBody = this._standInStrip(this._swordBodyFrames, fmap[0], fmap[1]);   /* v2.3.2425 */
+    const _swBody = this._standInStrip(this._swordBodyFrames, fmap[0], fmap[1]);   /* v2.3.2428 */
     const frames = cfg && ((_swBody && _swBody.length) ? _swBody : this._swordFrames[fmap[0]]);
     if (!cfg || !frames || !frames.length) return;
     const n = frames.length;
@@ -8615,7 +8615,7 @@ export class EffectsRenderer {
     const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgnT, sT); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
     const armorFrames = this._swordArmorFrames[fmap[0]];
     const weaponFrames = this._swordWeaponFrames[fmap[0]];
-    const bodyFrames = this._standInStrip(this._swordBodyFrames, fmap[0], fmap[1]);   /* v2.3.2425 */
+    const bodyFrames = this._standInStrip(this._swordBodyFrames, fmap[0], fmap[1]);   /* v2.3.2428 */
     if (bodyFrames && bodyFrames[fi]) {
       /* v2.3.954: layered gear path -- bald body + equipped chest/legs armour +
          the recolorable weapon.  The helmet rides in the chest piece, so skip the
@@ -8624,7 +8624,7 @@ export class EffectsRenderer {
       /* v2.3.1088: jogging-legs composite while MOVING -- swap to the leg-erased
          torso strip and draw animated jog legs under it (same _placeJogLegs helper
          + sheets as the bow).  Restricted to facings that have a torso strip. */
-      const _torsoFrames = this._standInStrip(this._swordTorsoFrames, fmap[0], fmap[1]);   /* v2.3.2425 */
+      const _torsoFrames = this._standInStrip(this._swordTorsoFrames, fmap[0], fmap[1]);   /* v2.3.2428 */
       const _jog = !!S._swordJogLegs && _torsoFrames && _torsoFrames[fi];
       sp.texture = _jog ? _torsoFrames[fi] : bodyFrames[fi];
       const gp = cfg.gearPose || 'swing';
@@ -8922,7 +8922,7 @@ export class EffectsRenderer {
          over to this renderer: the block pose would leave the player
          invisible, which is the exact failure v2.3.1800 wrote this for. */
       S._bowArtReady = !!(this.bowSprite && _rf && this._bowCfg[_rf[0]]
-        && ((this._standInStrip(this._bowBodyFrames, _rf[0], _rf[1]) || this._bowFrames[_rf[0]] || []).length));   /* v2.3.2425 */
+        && ((this._standInStrip(this._bowBodyFrames, _rf[0], _rf[1]) || this._bowFrames[_rf[0]] || []).length));   /* v2.3.2428 */
     }
     if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
     if (this._selfCorpse) return;   /* v2.3.2281 */
@@ -8931,7 +8931,7 @@ export class EffectsRenderer {
     const cfg = this._bowCfg[fmap[0]];
     const mirror = fmap[1];
     /* v2.3.2353: the drawn strip is the counted strip -- see the sword. */
-    const _bwBody = this._standInStrip(this._bowBodyFrames, fmap[0], fmap[1]);   /* v2.3.2425 */
+    const _bwBody = this._standInStrip(this._bowBodyFrames, fmap[0], fmap[1]);   /* v2.3.2428 */
     const frames = cfg && ((_bwBody && _bwBody.length) ? _bwBody : this._bowFrames[fmap[0]]);
     if (!cfg || !frames || !frames.length) return;
     const n = frames.length;
@@ -8953,7 +8953,7 @@ export class EffectsRenderer {
     sp.anchor.set(0.5, anchorY);
     const armorFrames = this._bowArmorFrames[fmap[0]];
     const weaponFrames = this._bowWeaponFrames[fmap[0]];
-    const bodyFrames = this._standInStrip(this._bowBodyFrames, fmap[0], fmap[1]);   /* v2.3.2425 */
+    const bodyFrames = this._standInStrip(this._bowBodyFrames, fmap[0], fmap[1]);   /* v2.3.2428 */
     const bodyH = (S._swordBodyH != null) ? S._swordBodyH : 84;
     const s = bodyH / 188;
     const sgn = mirror ? -s : s;
@@ -9052,7 +9052,7 @@ export class EffectsRenderer {
          jog legs UNDER a leg-erased torso strip so the feet stride instead of
          sliding.  Same foot-plant + scale as the stand-in => aligns by
          construction; the legs sprite anchors at the 256-frame's feet row (221). */
-      const _torsoFrames = this._standInStrip(this._bowTorsoFrames, fmap[0], fmap[1]);   /* v2.3.2425 */
+      const _torsoFrames = this._standInStrip(this._bowTorsoFrames, fmap[0], fmap[1]);   /* v2.3.2428 */
       const _jogLegs = !!S._bowJogLegs && _torsoFrames && _torsoFrames[fi];
       if (_jogLegs) {
         /* v2.3.1093: the legs face the SAME direction as the torso (the aim
