@@ -1,4 +1,4 @@
-/* DOES EVERY WEAPON REGISTER ITS HITS? (v2.3.2431)
+/* DOES EVERY WEAPON REGISTER ITS HITS? (v2.3.2433)
  *
  * Owner: "Test the arrow special attack, magic, magic special attack, sword,
  * and sword special attack too in a duel setting for hitbox registry.  Also

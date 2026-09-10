@@ -43,7 +43,7 @@
    garbage v2.3.2331 spent a version removing. */
 var _segHitX = 0, _segHitY = 0;
 /* ═══════════════════════════════════════════════════════════════════════════
-   v2.3.2431: THE HITBOX IS THE SPRITE YOU CAN SEE
+   v2.3.2433: THE HITBOX IS THE SPRITE YOU CAN SEE
    ═══════════════════════════════════════════════════════════════════════════
    Owner: "I do think you should change the arrow hitbox to match the px sprite
    size.  Same with magic projectiles (if there's any difference there)."
@@ -682,7 +682,7 @@ export function updateArrows(S, deps) {
               /* v2.3.2426: the SEGMENT this frame, not the endpoint — see the
                  header.  a._prevX is undefined on the first flight frame and
                  _segGap falls back to the point test there.
-                 v2.3.2431: ...and the segment now carries the projectile's own
+                 v2.3.2433: ...and the segment now carries the projectile's own
                  drawn BODY, so what is tested is the sprite the player can see
                  rather than a point at its anchor.  `_hitR` here is the
                  MONSTER's radius with no projectile allowance baked into it
@@ -1235,7 +1235,7 @@ export function updateArrows(S, deps) {
                 var _pvpY = (typeof _pvpO.renderY === 'number') ? _pvpO.renderY : _pvpO.y;
                 /* Body centre sits above the feet anchor — same intuition
                    as monsterBodyOffsetY; player sprites are fodder-scale. */
-                /* v2.3.2431: 22 is the PLAYER's body; the staff's 34 is that
+                /* v2.3.2433: 22 is the PLAYER's body; the staff's 34 is that
                    plus a bolt's half-thickness, added by hand long ago.  Named
                    so the generalisation below reads as the same idea. */
                 var _pvpHitR = a.isStaff ? 34 : PVP_BODY_R;
@@ -1243,7 +1243,7 @@ export function updateArrows(S, deps) {
                 /* v2.3.2426: the SEGMENT this frame, not the endpoint.  This is
                    the one with no safety net — the worker never re-simulates a
                    projectile, so whatever this line decides is final. */
-                /* v2.3.2431: the drawn body, swept — see the header.  The
+                /* v2.3.2433: the drawn body, swept — see the header.  The
                    radius is max(what it was, the player's 22px body + this
                    projectile's drawn half-thickness), so magic and both
                    specials keep the exact numbers they have today (34, 33, 51

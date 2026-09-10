@@ -187,7 +187,12 @@ if (typeof window !== 'undefined') {
       const a = localBodyArt(false);
       if (!a) return null;
       const r = artForFacing(a, dir);
-      return { tattoo: r ? r.tattoo : null, tattooFace: r ? r.tattooFace : null };
+      /* v2.3.2428: the TROUSERS join it, for exactly the reason this probe was
+         written -- "does facing away pick the back canvas?" has no other exact
+         answer from a test, and a mutation that made the pants keep their front
+         print on a back facing passed every existing assertion. */
+      return { tattoo: r ? r.tattoo : null, tattooFace: r ? r.tattooFace : null,
+        pants: r ? r.pants : null };
     } catch (e) { return null; }
   };
 }
@@ -569,7 +574,30 @@ function _torsoBands(d, w, h, frameW, frames) {
    measurement ended up reporting on the wrong animation entirely.  buildBodySheet
    knows, so buildBodySheet says. */
 let _bakeTag = '';
-export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH, eyeT, eyeRects, art) {
+/* ═══ v2.3.2431: THE FRAME WIDTH IS AN ARGUMENT, NOT A CONSTANT ═══
+   Every per-frame step below used the module constant FRAME_W = 256, which was
+   true of every sheet that had ever reached this function WITH ART: the stand
+   and jog sheets are 256 wide per frame.  v2.3.2428 started sending the player's
+   drawings to the sword, bow and jog-LEG stand-in strips as well, and those are
+   122, 128, 130, 154, 160, 214, 320, 340 and 402 px per frame -- so `frames`
+   came out as floor(w / 256), a number with no relationship to the sheet, and
+   every mask, band and stamp below was measured in 256px windows straddling
+   whichever figures happened to fall in them.
+
+   MEASURED, before the fix, with a per-frame ink probe:
+     bow-north-body      3 frames, ink [407, 0, 0]
+     bow-northwest-body  3 frames, ink [1095, 1, 0]
+     bow-southwest-body  3 frames, ink [439, 0, 0]
+     jog-east-legs      28 frames, ink [31, 0, 82, 0, 102, 0, ...]
+   A raised shield draws BLOCK_POSE_FRAME = 1 (effectsRenderer), so on three of
+   the five bow facings the block pose showed NO tattoo at all -- the exact thing
+   v2.3.2428 was written to fix -- and the trouser print flickered on every other
+   jog-leg frame.
+
+   Defaulted to FRAME_W so every existing caller is byte-identical; only the
+   stand-in loader passes anything else. */
+export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH, eyeT, eyeRects, art, frameW) {
+  const FW = (typeof frameW === 'number' && frameW > 0) ? Math.round(frameW) : FRAME_W;
   /* v2.3.1108: when the caller knows this sheet's logical frame height, restore
      a downscaled-on-disk sheet to it (nearest-neighbour, exact palette) so the
      skin/pants/shoes pixel thresholds + frame math are unchanged. The attack
@@ -583,8 +611,8 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
   const imgData = ctx.getImageData(0, 0, cv.width, cv.height);
   const d = imgData.data;
   const w = cv.width, h = cv.height;
-  const frames = Math.max(1, Math.floor(w / FRAME_W));
-  const shirtPx = shirtT ? _torsoBands(d, w, h, FRAME_W, frames) : null;
+  const frames = Math.max(1, Math.floor(w / FW));
+  const shirtPx = shirtT ? _torsoBands(d, w, h, FW, frames) : null;
   /* v2.3.1940: the two drawn regions.  Both masks are collected DURING the
      classification pass below, on the ORIGINAL pixels — after the retint a pale
      skin no longer passes _isSkin (alabaster is r-g=13, the test wants >25), so
@@ -626,7 +654,7 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      (It also means the tattoo hides under a shirt or a breastplate, which is
      what a chest tattoo does.) */
   const anyTat = wantTattoo || wantFaceTat || wantArmTat;
-  const torsoPx = anyTat ? (shirtPx || _torsoBands(d, w, h, FRAME_W, frames)) : null;
+  const torsoPx = anyTat ? (shirtPx || _torsoBands(d, w, h, FW, frames)) : null;
   const tattooPx = wantTattoo ? new Uint8Array(w * h) : null;
   /* Every bare-skin pixel, kept only when a face or arm tattoo is wanted:
      splitSkinRegions slices it against the torso band once the pass is done. */
@@ -680,10 +708,10 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      regionFromFeet for the 156-frame measurement and for why the row-band rule
      it replaces failed on the animation sheets. */
   const pantsPaint = pantsPx
-    ? litFabricMask(base, regionFromFeet(d, pantsPx, w, h, FRAME_W, PANTS_MAX_UP), w * h, PANTS_LIT_MIN) : null;
+    ? litFabricMask(base, regionFromFeet(d, pantsPx, w, h, FW, PANTS_MAX_UP), w * h, PANTS_LIT_MIN) : null;
   /* Pattern first, print over it: a print is ON the fabric, and the fabric is
      what the pattern is. */
-  if (pantsPat) stampPattern(d, w, h, FRAME_W, pantsPaint, pantsPat, !!art.mirror);
+  if (pantsPat) stampPattern(d, w, h, FW, pantsPaint, pantsPat, !!art.mirror);
   /* v2.3.1962: when the caller asks (`art.report`), every grid these stamps fit
      is collected and handed back on the canvas.  The designer needs the same
      numbers the stamp used in order to run a touch backwards into a cell — see
@@ -702,23 +730,23 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
   const _rep = (art && art.report) || _probe
     ? { pants: [], tattoo: [], face: [], arms: [] } : null;
   const _stampOpt = (arr) => (_rep ? { report: arr, profile: _probe } : undefined);
-  if (wantPantsArt) stampRegion(d, w, h, FRAME_W, pantsPaint, art.pants, !!art.mirror, PANTS_BOX,
+  if (wantPantsArt) stampRegion(d, w, h, FW, pantsPaint, art.pants, !!art.mirror, PANTS_BOX,
     _stampOpt(_rep && _rep.pants));
   if (shoesPat) {
-    stampPattern(d, w, h, FRAME_W,
-      litFabricMask(base, regionFromFeet(d, shoesPx, w, h, FRAME_W, SHOES_MAX_UP), w * h, SHOES_LIT_MIN),
+    stampPattern(d, w, h, FW,
+      litFabricMask(base, regionFromFeet(d, shoesPx, w, h, FW, SHOES_MAX_UP), w * h, SHOES_LIT_MIN),
       shoesPat, !!art.mirror);
   }
   /* v2.3.1950: `underSkin` on all three -- ink sits UNDER skin, so it takes the
      body's shading and lets some skin through.  A shirt print does not: it is
      ink ON fabric, and stays opaque. */
-  if (tattooPx) stampRegion(d, w, h, FRAME_W, tattooPx, art.tattoo, !!art.mirror, TATTOO_BOX,
+  if (tattooPx) stampRegion(d, w, h, FW, tattooPx, art.tattoo, !!art.mirror, TATTOO_BOX,
     { underSkin: true, report: _rep && _rep.tattoo, profile: _probe });
   /* v2.3.1949: face and arms.  `eachPiece` for the arms only -- a figure has
      two of them and the largest-piece rule would ink whichever happens to be
      nearer the camera. */
   if (skinPx) {
-    const reg = splitSkinRegions(skinPx, torsoPx, w, h, FRAME_W);
+    const reg = splitSkinRegions(skinPx, torsoPx, w, h, FW);
     /* ═══ v2.3.1991: PER-FRAME REGION SIZES, FOR THE PROBE ═══
        Owner: "the face tattoo only showing on idle and disappears during jog
        but then pops up on one frame."  A tattoo is painted into whatever
@@ -730,11 +758,11 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
        tools/qa/mp/mp-facetat.mjs. */
     if (typeof window !== 'undefined' && window.__btGridProbe) {
       try {
-        const _fr = Math.max(1, Math.floor(w / FRAME_W));
+        const _fr = Math.max(1, Math.floor(w / FW));
         const _face = new Array(_fr).fill(0), _arms = new Array(_fr).fill(0), _skin = new Array(_fr).fill(0);
         for (let y = 0; y < h; y++) {
           for (let x = 0; x < w; x++) {
-            const i = y * w + x, f = Math.min(_fr - 1, Math.floor(x / FRAME_W));
+            const i = y * w + x, f = Math.min(_fr - 1, Math.floor(x / FW));
             if (reg.face[i]) _face[f]++;
             if (reg.arms[i]) _arms[f]++;
             if (skinPx[i]) _skin[f]++;
@@ -774,15 +802,15 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
         }
       } catch (e) { /* a probe must never break a bake */ }
     }
-    if (wantFaceTat) stampRegion(d, w, h, FRAME_W, reg.face, art.tattooFace, !!art.mirror, FACE_BOX,
+    if (wantFaceTat) stampRegion(d, w, h, FW, reg.face, art.tattooFace, !!art.mirror, FACE_BOX,
       { underSkin: true, report: _rep && _rep.face, profile: _probe });
-    if (wantArmTat) stampRegion(d, w, h, FRAME_W, reg.arms, art.tattooArm, !!art.mirror, ARM_BOX,
+    if (wantArmTat) stampRegion(d, w, h, FW, reg.arms, art.tattooArm, !!art.mirror, ARM_BOX,
       { eachPiece: true, underSkin: true, report: _rep && _rep.arms, profile: _probe });
   }
   /* v2.3.1928: the iris last, so it overwrites rather than being classified.
      Its pixels are near-black and would otherwise fall through every branch
      above untouched, which is exactly why the eye needed its own mask. */
-  if (eyeT && eyeRects) { _eyeT = eyeT; _paintEyes(d, cv.width, cv.height, eyeRects, FRAME_W); }
+  if (eyeT && eyeRects) { _eyeT = eyeT; _paintEyes(d, cv.width, cv.height, eyeRects, FW); }
   ctx.putImageData(imgData, 0, 0);
   /* v2.3.1962: hand the grids back on the canvas rather than through a second
      return value — `canvas.__btDir` (v2.3.1815) set the precedent, and every
@@ -1043,9 +1071,22 @@ export function artForFacing(art, dir) {
      is exactly how the head and the shirt already behave. The ARM canvas still
      stays put: an arm is the same arm from behind. */
   const bodyBack = art.tattooBack;
+  /* v2.3.2428: the TROUSERS do it too.  Owner: "Do front and back on the pants
+     and make sure they're separate."  The pants print was the last drawn
+     surface still wrapping one design all the way round -- the same complaint
+     v2.3.2042 fixed for the face and v2.3.2148 for the torso, left unfixed for
+     the legs because nothing had asked yet.
+     An undrawn back canvas falls through to emptyArt exactly as the other two
+     do, so a player who has only ever drawn a front print now shows PLAIN
+     trousers from behind rather than their print wrapped round -- which is the
+     separation being asked for.  The trouser PATTERN is deliberately not
+     touched: a pattern is a property of the garment (it tiles the whole thing),
+     not a design with a front and a back. */
+  const legsBack = art.pantsBack;
   return { ...art,
     tattooFace: artHasInk(back) ? back : emptyArt(),
-    tattoo: artHasInk(bodyBack) ? bodyBack : emptyArt() };
+    tattoo: artHasInk(bodyBack) ? bodyBack : emptyArt(),
+    pants: artHasInk(legsBack) ? legsBack : emptyArt() };
 }
 
 export function bodyArtSeg(art) {
@@ -1065,14 +1106,20 @@ export function bodyArtSeg(art) {
      artForFacing has already picked WHICH torso drawing this bake uses, so this
      only has to stop two different back drawings sharing one sheet. */
   const tb2 = artHasInk(art.tattooBack) ? artHash(art.tattooBack) : '';
+  /* v2.3.2428: and the back of the trousers, same reasoning again --
+     artForFacing has already chosen WHICH leg drawing this bake uses, so this
+     only has to stop two different back prints sharing one sheet.  Anyone who
+     has not drawn one keeps the exact key they had. */
+  const pb = artHasInk(art.pantsBack) ? artHash(art.pantsBack) : '';
   /* v2.3.1941: the trouser pattern joins the same segment.  It is already a
      short string ("stripe-v:3"), so it goes in whole rather than hashed. */
   const q = parsePattern(art.pantsPattern, 'pants') ? patternKey(art.pantsPattern, 'pants') : '';
   const f = parsePattern(art.shoesPattern, 'shoes') ? patternKey(art.shoesPattern, 'shoes') : '';   /* v2.3.1944 */
-  if (!p && !t && !q && !f && !ft && !at && !hb && !tb2) return '';
+  if (!p && !t && !q && !f && !ft && !at && !hb && !tb2 && !pb) return '';
   /* '#' is the marker: no catalog id contains one, so _dropArtSheets can find
      every drawn bake by substring without matching e.g. '/default/'. */
-  return '/#art' + p + '.' + t + '.' + q + '.' + f + '.' + ft + '.' + at + '.' + hb + '.' + tb2 + (art.mirror ? 'm' : 'n');
+  return '/#art' + p + '.' + t + '.' + q + '.' + f + '.' + ft + '.' + at + '.' + hb + '.' + tb2
+    + '.' + pb + (art.mirror ? 'm' : 'n');
 }
 /** The local player's own drawings, in the shape the bake wants.  `mirror` is
  *  per-facing, so callers that know the facing pass it in. */
@@ -1081,11 +1128,12 @@ export function localBodyArt(mirror) {
   const ft = getArt('tattooFace'), at = getArt('tattooArm');   /* v2.3.1949 */
   const hb = getArt('tattooHeadBack');   /* v2.3.2043 */
   const tbk = getArt('tattooBack');       /* v2.3.2148 */
+  const pbk = getArt('pantsBack');        /* v2.3.2428 */
   const q = getPattern('pants'), f = getPattern('shoes');   /* v2.3.1944 */
   if (!artHasInk(p) && !artHasInk(t) && !artHasInk(ft) && !artHasInk(at) && !artHasInk(hb)
-    && !artHasInk(tbk)
+    && !artHasInk(tbk) && !artHasInk(pbk)
     && !parsePattern(q, 'pants') && !parsePattern(f, 'shoes')) return null;
-  return { pants: p, tattoo: t, tattooFace: ft, tattooArm: at, tattooHeadBack: hb,
+  return { pants: p, pantsBack: pbk, tattoo: t, tattooFace: ft, tattooArm: at, tattooHeadBack: hb,
     tattooBack: tbk,
     pantsPattern: q, shoesPattern: f, mirror: !!mirror };
 }

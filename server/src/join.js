@@ -82,7 +82,11 @@ const JOIN_COSMETIC_KEYS = [
      same cap, and added to BOTH gates and DRAWING_KEYS in this one change --
      v2.3.1939 put a drawing key in one gate and not the other and the print
      appeared on join then vanished on the first relay. */
-  'sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'tb', 'tr',
+  /* v2.3.2428: `pb` is the BACK OF THE TROUSERS -- the pants print's other
+     side, the same relation `sb` has to `sa`, `tb` to `tf` and `tr` to `ta`.
+     Same 256-char shape, same cap, and added to BOTH gates and DRAWING_KEYS in
+     this one change, for the reason stated three notes up. */
+  'sa', 'sb', 'pa', 'pb', 'ta', 'tf', 'tm', 'tb', 'tr',
   /* v2.3.1941: clothing patterns -- a tile id and a palette index, e.g.
      "stripe-v:3".  Short, so unlike the drawings above they sit inside the flat
      64-char cap with room to spare and need no special case. */
@@ -101,7 +105,7 @@ const JOIN_COSMETIC_KEYS = [
    the live-update path: the client's sanitiser rejects anything that is not
    exactly 256 hex characters, so peers saw the print appear on join and vanish
    two seconds later.  index.js imports this rather than repeating it. */
-export const DRAWING_KEYS = new Set(['sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'tb', 'tr']);   /* v2.3.2043: +tb; v2.3.2148: +tr, the back of the body */
+export const DRAWING_KEYS = new Set(['sa', 'sb', 'pa', 'pb', 'ta', 'tf', 'tm', 'tb', 'tr']);   /* v2.3.2043: +tb; v2.3.2148: +tr, the back of the body; v2.3.2428: +pb, the back of the trousers */
 /** Cap for one cosmetic key: drawings and avatars get the large bound. */
 export function cosmeticCap(k) { return (k === 'avatar' || DRAWING_KEYS.has(k)) ? 512 : 64; }
 /* ═══ v2.3.1970: THE TOP-LEVEL `name` WAS THE ONE THAT GOT AWAY ═══

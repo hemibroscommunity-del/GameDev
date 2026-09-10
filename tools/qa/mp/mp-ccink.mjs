@@ -578,7 +578,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const P3 = await H.newPlayer(browser, { name: 'Ed', wsPort, webPort,
     viewport: { width: 390, height: 844 }, touch: true });
   await openCreator(P3);
-  for (const [tab, wantTitle, wantSurface] of [['Skin', 'Tattoos', 'body'], ['Pants', 'Pants design', 'body'], ['Shoes', 'Shoe pattern', null]]) {
+  /* v2.3.2430: the SHIRT joins the loop, and it is the interesting one -- it
+     was the last editor working on a bare 16x16 grid, on the stated reasoning
+     that its print "is stamped on a different sheet with no region to hit-test
+     against".  Owner: "The shirt canvas should be a preview of the shirt you're
+     drawing on (not just the blank drawing canvas)." */
+  for (const [tab, wantTitle, wantSurface] of [['Skin', 'Tattoos', 'body'], ['Shirt', 'Shirt design', 'body'], ['Pants', 'Pants design', 'body'], ['Shoes', 'Shoe pattern', null]]) {
     rec.ok(`editors: the ${tab} tab opened (guard)`, await pickTab(P3, tab), null);
     await P3.page.waitForTimeout(1100);
     await P3.page.click('button.bt-cc-ink-pane');
@@ -671,6 +676,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
         });
         await P3.page.waitForTimeout(2000);
       }
+      /* v2.3.2430: the shirt opens on its PATTERN screen; `front` is where the
+         drawing is made, so that is the one to look at. */
+      if (tab === 'Shirt') {
+        await P3.page.evaluate(() => {
+          const b = [...document.querySelectorAll('.bt-paint-tabs .bt-cc-tab')]
+            .find((x) => /front/i.test(x.textContent || ''));
+          if (b) b.click();
+        });
+        await P3.page.waitForTimeout(2400);
+      }
       const surf = await P3.page.evaluate(() => {
         const cv = document.querySelector('.bt-bodyink-cv');
         const aim = cv && cv.__btInkAim;
@@ -679,6 +694,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
       });
       rec.ok(`editors: ${tab} draws on the CHARACTER, not on a bare 16x16 grid`,
         surf.body && !surf.flatGrid, surf);
+      if (tab === 'Shirt') {
+        rec.ok(`editors: ...and the surface reports where the PRINT sits on the `
+          + `garment (${surf.regions.join(',')})`, surf.regions.indexOf('shirt') >= 0, surf);
+        /* End to end, and the half that a region report alone cannot prove: a
+           touch on the shirt has to write the SHIRT canvas.  A surface that
+           framed the garment and wrote the chest tattoo underneath it would
+           satisfy every assertion above -- and the tattoo canvas is genuinely
+           there, directly beneath this one, which is why it is the control. */
+        const aim = await P3.page.evaluate(() => {
+          const c = document.querySelector('.bt-bodyink-cv');
+          const a = c && c.__btInkAim && c.__btInkAim.shirt;
+          return a ? { x: a.x, y: a.y, w: c.width } : null;
+        });
+        rec.ok('editors: the shirt print has a point to aim at (guard)', !!aim, aim);
+        if (aim) {
+          const b = await (await P3.page.$('.bt-bodyink-cv')).boundingBox();
+          const px = b.x + (aim.x / aim.w) * b.width, py = b.y + (aim.y / aim.w) * b.height;
+          await P3.page.mouse.move(px, py);
+          await P3.page.mouse.down();
+          await P3.page.mouse.move(px + 1, py + 1);
+          await P3.page.mouse.up();
+          await P3.page.waitForTimeout(800);
+          const landed = await P3.page.evaluate(() => {
+            const ink = (k) => { const v = localStorage.getItem(k) || ''; return [...v].filter((c) => c !== '0').length; };
+            return { shirt: ink('bt-shirtart'), chest: ink('bt-tattooart') };
+          });
+          rec.ok(`editors: a touch on the shirt inks the SHIRT and not the chest `
+            + `under it (${landed.shirt} / ${landed.chest})`,
+            landed.shirt > 0 && landed.chest === 0, landed);
+        }
+      }
       if (tab === 'Pants') {
         rec.ok(`editors: ...and the surface reports where the trousers are `
           + `(${surf.regions.join(',')})`, surf.regions.indexOf('pants') >= 0, surf);
@@ -710,6 +756,75 @@ export async function run({ browser, wsPort, webPort, rec }) {
           rec.ok(`editors: a stroke on the trousers lands in the PANTS drawing `
             + `(${cells.pants} cells) and not on the chest (${cells.tattoo})`,
             cells.pants > 0 && cells.tattoo === 0, cells);
+        }
+        /* ═══ v2.3.2428: AND THE TROUSERS HAVE TWO SIDES ═══
+           Owner: "Do front and back on the pants and make sure they're
+           separate."  Three claims, and each needs its own assertion because
+           each can hold while the others fail: the switch is THERE, a stroke
+           made on the far side lands in the OTHER canvas, and the renderer
+           actually RESOLVES a back facing to that canvas -- which is the one a
+           store check cannot see, and the one a mutation slipped through until
+           this was written. */
+        const sideBtns = await P3.page.evaluate(() =>
+          [...document.querySelectorAll('[data-ink-side-btn]')].map((b) => b.getAttribute('data-ink-side-btn')));
+        rec.ok(`editors: the pants screen offers a Front/Back switch (${sideBtns.join(',')})`,
+          sideBtns.join(',') === 'front,back', { sideBtns });
+        if (sideBtns.length === 2) {
+          const before = await P3.page.evaluate(() => {
+            const ink = (k) => { const v = localStorage.getItem(k) || ''; return [...v].filter((c) => c !== '0').length; };
+            return { front: ink('bt-pantsart'), back: ink('bt-pantsart-back') };
+          });
+          await P3.page.click('[data-ink-side-btn="back"]');
+          await P3.page.waitForTimeout(2200);
+          const backAim = await P3.page.evaluate(() => {
+            const c = document.querySelector('.bt-bodyink-cv');
+            const a = c && c.__btInkAim && c.__btInkAim.pants;
+            return a ? { x: a.x, y: a.y, w: c.width } : null;
+          });
+          rec.ok('editors: the trousers still report where they are with Back on (guard)',
+            !!backAim, backAim);
+          if (backAim) {
+            const bb = await (await P3.page.$('.bt-bodyink-cv')).boundingBox();
+            const bx = bb.x + (backAim.x / backAim.w) * bb.width;
+            const by = bb.y + (backAim.y / backAim.w) * bb.height;
+            await P3.page.mouse.move(bx, by);
+            await P3.page.mouse.down();
+            await P3.page.mouse.move(bx + 1, by + 1);
+            await P3.page.mouse.up();
+            await P3.page.waitForTimeout(700);
+            const after = await P3.page.evaluate(() => {
+              const ink = (k) => { const v = localStorage.getItem(k) || ''; return [...v].filter((c) => c !== '0').length; };
+              return { front: ink('bt-pantsart'), back: ink('bt-pantsart-back') };
+            });
+            rec.ok(`editors: a stroke with Back selected inks the BACK of the trousers `
+              + `(${before.back} -> ${after.back})`, after.back > before.back, { before, after });
+            rec.ok('editors: ...and leaves the front print exactly as it was',
+              after.front === before.front, { before, after });
+            /* THE RENDERER'S OWN ANSWER.  __btArtForFacing returns the decision
+               artForFacing makes rather than a cache that may predate it -- so
+               this says "a back facing resolves to the back canvas", which is
+               what "separate" has to mean once you walk away. */
+            const facing = await P3.page.evaluate(() => {
+              const f = window.__btArtForFacing;
+              const ink = (v) => (v ? [...v].filter((c) => c !== '0').length : -1);
+              if (!f) return { probe: false };
+              const s2 = f('south'), n = f('north');
+              return { probe: true, resolved: !!s2,
+                south: ink(s2 && s2.pants), north: ink(n && n.pants),
+                same: !!s2 && !!n && s2.pants === n.pants,
+                store: { front: ink(localStorage.getItem('bt-pantsart')),
+                  back: ink(localStorage.getItem('bt-pantsart-back')) } };
+            });
+            /* `resolved` is the guard that matters: localBodyArt answers null
+               when nothing is drawn, and a probe that returns null for BOTH
+               facings compares equal -- which would read as "the swap does not
+               happen" and mean "there was nothing to swap". */
+            rec.ok('editors: the facing probe has a drawing to resolve (guard)',
+              !!facing && facing.probe && facing.resolved, facing);
+            rec.ok('editors: and a back FACING resolves to the back print, which is '
+              + 'what a peer and the world renderer will draw',
+              !!facing && facing.resolved && !facing.same && facing.north > 0, facing);
+          }
         }
       }
     }
