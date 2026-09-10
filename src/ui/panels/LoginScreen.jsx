@@ -224,10 +224,24 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
               the logo, so `inset:0` gives it the image's own box. It used to
               be a sibling sized against .bt-login-title -- logo plus gap plus
               banner -- and swept a mask 22px lower than the lettering. */}
+          {/* ═══ v2.3.2458: ONE LOCKUP, THE OWNER'S OWN FILE ═══
+              Owner, with the art: "Can you use this for the splash landing
+              page (with the create a character and continue buttons) instead
+              of what's there now?"
+              It is the whole title in one picture -- HEMI BROS, BRO TOWN with
+              its sword, and the MULTIPLAYER AARPG rule -- so the two <img>s
+              that used to be composed here (logo-plain + banner-plain, slices
+              of the sheet by tools/gear/slice-splash-art.mjs) become one.
+              THAT ALSO RETIRES A CLASS OF BUG: the pair had to be kept in
+              proportion by hand (.bt-login-banner was sized "against the logo
+              rather than the viewport so the pair always reads as one
+              lockup"), and the shimmer had to be told which of the two boxes
+              it belonged to (v2.3.2208, a 22px miss).  One image has one box
+              and cannot drift from itself. */}
           <span className="bt-login-logowrap">
             <img
-              src={art('logo-plain')}
-              alt="Hemi Bros"
+              src={art('logo-full')}
+              alt="Hemi Bros — Bro Town, multiplayer AARPG"
               draggable={false}
               className="bt-login-logo"
             />
@@ -239,15 +253,9 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
             <div
               className="bt-login-shine"
               aria-hidden
-              style={{ '--lg-logo': `url("${mask('logo-plain')}")` }}
+              style={{ '--lg-logo': `url("${mask('logo-full')}")` }}
             />
           </span>
-          <img
-            src={art('banner-plain')}
-            alt=""
-            draggable={false}
-            className="bt-login-banner"
-          />
         </div>
 
         <div className="bt-login-actions">

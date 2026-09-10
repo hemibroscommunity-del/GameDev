@@ -104,8 +104,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     (await route(B)) === 'login', { route: await route(B) });
 
   /* ── 2. the title screen is the owner's painted set ── */
-  rec.ok('the BRO TOWN banner is under the logo',
-    await visible(B, '.bt-login-banner'), {});
+  /* v2.3.2458: BRO TOWN is INSIDE the lockup now (the owner supplied the
+     whole title as one picture), so there is no second element to find --
+     which is the claim.  A stale `.bt-login-banner` check would go on passing
+     the day someone re-adds an element by that name for something else. */
+  rec.ok('the title is ONE lockup, not a logo with a banner element under it',
+    (await visible(B, '.bt-login-logo')) && !(await visible(B, '.bt-login-banner')), {});
 
   /* ═══ v2.3.2208: THE SHIMMER LANDS ON THE LETTERING ═══
      .bt-login-shine masks itself with the logo so the highlight can only fall
@@ -245,11 +249,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return {
       login: await one('/ui/welcome/title/btn-continue.png'),
       create: await one('/ui/welcome/title/btn-create-plain.png'),
-      logo: await one('/ui/welcome/title/logo-plain.png'),
-      banner: await one('/ui/welcome/title/banner-plain.png'),
+      logo: await one('/ui/welcome/title/logo-full.png'),   /* v2.3.2458 */
     };
   });
-  /* ═══ v2.3.2209: THE MARKS THE OWNER ASKED US TO REMOVE ARE GONE ═══
+  /* ═══ v2.3.2458: THE MARK TESTS RETIRE WITH THE FILES THEY GUARDED ═══
+     Kept here as the record, because they were load-bearing for two versions
+     and the reasoning is worth more in place than in a git log.
+
+     v2.3.2209 pinned two properties of logo-plain.png and banner-plain.png --
+     no sparkle on the wordmark, no diamonds on the banner's rules -- and the
+     reason was NOT that sparkles are ugly: those two files were SLICES, cut
+     from the owner's sheet by tools/gear/slice-splash-art.mjs, and re-running
+     the slicer regenerates them with the marks.  The test existed so that a
+     regeneration could not quietly undo an owner decision.
+
+     Neither file is on this screen any more.  logo-full.png is the owner's
+     own finished lockup, not a slice of anything, so there is no generator
+     that could put a mark back into it -- and the pixel signature the old
+     test used would misfire on it anyway: the sword's blade is legitimately
+     bright and desaturated (240 such pixels, measured), which is exactly what
+     the sparkle rule looked for.  A test that reports a sword as a sparkle is
+     worse than no test.
+     What survives is the assertion below that the file actually decodes, and
+     the shimmer-box check above, which is the one that ever caught anything.
+
+     (the block this replaced)
+     ═══ v2.3.2209: THE MARKS THE OWNER ASKED US TO REMOVE ARE GONE ═══
      Owner: "there's still a static shine on the Hemi bros logo and diamonds
      framing 'bro town' that I want gone."
 
@@ -269,46 +294,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      - a diamond is the only thing on the banner's rules that is TALL. The
        rule is 10-12px of ink; each diamond was 35. So outside the lettering,
        no column may carry more ink than the rule does. */
-  const marks = await B.page.evaluate(async () => {
-    const read = (u) => new Promise((res) => {
-      const i = new Image();
-      i.onload = () => {
-        const c = document.createElement('canvas');
-        c.width = i.naturalWidth; c.height = i.naturalHeight;
-        const cx = c.getContext('2d');
-        cx.drawImage(i, 0, 0);
-        res({ w: c.width, h: c.height, d: cx.getImageData(0, 0, c.width, c.height).data });
-      };
-      i.onerror = () => res(null);
-      i.src = u;
-    });
-    const logo = await read('/ui/welcome/title/logo-plain.png');
-    const ban = await read('/ui/welcome/title/banner-plain.png');
-    if (!logo || !ban) return null;
-    let white = 0;
-    for (let i = 0; i < logo.d.length; i += 4) {
-      const r = logo.d[i], b = logo.d[i + 2], a = logo.d[i + 3];
-      if (a > 40 && r > 200 && b > 150 && (r - b) < 70) white++;
-    }
-    /* tallest column of ink outside the lettering (which spans x 108..347) */
-    let tallest = 0, tallestAt = -1;
-    for (let x = 0; x < ban.w; x++) {
-      if (x >= 100 && x <= 352) continue;
-      let n = 0;
-      for (let y = 0; y < ban.h; y++) if (ban.d[(y * ban.w + x) * 4 + 3] > 24) n++;
-      if (n > tallest) { tallest = n; tallestAt = x; }
-    }
-    return { white, tallest, tallestAt };
-  });
-  rec.ok('both title marks could be read for inspection (guard)', !!marks, marks);
-  rec.ok('the HEMI BROS logo carries no sparkle — nothing in it is bright and '
-       + 'desaturated, and only a star could be', !!marks && marks.white === 0, marks);
-  rec.ok('the BRO TOWN banner carries no diamonds — outside the lettering the '
-       + 'rules are the only ink, and a rule is thin',
-    !!marks && marks.tallest <= 16, marks);
-
-  rec.ok('every title slice actually decodes (guard: url() lies about 404s)',
-    loaded.login > 0 && loaded.create > 0 && loaded.logo > 0 && loaded.banner > 0, loaded);
+  rec.ok('every title image actually decodes (guard: url() lies about 404s)',
+    loaded.login > 0 && loaded.create > 0 && loaded.logo > 0, loaded);
   rec.ok('the second action is named "Create Character" for a screen reader',
     !!C && /Create Character/i.test(C.label), { label: C && C.label });
   /* v2.3.1954: and the FIRST one is named "Continue".  The plate's word is

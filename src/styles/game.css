@@ -4121,9 +4121,16 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
 /* The logo art carries its own outline and underside shadow — the sheet is
    drawn that way — so this adds only the ground shadow that lifts it off the
    painting.  No wide fuzzy glow: "reduce the fuzzy glow". */
+/* v2.3.2458: ONE image now, and it is TALLER than the old wordmark -- it
+   carries BRO TOWN and the sword that used to be a second element below it
+   (760x638, where logo-plain was 700x452).  So the height cap has to grow
+   with it or the art letterboxes inside its own element and reads smaller
+   than the pair it replaced: 30vh of a 844px phone is 253px, which at this
+   aspect would hold the width to 301px.  46vh gives the lockup the room the
+   logo AND the banner AND the gap between them had. */
 .bt-login-logo{
   position:relative;z-index:1;display:block;
-  width:min(80vw,380px);max-height:30vh;object-fit:contain;
+  width:min(80vw,380px);max-height:46vh;object-fit:contain;
   filter:drop-shadow(0 5px 12px rgba(3,6,10,.55));
 }
 /* The shimmer uses the LOGO as its own mask, so the highlight can only ever
@@ -4173,13 +4180,10 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
   97%{background-position:-80% 0;opacity:1}
   100%{background-position:-80% 0;opacity:0}
 }
-/* The BRO TOWN banner from the sheet, sized against the logo rather than the
-   viewport so the pair always reads as one lockup. */
-.bt-login-banner{
-  position:relative;z-index:1;
-  width:min(62vw,290px);object-fit:contain;
-  filter:drop-shadow(0 2px 5px rgba(3,6,10,.6));
-}
+/* v2.3.2458: .bt-login-banner is gone with the second <img> -- BRO TOWN is
+   inside the lockup now, so there is nothing left to size against the logo.
+   The rule is deleted rather than left empty: a selector that matches nothing
+   is the kind of thing a later edit re-points at something else. */
 
 /* ── the buttons ── */
 /* The pause the brief asks for.  clamp so a short phone gives it up first. */
@@ -4322,8 +4326,11 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
 /* Short/landscape viewports: the logo is the part that can afford to go, and
    the deliberate pause is the second. */
 @media (max-height:600px){
-  .bt-login-logo{max-height:20vh}
-  .bt-login-banner{width:min(50vw,220px)}
+  /* v2.3.2458: the same proportional bump the base rule takes (30->46vh),
+     applied to the short-screen cap: one image that is 1.19x taller per unit
+     of width needs its ceiling raised or it shrinks where there is least room
+     to spare.  The banner line goes with the element. */
+  .bt-login-logo{max-height:31vh}
   .bt-login-actions{margin-top:12px;gap:8px;max-width:300px}
   .bt-login-note{padding-top:10px;font-size:11.5px}
 }
