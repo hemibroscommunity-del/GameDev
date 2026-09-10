@@ -124,7 +124,7 @@ const keyForTarget = (t) => {
      'tattooBack', gridFor found no grid, and every stroke on the back was
      silently DROPPED: mp-bodyink saw the chest correctly left alone and the
      back never written, which reads as "the switch does nothing".
-     v2.3.2421: still exactly right now that the surface turns round -- the
+     v2.3.2422: still exactly right now that the surface turns round -- the
      north sheet reports `tattoo` for the back of the torso, because it is the
      torso region of the sheet being baked. */
   const key = FRONT_OF[t] || t;
@@ -174,7 +174,7 @@ export default function BodyInk({
   onRegion, onDown, onMove, onUp,
   /* v2.3.2150: true while the panel is drawing on the character's BACK, which
      moves the canvas each touch WRITES to (regionAt, through BACK_TARGET).
-     v2.3.2421: and, with `dir`, which way the figure this surface composites is
+     v2.3.2422: and, with `dir`, which way the figure this surface composites is
      facing and which drawing is stamped on it -- see the composite. The touch
      REGIONS are still keyed the same way (`tattoo` / `face` / `arms`) whichever
      side is showing, so the remap here stays exactly as it was; what changed is
@@ -596,7 +596,7 @@ export default function BodyInk({
          stripping the shirt would only take away the context that tells you
          where the waistband is.  Whatever the player is actually wearing. */
       const bareSkin = region !== 'pants';
-      /* ═══ v2.3.2421: THE SURFACE TURNS ROUND WITH THE SWITCH ═══
+      /* ═══ v2.3.2422: THE SURFACE TURNS ROUND WITH THE SWITCH ═══
          Owner: "the back button does not make the large canvas rotate to the
          back.  Also the front copies its drawings onto the back (these should
          be separate)."  Both halves of that are this one object.
@@ -671,7 +671,7 @@ export default function BodyInk({
       if (raf) cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
     };
-  /* v2.3.2421: `backSide` is a DEPENDENCY here for the same reason it is one
+  /* v2.3.2422: `backSide` is a DEPENDENCY here for the same reason it is one
      on regionAt -- the composite reads it to choose which drawing to stamp,
      and `dir` changing alongside it is a coincidence of the current caller,
      not a guarantee.  (No react-hooks plugin in this repo's flat config; the

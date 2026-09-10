@@ -597,7 +597,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (!t) return null;
       const r = t.getBoundingClientRect();
       const p = document.querySelector('.bt-paint').getBoundingClientRect();
-      /* v2.3.2421: where the WORD is painted, not where its block is.  An h2 in
+      /* v2.3.2422: where the WORD is painted, not where its block is.  An h2 in
          a column flex fills the cell whatever its text-align, so the element's
          own box says nothing about centring; a Range around the text node is
          the inline box the eye actually sees. */
@@ -621,7 +621,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`editors: ...at the top of the panel and inside its fold`,
       !!head && head.onScreen && head.atTop, head);
 
-    /* ═══ v2.3.2421: CENTRED AND BOLD ═══
+    /* ═══ v2.3.2422: CENTRED AND BOLD ═══
        Owner: "Center and bold the 'TATTOOS' label."
        CENTRED is measured off the painted word: the heading BLOCK fills the
        head cell either way, so only the inline box moves.  Left-aligned it sits

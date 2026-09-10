@@ -540,7 +540,7 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
            it off while you work.  The caption says so. */
         opts.headwear = 'none';
       } else if (target === 'tattooBack') {
-        /* ═══ v2.3.2421: THE BACK SHOWS THE BACK'S OWN DRAWING ═══
+        /* ═══ v2.3.2422: THE BACK SHOWS THE BACK'S OWN DRAWING ═══
            Owner: "the front copies its drawings onto the back (these should be
            separate)."  They ARE separate in the store and separate on the
            walking character (artForFacing, v2.3.2148) -- they were one only
@@ -561,7 +561,7 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
            showing a shirt while you draw under it reads as broken. */
         opts.shirt = 'none';
       } else if (target === 'tattooHeadBack') {
-        /* v2.3.2421: and the back of the head, the same fix -- the face slot is
+        /* v2.3.2422: and the back of the head, the same fix -- the face slot is
            where a north sheet's head drawing goes (artForFacing swaps the same
            way round). Without this the pane showed your FACE tattoo, mirrored
            onto the back of your head. */
@@ -572,7 +572,7 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
         /* Sleeves cover the upper arm; bare-chested you see the whole limb. */
         opts.shirt = 'none';
       }
-      /* ═══ v2.3.2421: A NORTH-FACING PANE SHOWS NORTH-FACING DRAWINGS ═══
+      /* ═══ v2.3.2422: A NORTH-FACING PANE SHOWS NORTH-FACING DRAWINGS ═══
          The branches above set the ONE canvas this pane is editing.  Every
          other drawing on the figure is left undefined on purpose, because
          drawCharacterPortrait then reads it from the live store for free
@@ -1681,7 +1681,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             <BodyInk look={look} arts={bodyArts} ink={ink}
               region={target === 'pants' ? 'pants' : (mode === 'face' ? 'face' : 'tattoo')}
               apiRef={bodyApiRef} activeTarget={artId}
-              /* v2.3.2421: the big canvas faces the side being inked, exactly as
+              /* v2.3.2422: the big canvas faces the side being inked, exactly as
                  the little worn preview beside it has since v2.3.2150.  Owner:
                  "the back button does not make the large canvas rotate to the
                  back."  It is `side` rather than `inkBack` so the two panes can

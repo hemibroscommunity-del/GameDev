@@ -2859,7 +2859,7 @@ broken) — same family, one layer down.
 
 ---
 
-## 70. The portrait does not apply the game's facing rule (v2.3.2421)
+## 70. The portrait does not apply the game's facing rule (v2.3.2422)
 
 **Tempting:** `artForFacing` (playerSkins) is the single place that decides
 which drawing a facing shows — chest for south, `tattooBack` for north, face
@@ -2905,7 +2905,7 @@ inputs, not the values.
 front canvases blue, back-only canvases green and the arm pink so that a pixel
 says whose drawing it is.
 
-## 71. Counting a stamped colour by how close it is to the palette (v2.3.2421)
+## 71. Counting a stamped colour by how close it is to the palette (v2.3.2422)
 
 **Tempting:** to prove a drawing is on screen, pick palette index 5, stamp it,
 and count pixels near `#f2c94c`. The palette is exact and the canvas is

@@ -29,7 +29,7 @@
 import * as H from './harness.mjs';
 
 const KEYS = { tattoo: 'bt-tattooart', tattooBack: 'bt-tattooart-back', tattooFace: 'bt-facetattoo', tattooArm: 'bt-armtattoo',
-  /* v2.3.2421: the back of the head. It has had a canvas since v2.3.2043 and a
+  /* v2.3.2422: the back of the head. It has had a canvas since v2.3.2043 and a
      way to select it since v2.3.2150, and no scenario has ever read it -- which
      is how it stayed possible for the Face screen's Back side to be the one
      surface still showing you the FRONT drawing. */
@@ -82,7 +82,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const skinTab = await page.$('button:has-text("Skin")');
   rec.ok('the creator has a skin tab to reach the designer from', !!skinTab, { found: !!skinTab });
   if (!skinTab) return;
-  /* ═══ v2.3.2421: PUT A SHIRT ON HIM FIRST ═══
+  /* ═══ v2.3.2422: PUT A SHIRT ON HIM FIRST ═══
      Everything below is about a drawing that a shirt COVERS, and this scenario
      has always run on a fresh character, who wears none.  That made a whole
      rule untestable: each tattoo screen takes off what hides the canvas it is
@@ -159,7 +159,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and it opens on FRONT, so nobody who never touches it sees any '
     + 'change', sideSwitch.pressed.join(',') === 'front', sideSwitch);
 
-  /* ═══ v2.3.2421: EVERY STROKE BELOW IS BLUE, ON PURPOSE ═══
+  /* ═══ v2.3.2422: EVERY STROKE BELOW IS BLUE, ON PURPOSE ═══
      The assertions this file gained for the back view ask what is PAINTED on
      the editor, not just what is stored, and "is my drawing showing" cannot be
      answered in the default near-black: it is the body sheet's own outline
@@ -174,7 +174,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* Pixels the figure cannot produce by itself, on any canvas in the panel:
      `.bt-bodyink-cv` is the big editor surface, `.bt-paint-pv` the little worn
      preview beside it.  Both are asked, because they are composited by
-     different code (BodyInk's own pass and WornPreview's) and the v2.3.2421
+     different code (BodyInk's own pass and WornPreview's) and the v2.3.2422
      leak was in BOTH -- fixing one and testing only that one would have left
      the preview still showing a chest tattoo on a back. */
   /* THREE colours, and which one a pixel is answers WHOSE drawing it is:
@@ -244,7 +244,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const box = await page.$('.bt-bodyink-cv');
   const r = await box.boundingBox();
-  /* ═══ v2.3.2421: A TAP THAT RE-READS WHERE THE CANVAS IS ═══
+  /* ═══ v2.3.2422: A TAP THAT RE-READS WHERE THE CANVAS IS ═══
      `r` above is captured once, and after any click on a control it can be
      wrong -- not because the VIEW moved (the aim follows that: __btInkAim is
      re-stamped on every blit) but because .bt-paint scrolls, and Playwright
@@ -379,7 +379,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await page.waitForTimeout(1800);
     await pickColour(6);   /* everything drawn on the BACK is green */
 
-    /* ═══ v2.3.2421: THE FIGURE TURNS ROUND ═══
+    /* ═══ v2.3.2422: THE FIGURE TURNS ROUND ═══
        Owner: "the back button does not make the large canvas rotate to the
        back."  It did not: v2.3.2150 shipped the switch as a canvas remap only
        and left the surface facing the camera, on the reasoning that there was
@@ -449,7 +449,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         + `looks like ON you (${backPvGreen} before, ${inkedPv} after)`,
         inkedPv > backPvGreen, { backPvGreen, inkedPv });
 
-      /* ═══ v2.3.2421: THE ARM, WHICH IS THE CASE THE GENERAL FIX EXISTS FOR ═══
+      /* ═══ v2.3.2422: THE ARM, WHICH IS THE CASE THE GENERAL FIX EXISTS FOR ═══
          The Body screen lets your FINGER move the canvas (v2.3.1994), so with
          Back selected the panel can be editing a THIRD canvas -- the arm, which
          has no back counterpart because an arm is the same arm from behind.
@@ -484,7 +484,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         { before: chestBeforeBack, after: inked(arts.tattoo) });
     }
     /* Back to front, or the face section below starts on the wrong side.
-       v2.3.2421: and back to BLUE with it -- the colour tracks the SIDE, not
+       v2.3.2422: and back to BLUE with it -- the colour tracks the SIDE, not
        the screen, so that a blue pixel means "drawn on a front canvas"
        everywhere in this file.  Missing this made the face section's separation
        check compare 0 against 0, which is a passing assertion that separates
@@ -529,7 +529,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the FOREHEAD takes ink (the owner\'s "including forehead etc")',
     faceRows.length > 0 && faceRows[0] <= 5, { topInkedRow: faceRows[0], rows: faceRows });
 
-  /* ═══ v2.3.2421: THE FACE SCREEN'S OTHER SIDE ═══
+  /* ═══ v2.3.2422: THE FACE SCREEN'S OTHER SIDE ═══
      The back of the head has had a canvas since v2.3.2043 and a switch to
      reach it since v2.3.2150, and no scenario has ever read it.  That gap is
      why it could sit there showing the FRONT face drawing on a head turned

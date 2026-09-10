@@ -1,4 +1,4 @@
-# The tattoo editor's two sides (v2.3.2421)
+# The tattoo editor's two sides (v2.3.2422)
 
 Owner, after testing the ink card: *"On the tattoos the back button does not
 make the large canvas rotate to the back. Also the front copies its drawings

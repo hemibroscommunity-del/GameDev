@@ -2877,9 +2877,9 @@ input{font-family:inherit}
    Sized and coloured off .bt-cc-panel-title's family rather than inventing a
    heading style.  No margin -- .bt-paint-head's own gap spaces it, so it costs
    exactly its text height and nothing else on a panel that is already tight at
-   390x664.  (v2.3.2416 also made it deliberately quiet; v2.3.2421 undid that
+   390x664.  (v2.3.2416 also made it deliberately quiet; v2.3.2422 undid that
    half on the owner's word -- see below.) */
-/* v2.3.2421: CENTRED, AND AS BOLD AS THIS FAMILY GOES.  Owner: "Center and
+/* v2.3.2422: CENTRED, AND AS BOLD AS THIS FAMILY GOES.  Owner: "Center and
    bold the 'TATTOOS' label."  Centred over the head cell, which is the tabs'
    own width, so it caps the strip it names instead of hanging off its left
    edge.
