@@ -2944,3 +2944,80 @@ view cannot reach the arms", and is not. Re-read the box after any click.
 
 Related: §66 (a probe that finds nothing has two explanations) and §65 (a
 measurement that is not of the thing you think it is).
+
+---
+
+## 72. "There is no region to hit-test against" — said of code, believed of the art (v2.3.2426)
+
+**Tempting:** the body's drawn regions come from `recolorBodyToCanvas`, which
+classifies skin, torso and trousers out of the sheet's own pixels and reports a
+grid per region. The shirt print is not on the body sheet at all — it is stamped
+onto a separate garment sprite by `composeShirt`/`stampShirtArt` — so the shirt
+genuinely cannot be drawn on the character, and the editor has to stay a flat
+16×16 grid. That reasoning is in the repo, written down at v2.3.2416 as the
+stated reason the shirt was the one editor left on an abstraction:
+
+> a shirt print is stamped on a different sheet with no region to hit-test
+> against, so there is nothing for a touch to hit-test against there yet.
+
+**Wrong, and the code disproving it is the code the sentence is about.**
+`stampShirtArt` computes, per frame, the exact box it fits the 16×16 grid into
+(`chestBox` → `ox, oy, cw, ch`) — it has done since v2.3.1938. It had no
+*report*, which is a different thing from having no *region*. Adding six lines
+that push the box it already has, in the record shape `stampRegion` already
+uses, made the shirt hit-testable with no new geometry anywhere: the surface,
+the cell mapping and every tool worked unchanged the first time it ran.
+
+**The tell is grammatical.** "There is no region" is a claim about the art.
+"There is no region *report*" is a claim about a function. The note conflated
+them, and a later reader — me — inherited the stronger claim for free. When a
+comment explains why something is impossible, check whether it is describing a
+property of the data or a gap in the code; those decay very differently, and
+only one of them is a reason.
+
+**Two details that made it drop in rather than fight:** the shirt layer is drawn
+through the identical `ctx` transform the body was, so `__btGridXform` maps both
+with no second matrix; and the report has to keep the measuring pass alive for a
+BLANK drawing (`if (!artHasInk(art) && !report) return`), which is the same rule
+the body regions needed at v2.3.1965 and for the same reason — keyed on ink
+alone, the first mark can never be made.
+
+Related: §70 (the portrait does not apply the game's facing rule) — the same
+family, a claim about the renderer that was true of one path and assumed of all
+of them.
+
+## 73. A second bake site does not inherit the first one's arguments (v2.3.2425)
+
+**Tempting:** the player's drawings are handed to `recolorBodyToCanvas` by
+`getBodyFrame`, which every pose goes through. So a tattoo is on the body in
+every pose, and a new pose gets it for free.
+
+**Wrong for every pose the figure is REPLACED in.** A sword swing and a raised
+shield do not animate the body — they hide it and draw a stand-in cut from
+separate authored sheets (`sword-<dir>-body.png`, `bow-<dir>-body.png`), and
+those sheets are baked by their own loader in `effectsRenderer`, which calls
+`recolorBodyToCanvas` a second time with its own argument list. That list had
+skin, pants and shoes and stopped: the ninth argument, the drawings, was never
+passed. So every tattoo, print and pattern was on the walking body and gone the
+instant you raised a shield — which is exactly when somebody is looking at you.
+
+**This is the third time the same site has been caught short.** v2.3.1788 found
+it one argument over ("the attack stand-ins wear the WALKING skin") and
+v2.3.1710 found the same class on the cook and the fire-lighter. The shape is
+always identical: a property is added to the body pipeline, every caller of
+`getBodyFrame` gets it, and the bakes that are NOT callers of `getBodyFrame`
+silently do not.
+
+**The rule:** when you add a per-player property to the body bake, grep for
+`recolorBodyToCanvas` rather than for `getBodyFrame`. There are two call sites
+and only one of them is the one you are thinking of.
+
+**And two things that come with it, both of which the walking body already
+does.** The stand-in must run `artForFacing` for its own sheet direction, or a
+north-facing stand-in wraps the chest tattoo round onto the back; and the three
+facings drawn by flipping a base sheet need a second, pre-flipped bake, or the
+design reads backwards there — the owner's own report on the shirt at v2.3.1938,
+"Your smiley face rotated the opposite direction". Bound the second bake to
+players who have actually drawn something and to directions the facing map
+actually mirrors, or it is memory nobody can see on the platform this game is
+built for.

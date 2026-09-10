@@ -187,7 +187,12 @@ if (typeof window !== 'undefined') {
       const a = localBodyArt(false);
       if (!a) return null;
       const r = artForFacing(a, dir);
-      return { tattoo: r ? r.tattoo : null, tattooFace: r ? r.tattooFace : null };
+      /* v2.3.2424: the TROUSERS join it, for exactly the reason this probe was
+         written -- "does facing away pick the back canvas?" has no other exact
+         answer from a test, and a mutation that made the pants keep their front
+         print on a back facing passed every existing assertion. */
+      return { tattoo: r ? r.tattoo : null, tattooFace: r ? r.tattooFace : null,
+        pants: r ? r.pants : null };
     } catch (e) { return null; }
   };
 }
