@@ -53,6 +53,48 @@ import { WORLDVIEW_EXITS } from '../../data/index.js';
 
 const KEY_LS = 'bt_dev_key';
 
+/* ═══ v2.3.2436: AN ADMIN CALL THAT NEVER ANSWERS ═══
+ *
+ * Owner, on a phone, against production: "I tapped the flags button and
+ * nothing was happening."  The panel said "Working…" and stayed there.
+ *
+ * Every control here is `disabled={busy}`, and `busy` was cleared only in
+ * the `finally` of the fetch.  `fetch` has NO timeout — so a request the
+ * network swallows never settles, the finally never runs, and the whole
+ * panel sits dead behind one word with no error and no way back except
+ * closing it.  From the outside that is indistinguishable from a button
+ * that does nothing, which is exactly how it was reported.
+ *
+ * Two separate defects came out of that, and both are fixed here:
+ *
+ *   1. Every admin call now aborts at ADMIN_TIMEOUT_MS and SAYS SO.  A
+ *      stalled request can no longer take the panel with it.  The point is
+ *      not the twelve seconds — it is that the promise always settles, so
+ *      `finally` always runs and `busy` can never stick.
+ *
+ *   2. The refresh that fires automatically when the panel opens is now
+ *      QUIET.  It used to set `busy`, which disabled the flags button the
+ *      owner had not pressed yet — one request's stall silencing a control
+ *      that has nothing to do with it.  It also used to write its failure
+ *      into the status line, so a panel opened while your character was not
+ *      in the room greeted you with "this worker does not have the test
+ *      routes yet" about a request you never made.  An automatic background
+ *      probe now neither disables anything nor narrates.
+ */
+const ADMIN_TIMEOUT_MS = 12000;
+const fetchWithTimeout = async (url, init) => {
+  /* AbortController + setTimeout rather than AbortSignal.timeout(): this
+     runs on whatever Safari the owner's phone is carrying, and the two-line
+     version needs no version floor to reason about. */
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), ADMIN_TIMEOUT_MS);
+  try { return await fetch(url, Object.assign({}, init || {}, { signal: ac.signal })); }
+  finally { clearTimeout(t); }
+};
+const isAbort = (e) => !!e && (e.name === 'AbortError' || e.name === 'TimeoutError');
+const TIMEOUT_MSG = 'No answer from the server after ' + (ADMIN_TIMEOUT_MS / 1000)
+  + 's. Check your connection and press it again.';
+
 const box = {
   position: 'fixed', inset: 0, zIndex: 9800,
   background: 'rgba(5, 9, 12, 0.72)',
@@ -81,6 +123,52 @@ const chip = {
 };
 const label = { color: COL.muted, font: '600 11px system-ui, sans-serif', letterSpacing: '.06em', textTransform: 'uppercase', margin: '14px 0 7px' };
 
+/* ═══ v2.3.2436: WHAT THIS WORKER SAYS IT CAN DO ═══
+ *
+ * The live-flags rail below answers "WHY is a system off".  It needs the
+ * admin key, a network round trip and a working admin surface — and when
+ * any of those is missing it can say nothing at all, which is how the owner
+ * ended up staring at a panel that would not tell them anything.
+ *
+ * This answers the question they were actually asking — "IS a system off?"
+ * — from state the client is already holding.  No key, no request, nothing
+ * that can stall.  It is the first thing in the panel for that reason.
+ *
+ * `state_sync.caps` is how a worker advertises what it handles, and the
+ * client gates a legacy fallback path on each one (handoff rule 19).  A cap
+ * that is FALSE and a cap that is ABSENT read identically to the client —
+ * both mean "this worker has not claimed the job" — so both list as off
+ * here.  Pretending to distinguish them would be a lie about how the gates
+ * actually read.
+ *
+ * CAP_GATES is a REGISTRY, not a nice-to-have list: precheck's cap-registry
+ * check fails the push if the client reads a `_serverCaps.<name>` that is
+ * not in it.  Without that, the next capability added to the client would
+ * be invisible here, and this panel would quietly report "all clear" while
+ * the very system the owner is chasing was switched off.
+ */
+const CAP_GATES = [
+  'abil', 'amuletForge', 'areaChat', 'arena', 'blockScale', 'botfp', 'broVerify',
+  'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
+  'gamble', 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
+  'laststand', 'party', 'partyChat', 'petLoot', 'pets', 'potionBag', 'prog3',
+  'prog3Chan', 'prog3x', 'questTrack', 'sponsor', 't2bench', 't2simple', 't2uniform',
+  'trade', 'trade2', 'trade2Review', 'trade2Weapons', 'weaponDrops', 'whisper',
+];
+
+/* Plain language for the ones whose absence the owner has actually reported
+   as a bug.  Deliberately NOT a full glossary: a made-up description is
+   worse than the cap's own name, which at least matches what the flag is
+   called and what OPERATIONS.md says about it. */
+const CAP_NOTES = {
+  prog3: 'the Points screen — combat levels read 0 without it',
+  prog3x: 'the extra Points stats',
+  prog3Chan: 'per-weapon point pools',
+  abil: 'special moves — the sword dash, shield bash and whirlwind',
+  elemBurst: 'the elemental burst',
+  blockScale: 'the shield block count',
+};
+
 export const DevPanel = ({ onClose }) => {
   const [key, setKey] = useState(() => { try { return localStorage.getItem(KEY_LS) || ''; } catch (e) { return ''; } });
   const [draft, setDraft] = useState('');
@@ -95,12 +183,18 @@ export const DevPanel = ({ onClose }) => {
      from `body` exactly as before, so every existing call site is unchanged
      -- the alternative was a second fetch helper that would have drifted from
      this one's 401/404 handling, which is the part worth having. */
-  const call = useCallback(async (path, body, method) => {
-    if (!key) { setMsg('Enter your admin key first.'); return null; }
-    setBusy(true);
+  const call = useCallback(async (path, body, method, opts) => {
+    /* v2.3.2436: `quiet` is for calls the owner did not make — see the
+       header.  It suppresses BOTH halves of the feedback (busy + message),
+       because a background probe that disables buttons or writes errors is
+       reporting on a request nobody asked for. */
+    const quiet = !!(opts && opts.quiet);
+    const say = quiet ? () => {} : setMsg;
+    if (!key) { say('Enter your admin key first.'); return null; }
+    if (!quiet) setBusy(true);
     try {
       const _m = method || (body ? 'POST' : 'GET');
-      const res = await fetch(BT_API_BASE + '/api/admin' + path, {
+      const res = await fetchWithTimeout(BT_API_BASE + '/api/admin' + path, {
         method: _m,
         headers: Object.assign({ Authorization: 'Bearer ' + key },
           body ? { 'Content-Type': 'application/json' } : {}),
@@ -110,9 +204,9 @@ export const DevPanel = ({ onClose }) => {
       /* Say WHICH failure it was.  401 and 404 mean very different things
          here — a typo in the key versus no key configured on the worker at
          all — and guessing between them wastes an afternoon. */
-      if (res.status === 401) { setMsg('Key rejected (401). Check for a typo.'); return null; }
+      if (res.status === 401) { say('Key rejected (401). Check for a typo.'); return null; }
       if (res.status === 404 && !j.ok) {
-        if (j.error !== 'Not found') { setMsg('Not found (404) — is that character online?'); return null; }
+        if (j.error !== 'Not found') { say('Not found (404) — is that character online?'); return null; }
         /* ═══ TWO VERY DIFFERENT 404s, AND THEY LOOK IDENTICAL ═══
            The admin surface answers {ok:false, error:'Not found'} with a 404
            BOTH when no ADMIN_KEY is configured (the deliberate fail-closed
@@ -128,35 +222,40 @@ export const DevPanel = ({ onClose }) => {
            key is good and the worker is simply behind.  Deliberately not
            solved by making the fail-closed 404 distinguishable — that would
            trade away the security property on purpose. */
+        if (quiet) return null;   /* v2.3.2436: no second round trip for a call nobody made */
         try {
-          const probe = await fetch(BT_API_BASE + '/api/admin/overview', { headers: { Authorization: 'Bearer ' + key } });
+          const probe = await fetchWithTimeout(BT_API_BASE + '/api/admin/overview', { headers: { Authorization: 'Bearer ' + key } });
           if (probe.ok) {
-            setMsg('Your key works, but this worker does not have the test routes yet — it needs the deploy that ships them.');
+            say('Your key works, but this worker does not have the test routes yet — it needs the deploy that ships them.');
           } else if (probe.status === 401) {
-            setMsg('Key rejected (401). Check for a typo.');
+            say('Key rejected (401). Check for a typo.');
           } else {
-            setMsg('No ADMIN_KEY set on the worker (404). See OPERATIONS.md.');
+            say('No ADMIN_KEY set on the worker (404). See OPERATIONS.md.');
           }
         } catch (e) {
-          setMsg('No ADMIN_KEY set on the worker (404). See OPERATIONS.md.');
+          say('No ADMIN_KEY set on the worker (404). See OPERATIONS.md.');
         }
         return null;
       }
-      if (!res.ok || !j.ok) { setMsg('Failed: ' + (j.error || res.status)); return null; }
+      if (!res.ok || !j.ok) { say('Failed: ' + (j.error || res.status)); return null; }
       return j;
     } catch (e) {
-      setMsg('Network error: ' + String(e).slice(0, 80));
+      /* v2.3.2436: an abort is OUR timeout, not the network refusing —
+         calling it a network error sends the owner to check their wifi when
+         the request was simply never answered. */
+      say(isAbort(e) ? TIMEOUT_MSG : 'Network error: ' + String(e).slice(0, 80));
       return null;
-    } finally { setBusy(false); }
+    } finally { if (!quiet) setBusy(false); }
   }, [key]);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (quiet) => {
     if (!key || !myId) return;
-    const j = await call('/dev/state?id=' + encodeURIComponent(myId));
-    if (j) { setState(j); setMsg(''); }
+    const j = await call('/dev/state?id=' + encodeURIComponent(myId), null, null, { quiet: !!quiet });
+    if (j) { setState(j); if (!quiet) setMsg(''); }
   }, [call, key, myId]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  /* v2.3.2436: quiet — nobody pressed this.  See the header. */
+  useEffect(() => { refresh(true); }, [refresh]);
 
   /* ═══ v2.3.2412: LIVE FLAGS, BECAUSE ONE OF THEM CAN BREAK THE GAME ═══
      Owner, 2026-09-09, on production: combat levels reading 0 on the Points
@@ -240,6 +339,49 @@ export const DevPanel = ({ onClose }) => {
         <div style={{ color: COL.muted, fontSize: 12, marginBottom: 6 }}>
           Owner tools. Everything here needs your admin key.
         </div>
+
+        {/* ═══ v2.3.2436: THE KEYLESS ANSWER ═══
+            See the note by CAP_GATES.  This reads the caps the client
+            already received on join, so it works with no admin key, no
+            network and no worker cooperation -- which is precisely when the
+            owner needs it most. */}
+        <div style={label}>This worker</div>
+        {(() => {
+          const caps = S && S._serverCaps;
+          if (!caps) {
+            return (
+              <div style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }}>
+                Not joined yet — open this once you are standing in the world.
+              </div>
+            );
+          }
+          const off = CAP_GATES.filter((c) => !caps[c]);
+          if (!off.length) {
+            return (
+              <div style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }} data-caps-ok="1">
+                All {CAP_GATES.length} systems claimed. Nothing is falling back to old behaviour.
+              </div>
+            );
+          }
+          return (
+            <div data-caps-off={off.join(',')} style={{
+              background: COL.accentFill, border: '1px solid ' + COL.accent,
+              color: COL.accent, borderRadius: 9, padding: '10px 11px',
+              fontSize: 12.5, lineHeight: 1.4, marginBottom: 9,
+            }}>
+              <b>{off.length === 1 ? 'This system is' : 'These ' + off.length + ' systems are'} switched
+              off for you:</b>
+              <div style={{ margin: '4px 0 5px' }}>
+                {off.map((c) => (
+                  <div key={c}>• {c}{CAP_NOTES[c] ? ' — ' + CAP_NOTES[c] : ''}</div>
+                ))}
+              </div>
+              The game falls back to its old behaviour for {off.length === 1 ? 'it' : 'them'}, which
+              usually looks like wrong numbers rather than a missing feature. A live flag of the same
+              name is the usual cause — check Live flags below.
+            </div>
+          );
+        })()}
 
         {!key && (
           <>

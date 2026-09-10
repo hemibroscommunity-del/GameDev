@@ -3021,3 +3021,42 @@ design reads backwards there — the owner's own report on the shirt at v2.3.193
 players who have actually drawn something and to directions the facing map
 actually mirrors, or it is memory nobody can see on the platform this game is
 built for.
+
+## 74. A `busy` flag over a fetch with no timeout is a dead panel (v2.3.2436)
+
+**Tempting:** the operator panel disables its buttons while a request is in
+flight (`disabled={busy}`), and clears the flag in the fetch's `finally` so it
+can never be left set. Every failure the surface can produce — 401, 404, no key
+configured, an old worker — has its own message. Nothing is silent.
+
+**Except that `fetch` has no timeout.** A request the network swallows never
+settles, so the `finally` never runs, so `busy` stays true forever — and
+because `disabled={busy}` is on EVERY control, one stalled call takes the whole
+panel down behind the single word "Working…", with no error and no way out but
+closing it. The owner reported it as "I tapped the flags button and nothing was
+happening", and they were right: the button was disabled. The careful set of
+messages covered every case except the one where nothing comes back, which is
+the case a phone on mobile data actually hits.
+
+**And the request that killed it was not one they made.** The panel fires a
+state refresh by itself on open. That automatic call shared the same `busy`, so
+a round trip nobody asked for disabled a button somebody was pressing — and
+wrote its own failure into the status line, greeting an owner who had just
+opened the panel with "this worker does not have the test routes yet" about a
+request they never made.
+
+**The rule, in two parts.** Any fetch whose result gates a control needs a
+timeout (`AbortController` + `setTimeout`; the point is not the duration, it is
+that the promise ALWAYS settles). And a call the user did not initiate must not
+be able to disable a control or write a message — give it a `quiet` path, or a
+background probe becomes an unexplained dead UI. Report a timeout as a timeout,
+too: "network error" sends someone to check their wifi over a request the
+server simply never answered.
+
+**Why the existing coverage missed it.** `mp-devflags` drives that same rail
+end to end and is green — list, warn, clear, worker agreeing — because its
+worker always replies. A hang is not a failure any real server hands you on
+demand; the pin (`mp-devstall`) has to manufacture it with a route that accepts
+the request and never answers. Twelve of its twenty-three assertions go red
+against the pre-fix panel, and its captured panel text is character for
+character the owner's screenshot.

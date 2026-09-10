@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  devstall: () => import('./mp-devstall.mjs'), /* v2.3.2436: the panel answers even when the admin surface never does -- and names an off capability with no key at all */
   hitmatrix: () => import('./mp-hitmatrix.mjs'), /* v2.3.2433: does EVERY weapon and special register its hits, on a monster and in a duel */
   hitsweep: () => import('./mp-hitsweep.mjs'), /* v2.3.2426: how accurate IS ranged hit detection -- measured hit rate vs the real per-frame step */
   standinart: () => import('./mp-standinart.mjs'), /* v2.3.2429: a swing and a raised shield wear your drawings */
