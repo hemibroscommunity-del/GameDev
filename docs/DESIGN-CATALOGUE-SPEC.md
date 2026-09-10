@@ -86,8 +86,18 @@ fall off the body and paint nothing.
 ## Symmetry is worth real memory
 
 A design that is identical flipped left-to-right lets the engine skip baking a
-second mirrored copy of the character sheet — about **29 MB** of texture on a
-phone (`artIsSymmetric`, `playerArt.js`).
+second mirrored copy of the character sheets (`artIsSymmetric`, `playerArt.js`).
+
+Measured from the real sheet dimensions, what an **asymmetric** design costs
+depends on where it is worn:
+
+| worn on | mirrored twin costs |
+|---|---|
+| chest, face or front of the pants | **~25 MB** |
+| a back canvas (back tattoo, back of head, back of the pants) | **~8 MB** |
+| the arms — the arm is never side-swapped, so every strip twins | **~34 MB** |
+
+That is per session and it stays resident.
 
 So if the subject is naturally symmetric — skull, heart, star, sun, anchor,
 shield, crown — make it **exactly** symmetric: column *x* must equal column

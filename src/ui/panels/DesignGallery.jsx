@@ -35,13 +35,25 @@
 import React from 'react';
 import { ART_W, ART_H, artColorAt } from '@/rendering/traits/playerArt.js';
 import { DESIGN_CATALOG, DESIGN_CATEGORIES } from '@/rendering/traits/designCatalog.js';
+import { SKIN_CATALOG, getSkin } from '@/rendering/playerSkins.js';
 
-/* The body art's own tan (playerSkins' SKIN_CATALOG 'default' swatch), so a
-   transparent cell reads as skin rather than as a hole. */
-const TILE = '#cd864b';
+/* v2.3.2437: THE GROUND UNDER A THUMBNAIL IS THE PLAYER'S OWN SKIN.
+   This said "what you see is what lands on you" while painting every tile on
+   the DEFAULT tan, which for a player on the palest or darkest skin is a lie
+   about the one property that decides whether a design reads at all --
+   designCatalog's header calls internal contrast against skin running #f9ece2
+   to #50382a the strongest predictor there is.  Browsing on someone else's
+   skin is how you pick the design that vanishes on yours. */
+const DEFAULT_TILE = '#cd864b';
+function skinTile() {
+  try {
+    const e = SKIN_CATALOG.find((c) => c.id === getSkin());
+    return (e && e.swatch) || DEFAULT_TILE;
+  } catch (err) { return DEFAULT_TILE; }
+}
 
 /** One design, painted cell by cell at `px` per cell. */
-function DesignSwatch({ art, px = 4 }) {
+function DesignSwatch({ art, px = 4, tile = DEFAULT_TILE }) {
   const ref = React.useRef(null);
   React.useEffect(() => {
     const cv = ref.current;
@@ -49,7 +61,7 @@ function DesignSwatch({ art, px = 4 }) {
     const ctx = cv.getContext('2d');
     if (!ctx) return;
     ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = TILE;
+    ctx.fillStyle = tile;
     ctx.fillRect(0, 0, cv.width, cv.height);
     for (let y = 0; y < ART_H; y++) {
       for (let x = 0; x < ART_W; x++) {
@@ -59,9 +71,15 @@ function DesignSwatch({ art, px = 4 }) {
         ctx.fillRect(x * px, y * px, px, px);
       }
     }
-  }, [art, px]);
+  }, [art, px, tile]);
+  /* v2.3.2437: `pixelated`, like every other pixel-art canvas in this UI
+     (PatternSwatch, .bt-paint-pv, .bt-cc-ink-pv, BodyInk).  The backing store
+     is 1:1 with the CSS box, so on a phone at DPR 2-3 the compositor
+     bilinearly upsamples it -- and the first thing a bilinear upsample smears
+     is exactly the full-cell near-black outline the catalogue relies on. */
   return <canvas ref={ref} width={ART_W * px} height={ART_H * px}
-    style={{ width: ART_W * px, height: ART_H * px, borderRadius: 4, display: 'block' }} />;
+    style={{ width: ART_W * px, height: ART_H * px, borderRadius: 4, display: 'block',
+      imageRendering: 'pixelated' }} />;
 }
 
 /** The gallery. `onPick(design)` applies; `onClose()` backs out changing nothing. */
@@ -69,36 +87,54 @@ export default function DesignGallery({ onPick, onClose, label = 'design' }) {
   /* 'all' first: the catalogue is small enough to scan whole, and landing on a
      filtered view would hide most of it from someone who has never seen it. */
   const [cat, setCat] = React.useState('all');
+  const downOnScrim = React.useRef(false);
+  /* read once per open: the store does not change while this is on screen */
+  const tile = React.useMemo(() => skinTile(), []);
   const shown = cat === 'all' ? DESIGN_CATALOG : DESIGN_CATALOG.filter((d) => d.cat === cat);
 
-  /* Escape closes, like the panel underneath. */
+  /* Escape closes the gallery.  Note the panel underneath binds no Escape of
+     its own, so this is the only Escape in the editor -- a second press does
+     nothing, which is asymmetric but is not something to "fix" here. */
   React.useEffect(() => {
     const k = (e) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
     window.addEventListener('keydown', k, true);
     return () => window.removeEventListener('keydown', k, true);
   }, [onClose]);
 
+  /* v2.3.2437: 32px and a pill, which is what LANTERN-SLATE gives a chip, and
+     tokens rather than literals so a theme change reaches this screen too. */
   const chip = (on) => ({
-    minHeight: 30, padding: '0 10px', borderRadius: 8, cursor: 'pointer',
+    minHeight: 32, padding: '0 12px', borderRadius: 999, cursor: 'pointer',
     whiteSpace: 'nowrap', fontSize: 12,
-    background: on ? 'var(--ui-brass-soft)' : 'rgba(0,0,0,.22)',
-    border: '1px solid ' + (on ? 'var(--ui-brass)' : 'rgba(229,237,233,.26)'),
+    background: on ? 'var(--ui-brass-soft)' : 'var(--ui-well-soft, #16262C)',
+    border: '1px solid ' + (on ? 'var(--ui-brass)' : 'var(--ui-line-strong, rgba(229,237,233,.20))'),
     color: on ? 'var(--ui-text)' : 'var(--ui-text-secondary)',
   });
 
   return (
-    <div className="bt-modal-scrim" role="dialog" aria-label="Ready-made designs"
-      onClick={onClose}
+    <div className="bt-modal-scrim" role="dialog" aria-modal="true" aria-label="Ready-made designs"
+      /* v2.3.2437: only a click that BEGAN on the scrim dismisses.  A click is
+         dispatched at the nearest common ancestor of its down and up targets,
+         so a drag that starts on the card and lifts over the scrim fires here
+         -- and threw away the player's category and scroll position in a
+         37-tile grid.  Comparing target to currentTarget is not enough on its
+         own for a drag, so the press is recorded on pointerdown. */
+      onPointerDown={(e) => { downOnScrim.current = e.target === e.currentTarget; }}
+      onClick={(e) => { if (e.target === e.currentTarget && downOnScrim.current) onClose(); }}
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(6,10,14,.72)',
+        position: 'fixed', inset: 0,
+        /* v2.3.2437: the LIGHT scrim token, not another copy of the panel's own.
+           Two at rgba(6,10,14,.72) composite to .92 and the character behind --
+           the thing the editor exists to show -- goes effectively black. */
+        background: 'var(--ui-modal-scrim, rgba(4,9,12,.38))',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         /* above the paint panel's own scrim (60), which stays put underneath */
         zIndex: 70, padding: 12,
       }}>
       <div onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'var(--ui-panel,#16202a)', border: '1px solid rgba(229,237,233,.26)',
-          borderRadius: 12, maxHeight: '92vh', width: 'min(96vw, 430px)',
+          background: 'var(--ui-panel, #1E2E34)', border: '1px solid var(--ui-line-strong, rgba(229,237,233,.20))',
+          borderRadius: 14, maxHeight: '92vh', width: 'min(96vw, 430px)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           boxShadow: '0 10px 30px rgba(5,8,10,.45)',
         }}>
@@ -115,7 +151,13 @@ export default function DesignGallery({ onPick, onClose, label = 'design' }) {
 
         {/* the filter row scrolls sideways rather than wrapping: wrapping costs
             a second 30px line on a phone, and this row is already optional */}
-        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '0 12px 10px' }}>
+        {/* v2.3.2437: overscroll-behavior on BOTH new scrollers.  .bt-paint got
+            this at v2.3.2414 with TRAPS #64 cited by name: without it a drag
+            past either end chains outward into .bt-name-modal, which on iOS 14
+            still leaves a scroll container that can be shoved with no finger
+            able to drag it back. */}
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', overscrollBehavior: 'contain',
+          padding: '0 12px 10px' }}>
           <button type="button" style={chip(cat === 'all')} onClick={() => setCat('all')}>All</button>
           {DESIGN_CATEGORIES.map((c) => (
             <button key={c.id} type="button" style={chip(cat === c.id)} onClick={() => setCat(c.id)}>
@@ -125,7 +167,8 @@ export default function DesignGallery({ onPick, onClose, label = 'design' }) {
         </div>
 
         <div style={{
-          overflowY: 'auto', padding: '0 12px 12px', display: 'grid',
+          overflowY: 'auto', overscrollBehavior: 'contain',
+          padding: '0 12px 12px', display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 8,
         }}>
           {shown.map((d) => (
@@ -134,17 +177,19 @@ export default function DesignGallery({ onPick, onClose, label = 'design' }) {
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                 padding: '7px 3px', borderRadius: 8, cursor: 'pointer',
-                background: 'rgba(0,0,0,.22)', border: '1px solid rgba(229,237,233,.20)',
+                background: 'var(--ui-well, #111E23)',
+                border: '1px solid var(--ui-line-strong, rgba(229,237,233,.20))',
                 color: 'var(--ui-text-secondary)', fontSize: 10, lineHeight: 1.15,
               }}>
-              <DesignSwatch art={d.art} px={4} />
+              <DesignSwatch art={d.art} px={4} tile={tile} />
               <span style={{ textAlign: 'center' }}>{d.name}</span>
             </button>
           ))}
         </div>
 
         <div style={{ padding: 12, borderTop: '1px solid rgba(229,237,233,.14)' }}>
-          <button type="button" className="bt-paint-copy" onClick={onClose}>Cancel</button>
+          <button type="button" className="bt-paint-copy" style={{ minHeight: 44 }}
+            onClick={onClose}>Cancel</button>
         </div>
       </div>
     </div>

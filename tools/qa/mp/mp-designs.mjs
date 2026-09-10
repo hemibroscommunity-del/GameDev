@@ -76,6 +76,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await openCreator(P);
   await openPaint(P);
 
+  /* ── 0. the button is REACHABLE, not merely present ──
+     TRAPS #67: el.click() inside page.evaluate does not hit-test, so every
+     other assertion in this file would stay green with the button rendered
+     below the panel's fold -- which is exactly what happened to the front/back
+     switch at v2.3.2414, in this same panel.  So: measure where it sits, then
+     drive it with a real hit-tested click. */
+  const reach = await P.page.evaluate(() => {
+    const b = [...document.querySelectorAll('.bt-paint-note button')]
+      .find((x) => /designs/i.test(x.textContent || ''));
+    if (!b) return null;
+    const panel = document.querySelector('.bt-paint');
+    const r = b.getBoundingClientRect(), p = panel.getBoundingClientRect();
+    const cs = getComputedStyle(b);
+    return {
+      w: Math.round(r.width), h: Math.round(r.height),
+      insideFold: r.top >= p.top - 1 && r.bottom <= p.bottom + 1,
+      onScreen: r.top >= 0 && r.bottom <= window.innerHeight,
+      visible: cs.visibility !== 'hidden' && cs.display !== 'none' && +cs.opacity > 0,
+      hit: (() => { const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+                    return !!e && (e === b || b.contains(e)); })(),
+    };
+  });
+  rec.ok(`${tag}: the Designs button is inside the panel's fold and on screen `
+    + `(${reach && reach.w}x${reach && reach.h})`,
+    !!reach && reach.insideFold && reach.onScreen && reach.visible);
+  rec.ok(`${tag}: a real tap lands on it -- elementFromPoint at its centre IS the `
+    + `button, so nothing is covering it`, !!reach && reach.hit);
+
   /* ── 1. the window opens and holds the whole catalogue ── */
   const opened = await openGallery(P);
   rec.ok(`${tag}: the editor has a Designs button and it opens a window`, opened);
@@ -135,6 +163,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`${tag}: every piece is a freehand op, the kind a brush stroke already makes `
     + `-- no new op kind reached the store`, o.every((x) => x.k === 'c'));
 
+  /* ── 3b. re-applying the SAME design must bank nothing ──
+     v2.3.2437: a pre-merge review found applyDesign always banked a history
+     entry, so an accidental double-tap on a tile left one tap of Undo that
+     visibly did nothing -- what `unbank` exists to prevent for the shape
+     tools.  The proof is the Undo assertion immediately below: if this second
+     apply banked, one tap would land on the design again, not on blank. */
+  await openGallery(P);
+  await P.page.waitForTimeout(500);
+  await P.page.evaluate((name) => {
+    const s = [...document.querySelectorAll('.bt-modal-scrim')];
+    const g = s[s.length - 1];
+    const t = [...g.querySelectorAll('button')]
+      .find((b) => b.querySelector('canvas') && (b.textContent || '').trim() === name);
+    if (t) t.click();
+  }, target.name);
+  await P.page.waitForTimeout(800);
+  rec.ok(`${tag}: re-applying the design already on the canvas leaves it unchanged`,
+    (await art(P)) === target.art);
+
   /* ── 4. ONE undo, not one per piece ── */
   await P.page.evaluate(() => {
     const b = [...document.querySelectorAll('.bt-paint-btn button, .bt-paint button')]
@@ -143,8 +190,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(700);
   const undone = await art(P);
-  rec.ok(`${tag}: ONE tap of Undo restores exactly what was there before, `
-    + `though the design added ${o.length} pieces`, undone === before);
+  rec.ok(`${tag}: ONE tap of Undo restores exactly what was there before, though the `
+    + `design added ${o.length} pieces AND was applied twice -- the second apply `
+    + `banked no dead history entry`, undone === before);
 
   /* ── 5. it persists across a panel close and reopen ── */
   await P.page.evaluate(() => {
@@ -165,7 +213,49 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`${tag}: the design is still there after the panel is closed and reopened`,
     (await art(P)) === target.art);
 
-  /* ── 6. Cancel is inert ── */
+  /* ── 7. the gallery names the CANVAS it writes, not the screen ──
+     v2.3.2437: it named the screen, so on Face + Back the Clear button said
+     "the whole back of head" while the gallery offered to ink "your tattoo" --
+     two controls on one screen giving different answers. */
+  await P.page.evaluate(() => {
+    const b = [...document.querySelectorAll('.bt-paint-tabs .bt-cc-tab')]
+      .find((x) => /face/i.test((x.textContent || '').trim()));
+    if (b) b.click();
+  });
+  await P.page.waitForTimeout(500);
+  await P.page.click('[data-ink-side-btn="back"]').catch(() => {});
+  await P.page.waitForTimeout(500);
+  const naming = await P.page.evaluate(() => {
+    const clear = [...document.querySelectorAll('.bt-paint button')]
+      .map((b) => b.getAttribute('title') || '')
+      .find((t) => /^Erase the whole /.test(t)) || '';
+    return { clear: clear.replace('Erase the whole ', '').trim() };
+  });
+  await openGallery(P);
+  await P.page.waitForTimeout(500);
+  const galleryCopy = await P.page.evaluate(() => {
+    const s = [...document.querySelectorAll('.bt-modal-scrim')];
+    return s[s.length - 1].textContent || '';
+  });
+  rec.ok(`${tag}: the gallery names the canvas it writes ("${naming.clear}"), the same `
+    + `one the Clear button beside it names -- not the screen`,
+    !!naming.clear && galleryCopy.includes(naming.clear));
+  await P.page.evaluate(() => {
+    const s = [...document.querySelectorAll('.bt-modal-scrim')];
+    const b = [...s[s.length - 1].querySelectorAll('button')].find((x) => /cancel/i.test(x.textContent || ''));
+    if (b) b.click();
+  });
+  await P.page.waitForTimeout(500);
+  await P.page.evaluate(() => {
+    const b = [...document.querySelectorAll('.bt-paint-tabs .bt-cc-tab')]
+      .find((x) => /body/i.test((x.textContent || '').trim()));
+    if (b) b.click();
+  });
+  await P.page.waitForTimeout(500);
+  await P.page.click('[data-ink-side-btn="front"]').catch(() => {});
+  await P.page.waitForTimeout(500);
+
+  /* ── 8. Cancel is inert ── */
   await openGallery(P);
   await P.page.waitForTimeout(500);
   await P.page.evaluate(() => {

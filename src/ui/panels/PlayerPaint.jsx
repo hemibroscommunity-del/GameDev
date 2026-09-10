@@ -760,6 +760,15 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const reachable = isTattoo ? ((inkBack ? TAB_SPOTS_BACK : TAB_SPOTS)[mode] || []) : [];
   const spot = (isTattoo && reachable.indexOf(bodySpot) >= 0) ? bodySpot : tabSpot;
   const scfg = TARGETS[spot] || cfg;
+  /* v2.3.2437: what the gallery and its button CALL the thing they write.
+     `cfg` is the SCREEN (Tattoos) and `scfg` is the canvas actually being
+     inked (back of head, arm tattoo, back of the pants) -- and the Clear
+     button two rows down already names the canvas.  Naming the screen instead
+     put two controls on one screen giving different answers: on Face + Back,
+     Clear said "the whole back of head" while the gallery offered to put a
+     skull on "your tattoo".  Same expression as Clear's, so they cannot drift
+     apart again. */
+  const inkLabel = isShirt ? ('shirt ' + side) : scfg.label;
   /* Which stored drawing this panel is editing right now. */
   const artId = isShirt ? (side === 'back' ? 'shirtBack' : 'shirtFront') : spot;
   /* v2.3.1994: and the same answer for code that runs BETWEEN renders.  A body
@@ -1071,10 +1080,21 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      carrying either across would point them at someone else's cells. */
   const applyDesign = (d) => {
     const id = artIdRef.current;
+    /* v2.3.2437: tapping the design that is ALREADY on the canvas changes
+       nothing you can see, so it must not cost a tap of Undo that visibly does
+       nothing -- the same standard `unbank` above holds the shape tools to. */
+    if (d.art === art) { setShowDesigns(false); return; }
     const cur = docRef.current.id === id ? docRef.current : { id, ...getDoc(id) };
     pushHist(cur);
     const nd = { id, base: emptyArt(), ops: designOps(d.art) };
+    /* v2.3.2437: the reset effect clears BOTH of these together, and for the
+       same reason it does: each one holds an INDEX into the op list that is
+       being replaced.  A stroke still under a finger when the design lands
+       would go on appending cells into one of the design's colour layers, and
+       drop that whole layer on lift if it never registered a cell. */
     pendRef.current = null;
+    strokeRef.current = null;
+    setLiveIdx(-1);
     docRef.current = nd;
     setDoc(nd);
     setSel(-1);
@@ -1834,7 +1854,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
               whole garment and has no 16x16 grid for a design to land on. */}
           {canDraw && !onPattern && (
             <button type="button" className="bt-paint-copy"
-              title={'Choose a ready-made design for your ' + cfg.label}
+              title={'Choose a ready-made design for your ' + inkLabel}
               onClick={() => setShowDesigns(true)}>
               Designs&hellip;
             </button>
@@ -2245,7 +2265,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
         </div>
       </div>
       {showDesigns && (
-        <DesignGallery label={cfg.label}
+        <DesignGallery label={inkLabel}
           onPick={applyDesign} onClose={() => setShowDesigns(false)} />
       )}
     </div>
