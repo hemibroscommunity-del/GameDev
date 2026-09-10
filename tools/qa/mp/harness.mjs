@@ -827,6 +827,62 @@ export async function closeDest(P, { timeout = 6000 } = {}) {
  */
 export const TOWN_CLEAN_SPOT = { x: 1000, y: 1460 };
 
+/* ═══ v2.3.2435: EQUIP A WEAPON, AND MEAN THE SLOT AS WELL ═══
+ *
+ * Lifted verbatim out of mp-hitmatrix so mp-hitreal can drive the same six
+ * weapon rows without a second copy of it, because the bug this helper exists
+ * to avoid is one a second copy would silently reintroduce.
+ *
+ * EQUIPPING TAKES THE WEAPON OUT OF THE STASH.  So the second time a row asks
+ * for a weapon it is no longer there to find, and a helper that only searches
+ * the stash bails — WITHOUT setting the active slot, leaving whatever the
+ * previous row was holding.  The first working run of mp-hitmatrix did exactly
+ * that: by the PvP half the sword rows were swinging a STAFF, which reported
+ * "PvP sword never reaches the wire" and looks exactly like a broken melee
+ * gate.  It was mislabelled rows.  Already-equipped is therefore success, not
+ * failure, and the active slot is set on BOTH paths.
+ *
+ * `stashSlot` is the equipment slot the worker files it under
+ * (weapon | rangedWeapon | staffWeapon); `activeSlot` is which one the player
+ * is holding (melee | ranged | staff).  They are different vocabularies and
+ * passing one for the other equips correctly and then fires the wrong
+ * weapon. */
+export function equipWeapon(P, wantType, stashSlot, activeSlot) {
+  return P.page.evaluate(({ wantType, slot, activeSlot }) => {
+    const S = window._gameState && window._gameState.current, R = S && S.rpg;
+    if (!R || !S.channel) return { ok: false, why: 'no state' };
+    const held = slot === 'weapon' ? R.weapon : slot === 'rangedWeapon' ? R.rangedWeapon : R.staffWeapon;
+    if (held && held.type === wantType) {
+      S.channel.send({ type: 'set_active_slot', payload: { slot: activeSlot } });
+      R.activeSlot = activeSlot; S._userCycledSlot = true;
+      return { ok: true, already: true };
+    }
+    const i = (R.weaponStash || []).findIndex((w) => w && w.type === wantType);
+    if (i < 0) return { ok: false, why: 'not in stash', stash: (R.weaponStash || []).map((w) => w && w.type) };
+    S.channel.send({ type: 'equip_request', payload: { stashIdx: i, slot } });
+    S.channel.send({ type: 'set_active_slot', payload: { slot: activeSlot } });
+    R.activeSlot = activeSlot;
+    S._userCycledSlot = true;
+    return { ok: true, idx: i };
+  }, { wantType, slot: stashSlot, activeSlot });
+}
+
+/* ═══ v2.3.2435: THE OWNER'S TEST KIT, OVER HTTP ═══
+ * The four /api/admin/dev ops (devtools.js).  They are POSTs carrying the
+ * player id IN THE BODY — only /dev/state takes it as a query param — and a
+ * call that puts it in the URL comes back `{ok:false, error:'playerId
+ * required'}` with a 400, which is easy to skim past as a transport failure.
+ * They exist so a scenario does not have to play the tutorial to reach a
+ * gated zone, and they are the same buttons the owner taps in the test panel. */
+export async function devOp(wsPort, op, playerId, body) {
+  const res = await fetch(`http://127.0.0.1:${wsPort}/api/admin/dev/${op}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${ADMIN_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.assign({ playerId }, body || {})),
+  });
+  return res.json();
+}
+
 export async function hopTo(P, tx, ty, { step = 100, gap = 260, tries = 40 } = {}) {
   for (let i = 0; i < tries; i++) {
     const done = await P.page.evaluate(({ x, y, s }) => {
