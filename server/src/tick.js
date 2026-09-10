@@ -19,6 +19,9 @@
    Draught sizes its per-tick floor against this cadence (server/src/data.js
    manaSurgePerTick), and a cadence that lives as a literal in one file and an
    assumption in another drifts the first time someone tunes it. */
+/* v2.3.2438: cadence of the incremental housekeeping jobs (see the slot in startTickLoop). */
+const HOUSEKEEP_SLOT_MS = 3000;
+
 export const REGEN_TICKS = 30;
 
 export const tickMethods = {
@@ -207,6 +210,18 @@ export const tickMethods = {
         if (!this._lastJackpotCheck || nowJp - this._lastJackpotCheck > 60000) {
           this._lastJackpotCheck = nowJp;
           this._jackpotMaybeResolve(nowJp).catch(() => {});
+        }
+        /* ═══ v2.3.2438: HOUSEKEEPING, ONE PAGE AT A TIME ═══
+           The oplog prune (inbox.js) and the daily metric (liveops.js) used
+           to be single calls that listed a whole prefix and held the input
+           gate until they finished -- on the JOIN path.  They are jobs now:
+           each call does one bounded page and returns.  This slot is their
+           only driver; a join never waits on either.  They run only while
+           the room is occupied, which is the only time anyone can notice a
+           stall and the only time the tick runs at all (rule 12). */
+        if (!this._lastHousekeep || nowJp - this._lastHousekeep > HOUSEKEEP_SLOT_MS) {
+          this._lastHousekeep = nowJp;
+          this._opPruneMaybe(nowJp).catch(() => {});
           this._metricsMaybe(nowJp).catch(() => {});
         }
       }
