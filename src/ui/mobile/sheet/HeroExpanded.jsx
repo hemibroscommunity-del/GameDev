@@ -13,7 +13,7 @@ import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroS
 /* v2.3.1660: trained-skill rebuild — the Build section becomes the
    seven-stat allocation menu when the worker owns prog3. */
 import {
-  prog3Live, prog3Pts, prog3AtkPts, prog3StatCap, prog3SkillLevel,
+  prog3Live, prog3HasSkills, prog3Pts, prog3AtkPts, prog3StatCap, prog3SkillLevel,
   prog3ActiveCat, prog3AtkMeta, prog3BodyMeta, PROG3_SKILL_META, prog3PoolFor } from '../../../data/prog3.js';
 import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
@@ -1951,7 +1951,50 @@ export const HeroExpanded = () => {
               budget. */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5, flex: 1, minHeight: 0, alignContent: 'stretch' }}>
             {COMBAT_SKILLS.map(s => {
-              const lvl = skillLevel(R, s.key);
+              /* ═══ v2.3.2414: THE LEVEL READS THE BLOB, NOT THE CAP ═══
+                 THE FOURTH SCREEN.  v2.3.1901 (StatScreenPanel), v2.3.1902
+                 (T2Panel) and v2.3.1922 (DashColumns) each moved one readout
+                 off prog3Live and onto prog3HasSkills.  This one was missed
+                 all three times, and it is the screen the owner has been
+                 reviewing commit after commit (v2.3.2214, v2.3.2229, v2.3.2326,
+                 v2.3.2382) -- so when it finally rendered for him it read as
+                 "the level 0 bug is back" when in truth it had never been in
+                 the fixed set.
+
+                 prog3Live is cap AND blob.  With the cap absent this whole
+                 branch renders, and skillLevel() is `R[key] || 0` for
+                 power/agility/mind -- the three legacy T1 stats v2.3.1659
+                 FROZE AT 0 for every prog3 character.  So the legacy grid
+                 cannot print anything but Lv 0 for the three weapon tiles,
+                 while the server has that character at 1 or better.
+                 prog3SkillLevel floors at Math.max(1, ...) and cannot return
+                 0, so a rendered 0 could only ever have come from here.
+
+                 Photographed both ways in a real client before this changed:
+                 cap on -> 3 prog3 lanes, 0 legacy tiles; cap stripped out of
+                 state_sync -> 0 lanes and SIX legacy tiles reading Lv 0, with
+                 the server-owned blob present and correct ({sword:1,bow:1,
+                 staff:1}) the whole time.
+
+                 WHAT DELIBERATELY DOES NOT CHANGE: the branch itself still
+                 swaps on prog3Live.  This grid is an ALLOCATION surface -- its
+                 tiles open T2Panel, which spends into the legacy channels --
+                 and allocation must match the worker that will settle it
+                 (handoff rule 19).  Against a cap-less worker the legacy
+                 SPEND path is the correct one; only the LEVEL it was labelling
+                 the tiles with was a lie.  Readouts read the blob, sends read
+                 the cap: that is the whole distinction, and conflating them is
+                 what produced four bugs.
+
+                 Vitality / Defense / Stamina keep skillLevel deliberately:
+                 STAT_TO_WEAPON_CAT has no entry for them, so `_p3cat` is
+                 undefined and they stay on the legacy read -- which is right,
+                 because those are allocated body stats that legitimately start
+                 at 0 (the same call v2.3.1901 made). */
+              const _p3cat = STAT_TO_WEAPON_CAT[s.key];
+              const lvl = (prog3HasSkills(R) && _p3cat)
+                ? prog3SkillLevel(R, _p3cat)
+                : skillLevel(R, s.key);
               const pct = skillProgressPct(R, s.key);
               const prog = skillProgress(R, s.key);
               const unspent = buildSkillUnspent(R, s.key);

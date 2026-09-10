@@ -8,6 +8,7 @@
    `stateRef.current._tutorialStep` read became `S._tutorialStep` (same
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
+import { STAFF_RANGE_PX } from '@/data/gameSystems.js'; /* v2.3.2387 */
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS } from '@/data/index.js';
 import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockAimPoint } from '@/game/combatHelpers.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
@@ -295,7 +296,12 @@ export function specialAttack(S) {
          three land about 0.42s, 0.77s and 1.24s out -- and because that lane is
          a ROLLING 1200ms filter rather than a fixed window, the first stamp has
          aged out by the time the third arrives. */
-      var _ORB_RANGE_PX = 560;
+      /* v2.3.2387: 560 -> STAFF_RANGE_PX (675), so the special reaches exactly
+         as far as the basic orb and as far as an arrow.  Solved per speed
+         below, so the fast/medium/slow spread (v2.3.2262) is unchanged -- only
+         the distance each one covers moves.  The staggered-arrival arithmetic
+         in the note above is about a ~200px engagement and does not shift. */
+      var _ORB_RANGE_PX = STAFF_RANGE_PX;
       var _ORB_SPEEDS = [8, 5, 3.2];
       for (var si = 0; si < 3; si++) {
         var _spd = _ORB_SPEEDS[si];
