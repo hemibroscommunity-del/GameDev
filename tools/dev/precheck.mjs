@@ -1010,6 +1010,69 @@ if (changedServer.length) {
   }
 }
 
+/* ---- 14. look-parity -------------------------------------------------
+   v2.3.2445.  The worker keeps a permanent character record and a stored
+   look WINS over whatever a client sends, so every key on that gate is a
+   thing PEERS will see.  characterRecord.js is the only road back onto the
+   owner's own device -- and it had drifted: 38 keys stored, 13 restored,
+   twenty read off the wire and dropped, including every drawing since
+   drawings shipped.  The symptom is the one that file's header exists to
+   prevent, "my character looks right to everyone except me", and it is
+   invisible from either side alone: the worker is behaving, the client is
+   behaving, and only the two lists side by side show the hole.
+
+   Nothing caught it because "not in the table" and "deliberately not
+   restored" looked identical.  So they are written down differently now, and
+   this check reads both: a gate key must be restored (LOOK_SETTERS, or an
+   inline rec.look.<k> read) or declared in LOOK_UNRESTORED with a reason.
+   In NEITHER is a FAIL -- which is what makes the next key added to the gate
+   a decision somebody has to make, rather than a thing that quietly goes
+   missing for the players who own it. */
+{
+  const KNOWN_NON_LOOK = new Set(['name']);   /* identity, not appearance */
+  let gate = null, setters = null, inline = null, declared = null;
+  try {
+    const j = read('server/src/join.js').match(/JOIN_COSMETIC_KEYS\s*=\s*\[([\s\S]*?)\n\];/);
+    if (j) gate = [...j[1].matchAll(/'([A-Za-z0-9_]+)'/g)].map((x) => x[1]);
+  } catch { /* handled below */ }
+  try {
+    const c = read('src/game/characterRecord.js');
+    const m = c.match(/const LOOK_SETTERS = \{([\s\S]*?)\n\};/);
+    if (m) setters = [...m[1].matchAll(/^\s{2}([A-Za-z0-9_]+):/gm)].map((x) => x[1]);
+    inline = [...c.matchAll(/rec\.look\.([A-Za-z0-9_]+)/g)].map((x) => x[1]);
+    const u = c.match(/LOOK_UNRESTORED = \{([\s\S]*?)\n\};/);
+    if (u) declared = [...u[1].matchAll(/^\s{2}([A-Za-z0-9_]+):/gm)].map((x) => x[1]);
+  } catch { /* handled below */ }
+  if (!gate || !setters || !declared) {
+    add('WARN', 'look-parity',
+      'could not parse JOIN_COSMETIC_KEYS or characterRecord\'s tables — check skipped');
+  } else {
+    const covered = new Set([...setters, ...inline, ...declared, ...KNOWN_NON_LOOK]);
+    const orphan = gate.filter((k) => !covered.has(k));
+    /* the other direction: a table naming a key the gate does not carry is
+       dead weight that reads as coverage */
+    const ghosts = [...new Set([...setters, ...declared])]
+      .filter((k) => !gate.includes(k) && !KNOWN_NON_LOOK.has(k));
+    if (!orphan.length && !ghosts.length) {
+      add('PASS', 'look-parity',
+        `all ${gate.length} stored look key(s) are restored (${setters.length + inline.length}) `
+        + `or declared unrestored (${declared.length})`);
+    } else {
+      add('FAIL', 'look-parity',
+        (orphan.length
+          ? `${orphan.length} key(s) the worker STORES are neither restored nor declared in\n`
+            + '    src/game/characterRecord.js — peers will see them and the owner will not:\n'
+            + `    ${orphan.join(' ')}\n`
+            + '    Add a setter to LOOK_SETTERS, or an entry to LOOK_UNRESTORED saying why not.\n'
+          : '')
+        + (ghosts.length
+          ? `    ${ghosts.length} key(s) named in characterRecord are not on the worker's gate `
+            + `(dead coverage): ${ghosts.join(' ')}`
+          : ''));
+    }
+  }
+}
+
 /* ---- report -------------------------------------------------------- */
 console.log(`precheck vs ${baseRef} (merge-base ${mergeBase.slice(0, 8)}) — ${changed.length} changed file(s)\n`);
 for (const r of results) console.log(`${r.level.padEnd(4)} [${r.check}] ${r.msg}`);
@@ -1017,3 +1080,4 @@ const nFail = results.filter((r) => r.level === 'FAIL').length;
 const nWarn = results.filter((r) => r.level === 'WARN').length;
 console.log(`\n${nFail ? 'BLOCKED' : 'OK TO PUSH'} — ${nFail} FAIL, ${nWarn} WARN`);
 process.exit(nFail ? 1 : 0);
+

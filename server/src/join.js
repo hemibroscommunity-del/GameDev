@@ -56,7 +56,13 @@ import { prog3FromLegacy } from './prog3.js';
  * Cosmetics overlap TRACK_COSMETIC_KEYS in index.js; join carries
  * `eqst` in addition, and does not carry mask/cape/pet. */
 const JOIN_PRESENCE_KEYS = ['x', 'y', 'd', 'z'];
-const JOIN_COSMETIC_KEYS = [
+/* v2.3.2445: EXPORTED so the suites can be driven off it rather than off a
+   literal copy.  Two literal arrays in anticheat and thirteen hand-written
+   checks in identity had drifted from this list -- `sb` was never asserted at
+   all in the seven years since it shipped, and `tr`/`pb` were added to the
+   gates without either suite noticing, including by the very commit whose
+   subject was that incident class. */
+export const JOIN_COSMETIC_KEYS = [
   'name', 'color', 'avatar',
   'bt', 'bl', 'hw', 'fh', 'hr', 'sk', 'hc', 'htc', 'fhc', 'st', 'stc',
   'ec',   /* v2.3.1930: eye colour -- see the note in index.js */

@@ -129,12 +129,19 @@ function _pat(slot, v) {
      2s relay from the owner's own store, so peers converge on the owner
      within one relay.  Restoring a frozen copy would fight the live toggle.
 
+   wpnMat -- the weapon's material is derived from the weapon you are holding
+     (its gearBase), and the weapon lives in the rpg blob, which the worker
+     restores authoritatively.  It rides the 2s relay from live state, so peers
+     follow the weapon actually in your hand rather than a snapshot.  Found by
+     the look-parity check below on its first run, which is the check working.
+
    hg/fr -- build height and frame are retired: both catalogs were emptied to
      a single entry (v2.3.1996, v2.3.2268), wireHeight/wireFrame answer
      undefined so no new record can carry them, and heightMul answers 1 for
      any id at all.  A legacy record's value renders identically for owner and
      peer, so there is nothing asymmetric left to fix. */
 export const LOOK_UNRESTORED = {
+  wpnMat: 'derived from the held weapon (rpg blob restores it)',
   eqc: 'derived from worn armour (rpg blob restores it)',
   eql: 'derived from worn armour (rpg blob restores it)',
   eqs: 'catalog has only none',
