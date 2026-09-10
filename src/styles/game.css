@@ -2258,6 +2258,18 @@ input{font-family:inherit}
 .bt-cc-cluster{
   /* .095 + .035 of the column, the two numbers in margin-inline below. */
   --cc-plate:calc(var(--cc-leftw)*1.13);
+  /* ═══ v2.3.2453: ONE GAP FOR THE WHOLE STACK ═══
+     Owner: "Randomize look needs to be spaced more evenly between those two
+     containers."  Measured on a 390 screen: the name well sat 19.4px above
+     Randomize and Randomize sat 8px above Reset -- the same button had two
+     different gaps, so it read as belonging to Reset and floating away from
+     the name.  Both are this one value now.
+     IT HAS TO BE A VARIABLE, because the top gap is not only a gap: it is the
+     slot the validation line lives in (v2.3.2378/2388, absolute at top:100%
+     of the name wrap) and .bt-cc-namemsg's height must equal it exactly.
+     Three rules used to carry the same magic .10 and the comments on two of
+     them said "keep them equal"; naming it is what actually keeps them. */
+  --cc-stackgap:calc(var(--cc-plate)*.10);
   position:relative;display:block;box-sizing:border-box;
   /* THE BLEED.  No `width` on purpose: this is a cross-axis stretch item in a
      flex column, so leaving width auto lets the negative margins WIDEN it --
@@ -2343,7 +2355,13 @@ input{font-family:inherit}
      THE TWO .10s MUST MATCH: this padding reserves the slot and the message's
      own height fills it.  Changing one alone either strands the text or
      reopens the hole. */
-  padding-top:calc(var(--cc-plate)*.10);
+  padding-top:var(--cc-stackgap);   /* v2.3.2453 */
+  /* v2.3.2453: ...and the SAME gap under Randomize, which is the change the
+     owner asked for.  The 8px here was the generic .bt-cc-actions grid gap
+     (v2.3.2036, written when this row was a bare pair of buttons with nothing
+     above them); inside the plate the row has a neighbour above, and one
+     rhythm beats two. */
+  gap:var(--cc-stackgap);
 }
 /* ═══ v2.3.2378: THE VALIDATION LINE BORROWS THE DIVIDER'S SLOT ═══
    It used to be a 15px row of its own between the name field and the rail,
@@ -2380,7 +2398,7 @@ input{font-family:inherit}
   /* the same fraction .bt-cc-actions reserves above, so the message is
      centred in that slot rather than in a box of its own.  (It was the
      divider rail's slot until v2.3.2388; the reservation outlived the rail.) */
-  height:calc(var(--cc-plate)*.10);   /* v2.3.2416: pairs with .bt-cc-actions' padding-top -- keep them equal */
+  height:var(--cc-stackgap);   /* v2.3.2453: THE variable, so it cannot drift from the slot again */
   display:flex;align-items:center;justify-content:center;
   font-size:11px;font-family:'Source Sans 3',sans-serif;text-align:center;
   pointer-events:none;
