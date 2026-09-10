@@ -149,6 +149,42 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   check('pvp: damage taken bounded by cap * 1.5 crit', !!hit && hit.payload.dmgTaken <= Math.ceil(dmgCap * 1.5),
     hit && { dmgTaken: hit.payload.dmgTaken, bound: Math.ceil(dmgCap * 1.5) });
 
+  /* v2.3.2445: THE ANGLE THAT NEVER CAME BACK.  `{"angle":1e999}` parses to
+     Infinity and the old arc loops (`while (d > PI) d -= 2*PI`) ran forever
+     on it -- one frame from one client and the whole room stopped answering.
+     Same for a finite value past ~2^50, where `+= 2*PI` no longer changes
+     the double.  The test is the return itself: if the resolver hangs this
+     suite never finishes, which is the failure mode it pins.  Neither value
+     is a radian a client could have produced (both emitters send atan2), so
+     each is read as 0 and the victim straight ahead at +x is still hit. */
+  for (const bad of [JSON.parse('{"angle":1e999}').angle, -Infinity, 1e308, -1e300]) {
+    room.eventBuffer.length = 0;
+    room._pvpHitLanes = new Map();
+    const t0 = Date.now();
+    room._resolvePvPAttack(room.sessions.get(wsA), { range: 250, arc: 3, angle: bad, dmgBase: 50, critChance: 0 });
+    const ms = Date.now() - t0;
+    check('pvp: angle ' + String(bad) + ' returns at once (' + ms + 'ms)', ms < 200, { ms });
+    check('pvp: ...and is read as 0 (the victim ahead is still hit)',
+      room.eventBuffer.filter((e) => e.type === 'pvp_hit').length === 1, room.eventBuffer);
+  }
+  /* A legitimate angle just past the seam (-PI and PI are the same direction)
+     still lands on a victim behind the attacker -- the loop-free normalise
+     must agree with the loops it replaced on real inputs. */
+  psB.x = -200;
+  for (const a of [Math.PI, -Math.PI, Math.PI + 0.05, -Math.PI - 0.05]) {
+    room.eventBuffer.length = 0;
+    room._pvpHitLanes = new Map();
+    room._resolvePvPAttack(room.sessions.get(wsA), { range: 250, arc: 1, angle: a, dmgBase: 50, critChance: 0 });
+    check('pvp: angle ' + a.toFixed(3) + ' hits the victim behind the attacker',
+      room.eventBuffer.filter((e) => e.type === 'pvp_hit').length === 1, room.eventBuffer);
+  }
+  psB.x = 200;
+  room.eventBuffer.length = 0;
+  room._pvpHitLanes = new Map();
+  room._resolvePvPAttack(room.sessions.get(wsA), { range: 250, arc: 1, angle: Math.PI, dmgBase: 50, critChance: 0 });
+  check('pvp: facing away (PI) misses the victim ahead',
+    room.eventBuffer.filter((e) => e.type === 'pvp_hit').length === 0, room.eventBuffer);
+
   // Blocking victim takes zero.
   psB.blocking = true;
   room.eventBuffer.length = 0;
