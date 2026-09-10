@@ -84,7 +84,7 @@ const WORLD_WEAPON_PX = { greatsword: 48, sword: 26, 'sword:wood': 45, bow: 52, 
    shadow below uses, and the same rows entityRenderer's BODY_ROWS carries. */
 const FOOT_ROW = { south: 221, north: 219, east: 223, northeast: 227, southwest: 234 };
 const DEFAULT_LIT_LUM = 149;            // default lit-skin luminance (see playerSkins)
-const TRAIT_VER = '2.3.2395';   /* v2.3.2174: de-fringe sweep across the trait sheets (tools/sprite-defringe.py); see playerSprites VERSION 101.
+const TRAIT_VER = '2.3.2411';   /* v2.3.2174: de-fringe sweep across the trait sheets (tools/sprite-defringe.py); see playerSprites VERSION 101.
                                    v2.3.2386: BUMPED FOR THE EYEWEAR REDRAW, and this is the first time it has HAD to move.
                                    Every earlier eyewear commit ADDED art -- new URLs, nothing cached to go stale.  v2.3.2379 is the
                                    first that CHANGED art already on main: seven pairs redrawn under their existing paths, plus

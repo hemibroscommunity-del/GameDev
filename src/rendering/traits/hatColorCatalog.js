@@ -96,7 +96,7 @@ export function onHatColorChange(fn) {
 
 /* ── in-game recolored hat textures ── */
 const DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
-const TRAIT_VER = '2.3.2395';   /* v2.3.2174: de-fringe sweep across the trait sheets (tools/sprite-defringe.py); see playerSprites VERSION 101.
+const TRAIT_VER = '2.3.2411';   /* v2.3.2174: de-fringe sweep across the trait sheets (tools/sprite-defringe.py); see playerSprites VERSION 101.
                                    v2.3.2386: BUMPED FOR THE EYEWEAR REDRAW, and this is the first time it has HAD to move.
                                    Every earlier eyewear commit ADDED art -- new URLs, nothing cached to go stale.  v2.3.2379 is the
                                    first that CHANGED art already on main: seven pairs redrawn under their existing paths, plus
@@ -112,7 +112,13 @@ const TRAIT_VER = '2.3.2395';   /* v2.3.2174: de-fringe sweep across the trait s
                                    v2.3.2395: and again, for meta.json ALONE this time -- no art byte changed.  The monocle's southwest
                                    nudge and the golden glasses' south scale are both placement numbers, and placement rides this same
                                    key: a returning player holding the old meta.json would wear the new art at the old anchors, which is
-                                   the failure mode the v2.3.2386 note above already calls out. */
+                                   the failure mode the v2.3.2386 note above already calls out.
+                                   v2.3.2411: and again, meta.json alone again -- the golden monocle's SOUTH nudge (crownNudge.south
+                                   x -12 -> -8, owner: "the south facing monocle needs to be nudged a bit to the right too").  Same
+                                   reasoning as v2.3.2395 six lines up, and the fact that this is the THIRD placement-only bump is the
+                                   point worth writing down: placement lives in meta.json, meta.json rides this key, so every by-eye
+                                   correction the owner asks for costs one bump.  A returning player holding the old meta.json wears the
+                                   art at the old anchors, i.e. sees the exact placement they just asked to have changed. */
 /* `${hatId}/${colorId}` -> { east:Texture, ... } | 'loading' */
 const _cache = {};
 

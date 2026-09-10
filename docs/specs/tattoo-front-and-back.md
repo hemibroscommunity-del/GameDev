@@ -52,7 +52,7 @@ canvas, so on the back it left `tattooArt` unset, and the portrait filled it
 with the front chest drawing. The big surface had the same shape of bug from the
 other direction: it passed `tattooArt: A.tattoo` unconditionally.
 
-Written up as `docs/TRAPS.md` §69.
+Written up as `docs/TRAPS.md` §70.
 
 ## What changed
 
@@ -141,7 +141,7 @@ the caller's, not a guarantee; it is listed here rather than claimed as
 covered.
 
 Two mutations were only caught after the tests were fixed, and both are in
-`TRAPS` §70: a yellow stroke is shaded down into skin tones and cannot be
+`TRAPS` §71: a yellow stroke is shaded down into skin tones and cannot be
 counted, and an aim taken before a click is stale in X (clicking the Back switch
 scrolls `.bt-paint` 67px sideways).
 

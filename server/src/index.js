@@ -4848,7 +4848,7 @@ export class GameRoom {
         // validates the questId + current state, transitions to
         // 'active'.
         if (session.id) {
-          this._handleQuestAccept(session, msg.payload || msg);
+          await this._handleQuestAccept(session, msg.payload || msg);
         }
         break;
 
@@ -4857,7 +4857,7 @@ export class GameRoom {
         // 'active' state + applies reward (gold + xp + AP) + unlocks
         // next in chain.
         if (session.id) {
-          this._handleQuestTurnIn(session, msg.payload || msg);
+          await this._handleQuestTurnIn(session, msg.payload || msg);
         }
         break;
 

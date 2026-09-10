@@ -24,13 +24,14 @@ const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
   ccink: () => import('./mp-ccink.mjs'), /* v2.3.2414: the inline ink card replaces the Design button nobody noticed */
-  jetstream: () => import('./mp-jetstream.mjs'), /* v2.3.2398: the bow's arrows lay the aim line now, and the sight beam they replaced is dark */
   ccfit: () => import('./mp-ccfit.mjs'), /* v2.3.2395: the monocle hangs off the eye in SW; the golden glasses stop overhanging the head in S */
+  switchbro: () => import('./mp-switchbro.mjs'), /* v2.3.2421: the door says what it does, in both directions */
   ccspin: () => import('./mp-ccspin.mjs'), /* v2.3.2391: the drag-to-spin cue, and that it does not eat the drag */
   cckb: () => import('./mp-cckb.mjs'), /* v2.3.2391: the iOS keyboard no longer shoves the creator */
   ccshades: () => import('./mp-ccshades.mjs'), /* v2.3.2390: the Thug Life south frame does not bow upward at the temples */
   ccjoin: () => import('./mp-ccjoin.mjs'), /* v2.3.2388: the join button explains its refusal; the diamond rail is gone */
   orbrange: () => import('./mp-orbrange.mjs'), /* v2.3.2387: a magic orb reaches as far as an arrow (675px, was 340) */
+  jetstream: () => import('./mp-jetstream.mjs'), /* v2.3.2398: the bow's arrows lay the aim line now, and the sight beam they replaced is dark */
   fakenum: () => import('./mp-fakenum.mjs'), /* v2.3.2350-2352: the client stops billing damage the worker never dealt */
   brobadge: () => import('./mp-brobadge.mjs'), /* v2.3.2345: the verified-Bro badge has art in it -- Texture.from is a lookup, so the icon rides the manifest */
   equipstale: () => import('./mp-equipstale.mjs'), /* v2.3.2341: Equip from a popup that outlived its bag must reach the worker or do nothing */
@@ -263,6 +264,8 @@ const SCENARIOS = {
   ability: () => import('./mp-ability.mjs'), /* v2.3.1733: the stamina abilities reach the worker, and stay locked until their milestone */
   joyfade: () => import('./mp-joyfade.mjs'), /* v2.3.2260: both sticks appear on input and fade after 2s; the right one stays while contextual */
   dashhit: () => import('./mp-dashhit.mjs'), /* v2.3.2261: does the lunge hurt a SERVER-driven monster? */
+  dashreal: () => import('./mp-dashreal.mjs'), /* v2.3.2418: a REAL finger on the disc, with the lock left to the game itself */
+  snowman: () => import('./mp-snowman.mjs'), /* v2.3.2419: does a snowman attack in each of its three bands? */
   worldtext: () => import('./mp-worldtext.mjs'), /* v2.3.2262: the dashboard zoom is a keeper, and in-world text must not shrink with it */
   aimpath: () => import('./mp-aimpath.mjs'), /* v2.3.2260: bow and magic fly where you point, not along an axis */
   orbline: () => import('./mp-orbline.mjs'), /* v2.3.2259: the magic special is one line of three, and bow/staff start at 80% of the melee starter */
