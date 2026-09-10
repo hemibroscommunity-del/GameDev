@@ -543,6 +543,20 @@ export default function BodyInk({
      not exist yet at mount, and a tab change). The 100% button passes `force`
      and is now the only thing that can move a view you set yourself. */
   const fittedRef = React.useRef('');
+  /* ═══ v2.3.2423: WHAT 100% IS A PERCENTAGE OF ═══
+     Owner: "The zoom in and zoom out percentage doesn't change despite zooming
+     and out."  It could not: the corner button was LABELLED "100%" as a fixed
+     string.  v2.3.1994 named it that on purpose -- "'Fit' named the mechanism;
+     '100%' names the view you get back" -- and the reasoning was sound for a
+     button and wrong for what it looks like, which is a readout sitting between
+     a minus and a plus.  Two of the three controls in that row change the zoom
+     and the third states it, so the third has to state the truth.
+     STATE, not a ref: the label has to re-render when this changes, and a ref
+     would leave the number stale exactly as often as it is interesting.  The
+     denominator is the FITTED zoom rather than z=1, because the editor opens
+     fitted -- so 100% is the view you started at and the number says how far in
+     you have gone from there, which is the question being asked. */
+  const [fitZ, setFitZ] = React.useState(0);
   const fitRegion = React.useCallback((force) => {
     const off = offRef.current, grids = gridsRef.current, m = xformRef.current;
     if (!off || !off.width || !grids || !m) return;
@@ -572,6 +586,7 @@ export default function BodyInk({
     const cx = ((p0.x + p1.x) / 2) / off.width;
     const cy = ((p0.y + p1.y) / 2) / off.height;
     fittedRef.current = region;
+    setFitZ(z);
     setView((v) => (Math.abs(v.z - z) < 0.01 && Math.abs(v.cx - cx) < 0.002
       && Math.abs(v.cy - cy) < 0.002) ? v : { z, cx, cy });
   }, [region, tabKeys]);
@@ -682,6 +697,11 @@ export default function BodyInk({
      overlays, which is what makes the ink appear under the finger a frame
      before the sheet it is baked into does. */
   React.useEffect(() => { try { blit(); } catch (e) { /* ignore */ } }, [view, blit]);
+
+  /* The number the corner button shows.  Rounded to whole percent and floored
+     at 1 so a view that has not been fitted yet (fitZ 0, one frame at mount)
+     reads as something rather than as Infinity or NaN. */
+  const zoomPct = fitZ > 0 ? Math.max(1, Math.round((view.z / fitZ) * 100)) : 100;
 
   /* ── pointer handling ─────────────────────────────────────────────────── */
   const zoomBy = React.useCallback((k, ax, ay) => {
@@ -852,10 +872,15 @@ export default function BodyInk({
             again in the corner was telling you something you chose.
             v2.3.1994 (owner: "Change 'fit' to just '100%'"): "Fit" named the
             mechanism; "100%" names the view you get back, which is the one the
-            editor opens on. */}
+            editor opens on.
+            v2.3.2423: and it is the LIVE number now -- see fitZ above.  It is
+            still the button that puts the view back, so the label and the
+            action agree: it reads 240%, you tap it, it reads 100%. */}
         <button type="button" className="bt-paint-size" onClick={() => fitRegion(true)}
-          title="Back to the whole area, at the zoom this opened on">
-          <span className="bt-paint-tool-label">100%</span>
+          data-zoom-pct={zoomPct}
+          title={zoomPct === 100 ? 'The whole area, at the zoom this opened on'
+            : 'Back to the whole area, at the zoom this opened on'}>
+          <span className="bt-paint-tool-label">{zoomPct + '%'}</span>
         </button>
       </div>
     </div>

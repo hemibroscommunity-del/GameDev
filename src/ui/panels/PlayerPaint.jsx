@@ -5,7 +5,7 @@ import {
 } from '@/rendering/traits/playerArt.js';
 import {
   TOOLS, toolById, lineCells, expandCells, mirrorCells,
-  BRUSH_SIZES, LETTERS,
+  BRUSH_SIZES, LETTERS, LETTER_W, LETTER_H,
 } from '@/rendering/traits/artTools.js';   /* v2.3.1948; v2.3.1949 mirror, back v2.3.2004 */
 import {
   getDoc, saveDoc, appendToDoc, copyDoc, replay,
@@ -201,7 +201,7 @@ const TOOL_HINT = {
   /* v2.3.1967 (owner: "add a hand shape to tap the existing shape to reselect
      and edit it").  The hint says TAP, because nothing about a hand icon tells
      you that the thing under it is still an object rather than pixels. */
-  select: 'Tap something you already drew to pick it up again',
+  select: 'Tap something you already drew to pick it up — recolour, resize or re-layer it',   /* v2.3.2423 */
 };
 
 function ToolIcon({ id }) {
@@ -1090,10 +1090,35 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const handleCell = (op) => {
     if (!op) return null;
     if (op.k === 's') return [op.a[2], op.a[3]];
-    if (op.k === 't') return [op.x, op.y];
+    /* v2.3.2423: a letter's handle is its box corner, like a shape's.  The
+       legacy form (no box) keeps the centre it has always had, so a drawing
+       made before this version still picks up where it always did. */
+    if (op.k === 't') return op.a ? [op.a[2], op.a[3]] : [op.x, op.y];
     return null;
   };
+  /* ═══ v2.3.2423: HOW BIG A LETTER LANDS ═══
+     Owner: "Letters need to default smaller on the pants they get cut off."
+     The glyph is 5x7 and the canvas is 16x16, so a letter has always taken 44%
+     of the height it is dropped into.  On the skin that is a chest piece and
+     roughly what you want; on the TROUSERS the grid is stretched over a narrow,
+     tapering region, so the outer columns of a 5-wide glyph land off the
+     garment and are never painted -- "cut off", exactly as reported, with no
+     size to reduce because a letter had no size.
+     4x6 rather than 3x5: measured against the pants region, 3 columns loses the
+     stem of an 'E' even with coverage sampling, and the point of shrinking it
+     is that the letter still reads.  Anything can be resized from the handle
+     afterwards, which is the real fix -- this is only where it starts. */
+  const letterBox = (cx, cy) => {
+    const isPants = artIdRef.current === 'pants' || artIdRef.current === 'pantsBack';
+    const w = isPants ? 4 : LETTER_W, h = isPants ? 6 : LETTER_H;
+    const x0 = Math.max(0, Math.min(ART_W - w, cx - (w >> 1)));
+    const y0 = Math.max(0, Math.min(ART_H - h, cy - (h >> 1)));
+    return [x0, y0, x0 + w - 1, y0 + h - 1];
+  };
   const selHandle = React.useMemo(() => handleCell(selOp), [selOp]);   /* v2.3.1994 */
+  /* v2.3.2423: can the thing you are holding be RESIZED, as opposed to only
+     moved or re-layered?  A shape always can; a letter can once it has a box. */
+  const selResizable = !!(selOp && (selOp.k === 's' || (selOp.k === 't' && selOp.a)));
 
   /* v2.3.1941: `onPattern` is a DEPENDENCY, not decoration.  The grid canvas is
      unmounted on the pattern screen, so coming back to a drawing re-creates it
@@ -1262,7 +1287,10 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
       isNew: false,
       orig: op,
       hist: null,
-      ratio: op.k === 's'
+      /* v2.3.2423: `op.a` rather than `op.k === 's'` -- a letter has a box now,
+         and picking one up has to restore the proportions it was placed at or
+         the ratio lock would square it up the first time you touched it. */
+      ratio: op.a
         ? (Math.abs(op.a[2] - op.a[0]) + 1) / (Math.abs(op.a[3] - op.a[1]) + 1)
         : 1,
     };
@@ -1346,6 +1374,27 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     if (pendRef.current) pendRef.current.hist = null;
   };
 
+  /* ═══ v2.3.2423: PICK IT UP, THEN CHANGE ITS COLOUR ═══
+     Owner: "You should be able to select something and recolor it. I wasn't
+     able to do this from the pants editor on a letter."
+     You could not, anywhere: the palette set `ink`, which is the colour the
+     NEXT mark is made in, and nothing ever re-read a mark that was already
+     down.  Every other property of a selected op could be changed -- its size,
+     its position, its layer -- and the one you can see from across the room
+     could not.
+     One undo step per selection, banked the same way a resize is, so picking a
+     letter up and trying three colours costs one tap of Undo rather than three.
+     `i` is the whole change: the cells are re-derived from the op on every
+     replay, so a colour swap is a one-field edit and the drawing follows. */
+  const recolorSel = (idx) => {
+    const i = selRef.current;
+    const op = i >= 0 ? docRef.current.ops[i] : null;
+    if (!op || op.i === idx) return false;
+    bankPend();
+    setOp(i, { ...op, i: idx });
+    return true;
+  };
+
   /* Resize to a new far corner, honouring the ratio lock.  The lock keeps the
      aspect the shape was DRAWN at rather than forcing a square: a 2:1 oval
      stays a 2:1 oval at every size, which is what "proportions are consistent"
@@ -1360,14 +1409,15 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     setDoc((d) => {
       const op = d.ops[i];
       if (!op) return d;
-      /* A letter has no size, so its handle MOVES it.  That is the only edit a
-         letter has, and giving it to the same handle keeps one gesture for
-         "adjust the thing you picked up". */
-      if (op.k === 't') {
+      /* v2.3.2423: a letter WITH a box resizes exactly as a shape does -- it
+         falls through to the shared code below.  Only the legacy form, which
+         has no box to resize, keeps the v2.3.1967 behaviour where the handle
+         moves it: there is nothing else its handle could do. */
+      if (op.k === 't' && !op.a) {
         if (op.x === cx && op.y === cy) return d;
         return { ...d, ops: d.ops.map((o, k) => (k === i ? { ...o, x: cx, y: cy } : o)) };
       }
-      if (op.k !== 's') return d;
+      if (op.k !== 's' && op.k !== 't') return d;
       const x0 = op.a[0], y0 = op.a[1];
       let nx = cx, ny = cy;
       if (lockRatio && pend.ratio > 0) {
@@ -1422,9 +1472,29 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
          above it genuinely changes what it fills. */
       const c = cellAt(e, false);
       if (!c) return;
-      setLiveIdx(addOp(tool === 'fill'
-        ? { k: 'f', x: c[0], y: c[1], i: ink, m: mirror ? 1 : 0 }
-        : { k: 't', g: letter, x: c[0], y: c[1], i: ink, m: mirror ? 1 : 0 }));   /* v2.3.2004 */
+      if (tool === 'fill') {
+        setLiveIdx(addOp({ k: 'f', x: c[0], y: c[1], i: ink, m: mirror ? 1 : 0 }));   /* v2.3.2004 */
+        return;
+      }
+      /* ═══ v2.3.2423: A PLACED LETTER STAYS IN YOUR HAND ═══
+         Owner: "The letters aren't working correctly (not pasting onto the
+         character and not scaling/resizing)."  It WAS pasting -- measured, 16
+         cells landed in the store on the first tap -- and then it was let go
+         of, immediately, because this branch never selected what it had just
+         made.  So there was no handle to drag, no Place/Cancel, and no way to
+         move it a cell over: the whole adjustment vocabulary the shapes have,
+         missing on the one tool where you cannot preview the result before you
+         commit it.
+         It is set up exactly as a dragged shape is (see `drag === 'shape'`
+         below) -- same pend record, same selection, same handle -- so a letter
+         and a box are now adjusted with one gesture rather than two rules. */
+      const box = letterBox(c[0], c[1]);
+      const li = addOp({ k: 't', g: letter, x: c[0], y: c[1], a: box, i: ink, m: mirror ? 1 : 0 });
+      setLiveIdx(li);
+      pendRef.current = { isNew: true, orig: null,
+        ratio: (Math.abs(box[2] - box[0]) + 1) / (Math.abs(box[3] - box[1]) + 1),
+        hist: histRef.current[histRef.current.length - 1] };
+      setSel(li);
       return;
     }
     paintingRef.current = true;
@@ -1771,8 +1841,13 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                  those get one wide Done rather than a Cancel with nothing to
                  cancel. */
               <div className="bt-paint-opts-main bt-paint-shapeops"
-                style={{ gridTemplateColumns: 'repeat(' + (selOp.k === 's' ? 3 : selOp.k === 't' ? 2 : 1) + ', 1fr)' }}>
-                {selOp.k === 's' && (
+                /* v2.3.2423: a letter with a box is resizable, so it takes the
+                   same three controls a shape does.  `selResizable` rather than
+                   a key test, because the legacy letter form is NOT resizable
+                   and would otherwise be offered a lock over a handle that only
+                   moves it. */
+                style={{ gridTemplateColumns: 'repeat(' + (selResizable ? 3 : selOp.k === 't' ? 2 : 1) + ', 1fr)' }}>
+                {selResizable && (
                   <button type="button" onClick={() => setLockRatio((v) => !v)}
                     aria-pressed={lockRatio}
                     className={'bt-paint-size' + (lockRatio ? ' bt-paint-size--on' : '')}
@@ -1878,7 +1953,21 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             <div className="bt-paint-layer-at">
               {selOp
                 ? ('Layer ' + (sel + 1) + ' of ' + doc.ops.length + ' \u00b7 ' + selName(selOp))
-                : 'Layers: pick the hand, tap something you drew'}
+                /* v2.3.2423: it says SELECT, because that is what the button
+                   says.  Owner: "The select button doesn't seem to work on what
+                   you've drawn" -- and it does work, on every surface, measured
+                   both on the body and on the flat grid.  What did not work was
+                   this sentence: the tool was renamed from the hand to Select at
+                   v2.3.1967 and the only line on screen that tells you the
+                   feature exists went on naming a control that is not there.
+                   Someone who read it looked for a hand, found none, and
+                   concluded the feature was broken -- which is the correct
+                   conclusion from what the screen said.
+                   It also names what picking something up is FOR, since the
+                   answers are now recolour and resize as well as re-layer. */
+                : (tool === 'select'
+                  ? 'Tap something you drew to pick it up — then recolour, resize or re-layer it'
+                  : 'Pick Select, then tap something you drew to change it')}
             </div>
             <div className="bt-paint-layer-btns">
               {LAYER_MOVES.map((m) => {
@@ -1909,9 +1998,16 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
         ) : (
           <div className="bt-paint-pal" style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 5 }}>
             {ART_PALETTE.map((c, i) => (
-              <button key={i} type="button" title={i === 0 ? 'Eraser — works with every tool' : 'Colour'}
+              <button key={i} type="button"
+                title={i === 0 ? 'Eraser — works with every tool'
+                  : (selOp ? 'Recolour what you picked up' : 'Colour')}
                 aria-label={i === 0 ? 'Eraser' : 'Colour ' + i}
-                onClick={() => setInk(i)}
+                /* v2.3.2423: with something picked up this repaints IT; with
+                   nothing picked up it arms the next mark, as it always has.
+                   The ink is set either way, so the colour you just chose is
+                   also the one you carry on drawing in -- which is what a
+                   palette tap means everywhere else. */
+                onClick={() => { recolorSel(i); setInk(i); }}
                 style={{ aspectRatio: '1 / 1', minHeight: 26, borderRadius: 6, cursor: 'pointer',
                   background: c || 'transparent',
                   /* the eraser reads as a hole, not as a colour */
