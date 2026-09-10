@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { infoPopupBus } from '../infoPopupBus.js';
 import { statInfo } from '../infoGlossary.js';
 import { COL, QUALITY_COLOR, panelStyle, getState } from '../dash/common.js';
-import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon, weaponForCat, swingCooldownMultFor } from '../../../data/gameSystems.js'; /* v2.3.1914: getActiveWeapon; v2.3.2231: weaponForCat; v2.3.2434: swingCooldownMultFor */
+import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon, weaponForCat, swingCooldownMultFor } from '../../../data/gameSystems.js'; /* v2.3.1914: getActiveWeapon; v2.3.2231: weaponForCat; v2.3.2441: swingCooldownMultFor */
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { CharacterView, FIGURE_W_FRAC } from './CharacterView.jsx'; /* v2.3.1815: the equip screen's own figure */
@@ -15,7 +15,7 @@ import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroS
 import {
   prog3Live, prog3HasSkills, prog3Pts, prog3AtkPts, prog3StatCap, prog3SkillLevel,
   prog3ActiveCat, prog3AtkMeta, prog3BodyMeta, PROG3_SKILL_META, prog3PoolFor,
-  prog3CritMult, prog3CritPct /* v2.3.2434 */ } from '../../../data/prog3.js';
+  prog3CritMult, prog3CritPct /* v2.3.2441 */ } from '../../../data/prog3.js';
 import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
@@ -1539,7 +1539,7 @@ export const HeroExpanded = () => {
               );
             };
             /* ═══════════════════════════════════════════════════════════
-               v2.3.2434: THE DENSE GRID — 4 + 3 + 2 IN THE SAME FOOTPRINT
+               v2.3.2441: THE DENSE GRID — 4 + 3 + 2 IN THE SAME FOOTPRINT
                ═══════════════════════════════════════════════════════════
                Owner, with a mockup: "the existing 2x2 stat-card layout becomes
                a dense but clearly grouped 4 + 3 + 2 layout without consuming
@@ -2092,7 +2092,7 @@ export const HeroExpanded = () => {
                         <span style={{
                           display: 'flex', alignItems: 'center', gap: 4,
                           maxWidth: '100%', minWidth: 0,
-                          /* v2.3.2434: the reserved corner is GONE with the
+                          /* v2.3.2441: the reserved corner is GONE with the
                              badge that needed it.  v2.3.2382 added this because
                              an absolutely-positioned pill cannot change
                              scrollWidth, so a clipping check passed on a label
@@ -2114,7 +2114,7 @@ export const HeroExpanded = () => {
                             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                           }}>{sk.label}</span>
                         </span>
-                        {/* ═══ v2.3.2434: THE SECOND LINE IS THE POINTS ═══
+                        {/* ═══ v2.3.2441: THE SECOND LINE IS THE POINTS ═══
                             Owner: "Replace LV 2 up / LV 1 down / LV 1 down
                             with remaining allocatable points."
 
@@ -2172,7 +2172,7 @@ export const HeroExpanded = () => {
                 {!laneClosed && (
                   <div id="bt-prog3-body" style={{
                     display: 'flex',
-                    /* v2.3.2382 made this a ROW of two columns.  v2.3.2434
+                    /* v2.3.2382 made this a ROW of two columns.  v2.3.2441
                        makes it a COLUMN again -- of three bands (4 / 3 / 2)
                        rather than of nine rows.  The id stays on THIS element:
                        the selector's aria-controls points at it and mp-prog3
@@ -2187,7 +2187,7 @@ export const HeroExpanded = () => {
                   }}>
                     {prog3TwoCol ? (
                       <>
-                        {/* ═══ v2.3.2434: 4 + 3 + 2, ONE COLUMN OF THREE BANDS ═══
+                        {/* ═══ v2.3.2441: 4 + 3 + 2, ONE COLUMN OF THREE BANDS ═══
                             ATTACK STAYS FIRST IN DOCUMENT ORDER.  Several
                             scenarios take the first
                             `[role="button"][aria-label*=" of "]` and expect an
