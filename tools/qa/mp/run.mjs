@@ -30,6 +30,7 @@ const SCENARIOS = {
   hitmatrix: () => import('./mp-hitmatrix.mjs'), /* v2.3.2435: does EVERY weapon and special register its hits, on a PINNED monster (the control for hitreal) and in a duel */
   hitsweep: () => import('./mp-hitsweep.mjs'), /* v2.3.2426: how accurate IS ranged hit detection -- measured hit rate vs the real per-frame step */
   standinart: () => import('./mp-standinart.mjs'), /* v2.3.2429: a swing and a raised shield wear your drawings */
+  designs: () => import('./mp-designs.mjs'), /* v2.3.2436: the ready-made design gallery, and what picking one puts on the character */
   ccink: () => import('./mp-ccink.mjs'), /* v2.3.2414: the inline ink card replaces the Design button nobody noticed */
   ccfit: () => import('./mp-ccfit.mjs'), /* v2.3.2395: the monocle hangs off the eye in SW; the golden glasses stop overhanging the head in S */
   ewcolour: () => import('./mp-ewcolour.mjs'), /* v2.3.2424: the eyewear swatch, and which part it paints */

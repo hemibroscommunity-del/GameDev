@@ -3044,6 +3044,20 @@ input{font-family:inherit}
      are shorter than the grid, and stretching them would strand each one at the
      top of an oversized row. */
   .bt-paint-ctl{gap:8px;align-self:start}
+  /* v2.3.2443: THE CAPTION GETS THE SPARE WIDTH, BECAUSE HEIGHT IS WHAT IS
+     SCARCE.  Adding the Designs button to the caption cell cost column 1 about
+     37px in a column that had ~31px of headroom -- measured as 6px of overflow
+     by mp-ccink's landscape assertion, which is pinned at exactly 0 because
+     v2.3.2414 put a control below the fold and the owner had to find it by
+     discovering the panel scrolls (TRAPS #68).
+     Shrinking the button is the wrong lever: it is already at 34px against a
+     44px touch-target floor, and sideways is where a phone is HELD, so a
+     smaller target there is worse, not better.  Width is the resource this
+     layout has spare -- the reflow above exists because "sideways there is
+     width to spare" -- so the caption takes some and wraps to fewer lines.
+     At 844x390 that is 140px -> 215px, which is enough to pay for the button
+     with room over, and the three columns still total 713px inside 844. */
+  .bt-paint-note{width:calc(var(--paint-size) * .95)}
 }
 /* Short AND narrow: keep the stack, just tighten it. */
 @media (max-height:460px) and (max-width:659px){
