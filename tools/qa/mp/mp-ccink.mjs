@@ -776,10 +776,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
           });
           await P3.page.click('[data-ink-side-btn="back"]');
           await P3.page.waitForTimeout(2200);
+          /* ═══ v2.3.2461: THE BACK STROKE GOES SOMEWHERE ELSE ON PURPOSE ═══
+             This used to aim at the region's centre -- the same point the four
+             FRONT strokes above were made around -- and then prove "separate"
+             by the two drawings coming out different.  That only worked while a
+             cell happened to be small enough for a 5px offset to be a different
+             cell: when v2.3.2461 gave the trousers their whole region the cells
+             grew, all five strokes collapsed onto the same two cells, and the
+             two canvases held IDENTICAL strings.  The assertion then read
+             "front and back are not separate" about a build where the two
+             store assertions above (a Back stroke raises `back` and leaves
+             `front` untouched) both passed -- i.e. it had gone vacuous, not
+             true.
+             So the back stroke is placed a quarter of the way in from the
+             grid's top-left corner, which is several cells from the centre at
+             ANY cell size, and the resolution check below now also names which
+             canvas each facing resolved to rather than only that the two
+             differ. */
           const backAim = await P3.page.evaluate(() => {
             const c = document.querySelector('.bt-bodyink-cv');
             const a = c && c.__btInkAim && c.__btInkAim.pants;
-            return a ? { x: a.x, y: a.y, w: c.width } : null;
+            return a ? { x: a.gx0 + a.gw * 0.25, y: a.gy0 + a.gh * 0.25, w: c.width } : null;
           });
           rec.ok('editors: the trousers still report where they are with Back on (guard)',
             !!backAim, backAim);
@@ -812,6 +829,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
               return { probe: true, resolved: !!s2,
                 south: ink(s2 && s2.pants), north: ink(n && n.pants),
                 same: !!s2 && !!n && s2.pants === n.pants,
+                /* v2.3.2461: WHICH canvas each facing resolved to, by identity
+                   with the store rather than by the two answers differing --
+                   "north gave me the back drawing" is the claim, and it stays
+                   checkable even if the two drawings happen to match. */
+                southIsFront: !!s2 && s2.pants === localStorage.getItem('bt-pantsart'),
+                northIsBack: !!n && n.pants === localStorage.getItem('bt-pantsart-back'),
                 store: { front: ink(localStorage.getItem('bt-pantsart')),
                   back: ink(localStorage.getItem('bt-pantsart-back')) } };
             });
@@ -823,7 +846,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
               !!facing && facing.probe && facing.resolved, facing);
             rec.ok('editors: and a back FACING resolves to the back print, which is '
               + 'what a peer and the world renderer will draw',
-              !!facing && facing.resolved && !facing.same && facing.north > 0, facing);
+              !!facing && facing.resolved && !facing.same && facing.north > 0
+              && facing.southIsFront && facing.northIsBack, facing);
           }
         }
       }
