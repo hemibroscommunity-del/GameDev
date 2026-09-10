@@ -280,6 +280,50 @@ export async function run({ browser, wsPort, webPort, rec }) {
     && (box2[2] - box2[0]) === (box1[2] - box1[0])
     && (box2[3] - box2[1]) === (box1[3] - box1[1]), { box1, box2 });
 
+  /* ── 3b-2. AND THE GRAB WORKS OFF THE GRID (v2.3.2460) ──
+     Owner: "I just highlighted the screen by accident trying to move a design
+     I just placed ... I haven't been able to do that yet."  A design covers a
+     body part AND the space around it, so the middle of the picture -- the
+     obvious place to grab it -- can easily be over the arm, the background or
+     the gap between the legs.  A press there used to resolve to no region and
+     never reach the panel at all, so nothing moved and iOS took the drag as a
+     text selection instead.
+     Driven from well OUTSIDE the grid (cell -6,-6 in grid space, which is off
+     the body), which is why this uses raw client coordinates rather than the
+     cell helper above. */
+  const boxA = (await ops(P))[0].a.slice();
+  const offGrid = await P.page.evaluate(() => {
+    const cv = document.querySelector('.bt-bodyink-cv');
+    const aim = cv && cv.__btInkAim;
+    if (!cv || !aim) return false;
+    const a = Object.keys(aim).map((k) => aim[k]).find((v) => v && v.target === 'tattoo');
+    if (!a) return false;
+    const r = cv.getBoundingClientRect();
+    const kx = r.width / cv.width, ky = r.height / cv.height;
+    /* Down a third of a grid ABOVE and LEFT of the grid's own corner -- off
+       every region, which is the press this change exists for -- and then all
+       the way to the middle of the grid, so the drag genuinely crosses cells
+       (a drag that starts AND ends outside clamps to the same corner cell and
+       moves nothing, which is not what is being tested). */
+    const p0 = { x: r.left + (a.gx0 - a.gw / 3) * kx, y: r.top + (a.gy0 - a.gh / 3) * ky };
+    const p1 = { x: r.left + (a.gx0 + a.gw / 2) * kx, y: r.top + (a.gy0 + a.gh / 2) * ky };
+    const mid = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
+    const ev = (t, p) => cv.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true,
+      composed: true, pointerId: 9, pointerType: 'touch', isPrimary: true,
+      clientX: p.x, clientY: p.y, buttons: t === 'pointerup' ? 0 : 1 }));
+    ev('pointerdown', p0);
+    /* the surface's own read of what that press resolved to: `held` is the
+       off-grid grab, `miss` is the old silent drop this replaced */
+    const d1 = window.__btInkDown ? JSON.parse(JSON.stringify(window.__btInkDown)) : null;
+    ev('pointermove', mid); ev('pointermove', p1); ev('pointerup', p1);
+    return !!(d1 && d1.held);
+  });
+  await P.page.waitForTimeout(500);
+  const boxB = (await ops(P))[0].a.slice();
+  rec.ok(`${tag}: a press that lands OFF the grid still grabs the held design `
+    + `(${boxA.join(',')} -> ${boxB.join(',')})`,
+    offGrid && boxB.join(',') !== boxA.join(','), { boxA, boxB, offGrid });
+
   /* ── 3c. THE WHOLE PLACEMENT IS ONE ACTION ──
      `bankPend` banks one history entry per SELECTION, not per adjustment, and
      applyDesign hands the fresh selection the entry its own apply banked -- so

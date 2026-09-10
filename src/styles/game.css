@@ -4456,6 +4456,20 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
    had; the bar under it carries the three things a finger needs that a grid
    did not — pan instead of ink, and the two zoom steps for the hand that is
    holding the phone. */
+/* ═══ v2.3.2460: A DRAG IN THE EDITOR IS NEVER A TEXT SELECTION ═══
+   Owner: "I just highlighted the screen by accident trying to move a design I
+   just placed."  The canvas itself was safe (touch-action:none plus pointer
+   capture), but everything AROUND it -- the tool labels, the mode strip, the
+   Place/Cancel words -- is ordinary selectable text, and iOS turns a drag that
+   starts on any of it into a selection with the blue handles.  Which is
+   precisely the gesture someone reaches for when they mean to move a drawing
+   and their finger starts a few pixels off the picture.
+   Scoped to the editor's own two roots rather than set globally: the chat box
+   and the name field are text that people DO select, and a blanket rule would
+   take that away to fix a drawing surface. */
+.bt-bodyink, .bt-paint{
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+}
 .bt-bodyink{display:flex;flex-direction:column;gap:6px}
 .bt-bodyink-cv{background:rgba(9,13,17,.55)}
 .bt-bodyink-bar{display:flex;align-items:center;gap:6px}
