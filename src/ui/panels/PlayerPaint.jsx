@@ -10,6 +10,9 @@ import {
 import {
   getDoc, saveDoc, appendToDoc, copyDoc, replay,
 } from '@/rendering/traits/artOps.js';   /* v2.3.1967: the canvas is an op list */
+/* v2.3.2436: the ready-made designs, and the gallery that picks one. */
+import { designOps } from '@/rendering/traits/designCatalog.js';
+import DesignGallery from '@/ui/panels/DesignGallery.jsx';
 import {
   patternsFor, getPattern, setPattern, parsePattern, formatPattern, patternInk,
 } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
@@ -871,6 +874,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   /* A copy changes the side you are NOT looking at, so without a word of
      feedback the button appears to do nothing at all. */
   const [copied, setCopied] = React.useState(false);
+  const [showDesigns, setShowDesigns] = React.useState(false);   /* v2.3.2436 */
   /* ═══ v2.3.1951: A SHAPE YOU CAN STILL RESIZE ═══
      Owner: "For shapes in editor it's helpful to have a drag handle on the
      corner so you can size it how you want (default is to keep shape ratio so
@@ -1051,6 +1055,32 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   };
   const setOp = (i, next) => setDoc((d) => ({ ...d, ops: d.ops.map((o, k) => (k === i ? next : o)) }));
   const dropOp = (i) => setDoc((d) => ({ ...d, ops: d.ops.filter((o, k) => k !== i) }));
+
+  /* ═══ v2.3.2436: PUTTING A READY-MADE DESIGN ON THE GRID ═══
+     One op per colour on an empty base (designCatalog's designOps explains why
+     that and not a flat base), banked as ONE undo entry -- pushHist snapshots
+     the whole doc, so the count of ops it replaces never costs the player a
+     second tap of Undo.
+     It REPLACES rather than merging.  Merging sounds kinder and is not: the
+     transparent cells of a design are most of it, so a merge would leave the
+     old drawing showing through every gap and the result would be neither
+     picture.  Replacing is what "choose a design" plainly means, and one tap
+     of Undo puts the old drawing back.
+     Anything held mid-gesture is dropped first: a pending shape and a
+     selection both index into the op list that is about to be replaced, and
+     carrying either across would point them at someone else's cells. */
+  const applyDesign = (d) => {
+    const id = artIdRef.current;
+    const cur = docRef.current.id === id ? docRef.current : { id, ...getDoc(id) };
+    pushHist(cur);
+    const nd = { id, base: emptyArt(), ops: designOps(d.art) };
+    pendRef.current = null;
+    docRef.current = nd;
+    setDoc(nd);
+    setSel(-1);
+    setBodyTick((t) => t + 1);
+    setShowDesigns(false);
+  };
 
   /* Persist as you draw: the character updates live behind the panel, which is
      the whole point of drawing on a character rather than in a vacuum.
@@ -1796,6 +1826,19 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
               {copied ? 'Copied \u2713' : ('Copy to ' + (side === 'front' ? 'back' : 'front'))}
             </button>
           )}
+          {/* v2.3.2436 (owner: "a catalog of pre done designs to choose from").
+              Here rather than in the button row for the reason the copy button
+              gives just above: that row is Undo/Redo/Clear/Done, and picking a
+              ready-made design is a once-per-design action, not one you reach
+              for mid-stroke.  Not on the pattern screen -- a pattern tiles the
+              whole garment and has no 16x16 grid for a design to land on. */}
+          {canDraw && !onPattern && (
+            <button type="button" className="bt-paint-copy"
+              title={'Choose a ready-made design for your ' + cfg.label}
+              onClick={() => setShowDesigns(true)}>
+              Designs&hellip;
+            </button>
+          )}
         </div>
 
         <div className="bt-paint-main">
@@ -2201,6 +2244,10 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
         </div>
         </div>
       </div>
+      {showDesigns && (
+        <DesignGallery label={cfg.label}
+          onPick={applyDesign} onClose={() => setShowDesigns(false)} />
+      )}
     </div>
   );
 }

@@ -840,6 +840,14 @@ const CATALOG = [
    one thing playerArt's codec is written to make impossible.  Dropping is
    silent here on purpose -- the count is asserted by the QA scenario, so a
    broken entry fails a test rather than the game. */
+/* How many designs were AUTHORED, before the validity gate below.  Exported
+   for one reason: the gate drops a malformed entry silently, and a test that
+   only ever sees the filtered list cannot tell a drop from a catalogue that
+   was always that size -- both sides shrink together and it stays green.
+   Comparing the two counts is what makes a drop fail a test instead of
+   quietly shipping 36 designs where 37 were written. */
+export const DESIGN_COUNT_AUTHORED = CATALOG.length;
+
 export const DESIGN_CATALOG = CATALOG
   .map((d) => ({ id: d.id, name: d.name, cat: d.cat, rows: d.rows, art: d.rows.join('') }))
   .filter((d) => d.rows.length === ART_H
