@@ -263,6 +263,7 @@ const SCENARIOS = {
   joyfade: () => import('./mp-joyfade.mjs'), /* v2.3.2260: both sticks appear on input and fade after 2s; the right one stays while contextual */
   dashhit: () => import('./mp-dashhit.mjs'), /* v2.3.2261: does the lunge hurt a SERVER-driven monster? */
   dashreal: () => import('./mp-dashreal.mjs'), /* v2.3.2418: a REAL finger on the disc, with the lock left to the game itself */
+  snowman: () => import('./mp-snowman.mjs'), /* v2.3.2419: does a snowman attack in each of its three bands? */
   worldtext: () => import('./mp-worldtext.mjs'), /* v2.3.2262: the dashboard zoom is a keeper, and in-world text must not shrink with it */
   aimpath: () => import('./mp-aimpath.mjs'), /* v2.3.2260: bow and magic fly where you point, not along an axis */
   orbline: () => import('./mp-orbline.mjs'), /* v2.3.2259: the magic special is one line of three, and bow/staff start at 80% of the melee starter */
