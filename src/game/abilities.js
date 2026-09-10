@@ -332,8 +332,24 @@ export function castAbility(S, kind) {
      without re-deriving either. */
   var _dashWin = _bashLt ? dashWindowMs(S, _bashLt) : DASH_WINDOW_MS;
   if (_bashLt) {
+    /* ═══ v2.3.2461: THE DASH TUMBLES, IT DOES NOT SLIDE ═══
+       Owner: "For sword dash instead of just showing the standing character
+       zoom to the enemy can you play the dodge roll animation until the
+       character reaches the monster?"
+       The body renders 'stand' for the whole travel today, and not by
+       oversight: the dash moves the player by writing x/y directly, exactly
+       as the dodge roll does, so the renderer's isMoving test (which reads
+       vx/vy) never sees it and the jog never starts either.  A standing
+       figure gliding across the screen is the result.
+       `kind` and `angle` are recorded here so the renderer can tell a dash
+       from a bash and point the tumble along the travel.  BroTown's movement
+       block refreshes `angle` every step, because the dash re-binds and
+       chases a target that moves. */
+    var _dashAng = Math.atan2((_bashLt.y || 0) - (S.player ? S.player.y : 0),
+                              (_bashLt.x || 0) - (S.player ? S.player.x : 0));
     S._bashDash = { targetId: _bashId, ref: _bashLt, startTime: now, until: now + _dashWin,
-      travelled: 0, maxTravel: DASH_MAX_REACH_PX };
+      travelled: 0, maxTravel: DASH_MAX_REACH_PX,
+      kind: kind, angle: isFinite(_dashAng) ? _dashAng : 0 };
   } else {
     S._bashDash = null;
   }

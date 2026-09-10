@@ -9727,7 +9727,26 @@ export class EntityRenderer {
        hole drawn beneath the player (effectsRenderer._updateFishingHole). */
     const fishing = !!(S._extraction && S._extraction.skill === 'fishing');
     /* v2.3.1534: the §5.8 dodge roll owns the body for its whole window. */
-    const dodging = !!S._dodgeRoll;
+    /* ═══ v2.3.2461: AND SO DOES THE SWORD DASH ═══
+       Owner: "For sword dash instead of just showing the standing character
+       zoom to the enemy can you play the dodge roll animation until the
+       character reaches the monster?"
+       The dash moved the player by writing x/y directly, exactly as the roll
+       does, so the isMoving test below (which reads vx/vy) never saw it: the
+       body held 'stand' and glided.  It borrows the roll's pose, sheet and
+       facing here, and ONLY those -- this is presentation.  Reusing
+       S._dodgeRoll itself would have been shorter and wrong: that field is
+       read for i-frames and for the damage-dodge test in monsterCombat, so
+       writing it would have handed the dash free invulnerability nobody asked
+       for.  `_rollSrc` is the one place the two are resolved, so pose, sheet
+       direction and frame clock cannot disagree about which is driving.
+       BASH IS DELIBERATELY EXCLUDED.  It shares this dash record (both set
+       S._bashDash) but it is a shoulder-shove, not a charge, and the owner
+       asked for the sword's move; `kind` is on the record precisely so the
+       two can differ. */
+    const _dashRoll = (S._bashDash && S._bashDash.kind === 'sworddash') ? S._bashDash : null;
+    const _rollSrc = S._dodgeRoll || _dashRoll;
+    const dodging = !!_rollSrc;
     let facing;
     /* ═══ v2.3.1837: A TURN IS A FACING, NOT JUST A POSE ═══
        Owner: "the character when idle faces whatever direction he last moved
@@ -9765,8 +9784,8 @@ export class EntityRenderer {
          x/y directly (BroTown.jsx), NOT through vx/vy, so the isMoving branch
          below would miss it and the tumble would play toward whatever the
          player happened to be facing when they swiped. */
-      const sector = Math.round(S._dodgeRoll.angle / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8]; facedAng = S._dodgeRoll.angle;
+      const sector = Math.round((_rollSrc.angle || 0) / (Math.PI / 4));
+      facing = SECTORS[((sector % 8) + 8) % 8]; facedAng = _rollSrc.angle || 0;
     } else if (bashPose) {
       /* v2.3.1735: the bash owns the body for its window, exactly as the
          dodge roll above does.  Placed ahead of the shield/aim branches so
@@ -10021,9 +10040,32 @@ export class EntityRenderer {
            actually used; DODGE_DURATION_MS covers the first frame before
            it has been published. */
         const fc = playerFrameCount('dodge', dir) || 9;
-        const dur = (S._dodgeRoll && S._dodgeRoll.durMs) || cycleMs('dodge', dir);
-        const t = (now - ((S._dodgeRoll && S._dodgeRoll.startTime) || now)) / dur;
-        frameIdx = Math.max(0, Math.min(fc - 1, Math.floor(t * fc)));
+        if (_dashRoll && !S._dodgeRoll) {
+          /* ═══ v2.3.2461: A DASH LOOPS WHERE A DODGE CLAMPS ═══
+             The clamp above is right for a dodge: one tumble, one window, and
+             freezing the last frame is how a roll settles.  A dash has no
+             fixed length -- it ends on ARRIVAL (v2.3.2260), anywhere from a
+             step to the ~869ms backstop -- so the same clamp would spend the
+             first ~300ms rolling and the rest of the travel frozen mid-tumble
+             on the final frame, which is the standing slide this change
+             exists to remove, wearing a different pose.
+             So it cycles for as long as the dash lasts, like the jog does:
+             the roll continues until the character reaches the monster, which
+             is the ask stated literally. */
+          frameIdx = Math.floor((now / cycleMs('dodge', dir)) * fc) % fc;
+        } else {
+          /* v2.3.1534: ONE-SHOT across the real roll window, clamped to the
+             last frame — never modulo, or the tumble would restart mid-roll.
+             durMs is published by the game loop (BroTown.jsx) because the
+             window is elastic: 250ms base + Endurance + the Reflexes T2 node,
+             up to ~500ms.  Recomputing that formula here would be a second
+             copy to drift out of sync, so the loop hands us the number it
+             actually used; DODGE_DURATION_MS covers the first frame before
+             it has been published. */
+          const dur = (S._dodgeRoll && S._dodgeRoll.durMs) || cycleMs('dodge', dir);
+          const t = (now - ((S._dodgeRoll && S._dodgeRoll.startTime) || now)) / dur;
+          frameIdx = Math.max(0, Math.min(fc - 1, Math.floor(t * fc)));
+        }
       }
       /* Kick off body-anchor + selected-hat asset loads early so they're
          ready by the time we place the headwear below. */
