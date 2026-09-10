@@ -67,6 +67,52 @@ const ops = (P) => P.page.evaluate(() => {
   return (b.tattoo && b.tattoo.o) || [];
 });
 
+/* ═══ v2.3.2455: DRAG A CELL TO A CELL ON THE EDITOR'S GRID ═══
+   The editor's canvas is one element and the grid is drawn inside it, so a
+   gesture is expressed in CELLS and converted here against the canvas's own
+   box.  Real pointer events (down/move/move/up) rather than a call into the
+   panel: the whole claim is that a finger can move and resize the design, and
+   a function call would pass on a build where the events never reach it.
+   Two moves, because the panel ignores a move that lands on the same cell as
+   the last one -- a single jump from the anchor would be dropped. */
+async function dragOnCanvas(P, fromCell, toCell) {
+  const ok = await P.page.evaluate(({ f, t }) => {
+    /* The editor draws on the FIGURE, not on a flat 16x16 grid (v2.3.2430
+       moved the last target onto the body), so a cell is not a fraction of the
+       canvas -- it is a cell of the region's grid as the composite currently
+       projects it.  BodyInk stamps that projection on the canvas as
+       __btInkAim exactly so a scenario does not have to guess it (v2.3.1965);
+       mp-bodyink aims the same way.  Pick the region this editor is writing to
+       -- the ops store keyed it `tattoo` -- rather than a fixed key, so the
+       drag lands on the grid the assertions read back. */
+    const cv = document.querySelector('.bt-bodyink-cv');
+    const aim = cv && cv.__btInkAim;
+    if (!cv || !aim) return false;
+    const a = Object.keys(aim).map((k) => aim[k]).find((v) => v && v.target === 'tattoo');
+    if (!a || !(a.gw > 0)) return false;
+    const r = cv.getBoundingClientRect();
+    /* box px -> client px: the canvas is drawn at device scale, so its own
+       pixels and its CSS box differ by exactly this ratio. */
+    const kx = r.width / cv.width, ky = r.height / cv.height;
+    const pt = (c) => ({
+      x: r.left + (a.gx0 + ((c[0] + 0.5) * a.gw) / 16) * kx,
+      y: r.top + (a.gy0 + ((c[1] + 0.5) * a.gh) / 16) * ky,
+    });
+    const p0 = pt(f), p1 = pt(t);
+    const mid = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
+    const ev = (type, p) => cv.dispatchEvent(new PointerEvent(type, {
+      bubbles: true, cancelable: true, composed: true,
+      pointerId: 7, pointerType: 'touch', isPrimary: true,
+      clientX: p.x, clientY: p.y, buttons: type === 'pointerup' ? 0 : 1 }));
+    /* Two moves: the panel drops a move that lands on the cell it already
+       handled, so one jump from the anchor would be ignored. */
+    ev('pointerdown', p0); ev('pointermove', mid); ev('pointermove', p1); ev('pointerup', p1);
+    return true;
+  }, { f: fromCell, t: toCell });
+  await P.page.waitForTimeout(500);
+  return ok;
+}
+
 /* The gate's guarantees, checked against the module the client bundles.  These
    need no browser -- they are what stops a pasted-in design shipping broken,
    and v2.3.2445 found the gate joining rows BEFORE validating them, which
@@ -182,13 +228,93 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const gone = await P.page.evaluate(() => document.querySelectorAll('.bt-modal-scrim').length);
   rec.ok(`${tag}: the window closes on the tap that applies`, gone === 1);
 
-  const colours = new Set([...target.art].filter((c) => c !== '0')).size;
+  /* ═══ v2.3.2455: ONE PIECE, HELD, NOT A PILE OF COLOURS ═══
+     This block asserted the OPPOSITE two versions ago -- one op per colour,
+     every one a freehand 'c' -- and it is rewritten rather than deleted for the
+     reason mp-aimpath gives about the bow's sight line: a test that once
+     claimed the reverse is the clearest record that a decision was made.
+     Owner: "after first placing the predesigns it's still selected (you can
+     move it around) and also resize it with the corner grab handle."  A design
+     split across N colour ops could not do either -- there was no single thing
+     to hold and no box shared between the pieces -- so it lands as one design
+     op that carries its own art and the box it is drawn into. */
   const o = await ops(P);
-  rec.ok(`${tag}: it lands as one piece per colour (${o.length} pieces for ${colours} colours), `
-    + `so Select has something to pick up -- a flat base would leave nothing`,
-    o.length === colours);
-  rec.ok(`${tag}: every piece is a freehand op, the kind a brush stroke already makes `
-    + `-- no new op kind reached the store`, o.every((x) => x.k === 'c'));
+  rec.ok(`${tag}: it lands as ONE op, not one per colour, so there is a single `
+    + `thing to hold`, o.length === 1, o);
+  rec.ok(`${tag}: ...and that op is a design carrying its own art and box`,
+    o.length === 1 && o[0].k === 'd' && o[0].art === target.art
+    && Array.isArray(o[0].a) && o[0].a.length === 4, o[0] || null);
+  rec.ok(`${tag}: ...covering the whole grid, which is where v2.3.2442 put it`,
+    o.length === 1 && o[0].a.join(',') === '0,0,15,15', o[0] || null);
+
+  /* ── 3a. IT IS STILL IN YOUR HAND: the handle, the move, the resize ── */
+  const held = await P.page.evaluate(() => {
+    const bar = document.querySelector('.bt-paint');
+    const txt = bar ? (bar.textContent || '') : '';
+    return { place: /Place/.test(txt), cancel: /Cancel/.test(txt),
+      lock: /Keep shape|Free size/.test(txt),
+      tool: !!document.querySelector('[aria-pressed="true"][title*="already drew"], [aria-pressed="true"][aria-label*="Select"]') };
+  });
+  rec.ok(`${tag}: the design is still SELECTED after it lands -- Place, Cancel and `
+    + `the ratio lock are all on screen, which is the shape vocabulary`,
+    held.place && held.cancel && held.lock, held);
+
+  /* Resize from the corner handle: drag it in, and the op's box must shrink
+     with it.  Driven through the same pointer events a finger sends, on the
+     canvas the editor is painting, so this exercises the real gesture rather
+     than calling a function the UI might not reach. */
+  const box0 = (await ops(P))[0].a.slice();
+  const resized = await dragOnCanvas(P, [15, 15], [9, 9]);
+  const box1 = (await ops(P))[0].a.slice();
+  rec.ok(`${tag}: the corner handle is draggable (guard)`, resized, { resized });
+  rec.ok(`${tag}: dragging the corner handle RESIZES the design `
+    + `(${box0.join(',')} -> ${box1.join(',')})`,
+    box1[2] < box0[2] && box1[3] < box0[3], { box0, box1 });
+
+  /* ...and dragging the design itself moves it, which is the other half of the
+     ask.  From inside the shrunk box to a cell down-right of it. */
+  const moved = await dragOnCanvas(P, [2, 2], [5, 4]);
+  const box2 = (await ops(P))[0].a.slice();
+  rec.ok(`${tag}: dragging the design MOVES it (${box1.join(',')} -> ${box2.join(',')})`,
+    moved && (box2[0] > box1[0] || box2[1] > box1[1])
+    && (box2[2] - box2[0]) === (box1[2] - box1[0])
+    && (box2[3] - box2[1]) === (box1[3] - box1[1]), { box1, box2 });
+
+  /* ── 3c. THE WHOLE PLACEMENT IS ONE ACTION ──
+     `bankPend` banks one history entry per SELECTION, not per adjustment, and
+     applyDesign hands the fresh selection the entry its own apply banked -- so
+     choosing a design, sizing it and sliding it about cost exactly one tap of
+     Undo between them.  That is the rule a hand-drawn shape already follows
+     (addOp banks the drawing, the adjustments ride along), applied to a design
+     rather than invented for it.  Measured: the design goes, not just the
+     move. */
+  const undoOnce = async () => {
+    await P.page.evaluate(() => {
+      const b = [...document.querySelectorAll('.bt-paint button')]
+        .find((x) => /^undo$/i.test((x.textContent || '').trim()));
+      if (b) b.click();
+    });
+    await P.page.waitForTimeout(700);
+  };
+  await undoOnce();
+  rec.ok(`${tag}: ONE tap of Undo takes the whole placement away -- the design, `
+    + `its resize and its move are one action`,
+    (await art(P)) === before && (await ops(P)).length === 0, await ops(P));
+
+  /* Put a fresh, unmoved copy back, so everything below measures the design as
+     the catalogue draws it rather than as this block left it. */
+  await openGallery(P);
+  await P.page.waitForTimeout(500);
+  await P.page.evaluate((name) => {
+    const s = [...document.querySelectorAll('.bt-modal-scrim')];
+    const g = s[s.length - 1];
+    const t = [...g.querySelectorAll('button')]
+      .find((b) => b.querySelector('canvas') && (b.textContent || '').trim() === name);
+    if (t) t.click();
+  }, target.name);
+  await P.page.waitForTimeout(900);
+  rec.ok(`${tag}: re-applying it puts the catalogue's own version back`,
+    (await art(P)) === target.art);
 
   /* ── 3b. re-applying the SAME design must bank nothing ──
      v2.3.2445: a pre-merge review found applyDesign always banked a history
@@ -218,8 +344,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(700);
   const undone = await art(P);
   rec.ok(`${tag}: ONE tap of Undo restores exactly what was there before, though the `
-    + `design added ${o.length} pieces AND was applied twice -- the second apply `
-    + `banked no dead history entry`, undone === before);
+    + `design was applied twice -- the second apply banked no dead history entry`,
+    undone === before);
 
   /* ── 5. it persists across a panel close and reopen ── */
   await P.page.evaluate(() => {

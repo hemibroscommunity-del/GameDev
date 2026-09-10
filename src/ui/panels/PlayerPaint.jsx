@@ -906,6 +906,17 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const pendRef = React.useRef(null);      /* {ratio, isNew, orig, hist} or null */
   const [lockRatio, setLockRatio] = React.useState(true);
   const dragHandleRef = React.useRef(false);
+  /* ═══ v2.3.2455: DRAGGING WHAT YOU ARE HOLDING MOVES IT ═══
+     Owner, of a placed design: "it's still selected (you can move it around)".
+     The select tool could pick a thing up and resize it from the corner, but
+     there was no gesture that moved it -- so a design that lands centred could
+     only ever be centred.  A drag with the select tool now carries whatever it
+     started on: {idx, from:[cx,cy], box} is where the finger went down and the
+     box as it was THEN, so the move is computed from the gesture's own origin
+     and cannot drift as it accumulates.  Every op with a box moves this way (a
+     shape, a letter, a design); a freehand stroke and a fill have no box and
+     keep the behaviour they had. */
+  const moveRef = React.useRef(null);
   const cvRef = React.useRef(null);
   const paintingRef = React.useRef(false);
   const lastRef = React.useRef('');
@@ -1093,7 +1104,14 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     if (!ops.length) { setShowDesigns(false); return; }
     const cur = docRef.current.id === id ? docRef.current : { id, ...getDoc(id) };
     pushHist(cur);
-    const nd = { id, base: emptyArt(), ops };
+    /* ═══ v2.3.2455: IT LANDS IN YOUR HAND, NOT ON THE FLOOR ═══
+       Owner: "after first placing the predesigns it's still selected (you can
+       move it around) and also resize it with the corner grab handle."
+       So it goes down as ONE design op covering the whole grid -- the same
+       picture as v2.3.2442's colour-per-op version, and `designOps` above is
+       still called first because its emptiness check is the guard that stops a
+       blank design replacing a real drawing. */
+    const nd = { id, base: emptyArt(), ops: [{ k: 'd', art: d.art, a: [0, 0, ART_W - 1, ART_H - 1] }] };
     /* v2.3.2445: the reset effect clears BOTH of these together, and for the
        same reason it does: each one holds an INDEX into the op list that is
        being replaced.  A stroke still under a finger when the design lands
@@ -1104,7 +1122,18 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     setLiveIdx(-1);
     docRef.current = nd;
     setDoc(nd);
-    setSel(-1);
+    /* Selected, with the same pend record a freshly dragged shape gets, so the
+       handle, the ratio lock and Place/Cancel all mean what they already mean.
+       `isNew` is true: Cancel on a design you just chose should take it away
+       again, not put a previous version of it back.
+       AND THE TOOL GOES TO SELECT.  The design is under your finger now, and
+       the select tool is the one whose drag moves what is held -- landing armed
+       with the pen would mean your first drag drew on the design instead of
+       moving it. */
+    pendRef.current = { isNew: true, orig: null, ratio: ART_W / ART_H,
+      hist: histRef.current[histRef.current.length - 1] };
+    setTool('select');
+    setSel(0);
     setBodyTick((t) => t + 1);
     setShowDesigns(false);
   };
@@ -1205,6 +1234,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        legacy form (no box) keeps the centre it has always had, so a drawing
        made before this version still picks up where it always did. */
     if (op.k === 't') return op.a ? [op.a[2], op.a[3]] : [op.x, op.y];
+    if (op.k === 'd') return [op.a[2], op.a[3]];   /* v2.3.2455 */
     return null;
   };
   /* ═══ v2.3.2427: HOW BIG A LETTER LANDS ═══
@@ -1229,7 +1259,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const selHandle = React.useMemo(() => handleCell(selOp), [selOp]);   /* v2.3.1994 */
   /* v2.3.2427: can the thing you are holding be RESIZED, as opposed to only
      moved or re-layered?  A shape always can; a letter can once it has a box. */
-  const selResizable = !!(selOp && (selOp.k === 's' || (selOp.k === 't' && selOp.a)));
+  const selResizable = !!(selOp && (selOp.k === 's' || selOp.k === 'd' || (selOp.k === 't' && selOp.a)));
   /* v2.3.2431: is the options row the ALPHABET right now?  True whenever the
      letter tool is chosen, held letter or not -- see the note on the row. */
   const onLetterStrip = tool === 'letter';
@@ -1545,7 +1575,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
         if (op.x === cx && op.y === cy) return d;
         return { ...d, ops: d.ops.map((o, k) => (k === i ? { ...o, x: cx, y: cy } : o)) };
       }
-      if (op.k !== 's' && op.k !== 't') return d;
+      if (op.k !== 's' && op.k !== 't' && op.k !== 'd') return d;   /* v2.3.2455: a design resizes like a shape */
       const x0 = op.a[0], y0 = op.a[1];
       let nx = cx, ny = cy;
       if (lockRatio && pend.ratio > 0) {
@@ -1563,6 +1593,34 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
       }
       if (op.a[2] === nx && op.a[3] === ny) return d;
       return { ...d, ops: d.ops.map((o, k) => (k === i ? { ...o, a: [x0, y0, nx, ny] } : o)) };
+    });
+  };
+
+  /* Move the held op's box by the gesture's delta, clamped so it cannot be
+     dragged off the grid -- a box that left the canvas would sample nothing and
+     the picture would vanish under the finger. */
+  const moveTo = (cx, cy) => {
+    const mv = moveRef.current;
+    const i = selRef.current;
+    if (!mv || i < 0) return;
+    bankPend();
+    setDoc((d) => {
+      const op = d.ops[i];
+      if (!op || !Array.isArray(op.a)) return d;
+      const b = mv.box;
+      const bx0 = Math.min(b[0], b[2]), bx1 = Math.max(b[0], b[2]);
+      const by0 = Math.min(b[1], b[3]), by1 = Math.max(b[1], b[3]);
+      const dx = Math.max(-bx0, Math.min(ART_W - 1 - bx1, cx - mv.from[0]));
+      const dy = Math.max(-by0, Math.min(ART_H - 1 - by1, cy - mv.from[1]));
+      const na = [b[0] + dx, b[1] + dy, b[2] + dx, b[3] + dy];
+      if (op.a[0] === na[0] && op.a[1] === na[1] && op.a[2] === na[2] && op.a[3] === na[3]) return d;
+      /* A letter keeps its legacy anchor in step with its box: x/y is what the
+         pre-v2.3.2427 form draws from, and leaving it behind would move the
+         outline without moving the glyph on an older drawing. */
+      const moved = op.k === 't'
+        ? { ...op, a: na, x: Math.min(na[0], na[2]), y: Math.min(na[1], na[3]) }
+        : { ...op, a: na };
+      return { ...d, ops: d.ops.map((o, k) => (k === i ? moved : o)) };
     });
   };
 
@@ -1587,7 +1645,32 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        the only way to say "never mind" without moving something. */
     if (tdef.drag === 'pick') {
       const c = cellAt(e, false);
-      selectOp(c ? hitTest(c[0], c[1]) : -1);
+      /* ═══ v2.3.2455: YOU GRAB WHAT YOU ARE HOLDING BY ITS BOX ═══
+         A design is mostly transparent -- that is what makes it a design and
+         not a rectangle -- so hit-testing its INK would mean the only way to
+         pick a skull up is to land on one of its lines.  Anything already held
+         is therefore grabbed anywhere inside its box, which is the rule every
+         editor uses and the one the selection outline already draws.  Nothing
+         held: the tap picks up whatever ink is under it, exactly as before. */
+      const cur = selRef.current;
+      const held = cur >= 0 ? docRef.current.ops[cur] : null;
+      const inHeld = !!(c && held && Array.isArray(held.a)
+        && c[0] >= Math.min(held.a[0], held.a[2]) && c[0] <= Math.max(held.a[0], held.a[2])
+        && c[1] >= Math.min(held.a[1], held.a[3]) && c[1] <= Math.max(held.a[1], held.a[3]));
+      const idx = inHeld ? cur : (c ? hitTest(c[0], c[1]) : -1);
+      if (!inHeld) selectOp(idx);
+      /* ...and a drag from there moves it.  Only ops with a box: a freehand
+         stroke stores the cells it finished with and a fill floods against the
+         grid beneath it, so neither has a rectangle that could be translated
+         without re-deriving the whole op. */
+      if (idx >= 0 && c) {
+        const op = docRef.current.ops[idx];
+        if (op && Array.isArray(op.a)) {
+          moveRef.current = { idx, from: c, box: op.a.slice() };
+          paintingRef.current = true;
+          lastRef.current = '';
+        }
+      }
       return;
     }
     /* Anywhere else means "done with that one". */
@@ -1651,6 +1734,17 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   };
   const move = (e) => {
     if (!paintingRef.current) return;
+    /* v2.3.2455: carrying something takes precedence over every drawing
+       gesture, exactly as the handle does -- the select tool paints nothing. */
+    if (moveRef.current) {
+      const c = cellAt(e, true);
+      if (!c) return;
+      const k = c[0] + ',' + c[1];
+      if (k === lastRef.current) return;
+      lastRef.current = k;
+      moveTo(c[0], c[1]);
+      return;
+    }
     if (dragHandleRef.current) {
       const c = cellAt(e, true);
       if (!c) return;
@@ -1682,6 +1776,16 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     /* v2.3.1994: the gesture is over, so the fast overlay the body surface
        paints ahead of the composite has nothing left to be ahead of. */
     setLiveIdx(-1);
+    /* v2.3.2455: still selected after a move, for the same reason a resize
+       leaves it selected -- you are usually placing, then nudging, then
+       sizing, and dropping the selection between those would cost a re-tap
+       each time. */
+    if (moveRef.current) {
+      moveRef.current = null;
+      paintingRef.current = false;
+      lastRef.current = '';
+      return;
+    }
     if (dragHandleRef.current) {
       /* Still selected — the whole point is that you can keep adjusting it. */
       dragHandleRef.current = false;
@@ -2034,10 +2138,10 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                   className="bt-paint-size bt-paint-size--on"
                   title="Finished with this one">
                   <span className="bt-paint-tool-label">
-                    {(selOp.k === 's' || selOp.k === 't') ? 'Place' : 'Done'}
+                    {(selOp.k === 's' || selOp.k === 't' || selOp.k === 'd') ? 'Place' : 'Done'}
                   </span>
                 </button>
-                {(selOp.k === 's' || selOp.k === 't') && (
+                {(selOp.k === 's' || selOp.k === 't' || selOp.k === 'd') && (   /* v2.3.2455 */
                   <button type="button" onClick={cancelPending} className="bt-paint-size"
                     title={(pendRef.current && pendRef.current.isNew)
                       ? 'Throw this one away' : 'Put it back the way you found it'}>

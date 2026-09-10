@@ -107,10 +107,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await page.waitForTimeout(900);
     /* Clicking a tile is not the same as wearing what it shows, and a scenario
        that assumes it would report on a bare chest while claiming a shirt. The
-       creator marks the pick with a painted badge; that badge is the proof. */
+       creator marks the pick on the TILE ITSELF; that mark is the proof.
+       v2.3.2455: it moved.  Until v2.3.2454 the pick carried a separate
+       cc-selected.webp badge as a child <img>, and this read that; the owner's
+       painted frames replaced it -- the picked tile is drawn with
+       cc-tile-on.png and the check is inside that art, so there is no element
+       to find any more.  The mark is now the tile's own background, which is
+       also the more honest thing to assert: it is what the player sees,
+       whereas the badge was one of two ways the selection was drawn. */
     const worn = await page.evaluate(() => {
       const t = [...document.querySelectorAll('.bt-cc-strip button')]
-        .find((x) => x.querySelector('img[src*="cc-selected"]'));
+        .find((x) => /cc-tile-on/.test(getComputedStyle(x).backgroundImage || ''));
       return t ? (t.getAttribute('title') || '?') : null;
     });
     rec.ok(`the character is actually WEARING a shirt now ("${worn}") -- without `
