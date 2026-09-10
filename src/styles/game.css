@@ -1602,7 +1602,12 @@ input{font-family:inherit}
   color:var(--ui-text-dim,#96A2A0);box-shadow:none;
 }
 .bt-cc-reset:active{transform:scale(.98);background:rgba(255,255,255,.09)}
-.bt-cc-actions>button{min-width:0;min-height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-family:'Source Sans 3',sans-serif;font-size:13px;font-weight:700;letter-spacing:.02em;padding:6px 8px}
+/* v2.3.2416: gap 6 -> 4 and side padding 8 -> 5, which is where the randomize
+   icon's extra 6px came from (28 -> 34, owner: "Icon too small").  Spent on the
+   picture rather than taken from the label: "Randomize Look" has to stay on one
+   line at this column width and mp-ccbuttons 3 fails if it does not -- v2.3.2036
+   shipped it wrapped once already. */
+.bt-cc-actions>button{min-width:0;min-height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-family:'Source Sans 3',sans-serif;font-size:13px;font-weight:700;letter-spacing:.02em;padding:6px 5px}
 /* v2.3.2151: the label never wraps, and the 4px of side padding + 2px of
    gap given back are what pays for the bigger type. Measured, not guessed:
    "Randomize Look" needs 115.1px at 15.2px, and the row had 113.2px of
@@ -1974,6 +1979,15 @@ input{font-family:inherit}
 .bt-cc-login:focus-visible,
 .bt-cc-play:focus-visible,
 .bt-cc-tab:focus-visible,
+/* v2.3.2414: the ink card's picture and its inline tools join the list.  A
+   pre-existing gap rather than a regression -- .bt-cc-draw was never in here
+   either, so the way in to the designer has always fallen back to the UA's own
+   thin orange outline while every other control on this screen wore the brass
+   one.  Cheap to close while rebuilding the control. */
+.bt-cc-ink-pane:focus-visible,
+.bt-cc-ink-chip:focus-visible,
+.bt-cc-ink-width:focus-visible,
+.bt-cc-ink-pats>button:focus-visible,
 .bt-cc-subtab:focus-visible{outline:2px solid var(--ui-brass-highlight);outline-offset:2px}
 /* v2.3.718: name input on the owner's parchment scroll (3-slice border-
    image: rolled end caps stay fixed, the parchment middle stretches).
@@ -2087,7 +2101,14 @@ input{font-family:inherit}
    floor still lives inline in NameModal.jsx (iOS zoom gate, v2.3.710). */
 /* v2.3.1272: 38 → 44px (touch-comfort floor); the 16px font stays (iOS
    zoom gate, v2.3.710). */
-.bt-cc-name{background:linear-gradient(180deg,#132329,#111E23);border:1px solid var(--ui-line);border-radius:10px;box-shadow:inset 0 2px 5px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.025);color:var(--ui-text);height:44px;font-family:'Source Sans 3',sans-serif;
+/* v2.3.2416: the field grows to fill its plate.  Owner: "Make name larger to
+   fill the space."  44px tall with 16px text was sized for the v2.3.1524
+   full-width well; in this column, under a gold plate and above a 48px button,
+   it read as the smallest thing in the cluster when it is the most important.
+   56/20 makes it the tallest control there, which is the right order.
+   The 16px floor the note below defends is a FLOOR -- going up cannot bring
+   back the iOS focus-zoom it exists to prevent. */
+.bt-cc-name{background:linear-gradient(180deg,#132329,#111E23);border:1px solid var(--ui-line);border-radius:10px;box-shadow:inset 0 2px 5px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.025);color:var(--ui-text);height:56px;font-size:20px;font-weight:700;font-family:'Source Sans 3',sans-serif;
   /* v2.3.1524: left-aligned with room for the dice on the right. Centred text
      with symmetric 42px padding fitted the old full-width well; in a column a
      third that wide it ran straight under the dice. The 16px floor stays —
@@ -2302,7 +2323,21 @@ input{font-family:inherit}
      twice.  .14 of the widened plate is 27.1px, within half a pixel of the
      27.5px candidate D reserved, so the rule keeps its distance from the name
      block above and gives its own extra height to the buttons below. */
-  padding-top:calc(var(--cc-plate)*.14);
+  /* v2.3.2416: .14 -> .10.  Owner: "panel behind name too much space between
+     name and randomize."  Measured, that gap was 27.1px against the 8px
+     between Randomize and Reset -- more than three times its neighbour, which
+     is what read as a hole rather than as spacing.
+     It is NOT slack: it is the slot the name-validation line and the ENTER
+     refusal reasons appear in (v2.3.2388), out of flow at top:100% of the name
+     wrap, so deleting it would drop those messages onto the buttons.  What it
+     was, was oversized -- the message is 11px text needing about 13px of line,
+     and .10 gives it 19.4px at 390 with room to centre in.  Paired with the
+     taller name field below, the cluster reads as three controls rather than
+     two with a gap in the middle.
+     THE TWO .10s MUST MATCH: this padding reserves the slot and the message's
+     own height fills it.  Changing one alone either strands the text or
+     reopens the hole. */
+  padding-top:calc(var(--cc-plate)*.10);
 }
 /* ═══ v2.3.2378: THE VALIDATION LINE BORROWS THE DIVIDER'S SLOT ═══
    It used to be a 15px row of its own between the name field and the rail,
@@ -2339,7 +2374,7 @@ input{font-family:inherit}
   /* the same fraction .bt-cc-actions reserves above, so the message is
      centred in that slot rather than in a box of its own.  (It was the
      divider rail's slot until v2.3.2388; the reservation outlived the rail.) */
-  height:calc(var(--cc-plate)*.14);
+  height:calc(var(--cc-plate)*.10);   /* v2.3.2416: pairs with .bt-cc-actions' padding-top -- keep them equal */
   display:flex;align-items:center;justify-content:center;
   font-size:11px;font-family:'Source Sans 3',sans-serif;text-align:center;
   pointer-events:none;
@@ -2527,9 +2562,10 @@ input{font-family:inherit}
 .bt-cc-tab--on{background:var(--ui-brass-soft);color:var(--ui-text);border-color:var(--ui-brass);box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 2px 6px rgba(5,8,10,.26)}
 /* ═══ v2.3.2358: the picker's category tiles, in the title screen's gold ═══
    SCOPED TO .bt-cc-panel ON PURPOSE.  The same .bt-cc-tab class dresses the
-   tattoo/shoe DRAWING screen (.bt-cc-draw), which is not part of this ask and
-   keeps the slate treatment above -- restyling the bare class would have taken
-   it too.  Everything below is one specificity step up, so the rules above
+   DRAWING panel's own mode strip (PlayerPaint's .bt-paint-tabs) and the label
+   inside the ink card (.bt-cc-ink .bt-cc-tab-label, v2.3.2414 -- v2.3.1946's
+   .bt-cc-draw before it), neither of which is part of this ask; both keep the
+   slate treatment above, and restyling the bare class would have taken them.  Everything below is one specificity step up, so the rules above
    stay the base and the short-viewport media queries further down still win.
 
    Resting tiles carry a dim gold rim, which the in-game spec forbids
@@ -2552,38 +2588,213 @@ input{font-family:inherit}
    large with a pencil icon next to it."
 
    NOT a second gold button, and that is deliberate.  v2.3.1251 made ENTER BRO
-   TOWN "the screen's ONE dominant gold action" against an approved mockup, and
-   the Lantern Slate do-not-drift list forbids new accents -- so a filled-brass
-   face here would either compete with the screen's real primary or invent a
-   colour.  This uses the brass-soft emphasis already defined one line above
-   (the selected-tab recipe), which is the strongest treatment the system has
-   short of the gold face, plus size: 54px against the 38px it replaces, well
-   over the spec's 44px minimum, with the label at the tab-label size rather
-   than shrunk to fit.
-   Press is the spec's 90ms / scale .98. */
-.bt-cc-draw{
-  width:100%;min-height:54px;margin-top:8px;
-  display:flex;align-items:center;justify-content:center;gap:9px;
+   TOWN "the screen's ONE dominant gold action" against an approved mockup -- so
+   a filled-brass face here would compete with the screen's real primary.  This
+   uses the brass-soft emphasis (the selected-tab recipe), which is the
+   strongest treatment short of the gold face.
+   Press is the spec's 90ms / scale .98.
+
+   ═══ v2.3.2414: AND IT IS A CARD NOW, NOT A BUTTON ═══
+   Owner: "I'd rather make the tattoo editor simplified, just a preview of the
+   body you'd be editing right there in the panel.  I don't really want a button
+   to launch the editor anymore.  Every time somebody playtests the game they
+   always never notice it."
+
+   v2.3.1946 made the button impossible to misread and it did not help, because
+   the problem was never its face -- it was its ADDRESS.  Measured at 390x844
+   on Skin: swatch grid ends 501.9, then 100.5px of ghosted colour block, then
+   the button at 624.4, then 147.6px of empty panel.  248.1px of dead height
+   with the control marooned in the middle of it, which is the one place an eye
+   scanning a column does not stop.
+
+   So the button becomes the FOOTER of a card that fills that dead height with
+   the player's own body, wearing the drawing they already have, hard up under
+   the grid.  Everything v2.3.1946 established is kept and simply applied to a
+   bigger box -- the brass rim, the brass-soft face, the 90ms/.98 press, the
+   painted icon at 34px, the label at 15px.  The rules below are that block
+   with `width/min-height` traded for a flex box and a footer.
+
+   NO NEW ACCENT AND NO SECOND GOLD ACTION: the card's face is the same
+   --ui-brass-soft over the same 1px --ui-brass it always was.  (The creator is
+   outside the Lantern Slate lock by owner directive -- see the Scope note in
+   docs/LANTERN-SLATE-SPEC.md, v2.3.2359 -- so a brass rim here is the title
+   flow's own vocabulary, not a drift inward.)
+
+   WHY flex:1 1 auto BETWEEN A FLOOR AND A CEILING.  The panel's spare height
+   varies enormously by tab and by phone: at 390x844 Skin has 248.1px going
+   begging and at 390x664 it has 164.5px, while Shoes has 361.5/199.5 and Shirt
+   -- whose colour block is REAL, not a ghost -- has 398.6/236.6.  A fixed
+   height would either waste the tall case or overflow the short one.  The floor
+   is 170px: the tool block wants about 110 of that (three palette rows, a
+   width row and its padding) and below roughly 60px of picture the body stops
+   being a picture of anyone.  The ceiling is 290px, which is where the card
+   stops growing on a tall phone -- past it the card starts to look like the
+   point of the screen, and the character on the pedestal is the point of the
+   screen.  Both numbers went UP at v2.3.2415, when the sentence in the footer
+   became the palette: a label costs 44px and a tool row costs more. */
+.bt-cc-ink{
+  /* flex-basis:0, NOT auto, and this is the line that decides how the card and
+     the option strip share a short phone.  With `auto` the card's basis is its
+     own content -- the tool row -- so on a deficit the two shrink in
+     proportion to their bases and the STRIP pays most of it: measured at
+     390x664 on Pants, an `auto` basis took the strip from 281.4 to 253.8 and
+     started hiding 27px of the catalogue that had been fully visible before
+     this change.  With basis 0 the card contributes nothing to the sum, so it
+     is sized purely by what is LEFT after the strip has its content, floored at
+     min-height and capped at max-height.  The picture takes the spare room; it
+     does not take the catalogue's. */
+  width:100%;flex:1 1 0;min-width:0;overflow:hidden;
+  /* min-height is the SHRINK FLOOR here, not a starting size: a flex item's
+     default min-height:auto would let this box refuse to shrink below its
+     content. */
+  min-height:170px;max-height:290px;margin-top:8px;
+  display:flex;flex-direction:column;padding:0;text-align:left;
   background:var(--ui-brass-soft);border:1px solid var(--ui-brass);
-  color:var(--ui-text);border-radius:11px;cursor:pointer;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 2px 8px rgba(5,8,10,.30);
-  transition:transform 90ms cubic-bezier(.2,.8,.2,1),background 90ms cubic-bezier(.2,.8,.2,1);
+  color:var(--ui-text);border-radius:11px;
 }
-.bt-cc-draw:active{transform:scale(.98);background:rgba(216,170,88,.24)}
-.bt-cc-draw .bt-cc-draw-icon{flex:0 0 auto;color:var(--ui-brass);display:block}
-.bt-cc-draw .bt-cc-tab-label{font-size:15px;letter-spacing:.01em}
+/* v2.3.2415: the card is a CONTAINER now, not one button -- it holds the
+   palette's buttons, and a button inside a button is markup browsers un-nest
+   unpredictably.  So the press lives on the picture, and pressing a colour
+   chip must not shrink the whole card under the finger. */
+.bt-cc-ink-pane:active{transform:scale(.99)}
+/* The picture. A ground darker than the panel so a pale skin tone still has an
+   edge -- lifted verbatim from .bt-paint-pv, which is the same pane doing the
+   same job inside the editor. */
+/* min-height 60, not 0: this is the one child that must never be squeezed to
+   nothing, because a card with no picture in it is just a palette. */
+.bt-cc-ink-pane{
+  position:relative;flex:1 1 auto;min-height:60px;display:block;overflow:hidden;
+  padding:0;border:0;width:100%;cursor:pointer;
+  background:radial-gradient(ellipse at 50% 76%,#2c3b45 0%,#151f27 72%);
+  transition:transform 90ms cubic-bezier(.2,.8,.2,1);
+}
+/* NOT .bt-paint-pv: that class hard-codes aspect-ratio:1/1 and this box is
+   whatever height the flex above leaves it.  WornPreview's blit() derives its
+   camera window from the box's own cssW/cssH, so a non-square box needs no
+   code -- only a class that does not force one. */
+.bt-cc-ink-pv{display:block;width:100%;height:100%;image-rendering:pixelated}
+/* ── the empty state ──
+   A blank chest in a frame reads as a picture of a chest, which is the exact
+   failure this whole change exists to fix.  A PLUS, centred on the picture
+   where the eye already is, until there is a single inked cell anywhere on
+   this target's canvases -- after which the picture says it itself.
+   A glyph rather than the "Nothing here yet" chip this shipped with for an
+   afternoon: a status line is something a player reads, agrees with, and moves
+   on from.  The plus is an invitation, and it means "add" in every app a
+   player has already used.
+   pointer-events:none: the picture behind it is the button. */
+/* v2.3.2415: the painted icon that used to sit in the label bar, as a badge.
+   28px, not the bar's 34: it is over the picture now rather than beside a
+   sentence, so it has to read as a mark on the pane and not as a sticker.
+   Still comfortably above the 26 the owner asked it to grow from (v2.3.2035).
+   Bottom-left so it never lands on the face, which is one of the two things
+   this pane exists to show. */
+.bt-cc-ink-badge{
+  position:absolute;left:6px;bottom:6px;width:28px;height:28px;
+  object-fit:contain;pointer-events:none;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.65));
+}
+.bt-cc-ink-empty{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  pointer-events:none;
+  font:400 44px/1 'Source Sans 3',sans-serif;
+  color:rgba(238,242,235,.44);text-shadow:0 1px 3px rgba(0,0,0,.55);
+}
+/* ═══ v2.3.2415: THE TOOLS, WHERE THE LABEL WAS ═══
+   Owner: "Instead of using space for 'tattoo your body or face' I'd rather you
+   just have the tools for tattooing right there beneath the character."
+
+   So the footer that carried the old button's sentence is the real palette
+   instead.  It is the LIGHT plate, and that follows the picker's own rule
+   rather than inventing one: on this screen gold is the WALLPAPER -- the panel
+   rim, every resting tab rim, the selected tab, the check coin on a chosen
+   swatch, the name frame and ENTER BRO TOWN are all gold -- so a brass band is
+   the one fill here that cannot stand out.  What is scarce is LIGHT, and both
+   controls the player has already tapped by the time they reach this card wear
+   this exact gradient: the option tiles (_apTileStyle, BroTown.jsx) and the
+   Default button (.bt-cc-defcolor above).  The half of the card that is a
+   CONTROL takes the shape the eye has been hitting for the last thirty
+   seconds; the half that is ART keeps the dark well pixel art needs.
+   (Not the light-and-airy palette returning: that lock is IN-GAME --
+   docs/LANTERN-SLATE-SPEC.md, Scope, v2.3.2359 -- and this gradient already
+   ships twice on this screen.) */
+.bt-cc-ink-tools{
+  flex:0 0 auto;display:flex;flex-direction:column;gap:5px;
+  padding:6px 5px;min-width:0;
+  background:linear-gradient(180deg,#F4F5F8,#CDD2DC);
+  border-top:1px solid rgba(20,30,34,.38);
+}
+/* ── the ink palette ──
+   auto-fill rather than a fixed column count: the chip is a fixed 22px and the
+   grid decides how many fit, which is the rule .bt-cc-strip and
+   .bt-cc-colors-row already follow in this panel (v2.3.1524).  At 390 wide
+   that lands 6 per row, so ART_PALETTE's sixteen entries make three.
+   22px is smaller than the editor's own ~38px swatch and that is a deliberate
+   trade: at this width a finger-sized palette would leave no picture, and a
+   mis-tap here still opens the editor -- where the same colour is available at
+   full size.  Past the cap it scrolls, with the same overscroll and pan-y
+   rules its two sibling scrollers carry, so a flick cannot drag the creator. */
+.bt-cc-ink-pal{
+  display:grid;grid-template-columns:repeat(auto-fill,22px);grid-auto-rows:22px;
+  gap:5px;justify-content:center;align-content:start;
+  max-height:calc(22px*3 + 10px);min-height:0;
+  overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;touch-action:pan-y;scrollbar-width:none;
+}
+.bt-cc-ink-pal::-webkit-scrollbar{display:none}
+.bt-cc-ink-chip{
+  width:22px;height:22px;border-radius:6px;padding:0;cursor:pointer;
+  border:1px solid rgba(0,0,0,.42);box-sizing:border-box;
+  transition:transform 90ms cubic-bezier(.2,.8,.2,1);
+}
+.bt-cc-ink-chip:active{transform:scale(.9)}
+/* Selection is the brass ring a chosen swatch wears everywhere else on this
+   screen, drawn with box-shadow so the chip's box does not change size and
+   reflow the grid under the finger (the same reason .bt-cc-defcolor--on uses
+   a shadow rather than a fatter border). */
+.bt-cc-ink-chip--on{border-color:var(--ui-brass);box-shadow:0 0 0 2px var(--ui-brass)}
+/* The eraser reads as a hole, not as a colour -- the same checker the editor
+   draws it with, because the same control must look like the same control in
+   both places or the shared store is a lie. */
+.bt-cc-ink-chip--erase{
+  background-color:transparent;
+  background-image:linear-gradient(45deg,#3a4650 25%,transparent 25%,transparent 75%,#3a4650 75%);
+  background-size:10px 10px;
+}
+/* ── the three brush widths ──
+   A dot at its true relative size, which is what the editor shows; no words,
+   because at this width a word would be the whole row. */
+.bt-cc-ink-widths{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;min-width:0}
+.bt-cc-ink-width{
+  min-height:26px;display:flex;align-items:center;justify-content:center;
+  border-radius:7px;cursor:pointer;padding:0;
+  background:rgba(20,30,34,.10);border:1px solid rgba(20,30,34,.30);
+  transition:transform 90ms cubic-bezier(.2,.8,.2,1);
+}
+.bt-cc-ink-width:active{transform:scale(.96)}
+.bt-cc-ink-width--on{border-color:var(--ui-brass);box-shadow:0 0 0 2px var(--ui-brass);background:rgba(216,170,88,.18)}
+.bt-cc-ink-dot{display:block;border-radius:50%;background:#1E2C33}
+/* ── shoes: the pattern tiles instead ──
+   Five across (plain, plus the four that survive eight pixels of boot), sized
+   off the column rather than fixed, which is how the editor sizes them too. */
+.bt-cc-ink-pats{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;min-width:0}
+.bt-cc-ink-pats>button{min-width:0}
 /* The sheet is height-constrained on the PRIMARY platform (iPhone landscape,
-   390px tall), and the extra 16px comes straight off the option strip above:
-   measured at 844x390, the strip goes 59px -> 43px against a 66px tile, so a
-   taller button means seeing less of the thing you are choosing.  On short
-   viewports it drops to the spec's 44px minimum and gives that room back --
-   what makes it noticeable is mostly the brass face, the border and the
-   pencil, none of which cost height. */
-@media (max-height:460px){
-  .bt-cc-draw{min-height:44px;margin-top:6px}
+   390px tall).  v2.3.1946 gave the button back 10px there; the card gives back
+   its ceiling, which is the only dimension that matters when the whole panel
+   is 300-odd pixels tall.  The floor drops to 88 -- a 38px footer plus 50px of
+   body -- because at that height the alternative is the option strip losing
+   rows to a picture. */
+/* Short viewports: the palette gives up its third row before the picture gives
+   up any more of itself.  Two rows still shows twelve of the sixteen colours
+   and the rest are one flick away; five pixels of body is not recoverable. */
+@media (max-height:760px){
+  .bt-cc-ink{min-height:148px}
+  .bt-cc-ink-pal{max-height:calc(22px*2 + 5px)}
 }
-@media (max-width:360px){
-  .bt-cc-draw .bt-cc-tab-label{font-size:14px}
+@media (max-height:460px){
+  .bt-cc-ink{min-height:132px;max-height:210px;margin-top:6px}
+  .bt-cc-ink-empty{font-size:32px}
 }
 
 /* ═══ v2.3.1947: THE DESIGNER'S PANES ═══
@@ -2603,6 +2814,49 @@ input{font-family:inherit}
    tall the row is. */
 .bt-paint{
   --paint-size:min(52vw,52vh,288px);
+  /* ═══ v2.3.2414: THE PANEL DECLARES WHAT IT ALLOWS, LIKE ITS SIBLINGS ═══
+     PlayerPaint gives this box `maxHeight:96vh; overflow:auto` inline, so it IS
+     a scroll container, and at 390x664 it needs to be: measured, its content is
+     728px in a 635px client box, with DONE below the fold.  It sits inside
+     .bt-name-modal, which is `touch-action:none`, and it was the only scroller
+     in that modal with no touch-action of its own -- .bt-cc-strip and
+     .bt-cc-colors-row both carry `pan-y`, under the policy stated on the modal's
+     own rule (v2.3.738, above): "the rail and sheet re-allow pan-y; everything
+     else is taps."
+
+     BE PRECISE ABOUT WHAT THIS IS AND IS NOT.  It is NOT a fix for a reproduced
+     bug.  The tempting inference -- ancestor `touch-action:none` stops a finger
+     panning a descendant scroller -- is FALSE, and was measured false here
+     before this line was written: a real touch drag takes this panel's
+     scrollTop from 0 to 102 of 103 with .bt-name-modal, body and html all
+     `touch-action:none`, because the intersection walk for a pan stops at the
+     scroll container that will perform it.  That is docs/TRAPS.md 68.  This
+     sandbox has no WebKit build, so whether iOS Safari agrees cannot be settled
+     here either way.
+
+     What the line is for, then, stated plainly:
+       - it writes the modal's policy down on the last box that was relying on
+         an unstated default, so the next reader does not have to re-derive it;
+       - `pan-y` (not `auto`) tells the compositor at touch-start that this
+         gesture can only scroll, so a drag does not wait on the pointer
+         handlers this panel is covered in;
+       - it costs no gesture that is not already gone: pinch-zoom's default
+         action belongs to the viewport, so its walk reaches `html,body
+         {touch-action:none}` (game.css above) and was excluded long before
+         this.
+     And it makes the real footgun impossible to reach by accident: `none` here
+     is the one value that WOULD strand Done, and PlayerPaint's header comment
+     ("touch-action is none so a drawing stroke never scrolls the page") is
+     about the CANVAS, which sets it inline -- a reader who applied it to the
+     panel would ship exactly that.
+
+     overscroll-behavior:contain is the concrete half, and matches both
+     siblings: without it a drag past either end chains outward into
+     .bt-name-modal, which is `overflow:hidden;overflow:clip` -- and on iOS 14,
+     where `clip` is dropped, `hidden` still leaves a scroll container that can
+     be shoved with no finger able to drag it back.  That is docs/TRAPS.md 64,
+     which is a bug this repo has already had once. */
+  touch-action:pan-y;overscroll-behavior:contain;
   padding:14px;gap:10px;
   display:grid;align-items:start;justify-content:start;
   grid-template-columns:auto auto;
@@ -2612,7 +2866,38 @@ input{font-family:inherit}
     "note main"
     "ctl  ctl";
 }
-.bt-paint-tabs{grid-area:tabs}
+/* v2.3.2414: the tabs and the front/back switch, as one cell.  See the note in
+   PlayerPaint.jsx: the switch had no grid-area at all, so it auto-placed into
+   an implicit row BELOW everything -- offsetTop 708 in a 738px content box at
+   390x664, under the Done button and off the panel's fold.  `gap` rather than a
+   margin on the switch, so the space exists only when both children do. */
+.bt-paint-head{grid-area:tabs;display:flex;flex-direction:column;gap:6px;min-width:0}
+/* v2.3.2416: the screen's name.  Owner: "Once in the editors find room to make
+   a title label somewhere so users know what editor they're in."
+   Sized and coloured off .bt-cc-panel-title's family rather than inventing a
+   heading style.  No margin -- .bt-paint-head's own gap spaces it, so it costs
+   exactly its text height and nothing else on a panel that is already tight at
+   390x664.  (v2.3.2416 also made it deliberately quiet; v2.3.2422 undid that
+   half on the owner's word -- see below.) */
+/* v2.3.2422: CENTRED, AND AS BOLD AS THIS FAMILY GOES.  Owner: "Center and
+   bold the 'TATTOOS' label."  Centred over the head cell, which is the tabs'
+   own width, so it caps the strip it names instead of hanging off its left
+   edge.
+   Bold is the half worth writing down, because the obvious move does nothing:
+   Source Sans 3 is loaded at 400/600/700 ONLY (src/index.html), so the 800 that
+   was already here resolves to the 700 face and 900 would resolve to the same
+   one -- raising the number is a no-op you can stare at for a while.  What
+   makes it read bolder is size and contrast: 13 -> 15px, and the primary text
+   colour instead of the secondary, which is what "deliberately quiet" below had
+   been costing it.  Still one line in an existing cell, so it still costs only
+   its own text height on a panel that is tight at 390x664. */
+.bt-paint-title{
+  margin:0;padding:0 2px;flex:0 0 auto;
+  font:800 15px/1.2 'Source Sans 3',sans-serif;
+  letter-spacing:.08em;text-transform:uppercase;text-align:center;
+  color:var(--ui-text);
+}
+.bt-paint-tabs{min-width:0}
 .bt-paint-side{grid-area:side;width:calc(var(--paint-size) * .62)}
 .bt-paint-note{grid-area:note;width:calc(var(--paint-size) * .62);
   font-size:11px;line-height:1.3;opacity:.78}
@@ -2710,29 +2995,9 @@ input{font-family:inherit}
 
 /* v2.3.1950: the saved-design row.  Three thumbnails and an arming button, on
    one line, sized so a slot stays a comfortable target on a phone. */
-.bt-paint-slots{display:flex;gap:6px;align-items:stretch}
-.bt-paint-slot{
-  flex:0 0 auto;width:46px;min-height:46px;padding:3px;position:relative;
-  border-radius:8px;cursor:pointer;line-height:0;
-  background:rgba(229,237,233,.06);border:1px solid rgba(229,237,233,.20);
-  transition:transform 90ms cubic-bezier(.2,.8,.2,1);
-}
-.bt-paint-slot:active{transform:scale(.97)}
-.bt-paint-slot--on{border-color:var(--ui-brass);background:var(--ui-brass-soft)}
-.bt-paint-slot canvas{
-  width:100%;aspect-ratio:1/1;display:block;image-rendering:pixelated;border-radius:5px;
-}
-/* the "nothing here yet" mark, over the empty checker */
-.bt-paint-slot-plus{
-  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  font-size:20px;line-height:1;color:rgba(229,237,233,.45);pointer-events:none;
-}
-.bt-paint-save{
-  flex:1 1 auto;min-height:46px;border-radius:8px;cursor:pointer;
-  background:rgba(229,237,233,.06);border:1px solid rgba(229,237,233,.20);
-  color:var(--ui-text);font-size:13px;
-}
-.bt-paint-save--on{background:var(--ui-brass-soft);border-color:var(--ui-brass)}
+/* v2.3.2416: .bt-paint-slots / -slot / -slot-plus / -save retired with the
+   design-slot feature (owner: the word Save meant two different things on
+   this screen).  See the note in PlayerPaint.jsx. */
 /* v2.3.1951: the pending-shape controls borrow the brush-size chip so the row
    keeps its height and the panel below it never jumps. */
 .bt-paint-shapeops .bt-paint-size{padding:4px 3px}
@@ -2889,6 +3154,27 @@ input{font-family:inherit}
    pad that grew with them would take the room back off the tiles every time
    you changed category. Anything past two rows scrolls within the pad. */
 .bt-cc-colors{flex:0 0 auto;display:flex;flex-direction:column;min-width:0}
+/* ═══ v2.3.2414: THE GHOST BAND GIVES ITS ROOM TO THE INK CARD ═══
+   `--yield` is set (NameModal) only where this block is a GHOST *and* the ink
+   card below is live -- which is Skin, Pants and Shoes, the three tabs whose
+   `colors` is null unconditionally (their swatch row IS their option strip).
+   On those three the band is 100.5px of `visibility:hidden` nothing, always,
+   whatever you pick; the card is what needs the height.
+
+   Reserving it was v2.3.1252's constant-sheet-height rule, which existed so
+   the flex STAGE could not resize the character.  The v2.3.1524 two-column
+   split retired that in practice -- the stage is a SIBLING of this panel now
+   (.bt-cc-col-left), and measures 172px at 390x844 and 120px at 390x664 on
+   every one of the nine tabs while the control below this block already ranged
+   397.6 -> 770 in y across them.  Nothing inside .bt-cc-panel can move the
+   character any more, which is what makes this safe.
+
+   display:none rather than a zero height: this block is `visibility:hidden`
+   already, so nothing painted is being taken away, and a 0px box holding a
+   min-height:75px row is a clip waiting to be got wrong.
+   Shirt is deliberately NOT in this set -- with a shirt on, that block holds
+   twelve real swatches. */
+.bt-cc-colors--yield{display:none}
 /* v2.3.2035: the DEFAULT colour button, above the swatches.  Fixed height so
    the row cannot vary with font metrics -- the constant-sheet-height
    guarantee (v2.3.1252) is the reason every row in this drawer is pinned, and

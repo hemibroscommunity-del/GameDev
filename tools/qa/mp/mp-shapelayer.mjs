@@ -33,7 +33,11 @@
  */
 import * as H from './harness.mjs';
 
-const ART_KEY = 'bt-pantsart';   /* v2.3.1978: the pants grid — see openGrid */
+const ART_KEY = 'bt-shirtart';   /* v2.3.2416: the shirt FRONT grid — see openGrid */
+/* The canvas id the op list is filed under inside the bt-artops blob.  Not the
+   same string as the storage key and easy to miss: playerArt maps the canvas
+   `shirtFront` to the key `bt-shirtart`, and artOps files ops by the CANVAS. */
+const DOC_ID = 'shirtFront';
 const OPS_KEY = 'bt-artops';
 const KEYS = [ART_KEY, 'bt-facetattoo', 'bt-armtattoo', OPS_KEY, 'bt-artslots'];
 
@@ -63,24 +67,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const created = await page.$('[data-tut="login-create"]');
     if (created) await created.click();
     await page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
-    /* v2.3.1978: THE PANTS DESIGNER, NOT THE SKIN ONE.
-       Owner: "For the tattoos just do two options: body and face."  Both of
-       those are now the draw-on-your-character surface, so the skin designer
-       has no flat 16x16 grid any more and therefore no shape tools — this
-       scenario used to reach them through the skin tab's second tab, which is
-       the Face screen now.  The shape tools, the hand/select tool and the layer
-       controls all still exist; they live on the garment designers, which are
-       still a grid.  Pants rather than the shirt because the shirt's Design
-       button is dead until a shirt is actually worn (NameModal's _PAINT_FROM_TAB),
-       and this scenario is about shapes, not about getting dressed first. */
+    /* v2.3.1978: NOT THE SKIN DESIGNER.  Owner: "For the tattoos just do two
+       options: body and face."  Both of those are the draw-on-your-character
+       surface, so the skin designer has no flat 16x16 grid and therefore no
+       shape tools — this scenario used to reach them through the skin tab.  The
+       shape tools, the hand/select tool and the layer controls all still exist;
+       they live on the garment designers, which are still a grid.
+
+       v2.3.1978 picked PANTS over the shirt for one reason: "the shirt's Design
+       button is dead until a shirt is actually worn, and this scenario is about
+       shapes, not about getting dressed first."  Both halves of that changed in
+       v2.3.2416.  Pants moved ONTO the character (owner: "On pants editor show
+       the actual pants where you drawing"), so it has no flat grid left either;
+       and the shirt's card is live with nothing worn (owner: "Add shirt editor
+       under shirt"), so the reason to avoid it is gone.  Shirt is now the only
+       flat-grid designer, and it needs no dressing first — which is exactly the
+       property v2.3.1978 wanted. */
     /* v2.3.2078: `[data-cc-tab]` has never existed in src/ — see mp-bodyink. */
-    const tab = await page.$('button:has-text("Pants")');
+    const tab = await page.$('button:has-text("Shirt")');
     if (!tab) return false;
     await tab.click();
     await page.waitForTimeout(300);
-    await page.click('button.bt-cc-draw');
+    await page.click('button.bt-cc-ink-pane');   /* v2.3.2414: the Design button is the ink CARD now */
     await page.waitForSelector('.bt-paint-tabs', { timeout: 20000 });
-    /* pants open on the PATTERN screen; the drawing grid is the second tab */
+    /* the shirt opens on PATTERN; its modes are pattern / front / back, so the
+       front drawing grid is the second tab -- the same position pants used. */
     await page.click('.bt-paint-tabs button:nth-child(2)');
     await page.waitForSelector('canvas.bt-paint-grid', { timeout: 20000 });
     await page.waitForTimeout(400);
@@ -268,7 +279,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     try { return localStorage.getItem(k) || ''; } catch (e) { return ''; }
   }, OPS_KEY);
   let ops = null;
-  try { ops = JSON.parse(stored).pants; } catch (e) { ops = null; }   /* v2.3.1978 */
+  try { ops = JSON.parse(stored)[DOC_ID]; } catch (e) { ops = null; }   /* v2.3.2416 */
   rec.ok('the op list is stored beside the drawing, not on the wire',
     !!ops && Array.isArray(ops.o) && ops.o.length === 2,
     { kinds: ops && ops.o && ops.o.map((o) => o.k), len: stored.length });
@@ -318,7 +329,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return a.join('');
   })();
   await btn('Done');
-  await page.evaluate(([k, opsKey, art]) => {
+  await page.evaluate(([k, opsKey, art, docId]) => {
     localStorage.setItem(k, art);
     /* One canvas's row; every other canvas falls back to "whatever is drawn,
        flat", which is what artOps does for a missing row anyway. */
@@ -326,10 +337,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
        purpose (a pen stroke stores the cells it FINISHED with, already
        mirrored), so a freehand op is not the one that can regress here. The
        three ops that carry a live `m` are the shape, the letter and the fill. */
+    /* v2.3.2416: the row is keyed by CANVAS id, and this scenario moved from
+       the pants grid to the shirt's when pants went onto the character.  It was
+       a literal `pants:` here, which meant the injected op landed on a canvas
+       the panel no longer opens -- the drawing replayed flat and the assertion
+       below reported the drop rule eating it. */
     localStorage.setItem(opsKey, JSON.stringify({
-      pants: { b: '0'.repeat(256), o: [{ k: 's', t: 'line', a: [3, 3, 3, 6], i: 1, b: 1, m: 1 }] },
+      [docId]: { b: '0'.repeat(256), o: [{ k: 's', t: 'line', a: [3, 3, 3, 6], i: 1, b: 1, m: 1 }] },
     }));
-  }, ['bt-pantsart', OPS_KEY, mirrorArt]);
+  }, [ART_KEY, OPS_KEY, mirrorArt, DOC_ID]);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1400);
   const remirror = await openGrid();
@@ -382,16 +398,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await page.waitForTimeout(250);
   }
 
-  await page.click('.bt-paint-slots .bt-paint-slot:nth-child(1)');
-  await page.waitForTimeout(350);
+  /* v2.3.2416: the three design slots and their Save button are gone (owner:
+     the word Save meant two different things on this screen), so the round trip
+     that used to be asserted here -- stash a design, clear, load it back -- has
+     no control to drive.  Clear itself is untouched and still worth pinning;
+     what follows is that assertion with the slot taps removed rather than a
+     weakened version of the old one.  Undo is what takes a Clear back now, and
+     mp-bodyink already covers that path. */
   await btn('Erase the whole');
+  await page.waitForTimeout(350);
   const cleared = await art();
   rec.ok('Clear empties the drawing (and the list under it)', inked(cleared) === 0, { n: inked(cleared) });
-  await page.click('.bt-paint-slots .bt-paint-slot:nth-child(1)');
-  await page.waitForTimeout(400);
-  const loaded = await art();
-  rec.ok('a saved design loads back exactly, with no ghost of what was on the grid',
-    loaded === m1, { same: loaded === m1, n: inked(loaded), was: inked(m1) });
 
   const errs = A.logs.filter((l) => String(l).startsWith('pageerror'));
   rec.ok('no page errors while shaping and re-layering', errs.length === 0, errs.slice(0, 3));

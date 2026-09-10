@@ -122,7 +122,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (!skinTab) return;
   await skinTab.click();
   await page.waitForTimeout(300);
-  await page.click('button.bt-cc-draw');
+  await page.click('button.bt-cc-ink-pane');   /* v2.3.2414: the Design button is the ink CARD now */
   await page.waitForSelector('.bt-bodyink-cv', { timeout: 20000 });
   await page.waitForTimeout(2200);
   await page.screenshot({ path: SHOTS + '/skinink-editor-body.png' });
