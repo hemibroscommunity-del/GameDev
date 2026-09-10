@@ -1,0 +1,38 @@
+# v2.3.2442: PROBE THE LIVE ROOM FROM SOMEWHERE THAT CAN REACH IT.
+#
+# Owner, 2026-09-10, after two fixes: "Seems like a persistent issue
+# connecting to the server."  Every diagnosis of production that day was made
+# from a sandbox whose proxy denies the worker, so each was an inference from
+# code.  This is the measurement: a GitHub runner CAN reach the worker, so it
+# performs the same steps a phone does -- HTTP to the worker, HTTP into the
+# room's Durable Object, then a real WebSocket join -- and prints what came
+# back and how long each took.
+#
+# Read-only and key-free: the admin route is hit WITHOUT a key on purpose,
+# because a 401/404 is an answer (the object is alive) and a timeout is the
+# finding.  The join uses a throwaway guest id and leaves the moment
+# state_sync arrives (or the deadline passes), so it never lands a player in
+# anyone's world.
+#
+#   Actions tab -> Probe live room -> Run workflow
+#
+# workflow_dispatch only works once the file is on the default branch.
+name: Probe live room
+on:
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: 'How long to wait for the room to answer the join'
+        default: '30'
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Probe the worker, the room, and a join
+        env:
+          PROBE_SECONDS: ${{ github.event.inputs.seconds || '30' }}
+        run: node tools/qa/probe-room.mjs
