@@ -1,5 +1,17 @@
 import React from 'react';
-import { PlayerPaint } from './PlayerPaint.jsx';   /* v2.3.1938; v2.3.1940 pants + tattoos */
+import { PlayerPaint, WornPreview, PatternSwatch } from './PlayerPaint.jsx';   /* v2.3.1938; v2.3.1940 pants + tattoos; v2.3.2399 WornPreview + PatternSwatch for the inline tools */
+/* v2.3.2399: the ink card reads the drawing stores directly.  It shows what
+   you ALREADY wear, so it has to repaint when the editor closes having changed
+   it -- `onArtChange`/`onPatternChange` are the stores' own subscriptions
+   (playerArt.js:287, patternCatalog.js:206) and returning their unsubscribers
+   is the whole of the wiring.  `artHasInk` answers the other question the card
+   asks: is this a blank body, which is the state the empty-state hint is for. */
+import { artHasInk, getArt, onArtChange, ART_PALETTE } from '@/rendering/traits/playerArt.js';
+import { BRUSH_SIZES } from '@/rendering/traits/artTools.js';   /* v2.3.2400: the inline width row offers the editor's own three */
+import { getPattern, onPatternChange, patternsFor, formatPattern, parsePattern, setPattern } from '@/rendering/traits/patternCatalog.js';
+/* v2.3.2399: the inline tool row and the editor share one ink/brush store, so
+   a colour picked under the character is the colour the editor opens with. */
+import { getInk, getBrush, setInk, setBrush, onToolsChange } from './paintTools.js';
 /* v2.3.1947: the designer shows the character wearing what you are making, and
    it has to be the SAME character the stage behind it is showing -- so it gets
    the look from the one function that builds it, not a second copy. */
@@ -92,6 +104,55 @@ import { HEIGHT_CATALOG } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1
    row as a fifth beveled die cell.  Every control returns to ≥32px
    with the primary ones at 44px+; the sheet ends up SHORTER than
    v2.3.1257 anyway (three rows removed vs one control-height added). */
+/* ═══ v2.3.2399: TWO CONSTANT TABLES, AT MODULE SCOPE ═══
+   Both were written inside the component and BOTH had to come out, for the
+   same reason the look is memoised a few hundred lines down: NameModal is an
+   unmemoised function component that re-renders on every keystroke in the name
+   field, so an object literal in its body is a NEW object every render.
+   _CARD_FOCUS is the one with teeth -- it is handed to WornPreview as `focus`,
+   which is in that component's `blit` dependency list, so a fresh identity
+   re-composited the whole character through drawCharacterPortrait on every
+   render while the Shoes tab was open.  _INK_SOURCES has no such consumer
+   today and is hoisted beside it anyway, so that adding one later cannot
+   quietly reintroduce the same bug.
+   Neither closes over anything, which is what makes this a pure move. */
+/* ═══ v2.3.2399: WHICH DRAWINGS EACH CARD IS SHOWING YOU ═══
+   The card's empty state (see .bt-cc-ink below) turns on "do you already
+   wear anything here", and that is a question about the STORES, not about
+   this tab: one target can span several canvases.  A tattoo spans five
+   (playerArt.js:165 CANVASES; PlayerPaint's TATTOO_SPOT/TAB_SPOTS tables
+   reach all of them), a shirt two, pants one, and shoes none at all --
+   shoes are pattern-only (v2.3.1944), which is why `pattern` is a separate
+   column rather than a flag.
+   Kept HERE beside _PAINT_FROM_TAB rather than exported from PlayerPaint:
+   it is the same four keys read one row further along, and a reader who has
+   understood the row above has understood this one. */
+var _INK_SOURCES = {
+  shirt: { canvases: ['shirtFront', 'shirtBack'], pattern: 'shirt' },
+  pants: { canvases: ['pants'], pattern: 'pants' },
+  tattoo: { canvases: ['tattoo', 'tattooBack', 'tattooFace', 'tattooArm', 'tattooHeadBack'], pattern: null },
+  shoes: { canvases: [], pattern: 'shoes' },
+};
+
+/* ═══ v2.3.2399: THE CARD IS NOT THE EDITOR'S PREVIEW PANE'S SIZE ═══
+   Every window in PlayerPaint's FOCUS table was measured against
+   .bt-paint-pv, which is square and about 126px wide at 390 (it is
+   `--paint-size * .62` and moves with the viewport, so that is one screen's
+   number, not the class's).  The card is 170.4 x 214 at 390x844
+   -- roughly twice the area -- and three of the four targets survive that
+   unchanged, because they frame a chunk of body: chest-and-head for a tattoo,
+   hips-and-thighs for pants, chest for a shirt.
+   SHOES do not.  A boot is about eight pixels of art, so the editor's window
+   (cy .865, h .27) is already a tight crop at 125px; at card size it became a
+   2.5x blow-up of two grey blocks with no character attached to them, which
+   is a picture of nothing.  So the card takes a wider window for that one
+   target: knee-to-sole, with the legs in it, so the thing on screen is
+   recognisably a pair of boots on a person.
+   A window rather than a zoom multiplier because focusFor applies the
+   feet-anchored build correction to whatever it is given, and a zoom applied
+   after that correction would point at a tall bro's shins. */
+var _CARD_FOCUS = { shoes: { cy: 0.82, h: 0.38 } };
+
 export function NameModal(props) {
   var onBack = props.onBack,          /* v2.3.2219 */
     _dragRotX = props._dragRotX,
@@ -264,6 +325,21 @@ export function NameModal(props) {
     /* v2.3.1941: "Design" rather than "Draw" for the two garments -- the panel
        behind this button now offers ready-made patterns as well as freehand
        drawing, and most people will want the patterns. */
+    /* ═══ v2.3.2399: `noun` IS WHAT THE CARD SHOWS; `label` IS WHAT IT SAYS ═══
+       These sentences were written for a lone button with a whole row to
+       itself.  In the card's footer -- 109px of usable width -- they wrap to
+       three lines and eat the picture: measured at 390x664 on Pants, a 54px
+       footer over an 89px sliver of thigh.
+       So the footer reads `(inked ? 'Edit ' : 'Add ') + noun`, one line, and
+       the sentence becomes the button's aria-label, where length costs nothing.
+       Nothing is lost by that trade because the PICTURE now carries what the
+       sentence was carrying: v2.3.1949 spelled the tattoo one out as "a face
+       tattoo nobody knows exists is a face tattoo nobody draws", and the card
+       faces the character south on the FOCUS.tattoo window, which puts the face
+       in shot.  Do not restore the sentences to the footer without also
+       explaining what shows the face instead.
+       The verb doubles as the empty state in words, beside the + on the
+       picture -- the same idea arriving on two channels. */
     shirt: { target: 'shirt', label: 'Pattern or draw on this shirt' },
     pants: { target: 'pants', label: 'Pattern or draw on these pants' },
     /* v2.3.1949: one button, three canvases -- the panel's mode strip picks
@@ -275,8 +351,22 @@ export function NameModal(props) {
        garment IS drawing, and the pencil says that better than a second shirt
        icon would beside a tab already showing shirts. */
     skin: { target: 'tattoo', label: 'Tattoo your body or face', icon: 'cc-draw-tattoo' },   /* v2.3.1978: two screens, not three */
-    /* v2.3.1944: shoes are pattern-only — no drawing on an eight-pixel boot. */
+    /* v2.3.1944: shoes are pattern-only — no drawing on an eight-pixel boot,
+       which is also why the noun is 'pattern' and never 'design': "draw" would
+       be a lie on this tab. */
     shoes: { target: 'shoes', label: 'Pattern these shoes', icon: 'cc-draw-shoes' },
+  };
+  /* v2.3.2400: the pattern currently on a slot, parsed.  patternCatalog
+     stores "<id>:<colourIndex>" as one string and the shoes tool row needs
+     both halves -- which tile is lit, and what colour to draw the others in. */
+  var _patNow = function (slot) {
+    return parsePattern(getPattern(slot), slot) || { id: '', colorIdx: 1 };
+  };
+  var _wearsInk = function (target) {
+    var src = _INK_SOURCES[target];
+    if (!src) return false;
+    if (src.pattern && getPattern(src.pattern)) return true;
+    return src.canvases.some(function (id) { return artHasInk(getArt(id)); });
   };
   var _TAB_ICON = function (n) { return '/ui/welcome/cc/cc-tab-' + n + '.png?v=' + BUILD_INFO.version; };
   var _TABS = [
@@ -353,6 +443,12 @@ export function NameModal(props) {
      The row's height is fixed in game.css (v2.3.1253's constant-height rule),
      and it already scrolls horizontally, so one more tile cannot move the
      stage -- which was the whole reason the tile was dropped. */
+  /* v2.3.2399: is the ink card live on this tab?  Computed HERE, above the
+     render, because two places need the same answer: the card itself, and the
+     colour block, which gives its reserved height to the card on a tab that
+     has no colours to put in it (see .bt-cc-colors--yield below). */
+  var _cardDef = _PAINT_FROM_TAB[_activeType] || null;
+  var _cardLive = !!_cardDef && !(_activeType === 'shirt' && (!_def.sel || _def.sel === 'none'));
   var _colorList = _def.colors || null;
   /* v2.3.1953: on the Build tab this row is the FRAME, not a colour, and two
      of the rules above do not apply to it.  There is no 'default' entry to
@@ -394,6 +490,53 @@ export function NameModal(props) {
      drawer's height is fixed by the constant-size guarantee (v2.3.1252). */
   /* v2.3.1940: which designer is open ('shirt' | 'pants' | 'tattoo'), or null. */
   var _paintState = React.useState(null), showPaint = _paintState[0], setShowPaint = _paintState[1];
+  /* ═══ v2.3.2399: THE CARD HAS TO HEAR THE EDITOR IT OPENED ═══
+     The card draws the player's CURRENT drawings, which it gets for free --
+     drawCharacterPortrait falls back to the live store for any drawing the
+     caller omits (characterPortrait.js:574-580) and the card omits all of
+     them.  What it does NOT get for free is a repaint: the store write happens
+     inside PlayerPaint, React has no reason to re-render this component for
+     it, and the card would go on showing the chest you had before you opened
+     the editor.  So: one revision counter, bumped by the stores' own
+     subscriptions, threaded into the look below so the preview's effect sees a
+     new dependency and recomposites.
+     It is a COUNTER rather than the drawings themselves on purpose -- a
+     tattoo is five 256-char strings and a shirt two more, and none of them is
+     read here; the only question is "did any of them move". */
+  var _inkState = React.useState(0), inkRev = _inkState[0], setInkRev = _inkState[1];
+  React.useEffect(function () {
+    var bump = function () { setInkRev(function (n) { return n + 1; }); };
+    var offArt = onArtChange(bump);
+    var offPat = onPatternChange(bump);
+    /* v2.3.2399: and the TOOL store, so the inline row shows the colour and
+       width the editor is actually armed with -- change them in there, close
+       it, and the row under the character agrees. */
+    var offTools = onToolsChange(bump);
+    return function () { offArt(); offPat(); offTools(); };
+  }, []);
+  /* v2.3.2399: ONE look object for the card and the editor, memoised.
+     It was built inline at the PlayerPaint call site, which handed a fresh
+     object identity to WornPreview on every render of this component -- fine
+     for a modal that opens over a frozen screen, wrong for a card that lives
+     on it: WornPreview's effect lists `look` in its deps (PlayerPaint.jsx),
+     so an unstable identity would re-composite the whole character on every
+     scroll-affordance measurement.  Memoising on the SELECTIONS makes the
+     preview repaint when the player changes something and not otherwise.
+     `inkRev` is in the dep list, not in the object: it is not part of the
+     look, it is the reason to look again. */
+  var _paintLook = React.useMemo(function () {
+    return portraitLook({
+      skinSel: skinSel, pantsSel: pantsSel, shoesSel: shoesSel,
+      hairSel: hairSel, hairColorSel: hairColorSel,
+      facialHairSel: facialHairSel, beardColorSel: beardColorSel,
+      headwearSel: headwearSel, hatColorSel: hatColorSel, eyeColor: eyeColorSel,
+      eyewearSel: eyewearSel,   /* v2.3.2361 */
+      shirtSel: shirtSel, shirtColorSel: shirtColorSel,
+      buildHeight: heightSel, buildFrame: frameSel   /* v2.3.1953 */
+    });
+  }, [skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel,
+    headwearSel, hatColorSel, eyeColorSel, eyewearSel, shirtSel, shirtColorSel,
+    heightSel, frameSel, inkRev]);
   var _stripRef = React.useRef(null);
   var _colorRowRef = React.useRef(null);
   /* v2.3.1254: scroll affordance — per-strip "more content waiting"
@@ -1293,7 +1436,18 @@ export function NameModal(props) {
        plus the ghost subtabs makes the sheet height IDENTICAL across
        every category and pick, so the stage — and the character — never
        change size. */
-    className: "bt-cc-colors" + (_colors ? "" : " bt-cc-ghost"),
+    /* v2.3.2399: `--yield` on a tab where this block is a GHOST and the ink
+       card below is live.  The band is 100.5px of `visibility:hidden` nothing
+       on Skin, Pants and Shoes -- all three have `colors: null` unconditionally
+       (their swatch row IS their option strip), so it is not empty because of
+       what you picked, it is empty always -- and the card is the thing that
+       needs the room.  It was reserved for v2.3.1252's constant-sheet-height
+       rule, which the v2.3.1524 two-column split retired in practice: the stage
+       is a sibling now and measures the same 172/120px on every tab regardless.
+       Shirt keeps its band: with a shirt on, that block holds twelve real
+       swatches. */
+    className: "bt-cc-colors" + (_colors ? "" : " bt-cc-ghost")
+      + ((!_colors && _cardLive) ? " bt-cc-colors--yield" : ""),
     "aria-hidden": _colors ? undefined : true,
     style: { position: 'relative' }
   }, /* v2.3.1272: the — COLOR — header is retired (space).
@@ -1347,71 +1501,219 @@ export function NameModal(props) {
      (visibility:hidden) on any category that has no colour row, and SKIN is
      exactly such a category -- its swatches ARE its options -- so "Draw a
      tattoo" was in the DOM, clickable by script, and invisible to a human.
-     Sitting outside also keeps v2.3.1252's rule intact: the sheet must be the
-     same height on every tab so the stage and the character never resize, which
-     is why the row is rendered on ALL eight tabs and simply ghosted on the five
-     that have nothing to draw, rather than appearing and disappearing.
      Three categories have a drawing: shirt, pants, and skin (whose drawing is a
      tattoo).  The shirt's is live only when a shirt is actually worn -- a print
-     with nothing to print on is a dead button -- and it ghosts the same way. */
+     with nothing to print on is a dead button -- and it ghosts the same way.
+
+     ═══ v2.3.2399: THE BUTTON IS THE CARD NOW ═══
+     Owner: "I'd rather make the tattoo editor simplified, just a preview of the
+     body you'd be editing right there in the panel.  I don't really want a
+     button to launch the editor anymore.  Every time somebody playtests the
+     game they always never notice it."
+
+     That last sentence is the requirement.  It is a DISCOVERABILITY report,
+     not a layout preference, and the button was not failing for want of
+     shouting -- v2.3.1946 already made it 54px of brass with a 34px painted
+     icon and a sentence-long label.  It was failing for where it stood.
+     Measured at 390x844 on Skin: the swatch grid ends at 501.9, then 100.5px
+     of `visibility:hidden` colour block (this tab has `colors: null`, so that
+     band is reserved and permanently empty), then the button at 624.4, then
+     147.6px more empty panel under it.  248.1px of dead height around it.  So
+     the eye reads the grid, finds nothing under it, and leaves for ENTER BRO
+     TOWN -- the button sits in the gap between two things, which is the one
+     place nothing gets looked at.
+
+     The card takes that dead height and puts the PLAYER'S OWN BODY in it,
+     wearing the drawing they already have, directly under the grid.  Three
+     things make it read as a control rather than as a thumbnail, and all three
+     are needed:
+       - it IS a <button>, the whole card, so press-scale and the brass rim
+         apply to the picture as well as to the words (the rim and the
+         brass-soft face are v2.3.1946's own treatment, moved, not a new
+         accent -- ENTER BRO TOWN stays the screen's one gold action);
+       - the old button survives as the card's FOOTER, same icon, same label,
+         so nothing that made it legible is lost -- only its isolation;
+       - the picture is of YOU and it changes when you change, which a
+         decorative thumbnail cannot do.
+
+     WHY THE GHOST ROW ON THE OTHER FIVE TABS IS RETIRED WITH IT.  v2.3.1938
+     rendered this on all eight tabs and ghosted five, to keep v2.3.1252's
+     constant-sheet-height rule -- which existed so the flex STAGE could not
+     resize the character.  That rule stopped binding at v2.3.1524, when the
+     two-column split moved the stage into the sibling .bt-cc-col-left:
+     measured, .bt-cc-stage's offsetHeight is 172 at 390x844 and 120 at 390x664
+     on all nine tabs, while this control's own y already ranges 397.6 -> 770
+     across them.  It has not been providing that guarantee for a long time.
+     So a tab with nothing to draw on now renders nothing here and gives the
+     room back to its option strip -- which Hats badly needed (it was hiding
+     365px of its catalogue at 844 and 527px at 664).
+     (Measure .bt-cc-stage with offsetHeight, never getBoundingClientRect: it
+     carries transform:scale(2) and the rect is double the layout box.
+     docs/TRAPS.md 65.) */
   (function () {
-    var _p = _PAINT_FROM_TAB[_activeType];
-    var _on = !!_p && !(_activeType === 'shirt' && (!_def.sel || _def.sel === 'none'));
-    return /*#__PURE__*/React.createElement("button", {
-      type: 'button', disabled: !_on,
-      className: 'bt-cc-draw' + (_on ? '' : ' bt-cc-ghost'),
-      "aria-hidden": _on ? undefined : true,
-      onClick: function () { if (_on) setShowPaint(_p.target); }
+    var _p = _cardDef;
+    /* NOT RENDERED AT ALL where there is nothing to decorate -- neither on the
+       five tabs with no drawing, nor on Shirt with no shirt on.  v2.3.1938
+       ghosted this control everywhere instead, to hold the sheet's height
+       constant for v2.3.1252; that rule stopped binding at v2.3.1524 (the stage
+       is a sibling column now and measures the same on every tab), and a
+       GHOSTED card is a much more expensive thing to reserve than a ghosted
+       button was -- 260px of invisible panel where the button cost 62.  Dead
+       height is the bug being fixed here, so reintroducing 260px of it on the
+       Shirt tab to avoid a reflow would be a poor trade: picking a shirt
+       already reveals its twelve-swatch colour row on the same tap, so the
+       card arriving with it reads as one thing unlocking, not as a jump. */
+    if (!_cardLive) return null;
+    var _inked = _wearsInk(_p.target);
+    var _toolInk = getInk();
+    var _toolBrush = getBrush();
+    /* ═══ v2.3.2400: THE TOOLS SIT UNDER HIM, NOT A LABEL ═══
+       Owner, on the first cut of this card: "Instead of using space for
+       'tattoo your body or face' I'd rather you just have the tools for
+       tattooing right there beneath the character."
+
+       So the footer that carried the old button's sentence is gone and the
+       real palette is in its place.  Three consequences worth stating, because
+       each one is a decision:
+
+       1. THE CARD IS NO LONGER ONE BUTTON.  It holds buttons now, and a button
+          inside a button is invalid markup that browsers un-nest in ways you
+          cannot predict.  The PICTURE is the button; the tools are their own.
+          Every one of them opens the editor, so the whole card is still a
+          door -- there is just no longer any part of it that is only a label.
+       2. THE TOOLS ARE THE EDITOR'S TOOLS, not a lookalike row.  Ink and brush
+          come from paintTools.js, which PlayerPaint seeds from and writes back
+          to, so picking a colour here arms the editor with it and changing it
+          in there updates this row.  Shoes are the exception and take pattern
+          tiles instead: they are pattern-only (v2.3.1944), so an ink palette
+          would be a row of controls that do nothing on that tab.
+       3. NOTHING SAYS "TATTOO" IN WORDS ANY MORE.  The tab says Skin, the
+          picture is your own bare chest and there is a palette under it; the
+          sentence survives as the picture's aria-label, where length is free.
+          If a future session finds playtesters still missing it, the thing to
+          add back is a cue, not the sentence -- the sentence was there for two
+          years and is what the owner asked to remove. */
+    var _tools = _INK_SOURCES[_p.target];
+    var _open = function () { setShowPaint(_p.target); };
+    return /*#__PURE__*/React.createElement("div", {
+      className: 'bt-cc-ink',
     },
-    /* v2.3.1946: a pencil, drawn inline rather than shipped as art -- it is
-       four strokes, it inherits the button's own colour, and it stays crisp at
-       any density without a second asset to preload (the animation-preload law
-       exists because assets that load late hitch; one that is never fetched
-       cannot).  aria-hidden because the label beside it already says it.
-       v2.3.2008: the two tabs that carry painted art use it instead; the
-       pencil stays the fallback and the answer for shirt and pants. */
-    (_on && _p.icon)
-      ? /*#__PURE__*/React.createElement("img", {
-        className: 'bt-cc-draw-icon', src: '/ui/welcome/cc/' + _p.icon + '.png?v=' + BUILD_INFO.version,
-        alt: '', draggable: false, "aria-hidden": true,
-        /* v2.3.2035 (owner: "make the tattoo body or face icon larger").
-           26 -> 34.  The art is 128x121 natural so this is still a
-           downscale.  Sized against the SMALL-screen button, not the big
-           one: .bt-cc-draw is min-height 54px normally but 44px under
-           max-height:720px (game.css), and 34 keeps 5px of breathing room
-           inside that 44 -- picking 40 would have looked right on this
-           desk and crushed the button on an iPhone SE. */
-        style: { width: 34, height: 34, objectFit: 'contain', flex: 'none' }
-      })
-      : /*#__PURE__*/React.createElement("svg", {
-      className: 'bt-cc-draw-icon', viewBox: '0 0 24 24', width: 22, height: 22,
-      "aria-hidden": true, focusable: 'false'
+    /*#__PURE__*/React.createElement("button", {
+      type: 'button', className: 'bt-cc-ink-pane',
+      /* The <canvas> inside is aria-hidden (WornPreview's `label: null`), so
+         this button's own name is the whole accessible name.  It keeps the
+         full sentence the footer used to show: a screen reader pays nothing
+         for its length, and it is the one place left that says the face is
+         reachable too. */
+      "aria-label": _p.label,
+      onClick: _open
     },
-    /*#__PURE__*/React.createElement("path", {
-      d: 'M4 20.5h4.2L20 8.7a2 2 0 0 0 0-2.8l-1.9-1.9a2 2 0 0 0-2.8 0L3.5 15.8V20a.5.5 0 0 0 .5.5Z',
-      fill: 'none', stroke: 'currentColor', strokeWidth: 1.9,
-      strokeLinecap: 'round', strokeLinejoin: 'round'
-    }),
-    /*#__PURE__*/React.createElement("path", {
-      d: 'M14.6 5.7 18.9 10',
-      fill: 'none', stroke: 'currentColor', strokeWidth: 1.9, strokeLinecap: 'round'
-    })),
-    /*#__PURE__*/React.createElement("span", { className: 'bt-cc-tab-label' },
-      _on ? _p.label : 'Draw'));
+      /*#__PURE__*/React.createElement(WornPreview, {
+        look: _paintLook, target: _p.target, side: 'front',
+        className: 'bt-cc-ink-pv', label: null,
+        /* The card is never the square .bt-paint-pv the FOCUS windows were
+           measured against, so it asks for the whole designed frame to stay in
+           shot rather than for the height to be pinned and the arms cropped.
+           See blit(). */
+        fit: 'contain',
+        focus: _CARD_FOCUS[_p.target]
+      }),
+      /* ── the empty state ──
+         A blank body in a frame reads as a picture of your chest, which is the
+         failure this change exists to fix wearing new clothes.  A PLUS, not a
+         sentence: it is this codebase's own mark for an empty canvas
+         (.bt-paint-slot-plus, the design slots inside the editor this opens),
+         it is an invitation where a status line ("Nothing here yet", which is
+         what this shipped with for an afternoon) is only a report, and it
+         needs no string that has to be true on four different tabs.
+         It goes the moment there is a single inked cell anywhere on this
+         target's canvases -- which is also the moment the picture starts
+         speaking for itself. */
+      _inked ? null : /*#__PURE__*/React.createElement("span", {
+        className: 'bt-cc-ink-empty', "aria-hidden": true
+      }, '+'),
+      /* ── v2.3.2400: the owner's painted icon, kept ──
+         It was the label bar's icon (v2.3.2008 painted it; v2.3.2035 took it
+         26 -> 34 because the owner asked for it bigger), and the label bar is
+         gone.  Deleting an asset the owner asked for twice to make room for
+         the tools they asked for once is not a trade worth making, so it
+         becomes a badge ON the picture: it costs no layout height, it says
+         "tattoo gun" / "patterned sneaker" without a word, and it keeps the
+         tab's purpose on screen now that nothing spells it out.
+         pointer-events:none and aria-hidden -- the picture behind it is the
+         button and the button already has a name.  Only the two tabs with
+         painted art carry one; shirt and pants had the inline pencil, which
+         was a stand-in for a missing asset rather than an asset, and a pencil
+         floating on a pair of trousers says less than the trousers do. */
+      _p.icon ? /*#__PURE__*/React.createElement("img", {
+        className: 'bt-cc-ink-badge',
+        src: '/ui/welcome/cc/' + _p.icon + '.png?v=' + BUILD_INFO.version,
+        alt: '', draggable: false, "aria-hidden": true
+      }) : null),
+    /*#__PURE__*/React.createElement("div", {
+      className: 'bt-cc-ink-tools',
+      /* A group, not a toolbar: `toolbar` promises arrow-key roving focus that
+         nothing here implements, and these are ordinary buttons in reading
+         order. */
+      role: 'group', "aria-label": _p.label
+    },
+    (_tools && _tools.pattern && !_tools.canvases.length)
+      /* ── SHOES: pattern tiles, because there is nothing to draw on ──
+         patternsFor('shoes') is the four that still read at eight pixels of
+         boot.  Writing straight to patternCatalog's own store rather than
+         through a second one: a pattern is part of the garment, it is already
+         persisted there, and the editor seeds from it. */
+      ? [/*#__PURE__*/React.createElement("div", { className: 'bt-cc-ink-pats', key: 'pats' },
+          [/*#__PURE__*/React.createElement(PatternSwatch, {
+            key: 'plain', tile: null, color: null,
+            on: !_patNow(_tools.pattern).id,
+            onPick: function () { setPattern(_tools.pattern, ''); _open(); }
+          })].concat(patternsFor(_tools.pattern).map(function (t) {
+            var cur = _patNow(_tools.pattern);
+            return /*#__PURE__*/React.createElement(PatternSwatch, {
+              key: t.id, tile: t, color: ART_PALETTE[cur.colorIdx || 1],
+              on: cur.id === t.id,
+              onPick: function () { setPattern(_tools.pattern, formatPattern(t.id, cur.colorIdx || 1)); _open(); }
+            });
+          })))]
+      /* ── EVERYTHING ELSE: the ink palette and the brush widths ──
+         Index 0 is the eraser and is drawn as a hole rather than as a colour,
+         exactly as the editor draws it -- the same control has to look like
+         the same control in both places or the shared store is a lie. */
+      : [/*#__PURE__*/React.createElement("div", { className: 'bt-cc-ink-pal', key: 'pal' },
+          ART_PALETTE.map(function (c, i) {
+            return /*#__PURE__*/React.createElement("button", {
+              key: i, type: 'button',
+              className: 'bt-cc-ink-chip' + (_toolInk === i ? ' bt-cc-ink-chip--on' : '')
+                + (c ? '' : ' bt-cc-ink-chip--erase'),
+              style: c ? { background: c } : undefined,
+              "aria-label": (i === 0 ? 'Eraser' : 'Colour ' + i) + ', and open the editor',
+              "aria-pressed": _toolInk === i,
+              onClick: function () { setInk(i); _open(); }
+            });
+          })),
+        /*#__PURE__*/React.createElement("div", { className: 'bt-cc-ink-widths', key: 'w' },
+          BRUSH_SIZES.map(function (n) {
+            return /*#__PURE__*/React.createElement("button", {
+              key: n, type: 'button',
+              className: 'bt-cc-ink-width' + (_toolBrush === n ? ' bt-cc-ink-width--on' : ''),
+              "aria-label": 'Brush ' + n + ' wide, and open the editor',
+              "aria-pressed": _toolBrush === n,
+              onClick: function () { setBrush(n); _open(); }
+            },
+            /*#__PURE__*/React.createElement("span", {
+              className: 'bt-cc-ink-dot',
+              style: { width: 4 + (n - 1) * 5, height: 4 + (n - 1) * 5 }
+            }));
+          }))]));
   }())))),
   showPaint && /*#__PURE__*/React.createElement(PlayerPaint, {
     target: showPaint,
     /* v2.3.1947: no `previewDir` -- the designer points the figure itself (a
        shirt BACK has to face away), so it supplies its own facing. */
-    look: portraitLook({
-      skinSel: skinSel, pantsSel: pantsSel, shoesSel: shoesSel,
-      hairSel: hairSel, hairColorSel: hairColorSel,
-      facialHairSel: facialHairSel, beardColorSel: beardColorSel,
-      headwearSel: headwearSel, hatColorSel: hatColorSel, eyeColor: eyeColorSel,
-      eyewearSel: eyewearSel,   /* v2.3.2361 */
-      shirtSel: shirtSel, shirtColorSel: shirtColorSel,
-      buildHeight: heightSel, buildFrame: frameSel   /* v2.3.1953 */
-    }),
+    /* v2.3.2399: the same memoised object the card draws from, so the panel
+       and the card behind it can never disagree about who they are showing. */
+    look: _paintLook,
     onClose: function () { setShowPaint(null); }
   }));
 }

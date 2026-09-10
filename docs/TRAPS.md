@@ -2674,3 +2674,54 @@ pass the overflow check by having nothing to overflow with.
 
 Related: §61 (a still-frame assertion cannot see a frozen animation) — the
 same family, a measurement taken in a state that cannot show the defect.
+
+## 67. "An ancestor's `touch-action:none` blocks a descendant scroller" (v2.3.2399)
+
+**Tempting:** `.bt-paint` is `overflow:auto` with no `touch-action`, sitting
+inside `.bt-name-modal{touch-action:none}` (game.css). At 390x664 its content is
+728px in a 635px box with **Done below the fold**. Every sibling scroller in
+that modal — `.bt-cc-strip`, `.bt-cc-colors-row` — explicitly re-allows `pan-y`,
+and the modal's own rule says why (v2.3.738: "the rail and sheet re-allow pan-y;
+everything else is taps"). So the panel is unpannable and Done is unreachable on
+the primary platform. That reads as an airtight chain, and it was written up as
+a confirmed live bug in a session brief.
+
+**Wrong.** The intersection walk for a pan stops at the **scroll container that
+will perform it**; elements above that container are never consulted. Measured
+with real `Input.dispatchTouchEvent` drags against the built client: a drag on
+`.bt-paint-note` takes `.bt-paint.scrollTop` from 0 to 102 of a possible 103,
+with `.bt-paint`, `.bt-name-modal`, `body` **and** `html` in the chain and three
+of those four set to `touch-action:none`. The panel pans fine.
+
+**The tell** was that the two facts never actually met: "the ancestor says none"
+and "the box overflows" are both true and neither implies the other. Nothing in
+the chain had been tested against a finger. A rule about gestures is testable
+with gestures — `Input.dispatchTouchEvent` through CDP goes through the same
+compositor logic a device does. (Do NOT reach for
+`Input.synthesizeScrollGesture`: it scrolls nothing in this headless build, so a
+probe built on it passes while proving nothing.)
+
+**The corollary, which is the useful half.** The only places a `none` can kill a
+pan are the scroll container itself and the elements *between it and the
+finger*. That is why `.bt-bodyink-cv` and `.bt-paint-grid` carry
+`touchAction:'none'` inline and it works — they are under the finger — and it is
+why `PlayerPaint.jsx`'s header note about touch-action is describing the
+**canvas**, not the panel. A reader who applies that sentence to `.bt-paint`
+ships the bug this entry is about.
+
+**What was actually wrong in that panel**, found while disproving the above:
+`.bt-paint-sideswitch` — the Front/Back control the owner asked for by name —
+had **no `grid-area` at all**. `.bt-paint` is a grid, so it auto-placed into an
+implicit row after every named one: measured `offsetTop` 708 in a 738px content
+box, below the tool rows, below the palette, below Done, and off the panel's own
+fold. Its own comment had said "it sits under the tabs" since v2.3.2150.
+Wrapping it and the tabs in one `.bt-paint-head` cell fixed it and took the
+landscape overflow from 24px to 0.
+
+**Receipt:** the drag matrix and the v2.3.2399 note on `.bt-paint` in game.css;
+`mp-ccink.mjs` §7 (which says out loud that its Chromium drag pins the *wrong*
+direction rather than proving an iOS fix).
+
+Related: §64 (an `overflow:hidden` box that stops fitting is a scroll
+container) — the same panel, the same family of error: a scrolling behaviour
+inferred from a declaration instead of measured.

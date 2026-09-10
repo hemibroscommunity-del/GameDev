@@ -78,7 +78,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!tab) return false;
     await tab.click();
     await page.waitForTimeout(300);
-    await page.click('button.bt-cc-draw');
+    await page.click('button.bt-cc-ink-pane');   /* v2.3.2399: the Design button is the ink CARD now */
     await page.waitForSelector('.bt-paint-tabs', { timeout: 20000 });
     /* pants open on the PATTERN screen; the drawing grid is the second tab */
     await page.click('.bt-paint-tabs button:nth-child(2)');

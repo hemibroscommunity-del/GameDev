@@ -14,6 +14,9 @@ import {
   patternsFor, getPattern, setPattern, parsePattern, formatPattern, patternInk,
 } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 import { drawCharacterPortrait } from '@/rendering/characterPortrait.js';   /* v2.3.1947 */
+/* v2.3.2399: the ink colour and the brush width are shared with the creator's
+   inline tool row -- see paintTools.js for why they live outside this panel. */
+import { getInk as getToolInk, getBrush as getToolBrush, setInk as setToolInk, setBrush as setToolBrush } from './paintTools.js';
 import BodyInk from '@/ui/panels/BodyInk.jsx';   /* v2.3.1965 */
 import { heightMul, PORTRAIT_FIT, getBuildHeight } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1953 */
 
@@ -291,7 +294,10 @@ function SlotChip({ art, on, arming, onPick }) {
    here from the same table the character is patterned from means a swatch can
    never drift from what the garment actually shows.  Scaled up so a 4-cell tile
    reads at thumbnail size (the character wears it at 2-3px a cell). */
-function PatternSwatch({ tile, color, on, onPick }) {
+/* v2.3.2399: exported for the creator's shoes card, which shows these tiles
+   inline -- shoes are pattern-only (v2.3.1944), so the tiles ARE that tab's
+   drawing tools and a colour palette would be the wrong row entirely. */
+export function PatternSwatch({ tile, color, on, onPick }) {
   const ref = React.useRef(null);
   const S = 6, N = 8;                          /* px per cell, cells shown */
   React.useEffect(() => {
@@ -403,14 +409,44 @@ const FOCUS = {
    uses: move the window's centre with the figure and scale the window by the
    same factor.  0.977 is the measured foot line quoted above. */
 const FIG_BOT = 0.977;
-function focusFor(target, heightId) {
-  const f = FOCUS[target] || FOCUS.shirt;
+/* v2.3.2399: `override` lets a caller supply its own {cy,h} window and still get
+   the build correction below applied to it.  It exists for the creator's ink
+   card, which is roughly twice the linear size of .bt-paint-pv: a frame chosen
+   to fill a 125px square becomes a 2.5x blow-up of eight pixels of boot in a
+   170x214 one.  The override is a WINDOW, not a zoom factor, so it goes through
+   exactly the same feet-anchored scaling every entry in FOCUS does -- a raw
+   window applied after the correction would point at a tall bro's shins. */
+function focusFor(target, heightId, override) {
+  const f = override || FOCUS[target] || FOCUS.shirt;
   const k = PORTRAIT_FIT * heightMul(heightId);
   if (k === 1) return f;
   return { cy: FIG_BOT + (f.cy - FIG_BOT) * k, h: f.h * k };
 }
 
-function WornPreview({ look, target, side, art, pat }) {
+/* ═══ v2.3.2399: EXPORTED, BECAUSE THE CREATOR NEEDS THIS EXACT PANE ═══
+   The creator's Design button is retired for a live preview card that IS the
+   way in (NameModal, .bt-cc-ink).  That card wants precisely what this pane
+   already does -- composite the player, point the camera at the garment being
+   edited, nearest-neighbour on the way up -- so it takes this component rather
+   than growing a second one that would drift from it the first time the camera
+   table changed.
+
+   Two props are new and both are for the card, not for this panel:
+     `className`  the card's canvas is not square (.bt-paint-pv hard-codes
+                  aspect-ratio:1/1), and blit() already derives its window from
+                  cssW/cssH, so a different box needs nothing but a class.
+     `label`      null makes the canvas aria-hidden.  In the card the canvas is
+                  INSIDE a <button> that carries the accessible name, and a
+                  role="img" with its own label there would announce twice.
+   Callers that pass neither get byte-identical behaviour to v2.3.1947.
+
+   Note `art`/`pat` are OPTIONAL for the card and must stay that way:
+   drawCharacterPortrait's contract is `opts.tattooArt !== undefined ? ... :
+   inkedArt('tattoo')` (characterPortrait.js:575), so leaving them undefined
+   falls back to the LIVE STORE -- which is what the card wants and what the
+   editor cannot use (a child's effects run before its parent's, so the panel's
+   own persist-to-store effect has not run yet; see the header note above). */
+function WornPreview({ look, target, side, art, pat, className, label, fit, focus }) {
   const boxRef = React.useRef(null);
   const offRef = React.useRef(null);
   const busyRef = React.useRef(false);
@@ -432,12 +468,27 @@ function WornPreview({ look, target, side, art, pat }) {
     const ctx = box.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, w, h);
-    const f = focusFor(target, buildH);
+    const f = focusFor(target, buildH, focus);
     const S = off.width;                       /* the composite is square */
-    const winH = f.h * S;
-    const winW = winH * (cssW / cssH);
+    /* ── how the frame meets a box that is not square ──
+       Every window in FOCUS was measured as f.h TALL against .bt-paint-pv,
+       which is aspect-ratio:1/1 -- so the window it describes is f.h x f.h.
+       The rule below pins the HEIGHT and derives the width from the box, which
+       is right for a square box and for this panel, and wrong for the creator's
+       ink card: that card is 170x214 at 390x844, so deriving the width gives
+       0.79 x the designed window and the arms -- which the tattoo canvas
+       covers -- are cropped off both sides.  It is wrong the other way at
+       390x664, where the card is 170x99 and the window opens to 1.7x.
+       `fit: 'contain'` keeps the whole designed square in shot whatever the
+       box's aspect, by growing the window on the box's LONG axis only.  A
+       square box takes the identical path either way (both maxes are 1), so
+       this panel is unchanged by it. */
+    const base = f.h * S;
+    const contain = fit === 'contain';
+    const winH = contain ? base * Math.max(1, cssH / cssW) : base;
+    const winW = contain ? base * Math.max(1, cssW / cssH) : base * (cssW / cssH);
     ctx.drawImage(off, FIG_CX * S - winW / 2, f.cy * S - winH / 2, winW, winH, 0, 0, w, h);
-  }, [target, buildH]);
+  }, [target, buildH, fit, focus]);
 
   React.useEffect(() => {
     if (!look) return undefined;
@@ -500,11 +551,15 @@ function WornPreview({ look, target, side, art, pat }) {
   }, [look, target, side, art, pat, blit]);
 
   if (!look) return null;
+  const decorative = label === null;
   return (
-    <canvas ref={boxRef} className="bt-paint-pv"
-      aria-label="Preview on your character" role="img" />
+    <canvas ref={boxRef} className={className || 'bt-paint-pv'}
+      aria-hidden={decorative ? true : undefined}
+      aria-label={decorative ? undefined : (label || 'Preview on your character')}
+      role={decorative ? undefined : 'img'} />
   );
 }
+export { WornPreview };
 
 export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const cfg = TARGETS[target] || TARGETS.shirt;
@@ -628,12 +683,25 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      ref).  Assigned during render, so they are never stale. */
   const docRef = React.useRef(doc); docRef.current = doc;
   const paintedRef = React.useRef(painted); paintedRef.current = painted;
-  const [ink, setInk] = React.useState(1);        /* palette index; 0 = eraser */
+  /* v2.3.2399: seeded FROM the shared store, so the colour the player tapped
+     under the character in the creator is the colour this panel opens armed
+     with.  The write-back effect below keeps the inline row honest the other
+     way round.  Lazy initialiser, not `useState(getToolInk())`: the argument
+     form would call the getter on every render for a value only the first one
+     uses. */
+  const [ink, setInk] = React.useState(() => getToolInk());        /* palette index; 0 = eraser */
   /* v2.3.1948 (owner: "any drawing tools like lines, shapes, eraser, fill?",
      then "a small eraser for erasing areas ... different brush size options ...
      perhaps letters you can place?"). */
   const [tool, setTool] = React.useState('pen');
-  const [brush, setBrush] = React.useState(1);
+  const [brush, setBrush] = React.useState(() => getToolBrush());
+  /* Write-back.  An effect rather than wrapping the setters: `setInk` and
+     `setBrush` have a dozen call sites between them (the palette, the tools
+     row, the shape ops, the eraser shortcut), and a wrapper is one call site
+     away from being bypassed by the next one added.  The store's own setters
+     no-op on an unchanged value, so this costs nothing on unrelated renders. */
+  React.useEffect(() => { setToolInk(ink); }, [ink]);
+  React.useEffect(() => { setToolBrush(brush); }, [brush]);
   const [letter, setLetter] = React.useState('A');
   /* ═══ v2.3.2004: MIRROR IS BACK, ALONGSIDE FILL ═══
      Owner: "Mirror is actually a nice feature if you have room in ui add it
@@ -1412,6 +1480,25 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
         style={{ background: 'var(--ui-panel, #16202a)', border: '1px solid rgba(229,237,233,.26)',
           borderRadius: 12, maxHeight: '96vh', maxWidth: '98vw', overflow: 'auto' }}>
 
+        {/* ═══ v2.3.2399: THE HEAD IS ONE GRID CELL, NOT TWO SIBLINGS ═══
+            The tabs and the front/back switch are one block of "which screen,
+            which way round", and until now only the tabs had a `grid-area`.
+            .bt-paint is a GRID, so a child with no area auto-places into an
+            IMPLICIT row after every named one -- measured at 390x664, the
+            switch rendered at offsetTop 708 in a 738px content box: below the
+            tool rows, below the palette, below DONE, and entirely below the
+            panel's own 635px fold.  The control the owner asked for by name
+            ("I don't see a menu option that toggles tattooing the back") was
+            reachable only by discovering that the panel scrolls.
+            Its own comment three lines down has always said it "sits under the
+            tabs"; this is the markup finally doing that.  A wrapper rather than
+            a fifth grid row because an empty declared row still costs its gaps
+            on the three screens that have no switch (the v2.3.1950 finding),
+            and because the two really are one control group.
+            It also takes 36px + a 10px gap out of the panel, which is the whole
+            of the landscape overflow. */}
+        {(MODES || isTattoo) && (
+        <div className="bt-paint-head">
         {MODES && (
           <div className="bt-paint-tabs" style={{ display: 'flex', gap: 6 }}>
             {MODES.map((m) => (
@@ -1449,8 +1536,12 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             Sharing it would make this switch look like two more screens, both
             to that test and to anyone reading the DOM. */}
         {isTattoo && (
+          /* marginTop retired with v2.3.2399's wrapper -- .bt-paint-head's own
+             gap is what separates it from the tabs now, and a margin on top of
+             that would double the space when both are present and leave a
+             stray 6px when the tabs are not. */
           <div className="bt-paint-sideswitch" data-ink-side={inkBack ? 'back' : 'front'}
-            style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+            style={{ display: 'flex', gap: 6 }}>
             {[['front', false], ['back', true]].map((opt) => (
               <button key={opt[0]} type="button"
                 data-ink-side-btn={opt[0]}
@@ -1462,6 +1553,8 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
               </button>
             ))}
           </div>
+        )}
+        </div>
         )}
 
         {/* v2.3.1947: the character wearing what you are making. */}
