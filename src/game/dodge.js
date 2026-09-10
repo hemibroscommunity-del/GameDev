@@ -15,6 +15,7 @@ import { addBuildUse, pushDmgPopup, lockAimPoint } from '@/game/combatHelpers.js
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
+import { hitMaterialOf } from '@/data/monsterVariants.js'; /* v2.3.2452 */
 
 export var triggerContextualDodge = function (S, R, ang) {
     if (S._dodgeRoll) return;
@@ -179,7 +180,11 @@ export var doLunge = function (S, R, ang) {
         }
         pushDmgPopup(S, lt.x, lt.y - 18, String(lDmg), '#fffbb0');
       }
-      BT_AUDIO.swordHit({ vol: 0.5 });
+      /* v2.3.2452: the lunge lands in the same body the swing does, so it
+         picks its sample the same way.  `lt` is a live monster here — it is
+         S.lockedTarget.ref, returned out of this function when null and again
+         when !lt.alive before the strike timer fires. */
+      BT_AUDIO.swordHit({ vol: 0.5 }, hitMaterialOf(lt.archetype || lt.type).kind);
       /* v2.3.1747: a lunge hit used to advance the combo chain; chain removed. */
     }, 160);
   };

@@ -2819,14 +2819,59 @@ BT_AUDIO.specialSwipe = function (opts) {
 BT_AUDIO.HIT_GAIN = 1.7;
 BT_AUDIO.SWORD_HIT_DETUNE = [1.015, 0.985];   /* opposite phase to the swing's */
 BT_AUDIO._swordHitToggle = 0;
-BT_AUDIO.swordHit = function (opts) {
+/* ═══ v2.3.2452: THE BLADE SOUNDS LIKE WHAT IT LANDED IN ═══
+ *
+ * Owner: "I prefer more of a fleshy sound when the sword hits... Only for
+ * fleshy monsters though.  Like fire goblin, slime are fleshy.  Bony is
+ * mummy."  So the hit is not one sample with one character -- it is chosen
+ * by WHAT THE MONSTER IS MADE OF, and that is already written down exactly
+ * once, in HIT_MATERIALS (monsterVariants.js, v2.3.2200), which the debris
+ * burst and the ground decal already key off.  Callers resolve the kind with
+ * hitMaterialOf() and pass the string; this layer stays ignorant of monsters.
+ *
+ * WHICH SAMPLE IS WHICH, AND WHY -- measured, not auditioned by name
+ * (tools/audio_analyze.mjs + an FFT pass; centroid = brightness):
+ *     monster-hit   1496 Hz, 68% below 400 Hz, rings 0.065s   <- WET AND LOW
+ *     sword-hit3    3303 Hz, 43% above 2 kHz,  rings 0.025s   <- dry crack
+ *     sword-hit2    4826 Hz, 65% above 2 kHz,  rings 0.100s   <- the clang
+ * monster-hit is the only sample in the library whose energy sits DOWN in the
+ * body of the spectrum -- every other candidate is 2.2-5.4 kHz.  That is what
+ * "fleshy" is, and it is why the sample is named for the thing being hit.
+ * Bone keeps the dry crack that stops dead (0.025s); stone gets the clang,
+ * which is finally a place where a clang is the right answer -- v2.3.2450
+ * exiled it from the rotation for landing on every other blow against a
+ * SLIME, not for being a bad sound.
+ *
+ * THE LEVEL TABLE IS NOT DECORATION -- same lesson as SWING_GAIN (v2.3.1798).
+ * These three uploads are recorded miles apart: peak-window RMS 0.048 /
+ * 0.131 / 0.209, a 4.4x spread, and monster-hit is the QUIET one.  Dropped
+ * in raw it would be a near-silent hit, which reads as the sound failing to
+ * play -- the exact bug being fixed above it.  The multipliers bring each to
+ * the loudness of sword-hit3, which is what the existing vol:0.55 call sites
+ * were tuned against.  Resulting peaks: 0.29 / 0.61 / 0.46 -- no clipping. */
+BT_AUDIO.HIT_KEY_BY_MATERIAL = {
+  goo:   'monster-hit',   /* slimes, wisps, bog lurkers, fishman, swarm */
+  ember: 'monster-hit',   /* fire goblin -- owner named it fleshy */
+  flesh: 'monster-hit',   /* players and NPCs (no HIT_MATERIALS entry) */
+  bone:  'sword-hit3',    /* mummy, skeleton, hexer */
+  stone: 'sword-hit2',    /* rockmonster, thorn shambler, brute, sentinel */
+};
+BT_AUDIO.HIT_KEY_GAIN = {
+  'monster-hit': 2.73,    /* 0.131 / 0.048 */
+  'sword-hit3':  1,       /* the reference */
+  'sword-hit2':  0.63,    /* 0.131 / 0.209 */
+};
+/* Snow is deliberately absent: the snowman already plays its own snowball
+   thud from the hit-reaction block, and the melee call site skips it. */
+BT_AUDIO.swordHit = function (opts, material) {
   var step = this._swordHitToggle++;
   var base = (opts && opts.vol != null) ? opts.vol : 0.6;
+  var key = this.HIT_KEY_BY_MATERIAL[material] || 'monster-hit';
   var o = {};
   for (var q in opts) o[q] = opts[q];
-  o.vol = base * this.HIT_GAIN;
+  o.vol = base * this.HIT_GAIN * (this.HIT_KEY_GAIN[key] || 1);
   if (o.rate == null) o.rate = this.SWORD_HIT_DETUNE[step % this.SWORD_HIT_DETUNE.length];
-  this.play('sword-hit3', o);
+  this.play(key, o);
 };
 /* Magic-hit alternation — same pattern as sword. Cycles magic-hit and
    magic-hit2 so staff-projectile hits don't repeat the same waveform. */
@@ -2919,6 +2964,45 @@ BT_AUDIO.loadSfxManifest = function () {
   this._loadedManifest = true;
   var m = this.SFX_MANIFEST;
   for (var k in m) this.loadSample(k, m[k]);
+};
+/* ═══ v2.3.2452: THE FIRST BLOW IS NOT ALLOWED TO BE SILENT ═══
+ *
+ * Owner: "the first swing does not register the monster hit sound."
+ *
+ * play() returns null when its sample has not decoded yet and only THEN
+ * kicks the fetch, so the FIRST use of any sound is silent and the second
+ * one works.  v2.3.2330 knew this and accepted it -- "a sound asked for
+ * early is a one-off silence, never an error" -- because it had just moved
+ * the manifest's 1.1 MB off the loading gate's critical path, where it was
+ * competing with the sprite burst for the connection.  That trade was right
+ * for 41 files.  It is wrong for the four that land on the player's very
+ * first action: a swing whose hit makes no sound reads as a broken hit, not
+ * as a slow download, and it happens on every cold session.
+ *
+ * So the combat-critical handful is loaded at the FIRST GESTURE -- the
+ * earliest instant an AudioContext can legally exist -- and the other 37
+ * still wait for the gate.  This is the audio form of the preloading LAW in
+ * CLAUDE.md: what the player can trigger immediately is loaded before they
+ * can trigger it, and load-on-first-use is a bug, not a policy.
+ *
+ * It does not undo v2.3.2330.  These are the smallest files in the library:
+ * 3.6 + 4.5 + 5.4 + 4.8 KB of hits and 39 KB of swings = 57 KB, under 5% of
+ * the 1.2 MB that fix was protecting the sprite burst from, and the swings
+ * are here because a swing is the other half of the same first action.
+ * loadSample() is idempotent, so the manifest pass later no-ops on all of
+ * them. */
+BT_AUDIO.COMBAT_CRITICAL_SFX = [
+  'monster-hit', 'sword-hit3', 'sword-hit2', 'snowman-hit',
+  'sword-swing-1', 'sword-swing-2', 'sword-swing-3',
+];
+BT_AUDIO.loadCriticalSfx = function () {
+  if (!this.ctx || this._loadedCriticalSfx) return;
+  this._loadedCriticalSfx = true;
+  for (var i = 0; i < this.COMBAT_CRITICAL_SFX.length; i++) {
+    var k = this.COMBAT_CRITICAL_SFX[i];
+    var u = this.SFX_MANIFEST[k];
+    if (u) this.loadSample(k, u);
+  }
 };
 /* v2.3.1422: managed looping SFX (sizzle while cooking, reel while
    cranking).  Keyed + idempotent: callers ENSURE the loop every frame
@@ -3135,6 +3219,10 @@ BT_AUDIO.unlock = function () {
      to load into, this gesture is the first moment the manifest can be
      fetched, so replay the ask here (idempotent via _loadedManifest). */
   if (this._sfxGateOpen) { try { this.loadSfxManifest(); } catch (e) {} }
+  /* v2.3.2452: ...and the four combat-critical samples load HERE regardless
+     of the gate, so the first swing of a cold session has a hit sound.  See
+     loadCriticalSfx.  Cheap (57 KB) and idempotent. */
+  try { this.loadCriticalSfx(); } catch (e) {}
   /* v2.3.1577: the session track starts here — this is the first gesture on
      the LOGIN screen (GameApp registers the handler at app level), so the
      music is playing before the player ever enters the world, and nothing
