@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { COL, getState } from './dash/common.js';
 import { ZONES } from '../../data/zones.js';
 import { DEPTH_CONFIG } from '../../data/lifeSkills.js';
+import { rosterCount } from '../../networking/charRoster.js'; /* v2.3.2421 */
 
 /* v2.3.1333: zone header rail (owner + ChatGPT spec).  The floating
    zone label kept getting lost against bright world art, and the
@@ -15,6 +16,40 @@ import { DEPTH_CONFIG } from '../../data/lifeSkills.js';
    game.css .bt-zone-header) + logout-door-icon.svg. */
 
 const V = '?v=2.3.1333c'; /* v2.3.1333c: bigger logout glyph */
+
+/* ═══ v2.3.2421: THIS DOOR IS ALSO THE BRO SWITCHER, AND IT NEVER SAID SO ═══
+ * Owner: "the level 0 I saw when I logged in was from an old save that somehow
+ * was the DEFAULT I logged into (it was an old character I'd made that I
+ * tattooed at one point)."
+ *
+ * Nothing is broken underneath.  A plain load reads bt_passphrase, asks the
+ * worker whether that key has a character, and on yes joins straight in
+ * (BroTown.jsx, __btBootRoute = 'resume').  Whichever key is stored IS who you
+ * are.  The device's other characters are all still there, in charRoster, and
+ * LoginScreen AUTO-OPENS the CharacterPicker whenever the roster is non-empty
+ * -- so the road to "play a different bro" already exists and is exactly one
+ * tap: this chip.
+ *
+ * The reason nobody finds it is that all three signals on the control say the
+ * opposite of what it does.  It is a DOOR glyph, it is labelled LOG OUT, and
+ * its confirm button wears bt-chisel--danger, which is the same red the game
+ * uses for salvaging an item and leaving a clan.  A player holding four bros
+ * reads "log out" as "end my session", not "show me my bros" -- so they never
+ * press it, and they stay on whichever character the key happens to name.
+ *
+ * So the fix is the WORDS, not the road.  Changing the boot route to open the
+ * picker would be a behaviour change for every returning player -- including
+ * everyone with exactly one character, who would gain a screen that asks them
+ * a question with one answer.  This tells the truth instead, and only when
+ * there is a truth to tell: the switch wording appears when the device
+ * actually holds more than one bro, and a single-character device keeps the
+ * old copy exactly.
+ *
+ * Read at RENDER rather than at module load: forgetChar and the create road
+ * both change the count while the game is running, and a value captured at
+ * import would go stale in the direction that matters (a player who just made
+ * their second bro is precisely the one who needs the new wording).
+ */
 
 /* Same zone + depth suffix the old floating label showed — the info
    survives, only the housing changed.  Title stays white per spec
@@ -35,6 +70,12 @@ function zoneTitle(S) {
 export const ZoneHeader = ({ onExit }) => {
   const [, force] = useState(0);
   const [confirming, setConfirming] = useState(false);
+  /* v2.3.2421: does this device actually hold more than one bro?  Guarded
+     because charRoster reads localStorage, which throws in a private window
+     rather than returning empty -- and a header that throws takes the whole
+     world chrome with it. */
+  let _many = false;
+  try { _many = rosterCount() > 1; } catch (e) { _many = false; }
   /* v2.3.2240: the owner's test panel opens on a 1.2s press of the zone
      name (src/ui/panels/DevPanel.jsx).  Here rather than in a HUD button
      because the header is always on screen in the world and nobody
@@ -102,7 +143,7 @@ export const ZoneHeader = ({ onExit }) => {
         <button
           type="button"
           className="bt-chisel bt-chisel--chip bt-zone-header__logout"
-          aria-label="Log out to the character screen"
+          aria-label={_many ? 'Switch bro, or log out' : 'Log out to the character screen'}
           onClick={() => setConfirming(true)}
         >
           <img src={`/icons/ui/logout-door-icon.svg${V}`} alt="" draggable={false} />
@@ -186,9 +227,11 @@ export const ZoneHeader = ({ onExit }) => {
               textAlign: 'center',
             }}
           >
-            <div style={{ fontSize: 15, fontWeight: 700, color: COL.text }}>Leave the world?</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: COL.text }}>{_many ? 'Switch bro?' : 'Leave the world?'}</div>
             <div style={{ fontSize: 12, color: COL.text2, marginTop: 4 }}>
-              You&apos;ll return to the character screen.
+              {_many
+                ? 'You\u2019ll go to your list of bros. This one is saved.'
+                : 'You\u2019ll return to the character screen.'}
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button
@@ -201,11 +244,16 @@ export const ZoneHeader = ({ onExit }) => {
               </button>
               <button
                 type="button"
-                className="bt-chisel bt-chisel--danger"
-                style={{ flex: 1, minHeight: 40, fontSize: 13, fontWeight: 800 }}
+                /* v2.3.2421: --danger only when it reads as an exit.  That red
+                   is the game's destroy colour (forge salvage, Leave Clan);
+                   on a switch nothing is destroyed and the bro is saved, so
+                   wearing it here is the control lying twice. */
+                className={_many ? 'bt-chisel bt-chisel--chip' : 'bt-chisel bt-chisel--danger'}
+                style={{ flex: 1, minHeight: 40, fontSize: 13, fontWeight: 800,
+                  color: _many ? COL.text : undefined }}
                 onClick={doExit}
               >
-                Log Out
+                {_many ? 'Switch Bro' : 'Log Out'}
               </button>
             </div>
           </div>
