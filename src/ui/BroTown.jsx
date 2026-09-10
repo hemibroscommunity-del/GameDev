@@ -460,7 +460,7 @@ function manaSurgePerFrame(S, active) {
 Object.assign(globalThis, DATA);
 Object.assign(globalThis, { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId });
 /* BT_API_BASE etc from networking — derive fresh each time */
-var BT_API_BASE = (window.BROTOWN_WS_URL || 'wss://brotown-server.hemibroscommunity.workers.dev').replace('wss://', 'https://').replace('ws://', 'http://');
+var BT_API_BASE = (window.BROTOWN_WS_URL || 'wss://api.brotown.net').replace('wss://', 'https://').replace('ws://', 'http://');   /* v2.3.2446: see networking/index.js */
 var SUPA_URL = ''; var SUPA_KEY = ''; var supa = null;
 Object.assign(globalThis, { BT_API_BASE, SUPA_URL, SUPA_KEY, supa });
 Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep });

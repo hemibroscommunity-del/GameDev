@@ -1,7 +1,20 @@
 /* ═══ MULTIPLAYER SERVER — Cloudflare Durable Objects ═══ */
 
-/* Server URLs */
-const WS_BASE = window.BROTOWN_WS_URL || 'wss://brotown-server.hemibroscommunity.workers.dev';
+/* Server URLs.
+   v2.3.2446: THE SERVER ON THE GAME'S OWN DOMAIN.  The worker has always
+   been reached at brotown-server.hemibroscommunity.workers.dev while the
+   page is served from brotown.net -- and workers.dev sits on enough DNS
+   block lists (it is abused for phishing) that the owner's own network
+   blocked it on 2026-09-10: the page loaded, then every call to the server
+   hung ("No answer from the server after 12s", "Still connecting") while a
+   GitHub runner joined the same room in 224ms.  v2.3.2443 gave the worker a
+   custom domain on the game's zone; this points the client at it.  It is
+   reachable exactly when the page is (same zone, same resolver), which the
+   old address was not.  window.BROTOWN_WS_URL still overrides everything
+   (the QA harness points it at localhost).  Every other default in the
+   client (wsClient.js, BroTown.jsx, crashTrap.js) is the same string; keep
+   them in step. */
+const WS_BASE = window.BROTOWN_WS_URL || 'wss://api.brotown.net';
 export const BT_API_BASE = WS_BASE.replace('wss://', 'https://').replace('ws://', 'http://');
 
 /* Legacy Supabase compat (Supabase removed; Durable Objects is the backend).

@@ -25,7 +25,7 @@
  *   PROBE_BASE     worker origin (default: production)
  *   PROBE_SECONDS  how long to wait for the join to be answered (default 30)
  */
-const BASE = (process.env.PROBE_BASE || 'https://brotown-server.hemibroscommunity.workers.dev').replace(/\/$/, '');
+const BASE = (process.env.PROBE_BASE || 'https://api.brotown.net').replace(/\/$/, '');
 const WS_BASE = BASE.replace(/^http/, 'ws');
 const SECS = Math.max(5, Number(process.env.PROBE_SECONDS) || 30);
 const ID = 'probe_gh_actions';
