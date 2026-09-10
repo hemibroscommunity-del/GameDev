@@ -1217,8 +1217,18 @@ export function NameModal(props) {
        button sits inside the input, so it presses via the class's
        reversed bevel instead of moving. */
     className: "bt-cc-btn",
-    /* v2.3.1272: 40px target inside the 44px name well. */
-    style: { position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', width: 40, height: 40, borderRadius: 8, cursor: 'pointer',
+    /* v2.3.1272: 40px target inside the 44px name well.
+       v2.3.2453: TALLER AND A BIGGER DIE, BUT NOT WIDER.  Owner: "randomize
+       button for name needs to be larger it looks small and awkward."  The
+       well grew to 56px at v2.3.2416 and this did not follow, so a 22px die
+       sat in the middle of a tall field with 17px of dead space over and
+       under it -- that gap is the awkwardness, not the icon's own size.
+       48px tall leaves 4px of well above and below and the die goes 22 -> 30.
+       THE WIDTH STAYS 40 ON PURPOSE: the field is 160px wide, its right
+       padding has to clear this button, and at 48 wide the placeholder
+       measured as "Tap to na..." -- a wider tap target bought with a truncated
+       field is a worse screen, and the die reads bigger either way. */
+    style: { position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', width: 40, height: 48, borderRadius: 10, cursor: 'pointer',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
     /* v2.3.1576: the owner PAINTED cc-random-name.webp and it was sitting
        unreferenced in public/ui/welcome/cc/ while this button drew the
@@ -1230,7 +1240,10 @@ export function NameModal(props) {
     className: "bt-cc-action-icon",
     src: '/ui/welcome/cc/cc-random-name.webp?v=' + BUILD_INFO.version,
     alt: '', draggable: false,
-    style: { width: 22, height: 22, objectFit: 'contain' }
+    /* v2.3.2453: 22 -> 30, with the button.  Stated inline for the reason
+       v2.3.2035 wrote down: .bt-cc-action-icon is shared with Randomize Look,
+       so each of the two says its own size instead of one silently winning. */
+    style: { width: 30, height: 30, objectFit: 'contain' }
   })), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1307: inline validation line — green check once the name
        clears the local rules, quiet guidance otherwise.  Fixed height
