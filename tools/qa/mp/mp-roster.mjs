@@ -122,11 +122,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   };
 
-  /* The door opens onto the list with no tap — that IS the feature, so it is
-     asserted before anything reopens it by hand. */
+  /* v2.3.2444: the door no longer opens the list by itself — owner: "Player
+     should need to tap continue or create a character".  So the FIRST thing
+     asserted is that nothing opened, and the second is that Continue does. */
   const autoOpen = !!(await P.page.$('[data-tut="char-picker"]'));
-  rec.ok('the door opens the character list by itself', autoOpen, {});
-  rec.ok('the picker is reachable from Continue (guard)', await openPicker(), {});
+  rec.ok('the door does NOT open the character list by itself', !autoOpen, {});
+  rec.ok('Continue opens the character list', await openPicker(), {});
   await settle();
   const order = await rowNames();
   const levels = await rowLevels();

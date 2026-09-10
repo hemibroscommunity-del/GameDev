@@ -248,7 +248,7 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      scenario pass by replacing the thing it claims to test. */
   if (init) await page.addInitScript(init);
   await page.goto(`http://localhost:${webPort}/${guest ? '?guest=1' : ''}`, { waitUntil: 'domcontentloaded' });
-  return { ctx, page, logs, name };
+  return { ctx, page, logs, name, seeded: !!phrase };
 }
 
 /** Drive character creation and wait until the world is live. */
@@ -304,12 +304,25 @@ export async function enterWorld(P, timeout = 90000) {
   const resumed = await page.evaluate(() => window.__btBootRoute === 'resume');
   if (!resumed) {
     await uncoverDoor(page);   /* v2.3.2111 — see uncoverDoor */
-    if (await page.$('[data-tut="login-create"]')) {
-      await page.click('[data-tut="login-create"]');
-      await page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
+    /* ═══ v2.3.2444: NOBODY WALKS IN BY THEMSELVES ANY MORE ═══
+       Owner: "Player should need to tap continue or create a character."
+       A device that already has a character used to skip the door entirely
+       (the 'resume' road above still exists, but only for the two moments a
+       player has ALREADY tapped: the picker's Play, and the key-login reload).
+       A seeded scenario therefore lands on the door like a returning player
+       and takes the road they take — Continue, then the character's row. */
+    if (P.seeded) {
+      if (!(await openPicker(page))) throw new Error('seeded device: Continue did not open the character list');
+      await page.waitForSelector('[data-tut="char-row"]', { timeout: 20000 });
+      await page.click('[data-tut="char-row"]');
+    } else {
+      if (await page.$('[data-tut="login-create"]')) {
+        await page.click('[data-tut="login-create"]');
+        await page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
+      }
+      await page.fill('input.bt-cc-name', name);
+      await page.click('button.bt-cc-play');
     }
-    await page.fill('input.bt-cc-name', name);
-    await page.click('button.bt-cc-play');
   }
   /* The loading screen preloads every global animation before the intro lifts
      (the animation-preloading law), so this legitimately takes a while. */

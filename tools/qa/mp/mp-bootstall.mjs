@@ -25,9 +25,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
      nothing.  newPlayer's `phrase` option exists for exactly that reason and
      writes it in an init script, which is the only moment early enough: the
      boot check runs on mount. */
+  /* v2.3.2444: a stored key no longer walks in by itself -- the landing page
+     is the door, and the account check runs BEHIND it, where a hang strands
+     nobody.  The checking road is now taken only on an explicit continuation
+     (a row tapped in the picker, a key typed at the door), which both mark
+     with bt_play_now before reloading; the init script sets the same mark so
+     this still drives the road it claims to. */
   const P = await H.newPlayer(browser, { name: 'Stalled', wsPort, webPort,
     viewport: { width: 390, height: 844 },
-    phrase: 'stall-test-key-one-two' });
+    phrase: 'stall-test-key-one-two',
+    init: () => { try { sessionStorage.setItem('bt_play_now', '1'); } catch (e) {} } });
 
   /* Hang the boot check.  Playwright's handler simply never calls
      fulfill/abort, so the request sits open exactly as it does against a
