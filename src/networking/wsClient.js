@@ -354,6 +354,24 @@ export function setupWebSocket(ctx) {
             tf: artHasInk(getArt('tattooFace')) ? getArt('tattooFace') : undefined,
             tm: artHasInk(getArt('tattooArm')) ? getArt('tattooArm') : undefined,
             tb: artHasInk(getArt('tattooHeadBack')) ? getArt('tattooHeadBack') : undefined,   /* v2.3.2043 */
+            /* ═══ v2.3.2431: THE THIRD SENDER, WHICH KEEPS BEING FORGOTTEN ═══
+               A drawing reaches other players by three roads and they have to
+               agree: this JOIN frame, the two-second `track` relay (BroTown.jsx)
+               and the two server gates (join.js / index.js).  v2.3.1939 missed a
+               gate and the print appeared on join then vanished two seconds
+               later; v2.3.2043 and v2.3.2084 each re-learned that.  This is the
+               OTHER half of the same mistake, and it is the worse half: the join
+               frame is the only road that reaches the PERMANENT character record
+               (`_loadOrCreateCharacter` copies JOIN_COSMETIC_KEYS into `look`
+               once and never updates it), so a key missing here can never be
+               restored when you sign in on a new device -- it is not late, it is
+               gone.
+               `tr` (the back-of-body tattoo, v2.3.2148) had been sitting here
+               with exactly this gap since it shipped; `pb` (the back of the
+               trousers, v2.3.2428) would have joined it.  Both go on now, in one
+               change, because they are one defect. */
+            tr: artHasInk(getArt('tattooBack')) ? getArt('tattooBack') : undefined,   /* v2.3.2148, sent from v2.3.2431 */
+            pb: artHasInk(getArt('pantsBack')) ? getArt('pantsBack') : undefined,   /* v2.3.2428 */
             /* v2.3.1941: clothing patterns.  Short ids ("stripe-v:3"), so
                unlike the drawings they need no special length handling. */
             /* v2.3.1953: height and frame.  `undefined` unless you actually

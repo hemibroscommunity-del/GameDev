@@ -2,6 +2,13 @@ import React from 'react';
 import { ART_W, ART_H, ART_PALETTE } from '@/rendering/traits/playerArt.js';
 import { cellAt } from '@/rendering/playerDecal.js';   /* v2.3.1962 */
 import { drawCharacterPortrait } from '@/rendering/characterPortrait.js';
+import { SHIRT_CATALOG } from '@/rendering/traits/shirtCatalog.js';   /* v2.3.2430 */
+
+/* v2.3.2430: the first shirt that is not "none" -- read from the catalogue
+   rather than hard-coded, so importing a second shirt cannot leave this
+   pointing at one that was removed.  The same rule PlayerPaint's worn preview
+   uses (v2.3.2416); one more caller, not a second policy. */
+const DEFAULT_SHIRT = (SHIRT_CATALOG.find((o) => o && o.id !== 'none') || {}).id || 'none';
 
 /* ═══ v2.3.1965: TATTOO THE BODY, NOT A GRID ═══
  *
@@ -109,13 +116,31 @@ const REGIONS = [
      pants bbox does not overlap any skin region, so its position only decides
      ties that cannot happen. */
   { key: 'pants',  target: 'pants',      label: 'Pants' },
+  /* v2.3.2430: THE SHIRT.  Owner: "The shirt canvas should be a preview of the
+     shirt you're drawing on (not just the blank drawing canvas)."  The reason
+     it was not, given at v2.3.2416, was that "a shirt print is stamped on a
+     different sheet with no region to hit-test against" -- true of the code as
+     it stood and not of the sheet: stampShirtArt already computed the exact box
+     it fits the grid into and simply never reported it.  It does now, into the
+     same `__btGrids` object under the key `shirt`, so this row is all the
+     surface needs.
+     Last in the list, after `pants`: the shirt grid sits over the CHEST, which
+     is also the tattoo region, so on a screen that could reach both the
+     more-specific one has to win.  No screen reaches both today (TAB_REGIONS
+     fences the shirt alone), so this only decides a tie that cannot happen --
+     which is exactly what was said of `pants` when it was added. */
+  { key: 'shirt',  target: 'shirtFront', label: 'Shirt' },
 ];
 /* v2.3.2150: front canvas -> its back counterpart, and back -> the front
    REGION it is drawn on. Both directions are needed and they are not the same
    question: the first is "which canvas does this touch write to", the second is
    "which part of the figure is that canvas drawn over". */
-const BACK_TARGET = { tattoo: 'tattooBack', tattooFace: 'tattooHeadBack' };
-const FRONT_OF = { tattooBack: 'tattoo', tattooHeadBack: 'tattooFace' };
+/* v2.3.2428: +the trousers, whose two sides work exactly like the torso's.
+   v2.3.2430: +the shirt, which has had two sides since v2.3.1939 -- it reaches
+   them through the MODE strip rather than the Front/Back switch, but by the
+   time it gets here the answer is the same one word: which side is showing. */
+const BACK_TARGET = { tattoo: 'tattooBack', tattooFace: 'tattooHeadBack', pants: 'pantsBack', shirtFront: 'shirtBack' };
+const FRONT_OF = { tattooBack: 'tattoo', tattooHeadBack: 'tattooFace', pantsBack: 'pants', shirtBack: 'shirtFront' };
 const keyForTarget = (t) => {
   /* A back canvas has no region OF ITS OWN NAME: the grid report is keyed by
      body region (`tattoo`, `face`, `arms`, `pants`) and says nothing about
@@ -157,6 +182,10 @@ const TAB_REGIONS = {
      this one really is a fence -- and it needs to be, because the legs sit
      directly under a torso whose skin IS inkable on another screen. */
   pants: ['pants'],
+  /* v2.3.2430: the shirt screen frames the garment and nothing else.  A fence
+     like the pants one and for the same reason: the print sits directly over a
+     chest whose skin IS inkable on another screen. */
+  shirt: ['shirt'],
 };
 
 /** Invert a 2D affine matrix applied as x' = a·x + c·y + e. */
@@ -543,6 +572,20 @@ export default function BodyInk({
      not exist yet at mount, and a tab change). The 100% button passes `force`
      and is now the only thing that can move a view you set yourself. */
   const fittedRef = React.useRef('');
+  /* ═══ v2.3.2427: WHAT 100% IS A PERCENTAGE OF ═══
+     Owner: "The zoom in and zoom out percentage doesn't change despite zooming
+     and out."  It could not: the corner button was LABELLED "100%" as a fixed
+     string.  v2.3.1994 named it that on purpose -- "'Fit' named the mechanism;
+     '100%' names the view you get back" -- and the reasoning was sound for a
+     button and wrong for what it looks like, which is a readout sitting between
+     a minus and a plus.  Two of the three controls in that row change the zoom
+     and the third states it, so the third has to state the truth.
+     STATE, not a ref: the label has to re-render when this changes, and a ref
+     would leave the number stale exactly as often as it is interesting.  The
+     denominator is the FITTED zoom rather than z=1, because the editor opens
+     fitted -- so 100% is the view you started at and the number says how far in
+     you have gone from there, which is the question being asked. */
+  const [fitZ, setFitZ] = React.useState(0);
   const fitRegion = React.useCallback((force) => {
     const off = offRef.current, grids = gridsRef.current, m = xformRef.current;
     if (!off || !off.width || !grids || !m) return;
@@ -572,6 +615,7 @@ export default function BodyInk({
     const cx = ((p0.x + p1.x) / 2) / off.width;
     const cy = ((p0.y + p1.y) / 2) / off.height;
     fittedRef.current = region;
+    setFitZ(z);
     setView((v) => (Math.abs(v.z - z) < 0.01 && Math.abs(v.cx - cx) < 0.002
       && Math.abs(v.cy - cy) < 0.002) ? v : { z, cx, cy });
   }, [region, tabKeys]);
@@ -595,7 +639,19 @@ export default function BodyInk({
          opposite is true: the trousers are the thing being drawn on, so
          stripping the shirt would only take away the context that tells you
          where the waistband is.  Whatever the player is actually wearing. */
-      const bareSkin = region !== 'pants';
+      /* v2.3.2430: three regions, three answers about what stays ON.
+         SKIN: strip the shirt and the hat -- this surface exists so you can
+         move between chest, face and arms without changing screens, and a
+         covered region you cannot ink reads as broken rather than as covered.
+         PANTS: keep everything -- the trousers are the thing being drawn on and
+         the shirt is the context that says where the waistband is.
+         SHIRT: keep everything AND make sure a shirt is on, which is the whole
+         of the owner's note.  A print needs something to print on, and with
+         nothing worn this surface would frame a bare chest and report no grid
+         at all -- the same case the creator's ink card answers by putting the
+         catalogue's first shirt on (v2.3.2416). */
+      const onShirt = region === 'shirt';
+      const bareSkin = region !== 'pants' && !onShirt;
       /* ═══ v2.3.2422: THE SURFACE TURNS ROUND WITH THE SWITCH ═══
          Owner: "the back button does not make the large canvas rotate to the
          back.  Also the front copies its drawings onto the back (these should
@@ -636,11 +692,20 @@ export default function BodyInk({
         faceTattooArt: (backSide ? A.tattooHeadBack : A.tattooFace) || '',
         armTattooArt: A.tattooArm || '',
         /* The pants drawing, live, for the same reason the three skin ones are
-           here: the surface IS the preview while you are drawing on it. */
-        pantsArt: A.pants || '',
+           here: the surface IS the preview while you are drawing on it.
+           v2.3.2428: and its own two sides, on the same rule as the torso. */
+        pantsArt: (backSide ? A.pantsBack : A.pants) || '',
         reportGrids: true,
         scale: Math.min(2, Math.round((typeof window !== 'undefined' && window.devicePixelRatio) || 1)),
-      }, bareSkin ? { shirt: 'none', headwear: 'none' } : null);
+      }, bareSkin ? { shirt: 'none', headwear: 'none' } : null,
+      onShirt ? {
+        shirtArt: (backSide ? A.shirtBack : A.shirtFront) || '',
+        /* The garment, when one is worn; the catalogue's first otherwise.
+           Without this the surface reports no shirt grid and the screen is
+           un-drawable for every player who has not picked a shirt -- which is
+           every new one. */
+        shirt: (look && look.shirt && look.shirt !== 'none') ? look.shirt : DEFAULT_SHIRT,
+      } : null);
       return drawCharacterPortrait(offRef.current, opts).then(() => {
         const off = offRef.current;
         gridsRef.current = (off && off.__btGrids) || null;
@@ -682,6 +747,11 @@ export default function BodyInk({
      overlays, which is what makes the ink appear under the finger a frame
      before the sheet it is baked into does. */
   React.useEffect(() => { try { blit(); } catch (e) { /* ignore */ } }, [view, blit]);
+
+  /* The number the corner button shows.  Rounded to whole percent and floored
+     at 1 so a view that has not been fitted yet (fitZ 0, one frame at mount)
+     reads as something rather than as Infinity or NaN. */
+  const zoomPct = fitZ > 0 ? Math.max(1, Math.round((view.z / fitZ) * 100)) : 100;
 
   /* ── pointer handling ─────────────────────────────────────────────────── */
   const zoomBy = React.useCallback((k, ax, ay) => {
@@ -852,10 +922,15 @@ export default function BodyInk({
             again in the corner was telling you something you chose.
             v2.3.1994 (owner: "Change 'fit' to just '100%'"): "Fit" named the
             mechanism; "100%" names the view you get back, which is the one the
-            editor opens on. */}
+            editor opens on.
+            v2.3.2427: and it is the LIVE number now -- see fitZ above.  It is
+            still the button that puts the view back, so the label and the
+            action agree: it reads 240%, you tap it, it reads 100%. */}
         <button type="button" className="bt-paint-size" onClick={() => fitRegion(true)}
-          title="Back to the whole area, at the zoom this opened on">
-          <span className="bt-paint-tool-label">100%</span>
+          data-zoom-pct={zoomPct}
+          title={zoomPct === 100 ? 'The whole area, at the zoom this opened on'
+            : 'Back to the whole area, at the zoom this opened on'}>
+          <span className="bt-paint-tool-label">{zoomPct + '%'}</span>
         </button>
       </div>
     </div>

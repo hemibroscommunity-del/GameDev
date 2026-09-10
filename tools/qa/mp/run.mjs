@@ -23,7 +23,10 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  statgrid: () => import('./mp-statgrid.mjs'), /* v2.3.2432: the Points screen is a 4+3+2 grid, in less room */
+  hitmatrix: () => import('./mp-hitmatrix.mjs'), /* v2.3.2433: does EVERY weapon and special register its hits, on a monster and in a duel */
+  hitsweep: () => import('./mp-hitsweep.mjs'), /* v2.3.2426: how accurate IS ranged hit detection -- measured hit rate vs the real per-frame step */
+  standinart: () => import('./mp-standinart.mjs'), /* v2.3.2429: a swing and a raised shield wear your drawings */
+  statgrid: () => import('./mp-statgrid.mjs'), /* v2.3.2434: the Points screen is a 4+3+2 grid, in less room */
   ccink: () => import('./mp-ccink.mjs'), /* v2.3.2414: the inline ink card replaces the Design button nobody noticed */
   ccfit: () => import('./mp-ccfit.mjs'), /* v2.3.2395: the monocle hangs off the eye in SW; the golden glasses stop overhanging the head in S */
   ewcolour: () => import('./mp-ewcolour.mjs'), /* v2.3.2424: the eyewear swatch, and which part it paints */

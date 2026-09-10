@@ -1,5 +1,5 @@
 /* ═══ THE POINTS SCREEN IS A 4 + 3 + 2 GRID, IN LESS ROOM THAN BEFORE ═══
- * (v2.3.2432)
+ * (v2.3.2434)
  *
  * Owner, with a mockup: "the existing 2x2 stat-card layout becomes a dense but
  * clearly grouped 4 + 3 + 2 layout without consuming any additional screen

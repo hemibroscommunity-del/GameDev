@@ -219,7 +219,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     el.scrollTop = 0;
     return { cells: all.length, firstIn, lastIn, lastAtMax, minRow: Math.min(...heights),
       minInfo: Math.min(...targets.filter((t) => t != null)),
-      /* v2.3.2432: how many cells actually HAVE one.  minInfo is Math.min of a
+      /* v2.3.2434: how many cells actually HAVE one.  minInfo is Math.min of a
          filtered list, so it answers Infinity -- and passes any floor -- for a
          screen with no info buttons at all.  This is the count that makes the
          floor mean something. */
@@ -241,10 +241,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !laneFit.err && laneFit.lastAtMax >= laneFit.minRow - 1, laneFit);
   rec.ok('...every row clears the 44pt line, which is what "twice as large" bought',
     !laneFit.err && laneFit.minRow >= 44, laneFit);
-  /* ═══ v2.3.2432: 30 ON A ROW, 22 IN A COMPACT CELL ═══
+  /* ═══ v2.3.2434: 30 ON A ROW, 22 IN A COMPACT CELL ═══
      v2.3.2222 set 30 against a FULL-WIDTH row, where a 30px secondary control
      sat beside a 26px icon, a label and a 38px [+] with room to spare.  The
-     owner's v2.3.2432 mockup puts four cells across 378px, and a 91.5px cell
+     owner's v2.3.2434 mockup puts four cells across 378px, and a 91.5px cell
      cannot hold a 30px info button, an icon, a value AND a [+] without the
      number losing.  So the floor is 22 where the cells are compact.
 
@@ -534,17 +534,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const spans = [...lane.querySelectorAll('span')];
     const arrow = spans.find((x) => /[\u25B2\u25BC]/.test(x.textContent || ''));
     const lv = spans.find((x) => /^LV\s/.test((x.textContent || '').trim()));
-    /* v2.3.2432: the PORTRAIT tab's second line is the lane's remaining
+    /* v2.3.2434: the PORTRAIT tab's second line is the lane's remaining
        points now, not its level. */
     const pts = spans.find((x) => /^\d+\s+PTS$/.test((x.textContent || '').trim()));
     const px = (el) => (el ? parseFloat(getComputedStyle(el).fontSize) : null);
     return { arrow: px(arrow), lv: px(lv), pts: px(pts),
       arrowColor: arrow ? getComputedStyle(arrow).color : null };
   });
-  /* ═══ v2.3.2432: THE SAME FLOOR, ON WHICHEVER LINE IS THERE ═══
+  /* ═══ v2.3.2434: THE SAME FLOOR, ON WHICHEVER LINE IS THERE ═══
      v2.3.2315 set these because the owner asked twice: "the expand and unexpand
      up/down arrows and level label needs to increase in size for legibility."
-     The owner's v2.3.2432 mockup then replaced the portrait tab's second line
+     The owner's v2.3.2434 mockup then replaced the portrait tab's second line
      with "3 PTS" and dropped the caret, so on that branch there is no arrow and
      no "LV n" left to measure -- and an assertion measuring a deleted element
      reports `null >= 13`, which is a FAILURE that says nothing about
@@ -666,21 +666,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const box = pills.map((p) => {
       const r = p.getBoundingClientRect();
       return { w: Math.round(r.width), h: Math.round(r.height),
-        /* v2.3.2432: `y` is what makes "one size per band" a real check.
+        /* v2.3.2434: `y` is what makes "one size per band" a real check.
            Without it every cell groups under `undefined`, the whole grid reads
            as one band of mixed widths, and the assertion fails for a layout
            that is correct. */
         y: Math.round(r.top),
         stat: (p.getAttribute('aria-label') || '').split(',')[0] };
     });
-    /* v2.3.2432: `div, span` here too, and for the same reason -- the cell's
+    /* v2.3.2434: `div, span` here too, and for the same reason -- the cell's
        title and value are spans, and they are exactly the text most at risk of
        cropping in a quarter-width cell. */
     const clipped = pills
       .flatMap((p) => [...p.querySelectorAll('div, span')])
       .filter((t) => t.children.length === 0 && t.scrollWidth > t.clientWidth + 1)
       .map((t) => t.textContent.trim());
-    /* v2.3.2432: `div, span`, not `div`.  The compact cell's title is a
+    /* v2.3.2434: `div, span`, not `div`.  The compact cell's title is a
        <span>, so a div-only walk returned NOTHING for it -- `minFont` came back
        null and the check failed for the right answer's sake but the wrong
        reason, and would have passed VACUOUSLY the moment a null guard was
@@ -693,10 +693,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { box, clipped, minFont: fonts.length ? Math.min(...fonts) : null };
   });
   const heights = [...new Set((pillGeom.box || []).map((b) => b.h))];
-  /* ═══ v2.3.2432: ONE SIZE PER BAND, NOT ONE SIZE OVERALL ═══
+  /* ═══ v2.3.2434: ONE SIZE PER BAND, NOT ONE SIZE OVERALL ═══
      v2.3.1710 wrote this from the owner's own words -- "Character build stat
      allocation pills should all be the same size" -- against a layout that was
-     one column of identical rows.  The owner's v2.3.2432 mockup is deliberately
+     one column of identical rows.  The owner's v2.3.2434 mockup is deliberately
      three bands of different widths (four across, then three, then two), so the
      literal reading of that sentence and the drawing the same owner supplied
      now contradict each other.  THIS IS AN OWNER-VISIBLE REVERSAL and is called
@@ -866,7 +866,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
             why: !badge ? 'no badge (empty pool?)' : `no span reading "${name}"` };
         }
         const b = badge.getBoundingClientRect(), l = label.getBoundingClientRect();
-        /* ═══ v2.3.2432: TWO-DIMENSIONAL, NOT HORIZONTAL-ONLY ═══
+        /* ═══ v2.3.2434: TWO-DIMENSIONAL, NOT HORIZONTAL-ONLY ═══
            This measured x-overlap alone, which was right while the count was a
            pill in the tab's top-right CORNER: same row, so an x-overlap was
            the whole story.  The count is now a centred line UNDER the centred

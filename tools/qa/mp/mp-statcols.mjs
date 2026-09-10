@@ -73,7 +73,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         overflowX: +(b.scrollWidth - b.clientWidth).toFixed(1),
         rows: rows.length,
         rowW: rows.length ? +rows[0].getBoundingClientRect().width.toFixed(1) : 0,
-        /* v2.3.2432: how many cells share the first band's y. */
+        /* v2.3.2434: how many cells share the first band's y. */
         bandN: rows.length
           ? rows.filter((r) => Math.abs(r.getBoundingClientRect().top
               - rows[0].getBoundingClientRect().top) < 2).length
@@ -87,8 +87,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !m.err && m.rows === 9, m);
     if (m.err || m.rows !== 9) { await P.ctx.close().catch(() => {}); continue; }
 
-    /* ═══ v2.3.2432: THE TWO-COLUMN CLAIM IS RETIRED ═══
-       v2.3.2382 made this a ROW of two columns on the owner's ask; v2.3.2432
+    /* ═══ v2.3.2434: THE TWO-COLUMN CLAIM IS RETIRED ═══
+       v2.3.2382 made this a ROW of two columns on the owner's ask; v2.3.2434
        makes it a COLUMN of three bands (4 across, then 3, then 2) on the
        owner's mockup.  So the flex-direction this file was built to pin has
        flipped BY INSTRUCTION, and asserting `row` would now be asserting the
