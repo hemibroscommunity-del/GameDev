@@ -95,6 +95,20 @@ const REGIONS = [
   { key: 'face',   target: 'tattooFace', label: 'Face' },
   { key: 'arms',   target: 'tattooArm',  label: 'Arms' },
   { key: 'tattoo', target: 'tattoo',     label: 'Chest' },
+  /* v2.3.2401: PANTS.  Owner: "On pants editor show the actual pants where
+     you drawing drawing in the editor (similar to how the other editors
+     work)."  The pants print was the last drawing still made on a bare 16x16
+     grid, so you drew a shape in the abstract and found out where it landed
+     afterwards.
+     It costs one row here because the renderer was already reporting a pants
+     grid: playerSkins bakes `{ pants, tattoo, face, arms }` and stamps the
+     pants region whenever a report is asked for -- `wantPantsArt` is
+     `artHasInk(art.pants) || wantReport` -- so an EMPTY pants canvas still
+     hit-tests, which is the case that matters for a first drawing.
+     Last in the list on purpose: priority is most-specific-first, and the
+     pants bbox does not overlap any skin region, so its position only decides
+     ties that cannot happen. */
+  { key: 'pants',  target: 'pants',      label: 'Pants' },
 ];
 /* v2.3.2150: front canvas -> its back counterpart, and back -> the front
    REGION it is drawn on. Both directions are needed and they are not the same
@@ -134,6 +148,11 @@ const keyForTarget = (t) => {
 const TAB_REGIONS = {
   tattoo: ['arms', 'tattoo'],
   face: ['face'],
+  /* v2.3.2401: the pants screen frames the trousers and nothing else.  There
+     is no second canvas for a finger to stray onto, so unlike the Body tab
+     this one really is a fence -- and it needs to be, because the legs sit
+     directly under a torso whose skin IS inkable on another screen. */
+  pants: ['pants'],
 };
 
 /** Invert a 2D affine matrix applied as x' = a·x + c·y + e. */
@@ -563,18 +582,23 @@ export default function BodyInk({
     const draw = () => {
       if (!offRef.current) offRef.current = document.createElement('canvas');
       const A = artsRef.current || {};
+      /* v2.3.2401: whether to strip what is WORN.  On a skin region it must be
+         stripped -- this surface exists so you can move between chest, face and
+         arms without changing screens, and a covered region you cannot ink
+         reads as broken rather than as covered.  On the PANTS region the
+         opposite is true: the trousers are the thing being drawn on, so
+         stripping the shirt would only take away the context that tells you
+         where the waistband is.  Whatever the player is actually wearing. */
+      const bareSkin = region !== 'pants';
       const opts = Object.assign({}, look, {
         dir,
-        /* Every skin canvas at once, and nothing worn that would hide one:
-           this surface exists so you can move between chest, face and arms
-           without changing screens, and a covered region you cannot ink reads
-           as broken rather than as covered. The panel's caption says what a
-           shirt and a hat hide in play. */
-        shirt: 'none', headwear: 'none',
         tattooArt: A.tattoo || '', faceTattooArt: A.tattooFace || '', armTattooArt: A.tattooArm || '',
+        /* The pants drawing, live, for the same reason the three skin ones are
+           here: the surface IS the preview while you are drawing on it. */
+        pantsArt: A.pants || '',
         reportGrids: true,
         scale: Math.min(2, Math.round((typeof window !== 'undefined' && window.devicePixelRatio) || 1)),
-      });
+      }, bareSkin ? { shirt: 'none', headwear: 'none' } : null);
       return drawCharacterPortrait(offRef.current, opts).then(() => {
         const off = offRef.current;
         gridsRef.current = (off && off.__btGrids) || null;
@@ -605,7 +629,7 @@ export default function BodyInk({
       if (raf) cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
     };
-  }, [look, dir, arts, blit, fitRegion]);
+  }, [look, dir, arts, region, blit, fitRegion]);
 
   /* View changes need no new composite, only a re-blit — and so do the three
      overlays, which is what makes the ink appear under the finger a frame

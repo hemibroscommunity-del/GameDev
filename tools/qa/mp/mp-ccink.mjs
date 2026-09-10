@@ -340,9 +340,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${tag}: ${t} has no card -- nothing on that tab can be drawn on`,
         perTab[t] === null, perTab);
     }
-    rec.ok(`${tag}: Shirt with no shirt on has no card either -- a print with `
-      + `nothing to print on is a dead control (v2.3.1938)`,
-      perTab.Shirt === null, perTab);
+    /* v2.3.2401 REVERSED THIS ONE, and it is worth saying why rather than
+       just moving the expectation.  v2.3.1938's rule was "a print with nothing
+       to print on is a dead button", so the Shirt tab withheld its control
+       until a shirt was worn -- and a fresh character wears none, which left
+       the one tab most obviously about a garment with nothing under it at all.
+       Owner: "Add shirt editor under shirt."
+       The rule was right about the symptom and wrong about the cause: what made
+       it dead was that a stroke had nowhere visible to land, not that the
+       player had not picked yet.  The preview puts the catalogue's first shirt
+       on when none is worn, so the design always has a garment -- which section
+       2d below is the check for. */
+    rec.ok(`${tag}: Shirt offers the card even with no shirt on -- the tab most `
+      + `obviously about a garment is not the one tab with nothing under it `
+      + `("${perTab.Shirt}")`, !!perTab.Shirt, perTab);
     /* ...and putting a shirt ON brings it back.  Without this the assertion
        above is satisfied by a card that never appears on Shirt at all. */
     rec.ok(`${tag}: the Shirt tab opened (guard)`, await pickTab(P, 'Shirt'), null);
@@ -372,6 +383,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
       + `(${shirtColours.swatches} swatches in a ${shirtColours.h}px block)`,
       shirtColours.swatches > 6 && !shirtColours.ghost && !shirtColours.yielded
         && shirtColours.h > 100, shirtColours);
+
+    /* ════ 2d. THE SHIRT CARD HAS A SHIRT IN IT ════
+       The reason the card can be live with nothing worn: WornPreview puts the
+       catalogue's first real shirt on so a print has a garment.  Asserted as
+       PIXELS rather than as an option, because "the preview draws a shirt" and
+       "the preview draws a bare chest" are the same DOM.
+       The shirt is white (#f4f4f4-ish in the sheet) over a mid skin tone, so a
+       bare-chested pane and a shirted one differ by thousands of near-white
+       pixels across the torso.  Compared against the SKIN card, which
+       deliberately strips the shirt -- the two panes are the same figure, the
+       same size, and differ in exactly this. */
+    rec.ok(`${tag}: back to Shirt with nothing worn (guard)`, await pickTab(P, 'Shirt'), null);
+    await P.page.waitForTimeout(1500);
+    const shirtPane = await P.page.evaluate(() => {
+      const c = document.querySelector('canvas.bt-cc-ink-pv');
+      if (!c || !c.width) return null;
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      let pale = 0, ink = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] < 40) continue;
+        ink++;
+        /* near-white and unsaturated: the tee, not skin and not the ground */
+        if (d[i] > 200 && d[i + 1] > 200 && d[i + 2] > 200) pale++;
+      }
+      return { ink, pale };
+    });
+    rec.ok(`${tag}: the shirt card painted a figure (guard: ${shirtPane && shirtPane.ink})`,
+      !!shirtPane && shirtPane.ink > 400, shirtPane);
+    rec.ok(`${tag}: ...wearing a shirt, though none is chosen -- otherwise every `
+      + `stroke in the editor it opens lands on a bare chest and nothing shows `
+      + `(${shirtPane && shirtPane.pale} near-white px)`,
+      !!shirtPane && shirtPane.pale > 300, shirtPane);
 
     /* ════ 6b. SHOES GET THE TOOLS SHOES HAVE ════
        Pattern-only (v2.3.1944): there is nothing to draw on an eight-pixel
@@ -527,6 +570,123 @@ export async function run({ browser, wsPort, webPort, rec }) {
         !!after && !!afterSkin && after.h !== afterSkin.h, { afterSkin, after });
     }
   }
+
+  /* ════ 9. THE EDITORS THEMSELVES (v2.3.2401) ════
+     Three owner asks in one pass over the panel, checked on the two screens
+     that differ most: the tattoo one (a body surface) and the pants one (which
+     only just became a body surface). */
+  const P3 = await H.newPlayer(browser, { name: 'Ed', wsPort, webPort,
+    viewport: { width: 390, height: 844 }, touch: true });
+  await openCreator(P3);
+  for (const [tab, wantTitle, wantSurface] of [['Skin', 'Tattoos', 'body'], ['Pants', 'Pants design', 'body'], ['Shoes', 'Shoe pattern', null]]) {
+    rec.ok(`editors: the ${tab} tab opened (guard)`, await pickTab(P3, tab), null);
+    await P3.page.waitForTimeout(1100);
+    await P3.page.click('button.bt-cc-ink-pane');
+    const up = await P3.page.waitForSelector('.bt-paint', { timeout: 20000 })
+      .then(() => true).catch(() => false);
+    rec.ok(`editors: ${tab}'s editor opened (guard)`, up, { tab, up });
+    if (!up) continue;
+    await P3.page.waitForTimeout(1800);
+
+    /* (a) A TITLE.  Owner: "Once in the editors find room to make a title label
+       somewhere so users know what editor they're in."  The panel had none: you
+       arrived from a card, the card went behind the scrim, and a shirt print and
+       a chest tattoo are the same grid beside the same palette. */
+    const head = await P3.page.evaluate(() => {
+      const t = document.querySelector('.bt-paint-title');
+      if (!t) return null;
+      const r = t.getBoundingClientRect();
+      const p = document.querySelector('.bt-paint').getBoundingClientRect();
+      return { text: (t.textContent || '').trim(), h: +r.height.toFixed(1),
+        onScreen: r.top >= p.top - 0.5 && r.bottom <= p.bottom + 0.5,
+        atTop: r.top - p.top < 60 };
+    });
+    rec.ok(`editors: ${tab} names its screen ("${head && head.text}")`,
+      !!head && head.text === wantTitle, { head, wantTitle });
+    /* A title below the fold is a title nobody reads. */
+    rec.ok(`editors: ...at the top of the panel and inside its fold`,
+      !!head && head.onScreen && head.atTop, head);
+
+    /* (b) NO SAVE, NO SLOTS.  Owner: "Remove the 'save' with the 4 slots
+       everywhere: too confusing between saving load out vs saving your current
+       work."  EVERYWHERE is the word, so this runs on every screen rather than
+       on the one it was noticed in. */
+    const stash = await P3.page.evaluate(() => ({
+      slots: document.querySelectorAll('.bt-paint-slots, .bt-paint-slot, .bt-paint-save').length,
+      /* and no button anywhere in the panel still offers to Save */
+      saveButtons: [...document.querySelectorAll('.bt-paint button')]
+        .map((b) => (b.textContent || '').trim())
+        .filter((t) => /^save$|tap a slot/i.test(t)),
+    }));
+    rec.ok(`editors: ${tab} has no design slots and no Save button `
+      + `(${stash.slots} elements, ${stash.saveButtons.length} buttons)`,
+      stash.slots === 0 && stash.saveButtons.length === 0, stash);
+
+    if (wantSurface === 'body') {
+      /* (c) THE PANTS PRINT IS MADE ON THE PANTS.  Owner: "On pants editor show
+         the actual pants where you drawing drawing in the editor (similar to how
+         the other editors work)."  For Skin this has been true since v2.3.1965
+         and is asserted here as the control: if the SKIN screen ever loses its
+         body surface, this loop says so rather than only the pants one. */
+      if (tab === 'Pants') {
+        await P3.page.evaluate(() => {
+          const b = [...document.querySelectorAll('.bt-paint-tabs .bt-cc-tab')]
+            .find((x) => /draw/i.test(x.textContent || ''));
+          if (b) b.click();
+        });
+        await P3.page.waitForTimeout(2000);
+      }
+      const surf = await P3.page.evaluate(() => {
+        const cv = document.querySelector('.bt-bodyink-cv');
+        const aim = cv && cv.__btInkAim;
+        return { body: !!cv, flatGrid: !!document.querySelector('.bt-paint-grid'),
+          regions: aim ? Object.keys(aim) : [] };
+      });
+      rec.ok(`editors: ${tab} draws on the CHARACTER, not on a bare 16x16 grid`,
+        surf.body && !surf.flatGrid, surf);
+      if (tab === 'Pants') {
+        rec.ok(`editors: ...and the surface reports where the trousers are `
+          + `(${surf.regions.join(',')})`, surf.regions.indexOf('pants') >= 0, surf);
+        /* The whole point, end to end: a touch on the trousers writes the PANTS
+           canvas.  A surface that framed the pants but wrote the chest would
+           pass every assertion above. */
+        const aim = await P3.page.evaluate(() => {
+          const c = document.querySelector('.bt-bodyink-cv');
+          const a = c && c.__btInkAim && c.__btInkAim.pants;
+          return a ? { x: a.x, y: a.y, w: c.width, h: c.height } : null;
+        });
+        rec.ok('editors: the pants region has a point to aim at (guard)', !!aim, aim);
+        if (aim) {
+          const box = await (await P3.page.$('.bt-bodyink-cv')).boundingBox();
+          for (const [dx, dy] of [[0, 0], [5, 0], [-5, 0], [0, 5]]) {
+            const px = box.x + ((aim.x + dx) / aim.w) * box.width;
+            const py = box.y + ((aim.y + dy) / aim.h) * box.height;
+            await P3.page.mouse.move(px, py);
+            await P3.page.mouse.down();
+            await P3.page.mouse.move(px + 1, py + 1);
+            await P3.page.mouse.up();
+            await P3.page.waitForTimeout(300);
+          }
+          const cells = await P3.page.evaluate(() => {
+            const get = (k) => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
+            const n = (a) => [...a].filter((c) => c !== '0').length;
+            return { pants: n(get('bt-pantsart')), tattoo: n(get('bt-tattooart')) };
+          });
+          rec.ok(`editors: a stroke on the trousers lands in the PANTS drawing `
+            + `(${cells.pants} cells) and not on the chest (${cells.tattoo})`,
+            cells.pants > 0 && cells.tattoo === 0, cells);
+        }
+      }
+    }
+    /* Back to the creator for the next tab. */
+    await P3.page.evaluate(() => {
+      const b = [...document.querySelectorAll('.bt-paint button')]
+        .find((x) => (x.textContent || '').trim() === 'Done');
+      if (b) b.click();
+    });
+    await P3.page.waitForTimeout(1400);
+  }
+  await P3.ctx.close().catch(() => {});
 
   /* ════ 7. THE PAINT PANEL CAN BE PANNED (v2.3.2399) ════
      Stated honestly: the failure is an iOS Safari one and Chromium cannot

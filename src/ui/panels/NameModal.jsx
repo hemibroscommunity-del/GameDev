@@ -448,7 +448,17 @@ export function NameModal(props) {
      colour block, which gives its reserved height to the card on a tab that
      has no colours to put in it (see .bt-cc-colors--yield below). */
   var _cardDef = _PAINT_FROM_TAB[_activeType] || null;
-  var _cardLive = !!_cardDef && !(_activeType === 'shirt' && (!_def.sel || _def.sel === 'none'));
+  /* v2.3.2401: EVERY paint tab has a card now.  Owner: "Add shirt editor under
+     shirt."  Until now the Shirt tab withheld it while no shirt was worn --
+     v2.3.1938's rule that "a print with nothing to print on is a dead button"
+     -- and since a fresh character wears none, the tab that most obviously
+     ought to have an editor was the one tab with nothing under it at all.
+     The rule was right about the symptom and wrong about the fix: what made it
+     a dead control was that the drawing had nowhere visible to land, not that
+     the player had not chosen yet.  WornPreview puts the catalogue's first
+     shirt on when none is worn (see its shirt branch), so the design always has
+     a garment, and the drawing is kept whichever shirt is picked later. */
+  var _cardLive = !!_cardDef;
   var _colorList = _def.colors || null;
   /* v2.3.1953: on the Build tab this row is the FRAME, not a colour, and two
      of the rules above do not apply to it.  There is no 'default' entry to
@@ -1238,8 +1248,15 @@ export function NameModal(props) {
        back; 28 is the last 2px of a 157.9px row that has 160.3px to sit in.
        It is still the size mp-ccsize guards, and still 8px up on the icon the
        owner asked to grow -- hiding it, which is what a frame with generous
-       rails wants you to do, would have reversed that ask outright. */
-    style: { width: 28, height: 28, objectFit: 'contain' } }),
+       rails wants you to do, would have reversed that ask outright.
+       v2.3.2401: 28 -> 34 (owner, on the name cluster: "Icon too small").  The
+       binding constraint has always been the ROW, not the button's height: the
+       label has to stay on one line beside it, which is what mp-ccbuttons 3
+       pins.  The 6px comes off the button's own side padding and its icon gap
+       rather than off the label (see .bt-cc-actions>button in game.css) --
+       shrinking the words to grow the picture would have traded one half of
+       this control for the other. */
+    style: { width: 34, height: 34, objectFit: 'contain' } }),
   /*#__PURE__*/React.createElement("span", null, "Randomize Look")),
   /* ═══ v2.3.2036: RESET ═══
      Owner: "add a reset button so you can make the character back to the
@@ -1635,11 +1652,12 @@ export function NameModal(props) {
       /* ── the empty state ──
          A blank body in a frame reads as a picture of your chest, which is the
          failure this change exists to fix wearing new clothes.  A PLUS, not a
-         sentence: it is this codebase's own mark for an empty canvas
-         (.bt-paint-slot-plus, the design slots inside the editor this opens),
-         it is an invitation where a status line ("Nothing here yet", which is
-         what this shipped with for an afternoon) is only a report, and it
-         needs no string that has to be true on four different tabs.
+         sentence: it means "add" in every app a player has already used, it is
+         an invitation where a status line ("Nothing here yet", which is what
+         this shipped with for an afternoon) is only a report, and it needs no
+         string that has to be true on four different tabs.  (It was also the
+         mark the editor's design slots drew for an empty one; those went at
+         v2.3.2401, so this is the only place it appears now.)
          It goes the moment there is a single inked cell anywhere on this
          target's canvases -- which is also the moment the picture starts
          speaking for itself. */

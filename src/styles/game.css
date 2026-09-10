@@ -1577,7 +1577,12 @@ input{font-family:inherit}
   color:var(--ui-text-dim,#96A2A0);box-shadow:none;
 }
 .bt-cc-reset:active{transform:scale(.98);background:rgba(255,255,255,.09)}
-.bt-cc-actions>button{min-width:0;min-height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-family:'Source Sans 3',sans-serif;font-size:13px;font-weight:700;letter-spacing:.02em;padding:6px 8px}
+/* v2.3.2401: gap 6 -> 4 and side padding 8 -> 5, which is where the randomize
+   icon's extra 6px came from (28 -> 34, owner: "Icon too small").  Spent on the
+   picture rather than taken from the label: "Randomize Look" has to stay on one
+   line at this column width and mp-ccbuttons 3 fails if it does not -- v2.3.2036
+   shipped it wrapped once already. */
+.bt-cc-actions>button{min-width:0;min-height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-family:'Source Sans 3',sans-serif;font-size:13px;font-weight:700;letter-spacing:.02em;padding:6px 5px}
 /* v2.3.2151: the label never wraps, and the 4px of side padding + 2px of
    gap given back are what pays for the bigger type. Measured, not guessed:
    "Randomize Look" needs 115.1px at 15.2px, and the row had 113.2px of
@@ -2071,7 +2076,14 @@ input{font-family:inherit}
    floor still lives inline in NameModal.jsx (iOS zoom gate, v2.3.710). */
 /* v2.3.1272: 38 → 44px (touch-comfort floor); the 16px font stays (iOS
    zoom gate, v2.3.710). */
-.bt-cc-name{background:linear-gradient(180deg,#132329,#111E23);border:1px solid var(--ui-line);border-radius:10px;box-shadow:inset 0 2px 5px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.025);color:var(--ui-text);height:44px;font-family:'Source Sans 3',sans-serif;
+/* v2.3.2401: the field grows to fill its plate.  Owner: "Make name larger to
+   fill the space."  44px tall with 16px text was sized for the v2.3.1524
+   full-width well; in this column, under a gold plate and above a 48px button,
+   it read as the smallest thing in the cluster when it is the most important.
+   56/20 makes it the tallest control there, which is the right order.
+   The 16px floor the note below defends is a FLOOR -- going up cannot bring
+   back the iOS focus-zoom it exists to prevent. */
+.bt-cc-name{background:linear-gradient(180deg,#132329,#111E23);border:1px solid var(--ui-line);border-radius:10px;box-shadow:inset 0 2px 5px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.025);color:var(--ui-text);height:56px;font-size:20px;font-weight:700;font-family:'Source Sans 3',sans-serif;
   /* v2.3.1524: left-aligned with room for the dice on the right. Centred text
      with symmetric 42px padding fitted the old full-width well; in a column a
      third that wide it ran straight under the dice. The 16px floor stays —
@@ -2286,7 +2298,21 @@ input{font-family:inherit}
      twice.  .14 of the widened plate is 27.1px, within half a pixel of the
      27.5px candidate D reserved, so the rule keeps its distance from the name
      block above and gives its own extra height to the buttons below. */
-  padding-top:calc(var(--cc-plate)*.14);
+  /* v2.3.2401: .14 -> .10.  Owner: "panel behind name too much space between
+     name and randomize."  Measured, that gap was 27.1px against the 8px
+     between Randomize and Reset -- more than three times its neighbour, which
+     is what read as a hole rather than as spacing.
+     It is NOT slack: it is the slot the name-validation line and the ENTER
+     refusal reasons appear in (v2.3.2388), out of flow at top:100% of the name
+     wrap, so deleting it would drop those messages onto the buttons.  What it
+     was, was oversized -- the message is 11px text needing about 13px of line,
+     and .10 gives it 19.4px at 390 with room to centre in.  Paired with the
+     taller name field below, the cluster reads as three controls rather than
+     two with a gap in the middle.
+     THE TWO .10s MUST MATCH: this padding reserves the slot and the message's
+     own height fills it.  Changing one alone either strands the text or
+     reopens the hole. */
+  padding-top:calc(var(--cc-plate)*.10);
 }
 /* ═══ v2.3.2378: THE VALIDATION LINE BORROWS THE DIVIDER'S SLOT ═══
    It used to be a 15px row of its own between the name field and the rail,
@@ -2323,7 +2349,7 @@ input{font-family:inherit}
   /* the same fraction .bt-cc-actions reserves above, so the message is
      centred in that slot rather than in a box of its own.  (It was the
      divider rail's slot until v2.3.2388; the reservation outlived the rail.) */
-  height:calc(var(--cc-plate)*.14);
+  height:calc(var(--cc-plate)*.10);   /* v2.3.2401: pairs with .bt-cc-actions' padding-top -- keep them equal */
   display:flex;align-items:center;justify-content:center;
   font-size:11px;font-family:'Source Sans 3',sans-serif;text-align:center;
   pointer-events:none;
@@ -2629,8 +2655,8 @@ input{font-family:inherit}
    this target's canvases -- after which the picture says it itself.
    A glyph rather than the "Nothing here yet" chip this shipped with for an
    afternoon: a status line is something a player reads, agrees with, and moves
-   on from.  The plus is an invitation, and it is the mark the editor behind
-   this card already uses for an empty design slot.
+   on from.  The plus is an invitation, and it means "add" in every app a
+   player has already used.
    pointer-events:none: the picture behind it is the button. */
 /* v2.3.2400: the painted icon that used to sit in the label bar, as a badge.
    28px, not the bar's 34: it is over the picture now rather than beside a
@@ -2821,6 +2847,19 @@ input{font-family:inherit}
    390x664, under the Done button and off the panel's fold.  `gap` rather than a
    margin on the switch, so the space exists only when both children do. */
 .bt-paint-head{grid-area:tabs;display:flex;flex-direction:column;gap:6px;min-width:0}
+/* v2.3.2401: the screen's name.  Owner: "Once in the editors find room to make
+   a title label somewhere so users know what editor they're in."
+   Sized and coloured off .bt-cc-panel-title's family rather than inventing a
+   heading style, and deliberately quiet: it is a signpost, not the thing you
+   came to look at.  No margin -- .bt-paint-head's own gap spaces it, so it
+   costs exactly its text height and nothing else on a panel that is already
+   tight at 390x664. */
+.bt-paint-title{
+  margin:0;padding:0 2px;flex:0 0 auto;
+  font:800 13px/1.2 'Source Sans 3',sans-serif;
+  letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ui-text-secondary);
+}
 .bt-paint-tabs{min-width:0}
 .bt-paint-side{grid-area:side;width:calc(var(--paint-size) * .62)}
 .bt-paint-note{grid-area:note;width:calc(var(--paint-size) * .62);
@@ -2919,29 +2958,9 @@ input{font-family:inherit}
 
 /* v2.3.1950: the saved-design row.  Three thumbnails and an arming button, on
    one line, sized so a slot stays a comfortable target on a phone. */
-.bt-paint-slots{display:flex;gap:6px;align-items:stretch}
-.bt-paint-slot{
-  flex:0 0 auto;width:46px;min-height:46px;padding:3px;position:relative;
-  border-radius:8px;cursor:pointer;line-height:0;
-  background:rgba(229,237,233,.06);border:1px solid rgba(229,237,233,.20);
-  transition:transform 90ms cubic-bezier(.2,.8,.2,1);
-}
-.bt-paint-slot:active{transform:scale(.97)}
-.bt-paint-slot--on{border-color:var(--ui-brass);background:var(--ui-brass-soft)}
-.bt-paint-slot canvas{
-  width:100%;aspect-ratio:1/1;display:block;image-rendering:pixelated;border-radius:5px;
-}
-/* the "nothing here yet" mark, over the empty checker */
-.bt-paint-slot-plus{
-  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  font-size:20px;line-height:1;color:rgba(229,237,233,.45);pointer-events:none;
-}
-.bt-paint-save{
-  flex:1 1 auto;min-height:46px;border-radius:8px;cursor:pointer;
-  background:rgba(229,237,233,.06);border:1px solid rgba(229,237,233,.20);
-  color:var(--ui-text);font-size:13px;
-}
-.bt-paint-save--on{background:var(--ui-brass-soft);border-color:var(--ui-brass)}
+/* v2.3.2401: .bt-paint-slots / -slot / -slot-plus / -save retired with the
+   design-slot feature (owner: the word Save meant two different things on
+   this screen).  See the note in PlayerPaint.jsx. */
 /* v2.3.1951: the pending-shape controls borrow the brush-size chip so the row
    keeps its height and the panel below it never jumps. */
 .bt-paint-shapeops .bt-paint-size{padding:4px 3px}

@@ -254,9 +254,9 @@ A blank body in a frame is the same failure wearing new clothes — it reads as 
 picture of your chest. Until any of the target's canvases carries a single inked
 cell, a **`+`** sits centred on the picture. A glyph rather than a sentence: the
 first cut said "Nothing here yet", which is a *status report* — a player reads
-it, agrees with it, and moves on. The `+` is an invitation, it is the mark the
-editor behind this card already uses for an empty design slot, and it needs no
-string that has to be true on four different tabs.
+it, agrees with it, and moves on. The `+` is an invitation, it means "add" in
+every app a player has already used, and it needs no string that has to be true
+on four different tabs.
 
 `_INK_SOURCES` is the table that answers "do you already wear anything here",
 because one target can span several canvases: a tattoo spans five, a shirt two,
@@ -379,3 +379,116 @@ tested nothing.
   area. The fix is `max-height:96vh;max-height:96dvh` (vh first — `dvh` is
   Safari 15.4+ and this repo's floor is iOS 14), but the cap is currently an
   inline style and moving it is a bigger change than this PR should carry.
+
+---
+
+# Second round: the tools, the editors, and the name cluster (v2.3.2401)
+
+Five owner notes after testing the preview build, and what each turned into.
+
+## 1. "Add shirt editor under shirt"
+
+The Shirt tab was the one paint tab with nothing under it. `_cardLive` withheld
+the card while no shirt was worn — v2.3.1938's rule that *a print with nothing
+to print on is a dead button* — and a fresh character wears none, so the tab
+most obviously about a garment showed an empty panel.
+
+The rule was right about the symptom and wrong about the cause: what made it
+dead was that a stroke had **nowhere visible to land**, not that the player
+hadn't chosen yet. So the card is live on all four paint tabs now, and
+`WornPreview`'s shirt branch puts the catalogue's first real shirt on when none
+is worn. That is the exact mirror of its tattoo branch, which takes a shirt
+*off* — each screen shows the surface it draws on. The drawing is kept whichever
+shirt is picked later.
+
+## 2. "Remove the save with the 4 slots everywhere"
+
+> "too confusing between saving load out vs saving your current work"
+
+Gone: `SlotChip`, the three-slot row, the Save/arming control, and their CSS.
+The confusion was this panel's fault — *Save* here meant "stash a copy in one of
+three lockers", inches from a game whose other Save means "keep what I'm
+wearing". Two promises behind one word.
+
+Nothing that mattered went with it. The drawing persists on **every stroke**,
+Undo/Redo walk its history, and the front↔back copy button still moves a design
+between canvases. The slot *store* (`playerArt`'s `getSlots`/`setSlot`) is left
+in place with no caller: it lives in `src/rendering/traits`, costs nothing
+unused, and anything already stashed stays readable.
+
+## 3. "On pants editor show the actual pants where you're drawing"
+
+The pants print was the last drawing still made on a bare 16×16 grid — you drew
+a shape in the abstract and found out where it landed afterwards.
+
+It costs **one row** in `BodyInk`'s `REGIONS` table, because the renderer was
+already reporting a pants grid: `playerSkins` bakes `{ pants, tattoo, face,
+arms }`, and `wantPantsArt` is `artHasInk(art.pants) || wantReport` — so an
+*empty* pants canvas still hit-tests, which is the case that matters for a first
+drawing. **No `src/rendering/**` edit was needed.**
+
+Two details that are not obvious:
+
+- `TAB_REGIONS.pants` is `['pants']` alone. Unlike the Body tab, which frames
+  torso *and* arms and lets your finger choose, this one is a fence — the legs
+  sit directly under a torso whose skin is inkable on another screen.
+- The composite stops stripping what's worn on this region. Skin regions must be
+  bared (a covered region you can't ink reads as broken); on pants the trousers
+  *are* the surface, so stripping the shirt would only remove the context that
+  shows where the waistband is.
+
+Shirts stay on the flat grid: a shirt print is stamped on a different sheet with
+no region report, so there is nothing to hit-test against yet.
+
+## 4. "Find room to make a title label so users know what editor they're in"
+
+`.bt-paint-title` — "Tattoos", "Shirt design", "Pants design", "Shoe pattern" —
+in the head cell beside the mode tabs rather than in a bar of its own. *Find
+room* is the ask, and a row costs 30px on a phone already tight at 390×664; one
+line in an existing cell adds only its text height.
+
+`title` is separate from `TARGETS.label` on purpose: `label` is a noun dropped
+into a sentence ("a shirt covers it") and reads wrong as a heading.
+
+## 5. The name cluster
+
+> "The bro name and randomize icon look awkward. Icon too small, panel behind
+> name too much space between name and randomize. Make name larger to fill the
+> space"
+
+Measured: **27.1px** between the name field and Randomize, against **8px**
+between Randomize and Reset — more than three times its neighbour, which is what
+read as a hole.
+
+It is not slack. It's the out-of-flow slot the name-validation line and the
+ENTER refusal reasons (v2.3.2388) appear in, so deleting it would drop those
+messages onto the buttons. It was *oversized*: the message is 11px text needing
+about 13px of line, and `--cc-plate * .10` gives it 19.4px. **Both halves moved
+together** — `.bt-cc-actions`' `padding-top` reserves the slot and
+`.bt-cc-namemsg`'s `height` fills it; changing one alone either strands the text
+or reopens the hole.
+
+- Name field **44 → 56px, 16 → 20px bold**. It was sized for the v2.3.1524
+  full-width well; in this column it was the smallest thing in the cluster when
+  it is the most important.
+- Randomize icon **28 → 34**. The binding constraint is the row, not the
+  button's height: the label must stay on one line, which `mp-ccbuttons` §3
+  pins (v2.3.2036 shipped it wrapped once). The 6px came off the button's side
+  padding and icon gap rather than off the label — shrinking the words to grow
+  the picture would trade one half of the control for the other.
+
+## Testing
+
+`mp-ccink` is **141 assertions** now. The new §9 opens each editor and checks
+its title is present and above the fold, that no screen has slots or a Save
+button, and — end to end — that a touch on the trousers writes the **pants**
+canvas and not the chest. §2d proves the shirt card really has a shirt in it by
+counting near-white pixels, because "draws a shirt" and "draws a bare chest" are
+the same DOM.
+
+`mp-shapelayer` moved from the pants grid to the shirt's, which is a change with
+a story: v2.3.1978 chose pants over the shirt precisely because *"the shirt's
+Design button is dead until a shirt is actually worn"*. Both halves of that
+reason changed in this round, and the shirt is now the only flat-grid designer.
+Two hard-coded `pants` canvas ids inside it had to move with it — the ops blob
+is keyed by **canvas** (`shirtFront`), not by storage key (`bt-shirtart`).
