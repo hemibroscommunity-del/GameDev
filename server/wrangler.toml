@@ -2,6 +2,23 @@ name = "brotown-server"
 main = "src/index.js"
 compatibility_date = "2024-12-01"
 
+# ═══ v2.3.2443: THE SERVER ON THE GAME'S OWN DOMAIN ═══
+# The client has always reached this worker at its *.workers.dev address,
+# while the game itself is served from brotown.net.  workers.dev is on a lot
+# of DNS block lists (it is abused for phishing, so several filters block
+# the whole zone), and a device behind one loads the game and then hangs on
+# every call to the server -- which is exactly what the owner saw on
+# 2026-09-10 ("No answer from the server after 12s", "Still connecting")
+# while a GitHub runner joined the live room in 224ms (probe-room run #1).
+# A custom domain on the game's zone takes the block list out of the path.
+# ADDITIVE: the workers.dev address keeps working, so an old client is not
+# cut off.  The client is switched over separately, AFTER this route is
+# live and probed (deploy-order safety: a client pointed at a name that
+# does not resolve yet would hold every player at "connecting").
+routes = [
+  { pattern = "api.brotown.net", custom_domain = true },
+]
+
 # ── v2.3.1664: on-chain score checkpoints (contracts/BroTownScores.sol) ──
 # The feature is OFF until both of these are set, and the game is entirely
 # unaffected while it is off (chainscore.js `_chainScoreConfigured`).
