@@ -20,6 +20,7 @@
  *      keys, keeps fresh ones, and rate-limits to one sweep per hour.
  */
 import { GameRoom } from '../src/index.js';
+import { OP_PRUNE } from '../src/inbox.js'; /* v2.3.2438 */
 
 function makeState() {
   const store = new Map();
@@ -27,12 +28,24 @@ function makeState() {
     storage: {
       get: async (k) => store.get(k),
       put: async (k, v) => { store.set(k, v); },
+      /* v2.3.2438: faithful to the runtime -- keys come back SORTED, `limit`
+         bounds the page, `startAfter` resumes past a key, and delete()
+         takes one key or an array.  The incremental housekeeping jobs
+         depend on all four; a mock that ignored `limit` would let a sweep
+         "finish" in one page and prove nothing about the paging. */
       list: async (opts) => {
         const out = new Map();
-        for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, v);
+        const keys = [...store.keys()].filter((k) => !opts?.prefix || k.startsWith(opts.prefix)).sort();
+        let n = 0;
+        for (const k of keys) {
+          if (opts?.startAfter && k <= opts.startAfter) continue;
+          if (opts?.limit && n >= opts.limit) break;
+          out.set(k, store.get(k)); n++;
+        }
+        if (store._listLog) store._listLog.push({ prefix: opts?.prefix, limit: opts?.limit, startAfter: opts?.startAfter, size: out.size });
         return out;
       },
-      delete: async (k) => { store.delete(k); },
+      delete: async (k) => { for (const x of (Array.isArray(k) ? k : [k])) store.delete(x); },
     },
     getWebSockets: () => [],
     acceptWebSocket: () => {},
@@ -199,6 +212,48 @@ await room.state.storage.put('oplog:old', Date.now() - 49 * 3600000);
 await room._opPruneMaybe();
 check('second sweep inside the hour is rate-limited (expired key survives)', state._store.has('oplog:old'));
 await room.state.storage.delete('oplog:old'); // don't leak into later checks
+
+// ── 10. v2.3.2438: the prune is a PAGED JOB, off the join path ──
+// The 2026-09-10 stall: one list() over every stamp ever written, then a
+// serial delete per key, awaited before state_sync.  Now: one bounded page
+// per call, batched deletes, a cursor, and _drainInbox never touches it.
+{
+  const N = OP_PRUNE.PAGE * 2 + 137;                  // three pages, last one short
+  const stale = Date.now() - 49 * 3600000;
+  for (let i = 0; i < N; i++) await room.state.storage.put('oplog:bulk:' + String(i).padStart(5, '0'), stale);
+  await room.state.storage.put('oplog:zz-fresh', Date.now());
+  room._lastOpPrune = 0; room._opPrune = null;
+  state._store._listLog = [];
+  const r1 = await room._opPruneMaybe();
+  check('page 1 reports more to do', r1 === true, r1);
+  check('page 1 listed at most one page of keys', state._store._listLog.length === 1 && state._store._listLog[0].limit === OP_PRUNE.PAGE && state._store._listLog[0].size === OP_PRUNE.PAGE, state._store._listLog);
+  const leftAfter1 = [...state._store.keys()].filter((k) => k.startsWith('oplog:bulk:')).length;
+  check('page 1 deleted exactly one page of stale keys', leftAfter1 === N - OP_PRUNE.PAGE, leftAfter1);
+  const r2 = await room._opPruneMaybe();
+  const r3 = await room._opPruneMaybe();
+  check('page 2 reports more to do, page 3 (short) reports done', r2 === true && r3 === false, { r2, r3 });
+  check('every page listed with the page limit and a cursor after the first', state._store._listLog.every((l, i) => l.limit === OP_PRUNE.PAGE && (i === 0 ? !l.startAfter : !!l.startAfter)), state._store._listLog);
+  check('all stale keys gone after three pages', [...state._store.keys()].filter((k) => k.startsWith('oplog:bulk:')).length === 0);
+  check('the fresh key survived the whole sweep', state._store.has('oplog:zz-fresh'));
+  check('a completed sweep arms the hourly anchor (fourth call is a no-op)', (await room._opPruneMaybe()) === false && state._store._listLog.length === 3, state._store._listLog.length);
+  check('the sweep reported its work', room._opPruneLast && room._opPruneLast.pages === 3 && room._opPruneLast.deleted === N, room._opPruneLast);
+  // THE JOIN PATH: a drain must not list the oplog at all.
+  room._lastOpPrune = 0; room._opPrune = null;
+  await room.state.storage.put('oplog:bulk:again', stale);
+  state._store._listLog = [];
+  await room._drainInbox('bp_inbox_nobody', { send() {} });
+  check('_drainInbox performs NO oplog list (the join path never waits on housekeeping)', !state._store._listLog.some((l) => l.prefix === 'oplog:'), state._store._listLog);
+  check('...and the stale key is still there for the tick slot to take', state._store.has('oplog:bulk:again'));
+  await room.state.storage.delete('oplog:bulk:again');
+  await room.state.storage.delete('oplog:zz-fresh');
+  // A page that THROWS ends the sweep and arms the anchor instead of spinning.
+  room._lastOpPrune = 0; room._opPrune = null;
+  const realList = state.storage.list;
+  state.storage.list = async () => { throw new Error('boom'); };
+  const rt = await room._opPruneMaybe();
+  state.storage.list = realList;
+  check('a throwing page ends the sweep (no spin) and arms the anchor', rt === false && room._opPrune === null && room._lastOpPrune > 0, { rt });
+}
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

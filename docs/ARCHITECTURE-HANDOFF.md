@@ -150,6 +150,19 @@ extended.
    opens it.** Therefore: **no cross-DO await between a validation and
    the commit that depends on it.** This is why the order book was folded
    INTO the GameRoom rather than living in its own DO.
+   **The same rule has a second edge (v2.3.2438): a handler that awaits
+   storage holds the gate for its WHOLE duration, so an unbounded
+   `storage.list()` on the join path or a tick slot is a room-wide stall —
+   nothing is answered, not the join that started it, not the next player's,
+   not the admin HTTP surface, until it finishes.** On 2026-09-10 the oplog
+   prune (every stamp ever written, serial deletes, awaited before
+   state_sync) and the daily economy snapshot (every `rpg:` blob with
+   values, on join and every 60s, retried every 60s on throw) did exactly
+   that, and the client walked into its offline legacy game while the room
+   was busy. Housekeeping that walks a prefix must be a JOB: one bounded
+   page per tick slot, a cursor in memory, batched deletes, never on the
+   join path (`_opPruneMaybe`, `_metricsMaybe`). A single `list()` with no
+   `limit` over a prefix that grows without bound is a bug on any hot path.
 10. **Fire-and-forget `_saveRpg` is correct** — output gates hold
     outbound messages until prior writes durably commit, so clients can
     never observe state that later rolls back.
