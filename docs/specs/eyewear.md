@@ -690,10 +690,267 @@ Dbz Glass, Eye Mask, Gojo Satoru and Vision Pro.
 
 ---
 
-## 7. A painted tab icon (optional)
+## 7. The painted tab icon — DONE (v2.3.2389)
 
-The Eyewear tab draws an inline glyph today. To replace it with a painted icon
-in the style of the other eight, generate `public/ui/welcome/cc/cc-tab-eyewear.png`
-with the UI-BIBLE icon recipe and the subject "a pair of round glasses, front
-view", then in `NameModal.jsx` change the tab's entry from
-`img: null, glyph: 'eyewear'` to `img: _TAB_ICON('eyewear')`.
+This section used to be a recipe: generate `cc-tab-eyewear.png` with the
+UI-BIBLE icon prompt, then swap the tab's `img: null, glyph: 'eyewear'` for
+`img: _TAB_ICON('eyewear')`. The owner supplied the art instead — *"Use this
+for the eyewear thumbnail for the trait picker category"* — so the swap is
+made and the inline glyph branch is deleted from `NameModal.jsx`. Build is
+the only tab still drawing its own glyph.
+
+The source is a 1254×1254 transparent PNG of gold-and-cream frames with pale
+blue lenses. It was trimmed to its content bounding box (1168×553, taken at
+alpha > 8 — there is a haze of near-zero alpha across most of the canvas that
+makes a plain `getbbox()` return almost the whole image), the haze zeroed so
+it could not smear into the resample, then LANCZOS'd to **176×83** — the same
+width as `cc-tab-hat.png`, the widest of the eight siblings.
+
+**Not quantized, deliberately.** Palette-reducing it to 16–32 colours takes
+the file from 20.6 KB to ~5.5 KB, which is tempting for a 30×30 icon, but
+both levels drop the black keyline around the frame and the icon loses the
+edge that separates it from the tab. The siblings are hand-drawn pixel art
+with hard edges and ~150 colours; this is a soft render with ~5 000, and the
+honest trade at this display size is to keep the art and pay the 20 KB.
+
+Its aspect ratio (2.1:1) is wider than any sibling, so `object-fit:contain` in
+the 30×30 slot paints it 30×14 where the eye icon gets 30×21. It reads as
+glasses at that size — checked against the siblings on the tab's own dark
+ground — but it does carry less visual weight than its neighbours. If that
+ever reads as wrong, the fix is to crop the swept-up temple arms rather than
+to scale the art past its slot.
+
+
+---
+
+## 8. The Thug Life south frame stops bowing upward (v2.3.2390)
+
+Owner: *"The current south idle black glasses view (I think thug life glasses)
+doesn't look correct the lenses look bent upward."*
+
+### The lenses were not bent
+
+Measured off `hi/south.png`, both lens rectangles run dead level — top at bbox
+row 9, bottom at row 22, across both — and they still do. Nothing in the art
+tilts.
+
+What bowed was the **silhouette**. The two temple arms sat as short fat wedges
+**fused to the frame's outer top corners**, nine rows tall against a fourteen-row
+lens. A stubby triangle welded to the corner of a lens is not read as an arm
+going back over the ear; it is read as *that corner lifting*. Two raised corners
+over a level bridge is an upward bow, which is exactly what was reported.
+
+### Why the wedges were there
+
+The owner's sheet (`assets/icons-source/eyewear-sheets/thug-life.png`) draws the
+arms as long thin diagonal strokes — about 2% of the piece's width at the tip,
+opening to 12% at the hinge, over **53 rows**. The v2.3.2379 import kept that
+taper but compressed it into **nine**. Same shape, two and a half times too
+short for its width, which turns a sweep into a wedge.
+
+Two independent references say nine rows is wrong:
+
+* **Every other pair in the catalogue** draws this hinge as a 2-row stub above
+  the frame — golden-glasses and goggles and 3d-glasses at rows 0–1,
+  white-glass at 0–2.
+* **Thug Life's own southwest facing**, which was never complained about,
+  tapers from 2px.
+
+### The change
+
+256-space rows 6–14 of `hi/south.png` are cleared; `south.png` is regenerated
+from it (a 2×2 box average — the regeneration reproduces the committed file
+byte-for-byte, which is how we know the downscale matches the pipeline). The
+frame keeps its own end-caps, so the temple is still there; only the raised
+wing is gone.
+
+**`anchors` and `crownNudge` are deliberately untouched** even though the art's
+bbox top moved from 6 to 15. The anchor is a coordinate, not a measurement, so
+holding it renders every remaining pixel in exactly the place the owner already
+approved in v2.3.2380 — no re-seating, no compensating nudge to get wrong. That
+is proven rather than assumed: a pixel diff of `preview_headwear.py` before and
+after changes only rows 99–113 of the south cell and nothing else in the sheet.
+
+`bboxes.south` **is** updated, to `[99, 15, 58, 17]`, because that one is a
+measurement. Nothing reads it for this item — `hatHairFit` consults it only for
+`floatsAboveHair` pieces, which this is not — so it stays honest for tooling
+without moving anything.
+
+`scale.south` stays at 0.912: that number came from a **width** fit, and the
+width is unchanged, the arms having lived inside the lens block's own column
+range.
+
+`TRAIT_VER` moves 2.3.2386 → 2.3.2390 in all six copies. This is the second time
+it has ever had to move, and for the same reason as the first: art *and*
+`meta.json` changed under paths already on main, so a returning player would
+otherwise keep the frame the owner asked us to fix.
+
+### The pin
+
+`tools/qa/mp/mp-ccshades.mjs`, 11 assertions. It measures a **top-edge profile**
+across the frame rather than looking for a tilt — a test that asked "are the two
+lenses level with each other" would have been green throughout the entire
+defect.
+
+It isolates the glasses by capturing the same character with and without the
+eyewear and subtracting, rather than by any colour threshold: the head outline
+is near-black too, and so are hair and beards.
+
+And it turns the figure to south first, then proves it turned, from the bare
+body's own symmetry. See **§63 of `docs/TRAPS.md`** — the creator opens on
+*southwest*, and the first cut of this scenario failed four assertions against
+art that was already fixed.
+
+Mutation-tested: 4 red against the pre-fix art (ends 18px and 16px above the
+middle in canvas pixels), 0 red after. The whole creator suite — ccshades,
+ccjoin, ccsize, ccbuttons, ccstand, ccfeet, ccload — is 115/115.
+
+---
+
+## 9. Two placements the owner corrected by eye (v2.3.2395)
+
+> "In southwest view the eyeglass needs to hang off the eye more it's too far
+> in the middle of the face"
+>
+> "Shrink the south view golden glasses a bit too"
+
+Both are `meta.json` numbers. No art changed.
+
+### The monocle, southwest: `crownNudge.southwest.x` −14 → −22
+
+At −14 the lens sat almost entirely inside the face, immediately beside the
+near eye — which is exactly the "middle of the face" reading. The **south**
+facing is the one the owner is happy with, and it hangs roughly half the lens
+past the head's left silhouette. −22 reproduces that proportion in the 3/4
+view: measured in the running client, the piece now sits **40%** outside the
+head's edge, against **14%** before.
+
+−26 was also rendered and is too far: the lens leaves the eye and the piece
+reads as floating beside the head rather than clamped on it.
+
+### The golden glasses, south: `scale.south` 1 → 0.912
+
+The same number Thug Life's south took at v2.3.2380 for the same request,
+which keeps the two front views the owner has asked to shrink consistent with
+each other. At 1.0 the frame reached **past the head on both sides** (piece
+206–318 against a face of 207–316); at 0.912 it sits inside on both
+(211–313), still spanning 94% of the face width, lenses still on the eyes.
+0.88 was rendered too and is a step too far.
+
+`crownNudge.south.y` moves by `bboxH*(1−s)/2` = `23 × 0.088 / 2` = **+1.012**,
+holding the **centre**. Holding the bottom edge is right for a hat on a skull
+and would lift these off the eye row (the v2.3.2380 note says the same).
+
+`TRAIT_VER` moves 2.3.2390 → 2.3.2395. Third time it has had to move, and the
+first for `meta.json` **alone** — placement rides the same cache key as the
+art, so a returning player holding the old meta would wear the current art at
+the old anchors.
+
+### How this was measured, after three failures
+
+You cannot find the face's silhouette in a picture where the eyewear is
+covering it. Three static attempts failed on that, or a cousin of it:
+
+* one re-implemented `_placeTrait`'s arithmetic by hand and got a different
+  answer from the renderer — which is exactly what `preview_headwear.py`'s own
+  header warns a hand-rolled preview is worth ("not a check, a second opinion
+  from a different function");
+* one keyed on skin colour, and since the monocle *covers* the skin at the
+  face edge, it found the first skin pixel to the **right** of the piece;
+* one took the head's edge from rows above and below the piece and caught the
+  **skull's widest point**, above the brow, reporting a piece that visibly sat
+  inside the face as sticking out of it.
+
+`mp-ccfit` captures the character **bare**, captures him **wearing** the piece,
+and subtracts. The difference is the piece exactly, with no threshold to tune,
+and the bare capture still holds the face edge the piece is now hiding.
+
+### The pin
+
+`tools/qa/mp/mp-ccfit.mjs`, 13 assertions, mutation-tested **per change**:
+reverting the monocle nudge turns its assertion red alone; reverting the
+glasses scale turns the two overhang assertions red.
+
+One number in it is load-bearing and worth stating: the monocle's "hangs off
+by at least **25%** of the piece". This file shipped for one run with a 12%
+floor, and the mutation check showed the rejected placement already managed
+14% — so the assertion passed the very state the fix exists to leave behind.
+The fix measures 40%; 25% clears both.
+
+## 10. The monocle's SOUTH placement (v2.3.2411)
+
+Owner: *"The south facing monocle needs to be nudged a bit to the right too"* —
+"too" because §9 had just moved the **southwest** one for the same complaint.
+
+`crownNudge.south.x` **−12 → −8**.
+
+### How it was chosen
+
+A rendered sweep of ten values (−16 −12 −10 −8 −6 −4 −2 0 +4 +12), injected by
+fulfilling the runtime `meta.json` fetch per candidate with a modified copy — the
+repo was never touched. One fresh browser context per candidate, because
+`_metaCache` in `characterPortrait.js` only fetches once per page load.
+
+Three things were **rendered rather than reasoned**, each because reasoning about
+one of them has gone wrong here before:
+
+- **The sign.** x −12 puts the lens left edge at canvas 308, x +12 puts it at
+  386. Increasing x moves the lens **right**. Confirmed by picture, not by
+  reading `_placeTrait` (§9 records two failed attempts to compute placement
+  analytically).
+- **The facing.** The creator opens on southwest (TRAPS §63), so south was
+  proved every run from the *bare* body's own head-band symmetry — 0.022 at
+  390×844, 0.029 at 390×664, both under the 0.06 face-on threshold. One run was
+  lost before this to a subtler version of the same trap: clicking the **Eyes**
+  tab swaps the stage to a zoomed head-only canvas (782→561px), which silently
+  corrupts a bare-vs-worn diff. Take the bare capture on the *eyewear* tab.
+- **The eye row**, off a bare render of the bald default character (no hair to
+  confuse the silhouette). The covered eye spans canvas 355–374, centre 364.5.
+  Cross-checked twice: mirroring the far eye about the head centre gives 363,
+  and `eyeMask.json`'s stand-south iris rects are 3px in 256-space = 9.75 canvas
+  px, exactly the width of the measured dark runs.
+
+### Why −8, and how far right it may go
+
+At the shipped −12 the lens centre sat at 350.5 — **14 canvas px (4.3 meta px)
+left of the eye**, on the temple, tangent to the head silhouette, with the eye
+buried at the lens's inner edge. That is precisely the "too far" the owner saw.
+At −8 the lens centre is 363.5 against an eye centre of 364.5: one canvas pixel,
+0.3 meta px. Four meta px of travel is 15% of the lens width — a nudge.
+
+**The failure going further is not the southwest one.** There, −26 was rejected
+because the lens left the face and read as floating beside the head. Here the
+lens is travelling *inward*, so the failure is the opposite: the rim crosses the
+face and reaches the **other eye**. At −6 the rim visibly clips the far eye's
+sclera and by −4 it covers it outright, so **−8 is the rightmost value this pass
+would ship.**
+
+> **v2.3.2417 — correction.** An earlier draft of this section put far-eye
+> clearance at −8 at **+4px**. It is about **2px**. The +4 compared a lens rim
+> located by *differencing* two renders against an eye located by *brightness
+> threshold* — two different edges, so the gap was measured between marks made
+> by different rulers. The direction of the failure is unchanged and −6 still
+> clips; the margin at −8 is one rim's width, not four.
+
+Proportions hold at 390×664 (overhang −11px vs −14px), so this is not
+viewport-specific.
+
+### The pin
+
+`mp-ccfit.mjs`, two assertions, expressed against the **head silhouette** rather
+than in canvas pixels — canvas size follows the viewport (782px at 390×844,
+546px at 390×664) and a pixel threshold would pin the wrong thing. They bracket
+the answer from opposite sides:
+
+- the lens sits **inboard** of the head edge (>2% of head width in),
+- its rim **stops short of the far eye** (<61% across the head).
+
+Mutation-tested: restoring −12 puts the lens edge 1% *outside* the silhouette
+and the first assertion goes red. 17/17 with the fix in place.
+
+**These two assertions do not pin −8 uniquely, and must not be read as if they
+did.** −10 passes both (inFrac 0.024 > 0.02, rightFrac 0.549 < 0.61). They bound
+the piece to the face from either side; what *chooses* −8 inside that band is
+the eye-centre measurement above, and −10 is the conservative neighbour if the
+far eye ever reads tight on a head this pass did not render. An earlier draft's
+claim that −8 was the only value satisfying both was false.

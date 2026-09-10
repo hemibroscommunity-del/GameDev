@@ -1423,6 +1423,48 @@ input{font-family:inherit}
 /* v2.3.1527: the cap also has to leave room for the 2x. On a wide desktop the
    column is 360px, and 720px of pedestal reached down over the name field. */
 .bt-name-box.bt-cc-box>.bt-cc-stage{flex:1 1 auto;min-height:110px;max-height:min(var(--cc-leftw),34vh,420px);margin-block:auto}
+/* ═══ v2.3.2391: WHILE THE KEYBOARD IS UP, THE BRO GIVES UP THE ROOM ═══
+   The v2.3.1307 reservation pads the column's bottom by the keyboard's height,
+   but the padding never reached the name field: this stage is flex:1 with a
+   110px floor and .bt-cc-namewrap has margin-top:auto, so once the stage hit
+   110 the column bottomed out and the field stuck at 428px — measurably below
+   the keyboard line on a 390x745 Safari tab, which is why Safari panned the
+   whole screen anyway and the owner saw it shift.
+   Dropping the floor to 0 and capping the stage lets the column actually
+   collapse upward.  The character is the right thing to sacrifice here: while
+   you are typing your name you are looking at the field, not at the bro, and
+   he comes straight back when the keyboard closes.
+   Scoped to [data-kb] so it exists only for the moments the keyboard does. */
+.bt-name-box.bt-cc-box[data-kb]>.bt-cc-stage{
+  /* A FIXED 96px, not a smaller flexible band, for two measured reasons.
+     Flexible (min-height:0 + a vh cap) collapsed the stage to ZERO on the
+     390px phones -- the bro vanished outright while typing, which is not
+     "give up some room", it is give up all of it.  And it did nothing at all
+     on a 375x553 SE, because @media (max-height:690px) further down sets
+     `min-height:96px!important` on .bt-cc-stage and an !important floor beats
+     a plain zero.  Pinning both ends at that same 96px agrees with the rule
+     instead of losing to it, and lands every phone on one predictable number.
+     The stage carries scale(2) (see .bt-cc-col-left>.bt-cc-stage), so 96px of
+     layout is ~192px of painted bro: he is smaller while you type, not gone.
+     flex:0 0 auto so nothing can stretch or crush it back. */
+  flex:0 0 auto;
+  min-height:96px;
+  max-height:96px;
+}
+/* ...AND SO DOES THE TITLE.  The stage alone was not enough, measured: at
+   390x745 it only had 128px to give and its own floor is 96, so collapsing it
+   bought 32px and left the field's bottom at 414 against a keyboard line of
+   409 -- five pixels short, which is still a pan.  The BRO TOWN logo is
+   another 99px sitting above it doing nothing for someone who is typing their
+   name, and it is the honest thing to spend: it is decoration at that moment,
+   and it comes back the instant the keyboard closes.
+   Scoped to .bt-cc-title, the wrapper -- .bt-cc-logo itself is two levels down
+   inside .bt-cc-logo-wrap, so a child selector aimed at the logo matches
+   nothing at all.  It did, silently, in the first cut of this rule: the
+   measurement came back byte-identical and only saying so out loud caught it. */
+.bt-name-box.bt-cc-box[data-kb]>.bt-cc-title{
+  display:none;
+}
 /* v2.3.1524: the hero cluster's margin-top:auto would put ALL the slack above
    the name field, leaving the character pinned to the top of a tall empty
    column. The stage's own auto margins split the slack instead, so it sits in
@@ -1833,9 +1875,15 @@ input{font-family:inherit}
    v2.3.1578 (owner: "make the breathing a little more obvious"): 3.5%
    → 6%, and 2600ms → 2200ms.  Amplitude is the direct answer, but a
    larger scale held at the old slow tempo starts to read as a wobble
-   rather than a breath, so the cycle tightens with it. */
+   rather than a breath, so the cycle tightens with it.
+   v2.3.2388: the gate is now :not([aria-disabled]) because the button
+   stopped carrying the native `disabled` attribute — it has to take the
+   press in order to answer it (see joinGate.js).  The selector had to
+   move with it or the readiness cue would invert: a blocked button would
+   breathe "you're good, go" at a player who cannot go, which is the one
+   thing the v2.3.1577 note above says it must never do. */
 .bt-cc-play-label{display:inline-block;will-change:transform}
-.bt-cc-play:not(:disabled) .bt-cc-play-label{animation:bt-cc-breathe 2200ms ease-in-out infinite}
+.bt-cc-play:not([aria-disabled]) .bt-cc-play-label{animation:bt-cc-breathe 2200ms ease-in-out infinite}
 @keyframes bt-cc-breathe{
   0%,100%{transform:scale(1)}
   50%{transform:scale(1.06)}
@@ -1845,7 +1893,7 @@ input{font-family:inherit}
    triggers vestibular discomfort, so it goes away entirely rather than
    merely slowing down. */
 @media (prefers-reduced-motion:reduce){
-  .bt-cc-play:not(:disabled) .bt-cc-play-label{animation:none}
+  .bt-cc-play:not([aria-disabled]) .bt-cc-play-label{animation:none}
 }
 /* v2.3.1254: creator slate buttons (dice, Randomize) share one class
    carrying the v2.3.1241 edge-parity MICRO-BEVEL — a hairline top
@@ -2230,10 +2278,23 @@ input{font-family:inherit}
     url('/ui/welcome/cc/cc-frame-bot.webp?v=2.3.2361') center bottom/100% auto no-repeat,
     url('/ui/welcome/cc/cc-frame-mid.webp?v=2.3.2361') center calc(var(--cc-plate)*.382)/100% calc(100% - var(--cc-plate)*.685) no-repeat;
 }
-/* The divider rail from the sheet's loose pieces (ball ends, centre diamond),
-   between the name block and the buttons as the mockup has it.  It rides on
-   .bt-cc-actions' own padding rather than on a pseudo-element: that element is
-   a grid, and a ::before inside it becomes a grid ITEM and takes a row. */
+/* ═══ v2.3.2388: THE DIVIDER RAIL IS GONE, ITS SLOT IS NOT ═══
+   Owner, on a screenshot of it: "Remove this diamond separator thing."
+
+   The art goes (cc-frame-rule.webp, ball ends and centre diamond, from the
+   sheet's loose pieces).  THE PADDING STAYS, and that is not laziness: since
+   v2.3.2378 this row's padding-top is where the validation line lives --
+   .bt-cc-namewrap>.bt-cc-namemsg is absolute at top:100% with exactly this
+   fraction for its height.  Deleting the padding with the picture would drop
+   the message onto the buttons, and v2.3.2388 gives it more to say than it
+   ever had (the ENTER BRO TOWN refusal reasons), so the slot is now doing
+   more work rather than less.
+   The gap is therefore unchanged and nothing in the column reflows -- the
+   character keeps the size the owner signed off at v2.3.2378, which cost
+   real arithmetic to arrive at.  If the space itself should close up too,
+   that is a second change and a second look at that ledger.
+   The file stays on disk: this is a decision about what the plate wears, not
+   a deletion of the art. */
 .bt-cc-cluster>.bt-cc-actions{
   /* .16 -> .14 for the reason the bottom padding gives above.  The divider art
      draws at 100% of THIS row, so the wider plate already draws a taller rule
@@ -2242,7 +2303,6 @@ input{font-family:inherit}
      27.5px candidate D reserved, so the rule keeps its distance from the name
      block above and gives its own extra height to the buttons below. */
   padding-top:calc(var(--cc-plate)*.14);
-  background:url('/ui/welcome/cc/cc-frame-rule.webp?v=2.3.2361') center top/100% auto no-repeat;
 }
 /* ═══ v2.3.2378: THE VALIDATION LINE BORROWS THE DIVIDER'S SLOT ═══
    It used to be a 15px row of its own between the name field and the rail,
@@ -2262,22 +2322,32 @@ input{font-family:inherit}
    edge, so an 11px line centred in that 27.9px slot cannot avoid it, and the
    text came out crossed through.
 
-   So the rail steps aside instead.  While the cluster carries data-msg the
-   background image is dropped and the message has the slot to itself: no
+   So the rail stepped aside instead.  While the cluster carried data-msg the
+   background image was dropped and the message had the slot to itself: no
    layout jump (it never had a row to grow), nothing overlapping, and the
-   information wins over the decoration for as long as there is information.
-   With the field empty the rail is back and the plate looks exactly as the
-   owner approved it. */
+   information winning over the decoration for as long as there was
+   information.
+
+   v2.3.2388: PAST TENSE ON THAT LAST PARAGRAPH -- the owner has since asked
+   for the rail itself to go ("Remove this diamond separator thing"), so there
+   is nothing left to step aside and the message has the slot unconditionally.
+   Everything ABOVE this note still holds and is why the padding stayed when
+   the picture went: the 15px row is still out of the flow, the character is
+   still the size that bought, and top:100% still lands here. */
 .bt-cc-namewrap>.bt-cc-namemsg{
   position:absolute;left:0;right:0;top:100%;
   /* the same fraction .bt-cc-actions reserves above, so the message is
-     centred in the rail's own slot rather than in a box of its own. */
+     centred in that slot rather than in a box of its own.  (It was the
+     divider rail's slot until v2.3.2388; the reservation outlived the rail.) */
   height:calc(var(--cc-plate)*.14);
   display:flex;align-items:center;justify-content:center;
   font-size:11px;font-family:'Source Sans 3',sans-serif;text-align:center;
   pointer-events:none;
 }
-.bt-cc-cluster[data-msg]>.bt-cc-actions{background-image:none}
+/* v2.3.2388: the rule that hid the rail while the message was showing is gone
+   with the rail.  data-msg itself is NOT dead -- NameModal still sets it, and
+   v2.3.2388 widened it to cover the button's refusal reasons; it is simply no
+   longer the CSS that reads it. */
 /* ── WHAT THE RAILS COST, AND WHO PAID ──────────────────────────────────
    Measured at 390x844 dpr3, where the column is 171.6px.  A frame with .105
    of margin per side leaves 135.6px of interior -- and "Randomize Look" alone
@@ -2866,7 +2936,38 @@ input{font-family:inherit}
   box-shadow:0 0 0 2px var(--ui-brass),0 2px 7px rgba(5,8,10,.38);
 }
 .bt-cc-defcolor:active{transform:scale(.97)}
-.bt-cc-colors-row{display:grid;grid-template-columns:repeat(auto-fill,var(--cc-swatch));grid-auto-rows:var(--cc-swatch);gap:5px;justify-content:center;align-content:start;height:calc(var(--cc-swatch)*2 + 9px);min-width:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;padding:2px;scrollbar-width:none;box-sizing:border-box}
+.bt-cc-colors-row{display:grid;grid-template-columns:repeat(auto-fill,var(--cc-swatch));grid-auto-rows:var(--cc-swatch);gap:5px;justify-content:center;align-content:start;flex:0 1 auto;height:auto;min-height:calc(var(--cc-swatch)*2 + 9px);max-height:calc(var(--cc-swatch)*4 + 19px);min-width:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;padding:2px;scrollbar-width:none;box-sizing:border-box}
+/* === v2.3.2396: THE COLOUR ROW STOPS HIDING COLOURS IT HAS ROOM FOR ===
+   Owner, with a screenshot of the Hair tab: "For some reason the color picker
+   is dimming the colors even when there's more room to display."
+
+   They are right, and the cue was not lying -- the CAP was.  This row was a
+   fixed height:calc(var(--cc-swatch)*2 + 9px): exactly two rows, on every tab,
+   whatever the catalogue and whatever the space.  Measured at 390x844 with a
+   trait actually PICKED (the row is empty until then, which is what made the
+   first probe of this report say "no overflow" on all eight tabs and nearly
+   sent me after the wrong bug):
+
+     Hair    13 swatches, 150px of content in a 75px box -- 75px hidden,
+             with 261px of EMPTY PANEL below the Design button
+     Shirt   12 swatches,  37px hidden, 374px free
+     Hats    11 swatches,  37px hidden, but only 2px free -- its own option
+             strip legitimately wants that room
+
+   So on Hair the picker hid half its colours behind a fade while a third of
+   the panel sat empty underneath.
+
+   height:auto with a two-row FLOOR and a four-row CEILING.  The floor keeps
+   v2.3.1252's constant-size guarantee: every tab reserves the same block, so
+   the stage and the character never move when you switch tabs -- which is the
+   whole reason this row is rendered, and ghosted, on tabs with no colours at
+   all.  The ceiling is four rows because the longest catalogue is hair's, and
+   hair puts THIRTEEN swatches in this row -- the fourteenth, Default, is a
+   text button in .bt-cc-colors-head above it -- which is exactly four rows at
+   the four columns 390px gives.  Past four it scrolls and the cue means
+   something again.
+   flex:0 1 auto, with the wrap's own min-height:0 (.bt-cc-panel>.bt-cc-scroll),
+   is what lets the row give the room back on a tab like Hats. */
 .bt-cc-colors-row::-webkit-scrollbar{display:none}
 .bt-cc-colors-row>*{flex:none!important;width:var(--cc-swatch)!important;height:var(--cc-swatch)!important}
 /* v2.3.1254: scroll affordance (owner: indicate there are more items) —
@@ -2968,6 +3069,59 @@ input{font-family:inherit}
    The picker pane sits on a higher layer, so where the two meet the picker
    wins and the bro passes behind it. */
 .bt-cc-col-left>.bt-cc-stage{transform:translateX(7%) scale(2);transform-origin:50% 50%;pointer-events:auto}
+/* ═══ v2.3.2391: THE DRAG-TO-SPIN CUE ═══
+   Anchored to the SAME contact line the boots stand on -- the platform line
+   sits at ~24.2% of stage height (v2.3.799 algebra, re-stated by the contact
+   shadow's bottom:22.4% just above it in NameModal), so the cue is hung just
+   under it and reads as lying on the pedestal at his feet rather than
+   floating.
+   WIDTH IS A PERCENTAGE OF THE STAGE, not px: .bt-cc-col-left>.bt-cc-stage
+   carries `scale(2)`, so any px size written here would paint at double on
+   the phone and at something else again on the desktop layout, which does not
+   take that transform.  A percentage rides the scale correctly on both.
+   pointer-events:none is load-bearing, not hygiene: the canvas underneath is
+   what the drag is captured on (NameModal's onPointerDown/Move), so a cue
+   that took the press would swallow the gesture it exists to advertise. */
+/* ═══ v2.3.2394: overflow:clip, BUT ONLY ON A TOUCH DEVICE ═══
+   v2.3.2391 put `overflow:clip` on .bt-name-modal unconditionally, to close
+   the focus-shove of TRAPS section 64 (an overflow:hidden box whose content
+   stops fitting is a real scroll container, and a .focus() on anything below
+   the fold scrolls the whole creator off the top).  That was right about the
+   bug and wrong about the scope, and CI caught what I did not: at the DESKTOP
+   layout the creator legitimately overflows -- 919px of column in a 780px
+   modal at 1000x780 -- and ENTER BRO TOWN sits at y 812, eighty-eight pixels
+   BELOW the fold.  overflow:hidden still lets a wheel reach it.  clip does
+   not, so the button became unclickable, and mp-questline said so by timing
+   out on the hit-target check with the element "visible, enabled and stable".
+
+   The shove is an iOS soft-keyboard phenomenon: it needs a viewport that
+   shrinks under a keyboard, which is a touch device.  Scoping the cure there
+   leaves the desktop with the scrolling it has always depended on to reach its
+   own primary button.  Not a workaround for the test -- reaching ENTER BRO
+   TOWN by wheel is how that layout has worked all along, and taking it away
+   was the regression. */
+@media (pointer:coarse){
+  .bt-name-modal{overflow:clip}
+}
+.bt-cc-spincue{
+  position:absolute;left:50%;bottom:12%;
+  /* SIZED BY THE STAGE'S HEIGHT, not its width.  The stage is only square on a
+     tall phone: measured, it is 343.2x343.2 at 390x844 but 343.2x239.6 at
+     390x664.  The CHARACTER is sized off that height (the canvas is
+     height:_frame.h% with aspect-ratio 1/1), so a cue sized off the WIDTH
+     drifts against him -- 35% of width read as 35% of the pedestal on one
+     phone and 51% on the other.  A height percentage with width:auto lets the
+     art's own 512x244 ratio do the rest, and cue and bro shrink together.
+     16.6% reproduces the 120px width that was chosen by eye at 390x844. */
+  height:16.6%;width:auto;
+  transform:translateX(-50%);
+  pointer-events:none;
+  image-rendering:pixelated;
+  /* .18s to match the contact shadow and the frame transition it shares a
+     trigger with, so the two never disagree mid-move. */
+  transition:opacity .18s ease;
+  will-change:opacity;
+}
 /* The rotate circles ride inside the stage, so the 2x doubled both their size
    AND their distance from its centre — they ended up half off the screen. They
    are pulled in and counter-scaled, which lands them back on the pedestal at

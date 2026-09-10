@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { COL } from '@/ui/mobile/dash/common.js';
 import { activeWeaponCategory, weaponXpRequired, WEAPON_LEVEL_CAP } from '@/data/gameSystems.js';
-import { prog3Live, prog3XpRequired, PROG3, PROG3_SKILL_META } from '@/data/prog3.js';
+import { prog3HasSkills, prog3XpRequired, PROG3, PROG3_SKILL_META } from '@/data/prog3.js';
 import { xpCardPoint, holdXp, landXp } from '@/ui/xpLanding.js'; /* v2.3.1874 */
 
 /* HudPopupOverlay — HUD-anchored "+N XP" / "+N G" feedback, plus the
@@ -125,7 +125,17 @@ export function weaponSkillProgress(R) {
   if (!R) return null;
   let cat;
   try { cat = activeWeaponCategory(R); } catch (e) { cat = 'sword'; }
-  if (prog3Live(R)) {
+  /* v2.3.2414: prog3HasSkills, not prog3Live -- the same correction as
+     v2.3.1901/1902/1922 and HeroExpanded above.  This function SENDS nothing;
+     it reads a level and an XP threshold for a floating popup, so the only
+     question it has is "is the level in the blob".  Gated on the cap, an
+     otherwise-healthy prog3 character got the LEGACY weapon-XP curve drawn
+     under a legacy level -- a bar measured against a threshold that skill does
+     not use, which is the same class of lie as the level itself (the v2.3.1901
+     note makes exactly this point about the curve moving with the level).
+     The body below already defaults to {level:1, xp:0} when the skill is
+     missing from the blob, so it is safe under the weaker gate. */
+  if (prog3HasSkills(R)) {
     const p3 = (R.prog3.sk && R.prog3.sk[cat]) || { level: 1, xp: 0 };
     const meta = PROG3_SKILL_META.find((s) => s.key === cat);
     const p3Level = Math.max(1, Math.min(PROG3.LEVEL_CAP, Math.floor(p3.level || 1)));

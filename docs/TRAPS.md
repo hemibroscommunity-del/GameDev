@@ -2552,6 +2552,128 @@ fine and a 340x380 screenshot said it was not, in about a second.
 **Related:** §60 — same session, same lesson. Reasoning about layout without
 measuring the rendered result is how both of these shipped.
 
+## 63. Measuring "the south view" in a creator that opens on southwest (v2.3.2390)
+
+The owner reported the **south idle** Thug Life glasses looking wrong. The
+obvious way to check it headlessly is to open the character creator, put the
+glasses on and measure the preview canvas.
+
+That measures the **southwest** 3/4 view. `characterPortrait.js`'s `_DMAP`
+falls back to `southwest`, and `BroTown.jsx` initialises `previewDir` to
+`'southwest'` — the creator has never opened face-on.
+
+This is worse than measuring nothing, because a 3/4 view of a pair of glasses
+is *legitimately* asymmetric: the near temple arm is drawn long and the far one
+short. `mp-ccshades`' first run reported the frame bowing up at both ends, with
+the left end 13px higher than the middle — against art whose wedges had already
+been removed. Two of the four failures were the art being fine and the view
+being wrong.
+
+**The tell** was that the "before" and "after" numbers were asymmetric (left
+119, right 127) for a piece that is mirror-symmetric by construction. A
+front-view measurement that comes back lopsided is measuring something other
+than the front view.
+
+**What to do.** `_PREVIEW_DIRS` is clockwise from `south`, and the preview
+starts on its last entry, so exactly one forward drag step lands on south.
+Then *prove* it landed there from evidence independent of the thing under
+test — `mp-ccshades` measures the **bare body's** own left/right symmetry over
+the head band, which has nothing to do with eyewear and reads 0.025 face-on
+against a much larger number in any 3/4 view. Turning and asserting you turned
+are two different steps, and skipping the second is how the first cut of this
+shipped confident and wrong.
+
+Related: §57 (a preview that does not reproduce every term of the placement
+arithmetic is a second opinion, not a check).
+
+## 64. An `overflow:hidden` box that stops fitting is a scroll container (v2.3.2391)
+
+`.bt-name-modal` is `position:fixed; inset:0; height:100dvh; overflow:hidden`.
+That reads as "this can never scroll". It is not what it means.
+
+`overflow:hidden` clips and **removes the scrollbar** — it does not remove the
+scroll *container*. The box is still programmatically scrollable, and the
+browser scrolls it on your behalf whenever something inside it takes focus
+below the fold. Reproduced: shrink the modal to 400px so its content no longer
+fits, call `.focus()` on the ENTER button, and the whole creator scrolls 228px
+off the top — logo at `-218px` — with **no way back**, because the same rule
+sets `touch-action:none` and `overscroll-behavior:none` so no finger can drag
+it down again.
+
+This is reachable in production, not a lab curiosity: iOS resizes the *layout*
+viewport for the keyboard in a home-screen install (`apple-mobile-web-app-capable`
+is set in `src/index.html`), which shrinks `100dvh` and produces exactly that
+too-small box.
+
+**Two consequences.**
+
+First, `overflow:hidden; overflow:clip` — in that order. `clip` creates no
+scroll container at all, so the shove becomes impossible; the duplicated
+`hidden` is what iOS 14–15 keeps, since `clip` is Safari 16+ and this game's
+floor is iOS 14. A bare `overflow:clip` would be **dropped** on those versions,
+falling back to `visible` and spilling the layout — worse than what you started
+with. Back it with a `scroll` listener that puts `scrollTop` to 0, for the
+versions that keep `hidden`.
+
+Second, and this is the trap proper: **"shrink the container to the visual
+viewport" is the obvious fix for an iOS keyboard bug, and here it CAUSES this
+one.** It was the first thing written for v2.3.2391 and it had to be thrown
+away — it re-flows the column beautifully and hands you a 228px scroll
+container in exchange.
+
+## 65. `getBoundingClientRect()` on a transformed element is not its layout box (v2.3.2391)
+
+`.bt-cc-col-left>.bt-cc-stage` carries `transform:scale(2)`. So the stage's
+`getBoundingClientRect().height` is **double** its layout height, and every
+CSS rule you write — `min-height`, `max-height`, flex basis — acts on the
+layout half.
+
+Chasing the keyboard fix, three consecutive measurements came back reporting
+the stage as "192px, unchanged" while a `max-height:96px` was demonstrably
+applying. The rule was working; the ruler was doubling. The tell was that the
+number never moved no matter what the CSS said — a measurement that refuses to
+respond to the thing it is measuring is usually measuring something else.
+
+Use `offsetHeight` (layout, untransformed) when you are checking whether a CSS
+rule took, and `getBoundingClientRect()` when you are checking what the player
+sees. They are different questions and on this stage they differ by 2×.
+
+Related: §62 (sizing a moving glyph's travel by its anchor point) — the same
+family of error, a number that is real but is not the one the question needs.
+
+## 66. Probing a creator control that is empty until a trait is picked (v2.3.2396)
+
+The owner reported the character creator's colour picker "dimming the colors
+even when there's more room to display". The first probe written for it did
+the obvious thing: open each of the eight trait tabs, measure
+`scrollHeight - clientHeight` on `.bt-cc-colors-row`, report the overflow.
+
+It came back **no overflow on any tab**, and that was very nearly the end of
+a real bug.
+
+`.bt-cc-colors-row` renders as `_colors || <div/>`. A fresh character is
+`None` on every tab — there is no trait to recolour, so there are no
+swatches, so the row holds a single empty `div` and cannot overflow anything.
+The probe measured eight empty boxes and truthfully reported that none of
+them was too small.
+
+Pick a real option first (click `.bt-cc-strip > *[1]`, wait for the recolour)
+and the numbers arrive: Hair, 13 swatches, 150px of content in a 75px box —
+**75px hidden, with 261px of empty panel below it.**
+
+The general shape: **a UI probe that finds nothing has two explanations, and
+"the bug is not there" is only one of them.** The other is that the probe
+never got the control into the state the bug lives in. When a report comes
+with a screenshot, the screenshot is a state description — match it before
+believing a null result. This one showed a *chosen* hairstyle with its
+colours under it; the probe was looking at 'None'.
+
+Guard for it in the test, not just in the probe: `mp-ccsize.mjs` §5 asserts
+`swatches > 6` **before** it asserts `hidden <= 2`, so an empty row can never
+pass the overflow check by having nothing to overflow with.
+
+Related: §61 (a still-frame assertion cannot see a frozen animation) — the
+same family, a measurement taken in a state that cannot show the defect.
 ## 67. A synthesised gesture proves the handler, not the reachability (v2.3.2413)
 
 The owner, trying to open the test panel: *"The long press on zone name to open

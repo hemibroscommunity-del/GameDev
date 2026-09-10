@@ -23,6 +23,12 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  ccfit: () => import('./mp-ccfit.mjs'), /* v2.3.2395: the monocle hangs off the eye in SW; the golden glasses stop overhanging the head in S */
+  ccspin: () => import('./mp-ccspin.mjs'), /* v2.3.2391: the drag-to-spin cue, and that it does not eat the drag */
+  cckb: () => import('./mp-cckb.mjs'), /* v2.3.2391: the iOS keyboard no longer shoves the creator */
+  ccshades: () => import('./mp-ccshades.mjs'), /* v2.3.2390: the Thug Life south frame does not bow upward at the temples */
+  ccjoin: () => import('./mp-ccjoin.mjs'), /* v2.3.2388: the join button explains its refusal; the diamond rail is gone */
+  orbrange: () => import('./mp-orbrange.mjs'), /* v2.3.2387: a magic orb reaches as far as an arrow (675px, was 340) */
   jetstream: () => import('./mp-jetstream.mjs'), /* v2.3.2398: the bow's arrows lay the aim line now, and the sight beam they replaced is dark */
   fakenum: () => import('./mp-fakenum.mjs'), /* v2.3.2350-2352: the client stops billing damage the worker never dealt */
   brobadge: () => import('./mp-brobadge.mjs'), /* v2.3.2345: the verified-Bro badge has art in it -- Texture.from is a lookup, so the icon rides the manifest */

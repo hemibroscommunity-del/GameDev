@@ -125,6 +125,7 @@ import { GamblePanel } from './panels/buildings/GamblePanel.jsx';
 import { PartyPanel } from './panels/buildings/PartyPanel.jsx';
 import { VendorPanel } from './panels/buildings/VendorPanel.jsx';
 import { MINE_SPOT_R, WORLD_ZOOM, FARM_BED_TILE } from '@/data/constants.js';
+import { pageIsPinchZoomed } from '@/data/joinGate.js';   /* v2.3.2388 */
 /* v2.3.1189: LEGACY DEBT burn-down — these five resolved only via the
    Object.assign(globalThis, DATA) below (eslint grandfathered them).
    Explicit imports close the latent ReferenceError window between
@@ -9383,13 +9384,16 @@ export var BroTown = function BroTown(_ref0) {
        enter that state and press PLAY, the canvas sizes off the zoomed
        viewport and the in-game layout breaks.  Easier to gate than to
        try to recover. */
-    try {
-      var _vvScale = (window.visualViewport && window.visualViewport.scale) || 1;
-      if (_vvScale > 1.05) {
-        alert('Please pinch-out to reset zoom (back to 100%) before starting.');
-        return;
-      }
-    } catch (e) {}
+    /* v2.3.2388: the threshold moved to data/joinGate.js so the ENTER BRO
+       TOWN button can explain this rule in the creator's own validation line
+       instead of a window.alert().  This stays as the enforcement -- joinTown
+       is also reached WITHOUT the creator mounted (the stored-character
+       auto-join below), and that path has no message slot to write to, so it
+       keeps the alert as its last resort. */
+    if (pageIsPinchZoomed()) {
+      alert('Please pinch-out to reset zoom (back to 100%) before starting.');
+      return;
+    }
     var name = nameInput.trim() || 'Anon';
     var S = stateRef.current;
     S.myName = name;
