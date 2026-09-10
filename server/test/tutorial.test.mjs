@@ -66,7 +66,19 @@ function makeState() {
     storage: {
       get: async (k) => store.get(k),
       put: async (k, v) => { store.set(k, v); },
-      list: async () => new Map(store),
+      list: async (opts) => {
+        /* v2.3.2421: HONOUR THE PREFIX, like every other suite's mock.
+           This was `async () => new Map(store)` -- it handed back the WHOLE
+           store whatever you asked for, so any code that scopes a sweep by
+           prefix was untested here and behaved differently than it does
+           against real DO storage. Caught when a reset sweep scoped to
+           `oplog:questitem:<pid>:` deleted every key in the store and the
+           scoping assertions failed against a mock that cannot express
+           scoping. Twelve-plus production call sites pass a prefix. */
+        const out = new Map();
+        for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, v);
+        return out;
+      },
       delete: async (k) => { store.delete(k); },
     },
     getWebSockets: () => [],
@@ -195,7 +207,7 @@ const sess = { id: 'bp_t' };
      moves around. */
   QUEST_REWARDS.__zonetest = { gold: 0, xp: 0, next: null,
     objective: { type: 'kill', arch: null, zone: 'frost', count: 5 } };
-  room._handleQuestAccept(sess, { questId: '__zonetest' });
+  await room._handleQuestAccept(sess, { questId: '__zonetest' });
   check('accept marks the quest active', ps._quests.__zonetest === 'active', ps._quests);
 
   room._creditQuestObjective('bp_t', 'kill', 'fodder', 'meadow');
@@ -207,7 +219,7 @@ const sess = { id: 'bp_t' };
   check('a kill in the named zone counts', ps._questKills.__zonetest === 1, ps._questKills.__zonetest);
 
   // A legacy quest with no zone must still count anywhere.
-  room._handleQuestAccept(sess, { questId: 'mayor_2' });
+  await room._handleQuestAccept(sess, { questId: 'mayor_2' });
   room._creditQuestObjective('bp_t', 'kill', 'fodder', 'ember');
   check('a zone-less legacy objective still counts anywhere',
     ps._questKills.mayor_2 === 1, ps._questKills.mayor_2);
@@ -229,8 +241,8 @@ const sess = { id: 'bp_t' };
 
   // tut_4 pays armor for 6 fire-goblin remnants.
   ps.inventory = { 'fire-goblin-remnants': 5 };
-  room._handleQuestAccept(sess, { questId: 'tut_4' });
-  room._handleQuestTurnIn(sess, { questId: 'tut_4', xpCat: 'sword' });
+  await room._handleQuestAccept(sess, { questId: 'tut_4' });
+  await room._handleQuestTurnIn(sess, { questId: 'tut_4', xpCat: 'sword' });
   check('an unmet objective pays nothing and stays active',
     ps._quests.tut_4 === 'active' && ps.coins === 0 && ps.armor === null,
     { st: ps._quests.tut_4, coins: ps.coins, armor: ps.armor });
@@ -238,7 +250,7 @@ const sess = { id: 'bp_t' };
     ps.inventory['fire-goblin-remnants'] === 5, ps.inventory);
 
   ps.inventory['fire-goblin-remnants'] = 7;   // one spare, to prove exact deduction
-  room._handleQuestTurnIn(sess, { questId: 'tut_4', xpCat: 'sword' });
+  await room._handleQuestTurnIn(sess, { questId: 'tut_4', xpCat: 'sword' });
   check('a met objective turns the quest in', ps._quests.tut_4 === 'turnedIn', ps._quests.tut_4);
   check('gold is paid', ps.coins === QUEST_REWARDS.tut_4.gold, ps.coins);
   /* v2.3.1687 (owner): "Scout's Vest" -> "Iron Torso". */
@@ -261,7 +273,7 @@ const sess = { id: 'bp_t' };
     ps.inventory['fire-goblin-remnants'] === 1, ps.inventory);
 
   const coinsAfter = ps.coins;
-  room._handleQuestTurnIn(sess, { questId: 'tut_4', xpCat: 'sword' });
+  await room._handleQuestTurnIn(sess, { questId: 'tut_4', xpCat: 'sword' });
   check('a turned-in quest cannot be claimed twice', ps.coins === coinsAfter, ps.coins);
 
   /* v2.3.1687 — the reward that used to VANISH.  Owner: "I turned in the
@@ -277,7 +289,7 @@ const sess = { id: 'bp_t' };
     ps2.inventory['fire-goblin-remnants'] = 6;
     const wsQ = room._wsBySessionId(sess.id);
     const before = wsQ ? wsQ.sent.length : 0;
-    room._handleQuestTurnIn(sess, { questId: 'tut_4', xpCat: 'sword' });
+    await room._handleQuestTurnIn(sess, { questId: 'tut_4', xpCat: 'sword' });
     const stashed = wsQ ? wsQ.sent.slice(before).filter((m) => m.type === 'quest_reward_stashed') : [];
     check('an occupied chest slot no longer swallows the reward',
       stashed.length === 1 && stashed[0].payload.item.name === 'Copper Greaves',
@@ -291,7 +303,7 @@ const sess = { id: 'bp_t' };
   // Armor already worn: the grant must not silently replace the player's.
   ps._quests.tut_4 = 'active';
   ps.armor = { name: 'Player Choice', tierMult: 3 };
-  room._handleQuestTurnIn(sess, { questId: 'tut_4', xpCat: 'sword' });
+  await room._handleQuestTurnIn(sess, { questId: 'tut_4', xpCat: 'sword' });
   check('an armor grant never overwrites armor the player is wearing',
     ps.armor.name === 'Player Choice', ps.armor);
 }
@@ -307,8 +319,8 @@ const sess = { id: 'bp_t' };
      ps.weapon here reported "no weapon granted" against a grant that had in
      fact worked perfectly — the slot routing is the thing worth pinning. */
   ps.inventory = { snowman: 9 };
-  room._handleQuestAccept(sess, { questId: 'tut_1' });
-  room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: 'bow' });
+  await room._handleQuestAccept(sess, { questId: 'tut_1' });
+  await room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: 'bow' });
   /* v2.3.1676: accepting tut_1 hands over the sword+shield (grantOnAccept),
      and turning it in pays the bow.  So after this sequence the player holds
      BOTH.
@@ -340,8 +352,8 @@ const sess = { id: 'bp_t' };
 
   /* And the STAFF from the next step goes somewhere else again. */
   ps.inventory = { 'slime-remnants': 6 };
-  room._handleQuestAccept(sess, { questId: 'tut_2' });
-  room._handleQuestTurnIn(sess, { questId: 'tut_2', xpCat: 'staff' });
+  await room._handleQuestAccept(sess, { questId: 'tut_2' });
+  await room._handleQuestTurnIn(sess, { questId: 'tut_2', xpCat: 'staff' });
   check('a granted STAFF reaches the bag as well, staff slot untouched',
     ps.weaponStash.some((w) => w && w.type === 'staff') && !ps.staffWeapon,
     { stash: ps.weaponStash, equipped: ps.staffWeapon });
@@ -351,6 +363,13 @@ const sess = { id: 'bp_t' };
   ps.weapon = { type: 'sword', tierMult: 1, name: 'Keeper' };
   ps.shield = { name: 'Own Shield' };   /* occupied: grantOnAccept must not replace it */
   ps.weaponStash = new Array(room.WEAPON_STASH_CAP).fill(0).map(() => ({ type: 'sword', tierMult: 1 }));
+  /* v2.3.2420: settle the room's own background work BEFORE zeroing the
+     purse. The room starts floating sweeps (_arenaEntrySweep refunds a 100g
+     entry for this player), and a floating promise lands at whatever await
+     happens to come next -- which, now that the quest handlers await storage,
+     is inside the turn-in. Draining it here means the coins measured below
+     are the quest's and nothing else's, whichever branch the code takes. */
+  await new Promise((r) => setTimeout(r, 0));
   ps.coins = 0;
   /* v2.3.1683: the equipped slots are filled here to prove the OPPOSITE of
      what they used to. Before, an empty slot swallowed the grant and the
@@ -358,8 +377,17 @@ const sess = { id: 'bp_t' };
      these two exist to show a failed grant leaves held gear alone. */
   ps.rangedWeapon = { type: 'bow', tierMult: 1, name: 'Old Bow' };
   ps.inventory = { snowman: 9 };
-  room._handleQuestAccept(sess, { questId: 'tut_1' });
-  room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: 'bow' });
+  /* v2.3.2420: measured as a DELTA, not against an absolute. The handlers
+     await storage now (the inbox drain below), and an await is where the
+     room's own background sweeps get to run -- _arenaEntrySweep refunded a
+     100g entry into this very player mid-turn-in and an `=== tut_1.gold`
+     assertion read that as the quest paying wrong. The property being pinned
+     is that the quest still pays its gold when an item grant fails, which is
+     a delta. */
+  const _goldBefore = ps.coins;
+  await room._handleQuestAccept(sess, { questId: 'tut_1' });
+  const _goldAfterAccept = ps.coins;
+  await room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: 'bow' });
   check('a full stash does not destroy the equipped weapon',
     ps.weapon.name === 'Keeper' && ps.rangedWeapon.name === 'Old Bow',
     { w: ps.weapon, r: ps.rangedWeapon });
@@ -368,8 +396,102 @@ const sess = { id: 'bp_t' };
   check('a full stash stays at cap (rule 3: no silent overflow)',
     ps.weaponStash.length === room.WEAPON_STASH_CAP, ps.weaponStash.length);
   check('a failed item grant still pays the gold and completes the quest',
-    ps.coins === QUEST_REWARDS.tut_1.gold && ps._quests.tut_1 === 'turnedIn',
-    { coins: ps.coins, st: ps._quests.tut_1 });
+    (ps.coins - _goldAfterAccept) === QUEST_REWARDS.tut_1.gold && ps._quests.tut_1 === 'turnedIn',
+    { before: _goldBefore, afterAccept: _goldAfterAccept, coins: ps.coins, st: ps._quests.tut_1 });
+
+  /* ═══ v2.3.2420: ...AND THE WEAPONS ARE NOT GONE ═══
+     Owner: "didn't receive bow and staff after completing first quest", on a
+     character old enough to be carrying eight weapons. Everything above this
+     line passed before the fix: the stash stayed at cap, the gold paid, the
+     quest completed. The bow and the staff were simply deleted, and a
+     turned-in quest cannot be retried -- resetting the character was the only
+     way out, which is what the owner did.
+
+     They go to the offline inbox now (handoff rule 4: every payout through
+     _creditPlayer), so they are handed over at the next join once a slot is
+     free. Read from STORAGE rather than from a return value, because storage
+     is what survives the deploy that rule 4 exists for. */
+  {
+    const box = (await room.state.storage.get('inbox:' + sess.id)) || [];
+    const wpns = box.filter((e) => e && e.kind === 'weapon');
+    const named = (n) => wpns.find((e) => e.payload && e.payload.weapon
+      && e.payload.weapon.name === n);
+    check('a bow that did not fit is in the INBOX, not deleted',
+      !!named('Pine Bow'), box);
+    check('...and so is the staff -- tut_1 pays BOTH, so one entry is not enough',
+      !!named('Pine Staff'), box);
+    check('...and the SWORD from the accept path too (grantOnAccept had the same hole)',
+      !!named('Copper Great Sword'), box);
+    check('...each carrying a forge-shaped weapon, not a bare name',
+      !!(named('Pine Bow').payload.weapon.type === 'bow'
+        && named('Pine Bow').payload.weapon.gearBase === 'ww_pine'
+        && named('Pine Bow').payload.weapon.tierMult > 0),
+      named('Pine Bow').payload.weapon);
+    /* Rule 5: the opId is what makes a reconnect or a crash-retry converge
+       instead of minting a second bow. Deterministic, and stamped in oplog:. */
+    check('...under a deterministic opId (rule 5), so a retry cannot double-pay',
+      wpns.every((e) => typeof e.opId === 'string' && e.opId.startsWith('questitem:' + sess.id + ':')),
+      wpns.map((e) => e.opId));
+    const _stamp = await room.state.storage.get('oplog:' + named('Pine Bow').opId);
+    check('...with that opId stamped in the oplog', typeof _stamp === 'number', _stamp);
+    /* Rule 1: _saveRpg rewrites from a fixed field list, so the scratch this
+       rides on must never reach the saved blob. */
+    check('...while the scratch it travelled on never reaches the saved blob',
+      ps._questWeaponUnfit == null, ps._questWeaponUnfit);
+
+    /* ═══ v2.3.2421: THE opId NAMES THE WEAPON, NOT ITS POSITION ═══
+       Found by an adversarial pre-merge review, and it is the same silent
+       loss v2.3.2420 exists to stop: a deduped credit returns 'dup' and the
+       weapon is dropped. Keyed on the loop index, a reward list that changes
+       (tut_1's staff MOVED here from tut_2 at v2.3.1692) makes index 0 name a
+       different weapon than the stamp was written for. */
+    check('the opId identifies the WEAPON, so a reordered reward cannot dedup '
+      + 'against a stamp written for a different one',
+      wpns.every((e) => {
+        const w = e.payload.weapon;
+        return e.opId.includes(':' + w.type + '.' + w.gearBase + '#');
+      }), wpns.map((e) => e.opId));
+    check('...and two different weapons never share an opId',
+      new Set(wpns.map((e) => e.opId)).size === wpns.length, wpns.map((e) => e.opId));
+  }
+
+  /* ═══ v2.3.2421: A RESTARTED CHARACTER IS NOT ITS PREVIOUS LIFE ═══
+     The stamps are keyed by PLAYER ID, and a restart does not change it --
+     the passphrase IS the character. So the second life turns tut_1 in, the
+     credit finds the FIRST life's stamp, returns 'dup', and the bow and staff
+     vanish again: the original bug, reintroduced for precisely the player who
+     already restarted to escape it.
+
+     On a THROWAWAY id. _resetCharacterData deletes playerState[pid], and the
+     first cut ran it on `sess` -- which detached the ps every later section
+     of this file is still holding, and turned four unrelated checks red. The
+     sweep is what is under test here, not how the stamps got written, so
+     writing them directly is both sufficient and isolated. */
+  {
+    const victim = 'bp_resetme';
+    const keep = [
+      ['oplog:questitem:bp_other:turnin:tut_1:bow.ww_pine#1', 1],  /* another PLAYER */
+      ['oplog:duelpot:' + victim + ':x', 1],                        /* another PRODUCER */
+      ['rpg:' + victim, { coins: 1 }],
+    ];
+    for (const [k, v] of keep) await room.state.storage.put(k, v);
+    for (const w of ['bow.ww_pine#1', 'staff.ww_pine#1', 'greatsword.copper#1']) {
+      await room.state.storage.put('oplog:questitem:' + victim + ':turnin:tut_1:' + w, Date.now());
+    }
+    const before = await room.state.storage.list({ prefix: 'oplog:questitem:' + victim + ':' });
+    check('the first life left questitem stamps behind (guard)', before.size === 3, before.size);
+
+    await room._resetCharacterData(victim);
+
+    const after = await room.state.storage.list({ prefix: 'oplog:questitem:' + victim + ':' });
+    check('restarting the character clears ITS quest-reward stamps, so the '
+      + 'second life is paid its bow and staff instead of being deduped',
+      after.size === 0, after.size);
+    check('...and leaves another PRODUCER\'s idempotency alone',
+      (await room.state.storage.get('oplog:duelpot:' + victim + ':x')) != null);
+    check('...and does not reach into another PLAYER\'s stamps',
+      (await room.state.storage.get('oplog:questitem:bp_other:turnin:tut_1:bow.ww_pine#1')) != null);
+  }
 }
 
 // ── 5. A bad reward definition must never break a turn-in ──
@@ -395,13 +517,13 @@ const sess = { id: 'bp_t' };
   ps.coins = 0; ps.armor = null;
 
   ps.inventory = { snowman: 4 };
-  room._handleQuestAccept(sess, { questId: 'tut_1' });
+  await room._handleQuestAccept(sess, { questId: 'tut_1' });
 
   /* No category, unknown category, prototype key — all refused, and
      refused WHOLE: the quest must stay claimable, not end up turnedIn
      with the reward unpaid. */
   for (const bad of [undefined, 'trebuchet', '__proto__', 42]) {
-    room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: bad });
+    await room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: bad });
   }
   check('an XP-paying turn-in with no valid skill is refused',
     ps._quests.tut_1 === 'active' && ps.coins === 0, { st: ps._quests.tut_1, coins: ps.coins });
@@ -413,7 +535,7 @@ const sess = { id: 'bp_t' };
 
   const bowBefore = ps.prog3.sk.bow.level + ps.prog3.sk.bow.xp;
   const swordBefore = ps.prog3.sk.sword.level + ps.prog3.sk.sword.xp;
-  room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: 'bow' });
+  await room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: 'bow' });
   check('naming a skill completes the turn-in', ps._quests.tut_1 === 'turnedIn', ps._quests.tut_1);
   check('the XP went into the NAMED skill',
     ps.prog3.sk.bow.level + ps.prog3.sk.bow.xp > bowBefore, ps.prog3.sk.bow);

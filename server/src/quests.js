@@ -116,7 +116,7 @@ export const questMethods = {
     return false;
   },
 
-  _handleQuestAccept(session, payload) {
+  async _handleQuestAccept(session, payload) {
     if (!session || !session.id) return;
     const ps = this.playerState[session.id];
     if (!ps) return;
@@ -151,6 +151,9 @@ export const questMethods = {
        it cannot be farmed by re-accepting. */
     if (Array.isArray(reward.grantOnAccept)) {
       for (const it of reward.grantOnAccept) this._grantQuestItem(ps, it);
+      /* v2.3.2420: the accept path pays a weapon too (tut_1's sword), and it
+         had the same silent hole. */
+      await this._questDrainUnfitWeapons(session.id, ps, 'accept:' + questId);
       this._recomputeMaxes(ps);
     }
     this._saveRpg(session.id, ps);
@@ -188,7 +191,7 @@ export const questMethods = {
     if (changed) this._queuePlayerStateFlush(playerId);
   },
 
-  _handleQuestTurnIn(session, payload) {
+  async _handleQuestTurnIn(session, payload) {
     if (!session || !session.id) return;
     const ps = this.playerState[session.id];
     if (!ps) return;
@@ -309,6 +312,10 @@ export const questMethods = {
         }
       }
       ps._questGrantOverflow = null;
+      /* v2.3.2420: and the weapons that did not fit go to the inbox rather
+         than the floor. AFTER the armour announcement so the ordering of
+         what the player sees is unchanged. */
+      await this._questDrainUnfitWeapons(session.id, ps, 'turnin:' + questId);
     }
     // Unlock next quest in chain.
     if (reward.next && !ps._quests[reward.next]) {
@@ -337,6 +344,70 @@ export const questMethods = {
    *
    * Returns true when something was granted.  Never throws.
    */
+  /* ═══ v2.3.2420: THE REWARD THAT DID NOT FIT STILL GETS PAID ═══
+     Drains whatever _grantQuestItem could not place into the offline inbox.
+     Rule 4: every payout goes through _creditPlayer -- online it applies
+     straight to playerState, and when the stash is still full it parks in
+     inbox:<id> and is retried at the next join. Rule 5: the opId is
+     deterministic and stamped in oplog:, so a reconnect or a crash-retry
+     converges instead of minting a second bow.
+
+     Awaits are STORAGE awaits only (_opSeen, _opStamp, _inboxAppend), which
+     hold the input gate closed (rule 9) -- no other event interleaves here,
+     so this cannot land between a validation and the commit that depends
+     on it.
+
+     ═══ v2.3.2421: THE opId NAMES THE WEAPON, NOT ITS ARRAY INDEX ═══
+     The first cut keyed on the loop counter -- `...:<tag>:<i>`. Two ways that
+     is wrong, and both end in the SILENT LOSS this whole change exists to
+     stop, because a deduped credit returns 'dup' and drops the weapon:
+
+       1. The index means nothing about WHICH weapon it is. Change the reward
+          list (tut_1 already pays two, and its staff moved here from tut_2 at
+          v2.3.1692) and index 0 now names a different weapon than the stamp
+          in oplog: was written for. The new weapon is refused as a duplicate
+          of the old one.
+       2. A weapon can only fit some of the time. Grant it with a FULL stash
+          and it inboxes at index 0; free a slot, and the next quest's first
+          unfit weapon takes index 0 too.
+
+     So the key is the weapon's own identity -- type plus the gearBase the
+     tier is minted into -- with an occurrence counter scoped WITHIN that
+     identity, which is the only thing the index was ever legitimately for
+     (two identical weapons in one reward, where the second must not dedup
+     against the first). Content first means a shifted position is harmless:
+     a moved weapon carries its own key with it. */
+  _questWeaponOpKey(w) {
+    /* Mirrors the minted shape in _grantQuestItem. Sanitised because it lands
+       in a storage KEY: anything outside [A-Za-z0-9_-] could collide two
+       different weapons onto one key, which is the bug this replaced. */
+    const part = (v) => String(v == null ? '' : v).replace(/[^A-Za-z0-9_-]/g, '');
+    return part(w && w.type) + '.' + part(w && w.gearBase);
+  },
+
+  async _questDrainUnfitWeapons(playerId, ps, tag) {
+    const unfit = Array.isArray(ps._questWeaponUnfit) ? ps._questWeaponUnfit : null;
+    ps._questWeaponUnfit = null;
+    if (!unfit || !unfit.length) return 0;
+    let n = 0;
+    const seen = Object.create(null);   /* rule 4: never a plain {} for a keyed map */
+    for (let i = 0; i < unfit.length; i++) {
+      const key = this._questWeaponOpKey(unfit[i]);
+      const nth = (seen[key] = (seen[key] || 0) + 1);
+      try {
+        await this._creditPlayer(playerId, {
+          opId: 'questitem:' + playerId + ':' + tag + ':' + key + '#' + nth,
+          source: 'quest',
+          kind: 'weapon',
+          payload: { weapon: unfit[i] },
+          note: 'quest reward (weapon stash was full)',
+        });
+        n++;
+      } catch (e) { /* one weapon failing must not strand the rest */ }
+    }
+    return n;
+  },
+
   _grantQuestItem(ps, item) {
     if (!ps || !item || typeof item !== 'object') return false;
     try {
@@ -429,7 +500,34 @@ export const questMethods = {
            _saveRpg truncates weaponStash at cap, so pushing past it destroys
            the weapon silently. */
         if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
-        if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return false;
+        /* ═══ v2.3.2420: A FULL STASH NO LONGER EATS THE REWARD ═══
+           Owner: "didn't receive bow and staff after completing first quest",
+           on a character old enough to be carrying eight weapons already.
+           WEAPON_STASH_CAP is 8, tut_1 pays a bow AND a staff, and this
+           branch returned false and said nothing -- while the caller
+           discarded the return value, the quest went to 'turnedIn', and the
+           gold and xp paid. There is no retry for a turned-in quest, so both
+           weapons were gone for good. Resetting the character was the only
+           way out, which is what the owner did.
+
+           v2.3.1687 fixed this exact class for ARMOUR (it overflows to the
+           client's bag and announces itself) and left weapons behind.
+
+           The refused weapon is now handed to the caller on in-memory scratch
+           so it can go through _creditPlayer -- handoff rule 4, "all payouts
+           go through _creditPlayer", which parks it in inbox:<id> and drains
+           it at the next join once a slot is free. Nothing is minted here and
+           nothing is lost.
+
+           SCRATCH, not a blob field: _saveRpg rewrites from a fixed field
+           list (rule 1), so this is dropped on the next save by construction
+           -- which is what we want, since the credit happens in the same
+           handler and rule 5's opId is what survives a crash, not this. */
+        if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) {
+          if (!Array.isArray(ps._questWeaponUnfit)) ps._questWeaponUnfit = [];
+          ps._questWeaponUnfit.push(minted);
+          return false;
+        }
         ps.weaponStash.push(minted);
         return true;
       }

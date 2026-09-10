@@ -316,6 +316,31 @@ export const persistenceMethods = {
       if (current) await this.state.storage.put('rpgsnap:' + pid + ':prereset-' + Date.now(), current);
     } catch (e) { /* snapshot is best-effort; the reset itself proceeds */ }
     try { await this.state.storage.delete('rpg:' + pid); } catch (e) {}
+    /* ═══ v2.3.2421: AND THE QUEST-REWARD STAMPS GO WITH THE CHARACTER ═══
+       v2.3.2420 made an unfittable quest weapon ride _creditPlayer into
+       inbox:<pid> under a deterministic opId stamped in oplog: (rule 5), so a
+       reconnect converges instead of minting a second bow. Those stamps are
+       keyed by PLAYER ID -- which a restart does not change, because the
+       passphrase IS the character.
+
+       So without this, a restarted character walks the tutorial again, turns
+       tut_1 in, and the credit finds its own stamp from the PREVIOUS life,
+       returns 'dup', and drops the bow and staff in silence. That is exactly
+       the bug v2.3.2420 was written to fix, reintroduced for the one player
+       who already hit it hard enough to restart -- which is the owner, and
+       which is how this was found.
+
+       Deleting is the honest repair rather than adding a generation counter:
+       a restarted character HAS received nothing, so the correct state of its
+       payout journal is empty. Scoped to `questitem:` and to this pid, so no
+       other producer's idempotency is touched. Bounded -- a handful of quests
+       times a couple of weapons -- and best-effort: a failed sweep must not
+       block the wipe, since the stamps only ever cause a re-grant to be
+       skipped, never a double-pay. */
+    try {
+      const stale = await this.state.storage.list({ prefix: 'oplog:questitem:' + pid + ':' });
+      for (const k of stale.keys()) { try { await this.state.storage.delete(k); } catch (e) {} }
+    } catch (e) { /* best-effort, as above */ }
     const ws = this._wsBySessionId(pid);
     if (ws) {
       try { ws.send(JSON.stringify({ type: 'character_reset_done' })); } catch (e) {}
