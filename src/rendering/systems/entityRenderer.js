@@ -9727,7 +9727,7 @@ export class EntityRenderer {
        hole drawn beneath the player (effectsRenderer._updateFishingHole). */
     const fishing = !!(S._extraction && S._extraction.skill === 'fishing');
     /* v2.3.1534: the §5.8 dodge roll owns the body for its whole window. */
-    /* ═══ v2.3.2461: AND SO DOES THE SWORD DASH ═══
+    /* ═══ v2.3.2462: AND SO DOES THE SWORD DASH ═══
        Owner: "For sword dash instead of just showing the standing character
        zoom to the enemy can you play the dodge roll animation until the
        character reaches the monster?"
@@ -10041,7 +10041,7 @@ export class EntityRenderer {
            it has been published. */
         const fc = playerFrameCount('dodge', dir) || 9;
         if (_dashRoll && !S._dodgeRoll) {
-          /* ═══ v2.3.2461: A DASH LOOPS WHERE A DODGE CLAMPS ═══
+          /* ═══ v2.3.2462: A DASH LOOPS WHERE A DODGE CLAMPS ═══
              The clamp above is right for a dodge: one tumble, one window, and
              freezing the last frame is how a roll settles.  A dash has no
              fixed length -- it ends on ARRIVAL (v2.3.2260), anywhere from a
@@ -10049,10 +10049,37 @@ export class EntityRenderer {
              first ~300ms rolling and the rest of the travel frozen mid-tumble
              on the final frame, which is the standing slide this change
              exists to remove, wearing a different pose.
-             So it cycles for as long as the dash lasts, like the jog does:
-             the roll continues until the character reaches the monster, which
-             is the ask stated literally. */
-          frameIdx = Math.floor((now / cycleMs('dodge', dir)) * fc) % fc;
+             So it cycles for as long as the dash lasts: the roll continues
+             until the character reaches the monster, which is the ask stated
+             literally.
+             ═══ TWO THINGS THE FIRST CUT OF THIS LINE GOT WRONG ═══
+             It read `Math.floor((now / cycle) * fc) % fc`, copying the jog.
+             The jog can do that because it is a seamless walk cycle; this
+             strip is neither seamless nor all tumble.
+             1. NO ANCHOR.  `now` is a free-running Date.now(), so the phase
+                had nothing to do with when the dash began: the tumble opened
+                on whatever frame the wall clock happened to be on.  Measured
+                in a real browser (tools/qa/mp/mp-dashroll.mjs's ancestor
+                probe): a dash opened on frame 6 of 9.  And the common dash is
+                SHORTER than one cycle -- an auto-lock sits inside 220px, which
+                at DASH_SPEED_PX_PER_MS closes in ~112ms against a 300ms
+                cycle -- so the player saw an arbitrary 3-4 frame slice out of
+                the middle of a tumble, never the crouch-and-dive that makes it
+                read as a roll at all.  startTime is on the dash record; the
+                sibling branch below anchors to its own.  So does this one now.
+             2. FRAME 9 IS NOT A TUMBLE FRAME.  playerSprites.js says it
+                outright -- "One-shot, not a loop: frame 9 IS the stand pose,
+                so the roll hands back to `stand` without a pop."  A modulo
+                over all 9 therefore cycled the UPRIGHT STANDING FRAME into the
+                middle of the dash, and opened on it about one cast in nine:
+                the exact standing glide this change exists to remove, served
+                by the code meant to remove it.  The loop runs over the tumble
+                frames only and the authored per-frame dwell is preserved, so
+                it reads at the speed it was drawn at. */
+          const _frameMs = cycleMs('dodge', dir) / fc;
+          const _tumbleFc = Math.max(1, fc - 1);   /* drop the stand handoff */
+          const _el = Math.max(0, now - (_dashRoll.startTime || now));
+          frameIdx = Math.floor(_el / _frameMs) % _tumbleFc;
         } else {
           /* v2.3.1534: ONE-SHOT across the real roll window, clamped to the
              last frame — never modulo, or the tumble would restart mid-roll.

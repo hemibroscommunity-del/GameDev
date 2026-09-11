@@ -332,7 +332,7 @@ export function castAbility(S, kind) {
      without re-deriving either. */
   var _dashWin = _bashLt ? dashWindowMs(S, _bashLt) : DASH_WINDOW_MS;
   if (_bashLt) {
-    /* ═══ v2.3.2461: THE DASH TUMBLES, IT DOES NOT SLIDE ═══
+    /* ═══ v2.3.2462: THE DASH TUMBLES, IT DOES NOT SLIDE ═══
        Owner: "For sword dash instead of just showing the standing character
        zoom to the enemy can you play the dodge roll animation until the
        character reaches the monster?"

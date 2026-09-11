@@ -23,7 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  inkreach: () => import('./mp-inkreach.mjs'), /* v2.3.2461: the pants squares ARE the trousers, and the shirt's run further down */
+  inkreach: () => import('./mp-inkreach.mjs'), /* v2.3.2462: the pants squares ARE the trousers, and the shirt's run further down */
   statgrid: () => import('./mp-statgrid.mjs'), /* v2.3.2441: the Points screen is a 4+3+2 grid, in less room */
   devstall: () => import('./mp-devstall.mjs'), /* v2.3.2440: the panel answers even when the admin surface never does -- and names an off capability with no key at all */
   joingate: () => import('./mp-joingate.mjs'), /* v2.3.2439: the world waits for the server -- a dead room, a not-ready room and a dropped socket all hold the player out */
@@ -279,6 +279,7 @@ const SCENARIOS = {
   joyfade: () => import('./mp-joyfade.mjs'), /* v2.3.2260: both sticks appear on input and fade after 2s; the right one stays while contextual */
   dashhit: () => import('./mp-dashhit.mjs'), /* v2.3.2261: does the lunge hurt a SERVER-driven monster? */
   dashreal: () => import('./mp-dashreal.mjs'), /* v2.3.2418: a REAL finger on the disc, with the lock left to the game itself */
+  dashroll: () => import('./mp-dashroll.mjs'), /* v2.3.2462: the lunge tumbles instead of gliding */
   snowman: () => import('./mp-snowman.mjs'), /* v2.3.2419: does a snowman attack in each of its three bands? */
   worldtext: () => import('./mp-worldtext.mjs'), /* v2.3.2262: the dashboard zoom is a keeper, and in-world text must not shrink with it */
   aimpath: () => import('./mp-aimpath.mjs'), /* v2.3.2260: bow and magic fly where you point, not along an axis */
