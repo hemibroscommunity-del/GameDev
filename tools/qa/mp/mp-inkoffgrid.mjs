@@ -222,7 +222,55 @@ export async function run({ browser, wsPort, webPort, rec }) {
     + `its corner at ${beforeH[2]} keeps that ${beforeH[2] - 15}-cell offset`,
     resized[2] === 11 + (beforeH[2] - 15), { want: 11 + (beforeH[2] - 15), got: resized[2] });
 
-  /* ── 5. THE LOAD GATE ACCEPTS THE MOVED BOX ──────────────────────────────
+  /* ── 5. THE OWNER'S OTHER ONE: A DESIGN THAT HAS BEEN RESIZED ────────────
+     Owner, on a sword design sitting over the gap between the legs: "this
+     design for instance I can't move closer to the outside of his leg.  It's
+     stuck there."
+
+     A DIFFERENT SYMPTOM OF THE SAME CLAMP, and the one a maximised design does
+     not reach.  Resizing drags the FAR corner; the near one is left exactly
+     where the design landed, which for a ready-made design is the grid's
+     top-left (0,0).  So after the very first resize the box is [0, 0, w, h] --
+     and the old rule's lower bound was `-bx0`, which for bx0 = 0 is ZERO.  Not
+     "can only move a little left": could not move left, or up, AT ALL, ever,
+     however small the design or however far the finger travelled.  Every
+     ready-made design anybody resized was pinned to the top-left corner of its
+     canvas.
+     Driven exactly as the owner did it: apply, pull the corner in, drag left. */
+  await P.page.evaluate(() => {
+    const b = [...document.querySelectorAll('.bt-paint-note button')]
+      .find((x) => /designs/i.test(x.textContent || ''));
+    if (b) b.click();
+  });
+  await P.page.waitForTimeout(700);
+  await P.page.evaluate((name) => {
+    const sc = [...document.querySelectorAll('.bt-modal-scrim')];
+    const g = sc[sc.length - 1];
+    const t = [...g.querySelectorAll('button')]
+      .find((x) => x.querySelector('canvas') && (x.textContent || '').trim() === name);
+    if (t) t.click();
+  }, target.name);
+  await P.page.waitForTimeout(900);
+  const fresh = (await ops(P)).length - 1;
+  const at = async () => ((await ops(P))[fresh] || {}).a;
+  rec.ok(`${tag}: a second design lands maximised too (guard)`,
+    (await at() || []).join(',') === '0,0,15,15', { a: await at() });
+
+  await dragOnCanvas(P, [15, 15], [9, 9]);        /* pull the corner in */
+  const shrunk = (await at()).slice();
+  rec.ok(`${tag}: resizing drags the FAR corner and leaves the near one at the `
+    + `grid's own corner (${shrunk.join(',')}) -- which is the state the old `
+    + `clamp could not move left or up out of`,
+    shrunk[0] === 0 && shrunk[1] === 0 && shrunk[2] < 15, { shrunk });
+
+  await dragOnCanvas(P, [5, 5], [1, 5]);
+  const nudged = (await at()).slice();
+  rec.ok(`${tag}: a RESIZED design can be dragged left, off the edge -- the old `
+    + `rule's lower bound was -bx0, exactly 0 for a box still anchored at the `
+    + `grid corner, so it was stuck there (${shrunk.join(',')} -> `
+    + `${nudged.join(',')})`, nudged[0] < 0, { shrunk, nudged });
+
+  /* ── 6. THE LOAD GATE ACCEPTS THE MOVED BOX ──────────────────────────────
      Checked against the MODULE, not through the browser, and deliberately:
      `saveDoc` writes the blob without sanitising and `sanitizeOp` runs on the
      way back IN, so a scenario that reads localStorage after a reload -- the
@@ -259,19 +307,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
     && !sanitizeOp({ k: 'd', art: target.art, a: [0, 0, 999, 15] })
     && !sanitizeOp({ k: 's', t: 'rect', a: [0, 0, 5000, 4], i: 3, b: 1 }));
 
-  /* ── 6. AND ALL OF IT SURVIVES A RELOAD ──────────────────────────────────
+  /* ── 7. AND ALL OF IT SURVIVES A RELOAD ──────────────────────────────────
      The weaker half of the same claim, end to end: the blob really is written
      and read back with the off-grid box intact. */
   const artBeforeReload = await art(P);
   const boxBeforeReload = (await ops(P))[0].a.slice();
+  const lastBeforeReload = (await ops(P)).slice(-1)[0].a.slice();
   await P.page.reload({ waitUntil: 'domcontentloaded' });
   await P.page.waitForTimeout(1800);
   const opsAfter = await ops(P);
   rec.ok(`${tag}: the moved design survives a reload -- the stored op still `
     + `carries its off-grid box (${opsAfter[0] && opsAfter[0].a.join(',')})`,
     !!opsAfter[0] && opsAfter[0].k === 'd'
-    && opsAfter[0].a.join(',') === boxBeforeReload.join(','),
-    { want: boxBeforeReload, got: opsAfter[0] && opsAfter[0].a });
+    && opsAfter[0].a.join(',') === boxBeforeReload.join(',')
+    && opsAfter.slice(-1)[0].a.join(',') === lastBeforeReload.join(','),
+    { want: [boxBeforeReload, lastBeforeReload],
+      got: [opsAfter[0] && opsAfter[0].a, opsAfter.slice(-1)[0] && opsAfter.slice(-1)[0].a] });
   rec.ok(`${tag}: ...and the drawing itself is byte-identical across the reload`,
     (await art(P)) === artBeforeReload);
 

@@ -266,6 +266,12 @@ function selName(op) {
   if (op.k === 's') return op.t === 'rect' ? 'box' : op.t === 'ellipse' ? 'circle' : 'line';
   if (op.k === 't') return 'letter ' + op.g;
   if (op.k === 'f') return 'fill';
+  /* v2.3.2463: a placed design said "brush stroke", because 'd' (v2.3.2455) was
+     never given a case here and fell through to the catch-all.  The owner read
+     that label off the layer row while reporting a design that would not move,
+     which is exactly the confusion a wrong name causes: it names the one thing
+     on the row that cannot be moved or resized at all. */
+  if (op.k === 'd') return 'design';
   return 'brush stroke';
 }
 
