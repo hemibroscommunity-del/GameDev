@@ -110,9 +110,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { peak: flight.peak, want: STAFF_RANGE_PX, floor: STAFF_RANGE_PX - STAFF_ORB_SPEED_PX * 4 });
 
   /* ════════════ 3. THE SPECIAL GOES WITH IT ════════════
-     Three orbs at three speeds (v2.3.2262 fast/medium/slow). Each solves its
-     own life from the SAME reach, so the spread survives and the distance
-     does not depend on which orb you are. */
+     Three orbs, each solving its life from the SAME reach, so the distance
+     does not depend on which orb you are. That is this file's claim and it is
+     unchanged.
+
+     ═══ v2.3.2464: WHAT THE SPEEDS ARE IS NO LONGER THIS FILE'S BUSINESS ═══
+     This block used to assert the three flew at three DIFFERENT speeds --
+     v2.3.2262's fast/medium/slow, an owner request. The owner has since
+     replaced it: "I want magic special to change to 3 evenly spaced out orbs.
+     Maybe like one every .2 seconds until it hits the 3rd orb." Evenly spaced
+     takes ONE speed; three speeds keep opening the gaps for the whole flight,
+     which is a fan rather than a line.
+
+     So the assertion is inverted rather than deleted, because the direction is
+     load-bearing either way: one speed is now the thing that must not silently
+     regress. The SPACING itself -- the 200ms launch step, and that the gaps
+     hold as the orbs travel -- belongs to mp-solospecial, which measures it in
+     flight. Here it is only the range that is at stake, and with one speed
+     there is one life and all three plainly land on STAFF_RANGE_PX. */
   const orbs = await P.page.evaluate(() => {
     const S = window._gameState.current, R = S.rpg, F = window._gameFns || {};
     /* specialAttack REFUSES without a real weapon in the slot -- getActiveWeapon
@@ -132,8 +147,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (orbs && orbs.length === 3) {
     rec.ok('all three special orbs reach the same 675px',
       orbs.every((o) => Math.abs(o.reach - STAFF_RANGE_PX) <= 3), orbs);
-    rec.ok('...and they still fly at three DIFFERENT speeds (the spread survives)',
-      new Set(orbs.map((o) => o.speedPx)).size === 3, orbs.map((o) => o.speedPx));
+    rec.ok('...and all three fly at ONE speed, so the volley stays evenly spaced',
+      new Set(orbs.map((o) => o.speedPx)).size === 1, orbs.map((o) => o.speedPx));
   } else {
     rec.skip('all three special orbs reach the same 675px', 'specialAttack bridge absent');
   }
