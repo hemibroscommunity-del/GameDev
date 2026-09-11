@@ -129,7 +129,7 @@ export function ShieldButton(props) {
   }),
   React.createElement('span', {
     style: {
-      fontSize: 9, fontWeight: 700, letterSpacing: '.04em', marginTop: 1,
+      fontSize: 11, fontWeight: 700, letterSpacing: '.04em', marginTop: 1,
       color: on ? '#F7F2E7' : '#B9C1BF', pointerEvents: 'none',
     },
   }, on ? 'UP' : 'BLOCK'));

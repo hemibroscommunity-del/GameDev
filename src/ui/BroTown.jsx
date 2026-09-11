@@ -2346,7 +2346,7 @@ export var BroTown = function BroTown(_ref0) {
            in the bottom-right corner, and a caption under the figure ran into
            it — "Average" came back as "Averag(check)".  Above it, the badge has
            the corner to itself and the label is never clipped. */
-        style: { fontSize: 8, fontWeight: 800, letterSpacing: '.02em', color: '#3a4450', lineHeight: 1, flex: '0 0 auto' }
+        style: { fontSize: 11, fontWeight: 800, letterSpacing: '.02em', color: '#3a4450', lineHeight: 1, flex: '0 0 auto' }
       }, opt.name),
       /*#__PURE__*/React.createElement("svg", {
         /* Headroom above and to the sides so the exaggerated `tall` and
@@ -2376,7 +2376,7 @@ export var BroTown = function BroTown(_ref0) {
          tiny None caption replaces it. */
       ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' } },
           /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/cc/cc-no-hair.webp?v=' + BUILD_INFO.version, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain' } }),
-          /*#__PURE__*/React.createElement("span", { style: { fontSize: 9, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, "None"))
+          /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, "None"))
       : /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',
           onError: function (e) { _thumbFallback(e, cat, opt.id); },
           style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
@@ -10758,7 +10758,7 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, achievementMsg.icon), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: 700,
       color: 'rgba(255,255,255,.6)',
       letterSpacing: '.1em',
@@ -10850,7 +10850,7 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: 800,
       color: '#59BF91',
       fontFamily: 'Source Sans 3,sans-serif'
@@ -10874,7 +10874,7 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 9,
+      fontSize: 11,
       fontWeight: 700,
       color: '#a0a0ff',
       marginBottom: 3
@@ -10908,7 +10908,7 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: 800,
       color: '#59BF91',
       fontFamily: 'Source Sans 3,sans-serif'
@@ -10928,7 +10928,7 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 9,
+      fontSize: 11,
       fontWeight: 700,
       color: '#a0a0ff',
       marginBottom: 3
@@ -10961,7 +10961,7 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
+      fontSize: 11,
       fontWeight: 700,
       color: '#D8A94D'
     }
@@ -10994,7 +10994,7 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, "\uD83C\uDFE1 Your Farm"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
+      fontSize: 11,
       color: 'rgba(255,255,255,.5)',
       marginBottom: 12
     }
@@ -11042,7 +11042,7 @@ export var BroTown = function BroTown(_ref0) {
       border: '1px solid rgba(255,255,255,.15)',
       background: 'rgba(255,255,255,.06)',
       color: 'rgba(255,255,255,.5)',
-      fontSize: 10,
+      fontSize: 11,
       cursor: 'pointer',
       width: '100%'
     },
@@ -11334,7 +11334,7 @@ export var BroTown = function BroTown(_ref0) {
       top: 44,
       left: 8,
       zIndex: 18,
-      fontSize: 9,
+      fontSize: 11,
       fontWeight: 700,
       color: 'rgba(255,255,255,.6)'
     }
@@ -11444,7 +11444,7 @@ export var BroTown = function BroTown(_ref0) {
           borderRadius: 3,
           background: e.color + '20',
           border: '1px solid ' + e.color + '40',
-          fontSize: 7,
+          fontSize: 11,
           color: e.color,
           display: 'flex',
           gap: 2,
@@ -11455,7 +11455,7 @@ export var BroTown = function BroTown(_ref0) {
   }(), ((_stateRef$current30 = stateRef.current) === null || _stateRef$current30 === void 0 ? void 0 : _stateRef$current30._pvpReputation) && stateRef.current._pvpReputation !== 'neutral' && /*#__PURE__*/React.createElement("span", {
     style: {
       color: ((_REPUTATION$stateRef$ = REPUTATION[stateRef.current._pvpReputation]) === null || _REPUTATION$stateRef$ === void 0 ? void 0 : _REPUTATION$stateRef$.color) || '#888',
-      fontSize: 8,
+      fontSize: 11,
       padding: '0 4px',
       borderRadius: 3,
       marginTop: 2,
@@ -11465,7 +11465,7 @@ export var BroTown = function BroTown(_ref0) {
   }, (_REPUTATION$stateRef$2 = REPUTATION[stateRef.current._pvpReputation]) === null || _REPUTATION$stateRef$2 === void 0 ? void 0 : _REPUTATION$stateRef$2.label), ((_stateRef$current31 = stateRef.current) === null || _stateRef$current31 === void 0 ? void 0 : _stateRef$current31._inDuel) && /*#__PURE__*/React.createElement("span", {
     style: {
       color: '#D95C54',
-      fontSize: 8,
+      fontSize: 11,
       fontWeight: 800,
       animation: 'pulse-dot 1s ease-in-out infinite'
     }
@@ -11541,7 +11541,7 @@ export var BroTown = function BroTown(_ref0) {
        card that quietly lost its second line, with nothing on screen saying
        the title can be tapped to get it back. */
     /*#__PURE__*/React.createElement("span", {
-      style: { fontSize: 9, opacity: 0.55, flex: '0 0 auto' }
+      style: { fontSize: 11, opacity: 0.55, flex: '0 0 auto' }
     }, questHudFolded ? '▸' : '▾')),
     /* v2.3.1714: FOLDED, the card is only ~26px tall, and UI-BIBLE Part 2 is
        explicit — "44x44pt minimum for anything tappable.  Visuals may be
@@ -11585,7 +11585,7 @@ export var BroTown = function BroTown(_ref0) {
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 18,
-        fontSize: 9,
+        fontSize: 11,
         fontWeight: 700,
         fontFamily: 'Source Sans 3,sans-serif',
         background: 'rgba(17,25,29,.85)' /* v2.3.1233: was orange .25+blur — tint lives in border/text now */,
@@ -11618,7 +11618,7 @@ export var BroTown = function BroTown(_ref0) {
       border: '1px solid rgba(160,216,240,.3)',
       background: 'rgba(160,216,240,.12)',
       color: '#a0d8f0',
-      fontSize: 9,
+      fontSize: 11,
       fontWeight: 700,
       cursor: 'pointer'
     },
@@ -11644,7 +11644,7 @@ export var BroTown = function BroTown(_ref0) {
       border: '1px solid rgba(160,216,240,.3)',
       background: 'rgba(160,216,240,.12)',
       color: '#a0d8f0',
-      fontSize: 9,
+      fontSize: 11,
       fontWeight: 700,
       cursor: 'pointer'
     },
@@ -11671,7 +11671,7 @@ export var BroTown = function BroTown(_ref0) {
       border: '1px solid rgba(96,165,250,.3)',
       background: (_stateRef$current41 = stateRef.current) !== null && _stateRef$current41 !== void 0 && _stateRef$current41._sled ? 'rgba(96,165,250,.3)' : 'rgba(96,165,250,.12)',
       color: '#60a5fa',
-      fontSize: 9,
+      fontSize: 11,
       fontWeight: 700,
       cursor: 'pointer'
     },
@@ -11734,7 +11734,7 @@ export var BroTown = function BroTown(_ref0) {
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       padding: '4px 8px',
-      fontSize: 9,
+      fontSize: 11,
       fontWeight: 700,
       color: '#3498DB'
     }
@@ -11745,7 +11745,7 @@ export var BroTown = function BroTown(_ref0) {
       border: '1px solid rgba(52,152,219,.3)',
       background: 'rgba(52,152,219,.12)',
       color: '#3498DB',
-      fontSize: 9,
+      fontSize: 11,
       fontWeight: 700,
       cursor: 'pointer'
     },
@@ -11785,7 +11785,7 @@ export var BroTown = function BroTown(_ref0) {
   }, "\uD83D\uDEA3 Build Raft (", RAFT_WOOD_COST, "w)") : /*#__PURE__*/React.createElement("div", {
     style: {
       padding: '4px 8px',
-      fontSize: 9,
+      fontSize: 11,
       fontWeight: 700,
       color: '#59BF91'
     }
@@ -11812,7 +11812,7 @@ export var BroTown = function BroTown(_ref0) {
       border: '1px solid rgba(234,88,12,.3)',
       background: 'rgba(234,88,12,.12)',
       color: '#ea580c',
-      fontSize: 9,
+      fontSize: 11,
       fontWeight: 700,
       cursor: 'pointer'
     },
@@ -11855,14 +11855,14 @@ export var BroTown = function BroTown(_ref0) {
   }, "\uD83D\uDD25 Light Torch (", TORCH_WOOD_COST, "w)") : /*#__PURE__*/React.createElement("div", {
     style: {
       padding: '4px 8px',
-      fontSize: 9,
+      fontSize: 11,
       fontWeight: 700,
       color: '#ea580c'
     }
   }, "\uD83D\uDD25 Torch: ", Math.ceil((TORCH_DURATION - (Date.now() - stateRef.current._torch.started)) / 1000), "s"), ((_stateRef$current48 = stateRef.current) === null || _stateRef$current48 === void 0 ? void 0 : _stateRef$current48._echoActive) && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: '4px 8px',
-      fontSize: 8,
+      fontSize: 11,
       fontWeight: 700,
       color: '#D95C54'
     }
@@ -12036,7 +12036,7 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       display: 'flex',
       alignItems: 'center',
-      fontSize: 9,
+      fontSize: 11,
       color: '#3498DB',
       fontWeight: 700,
       padding: '0 6px'
@@ -12047,7 +12047,7 @@ export var BroTown = function BroTown(_ref0) {
       padding: '0 10px',
       borderRadius: 8,
       border: 'none',
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: 700,
       cursor: 'pointer',
       background: stateRef.current._raft ? 'rgba(61,220,151,.2)' : 'rgba(52,152,219,.2)',
@@ -12110,7 +12110,7 @@ export var BroTown = function BroTown(_ref0) {
     var pct = Math.max(0, 1 - (Date.now() - stateRef.current._torch.started) / TORCH_DURATION);
     return /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 9,
+        fontSize: 11,
         color: '#ea580c',
         fontWeight: 700,
         padding: '0 6px',
@@ -12124,7 +12124,7 @@ export var BroTown = function BroTown(_ref0) {
       padding: '0 10px',
       borderRadius: 8,
       border: 'none',
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: 700,
       cursor: 'pointer',
       background: stateRef.current._torch ? 'rgba(255,255,255,.05)' : 'rgba(234,88,12,.2)',
@@ -12172,7 +12172,7 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, stateRef.current._torch ? '🔥 Lit' : '🪵 Light Torch (' + TORCH_WOOD_COST + ' wood)'), !stateRef.current._torch && /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
+      fontSize: 11,
       color: 'rgba(255,255,255,.3)',
       padding: '0 4px',
       display: 'flex',
@@ -12204,7 +12204,7 @@ export var BroTown = function BroTown(_ref0) {
       background: 'rgba(255,255,255,.2)',
       padding: '1px 5px',
       borderRadius: 3,
-      fontSize: 10,
+      fontSize: 11,
       marginRight: 4
     }
   }, "E"), BUILDINGS[nearBuilding].iconSrc ? /*#__PURE__*/React.createElement("img", {
@@ -12257,7 +12257,7 @@ export var BroTown = function BroTown(_ref0) {
       background: 'rgba(255,255,255,.2)',
       padding: '1px 5px',
       borderRadius: 3,
-      fontSize: 10,
+      fontSize: 11,
       marginRight: 4
     }
   }, "E"), "\uD83D\uDE34 Sleep (Restore All + Well Rested Buff)"), ((_stateRef$current53 = stateRef.current) === null || _stateRef$current53 === void 0 ? void 0 : _stateRef$current53._nearWorkshop) && !showDungeonCreator && /*#__PURE__*/React.createElement("button", {
@@ -12283,7 +12283,7 @@ export var BroTown = function BroTown(_ref0) {
       background: 'rgba(255,255,255,.2)',
       padding: '1px 5px',
       borderRadius: 3,
-      fontSize: 10,
+      fontSize: 11,
       marginRight: 4
     }
   }, "E"), "\uD83C\uDFD7\uFE0F Dungeon Workshop"), ((_stateRef$current54 = stateRef.current) === null || _stateRef$current54 === void 0 ? void 0 : _stateRef$current54._nearPetHouse) && !showPetHouse && /*#__PURE__*/React.createElement("button", {
@@ -12307,7 +12307,7 @@ export var BroTown = function BroTown(_ref0) {
       background: 'rgba(255,255,255,.2)',
       padding: '1px 5px',
       borderRadius: 3,
-      fontSize: 10,
+      fontSize: 11,
       marginRight: 4
     }
   }, "E"), "\uD83D\uDC3E Pet House"), ((_stateRef$current56 = stateRef.current) === null || _stateRef$current56 === void 0 ? void 0 : _stateRef$current56._nearHouse) && !showFurniture && /*#__PURE__*/React.createElement("button", {
@@ -12448,7 +12448,7 @@ export var BroTown = function BroTown(_ref0) {
         style: {
           padding: '6px 12px',
           borderRadius: 8,
-          fontSize: 9,
+          fontSize: 11,
           fontWeight: 700,
           cursor: 'pointer',
           background: canSnowball ? 'rgba(160,216,240,.2)' : 'rgba(255,255,255,.05)',
@@ -12478,7 +12478,7 @@ export var BroTown = function BroTown(_ref0) {
         style: {
           padding: '6px 12px',
           borderRadius: 8,
-          fontSize: 9,
+          fontSize: 11,
           fontWeight: 700,
           cursor: 'pointer',
           background: snowCount >= SNOWMAN_SNOW_COST ? 'rgba(160,216,240,.2)' : 'rgba(255,255,255,.05)',
@@ -12520,7 +12520,7 @@ export var BroTown = function BroTown(_ref0) {
         style: {
           padding: '6px 12px',
           borderRadius: 8,
-          fontSize: 9,
+          fontSize: 11,
           fontWeight: 700,
           cursor: 'pointer',
           background: woodCount >= SLED_WOOD_COST && !hasSled ? 'rgba(96,165,250,.2)' : 'rgba(255,255,255,.05)',
@@ -12574,7 +12574,7 @@ export var BroTown = function BroTown(_ref0) {
         style: {
           padding: '6px 12px',
           borderRadius: 8,
-          fontSize: 9,
+          fontSize: 11,
           fontWeight: 700,
           background: 'rgba(52,152,219,.1)',
           border: '1px solid rgba(52,152,219,.3)',
@@ -12587,7 +12587,7 @@ export var BroTown = function BroTown(_ref0) {
           style: {
             padding: '6px 12px',
             borderRadius: 8,
-            fontSize: 9,
+            fontSize: 11,
             fontWeight: 700,
             cursor: 'pointer',
             background: _woodCount >= RAFT_WOOD_COST ? 'rgba(139,105,20,.2)' : 'rgba(255,255,255,.05)',
@@ -12618,7 +12618,7 @@ export var BroTown = function BroTown(_ref0) {
           style: {
             padding: '6px 12px',
             borderRadius: 8,
-            fontSize: 9,
+            fontSize: 11,
             fontWeight: 700,
             background: 'rgba(139,105,20,.15)',
             border: '1px solid rgba(139,105,20,.3)',
@@ -12648,7 +12648,7 @@ export var BroTown = function BroTown(_ref0) {
           style: {
             padding: '6px 12px',
             borderRadius: 8,
-            fontSize: 9,
+            fontSize: 11,
             fontWeight: 700,
             cursor: 'pointer',
             background: hasWood ? 'rgba(234,88,12,.2)' : 'rgba(255,255,255,.05)',
@@ -12683,7 +12683,7 @@ export var BroTown = function BroTown(_ref0) {
           style: {
             padding: '6px 12px',
             borderRadius: 8,
-            fontSize: 9,
+            fontSize: 11,
             fontWeight: 700,
             background: 'rgba(234,88,12,.15)',
             border: '1px solid rgba(234,88,12,.3)',
@@ -12696,7 +12696,7 @@ export var BroTown = function BroTown(_ref0) {
         style: {
           padding: '6px 12px',
           borderRadius: 8,
-          fontSize: 8,
+          fontSize: 11,
           fontWeight: 600,
           background: S._echoActive ? 'rgba(217,92,84,.1)' : 'rgba(255,255,255,.03)',
           border: S._echoActive ? '1px solid rgba(217,92,84,.2)' : '1px solid rgba(255,255,255,.06)',

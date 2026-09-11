@@ -158,7 +158,7 @@ export function EnchantPanel(props) {
         }, "◆ ", wpn.element2), (wpn === null || wpn === void 0 ? void 0 : wpn.isVolatile) && /*#__PURE__*/React.createElement("span", {
           style: {
             color: '#D95C54',
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: 700
           }
         }, "⚡VOLATILE")), /*#__PURE__*/React.createElement("div", {

@@ -115,7 +115,7 @@ function ShelfSlot({ itemKey, count, price, selected, onTap, size }) {
         {count > 1 ? <span className="bt-item-qty">{count}</span> : null}
       </button>
       <div style={{
-        height: 15, textAlign: 'center', fontSize: 10.5, fontWeight: 700,
+        height: 15, textAlign: 'center', fontSize: 11, fontWeight: 700,
         lineHeight: '15px', color: '#EAC675', fontVariantNumeric: 'tabular-nums',
       }}>{price > 0 ? price + 'g' : ''}</div>
     </div>
@@ -297,7 +297,7 @@ export function ShopkeeperPanel() {
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.15 }}>Diego</div>
           <div style={{
-            fontSize: 10, color: 'var(--ui-text-muted, #8FA3A0)',
+            fontSize: 11, color: 'var(--ui-text-muted, #8FA3A0)',
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>“The more I have, the less I pay.”</div>
         </div>
@@ -337,7 +337,7 @@ export function ShopkeeperPanel() {
         justifyContent: 'center', padding: '6px 8px 4px',
       }}>
         <div style={{
-          fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em',
+          fontSize: 11, fontWeight: 700, letterSpacing: '.12em',
           textTransform: 'uppercase', color: 'var(--ui-text-muted, #8FA3A0)',
           marginBottom: 4, flex: 'none',
         }}>His shelf</div>
@@ -397,7 +397,7 @@ export function ShopkeeperPanel() {
               }}>{prettyKey(selKey)}</div>
               {/* His count first: it is what sets the price. */}
               <div style={{
-                fontSize: 10, color: 'var(--ui-text-muted, #8FA3A0)',
+                fontSize: 11, color: 'var(--ui-text-muted, #8FA3A0)',
                 fontVariantNumeric: 'tabular-nums',
                 /* One line. It wrapped to two at 390 with a long item name,
                    which pushed the row taller than the strip it lives in. */

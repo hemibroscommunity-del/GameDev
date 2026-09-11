@@ -119,7 +119,7 @@ export const QuestsPanel = () => {
                   position: 'absolute', top: 2, right: 2,
                   minWidth: 13, height: 13, padding: '0 3px',
                   borderRadius: 7, background: COL.accent, color: COL.onAccent,
-                  fontSize: 9, fontWeight: 900, lineHeight: '13px', textAlign: 'center',
+                  fontSize: 11, fontWeight: 900, lineHeight: '13px', textAlign: 'center',
                   fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
                 }}>{n > 9 ? '9+' : n}</span>
               )}
@@ -158,7 +158,7 @@ export const QuestsPanel = () => {
                 {ready ? (
                   <span style={{
                     flex: '0 0 auto',
-                    fontSize: 10, fontWeight: 700, letterSpacing: '.06em',
+                    fontSize: 11, fontWeight: 700, letterSpacing: '.06em',
                     color: '#20170D', background: COL.accent,
                     borderRadius: 5, padding: '2px 6px',
                     whiteSpace: 'nowrap',

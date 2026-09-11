@@ -161,7 +161,7 @@ export function TradePanel(props) {
       }
     }, emojis[key] || '📦'), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10,
+        fontSize: 11,
         color: '#8D9B98', /* v2.3.1235: batch-4 rollout — corrected text-3 */
         fontVariantNumeric: 'tabular-nums'
       }
@@ -171,7 +171,7 @@ export function TradePanel(props) {
         top: -2,
         right: -2,
         /* v2.3.1235: batch-4 rollout — corrected brass + on-accent ink */
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 700,
         color: '#172126',
         background: '#D8AA58',

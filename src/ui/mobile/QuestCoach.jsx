@@ -1093,7 +1093,7 @@ export function QuestCoach(props) {
       }, '×'),
       React.createElement('div', {
         style: {
-          fontSize: 10, fontWeight: 800, letterSpacing: '.1em',
+          fontSize: 11, fontWeight: 800, letterSpacing: '.1em',
           textTransform: 'uppercase', color: BRASS, marginBottom: 2,
           /* room for the X, so a long label cannot run under it
              (v2.3.2284: 20 -> 40, following the button to 44pt) */

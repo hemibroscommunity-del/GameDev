@@ -59,7 +59,7 @@ export function ActiveWarBanner(props) {
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 600,
         color: us.color || '#D8A85F',
         letterSpacing: '.05em'
@@ -81,7 +81,7 @@ export function ActiveWarBanner(props) {
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10, // v2.3.1239: 10px font floor (was 9)
+        fontSize: 11, // v2.3.1239: 10px font floor (was 9)
         fontWeight: 600,
         color: '#96A2A0',
         letterSpacing: '.12em'
@@ -96,12 +96,12 @@ export function ActiveWarBanner(props) {
       }
     }, mins, ":", secs < 10 ? '0' + secs : secs), !inWarZone && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10, // v2.3.1239: 10px font floor (was 9)
+        fontSize: 11, // v2.3.1239: 10px font floor (was 9)
         color: '#96A2A0'
       }
     }, "Go to ", (_ZONES$war$zone2 = ZONES[war.zone]) === null || _ZONES$war$zone2 === void 0 ? void 0 : _ZONES$war$zone2.name), inWarZone && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10, // v2.3.1239: 10px font floor (was 9)
+        fontSize: 11, // v2.3.1239: 10px font floor (was 9)
         color: '#D95C54',
         fontWeight: 700
       }
@@ -114,7 +114,7 @@ export function ActiveWarBanner(props) {
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 600,
         color: them.color || '#D95C54',
         letterSpacing: '.05em'
@@ -248,7 +248,7 @@ export function EndedWarBanner(props) {
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 600,
           letterSpacing: '.12em',
           color: '#96A2A0',
@@ -269,7 +269,7 @@ export function EndedWarBanner(props) {
       }));
     }(), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10,
+        fontSize: 11,
         color: '#96A2A0',
         marginTop: 8
       }

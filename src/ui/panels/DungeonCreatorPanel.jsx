@@ -228,7 +228,7 @@ export function DungeonCreatorPanel(props) {
         })
       }, /*#__PURE__*/React.createElement("span", null, p.icon), " ", p.name, !unlocked && /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 600,
           color: '#687575',
           fontVariantNumeric: 'tabular-nums'
@@ -432,7 +432,7 @@ export function DungeonCreatorPanel(props) {
         }
       }, lsIcon('/icons/ui/elem-' + key + '.webp?v=2.3.1232', '●', 14)), key, !bossBeaten && /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 10
+          fontSize: 11
         }
       }, "🔒"));
     })), /*#__PURE__*/React.createElement("div", {
@@ -545,7 +545,7 @@ export function DungeonCreatorPanel(props) {
         }
       }, /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 600,
           textTransform: 'uppercase',
           letterSpacing: '.08em',
@@ -623,7 +623,7 @@ export function DungeonCreatorPanel(props) {
         })
       }, a.emoji, " ", key, !unlocked && /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 10
+          fontSize: 11
         }
       }, "🔒"));
     })), /*#__PURE__*/React.createElement("div", {
@@ -741,7 +741,7 @@ export function DungeonCreatorPanel(props) {
         }
       }, lsIcon('/icons/popups/gold.webp?v=2.3.1232', '💰', 16), " ", p.cost), owned && /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 700,
           textTransform: 'uppercase',
           letterSpacing: '.08em',
@@ -817,7 +817,7 @@ export function DungeonCreatorPanel(props) {
         }
       }, lsIcon('/icons/popups/gold.webp?v=2.3.1232', '💰', 16), " ", p.cost), owned && /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 700,
           textTransform: 'uppercase',
           letterSpacing: '.08em',

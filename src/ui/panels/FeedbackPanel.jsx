@@ -424,7 +424,7 @@ export function FeedbackPanel(props) {
         style: {
           padding: '1px 7px',
           borderRadius: 999,
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 700,
           background: (cat === null || cat === void 0 ? void 0 : cat.color) + '20',
           color: cat === null || cat === void 0 ? void 0 : cat.color,
@@ -432,13 +432,13 @@ export function FeedbackPanel(props) {
         }
       }, (cat === null || cat === void 0 ? void 0 : cat.label) || t.category), /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 600,
           color: '#96A2A0'
         }
       }, (top === null || top === void 0 ? void 0 : top.label) || t.topic), /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 10,
+          fontSize: 11,
           color: '#96A2A0',
           marginLeft: 'auto',
           fontVariantNumeric: 'tabular-nums'
@@ -452,7 +452,7 @@ export function FeedbackPanel(props) {
         }
       }, t.text), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 10,
+          fontSize: 11,
           color: '#96A2A0',
           marginTop: 3,
           fontVariantNumeric: 'tabular-nums'
@@ -528,7 +528,7 @@ export function FeedbackPanel(props) {
       }
     }, c.label, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 400,
         color: '#96A2A0',
         marginTop: 2

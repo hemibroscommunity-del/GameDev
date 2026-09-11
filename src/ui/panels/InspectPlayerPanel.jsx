@@ -468,7 +468,7 @@ export function InspectPlayerPanel(props) {
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 10,
+          fontSize: 11,
           color: c,
           fontWeight: 600,
           letterSpacing: '.08em'
@@ -523,7 +523,7 @@ export function InspectPlayerPanel(props) {
         }
       }, val), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 600,
           color: '#96A2A0'
         }
