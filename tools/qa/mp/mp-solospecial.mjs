@@ -234,5 +234,154 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!drift && drift.every((d) => d <= 20), { drift, series: ser });
   }
 
+  /* ══════════ THE REAL GESTURE, WHICH IS NOT WHAT THE BRIDGE DOES ══════════
+     Everything above drives `specialAttack()` through the autotest bridge, and
+     that is only half the story -- it is the half that starts AT the special.
+     The owner does not call a function; they FLICK the attack disc, and a
+     flick is only recognised on touchEND:
+
+       touchstart  -> handleRBtnPress() -> S.autoAttack = true
+                      ...the auto-attack loop fires an ORDINARY shot...
+       touchmove   -> the flick
+       touchend    -> flick detected -> doSpecialAttack()
+
+     So on the real control the ordinary shot goes out BEFORE the special, on
+     the press, while the gesture is still ambiguous -- and no amount of
+     spending the swing clock inside specialAttack() can reach backwards and
+     stop a shot that has already left.  A test that only ever calls the
+     function sees the shot that comes AFTER and reports the bug fixed.  This
+     repo has been here before: mp-devwarp's note records the test panel's zone
+     chips passing for versions while being dead where the owner tapped them,
+     because mp-devpanel drove a synthetic message instead of pressing them.
+
+     So: press the disc for real. */
+  await P.page.evaluate(() => {
+    window.__touch = (el, type, x, y, id) => {
+      const t = new Touch({ identifier: id, target: el, clientX: x, clientY: y });
+      const end = type === 'touchend' || type === 'touchcancel';
+      el.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true,
+        touches: end ? [] : [t], targetTouches: end ? [] : [t], changedTouches: [t] }));
+    };
+    window.__centre = (sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { el, x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    };
+  });
+
+  /* ═══ THE PRESS IS REAL; THE CAST STANDS IN FOR THE FLICK ═══
+     The press is what spawns the leading shot, so the press must be a real
+     touch -- that is the whole point of this section, and driving it through
+     the bridge is what let v2.3.2464 report the bug fixed while the owner was
+     still watching a bolt lead his orbs.
+
+     The FLICK itself is not reproducible here: eight gesture shapes across
+     both right-hand surfaces were tried and none classified (`_lastSwipe`
+     never moved), because the classifier reads touch fields a synthesised
+     TouchEvent does not carry the way a thumb does. Rather than tune a
+     synthetic gesture until it happens to pass -- which would be fitting the
+     test to the harness instead of to the game -- the press is real and the
+     CAST is called directly, standing in for the touchend that would have
+     cast it. That is honest about what is and is not being exercised, and it
+     still tests the thing under repair: the shot the PRESS fires, and whether
+     the grace holds it until the gesture is legible. */
+  const pressRows = [];
+  for (const w of [
+    { key: 'bow',   type: 'bow',   stash: 'rangedWeapon', slot: 'ranged', own: 1 },
+    { key: 'magic', type: 'staff', stash: 'staffWeapon',  slot: 'staff',  own: 3 },
+  ]) {
+    await H.equipWeapon(P, w.type, w.stash, w.slot);
+    await P.page.waitForTimeout(900);
+    await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      S._aimAngle = 0.4; S._lastAimAngle = 0.4; S._facingAngle = 0.4; S._shieldUp = false;
+      /* An OPEN cadence -- the case the owner is in, where the loop is ready
+         to fire the instant the press lands. */
+      S.swingTimer = 0; S._lastSwipe = 0; S.autoAttack = false; S._atkPressAt = 0;
+      if (S.rpg) { S.rpg.mana = S.rpg.maxMana; }
+    });
+    await watchArrows(P);
+    const did = await P.page.evaluate(async () => {
+      const el = document.querySelector('[data-joyzone="R"]') || document.querySelector('.bt-rjoy-base');
+      if (!el) return { ok: false, why: 'no attack control' };
+      const r = el.getBoundingClientRect();
+      const x = r.x + r.width / 2, y = r.y + r.height / 2;
+      const wait = (ms) => new Promise((res) => setTimeout(res, ms));
+      const t0 = (window.__solo || {}).t0 || Date.now();
+      const mark = (n) => Date.now() - t0;
+      const at = {};
+      /* ═══ THE GESTURE MUST SPAN FRAMES, AND MUST NOT OUTLAST THE GRACE ═══
+         Two failed cuts of this, in opposite directions, and each looked like
+         a result.
+
+         With setTimeout waits (50ms + 40ms of intended thumb) the gesture took
+         394ms of WALL CLOCK -- this page runs a game loop on a headless box
+         with no GPU and its timers get what is left -- so it outran the 200ms
+         grace and the shot leaked.  That reads as "the fix does not work" and
+         is a fact about the test machine.
+
+         Dispatched back to back instead, the gesture took 1ms and no ordinary
+         shot appeared -- but neither did one with the grace set to ZERO.  A
+         gesture shorter than a single frame never gives the auto-attack loop a
+         turn, so nothing was being suppressed and the row passed for no
+         reason.  A test that survives its own mutation is not a test.
+
+         So the gesture is paced in FRAMES: requestAnimationFrame until it has
+         spanned enough real frames for the loop to have had its chance, and
+         then stopped well inside the grace.  Both bounds are asserted below,
+         because a run that misses either end is measuring the harness. */
+      at.press = mark();
+      window.__touch(el, 'touchstart', x, y, 77);       /* the real press */
+      const gStart = Date.now();
+      let frames = 0;
+      while (Date.now() - gStart < 70 && frames < 12) {
+        await new Promise((res) => requestAnimationFrame(res));
+        frames++;
+      }
+      window.__touch(el, 'touchmove', x + 40, y, 77);   /* the swipe */
+      at.end = mark();
+      at.frames = frames;
+      window.__touch(el, 'touchend', x + 80, y, 77);
+      /* ...and the cast the flick would have produced. */
+      (window._gameFns || {}).specialAttack();
+      at.cast = mark();
+      return { ok: true, at, gesture: at.end - at.press };
+    });
+    await P.page.waitForTimeout(1100);
+    await P.page.evaluate(() => { const S = window._gameState.current; S.autoAttack = false; S._atkPressAt = 0; });
+    const seen = await readArrows(P);
+    const sp = seen.filter((a) => a.special), no = seen.filter((a) => !a.special);
+    pressRows.push({ ...w, did, seen, special: sp.length, normal: no.length,
+      spAt: sp.length ? Math.min(...sp.map((a) => a.at)) : null, noAt: no.map((a) => a.at) });
+  }
+
+  console.log('\n    ── a REAL press on the attack control, then the cast ──');
+  for (const r of pressRows) {
+    console.log(`    ${r.key.padEnd(6)} special ${r.special}/${r.own} at ${r.spAt}ms   `
+      + `LEADING ordinary shots ${r.normal} at ${JSON.stringify(r.noAt)}ms`
+      + `   [press ${r.did.at && r.did.at.press}ms, gesture ${r.did.gesture}ms, cast ${r.did.at && r.did.at.cast}ms]`);
+  }
+  console.log('');
+
+  for (const r of pressRows) {
+    rec.ok(`${r.key} press: the special still casts after a real press (guard)`, r.special === r.own, r);
+    /* The grace can only cover a gesture shorter than itself, so a run whose
+       synthetic gesture outran it is measuring the test machine.  Stated as a
+       guard rather than left to silently weaken the row below. */
+    /* Both ends, because each one alone lets a row pass for the wrong reason:
+       too long and the grace could not have covered it; too short and the
+       auto-attack loop never had a frame in which to fire, so nothing was
+       suppressed (measured: at 1ms the row passed with the grace set to 0). */
+    rec.ok(`${r.key} press: the gesture spanned real frames and still finished inside the grace (guard)`,
+      r.did && r.did.gesture != null && r.did.gesture < 200
+        && r.did.at && r.did.at.frames >= 2,
+      { gesture: r.did && r.did.gesture, frames: r.did && r.did.at && r.did.at.frames, grace: 200 });
+    /* THE ASK, at the site the owner is actually looking at: nothing ordinary
+       may leave between the finger landing and the special going out. */
+    rec.ok(`${r.key} press: no ordinary shot leads the special (${r.normal})`,
+      r.normal === 0, r);
+  }
+
   await P.ctx.close().catch(() => {});
 }

@@ -22,7 +22,7 @@ import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3
 import {
   BT_AUDIO, DEATH_GOLD_PENALTY, DEATH_SCATTER_RECOVERY,
   ECHO_AGGRO_MULT, ELEMENTS, GEM_DROP_RATES, GOLD_NUGGET_DROP, GS_FORWARD_ARC,
-  GS_INNER_RADIUS, GS_OUTER_RADIUS, PVP_THREAT_DURATION,
+  GS_INNER_RADIUS, GS_OUTER_RADIUS, ATK_PRESS_GRACE_MS, PVP_THREAT_DURATION,
   QUEST_CHAINS, QUEST_STATUS, RARE_DROP_CHANCE, RARE_DROP_ITEMS, RARITY_TIERS,
   RESPAWN_BASE, RESPAWN_ESCALATE, RESPAWN_ESCALATE_WINDOW, RESPAWN_MAX, SPECIAL_ATK_MULT, specialAtkMultFor,
   SWING_ARC, SWING_COOLDOWN, weaponSwingMult /* v2.3.2265 */, SWING_RANGE, MELEE_CONTACT_MS /* v2.3.2200 */, TILE, WEAPON_TYPES, WELL_RESTED_XP_MULT,
@@ -1430,7 +1430,25 @@ export function updateMonsterCombat(S, deps) {
               _engSwing = _eD <= GS_OUTER_RADIUS;
             }
           }
-          if ((S.autoAttack || _engSwing) && !S._shieldUp && S.rpg && _eqWpn && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
+          /* ═══ v2.3.2465: HOLD THE FIRST SHOT UNTIL THE GESTURE IS LEGIBLE ═══
+             Owner, on a magic special: "When I swipe my finger the normal
+             attack (default) is leading."  The special is a FLICK and a flick
+             is only classified on touchend (BroTown rE/bE), while this loop
+             fires the moment handleRBtnPress sets autoAttack -- so the
+             ordinary shot left before the game could know the press was a
+             special, and the screenshot shows a white bolt out in front of the
+             three orbs.  v2.3.2464 spent the swing clock inside
+             specialAttack(), which correctly stops the shot AFTER the special
+             and cannot touch the one already gone.
+             So the FIRST shot of a press waits out the flick window
+             (_atkPressAt, stamped at the top of handleRBtnPress and cleared on
+             release, so a tap pays nothing).  ATK_PRESS_GRACE_MS is the whole
+             cost of this and is deliberately one named number: the gesture's
+             own ceiling is 400-500ms, but a thumb flick is far quicker than
+             its ceiling, and every ms here is latency on a held attack.  Raise
+             it if a flick still leads; lower it if the hold feels sticky. */
+          var _flickWait = S._atkPressAt && (Date.now() - S._atkPressAt) < ATK_PRESS_GRACE_MS;
+          if ((S.autoAttack || _engSwing) && !_flickWait && !S._shieldUp && S.rpg && _eqWpn && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
             /* Loot pickup freeze suppresses auto-swing — keeps the
                0.5s pickup animation clean instead of mid-swing. */
             var _lootSwingBlock = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;
