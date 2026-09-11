@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  backprev: () => import('./mp-backprev.mjs'), /* v2.3.2467: the pedestal preview turns round and so do the drawings */
   solospecial: () => import('./mp-solospecial.mjs'), /* v2.3.2465: the swipe fires the special alone -- no ordinary shot leading or trailing it -- and the three magic orbs are evenly spaced */
   offgrid: () => import('./mp-inkoffgrid.mjs'), /* v2.3.2463: a placed design drags off the edge and is clipped */
   textfloor: () => import('./mp-textfloor.mjs'), /* v2.3.2466: the 11px floor, and that nothing got cut off reaching it */

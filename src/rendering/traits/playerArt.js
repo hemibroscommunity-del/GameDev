@@ -302,6 +302,35 @@ export function headArtForDir(dir) {
   return inkedArt(sideForDir(dir) === 'back' ? 'tattooHeadBack' : 'tattooFace');
 }
 
+/* ═══ v2.3.2467: ...AND THE OTHER TWO, WHICH WERE NEVER WRITTEN ═══
+ * Owner: "designs on the back don't carry to the preview character bro on the
+ * pedestal."
+ *
+ * The torso and the trousers grew back canvases (v2.3.2148, v2.3.2428) and got
+ * their facing swap inside playerSkins' `artForFacing`, which the WORLD
+ * renderer calls.  The portrait path does not call it -- it takes an art
+ * object and a facing and stamps whatever it was given -- so every preview
+ * drawn through drawCharacterPortrait read `tattoo` and `pants` whichever way
+ * the figure was turned.  Measured before the fix, on all eight facings of the
+ * creator's pedestal: the FRONT drawing at full strength on every one of them
+ * and not a pixel of the back canvases anywhere.
+ *
+ * v2.3.2422 patched exactly one caller (PlayerPaint's worn preview) and said
+ * so in its own comment -- "it is made here because the portrait path never
+ * calls that function" -- which left the pedestal, the character sheet and
+ * anything else drawn this way still wrapping your chest piece round your back.
+ * These two put the rule where the other two already live, so a caller gets it
+ * by reading the store rather than by remembering to.
+ *
+ * The ARM is deliberately absent, here as in artForFacing: an arm is the same
+ * arm from behind, so `tattooArm` shows on every facing and needs no sibling. */
+export function torsoArtForDir(dir) {
+  return inkedArt(sideForDir(dir) === 'back' ? 'tattooBack' : 'tattoo');
+}
+export function pantsArtForDir(dir) {
+  return inkedArt(sideForDir(dir) === 'back' ? 'pantsBack' : 'pants');
+}
+
 /** Replace one canvas and persist it.  Invalid input is ignored rather than
  *  stored, so a corrupted localStorage value cannot poison the renderer. */
 export function setArt(id, s) {
