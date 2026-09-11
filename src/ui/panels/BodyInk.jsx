@@ -1,5 +1,6 @@
 import React from 'react';
 import { ART_W, ART_H, ART_PALETTE } from '@/rendering/traits/playerArt.js';
+import { drawGrabHandle, HANDLE_R, HANDLE_HIT } from '@/rendering/traits/artHandle.js';   /* v2.3.2463 */
 import { cellAt } from '@/rendering/playerDecal.js';   /* v2.3.1962 */
 import { drawCharacterPortrait } from '@/rendering/characterPortrait.js';
 import { SHIRT_CATALOG } from '@/rendering/traits/shirtCatalog.js';   /* v2.3.2430 */
@@ -210,10 +211,18 @@ export default function BodyInk({
      that the region you are touching is now the one you are inking. */
   backSide = false,
   overlayCells = null, selCells = null, handleCell = null,
+  /* v2.3.2463: does the handle RESIZE what is held, or only move it?  The glyph
+     says which (artHandle), and only the panel knows -- a legacy letter has no
+     box and its handle moves it instead. */
+  handleResize = true,
   /* v2.3.2460: the canvas the panel's held op lives on, or null when it holds
      nothing.  A target rather than a boolean: the grab has to lock the gesture
      to the RIGHT canvas, and the panel is the only one that knows which. */
   heldTarget = null,
+  /* v2.3.2463: and the box it occupies on that canvas, so a press INSIDE what
+     you are holding can be told from a press that merely landed nearby.  See
+     the grab branch in `down`. */
+  heldBox = null,
 }) {
   const boxRef = React.useRef(null);
   const offRef = React.useRef(null);
@@ -337,6 +346,24 @@ export default function BodyInk({
     if (!target) return null;
     const c = cellAt(g, p.x, p.y);
     if (c) return { target, gx: c.gx, gy: c.gy };
+    /* ═══ v2.3.2463: 'extend' -- THE CELL THE FINGER IS ON, GRID OR NOT ═══
+       A third answer, for the one gesture that needs it: dragging something
+       that may LIVE off the grid.  `clamp` pins a stray point to the nearest
+       edge cell, which is right for a shape whose corner must stay somewhere
+       and wrong for a move, because a pinned cell stops changing the moment
+       the finger passes the edge -- so the design tracks your finger across
+       the grid and then sticks, which reads as the same dead drag the owner
+       reported.  Extrapolating the same arithmetic past the box gives a cell
+       that keeps counting, and the translation it feeds is bounded where it
+       belongs, by moveTo's overlap rule.
+       Bounded anyway, loosely: a pointer under a heavy zoom-out can be a very
+       long way from the grid, and no gesture means to ask for a thousand. */
+    if (clamp === 'extend') {
+      const ex = Math.floor((p.x - g.ox) / g.cw), ey = Math.floor((p.y - g.oy) / g.ch);
+      return { target,
+        gx: Math.max(-2 * ART_W, Math.min(3 * ART_W, ex)),
+        gy: Math.max(-2 * ART_H, Math.min(3 * ART_H, ey)) };
+    }
     if (!clamp) return null;
     const gx = Math.max(0, Math.min(ART_W - 1, Math.floor((p.x - g.ox) / g.cw)));
     const gy = Math.max(0, Math.min(ART_H - 1, Math.floor((p.y - g.oy) / g.ch)));
@@ -482,6 +509,18 @@ export default function BodyInk({
       for (let k = 0; k < actList.length; k++) {
         const g = actList[k];
         for (let i = 0; i < cells.length; i++) {
+          /* v2.3.2463: OFF THE GRID IS NOT DRAWN.  `toBox` is a plain affine
+             map with no range of its own, so a cell at gx = -3 lands three
+             cells to the LEFT of the chest's origin -- on the arm, on the
+             background, wherever that happens to be -- in the selection gold or
+             in the live overlay's ink, over a body the baked sheet will never
+             paint there.  Boxes may hang off the grid since v2.3.2463, and
+             although artOps' clipCells means nothing off-grid should reach this
+             loop, a surface that draws whatever it is handed is one refactor
+             away from painting on the character's arm.  It costs one comparison
+             per cell to be correct on its own. */
+          if (cells[i][0] < 0 || cells[i][1] < 0
+            || cells[i][0] >= ART_W || cells[i][1] >= ART_H) continue;
           const a = toBox(g.ox + cells[i][0] * g.cw, g.oy + cells[i][1] * g.ch);
           const b = toBox(g.ox + (cells[i][0] + 1) * g.cw, g.oy + (cells[i][1] + 1) * g.ch);
           fn(a, b, g, cells[i]);
@@ -506,8 +545,17 @@ export default function BodyInk({
        shirt.  Only the edges with no neighbour in the set are stroked, so the
        ring hugs the shape rather than boxing three others in with it. */
     if (selCells && selCells.length) {
+      /* v2.3.2463: the neighbour map is indexed y * ART_W + x, which ALIASES
+         for an off-grid x -- (16, 3) writes slot 64, the real cell (0, 4) -- so
+         a cell nobody selected gets marked occupied and the genuine cell's edge
+         is then left unstroked, putting a hole in the outline.  Guarded rather
+         than trusted: clipCells should mean it cannot happen, and a typed array
+         neither throws nor grows when it does. */
       const has = new Uint8Array(ART_W * ART_H);
-      for (let i = 0; i < selCells.length; i++) has[selCells[i][1] * ART_W + selCells[i][0]] = 1;
+      for (let i = 0; i < selCells.length; i++) {
+        const x = selCells[i][0], y = selCells[i][1];
+        if (x >= 0 && y >= 0 && x < ART_W && y < ART_H) has[y * ART_W + x] = 1;
+      }
       ctx.save();
       ctx.lineWidth = Math.max(1.5, dpr * 1.1);
       ctx.strokeStyle = '#D8AA58';
@@ -531,20 +579,12 @@ export default function BodyInk({
       const a = toBox(g.ox + handleCell[0] * g.cw, g.oy + handleCell[1] * g.ch);
       const b = toBox(g.ox + (handleCell[0] + 1) * g.cw, g.oy + (handleCell[1] + 1) * g.ch);
       const hx = (a.x + b.x) / 2, hy = (a.y + b.y) / 2;
-      const r = Math.max(9, Math.abs(b.x - a.x) * 0.62);
-      ctx.beginPath();
-      ctx.arc(hx, hy, r, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(10,14,18,.55)';
-      ctx.fill();
-      ctx.lineWidth = Math.max(2, dpr);
-      ctx.strokeStyle = '#D8AA58';
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(hx, hy, Math.max(2, r * 0.28), 0, Math.PI * 2);
-      ctx.fillStyle = '#D8AA58';
-      ctx.fill();
+      /* v2.3.2463: one glyph for both surfaces (artHandle), sized from this
+         one's own cell -- which is a zoomed cell on a body sheet and a flat one
+         on the shirt, so the two floors differ and the drawing does not. */
+      drawGrabHandle(ctx, hx, hy, HANDLE_R(Math.abs(b.x - a.x), 13 * Math.max(1, dpr / 2)), handleResize);
     }
-  }, [windowFor, tabKeys, activeTarget, ink, overlayCells, selCells, handleCell]);
+  }, [windowFor, tabKeys, activeTarget, ink, overlayCells, selCells, handleCell, handleResize]);
 
   /* ═══ v2.3.1978: THE REGION FILLS THE EDITOR ═══
      Owner: "In the editor show the actual full upper torso region where you
@@ -792,7 +832,7 @@ export default function BodyInk({
     if (!api || !handleCell) return false;
     const c = api.cellCenter(activeTarget, handleCell[0], handleCell[1]);
     if (!c) return false;
-    return Math.hypot(e.clientX - c.x, e.clientY - c.y) <= Math.max(22, c.w * 1.3);
+    return Math.hypot(e.clientX - c.x, e.clientY - c.y) <= HANDLE_HIT(c.w, 26);
   };
 
   const down = (e) => {
@@ -819,6 +859,35 @@ export default function BodyInk({
     if (onH) gestureRef.current = activeTarget;
     else {
       const c = cellFor(e, false, null);
+      /* ═══ v2.3.2463: A PRESS INSIDE WHAT YOU ARE HOLDING IS A GRAB ═══
+         ...whatever region it happens to be over.  The regions overlap: the
+         chest grid covers the whole torso and an arm's bulk box reaches across
+         its edges, and `regionAt` answers most-specific-first, so a press on
+         the left of the chest can resolve to the ARM.  Harmless while every
+         drawing sat in the middle of its own region; not harmless now that a
+         design may be dragged until the only part of it left on the grid is
+         that edge -- the press meant to drag it back would silently switch the
+         panel to the arm canvas, which holds nothing, and the drag would do
+         nothing at all.  That is the same failure the owner reported, with a
+         different cause, and it is the exact hazard the HANDLE was given a rule
+         for in v2.3.1994: something you are already holding must not re-target
+         the canvas it lives on just because your finger is over another one.
+         THE COST, deliberately taken: while you are holding something, a press
+         inside its box will not switch canvases -- so inking an arm under a
+         chest-wide design means placing it first (Place is on screen the whole
+         time).  The alternative is losing hold of the thing you were dragging,
+         which is worse and is what happens today. */
+      if (heldTarget && heldBox && heldBox.length === 4) {
+        const hc = cellFor(e, 'extend', heldTarget);
+        const x0 = Math.min(heldBox[0], heldBox[2]), x1 = Math.max(heldBox[0], heldBox[2]);
+        const y0 = Math.min(heldBox[1], heldBox[3]), y1 = Math.max(heldBox[1], heldBox[3]);
+        if (hc && hc.gx >= x0 && hc.gx <= x1 && hc.gy >= y0 && hc.gy <= y1) {
+          gestureRef.current = heldTarget;
+          try { window.__btInkDown = { target: heldTarget, held: true, inBox: true, back: !!backSide }; } catch (_e) { /* ignore */ }
+          if (onDown) onDown(e, { handle: false, held: true });
+          return;
+        }
+      }
       /* ═══ v2.3.2460: A HELD PIECE CAN BE GRABBED OFF THE GRID ═══
          Owner: "I just highlighted the screen by accident trying to move a
          design I just placed.  Right after placing a design you should be able

@@ -91,6 +91,77 @@ const LETTER_SET = new Set(LETTERS);
 export const MAX_OPS = 120;
 const COLLAPSE = 40;
 
+/* ═══ v2.3.2463: A PLACED THING MAY HANG OFF THE GRID ═══
+ *
+ * Owner: "the design is maximized to fit the area so when you go to move it
+ * nothing happens because it can't move outside the drawing area.  Can you make
+ * it so that any design can move away from the drawn area so that you can see
+ * predesigns move once you've placed them but just cut off the portion that's
+ * not on the drawable grid?"
+ *
+ * Exactly right, and it was two rules deep.  A design lands covering the WHOLE
+ * grid, so a box that must stay inside the grid has nowhere to go -- the
+ * translation clamp in PlayerPaint's moveTo worked out to zero for it, every
+ * time, which is a drag that does nothing.  And `sanitizeOp` below rejected any
+ * box with an off-grid corner, so even once the drag moved something the op
+ * would have been dropped on the next load.
+ *
+ * So a box may now leave the grid, and what falls outside is CLIPPED.  Most of
+ * that clip was already there: `artWithCells` has always skipped cells outside
+ * 0..15, letterBoxCells tests every cell it emits, and mirrorCells drops an
+ * x it cannot reflect back in.  What was missing is that the cells still got
+ * HANDED OUT -- to the hit test, to the selection outline, to the body
+ * surface's overlay -- so an off-grid design would have drawn its outline
+ * across the character's arm while painting nothing there.  `clipCells` below
+ * is that missing edge, applied in the two places cells leave this file.
+ *
+ * THE BOUND IS NOT REMOVED, ONLY WIDENED.  This blob is hand-editable, and
+ * every shape helper loops over its box: rectCells walks ax..bx, ellipseCells
+ * scans both axes of it, designGroups samples w x h.  One grid of slack each
+ * way caps a box at 48 x 48 = 2304 samples, which is 9 full grids and cheap;
+ * an unbounded corner would let a crafted localStorage entry ask for a loop of
+ * any size at all.  `Number.isInteger` is not a bound and must not be mistaken
+ * for one: Number.isInteger(1e308) is true, and a width of Infinity is a `for`
+ * loop that never ends -- a white screen at startup, out of localStorage.
+ *
+ * AND THE EDITOR CLAMPS TO THESE SAME NUMBERS.  It has to, and not because the
+ * gesture cannot reach past them -- it can: moveTo bounds a drag by how much of
+ * the box still OVERLAPS the grid, which for a box wider than the grid permits
+ * a corner well past BOX_HI, and a resize can grow one 15 cells per pull.  Two
+ * rules that disagree is the worst shape this could take, because the
+ * disagreement is invisible until a page load: the gate refuses the op, the
+ * shortened list no longer replays to the stored drawing, and loadDocs bins the
+ * WHOLE canvas's op list.  So PlayerPaint imports BOX_LO/BOX_HI_X/BOX_HI_Y and
+ * clamps against them as well as against its own overlap rule, and this stays
+ * the read-side backstop for a blob that was not written by this session. */
+const BOX_OFF = ART_W;
+/* EXPORTED, because the gesture and the gate have to agree about this.  They
+   are two different rules -- the editor bounds a drag by how much of the box
+   still OVERLAPS the grid, this bounds each corner ABSOLUTELY -- and for a box
+   wider than the grid those two disagree: the overlap rule would happily put a
+   corner past BOX_HI, and the next page load would then refuse the op and, with
+   it, the whole canvas's op list.  So PlayerPaint clamps to these same numbers
+   as well as to its own rule (moveTo / resizeTo, v2.3.2463). */
+export const BOX_LO = -BOX_OFF, BOX_HI_X = ART_W - 1 + BOX_OFF, BOX_HI_Y = ART_H - 1 + BOX_OFF;
+
+/** The cells of `list` that are actually on the grid.  Returns the SAME array
+ *  when nothing is off it, which is every op on a drawing nobody has dragged
+ *  off the edge -- the common case pays one scan and no allocation. */
+function clipCells(list) {
+  let off = 0;
+  for (let i = 0; i < list.length; i++) {
+    const x = list[i][0], y = list[i][1];
+    if (x < 0 || y < 0 || x >= ART_W || y >= ART_H) { off = 1; break; }
+  }
+  if (!off) return list;
+  const out = [];
+  for (let i = 0; i < list.length; i++) {
+    const x = list[i][0], y = list[i][1];
+    if (x >= 0 && y >= 0 && x < ART_W && y < ART_H) out.push(list[i]);
+  }
+  return out;
+}
+
 /* ═══ v2.3.2455: A PLACED DESIGN IS ONE OP, NOT A PILE OF THEM ═══
    Owner: "after first placing the predesigns it's still selected (you can move
    it around) and also resize it with the corner grab handle."
@@ -134,6 +205,12 @@ export function designGroups(op) {
       /* index 0 is transparent, and a digit past the palette paints nothing --
          designOps' rule (designCatalog), applied to the same strings here. */
       if (!(v > 0 && v < ART_PALETTE.length)) continue;
+      /* v2.3.2463: the part of the picture that hangs off the grid is cut off
+         here, at the SAMPLE, not after.  Sampling is unchanged -- sx/sy are
+         still read from the cell's position within the BOX -- so the part you
+         can still see is the same part of the picture it was before the drag,
+         which is the whole point of being able to move it. */
+      if (x0 + x < 0 || y0 + y < 0 || x0 + x >= ART_W || y0 + y >= ART_H) continue;
       let cells = byInk.get(v);
       if (!cells) byInk.set(v, (cells = []));
       cells.push([x0 + x, y0 + y]);
@@ -149,6 +226,12 @@ export function designGroups(op) {
  *  `art` matters only to the bucket fill, which is the one op whose result
  *  depends on what is already on the grid. */
 export function opCells(op, art) {
+  return clipCells(rawOpCells(op, art));
+}
+
+/** opCells before the clip.  Split out so the clip is impossible to forget on
+ *  a new op kind: every return below goes through `opCells` above. */
+function rawOpCells(op, art) {
   if (!op) return [];
   if (op.k === 'c') {
     const out = [];
@@ -217,6 +300,16 @@ export function replay(base, ops, outCells) {
 /** Append an op to a {base, ops} pair, collapsing the oldest ops into the base
  *  if the list has grown past the cap.  Returns a NEW pair — nothing here is
  *  mutated, because undo snapshots share these arrays and objects. */
+/* v2.3.2463: A COLLAPSE CLIPS, AND THAT IS A ONE-WAY DOOR.  `replay` bakes the
+   oldest ops into the 256-character base, and the base has no cells outside the
+   grid -- so an op dragged half off the edge loses its off-grid half the moment
+   it falls out of the window, and dragging it back afterwards brings back a
+   shorter picture.  Stated rather than fixed: it takes 120 ops on one canvas to
+   reach, nothing visible changes at the moment it happens (the lost part was
+   already invisible), and preferring a fully on-grid op for the collapse would
+   make the window depend on where things are rather than on how old they are,
+   which is a worse rule to reason about.  It is the same trade MAX_OPS already
+   makes: past the cap you keep the drawing and lose the pieces. */
 export function appendToDoc(doc, op) {
   const base = (doc && isValidArt(doc.base)) ? doc.base : emptyArt();
   const ops = ((doc && doc.ops) || []).concat([op]);
@@ -232,6 +325,35 @@ const okInt = (v, lo, hi) => (typeof v === 'number' && Number.isInteger(v) && v 
  *  into a cell outside the grid — would take the whole designer down. */
 export function sanitizeOp(op) {
   if (!op || typeof op !== 'object') return null;
+  /* ═══ v2.3.2455: a placed design.  The art string is checked with the same
+     isValidArt every stored drawing goes through -- this blob is hand-editable
+     and the sampler indexes straight into the string, so a short or non-hex one
+     would read undefined and paint nothing at best.  No `i`: the design brings
+     its own colours (designGroups).
+
+     ═══ v2.3.2463: AND THAT IS WHY IT IS CHECKED FIRST ═══
+     It used to sit at the BOTTOM, below the ink guard two lines down -- and
+     that guard rejects an op with no `i`, which is every design op ever
+     written.  So the gate answered null for all of them, and since v2.3.2455
+     a placed design has not survived a page load: on the way back in the op
+     was dropped, the shortened list then failed the "does this still replay to
+     the stored drawing" test in loadDocs, and the WHOLE canvas's op list was
+     thrown away with it.  The pixels came back (they are the base now) and
+     every piece of that drawing -- designs, shapes, letters, strokes -- became
+     unselectable, unmovable and unlayerable.  Silent, because a flattened
+     drawing looks exactly like the drawing.
+     Verified against origin/main before the move: sanitizeOp({k:'d', art, a})
+     returns null, and returns the op the moment a stray `i` is added. */
+  if (op.k === 'd') {
+    if (!isValidArt(op.art) || !Array.isArray(op.a) || op.a.length !== 4) return null;
+    /* v2.3.2463: BOX_LO..BOX_HI.  This is the op the owner's report is about --
+       a design lands covering the whole grid, so it has nowhere to go until a
+       box is allowed past the edge. */
+    for (let n = 0; n < 4; n++) {
+      if (!okInt(op.a[n], BOX_LO, (n % 2) ? BOX_HI_Y : BOX_HI_X)) return null;
+    }
+    return { k: 'd', art: op.art, a: op.a.slice() };
+  }
   const i = op.i;
   if (!okInt(i, 0, 15)) return null;
   const m = op.m ? 1 : 0;
@@ -248,36 +370,40 @@ export function sanitizeOp(op) {
   }
   if (op.k === 's') {
     if (!SHAPE_TOOLS.has(op.t) || !Array.isArray(op.a) || op.a.length !== 4) return null;
-    if (!okInt(op.a[0], 0, ART_W - 1) || !okInt(op.a[2], 0, ART_W - 1)) return null;
-    if (!okInt(op.a[1], 0, ART_H - 1) || !okInt(op.a[3], 0, ART_H - 1)) return null;
+    /* v2.3.2463: BOX_LO..BOX_HI, not 0..15 -- a shape may be dragged off the
+       edge like a design, and the cells that leave the grid are clipped rather
+       than refused (see BOX_OFF).  Still an integer and still bounded: this
+       blob is hand-editable and every shape helper loops over the box. */
+    if (!okInt(op.a[0], BOX_LO, BOX_HI_X) || !okInt(op.a[2], BOX_LO, BOX_HI_X)) return null;
+    if (!okInt(op.a[1], BOX_LO, BOX_HI_Y) || !okInt(op.a[3], BOX_LO, BOX_HI_Y)) return null;
     if (!okInt(op.b, 1, 3)) return null;
     return { k: 's', t: op.t, a: op.a.slice(), i, b: op.b, m };
   }
   if (op.k === 't') {
-    if (!LETTER_SET.has(op.g) || !okInt(op.x, 0, ART_W - 1) || !okInt(op.y, 0, ART_H - 1)) return null;
+    if (!LETTER_SET.has(op.g)) return null;
     /* v2.3.2427: the box, when there is one.  Checked cell by cell like a
        shape's `a` -- this blob is hand-editable, and a letter box with a
-       non-integer or off-grid corner would sample outside the grid. */
+       non-integer corner would sample outside any bound at all.
+       v2.3.2463: the bound is BOX_LO..BOX_HI now, and so is x/y WHEN THERE IS
+       A BOX -- moveTo keeps the legacy anchor in step with the box it moved,
+       so a letter dragged off the left edge has a negative x by construction.
+       Without a box, x/y IS the glyph's position and stays on the grid: the
+       pre-v2.3.2427 form has no box to clip against and letterCells does not
+       test its cells. */
     if (op.a !== undefined) {
       if (!Array.isArray(op.a) || op.a.length !== 4) return null;
-      for (let n = 0; n < 4; n++) if (!okInt(op.a[n], 0, (n % 2) ? ART_H - 1 : ART_W - 1)) return null;
+      for (let n = 0; n < 4; n++) {
+        if (!okInt(op.a[n], BOX_LO, (n % 2) ? BOX_HI_Y : BOX_HI_X)) return null;
+      }
+      if (!okInt(op.x, BOX_LO, BOX_HI_X) || !okInt(op.y, BOX_LO, BOX_HI_Y)) return null;
       return { k: 't', g: op.g, x: op.x, y: op.y, a: op.a.slice(), i, m };
     }
+    if (!okInt(op.x, 0, ART_W - 1) || !okInt(op.y, 0, ART_H - 1)) return null;
     return { k: 't', g: op.g, x: op.x, y: op.y, i, m };
   }
   if (op.k === 'f') {
     if (!okInt(op.x, 0, ART_W - 1) || !okInt(op.y, 0, ART_H - 1)) return null;
     return { k: 'f', x: op.x, y: op.y, i, m };
-  }
-  /* v2.3.2455: a placed design.  The art string is checked with the same
-     isValidArt every stored drawing goes through -- this blob is hand-editable
-     and the sampler indexes straight into the string, so a short or non-hex one
-     would read undefined and paint nothing at best.  No `i`: the design brings
-     its own colours (designGroups). */
-  if (op.k === 'd') {
-    if (!isValidArt(op.art) || !Array.isArray(op.a) || op.a.length !== 4) return null;
-    for (let n = 0; n < 4; n++) if (!okInt(op.a[n], 0, (n % 2) ? ART_H - 1 : ART_W - 1)) return null;
-    return { k: 'd', art: op.art, a: op.a.slice() };
   }
   return null;
 }
