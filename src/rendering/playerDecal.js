@@ -332,6 +332,44 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
   if (!artHasInk(art) && !(opts && opts.report)) return 0;
   const frames = Math.max(1, Math.floor(w / frameW));
   const eachPiece = !!(opts && opts.eachPiece);
+  /* ═══ v2.3.2470: ONE BOX FOR THE WHOLE STRIP ═══
+     Owner, three reports of one defect: "Shirtless south jog tattoos flicker on
+     chest", "northeast jog spills the tattoo to the backswing arm", "East jog
+     appears to flicker the tattoo and spill onto backswing arm as well".
+
+     The extent measured below comes from the bare skin the classifier finds,
+     and on a SHIRTLESS bro the swinging arms walk in and out of that skin every
+     animation frame.  So the box the drawing is fitted into changes shape frame
+     to frame, in two directions at once:
+       - the arms part the chest from the belly, _largestPiece keeps only the
+         upper half, and the drawing COLLAPSES into it;
+       - or an arm joins the chest, the box STRETCHES over it, and the drawing
+         is painted onto the arm.
+     Measured on the shipped jog-south sheet: frames 2,3,4,7,17,19 of 26 fit a
+     cell height of 1.50-2.38 while the other twenty sit at 3.50-3.75.  The
+     cycle is 823ms, so that is about ten transitions a second, the drawing's
+     area changing 2-4.3x.  On east, jogging paints MORE ink than standing (424
+     standing, 500-990 jogging) and the surplus is the arm.  On northeast,
+     standing paints 0 and jogging paints 4-40 on 23 of 24 frames: ink on a
+     facing that has no drawing at all.
+     STANDING WAS ALWAYS FINE because a stand sheet is ONE frame.  Nothing to
+     cycle between, which is the shape of all three reports.
+
+     THE FIX IS NOT TO ARGUE WITH THE CLASSIFIER about which skin is chest.
+     That was tried three ways -- join the split pieces at 0.15, at 0.35, and
+     with a column-overlap rule -- and each widened some other pose's box onto
+     an arm: mp-standinart's thinnest gain on bow-south fell 72 -> 11 every
+     time.  Feeding more skin to a fit that is already too eager is the wrong
+     end of the lever, and the east/northeast spill is that same failure seen
+     from the front.
+
+     So the fit runs for EVERY frame first and the strip is stamped with ONE
+     box, the median of them.  A median is what makes it work: the bad frames
+     are a minority in both directions, so neither kind can drag it, and it
+     lands on the shape the pose actually holds.  Each frame is still painted
+     confined to ITS OWN mask, so ink can never land off the body -- what it can
+     no longer do is move between frames. */
+  const steady = !!(opts && opts.steadyBox);
   const underSkin = !!(opts && opts.underSkin);   /* v2.3.1950 */
   /* v2.3.1962: when the caller passes an array, every grid this stamp fits is
      pushed into it.  The designer reads them to turn a touch on the body back
@@ -340,9 +378,15 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
   const profile = !!(opts && opts.profile);   /* v2.3.1992: histograms in the report */
   let painted = 0;
   let scratch = null, seenBuf = null;
+  const _fits = steady ? [] : null;
   /* The mask is its own array, so painting colours into `d` can never change
      what counts as region -- every frame is measured and filled against the
      classification the caller made BEFORE any retinting. */
+  /* v2.3.2470: pass 0 measures every frame and paints nothing; pass 1 paints
+     them all with the median.  Without `steady` there is ONE pass and
+     everything below is byte-for-byte what it has always been. */
+  for (let pass = steady ? 0 : 1; pass <= 1; pass++) {
+  const _med = (pass === 1 && _fits && _fits.length) ? _medianFit(_fits) : null;
   for (let f = 0; f < frames; f++) {
     const x0 = f * frameW, x1 = Math.min(w, x0 + frameW);
     /* ── MEASURE THE REGION BY ITS BULK, NOT BY ITS EXTREMES ──
@@ -440,13 +484,38 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
     let cLo = Infinity, cHi = -1;
     for (let x = 0; x < colN.length; x++) if (colN[x] >= colMin) { if (x < cLo) cLo = x; if (x > cHi) cHi = x; }
     if (cHi < 0 || by < 0) { release(); continue; }
-    const lx = cLo + x0, rx = cHi + x0;
+    /* cLo/cHi are already local to the frame and ty/by are sheet rows needing
+       no conversion, so the median is of the same shape in every frame. */
+    if (pass === 0) { _fits.push([cLo, cHi, ty, by]); release(); continue; }
+    let _cLo = cLo, _cHi = cHi, _ty = ty, _by = by;
+    /* ── CORRECT THE OUTLIERS, DO NOT OVERWRITE THE STRIP ──
+       Replacing EVERY frame's box with the median was tried and is wrong: a
+       strip whose frames genuinely differ (a sword swing throws the torso
+       around far more than a jog bob) then gets one box that fits none of them,
+       and on a frame where it misses the mask entirely NOTHING paints.
+       Measured: mp-standinart's thinnest gain fell to 0 on sword-south-torso
+       frame 1 and bow-northwest-torso frame 1.
+       So a frame keeps its own fit unless that fit is an OUTLIER against the
+       strip.  Normal frames come out byte-for-byte as before -- which is what
+       leaves the swing and block strips alone -- and only the frames the arms
+       wrecked are pulled back onto the shape the pose actually holds.
+       The band is generous on purpose: this is here to catch a chest halved by
+       a passing arm (measured at 0.42-0.66 of the median on jog-south), not to
+       flatten the honest breathing of an animation. */
+    if (_med) {
+      const _mh = _med[3] - _med[2], _mw = _med[1] - _med[0];
+      const _h = by - ty, _w2 = cHi - cLo;
+      const _off = (_mh > 0 && (_h < _mh * 0.75 || _h > _mh * 1.33))
+        || (_mw > 0 && (_w2 < _mw * 0.75 || _w2 > _mw * 1.33));
+      if (_off) { _cLo = _med[0]; _cHi = _med[1]; _ty = _med[2]; _by = _med[3]; }
+    }
+    const lx = _cLo + x0, rx = _cHi + x0;
     /* v2.3.1950: the region's own mean brightness, so ink can be shaded BY the
        body rather than pasted flat over it — see INK_TUNE. */
     let refLum = 0;
     if (underSkin) {
       let n = 0, sum = 0;
-      for (let y = ty; y <= by; y++) {
+      for (let y = _ty; y <= _by; y++) {
         for (let x = lx; x <= rx; x++) {
           if (!confine[y * w + x]) continue;
           const i = (y * w + x) * 4;
@@ -456,7 +525,7 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
       }
       refLum = n ? sum / n : 128;
     }
-    const { ox, oy, cw, ch } = gridFit(lx, rx, ty, by, box);
+    const { ox, oy, cw, ch } = gridFit(lx, rx, _ty, _by, box);
     /* v2.3.1992: with `profile` set, the report carries the row/column HISTOGRAMS
        the extent was measured from, not just the extent.  The vanishing face
        tattoo was three wrong readings deep before anyone looked at the shape of
@@ -539,10 +608,10 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
       }
     }
     if (report) report.push(profile
-      ? { ox, oy, cw, ch, lx, rx, ty, by, frame: f, fx0, fx1, fy0, fy1,
+      ? { ox, oy, cw, ch, lx, rx, ty: _ty, by: _by, frame: f, fx0, fx1, fy0, fy1,
           fcx, fcy, fn, fw: frameW, cellN,
           rowN: Array.from(rowN), colN: Array.from(colN) }
-      : { ox, oy, cw, ch, lx, rx, ty, by, frame: f });
+      : { ox, oy, cw, ch, lx, rx, ty: _ty, by: _by, frame: f });
     for (let gy = 0; gy < ART_H; gy++) {
       for (let gx = 0; gx < ART_W; gx++) {
         const col = artColorAt(art, mirror ? (ART_W - 1 - gx) : gx, gy);
@@ -598,7 +667,20 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
     release();
     }
   }
+  }
   return painted;
+}
+
+/* The component-wise median of every frame's fit.  Median rather than mean
+   because the frames this exists to ignore are outliers in BOTH directions -- a
+   collapsed chest and an arm-stretched one -- and a mean would let each of them
+   drag the box a little of the way toward itself. */
+function _medianFit(fits) {
+  const pick = (i) => {
+    const v = fits.map((a) => a[i]).sort((x, y) => x - y);
+    return v[v.length >> 1];
+  };
+  return [pick(0), pick(1), pick(2), pick(3)];
 }
 
 /* Where each drawing sits inside its region.  Fractions, not pixels, so they
