@@ -70,6 +70,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
     + `shared class value (die ${die && die.w}, randomize ${rnd && rnd.w})`,
     !!die && !!rnd && die.w !== rnd.w, { die: die && die.w, rnd: rnd && rnd.w });
 
+  /* ═══ v2.3.2464: THE REROLL SYMBOL, AND THE FIELD IT SHARES A BOX WITH ═══
+     Owner, a third time and about the picture rather than its size: "I'm
+     talking about the symbol for randomizing to the right of the name...
+     Whatever that is.  Maybe replace it with a recycle icon or something."
+     cc-random-name.webp is a parchment scroll with a small die beside it, and
+     at the ~30px this button can spare the die is eight pixels across.  Two
+     rounds of enlarging could not fix a silhouette problem, so it is a stroked
+     vector now. */
+  const isVector = await P.page.evaluate(() => {
+    const el = document.querySelector('.bt-cc-namewrap .bt-cc-action-icon');
+    return el ? el.tagName.toLowerCase() : null;
+  });
+  rec.ok('the name reroll symbol is a VECTOR, so it cannot blur back into a '
+    + 'beige smudge at icon scale', isVector === 'svg', { tag: isVector });
+
+  /* THE GUARD THAT MATTERS, AND THE TRAP IT ENCODES.
+     Growing this button eats the field's right padding, and past a threshold
+     the placeholder ellipsises to "Tap to na...".  That shipped once already
+     BEHIND A MEASUREMENT THAT SAID IT FIT: an <input>'s scrollWidth reflects
+     its VALUE and ignores its placeholder entirely, so an empty field always
+     reports no overflow no matter how badly the placeholder is clipped.
+     The honest test is to put the placeholder in AS the value and measure
+     that, which is what this does -- then put the field back. */
+  const fit = await P.page.evaluate(() => {
+    const f = document.querySelector('input.bt-cc-name');
+    if (!f) return null;
+    const prev = f.value;
+    f.value = f.placeholder;
+    const r = { text: f.placeholder, scrollW: f.scrollWidth, clientW: f.clientWidth };
+    f.value = prev;
+    r.truncates = r.scrollW > r.clientW + 0.5;
+    return r;
+  });
+  rec.ok('...and the bigger button has not clipped the placeholder to '
+    + '"Tap to na..." (measured as a value, not as a placeholder)',
+    !!fit && fit.truncates === false, fit);
+
   const heroBtn = await box(P, '.bt-cc-btn--hero');
   rec.ok('...without pushing its button taller than the 52px minimum '
        + '(guard: "bigger" must not mean "the layout moved")',
