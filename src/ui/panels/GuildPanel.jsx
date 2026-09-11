@@ -122,7 +122,7 @@ export function GuildPanel(props) {
       }
     }, g.icon, " ", key.replace(/([A-Z])/g, ' $1').trim(), /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 10, // v2.3.1239: 10px font floor (was 9)
+        fontSize: 11, // v2.3.1239: 10px font floor (was 9)
         color: rank.color
       }
     }, rank.title.charAt(0)));
@@ -208,13 +208,13 @@ export function GuildPanel(props) {
       }
     })), nextRank && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10,
+        fontSize: 11,
         fontVariantNumeric: 'tabular-nums',
         color: '#96A2A0'
       }
     }, "Next: ", nextRank.title, " (Lv", nextRank.minLvl, ")"), !nextRank && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 700,
         color: '#D8A85F'
       }
@@ -241,7 +241,7 @@ export function GuildPanel(props) {
         style: {
           padding: '3px 8px',
           borderRadius: 999,
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 600,
           fontVariantNumeric: 'tabular-nums',
           background: achieved ? r.color + '20' : '#19252A',
@@ -250,7 +250,7 @@ export function GuildPanel(props) {
         }
       }, achieved ? '✅' : '🔒', " ", r.title, " (Lv", r.minLvl, ")", achieved && r.ap > 0 && /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 10, // v2.3.1239: 10px font floor (was 9)
+          fontSize: 11, // v2.3.1239: 10px font floor (was 9)
           color: '#96A2A0',
           marginLeft: 2
         }
@@ -400,7 +400,7 @@ export function GuildPanel(props) {
         style: {
           padding: '3px 8px',
           borderRadius: 999,
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 600,
           background: g.color + '15',
           border: '1px solid ' + g.color + '30',

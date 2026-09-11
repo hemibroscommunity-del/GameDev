@@ -127,7 +127,7 @@ export const InfoPopup = () => {
                 flexWrap: 'wrap',
                 gap: '0 10px', padding: '3px 0', fontSize: 12.5,
               }}>
-                <span style={{ color: COL.muted, fontSize: 10.5, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{r.label}</span>
+                <span style={{ color: COL.muted, fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{r.label}</span>
                 <span style={{ color: COL.text, fontWeight: 800, whiteSpace: 'nowrap', textAlign: 'right' }}>
                   {r.now}
                   {r.after != null && <> → <span style={{ color: '#59BF91' }}>{r.after}</span></>}
@@ -136,7 +136,7 @@ export const InfoPopup = () => {
               </div>
             ))}
             {cur.capped && (
-              <div style={{ marginTop: 4, fontSize: 10.5, color: COL.muted }}>At its cap — no more points can go here.</div>
+              <div style={{ marginTop: 4, fontSize: 11, color: COL.muted }}>At its cap — no more points can go here.</div>
             )}
           </div>
         )}

@@ -42,7 +42,7 @@ const RewardChip = ({ item }) => (
         if (box && box.parentNode) box.parentNode.removeChild(box);
       }}
     />
-    <div style={{ fontSize: 9, lineHeight: 1.15, color: COL.muted, textAlign: 'center' }}>
+    <div style={{ fontSize: 11, lineHeight: 1.15, color: COL.muted, textAlign: 'center' }}>
       {item.label || ''}
     </div>
   </div>
@@ -325,7 +325,7 @@ export const QuestDetailPanel = () => {
                  v2.3.1239, and this is the label that says WHOSE words these
                  are, which Task 3's whole "which quest is this" problem needs
                  legible.  The row it sits in already reserves the height. */
-              fontSize: 10, fontWeight: 700, letterSpacing: '.06em',
+              fontSize: 11, fontWeight: 700, letterSpacing: '.06em',
               textTransform: 'uppercase', color: COL.muted, marginBottom: 3,
             }}>{quest.npc}</div>
             <div style={{

@@ -414,7 +414,7 @@ export function WorldChatFeed() {
             background: 'rgba(13,22,27,.72)',
             border: '1px solid rgba(229,237,233,.14)',
             borderRadius: 8,
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: 700,
             letterSpacing: '.06em',
             textTransform: 'uppercase',
@@ -535,7 +535,7 @@ export function WorldChatFeed() {
                   borderRadius: 999,
                   background: 'var(--ui-brass, #D8AA58)',
                   color: '#20170D',
-                  fontSize: 9, fontWeight: 800, lineHeight: '14px',
+                  fontSize: 11, fontWeight: 800, lineHeight: '14px',
                   textAlign: 'center', fontVariantNumeric: 'tabular-nums',
                   boxShadow: '0 0 0 2px rgba(13,22,27,.92)',
                 }}
@@ -548,7 +548,7 @@ export function WorldChatFeed() {
           <>
 
           <span style={{
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: 700,
             letterSpacing: '.08em',
             textTransform: 'uppercase',
@@ -600,7 +600,7 @@ export function WorldChatFeed() {
             data-world-chat-hint=""
             style={{
               flex: '0 0 auto',
-              fontSize: 9,
+              fontSize: 11,
               fontWeight: 700,
               letterSpacing: '.06em',
               textTransform: 'uppercase',

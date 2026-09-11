@@ -377,7 +377,7 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, onSwipe, node
         <span aria-hidden="true" style={{
           position: 'absolute', top: 2, left: 4,
           background: '#D8AA58', color: '#20170D',
-          fontSize: 10, fontWeight: 900,
+          fontSize: 11, fontWeight: 900,
           borderRadius: 7, padding: '0 4px', lineHeight: 1.4,
           border: '1px solid rgba(0,0,0,.5)',
           pointerEvents: 'none',

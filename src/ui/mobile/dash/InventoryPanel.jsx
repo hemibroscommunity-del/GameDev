@@ -349,7 +349,7 @@ const ShopQuoteBadge = ({ ikey }) => {
       padding: '0 3px', borderRadius: 3,
       background: 'rgba(9,14,17,.82)',
       color: soft ? '#B08A45' : '#EAC675',
-      fontSize: 10, lineHeight: '13px', fontWeight: 700,
+      fontSize: 11, lineHeight: '13px', fontWeight: 700,
       fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
     }}>{q.buy}g{soft ? '\u2193' : '\u2191'}</span>
   );
@@ -452,7 +452,7 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
           border: '1px solid #f5c542',
           borderRadius: 3,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 10, lineHeight: 1, /* v2.3.1239: 10px font floor (was 9) */
+          fontSize: 11, lineHeight: 1, /* v2.3.1239: 10px font floor (was 9) */
         }}>⚓</span>
       )}
     </div>
@@ -793,7 +793,7 @@ export const InventoryPanel = () => {
                           the display window on selection. */}
                       <span style={{
                         flex: 1, minWidth: 0,
-                        fontSize: 10, fontWeight: 700, letterSpacing: '.03em',
+                        fontSize: 11, fontWeight: 700, letterSpacing: '.03em',
                         color: sl.ghost ? COL.muted : COL.text2, lineHeight: 1.25,
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       }}>{sl.label.toUpperCase()}</span>
@@ -827,10 +827,10 @@ export const InventoryPanel = () => {
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, paddingBottom: 2, flex: 'none' }}>
                     <span style={{
                       flex: 1, minWidth: 0,
-                      fontSize: 9, fontWeight: 800, letterSpacing: '.08em',
+                      fontSize: 11, fontWeight: 800, letterSpacing: '.08em',
                       color: COL.text2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     }}>{(selCard && selCard.title) || selSlot.label.toUpperCase()}</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: COL.muted, flex: 'none' }}>×</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: COL.muted, flex: 'none' }}>×</span>
                   </div>
                 )}
                 {selSlot ? (
@@ -916,7 +916,7 @@ export const InventoryPanel = () => {
                   <>
                     <span aria-hidden="true" style={{
                       position: 'absolute', top: 3, right: 7,
-                      fontSize: 9, fontWeight: 700, color: COL.muted,
+                      fontSize: 11, fontWeight: 700, color: COL.muted,
                       fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
                     }}>{wornCount}/6</span>
                     <div style={{
@@ -1299,7 +1299,7 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
           border: '1px solid #f5c542',
           borderRadius: 3,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 10, lineHeight: 1, /* v2.3.1239: 10px font floor (was 9) */
+          fontSize: 11, lineHeight: 1, /* v2.3.1239: 10px font floor (was 9) */
         }}>⚓</span>
       )}
     </div>

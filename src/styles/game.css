@@ -318,7 +318,7 @@
   display:flex;align-items:center;justify-content:center;gap:5px;
   background:rgba(6,14,18,.45);
   border-bottom:var(--ui-hairline) solid #29414B;
-  font-size:10px;font-weight:700;letter-spacing:.06em;
+  font-size:11px;font-weight:700;letter-spacing:.06em;
   color:var(--ui-dashboard-text-secondary);
   white-space:nowrap;overflow:hidden;
   pointer-events:none;
@@ -338,7 +338,7 @@
   background:rgba(8,17,22,.92);
   border:var(--ui-hairline) solid #40545E;
   border-radius:7px;
-  color:#F2F3EF;font-size:10px;font-weight:700;line-height:1;
+  color:#F2F3EF;font-size:11px;font-weight:700;line-height:1;
   font-variant-numeric:tabular-nums;
   text-shadow:none;box-shadow:none;
   pointer-events:none;
@@ -588,7 +588,7 @@
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  font-size:10.5px;
+  font-size:11px;
   font-weight:600;
   line-height:12px;
   letter-spacing:.01em;
@@ -733,7 +733,7 @@ input{font-family:inherit}
    (confirmed ✓ / ready ✓) sit in the same slot and lose their layout without
    it. */
 .bt-t2-lane-hint{
-  margin-left:auto;font-size:10px;font-weight:600;letter-spacing:.02em;
+  margin-left:auto;font-size:11px;font-weight:600;letter-spacing:.02em;
   text-transform:none;opacity:.85;
 }
 
@@ -1092,7 +1092,7 @@ input{font-family:inherit}
   font-size:11px;font-weight:800;flex-shrink:0}
 .bt-plist-name{font-size:11px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* v2.3.1239: owner feedback — 10px font floor across menus (was 8px) */
-.bt-plist-sub{font-size:10px;color:rgba(255,255,255,.4)}
+.bt-plist-sub{font-size:11px;color:rgba(255,255,255,.4)}
 /* v2.3.1234: z 30 → 32 — decision modals shared rung 30 with the
    joystick visuals + dashboard, and DOM order painted the JOYSTICKS on
    top of every open panel (visible in QA screenshots). Modals must beat
@@ -1148,7 +1148,7 @@ input{font-family:inherit}
   display:block;border:2.5px solid var(--pop)}
 .bt-inspect-name{font-size:16px;font-weight:800;color:#fff;margin-bottom:2px}
 .bt-inspect-stat{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:10px}
-.bt-inspect-pill{padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;
+.bt-inspect-pill{padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;
   background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.7)}
 .bt-inspect-tp{margin-top:12px;padding:8px 20px;background:var(--pop);color:#fff;border:none;
   border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;width:100%}
@@ -2953,7 +2953,7 @@ input{font-family:inherit}
    label give 37.7px against a 32px "Letters", so the row keeps its height and
    nothing below it moves. */
 .bt-paint-tools{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.bt-paint-tools .bt-paint-tool-label{font-size:8.5px;white-space:nowrap}
+.bt-paint-tools .bt-paint-tool-label{font-size:11px;white-space:nowrap}
 /* v2.3.1949: the options row is a flex pair now -- a variable part (brush
    widths, or the alphabet) and a Mirror toggle that never moves.
    v2.3.1994: the Mirror cell is retired (owner: "Swap out the mirror for
@@ -3003,7 +3003,7 @@ input{font-family:inherit}
   box-shadow:inset 0 1px 0 rgba(255,255,255,.10);
 }
 .bt-paint-tool--on .bt-paint-tool-icon{color:var(--ui-brass)}
-.bt-paint-tool-label{font-size:9px;letter-spacing:.02em;opacity:.9;line-height:1}
+.bt-paint-tool-label{font-size:11px;letter-spacing:.02em;opacity:.9;line-height:1}
 .bt-paint-tool-icon{display:block}
 /* A fixed-height well for the dot, so Fine/Medium/Thick sit on one baseline
    instead of stepping down as the dot grows. */
@@ -3052,12 +3052,12 @@ input{font-family:inherit}
    its width for a label nobody could read. */
 .bt-paint-layers{display:flex;flex-direction:column;gap:4px;min-width:0}
 .bt-paint-layer-at{
-  font-size:10px;line-height:1.2;letter-spacing:.01em;color:var(--ui-text);
+  font-size:11px;line-height:1.2;letter-spacing:.01em;color:var(--ui-text);
   opacity:.78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .bt-paint-layer-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
 .bt-paint-layer-btns .bt-paint-size{padding:4px 2px;min-height:38px}
-.bt-paint-layer-btns .bt-paint-tool-label{font-size:10.5px;line-height:1.15;text-align:center}
+.bt-paint-layer-btns .bt-paint-tool-label{font-size:11px;line-height:1.15;text-align:center}
 
 /* ── short viewports: the same markup, three columns ──
    MEASURED (v2.3.1947): on iPhone landscape (844x390) the single-grid panel
@@ -3579,7 +3579,7 @@ input{font-family:inherit}
      pane keeps tiles at a real touch size instead of both halves shrinking. */
   .bt-name-modal{--cc-tile:46px;--cc-swatch:30px;--cc-leftw:132px}
   .bt-cc-tabs{gap:2px}
-  .bt-cc-tab-label{font-size:9px}
+  .bt-cc-tab-label{font-size:11px}
   .bt-cc-tab-icon{width:22px;height:22px}
   .bt-cc-strip{gap:4px}
   .bt-cc-colors-row{gap:4px}
@@ -3808,11 +3808,11 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
 .bt-kb-chip:hover{opacity:1}
 .bt-kb-key{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;background:rgba(0,0,0,.6);
   /* v2.3.1239: owner feedback — 10px font floor (was 9px); desktop-only kb hint */
-  border:1px solid rgba(255,255,255,.15);border-radius:4px;font-size:10px;font-weight:700;color:rgba(255,255,255,.7);
+  border:1px solid rgba(255,255,255,.15);border-radius:4px;font-size:11px;font-weight:700;color:rgba(255,255,255,.7);
   font-family:'Source Sans 3',sans-serif;white-space:nowrap}
 .bt-kb-key kbd{display:inline-block;padding:1px 4px;background:rgba(255,255,255,.12);border-radius:2px;
   /* v2.3.1239: owner feedback — 10px font floor (was 8px); desktop-only kb hint */
-  font-size:10px;font-weight:800;color:#fff;min-width:14px;text-align:center}
+  font-size:11px;font-weight:800;color:#fff;min-width:14px;text-align:center}
 .bt-crosshair-cursor{cursor:crosshair !important}
 
 /* v2.3.1719: the DESKTOP STAT HUD is gone (owner: "remove the HUD stuff that
@@ -4282,7 +4282,7 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
    heavy text-shadow as the note because this sits over moving artwork. */
 .bt-login-ver{
   position:relative;padding:2px 14px 2px;
-  font-size:10px;line-height:1.4;letter-spacing:.06em;
+  font-size:11px;line-height:1.4;letter-spacing:.06em;
   font-variant-numeric:tabular-nums;
   color:#E8DCC4;opacity:.42;
   text-shadow:0 1px 3px rgba(3,6,10,.95),0 0 8px rgba(3,6,10,.7);
@@ -4418,13 +4418,13 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
   padding:16px;display:flex;flex-direction:column;gap:8px;
 }
 .bt-qoffer-kicker{
-  font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
   color:var(--ui-accent,#D8AA58);
 }
 .bt-qoffer-title{font-size:19px;font-weight:800;color:var(--ui-text);text-wrap:balance}
 .bt-qoffer-desc{font-size:13px;line-height:1.45;color:var(--ui-text-secondary)}
 .bt-qoffer-caption{
-  margin-top:2px;font-size:10px;font-weight:700;letter-spacing:.08em;
+  margin-top:2px;font-size:11px;font-weight:700;letter-spacing:.08em;
   text-transform:uppercase;color:var(--ui-text-secondary);
 }
 .bt-qoffer-items{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
@@ -4435,7 +4435,7 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
   background:#121B20;
   box-shadow:inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035);
 }
-.bt-qoffer-chiplabel{font-size:10px;line-height:1.2;color:var(--ui-text-secondary);text-align:center}
+.bt-qoffer-chiplabel{font-size:11px;line-height:1.2;color:var(--ui-text-secondary);text-align:center}
 .bt-qoffer-pay{display:flex;gap:12px;justify-content:center;font-size:14px;font-weight:800}
 .bt-qoffer-gold{color:#D8AA58}
 .bt-qoffer-xp{color:#58B97B}
@@ -4477,7 +4477,7 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
 /* The region under your finger, named. It is the one thing the surface knows
    and you cannot see: Undo, Clear and the palette all act on THIS canvas. */
 .bt-bodyink-where{
-  margin-left:auto;font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+  margin-left:auto;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
   color:var(--ui-brass);opacity:.85;padding-right:2px;
 }
 
@@ -4760,7 +4760,7 @@ html[data-orient="landscape"] .bt-dashboard{
 .bt-sd-vital{display:flex;align-items:center;gap:6px;padding:5px 10px 6px;background:rgba(0,0,0,.22);border-top:1px solid rgba(229,237,233,.06)}
 .bt-sd-vital-ic{width:14px;height:14px;object-fit:contain;flex:none}
 .bt-sd-vital-w{display:flex;transition:width .45s ease-out}
-.bt-sd-vital-n{font-size:10px;font-weight:800;line-height:1;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 3px rgba(0,0,0,.7);display:flex;align-items:center}
+.bt-sd-vital-n{font-size:11px;font-weight:800;line-height:1;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 3px rgba(0,0,0,.7);display:flex;align-items:center}
 .bt-sd-vital-s{padding:0 2px;opacity:.6}
 @media (prefers-reduced-motion:reduce){
   .bt-sd-hero,.bt-sd-slime,.bt-sd-shield,.bt-sd-orb,.bt-sd-shot,.bt-sd-pop,.bt-sd-point{animation:none}

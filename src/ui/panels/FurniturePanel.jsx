@@ -58,7 +58,7 @@ export function FurniturePanel(props) {
     }
   }, "🪑 Furniture Workshop"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
+      fontSize: 11,
       color: '#96A2A0',
       textAlign: 'left',
       marginBottom: 8
@@ -143,12 +143,12 @@ export function FurniturePanel(props) {
         }
       }, f.name, " ", isOwned && '✓'), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 10,
+          fontSize: 11,
           color: '#96A2A0'
         }
       }, f.desc), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 10,
+          fontSize: 11,
           color: '#96A2A0',
           fontVariantNumeric: 'tabular-nums'
         }

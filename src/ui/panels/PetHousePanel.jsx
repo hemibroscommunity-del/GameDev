@@ -238,7 +238,7 @@ export function PetHousePanel(props) {
       }
     }, "⚔️", pet.combatPower), isActive && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 700,
         letterSpacing: '.12em',
         color: '#D8A85F',
@@ -274,7 +274,7 @@ export function PetHousePanel(props) {
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: Object.assign({}, LS_HEADER, {
-        fontSize: 10,
+        fontSize: 11,
         marginBottom: 4
       })
     }, "Pet 1"), /*#__PURE__*/React.createElement("div", {
@@ -309,7 +309,7 @@ export function PetHousePanel(props) {
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: Object.assign({}, LS_HEADER, {
-        fontSize: 10,
+        fontSize: 11,
         marginBottom: 4
       })
     }, "Pet 2"), /*#__PURE__*/React.createElement("div", {
@@ -346,7 +346,7 @@ export function PetHousePanel(props) {
       })
     }, /*#__PURE__*/React.createElement("div", {
       style: Object.assign({}, LS_HEADER, {
-        fontSize: 10,
+        fontSize: 11,
         marginBottom: 4
       })
     }, "🧬 Evolution Preview"), /*#__PURE__*/React.createElement("div", {

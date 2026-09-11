@@ -860,7 +860,7 @@ export const ItemDetailPopup = () => {
                 {rows.map(row)}
               </div>}
           {rows.length > 1 && (
-            <div style={{ flex: '0 0 auto', marginTop: 4, textAlign: 'center', fontSize: 10, fontWeight: 600, letterSpacing: 0.4, color: '#96A2A0', pointerEvents: 'none', userSelect: 'none' }}>⌄ swipe · {rows.length} items</div>
+            <div style={{ flex: '0 0 auto', marginTop: 4, textAlign: 'center', fontSize: 11, fontWeight: 600, letterSpacing: 0.4, color: '#96A2A0', pointerEvents: 'none', userSelect: 'none' }}>⌄ swipe · {rows.length} items</div>
           )}
         </div>
       </div>
@@ -923,7 +923,7 @@ export const ItemDetailPopup = () => {
             filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: on ? '#F7F2E7' : '#B9C1BF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
-          <div style={{ fontSize: 10, color: '#96A2A0' }}>{sub}</div>{/* v2.3.1239: 10px font floor (was 9) */}
+          <div style={{ fontSize: 11, color: '#96A2A0' }}>{sub}</div>{/* v2.3.1239: 10px font floor (was 9) */}
         </div>
         <button type="button"
           onPointerUp={(e) => { e.stopPropagation(); if (on || canEquip) onToggle(); }}
@@ -1039,7 +1039,7 @@ export const ItemDetailPopup = () => {
                 filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: on ? '#F7F2E7' : '#B9C1BF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{on ? ((R2 && R2.legsArmor && R2.legsArmor.name) || 'Greaves') : (stashedLegs ? (stashedLegs.name || 'Greaves') : 'No greaves')}</div>
-              <div style={{ fontSize: 10, color: '#96A2A0' }}>Armor · legs</div>{/* v2.3.1239: 10px font floor (was 9) */}
+              <div style={{ fontSize: 11, color: '#96A2A0' }}>Armor · legs</div>{/* v2.3.1239: 10px font floor (was 9) */}
             </div>
             <button type="button"
               onPointerUp={(e) => { e.stopPropagation(); toggleLegs(); }}
@@ -1349,7 +1349,7 @@ export const ItemDetailPopup = () => {
         {/* v2.3.1232: category caption — 10/600 uppercase metadata */}
         {desc && (
           <div style={{
-            fontSize: 10, fontWeight: 600, color: COL.muted,
+            fontSize: 11, fontWeight: 600, color: COL.muted,
             textTransform: 'uppercase', letterSpacing: '0.08em',
             textAlign: 'center',
           }}>{desc}</div>

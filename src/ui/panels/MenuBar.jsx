@@ -466,7 +466,7 @@ export function MenuBar(props) {
           position: 'absolute',
           top: 3,
           right: 3,
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 700,
           color: '#20170D',
           background: '#D8A85F',

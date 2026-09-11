@@ -91,7 +91,7 @@ const InventoryTab = ({ onItemTap }) => {
             }}>
               {c.label}
               {(layer1 || c.id === 'all') && count > 0 && (
-                <span style={{ marginLeft: 6, fontFamily: FONT.mono, fontSize: 10,
+                <span style={{ marginLeft: 6, fontFamily: FONT.mono, fontSize: 11,
                   color: active ? 'rgba(238, 242, 235, 0.62)' : 'rgba(238, 242, 235, 0.45)' }}>{count}</span>
               )}
             </div>
@@ -105,7 +105,7 @@ const InventoryTab = ({ onItemTap }) => {
           height: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '0 14px 4px', fontFamily: FONT.sans,
         }}>
-          <span style={{ fontSize: 10, color: 'rgba(238, 242, 235, 0.50)' }}>{sortLabel}</span>
+          <span style={{ fontSize: 11, color: 'rgba(238, 242, 235, 0.50)' }}>{sortLabel}</span>
           <span onClick={() => setSortOpen(true)}
             style={{ fontSize: 11, color: 'rgba(238, 242, 235, 0.65)', cursor: 'pointer' }}>Sort ▾</span>
         </div>
