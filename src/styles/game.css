@@ -1,6 +1,31 @@
 ﻿/* ═══════════════════════════════════════════
    GAME — Base
 ═══════════════════════════════════════════ */
+/* ═══ v2.3.2466: NOTHING IN THE UI IS SMALLER THAN 11px ═══
+   Owner: "Make all font in the game at least the equivalent of size 8 font."
+   8pt is 10.67px at the standard web mapping, so the floor is 11.
+
+   THIS COMMENT EXISTS BECAUSE THE CHANGE ITSELF LEAVES NO TRACE.  It was ~197
+   bare number edits across 43 files -- 175 React inline `fontSize: N`, 19 in
+   this file, a few css-in-js strings -- and a number that simply changed from
+   10 to 11 tells a future reader nothing about why, or that it is load-bearing
+   rather than arbitrary.  Tagging 197 sites would be worse than useless, so the
+   reason is written down ONCE, here, where someone editing type would look.
+
+   11 IS NOT AN IMPOSED NUMBER, IT IS THIS GAME'S OWN BODY SIZE: 383 sites
+   already used it, against 230 at 12 and 202 at 13.  Everything this touched
+   had drifted BELOW the house size; it is a consolidation, not a restyle.
+
+   THE GAME-WORLD LABELS ARE EXEMPT AND STAY EXEMPT (owner's call).  Loot
+   names, NPC names and pickup timers are PixiJS text in WORLD space, where the
+   number is multiplied by the camera -- raising 7 to 11 there would have made
+   them up to 57% bigger over the ground, which is a change to how the game
+   looks and not to whether text is readable.  Their own base (LABEL_STYLE in
+   effectsRenderer.js) is already 11, so those are deliberate overrides.
+
+   tools/qa/mp/mp-textfloor.mjs holds the line: it walks every panel and fails
+   if any rendered text is under 11px, or if a bigger glyph is being CLIPPED by
+   a box that was sized for the old one. */
 :root {
   /* Bottom dashboard band height.  Single source of truth — JS-side
      code (BroTown.jsx DASH_FRAC) must be kept in sync if changed. */

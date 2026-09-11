@@ -1,4 +1,4 @@
-/* IS ANY TEXT TOO SMALL, AND DID MAKING IT BIGGER CUT ANYTHING OFF? (v2.3.2464)
+/* IS ANY TEXT TOO SMALL, AND DID MAKING IT BIGGER CUT ANYTHING OFF? (v2.3.2466)
  *
  * ── THE ASK ──
  * Owner: "Make all font in the game at least the equivalent of size 8 font."
