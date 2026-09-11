@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  solospecial: () => import('./mp-solospecial.mjs'), /* v2.3.2464: the special fires alone, and the three magic orbs are evenly spaced */
   inkreach: () => import('./mp-inkreach.mjs'), /* v2.3.2461: the pants squares ARE the trousers, and the shirt's run further down */
   statgrid: () => import('./mp-statgrid.mjs'), /* v2.3.2441: the Points screen is a 4+3+2 grid, in less room */
   devstall: () => import('./mp-devstall.mjs'), /* v2.3.2440: the panel answers even when the admin surface never does -- and names an off capability with no key at all */
