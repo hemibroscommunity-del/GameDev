@@ -9727,7 +9727,7 @@ export class EntityRenderer {
        hole drawn beneath the player (effectsRenderer._updateFishingHole). */
     const fishing = !!(S._extraction && S._extraction.skill === 'fishing');
     /* v2.3.1534: the §5.8 dodge roll owns the body for its whole window. */
-    /* ═══ v2.3.2462: AND SO DOES THE SWORD DASH ═══
+    /* ═══ v2.3.2463: AND SO DOES THE SWORD DASH ═══
        Owner: "For sword dash instead of just showing the standing character
        zoom to the enemy can you play the dodge roll animation until the
        character reaches the monster?"
@@ -10041,7 +10041,7 @@ export class EntityRenderer {
            it has been published. */
         const fc = playerFrameCount('dodge', dir) || 9;
         if (_dashRoll && !S._dodgeRoll) {
-          /* ═══ v2.3.2462: A DASH LOOPS WHERE A DODGE CLAMPS ═══
+          /* ═══ v2.3.2463: A DASH LOOPS WHERE A DODGE CLAMPS ═══
              The clamp above is right for a dodge: one tumble, one window, and
              freezing the last frame is how a roll settles.  A dash has no
              fixed length -- it ends on ARRIVAL (v2.3.2260), anywhere from a

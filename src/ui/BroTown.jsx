@@ -4507,7 +4507,7 @@ export var BroTown = function BroTown(_ref0) {
             var _bty = (typeof _bt.renderY === 'number' ? _bt.renderY : _bt.y);
             var _bdx = _btx - S.player.x, _bdy = _bty - S.player.y;
             var _bdist = Math.sqrt(_bdx * _bdx + _bdy * _bdy) || 1;
-            /* v2.3.2462: the tumble points along the travel, and the travel
+            /* v2.3.2463: the tumble points along the travel, and the travel
                re-aims every frame (the dash chases a target that moves), so
                the angle is refreshed here rather than only stamped at cast. */
             var _bang = Math.atan2(_bdy, _bdx);
