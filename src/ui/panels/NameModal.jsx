@@ -1269,7 +1269,34 @@ export function NameModal(props) {
        .095/.035 of the column and the right one deliberately leaves 2.0px
        before the picker panel (see its block in game.css), so width taken here
        would come straight out of the picker. */
-    style: { position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', width: 50, height: 50, borderRadius: 12, cursor: 'pointer',
+    /* ═══ v2.3.2468: CENTRED ON THE WELL, NOT ON THE WELL PLUS ITS HEADING ═══
+       Owner, with a screenshot: "center the randomize icon.  It's up against
+       the top of the container."
+
+       `top:50%` resolves against the POSITIONED ANCESTOR, and that is
+       .bt-cc-namewrap -- which holds the BRO NAME heading as well as the well.
+       Measured in a real 390x844 viewport: the wrap is 78px tall (22px heading
+       + 56px well), so 50% of it is the centre of the pair, 11px above the
+       centre of the well the button is supposed to sit in.  At 50px tall that
+       put the button's top edge 8px ABOVE the well's -- poking out of the
+       field, overlapping the heading's box, exactly what the screenshot shows.
+
+       Nothing about this was wrong when it was written: the button used to be
+       shorter than the slack and the heading did not exist as its own row.  It
+       broke by accretion -- v2.3.2151 added the heading INSIDE the wrap,
+       v2.3.2416 grew the well to 56, v2.3.2464 grew the button to 50 -- and
+       each of those was measured against the well, which is the one box
+       `top:50%` does not describe.
+
+       SO IT ANCHORS TO THE BOTTOM INSTEAD.  The well is the LAST thing in the
+       wrap and their bottom edges coincide, so `bottom` is measured from the
+       well whatever the heading above it does.  3 is the only arithmetic here
+       and it is the well's own slack: (56 - 50) / 2, the 56 being .bt-cc-name's
+       height in game.css.  Both halves are pinned by mp-ccsize, which asserts
+       the RELATIONSHIP (button centre == well centre) rather than the 3 -- so
+       if either box is resized again the test names it instead of the icon
+       quietly climbing out of the field a fourth time. */
+    style: { position: 'absolute', right: 2, bottom: 3, width: 50, height: 50, borderRadius: 12, cursor: 'pointer',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
     /* v2.3.1576: the owner PAINTED cc-random-name.webp and it was sitting
        unreferenced in public/ui/welcome/cc/ while this button drew the

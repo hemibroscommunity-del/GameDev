@@ -107,6 +107,54 @@ export async function run({ browser, wsPort, webPort, rec }) {
     + '"Tap to na..." (measured as a value, not as a placeholder)',
     !!fit && fit.truncates === false, fit);
 
+  /* ═══ v2.3.2468: AND IT SITS IN THE WELL, NOT ABOVE IT ═══
+     Owner, with a screenshot: "center the randomize icon.  It's up against the
+     top of the container."
+
+     WHY THIS IS A RELATIONSHIP AND NOT A NUMBER.  The button was positioned
+     `top:50%` of .bt-cc-namewrap, and the wrap is the BRO NAME heading plus the
+     well -- so 50% of it is the centre of the pair, not of the field.  Every
+     size change this button has had was measured against the WELL and was
+     right about the well; the offset came from the one box nobody was looking
+     at.  Pinning "the button's centre is the well's centre" is the claim that
+     survives the next resize of either; pinning `bottom:3px` would be pinning
+     the arithmetic that produced it, which is the thing that keeps going
+     stale.
+
+     THE OVERLAP IS ASSERTED SEPARATELY because it is the visible symptom and
+     it has its own failure mode: a button taller than the well would be
+     centred and still poke out at both ends, which a centre-only check reads
+     as perfect.  Measured before the fix: wrap 78 (22 heading + 56 well),
+     button centre 502.3 against the well's 513.3, top edge 477.3 against the
+     well's 485.3 -- 8px of button standing above the field and over the
+     heading's box. */
+  const nest = await P.page.evaluate(() => {
+    const b = document.querySelector('.bt-cc-namewrap > .bt-cc-btn');
+    const w = document.querySelector('input.bt-cc-name');
+    const wrap = document.querySelector('.bt-cc-namewrap');
+    if (!b || !w || !wrap) return null;
+    const R = (el) => { const r = el.getBoundingClientRect();
+      return { top: +r.top.toFixed(1), bot: +r.bottom.toFixed(1), h: +r.height.toFixed(1),
+        cy: +(r.top + r.height / 2).toFixed(1) }; };
+    return { btn: R(b), well: R(w), wrap: R(wrap) };
+  });
+  rec.ok('the name-reroll button and its well are both on screen (guard)', !!nest, nest);
+  rec.ok('the name-reroll button is CENTRED on the name well -- not on the well '
+    + `plus its heading (off by ${nest && +(nest.btn.cy - nest.well.cy).toFixed(1)}px, `
+    + `was -11)`,
+    !!nest && Math.abs(nest.btn.cy - nest.well.cy) <= 1, nest);
+  rec.ok('...and it does not stand out of the well at either end -- the symptom '
+    + `the owner saw (top ${nest && nest.btn.top} vs well ${nest && nest.well.top})`,
+    !!nest && nest.btn.top >= nest.well.top - 0.5 && nest.btn.bot <= nest.well.bot + 0.5,
+    nest);
+  /* The wrap really is taller than the well, which is WHY top:50% was wrong --
+     stated as an assertion so that if the heading ever moves out of the wrap
+     this note stops being true out loud rather than silently. */
+  rec.ok(`...and the trap is still live: the wrap (${nest && nest.wrap.h}px) is `
+    + `taller than the well (${nest && nest.well.h}px), so a future top:50% here `
+    + 'would be wrong again',
+    !!nest && nest.wrap.h > nest.well.h + 1, nest);
+
   const heroBtn = await box(P, '.bt-cc-btn--hero');
   rec.ok('...without pushing its button taller than the 52px minimum '
        + '(guard: "bigger" must not mean "the layout moved")',
