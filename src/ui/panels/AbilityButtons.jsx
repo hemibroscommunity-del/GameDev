@@ -190,7 +190,7 @@ export function AbilityButtons(props) {
     }, meta.glyph),
     React.createElement('span', {
       style: {
-        fontSize: 10, fontWeight: 700, letterSpacing: '.04em',
+        fontSize: 11, fontWeight: 700, letterSpacing: '.04em',
         color: ready ? '#F7F2E7' : '#687575', pointerEvents: 'none', marginTop: 2,
       },
     }, st.cdLeft > 0 ? (Math.ceil(st.cdLeft / 1000) + 's') : meta.label));

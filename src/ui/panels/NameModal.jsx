@@ -1251,11 +1251,25 @@ export function NameModal(props) {
        sat in the middle of a tall field with 17px of dead space over and
        under it -- that gap is the awkwardness, not the icon's own size.
        48px tall leaves 4px of well above and below and the die goes 22 -> 30.
-       THE WIDTH STAYS 40 ON PURPOSE: the field is 160px wide, its right
-       padding has to clear this button, and at 48 wide the placeholder
-       measured as "Tap to na..." -- a wider tap target bought with a truncated
-       field is a worse screen, and the die reads bigger either way. */
-    style: { position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', width: 40, height: 48, borderRadius: 10, cursor: 'pointer',
+       ═══ v2.3.2464: AND NOW WIDER TOO, BECAUSE THE SLACK WAS MEASURED ═══
+       The owner asked a second time, so height alone did not settle it.  The
+       note above declined to widen on the strength of one observation -- at 48
+       the placeholder read "Tap to na..." -- and treated that as the field
+       being full.  It was not: measured in a real 390x844 Safari-class
+       viewport, the well is 160.5px with 11px/46px padding, so the text has
+       103.5px and the placeholder "Tap to name" needs 93.0px at its own
+       computed 16px/700.  There were 10.5px sitting unused, and the earlier
+       attempt spent them on the button WITHOUT moving the padding that
+       reserves room for it -- which is what truncated the text, not the width
+       itself.
+       So: 50x50, and the field's padding moves with it (game.css).  The button
+       is square now rather than a 40x48 portrait holding a 30px square icon,
+       which is most of what read as awkward.
+       THE FIELD ITSELF STILL CANNOT GROW: .bt-cc-cluster's side margins are
+       .095/.035 of the column and the right one deliberately leaves 2.0px
+       before the picker panel (see its block in game.css), so width taken here
+       would come straight out of the picker. */
+    style: { position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', width: 50, height: 50, borderRadius: 12, cursor: 'pointer',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
     /* v2.3.1576: the owner PAINTED cc-random-name.webp and it was sitting
        unreferenced in public/ui/welcome/cc/ while this button drew the
@@ -1263,15 +1277,61 @@ export function NameModal(props) {
        already wired to the Randomize Look button right below, so the two
        reroll actions were rendering in two different visual languages.
        Painted icon wins; _dieSvg is retired with its last caller. */
-  }, /*#__PURE__*/React.createElement("img", {
-    className: "bt-cc-action-icon",
-    src: '/ui/welcome/cc/cc-random-name.webp?v=' + BUILD_INFO.version,
-    alt: '', draggable: false,
-    /* v2.3.2453: 22 -> 30, with the button.  Stated inline for the reason
-       v2.3.2035 wrote down: .bt-cc-action-icon is shared with Randomize Look,
-       so each of the two says its own size instead of one silently winning. */
-    style: { width: 30, height: 30, objectFit: 'contain' }
-  })), /*#__PURE__*/React.createElement("div", {
+  }, /* ═══ v2.3.2464: A SYMBOL THAT SAYS WHAT THE BUTTON DOES ═══
+        Owner, looking at it: "I'm talking about the symbol for randomizing to
+        the right of the name... Whatever that is.  Maybe replace it with a
+        recycle icon or something."  "Whatever that is" is the whole finding.
+
+        cc-random-name.webp is a PARCHMENT SCROLL with a small die resting
+        beside it.  Rendered large it is a nice piece of art; rendered at the
+        28-38px this button can spare, the die -- the only part that means
+        "reroll" -- is about eight pixels across, and the scroll behind it
+        flattens into a beige smear.  Enlarging it was tried twice (v2.3.2453,
+        and earlier in this same change) and could not fix it, because the
+        problem is not the SIZE, it is that a detailed illustration has no
+        silhouette left at icon scale.
+
+        So this goes back to a vector, which is what it was before v2.3.1576
+        swapped the inline die for the painted asset.  A stroked recycle glyph
+        is legible at any size by construction, carries the creator's gold, and
+        stays crisp at every device pixel ratio instead of resampling.  The
+        painted webp is left in public/ -- the Randomize LOOK button still uses
+        its sibling, and this one is a revert away if the owner prefers it.
+
+        THE GRADIENT ID IS SCOPED.  A bare id would collide if this ever
+        rendered twice on one screen, and the second instance would silently
+        take the first one's fill. */
+     /*#__PURE__*/React.createElement("svg", {
+       className: "bt-cc-action-icon",
+       viewBox: "0 0 24 24", fill: "none", "aria-hidden": "true", focusable: "false",
+       style: { width: 38, height: 38, display: 'block' }
+     },
+       /*#__PURE__*/React.createElement("defs", null,
+         /*#__PURE__*/React.createElement("linearGradient", {
+           id: "btCcRerollGold", x1: "0", y1: "0", x2: "0", y2: "1"
+         },
+           /*#__PURE__*/React.createElement("stop", { offset: "0", stopColor: "#F8EAB8" }),
+           /*#__PURE__*/React.createElement("stop", { offset: "0.45", stopColor: "#E3C070" }),
+           /*#__PURE__*/React.createElement("stop", { offset: "1", stopColor: "#B98F3A" }))),
+       /* Two arcs chasing each other, each ending in a hooked head.  Round
+          caps and a 2.6 stroke on a 24 box keep the ring readable when the
+          whole glyph is 38 CSS px on a phone. */
+       /*#__PURE__*/React.createElement("path", {
+         d: "M20.3 11.1a8.3 8.3 0 0 0-14.2-4.6L3.2 9.4",
+         stroke: "url(#btCcRerollGold)", strokeWidth: "2.6",
+         strokeLinecap: "round", strokeLinejoin: "round" }),
+       /*#__PURE__*/React.createElement("path", {
+         d: "M3.1 4.9v4.8h4.8",
+         stroke: "url(#btCcRerollGold)", strokeWidth: "2.6",
+         strokeLinecap: "round", strokeLinejoin: "round" }),
+       /*#__PURE__*/React.createElement("path", {
+         d: "M3.7 12.9a8.3 8.3 0 0 0 14.2 4.6l2.9-2.9",
+         stroke: "url(#btCcRerollGold)", strokeWidth: "2.6",
+         strokeLinecap: "round", strokeLinejoin: "round" }),
+       /*#__PURE__*/React.createElement("path", {
+         d: "M20.9 19.1v-4.8h-4.8",
+         stroke: "url(#btCcRerollGold)", strokeWidth: "2.6",
+         strokeLinecap: "round", strokeLinejoin: "round" }))), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1307: inline validation line — green check once the name
        clears the local rules, quiet guidance otherwise.  Fixed height
        so the cluster never jumps.  (Names are not unique server-side,

@@ -305,7 +305,7 @@ export const T2Panel = () => {
                     style={{ width: 16, height: 16, objectFit: 'contain' }}
                     onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(meta.emoji)); }} />
                 : <span style={{ fontSize: 15, lineHeight: 1 }}>{meta.emoji}</span>}
-              <span style={{ fontSize: 10.5, fontWeight: 600, lineHeight: 1 }}>{meta.label}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, lineHeight: 1 }}>{meta.label}</span>
               {/* v2.3.1311e: the per-tab Lv line is gone — the selected
                   category's level already reads on the skill bar below,
                   and the 5 channel rows need the vertical room. */}

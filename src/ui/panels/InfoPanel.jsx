@@ -55,7 +55,7 @@ function BroVerifyRow(props) {
   /* Failures are shown in place rather than thrown away — "not owner" and
      "chain unreachable" mean very different things to the player. */
   bro.error ? React.createElement('div', {
-    style: { marginTop: 6, fontSize: 10, lineHeight: 1.35, color: '#D95C54' },
+    style: { marginTop: 6, fontSize: 11, lineHeight: 1.35, color: '#D95C54' },
   }, bro.error) : null);
 }
 
@@ -97,7 +97,7 @@ export function InfoPanel(props) {
     }
   }, playerCount, " online"), /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 10, // v2.3.1239: 10px font floor (was 9)
+      fontSize: 11, // v2.3.1239: 10px font floor (was 9)
       color: stateRef.current._realtimeStatus === 'connected' ? '#59BF91' : '#D95C54',
       marginLeft: 4
     }
@@ -126,7 +126,7 @@ export function InfoPanel(props) {
       : 'character has no trained-skill record';
     return /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10, color: '#D9A441', marginTop: -4, marginBottom: 8,
+        fontSize: 11, color: '#D9A441', marginTop: -4, marginBottom: 8,
         lineHeight: 1.35,
       }
     }, "⚠ Combat numbers may read low — " + _why + ".",
@@ -144,7 +144,7 @@ export function InfoPanel(props) {
      Muted and one line, so it costs the panel almost nothing. */
   /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10, color: '#6E685E', marginTop: -2, marginBottom: 8,
+      fontSize: 11, color: '#6E685E', marginTop: -2, marginBottom: 8,
       fontVariantNumeric: 'tabular-nums',
     }
   }, "build " + BUILD_INFO.version + " (" + BUILD_INFO.sha + ")"), /*#__PURE__*/React.createElement("button", {

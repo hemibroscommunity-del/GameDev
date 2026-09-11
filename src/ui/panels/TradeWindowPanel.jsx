@@ -391,7 +391,7 @@ function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, rarityTie
           /* v2.3.2283: the tier wins over the data colour on an inverted lane
              -- see rarityByTier. On the dark lane both are absent and this is
              the same expression it always was. */
-          <div style={{ fontSize: 10, color: (ink.rarityByTier && ink.rarityByTier[rarityTier]) || rarityColor || ink.rarityFallback }}>{rarityLabel}</div>
+          <div style={{ fontSize: 11, color: (ink.rarityByTier && ink.rarityByTier[rarityTier]) || rarityColor || ink.rarityFallback }}>{rarityLabel}</div>
         ) : null}
       </div>
       {qty != null && !onInc && (

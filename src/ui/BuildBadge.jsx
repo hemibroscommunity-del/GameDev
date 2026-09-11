@@ -21,7 +21,7 @@ export const BuildBadge = () => (
       background: 'rgba(0,0,0,0.55)',
       color: '#ffffff',
       fontFamily: 'Source Sans 3, sans-serif',
-      fontSize: 10,
+      fontSize: 11,
       lineHeight: '14px',
       borderRadius: 3,
       pointerEvents: 'none',

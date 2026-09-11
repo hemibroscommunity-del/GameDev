@@ -212,7 +212,7 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                 position: 'absolute', top: -3, right: -3,
                 minWidth: 13, height: 13, padding: '0 3px',
                 borderRadius: 7, background: COL.accent, color: COL.onAccent,
-                fontSize: 9, fontWeight: 900, lineHeight: '13px', textAlign: 'center',
+                fontSize: 11, fontWeight: 900, lineHeight: '13px', textAlign: 'center',
                 fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
               }}>{count > 9 ? '9+' : count}</span>
             ) : null}

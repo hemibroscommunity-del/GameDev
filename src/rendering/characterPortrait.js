@@ -24,7 +24,7 @@ import { hatColorTarget } from './traits/hatColorCatalog.js';
 import { facialHairColorTarget } from './traits/facialHairColorCatalog.js';
 import { shirtColorTarget } from './traits/shirtColorCatalog.js';
 import {
-  shirtArtForDir, headArtForDir, torsoArtForDir, pantsArtForDir,   /* v2.3.2464 */
+  shirtArtForDir, headArtForDir, torsoArtForDir, pantsArtForDir,   /* v2.3.2467 */
   sanitizeShirtArt, inkedArt,
 } from './traits/playerArt.js';   /* v2.3.1938; v2.3.1940 + pants/tattoo */
 import { getPattern, parsePattern, sanitizePattern } from './traits/patternCatalog.js';   /* v2.3.1941 */
@@ -580,7 +580,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      so unlike the shirt print they go in with the recolour rather than after it.
      Same caller contract as `shirtArt`: an explicit value means "this player's",
      absent means this device's own.  No mirror -- see the shirt note below. */
-  /* ═══ v2.3.2464: THE STORE PATH RESOLVES THE FACING ═══
+  /* ═══ v2.3.2467: THE STORE PATH RESOLVES THE FACING ═══
      Owner: "designs on the back don't carry to the preview character bro on
      the pedestal."  It read `pants`, `tattoo` and `tattooFace` flat, whichever
      way the figure was turned, so a back drawing never appeared anywhere and a

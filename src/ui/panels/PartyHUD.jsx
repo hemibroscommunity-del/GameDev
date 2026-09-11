@@ -151,7 +151,7 @@ export function PartyHUD(props) {
   }, "🎟️ PARTY ", party.members.length, "/4"), /*#__PURE__*/React.createElement("button", {
     title: "Leave party",
     style: Object.assign({}, _btnBase, {
-      width: 24, height: 24, fontSize: 10, lineHeight: '24px', padding: 0,
+      width: 24, height: 24, fontSize: 11, lineHeight: '24px', padding: 0,
       borderRadius: 8,
       background: 'rgba(217,92,84,.12)', color: '#D95C54'
     }),
@@ -172,11 +172,11 @@ export function PartyHUD(props) {
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
       }
     }, m.id === party.leader ? '👑 ' : '', m.dead ? '💀 ' : '', m.name), /*#__PURE__*/React.createElement("span", {
-      style: { fontSize: 10, color: '#96A2A0', fontVariantNumeric: 'tabular-nums' }
+      style: { fontSize: 11, color: '#96A2A0', fontVariantNumeric: 'tabular-nums' }
     }, "Lv", m.level), iAmLeader && m.id !== myId && /*#__PURE__*/React.createElement("button", {
       title: "Kick",
       style: Object.assign({}, _btnBase, {
-        width: 24, height: 24, fontSize: 10, lineHeight: '24px', padding: 0, // v2.3.1239: 10px font floor (was 9)
+        width: 24, height: 24, fontSize: 11, lineHeight: '24px', padding: 0, // v2.3.1239: 10px font floor (was 9)
         borderRadius: 8,
         background: '#2B3940', color: '#96A2A0',
         border: '1px solid rgba(238,242,235,.14)'
@@ -197,7 +197,7 @@ export function PartyHUD(props) {
         transition: 'width .4s ease'
       }
     })), (m.away || zoneName) && /*#__PURE__*/React.createElement("div", {
-      style: { fontSize: 10, color: '#96A2A0', marginTop: 1 }
+      style: { fontSize: 11, color: '#96A2A0', marginTop: 1 }
     }, m.away ? 'away — reconnecting…' : '📍 ' + zoneName));
   }));
 }

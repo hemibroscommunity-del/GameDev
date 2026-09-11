@@ -63,7 +63,7 @@ const SectionHeader = ({ id, label }) => {
       padding: '8px 14px 6px', cursor: 'pointer', userSelect: 'none', touchAction: 'manipulation',
     }}>
       <span style={{
-        fontFamily: FONT.sans, fontSize: 10, letterSpacing: '0.12em',
+        fontFamily: FONT.sans, fontSize: 11, letterSpacing: '0.12em',
         color: C.muted2, textTransform: 'uppercase', fontWeight: 500,
       }}>{label}</span>
       <span style={{ fontFamily: FONT.sans, fontSize: 11, color: C.veryMuted }}>
@@ -106,7 +106,7 @@ const IdentityBand = ({ s }) => {
             Lv {s.level || 1} · {s.archetype || 'Wanderer'} · {s.pole || 'unaligned'}
           </div>
           {s.clanTag && (
-            <div style={{ fontFamily: FONT.sans, fontSize: 10, color: C.muted2, marginTop: 2 }}>
+            <div style={{ fontFamily: FONT.sans, fontSize: 11, color: C.muted2, marginTop: 2 }}>
               {s.clanTag}
             </div>
           )}
@@ -160,7 +160,7 @@ const StatTile = ({ stat, value, expanded, tier2 }) => {
         {value || 0}
       </div>
       {expanded && tier2 && (
-        <div style={{ fontFamily: FONT.mono, fontSize: 10, color: C.muted, marginTop: 1 }}>{/* v2.3.1239: 10px font floor (was 9) */}
+        <div style={{ fontFamily: FONT.mono, fontSize: 11, color: C.muted, marginTop: 1 }}>{/* v2.3.1239: 10px font floor (was 9) */}
           {tier2}
         </div>
       )}
@@ -206,7 +206,7 @@ const CombatSection = ({ s }) => {
     <div style={{ borderBottom: `1px solid ${C.divider}` }}>
       <SectionHeader id="combat" label="Combat" />
       <div style={{ padding: '0 14px 12px' }}>
-        <div style={{ fontSize: 10, color: C.muted2, letterSpacing: '0.12em',
+        <div style={{ fontSize: 11, color: C.muted2, letterSpacing: '0.12em',
           fontFamily: FONT.sans, textTransform: 'uppercase', marginBottom: 6 }}>
           {s.archetype || 'BALANCED'}
         </div>
@@ -219,7 +219,7 @@ const CombatSection = ({ s }) => {
         <StackedBar stats={stats} />
         {expanded && (
           <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px dashed ${C.divider}` }}>
-            <div style={{ fontSize: 10, color: C.muted2, letterSpacing: '0.12em',
+            <div style={{ fontSize: 11, color: C.muted2, letterSpacing: '0.12em',
               fontFamily: FONT.sans, textTransform: 'uppercase', marginBottom: 6 }}>VOWS</div>
             {vows.length === 0 ? (
               <div style={{ fontFamily: FONT.sans, fontSize: 11, color: C.muted, fontStyle: 'italic' }}>
@@ -233,7 +233,7 @@ const CombatSection = ({ s }) => {
                     background: C[v.stat] || C.text, marginRight: 6 }} />
                   {STAT_LABEL[v.stat] || v.stat}
                 </span>
-                <span style={{ fontFamily: FONT.mono, fontSize: 10, color: C.muted }}>
+                <span style={{ fontFamily: FONT.mono, fontSize: 11, color: C.muted }}>
                   vowed {v.days} days{v.partner ? ` · with ${v.partner}` : ''}
                 </span>
               </div>
@@ -258,7 +258,7 @@ const EquipTile = ({ item, label, size = 80 }) => (
         <span style={{ color: C.veryMuted, fontSize: 22 }}>—</span>
       )}
     </div>
-    <span style={{ fontFamily: FONT.sans, fontSize: 10, color: C.muted2, /* v2.3.1239: 10px font floor (was 9) */
+    <span style={{ fontFamily: FONT.sans, fontSize: 11, color: C.muted2, /* v2.3.1239: 10px font floor (was 9) */
       letterSpacing: '0.12em', textTransform: 'uppercase' }}>{label}</span>
   </div>
 );
@@ -360,12 +360,12 @@ const HistorySection = ({ s }) => {
             {h.capstones.slice(0, 4).map((c, i) => (
               <span key={i} style={{
                 padding: '2px 8px', borderRadius: 9, background: C.divider,
-                fontFamily: FONT.sans, fontSize: 10, color: C.text, /* v2.3.1239: 10px font floor (was 9) */
+                fontFamily: FONT.sans, fontSize: 11, color: C.text, /* v2.3.1239: 10px font floor (was 9) */
               }}>{c}</span>
             ))}
           </div>
         )}
-        <div style={{ fontFamily: FONT.mono, fontSize: 10, color: C.muted2, marginTop: 4 }}>
+        <div style={{ fontFamily: FONT.mono, fontSize: 11, color: C.muted2, marginTop: 4 }}>
           {h.zonesCleared || 0} zones · {h.apexKills || 0} apex kills
         </div>
         {expanded && (
@@ -406,7 +406,7 @@ const JourneySection = ({ s }) => {
           <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px dashed ${C.divider}` }}>
             {(j.entries || []).slice(0, 20).map((e, i) => (
               <div key={i} style={{ marginBottom: 8 }}>
-                <span style={{ fontFamily: FONT.mono, fontSize: 10, color: C.muted2, marginRight: 6 }}>{/* v2.3.1239: 10px font floor (was 9) */}
+                <span style={{ fontFamily: FONT.mono, fontSize: 11, color: C.muted2, marginRight: 6 }}>{/* v2.3.1239: 10px font floor (was 9) */}
                   Day {e.day || i + 1}
                 </span>
                 <span style={{ fontFamily: FONT.serif, fontStyle: 'italic', fontSize: 11, color: C.text }}>
@@ -471,7 +471,7 @@ export const InspectCard = () => {
             <div onClick={(e) => { e.stopPropagation(); inspectCardBus.markHintSeen(); }}
               style={{
                 padding: '6px 10px', background: C.divider,
-                fontFamily: FONT.sans, fontSize: 10, color: C.muted,
+                fontFamily: FONT.sans, fontSize: 11, color: C.muted,
                 textAlign: 'center', borderRadius: 4, margin: '8px 14px 14px',
                 fontStyle: 'italic', cursor: 'pointer',
               }}>

@@ -179,7 +179,7 @@ export default function DesignGallery({ onPick, onClose, label = 'design' }) {
                 padding: '7px 3px', borderRadius: 8, cursor: 'pointer',
                 background: 'var(--ui-well, #111E23)',
                 border: '1px solid var(--ui-line-strong, rgba(229,237,233,.20))',
-                color: 'var(--ui-text-secondary)', fontSize: 10, lineHeight: 1.15,
+                color: 'var(--ui-text-secondary)', fontSize: 11, lineHeight: 1.15,
               }}>
               <DesignSwatch art={d.art} px={4} tile={tile} />
               <span style={{ textAlign: 'center' }}>{d.name}</span>

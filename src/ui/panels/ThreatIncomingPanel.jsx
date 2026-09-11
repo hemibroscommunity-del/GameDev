@@ -185,7 +185,7 @@ export function ThreatIncomingPanel(props) {
     }
   }, "Call Guards")), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
+      fontSize: 11,
       color: '#96A2A0',
       marginTop: 6
     }

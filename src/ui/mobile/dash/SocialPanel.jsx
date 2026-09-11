@@ -274,7 +274,7 @@ export const SocialPanel = () => {
               </div>
             ))}
             {reqOut.length > 0 && (
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.muted, margin: '8px 0 4px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.muted, margin: '8px 0 4px' }}>
                 Sent
               </div>
             )}
@@ -373,7 +373,7 @@ export const SocialPanel = () => {
                 <span aria-hidden="true" style={{
                   flex: 'none',
                   background: COL.accent, color: '#20170D',
-                  fontSize: 10, fontWeight: 900,
+                  fontSize: 11, fontWeight: 900,
                   borderRadius: 7, padding: '1px 5px', lineHeight: 1.4,
                 }}>{friendsSrv.unreadOf(r.fid)}</span>
               )}

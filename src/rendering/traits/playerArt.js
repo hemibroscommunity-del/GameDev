@@ -302,7 +302,7 @@ export function headArtForDir(dir) {
   return inkedArt(sideForDir(dir) === 'back' ? 'tattooHeadBack' : 'tattooFace');
 }
 
-/* ═══ v2.3.2464: ...AND THE OTHER TWO, WHICH WERE NEVER WRITTEN ═══
+/* ═══ v2.3.2467: ...AND THE OTHER TWO, WHICH WERE NEVER WRITTEN ═══
  * Owner: "designs on the back don't carry to the preview character bro on the
  * pedestal."
  *

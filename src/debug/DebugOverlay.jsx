@@ -202,7 +202,7 @@ const WSPanel = () => {
             );
           })}
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: 6, fontFamily: 'monospace', fontSize: 10, whiteSpace: 'pre-wrap' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 6, fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap' }}>
           {sel != null && frames[sel]
             ? JSON.stringify(frames[sel].raw, null, 2)
             : <span style={{ color: '#888' }}>select a frame</span>}
@@ -382,7 +382,7 @@ const Cell = ({ k, v, hot }) => (
       </Section>
 
       <Section title={'LONG FRAMES >30ms (' + longFrames.length + ', last 60)'}>
-        <div style={{ fontSize: 10, maxHeight: 120, overflowY: 'auto' }}>
+        <div style={{ fontSize: 11, maxHeight: 120, overflowY: 'auto' }}>
           {longFrames.length === 0 && <div style={{ color: '#888' }}>none captured yet</div>}
           {longFrames.slice().reverse().map((lf, i) => (
             <div key={i} style={{ borderBottom: '1px solid #1a1a1a', padding: '2px 0', display: 'grid', gridTemplateColumns: '60px 50px 70px 1fr', gap: 4 }}>
@@ -398,7 +398,7 @@ const Cell = ({ k, v, hot }) => (
       </Section>
 
       <Section title={'EXTERNAL EVENTS >5ms (' + extEvents.length + ', non-RAF, e.g. ws handler)'}>
-        <div style={{ fontSize: 10, maxHeight: 90, overflowY: 'auto' }}>
+        <div style={{ fontSize: 11, maxHeight: 90, overflowY: 'auto' }}>
           {extEvents.length === 0 && <div style={{ color: '#888' }}>none captured yet</div>}
           {extEvents.slice().reverse().slice(0, 20).map((ev, i) => (
             <div key={i} style={{ borderBottom: '1px solid #1a1a1a', padding: '2px 0', display: 'grid', gridTemplateColumns: '60px 1fr', gap: 4 }}>
@@ -410,7 +410,7 @@ const Cell = ({ k, v, hot }) => (
       </Section>
 
       <Section title={'BROWSER LONG TASKS >50ms (' + longTasks.length + (perfTracker.hasLongTaskObserver() ? '' : ', unsupported on this browser') + ')'}>
-        <div style={{ fontSize: 10, maxHeight: 90, overflowY: 'auto' }}>
+        <div style={{ fontSize: 11, maxHeight: 90, overflowY: 'auto' }}>
           {longTasks.length === 0 && perfTracker.hasLongTaskObserver() && <div style={{ color: '#888' }}>none captured yet</div>}
           {longTasks.slice().reverse().slice(0, 30).map((lt, i) => (
             <div key={i} style={{ borderBottom: '1px solid #1a1a1a', padding: '2px 0', display: 'grid', gridTemplateColumns: '60px 1fr', gap: 4 }}>

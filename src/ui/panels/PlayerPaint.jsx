@@ -2023,7 +2023,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                     where there are four of them, rather than shrinking the
                     shirt's three for company. */}
                 <span className="bt-cc-tab-label"
-                  style={MODES.length > 3 ? { fontSize: '10px', letterSpacing: 0 } : undefined}>{m}</span>
+                  style={MODES.length > 3 ? { fontSize: '11px', letterSpacing: 0 } : undefined}>{m}</span>
               </button>
             ))}
           </div>

@@ -366,7 +366,7 @@ const XpBar = ({ S, pops, age }) => {
           {label} <span style={{ color: COL.text }}>Lv {wp.level}</span>
         </span>
         <span style={{
-          fontSize: 10, fontWeight: 600, color: COL.text2,
+          fontSize: 11, fontWeight: 600, color: COL.text2,
           fontVariantNumeric: 'tabular-nums',
         }}>
           {wp.maxed ? 'MAX' : `${wp.prog} / ${wp.thresh}`}

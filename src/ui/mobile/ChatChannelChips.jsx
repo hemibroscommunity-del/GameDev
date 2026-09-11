@@ -90,7 +90,7 @@ export const ChatChannelChips = ({ compact }) => {
     }),
     React.createElement('span', {
       key: '_hint',
-      style: { fontSize: 10.5, color: '#8D9B98', flex: '0 1 auto', whiteSpace: 'nowrap' },
+      style: { fontSize: 11, color: '#8D9B98', flex: '0 1 auto', whiteSpace: 'nowrap' },
     }, cur ? cur.hint : ''),
   );
 };

@@ -404,7 +404,7 @@ export const HeroExpanded = () => {
       touchAction: info ? 'manipulation' : undefined,
     }}>
       <span style={{
-        fontSize: 10.5, fontWeight: 600, color: COL.muted,
+        fontSize: 11, fontWeight: 600, color: COL.muted,
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>{label}</span>
       <span style={{
@@ -437,7 +437,7 @@ export const HeroExpanded = () => {
      here was already spoken for. */
   const groupHead = (text) => (
     <div style={{
-      fontSize: 10, fontWeight: 700, letterSpacing: '.12em',
+      fontSize: 11, fontWeight: 700, letterSpacing: '.12em',
       textTransform: 'uppercase', color: COL.muted,
       lineHeight: 1, flex: 'none',
     }}>{text}</div>
@@ -604,7 +604,7 @@ export const HeroExpanded = () => {
     }}>
       <span style={{
         flex: 1, minWidth: 0,
-        fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em',
+        fontSize: 11, fontWeight: 700, letterSpacing: '.04em',
         textTransform: 'uppercase', color: COL.muted,
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>{k}</span>
@@ -741,7 +741,7 @@ export const HeroExpanded = () => {
                   position: 'absolute', top: 2, right: 2,
                   minWidth: 13, height: 13, padding: '0 3px',
                   borderRadius: 7, background: COL.accent, color: COL.onAccent,
-                  fontSize: 9, fontWeight: 900, lineHeight: '13px', textAlign: 'center',
+                  fontSize: 11, fontWeight: 900, lineHeight: '13px', textAlign: 'center',
                   fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
                 }}>{badge > 9 ? '9+' : badge}</span>
               ))}
@@ -940,7 +940,7 @@ export const HeroExpanded = () => {
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{
                         display: 'block',
-                        fontSize: 9.5, fontWeight: 800, letterSpacing: '.03em',
+                        fontSize: 11, fontWeight: 800, letterSpacing: '.03em',
                         lineHeight: 1.1,
                         textTransform: 'uppercase', color: nameCol,
                         overflowWrap: 'anywhere',
@@ -964,7 +964,7 @@ export const HeroExpanded = () => {
                           flex: 'none', padding: '2px 8px', borderRadius: 999,
                           background: 'transparent', border: `1px solid ${rimCol}`,
                           color: rimCol, fontFamily: 'inherit',
-                          fontSize: 10, fontWeight: 800, letterSpacing: '.04em',
+                          fontSize: 11, fontWeight: 800, letterSpacing: '.04em',
                           cursor: 'pointer',
                         }}>CHANGE</button>
                     )}
@@ -999,7 +999,7 @@ export const HeroExpanded = () => {
                           flex: 'none', padding: '2px 8px', borderRadius: 999,
                           background: 'transparent', border: `1px solid ${rimCol}`,
                           color: rimCol, fontFamily: 'inherit',
-                          fontSize: 10, fontWeight: 800, letterSpacing: '.04em',
+                          fontSize: 11, fontWeight: 800, letterSpacing: '.04em',
                           cursor: 'pointer',
                         }}>REMOVE</button>
                     )}
@@ -1051,7 +1051,7 @@ export const HeroExpanded = () => {
                     }}>
                       {rows.length ? rows.map(statRow) : (
                         <div style={{
-                          fontSize: 10.5, fontWeight: 600, color: COL.muted,
+                          fontSize: 11, fontWeight: 600, color: COL.muted,
                           textAlign: 'center',
                         }}>{selSlot.ghost ? 'Nothing equipped here.' : 'No stat bonuses.'}</div>
                       )}
@@ -1070,7 +1070,7 @@ export const HeroExpanded = () => {
                     }}>
                       {bonuses.map((b) => (
                         <span key={b} style={{
-                          fontSize: 8.5, fontWeight: 700, letterSpacing: '.02em',
+                          fontSize: 11, fontWeight: 700, letterSpacing: '.02em',
                           color: COL.text2, whiteSpace: 'nowrap',
                         }}>{b}</span>
                       ))}
@@ -1483,7 +1483,7 @@ export const HeroExpanded = () => {
                     {/* The count the owner chose to keep: where the points
                         already are is what decides where the next one goes. */}
                     <div style={{
-                      fontSize: 10.5, fontWeight: 700, color: COL.text2, lineHeight: 1.1,
+                      fontSize: 11, fontWeight: 700, color: COL.text2, lineHeight: 1.1,
                       fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
                     }}>
                       {/* Shrink-wrapped so the +1 hangs off the ORB, not off the
@@ -1724,7 +1724,7 @@ export const HeroExpanded = () => {
                          went up to the floor instead and the padding paid for
                          it.  Measured at 10/800/.02em: "CRIT DMG" is the
                          longest quarter-cell title and it renders whole. */
-                      fontSize: 10, fontWeight: 800, letterSpacing: '.02em',
+                      fontSize: 11, fontWeight: 800, letterSpacing: '.02em',
                       textTransform: 'uppercase', color: COL.text2, lineHeight: 1,
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       minWidth: 0,
@@ -1846,13 +1846,13 @@ export const HeroExpanded = () => {
               }}>
                 <span style={{
                   /* Both at the 10px floor, for the reason the cell titles are. */
-                  fontSize: 10, fontWeight: 800, letterSpacing: '.10em',
+                  fontSize: 11, fontWeight: 800, letterSpacing: '.10em',
                   textTransform: 'uppercase', color: COL.text2,
                   whiteSpace: 'nowrap', flex: 'none',
                 }}>{text}</span>
                 {sub && (
                   <span style={{
-                    fontSize: 10, fontWeight: 700, letterSpacing: '.06em',
+                    fontSize: 11, fontWeight: 700, letterSpacing: '.06em',
                     textTransform: 'uppercase', color: COL.muted, opacity: 0.8,
                     whiteSpace: 'nowrap', flex: 'none',
                   }}>{sub}</span>
@@ -1865,12 +1865,12 @@ export const HeroExpanded = () => {
             const groupHead2 = (text, sub) => (
               <div style={{
                 display: 'flex', alignItems: 'baseline', gap: 5,
-                fontSize: 10, fontWeight: 700, letterSpacing: '.10em',
+                fontSize: 11, fontWeight: 700, letterSpacing: '.10em',
                 textTransform: 'uppercase', color: COL.muted,
                 lineHeight: 1, marginBottom: 1,
               }}>
                 <span style={{ whiteSpace: 'nowrap' }}>{text}</span>
-                {sub && <span style={{ fontSize: 9, letterSpacing: '.04em', color: COL.muted, opacity: 0.8, whiteSpace: 'nowrap' }}>{sub}</span>}
+                {sub && <span style={{ fontSize: 11, letterSpacing: '.04em', color: COL.muted, opacity: 0.8, whiteSpace: 'nowrap' }}>{sub}</span>}
               </div>
             );
             const restDps = R ? overallDps(R) : null;
@@ -1901,7 +1901,7 @@ export const HeroExpanded = () => {
                   the owner said "the last row is faded at the bottom"). */}
               <div aria-live="polite" className="bt-stat-peek" style={{
                 marginBottom: 4, height: 14, lineHeight: '14px', padding: '0 2px',
-                fontSize: 10.5, color: COL.text2,
+                fontSize: 11, color: COL.text2,
                 fontVariantNumeric: 'tabular-nums',
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>
@@ -2005,7 +2005,7 @@ export const HeroExpanded = () => {
                           <span aria-label={`${lanePts} points to spend on ${sk.label}`} style={{
                             flex: 'none', padding: '0 5px', borderRadius: 999,
                             background: COL.accent, color: '#20170D',
-                            fontSize: 9.5, fontWeight: 900, lineHeight: '15px',
+                            fontSize: 11, fontWeight: 900, lineHeight: '15px',
                             fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
                           }}>{lanePts} PT{lanePts === 1 ? '' : 'S'}</span>
                         )}
@@ -2287,14 +2287,14 @@ export const HeroExpanded = () => {
                         border: `1px solid ${COL.tileBor}`,
                       }}>
                         <span style={{
-                          flex: 'none', width: 52, fontSize: 10, fontWeight: 800,
+                          flex: 'none', width: 52, fontSize: 11, fontWeight: 800,
                           letterSpacing: '.04em', textTransform: 'uppercase',
                           color: COL.text2, lineHeight: '20px',
                           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                         }}>{sk.label}</span>
                         <span style={{
                           flex: 1, minWidth: 0, display: 'flex', gap: 8,
-                          fontSize: 10, fontWeight: 700, color: COL.muted,
+                          fontSize: 11, fontWeight: 700, color: COL.muted,
                           lineHeight: '20px', fontVariantNumeric: 'tabular-nums',
                           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                         }}>
@@ -2326,7 +2326,7 @@ export const HeroExpanded = () => {
             background: totalUnspent > 0 ? COL.accentFill : COL.wellSoft,
             border: `1px solid ${totalUnspent > 0 ? COL.accent : COL.tileBor}`,
             display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-            fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em',
+            fontSize: 11, fontWeight: 700, letterSpacing: '.06em',
             color: totalUnspent > 0 ? COL.accent : COL.text2,
           }}>
             <span>BUILD POINTS</span>
@@ -2420,7 +2420,7 @@ export const HeroExpanded = () => {
                     <span aria-hidden="true" style={{
                       position: 'absolute', top: 2, right: 2,
                       background: COL.accent, color: '#20170D',
-                      fontSize: 9, fontWeight: 900,
+                      fontSize: 11, fontWeight: 900,
                       borderRadius: 6, padding: '0 3px', lineHeight: 1.4,
                       pointerEvents: 'none',
                     }}>+{unspent}</span>
@@ -2522,7 +2522,7 @@ export const HeroExpanded = () => {
                   {/* v2.3.2176b: 10px, not 11.  "LIFETIME GOLD" whole plus a
                       seven-figure number is more than this row has at 11 --
                       and neither half may be clipped, so the type gives. */}
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, whiteSpace: 'nowrap' }}>{label}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, whiteSpace: 'nowrap' }}>{label}</div>
                   <div style={{ fontSize: valueFs, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flex: 'none' }}>{value}</div>
                 </div>
               ) : (
@@ -2538,7 +2538,7 @@ export const HeroExpanded = () => {
                   <div style={{ fontSize: valueFs, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
                   {/* v2.3.2176b: .02em, not .04 -- thirteen characters of
                       tracking is another 2px this cell does not have. */}
-                  <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.02em', textTransform: 'uppercase', color: COL.muted, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.02em', textTransform: 'uppercase', color: COL.muted, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
                 </div>
               )}
             </div>
@@ -2572,7 +2572,7 @@ export const HeroExpanded = () => {
                 Level {R._chainScore.level} recorded on Hemi
               </div>
               <div style={{
-                fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em',
+                fontSize: 11, fontWeight: 700, letterSpacing: '.04em',
                 textTransform: 'uppercase', color: COL.muted, marginTop: 1,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>

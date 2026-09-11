@@ -39,7 +39,7 @@ const SlotPicker = ({ slot, onPick, onCancel }) => {
               display: 'flex', flexDirection: 'column', alignItems: 'center',
             }}>
               <ItemArt item={it} size={42} />
-              <div style={{ fontSize: 10, color: INV.textPrimary, fontFamily: FONT.sans, marginTop: 4,
+              <div style={{ fontSize: 11, color: INV.textPrimary, fontFamily: FONT.sans, marginTop: 4,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
                 {it.name}
               </div>
@@ -95,7 +95,7 @@ const Slot = ({ slot, item, label, onTap }) => {
         )}
       </div>
       <div style={{
-        marginTop: 4, fontSize: 10, letterSpacing: 0.3, /* v2.3.1239: 10px font floor (was 9) */
+        marginTop: 4, fontSize: 11, letterSpacing: 0.3, /* v2.3.1239: 10px font floor (was 9) */
         color: empty ? 'rgba(238, 242, 235, 0.40)' : 'rgba(238, 242, 235, 0.62)',
         fontFamily: FONT.sans,
       }}>{label}</div>
@@ -123,7 +123,7 @@ const ShortcutSlot = ({ idx, item, onTap }) => {
       {item && item.count != null && item.count > 0 && (
         <div style={{
           position: 'absolute', right: 2, bottom: 2,
-          fontSize: 10, fontFamily: FONT.mono, color: '#E8D4A0',
+          fontSize: 11, fontFamily: FONT.mono, color: '#E8D4A0',
           textShadow: '0 1px 2px rgba(0,0,0,.7)',
         }}>×{item.count}</div>
       )}
@@ -157,7 +157,7 @@ const ShortcutPickerSheet = ({ slotIdx, onPick, onCancel }) => {
               display: 'flex', flexDirection: 'column', alignItems: 'center',
             }}>
               <ItemArt item={it} size={32} />
-              <div style={{ fontSize: 10, color: INV.textPrimary, fontFamily: FONT.sans, marginTop: 2, /* v2.3.1239: 10px font floor (was 9) */
+              <div style={{ fontSize: 11, color: INV.textPrimary, fontFamily: FONT.sans, marginTop: 2, /* v2.3.1239: 10px font floor (was 9) */
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
                 {it.name}
               </div>
@@ -258,7 +258,7 @@ export const EquippedTab = ({ onItemTap }) => {
           color: 'rgba(238, 242, 235, 0.78)', fontFamily: FONT.sans,
         }}>SHORTCUTS</div>
         <div style={{
-          fontSize: 10, color: 'rgba(238, 242, 235, 0.45)', fontFamily: FONT.sans,
+          fontSize: 11, color: 'rgba(238, 242, 235, 0.45)', fontFamily: FONT.sans,
         }}>Tap a slot to set</div>
       </div>
       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-start' }}>

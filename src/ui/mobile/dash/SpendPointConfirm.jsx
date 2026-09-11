@@ -185,7 +185,7 @@ export const SpendPointConfirm = () => {
         </div>
         {/* v2.3.1451: the one-sentence bench-locked story, only when live */}
         {ctxNow ? (
-          <div style={{ fontSize: 10.5, color: COL.muted, marginTop: -6, marginBottom: 10, lineHeight: 1.35 }}>
+          <div style={{ fontSize: 11, color: COL.muted, marginTop: -6, marginBottom: 10, lineHeight: 1.35 }}>
             Points keep their number forever — bigger monsters, bigger points.
           </div>
         ) : null}
