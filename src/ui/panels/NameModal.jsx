@@ -1328,10 +1328,31 @@ export function NameModal(props) {
         THE GRADIENT ID IS SCOPED.  A bare id would collide if this ever
         rendered twice on one screen, and the second instance would silently
         take the first one's fill. */
+     /* ═══ v2.3.2469: 38 -> 30, BECAUSE A VECTOR IS NOT A BITMAP ═══
+        Owner, looking at the centred button: "Shrink the randomize icon though
+        it's too large."
+
+        38 was inherited, not chosen for this glyph.  It was set at v2.3.2464 in
+        the same change that replaced the painted scroll-and-die with this
+        stroked recycle mark, and it was sized for the PROBLEM THAT CHANGE WAS
+        FIXING: the webp's meaningful part (the die) was a fraction of its
+        canvas, so the whole picture had to be blown up before the die read at
+        all.  The vector has the opposite property.  Measured with getBBox in a
+        real page, the arcs' geometry spans 17.8 of the 24-unit box (74%), and
+        the 2.6 stroke with round caps adds about 1.3 each side -- so roughly
+        85% of the box is painted.  Carrying the bitmap's number across to a
+        mark that FILLS its box made it render far heavier than the picture it
+        replaced, even though the number itself never changed.
+
+        30 is the size this button had before that swap (v2.3.2453, which the
+        owner accepted), and at 30 the glyph reads as an icon IN a 50px button
+        rather than as the button's face.  Legibility is not the trade it was
+        for the webp: a stroked vector is legible by construction at any size,
+        which is the whole reason it was chosen. */
      /*#__PURE__*/React.createElement("svg", {
        className: "bt-cc-action-icon",
        viewBox: "0 0 24 24", fill: "none", "aria-hidden": "true", focusable: "false",
-       style: { width: 38, height: 38, display: 'block' }
+       style: { width: 30, height: 30, display: 'block' }
      },
        /*#__PURE__*/React.createElement("defs", null,
          /*#__PURE__*/React.createElement("linearGradient", {
