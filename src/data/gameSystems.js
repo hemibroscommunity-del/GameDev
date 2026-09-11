@@ -5615,6 +5615,32 @@ export const BLOCK_ARC_HALF = Math.PI / 3;
    preview matches the damage.  Sword keeps the narrow SWING_ARC cone. */
 export const GS_INNER_RADIUS = 38;       // 360° core radius (any angle)
 export const GS_OUTER_RADIUS = 72;       // forward reach inside the half-circle
+
+/* ═══ v2.3.2465: HOW LONG THE FIRST SHOT OF A PRESS WAITS ═══
+ * Owner, on a magic special: "When I swipe my finger the normal attack
+ * (default) is leading" -- and then, asked how to fix it: "Slight delay
+ * option."
+ *
+ * The special is a FLICK on the attack control, and a flick cannot be
+ * recognised until the thumb lifts (BroTown's rE/bE classify it on touchend).
+ * The auto-attack loop, meanwhile, fires as soon as the PRESS sets autoAttack.
+ * So one gesture produced two attacks with the ordinary one in front, and no
+ * amount of work inside specialAttack() can recall a bolt that has already
+ * left.  The only place to stop it is before it is fired, and the only
+ * information available then is "a press has just started".
+ *
+ * Hence a grace, and hence a number that is a judgement rather than a
+ * derivation.  The gesture's own ceiling is 400ms on the last leg / 500ms
+ * total, but a real thumb flick is far quicker than the ceiling that admits
+ * it, and every millisecond here is input latency on a held attack.  200ms
+ * covers an ordinary flick with room to spare while staying under the ~250ms
+ * at which a delay stops reading as responsiveness and starts reading as lag.
+ *
+ * It is paid ONLY by a sustained hold, and only on its first shot:
+ * handleRBtnRelease clears the stamp, so a tap fires on release instead of
+ * serving out a window it can no longer use.  Raise it if a flick still leads;
+ * lower it if a held attack feels sticky. */
+export const ATK_PRESS_GRACE_MS = 200;
 export const GS_FORWARD_ARC = Math.PI;   // 180° forward half-circle
 
 /* v2.3.1747: the §5.9 Combo Chain constants (COMBO_BURST_BONUS,

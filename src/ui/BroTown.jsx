@@ -8129,6 +8129,33 @@ export var BroTown = function BroTown(_ref0) {
        and the disc's bS -- so this is the one place that sees every press on
        this side.  See JOY_FADE_MS. */
     S._rJoyLiveUntil = Date.now() + JOY_FADE_MS;
+    /* ═══ v2.3.2465: THE PRESS WAITS TO SEE WHAT THE GESTURE MEANT ═══
+       Owner, with a screenshot of a magic special: "When I swipe my finger the
+       normal attack (default) is leading" -- a white bolt out in front of the
+       three orbs, one gesture that fired two attacks.
+
+       THE SPECIAL IS A FLICK, AND A FLICK IS ONLY KNOWN ON touchEND.  The
+       sequence is: touchstart lands here and sets autoAttack; the auto-attack
+       loop fires an ORDINARY shot on its next eligible frame; the thumb
+       flicks; touchend classifies it and casts the special.  So the ordinary
+       shot leaves BEFORE the game can know the press was a special -- which is
+       why v2.3.2464's fix could not reach it.  That one spends the swing clock
+       inside specialAttack(), and by then the bolt is already in the air.
+
+       There is no way to know at press time, so the first shot of a press
+       WAITS -- the owner's own choice of remedy ("slight delay option") -- long
+       enough for a flick to declare itself.  Stamped at the very top of this
+       handler, above every branch, because both right-hand surfaces (the
+       zone's rS and the disc's bS) come through here and the leading shot has
+       to be held whichever one the thumb landed on.
+
+       IT COSTS A HOLD, NOT A TAP.  handleRBtnRelease clears the stamp, so a
+       tap that ends inside the window fires on release rather than being
+       delayed -- which is where a player expects a tap to land anyway.  Only a
+       sustained hold pays the wait, and only for its FIRST shot; the cadence
+       owns every shot after that.  The melee lunge is untouched: it fires
+       directly from this handler rather than through the loop. */
+    S._atkPressAt = Date.now();
     /* ═══ v2.3.2252: THE FIRST TAP COMMITS TO THE NEAREST ENEMY ═══
        Owner: "when the contextual attack button appears make it so your first
        tap immediately locks on and fires an attack at the enemy closest to
@@ -8410,6 +8437,10 @@ export var BroTown = function BroTown(_ref0) {
        stamina loop already dropped is not dropped again, which would send a
        second player_shield broadcast for one release. */
     _endShieldHold();
+    /* v2.3.2465: the flick window ends with the finger.  A tap that lifts
+       inside it is not a flick and never will be, so its shot is released
+       here rather than made to serve out a delay it cannot use. */
+    S._atkPressAt = 0;
     S.autoAttack = false;
     setAutoAttack(false);
     S._aiming = false;

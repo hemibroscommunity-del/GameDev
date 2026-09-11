@@ -2119,7 +2119,23 @@ input{font-family:inherit}
      with symmetric 42px padding fitted the old full-width well; in a column a
      third that wide it ran straight under the dice. The 16px floor stays —
      anything smaller makes iOS Safari zoom the page on focus (v2.3.710). */
-  text-align:left!important;padding:0 46px 0 11px!important;text-overflow:ellipsis}
+  /* ═══ v2.3.2464: 54 IS THE MEASURED CEILING, NOT A CHOSEN NUMBER ═══
+     The reroll button went 40 -> 50 wide (NameModal.jsx) and it sits at
+     right:2, so 52px of the well is underneath it and the text has to clear
+     that.  54 gives it exactly that plus 2px.
+     54 IS ALSO THE MOST THIS FIELD WILL EVER GIVE.  Swept in a real 390x844
+     viewport with the placeholder loaded as the input's VALUE (the only way to
+     get a truthful scrollWidth -- an input's scrollWidth ignores its
+     placeholder entirely, which is the trap that made a first pass at this
+     ship a truncated field while a measurement said it fit):
+         padR 40..54  ->  scrollWidth 157 == clientWidth 157, whole
+         padR 56      ->  scrollWidth 158 > 157, "Tap to na..."
+     So the button cannot exceed 52 wide while "Tap to name" stays whole, and
+     the left inset is 9 rather than 11 to keep that ceiling where it is.
+     A wider button than this needs a shorter placeholder or a wider field, and
+     the field cannot widen: .bt-cc-cluster's right margin deliberately leaves
+     2.0px before the picker panel (see its block below). */
+  text-align:left!important;padding:0 54px 0 9px!important;text-overflow:ellipsis}
 .bt-cc-name::placeholder{color:#B6C1BE;opacity:1} /* v2.3.1235: Checkpoint B — placeholder muted → secondary (too faint on the dark well) */
 
 /* ══════ v2.3.2359: THE NAME CLUSTER JOINS THE GOLD ══════

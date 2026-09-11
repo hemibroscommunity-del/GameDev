@@ -170,6 +170,38 @@ export function specialAttack(S) {
     }
     S._lastSwipe = now;
     S._hasUsedSwipe = true;
+    /* ═══ v2.3.2464: THE SPECIAL IS THIS BEAT'S ATTACK, NOT AN EXTRA ONE ═══
+       Owner: "is there a way to disable a normal attack that flies along with
+       a special attack?  When I do the special attack it's usually a normal
+       attack and special attack bundled together (happens to both magic and
+       bow)."
+
+       It was both of those weapons and never the sword, and the reason is two
+       lines apart in this function.  The MELEE arm below stamps
+       `S.swingTimer = now` -- it has to, because the swing animation and the
+       hit sweep are driven off that clock.  The BOW and STAFF arms push their
+       projectiles straight into S.arrows and never touched it.
+
+       And `S.swingTimer` is exactly what the auto-attack loop's cadence gate
+       reads (monsterCombat.js `Date.now() - S.swingTimer >= effectiveSwingCd`).
+       So for a ranged or staff build the special left that gate wide open and
+       the loop fired an ORDINARY shot beside it on the next frame it was
+       eligible -- which, since the loop runs whenever the player is holding
+       attack or is engaged, is the whole of a fight.  That is the "usually".
+       Measured before the fix (tools/qa/mp/mp-solospecial.mjs): one press of
+       the bow special put 1 special arrow and 2 ordinary ones in the air; one
+       press of the magic special put 3 orbs and 1 ordinary bolt.
+
+       Stamped HERE rather than in each arm, and stamped as the ordinary swing
+       clock rather than as a new suppression flag: the cadence that decides
+       when the next normal shot may go out is the thing that should have been
+       spent, so spending it is the fix.  The melee arm re-stamps the identical
+       value a few lines down (same `now`), so nothing about the sword moves.
+
+       Above every refusal gate this is not: `_lastSwipe` is the commit point,
+       so by this line the special is paid for and certain to fire.  A special
+       that was refused never reaches here and never spends the swing. */
+    S.swingTimer = now;
     var hasElement = activeWpn.element2 || activeWpn.element1;
     /* Aim direction — use finger swipe direction from right joystick, or locked target, or facing */
     /* ═══ v2.3.2260: THE SPECIAL HAD ITS OWN FALLBACK, AND IT WAS DUE EAST ═══
@@ -275,36 +307,50 @@ export function specialAttack(S) {
          monster and its own comment names this exact case ("a 3-bolt cone
          that can land all 3 on one target within ~100ms").  Checked, not
          assumed. */
-      var _ORB_GAP_MS = 100;
-      /* ═══ v2.3.2262: FAST, MEDIUM, SLOW ═══
-         Owner: "space out the magic attack orbs in a novel way: I want the
-         first orb speed to be fast, the second orb speed to be medium, and the
-         third orb speed to be slow."
+      var _ORB_GAP_MS = 200;   /* v2.3.2464: 100 -> 200, the owner's "one every .2 seconds" */
+      /* ═══ v2.3.2464: EVENLY SPACED, WHICH TAKES BOTH HALVES ═══
+         Owner: "I want magic special to change to 3 evenly spaced out orbs.
+         Maybe like one every .2 seconds until it hits the 3rd orb."
 
-         So the SPEEDS are the spacing now, and the launch stagger above stays
-         on top of it -- it is what made "3 hits in a row" reliable at point
-         blank (v2.3.2259), where a speed difference has no distance to open a
-         gap in.  Together the three separate hard: at one second they sit at
-         roughly 480 / 270 / 154 px from the caster.
+         This replaces v2.3.2262's "first orb fast, second medium, third slow"
+         (speeds 8 / 5 / 3.2), and BOTH numbers have to move or the ask is not
+         met.  An even launch gap on uneven speeds is a fan, not a line: the
+         orbs leave 200ms apart and then keep drawing apart for the whole
+         flight, because the lead one is travelling 2.5x the speed of the tail.
+         Measured on the old constants at ~1s of flight: gaps of 132px and 84px
+         between consecutive orbs, from a volley that left evenly.
 
-         RANGE IS HELD EQUAL, deliberately.  `life` is spent in TICKS, so three
-         speeds with one life would give three different reaches and the slow
-         orb would die short -- turning a spacing request into a range nerf on
-         the third hit.  Each life is solved from the same 560px the volley has
-         had since v2.3.1335, so all three still arrive.
+         So: ONE speed, and the spacing is the launch stagger alone -- which is
+         then constant for the whole flight, which is what "evenly spaced"
+         means.  At 5 px/frame and 200ms that is 60px of daylight between
+         orbs, held all the way out.
 
-         The server was already sized for the cadence: its special lane allows
-         3 hits per 1200ms per monster, and at a typical 200px engagement the
-         three land about 0.42s, 0.77s and 1.24s out -- and because that lane is
-         a ROLLING 1200ms filter rather than a fixed window, the first stamp has
-         aged out by the time the third arrives. */
+         THE SPEED IS THE STAFF'S OWN, not a new number.  An ordinary staff
+         bolt flies at 5 (projectiles.js: `a.isStaff ? 5 : 8`), so the special
+         now reads as three of YOUR orbs launched a fifth of a second apart,
+         rather than three orbs that behave like nothing else the staff fires.
+         It is also the one constant here a reader can change alone: raise it
+         and the volley snaps, and the spacing stays even either way.
+
+         RANGE IS HELD EQUAL, and now trivially so.  `life` is spent in TICKS,
+         so the old three speeds each needed their own life solved from the
+         same reach or the slow orb would have died short -- a spacing request
+         turning into a range nerf on the third hit.  With one speed there is
+         one life and all three plainly reach STAFF_RANGE_PX.
+
+         THE SERVER NEEDS NO MIRROR, checked rather than assumed.  Its special
+         lane admits 3 hits per 1200ms per monster (combat.js): the filter
+         drops stamps older than 1200ms and refuses at >=3, so exactly three
+         pass.  At a typical 200px engagement the orbs now land about 0.67s,
+         0.87s and 1.07s out -- a 400ms spread where the old spread was 820ms,
+         so all three stamps are live at once where the first used to have aged
+         out.  Three is still three, and the next cast is 1500ms away behind
+         the swipe cooldown, by which time the first stamp has expired. */
       /* v2.3.2387: 560 -> STAFF_RANGE_PX (675), so the special reaches exactly
-         as far as the basic orb and as far as an arrow.  Solved per speed
-         below, so the fast/medium/slow spread (v2.3.2262) is unchanged -- only
-         the distance each one covers moves.  The staggered-arrival arithmetic
-         in the note above is about a ~200px engagement and does not shift. */
+         as far as the basic orb and as far as an arrow. */
       var _ORB_RANGE_PX = STAFF_RANGE_PX;
-      var _ORB_SPEEDS = [8, 5, 3.2];
+      var _ORB_SPEED = 5;              /* the staff's own bolt speed */
+      var _ORB_SPEEDS = [_ORB_SPEED, _ORB_SPEED, _ORB_SPEED];
       for (var si = 0; si < 3; si++) {
         var _spd = _ORB_SPEEDS[si];
         var _life = Math.round(_ORB_RANGE_PX / _spd);
