@@ -596,7 +596,13 @@ let _bakeTag = '';
 
    Defaulted to FRAME_W so every existing caller is byte-identical; only the
    stand-in loader passes anything else. */
-export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH, eyeT, eyeRects, art, frameW) {
+/* v2.3.2470: `steadyArt` -- correct a drawing's per-frame fit against the rest
+   of the strip (see stampRegion's `steadyBox`).  Passed ONLY by the walking-body
+   bake.  The stand-in strips in effectsRenderer deliberately do not ask for it:
+   a sword swing throws the torso around far more than a jog bob, so its frames
+   are all honest outliers of each other and correcting them against a median
+   costs ink rather than steadying it -- measured, on sword-south-torso. */
+export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH, eyeT, eyeRects, art, frameW, steadyArt) {
   const FW = (typeof frameW === 'number' && frameW > 0) ? Math.round(frameW) : FRAME_W;
   /* v2.3.1108: when the caller knows this sheet's logical frame height, restore
      a downscaled-on-disk sheet to it (nearest-neighbour, exact palette) so the
@@ -740,8 +746,14 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
   /* v2.3.1950: `underSkin` on all three -- ink sits UNDER skin, so it takes the
      body's shading and lets some skin through.  A shirt print does not: it is
      ink ON fabric, and stays opaque. */
+  /* v2.3.2470: `steadyBox` -- the TORSO only.  One box for the whole strip, so
+     the swinging arms can neither collapse the chest's fit nor stretch it out
+     over an arm; see the block at the top of stampRegion for the measurements.
+     Deliberately NOT given to the trousers or the arms: a trouser print sits on
+     legs that genuinely move apart, and the arms already pass `eachPiece`
+     because their region is SUPPOSED to be two separate things. */
   if (tattooPx) stampRegion(d, w, h, FW, tattooPx, art.tattoo, !!art.mirror, TATTOO_BOX,
-    { underSkin: true, report: _rep && _rep.tattoo, profile: _probe });
+    { underSkin: true, steadyBox: !!steadyArt, report: _rep && _rep.tattoo, profile: _probe });
   /* v2.3.1949: face and arms.  `eachPiece` for the arms only -- a figure has
      two of them and the largest-piece rule would ink whichever happens to be
      nearer the camera. */
@@ -953,11 +965,46 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
        runs at full 256 (exact skin/pants/shoes pixel thresholds). */
     _bakeTag = `${pose}-${dir}`;
     const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, FRAME_H,
-      eyeT, EYE_MASK[`${pose}-${dir}`], art);
+      /* ═══ v2.3.2470: STEADY THE DRAWING, BUT ONLY ACROSS A JOG ═══
+         The correction is right exactly where the torso HOLDS ITS SHAPE and only
+         the arms move across it, which is the run cycle -- and that is all three
+         of the owner's reports (south flicker, east and northeast spill).
+         Every other multi-frame pose genuinely reshapes the chest: a dodge rolls
+         it away, a hit doubles it over, a pickup and a mine bend it right down.
+         Their frames are honest outliers of each other, so correcting them
+         against a median costs ink instead of steadying it -- measured twice,
+         each time by a suite that already owned the claim: mp-standinart's
+         thinnest gain fell 72 -> 0 on the sword swing, and mp-facetat's chest
+         coverage fell 0.88/0.958 -> 0.248/0 on dodge-east.
+         So the line is the pose, and it is drawn here rather than inside
+         stampRegion because this is the only place that knows which pose is
+         being baked. */
+      eyeT, EYE_MASK[`${pose}-${dir}`], art, undefined, pose === 'jog');
     /* v2.3.1120: count frames at full 256-space width, then downscale the DISPLAY
        texture to 256/DISPLAY_DS px (the figure shows ~100px on a phone).  Mipmaps
        off -- renders ~1:1 post-downscale, so the mip chain is wasted VRAM. */
     const frames = Math.max(1, Math.floor(full.width / FRAME_W));
+    /* ═══ v2.3.2470 QA PROBE: INK PER FRAME OF THE STRIP ═══
+       The drawing is fitted and stamped ONCE PER FRAME, so a pose can be
+       perfectly cached, handed out perfectly, and still blink -- the FRAMES
+       differ.  No counter on a cache can see that, and four of them reported a
+       clean bill while the chest was visibly pulsing.  The honest place to
+       measure is the baked strip, frame by frame.
+       OFF unless a scenario asks: it reads the whole sheet back out of its
+       canvas, which is far too much work to do on a player's phone. */
+    try {
+      if (typeof window !== 'undefined' && window.__btInkProbe) {
+        const _d = full.getContext('2d').getImageData(0, 0, full.width, full.height).data;
+        const _per = new Array(frames).fill(0);
+        for (let _i = 0; _i < _d.length; _i += 4) {
+          if (_d[_i + 3] < 40) continue;
+          if (!(_d[_i + 2] - _d[_i] >= 30 && _d[_i + 2] - _d[_i + 1] >= 20)) continue;
+          _per[Math.min(frames - 1, Math.floor(((_i >> 2) % full.width) / FRAME_W))]++;
+        }
+        (window.__btSheetInk || (window.__btSheetInk = Object.create(null)))[sheetKey] =
+          { frames, perFrame: _per, pose, dir };
+      }
+    } catch (e) { /* a probe must never break a bake */ }
     /* v2.3.1237: owner feedback — jog-shimmer at DISPLAY_DS=1: the recolour above
        ran on the exact-palette nearest upscale (required), so its output keeps
        the hard 2x stair-step edges when the sheet ships 128px on disk;
