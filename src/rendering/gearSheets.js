@@ -366,8 +366,19 @@ export function preloadGear() {
   /* (pose, dirs) pairs, not pose x dirs: the gather poses are authored
      south-only, so v2.3.1478's mine sheets would 404 four times per slot on
      every load if they rode the full DIRS loop. */
+  /* v2.3.2463: + 'dodge', which v2.3.1573 shipped gear sheets for and never
+     added here -- so chest/legs/shirt dodge art was the one pose that loaded
+     on FIRST USE, which the animation-preload law (CLAUDE.md) calls a bug.
+     It went unnoticed because the masked-body prewarm calls getGearFrame for
+     'dodge' and that call KICKS the fetch but returns null on the cold pass:
+     the bake is skipped, the sheet lands later, and an armoured roll dropped
+     its armour for the first roll of the session.  Rare enough to miss when
+     only the contextual dodge could reach it; the sword dash (v2.3.2463) now
+     plays this same pose as an opening move, so it is reached constantly.
+     south + east only -- the dodge strips are authored on that dominant-axis
+     pair (dodgeSheetDir), exactly as prewarmDirs already assumes. */
   const SETS = [['stand', DIRS], ['jog', DIRS], ['hit', DIRS],
-    ['mine', ['south']]];
+    ['mine', ['south']], ['dodge', ['south', 'east']]];
   const tasks = [];
   for (const slot of GEAR_SLOTS) {
     /* v2.3.1197: preload EVERY catalog item per slot, not just the currently
