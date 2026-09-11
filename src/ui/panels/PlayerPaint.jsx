@@ -8,10 +8,12 @@ import {
   BRUSH_SIZES, LETTERS, LETTER_W, LETTER_H,
 } from '@/rendering/traits/artTools.js';   /* v2.3.1948; v2.3.1949 mirror, back v2.3.2004 */
 import {
-  getDoc, saveDoc, appendToDoc, copyDoc, replay,
+  getDoc, saveDoc, appendToDoc, copyDoc, replay, opCells,
+  BOX_LO, BOX_HI_X, BOX_HI_Y,   /* v2.3.2463 */
 } from '@/rendering/traits/artOps.js';   /* v2.3.1967: the canvas is an op list */
 /* v2.3.2444: the ready-made designs, and the gallery that picks one. */
 import { designOps } from '@/rendering/traits/designCatalog.js';
+import { drawGrabHandle, HANDLE_R, HANDLE_HIT } from '@/rendering/traits/artHandle.js';   /* v2.3.2463 */
 import DesignGallery from '@/ui/panels/DesignGallery.jsx';
 import {
   patternsFor, getPattern, setPattern, parsePattern, formatPattern, patternInk,
@@ -1237,6 +1239,19 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     if (op.k === 'd') return [op.a[2], op.a[3]];   /* v2.3.2455 */
     return null;
   };
+  /* ═══ v2.3.2463: THE HANDLE STAYS WHERE A FINGER CAN REACH IT ═══
+     The corner above is the op's REAL far corner, and since v2.3.2463 a box may
+     hang off the grid -- so that corner can be at cell 23 of a 16-cell grid,
+     which is drawn nowhere and can be grabbed by nobody.  What is drawn and hit
+     tested is therefore the corner PINNED ONTO THE GRID, and the difference
+     between the two is carried through the drag as an offset (see `down`), so
+     grabbing a pinned handle resizes from the real corner rather than snapping
+     it to the edge first. */
+  const handleAt = (op) => {
+    const h = handleCell(op);
+    if (!h) return null;
+    return [Math.max(0, Math.min(ART_W - 1, h[0])), Math.max(0, Math.min(ART_H - 1, h[1]))];
+  };
   /* ═══ v2.3.2427: HOW BIG A LETTER LANDS ═══
      Owner: "Letters need to default smaller on the pants they get cut off."
      The glyph is 5x7 and the canvas is 16x16, so a letter has always taken 44%
@@ -1249,6 +1264,11 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      stem of an 'E' even with coverage sampling, and the point of shrinking it
      is that the letter still reads.  Anything can be resized from the handle
      afterwards, which is the real fix -- this is only where it starts. */
+  /* v2.3.2463: a letter is still PLACED wholly on the grid -- deliberately.
+     A box may leave the grid once you drag it (moveTo), but a tap near the edge
+     meaning "put a letter half off the screen" is much more likely to be a tap
+     near the edge, so this keeps yanking it inward and the drag is how you take
+     it out. */
   const letterBox = (cx, cy) => {
     const isPants = artIdRef.current === 'pants' || artIdRef.current === 'pantsBack';
     const w = isPants ? 4 : LETTER_W, h = isPants ? 6 : LETTER_H;
@@ -1256,10 +1276,14 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     const y0 = Math.max(0, Math.min(ART_H - h, cy - (h >> 1)));
     return [x0, y0, x0 + w - 1, y0 + h - 1];
   };
-  const selHandle = React.useMemo(() => handleCell(selOp), [selOp]);   /* v2.3.1994 */
+  const selHandle = React.useMemo(() => handleAt(selOp), [selOp]);   /* v2.3.1994; v2.3.2463 pinned */
   /* v2.3.2427: can the thing you are holding be RESIZED, as opposed to only
-     moved or re-layered?  A shape always can; a letter can once it has a box. */
-  const selResizable = !!(selOp && (selOp.k === 's' || selOp.k === 'd' || (selOp.k === 't' && selOp.a)));
+     moved or re-layered?  A shape always can; a letter can once it has a box.
+     v2.3.2463: a function now, because the HANDLE GLYPH asks the same question
+     -- two diagonal arrows on a handle that can only move the thing would be a
+     lie about what the drag does (artHandle). */
+  const canResize = (op) => !!(op && (op.k === 's' || op.k === 'd' || (op.k === 't' && op.a)));
+  const selResizable = canResize(selOp);
   /* v2.3.2431: is the options row the ALPHABET right now?  True whenever the
      letter tool is chosen, held letter or not -- see the note on the row. */
   const onLetterStrip = tool === 'letter';
@@ -1298,8 +1322,14 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
          a circle's box is mostly not the circle, and on a 16-cell grid a box
          drawn round one shape covers the three next to it.  Only the edges with
          no neighbour in the set are stroked, so the ring hugs the shape. */
+      /* v2.3.2463: guarded, for the reason spelled out at BodyInk's twin of
+         this loop -- an off-grid x aliases into the next row and blanks an edge
+         that should be drawn. */
       const has = new Uint8Array(ART_W * ART_H);
-      for (let i = 0; i < selCells.length; i++) has[selCells[i][1] * ART_W + selCells[i][0]] = 1;
+      for (let i = 0; i < selCells.length; i++) {
+        const hx = selCells[i][0], hy = selCells[i][1];
+        if (hx >= 0 && hy >= 0 && hx < ART_W && hy < ART_H) has[hy * ART_W + hx] = 1;
+      }
       ctx.save();
       ctx.lineWidth = Math.max(1.5, S * 0.11);
       ctx.strokeStyle = '#D8AA58';
@@ -1321,21 +1351,13 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        v2.3.1967: it sits on the selected OP now — the far corner of a shape, or
        a letter's own centre, since a letter has no size to drag and its handle
        moves it instead. */
-    const hcell = handleCell(selOp);
+    /* v2.3.2463: the pinned cell (handleAt), so a box dragged past the edge
+       still shows its handle -- and the shared glyph, which now says what the
+       drag does instead of only that something is there. */
+    const hcell = handleAt(selOp);
     if (hcell) {
       const hx = (hcell[0] + 0.5) * S, hy = (hcell[1] + 0.5) * S;
-      const r = Math.max(7, S * 0.62);
-      ctx.beginPath();
-      ctx.arc(hx, hy, r, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(10,14,18,.55)';
-      ctx.fill();
-      ctx.lineWidth = Math.max(2, S * 0.14);
-      ctx.strokeStyle = '#D8AA58';
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(hx, hy, Math.max(2, r * 0.28), 0, Math.PI * 2);
-      ctx.fillStyle = '#D8AA58';
-      ctx.fill();
+      drawGrabHandle(ctx, hx, hy, HANDLE_R(S, 11), canResize(selOp));
     }
   }, [art, painted, onPattern, sel, selOp]);
 
@@ -1362,6 +1384,14 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     const r = cv.getBoundingClientRect();
     let x = Math.floor(((e.clientX - r.left) / r.width) * ART_W);
     let y = Math.floor(((e.clientY - r.top) / r.height) * ART_H);
+    /* v2.3.2463: 'extend' -- the cell the finger is on whether or not the grid
+       reaches that far.  See the note on BodyInk's cellFor: a move needs a cell
+       that keeps counting past the edge, and clamping is what made a drag stop
+       following the finger there. */
+    if (clamp === 'extend') {
+      return [Math.max(-2 * ART_W, Math.min(3 * ART_W, x)),
+        Math.max(-2 * ART_H, Math.min(3 * ART_H, y))];
+    }
     if (clamp) {
       x = Math.max(0, Math.min(ART_W - 1, x));
       y = Math.max(0, Math.min(ART_H - 1, y));
@@ -1472,7 +1502,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   /* Is this pointer on the handle?  Generous: the handle is drawn about
      two-thirds of a cell and a finger is a lot wider than that. */
   const onHandle = (e) => {
-    const h = handleCell(selOpRef.current);
+    const h = handleAt(selOpRef.current);   /* v2.3.2463: where it is DRAWN */
     if (!h) return false;
     /* v2.3.1994: the body surface knows where a cell landed on the glass after
        the zoom and the pan, so it is asked rather than second-guessed. */
@@ -1480,7 +1510,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
       const api = bodyApiRef.current;
       const c = api && api.cellCenter(artIdRef.current, h[0], h[1]);
       if (!c) return false;
-      return Math.hypot(e.clientX - c.x, e.clientY - c.y) <= Math.max(22, c.w * 1.3);
+      return Math.hypot(e.clientX - c.x, e.clientY - c.y) <= HANDLE_HIT(c.w, 26);
     }
     const cv = cvRef.current;
     if (!cv) return false;
@@ -1488,7 +1518,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     const cw = r.width / ART_W, ch = r.height / ART_H;
     const hx = r.left + (h[0] + 0.5) * cw, hy = r.top + (h[1] + 0.5) * ch;
     const dx = e.clientX - hx, dy = e.clientY - hy;
-    return Math.hypot(dx, dy) <= Math.max(22, cw * 1.3);
+    return Math.hypot(dx, dy) <= HANDLE_HIT(cw, 26);
   };
 
   /* ── v2.3.1967: LAYERS ────────────────────────────────────────────────────
@@ -1578,6 +1608,20 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
       if (op.k !== 's' && op.k !== 't' && op.k !== 'd') return d;   /* v2.3.2455: a design resizes like a shape */
       const x0 = op.a[0], y0 = op.a[1];
       let nx = cx, ny = cy;
+      /* v2.3.2463: the corner this drag moves obeys the same two rules moveTo
+         does -- inside the load gate's bounds, and leaving the box overlapping
+         the grid.  The anchor may itself be off the grid now (a moved box keeps
+         its near corner), and without the overlap half you can drag the far
+         corner past it until the whole box is outside and the drawing is gone
+         with nothing left to grab.  When the anchor IS on the grid the box
+         overlaps whatever the far corner does, so these are no-ops there --
+         which is every drawing anybody has made until now. */
+      const fitCorner = (v, anchor, lo, hi, last) => {
+        let n = Math.max(lo, Math.min(hi, v));
+        if (anchor < 0) n = Math.max(0, n);
+        else if (anchor > last) n = Math.min(last, n);
+        return n;
+      };
       if (lockRatio && pend.ratio > 0) {
         const sx = nx >= x0 ? 1 : -1, sy = ny >= y0 ? 1 : -1;
         const w = Math.abs(nx - x0) + 1, h = Math.abs(ny - y0) + 1;
@@ -1588,17 +1632,51 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
         const nh = useW ? Math.max(1, Math.round(w / pend.ratio)) : h;
         nx = x0 + sx * (nw - 1);
         ny = y0 + sy * (nh - 1);
-        nx = Math.max(0, Math.min(ART_W - 1, nx));
-        ny = Math.max(0, Math.min(ART_H - 1, ny));
       }
+      /* Applied to BOTH paths, locked ratio or not: the free path takes nx
+         straight from the pointer, which the surface clamps to the grid, but
+         the handle's grab offset (v2.3.2463) can carry it well past that. */
+      nx = fitCorner(nx, x0, BOX_LO, BOX_HI_X, ART_W - 1);
+      ny = fitCorner(ny, y0, BOX_LO, BOX_HI_Y, ART_H - 1);
       if (op.a[2] === nx && op.a[3] === ny) return d;
+      /* ...and, as with a move, a resize that would leave nothing painted on
+         the grid is not applied. */
+      if (!opCells({ ...op, a: [x0, y0, nx, ny] }, '').length) return d;
       return { ...d, ops: d.ops.map((o, k) => (k === i ? { ...o, a: [x0, y0, nx, ny] } : o)) };
     });
   };
 
-  /* Move the held op's box by the gesture's delta, clamped so it cannot be
-     dragged off the grid -- a box that left the canvas would sample nothing and
-     the picture would vanish under the finger. */
+  /* ═══ v2.3.2463: IT MAY BE DRAGGED OFF THE EDGE ═══
+     Owner: "the design is maximized to fit the area so when you go to move it
+     nothing happens because it can't move outside the drawing area.  Can you
+     make it so that any design can move away from the drawn area ... but just
+     cut off the portion that's not on the drawable grid?"
+
+     The old rule was "the box must stay wholly inside the grid", written when
+     everything with a box was something you had just dragged out and therefore
+     smaller than the grid.  A ready-made design is not: it lands covering all
+     16x16, so `-bx0` and `ART_W - 1 - bx1` were both 0 and the clamp collapsed
+     every drag to exactly no movement.  Not a stiff drag -- a dead one, which
+     is what was reported.
+
+     The rule is now an OVERLAP: at least KEEP_ON cells of the box stay on the
+     grid, in each axis.  That is the invariant that actually matters, because
+     it is the one that keeps the thing findable -- something dragged entirely
+     off the grid would be invisible, unselectable once you tapped elsewhere,
+     and still in the op list forever.  Everything outside the grid is simply
+     clipped (artOps' clipCells), so what you see is what will print.
+
+     KEEP_ON is 1 rather than something roomier on purpose: a maximised design
+     is 16 wide, and any larger margin would take back the far end of exactly
+     the travel the owner is asking for -- sliding it until only the far edge of
+     the picture is over the garment is a legitimate thing to want. */
+  const KEEP_ON = 1;
+  /* A letter keeps its legacy anchor in step with its box: x/y is what the
+     pre-v2.3.2427 form draws from, and leaving it behind would move the outline
+     without moving the glyph on an older drawing. */
+  const moveOp = (op, na) => (op.k === 't'
+    ? { ...op, a: na, x: Math.min(na[0], na[2]), y: Math.min(na[1], na[3]) }
+    : { ...op, a: na });
   const moveTo = (cx, cy) => {
     const mv = moveRef.current;
     const i = selRef.current;
@@ -1610,17 +1688,36 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
       const b = mv.box;
       const bx0 = Math.min(b[0], b[2]), bx1 = Math.max(b[0], b[2]);
       const by0 = Math.min(b[1], b[3]), by1 = Math.max(b[1], b[3]);
-      const dx = Math.max(-bx0, Math.min(ART_W - 1 - bx1, cx - mv.from[0]));
-      const dy = Math.max(-by0, Math.min(ART_H - 1 - by1, cy - mv.from[1]));
+      /* The furthest left the box may go still leaves KEEP_ON of its right-hand
+         columns on the grid, and vice versa...
+         ...AND every corner stays inside the bounds the LOAD GATE accepts.  Two
+         rules, because they are two different things and they only coincide
+         while the box is no wider than the grid: for a box wider than that the
+         overlap rule alone would put a corner past BOX_HI, sanitizeOp would
+         refuse the op on the next page load, and the drop rule would then throw
+         away the whole canvas's op list -- the drawing surviving as flat pixels
+         with every piece of it unselectable.  Silent, and three ordinary
+         gestures away (drag off, grow it from the handle, drag again).
+         Clamped as a TRANSLATION (one dx for both corners) rather than corner
+         by corner, which would shear the box. */
+      const dx = Math.max(
+        Math.max(KEEP_ON - 1 - bx1, BOX_LO - bx0),
+        Math.min(Math.min(ART_W - KEEP_ON - bx0, BOX_HI_X - bx1), cx - mv.from[0]));
+      const dy = Math.max(
+        Math.max(KEEP_ON - 1 - by1, BOX_LO - by0),
+        Math.min(Math.min(ART_H - KEEP_ON - by0, BOX_HI_Y - by1), cy - mv.from[1]));
       const na = [b[0] + dx, b[1] + dy, b[2] + dx, b[3] + dy];
       if (op.a[0] === na[0] && op.a[1] === na[1] && op.a[2] === na[2] && op.a[3] === na[3]) return d;
-      /* A letter keeps its legacy anchor in step with its box: x/y is what the
-         pre-v2.3.2427 form draws from, and leaving it behind would move the
-         outline without moving the glyph on an older drawing. */
-      const moved = op.k === 't'
-        ? { ...op, a: na, x: Math.min(na[0], na[2]), y: Math.min(na[1], na[3]) }
-        : { ...op, a: na };
-      return { ...d, ops: d.ops.map((o, k) => (k === i ? moved : o)) };
+      /* ...and it must still PAINT something.  KEEP_ON keeps a cell of the BOX
+         on the grid, which is not the same as keeping any INK there: a design
+         is mostly transparent, so the one overlapping cell is very likely
+         empty, and an op painting nothing has no cells -- no outline, nothing
+         for the hit test to find, nothing on screen but the handle.  Refusing
+         the move is the cheap half of the fix; the other half is that a press
+         inside the held BOX still grabs it (BodyInk's heldBox branch), so even
+         a nearly-empty overlap stays in your hand. */
+      if (!opCells(moveOp(op, na), '').length) return d;
+      return { ...d, ops: d.ops.map((o, k) => (k === i ? moveOp(op, na) : o)) };
     });
   };
 
@@ -1635,7 +1732,18 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        rather than both of us testing the same circle and disagreeing. */
     if (info ? info.handle : onHandle(e)) {
       bankPend();
-      dragHandleRef.current = true;
+      /* v2.3.2463: carry the gap between where the handle is DRAWN and where
+         the box's corner really is.  They differ only once a box has been
+         dragged past the edge -- the glyph is pinned onto the grid so a finger
+         can still reach it (handleAt) while the corner it controls sits
+         outside.  Without this offset the first pointermove would slam the
+         corner to wherever the finger happened to be, shrinking the drawing by
+         however far off the grid it was hanging. */
+      const hOp = selOpRef.current;
+      const real = handleCell(hOp), shown = handleAt(hOp);
+      dragHandleRef.current = (real && shown)
+        ? { ox: real[0] - shown[0], oy: real[1] - shown[1] }
+        : { ox: 0, oy: 0 };
       paintingRef.current = true;
       lastRef.current = '';
       return;
@@ -1644,14 +1752,19 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        putting anything down.  A tap on nothing clears the selection, which is
        the only way to say "never mind" without moving something. */
     if (tdef.drag === 'pick') {
-      /* v2.3.2460: CLAMPED, but only for the off-grid grab.  A press meant to
-         pick a held piece up can land outside the grid -- that is the whole
-         point of the change in BodyInk's `down` -- and an unclamped read
-         answers "nowhere" for exactly those presses, so the drag would have
-         nothing to measure from.  Every OTHER press keeps the unclamped read
-         it has always had: on the flat grid a tap beside the squares must
-         still mean "never mind", not "pick up whatever is nearest". */
-      const c = cellAt(e, !!(info && info.held));
+      /* v2.3.2460: a press meant to pick a held piece up can land outside the
+         grid -- that is the whole point of the change in BodyInk's `down` --
+         and the plain unclamped read answers "nowhere" for exactly those
+         presses, so the drag would have nothing to measure from.  It was
+         clamped for those, which put the origin at the nearest EDGE cell
+         rather than under the finger.
+         v2.3.2463: 'extend' instead, for every press on this tool.  It answers
+         the cell the finger is really on, so the move's origin and its samples
+         are measured in the same space and the box travels exactly as far as
+         the hand does.  Nothing else changes: a press that lands on nothing
+         still finds no op (hitTest only matches painted cells, and nothing is
+         painted off the grid), which is still "never mind". */
+      const c = cellAt(e, 'extend');
       /* ═══ v2.3.2455: YOU GRAB WHAT YOU ARE HOLDING BY ITS BOX ═══
          A design is mostly transparent -- that is what makes it a design and
          not a rectangle -- so hit-testing its INK would mean the only way to
@@ -1751,7 +1864,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     /* v2.3.2455: carrying something takes precedence over every drawing
        gesture, exactly as the handle does -- the select tool paints nothing. */
     if (moveRef.current) {
-      const c = cellAt(e, true);
+      const c = cellAt(e, 'extend');   /* v2.3.2463: past the edge, too */
       if (!c) return;
       const k = c[0] + ',' + c[1];
       if (k === lastRef.current) return;
@@ -1762,10 +1875,14 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     if (dragHandleRef.current) {
       const c = cellAt(e, true);
       if (!c) return;
-      const k = c[0] + ',' + c[1];
+      /* v2.3.2463: +the grab offset, so the corner follows the finger instead
+         of jumping to it when the handle was pinned onto the grid edge. */
+      const off = dragHandleRef.current;
+      const tx = c[0] + (off.ox || 0), ty = c[1] + (off.oy || 0);
+      const k = tx + ',' + ty;
       if (k === lastRef.current) return;
       lastRef.current = k;
-      resizeTo(c[0], c[1]);
+      resizeTo(tx, ty);
       return;
     }
     if (tdef.drag === 'shape') {
@@ -2029,10 +2146,12 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
               overlayCells={(liveIdx >= 0 && liveIdx < painted.cells.length) ? painted.cells[liveIdx] : null}
               selCells={(sel >= 0 && sel < painted.cells.length) ? painted.cells[sel] : null}
               handleCell={selHandle}
+              handleResize={selResizable}   /* v2.3.2463 */
               /* v2.3.2460: what is in the panel's hand, so a press that lands
                  off the grid can still grab it (see BodyInk's `down`).  Only
                  ops with a BOX -- those are the ones a drag can translate. */
-              heldTarget={(selOp && Array.isArray(selOp.a)) ? artId : null} />
+              heldTarget={(selOp && Array.isArray(selOp.a)) ? artId : null}
+              heldBox={(selOp && Array.isArray(selOp.a)) ? selOp.a : null}   /* v2.3.2463 */ />
           ) : (
             /* v2.3.1967: a class, so a headless scenario can aim at the flat
                grid without guessing which canvas in the panel it is (the panel

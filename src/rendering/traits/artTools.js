@@ -60,18 +60,36 @@ export function rectCells(x0, y0, x1, y1) {
  *
  *  Cell (x,y) is the unit square [x,x+1) x [y,y+1), so its centre is at x+0.5;
  *  the box's centre and radii are stated in those continuous coordinates. */
+/* ═══ v2.3.2463: A DEDUPE KEY THAT DOES NOT ALIAS OFF THE GRID ═══
+   Three helpers here dedupe cells through `seen[y * ART_W + x]` on a 256-entry
+   Uint8Array, which is exactly right while every cell is on the grid and wrong
+   the moment one is not: (16, 3) computes 3*16+16 = 64, which is the index of
+   the REAL cell (0, 4).  A typed array silently ignores a negative or past-end
+   index, so half the off-grid cells vanish from the map and the other half
+   squat on a real cell's slot -- and the real cell is then skipped as a
+   duplicate and never painted.  The player sees a one-pixel hole in a thick
+   box or circle that appears only after the shape is dragged off the edge, and
+   moves as they drag.  Boxes may leave the grid as of v2.3.2463 (artOps'
+   BOX_OFF), so this is now reachable.
+
+   A Set of packed integers instead: off-grid cells get their own keys, dedupe
+   stays exact everywhere, and the on-grid case -- every stroke anybody has ever
+   made -- behaves identically.  The cells that are still outside are dropped
+   downstream by artOps' clipCells, which is the one place that decides it. */
+const cellKey = (x, y) => ((y + 64) << 9) | (x + 64);
+
 export function ellipseCells(x0, y0, x1, y1) {
   const ax = Math.min(x0, x1), bx = Math.max(x0, x1);
   const ay = Math.min(y0, y1), by = Math.max(y0, y1);
   const cx = (ax + bx + 1) / 2, cy = (ay + by + 1) / 2;
   const rx = (bx - ax + 1) / 2, ry = (by - ay + 1) / 2;
-  const seen = new Uint8Array(ART_W * ART_H);
+  const seen = new Set();   /* v2.3.2463: see cellKey */
   const out = [];
   const put = (x, y) => {
     if (x < ax || x > bx || y < ay || y > by) return;
-    const k = y * ART_W + x;
-    if (seen[k]) return;
-    seen[k] = 1; out.push([x, y]);
+    const k = cellKey(x, y);
+    if (seen.has(k)) return;
+    seen.add(k); out.push([x, y]);
   };
   for (let x = ax; x <= bx; x++) {
     const t = 1 - ((x + 0.5 - cx) / rx) ** 2;
@@ -152,14 +170,14 @@ export function brushCells(x, y, size) {
 /** Widen a set of cells by the brush, with no cell listed twice. */
 export function expandCells(cells, size) {
   if (!size || size <= 1) return cells;
-  const seen = new Uint8Array(ART_W * ART_H);
+  const seen = new Set();   /* v2.3.2463: see cellKey */
   const out = [];
   for (let i = 0; i < cells.length; i++) {
     const dab = brushCells(cells[i][0], cells[i][1], size);
     for (let k = 0; k < dab.length; k++) {
-      const idx = dab[k][1] * ART_W + dab[k][0];
-      if (seen[idx]) continue;
-      seen[idx] = 1; out.push(dab[k]);
+      const idx = cellKey(dab[k][0], dab[k][1]);
+      if (seen.has(idx)) continue;
+      seen.add(idx); out.push(dab[k]);
     }
   }
   return out;
@@ -281,7 +299,7 @@ export function letterBoxCells(ch, x0, y0, x1, y1) {
   const lx = Math.min(x0, x1), rx = Math.max(x0, x1);
   const ty = Math.min(y0, y1), by = Math.max(y0, y1);
   const w = rx - lx + 1, h = by - ty + 1;
-  const seen = new Uint8Array(ART_W * ART_H);
+  const seen = new Set();   /* v2.3.2463: see cellKey */
   const out = [];
   for (let r = 0; r < LETTER_H; r++) {
     for (let c = 0; c < LETTER_W; c++) {
@@ -295,9 +313,9 @@ export function letterBoxCells(ch, x0, y0, x1, y1) {
       for (let ny = cy0; ny <= cy1; ny++) {
         for (let nx = cx0; nx <= cx1; nx++) {
           if (nx < 0 || ny < 0 || nx >= ART_W || ny >= ART_H) continue;
-          const k = ny * ART_W + nx;
-          if (seen[k]) continue;
-          seen[k] = 1; out.push([nx, ny]);
+          const k = cellKey(nx, ny);
+          if (seen.has(k)) continue;
+          seen.add(k); out.push([nx, ny]);
         }
       }
     }
@@ -315,15 +333,15 @@ export function letterBoxCells(ch, x0, y0, x1, y1) {
    correct — there is no centre CELL in 16, only a centre EDGE. */
 export function mirrorCells(cells, on) {
   if (!on) return cells;
-  const seen = new Uint8Array(ART_W * ART_H);
+  const seen = new Set();   /* v2.3.2463: see cellKey */
   const out = [];
   for (let i = 0; i < cells.length; i++) {
     const x = cells[i][0], y = cells[i][1];
     for (const nx of [x, ART_W - 1 - x]) {
       if (nx < 0 || nx >= ART_W) continue;
-      const idx = y * ART_W + nx;
-      if (seen[idx]) continue;
-      seen[idx] = 1; out.push([nx, y]);
+      const idx = cellKey(nx, y);
+      if (seen.has(idx)) continue;
+      seen.add(idx); out.push([nx, y]);
     }
   }
   return out;
