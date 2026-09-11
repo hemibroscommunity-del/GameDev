@@ -23,7 +23,10 @@ import { hairColorTarget } from './traits/hairColorCatalog.js';
 import { hatColorTarget } from './traits/hatColorCatalog.js';
 import { facialHairColorTarget } from './traits/facialHairColorCatalog.js';
 import { shirtColorTarget } from './traits/shirtColorCatalog.js';
-import { shirtArtForDir, sanitizeShirtArt, inkedArt } from './traits/playerArt.js';   /* v2.3.1938; v2.3.1940 + pants/tattoo */
+import {
+  shirtArtForDir, headArtForDir, torsoArtForDir, pantsArtForDir,   /* v2.3.2464 */
+  sanitizeShirtArt, inkedArt,
+} from './traits/playerArt.js';   /* v2.3.1938; v2.3.1940 + pants/tattoo */
 import { getPattern, parsePattern, sanitizePattern } from './traits/patternCatalog.js';   /* v2.3.1941 */
 import { composeShirt } from './playerDecal.js';   /* v2.3.1938; v2.3.1941 one compositor for colour + pattern + print */
 import { SPRITE_VERSION } from './playerSprites.js';
@@ -577,12 +580,30 @@ export async function drawCharacterPortrait(canvas, opts) {
      so unlike the shirt print they go in with the recolour rather than after it.
      Same caller contract as `shirtArt`: an explicit value means "this player's",
      absent means this device's own.  No mirror -- see the shirt note below. */
-  const _pantsArt = (opts && opts.pantsArt !== undefined) ? sanitizeShirtArt(opts.pantsArt) : inkedArt('pants');
-  const _tattooArt = (opts && opts.tattooArt !== undefined) ? sanitizeShirtArt(opts.tattooArt) : inkedArt('tattoo');
+  /* ═══ v2.3.2464: THE STORE PATH RESOLVES THE FACING ═══
+     Owner: "designs on the back don't carry to the preview character bro on
+     the pedestal."  It read `pants`, `tattoo` and `tattooFace` flat, whichever
+     way the figure was turned, so a back drawing never appeared anywhere and a
+     front one wrapped round onto the back.  Measured on all eight facings of
+     the creator's pedestal before the fix: the front drawing at full strength
+     on every one, and zero pixels of any back canvas.
+
+     THE CALLER CONTRACT IS UNCHANGED, and that is the whole design: an
+     explicit value (even '') still means "this player's, already decided" --
+     which is what PlayerPaint's editor pane relies on, because it chooses the
+     side from its own Front/Back switch rather than from the facing.  Only the
+     `undefined` branch changed, and only from "the front canvas" to "the canvas
+     this facing shows" -- the same rule shirtArtForDir has applied on the line
+     below since v2.3.1939, now written once per canvas in playerArt beside it.
+
+     The ARM has no such branch on purpose: an arm is the same arm from behind
+     (playerSkins' artForFacing says so in the same words). */
+  const _pantsArt = (opts && opts.pantsArt !== undefined) ? sanitizeShirtArt(opts.pantsArt) : pantsArtForDir(DIR);
+  const _tattooArt = (opts && opts.tattooArt !== undefined) ? sanitizeShirtArt(opts.tattooArt) : torsoArtForDir(DIR);
   /* v2.3.1949: the face and arm canvases follow the same caller contract -- an
      explicit value (even '') means "this player's", undefined means "read the
      local store", which is what keeps every preview live for free. */
-  const _faceArt = (opts && opts.faceTattooArt !== undefined) ? sanitizeShirtArt(opts.faceTattooArt) : inkedArt('tattooFace');
+  const _faceArt = (opts && opts.faceTattooArt !== undefined) ? sanitizeShirtArt(opts.faceTattooArt) : headArtForDir(DIR);
   const _armArt = (opts && opts.armTattooArt !== undefined) ? sanitizeShirtArt(opts.armTattooArt) : inkedArt('tattooArm');
   /* v2.3.1941: the trouser pattern rides the same object. */
   const _pantsPat = (opts && opts.pantsPattern !== undefined)

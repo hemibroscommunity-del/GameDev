@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  backprev: () => import('./mp-backprev.mjs'), /* v2.3.2464: the pedestal preview turns round and so do the drawings */
   offgrid: () => import('./mp-inkoffgrid.mjs'), /* v2.3.2463: a placed design drags off the edge and is clipped */
   inkreach: () => import('./mp-inkreach.mjs'), /* v2.3.2461: the pants squares ARE the trousers, and the shirt's run further down */
   statgrid: () => import('./mp-statgrid.mjs'), /* v2.3.2441: the Points screen is a 4+3+2 grid, in less room */
