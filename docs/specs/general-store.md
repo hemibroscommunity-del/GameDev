@@ -134,6 +134,39 @@ that keeps the rebuild's `list()` finite) · 60 s sweep interval, 20
 listings resolved per pass · browse page 20, capped at 40 · minimum bid
 increment 1 · maximum price 999,999.
 
+## The client (v2.3.2476)
+
+| Where | What |
+|---|---|
+| `src/ui/storeApi.js` | the one door to the worker: room + token plumbing, `storeEnabled()` (the `_serverCaps.store` gate) |
+| `src/ui/mobile/dash/ItemDetailPopup.jsx` | the **Sell** action and the inline price sheet; the anchor demoted to a header chip |
+| `src/ui/panels/buildings/StorePanel.jsx` | the shelf: `buildingPanel === 'store'`, grouped by the bag's own `CATEGORIES` |
+| `src/ui/panels/buildings/VendorPanel.jsx` | the **door** — a "Player store" row at the top of the general store building |
+| `src/ui/panels/buildings/ExchangePanel.jsx` | the same link, and the deletion of the legacy self-credit path |
+| `src/ui/mobile/StoreToast.jsx` + `storeToastBus.js` | "your thing sold", pushed from `gameEvents.js` on an `inbox_delivered` entry whose `source` is `market` |
+
+**The door matters.** Twelve building panels are written and only two have a
+prop on the current town map — the forge and the general store
+(`worldProps.js`); the MARKETPLACE building that opens the Exchange has no
+door at all, which is why `mp-market` has skipped its UI half for versions.
+So the store hangs off the general store building, which is both the
+building it belongs in and one a player can actually walk into.
+Shopkeeper Bro's own shelf is unchanged; the player store is a row above it.
+
+**The legacy self-credit path is gone** from `ExchangePanel` (v2.3.2476).
+It ran whenever a response arrived without `settled: true` and moved coins
+and stash entries itself — the deploy-order fallback from v2.3.1118, which
+rule zero says exists "to be deleted once every worker in production
+advertises the capability". Every worker has settled the order book for
+hundreds of versions; what remained was a client that still knew how to pay
+itself.
+
+**Selling never mutates locally.** The Sell sheet posts a key (or a stash
+index) and a price; the goods leave the bag on the worker's side and the
+client redraws off the `player_state` echo. The stash index is re-resolved
+against the live stash immediately before sending, for the reason
+v2.3.2341 records on the Equip button.
+
 ## Attach points
 
 - `server/src/store.js` — the mixin (`Object.assign(GameRoom.prototype,
@@ -144,6 +177,11 @@ increment 1 · maximum price 999,999.
 - `src/ui/panels/DevPanel.jsx` — `CAP_GATES` entry.
 - `server/test/market.test.mjs` — the store section (both surfaces are
   tested in one file so they can be shown not to interfere).
+- `tools/qa/mp/mp-market.mjs` — two real browsers against the real HTTP
+  surface: list, bid, outbid refund, accept, buy now, take down, and the
+  seller's notice.
+- `tools/qa/mp/mp-store.mjs` — the screen: the bag's Sell button, the price
+  sheet, the walk to the door, the shelf, and the take-down.
 
 ## Defaults taken (confirm)
 
@@ -153,3 +191,7 @@ increment 1 · maximum price 999,999.
 - Listings expire after 24 h, matching the order book.
 - Any stackable the player holds is listable (the same posture trading
   takes — there is no blocked-key list).
+- The store's door is the general store building (the marketplace building
+  has no prop on the town map); the Exchange links across to it too.
+- The sale notice fires for the old Exchange's sales as well, since both
+  surfaces settle with `source: 'market'`.

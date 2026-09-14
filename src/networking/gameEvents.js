@@ -15,6 +15,7 @@ import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3
 import { _onBroNonce, _onBroResult } from './broWallet.js'; /* v2.3.1576 */
 import { shopBus } from '../ui/mobile/shopBus.js';   /* v2.3.2050 */
 import { capeStatusBus } from '../ui/mobile/capeStatusBus.js'; /* v2.3.2118 */
+import { storeToastBus } from '../ui/mobile/storeToastBus.js'; /* v2.3.2476 */
 import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
 import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is a legacy number under prog3 */
@@ -1251,6 +1252,22 @@ export function processGameEvent(type, payload, S, deps) {
                   text: '📫 You received ' + _what + (_e.note ? ' (' + _e.note + ')' : ''),
                   ts: Date.now()
                 }]);
+                /* ═══ v2.3.2476: A SALE IS THE ONE DELIVERY YOU WAIT FOR ═══
+                   The store and the order book both settle the seller's gold
+                   through _creditPlayer with source 'market' and a note saying
+                   what sold and for how much (server/src/store.js), so the
+                   notice needs nothing new on the wire -- only somewhere to be
+                   seen.  The chat line above stays and is still the record;
+                   this is the same sentence as a card that shows itself for six
+                   seconds, because chat on a phone mid-fight is not a
+                   notification.
+                   NARROW ON PURPOSE: only 'market'.  Every other delivery keeps
+                   the chat line alone -- the daily reward was made silent
+                   deliberately (v2.3.2037) and a toast would put it back,
+                   louder. */
+                if (_e.source === 'market') {
+                  storeToastBus.push('You received ' + _what + (_e.note ? ' \u2014 ' + _e.note : ''));
+                }
               }
               if (_inbEntries.length && setChatLog) setChatLog(_toConsumableArray(S.chatLog));
               if (payload && payload.queued) {
