@@ -34,6 +34,7 @@ import {
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
 import { marketMethods } from './market.js';
+import { storeMethods } from './store.js';   /* v2.3.2475: the per-listing general store */
 import { shopMethods } from './shop.js';   /* v2.3.2047: Shopkeeper Bro's public pile */
 // v2.3.1119 (heavy-systems PR4): server-settled trades -- the relay
 // handshake stays, but the room intercepts it and moves the goods
@@ -222,6 +223,16 @@ async function routeHttp(request, env) {
     if (url.pathname.startsWith('/api/market')) {
       const mktRoom = url.searchParams.get('room') || 'brotown-1';
       return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(mktRoom)).fetch(request);
+    }
+
+    /* v2.3.2475: the general store rides the same route shape as the order
+       book above, and for the same reason -- its escrow mutates the wallets
+       and stashes this room owns, so it has to be the room that answers.
+       Separate path so the two surfaces can be reasoned about (and rate-
+       limited, and retired) independently. */
+    if (url.pathname.startsWith('/api/store')) {
+      const stRoom = url.searchParams.get('room') || 'brotown-1';
+      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(stRoom)).fetch(request);
     }
 
     if (url.pathname.startsWith('/api/leaderboard')) {
@@ -4014,6 +4025,10 @@ export class GameRoom {
     if (url.pathname.startsWith('/api/market')) {
       return this._marketFetch(request);
     }
+    // v2.3.2475: general-store HTTP surface -- see store.js.
+    if (url.pathname.startsWith('/api/store')) {
+      return this._storeFetch(request);
+    }
     // v2.3.1126: arena HTTP surface (same fold -- see gladiator.js).
     if (url.pathname.startsWith('/api/arena')) {
       return this._arenaFetch(request);
@@ -5142,6 +5157,7 @@ Object.assign(GameRoom.prototype, chatLaneMethods); /* v2.3.2136 */
 Object.assign(GameRoom.prototype, broVerifyMethods); /* v2.3.1576 */
 Object.assign(GameRoom.prototype, eventCapeMethods); /* v2.3.2026 */
 Object.assign(GameRoom.prototype, marketMethods);
+Object.assign(GameRoom.prototype, storeMethods);   /* v2.3.2475: the general store */
 Object.assign(GameRoom.prototype, shopMethods);   /* v2.3.2047 */
 // v2.3.1119: trade settlement mixin (same pattern).
 Object.assign(GameRoom.prototype, tradeMethods);
