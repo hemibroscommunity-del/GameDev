@@ -250,7 +250,30 @@ export const GameApp = () => {
        object — truthy — making every window focus a hard rebuild and undoing
        the v2.3.1593 no-restart-on-focus fix.  pageshow IS a real restore, so
        it stays hard; focus is not, so it stays soft. */
-    const onPageShow = () => onResume(true);
+    /* v2.3.2492: ...and it has to ARM THE RECLAIM as well, which is the half
+       that was missing.  onResume alone resumes the context and re-kicks the
+       music, and against the failure a bfcache return actually produces --
+       iOS handing the audio session to another app -- that is a no-op: the
+       context reports 'running', the graph looks healthy, and the sound has
+       no route to the speaker.  Only reclaimIfNeeded (in a real gesture) can
+       repair that, and it only runs if something armed it.
+       noteHidden -> noteVisible arms it after 2 s away, but that pair never
+       ran here: iOS does not reliably fire visibilitychange on the way out of
+       a bfcache freeze (see the note above, and wsClient's "when iOS bothers
+       to fire it"), so there is no _hiddenAt to measure and noteVisible
+       measures an absence of nothing.  A persisted pageshow IS a freeze and
+       thaw of unknown length, so it is treated as a long one -- noteRestored.
+       A non-persisted pageshow is an ordinary load, so it goes down the
+       measured path, which arms only if a hide really was recorded. */
+    const onPageShow = (e) => {
+      if (BT_AUDIO) {
+        try {
+          if (e && e.persisted) BT_AUDIO.noteRestored();
+          else BT_AUDIO.noteVisible();
+        } catch (_e) {}
+      }
+      onResume(true);
+    };
     const onFocus = () => onResume(false);
     window.addEventListener('pageshow', onPageShow);
     window.addEventListener('focus', onFocus);
