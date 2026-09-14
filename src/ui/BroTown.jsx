@@ -51,7 +51,7 @@ import { startBuildWatch } from '@/game/buildWatch.js';
 import { TouchControls, RBTN_BODY_BG, RBTN_BODY_BG_HOT, RKNOB_BG, RKNOB_BG_HOT } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack */
-import { GESTURE_TOOL_URLS, gestureDemo01, gestureCue01 } from '@/game/gesturePose.js'; /* v2.3.2245: the tool strips the button face plays; gestureDemo01 v2.3.2384 */
+import { GESTURE_TOOL_URLS, gestureDemo01, gestureCue01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245: the tool strips the button face plays; gestureDemo01 v2.3.2384; extractionMeter01 v2.3.2501 (shared with the bar above the head) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 
@@ -5200,8 +5200,16 @@ export var BroTown = function BroTown(_ref0) {
             if (_ex) {
               var _c = _ring.firstChild;
               var _frac, _col;
-              if (_ex.status === 'ready') { _frac = Math.max(0, Math.min(1, _ex.progress || 0)); _col = 'rgba(89,191,145,.95)'; }
-              else { var _span = Math.max(1, (_ex.windowOpensAt || 0) - (_ex.startedAt || 0)); _frac = Math.max(0, Math.min(1, (Date.now() - (_ex.startedAt || 0)) / _span)); _col = 'rgba(216,168,95,.55)'; }
+              /* v2.3.2501: the two fractions come from extractionMeter01
+                 (gesturePose.js) now, because the new bar above the
+                 character's head shows the SAME wind-up and the same strokes.
+                 Two meters on two copies of the arithmetic drift, and the
+                 drift is the thing a player notices.  The ring's own
+                 behaviour is unchanged: amber sweep for the wind-up, green
+                 sweep for the strokes, each from 0. */
+              var _m = extractionMeter01(_ex, Date.now());
+              if (_ex.status === 'ready') { _frac = _m.reps; _col = 'rgba(89,191,145,.95)'; }
+              else { _frac = _m.windup; _col = 'rgba(216,168,95,.55)'; }
               /* r = 40% of the box: circumference in the SVG's own units --
                  the box is square, so a percentage radius resolves against
                  its width; stamp the dash as a fraction of 2*pi*r in px. */

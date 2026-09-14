@@ -64,6 +64,46 @@ const DEMO_CYCLE_MS = { mining: 700, woodcutting: 700, fishing: 450, cooking: 16
    the demonstration back while the window is still open. */
 const DEMO_HOLD_MS = 600;
 
+/* ═══ v2.3.2501: ONE READING OF HOW FAR ALONG A HARVEST IS ═══
+ *
+ * Owner: a bar above the character's head that fills through the wind-up,
+ * waits at the top for the window, and finishes as the strokes land.
+ *
+ * The button's ring already computes exactly this (BroTown's harvest face),
+ * and the rule for a second meter showing the same thing is that it must not
+ * own a second timer: two clocks for one event drift, and the drift is what a
+ * player sees.  So the arithmetic moves HERE, both meters read it, and the
+ * button's behaviour is unchanged -- it still shows the wind-up and then the
+ * strokes as two separate sweeps of the ring.
+ *
+ * `bar01` is the world bar's single continuous reading:
+ *   waiting  0 -> 0.95  over startedAt -> windowOpensAt
+ *   ready     0.95      until the first stroke registers
+ *   reps      0.95 -> 1 as ex.progress runs to full
+ * The 95% stall is the point: the bar says "nearly" and then waits for YOU,
+ * rather than completing and leaving nothing to explain the pause.  `ready`
+ * has had NO timeout since v2.3.1416, so that wait is unbounded and a still
+ * bar would read as a hang -- which is why the drawing side pulses it (see
+ * effectsRenderer's _drawWindupBar) instead of leaving it frozen.
+ *
+ * Returns null when there is nothing to show. */
+export const WINDUP_STALL_01 = 0.95;
+
+export function extractionMeter01(ex, now) {
+  if (!ex) return null;
+  const t = (typeof now === 'number') ? now : Date.now();
+  const span = Math.max(1, (ex.windowOpensAt || 0) - (ex.startedAt || 0));
+  const windup = Math.max(0, Math.min(1, (t - (ex.startedAt || 0)) / span));
+  const reps = Math.max(0, Math.min(1, ex.progress || 0));
+  const ready = ex.status === 'ready';
+  return {
+    ready,
+    windup,
+    reps,
+    bar01: ready ? (WINDUP_STALL_01 + (1 - WINDUP_STALL_01) * reps) : (WINDUP_STALL_01 * windup),
+  };
+}
+
 export function gestureDemo01(ex, now) {
   if (!ex || ex.status !== 'ready') return null;
   /* TWO CLOCKS, AND THEY ARE NOT THE SAME EPOCH.  `_gestureMovedAt` is stamped

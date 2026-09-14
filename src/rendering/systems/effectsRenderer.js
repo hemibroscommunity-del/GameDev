@@ -22,7 +22,7 @@ import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */ } from '@/data/index.js';
-import { gesturePose01 } from '@/game/gesturePose.js'; /* v2.3.2245 */
+import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2501 (the wind-up bar reads the button ring's own numbers) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
@@ -9669,7 +9669,103 @@ export class EffectsRenderer {
        pace (gesturePose01).  The mining strike sparks + clink fire from the
        pump slam (ExtractionSwipeLayer onSlam), so nothing here is needed for
        them either. */
+    /* v2.3.2501: the wind-up bar over whichever figure is on screen -- see
+       _drawWindupBar.  Last, because it reads the stand-in sprites' final
+       transforms to find the top of the head. */
+    this._drawWindupBar(S, ex, now);
     void x; void y; void chopSign;
+  }
+
+  /* ═══ v2.3.2501: THE WIND-UP, OVER THE CHARACTER'S HEAD ═══
+   *
+   * Owner: a progress bar above the head that fills while the harvest winds
+   * up, and finishes as the strokes land.
+   *
+   * WHY IT IS NEEDED AT ALL.  The wind-up is 2-10 seconds long (base 4), and
+   * the only thing that has ever shown it is a thin ring on the right button
+   * -- under the player's own thumb, at the edge of the screen, while their
+   * eyes are on the character.  Then `ready` arrives and WAITS, with no
+   * timeout at all since v2.3.1416, so a player who does not notice the
+   * button can stand there indefinitely believing the game has stopped.
+   *
+   * THE 95% STALL IS THE WHOLE POINT, and it is why the bar does not simply
+   * fill to the top: at 95% it says "nearly, now do your part", and the last
+   * sliver is the reps.  A bar that completed and then sat there would be
+   * indistinguishable from the hang it is supposed to rule out -- which is
+   * also why the head of the bar BREATHES while it waits.  A still bar at a
+   * stall is a frozen bar to anyone looking at it.
+   *
+   * ONE TIMER, NOT TWO: the fractions come from extractionMeter01
+   * (gesturePose.js), the same function the button's ring reads.  Two meters
+   * with two copies of the arithmetic drift apart, and the drift is what gets
+   * reported.
+   *
+   * WHERE "THE HEAD" IS depends on the skill, because woodcutting and cooking
+   * HIDE the real body and put a stand-in on screen instead (entityRenderer's
+   * _chopHide, v2.3.846/853).  So the anchor is whichever figure is actually
+   * drawn: the stand-in's own top for those two (read off its live transform,
+   * so it rides the zone's perspective curve for free), and the body's own
+   * height above the player's feet for mining and fishing.  Anchoring all
+   * four to the player would have floated the bar over empty grass while the
+   * lumberjack worked at a tree several tiles away.
+   *
+   * Drawn on cueGfx: cleared once per frame at the top of
+   * _updateExtractionCue, and in gestureFront, which is the layer that sits in
+   * FRONT of the trees (v2.3.1765) -- a bar over a lumberjack's head that a
+   * canopy can hide is worse than no bar. */
+  _drawWindupBar(S, ex, now) {
+    const gfx = this.cueGfx;
+    if (!gfx || !ex || !S || !S.player) return;
+    const m = extractionMeter01(ex, Date.now());
+    if (!m) return;
+    /* The zone's perspective curve at the FIGURE's feet, so the bar shrinks
+       with the bro on a vista map exactly as the stand-ins do (v2.3.2287). */
+    const pscale = zonePlayerScale(S.currentZone, S.player.x, S.player.y, TILE);
+    let cx = S.player.x;
+    let topY = S.player.y - STANDIN_REF_BODY_H * pscale;
+    const standIn = (ex.skill === 'woodcutting') ? this.chopSprite
+      : (ex.skill === 'cooking') ? this.cookSprite : null;
+    if (standIn && standIn.visible && standIn.texture) {
+      /* anchor (0.5, 1) = the figure's feet, so its crown is one drawn height
+         up.  Read off the sprite rather than recomputed from the constants,
+         because the two would have to be kept in step by hand. */
+      cx = standIn.x;
+      topY = standIn.y - Math.abs(standIn.scale.y) * (standIn.texture.height || 220);
+    }
+    /* 46 x 8 world px: the monster/peer health bar is 44 x 13 in its own
+       container units (entityRenderer), so this reads as the same family of
+       object at a glance -- same width, slimmer, because it is a secondary
+       meter and it must not be mistaken for health. */
+    const W = 46 * pscale, H = 8 * pscale;
+    const x0 = cx - W / 2, y0 = topY - 12 * pscale;
+    if (!(W > 1 && H > 0.5)) return;   /* a speck on a vista rim: draw nothing */
+    const r = Math.min(H / 2, 3 * pscale);
+    /* track: the Lantern Slate `well` over a hairline border, the same trough
+       every other meter in the game sits in (docs/LANTERN-SLATE-SPEC.md). */
+    gfx.roundRect(x0, y0, W, H, r).fill({ color: 0x121B20, alpha: 0.72 });
+    gfx.roundRect(x0, y0, W, H, r).stroke({ width: Math.max(1, pscale), color: 0xEEF2EB, alpha: 0.24 });
+    const fillW = Math.max(0, Math.min(1, m.bar01)) * W;
+    if (fillW > 0.5) {
+      /* brass while it winds up (the accent), green once it is YOUR turn --
+         the same two colours the button's ring has always used for these two
+         phases, so the two meters read as one thing. */
+      gfx.roundRect(x0, y0, fillW, H, r).fill({ color: m.ready ? 0x59BF91 : 0xD8A85F, alpha: 0.95 });
+    }
+    /* THE BREATHING HEAD.  Only while the bar is stalled -- ready, with no
+       stroke counted yet.  Once the reps start moving the bar moves, and a
+       moving bar needs no help proving it is alive. */
+    if (m.ready && m.reps <= 0.0001) {
+      const pulse = 0.35 + 0.45 * (0.5 + 0.5 * Math.sin(now / 260));
+      const capW = Math.max(2 * pscale, H);
+      gfx.roundRect(x0 + fillW - capW, y0, capW, H, r).fill({ color: 0xF0C878, alpha: pulse });
+    }
+    /* v2.3.2501 QA probe: the fill fraction and phase, neither of which a
+       screenshot can read off an anti-aliased 46px bar. */
+    if (typeof window !== 'undefined') {
+      window.__btWindupBar = { bar01: +m.bar01.toFixed(3), windup: +m.windup.toFixed(3),
+        reps: +m.reps.toFixed(3), ready: m.ready, skill: ex.skill,
+        x: +cx.toFixed(1), y: +y0.toFixed(1), w: +W.toFixed(1) };
+    }
   }
 
   clear() {
