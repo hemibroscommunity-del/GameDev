@@ -2692,6 +2692,17 @@ BT_AUDIO.SFX_MANIFEST = {
      "great" cut-down sound; wired into the extraction reward in
      lifeSkillRewards.js. */
   'tree-fall':     '/audio/tree-fall.mp3',
+  /* ═══ v2.3.2490: THE COIN PICKUP, AT LAST A SOUND ═══
+     Picking up gold has been SILENT since v2.3.1103, when the owner
+     removed every procedurally-synthesised sound ("worse than nothing") by
+     turning beep() into a no-op -- which also silenced collect(), which is
+     two beeps, which is what the pickup played.  Nobody noticed because the
+     call sites still read like they made a noise.
+     Owner-supplied file ("Spilled Coins", freesound_community id 101296;
+     see CREDITS.md).  New `loot` group, same eager-load as every other
+     entry here, which is what satisfies the animation/asset preloading law
+     -- no lazy first-use fetch on the frame a coin is grabbed. */
+  'coin-pickup':   '/sfx/loot/coin-pickup.mp3',
 };
 
 /* Regular sword-hit alternation. The two samples cycle so a flurry of hits

@@ -5843,16 +5843,28 @@ export var BroTown = function BroTown(_ref0) {
                        piles the pet could never claim. */
                     var _petFFA = loot.isDeathDrop && loot.ownerOnlyUntil && Date.now() > loot.ownerOnlyUntil;
                     if (!_petFFA && loot.recipients && !loot.recipients.includes(S.myId)) return true;
-                    /* Shares _pickupPending with the manual walk-over
-                       path (groundLoot.js) so pet + player never
-                       double-send for one pile; same 5 s watchdog
-                       clears a lost request. */
-                    if (loot._pickupPending && loot._pickupSentAt && Date.now() - loot._pickupSentAt > 5000) {
-                      loot._pickupPending = false;
+                    /* v2.3.2490: THE PET'S IN-FLIGHT FLAG IS ITS OWN.
+                       This used to share `_pickupPending` with the manual
+                       walk-over path in groundLoot.js, reasoning that pet +
+                       player should never double-send for one pile.  What it
+                       actually bought was a pet request BLOCKING the
+                       player's own hands: the pet fires from 80 px away, the
+                       worker refuses it (`no-pet` when the active pet is not
+                       a number server-side -- and `no-pet` is not one of the
+                       fast re-arms), and the flag then sat set for the full
+                       5 s watchdog while the player stood on the pile
+                       pressing nothing, because the pile was "pending".
+                       A double-send costs one refused request; the shared
+                       flag cost the pickup.  Separate flag, separate
+                       watchdog; the worker settles the race for us (the
+                       loser gets already-claimed / no-pile, which the
+                       reject handler now drops the local pile on). */
+                    if (loot._petPickupPending && loot._petSentAt && Date.now() - loot._petSentAt > 5000) {
+                      loot._petPickupPending = false;
                     }
-                    if (!loot._pickupPending) {
-                      loot._pickupPending = true;
-                      loot._pickupSentAt = Date.now();
+                    if (!loot._petPickupPending) {
+                      loot._petPickupPending = true;
+                      loot._petSentAt = Date.now();
                       if (S.channel) {
                         try { S.channel.send({ type: 'loot_pickup', payload: { lootId: loot.lootId, zone: S.currentZone, viaPet: true } }); } catch (e) {}
                       }
