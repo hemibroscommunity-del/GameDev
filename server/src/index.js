@@ -914,8 +914,23 @@ export class GameRoom {
        the directional shield before the swing connects.  Same
        constant gates both "stop advancing" (line ~262) and "attack
        if in range" (line ~292) so they stay paired -- monster halts
-       and attacks at the same ring. */
-    this.MONSTER_ATTACK_RANGE = 45;
+       and attacks at the same ring.
+
+       ═══ v2.3.2482: 45 -> 72, "the full length of the sword" ═══
+       Owner ask (backlog triage, D14): monsters crowded right into the
+       player's body, which is both unreadable and unfair -- you cannot face
+       a threat you are standing inside.  72 is GS_OUTER_RADIUS, the player's
+       OWN melee reach (monsterCombat.js), so the ring a monster stops at is
+       now exactly the ring the player can hit from.
+
+       THE SECOND HALF IS NOT OPTIONAL.  This constant gates the monster's
+       swing reach as well as its stopping distance -- both here (the tick
+       loop's ATTACK_RANGE literal) and in _basicAtkGeom, which is what the
+       wind-up re-measures against.  Widening the stop ring alone would park
+       every monster outside its own reach and they would never land a hit
+       again, which is the same class of bug the v2.3.1639 knockback note
+       below describes.  All three move together or none of them do. */
+    this.MONSTER_ATTACK_RANGE = 72;
     this.MONSTER_ATTACK_CD = 1500; // ms
     /* v2.3.1731: parry (see _parryOpen for why the window is 250, not 150) */
     this.PARRY_WINDOW_MS = 250;
@@ -1940,7 +1955,11 @@ export class GameRoom {
         // regardless of approach angle.  Y_SCALE=3.0 -> 15 px N-S
         // stopping distance (per user: "needs to be about half of
         // what it is now" from the 30 px v2.3.96 ring).
-        const ATTACK_RANGE = 45;
+        /* v2.3.2482: 45 -> 72 (GS_OUTER_RADIUS, the player's own melee
+           reach).  PAIRED with this.MONSTER_ATTACK_RANGE in the constructor
+           and with _basicAtkGeom in telegraph.js -- see the constructor's
+           note for why all three must carry the same number. */
+        const ATTACK_RANGE = 72;
         const Y_SCALE = 3.0;
         /* v2.3.1409 (owner: "snowmen attacks are lethargic — I can stand
            there for 5 seconds and they won't attack me once").  Geometry
@@ -1955,7 +1974,11 @@ export class GameRoom {
            reads as passive.  Relax the ring for snowmen only: range 70
            with Y_SCALE 1.5 puts the collision equilibrium (dy≈42 ->
            scaled 63) inside reach on every approach angle. */
-        const _atkRange = m.arch === 'snowman' ? 70 : ATTACK_RANGE;
+        /* v2.3.2482: the snowman's relaxed ring was a WIDENING of the old
+           45px default; now that the default is 72 it would be a narrowing,
+           so take whichever is larger.  His 1.5 Y-scale still does the work
+           the note above describes (the tall collision body). */
+        const _atkRange = m.arch === 'snowman' ? Math.max(70, ATTACK_RANGE) : ATTACK_RANGE;
         const _yScale = m.arch === 'snowman' ? 1.5 : Y_SCALE;
         // Effective aggro range -- bumps to 1200 px when the sticky
         // override is active, so a bow-snipe from anywhere on screen

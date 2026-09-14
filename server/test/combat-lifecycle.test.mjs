@@ -2026,11 +2026,14 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     !!fodderTele && fodderTele.payload.phase === 'telegraph'
     && fodderTele.payload.ability === 'lunge',
     fodderTele && fodderTele.payload);
+  /* v2.3.2482: the stalker kit was deleted (the pounce), so "slowest" is now
+     measured against every kit that EXISTS rather than against a hardcoded
+     pair -- which is the property the assertion was always about, and it
+     survives the next kit being added or removed. */
   check('telegraph: fodder\'s tell is the SLOWEST — a beginner\'s reaction time',
-    TELEGRAPH.KITS.fodder.windupMs > TELEGRAPH.KITS.brute.windupMs
-    && TELEGRAPH.KITS.fodder.windupMs > TELEGRAPH.KITS.stalker.windupMs,
-    { fodder: TELEGRAPH.KITS.fodder.windupMs, brute: TELEGRAPH.KITS.brute.windupMs,
-      stalker: TELEGRAPH.KITS.stalker.windupMs });
+    Object.entries(TELEGRAPH.KITS).every(([arch, k]) =>
+      arch === 'fodder' || TELEGRAPH.KITS.fodder.windupMs > k.windupMs),
+    Object.fromEntries(Object.entries(TELEGRAPH.KITS).map(([a, k]) => [a, k.windupMs])));
   check('telegraph: fodder carries NO damage spike (a cue, not a threat)',
     TELEGRAPH.KITS.fodder.dmgMult === 1.0
     && TELEGRAPH.KITS.fodder.dmgMult < TELEGRAPH.KITS.brute.dmgMult,
@@ -2063,6 +2066,31 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     basicWindupMs('swarm') === Math.min(...Object.keys(BASIC_WINDUP.MS)
       .filter((k) => k !== 'DEFAULT').map((k) => BASIC_WINDUP.MS[k])),
     { swarm: basicWindupMs('swarm'), table: BASIC_WINDUP.MS });
+
+  /* ══ v2.3.2482: THE STALKER'S POUNCE IS GONE (owner ask) ══
+     Stalkers spawn only in sky / Desert Winds and are re-skinned as mummies
+     there, so a 140px leap onto the player had no art to explain it.  The
+     kit is deleted; the archetype keeps the universal basic wind-up swing,
+     which is the half that must not go with it. */
+  check('pounce: the stalker kit is gone',
+    !TELEGRAPH.KITS.stalker, TELEGRAPH.KITS.stalker);
+  check('pounce: ...and no kit declares that kind any more (the leap branch is dead)',
+    Object.values(TELEGRAPH.KITS).every((k) => k.kind !== 'pounce'),
+    Object.values(TELEGRAPH.KITS).map((k) => k.kind));
+  check('pounce: ...but a stalker still has its basic wind-up',
+    basicWindupMs('stalker') > 0, basicWindupMs('stalker'));
+  {
+    /* Drive a real stalker through a real tick: it must swing, not cast. */
+    armBrute();
+    tm.arch = 'stalker';
+    tm._tgNextAt = 0;                     /* a kit WOULD be allowed to fire */
+    tick();
+    const st = abilities();
+    check('pounce: a stalker in reach winds up an ordinary SWING, never a cast',
+      st.length > 0 && st.every((e) => e.payload.phase !== 'telegraph')
+        && st.some((e) => e.payload.ability === 'swing'),
+      st.map((e) => e.payload));
+  }
 
   /* ═══ v2.3.2215: EVERY BASIC ATTACK HAS A WIND-UP ═══
      The kits above cover three archetypes on a multi-second cooldown; the
