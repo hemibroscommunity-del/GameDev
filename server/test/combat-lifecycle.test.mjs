@@ -2304,5 +2304,173 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   psB.z = 'meadow';
 }
 
+/* ══ v2.3.2481: the killing blow's REAL number, and the staff splash ══
+   Two owner asks that share one handler.
+
+   (1) `dmg` on monster_hit has always been the CREDITED damage — clamped to
+       the monster's remaining HP — so the last hit of every fight printed a
+       sliver.  `rawDmg` is the roll before that clamp, sent only when the two
+       differ so an ordinary hit costs no extra bytes.  Nothing server-side
+       reads it back: contribution and trained XP must stay on the credited
+       number, which is what these assertions pin.
+
+   (2) Basic staff bolts splash 50% to nearby monsters.  It lives on the
+       server because the client sends one monster_damage per target and the
+       worker rolls FULL damage for each — a client-side splash would be an
+       exploit.  Pinned here: it fires for a basic bolt, not for a special,
+       not for melee; it is bounded by the target cap and the radius; and it
+       never exceeds half the primary's own roll. */
+{
+  psA.z = 'meadow'; psA.dead = false; psA.dying = false;
+  psA.weapon = { type: 'sword', tierMult: 1 };
+  psA.staffWeapon = { type: 'staff', tierMult: 1 };
+  psA.rangedWeapon = null;
+  psA.activeSlot = 'staff';
+  psA.weaponSpecs = {};
+
+  /* The hit-cadence floor (v2.3.1134) is per (player, monster) and this
+     block lands several hits on the SAME monster inside one millisecond, so
+     clear it between hits.  The floor itself is pinned positively in
+     anticheat.test.mjs; nothing here is about it. */
+  const nocad = () => { psA._monHitCad = new Map(); };
+
+  /* Fresh monsters pushed into the LIVE meadow list rather than reused from
+     the `meadowMonsters` capture at the top of the file: by this point in the
+     suite the room has re-spawned the zone at least once, so that capture is
+     no longer the array _handleMonsterDamage looks in (the handler resolves
+     by id out of room.monsters[zone], and a stale reference is simply never
+     found).  Every monster below is this section's own. */
+  const liveMeadow = room.monsters.meadow;
+  let _sxN = 0;
+  const freshMon = () => {
+    const sp = room._spawnZoneMonsters('meadow');
+    const m = sp && sp[0];
+    if (!m) throw new Error('combat-lifecycle: meadow spawns nothing');
+    m.id = 'sm-meadow-s' + (_sxN++);
+    m.alive = true; m.hp = m.maxHp = 99999; m.dmgByPlayer = {};
+    m._wanderPausedUntil = Date.now() + 600000;
+    liveMeadow.push(m);
+    return m;
+  };
+
+  /* ── (1) rawDmg ── */
+  const mo = freshMon();
+  mo.hp = 1;
+  mo.x = 5000; mo.y = 5000;                 /* alone: no splash to confuse it */
+  room.eventBuffer.length = 0;
+  nocad();
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: mo.id, zone: 'meadow', slot: 'melee' } }));
+  const hitO = room.eventBuffer.find((e) => e.type === 'monster_hit');
+  check('rawDmg: an overkill hit reports the full roll beside the credited one',
+    !!hitO && hitO.payload.dmg === 1 && typeof hitO.payload.rawDmg === 'number'
+      && hitO.payload.rawDmg > 1,
+    hitO && { dmg: hitO.payload.dmg, rawDmg: hitO.payload.rawDmg });
+  /* The whole point of the clamp: rawDmg is a LABEL.  HP came down by the
+     credited amount only, so the bar cannot go negative and the §7
+     contribution share (which is damage / max hp) cannot be inflated by
+     swinging hard at a monster with one point left. */
+  check('rawDmg: hp still came down by the CLAMPED amount, not the raw roll',
+    !!hitO && mo.hp === 0, { hp: mo.hp, dmg: hitO && hitO.payload.dmg, raw: hitO && hitO.payload.rawDmg });
+
+  const mf = freshMon();
+  mf.x = 5000; mf.y = 5000;
+  room.eventBuffer.length = 0;
+  nocad();
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: mf.id, zone: 'meadow', slot: 'melee' } }));
+  const hitF = room.eventBuffer.find((e) => e.type === 'monster_hit');
+  check('rawDmg: a non-overkill hit sends no rawDmg at all (wire stays small)',
+    !!hitF && hitF.payload.rawDmg === undefined, hitF && hitF.payload);
+
+  /* The shared status/burst/splash pipeline reports the same way — a burn
+     tick or an Element Burst that lands the last point of damage is exactly
+     the case the owner complained about. */
+  const md = freshMon();
+  md.hp = 1; md.x = 5000; md.y = 5000;
+  room.eventBuffer.length = 0;
+  room._applyMonsterDot('meadow', md, 50, 'pa', 'burn');
+  const hitD = room.eventBuffer.find((e) => e.type === 'monster_hit');
+  check('rawDmg: a DoT/burst tick reports its full roll too',
+    !!hitD && hitD.payload.dmg === 1 && hitD.payload.rawDmg === 50 && md.hp === 0,
+    hitD && hitD.payload);
+
+  /* ── (2) staff splash ── */
+  /* Park three monsters on top of each other and a fourth far away, so the
+     radius itself is under test and not just the loop. */
+  const sTgt = freshMon();
+  const sN1 = freshMon();
+  const sN2 = freshMon();
+  const sFar = freshMon();
+  const park = (m, x, y) => {
+    m.alive = true; m.hp = m.maxHp = 99999; m.dmgByPlayer = {};
+    m.x = x; m.y = y; m._wanderPausedUntil = Date.now() + 600000;
+  };
+  park(sTgt, 9000, 9000);
+  park(sN1, 9020, 9000);                    /*  20px away: inside 60 */
+  park(sN2, 9000, 9040);                    /*  40px away: inside 60 */
+  park(sFar, 9400, 9000);                   /* 400px away: outside   */
+
+  room.eventBuffer.length = 0;
+  nocad();
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: sTgt.id, zone: 'meadow', slot: 'staff' } }));
+  const sHits = room.eventBuffer.filter((e) => e.type === 'monster_hit');
+  const hitOn = (m) => sHits.find((e) => e.payload.monsterId === m.id);
+  const primary = hitOn(sTgt);
+  check('staff splash: the bolt\'s own target takes an ordinary, unsplashed hit',
+    !!primary && !primary.payload.splash, primary && primary.payload);
+  check('staff splash: both neighbours inside the radius are hit and tagged',
+    !!hitOn(sN1) && hitOn(sN1).payload.splash === true
+      && !!hitOn(sN2) && hitOn(sN2).payload.splash === true,
+    sHits.map((e) => ({ id: e.payload.monsterId, splash: e.payload.splash })));
+  check('staff splash: a monster outside the radius is untouched',
+    !hitOn(sFar) && sFar.hp === sFar.maxHp, { hp: sFar.hp });
+  check('staff splash: the splash is half the primary roll, never more',
+    !!primary && !!hitOn(sN1)
+      && hitOn(sN1).payload.dmg <= Math.ceil(primary.payload.dmg * 0.5) + 1
+      && hitOn(sN1).payload.dmg >= 1,
+    { primary: primary && primary.payload.dmg, splash: hitOn(sN1) && hitOn(sN1).payload.dmg });
+  check('staff splash: it carries the staff mark so the popup wears the right icon',
+    !!hitOn(sN1) && hitOn(sN1).payload.slot === 'staff', hitOn(sN1) && hitOn(sN1).payload);
+  check('staff splash: the neighbours are pulled onto the attacker (no free farming)',
+    sN1._aggroOverrideTarget === 'pa' && sN1._aggroOverrideUntil > Date.now(),
+    { t: sN1._aggroOverrideTarget, until: sN1._aggroOverrideUntil });
+
+  /* A SPECIAL does not splash: it is already a three-bolt cone. */
+  park(sTgt, 9000, 9000); park(sN1, 9020, 9000); park(sN2, 9000, 9040);
+  room.eventBuffer.length = 0;
+  nocad();
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: sTgt.id, zone: 'meadow', slot: 'staff', special: true } }));
+  const spHits = room.eventBuffer.filter((e) => e.type === 'monster_hit');
+  check('staff splash: a SPECIAL bolt does not splash',
+    spHits.length === 1 && spHits[0].payload.monsterId === sTgt.id,
+    spHits.map((e) => e.payload.monsterId));
+
+  /* And neither does a sword, standing in exactly the same place. */
+  park(sTgt, 9000, 9000); park(sN1, 9020, 9000); park(sN2, 9000, 9040);
+  room.eventBuffer.length = 0;
+  nocad();
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: sTgt.id, zone: 'meadow', slot: 'melee' } }));
+  const mlHits = room.eventBuffer.filter((e) => e.type === 'monster_hit');
+  check('staff splash: melee never splashes',
+    mlHits.length === 1 && mlHits[0].payload.monsterId === sTgt.id,
+    mlHits.map((e) => e.payload.monsterId));
+
+  /* Detonation widens the radius the same way it widens the bolt's own hit
+     circle on the client (+1%/pt, capped at 100): the far monster that was
+     out of reach at 60px comes into reach at 120px. */
+  park(sTgt, 9000, 9000); park(sFar, 9100, 9000);   /* 100px: outside 60, inside 120 */
+  park(sN1, -50000, -50000); park(sN2, -50000, -50000);
+  psA.weaponSpecs = { staff: { detonation: 100 } };
+  room.eventBuffer.length = 0;
+  nocad();
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: sTgt.id, zone: 'meadow', slot: 'staff' } }));
+  const detHits = room.eventBuffer.filter((e) => e.type === 'monster_hit');
+  check('staff splash: Detonation widens the radius (+1%/pt, capped at 100 pts)',
+    room._staffSplashMult(psA) === 2
+      && !!detHits.find((e) => e.payload.monsterId === sFar.id),
+    { mult: room._staffSplashMult(psA), ids: detHits.map((e) => e.payload.monsterId) });
+  psA.weaponSpecs = {};
+  psA.activeSlot = 'melee'; psA.staffWeapon = null;
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);
