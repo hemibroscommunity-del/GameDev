@@ -920,3 +920,70 @@ reads this document from `origin/claude/game-backlog-triage-akaog2` (PR
 #613) until that PR merges. Branches: `claude/lane-L-loot`,
 `claude/lane-C-controls-bow`, `claude/lane-S-server-combat`,
 `claude/lane-M-store`.
+
+### 5.8 Owner answers to §0.4 (2026-09-14, later) — every decision is now closed
+
+Sessions read this subsection as the final word; it supersedes the
+defaults stated earlier in this document.
+
+- **D1 normalization → DISPLAY-ONLY rescaling** (the owner's lean, and
+  the recommendation: it delivers the mental model at a fraction of the
+  cost, with no gameplay risk, and `k = 1` restores today's numbers). Spec:
+  one client-side display scale `k = 5` (the lowest level-1 roll is the
+  sword's 5.0) applied by ONE exported helper in `src/data/gameSystems.js`
+  to every player-facing combat number: damage popups, monster HP text and
+  bar labels, player HP, heals and potion values, damage-range / DPS /
+  tooltip readouts, PvP and duel numbers, chat combat lines. Internal math,
+  the wire and the server are untouched. Consistency rule: a non-kill
+  popup shows the change in DISPLAYED HP — `ceil(before/k) − ceil(after/k)`
+  — so the hits add up to the bar; the kill popup shows `round(rawDmg/k)`
+  (lane S PR 1 adds `rawDmg`). Mana and stamina are NOT scaled (default;
+  confirm). Assigned to **lane S as its PR 4**, replacing the design note.
+  Surfaces to audit: `gameEvents.js` popups, `entityRenderer.js` HP text
+  (~7766 — change only the call site; lane H's nameplate work adopts the
+  same helper), `HeroExpanded.jsx` stats, item cards and tooltips
+  (`calcDisplayDps`), `display-dps.test.mjs` pins, harnesses `mp-fakenum`,
+  `mp-dmgicon`, `mp-hpbar`, `mp-resbars`, `mp-critpreview`.
+- **D2 yes**: player HP is displayed ÷k too. **D3 yes**: a tap lock is
+  absolute. **D9 yes**: block left of the disc, abilities above. **D12
+  yes**: resistance covers every elemental-pipeline damage the player
+  takes. **D13 yes**: 60 px, basic bolts only, 50 %. **D14 yes**: 72 px
+  stop with matching reach. **D16 yes**: the four difficulty bands as
+  stated in §5.2.
+- **D4 / "attacking you" → the plate's BACKGROUND FILL turns bright red
+  while the monster is attacking you; the border rules do not change.**
+  Combined with "the plate disappears in active combat", the default
+  precedence is: hidden while the monster is YOUR engaged target (locked,
+  or hit by you within the last 3 s); otherwise bright-red fill while
+  `_atkMeUntil` is live; otherwise the difficulty border (confirm).
+- **D6 → hide the cape on the dodge pose INCLUDING the loot bend**
+  (reverses v2.3.2129 in full: the cape hung in mid-air while the player
+  crouched). Add `dodge` (and the pickup pose if it is separate) back to
+  `_CAPE_HIDDEN_POSES`.
+- **D7 → greatsword at southwest goes BEHIND the body for jog/idle AND for
+  the attack swing** (it is in the right hand, facing away from the camera;
+  the character should occlude the swing instead of the blade passing
+  through the body). Southeast and east are unchanged.
+- **D10 → landscape zoom: town/worldview only**; combat zones stay.
+- **D11 / store phases 2–3 → proceed after the owner reviews phase 1.**
+  Lane M stops after its two PRs; M2 (server gear stash) and M3 (gear
+  listings) are queued behind that review.
+- **Coin sound → royalty free, owner-supplied.** The CREDITS.md row says
+  so; no "confirm" marker.
+- **Lil Bro → skipped for now.** Drop it from lane A.
+- **Mana bar in landscape → reuse the existing block-style bar asset**
+  (the mana blocks that shipped with the stamina block asset). Lane H3.
+- **Shirtless-bow "boxed squares" → resolved** (it was a tattoo, working
+  as designed). Drop it.
+- **Copper feet → the body's SHOES poke out beneath the copper leggings.**
+  The masked-body erase for the legs slot (6 px dilation) or the greaves'
+  boot rows; lane A2 measures with `qa-gear-sheet.mjs` and fixes the
+  erase/boot coverage, with 20× renders in the PR.
+- **Tee shoulder, east → while JOGGING, not in combat; the owner suspects
+  the shield's layering.** Lane A1 reproduces jog-east with and without a
+  shield equipped; if the bare shoulder appears only with the shield, the
+  cause is the shield placement's body clone or mask (the same family as
+  v2.3.2134's capsule), not the tee art. Only then fall back to §2.7's
+  hand-drawn-frames answer.
+- **Debris → use the fallback art for now.** Lane F1 makes the fallback
+  burst and decals last about 5 s and read clearly; no sheets needed.
