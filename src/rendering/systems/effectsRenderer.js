@@ -12,12 +12,88 @@ import { Assets, BitmapFont, BitmapText, CanvasTextMetrics, Container, Graphics,
    consumed by preloadWorldAnimations (preloadAnimations.js). */
 const _fxPreload = [];
 
+/* ═══ v2.3.2500: A STAND-IN IS THE SAME BRO, SO IT IS THE SAME SIZE ═══
+ *
+ * The walking body is drawn through _applyBuildScale (entityRenderer): the
+ * zone's perspective scale TIMES this bro's build (buildCatalog -- height on
+ * y, frame on x).  This file had zero references to it, so every figure that
+ * REPLACES the body for a few seconds -- the lumberjack, the cook, the
+ * fire-lighter, and the peer twins of all three -- was drawn at the average
+ * build while the body it stands in for was not.  That is a figure that
+ * changes size the moment it starts working, which is what the chop stand-in's
+ * "about 10% too small" report is (see the backlog triage, chop size): the
+ * answer is the build multiplier, NOT a fourth bump of CHOP_STANDIN_H, which
+ * has already been moved three times (84 -> 112 -> 95 -> 104.5) chasing it.
+ *
+ * TODAY IT IS EXACTLY 1.0 AND CHANGES NOTHING ON SCREEN.  HEIGHT_CATALOG and
+ * FRAME_CATALOG were each locked to a single 1.00 entry in v2.3.1995/1996
+ * ("keep the medium build only"), and an unknown id answers 1 by the same
+ * deploy-order rule, so a peer on an older client relaying `hg: 'tall'` also
+ * renders 1.0.  This is the plumbing, put in where it was missing, so that the
+ * day a second height goes back into that catalog the stand-ins move with the
+ * body instead of being found a version later.
+ *
+ * NOT APPLIED TO THE SWORD AND BOW STAND-INS, on purpose: those size
+ * themselves from S._swordBodyH / S._swordFootY, which entityRenderer computes
+ * from `display.scale.y` -- the scale _applyBuildScale has ALREADY written.
+ * Multiplying again there would square the build. */
+const _localBuild = () => buildScale(getBuildHeight(), getBuildFrame());
+const _peerBuild = (o) => buildScale(o && o.buildHeight, o && o.buildFrame);
+
 /* v2.3.1800: which of the three bow frames a HELD block sits on.  0 is still
    raising and 2 is the release recoil; 1 is drawn and steady, which is the one
    that reads as bracing behind a shield. */
 const BLOCK_POSE_FRAME = 1;
 const _fxLoad = (url) => { const p = Assets.load(url); _fxPreload.push(p); return p; };
 export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload); }
+
+/* ═══ v2.3.2500: THE SKIN-TONE PROBE, FOR THE STAND-INS THAT HAD NONE ═══
+ *
+ * v2.3.1788 published the mean skin RGB of the baked SWORD and BOW sheets on
+ * window.__btStandInSkin so mp-standinskin could assert that a bro does not
+ * change complexion when he swings.  The gathering stand-ins -- chop, cook,
+ * fire -- go through their own bakes and were outside that coverage, which is
+ * how the chopper kept the artist's paint for eleven versions without a test
+ * noticing.  Same reading, same object, so one harness covers all five.
+ *
+ * WHY THE BAKED CANVAS AND NOT A SCREENSHOT: the town's cobblestone passes the
+ * same warm-tone test this classifier uses (measured: ~51k "skin" pixels in an
+ * 80x90 crop containing one bro), so a world screenshot gives identical
+ * numbers before and after a fix.  The canvas is the thing that changed.
+ *
+ * _bakeBodyStrip keeps its own inline copy of this test rather than calling
+ * here: it shares ONE walk of a multi-megapixel canvas with the v2.3.2431 ink
+ * probe, and splitting them would add a second full read on a phone. */
+/* `opts` is the SAME ratio window the sheet's own bake was given (recolorStandInSkin).
+   It matters for the fire strip and only for it: the probe's warm-tone test is
+   the body pipeline's, and a campfire passes it -- measured, the flame and its
+   glow drag the fire figure's reported mean to [226,145,88] when the BODY it
+   recoloured is at the walking palette.  Measuring with the window the bake
+   used means the probe counts the pixels the bake actually retinted, which is
+   the thing under test.  Same trick, same reason as v2.3.1723's gear fit:
+   "fitting into the body's ALPHA silhouette gives nonsense" because the halo is
+   in it. */
+function _probeStandInSkin(key, cv, opts) {
+  try {
+    if (typeof window === 'undefined' || !cv) return;
+    const o = opts || {};
+    const maxBR = o.maxBR != null ? o.maxBR : Infinity;
+    const minGR = o.minGR != null ? o.minGR : 0;
+    const maxGR = o.maxGR != null ? o.maxGR : Infinity;
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0, sr = 0, sg = 0, sb = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
+      if (!(a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25)) continue;
+      if (b / r > maxBR || g / r < minGR || g / r > maxGR) continue;
+      n++; sr += r; sg += g; sb += b;
+    }
+    if (!window.__btStandInSkin) window.__btStandInSkin = {};
+    window.__btStandInSkin[key] = n
+      ? { n, rgb: [Math.round(sr / n), Math.round(sg / n), Math.round(sb / n)] }
+      : { n: 0 };
+  } catch (e) { /* a probe never breaks a bake */ }
+}
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
@@ -32,6 +108,7 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.j
 import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
+import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
 import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
@@ -1699,15 +1776,27 @@ export class EffectsRenderer {
     this._foodIconTex = {};   /* iconUrl -> Texture | 'loading' */
     this._chopFrames = [];
     this._chopLastFrame = -1;  // strike-frame edge tracker for the chop sfx
+    /* v2.3.2500: the decoded images Pixi is already holding for the two strips
+       above, kept so the skin bake can read them WITHOUT a second fetch.  The
+       cook and the fire-lighter load their own copy and deliberately drop it
+       (a rebake re-fetches from the HTTP cache) because holding ~4MB of RGBA
+       for a menu action is the trade spriteScale.js warns about -- but these
+       two sheets stay resident either way, because a PEER's lumberjack is
+       drawn from them, so reading them costs nothing and a skin change rebakes
+       with no network at all.  Measured with mp-coldload: fetching them a
+       second time showed up immediately as 0.64 MB of duplicate download,
+       which is the exact family of waste that harness exists to catch. */
+    this._chopSrc = Object.create(null);
     /* v2.3.1469: ?v= added — the strip itself changed (transparent eye
        holes filled white, owner report) and it had no cache-bust, so
        returning players would have kept the stale copy forever. */
-    _fxLoad('/sprites/skills/chop-strip.webp?v=2.3.1469').then((tex) => {
+    const _chopBody = _fxLoad('/sprites/skills/chop-strip.webp?v=2.3.1469').then((tex) => {
       const FW = 240, FH = 220;  // per-frame size of chop-strip.png
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) {
         this._chopFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
       }
+      this._chopSrc.body = tex.source && tex.source.resource;   /* v2.3.2500 */
     }).catch((err) => console.warn('[chop-strip] load failed', err));
     /* v2.3.1468: legs-erased lumberjack, swapped in while leg armour is
        equipped — the cook-strip-legless pattern (v2.3.1114).  The
@@ -1716,13 +1805,21 @@ export class EffectsRenderer {
        (v2.3.1466) read as "duplicating another body beneath the legs"
        (owner).  With the legless body the armor legs ARE the legs. */
     this._chopLeglessFrames = [];
-    _fxLoad('/sprites/skills/chop-strip-legless.webp?v=2.3.1469').then((tex) => {
+    const _chopLegless = _fxLoad('/sprites/skills/chop-strip-legless.webp?v=2.3.1469').then((tex) => {
       const FW = 240, FH = 220;
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) {
         this._chopLeglessFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
       }
+      this._chopSrc.legless = tex.source && tex.source.resource;   /* v2.3.2500 */
     }).catch((err) => console.warn('[chop-strip-legless] load failed', err));
+    /* v2.3.2500: the two arrays above stay RAW on purpose -- they are what a
+       PEER's lumberjack is drawn from (the SPEC table in
+       _updateRemoteExtraction), and a peer must not wear your complexion.  YOUR
+       own chopper draws from the skin-baked pair below. */
+    this._chopSkinFrames = [];
+    this._chopLeglessSkinFrames = [];
+    this._loadChopSkinStrips(_chopBody, _chopLegless);
 
     /* v2.3.1131: gear layers for the woodcutting chopper (mirror of the cook
        stand-in).  Shirt / leg-armour / chest-plate drawn over the lumberjack when
@@ -2495,6 +2592,135 @@ export class EffectsRenderer {
       this._gearStripFrame('chest', 'steelplate', pose, dir, fw, 0);
       this._gearStripFrame('legs', 'steelgreaves', pose, dir, fw, 0);
     }
+    /* ═══ v2.3.2500: AND THE TWO POSES EVERY FIGHT BEGINS WITH ═══
+       The sword swing and the bow shot were the last stand-ins whose gear
+       strips were still CUT on first use, and the paragraph above says in as
+       many words why warming them anywhere else does not work:
+       preloadCombatGear (combatGear.js) fills the Pixi ASSETS cache, while
+       _gearStripFrame keeps its own SLICE cache and returns null for a frame
+       while it schedules the cut -- so a hot Assets cache still draws nothing
+       on the first frame.  That is the first swing and the first shot of every
+       session drawn without the shirt or the armour, which is the same
+       first-use load the preloading law forbids (CLAUDE.md, TRAPS #12) and the
+       same shape of bug as the pickup pose in this change.
+       The SHIRT is the slot that needed this most: combatGear.js warms chest
+       and legs only ("Only chest + legs layer during combat"), so the shirt
+       sheets were not even in the Assets cache to be sliced from.
+       Frame widths are READ from _swordCfg / _bowCfg rather than written out
+       again -- those tables already own each facing's frame box, and a literal
+       here is exactly the copy TRAPS §51 is about.  Both tables are built
+       earlier in this constructor, so they are populated by now. */
+    for (const [_map, _fallbackPose] of [[this._swordCfg, 'swing'], [this._bowCfg, 'bowshot']]) {
+      for (const _dirKey of Object.keys(_map)) {
+        const _cfg = _map[_dirKey];
+        const _gp = _cfg.gearPose || _fallbackPose;
+        /* tshirt / steelplate / steelgreaves are the only items with sheets,
+           and every recolour (copperplate, coppergreaves...) resolves to this
+           same art through gearArtSafe inside _gearStripFrame -- so nothing
+           here is guessed and no recoloured id needs its own warm. */
+        this._gearStripFrame('shirt', 'tshirt', _gp, _dirKey, _cfg.fw, 0);
+        this._gearStripFrame('chest', 'steelplate', _gp, _dirKey, _cfg.fw, 0);
+        this._gearStripFrame('legs', 'steelgreaves', _gp, _dirKey, _cfg.fw, 0);
+      }
+    }
+  }
+
+  /* ═══ v2.3.2500: THE LUMBERJACK WEARS THE PLAYER'S SKIN TOO ═══
+   *
+   * The cook got this in v2.3.1710 and the fire-lighter in v2.3.1713, both
+   * after the owner reported "has the wrong skin color".  The chopper is the
+   * third figure of the same set and it was simply never done: chop-strip.webp
+   * went through a plain _fxLoad and was drawn as painted, so the moment you
+   * started woodcutting your bro's complexion changed to the artist's -- while
+   * his hat, hair and beard (_placeSkillTraitsOn, v2.3.867) kept following you,
+   * which is what makes it read as a bug rather than a style.
+   *
+   * WHAT IS DIFFERENT FROM THE COOK, AND WHY.
+   *
+   * 1. The raw slices STAY.  Cook and fire bake over the one array they own,
+   *    and the SPEC table in _updateRemoteExtraction hands that same array to
+   *    a PEER's stand-in -- which is why the note there records that a peer's
+   *    cook has quietly worn YOUR skin since v2.3.1710.  Repeating that here
+   *    would mean every lumberjack in the zone wearing the complexion of
+   *    whoever happens to be watching.  So this bakes into a SECOND pair of
+   *    arrays, your own figure draws those, and peers keep the raw art they
+   *    have always been drawn with.  (Doing peers properly means one bake per
+   *    peer skin, which is the resident-memory trade the cook's notes refuse.)
+   *
+   * 2. Only the TWELVE frames that are drawn.  Both the local chopper
+   *    (CHOP_BASE 12, CHOP_COUNT 12) and the peer row (`from: 12, count: 12`)
+   *    play source frames 12..23 of the 24-frame strip -- the first twelve are
+   *    the upswing the owner cut in v2.3.1131 and are never shown.  Baking the
+   *    whole strip would add 5.1 MB of resident RGBA per sheet for pixels
+   *    nothing draws; cropping to the played range costs half that, on the
+   *    platform whose OOM history is written up in spriteScale.js.  The
+   *    baked arrays are therefore indexed by `k` (0..11), not by the body
+   *    index -- the same two-index split v2.3.2303 had to make for the gear
+   *    strips, for the same reason.
+   *
+   * 3. The skin recolour is the stand-in recipe (recolorStandInSkin), not the
+   *    whole-body one: the axe head and the wood chips are props that the
+   *    body pipeline's seeds would retint.  Default skin falls back to the
+   *    explicit tan for the same reason cook and fire do -- "leave the art as
+   *    painted" is only coherent while every sheet is painted in one palette,
+   *    and this one is not.
+   *
+   * 4. It bakes from the image the RAW load already decoded (this._chopSrc),
+   *    not from a fetch of its own.  Cook and fire each pull their own copy
+   *    because their raw texture is replaced by the bake and nothing else
+   *    holds the source; here the raw sheets stay resident for the peers
+   *    (point 1), so a second fetch would be 0.64 MB of pure duplicate
+   *    download -- which is exactly what mp-coldload reported the first time
+   *    this was written with its own loader.  MEASURED, mean skin RGB against
+   *    the walking palette [186,122,68]: the art as painted is [222,124,59],
+   *    36 units off; after this bake it is [205,130,71], 19 off.
+   *
+   * PRELOADING IS LAW (CLAUDE.md): the bake is pushed onto _fxPreload, the
+   * list _fxLoad feeds and effectsAnimationsReady() awaits, so the intro gate
+   * holds for the RECOLOURED textures rather than baking mid-chop. */
+  _loadChopSkinStrips(bodyLoad, leglessLoad) {
+    /* The BAKE goes on the gate, not just the downloads: _fxLoad already
+       registered the two fetches, but effectsAnimationsReady() settling on
+       those says only that the art arrived.  Pushing this says the recoloured
+       textures exist before the intro overlay lifts, which is what the law
+       actually asks for (CLAUDE.md) -- the same reason _loadCookStrips pushes
+       its bake rather than relying on its loads. */
+    _fxPreload.push(Promise.all([bodyLoad, leglessLoad])
+      .then(() => { this._bakeChopStrips(); })
+      .catch((err) => console.warn('[chop-strip skin] bake failed', err)));
+    /* The character menu can change the skin mid-session; rebake exactly as
+       the cook and the fire-lighter do -- but from the images already in hand,
+       so this one costs no network at all. */
+    onSkinChange(() => { try { this._bakeChopStrips(); } catch (e) { /* never break a menu */ } });
+  }
+
+  _bakeChopStrips() {
+    const bodyImg = this._chopSrc && this._chopSrc.body;
+    const leglessImg = this._chopSrc && this._chopSrc.legless;
+    if (!bodyImg || !leglessImg) return;   /* a failed load: the raw art still draws */
+    /* skinTarget() returns null for the 'default' pick -- see the cook's bake
+       for why that cannot stand for a painted stand-in. */
+    const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
+    const FW = 240, FH = 220, FROM = 12, COUNT = 12;
+    for (const [key, img] of [['_chopSkinFrames', bodyImg], ['_chopLeglessSkinFrames', leglessImg]]) {
+      /* Crop to the played frames FIRST, then recolour: the classifier labels
+         connected blobs, and the cut lands on a frame boundary, so cropping
+         changes no blob and costs half the canvas. */
+      const src = document.createElement('canvas');
+      src.width = FW * COUNT; src.height = FH;
+      const sctx = src.getContext('2d');
+      sctx.imageSmoothingEnabled = false;
+      sctx.drawImage(img, FROM * FW, 0, FW * COUNT, FH, 0, 0, FW * COUNT, FH);
+      const cv = recolorStandInSkin(src, skinT, FH);
+      const source = Texture.from(cv).source;
+      source.scaleMode = 'linear';
+      const arr = [];
+      for (let i = 0; i < COUNT; i++) arr.push(new Texture({ source, frame: new Rectangle(i * FW, 0, FW, FH) }));
+      this[key] = arr;
+      /* v2.3.2500: the mp-standinskin probe, the same reading the sword and
+         bow bakes publish -- see _probeStandInSkin. */
+      _probeStandInSkin('/sprites/skills/chop' + (key === '_chopSkinFrames' ? '' : '-legless') + '-strip.webp', cv);
+    }
   }
 
   /* ═══ v2.3.1710: THE COOK WEARS THE PLAYER'S SKIN ═══
@@ -2567,6 +2793,7 @@ export class EffectsRenderer {
       const arr = [];
       for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * FW, 0, FW, FH) }));
       this[key] = arr;
+      _probeStandInSkin('/sprites/skills/cook' + (key === '_cookFrames' ? '' : '-legless') + '-strip.webp', cv);   /* v2.3.2500 */
     }
   }
 
@@ -2641,6 +2868,7 @@ export class EffectsRenderer {
       const arr = [];
       for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * FIRE_FW, 0, FIRE_FW, FIRE_FH) }));
       this._fireFrames = arr;
+      _probeStandInSkin('/sprites/skills/firemaking-strip.webp', cv, FIRE_SKIN_OPTS);   /* v2.3.2500: measured through the bake's own window -- see _probeStandInSkin */
     }).catch((err) => console.warn('[firemaking-strip] load failed', err));
   }
 
@@ -7435,7 +7663,11 @@ export class EffectsRenderer {
        fix, your figure this time. See the peer twin at _updateRemoteExtraction. */
     const pscale = zonePlayerScale(S.currentZone, S.player.x, S.player.y, TILE);
     const s = (FH / FIRE_FH) * pscale;
-    sp.scale.set(s, s);
+    /* v2.3.2500: ...times your build, as the walking body is (see _localBuild).
+       The sprite is anchored (0.5, 1) -- its feet -- so growing y grows the
+       figure upward and needs no lift, unlike the frame-centred body. */
+    const _b = _localBuild();
+    sp.scale.set(s * _b.sx, s * _b.sy);
     sp.x = S.player.x;
     sp.y = S.player.y + 6 * pscale;   /* the foot offset shrinks with the figure */
     /* v2.3.2287 QA probe -- the sibling of __btChopFigure, which the fire
@@ -7677,6 +7909,9 @@ export class EffectsRenderer {
          Same curve, same position, so the two now shrink together. */
       const pscale = zonePlayerScale(zone, ox, oy, TILE);
       const s = (spec.h / spec.fh) * pscale;   /* v2.3.1715: per-strip frame height, was a hardcoded 220 */
+      /* v2.3.2500: and THEIR build, relayed as hg/fr (peerCosmetics) and read
+         here exactly as entityRenderer reads it for their walking body. */
+      const _bR = _peerBuild(o);
       /* ═══ v2.3.2303: WHICH SIDE OF THE TRUNK ═══
          The local chopper flips to face the tree it is working (chopSign, off
          the node in _updateExtractionCue). A watcher has no node -- so this
@@ -7697,7 +7932,8 @@ export class EffectsRenderer {
         }
         if (_best) _sign = _best.x >= ox ? 1 : -1;
       }
-      sp.scale.set(_sign < 0 ? -s : s, s);
+      const _sxR = s * _bR.sx, _syR = s * _bR.sy;   /* v2.3.2500 */
+      sp.scale.set(_sign < 0 ? -_sxR : _sxR, _syR);
       sp.x = ox;
       sp.y = oy + 6 * pscale;                 /* foot offset shrinks with the figure */
       sp.visible = true;
@@ -8300,8 +8536,14 @@ export class EffectsRenderer {
       /* v2.3.1100: naked east grows the torso (sT) with the legs re-anchoring via
          torsoScale; the torso also drops by _torsoDY while the legs keep the
          un-nudged foot row (_baseFootY). */
-      const sT = sY * _torsoOnlyAdj;
-      const sgnT = mirror ? -(sY * _torsoOnlyAdj) : (sY * _torsoOnlyAdj);
+      /* v2.3.2500: their build, relayed as hg/fr -- height on y, frame on x,
+         exactly as entityRenderer scales their walking body.  The LOCAL swing
+         stand-in gets this for free (it sizes itself from S._swordBodyH, which
+         is computed from the display scale the build is already on); this one
+         computes its own scale from the zone curve, so it needs the term. */
+      const _bS = _peerBuild(o);
+      const sT = sY * _torsoOnlyAdj * _bS.sy;
+      const sgnT = (mirror ? -(sY * _torsoOnlyAdj) : (sY * _torsoOnlyAdj)) * _bS.sx;
       sp.scale.set(sgnT, sT);
       const _baseFootY = ((o.renderY != null) ? o.renderY : o.y) + REMOTE_SWING_FOOT_DY;
       sp.x = (o.renderX != null) ? o.renderX : o.x;
@@ -8350,7 +8592,11 @@ export class EffectsRenderer {
         const legTex = _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length];
         this._placeJogLegs(set.jogLegs, set.jogLegsGear, {
           legTex, gearFrame: getGearFrame('legs', eq.legs, 'jog', _jdir, _jfr),
-          cutRow: swordTorsoCutRow(cfgKey, fi), jdir: _jdir, jfr: _jfr, mir: _rmir, s: sY, x: sp.x, footY: _baseFootY,
+          /* v2.3.2500: the legs take the build too, or a tall peer swings with
+             an average pair of legs under him.  _placeJogLegs takes ONE scalar
+             for both axes, so it gets the height term -- the frame axis is
+             locked at 1.00 (buildCatalog, v2.3.1996) and has nothing to add. */
+          cutRow: swordTorsoCutRow(cfgKey, fi), jdir: _jdir, jfr: _jfr, mir: _rmir, s: sY * _bS.sy, x: sp.x, footY: _baseFootY,
           feetY: cfg.feetY, hasLegArmour: !!(eq.legs && eq.legs !== 'none'), legsItem: eq.legs, weapon: 'sword',
           seamLift: _seamLift, torsoScale: _torsoOnlyAdj, legSizeAdj: _legSizeAdj, legShiftX: _legShiftX, legShiftY: _legShiftY,
         });
@@ -8435,11 +8681,15 @@ export class EffectsRenderer {
          were a flat 0.45, so on a vista zone — where the curve runs to ~0.03 —
          a peer attacking drew a full-size figure over a speck.  Same curve,
          same inputs, so the stand-in and the body shrink together. */
-      const sY = REMOTE_BOW_SCALE * zonePlayerScale(
+      const _sYraw = REMOTE_BOW_SCALE * zonePlayerScale(
         S.currentZone || 'town',
         (o.renderX != null) ? o.renderX : o.x,
         (o.renderY != null) ? o.renderY : o.y, TILE);
-      const sgnX = mirror ? -sY : sY;
+      /* v2.3.2500: their build, as on the remote swing above and on their
+         walking body.  Height on y, frame on x. */
+      const _bB = _peerBuild(o);
+      const sY = _sYraw * _bB.sy;
+      const sgnX = (mirror ? -_sYraw : _sYraw) * _bB.sx;
       /* v2.3.1087: jogging legs while this remote is MOVING -- swap the body to the
          leg-erased torso strip and composite recolored jog legs under it (same
          _placeJogLegs helper + tuning as the local player).  Gate on the remote's
@@ -9433,7 +9683,17 @@ export class EffectsRenderer {
       const _chopLegsTex = this._gearStripFrame('legs', getEquip('legs'), 'chop', 'west', CHOP_GEAR_FW, k);
       const _chopLegsOn = !!_chopLegsTex
         && this._chopLeglessFrames.length === this._chopFrames.length;
-      sp.texture = (_chopLegsOn ? this._chopLeglessFrames : this._chopFrames)[fi];
+      /* ═══ v2.3.2500: YOUR OWN CHOPPER WEARS YOUR SKIN ═══
+         The skin-baked pair (_bakeChopStrips) holds ONLY the twelve played
+         frames, so it is indexed by `k`, while the raw art is a 24-frame strip
+         indexed by CHOP_BASE + k.  Two arrays, two indices -- picked together
+         here so they cannot be mixed up, exactly as v2.3.2303 had to do for
+         the gear strips.  Falls back to the raw art if the bake has not landed
+         (or failed): a figure in the artist's complexion is the old behaviour,
+         while no figure at all would be a new bug. */
+      const _chopSkinArr = _chopLegsOn ? this._chopLeglessSkinFrames : this._chopSkinFrames;
+      const _chopRawArr = _chopLegsOn ? this._chopLeglessFrames : this._chopFrames;
+      sp.texture = (_chopSkinArr.length === CHOP_COUNT) ? _chopSkinArr[k] : _chopRawArr[fi];
       /* v2.3.2287: the vista curve, as on the fire figure above and on the
          peer twin. Sampled at the STAND-IN's own spot, not the player's --
          the lumberjack stands at the tree, which on a perspective zone is a
@@ -9441,7 +9701,12 @@ export class EffectsRenderer {
       const _cx = node.x - chopSign * CHOP_OFFSET, _cy = node.y;
       const pscale = zonePlayerScale(S.currentZone, _cx, _cy, TILE);
       const s = (CHOP_H / 220) * pscale;
-      sp.scale.set(chopSign < 0 ? -s : s, s);  // flip to face the trunk
+      /* v2.3.2500: your build, as on the walking body (see _localBuild) -- the
+         answer to "the chopper is ~10% small", instead of a fourth bump of
+         CHOP_STANDIN_H. */
+      const _bW = _localBuild();
+      const _sx = s * _bW.sx, _sy = s * _bW.sy;
+      sp.scale.set(chopSign < 0 ? -_sx : _sx, _sy);  // flip to face the trunk
       sp.x = _cx;
       sp.y = _cy + 6 * pscale;
       sp.visible = true;
@@ -9467,7 +9732,12 @@ export class EffectsRenderer {
         if (!t) { spr.visible = false; return; }
         spr.anchor.set(0.5, 1); spr.texture = t;
         const sL = (CHOP_H / (t.height || 220)) * pscale;
-        spr.scale.set(chopSign < 0 ? -sL : sL, sL);
+        /* v2.3.2500: the ONE local gear placer that does not derive from
+           sp.scale carries the build itself, or the armour stays average-sized
+           over a taller lumberjack -- the same reasoning v2.3.2287 wrote here
+           for the zone curve. */
+        const sLx = sL * _bW.sx, sLy = sL * _bW.sy;
+        spr.scale.set(chopSign < 0 ? -sLx : sLx, sLy);
         spr.x = sp.x; spr.y = sp.y; spr.visible = true;
       };
       /* Shirt: paper-doll recolour -- the chop shirt art is a grayscale base, so
@@ -9598,7 +9868,8 @@ export class EffectsRenderer {
       /* v2.3.2287: the vista curve, as on the fire and chop figures. */
       const pscale = zonePlayerScale(S.currentZone, node.x, node.y, TILE);
       const s = (COOK_H / 220) * pscale;
-      sp.scale.set(s, s);
+      const _bC = _localBuild();   /* v2.3.2500: your build, as on the body */
+      sp.scale.set(s * _bC.sx, s * _bC.sy);
       /* The pan hangs to the figure's RIGHT, so this offset is what keeps it
          over the flames — it has to track COOK_H or the pan slides off the
          fire.  v2.3.1429 doubled it with the 2x; v2.3.1710 scales it back by

@@ -2850,11 +2850,39 @@ export const prewarmProgress = { done: 0, total: 0 };
    flash of default skin/pants the first time the player rolls.  That is the
    first-use hitch class CLAUDE.md's animation-preloading law exists to stop.
    Cost is 2 dirs x 9 frames = 18, against jog's ~140. */
-const PREWARM_POSES = ['stand', 'jog', 'hit', 'mine', 'dodge'];
+/* v2.3.2500 (owner: "the first item you pick up you are shirtless for about
+   half a second", and the animation-preload LAW, CLAUDE.md / TRAPS #12):
+   + 'pickup' and + 'fish'.  The gear SHEETS for these two poses are warmed by
+   preloadGear (gearSheets.js, same change); this list is the other half of the
+   gate -- it walks the same (pose, dir, frame) grid the renderer will ask for
+   so the BODY bake and the armour composite are warm too. */
+const PREWARM_POSES = ['stand', 'jog', 'hit', 'mine', 'dodge', 'pickup', 'fish'];
 /* The gather poses are authored SOUTH-ONLY -- walking them through all five
    dirs would bake four empty frames per pose and log four 404s per slot.
    Dodge is authored south + east for the same reason (see playerSprites). */
-const prewarmDirs = (pose, dirs) => (pose === 'mine' ? ['south'] : pose === 'dodge' ? ['south', 'east'] : dirs);
+const prewarmDirs = (pose, dirs) => ((pose === 'mine' || pose === 'pickup' || pose === 'fish') ? ['south']
+  : pose === 'dodge' ? ['south', 'east'] : dirs);
+
+/* ═══ v2.3.2500: WARM THE FRAME THE RENDERER WILL ACTUALLY ASK FOR ═══
+ *
+ * Two poses do not take the plain recoloured body, and a prewarm that ignores
+ * that warms nothing while costing the cache:
+ *
+ *  - FISH draws the RAW sheet by design (getFrame('fish','south') at both the
+ *    local and the remote draw site; the pink rod and line are baked art and
+ *    the body-region recolour would mis-paint them, v2.3.2304).  The masked
+ *    cache keys on the SOURCE TEXTURE's uid, so baking from getBodyFrame here
+ *    would file the result under a texture the renderer never presents -- a
+ *    miss at fishing time AND an eviction out of the 520-entry cap.
+ *  - PICKUP is never masked at all: both draw sites read `pose === 'pickup'
+ *    ? tex : _maskedBodyFrame(...)` (v2.3.1057 -- the per-frame bake inside
+ *    the 0.5 s freeze was 29 GPU uploads in a burst).  So its frames are
+ *    warmed (body sheet + gear sheets, which IS what was missing) and the
+ *    mask bake is skipped, exactly as the renderer skips it.
+ *
+ * Both rules are stated as the render path's own conditions so the two can be
+ * grepped against each other rather than drifting. */
+const _prewarmMasks = (pose) => pose !== 'pickup';
 
 /* v2.3.701: plan the WHOLE intro workload up front so the loading bar is
    monotonic.  Previously each pass added its own count to `total` when it
@@ -2995,7 +3023,9 @@ export async function prewarmMaskedBodyFrames(opts) {
       const fc = playerFrameCount(pose, dir) || 1;
       for (let f = 0; f < fc; f++) {
         prewarmProgress.done++;
-        const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor(), localBodyArt(false));
+        /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks. */
+        const tex = (pose === 'fish') ? getFrame('fish', 'south', f)
+          : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor(), localBodyArt(false));
         if (!tex) continue;
         const worn = [];
         for (const sl of slots) {
@@ -3006,6 +3036,9 @@ export async function prewarmMaskedBodyFrames(opts) {
           }
         }
         if (!worn.length) continue;
+        /* v2.3.2500: the gear sheet above is the half this pose was missing;
+           the mask is not baked for a pose the renderer never masks. */
+        if (!_prewarmMasks(pose)) continue;
         /* v2.3.1399: the fullset figure replaces these frames at runtime —
            baking them only burns VRAM (see _fullsetCoversBake). */
         if (_fullsetCoversBake(worn, pose, dir)) continue;
@@ -3084,7 +3117,9 @@ export async function prewarmAltWornSets(opts) {
         for (let f = 0; f < fc; f++) {
           if (seq !== _altPrewarmSeq) return;
           if (fast) prewarmProgress.done++;
-          const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor(), localBodyArt(false));
+          /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks. */
+          const tex = (pose === 'fish') ? getFrame('fish', 'south', f)
+            : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor(), localBodyArt(false));
           if (!tex) continue;
           const worn = [];
           for (const [sl, id] of set.worn) {
@@ -3092,6 +3127,7 @@ export async function prewarmAltWornSets(opts) {
             if (gt) worn.push({ k: sl + ':' + id, tex: gt });
           }
           if (!worn.length) continue;
+          if (!_prewarmMasks(pose)) continue;   /* v2.3.2500: see _prewarmMasks */
           /* v2.3.1399: skip the full-steel family's figure-covered jog
              bakes here too (see _fullsetCoversBake). */
           if (_fullsetCoversBake(worn, pose, dir)) continue;
