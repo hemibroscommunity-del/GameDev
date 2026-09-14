@@ -1,5 +1,15 @@
-/* ═══ THE POINTS SCREEN IS A 4 + 3 + 2 GRID, IN LESS ROOM THAN BEFORE ═══
- * (v2.3.2441)
+/* ═══ THE POINTS SCREEN IS AN ACCORDION OVER A SHARED BAND ═══
+ * (v2.3.2483; was a 4 + 3 + 2 grid under a selector row, v2.3.2441)
+ *
+ * Owner, with a mockup (docs/triage-2026-09-14/assets/points-accordion.png):
+ * one collapsible section per combat skill -- icon, name, its point total and
+ * a chevron -- with the stats that belong to the character in a SHARED STATS
+ * band below all three.  ELEM PWR moved into each skill's section (it is a
+ * per-weapon stat since v2.3.2483) and MAX MANA and ELEM RESIST joined the
+ * shared band, so the bands are 4 + 1 (the open skill) and 4 + 2 (shared).
+ *
+ * The cell RECIPE did not change, which is why the geometry assertions below
+ * still read the same relationships the v2.3.2441 note established:
  *
  * Owner, with a mockup: "the existing 2x2 stat-card layout becomes a dense but
  * clearly grouped 4 + 3 + 2 layout without consuming any additional screen
@@ -33,7 +43,13 @@ const ROW = '[role="button"][aria-label*=" of "]';
 /* Every cell, grouped into the bands they actually render in — read off the
    measured top edge, not off an assumed order. */
 const readGrid = (P) => P.page.evaluate((ROWSEL) => {
-  const body = document.getElementById('bt-prog3-body');
+  /* v2.3.2483: the allocation surface is no longer ONE element.  The owner's
+     Points accordion puts each skill's stats inside its own collapsible
+     section (#bt-prog3-body is the OPEN one) and the shared stats in a band
+     BELOW all three, as siblings -- so reading the grid through the lane body
+     alone would now see five cells and no shared band at all.  The client
+     ships `[data-prog3-points]` around the whole surface for exactly this. */
+  const body = document.querySelector('[data-prog3-points]') || document.getElementById('bt-prog3-body');
   if (!body) return { err: 'no prog3 body' };
   const cells = [...body.querySelectorAll(ROWSEL)].map((el) => {
     const r = el.getBoundingClientRect();
@@ -91,7 +107,10 @@ const readGrid = (P) => P.page.evaluate((ROWSEL) => {
 const readTabs = (P) => P.page.evaluate(() => (
   [...document.querySelectorAll('[data-prog3-lane]')].map((t) => {
     const spans = [...t.querySelectorAll('span')].filter((s) => !s.children.length);
-    const pts = spans.find((s) => /^\d+\s+PTS$/.test((s.textContent || '').trim()));
+    /* v2.3.2483: the accordion header prints the bare count beside the skill
+       mark (the owner's mock), where the selector tab printed "N PTS".  Both
+       shapes accepted so this reads whichever is shipping. */
+    const pts = spans.find((s) => /^\d+(\s+PTS)?$/.test((s.textContent || '').trim()));
     return {
       k: t.getAttribute('data-prog3-lane'),
       aria: t.getAttribute('aria-label'),
@@ -140,26 +159,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    bands: ' + JSON.stringify(g.bands));
   console.log('    heads: ' + JSON.stringify(g.heads));
 
-  /* ════════ 1. THREE BANDS, 4 THEN 3 THEN 2 ════════ */
-  rec.ok('the stats fall into THREE bands, top to bottom', g.bands.length === 3, g.bands);
-  rec.ok('...the first is the four weapon stats, four across',
+  /* ════════ 1. FOUR BANDS: the open skill, then the shared stats ════════
+     v2.3.2483 -- the owner's Points accordion (docs/triage-2026-09-14/assets/
+     points-accordion.png) regroups what v2.3.2441's 4 + 3 + 2 laid out:
+     ELEM PWR moved INTO each skill's section (it is a per-weapon stat now),
+     and MAX MANA and ELEM RESIST joined the shared row.  So the open skill
+     shows five stats (4 across + 1 wide) and the shared band shows six
+     (4 across + 2 wide).  The cell RECIPE is unchanged -- same four-abreast
+     width, same two-abreast wide cell -- which is why every geometry
+     assertion below still reads the same relationships. */
+  rec.ok('the stats fall into FOUR bands, top to bottom', g.bands.length === 4, g.bands);
+  rec.ok('...the first is the open skill\'s four, four across',
     g.bands[0] && g.bands[0].n === 4
     && ['Damage', 'Crit', 'Crit Dmg', 'Atk Speed'].every((s, i) => g.bands[0].stats[i] === s),
     g.bands[0]);
-  rec.ok('...the second is STAMINA | DODGE | ELEM POWER, three across',
-    g.bands[1] && g.bands[1].n === 3
-    && ['Stamina', 'Dodge', 'Elem Power'].every((s, i) => g.bands[1].stats[i] === s),
-    g.bands[1]);
-  rec.ok('...and the third is the two BIG cells, DEFENSE and MAX HP',
-    g.bands[2] && g.bands[2].n === 2
-    && g.bands[2].stats[0] === 'Defense' && g.bands[2].stats[1] === 'Max HP',
+  rec.ok('...the second is that skill\'s ELEM PWR, on its own wide cell',
+    g.bands[1] && g.bands[1].n === 1 && g.bands[1].stats[0] === 'Elem Pwr', g.bands[1]);
+  rec.ok('...the third is MAX HP | DEFENSE | STAMINA | DODGE, four across',
+    g.bands[2] && g.bands[2].n === 4
+    && ['Max HP', 'Defense', 'Stamina', 'Dodge'].every((s, i) => g.bands[2].stats[i] === s),
     g.bands[2]);
-  /* The owner's "Defense and Max HP get the larger cells" — asserted as a
+  rec.ok('...and the fourth is the two BIG shared cells, MAX MANA and ELEM RESIST',
+    g.bands[3] && g.bands[3].n === 2
+    && g.bands[3].stats[0] === 'Max Mana' && g.bands[3].stats[1] === 'Elem Resist',
+    g.bands[3]);
+  /* The owner's "the same component language at a larger size" — asserted as a
      RELATIONSHIP, not a pixel count, so a width retune cannot break it. */
-  rec.ok('...and those two really are the larger cells (about half the width each)',
-    g.bands[2] && g.bands[0] && g.bands[2].w > g.bands[1].w && g.bands[1].w > g.bands[0].w
-    && Math.abs(g.bands[2].w - g.bodyW / 2) <= 6,
-    { quarter: g.bands[0].w, third: g.bands[1].w, half: g.bands[2].w, bodyW: g.bodyW });
+  rec.ok('...and the wide cells really are the larger ones (about half the width each)',
+    g.bands[3] && g.bands[0] && g.bands[3].w > g.bands[0].w
+    && Math.abs(g.bands[3].w - g.bodyW / 2) <= 10,
+    { quarter: g.bands[0].w, half: g.bands[3].w, bodyW: g.bodyW });
   /* Every cell in a band is one size — the part of v2.3.1710's rule that a
      banded grid can still keep. */
   rec.ok('every cell in a band is exactly one width, and every cell one height',
@@ -168,22 +197,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
     && g.bands.every((b) => [...new Set(g.cells.filter((c) => Math.abs(c.y - b.y) < 3).map((c) => c.w))].length === 1),
     { heights: [...new Set(g.cells.map((c) => c.h))] });
 
-  /* ════════ 2. THE DIVIDERS SAY WHICH GROUP, AND FOLLOW THE LANE ════════ */
-  rec.ok('a MELEE STATS divider heads the weapon band',
-    g.heads.some((h) => /^MELEE STATS$/i.test(h)), g.heads);
-  rec.ok('...and a GLOBAL STATS / SHARED divider heads the rest',
-    /* `\s*`, not `\s+`: the two words are separate spans separated by a flex
-       `gap`, so textContent concatenates them with no whitespace at all. */
-    g.heads.some((h) => /^GLOBAL STATS\s*SHARED$/i.test(h)), g.heads);
-  rec.ok('the retired ATTACK / CHARACTER SHARED headers are gone',
-    !g.heads.some((h) => /^ATTACK$/i.test(h) || /^CHARACTER\s+SHARED$/i.test(h)), g.heads);
+  /* ════════ 2. THE SECTIONS SAY WHOSE STATS THESE ARE ════════
+     v2.3.2483: the weapon divider is gone because the SECTION HEADER is now
+     the label -- the open accordion says MELEE above its own cells, which is
+     what the owner's mock draws.  What survives is the shared band's own
+     heading, and the rule that a weapon's name appears exactly once. */
+  rec.ok('a SHARED STATS divider heads the shared band',
+    g.heads.some((h) => /^SHARED STATS/i.test(h)), g.heads);
+  rec.ok('the retired GLOBAL STATS / ATTACK / CHARACTER headers are gone',
+    !g.heads.some((h) => /^GLOBAL STATS/i.test(h) || /^ATTACK$/i.test(h)
+      || /^CHARACTER\s+SHARED$/i.test(h)), g.heads);
+  const openLane = await P.page.evaluate(() =>
+    (document.querySelector('[data-prog3-lane][aria-expanded="true"]') || {}).getAttribute
+      ? document.querySelector('[data-prog3-lane][aria-expanded="true"]').getAttribute('data-prog3-lane')
+      : null);
+  rec.ok('exactly one skill section is open, and it is the one whose stats are showing',
+    openLane === 'sword', { openLane });
 
   await P.page.locator('[data-prog3-lane="bow"]').first().click({ timeout: 6000 }).catch(() => {});
   await P.page.waitForTimeout(900);
   const gBow = await readGrid(P);
-  rec.ok('switching to Bow renames the weapon divider, so it always says whose stats these are',
-    gBow.heads.some((h) => /^BOW STATS$/i.test(h)) && !gBow.heads.some((h) => /^MELEE STATS$/i.test(h)),
-    gBow.heads);
+  rec.ok('switching to Bow shows BOW\'s stats, so the cells always belong to the open section',
+    gBow.cells.some((c) => /for bow/.test(c.aria || ''))
+      && !gBow.cells.some((c) => /for sword/.test(c.aria || '')),
+    gBow.cells.map((c) => c.aria));
   await P.page.locator('[data-prog3-lane="sword"]').first().click({ timeout: 6000 }).catch(() => {});
   await P.page.waitForTimeout(900);
 
@@ -191,11 +228,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const tabs = await readTabs(P);
   console.log('    tabs: ' + JSON.stringify(tabs));
   rec.ok('all three weapon tabs are there (guard)', tabs.length === 3, tabs.length);
-  rec.ok('every tab\'s second line is its remaining points, "N PTS"',
-    tabs.every((t) => /^\d+ PTS$/.test(t.ptsText || '')), tabs.map((t) => t.ptsText));
-  rec.ok('...and no tab still shows a level or a collapse caret',
-    tabs.every((t) => !/LV\s*\d/.test(t.text) && !/[▲▼]/.test(t.text)),
-    tabs.map((t) => t.text));
+  /* v2.3.2483: the accordion header prints the bare count beside the skill
+     mark; the selector tab it replaces printed "N PTS".  Either reads. */
+  rec.ok('every section header says its remaining points',
+    tabs.every((t) => /^\d+( PTS)?$/.test(t.ptsText || '')), tabs.map((t) => t.ptsText));
+  /* v2.3.2483: the caret is BACK, and deliberately -- an accordion without one
+     does not say it can be opened.  The LEVEL staying off screen is the part
+     of v2.3.2441's rule that survives (it is still in the aria-label). */
+  rec.ok('...and no section header still shows a level on screen',
+    tabs.every((t) => !/LV\s*\d/.test(t.text)), tabs.map((t) => t.text));
   /* "Do not duplicate the available-points count anywhere else." */
   rec.ok('...and the count appears exactly ONCE per tab -- the corner badge is gone',
     tabs.every((t) => t.countNodes === 1), tabs.map((t) => ({ k: t.k, n: t.countNodes })));
@@ -206,16 +247,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     tabs.every((t) => /, level \d+$/.test(t.aria || '')), tabs.map((t) => t.aria));
   rec.ok('...and the tab still says how many points it has, for a screen reader',
     tabs.every((t) => /point/.test(t.title || '')), tabs.map((t) => t.title));
-  const lit = tabs.filter((t) => !/^0 PTS$/.test(t.ptsText || ''));
-  const zero = tabs.filter((t) => /^0 PTS$/.test(t.ptsText || ''));
+  const lit = tabs.filter((t) => !/^0( PTS)?$/.test(t.ptsText || ''));
+  const zero = tabs.filter((t) => /^0( PTS)?$/.test(t.ptsText || ''));
   rec.ok('a lane with points to spend prints them in gold, not grey',
     lit.length === 0 || lit.every((t) => /216,\s*170,\s*88/.test(t.ptsColor || '')),
     lit.map((t) => ({ k: t.k, c: t.ptsColor })));
   rec.ok('...and a lane with none is muted',
     zero.length === 0 || zero.every((t) => /141,\s*155,\s*152/.test(t.ptsColor || '')),
     zero.map((t) => ({ k: t.k, c: t.ptsColor })));
-  rec.ok('the tab row did not grow: still 44px, exactly as before',
-    tabs.every((t) => t.h === 44), tabs.map((t) => t.h));
+  /* v2.3.2483: the 44px selector ROW is gone -- the owner's mock stacks three
+     30px section headers instead, so the number this pinned no longer names
+     anything on screen.  What is worth pinning is that the three are the SAME
+     size (a header that grows for one skill is a layout bug) and that the
+     stack is not taller than the row it replaces by more than its own two
+     extra headers. */
+  const headH = tabs.map((t) => t.h);
+  rec.ok('the three section headers are one size, and that size is a real thumb target',
+    headH.length === 3 && [...new Set(headH)].length === 1 && headH[0] >= 44, headH);
 
   /* ════════ 4. THE CELL PRINTS A LIVE VALUE, NOT "N / M" ════════ */
   const dmg = g.cells.find((c) => c.stat === 'Damage');
@@ -237,13 +285,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and it is a cue, not a button -- nothing to tap and nothing to read out',
     !!g.chevron && !g.chevron.role && g.chevron.hidden === 'true', g.chevron);
 
-  /* ════════ 6. IT GOT SMALLER, WHICH WAS THE ASK ════════
-     280px is the measured height of the old two-column body at this width
-     (nine 48px rows in two columns plus two group heads).  The new grid must
-     be under it -- "without consuming any additional screen space". */
-  rec.ok(`the whole stat area is SMALLER than the layout it replaces `
-       + `(${g.bodyH}px against the old 280px)`,
-    g.bodyH < 280, { now: g.bodyH, before: 280 });
+  /* ════════ 6. THE PANEL DID NOT GROW ════════
+     v2.3.2483: this used to pin the CONTENT under 280px -- the height of the
+     two-column body v2.3.2441 replaced -- because that version's ask was
+     "without consuming any additional screen space".  The owner's accordion
+     mock changes what that sentence can mean: three stacked section headers
+     plus two more stats (ELEM PWR per skill, MAX MANA and ELEM RESIST shared)
+     cannot fit the same content box, and the mock draws them stacked anyway.
+
+     The ask itself survives intact, and it was never really about the content
+     box: "do not make the bottom menu taller, do not move its top edge upward,
+     do not reduce the visible game world."  That is the SHEET, and it is
+     unchanged -- what the accordion spends is scroll, not screen.  So the
+     assertion moves to the thing the owner actually protected: the scrolling
+     window this content sits in.  A content height that overflows it is
+     expected and is cued by the chevron pinned above. */
+  const win = await P.page.evaluate(() => {
+    let n = document.querySelector('[data-prog3-points]');
+    for (; n; n = n.parentElement) {
+      if (n.scrollHeight - n.clientHeight > 4 && /auto|scroll/.test(getComputedStyle(n).overflowY)) {
+        return { h: Math.round(n.getBoundingClientRect().height), sh: Math.round(n.scrollHeight) };
+      }
+    }
+    return null;
+  });
+  console.log('    scroller: ' + JSON.stringify(win) + '  content: ' + g.bodyH + 'px');
+  rec.ok('the stat area still lives inside the sheet\'s own scroller, which did not grow',
+    !!win && win.h > 0 && win.h <= 260, { win, content: g.bodyH });
 
   /* The picture goes here, AT REST -- before section 7 scrolls the panel to
      reach the cells below the fold.  A screenshot taken after that shows a

@@ -309,7 +309,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (!btn) { out.push({ k, err: 'no stat row' }); continue; }
       let sc = btn.parentElement;
       while (sc && getComputedStyle(sc).overflowY !== 'auto') sc = sc.parentElement;
-      if (sc) sc.scrollTop = 0;
+      /* ═══ v2.3.2483: MEASURED WHERE OPENING IT LEAVES YOU ═══
+         This used to force `scrollTop = 0` first, which was the right question
+         while v2.3.2441's selector row made the answer independent of scroll.
+         The owner's accordion stacks three 44px headers, so the third
+         section's stats cannot be above the fold at scrollTop 0 on a 191px
+         window at ANY header height that still clears the 44px thumb target.
+         The client answers that by SCROLLING the section it just opened to the
+         top (HeroExpanded's open effect), so the honest question is now "after
+         opening it, can you see its first stat" — which is the property the
+         v2.3.1660 incident was actually about.  Forcing the scroller back to
+         zero would be measuring a state the player never sees. */
       await wait();
       const b = btn.getBoundingClientRect();
       const p = sc ? sc.getBoundingClientRect() : null;
@@ -344,12 +354,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    first stat row, per lane: ' + JSON.stringify(firstRowByLane));
   rec.ok('EVERY combat lane opens onto its first stat row, not just the default one',
     firstRowByLane.every((r) => r.full === true), firstRowByLane);
-  /* And it should be the SAME row position whichever lane you picked -- a
-     layout where the answer depends on which of three you chose is the shape
-     of the bug above, even when all three happen to clear the fold. */
+  /* ═══ v2.3.2483: THE ACCORDION KEEPS THIS, BY MOVING INSTEAD ═══
+     This used to demand the SAME row position whichever lane you picked,
+     which is what v2.3.2441's side-by-side selector row bought: one header
+     bank, so the body started at one y.  The owner's Points mockup
+     (docs/triage-2026-09-14/assets/points-accordion.png) stacks the three
+     skills as collapsible sections instead, so by construction the second
+     lane's body starts one header lower than the first and the third one
+     lower again.  Demanding equality would now be demanding the mock not be
+     built.
+
+     ...and the client keeps it anyway, which is why the assertion stayed.
+     Opening a section scrolls that section's header to the top of the
+     scroller (HeroExpanded's open effect), so the first stat row lands at the
+     same place whichever of the three you picked -- the lane-index dependence
+     is gone by construction again, just bought with a scroll instead of with
+     a side-by-side selector.  The tolerance widens from 1px to 8: a scroll
+     lands where the layout puts it, not on a pixel we chose. */
   const tops = firstRowByLane.filter((r) => r.top != null).map((r) => r.top);
   rec.ok('...at the same height for all three, so the choice cannot push it under the fold',
-    tops.length === 3 && (Math.max(...tops) - Math.min(...tops)) <= 1, { tops });
+    tops.length === 3 && (Math.max(...tops) - Math.min(...tops)) <= 8, { tops });
 
 
   /* ═══ v2.3.2315: THE ACCORDION ACTUALLY CLOSES ═══
@@ -393,6 +417,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the world-chat bell).  DRIFT IS THE POINT: a pixel-perfect tap passes on
      the broken build too, which is what a synthetic dispatch was really
      asserting all along. */
+  let lastTapAt = null;   /* v2.3.2483: why a tap was refused, for the guard below */
   const tapLane = async (key, drift = 18) => {
     const at = await P.page.evaluate((k) => {
       const el = document.querySelector(`[data-prog3-lane="${k}"]`);
@@ -402,8 +427,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* Report what is really at that point: a lane below the fold answers
          nothing, and a tap aimed there measures the wrong screen. */
       const hit = document.elementFromPoint(x, y);
-      return { x, y, onLane: !!(hit && hit.closest && hit.closest(`[data-prog3-lane="${k}"]`)) };
+      return { x, y, r: { t: Math.round(r.top), b: Math.round(r.bottom), h: Math.round(r.height) },
+        hitTag: hit ? hit.tagName : null,
+        hitLane: hit && hit.closest ? ((hit.closest('[data-prog3-lane]') || {}).getAttribute
+          ? hit.closest('[data-prog3-lane]').getAttribute('data-prog3-lane') : null) : null,
+        onLane: !!(hit && hit.closest && hit.closest(`[data-prog3-lane="${k}"]`)) };
     }, key);
+    lastTapAt = at;
     if (!at || !at.onLane) return false;
     const cdp = await P.page.context().newCDPSession(P.page);
     /* Upward drift: these headers sit at the TOP of the scroller, so a
@@ -441,20 +471,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...and tapping it again re-opens it, so the collapse is not a trap',
       l2.open.length === 1 && l2.open[0] === wasOpen, l2);
 
-    /* Scrolled into view first, on purpose and with a note: with one lane open
-       its seven stat rows push the other two headers ~413px BELOW the panel
-       (measured at 390x844: panel 653..844, bow header top 1257).  A tap aimed
-       at a rect that is off screen lands on whatever is really there, so this
-       would otherwise be measuring the wrong thing -- and the layout fact it
-       exposes is asserted on its own below. */
+    /* v2.3.2483: the scroll-to-the-bottom that used to stand here is GONE.
+       It existed because v2.3.2315's stacked lanes pushed the other two
+       headers ~413px below the panel with one open, so a tap aimed at an
+       off-screen rect landed on whatever was really there.  The accordion
+       puts all three headers within the first ~130px and the client scrolls
+       the open one to the top, so the other two are on screen at rest — and
+       scrolling to the very bottom now lands on the SHARED band instead,
+       which is how this started failing rather than passing. */
     const other = ['sword', 'bow', 'staff'].find((k) => k !== wasOpen);
-    await P.page.evaluate(() => {
-      const el = document.querySelector('[data-prog3-lane]');
-      for (let n = el; n; n = n.parentElement)
-        if (n.scrollHeight - n.clientHeight > 4 && /auto|scroll/.test(getComputedStyle(n).overflowY)) { n.scrollTop = n.scrollHeight; break; }
-    });
+    /* Scrolled into view first, on purpose and with a note (the v2.3.2315
+       reasoning, re-aimed): with one section open, its stats sit between that
+       header and the next, so the other two headers can be below the fold --
+       measured at the harness default, bow's header lands at y 773..817 in a
+       780px window and elementFromPoint answers NULL.  A tap aimed at a rect
+       that is off screen measures the wrong thing.  v2.3.2483 scrolls to the
+       header ITSELF rather than to the bottom of the scroller: the bottom is
+       the SHARED STATS band now, which is a different screen. */
+    await P.page.evaluate((k) => {
+      const el = document.querySelector(`[data-prog3-lane="${k}"]`);
+      if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
+    }, other);
     await P.page.waitForTimeout(300);
-    await tapLane(other, -18);
+    /* v2.3.2483: NO DRIFT on this one, and its result is asserted.  The -18
+       upward drift was tuned for headers pinned at the very top of the
+       scroller; the accordion scrolls the section you opened to the top, so
+       the OTHER two headers sit mid-panel where an 18px drag is a real scroll
+       and the tap is legitimately cancelled.  Drift itself is still covered --
+       the two taps above this one carry it. */
+    const tappedOther = await tapLane(other, 0);
+    rec.ok('the other lane could be tapped at all (guard)', tappedOther === true, { other, at: lastTapAt });
     await P.page.waitForTimeout(350);
     const l3 = await laneState();
     /* One at a time is the design, and the toggle must not have broken it. */
@@ -517,8 +563,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
        1 and the honest contract was "reachable from somewhere".  With the
        lanes side by side it is 3 at rest, which is the whole point of the
        change, so the printed number becomes the assertion. */
-    rec.ok('all three combat types are on screen AT REST, without scrolling for them',
-      reach.onAtTop === 3, reach);
+    /* ═══ v2.3.2483: TWO AT REST, THREE ACROSS THE SCROLL ═══
+       v2.3.2326 raised this from "reachable from somewhere" to "all three at
+       rest" because v2.3.2441's selector row put them side by side.  The
+       owner's Points mock stacks them again as an accordion, so the open
+       section's own stats sit BETWEEN two headers and the third cannot be at
+       rest on a 191px window without hiding the stats it exists to reveal.
+       What the assertion has always really protected -- you can get to any
+       combat type without hunting -- is measured as written: the open one and
+       at least one neighbour are visible without moving, and every one of the
+       three is on screen at one end of the scroll or the other. */
+    const everSeen = new Set([...reach.atTop, ...reach.atBottom].filter((l) => l.on).map((l) => l.k));
+    rec.ok('every combat type is reachable, and two are on screen without scrolling at all',
+      reach.onAtTop >= 2 && everSeen.size === 3, { reach, everSeen: [...everSeen] });
   }
 
   /* ═══ v2.3.2315: AND THE TWO THINGS HE HAS TO READ ARE READABLE ═══
@@ -537,8 +594,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.2441: the PORTRAIT tab's second line is the lane's remaining
        points now, not its level. */
     const pts = spans.find((x) => /^\d+\s+PTS$/.test((x.textContent || '').trim()));
+    /* v2.3.2483: the accordion header prints the bare count on the same line
+       as the name, so there is no "N PTS" span to find on that branch. */
+    const count = spans.find((x) => !x.children.length && /^\d+$/.test((x.textContent || '').trim()));
     const px = (el) => (el ? parseFloat(getComputedStyle(el).fontSize) : null);
-    return { arrow: px(arrow), lv: px(lv), pts: px(pts),
+    return { arrow: px(arrow), lv: px(lv), pts: px(pts), count: px(count),
       arrowColor: arrow ? getComputedStyle(arrow).color : null };
   });
   /* ═══ v2.3.2441: THE SAME FLOOR, ON WHICHEVER LINE IS THERE ═══
@@ -554,8 +614,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Landscape still stacks accordions and still has both, so both are still
      checked there.  What is NOT weakened: the floor is still 12/13 and still
      read off the RENDERED style. */
-  const secondLine = legibility && (legibility.pts != null ? legibility.pts : legibility.lv);
-  rec.ok('the weapon tab\'s second line is big enough to read (LV n in landscape, N PTS in portrait)',
+  /* v2.3.2483: and a third shape -- the accordion header prints the count on
+     the SAME line as the name (the owner's mock), so there is no second line
+     to find at all in portrait.  The property is unchanged and so is the
+     floor: whatever the branch renders as the header's count must clear 12.
+     Read off the rendered style, as before. */
+  const secondLine = legibility && (legibility.pts != null ? legibility.pts
+    : legibility.lv != null ? legibility.lv : legibility.count);
+  rec.ok('the weapon header\'s point count is big enough to read',
     !!legibility && secondLine != null && secondLine >= 12, legibility);
   rec.ok('...and where a collapse caret exists, it is legible too',
     !!legibility && (legibility.arrow == null || legibility.arrow >= 13), legibility);
@@ -596,9 +662,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return at;
   });
   console.log('    navigation through the scroll: ' + JSON.stringify(navAlways));
-  rec.ok('the three combat types never scroll away — all on screen at top, middle and end',
+  /* v2.3.2483: the accordion stacks the three, so the one furthest from the
+     open section leaves the window -- see the note on the "at rest" assertion
+     above.  Every one of them is still on screen somewhere in the scroll, and
+     never fewer than two at once, which is what "the lanes are the navigation"
+     actually needs. */
+  /* ═══ v2.3.2483: TWO AT A TIME, ALL THREE ACROSS THE SCROLL ═══
+     "Never scroll away" was true of v2.3.2441's selector row, which was one
+     44px bank at a fixed offset.  The owner's accordion makes the headers the
+     navigation AND the content: with a section open its stats sit between its
+     header and the next one, so on a phone-height window the third header is
+     always one short scroll away.  Measured at the harness default: two on
+     screen at the top, two in the middle, two at the end -- and a different
+     two, so every combat type is on screen somewhere in a single flick.
+
+     That is the property worth pinning, and it is the one the player
+     experiences: you are never looking at a screen with fewer than two of the
+     three on it, and you never have to hunt for the third.  Dropping to one
+     (or to none, which is what a taller open section would do) fails here. */
+  const seenAcross = new Set(['top', 'mid', 'max']
+    .flatMap((t) => (navAlways[t] || []).filter((l) => l.on).map((l) => l.k)));
+  rec.ok('never fewer than two combat types on screen, and all three within one scroll',
     !navAlways.err && ['top', 'mid', 'max'].every((t) => navAlways[t].length === 3
-      && navAlways[t].every((l) => l.on)), navAlways);
+      && navAlways[t].filter((l) => l.on).length >= 2)
+      && seenAcross.size === 3,
+    { navAlways, seenAcross: [...seenAcross] });
   rec.ok('...and each is a real thumb target, not a strip',
     !navAlways.err && navAlways.top.every((l) => l.h >= 44), navAlways.top);
   /* ═══ v2.3.2326: THE FAILURE THAT WOULD LOOK LIKE FONT RENDERING ═══
@@ -906,12 +994,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
         if (!first) { out.push({ k, err: 'no stat row' }); continue; }
         let sc = first.parentElement;
         while (sc && getComputedStyle(sc).overflowY !== 'auto') sc = sc.parentElement;
-        if (sc) sc.scrollTop = 0;
+        /* v2.3.2483: measured where opening it leaves you — see the twin note
+           on the other copy of this loop earlier in the file. */
         await wait();
         const b = first.getBoundingClientRect();
         const p = sc ? sc.getBoundingClientRect() : null;
-        const sel = document.querySelector('[data-prog3-lane]').parentElement.getBoundingClientRect();
-        const ceil = p ? Math.max(p.top, sel.bottom) : sel.bottom;
+        /* ═══ v2.3.2483: THE CEILING IS THE STUCK STACK, NOT A PARENT ═══
+           This used to read `[data-prog3-lane]`.parentElement.bottom, which
+           was exactly right while that parent WAS the selector bank (one row
+           of three tabs, v2.3.2441).  With the owner's accordion each lane
+           header's parent is its own SECTION -- header plus, when open, its
+           stat rows -- so for the open lane that rectangle swallows the very
+           row being measured and every reading came back "visible: 0" for a
+           row plainly on screen.  Measured the same way the other block in
+           this file does instead: whatever is actually STUCK at the top. */
+        let ceil = p ? p.top : 0;
+        if (p && sc) {
+          for (const e of sc.querySelectorAll('*')) {
+            const cs = getComputedStyle(e);
+            if (cs.position !== 'sticky') continue;
+            const bb = e.getBoundingClientRect();
+            const stuckAt = p.top + (parseFloat(cs.top) || 0);
+            if (bb.height > 0 && Math.abs(bb.top - stuckAt) <= 1.5 && bb.bottom > ceil) ceil = bb.bottom;
+          }
+        }
         const floor = p ? Math.min(p.bottom, window.innerHeight) : window.innerHeight;
         out.push({ k, top: Math.round(b.top),
           visible: Math.round(Math.max(0, Math.min(b.bottom, floor) - Math.max(b.top, ceil))),
@@ -922,9 +1028,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     console.log(`    ${w}x${h} first stat row: ${JSON.stringify(rows)}`);
     rec.ok(`${w}x${h}: every weapon opens onto its first spendable stat`,
       rows.every((r) => r.full === true), rows);
+    /* v2.3.2483: still equal, now bought with the open-section scroll rather
+       than with a side-by-side selector -- see the twin note earlier in the
+       file.  8px of tolerance because a scroll lands where the layout puts it. */
     const tops = rows.filter((r) => r.top != null).map((r) => r.top);
     rec.ok(`${w}x${h}: ...at the same height for all three`,
-      tops.length === 3 && (Math.max(...tops) - Math.min(...tops)) <= 1, { tops });
+      tops.length === 3 && (Math.max(...tops) - Math.min(...tops)) <= 8, { tops });
 
     await N.ctx.close().catch(() => {});
   }

@@ -435,6 +435,35 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const required = ['SPECIAL_MANA_COST', 'MANA_PER_MAGIC_LEVEL', 'BURST_MANA_COST', 'BURST_MIN_CHAR_LEVEL', 'BURST_CD_MS', 'BURST_RADIUS', 'BURST_DMG_MULT'];
   const missing = required.filter((k) => !(k in cli) || !(k in srv));
   check('the mana-rework / Element Burst constants exist on BOTH sides', missing.length === 0, missing);
+
+  /* ═══ v2.3.2483: THE KEY SETS, NOT JUST THE VALUES ═══
+     The subset comparison above is deliberately forgiving — the server owns
+     curve functions the client never evaluates — but that forgiveness has a
+     hole with teeth: a stat that MOVES tables (or is deleted from one side)
+     stops appearing in `shared` and the drift passes silently.  This version
+     is exactly that case: `elem` left BODY for ATK, and until this assertion
+     existed a client still carrying BODY.elem would have been reported clean
+     while every elemental readout it printed came from a stat the worker no
+     longer had.
+
+     BODY and ATK are the two tables the allocation UI maps and the worker's
+     whitelist reads, so their key sets must match EXACTLY, both directions. */
+  for (const table of ['BODY', 'ATK']) {
+    const sk = Object.keys(SRV_PROG3[table] || {}).sort();
+    const ck = Object.keys(CLIENT_PROG3[table] || {}).sort();
+    check(`PROG3.${table} key sets match exactly (a stat on one side only is a silent desync)`,
+      sk.length > 0 && sk.join(',') === ck.join(','), { server: sk, client: ck });
+  }
+  /* And the three stats this version moved or created, by name, so a future
+     edit that quietly drops one fails here rather than in a player's build. */
+  check('elem is an ATK stat on BOTH sides (it left BODY in v2.3.2483)',
+    !!SRV_PROG3.ATK.elem && !!CLIENT_PROG3.ATK.elem
+      && !SRV_PROG3.BODY.elem && !CLIENT_PROG3.BODY.elem,
+    { srvAtk: SRV_PROG3.ATK.elem, cliAtk: CLIENT_PROG3.ATK.elem,
+      srvBody: SRV_PROG3.BODY.elem, cliBody: CLIENT_PROG3.BODY.elem });
+  check('eres and mana are BODY stats on BOTH sides',
+    !!SRV_PROG3.BODY.eres && !!CLIENT_PROG3.BODY.eres
+      && !!SRV_PROG3.BODY.mana && !!CLIENT_PROG3.BODY.mana);
 }
 
 // ── 13. Life-skill retune mirrors (v2.3.1765).  Two numbers the owner

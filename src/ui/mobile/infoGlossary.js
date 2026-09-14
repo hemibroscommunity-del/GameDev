@@ -67,11 +67,32 @@ export const STAT_INFO = _mk({
     body: 'The energy your special moves and dodges draw from.',
     note: 'A bigger pool means more specials before you have to wait for it to refill.',
   },
-  /* v2.3.2199: the two new spendable stats. */
+  /* v2.3.2199: the two new spendable stats.
+     v2.3.2483: 'Elem Power' became per-weapon and its row label shortened to
+     'Elem Pwr' (the owner's own wording in the Points mock).  BOTH keys are
+     kept: the label is what looks the entry up, the landscape pane and older
+     copy still say the long form, and an explainer that silently disappears
+     takes the row's ℹ️ button with it. */
   'Elem Power': {
     title: 'Elemental power',
     body: 'Makes your weapon’s element hit harder — burns, roots, thorns and element combos all grow with it.',
     note: 'Only works with an enchanted weapon (one that carries an element).',
+  },
+  'Elem Pwr': {
+    title: 'Elemental power',
+    body: 'Makes this weapon’s element hit harder — burns, roots, thorns and element combos all grow with it.',
+    note: 'Bought per weapon: points you put into Melee’s elemental power do nothing for your bow. Only works with an enchanted weapon (one that carries an element).',
+  },
+  /* v2.3.2483: the two new shared stats. */
+  'Max Mana': {
+    title: 'Max mana',
+    body: 'The pool your special attacks and elemental bursts are cast from.',
+    note: 'A bigger pool also earns you more casts, not just a longer bar — the bar gains a segment as you invest, and one segment is one special.',
+  },
+  'Elem Resist': {
+    title: 'Elemental resistance',
+    body: 'Cuts the damage you take from elemental sources — burning ground and the blue slime’s blast.',
+    note: 'Separate from Defense, which cuts every kind of hit. The two stack.',
   },
   Defense: {
     title: 'Defense',

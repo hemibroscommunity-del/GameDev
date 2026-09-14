@@ -41,9 +41,9 @@
  */
 
 import { t2ReplayFlat } from './data.js';
-import { prog3FromLegacy, prog3SplitAtk, prog3GrantRetroPoints } from './prog3.js';
+import { prog3FromLegacy, prog3SplitAtk, prog3GrantRetroPoints, prog3MoveElemToAtk } from './prog3.js';
 
-export const RPG_SCHEMA_VERSION = 14;
+export const RPG_SCHEMA_VERSION = 15;
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -513,6 +513,37 @@ export const MIGRATIONS = [
       if (!blob || typeof blob !== 'object') return false;
       if (!blob.prog3 || typeof blob.prog3 !== 'object') return false;
       return prog3GrantRetroPoints(blob.prog3);
+    },
+  },
+  {
+    v: 15,
+    name: 'prog3-elem-per-weapon',
+    /* v2.3.2483 (owner ask, backlog triage §2.1c).  Elemental power was ONE
+       global BODY channel from v2.3.2199; it is now an ATK channel allocated
+       per combat type, alongside DAMAGE / CRIT / CRIT DMG / ATK SPD.
+
+       A stored `prog3.alloc.elem` therefore has nowhere to land, and
+       prog3MoveElemToAtk REFUNDS it to the pool.  The v11 precedent
+       (prog3-per-type-offense) chose the same answer for the same two
+       reasons: copying the points into all three types would triple a
+       player's investment for free, and picking one type to receive them
+       would be guessing on their behalf.  Refunding hands the choice back,
+       which is the entire point of the change.
+
+       NOTHING ELSE TO DO for the two BODY channels arriving in the same
+       version (ELEM RESIST, MAX MANA): they start at zero, prog3FreshAlloc
+       carries them, and _sanitizeProg3 fills any blob that lacks them — and
+       max mana is ADDED to the Magic-level derivation, so at zero points
+       every stored character's pool is unchanged.
+
+       Idempotent: prog3MoveElemToAtk returns false the moment `alloc.elem`
+       is absent, so a re-run cannot double-refund.  Fail-open covered: the
+       join boundary heal (_sanitizeProg3) runs the same fold, the v11
+       pattern. */
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      if (!blob.prog3 || typeof blob.prog3 !== 'object') return false;
+      return prog3MoveElemToAtk(blob.prog3);
     },
   },
 ];

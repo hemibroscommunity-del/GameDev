@@ -449,7 +449,11 @@ export const telegraphMethods = {
       kit.flat ? Math.ceil(kit.flat) : Math.ceil(m.dmg * kit.dmgMult),
       Math.max(1, Math.floor((ps.maxHp || 100) * TELEGRAPH.MAX_HIT_PCT)),
     );
-    const res = this._applyDamage(ps, raw, false);
+    /* v2.3.2483: the blue slime's death burst is an ELEMENTAL blast and the
+       new ELEM RESIST stat reads it; a brute's slam and a fodder's lunge are
+       ordinary untyped hits and are not resisted (PROG3.BODY.eres carries
+       the closed list and why it is closed). */
+    const res = this._applyDamage(ps, raw, false, { elemental: kit.kind === 'burst' });
     if (!res.dodged) {
       this._trackMonsterDamage(ps, m.id, res.graced ? (res.dmgIntent || 0) : res.dmgTaken);
     }

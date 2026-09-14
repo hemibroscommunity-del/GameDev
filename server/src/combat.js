@@ -109,11 +109,15 @@ export const combatMethods = {
      assumption keeps breaking (three incidents in one day).
      m.hp > 0 so a corpse never catches a burn, matching the guard on the
      inline copy below. */
-  _applyWeaponElementStatus(m, element, sourceId, attackerPs, now) {
+  /* v2.3.2483: `cat` — which weapon's elemental power prices the DoT.
+     Defaults to 'sword' because the one caller (the lunge, abilities.js) is
+     melee-only by construction: it rolls off ps.weapon and only fires with
+     melee equipped. */
+  _applyWeaponElementStatus(m, element, sourceId, attackerPs, now, cat) {
     if (!m || !attackerPs || !(m.hp > 0)) return false;
     if (typeof element !== 'string') return false;
     if (!Object.prototype.hasOwnProperty.call(ELEMENT_STATUS, element)) return false;
-    return applyElementStatus(m, element, sourceId, elemAttackStat(attackerPs, 'power'),
+    return applyElementStatus(m, element, sourceId, elemAttackStat(attackerPs, 'power', cat || 'sword'),
       now || Date.now(), this._attuneMult(attackerPs));
   },
 
@@ -176,7 +180,13 @@ export const combatMethods = {
     return 1 - Math.min(MAX_DR, combined);
   },
 
-  _applyDamage(ps, rawDmg, isBlock) {
+  /* v2.3.2483: `opts.elemental` marks damage the server minted through an
+     ELEMENTAL source (the fire trail, the slime burst).  It is the only
+     thing the new ELEM RESIST stat reads — declared by the CALLER rather
+     than sniffed here, because "is this hit elemental" is knowledge the
+     damage site has and this function does not.  Omitted everywhere else,
+     so every untyped hit behaves exactly as before. */
+  _applyDamage(ps, rawDmg, isBlock, opts) {
     if (!ps) return { dmgTaken: 0, dodged: false, graced: false };
     const r = Math.max(1, Math.round(rawDmg || 0));
     // Zone-entry damage immunity (replaces the prior monster-shove on
@@ -247,6 +257,16 @@ export const combatMethods = {
     if (_p3) {
       const _defMult = this._prog3DefMult(ps);
       if (_defMult < 1) dmgTaken = Math.max(1, Math.round(dmgTaken * _defMult));
+      /* v2.3.2483: ELEM RESIST, immediately after the general one and on the
+         same terms — a percentage cut with the floor-1 clamp preserved, so a
+         fully-resistant player still takes chip damage from a fire patch.
+         Multiplicative with `def` rather than additive: two 30% cuts that
+         add reach 60%, two that multiply reach 51%, and only the second
+         shape is safe against a future third layer. */
+      if (opts && opts.elemental) {
+        const _eMult = this._prog3ElemResistMult(ps);
+        if (_eMult < 1) dmgTaken = Math.max(1, Math.round(dmgTaken * _eMult));
+      }
     }
     /* ═══ v2.3.1679: WORN ARMOR IS REAL MITIGATION ═══
        Owner: "make the effect when worn (after getting awards from quest) 30%
@@ -951,7 +971,11 @@ export const combatMethods = {
       /* v2.3.2199: the snapshot prices the whole DoT (burn/root ticks and
          the thorn recoil read st.power) — prog3 players snapshot their
          allocated `elem` stat, legacy players their old power, one seam. */
-      applyElementStatus(m, element, session.id, elemAttackStat(attackerPs, 'power'), _now,
+      /* v2.3.2483: elemental power is per weapon now, so the snapshot is
+         priced off the CATEGORY the server itself resolved (_effSlot), never
+         the client's raw slot claim. */
+      const _elCat = this._prog3CatFor(_effSlot === 'ranged' ? 'bow' : _effSlot);
+      applyElementStatus(m, element, session.id, elemAttackStat(attackerPs, 'power', _elCat), _now,
         this._attuneMult(attackerPs));
       // Volatile mirrors _computeAttackDamage's slot resolution.
       const _eff = (slot === 'melee' || slot === 'ranged' || slot === 'staff')
@@ -959,7 +983,7 @@ export const combatMethods = {
       const _w = _eff === 'ranged' ? attackerPs.rangedWeapon
                : _eff === 'staff' ? attackerPs.staffWeapon
                : attackerPs.weapon;
-      const col = resolveElementCollision(m, element, attackerPs, !!(_w && _w.isVolatile), _now);
+      const col = resolveElementCollision(m, element, attackerPs, !!(_w && _w.isVolatile), _now, _elCat); /* v2.3.2483 */
       if (col) {
         const colDmg = Math.min(col.dmg, Math.max(0, m.hp));
         m.hp -= colDmg;

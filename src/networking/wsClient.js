@@ -24,7 +24,7 @@ import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking
 import { peerCosmeticsFromWire, peerPassthroughFromWire, applyPeerCosmetics } from '@/networking/peerCosmetics.js';
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setProg3ElemEnabled /* v2.3.2483 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -1113,6 +1113,13 @@ export function setupWebSocket(ctx) {
                    the "+3 points" banner copy (display only; see the
                    flag's note in data/prog3.js). */
                 setProg3XEnabled(!!(S._serverCaps && S._serverCaps.prog3x));
+                /* v2.3.2483: the attribute restructure (elem per weapon, the
+                   new Elem Resist and Max Mana body stats).  Display only, the
+                   same shape as prog3x above — against an old worker the three
+                   rows hide, the elemental readouts keep reading the GLOBAL
+                   stat that worker rolls off, and the mana prediction keeps
+                   its pure Magic-level derivation. */
+                setProg3ElemEnabled(!!(S._serverCaps && S._serverCaps.prog3elem));
                 /* v2.3.1733: stamina-abilities deploy-order gate.  The two
                    ability BUTTONS render and the `ability` message is sent
                    only while THIS worker claims caps.abil — an old worker
