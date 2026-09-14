@@ -802,3 +802,121 @@ play). H1.
   extends these rather than starting new.
 - `tools/audit-validator.py --scale` and `tools/balance-sim.mjs` — the
   normalization preview tools already exist.
+
+---
+
+## 5. Owner input received after the first cut (2026-09-14, later the same day)
+
+The owner answered part of §0.4 with four mockups, a sound file and three
+statements. Sessions launched from this plan read THIS section before their
+lane brief; where it disagrees with §1 or §2 above, this section wins.
+
+### 5.1 Model choice
+
+The owner chose **Opus 5 for every lane** ("I'll trust that you've
+structured each request correctly so that Opus 5 high is capable of doing
+them all"). The lane table's Fable picks are therefore advisory only. The
+effort tier is not settable when a session is created from another session;
+launched sessions run at the environment's default effort. Every brief in
+§5.7 is written more prescriptively than §1.3 to compensate: named files,
+named functions, the order of steps, and the harness that proves each step.
+
+### 5.2 The nameplate design (D4, D5 answered)
+
+Mockup: `docs/triage-2026-09-14/assets/nameplate-design.png` (Frost Ridge,
+portrait). What it specifies, read off the image:
+
+- **Monster plate** = a rounded dark-navy pill, bold white name, and the
+  level in a white circular badge at the pill's right end (dark digits).
+  The pill's 2 px border is coloured by **difficulty relative to the
+  player's level**, and the mock's own legend names the four bands: green
+  "Low", yellow "Near", orange "High", red "Danger". The mock's player is
+  level 3 and shows level 1 green, level 2 yellow, level 4 orange, level 6
+  red. Default thresholds (D16, confirm): diff ≤ −2 green; −1 to 0 yellow;
+  +1 to +2 orange; ≥ +3 red.
+- **Player plate** = same pill with a gold border and the level badge
+  ("Bronze Gravy 3").
+- **NPC plate** (second mockup, town) = dark rounded rectangle, white name,
+  small gold role or level line under it ("Mayor Bro / Mayor",
+  "Rex Bash / LV 3").
+- Text is far larger than today's 8 pt world text: the pill reads at about
+  14–15 CSS px on a phone. This settles D5 — the new plate sets its own
+  size as a CSS-pixel value, not a world-scaled font.
+- **In combat the monster pill hides** (the backlog ask). The HP bar stays.
+  Because a red border now means "Danger", the "monster is attacking you"
+  cue (v2.3.2295, D4) moves off the plate: default is a red tint or ring on
+  the HP bar frame while `_atkMeUntil` is live (confirm).
+- The mock also shows a small orange triangle above the locked monster: the
+  existing lock chip, unchanged.
+
+### 5.3 The Points accordion (S2's UI, answered)
+
+Mockup: `docs/triage-2026-09-14/assets/points-accordion.png`. The Points
+tab becomes an accordion: one collapsible section per combat skill
+(MELEE, BOW, STAFF) with the skill's icon, its point total and a chevron in
+the header; inside, one tile per channel (icon, channel name, current
+value, and a − / count / + row). The mock shows DAMAGE, CRIT, CRIT DMG, ATK
+SPD per skill; **the owner adds ELEM PWR to each skill's section** (it is
+no longer shared). Below the accordions a **SHARED STATS** header carries
+the three per-skill totals and the shared tiles: the mock shows MAX HP,
+DEFENSE, STAMINA, DODGE (and ELEM PWR, which moves out); per the backlog
+**MAX MANA and ELEM RESIST join the shared row**. Channels that exist in
+code but are not in the mock stay in their skill's section — list them in
+the PR rather than dropping them. Owner rows keep the "i" info button.
+
+### 5.4 The coin sound (D15 partly answered)
+
+`public/sfx/loot/coin-pickup.mp3` (38 KB, MP3 160 kbps 24 kHz, about two
+seconds; source: "Spilled Coins", freesound_community, id 101296, as
+supplied by the owner). Lane L hangs it on `_applyLootCredit` when
+`payload.coins > 0`, registers it in `SFX_MANIFEST` under a new `loot`
+group, and adds a CREDITS.md row (license as the owner confirms; assumed
+Pixabay Content License from the file name — **outstanding**). Never
+re-enable `beep()`.
+
+### 5.5 Lil Bro
+
+The owner says the NPC "was already given as an art asset". What the repo
+holds is only the IMPORTED result (`public/sprites/npc/lil-bro-walk-*.webp`);
+the source sheet is not under `tools/gear/src-art/npc` (only the Mayor's
+files are) and the clone is shallow, so it cannot be recovered from
+history. Two routes for lane A: the owner re-uploads the source sheet and
+`tools/import_npc_walk.py` is re-run with the white test removed from
+`is_key()`; or, without the source, fill the transparent holes that lie
+INSIDE the body silhouette with the shirt's white (the same enclosed-hole
+idea as `tools/fill_gear_gaps.py`), verified at 20× on all eight facings.
+
+### 5.6 New lane T — the tattoo editor zone picker
+
+Mockup `docs/triage-2026-09-14/assets/tattoo-editor-mock.png`; UI art
+`tools/gear/src-art/creator/tattoo-zone-ui.png` (a contact sheet: top row
+four square zone frames — two sizes, each in a plain and a glowing
+"selected" state; middle row a flip button, a previous and a next chevron
+button, and an "i" button; bottom row two label plates, "Tap a zone to edit"
+and "Front • Chest + Arms"). Slice it by measuring the cells, not by
+assuming a grid (TRAPS §59).
+
+What changes: the small character preview beside the editor gets two
+tappable zone frames drawn over the figure (head, torso). Tapping one loads
+that zone's canvas into the big grid; the selected frame glows. The flip
+button turns the preview to the **back** (the `north` sheet already renders
+back art, v2.3.2422) and the two frames then address the back-head and
+back-torso canvases. The label plate names the side and zone. The same
+picker drives shirt and pants designs (front/back). The zone model already
+exists in `src/ui/panels/BodyInk.jsx` (`BACK_TARGET` / `FRONT_OF`, the MODE
+strip, :133–156) — this replaces the MODE strip and Front/Back switch as
+the way to choose a canvas, not the canvases. Editor: `PlayerPaint.jsx`.
+Specs: `docs/specs/tattoo-front-and-back.md`, `creator-ink-card.md`;
+history v2.3.2455–2470 (design placement). Harnesses: `mp-bodyink`,
+`mp-inkback`, `mp-inkframes`, `mp-inkplace`, `mp-tattoos`, `mp-facetat`,
+`mp-designs`, `mp-ccink`.
+
+### 5.7 What was launched from this session
+
+Four sessions were created from this session on Opus 5, each on its own
+branch from `main`, with the briefs below; the remaining lanes (P, H, T, F,
+A) are queued behind them so no more than four run at once. Each session
+reads this document from `origin/claude/game-backlog-triage-akaog2` (PR
+#613) until that PR merges. Branches: `claude/lane-L-loot`,
+`claude/lane-C-controls-bow`, `claude/lane-S-server-combat`,
+`claude/lane-M-store`.
