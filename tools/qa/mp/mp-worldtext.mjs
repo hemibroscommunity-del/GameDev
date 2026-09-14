@@ -103,34 +103,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`...and bringing the band back zooms OUT again (${open.scale} -> ${reclosed.scale})`,
     reclosed.scale < open.scale - 0.001, { folded: open.scale, restored: reclosed.scale });
 
-  /* ═══ 2. THE PLATE SHRINKS LESS THAN THE WORLD, AND NOT BY NOTHING ═══
-     ═══ v2.3.2263: THE MIDDLE, PINNED FROM BOTH SIDES ═══
-     v2.3.2262 asserted the plate held EXACTLY its on-screen size across a zoom
-     change, which is what full 1/w compensation does -- and the owner's answer
-     to that build was "nameplates are now way too large", measured at 18 CSS px
-     of type over a 27 CSS px slime.  So the rule changed to sqrt(1/w)
-     (entityRenderer setPlateZoom) and this pair of assertions changed with it,
-     to a bound rather than an equality: the plate must shrink by LESS than the
-     world does, and by MORE than nothing.
+  /* ═══ 2. THE PLATE DOES NOT MOVE WITH THE ZOOM AT ALL ═══
+     ═══ v2.3.2496: D5 SETTLES WHAT THREE ROUNDS COULD NOT ═══
+     The history is worth keeping because it is the argument, and the owner has
+     now ended it.  v2.3.2262 pinned the plate to a constant screen size (full
+     1/w) and the answer was "nameplates are now way too large", 18 CSS px of
+     type over a 27 CSS px slime.  v2.3.2263 moved to sqrt(1/w) and the answer
+     was "reduce the font size of the name plates.  It's huge."  v2.3.2265 cut
+     the BASE to 8 and kept sqrt -- which is how the plate ended up at about
+     6 CSS px in a combat zone, the complaint this build is fixing.
 
-     Both counterfactuals are named on purpose.  An assertion that only said
-     "bigger than uncompensated" would pass for the too-large build this exists
-     to prevent coming back, and one that only said "smaller than compensated"
-     would pass for no compensation at all.  Between them there is one rule
-     left, and it is the one shipped. */
+     None of those rounds was wrong about its own screenshot.  What was wrong
+     was that the size depended on the camera, so no one could state a number
+     for it and each round moved a coefficient the next one moved back.  D5
+     states the number instead: the plate is a CSS-PIXEL size, about 14-15 on a
+     phone, and it does not track the zoom.
+
+     So the assertion inverts.  It used to require the plate to shrink by LESS
+     than the world and by MORE than nothing -- the middle.  It now requires the
+     plate's on-screen size to be the SAME in both zoom states, which is the
+     property that makes "15 px" a thing a person can check on their phone.  The
+     too-large build this file used to guard against is guarded by the CSS size
+     itself now (mp-monsterplate asserts 13-17), which is a bound on the number
+     rather than on its rate of change -- a stronger guard, and the one the
+     earlier rounds were reaching for. */
   const ratio = closed.scale / open.scale;   /* band-up scale over folded scale: < 1 */
-  const wantRatio = Math.sqrt(ratio);        /* what sqrt compensation predicts */
   const gotRatio = closed.plate.h / open.plate.h;
   console.log(`    world scale ratio ${ratio.toFixed(3)}; plate h ${open.plate.h} -> ${closed.plate.h}`
-    + ` (plate ratio ${gotRatio.toFixed(3)}, sqrt predicts ${wantRatio.toFixed(3)})`);
+    + ` (plate ratio ${gotRatio.toFixed(3)}; D5 wants 1.000)`);
   rec.ok(`guard: the two states really are different zooms (x${ratio.toFixed(3)})`,
     ratio < 0.97, { ratio, withBand: closed.scale, folded: open.scale });
-  rec.ok(`the plate shrinks LESS than the world does (plate x${gotRatio.toFixed(3)} vs world x${ratio.toFixed(3)})`,
-    gotRatio > ratio + 0.02, { gotRatio, ratio, withBand: closed.plate, folded: open.plate });
-  rec.ok('...and it is NOT pinned to a constant screen size either, which is what read as "way too large"',
-    gotRatio < 0.995, { gotRatio, withBand: closed.plate, folded: open.plate });
-  rec.ok(`...it tracks sqrt(zoom), the middle both of those miss (${gotRatio.toFixed(3)} vs ${wantRatio.toFixed(3)})`,
-    Math.abs(gotRatio - wantRatio) <= 0.04, { gotRatio, wantRatio, ratio });
+  rec.ok(`the plate holds its on-screen size across the zoom (plate x${gotRatio.toFixed(3)} vs world x${ratio.toFixed(3)})`,
+    Math.abs(gotRatio - 1) <= 0.03, { gotRatio, ratio, withBand: closed.plate, folded: open.plate });
+  /* The counterfactual, kept: an uncompensated plate would follow the world
+     down, and that is the 6-px build. */
+  rec.ok('...and it does NOT follow the world down, which is the ~6 CSS px it used to read at',
+    gotRatio > ratio + 0.05, { gotRatio, ratio });
 
   /* ═══ 3. AND IT IS RASTERISED AT THE SIZE IT IS SHOWN ═══
      v2.3.1821 on this same plate: a Pixi Text is a texture, so growing its

@@ -234,14 +234,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!seen.alarmPlates && seen.alarmPlates.length > 1
       && seen.alarmPlates.filter((p) => p.alarm).length < seen.alarmPlates.length,
     { plates: seen.alarmPlates });
-  /* The LEVEL line has to move with the fill -- the same light-fill-keeps-the-
-     dark-ink trap TRAPS §48 records for the trade lanes. #D8AA58 measures
-     4.85:1 on the alarm red and the danger #ef4444 only 1.9:1, so the ramp
-     travels with the ground or the plate says "LV 1" in a colour you cannot
-     read at the exact moment you want to read it. */
-  rec.ok('...and the LV line takes the alarm ramp with it, not the brass one',
-    !!(seen.alarm && /ffd9d9/i.test(String(seen.alarm.plate.levelFill || ''))),
-    { levelFill: seen.alarm && seen.alarm.plate.levelFill });
+  /* ═══ v2.3.2496: THE LV LINE IS GONE, AND SO IS THE INK PROBLEM ═══
+     This used to require the brass LV line to take the alarm ramp with it --
+     the light-fill-keeps-the-dark-ink trap TRAPS §48 records, because #D8AA58
+     measured 4.85:1 on the old dark alarm fill and the danger #ef4444 only
+     1.9:1.  The owner's plate has no LV line: the level is dark digits inside
+     a WHITE badge, whose contrast does not depend on the plate's fill at all,
+     so the trap is designed out rather than managed.
+     What replaces the assertion is the rule D4 states instead -- the alarm
+     moves the FILL and leaves the border alone, so "hitting you" and "far above
+     you" stay two readable statements rather than one red blur. */
+  rec.ok('...and its difficulty border is untouched by the alarm',
+    !!(seen.alarm && seen.alarm.plate.band
+       && !/\|!/.test(String(seen.alarm.plate.band))),
+    { band: seen.alarm && seen.alarm.plate.band });
+  rec.ok('...and the level still reads, in its own white badge',
+    !!(seen.alarm && /^\d+$/.test(String(seen.alarm.plate.badge || ''))),
+    { badge: seen.alarm && seen.alarm.plate.badge });
   /* ...and the plate was actually REPAINTED for it. The rounded rect behind
      the text is rebuilt only when the plate's cache key changes, and for a
      monster the name and level never change after the first frame -- so an
@@ -249,7 +258,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      assertion above, and leave the plate dark for the life of the monster.
      The key is the only thing that can tell those two apart from outside. */
   rec.ok('...and the plate was rebuilt for the alarm, not merely flagged for it',
-    !!(seen.alarm && /\|!$/.test(String(seen.alarm.plate.pillKey || ''))),
+    !!(seen.alarm && /\|!\|/.test(String(seen.alarm.plate.pillKey || ''))),   /* v2.3.2496: the band follows `!` in the key */
     { pillKey: seen.alarm && seen.alarm.plate.pillKey });
 
   /* ═══ THE TWO ABOVE-HEAD MARKS DO NOT SIT ON EACH OTHER ═══

@@ -1556,6 +1556,19 @@ export function processGameEvent(type, payload, S, deps) {
                      Clobbering it made curHp == hp on every hit, which
                      locked the bar percentage at 100%. */
                   hitM.curHp = Math.round(payload.hpPct * hitM.maxHp);
+                  /* ═══ v2.3.2496: "HIT BY YOU IN THE LAST 3s" (D4) ═══
+                     The nameplate hides while a monster is the fight you are
+                     actually in, and one of the two facts that decides it is a
+                     hit YOU landed -- which nothing recorded.  (`_hitFlash` is
+                     not it: it is stamped for a PEER's hits and for your own
+                     server-rolled ones, and deliberately not for your own
+                     swings, which stamp it at blade contact instead.)
+                     Stamped off the worker's echo rather than at the local
+                     swing site so every weapon and every ability counts once,
+                     from the one message that says a hit really landed; a
+                     round trip is nothing against a 3-second window.
+                     entityRenderer reads it; nothing else does. */
+                  if (payload.attackerId === S.myId) hitM._hitByMeAt = Date.now();
                   /* ═══ v2.3.2372: THE LUNGE'S ELEMENT PIP RIDES THE REAL HIT ═══
                      The server owns statuses and never syncs them, so the
                      coloured pip and the ambient element particles are drawn
