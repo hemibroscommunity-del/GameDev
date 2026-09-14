@@ -1,6 +1,10 @@
 # The bow's jet stream (v2.3.2398)
 
-**Status:** shipped. Replaces the bow's sight beam.
+**Status:** superseded twice. The jet stream was switched off at v2.3.2448
+(`JET_STREAM_ENABLED = false`) and the sight beam came back at the arrow's own
+reach; v2.3.2473 then made that beam STOP at whatever the bow is pointed at and
+gated the shot itself on the same answer — see `bow-sight-gate.md`.  Kept for
+the history of this line, which has now moved five times.
 
 > "Instead of the aim tool (curvy line) for the bow I want to try to add a jet
 > stream to each arrow. … For bro town I'm wanting to make a jet stream after

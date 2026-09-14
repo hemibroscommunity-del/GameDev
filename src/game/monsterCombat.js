@@ -37,12 +37,14 @@ import {
   monsterBodyOffsetY, monsterMeleeHitRadius, monsterProceduralRadius, TOWN_SPAWN /* v2.3.1777 */
 } from '@/data/index.js';
 import { prog3Live, prog3CatFor, prog3CritPct, prog3CritMult, prog3CritFlat } from '@/data/prog3.js'; /* v2.3.2218 */
-import { STAFF_LIFE } from '@/data/gameSystems.js'; /* v2.3.2387: one staff range for all four spawn sites */
+import { STAFF_LIFE, BOW_RANGE_PX } from '@/data/gameSystems.js'; /* v2.3.2387: one staff range for all four spawn sites; v2.3.2473: the sight gate's reach */
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */ } from '@/game/combatHelpers.js';
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
+import { firstSightHit } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii */
+import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
@@ -1430,6 +1432,39 @@ export function updateMonsterCombat(S, deps) {
               _engSwing = _eD <= GS_OUTER_RADIUS;
             }
           }
+          /* ═══ v2.3.2473: WHERE IS THE BOW ACTUALLY POINTING? ═══
+             Owner (backlog §2.5): the bow fires only when the line of sight is
+             ON a monster, and the sight stream stops at whatever it is pointed
+             at instead of running its full reach through everything.
+
+             RESOLVED HERE, ONCE A FRAME, AND PUBLISHED.  It is needed in two
+             places -- the fire gate a few lines below, and the drawn line in
+             effectsRenderer -- and those two must never disagree, because the
+             whole value of the line is that it promises what the shot will do.
+             The renderer therefore reads this answer rather than computing its
+             own; it is also outside the cadence gate on purpose, since the line
+             is drawn on frames no shot is due.
+
+             Same origin and same ladder as the shot: the bow GRIP (v2.3.1979 --
+             measured from the feet, the flight line comes out parallel to the
+             line that hits and passes beside the target) and rangedAimAngle
+             (combatHelpers, the one ladder).  Reach is the arrow's own plant
+             cap, so the gate cannot open on something the arrow could never
+             reach. */
+          if (_aSlot === 'ranged' && S.rpg && _eqWpn && !isPlayerDead(S)) {
+            var _bsX = (typeof S._bowGripX === 'number') ? S._bowGripX : P.x;
+            var _bsY = (typeof S._bowGripY === 'number') ? S._bowGripY : P.y;
+            var _bsA = rangedAimAngle(S, _bsX, _bsY).ang;
+            var _bsHit = null;
+            try {
+              _bsHit = firstSightHit(S, _bsX, _bsY, _bsA,
+                BOW_RANGE_PX * (bowRangeMult(S.rpg) || 1), { isStaff: false, isSpecial: false });
+            } catch (e) { _bsHit = null; }
+            S._bowSight = { ang: _bsA, d: _bsHit ? _bsHit.dist : null,
+              id: _bsHit ? _bsHit.id : null, at: Date.now() };
+          } else if (S._bowSight) {
+            S._bowSight = null;
+          }
           /* ═══ v2.3.2465: HOLD THE FIRST SHOT UNTIL THE GESTURE IS LEGIBLE ═══
              Owner, on a magic special: "When I swipe my finger the normal
              attack (default) is leading."  The special is a FLICK and a flick
@@ -1556,6 +1591,51 @@ export function updateMonsterCombat(S, deps) {
                    that needs to know where a shot is going.
                    Behaviour is unchanged: same order, same origin. */
                 arrAngle = rangedAimAngle(S, _shotX, _shotY).ang;
+                /* ═══ v2.3.2473: THE BOW ONLY LOOSES WHEN THE LINE IS ON SOMETHING ═══
+                   Owner (backlog §2.5).  `S._bowSight` was resolved a few
+                   hundred lines above, before the cadence gate, from the same
+                   grip and the same aim ladder this shot uses.
+
+                   NOT STAMPING `swingTimer` IS THE WHOLE MECHANISM, and it is
+                   why this reads as "the bow waits" rather than "the bow
+                   refuses".  The cooldown clock runs from the last shot that
+                   actually LEFT, so a player holding the attack while sweeping
+                   past a monster fires the instant the line touches him --
+                   there is no extra beat to wait out, and no rhythm to learn.
+                   Stamping it here would have turned every off-target frame
+                   into a spent cadence and made the bow fire on a metronome
+                   whether or not it could hit.
+
+                   A PRESSED SPECIAL IS QUEUED, not thrown away.  playerActions'
+                   specialAttack sets `_bowSpecialQueued` instead of firing when
+                   the line is empty (it spends no mana and starts no cooldown
+                   doing so), and this is where it is consumed: the first frame
+                   the line lands on something, the special goes out INSTEAD of
+                   the ordinary arrow.  It has to be instead: specialAttack
+                   spends the swing clock itself (v2.3.2464), and letting both
+                   go on one frame is the bundled-shot bug that fix was written
+                   for.  The queue expires so a request made a fight ago cannot
+                   fire at a monster the player never meant.
+
+                   STAFF IS UNTOUCHED -- it is not in this branch's scope (the
+                   gate below is `!isStaff`), its bolts splash and home, and no
+                   part of the owner's ask is about magic. */
+                var _mayLoose = true;
+                if (!isStaff) {
+                  var _sightOn = !!(S._bowSight && S._bowSight.d != null);
+                  if (S._bowSpecialQueued
+                      && Date.now() - S._bowSpecialQueued >= BOW_SPECIAL_QUEUE_MS) {
+                    S._bowSpecialQueued = 0;   /* the request went stale */
+                  }
+                  if (_sightOn && S._bowSpecialQueued) {
+                    S._bowSpecialQueued = 0;
+                    _mayLoose = false;         /* the special IS this beat's shot */
+                    try { specialAttack(S); } catch (e) { /* refusals float their own popup */ }
+                  } else if (!_sightOn) {
+                    _mayLoose = false;         /* no line, no arrow, and no spent cadence */
+                  }
+                }
+                if (_mayLoose) {
                 if (!S.arrows) S.arrows = [];
                 S.arrows.push({
                   ang: arrAngle,
@@ -1578,7 +1658,8 @@ export function updateMonsterCombat(S, deps) {
                      (573px on a 390x844 phone) -- see the derivation on
                      STAFF_RANGE_PX in gameSystems.js.  The bow's 90 is
                      untouched: its reach is governed by the plant cap, not by
-                     life (90 x 8 = 720 > 675). */
+                     life (v2.3.2473: 90 x 24 = 2160, further past 675 than the
+                     90 x 8 = 720 this note was written for). */
                   life: isStaff ? STAFF_LIFE : 90,
                   maxLife: isStaff ? STAFF_LIFE : 90,
                   hitIds: new Set(),
@@ -1605,6 +1686,7 @@ export function updateMonsterCombat(S, deps) {
                   S._bowShotAng = arrAngle;
                   BT_AUDIO.play('arrow-fly', { vol: 0.85 });
                 }
+                }   /* v2.3.2473: end of `if (_mayLoose)` -- see the sight gate above */
               } else if (!S.isSwinging) {
                 S.swingTimer = Date.now();
                 S.isSwinging = true;

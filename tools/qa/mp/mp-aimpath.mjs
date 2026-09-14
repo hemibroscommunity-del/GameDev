@@ -38,6 +38,38 @@ const offAxis = (a) => {
   return Math.min(r, q - r);
 };
 
+/* ═══ v2.3.2473: A BOW NEEDS SOMETHING ON ITS LINE BEFORE IT WILL FIRE ═══
+ * The bow no longer looses at empty ground: monsterCombat's sight gate fires
+ * only when a ray from the grip along the aim crosses a live target's hit
+ * circle (owner, backlog §2.5).  Every block below that asserts an ANGLE has
+ * to hold a bow that is actually shooting, so each one now stands a monster on
+ * the line it is about to measure.
+ *
+ * THIS DOES NOT WEAKEN WHAT THEY ASSERT, and it is worth saying why, because
+ * "the test put a monster where it wanted the arrow to go" sounds circular.
+ * The monster is NOT a lock -- bow and staff auto-acquire nothing (v2.3.2258),
+ * and these blocks set `lockedTarget = null` -- so it contributes nothing to
+ * rangedAimAngle's ladder.  The angle still comes from `_aimAngle` or
+ * `_facingAngle` exactly as before; the monster only satisfies the gate.  A
+ * build that regressed to the cardinal fallback would still fire (the monster
+ * sits at the awkward diagonal, not on an axis) and would still be caught.
+ *
+ * `d` is comfortably inside the 675px plant cap, and the fodder's hit circle
+ * (27px + the arrow's 6.6px half-thickness) is wide enough that the gate does
+ * not turn into a sub-degree aiming exercise.
+ */
+const seedOnLine = (P, ang, d) => P.page.evaluate((a) => {
+  const S = window._gameState.current, F = window._gameFns || {};
+  S._serverMonsters = false;
+  const m = F.createMonster('aim-line', 'fodder', 2,
+    S.player.x + Math.cos(a.ang) * a.d, S.player.y + Math.sin(a.ang) * a.d, null);
+  m.alive = true; m.curHp = m.maxHp = 90000; m.spd = 0; m.vx = 0; m.vy = 0;
+  m.renderX = m.x; m.renderY = m.y;
+  S.monsters = [m];
+  S.lockedTarget = null;
+  return { mx: Math.round(m.x), my: Math.round(m.y) };
+}, { ang, d });
+
 const armRanged = (P, slot) => P.page.evaluate((slot) => {
   const S = window._gameState.current, R = S.rpg, F = window._gameFns || {};
   const t = ((F.WOODWORKING_TIERS || {}).pine) || { tierMult: 1 };
@@ -48,6 +80,7 @@ const armRanged = (P, slot) => P.page.evaluate((slot) => {
   S.lockedTarget = null;
   S.arrows = [];
   S._shieldUp = false;
+  S._bowSpecialQueued = 0;   /* v2.3.2473: no request left over from the last block */
   return { slot: R.activeSlot, wpn: slot === 'staff' ? R.staffWeapon.type : R.rangedWeapon.type };
 }, slot);
 
@@ -59,6 +92,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const slot of ['ranged', 'staff']) {
     const armed = await armRanged(P, slot);
     rec.ok(`guard: a ${armed.wpn} is in hand with no lock`, !!armed.wpn, armed);
+    /* v2.3.2473: a target ON the diagonal this block aims down, so the bow's
+       sight gate lets the shot go.  See seedOnLine. */
+    const onLine = await seedOnLine(P, DIAG, 300);
+    console.log(`    ${slot} target on the line: ${JSON.stringify(onLine)}`);
 
     /* ── 1. THE ORDINARY SHOT ──
        The player is aiming on a diagonal and holding the attack.  This is the
@@ -186,13 +223,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
     locked.aim != null && Math.abs(locked.aim - (-Math.PI / 2)) < 0.2, locked);
   /* Now the monster is gone -- killed and despawned, the ordinary end of a
      fight.  The lock's ref is stale from this frame on. */
+  /* ═══ v2.3.2473: SOMETHING ELSE HAS TO BE ON THE LINE ═══
+     The phantom really is gone -- that is the whole subject of this block --
+     but the bow will not loose at empty ground any more, so with the zone
+     emptied there would be no shot to measure and the guard below would fail
+     for a reason that has nothing to do with stale aim residue.
+     A DIFFERENT monster is put on the BODY'S heading (0.9, the fallback this
+     block expects the shot to take), and none at all where the phantom stood.
+     That makes the assertion stronger rather than weaker: if the stale lock
+     were still aiming, the shot would fly at -pi/2 where nothing is, and it
+     would still be caught. */
   const gone = await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    S.monsters = [];
+    const S = window._gameState.current, F = window._gameFns || {};
+    const m = F.createMonster('body-line', 'fodder', 2,
+      S.player.x + Math.cos(0.9) * 300, S.player.y + Math.sin(0.9) * 300, null);
+    m.alive = true; m.curHp = m.maxHp = 90000; m.spd = 0; m.vx = 0; m.vy = 0;
+    m.renderX = m.x; m.renderY = m.y;
+    S.monsters = [m];
     S.arrows = [];
     S.swingTimer = 0;
     S.autoAttack = true;
-    return { aimBefore: S._aimAngle };
+    /* ...AND THE FALLBACK IS PINNED TO A NUMBER, NOT TO A SMOOTHED ONE.
+       `_lastAimAngle` is the rung ABOVE `_facingAngle` in rangedAimAngle's
+       ladder and is written in exactly one place -- the player's own stick --
+       so it is the one thing here that means "the direction the player asked
+       for".  Setting it is what makes the expected answer EXACT: _facingAngle
+       is eased toward the lock every frame while the lock lives, so after the
+       monster dies it is somewhere between 0.9 and -pi/2 and moving, which is
+       precisely the drift this block's own note records chasing once already.
+       It does not soften the claim: if either lock-derived residue had
+       survived, the shot would still leave at -pi/2 and both rows below would
+       still fail. */
+    S._lastAimAngle = 0.9;
+    return { aimBefore: S._aimAngle, mx: Math.round(m.x), my: Math.round(m.y) };
   });
   /* ═══ CATCH THE HEADING ON THE FRAME THE ARROW LEAVES ═══
      _facingAngle is SMOOTHED toward the last movement direction every frame, so
