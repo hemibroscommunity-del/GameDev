@@ -67,6 +67,8 @@ const rects = (P) => P.page.evaluate(() => {
     mode: (bus && bus.state && bus.state.mode) || null,
     attack: one('.bt-rjoy-base'), shield: one('[data-shield]'),
     bash: one('[data-ability="bash"]'), whirl: one('[data-ability="whirl"]'),
+    /* v2.3.2472: the Special button and the movement disc it orbits. */
+    special: one('[data-special]'), ljoy: one('.bt-joystick-base'),
   };
 });
 
@@ -134,6 +136,11 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     if (S.rpg && !S.rpg.shield) S.rpg.shield = { type: 'shield', name: 'QA Shield', tierMult: 1 };
+    /* v2.3.2472: a weapon in the active slot, because the Special button
+       measured below refuses to exist without one (specialButtonLive) and a
+       fresh character starts bare -- weapons begin in the bag. */
+    if (S.rpg && !S.rpg.weapon) S.rpg.weapon = { type: 'sword', name: 'QA Sword', tierMult: 1 };
+    if (S.rpg) S.rpg.activeSlot = S.rpg.activeSlot || 'melee';
     S._serverMonsters = false;
     S.monsters = [{
       id: 'lay_1', arch: 'fodder', archetype: 'fodder', type: 'fodder',
@@ -222,6 +229,56 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
       || r.bash.right <= r.shield.left || r.bash.left >= r.shield.right,
       { bash: r.bash, shield: r.shield });
   }
+
+  /* ═══ v2.3.2472: THE COMBAT CONTROLS ARE ONE COLUMN (owner decision D9) ═══
+     "Block left of the disc, abilities stacked above it."  Three claims, and
+     each one has failed before in its own way:
+
+     1. NOTHING IN THE COLUMN MAY TOUCH THE ATTACK DISC, on either axis.  This
+        is the hard one and the reason v2.3.2327's `50vw - size` clamp was
+        inverted: that clamp let the button slide RIGHT, under the disc, which
+        was harmless in the band BELOW it and is not harmless level with its
+        centre.  A sibling with a higher z-index eats every touch in an overlap,
+        and the disc is the control the player presses most.
+     2. THEY SHARE ONE RIGHT EDGE.  Three files used to write three `right`
+        expressions; drift between them is what v2.3.2254 and v2.3.2327 each
+        cost the owner a round trip over.
+     3. BLOCK IS THE BOTTOM OF THE STACK and level with the disc's centre --
+        which is the whole point of the move, since the band placement is what
+        put it under the attacking thumb. */
+  const column = [['shield', r.shield], ['bash', r.bash], ['whirl', r.whirl]]
+    .filter(([, b]) => b && b.shown);
+  if (r.attack && r.attack.shown) {
+    for (const [name, box] of column) {
+      const clear = box.right <= r.attack.left
+        || box.left >= r.attack.right
+        || box.bottom <= r.attack.top
+        || box.top >= r.attack.bottom;
+      rec.ok(`${tag}: the ${name} button never overlaps the attack disc (D9 column)`,
+        clear, { name, box, attack: r.attack });
+    }
+  }
+  if (column.length > 1) {
+    const rights = column.map(([, b]) => b.right);
+    rec.ok(`${tag}: every control in the column shares one right edge (${rights.join(', ')})`,
+      Math.max(...rights) - Math.min(...rights) <= 1, { column });
+  }
+  if (r.shield && r.shield.shown && r.attack && r.attack.shown) {
+    const discMidY = (r.attack.top + r.attack.bottom) / 2;
+    const blockMidY = (r.shield.top + r.shield.bottom) / 2;
+    rec.ok(`${tag}: Block sits LEFT of the disc and level with its centre `
+      + `(block mid ${Math.round(blockMidY)} vs disc mid ${Math.round(discMidY)})`,
+      r.shield.right <= r.attack.left && Math.abs(blockMidY - discMidY) <= 3,
+      { shield: r.shield, attack: r.attack });
+  }
+  if (r.shield && r.bash && r.shield.shown && r.bash.shown) {
+    rec.ok(`${tag}: ...with Shield Bash stacked ABOVE it, not beside or below`,
+      r.bash.bottom <= r.shield.top, { bash: r.bash, shield: r.shield });
+  }
+  if (r.bash && r.whirl && r.bash.shown && r.whirl.shown) {
+    rec.ok(`${tag}: ...and Whirlwind above that`,
+      r.whirl.bottom <= r.bash.top, { whirl: r.whirl, bash: r.bash });
+  }
   const slug = `${phone.width}x${phone.height}${phone.sab ? '-standalone' : ''}${phone.expand ? '-open' : ''}`;
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/btnlayout-${slug}.png` });
 
@@ -249,6 +306,33 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
     return { shieldUp: !!S._shieldUp, swipe: !!S._hasUsedSwipe, mp: S.rpg ? S.rpg.mp : null };
   });
   rec.ok(`${tag}: guard: the shield starts DOWN for the slide test`, pre.shieldUp === false, pre);
+
+  /* ═══ v2.3.2472: THE SPECIAL BUTTON, THE LEFT STICK'S NEW NEIGHBOUR ═══
+     Measured HERE rather than with the column above, because it is hidden
+     while the guard is raised (specialButtonLive) and the rows above run with
+     the shield deliberately UP so the bash button exists.
+
+     Same rule as the column, mirrored.  Its whole hazard is that the movement
+     input is the ENTIRE left half ([data-joyzone="L"]) and a left-zone swipe is
+     the dodge: a button there has to clear the movement disc rather than sit on
+     it, and it must stay inside the left half -- straying right of centre would
+     put it in the AIM zone, which is a different control entirely. */
+  const r2 = await rects(P);
+  if (r2.special && r2.special.shown) {
+    rec.ok(`${tag}: the Special button stays in the left half (right ${r2.special.right} <= ${Math.round(phone.width / 2)})`,
+      r2.special.right <= phone.width / 2, r2.special);
+    rec.ok(`${tag}: ...and sits clear of the dashboard`,
+      r2.special.bottom <= r2.dashTop, { special: r2.special, dashTop: r2.dashTop });
+    if (r2.ljoy) {
+      rec.ok(`${tag}: ...and clears the movement disc rather than covering it`,
+        r2.special.left >= r2.ljoy.right || r2.special.right <= r2.ljoy.left
+        || r2.special.bottom <= r2.ljoy.top || r2.special.top >= r2.ljoy.bottom,
+        { special: r2.special, ljoy: r2.ljoy });
+    }
+  } else {
+    rec.ok(`${tag}: guard: the Special button is on screen with a monster in the perimeter and the guard down`,
+      false, r2.special);
+  }
 
   const slid = await P.page.evaluate(() => {
     const a = window.__centre('.bt-rjoy-base');
