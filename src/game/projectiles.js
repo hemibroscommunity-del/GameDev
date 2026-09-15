@@ -898,7 +898,7 @@ export function updateArrows(S, deps) {
                    plus radial particle burst when a staff bolt collides. */
                 if (a.isStaff) {
                   var _orbColor = projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#a78bfa';
-                  /* ═══ v2.3.2473: THE CRASH HAPPENS WHERE THE ORB DID ═══
+                  /* ═══ v2.3.2505: THE CRASH HAPPENS WHERE THE ORB DID ═══
                    *
                    * Owner (F2): magic orbs "vanish" in Desert Winds.
                    *
