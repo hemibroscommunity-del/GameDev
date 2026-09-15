@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { inspectCardBus } from './inspectCardBus.js';
 import { ItemArt } from './ItemArt.jsx';
+import { toDisplayHp } from '@/data/gameSystems.js'; /* v2.3.2572: the display HP scale (§5.8 D1) */
 
 /* v2.3.1233: Lantern Slate flip (docs/LANTERN-SLATE-SPEC.md) — the card
    was still on the pre-Lantern light-parchment palette.  Keys kept so
@@ -191,7 +192,13 @@ const StackedBar = ({ stats }) => {
 const tier2Label = (s, k) => {
   const t2 = s.tier2 || {};
   if (k === 'power' && t2.crit)           return `${Math.round((t2.crit.chance || 0) * 100)}% / x${(t2.crit.mult || 1).toFixed(2)}`;
-  if (k === 'vitality' && t2.maxHp)       return `${t2.maxHp} HP`;
+  /* v2.3.2572: on the display scale, like every other HP readout (§5.8 D1).
+     This tile is the inspected player's HP POOL, and it sat beside a dash that
+     has read scaled since v2.3.2521 -- so inspecting someone showed a number
+     four to five times larger than the one they were reading about themselves.
+     The neighbouring stamina and mana tiles stay raw on purpose: §5.8 states
+     they are NOT on this scale. */
+  if (k === 'vitality' && t2.maxHp)       return `${toDisplayHp(t2.maxHp)} HP`;
   if (k === 'endurance' && t2.maxStamina) return `${t2.maxStamina} stam`;
   if (k === 'agility' && t2.dodge != null) return `${Math.round(t2.dodge * 100)}% eva`;
   if (k === 'mind' && t2.maxMana)         return `${t2.maxMana} MP`;

@@ -17,7 +17,7 @@ const STATUS_TO_ELEMENT = new Map();
 for (const el of Object.values(ELEMENTS || {})) {
   if (el && el.status) STATUS_TO_ELEMENT.set(el.status, el);
 }
-import { lookupCollision, PVP_THREAT_CONSENT_MS, toDisplayHp } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale */
+import { lookupCollision, PVP_THREAT_CONSENT_MS, toDisplayHp, DISPLAY_SCALE_K } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale; v2.3.2572: k, for the HP-read probe */
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount, dodgeSheetDir } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX, HELD_SHIELD_PX } from '../backShield.js'; /* v2.3.1784; HELD_ v2.3.1798 */
@@ -8699,6 +8699,11 @@ export class EntityRenderer {
             ? { vis: !!display._hpBarFill.visible,
                 alpha: Math.round((display._hpBarFill.alpha || 0) * 100) / 100 }
             : null,
+          /* v2.3.2572: the number actually PRINTED on that bar, plus the raw
+             pool behind it, so mp-hpscale can hold this monster's reading
+             against the player's own rather than against a constant. */
+          hpNum: display._hpText ? String(display._hpText.text || '') : null,
+          hpRaw: (m.curHp != null ? m.curHp : m.hp),
           /* v2.3.2154: the rasterised sizes, so "a bit larger font" is a
              measurement rather than a diff review. Read-only, like every other
              field on this probe. */
@@ -9112,7 +9117,11 @@ export class EntityRenderer {
        considered this frame, which in a duel is the opponent — enough to
        assert the bar armed, tracked a real fraction, and hid again. */
     if (typeof window !== 'undefined') {
-      window.__btPeerHpBar = { shown: show, hp, maxHp, frac: +frac.toFixed(3), sinceHitMs: now - seen, dead: !!other._isDead };
+      window.__btPeerHpBar = { shown: show, hp, maxHp, frac: +frac.toFixed(3), sinceHitMs: now - seen, dead: !!other._isDead,
+        /* v2.3.2572: the number this bar DRAWS, so mp-hpscale can hold it
+           against the player's own and the monster's. */
+        drawn: display._duelBarText ? String(display._duelBarText.text || '') : null,
+        expect: String(toDisplayHp(hp)) };
     }
     if (!show) {
       if (bar.alpha !== 0) {
@@ -9181,7 +9190,12 @@ export class EntityRenderer {
 
     const txt = display._duelBarText;
     if (txt) {
-      const str = String(Math.ceil(hp));
+      /* v2.3.2572: and a PEER's number too (§5.8 D1).  This bar is "the
+         monster's bar, deliberately" (see this method's header) -- it shares
+         the art, the box and the drain constants -- so it has to share the
+         scale as well, or duelling someone shows their HP in one currency and
+         the monster you both walk past in another. */
+      const str = String(toDisplayHp(hp));
       if (txt.text !== str) txt.text = str;
       txt.x = 0;
       txt.y = PEER_HPBAR_Y;
@@ -13782,8 +13796,41 @@ export class EntityRenderer {
          and the fade bookkeeping stay untouched. */
       maxText.alpha = 0;
       maxText.visible = false;
-      const hpStr = String(Math.ceil(hpCur));
+      /* ═══ v2.3.2572: YOUR OWN HP NUMBER JOINS THE DISPLAY SCALE (§5.8 D1) ═══
+         Owner: "character HP bar should read based on the new HP display
+         (lower) ... same with other combat numbers."
+
+         v2.3.2520 put the monster's floating HP number on toDisplayHp and
+         v2.3.2521 did the dash, the stat screen and the hero sheet -- but this
+         one, the number over the PLAYER'S OWN head, kept its raw Math.ceil.
+         So the same character read 100 here and "20 / 20" one tap away in the
+         dashboard, which is precisely the inconsistency StatsPanel's own note
+         was written about.  Same Math.ceil it always was, with the scale
+         folded in: toDisplayHp IS ceil(hp/k), so a player on their last raw
+         point still reads 1 and never 0.
+
+         DISPLAY ONLY.  R.hp is untouched; nothing the server computes with
+         passes through here.  Set DISPLAY_SCALE_K = 1 and this line reads
+         exactly as it did before. */
+      const hpStr = String(toDisplayHp(hpCur));
       if (heartText.text !== hpStr) heartText.text = hpStr;
+      /* ═══ v2.3.2572: QA probe (tools/qa/mp/mp-hpscale.mjs) ═══
+         The owner's complaint is not about one number, it is about TWO numbers
+         for one character disagreeing -- so the probe reports the raw pool
+         beside the string actually drawn, and the scenario compares the drawn
+         value against every other surface rather than against a constant.
+         Read off the Text node, not off the expression that fed it: "the call
+         site was changed" and "the screen changed" are different claims, and
+         the second is the one the owner is making. */
+      if (typeof window !== 'undefined') {
+        window.__btHpReads = {
+          rawHp: Math.ceil(hpCur), rawMaxHp: Math.ceil(hpMax),
+          drawn: heartText.text,
+          drawnMax: maxText.visible ? maxText.text : null,   /* retired v2.3.1472 */
+          expect: String(toDisplayHp(hpCur)), expectMax: String(toDisplayHp(hpMax)),
+          k: DISPLAY_SCALE_K,
+        };
+      }
     }
   }
 
