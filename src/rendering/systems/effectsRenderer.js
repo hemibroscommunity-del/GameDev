@@ -568,9 +568,33 @@ _fxLoad('/sprites/projectiles/magic-bolt-v1.webp?v=2.3.1334').then((tex) => {
    half the head) and 0.742 (eats the collar): 0.79 cuts at the collar and
    leaves shaft plus collar, which is what a spent arrow buried in something
    should look like. */
+/* ═══ v2.3.2511: BIGGER, AND IT BREATHES ═══
+ * Owner (backlog §2.5): pulse the special arrow white in flight, and enlarge
+ * it slightly.
+ *
+ * SCALE 0.17 -> 0.20 is the "slightly": the sheet is 314px wide, so the drawn
+ * arrow goes 53.4 -> 62.8 world px, about 18% longer.  Deliberately modest --
+ * the special already reads as heavy through its golden flame art, and the
+ * PROJ_BODY capsule in projectiles.js is measured off this number, so a large
+ * change here silently widens the hit test too.  (That table's own header says
+ * so: "IF THE ART IS RECUT OR RESCALED, THESE MOVE WITH IT".  It is updated in
+ * the same change.)
+ *
+ * `pulse` is the white flash, drawn as a SECOND additive sprite over the first
+ * rather than as a tint.  Two reasons, and the first is arithmetic: Pixi's
+ * tint MULTIPLIES, so it can only darken -- there is no tint that makes golden
+ * art brighter than it is.  The second is the standing iOS rule: a filter is
+ * the documented grain hazard over the WebGL canvas (v2.3.948's charge pie,
+ * v2.3.1236's joystick bases), and an additive sprite is a draw call, not a
+ * filter.
+ *
+ * pulseMs 260 is a touch faster than the 90ms frame clock times its 4-frame
+ * loop, so the flash does not land on the same art frame every time and the
+ * two rhythms read as one living object rather than a strobe. */
 const ARROW_SPECIAL = {
   frames: [], noHead: [], headFrac: 0.79,
-  anchor: { x: 0.460, y: 0.580 }, frameMs: 90, scale: 0.17,
+  anchor: { x: 0.460, y: 0.580 }, frameMs: 90, scale: 0.20,
+  pulse: { ms: 260, alpha: 0.5, grow: 0.12 },
 };
 const MAGIC_SPECIAL = {
   frames: [], anchor: { x: 0.639, y: 0.536 }, frameMs: 90, scale: 0.30,
@@ -615,6 +639,21 @@ const SWORD_SLASH = { frames: [], anchor: { x: 0.5, y: 0.5 } };
  * texture.  Owner: "the arrowhead is missing mid flight.  It should only get
  * stuck in the monster without the arrowhead."  The silhouette is no longer
  * touched at all.
+ *
+ * ═══ v2.3.2511: THE KEYLINE IS THICKER NOW, AND ONLY ON THE SHAFT ═══
+ * Owner (backlog §2.5), still the same complaint: the outline needs to read.
+ * v2.3.1877's own measurement is why blackening alone was not enough -- at this
+ * size a ONE-pixel keyline owns about half an output pixel however black it is
+ * -- so make-pine-arrow.mjs now grows it INWARD by one pixel, which cannot fill
+ * a concavity the way v2.3.1876's outward rim did.  Measured by the script:
+ * keyline pixels on the shaft x1.37, steel head 305 -> 305 (100% kept),
+ * headFrac still 0.742.  The thicken stops three columns short of the steel
+ * boundary, because the head is the thinnest part of the art and because the
+ * head measurement is a per-column vote that blackening moves -- the first run
+ * of that pass reported 0.719, which is v2.3.1876's number reached by a
+ * different route.  NO RUNTIME FILTER, deliberately: a filter over the WebGL
+ * canvas is the documented iOS grain hazard (v2.3.948, v2.3.1236), which is
+ * why every move of this line has been made in the art.
  *
  * Art noses RIGHT like the magic bolt and the special arrow, so rotation is
  * the travel angle with no offset.  The anchor is where the OLD polygon
@@ -3997,12 +4036,21 @@ export class EffectsRenderer {
         this.magicBoltSprites.splice(i, 1);
       }
     }
-    /* v2.3.1396: same reap for the painted special-projectile sprites. */
+    /* v2.3.1396: same reap for the painted special-projectile sprites.
+       v2.3.2511: the white-pulse overlay is pooled in this SAME list, so it is
+       reaped by the same pass -- but the back-reference it clears depends on
+       which of the two it is, or a dead glow would leave `_fxGlow` pointing at
+       a destroyed sprite and _placeSpecialFx would draw nothing for the rest
+       of that projectile's life. */
     for (let i = this.specialFxSprites.length - 1; i >= 0; i--) {
       const entry = this.specialFxSprites[i];
       if (!_liveBolts.has(entry.proj) || !entry.sprite || entry.sprite.destroyed) {
+        const _wasGlow = !!(entry.proj && entry.proj._fxGlow === entry.sprite);
         if (entry.sprite && !entry.sprite.destroyed) entry.sprite.destroy();
-        if (entry.proj) entry.proj._fxSprite = null;
+        if (entry.proj) {
+          if (_wasGlow) entry.proj._fxGlow = null;
+          else entry.proj._fxSprite = null;
+        }
         this.specialFxSprites.splice(i, 1);
       }
     }
@@ -4302,6 +4350,49 @@ export class EffectsRenderer {
     sprite.y = y;
     sprite.rotation = ang || 0;
     sprite.alpha = alpha;
+    /* ═══ v2.3.2511: THE WHITE PULSE ═══
+       Owner (backlog §2.5): pulse the special arrow white in flight.
+
+       A SECOND SPRITE, ADDITIVE, over the first.  Pixi's tint multiplies, so
+       no tint can make golden art brighter than it already is; and a filter is
+       the documented iOS grain hazard over the WebGL canvas (v2.3.948,
+       v2.3.1236), which rules out the other obvious answer.  Adding light is
+       what "flashes white" actually means, and an additive draw is how you add
+       light.
+
+       Pooled on the projectile beside the main sprite and torn down with it
+       (see the specialFxSprites sweep), so a volley cannot leak one per shot.
+       It carries the SAME texture, anchor and rotation -- it is the same arrow
+       seen a little brighter and a little bigger, not a halo behind it, which
+       is the shape v2.3.1396 retired when the painted art arrived.
+
+       ONLY WHILE FLYING.  `headless` is the caller's `planted || stuckIn`, so a
+       spent arrow riding a monster for four seconds stops flashing -- a stuck
+       arrow that keeps pulsing reads as a live shot and is the sort of thing
+       that gets reported as "the special hits forever". */
+    if (cfg.pulse && !hn) {
+      let glow = p._fxGlow;
+      if (!glow || glow.destroyed) {
+        glow = new Sprite(frame);
+        glow.blendMode = 'add';
+        this.projectileLayer.addChild(glow);
+        p._fxGlow = glow;
+        this.specialFxSprites.push({ proj: p, sprite: glow });
+      }
+      if (glow.texture !== frame) glow.texture = frame;
+      /* 0..1..0 over pulse.ms, so the flash swells and fades rather than
+         switching on -- a square wave at this size reads as a flicker. */
+      const _ph = (now % cfg.pulse.ms) / cfg.pulse.ms;
+      const _sw = Math.sin(_ph * Math.PI);
+      glow.anchor.set(cfg.anchor.x, cfg.anchor.y);
+      glow.scale.set(cfg.scale * (pk || 1) * (1 + cfg.pulse.grow * _sw));
+      glow.x = x; glow.y = y;
+      glow.rotation = ang || 0;
+      glow.alpha = alpha * cfg.pulse.alpha * _sw;
+      glow.visible = true;
+    } else if (p._fxGlow && !p._fxGlow.destroyed) {
+      p._fxGlow.visible = false;
+    }
     liveSet.add(p);
   }
 
