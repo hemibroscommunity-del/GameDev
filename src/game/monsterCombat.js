@@ -2745,7 +2745,20 @@ export function updateMonsterCombat(S, deps) {
                       size: 1.5 + Math.random() * 2
                     });
                   }
-                  pushDmgPopup(S, npc.x, npc.y - 20, '' + npcDmg, '#fff');
+                  /* ═══ v2.3.2497: NO DAMAGE NUMBERS ON THE MAYOR ═══
+                     Owner.  NPC damage is entirely client-local prediction --
+                     no npc_hit exists on the wire and the worker never hears
+                     about it -- so a number over the quest giver is a figure
+                     the game made up about a character it does not fight.
+                     `noHp` is the flag the NPC table already carries for
+                     exactly this population (gameDisplay.js: Mayor Bro is
+                     hp 100 / noHp true), so the gate reads the fact that is
+                     already there instead of naming him.
+                     ONLY the number is gated: the swing still registers, the
+                     particles and the knockback still play, because "he does
+                     not show damage" and "he cannot be hit" are different
+                     claims and only the first was made. */
+                  if (!npc.noHp) pushDmgPopup(S, npc.x, npc.y - 20, '' + npcDmg, '#fff');
                   S.screenShake = 2;
                   if (npc.hp <= 0) {
                     npc.alive = false;
