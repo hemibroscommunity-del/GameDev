@@ -108,6 +108,28 @@ export function isGearProvSlot(slot) {
   return typeof slot === 'string' && GEAR_PROV_SLOTS.indexOf(slot) !== -1;
 }
 
+/* v2.3.2536: which rpg-blob stash list holds a piece of each slot.  Two
+   frozen tables rather than one object lookup keyed by a client string --
+   `GEAR_PROV_FIELD['__proto__']` on a plain object would answer with an
+   inherited member (TRAPS #6), so both directions go through a guard. */
+export const GEAR_PROV_FIELD = Object.freeze({
+  armor: 'armorStash', legsArmor: 'legsStash', shield: 'shieldStash',
+  amulet: 'amuletStash', gear: 'gearStash',
+});
+export const GEAR_PROV_FIELDS = Object.freeze(['armorStash', 'legsStash', 'shieldStash', 'amuletStash', 'gearStash']);
+
+export function isGearStashField(field) {
+  return typeof field === 'string' && GEAR_PROV_FIELDS.indexOf(field) !== -1;
+}
+
+export function slotForGearField(field) {
+  if (!isGearStashField(field)) return null;
+  for (const slot of GEAR_PROV_SLOTS) {
+    if (GEAR_PROV_FIELD[slot] === field) return slot;
+  }
+  return null;
+}
+
 /* The two provenance marks.  `minted` means "this server wrote this
    piece down against this player"; `legacy` means "it works, we cannot
    prove where it came from".  Both are DERIVED — see the header. */
@@ -254,7 +276,9 @@ export const gearProvMethods = {
   },
 
   _gearProvForget(playerId) {
-    if (playerId) this._gearProvMap().delete(playerId);
+    if (!playerId) return;
+    this._gearProvMap().delete(playerId);
+    if (this._gearProvPending) this._gearProvPending.delete(playerId);
   },
 
   /* Fire-and-forget put, the _saveRpg posture (rule 10): the output gate
@@ -527,7 +551,7 @@ export const gearProvMethods = {
     return out;
   },
 
-  /* Is this piece one the server can prove?  The single question PR 3's
+  /* Is this piece one the server can prove?  The single question the
      listing gate asks, kept here so there is one definition of
      "sellable provenance" rather than one per caller. */
   _gearProvOwned(playerId, slot, piece) {
@@ -536,5 +560,248 @@ export const gearProvMethods = {
     const ledger = this._gearProvOf(playerId);
     const row = ledger ? findProvRow(ledger, gid) : null;
     return !!(row && row.slot === slot);
+  },
+
+  /* ═══ v2.3.2546: MARK A DELIVERED PIECE FROM THE LEDGER ═══
+     Called right after #643's `_stGearApplyCredit` has sanitized, capped
+     and pushed the piece (inbox.js) -- see the note there for why the two
+     compose instead of one replacing the other.
+
+     The mark is DERIVED, here as everywhere else in this module: the row
+     has already been granted (awaited, by the caller), so this ASKS THE
+     LEDGER rather than trusting the payload's claim about itself.  If the
+     row write failed, the piece keeps whatever #643's apply gave it and
+     stays unproven -- usable, unsellable -- rather than carrying a mark
+     nothing backs.
+
+     On a VERIFIED row the piece is rebuilt IN PLACE from the row's own
+     stored copy, which is rule 16's shape at the one funnel every future
+     producer will reach for: reading the payload's stats while verifying
+     only its id would leave the next caller free to reintroduce exactly
+     the gap this lane exists to close.  Rebuilt in place rather than
+     replaced so #643's own fields on the pushed object (its `_sv`) are
+     not silently dropped by this lane. */
+  _gearProvMarkDelivered(playerId, payload, landed) {
+    if (!landed || typeof landed !== 'object') return landed;
+    delete landed.gid;
+    delete landed.prov;
+    landed.prov = PROV_LEGACY;
+    const row = payload && payload.row;
+    const slot = row ? slotForGearField(payload.field) : null;
+    if (!row || !row.id || !slot || row.slot !== slot) return landed;
+    if (!this._gearProvOwned(playerId, slot, { gid: row.id })) return landed;
+    const src = row.p && typeof row.p === 'object' ? row.p : null;
+    if (src) {
+      for (const k of Object.keys(landed)) {
+        if (k === 'prov' || k === '_sv') continue;
+        delete landed[k];
+      }
+      Object.assign(landed, clonePiece(src));
+      delete landed.gid;
+      delete landed.prov;
+    }
+    landed.gid = row.id;
+    landed.prov = PROV_MINTED;
+    return landed;
+  },
+
+  /* ═══ v2.3.2536: MAY THIS PLAYER SELL THIS PIECE? ═══
+     ONE definition, with a REASON, because the client has to be able to
+     say why a Sell button is greyed rather than failing silently (the
+     owner's decision in v2.3.2534: legacy gear is usable, not sellable,
+     and a player is owed an explanation).
+
+     Reasons, all of them stable strings the client can key off:
+       'ok'        -- the server minted it and still holds the record
+       'legacy'    -- no id: minted before the ledger existed, or claimed
+                      by a client and never proved.  Permanent.
+       'wrong_slot'-- the id names a piece for a different slot
+       'not_held'  -- we minted it, but the record is no longer in this
+                      player's ledger: it has been sold, traded, escrowed
+                      into a live listing, or aged out past the cap
+       'worn'      -- it is on your body right now; take it off first
+       'in_mail'   -- it is a delivery still waiting in your inbox
+       'cosmetic'  -- an outfit layer.  NEVER sellable, by design, and not
+                      the same answer as 'legacy'
+       'no_player' -- no session (the ledger is not loaded)
+
+     ═══ v2.3.2539: THE GATE ASKS TWO QUESTIONS, NOT ONE ═══
+     It used to ask only "is there a row?", and treated the row as proof of
+     POSSESSION.  It is not: a row records a MINT.  The review of #650 ran
+     both consequences against a real GameRoom rather than reasoning about
+     them, and both print gear the moment #643 wires this up:
+
+       (a) WORN pieces have rows -- quests.js mints the tut_1 shield
+           straight into `ps.shield` and records it there.  The gate said
+           yes, `_gearProvTake` removed the row and best-effort spliced the
+           STASH list (where a worn piece is not), and the player kept
+           wearing theirs while the buyer received a copy.
+       (b) A piece parked in the MAIL had a row too, because the row was
+           granted before delivery was attempted and a full stash defers
+           delivery.  Sell the rebuilt copy now, receive the real one when
+           you make room.
+
+     (b) is closed at the source -- the row is no longer granted for a
+     delivery that did not land (inbox.js) -- and this gate checks the mail
+     anyway, because a gate that depends on another file's ordering staying
+     correct is not a gate. */
+  _gearSellable(playerId, slot, piece) {
+    if (!playerId) return { ok: false, reason: 'no_player' };
+    if (!isGearProvSlot(slot)) return { ok: false, reason: 'wrong_slot' };
+    /* Cosmetics have NO server mint path at all (gearCatalog.js is client
+       art), so they can never carry a row -- and `legacy` would be the
+       wrong thing to tell a player, because it means "you earned this
+       before we kept receipts, sorry" and invites a future contributor to
+       "fix" cosmetics by adding a mint path nobody wants.  The truth is
+       "these are not sellable, by design". */
+    if (slot === 'gear') return { ok: false, reason: 'cosmetic' };
+    const gid = claimedGid(piece && typeof piece === 'object' ? piece : { gid: piece });
+    if (!gid) return { ok: false, reason: 'legacy' };
+    const ledger = this._gearProvOf(playerId);
+    if (!ledger) return { ok: false, reason: 'no_player' };
+    /* Checked BEFORE the row lookup, and it is why 'in_mail' exists as a
+       separate answer at all.  With the ordering fix in inbox.js a parked
+       piece has no row, so the lookup below would answer 'not_held' -- true,
+       but useless to a player, who would be told a piece they can see in
+       their mail is not theirs.  "It is still in the post" is something they
+       can act on, which is the entire purpose of these strings. */
+    if (this._gearProvInMail(playerId, gid)) return { ok: false, reason: 'in_mail' };
+    const row = findProvRow(ledger, gid);
+    if (!row) return { ok: false, reason: 'not_held' };
+    if (row.slot !== slot) return { ok: false, reason: 'wrong_slot' };
+    const ps = this.playerState[playerId];
+    /* Worn: refuse rather than strip the piece off the player's body.  A
+       listing must never take what someone is using, and "unequip it
+       first" is a thing a player can act on -- which is what the reason
+       strings are for. */
+    if (ps && ps[slot] && ps[slot].gid === row.id) return { ok: false, reason: 'worn' };
+    return { ok: true, reason: 'ok', gid: row.id };
+  },
+
+  /* Is this id sitting in an undelivered inbox entry?  Reads the in-memory
+     pending set rather than storage, so the gate stays synchronous and can
+     run inside one input-gated event (rule 9).  The set is rebuilt from
+     `inbox:<pid>` on join, which is the only moment a player can have mail
+     they have not been handed. */
+  _gearProvInMail(playerId, gid) {
+    const pend = this._gearProvPending && this._gearProvPending.get(playerId);
+    return !!(pend && pend.has(gid));
+  },
+
+  /* Remember / forget an id that is queued in the mail. */
+  _gearProvMailMark(playerId, gid, on) {
+    if (!playerId || !gid) return;
+    if (!this._gearProvPending) this._gearProvPending = new Map();
+    let set = this._gearProvPending.get(playerId);
+    if (on) {
+      if (!set) { set = new Set(); this._gearProvPending.set(playerId, set); }
+      set.add(gid);
+    } else if (set) {
+      set.delete(gid);
+      if (!set.size) this._gearProvPending.delete(playerId);
+    }
+  },
+
+  /* ═══ TAKE A PIECE INTO ESCROW ═══
+     The listing path's half of rule 16: the server hands out ITS OWN copy
+     of the piece and REMOVES the record from the player's ledger, so the
+     same piece cannot be listed twice, cannot be equipped by name while
+     it is on the shelf, and cannot come back through a join claim as a
+     second provable copy.
+
+     The detached row is RETURNED, not held anywhere: the caller escrows
+     it inside the listing record, exactly as the goods themselves are
+     escrowed (rule 7, money at rest lives in storage).  So the row travels
+     with the goods and the store's existing wake-time rebuild is what
+     recovers it -- no second recovery mechanism, and no "escrowed" flag
+     that could strand a piece if a listing record went missing.
+
+     Synchronous: one in-memory ledger edit plus a fire-and-forget put, no
+     await, so a caller can validate and commit inside one event (rule 9).
+
+     CRASH SHAPE, stated because it is a real cost: if the room dies
+     between this call and the listing record landing, the row is gone and
+     the piece reverts to `legacy` -- usable, unsellable. That is the
+     direction chosen deliberately. The alternative ordering (write the
+     listing first, take the row after) fails toward the piece existing in
+     BOTH places, which is a duplicate, which is money. */
+  _gearProvTake(playerId, slot, gid) {
+    const verdict = this._gearSellable(playerId, slot, gid);
+    if (!verdict.ok) return null;
+    const ledger = this._gearProvOf(playerId);
+    const idx = ledger.list.findIndex((r) => r.id === verdict.gid);
+    if (idx < 0) return null;
+    const row = ledger.list[idx];
+    ledger.list.splice(idx, 1);
+    this._gearProvSave(playerId, ledger);
+    /* Take it out of the server's own stash too, WHERE IT IS PRESENT.
+       It often is not -- a dropped or quest piece goes straight to the
+       player's browser and only reaches the server's list through a join
+       claim -- so this is a best-effort tidy, never the authority.  The
+       authority is the row, which has just moved. */
+    const field = GEAR_PROV_FIELD[slot];
+    const psTake = this.playerState[playerId];
+    if (field && psTake && Array.isArray(psTake[field])) {
+      const list = psTake[field];
+      const at = list.findIndex((g) => g && g.gid === verdict.gid);
+      if (at >= 0) {
+        list.splice(at, 1);
+        /* v2.3.2539: and PERSIST it.  The splice used to live only in
+           memory until some unrelated path happened to save, so a room
+           restart in between left the stored blob still holding the piece
+           while the ledger had lost its row -- it reloaded as `legacy`.
+           Not a duplicate and not a loss, but an undocumented obligation on
+           every caller, which is the kind of thing the next caller forgets
+           (review of #650). */
+        this._saveRpg(playerId, psTake);
+      }
+    }
+    const piece = { ...row.p };
+    delete piece.gid;
+    delete piece.prov;
+    piece.gid = row.id;
+    piece.prov = PROV_MINTED;
+    return { piece, row: { id: row.id, slot: row.slot, src: row.src, at: row.at, p: row.p } };
+  },
+
+  /* ═══ GIVE A PIECE ITS RECORD BACK, TO WHOEVER NOW OWNS IT ═══
+     The other half: a sale hands the row to the BUYER, a cancel or an
+     expiry hands it back to the SELLER.  Same function, because they are
+     the same operation -- the row keeps its id, so the piece keeps its
+     identity across the counter and nothing anywhere has to guess whether
+     two pieces are "the same piece" by name (the #643 trap).
+
+     ASYNC and read-modify-write, because the recipient may be offline:
+     the buyer of a listing does not have to be logged in. When they ARE
+     online the warm cache is updated too, so the live playerState and the
+     durable record cannot disagree.
+
+     Idempotent: granting a row whose id the ledger already holds is a
+     no-op rather than a second row. That matters because settlement
+     retries (rule 5's opId converges the PAYMENT; this converges the
+     RECORD). */
+  async _gearProvGrantRow(playerId, row) {
+    if (!playerId || !row || typeof row !== 'object') return false;
+    if (typeof row.id !== 'string' || !row.id || !isGearProvSlot(row.slot)) return false;
+    if (!row.p || typeof row.p !== 'object') return false;
+    const cached = this._gearProvOf(playerId);
+    let ledger = cached;
+    if (!ledger) {
+      let stored = null;
+      try { stored = await this.state.storage.get(GEAR_PROV_KEY(playerId)); } catch (e) { stored = null; }
+      ledger = normalizeProvLedger(stored);
+    }
+    if (findProvRow(ledger, row.id)) return true;   /* already ours: converge, do not duplicate */
+    ledger.list.push({ id: row.id, slot: row.slot, src: typeof row.src === 'string' ? row.src.slice(0, 24) : '', at: typeof row.at === 'number' ? row.at : Date.now(), p: row.p });
+    if (ledger.list.length > GEAR_PROV_CAP) {
+      ledger.forgotten += ledger.list.length - GEAR_PROV_CAP;
+      ledger.list = ledger.list.slice(ledger.list.length - GEAR_PROV_CAP);
+    }
+    if (cached) this._gearProvMap().set(playerId, ledger);
+    /* Awaited for an offline recipient: there is no output gate holding a
+       message for them, so an unawaited put can be lost to eviction and
+       the buyer would own a piece the server cannot prove. */
+    try { await this.state.storage.put(GEAR_PROV_KEY(playerId), ledger); } catch (e) { return false; }
+    return true;
   },
 };

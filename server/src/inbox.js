@@ -1,3 +1,6 @@
+import { GEAR_STASH_CAP } from './gearstash.js';                      /* v2.3.2536 */
+import { isGearStashField, slotForGearField, PROV_MINTED, PROV_LEGACY } from './gearprov.js'; /* v2.3.2536 */
+
 /* ═══ v2.3.1117: INBOX + ESCROW PRIMITIVES (PR2 of the heavy-systems
  * plan; spec in docs/specs/inbox-escrow.md) ═══
  *
@@ -145,8 +148,10 @@ export const inboxMethods = {
    *   kind 'gold'   payload { amount }
    *   kind 'item'   payload { invKey, count }
    *   kind 'weapon' payload { weapon }   (opaque blob, sanitized on apply)
-   *   kind 'gear'   payload { field, piece } (v2.3.2531 -- one of the five
-   *                 gear stashes, gearstash.js; sanitized on apply)
+   *   kind 'gear'   payload { field, piece, row } -- one of the five gear
+   *                 stashes (v2.3.2531, gearstash.js; sanitized on apply),
+   *                 plus, since v2.3.2536, the piece's detached provenance
+   *                 row so the delivered copy can be marked from the ledger
    * Online -> applied to live playerState immediately (+ inbox_delivered
    * notification).  Offline, or online with a full weapon stash -> parked
    * in inbox:<id> and drained at the next join.  Returns 'delivered' |
@@ -154,15 +159,56 @@ export const inboxMethods = {
   async _creditPlayer(playerId, entry) {
     if (await this._opSeen(entry.opId)) return 'dup';
     await this._opStamp(entry.opId);
+    /* ═══ v2.3.2539: THE ROW ONLY LANDS IF THE PIECE DOES ═══
+       v2.3.2536 granted the provenance row FIRST and unconditionally, on
+       the argument that an offline recipient has no output gate holding a
+       message for them.  That argument is right about durability and wrong
+       about ordering: `_applyCreditToPs` also declines when the target
+       stash is at GEAR_STASH_CAP, and that happens while the player is
+       ONLINE -- so the ledger claimed they held a piece that was sitting in
+       their inbox, and they could sell a rebuilt copy of it and then
+       receive the real one on reconnect.  Two pairs of greaves.  (Review of
+       #650, reproduced against a real GameRoom.)
+
+       So the row is granted only when the piece will actually land, and
+       otherwise travels INSIDE the durable inbox entry -- which satisfies
+       the offline case for the same reason the entry itself does, and is
+       granted by the drain at the moment the piece is really applied.
+       A storage await holds the input gate closed (rule 9), so nothing
+       interleaves between this and the commit below. */
     const ps = this.playerState[playerId];
-    if (ps && this._applyCreditToPs(ps, entry)) {
+    const _fits = entry.kind !== 'gear' || !!(ps && this._gearCreditFits(ps, entry));
+    if (_fits) await this._creditGearRow(playerId, entry);
+    if (ps && _fits && this._applyCreditToPs(ps, entry, playerId)) {
       this._saveRpg(playerId, ps);
       this._queuePlayerStateFlush(playerId);
       this._sendInboxDelivered(playerId, [entry], 0);
       return 'delivered';
     }
     await this._inboxAppend(playerId, entry);
+    /* Parked: the gate has to know this id is mail, not property, for as
+       long as it sits there (gearprov.js _gearSellable, reason 'in_mail'). */
+    this._gearCreditMail(playerId, entry, true);
     return 'inboxed';
+  },
+
+  /* v2.3.2539: would a gear credit fit right now?  Mirrors the capacity
+     test in _applyCreditToPs's gear branch so the caller can decide whether
+     to grant the row BEFORE applying -- the two must agree, which is why
+     this reads the same cap from the same place rather than restating it. */
+  _gearCreditFits(ps, entry) {
+    if (!ps || !entry || entry.kind !== 'gear') return true;
+    const p = entry.payload || {};
+    if (!isGearStashField(p.field)) return true;   /* malformed: "fits", so it is consumed and dropped */
+    const list = ps[p.field];
+    return !Array.isArray(list) || list.length < GEAR_STASH_CAP;
+  },
+
+  /* Mark / unmark a parked gear entry's id in the pending-mail set. */
+  _gearCreditMail(playerId, entry, on) {
+    if (!entry || entry.kind !== 'gear') return;
+    const row = entry.payload && entry.payload.row;
+    if (row && row.id) this._gearProvMailMark(playerId, row.id, on);
   },
 
   // Apply one credit entry to a live playerState.  Returns false ONLY
@@ -170,7 +216,11 @@ export const inboxMethods = {
   // truncates the stash at cap, so pushing past it would silently
   // DESTROY the weapon).  Malformed entries return true so a bad
   // payload can never wedge the inbox forever.
-  _applyCreditToPs(ps, entry) {
+  /* v2.3.2536: `playerId` is the third argument so the `gear` kind below
+     can put the piece's provenance row back into the right player's ledger
+     (gearprov.js).  `ps` carries no id of its own and both call sites above
+     already hold one. */
+  _applyCreditToPs(ps, entry, playerId) {
     const p = entry.payload || {};
     if (entry.kind === 'gold') {
       ps.coins = Math.max(0, (ps.coins || 0) + Math.max(0, Math.floor(p.amount || 0)));
@@ -198,17 +248,41 @@ export const inboxMethods = {
       ps.weaponStash.push(w);
       return true;
     }
-    /* v2.3.2531: a piece of GEAR — the goods leg of a store sale, the
-       refund of a cancelled or expired gear listing, or the unwind of a
-       listing whose record could not be written.  Delegated to
-       storegear.js rather than spelled out here because which sanitizer
-       a piece needs depends on which of the five lists it belongs to
-       (an amulet reaches the authoritative damage roll and goes through
-       _sanitizeAmulet; a cosmetic is a {slot, gearId} pair).
-       Like the weapon branch it returns FALSE only for a full stash, so
-       the entry waits in the mail instead of being destroyed by
-       _saveRpg's cap (handoff rule 3). */
-    if (entry.kind === 'gear') return this._stGearApplyCredit(ps, p);
+    /* ═══ v2.3.2546: ONE GEAR APPLY, TWO JOBS ═══
+       #643 landed its own gear credit (`_stGearApplyCredit`, storegear.js)
+       while this lane was in review, and both branches wrote a
+       `kind === 'gear'` arm here.  They are not rivals -- they do
+       different halves, so this composes them rather than picking one:
+
+         - #643's apply knows WHICH SANITIZER a piece needs, which depends
+           on the list it belongs to (an amulet reaches the authoritative
+           damage roll and goes through _sanitizeAmulet; a cosmetic is a
+           {slot, gearId} pair).  It also does the cap check and the push.
+           Keeping it means this funnel does not grow a second, thinner
+           copy of that table.
+         - This lane adds the mark, DERIVED from the provenance ledger
+           rather than asserted: on a verified row the landed piece is
+           rebuilt from the row's own stored copy (rule 16 -- the server's
+           own copy by reference), so a producer cannot put inflated stats
+           beside a genuine id.
+
+       Rule 3's contract is #643's and is unchanged: a FULL stash returns
+       false so the entry stays QUEUED, because _saveRpg caps these lists
+       and pushing past the cap would silently destroy the piece.
+
+       NOTE for the owner/reviewer: `_sv` (storegear.js) and `prov`/`gid`
+       (gearprov.js) are now TWO provenance marks on the same pieces. That
+       duplication is deliberate for now and flagged on the PR -- retiring
+       one is a design call, not something this merge should decide. */
+    if (entry.kind === 'gear') {
+      const gField = p && p.field;
+      const beforeN = Array.isArray(ps[gField]) ? ps[gField].length : 0;
+      if (!this._stGearApplyCredit(ps, p)) return false;   /* full stash: stay queued */
+      const gList = ps[gField];
+      const landed = (Array.isArray(gList) && gList.length > beforeN) ? gList[gList.length - 1] : null;
+      if (landed) this._gearProvMarkDelivered(playerId, p, landed);
+      return true;
+    }
     return true;
   },
 
@@ -262,9 +336,20 @@ export const inboxMethods = {
       const delivered = [];
       const remainder = [];
       for (const entry of box) {
-        if (this._applyCreditToPs(ps, entry)) delivered.push(entry);
+        /* v2.3.2539: a parked gear entry carries its row, and the row is
+           granted HERE -- at the moment the piece is really applied -- not
+           when the credit was first attempted.  Granting is idempotent, so
+           a retry converges on one row. */
+        const _fits = entry.kind !== 'gear' || this._gearCreditFits(ps, entry);
+        if (_fits) await this._creditGearRow(playerId, entry);
+        if (_fits && this._applyCreditToPs(ps, entry, playerId)) delivered.push(entry);
         else remainder.push(entry);
       }
+      /* Rebuild the pending-mail set from what is STILL queued, so the sell
+         gate's 'in_mail' answer is exact after every drain -- including the
+         entries this drain has just handed over. */
+      for (const e of delivered) this._gearCreditMail(playerId, e, false);
+      for (const e of remainder) this._gearCreditMail(playerId, e, true);
       if (remainder.length) await this.state.storage.put(key, remainder);
       else await this.state.storage.delete(key);
       if (delivered.length) {
@@ -272,6 +357,18 @@ export const inboxMethods = {
         this._sendInboxDelivered(playerId, delivered, remainder.length, ws);
       }
     } catch (e) { /* mail must never block a join */ }
+  },
+
+  /* v2.3.2536: put a credited piece's provenance row into the recipient's
+     ledger.  A no-op for every other kind, and for a gear entry with no
+     row -- such a piece arrives `legacy`, which is the honest answer for
+     gear whose origin cannot be proved, rather than a refusal that would
+     strand the delivery. */
+  async _creditGearRow(playerId, entry) {
+    if (!entry || entry.kind !== 'gear') return;
+    const row = entry.payload && entry.payload.row;
+    if (!row) return;
+    try { await this._gearProvGrantRow(playerId, row); } catch (e) { /* the piece still arrives, legacy */ }
   },
 
   _sendInboxDelivered(playerId, entries, queued, wsOverride) {
