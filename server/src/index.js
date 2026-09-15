@@ -2785,7 +2785,11 @@ export class GameRoom {
     if (!this._monsterDamageable(m)) return 0;   /* v2.3.2221: a DoT tick into an
        invulnerable phase DROPS -- it must not bank up and land on the way out,
        which would make the phase a delay rather than an immunity. */
-    const dmg = Math.min(Math.max(0, Math.round(rawDmg || 0)), Math.max(0, m.hp));
+    /* v2.3.2481: the pre-clamp figure, kept so the popup can show the hit
+       that was actually rolled rather than the sliver of HP left to take
+       (see the monster_hit payload below). */
+    const _rawRounded = Math.max(0, Math.round(rawDmg || 0));
+    const dmg = Math.min(_rawRounded, Math.max(0, m.hp));
     if (dmg <= 0) return 0;
     m.hp -= dmg;
     if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
@@ -2802,8 +2806,18 @@ export class GameRoom {
            crit anchor's whole point (v2.3.2212: "it always reads as a spike")
            is invisible for anything that comes through here. */
         monsterId: m.id, zone: zoneId, dmg, isCrit: !!(opts && opts.isCrit),
+        /* v2.3.2481: overkill raw, display only, sent only when it differs
+           — a burn tick or an Element Burst that lands the last point of
+           damage now reads at its real size.  Every credited number
+           (contribution, XP, the HP bar) still comes off `dmg`. */
+        ...(_rawRounded > dmg ? { rawDmg: _rawRounded } : null),
         attackerId: sourceId, status: statusId,
         burst: !!(opts && opts.burst),
+        /* v2.3.2481: which weapon this came from, when the caller knows.
+           Display only (the popup's weapon mark, v2.3.2232) — the staff
+           splash is the first source here that has a weapon to name. */
+        ...(opts && opts.slot ? { slot: opts.slot } : null),
+        ...(opts && opts.splash ? { splash: true } : null),
         hpPct: Math.max(0, m.hp / m.maxHp),
       },
     });

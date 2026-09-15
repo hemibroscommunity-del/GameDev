@@ -1556,6 +1556,21 @@ export function processGameEvent(type, payload, S, deps) {
                      Clobbering it made curHp == hp on every hit, which
                      locked the bar percentage at 100%. */
                   hitM.curHp = Math.round(payload.hpPct * hitM.maxHp);
+                  /* ═══ v2.3.2481: THE KILLING BLOW SHOWS ITS REAL NUMBER ═══
+                     `payload.dmg` is the CREDITED damage — the worker clamps
+                     it to the monster's remaining HP so the HP bar and the
+                     kill-credit share stay honest — which is why the last hit
+                     of a fight always printed a tiny number no matter how hard
+                     it hit.  The worker now also sends `rawDmg`, the roll
+                     before that clamp, on the hits where the two differ.
+                     Display only, and only for the POPUP: the HP bar still
+                     reads hpPct, because the monster really did only have
+                     that much left to take.
+                     DEPLOY-ORDER (rule 19): an older worker sends no rawDmg
+                     and every number below falls back to `dmg`, which is
+                     exactly today's behaviour. */
+                  var _popDmg = (typeof payload.rawDmg === 'number'
+                    && payload.rawDmg > payload.dmg) ? payload.rawDmg : payload.dmg;
                   /* ═══ v2.3.2372: THE LUNGE'S ELEMENT PIP RIDES THE REAL HIT ═══
                      The server owns statuses and never syncs them, so the
                      coloured pip and the ambient element particles are drawn
@@ -1607,7 +1622,8 @@ export function processGameEvent(type, payload, S, deps) {
                      trailing second pulse read as "the flash is delayed"
                      (owner report, first playtest).  Everything
                      echo-driven now sits behind the same gate. */
-                  if (payload.attackerId !== S.myId || payload.ability || payload.thorns || payload.burst) {
+                  if (payload.attackerId !== S.myId || payload.ability || payload.thorns || payload.burst
+                      || payload.splash /* v2.3.2481: a splashed neighbour has no local hit site of its own */) {
                     hitM._hitFlash = Date.now();
                     if (hitM.curHp > 0) {
                       hitM._hitAnimStart = Date.now();
@@ -1647,7 +1663,9 @@ export function processGameEvent(type, payload, S, deps) {
                   if (payload.attackerId !== S.myId) {
                     enqueuePeerDamage(S, peerDmgKey(payload.monsterId, hitM.x || hitM.renderX, hitM.y || hitM.renderY), {
                       x: hitM.x || hitM.renderX, y: monsterPopupY(hitM, -20),
-                      text: '-' + payload.dmg, color: payload.isCrit ? DMG_CRIT_COLOR : '#ff8888',
+                      text: '-' + _popDmg,   /* v2.3.2481 */
+                      color: payload.isCrit ? DMG_CRIT_COLOR
+                        : (payload.splash ? '#c4b5fd' : '#ff8888'),   /* v2.3.2481: peer splash reads as splash too */
                       /* v2.3.2211: the server's crit gets the same treatment
                          the local swing gets -- big number + the crit mark.
                          These two doors painted the same event differently,
@@ -1709,12 +1727,18 @@ export function processGameEvent(type, payload, S, deps) {
                     var _colFresh = _colMem && _colMem.id === _colId && (Date.now() - _colMem.at) < 1500;
                     if (_colId) {
                       pushDmgPopup(S, (hitM.x || hitM.renderX) + 8, monsterPopupY(hitM, -35),
-                        (_colFresh ? _colMem.prefix : '') + '-' + payload.dmg
+                        (_colFresh ? _colMem.prefix : '') + '-' + _popDmg   /* v2.3.2481 */
                           + (_colFresh && _colMem.name ? ' ' + _colMem.name : ''),
                         _colFresh ? _colMem.color : '#fffbb0');
                     } else {
                       pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20),
-                        '-' + payload.dmg, payload.isCrit ? DMG_CRIT_COLOR : '#ffd08a',
+                        '-' + _popDmg,
+                        /* v2.3.2481: a SPLASH number wears the staff's violet
+                           rather than the weapon amber, so at a glance you can
+                           tell the bolt's own target from the neighbours it
+                           caught.  Crit colour still wins -- a crit is the
+                           louder fact. */
+                        payload.isCrit ? DMG_CRIT_COLOR : (payload.splash ? '#c4b5fd' : '#ffd08a'),
                         /* v2.3.2232: the weapon that dealt it, not a flat sword.
                            v2.3.2233: ...and that now includes the crit, which
                            carried a bladed burst on bow and staff hits alike. */
@@ -1726,7 +1750,7 @@ export function processGameEvent(type, payload, S, deps) {
                        local prediction (unlike swings), so our own thorns
                        hits DO need the popup or the block just silently
                        chips the monster's bar. */
-                    pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + payload.dmg + ' 🌵', '#a3e635');
+                    pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + _popDmg + ' 🌵', '#a3e635');   /* v2.3.2481 */
                   } else if (payload.burst) {
                     /* v2.3.1734: same gap, same fix.  An Element Burst is
                        resolved entirely server-side (no local prediction —
@@ -1734,7 +1758,7 @@ export function processGameEvent(type, payload, S, deps) {
                        this branch the caster's own biggest button would
                        land in silence on their own screen while every
                        OTHER player in the zone saw the numbers. */
-                    pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + payload.dmg, '#c084fc');
+                    pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + _popDmg, '#c084fc');   /* v2.3.2481 */
                   }
                   /* Hit particles — v2.3.2200b: same gate as the flash
                      above.  "For everyone" meant bystanders; for the
@@ -1742,7 +1766,8 @@ export function processGameEvent(type, payload, S, deps) {
                      round-trip after their contact-time debris, which
                      contributed to the same "feedback trails the hit"
                      read the double flash did. */
-                  if (payload.attackerId !== S.myId || payload.ability || payload.thorns || payload.burst) {
+                  if (payload.attackerId !== S.myId || payload.ability || payload.thorns || payload.burst
+                      || payload.splash /* v2.3.2481: a splashed neighbour has no local hit site of its own */) {
                     for (var hp2 = 0; hp2 < 3; hp2++) {
                       S.hitParticles.push({
                         x: hitM.x || hitM.renderX, y: hitM.y || hitM.renderY,
