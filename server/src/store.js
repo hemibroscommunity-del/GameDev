@@ -44,6 +44,9 @@
  *                  escrowed by the bid); otherwise clear it and re-list.
  *   rec.pendBid  — a bid is being escrowed.  Promote it iff its debit
  *                  stamp is present; otherwise drop it — no money moved.
+ *   rec.releasing — a cancel or an expiry is handing everything back
+ *                  (v2.3.2506).  Finish the release and delete; never
+ *                  re-list, or the goods and the bid go out twice.
  * Because only records CARRYING a marker need an oplog read, the rebuild
  * costs one paged list() and (almost always) zero extra storage reads —
  * handoff rule 9's second edge: a storage await holds the whole room.
@@ -191,6 +194,15 @@ export const storeMethods = {
      re-listed, false if it was resolved (and deleted) here.  Only records
      carrying an in-flight marker cost an oplog read. */
   async _stConverge(rec) {
+    /* v2.3.2506: a cancel or an expiry was mid-flight when the DO died.
+       Finish it rather than putting it back on the shelf — every leg of
+       _stRelease is idempotent through its own opId, so a refund that
+       already landed reports `dup` and nobody is paid twice, and the
+       release ends in the delete the crash missed. */
+    if (rec.releasing) {
+      await this._stRelease(rec, rec.releasing.why || 'listing cancelled');
+      return false;
+    }
     if (rec.sale) {
       // A buy-now or an accepted bid was mid-settlement when the DO died.
       const paid = rec.sale.paid || (await this._opSeen('store:' + rec.id + ':pay'));
@@ -551,6 +563,30 @@ export const storeMethods = {
       this._stRemoveFromIndex(rec);
       await this.state.storage.delete('store_listing:' + rec.id);
       return;
+    }
+    /* ── v2.3.2506: MARK BEFORE ANYTHING MOVES ────────────────────────
+       What follows is three separate disk writes — refund the bid, mail
+       the goods home, delete the record — and the worker restarts on
+       EVERY merge to main that touches server/**, so the gap between them
+       is a window that really opens.  Shipped without this marker, a
+       crash after the refunds left a record carrying no in-flight flag at
+       all: `_stConverge` read it as a perfectly healthy listing and put it
+       straight back on the shelf, still holding the goods it had already
+       returned and the bid it had already refunded.  Buying it then minted
+       a SECOND copy of the item, and accepting the stale bid paid the
+       seller gold nobody had paid — silent, repeatable by anyone who
+       noticed, and inflationary for everyone.
+       This is v2.3.1184 again: market.js `_mktEnsureIndex` (lines 96-103)
+       checks `refund:<id>` alongside its two settle stamps and DELETES
+       rather than re-lists for exactly this reason.  The store copied the
+       buy path's protection (rec.sale) and not the refund path's.
+       Announcing the release first, the way rec.sale and rec.pendBid
+       already do, keeps the fix inside this module's own design: only
+       records carrying a marker cost the rebuild an oplog read, which is
+       the property the header argues for. */
+    if (!rec.releasing) {
+      rec.releasing = { why, at: Date.now() };
+      await this.state.storage.put('store_listing:' + rec.id, rec);
     }
     if (rec.topBid) {
       await this._creditPlayer(rec.topBid.bidderId, {

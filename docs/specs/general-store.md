@@ -113,6 +113,20 @@ the wake-time rebuild (`_stEnsureIndex` → `_stConverge`) resolves it:
 |---|---|
 | `rec.sale` | resume the settlement if the payment stamp is present (or the bid already paid); otherwise clear it and re-list |
 | `rec.pendBid` | promote the bid if its debit stamp is present; otherwise drop it — no money moved |
+| `rec.releasing` | finish the release (`_stRelease` re-runs; every leg is idempotent through its opId) and delete the record — never re-list it |
+
+`rec.releasing` was added in **v2.3.2506**, after review. A cancel or an
+expiry is also three separate disk writes — refund the bid, mail the
+goods home, delete the record — and the worker restarts on every merge to
+`main` touching `server/**`. Before the marker existed, a death between
+the refunds and the delete left a record carrying *no* flag at all, so
+the rebuild read it as healthy and put it back on the shelf holding goods
+it had already returned and a bid it had already refunded: the item could
+be bought a second time, and an accepted stale bid paid the seller gold
+nobody paid. `market.js` `_mktEnsureIndex` checks its `refund:<id>` stamp
+for exactly this reason (v2.3.1184); the store had copied the buy path's
+protection and not the refund path's. Covered by `market.test.mjs` S8
+(d) and (e).
 
 Because only a record *carrying* a marker costs an oplog read, the
 rebuild is one paged `list()` and (almost always) zero extra storage
