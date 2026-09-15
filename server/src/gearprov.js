@@ -82,9 +82,11 @@ export const GEAR_PROV_V = 1;
  * so 256 rows is ~50 KB against the DO value limit, not the ~28 KB an
  * earlier draft of this comment claimed off a ~110-byte row.  Still
  * comfortably inside the limit; corrected (v2.3.2537, review of #648) so
- * that nobody later raises the cap on the strength of the wrong number.  At the live drop rates (MONSTER_ARMOR_DROPS: two pieces
- * at 1/500 each) 256 recorded pieces is on the order of 64,000 monster
- * kills, plus a handful of quest pieces and one amulet per forge press.
+ * that nobody later raises the cap on the strength of the wrong number.
+ *
+ * At the live drop rates (MONSTER_ARMOR_DROPS: two pieces at 1/500 each)
+ * 256 recorded pieces is on the order of 64,000 monster kills, plus a
+ * handful of quest pieces and one amulet per forge press.
  *
  * At the cap the OLDEST row is dropped and `forgotten` is incremented.
  * That means the oldest piece a very long-lived character owns stops
