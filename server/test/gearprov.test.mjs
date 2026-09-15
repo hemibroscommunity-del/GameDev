@@ -63,7 +63,7 @@ function check(name, cond, detail) {
 
 const state = makeState();
 const room = new GameRoom(state, mockEnv);
-/* v2.3.2538: kept so sections that stub _wsBySessionId can put it back --
+/* v2.3.2544: kept so sections that stub _wsBySessionId can put it back --
    see the note on the gear-lock stub in section 4b. */
 const _realWsBySessionId = room._wsBySessionId.bind(room);
 
@@ -152,7 +152,7 @@ let questShieldGid = null;
   const over = ps._questGrantOverflow || [];
   check('quest armour handed to the client carries an id too',
     over.length === 1 && typeof over[0].gid === 'string' && over[0].prov === PROV_MINTED, over[0]);
-  /* v2.3.2538: and the id is genuinely ON THE WIRE, which is the contract
+  /* v2.3.2544: and the id is genuinely ON THE WIRE, which is the contract
      wsClient's `quest_reward_stashed` ingestion now reads.  The client half
      has no unit suite, so the wire shape is what can be pinned here -- and
      it is exactly the half that was broken: the worker was sending the id
@@ -445,7 +445,7 @@ let amuletGid = null;
     ps.armor && ps.armor.name === 'Old Plate', ps.armor);
   room._prog3EquipOk = () => true;
 
-  /* v2.3.2538: the stub is RESTORED afterwards rather than left installed on
+  /* v2.3.2544: the stub is RESTORED afterwards rather than left installed on
      the file-wide shared room.  It happens to be harmless today (the real
      _threatGearLocked also answers false with no lock), but a stub left
      lying around is how a later section silently stops testing a gate. */

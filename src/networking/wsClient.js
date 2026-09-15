@@ -2304,7 +2304,7 @@ export function setupWebSocket(ctx) {
                    dropping `slot`. */
                 S.rpg[_qrsKey].push({ name: _qrsName, tierMult: _qrsTm,
                   slot: _qrsLegs ? 'legsArmor' : 'armor',
-                  /* v2.3.2538: the server's id travels with a quest piece
+                  /* v2.3.2544: the server's id travels with a quest piece
                      too -- same reason as the loot_credit site above, and
                      the same optional shape against an old worker. */
                   gid: (typeof _qrs.gid === 'string' && _qrs.gid) ? _qrs.gid : undefined,
@@ -2778,7 +2778,7 @@ export function setupWebSocket(ctx) {
             var _pcKey = _pcLegs ? 'legsStash' : 'armorStash';
             if (!Array.isArray(R[_pcKey])) R[_pcKey] = [];
             var _pcWorn = _pcLegs ? R.legsArmor : R.armor;
-            /* ═══ v2.3.2538: THE SERVER'S ID TRAVELS WITH THE PIECE ═══
+            /* ═══ v2.3.2544: THE SERVER'S ID TRAVELS WITH THE PIECE ═══
                The worker mints every piece of gear with a `gid` now
                (gearprov.js) and sends it here -- and this handler used to
                rebuild the piece from a named list of fields and drop it.
