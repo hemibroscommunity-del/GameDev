@@ -3196,3 +3196,114 @@ demand; the pin (`mp-devstall`) has to manufacture it with a route that accepts
 the request and never answers. Twelve of its twenty-three assertions go red
 against the pre-fix panel, and its captured panel text is character for
 character the owner's screenshot.
+
+## 78. Freeing a gesture is not an invitation to put the old one back (v2.3.2542)
+
+Three versions of one control in four days, and the middle one is the trap.
+
+* **v2.3.2446** gave bow and staff a double-tap-and-HOLD guard on the right
+  control, and took their shield BUTTON away — a hold has a direction, a
+  button does not.
+* **v2.3.2472** (owner decision D8) reversed all three parts together: the
+  button came back, `shieldAimAngle` gained a nearest-monster rung to supply
+  the direction, the hold was retired — and the freed double tap was given to
+  the WEAPON SWAP.
+* **v2.3.2542** (owner, after playing it) took the swap back off: *"Weapon
+  swapping goes back to the LEFT joystick only."*
+
+**Tempting:** the right double tap is unbound again, and the thing that used
+to live there — the v2.3.2446 guard — is sitting right there in the git
+history, one revert away. It even looks like a restoration rather than a new
+feature.
+
+**Wrong, and it is the one move the owner called out by name.** The guard was
+not retired to make room for the swap; it was retired *because the shield
+button replaced it*, and the owner is keeping the button. Put the gesture
+back and there are two controls raising one shield through one classifier —
+the backlog's §0.2 in as many words: *"Blast radius if done piecemeal: two
+gestures on one classifier."* v2.3.2451 is what that costs: the drag that
+aimed a held arc re-armed `autoAttack` with no new press, so
+`monsterCombat`'s `if (S.autoAttack && S._shieldUp) dropShield(S, 'attack')`
+read a rotation as an attack and the guard fell the moment the thumb moved.
+
+**A bound gesture is not the goal.** The right half is the aim/attack
+surface and every press on it already means something (tap: lock and swing,
+hold: sustain, drag: aim, flick: special). Leaving the pair unclassified is
+what makes the FIRST tap of any pair behave exactly like a single tap — which
+is what the melee lunge depends on, since `maybeSwordDash` fires on tap one
+and nothing may consume tap two on its way there.
+
+**The pin:** `mp-bowshield` §6 and §6c assert the ABSENCE in both directions,
+on both right-hand surfaces — no swap, no guard, including on a deliberate
+tap-tap-and-hold, which is the exact shape a restoration would make work
+again. A hand that re-adds the gesture goes red there rather than on a phone.
+
+**Still open, and not this entry's to fix:** `QuestCoach.jsx`'s `blockRanged`
+lesson has told players to *"double-tap Attack to raise your shield"* since
+v2.3.2269 and still does. It has been wrong since v2.3.2472. Four rows of
+`mp-questcoach` are red on `main` for that reason alone. The lesson is the
+Block BUTTON now.
+
+Related: §0.2 of `docs/BACKLOG-TRIAGE-2026-09-14.md`, and
+`docs/specs/control-redesign.md` §§11.1-11.2 and §12.1.
+
+## 79. `S._engaged` is not "am I in combat" — it is "did I tap this one" (v2.3.2542)
+
+The owner asked for Whirlwind to be limited to *"active melee combat only"*.
+The client holds four facts that could answer that, and one of them is
+literally named engagement: `S._engaged`, maintained by
+`targeting.js:_updateEngagement`, whose own header says it *"begins at a melee
+tap"* and ends when the monster you chose is dead or gone — *"kill it and you
+are out of combat until you pick another."* That sentence reads like the ask,
+already written down and already maintained every frame.
+
+**It is too narrow, and it fails in the exact situations the ability is for.**
+`_updateEngagement` arms `_engagedId` only from a lock with `src: 'tap'`, and
+the only writers of that src are the two canvas tap-a-monster branches and
+`handleRBtnPress` *promoting an existing lock*. So:
+
+1. **Hold Attack through a kill.** The lock re-points to the next monster as
+   `src:'auto'`, the dead one stops being holdable, and 1500ms later
+   (`ENGAGE_GRACE_MS`) the flag drops — with the thumb still down and a pack
+   still on you. That is the moment a player reaches for a whirl.
+2. **Press before anything is locked.** Walking into a pack, the promotion is
+   a no-op (no lock yet), no further press happens while the thumb is held,
+   and the auto rule's lock is `src:'auto'` — so the flag is false for that
+   whole fight.
+3. **Desktop, always.** The mouse swing path never runs `handleRBtnPress`, so
+   nothing arms the flag but a click landing within 40 CSS px of a monster's
+   body centre — and `AbilityButtons` is `bt-desktop-hide`, so there is no
+   greyed button to explain the refusal, only a popup.
+
+**Why the hole was invisible.** `_engaged` had exactly one consumer,
+`monsterCombat`'s auto-engage swing, and that one is gated `!S.autoAttack` —
+it only matters when the thumb is NOT held, which is precisely the case the
+hole does not cover. The first reader that matters *while* the thumb is held
+is the one that found it.
+
+**What to use instead:** `monsterLock(S)` (exported from `targeting.js` at
+this version). For a melee player `updateTargeting` acquires it automatically
+inside the 220px perimeter, holds it to the 275px hysteresis ring, re-points
+it across a kill and drops it when nothing holds — so it is true for exactly
+as long as a fight is under way, on every input surface, and it is the same
+fact that lights the attack disc, so the player can see the condition.
+
+`engagedStance()` is not the answer either: `autoAttack || a tapped lock` is
+true while the thumb is down over an empty field ("any time", which was the
+complaint), and anything gated on `autoAttack` greys the instant the thumb
+LIFTS — which is when the player is reaching for the button.
+
+And do not reach for the melee reach test (`dist − monsterMeleeHitRadius <=
+GS_OUTER_RADIUS`, 72) that `monsterCombat` composes with `_engaged` for the
+auto-engage swing: whirl's radius is **240**, so a 72px gate refuses the very
+cast the move exists for.
+
+**The pin:** `mp-rbutton` §C kills the monster that started the fight with the
+thumb still down, then asserts the button is still live **while
+`S._engaged` is false** — so re-pointing the gate at the flag goes red. §D
+asserts the button is live on an `src:'auto'` lock that nothing ever tapped,
+which is the desktop path.
+
+Related: §61 and §66 (a measurement taken in a state that cannot show the
+defect) — the first cut of the harness seeded `src:'tap'` by hand and so
+could only ever exercise the one path that worked.

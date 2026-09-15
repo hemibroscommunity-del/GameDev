@@ -2,7 +2,7 @@ import React from 'react';
 import { ABILITY_META } from '@/data/index.js';
 import { abilityStatus, castAbility } from '@/game/abilities.js';
 import { blockRingBus } from '@/ui/mobile/blockRingBus.js'; /* v2.3.2252: the bash button follows the shield's edge, not a 200ms poll */
-import { ctlColumn, ctlBottom } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2472: the one shared left-of-the-disc column (D9) */
+import { ctlColumn, ctlBottom, CTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2472: the one shared left-of-the-disc column (D9); v2.3.2542: ...and its slot map */
 
 /* ═══ v2.3.2472: STACKED ABOVE THE BLOCK BUTTON ═══
    Owner decision D9: "Block left of the disc, abilities stacked above it."
@@ -25,8 +25,11 @@ import { ctlColumn, ctlBottom } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.247
    Slots are assigned by KIND, not by position in `live`, so Whirlwind does not
    slide down into Bash's place on the frames where bash is hidden (it is
    visible only while the shield is raised, which is most frames).  A button
-   that moves when its neighbour appears is a button the thumb misses. */
-const SLOT_OF = { bash: 1, whirl: 2 };
+   that moves when its neighbour appears is a button the thumb misses.
+
+   v2.3.2542: the map moved to ShieldButton's CTL_SLOT when the Special button
+   joined the column -- four controls in one stack is one list too many to keep
+   in four files' heads. */
 
 /* ═══ v2.3.1733: THE ABILITY BUTTONS ═══
  *
@@ -98,19 +101,38 @@ export function AbilityButtons(props) {
   var slotStyle = function (kind) {
     return {
       right: col.right,
-      bottom: ctlBottom(col.bottomPx(SLOT_OF[kind] || 1)),
+      /* v2.3.2542: hasOwnProperty, NOT `|| 1`.  The private SLOT_OF this
+         replaced had no falsy member, so `|| 1` was a pure missing-key
+         fallback; the shared map has `block: 0` and `special: -1`, and
+         `0 || 1` is 1 -- Shield Bash's own slot.  Harmless while `kinds` is
+         ['bash','whirl'], and a button stacked exactly on top of Bash at z31
+         the day anything at slot 0 is routed through here. */
+      bottom: ctlBottom(col.bottomPx(
+        Object.prototype.hasOwnProperty.call(CTL_SLOT, kind) ? CTL_SLOT[kind] : 1)),
     };
   };
 
   return React.createElement(React.Fragment, null, live.map(function (entry) {
     var kind = entry.kind, st = entry.st;
     var meta = ABILITY_META[kind] || { label: kind, glyph: '?' };
-    var ready = st.cdLeft <= 0 && st.afford && st.equipped;
+    /* v2.3.2542: `engaged` joins the ready test -- whirlwind is greyed out of
+       combat rather than hidden (game/abilities.js NEEDS_ENGAGED), so the brass
+       edge and the bright label have to go with it or the button would look
+       live while castAbility refuses. */
+    var ready = st.cdLeft <= 0 && st.afford && st.equipped && st.engaged !== false;
     var slot = slotStyle(kind);
     return React.createElement('div', {
       key: kind,
       className: 'bt-desktop-hide',
       'data-ability': kind,
+      /* v2.3.2542: the button's own answer to "why is this dim", for QA and for
+         anyone reading the DOM -- a screenshot cannot separate a cooldown from
+         an unmet stance rule. */
+      'data-ready': ready ? '1' : '0',
+      'data-engaged': st.engaged === false ? '0' : '1',
+      /* v2.3.2542: a greyed button still routes into castAbility, deliberately:
+         that is what floats the reason ("Not in combat!") instead of leaving the
+         player to guess why nothing happened. */
       onTouchStart: function (e) {
         e.preventDefault();
         e.stopPropagation();
@@ -138,7 +160,10 @@ export function AbilityButtons(props) {
           : 'radial-gradient(circle, #1A2429 0%, #141C21 100%)',
         border: '2px solid ' + (ready ? '#D8A85F' : 'rgba(238,242,235,.14)'),
         boxShadow: ready ? 'inset 0 1px 0 rgba(255,255,255,.08)' : 'none',
-        opacity: st.equipped ? 1 : 0.45,
+        /* v2.3.2542: the same 0.45 "you cannot use this yet" wash the missing-
+           weapon case has used since v2.3.1733, now also for an ability whose
+           stance rule is unmet -- one unavailable look, not two. */
+        opacity: (st.equipped && st.engaged !== false) ? 1 : 0.45,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
