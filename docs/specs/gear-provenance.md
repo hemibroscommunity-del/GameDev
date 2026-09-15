@@ -284,7 +284,8 @@ cannot do, since v2.3.2534, is describe a piece and have it come out
 
 | Direction | Field | Note |
 |---|---|---|
-| server → client (`player_state`, `loot_credit`, `quest_reward_stashed`) | `gid`, `prov` on each gear object | echo; no client reads them yet |
+| server → client (`player_state`, `loot_credit`, `quest_reward_stashed`) | `gid`, `prov` on each gear object | **v2.3.2538:** the client now stores `gid` when it ingests a piece, which is what makes `armorRef` able to fire at all; `prov` is still read by nobody (the "tell the player why" half is owed by the store UI) |
+| server → peers (`state_sync`) | — | **cropped**: `gid` and `prov` are stripped from every player's copy before it goes out (v2.3.2537) |
 | client → server (join seeds, `stats_update`) | `gid` | **looked up, never trusted**; `prov` is stripped unconditionally |
 | client → server (`stats_update`, v2.3.2535) | `armorRef`, `legsArmorRef` | a bare id, or `null` to unequip; gated client-side on `caps.gearRef` |
 
