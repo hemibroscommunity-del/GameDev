@@ -62,6 +62,38 @@ const WEAPON_CHANNEL_KEYS = {
 };
 
 export const gridMethods = {
+  /* ═══ v2.3.2535: ONE GATE FOR BOTH EQUIP LANES ═══
+     `stats_update` can now say what you are wearing in two ways -- by
+     NAMING a recorded piece (`armorRef`) or by DESCRIBING one (`armor`,
+     the legacy shape).  Both end here, so the gates cannot drift apart:
+     copying them would be exactly the bug where a new lane quietly skips
+     the defence-point check nobody thought to re-read.
+
+     `next` is the already-resolved piece (or null to unequip).  Returns
+     true when the slot actually changed, so the caller can flip
+     statsChanged.  A refusal is silent by design: the player_state echo
+     that follows snaps the client's own local list back, which is the
+     self-correction both gates below have always relied on.
+
+       - identical re-send: no-op (JSON compare, so no spurious recompute
+         + flush on the 2 s cadence);
+       - v2.3.1129 threat gear-lock: the guard has you; keep what is worn;
+       - v2.3.1661 prog3: armour tiers gate on allocated DEFENSE POINTS
+         (§6) and armour swaps ride stats_update rather than
+         equip_request, so the gate has to sit here.  Unequip (null)
+         always passes and already-worn armour is grandfathered -- only
+         swaps are gated. */
+  _gridsApplyArmor(session, ps, slot, next) {
+    const oldSig = ps[slot] ? JSON.stringify(ps[slot]) : 'null';
+    const newSig = next ? JSON.stringify(next) : 'null';
+    if (oldSig === newSig) return false;
+    if (this._threatGearLocked(session.id, ps)) return false;
+    /* _prog3EquipOk's 'armor' slot covers BOTH body pieces (gear.js). */
+    if (next && !this._prog3EquipOk(ps, 'armor', next)) return false;
+    ps[slot] = next;
+    return true;
+  },
+
   // ═══ Combat XP + level (server-authoritative) ═══
   //
   // Mirrors xpRequired() in src/data/gameSystems.js so the worker
@@ -867,7 +899,39 @@ export const gridMethods = {
     // Without this, the worker's ps.armor stays stale, its echoed
     // player_state re-applies the old armor on the client, and the
     // local unequip silently undoes itself.
-    if ('armor' in payload) {
+    /* ═══ v2.3.2535: NAMING A PIECE BEATS DESCRIBING ONE ═══
+       `armorRef` is a bare id (or null to unequip).  Nothing else travels
+       with it, so there is no blob on the wire to inflate: the piece that
+       gets equipped is the server's OWN copy of what it minted
+       (gearprov.js _gearProvPieceByRef).  An id that names nothing this
+       player owns in this slot is a REFUSAL -- the currently worn piece
+       stays -- and deliberately NOT a fall-through to whatever else was in
+       the payload, which would make the whole path decorative.
+
+       The describe path below is untouched and still runs for everything
+       the server cannot prove, which is every piece minted before
+       v2.3.2534.  Gated the other way round from usual: the SERVER accepts
+       both shapes whichever client it is talking to, and the CLIENT sends
+       the ref only when `caps.gearRef` says the worker understands it
+       (rule 19).  Old client + new worker: the object arrives and is
+       handled exactly as before.  New client + old worker: the flag is
+       absent, the client keeps sending the object, and `armorRef` never
+       leaves the browser. */
+    let _armorHandled = false;
+    if ('armorRef' in payload) {
+      _armorHandled = true;
+      const _ref = payload.armorRef;
+      if (_ref === null) {
+        this._gridsApplyArmor(session, ps, 'armor', null) && (statsChanged = true);
+      } else {
+        const _piece = this._gearProvPieceByRef(session.id, 'armor', _ref);
+        /* A miss keeps the current piece.  The echo that follows snaps the
+           client's own list back, which is the same self-correction the
+           threat gear-lock and the defence-point gate already rely on. */
+        if (_piece && this._gridsApplyArmor(session, ps, 'armor', _piece)) statsChanged = true;
+      }
+    }
+    if (!_armorHandled && 'armor' in payload) {
       const incoming = payload.armor;
       let newArmor = null;
       if (incoming && typeof incoming === 'object' && incoming.name !== 'Leather Armor') {
@@ -877,37 +941,32 @@ export const gridMethods = {
         // _armorDrMult's identical ×8 clamp — same ceiling, and the DR cap
         // (75%) still sits above it as the last word.  Keep the two in step.
         // Leather Armor rejected outright per v2.3.249 removal.
-        newArmor = { ...incoming };
-        if (typeof newArmor.tierMult === 'number') {
-          newArmor.tierMult = Math.max(0, Math.min(8, newArmor.tierMult));
-        }
+        /* ═══ v2.3.2534: THE EQUIP CLAIM IS RESOLVED, NOT COPIED ═══
+           This is the inbound path that actually feeds the damage-reduction
+           maths, so it is the one that matters -- and it is the shape of
+           #643's `_sv` finding: a mark stripped from the selector and not
+           from the path that counted.  _gearProvResolve strips BOTH `gid`
+           and `prov` from the claim before anything reads them, then either
+           rebuilds the piece from the ledger row that id names (rule 16 --
+           the server's own copy, so a forged gid on an inflated plate hands
+           back the modest plate that was actually minted) or marks the
+           claim `legacy` and keeps the existing clamp.
+           The clamp is unchanged and still runs on everything that is not a
+           ledger hit; a ledger row was clamped when it was minted.
+           PR 2 of this lane retires the describe-a-piece form entirely in
+           favour of naming one -- this version only labels it. */
+        newArmor = this._gearProvResolve(session.id, 'armor', incoming, (g) => {
+          const o = { ...g };
+          if (typeof o.tierMult === 'number') o.tierMult = Math.max(0, Math.min(8, o.tierMult));
+          return o;
+        });
       }
-      // JSON-compare so an identical re-send doesn't trigger spurious
-      // recompute + flush.
-      const oldSig = ps.armor ? JSON.stringify(ps.armor) : 'null';
-      const newSig = newArmor ? JSON.stringify(newArmor) : 'null';
-      if (oldSig !== newSig) {
-        // v2.3.1129: guard gear lock -- reject the swap; the
-        // player_state echo from the gate snaps the client's local
-        // armorStash mutation back (see the comment block above: the
-        // echo re-applying ps.armor is exactly the documented
-        // self-correction behavior).
-        if (this._threatGearLocked(session.id, ps)) {
-          // locked: keep the old armor
-        } else if (newArmor && !this._prog3EquipOk(ps, 'armor', newArmor)) {
-          // v2.3.1661 (prog3): armor tiers gate on allocated DEFENSE
-          // POINTS (§6) and armor swaps ride stats_update, not
-          // equip_request — so the new server gate must sit HERE too.
-          // Reject = keep the old armor; the player_state echo snaps
-          // the client's local armorStash mutation back (the exact
-          // threat-lock behavior above).  Unequip (null) always
-          // passes; already-worn armor is grandfathered (only swaps
-          // are gated).
-        } else {
-          ps.armor = newArmor;
-          statsChanged = true;
-        }
-      }
+      /* v2.3.2535: the compare + the two gates + the assign now live in
+         _gridsApplyArmor, shared with the ref lane above.  Hoisted rather
+         than copied so the describe path and the name path cannot drift
+         into gating differently -- which is the bug shape that would let
+         the new lane skip the defence-point check nobody re-read. */
+      if (this._gridsApplyArmor(session, ps, 'armor', newArmor)) statsChanged = true;
     }
     /* ═══ v2.3.1701: THE LEGS SLOT RIDES THE SAME LANE ═══
        `ps.legsArmor` has existed since v2.3.1679 (it is half of
@@ -922,27 +981,30 @@ export const gridMethods = {
        ABSENT means "no opinion", never "take it off": the field is only sent
        by the legs flows (equipActions.js syncArmorChange opts.legs), so a
        client that has not learned its legs piece cannot wipe it. */
-    if ('legsArmor' in payload) {
+    /* v2.3.2535: the legs slot gets the same ref lane, same rules. */
+    let _legsHandled = false;
+    if ('legsArmorRef' in payload) {
+      _legsHandled = true;
+      const _refL = payload.legsArmorRef;
+      if (_refL === null) {
+        this._gridsApplyArmor(session, ps, 'legsArmor', null) && (statsChanged = true);
+      } else {
+        const _pieceL = this._gearProvPieceByRef(session.id, 'legsArmor', _refL);
+        if (_pieceL && this._gridsApplyArmor(session, ps, 'legsArmor', _pieceL)) statsChanged = true;
+      }
+    }
+    if (!_legsHandled && 'legsArmor' in payload) {
       const incomingL = payload.legsArmor;
       let newLegs = null;
       if (incomingL && typeof incomingL === 'object') {
-        newLegs = { ...incomingL };
-        if (typeof newLegs.tierMult === 'number') {
-          newLegs.tierMult = Math.max(0, Math.min(8, newLegs.tierMult));
-        }
+        /* v2.3.2534: same resolve as the chest piece above, same reasons. */
+        newLegs = this._gearProvResolve(session.id, 'legsArmor', incomingL, (g) => {
+          const o = { ...g };
+          if (typeof o.tierMult === 'number') o.tierMult = Math.max(0, Math.min(8, o.tierMult));
+          return o;
+        });
       }
-      const oldSigL = ps.legsArmor ? JSON.stringify(ps.legsArmor) : 'null';
-      const newSigL = newLegs ? JSON.stringify(newLegs) : 'null';
-      if (oldSigL !== newSigL) {
-        if (this._threatGearLocked(session.id, ps)) {
-          // locked: keep the old piece
-        } else if (newLegs && !this._prog3EquipOk(ps, 'armor', newLegs)) {
-          // defense-point gate, same as the chest piece
-        } else {
-          ps.legsArmor = newLegs;
-          statsChanged = true;
-        }
-      }
+      if (this._gridsApplyArmor(session, ps, 'legsArmor', newLegs)) statsChanged = true;
     }
     if (statsChanged) {
       // v2.3.910: stats grew -> derived combat level may have risen; refill

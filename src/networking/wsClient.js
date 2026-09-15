@@ -2351,6 +2351,10 @@ export function setupWebSocket(ctx) {
                    dropping `slot`. */
                 S.rpg[_qrsKey].push({ name: _qrsName, tierMult: _qrsTm,
                   slot: _qrsLegs ? 'legsArmor' : 'armor',
+                  /* v2.3.2544: the server's id travels with a quest piece
+                     too -- same reason as the loot_credit site above, and
+                     the same optional shape against an old worker. */
+                  gid: (typeof _qrs.gid === 'string' && _qrs.gid) ? _qrs.gid : undefined,
                   mat: _qrs.mat ? String(_qrs.mat).slice(0, 16) : undefined });
                 try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               }
@@ -2833,13 +2837,35 @@ export function setupWebSocket(ctx) {
             var _pcKey = _pcLegs ? 'legsStash' : 'armorStash';
             if (!Array.isArray(R[_pcKey])) R[_pcKey] = [];
             var _pcWorn = _pcLegs ? R.legsArmor : R.armor;
-            var _pcHeld = (_pcWorn && _pcWorn.name === _pcName && (Number(_pcWorn.tierMult) || 1) === _pcTm)
-              || R[_pcKey].some(function (a) {
-                return a && a.name === _pcName && (Number(a.tierMult) || 1) === _pcTm;
-              });
+            /* ═══ v2.3.2544: THE SERVER'S ID TRAVELS WITH THE PIECE ═══
+               The worker mints every piece of gear with a `gid` now
+               (gearprov.js) and sends it here -- and this handler used to
+               rebuild the piece from a named list of fields and drop it.
+               That silently switched OFF the whole equip-by-name path added
+               in v2.3.2535: with no id in the bag there is nothing for
+               `armorRef` to name, so `syncArmorChange` always fell into the
+               describe branch and the feature could never fire for a real
+               piece.  Caught by the review of #649, which grepped the client
+               for `.gid` and found exactly one site -- the line that READS
+               one, and nothing that writes one.
+               Kept OPTIONAL: an old worker sends no id and the piece is
+               stored exactly as before (deploy-order safety, rule 19). */
+            var _pcGid = (typeof _pc.gid === 'string' && _pc.gid) ? _pc.gid : undefined;
+            /* ...and the already-held guard prefers the ID when both sides
+               have one.  Name + tierMult cannot tell two genuinely different
+               pieces of the same kind apart, so without this a second Iron
+               Torso would be swallowed as a duplicate of the first. */
+            var _pcHeld = _pcGid
+              ? ((_pcWorn && _pcWorn.gid === _pcGid)
+                 || R[_pcKey].some(function (a) { return a && a.gid === _pcGid; }))
+              : ((_pcWorn && _pcWorn.name === _pcName && (Number(_pcWorn.tierMult) || 1) === _pcTm)
+                 || R[_pcKey].some(function (a) {
+                   return a && a.name === _pcName && (Number(a.tierMult) || 1) === _pcTm;
+                 }));
             if (_pcHeld) continue;
             R[_pcKey].push({ name: _pcName, tierMult: _pcTm,
               slot: _pcLegs ? 'legsArmor' : 'armor',
+              gid: _pcGid,
               mat: _pc.mat ? String(_pc.mat).slice(0, 16) : undefined,
               /* v2.3.1925: the GRADE travels with the piece.  It is what
                  getArmorPieceDr multiplies the tier by, so a piece that
