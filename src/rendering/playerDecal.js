@@ -841,6 +841,73 @@ export const ARM_BOX = { fillW: 1, fillH: 1, cy: 0.50 };
  * SHINS: the art wears shorts, so a bare lower leg is skin too, and an
  * unbounded "skin that is not torso and not head" mask reaches the ankles.
  */
+/* ═══ v2.3.2472: THE HEAD'S OWN BOX, WALKED DOWN FROM THE CROWN ═══
+ * Owner (backlog triage 2026-09-14, art item 4): on the jog south and east
+ * BOW-SHOT frames the face tattoo covers only the top half of the face.
+ *
+ * The cause is the boundary the splitter used, and it is only wrong on these
+ * sheets.  "Face = skin above the torso band's FIRST row" is exact while the
+ * topmost torso pixel in the frame is the collar, which it is on every walking
+ * sheet: the arms hang at the sides, so nothing torso-coloured reaches higher
+ * than the neck.  A bow shot raises BOTH arms to shoulder height and the draw
+ * arm above it, so the band's first row lands at jaw height -- and the whole
+ * lower half of the head then sits at-or-below it and is classified as arm.
+ * The face canvas is fitted to whatever the face region's box is (FACE_BOX
+ * fills it), so the drawing was squeezed into the forehead and the jaw went
+ * bare.  It was not missing; it was somewhere else.
+ *
+ * So the boundary comes off the HEAD instead, and the head is found by walking
+ * its own silhouette: start at the topmost skin run in the frame (the crown),
+ * step down row by row taking the skin run that overlaps the one above, and
+ * stop at the NECK -- the row where that run narrows to well under the widest
+ * the head reached.  No flood fill, and no horizontal neck cut: v2.3.1986 tried
+ * the second of those, found the jaw-and-neck mass was continuous with the
+ * torso, and painted a shirt-coloured blob on the character's face (TRAPS).  A
+ * run walk cannot leave the silhouette it started in, and the box it returns is
+ * a hard column bound on top of the row bound.
+ *
+ * IT CAN ONLY EVER ADD.  The face keeps every pixel the old rule gave it --
+ * `y < top` is untouched below -- and the new clause reaches down only as far
+ * as the head box, only inside the head's own columns.  So a sheet where the
+ * walk fails, or ends above the collar, renders exactly as it does today; the
+ * worst case is the bug that is already shipped, not a new one.  That is
+ * deliberate: this function bakes every body sheet in the game and the face is
+ * the one region where being wrong is a blob on a character's face. */
+const _HEAD_NECK_PINCH = 0.62;   /* narrower than this share of the widest row -> the neck */
+const _HEAD_SHOULDER_W = 1.60;   /* wider than this -> the run has merged into the shoulders */
+
+function _headBoxInFrame(skin, w, h, x0, x1) {
+  let crown = -1;
+  for (let y = 0; y < h && crown < 0; y++) {
+    for (let x = x0; x < x1; x++) if (skin[y * w + x]) { crown = y; break; }
+  }
+  if (crown < 0) return null;
+  let l = -1, r = -1;
+  for (let x = x0; x < x1; x++) if (skin[crown * w + x]) { if (l < 0) l = x; r = x; }
+  if (l < 0) return null;
+  let maxW = r - l + 1, bot = crown;
+  for (let y = crown + 1; y < h; y++) {
+    /* every skin run on this row that OVERLAPS the head's current span, unioned.
+       Overlap is what keeps the walk on the head: a raised fist beside the ear
+       is its own run and is never joined unless it actually touches. */
+    let nl = -1, nr = -1, x = x0;
+    while (x < x1) {
+      if (!skin[y * w + x]) { x++; continue; }
+      let e = x;
+      while (e + 1 < x1 && skin[y * w + e + 1]) e++;
+      if (e >= l && x <= r) { if (nl < 0 || x < nl) nl = x; if (e > nr) nr = e; }
+      x = e + 1;
+    }
+    if (nl < 0) break;                                  /* silhouette ended */
+    const rw = nr - nl + 1;
+    if (rw > maxW * _HEAD_SHOULDER_W) break;            /* shoulders */
+    if (y > crown + 3 && rw < maxW * _HEAD_NECK_PINCH) break;   /* the neck */
+    if (rw > maxW) maxW = rw;
+    l = nl; r = nr; bot = y;
+  }
+  return { l, r, bot };
+}
+
 export function splitSkinRegions(skin, torso, w, h, frameW) {
   const frames = Math.max(1, Math.floor(w / frameW));
   const face = new Uint8Array(w * h);
@@ -857,11 +924,16 @@ export function splitSkinRegions(skin, torso, w, h, frameW) {
       }
     }
     if (top < 0) continue;            /* no torso in this frame: place nothing */
+    const head = _headBoxInFrame(skin, w, h, x0, x1);   /* v2.3.2472 */
     for (let y = 0; y < h; y++) {
       const row = y * w;
       for (let x = x0; x < x1; x++) {
         if (!skin[row + x]) continue;
         if (y < top) face[row + x] = 1;
+        /* v2.3.2472: the rest of the head, when the band's first row cut it in
+           half.  Bounded on BOTH axes by the walked box, so it cannot reach the
+           chest (row) or an arm held up beside the ear (column). */
+        else if (head && y <= head.bot && x >= head.l && x <= head.r) face[row + x] = 1;
         else if (y <= bot && !torso[row + x]) arms[row + x] = 1;
       }
     }

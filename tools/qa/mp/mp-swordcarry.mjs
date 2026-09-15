@@ -98,8 +98,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── v2.3.1787: WHICH SIDE OF THE BODY THE BLADE IS ON ──
      Owner: "SW SE and E need the sword layered in front of" ... "Looks like it
      is probably the shirt."  In front for E/SE/S/SW/NE, behind for W/NW/N —
-     the facings where you are looking at his back. */
-  const FRONT = new Set(['E', 'SE', 'S', 'SW', 'NE']);
+     the facings where you are looking at his back.
+
+     ═══ v2.3.2472: SW COMES OUT, BY THE SAME OWNER ═══
+     D7, backlog triage 2026-09-14 §5.8: "greatsword at southwest goes BEHIND
+     the body for jog/idle AND for the attack swing -- it is in the right hand,
+     facing away from the camera; the character should occlude the swing instead
+     of the blade passing through the body.  Southeast and east are unchanged."
+
+     So this set loses SW and keeps everything else, which is the shape of the
+     answer: at SE and E the blade is on the CAMERA side of the figure and at SW
+     it is on the far side.  v2.3.1787 swept SW along with the two facings it
+     could actually see.  Rendered at 20x before and after (tools/qa/mp/out/,
+     arules-*-greatsword-carry-southwest.png): before, the blade runs down across
+     the tee and the cape; after, the body occludes it and only the span outside
+     the silhouette reads.  The plain sword and the staff have been behind at SW
+     all along -- they are not `_heldInHand` and never reach heldWeaponInFront --
+     so this makes the greatsword agree with them rather than inventing a rule. */
+  const FRONT = new Set(['E', 'SE', 'S', 'NE']);
   for (let i = 0; i < 8; i++) {
     const m = await face(P, i);
     const want = FRONT.has(NAMES[i]);
