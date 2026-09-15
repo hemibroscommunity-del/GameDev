@@ -31,6 +31,7 @@ import { GameRoom } from '../src/index.js';
 import { GEAR_SELL, removeGearLocal } from '../../src/ui/mobile/dash/gearSellLocal.js';   /* v2.3.2532: the client half of a gear listing (S12j) */
 import { GEAR_SELL_REASON, gearSellReasonText, gearSellCheck, gearSellGid } from '../../src/ui/mobile/dash/gearSellReason.js';   /* v2.3.2551: the client half of a REFUSAL (S12m) */
 import { GEAR_REFUSAL } from '../src/storegear.js';   /* v2.3.2551: ...and the table it mirrors */
+import { QUEST_REWARDS, MONSTER_ARMOR_DROPS } from '../src/data.js';   /* v2.3.2554: the REAL copper/iron entries, so S12o cannot drift from the catalog */
 
 function makeState() {
   const store = new Map();
@@ -1520,6 +1521,123 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
         tooLong.ok === false && tooLong.reason === 'legacy', tooLong);
       check('store gear: ...and refusing it took nothing',
         SEL.armorStash.length === 1 && shop._gearSellable(GSEL, 'armor', boundGid).ok === true, SEL.armorStash);
+    }
+
+    /* ══ S12o. A PIECE KEEPS ITS MATERIAL — AND ITS COLOUR — ACROSS A SALE ══
+       (v2.3.2554.)
+
+       The owner read "outfits aren't sellable" in the PR body and asked
+       whether that meant their armour: *"the copper armor is supposed to be
+       its own tier of armor (even though it's just recolored from iron) so
+       it needs to be able to be bought and sold and retain its color."*
+
+       It does, and this is the proof rather than the assurance.  Copper is
+       a real tier of stat armour, not a cosmetic: `QUEST_REWARDS.life_2`
+       and `.tut_4` grant `Copper Torso` and `Copper Greaves` with
+       `mat: 'copper'`, and a quest grant is one of the mint paths #648
+       records — so copper carries a receipt and IS sellable.  The colour
+       is not chosen separately either: `gearCatalog.js` derives the art
+       from the piece with `gearIdFor(slot, R.armor.mat)`, so `mat` riding
+       on the object is what makes a buyer see copper.
+
+       What this PR actually makes unsellable is only the separate
+       `gearStash` COSMETIC entry — a `{slot, gearId}` pair with no stats
+       and no material.
+
+       The items come from the REAL tables rather than from a copy of their
+       fields, so this test cannot quietly drift away from the catalog the
+       game grants; and the sale is driven through the real HTTP route. */
+    {
+      const wornCopper = QUEST_REWARDS.life_2.item;
+      const legsCopper = QUEST_REWARDS.tut_4.item;
+      check('copper: (guard) the catalog still grants copper as STAT armour with a material',
+        wornCopper.kind === 'armor' && wornCopper.mat === 'copper' && wornCopper.tierMult === 1
+        && legsCopper.kind === 'legs' && legsCopper.mat === 'copper',
+        { chest: wornCopper, legs: legsCopper });
+
+      const sreq3 = (body) => shop.fetch(new Request('https://x/api/store/list?room=brotown-1', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      }));
+      shop._httpAuthCheck = () => true;   /* covered on its own in S10 */
+      shop._prog3EquipOk = () => true;
+
+      SEL.armorStash = []; SEL.armor = null; SEL.legsStash = []; SEL.legsArmor = null;
+      BUY.armorStash = []; BUY.legsStash = [];
+      /* The buyer has been shopping all section; top them up so a refusal
+         here is about the GEAR and never about the wallet.  (A "Not enough
+         gold" answer would have made this test pass for the wrong reason
+         had it been asserting a refusal instead of a sale.) */
+      BUY.coins = 5000;
+      SEL._questGrantOverflow = null;
+      shop._grantQuestItem(SEL, wornCopper, GSEL);
+      const copperGid = SEL._questGrantOverflow[SEL._questGrantOverflow.length - 1].gid;
+      check('copper: the quest grant mints it with a receipt',
+        !!copperGid && SEL._questGrantOverflow[SEL._questGrantOverflow.length - 1].mat === 'copper',
+        SEL._questGrantOverflow[SEL._questGrantOverflow.length - 1]);
+
+      /* WORN, on a piece that actually carries a material — the existing
+         worn tests use a plain plate, so this is the material-bearing
+         case, equipped through the real route. */
+      await shop.webSocketMessage(wsSel, JSON.stringify({ type: 'stats_update', payload: { armorRef: copperGid } }));
+      check('copper: (setup) the real equip route put it on, in copper',
+        !!SEL.armor && SEL.armor.gid === copperGid && SEL.armor.mat === 'copper', SEL.armor);
+      const copperWorn = await (await sreq3({ playerId: GSEL, kind: 'gear', field: 'armorStash', gid: copperGid, price: 120 })).json();
+      check('copper: it is refused while you are WEARING it, with the reason',
+        copperWorn.ok === false && copperWorn.reason === 'worn', copperWorn);
+      await shop.webSocketMessage(wsSel, JSON.stringify({ type: 'stats_update', payload: { armorRef: null } }));
+
+      /* ...and sells once it is off, over the real route, keeping colour. */
+      const copperList = await (await sreq3({ playerId: GSEL, kind: 'gear', field: 'armorStash', gid: copperGid, price: 120 })).json();
+      check('copper: ...and sells once it is off', copperList.ok === true, copperList);
+      check('copper: the shelf card shows the material, so a buyer sees the colour BEFORE buying',
+        copperList.listing.disp.mat === 'copper' && copperList.listing.disp.name === 'Copper Torso',
+        copperList.listing.disp);
+      const copperBuy = await shop._stBuyNow(copperList.listing.id, 'bp_st_buy');
+      check('copper: the sale settles', copperBuy.ok === true && copperBuy.bought === true, copperBuy);
+      const gotCopper = BUY.armorStash.find((g) => g && g.name === 'Copper Torso');
+      check('copper: THE BUYER RECEIVES IT AS COPPER, at its own tier',
+        !!gotCopper && gotCopper.mat === 'copper' && gotCopper.tierMult === 1, gotCopper);
+      check('copper: ...under the same receipt, so they can sell it on again',
+        gotCopper.gid === copperGid && shop._gearSellable('bp_st_buy', 'armor', copperGid).ok === true,
+        shop._gearSellable('bp_st_buy', 'armor', copperGid));
+
+      /* The LEGS twin, because the two are granted by different quests and
+         a per-slot table is exactly the kind of thing that goes wrong once. */
+      SEL._questGrantOverflow = null;
+      shop._grantQuestItem(SEL, legsCopper, GSEL);
+      const legsGid = SEL._questGrantOverflow[SEL._questGrantOverflow.length - 1].gid;
+      const legsList = await (await sreq3({ playerId: GSEL, kind: 'gear', field: 'legsStash', gid: legsGid, price: 60 })).json();
+      check('copper: the legs sell too', legsList.ok === true, legsList);
+      const legsBuy = await shop._stBuyNow(legsList.listing.id, 'bp_st_buy');
+      check('copper: ...and the buyer gets copper greaves, not plain ones',
+        legsBuy.ok === true && BUY.legsStash.some((g) => g && g.name === 'Copper Greaves' && g.mat === 'copper'),
+        BUY.legsStash);
+
+      /* IRON is the tier above and arrives by a different route — a monster
+         drop.  The drop path's own recording is pinned in gearprov §2
+         through the real `loot_pickup` handler; what is pinned here is that
+         the SALE keeps the material, read off the real drop table. */
+      const ironDrop = MONSTER_ARMOR_DROPS[0];
+      check('iron: (guard) the drop table still carries a material and the tier-two multiplier',
+        ironDrop.mat === 'iron' && ironDrop.tierMult === 2 && ironDrop.slot === 'armor', ironDrop);
+      SEL.armorStash = []; SEL.armor = null; BUY.armorStash = [];
+      const ironMinted = shop._gearProvRecord(GSEL, 'armor',
+        { name: ironDrop.name, mat: ironDrop.mat, tierMult: ironDrop.tierMult }, 'drop');
+      const ironList = await (await sreq3({ playerId: GSEL, kind: 'gear', field: 'armorStash', gid: ironMinted.gid, price: 300 })).json();
+      check('iron: a dropped plate sells', ironList.ok === true, ironList);
+      const ironBuy = await shop._stBuyNow(ironList.listing.id, 'bp_st_buy');
+      const gotIron = BUY.armorStash.find((g) => g && g.name === 'Iron Torso');
+      check('iron: the buyer receives it as iron, at tier two',
+        ironBuy.ok === true && !!gotIron && gotIron.mat === 'iron' && gotIron.tierMult === 2, gotIron);
+      check('copper and iron are DIFFERENT pieces to the game, not one recoloured twice',
+        gotCopper.mat !== gotIron.mat && gotCopper.tierMult !== gotIron.tierMult,
+        { copper: gotCopper.mat + '/' + gotCopper.tierMult, iron: gotIron.mat + '/' + gotIron.tierMult });
+
+      /* And the thing that IS unsellable, side by side with them, so the
+         difference is one assertion apart rather than one document apart. */
+      check('...while the separate COSMETIC layer is the only thing refused, and by its own reason',
+        shop._gearSellable(GSEL, 'gear', { slot: 'chest', gearId: 'steelchest' }).reason === 'cosmetic',
+        shop._gearSellable(GSEL, 'gear', { slot: 'chest', gearId: 'steelchest' }));
     }
 
     /* ══ S12m. THE REASON TABLE IS MIRRORED, AND PINNED ══

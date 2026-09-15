@@ -43,7 +43,7 @@
    wire, and '__proto__' is a legal string (TRAPS #6). */
 export const GEAR_SELL_REASON = new Map([
   ['legacy', 'Earned before the game kept receipts — it still works, but it cannot be sold'],
-  ['cosmetic', "Outfits aren't sellable"],
+  ['cosmetic', "Looks aren't sellable — only armour with stats is"],
   ['worn', "You're wearing it — take it off first"],
   ['in_mail', "It's still in the post"],
   ['not_held', "That piece isn't yours right now"],
@@ -68,12 +68,21 @@ export function gearSellReasonText(reason) {
  *
  * THE TWO ANSWERS THIS CAN GIVE ON ITS OWN, and why only these two:
  *
- *   'cosmetic' — an outfit layer.  There is no server mint path for
- *     cosmetics at ALL (the catalog is client art), so no cosmetic can
- *     ever carry a receipt.  Permanent, knowable offline, and kept as a
- *     SEPARATE answer from 'legacy' deliberately: "outfits aren't
- *     sellable" is the design, where "earned before receipts" would read
- *     as an oversight somebody should go and fix.
+ *   'cosmetic' — the separate LOOK layer (a {slot, gearId} pair from
+ *     gearCatalog.js, with no stats and no material).  There is no server
+ *     mint path for these at ALL — the catalog is client art — so one can
+ *     never carry a receipt.  Permanent, knowable offline, and kept as a
+ *     SEPARATE answer from 'legacy' deliberately: "this is a look" is the
+ *     design, where "earned before receipts" would read as an oversight
+ *     somebody should go and fix.
+ *
+ *     v2.3.2554: the sentence names what IS sellable beside what is not,
+ *     because the old wording ("outfits aren't sellable") made the owner
+ *     ask whether their COPPER ARMOUR had become unsellable.  It had not:
+ *     copper and iron are stat armour, the server mints them, they carry
+ *     a receipt, and they sell keeping their colour — the colour rides on
+ *     the piece as `mat` and gearCatalog derives the art from it.  A
+ *     player should not have to know that to read this card.
  *
  *   'legacy' — no `gid`, or a `prov` that is not 'minted'.  Also
  *     permanent: a piece minted before the receipt book existed has no id

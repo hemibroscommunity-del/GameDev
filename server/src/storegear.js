@@ -190,6 +190,21 @@
  * would invite the next contributor to "fix" cosmetics by adding a mint
  * path nobody wants.
  *
+ * v2.3.2554: the sentence used to read "Outfits aren't sellable", and the
+ * word did real damage -- the owner read it and asked whether their COPPER
+ * ARMOUR had just become unsellable.  It had not, and the distinction is
+ * the whole point: copper and iron are stat armour with a `mat` on the
+ * piece (QUEST_REWARDS.life_2 / .tut_4, MONSTER_ARMOR_DROPS), they are
+ * minted by the server, they carry a receipt, and they sell -- keeping
+ * their colour, because gearCatalog.js derives the art from `mat` on the
+ * piece itself (`gearIdFor(slot, R.armor.mat)`) rather than from a
+ * separately-chosen look.  What is refused here is only the separate
+ * `gearStash` entry, a `{slot, gearId}` pair with no stats and no
+ * material.  So the sentence now names what IS sellable beside what is
+ * not, and `market.test.mjs` §S12o proves the armour half by selling a
+ * real Copper Torso and a real Iron Torso through the real route and
+ * reading the material back off what the buyer receives.
+ *
  * ── 5. `_sv` IS RETIRED (v2.3.2552) ──────────────────────────────────
  *
  * This module used to carry its own provenance mark: `_sv`, a boolean set
@@ -248,7 +263,7 @@ export const STORE_GEAR = {
    through a wire path, and `'__proto__'` is a legal string (TRAPS #6). */
 export const GEAR_REFUSAL = new Map([
   ['legacy', 'Earned before the game kept receipts — it still works, but it cannot be sold'],
-  ['cosmetic', "Outfits aren't sellable"],
+  ['cosmetic', "Looks aren't sellable — only armour with stats is"],
   ['worn', "You're wearing it — take it off first"],
   ['in_mail', "It's still in the post"],
   ['not_held', "That piece isn't yours right now"],

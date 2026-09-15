@@ -30,7 +30,7 @@ names what an item *is*, only which of the caller's own goods to list.
 | stackable inventory items (`ps.inventory`) | the equipped slots |
 | weapons from the server weapon stash (`ps.weaponStash`) | anything the server does not hold a copy of |
 | **gear the server MINTED and you still hold** (v2.3.2531; gated on the receipt ledger v2.3.2551) | gear the server never recorded (`legacy`) — usable, not sellable |
-| | cosmetic outfit layers — never sellable, by design |
+| ...which includes every **stat armour tier**: copper (`QUEST_REWARDS.life_2` / `.tut_4`) and iron (`MONSTER_ARMOR_DROPS`) are minted, carry a receipt, sell, and **keep their colour**, because `gearCatalog.js` derives the art from `mat` on the piece (`gearIdFor(slot, R.armor.mat)`) rather than from a separately-chosen look | the separate `gearStash` **cosmetic layer** — a `{slot, gearId}` pair with no stats and no material. Never sellable, by design |
 
 The rule behind that table has not changed and is the only rule here:
 **the store can escrow exactly what the server already holds by
@@ -418,7 +418,7 @@ out to the client on the HTTP answer, alongside a human sentence:
 | `reason` | what the player reads |
 |---|---|
 | `legacy` | Earned before the game kept receipts — it still works, but it cannot be sold |
-| `cosmetic` | Outfits aren't sellable |
+| `cosmetic` | Looks aren't sellable — only armour with stats is |
 | `worn` | You're wearing it — take it off first |
 | `in_mail` | It's still in the post |
 | `not_held` | That piece isn't yours right now |
