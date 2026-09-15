@@ -1456,7 +1456,7 @@ export function setupWebSocket(ctx) {
               try { console.log('[loot_pickup_rejected]', msg.payload, 'myId=', S.myId); } catch (e) {}
               var _rjPermanent = msg.payload.reason === 'no-pile' || msg.payload.reason === 'already-claimed' ||
                 msg.payload.reason === 'not-recipient' || msg.payload.reason === 'wrong-zone';
-              /* ═══ v2.3.2535: THE THIRD KIND OF NO, WHICH HAD NO HANDLER ═══
+              /* ═══ v2.3.2545: THE THIRD KIND OF NO, WHICH HAD NO HANDLER ═══
                  v2.3.2490 sorted refusals into "permanent" (drop the pile) and
                  "out-of-range" (re-arm fast), and its own note lists the
                  reasons it deliberately left out as transient -- 'dead' and
@@ -1500,7 +1500,7 @@ export function setupWebSocket(ctx) {
                     _rjPile._pickupRetryAt = Date.now() + 1000;
                     break;
                   }
-                  /* ═══ v2.3.2535: EIGHT FAST TRIES, NOT EIGHT FOR ALL TIME ═══
+                  /* ═══ v2.3.2545: EIGHT FAST TRIES, NOT EIGHT FOR ALL TIME ═══
                      `_pickupTries` was never reset, so the budget was a
                      LIFETIME one: a pile refused eight times in the second
                      after it dropped -- which is what a stale worker-side
@@ -2753,7 +2753,7 @@ export function setupWebSocket(ctx) {
              sound, and a 0-coin share should not click.  Pet credits ring
              too -- the coins landed either way. */
           try { BT_AUDIO.play('coin-pickup', { vol: 0.45 }); } catch (_ce) {}
-          /* v2.3.2535: dev probe, house style (cf. window.__btLootSprites) and
+          /* v2.3.2545: dev probe, house style (cf. window.__btLootSprites) and
              gated on the harness's __btProbe flag so a real player never pays
              for it.  tools/qa/mp/mp-lootcue.mjs counts this, which is what
              lets "a refused pickup makes NO coin sound" be an assertion about
@@ -3557,7 +3557,7 @@ export function setupWebSocket(ctx) {
           return;
         }
         if (msg.type === 'loot_pickup') {
-          /* ═══ v2.3.2535: THE PICKUP IS MEASURED FROM ps, SO SEND ps FIRST ═══
+          /* ═══ v2.3.2545: THE PICKUP IS MEASURED FROM ps, SO SEND ps FIRST ═══
              Owner, still: "coins sometimes magnetize toward the player without
              ever being picked up."
 

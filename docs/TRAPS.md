@@ -3197,7 +3197,7 @@ the request and never answers. Twelve of its twenty-three assertions go red
 against the pre-fix panel, and its captured panel text is character for
 character the owner's screenshot.
 
-## 78. A control run that still contains the fix (v2.3.2535)
+## 78. A control run that still contains the fix (v2.3.2545)
 
 **Tempting, and correct as a method:** to prove a new assertion really catches
 the bug it claims to catch, take the fix back out, rebuild, re-run, and check

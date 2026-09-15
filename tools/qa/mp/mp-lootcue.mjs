@@ -1,4 +1,4 @@
-/* THE THREE THINGS A COIN DOES ON ITS WAY INTO THE BAG (v2.3.2535).
+/* THE THREE THINGS A COIN DOES ON ITS WAY INTO THE BAG (v2.3.2545).
  *
  * Owner, after playing the merged build, on ground loot:
  *   1. "loot no longer flashes and bobs before it disappears"
@@ -52,7 +52,7 @@
  * gap was measured at up to 85 px against a pile whose anchor a dash kill
  * leaves 76-107 px away (mp-lootmagnet's own measurement).  85 + 107 is 192
  * against a budget of 160: the refusal, and why the owner sees it "mainly
- * during melee dash".  v2.3.2535 flushes the held position first, exactly as
+ * during melee dash".  v2.3.2545 flushes the held position first, exactly as
  * v2.3.1765 did for Shield Bash, so the gap at ask time must now be ~0.
  *
  * That block asks TEN times rather than once, and the reason is a measured

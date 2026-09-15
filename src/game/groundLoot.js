@@ -94,7 +94,7 @@ export function updateGroundLootPickup(S, deps) {
                pull can't compound frame-over-frame into an unbounded
                drag; lDist still bounds the inner edge so the pile stops
                crawling once it visually reaches the player. */
-            /* ═══ v2.3.2535: "THE MAGNET HAS IT" IS ONE FACT, NAMED ONCE ═══
+            /* ═══ v2.3.2545: "THE MAGNET HAS IT" IS ONE FACT, NAMED ONCE ═══
                The pull below and the pickup request further down are the two
                halves of the same event -- the pile is committed to this
                player -- and they used to be written as two unrelated
@@ -102,7 +102,7 @@ export function updateGroundLootPickup(S, deps) {
                lets the request fire on the same frame the pull starts (see
                the request block below) instead of half a second later. */
             var _magnetHolds = _magnetReady && _amPileRecipient && sDist < magnetRange;
-            /* v2.3.2535: the pull no longer stops dead on `_collected`.  The
+            /* v2.3.2545: the pull no longer stops dead on `_collected`.  The
                credit arrives while the coin is still in flight now, and the
                pile stays on screen for its 0.5 s despawn delay -- without
                this the sprite froze in mid-air for that half second and then
@@ -201,7 +201,7 @@ export function updateGroundLootPickup(S, deps) {
                the share and despawns the pile locally via
                _applyLootCredit).  Keep the pile visible until then so
                there's no ghost-state if the request fails. */
-            /* ═══ v2.3.2535: ASK WHEN THE MAGNET TAKES IT, NOT WHEN THE
+            /* ═══ v2.3.2545: ASK WHEN THE MAGNET TAKES IT, NOT WHEN THE
                    SPRITE ARRIVES ═══
                Owner: "the coin sound lands too late when picking up coins."
 
