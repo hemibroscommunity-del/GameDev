@@ -158,7 +158,7 @@ scrolls `.bt-paint` 67px sideways).
 
 ---
 
-# The zone picker replaces the switch (v2.3.2472)
+# The zone picker replaces the switch (v2.3.2503)
 
 Owner, with a mockup of the finished screen
 (`docs/triage-2026-09-14/assets/tattoo-editor-mock.png`) and a sheet of UI art

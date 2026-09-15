@@ -419,7 +419,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and says so afterwards', (await pctLabel()) === '100%', { after: await pctLabel() });
 
   /* ═══ THE FACE, INCLUDING THE PARTS THAT WERE OUT OF REACH ═════════════ */
-  /* v2.3.2472: the HEAD frame on the little figure, where the `face` tab used
+  /* v2.3.2503: the HEAD frame on the little figure, where the `face` tab used
      to be -- the zone picker replaced the mode strip (PlayerPaint's ZONES). */
   const faceTab = await page.$('[data-zone-btn="face"]');
   if (faceTab) await faceTab.click();

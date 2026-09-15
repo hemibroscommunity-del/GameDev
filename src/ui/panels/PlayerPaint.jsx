@@ -202,7 +202,7 @@ const TAB_SPOTS_BACK = {
   face: ['tattooHeadBack'],
 };
 
-/* ═══ v2.3.2472: TAP THE PART OF YOURSELF YOU WANT TO DRAW ON ═══
+/* ═══ v2.3.2503: TAP THE PART OF YOURSELF YOU WANT TO DRAW ON ═══
  *
  * Owner, with a mockup of the finished screen
  * (docs/triage-2026-09-14/assets/tattoo-editor-mock.png) and a sheet of UI art
@@ -250,7 +250,7 @@ const ZONE_APERTURE = 0.581;
    control at and the reason this is stated in CSS px rather than as a fraction
    of a pane that changes size. */
 const ZONE_MIN_PX = 44;
-/* ═══ v2.3.2472: A HEAD ZONE NEEDS THE WHOLE HEAD IN SHOT ═══
+/* ═══ v2.3.2503: A HEAD ZONE NEEDS THE WHOLE HEAD IN SHOT ═══
    FOCUS.tattooFace is {cy .43, h .45}, a window over the UPPER BODY chosen at
    v2.3.1978 when the pane's whole job was "what does it look like ON you" and
    the face screen's own editor was already the head at full zoom. That window
@@ -562,7 +562,7 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
   const offRef = React.useRef(null);
   const busyRef = React.useRef(false);
   const dirtyRef = React.useRef(false);
-  /* v2.3.2472: the zone picker's frames are placed off the composite's OWN grid
+  /* v2.3.2503: the zone picker's frames are placed off the composite's OWN grid
      report, never off measured fractions of the pane. The alternative was a
      table of head/torso boxes beside FOCUS, and FOCUS's own history says why
      not: every window in it had to be re-derived when the build scaling landed
@@ -626,7 +626,7 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
     const sx = FIG_CX * S - winW / 2, sy = f.cy * S - winH / 2;
     ctx.drawImage(off, sx, sy, winW, winH, 0, 0, w, h);
 
-    /* ── v2.3.2472: where each body region landed, as fractions of THIS box ──
+    /* ── v2.3.2503: where each body region landed, as fractions of THIS box ──
        Two hops, both taken from the code that owns them rather than re-derived:
        the composite reports the matrix it drew the body sheet through
        (__btGridXform, characterPortrait v2.3.1965), and the window above is the
@@ -669,7 +669,7 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
         /* Half the creator stage's resolution: this box is ~125px, and the
            composite cost is paid on every stroke. */
         scale: Math.min(2, Math.round((typeof window !== 'undefined' && window.devicePixelRatio) || 1)),
-        /* v2.3.2472: only when a caller is placing zone frames on this pane.
+        /* v2.3.2503: only when a caller is placing zone frames on this pane.
            The report makes the composite stamp every region whether it carries
            ink or not (playerDecal's `wantPantsArt` rule and its siblings), which
            is work the inspect card and the creator's ink card have no use for. */
@@ -798,7 +798,7 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
 }
 export { WornPreview };
 
-/* ═══ v2.3.2472: THE ZONE PICKER ═══
+/* ═══ v2.3.2503: THE ZONE PICKER ═══
  * The frames and the flip button, laid over the worn preview. See ZONES above
  * for what this replaces and why.
  *
@@ -907,7 +907,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      behind it rather than being deleted: a 16x16 grid is a better tool for a
      deliberate, symmetrical design than a finger on a zoomed limb, and
      throwing it away to answer the note would be a trade, not a fix. */
-  /* ═══ v2.3.2472: THE STRIP IS "WHICH TOOL", NEVER "WHICH CANVAS" ═══
+  /* ═══ v2.3.2503: THE STRIP IS "WHICH TOOL", NEVER "WHICH CANVAS" ═══
      Both of the canvas choices that used to live here are the zone picker's now
      (see ZONES): the tattoo screen's body/face pair became two frames on the
      figure, and the shirt's front/back became the flip button under it. What is
@@ -945,7 +945,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      The PATTERN screen is excluded on purpose: a pattern tiles the entire
      garment, so it has no front and no back to choose between. */
   const isPants = target === 'pants';
-  /* v2.3.2472: every screen you can DRAW on has two sides, and reaches them the
+  /* v2.3.2503: every screen you can DRAW on has two sides, and reaches them the
      same way -- the flip button under the figure. The shirt is the one that
      changed: its sides were two entries in the mode strip (v2.3.1939), which is
      why `side` needed the `mode === 'back'` fallback that is gone below.
@@ -1020,7 +1020,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      apart again. */
   const inkLabel = isShirt ? ('shirt ' + side) : scfg.label;
 
-  /* ── v2.3.2472: the zone picker's state, all of it derived ───────────────
+  /* ── v2.3.2503: the zone picker's state, all of it derived ───────────────
      There is no "which zone is selected" variable, on purpose. The selection IS
      `mode` on the tattoo screens and is the only zone anywhere else, so the
      frame that glows cannot drift from the canvas being inked -- which is the
@@ -2280,7 +2280,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             is already tight -- so it is one line above the mode strip, in the
             same cell, and adds only its own text height. */}
         <h2 className="bt-paint-title">{cfg.title || 'Design'}</h2>
-        {/* v2.3.2472: two entries at most, and never a canvas -- see MODES. The
+        {/* v2.3.2503: two entries at most, and never a canvas -- see MODES. The
             four-tab sizing this block used to carry went with the tattoo
             screen's body/face pair, which is the zone picker's job now. */}
         {MODES && (
@@ -2297,7 +2297,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
         </div>
 
         {/* v2.3.1947: the character wearing what you are making.
-            v2.3.2472: ...and the thing you choose a canvas WITH. The front/back
+            v2.3.2503: ...and the thing you choose a canvas WITH. The front/back
             switch that used to sit up in the head cell is the flip button under
             the figure now, and the tattoo screen's mode strip is the two frames
             over him -- see ZONES. */}

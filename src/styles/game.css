@@ -2983,7 +2983,7 @@ input{font-family:inherit}
 }
 .bt-paint-tabs{min-width:0}
 .bt-paint-side{grid-area:side;width:calc(var(--paint-size) * .62)}
-/* ═══ v2.3.2472: THE CAPTION RESERVES ITS TALLEST SELF ═══
+/* ═══ v2.3.2503: THE CAPTION RESERVES ITS TALLEST SELF ═══
    The caption's text is per-CANVAS (TARGETS[].note), so it changes length as
    your finger moves from the chest to an arm -- and its column is only
    --paint-size * .62 wide, so "Chest and arms. Draw straight on either..."
@@ -3122,7 +3122,7 @@ input{font-family:inherit}
 .bt-paint-layer-btns .bt-paint-size{padding:4px 2px;min-height:38px}
 .bt-paint-layer-btns .bt-paint-tool-label{font-size:11px;line-height:1.15;text-align:center}
 
-/* ═══ v2.3.2472: THE ZONE PICKER ═══
+/* ═══ v2.3.2503: THE ZONE PICKER ═══
    The frames and the flip button that replaced the tattoo screen's mode strip
    and the Front/Back switch -- see PlayerPaint's ZONES for the whole of why.
    Everything here is positioned as a PERCENTAGE of the preview pane, because

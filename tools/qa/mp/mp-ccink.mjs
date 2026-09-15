@@ -678,9 +678,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       /* v2.3.2430: the shirt opens on its PATTERN screen; the drawing is made on
          the other one, so that is the one to look at.
-         v2.3.2472: and that one is `drawing` now, not `front`.  The shirt's
+         v2.3.2503: and that one is `drawing` now, not `front`.  The shirt's
          two SIDES were two entries in this strip (v2.3.1939); they are the zone
-         picker's flip button since v2.3.2472, which leaves the strip saying only
+         picker's flip button since v2.3.2503, which leaves the strip saying only
          what it says on every other garment -- pattern, or draw. */
       if (tab === 'Shirt') {
         await P3.page.evaluate(() => {
@@ -769,7 +769,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
            actually RESOLVES a back facing to that canvas -- which is the one a
            store check cannot see, and the one a mutation slipped through until
            this was written. */
-        /* v2.3.2472: a FLIP button under the figure, not a pair of words above
+        /* v2.3.2503: a FLIP button under the figure, not a pair of words above
            it -- the zone picker replaced the Front/Back switch on every drawing
            screen (PlayerPaint's ZONES).  The property asserted is the one that
            matters and has not changed: the trousers have a way to reach their
@@ -935,7 +935,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        button in the panel" is the property, and it survives the panel being
        re-laid out again -- which is exactly what it then had to do.
 
-       v2.3.2472: the switch is the zone picker's FLIP BUTTON now, and it lives
+       v2.3.2503: the switch is the zone picker's FLIP BUTTON now, and it lives
        over the little figure instead of in the head cell, so "under the tabs"
        is no longer the claim.  Everything else carries across unchanged,
        because the regression this defends was never about the widget: a control
@@ -990,7 +990,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         frames.length > 0 && frames.every((f) => !f.hidden && f.w >= 43.5 && f.h >= 43.5),
         { frames });
 
-      /* ═══ v2.3.2472: PICKING A ZONE MUST NOT MOVE THE EDITOR ═══
+      /* ═══ v2.3.2503: PICKING A ZONE MUST NOT MOVE THE EDITOR ═══
          The caption under the picker is per-canvas, so it changes length when
          you pick a different zone -- and .bt-modal-scrim CENTRES this panel, so
          a panel whose height follows the caption slides everything inside it up

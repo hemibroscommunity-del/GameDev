@@ -1,4 +1,4 @@
-/* ═══ v2.3.2472: CUT THE TATTOO EDITOR'S ZONE-PICKER ART FROM THE OWNER'S SHEET ═══
+/* ═══ v2.3.2503: CUT THE TATTOO EDITOR'S ZONE-PICKER ART FROM THE OWNER'S SHEET ═══
  *
  * Owner, with `tools/gear/src-art/creator/tattoo-zone-ui.png` and the mockup
  * `docs/triage-2026-09-14/assets/tattoo-editor-mock.png`: the little character

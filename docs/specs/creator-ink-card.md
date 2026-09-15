@@ -495,7 +495,7 @@ is keyed by **canvas** (`shirtFront`), not by storage key (`bt-shirtart`).
 
 ---
 
-# The card's editor gets a zone picker (v2.3.2472)
+# The card's editor gets a zone picker (v2.3.2503)
 
 The full write-up is in `docs/specs/tattoo-front-and-back.md`. This is what
 changed behind the door this document opens.

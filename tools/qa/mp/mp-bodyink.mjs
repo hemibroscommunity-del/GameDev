@@ -133,8 +133,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await page.waitForSelector('.bt-bodyink-cv', { timeout: 20000 });
   await page.waitForTimeout(1800);
 
-  /* ═══ v2.3.2472: TWO ZONES ON THE FIGURE, NOT TWO ROWS OF WORDS ═══
-     Until v2.3.2472 this read a body/face mode strip (v2.3.1978) and a
+  /* ═══ v2.3.2503: TWO ZONES ON THE FIGURE, NOT TWO ROWS OF WORDS ═══
+     Until v2.3.2503 this read a body/face mode strip (v2.3.1978) and a
      front/back switch (v2.3.2150), and the four assertions below are those four
      carried across to the control that replaced both: the owner's zone picker,
      which puts a tappable frame over the head and the torso of the little
@@ -407,7 +407,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     + 'Front selected (guard: if this fails the tap is missing and the back '
     + 'check below proves nothing)', ctrlAfter > ctrlBefore, { ctrlBefore, ctrlAfter });
 
-  /* v2.3.2472: the flip button, not a Back button -- see the zone-picker block
+  /* v2.3.2503: the flip button, not a Back button -- see the zone-picker block
      above.  Only its PRESENCE is checked here: the two guards immediately below
      read the FRONT view, so the turn itself has to wait for the click site
      further down, exactly where the old Back button was clicked. */
@@ -545,7 +545,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* ═══ FACE ═══════════════════════════════════════════════════════════ */
-  /* v2.3.2472: the HEAD frame on the little figure, where the `face` tab used
+  /* v2.3.2503: the HEAD frame on the little figure, where the `face` tab used
      to be.  Same job -- point the editor at the head -- through the control the
      owner asked for. */
   await page.click('[data-zone-btn="face"]');

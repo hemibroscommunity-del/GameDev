@@ -139,7 +139,7 @@ function catalogueInvariants(rec, tag) {
   rec.ok(`${tag}: every entry's rows still join to exactly its art string`, badArt === 0);
 }
 
-/* v2.3.2472: turn the little figure to `want` and leave it there.  The flip
+/* v2.3.2503: turn the little figure to `want` and leave it there.  The flip
    button replaced the two-button Front/Back switch, and a toggle is not
    idempotent -- clicking it blind walks PAST the side you asked for. */
 async function faceSide(P, want) {
@@ -429,7 +429,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      v2.3.2445: it named the screen, so on Face + Back the Clear button said
      "the whole back of head" while the gallery offered to ink "your tattoo" --
      two controls on one screen giving different answers. */
-  /* v2.3.2472: the head frame on the little figure and the flip button under
+  /* v2.3.2503: the head frame on the little figure and the flip button under
      him, where the `face` tab and the Back switch used to be.  Same two moves
      -- point the editor at the head, turn him round -- through the zone picker
      that replaced both (PlayerPaint's ZONES).  The flip is a TOGGLE, so it is
