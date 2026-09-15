@@ -42,8 +42,13 @@
 
 import { t2ReplayFlat } from './data.js';
 import { prog3FromLegacy, prog3SplitAtk, prog3GrantRetroPoints, prog3MoveElemToAtk } from './prog3.js';
+import { normalizeGearStashes } from './gearstash.js';
 
-export const RPG_SCHEMA_VERSION = 15;
+/* v2.3.2523: 16, appended above the attributes restructure's v15
+ * (v2.3.2512), which merged while this slice was in flight.  Migration
+ * numbers are APPENDED and never renumbered (the recipe above), so a
+ * blob stamped 15 runs v16 next and one stamped 16 has run both. */
+export const RPG_SCHEMA_VERSION = 16;
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -545,6 +550,33 @@ export const MIGRATIONS = [
       if (!blob.prog3 || typeof blob.prog3 !== 'object') return false;
       return prog3MoveElemToAtk(blob.prog3);
     },
+  },
+  {
+    v: 16,
+    name: 'gear-stash-fields',
+    /* v2.3.2523: the five gear stashes become real rpg-blob fields
+       (gearstash.js, spec docs/specs/gear-stash.md).  Every record
+       written before this slice has none of them, so this is the shape
+       pass that gives every stored blob the same known container:
+       five arrays of plain objects, capped.
+
+       SHAPE ONLY, deliberately.  The value clamps (tierMult ceilings,
+       the amulet whitelist, the strict strip of server-minted forge
+       fields) live on the join path beside every other clamp, the
+       v2.3.1104 heal-on-load posture -- a migration carrying its own
+       copy of a ceiling is a second ceiling to forget.
+
+       It does NOT adopt anything: a migration cannot see the client,
+       and the player's stash is still in their browser at this point.
+       Adoption is a join-time, once-per-character step stamped by
+       `gearStashCaptured` (_gearStashAdoptOnJoin), which this
+       deliberately leaves absent -- absent means "not captured yet",
+       the goldNuggets/gems posture (v2.3.1192 / v2.3.1198).
+
+       Idempotent: the second pass finds five arrays and changes
+       nothing.  Partial-tolerant: any subset may be present already
+       (an interrupted earlier pass, or a blob saved by this version). */
+    run: normalizeGearStashes,
   },
 ];
 

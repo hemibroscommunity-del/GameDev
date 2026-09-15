@@ -163,6 +163,28 @@ const JOIN_RPG_PREFIX_RE = /^rpg[A-Z][A-Za-z0-9]*$/;
  * if MAX_INBOUND_BYTES is ever raised, this keeps a single value from
  * scaling with it. */
 const JOIN_RPG_MAX_BYTES = 8 * 1024;
+/* ═══ v2.3.2523: SEEDS THE EXPLICIT INGEST READS AND NOBODY ELSE ═══
+ *
+ * Every other rpg* seed is copied into cleanJoinData, which is spread
+ * onto playerState -- and getAllPlayerData() spreads that into the
+ * state_sync EVERY other player receives.  That is already true of
+ * rpgWeaponStash and is left alone (behaviour-frozen), but the four
+ * gear stashes this version adds would put a fifth to eighth copy of
+ * one player's whole wardrobe on a room-wide broadcast, for fields no
+ * peer renders and no handler reads.
+ *
+ * So they are INGEST-ONLY: _handleJoin reads them straight off
+ * `msg.data` (which is the raw message and unaffected by this set) and
+ * hands them to _gearStashAdoptOnJoin, where they are sanitized, merged
+ * and stored; they never reach playerState and never reach the wire.
+ * Skipping the copy also skips the per-key size guard below, which is
+ * safe for exactly one reason: that guard is defence in depth over
+ * MAX_INBOUND_BYTES (16 KB for the WHOLE frame, index.js), and the
+ * frame gate is what actually bounds these.  The adoption path bounds
+ * them again by entry count (GEAR_STASH_CAP, gearstash.js). */
+const JOIN_RPG_INGEST_ONLY = new Set([
+  'rpgArmorStash', 'rpgLegsStash', 'rpgShieldStash', 'rpgGearStash', 'rpgAmuletStash',
+]);
 
 /* ═══ v2.3.1982: THE ROOM-FULL REFUSAL ═══
  *
@@ -314,6 +336,7 @@ export const joinMethods = {
        braces -- '__proto__' cannot match JOIN_RPG_PREFIX_RE anyway). */
     for (const k of Object.getOwnPropertyNames(raw)) {
       if (!JOIN_RPG_PREFIX_RE.test(k)) continue;
+      if (JOIN_RPG_INGEST_ONLY.has(k)) continue;   /* v2.3.2523 -- see the set */
       const v = raw[k];
       if (v === undefined) continue;
       /* v2.3.1629: bound the VALUE, not just the key.  The pattern
@@ -845,6 +868,17 @@ export const joinMethods = {
       // stats block below; stored wins on every later reconnect.
       this._gemsAdoptOnJoin(this.playerState[msg.id], stored,
         (msg.data && msg.data.rpgLifeSkills) || null);
+      /* v2.3.2523 (gear stash): load the five server-held gear stashes
+         and, for a record that predates the slice, adopt the client's
+         local armour / legs / shield / cosmetic lists ONCE
+         (gearstash.js).  Same seam and same reasons as the gems line
+         above: stored wins on every reconnect, the claim is folded in
+         by multiset union so a retry cannot duplicate a piece, and the
+         stamp rides the _saveRpg at the end of the stats block below so
+         data and stamp can never land apart.  Reads msg.data directly
+         rather than the session copy -- these four seeds are ingest-only
+         and never enter playerState (see _sanitizeJoinData). */
+      this._gearStashAdoptOnJoin(this.playerState[msg.id], stored, msg.data || null);
       // Session-only equipment-derived values.  Always read from join
       // — recomputed client-side on every recalcDerived.
       // v2.3.1306: upper-bound def at ingest too (2100 = the grids.js

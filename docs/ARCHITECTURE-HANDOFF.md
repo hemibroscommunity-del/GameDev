@@ -54,7 +54,7 @@ extended.
 
    | Prefix | Value | Owner (spec) |
    |---|---|---|
-   | `rpg:<playerId>` | the player blob (fixed field list) | core |
+   | `rpg:<playerId>` | the player blob (fixed field list) — v2.3.2523 adds the five GEAR STASHES (`armorStash`, `legsStash`, `shieldStash`, `gearStash`, `amuletStash`) + the `gearStashCaptured` adoption stamp; they are blob fields, not their own prefix | core (gear-stash.md) |
    | `auth:<playerId>` | `{pfHash, createdAt}` SHA-256 of `btv1\|phrase` | identity.md |
    | `char:<playerId>` | `{name, look, createdAt}` the PERMANENT name + appearance; first write wins and a stored record beats the join payload | identity.md |
    | `inbox:<playerId>` | pending credit entries (offline mail) | inbox-escrow.md |

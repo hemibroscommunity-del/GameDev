@@ -38,6 +38,13 @@ those stashes server-side (fixed field list + migration + join load), and
 phase 3 lets the store escrow them. **Do not add a gear branch here
 first.**
 
+> v2.3.2523: phase 2 has shipped — the five gear stashes are rpg-blob
+> fields now (`docs/specs/gear-stash.md`). The scope table above is
+> still correct: the store lists none of them yet, and the client is
+> still the authority for what is in its own stash. Phase 3 is the
+> change that makes the server the writer (escrow) and the client a
+> reader of the echo.
+
 ## Wire surface (HTTP, `/api/store*`)
 
 Routed by the outer worker to the shared room, same as `/api/market*`
