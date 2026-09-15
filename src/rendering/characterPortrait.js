@@ -47,7 +47,7 @@ import { materialRgb, weaponMaterial } from './traits/materialTints.js'; /* v2.3
 
 import { weaponArtUrl } from './weaponSprites.js';        /* v2.3.1841 */
 import { getShieldArt } from './shieldSprites.js';        /* v2.3.1841 */
-import { getCape } from './traits/capeCatalog.js';        /* v2.3.2472: the worn cape, in the preview */
+import { getCape } from './traits/capeCatalog.js';        /* v2.3.2507: the worn cape, in the preview */
 import { getWeaponHandle, getAnchor } from './playerAnchors.js'; /* v2.3.1841 */
 
 const FRAME = 256;
@@ -117,7 +117,7 @@ const GEAR_ART_VER = '2.3.1656';
    with any shirt-sheet regen; it is separate from GEAR_ART_VER so re-baking
    the tee does not make every player re-download the armour art too. */
 const SHIRT_ART_VER = '2.3.1995';
-/* ═══ v2.3.2472: THE CAPE'S OWN CACHE-BUST ═══
+/* ═══ v2.3.2507: THE CAPE'S OWN CACHE-BUST ═══
    Separate from the two above for the reason SHIRT_ART_VER is separate from
    GEAR_ART_VER: the cape is five stills that nothing else re-bakes, so a cape
    redraw should not make every player re-download the armour art.  Bump it with
@@ -455,7 +455,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      why backShieldPlacement asks for facing + PI; the same rule here. */
   const _dirIdx = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'].indexOf(dir || DIR);
   const _shieldArt = shield && _dirIdx >= 0 ? getShieldArt(_dirIdx * Math.PI / 4 + Math.PI) : null;
-  /* ═══ v2.3.2472: THE CAPE, IN THE EQUIPMENT PREVIEW ═══
+  /* ═══ v2.3.2507: THE CAPE, IN THE EQUIPMENT PREVIEW ═══
      Owner (backlog triage 2026-09-14, art item 10): "no cape in the SW
      equipment preview."  There was no cape code in this file at all -- the
      cosmetic rendered in the world and nowhere the player chooses it, which
@@ -612,7 +612,7 @@ export async function drawCharacterPortrait(canvas, opts) {
     ctx.drawImage(shieldImg, -sPx / 2, -sPx / 2, sPx, sPx);
     ctx.restore();
   }
-  /* v2.3.2472: the cape's PANELS, after the slung shield and before the body --
+  /* v2.3.2507: the cape's PANELS, after the slung shield and before the body --
      the world's child order exactly (shieldBackLo, capeBack, spriteBody in
      entityRenderer's container build).  On the SPLIT facings this is the back
      half only and the torso then draws over it, which is the whole point of the
@@ -869,7 +869,7 @@ export async function drawCharacterPortrait(canvas, opts) {
       hctx.globalCompositeOperation = 'destination-in';
       hctx.drawImage(maskCv, 0, 0);
     } else if (capeHoodMaskImg) {
-      /* v2.3.2472: the HOOD clips the hair, the same rule and the same
+      /* v2.3.2507: the HOOD clips the hair, the same rule and the same
          precedence the world uses (_placeHairMask's else-branch, v2.3.2186): a
          hat that clips wins, because the hat draws above the hood and its
          outline is the one the hair has to obey; with no such hat the hood's
@@ -884,7 +884,7 @@ export async function drawCharacterPortrait(canvas, opts) {
     }
     ctx.drawImage(hairCv, 0, 0);
   }
-  /* v2.3.2472: the cape's FRONT half, in the world's own order -- above the
+  /* v2.3.2507: the cape's FRONT half, in the world's own order -- above the
      hair, below the eyewear and the hat (entityRenderer builds hairSprite,
      capeSprite, eyewearSprite, headwearSprite in that sequence, and that child
      order IS the z-order).  On a split facing this is the hood alone; on north
@@ -935,7 +935,7 @@ export async function drawCharacterPortrait(canvas, opts) {
  *  hit memory; expected misses (e.g. hairmask 404s) are harmless. */
 export function prewarmPortraitDirs(opts) {
   const { hair, facialHair, headwear, eyewear } = opts || {};   /* v2.3.2361: + eyewear */
-  /* v2.3.2472: the cape too.  ANIMATION PRELOADING IS LAW (CLAUDE.md): a cape
+  /* v2.3.2507: the cape too.  ANIMATION PRELOADING IS LAW (CLAUDE.md): a cape
      that fetched on the first rotate would pop in over a figure the player is
      already looking at, which is the first-use hitch the law exists to stop.
      Same opts-or-store rule the draw uses. */
@@ -1028,7 +1028,7 @@ export function portraitOptsFromPeer(o) {
     shirt: c.shirt,
     shirtColor: shirtColorTarget(c.shirtColor),
     eyeColor: c.eyeColor,                                      /* v2.3.1930 */
-    cape: c.cape || 'none',                                    /* v2.3.2472 */
+    cape: c.cape || 'none',                                    /* v2.3.2507 */
     shirtArt: c.shirtArtFront || null,                         /* v2.3.1939 */
     pantsArt: c.pantsArt || null,                              /* v2.3.1940 */
     tattooArt: c.tattooArt || null,                            /* v2.3.1940 */

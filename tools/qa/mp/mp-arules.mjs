@@ -1,4 +1,4 @@
-/* THE SPRITE-ART RULE FIXES, PHOTOGRAPHED AND MEASURED (v2.3.2472).
+/* THE SPRITE-ART RULE FIXES, PHOTOGRAPHED AND MEASURED (v2.3.2507).
  *
  * Five owner reports from the 2026-09-14 backlog triage (§5.8 D6, §5.8 D7, and
  * art items 8, 9, 10) are all the same KIND of bug: the art is right and a

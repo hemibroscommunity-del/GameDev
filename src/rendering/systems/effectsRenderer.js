@@ -57,7 +57,7 @@ import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 
    published from there. */
 const SECTORS8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 
-/* ═══ v2.3.2472: WHICH SWINGS THE BODY OCCLUDES ═══
+/* ═══ v2.3.2507: WHICH SWINGS THE BODY OCCLUDES ═══
  * Owner (D7, backlog triage 2026-09-14 §5.8): the greatsword at southwest goes
  * behind the body "for jog/idle AND for the attack swing -- it is in the right
  * hand, facing away from the camera".  entityRenderer's heldWeaponInFront is
@@ -330,7 +330,7 @@ if (typeof window !== 'undefined') {
       backIdx,
       bodyIdx,
       backUnderBody: (on && backIdx >= 0 && bodyIdx >= 0) ? (backIdx < bodyIdx) : null,
-      /* v2.3.2472: whether this (stand-in, direction) is the drape-over-the-waist
+      /* v2.3.2507: whether this (stand-in, direction) is the drape-over-the-waist
          exception, so a scenario asserts the RULE it is under rather than one
          blanket claim that the exception then has to be carved out of. */
       overBody: !!(p && p.overBody),
@@ -349,7 +349,7 @@ if (typeof window !== 'undefined') {
   };
 }
 
-/* ═══ v2.3.2472: THE ONE STAND-IN WHERE THE PANELS GO IN FRONT ═══
+/* ═══ v2.3.2507: THE ONE STAND-IN WHERE THE PANELS GO IN FRONT ═══
  * Owner (backlog triage 2026-09-14, art item 8): on the EAST jog bow attack the
  * cape "should drape over the waist, not behind".
  *
@@ -2742,7 +2742,7 @@ export class EffectsRenderer {
      dir/mirror = trait facing; the crown world pos is derived from sp's own
      transform + the per-frame crown, and the trait scale from the stand-in's
      render scale × head proportion so the hat matches the head size. */
-  /* v2.3.2472: `belowSprite` is optional and only the bow stand-ins pass it --
+  /* v2.3.2507: `belowSprite` is optional and only the bow stand-ins pass it --
      the cape's drape-over-the-waist exception caps the panels under the weapon.
      See _STAND_IN_CAPE_OVER_BODY. */
   _placeSkillTraitsOn(skillKey, sp, fi, dir, mirror, belowSprite) {
@@ -8271,7 +8271,7 @@ export class EffectsRenderer {
   /* Parameterized version of _placeSkillTraitsOn: composites an ARBITRARY
      player's hair/beard/hat (`looks`) at the swing-frame crown, onto their own
      trait sprites. */
-  /* v2.3.2472: + belowSprite, the peer's copy of the bow-cape cap. */
+  /* v2.3.2507: + belowSprite, the peer's copy of the bow-cape cap. */
   _placeSkillTraitsOnFor(skillKey, sp, fi, dir, mirror, looks, traitSprites, belowSprite) {
     const data = this._skillCrowns && this._skillCrowns[skillKey];
     if (!data || !data.crowns || !data.crowns.length) { hideSkillTraits(traitSprites); return; }
@@ -8426,7 +8426,7 @@ export class EffectsRenderer {
       if (set.chest) set.chest.tint = gearTint(eq.chest);
       if (set.weapon) set.weapon.tint = materialTint(o && o.wpnMat);
       /* v2.3.1047: north swings hold the blade on the far side -> behind body.
-         v2.3.2472: and southwest, for the owner's D7 reason -- resolved from the
+         v2.3.2507: and southwest, for the owner's D7 reason -- resolved from the
          peer's own swing ANGLE to the full 8 sectors, because dir4 above is a
          4-way collapse that has no southwest in it at all.  Without this the
          rule would hold for your own character and not for anyone else's, which
@@ -8588,7 +8588,7 @@ export class EffectsRenderer {
         headwear: o.headwear, hatColor: o.hatColor,
         cape: o.cape,                                        /* v2.3.2190 */
       };
-      this._placeSkillTraitsOnFor(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror, looks, set.traits, set.weapon);   /* v2.3.2472: the cape cap, peer side */
+      this._placeSkillTraitsOnFor(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror, looks, set.traits, set.weapon);   /* v2.3.2507: the cape cap, peer side */
       /* composite the jog legs under the torso strip (or hide them). */
       if (_jog) {
         const _fc = jogFrameCount('jog', _jdir) || 24;
@@ -8623,7 +8623,7 @@ export class EffectsRenderer {
   /* v2.3.1047: per-facing z-order for the swing weapon.  `behind` (north /
      back-to-camera facings) drops the blade just below the body so the body +
      gear occlude it; otherwise the weapon rides on top of the body + gear.
-     v2.3.2472: `behind` is now true for SOUTHWEST as well -- see _swingBehind. */
+     v2.3.2507: `behind` is now true for SOUTHWEST as well -- see _swingBehind. */
   _orderSwingWeapon(wsp, body, topGear, behind) {
     const layer = wsp && wsp.parent; if (!layer) return;
     const wi = layer.getChildIndex(wsp);
@@ -8895,12 +8895,12 @@ export class EffectsRenderer {
          this stack from legs to shirt, so this argument moves with it — leaving
          it on legs would drop the blade behind the shirt on the first non-north
          swing after any north one. */
-      /* v2.3.2472: ...and SOUTHWEST joins it (owner D7).  Asked of the real
+      /* v2.3.2507: ...and SOUTHWEST joins it (owner D7).  Asked of the real
          8-way swing facing rather than of fmap[0], which cannot tell southwest
          from south or southeast -- see _swingBehind. */
       const _behind = _swingBehind(fmap[0], S._renderFacing);
       this._orderSwingWeapon(this.swordWeaponSprite, sp, this.swordShirtSprite, _behind);
-      /* v2.3.2472 QA probe, house style (__btSwingTints, __btStandInCape): the
+      /* v2.3.2507 QA probe, house style (__btSwingTints, __btStandInCape): the
          blade's z-order AS DRAWN, read off the live scene graph rather than off
          the flag that asked for it.  `behind` is what the rule decided; the two
          indices are what the layer actually holds, and mp-arules asserts the
@@ -9375,7 +9375,7 @@ export class EffectsRenderer {
     /* v2.3.952: armored bow is helmeted -> skip hat/beard/hair (matches the
        sword); the bald baked sheet still composites them. */
     if (_armored) hideSkillTraits(this.skillTraits);
-    /* v2.3.2472: the bow sprite goes in as the cape's ceiling -- on the east
+    /* v2.3.2507: the bow sprite goes in as the cape's ceiling -- on the east
        profile the panels are raised over the waist and must still pass under
        the drawn bow.  See _STAND_IN_CAPE_OVER_BODY. */
     else this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror, this.bowWeaponSprite);
