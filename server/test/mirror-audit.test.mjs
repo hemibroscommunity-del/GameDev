@@ -763,7 +763,16 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const _hitRBlock = proj.slice(proj.indexOf('var _hitR = 18;'), proj.indexOf('staffAoeMult(S.rpg)'));
   check('magic = bow: no staff-only splash radius survives in the projectile hit table',
     _hitRBlock.length > 100 && !/isStaff\s*\?\s*\d+\s*:\s*\d+/.test(_hitRBlock)
-    && /_hitR = 27;/.test(_hitRBlock) && /_hitR = 40;/.test(_hitRBlock),
+    /* v2.3.2518: the small-monster radius reads 25, not 27.  v2.3.2511
+       re-measured the slime frame by frame (34/48/54 wide, 41 tall) and
+       found 27 was one axis of an ellipse, so a circle drawn at it was 46%
+       too generous vertically -- the "it counted when it clearly passed
+       over its head" report.  The sentinel here is guarding that the table
+       still HAS its per-size rows, so it tracks the value; it does not get
+       to hold the radius at a number the art disproved.  Caught after the
+       fact because the client-only change that moved it ran no server
+       suite (this file is the mirror, and it lives on the server side). */
+    && /_hitR = 25;/.test(_hitRBlock) && /_hitR = 40;/.test(_hitRBlock),
     { blockLen: _hitRBlock.length, staffTernaries: (_hitRBlock.match(/isStaff\s*\?/g) || []).length });
 
   /* ═══ v2.3.2218: THE CRIT THE POPUP PREDICTS IS THE CRIT THE SERVER ROLLS ═══
