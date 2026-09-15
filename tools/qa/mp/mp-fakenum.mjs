@@ -92,7 +92,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
      40 raw = displayed hp 40 -> 32, so the popup reads 8, which is also
      round(40/k) -- the two halves of the consistency rule agree whenever the
      worker's dmg and hpPct agree, which in real play is always. */
-  rec.ok('...and it carries the WORKER\'s damage, not a second local roll',
+  /* v2.3.2517: RENAMED to say what it now proves.  It used to read "it
+     carries the WORKER's damage", and since v2.3.2502 a non-kill popup does
+     not read payload.dmg at all -- it reports the change in DISPLAYED hp,
+     derived from the worker's hpPct.  Same guarantee (the number is the
+     worker's, not a second local roll) off a different field, so the claim
+     had to move with it or the next reader is misled about which field is
+     under test.  Review of PR #630, finding 5. */
+  rec.ok('...and it follows the WORKER\'s health percentage, not a second local roll',
     coll.pops.length === 1 && coll.pops[0].t.indexOf('8') >= 0, coll);
   rec.ok('...wearing the collision\'s own name, not a bare weapon hit',
     coll.pops.length === 1 && /Wildfire/.test(coll.pops[0].t), coll);
