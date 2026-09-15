@@ -47,6 +47,7 @@ import { materialRgb, weaponMaterial } from './traits/materialTints.js'; /* v2.3
 
 import { weaponArtUrl } from './weaponSprites.js';        /* v2.3.1841 */
 import { getShieldArt } from './shieldSprites.js';        /* v2.3.1841 */
+import { getCape } from './traits/capeCatalog.js';        /* v2.3.2516: the worn cape, in the preview */
 import { getWeaponHandle, getAnchor } from './playerAnchors.js'; /* v2.3.1841 */
 
 const FRAME = 256;
@@ -116,6 +117,21 @@ const GEAR_ART_VER = '2.3.1656';
    with any shirt-sheet regen; it is separate from GEAR_ART_VER so re-baking
    the tee does not make every player re-download the armour art too. */
 const SHIRT_ART_VER = '2.3.1995';
+/* ═══ v2.3.2516: THE CAPE'S OWN CACHE-BUST ═══
+   Separate from the two above for the reason SHIRT_ART_VER is separate from
+   GEAR_ART_VER: the cape is five stills that nothing else re-bakes, so a cape
+   redraw should not make every player re-download the armour art.  Bump it with
+   any change under public/sprites/traits/cape/. */
+const CAPE_ART_VER = '2.3.2023';
+/* The facings the cape art SPLITS across the body: a hood frame exists for
+   these and for no others.  Kept as its own list rather than imported from
+   capeSprites.js because that module is a Pixi Assets loader and this canvas
+   fetches plain Images; a three-entry list copied with its reason beside it is
+   cheaper than dragging the loader into the preview.  north / northeast are the
+   BACK view, where the whole garment is between the camera and the character and
+   correctly covers him, so it stays ONE layer drawn in front -- which is exactly
+   what _placeCape does in the world. */
+const CAPE_SPLIT_DIRS = ['south', 'southwest', 'east'];
 
 /* v2.3.1579: the portrait prefers the 256px `hi/` art.
  *
@@ -439,9 +455,41 @@ export async function drawCharacterPortrait(canvas, opts) {
      why backShieldPlacement asks for facing + PI; the same rule here. */
   const _dirIdx = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'].indexOf(dir || DIR);
   const _shieldArt = shield && _dirIdx >= 0 ? getShieldArt(_dirIdx * Math.PI / 4 + Math.PI) : null;
-  const [wpnImg, shieldImg] = await Promise.all([
+  /* ═══ v2.3.2516: THE CAPE, IN THE EQUIPMENT PREVIEW ═══
+     Owner (backlog triage 2026-09-14, art item 10): "no cape in the SW
+     equipment preview."  There was no cape code in this file at all -- the
+     cosmetic rendered in the world and nowhere the player chooses it, which
+     docs/specs/cape-and-contest.md §3.3 predicted in as many words ("a cape
+     that renders in-world and not in the preview is a half-shipped cosmetic").
+     The equip screen pins itself to southwest, which is a SPLIT facing, so the
+     half the owner is looking for is the hood.
+
+     THIS NEEDS NO ANCHOR MATHS, and that is why it is a load and two draws
+     rather than a placement path.  tools/import_cape_green.py registers every
+     cape frame against the real `stand-<dir>.png` at its fitted position inside
+     a full 256 box -- the same contract a full-frame armour sheet has -- and
+     this canvas draws the body into exactly that 256 box.  So the cape goes on
+     at (0,0,FRAME,FRAME) like the gear layers, and the mirrored views (west,
+     northwest, southeast) flip with the whole composite because they are inside
+     the same ctx mirror the body is.
+
+     CALLER CONTRACT, the same one shirtArt / tattooArt / pantsArt follow in this
+     file: an explicit `cape` (even '' or 'none') means "this player's, already
+     decided", and undefined means "read this device's own".  That is what keeps
+     the local player's equip screen live for free while an inspect card of
+     SOMEONE ELSE cannot borrow your cape -- the v2.3.1930 eye-colour lesson. */
+  const _capeId = (opts && opts.cape !== undefined) ? opts.cape : getCape();
+  const _wantCape = !!(_capeId && _capeId !== 'none');
+  const _capeSplit = _wantCape && CAPE_SPLIT_DIRS.includes(DIR);
+  const [wpnImg, shieldImg, capeImg, capeHoodImg, capeHoodMaskImg] = await Promise.all([
     _wpnUrl ? loadImage(_wpnUrl).catch(() => null) : null,
     _shieldArt ? loadImage(_shieldArt.url).catch(() => null) : null,
+    _wantCape ? loadImage(`/sprites/traits/cape/${_capeId}/${DIR}.png?v=${CAPE_ART_VER}`).catch(() => null) : null,
+    _capeSplit ? loadImage(`/sprites/traits/cape/${_capeId}/hood/${DIR}.png?v=${CAPE_ART_VER}`).catch(() => null) : null,
+    /* the hood's silhouette with its face opening filled -- the shape the hair
+       is clipped to, so a big style cannot burst out through the hood the way
+       v2.3.2186 fixed in the world. */
+    _capeSplit ? loadImage(`/sprites/traits/cape/${_capeId}/hood/hairmask-${DIR}.png?v=${CAPE_ART_VER}`).catch(() => null) : null,
   ]);
   /* Painted height of THIS facing's figure, so world px convert to frame px.
      crown[1] is measured (body-tops.json); the foot row is the measured
@@ -564,6 +612,15 @@ export async function drawCharacterPortrait(canvas, opts) {
     ctx.drawImage(shieldImg, -sPx / 2, -sPx / 2, sPx, sPx);
     ctx.restore();
   }
+  /* v2.3.2516: the cape's PANELS, after the slung shield and before the body --
+     the world's child order exactly (shieldBackLo, capeBack, spriteBody in
+     entityRenderer's container build).  On the SPLIT facings this is the back
+     half only and the torso then draws over it, which is the whole point of the
+     v2.3.2186 split: drawn whole and in front, the panels cover the chest and
+     the figure reads as a slab.  On north / northeast there is no hood frame,
+     the full garment is this one layer, and drawing it BEHIND is wrong -- see
+     the front-side draw further down, which handles that case. */
+  if (capeImg && _capeSplit) ctx.drawImage(capeImg, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
   /* v2.3.1928: eye colour.  The portrait is where this feature actually reads
      -- the world figure is ~77px tall, so the iris is about one screen pixel
      there, and this draws at the full 256 frame.
@@ -811,8 +868,33 @@ export async function drawCharacterPortrait(canvas, opts) {
       const hctx = hairCv.getContext('2d');
       hctx.globalCompositeOperation = 'destination-in';
       hctx.drawImage(maskCv, 0, 0);
+    } else if (capeHoodMaskImg) {
+      /* v2.3.2516: the HOOD clips the hair, the same rule and the same
+         precedence the world uses (_placeHairMask's else-branch, v2.3.2186): a
+         hat that clips wins, because the hat draws above the hood and its
+         outline is the one the hair has to obey; with no such hat the hood's
+         silhouette is.  The mask is a full 256 frame registered to the body
+         like the cape itself, so unlike the hat's it needs no trait placement.
+         Without this a big style bursts out through the hood in the preview
+         while being clipped in play -- which makes the preview lie about the
+         thing it exists to show. */
+      const hctx = hairCv.getContext('2d');
+      hctx.globalCompositeOperation = 'destination-in';
+      hctx.drawImage(capeHoodMaskImg, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
     }
     ctx.drawImage(hairCv, 0, 0);
+  }
+  /* v2.3.2516: the cape's FRONT half, in the world's own order -- above the
+     hair, below the eyewear and the hat (entityRenderer builds hairSprite,
+     capeSprite, eyewearSprite, headwearSprite in that sequence, and that child
+     order IS the z-order).  On a split facing this is the hood alone; on north
+     and northeast, where the art ships no hood cut, the whole garment draws here
+     because the character has his back to the camera and the cape is in front of
+     him.  `capeHoodImg || capeImg` says exactly that and needs no dir test: the
+     hood frame exists precisely on the facings that split. */
+  {
+    const _capeFront = _capeSplit ? capeHoodImg : capeImg;
+    if (_capeFront) ctx.drawImage(_capeFront, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
   }
   /* v2.3.2361: eyewear -- after the hair (frames sit in front of a fringe) and
      before the hat (a brim crosses the top of the frames), the same order the
@@ -853,9 +935,21 @@ export async function drawCharacterPortrait(canvas, opts) {
  *  hit memory; expected misses (e.g. hairmask 404s) are harmless. */
 export function prewarmPortraitDirs(opts) {
   const { hair, facialHair, headwear, eyewear } = opts || {};   /* v2.3.2361: + eyewear */
+  /* v2.3.2516: the cape too.  ANIMATION PRELOADING IS LAW (CLAUDE.md): a cape
+     that fetched on the first rotate would pop in over a figure the player is
+     already looking at, which is the first-use hitch the law exists to stop.
+     Same opts-or-store rule the draw uses. */
+  const _cape = (opts && opts.cape !== undefined) ? opts.cape : getCape();
   loadBodyTops();
   for (const DIR of ['east', 'north', 'south', 'northeast', 'southwest']) {
     loadImage(`/sprites/player/stand-${DIR}.png?v=${SPRITE_VERSION}`).catch(() => {});
+    if (_cape && _cape !== 'none') {
+      loadImage(`/sprites/traits/cape/${_cape}/${DIR}.png?v=${CAPE_ART_VER}`).catch(() => {});
+      if (CAPE_SPLIT_DIRS.includes(DIR)) {
+        loadImage(`/sprites/traits/cape/${_cape}/hood/${DIR}.png?v=${CAPE_ART_VER}`).catch(() => {});
+        loadImage(`/sprites/traits/cape/${_cape}/hood/hairmask-${DIR}.png?v=${CAPE_ART_VER}`).catch(() => {});
+      }
+    }
     if (hair && hair !== 'none') loadTraitBest('hair', hair, DIR);
     if (facialHair && facialHair !== 'none') loadTraitBest('facialhair', facialHair, DIR);
     if (eyewear && eyewear !== 'none') loadTraitBest('eyewear', eyewear, DIR);   /* v2.3.2361 */
@@ -934,6 +1028,7 @@ export function portraitOptsFromPeer(o) {
     shirt: c.shirt,
     shirtColor: shirtColorTarget(c.shirtColor),
     eyeColor: c.eyeColor,                                      /* v2.3.1930 */
+    cape: c.cape || 'none',                                    /* v2.3.2516 */
     shirtArt: c.shirtArtFront || null,                         /* v2.3.1939 */
     pantsArt: c.pantsArt || null,                              /* v2.3.1940 */
     tattooArt: c.tattooArt || null,                            /* v2.3.1940 */

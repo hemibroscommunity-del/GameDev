@@ -17,14 +17,22 @@
  *     matters and it is here deliberately.
  *   - SW joins the in-front set for held weapons.
  *
+ * ═══ v2.3.2516: SW LEAVES THE IN-FRONT SET, BY OWNER DECISION ═══
+ * D7, backlog triage 2026-09-14 §5.8: "greatsword at southwest goes BEHIND the
+ * body for jog/idle AND for the attack swing -- it is in the right hand, facing
+ * away from the camera... Southeast and east are unchanged."  The rule lives in
+ * ONE function shared by this path and the local one (heldWeaponInFront,
+ * entityRenderer) precisely so the two cannot drift, which is why this file
+ * moves with it -- and why, when it did not, this assertion is what caught it.
+ *
  * MEASURED BASELINE (observer's view, peer holding a greatsword):
- *     E / SE / S / SW / NE   weapon in front
- *     W / NW / N             weapon behind
+ *     E / SE / S / NE        weapon in front
+ *     SW / W / NW / N        weapon behind
  *     armoured               wcIdx > gearChestIdx
  */
 import * as H from './harness.mjs';
 
-const FRONT = new Set(['east', 'southeast', 'south', 'southwest', 'northeast']);
+const FRONT = new Set(['east', 'southeast', 'south', 'northeast']);   /* v2.3.2516: -southwest (owner D7) */
 const ORDER = [['east', 0], ['southeast', 1], ['south', 2], ['southwest', 3],
                ['west', 4], ['northwest', 5], ['north', 6], ['northeast', 7]];
 

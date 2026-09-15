@@ -753,10 +753,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('all five real-body poses were actually reached (guard: an unreached '
     + 'pose would let every claim below pass on nothing)',
     posed.length === POSES.length, posed.map((x) => x.tag));
-  rec.ok('the cape is drawn on every one of them -- it no longer vanishes when '
-    + 'you take a hit or bend down for loot',
-    posed.length > 0 && posed.every((x) => x.capeOn && x.bodyOn),
-    posed.map((x) => ({ tag: x.tag, cape: x.capeOn, body: x.bodyOn })));
+  /* ═══ v2.3.2516: TWO OF THE FIVE ARE HIDDEN AGAIN, BY OWNER DECISION ═══
+     Owner (D6, backlog triage 2026-09-14 §5.8): "hide the cape on the dodge
+     pose INCLUDING the loot bend."  The v2.3.2129 claim this assertion was
+     written for -- "a cape you paid for does not vanish every time you take a
+     hit or bend down for loot" -- turned out to be right about three of its
+     five poses and wrong about two.  The cape is a standing still pinned to the
+     frame's crown, so it hangs straight down from the head: correct on hit,
+     mine and fish, where the figure stays upright, and wrong on dodge and
+     pickup, where the torso goes horizontal and the cape hangs into the ground
+     beside a bent-away body.  The owner's words: "a cape hanging in mid-air
+     while the player crouched".
+
+     Split in two rather than loosened, so neither half can pass vacuously: the
+     three upright poses must still WEAR it, and the two bent ones must not. */
+  const CAPE_OFF_POSES = new Set(['dodge', 'pickup']);
+  const upright = posed.filter((x) => !CAPE_OFF_POSES.has(x.tag));
+  const bent = posed.filter((x) => CAPE_OFF_POSES.has(x.tag));
+  rec.ok('the cape is still drawn on the UPRIGHT real-body poses -- it does not '
+    + 'vanish every time you take a hit, mine or fish (the v2.3.2129 point, '
+    + 'which stands for these three)',
+    upright.length === 3 && upright.every((x) => x.capeOn && x.bodyOn),
+    upright.map((x) => ({ tag: x.tag, cape: x.capeOn, body: x.bodyOn })));
+  rec.ok('...and it is OFF on the two poses that bend the torso flat -- the '
+    + 'roll and the loot bend (owner D6, v2.3.2516). A cape pinned to the crown '
+    + 'hangs straight down from it, which on a crouch is into the ground',
+    bent.length === 2 && bent.every((x) => !x.capeOn && x.bodyOn),
+    bent.map((x) => ({ tag: x.tag, cape: x.capeOn, body: x.bodyOn })));
   /* A BOUND, not zero. The first cut of this asserted dx == dy == 0 and failed
      on a correct build: the cape deliberately follows each frame's own crown
      (v2.3.2023b), so 'hit' reads +6,+6 and that is the feature working. What a
@@ -766,11 +789,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
      full-frame sticker on the body's own transform, and a width that drifts
      means it stopped being one. */
   const OFFSET_CAP = 24;
-  rec.ok(`...and on each one it stays ON the character (within ${OFFSET_CAP}px) `
-    + 'and is drawn at the body\'s exact size',
-    posed.length > 0 && posed.every((x) => Math.abs(x.dx) <= OFFSET_CAP
+  /* v2.3.2516: asked of the poses that still DRAW a cape.  A hidden sprite has
+     no position to be within a head's width of, and its stale last-frame size
+     is not a measurement of anything -- dodge and pickup report dw 1.94 purely
+     because nothing re-seated them. */
+  rec.ok(`...and on each one that draws it, it stays ON the character (within `
+    + `${OFFSET_CAP}px) and is drawn at the body's exact size`,
+    upright.length > 0 && upright.every((x) => Math.abs(x.dx) <= OFFSET_CAP
       && Math.abs(x.dy) <= OFFSET_CAP && Math.abs(x.w) < 1.5),
-    posed.map((x) => ({ tag: x.tag, dx: x.dx, dy: x.dy, dw: x.w })));
+    upright.map((x) => ({ tag: x.tag, dx: x.dx, dy: x.dy, dw: x.w })));
   rec.ok('every pose was photographed, not only measured -- the numbers cannot '
     + 'say whether a cape looks right on a roll',
     posed.length === POSES.length && posed.every((x) => !!x.shot),

@@ -23,6 +23,9 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  teeshield: () => import('./mp-teeshield.mjs'), /* v2.3.2516: is the bare jog-east shoulder the shield's arm capsule, or the artist's unsleeved frames? */
+  facebow: () => import('./mp-facebow.mjs'), /* v2.3.2516: the face tattoo reaches the jaw on a moving bow shot */
+  arules: () => import('./mp-arules.mjs'), /* v2.3.2516: the sprite-art RULE fixes -- cape on the roll and the loot bend, and the cape the south block used to lose */
   store: () => import('./mp-store.mjs'), /* v2.3.2476: the general store -- list from the bag, walk to the door, see it on the shelf */
   stuckarrow: () => import('./mp-stuckarrow.mjs'), /* v2.3.2511: one arrow sticks, and it sticks in the body */
   inkframes: () => import('./mp-inkframes.mjs'), /* v2.3.2470: a drawing must not pulse or spill as he runs */

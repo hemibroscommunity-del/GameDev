@@ -134,6 +134,41 @@ import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 
    published from there. */
 const SECTORS8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 
+/* ═══ v2.3.2516: WHICH SWINGS THE BODY OCCLUDES ═══
+ * Owner (D7, backlog triage 2026-09-14 §5.8): the greatsword at southwest goes
+ * behind the body "for jog/idle AND for the attack swing -- it is in the right
+ * hand, facing away from the camera".  entityRenderer's heldWeaponInFront is
+ * the jog/idle half; this is the swing's.
+ *
+ * IT CANNOT BE DECIDED FROM THE SHEET KEY, nor from the swing's own direction,
+ * and that is the whole reason this is a function and not one more
+ * `=== 'north'`.  TWO separate 4-way collapses stand between the swing and the
+ * word "southwest":
+ *
+ *   the SHEET.  There are three swing sheets.  _swordFacing maps southwest AND
+ *   southeast AND south onto `['south', ...]`, and the mirror flag cannot
+ *   separate them either, because southwest and south are BOTH unmirrored.
+ *   Keying the exception here would move southeast -- which the owner's answer
+ *   names as unchanged -- along with southwest.
+ *
+ *   `S._swordSwingDir`.  It reads like the answer and is not: v2.3.936 resolves
+ *   it by DOMINANT AXIS ("the big sword sweeps a wide arc, so 3 sheets cover
+ *   everything"), so its only values are east / west / south / north and a
+ *   southwest swing arrives as 'south'.  Measured before this comment was
+ *   written: a southwest-pinned swing reported sheet 'south', facing 'south'.
+ *
+ * So it is asked of `S._renderFacing`, the true 8-way compass entityRenderer
+ * publishes each frame -- which is exactly what _placeStandInShield reasoned its
+ * way to at v2.3.1784, in the same words, for the same collapse.  The peer path
+ * has no such publication for someone else's swing and resolves the peer's own
+ * swing angle to the same eight sectors instead.
+ *
+ * north keeps its v2.3.1047 behaviour unchanged: back to camera, blade on the
+ * far side. */
+function _swingBehind(sheetKey, facing8) {
+  return sheetKey === 'north' || facing8 === 'southwest';
+}
+
 /* The drawn body height the slung shield's 72px was measured against — the
    fallback entityRenderer publishes for S._swordBodyH.  The stand-in scales
    itself to the avatar's real per-facing height, so the shield divides by this
@@ -372,6 +407,10 @@ if (typeof window !== 'undefined') {
       backIdx,
       bodyIdx,
       backUnderBody: (on && backIdx >= 0 && bodyIdx >= 0) ? (backIdx < bodyIdx) : null,
+      /* v2.3.2516: whether this (stand-in, direction) is the drape-over-the-waist
+         exception, so a scenario asserts the RULE it is under rather than one
+         blanket claim that the exception then has to be carved out of. */
+      overBody: !!(p && p.overBody),
       hoodOn: on,
       hoodClipReady: !!(sprites && sprites.capeHoodMask && sprites.capeHoodMask._btReady),
       /* The DRAWN height of the 256 frame: against the same number on the
@@ -387,9 +426,41 @@ if (typeof window !== 'undefined') {
   };
 }
 
-function _placeStandInCapeOn(sprites, capeId, dir, mirror, cwx, cwy, crownToFeet, bodySprite, key) {
+/* ═══ v2.3.2516: THE ONE STAND-IN WHERE THE PANELS GO IN FRONT ═══
+ * Owner (backlog triage 2026-09-14, art item 8): on the EAST jog bow attack the
+ * cape "should drape over the waist, not behind".
+ *
+ * Everywhere else the v2.3.2186 split is right and the rule below enforces it:
+ * the hood is in front of the skull, the panels hang behind the torso, and a
+ * panel drawn over the chest is the slab the owner photographed at v2.3.2023.
+ *
+ * East is the exception because east is the only PROFILE the stand-ins have.
+ * On a three-quarter or head-on view the torso is between the camera and the
+ * cape, so "behind the body" and "behind in the world" are the same picture.
+ * Side-on they are not: the cape hangs down the character's back, which at east
+ * is BESIDE him on screen, not behind him -- and the part of it that does cross
+ * the figure is the hem falling across the hip.  Dropped under the body that hem
+ * disappears into the torso and the cape reads as cut off at the belt, which is
+ * the report.
+ *
+ * Keyed by (stand-in, direction) rather than by direction alone, deliberately.
+ * The sword stand-in has an east profile too, and its cape was not reported --
+ * its arm and blade sweep through exactly the region in question, so a panel
+ * raised over the body there is a change nobody asked for.  A table means the
+ * next facing the owner rules on is one line and not a re-derivation.
+ *
+ * `bow_e` covers WEST as well, by construction: west IS bow_e drawn mirrored
+ * (_bowFacing), so the two profiles cannot disagree.  That is a default this
+ * lane took rather than an owner instruction -- the report named east, and east
+ * and west are one sheet, one geometry and one z-order question. */
+const _STAND_IN_CAPE_OVER_BODY = Object.assign(Object.create(null), {
+  'bow_e|east': 1,
+});
+
+function _placeStandInCapeOn(sprites, capeId, dir, mirror, cwx, cwy, crownToFeet, bodySprite, key, belowSprite) {
   const drawn = placeStandInCape(sprites, capeId, dir, mirror, cwx, cwy, crownToFeet);
-  if (typeof window !== 'undefined') _capeProbe = { sprites, body: bodySprite, key, dir, mirror };
+  const overBody = !!_STAND_IN_CAPE_OVER_BODY[`${key}|${dir}`];
+  if (typeof window !== 'undefined') _capeProbe = { sprites, body: bodySprite, key, dir, mirror, overBody };
   const back = sprites && sprites.capeBack;
   if (!drawn || !back || !back.visible || !bodySprite) return drawn;
   const parent = back.parent;
@@ -397,6 +468,28 @@ function _placeStandInCapeOn(sprites, capeId, dir, mirror, cwx, cwy, crownToFeet
   try {
     const backIdx = parent.getChildIndex(back);
     const bodyIdx = parent.getChildIndex(bodySprite);
+    if (overBody) {
+      /* THE EXCEPTION, in the same index arithmetic as the rule below and for
+         the same reason.  Moving a child UP to index i lands it directly ABOVE
+         whatever was at i (the removal shifts that element down first); moving
+         one DOWN to index i lands it directly BELOW.  So "just above the body"
+         is setChildIndex(back, bodyIdx) and only when it is currently lower.
+
+         Then it is capped UNDER the weapon.  The bow is drawn from the grip out
+         in front of the figure and is the thing the shot is about; cloth over it
+         would be a second defect traded for the first.  `belowSprite` is
+         optional -- a caller that has no weapon sprite to hand simply gets the
+         panels above the body, which is all the owner asked for. */
+      if (backIdx < bodyIdx) parent.setChildIndex(back, bodyIdx);
+      if (belowSprite && belowSprite.visible && belowSprite.parent === parent) {
+        const wIdx = parent.getChildIndex(belowSprite);
+        const nowIdx = parent.getChildIndex(back);
+        if (wIdx > parent.getChildIndex(bodySprite) && nowIdx > wIdx) {
+          parent.setChildIndex(back, wIdx);
+        }
+      }
+      return drawn;
+    }
     /* ONLY when it is above, and that is not a micro-optimisation -- it is the
        correctness condition.  setChildIndex REMOVES and re-inserts, so moving a
        child that already sits BELOW the target to the target's index lands it
@@ -2959,7 +3052,10 @@ export class EffectsRenderer {
      dir/mirror = trait facing; the crown world pos is derived from sp's own
      transform + the per-frame crown, and the trait scale from the stand-in's
      render scale × head proportion so the hat matches the head size. */
-  _placeSkillTraitsOn(skillKey, sp, fi, dir, mirror) {
+  /* v2.3.2516: `belowSprite` is optional and only the bow stand-ins pass it --
+     the cape's drape-over-the-waist exception caps the panels under the weapon.
+     See _STAND_IN_CAPE_OVER_BODY. */
+  _placeSkillTraitsOn(skillKey, sp, fi, dir, mirror, belowSprite) {
     /* v2.3.1713: follow the figure that owns the traits this frame into ITS
        layer.  The gathering figures moved up to gestureFront (above trees);
        the sword/bow stand-ins stayed in nodeLayer, and a head that drew in a
@@ -2987,7 +3083,7 @@ export class EffectsRenderer {
     /* v2.3.2190: the cape's size is the FIGURE's, not the head's -- the
        stand-in's own crown-to-feet, in world px.  See placeStandInCape. */
     _placeStandInCapeOn(this.skillTraits, _gathering ? null : getCape(), dir, mirror,
-      cwx, cwy, (data.fh - cr[1]) * Math.abs(sp.scale.y), sp, skillKey);
+      cwx, cwy, (data.fh - cr[1]) * Math.abs(sp.scale.y), sp, skillKey, belowSprite);
     placeSkillTraits(this.skillTraits, cwx, cwy, dir, mirror, scaleVal);
   }
 
@@ -8937,7 +9033,8 @@ export class EffectsRenderer {
   /* Parameterized version of _placeSkillTraitsOn: composites an ARBITRARY
      player's hair/beard/hat (`looks`) at the swing-frame crown, onto their own
      trait sprites. */
-  _placeSkillTraitsOnFor(skillKey, sp, fi, dir, mirror, looks, traitSprites) {
+  /* v2.3.2516: + belowSprite, the peer's copy of the bow-cape cap. */
+  _placeSkillTraitsOnFor(skillKey, sp, fi, dir, mirror, looks, traitSprites, belowSprite) {
     const data = this._skillCrowns && this._skillCrowns[skillKey];
     if (!data || !data.crowns || !data.crowns.length) { hideSkillTraits(traitSprites); return; }
     const cr = data.crowns[Math.min(fi, data.crowns.length - 1)];
@@ -8951,7 +9048,7 @@ export class EffectsRenderer {
        set out to remove.  Before the head traits, for the hair-clip reason in
        _placeSkillTraitsOn. */
     _placeStandInCapeOn(traitSprites, _isGatheringStandIn(skillKey) ? null : (looks && looks.cape),
-      dir, mirror, cwx, cwy, (data.fh - cr[1]) * Math.abs(sp.scale.y), sp, skillKey);
+      dir, mirror, cwx, cwy, (data.fh - cr[1]) * Math.abs(sp.scale.y), sp, skillKey, belowSprite);
     placeSkillTraitsFor(traitSprites, looks, cwx, cwy, dir, mirror, scaleVal);
   }
 
@@ -9096,8 +9193,14 @@ export class EffectsRenderer {
       if (set.legs) set.legs.tint = gearTint(eq.legs);
       if (set.chest) set.chest.tint = gearTint(eq.chest);
       if (set.weapon) set.weapon.tint = materialTint(o && o.wpnMat);
-      /* v2.3.1047: north swings hold the blade on the far side -> behind body. */
-      this._orderSwingWeapon(set.weapon, set.body, set.chest, cfgKey === 'north');
+      /* v2.3.1047: north swings hold the blade on the far side -> behind body.
+         v2.3.2516: and southwest, for the owner's D7 reason -- resolved from the
+         peer's own swing ANGLE to the full 8 sectors, because dir4 above is a
+         4-way collapse that has no southwest in it at all.  Without this the
+         rule would hold for your own character and not for anyone else's, which
+         is the asymmetry v2.3.1011 set out to remove. */
+      this._orderSwingWeapon(set.weapon, set.body, set.chest,
+        _swingBehind(cfgKey, SECTORS8[((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8]));
       /* their hair / beard / hat at the swing-frame crown anchor. */
       const looks = {
         hair: o.hair, hairColor: o.hairColor,
@@ -9261,7 +9364,7 @@ export class EffectsRenderer {
         headwear: o.headwear, hatColor: o.hatColor,
         cape: o.cape,                                        /* v2.3.2190 */
       };
-      this._placeSkillTraitsOnFor(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror, looks, set.traits);
+      this._placeSkillTraitsOnFor(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror, looks, set.traits, set.weapon);   /* v2.3.2516: the cape cap, peer side */
       /* composite the jog legs under the torso strip (or hide them). */
       if (_jog) {
         const _fc = jogFrameCount('jog', _jdir) || 24;
@@ -9295,7 +9398,8 @@ export class EffectsRenderer {
 
   /* v2.3.1047: per-facing z-order for the swing weapon.  `behind` (north /
      back-to-camera facings) drops the blade just below the body so the body +
-     gear occlude it; otherwise the weapon rides on top of the body + gear. */
+     gear occlude it; otherwise the weapon rides on top of the body + gear.
+     v2.3.2516: `behind` is now true for SOUTHWEST as well -- see _swingBehind. */
   _orderSwingWeapon(wsp, body, topGear, behind) {
     const layer = wsp && wsp.parent; if (!layer) return;
     const wi = layer.getChildIndex(wsp);
@@ -9567,7 +9671,28 @@ export class EffectsRenderer {
          this stack from legs to shirt, so this argument moves with it — leaving
          it on legs would drop the blade behind the shirt on the first non-north
          swing after any north one. */
-      this._orderSwingWeapon(this.swordWeaponSprite, sp, this.swordShirtSprite, fmap[0] === 'north');
+      /* v2.3.2516: ...and SOUTHWEST joins it (owner D7).  Asked of the real
+         8-way swing facing rather than of fmap[0], which cannot tell southwest
+         from south or southeast -- see _swingBehind. */
+      const _behind = _swingBehind(fmap[0], S._renderFacing);
+      this._orderSwingWeapon(this.swordWeaponSprite, sp, this.swordShirtSprite, _behind);
+      /* v2.3.2516 QA probe, house style (__btSwingTints, __btStandInCape): the
+         blade's z-order AS DRAWN, read off the live scene graph rather than off
+         the flag that asked for it.  `behind` is what the rule decided; the two
+         indices are what the layer actually holds, and mp-arules asserts the
+         second.  The v2.3.2153 cape bug is the standing reason for the
+         difference -- it passed every assertion about intent while drawing
+         nothing. */
+      if (typeof window !== 'undefined') {
+        const _lay = this.swordWeaponSprite && this.swordWeaponSprite.parent;
+        window.__btSwingZ = {
+          facing: S._renderFacing || null, swingDir: S._swordSwingDir || null,
+          sheet: fmap[0], mirror: !!fmap[1], behind: _behind,
+          weaponIdx: _lay ? _lay.getChildIndex(this.swordWeaponSprite) : -1,
+          bodyIdx: (_lay && sp.parent === _lay) ? _lay.getChildIndex(sp) : -1,
+          weaponVisible: !!(this.swordWeaponSprite && this.swordWeaponSprite.visible),
+        };
+      }
       if (_jog) {
         /* v2.3.1093: legs face the SAME direction as the torso (the swing
            facing), not the movement direction -- upper and lower body stay
@@ -10026,7 +10151,10 @@ export class EffectsRenderer {
     /* v2.3.952: armored bow is helmeted -> skip hat/beard/hair (matches the
        sword); the bald baked sheet still composites them. */
     if (_armored) hideSkillTraits(this.skillTraits);
-    else this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
+    /* v2.3.2516: the bow sprite goes in as the cape's ceiling -- on the east
+       profile the panels are raised over the waist and must still pass under
+       the drawn bow.  See _STAND_IN_CAPE_OVER_BODY. */
+    else this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror, this.bowWeaponSprite);
   }
 
   /* ── Extraction cue (v2.3.229) ──
