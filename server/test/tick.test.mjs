@@ -823,5 +823,90 @@ check('forged monster_transform dropped by deny-list',
   check('...and the quest that DOES name ember opens ember', ps.z === 'ember', ps.z);
 }
 
+/* ══ v2.3.2482: monsters stop a sword's length away, and can still reach ══
+   Owner ask (D14): monsters crowded into the player's body.  The stop ring
+   moved 45 -> 72 px (GS_OUTER_RADIUS, the player's own melee reach).
+
+   THE SECOND HALF IS THE POINT OF THIS SECTION.  The same constant gates the
+   monster's SWING reach, in two places -- the tick loop and _basicAtkGeom,
+   which is what the wind-up re-measures against.  Move the stop ring alone
+   and every monster parks outside its own reach and never lands another hit,
+   which would read as "monsters are broken", not as "monsters back off". */
+{
+  const A = monsters[1] || m0;
+  A._wanderPausedUntil = Date.now() + 600000;
+  const parkA = (gap) => {
+    A.alive = true; A.hp = A.maxHp;
+    A.x = A.spawnX = FAR; A.y = A.spawnY = FAR;
+    ps.z = 'meadow';                            /* an earlier section walks him to ember */
+    ps.x = FAR + gap; ps.y = FAR;               /* same y: no Y-scale in play */
+    ps.hp = ps.maxHp; ps.blocking = false;
+    ps.dead = false; ps.dying = false;
+    A.atkCd = 0;
+    A._tgPhase = null; A._tgUntil = 0; A._tgAim = null; A._tgTarget = null;
+    A._tgNextAt = Date.now() + 1e9;             /* basic swing only */
+    A._bwUntil = 0; A._bwTarget = null; A._bwKind = null;
+    A._attackingUntil = 0; A._kbDebt = 0;
+    A._projImpactAt = 0;                        /* no ball in the air */
+    clearDirty();
+  };
+  const landA = () => {
+    room._tickMonsters();
+    if (A._bwUntil) { A._bwUntil = Date.now() - 1; room._tickMonsters(); }
+    return room.eventBuffer.find((e) => e.type === 'monster_attack' && e.payload.monsterId === A.id);
+  };
+
+  check('stop ring: the server constant is the player\'s own melee reach',
+    room.MONSTER_ATTACK_RANGE === 72, room.MONSTER_ATTACK_RANGE);
+
+  /* 60px used to be a chase (60 > 45); it is now inside the ring, so he
+     holds his ground.  This is the behaviour change, stated. */
+  parkA(60);
+  const x60 = A.x;
+  room._tickMonsters();
+  check('stop ring: a monster 60px away no longer walks into your body',
+    A.x === x60, { before: x60, after: A.x });
+
+  /* 100px is still a chase, and he pulls up at the new ring rather than the
+     old one.  Ticked to convergence, then measured. */
+  parkA(100);
+  for (let i = 0; i < 200; i++) {
+    A._attackingUntil = 0; A._bwUntil = 0; A._bwTarget = null;
+    A.atkCd = Number.MAX_SAFE_INTEGER;          /* chase only, never swing */
+    room._tickMonsters();
+  }
+  const settled = Math.abs(ps.x - A.x);
+  check('stop ring: a chase settles at ~72px, not at ~45',
+    settled > 60 && settled <= 73, { settled });
+
+  /* And the reach moved with it: a swing from 65px -- outside the OLD ring,
+     inside the new one -- has to land, or the monster is a scarecrow. */
+  parkA(65);
+  const hit65 = landA();
+  check('stop ring: ...and a swing from 65px still lands (reach tracks the ring)',
+    !!hit65 && hit65.payload.dmgTaken > 0, hit65 && hit65.payload);
+
+  /* The wind-up's own whiff ring reads the same constant.  Pinned directly
+     because it lives in a different file and is the half that silently
+     rots: geom.range must BE the ring, not a copy of the old number. */
+  check('stop ring: the wind-up whiff ring reads the same constant',
+    room._basicAtkGeom({ arch: 'fodder' }).range === room.MONSTER_ATTACK_RANGE,
+    room._basicAtkGeom({ arch: 'fodder' }));
+  check('stop ring: ...and the snowman\'s relaxed ring is never NARROWER than it',
+    room._basicAtkGeom({ arch: 'snowman' }).range >= room.MONSTER_ATTACK_RANGE,
+    room._basicAtkGeom({ arch: 'snowman' }));
+
+  /* Walking genuinely out of reach must still whiff -- the ring moved, the
+     escape did not stop working.  1.3x grace over 72 is ~94px, so 160 is
+     clear of it by any reading. */
+  parkA(160);
+  const hit160 = landA();
+  check('stop ring: walking clear of the ring still whiffs',
+    !hit160, hit160 && hit160.payload);
+
+  ps.x = -100000; ps.y = -100000;               /* park the player again */
+  A.x = A.spawnX = FAR; A.y = A.spawnY = FAR;
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
