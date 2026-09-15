@@ -837,6 +837,38 @@ export async function closeDest(P, { timeout = 6000 } = {}) {
   });
 }
 
+/* ═══ v2.3.2526: A FIRST JOIN ARRIVES WITH THE BAND FOLDED ═══
+ *
+ * v2.3.2495 folds the dashboard on a brand-new bro's first join (owner: the
+ * first thing a new player should see is the world, with a ring on the chip
+ * that brings the band back).  Every client this harness makes IS a brand-new
+ * bro, so from that version on the resting three-column row -- BAG / EQUIPPED
+ * / COMBAT -- is simply not in the DOM when a scenario arrives.
+ *
+ * That is correct behaviour and a broken PRECONDITION, and the two are easy to
+ * confuse: mp-bandsummary read zero combat pills and reported the pills gone,
+ * and mp-worldtext pressed the fold chip to fold a band that was already
+ * folded and measured the zoom backwards.  Neither failure is about the thing
+ * its scenario tests.
+ *
+ * So the precondition is stated once, here, rather than guessed at in each
+ * scenario.  It taps the real chip, like closeDest above: a chip that stops
+ * unfolding the band should fail the scenario that needs it rather than be
+ * worked around by writing the bus.  Idempotent -- an open band is left alone
+ * -- and it returns the state it arrived in, so a caller whose subject IS the
+ * first join can assert on that instead. */
+export async function unfoldBand(P, { timeout = 6000 } = {}) {
+  const read = () => P.page.evaluate(() => {
+    const b = document.querySelector('[data-dash-fold]');
+    return b ? b.getAttribute('data-dash-fold') : null;
+  });
+  const arrived = await read();
+  if (arrived !== 'min') return { arrived, now: arrived };
+  await tapTop(P.page, '[data-dash-fold]', timeout).catch(() => {});
+  await P.page.waitForTimeout(900);
+  return { arrived, now: await read() };
+}
+
 /* ── PIXELS ────────────────────────────────────────────────────────────────
  * Some things can only be proven by looking at the screen.  The obvious way —
  * getImageData on the game canvas — returns BLANK: the WebGL context has no

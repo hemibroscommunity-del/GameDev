@@ -53,8 +53,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(P);
   await P.page.waitForTimeout(3000);
 
+  /* ═══ v2.3.2526: A FIRST JOIN NOW ARRIVES FOLDED ═══
+     v2.3.2495 folds the band on a brand-new bro's first join, and every client
+     here is one -- so the "press the chip to fold it" sequence below was
+     pressing it to UNFOLD, measuring the zoom backwards and failing six
+     assertions that describe correct behaviour.  "With the band" is the
+     baseline this whole file compares against, so the precondition is stated
+     rather than assumed.  H.unfoldBand taps the real chip (see its note). */
+  const arrivedFold = (await H.unfoldBand(P)).arrived;
   const closed = await probe(P);
-  console.log('    dashboard closed: ' + JSON.stringify(closed));
+  console.log('    dashboard closed: ' + JSON.stringify(closed)
+    + ' (arrived ' + arrivedFold + ')');
   rec.ok('the world scale and the plate can both be measured (guard)',
     closed.scale > 0 && !!closed.plate && closed.plate.h > 0, closed);
   if (!closed.plate) { await P.ctx.close().catch(() => {}); return; }
@@ -73,7 +82,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const b = document.querySelector('[data-dash-fold]');
     return b ? b.getAttribute('data-dash-fold') : null;
   });
-  rec.ok('the dashboard fold chip is on screen (guard)', foldBefore === 'open', { foldBefore });
+  rec.ok('the dashboard fold chip is on screen and the band is open (guard)',
+    foldBefore === 'open', { foldBefore, arrivedFold });
   await P.page.evaluate(() => {
     const b = document.querySelector('[data-dash-fold]');
     if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
@@ -104,7 +114,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     reclosed.scale < open.scale - 0.001, { folded: open.scale, restored: reclosed.scale });
 
   /* ═══ 2. THE PLATE DOES NOT MOVE WITH THE ZOOM AT ALL ═══
-     ═══ v2.3.2513: D5 SETTLES WHAT THREE ROUNDS COULD NOT ═══
+     ═══ v2.3.2519: D5 SETTLES WHAT THREE ROUNDS COULD NOT ═══
      The history is worth keeping because it is the argument, and the owner has
      now ended it.  v2.3.2262 pinned the plate to a constant screen size (full
      1/w) and the answer was "nameplates are now way too large", 18 CSS px of
