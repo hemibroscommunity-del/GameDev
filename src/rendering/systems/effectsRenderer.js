@@ -12,12 +12,88 @@ import { Assets, BitmapFont, BitmapText, CanvasTextMetrics, Container, Graphics,
    consumed by preloadWorldAnimations (preloadAnimations.js). */
 const _fxPreload = [];
 
+/* ═══ v2.3.2500: A STAND-IN IS THE SAME BRO, SO IT IS THE SAME SIZE ═══
+ *
+ * The walking body is drawn through _applyBuildScale (entityRenderer): the
+ * zone's perspective scale TIMES this bro's build (buildCatalog -- height on
+ * y, frame on x).  This file had zero references to it, so every figure that
+ * REPLACES the body for a few seconds -- the lumberjack, the cook, the
+ * fire-lighter, and the peer twins of all three -- was drawn at the average
+ * build while the body it stands in for was not.  That is a figure that
+ * changes size the moment it starts working, which is what the chop stand-in's
+ * "about 10% too small" report is (see the backlog triage, chop size): the
+ * answer is the build multiplier, NOT a fourth bump of CHOP_STANDIN_H, which
+ * has already been moved three times (84 -> 112 -> 95 -> 104.5) chasing it.
+ *
+ * TODAY IT IS EXACTLY 1.0 AND CHANGES NOTHING ON SCREEN.  HEIGHT_CATALOG and
+ * FRAME_CATALOG were each locked to a single 1.00 entry in v2.3.1995/1996
+ * ("keep the medium build only"), and an unknown id answers 1 by the same
+ * deploy-order rule, so a peer on an older client relaying `hg: 'tall'` also
+ * renders 1.0.  This is the plumbing, put in where it was missing, so that the
+ * day a second height goes back into that catalog the stand-ins move with the
+ * body instead of being found a version later.
+ *
+ * NOT APPLIED TO THE SWORD AND BOW STAND-INS, on purpose: those size
+ * themselves from S._swordBodyH / S._swordFootY, which entityRenderer computes
+ * from `display.scale.y` -- the scale _applyBuildScale has ALREADY written.
+ * Multiplying again there would square the build. */
+const _localBuild = () => buildScale(getBuildHeight(), getBuildFrame());
+const _peerBuild = (o) => buildScale(o && o.buildHeight, o && o.buildFrame);
+
 /* v2.3.1800: which of the three bow frames a HELD block sits on.  0 is still
    raising and 2 is the release recoil; 1 is drawn and steady, which is the one
    that reads as bracing behind a shield. */
 const BLOCK_POSE_FRAME = 1;
 const _fxLoad = (url) => { const p = Assets.load(url); _fxPreload.push(p); return p; };
 export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload); }
+
+/* ═══ v2.3.2500: THE SKIN-TONE PROBE, FOR THE STAND-INS THAT HAD NONE ═══
+ *
+ * v2.3.1788 published the mean skin RGB of the baked SWORD and BOW sheets on
+ * window.__btStandInSkin so mp-standinskin could assert that a bro does not
+ * change complexion when he swings.  The gathering stand-ins -- chop, cook,
+ * fire -- go through their own bakes and were outside that coverage, which is
+ * how the chopper kept the artist's paint for eleven versions without a test
+ * noticing.  Same reading, same object, so one harness covers all five.
+ *
+ * WHY THE BAKED CANVAS AND NOT A SCREENSHOT: the town's cobblestone passes the
+ * same warm-tone test this classifier uses (measured: ~51k "skin" pixels in an
+ * 80x90 crop containing one bro), so a world screenshot gives identical
+ * numbers before and after a fix.  The canvas is the thing that changed.
+ *
+ * _bakeBodyStrip keeps its own inline copy of this test rather than calling
+ * here: it shares ONE walk of a multi-megapixel canvas with the v2.3.2431 ink
+ * probe, and splitting them would add a second full read on a phone. */
+/* `opts` is the SAME ratio window the sheet's own bake was given (recolorStandInSkin).
+   It matters for the fire strip and only for it: the probe's warm-tone test is
+   the body pipeline's, and a campfire passes it -- measured, the flame and its
+   glow drag the fire figure's reported mean to [226,145,88] when the BODY it
+   recoloured is at the walking palette.  Measuring with the window the bake
+   used means the probe counts the pixels the bake actually retinted, which is
+   the thing under test.  Same trick, same reason as v2.3.1723's gear fit:
+   "fitting into the body's ALPHA silhouette gives nonsense" because the halo is
+   in it. */
+function _probeStandInSkin(key, cv, opts) {
+  try {
+    if (typeof window === 'undefined' || !cv) return;
+    const o = opts || {};
+    const maxBR = o.maxBR != null ? o.maxBR : Infinity;
+    const minGR = o.minGR != null ? o.minGR : 0;
+    const maxGR = o.maxGR != null ? o.maxGR : Infinity;
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0, sr = 0, sg = 0, sb = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
+      if (!(a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25)) continue;
+      if (b / r > maxBR || g / r < minGR || g / r > maxGR) continue;
+      n++; sr += r; sg += g; sb += b;
+    }
+    if (!window.__btStandInSkin) window.__btStandInSkin = {};
+    window.__btStandInSkin[key] = n
+      ? { n, rgb: [Math.round(sr / n), Math.round(sg / n), Math.round(sb / n)] }
+      : { n: 0 };
+  } catch (e) { /* a probe never breaks a bake */ }
+}
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
@@ -32,6 +108,7 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.j
 import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
+import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
 import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
@@ -860,8 +937,51 @@ export async function freeFrostImpactTex() {
   }
 }
 
-const DEBRIS_MS = 450;
+/* v2.3.2504: channel-wise lerp between two packed 0xRRGGBB colours.  Used by
+   the lock chip's first-second flash; kept at module scope because it is two
+   lines and a per-frame closure in the draw path is the kind of allocation
+   this file has had to unpick before. */
+function _mixHex(a, b, t) {
+  const k = t < 0 ? 0 : (t > 1 ? 1 : t);
+  const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+  const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+  return (((ar + (br - ar) * k) | 0) << 16)
+    | (((ag + (bg - ag) * k) | 0) << 8)
+    | ((ab + (bb - ab) * k) | 0);
+}
+
+/* ═══ v2.3.2504: THE FALLBACK IS THE SHIPPING EFFECT, SO MAKE IT ONE ═══
+ *
+ * Owner (§5.8): "Debris → use the fallback art for now.  Lane F1 makes the
+ * fallback burst and decals last about 5 s and read clearly; no sheets needed."
+ *
+ * WHAT WAS ACTUALLY WRONG.  Not the hit path -- that has worked since
+ * v2.3.2200 and fires from all three sites (melee sweep, projectile impact,
+ * and the monster_hit handler for peer/server-rolled hits).  It is that NONE
+ * of the five DEBRIS_BURSTS sheets above exist under public/sprites/effects/,
+ * so every hit in the game has always taken the placeholder branch: six tinted
+ * 32px dots, gone in 450ms.  The owner was not failing to see a broken effect,
+ * he was seeing a placeholder that was never meant to be the product.
+ *
+ * TWO CLOCKS, NOT ONE.  The sheet path keeps 450ms, because that number is not
+ * a taste call there -- it is the frame pacing of an 8-frame one-shot strip
+ * (~56ms a frame), and stretching it to 5s would play a future owner-generated
+ * burst at 625ms a frame, which is a slideshow.  The placeholder gets its own
+ * 5s, and the two cannot be confused for each other.
+ *
+ * THE PLACEHOLDER GREW A GROUND PHASE, because 5s of parametric flight is not
+ * a longer effect, it is chunks in low orbit: at the old 16.7ms frame units a
+ * particle would be ~5400px below the monster by the end.  So a chunk now
+ * flies for its own computed arc, LANDS, squashes flat and lies there for the
+ * rest of the 5s before fading -- which is what "debris" means and what makes
+ * the effect readable as a thing that happened rather than a flicker. */
+const DEBRIS_STRIP_MS = 450;     /* the SHEET path: 8 frames at ~56ms */
+const DEBRIS_FALLBACK_MS = 5000; /* the placeholder: fly, land, lie there */
+const DEBRIS_FADE_MS = 1400;     /* ...fading over its last stretch */
+const DEBRIS_GRAV = 0.11;        /* the 1/2-g term, in 60Hz frame units */
+const DEBRIS_PARTS = 7;
 const DEBRIS_MIN_GAP_MS = 150;   /* per-monster dedup, the _impactSpawned posture */
+const DEBRIS_MAX_BURSTS = 24;    /* hard cap, hitParticles posture */
 
 /* Minted soft-particle texture (the entityRenderer _shadowTex recipe:
    one canvas radial gradient, minted once, tinted per use — batches). */
@@ -1699,15 +1819,27 @@ export class EffectsRenderer {
     this._foodIconTex = {};   /* iconUrl -> Texture | 'loading' */
     this._chopFrames = [];
     this._chopLastFrame = -1;  // strike-frame edge tracker for the chop sfx
+    /* v2.3.2500: the decoded images Pixi is already holding for the two strips
+       above, kept so the skin bake can read them WITHOUT a second fetch.  The
+       cook and the fire-lighter load their own copy and deliberately drop it
+       (a rebake re-fetches from the HTTP cache) because holding ~4MB of RGBA
+       for a menu action is the trade spriteScale.js warns about -- but these
+       two sheets stay resident either way, because a PEER's lumberjack is
+       drawn from them, so reading them costs nothing and a skin change rebakes
+       with no network at all.  Measured with mp-coldload: fetching them a
+       second time showed up immediately as 0.64 MB of duplicate download,
+       which is the exact family of waste that harness exists to catch. */
+    this._chopSrc = Object.create(null);
     /* v2.3.1469: ?v= added — the strip itself changed (transparent eye
        holes filled white, owner report) and it had no cache-bust, so
        returning players would have kept the stale copy forever. */
-    _fxLoad('/sprites/skills/chop-strip.webp?v=2.3.1469').then((tex) => {
+    const _chopBody = _fxLoad('/sprites/skills/chop-strip.webp?v=2.3.1469').then((tex) => {
       const FW = 240, FH = 220;  // per-frame size of chop-strip.png
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) {
         this._chopFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
       }
+      this._chopSrc.body = tex.source && tex.source.resource;   /* v2.3.2500 */
     }).catch((err) => console.warn('[chop-strip] load failed', err));
     /* v2.3.1468: legs-erased lumberjack, swapped in while leg armour is
        equipped — the cook-strip-legless pattern (v2.3.1114).  The
@@ -1716,13 +1848,21 @@ export class EffectsRenderer {
        (v2.3.1466) read as "duplicating another body beneath the legs"
        (owner).  With the legless body the armor legs ARE the legs. */
     this._chopLeglessFrames = [];
-    _fxLoad('/sprites/skills/chop-strip-legless.webp?v=2.3.1469').then((tex) => {
+    const _chopLegless = _fxLoad('/sprites/skills/chop-strip-legless.webp?v=2.3.1469').then((tex) => {
       const FW = 240, FH = 220;
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) {
         this._chopLeglessFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
       }
+      this._chopSrc.legless = tex.source && tex.source.resource;   /* v2.3.2500 */
     }).catch((err) => console.warn('[chop-strip-legless] load failed', err));
+    /* v2.3.2500: the two arrays above stay RAW on purpose -- they are what a
+       PEER's lumberjack is drawn from (the SPEC table in
+       _updateRemoteExtraction), and a peer must not wear your complexion.  YOUR
+       own chopper draws from the skin-baked pair below. */
+    this._chopSkinFrames = [];
+    this._chopLeglessSkinFrames = [];
+    this._loadChopSkinStrips(_chopBody, _chopLegless);
 
     /* v2.3.1131: gear layers for the woodcutting chopper (mirror of the cook
        stand-in).  Shirt / leg-armour / chest-plate drawn over the lumberjack when
@@ -2495,6 +2635,135 @@ export class EffectsRenderer {
       this._gearStripFrame('chest', 'steelplate', pose, dir, fw, 0);
       this._gearStripFrame('legs', 'steelgreaves', pose, dir, fw, 0);
     }
+    /* ═══ v2.3.2500: AND THE TWO POSES EVERY FIGHT BEGINS WITH ═══
+       The sword swing and the bow shot were the last stand-ins whose gear
+       strips were still CUT on first use, and the paragraph above says in as
+       many words why warming them anywhere else does not work:
+       preloadCombatGear (combatGear.js) fills the Pixi ASSETS cache, while
+       _gearStripFrame keeps its own SLICE cache and returns null for a frame
+       while it schedules the cut -- so a hot Assets cache still draws nothing
+       on the first frame.  That is the first swing and the first shot of every
+       session drawn without the shirt or the armour, which is the same
+       first-use load the preloading law forbids (CLAUDE.md, TRAPS #12) and the
+       same shape of bug as the pickup pose in this change.
+       The SHIRT is the slot that needed this most: combatGear.js warms chest
+       and legs only ("Only chest + legs layer during combat"), so the shirt
+       sheets were not even in the Assets cache to be sliced from.
+       Frame widths are READ from _swordCfg / _bowCfg rather than written out
+       again -- those tables already own each facing's frame box, and a literal
+       here is exactly the copy TRAPS §51 is about.  Both tables are built
+       earlier in this constructor, so they are populated by now. */
+    for (const [_map, _fallbackPose] of [[this._swordCfg, 'swing'], [this._bowCfg, 'bowshot']]) {
+      for (const _dirKey of Object.keys(_map)) {
+        const _cfg = _map[_dirKey];
+        const _gp = _cfg.gearPose || _fallbackPose;
+        /* tshirt / steelplate / steelgreaves are the only items with sheets,
+           and every recolour (copperplate, coppergreaves...) resolves to this
+           same art through gearArtSafe inside _gearStripFrame -- so nothing
+           here is guessed and no recoloured id needs its own warm. */
+        this._gearStripFrame('shirt', 'tshirt', _gp, _dirKey, _cfg.fw, 0);
+        this._gearStripFrame('chest', 'steelplate', _gp, _dirKey, _cfg.fw, 0);
+        this._gearStripFrame('legs', 'steelgreaves', _gp, _dirKey, _cfg.fw, 0);
+      }
+    }
+  }
+
+  /* ═══ v2.3.2500: THE LUMBERJACK WEARS THE PLAYER'S SKIN TOO ═══
+   *
+   * The cook got this in v2.3.1710 and the fire-lighter in v2.3.1713, both
+   * after the owner reported "has the wrong skin color".  The chopper is the
+   * third figure of the same set and it was simply never done: chop-strip.webp
+   * went through a plain _fxLoad and was drawn as painted, so the moment you
+   * started woodcutting your bro's complexion changed to the artist's -- while
+   * his hat, hair and beard (_placeSkillTraitsOn, v2.3.867) kept following you,
+   * which is what makes it read as a bug rather than a style.
+   *
+   * WHAT IS DIFFERENT FROM THE COOK, AND WHY.
+   *
+   * 1. The raw slices STAY.  Cook and fire bake over the one array they own,
+   *    and the SPEC table in _updateRemoteExtraction hands that same array to
+   *    a PEER's stand-in -- which is why the note there records that a peer's
+   *    cook has quietly worn YOUR skin since v2.3.1710.  Repeating that here
+   *    would mean every lumberjack in the zone wearing the complexion of
+   *    whoever happens to be watching.  So this bakes into a SECOND pair of
+   *    arrays, your own figure draws those, and peers keep the raw art they
+   *    have always been drawn with.  (Doing peers properly means one bake per
+   *    peer skin, which is the resident-memory trade the cook's notes refuse.)
+   *
+   * 2. Only the TWELVE frames that are drawn.  Both the local chopper
+   *    (CHOP_BASE 12, CHOP_COUNT 12) and the peer row (`from: 12, count: 12`)
+   *    play source frames 12..23 of the 24-frame strip -- the first twelve are
+   *    the upswing the owner cut in v2.3.1131 and are never shown.  Baking the
+   *    whole strip would add 5.1 MB of resident RGBA per sheet for pixels
+   *    nothing draws; cropping to the played range costs half that, on the
+   *    platform whose OOM history is written up in spriteScale.js.  The
+   *    baked arrays are therefore indexed by `k` (0..11), not by the body
+   *    index -- the same two-index split v2.3.2303 had to make for the gear
+   *    strips, for the same reason.
+   *
+   * 3. The skin recolour is the stand-in recipe (recolorStandInSkin), not the
+   *    whole-body one: the axe head and the wood chips are props that the
+   *    body pipeline's seeds would retint.  Default skin falls back to the
+   *    explicit tan for the same reason cook and fire do -- "leave the art as
+   *    painted" is only coherent while every sheet is painted in one palette,
+   *    and this one is not.
+   *
+   * 4. It bakes from the image the RAW load already decoded (this._chopSrc),
+   *    not from a fetch of its own.  Cook and fire each pull their own copy
+   *    because their raw texture is replaced by the bake and nothing else
+   *    holds the source; here the raw sheets stay resident for the peers
+   *    (point 1), so a second fetch would be 0.64 MB of pure duplicate
+   *    download -- which is exactly what mp-coldload reported the first time
+   *    this was written with its own loader.  MEASURED, mean skin RGB against
+   *    the walking palette [186,122,68]: the art as painted is [222,124,59],
+   *    36 units off; after this bake it is [205,130,71], 19 off.
+   *
+   * PRELOADING IS LAW (CLAUDE.md): the bake is pushed onto _fxPreload, the
+   * list _fxLoad feeds and effectsAnimationsReady() awaits, so the intro gate
+   * holds for the RECOLOURED textures rather than baking mid-chop. */
+  _loadChopSkinStrips(bodyLoad, leglessLoad) {
+    /* The BAKE goes on the gate, not just the downloads: _fxLoad already
+       registered the two fetches, but effectsAnimationsReady() settling on
+       those says only that the art arrived.  Pushing this says the recoloured
+       textures exist before the intro overlay lifts, which is what the law
+       actually asks for (CLAUDE.md) -- the same reason _loadCookStrips pushes
+       its bake rather than relying on its loads. */
+    _fxPreload.push(Promise.all([bodyLoad, leglessLoad])
+      .then(() => { this._bakeChopStrips(); })
+      .catch((err) => console.warn('[chop-strip skin] bake failed', err)));
+    /* The character menu can change the skin mid-session; rebake exactly as
+       the cook and the fire-lighter do -- but from the images already in hand,
+       so this one costs no network at all. */
+    onSkinChange(() => { try { this._bakeChopStrips(); } catch (e) { /* never break a menu */ } });
+  }
+
+  _bakeChopStrips() {
+    const bodyImg = this._chopSrc && this._chopSrc.body;
+    const leglessImg = this._chopSrc && this._chopSrc.legless;
+    if (!bodyImg || !leglessImg) return;   /* a failed load: the raw art still draws */
+    /* skinTarget() returns null for the 'default' pick -- see the cook's bake
+       for why that cannot stand for a painted stand-in. */
+    const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
+    const FW = 240, FH = 220, FROM = 12, COUNT = 12;
+    for (const [key, img] of [['_chopSkinFrames', bodyImg], ['_chopLeglessSkinFrames', leglessImg]]) {
+      /* Crop to the played frames FIRST, then recolour: the classifier labels
+         connected blobs, and the cut lands on a frame boundary, so cropping
+         changes no blob and costs half the canvas. */
+      const src = document.createElement('canvas');
+      src.width = FW * COUNT; src.height = FH;
+      const sctx = src.getContext('2d');
+      sctx.imageSmoothingEnabled = false;
+      sctx.drawImage(img, FROM * FW, 0, FW * COUNT, FH, 0, 0, FW * COUNT, FH);
+      const cv = recolorStandInSkin(src, skinT, FH);
+      const source = Texture.from(cv).source;
+      source.scaleMode = 'linear';
+      const arr = [];
+      for (let i = 0; i < COUNT; i++) arr.push(new Texture({ source, frame: new Rectangle(i * FW, 0, FW, FH) }));
+      this[key] = arr;
+      /* v2.3.2500: the mp-standinskin probe, the same reading the sword and
+         bow bakes publish -- see _probeStandInSkin. */
+      _probeStandInSkin('/sprites/skills/chop' + (key === '_chopSkinFrames' ? '' : '-legless') + '-strip.webp', cv);
+    }
   }
 
   /* ═══ v2.3.1710: THE COOK WEARS THE PLAYER'S SKIN ═══
@@ -2567,6 +2836,7 @@ export class EffectsRenderer {
       const arr = [];
       for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * FW, 0, FW, FH) }));
       this[key] = arr;
+      _probeStandInSkin('/sprites/skills/cook' + (key === '_cookFrames' ? '' : '-legless') + '-strip.webp', cv);   /* v2.3.2500 */
     }
   }
 
@@ -2641,6 +2911,7 @@ export class EffectsRenderer {
       const arr = [];
       for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * FIRE_FW, 0, FIRE_FW, FIRE_FH) }));
       this._fireFrames = arr;
+      _probeStandInSkin('/sprites/skills/firemaking-strip.webp', cv, FIRE_SKIN_OPTS);   /* v2.3.2500: measured through the bake's own window -- see _probeStandInSkin */
     }).catch((err) => console.warn('[firemaking-strip] load failed', err));
   }
 
@@ -4041,8 +4312,8 @@ export class EffectsRenderer {
    *  the eye strings into a linear path.
    *
    *  Trail position is captured ONCE per render frame.  At the
-   *  arrow's typical speed (8 px/frame), an 8-point trail covers
-   *  ~64 px = a clear streak that doesn't lag behind reality. */
+   *  arrow's typical speed (v2.3.2473: 24 px/frame, was 8), an 8-point trail
+   *  covers ~192 px = a clear streak that doesn't lag behind reality. */
   /* v2.3.2287: the arrow probe's reader. Armed lazily like the rest -- no cost
      unless something calls it, and nothing in the game does. */
   projScaleProbe() { return this._projScaleProbe || null; }
@@ -4051,12 +4322,22 @@ export class EffectsRenderer {
     const TRAIL_LEN = 8;
     if (!p._trail) p._trail = [];
     /* Skip recording if we just teleported (e.g. zone change reset).
-       A jump in distance > 80 px between samples means re-spawn. */
+       A jump in distance > TRAIL_TELEPORT_PX between samples means re-spawn.
+       ═══ v2.3.2473: 80 -> 260, BECAUSE THE ARROW GOT FASTER ═══
+       80px was chosen against 8px/frame.  At 24 (projectiles.ARROW_SPEED_PX)
+       the fastest legitimate step is 24 x the Longshot cap 2.0 x _dtScale's
+       clamp 3 = 144px, so the old threshold would have read an ordinary
+       Longshot arrow on a stuttering frame as a teleport and cleared its
+       trail -- a streak that blinks out exactly when the frame rate is
+       already bad.  260 clears 144 with room and is still nowhere near a
+       zone change.  Same number and same reasoning as _segGap's sweep cap in
+       projectiles.js; both are "this is not flight" guards. */
+    const TRAIL_TELEPORT_PX = 260;
     const last = p._trail[p._trail.length - 1];
     if (last) {
       const dx = p._renderX - last.x;
       const dy = p._renderY - last.y;
-      if (dx * dx + dy * dy > 80 * 80) p._trail.length = 0;
+      if (dx * dx + dy * dy > TRAIL_TELEPORT_PX * TRAIL_TELEPORT_PX) p._trail.length = 0;
     }
     p._trail.push({ x: p._renderX, y: p._renderY });
     if (p._trail.length > TRAIL_LEN) p._trail.shift();
@@ -4514,8 +4795,15 @@ export class EffectsRenderer {
            all -- so a report of rings alone could not tell "the chip replaced
            the reticle" from "the target lost its mark entirely", and those are
            a fix and a regression wearing the same number. */
+        /* v2.3.2504: + the melee reach ring.  It is drawn on engageRingGfx,
+           not on the overlay Graphics this probe wraps, so `count` above
+           cannot see it -- and a ring the tripwire cannot see is exactly the
+           thing the tripwire exists to stop happening quietly.  Reported
+           explicitly instead, so mp-lockrings can keep asserting "no RETICLE
+           circle on the target" while also asserting that the reach ring is
+           there and is the right size. */
         return { count: _lr._lockRings, radii: _lr._lockRingRadii || [],
-          chips: _lr._lockChips || 0 };
+          chips: _lr._lockChips || 0, reach: _lr._reachRing || null };
       };
     }
     try {
@@ -4601,6 +4889,124 @@ export class EffectsRenderer {
           _erg.stroke({ color: 0x14181A, width: 3.5 * _rk, alpha: 0.30 * t });
           _erg.ellipse(mx, my, rx, ry);
           _erg.stroke({ color: col, width: (isCur ? 2.4 : 1.5) * _rk, alpha: (isCur ? 0.85 : 0.5) * t });
+        }
+      }
+      /* ═══ v2.3.2504: THE MELEE REACH RING ═══
+         Owner (F1): a light-red ring on the aggroed or locked monster, ONE
+         ring, radius = melee reach.
+
+         WHAT IT MEANS, AND WHAT IT DELIBERATELY DOES NOT.  It means "your
+         sword lands from inside here" -- nothing else.  "Close enough to dash"
+         is NOT a state in this codebase and this ring must never be read as
+         one: the sword dash has no trigger radius at all (maybeSwordDash fires
+         on the melee press with ANY monster lock out to DASH_MAX_REACH_PX 900,
+         abilities.js), and the 220px TARGET_PERIMETER_PX is what supplies that
+         lock, not a lunge threshold.  Drawing a lunge ring would teach a rule
+         the game does not have.
+
+         THE RADIUS IS THE SWING TEST, READ OFF THE SWING TEST.  Both melee
+         reach checks in monsterCombat -- the sweep (~1784) and the engaged
+         auto-swing (~1428) -- are `hypot(player, BODY CENTRE) -
+         monsterMeleeHitRadius(arch) <= GS_OUTER_RADIUS`.  Rearranged, the set
+         of PLAYER FOOT positions that can land a swing is a disc of radius
+         GS_OUTER_RADIUS + monsterMeleeHitRadius centred on the monster's body
+         centre: 96px for a slime, 122 for a skeleton.  Both terms are the
+         shared tables the hit test itself reads, so a retune of either moves
+         the ring with it and the drawing cannot drift away from the rule.
+
+         A TRUE CIRCLE, NOT THE SQUASHED GROUND ELLIPSE ABOVE.  The candidate
+         rings are squashed 0.38 as a ground-plane convention, which is fine
+         for a footprint marker.  This one is a promise about whether a swing
+         will connect, and the test behind it is plain Euclidean distance in
+         world units with no y-scale anywhere -- so a squashed ring would say
+         "in reach" to a player standing north of a monster who is not, and
+         "out of reach" to one east of it who is.  A wrong ring is worse than
+         no ring; the perspective convention loses to the arithmetic.
+
+         CENTRED ON THE BODY CENTRE (renderY - monsterBodyOffsetY) for the same
+         reason: that is the point the reach is measured to.  It sits above the
+         feet, which is why the ring hangs around the monster's middle rather
+         than lying under it.
+
+         MELEE ONLY.  A bow or a staff never runs this test, so a reach ring
+         with one drawn would be decoration that means nothing.  Same slot
+         classifier targeting.autoAcquires uses, read inline rather than
+         imported -- this file already branches on S.rpg.activeSlot.
+
+         ON engageRingGfx, not the overlay Graphics: this is a ground/telegraph
+         mark like the rings above it, and it shares their clear(). */
+      const _rrSlot = S.rpg && S.rpg.activeSlot;
+      const _rrMelee = !(_rrSlot === 'ranged' || _rrSlot === 'staff');
+      this._reachRing = null;
+      if (_erg && _rrMelee && S.player && !S._zoneLoading) {
+        /* ONE RING.  The lock wins outright -- it is the monster you chose --
+           and only when there is no lock does the nearest monster that is
+           actually coming for you take it.  Never both: two reach rings would
+           be the "two circles on one monster" complaint in a new costume. */
+        let _rrM = (S.lockedTarget && S.lockedTarget.type === 'monster')
+          ? S.lockedTarget.ref : null;
+        if (_rrM && (_rrM.alive === false
+            || (typeof _rrM.curHp === 'number' && _rrM.curHp <= 0))) _rrM = null;
+        if (!_rrM) {
+          /* "Aggroed" reads BOTH writers, because neither covers both zone
+             kinds on its own: `tg` is the worker's live "who am I chasing"
+             field (wsClient keeps it in step with the wire), and `_aggroed` is
+             the local-AI/retaliation flag that the same handler CLEARS when
+             the wire disagrees.  Either one alone leaves half the game's
+             monsters unable to wear this ring. */
+          const _ms = S.monsters || [];
+          let _bd = Infinity;
+          for (let i = 0; i < _ms.length; i++) {
+            const m = _ms[i];
+            if (!m || m.alive === false) continue;
+            if (typeof m.curHp === 'number' && m.curHp <= 0) continue;
+            if (!((m.tg != null && m.tg === S.myId) || m._aggroed)) continue;
+            const ax = (m.renderX != null ? m.renderX : m.x);
+            const ay = (m.renderY != null ? m.renderY : m.y);
+            if (!Number.isFinite(ax) || !Number.isFinite(ay)) continue;
+            const dd = (ax - S.player.x) * (ax - S.player.x) + (ay - S.player.y) * (ay - S.player.y);
+            if (dd < _bd) { _bd = dd; _rrM = m; }
+          }
+        }
+        const _rrX = _rrM && (_rrM.renderX != null ? _rrM.renderX : _rrM.x);
+        const _rrFy = _rrM && (_rrM.renderY != null ? _rrM.renderY : _rrM.y);
+        if (_rrM && Number.isFinite(_rrX) && Number.isFinite(_rrFy)) {
+          const _rrArch = _rrM.arch || _rrM.archetype || _rrM.type;
+          const _rrR = GS_OUTER_RADIUS + (monsterMeleeHitRadius(_rrArch) || 24);
+          const _rrY = _rrFy - (monsterBodyOffsetY(_rrArch) || 23);
+          const _rrD = Math.hypot(_rrX - S.player.x, _rrY - S.player.y);
+          const _rrIn = _rrD <= _rrR;
+          /* The line weight is a SCREEN measurement, v2.3.2255's correction:
+             1.5 world px at the 0.60 a combat zone runs at is under one device
+             pixel, which is the whole reason "the red circle is hard to see"
+             survived two colour lifts. */
+          const _rrk = 1 / (S._worldScaleX > 0.01 ? S._worldScaleX : 1);
+          /* IN REACH IS THE STATE WORTH SEEING, so it is the one that is
+             brighter and heavier.  Out of reach the ring is a faint guide you
+             walk towards; the moment your feet cross it, it firms up -- which
+             is the answer to "can I hit this yet" without reading a number.
+             Both tones are light red (the owner's colour); the step is in
+             weight and alpha, not hue, so the ring never changes its meaning. */
+          _erg.circle(_rrX, _rrY, _rrR);
+          _erg.stroke({ color: 0x14181A, width: 3.2 * _rrk, alpha: _rrIn ? 0.34 : 0.20 });
+          _erg.circle(_rrX, _rrY, _rrR);
+          _erg.stroke({ color: _rrIn ? 0xFF6A6A : 0xFFA8A8,
+            width: (_rrIn ? 2.3 : 1.5) * _rrk, alpha: _rrIn ? 0.82 : 0.42 });
+          /* Published for the same reason every other mark in this region is:
+             a ring drawn at the wrong radius and a ring not drawn at all are
+             indistinguishable in a screenshot crop, and mp-engage asserts the
+             radius against the reach table rather than against a number typed
+             into the test. */
+          /* `outer` and `hitR` are published SEPARATELY from `r`, not as a
+             convenience: it is what lets mp-engage assert the COMPOSITION
+             rule (r === GS_OUTER_RADIUS + monsterMeleeHitRadius) rather than a
+             radius typed into the test, so a hand-tuned number pasted in here
+             one day fails the harness instead of quietly drawing a ring the
+             swing does not honour. */
+          this._reachRing = { id: _rrM.id, x: _rrX, y: _rrY, r: _rrR,
+            outer: GS_OUTER_RADIUS, hitR: monsterMeleeHitRadius(_rrArch) || 24,
+            arch: _rrArch, inReach: _rrIn, dist: Math.round(_rrD),
+            src: (S.lockedTarget && S.lockedTarget.ref === _rrM) ? 'lock' : 'aggro' };
         }
       }
       /* v2.3.2251: the same `_zoneLoading` guard the ground rings take -- marks
@@ -4863,7 +5269,48 @@ export class EffectsRenderer {
              bob in world units breathes by a third of its size at one zoom
              and a fifth at another, which is the correction v2.3.2263 made
              to the old reticle's pulse. */
-          const CHIP_BOB = 6;
+          /* ═══ v2.3.2504: THE FIRST SECOND OF A LOCK ANNOUNCES ITSELF ═══
+             F1: "stamp `at` on EVERY lock, then lerp the chip's colour and bob
+             amplitude over its first second."
+
+             WHY IT COULD NOT BE DONE BEFORE.  `lockedTarget.at` was stamped
+             only inside tapStealable, which never runs for an automatic lock
+             -- so the chip had no idea when it had appeared and could not tell
+             a target acquired this instant from one held for a minute.
+             targeting.js stamps `at` on every lock now (v2.3.2504); this is
+             the consumer.
+
+             WHAT MOVES: colour and bob amplitude, and nothing else.  The chip's
+             SIZE is pinned by mp-arrowshot, which measures the target's mark by
+             frame-differencing a 34px crop and gates it at 12..24 CSS px with
+             the upper bound there to catch a mark that has saturated its own
+             crop -- the first cut of this chip tripped exactly that.  A flash
+             that grew the chip would hand that failure back, so the flash is
+             carried entirely by brightness and travel.
+
+             AND IT IS PAID FOR OUT OF HEADROOM, the v2.3.2313 rule this block
+             already lives by: the standoff below is (amplitude + 5), so the
+             BOTTOM of the swing is the same pixel whatever the amplitude is.
+             The extra travel happens upward, in empty sky, and mp-lockchip's
+             worst-case clearance (>= 2px over the sprite's top edge) is
+             unchanged by construction rather than by luck.
+
+             1000ms, ease-out (1-t)^2 on the amplitude so the settle reads as a
+             landing rather than a stop. */
+          const LOCK_FLASH_MS = 1000;
+          const _cAt = (S.lockedTarget && typeof S.lockedTarget.at === 'number')
+            ? S.lockedTarget.at : 0;
+          /* Clamped both ways: a clock the browser has stepped backwards, or a
+             stamp from a lock that predates this build, must degrade to "not
+             flashing" rather than to a chip stuck at full flare forever. */
+          const _cAge = _cAt ? (now - _cAt) : LOCK_FLASH_MS;
+          const _cFl = (_cAge >= 0 && _cAge < LOCK_FLASH_MS)
+            ? 1 - (_cAge / LOCK_FLASH_MS) : 0;
+          const _cEase = _cFl * _cFl;
+          /* 6 at rest (v2.3.2314's amplitude, unchanged), 15 at the instant of
+             the lock.  The sweep mp-lockchip asserts (>= 8 for a full
+             peak-to-trough travel) only ever gets bigger during the flash. */
+          const CHIP_BOB = 6 + 9 * _cEase;
           const _cbob = Math.sin(now / 200) * CHIP_BOB * _ck;
           /* 16.4 CSS px across, 11 tall, plus a 2.6px rim -- so ~19 overall.
              mp-arrowshot already fixes a numeric meaning for "small/medium" on
@@ -4935,19 +5382,43 @@ export class EffectsRenderer {
           gfx.poly(_cpoly);
           gfx.stroke({ color: 0x14181A, width: 2.6 * _ck, alpha: 0.8 });
           gfx.poly(_cpoly);
-          gfx.fill({ color: _chot ? 0xFF3C3C : 0xF08A2E, alpha: 0.95 });
+          /* The flash lerps toward a hot white-gold, NOT toward a third hue.
+             The chip's colour already carries one meaning -- v2.3.2253's rule,
+             brass while merely locked, red while you are attacking -- and a new
+             colour would be a second meaning on the same channel.  Lightening
+             whatever the resting colour IS keeps that rule intact: a lock taken
+             mid-swing flashes a pale red and settles to red, a lock taken cold
+             flashes a pale gold and settles to orange. */
+          const _cRest = _chot ? 0xFF3C3C : 0xF08A2E;
+          const _cFill = _mixHex(_cRest, 0xFFF3D6, _cEase * 0.85);
+          gfx.fill({ color: _cFill, alpha: 0.95 });
           this._lockChips = 1;
           /* Pushed onto the same probe list the carets use, with target:true,
              so every scenario that asks __btAtkMark "which monster is the
              target" keeps its answer after the mark moved out of that loop. */
+          /* v2.3.2504: + the flash state.  The chip's colour and its bob
+             amplitude are the whole of the first-second cue, and neither
+             survives a screenshot: a still frame cannot say whether a pale
+             chip is flashing or whether the build simply painted it pale, and
+             the bob is a phase you would have to catch.  Reported, so
+             mp-lockchip can assert the CUE rather than a pixel. */
           _marks.push({ id: _lockChip.id, x: _cxp, y: _ctop, nearest: false,
-            target: true, hot: _chot, chip: true });
+            target: true, hot: _chot, chip: true,
+            color: _cFill, rest: _cRest, flash: +_cEase.toFixed(3),
+            bob: +CHIP_BOB.toFixed(2), at: _cAt || null });
         }
       }
       this._atkMarks = _marks;
       if (typeof window !== 'undefined' && !window.__btAtkMark) {
         const _self = this;
         window.__btAtkMark = function () { return (_self._atkMarks || []).slice(); };
+      }
+      /* v2.3.2504: the melee reach ring, on its own so a scenario that only
+         cares about reach does not have to arm the circle-counting wrapper
+         (which is opt-in precisely because it is a wrapper on a hot method). */
+      if (typeof window !== 'undefined' && !window.__btReachRing) {
+        const _selfR = this;
+        window.__btReachRing = function () { return _selfR._reachRing || null; };
       }
     } catch (e) {
       if (!this._candErrLogged) {
@@ -5196,7 +5667,28 @@ export class EffectsRenderer {
          shoots" is the owner's whole ask here, and a scenario cannot measure a
          polygon.  Computed for the bow whether or not it is drawn, so a test
          can compare it against an arrow's real plant distance. */
-      const _beamLen = isRanged ? BOW_RANGE_PX * bowRangeMult(S.rpg) : 95;
+      /* ═══ v2.3.2473: ...AND IT STOPS AT WHAT IT IS POINTED AT ═══
+         Owner (backlog §2.5): clip the stream at the first hit distance rather
+         than drawing its full reach straight through the monster.
+
+         THE ANSWER IS NOT COMPUTED HERE.  `S._bowSight` is resolved once a
+         frame by monsterCombat, from the same grip and the same aim ladder the
+         shot uses, and the FIRE GATE reads the very same field -- so the line
+         cannot promise a hit the bow will not take, which is the one property
+         a sight line exists for.  A second copy of the ray test in the
+         renderer would be right the day it shipped and wrong the next time
+         either end moved; that is v2.3.2320's lesson about the aim ladder,
+         one layer down.
+
+         Unclipped when the line is empty, deliberately: the stream is then
+         doing its other job, which is showing the player where they are
+         pointing so they can bring it onto something. */
+      const _fullLen = BOW_RANGE_PX * bowRangeMult(S.rpg);
+      const _sightD = (isBow && S._bowSight && typeof S._bowSight.d === 'number')
+        ? S._bowSight.d : null;
+      const _beamLen = isRanged
+        ? (_sightD != null ? Math.max(24, Math.min(_sightD, _fullLen)) : _fullLen)
+        : 95;
       if (shouldDraw && _beamOrigin) {
         if (isBow) {
           const _ra = rangedAimAngle(S, _beamOrigin.x, _beamOrigin.y);
@@ -5220,6 +5712,11 @@ export class EffectsRenderer {
           return { visible: !!shouldDraw, ranged: !!isRanged, aimState: !!aimState,
             slot: slot || null, firing: !!bowFiring,
             angle: _beamAng, src: _beamSrc, len: _beamLen,   /* v2.3.2448 */
+            /* v2.3.2473: whether the stream stopped at a target, and the full
+               reach it would have drawn without one -- "the line is short" has
+               two causes (a clip, or a range multiplier) and a scenario cannot
+               tell them apart from the length alone. */
+            clipped: _sightD != null, fullLen: _fullLen, sightD: _sightD,
             origin: _beamOrigin ? { x: _beamOrigin.x, y: _beamOrigin.y } : null };
         };
       }
@@ -6386,7 +6883,33 @@ export class EffectsRenderer {
   _updateGroundSplatter(S) {
     const splatters = S.groundSplatter || [];
     if (!this._splatPool) this._splatPool = [];
+    /* ═══ v2.3.2504: THE MARKS WERE INVISIBLE BY CONSTRUCTION ═══
+       Owner (§5.8): the hit decals do not read.  They did not: a decal is
+       minted white and tinted with the material's DARK decal colour (goo
+       #1f7a55, stone #5b5b5b -- monsterVariants HIT_MATERIALS), drawn at
+       size/20 = 13..26 world px, at 0.35 alpha.  A dark green smudge at a
+       third opacity, a quarter the width of the slime that dropped it, on
+       grass.  Nothing was broken; the numbers never added up to a visible
+       mark.
+       Three changes, all here in the drawer so the spawn sites keep owning
+       WHAT a mark is (material, position, TTL) while this owns how it reads:
+       bigger, less transparent, and given a dark halo so a light material on
+       snow and a dark one on grass both have an edge.  The TTL is untouched at
+       8s and stays in lockstep with stateCleanup's filter -- the owner asked
+       for about 5s and these already outlast that; they were just not
+       there to be seen. */
+    /* The halo goes in its own container added FIRST, so every halo is under
+       every mark.  Interleaving them in one pool would put mark 3's halo over
+       mark 2's body, and a dark ring across a neighbouring splat reads as
+       grime rather than as an edge. */
+    if (!this._splatHaloLayer || this._splatHaloLayer.destroyed) {
+      this._splatHaloLayer = new Container();
+      this.splatLayer.addChildAt(this._splatHaloLayer, 0);
+      this._splatHaloPool = [];
+    }
+    if (!this._splatHaloPool) this._splatHaloPool = [];
     const pool = this._splatPool;
+    const halos = this._splatHaloPool;
     const now = Date.now();
     const GROUND_DECAL_MS = 8000, DECAL_FADE_MS = 2000;
     const tex = groundDecalTex();
@@ -6399,20 +6922,41 @@ export class EffectsRenderer {
         this.splatLayer.addChild(sp);
         pool[i] = sp;
       }
+      let ha = halos[i];
+      if (!ha || ha.destroyed) {
+        ha = new Sprite(tex);
+        ha.anchor.set(0.5, 0.5);
+        ha.tint = 0x14181A;
+        this._splatHaloLayer.addChild(ha);
+        halos[i] = ha;
+      }
       sp.x = d.x; sp.y = d.y;
+      ha.x = d.x; ha.y = d.y;
       /* Deterministic per-mark rotation from its timestamp — stable
          across frames without storing another field. */
       sp.rotation = ((d.ts || 0) % 628) / 100;
-      const s = (d.size || 4) / 20;
+      ha.rotation = sp.rotation;
+      /* size/13, not size/20: the spawn sites hand out size 4..8 (and bigger
+         on a kill), so a hit mark goes from ~13-26 world px across to ~20-39 --
+         roughly the base of the body that dropped it, which is what a splat
+         under a monster should be. */
+      const s = (d.size || 4) / 13;
       sp.scale.set(s * 1.25, s);   /* slightly squashed = lies on the ground */
+      ha.scale.set(s * 1.25 * 1.22, s * 1.22);
       if (d._tint == null) d._tint = cssToHex(d.color || '#4a0000');
       if (sp.tint !== d._tint) sp.tint = d._tint;
       const age = now - (d.ts || now);
-      sp.alpha = 0.35 * Math.max(0, Math.min(1, (GROUND_DECAL_MS - age) / DECAL_FADE_MS));
+      const k = Math.max(0, Math.min(1, (GROUND_DECAL_MS - age) / DECAL_FADE_MS));
+      sp.alpha = 0.72 * k;
+      ha.alpha = 0.30 * k;
       if (!sp.visible) sp.visible = true;
+      if (!ha.visible) ha.visible = true;
     }
     for (let i = splatters.length; i < pool.length; i++) {
       if (pool[i] && !pool[i].destroyed && pool[i].visible) pool[i].visible = false;
+    }
+    for (let i = splatters.length; i < halos.length; i++) {
+      if (halos[i] && !halos[i].destroyed && halos[i].visible) halos[i].visible = false;
     }
   }
 
@@ -6453,7 +6997,16 @@ export class EffectsRenderer {
 
   _spawnDebrisBurst(b, now) {
     if (!this._debrisFx) this._debrisFx = [];
-    if (this._debrisFx.length >= 24) return;   /* hard cap, hitParticles posture */
+    /* v2.3.2504: EVICT THE OLDEST, don't drop the newest.  At 450ms the cap
+       was nearly unreachable and returning early was free; at 5s a busy fight
+       sits on it permanently, and "return" there means the hit you just landed
+       is the one with no feedback -- the cap would silently reproduce the
+       complaint this change exists to fix.  A settled chunk from four seconds
+       ago disappearing is not something anyone can see. */
+    while (this._debrisFx.length >= DEBRIS_MAX_BURSTS) {
+      const _old = this._debrisFx.shift();
+      this._killDebrisFx(_old);
+    }
     const cfg = DEBRIS_BURSTS[b.kind];
     const ang = (typeof b.ang === 'number') ? b.ang : -Math.PI / 2;
     if (cfg && cfg.frames.length) {
@@ -6463,56 +7016,166 @@ export class EffectsRenderer {
       sp.x = b.x; sp.y = b.y;
       sp.scale.set(cfg.h / 256);
       this.particleLayer.addChild(sp);
-      this._debrisFx.push({ strip: sp, cfg, t0: now });
+      this._debrisFx.push({ strip: sp, cfg, t0: now, ms: DEBRIS_STRIP_MS });
     } else {
       const parts = [];
-      for (let i = 0; i < 6; i++) {
+      const tint = b.tint || 0xffffff;
+      for (let i = 0; i < DEBRIS_PARTS; i++) {
+        /* TWO SPRITES A CHUNK, and the second one is not decoration.  This
+           mark lands on town cobble, desert sand, grass and snow, and a
+           material tint on the ground that matches it is invisible -- goo
+           green on grass is the owner's exact case, and TRAPS §21 names this
+           family of false negative.  Every other mark in this renderer carries
+           a dark keyline for the same reason; a chunk gets one as an
+           under-sprite because a tinted Sprite has only one colour to give.
+           Same texture as the chunk, so both still batch. */
+        const rim = new Sprite(debrisDotTex());
+        rim.anchor.set(0.5, 0.5);
+        rim.tint = 0x14181A;
+        rim.x = b.x; rim.y = b.y;
         const sp = new Sprite(debrisDotTex());
         sp.anchor.set(0.5, 0.5);
-        sp.tint = b.tint || 0xffffff;
+        sp.tint = tint;
         sp.x = b.x; sp.y = b.y;
-        const sc = 0.3 + Math.random() * 0.4;
+        /* 0.55..1.15, up from 0.3..0.7: the dot texture is a 32px soft
+           particle, so the old range drew chunks 10-22px across at world
+           scale -- under a fingertip on the phone this is played on. */
+        const sc = 0.55 + Math.random() * 0.6;
         sp.scale.set(sc);
-        this.particleLayer.addChild(sp);
+        rim.scale.set(sc * 1.32);
         const a = ang + (Math.random() - 0.5) * 1.2;
         const spd = 1.6 + Math.random() * 2.6;
-        parts.push({ sp, x0: b.x, y0: b.y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd - 1.4, sc });
+        const vx = Math.cos(a) * spd;
+        const vy = Math.sin(a) * spd - 1.9;
+        /* WHERE THE GROUND IS.  The burst is queued at the monster's BODY
+           CENTRE (spawnHitDebris subtracts monsterBodyOffsetY), and the feet
+           are that offset below -- 23 world px on a slime, 60 on a skeleton.
+           The renderer is not handed the archetype, so rather than guess at a
+           table it cannot see, each chunk falls a fixed 16..40px: far enough to
+           read as landing, never so far that it lands behind the monster on
+           the tallest shape.  The chunks scatter over the base of the body,
+           which is where a chip off a monster belongs.
+           Landing time is SOLVED, not stepped: 0.11t^2 + vy*t = gy, so the
+           rest pose is one sqrt at spawn instead of a per-frame integration
+           that would drift with the frame rate (the same dt-safety the
+           parametric flight was written for). */
+        const gy = 16 + Math.random() * 24;
+        const tLand = (-vy + Math.sqrt(vy * vy + 4 * DEBRIS_GRAV * gy)) / (2 * DEBRIS_GRAV);
+        parts.push({ sp, rim, x0: b.x, y0: b.y, vx, vy, sc, gy, tLand,
+          xLand: b.x + vx * tLand, yLand: b.y + gy,
+          /* A chunk that has landed lies FLAT -- squashed on y, a touch wider
+             on x -- which is the same "this is on the ground" cue the splatter
+             sprites use.  Deterministic per chunk so it does not shimmer. */
+          spin: (Math.random() - 0.5) * 0.9 });
       }
-      this._debrisFx.push({ parts, t0: now });
+      /* EVERY RIM UNDER EVERY CHUNK, not each rim under its own chunk.  Added
+         one pair at a time, chunk 1's rim lands on top of chunk 0's body and
+         the burst muddies itself; Pixi draws in child order and there is no
+         z within a layer to lean on. */
+      for (const p of parts) this.particleLayer.addChild(p.rim);
+      for (const p of parts) this.particleLayer.addChild(p.sp);
+      this._debrisFx.push({ parts, t0: now, ms: DEBRIS_FALLBACK_MS });
     }
   }
 
-  _advanceDebrisBursts(now) {
-    const list = this._debrisFx;
-    if (!list || !list.length) return;
+  /* v2.3.2504: one disposer, because the cap eviction above and the expiry
+     sweep below both need it and a second copy would be the one that forgets
+     the rim sprite. */
+  _killDebrisFx(fx) {
+    if (!fx) return;
     const kill = (sp) => {
       if (!sp || sp.destroyed) return;
       if (sp.parent) sp.parent.removeChild(sp);   /* Pixi v8 zombie defence */
       sp.destroy();
     };
+    if (fx.strip) kill(fx.strip);
+    if (fx.parts) for (const p of fx.parts) { kill(p.sp); kill(p.rim); }
+  }
+
+  /* v2.3.2504: what debris is on screen right now.  The bursts are pooled
+     sprites with no DOM and no stable pixels -- a screenshot can say "there is
+     something green near the slime" and nothing at all about how long it
+     lasts, which is the entire ask (§5.8: "about 5 s ... read clearly").  So
+     the renderer reports its own queue and mp-feel asserts the lifetime and
+     the landing off that, the same posture as __btAtkMark and
+     __btMonsterHitReact. */
+  _debrisReport(now) {
+    const list = this._debrisFx || [];
+    return list.map((fx) => ({
+      age: now - fx.t0,
+      ms: fx.ms || DEBRIS_STRIP_MS,
+      sheet: !!fx.strip,
+      parts: fx.parts ? fx.parts.length : 0,
+      /* How many chunks have finished their arc and are lying on the ground.
+         "Landed" is the half of the effect that makes 5s legible rather than
+         absurd, and it is invisible to every other measure. */
+      landed: fx.parts
+        ? fx.parts.filter((p) => (now - fx.t0) / 16.7 >= p.tLand).length : 0,
+      alpha: fx.parts && fx.parts[0] && fx.parts[0].sp && !fx.parts[0].sp.destroyed
+        ? +fx.parts[0].sp.alpha.toFixed(3) : null,
+    }));
+  }
+
+  _advanceDebrisBursts(now) {
+    if (typeof window !== 'undefined' && !window.__btDebris) {
+      const _selfD = this;
+      window.__btDebris = function () { return _selfD._debrisReport(Date.now()); };
+    }
+    const list = this._debrisFx;
+    if (!list || !list.length) return;
     for (let i = list.length - 1; i >= 0; i--) {
       const fx = list[i];
       const age = now - fx.t0;
-      if (age >= DEBRIS_MS) {
-        if (fx.strip) kill(fx.strip);
-        if (fx.parts) for (const p of fx.parts) kill(p.sp);
+      /* v2.3.2504: the burst carries its OWN lifetime.  A sheet burst is the
+         pacing of its 8 frames; a placeholder burst is 5s of flight and
+         settle.  One shared constant could only ever be right for one of them.
+         `|| DEBRIS_STRIP_MS` covers a burst queued by an older frame across a
+         hot reload rather than leaving it immortal. */
+      const ms = fx.ms || DEBRIS_STRIP_MS;
+      if (age >= ms) {
+        this._killDebrisFx(fx);
         list.splice(i, 1);
         continue;
       }
-      const t01 = age / DEBRIS_MS;
+      const t01 = age / ms;
       if (fx.strip && !fx.strip.destroyed) {
         const fi = Math.min(7, Math.floor(t01 * 8));
         fx.strip.texture = fx.cfg.frames[fi];
         fx.strip.alpha = t01 > 0.8 ? (1 - t01) / 0.2 : 1;
       } else if (fx.parts) {
-        /* Parametric flight: x = x0 + v·t, y adds gravity's ½g·t² */
+        /* Parametric flight: x = x0 + v·t, y adds gravity's ½g·t² -- computed
+           from AGE, never integrated, so it is identical at 30fps and 120. */
         const tf = age / 16.7;   /* 60Hz-frame units */
+        /* One fade for the whole burst, over its last stretch.  Holding full
+           alpha until then is the point: the owner's complaint was that the
+           mark was gone before he looked at it, and a chunk that starts fading
+           immediately is a 5s effect that reads as a 1s one. */
+        const fade = age > (ms - DEBRIS_FADE_MS)
+          ? Math.max(0, (ms - age) / DEBRIS_FADE_MS) : 1;
         for (const p of fx.parts) {
-          if (p.sp.destroyed) continue;
-          p.sp.x = p.x0 + p.vx * tf;
-          p.sp.y = p.y0 + p.vy * tf + 0.06 * tf * tf;
-          p.sp.alpha = 1 - t01 * t01;
-          p.sp.scale.set(p.sc * (1 - t01 * 0.5));
+          if (!p.sp || p.sp.destroyed) continue;
+          let px, py, sx, sy;
+          if (tf < p.tLand) {
+            px = p.x0 + p.vx * tf;
+            py = p.y0 + p.vy * tf + DEBRIS_GRAV * tf * tf;
+            sx = p.sc; sy = p.sc;
+          } else {
+            /* LANDED.  Frozen where the arc put it, squashed flat so it reads
+               as lying on the ground rather than hanging in the air, and given
+               its own small rotation so seven identical dots do not look like
+               a pattern. */
+            px = p.xLand; py = p.yLand;
+            sx = p.sc * 1.15; sy = p.sc * 0.46;
+            if (p.sp.rotation !== p.spin) { p.sp.rotation = p.spin; p.rim.rotation = p.spin; }
+          }
+          p.sp.x = px; p.sp.y = py;
+          p.sp.alpha = fade;
+          p.sp.scale.set(sx, sy);
+          if (p.rim && !p.rim.destroyed) {
+            p.rim.x = px; p.rim.y = py;
+            p.rim.alpha = fade * 0.55;
+            p.rim.scale.set(sx * 1.32, sy * 1.32);
+          }
         }
       }
     }
@@ -7435,7 +8098,11 @@ export class EffectsRenderer {
        fix, your figure this time. See the peer twin at _updateRemoteExtraction. */
     const pscale = zonePlayerScale(S.currentZone, S.player.x, S.player.y, TILE);
     const s = (FH / FIRE_FH) * pscale;
-    sp.scale.set(s, s);
+    /* v2.3.2500: ...times your build, as the walking body is (see _localBuild).
+       The sprite is anchored (0.5, 1) -- its feet -- so growing y grows the
+       figure upward and needs no lift, unlike the frame-centred body. */
+    const _b = _localBuild();
+    sp.scale.set(s * _b.sx, s * _b.sy);
     sp.x = S.player.x;
     sp.y = S.player.y + 6 * pscale;   /* the foot offset shrinks with the figure */
     /* v2.3.2287 QA probe -- the sibling of __btChopFigure, which the fire
@@ -7677,6 +8344,9 @@ export class EffectsRenderer {
          Same curve, same position, so the two now shrink together. */
       const pscale = zonePlayerScale(zone, ox, oy, TILE);
       const s = (spec.h / spec.fh) * pscale;   /* v2.3.1715: per-strip frame height, was a hardcoded 220 */
+      /* v2.3.2500: and THEIR build, relayed as hg/fr (peerCosmetics) and read
+         here exactly as entityRenderer reads it for their walking body. */
+      const _bR = _peerBuild(o);
       /* ═══ v2.3.2303: WHICH SIDE OF THE TRUNK ═══
          The local chopper flips to face the tree it is working (chopSign, off
          the node in _updateExtractionCue). A watcher has no node -- so this
@@ -7697,7 +8367,8 @@ export class EffectsRenderer {
         }
         if (_best) _sign = _best.x >= ox ? 1 : -1;
       }
-      sp.scale.set(_sign < 0 ? -s : s, s);
+      const _sxR = s * _bR.sx, _syR = s * _bR.sy;   /* v2.3.2500 */
+      sp.scale.set(_sign < 0 ? -_sxR : _sxR, _syR);
       sp.x = ox;
       sp.y = oy + 6 * pscale;                 /* foot offset shrinks with the figure */
       sp.visible = true;
@@ -8300,8 +8971,14 @@ export class EffectsRenderer {
       /* v2.3.1100: naked east grows the torso (sT) with the legs re-anchoring via
          torsoScale; the torso also drops by _torsoDY while the legs keep the
          un-nudged foot row (_baseFootY). */
-      const sT = sY * _torsoOnlyAdj;
-      const sgnT = mirror ? -(sY * _torsoOnlyAdj) : (sY * _torsoOnlyAdj);
+      /* v2.3.2500: their build, relayed as hg/fr -- height on y, frame on x,
+         exactly as entityRenderer scales their walking body.  The LOCAL swing
+         stand-in gets this for free (it sizes itself from S._swordBodyH, which
+         is computed from the display scale the build is already on); this one
+         computes its own scale from the zone curve, so it needs the term. */
+      const _bS = _peerBuild(o);
+      const sT = sY * _torsoOnlyAdj * _bS.sy;
+      const sgnT = (mirror ? -(sY * _torsoOnlyAdj) : (sY * _torsoOnlyAdj)) * _bS.sx;
       sp.scale.set(sgnT, sT);
       const _baseFootY = ((o.renderY != null) ? o.renderY : o.y) + REMOTE_SWING_FOOT_DY;
       sp.x = (o.renderX != null) ? o.renderX : o.x;
@@ -8350,7 +9027,11 @@ export class EffectsRenderer {
         const legTex = _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length];
         this._placeJogLegs(set.jogLegs, set.jogLegsGear, {
           legTex, gearFrame: getGearFrame('legs', eq.legs, 'jog', _jdir, _jfr),
-          cutRow: swordTorsoCutRow(cfgKey, fi), jdir: _jdir, jfr: _jfr, mir: _rmir, s: sY, x: sp.x, footY: _baseFootY,
+          /* v2.3.2500: the legs take the build too, or a tall peer swings with
+             an average pair of legs under him.  _placeJogLegs takes ONE scalar
+             for both axes, so it gets the height term -- the frame axis is
+             locked at 1.00 (buildCatalog, v2.3.1996) and has nothing to add. */
+          cutRow: swordTorsoCutRow(cfgKey, fi), jdir: _jdir, jfr: _jfr, mir: _rmir, s: sY * _bS.sy, x: sp.x, footY: _baseFootY,
           feetY: cfg.feetY, hasLegArmour: !!(eq.legs && eq.legs !== 'none'), legsItem: eq.legs, weapon: 'sword',
           seamLift: _seamLift, torsoScale: _torsoOnlyAdj, legSizeAdj: _legSizeAdj, legShiftX: _legShiftX, legShiftY: _legShiftY,
         });
@@ -8435,11 +9116,15 @@ export class EffectsRenderer {
          were a flat 0.45, so on a vista zone — where the curve runs to ~0.03 —
          a peer attacking drew a full-size figure over a speck.  Same curve,
          same inputs, so the stand-in and the body shrink together. */
-      const sY = REMOTE_BOW_SCALE * zonePlayerScale(
+      const _sYraw = REMOTE_BOW_SCALE * zonePlayerScale(
         S.currentZone || 'town',
         (o.renderX != null) ? o.renderX : o.x,
         (o.renderY != null) ? o.renderY : o.y, TILE);
-      const sgnX = mirror ? -sY : sY;
+      /* v2.3.2500: their build, as on the remote swing above and on their
+         walking body.  Height on y, frame on x. */
+      const _bB = _peerBuild(o);
+      const sY = _sYraw * _bB.sy;
+      const sgnX = (mirror ? -_sYraw : _sYraw) * _bB.sx;
       /* v2.3.1087: jogging legs while this remote is MOVING -- swap the body to the
          leg-erased torso strip and composite recolored jog legs under it (same
          _placeJogLegs helper + tuning as the local player).  Gate on the remote's
@@ -9433,7 +10118,17 @@ export class EffectsRenderer {
       const _chopLegsTex = this._gearStripFrame('legs', getEquip('legs'), 'chop', 'west', CHOP_GEAR_FW, k);
       const _chopLegsOn = !!_chopLegsTex
         && this._chopLeglessFrames.length === this._chopFrames.length;
-      sp.texture = (_chopLegsOn ? this._chopLeglessFrames : this._chopFrames)[fi];
+      /* ═══ v2.3.2500: YOUR OWN CHOPPER WEARS YOUR SKIN ═══
+         The skin-baked pair (_bakeChopStrips) holds ONLY the twelve played
+         frames, so it is indexed by `k`, while the raw art is a 24-frame strip
+         indexed by CHOP_BASE + k.  Two arrays, two indices -- picked together
+         here so they cannot be mixed up, exactly as v2.3.2303 had to do for
+         the gear strips.  Falls back to the raw art if the bake has not landed
+         (or failed): a figure in the artist's complexion is the old behaviour,
+         while no figure at all would be a new bug. */
+      const _chopSkinArr = _chopLegsOn ? this._chopLeglessSkinFrames : this._chopSkinFrames;
+      const _chopRawArr = _chopLegsOn ? this._chopLeglessFrames : this._chopFrames;
+      sp.texture = (_chopSkinArr.length === CHOP_COUNT) ? _chopSkinArr[k] : _chopRawArr[fi];
       /* v2.3.2287: the vista curve, as on the fire figure above and on the
          peer twin. Sampled at the STAND-IN's own spot, not the player's --
          the lumberjack stands at the tree, which on a perspective zone is a
@@ -9441,7 +10136,12 @@ export class EffectsRenderer {
       const _cx = node.x - chopSign * CHOP_OFFSET, _cy = node.y;
       const pscale = zonePlayerScale(S.currentZone, _cx, _cy, TILE);
       const s = (CHOP_H / 220) * pscale;
-      sp.scale.set(chopSign < 0 ? -s : s, s);  // flip to face the trunk
+      /* v2.3.2500: your build, as on the walking body (see _localBuild) -- the
+         answer to "the chopper is ~10% small", instead of a fourth bump of
+         CHOP_STANDIN_H. */
+      const _bW = _localBuild();
+      const _sx = s * _bW.sx, _sy = s * _bW.sy;
+      sp.scale.set(chopSign < 0 ? -_sx : _sx, _sy);  // flip to face the trunk
       sp.x = _cx;
       sp.y = _cy + 6 * pscale;
       sp.visible = true;
@@ -9467,7 +10167,12 @@ export class EffectsRenderer {
         if (!t) { spr.visible = false; return; }
         spr.anchor.set(0.5, 1); spr.texture = t;
         const sL = (CHOP_H / (t.height || 220)) * pscale;
-        spr.scale.set(chopSign < 0 ? -sL : sL, sL);
+        /* v2.3.2500: the ONE local gear placer that does not derive from
+           sp.scale carries the build itself, or the armour stays average-sized
+           over a taller lumberjack -- the same reasoning v2.3.2287 wrote here
+           for the zone curve. */
+        const sLx = sL * _bW.sx, sLy = sL * _bW.sy;
+        spr.scale.set(chopSign < 0 ? -sLx : sLx, sLy);
         spr.x = sp.x; spr.y = sp.y; spr.visible = true;
       };
       /* Shirt: paper-doll recolour -- the chop shirt art is a grayscale base, so
@@ -9598,7 +10303,8 @@ export class EffectsRenderer {
       /* v2.3.2287: the vista curve, as on the fire and chop figures. */
       const pscale = zonePlayerScale(S.currentZone, node.x, node.y, TILE);
       const s = (COOK_H / 220) * pscale;
-      sp.scale.set(s, s);
+      const _bC = _localBuild();   /* v2.3.2500: your build, as on the body */
+      sp.scale.set(s * _bC.sx, s * _bC.sy);
       /* The pan hangs to the figure's RIGHT, so this offset is what keeps it
          over the flames — it has to track COOK_H or the pan slides off the
          fire.  v2.3.1429 doubled it with the 2x; v2.3.1710 scales it back by

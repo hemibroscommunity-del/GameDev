@@ -1095,6 +1095,107 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
         .every((o) => room._isQuestObjectiveItem(o.invKey || (o.invPrefix + 'x'))));
     delete room.playerState[pid];
   }
+
+  /* ── v2.3.2491: RECOVERING YOUR BAG AND DYING AT ONCE ──
+   * Owner: dying and recovering "at the same time" loses the bag.
+   *
+   * The two halves are not independent.  A death pile spawns where you died,
+   * which is inside the pack that killed you.  You come back, walk onto it,
+   * and the credit sets a 500 ms PICKUP FREEZE on the client (movement and
+   * facing locked so the pickup animation reads).  The pack is still there.
+   * You die inside the freeze the game imposed, and _spawnDeathPile drops the
+   * bag you just picked up straight back where it can be taken or expire.
+   *
+   * The shield runs through the REAL pickup handler, not a hand-set flag,
+   * because the stamp has to survive the path the player actually takes.
+   *
+   * Every assertion below has a partner: a shielded item must be kept AND
+   * absent from the pile.  One without the other is the duplicate-mint bug
+   * the v2.3.1688 tool pass and the v2.3.1701 quest pass both had to avoid. */
+  {
+    const pid = 'redropper';
+    room.playerState[pid] = {
+      hp: 100, maxHp: 100, z: 'meadow', x: 3000, y: 3000,
+      dead: false, dying: false, disconnected: false,
+      inventory: { wood_kindling: 2 },   // carried BEFORE the recovery
+    };
+    const psR = room.playerState[pid];
+    const wsR = wsA;                     // any live socket; the sends are not asserted
+    const bySession = room._wsBySessionId;
+    room._wsBySessionId = (id) => (id === pid ? wsR : bySession.call(room, id));
+    const sessR = { id: pid, name: 'Redropper' };
+    const sessionById = room._sessionById;
+    room._sessionById = (id) => (id === pid ? sessR : sessionById.call(room, id));
+
+    /* The bag on the ground, exactly as a previous death left it. */
+    const bag = {
+      lootId: 'dd-' + pid + '-old', zone: 'meadow', x: 3000, y: 3000,
+      coins: 0, skull: null, shard: null,
+      recipients: [pid], shares: {}, killerName: 'Redropper', ts: Date.now(),
+      inventoryClaimed: false, claimedBy: {}, isDeathDrop: true,
+      deathItems: [{ key: 'gold_nugget', qty: 4 }, { key: 'wood_kindling', qty: 1 }],
+      ownerOnlyUntil: Date.now() + 60000, expiry: Date.now() + 120000,
+    };
+    if (!room.loot.meadow) room.loot.meadow = [];
+    room.loot.meadow.push(bag);
+    room._handleLootPickup(sessR, { lootId: bag.lootId, zone: 'meadow' });
+    check('recovery: the bag is back in the inventory',
+      psR.inventory.gold_nugget === 4 && psR.inventory.wood_kindling === 3, psR.inventory);
+    check('recovery: the pickup stamped what it handed over',
+      !!psR._lootRecovered && psR._lootRecovered.items.gold_nugget === 4
+      && psR._lootRecovered.items.wood_kindling === 1, psR._lootRecovered);
+
+    /* ...and now the pack finishes the job, inside the freeze. */
+    psR.hp = 0;
+    room._handlePlayerDeath(psR, pid, 'monster:pack');
+    check('a death inside the grace window KEEPS what was just recovered',
+      psR.inventory.gold_nugget === 4, psR.inventory);
+    check('...and only the newly-credited part of a shared key, not the whole stack',
+      psR.inventory.wood_kindling === 1, psR.inventory);
+    const rPile = (room.loot.meadow || []).find((l) => l.isDeathDrop && l.lootId.startsWith('dd-' + pid + '-')
+      && l.lootId !== bag.lootId);
+    const rKeys = (rPile && rPile.deathItems || []).map((i) => i.key);
+    check('...and the new pile does NOT carry a copy of the shielded items',
+      !rKeys.includes('gold_nugget'), rKeys);
+    check('...while the 2 kindling carried in BEFORE the recovery still drops',
+      (rPile && rPile.deathItems || []).some((i) => i.key === 'wood_kindling' && i.qty === 2), rKeys);
+    /* Second wipe, five seconds later.  Sparing at death alone is cosmetic
+       (the v2.3.1616 lesson, and the reason the shield is frozen at death
+       rather than re-tested against the clock here). */
+    psR.dying = true; psR.respawnAt = Date.now() - 1;
+    room._tickPlayerRespawn();
+    check('the respawn wipe keeps the recovered items too',
+      psR.inventory.gold_nugget === 4 && psR.inventory.wood_kindling === 1, psR.inventory);
+    check('...and the shield is spent, so the NEXT death starts clean',
+      !psR._deathShield && !psR._lootRecovered, { s: psR._deathShield, r: psR._lootRecovered });
+
+    /* THE CONTROL.  Without it every assertion above is also satisfied by a
+       build that simply stopped dropping anything: an old recovery is not
+       shielded, and dying then costs the bag exactly as it always has. */
+    psR.inventory = { gold_nugget: 4 };
+    psR._lootRecovered = { at: Date.now() - (room.DEATH_REDROP_GRACE_MS + 500),
+      items: { gold_nugget: 4 } };
+    psR.hp = 0; psR.dying = false; psR.dead = false;
+    /* The respawn above sent them to town, and a town death spawns no pile
+       at all (_spawnDeathPile refuses safe zones) -- which would have made
+       this control pass for the wrong reason. */
+    psR.z = 'meadow'; psR.x = 3000; psR.y = 3000;
+    /* By INDEX, not by lootId: the id is `dd-<player>-<Date.now()>` and the
+       suite runs two deaths inside the same millisecond, so the two piles can
+       share an id and a by-id lookup silently finds the earlier one. */
+    const nBefore = (room.loot.meadow || []).length;
+    room._handlePlayerDeath(psR, pid, 'monster:pack');
+    check('control: a recovery OLDER than the grace window is not shielded',
+      !psR.inventory.gold_nugget, psR.inventory);
+    const cPile = (room.loot.meadow || []).slice(nBefore).find((l) => l.isDeathDrop);
+    check('control: ...and those items are on the ground where they belong',
+      (cPile && cPile.deathItems || []).some((i) => i.key === 'gold_nugget' && i.qty === 4),
+      cPile && cPile.deathItems);
+
+    room._wsBySessionId = bySession;
+    room._sessionById = sessionById;
+    delete room.playerState[pid];
+  }
   delete room.playerState['well'];
 }
 
@@ -2026,11 +2127,14 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     !!fodderTele && fodderTele.payload.phase === 'telegraph'
     && fodderTele.payload.ability === 'lunge',
     fodderTele && fodderTele.payload);
+  /* v2.3.2482: the stalker kit was deleted (the pounce), so "slowest" is now
+     measured against every kit that EXISTS rather than against a hardcoded
+     pair -- which is the property the assertion was always about, and it
+     survives the next kit being added or removed. */
   check('telegraph: fodder\'s tell is the SLOWEST — a beginner\'s reaction time',
-    TELEGRAPH.KITS.fodder.windupMs > TELEGRAPH.KITS.brute.windupMs
-    && TELEGRAPH.KITS.fodder.windupMs > TELEGRAPH.KITS.stalker.windupMs,
-    { fodder: TELEGRAPH.KITS.fodder.windupMs, brute: TELEGRAPH.KITS.brute.windupMs,
-      stalker: TELEGRAPH.KITS.stalker.windupMs });
+    Object.entries(TELEGRAPH.KITS).every(([arch, k]) =>
+      arch === 'fodder' || TELEGRAPH.KITS.fodder.windupMs > k.windupMs),
+    Object.fromEntries(Object.entries(TELEGRAPH.KITS).map(([a, k]) => [a, k.windupMs])));
   check('telegraph: fodder carries NO damage spike (a cue, not a threat)',
     TELEGRAPH.KITS.fodder.dmgMult === 1.0
     && TELEGRAPH.KITS.fodder.dmgMult < TELEGRAPH.KITS.brute.dmgMult,
@@ -2063,6 +2167,31 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     basicWindupMs('swarm') === Math.min(...Object.keys(BASIC_WINDUP.MS)
       .filter((k) => k !== 'DEFAULT').map((k) => BASIC_WINDUP.MS[k])),
     { swarm: basicWindupMs('swarm'), table: BASIC_WINDUP.MS });
+
+  /* ══ v2.3.2482: THE STALKER'S POUNCE IS GONE (owner ask) ══
+     Stalkers spawn only in sky / Desert Winds and are re-skinned as mummies
+     there, so a 140px leap onto the player had no art to explain it.  The
+     kit is deleted; the archetype keeps the universal basic wind-up swing,
+     which is the half that must not go with it. */
+  check('pounce: the stalker kit is gone',
+    !TELEGRAPH.KITS.stalker, TELEGRAPH.KITS.stalker);
+  check('pounce: ...and no kit declares that kind any more (the leap branch is dead)',
+    Object.values(TELEGRAPH.KITS).every((k) => k.kind !== 'pounce'),
+    Object.values(TELEGRAPH.KITS).map((k) => k.kind));
+  check('pounce: ...but a stalker still has its basic wind-up',
+    basicWindupMs('stalker') > 0, basicWindupMs('stalker'));
+  {
+    /* Drive a real stalker through a real tick: it must swing, not cast. */
+    armBrute();
+    tm.arch = 'stalker';
+    tm._tgNextAt = 0;                     /* a kit WOULD be allowed to fire */
+    tick();
+    const st = abilities();
+    check('pounce: a stalker in reach winds up an ordinary SWING, never a cast',
+      st.length > 0 && st.every((e) => e.payload.phase !== 'telegraph')
+        && st.some((e) => e.payload.ability === 'swing'),
+      st.map((e) => e.payload));
+  }
 
   /* ═══ v2.3.2215: EVERY BASIC ATTACK HAS A WIND-UP ═══
      The kits above cover three archetypes on a multi-second cooldown; the

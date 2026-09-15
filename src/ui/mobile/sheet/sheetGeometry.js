@@ -343,7 +343,21 @@ export function landDockFootprint(vw, vh) {
    two were drawn in the same corner, chip on top, and the bell could not
    be tapped.  The chip renders at exactly this width, so the two cannot
    drift. */
-export const LAND_FOLD_CHIP_W = 34;
+/* ═══ v2.3.2497: 34 -> 44, BECAUSE IT IS A TOUCH TARGET ═══
+   docs/UI-BIBLE.md: "Touch targets: 44x44pt minimum for anything tappable
+   (Apple HIG).  Visuals may be smaller; the hit area may not."  Measured, this
+   chip was 34x34 with a 6px 9-sliced frame -- about 22px of glyph, and the
+   ONLY control left on the world when the sideways dashboard is at rest
+   (v2.3.2176: "minimized means minimized"), so the one button that opens
+   everything was the smallest thing on the screen.
+   Same argument v2.3.2320/2321 made for the five nav buttons, applied to the
+   control that reveals them.  It fits: the landscape dock is
+   navButtonSize().h + 2*DASH_GAP tall, which is 52 at a 390px short axis, so a
+   44px chip sits inside it with room either side.
+   The chip renders at exactly this width and BroTown's resize() spends it on
+   --land-fold-w, so the chat feed and the notification bell step around the
+   new size without a second number to keep in sync. */
+export const LAND_FOLD_CHIP_W = 44;
 
 export function identityRowHeight(vw, vh) {
   return 40 + (vh && vh <= 720 ? 8 : 12);

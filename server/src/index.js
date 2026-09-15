@@ -34,6 +34,7 @@ import {
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
 import { marketMethods } from './market.js';
+import { storeMethods } from './store.js';   /* v2.3.2475: the per-listing general store */
 import { shopMethods } from './shop.js';   /* v2.3.2047: Shopkeeper Bro's public pile */
 // v2.3.1119 (heavy-systems PR4): server-settled trades -- the relay
 // handshake stays, but the room intercepts it and moves the goods
@@ -222,6 +223,16 @@ async function routeHttp(request, env) {
     if (url.pathname.startsWith('/api/market')) {
       const mktRoom = url.searchParams.get('room') || 'brotown-1';
       return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(mktRoom)).fetch(request);
+    }
+
+    /* v2.3.2475: the general store rides the same route shape as the order
+       book above, and for the same reason -- its escrow mutates the wallets
+       and stashes this room owns, so it has to be the room that answers.
+       Separate path so the two surfaces can be reasoned about (and rate-
+       limited, and retired) independently. */
+    if (url.pathname.startsWith('/api/store')) {
+      const stRoom = url.searchParams.get('room') || 'brotown-1';
+      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(stRoom)).fetch(request);
     }
 
     if (url.pathname.startsWith('/api/leaderboard')) {
@@ -914,8 +925,23 @@ export class GameRoom {
        the directional shield before the swing connects.  Same
        constant gates both "stop advancing" (line ~262) and "attack
        if in range" (line ~292) so they stay paired -- monster halts
-       and attacks at the same ring. */
-    this.MONSTER_ATTACK_RANGE = 45;
+       and attacks at the same ring.
+
+       ═══ v2.3.2482: 45 -> 72, "the full length of the sword" ═══
+       Owner ask (backlog triage, D14): monsters crowded right into the
+       player's body, which is both unreadable and unfair -- you cannot face
+       a threat you are standing inside.  72 is GS_OUTER_RADIUS, the player's
+       OWN melee reach (monsterCombat.js), so the ring a monster stops at is
+       now exactly the ring the player can hit from.
+
+       THE SECOND HALF IS NOT OPTIONAL.  This constant gates the monster's
+       swing reach as well as its stopping distance -- both here (the tick
+       loop's ATTACK_RANGE literal) and in _basicAtkGeom, which is what the
+       wind-up re-measures against.  Widening the stop ring alone would park
+       every monster outside its own reach and they would never land a hit
+       again, which is the same class of bug the v2.3.1639 knockback note
+       below describes.  All three move together or none of them do. */
+    this.MONSTER_ATTACK_RANGE = 72;
     this.MONSTER_ATTACK_CD = 1500; // ms
     /* v2.3.1731: parry (see _parryOpen for why the window is 250, not 150) */
     this.PARRY_WINDOW_MS = 250;
@@ -1049,6 +1075,23 @@ export class GameRoom {
     // may grab it; pile despawns entirely at DEATH_PILE_TOTAL_MS.
     this.DEATH_PILE_OWNER_MS = 60000;
     this.DEATH_PILE_TOTAL_MS = 120000;
+    /* ═══ v2.3.2491: THE RECOVERY THAT COST YOU THE BAG ═══
+       Owner: dying and recovering "at the same time" loses the bag.
+       The sequence is not a coincidence.  A death pile spawns at the spot
+       you died, which is inside the pack that killed you.  You come back,
+       walk onto it, and the pickup credit sets a 500 ms PICKUP FREEZE on
+       the client (wsClient.js _applyLootCredit, groundLoot.js) -- movement
+       locked, facing locked to camera, so the pickup animation reads.  The
+       pack is still there.  You die during the freeze the game imposed on
+       you, and _spawnDeathPile drops the bag you just picked up straight
+       back on the ground, in the same pack, where it can be taken by
+       someone else or expire.  Repeat.
+       So: items credited by a loot pickup within this window are not put
+       in the new pile and are not wiped.  1000 ms is the 500 ms freeze
+       plus room for the round trip that set it -- long enough to cover the
+       window the game took away from the player, short enough that it
+       cannot be aimed at on purpose. */
+    this.DEATH_REDROP_GRACE_MS = 1000;
     this.LOOT_PICKUP_RANGE = 160; // px; was 30 -> 60 -> 90 -> 160 (v2.3.1161, the snowman "out of range" playtest report).  The legit "loot is at my feet" geometry stacks: the pile spawns at the MONSTER's center (a large sprite puts that ~40-60 px from where the killer stands), client magnetism pulls the pile visually up to 50 px toward the player (render-only + server-anchored since v2.3.1161, groundLoot.js), and the server's view of the player position lags the client's move throttle by up to ~50 px mid-walk.  Sum ~150 px; 160 accepts it with margin while staying far under cross-screen theft range.
     // v2.3.846: node_strike proximity gate.  Separate from LOOT_PICKUP_RANGE
     // because the gather STANCE can sit further from the node than a loot
@@ -1940,7 +1983,11 @@ export class GameRoom {
         // regardless of approach angle.  Y_SCALE=3.0 -> 15 px N-S
         // stopping distance (per user: "needs to be about half of
         // what it is now" from the 30 px v2.3.96 ring).
-        const ATTACK_RANGE = 45;
+        /* v2.3.2482: 45 -> 72 (GS_OUTER_RADIUS, the player's own melee
+           reach).  PAIRED with this.MONSTER_ATTACK_RANGE in the constructor
+           and with _basicAtkGeom in telegraph.js -- see the constructor's
+           note for why all three must carry the same number. */
+        const ATTACK_RANGE = 72;
         const Y_SCALE = 3.0;
         /* v2.3.1409 (owner: "snowmen attacks are lethargic — I can stand
            there for 5 seconds and they won't attack me once").  Geometry
@@ -1955,7 +2002,11 @@ export class GameRoom {
            reads as passive.  Relax the ring for snowmen only: range 70
            with Y_SCALE 1.5 puts the collision equilibrium (dy≈42 ->
            scaled 63) inside reach on every approach angle. */
-        const _atkRange = m.arch === 'snowman' ? 70 : ATTACK_RANGE;
+        /* v2.3.2482: the snowman's relaxed ring was a WIDENING of the old
+           45px default; now that the default is 72 it would be a narrowing,
+           so take whichever is larger.  His 1.5 Y-scale still does the work
+           the note above describes (the tall collision body). */
+        const _atkRange = m.arch === 'snowman' ? Math.max(70, ATTACK_RANGE) : ATTACK_RANGE;
         const _yScale = m.arch === 'snowman' ? 1.5 : Y_SCALE;
         // Effective aggro range -- bumps to 1200 px when the sticky
         // override is active, so a bow-snipe from anywhere on screen
@@ -2866,6 +2917,11 @@ export class GameRoom {
     // was party to -- the survivor can't keep hitting them through the
     // respawn.  (Duel pairs already cleared by the resolution above.)
     _hook('pvpConsent', () => this._clearPvpConsent(playerId));
+    /* v2.3.2491: freeze the recovery shield HERE, before anything reads it.
+       Both the pile spawn below and the respawn wipe five seconds from now
+       consume ps._deathShield rather than re-testing the clock, so they can
+       never disagree about which items this death was allowed to take. */
+    ps._deathShield = this._deathRecoveryShield(ps);
     if (!_duelKill) {
       // Spawn a pickable death pile at the death location carrying the
       // player's entire general inventory (mummy remains, fish, wood,
@@ -2876,8 +2932,10 @@ export class GameRoom {
       _hook('deathPile', () => this._spawnDeathPile(ps, playerId));
       /* v2.3.1688: the gathering TOOLS survive (see _keepGatherTools).  They
          are equipment held in the bag for storage reasons, not loot — losing
-         them to a death silently ends woodcutting/fishing/mining for good. */
-      ps.inventory = this._keepGatherTools(ps.inventory);
+         them to a death silently ends woodcutting/fishing/mining for good.
+         v2.3.2491: ...and so does anything a loot pickup handed over inside
+         the client's 500 ms pickup freeze — see _wipeInventoryOnDeath. */
+      ps.inventory = this._wipeInventoryOnDeath(ps);
     }
     /* v2.3.1616: carry the duel exemption forward to the RESPAWN wipe, which
        is a second, unconditional `ps.inventory = {}` five seconds from now
@@ -2949,7 +3007,14 @@ export class GameRoom {
       /* v2.3.1688: the respawn wipe keeps the tools too — it is the second,
          unconditional wipe, so sparing them at death alone would not have
          saved them. */
-      else ps.inventory = this._keepGatherTools(ps.inventory);
+      /* v2.3.2491: the SAME helper as the death wipe, for the same reason
+         the tools needed it in v2.3.1688 — this wipe is unconditional, so
+         sparing something at death alone would not have saved it. */
+      else ps.inventory = this._wipeInventoryOnDeath(ps);
+      /* One death, one shield: clear it here so the next death starts from
+         whatever that death's own pickup history says. */
+      if (ps._deathShield) delete ps._deathShield;
+      if (ps._lootRecovered) delete ps._lootRecovered;
       ps.dmgFromMonster = {};
       this._saveRpg(id, ps);
       const ws = this._wsBySessionId(id);
@@ -3629,6 +3694,55 @@ export class GameRoom {
   // pile up (recipients=null bypasses the recipient gate in
   // _handleLootPickup); first picker gets everything.  TTL is the
   // standard LOOT_EXPIRY_MS (60 s) so _tickLoot despawns it on schedule.
+  /* v2.3.2491: record what a loot pickup just put in the bag, and when.
+     In-memory only (rule 11): a deploy between the pickup and the death
+     costs one bag's worth of shielding, which is the same thing that
+     happens today and not worth a storage key.  Object.create(null)
+     because inventory keys travel from the client (rule 4). */
+  _stampLootRecovered(ps, items) {
+    if (!ps || !items || !items.length) return;
+    const map = Object.create(null);
+    for (const it of items) {
+      const key = it && it.key;
+      const qty = Math.floor(Number(it && it.qty) || 0);
+      if (!key || qty <= 0) continue;
+      map[key] = (map[key] || 0) + qty;
+    }
+    if (!Object.keys(map).length) return;
+    ps._lootRecovered = { at: Date.now(), items: map };
+  }
+
+  /* The shield itself: what may NOT be dropped by a death happening right
+     now, because the player was still frozen by the pickup that granted it.
+     Decided ONCE, at death, and then stored on ps -- the respawn wipe runs
+     five seconds later and would fail any freshness test by then.  That is
+     the v2.3.1616 lesson exactly: the death wipe and the respawn wipe are
+     two wipes, and an exemption that only covers the first is cosmetic. */
+  _deathRecoveryShield(ps) {
+    const rec = ps && ps._lootRecovered;
+    if (!rec || !rec.items) return null;
+    if (Date.now() - (rec.at || 0) > this.DEATH_REDROP_GRACE_MS) return null;
+    return rec.items;
+  }
+
+  /* The death wipe, with both carve-outs applied in ONE place so "kept" and
+     "dropped" can never disagree (the v2.3.1701 rule -- disagreement mints a
+     duplicate on the ground).  _keepGatherTools keeps the FULL quantity of
+     every key that survives death outright; the shield adds back only the
+     quantity _spawnDeathPile withheld from the pile, so for any key the two
+     sides sum to exactly what the player had. */
+  _wipeInventoryOnDeath(ps) {
+    const keep = this._keepGatherTools(ps.inventory);
+    const shield = ps && ps._deathShield;
+    if (shield) {
+      for (const k of Object.keys(shield)) {
+        const q = Math.floor(Number(shield[k]) || 0);
+        if (q > 0) keep[k] = Math.max(keep[k] || 0, q);
+      }
+    }
+    return keep;
+  }
+
   _spawnDeathPile(ps, playerId) {
     if (!ps || !ps.inventory) return null;
     const items = [];
@@ -3638,9 +3752,15 @@ export class GameRoom {
        v2.3.1701: quest objective items keep the bag for the same reason and
        must be excluded here for the same reason — ONE predicate decides
        both, so "kept" and "dropped" can never disagree and duplicate. */
+    /* v2.3.2491: the third carve-out -- whatever a loot pickup handed over
+       in the last DEATH_REDROP_GRACE_MS.  Subtracted rather than skipped,
+       because the player may well have been carrying some of the same key
+       already and only the newly-credited part is shielded. */
+    const shield = ps._deathShield || null;
     for (const [k, v] of Object.entries(ps.inventory)) {
       if (this._keptThroughDeath(k)) continue;
-      const qty = Math.floor(Number(v) || 0);
+      let qty = Math.floor(Number(v) || 0);
+      if (shield && shield[k]) qty -= Math.floor(Number(shield[k]) || 0);
       if (qty > 0) items.push({ key: k, qty });
     }
     if (items.length === 0) return null;
@@ -3830,6 +3950,10 @@ export class GameRoom {
         ps.inventory[key] = (ps.inventory[key] || 0) + qty;
         itemsForMe.push({ key, qty });
       }
+      /* v2.3.2491: stamp what was just handed over, so a death inside the
+         client's 500 ms pickup freeze cannot drop it straight back
+         (_deathRecoveryShield). */
+      this._stampLootRecovered(ps, itemsForMe);
       pile.claimedBy[session.id] = true;
       pile.inventoryClaimed = true;
       this._saveRpg(session.id, ps);
@@ -3942,6 +4066,16 @@ export class GameRoom {
       if (!ps.inventory) ps.inventory = {};
       ps.inventory[gemForMe] = (ps.inventory[gemForMe] || 0) + 1;
     }
+    /* v2.3.2491: the SAME 500 ms client freeze fires for a kill pile's
+       trophy, shard or gem, so the same shield applies -- the player did not
+       choose to stand still, the pickup did. */
+    {
+      const _justGot = [];
+      if (skullForMe) _justGot.push({ key: this._invKeyForSkull(skullForMe, pile.skullArch), qty: 1 });
+      if (shardForMe) _justGot.push({ key: shardForMe, qty: 1 });
+      if (gemForMe) _justGot.push({ key: gemForMe, qty: 1 });
+      if (_justGot.length) this._stampLootRecovered(ps, _justGot);
+    }
     this._saveRpg(session.id, ps);
 
     // Private credit to the picker -- this is the authoritative grant.
@@ -4027,6 +4161,10 @@ export class GameRoom {
     // now -- see market.js).  Before the Upgrade check like _room_count.
     if (url.pathname.startsWith('/api/market')) {
       return this._marketFetch(request);
+    }
+    // v2.3.2475: general-store HTTP surface -- see store.js.
+    if (url.pathname.startsWith('/api/store')) {
+      return this._storeFetch(request);
     }
     // v2.3.1126: arena HTTP surface (same fold -- see gladiator.js).
     if (url.pathname.startsWith('/api/arena')) {
@@ -5156,6 +5294,7 @@ Object.assign(GameRoom.prototype, chatLaneMethods); /* v2.3.2136 */
 Object.assign(GameRoom.prototype, broVerifyMethods); /* v2.3.1576 */
 Object.assign(GameRoom.prototype, eventCapeMethods); /* v2.3.2026 */
 Object.assign(GameRoom.prototype, marketMethods);
+Object.assign(GameRoom.prototype, storeMethods);   /* v2.3.2475: the general store */
 Object.assign(GameRoom.prototype, shopMethods);   /* v2.3.2047 */
 // v2.3.1119: trade settlement mixin (same pattern).
 Object.assign(GameRoom.prototype, tradeMethods);

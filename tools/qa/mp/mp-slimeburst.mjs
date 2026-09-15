@@ -137,5 +137,74 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !s || !s.visible || s.sx <= idle[c.id] * 1.5, { case: c.id, idle: idle[c.id], s });
   }
 
+  /* ══ v2.3.2491: A FRAME HITCH LONGER THAN THE BURST ══════════════════════
+   * The burst is 400 ms long, which is shorter than plenty of real frames on
+   * a phone -- a per-zone texture upload, a GC pause, the loot pile's own
+   * sprite landing.  On a wall-clock window a single one of those at the
+   * wrong moment ends the animation with nothing drawn, or with one frame
+   * drawn and the rest skipped, and the player sees the swollen slime freeze
+   * and vanish.
+   *
+   * THE HITCH IS REAL, not simulated: the busy-wait below blocks the main
+   * thread, so no rAF callback can run for its duration -- exactly what a
+   * long frame is.  Two of them, because the two halves fail differently:
+   *   (a) BEFORE anything is drawn -- fixed by starting the clock on the
+   *       first rendered frame;
+   *   (b) AFTER the first frame -- fixed by advancing the clock by rendered
+   *       frames with a capped step, which starting it later does nothing
+   *       about.  This is the half the first cut of the fix missed.
+   */
+  for (const [label, preMs, hitchMs] of [['before the first frame', 0, 600],
+    ['after the first frame', 40, 600]]) {
+    const id = 'qa-burst-hitch-' + preMs;
+    await P.page.evaluate(({ mid }) => {
+      const S = window._gameState.current;
+      S.monsters = (S.monsters || []).concat([{
+        id: mid, x: S.player.x + 70, y: S.player.y,
+        hp: 100, maxHp: 100, curHp: 100, alive: true,
+        arch: 'fodder', type: 'fodder', level: 3,
+        statuses: {}, vx: 0, vy: 0, atkCd: 0,
+        spawnX: S.player.x + 70, spawnY: S.player.y,
+      }]);
+    }, { mid: id });
+    await P.page.waitForTimeout(400);
+    const liveSx = await spriteOf(P, id);
+
+    await P.page.evaluate(async ({ mid, pre, hitch }) => {
+      const S = window._gameState.current;
+      const m = S.monsters.find((x) => x.id === mid);
+      if (m) { m.curHp = 0; m.alive = false; }
+      if (pre) await new Promise((r) => setTimeout(r, pre));
+      const t0 = Date.now();
+      while (Date.now() - t0 < hitch) { /* block the main thread -- a long frame */ }
+    }, { mid: id, pre: preMs, hitch: hitchMs });
+
+    /* One frame after the hitch: on a wall-clock window the burst is over
+       (or was never entered) and the corpse is gone.  It should be playing. */
+    await P.page.waitForTimeout(60);
+    const after = await P.page.evaluate((mid) => {
+      const S = window._gameState.current;
+      const m = S.monsters.find((x) => x.id === mid);
+      const s = window.__btMonsterSprite ? window.__btMonsterSprite(mid) : null;
+      return { state: m && m._slimeState, clock: m && m._burstClock ? m._burstClock.t : null,
+        sx: s ? s.sx : null, visible: s ? s.visible : null };
+    }, id);
+    console.log(`    hitch ${label}: ` + JSON.stringify(after));
+    rec.ok(`a ${hitchMs}ms frame hitch ${label} does not skip the burst`,
+      after.visible === true && after.clock != null && after.clock < 400,
+      { label, after, liveSx });
+    /* ...and it still ENDS: a burst that cannot be skipped must not become a
+       corpse that never leaves either. */
+    await P.page.waitForTimeout(900);
+    const ended = await spriteOf(P, id);
+    rec.ok(`...and it still finishes afterwards (${label})`,
+      !ended || !ended.visible || ended.sx <= (liveSx ? liveSx.sx : 1) * 1.5,
+      { label, ended, liveSx });
+    await P.page.evaluate((mid) => {
+      const S = window._gameState.current;
+      S.monsters = (S.monsters || []).filter((x) => x.id !== mid);
+    }, id);
+  }
+
   await P.ctx.close().catch(() => {});
 }

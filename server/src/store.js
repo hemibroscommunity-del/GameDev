@@ -1,0 +1,632 @@
+/* ═══ v2.3.2475: THE GENERAL STORE — PER-LISTING SALES (PHASE 1) ═══
+ *
+ * The order book next door (market.js) is a BUCKET book: five taxonomy
+ * fields make an index key, a resting buy IS a bid for that whole bucket,
+ * and the first crossing order executes.  That shape cannot express the
+ * thing the owner asked for — "bid or buy THIS sword" — and it can only
+ * ever list one kind of goods (a stash weapon), because the bucket key is
+ * a weapon taxonomy.  So this is a second, per-LISTING surface beside it
+ * rather than a rewrite of it: the order book keeps working unchanged (its
+ * suite still pins it), and a listing here is one seller, one pile of
+ * goods, one ask price, and at most one live bid.
+ *
+ * PHASE 1 SCOPE (owner decision D11, docs/BACKLOG-TRIAGE-2026-09-14.md
+ * §0.4): stackable inventory items and weapons from the SERVER's weapon
+ * stash.  Armour, shields, legs, cosmetics and amulets are NOT listable
+ * and must not be added here without doing the work first — those stashes
+ * are client-local (the server holds only the equipped slot; grids.js:860
+ * "armor lives in a client-only armorStash"), and handoff rule 16 forbids
+ * escrowing a blob the client supplies.  Phase 2 moves those stashes
+ * server-side; phase 3 lists them.
+ *
+ * Mixed into GameRoom via Object.assign(GameRoom.prototype, storeMethods)
+ * in index.js, same as market.js — escrow has to be a synchronous mutation
+ * of the playerState/rpg blobs this DO already owns (handoff rule 9: no
+ * cross-DO await between a validation and the commit that depends on it).
+ *
+ * Storage keys (GameRoom storage, never inside the rpg blob — rule 1):
+ *   store_listing:<listingId>   one listing, holding the escrowed goods,
+ *                               the live bid, and any in-flight marker
+ *
+ * ── WHY THE INTENT MARKERS EXIST (read before editing any money path) ──
+ *
+ * market.js escrows at PLACEMENT, so its record already names everything
+ * of value the moment it lands.  A store sale cannot: the buyer's gold
+ * arrives at BUY time, after the record exists, so there is a window where
+ * money has moved and nothing on disk names whose it was.  A DO restart in
+ * that window (a deploy, an eviction) loses it — the exact class of bug
+ * v2.3.1184 closed on the order book.
+ *
+ * So every money move here is preceded by a marker written INTO the
+ * listing record, and the wake-time rebuild converges on the marker:
+ *   rec.sale     — a buy-now (or an accepted bid) is settling.  Resume iff
+ *                  the payment stamp is present (or the money was already
+ *                  escrowed by the bid); otherwise clear it and re-list.
+ *   rec.pendBid  — a bid is being escrowed.  Promote it iff its debit
+ *                  stamp is present; otherwise drop it — no money moved.
+ *   rec.releasing — a cancel or an expiry is handing everything back
+ *                  (v2.3.2506).  Finish the release and delete; never
+ *                  re-list, or the goods and the bid go out twice.
+ * Because only records CARRYING a marker need an oplog read, the rebuild
+ * costs one paged list() and (almost always) zero extra storage reads —
+ * handoff rule 9's second edge: a storage await holds the whole room.
+ *
+ * Settlement itself is credit-first / delete-last with deterministic
+ * opIds, exactly as rule 5/6 require:
+ *   store:<id>:goods           the goods leg  (buyer)
+ *   store:<id>:gold            the money leg  (seller)
+ *   store:<id>:pay             the buyer's payment debit (buy-now)
+ *   store:<id>:bid:<seq>       a bidder's escrow debit
+ *   store:<id>:bidref:<seq>    an outbid/cancel/expiry refund
+ *   store:<id>:refund          goods returned to the seller
+ *   store:<id>:unwind          a listing whose record could not be written
+ * The goods leg settles FIRST — it is the unique, irreplaceable half of
+ * the trade (market.js's v2.3.1184 note, same reasoning).
+ *
+ * NO ALARMS (rule 12): listings expire lazily.  Every store request runs a
+ * rate-limited, bounded sweep; an expired listing refunds its bid and
+ * mails the goods back to the seller.
+ *
+ * The sold notice reuses the mail the economy already has: the seller's
+ * gold leg is a _creditPlayer with source 'market', which reaches an
+ * online seller as `inbox_delivered` and an offline one through
+ * `inbox:<pid>` at their next join.  No new event type, so nothing to add
+ * to PRIVILEGED_EVENTS. */
+
+import { SHOP_ITEMS } from './data.js';
+
+export const STORE = {
+  LISTING_EXPIRY: 86400000,   // 24h, same as the order book's listings
+  MAX_PER_PLAYER: 10,         // ...and the same per-player ceiling
+  MAX_GLOBAL: 2000,           // hard bound on the rebuild's list() (rule 9)
+  SWEEP_INTERVAL: 60000,
+  SWEEP_MAX: 20,              // expired listings resolved per sweep pass
+  LOAD_PAGE: 500,             // rebuild page size
+  PAGE_DEFAULT: 20,
+  PAGE_MAX: 40,
+  BID_LOG_CAP: 10,
+  MAX_PRICE: 999999,
+  MAX_QTY: 9999,
+  MIN_BID_STEP: 1,
+};
+
+/* The bag's potion filter is keyed off the shop's own consumables
+   (isPotionKey -> POTION_THUMBS, src/ui/mobile/dash/InventoryPanel.jsx),
+   and SHOP_ITEMS is the table that one mirrors.  Lowercased because the
+   ids are camelCase ('manaShard') and inventory keys are not. */
+const POTION_KEYS = new Set(Object.keys(SHOP_ITEMS).map((k) => k.toLowerCase()));
+
+export const storeMethods = {
+  /* ── derivation: the server says what a listing IS ──────────────────
+   *
+   * market.js:66-69 documents the hole this avoids: there, the listed
+   * taxonomy is client-supplied and nothing checks it against the escrowed
+   * weapon, "so a modified client can advertise a copper blade as godly".
+   * Here the request names only WHICH of the seller's own goods to list
+   * (an inventory key they hold, or a stash index) — every field the store
+   * displays is read off the server's own copy after escrow. */
+  _stCategory(key) {
+    const k = String(key || '').toLowerCase();
+    /* Mirror of classify() in src/ui/mobile/dash/InventoryPanel.jsx:34-59,
+       so the store's tabs group exactly like the bag's filter chips.  Drift
+       here files an item under the wrong tab — cosmetic, not a value bug —
+       which is why this is a mirror and not a new authority. */
+    if (/sword|bow|staff|spear|axe|dagger|hammer|wand|gauntlet/.test(k)) return 'weapon';
+    if (/helm|cuirass|armor|shield|robe|cape|boots|gloves|mail|plate/.test(k)) return 'armor';
+    if (POTION_KEYS.has(k)) return 'potion';
+    if (/potion|elixir|tonic|salve|brew|tincture|draught/.test(k)) return 'potion';
+    return 'crafting';
+  },
+
+  // Display fields, read off the escrowed server-side goods only.
+  _stDisplay(kind, invKey, weapon) {
+    if (kind === 'weapon') {
+      const w = weapon || {};
+      return {
+        name: typeof w.name === 'string' ? w.name.slice(0, 40) : 'Weapon',
+        type: typeof w.type === 'string' ? w.type : null,
+        tier: typeof w.tier === 'string' ? w.tier : null,
+        tierMult: typeof w.tierMult === 'number' ? w.tierMult : 1,
+        element1: typeof w.element1 === 'string' ? w.element1 : null,
+        element2: typeof w.element2 === 'string' ? w.element2 : null,
+        quality: typeof w.quality === 'string' ? w.quality : null,
+        hardness: typeof w.hardness === 'number' ? w.hardness : 0,
+        temper: typeof w.temper === 'number' ? w.temper : 0,
+      };
+    }
+    return { name: String(invKey || ''), invKey: String(invKey || '') };
+  },
+
+  _stLabel(rec) {
+    const n = (rec.disp && rec.disp.name) || 'item';
+    return rec.kind === 'weapon' ? n : (rec.qty > 1 ? rec.qty + 'x ' + n : n);
+  },
+
+  /* The public view of a listing.  The escrowed weapon BLOB never goes on
+     the wire — a buyer needs the derived stats above, not the object the
+     server will hand them, and shipping the blob is how a client learns to
+     re-post it.  (The order book does ship it; that is its legacy shape,
+     not a pattern to copy.) */
+  _stPublic(o) {
+    return {
+      id: o.id,
+      sellerId: o.sellerId,
+      sellerName: o.sellerName,
+      kind: o.kind,
+      cat: o.cat,
+      qty: o.qty,
+      askPrice: o.askPrice,
+      createdAt: o.createdAt,
+      expiresAt: o.expiresAt,
+      disp: o.disp,
+      topBid: o.topBid ? { name: o.topBid.bidderName, bidderId: o.topBid.bidderId, amount: o.topBid.amount, at: o.topBid.at } : null,
+      bidCount: Array.isArray(o.bids) ? o.bids.length : 0,
+      selling: !!o.sale,
+    };
+  },
+
+  /* ── index ────────────────────────────────────────────────────────
+     One Map of live listings, rebuilt once per DO wake.  Bounded by
+     STORE.MAX_GLOBAL (enforced at placement) and read in pages, because
+     an unbounded list() holds the room's input gate for its whole
+     duration (rule 9, v2.3.2438). */
+  async _stEnsureIndex() {
+    if (this._stIndex) return;
+    this._stIndex = new Map();
+    this._stCounts = new Map();
+    let after = null;
+    for (;;) {
+      const opts = { prefix: 'store_listing:', limit: STORE.LOAD_PAGE };
+      if (after) opts.startAfter = after;
+      const page = await this.state.storage.list(opts);
+      let last = null;
+      for (const [k, rec] of page) {
+        last = k;
+        if (!rec || !rec.id) { await this.state.storage.delete(k); continue; }
+        if (await this._stConverge(rec)) this._stAddToIndex(rec);
+      }
+      if (page.size < STORE.LOAD_PAGE || !last) break;
+      after = last;
+    }
+  },
+
+  /* Converge one record read off disk.  Returns true if it should be
+     re-listed, false if it was resolved (and deleted) here.  Only records
+     carrying an in-flight marker cost an oplog read. */
+  async _stConverge(rec) {
+    /* v2.3.2506: a cancel or an expiry was mid-flight when the DO died.
+       Finish it rather than putting it back on the shelf — every leg of
+       _stRelease is idempotent through its own opId, so a refund that
+       already landed reports `dup` and nobody is paid twice, and the
+       release ends in the delete the crash missed. */
+    if (rec.releasing) {
+      await this._stRelease(rec, rec.releasing.why || 'listing cancelled');
+      return false;
+    }
+    if (rec.sale) {
+      // A buy-now or an accepted bid was mid-settlement when the DO died.
+      const paid = rec.sale.paid || (await this._opSeen('store:' + rec.id + ':pay'));
+      if (paid) {
+        await this._stSettle(rec, rec.sale.buyerId, rec.sale.buyerName, rec.sale.price, rec.sale.bidSeq || null);
+        await this.state.storage.delete('store_listing:' + rec.id);
+        return false;
+      }
+      // The money never moved: the listing simply goes back on the shelf.
+      rec.sale = null;
+      await this.state.storage.put('store_listing:' + rec.id, rec);
+    }
+    if (rec.pendBid) {
+      const pb = rec.pendBid;
+      if (await this._opSeen('store:' + rec.id + ':bid:' + pb.seq)) {
+        await this._stPromoteBid(rec, pb);
+      } else {
+        rec.pendBid = null;
+        await this.state.storage.put('store_listing:' + rec.id, rec);
+      }
+    }
+    return true;
+  },
+
+  _stAddToIndex(rec) {
+    this._stIndex.set(rec.id, rec);
+    this._stCounts.set(rec.sellerId, (this._stCounts.get(rec.sellerId) || 0) + 1);
+  },
+
+  _stRemoveFromIndex(rec) {
+    if (!this._stIndex.delete(rec.id)) return;
+    const n = (this._stCounts.get(rec.sellerId) || 1) - 1;
+    if (n <= 0) this._stCounts.delete(rec.sellerId);
+    else this._stCounts.set(rec.sellerId, n);
+  },
+
+  /* ── HTTP surface ─────────────────────────────────────────────────
+     Same shape as the order book's: routed from the outer worker to this
+     room, every mutating response carries `settled: true` (rule 19) and
+     every mutating request carries the caller's own session token
+     (httpauth.js — a public playerId was never authentication, v2.3.1178). */
+  async _storeFetch(request) {
+    const url = new URL(request.url);
+    const path = url.pathname.replace('/api/store', '');
+    const H = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
+    const deny = () => new Response(JSON.stringify({ ok: false, settled: true, error: 'Not authorized' }), { status: 403, headers: H });
+    try {
+      await this._stEnsureIndex();
+      await this._stSweep();
+
+      if (request.method === 'GET' && path.startsWith('/browse')) {
+        const out = this._stBrowse(url.searchParams.get('cat'), url.searchParams.get('cursor'), Number(url.searchParams.get('limit')));
+        return new Response(JSON.stringify({ ok: true, ...out }), { headers: H });
+      }
+      if (request.method === 'GET' && path.startsWith('/mine')) {
+        const pid = url.searchParams.get('playerId');
+        const mine = [];
+        for (const rec of this._stIndex.values()) if (rec.sellerId === pid) mine.push(this._stPublic(rec));
+        const bidding = [];
+        for (const rec of this._stIndex.values()) {
+          if (rec.topBid && rec.topBid.bidderId === pid && rec.sellerId !== pid) bidding.push(this._stPublic(rec));
+        }
+        mine.sort((a, b) => b.createdAt - a.createdAt);
+        bidding.sort((a, b) => b.createdAt - a.createdAt);
+        return new Response(JSON.stringify({ ok: true, listings: mine, bidding }), { headers: H });
+      }
+      if (request.method === 'POST') {
+        const body = await request.json();
+        const pid = body && body.playerId;
+        if (!this._httpAuthCheck(pid, request)) return deny();
+        let result;
+        if (path.startsWith('/list')) result = await this._stCreateListing(body);
+        else if (path.startsWith('/buy')) result = await this._stBuyNow(body.listingId, pid);
+        else if (path.startsWith('/bid')) result = await this._stPlaceBid(body.listingId, pid, body.amount);
+        else if (path.startsWith('/accept')) result = await this._stAcceptBid(body.listingId, pid);
+        else return new Response(JSON.stringify({ ok: false, error: 'Not found' }), { status: 404, headers: H });
+        return new Response(JSON.stringify(result), { headers: H });
+      }
+      if (request.method === 'DELETE' && path.startsWith('/cancel')) {
+        const pid = url.searchParams.get('playerId');
+        if (!this._httpAuthCheck(pid, request)) return deny();
+        const result = await this._stCancel(url.searchParams.get('id'), pid);
+        return new Response(JSON.stringify(result), { headers: H });
+      }
+      return new Response(JSON.stringify({ ok: false, error: 'Not found' }), { status: 404, headers: H });
+    } catch (err) {
+      return new Response(JSON.stringify({ ok: false, error: err.message }), { status: 500, headers: H });
+    }
+  },
+
+  /* ── browse: ONE PAGE, never the whole shelf ───────────────────────
+     `_mktQueryOrders` walks every bucket and hands back up to 100 whole
+     order records including their escrowed blobs; at a few thousand
+     listings that is a response nobody can render and a payload nobody
+     asked for.  This pages instead: newest first, the cursor is the last
+     row's own sort key, so a listing that sells between two pages shifts
+     nothing (no offset to slide). */
+  _stBrowse(cat, cursor, limit) {
+    const lim = Math.min(STORE.PAGE_MAX, Math.max(1, Math.floor(limit) || STORE.PAGE_DEFAULT));
+    const wanted = cat && cat !== 'all' ? String(cat) : null;
+    const rows = [];
+    for (const rec of this._stIndex.values()) {
+      if (rec.sale) continue;                     // mid-settlement: not for sale
+      if (wanted && rec.cat !== wanted) continue;
+      rows.push(rec);
+    }
+    // Newest first; the id breaks ties so the order is total and stable.
+    rows.sort((a, b) => (b.createdAt - a.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    let start = 0;
+    if (cursor) {
+      const i = rows.findIndex((r) => r.createdAt + ':' + r.id === cursor);
+      start = i === -1 ? 0 : i + 1;
+    }
+    const page = rows.slice(start, start + lim);
+    const nextCursor = (start + lim) < rows.length && page.length
+      ? page[page.length - 1].createdAt + ':' + page[page.length - 1].id
+      : null;
+    return { listings: page.map((r) => this._stPublic(r)), nextCursor, total: rows.length };
+  },
+
+  /* ── list: escrow the goods, THEN write the record ──────────────────
+     Rule 7: money at rest escrows at placement.  The goods leave the
+     seller now and live in the record until someone buys them, the seller
+     delists, or it expires.
+
+     The order of the two is forced: the record is what every refund path
+     keys off, so if the put throws AFTER the goods have left, the seller
+     is short an item nothing names (market.js's v2.3.1971 incident —
+     "escrow that can't be written is escrow that never existed").  Hence
+     the unwind below. */
+  async _stCreateListing(body) {
+    const { playerId, kind, price } = body || {};
+    if (!playerId) return { ok: false, settled: true, error: 'Missing fields' };
+    const p = Math.floor(Number(price) || 0);
+    if (!(p >= 1 && p <= STORE.MAX_PRICE)) return { ok: false, settled: true, error: 'Invalid price' };
+    if (kind !== 'item' && kind !== 'weapon') return { ok: false, settled: true, error: 'Invalid kind' };
+
+    const ps = this.playerState[playerId];
+    if (!ps) return { ok: false, settled: true, error: 'Not in game' };
+    if ((this._stCounts.get(playerId) || 0) >= STORE.MAX_PER_PLAYER) {
+      return { ok: false, settled: true, error: 'Max ' + STORE.MAX_PER_PLAYER + ' listings' };
+    }
+    if (this._stIndex.size >= STORE.MAX_GLOBAL) return { ok: false, settled: true, error: 'Store is full' };
+
+    const id = crypto.randomUUID();
+    const escrowOp = 'store:' + id + ':esc';
+    let invKey = null; let weapon = null; let qty = 1;
+
+    if (kind === 'item') {
+      const k = typeof body.invKey === 'string' ? body.invKey : '';
+      /* Same two gates the trade sanitizer uses (trade.js:76-96): a bounded
+         key, and never an Object.prototype member — `inv.constructor` is
+         truthy and inherited, so an ownership check that indexes the map
+         directly passes on goods nobody holds (v2.3.1971). */
+      if (!k || k.length > 32 || Object.prototype.hasOwnProperty.call(Object.prototype, k)) {
+        return { ok: false, settled: true, error: 'Invalid item' };
+      }
+      qty = Math.floor(Number(body.qty) || 0);
+      if (!(qty >= 1 && qty <= STORE.MAX_QTY)) return { ok: false, settled: true, error: 'Invalid quantity' };
+      const took = await this._escrowTakeItem(playerId, k, qty, escrowOp);
+      if (!took.ok) return { ok: false, settled: true, error: 'You do not have that' };
+      invKey = k;
+    } else {
+      const idx = Math.floor(Number(body.stashIndex));
+      if (!Number.isFinite(idx) || idx < 0 || !Array.isArray(ps.weaponStash) || idx >= ps.weaponStash.length) {
+        return { ok: false, settled: true, error: 'Item not in stash' };
+      }
+      // Rule 16: the server's own copy by index — body.item is ignored.
+      weapon = this._sanitizeWeapon(ps.weaponStash[idx]);
+      if (!weapon) return { ok: false, settled: true, error: 'Item not in stash' };
+      ps.weaponStash.splice(idx, 1);
+      this._saveRpg(playerId, ps);
+      this._queuePlayerStateFlush(playerId);
+    }
+
+    const now = Date.now();
+    const rec = {
+      id,
+      sellerId: playerId,
+      sellerName: (typeof ps.name === 'string' && ps.name) ? ps.name.slice(0, 24) : (this._stNameOf(playerId) || 'Someone'),
+      kind,
+      invKey,
+      weapon,
+      qty: kind === 'weapon' ? 1 : qty,
+      cat: kind === 'weapon' ? 'weapon' : this._stCategory(invKey),
+      disp: this._stDisplay(kind, invKey, weapon),
+      askPrice: p,
+      createdAt: now,
+      expiresAt: now + STORE.LISTING_EXPIRY,
+      bidSeq: 0,
+      topBid: null,
+      pendBid: null,
+      bids: [],
+      sale: null,
+    };
+
+    try {
+      await this.state.storage.put('store_listing:' + id, rec);
+    } catch (err) {
+      /* Nothing is stamped or credited yet, so this is a plain restore —
+         through _creditPlayer so a seller who vanished between the escrow
+         and the failure still gets their goods, in the mail. */
+      await this._creditPlayer(playerId, {
+        opId: 'store:' + id + ':unwind', source: 'market',
+        kind: kind === 'weapon' ? 'weapon' : 'item',
+        payload: kind === 'weapon' ? { weapon } : { invKey, count: qty },
+        note: 'listing failed',
+      });
+      throw err;
+    }
+
+    this._stAddToIndex(rec);
+    return { ok: true, settled: true, listing: this._stPublic(rec) };
+  },
+
+  // The display name for a seller, from the session the room already has.
+  _stNameOf(playerId) {
+    for (const [, s] of this.sessions) if (s.id === playerId) return s.name;
+    return null;
+  },
+
+  /* ── buy now ──────────────────────────────────────────────────────── */
+  async _stBuyNow(listingId, buyerId) {
+    const rec = this._stIndex.get(String(listingId || ''));
+    if (!rec) return { ok: false, settled: true, error: 'That listing is gone' };
+    if (rec.sale || rec.pendBid) return { ok: false, settled: true, error: 'Someone is buying that right now' };
+    if (rec.sellerId === buyerId) return { ok: false, settled: true, error: 'That is your own listing' };
+    const ps = this.playerState[buyerId];
+    if (!ps) return { ok: false, settled: true, error: 'Not in game' };
+    if ((ps.coins || 0) < rec.askPrice) return { ok: false, settled: true, error: 'Not enough gold' };
+
+    // Intent first (see the header): the record names the buyer BEFORE any
+    // money moves, so a restart mid-sale finishes it instead of losing it.
+    rec.sale = { buyerId, buyerName: this._stNameOf(buyerId) || 'Someone', price: rec.askPrice, paid: false, bidSeq: null, at: Date.now() };
+    await this.state.storage.put('store_listing:' + rec.id, rec);
+
+    const paid = await this._escrowDebitGold(buyerId, rec.askPrice, 'store:' + rec.id + ':pay');
+    if (!paid.ok) {
+      rec.sale = null;
+      await this.state.storage.put('store_listing:' + rec.id, rec);
+      return { ok: false, settled: true, error: 'Not enough gold' };
+    }
+
+    const price = rec.sale.price;
+    const buyerName = rec.sale.buyerName;
+    await this._stSettle(rec, buyerId, buyerName, price, null);
+    this._stRemoveFromIndex(rec);
+    await this.state.storage.delete('store_listing:' + rec.id);
+    return { ok: true, settled: true, bought: true, price, listing: this._stPublic(rec) };
+  },
+
+  /* ── bid ──────────────────────────────────────────────────────────
+     A bid is gold at rest, so it escrows the moment it is placed (rule 7)
+     and the previous bidder is refunded in the same event.  A bid that
+     reaches the ask is simply a purchase — there is nothing left for the
+     seller to decide, and leaving it resting would let a listing sit
+     "sold" without settling. */
+  async _stPlaceBid(listingId, bidderId, amount) {
+    const rec = this._stIndex.get(String(listingId || ''));
+    if (!rec) return { ok: false, settled: true, error: 'That listing is gone' };
+    if (rec.sale || rec.pendBid) return { ok: false, settled: true, error: 'Someone is buying that right now' };
+    if (rec.sellerId === bidderId) return { ok: false, settled: true, error: 'That is your own listing' };
+    const amt = Math.floor(Number(amount) || 0);
+    if (!(amt >= 1 && amt <= STORE.MAX_PRICE)) return { ok: false, settled: true, error: 'Invalid bid' };
+    if (amt >= rec.askPrice) return this._stBuyNow(listingId, bidderId);
+    const floor = rec.topBid ? rec.topBid.amount + STORE.MIN_BID_STEP : 1;
+    if (amt < floor) return { ok: false, settled: true, error: 'Bid at least ' + floor };
+    const ps = this.playerState[bidderId];
+    if (!ps) return { ok: false, settled: true, error: 'Not in game' };
+    if ((ps.coins || 0) < amt) return { ok: false, settled: true, error: 'Not enough gold' };
+
+    const seq = (rec.bidSeq || 0) + 1;
+    rec.pendBid = { seq, bidderId, bidderName: this._stNameOf(bidderId) || 'Someone', amount: amt, at: Date.now() };
+    await this.state.storage.put('store_listing:' + rec.id, rec);
+
+    const took = await this._escrowDebitGold(bidderId, amt, 'store:' + rec.id + ':bid:' + seq);
+    if (!took.ok) {
+      rec.pendBid = null;
+      await this.state.storage.put('store_listing:' + rec.id, rec);
+      return { ok: false, settled: true, error: 'Not enough gold' };
+    }
+    await this._stPromoteBid(rec, rec.pendBid);
+    return { ok: true, settled: true, bid: true, amount: amt, listing: this._stPublic(rec) };
+  },
+
+  /* Promote an escrowed bid to the top: refund whoever it outbid, then
+     write the record.  Idempotent — the refund carries the outbid bid's
+     own sequence number, so replaying this after a restart pays once. */
+  async _stPromoteBid(rec, pend) {
+    const prev = rec.topBid;
+    if (prev && prev.seq !== pend.seq) {
+      await this._creditPlayer(prev.bidderId, {
+        opId: 'store:' + rec.id + ':bidref:' + prev.seq, source: 'market', kind: 'gold',
+        payload: { amount: prev.amount }, note: 'outbid on ' + this._stLabel(rec),
+      });
+    }
+    rec.bidSeq = pend.seq;
+    rec.topBid = { seq: pend.seq, bidderId: pend.bidderId, bidderName: pend.bidderName, amount: pend.amount, at: pend.at };
+    rec.pendBid = null;
+    if (!Array.isArray(rec.bids)) rec.bids = [];
+    rec.bids.push({ seq: pend.seq, name: pend.bidderName, amount: pend.amount, at: pend.at });
+    if (rec.bids.length > STORE.BID_LOG_CAP) rec.bids.splice(0, rec.bids.length - STORE.BID_LOG_CAP);
+    await this.state.storage.put('store_listing:' + rec.id, rec);
+  },
+
+  /* ── the seller takes the top bid ──────────────────────────────────
+     The bidder's gold is already escrowed, so `paid: true` on the marker:
+     there is no debit left to make and the rebuild must not look for one. */
+  async _stAcceptBid(listingId, sellerId) {
+    const rec = this._stIndex.get(String(listingId || ''));
+    if (!rec) return { ok: false, settled: true, error: 'That listing is gone' };
+    if (rec.sellerId !== sellerId) return { ok: false, settled: true, error: 'Not yours' };
+    if (rec.sale || rec.pendBid) return { ok: false, settled: true, error: 'Someone is buying that right now' };
+    if (!rec.topBid) return { ok: false, settled: true, error: 'No bids yet' };
+
+    const bid = rec.topBid;
+    rec.sale = { buyerId: bid.bidderId, buyerName: bid.bidderName, price: bid.amount, paid: true, bidSeq: bid.seq, at: Date.now() };
+    await this.state.storage.put('store_listing:' + rec.id, rec);
+
+    await this._stSettle(rec, bid.bidderId, bid.bidderName, bid.amount, bid.seq);
+    this._stRemoveFromIndex(rec);
+    await this.state.storage.delete('store_listing:' + rec.id);
+    return { ok: true, settled: true, accepted: true, price: bid.amount, listing: this._stPublic(rec) };
+  },
+
+  /* ── settlement ────────────────────────────────────────────────────
+     Credit-first, delete-last (rule 6).  Goods before gold: the goods are
+     the irreplaceable half (market.js v2.3.1184).  `paidBidSeq` names a
+     bid whose escrow IS the payment, so it must not also be refunded;
+     any OTHER live bid is refunded here, because the listing is gone. */
+  async _stSettle(rec, buyerId, buyerName, price, paidBidSeq) {
+    const label = this._stLabel(rec);
+    await this._creditPlayer(buyerId, {
+      opId: 'store:' + rec.id + ':goods', source: 'market',
+      kind: rec.kind === 'weapon' ? 'weapon' : 'item',
+      payload: rec.kind === 'weapon' ? { weapon: rec.weapon } : { invKey: rec.invKey, count: rec.qty },
+      note: label + ' bought',
+    });
+    await this._creditPlayer(rec.sellerId, {
+      opId: 'store:' + rec.id + ':gold', source: 'market', kind: 'gold',
+      payload: { amount: price },
+      note: label + ' sold to ' + (buyerName || 'someone') + ' for ' + price,
+    });
+    if (rec.topBid && rec.topBid.seq !== paidBidSeq) {
+      await this._creditPlayer(rec.topBid.bidderId, {
+        opId: 'store:' + rec.id + ':bidref:' + rec.topBid.seq, source: 'market', kind: 'gold',
+        payload: { amount: rec.topBid.amount }, note: 'bid returned on ' + label,
+      });
+    }
+  },
+
+  /* ── cancel / expiry ───────────────────────────────────────────────
+     Both land here: refund the live bid, mail the goods home, delete the
+     record LAST.  Rule 6 — never refund over a stamped payout, or a crash
+     between a settlement's credits and its delete becomes a double-pay. */
+  async _stRelease(rec, why) {
+    if (await this._opSeen('store:' + rec.id + ':goods')) {
+      this._stRemoveFromIndex(rec);
+      await this.state.storage.delete('store_listing:' + rec.id);
+      return;
+    }
+    /* ── v2.3.2506: MARK BEFORE ANYTHING MOVES ────────────────────────
+       What follows is three separate disk writes — refund the bid, mail
+       the goods home, delete the record — and the worker restarts on
+       EVERY merge to main that touches server/**, so the gap between them
+       is a window that really opens.  Shipped without this marker, a
+       crash after the refunds left a record carrying no in-flight flag at
+       all: `_stConverge` read it as a perfectly healthy listing and put it
+       straight back on the shelf, still holding the goods it had already
+       returned and the bid it had already refunded.  Buying it then minted
+       a SECOND copy of the item, and accepting the stale bid paid the
+       seller gold nobody had paid — silent, repeatable by anyone who
+       noticed, and inflationary for everyone.
+       This is v2.3.1184 again: market.js `_mktEnsureIndex` (lines 96-103)
+       checks `refund:<id>` alongside its two settle stamps and DELETES
+       rather than re-lists for exactly this reason.  The store copied the
+       buy path's protection (rec.sale) and not the refund path's.
+       Announcing the release first, the way rec.sale and rec.pendBid
+       already do, keeps the fix inside this module's own design: only
+       records carrying a marker cost the rebuild an oplog read, which is
+       the property the header argues for. */
+    if (!rec.releasing) {
+      rec.releasing = { why, at: Date.now() };
+      await this.state.storage.put('store_listing:' + rec.id, rec);
+    }
+    if (rec.topBid) {
+      await this._creditPlayer(rec.topBid.bidderId, {
+        opId: 'store:' + rec.id + ':bidref:' + rec.topBid.seq, source: 'market', kind: 'gold',
+        payload: { amount: rec.topBid.amount }, note: 'bid returned on ' + this._stLabel(rec),
+      });
+    }
+    await this._creditPlayer(rec.sellerId, {
+      opId: 'store:' + rec.id + ':refund', source: 'market',
+      kind: rec.kind === 'weapon' ? 'weapon' : 'item',
+      payload: rec.kind === 'weapon' ? { weapon: rec.weapon } : { invKey: rec.invKey, count: rec.qty },
+      note: why,
+    });
+    this._stRemoveFromIndex(rec);
+    await this.state.storage.delete('store_listing:' + rec.id);
+  },
+
+  async _stCancel(listingId, sellerId) {
+    if (!listingId || !sellerId) return { ok: false, settled: true, error: 'Missing params' };
+    const rec = this._stIndex.get(String(listingId));
+    if (!rec) return { ok: false, settled: true, error: 'That listing is gone' };
+    if (rec.sellerId !== sellerId) return { ok: false, settled: true, error: 'Not yours' };
+    if (rec.sale || rec.pendBid) return { ok: false, settled: true, error: 'Someone is buying that right now' };
+    await this._stRelease(rec, 'listing cancelled');
+    return { ok: true, settled: true, cancelled: this._stPublic(rec) };
+  },
+
+  /* Lazy expiry (rule 12 — there are no alarms, and the tick stops when
+     the room empties).  Rate-limited and BOUNDED: each pass resolves at
+     most SWEEP_MAX listings, so one request can never hold the input gate
+     open for a whole backlog (rule 9's second edge). */
+  async _stSweep() {
+    const now = Date.now();
+    if (this._stLastSweep && now - this._stLastSweep < STORE.SWEEP_INTERVAL) return;
+    this._stLastSweep = now;
+    const due = [];
+    for (const rec of this._stIndex.values()) {
+      if (rec.expiresAt <= now && !rec.sale && !rec.pendBid) due.push(rec);
+      if (due.length >= STORE.SWEEP_MAX) break;
+    }
+    for (const rec of due) await this._stRelease(rec, 'listing expired');
+  },
+};

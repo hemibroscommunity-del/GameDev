@@ -255,6 +255,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!rings && rings.count === 0, rings);
   rec.ok(`...and it wears exactly ONE pointer chip instead (chips: ${rings && rings.chips})`,
     !!rings && rings.chips === 1, rings);
+  /* ═══ v2.3.2504: THE ONE RING THAT IS SUPPOSED TO BE THERE ═══
+     F1 adds a melee REACH ring on the locked monster, which is a deliberate
+     new ring on the very body this file spent four versions clearing.  The two
+     are not the same mark and the distinction is the point: the retired
+     reticle said "this is your target" (which the chip says now), the reach
+     ring says "your sword lands from inside here" -- a different fact, drawn
+     on the ground layer at the swing's own radius rather than as a 15px
+     decoration at the feet.
+
+     IT IS REPORTED RATHER THAN COUNTED, and that is worth being explicit
+     about.  The `count` above comes from a wrapper on the overlay Graphics'
+     circle(); the reach ring is drawn on engageRingGfx (the ground/telegraph
+     layer the candidate rings live on), which that wrapper does not see -- the
+     same blind spot the candidate rings have always sat in.  Rather than leave
+     a new ring outside the tripwire, the renderer names it in the same report,
+     so this file can still assert "no reticle circle came back" AND "the reach
+     ring is there, once, at the right size". */
+  const reach = rings && rings.reach;
+  rec.ok(`...and ONE melee reach ring, on the monster that is locked (${reach && reach.id})`,
+    !!reach && reach.id === 'locked', reach);
+  rec.ok(`...sized by the swing test, not by hand: ${reach && reach.r} = ${reach && reach.outer} + ${reach && reach.hitR}`,
+    !!reach && Math.abs(reach.r - (reach.outer + reach.hitR)) < 0.5, reach);
   /* And the chip is ABOVE the monster, not on it -- an upside-down triangle
      drawn at the feet would satisfy both counts above and be the wrong mark.
      __btAtkMark reports where the renderer actually put it; the body centre is

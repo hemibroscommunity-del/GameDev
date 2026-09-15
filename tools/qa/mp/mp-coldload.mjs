@@ -111,6 +111,18 @@ console.log('\n════ COLD LOAD, phone viewport 390x844 dpr3 ════'
 console.log(`zone ${info.zone} · ${reqs.length} requests · ${mb(total)} MB transferred`);
 console.log(`domcontentloaded ${marks.domcontentloaded}ms · playable ${marks.playable}ms`);
 
+/* v2.3.2500: the preload manifest's own settle report, printed beside the
+   bytes.  This harness already waits for PLAYABLE, which is the far side of
+   the intro gate, so the report is complete by here -- and the two readings
+   answer the two halves of the same question: the bytes say what a cold load
+   costs, and this says whether the things that were supposed to be paid for
+   up front actually settled.  A 'rejected' here is a group that will load
+   during play instead, which is what the animation-preloading law forbids
+   (CLAUDE.md). */
+const preload = await P.page.evaluate(() => window.__btPreloadReport || null);
+console.log('\n── preload manifest (window.__btPreloadReport) ──');
+console.log(preload ? JSON.stringify(preload) : 'MISSING -- preloadWorldAnimations never published');
+
 console.log('\n── by type ──');
 for (const [k, v] of Object.entries(byCat).sort((a, b) => b[1].b - a[1].b))
   console.log(String(k).padEnd(10), String(v.n).padStart(5), mb(v.b).padStart(9), 'MB');

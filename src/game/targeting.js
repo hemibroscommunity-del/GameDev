@@ -423,6 +423,30 @@ export function updateTargeting(S) {
      monster rule must not stamp over. */
   const lt = S.lockedTarget;
   if (lt && lt.ref && lt.type !== 'monster') return;   /* npc/player: not ours */
+  /* ═══ v2.3.2504: EVERY LOCK CARRIES A START TIME, NOT JUST A TAPPED ONE ═══
+     `at` existed only because tapStealable needed a pin clock, and it was
+     stamped LAZILY inside that function -- which is reached only for melee
+     (it returns early at `!autoAcquires`) and only on the tap-owned branch.
+     So an AUTOMATIC lock -- the common case, the one you get by walking up to
+     a slime -- had no `at` at all, and the lock-on chip could not tell a lock
+     one frame old from one thirty seconds old.  That is why the chip could not
+     flash when a target is first acquired (F1): there was no start to flash
+     from, not a missing animation.
+
+     Stamped HERE, before any branch below reads the lock, so it covers all
+     four writers (the auto rule at the foot of this file and the three tap
+     sites in BroTown.jsx) from ONE place rather than four that can each forget
+     it -- the same reasoning tapStealable's own comment gives for not stamping
+     at the tap sites.  tapStealable's lazy stamp below is now unreachable and
+     left exactly as it is: it is lane H's to retire with the rest of that
+     function, and a dead assignment is not worth a merge conflict.
+
+     A RE-POINT IS A NEW LOCK.  The auto rule allocates a fresh object whenever
+     the monster changes (see the comment at its assignment), so a switch to a
+     new monster arrives here with `at` unset and gets a fresh stamp -- which is
+     what makes the chip flash again for the new target.  A lock that merely
+     survives the frame keeps the stamp it already had. */
+  if (lt && lt.at == null) lt.at = Date.now();
   /* v2.3.2261: before ANY branch below reads the lock -- including the tap
      branch, which returns early and is what made the ghost immortal -- make the
      lock point at a monster that is actually in this zone, or drop it.  See
@@ -512,7 +536,11 @@ export function updateTargeting(S) {
      and a fresh object every frame would churn the field every consumer of
      S.lockedTarget compares by reference. */
   if (!cur || cur.ref !== best.m) {
-    S.lockedTarget = { type: 'monster', id: best.m.id, ref: best.m, src: 'auto' };
+    /* v2.3.2504: `at` on the literal as well as on the guard above, so the
+       stamp is the moment of acquisition rather than the top of the NEXT
+       frame -- a ~16ms difference that does not matter to tapStealable's 900ms
+       pin but is the zero point the chip's first-second flash lerps from. */
+    S.lockedTarget = { type: 'monster', id: best.m.id, ref: best.m, src: 'auto', at: Date.now() };
   }
 }
 

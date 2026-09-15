@@ -61,6 +61,7 @@ extended.
    | `oplog:<opId>` | timestamp; idempotency journal, pruned >48h | inbox-escrow.md |
    | `mkt_order:<orderId>` | resting order w/ escrowed item | marketplace.md |
    | `mkt_hist:<indexKey>` | rolling last-50 executed prices | marketplace.md |
+   | `store_listing:<listingId>` | one general-store listing: the escrowed goods (stackable or stash weapon), ask price, the live bid, and the in-flight sale/bid marker the wake-time rebuild converges on | general-store.md |
    | `duelEscrow:<duelId>` | `{a, b, wager, startedAt}` | duels.md |
    | `clan:<clanId>` / `clan_by_player:<pid>` / `clan_war:<warId>` | clan registry + war snapshots | clans.md |
    | `arena_entry:<tid>:<pid>` | escrowed 100g tournament entry | arena.md |

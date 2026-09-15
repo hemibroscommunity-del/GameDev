@@ -58,8 +58,14 @@ the tell.
   *during* the tell and have it count, and it matches how the kits and the
   snowball impact already resolved.
 - **The grace ring is the honest half of the trade.** At 1.0 every
-  micro-step out of a 45px ring would whiff and monsters would look broken;
-  unbounded, walking away would never work and the tell would be decoration.
+  micro-step out of the contact ring would whiff and monsters would look
+  broken; unbounded, walking away would never work and the tell would be
+  decoration. **v2.3.2482:** that contact ring moved 45 → 72 px
+  (`MONSTER_ATTACK_RANGE`, matching the player's own melee reach), so the
+  grace ring is now ~94 px. The multiplier itself is unchanged at 1.3 — it
+  is a *ratio*, and the trade it encodes (deliberate kiting escapes, jitter
+  does not) holds at either scale. `_basicAtkGeom` reads the constant rather
+  than a copy of the number, which is what keeps the two in step.
 
 ### Cancellation
 
