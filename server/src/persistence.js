@@ -243,11 +243,14 @@ export const persistenceMethods = {
            Added to the fixed list the way goldNuggets/goldBars were
            (v2.3.1192), NOT as ad-hoc ps fields (rule 1 / TRAPS #2), and
            capped here as well as at ingest so a list can never grow
-           without bound in storage.  `gearStashCaptured` is the
-           one-time adoption stamp: absent means "this record predates
-           the slice, fold the client's claim in once" and it rides the
-           SAME put as the lists it describes, so no crash can leave one
-           without the other. */
+           without bound in storage.  `gearStashCaptured` records that a
+           real, complete capture has landed for this character; it rides
+           the SAME put as the lists it describes, so no crash can leave
+           one without the other.  v2.3.2527: it is a RECORD, not a gate
+           -- adoption runs on every join regardless (the merge is
+           idempotent), because gating on this stamp is what let a
+           second device's empty browser close the capture over a
+           wardrobe it had never seen.  See _gearStashAdoptOnJoin. */
         armorStash: capStash(ps.armorStash),
         legsStash: capStash(ps.legsStash),
         shieldStash: capStash(ps.shieldStash),

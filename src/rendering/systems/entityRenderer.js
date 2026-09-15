@@ -4872,11 +4872,105 @@ function _hideExceptDeep(display, keep) {
    player's gold are the mock's own pixels (its legend names the bands Low /
    Near / High / Danger).  The one value NOT taken from the mock is the
    attacking-you fill -- see PLATE_ALARM_FILL. */
-const PLATE_INK = 0x0B1F2D;          /* sampled: (11,31,45), opaque over water and grass alike */
-const PLATE_NAME_FILL = '#FFFFFF';
-const PLATE_BADGE_FILL = 0xFFFFFF;
+const PLATE_INK = 0x0B1F2D;          /* sampled: (11,31,45); see PLATE_FILL_ALPHA for how opaque it is drawn */
 const PLATE_BADGE_INK = '#0B1F2D';   /* sampled ~(5,5,5); the plate's own navy, 16.4:1 on white */
+
+/* ═══════════════════════════════════════════════════════════════════════
+   v2.3.2530: THE SOFTENING KNOBS -- ONE BLOCK, SIX NUMBERS
+   ═══════════════════════════════════════════════════════════════════════
+   Owner, after seeing the v2.3.2513 plate on a real phone: the nameplates are
+   "too harsh -- the contrast is too high."  This is TASTE, not a defect: the
+   plate is built correctly to the mockup, and the mockup is right about itself.
+   A mockup is judged ALONE on a clean background; in play the same plate sits
+   at ~15 CSS px over a moving, textured scene, and there an opaque navy block
+   under bold type reads as a sticker pasted onto the world rather than a label
+   belonging to it.  Lantern Slate's first hard lock says the painterly world
+   stays the brightest, most saturated thing on screen -- and until this change
+   the plate was the one thing on the world that was not.
+
+   EVERY softening value lives in this block and nowhere else, so that "a bit
+   softer still" is an edit to three numbers here rather than a hunt through
+   two draw functions.  Each line says WHICH COMPLAINT IT ANSWERS.
+
+   ── WHAT MUST SURVIVE ANY FURTHER NUDGE ────────────────────────────────
+   Three things on this plate carry information, and a softening that muddies
+   any of them has failed even if it looks nicer:
+
+     1. THE FOUR DIFFICULTY BANDS must stay tellable apart at 2 px on a phone
+        -- yellow (`near`) and orange (`high`) are the pair at risk.  This is
+        why the border is softened by ALPHA and never by desaturating the band
+        colours.  Alpha compositing is linear, so drawing a band at alpha A
+        over ANY background preserves exactly A of the distance between two
+        bands: at 0.85 the four colours keep 85% of their separation over the
+        snowfield, the grass, the cobble and the cave alike.  Desaturating
+        yellow and orange, by contrast, collapses them into each other -- which
+        is the one move that would quietly destroy the signal while looking
+        like a softening.  mp-monsterplate pins this: it reads the four colours
+        the renderer actually strokes, composites them at PLATE_BORDER_ALPHA
+        and asserts a CIEDE2000 floor between every pair.
+     2. THE ATTACKING-YOU FILL is a warning and is DELIBERATELY EXEMPT -- see
+        the alarm block below.  Softening the resting plate makes it louder by
+        comparison, which is the right direction for a warning.
+     3. THE NAME must stay readable at ~15 CSS px over a busy scene.  Softening
+        contrast has a floor; past it one complaint is swapped for another.
+        Measured worst case at the values below: the name holds 8.4:1 with the
+        plate composited over pure white and 15.6:1 over black, against a 4.5:1
+        AA body-text floor.  That headroom is real and it is the budget any
+        further nudge spends -- PLATE_FILL_ALPHA can go a good deal lower
+        before the name is in trouble.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* THE BIGGEST LEVER, AND THE ONE TO REACH FOR FIRST.  How opaque the navy
+   capsule is drawn.  1 = the v2.3.2513 sticker; lower lets the scene through
+   so the plate sits IN the world instead of on top of it.  "Still too harsh"
+   or "the plates are too heavy" -> lower this (0.76, then 0.70).  "I can't
+   read the names now" -> raise it back toward 1.
+
+   0.82 IS NOT AN ARBITRARY FIRST STEP.  It is the alpha the plate that came
+   BEFORE the mockup ran at for hundreds of versions (the two-line rect, still
+   visible on NPCs), and that plate never once drew a harshness complaint --
+   which makes it the only evidence in the repo about where this number wants
+   to sit.  The v2.3.2513 plate went to 1 because the mock's fill "samples
+   identically over water and over grass", which is an argument about the
+   COLOUR being right, not about it being opaque. */
+const PLATE_FILL_ALPHA = 0.82;
+
+/* The name's ink.  Already a warm off-white rather than pure white (this is
+   the value the factory has always drawn -- v2.3.2513's PLATE_NAME_FILL
+   constant said '#FFFFFF' but was never wired to anything, so the name on
+   screen was never actually pure white).  Wired up properly now so it is a
+   knob rather than a literal buried in the factory, and left at the shipped
+   value on purpose: the name is the highest-value thing on the plate and this
+   round already takes weight out of it (below).  "The names are too bright"
+   -> step toward '#E8E3D8'. */
+const PLATE_NAME_FILL = '#F4F0E7';
+
+/* The name's weight, 700 -> 600.  Less ink per glyph at the same size, which
+   is contrast taken out of the type without taking size out of it.  600 is a
+   real loaded weight (src/index.html requests Source Sans 3 400/600/700), not
+   a synthesised one.  "The names still shout" -> 500.  "The names look weak /
+   thin over the grass" -> back to '700'. */
+const PLATE_NAME_WEIGHT = '600';
+
+/* The difficulty border's opacity.  Softens the ring without touching the
+   four band HUES -- see note 1 above for why that distinction is the whole
+   ballgame.  "The coloured rings are too loud" -> 0.75.  "I can't tell the
+   yellow from the orange any more" -> raise it back toward 1 (and do NOT
+   reach for the band colours themselves). */
+const PLATE_BORDER_ALPHA = 0.80;
+
+/* The border's width, unchanged at 2.  §5.2 states 2 px and the owner
+   confirmed the four bands against that number (D16), so this round takes its
+   softening from the alpha above and leaves the width alone -- a thinner ring
+   costs band information twice over (less colour AND fewer pixels to judge it
+   by).  It lives here so it is visible as a knob, not so it gets pulled. */
 const PLATE_BORDER_PX = 2;
+
+/* The level badge's disc.  Was pure white, which at 18 px across is the
+   brightest object on the whole plate and a real part of why it reads hot.
+   Off-white costs the dark digits almost nothing (14.6:1, was 16.4:1).
+   "The level circles glare" -> step toward 0xE6E2D8. */
+const PLATE_BADGE_FILL = 0xF2EFE6;
 /* The four difficulty bands (D16, confirmed), sampled from the mock's legend.
    The band is the monster's level RELATIVE TO YOURS, which is the whole point:
    a level 6 is "Danger" to a level 3 and "Near" to a level 6. */
@@ -4905,6 +4999,34 @@ const PLATE_BAND = {
    has now asked for bright, so it is solved by going as bright as the text
    allows instead. */
 const PLATE_ALARM_FILL = 0xE03131;
+/* ═══ v2.3.2530: THE WARNING IS EXEMPT FROM THE SOFTENING ═══
+   The owner's ask was to soften the plate; this state is the one thing on it
+   that is a WARNING rather than a label, and a warning that has been quieted
+   to match its surroundings is a warning that has been deleted.  So the alarm
+   plate keeps the full-strength treatment: an OPAQUE fill while every other
+   plate on screen is now translucent, pure-white 700 type while every other
+   name is off-white 600.  The softening therefore does not merely spare this
+   state -- it makes it stand further out than it did before, which is the
+   right direction for "this thing is hitting you."
+
+   THE WHITE IS ALSO A CORRECTION.  The block above chose #E03131 as "the
+   brightest red that still passes AA for the name", and measured it at 4.51:1
+   -- a figure that assumes WHITE ink.  The name was never white: the factory
+   has always drawn #F4F0E7, which measures 4.04:1 on this fill and is under
+   the AA floor the comment believed it was holding.  Naming the alarm ink here
+   makes the code do what the note already claimed, and it is the only value in
+   this change that goes UP.  If the red plate reads too hot on a phone, the
+   knob is this pair, not PLATE_ALARM_FILL -- moving the red is what the AA
+   arithmetic above is pinned to.
+
+   The BORDER is deliberately not listed: D4 says "the border rules do not
+   change" in the alarm state, so the difficulty ring is drawn at the same
+   PLATE_BORDER_ALPHA in both states.  That is what keeps a red ring ("far
+   above you") and a red fill ("hitting you right now") two readable
+   statements instead of one red blur. */
+const PLATE_ALARM_FILL_ALPHA = 1;
+const PLATE_ALARM_NAME_FILL = '#FFFFFF';
+const PLATE_ALARM_NAME_WEIGHT = '700';
 /* Geometry, as ratios of the name's type size so the whole plate scales from
    one number (the same "the plate sizes itself off this number" property the
    old pill had, which is what kept text from rattling in a fixed box). */
@@ -5250,6 +5372,12 @@ function _updateNamePill(display, name, level, visible, broId, alarm, band) {
     /* The capsule re-anchors the name to its own centre; a display only ever
        takes one of these two paths, but restoring the factory's anchor here
        means that stays true by construction rather than by luck. */
+    /* v2.3.2530: and the same for the TYPE, for the same reason.  The capsule
+       now sets fill and weight per state (softened at rest, full-strength in
+       the alarm), so this branch restores the factory's pair -- §5.2 leaves
+       the NPC's two-line plate exactly as it is, and "exactly as it is"
+       has to be written down somewhere now that the other path moves it. */
+    _setPillType(display, '#F4F0E7', '700');
     display._pillName.anchor.set(0.5, 0);
     display._pillName.y = 3;
     display._pillName.x = 0;
@@ -5293,6 +5421,18 @@ function _updateNamePill(display, name, level, visible, broId, alarm, band) {
   display._pillBand = band || null;
 }
 
+/* v2.3.2530: set the name's ink and weight, and ONLY when they changed.
+   A Pixi Text is a texture and a style write regenerates it, so this is
+   guarded rather than written every rebuild -- the plate is already rebuilt
+   only on a key change, and there is no reason for an alarm flicker to also
+   re-rasterise a name whose type did not move. */
+function _setPillType(display, fill, weight) {
+  const t = display && display._pillName;
+  if (!t) return;
+  if (String(t.style.fill) !== fill) t.style.fill = fill;
+  if (String(t.style.fontWeight) !== weight) t.style.fontWeight = weight;
+}
+
 /* ═══ v2.3.2513: DRAW THE MOCKUP'S PLATE ═══
    Called only from the rebuild branch above, so everything here runs on a text
    / band / alarm change and never per frame.
@@ -5315,6 +5455,14 @@ function _drawPlateCapsule(display, level, broId, alarm, band) {
   const nameT = display._pillName;
   const lvlNum = display._pillLvlNum;
   const bro = display._broBadge;
+  /* ═══ v2.3.2530: THE TYPE IS SET BEFORE THE PILL IS MEASURED ═══
+     The softened weight is 600 and the alarm's is 700, and a lighter weight is
+     a NARROWER string -- so the style has to land before `nameT.width` is read
+     below or the capsule is sized for the weight it used to be drawn at, which
+     is a plate whose padding changes when a monster starts hitting you. */
+  _setPillType(display,
+    alarm ? PLATE_ALARM_NAME_FILL : PLATE_NAME_FILL,
+    alarm ? PLATE_ALARM_NAME_WEIGHT : PLATE_NAME_WEIGHT);
   nameT.anchor.set(0.5, 0.5);
   const broD = broId ? Math.max(11, Math.round(h * 0.62)) : 0;
   const broPad = broId ? broD + Math.round(gap * 0.6) : 0;
@@ -5351,13 +5499,44 @@ function _drawPlateCapsule(display, level, broId, alarm, band) {
      and a red fill ("hitting you right now") can be on screen together and
      still mean two different things.  The plate is opaque: the mock's fill
      samples identically over water and over grass. */
-  g.fill({ color: alarm ? PLATE_ALARM_FILL : PLATE_INK, alpha: 1 });
-  g.stroke({ color: PLATE_BAND[band] || PLATE_BAND.near, alpha: 1,
+  /* ═══ v2.3.2530: AND THE FILL IS NO LONGER OPAQUE ═══
+     The owner's "too harsh" is mostly this one value.  The v2.3.2513 comment
+     above ends "The plate is opaque: the mock's fill samples identically over
+     water and over grass", which was an argument for the COLOUR being right
+     everywhere -- and it still is, because the hue has not moved.  What has
+     moved is how much of it lands: at PLATE_FILL_ALPHA the scene reads faintly
+     through the capsule, so the plate belongs to the world instead of being
+     pasted on it, and the name still measures 8.4:1 in the worst case a scene
+     can hand it (see the knob block).  The alarm state keeps alpha 1 -- a
+     warning does not get to be translucent. */
+  g.fill({ color: alarm ? PLATE_ALARM_FILL : PLATE_INK,
+    alpha: alarm ? PLATE_ALARM_FILL_ALPHA : PLATE_FILL_ALPHA });
+  g.stroke({ color: PLATE_BAND[band] || PLATE_BAND.near, alpha: PLATE_BORDER_ALPHA,
     width: PLATE_BORDER_PX, alignment: 0.5 });
   if (lvlNum) {
     g.circle(badgeCx, h / 2, badgeD / 2);
     g.fill({ color: PLATE_BADGE_FILL, alpha: 1 });
   }
+  /* ═══ v2.3.2530: WHAT WAS ACTUALLY PAINTED, FOR THE PROBE ═══
+     A Graphics cannot be read back and a screenshot cannot tell this ring from
+     an orange monster standing behind it (TRAPS §21) -- the same reason `band`
+     and `alarm` are reported as intent rather than sampled.  The softening is
+     four numbers that are invisible from outside the renderer, so they are
+     recorded here, at the point they were used, and mp-monsterplate asserts
+     them.  Without this a future edit could put alpha back to 1 and every
+     existing assertion would still pass. */
+  display._pillSoft = {
+    fillAlpha: alarm ? PLATE_ALARM_FILL_ALPHA : PLATE_FILL_ALPHA,
+    borderAlpha: PLATE_BORDER_ALPHA,
+    borderPx: PLATE_BORDER_PX,
+    borderColor: PLATE_BAND[band] || PLATE_BAND.near,
+    badgeFill: PLATE_BADGE_FILL,
+    nameFill: alarm ? PLATE_ALARM_NAME_FILL : PLATE_NAME_FILL,
+    nameWeight: alarm ? PLATE_ALARM_NAME_WEIGHT : PLATE_NAME_WEIGHT,
+    /* every band the renderer can stroke, so the four-way separation is
+       checkable from one plate instead of needing four monsters on screen */
+    bands: PLATE_BAND,
+  };
 }
 
 
@@ -8265,6 +8444,13 @@ export class EntityRenderer {
              `hidden` says the plate was deliberately taken down for D4's first
              rule rather than merely absent. */
           band: _pui ? (_pui._pillBand || null) : null,
+          /* v2.3.2530: the softening values the capsule actually painted with
+             -- fill/border alpha, the band colour it stroked, the name's ink
+             and weight.  Reported for the same reason `band` is: none of it
+             can be read back off a Graphics, and a screenshot of a 2px ring
+             over a textured scene is exactly the crop TRAPS §21 says not to
+             trust a colour count on.  mp-monsterplate pins these. */
+          soft: _pui ? (_pui._pillSoft || null) : null,
           badge: _pui && _pui._pillLvlNum ? String(_pui._pillLvlNum.text || '') : null,
           hidden: !!(_pillNode && !_pillNode.visible),
           /* the two facts D4's precedence is computed from, so a failing
