@@ -1,4 +1,5 @@
 import React from 'react';
+import { storeEnabled } from '@/ui/storeApi.js';   /* v2.3.2476 */
 import { BT_AUDIO } from '@/data/index.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
@@ -59,10 +60,36 @@ function lsGold(amount, size) {
 export function VendorPanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
-    setRpgState = props.setRpgState;
+    setRpgState = props.setRpgState,
+    setBuildingPanel = props.setBuildingPanel;
+  /* ═══ v2.3.2476: THE DOOR TO THE PLAYER STORE ═══
+     The store needed somewhere to be entered from, and the building it
+     belongs in is the one it is named after: the GENERAL STORE prop on the
+     east plaza (worldProps.js), which opens this panel. That is also the
+     only door available -- the MARKETPLACE building that opens the old
+     Exchange has no prop on the current town map at all (mp-market reports
+     "no placed town prop carries action 'exchange'"), so hanging it there
+     would have hung it on nothing.
+     Shopkeeper Bro keeps his shelf exactly as it is; this is one row above
+     it. Gated on the store cap, read through storeEnabled() so the button
+     cannot appear against a worker with no store to open. */
+  var storeOn = storeEnabled();
   return React.createElement("div", { style: LS_WRAP },
     lsHeader('vendor', '🛒', "Vendor", "Basic supplies for starting adventurers"),
     React.createElement("div", { style: LS_BODY },
+      storeOn && setBuildingPanel ? React.createElement("button", {
+        type: 'button',
+        onClick: function onClick() { setBuildingPanel('store'); },
+        style: {
+          width: '100%', minHeight: 44, marginBottom: 10, padding: '0 12px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+          borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+          border: '1px solid ' + LS.brass, background: LS.brassFill, color: LS.brass,
+          fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em',
+          WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation'
+        }
+      }, React.createElement("span", null, "Player store"),
+         React.createElement("span", { style: { fontSize: 11, fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: LS.txt2 } }, "What everyone is selling ›")) : null,
       React.createElement("div", {
         style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 4 }
       }, React.createElement("span", { style: { fontSize: 12, color: LS.txt2 } }, "Your gold"),

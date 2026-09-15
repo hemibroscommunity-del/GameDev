@@ -329,8 +329,19 @@ function lay(x, y, now, opts) {
      monster, and that the zone tick CALLS the burn.  The rules those two
      obey are pinned above, deterministically, against the functions
      themselves. */
-  gob.x = ps.x + 60; gob.y = ps.y;
+  /* v2.3.2482: was ps.x + 60, which sat INSIDE the new 72px stop ring
+     (MONSTER_ATTACK_RANGE moved 45 -> 72) -- the goblin was already "in your
+     face" on tick 0 and never took a step, so no trail was ever laid.  Start
+     him outside the ring instead, and hold him on the target with the same
+     sticky-aggro stamp a real hit would leave, so 400 fake ticks of a player
+     walking 3px a step cannot walk him out of aggro range before he has
+     covered SPACING_PX.  Neither is a behaviour change -- both are the
+     fixture saying "he is chasing", which is the precondition this section
+     is about. */
+  gob.x = ps.x + 140; gob.y = ps.y;
   gob.spawnX = gob.x; gob.spawnY = gob.y;
+  gob._aggroOverrideTarget = 'p1';
+  gob._aggroOverrideUntil = Date.now() + 60000;
   gob._ftX = null;
   let sawPatch = false;
   for (let i = 0; i < 400 && !sawPatch; i++) {
