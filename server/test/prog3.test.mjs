@@ -18,7 +18,8 @@
  */
 import { GameRoom } from '../src/index.js';
 import { runRpgMigrations, RPG_SCHEMA_VERSION } from '../src/migrations.js';
-import { PROG3, prog3XpRequired, prog3FromLegacy, prog3SplitAtk } from '../src/prog3.js';
+import { PROG3, prog3XpRequired, prog3FromLegacy, prog3SplitAtk,
+  prog3StatDef, prog3FreshAtk /* v2.3.2512 */ } from '../src/prog3.js';
 import { BLACKSMITH_TIERS } from '../src/data.js';
 
 const mockState = {
@@ -82,10 +83,11 @@ function check(name, cond, detail) {
   check('the rate stamp rides the respec (v14 must not double-grant)',
     blob.prog3.ppl === PROG3.POINTS_PER_LEVEL, blob.prog3.ppl);
   /* v2.3.1668: alloc is the BODY set only; offense lives in atk, keyed
-     by combat type.  v2.3.2199: + elem / + dmg. */
+     by combat type.  v2.3.2199: + elem / + dmg.
+     v2.3.2512: elem LEAVES for atk (per weapon); eres + mana arrive. */
   check('body alloc starts zeroed',
     Object.values(blob.prog3.alloc).every((v) => v === 0)
-      && Object.keys(blob.prog3.alloc).sort().join(',') === 'def,dodge,elem,hp,stam', blob.prog3.alloc);
+      && Object.keys(blob.prog3.alloc).sort().join(',') === 'def,dodge,eres,hp,mana,stam', blob.prog3.alloc);
   check('per-type offense starts zeroed for all three skills',
     PROG3.SKILLS.every((c) => blob.prog3.atk[c]
       && blob.prog3.atk[c].crit === 0 && blob.prog3.atk[c].critDmg === 0 && blob.prog3.atk[c].aspd === 0
@@ -661,30 +663,145 @@ const psA = room.playerState.pa;
     healedTwice.pool === healed.pool && healedTwice.poolBy.sword === healed.poolBy.sword,
     { pool: healedTwice.pool });
   check('sanitize clamps the new stats',
-    room._sanitizeProg3({ sk: {}, alloc: { elem: 999 }, atk: { sword: { dmg: 999 } }, pool: 0, ppl: 3 })
-      .alloc.elem === PROG3.BODY.elem.cap
+    /* v2.3.2512: elem is an ATK stat now, so a BODY `elem` is REFUNDED
+       rather than clamped — pinned in its own section below. */
+    room._sanitizeProg3({ sk: {}, alloc: {}, atk: { sword: { elem: 999 } }, pool: 0, ppl: 3 })
+      .atk.sword.elem === PROG3.ATK.elem.cap
     && room._sanitizeProg3({ sk: {}, alloc: {}, atk: { sword: { dmg: 999 } }, pool: 0, ppl: 3 })
-      .atk.sword.dmg === PROG3.ATK.dmg.cap);
+      .atk.sword.dmg === PROG3.ATK.dmg.cap
+    && room._sanitizeProg3({ sk: {}, alloc: { eres: 999, mana: 999 }, atk: {}, pool: 0, ppl: 3 })
+      .alloc.eres === PROG3.BODY.eres.cap);
 
   /* elem feeds the DoT snapshot and the collision stat; legacy players
-     keep their old read, byte for byte. */
-  const p3ps = { prog3: { alloc: { elem: 75 } }, power: 500 };
+     keep their old read, byte for byte.
+     v2.3.2512: per weapon — the stat is read out of atk[cat].elem, and a
+     reader that names no category falls back to 'sword'. */
+  const p3ps = { prog3: { atk: { sword: { elem: 75 }, bow: { elem: 0 }, staff: { elem: 0 } } }, power: 500 };
   const legacyPs = { power: 40, agility: 15 };
-  check('elemAttackStat: prog3 reads elem × per, never the fossil T1 stat',
-    elemAttackStat(p3ps, 'power') === 75 * PROG3.BODY.elem.per, elemAttackStat(p3ps, 'power'));
+  check('elemAttackStat: prog3 reads the WEAPON\'s elem × per, never the fossil T1 stat',
+    elemAttackStat(p3ps, 'power', 'sword') === 75 * PROG3.ATK.elem.per,
+    elemAttackStat(p3ps, 'power', 'sword'));
+  check('elemAttackStat: a different weapon reads its OWN elem, not the sword\'s',
+    elemAttackStat(p3ps, 'power', 'bow') === 0 && elemAttackStat(p3ps, 'power', 'staff') === 0,
+    { bow: elemAttackStat(p3ps, 'power', 'bow'), staff: elemAttackStat(p3ps, 'power', 'staff') });
+  check('elemAttackStat: an unnamed category falls back to sword (never someone else\'s lane)',
+    elemAttackStat(p3ps, 'power') === elemAttackStat(p3ps, 'power', 'sword'));
   check('elemAttackStat: legacy reads the named legacy stat',
-    elemAttackStat(legacyPs, 'power') === 40 && elemAttackStat(legacyPs, 'agility') === 15);
+    elemAttackStat(legacyPs, 'power', 'sword') === 40 && elemAttackStat(legacyPs, 'agility', 'bow') === 15);
   const burnM = { hp: 1000, statuses: null };
-  applyElementStatus(burnM, 'flame', 'src1', elemAttackStat(p3ps, 'power'), 1000, 1);
+  applyElementStatus(burnM, 'flame', 'src1', elemAttackStat(p3ps, 'power', 'sword'), 1000, 1);
   burnM.statuses.burn.lastTick = 0;
   const ticks = tickElementStatuses(burnM, 0.1, 1000);
   check('burn DoT prices off the elem snapshot (5 + 75×0.3)',
-    ticks.length === 1 && ticks[0].dmg === Math.round(5 + 75 * PROG3.BODY.elem.per * 0.3), ticks);
+    ticks.length === 1 && ticks[0].dmg === Math.round(5 + 75 * PROG3.ATK.elem.per * 0.3), ticks);
   const colM = { hp: 1000, statuses: null, element: null };
   applyElementStatus(colM, 'flame', 'src1', 0, 1000, 1);
-  const col = resolveElementCollision(colM, 'frost', p3ps, false, 2000);
+  const col = resolveElementCollision(colM, 'frost', p3ps, false, 2000, 'sword');
   check('collision stat term reads elem for prog3 attackers',
     col && col.id === 'steam' && col.dmg >= Math.round(40 + 75 * 0.8), col);
+}
+
+/* ══ v2.3.2512: ELEM PWR per weapon, ELEM RESIST and MAX MANA as stats ══
+   Owner asks from the backlog triage (§2.1c, D12).  Three moves in one
+   system, because they share the allocation grid and one migration:
+     - ELEM PWR: one global BODY channel -> one ATK channel per combat type;
+     - ELEM RESIST: a new global BODY channel, the first thing in the game
+       that reduces elemental damage (the 5% cooking buff aside);
+     - MAX MANA: a new global BODY channel, ADDED to the Magic-level
+       derivation so nobody's existing pool moves. */
+{
+  const { prog3MoveElemToAtk } = await import('../src/prog3.js');
+
+  /* ── the grid ── */
+  check('elem is an ATK stat now, and no longer a BODY one',
+    !!PROG3.ATK.elem && !PROG3.BODY.elem, { atk: PROG3.ATK.elem, body: PROG3.BODY.elem });
+  check('...at the same cap and per-point value it always had (a point buys what it bought)',
+    PROG3.ATK.elem.cap === 75 && PROG3.ATK.elem.per === 1, PROG3.ATK.elem);
+  check('eres and mana are BODY stats (global: they describe the character)',
+    !!PROG3.BODY.eres && !!PROG3.BODY.mana && !PROG3.ATK.eres && !PROG3.ATK.mana);
+  check('the allocate whitelist accepts all three through the same door',
+    prog3StatDef('elem').scope === 'atk'
+      && prog3StatDef('eres').scope === 'body'
+      && prog3StatDef('mana').scope === 'body',
+    { elem: prog3StatDef('elem'), eres: prog3StatDef('eres'), mana: prog3StatDef('mana') });
+
+  /* ── migration v15: the refund (the v11 precedent) ── */
+  const mv = {
+    _v: 14,
+    prog3: {
+      sk: { sword: { level: 5, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 1, xp: 0 } },
+      alloc: { def: 2, hp: 1, dodge: 0, stam: 0, elem: 30 },
+      atk: { sword: { crit: 0, critDmg: 0, aspd: 0, dmg: 0 }, bow: {}, staff: {} },
+      pool: 5, poolBy: { sword: 5, bow: 0, staff: 0 }, ppl: 3,
+    },
+  };
+  const res15 = runRpgMigrations(mv);
+  check('v15 runs clean to the current version',
+    res15.failed === null && mv._v === RPG_SCHEMA_VERSION, { res: res15, v: mv._v });
+  check('v15 REFUNDS placed elem points to the pool (never copies them ×3, never guesses a type)',
+    mv.prog3.pool === 5 + 30 && mv.prog3.alloc.elem === undefined,
+    { pool: mv.prog3.pool, alloc: mv.prog3.alloc });
+  check('v15 leaves every other body stat alone',
+    mv.prog3.alloc.def === 2 && mv.prog3.alloc.hp === 1, mv.prog3.alloc);
+  const poolAfter15 = mv.prog3.pool;
+  check('v15 is idempotent (a re-run cannot double-refund)',
+    prog3MoveElemToAtk(mv.prog3) === false && mv.prog3.pool === poolAfter15, mv.prog3.pool);
+
+  /* ── the boundary heal, because migrations fail open ── */
+  const bh = room._sanitizeProg3({
+    sk: {}, alloc: { def: 1, elem: 12 }, atk: { sword: {}, bow: {}, staff: {} },
+    pool: 2, poolBy: { sword: 2 }, ppl: 3,
+  });
+  check('sanitize folds an elem-as-BODY blob the same way (fail-open cover)',
+    bh.pool === 2 + 12 && bh.alloc.elem === undefined && bh.alloc.def === 1,
+    { pool: bh.pool, alloc: bh.alloc });
+
+  /* ── MAX MANA: unchanged at zero points, and it buys real casts ── */
+  const mps = (pts, magicLvl) => {
+    const ps = {
+      prog3: {
+        sk: { sword: { level: 1, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: magicLvl, xp: 0 } },
+        alloc: { def: 0, hp: 0, dodge: 0, stam: 0, eres: 0, mana: pts },
+        atk: prog3FreshAtk(), pool: 0, poolBy: { sword: 0, bow: 0, staff: 0 },
+      },
+    };
+    room._prog3Recompute(ps);
+    return ps;
+  };
+  const base = mps(0, 10);
+  check('max mana at ZERO points is exactly the old Magic-level derivation',
+    base.maxMana === Math.floor(100 + 10 * PROG3.MANA_PER_MAGIC_LEVEL), base.maxMana);
+  const spent = mps(20, 10);
+  check('...and a point adds MANA_PER_MAGIC_LEVEL, so one point = one Magic level',
+    spent.maxMana === Math.floor(100 + 10 * PROG3.MANA_PER_MAGIC_LEVEL + 20 * PROG3.BODY.mana.per),
+    spent.maxMana);
+  /* THE TRAP THIS AVOIDS (v2.3.1734): a special costs maxMana / manaBlocks,
+     so a bigger pool with the same block count is a more expensive cast and
+     zero extra casts.  Investing must buy CASTS. */
+  check('spending on max mana buys CASTS, not just a longer bar',
+    spent.manaBlocks > base.manaBlocks
+      && Math.floor(spent.maxMana / spent.manaBlocks) > 0,
+    { blocks: [base.manaBlocks, spent.manaBlocks], max: [base.maxMana, spent.maxMana] });
+
+  /* ── ELEM RESIST: cuts elemental damage only ── */
+  const victim = (pts) => ({
+    hp: 1000, maxHp: 1000, z: 'meadow', agility: 0, _zoneEntryGraceUntil: 0,
+    prog3: {
+      sk: {}, alloc: { def: 0, hp: 0, dodge: 0, stam: 0, eres: pts, mana: 0 },
+      atk: prog3FreshAtk(), pool: 0, poolBy: { sword: 0, bow: 0, staff: 0 },
+    },
+  });
+  const plainV = victim(75);
+  const plain = room._applyDamage(plainV, 100, false).dmgTaken;
+  const elemV = victim(75);
+  const elem = room._applyDamage(elemV, 100, false, { elemental: true }).dmgTaken;
+  check('elem resist cuts ELEMENTAL damage at the capped rate (−30% at 75 pts)',
+    elem === Math.round(100 * (1 - 75 * PROG3.BODY.eres.per)), { elem, plain });
+  check('...and leaves ordinary untyped damage completely alone',
+    plain === 100, plain);
+  const zeroV = victim(0);
+  check('...and a character with no points in it takes elemental damage in full',
+    room._applyDamage(zeroV, 100, false, { elemental: true }).dmgTaken === 100);
 }
 
 /* ═══ v2.3.2210: EVERY CHARACTER STARTS AT A FLAT 1%, PER DAMAGE TYPE ═══

@@ -242,24 +242,57 @@ const AUTO_SWITCH_MARGIN = 0.88;
  * threshold, so "meaningfully nearer" means one thing in this file.  A tapped
  * lock with NOTHING nearer is never touched here, which is what keeps a distant
  * tapped target alive while you close on it. */
-const TAP_PIN_MS = 900;
-function tapStealable(S, cands) {
+/* v2.3.2513: TAP_PIN_MS (900) is retired with the steal it gated -- there is
+   nothing left to pin a tap against.  Named here rather than deleted silently
+   because the paragraph above explains a rule in terms of it, and the next
+   reader needs to know the constant is gone on purpose. */
+/* ═══ v2.3.2513: D3 -- A TAP IS ABSOLUTE, AND THE STEAL IS RETIRED ═══
+ * Owner, asked to choose between the two directives above and the complaint
+ * they produced: a tap lock is absolute until the monster dies or leaves the
+ * 220px perimeter.  So the 900ms pin and the 12%-nearer steal are gone, and
+ * what replaces them is a release rather than a theft: nothing TAKES your
+ * target off you; the target can only LEAVE.
+ *
+ * Reconciling that with v2.3.2263's own directive ("go by the nearest monster,
+ * not just the one you've been fighting") is the point of the release.  The
+ * complaint that produced the steal was a tapped lock pinning the fight while
+ * a slime stood on your feet -- and that is exactly the case where the tapped
+ * monster has walked out of the fight.  Once it leaves, the automatic rule
+ * takes over and the nearest monster is the target again, which is what the
+ * owner asked for both times.
+ *
+ * THREE THINGS THE RELEASE MUST NOT BREAK, all of them shipped features with
+ * their own scenarios, and all three are why this is not simply "drop a tap
+ * lock outside 220px":
+ *
+ *   - A BOW OR STAFF TAP SNIPES AT 675px (v2.3.2246, up to 1350 with
+ *     Longshot).  The tap is the ONLY lock those weapons get, so a perimeter
+ *     release there would delete ranged targeting outright.  autoAcquires
+ *     gates this the same way it gated the steal.
+ *   - TAP A MONSTER ACROSS THE SCREEN, THEN WALK TO IT (v2.3.2285, mp-tapswing
+ *     taps at 730px).  It was never inside the perimeter, so a bare distance
+ *     test would drop the lock on the frame it was made.  Hence LATCHED: the
+ *     release arms only once the monster has actually been inside the
+ *     perimeter, i.e. once the fight has really started.
+ *   - THE BOUNDARY MUST NOT CHATTER.  A monster pacing the edge would flip the
+ *     lock on and off every few frames, so the release uses the hysteresis
+ *     ring the rest of this file already uses -- in at 220, out at 275.
+ */
+function tapReleased(S) {
   const lt = monsterLock(S);
   if (!lt) return false;
-  /* Ranged and magic: the tap is the whole targeting system.  Never stolen. */
+  /* Ranged and magic: the tap is the whole targeting system.  Never released
+     by range -- the 675px snipe depends on it. */
   if (!autoAcquires(S)) return false;
-  /* Stamped on first sight rather than at the three tap sites, so a new one
-     cannot forget it and read as instantly stealable. */
-  if (lt.at == null) { lt.at = Date.now(); return false; }
-  if (Date.now() - lt.at < TAP_PIN_MS) return false;
-  if (!cands || !cands.length) return false;      /* nothing nearer to steal it */
-  const best = cands[0];
-  if (!best || best.m === lt.ref) return false;   /* already the nearest */
   const p = monPos(lt.ref);
   if (!p || !S.player) return false;
   const dx = p.x - S.player.x, dy = p.y - S.player.y;
-  const curD2 = dx * dx + dy * dy;
-  return best.d2 <= curD2 * AUTO_SWITCH_MARGIN * AUTO_SWITCH_MARGIN;
+  const d2 = dx * dx + dy * dy;
+  const IN = TARGET_PERIMETER_PX;
+  if (d2 <= IN * IN) { lt.near = true; return false; }   /* the latch */
+  if (!lt.near) return false;                            /* still on the way in */
+  const OUT = TARGET_PERIMETER_PX * TARGET_HYST;
+  return d2 > OUT * OUT;
 }
 
 /* Once per frame (monsterCombat's tick): refresh the candidate list, then
@@ -295,12 +328,19 @@ export function autoAcquires(S) {
  * recorded the lock coming back on the SAME monster id with src flipped from
  * 'tap' to 'auto'.
  *
- * That flip is tapStealable doing its job (v2.3.2263, the owner's own "go by
+ * That flip was tapStealable doing its job (v2.3.2263, the owner's own "go by
  * the nearest monster" directive): 900ms after the tap, anything 12% nearer
  * takes the lock. Walk 730px across a spoke and you pass something. The lock
  * then returns to your target when it is nearest again -- but as an automatic
  * one, and engagedStance reads src === 'tap', so your expressed intent has
  * been quietly erased by walking past a slime.
+ *
+ * v2.3.2513 RETIRED THAT STEAL (D3), so the flip it describes can no longer
+ * happen on the walk itself -- but this flag is not retired with it. A tapped
+ * monster that walks out of the perimeter releases the lock now (tapReleased),
+ * and the lock legitimately comes and goes on a long approach, so "the game
+ * has forgotten you chose this fight" is still a state this file has to be
+ * able to answer, and _engaged is still the answer.
  *
  * So intent cannot live on the lock: the lock is allowed to move, and should.
  * `_engaged` is the intent itself -- "I picked a fight" -- and it survives the
@@ -431,14 +471,14 @@ export function updateTargeting(S) {
       S._lockDroppedAt = Date.now();
       S._lockDroppedWhy = 'dead';
       clearLockAim(S);
-    } else if (!tapStealable(S, cands)) {
+    } else if (!tapReleased(S)) {
       return;
     }
     /* else: fall through to the automatic rule below, which re-points at
-       cands[0].  Only reachable for MELEE and only with a genuinely nearer
-       candidate in hand -- see tapStealable -- so the `!cands.length` branch
-       under it, which would DROP a distant tapped lock, cannot be reached
-       from here. */
+       cands[0] -- or clears the lock if there is nothing in the perimeter at
+       all, which is now a reachable and correct outcome: the monster you
+       tapped has left the fight and nothing has replaced it.  Only reachable
+       for MELEE (see tapReleased). */
   }
 
   /* ═══ v2.3.2258: ...AND A BOW DOES NOT ═══

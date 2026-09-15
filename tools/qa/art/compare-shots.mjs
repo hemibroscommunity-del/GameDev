@@ -1,4 +1,4 @@
-/* SIDE-BY-SIDE BEFORE/AFTER PLATES FOR AN ART PR (v2.3.2509).
+/* SIDE-BY-SIDE BEFORE/AFTER PLATES FOR AN ART PR (v2.3.2516).
  *
  * docs/TRAPS.md §21 is the standing rule that art in this repo is signed off on
  * a RENDER and never by eye or by a number alone, and the owner's own rule for

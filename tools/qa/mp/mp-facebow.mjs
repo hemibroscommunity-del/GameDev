@@ -1,4 +1,4 @@
-/* THE FACE TATTOO ON A BOW SHOT (v2.3.2509).
+/* THE FACE TATTOO ON A BOW SHOT (v2.3.2516).
  *
  * Owner (backlog triage 2026-09-14, art item 4): on the jog SOUTH and EAST
  * bow-shot frames the face tattoo covers only the top half of the face.

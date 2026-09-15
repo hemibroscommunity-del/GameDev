@@ -98,7 +98,7 @@ import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */ } from '@/data/index.js';
-import { gesturePose01 } from '@/game/gesturePose.js'; /* v2.3.2245 */
+import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the wind-up bar reads the button ring's own numbers) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
@@ -134,7 +134,7 @@ import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 
    published from there. */
 const SECTORS8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 
-/* ═══ v2.3.2509: WHICH SWINGS THE BODY OCCLUDES ═══
+/* ═══ v2.3.2516: WHICH SWINGS THE BODY OCCLUDES ═══
  * Owner (D7, backlog triage 2026-09-14 §5.8): the greatsword at southwest goes
  * behind the body "for jog/idle AND for the attack swing -- it is in the right
  * hand, facing away from the camera".  entityRenderer's heldWeaponInFront is
@@ -407,7 +407,7 @@ if (typeof window !== 'undefined') {
       backIdx,
       bodyIdx,
       backUnderBody: (on && backIdx >= 0 && bodyIdx >= 0) ? (backIdx < bodyIdx) : null,
-      /* v2.3.2509: whether this (stand-in, direction) is the drape-over-the-waist
+      /* v2.3.2516: whether this (stand-in, direction) is the drape-over-the-waist
          exception, so a scenario asserts the RULE it is under rather than one
          blanket claim that the exception then has to be carved out of. */
       overBody: !!(p && p.overBody),
@@ -426,7 +426,7 @@ if (typeof window !== 'undefined') {
   };
 }
 
-/* ═══ v2.3.2509: THE ONE STAND-IN WHERE THE PANELS GO IN FRONT ═══
+/* ═══ v2.3.2516: THE ONE STAND-IN WHERE THE PANELS GO IN FRONT ═══
  * Owner (backlog triage 2026-09-14, art item 8): on the EAST jog bow attack the
  * cape "should drape over the waist, not behind".
  *
@@ -661,9 +661,33 @@ _fxLoad('/sprites/projectiles/magic-bolt-v1.webp?v=2.3.1334').then((tex) => {
    half the head) and 0.742 (eats the collar): 0.79 cuts at the collar and
    leaves shaft plus collar, which is what a spent arrow buried in something
    should look like. */
+/* ═══ v2.3.2511: BIGGER, AND IT BREATHES ═══
+ * Owner (backlog §2.5): pulse the special arrow white in flight, and enlarge
+ * it slightly.
+ *
+ * SCALE 0.17 -> 0.20 is the "slightly": the sheet is 314px wide, so the drawn
+ * arrow goes 53.4 -> 62.8 world px, about 18% longer.  Deliberately modest --
+ * the special already reads as heavy through its golden flame art, and the
+ * PROJ_BODY capsule in projectiles.js is measured off this number, so a large
+ * change here silently widens the hit test too.  (That table's own header says
+ * so: "IF THE ART IS RECUT OR RESCALED, THESE MOVE WITH IT".  It is updated in
+ * the same change.)
+ *
+ * `pulse` is the white flash, drawn as a SECOND additive sprite over the first
+ * rather than as a tint.  Two reasons, and the first is arithmetic: Pixi's
+ * tint MULTIPLIES, so it can only darken -- there is no tint that makes golden
+ * art brighter than it is.  The second is the standing iOS rule: a filter is
+ * the documented grain hazard over the WebGL canvas (v2.3.948's charge pie,
+ * v2.3.1236's joystick bases), and an additive sprite is a draw call, not a
+ * filter.
+ *
+ * pulseMs 260 is a touch faster than the 90ms frame clock times its 4-frame
+ * loop, so the flash does not land on the same art frame every time and the
+ * two rhythms read as one living object rather than a strobe. */
 const ARROW_SPECIAL = {
   frames: [], noHead: [], headFrac: 0.79,
-  anchor: { x: 0.460, y: 0.580 }, frameMs: 90, scale: 0.17,
+  anchor: { x: 0.460, y: 0.580 }, frameMs: 90, scale: 0.20,
+  pulse: { ms: 260, alpha: 0.5, grow: 0.12 },
 };
 const MAGIC_SPECIAL = {
   frames: [], anchor: { x: 0.639, y: 0.536 }, frameMs: 90, scale: 0.30,
@@ -708,6 +732,21 @@ const SWORD_SLASH = { frames: [], anchor: { x: 0.5, y: 0.5 } };
  * texture.  Owner: "the arrowhead is missing mid flight.  It should only get
  * stuck in the monster without the arrowhead."  The silhouette is no longer
  * touched at all.
+ *
+ * ═══ v2.3.2511: THE KEYLINE IS THICKER NOW, AND ONLY ON THE SHAFT ═══
+ * Owner (backlog §2.5), still the same complaint: the outline needs to read.
+ * v2.3.1877's own measurement is why blackening alone was not enough -- at this
+ * size a ONE-pixel keyline owns about half an output pixel however black it is
+ * -- so make-pine-arrow.mjs now grows it INWARD by one pixel, which cannot fill
+ * a concavity the way v2.3.1876's outward rim did.  Measured by the script:
+ * keyline pixels on the shaft x1.37, steel head 305 -> 305 (100% kept),
+ * headFrac still 0.742.  The thicken stops three columns short of the steel
+ * boundary, because the head is the thinnest part of the art and because the
+ * head measurement is a per-column vote that blackening moves -- the first run
+ * of that pass reported 0.719, which is v2.3.1876's number reached by a
+ * different route.  NO RUNTIME FILTER, deliberately: a filter over the WebGL
+ * canvas is the documented iOS grain hazard (v2.3.948, v2.3.1236), which is
+ * why every move of this line has been made in the art.
  *
  * Art noses RIGHT like the magic bolt and the special arrow, so rotation is
  * the travel angle with no offset.  The anchor is where the OLD polygon
@@ -3013,7 +3052,7 @@ export class EffectsRenderer {
      dir/mirror = trait facing; the crown world pos is derived from sp's own
      transform + the per-frame crown, and the trait scale from the stand-in's
      render scale × head proportion so the hat matches the head size. */
-  /* v2.3.2509: `belowSprite` is optional and only the bow stand-ins pass it --
+  /* v2.3.2516: `belowSprite` is optional and only the bow stand-ins pass it --
      the cape's drape-over-the-waist exception caps the panels under the weapon.
      See _STAND_IN_CAPE_OVER_BODY. */
   _placeSkillTraitsOn(skillKey, sp, fi, dir, mirror, belowSprite) {
@@ -4093,12 +4132,21 @@ export class EffectsRenderer {
         this.magicBoltSprites.splice(i, 1);
       }
     }
-    /* v2.3.1396: same reap for the painted special-projectile sprites. */
+    /* v2.3.1396: same reap for the painted special-projectile sprites.
+       v2.3.2511: the white-pulse overlay is pooled in this SAME list, so it is
+       reaped by the same pass -- but the back-reference it clears depends on
+       which of the two it is, or a dead glow would leave `_fxGlow` pointing at
+       a destroyed sprite and _placeSpecialFx would draw nothing for the rest
+       of that projectile's life. */
     for (let i = this.specialFxSprites.length - 1; i >= 0; i--) {
       const entry = this.specialFxSprites[i];
       if (!_liveBolts.has(entry.proj) || !entry.sprite || entry.sprite.destroyed) {
+        const _wasGlow = !!(entry.proj && entry.proj._fxGlow === entry.sprite);
         if (entry.sprite && !entry.sprite.destroyed) entry.sprite.destroy();
-        if (entry.proj) entry.proj._fxSprite = null;
+        if (entry.proj) {
+          if (_wasGlow) entry.proj._fxGlow = null;
+          else entry.proj._fxSprite = null;
+        }
         this.specialFxSprites.splice(i, 1);
       }
     }
@@ -4398,6 +4446,49 @@ export class EffectsRenderer {
     sprite.y = y;
     sprite.rotation = ang || 0;
     sprite.alpha = alpha;
+    /* ═══ v2.3.2511: THE WHITE PULSE ═══
+       Owner (backlog §2.5): pulse the special arrow white in flight.
+
+       A SECOND SPRITE, ADDITIVE, over the first.  Pixi's tint multiplies, so
+       no tint can make golden art brighter than it already is; and a filter is
+       the documented iOS grain hazard over the WebGL canvas (v2.3.948,
+       v2.3.1236), which rules out the other obvious answer.  Adding light is
+       what "flashes white" actually means, and an additive draw is how you add
+       light.
+
+       Pooled on the projectile beside the main sprite and torn down with it
+       (see the specialFxSprites sweep), so a volley cannot leak one per shot.
+       It carries the SAME texture, anchor and rotation -- it is the same arrow
+       seen a little brighter and a little bigger, not a halo behind it, which
+       is the shape v2.3.1396 retired when the painted art arrived.
+
+       ONLY WHILE FLYING.  `headless` is the caller's `planted || stuckIn`, so a
+       spent arrow riding a monster for four seconds stops flashing -- a stuck
+       arrow that keeps pulsing reads as a live shot and is the sort of thing
+       that gets reported as "the special hits forever". */
+    if (cfg.pulse && !hn) {
+      let glow = p._fxGlow;
+      if (!glow || glow.destroyed) {
+        glow = new Sprite(frame);
+        glow.blendMode = 'add';
+        this.projectileLayer.addChild(glow);
+        p._fxGlow = glow;
+        this.specialFxSprites.push({ proj: p, sprite: glow });
+      }
+      if (glow.texture !== frame) glow.texture = frame;
+      /* 0..1..0 over pulse.ms, so the flash swells and fades rather than
+         switching on -- a square wave at this size reads as a flicker. */
+      const _ph = (now % cfg.pulse.ms) / cfg.pulse.ms;
+      const _sw = Math.sin(_ph * Math.PI);
+      glow.anchor.set(cfg.anchor.x, cfg.anchor.y);
+      glow.scale.set(cfg.scale * (pk || 1) * (1 + cfg.pulse.grow * _sw));
+      glow.x = x; glow.y = y;
+      glow.rotation = ang || 0;
+      glow.alpha = alpha * cfg.pulse.alpha * _sw;
+      glow.visible = true;
+    } else if (p._fxGlow && !p._fxGlow.destroyed) {
+      p._fxGlow.visible = false;
+    }
     liveSet.add(p);
   }
 
@@ -8942,7 +9033,7 @@ export class EffectsRenderer {
   /* Parameterized version of _placeSkillTraitsOn: composites an ARBITRARY
      player's hair/beard/hat (`looks`) at the swing-frame crown, onto their own
      trait sprites. */
-  /* v2.3.2509: + belowSprite, the peer's copy of the bow-cape cap. */
+  /* v2.3.2516: + belowSprite, the peer's copy of the bow-cape cap. */
   _placeSkillTraitsOnFor(skillKey, sp, fi, dir, mirror, looks, traitSprites, belowSprite) {
     const data = this._skillCrowns && this._skillCrowns[skillKey];
     if (!data || !data.crowns || !data.crowns.length) { hideSkillTraits(traitSprites); return; }
@@ -9103,7 +9194,7 @@ export class EffectsRenderer {
       if (set.chest) set.chest.tint = gearTint(eq.chest);
       if (set.weapon) set.weapon.tint = materialTint(o && o.wpnMat);
       /* v2.3.1047: north swings hold the blade on the far side -> behind body.
-         v2.3.2509: and southwest, for the owner's D7 reason -- resolved from the
+         v2.3.2516: and southwest, for the owner's D7 reason -- resolved from the
          peer's own swing ANGLE to the full 8 sectors, because dir4 above is a
          4-way collapse that has no southwest in it at all.  Without this the
          rule would hold for your own character and not for anyone else's, which
@@ -9273,7 +9364,7 @@ export class EffectsRenderer {
         headwear: o.headwear, hatColor: o.hatColor,
         cape: o.cape,                                        /* v2.3.2190 */
       };
-      this._placeSkillTraitsOnFor(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror, looks, set.traits, set.weapon);   /* v2.3.2509: the cape cap, peer side */
+      this._placeSkillTraitsOnFor(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror, looks, set.traits, set.weapon);   /* v2.3.2516: the cape cap, peer side */
       /* composite the jog legs under the torso strip (or hide them). */
       if (_jog) {
         const _fc = jogFrameCount('jog', _jdir) || 24;
@@ -9308,7 +9399,7 @@ export class EffectsRenderer {
   /* v2.3.1047: per-facing z-order for the swing weapon.  `behind` (north /
      back-to-camera facings) drops the blade just below the body so the body +
      gear occlude it; otherwise the weapon rides on top of the body + gear.
-     v2.3.2509: `behind` is now true for SOUTHWEST as well -- see _swingBehind. */
+     v2.3.2516: `behind` is now true for SOUTHWEST as well -- see _swingBehind. */
   _orderSwingWeapon(wsp, body, topGear, behind) {
     const layer = wsp && wsp.parent; if (!layer) return;
     const wi = layer.getChildIndex(wsp);
@@ -9580,12 +9671,12 @@ export class EffectsRenderer {
          this stack from legs to shirt, so this argument moves with it — leaving
          it on legs would drop the blade behind the shirt on the first non-north
          swing after any north one. */
-      /* v2.3.2509: ...and SOUTHWEST joins it (owner D7).  Asked of the real
+      /* v2.3.2516: ...and SOUTHWEST joins it (owner D7).  Asked of the real
          8-way swing facing rather than of fmap[0], which cannot tell southwest
          from south or southeast -- see _swingBehind. */
       const _behind = _swingBehind(fmap[0], S._renderFacing);
       this._orderSwingWeapon(this.swordWeaponSprite, sp, this.swordShirtSprite, _behind);
-      /* v2.3.2509 QA probe, house style (__btSwingTints, __btStandInCape): the
+      /* v2.3.2516 QA probe, house style (__btSwingTints, __btStandInCape): the
          blade's z-order AS DRAWN, read off the live scene graph rather than off
          the flag that asked for it.  `behind` is what the rule decided; the two
          indices are what the layer actually holds, and mp-arules asserts the
@@ -10060,7 +10151,7 @@ export class EffectsRenderer {
     /* v2.3.952: armored bow is helmeted -> skip hat/beard/hair (matches the
        sword); the bald baked sheet still composites them. */
     if (_armored) hideSkillTraits(this.skillTraits);
-    /* v2.3.2509: the bow sprite goes in as the cape's ceiling -- on the east
+    /* v2.3.2516: the bow sprite goes in as the cape's ceiling -- on the east
        profile the panels are raised over the waist and must still pass under
        the drawn bow.  See _STAND_IN_CAPE_OVER_BODY. */
     else this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror, this.bowWeaponSprite);
@@ -10503,7 +10594,107 @@ export class EffectsRenderer {
        pace (gesturePose01).  The mining strike sparks + clink fire from the
        pump slam (ExtractionSwipeLayer onSlam), so nothing here is needed for
        them either. */
+    /* v2.3.2514: the wind-up bar over whichever figure is on screen -- see
+       _drawWindupBar.  Last, because it reads the stand-in sprites' final
+       transforms to find the top of the head. */
+    this._drawWindupBar(S, ex, now);
     void x; void y; void chopSign;
+  }
+
+  /* ═══ v2.3.2514: THE WIND-UP, OVER THE CHARACTER'S HEAD ═══
+   *
+   * Owner: a progress bar above the head that fills while the harvest winds
+   * up, and finishes as the strokes land.
+   *
+   * WHY IT IS NEEDED AT ALL.  The wind-up is 2-10 seconds long (base 4), and
+   * the only thing that has ever shown it is a thin ring on the right button
+   * -- under the player's own thumb, at the edge of the screen, while their
+   * eyes are on the character.  Then `ready` arrives and WAITS, with no
+   * timeout at all since v2.3.1416, so a player who does not notice the
+   * button can stand there indefinitely believing the game has stopped.
+   *
+   * THE 95% STALL IS THE WHOLE POINT, and it is why the bar does not simply
+   * fill to the top: at 95% it says "nearly, now do your part", and the last
+   * sliver is the reps.  A bar that completed and then sat there would be
+   * indistinguishable from the hang it is supposed to rule out -- which is
+   * also why the head of the bar BREATHES while it waits.  A still bar at a
+   * stall is a frozen bar to anyone looking at it.
+   *
+   * ONE TIMER, NOT TWO: the fractions come from extractionMeter01
+   * (gesturePose.js), the same function the button's ring reads.  Two meters
+   * with two copies of the arithmetic drift apart, and the drift is what gets
+   * reported.
+   *
+   * WHERE "THE HEAD" IS depends on the skill, because woodcutting and cooking
+   * HIDE the real body and put a stand-in on screen instead (entityRenderer's
+   * _chopHide, v2.3.846/853).  So the anchor is whichever figure is actually
+   * drawn: the stand-in's own top for those two (read off its live transform,
+   * so it rides the zone's perspective curve for free), and the body's own
+   * height above the player's feet for mining and fishing.  Anchoring all
+   * four to the player would have floated the bar over empty grass while the
+   * lumberjack worked at a tree several tiles away.
+   *
+   * Drawn on cueGfx: cleared once per frame at the top of
+   * _updateExtractionCue, and in gestureFront, which is the layer that sits in
+   * FRONT of the trees (v2.3.1765) -- a bar over a lumberjack's head that a
+   * canopy can hide is worse than no bar. */
+  _drawWindupBar(S, ex, now) {
+    const gfx = this.cueGfx;
+    if (!gfx || !ex || !S || !S.player) return;
+    const m = extractionMeter01(ex, Date.now());
+    if (!m) return;
+    /* The zone's perspective curve at the FIGURE's feet, so the bar shrinks
+       with the bro on a vista map exactly as the stand-ins do (v2.3.2287). */
+    const pscale = zonePlayerScale(S.currentZone, S.player.x, S.player.y, TILE);
+    let cx = S.player.x;
+    /* v2.3.2514: ...times the bro's build, because v2.3.2500 put that term on
+       every figure this bar sits over.  Identity today (both axes are locked
+       at 1.00, buildCatalog v2.3.1995/1996) -- written so the bar cannot drift
+       off a taller head the day a second height comes back. */
+    let topY = S.player.y - STANDIN_REF_BODY_H * pscale * _localBuild().sy;
+    const standIn = (ex.skill === 'woodcutting') ? this.chopSprite
+      : (ex.skill === 'cooking') ? this.cookSprite : null;
+    if (standIn && standIn.visible && standIn.texture) {
+      /* anchor (0.5, 1) = the figure's feet, so its crown is one drawn height
+         up.  Read off the sprite rather than recomputed from the constants,
+         because the two would have to be kept in step by hand. */
+      cx = standIn.x;
+      topY = standIn.y - Math.abs(standIn.scale.y) * (standIn.texture.height || 220);
+    }
+    /* 46 x 8 world px: the monster/peer health bar is 44 x 13 in its own
+       container units (entityRenderer), so this reads as the same family of
+       object at a glance -- same width, slimmer, because it is a secondary
+       meter and it must not be mistaken for health. */
+    const W = 46 * pscale, H = 8 * pscale;
+    const x0 = cx - W / 2, y0 = topY - 12 * pscale;
+    if (!(W > 1 && H > 0.5)) return;   /* a speck on a vista rim: draw nothing */
+    const r = Math.min(H / 2, 3 * pscale);
+    /* track: the Lantern Slate `well` over a hairline border, the same trough
+       every other meter in the game sits in (docs/LANTERN-SLATE-SPEC.md). */
+    gfx.roundRect(x0, y0, W, H, r).fill({ color: 0x121B20, alpha: 0.72 });
+    gfx.roundRect(x0, y0, W, H, r).stroke({ width: Math.max(1, pscale), color: 0xEEF2EB, alpha: 0.24 });
+    const fillW = Math.max(0, Math.min(1, m.bar01)) * W;
+    if (fillW > 0.5) {
+      /* brass while it winds up (the accent), green once it is YOUR turn --
+         the same two colours the button's ring has always used for these two
+         phases, so the two meters read as one thing. */
+      gfx.roundRect(x0, y0, fillW, H, r).fill({ color: m.ready ? 0x59BF91 : 0xD8A85F, alpha: 0.95 });
+    }
+    /* THE BREATHING HEAD.  Only while the bar is stalled -- ready, with no
+       stroke counted yet.  Once the reps start moving the bar moves, and a
+       moving bar needs no help proving it is alive. */
+    if (m.ready && m.reps <= 0.0001) {
+      const pulse = 0.35 + 0.45 * (0.5 + 0.5 * Math.sin(now / 260));
+      const capW = Math.max(2 * pscale, H);
+      gfx.roundRect(x0 + fillW - capW, y0, capW, H, r).fill({ color: 0xF0C878, alpha: pulse });
+    }
+    /* v2.3.2514 QA probe: the fill fraction and phase, neither of which a
+       screenshot can read off an anti-aliased 46px bar. */
+    if (typeof window !== 'undefined') {
+      window.__btWindupBar = { bar01: +m.bar01.toFixed(3), windup: +m.windup.toFixed(3),
+        reps: +m.reps.toFixed(3), ready: m.ready, skill: ex.skill,
+        x: +cx.toFixed(1), y: +y0.toFixed(1), w: +W.toFixed(1) };
+    }
   }
 
   clear() {

@@ -753,7 +753,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('all five real-body poses were actually reached (guard: an unreached '
     + 'pose would let every claim below pass on nothing)',
     posed.length === POSES.length, posed.map((x) => x.tag));
-  /* ═══ v2.3.2509: TWO OF THE FIVE ARE HIDDEN AGAIN, BY OWNER DECISION ═══
+  /* ═══ v2.3.2516: TWO OF THE FIVE ARE HIDDEN AGAIN, BY OWNER DECISION ═══
      Owner (D6, backlog triage 2026-09-14 §5.8): "hide the cape on the dodge
      pose INCLUDING the loot bend."  The v2.3.2129 claim this assertion was
      written for -- "a cape you paid for does not vanish every time you take a
@@ -776,7 +776,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     upright.length === 3 && upright.every((x) => x.capeOn && x.bodyOn),
     upright.map((x) => ({ tag: x.tag, cape: x.capeOn, body: x.bodyOn })));
   rec.ok('...and it is OFF on the two poses that bend the torso flat -- the '
-    + 'roll and the loot bend (owner D6, v2.3.2509). A cape pinned to the crown '
+    + 'roll and the loot bend (owner D6, v2.3.2516). A cape pinned to the crown '
     + 'hangs straight down from it, which on a crouch is into the ground',
     bent.length === 2 && bent.every((x) => !x.capeOn && x.bodyOn),
     bent.map((x) => ({ tag: x.tag, cape: x.capeOn, body: x.bodyOn })));
@@ -789,7 +789,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      full-frame sticker on the body's own transform, and a width that drifts
      means it stopped being one. */
   const OFFSET_CAP = 24;
-  /* v2.3.2509: asked of the poses that still DRAW a cape.  A hidden sprite has
+  /* v2.3.2516: asked of the poses that still DRAW a cape.  A hidden sprite has
      no position to be within a head's width of, and its stale last-frame size
      is not a measurement of anything -- dodge and pickup report dw 1.94 purely
      because nothing re-seated them. */
