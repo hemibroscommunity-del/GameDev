@@ -225,7 +225,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...so the demo is not fighting the player\'s own motion',
     distinct(live, 'posF') <= 2, { seen: live.map((r) => r.posF) });
 
-  /* ═══ v2.3.2501: THE REAL POINTER PATH, WHICH NOTHING EVER EXERCISED ═══
+  /* ═══ v2.3.2511: THE REAL POINTER PATH, WHICH NOTHING EVER EXERCISED ═══
    *
    * Everything above sets `ex._gestureDown` and `ex.cueFrame01` BY HAND, and
    * that is honest about what it tests -- the demo's stand-down rule -- but it
@@ -325,7 +325,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!lifted && lifted.gestureDown === false, lifted);
   }
 
-  /* ═══ AND THE WIND-UP BAR OVER THE HEAD (v2.3.2501) ═══
+  /* ═══ AND THE WIND-UP BAR OVER THE HEAD (v2.3.2511) ═══
      The bar is 46 world px of anti-aliased Graphics over a character's head;
      a screenshot cannot say what fraction it is at, so the renderer publishes
      the reading it drew.  The STALL is the assertion that matters: `ready` has

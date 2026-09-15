@@ -194,7 +194,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
        the world->CSS conversion those needed is gone with them.) */
     const cueScreenPos = () => buttonCueScreenPos(stateRef && stateRef.current);
 
-    /* ═══ v2.3.2501: THE FINGER THAT WAS ALREADY DOWN ═══
+    /* ═══ v2.3.2511: THE FINGER THAT WAS ALREADY DOWN ═══
      *
      * Owner: the character stops following your thumb partway through a
      * harvest and goes back to playing the demonstration.
@@ -268,7 +268,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
          inference -- while the finger is on the glass there is no demo, no
          matter how long the frame took. */
       ex._gestureDown = true;
-      /* v2.3.2501: WHOSE finger this is.  onPointerUp used to clear the
+      /* v2.3.2511: WHOSE finger this is.  onPointerUp used to clear the
          gesture for ANY pointer that lifted -- the left thumb coming off the
          movement stick killed the harvest stroke the right thumb was in the
          middle of, and the demo came back 600ms later.  Recorded on the press
@@ -361,7 +361,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       const x = e.clientX, y = e.clientY;
       if (downPointers.has(e.pointerId)) downPointers.set(e.pointerId, { x, y });
       let sw = swipeRef.current;
-      /* v2.3.2501: ADOPT A FINGER THAT WAS DOWN BEFORE THE WINDOW OPENED.
+      /* v2.3.2511: ADOPT A FINGER THAT WAS DOWN BEFORE THE WINDOW OPENED.
          See the note above beginGesture: the thumb that pressed CHOP is
          already on the glass when `ready` arrives, and its pointerdown came
          and went while there was nothing to start.  This is where it gets
@@ -381,7 +381,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
         }
       }
       if (!sw) return;
-      /* v2.3.2501: one gesture, one finger.  A second pointer wandering over
+      /* v2.3.2511: one gesture, one finger.  A second pointer wandering over
          the button must not feed the stroke the first one is making. */
       if (sw.pointerId != null && e.pointerId !== sw.pointerId) return;
       const ex = readyExtraction();
@@ -469,7 +469,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
     const onPointerUp = (e) => {
       const id = e && e.pointerId;
       downPointers.delete(id);
-      /* ═══ v2.3.2501: ONLY THE FINGER THAT IS MAKING THE GESTURE ENDS IT ═══
+      /* ═══ v2.3.2511: ONLY THE FINGER THAT IS MAKING THE GESTURE ENDS IT ═══
          This handler took no argument and cleared the press for ANY pointer.
          Both thumbs are on the glass during a harvest -- the left one steers,
          and on a phone it lifts and lands constantly -- so every one of those
@@ -502,7 +502,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
         return {
           status: ex ? ex.status : null, skill: ex ? ex.skill : null,
           pressed: !!swipeRef.current, reps: ex ? +(ex.reps || 0).toFixed(2) : null,
-          /* v2.3.2501: the two facts the pointer fixes are about, neither of
+          /* v2.3.2511: the two facts the pointer fixes are about, neither of
              which a screenshot can see -- whether the layer believes a finger
              is on the button (the demo stands down on this) and WHICH finger
              owns the stroke (so a second one lifting cannot end it). */
