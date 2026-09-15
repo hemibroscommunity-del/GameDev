@@ -1064,10 +1064,53 @@ export function updateArrows(S, deps) {
                    plus radial particle burst when a staff bolt collides. */
                 if (a.isStaff) {
                   var _orbColor = projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#a78bfa';
+                  /* ═══ v2.3.2505: THE CRASH HAPPENS WHERE THE ORB DID ═══
+                   *
+                   * Owner (F2): magic orbs "vanish" in Desert Winds.
+                   *
+                   * MEASURED, not reasoned -- the triage says outright that this
+                   * one cannot be judged from code (BACKLOG-TRIAGE-2026-09-14
+                   * §2.5), so mp-orbrange §6 flies real orbs at the real zone's
+                   * real monsters and reports where each one ends and where its
+                   * crash is drawn.  Every orb died on a HIT, with most of its
+                   * life left, at the distance of the monster it hit -- the range
+                   * is fine and nothing is vanishing.  What IS wrong is the
+                   * feedback: the crash ring and its 22 sparks were spawned at
+                   * `m.x, m.y` -- the monster's FEET -- while the hit test that
+                   * just fired is a circle at its BODY CENTRE (renderY minus
+                   * monsterBodyOffsetY).  Measured over six flights: the crash
+                   * landed 22-37 px below and 23-42 px to the side of the point
+                   * where the orb actually disappeared.
+                   *
+                   * WHY DESERT WINDS AND NOWHERE ELSE.  That gap IS the body
+                   * offset, and this zone is the game's tallest cast: every
+                   * archetype here re-skins to the mummy (offset 48), which
+                   * turns into the skeleton (60) on its first point of damage.
+                   * On a slime (23) the ring lands close enough to read as the
+                   * same event.  On a 120px skeleton the orb winks out at chest
+                   * height and a small ring flashes at its feet, mostly behind
+                   * the sprite -- which from the outside is exactly "it vanished
+                   * before it got there".
+                   *
+                   * The fix is the contact point: the orb's last rendered
+                   * position, which is the last place the player's eye had it, so
+                   * the crash continues the flight instead of jumping off it.
+                   * `m.x/m.y` stays as the fallback for a frame with no render
+                   * position yet, because that is what shipped.  Nothing about
+                   * the hit, the damage, the knockback or the wire changes --
+                   * this moves two rings and a particle spray.
+                   *
+                   * The knockback angle three lines below already reads
+                   * a._renderX/_renderY for the same reason; this block was the
+                   * one that did not. */
+                  var _orbFxX = (typeof a._renderX === 'number') ? a._renderX : m.x;
+                  var _orbFxY = (typeof a._renderY === 'number') ? a._renderY
+                    : (((typeof m.renderY === 'number') ? m.renderY : m.y)
+                       - monsterBodyOffsetY(m.archetype || m.type));
                   if (!S._impactRings) S._impactRings = [];
                   /* Outer expanding ring — the "crash" flash. */
                   S._impactRings.push({
-                    x: m.x, y: m.y, ts: Date.now(),
+                    x: _orbFxX, y: _orbFxY, ts: Date.now(),
                     color: _orbColor, maxR: 26, duration: 320,
                   });
                   /* Inner brighter ring 40 ms later for double-pulse
@@ -1077,7 +1120,7 @@ export function updateArrows(S, deps) {
                      the first frame after spawn (same family of bug
                      as the swingTimer +300 player-flicker on cast). */
                   S._impactRings.push({
-                    x: m.x, y: m.y, ts: Date.now(), startDelay: 40,
+                    x: _orbFxX, y: _orbFxY, ts: Date.now(), startDelay: 40,
                     color: _orbColor, maxR: 14, duration: 220,
                   });
                   /* Dissipation — radial particle spray outward, with a
@@ -1087,8 +1130,8 @@ export function updateArrows(S, deps) {
                     var _oa = (_op / 22) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
                     var _osp = 2 + Math.random() * 4;
                     S.hitParticles.push({
-                      x: m.x + Math.cos(_oa) * 4,
-                      y: m.y + Math.sin(_oa) * 4,
+                      x: _orbFxX + Math.cos(_oa) * 4,
+                      y: _orbFxY + Math.sin(_oa) * 4,
                       vx: Math.cos(_oa) * _osp,
                       vy: Math.sin(_oa) * _osp - 0.7,
                       life: 0.45 + Math.random() * 0.4,

@@ -114,6 +114,41 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...putting both discs back on screen',
     healed.zones.length === 2 && healed.zones.every((z) => z.top >= 0 && z.bottom <= healed.vh), healed);
 
+  /* ═══ v2.3.2497: D10 -- SIDEWAYS, TOWN ZOOMS OUT AND A COMBAT ZONE DOES NOT ═══
+     Owner: "landscape zoom: town/worldview only; combat zones stay."  Sideways
+     the game was ~40% more zoomed in than upright, and the fix frees TOWN
+     without touching the nine 32x32 combat maps -- where zooming out would
+     show the void the no-floor rules (v2.3.2247, v2.3.2257) exist to prevent.
+
+     BOTH HALVES OR NEITHER.  "Town zooms out" alone would pass for a change
+     that zoomed everything out, which is the thing that cannot ship; "combat
+     is unchanged" alone would pass for no change at all.
+     Asked of the rule rather than by warping: __btWorldView(zoneId) runs the
+     real worldViewport() against the live canvas, so the combat answer is the
+     renderer's own and not this file's arithmetic (TRAPS §37). */
+  const d10 = await P.page.evaluate(() => ({
+    town: window.__btWorldView && window.__btWorldView('town'),
+    combat: window.__btWorldView && window.__btWorldView('ember'),
+    canvasW: Math.round(document.querySelector('canvas').getBoundingClientRect().width),
+    canvasH: Math.round(document.querySelector('canvas').getBoundingClientRect().height),
+  }));
+  console.log('    D10 sideways: ' + JSON.stringify(d10));
+  rec.ok('the viewport rule can be asked about either zone (guard)',
+    !!(d10.town && d10.combat), d10);
+  if (d10.town && d10.combat) {
+    /* The combat zone's own floor is cssW/1024 on this canvas, and it is what
+       every zone used to be held to sideways. */
+    const combatFloor = d10.canvasW / 1024;
+    rec.ok('...a combat zone sideways is still pinned to its own map width, exactly as before',
+      Math.abs(d10.combat.scale - combatFloor) <= 0.005, { combat: d10.combat, combatFloor });
+    rec.ok('...town sideways is NOT held to that same zoom any more',
+      d10.town.scale < combatFloor - 0.05, { town: d10.town, combatFloor });
+    /* And what it IS held to: town's own map, which is the "no void" rule
+       doing the deciding rather than a reference the town does not need. */
+    rec.ok('...it is held to the TOWN map instead, so the view widens without void',
+      d10.town.W <= 1664 + 1 && d10.town.W > 1024, d10.town);
+  }
+
   /* open the Bag, then rotate back with it open */
   await P.page.evaluate(() => window.__broDashPanelBus.open('bag'));
   await P.page.waitForTimeout(700);
