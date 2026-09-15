@@ -1,4 +1,5 @@
 import React from 'react';
+import { combatBandTopPx } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2564: how high the combat band reaches, from the same arithmetic the controls place themselves with */
 /* v2.3.1797: the special lesson has to know whether the ACTIVE slot holds a
    weapon, which is not "does the player own one" — specialAttack() refuses
    with "No weapon equipped!" when the active slot is empty, and a coach mark
@@ -1198,6 +1199,53 @@ export function QuestCoach(props) {
      which is precisely the "text above the right joystick" the owner
      asked for, and the bag button is down there too. */
   const above = r.top > 108;
+  /* ═══ v2.3.2564: THE CARD KEEPS OFF THE COMBAT BAND ═══
+   *
+   * Owner, deciding the question v2.3.2562's spec §12.8 wrote down and left
+   * open: "Coach card move off the combat band (doesn't seem like a big deal
+   * either way)."  So the CARD moves, not the buttons.
+   *
+   * WHAT WAS WRONG.  A lesson anchored to the bottom dashboard or nav rail
+   * gets `above` = true and hangs its card just over that anchor -- which puts
+   * it in the strip between the dashboard and the discs, and that strip is
+   * where every combat control lives.  Measured during the tutorial: the card
+   * covered the Block button COMPLETELY at 360px wide and 76% at 390, centre
+   * unreachable.  The card is pointerEvents:'auto' since v2.3.2312 (so it can
+   * be tapped away), so it does not merely sit on top -- it EATS the press.
+   *
+   * WHY THAT MATTERED ENOUGH TO MOVE IT.  The overlap was not new: the same
+   * card covered the Special button before v2.3.2562 put Block there.  But
+   * Special has a second trigger (the attack-disc flick the onboarding itself
+   * teaches) and Block has NONE on a phone -- `toggleShield` has exactly one
+   * caller in the client, this button, and the double tap that used to raise
+   * the shield was retired at TRAPS §78 and deliberately not restored.  So a
+   * covered Block button is a player who cannot raise their shield at all,
+   * which is the report mp-duelblock exists for: "I think I was unable to
+   * block".
+   *
+   * THE WHOLE BAND, NOT JUST BLOCK.  These controls move -- four times in four
+   * days, at the last count -- so the card clears the union of whatever is
+   * live, found by attribute rather than by position.  A control added to this
+   * cluster later is covered by the same rule without anyone remembering to
+   * come back here.
+   *
+   * IT STILL POINTS AT WHAT IT TEACHES.  The spotlight RING is a separate
+   * element anchored to the target rect (just above); only the CARD moves.  So
+   * the lesson still gestures at its control and only the words slide up.
+   * Clamped so the card cannot be pushed off the top of the screen: if the two
+   * ever genuinely cannot both fit, the card stays put and readable rather
+   * than vanishing, because a lesson you cannot read is worse than one sitting
+   * near a button. */
+  const bandClear = (() => {
+    try {
+      const cs = getComputedStyle(document.documentElement);
+      const band = parseFloat(cs.getPropertyValue('--sheet-h'))
+        || parseFloat(cs.getPropertyValue('--dash-h')) || 0;
+      /* Measured from the viewport's BOTTOM, which is the unit `bottom` below
+         wants, so the two can be compared directly. */
+      return band + combatBandTopPx(playIsLandscape()) + 12;
+    } catch (_e) { return 0; /* a card that cannot measure simply does not dodge */ }
+  })();
   /* v2.3.2312: ONE dismiss, worn by the X and by the card body alike.  Both
      mark the lesson done in the same localStorage record the gesture would
      have -- a card you have explicitly put down, which then returns on the
@@ -1269,7 +1317,19 @@ export function QuestCoach(props) {
            a guessed 62px top offset and the three-line block card overlapped
            the very joystick it was pointing at. */
         top: above ? undefined : r.top + r.height + pad + 10,
-        bottom: above ? Math.max(6, window.innerHeight - (r.top - pad - 10)) : undefined,
+        /* v2.3.2564: ...and then lifted clear of the combat band.  `bottom` is
+           measured from the viewport's bottom, so a LARGER value sits higher:
+           taking the max raises the card and never lowers it.  The 12px is the
+           same breathing room the anchor gap above uses.  Capped at
+           innerHeight - 120 so a very tall band cannot push the card off the
+           top edge -- see the note on `bandTop`. */
+        bottom: above
+          ? Math.min(
+            Math.max(
+              Math.max(6, window.innerHeight - (r.top - pad - 10)),
+              bandClear),
+            Math.max(6, window.innerHeight - 120))
+          : undefined,
         width: 220,
         background: INK,
         border: '1px solid rgba(216,170,88,.45)',

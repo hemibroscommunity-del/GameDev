@@ -151,16 +151,61 @@ export async function run({ browser, wsPort, webPort, rec }) {
     window.__popups = [];
   });
   await P.page.waitForTimeout(700);
-  /* The count is 1, not 2: whirl renders because the sword is drawn, and bash
-     is absent because the shield is equipped but not RAISED. */
+  /* ═══ v2.3.2561: A DRAWN SWORD IS NO LONGER ENOUGH -- THE FIGHT IS PART OF IT ═══
+     Owner, after playing the v2.3.2542 build: Whirlwind's button disappears out
+     of combat instead of greying.  This player is standing in town with nothing
+     to fight, so the sword alone buys no button now.  Asserted BEFORE the
+     monster is seeded, because otherwise the rows below could not tell "the
+     weapon rule works" apart from "the combat rule works". */
+  rec.ok('with a sword drawn but NO fight, Whirlwind is not on screen at all (v2.3.2561)',
+    (await P.page.evaluate(() => !document.querySelector('[data-ability="whirl"]'))) === true);
+  /* ...and the ability itself still says visible-but-not-engaged, which is the
+     split that keeps the cast refusal reachable on the desktop R key.  If a
+     later hand folds the lock into `visible`, this row is where it shows up. */
+  const townSt = await P.page.evaluate(() => {
+    const F = window._gameFns || {};
+    return F.abilityStatus ? F.abilityStatus('whirl') : null;
+  });
+  rec.ok('...and it is HIDDEN by the button, not by `visible` — the status still reads visible:true, engaged:false',
+    !!(townSt && townSt.visible === true && townSt.engaged === false), townSt);
+
+  /* Now give it a fight.  A monster inside the 220px perimeter is all it takes:
+     updateTargeting acquires the lock on its own for a melee player, with no tap
+     — the same path mp-rbutton §B drives. */
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    S._serverMonsters = false;
+    S.monsters = [{
+      id: 'abil_fodder', arch: 'fodder', archetype: 'fodder', type: 'fodder',
+      x: S.player.x + 90, y: S.player.y, renderX: S.player.x + 90, renderY: S.player.y,
+      spawnX: S.player.x + 90, spawnY: S.player.y, targetX: S.player.x + 90, targetY: S.player.y,
+      hp: 5000, curHp: 5000, maxHp: 5000, dmg: 0, level: 1, gold: 0, spd: 0, vx: 0, vy: 0,
+      alive: true, statuses: {}, _hitThisSwing: false, _atkCd: 0, _stunUntil: 0,
+      respawnAt: 0, moveTimer: 0, _stuckArrows: [],
+    }];
+    S.lockedTarget = null;
+  });
+  await P.page.waitForTimeout(700);
+  rec.ok('guard: the monster inside the perimeter acquired the lock on its own, with no tap',
+    (await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      return !!(S.lockedTarget && S.lockedTarget.ref && String(S.lockedTarget.ref.id) === 'abil_fodder');
+    })) === true);
+  /* The count is 1, not 2: whirl renders because the sword is drawn AND a fight
+     is under way, and bash is absent because the shield is equipped but not
+     RAISED. */
   const fakeButtons = await P.page.evaluate(() => document.querySelectorAll('[data-ability]').length);
-  rec.ok('at base level, with a sword drawn, Whirlwind is on screen — it is ungated now',
+  rec.ok('at base level, with a sword drawn and a fight on, Whirlwind is on screen — it is ungated now',
     fakeButtons === 1, fakeButtons);
   rec.ok('...and it is WHIRL — bash is absent because the shield is not raised',
     (await P.page.evaluate(() => !!document.querySelector('[data-ability="whirl"]')
       && !document.querySelector('[data-ability="bash"]'))) === true);
   /* Swap to the bow: the button goes, and it GOES rather than greying out --
-     a control that can never fire is worse than no control. */
+     a control that can never fire is worse than no control.
+     v2.3.2561: the fight seeded above is deliberately LEFT RUNNING across this
+     swap, so the row still isolates the WEAPON rule.  Clear the monster too and
+     it would pass for either reason, which is the shape of a test that stops
+     being able to fail. */
   await P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
     if (S && S.rpg) S.rpg.activeSlot = 'ranged';

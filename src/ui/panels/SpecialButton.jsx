@@ -2,7 +2,7 @@ import React from 'react';
 import { TARGET_PERIMETER_PX, getActiveWeapon, specialManaCost } from '@/data/index.js';
 import { specialAttack } from '@/game/playerActions.js';
 import { BOW_SPECIAL_QUEUE_MS } from '@/game/combatHelpers.js'; /* v2.3.2543: the queued special's own expiry, so the button and the fire site cannot disagree about how long a request stands */
-import { ctlColumn, ctlBottom, CTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2542: the shared right-hand column */
+import { ctlBottom, leftCluster, LCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2562: back to the LEFT disc, in the shared diagonal cluster */
 
 /* ═══ v2.3.2542: A SPECIAL ATTACK BUTTON, ORBITING THE ATTACK DISC ═══
  *
@@ -19,10 +19,34 @@ import { ctlColumn, ctlBottom, CTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /
  * ordinary swing instead and the player has no way to see which reading they
  * got.  A labelled button cannot be misread and shows its own cooldown.
  *
- * ═══ IT MUST STILL SWALLOW ITS OWN TOUCHES -- FOR A DIFFERENT NEIGHBOUR ═══
- * On the left the hazard was the movement layer: a press that fell through
- * walked or dodged.  On the right there are TWO things underneath, and the
- * owner named both:
+ * ═══ v2.3.2562: AND BACK TO THE LEFT AGAIN, WITH WHIRLWIND BESIDE IT ═══
+ * Owner, after playing the v2.3.2542 build and sending a screenshot: "I'd like
+ * the whirlwind and special attack buttons diagonally above the left joystick
+ * (directionally above but diagonal to provide enough space between them for
+ * not accidentally pressing the other one)".  So this button returns to the
+ * side it was on at v2.3.2472, one slot of a two-control diagonal -- see
+ * leftCluster in ShieldButton.jsx for the geometry and why the two steps are
+ * different sizes.
+ *
+ * WHICH MAKES THE PARAGRAPH BELOW LIVE AGAIN, in its ORIGINAL form: the
+ * neighbour underneath is the movement layer once more, and a press that fell
+ * through would walk or dodge.  The guards do not change -- touchstart,
+ * touchend and touchmove are all stopped, and they were written for exactly
+ * this side.  What changes is which failure they prevent, so both are kept
+ * below rather than one being swapped for the other: this button has now been
+ * on both halves of the screen twice, and the next move should not have to
+ * rediscover either list.
+ *
+ * ═══ IT MUST SWALLOW ITS OWN TOUCHES -- ON EITHER SIDE ═══
+ * On the LEFT (v2.3.2472, and again now) the hazard is the movement layer:
+ * `[data-joyzone="L"]`, the full-height left HALF at z6, whose touchstart
+ * begins a walk and whose swipe dodges.  A press that leaked would move the
+ * player instead of firing.  This is asserted with a REAL finger rather than a
+ * dispatched event, because dispatchEvent does not hit-test and so cannot tell
+ * a reachable button from an unreachable one (TRAPS 67).
+ *
+ * On the RIGHT (v2.3.2542, kept for the record) there were TWO things
+ * underneath, and the owner named both:
  *
  *   1. THE ATTACK DISC (`.bt-rjoy-base`, z30, pointerEvents:'auto' whenever the
  *      contextual button is live).  This button sits at z31 in the column that
@@ -46,11 +70,18 @@ import { ctlColumn, ctlBottom, CTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /
  * two lines and the failure it prevents is silent.
  *
  * ═══ WHERE ═══
- * Slot -1 of the D9 column: hugging the disc's left edge, one button below the
- * Block button, in the band the shield vacated.  See CTL_SLOT in
- * ShieldButton.jsx for why it goes BELOW the stack rather than on top of it.
- * Measured through ctlColumn, so it tracks the disc and the other three
- * controls at every width instead of carrying a fourth copy of the layout rule.
+ * v2.3.2562: slot 0 of the LEFT cluster -- the lower-left of the diagonal pair
+ * above the movement disc, with Whirlwind up and to its right.  Measured
+ * through leftCluster (ShieldButton.jsx) rather than with its own numbers, for
+ * the reason ctlColumn existed: a control that writes its own layout rule
+ * drifts from its neighbour, and the owner has paid for that twice
+ * (v2.3.2254's button behind the dashboard, v2.3.2327's bash too far away).
+ *
+ * ITS SLOT DOES NOT DEPEND ON WHIRLWIND BEING DRAWN.  Whirlwind disappears out
+ * of combat as of v2.3.2561, and slots are keyed by control, so this button
+ * holds its pixels whether or not its neighbour is on screen.  A control that
+ * moves when its neighbour hides is worse than either problem alone, and
+ * mp-btnlayout asserts the position is identical in both states.
  *
  * ═══ WHEN ═══
  * Unchanged: the same shape of predicate as shieldButtonLive -- a weapon in the
@@ -149,9 +180,9 @@ export function SpecialButton(props) {
   }
   if (!specialButtonLive(S, TARGET_PERIMETER_PX)) return null;
 
-  /* v2.3.2542: the shared right-hand column decides the size, the right edge
-     and the slot height -- one rule for Block, Bash, Whirlwind and this. */
-  var col = ctlColumn(isLandscape);
+  /* v2.3.2562: the shared LEFT cluster decides the size, the left edge and the
+     slot height -- one rule for this button and Whirlwind beside it. */
+  var col = leftCluster(isLandscape);
   var size = col.size;
 
   var cdLeft = Math.max(0, SPECIAL_CD_MS - (Date.now() - (S._lastSwipe || 0)));
@@ -188,11 +219,11 @@ export function SpecialButton(props) {
     onContextMenu: function (e) { e.preventDefault(); },
     style: {
       position: 'fixed',
-      right: col.right,
-      bottom: ctlBottom(col.bottomPx(CTL_SLOT.special)),
+      left: col.leftPx(LCTL_SLOT.special),
+      bottom: ctlBottom(col.bottomPx(LCTL_SLOT.special)),
       width: size, height: size, borderRadius: '50%',
-      /* Above [data-joyzone="R"] (z6) and the disc's corner box (z30), the
-         same rung ShieldButton and AbilityButtons sit on. */
+      /* Above [data-joyzone="L"] (z6) and the movement disc's corner box (z30),
+         the same rung ShieldButton and AbilityButtons sit on. */
       zIndex: 31,
       touchAction: 'none',
       pointerEvents: 'auto',

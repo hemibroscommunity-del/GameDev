@@ -255,14 +255,40 @@ export function resolveCastAngle(S) {
  * toe with.  The lock says a fight is on; the ability's radius decides what it
  * reaches.
  *
- * ═══ IT GREYS, IT DOES NOT VANISH ═══
- * Owner: "The button should read as unavailable rather than silently doing
- * nothing when the condition is not met."  So this is NOT a `visible` term (a
- * button that disappears between fights is a button nobody learns, and the
- * reason v2.3.2327's weapon rule went INTO `visible` was that an archer's
- * Whirlwind could never become available -- a sword's always can, within
- * seconds).  It rides beside `equipped` and `afford` instead: the button stays
- * on screen, dims, loses its brass edge, and castAbility floats a reason.
+ * ═══ v2.3.2561: THE BUTTON VANISHES -- AND THIS IS STILL NOT A `visible` TERM ═══
+ * v2.3.2542 greyed the button (owner: "should read as unavailable rather than
+ * silently doing nothing").  Owner, after playing that build: the button should
+ * DISAPPEAR out of combat instead of greying.  That is a change to how the rule
+ * PRESENTS, not to what it means, and the distinction is load-bearing:
+ *
+ *   `visible` is ALSO the cast gate -- castAbility returns false on `!st.visible`
+ *   before it reaches any of the popup branches below.  Fold the lock into
+ *   `visible` and the "Not in combat!" popup stops firing on EVERY path,
+ *   including the desktop R key, where AbilityButtons is bt-desktop-hide and
+ *   there is no button to look at.  Silence on desktop is the exact v2.3.1716
+ *   failure v2.3.2542 was avoiding, and it would be reintroduced by the one-line
+ *   change that looks like the whole feature.
+ *
+ * So `engaged` stays its own field beside `equipped` and `afford`, castAbility
+ * keeps its refusal path and its popup, and the HIDING happens one layer up:
+ * AbilityButtons filters `st.engaged === false` out of its render list.  The
+ * cast rule and the button rule are deliberately NOT the same rule any more --
+ * which is the one place in this file where that is true, so it is written here
+ * rather than left to be rediscovered from the JSX.
+ *
+ * The reason the old note gave for keeping it out of `visible` -- "a button that
+ * disappears between fights is a button nobody learns" -- was the owner's call
+ * to overrule, and they have overruled it after playing it.  v2.3.2327's weapon
+ * rule stays in `visible` for its own separate reason (an archer's Whirlwind can
+ * never become available, so neither its button nor its cast should exist).
+ *
+ * NO LINGER IS NEEDED, and that is a property of the gate rather than luck.
+ * The right disc's contextual visibility (LANTERN-SLATE-SPEC, v2.3.2246) carries
+ * a 400ms linger because its input is CANDIDACY -- a hard 220px test that a
+ * monster pacing the boundary would strobe.  This gate's input is the LOCK,
+ * which targeting.js acquires at 220 and holds out to 275 (TARGET_HYST): the
+ * 55px dead band IS the anti-strobe, already there, and it is what makes an
+ * appearing/disappearing button safe where a bare radius test would not be.
  *
  * ═══ WHY THIS IS NOT A FIELD IN THE MIRRORED TABLE ═══
  * `needsHeldShield` and `needsMeleeActive` are declared in data/abilities.js,
@@ -318,7 +344,10 @@ export function abilityStatus(S, kind) {
   /* v2.3.2542: ...and whirlwind additionally wants a fight actually under way.
      Reported as its own field rather than folded into `visible` -- see
      NEEDS_LOCK above.  `true` for every ability that does not ask for it, so
-     callers can read `st.engaged` unconditionally. */
+     callers can read `st.engaged` unconditionally.
+     v2.3.2561: AbilityButtons now HIDES the button on this field instead of
+     dimming it.  Still not a `visible` term: `visible` gates the cast, and the
+     desktop R key has no button to hide -- only the popup below. */
   var engaged = !NEEDS_LOCK[kind] || !!monsterLock(S);
   var now = Date.now();
   var readyAt = cdMap(S)[kind] || 0;
@@ -362,11 +391,27 @@ export function castAbility(S, kind) {
     pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough energy!', '#F2C14E', { ts: Date.now() });
     return false;
   }
-  /* v2.3.2542: and the same courtesy for the engagement rule -- the button is
-     greyed, so a press on it is a player asking why.  Below the affordability
-     check on purpose: "not enough energy" is the more actionable answer when
-     both are true, and this one is reachable from the desktop R key as well,
-     where there is no greyed button to look at. */
+  /* v2.3.2542: and the same courtesy for the engagement rule.  Below the
+     affordability check on purpose: "not enough energy" is the more actionable
+     answer when both are true.
+
+     ═══ v2.3.2561: THIS PATH MATTERS MORE NOW, NOT LESS ═══
+     v2.3.2542 justified it by "the button is greyed, so a press on it is a
+     player asking why".  The button is GONE out of combat now, so that sentence
+     no longer describes the touch case -- and the path is still load-bearing on
+     two surfaces that have nothing else:
+
+       - DESKTOP.  The R key routes straight here and AbilityButtons is
+         bt-desktop-hide, so this popup is the only feedback that exists.  This
+         is the whole reason the lock stayed out of `visible` (see NEEDS_LOCK).
+       - THE TOUCH RACE.  AbilityButtons re-renders on a 200ms tick, so for up
+         to ~200ms after the lock drops the button is still painted and still
+         pressable.  castAbility re-checks live state and refuses -- the same
+         "on screen and dead" window v2.3.2252 called out for Shield Bash -- and
+         without this branch that press would be silent.
+
+     A refused press still costs no cooldown and no stamina: both are written
+     below this check, not above it. */
   if (!st.engaged) {
     pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not in combat!', '#D8A94D', { ts: Date.now() });
     return false;

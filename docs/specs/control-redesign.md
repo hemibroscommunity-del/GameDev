@@ -893,7 +893,12 @@ The left stick's double tap still swaps too. They are different surfaces,
 each classifying its own taps, and the left one is what the onboarding
 already teaches.
 
-### 11.3 The combat column moves left of the disc (D9)
+### 11.3 The combat column moves left of the disc (D9) — ~~SUPERSEDED~~, see §12.7
+
+> **The slot table below described the layout from v2.3.2472 to v2.3.2562 and
+> is kept for that history only.** v2.3.2562 dismantled the column: Whirlwind
+> and Special moved to the left disc, Block to the diagonal bottom-left of the
+> attack disc, and only Shield Bash's row is still true. See §12.7.
 
 > D9: "Block left of the disc, abilities stacked above it."
 
@@ -928,7 +933,7 @@ owner** — if a phone check shows the movement stick catching, shrink
 The slide-from-attack-onto-the-shield latch (v2.3.2254) needs no change:
 it reads the live `[data-shield]` rect, so it follows the button.
 
-### 11.4 A Special Attack button beside the movement stick — MOVED, see §12.2
+### 11.4 A Special Attack button beside the movement stick — moved to the right in §12.2, then **back here** in §12.7
 
 `src/ui/panels/SpecialButton.jsx`, a second trigger for the same
 `specialAttack` the flick fires. The flick stays — it is what the
@@ -1043,6 +1048,9 @@ over, and into the shared column rather than beside it:
 of the D9 column (`CTL_SLOT`, exported from `ShieldButton.jsx` so four
 controls cannot each keep their own idea of who sits where).
 
+> **~~slot −1~~ — reversed by §12.7.** The owner moved this button back beside
+> the movement stick after playing it. It measures through `leftCluster()` now.
+
 **Why below Block rather than above Whirlwind.** Slot 3 works out at 283px
 above the dashboard band in landscape, on a 390px-tall screen — a combat
 button up among the health bars and a long way from the thumb holding
@@ -1137,14 +1145,15 @@ exact cast the move exists for — the one that gathers a ring of monsters you
 are not yet toe to toe with. The lock says a fight is on; the ability's radius
 decides what it reaches.
 
-**It greys, it does not vanish.** The rule is a new `engaged` field on
-`abilityStatus`, beside `equipped` and `afford` — *not* a `visible` term.
-v2.3.2327 put the weapon rule into `visible` because an archer's Whirlwind
-could never become available; a sword's can, within seconds. So the button
-stays on screen at 0.45 with no brass edge, `data-engaged="0"`, and a press
-routes into `castAbility` on purpose, which floats **"Not in combat!"** — a
-greyed button that says nothing is the v2.3.1716 failure. A refused press
-costs no cooldown and no stamina (the check sits above both).
+**It greys, it does not vanish.** ~~The button stays on screen at 0.45 with no
+brass edge.~~ **Superseded by v2.3.2561 — see §12.6 below.** The rest of this
+paragraph still stands: the rule is an `engaged` field on `abilityStatus`,
+beside `equipped` and `afford` — *not* a `visible` term. v2.3.2327 put the
+weapon rule into `visible` because an archer's Whirlwind could never become
+available; a sword's can, within seconds. A press routes into `castAbility` on
+purpose, which floats **"Not in combat!"** — a refusal that says nothing is the
+v2.3.1716 failure. A refused cast costs no cooldown and no stamina (the check
+sits above both).
 
 The requirement is declared as data (`NEEDS_LOCK` in `src/game/abilities.js`)
 rather than an `if (kind ===` branch, matching `needsHeldShield` /
@@ -1162,10 +1171,10 @@ like the slot `needsMeleeActive` reads.
 |---|---|---|
 | 12.1 | The right double tap is free — bind it to something? | **No.** Unbound is the end state; see the trap note in §12.1. |
 | 12.2 | Which slot for the Special button? | **−1**, below Block, in the band D9 emptied. Slot 3 would sit 283px up in landscape, among the health bars. |
-| 12.3 | Does the Special button keep the column's encroachment into the movement zone on a narrow phone? | **Yes** — it takes exactly the same left edge as Block (asserted), rather than a new bite of its own. On a 375 that is 7px, on a 360 14px; the alternative is sliding under the attack disc. |
+| 12.3 | Does the Special button keep the column's encroachment into the movement zone on a narrow phone? | ~~**Yes** — it takes exactly the same left edge as Block.~~ **Moot since §12.7:** the button is on the other side of the screen now and shares no edge with Block. |
 | 12.4 | Which "in combat" for whirl? | **The monster lock** (`monsterLock`), the fact that already lights the attack disc. NOT `S._engaged` (greys mid-fight and is unreachable on desktop — see §12.3), NOT `engagedStance()` (true over an empty field, and greys when the thumb lifts), NOT the melee reach test (tuned for a 72px swing; whirl reaches 240). |
-| 12.5 | Gate whirl by hiding the button, as v2.3.2327 hid it for a bow? | **No — grey it.** The owner asked for "unavailable", and unlike the bow case the condition clears within seconds of a fight starting. |
-| 12.6 | Whirl is out of combat and the player presses anyway — silent, or a popup? | **Popup**, and the press is routed for exactly that reason. A refused press costs no cooldown (asserted). |
+| 12.5 | Gate whirl by hiding the button, as v2.3.2327 hid it for a bow? | ~~**No — grey it.**~~ **Reversed by the owner at v2.3.2561 after playing the merged build — hide it.** See §12.6 below. |
+| 12.6 | Whirl is out of combat and the player presses anyway — silent, or a popup? | **Popup**, and the cast is routed for exactly that reason. A refused cast costs no cooldown and no stamina (asserted). Unchanged by v2.3.2561, and more load-bearing than before — see §12.6. |
 
 ### 12.5 Found in this pass, NOT changed here
 
@@ -1189,3 +1198,173 @@ like the slot `needsMeleeActive` reads.
   no fixture has caught it. `mp-btnlayout` now measures it against every
   column button and SKIPs with a reason when the fixture has no burst
   weapon, so the row is armed for whoever gives that button a slot.
+
+### 12.6 v2.3.2561 — the button disappears, and why that is not a `visible` term
+
+Owner, after playing the v2.3.2542 build: **the Whirlwind button should
+disappear entirely when you are not in combat, instead of greying out.** That
+reverses judgement call 12.5 and nothing else. The *rule* is untouched — it is
+still `monsterLock(S)` (12.4 stands), still declared as data in `NEEDS_LOCK`,
+still reported as its own `engaged` field.
+
+**What changed is one line, and where it lives is the whole point.**
+`AbilityButtons` filters `st.engaged === false` out of its render list.
+`abilityStatus` still reports `visible: true, engaged: false` out of combat.
+
+The tempting one-line version — fold the lock into `visible` — breaks two
+things at once, because **`visible` is also the cast gate**: `castAbility`
+returns on `!st.visible` before it reaches any popup branch.
+
+1. The **"Not in combat!"** popup would stop firing on *every* path.
+2. Including the **desktop R key**, where `AbilityButtons` is `bt-desktop-hide`
+   and the popup is the only feedback that exists. Silence on desktop is the
+   v2.3.1716 failure v2.3.2542 was built to avoid.
+
+So the cast rule and the button rule are deliberately different rules now.
+`mp-rbutton` §A pins the split directly: the button is **absent from the DOM**,
+the status still reads `visible: true, engaged: false`, and the refusal is
+driven through a real `KeyR` press — which is the surface that would go silent.
+
+**No linger is needed, and that is a property of the gate rather than luck.**
+The right disc's contextual visibility (LANTERN-SLATE-SPEC, v2.3.2246) carries
+a 400ms linger because its input is *candidacy*, a hard 220px test that a
+monster pacing the boundary would strobe. This gate's input is the **lock**,
+which `targeting.js` acquires at 220 and holds out to 275 (`TARGET_HYST`). That
+55px dead band *is* the anti-strobe, already there — and it matters more for a
+button that appears and disappears than it did for one that brightened and
+dimmed, because a control flickering in and out of existence moves the thumb's
+target, where a flickering opacity did not.
+
+**A real unmount, not a CSS gate.** TRAPS §41 (a hidden control still measures,
+and still moves the hit-test) is the hazard here, and it does not bite: nothing
+anchors onboarding to this button — `ControlsTutorial` and `QuestCoach` ring
+`.bt-rjoy-base` and `[data-shield]`, never `[data-ability]` — so there is no
+coach mark left ringing empty air, and an unmounted node takes no taps.
+
+**Known consequence, accepted:** the ~48px the button occupied becomes
+right-joystick surface again while it is gone, so a tap there out of combat
+auto-attacks instead of floating a refusal. That is the same square behaving as
+the rest of the right half does, and out of combat there is nothing to hit.
+
+**The 200ms window is why 12.6 still stands.** `AbilityButtons` re-renders on a
+200ms tick, so for up to ~200ms after the lock drops the button is still painted
+and still pressable — the "on screen and dead" window v2.3.2252 named for Shield
+Bash. `castAbility` re-checks live state and refuses out loud, which is what
+keeps that press from dying quietly.
+
+### 12.7 v2.3.2562 — the buttons move sides
+
+Owner, after playing the merged build and sending a screenshot: *"the placement
+of the buttons isn't ideal. I'd like the whirlwind and special attack buttons
+diagonally above the left joystick (directionally above but diagonal to provide
+enough space between them for not accidentally pressing the other one) and the
+shield block button to the diagonal bottom left of that right joystick (as a
+mental separation for combat purpose further away from the other buttons on its
+own side)."*
+
+This dismantles the D9 column (§12.2) and **reverses §12.2's move of the Special
+button** to the attack side, which was itself only two versions old. That is the
+owner's call after playing both.
+
+| Control | Was | Now |
+|---|---|---|
+| Whirlwind | column slot 2, right of the movement zone | left cluster slot 1 — up and right of Special |
+| Special | column slot −1, below Block | left cluster slot 0 — above the movement disc |
+| Block | column slot 0, level with the disc's centre | diagonal bottom-left of the attack disc, alone |
+| **Shield Bash** | column slot 1 | **unchanged** — the ask does not mention it |
+
+**The gap is the requirement, so it is a number.** "Enough space … for not
+accidentally pressing the other one" is not "they do not overlap" — two buttons
+shoulder to shoulder also do not overlap, and that is the layout being
+complained about. The horizontal step is a full button plus half a button
+(`LCTL_THUMB_FRAC`), which separates the boxes on that axis *alone*, so the
+vertical rise is free to be small. Measured: **24px clear / 77px between centres
+at 360 and 390 portrait; 27px clear / 86px between centres in landscape.**
+
+The gap was first written as a flat 24px and that was wrong in a way only the
+landscape run caught: the button grows to 54px sideways, so a constant gap got
+*proportionally tighter* on the orientation with less room. It is a fraction now.
+
+**Why the rise is smaller than the step.** §12.2 rejected a slot that worked out
+~283px above the dashboard band on a 390px-tall landscape screen, for putting a
+control "up among the health bars" — which are drawn on the canvas, so no rect
+can catch it and only the number can. A full-button rise on both axes would have
+repeated it. `mp-abilslot` now asserts that ceiling directly.
+
+**The hazard is that the left half is the movement zone.** `[data-joyzone="L"]`
+is the full-height left half at z6; its touchstart begins a walk and a swipe
+dodges, and `lM`/`lE` are bound to *window*. Both buttons stop touchstart,
+touchend and touchmove — the guards `SpecialButton` has carried since v2.3.2472
+for this exact neighbour, now on `AbilityButtons` too. Proven with
+`page.touchscreen.tap` at real coordinates, never `dispatchEvent`, which does
+not hit-test (TRAPS §67); and the converse is asserted too — the movement
+surface still answers where no button covers it.
+
+### 12.8 Found by this pass — raised, decided by the owner, fixed in v2.3.2564
+
+**The band below the attack disc is not empty during onboarding.** §12.2's note
+said "the band BELOW the disc is EMPTY … nothing lives there now". It is not:
+the onboarding coach paints a ~220×81 card containing a real 44×44 button low
+and centre, inside a full-screen z31 overlay, and it lands squarely on Block's
+new home. `mp-duelblock`'s "with nothing over it" row caught it — it now names
+the coverer instead of only reporting `false`.
+
+This is **not new with Block**. The Special button has sat in that same band
+since v2.3.2542 with the same overlap, and it went unnoticed because the only
+scenario that hit-tests it (`mp-joyfade`) already retired the coach first.
+
+**But the swap matters more than "same overlap, different control" suggests,
+and this is the part worth acting on.** Special has a second way to fire it —
+the flick on the attack disc, which §11.4 says is what onboarding actually
+teaches. **Block has no second way on a phone.** `toggleShield`
+(`src/game/shieldToggle.js`) has exactly one caller in the whole client,
+`ShieldButton.jsx`; the double-tap that used to raise the shield was
+deliberately retired (TRAPS §78) and not restored, and the Q key is desktop-only
+(it reaches `raiseShieldToggle` by a different path). So while that card is over
+the button, a phone player mid-tutorial **cannot raise their shield at all** —
+which is the exact report `mp-duelblock` was written for: *"I think I was unable
+to block"*.
+
+Measured coverage: on a **360px** phone the card covers the Block button
+**completely**; on a **390** it covers 76% and the centre is unreachable. It
+only bites during onboarding, so it does not affect a player past the tutorial.
+
+**The owner decided it: "Coach card move off the combat band (doesn't seem like
+a big deal either way)."** So the card moved, not the buttons — shipped in the
+same PR, deliberately, so `main` never has a version where Block is unreachable
+during the tutorial.
+
+**What v2.3.2564 does.** `QuestCoach` lifts its card clear of the whole combat
+band, not merely clear of Block. The band's top comes from `combatBandTopPx()`
+in `ShieldButton.jsx` — the same arithmetic the controls place themselves with.
+
+**Why not measure the live boxes, which was the first cut.** Half these controls
+come and go: Whirlwind is gone out of combat (§12.6), Bash exists only with the
+guard raised, Special hides behind it. So a DOM sweep answers "how high is the
+band *right now*", and the card that reads it is not re-rendered when a button
+later appears underneath it. Measured: at 360 the card placed itself before
+Whirlwind arrived and then overlapped it by 14px, while the same code at 390
+happened to be fine — a layout rule that depends on render order. Computing from
+the anchors covers every slot whether or not it is currently drawn, which is also
+what the owner asked for: the band is where the controls live, and another button
+could land there later.
+
+**It still teaches.** The spotlight ring is a separate element anchored to the
+lesson's target, so only the words move — asserted, along with the card still
+being fully on screen.
+
+**What that cost, and a note for whoever needs it.** Driving the proof turned up
+something unrelated but worth recording: a single `page.touchscreen.tap` on the
+Block button delivers **one touchstart and one mousedown**, and `ShieldButton`
+binds `press` to both — so the tap toggles the shield up and straight back down.
+It is almost certainly this emulation rather than an iPhone (`press` calls
+`preventDefault()` on a cancelable touchstart, which is what suppresses the
+compatibility mouse events on iOS Safari), and it is invisible on every other
+control here because Whirl and Special are cooldown-gated, so their second fire
+is refused and nothing shows. **Not fixed** — those handlers predate this work by
+300 versions and the real-device behaviour cannot be confirmed from here.
+
+**And the landscape coach card still sits over the movement joystick's centre**
+— same overlay, different control, found by `mp-abilslot`'s reachability probe.
+The band dodge above is vertical and does not address a card that is beside the
+joystick rather than above it. Still the onboarding layout's to fix.

@@ -50,7 +50,7 @@ import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import { startBuildWatch } from '@/game/buildWatch.js';
 import { TouchControls, RBTN_BODY_BG, RBTN_BODY_BG_HOT, RKNOB_BG, RKNOB_BG_HOT } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
-import { ShieldButton } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack */
+import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
 import { GESTURE_TOOL_URLS, gestureDemo01, gestureCue01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245: the tool strips the button face plays; gestureDemo01 v2.3.2384; extractionMeter01 v2.3.2514 (shared with the bar above the head) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
@@ -8466,7 +8466,7 @@ export var BroTown = function BroTown(_ref0) {
       'position: fixed',
       'left: 0',
       'top: 0',
-      'width: 18px',
+      'width: ' + EDGE_GUARD_PX + 'px',   /* v2.3.2563: shared with leftCluster */
       'height: 100%',
       'z-index: 40',
       'background: transparent',
