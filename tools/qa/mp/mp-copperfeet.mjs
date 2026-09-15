@@ -1,4 +1,4 @@
-/* THE COPPER LEGGINGS HAVE BLUISH FEET (v2.3.2517).
+/* THE COPPER LEGGINGS HAVE BLUISH FEET (v2.3.2519).
  *
  * Owner (backlog triage 2026-09-14 §5.8): the copper leg armour reads blue at
  * the feet on a jog east, and the cause is already settled -- "the body's SHOES

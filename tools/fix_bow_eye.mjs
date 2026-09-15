@@ -13,12 +13,12 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 
 const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
-/* v2.3.2517: was a hard-coded path from the session that wrote this file, which
+/* v2.3.2519: was a hard-coded path from the session that wrote this file, which
    no later session has.  The montage is a preview, so it goes somewhere that
    always exists and can be overridden. */
 const SCRATCH = process.env.BT_SCRATCH || '/tmp';
 const APPLY = process.env.APPLY === '1';
-/* ═══ v2.3.2517: FRAME 2 IS NOT FINE, AND THE NOTE BELOW IS WHY IT LOOKED IT ═══
+/* ═══ v2.3.2519: FRAME 2 IS NOT FINE, AND THE NOTE BELOW IS WHY IT LOOKED IT ═══
  * Owner (backlog triage 2026-09-14, art item 3): "south idle bow-shot, left
  * eyeball all black."
  *
@@ -94,7 +94,7 @@ function processFrame(d,W,x0,fw){
   const whiteCount=(g)=>g.reduce((n,[x,y])=>{const o=(y*W+x)*4;return n+(isWhite(d[o],d[o+1],d[o+2],d[o+3])?1:0);},0);
   const lWhite=whiteCount(L), rWhite=whiteCount(R), rW=rb.x1-rb.x0+1, lW=lb.x1-lb.x0+1;
   /* TWO defects, one repair.  v2.3.961's was an oversized WHITE BLOCK sclera on
-     the camera-left eye; v2.3.2517's (frame 2) is the opposite -- that eye is
+     the camera-left eye; v2.3.2519's (frame 2) is the opposite -- that eye is
      solid dark with no sclera at all.  Both are fixed by stamping the
      well-formed camera-right eye at the left eye's position, so the rule below
      accepts either shape and nothing else:

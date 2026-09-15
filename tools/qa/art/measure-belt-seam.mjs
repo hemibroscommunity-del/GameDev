@@ -1,4 +1,4 @@
-/* DOES THE CHAIN BELT COVER THE PLATE-TO-GREAVES SEAM? (v2.3.2517)
+/* DOES THE CHAIN BELT COVER THE PLATE-TO-GREAVES SEAM? (v2.3.2519)
  *
  * Owner (backlog triage 2026-09-14, art item 6): "SE jog, armored legs: gap
  * between the legs and the torso on a frame or few."
