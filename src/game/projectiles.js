@@ -731,31 +731,34 @@ export function updateArrows(S, deps) {
                this is the only branch that FLIES — the stuck, held and
                planting branches above all freeze _renderX, and a segment
                built from one of those is not a flight path. */
-            /* ═══ v2.3.2473: THE FIRST FLIGHT FRAME HAS TO SWEEP TOO ═══
-               `_renderX` does not exist yet on a projectile's first flying
-               frame, so `_prevX` came out undefined and _projCapsule fell back
-               to `px = a._renderX` -- the NEW position.  The capsule was then
-               the arrow's drawn body sitting at where it had ARRIVED, with
-               nothing behind it: the whole first step went untested.
+            /* ═══ v2.3.2473: THE FIRST FLIGHT FRAME SWEEPS FROM ITS LAUNCH POINT ═══
+               `_renderX` does not exist yet on a projectile whose FIRST update
+               is a flying one -- anything without the bow's nock latch, which
+               is every staff bolt and the bow special (it carries no
+               `fromGrip`, so `_released` is true immediately).  `_prevX` came
+               out undefined there, and _projCapsule falls back to
+               `px = a._renderX`: the capsule became the arrow's drawn body
+               sitting at where it had ARRIVED, with nothing behind it, so that
+               first step went untested as a segment.
 
-               THAT WAS SURVIVABLE AT 8 px/frame AND IS NOT AT 24.  Measured on
-               the real server monsters (mp-hitreal, verdant): a bow special is
-               pushed at dist 14 and its first step is 24 x _dtScale's x3 clamp
-               = 72px, so its first tested position is 86px out and the capsule
-               reaches back only to 86 - 28.9 = 57.  A slime CHARGING the player
-               -- which is what they do -- gets inside that before the cast
-               resolves, and the arrow skips straight over it and flies on:
-               five of five specials missed a monster that had closed to under
-               60px, where the old 38px first position covered everything from
-               13px outward.  It is the near side of the same hole the segment
-               cap guards on the far side.
+               Seeding the previous point at the pre-step distance makes the
+               first frame sweep 14 -> 86 the way every later frame sweeps,
+               which is the geometry the drawn arrow actually travels.  It is
+               the same principle v2.3.2426 and v2.3.2433 shipped -- test the
+               segment the sprite crossed, not the point it stopped at -- and
+               v2.3.2473's 3x speed makes that untested first step three times
+               longer than it used to be.
 
-               Seeding the previous point at the launch distance closes it: the
-               first frame now sweeps 14 -> 86 like every later frame sweeps,
-               which is the geometry the drawn arrow actually travels.  It can
-               only ADD hits the player already saw the arrow make, and it is
-               right at any speed -- the 8px version had the same hole, one
-               third as wide. */
+               HONEST ABOUT ITS EVIDENCE.  This was written to explain five bow
+               specials missing charging slimes in mp-hitreal, and IT DOES NOT
+               EXPLAIN THEM: a scenario that scripts exactly that charge, with
+               the frame rate throttled to pin _dtScale at its x3 clamp, hits
+               all four cases WITH this change and without it.  So the hitreal
+               misses have some other cause and are still open (reported on the
+               PR).  What is kept here is only the narrow claim the code
+               supports -- a segment test should test the whole segment -- and
+               the measurement that it changes no observed outcome, which is
+               why it is safe to keep rather than a fix to rely on. */
             if (a._renderX == null || a._renderY == null) {
               a._prevX = _bx + Math.cos(a.ang) * _dist0;
               a._prevY = _by + Math.sin(a.ang) * _dist0;
