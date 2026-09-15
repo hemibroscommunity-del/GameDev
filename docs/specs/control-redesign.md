@@ -1137,14 +1137,15 @@ exact cast the move exists for — the one that gathers a ring of monsters you
 are not yet toe to toe with. The lock says a fight is on; the ability's radius
 decides what it reaches.
 
-**It greys, it does not vanish.** The rule is a new `engaged` field on
-`abilityStatus`, beside `equipped` and `afford` — *not* a `visible` term.
-v2.3.2327 put the weapon rule into `visible` because an archer's Whirlwind
-could never become available; a sword's can, within seconds. So the button
-stays on screen at 0.45 with no brass edge, `data-engaged="0"`, and a press
-routes into `castAbility` on purpose, which floats **"Not in combat!"** — a
-greyed button that says nothing is the v2.3.1716 failure. A refused press
-costs no cooldown and no stamina (the check sits above both).
+**It greys, it does not vanish.** ~~The button stays on screen at 0.45 with no
+brass edge.~~ **Superseded by v2.3.2561 — see §12.6 below.** The rest of this
+paragraph still stands: the rule is an `engaged` field on `abilityStatus`,
+beside `equipped` and `afford` — *not* a `visible` term. v2.3.2327 put the
+weapon rule into `visible` because an archer's Whirlwind could never become
+available; a sword's can, within seconds. A press routes into `castAbility` on
+purpose, which floats **"Not in combat!"** — a refusal that says nothing is the
+v2.3.1716 failure. A refused cast costs no cooldown and no stamina (the check
+sits above both).
 
 The requirement is declared as data (`NEEDS_LOCK` in `src/game/abilities.js`)
 rather than an `if (kind ===` branch, matching `needsHeldShield` /
@@ -1164,8 +1165,61 @@ like the slot `needsMeleeActive` reads.
 | 12.2 | Which slot for the Special button? | **−1**, below Block, in the band D9 emptied. Slot 3 would sit 283px up in landscape, among the health bars. |
 | 12.3 | Does the Special button keep the column's encroachment into the movement zone on a narrow phone? | **Yes** — it takes exactly the same left edge as Block (asserted), rather than a new bite of its own. On a 375 that is 7px, on a 360 14px; the alternative is sliding under the attack disc. |
 | 12.4 | Which "in combat" for whirl? | **The monster lock** (`monsterLock`), the fact that already lights the attack disc. NOT `S._engaged` (greys mid-fight and is unreachable on desktop — see §12.3), NOT `engagedStance()` (true over an empty field, and greys when the thumb lifts), NOT the melee reach test (tuned for a 72px swing; whirl reaches 240). |
-| 12.5 | Gate whirl by hiding the button, as v2.3.2327 hid it for a bow? | **No — grey it.** The owner asked for "unavailable", and unlike the bow case the condition clears within seconds of a fight starting. |
-| 12.6 | Whirl is out of combat and the player presses anyway — silent, or a popup? | **Popup**, and the press is routed for exactly that reason. A refused press costs no cooldown (asserted). |
+| 12.5 | Gate whirl by hiding the button, as v2.3.2327 hid it for a bow? | ~~**No — grey it.**~~ **Reversed by the owner at v2.3.2561 after playing the merged build — hide it.** See §12.6 below. |
+| 12.6 | Whirl is out of combat and the player presses anyway — silent, or a popup? | **Popup**, and the cast is routed for exactly that reason. A refused cast costs no cooldown and no stamina (asserted). Unchanged by v2.3.2561, and more load-bearing than before — see §12.6. |
+
+### 12.6 v2.3.2561 — the button disappears, and why that is not a `visible` term
+
+Owner, after playing the v2.3.2542 build: **the Whirlwind button should
+disappear entirely when you are not in combat, instead of greying out.** That
+reverses judgement call 12.5 and nothing else. The *rule* is untouched — it is
+still `monsterLock(S)` (12.4 stands), still declared as data in `NEEDS_LOCK`,
+still reported as its own `engaged` field.
+
+**What changed is one line, and where it lives is the whole point.**
+`AbilityButtons` filters `st.engaged === false` out of its render list.
+`abilityStatus` still reports `visible: true, engaged: false` out of combat.
+
+The tempting one-line version — fold the lock into `visible` — breaks two
+things at once, because **`visible` is also the cast gate**: `castAbility`
+returns on `!st.visible` before it reaches any popup branch.
+
+1. The **"Not in combat!"** popup would stop firing on *every* path.
+2. Including the **desktop R key**, where `AbilityButtons` is `bt-desktop-hide`
+   and the popup is the only feedback that exists. Silence on desktop is the
+   v2.3.1716 failure v2.3.2542 was built to avoid.
+
+So the cast rule and the button rule are deliberately different rules now.
+`mp-rbutton` §A pins the split directly: the button is **absent from the DOM**,
+the status still reads `visible: true, engaged: false`, and the refusal is
+driven through a real `KeyR` press — which is the surface that would go silent.
+
+**No linger is needed, and that is a property of the gate rather than luck.**
+The right disc's contextual visibility (LANTERN-SLATE-SPEC, v2.3.2246) carries
+a 400ms linger because its input is *candidacy*, a hard 220px test that a
+monster pacing the boundary would strobe. This gate's input is the **lock**,
+which `targeting.js` acquires at 220 and holds out to 275 (`TARGET_HYST`). That
+55px dead band *is* the anti-strobe, already there — and it matters more for a
+button that appears and disappears than it did for one that brightened and
+dimmed, because a control flickering in and out of existence moves the thumb's
+target, where a flickering opacity did not.
+
+**A real unmount, not a CSS gate.** TRAPS §41 (a hidden control still measures,
+and still moves the hit-test) is the hazard here, and it does not bite: nothing
+anchors onboarding to this button — `ControlsTutorial` and `QuestCoach` ring
+`.bt-rjoy-base` and `[data-shield]`, never `[data-ability]` — so there is no
+coach mark left ringing empty air, and an unmounted node takes no taps.
+
+**Known consequence, accepted:** the ~48px the button occupied becomes
+right-joystick surface again while it is gone, so a tap there out of combat
+auto-attacks instead of floating a refusal. That is the same square behaving as
+the rest of the right half does, and out of combat there is nothing to hit.
+
+**The 200ms window is why 12.6 still stands.** `AbilityButtons` re-renders on a
+200ms tick, so for up to ~200ms after the lock drops the button is still painted
+and still pressable — the "on screen and dead" window v2.3.2252 named for Shield
+Bash. `castAbility` re-checks live state and refuses out loud, which is what
+keeps that press from dying quietly.
 
 ### 12.5 Found in this pass, NOT changed here
 

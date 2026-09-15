@@ -33,6 +33,31 @@ const setup = (P, opts) => P.page.evaluate((o) => {
   S.rpg.weapon = { type: 'sword', name: 'Copper Sword', gearBase: 'copper', dmg: 3 };
   S.rpg.rangedWeapon = { type: 'bow', name: 'Pine Bow', gearBase: 'wood', dmg: 3 };
   S.rpg.activeSlot = o.slot;
+  /* ═══ v2.3.2561: A FIGHT, BECAUSE WHIRLWIND'S BUTTON NOW NEEDS ONE ═══
+     Owner, after playing v2.3.2542: the button disappears out of combat rather
+     than greying.  This file measures WHERE the buttons sit, so it needs them
+     on screen -- a monster inside the 220px perimeter is what puts whirl there.
+
+     The lock is ALSO written by hand, which is normally the wrong move (a
+     fixture that writes the lock tests the fixture -- mp-rbutton §B/§D exist
+     precisely to prove updateTargeting acquires it on its own, and mp-ability
+     drives the same auto-acquire path).  It is deliberate here: the RANGED lane
+     does not auto-acquire at all (targeting.js `autoAcquires` -- for a bow the
+     tap IS the targeting system), so without it the bow row below would find
+     whirl absent for TWO reasons and could no longer fail if the weapon rule
+     broke.  Both slots get the same fight, so the only thing that moves between
+     the two measurements is the weapon. */
+  S._serverMonsters = false;
+  const mx = S.player.x + 90, my = S.player.y;
+  const mon = {
+    id: 'slot_fodder', arch: 'fodder', archetype: 'fodder', type: 'fodder',
+    x: mx, y: my, renderX: mx, renderY: my, spawnX: mx, spawnY: my, targetX: mx, targetY: my,
+    hp: 5000, curHp: 5000, maxHp: 5000, dmg: 0, level: 1, gold: 0, spd: 0, vx: 0, vy: 0,
+    alive: true, statuses: {}, _hitThisSwing: false, _atkCd: 0, _stunUntil: 0,
+    respawnAt: 0, moveTimer: 0, _stuckArrows: [],
+  };
+  S.monsters = [mon];
+  S.lockedTarget = { type: 'monster', id: mon.id, ref: mon, src: 'tap' };
   window.__pin = !!o.shieldUp;
   if (!window.__pinned) {
     window.__pinned = true;
@@ -56,8 +81,13 @@ const boxes = (P) => P.page.evaluate(() => {
     const r = el.getBoundingClientRect();
     return { x: Math.round(r.left), r2: Math.round(r.right), y: Math.round(r.top), b2: Math.round(r.bottom) };
   });
+  const S = window._gameState.current;
   return { vw: window.innerWidth, leftZoneEnds: zone ? Math.round(zone.right) : null,
     dashTop, discs, shield: b('[data-shield]'),
+    /* v2.3.2561: reported so the whirl rows below cannot pass or fail for a
+       reason the fixture quietly lost -- a dropped lock would take the button
+       away on its own and look exactly like the weapon rule working. */
+    lock: !!(S && S.lockedTarget && S.lockedTarget.ref),
     bash: b('[data-ability="bash"]'), whirl: b('[data-ability="whirl"]') };
 });
 
@@ -72,7 +102,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(800);
     const g = await boxes(P);
     console.log(`    ${w} melee+shieldUp: ${JSON.stringify(g)}`);
-    rec.ok(`${w}: both ability buttons are on screen with a sword and the shield up (guard)`,
+    rec.ok(`${w}: guard: the seeded fight is still live, so whirl's button has its reason to exist (v2.3.2561)`,
+      g.lock === true, g);
+    rec.ok(`${w}: both ability buttons are on screen with a sword, the shield up and a fight on (guard)`,
       !!g.bash && !!g.whirl, g);
     if (g.bash) {
       /* The attack disc and the movement zone are DERIVED, not queried: both
@@ -104,6 +136,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(700);
     const bow = await boxes(P);
     console.log(`    ${w} bow: bash=${!!bow.bash} whirl=${!!bow.whirl}`);
+    rec.ok(`${w}: guard: the fight is still live across the weapon swap, so the row below is about the WEAPON`,
+      bow.lock === true, bow);
     rec.ok(`${w}: with a BOW out, Whirlwind is gone entirely (not just greyed)`, !bow.whirl, bow.whirl);
     rec.ok(`${w}: ...and Shield Bash is still there, because the shield is still up`, !!bow.bash, bow.bash);
 

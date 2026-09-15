@@ -614,7 +614,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
      cut.  The rows below are shaped by how that first cut failed review, because
      a test that only proves the happy path is what let it look right:
 
-       §A  out of combat  -> on screen, dimmed, refuses out loud, costs nothing
+       §A  out of combat  -> v2.3.2561: GONE from the DOM (it was "on screen,
+                            dimmed" at v2.3.2542 -- the owner changed the
+                            presentation after playing it).  The cast still
+                            refuses out loud and still costs nothing, asserted
+                            through the desktop R key since there is no longer
+                            a button to press.
        §B  in combat      -> available, and the cast is accepted
        §C  THE KILL       -> the monster that started the fight dies while the
                             thumb is still down and another is in range.  This
@@ -653,7 +658,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const whirlState = (P2) => P2.page.evaluate(() => {
     const el = document.querySelector('[data-ability="whirl"]');
     const S = window._gameState.current;
-    if (!el) return { present: false, lock: !!(S.lockedTarget && S.lockedTarget.ref) };
+    /* v2.3.2561: the STATUS is read whether or not the button exists.  The
+       absent branch used to return `present:false` and nothing else, which was
+       fine while absence meant "wrong weapon" -- now absence is the ordinary
+       out-of-combat state and `st` is the field that proves the button was
+       hidden by the render filter rather than by `visible`.  A probe that drops
+       it reports `undefined` and fails a correct build (TRAPS §28). */
+    if (!el) {
+      return { present: false,
+        st: window.__btAbilityStatus ? window.__btAbilityStatus('whirl') : null,
+        lock: !!(S.lockedTarget && S.lockedTarget.ref),
+        lockId: S.lockedTarget && S.lockedTarget.ref ? String(S.lockedTarget.ref.id) : null,
+        lockSrc: S.lockedTarget ? S.lockedTarget.src : null,
+        engagedFlag: !!S._engaged };
+    }
     const cs = getComputedStyle(el);
     const b = el.getBoundingClientRect();
     return { present: true,
@@ -668,26 +686,57 @@ export async function run({ browser, wsPort, webPort, rec }) {
       x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height / 2) };
   });
 
-  /* ── §A out of combat ── */
+  /* ── §A out of combat ──
+     ═══ v2.3.2561: THE BUTTON IS GONE, NOT GREYED ═══
+     Owner, after playing the v2.3.2542 build: Whirlwind's button should
+     DISAPPEAR out of combat rather than dim.  These rows asserted the opposite
+     ("STILL ON SCREEN -- it reads unavailable rather than vanishing") because
+     that WAS the decision at v2.3.2542; they are re-pointed at the new
+     behaviour rather than deleted, so the file still pins a specific claim
+     about what the player sees out of combat.
+
+     What must NOT change with them is the split underneath: the button is
+     hidden by AbilityButtons filtering its render list, NOT by folding the lock
+     into `visible`.  Hence the status row below, which is now the load-bearing
+     one -- `visible: true, engaged: false` is the shape that keeps castAbility's
+     refusal (and its popup) reachable on the desktop R key, where there has
+     never been a button to look at.  A hand that "simplifies" this by moving
+     the lock into `visible` goes red HERE, and silently breaks desktop. */
   const whirlOut = await whirlState(P);
-  rec.ok('out of combat the Whirlwind button is STILL ON SCREEN -- it reads unavailable rather than vanishing',
-    whirlOut.present === true && whirlOut.shown === true, whirlOut);
-  rec.ok('...and it reads as unavailable: dimmed, and saying so in its own state',
-    whirlOut.opacity < 0.6 && whirlOut.engagedAttr === '0' && whirlOut.readyAttr === '0', whirlOut);
-  rec.ok('...and the status it draws from agrees -- visible, but not in a fight',
+  rec.ok('out of combat the Whirlwind button is GONE from the DOM entirely -- not dimmed, not hidden by CSS',
+    whirlOut.present === false, whirlOut);
+  rec.ok('...but the ability still reports itself as visible-and-not-in-a-fight, which is what keeps the '
+    + 'cast refusal (and its popup) alive on every input surface',
     !!(whirlOut.st && whirlOut.st.visible === true && whirlOut.st.engaged === false), whirlOut.st);
-  /* Pressing it anyway must SAY something.  Through the real button, because a
-     direct castAbility call would not prove the greyed button still routes. */
-  if (whirlOut.present) {
-    await P.page.touchscreen.tap(whirlOut.x, whirlOut.y);
-    await P.page.waitForTimeout(350);
-  }
+  /* ═══ THE CAST MUST STILL SAY SOMETHING, AND NOW ONLY THE KEY CAN ASK ═══
+     There is no button to tap any more, so this is driven through the DESKTOP
+     R KEY -- a real page.keyboard press landing on the window keydown listener
+     (game/desktopControls.js, `e.code === 'KeyR'`), not a direct castAbility
+     call, which would prove nothing about the path a player actually uses.
+     This is the surface the popup exists for: AbilityButtons is
+     bt-desktop-hide, so on a mouse-and-keyboard client the popup is the ONLY
+     feedback a refused whirl ever produces. */
+  const outBefore = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return { stam: (S.rpg && S.rpg.stamina) || 0 };
+  });
+  await P.page.keyboard.press('KeyR');
+  await P.page.waitForTimeout(350);
   const outPopups = await P.page.evaluate(() => (window.__popups || []).slice());
-  const outCd = await P.page.evaluate(() => (window.__btAbilityStatus ? window.__btAbilityStatus('whirl').cdLeft : -1));
-  rec.ok('pressing it out of combat refuses OUT LOUD rather than doing nothing silently',
+  const outAfter = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return {
+      stam: (S.rpg && S.rpg.stamina) || 0,
+      cdLeft: window.__btAbilityStatus ? window.__btAbilityStatus('whirl').cdLeft : -1,
+    };
+  });
+  rec.ok('casting it out of combat from the KEYBOARD refuses OUT LOUD rather than doing nothing silently '
+    + '(this is the desktop path, where there is no button at all)',
     outPopups.some((t) => typeof t === 'string' && /not in combat/i.test(t)), outPopups);
-  rec.ok('...and the refused press costs no cooldown, so the ability is ready the moment a fight starts',
-    outCd <= 0, { cdLeft: outCd });
+  rec.ok('...and the refused cast costs no cooldown, so the ability is ready the moment a fight starts',
+    outAfter.cdLeft <= 0, { cdLeft: outAfter.cdLeft });
+  rec.ok('...and it costs no stamina either -- the engagement check sits ABOVE the bar deduction',
+    outAfter.stam === outBefore.stam, { before: outBefore.stam, after: outAfter.stam });
 
   /* ── §B in combat, acquired automatically ──
      No hand-written lock: a monster is put in the zone and updateTargeting is

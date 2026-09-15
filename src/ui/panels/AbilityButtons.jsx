@@ -87,7 +87,35 @@ export function AbilityButtons(props) {
   var live = [];
   for (var i = 0; i < kinds.length; i++) {
     var st = abilityStatus(S, kinds[i]);
-    if (st.visible) live.push({ kind: kinds[i], st: st });
+    /* ═══ v2.3.2561: OUT OF COMBAT, WHIRLWIND IS NOT ON SCREEN AT ALL ═══
+       Owner, after playing the v2.3.2542 build: the button should disappear
+       when you are not in combat rather than grey out.
+
+       FILTERED HERE, NOT FOLDED INTO `visible`, and that is the whole shape of
+       this change.  `visible` is also what castAbility gates on
+       (game/abilities.js), so moving the lock into it would kill the
+       "Not in combat!" popup on every path -- including the desktop R key,
+       where this component is bt-desktop-hide and the popup is the only
+       feedback there is.  So the CAST rule and the BUTTON rule are different
+       rules now: abilityStatus still reports `engaged` honestly, castAbility
+       still refuses out loud, and only the render list narrows.
+
+       Slots are assigned by KIND (CTL_SLOT), so Shield Bash does not slide up
+       into Whirlwind's place on the frames where whirl is gone -- the same
+       property the note at the top of this file relies on for the reverse case.
+
+       No linger, and no CSS gate.  A real unmount rather than opacity/
+       visibility, because a hidden-but-present box still answers
+       getBoundingClientRect and still takes taps (TRAPS §41) -- nothing anchors
+       onboarding to this button (ControlsTutorial and QuestCoach ring
+       .bt-rjoy-base and [data-shield], never [data-ability]), so there is no
+       coach mark to leave ringing empty air.  And the gate does not chatter:
+       targeting.js takes the lock at 220px and holds it to 275 (TARGET_HYST),
+       so a monster pacing the perimeter cannot flicker the button.  That 55px
+       dead band is why the right disc's 400ms linger (LANTERN-SLATE-SPEC
+       v2.3.2246) is not needed here -- the disc lingers because ITS input is
+       bare candidacy, which has no hysteresis of its own. */
+    if (st.visible && st.engaged !== false) live.push({ kind: kinds[i], st: st });
   }
   if (!live.length) return null;
 
@@ -115,10 +143,13 @@ export function AbilityButtons(props) {
   return React.createElement(React.Fragment, null, live.map(function (entry) {
     var kind = entry.kind, st = entry.st;
     var meta = ABILITY_META[kind] || { label: kind, glyph: '?' };
-    /* v2.3.2542: `engaged` joins the ready test -- whirlwind is greyed out of
-       combat rather than hidden (game/abilities.js NEEDS_ENGAGED), so the brass
-       edge and the bright label have to go with it or the button would look
-       live while castAbility refuses. */
+    /* v2.3.2542: `engaged` joins the ready test, so the brass edge and the
+       bright label cannot say "live" while castAbility refuses.
+       v2.3.2561: the filter above means a rendered button is always engaged, so
+       this term no longer decides anything -- KEPT as the belt to that braces.
+       It is the term that stops a button from painting itself live in the
+       ~200ms window between the lock dropping and the next tick re-rendering,
+       if a future change ever renders an unengaged ability for its own reason. */
     var ready = st.cdLeft <= 0 && st.afford && st.equipped && st.engaged !== false;
     var slot = slotStyle(kind);
     return React.createElement('div', {
@@ -130,9 +161,13 @@ export function AbilityButtons(props) {
          an unmet stance rule. */
       'data-ready': ready ? '1' : '0',
       'data-engaged': st.engaged === false ? '0' : '1',
-      /* v2.3.2542: a greyed button still routes into castAbility, deliberately:
-         that is what floats the reason ("Not in combat!") instead of leaving the
-         player to guess why nothing happened. */
+      /* v2.3.2542: the press routes into castAbility, which re-checks the LIVE
+         state and floats the reason instead of leaving the player to guess why
+         nothing happened.
+         v2.3.2561: still deliberate.  Out of combat there is no longer a button
+         to press -- but the 200ms tick means one can survive a few frames past
+         the lock dropping, and that press must still say "Not in combat!"
+         rather than die quietly (the v2.3.2252 "on screen and dead" window). */
       onTouchStart: function (e) {
         e.preventDefault();
         e.stopPropagation();
@@ -160,9 +195,11 @@ export function AbilityButtons(props) {
           : 'radial-gradient(circle, #1A2429 0%, #141C21 100%)',
         border: '2px solid ' + (ready ? '#D8A85F' : 'rgba(238,242,235,.14)'),
         boxShadow: ready ? 'inset 0 1px 0 rgba(255,255,255,.08)' : 'none',
-        /* v2.3.2542: the same 0.45 "you cannot use this yet" wash the missing-
-           weapon case has used since v2.3.1733, now also for an ability whose
-           stance rule is unmet -- one unavailable look, not two. */
+        /* The 0.45 "you cannot use this yet" wash the missing-weapon case has
+           used since v2.3.1733.  v2.3.2542 extended it to the engagement rule;
+           v2.3.2561 hides that case instead, so in practice this is the
+           missing-weapon wash again -- the `engaged` term is kept for the same
+           reason as the one in `ready` above. */
         opacity: (st.equipped && st.engaged !== false) ? 1 : 0.45,
         display: 'flex',
         alignItems: 'center',

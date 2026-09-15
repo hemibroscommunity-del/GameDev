@@ -66,6 +66,11 @@ const rects = (P) => P.page.evaluate(() => {
     innerH: window.innerHeight,
     mode: (bus && bus.state && bus.state.mode) || null,
     attack: one('.bt-rjoy-base'), shield: one('[data-shield]'),
+    /* v2.3.2561: whirl's button exists only while a fight is on, so the lock is
+       reported alongside it -- an absent button and a dropped lock are the same
+       picture otherwise. */
+    lock: !!(window._gameState.current && window._gameState.current.lockedTarget
+      && window._gameState.current.lockedTarget.ref),
     bash: one('[data-ability="bash"]'), whirl: one('[data-ability="whirl"]'),
     /* v2.3.2472: the Special button; v2.3.2542 moved it off the movement disc
        and into the right-hand column, so the disc it must clear is the ATTACK
@@ -202,6 +207,15 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
     Math.abs(r.dashTop - (r.innerH - _band)) <= 2, { dashTop: r.dashTop, innerH: r.innerH, dashH: _band });
   rec.ok(`${tag}: guard: the shield is up, so the bash button exists`,
     !!r.bash && r.bash.shown === true, r.bash);
+  /* ═══ v2.3.2561: AND WHIRL EXISTS BECAUSE THERE IS A FIGHT ═══
+     Its button disappears out of combat now (owner, after playing v2.3.2542),
+     and the clearance loop below skips any box it cannot find -- so without
+     this guard a whirl that stopped rendering would take its own assertion off
+     the board and the suite would go green one row shorter (TRAPS §28).  The
+     fixture above already seeds a monster 80px away, which is inside the 220px
+     perimeter, so updateTargeting acquires the lock with no tap. */
+  rec.ok(`${tag}: guard: a monster is in the perimeter, so the whirl button exists to be measured`,
+    !!r.whirl && r.whirl.shown === true && r.lock === true, { whirl: r.whirl, lock: r.lock });
 
   /* THE CLAIM.  Every combat control's BOTTOM edge must sit above the
      dashboard's top edge -- not merely its top edge, or a button half-swallowed
