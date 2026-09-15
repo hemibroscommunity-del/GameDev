@@ -1,5 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 
+/* ═══ v2.3.2573: THIS COMPONENT HAS NO CALLERS ═══
+   Noted during the v2.3.2572 HP-display-scale sweep, which had to decide
+   whether it needed scaling.  It does not, on two counts: nothing in the tree
+   renders it (BroTown.jsx imports the symbol and never uses it), and it draws
+   a FRACTION and prints no number, so the display scale would not touch it
+   even if it were live -- hp/maxHp is unchanged by dividing both sides.
+   Left in place rather than deleted: that is a call for whoever is cleaning
+   up the desktop HUD row this was built for, not for a nameplate change. */
+
 /* v2.3.1273: DOM version of the owner's health-bar art (the canvas
    widgets live in entityRenderer).  Two-sprite technique: the empty
    frame paints the track, and the full red bar paints on top CLIPPED to
