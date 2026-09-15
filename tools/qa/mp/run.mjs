@@ -59,6 +59,7 @@ const SCENARIOS = {
   fakenum: () => import('./mp-fakenum.mjs'), /* v2.3.2350-2352: the client stops billing damage the worker never dealt */
   brobadge: () => import('./mp-brobadge.mjs'), /* v2.3.2345: the verified-Bro badge has art in it -- Texture.from is a lookup, so the icon rides the manifest */
   equipstale: () => import('./mp-equipstale.mjs'), /* v2.3.2341: Equip from a popup that outlived its bag must reach the worker or do nothing */
+  lootcue: () => import('./mp-lootcue.mjs'), /* v2.3.2531: the pile's last call, the ask that fires when the magnet takes it, and the position that ask is judged against */
   lootmagnet: () => import('./mp-lootmagnet.mjs'), /* v2.3.2490: the magnet stops PUSHING the pile away, and a drifted pile is re-homed */
   lootzone: () => import('./mp-lootzone.mjs'), /* v2.3.2342: a loot pile dropped in Ember does not land on Frost's ground */
   partpool: () => import('./mp-partpool.mjs'), /* v2.3.2331: the particle field is pooled sprites, not re-tessellated polygons */

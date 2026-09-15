@@ -94,7 +94,21 @@ export function updateGroundLootPickup(S, deps) {
                pull can't compound frame-over-frame into an unbounded
                drag; lDist still bounds the inner edge so the pile stops
                crawling once it visually reaches the player. */
-            if (_magnetReady && _amPileRecipient && !loot._collected && sDist < magnetRange && lDist > 20) {
+            /* ═══ v2.3.2531: "THE MAGNET HAS IT" IS ONE FACT, NAMED ONCE ═══
+               The pull below and the pickup request further down are the two
+               halves of the same event -- the pile is committed to this
+               player -- and they used to be written as two unrelated
+               conditions that happened to overlap.  Naming it once is what
+               lets the request fire on the same frame the pull starts (see
+               the request block below) instead of half a second later. */
+            var _magnetHolds = _magnetReady && _amPileRecipient && sDist < magnetRange;
+            /* v2.3.2531: the pull no longer stops dead on `_collected`.  The
+               credit arrives while the coin is still in flight now, and the
+               pile stays on screen for its 0.5 s despawn delay -- without
+               this the sprite froze in mid-air for that half second and then
+               blinked out, which reads worse than the old late pickup did.
+               It finishes its trip into the player instead. */
+            if (_magnetHolds && lDist > 20) {
               /* v2.3.2490: THREE FAULTS IN ONE LINE.  The pull used to be
                  `(1 - lDist / magnetRange) * 3` with no clamp at either end.
                  Once the VISUAL pile sat farther than magnetRange from the
@@ -187,7 +201,51 @@ export function updateGroundLootPickup(S, deps) {
                the share and despawns the pile locally via
                _applyLootCredit).  Keep the pile visible until then so
                there's no ghost-state if the request fails. */
-            if (lDist < 20 && loot._serverLoot && loot.lootId) {
+            /* ═══ v2.3.2531: ASK WHEN THE MAGNET TAKES IT, NOT WHEN THE
+                   SPRITE ARRIVES ═══
+               Owner: "the coin sound lands too late when picking up coins."
+
+               The sound is played from _applyLootCredit (wsClient.js) when the
+               WORKER confirms the credit, and that is deliberate -- it is the
+               only moment the game knows the coins are really yours, so it can
+               never ring for a pickup that did not happen.  What was late was
+               not the sound, it was the ASK.
+
+               MEASURED: the magnet engages at 50 px from the pile's anchor and
+               the request only went out once the SPRITE was inside 20 px.  The
+               pull is floored at 0.35 (v2.3.2490), i.e. ~1.05 px per frame at
+               the outer edge, so crossing that last 30 px takes about 30
+               frames -- half a second at 60 Hz, longer on a phone -- during
+               which the player has already watched the coin fly at them and is
+               waiting for something to happen.  The network round trip the
+               sound also waits for is a few tens of milliseconds next to that.
+
+               So the request goes out on the frame the magnet TAKES the pile.
+               This is not a wider pickup radius in disguise: the pull
+               converges from anywhere inside the magnet range, so every pile
+               the magnet holds today is already collected a moment later --
+               the set of pickups does not change, only when they are asked
+               for.  The one behaviour that does change is in the player's
+               favour: a pile the magnet had hold of when you turned and walked
+               off is now yours instead of being left behind.
+
+               Nothing about AUTHORITY moves.  The worker still checks the
+               recipient list, the zone, death, the claim flags and its own
+               160 px range (LOOT_PICKUP_RANGE, measured from the anchor) --
+               and 50 px from that anchor is deep inside 160, so asking here
+               asks from a position the worker can actually grant.
+
+               DEATH PILES KEEP THE 20 px TRIGGER, deliberately.  A death drop
+               carries no recipient list on the client (null is what lets
+               anyone walk over it once the free-for-all window opens), so the
+               client cannot tell whose bag it is -- only the worker can, and
+               its answer for someone else's is `not-recipient`, which
+               v2.3.2490 treats as a permanent no and drops the local pile on.
+               Asking early would make another player's bag vanish off your
+               screen from 50 px out instead of 20.  The coin sound this is
+               for is a kill-pile sound; there is nothing to gain here. */
+            var _askNow = lDist < 20 || (_magnetHolds && !loot.isDeathDrop);
+            if (_askNow && !loot._collected && loot._serverLoot && loot.lootId) {
               /* Watchdog: if the server never replied with loot_credit
                  (network drop, bot rejection, etc.), the pile would sit
                  forever with _pickupPending=true. After 5 s clear the
