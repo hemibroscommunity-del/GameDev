@@ -126,8 +126,26 @@ if (wrote) {
   const r = spawnSync('python3', [path.join(ROOT, 'tools/webp_icons.py'), '--convert'],
     { cwd: ROOT, stdio: 'inherit' });
   if (r.status !== 0) {
-    console.log('  !! webp conversion failed — the new icons are still .png and');
-    console.log('     metalIconPath() will 404 on them.  Run tools/webp_icons.py --convert.');
-    process.exitCode = 1;
+    /* ═══ v2.3.2519: A CHROMIUM FALLBACK, BECAUSE THIS SANDBOX HAS NO NUMPY ═══
+       webp_icons.py needs numpy + Pillow and neither is installed here (npm
+       works; PyPI is firewalled -- CLAUDE.md).  Without a fallback this script
+       cannot finish in this environment at all: the metal icons stay .png while
+       metalIconPath() asks for .webp, which is a 404 on every one of them in
+       the bag, and the failure is at the END of a long run so it is easy to
+       walk away from.
+       The fallback encodes through Chromium's canvas, which is not lossless --
+       so it DECODES EVERY FILE BACK and refuses any whose opaque pixels drifted
+       (measured on this set: worst opaque delta 0, with the only differences on
+       the antialiased fringe, exactly the premultiplied-canvas artefact
+       docs/TRAPS.md section 53 describes).  Python stays the preferred path and
+       runs first; this only runs when it cannot. */
+    console.log('  webp_icons.py unavailable — falling back to the Chromium encoder');
+    const r2 = spawnSync('node', [path.join(ROOT, 'tools/gear/icons-to-webp.mjs'), '--all'],
+      { cwd: ROOT, stdio: 'inherit' });
+    if (r2.status !== 0) {
+      console.log('  !! webp conversion failed — the new icons are still .png and');
+      console.log('     metalIconPath() will 404 on them.  Run tools/webp_icons.py --convert.');
+      process.exitCode = 1;
+    }
   }
 }
