@@ -133,9 +133,39 @@ export function specialAttack(S) {
        which is why the slot is tested rather than the field. */
     if ((R.activeSlot === 'ranged') && !(S._bowSight && S._bowSight.d != null)) {
       S._bowSpecialQueued = now;
-      /* The same courtesy the no-weapon and no-mana refusals get: a control
-         that silently does nothing is indistinguishable from a broken one. */
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Lining up...', '#D8A94D', { ts: now });
+      /* ═══ v2.3.2527: THE QUEUE IS SHOWN ON THE BUTTON, NOT SAID IN A POPUP ═══
+         Owner, after playing the merged rework: swiping the bow's special on a
+         monster "often pops a message saying the ability is queued", and "the
+         player does not need telling every time; they swiped, they expect a
+         shot."
+
+         v2.3.2473 floated a 'Lining up...' popup here for a good reason, which
+         still holds: a control that silently does nothing is indistinguishable
+         from a broken one, and that is the courtesy the no-weapon and no-mana
+         refusals get.  What was wrong was the FORM, not the feedback.  Those
+         two refusals are dead ends -- the press achieved nothing and the player
+         must change something -- so a one-off message is the right shape for
+         them.  A queued special is the opposite: it is a request that is still
+         alive and about to be granted, so its feedback belongs in the STATE of
+         the control that is holding it, where the player can glance at it, and
+         not in a line of text over their character that they must read while
+         aiming.  A popup per swipe is also per SWIPE: the flick is the fastest
+         input in the game and the owner can issue several a second.
+
+         So the feedback moved rather than being deleted: SpecialButton reads
+         `_bowSpecialQueued` (through specialQueued(), which applies the same
+         BOW_SPECIAL_QUEUE_MS expiry the fire site does) and holds a brass ring
+         and an AIM label for as long as the request stands.  See its header.
+
+         Worth recording that this is now a RARE state as well as a quiet one.
+         The reason the message fired so often was item 1 of the same report:
+         the gate was testing a ray from wherever the player last fired, so a
+         special swiped with the line plainly on a monster queued instead of
+         firing, and kept queueing until the player walked back. With the gate
+         reading the live grip (bowGripPoint, combatHelpers) a swipe that looks
+         on target IS on target, and the queue resolves on the next frame.  It
+         still earns a visible state: the genuine case it was built for -- a
+         special pressed while the line is on empty ground -- is unchanged. */
       return;
     }
     /* A special that IS firing consumes any standing request, so a queued one

@@ -67,6 +67,56 @@ import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
  * different -- four branches floored at zero with the lock applied after, from
  * a different origin. Merging them would be a behaviour change wearing a
  * refactor's clothes. */
+/* ═══ v2.3.2527: ...AND ONE ANSWER FOR "WHERE DOES IT COME FROM" ═══
+ * The ladder above settles the shot's DIRECTION from an origin it is handed.
+ * This settles that origin, for the same reason and after the same bug.
+ *
+ * OWNER, after playing the merged bow rework: sometimes the sight line is
+ * visibly on a monster and the bow will not fire, and sometimes it is visibly
+ * off one and fires anyway.  Wrong in BOTH directions is never a radius that
+ * needs a nudge -- a circle a few px too small misses on the edges and never
+ * fires early.  It is two pieces of code disagreeing about the same line.
+ *
+ * THEY DISAGREED ABOUT THE ORIGIN, AND ONLY ABOUT THE ORIGIN.  effectsRenderer
+ * publishes the bow grip twice on adjacent lines: `_bowGripX/Y`, the absolute
+ * world point, and `_bowGripDX/DY`, the same point as an offset from the
+ * player.  The drawn beam read the OFFSET and tracked the player live; the fire
+ * gate and the shot site read the ABSOLUTE.  Both are written inside
+ * `_updateBowShot`, which returns early unless `S._bowShowing` -- true only for
+ * the 360 ms of BOW_SHOT_MS after a shot (and a held block).  So between
+ * volleys the absolute pair stops being rewritten and FREEZES at the world
+ * point of the last shot, while the offset pair keeps tracking.
+ *
+ * The gap is then exactly how far the player has walked since they last fired,
+ * with no bound on it, which is why the same build does both things:
+ *   - walk sideways and re-point at a monster -> the drawn line is on him, the
+ *     stale ray is parallel and offset, nothing fires;
+ *   - keep the old heading -> the drawn line clears him, the stale ray still
+ *     crosses him, and an arrow goes out at a line nobody was shown.
+ * Measured at 140 px of divergence for a 140 px step, with the two rays held
+ * parallel by construction so the origin is the only variable: mp-bowgate.
+ *
+ * WHY A HELPER RATHER THAN COPYING THE OFFSET EXPRESSION TO THE GATE.  Three
+ * call sites need this point -- the gate, the shot that follows it, and the
+ * line that promises both -- and the whole value of the sight line is that it
+ * cannot disagree with the shot.  A third inline copy of `player + delta` is
+ * the same shape of trap the note above this one was written about, one layer
+ * down: right the day it ships, wrong the next time the grip moves.
+ *
+ * The fallback is the player's own position, which is what every one of these
+ * sites already fell back to before the grip has ever been published (a bow
+ * that has not fired yet, or art that never loaded). */
+export function bowGripPoint(S) {
+  if (!S || !S.player) return null;
+  var px = S.player.x, py = S.player.y;
+  if (typeof px !== 'number' || typeof py !== 'number' || !isFinite(px) || !isFinite(py)) return null;
+  var dx = S._bowGripDX, dy = S._bowGripDY;
+  if (typeof dx === 'number' && typeof dy === 'number' && isFinite(dx) && isFinite(dy)) {
+    return { x: px + dx, y: py + dy };
+  }
+  return { x: px, y: py };
+}
+
 export function rangedAimAngle(S, originX, originY) {
   var lockPt = lockAimPoint(S && S.lockedTarget && S.lockedTarget.ref);
   if (lockPt) {
