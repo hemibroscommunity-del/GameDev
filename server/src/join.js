@@ -181,9 +181,20 @@ const JOIN_RPG_MAX_BYTES = 8 * 1024;
  * safe for exactly one reason: that guard is defence in depth over
  * MAX_INBOUND_BYTES (16 KB for the WHOLE frame, index.js), and the
  * frame gate is what actually bounds these.  The adoption path bounds
- * them again by entry count (GEAR_STASH_CAP, gearstash.js). */
+ * them again by entry count (GEAR_STASH_CAP, gearstash.js).
+ *
+ * v2.3.2527 (review finding 3): `rpgAmuletStash` stays in this set but
+ * is now read by NOBODY -- gearstash.js deliberately has no seed key for
+ * the amulet list, because that list has no client stash to adopt from
+ * and a claim for it could only ever be forged (up to 32 validated,
+ * therefore legitimate, top-tier amulets).  It is listed here so that
+ * dropping the ear for it does not hand it the other fate: without the
+ * exclusion the key would fall through to cleanJoinData, onto
+ * playerState, and out on the room-wide state_sync.  Named, excluded,
+ * and read by nothing is the safe corner of that square. */
 const JOIN_RPG_INGEST_ONLY = new Set([
-  'rpgArmorStash', 'rpgLegsStash', 'rpgShieldStash', 'rpgGearStash', 'rpgAmuletStash',
+  'rpgArmorStash', 'rpgLegsStash', 'rpgShieldStash', 'rpgGearStash',
+  'rpgAmuletStash',   /* excluded AND unread -- see above */
 ]);
 
 /* ═══ v2.3.1982: THE ROOM-FULL REFUSAL ═══
