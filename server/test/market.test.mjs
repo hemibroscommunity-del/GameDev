@@ -407,7 +407,9 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
  *   S7.  Double settlement is a no-op — the opIds are the wall (rule 5).
  *   S8.  Crash convergence: an in-flight sale marker with its payment
  *        stamp RESUMES on rebuild; one without it re-lists; a bid marker
- *        whose debit never landed is dropped.
+ *        whose debit never landed is dropped; and (v2.3.2506) a cancel or
+ *        an expiry that died between its refunds and its delete is
+ *        FINISHED on the next wake instead of going back on the shelf.
  *   S9.  Browse pages, and the page is bounded (rule 9).
  *   S10. HTTP surface: `settled: true` on every mutating response, and
  *        the session-token gate (v2.3.1178) rejects a forged caller.
@@ -630,6 +632,87 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
     room8._stIndex.get(crashC.listing.id).topBid?.amount === 55,
     st._store.get('store_listing:' + crashC.listing.id));
   await room8._stCancel(crashC.listing.id, 'bp_st_sell');
+
+  /* (d)+(e) v2.3.2506 — the cancel/expiry crash window.
+     `_stRelease` refunds the bid, mails the goods home, then deletes the
+     record: three separate disk writes, and the worker restarts on every
+     merge to main that touches server/**.  Shipped without a marker, a
+     death between the refunds and the delete left a record carrying NO
+     in-flight flag, so the rebuild re-listed it holding goods it had
+     already returned and a bid it had already refunded — the item could
+     then be bought a second time, and an accepted stale bid paid the
+     seller gold nobody paid.  Both halves are measured the only way that
+     catches minting: count the goods and the gold in the WHOLE world
+     (live players plus whatever the shelf still holds in escrow) before
+     and after, and demand they match. */
+  const gelInWorld = () => {
+    let n = (SEL.inventory.slime_gel || 0) + (BUY.inventory.slime_gel || 0) + (OTH.inventory.slime_gel || 0);
+    for (const [k, r] of st._store) {
+      if (k.startsWith('store_listing:') && r && r.invKey === 'slime_gel') n += r.qty;
+    }
+    return n;
+  };
+  const goldInWorld = () => {
+    let g = SEL.coins + BUY.coins + OTH.coins;
+    for (const [k, r] of st._store) {
+      if (k.startsWith('store_listing:') && r && r.topBid) g += r.topBid.amount;   // escrowed bids
+    }
+    return g;
+  };
+  const realDelete = st.storage.delete;
+  const dieOnDeleteOf = (id) => {
+    st.storage.delete = async (k) => {
+      if (k === 'store_listing:' + id) throw new Error('simulated restart before the delete');
+      return realDelete(k);
+    };
+  };
+
+  // (d) a seller CANCEL that died before its delete.
+  SEL.inventory.slime_gel = (SEL.inventory.slime_gel || 0) + 2;
+  const gelPreD = gelInWorld(); const goldPreD = goldInWorld();
+  const crashD = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 2, price: 500 });
+  await shop._stPlaceBid(crashD.listing.id, 'bp_st_buy', 90);
+  dieOnDeleteOf(crashD.listing.id);
+  let diedD = false;
+  try { await shop._stCancel(crashD.listing.id, 'bp_st_sell'); } catch { diedD = true; }
+  st.storage.delete = realDelete;
+  check('store: (setup) the cancel refunded and then died before its delete',
+    diedD && st._store.has('store_listing:' + crashD.listing.id), { diedD });
+  const room9 = new GameRoom(st, mockEnv);
+  room9.playerState = shop.playerState;
+  await room9._stEnsureIndex();
+  check('store: a cancel interrupted before its delete does NOT come back on the shelf',
+    !room9._stIndex.has(crashD.listing.id) && !st._store.has('store_listing:' + crashD.listing.id),
+    st._store.get('store_listing:' + crashD.listing.id));
+  check('store: the interrupted cancel mints no item and no gold',
+    gelInWorld() === gelPreD && goldInWorld() === goldPreD,
+    { gel: gelInWorld(), wantGel: gelPreD, gold: goldInWorld(), wantGold: goldPreD });
+  const ghostBuy = await room9._stBuyNow(crashD.listing.id, 'bp_st_buy');
+  check('store: the cancelled listing cannot be bought a second time', ghostBuy.ok === false, ghostBuy);
+
+  // (e) the same window on the EXPIRY path (rule 12 — no alarms, the sweep
+  //     is the only thing that ever resolves these).
+  SEL.inventory.slime_gel = (SEL.inventory.slime_gel || 0) + 1;
+  const gelPreE = gelInWorld(); const goldPreE = goldInWorld();
+  const crashE = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 500 });
+  await shop._stPlaceBid(crashE.listing.id, 'bp_st_buy', 40);
+  shop._stIndex.get(crashE.listing.id).expiresAt = Date.now() - 1;
+  shop._stLastSweep = 0;
+  dieOnDeleteOf(crashE.listing.id);
+  let diedE = false;
+  try { await shop._stSweep(); } catch { diedE = true; }
+  st.storage.delete = realDelete;
+  check('store: (setup) the expiry refunded and then died before its delete',
+    diedE && st._store.has('store_listing:' + crashE.listing.id), { diedE });
+  const room10 = new GameRoom(st, mockEnv);
+  room10.playerState = shop.playerState;
+  await room10._stEnsureIndex();
+  check('store: an expiry interrupted before its delete does NOT come back on the shelf',
+    !room10._stIndex.has(crashE.listing.id) && !st._store.has('store_listing:' + crashE.listing.id),
+    st._store.get('store_listing:' + crashE.listing.id));
+  check('store: the interrupted expiry mints no item and no gold',
+    gelInWorld() === gelPreE && goldInWorld() === goldPreE,
+    { gel: gelInWorld(), wantGel: gelPreE, gold: goldInWorld(), wantGold: goldPreE });
 
   // ── S9. browse pages ──
   SEL.inventory.slime_gel = 20;
