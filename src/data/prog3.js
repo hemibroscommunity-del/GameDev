@@ -36,7 +36,12 @@ export const PROG3 = {
     hp:      { cap: 100, per: 8 },      // +8 max HP/pt
     dodge:   { cap: 75,  per: 0.004 },  // +0.4% dodge/pt
     stam:    { cap: 100, per: 3 },      // +3 max stamina/pt
-    elem:    { cap: 75,  per: 1 },      // v2.3.2199: +1 elemental power/pt (DoT + collisions)
+    /* v2.3.2512: elem LEFT for ATK (per weapon); eres + mana arrive.  The
+       reasoning for all three lives on the SERVER copy (server/src/prog3.js),
+       which is the source of truth; these are its mirror and mirror-audit §12
+       pins both the values AND the key sets. */
+    eres:    { cap: 75,  per: 0.004 },  // −0.4% elemental damage taken/pt
+    mana:    { cap: 100, per: 2.5 },    // +2.5 max mana/pt, ON TOP of the Magic-level pool
   },
   ATK: {
     /* v2.3.2210: the flat 1% base every character starts with -- the
@@ -51,6 +56,7 @@ export const PROG3 = {
     critDmg: { cap: 100, per: 0.01 },   // +1% crit damage/pt, PER TYPE
     aspd:    { cap: 100, per: 0.0035 }, // −0.35% swing period/pt, PER TYPE
     dmg:     { cap: 75,  per: 0.5 },    // v2.3.2199: +0.5 damage/pt pre-tier, PER TYPE
+    elem:    { cap: 75,  per: 1 },      // v2.3.2512: +1 elemental power/pt, PER TYPE (was global BODY)
   },
   /* v2.3.1727: the retune PROGRESSION-REDESIGN #13 deferred — the §7-A
      placeholders bought +17.7% damage over ten character levels, which the
@@ -122,16 +128,23 @@ export const PROG3_ATK_META = [
   /* Atk Speed's points SHORTEN the swing, so its total is a reduction — the
      label below says "faster" rather than printing a negative. */
   { key: 'aspd',    label: 'Atk Speed', perText: '−0.35% swing time',  pct: true, unit: '% faster', iconSrc: '/icons/ui/t2/sword-tempo.webp?v=2.3.1694' },
+  /* v2.3.2512: elemental power, now per weapon — burns/roots/thorns and
+     element collisions from THIS weapon scale off it.  Same art it carried
+     as a body stat (the detonation drawing is still the closest the repo
+     has); swap the day a dedicated element-power icon exists. */
+  { key: 'elem',    label: 'Elem Pwr', perText: '+1 elemental power', unit: ' power', iconSrc: '/icons/ui/t2/staff-detonation.webp?v=2.3.2199', capsProg3Elem: true },
 ];
 export const PROG3_BODY_META = [
   { key: 'def',   label: 'Defense', perText: '−0.4% damage taken', pct: true, unit: '% less damage', iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1694' },
   { key: 'hp',    label: 'Max HP',  perText: '+8 max HP',          unit: ' HP', iconSrc: '/icons/ui/hero/hp-heart.webp?v=2.3.1922' } /* v2.3.1922: plain heart */,
   { key: 'dodge', label: 'Dodge',   perText: '+0.4% dodge',        pct: true, unit: '%', iconSrc: '/icons/ui/hero/dodge.webp?v=2.3.1694' },
   { key: 'stam',  label: 'Stamina', perText: '+3 max stamina',     unit: ' stamina', iconSrc: '/icons/ui/hero/stamina.webp?v=2.3.1694' },
-  /* v2.3.2199: elemental power — burns/roots/thorns and element collisions
-     scale from it (the detonation art is the closest drawing the repo has;
-     swap the day a dedicated element-power icon exists). */
-  { key: 'elem',  label: 'Elem Power', perText: '+1 elemental power', unit: ' power', iconSrc: '/icons/ui/t2/staff-detonation.webp?v=2.3.2199', capsProg3x: true },
+  /* v2.3.2512: elemental power moved OUT of this table and into PROG3_ATK_META
+     (per weapon).  What arrives in its place is the defensive half the
+     elemental system never had, plus the mana pool finally becoming something
+     a player can choose to buy. */
+  { key: 'mana',  label: 'Max Mana',   perText: '+2.5 max mana',      unit: ' mana', iconSrc: '/icons/ui/hero/magic.webp?v=2.3.1311', capsProg3Elem: true },
+  { key: 'eres',  label: 'Elem Resist', perText: '−0.4% elemental damage taken', pct: true, unit: '% less elemental', iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1694', capsProg3Elem: true },
 ];
 
 /* The rows the CONNECTED worker supports, with critDmg's copy resolved
@@ -141,6 +154,10 @@ function _resolveMetaRows(rows) {
   for (var i = 0; i < rows.length; i++) {
     var m = rows[i];
     if (m.capsProg3x && !_prog3x) continue;
+    /* v2.3.2512: rows that only exist on a worker carrying the elem/eres/mana
+       grid.  Same rule as capsProg3x above and for the same reason: never
+       offer a stat the wire will silently refuse (rule 19). */
+    if (m.capsProg3Elem && !_prog3elem) continue;
     if (m.key === 'critDmg' && !_prog3x) {
       out.push({ ...m, perText: m.perTextLegacy, unit: m.unitLegacy, pct: false });
     } else out.push(m);
@@ -177,6 +194,38 @@ export function isProg3Enabled() { return _enabled; }
 var _prog3x = false;
 export function setProg3XEnabled(on) { _prog3x = !!on; }
 export function isProg3XEnabled() { return _prog3x; }
+
+/* ═══ v2.3.2512: caps.prog3elem — the attribute restructure gate ═══
+   Elemental power moved from ONE global stat to one per combat type, and
+   two new global stats arrived (Elem Resist, Max Mana).  Display-only, the
+   capsProg3x pattern exactly: against an OLD worker the three rows hide
+   (it would silently refuse the allocation), the client keeps reading the
+   GLOBAL elem stat that worker actually rolls off, and its max-mana
+   prediction keeps the pure Magic-level derivation that worker computes.
+   Nothing new is ever SENT on this flag — a prog3_allocate naming `elem`
+   with a `cat` is shaped exactly like today's atk spends. */
+var _prog3elem = false;
+export function setProg3ElemEnabled(on) { _prog3elem = !!on; }
+export function isProg3ElemEnabled() { return _prog3elem; }
+
+/* The player's effective elemental power for a weapon — the client mirror of
+   the server's elemAttackStat seam (server/src/elemental.js).  ONE definition,
+   because three separate readers (the DoT tick, the collision roll, the stat
+   preview) each had their own inline copy of it and that is how a mirror
+   drifts.  Against an OLD worker (_prog3elem false) it reads the GLOBAL body
+   stat that worker still rolls off, so predictions keep matching the wire in
+   either deploy order. */
+export function prog3ElemPower(rpg, cat) {
+  if (!(rpg && rpg.prog3)) return 0;
+  if (!_prog3elem) {
+    var g = (rpg.prog3.alloc && rpg.prog3.alloc.elem) || 0;
+    return Math.max(0, Math.min(75, g)) * 1;   /* the retired BODY.elem cap/per */
+  }
+  var c = (cat === 'bow' || cat === 'staff') ? cat : 'sword';
+  var a = rpg.prog3.atk && rpg.prog3.atk[c];
+  var v = (a && a.elem) || 0;
+  return Math.max(0, Math.min(PROG3.ATK.elem.cap, v)) * PROG3.ATK.elem.per;
+}
 
 /* ═══ v2.3.1734: caps.elemBurst — the deploy-order gate for BOTH halves
    of the mana rework (server/src/join.js advertises it) ═══
