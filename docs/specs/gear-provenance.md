@@ -1,4 +1,4 @@
-# Gear provenance — the server records what it mints (v2.3.2534–2535)
+# Gear provenance — the server records what it mints (v2.3.2534–2535, repaired v2.3.2537)
 
 Spec + attach points for `server/src/gearprov.js`. Phase 1 of the gear
 provenance lane (PR 1 of 3: **record at mint** → equip names a recorded
@@ -125,6 +125,55 @@ all — TRAPS #6 closed by shape rather than by discipline.
 
 Nothing is added to the rpg blob (rule 1). `gid` and `prov` ride **on**
 the existing gear objects, which are already stored whole.
+
+## Four repairs from the review of #648 (v2.3.2537)
+
+1. **The gem-EXTRACT op now touches the row.** `_stripGems` rewrites a worn
+   shield in place (clears `gem`, rebuilds the name) and is the second
+   mutation of a minted piece in `amulet.js`; the gem-SLOT op one function
+   above already called `_gearProvTouch` and this one did not, so the row
+   kept the gem that had just been pulled out. Latent while nothing rebuilds
+   routinely — and v2.3.2535 makes rebuilding the normal way to equip, at
+   which point extract → unequip → re-equip returns the gem. Free gems on a
+   loop. Called unconditionally, since `_gearProvTouch` no-ops on a piece
+   with no id and the op also serves weapon targets.
+2. **A character restart deletes the ledger.** `_resetCharacterData`
+   (persistence.js) wipes `rpg:<pid>` and the quest-reward stamps but left
+   `gear_prov:<pid>` behind — and rows are keyed by player id, which a
+   restart does not change. The old wardrobe came back marked `minted` on a
+   brand-new level-1 character, and two tabs share one identity by design, so
+   the other tab hands it straight back. Nothing was multiplied; it came back
+   *provable*, which v2.3.2536 turns into sellable. The key and the cached
+   copy now go with the character.
+3. **Ids no longer ride the room-wide broadcast.** `getAllPlayerData()`
+   spreads a player's whole state into every other player's `state_sync`, so
+   every minted `gid` went out. Not exploitable — a gid is only ever resolved
+   against its own sender's ledger — but it contradicts this lane's own
+   decision to keep gids off the loot-pile broadcast, and test §8 ("the
+   ledger does not leak to other players") searched the message for
+   `gear_prov` and `forgotten` and never for `gid`, so it passed while they
+   went out.
+
+   The crop is **by shape, not by a list of field names**. The first cut
+   named the four worn slots and the five stash lists and missed
+   `_questGrantOverflow` — the in-memory scratch a quest turn-in parks minted
+   armour on, which is on playerState like everything else. An allowlist here
+   is a list somebody must remember to extend; a sweep cannot be forgotten.
+   §8 now sets a minted piece up first (otherwise the assertion is vacuous
+   whatever it greps for), searches for `gid` and `prov`, names the scratch
+   field explicitly, and asserts the crop does **not** damage the live state
+   or the player's own `player_state`.
+4. **The cap's size estimate was about half of what a row costs.** A row
+   stores the whole minted blob verbatim plus id/slot/source/timestamp:
+   ~180–200 bytes, so 256 rows is ~50 KB, not the ~28 KB the comment
+   claimed. Still well inside the limit; corrected so nobody raises the cap
+   on the strength of the wrong number.
+
+Also hardened in the same pass, from the review's tidiness notes: a rebuilt
+piece and its ledger row were shallow copies of each other and aliased any
+nested value, so mutating the live piece would have silently edited the
+record. Flat today, a real bug the first day a piece gains a nested field —
+`clonePiece` now separates them.
 
 ## There is no "done" stamp
 
@@ -288,7 +337,7 @@ Written here so PR 2 and PR 3 inherit them on purpose.
 
 ## Tests
 
-`server/test/gearprov.test.mjs` (86 assertions). Structured around the
+`server/test/gearprov.test.mjs` (108 assertions). Structured around the
 three ways this family of change has gone wrong here rather than around
 the happy path:
 

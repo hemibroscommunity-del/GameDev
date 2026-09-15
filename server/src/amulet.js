@@ -244,6 +244,23 @@ export const amuletMethods = {
       if (!ps.lifeSkills.gems || typeof ps.lifeSkills.gems !== 'object') ps.lifeSkills.gems = {};
       for (const key of gained) ps.lifeSkills.gems[key] = (ps.lifeSkills.gems[key] || 0) + 1;
       this._stripGems(item, kind);
+      /* ═══ v2.3.2537: THE ROW FOLLOWS THIS MUTATION TOO ═══
+         _stripGems REWRITES the piece in place -- a shield loses its `gem`
+         and has its display name rebuilt.  A shield is something this server
+         mints (tut_1's Pine Shield is the first gear most characters own), so
+         without this the ledger's stored copy keeps the gem that was just
+         extracted.  The gem-SLOT op above already called this; the extract op
+         did not, which is the same miss in the same file.
+
+         It matters more than it looks: v2.3.2535 makes rebuilding a piece
+         from its row routine (equipping by name), and against a stale row
+         extract -> unequip -> re-equip hands the gem back.  Free gems on a
+         loop.  Caught by the review of #648 before that PR existed.
+
+         Called unconditionally: _gearProvTouch is a no-op for a piece with no
+         id, which covers the weapon and stash-weapon targets this op also
+         serves, so there is no branch here to get wrong later. */
+      this._gearProvTouch(session.id, item);
 
     } else {
       return; // unknown op -- deny by default

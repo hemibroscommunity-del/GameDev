@@ -5305,7 +5305,10 @@ export class GameRoom {
 
   broadcastAll(msg) { const s = JSON.stringify(msg); for (const [ws] of this.sessions) { try { ws.send(s); } catch {} } }
   broadcastExcept(ex, msg) { const s = JSON.stringify(msg); for (const [ws] of this.sessions) { if (ws !== ex) { try { ws.send(s); } catch {} } } }
-  getAllPlayerData() { const r = {}; for (const [, s] of this.sessions) { if (s.id) r[s.id] = { ...this.playerState[s.id], name: s.name, ...s.data }; } return r; }
+  /* v2.3.2537: the peer copy is cropped of gear ids before it goes out --
+     see _gearProvCropPeer (gearprov.js) for why a gid has no business on a
+     room-wide broadcast even though it is not exploitable. */
+  getAllPlayerData() { const r = {}; for (const [, s] of this.sessions) { if (s.id) r[s.id] = this._gearProvCropPeer({ ...this.playerState[s.id], name: s.name, ...s.data }); } return r; }
   getPlayerCount() { let c = 0; for (const [, s] of this.sessions) { if (s.id) c++; } return c; }
 }
 

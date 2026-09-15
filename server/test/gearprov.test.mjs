@@ -583,13 +583,167 @@ let amuletGid = null;
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   8. The ledger does not leak to other players
-   ════════════════════════════════════════════════════════════════════ */
+   8. Nothing about the ledger reaches other players
+   ════════════════════════════════════════════════════════════════════
+   v2.3.2537: this section USED TO search the broadcast for the words
+   `gear_prov` and `forgotten` and nothing else -- so it passed with a
+   clean conscience while every `gid` in the room went out on it.  A test
+   whose name promises more than it checks is what gave #643 its false
+   confidence, so the setup below deliberately puts a MINTED piece on a
+   player first: without that, the assertion is vacuous whatever it greps
+   for. */
 {
-  const all = room.getAllPlayerData ? room.getAllPlayerData() : null;
+  const PID8 = 'bp_prov_peer';
+  const ws8 = fakeWs('P8');
+  await join(room, ws8, PID8);
+  const ps8 = room.playerState[PID8];
+  room._prog3EquipOk = () => true;
+  ps8.shield = null;
+  room._grantQuestItem(ps8, { kind: 'shield', gearBase: 'wood', tierMult: 1, name: 'Pine Shield' }, PID8);
+  ps8._questGrantOverflow = null;
+  room._grantQuestItem(ps8, { kind: 'armor', name: 'Copper Torso', mat: 'copper', tierMult: 1 }, PID8);
+  const wornGid = ps8._questGrantOverflow[0].gid;
+  ps8.armor = { ...ps8._questGrantOverflow[0] };
+  ps8.armorStash = [{ ...ps8._questGrantOverflow[0] }];
+
+  check('guard: the player really is carrying minted gear before we look',
+    !!ps8.shield.gid && !!ps8.armor.gid && !!(ps8.armorStash[0] || {}).gid,
+    { s: ps8.shield.gid, a: ps8.armor.gid });
+
+  const all = room.getAllPlayerData();
   const blob = JSON.stringify(all || {});
   check('no gear_prov ledger rides the room-wide state_sync',
     !/gear_prov/.test(blob) && !/"forgotten"/.test(blob));
+  check('...and no gear ID rides it either -- searched for, not assumed',
+    !/"gid"/.test(blob) && blob.indexOf(wornGid) === -1, blob.slice(0, 300));
+  check('...nor the provenance mark, which is nobody else\'s business',
+    !/"prov"/.test(blob));
+  check('the WORN slots are what got cropped, and they are still there',
+    !!all[PID8].armor && all[PID8].armor.name === 'Copper Torso' && !all[PID8].armor.gid,
+    all[PID8].armor);
+  check('...the stash lists too', Array.isArray(all[PID8].armorStash)
+    && all[PID8].armorStash.length === 1 && !all[PID8].armorStash[0].gid, all[PID8].armorStash);
+  /* The scratch field a field-name crop missed.  Named explicitly so a
+     future refactor back to an allowlist fails right here. */
+  check('...and the quest-reward scratch, which a field-name crop missed',
+    !Array.isArray(all[PID8]._questGrantOverflow)
+      || all[PID8]._questGrantOverflow.every((g) => !g.gid && !g.prov),
+    all[PID8]._questGrantOverflow);
+
+  /* The crop must not damage the server's OWN copy -- it works on the
+     caller's fresh spread, never on playerState. */
+  check('cropping the broadcast did not strip the live state',
+    ps8.armor.gid === wornGid && ps8.armor.prov === PROV_MINTED, ps8.armor);
+  /* ...and the player's own player_state still carries the mark, which is
+     the whole point of having one. */
+  const wsOwn = fakeWs('P8own');
+  room._sendPlayerState(wsOwn, PID8);
+  const own = wsOwn.sent.filter((m) => m.type === 'player_state').pop();
+  check('the player\'s OWN player_state still carries their id and mark',
+    !!own && own.payload.armor && own.payload.armor.gid === wornGid
+      && own.payload.armor.prov === PROV_MINTED, own && own.payload.armor);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   10. v2.3.2537 -- a mutation the row has to follow: gem EXTRACTION
+   ════════════════════════════════════════════════════════════════════
+   The spec's rule is "any server-side op that mutates a minted piece must
+   call _gearProvTouch".  The gem-SLOT op obeyed it; the gem-EXTRACT op did
+   not, so the ledger kept the gem that had just been pulled out.  Latent
+   while nothing rebuilds routinely -- and v2.3.2535 makes rebuilding the
+   normal way to equip, at which point extract, unequip, re-equip returns
+   the gem.  Free gems on a loop.
+   ════════════════════════════════════════════════════════════════════ */
+{
+  const PIDX = 'bp_prov_extract';
+  const wsX = fakeWs('X');
+  await join(room, wsX, PIDX);
+  const ps = room.playerState[PIDX];
+  ps.shield = null;
+  room._grantQuestItem(ps, { kind: 'shield', gearBase: 'wood', tierMult: 1, name: 'Pine Shield' }, PIDX);
+  const gid = ps.shield.gid;
+  /* A shield carrying a gem.  The slotting itself is still client-local
+     (handoff item A), so this is set the way a real one arrives -- on the
+     blob -- rather than through an op the server does not yet own. */
+  ps.shield.gem = 'flame';
+  ps.shield.name = 'Pine Flame Shield';
+  room._gearProvTouch(PIDX, ps.shield);
+  check('guard: the ledger holds the gemmed shield before extraction',
+    findProvRow(room._gearProvOf(PIDX), gid).p.gem === 'flame');
+
+  ps.coins = 9999999;
+  ps.lifeSkills = ps.lifeSkills || {};
+  ps.lifeSkills.gems = {};
+  await send(room, wsX, { type: 'amulet_forge_request', payload: { op: 'extract', target: 'shield' } });
+  check('extraction strips the gem from the live shield',
+    ps.shield.gem === null, ps.shield);
+  check('...and credits the polished gem', (ps.lifeSkills.gems.polished_flame || 0) === 1, ps.lifeSkills.gems);
+  check('...AND the ledger row follows it',
+    findProvRow(room._gearProvOf(PIDX), gid).p.gem === null,
+    findProvRow(room._gearProvOf(PIDX), gid).p);
+
+  /* The assertion that actually matters: force a REBUILD from the record
+     (the path a claim takes, and the path equipping-by-name will take) and
+     prove the gem does not come back. */
+  const rebuilt = room._gearProvResolve(PIDX, 'shield', { gid }, null);
+  check('a piece rebuilt from the record does NOT get the gem back',
+    !!rebuilt && rebuilt.gem === null && rebuilt.prov === PROV_MINTED, rebuilt);
+  /* The stripped name is what _stripGems builds from the tier label, which
+     for gearBase 'wood' is "Wood Shield" -- not the "Pine Shield" the quest
+     grant names it.  Asserted as the code actually behaves: the point here
+     is that the ROW followed the mutation, not that the mutation picked a
+     particular label. */
+  check('...and the rebuilt name is the stripped one, not the gemmed one',
+    rebuilt.name === 'Wood Shield', rebuilt.name);
+
+  /* And through a real reconnect, claiming the id in the stash seed. */
+  const wsX2 = fakeWs('X2');
+  await join(room, wsX2, PIDX, { rpgShieldStash: [{ name: 'Pine Flame Shield', gem: 'flame', gearBase: 'wood', tierMult: 1, gid }] });
+  const claimed = (room.playerState[PIDX].shieldStash || [])[0];
+  check('...and a reconnect claiming the gemmed shield still gets the stripped one',
+    !!claimed && claimed.gem === null, claimed);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   11. v2.3.2537 -- restarting the character takes the record with it
+   ════════════════════════════════════════════════════════════════════
+   The ledger is keyed by player id and a restart does not change the id
+   (the passphrase IS the character).  Left behind, it would rebuild an old
+   wardrobe as `minted` on a brand-new level-1 character -- and two tabs
+   share one identity by design, so the other tab can hand it straight
+   back.  Nothing is multiplied; it comes back PROVABLE, which v2.3.2536
+   turns into sellable.
+   ════════════════════════════════════════════════════════════════════ */
+{
+  const PIDR = 'bp_prov_reset';
+  const wsR = fakeWs('R1');
+  await join(room, wsR, PIDR);
+  const ps = room.playerState[PIDR];
+  ps._questGrantOverflow = null;
+  room._grantQuestItem(ps, { kind: 'armor', name: 'Copper Torso', mat: 'copper', tierMult: 1 }, PIDR);
+  const gid = ps._questGrantOverflow[0].gid;
+  await room._saveRpg(PIDR, ps);
+  check('guard: the record exists before the restart', !!state._store.get(GEAR_PROV_KEY(PIDR)));
+
+  await room._resetCharacterData(PIDR);
+  check('a character restart deletes the gear record', !state._store.get(GEAR_PROV_KEY(PIDR)));
+  check('...and drops the in-memory copy with it', !room._gearProvOf(PIDR));
+  check('...and still snapshots the old blob, as it always did',
+    [...state._store.keys()].some((k) => k.startsWith('rpgsnap:' + PIDR + ':prereset-')));
+
+  /* The second tab hands the old wardrobe back.  It is NOT refused -- the
+     player keeps what they claim, per the legacy decision -- but it can no
+     longer come back provable. */
+  const wsR2 = fakeWs('R2');
+  await join(room, wsR2, PIDR, {
+    rpgArmorStash: [{ name: 'Copper Torso', mat: 'copper', tierMult: 1, gid }],
+  });
+  const back = (room.playerState[PIDR].armorStash || [])[0];
+  check('a stale tab can still hand the old wardrobe back...', !!back && back.name === 'Copper Torso', back);
+  check('...but it comes back LEGACY, not minted, on the fresh character',
+    back.prov === PROV_LEGACY && !back.gid, back);
+  check('...and the fresh character starts with an empty record book',
+    room._gearProvOf(PIDR).list.length === 0, room._gearProvOf(PIDR));
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL PASS');
