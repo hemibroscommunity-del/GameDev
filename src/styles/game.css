@@ -3195,7 +3195,17 @@ input{font-family:inherit}
    under a thumb rather than beside the head. 26% of a ~178px pane is 46px,
    which clears the 44px floor on its own; the min-width is for the creator's
    card and for landscape, where the pane is smaller. */
-/* ═══ v2.3.2527: THE FLIP BUTTON IS IN FRONT, AND IT KEEPS ITS OWN TAPS ═══
+/* ═══ v2.3.2541: THE FLIP BUTTON IS IN FRONT, AND IT KEEPS ITS OWN TAPS ═══
+   (v2.3.2547: this block said v2.3.2527 until now, and that was a stale label
+   rather than its history. Four PRs claimed 2527 at once -- the tag the session
+   brief handed all of them -- and #641 took it, so this lane moved to 2541. The
+   renumber caught VitalBar.jsx, mp-zoneflip.mjs and run.mjs and missed this
+   file, which merged that way: on main, the CSS half of one change carried the
+   gear-stash lane's tag while the other half carried its own. Corrected rather
+   than left alone because these tags ARE the institutional memory -- grepping
+   2527 was returning the gear-stash incident plus one unrelated CSS rule, and
+   grepping 2541 for this fix found the test and the component but not the line
+   that actually implements it.)
    Owner, on the newly-merged build: the front/back switch "is layered BEHIND
    something and needs to be in front", in the tattoo editor and the clothing
    editor alike.
