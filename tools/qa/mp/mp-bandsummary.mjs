@@ -454,6 +454,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     R.prog3.sk.staff = { level: 1, xp: 140 };
     try { window.__broDashPanelBus.toBar(); } catch (e) {}
   });
+  /* ═══ v2.3.2519: ...AND THE BAND HAS TO BE UNFOLDED TO HAVE A ROW AT ALL ═══
+     toBar() puts the sheet away; it does not UNFOLD the band, and since
+     v2.3.2495 a brand-new bro's first join arrives folded -- which is what
+     this client is.  Folded, the three-column row is not rendered, so every
+     assertion below read zero pills and reported the pills missing.  The
+     390-wide client above only escaped it because its earlier steps open a
+     destination, and opening one unfolds.  See H.unfoldBand. */
+  await H.unfoldBand(N);
   await N.page.waitForTimeout(700);
   const narrow = await readPills(N);
   rec.ok('the three pills are there at 360 too (guard)', narrow.length === 3,

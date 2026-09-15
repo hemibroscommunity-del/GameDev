@@ -436,10 +436,11 @@ export function updateTargeting(S) {
      Stamped HERE, before any branch below reads the lock, so it covers all
      four writers (the auto rule at the foot of this file and the three tap
      sites in BroTown.jsx) from ONE place rather than four that can each forget
-     it -- the same reasoning tapStealable's own comment gives for not stamping
-     at the tap sites.  tapStealable's lazy stamp below is now unreachable and
-     left exactly as it is: it is lane H's to retire with the rest of that
-     function, and a dead assignment is not worth a merge conflict.
+     it -- the same reasoning the retired tapStealable's own comment gave for
+     not stamping at the tap sites.  (That function's lazy stamp was left in
+     place by v2.3.2504 as "lane H's to retire with the rest of it"; v2.3.2496
+     did retire it, so this is now the ONLY writer of `at` besides the auto
+     rule's own fresh object -- which is what that version was counting on.)
 
      A RE-POINT IS A NEW LOCK.  The auto rule allocates a fresh object whenever
      the monster changes (see the comment at its assignment), so a switch to a
@@ -538,8 +539,9 @@ export function updateTargeting(S) {
   if (!cur || cur.ref !== best.m) {
     /* v2.3.2504: `at` on the literal as well as on the guard above, so the
        stamp is the moment of acquisition rather than the top of the NEXT
-       frame -- a ~16ms difference that does not matter to tapStealable's 900ms
-       pin but is the zero point the chip's first-second flash lerps from. */
+       frame -- a ~16ms difference that mattered to nothing in the retired
+       900ms tap pin (v2.3.2496) but is the zero point the chip's first-second
+       flash lerps from. */
     S.lockedTarget = { type: 'monster', id: best.m.id, ref: best.m, src: 'auto', at: Date.now() };
   }
 }
