@@ -1,7 +1,7 @@
 import React from 'react';
 import { TARGET_PERIMETER_PX, getActiveWeapon, specialManaCost } from '@/data/index.js';
 import { specialAttack } from '@/game/playerActions.js';
-import { BOW_SPECIAL_QUEUE_MS } from '@/game/combatHelpers.js'; /* v2.3.2527: the queued special's own expiry, so the button and the fire site cannot disagree about how long a request stands */
+import { BOW_SPECIAL_QUEUE_MS } from '@/game/combatHelpers.js'; /* v2.3.2543: the queued special's own expiry, so the button and the fire site cannot disagree about how long a request stands */
 import { LBTN, ctlBottom } from '@/ui/panels/ShieldButton.jsx';
 
 /* ═══ v2.3.2472: A SPECIAL ATTACK BUTTON, BESIDE THE MOVEMENT STICK ═══
@@ -54,7 +54,7 @@ import { LBTN, ctlBottom } from '@/ui/panels/ShieldButton.jsx';
  */
 const SPECIAL_CD_MS = 1500;   /* playerActions.specialAttack's own §4.5 gate */
 
-/* ═══ v2.3.2527: A HELD SPECIAL IS A STATE OF THIS BUTTON, NOT A MESSAGE ═══
+/* ═══ v2.3.2543: A HELD SPECIAL IS A STATE OF THIS BUTTON, NOT A MESSAGE ═══
  *
  * Owner, after playing the merged bow rework: swiping the bow's special on a
  * monster "often pops a message saying the ability is queued", and "the player
@@ -135,7 +135,7 @@ export function SpecialButton(props) {
       return { live: specialButtonLive(s2, TARGET_PERIMETER_PX), cdLeft: cd2,
         mana: s2.rpg.mana, cost: specialManaCost(s2.rpg),
         weapon: !!getActiveWeapon(s2.rpg), lock: !!(s2.lockedTarget && s2.lockedTarget.ref),
-        /* v2.3.2527: the held-special state, which replaced a popup.  A
+        /* v2.3.2543: the held-special state, which replaced a popup.  A
            scenario can read a flag; it cannot read a ring. */
         queued: specialQueued(s2) };
     };
@@ -152,7 +152,7 @@ export function SpecialButton(props) {
   var cost = specialManaCost(S.rpg);
   var afford = (S.rpg.mana || 0) >= cost;
   var ready = cdLeft <= 0 && afford;
-  /* v2.3.2527: a swipe the bow is holding until its line lands.  See the
+  /* v2.3.2543: a swipe the bow is holding until its line lands.  See the
      header -- this is where the 'Lining up...' popup went. */
   var queued = specialQueued(S);
 
@@ -194,7 +194,7 @@ export function SpecialButton(props) {
          with a brass edge while it will do something.  No CSS filter at any
          state -- a filter on a DOM overlay compositing over the WebGL canvas
          is the documented iOS grain hazard (v2.3.948, v2.3.1236). */
-      /* v2.3.2527: a held swipe reads as the LIT slate with a full brass rim --
+      /* v2.3.2543: a held swipe reads as the LIT slate with a full brass rim --
          the same two tokens the ready state already uses, turned up rather
          than a new colour, so the button says "your press landed and is
          waiting" without introducing a third visual language to learn.  Still
@@ -230,7 +230,7 @@ export function SpecialButton(props) {
       color: queued ? '#F0C878' : (ready ? '#F7F2E7' : '#687575'), pointerEvents: 'none',
     },
   },
-  /* v2.3.2527: AIM, because that is the ACTION the state is asking for -- the
+  /* v2.3.2543: AIM, because that is the ACTION the state is asking for -- the
      shot goes the moment the line touches something, so the one useful thing
      the player can do with this information is move the line.  'QUEUED' would
      name the machinery instead, which is what the popup did. */

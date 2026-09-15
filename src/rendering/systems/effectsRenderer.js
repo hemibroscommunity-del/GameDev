@@ -121,7 +121,7 @@ import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.176
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
 import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
-import { rangedAimAngle, bowGripPoint } from '@/game/combatHelpers.js'; /* v2.3.2320: the bow sight line uses the SAME ladder the arrow does; v2.3.2527: ...from the same ORIGIN, too */
+import { rangedAimAngle, bowGripPoint } from '@/game/combatHelpers.js'; /* v2.3.2320: the bow sight line uses the SAME ladder the arrow does; v2.3.2543: ...from the same ORIGIN, too */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon */
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js'; /* v2.3.1864 */
@@ -5843,7 +5843,7 @@ export class EffectsRenderer {
          MELEE IS UNTOUCHED and keeps its own ladder below: that branch is not
          a sight line, it is the wild-swing AoE drawn (v2.3.940), and its
          contract is preview-matches-DAMAGE, against a different hit test. */
-      /* v2.3.2527: the same helper the fire gate casts from, instead of a
+      /* v2.3.2543: the same helper the fire gate casts from, instead of a
          second inline copy of `player + offset`.  The expression here was
          already the CORRECT one -- it is the gate that was reading the stale
          absolute -- but leaving two copies of it in two files is how the two

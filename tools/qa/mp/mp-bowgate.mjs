@@ -1,4 +1,4 @@
-/* DOES THE BOW'S FIRE GATE TEST THE LINE THE PLAYER IS SHOWN? (v2.3.2527)
+/* DOES THE BOW'S FIRE GATE TEST THE LINE THE PLAYER IS SHOWN? (v2.3.2543)
  *
  * Owner, after playing the merged bow rework: it "works well with the
  * exception of those moments" -- sometimes the sight line is visibly ON a

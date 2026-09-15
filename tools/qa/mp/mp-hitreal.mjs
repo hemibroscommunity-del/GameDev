@@ -328,7 +328,7 @@ const aimAt = (P, t) => P.page.evaluate(({ ax, ay }) => {
      only just wider than the 28px offset, so the fixture was always on the
      edge of missing and the gate simply made that visible.
 
-     ═══ v2.3.2527: ...AND THE GRIP IT AIMS FROM IS THE LIVE ONE ═══
+     ═══ v2.3.2543: ...AND THE GRIP IT AIMS FROM IS THE LIVE ONE ═══
      The paragraph above was right that this fixture must measure from whatever
      point the gate casts from, and it named the wrong field.  It read the
      ABSOLUTE `_bowGripX/Y`, on the stated grounds that this is "the number the

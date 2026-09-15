@@ -67,7 +67,7 @@ import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
  * different -- four branches floored at zero with the lock applied after, from
  * a different origin. Merging them would be a behaviour change wearing a
  * refactor's clothes. */
-/* ═══ v2.3.2527: ...AND ONE ANSWER FOR "WHERE DOES IT COME FROM" ═══
+/* ═══ v2.3.2543: ...AND ONE ANSWER FOR "WHERE DOES IT COME FROM" ═══
  * The ladder above settles the shot's DIRECTION from an origin it is handed.
  * This settles that origin, for the same reason and after the same bug.
  *

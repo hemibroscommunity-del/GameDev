@@ -133,7 +133,7 @@ export function specialAttack(S) {
        which is why the slot is tested rather than the field. */
     if ((R.activeSlot === 'ranged') && !(S._bowSight && S._bowSight.d != null)) {
       S._bowSpecialQueued = now;
-      /* ═══ v2.3.2527: THE QUEUE IS SHOWN ON THE BUTTON, NOT SAID IN A POPUP ═══
+      /* ═══ v2.3.2543: THE QUEUE IS SHOWN ON THE BUTTON, NOT SAID IN A POPUP ═══
          Owner, after playing the merged rework: swiping the bow's special on a
          monster "often pops a message saying the ability is queued", and "the
          player does not need telling every time; they swiped, they expect a
