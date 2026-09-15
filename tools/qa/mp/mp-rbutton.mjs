@@ -528,7 +528,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('a left-side swipe dodges', afterDodge.roll === true, afterDodge);
   rec.ok('...and the dodge cancels the block', afterDodge.shield === false && afterDodge.droppedWhy === 'dodge', afterDodge);
 
-  /* ═══ v2.3.2527: THE SPECIAL BUTTON, ORBITING THE ATTACK DISC ═══
+  /* ═══ v2.3.2542: THE SPECIAL BUTTON, ORBITING THE ATTACK DISC ═══
      Owner, after playing the merged build: "Move the Special attack button to
      orbit the RIGHT joystick, not the left."  A second trigger for the same
      specialAttack the flick fires (C1), one screen-half over from where
@@ -579,7 +579,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and it takes touches itself, rather than letting them fall through to the zone',
     specVis.pe === 'auto', specVis);
   rec.ok('...sitting in the RIGHT half now, with the attack controls -- not over on the movement side '
-    + '(v2.3.2527; this row asserted the opposite at v2.3.2472)',
+    + '(v2.3.2542; this row asserted the opposite at v2.3.2472)',
     specVis.left >= specVis.half, specVis);
   if (specVis.disc) {
     rec.ok('...and clear of the attack disc itself, so no finger can land on both',
@@ -603,7 +603,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     afterSpec.lock === beforeSpec.lock, { beforeSpec, afterSpec });
   rec.ok('...and nothing dodged or rolled from it either', afterSpec.roll === false, afterSpec);
 
-  /* ═══ v2.3.2527: WHIRLWIND IS AVAILABLE ONLY IN A MELEE FIGHT ═══
+  /* ═══ v2.3.2542: WHIRLWIND IS AVAILABLE ONLY IN A MELEE FIGHT ═══
      Owner, after playing the merged build: "Limit the whirl ability to active
      melee combat only.  Right now it can be used any time."  And: "The button
      should read as unavailable rather than silently doing nothing when the

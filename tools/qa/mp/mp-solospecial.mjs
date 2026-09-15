@@ -429,7 +429,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       r.normal === 0, r);
   }
 
-  /* ══════════ AND THE SAME PRESS, ON THE SPECIAL BUTTON (v2.3.2527) ══════════
+  /* ══════════ AND THE SAME PRESS, ON THE SPECIAL BUTTON (v2.3.2542) ══════════
      Owner, after playing the merged build: "Move the Special attack button to
      orbit the RIGHT joystick, not the left ... Make sure a tap on the Special
      button does not also fire the attack disc beneath it."

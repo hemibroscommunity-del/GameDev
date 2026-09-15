@@ -1,9 +1,9 @@
 import React from 'react';
 import { TARGET_PERIMETER_PX, getActiveWeapon, specialManaCost } from '@/data/index.js';
 import { specialAttack } from '@/game/playerActions.js';
-import { ctlColumn, ctlBottom, CTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2527: the shared right-hand column */
+import { ctlColumn, ctlBottom, CTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2542: the shared right-hand column */
 
-/* ═══ v2.3.2527: A SPECIAL ATTACK BUTTON, ORBITING THE ATTACK DISC ═══
+/* ═══ v2.3.2542: A SPECIAL ATTACK BUTTON, ORBITING THE ATTACK DISC ═══
  *
  * Owner, after playing the merged build on a phone: "Move the Special attack
  * button to orbit the RIGHT joystick, not the left."  v2.3.2472 put it beside
@@ -39,7 +39,7 @@ import { ctlColumn, ctlBottom, CTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /
  * A touch that ENDS here is stopped for the same reason it was on the left:
  * a release is classified, and this surface's release must not be read as the
  * end of a tap, a flick, or -- for as long as any surface on this side ever
- * classifies one again -- the first half of a pair.  v2.3.2527 unbound the
+ * classifies one again -- the first half of a pair.  v2.3.2542 unbound the
  * right control's double tap (BroTown's handleRBtnPress), so there is nothing
  * on this side counting taps today; the guard stays anyway, because the cost is
  * two lines and the failure it prevents is silent.
@@ -114,7 +114,7 @@ export function SpecialButton(props) {
   }
   if (!specialButtonLive(S, TARGET_PERIMETER_PX)) return null;
 
-  /* v2.3.2527: the shared right-hand column decides the size, the right edge
+  /* v2.3.2542: the shared right-hand column decides the size, the right edge
      and the slot height -- one rule for Block, Bash, Whirlwind and this. */
   var col = ctlColumn(isLandscape);
   var size = col.size;
@@ -141,7 +141,7 @@ export function SpecialButton(props) {
     'data-special': ready ? 'ready' : 'wait',
     onTouchStart: press,
     onMouseDown: press,
-    /* v2.3.2527: a touch that ENDS here must not reach the zone either -- rE
+    /* v2.3.2542: a touch that ENDS here must not reach the zone either -- rE
        classifies every release on that side, forwards a short one to the canvas
        as a lock-on click (v2.3.816) and runs the flick test that fires the
        special a SECOND time. */

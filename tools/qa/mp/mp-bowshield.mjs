@@ -1,5 +1,5 @@
 /* THE SHIELD BUTTON IS ON BOW AND STAFF, AND THE RIGHT CONTROL'S DOUBLE TAP IS
- * BOUND TO NOTHING (v2.3.2527 — owner, after playing the merged build).
+ * BOUND TO NOTHING (v2.3.2542 — owner, after playing the merged build).
  *
  * ═══ THIS FILE HAS BEEN INVERTED TWICE.  READ THIS BEFORE CHANGING IT AGAIN ═══
  * Until v2.3.2472 it asserted v2.3.2446's behaviour: "on a BOW the shield button
@@ -8,7 +8,7 @@
  * of that together, because they were one mechanism, and took the freed double
  * tap for the WEAPON SWAP.
  *
- * v2.3.2527 takes the swap back off it.  Owner, on a phone: "Revert the
+ * v2.3.2542 takes the swap back off it.  Owner, on a phone: "Revert the
  * right-joystick double-tap weapon swap.  Weapon swapping goes back to the LEFT
  * joystick only."
  *
@@ -261,7 +261,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 6. THE DOUBLE TAP DOES NOTHING AT ALL NOW ──
      Two claims per surface, and BOTH have to be made: the swap is gone
-     (v2.3.2527, the owner's ask) and the v2.3.2446 guard has NOT come back in
+     (v2.3.2542, the owner's ask) and the v2.3.2446 guard has NOT come back in
      its place (the trap this file's header is about).  Driven on BOTH surfaces,
      because handleRBtnPress is what used to classify the pair and both the
      zone's rS and the disc's bS come through it -- a classifier restored on
@@ -271,7 +271,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const beforeZ = await st(P);
   await doubleTap(P, ZONE, 90);
   const afterZ = await st(P);
-  rec.ok('bowshield: a double tap on the right ZONE does NOT swap the weapon (v2.3.2527 -- '
+  rec.ok('bowshield: a double tap on the right ZONE does NOT swap the weapon (v2.3.2542 -- '
     + 'this row asserted the opposite at v2.3.2472)',
     afterZ.slot === beforeZ.slot, { before: beforeZ.slot, after: afterZ.slot });
   rec.ok('bowshield: ...and it does NOT raise a guard either -- v2.3.2446 is not restored by the '
@@ -328,7 +328,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       + JSON.stringify(dashReady));
   }
 
-  /* ── 6c. A DOUBLE TAP AND HOLD IS NOT A GUARD EITHER (v2.3.2527) ──
+  /* ── 6c. A DOUBLE TAP AND HOLD IS NOT A GUARD EITHER (v2.3.2542) ──
      v2.3.2472's 50px distance row stood here -- it proved that two taps in
      DIFFERENT places were not a swap.  With no swap on this surface that claim
      is vacuous, so the row is spent on the thing that can still go wrong

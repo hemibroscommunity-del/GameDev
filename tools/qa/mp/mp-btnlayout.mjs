@@ -67,12 +67,12 @@ const rects = (P) => P.page.evaluate(() => {
     mode: (bus && bus.state && bus.state.mode) || null,
     attack: one('.bt-rjoy-base'), shield: one('[data-shield]'),
     bash: one('[data-ability="bash"]'), whirl: one('[data-ability="whirl"]'),
-    /* v2.3.2472: the Special button; v2.3.2527 moved it off the movement disc
+    /* v2.3.2472: the Special button; v2.3.2542 moved it off the movement disc
        and into the right-hand column, so the disc it must clear is the ATTACK
        one now -- `ljoy` stays because the "it is not on the left any more" row
        is worth keeping honest. */
     special: one('[data-special]'), ljoy: one('.bt-joystick-base'),
-    /* v2.3.2527: the Element Burst button places itself independently of
+    /* v2.3.2542: the Element Burst button places itself independently of
        ctlColumn (ElementBurstButton.jsx: right = 50 + discW + 10, level with the
        disc's centre), which is the column's slot 0 within a couple of pixels.
        Measured here so a collision with the cluster is visible rather than
@@ -256,13 +256,13 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
      3. BLOCK IS THE BOTTOM OF THE STACK and level with the disc's centre --
         which is the whole point of the move, since the band placement is what
         put it under the attacking thumb. */
-  /* v2.3.2527: the Special button joins this column at slot -1 (CTL_SLOT).  It
+  /* v2.3.2542: the Special button joins this column at slot -1 (CTL_SLOT).  It
      is NOT in this list because the rows here run with the shield deliberately
      UP -- specialButtonLive hides it behind a raised guard -- so it is measured
      with the rest of the second pass further down. */
   const column = [['shield', r.shield], ['bash', r.bash], ['whirl', r.whirl]]
     .filter(([, b]) => b && b.shown);
-  /* ═══ v2.3.2527: NOTHING ELSE IS PARKED ON TOP OF THE COLUMN ═══
+  /* ═══ v2.3.2542: NOTHING ELSE IS PARKED ON TOP OF THE COLUMN ═══
      The cluster is four controls now, and one MORE button places itself in the
      same strip without going through ctlColumn: Element Burst.  A silent
      overlap between two z31 siblings is the failure D9's own note names ("a
@@ -339,7 +339,7 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
   });
   rec.ok(`${tag}: guard: the shield starts DOWN for the slide test`, pre.shieldUp === false, pre);
 
-  /* ═══ v2.3.2527: THE SPECIAL BUTTON ORBITS THE ATTACK DISC NOW ═══
+  /* ═══ v2.3.2542: THE SPECIAL BUTTON ORBITS THE ATTACK DISC NOW ═══
      Owner, after playing the merged build: "Move the Special attack button to
      orbit the RIGHT joystick, not the left."  Every row below asserted the
      mirror image of itself at v2.3.2472 ("stays in the left half", "clears the
@@ -406,7 +406,7 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
       false, r2.special);
   }
 
-  /* v2.3.2527: a SECOND capture, with the guard down -- the only state in which
+  /* v2.3.2542: a SECOND capture, with the guard down -- the only state in which
      the Special button exists, so the shot above (taken with the shield
      deliberately UP so bash renders) cannot show the full cluster.  Two shots,
      two states, because the cluster's membership changes between them. */

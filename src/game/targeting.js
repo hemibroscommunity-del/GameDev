@@ -162,7 +162,7 @@ export function targetCandidates(S, radiusPx) {
 }
 
 /* Is the current lock a MONSTER lock that the perimeter rule owns? */
-/* v2.3.2527: exported for the whirlwind gate (game/abilities.js).  "Is a
+/* v2.3.2542: exported for the whirlwind gate (game/abilities.js).  "Is a
    monster locked" is the canonical reading of "a fight is under way" for a
    melee player -- updateTargeting acquires it automatically inside the
    perimeter, re-points it across a kill, and drops it every frame the ref is

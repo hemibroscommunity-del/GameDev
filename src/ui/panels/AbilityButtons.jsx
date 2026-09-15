@@ -2,7 +2,7 @@ import React from 'react';
 import { ABILITY_META } from '@/data/index.js';
 import { abilityStatus, castAbility } from '@/game/abilities.js';
 import { blockRingBus } from '@/ui/mobile/blockRingBus.js'; /* v2.3.2252: the bash button follows the shield's edge, not a 200ms poll */
-import { ctlColumn, ctlBottom, CTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2472: the one shared left-of-the-disc column (D9); v2.3.2527: ...and its slot map */
+import { ctlColumn, ctlBottom, CTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2472: the one shared left-of-the-disc column (D9); v2.3.2542: ...and its slot map */
 
 /* ═══ v2.3.2472: STACKED ABOVE THE BLOCK BUTTON ═══
    Owner decision D9: "Block left of the disc, abilities stacked above it."
@@ -27,7 +27,7 @@ import { ctlColumn, ctlBottom, CTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /
    visible only while the shield is raised, which is most frames).  A button
    that moves when its neighbour appears is a button the thumb misses.
 
-   v2.3.2527: the map moved to ShieldButton's CTL_SLOT when the Special button
+   v2.3.2542: the map moved to ShieldButton's CTL_SLOT when the Special button
    joined the column -- four controls in one stack is one list too many to keep
    in four files' heads. */
 
@@ -101,7 +101,7 @@ export function AbilityButtons(props) {
   var slotStyle = function (kind) {
     return {
       right: col.right,
-      /* v2.3.2527: hasOwnProperty, NOT `|| 1`.  The private SLOT_OF this
+      /* v2.3.2542: hasOwnProperty, NOT `|| 1`.  The private SLOT_OF this
          replaced had no falsy member, so `|| 1` was a pure missing-key
          fallback; the shared map has `block: 0` and `special: -1`, and
          `0 || 1` is 1 -- Shield Bash's own slot.  Harmless while `kinds` is
@@ -115,7 +115,7 @@ export function AbilityButtons(props) {
   return React.createElement(React.Fragment, null, live.map(function (entry) {
     var kind = entry.kind, st = entry.st;
     var meta = ABILITY_META[kind] || { label: kind, glyph: '?' };
-    /* v2.3.2527: `engaged` joins the ready test -- whirlwind is greyed out of
+    /* v2.3.2542: `engaged` joins the ready test -- whirlwind is greyed out of
        combat rather than hidden (game/abilities.js NEEDS_ENGAGED), so the brass
        edge and the bright label have to go with it or the button would look
        live while castAbility refuses. */
@@ -125,12 +125,12 @@ export function AbilityButtons(props) {
       key: kind,
       className: 'bt-desktop-hide',
       'data-ability': kind,
-      /* v2.3.2527: the button's own answer to "why is this dim", for QA and for
+      /* v2.3.2542: the button's own answer to "why is this dim", for QA and for
          anyone reading the DOM -- a screenshot cannot separate a cooldown from
          an unmet stance rule. */
       'data-ready': ready ? '1' : '0',
       'data-engaged': st.engaged === false ? '0' : '1',
-      /* v2.3.2527: a greyed button still routes into castAbility, deliberately:
+      /* v2.3.2542: a greyed button still routes into castAbility, deliberately:
          that is what floats the reason ("Not in combat!") instead of leaving the
          player to guess why nothing happened. */
       onTouchStart: function (e) {
@@ -160,7 +160,7 @@ export function AbilityButtons(props) {
           : 'radial-gradient(circle, #1A2429 0%, #141C21 100%)',
         border: '2px solid ' + (ready ? '#D8A85F' : 'rgba(238,242,235,.14)'),
         boxShadow: ready ? 'inset 0 1px 0 rgba(255,255,255,.08)' : 'none',
-        /* v2.3.2527: the same 0.45 "you cannot use this yet" wash the missing-
+        /* v2.3.2542: the same 0.45 "you cannot use this yet" wash the missing-
            weapon case has used since v2.3.1733, now also for an ability whose
            stance rule is unmet -- one unavailable look, not two. */
         opacity: (st.equipped && st.engaged !== false) ? 1 : 0.45,

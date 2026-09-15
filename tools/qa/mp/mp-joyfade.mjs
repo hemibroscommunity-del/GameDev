@@ -180,7 +180,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and now it is lit, which is what tells you so',
     ctxVis && ctxVis.lit === true, ctxVis);
 
-  /* ═══ v2.3.2527: ...AND THE NEW NEIGHBOUR HAS NOT TAKEN THE DISC'S SURFACE ═══
+  /* ═══ v2.3.2542: ...AND THE NEW NEIGHBOUR HAS NOT TAKEN THE DISC'S SURFACE ═══
      The Special button moved to this side of the screen ("Move the Special
      attack button to orbit the RIGHT joystick, not the left"), and this file is
      where "the disc takes touches" is pinned -- so this is where the cost of

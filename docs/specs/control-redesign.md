@@ -1,4 +1,4 @@
-# Control redesign — the contextual right button (v2.3.2242 → v2.3.2245; caught up to v2.3.2472 in §§10–11, and to v2.3.2527 in §12)
+# Control redesign — the contextual right button (v2.3.2242 → v2.3.2245; caught up to v2.3.2472 in §§10–11, and to v2.3.2542 in §12)
 
 Owner directive, 2026-09-03. Quoted in full because every decision below
 is measured against it:
@@ -987,7 +987,7 @@ Probe: `window.__btDiscVis().R.ghost` (and `.ghostRect`).
 
 ---
 
-## 12. The phone-play pass of 2026-09-15 (v2.3.2527)
+## 12. The phone-play pass of 2026-09-15 (v2.3.2542)
 
 Three reports from the owner after playing the merged v2.3.2472 build on
 their phone. All three are the same gesture system, so they ship together —

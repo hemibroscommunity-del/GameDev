@@ -87,7 +87,7 @@ export const CTL_GAP = 4;         /* column <-> disc */
 export const CTL_STACK_GAP = 8;   /* between stacked slots */
 export const CTL_MIN_SIZE = 44;   /* Apple's touch-target minimum */
 
-/* ═══ v2.3.2527: WHO SITS IN WHICH SLOT, IN ONE PLACE ═══
+/* ═══ v2.3.2542: WHO SITS IN WHICH SLOT, IN ONE PLACE ═══
  *
  * Owner, after playing the merged build: "Move the Special attack button to
  * orbit the RIGHT joystick, not the left."  So the column gains a fourth
@@ -171,7 +171,7 @@ export function ShieldButton(props) {
   var on = !!S._shieldUp;
   var onCd = !!(S._shieldCdUntil && Date.now() < S._shieldCdUntil);
   /* v2.3.2472 (D9): slot 0 of the left-of-the-disc column -- see ctlColumn. */
-  /* v2.3.2527: ...and the slot number now comes from the shared CTL_SLOT map
+  /* v2.3.2542: ...and the slot number now comes from the shared CTL_SLOT map
      rather than a literal, so "which control is where" is one list. */
   var col = ctlColumn(isLandscape);
   var size = col.size;

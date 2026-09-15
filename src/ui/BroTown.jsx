@@ -51,7 +51,7 @@ import { startBuildWatch } from '@/game/buildWatch.js';
 import { TouchControls, RBTN_BODY_BG, RBTN_BODY_BG_HOT, RKNOB_BG, RKNOB_BG_HOT } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack */
-import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2527 moved it to the attack disc's column */
+import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
 import { GESTURE_TOOL_URLS, gestureDemo01, gestureCue01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245: the tool strips the button face plays; gestureDemo01 v2.3.2384; extractionMeter01 v2.3.2514 (shared with the bar above the head) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
@@ -75,7 +75,7 @@ import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2
  * would paint both sticks), and it does not fire on touchmove -- so a long drag
  * would not refresh it, which is the one case this must handle. */
 export const JOY_FADE_MS = 2000;
-/* ═══ v2.3.2527: THE RIGHT CONTROL'S DOUBLE TAP IS UNBOUND, DELIBERATELY ═══
+/* ═══ v2.3.2542: THE RIGHT CONTROL'S DOUBLE TAP IS UNBOUND, DELIBERATELY ═══
  *
  * Owner, after playing the merged build on a phone: "Revert the right-joystick
  * double-tap weapon swap.  Weapon swapping goes back to the LEFT joystick
@@ -8123,10 +8123,10 @@ export var BroTown = function BroTown(_ref0) {
      weapon slot.  Each tap (single-tap classification: no movement + brief
      duration) opens a preview window that renders an icon inside the joystick
      disc; the window auto-closes when the timer expires.
-     v2.3.2527: the RIGHT joystick has no double-tap gesture at all.  This note
+     v2.3.2542: the RIGHT joystick has no double-tap gesture at all.  This note
      used to describe v2.3.2446's tap-then-tap-and-hold shield (retired at
      v2.3.2472, which took the pair for the weapon swap) and then that swap
-     (taken back off it by the owner at v2.3.2527).  The right control's pair of
+     (taken back off it by the owner at v2.3.2542).  The right control's pair of
      taps is deliberately unbound -- see the note at handleRBtnPress. */
   var lJoyPreviewRef = useRef(null);
   var rTapState = useRef({ lastEndAt: 0, lastX: 0, lastY: 0, startAt: 0, startX: 0, startY: 0, moved: false });
@@ -8242,7 +8242,7 @@ export var BroTown = function BroTown(_ref0) {
      frame while the button is held).
      v2.3.2251: and the lock is acquired automatically, every frame, by
      targeting.updateTargeting -- the press no longer acquires anything. */
-  /* v2.3.2527: back to taking no arguments.  v2.3.2472 passed the touch point
+  /* v2.3.2542: back to taking no arguments.  v2.3.2472 passed the touch point
      in for its double-tap distance test; with the gesture gone there is nothing
      on this side that needs to know WHERE the press landed, and the desktop and
      the tutorial call it with nothing anyway. */
@@ -8300,7 +8300,7 @@ export var BroTown = function BroTown(_ref0) {
        this reads the existing lock rather than re-running the nearest search:
        a monster tapped at bow range, with a slime at your feet, keeps its lock
        -- promoting an already-tapped lock is a no-op. */
-    /* ═══ v2.3.2527: NOTHING CLASSIFIES A PAIR OF TAPS HERE ANY MORE ═══
+    /* ═══ v2.3.2542: NOTHING CLASSIFIES A PAIR OF TAPS HERE ANY MORE ═══
        Owner: "Weapon swapping goes back to the LEFT joystick only."  v2.3.2472's
        double-tap swap stood here, with v2.3.2271's lock stash (`_rTapLockWas`),
        the `_rTapAt` / `_rTapX` press clock and the `_rDblConsumedAt` stamp that
@@ -8992,7 +8992,7 @@ export var BroTown = function BroTown(_ref0) {
         var dys = t.clientY - rts2.startY;
         if (dxs * dxs + dys * dys > TAP_MAX_MOVE_SQ_PX) {
           rts2.moved = true;
-          /* v2.3.2527: v2.3.2271's "a DRAG is not half of a double tap" reset
+          /* v2.3.2542: v2.3.2271's "a DRAG is not half of a double tap" reset
              (`_rTapAt = 0`) stood here.  It has nothing left to protect -- this
              surface no longer classifies a pair of taps at all -- and the flag
              it cleared is gone with the gesture.  `moved` itself is still set,
@@ -9078,7 +9078,7 @@ export var BroTown = function BroTown(_ref0) {
         openSelfChat();
         return;
       }
-      /* v2.3.2527: v2.3.2271's `_rDblConsumedAt` gate stood here -- it withheld
+      /* v2.3.2542: v2.3.2271's `_rDblConsumedAt` gate stood here -- it withheld
          the forward for the one press a double tap had eaten, so the pair could
          not lock and then immediately unlock the monster it was aimed at.  With
          no pair to recognise (see handleRBtnPress) no press is ever eaten, so
@@ -12782,7 +12782,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2527: ...and the Special button orbits the ATTACK disc, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2542: ...and the Special button orbits the ATTACK disc, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one

@@ -3197,7 +3197,7 @@ the request and never answers. Twelve of its twenty-three assertions go red
 against the pre-fix panel, and its captured panel text is character for
 character the owner's screenshot.
 
-## 78. Freeing a gesture is not an invitation to put the old one back (v2.3.2527)
+## 78. Freeing a gesture is not an invitation to put the old one back (v2.3.2542)
 
 Three versions of one control in four days, and the middle one is the trap.
 
@@ -3208,7 +3208,7 @@ Three versions of one control in four days, and the middle one is the trap.
   button came back, `shieldAimAngle` gained a nearest-monster rung to supply
   the direction, the hold was retired — and the freed double tap was given to
   the WEAPON SWAP.
-* **v2.3.2527** (owner, after playing it) took the swap back off: *"Weapon
+* **v2.3.2542** (owner, after playing it) took the swap back off: *"Weapon
   swapping goes back to the LEFT joystick only."*
 
 **Tempting:** the right double tap is unbound again, and the thing that used
@@ -3247,7 +3247,7 @@ Block BUTTON now.
 Related: §0.2 of `docs/BACKLOG-TRIAGE-2026-09-14.md`, and
 `docs/specs/control-redesign.md` §§11.1-11.2 and §12.1.
 
-## 79. `S._engaged` is not "am I in combat" — it is "did I tap this one" (v2.3.2527)
+## 79. `S._engaged` is not "am I in combat" — it is "did I tap this one" (v2.3.2542)
 
 The owner asked for Whirlwind to be limited to *"active melee combat only"*.
 The client holds four facts that could answer that, and one of them is

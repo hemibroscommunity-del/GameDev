@@ -151,7 +151,7 @@ export function shieldButtonLive(S, perimeterPx) {
      because they auto-acquire nothing.  So the button can express the arc
      after all.
 
-     v2.3.2527: ...and the double tap that freed up is bound to NOTHING now.
+     v2.3.2542: ...and the double tap that freed up is bound to NOTHING now.
      v2.3.2472 gave it the weapon swap; the owner took that back off it after
      playing ("weapon swapping goes back to the LEFT joystick only").  The
      gesture being unbound is NOT an invitation to put this guard back on it --

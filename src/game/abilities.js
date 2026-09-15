@@ -28,7 +28,7 @@ import { BT_AUDIO, abilityCfg, abilityStaminaCost, abilityUnlocked, isAbilitiesE
   meleeSwingSfx /* v2.3.2260: the lunge borrows the swing's own per-weapon sound */ } from '@/data/index.js';
 import { isPlayerDead, pushDmgPopup } from '@/game/combatHelpers.js';
 import { prog3ActiveCat } from '@/data/prog3.js';   /* v2.3.2327: whirlwind is the sword's */
-import { monsterLock } from '@/game/targeting.js';  /* v2.3.2527: whirlwind wants a fight under way */
+import { monsterLock } from '@/game/targeting.js';  /* v2.3.2542: whirlwind wants a fight under way */
 
 /* Local cooldown clocks, keyed by our OWN constant names (never a client- or
    wire-supplied string), so a plain object is safe here. */
@@ -188,7 +188,7 @@ export function resolveCastAngle(S) {
   return (typeof f === 'number') ? f : Math.PI / 2;
 }
 
-/* ═══ v2.3.2527: WHIRLWIND ONLY WHILE YOU ARE ACTUALLY IN A MELEE FIGHT ═══
+/* ═══ v2.3.2542: WHIRLWIND ONLY WHILE YOU ARE ACTUALLY IN A MELEE FIGHT ═══
  *
  * Owner, after playing the merged build on a phone: "Limit the whirl ability to
  * active melee combat only.  Right now it can be used any time."
@@ -315,7 +315,7 @@ export function abilityStatus(S, kind) {
   var visible = abilityUnlocked(level, kind)
     && (!needsHeld || (!!R.shield && !!(S && S._shieldUp)))
     && (!needsMelee || (prog3ActiveCat(R) === 'sword' && !!R.weapon));
-  /* v2.3.2527: ...and whirlwind additionally wants a fight actually under way.
+  /* v2.3.2542: ...and whirlwind additionally wants a fight actually under way.
      Reported as its own field rather than folded into `visible` -- see
      NEEDS_LOCK above.  `true` for every ability that does not ask for it, so
      callers can read `st.engaged` unconditionally. */
@@ -362,7 +362,7 @@ export function castAbility(S, kind) {
     pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough energy!', '#F2C14E', { ts: Date.now() });
     return false;
   }
-  /* v2.3.2527: and the same courtesy for the engagement rule -- the button is
+  /* v2.3.2542: and the same courtesy for the engagement rule -- the button is
      greyed, so a press on it is a player asking why.  Below the affordability
      check on purpose: "not enough energy" is the more actionable answer when
      both are true, and this one is reachable from the desktop R key as well,
