@@ -568,7 +568,7 @@ _fxLoad('/sprites/projectiles/magic-bolt-v1.webp?v=2.3.1334').then((tex) => {
    half the head) and 0.742 (eats the collar): 0.79 cuts at the collar and
    leaves shaft plus collar, which is what a spent arrow buried in something
    should look like. */
-/* ═══ v2.3.2474: BIGGER, AND IT BREATHES ═══
+/* ═══ v2.3.2511: BIGGER, AND IT BREATHES ═══
  * Owner (backlog §2.5): pulse the special arrow white in flight, and enlarge
  * it slightly.
  *
@@ -640,7 +640,7 @@ const SWORD_SLASH = { frames: [], anchor: { x: 0.5, y: 0.5 } };
  * stuck in the monster without the arrowhead."  The silhouette is no longer
  * touched at all.
  *
- * ═══ v2.3.2474: THE KEYLINE IS THICKER NOW, AND ONLY ON THE SHAFT ═══
+ * ═══ v2.3.2511: THE KEYLINE IS THICKER NOW, AND ONLY ON THE SHAFT ═══
  * Owner (backlog §2.5), still the same complaint: the outline needs to read.
  * v2.3.1877's own measurement is why blackening alone was not enough -- at this
  * size a ONE-pixel keyline owns about half an output pixel however black it is
@@ -4037,7 +4037,7 @@ export class EffectsRenderer {
       }
     }
     /* v2.3.1396: same reap for the painted special-projectile sprites.
-       v2.3.2474: the white-pulse overlay is pooled in this SAME list, so it is
+       v2.3.2511: the white-pulse overlay is pooled in this SAME list, so it is
        reaped by the same pass -- but the back-reference it clears depends on
        which of the two it is, or a dead glow would leave `_fxGlow` pointing at
        a destroyed sprite and _placeSpecialFx would draw nothing for the rest
@@ -4350,7 +4350,7 @@ export class EffectsRenderer {
     sprite.y = y;
     sprite.rotation = ang || 0;
     sprite.alpha = alpha;
-    /* ═══ v2.3.2474: THE WHITE PULSE ═══
+    /* ═══ v2.3.2511: THE WHITE PULSE ═══
        Owner (backlog §2.5): pulse the special arrow white in flight.
 
        A SECOND SPRITE, ADDITIVE, over the first.  Pixi's tint multiplies, so

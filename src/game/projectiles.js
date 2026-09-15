@@ -110,7 +110,7 @@ var PROJ_BODY = {
   /* back = anchor.x * drawnW, front = (1 - anchor.x) * drawnW, half = drawnH / 2 */
   arrow:        { back: 24.0, front: 28.5, half: 6.6 },   /* 128x32  @ 52.5/128, anchor .457 */
   magicBolt:    { back: 26.9, front: 12.2, half: 11.5 },  /* 217x128 @ 0.18,     anchor .688 */
-  arrowSpecial: { back: 28.9, front: 33.9, half: 12.8 },  /* v2.3.2474: 314x128 @ 0.20 (was 0.17), anchor .460 */
+  arrowSpecial: { back: 28.9, front: 33.9, half: 12.8 },  /* v2.3.2511: 314x128 @ 0.20 (was 0.17), anchor .460 */
   magicSpecial: { back: 42.6, front: 24.0, half: 19.2 },  /* 222x128 @ 0.30,     anchor .639 */
 };
 /* ═══ v2.3.2473: THE HIT RADIUS, IN ONE PLACE ═══
@@ -125,7 +125,7 @@ var PROJ_BODY = {
  * { isStaff, isSpecial }.  Everything else is the monster.
  */
 export var SPECIAL_HIT_R_MULT = 3;   /* v2.3.222: special arrow has 3x damage radius */
-/* v2.3.2474: and it may not reach more than half the special arrow's own drawn
+/* v2.3.2511: and it may not reach more than half the special arrow's own drawn
    length past the monster's own circle.  The special is drawn 62.8 world px
    long (PROJ_BODY.arrowSpecial: a 314px sheet at ARROW_SPECIAL.scale 0.20), so
    half of it is 31.4 -- see the cap at the bottom of monsterProjRadius.  If the
@@ -152,7 +152,7 @@ export function monsterProjRadius(m, S, opts) {
        but it is now a MEASURED number rather than a guess, and
        it is paired with the anchor fix that finally puts the
        centre it is measured from in the right place.
-       ═══ v2.3.2474: 27 -> 25, AND THE MEASUREMENT COVERS BOTH AXES ═══
+       ═══ v2.3.2511: 27 -> 25, AND THE MEASUREMENT COVERS BOTH AXES ═══
        Owner (backlog §2.5): arrows register on slimes they clearly miss.
        Re-measured with tools/gear/measure-monster-body.mjs, which decodes the
        shipped sheets frame by frame rather than trusting the arithmetic in the
@@ -169,7 +169,7 @@ export function monsterProjRadius(m, S, opts) {
        plain arrow's 6.6px capsule the effective radius is 31.6 -- an arrow
        whose drawn EDGE touches the drawn blob, which is what a hit should
        mean. */
-    _hitR = 25;   /* v2.3.2243: was staff 38.  v2.3.2474: 27 -> 25, measured */
+    _hitR = 25;   /* v2.3.2243: was staff 38.  v2.3.2511: 27 -> 25, measured */
   } else if (_archProj === 'fireGoblin') {
     _hitR = 26;   /* v2.3.2243: was staff 40 */
   } else if (_archProj === 'snowman') {
@@ -199,7 +199,7 @@ export function monsterProjRadius(m, S, opts) {
      (+0.7%/pt, cap +69.3%) before the special multiplier. */
   if (opts && opts.isStaff && S && S.rpg) _hitR *= staffAoeMult(S.rpg);
   /* v2.3.222: special arrow has 3x damage radius.
-     ═══ v2.3.2474: ...UP TO A CAP TIED TO THE ART ═══
+     ═══ v2.3.2511: ...UP TO A CAP TIED TO THE ART ═══
      Owner (backlog §2.5): cap the special's radius multiplier.  A bare x3 is
      not a radius, it is a compounding one -- it scales with whatever the
      monster's own circle already is -- so the biggest targets got the biggest
@@ -211,7 +211,7 @@ export function monsterProjRadius(m, S, opts) {
      tall (120).
      THE CAP IS THE PROJECTILE'S OWN DRAWN BODY.  The special arrow is drawn
      62.8 world px long (PROJ_BODY.arrowSpecial, back 28.9 + front 33.9, after
-     v2.3.2474's own scale bump), so its blast may reach at most half that --
+     v2.3.2511's own scale bump), so its blast may reach at most half that --
      31px -- beyond the monster's own circle.  The rule is then "you can hit what the arrow could plausibly
      sweep", which is a sentence the art can be re-measured against, rather
      than a multiplier nobody can picture.
@@ -377,7 +377,7 @@ import {
   monsterBodyOffsetY, monsterProceduralRadius, trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
   BOW_RANGE_PX, /* v2.3.2448: the arrow's plant cap, shared with the sight stream */
 } from '@/data/index.js';
-import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2474: arrows sound like what they hit */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
+import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */ } from '@/game/combatHelpers.js';
@@ -1083,7 +1083,7 @@ export function updateArrows(S, deps) {
                     BT_AUDIO.collect();
                   }
                 }
-                /* ═══ v2.3.2474: AN ARROW SOUNDS LIKE WHAT IT HIT ═══
+                /* ═══ v2.3.2511: AN ARROW SOUNDS LIKE WHAT IT HIT ═══
                    Owner (backlog §2.5): melee hits have been material-keyed
                    since v2.3.2452 -- goo and ember and flesh thud, bone
                    cracks, stone rings -- and arrows and bolts kept playing one
@@ -1246,7 +1246,7 @@ export function updateArrows(S, deps) {
                 /* Staff projectiles are magic — no physical shaft to
                    leave embedded in the body.  Particle FX from
                    spawnWeaponHitFX above is the visual residue. */
-                /* ═══ v2.3.2474: ONE ARROW, NOT TWO ═══
+                /* ═══ v2.3.2511: ONE ARROW, NOT TWO ═══
                    Owner (backlog §2.5): "two stuck arrows on a special".  Both
                    halves were doing their job and neither knew about the
                    other: this block pushes a plain `_stuckArrows` stub for
@@ -1298,7 +1298,7 @@ export function updateArrows(S, deps) {
                     var _saEntryDx = -Math.cos(a.ang);
                     var _saEntryDy = -Math.sin(a.ang);
                     var _saRx, _saRy, _saYAnchor;
-                    /* ═══ v2.3.2474: THE MUMMY AND THE SKELETON GET THEIR OWN ═══
+                    /* ═══ v2.3.2511: THE MUMMY AND THE SKELETON GET THEIR OWN ═══
                        Owner (backlog §2.5): "arrows stick below the feet of the
                        mummy and the skeleton."  They did, and this table is
                        why: only fireGoblin and the slime had entries, so every
@@ -1630,7 +1630,7 @@ export function updateArrows(S, deps) {
                   });
                   /* Impact feedback — sound + a few particles at the
                      target; damage number waits for the server pvp_hit. */
-                  /* v2.3.2474: the same material routing as the monster hit
+                  /* v2.3.2511: the same material routing as the monster hit
                      above.  A player has no archetype, so 'flesh' -- exactly
                      what monsterCombat passes for an NPC (v2.3.2452). */
                   if (a.isStaff) {

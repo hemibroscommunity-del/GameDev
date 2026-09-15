@@ -1,4 +1,4 @@
-/* ONE ARROW STICKS, AND IT STICKS IN THE BODY (v2.3.2474)
+/* ONE ARROW STICKS, AND IT STICKS IN THE BODY (v2.3.2511)
  *
  * Two owner reports from the 2026-09-14 triage (§2.5), both about the same
  * dozen lines and neither visible to any existing suite:
@@ -129,7 +129,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const spec = await settle(P);
   console.log(`    special -> ${JSON.stringify(spec)}`);
   rec.ok('a bow SPECIAL rides the monster as the charged arrow', spec.stuckIn === true, spec);
-  rec.ok('...and leaves NO plain shaft beside it -- one arrow, not two (v2.3.2474)',
+  rec.ok('...and leaves NO plain shaft beside it -- one arrow, not two (v2.3.2511)',
     spec.stubs === 0, spec);
 
   /* ── 3. the shaft plants in the BODY, not at the feet ──

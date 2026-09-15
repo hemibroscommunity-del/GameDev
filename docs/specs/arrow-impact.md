@@ -1,4 +1,4 @@
-# What happens when an arrow lands (v2.3.2474)
+# What happens when an arrow lands (v2.3.2511)
 
 **Status:** shipped, client-only. Lane C of the 2026-09-14 backlog triage
 (`docs/BACKLOG-TRIAGE-2026-09-14.md` §2.5). Six contained fixes to the moment

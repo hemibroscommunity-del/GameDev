@@ -42,7 +42,7 @@ const OUT = path.join(ROOT, 'public/sprites/projectiles/arrow-pine.png');
 const OUT_W = 128, OUT_H = 32;
 
 const PAGE = `<!doctype html><meta charset="utf-8"><body><script>
-/* v2.3.2474: how much neutral-grey (steel) is left in the right third of the
+/* v2.3.2511: how much neutral-grey (steel) is left in the right third of the
    texture -- the measurement that catches an inward thicken eating the head,
    which is the failure v2.3.1876 shipped. */
 function countInk(px, w, h, maxX) {
@@ -180,7 +180,7 @@ window.__arrow = (src, ow, oh) => new Promise((res) => {
       op[i] = a <= LO ? 0 : a >= HI ? 255 : Math.round((a - LO) / (HI - LO) * 255);
     }
 
-    /* ═══ v2.3.2474: AND THE KEYLINE IS THICKENED -- INWARD ═══
+    /* ═══ v2.3.2511: AND THE KEYLINE IS THICKENED -- INWARD ═══
        Owner (backlog §2.5), still: the arrow needs a stronger outline.
        v2.3.1877's own measurement says why one more pass is needed: at
        ARROW_PINE.lenPx through a ~0.67 world scale the texture lands in about
