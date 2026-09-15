@@ -112,7 +112,7 @@ import { gatheringMethods } from './gathering.js';
 // v2.3.1169 (P4 decomposition): equipment store (sanitizers/sell/forge/equip) -- see gear.js.
 import { gearMethods } from './gear.js';
 import { gearStashMethods } from './gearstash.js'; /* v2.3.2523 */
-import { gearProvMethods } from './gearprov.js'; /* v2.3.2531 */
+import { gearProvMethods } from './gearprov.js'; /* v2.3.2534 */
 // v2.3.1170 (P4 decomposition): build grids + progression + stats_update -- see grids.js.
 import { gridMethods } from './grids.js';
 // v2.3.1171 (P4 decomposition): the move handler (anti-teleport + zone streaming) -- see movement.js.
@@ -4040,7 +4040,7 @@ export class GameRoom {
     let armorForMe = null;
     if (pile.armor && pile.armor.length && !pile.armorClaimed) {
       pile.armorClaimed = true;
-      /* ═══ v2.3.2531: THE MINT IS RECORDED HERE, NOT AT THE KILL ═══
+      /* ═══ v2.3.2534: THE MINT IS RECORDED HERE, NOT AT THE KILL ═══
          The piece is BUILT at the kill (_rollArmorDropsForKill) but it is
          not anybody's until it is picked up: the pile may expire unclaimed,
          and the claimant is not always the killer (shares, pet vacuum).  So
@@ -5175,7 +5175,7 @@ export class GameRoom {
       const _ps = this.playerState[session.id];
       if (_ps && _ps._regenDirty) await this._saveRpg(session.id, _ps);
       delete this.playerState[session.id];
-      /* v2.3.2531: drop the in-memory provenance ledger with the session.
+      /* v2.3.2534: drop the in-memory provenance ledger with the session.
          The record itself is durable in gear_prov:<pid> and reloads on the
          next join (gearprov.js); this is only the cache. */
       this._gearProvForget(session.id);
@@ -5367,7 +5367,7 @@ Object.assign(GameRoom.prototype, gatheringMethods);
 Object.assign(GameRoom.prototype, gearMethods);
 // v2.3.2523: the server-side gear stashes -- see gearstash.js.
 Object.assign(GameRoom.prototype, gearStashMethods);
-Object.assign(GameRoom.prototype, gearProvMethods); /* v2.3.2531 */
+Object.assign(GameRoom.prototype, gearProvMethods); /* v2.3.2534 */
 // v2.3.1170 (P4 decomposition): grids + progression -- see grids.js.
 Object.assign(GameRoom.prototype, gridMethods);
 // v2.3.1171 (P4 decomposition): movement -- see movement.js.

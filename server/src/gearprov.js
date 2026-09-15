@@ -1,4 +1,4 @@
-/* ═══ v2.3.2531: GEAR PROVENANCE — THE SERVER RECORDS WHAT IT MINTS ═══
+/* ═══ v2.3.2534: GEAR PROVENANCE — THE SERVER RECORDS WHAT IT MINTS ═══
  * Spec: docs/specs/gear-provenance.md
  *
  * THE HOLE THIS CLOSES.  Until now the server handed out armour, legs,
@@ -415,7 +415,7 @@ export const gearProvMethods = {
     }
   },
 
-  /* ═══ v2.3.2532: EQUIP BY NAME ═══
+  /* ═══ v2.3.2535: EQUIP BY NAME ═══
      Resolve a `<slot>Ref` from stats_update into the piece it names.
      The reference is a bare gid string and NOTHING else travels with it,
      which is the point: there is no blob on the wire to inflate, and the

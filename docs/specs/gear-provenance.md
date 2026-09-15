@@ -1,4 +1,4 @@
-# Gear provenance — the server records what it mints (v2.3.2531–2532)
+# Gear provenance — the server records what it mints (v2.3.2534–2535)
 
 Spec + attach points for `server/src/gearprov.js`. Phase 1 of the gear
 provenance lane (PR 1 of 3: **record at mint** → equip names a recorded
@@ -176,7 +176,7 @@ damage maths, traded, everything it does today — and carries
 `prov: 'legacy'` so the client can say *why* it cannot be listed instead
 of failing silently.
 
-## Equipping by name (v2.3.2532)
+## Equipping by name (v2.3.2535)
 
 `stats_update` can now say what you are wearing in two ways:
 
@@ -228,7 +228,7 @@ The describe path can be deleted when **both** of these are true:
 Until (2), the describe path is load-bearing, and **this version does not
 close the equip trust hole** — it builds the path that will. A modified
 client can still describe a legacy piece with any stats it likes. What it
-cannot do, since v2.3.2531, is describe a piece and have it come out
+cannot do, since v2.3.2534, is describe a piece and have it come out
 *provable*.
 
 ## Wire surface
@@ -237,14 +237,14 @@ cannot do, since v2.3.2531, is describe a piece and have it come out
 |---|---|---|
 | server → client (`player_state`, `loot_credit`, `quest_reward_stashed`) | `gid`, `prov` on each gear object | echo; no client reads them yet |
 | client → server (join seeds, `stats_update`) | `gid` | **looked up, never trusted**; `prov` is stripped unconditionally |
-| client → server (`stats_update`, v2.3.2532) | `armorRef`, `legsArmorRef` | a bare id, or `null` to unequip; gated client-side on `caps.gearRef` |
+| client → server (`stats_update`, v2.3.2535) | `armorRef`, `legsArmorRef` | a bare id, or `null` to unequip; gated client-side on `caps.gearRef` |
 
 A `gid` is not a secret: it is only usable by the player whose ledger
 holds it. No new message type, so nothing is owed to `PRIVILEGED_EVENTS`.
 
-v2.3.2531 shipped no caps flag, deliberately: nothing client-side gated
+v2.3.2534 shipped no caps flag, deliberately: nothing client-side gated
 on it, and `caps-audit.test.mjs` treats an advertised-but-unread flag as
-dead weight that *looks* like a live gate. v2.3.2532 adds `caps.gearRef`,
+dead weight that *looks* like a live gate. v2.3.2535 adds `caps.gearRef`,
 which the client genuinely reads.
 
 ## Deploy-order safety (rule 19/20)
@@ -304,7 +304,7 @@ the happy path:
   claimed grade discarded;
 - §4 the inbound **`stats_update`** claim — the path that actually feeds
   the damage maths, and the shape of #643's missed strip;
-- §4b **equipping by name** (v2.3.2532): a ref equips the server's own
+- §4b **equipping by name** (v2.3.2535): a ref equips the server's own
   copy; a ref that names nothing, or names another slot, or is
   `'__proto__'`, keeps what is worn; a ref does **not** fall through to an
   object sent alongside it; both lanes obey the same two gates; the

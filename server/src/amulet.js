@@ -150,7 +150,7 @@ export const amuletMethods = {
       // it is replaced, same as the client).  Shape is what
       // _sanitizeAmulet whitelists, by construction.
       ps.amulet = { tier: tierKey, gem: null, name: tier.label + ' Gold Amulet' };
-      /* v2.3.2531: a forged amulet is the most expensive thing in the game,
+      /* v2.3.2534: a forged amulet is the most expensive thing in the game,
          and this is the ONLY path that mints one -- so it is also the only
          amulet that can ever be proved (gearprov.js).  Everything already on
          a character predates the ledger and stays `legacy`: usable, not
@@ -189,7 +189,7 @@ export const amuletMethods = {
       // site.  (The client's _questFlags.slottedGem write stays
       // client-side -- rule 18, the server must not write _questFlags
       // mid-session.)
-      /* v2.3.2531: the gem slot MUTATES a piece the server may have minted,
+      /* v2.3.2534: the gem slot MUTATES a piece the server may have minted,
          so the provenance row has to follow it (gearprov.js).  Without this
          a reconnect rebuilds the amulet from its mint-time row and the gem
          is gone -- which is not theory: it is what amulet.test.mjs caught

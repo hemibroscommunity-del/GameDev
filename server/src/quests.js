@@ -408,7 +408,7 @@ export const questMethods = {
     return n;
   },
 
-  /* v2.3.2531: `playerId` is the third argument so a granted piece can be
+  /* v2.3.2534: `playerId` is the third argument so a granted piece can be
      RECORDED against its owner (gearprov.js).  `ps` carries no id of its
      own, and inferring one by scanning playerState would be a second,
      guessable answer to a question the caller already knows — every call
@@ -447,7 +447,7 @@ export const questMethods = {
              client that can see the wearer. */
           mat: item.mat ? String(item.mat).slice(0, 16) : undefined,
         };
-        /* v2.3.2531: record it before it leaves.  This piece goes STRAIGHT to
+        /* v2.3.2534: record it before it leaves.  This piece goes STRAIGHT to
            the player's browser (quest_reward_stashed) and the server keeps no
            copy of it at all — which is exactly why it needed an id: the id is
            the only thing that comes back able to prove where the piece came
@@ -477,7 +477,7 @@ export const questMethods = {
           gearBase: String(item.gearBase || 'wood'),
           name: String(item.name || 'Quest Shield'),
         };
-        /* v2.3.2531: the starter shield is the FIRST piece of gear most
+        /* v2.3.2534: the starter shield is the FIRST piece of gear most
            characters ever own (tut_1 grantOnAccept), so it is also the first
            test of whether provenance reaches a real wardrobe. */
         this._gearProvRecord(playerId, 'shield', ps.shield, 'quest');
