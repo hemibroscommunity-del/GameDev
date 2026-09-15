@@ -3195,9 +3195,46 @@ input{font-family:inherit}
    under a thumb rather than beside the head. 26% of a ~178px pane is 46px,
    which clears the 44px floor on its own; the min-width is for the creator's
    card and for landscape, where the pane is smaller. */
+/* ═══ v2.3.2527: THE FLIP BUTTON IS IN FRONT, AND IT KEEPS ITS OWN TAPS ═══
+   Owner, on the newly-merged build: the front/back switch "is layered BEHIND
+   something and needs to be in front", in the tattoo editor and the clothing
+   editor alike.
+
+   It was. `.bt-zone-frame--on` above takes `z-index:1` so a selected frame's
+   glow can spread over its NEIGHBOUR, and this button had no z-index at all --
+   so although it comes later in the DOM (which is what would otherwise put it
+   on top), the positive z-index beat it and the selected frame painted across
+   the button's upper third.
+
+   And it was the worse half of the bug as well as the visible one. A frame is a
+   real <button> and the flip button sits BELOW it, overlapping: measured at
+   390x844, the pants frame's own hit box is y 180-264 against a flip button at
+   y 247-291, so 17px of a 44px target belonged to the frame. Stacking order is
+   hit-test order, so the frame took those taps -- tap the top of the switch and
+   you re-selected the zone you were already on, which reads as a dead button.
+
+   ONE number fixes both, which is the point of fixing it here rather than by
+   moving anything: paint order and hit order are the same order, so lifting the
+   button above the selected frame puts it in front AND gives it back every
+   point on its own face. 2, not 1, because 1 is what it has to beat.
+
+   AND YES, THIS IS ALLOWED TO BE A Z-INDEX (docs/TRAPS.md 20, 39). That trap is
+   about raising a number ACROSS stacking contexts, where no number either side
+   picks can settle it. These two are SIBLINGS in one context: .bt-zonepick is
+   position:relative with z-index:auto, so it forms no context of its own, and
+   the frame's own transform scopes its descendants but leaves the frame itself
+   ranked against this button in the same parent stack. The trap's own remedy is
+   what proved it rather than the reasoning -- elementFromPoint on the control,
+   which is what mp-zoneflip asserts.
+   mp-zoneflip pins both halves -- the computed stack, who owns each of nine
+   points across the button's face, and a real tap at the corner that was being
+   eaten -- in all three editors at three viewports. Verified by reverting this
+   one line: 27 of 27 assertions fail without it, and the corner tap reports
+   "front -> front", which is the dead button the owner described. */
 .bt-zone-flip{
   left:50%;bottom:0;transform:translate(-50%,42%);
   width:26%;min-width:44px;height:auto;aspect-ratio:1/1;
+  z-index:2;
 }
 .bt-zone-flip:active{transform:translate(-50%,42%) scale(.94)}
 /* The two lines under the figure. The mockup sets them in a serif; this uses
