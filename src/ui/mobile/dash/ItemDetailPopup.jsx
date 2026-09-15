@@ -13,10 +13,11 @@ import {
 } from './inventoryLocks.js';
 import { thumbFor, iconFor, classify } from './InventoryPanel.jsx';
 import { firemakingBus } from '../firemakingBus.js';
-import { storeEnabled, storeGearEnabled, storeList } from '@/ui/storeApi.js'; /* v2.3.2476: the general store; v2.3.2531: gear */
+import { storeEnabled, storeGearEnabled, storeGearRefEnabled, storeList } from '@/ui/storeApi.js'; /* v2.3.2476: the general store; v2.3.2531: gear; v2.3.2551: naming a piece by its id */
 import { eatBus } from '../eatBus.js';
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
 import { GEAR_SELL, removeGearLocal } from './gearSellLocal.js'; /* v2.3.2531: which stash a gear card sells out of; v2.3.2532: and taking it out of ours */
+import { gearSellCheck, gearSellReasonText, gearSellGid } from './gearSellReason.js'; /* v2.3.2551: and WHY it cannot be sold */
 import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect, syncArmorChange, equipArmorFromStash, equipLegsFromStash } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin */
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
 import { playVw } from '../playViewport.js';
@@ -281,8 +282,10 @@ function resolveTarget(target) {
          piece off this card and put it nowhere.  v2.3.2532: the piece IS
          spliced out of our own list once the worker confirms -- this
          client never reads the gear stashes off the player_state echo,
-         so nothing else would take it off the card (gearSellLocal.js). */
-      actions: { equip: true, sell: storeGearEnabled() },
+         so nothing else would take it off the card (gearSellLocal.js).
+         v2.3.2551: ...and the button now SAYS WHY when it cannot work --
+         see gearSellAffordance above. */
+      ...gearSellCard(target),
     };
   }
   if (target.kind === 'armor') {
@@ -345,8 +348,10 @@ function resolveTarget(target) {
          piece off this card and put it nowhere.  v2.3.2532: the piece IS
          spliced out of our own list once the worker confirms -- this
          client never reads the gear stashes off the player_state echo,
-         so nothing else would take it off the card (gearSellLocal.js). */
-      actions: { equip: true, sell: storeGearEnabled() },
+         so nothing else would take it off the card (gearSellLocal.js).
+         v2.3.2551: ...and the button now SAYS WHY when it cannot work --
+         see gearSellAffordance above. */
+      ...gearSellCard(target),
     };
   }
   /* v2.3.1701: the LEGS twin of stashArmor.  Same card, but every number is
@@ -380,8 +385,10 @@ function resolveTarget(target) {
          piece off this card and put it nowhere.  v2.3.2532: the piece IS
          spliced out of our own list once the worker confirms -- this
          client never reads the gear stashes off the player_state echo,
-         so nothing else would take it off the card (gearSellLocal.js). */
-      actions: { equip: true, sell: storeGearEnabled() },
+         so nothing else would take it off the card (gearSellLocal.js).
+         v2.3.2551: ...and the button now SAYS WHY when it cannot work --
+         see gearSellAffordance above. */
+      ...gearSellCard(target),
     };
   }
   /* v2.3.685: worn gear (the rendered steel chest/legs, gearCatalog slots) in
@@ -414,11 +421,39 @@ function resolveTarget(target) {
          piece off this card and put it nowhere.  v2.3.2532: the piece IS
          spliced out of our own list once the worker confirms -- this
          client never reads the gear stashes off the player_state echo,
-         so nothing else would take it off the card (gearSellLocal.js). */
-      actions: { equip: true, sell: storeGearEnabled() },
+         so nothing else would take it off the card (gearSellLocal.js).
+         v2.3.2551: ...and the button now SAYS WHY when it cannot work --
+         see gearSellAffordance above. */
+      ...gearSellCard(target),
     };
   }
   return null;
+}
+
+/* ═══ v2.3.2551: THE SELL BUTTON, AND WHY IT MIGHT NOT WORK ═══
+   Four gear cards all want the same answer, and before this they all
+   spelled the same `sell: storeGearEnabled()` — which says "this worker
+   runs gear listings" and nothing at all about THIS piece.  So a plate
+   the worker will refuse got a hopeful button and an "Invalid item" after
+   the tap, and an outfit layer — which can never be sold, by design — got
+   the same.
+
+   Now one helper answers both halves for every card:
+     `sell`     — is the surface available at all (the worker's cap)?
+     `sellWhy`  — a sentence, when this browser can already tell the piece
+                  will be refused.  Empty means "nothing we know rules it
+                  out", NOT "the worker will say yes".
+
+   Only the two PERMANENT answers are decided here (`cosmetic`, `legacy`);
+   worn / in-the-post / already-on-the-shelf depend on state only the
+   worker has, and guessing at those would hide sales a player could
+   really make.  See gearSellReason.js. */
+function gearSellCard(target) {
+  if (!storeGearEnabled()) return { actions: { equip: true, sell: false }, sellWhy: '' };
+  const g = GEAR_SELL.get(target.kind);
+  if (!g) return { actions: { equip: true, sell: false }, sellWhy: '' };
+  const chk = gearSellCheck(g.field, target[g.prop]);
+  return { actions: { equip: true, sell: true }, sellWhy: chk.ok ? '' : chk.text };
 }
 
 /* Catalog display name for a gear slot item id. */
@@ -1137,7 +1172,7 @@ export const ItemDetailPopup = () => {
 
   const resolved = resolveTarget(target);
   if (!resolved) return null;
-  const { lockKey, thumb, glyph, name, info, delta, desc, actions } = resolved;
+  const { lockKey, thumb, glyph, name, info, delta, desc, actions, sellWhy } = resolved;
   const locked = itemIsLocked(lockKey);
 
   /* v2.3.853: logs no longer cook directly -- they light a campfire.  Tapping a
@@ -1358,7 +1393,26 @@ export const ItemDetailPopup = () => {
       const g = gearSell;
       const piece = target[g.prop];
       if (!piece) { setSellErr('That piece moved — open it again'); return; }
-      body = { kind: 'gear', field: g.field, sel: piece, hint: target.index || 0, price };
+      /* v2.3.2551: refuse locally for the two answers we can be SURE of,
+         so an outfit layer or a pre-receipts plate never travels only to
+         come back refused.  The worker checks this again and is the truth
+         -- this is the same posture as the price check above. */
+      const pre = gearSellCheck(g.field, piece);
+      if (!pre.ok) { setSellErr(pre.text); return; }
+      /* ═══ v2.3.2551: NAME IT BY ITS ID WHEN THE WORKER UNDERSTANDS ONE ═══
+         An id finds the worker's receipt directly -- including for a piece
+         its own stash snapshot has not adopted yet, which a selector
+         cannot find at all.  Against a worker that has not advertised
+         `storeGearRef` the selector below still goes up and is resolved
+         against its own list exactly as it always was; a `gid` sent to
+         that worker would simply be an unknown field and the request would
+         come back "Invalid item" (storeApi.js).  The id is not a secret
+         and not a claim: it is only usable by the player whose receipt
+         book holds it, and the worker rebuilds the piece from ITS copy. */
+      const gid = storeGearRefEnabled() ? gearSellGid(piece) : null;
+      body = gid
+        ? { kind: 'gear', field: g.field, gid, price }
+        : { kind: 'gear', field: g.field, sel: piece, hint: target.index || 0, price };
     } else if (target.kind === 'stashWeapon') {
       const S2 = getState();
       const stash = (S2 && S2.rpg && S2.rpg.weaponStash) || [];
@@ -1392,7 +1446,15 @@ export const ItemDetailPopup = () => {
         if (R3 && removeGearLocal(R3, gearSell.field, target[gearSell.prop], target.index)) persist(R3);
       }
       itemDetailBus.close();
-    } else setSellErr((r && r.error) || 'The store could not take it');
+    } else {
+      /* v2.3.2551: the worker answers a gear refusal with a STABLE reason
+         string as well as a sentence.  Prefer this browser's own wording
+         for a reason it knows, so the four cards say the same thing before
+         and after a tap; fall back to the worker's sentence when it is
+         newer than we are and knows a reason we do not. */
+      const why = (r && r.reason) ? gearSellReasonText(r.reason) : '';
+      setSellErr(why || (r && r.error) || 'The store could not take it');
+    }
   };
   const onClose = () => itemDetailBus.close();
 
@@ -1553,9 +1615,25 @@ export const ItemDetailPopup = () => {
           {actions.capeOff  && <button onClick={onCapeOff} className={buttonClass('danger')}  style={buttonStyle('danger')}>Unequip</button>}
           {actions.equip    && <button onClick={onEquip}   className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
           {actions.unequip  && <button onClick={onUnequip} className={buttonClass('danger')} style={buttonStyle('danger')}>Unequip</button>}
-          {actions.sell && !sellOpen && <button onClick={() => { setSellOpen(true); setSellErr(''); }} className={buttonClass()} style={buttonStyle()}>Sell</button>}
+          {/* v2.3.2551: a piece this browser already knows is unsellable keeps
+              its button and loses its hope, rather than losing its button.
+              A control that vanishes tells the player nothing; a greyed one
+              beside a sentence tells them whether to take it off, or that
+              outfits are simply not for sale.  `sellWhy` is only ever set
+              for the two PERMANENT answers -- everything else is left to the
+              worker, which answers with a reason of its own. */}
+          {actions.sell && !sellOpen && !sellWhy && <button onClick={() => { setSellOpen(true); setSellErr(''); }} className={buttonClass()} style={buttonStyle()}>Sell</button>}
+          {actions.sell && !sellOpen && !!sellWhy && (
+            <button disabled aria-disabled="true" className={buttonClass()} style={{ ...buttonStyle(), opacity: 0.45 }}>Sell</button>
+          )}
           <button onClick={onClose} className={buttonClass()} style={buttonStyle()}>X</button>
         </div>
+
+        {actions.sell && !sellOpen && !!sellWhy && (
+          <div style={{ marginTop: 2, fontSize: 11, fontWeight: 600, color: COL.muted, lineHeight: 1.4, textAlign: 'center' }}>
+            {sellWhy}
+          </div>
+        )}
 
         {/* ═══ v2.3.2476: THE PRICE SHEET ═══
             Your price, nobody else's -- the store has no suggested value and

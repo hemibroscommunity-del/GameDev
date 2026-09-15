@@ -366,6 +366,15 @@ export const gearProvMethods = {
       if (trusted) {
         const own = { ...claim };
         delete own.prov;
+        /* v2.3.2552: ...and the retired `_sv` mark (storegear.js section
+           5).  The sweep lives in `sanitizeGearPiece` for every other
+           path, but this branch returns our own copy WITHOUT sanitizing --
+           deliberately, so a gem slotted after the mint is not reverted --
+           so the one place a dead field could survive forever is a piece
+           that is actually PROVEN.  That is the worst place to leave it:
+           the next reader would find `_sv: true` on exactly the minted
+           pieces and conclude it still means something. */
+        delete own._sv;
         own.gid = row.id;
         own.prov = PROV_MINTED;
         return own;
@@ -578,9 +587,13 @@ export const gearProvMethods = {
      stored copy, which is rule 16's shape at the one funnel every future
      producer will reach for: reading the payload's stats while verifying
      only its id would leave the next caller free to reintroduce exactly
-     the gap this lane exists to close.  Rebuilt in place rather than
-     replaced so #643's own fields on the pushed object (its `_sv`) are
-     not silently dropped by this lane. */
+     the gap this lane exists to close.
+
+     v2.3.2552: the rebuild used to preserve `_sv` alongside `prov`, because
+     #643's apply set that mark on the object this one edits.  `_sv` is
+     retired (storegear.js section 5), so the preserve is gone and the
+     rebuild is now a clean one -- every field on the landed object comes
+     from the ledger's own copy. */
   _gearProvMarkDelivered(playerId, payload, landed) {
     if (!landed || typeof landed !== 'object') return landed;
     delete landed.gid;
@@ -593,7 +606,7 @@ export const gearProvMethods = {
     const src = row.p && typeof row.p === 'object' ? row.p : null;
     if (src) {
       for (const k of Object.keys(landed)) {
-        if (k === 'prov' || k === '_sv') continue;
+        if (k === 'prov') continue;
         delete landed[k];
       }
       Object.assign(landed, clonePiece(src));

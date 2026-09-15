@@ -17,154 +17,206 @@
  * `_stRelease` as every other listing.  What lives HERE is only what
  * gear needs and stackables and weapons do not -- how you NAME a piece
  * in a request, what a piece is worth as a credit (`kind: 'gear'`), and
- * the two trust holes listing one opens.  The sections below are:
- *   1. WHY A SELECTOR AND NOT AN INDEX
- *   2. THE WORN SLOT: a known open hole, not a solved one
- *   3. WHAT IS *NOT* CLOSED, and why that is a decision
+ * the gate a listing has to pass.  The sections below are:
+ *   1. HOW A PIECE IS NAMED: an id, or the selector that finds one
+ *   2. THE WORN SLOT: closed, by an id rather than a guess
+ *   3. BEING IN THE STASH IS NO LONGER THE QUESTION
+ *   4. WHY A REFUSAL HAS A REASON, and not just a `false`
+ *   5. `_sv` IS RETIRED
  *
  * v2.3.2532 revision: the worn-slot RECONCILIATION this module shipped
  * with is gone.  It deleted gear players genuinely own -- read section 2
  * before adding anything like it back.
  *
- * ── 1. WHY A SELECTOR AND NOT AN INDEX ───────────────────────────────
+ * ═══ v2.3.2551 REVISION: THE LEDGER IS THE GATE ═══
+ *
+ * Sections 2 and 3 below USED to describe two open trust holes -- "you can
+ * sell the armour off your own back" and "being in the stash is not proof
+ * of ownership" -- accepted deliberately for the demo and bounded by the
+ * `caps.storeGear` kill switch.  Both are CLOSED now, by the thing their
+ * own text named as the real fix: "the server has to know what is in a
+ * stash because IT put it there".  It does.  `gear_prov:<playerId>`
+ * (gearprov.js, #648) records every piece this server mints, and #650
+ * built the custody primitives on top of it.  This version wires them up.
+ *
+ * WHAT A LISTING NOW HAS TO PASS.  One call -- `_gearSellable(playerId,
+ * slot, gid)` -- and it is the WHOLE gate, not one of two.  It asks both
+ * questions rather than only the first:
+ *
+ *   1. did this server MINT this piece for this player (is there a row)?
+ *   2. is this player still HOLDING it (is the row still theirs, is the
+ *      piece not on their body, not sitting in their mail)?
+ *
+ * The second question is the one #650's own review added, after running
+ * both consequences against a real GameRoom: a worn piece has a row (the
+ * tut_1 shield is minted straight onto your body), and so did a piece
+ * parked in the post.  Either one prints gear the moment a store wires
+ * this up, which is this file.  Do NOT add a second check beside the gate:
+ * the reasons it returns are load-bearing (see below) and a caller that
+ * refuses for its own reasons first has no reason string to show.
+ *
+ * ── 1. HOW A PIECE IS NAMED: AN ID, OR THE SELECTOR THAT FINDS ONE ───
  *
  * A stash WEAPON is addressed by index because `ps.weaponStash` IS the
  * authoritative list -- the client mirrors it off the player_state echo,
  * so index 2 means the same weapon on both sides.  The gear stashes are
- * not like that yet.  gear-stash.md says so in its own "What this does
- * NOT solve": "the client is still the authority for its own stashes...
- * the server's copy is a point-in-time snapshot and drifts as the player
- * rearranges their gear."  The two lists are in different orders and can
- * be different lengths, so an index from the client points at whatever
- * happens to sit there on OUR side -- which is how a player sells a
- * different piece from the one they tapped.
+ * still not like that (gear-stash.md, "What this does NOT solve": the
+ * client is the authority for its own and the server's copy drifts), so
+ * an index from a client points at whatever happens to sit there on OUR
+ * side -- which is how a player sells a different piece from the one they
+ * tapped.
  *
- * So a gear request carries a SELECTOR: the piece's own identifying
- * fields, from which the server derives `stashSig` (gearstash.js -- the
- * client's own _shSig, so both sides call the same two pieces the same
- * piece) and finds a matching entry in ITS OWN list.  The selector is
- * never the goods: what gets escrowed is the server's own object, by
- * reference, exactly as handoff rule 16 demands and exactly as
- * `_stCreateListing` already does for a weapon.  A `hint` index rides
- * along only to break ties between two identical pieces; it is checked
- * against the signature before it is believed.
+ * v2.3.2531 solved that with a SELECTOR: the piece's own identifying
+ * fields, from which the server derives `stashSig` and finds a matching
+ * entry in its own list.  v2.3.2551 adds the better answer beside it --
+ * `{ field, gid }`, the server's own id for the piece -- and BOTH are
+ * understood, because a worker and a browser deploy separately:
  *
- * ── 2. THE WORN SLOT: A KNOWN OPEN HOLE, NOT A SOLVED ONE ───────────
+ *   - `body.gid` (new client, `caps.storeGearRef`): resolved straight
+ *     against the ledger.  Strictly better than a selector, because the
+ *     ledger reaches a minted piece the server's stash SNAPSHOT has not
+ *     adopted yet -- a quest plate goes to the browser's bag and only
+ *     reaches our list on the next join, and until then a selector finds
+ *     nothing while the id finds the row.
+ *   - `body.sel` (old client, still shipped): resolved against the
+ *     server's own list as before, and then THE SERVER'S OWN ENTRY'S
+ *     `gid` is what goes to the gate -- never the one the selector
+ *     claimed.  Free accuracy on the way past: `stashSig` (gearstash.js)
+ *     already keys on `gid:` + the id when a piece has one, and the
+ *     client has stored `gid` since v2.3.2544, so for minted gear an old
+ *     client's selector is ALREADY an id match rather than a name match.
  *
- * Adoption records the stash as it stood at that join.  Equip a piece
- * afterwards and the client moves it out of its LOCAL stash into the
- * worn slot -- and tells the server about the worn slot alone
- * (`stats_update`, grids.js).  Our copy of the stash still lists it.
- * The piece is therefore recorded TWICE: once as `ps.armor`, once in
- * `ps.armorStash`.  Sell the stash copy and the player keeps wearing
- * the armour they were paid for; the buyer paid real gold for a second
- * copy of one plate.  It needs no modified client -- equipping a spare
- * is the normal way to play.
+ * Either way the request only ever says WHICH piece.  What gets escrowed
+ * is the ledger's own copy, by reference, exactly as handoff rule 16
+ * demands.  `hint` still rides along on the selector path to break ties
+ * between two identical pieces; it is checked against the signature
+ * before it is believed.
  *
- * v2.3.2531 shipped a reconciliation for this and v2.3.2532 TOOK IT
- * BACK OUT, because it was worse than the hole.  It removed one stash
- * entry whose signature matched the worn piece, on the assumption that
- * such an entry is a stale duplicate.  Often it is not:
- *   - Every existing player who was already wearing armour when the
- *     hand-over ran holds only REAL spares -- the worn piece was never
- *     double-recorded for them -- and the reconciliation ate one.
- *   - It ran on every listing REQUEST, so it was not idempotent against
- *     a real wardrobe: three requests ate three identical spares.
- *   - It swept all four slots regardless of which list was being sold
- *     from, so listing a shield deleted an armour spare.
- *   - The deletion was persisted even when the listing then failed.
- *   - And it did not close the hole anyway: unequip, list, re-equip is
- *     three buttons in the game and walks straight past it, because
- *     nothing is worn at the moment the check runs.
- * The root problem is that `name|gearBase|tierMult|tier` cannot tell a
- * stale copy of what you are wearing from a second identical plate you
- * really own.  There is no honest heuristic here, so there is no
- * heuristic here: DELETING GEAR A PLAYER OWNS IS STRICTLY WORSE THAN
- * THE DUPLICATION IT WAS MEANT TO PREVENT.  Do not reintroduce one.
+ * ── 2. THE WORN SLOT: CLOSED, BY AN ID RATHER THAN A GUESS ───────────
  *
- * So, plainly: from this version a player CAN sell the armour off their
- * own back.  What bounds it is `caps.storeGear`, the same live-ops kill
- * switch that bounds item 3 below -- one flag write and gear listings
- * stop being offered and stop being accepted, with no deploy.  The real
- * fix is a ledger, not a guess: the server has to know what is in a
- * stash because IT put it there (see item 3), and until then the worn
- * slot cannot be reconciled against a list it never wrote.  The owner
- * is deciding that separately; this module must not pre-empt it.
+ * The hole was that adoption records the stash as it stood at that join,
+ * so a piece equipped afterwards is recorded TWICE -- once as `ps.armor`,
+ * once still in `ps.armorStash` -- and selling the stash copy left the
+ * seller wearing the armour they were paid for.
  *
- * COSMETICS have the same hole for a second, independent reason: the
- * server stores no worn-cosmetic slot at all (there is no such field in
- * _saveRpg's fixed list -- the rendered layers are client-local), so
- * even a ledger would have nothing to compare a `gearStash` entry
- * against until one exists.  Cosmetics carry no stats, so what leaks
- * there is a duplicate LOOK and the buyer's gold, not power.
+ * v2.3.2531 tried to fix this by DELETING one stash entry whose
+ * `name|gearBase|tierMult|tier` signature matched the worn piece, and
+ * v2.3.2532 took it back out because that signature cannot tell a stale
+ * copy from a second identical plate: it ate real spares, on every
+ * request, in every slot, whether or not the listing then succeeded.
+ * DELETING GEAR A PLAYER OWNS IS STRICTLY WORSE THAN THE DUPLICATION IT
+ * WAS MEANT TO PREVENT.  That judgement stands and nothing here reverses
+ * it -- this path still deletes nothing it was not asked to list.
  *
- * ── 3. WHAT IS *NOT* CLOSED, AND WHY THAT IS A DECISION ──────────────
+ * What closes it instead is that the duplicate is no longer ambiguous.
+ * The worn piece and the stale stash entry carry the SAME `gid`, and
+ * `_gearSellable` refuses a gid that is on the player's body -- with the
+ * reason `worn`, which is something a player can act on ("take it off
+ * first").  Two genuinely different plates have two different ids and
+ * both stay sellable.  An id is not a guess.
  *
- * Being in the stash list is NOT proof of ownership.  Adoption validates
- * the SHAPE of what a client claims and never whether the player ever
- * held it; it reaches every existing character, and (v2.3.2527) it never
- * closes.  A modified client can therefore put gear into its own stash
- * list, and from this version that gear can be sold.
+ * ── 3. BEING IN THE STASH IS NO LONGER THE QUESTION ──────────────────
  *
- * The three ways to close it were weighed, not defaulted through.
+ * The old text here said: adoption validates the SHAPE of what a client
+ * claims and never whether the player ever held it, so a modified client
+ * could put gear into its own stash list and sell it.  That is still true
+ * of adoption -- gear-stash.md's "What this does NOT solve" is unchanged
+ * and this version does not touch it.  It simply stopped mattering to the
+ * STORE, because being in the stash list is not what is asked any more.
+ * What is asked is whether this server wrote the piece down when it minted
+ * it.  A claimed piece has no row, so it comes out `legacy`: usable, worn,
+ * rendered, counted in the damage maths, and not sellable.
  *
- * "Only list pieces the server can corroborate" is the one that would
- * really work, and the reason it does not work YET is worth writing
- * down, because it is nearly the opposite of what it looks like.  The
- * server DOES mint armour: `_rollArmorDropsForKill` (index.js) builds a
- * dropped piece out of MONSTER_ARMOR_DROPS, and `_grantQuestItem`
- * (quests.js) builds quest armour out of QUEST_REWARDS.  But both were
- * written when there was no server-side stash to put them in, so both
- * hand the piece to the CLIENT -- `loot_credit.armor`,
- * `quest_reward_stashed` -- and never record it in `ps`.  The server
- * mints gear and then forgets it.  So corroboration has a real source
- * and no ledger, and until those two sites also write the stash, "list
- * only corroborated pieces" lists NOTHING.  (The forge-minted fields a
- * client claim cannot fake -- `hardness`, `temper` -- are weapons-only:
- * hardening.js refuses any slot that is not a weapon.)
+ * `caps.storeGear` is KEPT as the kill switch.  It is no longer bounding
+ * an accepted risk -- it is an ordinary live-ops lever for switching a
+ * surface off without a deploy, which is worth having on any money path.
  *
- * "Require the piece across more than one session" was rejected as
- * theatre with a real cost: adoption runs on every join, so an attacker
- * pays one extra login while an honest player waits a session to sell
- * armour they just earned.
+ * ── 4. WHY A REFUSAL HAS A REASON, AND NOT JUST A `false` ────────────
  *
- * So the risk is ACCEPTED for the demo, deliberately, and bounded
- * instead:
- *   - the whole surface hangs off its own narrow cap, `caps.storeGear`,
- *     which live-ops can switch off WITHOUT A DEPLOY (join.js spreads
- *     `..._liveFlags` last over the baked caps) -- one flag write and
- *     gear listings stop being offered or accepted;
- *   - `STORE_GEAR.STRICT_FLAG` is the tighter rule, already wired: turn
- *     on the `store_gear_strict` live flag and only pieces the SERVER
- *     itself wrote are listable;
- *   - which the server now marks, from this version on: every piece
- *     delivered through `_creditPlayer(kind:'gear')` -- the refund of an
- *     expired listing, the goods leg of a purchase -- is stamped `_sv`.
- * Nothing carries `_sv` at the moment this ships, so strict mode lists
- * nothing and must stay off.  It becomes usable the moment the two mint
- * sites above ALSO write the stash they already fill on the client --
- * that is the named next slice, and it is a small one because the merge
- * gear-stash.md ships is a multiset union: a piece written to both sides
- * converges to one copy on the next join rather than doubling.
- * Do not read `_sv` as a value: it is a provenance mark, it multiplies
- * nothing, and strict-mode sanitizing strips it off anything a client
- * hands us -- at EVERY seam, the join claim included, which is where
- * v2.3.2531 left it forgeable (gearstash.js GEAR_PROV / carryProv).
+ * #648 promised the player would be told WHY a piece cannot be sold, and
+ * the promise went unkept: the mark reached the browser and nothing read
+ * it.  A greyed-out Sell button with no explanation is worse than no
+ * button -- the player cannot tell "you must take it off" from "this game
+ * is broken".  So every refusal carries a STABLE reason string from
+ * `_gearSellable` straight out to the client alongside a human sentence,
+ * and `GEAR_REFUSAL` below is the one table that turns one into the other.
+ *
+ * `cosmetic` is deliberately NOT the same answer as `legacy`.  Outfit
+ * layers have no server mint path at all (the catalog is client art) and
+ * are never sellable BY DESIGN; telling a player "earned before receipts"
+ * would invite the next contributor to "fix" cosmetics by adding a mint
+ * path nobody wants.
+ *
+ * ── 5. `_sv` IS RETIRED (v2.3.2552) ──────────────────────────────────
+ *
+ * This module used to carry its own provenance mark: `_sv`, a boolean set
+ * in `_stGearApplyCredit` and read by `_stGearListable` under the
+ * `store_gear_strict` live flag.  Every part of that is gone -- the mark,
+ * the flag, the listable check and the belt-and-braces strip.
+ *
+ * It drove exactly ONE decision and the ledger makes it better: `_sv` said
+ * "a server wrote this", `gid` says "THIS server wrote this FOR YOU, and
+ * here is the copy it wrote".  A boolean can be copied onto any blob -- it
+ * is only as strong as the completeness of its stripping, and #643's own
+ * review found the one inbound path that forgot to strip it.  A row cannot
+ * be copied into somebody else's ledger.
+ *
+ * TWO CONSEQUENCES WORTH KNOWING.  `store_gear_strict` is now INERT: a
+ * live-ops flag by that name changes nothing, and if it were switched ON
+ * today it would go from "lists nothing" to "lists minted gear", which is
+ * the permissive direction.  It is documented as needing to stay off and
+ * nothing carried `_sv` before this, so there is nothing on the shelf that
+ * changes hands differently.  And a stored piece may still carry the dead
+ * field: `sanitizeGearPiece` (gearstash.js) sweeps it out unconditionally,
+ * so blobs shed it on the next join rather than needing a migration.
  */
 
-import { GEAR_STASH_FIELDS, GEAR_STASH_CAP, GEAR_PROV, carryProv, stashSig, sanitizeGearPiece, sanitizeCosmeticEntry } from './gearstash.js';
+import { GEAR_STASH_FIELDS, GEAR_STASH_CAP, stashSig, sanitizeGearPiece, sanitizeCosmeticEntry } from './gearstash.js';
+/* v2.3.2551: the custody layer (#650).  `slotForGearField` turns the
+   request's list name into the ledger's slot name; the gate and the take
+   are methods on the room (gearProvMethods), so they are called through
+   `this` rather than imported. */
+import { slotForGearField } from './gearprov.js';
 
 export const STORE_GEAR = {
-  /* The live-ops flag that tightens listing to server-written pieces
-     only.  Read through _flagOn (liveops.js), which is warm by the time
-     any HTTP route runs (the join path awaits _liveFlagsEnsure). */
-  STRICT_FLAG: 'store_gear_strict',
-  /* The provenance mark.  Defined in gearstash.js (GEAR_PROV) and
-     re-exported here, because the sanitizers that must carry it and the
-     strict rule that reads it are in different modules and a mark
-     spelled twice is a mark one of them forgets. */
-  PROV: GEAR_PROV,
+  /* v2.3.2552: `STRICT_FLAG` and `PROV` are GONE -- see section 5 of the
+     header.  The object is kept because the module's own constants belong
+     in one ALL-CAPS place (rule 25) and the next one will land here. */
+  /* The longest gid the ledger ever mints is well under this; anything
+     longer is not an id we issued, so it is refused before it reaches a
+     comparison or a Map key (gearprov.js claimedGid uses the same bound). */
+  MAX_GID: 40,
 };
+
+/* ═══ WHY A REFUSAL HAS A SENTENCE, NOT JUST A `false` (v2.3.2551) ═══
+   The reason strings come from `_gearSellable` (gearprov.js) and are
+   STABLE: the client keys off them, so they are part of the wire surface
+   and renaming one is a breaking change.  This table is the one place
+   they become English.
+
+   MIRRORED, deliberately, in `src/ui/mobile/dash/gearSellReason.js` so the
+   browser can grey a Sell button and say why BEFORE the player taps it --
+   the server cannot be asked "would you refuse this?" without a round trip
+   per card.  `market.test.mjs` asserts the two tables are identical, the
+   same posture `mirror-audit.test.mjs` uses for data.js: a mirror that
+   nothing pins is a mirror that drifts.
+
+   A Map, not an object: these are looked up with a string that has been
+   through a wire path, and `'__proto__'` is a legal string (TRAPS #6). */
+export const GEAR_REFUSAL = new Map([
+  ['legacy', 'Earned before the game kept receipts — it still works, but it cannot be sold'],
+  ['cosmetic', "Outfits aren't sellable"],
+  ['worn', "You're wearing it — take it off first"],
+  ['in_mail', "It's still in the post"],
+  ['not_held', "That piece isn't yours right now"],
+  ['wrong_slot', 'Wrong kind of slot for that piece'],
+  ['no_player', 'You are not in the game right now'],
+  ['bad_field', 'Invalid item'],
+]);
+
+export function gearRefusalText(reason) {
+  return GEAR_REFUSAL.get(reason) || 'That piece cannot be sold';
+}
 
 /* Every gear list files under the bag's ARMOR chip.  The bag's own
    CATEGORIES roster is all/weapon/armor/potion/crafting
@@ -199,26 +251,9 @@ export const storeGearMethods = {
      authoritative damage roll reads (AMULET_TIER_POWER), rather than a
      second copy of it. */
   _stGearSanitize(field, piece, strict) {
-    let out;
-    if (field === 'amuletStash') out = this._sanitizeAmulet(piece);
-    else if (field === 'gearStash') out = sanitizeCosmeticEntry(piece);
-    else out = sanitizeGearPiece(piece, !!strict);
-    /* v2.3.2532: the same seam the join path uses (gearstash.js
-       carryProv).  Amulets and cosmetics are REBUILT by their
-       sanitizers, so without this an escrow or a refund of one dropped
-       its `_sv`; a wire blob (strict) can never gain it. */
-    return carryProv(piece, out, !!strict);
-  },
-
-  /* Strip the provenance mark off anything that came from a client.
-     v2.3.2532: BELT AND BRACES only -- the strict sanitizers now strip it
-     themselves at every seam (gearstash.js GEAR_PROV), which is what
-     closes the join claim, the path this one never covered.  Kept because
-     the selector is the one blob built straight off a request body and a
-     second removal there costs nothing. */
-  _stGearStrip(piece) {
-    if (piece && typeof piece === 'object') delete piece[STORE_GEAR.PROV];
-    return piece;
+    if (field === 'amuletStash') return this._sanitizeAmulet(piece);
+    if (field === 'gearStash') return sanitizeCosmeticEntry(piece);
+    return sanitizeGearPiece(piece, !!strict);
   },
 
   /* Find the seller's own copy of the piece a request names.  `sel` is a
@@ -252,14 +287,6 @@ export const storeGearMethods = {
     const f = this._liveFlags;
     if (!f || typeof f !== 'object') return false;
     return Object.prototype.hasOwnProperty.call(f, 'storeGear') && !f.storeGear;
-  },
-
-  /* Is this piece allowed to be listed at all?  Shape first, then the
-     optional strict-provenance rule (see the header's item 3). */
-  _stGearListable(piece) {
-    if (!piece || typeof piece !== 'object') return false;
-    if (this._flagOn && this._flagOn(STORE_GEAR.STRICT_FLAG)) return piece[STORE_GEAR.PROV] === true;
-    return true;
   },
 
   /* The display record for a gear listing.  Read off the ESCROWED
@@ -298,50 +325,93 @@ export const storeGearMethods = {
 
   _stGearCategory() { return GEAR_CAT; },
 
+  /* ═══ NAME A PIECE: the id, or the selector that finds one ═══
+     Returns the `gid` the gate should be asked about, or null when the
+     request names nothing we hold a record for (which the gate answers as
+     `legacy` -- the honest reason, and the one a player can understand).
+
+     Header section 1 has the WHY.  The one line that matters for safety:
+     on the selector path the id comes off the SERVER'S OWN entry, never
+     off the selector.  A selector carrying a forged gid matches nothing
+     (our entries carry the ids we minted), and even if it somehow did,
+     `_gearSellable` resolves against this player's own ledger, so the
+     worst a forgery buys is your own modest piece back. */
+  _stGearNameToGid(ps, field, body) {
+    const direct = body && body.gid;
+    if (typeof direct === 'string' && direct && direct.length <= STORE_GEAR.MAX_GID) return direct;
+
+    /* The selector is sanitized in STRICT mode before its signature is
+       taken.  It is only a lookup key, but a 200 KB `name` would build a
+       200 KB key. */
+    const sel = this._stGearSanitize(field, body && body.sel, true);
+    if (!sel) return null;
+    const at = this._stGearResolve(ps, field, sel, body && body.hint);
+    if (at === -1) return null;
+    const own = ps[field][at];
+    return (own && typeof own.gid === 'string' && own.gid) ? own.gid : null;
+  },
+
   /* ═══ the escrow ═══
      Called from _stCreateListing's `kind === 'gear'` branch, AFTER the
      price/cap checks and BEFORE the record is written, so the listing
      path's existing unwind still covers a put that throws.  Returns
-     `{ ok, field, piece }` or `{ ok: false, error }`.
+     `{ ok, field, piece, row }` or `{ ok: false, reason, error }`.
 
-     Order matters and is the same order the weapon branch uses: take the
-     server's own copy out of the server's own list, save, flush the
-     echo.  Nothing the request supplied is kept. */
+     ── v2.3.2551: THE GATE, AND ONLY THE GATE ──
+     `_gearSellable` is the whole question (header section 1): minted AND
+     held AND not worn AND not in the post AND the right slot.  There is
+     deliberately no second check beside it -- not a stash-membership test,
+     not a shape test -- because a caller that refuses first has no reason
+     string to hand the player, and because two gates are two places for
+     the next contributor to fix only one of.
+
+     ── WHY THE TAKEN PIECE IS NOT RE-SANITIZED ──
+     `_gearProvTake` hands back the LEDGER'S own copy of what the server
+     minted, already sanitized at mint time.  Running it through
+     `_stGearSanitize` again would be worse than useless: `_sanitizeAmulet`
+     and `sanitizeCosmeticEntry` REBUILD from a whitelist, so they would
+     drop the `gid` -- and an escrowed piece whose identity has been
+     rubbed off is a piece the buyer receives as `legacy`.  Rule 16 is
+     satisfied by the piece coming from our own record in the first place.
+
+     ── CRASH SHAPE (walked, because this is money) ──
+     `_gearProvTake` is synchronous: one in-memory ledger edit, a
+     fire-and-forget ledger put, the stash splice and a `_saveRpg`.  The
+     record write that carries the row into escrow happens in
+     `_stCreateListing` immediately after.  If the room dies in between,
+     the row is gone and the piece is out of the server's stash -- and the
+     player's own browser still holds its copy, because the client only
+     splices on `ok`.  Their next join re-adopts it and `_gearProvResolve`
+     finds no row, so it comes back `legacy`: USABLE, WORN, COUNTED IN THE
+     DAMAGE MATHS, NOT SELLABLE.  That is the direction this is built to
+     fail in.  The other ordering -- write the listing, take the row after
+     -- fails toward the piece existing in BOTH places, which is a
+     duplicate, which is money. */
   _stGearEscrow(playerId, ps, body) {
     const field = body && body.field;
-    if (!isGearField(field)) return { ok: false, error: 'Invalid item' };
+    if (!isGearField(field)) return { ok: false, reason: 'bad_field', error: gearRefusalText('bad_field') };
+    const slot = slotForGearField(field);
+    if (!slot) return { ok: false, reason: 'bad_field', error: gearRefusalText('bad_field') };
 
-    /* v2.3.2532: nothing is reconciled against the WORN slot here.  The
-       v2.3.2531 attempt deleted gear players really own (see the header's
-       item 2) and is deliberately not replaced by another heuristic --
-       "sell the armour off your own back" is a known open hole bounded by
-       `caps.storeGear` until the server keeps a real ledger of what it
-       minted.  Do not add a signature match back into this path.
+    const gid = this._stGearNameToGid(ps, field, body);
+    /* A null gid is passed THROUGH to the gate rather than short-circuited
+       here, so that a cosmetic answers `cosmetic` and everything else
+       answers `legacy` -- the gate owns the reasons, this does not. */
+    const verdict = this._gearSellable(playerId, slot, gid);
+    if (!verdict.ok) return { ok: false, reason: verdict.reason, error: gearRefusalText(verdict.reason) };
 
-       The selector is sanitized in STRICT mode before its signature is
-       taken.  It is only a lookup key, but a 200 KB `name` would build a
-       200 KB key, and strict mode is also what removes a claimed `_sv`
-       before it could ever be compared. */
-    const sel = this._stGearStrip(this._stGearSanitize(field, body && body.sel, true));
-    if (!sel) return { ok: false, error: 'Invalid item' };
-
-    const at = this._stGearResolve(ps, field, sel, body && body.hint);
-    if (at === -1) return { ok: false, error: 'Item not in stash' };
-
-    /* Rule 16: the server's own object by index into its OWN list.  Run
-       through the non-strict sanitizer so a stale stored blob heals on
-       the way into escrow (the v2.3.1104 heal-on-load posture) -- the
-       escrowed copy is what a buyer will be handed. */
-    const piece = this._stGearSanitize(field, ps[field][at], false);
-    if (!piece) return { ok: false, error: 'Item not in stash' };
-    if (!this._stGearListable(ps[field][at])) return { ok: false, error: 'That piece cannot be listed yet' };
-    /* `_sv` rides across in _stGearSanitize's carryProv (non-strict), so
-       the escrowed copy keeps the provenance the stash entry had. */
-
-    ps[field].splice(at, 1);
-    this._saveRpg(playerId, ps);
+    const took = this._gearProvTake(playerId, slot, verdict.gid);
+    /* The gate said yes a moment ago and nothing can interleave between
+       them (rule 9: no await in either), so this is a "cannot happen"
+       branch.  It exists because the alternative to a branch here is an
+       escrow of `undefined`. */
+    if (!took || !took.piece || !took.row) {
+      return { ok: false, reason: 'not_held', error: gearRefusalText('not_held') };
+    }
+    /* `_gearProvTake` has already spliced the server's own stash where the
+       piece was present and saved the blob; this is only the echo. */
     this._queuePlayerStateFlush(playerId);
-    return { ok: true, field, piece };
+    return { ok: true, field, piece: took.piece, row: took.row };
   },
 
   /* ═══ the credit ═══
@@ -363,9 +433,13 @@ export const storeGearMethods = {
     if (!piece) return true;
     if (!Array.isArray(ps[field])) ps[field] = [];
     if (ps[field].length >= GEAR_STASH_CAP) return false;
-    /* The server is the one writing it, so it is corroborated BY
-       CONSTRUCTION -- this is the only place `_sv` is ever set. */
-    piece[STORE_GEAR.PROV] = true;
+    /* v2.3.2552: this used to stamp `_sv: true` here -- "the server is the
+       one writing it, so it is corroborated by construction".  The mark is
+       retired.  What corroborates a delivered piece now is its ledger ROW,
+       which `_creditPlayer` has already granted (awaited) by the time this
+       runs, and which `_gearProvMarkDelivered` reads back to set `gid` and
+       `prov` on what lands here -- DERIVED from the ledger rather than
+       asserted by whoever pushed it. */
     ps[field].push(piece);
     return true;
   },

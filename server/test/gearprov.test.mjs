@@ -29,6 +29,8 @@
  * stat it had and is simply marked unsellable.
  */
 import { GameRoom } from '../src/index.js';
+import * as gearstashExports from '../src/gearstash.js';   /* v2.3.2552: §10 asserts what it no longer exports */
+import { STORE_GEAR } from '../src/storegear.js';          /* v2.3.2552: ...and what it no longer names */
 import {
   GEAR_PROV_KEY, GEAR_PROV_CAP, GEAR_PROV_V, PROV_MINTED, PROV_LEGACY,
   emptyProvLedger, normalizeProvLedger, findProvRow, isGearProvSlot, claimedGid,
@@ -1029,6 +1031,169 @@ let amuletGid = null;
     back.prov === PROV_LEGACY && !back.gid, back);
   check('...and the fresh character starts with an empty record book',
     room._gearProvOf(PIDR).list.length === 0, room._gearProvOf(PIDR));
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   10. v2.3.2551/2552 -- THE STORE IS WIRED ONTO THE GATE, AND `_sv` IS GONE
+   ════════════════════════════════════════════════════════════════════
+   §9 proved the custody primitives in isolation.  #650 shipped them and
+   said out loud what it had not done: "Nothing in `server/src` calls the
+   sell gate yet."  This section is the proof that something does.
+
+   The store's own end-to-end behaviour -- escrow, cancel, expiry, sale,
+   the crash windows, the reasons over HTTP -- is pinned in
+   `market.test.mjs` §S12, against a real `_stCreateListing` and a real
+   `fetch`.  What is pinned HERE is the part only this file's vantage can
+   see: that the listing path and the gate cannot DISAGREE, because the
+   listing path has no gate of its own; and that the retired mark is
+   retired everywhere rather than merely unused.
+
+   Driven through real messages, per this suite's rule: the forged claim
+   below goes through `webSocketMessage`, never through `stripProv`. */
+{
+  const PIDS = 'bp_prov_store';
+  const wsSt = fakeWs('ST');
+  await join(room, wsSt, PIDS);
+  const psS = room.playerState[PIDS];
+  room._prog3EquipOk = () => true;
+  await room._stEnsureIndex();
+
+  /* ── THE LISTING PATH HAS NO GATE OF ITS OWN ──
+     For every shape the gate has an opinion about, `_stGearEscrow` must
+     return exactly the gate's verdict -- same ok, same reason.  A second
+     gate beside the first is how a refusal loses its reason string, and
+     how the next contributor fixes one of two checks.  Table-driven so a
+     new reason cannot be added to `_gearSellable` and quietly skipped
+     here. */
+  psS.armorStash = []; psS.legsStash = []; psS.shieldStash = []; psS.armor = null;
+  psS._questGrantOverflow = null;
+  room._grantQuestItem(psS, { kind: 'armor', name: 'Gate Plate', mat: 'iron', tierMult: 2 }, PIDS);
+  const gateGid = psS._questGrantOverflow[0].gid;
+  psS.armorStash = [{ ...psS._questGrantOverflow[0] }];
+  psS.gearStash = [{ slot: 'chest', gearId: 'steelchest', name: 'Steel Chest' }];
+
+  const cases = [
+    ['a recorded piece we hold', 'armorStash', 'armor', gateGid],
+    ['an id nobody was issued', 'armorStash', 'armor', 'g-not-a-real-id'],
+    ['the right id in the wrong slot', 'shieldStash', 'shield', gateGid],
+    ['a piece with no id at all', 'armorStash', 'armor', null],
+    ['an outfit layer', 'gearStash', 'gear', null],
+  ];
+  for (const [label, field, slot, gid] of cases) {
+    const verdict = room._gearSellable(PIDS, slot, gid);
+    const escrow = room._stGearEscrow(PIDS, psS, gid ? { field, gid } : { field, sel: { name: 'Nope', tierMult: 1, slot: 'chest', gearId: 'zzz' } });
+    check('store gate: ' + label + ' -- the listing path answers exactly what the gate does',
+      escrow.ok === verdict.ok && (verdict.ok || escrow.reason === verdict.reason),
+      { label, verdict, escrow });
+    /* Put the one success back, so the table is order-independent. */
+    if (escrow.ok) await room._gearProvGrantRow(PIDS, escrow.row);
+  }
+  check('store gate: ...and every refusal above left the wardrobe alone',
+    psS.gearStash.length === 1 && !!room._gearProvOf(PIDS).list.find((r) => r.id === gateGid),
+    { gear: psS.gearStash, book: room._gearProvOf(PIDS).list.length });
+
+  /* ── A WORN PIECE, THROUGH THE LISTING PATH ──
+     The single most expensive thing #650's review found, asserted against
+     the path that would have printed the gear rather than against the
+     helper.  The starter shield is minted straight onto the body, which
+     is why this case exists at all. */
+  room._grantQuestItem(psS, { kind: 'shield', gearBase: 'wood', tierMult: 1, name: 'Pine Shield' }, PIDS);
+  const wornShield = psS.shield;
+  check('store gate: (setup) the starter shield is minted straight onto the body',
+    !!wornShield && wornShield.prov === PROV_MINTED, wornShield);
+  psS.shieldStash = [{ ...wornShield }];          // ...and adoption left a twin in the list
+  const sellWorn = room._stGearEscrow(PIDS, psS, { field: 'shieldStash', gid: wornShield.gid });
+  check("store gate: listing the shield you are WEARING is refused with 'worn'",
+    sellWorn.ok === false && sellWorn.reason === 'worn', sellWorn);
+  check('store gate: ...and you are still wearing it afterwards',
+    psS.shield && psS.shield.gid === wornShield.gid, psS.shield);
+  check('store gate: ...and its receipt is still yours',
+    !!findProvRow(room._gearProvOf(PIDS), wornShield.gid));
+
+  /* ── A FORGED CLAIM, THROUGH A REAL JOIN, CANNOT BECOME SELLABLE ──
+     The shape of #643's miss: a mark stripped from the selector and not
+     from the path that fills a stash.  There is no mark to strip now, so
+     what is asserted is the whole chain -- claim arrives, resolves
+     legacy, and the LISTING PATH refuses it. */
+  {
+    const PIDF = 'bp_prov_forge';
+    const wsF = fakeWs('F');
+    await join(room, wsF, PIDF, {
+      rpgArmorStash: [
+        { name: 'Forged Godly Plate', mat: 'mythril', tierMult: 8, gid: 'g-invented', prov: PROV_MINTED, _sv: true },
+        { name: 'Stolen Plate', mat: 'iron', tierMult: 2, gid: gateGid, prov: PROV_MINTED },
+      ],
+    });
+    const psF = room.playerState[PIDF];
+    await room._stEnsureIndex();
+    check('store gate: an invented id lands legacy through a real join',
+      psF.armorStash[0].prov === PROV_LEGACY && !psF.armorStash[0].gid && psF.armorStash[0]._sv === undefined,
+      psF.armorStash[0]);
+    check("store gate: ...and ANOTHER player's real id lands legacy too",
+      psF.armorStash[1].prov === PROV_LEGACY && !psF.armorStash[1].gid, psF.armorStash[1]);
+    const forgedList = room._stGearEscrow(PIDF, psF, { field: 'armorStash', gid: 'g-invented' });
+    const stolenList = room._stGearEscrow(PIDF, psF, { field: 'armorStash', gid: gateGid });
+    check('store gate: the listing path refuses the invented id',
+      forgedList.ok === false && forgedList.reason === 'not_held', forgedList);
+    check("store gate: ...and refuses another player's id without touching THEIR record",
+      stolenList.ok === false && stolenList.reason === 'not_held'
+      && !!findProvRow(room._gearProvOf(PIDS), gateGid), stolenList);
+    check('store gate: ...and the forger keeps both pieces, at the stats they claimed, simply unsellable',
+      psF.armorStash.length === 2 && psF.armorStash[0].tierMult === 8, psF.armorStash);
+    /* The selector path has to reach the same place: an old browser must
+       not be able to list what a new one cannot. */
+    const bySel = room._stGearEscrow(PIDF, psF, { field: 'armorStash', sel: { ...psF.armorStash[0] }, hint: 0 });
+    check('store gate: ...and naming it by SELECTOR is refused identically',
+      bySel.ok === false && bySel.reason === 'legacy', bySel);
+  }
+
+  /* ── THE RETIREMENT IS COMPLETE, NOT MERELY UNUSED ──
+     "Nothing reads this" is not evidence (/repo-review angle F): the
+     grep is.  These assert the absence of every part of the mechanism at
+     the places a future contributor would look for it. */
+  check('`_sv`: the module that defined the mark no longer exports it',
+    !('GEAR_PROV' in gearstashExports) && !('carryProv' in gearstashExports),
+    Object.keys(gearstashExports).filter((k) => /PROV|carry/i.test(k)));
+  check('`_sv`: the store no longer has a listable check or a strip',
+    typeof room._stGearListable === 'undefined' && typeof room._stGearStrip === 'undefined',
+    { listable: typeof room._stGearListable, strip: typeof room._stGearStrip });
+  check('`_sv`: the STORE_GEAR constants no longer name a mark or a strict flag',
+    !('PROV' in STORE_GEAR) && !('STRICT_FLAG' in STORE_GEAR), Object.keys(STORE_GEAR));
+  /* The one decision it used to make, made better.  `store_gear_strict`
+     is now inert: turning it on changes nothing, where before it was the
+     difference between "lists nothing" and "lists marked pieces". */
+  {
+    psS.armorStash = [];
+    room._grantQuestItem(psS, { kind: 'armor', name: 'Inert Plate', mat: 'iron', tierMult: 2 }, PIDS);
+    const inertGid = psS._questGrantOverflow[psS._questGrantOverflow.length - 1].gid;
+    const before = room._gearSellable(PIDS, 'armor', inertGid).ok;
+    room._liveFlags = { store_gear_strict: true };
+    const during = room._gearSellable(PIDS, 'armor', inertGid).ok;
+    const escrowDuring = room._stGearEscrow(PIDS, psS, { field: 'armorStash', gid: inertGid });
+    room._liveFlags = {};
+    check('`_sv`: the retired `store_gear_strict` live flag is inert in both directions',
+      before === true && during === true && escrowDuring.ok === true,
+      { before, during, escrow: escrowDuring });
+    if (escrowDuring.ok) await room._gearProvGrantRow(PIDS, escrowDuring.row);
+  }
+  /* And a delivered piece is marked from the BOOK, not from a flag on
+     the payload -- the replacement for what `_stGearApplyCredit` used to
+     stamp.  Driven through the real credit funnel. */
+  {
+    psS.legsStash = [];
+    room._grantQuestItem(psS, { kind: 'legs', name: 'Delivered Greaves', mat: 'iron', tierMult: 2 }, PIDS);
+    const delGid = psS._questGrantOverflow[psS._questGrantOverflow.length - 1].gid;
+    const taken = room._gearProvTake(PIDS, 'legsArmor', delGid);
+    psS.legsStash = [];
+    await room._creditPlayer(PIDS, {
+      opId: 'test:sv-retire:1', source: 'market', kind: 'gear',
+      payload: { field: 'legsStash', piece: { ...taken.piece, _sv: true }, row: taken.row },
+      note: 'delivered',
+    });
+    const landed = psS.legsStash[0];
+    check('`_sv`: a delivered piece is marked from the ledger, and carries no dead flag',
+      !!landed && landed.gid === delGid && landed.prov === PROV_MINTED && landed._sv === undefined, landed);
+  }
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL PASS');

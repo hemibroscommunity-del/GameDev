@@ -29,6 +29,8 @@
  */
 import { GameRoom } from '../src/index.js';
 import { GEAR_SELL, removeGearLocal } from '../../src/ui/mobile/dash/gearSellLocal.js';   /* v2.3.2532: the client half of a gear listing (S12j) */
+import { GEAR_SELL_REASON, gearSellReasonText, gearSellCheck, gearSellGid } from '../../src/ui/mobile/dash/gearSellReason.js';   /* v2.3.2551: the client half of a REFUSAL (S12m) */
+import { GEAR_REFUSAL } from '../src/storegear.js';   /* v2.3.2551: ...and the table it mirrors */
 
 function makeState() {
   const store = new Map();
@@ -822,6 +824,28 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
   {
     const GSEL = 'bp_st_sell';
     const plate = (name, q) => ({ name, gearBase: 'iron', mat: 'iron', tierMult: 2.0, ...(q ? { quality: q } : null) });
+
+    /* ═══ v2.3.2551: EVERY SELLABLE PIECE IS ONE THE SERVER MINTED ═══
+       Before this version a test could put a bare object in `ps.armorStash`
+       and sell it, because being in the list WAS the qualification.  It is
+       not any more: the gate asks the receipt book.  So the setup has to
+       mint, which is what `_gearProvRecord` does at every real mint site
+       (a monster drop at pickup, a quest grant, an amulet forge press).
+
+       The stash copy is pushed separately and deliberately, because that
+       is the real shape: the server mints a piece, the piece goes to the
+       player's browser, and the server's own list learns about it later
+       through the join claim.  The two are not the same object, exactly as
+       they are not in the game. */
+    const mintInto = (pid, slot, field, piece) => {
+      const ps = shop.playerState[pid];
+      const rec = shop._gearProvRecord(pid, slot, { ...piece }, 'test');
+      if (!Array.isArray(ps[field])) ps[field] = [];
+      ps[field].push({ ...rec });
+      return rec.gid;
+    };
+    const mintedPlate = (pid, name, q) => mintInto(pid, 'armor', 'armorStash', plate(name, q));
+
     /* Count one named piece everywhere it can be: the seller's stash, the
        buyer's stash, the worn slot, and any listing still holding it. */
     const pieceInWorld = (field, name) => {
@@ -836,61 +860,83 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
     };
     const wornCount = (slot, name) => [SEL, BUY, OTH].filter((ps) => ps[slot] && ps[slot].name === name).length;
 
-    // ── S12a. escrow takes the SERVER's copy, and the card is derived ──
-    SEL.armorStash = [plate('Iron Torso', 'elite')];
-    SEL.armor = null;
-    /* The selector is an IDENTITY, so the fields the signature is built
-       from have to be the real ones — a claimed tierMult of 999 simply
-       names a piece nobody holds, and names it harmlessly. */
+    // ── S12a. escrow takes the LEDGER's copy, and the receipt goes with it ──
+    SEL.armorStash = []; SEL.armor = null;
+    const torsoGid = mintedPlate(GSEL, 'Iron Torso', 'elite');
+
+    /* The gate is asked about an ID, so a request naming a piece nobody
+       minted is refused with a reason a player can read -- not with
+       "Item not in stash". */
     const inflated = await shop._stCreateListing({
       playerId: GSEL, kind: 'gear', field: 'armorStash', price: 250,
       sel: { name: 'Iron Torso', gearBase: 'iron', tierMult: 999 },
     });
-    check('store gear: a selector claiming a bigger piece matches nothing',
-      inflated.ok === false && inflated.error === 'Item not in stash', inflated);
+    check('store gear: a selector that matches nothing is refused as legacy, with a reason',
+      inflated.ok === false && inflated.reason === 'legacy', inflated);
     check('store gear: ...and it took nothing on the way past', SEL.armorStash.length === 1, SEL.armorStash);
 
     const gList = await shop._stCreateListing({
-      playerId: GSEL, kind: 'gear', field: 'armorStash', price: 250,
-      /* The fields the signature reads are truthful (they have to be —
-         they are how the piece is found); everything the store DISPLAYS
-         or ESCROWS is still taken off the server's own copy, so these
-         lies about it are ignored. */
-      sel: { name: 'Iron Torso', gearBase: 'iron', tierMult: 2.0, quality: 'godly', hardness: 5, temper: 9999 },
+      playerId: GSEL, kind: 'gear', field: 'armorStash', price: 250, gid: torsoGid,
+      /* Everything a modified client could say about the piece, said, and
+         all of it ignored: the goods, the card and the price basis are the
+         LEDGER's copy of what this server minted. */
+      sel: { name: 'Godly Iron Plate', gearBase: 'mythril', tierMult: 8, quality: 'godly', hardness: 5, temper: 9999 },
       cat: 'weapon', disp: { name: 'Godly Plate' },
     });
-    check('store gear: a plate is listed out of the SERVER stash',
+    check('store gear: a MINTED plate is listed, named by its receipt number',
       gList.ok === true && gList.settled === true && SEL.armorStash.length === 0, { r: gList, stash: SEL.armorStash });
-    check('store gear: the card is read off the escrowed piece, not the request',
+    check('store gear: the card is read off the ledger\'s piece, not the request',
       gList.ok === true && gList.listing.disp.name === 'Iron Torso' && gList.listing.disp.tierMult === 2.0
       && gList.listing.disp.quality === 'elite' && gList.listing.disp.slot === 'Chest', gList.listing);
     check('store gear: it files under the bag ARMOR chip, not the claimed weapon',
       gList.listing.cat === 'armor', gList.listing);
     check('store gear: the escrowed piece is NEVER put on the wire',
-      gList.listing.gear === undefined && gList.listing.weapon === undefined, gList.listing);
+      gList.listing.gear === undefined && gList.listing.gearRow === undefined
+      && gList.listing.weapon === undefined, gList.listing);
+    const gRec = st._store.get('store_listing:' + gList.listing.id);
     check('store gear: the escrow record holds the piece and the list it came from',
-      st._store.get('store_listing:' + gList.listing.id).gear?.name === 'Iron Torso'
-      && st._store.get('store_listing:' + gList.listing.id).gearField === 'armorStash',
-      st._store.get('store_listing:' + gList.listing.id));
+      gRec.gear?.name === 'Iron Torso' && gRec.gearField === 'armorStash', gRec);
+    check('store gear: ...AND the piece\'s detached RECEIPT, escrowed beside the goods',
+      !!gRec.gearRow && gRec.gearRow.id === torsoGid && gRec.gearRow.slot === 'armor', gRec.gearRow);
+    check('store gear: the escrowed piece keeps its identity, so it stays provable across the counter',
+      gRec.gear.gid === torsoGid && gRec.gear.prov === 'minted', gRec.gear);
     check('store gear: the forge-minted fields a client claimed are not in escrow',
-      st._store.get('store_listing:' + gList.listing.id).gear.hardness === undefined
-      && st._store.get('store_listing:' + gList.listing.id).gear.temper === undefined,
-      st._store.get('store_listing:' + gList.listing.id).gear);
+      gRec.gear.hardness === undefined && gRec.gear.temper === undefined, gRec.gear);
 
-    // ── S12b. cancel returns the piece, to the right list ──
+    /* ── THE RECEIPT MOVED, SO THE PIECE CANNOT BE IN TWO PLACES ──
+       This is the property the whole lane exists for.  While the piece is
+       on the shelf the seller's book does not name it, so they cannot list
+       it again and they cannot equip it by name either. */
+    check('store gear: a piece on the shelf cannot be listed a second time',
+      shop._gearSellable(GSEL, 'armor', torsoGid).reason === 'not_held',
+      shop._gearSellable(GSEL, 'armor', torsoGid));
+    check('store gear: ...and cannot be equipped by name while it is there',
+      shop._gearProvPieceByRef(GSEL, 'armor', torsoGid) === null);
+    const relist = await shop._stCreateListing({
+      playerId: GSEL, kind: 'gear', field: 'armorStash', gid: torsoGid, price: 10,
+    });
+    check('store gear: ...and the second listing request is refused, with the reason why',
+      relist.ok === false && relist.reason === 'not_held', relist);
+
+    // ── S12b. cancel returns the piece AND its receipt ──
     const cxlG = await shop._stCancel(gList.listing.id, GSEL);
     check('store gear: cancel returns the piece to its own stash',
       cxlG.ok === true && SEL.armorStash.length === 1 && SEL.armorStash[0].name === 'Iron Torso', SEL.armorStash);
     check('store gear: the returned piece keeps its grade',
       SEL.armorStash[0].quality === 'elite', SEL.armorStash[0]);
-    check('store gear: the piece the server handed back is marked as server-written',
-      SEL.armorStash[0]._sv === true, SEL.armorStash[0]);
+    check('store gear: the returned piece comes back PROVABLE, under the same receipt number',
+      SEL.armorStash[0].gid === torsoGid && SEL.armorStash[0].prov === 'minted', SEL.armorStash[0]);
+    check('store gear: ...so it is sellable again, and the book says so',
+      shop._gearSellable(GSEL, 'armor', torsoGid).ok === true, shop._gearSellable(GSEL, 'armor', torsoGid));
+    check('store gear: the mark is DERIVED, not carried — the retired `_sv` is nowhere on it',
+      SEL.armorStash[0]._sv === undefined, SEL.armorStash[0]);
     check('store gear: the cancelled listing is gone', !st._store.has('store_listing:' + gList.listing.id));
 
     // ── S12c. expiry returns the piece too (rule 12: no alarms) ──
-    SEL.legsStash = [plate('Iron Greaves')];
+    SEL.legsStash = [];
+    const greavesGid = mintInto(GSEL, 'legsArmor', 'legsStash', plate('Iron Greaves'));
     const gExp = await shop._stCreateListing({
-      playerId: GSEL, kind: 'gear', field: 'legsStash', sel: plate('Iron Greaves'), price: 90,
+      playerId: GSEL, kind: 'gear', field: 'legsStash', gid: greavesGid, price: 90,
     });
     check('store gear: (setup) the greaves are escrowed', gExp.ok === true && SEL.legsStash.length === 0, SEL.legsStash);
     await shop._stPlaceBid(gExp.listing.id, 'bp_st_buy', 40);
@@ -900,15 +946,17 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
     await shop._stSweep();
     check('store gear: expiry returns the piece to the seller',
       SEL.legsStash.length === 1 && SEL.legsStash[0].name === 'Iron Greaves', SEL.legsStash);
+    check('store gear: ...with its receipt, so an expired listing does not quietly make gear unsellable',
+      SEL.legsStash[0].gid === greavesGid && shop._gearSellable(GSEL, 'legsArmor', greavesGid).ok === true,
+      SEL.legsStash[0]);
     check('store gear: expiry refunds the standing bid', BUY.coins === expCoinsG + 40, BUY.coins);
     check('store gear: the expired gear listing is deleted', !st._store.has('store_listing:' + gExp.listing.id));
 
-    // ── S12d. a sale delivers the piece into the BUYER's stash ──
-    SEL.shieldStash = [{ name: 'Pine Shield', gearBase: 'wood', tierMult: 1.0 }];
-    BUY.shieldStash = [];
+    // ── S12d. a sale delivers the piece AND the receipt to the BUYER ──
+    SEL.shieldStash = []; BUY.shieldStash = [];
+    const shieldGid = mintInto(GSEL, 'shield', 'shieldStash', { name: 'Pine Shield', gearBase: 'wood', tierMult: 1.0 });
     const gSale = await shop._stCreateListing({
-      playerId: GSEL, kind: 'gear', field: 'shieldStash',
-      sel: { name: 'Pine Shield', gearBase: 'wood', tierMult: 1.0 }, price: 120,
+      playerId: GSEL, kind: 'gear', field: 'shieldStash', gid: shieldGid, price: 120,
     });
     const sellCoinsG = SEL.coins;
     const boughtG = await shop._stBuyNow(gSale.listing.id, 'bp_st_buy');
@@ -916,55 +964,96 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
       boughtG.ok === true && boughtG.bought === true && boughtG.price === 120, boughtG);
     check('store gear: the buyer receives the piece in the right stash',
       BUY.shieldStash.length === 1 && BUY.shieldStash[0].name === 'Pine Shield', BUY.shieldStash);
+    check('store gear: ...under the SAME receipt number, so it keeps its identity across the counter',
+      BUY.shieldStash[0].gid === shieldGid && BUY.shieldStash[0].prov === 'minted', BUY.shieldStash[0]);
+    check('store gear: the buyer can now sell it on, and the SELLER cannot',
+      shop._gearSellable('bp_st_buy', 'shield', shieldGid).ok === true
+      && shop._gearSellable(GSEL, 'shield', shieldGid).ok === false,
+      { buyer: shop._gearSellable('bp_st_buy', 'shield', shieldGid), seller: shop._gearSellable(GSEL, 'shield', shieldGid) });
     check('store gear: the seller is paid, goods leg first', SEL.coins === sellCoinsG + 120, SEL.coins);
     check('store gear: both legs are stamped (rule 5)',
       st._store.has('oplog:store:' + gSale.listing.id + ':goods')
       && st._store.has('oplog:store:' + gSale.listing.id + ':gold'));
     check('store gear: the record is deleted LAST and is gone', !st._store.has('store_listing:' + gSale.listing.id));
 
-    /* ══ S12e. THE WORN SLOT: A KNOWN OPEN HOLE, AND THE SPARES IT
-           MUST NOT EAT (v2.3.2532) ══
-       v2.3.2531 shipped `_stGearReconcileWorn` here: before escrow it
-       deleted one stash entry whose signature matched the worn piece,
-       on the theory that such an entry is the stale duplicate adoption
-       left behind.  v2.3.2532 REMOVED it, because the theory is wrong
-       often enough to cost people real armour — every player already
-       wearing a plate when the hand-over ran holds only genuine spares,
-       and the sweep ate one, on every request, in every slot, whether
-       or not the listing then succeeded.  Deleting gear somebody owns is
-       strictly worse than the duplication it was aimed at, and the
-       signature it matched on cannot tell the two apart.
+    /* A DELIVERY CANNOT PUT INFLATED STATS BESIDE A GENUINE RECEIPT.  The
+       goods payload is the one place a future producer could try, so the
+       apply is driven directly with a lying piece under a real receipt and
+       the ledger's own copy is what has to land (rule 16). */
+    {
+      const row = { id: shieldGid, slot: 'shield', src: 'test', at: Date.now(), p: { name: 'Pine Shield', gearBase: 'wood', tierMult: 1.0 } };
+      BUY.shieldStash = [];
+      await shop._creditPlayer('bp_st_buy', {
+        opId: 'test:liar:1', source: 'market', kind: 'gear',
+        payload: { field: 'shieldStash', piece: { name: 'Godly Shield', gearBase: 'mythril', tierMult: 8 }, row },
+        note: 'a lying producer',
+      });
+      check('store gear: a delivery claiming a godly piece under a real receipt hands over the REAL one',
+        BUY.shieldStash.length === 1 && BUY.shieldStash[0].name === 'Pine Shield'
+        && BUY.shieldStash[0].tierMult === 1.0 && BUY.shieldStash[0].gid === shieldGid, BUY.shieldStash[0]);
+    }
 
-       So what is asserted here is the honest state of affairs: the hole
-       is OPEN and named (a player can list the piece they are wearing),
-       the `caps.storeGear` switch below is what bounds it, and NOTHING
-       on this path deletes a stash entry it was not asked to list.
-       Counted over the whole world, because "the stash is empty now"
-       would pass while the piece existed twice. */
-    SEL.armorStash = [plate('Worn Plate')];
-    SEL.armor = plate('Worn Plate');            // ...and now they put it on
+    /* ══ S12e. THE WORN SLOT: CLOSED, AND THE SPARES STILL SAFE ══
+       The hole: adoption records the stash as it stood at that join, so a
+       piece equipped afterwards is on the books TWICE -- as `ps.armor` and
+       still in `ps.armorStash` -- and selling the stash copy left the
+       seller wearing the armour they were paid for.  It needed no modified
+       client: equipping a spare is the normal way to play.
+
+       v2.3.2531 tried to close it by DELETING one stash entry whose
+       name|gearBase|tierMult|tier signature matched the worn piece, and
+       v2.3.2532 took that back out because the signature cannot tell a
+       stale copy from a second identical plate -- it ate real spares.
+
+       v2.3.2551 closes it without guessing.  The worn piece and its stale
+       stash twin carry the SAME receipt number, and the gate refuses a
+       receipt that is on the player's body: reason `worn`, which is
+       something a player can act on.  Two genuinely different plates have
+       two different numbers and both stay sellable.
+
+       Counted over the WHOLE world, because "the stash is empty now" would
+       pass while the piece existed twice. */
+    SEL.armorStash = []; SEL.armor = null;
+    const wornGid = mintedPlate(GSEL, 'Worn Plate');
+    SEL.armor = { ...SEL.armorStash[0] };          // ...and now they put it on
     const wornPreTotal = pieceInWorld('armorStash', 'Worn Plate') + wornCount('armor', 'Worn Plate');
     check('store gear: (setup) the worn plate really is recorded twice', wornPreTotal === 2, wornPreTotal);
     const sellWorn = await shop._stCreateListing({
-      playerId: GSEL, kind: 'gear', field: 'armorStash', sel: plate('Worn Plate'), price: 300,
+      playerId: GSEL, kind: 'gear', field: 'armorStash', gid: wornGid, price: 300,
     });
-    check('store gear: KNOWN HOLE — the plate you are wearing CAN still be listed',
-      sellWorn.ok === true, sellWorn);
-    check('store gear: ...the listing itself neither mints nor destroys — the double count is the hand-over\'s, not ours',
-      pieceInWorld('armorStash', 'Worn Plate') + wornCount('armor', 'Worn Plate') === wornPreTotal,
-      { world: pieceInWorld('armorStash', 'Worn Plate'), worn: wornCount('armor', 'Worn Plate') });
-    if (sellWorn.ok) await shop._stCancel(sellWorn.listing.id, GSEL);
-    check('store gear: ...and cancelling it puts the piece back, still two, still no third',
+    check('store gear: CLOSED — the plate you are WEARING can no longer be listed',
+      sellWorn.ok === false && sellWorn.reason === 'worn', sellWorn);
+    check('store gear: ...and the refusal says something the player can act on',
+      sellWorn.error === "You're wearing it — take it off first", sellWorn.error);
+    check('store gear: ...and refusing it moved nothing at all',
       pieceInWorld('armorStash', 'Worn Plate') + wornCount('armor', 'Worn Plate') === wornPreTotal
-      && SEL.armorStash.filter((g) => g.name === 'Worn Plate').length === 1,
-      { stash: SEL.armorStash, worn: SEL.armor });
+      && SEL.armorStash.length === 1, { stash: SEL.armorStash, worn: SEL.armor });
+    /* The selector path has to reach the same answer -- an old browser must
+       not be able to sell what a new one cannot. */
+    const sellWornSel = await shop._stCreateListing({
+      playerId: GSEL, kind: 'gear', field: 'armorStash', sel: SEL.armorStash[0], hint: 0, price: 300,
+    });
+    check('store gear: ...and an OLD client naming it by selector is refused identically',
+      sellWornSel.ok === false && sellWornSel.reason === 'worn', sellWornSel);
+    /* Take it off and it sells, which is what the refusal promised. */
+    SEL.armor = null;
+    const sellUnworn = await shop._stCreateListing({
+      playerId: GSEL, kind: 'gear', field: 'armorStash', gid: wornGid, price: 300,
+    });
+    check('store gear: ...take it off and the same piece lists fine', sellUnworn.ok === true, sellUnworn);
+    if (sellUnworn.ok) await shop._stCancel(sellUnworn.listing.id, GSEL);
 
-    /* THE REGRESSION THE REMOVAL EXISTS FOR.  A player wearing a plate
-       and holding one real spare of it: no listing they make, and no
-       listing they are REFUSED, may take that spare off them. */
-    SEL.armorStash = [plate('Twin Plate')];
-    SEL.armor = plate('Twin Plate');
-    SEL.shieldStash = [{ name: 'Pine Shield', gearBase: 'wood', tierMult: 1 }];
+    /* THE REGRESSION THE 2532 REMOVAL EXISTS FOR, still pinned.  A player
+       wearing a plate and holding one real spare of it: no listing they
+       make, and no listing they are REFUSED, may take that spare off them.
+       Two separate mints, so two separate receipts -- which is exactly
+       what the old signature heuristic could not see. */
+    SEL.armorStash = []; SEL.armor = null; SEL.shieldStash = [];
+    const twinWornGid = mintedPlate(GSEL, 'Twin Plate');
+    SEL.armor = { ...SEL.armorStash[0] };
+    SEL.armorStash = [];
+    const twinSpareGid = mintedPlate(GSEL, 'Twin Plate');
+    const pineGid = mintInto(GSEL, 'shield', 'shieldStash', { name: 'Pine Shield', gearBase: 'wood', tierMult: 1 });
     const spareBefore = SEL.armorStash.length;
     for (let i = 0; i < 3; i++) {
       const miss = await shop._stCreateListing({
@@ -975,7 +1064,7 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
     check('store gear: ...and three refused requests did NOT erode the real spare',
       SEL.armorStash.length === spareBefore && SEL.armorStash[0].name === 'Twin Plate', SEL.armorStash);
     const sellShield = await shop._stCreateListing({
-      playerId: GSEL, kind: 'gear', field: 'shieldStash', sel: { name: 'Pine Shield', gearBase: 'wood', tierMult: 1 }, price: 40,
+      playerId: GSEL, kind: 'gear', field: 'shieldStash', gid: pineGid, price: 40,
     });
     check('store gear: selling a SHIELD works', sellShield.ok === true, sellShield);
     check('store gear: ...and it touches no other list — the armour spare is untouched',
@@ -983,44 +1072,100 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
       && SEL.armor && SEL.armor.name === 'Twin Plate', SEL.armorStash);
     if (sellShield.ok) await shop._stCancel(sellShield.listing.id, GSEL);
     const sellSpare = await shop._stCreateListing({
-      playerId: GSEL, kind: 'gear', field: 'armorStash', sel: plate('Twin Plate'), price: 150,
+      playerId: GSEL, kind: 'gear', field: 'armorStash', gid: twinSpareGid, price: 150,
     });
-    check('store gear: the spare itself is sellable', sellSpare.ok === true, sellSpare);
+    check('store gear: the SPARE is sellable even though an identical plate is worn',
+      sellSpare.ok === true, sellSpare);
     check('store gear: ...and exactly one copy is left behind, wearing the other',
       SEL.armorStash.filter((g) => g.name === 'Twin Plate').length === 0
       && SEL.armor.name === 'Twin Plate'
       && pieceInWorld('armorStash', 'Twin Plate') + wornCount('armor', 'Twin Plate') === 2,
       { stash: SEL.armorStash, escrowed: pieceInWorld('armorStash', 'Twin Plate') });
+    check('store gear: ...and the WORN twin is still refused, by its own number',
+      shop._gearSellable(GSEL, 'armor', twinWornGid).reason === 'worn',
+      shop._gearSellable(GSEL, 'armor', twinWornGid));
     await shop._stCancel(sellSpare.listing.id, GSEL);
     check('store gear: the removed reconciliation really is gone from the room',
       typeof shop._stGearReconcileWorn === 'undefined', typeof shop._stGearReconcileWorn);
+    check('store gear: ...and so is every part of the retired `_sv` mark',
+      typeof shop._stGearListable === 'undefined' && typeof shop._stGearStrip === 'undefined',
+      { listable: typeof shop._stGearListable, strip: typeof shop._stGearStrip });
 
-    /* ══ S12f. THE STASH ENTRY CHANGED SINCE THE CARD WAS OPENED ══
-       The client's list and ours drift out of order, so `hint` is a
-       tie-break and never an address.  A hint pointing at a different
-       piece must resolve by SIGNATURE to the right one; a selector
-       naming a piece that is no longer there must take nothing at all. */
-    SEL.armorStash = [plate('Copper Torso'), plate('Steel Torso')];
-    SEL.armor = null;
+    /* ══ S12f. NAMING THE PIECE: the id, and the selector an old client sends ══
+       Both naming paths reach the SAME gate; what differs is precision.
+       `hint` is still a tie-break and never an address, and a selector
+       that names nothing must take nothing at all. */
+    SEL.armorStash = []; SEL.armor = null;
+    const copperGid = mintedPlate(GSEL, 'Copper Torso');
+    const steelGid = mintedPlate(GSEL, 'Steel Torso');
+    void copperGid;
     const staleHint = await shop._stCreateListing({
       playerId: GSEL, kind: 'gear', field: 'armorStash',
-      sel: plate('Steel Torso'), hint: 0,        // index 0 is the COPPER one now
+      sel: SEL.armorStash[1], hint: 0,        // index 0 is the COPPER one
       price: 80,
     });
-    check('store gear: a stale index does not sell the wrong piece',
+    check('store gear: an old client\'s stale index does not sell the wrong piece',
       staleHint.ok === true && staleHint.listing.disp.name === 'Steel Torso'
       && SEL.armorStash.length === 1 && SEL.armorStash[0].name === 'Copper Torso',
       { listed: staleHint.listing.disp, left: SEL.armorStash });
+    check('store gear: ...and it escrowed the receipt the SERVER holds for it',
+      st._store.get('store_listing:' + staleHint.listing.id).gearRow.id === steelGid,
+      st._store.get('store_listing:' + staleHint.listing.id).gearRow);
     await shop._stCancel(staleHint.listing.id, GSEL);
 
     const gonePiece = await shop._stCreateListing({
       playerId: GSEL, kind: 'gear', field: 'armorStash', sel: plate('Mythril Torso'), price: 80,
     });
     const stashAfterMiss = SEL.armorStash.length;
-    check('store gear: a piece that is not in the server stash lists nothing',
-      gonePiece.ok === false && gonePiece.error === 'Item not in stash', gonePiece);
+    check('store gear: a piece that is in no stash and no book lists nothing',
+      gonePiece.ok === false && gonePiece.reason === 'legacy', gonePiece);
     check('store gear: ...and a refused listing takes nothing out of the stash',
       stashAfterMiss === 2, SEL.armorStash);
+
+    /* THE ID REACHES WHAT THE SELECTOR CANNOT.  A quest plate goes straight
+       to the browser's bag; the server's own stash snapshot learns of it
+       only at the next join.  Until then the selector finds nothing while
+       the receipt number finds the row -- which is the whole reason
+       `caps.storeGearRef` is worth advertising. */
+    {
+      const notAdopted = shop._gearProvRecord(GSEL, 'armor', plate('Unadopted Plate'), 'quest');
+      const byName = await shop._stCreateListing({
+        playerId: GSEL, kind: 'gear', field: 'armorStash', sel: { ...notAdopted }, price: 55,
+      });
+      check('store gear: a selector cannot find a piece our stash snapshot has not adopted',
+        byName.ok === false, byName);
+      const byId = await shop._stCreateListing({
+        playerId: GSEL, kind: 'gear', field: 'armorStash', gid: notAdopted.gid, price: 55,
+      });
+      check('store gear: ...but its receipt number can, and lists the LEDGER\'s copy',
+        byId.ok === true && byId.listing.disp.name === 'Unadopted Plate', byId);
+      if (byId.ok) await shop._stCancel(byId.listing.id, GSEL);
+    }
+
+    /* A FORGED RECEIPT NUMBER BUYS NOTHING.  Three shapes: another
+       player's real number, a number nobody ever issued, and '__proto__'
+       (TRAPS #6 -- the ledger's list is an ARRAY, so there is no key to
+       poison, but the request still has to be refused). */
+    {
+      BUY.armorStash = [];
+      const theirsGid = mintInto('bp_st_buy', 'armor', 'armorStash', plate('Not Yours'));
+      const stashBefore = BUY.armorStash.length;
+      const forged = await shop._stCreateListing({
+        playerId: GSEL, kind: 'gear', field: 'armorStash', gid: theirsGid, price: 5,
+      });
+      check('store gear: another player\'s receipt number is not yours to sell',
+        forged.ok === false && forged.reason === 'not_held', forged);
+      check('store gear: ...and it took nothing off them', BUY.armorStash.length === stashBefore, BUY.armorStash);
+      const never = await shop._stCreateListing({
+        playerId: GSEL, kind: 'gear', field: 'armorStash', gid: 'g-never-issued', price: 5,
+      });
+      check('store gear: a number nobody issued is refused', never.ok === false && never.reason === 'not_held', never);
+      const proto = await shop._stCreateListing({
+        playerId: GSEL, kind: 'gear', field: 'armorStash', gid: '__proto__', price: 5,
+      });
+      check("store gear: '__proto__' as a receipt number is refused like any other miss",
+        proto.ok === false && proto.reason === 'not_held', proto);
+    }
 
     /* ══ S12g. THE CRASH WINDOW, on both release paths ══
        `_stRelease` is three disk writes and the worker restarts on every
@@ -1028,7 +1173,11 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
        `releasing` marker as everything else (v2.3.2521) — not a second
        mechanism — or a death between the refund and the delete puts the
        listing back on the shelf holding a piece it already handed back:
-       buy it again and the plate has been minted. */
+       buy it again and the plate has been minted.
+
+       v2.3.2551 adds one more thing to protect: the RECEIPT travels inside
+       the same record, so the same marker recovers it and there is still
+       no second recovery mechanism. */
     const platesInWorld = (name) => pieceInWorld('armorStash', name) + wornCount('armor', name);
     const goldInWorldG = () => {
       let g = SEL.coins + BUY.coins + OTH.coins;
@@ -1046,11 +1195,11 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
     };
 
     // (g1) a seller CANCEL of a gear listing that died before its delete.
-    SEL.armorStash = [plate('Crash Plate')];
-    SEL.armor = null;
+    SEL.armorStash = []; SEL.armor = null;
+    const crashGid = mintedPlate(GSEL, 'Crash Plate');
     const gPreCount = platesInWorld('Crash Plate'); const gPreGold = goldInWorldG();
     const crashG = await shop._stCreateListing({
-      playerId: GSEL, kind: 'gear', field: 'armorStash', sel: plate('Crash Plate'), price: 500,
+      playerId: GSEL, kind: 'gear', field: 'armorStash', gid: crashGid, price: 500,
     });
     await shop._stPlaceBid(crashG.listing.id, 'bp_st_buy', 70);
     dieOnDeleteOfG(crashG.listing.id);
@@ -1064,6 +1213,7 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
       st._store.get('store_listing:' + crashG.listing.id));
     const roomG1 = new GameRoom(st, mockEnv);
     roomG1.playerState = shop.playerState;
+    roomG1._gearProvCache = shop._gearProvCache;
     await roomG1._stEnsureIndex();
     check('store gear: an interrupted cancel does NOT come back on the shelf',
       !roomG1._stIndex.has(crashG.listing.id) && !st._store.has('store_listing:' + crashG.listing.id),
@@ -1071,14 +1221,19 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
     check('store gear: the interrupted cancel mints no plate and no gold',
       platesInWorld('Crash Plate') === gPreCount && goldInWorldG() === gPreGold,
       { plates: platesInWorld('Crash Plate'), want: gPreCount, gold: goldInWorldG(), wantGold: gPreGold });
+    check('store gear: ...and exactly ONE receipt for it, so it is neither lost nor doubled',
+      shop._gearProvOf(GSEL).list.filter((r) => r.id === crashGid).length === 1
+      && shop._gearSellable(GSEL, 'armor', crashGid).ok === true,
+      shop._gearSellable(GSEL, 'armor', crashGid));
     const ghostBuyG = await roomG1._stBuyNow(crashG.listing.id, 'bp_st_buy');
     check('store gear: the cancelled gear listing cannot be bought a second time', ghostBuyG.ok === false, ghostBuyG);
 
     // (g2) the same window on the EXPIRY path.
-    SEL.armorStash = [plate('Expiry Plate')];
+    SEL.armorStash = []; SEL.armor = null;
+    const expGid = mintedPlate(GSEL, 'Expiry Plate');
     const ePreCount = platesInWorld('Expiry Plate'); const ePreGold = goldInWorldG();
     const crashGE = await shop._stCreateListing({
-      playerId: GSEL, kind: 'gear', field: 'armorStash', sel: plate('Expiry Plate'), price: 500,
+      playerId: GSEL, kind: 'gear', field: 'armorStash', gid: expGid, price: 500,
     });
     await shop._stPlaceBid(crashGE.listing.id, 'bp_st_buy', 35);
     shop._stIndex.get(crashGE.listing.id).expiresAt = Date.now() - 1;
@@ -1091,6 +1246,7 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
       diedGE && st._store.has('store_listing:' + crashGE.listing.id), { diedGE });
     const roomG2 = new GameRoom(st, mockEnv);
     roomG2.playerState = shop.playerState;
+    roomG2._gearProvCache = shop._gearProvCache;
     await roomG2._stEnsureIndex();
     check('store gear: an interrupted expiry does NOT come back on the shelf',
       !roomG2._stIndex.has(crashGE.listing.id) && !st._store.has('store_listing:' + crashGE.listing.id),
@@ -1100,27 +1256,71 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
       { plates: platesInWorld('Expiry Plate'), want: ePreCount, gold: goldInWorldG(), wantGold: ePreGold });
 
     // (g3) a plain restart over a RESTING gear listing keeps the escrow
-    //      intact and still refunds to the right list afterwards.
-    SEL.armorStash = [plate('Rebuild Plate')];
+    //      intact -- goods AND receipt -- and still refunds afterwards.
+    SEL.armorStash = []; SEL.armor = null;
+    const rebuildGid = mintedPlate(GSEL, 'Rebuild Plate');
     const restG = await shop._stCreateListing({
-      playerId: GSEL, kind: 'gear', field: 'armorStash', sel: plate('Rebuild Plate'), price: 210,
+      playerId: GSEL, kind: 'gear', field: 'armorStash', gid: rebuildGid, price: 210,
     });
     const roomG3 = new GameRoom(st, mockEnv);
     roomG3.playerState = shop.playerState;
+    roomG3._gearProvCache = shop._gearProvCache;
     await roomG3._stEnsureIndex();
-    check('store gear: a resting gear listing survives a restart with its piece',
+    check('store gear: a resting gear listing survives a restart with its piece AND its receipt',
       roomG3._stIndex.get(restG.listing.id)?.gear?.name === 'Rebuild Plate'
-      && roomG3._stIndex.get(restG.listing.id)?.gearField === 'armorStash',
+      && roomG3._stIndex.get(restG.listing.id)?.gearField === 'armorStash'
+      && roomG3._stIndex.get(restG.listing.id)?.gearRow?.id === rebuildGid,
       roomG3._stIndex.get(restG.listing.id));
     const stashPreG3 = SEL.armorStash.length;
     await roomG3._stCancel(restG.listing.id, GSEL);
-    check('store gear: the rebuilt room returns the piece to the right stash',
-      SEL.armorStash.length === stashPreG3 + 1 && SEL.armorStash.some((g) => g.name === 'Rebuild Plate'), SEL.armorStash);
+    check('store gear: the rebuilt room returns the piece to the right stash, still provable',
+      SEL.armorStash.length === stashPreG3 + 1
+      && SEL.armorStash.some((g) => g.name === 'Rebuild Plate' && g.gid === rebuildGid), SEL.armorStash);
 
-    // ── S12h. an offline seller gets the piece in the MAIL, not nowhere ──
-    SEL.armorStash = [plate('Mail Plate')];
+    /* (g4) THE ONE WINDOW THAT FAILS THE OTHER WAY, stated because it is a
+       real cost.  `_gearProvTake` is synchronous and the listing record is
+       written immediately after it.  If the room dies in between, the
+       receipt is gone and the piece is out of the server's stash -- and the
+       player's own browser still holds its copy, because the client only
+       splices on `ok`.  Their next join re-adopts it and it comes back
+       LEGACY: usable, worn, counted in the damage maths, not sellable.
+       Never in two places, which is the direction that would be money. */
+    {
+      SEL.armorStash = []; SEL.armor = null;
+      const doomedGid = mintedPlate(GSEL, 'Doomed Plate');
+      const clientCopy = { ...SEL.armorStash[0] };      // the browser's own copy
+      const realPutG = st.storage.put;
+      st.storage.put = async (k, v) => {
+        if (k.startsWith('store_listing:')) throw new Error('simulated death before the record landed');
+        return realPutG(k, v);
+      };
+      let dead = false;
+      try {
+        await shop._stCreateListing({ playerId: GSEL, kind: 'gear', field: 'armorStash', gid: doomedGid, price: 70 });
+      } catch { dead = true; }
+      st.storage.put = realPutG;
+      check('store gear: (setup) the record could not be written', dead === true);
+      /* The unwind is the ordinary path and it hands BOTH back, so the
+         piece is whole again.  What is pinned here is that it is never in
+         two places, whichever half survived. */
+      check('store gear: a listing whose record failed leaves exactly one copy in the world',
+        platesInWorld('Doomed Plate') === 1, { world: platesInWorld('Doomed Plate'), stash: SEL.armorStash });
+      const verdict = shop._gearSellable(GSEL, 'armor', doomedGid);
+      check('store gear: ...and it is either fully whole or merely unsellable — never a duplicate',
+        verdict.ok === true || verdict.reason === 'not_held' || verdict.reason === 'legacy', verdict);
+      /* And the browser's surviving copy, re-adopted, can never promote
+         itself: `prov` is derived from the book, never read off the wire. */
+      const readopted = shop._gearProvResolve(GSEL, 'armor', { ...clientCopy, prov: 'minted' }, null, false);
+      check('store gear: a browser re-offering the piece cannot promote it by claiming `minted`',
+        readopted.prov === 'minted' ? !!shop._gearProvOf(GSEL).list.find((r) => r.id === readopted.gid) : readopted.prov === 'legacy',
+        readopted);
+    }
+
+    // ── S12h. an offline seller gets the piece AND the receipt in the MAIL ──
+    SEL.armorStash = []; SEL.armor = null;
+    const mailGid = mintedPlate(GSEL, 'Mail Plate');
     const gMail = await shop._stCreateListing({
-      playerId: GSEL, kind: 'gear', field: 'armorStash', sel: plate('Mail Plate'), price: 400,
+      playerId: GSEL, kind: 'gear', field: 'armorStash', gid: mailGid, price: 400,
     });
     const savedSel = shop.playerState[GSEL];
     delete shop.playerState[GSEL];                 // the seller logs off
@@ -1128,34 +1328,46 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
     const gearMail = (st._store.get('inbox:' + GSEL) || []).filter((e) => e.kind === 'gear');
     check('store gear: an offline seller is mailed the piece, with the list named',
       gearMail.some((e) => e.payload.field === 'armorStash' && e.payload.piece.name === 'Mail Plate'), gearMail);
+    check('store gear: ...and the receipt travels INSIDE the mail entry, not granted ahead of it',
+      gearMail.some((e) => e.payload.row && e.payload.row.id === mailGid), gearMail);
     shop.playerState[GSEL] = savedSel;
     await shop._drainInbox(GSEL, wsSel);
     check('store gear: ...and the next join drains it back into that stash',
       SEL.armorStash.some((g) => g.name === 'Mail Plate'), SEL.armorStash);
+    check('store gear: ...provable again, under the same number',
+      SEL.armorStash.some((g) => g.name === 'Mail Plate' && g.gid === mailGid)
+      && shop._gearSellable(GSEL, 'armor', mailGid).ok === true, SEL.armorStash);
 
     // ── S12i. guards and the kill switch ──
-    SEL.armorStash = [plate('Guard Plate')];
+    SEL.armorStash = []; SEL.armor = null;
+    const guardGid = mintedPlate(GSEL, 'Guard Plate');
     const badField = await shop._stCreateListing({
-      playerId: GSEL, kind: 'gear', field: 'constructor', sel: plate('Guard Plate'), price: 10,
+      playerId: GSEL, kind: 'gear', field: 'constructor', gid: guardGid, price: 10,
     });
     check('store gear: an Object.prototype name is not a stash (TRAPS #6)', badField.ok === false, badField);
     const noField = await shop._stCreateListing({
-      playerId: GSEL, kind: 'gear', field: 'weaponStash', sel: plate('Guard Plate'), price: 10,
+      playerId: GSEL, kind: 'gear', field: 'weaponStash', gid: guardGid, price: 10,
     });
     check('store gear: only the five gear lists are listable this way', noField.ok === false, noField);
     const noSel = await shop._stCreateListing({ playerId: GSEL, kind: 'gear', field: 'armorStash', price: 10 });
     check('store gear: a listing that names no piece is refused', noSel.ok === false, noSel);
+    const wrongSlot = await shop._stCreateListing({
+      playerId: GSEL, kind: 'gear', field: 'shieldStash', gid: guardGid, price: 10,
+    });
+    check("store gear: a chest piece's number offered as a shield answers 'wrong_slot'",
+      wrongSlot.ok === false && wrongSlot.reason === 'wrong_slot', wrongSlot);
     check('store gear: none of those refusals took the plate',
       SEL.armorStash.length === 1 && SEL.armorStash[0].name === 'Guard Plate', SEL.armorStash);
 
-    /* The kill switch the PR body leans on: one live-ops flag write stops
-       gear listings being ACCEPTED, not just advertised, so a client that
-       kept its button is still refused.  Existing listings are untouched
-       by it on purpose — a switch that destroyed live escrow would be
-       worse than the thing it switches off. */
+    /* The kill switch: one live-ops flag write stops gear listings being
+       ACCEPTED, not just advertised, so a client that kept its button is
+       still refused.  Existing listings are untouched by it on purpose — a
+       switch that destroyed live escrow would be worse than the thing it
+       switches off.  It is no longer BOUNDING an accepted risk (the gate
+       does that now); it is an ordinary lever on a money path. */
     shop._liveFlags = { storeGear: false };
     const killed = await shop._stCreateListing({
-      playerId: GSEL, kind: 'gear', field: 'armorStash', sel: plate('Guard Plate'), price: 10,
+      playerId: GSEL, kind: 'gear', field: 'armorStash', gid: guardGid, price: 10,
     });
     check('store gear: the live-ops kill switch refuses new gear listings',
       killed.ok === false && killed.error === 'Gear cannot be listed right now', killed);
@@ -1166,41 +1378,108 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
       stillItems.error !== 'Gear cannot be listed right now', stillItems);
     shop._liveFlags = {};
 
-    /* The STRICT provenance rule, the tighter setting the accepted risk
-       is hedged with.  With it on, only pieces the SERVER itself wrote
-       (`_sv`, set in _stGearApplyCredit and nowhere else) are listable —
-       so an adopted piece is refused and a piece that came back from a
-       listing is not.  It ships OFF, because nothing carries the mark
-       until the two server mint sites also write the stash. */
-    shop._liveFlags = { store_gear_strict: true };
-    SEL.armorStash = [plate('Claimed Plate')];
-    const strictNo = await shop._stCreateListing({
-      playerId: GSEL, kind: 'gear', field: 'armorStash', sel: plate('Claimed Plate'), price: 10,
-    });
-    check('store gear: strict mode refuses a piece the server never wrote',
-      strictNo.ok === false && strictNo.error === 'That piece cannot be listed yet', strictNo);
-    check('store gear: ...and refusing it leaves the piece alone', SEL.armorStash.length === 1, SEL.armorStash);
-    SEL.armorStash = [{ ...plate('Server Plate'), _sv: true }];
-    const strictYes = await shop._stCreateListing({
-      playerId: GSEL, kind: 'gear', field: 'armorStash', sel: plate('Server Plate'), price: 10,
-    });
-    check('store gear: strict mode allows a piece the server itself handed over',
-      strictYes.ok === true, strictYes);
-    if (strictYes.ok) await shop._stCancel(strictYes.listing.id, GSEL);
-    shop._liveFlags = {};
-    /* v2.3.2532: this used to assert `_stGearStrip` directly, which was
-       false confidence — the strip never covered the JOIN CLAIM, and the
-       claim is the path that actually fills a stash.  The real proof is
-       a forged `_sv` surviving a real join and being refused by strict
-       mode: gearstash.test.mjs §8.  What is left here is the sanitizer
-       the store itself calls, in both directions. */
-    check('store gear: a wire blob cannot bring the provenance mark in with it',
-      shop._stGearSanitize('armorStash', { name: 'Forged', tierMult: 1, _sv: true }, true)._sv === undefined
-      && shop._stGearSanitize('gearStash', { slot: 'chest', gearId: 'x', _sv: true }, true)._sv === undefined
-      && shop._stGearSanitize('amuletStash', { tier: 'regal', gem: 'frost', _sv: true }, true)._sv === undefined);
-    check('store gear: ...and a piece of OURS keeps it through a sanitize that rebuilds',
-      shop._stGearSanitize('gearStash', { slot: 'chest', gearId: 'x', _sv: true }, false)._sv === true
-      && shop._stGearSanitize('amuletStash', { tier: 'regal', gem: 'frost', _sv: true }, false)._sv === true);
+    /* ══ S12l. EVERY REFUSAL CARRIES A REASON THE PLAYER CAN READ ══
+       #648 promised this and nothing delivered it: `prov` reached the
+       browser and was read by nobody, so a Sell button either was not
+       there or failed with "Invalid item".  The reason is now part of the
+       answer, and each one is a different sentence — `cosmetic` most of
+       all, because outfits are unsellable BY DESIGN and telling a player
+       "earned before receipts" would read as an oversight to go and fix.
+
+       Driven through the real HTTP route, not the helper, because that is
+       the surface the browser actually reads. */
+    {
+      const sreq = (body) => shop.fetch(new Request('https://x/api/store/list?room=brotown-1', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-bt-auth': shop._httpTokens?.get?.(GSEL) || '' },
+        body: JSON.stringify(body),
+      }));
+      shop._httpAuthCheck = () => true;   // the token gate has its own section (S10)
+
+      SEL.armorStash = []; SEL.armor = null; SEL.gearStash = [{ slot: 'chest', gearId: 'steelchest', name: 'Steel Chest' }];
+      const legacyPlate = { ...plate('Grandfather Plate') };        // no receipt: minted before the book
+      SEL.armorStash.push(legacyPlate);
+      const wornBodyGid = mintedPlate(GSEL, 'On My Back');
+      SEL.armor = { ...SEL.armorStash[SEL.armorStash.length - 1] };
+
+      const answers = {};
+      for (const [label, body] of [
+        ['legacy', { playerId: GSEL, kind: 'gear', field: 'armorStash', sel: legacyPlate, price: 10 }],
+        ['cosmetic', { playerId: GSEL, kind: 'gear', field: 'gearStash', sel: SEL.gearStash[0], price: 10 }],
+        ['worn', { playerId: GSEL, kind: 'gear', field: 'armorStash', gid: wornBodyGid, price: 10 }],
+        ['not_held', { playerId: GSEL, kind: 'gear', field: 'armorStash', gid: 'g-nope', price: 10 }],
+        ['wrong_slot', { playerId: GSEL, kind: 'gear', field: 'shieldStash', gid: wornBodyGid, price: 10 }],
+      ]) {
+        answers[label] = await (await sreq(body)).json();
+      }
+      for (const want of ['legacy', 'cosmetic', 'worn', 'not_held', 'wrong_slot']) {
+        check("store gear: the browser is told '" + want + "' over HTTP, with a sentence",
+          answers[want].ok === false && answers[want].settled === true
+          && answers[want].reason === want && typeof answers[want].error === 'string' && answers[want].error.length > 0,
+          answers[want]);
+      }
+      check('store gear: an outfit layer is NOT told it was "earned before receipts"',
+        answers.cosmetic.error !== answers.legacy.error, { c: answers.cosmetic.error, l: answers.legacy.error });
+      check('store gear: ...and no refusal took anything',
+        SEL.armorStash.length === 2 && SEL.gearStash.length === 1 && !!SEL.armor,
+        { armor: SEL.armorStash, gear: SEL.gearStash });
+
+      /* A piece STILL IN THE POST is the fifth answer, and it needs the
+         mail to really hold one -- a full stash defers a delivery while
+         the player is online, which is how the row and the piece came
+         apart in the first place (#650's review). */
+      SEL.legsStash = [];
+      const postGid = mintInto(GSEL, 'legsArmor', 'legsStash', plate('Posted Greaves'));
+      const taken = shop._gearProvTake(GSEL, 'legsArmor', postGid);
+      SEL.legsStash = new Array(32).fill(null).map((_, i) => plate('Filler ' + i));   // GEAR_STASH_CAP
+      await shop._creditPlayer(GSEL, {
+        opId: 'test:post:1', source: 'market', kind: 'gear',
+        payload: { field: 'legsStash', piece: taken.piece, row: taken.row }, note: 'in the post',
+      });
+      const postAnswer = await (await sreq({ playerId: GSEL, kind: 'gear', field: 'legsStash', gid: postGid, price: 10 })).json();
+      check("store gear: a piece sitting in the mail answers 'in_mail', not 'not yours'",
+        postAnswer.ok === false && postAnswer.reason === 'in_mail', postAnswer);
+      SEL.legsStash = [];
+      await shop._drainInbox(GSEL, wsSel);
+      check('store gear: ...and once it lands it is sellable, under the same number',
+        SEL.legsStash.some((g) => g.gid === postGid) && shop._gearSellable(GSEL, 'legsArmor', postGid).ok === true,
+        SEL.legsStash);
+    }
+
+    /* ══ S12m. THE REASON TABLE IS MIRRORED, AND PINNED ══
+       The browser cannot ask the worker "would you refuse this?" once per
+       card, so it carries its own copy of the sentences
+       (src/ui/mobile/dash/gearSellReason.js).  A mirror nothing pins is a
+       mirror that drifts -- mirror-audit.test.mjs's posture for data.js. */
+    {
+      const serverKeys = [...GEAR_REFUSAL.keys()].sort();
+      const clientKeys = [...GEAR_SELL_REASON.keys()].sort();
+      check('client mirror: the two reason tables list the same reasons',
+        serverKeys.join(',') === clientKeys.join(','), { server: serverKeys, client: clientKeys });
+      check('client mirror: ...and say the same sentence for each',
+        serverKeys.every((k) => GEAR_REFUSAL.get(k) === GEAR_SELL_REASON.get(k)),
+        serverKeys.filter((k) => GEAR_REFUSAL.get(k) !== GEAR_SELL_REASON.get(k)));
+      check('client mirror: every reason `_gearSellable` can answer has a sentence',
+        ['legacy', 'cosmetic', 'worn', 'in_mail', 'not_held', 'wrong_slot', 'no_player']
+          .every((k) => typeof GEAR_SELL_REASON.get(k) === 'string' && GEAR_SELL_REASON.get(k).length > 0));
+      check('client mirror: an unknown reason from a newer worker still gets a sentence',
+        typeof gearSellReasonText('something_new_2599') === 'string'
+        && gearSellReasonText('something_new_2599').length > 0, gearSellReasonText('something_new_2599'));
+
+      /* And the browser's own pre-tap check: the two PERMANENT answers it
+         is allowed to decide alone, and nothing else. */
+      check('client: an outfit layer is greyed as `cosmetic` before the tap',
+        gearSellCheck('gearStash', { slot: 'chest', gearId: 'steelchest' }).reason === 'cosmetic');
+      check('client: a piece with no receipt number is greyed as `legacy`',
+        gearSellCheck('armorStash', plate('Old Plate')).reason === 'legacy');
+      check('client: ...and so is one that CLAIMS `minted` without a number',
+        gearSellCheck('armorStash', { ...plate('Liar Plate'), prov: 'minted' }).reason === 'legacy');
+      check('client: a recorded piece is left hopeful — worn/in-the-post are the worker\'s to answer',
+        gearSellCheck('armorStash', { ...plate('Real Plate'), gid: 'g-abc', prov: 'minted' }).ok === true);
+      check('client: the id it would send is the piece\'s own, bounded, or nothing',
+        gearSellGid({ gid: 'g-abc' }) === 'g-abc'
+        && gearSellGid({ gid: 'x'.repeat(41) }) === null
+        && gearSellGid({}) === null && gearSellGid(null) === null);
+    }
 
     /* ══ S12j. THE CLIENT'S OWN BAG STOPS SHOWING WHAT IT SOLD ══
        The half the worker cannot do for you.  v2.3.2531 listed a piece
@@ -1210,13 +1489,14 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
        closed the popup.  So the plate stayed in the bag and stayed in
        localStorage — and tapping Equip on it made the worker accept it
        through `stats_update`, handing the seller a copy of the plate the
-       buyer had just paid for.  With the hand-over running on every
-       login (#641) the surviving copy folds straight back into the
-       server stash, which makes it a loop rather than a one-off.
+       buyer had just paid for.
 
-       `removeGearLocal` (src/ui/mobile/dash/gearSellLocal.js) is the
-       smaller fix, and it is a pure module precisely so this suite can
-       reach it — ItemDetailPopup.jsx cannot be imported here. */
+       v2.3.2551 makes that far less expensive than it was: the surviving
+       copy is re-offered under a receipt number the book no longer holds,
+       so it comes back LEGACY and cannot be sold again.  The splice is
+       still the right fix — a bag showing gear you do not own is a bug on
+       its own — and `removeGearLocal` is a pure module precisely so this
+       suite can reach it; ItemDetailPopup.jsx cannot be imported here. */
     {
       const R = {
         armorStash: [plate('Bag Plate'), plate('Other Plate')],
@@ -1269,13 +1549,15 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
        quest armour.  What is pinned HERE is the contract that branch
        depends on: that a returned gear listing actually reaches the
        socket as a gear delivery naming its list and carrying its piece.
-       Without these fields the client cannot put it anywhere. */
+       v2.3.2551 adds one more thing the branch depends on: the piece on
+       the wire keeps its RECEIPT NUMBER, which is what lets the bag's
+       copy stay provable and lets `armorRef` name it afterwards. */
     {
-      SEL.armorStash = [plate('Homecoming Plate')];
-      SEL.armor = null;
+      SEL.armorStash = []; SEL.armor = null;
+      const homeGid = mintedPlate(GSEL, 'Homecoming Plate');
       wsSel.sent.length = 0;
       const back = await shop._stCreateListing({
-        playerId: GSEL, kind: 'gear', field: 'armorStash', sel: plate('Homecoming Plate'), price: 99,
+        playerId: GSEL, kind: 'gear', field: 'armorStash', gid: homeGid, price: 99,
       });
       check('client contract: (setup) the piece is listed', back.ok === true, back);
       await shop._stCancel(back.listing.id, GSEL);
@@ -1289,12 +1571,15 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
       check('client contract: ...and carrying the piece itself, so the bag can show it again',
         gearEntry && gearEntry.payload.piece && gearEntry.payload.piece.name === 'Homecoming Plate',
         gearEntry && gearEntry.payload && gearEntry.payload.piece);
+      check('client contract: ...with its receipt number, so the bag\'s copy stays provable',
+        gearEntry && gearEntry.payload.piece.gid === homeGid, gearEntry && gearEntry.payload.piece);
       /* And the same on the EXPIRY path, which is the one no player
          triggers on purpose and therefore the one nobody would notice. */
-      SEL.armorStash = [plate('Expired Homecoming')];
+      SEL.armorStash = [];
+      const expHomeGid = mintedPlate(GSEL, 'Expired Homecoming');
       wsSel.sent.length = 0;
       const back2 = await shop._stCreateListing({
-        playerId: GSEL, kind: 'gear', field: 'armorStash', sel: plate('Expired Homecoming'), price: 99,
+        playerId: GSEL, kind: 'gear', field: 'armorStash', gid: expHomeGid, price: 99,
       });
       shop._stIndex.get(back2.listing.id).expiresAt = Date.now() - 1;
       shop._stLastSweep = 0;
@@ -1304,7 +1589,8 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
         .find((e) => e.kind === 'gear');
       check('client contract: an EXPIRED gear listing comes home the same way',
         !!expEntry && expEntry.payload.field === 'armorStash'
-        && expEntry.payload.piece.name === 'Expired Homecoming', expEntry && expEntry.payload);
+        && expEntry.payload.piece.name === 'Expired Homecoming'
+        && expEntry.payload.piece.gid === expHomeGid, expEntry && expEntry.payload);
     }
   }
 

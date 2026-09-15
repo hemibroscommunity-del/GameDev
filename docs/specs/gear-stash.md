@@ -294,6 +294,9 @@ precedent:
 > **Whoever builds the store listings must not treat "it is in the
 > adopted list" as proof of ownership.** A sellable list needs a
 > provenance the server minted, not a list the client handed over.
+> *(v2.3.2551: done — the store gates on `_gearSellable`. This warning
+> stays for the NEXT consumer of these lists, whatever it turns out to
+> be.)*
 
 **2. A piece equipped after the capture is recorded twice.** The client
 never tells the server when you equip something, so a piece you put on
@@ -327,11 +330,25 @@ writer for equip/unequip first.
 >   of the client's own list (`gearSellLocal.js`) so the bag stops showing
 >   what was sold — the smaller fix, not the real one.
 >
-> And the open trust boundary below is now load-bearing rather than
-> theoretical: the store accepts the risk deliberately behind
-> `caps.storeGear`, which live-ops can switch off without a deploy. Read
-> "Being in the stash is not proof of ownership" in the store spec before
-> changing anything about adoption.
+> **v2.3.2551 — BOTH of the above are now CLOSED, and not by this file.**
+> The store no longer asks whether a piece is in a stash list. It asks the
+> receipt ledger (`docs/specs/gear-provenance.md`): did this server mint
+> this piece for this player, and do they still hold it — not worn, not
+> sitting in the post. So:
+> - **the worn duplicate** is refused by id rather than reconciled by
+>   guess, with the reason `worn` shown to the player. No heuristic came
+>   back and none should;
+> - **"being in the stash is not proof of ownership"** stopped mattering
+>   to the store. A claimed piece has no row, so it answers `legacy`:
+>   usable, worn, rendered, counted in the damage maths, and not sellable.
+>
+> **Adoption itself is unchanged, and so is everything this section says
+> about it.** The two warnings below are still true of `_gearStashAdoptOnJoin`
+> — the claim is checked for shape and never for ownership, it reaches every
+> existing character, and it never closes. They are simply no longer a
+> route to money. Do not read "the store is safe now" as "the claim is
+> trusted now": anything else that ever consumes these lists inherits the
+> warnings in full.
 
 ## Tests
 

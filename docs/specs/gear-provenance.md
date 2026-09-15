@@ -1,8 +1,12 @@
-# Gear provenance — the server records what it mints (v2.3.2534–2536, repaired v2.3.2537–2539)
+# Gear provenance — the server records what it mints (v2.3.2534–2536, repaired v2.3.2537–2539, wired to the store v2.3.2551–2552)
 
-Spec + attach points for `server/src/gearprov.js`. Phase 1 of the gear
-provenance lane (PR 1 of 3: **record at mint** → equip names a recorded
-piece → the store sells only what the server recorded).
+Spec + attach points for `server/src/gearprov.js`. The gear provenance
+lane, all three steps now shipped: **record at mint** (#648) → equip names
+a recorded piece (#649) → the custody primitives (#650) → **the store
+sells only what the server recorded** (v2.3.2551), with `_sv` retired
+(v2.3.2552). The store half is specified in
+`docs/specs/general-store.md` "Gear listings"; what is here is the ledger
+and the gate it answers with.
 
 ## Why
 
@@ -418,44 +422,77 @@ without a record silently stops being sellable, which is worse. The
 ledger**, not taken from the payload — the same discipline as everywhere
 else in this module.
 
-### What #643 must change to use this
+### What #643 had to change to use this — DONE (v2.3.2551, #643 wired)
 
-#643's `storegear.js` currently validates a listing against the stash by
-index and keeps its own `_sv` mark and its own `_stGearReconcileWorn`.
-Against this foundation it should instead:
+Written as a to-do list for the next lane; this is how each item landed.
+The numbering is kept because other docs cite it.
 
-1. **Take the listing request as `{field, gid}`**, not an index. An index
-   into a drifting snapshot is what made "which piece did you mean" a
-   guess in the first place.
-2. **Gate on `_gearSellable(playerId, slot, gid)`** — it is the *whole*
-   gate, worn/mail/cosmetic checks included, so do not add a second one
-   beside it — and return its `reason` to the client so the Sell button can
-   explain a refusal (`legacy` → "earned before the game kept receipts";
-   `worn` → "take it off first"; `in_mail` → "still in the post";
-   `cosmetic` → "outfits aren't sellable").
+1. **Take the listing request as `{field, gid}`, not an index.** ✅ Done,
+   *and* the v2.3.2531 selector is kept beside it, because a worker and a
+   browser deploy separately. A new client gated on `caps.storeGearRef`
+   sends the id; an older one sends `{field, sel, hint}` and the server
+   resolves it against its own list and then reads **its own entry's**
+   `gid` — never the selector's. `stashSig` already keys on the id when a
+   piece has one and the client has stored `gid` since v2.3.2544, so an
+   old client's selector is already an id match for minted gear. The id
+   path is strictly better for one reason worth keeping: it reaches a
+   minted piece the server's stash snapshot has not adopted yet.
+2. **Gate on `_gearSellable(playerId, slot, gid)`** — the *whole* gate,
+   worn/mail/cosmetic included — and return its `reason`. ✅ Done.
+   `_stGearEscrow` (storegear.js) has no gate of its own: no stash
+   membership test, no shape test, nothing beside it. `gearprov.test.mjs`
+   §10 pins that table-driven — for every shape the gate has an opinion
+   about, the listing path must answer *exactly* the gate's `ok` and
+   `reason`. The reason reaches the browser on the HTTP answer and
+   `GEAR_REFUSAL` turns it into a sentence (mirrored client-side in
+   `gearSellReason.js`, pinned by `market.test.mjs` §S12m).
+
+   > **This item already said "the whole gate" before #650 merged**, and
+   > that wording is kept rather than rewritten: v2.3.2539 had repaired
+   > the gate itself after the review of #650 found it asking only *"is
+   > there a row?"* — treating a row as proof of **possession** when a row
+   > records a **mint**. So there was nothing to correct here. What is
+   > added is the warning: **do not re-derive the weaker version.** Gating
+   > on minting alone passes a piece you are WEARING (the tut_1 shield is
+   > minted straight onto your body) and one still sitting in your MAIL,
+   > and each of those prints gear the moment a store wires it up. See
+   > "The gate asks two questions, not one" above.
 3. **Escrow with `_gearProvTake`** and store the returned `row` in the
-   `store_listing:<id>` record next to the goods, exactly as `rec.weapon`
-   is stored today.
+   `store_listing:<id>` record next to the goods. ✅ Done: `rec.gearRow`,
+   written in the same put as `rec.gear`, so the store's existing
+   wake-time rebuild recovers it and there is no second mechanism.
 4. **Deliver with `_creditPlayer({kind:'gear', payload:{field, piece,
-   row}})`** on the goods leg — which replaces its hand-rolled gear
-   delivery and its own `inbox_delivered` branch.
-5. **Refund the same way** on cancel, expiry and the failed-write unwind:
-   the same `{field, piece, row}` back to the seller.
-6. **Delete `_stGearReconcileWorn` entirely.** Its job was to guess
-   whether a stash entry was a stale copy of a worn piece. With ids there
-   is nothing to guess: a piece is on the shelf or it is not, and the
-   ledger says which.
-7. **Delete the `_sv` mark and `carryProv`.** `prov` supersedes them and
-   is derived rather than asserted.
+   row}})`.** ✅ Done — `_stGoodsCredit` is the one place that says what a
+   listing is made of, so the sale, the refund, the expiry and the
+   failed-write unwind all carry the row without any of them being edited
+   separately.
+5. **Refund the same way** on cancel, expiry and the unwind. ✅ Done, by
+   item 4 — they are the same derivation.
+6. **Delete `_stGearReconcileWorn` entirely.** ✅ Already done by
+   v2.3.2532, which removed it for deleting real spares. Nothing replaced
+   it and nothing should: the worn case is answered by `worn` on the gate,
+   because the worn piece and its stale stash twin carry the same id.
+7. **Delete the `_sv` mark and `carryProv`.** ✅ Done (v2.3.2552) — the
+   mark, `carryProv`, `_stGearStrip`, `_stGearListable` and the
+   `store_gear_strict` flag are all gone. `sanitizeGearPiece` sweeps the
+   dead field off every piece it touches and `_gearProvResolve`'s trusted
+   branch does the same (that branch deliberately skips the sanitizer, so
+   it was the one place the residue could have survived on exactly the
+   *proven* pieces). No migration: a stray `_sv` is an inert unknown field
+   and blobs shed it on the next join.
 8. Keep its client-side splice and its `inbox_delivered` `kind:'gear'`
-   branch — both are still needed, because the client still does not read
-   the echoed stash.
+   branch. ✅ Kept, both. The splice matters less than it did — a
+   surviving bag copy is now re-offered under a receipt the book no longer
+   holds, so it comes back `legacy` and cannot be sold twice — but a bag
+   showing gear you do not own is a bug on its own.
 
 ## Wire surface
 
 | Direction | Field | Note |
 |---|---|---|
-| server → client (`player_state`, `loot_credit`, `quest_reward_stashed`) | `gid`, `prov` on each gear object | **v2.3.2544:** the client now stores `gid` when it ingests a piece, which is what makes `armorRef` able to fire at all; `prov` is still read by nobody (the "tell the player why" half is owed by the store UI) |
+| server → client (`player_state`, `loot_credit`, `quest_reward_stashed`) | `gid`, `prov` on each gear object | **v2.3.2544:** the client stores `gid` when it ingests a piece, which is what makes `armorRef` able to fire at all. **v2.3.2551: `prov` is finally READ** — `gearSellReason.js` greys a Sell button and says why, which is the promise this spec made and did not keep for two versions |
+| client → server (`/api/store/list`) | `gid` | v2.3.2551: names the piece to list. Gated client-side on `caps.storeGearRef`; looked up in the sender's own ledger, so a forged one buys nothing |
+| server → client (`/api/store/list` answer) | `reason` | v2.3.2551: the stable refusal string from `_gearSellable`, beside a human `error` sentence. HTTP, so `settled: true` rides with it as usual |
 | server → peers (`state_sync`) | — | **cropped**: `gid` and `prov` are stripped from every player's copy before it goes out (v2.3.2537) |
 | client → server (join seeds, `stats_update`) | `gid` | **looked up, never trusted**; `prov` is stripped unconditionally |
 | client → server (`stats_update`, v2.3.2535) | `armorRef`, `legsArmorRef` | a bare id, or `null` to unequip; gated client-side on `caps.gearRef` |
@@ -492,8 +529,11 @@ Both halves ship in either order. Nothing gates on anything.
 
 Written here so PR 2 and PR 3 inherit them on purpose.
 
-0. **This is the custody layer, not the listings.** #643 is what turns it
-   into a Sell button; the checklist above is exactly what it must change.
+0. ~~**This is the custody layer, not the listings.**~~ **RESOLVED
+   (v2.3.2551).** The store is wired onto `_gearSellable` /
+   `_gearProvTake` / `_gearProvGrantRow`; the checklist above records how
+   each item landed. What is still open is listed below, and item 5 in
+   particular got *smaller* rather than closing.
 1. **The ledger's FIFO cap.** At 256 recorded pieces the oldest row is
    dropped and `forgotten` is incremented, so a very long-lived
    character's oldest piece reverts to `legacy`. 256 is on the order of
@@ -517,9 +557,28 @@ Written here so PR 2 and PR 3 inherit them on purpose.
 4. **Cosmetics can never be proved** until something server-side mints
    one (see the enumeration above).
 5. **A piece can still be worn and stashed at once.** Dedupe demotes the
-   duplicate rather than deciding which is real, because deciding is
-   PR 2's job (equipping names a recorded piece) and PR 3's (the stash
-   is the authority for selling).
+   duplicate rather than deciding which is real. **v2.3.2551 makes this
+   stop costing anything on the selling side** — the worn piece and its
+   stash twin share one id, so the gate refuses the listing with `worn`
+   and the player is told to take it off — but the *display* is still
+   double: the browser's bag shows a piece it is also wearing until the
+   client reads the echoed stash, which remains open (`gear-stash.md`,
+   "M3's first problem").
+6. **A modified client can still DESCRIBE a lookalike of a listed piece
+   and wear it** (`stats_update`'s describe lane, which is load-bearing
+   until every equippable piece has an id — see "Retiring the describe
+   path"). It comes out `legacy`, so it cannot be sold: the outcome is
+   "sell once and keep an unsellable twin", not "sell twice". Closes when
+   the browser reads the server's stash instead of its own.
+7. **`_creditPlayer` stamps its opId before it does the work.** Pre-existing
+   for every payout kind and not this lane's to change. The gear-specific
+   shape: if the isolate dies between the awaited row grant and the
+   fire-and-forget `_saveRpg`, the recipient holds a receipt for a piece
+   that is not in their stored stash — so they can re-materialise *their
+   own* piece from the receipt. The world count stays at one (the seller's
+   copy was consumed by the take), and the browser's own delivered copy
+   re-adopts and resolves `minted` on the next join, so it self-heals. It
+   is written down because it is undefined rather than wrong.
 
 ## Tests
 

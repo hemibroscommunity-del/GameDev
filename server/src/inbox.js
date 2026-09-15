@@ -270,10 +270,11 @@ export const inboxMethods = {
        false so the entry stays QUEUED, because _saveRpg caps these lists
        and pushing past the cap would silently destroy the piece.
 
-       NOTE for the owner/reviewer: `_sv` (storegear.js) and `prov`/`gid`
-       (gearprov.js) are now TWO provenance marks on the same pieces. That
-       duplication is deliberate for now and flagged on the PR -- retiring
-       one is a design call, not something this merge should decide. */
+       v2.3.2552: that note used to say `_sv` and `prov`/`gid` were TWO
+       provenance marks on the same pieces, left side by side because
+       retiring one was a design call. The owner made it: `_sv` is retired
+       and the ledger is the only mark. #643's apply still does the
+       sanitizer/cap/push half; it simply no longer stamps anything. */
     if (entry.kind === 'gear') {
       const gField = p && p.field;
       const beforeN = Array.isArray(ps[gField]) ? ps[gField].length : 0;

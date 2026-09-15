@@ -388,6 +388,20 @@ Summary of the wire-visible changes:
   place/cancel, arena join/leave); the server rejects requests whose
   `playerId` isn't backed by that player's own live-session token.
   Public `/api/leaderboard` is GET-only.
+- v2.3.2551 (general-store.md): `POST /api/store/list` with
+  `kind: 'gear'` names the piece by its server-assigned `gid`
+  (`{field, gid, price}`) when the worker advertises
+  **`caps.storeGearRef`**, and by the v2.3.2531 selector
+  (`{field, sel, hint, price}`) when it does not — both are accepted, and
+  on the selector path the id that reaches the sell gate is read off the
+  SERVER's own stash entry, never off the selector. A refusal answers
+  `{ok: false, settled: true, reason, error}`: `reason` is a stable
+  string from `_gearSellable` (`legacy` / `cosmetic` / `worn` /
+  `in_mail` / `not_held` / `wrong_slot` / `no_player`) that the client
+  keys its explanation off, and `error` is a human sentence for a client
+  that does not know a newer reason. `caps.storeGearRef` gates only HOW a
+  piece is named — the gate itself runs on both paths, so an old browser
+  can sell exactly what a new one can. See `docs/specs/gear-provenance.md`.
 
 **New server→client messages (all in `PRIVILEGED_EVENTS`):**
 
