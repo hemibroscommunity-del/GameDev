@@ -374,6 +374,30 @@ export const persistenceMethods = {
       const stale = await this.state.storage.list({ prefix: 'oplog:questitem:' + pid + ':' });
       for (const k of stale.keys()) { try { await this.state.storage.delete(k); } catch (e) {} }
     } catch (e) { /* best-effort, as above */ }
+    /* ═══ v2.3.2537: AND THE GEAR RECORD GOES WITH THE CHARACTER ═══
+       v2.3.2534 gave every minted piece an id and a row in
+       `gear_prov:<pid>` (gearprov.js).  Rows are keyed by PLAYER ID, which a
+       restart does not change -- the passphrase IS the character -- so
+       without this the ledger outlives the wipe with every row intact.
+
+       On the fresh join it loads full, and anything naming an old gid is
+       rebuilt from the record and comes back marked `minted` on a brand-new
+       level-1 character.  An honest player never sees it (a browser that
+       restarts clears its own copy), but two tabs share one identity by
+       design: restart in one tab and the other still holds the old wardrobe
+       and hands it straight back.  Nothing is MULTIPLIED -- it is gear you
+       did once own -- but it comes back PROVABLE, and v2.3.2536 turns
+       provable into sellable on a character that is supposed to be starting
+       over.
+
+       Deleted rather than generation-counted for the same reason the quest
+       stamps above are: a restarted character has been minted nothing, so
+       the correct state of its record book is empty.  The in-memory cache
+       goes too -- webSocketClose would drop it when the socket below
+       finishes closing, but the reset must not depend on that timing (the
+       same belt-and-braces argument as the playerState delete below). */
+    try { await this.state.storage.delete('gear_prov:' + pid); } catch (e) { /* best-effort, as above */ }
+    this._gearProvForget(pid);
     const ws = this._wsBySessionId(pid);
     if (ws) {
       try { ws.send(JSON.stringify({ type: 'character_reset_done' })); } catch (e) {}
