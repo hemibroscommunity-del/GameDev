@@ -521,6 +521,14 @@ export const ItemDetailPopup = () => {
   const [sellQty, setSellQty] = useState(1);
   const [sellBusy, setSellBusy] = useState(false);
   const [sellErr, setSellErr] = useState('');
+  /* v2.3.2507: a REF, not the busy flag, is what stops a double tap.
+     `setSellBusy(true)` disables the button on the next render, and on a
+     phone the normal way to press something once is to press it twice --
+     two pointerups inside one frame both get through, and the worker
+     honours both: two listings, two escrows, one intended sale.  Nothing
+     is lost (each can be taken down) but the seller did not ask for it.
+     Raised as finding #3 on PR #615's review, which names this button. */
+  const sellInFlight = useRef(false);
 
   useEffect(() => {
     const u1 = itemDetailBus.subscribe(() => force((v) => v + 1));
@@ -532,6 +540,7 @@ export const ItemDetailPopup = () => {
      card on something else (or closing it) starts over. */
   useEffect(() => {
     setSellOpen(false); setSellPrice(''); setSellQty(1); setSellErr(''); setSellBusy(false);
+    sellInFlight.current = false;
   }, [itemDetailBus.state.open, itemDetailBus.state.target]);
 
   /* Measure popup size after render, then reposition.  setLayoutEffect
@@ -1293,6 +1302,7 @@ export const ItemDetailPopup = () => {
   const sellMax = (target && target.kind === 'inventory')
     ? Math.max(1, Math.floor(target.count || 1)) : 1;
   const onSellConfirm = async () => {
+    if (sellInFlight.current) return;   /* v2.3.2507: one tap, one listing */
     const price = Math.floor(Number(sellPrice) || 0);
     if (!(price >= 1)) { setSellErr('Put a price on it first'); return; }
     let body;
@@ -1306,8 +1316,10 @@ export const ItemDetailPopup = () => {
       const qty = Math.max(1, Math.min(sellMax, Math.floor(Number(sellQty) || 1)));
       body = { kind: 'item', invKey: target.key, qty, price };
     }
+    sellInFlight.current = true;
     setSellBusy(true); setSellErr('');
     const r = await storeList(body);
+    sellInFlight.current = false;
     setSellBusy(false);
     if (r && r.ok) itemDetailBus.close();
     else setSellErr((r && r.error) || 'The store could not take it');

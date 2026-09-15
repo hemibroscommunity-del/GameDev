@@ -175,6 +175,12 @@ advertises the capability". Every worker has settled the order book for
 hundreds of versions; what remained was a client that still knew how to pay
 itself.
 
+**One tap, one listing (v2.3.2507).** The Sell button's in-flight guard is
+a ref, not the busy state: `setSellBusy(true)` only disables the button on
+the next render, and on a phone the normal way to press something once is
+to press it twice — two pointerups in one frame would otherwise both reach
+the worker and escrow the goods twice.
+
 **Selling never mutates locally.** The Sell sheet posts a key (or a stash
 index) and a price; the goods leave the bag on the worker's side and the
 client redraws off the `player_state` echo. The stash index is re-resolved
