@@ -13,7 +13,7 @@ import {
 } from './inventoryLocks.js';
 import { thumbFor, iconFor, classify } from './InventoryPanel.jsx';
 import { firemakingBus } from '../firemakingBus.js';
-import { storeEnabled, storeList } from '@/ui/storeApi.js'; /* v2.3.2476: the general store */
+import { storeEnabled, storeGearEnabled, storeList } from '@/ui/storeApi.js'; /* v2.3.2476: the general store; v2.3.2528: gear */
 import { eatBus } from '../eatBus.js';
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
 import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect, syncArmorChange, equipArmorFromStash, equipLegsFromStash } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin */
@@ -274,7 +274,13 @@ function resolveTarget(target) {
       info: 'Hold to block',
       delta,
       desc: (sh.gearBase === 'wood' ? 'Wooden' : tierLabel(sh)) + ' · Shield',
-      actions: { equip: true },
+      /* v2.3.2528: Sell -- the store can take gear now (store phase 3,
+         server/src/storegear.js).  Its OWN cap, not the store's: an older
+         worker refuses `kind: 'gear'`, so an ungated button would take the
+         piece off this card and put it nowhere.  Nothing is spliced
+         locally -- the worker takes its own copy out of its own stash and
+         the bag redraws off the player_state echo. */
+      actions: { equip: true, sell: storeGearEnabled() },
     };
   }
   if (target.kind === 'armor') {
@@ -331,7 +337,13 @@ function resolveTarget(target) {
       info: Math.round(dr * 100) + '% damage reduced',
       delta,
       desc: (ar.gearBase === 'wood' ? 'Leather' : tierLabel(ar)) + ' · Chest',
-      actions: { equip: true },
+      /* v2.3.2528: Sell -- the store can take gear now (store phase 3,
+         server/src/storegear.js).  Its OWN cap, not the store's: an older
+         worker refuses `kind: 'gear'`, so an ungated button would take the
+         piece off this card and put it nowhere.  Nothing is spliced
+         locally -- the worker takes its own copy out of its own stash and
+         the bag redraws off the player_state echo. */
+      actions: { equip: true, sell: storeGearEnabled() },
     };
   }
   /* v2.3.1701: the LEGS twin of stashArmor.  Same card, but every number is
@@ -359,7 +371,13 @@ function resolveTarget(target) {
       /* Quest armour carries no gearBase, so tierLabel is empty for it —
          don't render a leading separator for a tier it does not have. */
       desc: (tierLabel(ar) ? tierLabel(ar) + ' · ' : '') + 'Armor · Legs',
-      actions: { equip: true },
+      /* v2.3.2528: Sell -- the store can take gear now (store phase 3,
+         server/src/storegear.js).  Its OWN cap, not the store's: an older
+         worker refuses `kind: 'gear'`, so an ungated button would take the
+         piece off this card and put it nowhere.  Nothing is spliced
+         locally -- the worker takes its own copy out of its own stash and
+         the bag redraws off the player_state echo. */
+      actions: { equip: true, sell: storeGearEnabled() },
     };
   }
   /* v2.3.685: worn gear (the rendered steel chest/legs, gearCatalog slots) in
@@ -386,7 +404,13 @@ function resolveTarget(target) {
       name: g.name || gearName(g.slot, g.gearId),
       info: 'In bag',
       desc: 'Steel · ' + (g.slot === 'chest' ? 'Chest' : 'Legs'),
-      actions: { equip: true },
+      /* v2.3.2528: Sell -- the store can take gear now (store phase 3,
+         server/src/storegear.js).  Its OWN cap, not the store's: an older
+         worker refuses `kind: 'gear'`, so an ungated button would take the
+         piece off this card and put it nowhere.  Nothing is spliced
+         locally -- the worker takes its own copy out of its own stash and
+         the bag redraws off the player_state echo. */
+      actions: { equip: true, sell: storeGearEnabled() },
     };
   }
   return null;
@@ -1307,7 +1331,30 @@ export const ItemDetailPopup = () => {
     const price = Math.floor(Number(sellPrice) || 0);
     if (!(price >= 1)) { setSellErr('Put a price on it first'); return; }
     let body;
-    if (target.kind === 'stashWeapon') {
+    /* ═══ v2.3.2528: A GEAR PIECE IS NAMED, NOT INDEXED ═══
+       The weapon branch below sends an index because `weaponStash` is the
+       WORKER's list and this client mirrors it off the echo.  The gear
+       stashes are not that yet: the client is still the authority for its
+       own (gear-stash.md, "What this does NOT solve") and the worker's
+       copy is a snapshot in its own order, so an index would name a
+       different piece on its side.  So the piece's identifying fields go
+       up as a selector, the worker derives the lookup key with its own
+       signature function, and our index rides along only as a tie-break
+       between two identical pieces -- believed only if the worker's own
+       entry there agrees.
+
+       `sel` is NEVER the goods.  What is escrowed is the worker's own
+       object (handoff rule 16); everything here is a way of saying WHICH
+       one, and nothing is applied locally -- a worn piece, for instance,
+       is reconciled away server-side before escrow, so a Sell that is
+       refused leaves the bag exactly as it was. */
+    const gearSell = GEAR_SELL.get(target.kind);   /* a Map, not an object: 'constructor' is a legal string (TRAPS #6) */
+    if (gearSell) {
+      const g = gearSell;
+      const piece = target[g.prop];
+      if (!piece) { setSellErr('That piece moved — open it again'); return; }
+      body = { kind: 'gear', field: g.field, sel: piece, hint: target.index || 0, price };
+    } else if (target.kind === 'stashWeapon') {
       const S2 = getState();
       const stash = (S2 && S2.rpg && S2.rpg.weaponStash) || [];
       const idx = resolveStashIdx(stash, target.wpn, target.index);
@@ -1594,6 +1641,22 @@ function sameWeapon(a, b) {
   return !!a && !!b && a.name === b.name && a.type === b.type
     && a.gearBase === b.gearBase && a.quality === b.quality;
 }
+/* v2.3.2528: which server-side stash each gear card sells out of, and
+   where the card keeps its piece.  A table rather than a branchy
+   if-chain because the four cards already differ in every other respect
+   (different slots, different bases, different worn pieces to compare
+   against) and one more chain of `else if (target.kind === ...)` is how
+   the legs piece ended up in the chest slot once already (see the note
+   above the stashLegs card).  The field names are the server's
+   GEAR_STASH_FIELDS (server/src/gearstash.js); `amuletStash` has no card
+   here because an amulet still has no unequip flow to put one in. */
+const GEAR_SELL = new Map([
+  ['stashArmor',  { field: 'armorStash',  prop: 'armor' }],
+  ['stashLegs',   { field: 'legsStash',   prop: 'armor' }],
+  ['stashShield', { field: 'shieldStash', prop: 'shield' }],
+  ['stashGear',   { field: 'gearStash',   prop: 'gear' }],
+]);
+
 function resolveStashIdx(stash, wpn, hintIdx) {
   if (!Array.isArray(stash) || !wpn) return -1;
   const byRef = stash.indexOf(wpn);

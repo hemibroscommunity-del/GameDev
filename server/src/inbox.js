@@ -145,6 +145,8 @@ export const inboxMethods = {
    *   kind 'gold'   payload { amount }
    *   kind 'item'   payload { invKey, count }
    *   kind 'weapon' payload { weapon }   (opaque blob, sanitized on apply)
+   *   kind 'gear'   payload { field, piece } (v2.3.2528 -- one of the five
+   *                 gear stashes, gearstash.js; sanitized on apply)
    * Online -> applied to live playerState immediately (+ inbox_delivered
    * notification).  Offline, or online with a full weapon stash -> parked
    * in inbox:<id> and drained at the next join.  Returns 'delivered' |
@@ -196,6 +198,17 @@ export const inboxMethods = {
       ps.weaponStash.push(w);
       return true;
     }
+    /* v2.3.2528: a piece of GEAR — the goods leg of a store sale, the
+       refund of a cancelled or expired gear listing, or the unwind of a
+       listing whose record could not be written.  Delegated to
+       storegear.js rather than spelled out here because which sanitizer
+       a piece needs depends on which of the five lists it belongs to
+       (an amulet reaches the authoritative damage roll and goes through
+       _sanitizeAmulet; a cosmetic is a {slot, gearId} pair).
+       Like the weapon branch it returns FALSE only for a full stash, so
+       the entry waits in the mail instead of being destroyed by
+       _saveRpg's cap (handoff rule 3). */
+    if (entry.kind === 'gear') return this._stGearApplyCredit(ps, p);
     return true;
   },
 

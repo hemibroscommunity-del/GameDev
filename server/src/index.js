@@ -35,6 +35,7 @@ import {
 // are mixed into the class below (see market.js header for why).
 import { marketMethods } from './market.js';
 import { storeMethods } from './store.js';   /* v2.3.2475: the per-listing general store */
+import { storeGearMethods } from './storegear.js';   /* v2.3.2528: gear listings (store phase 3) */
 import { shopMethods } from './shop.js';   /* v2.3.2047: Shopkeeper Bro's public pile */
 // v2.3.1119 (heavy-systems PR4): server-settled trades -- the relay
 // handshake stays, but the room intercepts it and moves the goods
@@ -5296,6 +5297,7 @@ Object.assign(GameRoom.prototype, broVerifyMethods); /* v2.3.1576 */
 Object.assign(GameRoom.prototype, eventCapeMethods); /* v2.3.2026 */
 Object.assign(GameRoom.prototype, marketMethods);
 Object.assign(GameRoom.prototype, storeMethods);   /* v2.3.2475: the general store */
+Object.assign(GameRoom.prototype, storeGearMethods);   /* v2.3.2528: gear listings */
 Object.assign(GameRoom.prototype, shopMethods);   /* v2.3.2047 */
 // v2.3.1119: trade settlement mixin (same pattern).
 Object.assign(GameRoom.prototype, tradeMethods);

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { CATEGORIES } from '@/ui/mobile/dash/bagFilterBus.js';
 import { thumbFor, iconFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
+import { armorIconFor, gearIdIcon } from '@/rendering/gearVariants.js'; /* v2.3.2528: gear listing art */
 import { storeBrowse, storeMine, storeBuy, storeBid, storeAccept, storeCancel, storeEnabled, storeMyId } from '@/ui/storeApi.js';
 
 /* === StorePanel — buildingPanel === 'store' ===================== v2.3.2476
@@ -44,6 +45,10 @@ const BODY = { padding: '10px 12px 14px' };
 const MOD = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: LS.txt3, margin: '0 0 6px' };
 
 const WEAPON_GLYPH = { bow: '\u{1F3F9}', staff: '\u{1FA84}', greatsword: '⚔', sword: '⚔' };
+
+/* v2.3.2528: the fallback glyph per gear slot, for a piece whose painted
+   icon the table does not know (a quest piece with no metal, say). */
+const GEAR_GLYPH = { Chest: '\u{1F9BA}', Legs: '\u{1F456}', Shield: '\u{1F6E1}', Amulet: '\u{1F4FF}', Outfit: '\u{1F9BA}' };
 
 function header(gold) {
   return (
@@ -100,6 +105,20 @@ function listingArt(l) {
     const g = WEAPON_GLYPH[(l.disp && l.disp.type) || ''] || '⚔';
     return <span style={{ fontSize: 22, lineHeight: '38px' }}>{g}</span>;
   }
+  /* v2.3.2528: a gear listing draws the same painted icon the bag draws
+     for that piece -- the item card reads its metal off the piece
+     (armorIconFor(slot, mat), v2.3.1758) and so does this, off the
+     server-derived `disp`.  A shape the icon table does not know falls
+     through to the slot glyph rather than to a broken image. */
+  if (l.kind === 'gear') {
+    const d = l.disp || {};
+    const src = d.gearId ? gearIdIcon(d.gearId)
+      : d.slot === 'Chest' ? armorIconFor('chest', d.mat)
+      : d.slot === 'Legs' ? armorIconFor('legs', d.mat)
+      : null;
+    if (src) return <img src={src} alt="" draggable={false} style={{ width: 30, height: 30, objectFit: 'contain' }} />;
+    return <span style={{ fontSize: 20, lineHeight: '38px' }}>{GEAR_GLYPH[d.slot] || '\u{1F9BA}'}</span>;
+  }
   const key = (l.disp && l.disp.invKey) || '';
   const src = thumbFor(key);
   if (src) return <img src={src} alt="" draggable={false} style={{ width: 30, height: 30, objectFit: 'contain' }} />;
@@ -108,7 +127,7 @@ function listingArt(l) {
 
 function prettyName(l) {
   const n = (l.disp && l.disp.name) || 'Item';
-  if (l.kind === 'weapon') return n;
+  if (l.kind === 'weapon' || l.kind === 'gear') return n;
   return n.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
@@ -122,6 +141,18 @@ function subtitle(l) {
     if (d.element2) bits.push(String(d.element2));
     if (d.hardness) bits.push('H' + d.hardness);
     return bits.join(' · ') || 'Weapon';
+  }
+  /* v2.3.2528: the same subtitle shape as a weapon -- the facts the
+     server derived off its own escrowed copy, in the order the item card
+     reads them, and nothing this panel worked out for itself. */
+  if (l.kind === 'gear') {
+    const d = l.disp || {};
+    const bits = [];
+    if (d.quality) bits.push(String(d.quality));
+    if (d.tier) bits.push(String(d.tier));
+    if (d.gem) bits.push(String(d.gem));
+    if (d.slot) bits.push(String(d.slot));
+    return bits.join(' · ') || 'Gear';
   }
   return (l.qty > 1 ? l.qty + ' of them' : 'One') + ' · ' + (l.cat || 'item');
 }
@@ -198,7 +229,7 @@ export function StorePanel(props) {
         }}>{listingArt(l)}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: LS.txt1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {prettyName(l)}{l.kind !== 'weapon' && l.qty > 1 ? ' ×' + l.qty : ''}
+            {prettyName(l)}{l.kind !== 'weapon' && l.kind !== 'gear' && l.qty > 1 ? ' ×' + l.qty : ''}
           </div>
           <div style={{ fontSize: 11, color: LS.txt3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtitle(l)}</div>
           <div style={{ fontSize: 11, color: LS.txt3, marginTop: 2 }}>

@@ -12,12 +12,22 @@
  *
  * PHASE 1 SCOPE (owner decision D11, docs/BACKLOG-TRIAGE-2026-09-14.md
  * §0.4): stackable inventory items and weapons from the SERVER's weapon
- * stash.  Armour, shields, legs, cosmetics and amulets are NOT listable
- * and must not be added here without doing the work first — those stashes
- * are client-local (the server holds only the equipped slot; grids.js:860
- * "armor lives in a client-only armorStash"), and handoff rule 16 forbids
- * escrowing a blob the client supplies.  Phase 2 moves those stashes
- * server-side; phase 3 lists them.
+ * stash.  Armour, shields, legs, cosmetics and amulets were NOT listable,
+ * because those stashes were client-local (the server held only the
+ * equipped slot) and handoff rule 16 forbids escrowing a blob the client
+ * supplies.  Phase 2 (v2.3.2523, gearstash.js) moved those stashes
+ * server-side; PHASE 3 (v2.3.2528) lists them.
+ *
+ * GEAR LISTINGS (v2.3.2528) are `kind: 'gear'` and live in storegear.js.
+ * Read that module's header before touching them: it carries the two
+ * things that make gear different from a weapon (a piece is named by a
+ * SELECTOR, not an index, because the client's stash and ours drift out
+ * of order; and the WORN slot has to be reconciled before escrow, or a
+ * player sells the armour off their own back and keeps wearing it), plus
+ * the trust decision that was taken deliberately rather than inherited.
+ * Everything else about a gear listing — the markers, the rebuild, the
+ * credit-first settle, the opIds — is this file's, unchanged, and that is
+ * the point: see _stGoodsCredit.
  *
  * Mixed into GameRoom via Object.assign(GameRoom.prototype, storeMethods)
  * in index.js, same as market.js — escrow has to be a synchronous mutation
@@ -74,6 +84,10 @@
  * to PRIVILEGED_EVENTS. */
 
 import { SHOP_ITEMS } from './data.js';
+/* v2.3.2528: gear listings (storegear.js).  Only the field roster comes
+   from there at module scope -- every gear behaviour is a method on the
+   room, so this module keeps one import and no second copy of anything. */
+import { isGearField } from './storegear.js';
 
 export const STORE = {
   LISTING_EXPIRY: 86400000,   // 24h, same as the order book's listings
@@ -139,7 +153,27 @@ export const storeMethods = {
 
   _stLabel(rec) {
     const n = (rec.disp && rec.disp.name) || 'item';
-    return rec.kind === 'weapon' ? n : (rec.qty > 1 ? rec.qty + 'x ' + n : n);
+    if (rec.kind === 'weapon' || rec.kind === 'gear') return n;
+    return rec.qty > 1 ? rec.qty + 'x ' + n : n;
+  },
+
+  /* ═══ v2.3.2528: ONE PLACE THAT SAYS WHAT A LISTING IS MADE OF ═══
+     `_stSettle`, `_stRelease` and the create-path unwind each used to
+     spell out the same `kind === 'weapon' ? weapon : item` ternary, in
+     two halves (the credit kind and its payload) that had to agree.
+     Adding a third kind to three sites in six places is how one of them
+     ends up crediting `{ invKey: null }` -- which _applyCreditToPs
+     accepts and silently discards, destroying the goods.
+
+     So the shape is derived ONCE, here, and every money path reads it.
+     That is also what puts gear under the v2.3.2521 `releasing` marker
+     and the whole wake-time convergence for free: a gear listing is the
+     same record travelling the same paths, not a second mechanism
+     beside them. */
+  _stGoodsCredit(rec) {
+    if (rec.kind === 'weapon') return { kind: 'weapon', payload: { weapon: rec.weapon } };
+    if (rec.kind === 'gear') return { kind: 'gear', payload: { field: rec.gearField, piece: rec.gear } };
+    return { kind: 'item', payload: { invKey: rec.invKey, count: rec.qty } };
   },
 
   /* The public view of a listing.  The escrowed weapon BLOB never goes on
@@ -338,7 +372,18 @@ export const storeMethods = {
     if (!playerId) return { ok: false, settled: true, error: 'Missing fields' };
     const p = Math.floor(Number(price) || 0);
     if (!(p >= 1 && p <= STORE.MAX_PRICE)) return { ok: false, settled: true, error: 'Invalid price' };
-    if (kind !== 'item' && kind !== 'weapon') return { ok: false, settled: true, error: 'Invalid kind' };
+    /* v2.3.2528: 'gear' joins the roster, and it is gated on its OWN
+       narrow cap rather than on `caps.store` — the whole point of the
+       flag is that the owner can switch gear listings off from live-ops
+       without touching the store the rest of the game is using.  join.js
+       spreads `..._liveFlags` last over the baked caps, so writing
+       `storeGear: false` into the `liveflags` key stops the offer AND,
+       here, stops the acceptance: a client that kept its button would
+       still be refused. */
+    if (kind !== 'item' && kind !== 'weapon' && kind !== 'gear') return { ok: false, settled: true, error: 'Invalid kind' };
+    if (kind === 'gear' && this._stGearOff()) {
+      return { ok: false, settled: true, error: 'Gear cannot be listed right now' };
+    }
 
     const ps = this.playerState[playerId];
     if (!ps) return { ok: false, settled: true, error: 'Not in game' };
@@ -350,6 +395,7 @@ export const storeMethods = {
     const id = crypto.randomUUID();
     const escrowOp = 'store:' + id + ':esc';
     let invKey = null; let weapon = null; let qty = 1;
+    let gear = null; let gearField = null;   /* v2.3.2528 */
 
     if (kind === 'item') {
       const k = typeof body.invKey === 'string' ? body.invKey : '';
@@ -365,7 +411,14 @@ export const storeMethods = {
       const took = await this._escrowTakeItem(playerId, k, qty, escrowOp);
       if (!took.ok) return { ok: false, settled: true, error: 'You do not have that' };
       invKey = k;
-    } else {
+    } else if (kind === 'weapon') {
+      /* v2.3.2528: `else if`, not `else`.  It was a bare `else` when
+         'weapon' was the only other kind, and the gear branch below
+         silently fell into it -- a gear request went looking for
+         `body.stashIndex` in the WEAPON stash and came back "Item not in
+         stash".  Harmless here only because that path refuses an
+         out-of-range index; a third kind arriving into a branch that
+         SPLICED first would have been an escrow of the wrong goods. */
       const idx = Math.floor(Number(body.stashIndex));
       if (!Number.isFinite(idx) || idx < 0 || !Array.isArray(ps.weaponStash) || idx >= ps.weaponStash.length) {
         return { ok: false, settled: true, error: 'Item not in stash' };
@@ -378,6 +431,21 @@ export const storeMethods = {
       this._queuePlayerStateFlush(playerId);
     }
 
+    /* v2.3.2528: the gear branch.  Everything it needs that a weapon does
+       not — reconciling the worn slot, resolving a selector against the
+       server's own list, the strict-provenance rule — is storegear.js's;
+       what comes back is the server's own piece, already spliced out of
+       the server's own stash and saved.  Same shape as the weapon branch
+       above, one call instead of eight lines, because getting that
+       sequence wrong is how escrow goes missing. */
+    if (kind === 'gear') {
+      if (!isGearField(body && body.field)) return { ok: false, settled: true, error: 'Invalid item' };
+      const got = this._stGearEscrow(playerId, ps, body);
+      if (!got.ok) return { ok: false, settled: true, error: got.error };
+      gear = got.piece;
+      gearField = got.field;
+    }
+
     const now = Date.now();
     const rec = {
       id,
@@ -386,9 +454,17 @@ export const storeMethods = {
       kind,
       invKey,
       weapon,
-      qty: kind === 'weapon' ? 1 : qty,
-      cat: kind === 'weapon' ? 'weapon' : this._stCategory(invKey),
-      disp: this._stDisplay(kind, invKey, weapon),
+      /* v2.3.2528: the escrowed PIECE and which list it came out of.
+         `gearField` is what the refund and the goods leg hand back, so it
+         is part of the record from the moment the record exists — a
+         refund that did not know the list would have nowhere to put it. */
+      gear,
+      gearField,
+      qty: (kind === 'weapon' || kind === 'gear') ? 1 : qty,
+      cat: kind === 'weapon' ? 'weapon'
+        : kind === 'gear' ? this._stGearCategory()
+        : this._stCategory(invKey),
+      disp: kind === 'gear' ? this._stGearDisplay(gearField, gear) : this._stDisplay(kind, invKey, weapon),
       askPrice: p,
       createdAt: now,
       expiresAt: now + STORE.LISTING_EXPIRY,
@@ -405,10 +481,14 @@ export const storeMethods = {
       /* Nothing is stamped or credited yet, so this is a plain restore —
          through _creditPlayer so a seller who vanished between the escrow
          and the failure still gets their goods, in the mail. */
+      /* v2.3.2528: through the same derivation every other money path
+         uses, so a gear listing whose record could not be written hands
+         the PIECE back rather than an `{ invKey: null }` the inbox would
+         accept and quietly drop. */
+      const goods = this._stGoodsCredit(rec);
       await this._creditPlayer(playerId, {
         opId: 'store:' + id + ':unwind', source: 'market',
-        kind: kind === 'weapon' ? 'weapon' : 'item',
-        payload: kind === 'weapon' ? { weapon } : { invKey, count: qty },
+        kind: goods.kind, payload: goods.payload,
         note: 'listing failed',
       });
       throw err;
@@ -535,10 +615,10 @@ export const storeMethods = {
      any OTHER live bid is refunded here, because the listing is gone. */
   async _stSettle(rec, buyerId, buyerName, price, paidBidSeq) {
     const label = this._stLabel(rec);
+    const goods = this._stGoodsCredit(rec);   /* v2.3.2528 */
     await this._creditPlayer(buyerId, {
       opId: 'store:' + rec.id + ':goods', source: 'market',
-      kind: rec.kind === 'weapon' ? 'weapon' : 'item',
-      payload: rec.kind === 'weapon' ? { weapon: rec.weapon } : { invKey: rec.invKey, count: rec.qty },
+      kind: goods.kind, payload: goods.payload,
       note: label + ' bought',
     });
     await this._creditPlayer(rec.sellerId, {
@@ -594,10 +674,10 @@ export const storeMethods = {
         payload: { amount: rec.topBid.amount }, note: 'bid returned on ' + this._stLabel(rec),
       });
     }
+    const goods = this._stGoodsCredit(rec);   /* v2.3.2528 */
     await this._creditPlayer(rec.sellerId, {
       opId: 'store:' + rec.id + ':refund', source: 'market',
-      kind: rec.kind === 'weapon' ? 'weapon' : 'item',
-      payload: rec.kind === 'weapon' ? { weapon: rec.weapon } : { invKey: rec.invKey, count: rec.qty },
+      kind: goods.kind, payload: goods.payload,
       note: why,
     });
     this._stRemoveFromIndex(rec);

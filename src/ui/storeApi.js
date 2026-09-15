@@ -41,6 +41,18 @@ export function storeEnabled() {
   return !!(s && s._serverCaps && s._serverCaps.store);
 }
 
+/* v2.3.2528: ...and is it running GEAR listings?  Its own narrow cap,
+   not a widening of `store`: an older worker knows nothing about
+   `kind: 'gear'` and refuses the listing, so a Sell button on an armour
+   card would take the piece off the screen and put it nowhere.  It is
+   also the owner's kill switch — live-ops can write `storeGear: false`
+   and every gear Sell button in the game goes away on the next join
+   (join.js spreads the live flags last over the baked caps). */
+export function storeGearEnabled() {
+  const s = S();
+  return !!(s && s._serverCaps && s._serverCaps.storeGear);
+}
+
 export function storeMyId() {
   const s = S();
   return (s && s.myId) || null;
@@ -86,8 +98,22 @@ export async function storeMine() {
 
 /* kind 'item'  -> { invKey, qty, price }
    kind 'weapon'-> { stashIndex, price }
+   kind 'gear'  -> { field, sel, hint, price }        (v2.3.2528)
    The worker takes the goods from ITS OWN copy of your bag or stash; what
-   goes up here only names which one (handoff rule 16). */
+   goes up here only names which one (handoff rule 16).
+
+   GEAR IS NAMED DIFFERENTLY FROM A WEAPON, and the difference matters.
+   `weaponStash` is the server's list and this client mirrors it off the
+   player_state echo, so index 2 means the same weapon on both sides.  The
+   gear stashes are the other way round for now: the client is still the
+   authority for its own (gear-stash.md, "What this does NOT solve") and
+   the server holds a snapshot that drifts out of order as you rearrange.
+   An index would therefore point at whatever happens to sit there on the
+   worker's side — a different piece from the one you tapped.  So `sel` is
+   the piece's own identifying fields and the WORKER builds the lookup key
+   from them, against its own list; `hint` is our index, believed only if
+   the worker's own entry at that position agrees.  `sel` is a selector
+   and never the goods: what is escrowed is the worker's own copy. */
 export const storeList = (body) => post('/list', body);
 export const storeBuy = (listingId) => post('/buy', { listingId });
 export const storeBid = (listingId, amount) => post('/bid', { listingId, amount });
