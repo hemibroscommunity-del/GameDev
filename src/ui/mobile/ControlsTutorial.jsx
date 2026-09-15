@@ -32,8 +32,10 @@ const STEPS = [
      stick release handler measures the release speed and triggers when it
      clears ~0.15 px/ms over 8px in under 400ms.  Holding does nothing, so
      the one line of onboarding that mentions the special was teaching a
-     control that does not exist.  (Double-tap-and-hold is the SHIELD,
-     which the ring covers separately.) */
+     control that does not exist.  (v2.3.2574: this parenthesis used to say
+     "double-tap-and-hold is the SHIELD".  It was, once; the guard moved to
+     the Block BUTTON at v2.3.2472 and the gesture is bound to nothing now --
+     see TRAPS §78.  The `shield` step below already teaches the button.) */
   /* v2.3.2242: the right stick is a BUTTON now (docs/specs/control-redesign.md).
      Hold = auto-attack the nearest enemy; a quick swipe on it = special.
      v2.3.2251: and it is a plain attack button again -- the v2.3.2246 "press

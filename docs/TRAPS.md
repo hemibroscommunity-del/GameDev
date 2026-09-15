@@ -3238,11 +3238,24 @@ on both right-hand surfaces — no swap, no guard, including on a deliberate
 tap-tap-and-hold, which is the exact shape a restoration would make work
 again. A hand that re-adds the gesture goes red there rather than on a phone.
 
-**Still open, and not this entry's to fix:** `QuestCoach.jsx`'s `blockRanged`
-lesson has told players to *"double-tap Attack to raise your shield"* since
-v2.3.2269 and still does. It has been wrong since v2.3.2472. Four rows of
-`mp-questcoach` are red on `main` for that reason alone. The lesson is the
-Block BUTTON now.
+**CLOSED at v2.3.2574:** `QuestCoach.jsx`'s `blockRanged` lesson had told
+players to *"double-tap Attack to raise your shield"* since v2.3.2269, and had
+been wrong since v2.3.2472. It now reads *"With the bow or staff out, tap the
+Block button to raise your shield"* and its mark rings `[data-shield]` instead
+of the attack disc -- the copy and the anchor moved together, because naming the
+Block button while ringing the attack disc is the same bug with better words.
+The direction was the one this entry gives: the GAME was wrong, not the test.
+`mp-questcoach` went 70/75 to 73/76.
+
+**What that fix uncovered, and did NOT fix:** pointing those rows at the Block
+button and pressing it with a REAL finger -- the first test in this repo to do
+so -- found that the button raises the guard on `touchstart` and drops it again
+on the compatibility `mousedown` that follows, because React 18 registers
+`touchstart` passively and the handler's `preventDefault()` cannot suppress it.
+Three rows of `mp-questcoach` are red on `main` for THAT reason now. It is a
+combat bug, not a tutorial one, and it is §67 all over again: every other shield
+test drives the button with `dispatchEvent`, which emits no compatibility mouse
+events, and all of them are green.
 
 Related: §0.2 of `docs/BACKLOG-TRIAGE-2026-09-14.md`, and
 `docs/specs/control-redesign.md` §§11.1-11.2 and §12.1.

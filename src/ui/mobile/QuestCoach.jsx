@@ -595,9 +595,40 @@ const LESSONS = [
   {
     id: 'blockRanged',
     shape: 'circle',
-    /* The gesture is ON the attack button now, so the mark points there and
-       needs no fallback -- the shield BUTTON's own coming-and-going was the
-       only reason the old lesson carried two anchors. */
+    /* ═══ v2.3.2574: THE LESSON TAUGHT A GESTURE THAT NO LONGER EXISTS ═══
+       This said "double-tap Attack to raise your shield" and rang the ATTACK
+       disc for it, from v2.3.2269 until now.  It has been wrong since
+       v2.3.2472, which gave bow and staff the shield BUTTON back (owner
+       decision D8) and retired the double-tap-and-HOLD guard it replaced; the
+       owner then took the freed double tap off the right control entirely at
+       v2.3.2542 ("weapon swapping goes back to the LEFT joystick only").  So
+       for 100+ versions a brand-new player on a phone was being told to make a
+       pair of taps that this build classifies as nothing at all -- two ordinary
+       swings -- while the mark pointed at the wrong control to make them on.
+
+       THE COPY AND THE ANCHOR MOVE TOGETHER, because either one alone still
+       lies: naming the Block button while ringing the attack disc is the same
+       bug with better words.  Both now name the control that actually raises
+       the guard (ShieldButton.jsx, `[data-shield]`, one tap -- shieldToggle's
+       `shieldButtonLive` has had no `activeSlot` read since v2.3.2472, so the
+       button is there for bow and staff exactly as it is for melee).
+
+       NO POSITION IN THE COPY, DELIBERATELY.  The button has moved three times
+       in a month (under the disc, level with its centre at D9, diagonal
+       bottom-left at v2.3.2562) and is being moved again as this ships.  "The
+       Block button" survives a layout change; "bottom-left" does not.
+
+       AND THIS IS NOT THE GESTURE COMING BACK.  TRAPS §78 is explicit that the
+       right control's unbound pair of taps must stay unbound -- the fix is the
+       tutorial learning what the game does, not the game re-growing the
+       gesture.  Nothing in BroTown.jsx is touched by this change.
+
+       ONE CONSEQUENCE WORTH KNOWING: `[data-shield]` is only on screen when
+       there is something to block, so in an empty town this lesson measures
+       null and the walk skips it (`if (!rect) continue` below) until the first
+       fight -- which is the beat it is about.  That is the file's existing
+       "degrade to fewer callouts rather than wrong ones" rule (v2.3.1205)
+       doing its job, not a regression. */
     /* ═══ v2.3.2495: THE FALLBACK WAS THE SCREEN-SIZED OVAL ═══
        The comment above has said "needs no fallback" since v2.3.2269 and the
        array carried one anyway: `[data-joyzone="R"]`, the fixed right HALF of
@@ -619,8 +650,8 @@ const LESSONS = [
        size guard at the top of this file is the belt to this braces: even if
        some future anchor resolves to a layer this size, it can no longer be
        drawn. */
-    anchors: [{ sel: '.bt-rjoy-base', reach: '.bt-rjoy-base',
-                body: 'With the bow or staff out, double-tap Attack to raise your shield.' }],
+    anchors: [{ sel: '[data-shield]', reach: '[data-shield]',
+                body: 'With the bow or staff out, tap the Block button to raise your shield.' }],
     label: 'Guard with the bow',
     /* Bow or staff IN HAND, a shield to raise, and the turn-in that paid them
        -- the same `tut_1 === 'turnedIn'` gate equipAll uses, so the two cannot
