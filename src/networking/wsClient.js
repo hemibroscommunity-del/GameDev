@@ -342,10 +342,28 @@ export function setupWebSocket(ctx) {
            must yield.
            Entries past the budget are simply not seeded — they stay in this
            browser, exactly where they are today, and the player loses
-           nothing they can see.  A lockout would cost them everything. */
+           nothing they can see.  A lockout would cost them everything.
+
+           ═══ v2.3.2527: AN EMPTY LIST SENDS NO KEY AT ALL (review
+           finding 1b) ═══
+           This used to send `rpgArmorStash: []` and friends
+           unconditionally, which made two completely different sentences
+           look identical on the wire: "I have no spare armour" and "this
+           browser has no idea what you own".  The second one is the
+           ordinary case — a second device, a private tab, a cleared
+           Safari, a fresh install — and the worker, hearing four empty
+           arrays, recorded a wardrobe of nothing for a player with a
+           full one.  Omitting the key removes the sentence entirely:
+           there is nothing to mistake for a claim, and the worker's
+           adoption simply waits for a browser that does have something
+           to say (server/src/gearstash.js).
+           A list emptied by the budget above disappears for the same
+           reason and with the same result — it is not a claim that this
+           list is empty, so nothing is written down about it. */
+        var _gsSeeds = {};   /* literal keys only, never client text -- TRAPS #6 does not apply */
         var _gsLeft = 4096;
-        var _stashSeed = function (arr) {
-          if (!Array.isArray(arr)) return [];
+        var _stashSeed = function (key, arr) {
+          if (!Array.isArray(arr) || !arr.length) return;
           var out = [];
           for (var _i = 0; _i < arr.length && out.length < 32; _i++) {
             var _s;
@@ -355,8 +373,12 @@ export function setupWebSocket(ctx) {
             _gsLeft -= _s.length;
             out.push(arr[_i]);
           }
-          return out;
+          if (out.length) _gsSeeds[key] = out;
         };
+        _stashSeed('rpgArmorStash', S.rpg && S.rpg.armorStash);
+        _stashSeed('rpgLegsStash', S.rpg && S.rpg.legsStash);
+        _stashSeed('rpgShieldStash', S.rpg && S.rpg.shieldStash);
+        _stashSeed('rpgGearStash', S.rpg && S.rpg.gearStash);
         ws.send(JSON.stringify({
           type: 'join',
           id: S.myId,
@@ -524,25 +546,25 @@ export function setupWebSocket(ctx) {
             rpgWeaponStash: (S.rpg && Array.isArray(S.rpg.weaponStash)) ? S.rpg.weaponStash : [],
             /* v2.3.2523 (gear stash): the four stashes that have only
                ever existed on this device -- armour, legs, shields and
-               cosmetic gear.  The worker now holds them too
-               (server/src/gearstash.js) and captures this claim ONCE,
-               for a character whose stored record predates the slice;
-               after that its own copy wins forever and this is ignored,
-               exactly like rpgWeaponStash and the nugget ledger above.
-               Sent as ARRAYS even when empty: the worker stamps
-               "captured" only when it sees an array, so a client that
-               omitted them would make it wait for one that does -- which
-               is what makes an old tab against a new worker harmless
-               (it never burns the capture) and a new tab against an old
-               worker equally harmless (unknown join keys are dropped).
-               Capped at 32 per list to match the worker's cap, and
-               budgeted by size on top of that (see _stashSeed above:
-               the frame gate is silent, so an oversized join is a
-               lockout, not a truncation). */
-            rpgArmorStash: _stashSeed(S.rpg && S.rpg.armorStash),
-            rpgLegsStash: _stashSeed(S.rpg && S.rpg.legsStash),
-            rpgShieldStash: _stashSeed(S.rpg && S.rpg.shieldStash),
-            rpgGearStash: _stashSeed(S.rpg && S.rpg.gearStash),
+               cosmetic gear -- are spread in here by _stashSeed above.
+               The worker holds them too now (server/src/gearstash.js)
+               and folds this claim into its own copy by a multiset
+               union, so sending it on every join costs nothing and adds
+               nothing once it is already held (exactly like
+               rpgWeaponStash and the nugget ledger above).
+               v2.3.2527: A LIST WITH NOTHING IN IT SENDS NO KEY.  An
+               absent key means "this browser is not telling you about
+               that list"; an empty array used to mean the same thing
+               while LOOKING like "the player owns none", and the worker
+               believed it and closed the capture (review finding 1).
+               Both deploy directions stay harmless: an old tab against
+               a new worker sends no seed and nothing is recorded, and a
+               new tab against an old worker has its unknown join keys
+               dropped.  Capped at 32 per list, and budgeted by size on
+               top of that (see _stashSeed above: the frame gate is
+               silent, so an oversized join is a lockout, not a
+               truncation). */
+            ..._gsSeeds,
             /* Quest state bootstrap (slice 17). */
             rpgQuests: (S.rpg && S.rpg._quests) || {},
             rpgQuestFlags: (S.rpg && S.rpg._questFlags) || {},
