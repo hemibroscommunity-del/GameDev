@@ -1,4 +1,4 @@
-# Gear provenance — the server records what it mints (v2.3.2531–2532)
+# Gear provenance — the server records what it mints (v2.3.2531–2533)
 
 Spec + attach points for `server/src/gearprov.js`. Phase 1 of the gear
 provenance lane (PR 1 of 3: **record at mint** → equip names a recorded
@@ -231,6 +231,114 @@ client can still describe a legacy piece with any stats it likes. What it
 cannot do, since v2.3.2531, is describe a piece and have it come out
 *provable*.
 
+## Custody — selling only what the server recorded (v2.3.2533)
+
+This is the foundation #643 (gear listings) was parked waiting for. It
+ships the custody layer, not the listings themselves.
+
+### The one definition, with a reason
+
+`_gearSellable(playerId, slot, pieceOrGid)` → `{ok, reason, gid}`. The
+reasons are stable strings so the client can say **why** a Sell button is
+greyed rather than failing silently — which is the other half of the
+owner's "legacy gear is usable, not sellable" decision:
+
+| reason | meaning |
+|---|---|
+| `ok` | the server minted it and still holds the record |
+| `legacy` | no id — minted before the ledger existed, or claimed and never proved. **Permanent** |
+| `wrong_slot` | the id names a piece for a different slot |
+| `not_held` | we minted it, but the record is no longer in this player's ledger: sold, escrowed into a live listing, or aged out past the cap |
+| `no_player` | no session, so no loaded ledger |
+
+### Escrow moves the record, it does not flag it
+
+`_gearProvTake(playerId, slot, gid)` returns `{piece, row}` — the
+server's own copy of the piece plus its **detached** provenance row — and
+removes the row from the player's ledger (and the piece from the server's
+own stash list, where it happens to be present).
+
+The row is *returned*, not flagged in place, so the caller escrows it
+**inside the listing record** alongside the goods (rule 7: money at rest
+lives in storage). That means:
+
+- the store's existing wake-time rebuild is what recovers it — **no second
+  recovery mechanism**, and no `escrowed: true` flag that could strand a
+  piece forever if a listing record went missing;
+- the same piece cannot be listed twice (`not_held`);
+- **it cannot be equipped by name while it is on the shelf**, because
+  `_gearProvPieceByRef` has no row to find. That closes the hole
+  v2.3.2532 left open and named.
+
+`_gearProvTake` is **synchronous** — one in-memory ledger edit plus a
+fire-and-forget put — so a caller can validate and commit inside one
+event (rule 9).
+
+**Crash shape, stated because it is a real cost:** if the room dies
+between the take and the listing record landing, the row is gone and the
+piece reverts to `legacy` — usable, unsellable. That direction is
+deliberate. The other ordering (write the listing, take the row after)
+fails toward the piece existing in *both* places, which is a duplicate,
+which is money.
+
+### Handing it over
+
+`_gearProvGrantRow(playerId, row)` — **async**, read-modify-write, because
+the recipient may be offline. A sale hands the row to the **buyer**; a
+cancel or an expiry hands it back to the **seller**. Same function,
+because they are the same operation. The row keeps its id, so **the piece
+keeps its identity across the counter** and nothing has to guess whether
+two pieces are "the same piece" by name — the #643 trap, closed by
+construction. Idempotent, so a settlement retry converges on one row.
+
+### Gear rides `_creditPlayer` like everything else
+
+New `kind: 'gear'`, payload `{field, piece, row}`. Handoff rule 4 — every
+payout goes through `_creditPlayer`, which gets offline delivery, the
+oplog idempotency stamp and the `inbox_delivered` notice for free. Rule
+3's contract is honoured exactly as the weapon branch does it: a **full
+stash returns false so the entry stays queued**, because `_saveRpg`
+truncates these lists at the cap and pushing past it would silently
+destroy the piece.
+
+The row lands **first** and is awaited (there is no output gate holding a
+message for an offline player, so an unawaited put could be lost to
+eviction). A record without a piece converges on the next drain; a piece
+without a record silently stops being sellable, which is worse. The
+`minted` mark on a delivered piece is then **derived by asking the
+ledger**, not taken from the payload — the same discipline as everywhere
+else in this module.
+
+### What #643 must change to use this
+
+#643's `storegear.js` currently validates a listing against the stash by
+index and keeps its own `_sv` mark and its own `_stGearReconcileWorn`.
+Against this foundation it should instead:
+
+1. **Take the listing request as `{field, gid}`**, not an index. An index
+   into a drifting snapshot is what made "which piece did you mean" a
+   guess in the first place.
+2. **Gate on `_gearSellable(playerId, slot, gid)`** and return its
+   `reason` to the client, so the Sell button can explain a refusal
+   (`legacy` → "earned before the game kept receipts").
+3. **Escrow with `_gearProvTake`** and store the returned `row` in the
+   `store_listing:<id>` record next to the goods, exactly as `rec.weapon`
+   is stored today.
+4. **Deliver with `_creditPlayer({kind:'gear', payload:{field, piece,
+   row}})`** on the goods leg — which replaces its hand-rolled gear
+   delivery and its own `inbox_delivered` branch.
+5. **Refund the same way** on cancel, expiry and the failed-write unwind:
+   the same `{field, piece, row}` back to the seller.
+6. **Delete `_stGearReconcileWorn` entirely.** Its job was to guess
+   whether a stash entry was a stale copy of a worn piece. With ids there
+   is nothing to guess: a piece is on the shelf or it is not, and the
+   ledger says which.
+7. **Delete the `_sv` mark and `carryProv`.** `prov` supersedes them and
+   is derived rather than asserted.
+8. Keep its client-side splice and its `inbox_delivered` `kind:'gear'`
+   branch — both are still needed, because the client still does not read
+   the echoed stash.
+
 ## Wire surface
 
 | Direction | Field | Note |
@@ -261,6 +369,8 @@ Both halves ship in either order. Nothing gates on anything.
 
 Written here so PR 2 and PR 3 inherit them on purpose.
 
+0. **This is the custody layer, not the listings.** #643 is what turns it
+   into a Sell button; the checklist above is exactly what it must change.
 1. **The ledger's FIFO cap.** At 256 recorded pieces the oldest row is
    dropped and `forgotten` is incremented, so a very long-lived
    character's oldest piece reverts to `legacy`. 256 is on the order of
@@ -288,7 +398,7 @@ Written here so PR 2 and PR 3 inherit them on purpose.
 
 ## Tests
 
-`server/test/gearprov.test.mjs` (86 assertions). Structured around the
+`server/test/gearprov.test.mjs` (113 assertions). Structured around the
 three ways this family of change has gone wrong here rather than around
 the happy path:
 
@@ -319,6 +429,17 @@ the happy path:
   mark, a later join still resolves, and a mint whose ledger write is
   lost to a crash comes back **usable and unproven** — never missing,
   never trusted — with the next mint recording normally;
+- §9 **custody** (v2.3.2533): every `_gearSellable` reason; taking a piece
+  returns the server's copy and its detached row, empties the ledger entry
+  and the stash slot, and makes the piece unlistable *and* unequippable
+  while it is on the shelf; an offline buyer's **record** lands durably at
+  once while the piece waits in the mail and arrives at their next login
+  under the same id; a settlement retry converges on one row; a cancel
+  hands it straight back; a full stash keeps the delivery queued rather
+  than eating it; a piece with no row arrives legacy rather than being
+  refused; a bogus stash name (`'__proto__'`) and a bogus piece are
+  dropped without wedging the mail; and selling one of two
+  identical-looking pieces leaves the other alone;
 - §8 the ledger never rides the room-wide `state_sync`.
 
 §3 and §4 never call `stripProv`. #643's strip test passed while the hole

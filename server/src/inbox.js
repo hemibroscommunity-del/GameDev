@@ -1,3 +1,6 @@
+import { GEAR_STASH_CAP } from './gearstash.js';                      /* v2.3.2533 */
+import { isGearStashField, slotForGearField, PROV_MINTED, PROV_LEGACY } from './gearprov.js'; /* v2.3.2533 */
+
 /* ═══ v2.3.1117: INBOX + ESCROW PRIMITIVES (PR2 of the heavy-systems
  * plan; spec in docs/specs/inbox-escrow.md) ═══
  *
@@ -145,6 +148,9 @@ export const inboxMethods = {
    *   kind 'gold'   payload { amount }
    *   kind 'item'   payload { invKey, count }
    *   kind 'weapon' payload { weapon }   (opaque blob, sanitized on apply)
+   *   kind 'gear'   payload { field, piece, row }  (v2.3.2533 -- the
+   *                 server's own copy of a piece of armour/legs/shield/
+   *                 amulet/cosmetic, plus its detached provenance row)
    * Online -> applied to live playerState immediately (+ inbox_delivered
    * notification).  Offline, or online with a full weapon stash -> parked
    * in inbox:<id> and drained at the next join.  Returns 'delivered' |
@@ -152,8 +158,18 @@ export const inboxMethods = {
   async _creditPlayer(playerId, entry) {
     if (await this._opSeen(entry.opId)) return 'dup';
     await this._opStamp(entry.opId);
+    /* v2.3.2533: the provenance row lands FIRST and is awaited, because
+       the recipient may be offline and there is no output gate holding a
+       message for them -- an unawaited put could be lost to eviction and
+       the buyer would own a piece the server could not prove.  Ordered
+       before the apply on purpose: a record without a piece converges on
+       the next drain (the row grant is idempotent), whereas a piece
+       without a record is a piece that silently stopped being sellable.
+       A storage await holds the input gate closed (rule 9), so nothing
+       interleaves between this and the commit below. */
+    await this._creditGearRow(playerId, entry);
     const ps = this.playerState[playerId];
-    if (ps && this._applyCreditToPs(ps, entry)) {
+    if (ps && this._applyCreditToPs(ps, entry, playerId)) {
       this._saveRpg(playerId, ps);
       this._queuePlayerStateFlush(playerId);
       this._sendInboxDelivered(playerId, [entry], 0);
@@ -168,7 +184,11 @@ export const inboxMethods = {
   // truncates the stash at cap, so pushing past it would silently
   // DESTROY the weapon).  Malformed entries return true so a bad
   // payload can never wedge the inbox forever.
-  _applyCreditToPs(ps, entry) {
+  /* v2.3.2533: `playerId` is the third argument so the `gear` kind below
+     can put the piece's provenance row back into the right player's ledger
+     (gearprov.js).  `ps` carries no id of its own and both call sites above
+     already hold one. */
+  _applyCreditToPs(ps, entry, playerId) {
     const p = entry.payload || {};
     if (entry.kind === 'gold') {
       ps.coins = Math.max(0, (ps.coins || 0) + Math.max(0, Math.floor(p.amount || 0)));
@@ -194,6 +214,51 @@ export const inboxMethods = {
       if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
       if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return false;
       ps.weaponStash.push(w);
+      return true;
+    }
+    /* ═══ v2.3.2533: GEAR RIDES THE SAME FUNNEL AS EVERYTHING ELSE ═══
+       Handoff rule 4 -- every payout goes through _creditPlayer, which
+       gets offline delivery, the oplog idempotency stamp and the
+       inbox_delivered notice for free.  Until now gear could not, because
+       the server had no gear stash to deliver into; v2.3.2523 gave it one
+       and v2.3.2531 gave the pieces identities, so the store, a trade or
+       any future producer can hand a player a piece of armour without
+       hand-rolling an inbox write.
+
+       `payload` is `{field, piece, row}` -- the stash list it belongs in,
+       the server's own copy of the piece, and its detached provenance row
+       (from _gearProvTake).  The row is optional: a piece handed over
+       without one arrives `legacy`, which is the honest answer for gear
+       whose origin we cannot prove, rather than a refusal that would
+       strand the delivery.
+
+       Rule 3's contract, exactly as the weapon branch above: a FULL stash
+       returns false so the entry stays QUEUED.  _saveRpg caps these lists,
+       so pushing past the cap would silently destroy the piece -- the
+       precise failure the weapon branch exists to avoid. */
+    if (entry.kind === 'gear') {
+      const field = p.field;
+      if (!isGearStashField(field)) return true;   /* malformed: never wedge the inbox */
+      const slot = slotForGearField(field);
+      const piece = p.piece;
+      if (!piece || typeof piece !== 'object' || Array.isArray(piece)) return true;
+      if (!Array.isArray(ps[field])) ps[field] = [];
+      if (ps[field].length >= GEAR_STASH_CAP) return false;
+      const out = { ...piece };
+      delete out.gid;
+      delete out.prov;
+      out.prov = PROV_LEGACY;
+      /* The mark is DERIVED, here as everywhere else: _creditGearRow has
+         already landed the row (awaited, above), so this ASKS THE LEDGER
+         rather than trusting the payload's own claim about itself.  If the
+         row write failed, the piece arrives legacy -- usable, unsellable --
+         instead of carrying a mark nothing backs. */
+      if (p.row && p.row.id && p.row.slot === slot
+          && this._gearProvOwned(playerId, slot, { gid: p.row.id })) {
+        out.gid = p.row.id;
+        out.prov = PROV_MINTED;
+      }
+      ps[field].push(out);
       return true;
     }
     return true;
@@ -249,7 +314,12 @@ export const inboxMethods = {
       const delivered = [];
       const remainder = [];
       for (const entry of box) {
-        if (this._applyCreditToPs(ps, entry)) delivered.push(entry);
+        /* v2.3.2533: a gear entry that parked here still carries its row.
+           Granting is idempotent, so a row already landed at credit time
+           is a no-op; a row that only reaches the ledger now is the
+           offline-buyer case. */
+        await this._creditGearRow(playerId, entry);
+        if (this._applyCreditToPs(ps, entry, playerId)) delivered.push(entry);
         else remainder.push(entry);
       }
       if (remainder.length) await this.state.storage.put(key, remainder);
@@ -259,6 +329,18 @@ export const inboxMethods = {
         this._sendInboxDelivered(playerId, delivered, remainder.length, ws);
       }
     } catch (e) { /* mail must never block a join */ }
+  },
+
+  /* v2.3.2533: put a credited piece's provenance row into the recipient's
+     ledger.  A no-op for every other kind, and for a gear entry with no
+     row -- such a piece arrives `legacy`, which is the honest answer for
+     gear whose origin cannot be proved, rather than a refusal that would
+     strand the delivery. */
+  async _creditGearRow(playerId, entry) {
+    if (!entry || entry.kind !== 'gear') return;
+    const row = entry.payload && entry.payload.row;
+    if (!row) return;
+    try { await this._gearProvGrantRow(playerId, row); } catch (e) { /* the piece still arrives, legacy */ }
   },
 
   _sendInboxDelivered(playerId, entries, queued, wsOverride) {

@@ -583,6 +583,132 @@ let amuletGid = null;
 }
 
 /* ════════════════════════════════════════════════════════════════════
+   9. v2.3.2533 -- CUSTODY: may this be sold, taking it, handing it over
+   ════════════════════════════════════════════════════════════════════ */
+{
+  const SELLER = 'bp_prov_sell';
+  const BUYER = 'bp_prov_buy';
+  const wsS = fakeWs('S');
+  await join(room, wsS, SELLER);
+  const ps = room.playerState[SELLER];
+  room._prog3EquipOk = () => true;
+
+  ps._questGrantOverflow = null;
+  room._grantQuestItem(ps, { kind: 'armor', name: 'Copper Torso', mat: 'copper', tierMult: 1 }, SELLER);
+  const gid = ps._questGrantOverflow[0].gid;
+  /* Put a copy in the server's own stash, the way a join claim would. */
+  ps.armorStash = [{ ...ps._questGrantOverflow[0] }];
+
+  /* ── the one definition of "may this be sold", with a reason ── */
+  check('a minted piece is sellable', room._gearSellable(SELLER, 'armor', gid).ok === true);
+  check("a legacy piece answers 'legacy', so the client can say why",
+    room._gearSellable(SELLER, 'armor', { name: 'Old Plate' }).reason === 'legacy');
+  check("an id we never issued answers 'not_held'",
+    room._gearSellable(SELLER, 'armor', 'g-never-issued').reason === 'not_held');
+  check("the right id in the wrong slot answers 'wrong_slot'",
+    room._gearSellable(SELLER, 'shield', gid).reason === 'wrong_slot');
+  check("a piece belonging to someone ELSE is not sellable by you",
+    room._gearSellable(BUYER, 'armor', gid).ok === false, room._gearSellable(BUYER, 'armor', gid));
+
+  /* ── taking it into escrow ── */
+  const taken = room._gearProvTake(SELLER, 'armor', gid);
+  check('taking a piece returns the SERVER\'s copy, not a claim',
+    !!taken && taken.piece.name === 'Copper Torso' && taken.piece.gid === gid, taken && taken.piece);
+  check('...and its detached row, for the listing record to escrow',
+    !!taken.row && taken.row.id === gid && taken.row.slot === 'armor', taken.row);
+  check('...the record leaves the seller\'s ledger', !findProvRow(room._gearProvOf(SELLER), gid));
+  check('...and the piece leaves the server\'s own stash where it was present',
+    (ps.armorStash || []).length === 0, ps.armorStash);
+
+  check('a piece already on the shelf cannot be listed a SECOND time',
+    room._gearSellable(SELLER, 'armor', gid).reason === 'not_held');
+  /* This is the hole v2.3.2532 left open and named: a ref could equip a
+     piece the player was no longer holding.  With the row gone, it cannot. */
+  check('...and cannot be EQUIPPED by name while it is on the shelf',
+    room._gearProvPieceByRef(SELLER, 'armor', gid) === null);
+  await send(room, wsS, { type: 'stats_update', payload: { armorRef: gid } });
+  check('...proven through the real message path too', !ps.armor, ps.armor);
+  check('taking it twice returns nothing the second time',
+    room._gearProvTake(SELLER, 'armor', gid) === null);
+
+  /* ── handing it to the buyer, who is OFFLINE ── */
+  const res = await room._creditPlayer(BUYER, {
+    opId: 'store:test1:goods', source: 'market', kind: 'gear',
+    payload: { field: 'armorStash', piece: taken.piece, row: taken.row }, note: 'bought',
+  });
+  check('an offline buyer\'s piece parks in the mail', res === 'inboxed', res);
+  const buyerLedger = await state._store.get(GEAR_PROV_KEY(BUYER));
+  check('...but the RECORD lands durably straight away (no output gate for an offline player)',
+    !!buyerLedger && buyerLedger.list.some((r) => r.id === gid), buyerLedger);
+
+  const wsB = fakeWs('BY');
+  await join(room, wsB, BUYER);
+  const psB = room.playerState[BUYER];
+  check('...and the piece arrives in the right stash at their next login',
+    (psB.armorStash || []).length === 1 && psB.armorStash[0].name === 'Copper Torso', psB.armorStash);
+  check('...still provable, under the SAME id -- the piece kept its identity across the counter',
+    psB.armorStash[0].gid === gid && psB.armorStash[0].prov === PROV_MINTED, psB.armorStash[0]);
+  check('...and it is now the BUYER who may sell it, not the seller',
+    room._gearSellable(BUYER, 'armor', gid).ok === true
+      && room._gearSellable(SELLER, 'armor', gid).ok === false);
+  const mail = wsB.sent.filter((m) => m.type === 'inbox_delivered').pop();
+  check('...announced through the existing mail notice, not a new event type',
+    !!mail && mail.payload.entries.some((e) => e.kind === 'gear'), mail && mail.payload.entries);
+
+  /* A settlement retry must converge on ONE row, not two (rule 5's opId
+     converges the payment; this converges the record). */
+  await room._gearProvGrantRow(BUYER, taken.row);
+  check('granting the same row twice leaves ONE row, not two',
+    room._gearProvOf(BUYER).list.filter((r) => r.id === gid).length === 1);
+
+  /* ── the cancel / expiry direction: same function, row goes back ── */
+  const back = room._gearProvTake(BUYER, 'armor', gid);
+  check('the buyer can put it back on the shelf', !!back);
+  await room._gearProvGrantRow(BUYER, back.row);
+  check('a cancelled listing hands the record straight back', room._gearSellable(BUYER, 'armor', gid).ok === true);
+
+  /* ── a FULL stash keeps the delivery queued rather than eating it
+        (handoff rule 3 -- _saveRpg truncates these lists at the cap) ── */
+  psB.legsStash = Array.from({ length: 32 }, (_, i) => ({ name: 'Filler ' + i, tierMult: 1 }));
+  const full = await room._creditPlayer(BUYER, {
+    opId: 'store:test2:goods', source: 'market', kind: 'gear',
+    payload: { field: 'legsStash', piece: { name: 'Greaves', tierMult: 1 } }, note: 'bought',
+  });
+  check('a delivery into a FULL stash stays queued instead of being destroyed', full === 'inboxed', full);
+  check('...and the full list did not grow past its cap', psB.legsStash.length === 32, psB.legsStash.length);
+
+  /* ── a piece with no row arrives legacy rather than being refused ── */
+  psB.shieldStash = [];
+  await room._creditPlayer(BUYER, {
+    opId: 'store:test3:goods', source: 'market', kind: 'gear',
+    payload: { field: 'shieldStash', piece: { name: 'Plain Shield', gearBase: 'wood', tierMult: 1 } }, note: 'bought',
+  });
+  check('a piece handed over WITHOUT a record arrives legacy, not refused',
+    (psB.shieldStash || []).length === 1 && psB.shieldStash[0].prov === PROV_LEGACY, psB.shieldStash);
+
+  /* ── malformed payloads cannot wedge the mail forever ── */
+  const before = (psB.armorStash || []).length;
+  await room._creditPlayer(BUYER, { opId: 'store:test4:goods', source: 'market', kind: 'gear', payload: { field: '__proto__', piece: { name: 'X' } } });
+  await room._creditPlayer(BUYER, { opId: 'store:test5:goods', source: 'market', kind: 'gear', payload: { field: 'armorStash', piece: 'not-an-object' } });
+  check('a bogus stash name and a bogus piece are dropped, not queued forever',
+    (psB.armorStash || []).length === before && !Array.isArray(Object.prototype.armorStash),
+    (psB.armorStash || []).length);
+
+  /* ── no signature heuristic anywhere: selling one of two identical
+        pieces leaves the other alone (the #643 deletion) ── */
+  psB._questGrantOverflow = null;
+  room._grantQuestItem(psB, { kind: 'armor', name: 'Twin Plate', mat: 'iron', tierMult: 2 }, BUYER);
+  const twinA = psB._questGrantOverflow[0].gid;
+  psB._questGrantOverflow = null;
+  room._grantQuestItem(psB, { kind: 'armor', name: 'Twin Plate', mat: 'iron', tierMult: 2 }, BUYER);
+  const twinB = psB._questGrantOverflow[0].gid;
+  room._gearProvTake(BUYER, 'armor', twinA);
+  check('selling one of two identical-looking pieces leaves the other sellable',
+    room._gearSellable(BUYER, 'armor', twinA).ok === false
+      && room._gearSellable(BUYER, 'armor', twinB).ok === true);
+}
+
+/* ════════════════════════════════════════════════════════════════════
    8. The ledger does not leak to other players
    ════════════════════════════════════════════════════════════════════ */
 {
