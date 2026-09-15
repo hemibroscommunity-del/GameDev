@@ -857,8 +857,12 @@ export const gridMethods = {
       computeCanonicalPools(ps);
     }
     // Armor swap routes through stats_update (not equip_request) because
-    // armor lives in a client-only armorStash and the popup mutates it
-    // locally before pushing.  Worker accepts the new armor object (or
+    // the armorStash the popup swaps against is the CLIENT's and it
+    // mutates it locally before pushing.  (v2.3.2523 gave the server its
+    // own armorStash -- gearstash.js -- but only as a holder of record
+    // for the store; the client still owns the equip flow below, and
+    // nothing here reads or writes the server's copy.)  Worker accepts
+    // the new armor object (or
     // null on unequip), clamps tierMult defensively, recomputes maxHp.
     // Without this, the worker's ps.armor stays stale, its echoed
     // player_state re-applies the old armor on the client, and the

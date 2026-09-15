@@ -111,6 +111,7 @@ import { eventCapeMethods } from './eventcapes.js';
 import { gatheringMethods } from './gathering.js';
 // v2.3.1169 (P4 decomposition): equipment store (sanitizers/sell/forge/equip) -- see gear.js.
 import { gearMethods } from './gear.js';
+import { gearStashMethods } from './gearstash.js'; /* v2.3.2523 */
 // v2.3.1170 (P4 decomposition): build grids + progression + stats_update -- see grids.js.
 import { gridMethods } from './grids.js';
 // v2.3.1171 (P4 decomposition): the move handler (anti-teleport + zone streaming) -- see movement.js.
@@ -5344,6 +5345,8 @@ Object.assign(GameRoom.prototype, cookingMethods);
 Object.assign(GameRoom.prototype, gatheringMethods);
 // v2.3.1169 (P4 decomposition): gear -- see gear.js.
 Object.assign(GameRoom.prototype, gearMethods);
+// v2.3.2523: the server-side gear stashes -- see gearstash.js.
+Object.assign(GameRoom.prototype, gearStashMethods);
 // v2.3.1170 (P4 decomposition): grids + progression -- see grids.js.
 Object.assign(GameRoom.prototype, gridMethods);
 // v2.3.1171 (P4 decomposition): movement -- see movement.js.

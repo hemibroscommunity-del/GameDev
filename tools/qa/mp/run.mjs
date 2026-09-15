@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  gearstash: () => import('./mp-gearstash.mjs'), /* v2.3.2523: the gear stashes move server-side -- the frame, the stored blob, and no double-adopt on reconnect */
   copperfeet: () => import('./mp-copperfeet.mjs'), /* v2.3.2519: the body's boot showing past the leg armour on a jog east */
   teeshield: () => import('./mp-teeshield.mjs'), /* v2.3.2516: is the bare jog-east shoulder the shield's arm capsule, or the artist's unsleeved frames? */
   facebow: () => import('./mp-facebow.mjs'), /* v2.3.2516: the face tattoo reaches the jaw on a moving bow shot */

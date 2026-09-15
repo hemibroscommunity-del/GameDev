@@ -326,6 +326,37 @@ export function setupWebSocket(ctx) {
         if (ws.readyState !== 1) return;
         S._realtimeStatus = 'connected';
         reconnectDelay = 1000;
+        /* ═══ v2.3.2523: THE GEAR-STASH SEED IS BUDGETED, NOT JUST CAPPED ═══
+           The worker DROPS an inbound frame over MAX_INBOUND_BYTES (16 KB)
+           without a word — no close code, no rejection, nothing the client
+           can see — so an oversized join is not a truncated join, it is a
+           player who never gets into the game and never learns why.  The
+           four stash seeds below are the first join fields whose size a
+           PLAYER controls (every other one is a short id, a fixed-length
+           drawing, or a list the worker already capped), so they carry
+           their own budget: entries go on until 4 KB of them have.  4 KB
+           and not more because the rest of the payload is not small on a
+           fully-decorated character -- nine 512-char drawings plus the
+           avatar URL plus the inventory, quest maps and weapon stash can
+           run to ~7 KB by themselves -- and the seed is the half that
+           must yield.
+           Entries past the budget are simply not seeded — they stay in this
+           browser, exactly where they are today, and the player loses
+           nothing they can see.  A lockout would cost them everything. */
+        var _gsLeft = 4096;
+        var _stashSeed = function (arr) {
+          if (!Array.isArray(arr)) return [];
+          var out = [];
+          for (var _i = 0; _i < arr.length && out.length < 32; _i++) {
+            var _s;
+            try { _s = JSON.stringify(arr[_i]); } catch (e) { continue; }
+            if (!_s || _s.length > 1024) continue;   /* one absurd entry never eats the budget */
+            if (_s.length > _gsLeft) break;
+            _gsLeft -= _s.length;
+            out.push(arr[_i]);
+          }
+          return out;
+        };
         ws.send(JSON.stringify({
           type: 'join',
           id: S.myId,
@@ -491,6 +522,27 @@ export function setupWebSocket(ctx) {
             rpgGoldNuggets: (S.rpg && typeof S.rpg.goldNuggets === 'number') ? S.rpg.goldNuggets : 0,
             rpgGoldBars: (S.rpg && typeof S.rpg.goldBars === 'number') ? S.rpg.goldBars : 0,
             rpgWeaponStash: (S.rpg && Array.isArray(S.rpg.weaponStash)) ? S.rpg.weaponStash : [],
+            /* v2.3.2523 (gear stash): the four stashes that have only
+               ever existed on this device -- armour, legs, shields and
+               cosmetic gear.  The worker now holds them too
+               (server/src/gearstash.js) and captures this claim ONCE,
+               for a character whose stored record predates the slice;
+               after that its own copy wins forever and this is ignored,
+               exactly like rpgWeaponStash and the nugget ledger above.
+               Sent as ARRAYS even when empty: the worker stamps
+               "captured" only when it sees an array, so a client that
+               omitted them would make it wait for one that does -- which
+               is what makes an old tab against a new worker harmless
+               (it never burns the capture) and a new tab against an old
+               worker equally harmless (unknown join keys are dropped).
+               Capped at 32 per list to match the worker's cap, and
+               budgeted by size on top of that (see _stashSeed above:
+               the frame gate is silent, so an oversized join is a
+               lockout, not a truncation). */
+            rpgArmorStash: _stashSeed(S.rpg && S.rpg.armorStash),
+            rpgLegsStash: _stashSeed(S.rpg && S.rpg.legsStash),
+            rpgShieldStash: _stashSeed(S.rpg && S.rpg.shieldStash),
+            rpgGearStash: _stashSeed(S.rpg && S.rpg.gearStash),
             /* Quest state bootstrap (slice 17). */
             rpgQuests: (S.rpg && S.rpg._quests) || {},
             rpgQuestFlags: (S.rpg && S.rpg._questFlags) || {},
@@ -1754,7 +1806,7 @@ export function setupWebSocket(ctx) {
                  first not automatically equipped"): a shield the server
                  reports goes into the BAG, never straight onto the arm.
                  The server's `shield` field is an OWNERSHIP record — there
-                 is no server-side shield stash (handoff rule 1 forbids a new
+                 was no server-side shield stash (handoff rule 1 forbids a new
                  rpg-blob field) so equipped-vs-stashed has always been the
                  client's to decide, and this line decided it wrong: it wrote
                  the server's value into the EQUIPPED slot every time.
@@ -1765,7 +1817,13 @@ export function setupWebSocket(ctx) {
                  this version would get a second one in the bag.  Matching by
                  value means a shield we already hold — on the arm OR in the
                  bag — is recognised and ignored, and only a genuinely new
-                 grant lands. */
+                 grant lands.
+                 v2.3.2523: `shieldStash` IS a server field now
+                 (server/src/gearstash.js), and the worker adopts this list
+                 once — but the rescue below stays exactly as it is, because
+                 this client still owns equipped-vs-stashed and the worker
+                 does not yet send a stash the client reads.  The signature
+                 used here is the one the worker's merge uses, on purpose. */
               if ('shield' in msg.payload && msg.payload.shield) {
                 var _svShield = msg.payload.shield;
                 var _shSig = function (sh) {

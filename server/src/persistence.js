@@ -20,6 +20,17 @@
  * bootstrap stay in index.js -- they belong to the join slice. */
 
 import { RPG_SCHEMA_VERSION, runRpgMigrations, healLifeSkills } from './migrations.js';
+import { GEAR_STASH_CAP } from './gearstash.js';
+
+/* v2.3.2523: one bound for the five gear stashes, applied at BOTH the
+   save and the echo below.  Handoff rule 3's warning is why it is a
+   function and not five inline slices: `_saveRpg` truncating a stash at
+   cap is a silent item loss, so the cap lives in exactly one place and
+   every writer that could push past it (adoption, and M3's escrow
+   return path) checks the same constant. */
+function capStash(v) {
+  return Array.isArray(v) ? v.slice(0, GEAR_STASH_CAP) : [];
+}
 
 /* v2.3.2058: ps._buffs is otherwise a pure {name: endsAt} map -- _pruneBuffs
    and _buffActive both read every value as a timestamp. These keys are the
@@ -224,6 +235,25 @@ export const persistenceMethods = {
         shield: ps.shield || null,
         amulet: ps.amulet || null,
         weaponStash: Array.isArray(ps.weaponStash) ? ps.weaponStash.slice(0, this.WEAPON_STASH_CAP) : [],
+        /* v2.3.2523: THE GEAR STASHES (gearstash.js, spec
+           docs/specs/gear-stash.md).  Armour, legs, shields, cosmetic
+           gear and amulets were client-local -- the server held only the
+           worn piece -- so none of them could be escrowed by the store
+           (rule 16: the server can only take custody of its own copy).
+           Added to the fixed list the way goldNuggets/goldBars were
+           (v2.3.1192), NOT as ad-hoc ps fields (rule 1 / TRAPS #2), and
+           capped here as well as at ingest so a list can never grow
+           without bound in storage.  `gearStashCaptured` is the
+           one-time adoption stamp: absent means "this record predates
+           the slice, fold the client's claim in once" and it rides the
+           SAME put as the lists it describes, so no crash can leave one
+           without the other. */
+        armorStash: capStash(ps.armorStash),
+        legsStash: capStash(ps.legsStash),
+        shieldStash: capStash(ps.shieldStash),
+        gearStash: capStash(ps.gearStash),
+        amuletStash: capStash(ps.amuletStash),
+        gearStashCaptured: !!ps.gearStashCaptured,
         // Quest state (slice 17).  Chain progression + flags +
         // kill counters.  Server validates accept/turn-in state
         // transitions but currently trusts the client's claim
@@ -448,6 +478,22 @@ export const persistenceMethods = {
           shield: ps.shield || null,
           amulet: ps.amulet || null,
           weaponStash: Array.isArray(ps.weaponStash) ? ps.weaponStash.slice(0, this.WEAPON_STASH_CAP) : [],
+          /* v2.3.2523: the gear stashes echo beside the weapon one, so a
+             client that has adopted them can render the server's copy
+             instead of its localStorage one (a device switch or a
+             cleared cache loses that copy -- the v2.3.1021 weapon-track
+             argument, and the v2.3.1624 raw-stats one).  Today's client
+             does not read them: its player_state handler assigns
+             field-by-field behind `'x' in msg.payload` guards, so an
+             unknown field is ignored, never merged -- which is what
+             makes echoing them BEFORE any client reads them safe in
+             both deploy directions (rule 19/20).  Nothing is taken away
+             from the player's own stash by this echo. */
+          armorStash: capStash(ps.armorStash),
+          legsStash: capStash(ps.legsStash),
+          shieldStash: capStash(ps.shieldStash),
+          gearStash: capStash(ps.gearStash),
+          amuletStash: capStash(ps.amuletStash),
           // Quest state mirror (slice 17).
           _quests: ps._quests || {},
           _questFlags: ps._questFlags || {},
