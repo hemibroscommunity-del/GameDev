@@ -150,6 +150,16 @@ export const amuletMethods = {
       // it is replaced, same as the client).  Shape is what
       // _sanitizeAmulet whitelists, by construction.
       ps.amulet = { tier: tierKey, gem: null, name: tier.label + ' Gold Amulet' };
+      /* v2.3.2531: a forged amulet is the most expensive thing in the game,
+         and this is the ONLY path that mints one -- so it is also the only
+         amulet that can ever be proved (gearprov.js).  Everything already on
+         a character predates the ledger and stays `legacy`: usable, not
+         sellable.  Note the mint REPLACES the worn amulet with no stash to
+         catch the old one (client parity, v2.3.1192) -- the replaced amulet's
+         row is left in the ledger rather than removed, because a row is a
+         record of a mint, not an inventory; PR 3's listing gate asks whether
+         the player still HOLDS the piece as well as whether we minted it. */
+      this._gearProvRecord(session.id, 'amulet', ps.amulet, 'forge');
       // Crafting XP -- client parity: addLifeSkillXp('blacksmithing',
       // at.minLvl * 3) at the craft site.
       this._addLifeSkillXp(ps, 'blacksmithing', (tier.minLvl || 1) * 3);
@@ -179,6 +189,12 @@ export const amuletMethods = {
       // site.  (The client's _questFlags.slottedGem write stays
       // client-side -- rule 18, the server must not write _questFlags
       // mid-session.)
+      /* v2.3.2531: the gem slot MUTATES a piece the server may have minted,
+         so the provenance row has to follow it (gearprov.js).  Without this
+         a reconnect rebuilds the amulet from its mint-time row and the gem
+         is gone -- which is not theory: it is what amulet.test.mjs caught
+         when the first cut of the resolve rebuilt every path. */
+      this._gearProvTouch(session.id, ps.amulet);
       this._addLifeSkillXp(ps, 'enchanting', 20);
 
     } else if (op === 'extract') {

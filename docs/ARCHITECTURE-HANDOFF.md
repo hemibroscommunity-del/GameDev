@@ -55,6 +55,7 @@ extended.
    | Prefix | Value | Owner (spec) |
    |---|---|---|
    | `rpg:<playerId>` | the player blob (fixed field list) — v2.3.2523 adds the five GEAR STASHES (`armorStash`, `legsStash`, `shieldStash`, `gearStash`, `amuletStash`) + the `gearStashCaptured` adoption stamp; they are blob fields, not their own prefix | core (gear-stash.md) |
+   | `gear_prov:<playerId>` | `{_v, seq, forgotten, list:[{id, slot, src, at, p}]}` — the GEAR PROVENANCE ledger (v2.3.2531): one row per piece of gear this server minted for this player, holding the server-assigned `gid` and a verbatim copy of the minted blob. The row is the ownership proof; an inbound `gid` is looked up here and the piece rebuilt from `p`, never trusted from the wire. FIFO-capped at 256 with `forgotten` counting what aged out | gear-provenance.md |
    | `auth:<playerId>` | `{pfHash, createdAt}` SHA-256 of `btv1\|phrase` | identity.md |
    | `char:<playerId>` | `{name, look, createdAt}` the PERMANENT name + appearance; first write wins and a stored record beats the join payload | identity.md |
    | `inbox:<playerId>` | pending credit entries (offline mail) | inbox-escrow.md |

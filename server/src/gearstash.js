@@ -195,6 +195,19 @@ export function sanitizeStashList(field, arr, strict, amuletSanitizer) {
    identity; amulets on tier+gem+name. */
 export function stashSig(field, g) {
   if (!g) return '';
+  /* v2.3.2531: a server-minted piece is identified by its ID, full stop.
+     That is the whole point of gearprov.js: two pieces with different gids
+     are two different pieces however identically they are named, and one
+     piece carrying the same gid on both sides of a merge is ONE piece.  The
+     value signature below stays for everything the server cannot prove
+     (legacy gear, cosmetics), which is what it was always really doing.
+
+     This is deliberately NOT the reconciliation-by-signature that #643 was
+     caught by -- that one GUESSED that a stash entry matching the worn piece
+     by name|gearBase|tierMult|tier was a stale duplicate and deleted real
+     gear.  Nothing is deleted here and nothing is guessed: an id either is
+     or is not the same id. */
+  if (typeof g.gid === 'string' && g.gid) return 'gid:' + g.gid;
   if (field === COSMETIC_FIELD) return (g.slot || '') + '|' + (g.gearId || '');
   if (field === 'amuletStash') return (g.tier || '') + '|' + (g.gem || '') + '|' + (g.name || '');
   return [g.name || '', g.gearBase || '', g.tierMult == null ? '' : g.tierMult, g.tier || ''].join('|');
@@ -238,6 +251,17 @@ export function mergeStashLists(field, held, claimed) {
   return out.slice(0, GEAR_STASH_CAP);
 }
 
+/* Which provenance slot each stash list belongs to (gearprov.js).  Written
+   out, not derived, for the same reason GEAR_STASH_SEED_KEYS is: the audits
+   and precheck read literals, not string arithmetic. */
+export const GEAR_STASH_PROV_SLOT = {
+  armorStash: 'armor',
+  legsStash: 'legsArmor',
+  shieldStash: 'shield',
+  gearStash: 'gear',
+  amuletStash: 'amulet',
+};
+
 export const gearStashMethods = {
   /* Join-time load + one-time adoption of the four client-local
      stashes.  Called from _handleJoin for BOTH branches (stored record
@@ -256,18 +280,30 @@ export const gearStashMethods = {
 
      Returns nothing; mutates ps.  Never throws -- a join must not fail
      because a stash was malformed. */
-  _gearStashAdoptOnJoin(ps, stored, md) {
+  _gearStashAdoptOnJoin(ps, stored, md, playerId) {
     if (!ps) return;
     const amuletSan = (a) => this._sanitizeAmulet(a);
     const claimed = new Map();   /* field -> sanitized claim (TRAPS #6: never a plain object) */
     let sawClaim = false;
     for (const f of GEAR_STASH_FIELDS) {
+      const slot = GEAR_STASH_PROV_SLOT[f];
+      /* v2.3.2531: every entry, ours and theirs, goes through the provenance
+         resolve (gearprov.js) -- which strips `gid`/`prov` from the raw entry
+         FIRST, then rebuilds the piece from the ledger's own copy if the id
+         is one we minted for this player, and otherwise marks it `legacy`.
+         The per-entry sanitizer is this field's existing one, so the clamps
+         are unchanged; only the provenance is new.  It runs on the STORED
+         list too, so a record written before this version heals into a marked
+         one on the next reconnect rather than being trusted for being ours
+         (the v2.3.1104 posture). */
+      const strictSan = (g) => sanitizeStashList(f, [g], true, amuletSan)[0] || null;
+      const ownSan = (g) => sanitizeStashList(f, [g], false, amuletSan)[0] || null;
       const own = stored ? stored[f] : ps[f];
-      ps[f] = sanitizeStashList(f, own, false, amuletSan);
+      ps[f] = this._gearProvResolveList(playerId, slot, Array.isArray(own) ? own.slice(0, GEAR_STASH_CAP) : [], ownSan, !!stored);
       const raw = md ? md[GEAR_STASH_SEED_KEYS[f]] : undefined;
       if (Array.isArray(raw)) {
         sawClaim = true;
-        claimed.set(f, sanitizeStashList(f, raw, true, amuletSan));
+        claimed.set(f, this._gearProvResolveList(playerId, slot, raw.slice(0, GEAR_STASH_CAP), strictSan));
       }
     }
     if (stored && stored.gearStashCaptured) {

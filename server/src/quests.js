@@ -150,7 +150,7 @@ export const questMethods = {
        Only ever fires on the accept that MOVES the quest into 'active', so
        it cannot be farmed by re-accepting. */
     if (Array.isArray(reward.grantOnAccept)) {
-      for (const it of reward.grantOnAccept) this._grantQuestItem(ps, it);
+      for (const it of reward.grantOnAccept) this._grantQuestItem(ps, it, session.id);
       /* v2.3.2420: the accept path pays a weapon too (tut_1's sword), and it
          had the same silent hole. */
       await this._questDrainUnfitWeapons(session.id, ps, 'accept:' + questId);
@@ -295,7 +295,7 @@ export const questMethods = {
       /* v2.3.1692: `item` may be an ARRAY (tut_1 pays the bow AND the staff).
          Granted one at a time so each keeps its own slot rules. */
       const _items = Array.isArray(reward.item) ? reward.item : [reward.item];
-      for (const _it of _items) { this._grantQuestItem(ps, _it); }
+      for (const _it of _items) { this._grantQuestItem(ps, _it, session.id); }
       /* v2.3.1695: every armour piece that overflowed to the bag is announced,
          not just the last one (armorSet pays two). */
       const _over = Array.isArray(ps._questGrantOverflow) ? ps._questGrantOverflow : null;
@@ -408,7 +408,15 @@ export const questMethods = {
     return n;
   },
 
-  _grantQuestItem(ps, item) {
+  /* v2.3.2531: `playerId` is the third argument so a granted piece can be
+     RECORDED against its owner (gearprov.js).  `ps` carries no id of its
+     own, and inferring one by scanning playerState would be a second,
+     guessable answer to a question the caller already knows — every call
+     site here is inside a handler holding `session.id`, and devtools holds
+     the operator's target.  Omitted (the argument absent) the grant still
+     works exactly as before and the piece is marked `legacy`: unrecorded
+     gear is usable, just not sellable, which is the whole posture. */
+  _grantQuestItem(ps, item, playerId) {
     if (!ps || !item || typeof item !== 'object') return false;
     try {
       if (item.kind === 'armor' || item.kind === 'legs') {
@@ -428,7 +436,7 @@ export const questMethods = {
            set must not report only its last piece. */
         const slot = item.kind === 'legs' ? 'legsArmor' : 'armor';
         if (!Array.isArray(ps._questGrantOverflow)) ps._questGrantOverflow = [];
-        ps._questGrantOverflow.push({
+        const _minted = {
           name: String(item.name || 'Quest Armor'),
           tierMult: Math.max(0, Math.min(8, Number(item.tierMult) || 1)),
           slot,
@@ -438,7 +446,15 @@ export const questMethods = {
              data.  Clamped to a short identifier because it is echoed to every
              client that can see the wearer. */
           mat: item.mat ? String(item.mat).slice(0, 16) : undefined,
-        });
+        };
+        /* v2.3.2531: record it before it leaves.  This piece goes STRAIGHT to
+           the player's browser (quest_reward_stashed) and the server keeps no
+           copy of it at all — which is exactly why it needed an id: the id is
+           the only thing that comes back able to prove where the piece came
+           from.  The row lands in gear_prov:<playerId>, so a crash before the
+           announcement still leaves the ownership proof behind. */
+        this._gearProvRecord(playerId, slot, _minted, 'quest');
+        ps._questGrantOverflow.push(_minted);
         return false;
       }
       if (item.kind === 'shield') {
@@ -461,6 +477,10 @@ export const questMethods = {
           gearBase: String(item.gearBase || 'wood'),
           name: String(item.name || 'Quest Shield'),
         };
+        /* v2.3.2531: the starter shield is the FIRST piece of gear most
+           characters ever own (tut_1 grantOnAccept), so it is also the first
+           test of whether provenance reaches a real wardrobe. */
+        this._gearProvRecord(playerId, 'shield', ps.shield, 'quest');
         this._recomputeMaxes(ps);
         return true;
       }
@@ -537,7 +557,7 @@ export const questMethods = {
          player already wearing a chest piece still receives the legs. */
       if (item.kind === 'armorSet' && Array.isArray(item.pieces)) {
         let any = false;
-        for (const piece of item.pieces) { if (this._grantQuestItem(ps, piece)) any = true; }
+        for (const piece of item.pieces) { if (this._grantQuestItem(ps, piece, playerId)) any = true; }
         return any;
       }
       if (item.kind === 'inv' && typeof item.key === 'string') {

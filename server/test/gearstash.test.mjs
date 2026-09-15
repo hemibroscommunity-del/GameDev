@@ -138,8 +138,15 @@ const clientClaim = () => ({
       && saved.gearStash.length === 2 && Array.isArray(saved.amuletStash),
     Object.keys(saved).filter((k) => /Stash/.test(k)));
   check('the capture stamp survives the save too', saved.gearStashCaptured === true);
-  check('a cosmetic entry keeps only {slot, gearId, name}',
-    Object.keys(saved.gearStash[0]).sort().join(',') === 'gearId,name,slot', saved.gearStash[0]);
+  /* v2.3.2531: ...plus the derived `prov` mark (gearprov.js).  Cosmetics
+     have NO server mint path at all -- the catalog is client art and the
+     list is filled by unequipping a worn layer -- so every cosmetic entry
+     is `legacy` and will stay that way until something server-side mints
+     one.  The whitelist property this assertion exists for is unchanged:
+     nothing the client sent survives except slot/gearId/name. */
+  check('a cosmetic entry keeps only {slot, gearId, name} (+ the derived prov mark)',
+    Object.keys(saved.gearStash[0]).sort().join(',') === 'gearId,name,prov,slot'
+      && saved.gearStash[0].prov === 'legacy', saved.gearStash[0]);
 }
 
 // ── 3. re-adoption after a RESTART adds nothing (the #615 shape) ──

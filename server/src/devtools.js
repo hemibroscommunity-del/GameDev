@@ -123,7 +123,7 @@ export const devToolsMethods = {
 
     if (want === 'all' || want === 'weapons') {
       for (const w of DEVKIT.WEAPONS) {
-        try { if (this._grantQuestItem(ps, w)) out.weapons++; } catch (e) { /* a full stash is not fatal */ }
+        try { if (this._grantQuestItem(ps, w, playerId)) out.weapons++; } catch (e) { /* a full stash is not fatal */ }
       }
       /* ═══ v2.3.2421: AND CLEAR WHAT DID NOT FIT ═══
          v2.3.2420 made _grantQuestItem park a weapon it cannot place on
