@@ -23,7 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  copperfeet: () => import('./mp-copperfeet.mjs'), /* v2.3.2508: the body's boot showing past the leg armour on a jog east */
+  copperfeet: () => import('./mp-copperfeet.mjs'), /* v2.3.2510: the body's boot showing past the leg armour on a jog east */
   teeshield: () => import('./mp-teeshield.mjs'), /* v2.3.2509: is the bare jog-east shoulder the shield's arm capsule, or the artist's unsleeved frames? */
   facebow: () => import('./mp-facebow.mjs'), /* v2.3.2509: the face tattoo reaches the jaw on a moving bow shot */
   arules: () => import('./mp-arules.mjs'), /* v2.3.2509: the sprite-art RULE fixes -- cape on the roll and the loot bend, and the cape the south block used to lose */

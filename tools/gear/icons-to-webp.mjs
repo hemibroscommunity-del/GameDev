@@ -1,4 +1,4 @@
-/* PNG -> WEBP FOR THE INVENTORY ICONS, WITHOUT PYTHON (v2.3.2508).
+/* PNG -> WEBP FOR THE INVENTORY ICONS, WITHOUT PYTHON (v2.3.2510).
  *
  * tools/webp_icons.py does this with numpy+Pillow and is what
  * make-metal-icons.mjs calls.  Neither package is installed in this sandbox

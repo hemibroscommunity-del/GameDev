@@ -1,4 +1,4 @@
-/* MAGNIFY A REGION OF A SPRITE SHEET (v2.3.2508).
+/* MAGNIFY A REGION OF A SPRITE SHEET (v2.3.2510).
  *
  * The standing rule for art in this repo is docs/TRAPS.md §21: it is decided on
  * a render and never by eye at game size or on a number alone.  A pixel-art eye
