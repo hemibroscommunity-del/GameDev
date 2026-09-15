@@ -4041,8 +4041,8 @@ export class EffectsRenderer {
    *  the eye strings into a linear path.
    *
    *  Trail position is captured ONCE per render frame.  At the
-   *  arrow's typical speed (8 px/frame), an 8-point trail covers
-   *  ~64 px = a clear streak that doesn't lag behind reality. */
+   *  arrow's typical speed (v2.3.2473: 24 px/frame, was 8), an 8-point trail
+   *  covers ~192 px = a clear streak that doesn't lag behind reality. */
   /* v2.3.2287: the arrow probe's reader. Armed lazily like the rest -- no cost
      unless something calls it, and nothing in the game does. */
   projScaleProbe() { return this._projScaleProbe || null; }
@@ -4051,12 +4051,22 @@ export class EffectsRenderer {
     const TRAIL_LEN = 8;
     if (!p._trail) p._trail = [];
     /* Skip recording if we just teleported (e.g. zone change reset).
-       A jump in distance > 80 px between samples means re-spawn. */
+       A jump in distance > TRAIL_TELEPORT_PX between samples means re-spawn.
+       ═══ v2.3.2473: 80 -> 260, BECAUSE THE ARROW GOT FASTER ═══
+       80px was chosen against 8px/frame.  At 24 (projectiles.ARROW_SPEED_PX)
+       the fastest legitimate step is 24 x the Longshot cap 2.0 x _dtScale's
+       clamp 3 = 144px, so the old threshold would have read an ordinary
+       Longshot arrow on a stuttering frame as a teleport and cleared its
+       trail -- a streak that blinks out exactly when the frame rate is
+       already bad.  260 clears 144 with room and is still nowhere near a
+       zone change.  Same number and same reasoning as _segGap's sweep cap in
+       projectiles.js; both are "this is not flight" guards. */
+    const TRAIL_TELEPORT_PX = 260;
     const last = p._trail[p._trail.length - 1];
     if (last) {
       const dx = p._renderX - last.x;
       const dy = p._renderY - last.y;
-      if (dx * dx + dy * dy > 80 * 80) p._trail.length = 0;
+      if (dx * dx + dy * dy > TRAIL_TELEPORT_PX * TRAIL_TELEPORT_PX) p._trail.length = 0;
     }
     p._trail.push({ x: p._renderX, y: p._renderY });
     if (p._trail.length > TRAIL_LEN) p._trail.shift();
@@ -5196,7 +5206,28 @@ export class EffectsRenderer {
          shoots" is the owner's whole ask here, and a scenario cannot measure a
          polygon.  Computed for the bow whether or not it is drawn, so a test
          can compare it against an arrow's real plant distance. */
-      const _beamLen = isRanged ? BOW_RANGE_PX * bowRangeMult(S.rpg) : 95;
+      /* ═══ v2.3.2473: ...AND IT STOPS AT WHAT IT IS POINTED AT ═══
+         Owner (backlog §2.5): clip the stream at the first hit distance rather
+         than drawing its full reach straight through the monster.
+
+         THE ANSWER IS NOT COMPUTED HERE.  `S._bowSight` is resolved once a
+         frame by monsterCombat, from the same grip and the same aim ladder the
+         shot uses, and the FIRE GATE reads the very same field -- so the line
+         cannot promise a hit the bow will not take, which is the one property
+         a sight line exists for.  A second copy of the ray test in the
+         renderer would be right the day it shipped and wrong the next time
+         either end moved; that is v2.3.2320's lesson about the aim ladder,
+         one layer down.
+
+         Unclipped when the line is empty, deliberately: the stream is then
+         doing its other job, which is showing the player where they are
+         pointing so they can bring it onto something. */
+      const _fullLen = BOW_RANGE_PX * bowRangeMult(S.rpg);
+      const _sightD = (isBow && S._bowSight && typeof S._bowSight.d === 'number')
+        ? S._bowSight.d : null;
+      const _beamLen = isRanged
+        ? (_sightD != null ? Math.max(24, Math.min(_sightD, _fullLen)) : _fullLen)
+        : 95;
       if (shouldDraw && _beamOrigin) {
         if (isBow) {
           const _ra = rangedAimAngle(S, _beamOrigin.x, _beamOrigin.y);
@@ -5220,6 +5251,11 @@ export class EffectsRenderer {
           return { visible: !!shouldDraw, ranged: !!isRanged, aimState: !!aimState,
             slot: slot || null, firing: !!bowFiring,
             angle: _beamAng, src: _beamSrc, len: _beamLen,   /* v2.3.2448 */
+            /* v2.3.2473: whether the stream stopped at a target, and the full
+               reach it would have drawn without one -- "the line is short" has
+               two causes (a clip, or a range multiplier) and a scenario cannot
+               tell them apart from the length alone. */
+            clipped: _sightD != null, fullLen: _fullLen, sightD: _sightD,
             origin: _beamOrigin ? { x: _beamOrigin.x, y: _beamOrigin.y } : null };
         };
       }
