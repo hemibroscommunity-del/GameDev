@@ -860,7 +860,7 @@ export async function freeFrostImpactTex() {
   }
 }
 
-/* v2.3.2472: channel-wise lerp between two packed 0xRRGGBB colours.  Used by
+/* v2.3.2504: channel-wise lerp between two packed 0xRRGGBB colours.  Used by
    the lock chip's first-second flash; kept at module scope because it is two
    lines and a per-frame closure in the draw path is the kind of allocation
    this file has had to unpick before. */
@@ -873,7 +873,7 @@ function _mixHex(a, b, t) {
     | ((ab + (bb - ab) * k) | 0);
 }
 
-/* ═══ v2.3.2472: THE FALLBACK IS THE SHIPPING EFFECT, SO MAKE IT ONE ═══
+/* ═══ v2.3.2504: THE FALLBACK IS THE SHIPPING EFFECT, SO MAKE IT ONE ═══
  *
  * Owner (§5.8): "Debris → use the fallback art for now.  Lane F1 makes the
  * fallback burst and decals last about 5 s and read clearly; no sheets needed."
@@ -4557,7 +4557,7 @@ export class EffectsRenderer {
            all -- so a report of rings alone could not tell "the chip replaced
            the reticle" from "the target lost its mark entirely", and those are
            a fix and a regression wearing the same number. */
-        /* v2.3.2472: + the melee reach ring.  It is drawn on engageRingGfx,
+        /* v2.3.2504: + the melee reach ring.  It is drawn on engageRingGfx,
            not on the overlay Graphics this probe wraps, so `count` above
            cannot see it -- and a ring the tripwire cannot see is exactly the
            thing the tripwire exists to stop happening quietly.  Reported
@@ -4653,7 +4653,7 @@ export class EffectsRenderer {
           _erg.stroke({ color: col, width: (isCur ? 2.4 : 1.5) * _rk, alpha: (isCur ? 0.85 : 0.5) * t });
         }
       }
-      /* ═══ v2.3.2472: THE MELEE REACH RING ═══
+      /* ═══ v2.3.2504: THE MELEE REACH RING ═══
          Owner (F1): a light-red ring on the aggroed or locked monster, ONE
          ring, radius = melee reach.
 
@@ -5031,7 +5031,7 @@ export class EffectsRenderer {
              bob in world units breathes by a third of its size at one zoom
              and a fifth at another, which is the correction v2.3.2263 made
              to the old reticle's pulse. */
-          /* ═══ v2.3.2472: THE FIRST SECOND OF A LOCK ANNOUNCES ITSELF ═══
+          /* ═══ v2.3.2504: THE FIRST SECOND OF A LOCK ANNOUNCES ITSELF ═══
              F1: "stamp `at` on EVERY lock, then lerp the chip's colour and bob
              amplitude over its first second."
 
@@ -5039,7 +5039,7 @@ export class EffectsRenderer {
              only inside tapStealable, which never runs for an automatic lock
              -- so the chip had no idea when it had appeared and could not tell
              a target acquired this instant from one held for a minute.
-             targeting.js stamps `at` on every lock now (v2.3.2472); this is
+             targeting.js stamps `at` on every lock now (v2.3.2504); this is
              the consumer.
 
              WHAT MOVES: colour and bob amplitude, and nothing else.  The chip's
@@ -5158,7 +5158,7 @@ export class EffectsRenderer {
           /* Pushed onto the same probe list the carets use, with target:true,
              so every scenario that asks __btAtkMark "which monster is the
              target" keeps its answer after the mark moved out of that loop. */
-          /* v2.3.2472: + the flash state.  The chip's colour and its bob
+          /* v2.3.2504: + the flash state.  The chip's colour and its bob
              amplitude are the whole of the first-second cue, and neither
              survives a screenshot: a still frame cannot say whether a pale
              chip is flashing or whether the build simply painted it pale, and
@@ -5175,7 +5175,7 @@ export class EffectsRenderer {
         const _self = this;
         window.__btAtkMark = function () { return (_self._atkMarks || []).slice(); };
       }
-      /* v2.3.2472: the melee reach ring, on its own so a scenario that only
+      /* v2.3.2504: the melee reach ring, on its own so a scenario that only
          cares about reach does not have to arm the circle-counting wrapper
          (which is opt-in precisely because it is a wrapper on a hot method). */
       if (typeof window !== 'undefined' && !window.__btReachRing) {
@@ -6619,7 +6619,7 @@ export class EffectsRenderer {
   _updateGroundSplatter(S) {
     const splatters = S.groundSplatter || [];
     if (!this._splatPool) this._splatPool = [];
-    /* ═══ v2.3.2472: THE MARKS WERE INVISIBLE BY CONSTRUCTION ═══
+    /* ═══ v2.3.2504: THE MARKS WERE INVISIBLE BY CONSTRUCTION ═══
        Owner (§5.8): the hit decals do not read.  They did not: a decal is
        minted white and tinted with the material's DARK decal colour (goo
        #1f7a55, stone #5b5b5b -- monsterVariants HIT_MATERIALS), drawn at
@@ -6733,7 +6733,7 @@ export class EffectsRenderer {
 
   _spawnDebrisBurst(b, now) {
     if (!this._debrisFx) this._debrisFx = [];
-    /* v2.3.2472: EVICT THE OLDEST, don't drop the newest.  At 450ms the cap
+    /* v2.3.2504: EVICT THE OLDEST, don't drop the newest.  At 450ms the cap
        was nearly unreachable and returning early was free; at 5s a busy fight
        sits on it permanently, and "return" there means the hit you just landed
        is the one with no feedback -- the cap would silently reproduce the
@@ -6814,7 +6814,7 @@ export class EffectsRenderer {
     }
   }
 
-  /* v2.3.2472: one disposer, because the cap eviction above and the expiry
+  /* v2.3.2504: one disposer, because the cap eviction above and the expiry
      sweep below both need it and a second copy would be the one that forgets
      the rim sprite. */
   _killDebrisFx(fx) {
@@ -6828,7 +6828,7 @@ export class EffectsRenderer {
     if (fx.parts) for (const p of fx.parts) { kill(p.sp); kill(p.rim); }
   }
 
-  /* v2.3.2472: what debris is on screen right now.  The bursts are pooled
+  /* v2.3.2504: what debris is on screen right now.  The bursts are pooled
      sprites with no DOM and no stable pixels -- a screenshot can say "there is
      something green near the slime" and nothing at all about how long it
      lasts, which is the entire ask (§5.8: "about 5 s ... read clearly").  So
@@ -6862,7 +6862,7 @@ export class EffectsRenderer {
     for (let i = list.length - 1; i >= 0; i--) {
       const fx = list[i];
       const age = now - fx.t0;
-      /* v2.3.2472: the burst carries its OWN lifetime.  A sheet burst is the
+      /* v2.3.2504: the burst carries its OWN lifetime.  A sheet burst is the
          pacing of its 8 frames; a placeholder burst is 5s of flight and
          settle.  One shared constant could only ever be right for one of them.
          `|| DEBRIS_STRIP_MS` covers a burst queued by an older frame across a

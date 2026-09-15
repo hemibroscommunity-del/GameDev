@@ -119,7 +119,7 @@ export const MONSTER_VARIANTS = {
     /* v2.3.116: explicit walkDistPerFrame doubles the default 1.5 so
        skeleton's chase animation cycles ~0.8 s instead of ~0.4 s --
        50% slower per user feedback ("too frantic"). */
-    /* ═══ v2.3.2472: IT WAS STILL SPRINTING IN PLACE ═══
+    /* ═══ v2.3.2504: IT WAS STILL SPRINTING IN PLACE ═══
        Owner: the skeleton's legs cycle far faster than it travels.
 
        ARITHMETIC, not taste.  The walk loop is DISTANCE-driven
@@ -223,7 +223,7 @@ export const MONSTER_VARIANTS = {
     remnantsScalePx: 48,
     /* Fireball on-screen size.  16 px was a bit small to read against
        the bright zone -- 50% bump per user (v2.3.13). */
-    /* v2.3.2472: and 24 still is.  Same complaint, same direction, one more
+    /* v2.3.2504: and 24 still is.  Same complaint, same direction, one more
        step: 24 -> 40.  The goblin himself is drawn at liveScalePx 96, so 40 is
        a fireball a little under half his height -- a thing you flinch from
        rather than a spark.  The field is stated in ON-SCREEN px and the

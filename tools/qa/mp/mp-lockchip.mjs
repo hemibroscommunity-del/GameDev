@@ -186,7 +186,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        room for the sampler missing the exact peaks. */
     rec.ok(`${who}: ...and it visibly bobs, not a wobble you have to be told about`,
       swing >= 8, { swing, samples: m.samples });
-    /* v2.3.2472: the sweep above starts 1400ms AFTER the lock, so everything
+    /* v2.3.2504: the sweep above starts 1400ms AFTER the lock, so everything
        it measures is the RESTING chip -- the first-second flash is over before
        the first sample. That is the right scope for these four assertions (the
        resting look is what four earlier versions tuned), and it is why the
@@ -194,7 +194,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        smuggled in here on numbers that never saw it. */
   }
 
-  /* ═══ v2.3.2472: THE FIRST SECOND OF A LOCK ANNOUNCES ITSELF ═══
+  /* ═══ v2.3.2504: THE FIRST SECOND OF A LOCK ANNOUNCES ITSELF ═══
      F1: "stamp `at` on EVERY lock, then lerp the chip's colour and bob
      amplitude over its first second."
 
@@ -277,7 +277,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ═══ THE HALF THAT WAS BROKEN: AN AUTOMATIC LOCK ═══
      Dropped without touching the monster, so the nearest-enemy rule in
-     targeting.js re-acquires it on its own with src 'auto'.  Before v2.3.2472
+     targeting.js re-acquires it on its own with src 'auto'.  Before v2.3.2504
      that lock had no `at` and the chip appeared fully settled from its first
      frame -- which is the case the owner actually meets, every fight. */
   await P.page.evaluate(() => { window._gameState.current.lockedTarget = null; });

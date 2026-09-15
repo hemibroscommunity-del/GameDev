@@ -148,7 +148,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      so it belongs to the candidates that are NOT the target. */
   rec.ok('the renderer marks the candidate (probe: one mark, on this monster, as the target)',
     !!marks && marks.length === 1 && marks[0].id === 'qa_eng_1' && marks[0].target === true, marks);
-  /* v2.3.2472: MEASURED AT REST, ON PURPOSE.  The chip's first second is now a
+  /* v2.3.2504: MEASURED AT REST, ON PURPOSE.  The chip's first second is now a
      flash -- the bob amplitude lerps 15 -> 6 over 1000ms, which lifts the top
      of its swing by up to ~18 world px while it settles (the BOTTOM is pinned
      by the standoff, which is what mp-lockchip's clearance assertions depend
@@ -348,7 +348,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const settled = await P.page.evaluate(() => window.__btDiscVis());
   rec.ok('...and it is gone once the linger runs out', settled.R.shown === false, settled.R);
 
-  /* ═══ 5. THE MELEE REACH RING (v2.3.2472) ═══
+  /* ═══ 5. THE MELEE REACH RING (v2.3.2504) ═══
      Owner (F1): a light-red ring on the aggroed or locked monster, ONE ring,
      radius = melee reach.
 

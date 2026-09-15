@@ -140,7 +140,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and it expires on the 8s TTL (owner: 5-10 seconds)',
     afterTtl === 0, { afterTtl });
 
-  /* ═══ 4. THE DEBRIS BURST IS A THING YOU CAN SEE (v2.3.2472) ═══
+  /* ═══ 4. THE DEBRIS BURST IS A THING YOU CAN SEE (v2.3.2504) ═══
      Owner (§5.8): "Debris → use the fallback art for now.  Lane F1 makes the
      fallback burst and decals last about 5 s and read clearly; no sheets
      needed."

@@ -255,7 +255,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!rings && rings.count === 0, rings);
   rec.ok(`...and it wears exactly ONE pointer chip instead (chips: ${rings && rings.chips})`,
     !!rings && rings.chips === 1, rings);
-  /* ═══ v2.3.2472: THE ONE RING THAT IS SUPPOSED TO BE THERE ═══
+  /* ═══ v2.3.2504: THE ONE RING THAT IS SUPPOSED TO BE THERE ═══
      F1 adds a melee REACH ring on the locked monster, which is a deliberate
      new ring on the very body this file spent four versions clearing.  The two
      are not the same mark and the distinction is the point: the retired

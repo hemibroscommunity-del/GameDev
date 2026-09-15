@@ -60,7 +60,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   rec.ok('the skeleton phase runs 25% faster (1.4 -> 1.75)',
     geo.skeletonSpd === 1.75, geo.skeletonSpd);
-  /* ═══ v2.3.2472: AND ITS LEGS KEEP UP WITH IT, RATHER THAN OUTRUNNING IT ═══
+  /* ═══ v2.3.2504: AND ITS LEGS KEEP UP WITH IT, RATHER THAN OUTRUNNING IT ═══
      Owner (F1): the skeleton looks like it is sprinting in place.
 
      THE ASSERTION IS THE CADENCE, NOT THE CONSTANT, because the constant on

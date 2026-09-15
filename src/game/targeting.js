@@ -383,7 +383,7 @@ export function updateTargeting(S) {
      monster rule must not stamp over. */
   const lt = S.lockedTarget;
   if (lt && lt.ref && lt.type !== 'monster') return;   /* npc/player: not ours */
-  /* ═══ v2.3.2472: EVERY LOCK CARRIES A START TIME, NOT JUST A TAPPED ONE ═══
+  /* ═══ v2.3.2504: EVERY LOCK CARRIES A START TIME, NOT JUST A TAPPED ONE ═══
      `at` existed only because tapStealable needed a pin clock, and it was
      stamped LAZILY inside that function -- which is reached only for melee
      (it returns early at `!autoAcquires`) and only on the tap-owned branch.
@@ -496,7 +496,7 @@ export function updateTargeting(S) {
      and a fresh object every frame would churn the field every consumer of
      S.lockedTarget compares by reference. */
   if (!cur || cur.ref !== best.m) {
-    /* v2.3.2472: `at` on the literal as well as on the guard above, so the
+    /* v2.3.2504: `at` on the literal as well as on the guard above, so the
        stamp is the moment of acquisition rather than the top of the NEXT
        frame -- a ~16ms difference that does not matter to tapStealable's 900ms
        pin but is the zero point the chip's first-second flash lerps from. */
