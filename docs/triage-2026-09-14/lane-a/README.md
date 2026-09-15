@@ -89,3 +89,36 @@ equipped. The shoulder is bare either way, and the shielded run measures no
 worse. See the PR body for what that rules out.
 
 ![with and without a shield](tee-shoulder-shield-or-not.png)
+
+---
+
+# Lane A, part 2 — the rebakes and the measurements
+
+## The south bow shot's black eye
+
+Stand-ins get no eye colour (the player's choice is never painted on one), so
+these sheets *are* the eyes. The camera-left eye on the release frame was a
+solid dark rectangle with no sclera at all, beside a right eye that has one.
+Rebuilt from the right eye by the same tool that fixed frame 0 in v2.3.961 —
+which is the same eye, on the same sheet, for the opposite defect.
+
+![the south bow release frame](bow-south-eye.png)
+
+## The armoured-legs icon in the equipped slot
+
+Every slot draws its icon the same way (80% of the cell, `contain`), so what
+differs is how much of its own canvas each icon uses. Measured: chest plate
+196×186, sword 193×196, great sword 196×184 — and greaves **127×196**, a third
+less ink. Rescaled inside its own canvas to 148×228, and the copper and iron
+variants regenerated from it.
+
+![the icon at slot size](greaves-icon-slot.png)
+
+## The copper leggings' feet — the diagnosis
+
+Left: the BODY layer of one jog-east frame with copper greaves on. Right: the
+copper armour layer of the same frame. The grey boot is in the body layer and
+the armour layer has none of it, so the owner's answer in §5.8 is right — it is
+the body's own shoe — and it is not a cool pixel in the steel art.
+
+![body layer vs armour layer](copper-feet-body-layer.png)
