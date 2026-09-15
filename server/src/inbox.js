@@ -158,25 +158,56 @@ export const inboxMethods = {
   async _creditPlayer(playerId, entry) {
     if (await this._opSeen(entry.opId)) return 'dup';
     await this._opStamp(entry.opId);
-    /* v2.3.2536: the provenance row lands FIRST and is awaited, because
-       the recipient may be offline and there is no output gate holding a
-       message for them -- an unawaited put could be lost to eviction and
-       the buyer would own a piece the server could not prove.  Ordered
-       before the apply on purpose: a record without a piece converges on
-       the next drain (the row grant is idempotent), whereas a piece
-       without a record is a piece that silently stopped being sellable.
+    /* ═══ v2.3.2538: THE ROW ONLY LANDS IF THE PIECE DOES ═══
+       v2.3.2536 granted the provenance row FIRST and unconditionally, on
+       the argument that an offline recipient has no output gate holding a
+       message for them.  That argument is right about durability and wrong
+       about ordering: `_applyCreditToPs` also declines when the target
+       stash is at GEAR_STASH_CAP, and that happens while the player is
+       ONLINE -- so the ledger claimed they held a piece that was sitting in
+       their inbox, and they could sell a rebuilt copy of it and then
+       receive the real one on reconnect.  Two pairs of greaves.  (Review of
+       #650, reproduced against a real GameRoom.)
+
+       So the row is granted only when the piece will actually land, and
+       otherwise travels INSIDE the durable inbox entry -- which satisfies
+       the offline case for the same reason the entry itself does, and is
+       granted by the drain at the moment the piece is really applied.
        A storage await holds the input gate closed (rule 9), so nothing
        interleaves between this and the commit below. */
-    await this._creditGearRow(playerId, entry);
     const ps = this.playerState[playerId];
-    if (ps && this._applyCreditToPs(ps, entry, playerId)) {
+    const _fits = entry.kind !== 'gear' || !!(ps && this._gearCreditFits(ps, entry));
+    if (_fits) await this._creditGearRow(playerId, entry);
+    if (ps && _fits && this._applyCreditToPs(ps, entry, playerId)) {
       this._saveRpg(playerId, ps);
       this._queuePlayerStateFlush(playerId);
       this._sendInboxDelivered(playerId, [entry], 0);
       return 'delivered';
     }
     await this._inboxAppend(playerId, entry);
+    /* Parked: the gate has to know this id is mail, not property, for as
+       long as it sits there (gearprov.js _gearSellable, reason 'in_mail'). */
+    this._gearCreditMail(playerId, entry, true);
     return 'inboxed';
+  },
+
+  /* v2.3.2538: would a gear credit fit right now?  Mirrors the capacity
+     test in _applyCreditToPs's gear branch so the caller can decide whether
+     to grant the row BEFORE applying -- the two must agree, which is why
+     this reads the same cap from the same place rather than restating it. */
+  _gearCreditFits(ps, entry) {
+    if (!ps || !entry || entry.kind !== 'gear') return true;
+    const p = entry.payload || {};
+    if (!isGearStashField(p.field)) return true;   /* malformed: "fits", so it is consumed and dropped */
+    const list = ps[p.field];
+    return !Array.isArray(list) || list.length < GEAR_STASH_CAP;
+  },
+
+  /* Mark / unmark a parked gear entry's id in the pending-mail set. */
+  _gearCreditMail(playerId, entry, on) {
+    if (!entry || entry.kind !== 'gear') return;
+    const row = entry.payload && entry.payload.row;
+    if (row && row.id) this._gearProvMailMark(playerId, row.id, on);
   },
 
   // Apply one credit entry to a live playerState.  Returns false ONLY
@@ -244,19 +275,33 @@ export const inboxMethods = {
       if (!piece || typeof piece !== 'object' || Array.isArray(piece)) return true;
       if (!Array.isArray(ps[field])) ps[field] = [];
       if (ps[field].length >= GEAR_STASH_CAP) return false;
-      const out = { ...piece };
-      delete out.gid;
-      delete out.prov;
-      out.prov = PROV_LEGACY;
       /* The mark is DERIVED, here as everywhere else: _creditGearRow has
-         already landed the row (awaited, above), so this ASKS THE LEDGER
-         rather than trusting the payload's own claim about itself.  If the
-         row write failed, the piece arrives legacy -- usable, unsellable --
-         instead of carrying a mark nothing backs. */
-      if (p.row && p.row.id && p.row.slot === slot
-          && this._gearProvOwned(playerId, slot, { gid: p.row.id })) {
+         already landed the row (awaited, by the caller), so this ASKS THE
+         LEDGER rather than trusting the payload's own claim about itself.
+         If the row write failed, the piece arrives legacy -- usable,
+         unsellable -- instead of carrying a mark nothing backs.
+
+         v2.3.2538: and when the row DOES verify, the piece is rebuilt from
+         the row's own stored copy rather than from `payload.piece`.  Rule
+         16's shape is "the server's own copy by reference, never the wire
+         blob", and this funnel is the one every future producer will reach
+         for -- reading the payload's stats while verifying only its id
+         would leave the next caller free to reintroduce exactly the gap
+         this lane exists to close (review of #650). */
+      let out;
+      const verified = p.row && p.row.id && p.row.slot === slot
+        && this._gearProvOwned(playerId, slot, { gid: p.row.id });
+      if (verified) {
+        out = { ...(p.row.p || piece) };
+        delete out.gid;
+        delete out.prov;
         out.gid = p.row.id;
         out.prov = PROV_MINTED;
+      } else {
+        out = { ...piece };
+        delete out.gid;
+        delete out.prov;
+        out.prov = PROV_LEGACY;
       }
       ps[field].push(out);
       return true;
@@ -314,14 +359,20 @@ export const inboxMethods = {
       const delivered = [];
       const remainder = [];
       for (const entry of box) {
-        /* v2.3.2536: a gear entry that parked here still carries its row.
-           Granting is idempotent, so a row already landed at credit time
-           is a no-op; a row that only reaches the ledger now is the
-           offline-buyer case. */
-        await this._creditGearRow(playerId, entry);
-        if (this._applyCreditToPs(ps, entry, playerId)) delivered.push(entry);
+        /* v2.3.2538: a parked gear entry carries its row, and the row is
+           granted HERE -- at the moment the piece is really applied -- not
+           when the credit was first attempted.  Granting is idempotent, so
+           a retry converges on one row. */
+        const _fits = entry.kind !== 'gear' || this._gearCreditFits(ps, entry);
+        if (_fits) await this._creditGearRow(playerId, entry);
+        if (_fits && this._applyCreditToPs(ps, entry, playerId)) delivered.push(entry);
         else remainder.push(entry);
       }
+      /* Rebuild the pending-mail set from what is STILL queued, so the sell
+         gate's 'in_mail' answer is exact after every drain -- including the
+         entries this drain has just handed over. */
+      for (const e of delivered) this._gearCreditMail(playerId, e, false);
+      for (const e of remainder) this._gearCreditMail(playerId, e, true);
       if (remainder.length) await this.state.storage.put(key, remainder);
       else await this.state.storage.delete(key);
       if (delivered.length) {

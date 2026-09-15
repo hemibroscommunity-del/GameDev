@@ -274,7 +274,9 @@ export const gearProvMethods = {
   },
 
   _gearProvForget(playerId) {
-    if (playerId) this._gearProvMap().delete(playerId);
+    if (!playerId) return;
+    this._gearProvMap().delete(playerId);
+    if (this._gearProvPending) this._gearProvPending.delete(playerId);
   },
 
   /* Fire-and-forget put, the _saveRpg posture (rule 10): the output gate
@@ -572,18 +574,87 @@ export const gearProvMethods = {
        'not_held'  -- we minted it, but the record is no longer in this
                       player's ledger: it has been sold, traded, escrowed
                       into a live listing, or aged out past the cap
-       'no_player' -- no session (the ledger is not loaded) */
+       'worn'      -- it is on your body right now; take it off first
+       'in_mail'   -- it is a delivery still waiting in your inbox
+       'cosmetic'  -- an outfit layer.  NEVER sellable, by design, and not
+                      the same answer as 'legacy'
+       'no_player' -- no session (the ledger is not loaded)
+
+     ═══ v2.3.2538: THE GATE ASKS TWO QUESTIONS, NOT ONE ═══
+     It used to ask only "is there a row?", and treated the row as proof of
+     POSSESSION.  It is not: a row records a MINT.  The review of #650 ran
+     both consequences against a real GameRoom rather than reasoning about
+     them, and both print gear the moment #643 wires this up:
+
+       (a) WORN pieces have rows -- quests.js mints the tut_1 shield
+           straight into `ps.shield` and records it there.  The gate said
+           yes, `_gearProvTake` removed the row and best-effort spliced the
+           STASH list (where a worn piece is not), and the player kept
+           wearing theirs while the buyer received a copy.
+       (b) A piece parked in the MAIL had a row too, because the row was
+           granted before delivery was attempted and a full stash defers
+           delivery.  Sell the rebuilt copy now, receive the real one when
+           you make room.
+
+     (b) is closed at the source -- the row is no longer granted for a
+     delivery that did not land (inbox.js) -- and this gate checks the mail
+     anyway, because a gate that depends on another file's ordering staying
+     correct is not a gate. */
   _gearSellable(playerId, slot, piece) {
     if (!playerId) return { ok: false, reason: 'no_player' };
     if (!isGearProvSlot(slot)) return { ok: false, reason: 'wrong_slot' };
+    /* Cosmetics have NO server mint path at all (gearCatalog.js is client
+       art), so they can never carry a row -- and `legacy` would be the
+       wrong thing to tell a player, because it means "you earned this
+       before we kept receipts, sorry" and invites a future contributor to
+       "fix" cosmetics by adding a mint path nobody wants.  The truth is
+       "these are not sellable, by design". */
+    if (slot === 'gear') return { ok: false, reason: 'cosmetic' };
     const gid = claimedGid(piece && typeof piece === 'object' ? piece : { gid: piece });
     if (!gid) return { ok: false, reason: 'legacy' };
     const ledger = this._gearProvOf(playerId);
     if (!ledger) return { ok: false, reason: 'no_player' };
+    /* Checked BEFORE the row lookup, and it is why 'in_mail' exists as a
+       separate answer at all.  With the ordering fix in inbox.js a parked
+       piece has no row, so the lookup below would answer 'not_held' -- true,
+       but useless to a player, who would be told a piece they can see in
+       their mail is not theirs.  "It is still in the post" is something they
+       can act on, which is the entire purpose of these strings. */
+    if (this._gearProvInMail(playerId, gid)) return { ok: false, reason: 'in_mail' };
     const row = findProvRow(ledger, gid);
     if (!row) return { ok: false, reason: 'not_held' };
     if (row.slot !== slot) return { ok: false, reason: 'wrong_slot' };
+    const ps = this.playerState[playerId];
+    /* Worn: refuse rather than strip the piece off the player's body.  A
+       listing must never take what someone is using, and "unequip it
+       first" is a thing a player can act on -- which is what the reason
+       strings are for. */
+    if (ps && ps[slot] && ps[slot].gid === row.id) return { ok: false, reason: 'worn' };
     return { ok: true, reason: 'ok', gid: row.id };
+  },
+
+  /* Is this id sitting in an undelivered inbox entry?  Reads the in-memory
+     pending set rather than storage, so the gate stays synchronous and can
+     run inside one input-gated event (rule 9).  The set is rebuilt from
+     `inbox:<pid>` on join, which is the only moment a player can have mail
+     they have not been handed. */
+  _gearProvInMail(playerId, gid) {
+    const pend = this._gearProvPending && this._gearProvPending.get(playerId);
+    return !!(pend && pend.has(gid));
+  },
+
+  /* Remember / forget an id that is queued in the mail. */
+  _gearProvMailMark(playerId, gid, on) {
+    if (!playerId || !gid) return;
+    if (!this._gearProvPending) this._gearProvPending = new Map();
+    let set = this._gearProvPending.get(playerId);
+    if (on) {
+      if (!set) { set = new Set(); this._gearProvPending.set(playerId, set); }
+      set.add(gid);
+    } else if (set) {
+      set.delete(gid);
+      if (!set.size) this._gearProvPending.delete(playerId);
+    }
   },
 
   /* ═══ TAKE A PIECE INTO ESCROW ═══
@@ -624,10 +695,21 @@ export const gearProvMethods = {
        claim -- so this is a best-effort tidy, never the authority.  The
        authority is the row, which has just moved. */
     const field = GEAR_PROV_FIELD[slot];
-    if (field && Array.isArray(this.playerState[playerId] && this.playerState[playerId][field])) {
-      const list = this.playerState[playerId][field];
+    const psTake = this.playerState[playerId];
+    if (field && psTake && Array.isArray(psTake[field])) {
+      const list = psTake[field];
       const at = list.findIndex((g) => g && g.gid === verdict.gid);
-      if (at >= 0) list.splice(at, 1);
+      if (at >= 0) {
+        list.splice(at, 1);
+        /* v2.3.2538: and PERSIST it.  The splice used to live only in
+           memory until some unrelated path happened to save, so a room
+           restart in between left the stored blob still holding the piece
+           while the ledger had lost its row -- it reloaded as `legacy`.
+           Not a duplicate and not a loss, but an undocumented obligation on
+           every caller, which is the kind of thing the next caller forgets
+           (review of #650). */
+        this._saveRpg(playerId, psTake);
+      }
     }
     const piece = { ...row.p };
     delete piece.gid;

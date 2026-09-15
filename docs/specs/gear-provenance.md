@@ -1,4 +1,4 @@
-# Gear provenance — the server records what it mints (v2.3.2534–2536, repaired v2.3.2537)
+# Gear provenance — the server records what it mints (v2.3.2534–2536, repaired v2.3.2537–2538)
 
 Spec + attach points for `server/src/gearprov.js`. Phase 1 of the gear
 provenance lane (PR 1 of 3: **record at mint** → equip names a recorded
@@ -294,11 +294,37 @@ owner's "legacy gear is usable, not sellable" decision:
 
 | reason | meaning |
 |---|---|
-| `ok` | the server minted it and still holds the record |
+| `ok` | the server minted it, and this player is actually holding it |
 | `legacy` | no id — minted before the ledger existed, or claimed and never proved. **Permanent** |
+| `cosmetic` | an outfit layer. **Never** sellable, by design — deliberately *not* the same answer as `legacy`, which would invite someone to "fix" cosmetics by adding a mint path nobody wants |
+| `worn` | it is on your body right now; take it off first |
+| `in_mail` | it is a delivery still waiting in your inbox |
 | `wrong_slot` | the id names a piece for a different slot |
 | `not_held` | we minted it, but the record is no longer in this player's ledger: sold, escrowed into a live listing, or aged out past the cap |
 | `no_player` | no session, so no loaded ledger |
+
+### The gate asks two questions, not one (v2.3.2538)
+
+It first asked only *"is there a row?"*, treating a row as proof of
+**possession**. A row records a **mint**. The review of #650 ran both
+consequences against a real `GameRoom` rather than reasoning about them, and
+both print gear the moment #643 wires this up:
+
+- **A worn piece passed.** `quests.js` mints the tut_1 shield straight into
+  `ps.shield` and records it there, so worn pieces have rows. The gate said
+  yes, `_gearProvTake` removed the row and best-effort spliced the *stash*
+  list — where a worn piece is not — and the seller kept wearing theirs while
+  the buyer received a copy. Now refused with `worn`: a listing must never
+  take what someone is using, and "unequip it first" is something a player
+  can act on.
+- **A piece parked in the mail passed.** The row was granted *before*
+  delivery was attempted, and `_applyCreditToPs` declines on a full stash
+  while the player is **online** — so the ledger claimed they held a piece
+  sitting in their inbox. Closed at the source: the row is now granted only
+  when the piece actually lands, and otherwise travels **inside** the durable
+  inbox entry (just as durable, and impossible to sell from). The gate checks
+  the mail anyway, because a gate that depends on another file's ordering
+  staying correct is not a gate.
 
 ### Escrow moves the record, it does not flag it
 
@@ -367,9 +393,12 @@ Against this foundation it should instead:
 1. **Take the listing request as `{field, gid}`**, not an index. An index
    into a drifting snapshot is what made "which piece did you mean" a
    guess in the first place.
-2. **Gate on `_gearSellable(playerId, slot, gid)`** and return its
-   `reason` to the client, so the Sell button can explain a refusal
-   (`legacy` → "earned before the game kept receipts").
+2. **Gate on `_gearSellable(playerId, slot, gid)`** — it is the *whole*
+   gate, worn/mail/cosmetic checks included, so do not add a second one
+   beside it — and return its `reason` to the client so the Sell button can
+   explain a refusal (`legacy` → "earned before the game kept receipts";
+   `worn` → "take it off first"; `in_mail` → "still in the post";
+   `cosmetic` → "outfits aren't sellable").
 3. **Escrow with `_gearProvTake`** and store the returned `row` in the
    `store_listing:<id>` record next to the goods, exactly as `rec.weapon`
    is stored today.
@@ -404,6 +433,16 @@ v2.3.2534 shipped no caps flag, deliberately: nothing client-side gated
 on it, and `caps-audit.test.mjs` treats an advertised-but-unread flag as
 dead weight that *looks* like a live gate. v2.3.2535 adds `caps.gearRef`,
 which the client genuinely reads.
+
+### Rollback, and the one thing that would lose a piece
+
+Deploying **forward** is safe in both orders — no client behaviour depends on
+any of this. **Rolling the worker BACK** past v2.3.2536 is not, once a
+producer exists: `_applyCreditToPs` returns `true` for a kind it does not
+recognise, meaning "delivered, drop it", so an old worker draining an inbox
+that holds a `kind: 'gear'` entry would discard the piece. Nothing produces
+those entries yet, so there is nothing to lose today — but if #643 has
+shipped, a rollback needs the inbox drained first.
 
 ## Deploy-order safety (rule 19/20)
 
@@ -448,7 +487,7 @@ Written here so PR 2 and PR 3 inherit them on purpose.
 
 ## Tests
 
-`server/test/gearprov.test.mjs` (135 assertions). Structured around the
+`server/test/gearprov.test.mjs` (153 assertions). Structured around the
 three ways this family of change has gone wrong here rather than around
 the happy path:
 
