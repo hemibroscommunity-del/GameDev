@@ -163,13 +163,20 @@ client-local → server-owned (rule zero), not a two-way mirror.
 > and both are handled there rather than here:
 > - **A piece equipped after adoption is recorded twice** — once as the
 >   worn slot, still in the stash — so escrowing from the stash sells the
->   armour off the player's own back. `_stGearReconcileWorn` (storegear.js)
->   removes one matching entry per worn slot immediately before escrow.
->   `gearStash` has no worn counterpart on the server at all, so cosmetics
->   are the one case that cannot be reconciled.
+>   armour off the player's own back. v2.3.2528 reconciled the worn slot
+>   to close this; **v2.3.2529 removed that reconciliation**, because a
+>   `name|gearBase|tierMult|tier` match cannot tell a stale copy from a
+>   second identical plate and it deleted real spares. The hole is OPEN
+>   and bounded by the `caps.storeGear` kill switch; the real fix is the
+>   server recording gear when it mints it, which is where this spec's
+>   own "the server mints gear and then forgets it" leads.
 > - **The two lists are in different orders**, so a gear listing names its
 >   piece with a *selector* the server turns into a `stashSig` against its
 >   own copy, never with an index.
+> - **The client is still not a reader of the echo**, which is the first
+>   problem above and remains open. v2.3.2529 splices a listed piece out
+>   of the client's own list (`gearSellLocal.js`) so the bag stops showing
+>   what was sold — the smaller fix, not the real one.
 >
 > And the open trust boundary below is now load-bearing rather than
 > theoretical: the store accepts the risk deliberately behind

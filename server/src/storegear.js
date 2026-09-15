@@ -14,11 +14,17 @@
  * rebuild, the credit-first settle, the opId journal -- already exists
  * in store.js and is shared verbatim: a gear listing is the same record
  * with `kind: 'gear'`, and it travels the same `_stSettle` and
- * `_stRelease` as every other listing.  What lives HERE is only the
- * three things gear needs that stackables and weapons do not:
- *   1. how you NAME a gear piece in a request (a selector, not an index)
- *   2. reconciling the WORN slot before custody changes hands
- *   3. what a gear piece is worth as a credit (`kind: 'gear'`)
+ * `_stRelease` as every other listing.  What lives HERE is only what
+ * gear needs and stackables and weapons do not -- how you NAME a piece
+ * in a request, what a piece is worth as a credit (`kind: 'gear'`), and
+ * the two trust holes listing one opens.  The sections below are:
+ *   1. WHY A SELECTOR AND NOT AN INDEX
+ *   2. THE WORN SLOT: a known open hole, not a solved one
+ *   3. WHAT IS *NOT* CLOSED, and why that is a decision
+ *
+ * v2.3.2529 revision: the worn-slot RECONCILIATION this module shipped
+ * with is gone.  It deleted gear players genuinely own -- read section 2
+ * before adding anything like it back.
  *
  * ── 1. WHY A SELECTOR AND NOT AN INDEX ───────────────────────────────
  *
@@ -43,44 +49,54 @@
  * along only to break ties between two identical pieces; it is checked
  * against the signature before it is believed.
  *
- * ── 2. THE WORN SLOT (the one that mints) ────────────────────────────
+ * ── 2. THE WORN SLOT: A KNOWN OPEN HOLE, NOT A SOLVED ONE ───────────
  *
  * Adoption records the stash as it stood at that join.  Equip a piece
- * afterwards and the client moves it out of its LOCAL stash and into the
+ * afterwards and the client moves it out of its LOCAL stash into the
  * worn slot -- and tells the server about the worn slot alone
  * (`stats_update`, grids.js).  Our copy of the stash still lists it.
  * The piece is therefore recorded TWICE: once as `ps.armor`, once in
- * `ps.armorStash`.
+ * `ps.armorStash`.  Sell the stash copy and the player keeps wearing
+ * the armour they were paid for; the buyer paid real gold for a second
+ * copy of one plate.  It needs no modified client -- equipping a spare
+ * is the normal way to play.
  *
- * Escrow from the stash without reconciling and the player sells the
- * armour off their own back and keeps wearing it -- one plate, two
- * owners, and the buyer paid real gold for a copy.  That is minting, and
- * it needs no modified client at all: equipping a spare is the normal
- * way to use this game.
+ * v2.3.2528 shipped a reconciliation for this and v2.3.2529 TOOK IT
+ * BACK OUT, because it was worse than the hole.  It removed one stash
+ * entry whose signature matched the worn piece, on the assumption that
+ * such an entry is a stale duplicate.  Often it is not:
+ *   - Every existing player who was already wearing armour when the
+ *     hand-over ran holds only REAL spares -- the worn piece was never
+ *     double-recorded for them -- and the reconciliation ate one.
+ *   - It ran on every listing REQUEST, so it was not idempotent against
+ *     a real wardrobe: three requests ate three identical spares.
+ *   - It swept all four slots regardless of which list was being sold
+ *     from, so listing a shield deleted an armour spare.
+ *   - The deletion was persisted even when the listing then failed.
+ *   - And it did not close the hole anyway: unequip, list, re-equip is
+ *     three buttons in the game and walks straight past it, because
+ *     nothing is worn at the moment the check runs.
+ * The root problem is that `name|gearBase|tierMult|tier` cannot tell a
+ * stale copy of what you are wearing from a second identical plate you
+ * really own.  There is no honest heuristic here, so there is no
+ * heuristic here: DELETING GEAR A PLAYER OWNS IS STRICTLY WORSE THAN
+ * THE DUPLICATION IT WAS MEANT TO PREVENT.  Do not reintroduce one.
  *
- * `_stGearReconcileWorn` closes it at the only moment that matters: the
- * moment custody changes hands.  For each of the four slots the server
- * actually knows about it removes ONE stash entry matching the worn
- * piece -- one, not all, because a player who genuinely owns two
- * identical plates and wears one still has a spare to sell.  It runs
- * before the piece is resolved, so a worn piece is simply not there to
- * be listed.
+ * So, plainly: from this version a player CAN sell the armour off their
+ * own back.  What bounds it is `caps.storeGear`, the same live-ops kill
+ * switch that bounds item 3 below -- one flag write and gear listings
+ * stop being offered and stop being accepted, with no deploy.  The real
+ * fix is a ledger, not a guess: the server has to know what is in a
+ * stash because IT put it there (see item 3), and until then the worn
+ * slot cannot be reconciled against a list it never wrote.  The owner
+ * is deciding that separately; this module must not pre-empt it.
  *
- * It is deliberately NOT hung off the join path: adoption belongs to
- * gearstash.js, this is the escrow gate, and a reconciliation that runs
- * where the value moves is the one that cannot be bypassed by a route
- * that forgets to call it.
- *
- * COSMETICS ARE THE EXCEPTION, and it is a real one: the server stores
- * no worn-cosmetic slot at all (there is no such field in _saveRpg's
- * fixed list -- the rendered layers are client-local), so there is
- * nothing to reconcile a `gearStash` entry against.  A player wearing a
- * cosmetic chest can sell the server's stale copy of it and keep
- * wearing their own.  Cosmetics carry no stats -- they are appearance --
- * so what leaks is a duplicate LOOK and the buyer's gold, not power.
- * It is called out here, in the spec and in the PR body rather than
- * quietly shipped; closing it needs a worn-cosmetic field, which is a
- * gear-stash change, not a store change.
+ * COSMETICS have the same hole for a second, independent reason: the
+ * server stores no worn-cosmetic slot at all (there is no such field in
+ * _saveRpg's fixed list -- the rendered layers are client-local), so
+ * even a ledger would have nothing to compare a `gearStash` entry
+ * against until one exists.  Cosmetics carry no stats, so what leaks
+ * there is a duplicate LOOK and the buyer's gold, not power.
  *
  * ── 3. WHAT IS *NOT* CLOSED, AND WHY THAT IS A DECISION ──────────────
  *
@@ -132,30 +148,22 @@
  * converges to one copy on the next join rather than doubling.
  * Do not read `_sv` as a value: it is a provenance mark, it multiplies
  * nothing, and strict-mode sanitizing strips it off anything a client
- * hands us (see _stGearStrip).
+ * hands us -- at EVERY seam, the join claim included, which is where
+ * v2.3.2528 left it forgeable (gearstash.js GEAR_PROV / carryProv).
  */
 
-import { GEAR_STASH_FIELDS, GEAR_STASH_CAP, stashSig, sanitizeGearPiece, sanitizeCosmeticEntry } from './gearstash.js';
+import { GEAR_STASH_FIELDS, GEAR_STASH_CAP, GEAR_PROV, carryProv, stashSig, sanitizeGearPiece, sanitizeCosmeticEntry } from './gearstash.js';
 
 export const STORE_GEAR = {
   /* The live-ops flag that tightens listing to server-written pieces
      only.  Read through _flagOn (liveops.js), which is warm by the time
      any HTTP route runs (the join path awaits _liveFlagsEnsure). */
   STRICT_FLAG: 'store_gear_strict',
-  /* The provenance mark.  Underscored like every other server-owned
-     scratch field on a blob, and stripped from any client claim. */
-  PROV: '_sv',
-};
-
-/* Which worn slot each stash list is the spare rack for.  `gearStash`
-   is absent ON PURPOSE -- the server has no worn-cosmetic field, see the
-   header.  Written out rather than derived so the omission is visible
-   and greppable instead of being an accident of string arithmetic. */
-const WORN_SLOT_FOR = {
-  armorStash: 'armor',
-  legsStash: 'legsArmor',
-  shieldStash: 'shield',
-  amuletStash: 'amulet',
+  /* The provenance mark.  Defined in gearstash.js (GEAR_PROV) and
+     re-exported here, because the sanitizers that must carry it and the
+     strict rule that reads it are in different modules and a mark
+     spelled twice is a mark one of them forgets. */
+  PROV: GEAR_PROV,
 };
 
 /* Every gear list files under the bag's ARMOR chip.  The bag's own
@@ -191,43 +199,26 @@ export const storeGearMethods = {
      authoritative damage roll reads (AMULET_TIER_POWER), rather than a
      second copy of it. */
   _stGearSanitize(field, piece, strict) {
-    if (field === 'amuletStash') return this._sanitizeAmulet(piece);
-    if (field === 'gearStash') return sanitizeCosmeticEntry(piece);
-    return sanitizeGearPiece(piece, !!strict);
+    let out;
+    if (field === 'amuletStash') out = this._sanitizeAmulet(piece);
+    else if (field === 'gearStash') out = sanitizeCosmeticEntry(piece);
+    else out = sanitizeGearPiece(piece, !!strict);
+    /* v2.3.2529: the same seam the join path uses (gearstash.js
+       carryProv).  Amulets and cosmetics are REBUILT by their
+       sanitizers, so without this an escrow or a refund of one dropped
+       its `_sv`; a wire blob (strict) can never gain it. */
+    return carryProv(piece, out, !!strict);
   },
 
   /* Strip the provenance mark off anything that came from a client.
-     sanitizeGearPiece keeps unknown fields deliberately (so a field the
-     table has not learned about yet is not destroyed), which is exactly
-     why `_sv` has to be removed by name here. */
+     v2.3.2529: BELT AND BRACES only -- the strict sanitizers now strip it
+     themselves at every seam (gearstash.js GEAR_PROV), which is what
+     closes the join claim, the path this one never covered.  Kept because
+     the selector is the one blob built straight off a request body and a
+     second removal there costs nothing. */
   _stGearStrip(piece) {
     if (piece && typeof piece === 'object') delete piece[STORE_GEAR.PROV];
     return piece;
-  },
-
-  /* ═══ CONSTRAINT 2: the worn piece is not a spare ═══
-     Remove ONE stash entry per worn slot that matches the worn piece.
-     Returns true when it changed something, so the caller can persist.
-     Cheap -- five signature builds over lists capped at 32 -- and it
-     runs on the listing path only, where custody changes hands. */
-  _stGearReconcileWorn(ps) {
-    if (!ps) return false;
-    let changed = false;
-    for (const field of GEAR_STASH_FIELDS) {
-      const wornKey = WORN_SLOT_FOR[field];
-      if (!wornKey) continue;                 // gearStash: no worn record
-      const worn = ps[wornKey];
-      if (!worn || typeof worn !== 'object') continue;
-      const list = ps[field];
-      if (!Array.isArray(list) || !list.length) continue;
-      const wantSig = stashSig(field, worn);
-      if (!wantSig) continue;
-      const at = list.findIndex((e) => stashSig(field, e) === wantSig);
-      if (at === -1) continue;
-      list.splice(at, 1);                     // ONE copy: a real spare survives
-      changed = true;
-    }
-    return changed;
   },
 
   /* Find the seller's own copy of the piece a request names.  `sel` is a
@@ -320,15 +311,14 @@ export const storeGearMethods = {
     const field = body && body.field;
     if (!isGearField(field)) return { ok: false, error: 'Invalid item' };
 
-    /* Constraint 2 first: a worn piece must not be listable, and the
-       reconciliation is persisted whether or not the listing succeeds --
-       it corrected a double-count that was real either way. */
-    if (this._stGearReconcileWorn(ps)) {
-      this._saveRpg(playerId, ps);
-      this._queuePlayerStateFlush(playerId);
-    }
+    /* v2.3.2529: nothing is reconciled against the WORN slot here.  The
+       v2.3.2528 attempt deleted gear players really own (see the header's
+       item 2) and is deliberately not replaced by another heuristic --
+       "sell the armour off your own back" is a known open hole bounded by
+       `caps.storeGear` until the server keeps a real ledger of what it
+       minted.  Do not add a signature match back into this path.
 
-    /* The selector is sanitized in STRICT mode before its signature is
+       The selector is sanitized in STRICT mode before its signature is
        taken.  It is only a lookup key, but a 200 KB `name` would build a
        200 KB key, and strict mode is also what removes a claimed `_sv`
        before it could ever be compared. */
@@ -345,7 +335,8 @@ export const storeGearMethods = {
     const piece = this._stGearSanitize(field, ps[field][at], false);
     if (!piece) return { ok: false, error: 'Item not in stash' };
     if (!this._stGearListable(ps[field][at])) return { ok: false, error: 'That piece cannot be listed yet' };
-    if (ps[field][at][STORE_GEAR.PROV] === true) piece[STORE_GEAR.PROV] = true;
+    /* `_sv` rides across in _stGearSanitize's carryProv (non-strict), so
+       the escrowed copy keeps the provenance the stash entry had. */
 
     ps[field].splice(at, 1);
     this._saveRpg(playerId, ps);

@@ -295,5 +295,88 @@ const clientClaim = () => ({
     echo && Object.keys(echo.payload).filter((k) => /Stash/.test(k)));
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   8. THE PROVENANCE MARK ACROSS A REAL JOIN (v2.3.2529)
+   ══════════════════════════════════════════════════════════════════
+   `_sv` means "the server wrote this piece" and is the whole basis of
+   the store's strict-provenance mode (server/src/storegear.js).  The
+   v2.3.2528 slice got it wrong in BOTH directions, and neither was
+   visible from a test that called a sanitizer directly — which is why
+   these drive the actual join, the path that actually fills a stash:
+
+     - FORGEABLE.  The store stripped the mark off a listing SELECTOR
+       and nothing stripped it off the join claim, so a modified client
+       could mark its own forged plate `_sv: true` and strict mode
+       waved it through.  Strict mode was the hedge on an accepted
+       minting risk, so a forgeable mark is no hedge at all.
+     - LOST.  `sanitizeCosmeticEntry` and `_sanitizeAmulet` REBUILD
+       from a whitelist rather than copying, so an outfit or an amulet
+       the server genuinely handed over lost its mark on the owner's
+       next login and became unlistable under strict mode.
+
+   Both are asserted through `_stGearListable`, the room method the
+   store actually asks, with the strict flag actually on. */
+{
+  const wsP = fakeWs('prov-claim');
+  await join(room, wsP, 'bp_gs_prov', {
+    rpgArmorStash: [{ name: 'Forged Plate', gearBase: 'iron', tierMult: 3, tier: 't3', _sv: true }],
+    rpgGearStash: [{ slot: 'chest', gearId: 'forgedlook', name: 'Forged Look', _sv: true }],
+    rpgAmuletStash: [{ tier: 'mythic', gem: 'flame', name: 'Forged Amulet', _sv: true }],
+  });
+  const psP = room.playerState['bp_gs_prov'];
+  check('a join claim cannot award itself the provenance mark',
+    psP.armorStash.length === 1 && psP.armorStash[0]._sv === undefined, psP.armorStash[0]);
+  check('...nor on a cosmetic or an amulet claim',
+    psP.gearStash[0]._sv === undefined && psP.amuletStash[0]._sv === undefined,
+    { gear: psP.gearStash[0], amulet: psP.amuletStash[0] });
+  room._liveFlags = { store_gear_strict: true };
+  check('...so strict mode refuses the forged claim, which is the point',
+    room._stGearListable(psP.armorStash[0]) === false
+      && room._stGearListable(psP.gearStash[0]) === false
+      && room._stGearListable(psP.amuletStash[0]) === false, psP.armorStash[0]);
+  room._liveFlags = {};
+  /* The claim still ARRIVED — stripping the mark must not cost the
+     player the piece, only its provenance. */
+  check('...and the pieces themselves are still there, just unmarked',
+    psP.armorStash[0].name === 'Forged Plate' && psP.gearStash[0].gearId === 'forgedlook'
+      && psP.amuletStash[0].tier === 'mythic', psP.armorStash[0]);
+}
+
+/* The reverse: a piece the SERVER wrote (a refund, an expiry, a
+   purchase — _stGearApplyCredit is the only writer) must still carry its
+   mark after a save, a restart and a fresh login, for all three shapes.
+   The cosmetic and the amulet are the ones that regressed, because
+   their sanitizers rebuild. */
+{
+  const store2 = new Map();
+  const room2 = new GameRoom(makeState(store2), mockEnv);
+  await store2.set('rpg:bp_gs_svd', {
+    _v: RPG_SCHEMA_VERSION, coins: 0, level: 1, gearStashCaptured: true,
+    armorStash: [{ name: 'Server Plate', gearBase: 'iron', tierMult: 2, tier: 't2', _sv: true }],
+    legsStash: [], shieldStash: [],
+    gearStash: [{ slot: 'chest', gearId: 'serverlook', name: 'Server Look', _sv: true }],
+    amuletStash: [{ tier: 'regal', gem: 'frost', name: 'Server Amulet', _sv: true }],
+  });
+  await join(room2, fakeWs('prov-stored'), 'bp_gs_svd', {});
+  const psS = room2.playerState['bp_gs_svd'];
+  check('a server-written plate keeps its mark across a login',
+    psS.armorStash[0] && psS.armorStash[0]._sv === true, psS.armorStash[0]);
+  check('a server-written COSMETIC keeps its mark across a login (it rebuilds)',
+    psS.gearStash[0] && psS.gearStash[0]._sv === true, psS.gearStash[0]);
+  check('a server-written AMULET keeps its mark across a login (it rebuilds)',
+    psS.amuletStash[0] && psS.amuletStash[0]._sv === true, psS.amuletStash[0]);
+  room2._liveFlags = { store_gear_strict: true };
+  check('...so strict mode lists all three, which is what it is for',
+    room2._stGearListable(psS.armorStash[0]) === true
+      && room2._stGearListable(psS.gearStash[0]) === true
+      && room2._stGearListable(psS.amuletStash[0]) === true);
+  room2._liveFlags = {};
+  await room2._saveRpg('bp_gs_svd', psS);
+  const savedS = store2.get('rpg:bp_gs_svd');
+  check('...and the mark survives _saveRpg\'s fixed field list too',
+    savedS.armorStash[0]._sv === true && savedS.gearStash[0]._sv === true
+      && savedS.amuletStash[0]._sv === true, savedS.gearStash[0]);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

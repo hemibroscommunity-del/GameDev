@@ -89,6 +89,43 @@ export const GEAR_STASH_SEED_KEYS = {
    blob.  Kept as one boolean rather than two parallel field lists. */
 const COSMETIC_FIELD = 'gearStash';
 
+/* ═══ v2.3.2529: THE PROVENANCE MARK LIVES HERE, NOT IN THE STORE ═══
+   `_sv` means "the SERVER wrote this piece" -- it is set in exactly one
+   place (_stGearApplyCredit, storegear.js) and read by exactly one
+   (strict-mode listing).  It is defined in THIS module because this is
+   where every sanitizer that could carry it or drop it lives, and a mark
+   whose name is declared in one file and honoured in another is a mark
+   the next sanitizer somebody adds will silently drop.  storegear.js
+   re-exports it as STORE_GEAR.PROV rather than spelling it a second time.
+
+   It has to survive a round trip through storage and be UNFORGEABLE off
+   the wire, and v2.3.2528 got both edges wrong in opposite directions
+   (found by the adversarial review of #643):
+     - FORGEABLE.  The join claim is the path that actually fills a
+       stash, and it sanitizes STRICT -- but strict only stripped the
+       three forge fields, so a modified client could mark its own forged
+       plate `_sv: true` and strict mode waved it through.  The store
+       stripped the mark off the SELECTOR, which is not the path that
+       fills anything.
+     - LOST.  `sanitizeCosmeticEntry` and `_sanitizeAmulet` do not copy,
+       they REBUILD from a whitelist, so a cosmetic or amulet the server
+       genuinely handed over lost its mark on the owner's next login and
+       became unlistable under strict mode.
+   Both edges are one rule: the mark is carried across a sanitize when
+   and only when the source was OURS (non-strict), and never when the
+   source came off the wire.  `carryProv` is that rule, applied at every
+   sanitize seam so no shape can opt out of it. */
+export const GEAR_PROV = '_sv';
+
+/* Carry `_sv` from a source blob onto its sanitized output.  `strict`
+   (the blob came off the wire) means never.  Returns `out` so it can
+   wrap a sanitizer call directly. */
+export function carryProv(src, out, strict) {
+  if (strict || !out || typeof out !== 'object') return out;
+  if (src && typeof src === 'object' && src[GEAR_PROV] === true) out[GEAR_PROV] = true;
+  return out;
+}
+
 const STR_CAP = 40;
 
 function boundStr(v) {
@@ -145,6 +182,10 @@ export function sanitizeGearPiece(g, strict) {
     delete out.quality;
     delete out.hardness;
     delete out.temper;
+    /* v2.3.2529: and the provenance mark.  This is a shallow COPY, so
+       without this line a client-claimed `_sv: true` rode the join claim
+       into the stash and strict-mode listing believed it (GEAR_PROV). */
+    delete out[GEAR_PROV];
   } else {
     if (typeof out.hardness === 'number') out.hardness = Math.max(0, Math.min(5, Math.floor(out.hardness)));
     if (typeof out.temper === 'number') out.temper = Math.max(0, Math.min(9999, Math.floor(out.temper)));
@@ -180,11 +221,21 @@ export function sanitizeCosmeticEntry(g) {
 export function sanitizeStashList(field, arr, strict, amuletSanitizer) {
   if (!Array.isArray(arr)) return [];
   const cap = arr.slice(0, GEAR_STASH_CAP);
-  let mapped;
-  if (field === COSMETIC_FIELD) mapped = cap.map(sanitizeCosmeticEntry);
-  else if (field === 'amuletStash') mapped = cap.map((a) => (amuletSanitizer ? amuletSanitizer(a) : null));
-  else mapped = cap.map((g) => sanitizeGearPiece(g, strict));
-  return mapped.filter(Boolean);
+  const out = [];
+  for (const src of cap) {
+    let piece;
+    if (field === COSMETIC_FIELD) piece = sanitizeCosmeticEntry(src);
+    else if (field === 'amuletStash') piece = amuletSanitizer ? amuletSanitizer(src) : null;
+    else piece = sanitizeGearPiece(src, strict);
+    if (!piece) continue;
+    /* v2.3.2529: one seam, both directions -- a stored piece keeps `_sv`
+       through a REBUILDING sanitizer, a claimed one can never gain it.
+       A loop rather than three `.map`s because `.map(fn)` hands the
+       callback the INDEX as its second argument, which is exactly how a
+       `strict` flag becomes "false for entry 0, true for the rest". */
+    out.push(carryProv(src, piece, strict));
+  }
+  return out;
 }
 
 /* The identity of a piece, for the merge below.  Deliberately the

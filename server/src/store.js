@@ -22,9 +22,10 @@
  * Read that module's header before touching them: it carries the two
  * things that make gear different from a weapon (a piece is named by a
  * SELECTOR, not an index, because the client's stash and ours drift out
- * of order; and the WORN slot has to be reconciled before escrow, or a
- * player sells the armour off their own back and keeps wearing it), plus
- * the trust decision that was taken deliberately rather than inherited.
+ * of order; and TWO open trust holes -- a player can sell the armour off
+ * their own back, and being in a stash is not proof of ownership -- both
+ * accepted deliberately for the demo and both bounded by the same
+ * `caps.storeGear` kill switch, not by a heuristic).
  * Everything else about a gear listing — the markers, the rebuild, the
  * credit-first settle, the opIds — is this file's, unchanged, and that is
  * the point: see _stGoodsCredit.
@@ -432,8 +433,8 @@ export const storeMethods = {
     }
 
     /* v2.3.2528: the gear branch.  Everything it needs that a weapon does
-       not — reconciling the worn slot, resolving a selector against the
-       server's own list, the strict-provenance rule — is storegear.js's;
+       not — resolving a selector against the server's own list, the
+       strict-provenance rule — is storegear.js's;
        what comes back is the server's own piece, already spliced out of
        the server's own stash and saved.  Same shape as the weapon branch
        above, one call instead of eight lines, because getting that

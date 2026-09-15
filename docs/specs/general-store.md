@@ -188,35 +188,74 @@ truthful, because they *are* the identity. A selector claiming a bigger
 `tierMult` does not list a bigger piece — it names a piece nobody holds,
 and is refused having taken nothing.
 
-### The worn slot (the one that mints)
+### The worn slot — a known open hole (v2.3.2529)
 
 **A piece equipped after the hand-over is recorded twice.** Adoption
 writes the stash as it stood; equipping is client-local and the client
 tells the server about the worn slot alone (`stats_update`, grids.js), so
 the server now holds the plate as `ps.armor` *and* as an entry in
-`ps.armorStash`. Escrow from the stash without reconciling and the player
-sells the armour off their own back and keeps wearing it — one plate, two
-owners, and the buyer paid real gold for a copy. No modified client is
-needed: equipping a spare is the normal way to play.
+`ps.armorStash`. List the stash copy and the player keeps wearing the
+armour they were paid for — one plate, two owners, and the buyer paid
+real gold for a copy. No modified client is needed: equipping a spare is
+the normal way to play.
 
-`_stGearReconcileWorn` closes it at the moment custody changes hands. For
-each of the four slots the server knows (`armor`, `legsArmor`, `shield`,
-`amulet`) it removes **one** stash entry matching the worn piece — one,
-not all, so a player who genuinely owns two identical plates and wears one
-still has a spare to sell. It runs before the piece is resolved, and its
-result is persisted whether or not the listing then succeeds: the
-double-count was real either way. It is deliberately *not* on the join
-path — adoption belongs to `gearstash.js`, this is the escrow gate, and a
-reconciliation that runs where the value moves cannot be bypassed by a
-route that forgets to call it.
+v2.3.2528 shipped `_stGearReconcileWorn` for this and **v2.3.2529 removed
+it**, because it was worse than the hole it closed. It deleted one stash
+entry whose signature matched the worn piece, assuming such an entry is
+the stale duplicate adoption left behind. Often it is not:
 
-**Cosmetics are the exception, and it is a real one.** The server stores
-no worn-cosmetic slot at all — there is no such field in `_saveRpg`'s
-fixed list — so a `gearStash` entry has nothing to be reconciled against.
-A player wearing a cosmetic layer can sell the server's stale copy and
-keep wearing their own. Cosmetics carry no stats (they are appearance), so
-what leaks is a duplicate *look* and the buyer's gold, not power. Closing
-it needs a worn-cosmetic field, which is a gear-stash change.
+- Every player already wearing armour when the hand-over ran holds only
+  **real spares** — the worn piece was never double-recorded for them —
+  and the sweep ate one.
+- It ran on every listing **request**, so it was not idempotent against a
+  real wardrobe: three requests ate three identical spares.
+- It swept all four slots regardless of which list was being sold from,
+  so listing a shield deleted an armour spare.
+- The deletion persisted even when the listing then failed.
+- And it did not close the hole anyway: unequip → list → re-equip is
+  three buttons in the game and walks straight past it.
+
+The root problem is that `name|gearBase|tierMult|tier` cannot tell a stale
+copy of what you are wearing from a second identical plate you really own.
+**Deleting gear a player owns is strictly worse than the duplication it
+was meant to prevent**, so there is no replacement heuristic and none
+should be added. `server/test/market.test.mjs` §S12e asserts the removal
+and the spares it must not eat.
+
+So, plainly: **a player can sell the armour off their own back.** What
+bounds it is `caps.storeGear` — the same live-ops kill switch that bounds
+the accepted risk below, one flag write, no deploy. The real fix is a
+ledger rather than a guess: the server has to know what is in a stash
+because *it* put it there (see the two mint sites named below), and until
+then the worn slot cannot be reconciled against a list the server never
+wrote. That is the owner's call to make separately.
+
+**Cosmetics have the same hole for a second, independent reason.** The
+server stores no worn-cosmetic slot at all — there is no such field in
+`_saveRpg`'s fixed list — so even a ledger would have nothing to compare a
+`gearStash` entry against until one exists. Cosmetics carry no stats (they
+are appearance), so what leaks there is a duplicate *look* and the buyer's
+gold, not power.
+
+### The client has to stop showing what it sold (v2.3.2529)
+
+The client does **not** read `armorStash` / `legsStash` / `shieldStash` /
+`gearStash` off the `player_state` echo — `gear-stash.md` names that as
+"M3's first problem" and it is still open. v2.3.2528 relied on a redraw
+that therefore never happened: the listed piece stayed on its card and in
+localStorage, and tapping **Equip** on it made the worker accept it
+through `stats_update`, so the buyer got the escrowed plate and the seller
+wore an identical one. With the hand-over running on every login (#641)
+the surviving copy folds back into the server stash on reload, which turns
+a one-off into a loop.
+
+`removeGearLocal` (`src/ui/mobile/dash/gearSellLocal.js`) splices the piece
+out of the client's own list on a **successful** listing only — identity
+first, then the tile's index checked by signature, then the first
+signature match, never a blind index. A refused listing leaves the bag
+exactly as it was, because the worker took nothing. This is the smaller
+fix and it is named as such: **making the client a reader of the echoed
+stash is the real one, and it remains open.**
 
 ### Being in the stash is not proof of ownership — an accepted risk
 
@@ -384,11 +423,15 @@ the next render, and on a phone the normal way to press something once is
 to press it twice — two pointerups in one frame would otherwise both reach
 the worker and escrow the goods twice.
 
-**Selling never mutates locally.** The Sell sheet posts a key (or a stash
-index) and a price; the goods leave the bag on the worker's side and the
-client redraws off the `player_state` echo. The stash index is re-resolved
-against the live stash immediately before sending, for the reason
-v2.3.2341 records on the Equip button.
+**Selling never mutates locally — except where nothing would redraw.**
+The Sell sheet posts a key (or a stash index) and a price; a stackable or
+a weapon leaves the bag on the worker's side and the client redraws off
+the `player_state` echo. The stash index is re-resolved against the live
+stash immediately before sending, for the reason v2.3.2341 records on the
+Equip button. **Gear is the exception (v2.3.2529)**: the client is not a
+reader of the echoed gear stashes, so a successful gear listing splices
+the piece out of the local list itself (`gearSellLocal.js`, above). Still
+nothing on failure, and still nothing before the worker has answered.
 
 ## Attach points
 
@@ -399,6 +442,9 @@ v2.3.2341 records on the Equip button.
 - `server/src/index.js` — the outer-worker route and the DO `fetch`
   branch, beside the market's.
 - `server/src/join.js` — `caps.store`, `caps.storeGear`.
+- `src/ui/mobile/dash/gearSellLocal.js` — the gear cards' stash table and
+  the local splice (v2.3.2529); pure, so `market.test.mjs` §S12j can
+  import it.
 - `src/ui/panels/DevPanel.jsx` — `CAP_GATES` entries.
 - `server/test/market.test.mjs` — the store section (both surfaces are
   tested in one file so they can be shown not to interfere).
@@ -426,8 +472,8 @@ Gear (v2.3.2528):
 - **Gear may be listed even though the server cannot prove you own it.**
   The reasoning and the kill switch are in "Gear listings" above; this is
   the one default worth a second look before the game has real players.
-- A worn piece is not listable, and the duplicate stash entry is cleaned
-  up on the spot — including when the listing is then refused.
+- **A worn piece IS listable** — the worn-slot hole is open and bounded by
+  the kill switch, not closed by a heuristic (v2.3.2529, above)
 - Cosmetic layers *are* listable even though their worn state is invisible
   to the server; they carry no stats.
 - Gear files under the bag's **armor** chip, all five lists.

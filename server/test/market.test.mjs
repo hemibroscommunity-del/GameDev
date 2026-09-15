@@ -28,6 +28,7 @@
  *      deletes (never re-lists) stamped leftovers.
  */
 import { GameRoom } from '../src/index.js';
+import { GEAR_SELL, removeGearLocal } from '../../src/ui/mobile/dash/gearSellLocal.js';   /* v2.3.2529: the client half of a gear listing (S12j) */
 
 function makeState() {
   const store = new Map();
@@ -417,12 +418,12 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
  *        Object.prototype key, and goods you do not hold.
  *   S12. GEAR listings (v2.3.2528, storegear.js): escrow out of the
  *        server's own gear stash and return on cancel, on expiry and
- *        across a simulated restart in each; the WORN-slot double count
- *        (a piece equipped after adoption is recorded twice — escrow it
- *        unreconciled and a player sells the armour off their own back
- *        and keeps wearing it); a stash entry that has CHANGED since the
- *        card was opened; the kill switch; and the selector's own
- *        refusals.
+ *        across a simulated restart in each; the WORN-slot hole, which
+ *        v2.3.2529 leaves OPEN and named rather than guessed at (§S12e —
+ *        the reconciliation that guessed deleted real spares); a stash
+ *        entry that has CHANGED since the card was opened; the kill
+ *        switch; the provenance mark in both directions; and (§S12j) the
+ *        client's own bag losing the piece it just listed.
  * ════════════════════════════════════════════════════════════════════ */
 {
   /* Its own storage mock, honouring `limit`/`startAfter` — the rebuild
@@ -799,16 +800,20 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
      really does travel them, and does not quietly get a second
      mechanism of its own.
 
-     The two hazards this section exists for are both duplication, and
-     both were found by adversarial review of the gear-stash slice
-     (#640/#641) rather than by the code:
+     The hazards this section exists for are all duplication, and all
+     were found by adversarial review (#640/#641, then #643) rather than
+     by the code:
        - the WORN slot.  A piece equipped after the hand-over is recorded
-         twice, once as `ps.armor` and still in `ps.armorStash`.  Escrow
-         from the stash without reconciling and the seller keeps wearing
-         the armour they just sold.
+         twice, once as `ps.armor` and still in `ps.armorStash`, so the
+         seller can keep wearing the armour they just sold.  OPEN, and
+         §S12e says so: the v2.3.2528 reconciliation for it deleted real
+         spares, so it is gone and the kill switch is the bound.
        - a stale SELECTOR.  The client's stash and the server's are in
          different orders, so a card opened a moment ago can name an
          index holding something else by the time Sell is pressed.
+       - the CLIENT's own copy (§S12j).  Nothing redraws these lists off
+         the echo, so a listed piece has to be spliced out locally or it
+         can be equipped — and re-adopted — after it was sold.
 
      Goods are counted the way S8 counts them: over the WHOLE world (live
      players plus whatever the shelf still holds in escrow), before and
@@ -917,14 +922,23 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
       && st._store.has('oplog:store:' + gSale.listing.id + ':gold'));
     check('store gear: the record is deleted LAST and is gone', !st._store.has('store_listing:' + gSale.listing.id));
 
-    /* ══ S12e. CONSTRAINT 2 — YOU CANNOT SELL THE ARMOUR OFF YOUR BACK ══
-       The exact shape the review found, reproduced without a modified
-       client: adoption records the stash as it stood, the player then
-       EQUIPS the piece (client-local; the server hears only about the
-       worn slot, via stats_update/grids.js), and the server's record now
-       names one plate twice.  Escrow it from the stash and the seller
-       keeps wearing what they sold — one plate, two owners.
+    /* ══ S12e. THE WORN SLOT: A KNOWN OPEN HOLE, AND THE SPARES IT
+           MUST NOT EAT (v2.3.2529) ══
+       v2.3.2528 shipped `_stGearReconcileWorn` here: before escrow it
+       deleted one stash entry whose signature matched the worn piece,
+       on the theory that such an entry is the stale duplicate adoption
+       left behind.  v2.3.2529 REMOVED it, because the theory is wrong
+       often enough to cost people real armour — every player already
+       wearing a plate when the hand-over ran holds only genuine spares,
+       and the sweep ate one, on every request, in every slot, whether
+       or not the listing then succeeded.  Deleting gear somebody owns is
+       strictly worse than the duplication it was aimed at, and the
+       signature it matched on cannot tell the two apart.
 
+       So what is asserted here is the honest state of affairs: the hole
+       is OPEN and named (a player can list the piece they are wearing),
+       the `caps.storeGear` switch below is what bounds it, and NOTHING
+       on this path deletes a stash entry it was not asked to list.
        Counted over the whole world, because "the stash is empty now"
        would pass while the piece existed twice. */
     SEL.armorStash = [plate('Worn Plate')];
@@ -934,31 +948,52 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
     const sellWorn = await shop._stCreateListing({
       playerId: GSEL, kind: 'gear', field: 'armorStash', sel: plate('Worn Plate'), price: 300,
     });
-    check('store gear: the plate you are WEARING cannot be listed',
-      sellWorn.ok === false && sellWorn.error === 'Item not in stash', sellWorn);
-    check('store gear: ...and the double count is reconciled away, not left to rot',
-      SEL.armorStash.filter((g) => g.name === 'Worn Plate').length === 0
-      && SEL.armor && SEL.armor.name === 'Worn Plate', { stash: SEL.armorStash, worn: SEL.armor });
-    check('store gear: the reconciliation mints nothing — exactly one plate survives',
-      pieceInWorld('armorStash', 'Worn Plate') + wornCount('armor', 'Worn Plate') === 1,
-      { stash: pieceInWorld('armorStash', 'Worn Plate'), worn: wornCount('armor', 'Worn Plate') });
+    check('store gear: KNOWN HOLE — the plate you are wearing CAN still be listed',
+      sellWorn.ok === true, sellWorn);
+    check('store gear: ...the listing itself neither mints nor destroys — the double count is the hand-over\'s, not ours',
+      pieceInWorld('armorStash', 'Worn Plate') + wornCount('armor', 'Worn Plate') === wornPreTotal,
+      { world: pieceInWorld('armorStash', 'Worn Plate'), worn: wornCount('armor', 'Worn Plate') });
+    if (sellWorn.ok) await shop._stCancel(sellWorn.listing.id, GSEL);
+    check('store gear: ...and cancelling it puts the piece back, still two, still no third',
+      pieceInWorld('armorStash', 'Worn Plate') + wornCount('armor', 'Worn Plate') === wornPreTotal
+      && SEL.armorStash.filter((g) => g.name === 'Worn Plate').length === 1,
+      { stash: SEL.armorStash, worn: SEL.armor });
 
-    /* A REAL spare is not collateral damage: two identical plates, one
-       worn, still leaves one to sell.  The reconciliation removes ONE
-       copy per worn slot, not every match. */
-    SEL.armorStash = [plate('Twin Plate'), plate('Twin Plate')];
+    /* THE REGRESSION THE REMOVAL EXISTS FOR.  A player wearing a plate
+       and holding one real spare of it: no listing they make, and no
+       listing they are REFUSED, may take that spare off them. */
+    SEL.armorStash = [plate('Twin Plate')];
     SEL.armor = plate('Twin Plate');
+    SEL.shieldStash = [{ name: 'Pine Shield', gearBase: 'wood', tierMult: 1 }];
+    const spareBefore = SEL.armorStash.length;
+    for (let i = 0; i < 3; i++) {
+      const miss = await shop._stCreateListing({
+        playerId: GSEL, kind: 'gear', field: 'armorStash', sel: plate('Nothing Plate'), price: 10,
+      });
+      check('store gear: a listing that names nothing is refused (round ' + (i + 1) + ')', miss.ok === false, miss);
+    }
+    check('store gear: ...and three refused requests did NOT erode the real spare',
+      SEL.armorStash.length === spareBefore && SEL.armorStash[0].name === 'Twin Plate', SEL.armorStash);
+    const sellShield = await shop._stCreateListing({
+      playerId: GSEL, kind: 'gear', field: 'shieldStash', sel: { name: 'Pine Shield', gearBase: 'wood', tierMult: 1 }, price: 40,
+    });
+    check('store gear: selling a SHIELD works', sellShield.ok === true, sellShield);
+    check('store gear: ...and it touches no other list — the armour spare is untouched',
+      SEL.armorStash.length === 1 && SEL.armorStash[0].name === 'Twin Plate'
+      && SEL.armor && SEL.armor.name === 'Twin Plate', SEL.armorStash);
+    if (sellShield.ok) await shop._stCancel(sellShield.listing.id, GSEL);
     const sellSpare = await shop._stCreateListing({
       playerId: GSEL, kind: 'gear', field: 'armorStash', sel: plate('Twin Plate'), price: 150,
     });
-    check('store gear: a genuine spare of the piece you are wearing IS sellable',
-      sellSpare.ok === true, sellSpare);
+    check('store gear: the spare itself is sellable', sellSpare.ok === true, sellSpare);
     check('store gear: ...and exactly one copy is left behind, wearing the other',
       SEL.armorStash.filter((g) => g.name === 'Twin Plate').length === 0
       && SEL.armor.name === 'Twin Plate'
       && pieceInWorld('armorStash', 'Twin Plate') + wornCount('armor', 'Twin Plate') === 2,
       { stash: SEL.armorStash, escrowed: pieceInWorld('armorStash', 'Twin Plate') });
     await shop._stCancel(sellSpare.listing.id, GSEL);
+    check('store gear: the removed reconciliation really is gone from the room',
+      typeof shop._stGearReconcileWorn === 'undefined', typeof shop._stGearReconcileWorn);
 
     /* ══ S12f. THE STASH ENTRY CHANGED SINCE THE CARD WAS OPENED ══
        The client's list and ours drift out of order, so `hint` is a
@@ -1153,8 +1188,69 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
       strictYes.ok === true, strictYes);
     if (strictYes.ok) await shop._stCancel(strictYes.listing.id, GSEL);
     shop._liveFlags = {};
-    check('store gear: a client cannot award itself the provenance mark',
-      shop._stGearStrip(shop._stGearSanitize('armorStash', { name: 'Forged', tierMult: 1, _sv: true }, true))._sv === undefined);
+    /* v2.3.2529: this used to assert `_stGearStrip` directly, which was
+       false confidence — the strip never covered the JOIN CLAIM, and the
+       claim is the path that actually fills a stash.  The real proof is
+       a forged `_sv` surviving a real join and being refused by strict
+       mode: gearstash.test.mjs §8.  What is left here is the sanitizer
+       the store itself calls, in both directions. */
+    check('store gear: a wire blob cannot bring the provenance mark in with it',
+      shop._stGearSanitize('armorStash', { name: 'Forged', tierMult: 1, _sv: true }, true)._sv === undefined
+      && shop._stGearSanitize('gearStash', { slot: 'chest', gearId: 'x', _sv: true }, true)._sv === undefined
+      && shop._stGearSanitize('amuletStash', { tier: 'regal', gem: 'frost', _sv: true }, true)._sv === undefined);
+    check('store gear: ...and a piece of OURS keeps it through a sanitize that rebuilds',
+      shop._stGearSanitize('gearStash', { slot: 'chest', gearId: 'x', _sv: true }, false)._sv === true
+      && shop._stGearSanitize('amuletStash', { tier: 'regal', gem: 'frost', _sv: true }, false)._sv === true);
+
+    /* ══ S12j. THE CLIENT'S OWN BAG STOPS SHOWING WHAT IT SOLD ══
+       The half the worker cannot do for you.  v2.3.2528 listed a piece
+       and left it sitting on its card: this client does not read the
+       gear stashes off the `player_state` echo (gear-stash.md, "M3's
+       first problem", still open) and the popup's success path only
+       closed the popup.  So the plate stayed in the bag and stayed in
+       localStorage — and tapping Equip on it made the worker accept it
+       through `stats_update`, handing the seller a copy of the plate the
+       buyer had just paid for.  With the hand-over running on every
+       login (#641) the surviving copy folds straight back into the
+       server stash, which makes it a loop rather than a one-off.
+
+       `removeGearLocal` (src/ui/mobile/dash/gearSellLocal.js) is the
+       smaller fix, and it is a pure module precisely so this suite can
+       reach it — ItemDetailPopup.jsx cannot be imported here. */
+    {
+      const R = {
+        armorStash: [plate('Bag Plate'), plate('Other Plate')],
+        gearStash: [{ slot: 'chest', gearId: 'steelchest', name: 'Steel Chest' }],
+      };
+      const listed = R.armorStash[0];
+      check('client: the card sells out of the list the server names',
+        GEAR_SELL.get('stashArmor').field === 'armorStash'
+        && GEAR_SELL.get('stashLegs').field === 'legsStash'
+        && GEAR_SELL.get('stashShield').field === 'shieldStash'
+        && GEAR_SELL.get('stashGear').field === 'gearStash');
+      check('client: a listed piece leaves the bag', removeGearLocal(R, 'armorStash', listed, 0) === true);
+      check('client: ...and only that one — the other plate stays',
+        R.armorStash.length === 1 && R.armorStash[0].name === 'Other Plate', R.armorStash);
+      /* The array was replaced under the popup (the v2.3.2341 shape):
+         identity is gone, so the signature has to find it. */
+      const R2 = { armorStash: [plate('Other Plate'), plate('Bag Plate')] };
+      check('client: a piece whose array was replaced is still found by signature',
+        removeGearLocal(R2, 'armorStash', plate('Bag Plate'), 0) === true
+        && R2.armorStash.length === 1 && R2.armorStash[0].name === 'Other Plate', R2.armorStash);
+      /* A stale hint must never remove a piece the player still owns. */
+      const R3 = { armorStash: [plate('Keep Me'), plate('Sell Me')] };
+      removeGearLocal(R3, 'armorStash', plate('Sell Me'), 0);
+      check('client: a stale index does not take the wrong piece out of the bag',
+        R3.armorStash.length === 1 && R3.armorStash[0].name === 'Keep Me', R3.armorStash);
+      /* A refused listing calls this with something that is not there;
+         it must be a no-op, not a "remove whatever is at the hint". */
+      const R4 = { armorStash: [plate('Keep Me')] };
+      check('client: a piece that is not in the bag removes nothing',
+        removeGearLocal(R4, 'armorStash', plate('Ghost'), 0) === false && R4.armorStash.length === 1, R4.armorStash);
+      check('client: a cosmetic is matched on slot+gearId, like the server',
+        removeGearLocal(R, 'gearStash', { slot: 'chest', gearId: 'steelchest' }, 0) === true
+        && R.gearStash.length === 0, R.gearStash);
+    }
   }
 
   // ── the order book next door is untouched ──
