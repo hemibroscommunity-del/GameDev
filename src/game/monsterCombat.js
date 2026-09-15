@@ -27,7 +27,7 @@ import {
   RESPAWN_BASE, RESPAWN_ESCALATE, RESPAWN_ESCALATE_WINDOW, RESPAWN_MAX, SPECIAL_ATK_MULT, specialAtkMultFor,
   SWING_ARC, SWING_COOLDOWN, weaponSwingMult /* v2.3.2265 */, SWING_RANGE, MELEE_CONTACT_MS /* v2.3.2200 */, TILE, WEAPON_TYPES, WELL_RESTED_XP_MULT,
   ZONES, ZONE_RESOURCES, applyStatus, awardWeaponXp, bowPierceCount, bowRangeMult, calcBlockReduction, calcCritChance,
-  calcCritMult, calcCombatDmgRange /* v2.3.2502: the RAW range -- the crit anchor is gameplay, not a readout */, calcSpecialDmg, calcWeaponDmg, cleaveArcBonus, createDefaultCompStats, createDefaultLifeSkills,
+  calcCritMult, calcCombatDmgRange /* v2.3.2520: the RAW range -- the crit anchor is gameplay, not a readout */, calcSpecialDmg, calcWeaponDmg, cleaveArcBonus, createDefaultCompStats, createDefaultLifeSkills,
   CRIT_ANCHOR_MULT,
   createMonster, discoverCollision, discoverMonster, generateZoneMap, getActiveWeapon,
   getAttunementPts, getCollisionDeathFX, getDefenseBlockBonus, getEffectiveness, getElementDeathFX,
@@ -37,7 +37,7 @@ import {
   monsterBodyOffsetY, monsterMeleeHitRadius, monsterProceduralRadius, TOWN_SPAWN /* v2.3.1777 */
 } from '@/data/index.js';
 import { prog3Live, prog3CatFor, prog3CritPct, prog3CritMult, prog3CritFlat } from '@/data/prog3.js'; /* v2.3.2218 */
-import { STAFF_LIFE, BOW_RANGE_PX, toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2387: one staff range for all four spawn sites; v2.3.2473: the sight gate's reach; v2.3.2502: the display damage scale */
+import { STAFF_LIFE, BOW_RANGE_PX, toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2387: one staff range for all four spawn sites; v2.3.2473: the sight gate's reach; v2.3.2520: the display damage scale */
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
@@ -615,7 +615,7 @@ export function updateMonsterCombat(S, deps) {
                       hurtPlayerLocal(S, _R6, finalDmg);
                       trackMonsterDamage(S, m.id, finalDmg);
                       if (window.__dmgLog) try { console.log('[dmg] boss-slam', { amt: finalDmg, archetype: m.archetype || m.type, blocked: blocked }); } catch (e) {}
-                      pushDmgPopup(S, P.x, P.y - 20, blocked ? 'BLOCK' : '-' + toDisplayDamage(finalDmg), '#f5c542');   /* v2.3.2502: display scale */
+                      pushDmgPopup(S, P.x, P.y - 20, blocked ? 'BLOCK' : '-' + toDisplayDamage(finalDmg), '#f5c542');   /* v2.3.2520: display scale */
                       if (blocked) {
                         try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
                       } else {
@@ -660,7 +660,7 @@ export function updateMonsterCombat(S, deps) {
                       hurtPlayerLocal(S, _R6, _finalDmg);
                       trackMonsterDamage(S, m.id, _finalDmg);
                       if (window.__dmgLog) try { console.log('[dmg] boss-sweep', { amt: _finalDmg, archetype: m.archetype || m.type, blocked: _blocked }); } catch (e) {}
-                      pushDmgPopup(S, P.x, P.y - 20, _blocked ? 'BLOCK' : '-' + toDisplayDamage(_finalDmg), '#a855f7');   /* v2.3.2502: display scale */
+                      pushDmgPopup(S, P.x, P.y - 20, _blocked ? 'BLOCK' : '-' + toDisplayDamage(_finalDmg), '#a855f7');   /* v2.3.2520: display scale */
                       if (_blocked) {
                         try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
                       } else {
@@ -732,7 +732,7 @@ export function updateMonsterCombat(S, deps) {
                   hurtPlayerLocal(S, _R6, _finalDmg2);
                   trackMonsterDamage(S, m.id, _finalDmg2);
                   if (window.__dmgLog) try { console.log('[dmg] boss-charge', { amt: _finalDmg2, archetype: m.archetype || m.type, blocked: _blocked2 }); } catch (e) {}
-                  pushDmgPopup(S, P.x, P.y - 20, _blocked2 ? 'BLOCK' : '-' + toDisplayDamage(_finalDmg2), '#ea580c');   /* v2.3.2502: display scale */
+                  pushDmgPopup(S, P.x, P.y - 20, _blocked2 ? 'BLOCK' : '-' + toDisplayDamage(_finalDmg2), '#ea580c');   /* v2.3.2520: display scale */
                   if (_blocked2) {
                     try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
                   } else {
@@ -907,7 +907,7 @@ export function updateMonsterCombat(S, deps) {
                       if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: explodeDmg } });
                     }
                     S.screenShake = 8;
-                    /* v2.3.2506: was full-size — v2.3.2502 converted the ordinary
+                    /* v2.3.2521: was full-size — v2.3.2520 converted the ordinary
                        hit popup below and missed this one, so a volatile's death
                        burst printed a raw number next to scaled ones. */
                     pushDmgPopup(S, m.x, m.y - 20, 'BOOM -' + toDisplayDamage(explodeDmg), '#ea580c');
@@ -991,9 +991,9 @@ export function updateMonsterCombat(S, deps) {
                         hurtPlayerLocal(S, _R6, pierceDmg);
                         trackMonsterDamage(S, m.id, pierceDmg);
                         if (window.__dmgLog) try { console.log('[dmg] sentinel-pierce', pierceDmg); } catch (e) {}
-                        /* v2.3.2506: was full-size.  This popup fires in the SAME
+                        /* v2.3.2521: was full-size.  This popup fires in the SAME
                            blow as the '-N' at the foot of this block (converted in
-                           v2.3.2502), so one sentinel hit printed "-2" and
+                           v2.3.2520), so one sentinel hit printed "-2" and
                            "Pierce -9" together — the half-converted screen that
                            makes the whole change look broken. */
                         pushDmgPopup(S, P.x + 10, P.y - 22, 'Pierce -' + toDisplayDamage(pierceDmg), '#e8e8e8');
@@ -1006,7 +1006,7 @@ export function updateMonsterCombat(S, deps) {
                         hurtPlayerLocal(S, _R6, critDmg);
                         trackMonsterDamage(S, m.id, critDmg);
                         if (window.__dmgLog) try { console.log('[dmg] stalker-crit', critDmg); } catch (e) {}
-                        /* v2.3.2506: was full-size — same blow, same block, same
+                        /* v2.3.2521: was full-size — same blow, same block, same
                            mismatch as the Pierce popup above. */
                         pushDmgPopup(S, P.x, P.y - 40, 'CRIT -' + toDisplayDamage(critDmg), '#ff5e6c');
                         S.screenShake = Math.max(S.screenShake || 0, 4);
@@ -1049,7 +1049,7 @@ export function updateMonsterCombat(S, deps) {
                         });
                       }
                     } else {
-                      pushDmgPopup(S, P.x, P.y - 30, '-' + toDisplayDamage(dmgTaken), '#ff5e6c', { iconKey: 'heart' });   /* v2.3.2502: display scale */
+                      pushDmgPopup(S, P.x, P.y - 30, '-' + toDisplayDamage(dmgTaken), '#ff5e6c', { iconKey: 'heart' });   /* v2.3.2520: display scale */
                     }
                   }
                   if (_R6.hp <= 0) {
@@ -1992,11 +1992,11 @@ export function updateMonsterCombat(S, deps) {
                    the same order the server uses. */
                 var _rangeTop = 0;
                 if (isCrit) {
-                  /* v2.3.2502: calcCOMBATDmgRange, not calcDisplayDmgRange.
+                  /* v2.3.2520: calcCOMBATDmgRange, not calcDisplayDmgRange.
                      This anchor is GAMEPLAY -- it mirrors combat.js
                      _critAnchor so the local prediction matches the damage
                      the worker actually pays -- and the display scale that
-                     shipped in v2.3.2502 divides the DISPLAY range by 5.
+                     shipped in v2.3.2520 divides the DISPLAY range by 5.
                      Reading the display half here would floor every
                      predicted crit at a fifth of the server's floor, i.e.
                      the exact prediction/authority divergence v2.3.2213

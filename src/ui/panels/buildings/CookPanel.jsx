@@ -1,5 +1,5 @@
 import React from 'react';
-import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, createDefaultCompStats, getCookingSweetSpot, getFishTierLevel, toDisplayDamage } from '@/data/index.js'; /* v2.3.2502: the display damage scale */
+import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, createDefaultCompStats, getCookingSweetSpot, getFishTierLevel, toDisplayDamage } from '@/data/index.js'; /* v2.3.2520: the display damage scale */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -472,7 +472,7 @@ export function CookPanel(props) {
           try {
             localStorage.setItem('bt_rpg', JSON.stringify(R));
           } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + toDisplayDamage(healed) + ' HP', '#59BF91');   /* v2.3.2502: display scale */
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + toDisplayDamage(healed) + ' HP', '#59BF91');   /* v2.3.2520: display scale */
           BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
         }
       }, "Eat"));

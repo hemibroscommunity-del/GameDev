@@ -34,7 +34,7 @@
  * expected-value mirror for UI only. */
 import {
   calcDisplayDmgRange, calcDisplayDps, calcDisplayHeal, calcDisplayArmorHp,
-  /* ═══ v2.3.2502: the display damage scale (§5.8 D1) ═══
+  /* ═══ v2.3.2520: the display damage scale (§5.8 D1) ═══
      calcCombatDmgRange is the range this suite's fixtures have always
      pinned -- the SERVER-unit math, unchanged.  calcDisplayDmgRange is now
      that same range with the display scale applied, so every "matches hand
@@ -193,7 +193,7 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   const critHitH = Math.max(avgH * critMult, expMax * 2) + critFlat;
   const expDps = (avgH + critChance * (critHitH - avgH)) / (600 / 1000);
 
-  /* v2.3.2502: the hand math above is in SERVER units and stays there — it is
+  /* v2.3.2520: the hand math above is in SERVER units and stays there — it is
      the roll the worker will confirm, and the crit anchor reads it. */
   const raw = calcCombatDmgRange(rpg, wpn);
   check('fixture: RAW damage range matches hand math exactly',
@@ -339,7 +339,7 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
 // readout must move with the accumulator and ignore stale counts.
 {
   const SWORD2 = { type: 'sword', tierMult: 1 };
-  /* v2.3.2502: raw half — 777 is a flat in SERVER units, so the check that it
+  /* v2.3.2520: raw half — 777 is a flat in SERVER units, so the check that it
      lands whole belongs on the unscaled range (the scaled one would compare
      777 against 777/k and fail for a reason that has nothing to do with the
      accumulator this section is about). */
@@ -390,7 +390,7 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   const avgX = (expMinX + expMaxX) / 2;
   const critHitX = Math.max(avgX * 2.1, expMaxX * 2);
   const expDpsX = (avgX + (0.01 + 50 * PROG3.ATK.crit.per) * (critHitX - avgX)) / (cdX / 1000);
-  const rX = calcCombatDmgRange(p3rpg, SWORD);           /* v2.3.2502: raw half */
+  const rX = calcCombatDmgRange(p3rpg, SWORD);           /* v2.3.2520: raw half */
   const dX = calcDisplayDps(p3rpg, SWORD);
   check('prog3x fixture: range carries the dmg stat pre-tier',
     !!rX && rX.min === expMinX && rX.max === expMaxX && Math.abs(rX.cdMs - cdX) < 1e-9,
@@ -407,7 +407,7 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   const avgL = (expMinL + expMaxL) / 2;
   const critHitL = Math.max(avgL * 1.5, expMaxL * 2) + 60 * 2;   /* flat rides ON TOP of the anchor */
   const expDpsL = (avgL + (0.01 + 50 * PROG3.ATK.crit.per) * (critHitL - avgL)) / (cdX / 1000);
-  const rL = calcCombatDmgRange(p3rpg, SWORD);           /* v2.3.2502: raw half */
+  const rL = calcCombatDmgRange(p3rpg, SWORD);           /* v2.3.2520: raw half */
   const dL = calcDisplayDps(p3rpg, SWORD);
   check('old-worker fallback: dmg stat leaves the range',
     !!rL && rL.min === expMinL && rL.max === expMaxL, { got: rL, expMinL, expMaxL });
@@ -416,7 +416,7 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   setProg3Enabled(false);
 }
 
-// ── 12. v2.3.2502: THE DISPLAY DAMAGE SCALE (§5.8 D1) ──
+// ── 12. v2.3.2520: THE DISPLAY DAMAGE SCALE (§5.8 D1) ──
 // Display-only rescaling of every player-facing combat number.  Three
 // properties make it safe, and all three are pinned here rather than
 // trusted:

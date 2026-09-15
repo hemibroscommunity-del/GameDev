@@ -5045,7 +5045,7 @@ export function getWeaponCritFlat(rpg) {
   return weaponCritFlatFor(rpg, (getActiveWeapon(rpg) || {}).type);
 }
 
-/* ═══ v2.3.2502: THE DISPLAY DAMAGE SCALE (§5.8 D1) ═══
+/* ═══ v2.3.2520: THE DISPLAY DAMAGE SCALE (§5.8 D1) ═══
  *
  * Owner ask, in their words: the combat numbers are too big to read at a
  * glance on a phone.  A level-1 monster has 58 HP and a level-1 sword hits
@@ -5187,7 +5187,7 @@ export function toDisplayHitDamage(hpBefore, hpAfter, rawDmg) {
 
    Returns null / 0 for a missing or unknown weapon.
 
-   ═══ v2.3.2502: RAW vs DISPLAYED ═══
+   ═══ v2.3.2520: RAW vs DISPLAYED ═══
    This function now comes in two halves, and the split is load-bearing.
 
    calcCombatDmgRange is the INTERNAL-UNIT range — the server-mirroring math
@@ -5236,7 +5236,7 @@ export function calcCombatDmgRange(rpg, wpn) {
     cdMs: cdMs,
   };
 }
-/* v2.3.2502: the player-facing half — see the RAW vs DISPLAYED note above. */
+/* v2.3.2520: the player-facing half — see the RAW vs DISPLAYED note above. */
 export function calcDisplayDmgRange(rpg, wpn) {
   var r = calcCombatDmgRange(rpg, wpn);
   if (!r) return null;
@@ -5252,7 +5252,7 @@ export function calcDisplayDmgRange(rpg, wpn) {
   };
 }
 export function calcDisplayDps(rpg, wpn) {
-  /* v2.3.2502: folded from the RAW range on purpose.  Every term below --
+  /* v2.3.2520: folded from the RAW range on purpose.  Every term below --
      the crit anchor's `r.max * CRIT_ANCHOR_MULT` floor and the banked
      critFlat added on top of it -- is in server units, so mixing a scaled
      range with an unscaled flat would not be "DPS / k", it would be a
@@ -5293,7 +5293,7 @@ export function calcDisplayDps(rpg, wpn) {
      first cut folded critFlat inside the max and would have under-reported
      every legacy crit-flat build by the part the floor swallowed. */
   var critHit = Math.max(avg * critMult, r.max * CRIT_ANCHOR_MULT) + critFlat;
-  return ((avg + critChance * (critHit - avg)) / (r.cdMs / 1000)) / DISPLAY_SCALE_K;   /* v2.3.2502 */
+  return ((avg + critChance * (critHit - avg)) / (r.cdMs / 1000)) / DISPLAY_SCALE_K;   /* v2.3.2520 */
 }
 
 /* v2.3.1207: ONE display heal formula for every fish readout — the

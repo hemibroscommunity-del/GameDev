@@ -3,7 +3,7 @@ import {
   calcMoveSpeed, passiveDodgeChance, getActiveWeapon, getWeaponCritStat,
   getEvasionPts, getDefenseBlockBonus, xpRequired, weaponXpRequired,
   buildSkillUnspent, getArmorDrPct,
-  DISPLAY_SCALE_K, toDisplayHp, /* v2.3.2506: the Build cards read in display units too */
+  DISPLAY_SCALE_K, toDisplayHp, /* v2.3.2521: the Build cards read in display units too */
 } from '../../../data/gameSystems.js';
 /* v2.3.1660: trained-skill rebuild mirrors — display branches only;
    the legacy formulas stay for old workers (rule 19). */
@@ -220,8 +220,8 @@ export function combatLevelProgress(R) {
    - vitality/endurance/mind capacity: +10 HP / +3 stam / +3.5 mana
      per point (calcMaxHp/Stam/Mana);
    - defense: the live DR% (with shield). */
-/* ═══ v2.3.2506: THE BUILD CARDS SPEAK IN DISPLAY UNITS ═══
-   v2.3.2502 scaled the Damage and HP rows but not these blurbs, so a card
+/* ═══ v2.3.2521: THE BUILD CARDS SPEAK IN DISPLAY UNITS ═══
+   v2.3.2520 scaled the Damage and HP rows but not these blurbs, so a card
    said "+8.3 dmg with melee" and "+10 max HP" while the row two inches away
    said "1-2" and "20".  Same lens, same screen.  The damage line divides by
    k directly rather than going through toDisplayDamage: this is a FRACTIONAL

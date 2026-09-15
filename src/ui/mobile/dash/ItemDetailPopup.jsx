@@ -24,7 +24,7 @@ import {
   calcDisplayDmgRange,
   calcDisplayDps,
   calcDisplayHeal,
-  toDisplayDamage, /* v2.3.2502: the display damage scale */
+  toDisplayDamage, /* v2.3.2520: the display damage scale */
   getArmorPieceDr, /* v2.3.1697: replaced calcDisplayArmorHp — armor buys mitigation, not HP */
   calcBlockReduction,
   /* v2.3.1845: the two tier tables left with tierLabel — weaponTierLabel
@@ -143,7 +143,7 @@ function resolveTarget(target) {
     else if (isCapeItemKey(key)) {
       info = capeIsWorn() ? 'Worn — a contest prize' : 'A contest prize, in your bag';
     }
-    else if (isCookedFish) info = '+' + toDisplayDamage(calcDisplayHeal(SR && SR.rpg, key)) + ' HP when eaten';   /* v2.3.2502: display scale */
+    else if (isCookedFish) info = '+' + toDisplayDamage(calcDisplayHeal(SR && SR.rpg, key)) + ' HP when eaten';   /* v2.3.2520: display scale */
     else if (isRawFish) info = 'Cook over a campfire';
     else if (isBurnt) info = 'Inedible';
     else if (isLog) info = 'Light a campfire to cook at';

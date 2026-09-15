@@ -407,7 +407,7 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
  *   S7.  Double settlement is a no-op — the opIds are the wall (rule 5).
  *   S8.  Crash convergence: an in-flight sale marker with its payment
  *        stamp RESUMES on rebuild; one without it re-lists; a bid marker
- *        whose debit never landed is dropped; and (v2.3.2506) a cancel or
+ *        whose debit never landed is dropped; and (v2.3.2521) a cancel or
  *        an expiry that died between its refunds and its delete is
  *        FINISHED on the next wake instead of going back on the shelf.
  *   S9.  Browse pages, and the page is bounded (rule 9).
@@ -633,7 +633,7 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
     st._store.get('store_listing:' + crashC.listing.id));
   await room8._stCancel(crashC.listing.id, 'bp_st_sell');
 
-  /* (d)+(e) v2.3.2506 — the cancel/expiry crash window.
+  /* (d)+(e) v2.3.2521 — the cancel/expiry crash window.
      `_stRelease` refunds the bid, mails the goods home, then deletes the
      record: three separate disk writes, and the worker restarts on every
      merge to main that touches server/**.  Shipped without a marker, a

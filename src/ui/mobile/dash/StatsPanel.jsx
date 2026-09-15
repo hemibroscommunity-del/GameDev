@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
-import { toDisplayHp } from '../../../data/gameSystems.js'; /* v2.3.2506: the display scale */
+import { toDisplayHp } from '../../../data/gameSystems.js'; /* v2.3.2521: the display scale */
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — the flat
    label:value dump becomes a real readout: VITALS as spec meters
@@ -102,7 +102,7 @@ export const StatsPanel = () => {
   return (
     <div style={panelStyle}>
       <div style={secHdr}>Vitals</div>
-      {/* v2.3.2506: this HP readout was missed by v2.3.2502's display scale,
+      {/* v2.3.2521: this HP readout was missed by v2.3.2520's display scale,
           so the Stats tab said "100 / 100" while the Hero sheet said
           "20 / 20" for the same character one tap away.  toDisplayHp is the
           right helper (ceil, so 1 HP left never reads 0) and it matches what

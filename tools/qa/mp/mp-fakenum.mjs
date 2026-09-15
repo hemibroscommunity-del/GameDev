@@ -74,7 +74,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* The local roll's leftovers, exactly as monsterCombat would have set
        them for a collision it resolved but did not print. */
     S._ownCollisionRecent = { id: 'wildfire', name: 'Wildfire', color: '#ff9a3c', prefix: '', at: Date.now() };
-    /* v2.3.2502: dmg and hpPct now have to AGREE.  Since the display scale
+    /* v2.3.2520: dmg and hpPct now have to AGREE.  Since the display scale
        shipped, a non-kill popup reports the change in DISPLAYED hp rather
        than the raw dmg field (see toDisplayHitDamage), so a staged payload
        claiming "21 damage" alongside an hpPct that says 40 was taken no
@@ -88,12 +88,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    popups after ONE worker collision hit', JSON.stringify(coll.pops));
   rec.ok('a worker collision hit produces exactly ONE damage number',
     coll.pops.length === 1, coll);
-  /* v2.3.2502: the number is the worker's damage THROUGH THE DISPLAY SCALE.
+  /* v2.3.2520: the number is the worker's damage THROUGH THE DISPLAY SCALE.
      40 raw = displayed hp 40 -> 32, so the popup reads 8, which is also
      round(40/k) -- the two halves of the consistency rule agree whenever the
      worker's dmg and hpPct agree, which in real play is always. */
-  /* v2.3.2517: RENAMED to say what it now proves.  It used to read "it
-     carries the WORKER's damage", and since v2.3.2502 a non-kill popup does
+  /* v2.3.2522: RENAMED to say what it now proves.  It used to read "it
+     carries the WORKER's damage", and since v2.3.2520 a non-kill popup does
      not read payload.dmg at all -- it reports the change in DISPLAYED hp,
      derived from the worker's hpPct.  Same guarantee (the number is the
      worker's, not a second local roll) off a different field, so the claim
@@ -111,7 +111,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const plain = await P.page.evaluate(() => {
     const S = window._gameState.current;
     S.dmgNumbers = [];
-    /* v2.3.2502: agreeing pair again -- 160 -> 140 hp is 20 damage,
+    /* v2.3.2520: agreeing pair again -- 160 -> 140 hp is 20 damage,
        hpPct 0.7.  Displayed: 32 -> 28, so the popup reads 4 = round(20/k). */
     window.__btDispatch({ type: 'monster_hit', payload: {
       monsterId: 'fn-mon-1', zone: S.currentZone, dmg: 20, isCrit: false,
@@ -119,7 +119,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return (S.dmgNumbers || []).map((d) => String(d.text));
   });
   rec.ok('control: an ordinary worker hit still prints its number',
-    plain.length === 1 && plain[0].indexOf('4') >= 0, { plain });   /* v2.3.2502: 20 raw -> 4 displayed */
+    plain.length === 1 && plain[0].indexOf('4') >= 0, { plain });   /* v2.3.2520: 20 raw -> 4 displayed */
 
   /* ══ THE REST NEEDS A ZONE THE WORKER IS DRIVING, AND A REAL WEAPON ══
      The lunge and the dash bugs ARE the disagreement with the worker, so

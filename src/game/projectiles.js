@@ -376,7 +376,7 @@ import {
   getEvasionPts, resolveCollision, rollPassiveDodge, spawnWeaponHitFX, staffAoeMult,
   monsterBodyOffsetY, monsterProceduralRadius, trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
   BOW_RANGE_PX, /* v2.3.2448: the arrow's plant cap, shared with the sight stream */
-  toDisplayDamage, /* v2.3.2502: the display damage scale */
+  toDisplayDamage, /* v2.3.2520: the display damage scale */
 } from '@/data/index.js';
 import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
@@ -1786,7 +1786,7 @@ export function updateSlimeProjectiles(S) {
             S._hitFlash = Date.now();
             if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: _projDmg } });
             if (_R6P.hp > 0) addBuildUse(_R6P, 'vitality', _projDmg);
-            pushDmgPopup(S, P.x, P.y - 20, '-' + toDisplayDamage(_projDmg), '#fff');   /* v2.3.2502: display scale */
+            pushDmgPopup(S, P.x, P.y - 20, '-' + toDisplayDamage(_projDmg), '#fff');   /* v2.3.2520: display scale */
             S.screenShake = Math.max(S.screenShake || 0, 4);
             for (var _hp = 0; _hp < 6; _hp++) {
               var _hpA = Math.random() * Math.PI * 2;
