@@ -32,14 +32,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const rest = await probe(P);
   rec.ok('at rest, neither bar is drawn (control)',
     !!rest && rest.mp <= 0.01 && rest.en <= 0.01, rest);
-  rec.ok('...and the name plate is therefore shown', !!rest && rest.plateHidden === false, rest);
+  rec.ok('...and the name plate is shown', !!rest && rest.plateVisible === true, rest);
 
-  /* ── 1. spending MP reveals the bar and hides the plate ── */
+  /* ── 1. spending MP reveals the bar, and NO LONGER touches the plate ──
+     ═══ v2.3.2571: THIS ASSERTION IS INVERTED ON PURPOSE ═══
+     v2.3.1895 hid the name plate whenever a spend bar was up, and said why:
+     the bars and the plate shared a y under the character's feet, so they
+     "would overlap".  v2.3.2571 moved the plate over the head, so they no
+     longer share anything -- and the hide, left in place, would have been a
+     name blinking off every time the player cast a spell, which is precisely
+     the distraction this round of work exists to remove.
+     So the claim flips: spending MP must leave the plate ALONE.  It is not
+     dropped, because "the plate stopped reacting to MP" is exactly the sort of
+     thing that gets re-added by someone reading the old comment. */
   await spend(P, 'mana', 30);
   await P.page.waitForTimeout(250);
   const spent = await probe(P);
   rec.ok('spending MP reveals the MP bar', !!spent && spent.mp > 0.9, spent);
-  rec.ok('...and the name plate disappears', !!spent && spent.plateHidden === true, spent);
+  rec.ok('...and the name plate is left alone (it is over the head now, not under the bars)',
+    !!spent && spent.plateVisible === true, spent);
   rec.ok('...while the ENERGY bar stays hidden (they are independent)',
     !!spent && spent.en <= 0.01, spent);
 
@@ -53,7 +64,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(800);        /* ~2.35s */
   const gone = await probe(P);
   rec.ok('gone after 2 seconds', !!gone && gone.mp <= 0.01, gone);
-  rec.ok('...and the name plate comes back', !!gone && gone.plateHidden === false, gone);
+  rec.ok('...and the name plate never went anywhere', !!gone && gone.plateVisible === true, gone);
 
   /* ── 3. a second spend re-arms the hold rather than letting it fade out ── */
   await spend(P, 'mana', 10);

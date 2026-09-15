@@ -4635,7 +4635,13 @@ function createMonsterDisplay(monster) {
      "about 14-15 CSS px").  The three rounds of coefficient-moving that got it
      to 8 are in setPlateZoom's note. */
   _attachNamePill(hpUi, 15, MONSTER_SIZE_MULT);   /* v2.3.2154: 10 -> 12; v2.3.2265: 12 -> 8; v2.3.2513: 8 -> 15 CSS px */
-  hpUi._namePill.y = size + 6;
+  /* v2.3.2571: was `size + 6` -- BELOW the monster, which is where the plate
+     lived from v2.3.1918 until the owner asked for it over the head.  This is
+     only the seed: _updateMonsters re-places the plate onto the HP bar's own
+     centre line every frame (see `_plateBandY`).  It is an above-head value
+     rather than the old one so that the single frame before the bar's texture
+     resolves does not flash the plate under the feet. */
+  hpUi._namePill.y = -size - 38;
 
   /* Single dynamic Graphics for everything that DOES change per frame:
      status icons, aggro alert, stuck arrows, threat arrow, stun pip.
@@ -4873,7 +4879,6 @@ function _hideExceptDeep(display, keep) {
    Near / High / Danger).  The one value NOT taken from the mock is the
    attacking-you fill -- see PLATE_ALARM_FILL. */
 const PLATE_INK = 0x0B1F2D;          /* sampled: (11,31,45); see PLATE_FILL_ALPHA for how opaque it is drawn */
-const PLATE_BADGE_INK = '#0B1F2D';   /* sampled ~(5,5,5); the plate's own navy, 16.4:1 on white */
 
 /* ═══════════════════════════════════════════════════════════════════════
    v2.3.2530: THE SOFTENING KNOBS -- ONE BLOCK, SIX NUMBERS
@@ -4966,11 +4971,13 @@ const PLATE_BORDER_ALPHA = 0.80;
    by).  It lives here so it is visible as a knob, not so it gets pulled. */
 const PLATE_BORDER_PX = 2;
 
-/* The level badge's disc.  Was pure white, which at 18 px across is the
-   brightest object on the whole plate and a real part of why it reads hot.
-   Off-white costs the dark digits almost nothing (14.6:1, was 16.4:1).
-   "The level circles glare" -> step toward 0xE6E2D8. */
-const PLATE_BADGE_FILL = 0xF2EFE6;
+/* v2.3.2530's PLATE_BADGE_FILL (the level disc's off-white) is GONE in
+   v2.3.2571 along with the disc it filled -- see the level block in
+   _drawPlateCapsule.  Deleted rather than left as a knob that paints nothing:
+   mp-monsterplate asserted the softening off it, and an assertion on a value
+   the renderer no longer draws is TRAPS §33.  The claim it carried ("the
+   brightest object on the plate was stepped down") is now carried by the
+   disc's absence, which is a stronger version of the same thing. */
 /* The four difficulty bands (D16, confirmed), sampled from the mock's legend.
    The band is the monster's level RELATIVE TO YOURS, which is the whole point:
    a level 6 is "Danger" to a level 3 and "Near" to a level 6. */
@@ -4980,6 +4987,45 @@ const PLATE_BAND = {
   high:   0xF3821F,   /* diff +1..+2 -- sampled (243,130,31) */
   danger: 0xFF3636,   /* diff >= +3  -- sampled (255,54,54)  */
   gold:   0xF5CC4A,   /* the player's own plate -- sampled (253,213,70) */
+};
+/* ═══════════════════════════════════════════════════════════════════════
+   v2.3.2571: THE LEVEL'S INK, BECAUSE THE BAND COLOUR IS NOT ALWAYS LEGIBLE
+   ═══════════════════════════════════════════════════════════════════════
+   The new mock drops the white circle and sets the level as plain digits in
+   the BAND COLOUR, a space after the name.  Taken literally that is a
+   regression on the one band that matters most: measured against the plate
+   fill composited over every ground in the game (the same arithmetic
+   mp-monsterplate runs on the name),
+
+       low    #4BE54E  5.75:1     near   #F0DE2F  6.92:1
+       high   #F3821F  3.65:1     danger #FF3636  2.66:1   <-- both under AA
+
+   -- i.e. "Snowman 8" in Danger red would have been the LEAST readable thing
+   on a plate whose whole point is to be read at a glance.  #FF3636 is a
+   BORDER colour: a 2 px ring is judged as a hue against its neighbours, and
+   13 px of type is judged as ink against what is behind it.  Those are two
+   different jobs and it turns out they do not want the same value.
+
+   So the border keeps the sampled band colours EXACTLY -- the four-way
+   separation the knob block protects is untouched, because nothing about the
+   ring moves -- and the digits get a per-band TEXT TINT: the same hue lifted
+   toward white only as far as the AA floor demands (high +22%, danger +47%;
+   low, near and gold already clear it and are byte-identical to the band).
+   The reading "the number is the band colour" survives; what changes is that
+   it survives at 13 px on a phone.
+
+   NOT A DESATURATION.  The knob block's note 1 forbids desaturating the bands
+   because it collapses yellow into orange; lightening toward white is a
+   different move and is checked as such -- the four TINTS separate at worst
+   ΔE00 23.3 (high/danger), against the same floor of 12 the rings hold.
+   mp-monsterplate asserts both the contrast and the separation, so a future
+   "just use the band colour" would fail rather than quietly go dim. */
+const PLATE_LEVEL_INK = {
+  low:    '#4BE54E',   /* = band, 5.75:1 */
+  near:   '#F0DE2F',   /* = band, 6.92:1 */
+  high:   '#F69E50',   /* band lifted 22%, 4.52:1 */
+  danger: '#FF9A9A',   /* band lifted 47%, 4.71:1 */
+  gold:   '#F5CC4A',   /* = band, 6.20:1 */
 };
 /* ═══ THE ATTACKING-YOU FILL, AND THE ONE NUMBER THE MOCK DOES NOT GIVE ═══
    D4: "the plate's BACKGROUND FILL turns bright red while the monster is
@@ -5027,6 +5073,16 @@ const PLATE_ALARM_FILL = 0xE03131;
 const PLATE_ALARM_FILL_ALPHA = 1;
 const PLATE_ALARM_NAME_FILL = '#FFFFFF';
 const PLATE_ALARM_NAME_WEIGHT = '700';
+/* v2.3.2571: and the LEVEL's ink follows the name into the alarm state, for
+   the reason the name did.  The level is band-coloured digits on the plate now
+   (PLATE_LEVEL_INK), and every one of those tints is measured against the
+   NAVY fill -- on the alarm's red they collapse: low 2.71, near 3.27, high
+   1.72, danger 1.25.  A red "8" on a red plate is TRAPS §48 exactly, a second
+   time on the same plate and in the same state the note above had to fix it
+   for the name.  So the alarm overrides INK and never the BORDER: the ring
+   still carries the band (D4), and the digits go white so they can be read at
+   the moment the plate is shouting. */
+const PLATE_ALARM_LEVEL_FILL = '#FFFFFF';
 /* Geometry, as ratios of the name's type size so the whole plate scales from
    one number (the same "the plate sizes itself off this number" property the
    old pill had, which is what kept text from rattling in a fixed box). */
@@ -5039,6 +5095,14 @@ const PLATE_BADGE_TYPE_RATIO = 0.85;
    monster counted as the fight you are in, so the plate stays down between
    swings instead of blinking back on in the gap. */
 const PLATE_ENGAGED_MS = 3000;
+/* ═══ v2.3.2571: THE PLAYER'S BAND LINE, NAMED ONCE ═══
+   The local player's above-head HP bar has been drawn at -(HP_RING_OUTER_R+49)
+   since v2.3.459, as a literal inside _updatePlayerHud.  The plate now has to
+   land on that same line, and two copies of a y that must agree is the drift
+   this file has a dozen notes about (_markTopY, _bandTopOff, the v2.3.1638
+   popup).  So it is a constant, read by the bar that defines it AND by the
+   plate that sits on it. */
+const PLAYER_BAND_Y = -(HP_RING_OUTER_R + 49);   /* ~-73 */
 
 /* Which band a monster's level falls in, relative to the player's.
    Exported so the QA probe and any future caller ask the same question once
@@ -5115,7 +5179,7 @@ function _attachNamePill(container, nameSize, sizeMult, host) {
   const lvlNumT = new Text({ text: '', resolution: _pillRes, style: {
     fontFamily: 'Source Sans 3, sans-serif',
     fontSize: Math.max(8, Math.round(nameSize * PLATE_BADGE_TYPE_RATIO)),
-    fontWeight: '800', fill: PLATE_BADGE_INK, align: 'center',
+    fontWeight: '800', fill: PLATE_LEVEL_INK.near, align: 'center',
   } });
   lvlNumT.anchor.set(0.5, 0.5);
   lvlNumT.visible = false;
@@ -5451,7 +5515,6 @@ function _drawPlateCapsule(display, level, broId, alarm, band) {
   /* The badge fills the pill's inner height but for a hair -- measured at 30
      image px inside a 32 px inner box, which is what makes the mock's circle
      read as part of the capsule rather than as a disc sitting on it. */
-  const badgeD = Math.max(10, h - PLATE_BORDER_PX * 2 - 2);
   const nameT = display._pillName;
   const lvlNum = display._pillLvlNum;
   const bro = display._broBadge;
@@ -5466,20 +5529,40 @@ function _drawPlateCapsule(display, level, broId, alarm, band) {
   nameT.anchor.set(0.5, 0.5);
   const broD = broId ? Math.max(11, Math.round(h * 0.62)) : 0;
   const broPad = broId ? broD + Math.round(gap * 0.6) : 0;
+  /* ═══ v2.3.2571: THE LEVEL LOSES ITS CIRCLE ═══
+     The new mock sets the level as plain digits a space after the name, in the
+     band's colour -- no disc behind them.  That is the single biggest part of
+     "the new name plates here are also simplified", and it does two things at
+     once: the plate loses its BRIGHTEST object (the v2.3.2530 note already
+     names the white disc as "a real part of why it reads hot", and stepping it
+     to off-white was as far as that round could go without dropping it), and
+     it loses the width the disc reserved -- `badgeD` was h-6, a fixed ~21 px
+     whatever the digits were, so a level 3 paid for two columns it did not
+     use.  Measured on the fixture: 100 px -> 78 px for "Snowman 42".
+     The Text node itself is deliberately KEPT rather than folded into the
+     name string.  It carries its own ink (the band tint) and its own weight,
+     which a single Text cannot do, and mp-monsterplate reads the level off it
+     -- one node, one fact, still true. */
   if (lvlNum) {
     lvlNum.visible = true;
     lvlNum.text = String(level);
+    const ink = alarm ? PLATE_ALARM_LEVEL_FILL
+      : (PLATE_LEVEL_INK[band] || PLATE_LEVEL_INK.near);
+    if (String(lvlNum.style.fill) !== ink) lvlNum.style.fill = ink;
   }
   display._pillLevel.visible = false;
-  const lvlW = lvlNum ? Math.max(badgeD, 0) : 0;
+  /* The digits are measured, not reserved: the width is what this level
+     actually sets, which is the whole point of dropping the disc. */
+  const lvlW = lvlNum ? Math.ceil(lvlNum.width) : 0;
   const w = padL + broPad + Math.ceil(nameT.width) + gap + lvlW + padR;
   /* x runs from -w/2; the name centres in the space its neighbours leave. */
   const left = -w / 2;
   const nameLeft = left + padL + broPad;
   nameT.x = nameLeft + nameT.width / 2;
   nameT.y = h / 2;
-  const badgeCx = left + w - padR - badgeD / 2;
-  if (lvlNum) { lvlNum.x = badgeCx; lvlNum.y = h / 2; }
+  /* The digits sit on the name's baseline-ish centre line, a `gap` after it --
+     one line, the mock's "Snowman 3". */
+  if (lvlNum) { lvlNum.x = nameLeft + nameT.width + gap + lvlW / 2; lvlNum.y = h / 2; }
   if (bro) {
     bro.visible = !!broId;
     if (broId) {
@@ -5513,10 +5596,8 @@ function _drawPlateCapsule(display, level, broId, alarm, band) {
     alpha: alarm ? PLATE_ALARM_FILL_ALPHA : PLATE_FILL_ALPHA });
   g.stroke({ color: PLATE_BAND[band] || PLATE_BAND.near, alpha: PLATE_BORDER_ALPHA,
     width: PLATE_BORDER_PX, alignment: 0.5 });
-  if (lvlNum) {
-    g.circle(badgeCx, h / 2, badgeD / 2);
-    g.fill({ color: PLATE_BADGE_FILL, alpha: 1 });
-  }
+  /* v2.3.2571: the white disc that used to sit here is gone -- see the level
+     block above, and PLATE_BADGE_FILL went with it. */
   /* ═══ v2.3.2530: WHAT WAS ACTUALLY PAINTED, FOR THE PROBE ═══
      A Graphics cannot be read back and a screenshot cannot tell this ring from
      an orange monster standing behind it (TRAPS §21) -- the same reason `band`
@@ -5530,7 +5611,8 @@ function _drawPlateCapsule(display, level, broId, alarm, band) {
     borderAlpha: PLATE_BORDER_ALPHA,
     borderPx: PLATE_BORDER_PX,
     borderColor: PLATE_BAND[band] || PLATE_BAND.near,
-    badgeFill: PLATE_BADGE_FILL,
+    levelInk: alarm ? PLATE_ALARM_LEVEL_FILL : (PLATE_LEVEL_INK[band] || PLATE_LEVEL_INK.near),
+    levelInks: PLATE_LEVEL_INK,
     nameFill: alarm ? PLATE_ALARM_NAME_FILL : PLATE_NAME_FILL,
     nameWeight: alarm ? PLATE_ALARM_NAME_WEIGHT : PLATE_NAME_WEIGHT,
     /* every band the renderer can stroke, so the four-way separation is
@@ -8380,8 +8462,63 @@ export class EntityRenderer {
         }
         display._hpText.x = 0;
         display._hpText.y = barY;
+        /* v2.3.2571: the band's anchor line, published for the plate.  The
+           per-archetype maths that works out where this monster's art really
+           ends lives HERE and nowhere else (the variant / snowman / fodder
+           cases above), and v2.3.2295 already warned that "anything drawn from
+           outside it was guessing".  The plate now sits in this exact spot, so
+           it reads the answer instead of deriving a second one -- the same
+           mistake _markTopY and _bandTopOff were each stashed to prevent. */
+        display._plateBandY = barY;
       }
-      if (hpPct >= 0.999) {
+      /* ═══════════════════════════════════════════════════════════════════
+         v2.3.2571: ONE OCCUPANT OF THE BAND -- THE PLATE *BECOMES* THE BAR
+         ═══════════════════════════════════════════════════════════════════
+         Owner: "I want them to be above the head and disappear (change to hp
+         bar) when taking damage ... This makes it way less distracting."
+
+         Half of this was already true and is worth saying plainly: since
+         v2.3.2513 the plate has HIDDEN itself for the monster you are actually
+         fighting (D4's first rule), and the HP bar has stayed up.  What was
+         missing is that the two lived in DIFFERENT PLACES -- the plate under
+         the monster's feet, the bar over its head -- so what the owner saw was
+         a label vanishing in one spot and a bar already present in another.
+         Nothing read as a swap because nothing swapped.
+
+         So the change is not a new state machine, it is a MOVE plus a gate:
+
+           - the plate moves up onto `_plateBandY`, the bar's own centre line
+             (see the plate block below), and
+           - the bar stops keying its visibility off "is this monster hurt"
+             and keys it off the SAME predicate that hides the plate.
+
+         That predicate is `_bandBar`, and it is deliberately the exact
+         expression D4 already used for the plate -- locked with real intent,
+         or hit by you inside PLATE_ENGAGED_MS.  Two consequences, both wanted:
+
+         1. NO EMPTY BAND.  Under the old rule a monster you had locked and not
+            yet hit hid its plate (engaged) and hid its bar (still at full HP),
+            leaving nothing over its head at the moment you were aiming at it.
+            The bar now shows at full health for the thing you are swinging at,
+            which is the readout D4 says you need mid-swing.
+         2. A HURT MONSTER YOU ARE *NOT* FIGHTING SHOWS ITS NAME AGAIN, not a
+            half-empty bar someone else emptied.  That is the owner's "less
+            distracting" applied to the other side of the same rule: at rest
+            the field is plates, in a fight it is bars.
+
+         WHY PLATE_ENGAGED_MS AND NOT A NEW NUMBER.  A plate that flipped to a
+         bar and back on every landed hit would strobe through a fast fight,
+         and this timeout is already the repo's answer to that exact strobe:
+         D4 picked 3 s so the plate "stays down between swings instead of
+         blinking back on in the gap".  Reusing it means the swap inherits a
+         window that was chosen, and shipped, against this failure mode --
+         and it means "the fight is over" has ONE definition on this plate
+         rather than two that can drift apart. */
+      const _bandLocked = !!(S.lockedTarget && S.lockedTarget.type === 'monster'
+        && S.lockedTarget.ref === m && engagedStance(S));
+      const _bandHitByMe = !!(m._hitByMeAt && now - m._hitByMeAt < PLATE_ENGAGED_MS);
+      const _bandBar = _bandLocked || _bandHitByMe;
+      if (!_bandBar) {
         display._hpHeart.alpha = 0;
         display._hpText.alpha = 0;
         if (display._hpBarFill) display._hpBarFill.alpha = 0;
@@ -8414,6 +8551,103 @@ export class EntityRenderer {
          gating on the owner's call that death is the teacher.  It moves from
          the whole level string to the plate's LV line, which is where the
          level now lives. */
+      const _plateUi = display._hpUi;
+      if (_plateUi && _plateUi._namePill) {
+        /* v2.3.2295: stamped by the monster_attack handler (gameEvents.js) when
+           the worker says THIS monster hit ME. A window rather than a flag --
+           there is no "stopped attacking" message, so the plate has to time
+           itself out. */
+        const _plateAlarm = !!(m._atkMeUntil && now < m._atkMeUntil);
+        /* ═══ v2.3.2513: D4's PRECEDENCE, IN D4's ORDER ═══
+           Owner, and the order is the whole answer -- the three states used to
+           contradict each other (a plate cannot be hidden AND red):
+
+             1. HIDDEN while this monster is YOUR engaged target.  The HP bar
+                stays: what you need mid-swing is the health, not the name, and
+                the plate is what was covering the fight.
+             2. otherwise the BACKGROUND turns bright red while it is hitting
+                you -- the v2.3.2295 cue, which is about a monster you are NOT
+                already fighting walking up and starting one.
+             3. otherwise the difficulty border, which is the resting state and
+                the thing you read before deciding to engage at all.
+
+           "Engaged" is the narrow test, not the bare lock.  With automatic
+           acquisition a lock exists whenever ANY monster is inside the 220px
+           perimeter -- the exact trap targeting.js's engagedStance note records
+           -- so hiding on the lock alone would blank the plate of every monster
+           you walk past, which is when you most want to read it.  So: the lock
+           AND a real intent (thumb on Attack, or you tapped this one), or a hit
+           you actually landed on it in the last three seconds. */
+        /* v2.3.2571: ONE expression, computed once above, drives both halves
+           of the swap -- `_bandBar` shows the bar and `!_bandBar` shows the
+           plate.  It used to be restated here as `_plateLocked`/
+           `_plateHitByMe`; two copies of "am I fighting this thing" is how the
+           bar and the plate come to disagree and the band ends up holding
+           both or neither.  The D4 reasoning the old copy carried is in the
+           `_bandBar` block above, where the value is now made. */
+        const _plateShow = !_bandBar;
+        /* The band is the monster's level RELATIVE TO YOURS (D16), so it moves
+           when either side levels.  plateBandFor owns the four thresholds. */
+        const _plateBand = plateBandFor(m.level, (S.rpg && S.rpg.level) || 1);
+        _updateNamePill(_plateUi, monsterDisplayName(m.archetype || m.type),
+          m.level == null ? 1 : m.level, _plateShow, null, _plateAlarm, _plateBand);
+        /* ═══ v2.3.2571: THE PLATE SITS WHERE THE BAR SITS ═══
+           Centred on `_plateBandY`, the bar's own centre line, so the two
+           states occupy one spot and the transition reads as the plate
+           BECOMING the bar rather than as one thing leaving and another
+           arriving somewhere else.  That single fact is most of the owner's
+           ask; the hide/show either side of it was already shipping.
+
+           The plate's origin is its TOP centre (_drawPlateCapsule draws from
+           y=0 down), so centring means backing off half its height -- and that
+           height is in the PILL's units, which `_pillZoom` scales into the
+           _hpUi units `_plateBandY` is measured in.  Reading the zoom rather
+           than assuming 1 is what keeps the plate centred on the bar at every
+           camera distance instead of only at the one it was written at.
+
+           Fallback -38: the bar's own maths lives behind the texture guard
+           above, so on the first frames of a monster's life (bar art not yet
+           resolved) there is no band line to read.  -38 is over the head for
+           every archetype -- the shortest band the guarded path produces is
+           `-size - 22 - 2 - H/2` -- so the plate is never briefly drawn back
+           under the feet where it used to live. */
+        const _pillH = (_plateUi._pillCss || 15) * PLATE_H_RATIO;
+        const _pillS = _plateUi._pillZoom || 1;
+        const _bandY = (display._plateBandY != null) ? display._plateBandY : -38;
+        const _plateHalf = (_pillH * _pillS) / 2;
+        const _plateY = Math.round(_bandY - _plateHalf);
+        if (_plateUi._namePill.y !== _plateY) _plateUi._namePill.y = _plateY;
+        /* ═══ v2.3.2571: THE BAND TOP FOLLOWS ITS OCCUPANT ═══
+           `_markTopY` is "the top of the above-head band", and the notice cue
+           reads it to sit clear above the monster.  It was the BAR's top,
+           which was the only thing in the band; the plate is a little taller
+           than the bar (~18 local units against 13), so leaving the value
+           alone would let the "!" land on the plate's upper edge -- and the
+           cue is shown exactly when the PLATE is the occupant, so that is not
+           a rare case, it is the only case.
+           Raised only while the plate is up.  m._bandTopOff / _popupTopOff are
+           deliberately left on the bar's line: their consumers (damage popups,
+           the target chip) all run mid-fight, which is precisely when the bar
+           is the occupant, so the bar's top is the right answer for them. */
+        if (_plateShow && display._plateBandY != null) {
+          display._markTopY = _bandY - _plateHalf;
+        }
+      }
+
+      /* ═══ v2.3.2571: THE PROBE READS THE FRAME IT IS REPORTING ON ═══
+         This block used to sit ABOVE the plate update that follows it, and
+         that made it report two different frames at once: the HP bar's alpha
+         from THIS frame (the band gate runs further up) and the plate's
+         `visible` from the LAST one, because nothing had written it yet.
+         Harmless while the two were independent; not harmless now that they
+         are complements, because the one frame where they disagree is exactly
+         the frame the band swaps -- so shot-plateswap read a phantom 'none'
+         between bar and plate on every fight and called it a strobe. Nothing
+         was wrong on screen (both are written before the frame is presented);
+         the PROBE was wrong, which is the more dangerous of the two, because
+         it is what every assertion about this plate is built on.
+         Moved below the update so a record describes one frame. Same fields,
+         same order, no behaviour change -- the probe is read-only. */
       /* v2.3.1918: QA probe (tools/qa/mp/mp-monsterplate.mjs).  Reports what
          is ACTUALLY attached and where, because "the Text node is gone from
          the factory" and "the label is gone from the screen" are different
@@ -8478,6 +8712,19 @@ export class EntityRenderer {
               * (_pui.scale ? _pui.scale.x : 1) * (S._worldScaleX || 1) * 10) / 10
             : null,
           y: _pillNode ? _pillNode.y : null,
+          /* ═══ v2.3.2571: THE TWO NUMBERS THE SWAP IS ═══
+             `bandY` is the HP bar's centre line and `plateMidY` is the plate's,
+             both in _hpUi units.  The owner's ask is that the plate and the bar
+             occupy ONE spot, and that is a claim about two coordinates being
+             equal -- which a screenshot cannot settle (TRAPS §21/§37: the plate
+             is drawn over a moving scene, and measuring it against the box that
+             defines it would only re-check the arithmetic).  So both are
+             reported and mp-monsterplate asserts they coincide. */
+          bandY: display._plateBandY != null ? Math.round(display._plateBandY * 10) / 10 : null,
+          plateMidY: _pillNode
+            ? Math.round((_pillNode.y + ((_pui._pillCss || 15) * PLATE_H_RATIO
+              * (_pui._pillZoom || 1)) / 2) * 10) / 10
+            : null,
           /* v2.3.2295: is this plate in its attacking-you state, and does the
              notice cue think this monster just spotted you. Both read off the
              renderer rather than off game state, so what the scenario asserts
@@ -8500,43 +8747,6 @@ export class EntityRenderer {
           noticeAge: m._aggroTs ? (now - m._aggroTs) : null,
           hasOldLvlText: !!display._lvlText,
         });
-      }
-      const _plateUi = display._hpUi;
-      if (_plateUi && _plateUi._namePill) {
-        /* v2.3.2295: stamped by the monster_attack handler (gameEvents.js) when
-           the worker says THIS monster hit ME. A window rather than a flag --
-           there is no "stopped attacking" message, so the plate has to time
-           itself out. */
-        const _plateAlarm = !!(m._atkMeUntil && now < m._atkMeUntil);
-        /* ═══ v2.3.2513: D4's PRECEDENCE, IN D4's ORDER ═══
-           Owner, and the order is the whole answer -- the three states used to
-           contradict each other (a plate cannot be hidden AND red):
-
-             1. HIDDEN while this monster is YOUR engaged target.  The HP bar
-                stays: what you need mid-swing is the health, not the name, and
-                the plate is what was covering the fight.
-             2. otherwise the BACKGROUND turns bright red while it is hitting
-                you -- the v2.3.2295 cue, which is about a monster you are NOT
-                already fighting walking up and starting one.
-             3. otherwise the difficulty border, which is the resting state and
-                the thing you read before deciding to engage at all.
-
-           "Engaged" is the narrow test, not the bare lock.  With automatic
-           acquisition a lock exists whenever ANY monster is inside the 220px
-           perimeter -- the exact trap targeting.js's engagedStance note records
-           -- so hiding on the lock alone would blank the plate of every monster
-           you walk past, which is when you most want to read it.  So: the lock
-           AND a real intent (thumb on Attack, or you tapped this one), or a hit
-           you actually landed on it in the last three seconds. */
-        const _plateLocked = !!(S.lockedTarget && S.lockedTarget.type === 'monster'
-          && S.lockedTarget.ref === m && engagedStance(S));
-        const _plateHitByMe = !!(m._hitByMeAt && now - m._hitByMeAt < PLATE_ENGAGED_MS);
-        const _plateShow = !(_plateLocked || _plateHitByMe);
-        /* The band is the monster's level RELATIVE TO YOURS (D16), so it moves
-           when either side levels.  plateBandFor owns the four thresholds. */
-        const _plateBand = plateBandFor(m.level, (S.rpg && S.rpg.level) || 1);
-        _updateNamePill(_plateUi, monsterDisplayName(m.archetype || m.type),
-          m.level == null ? 1 : m.level, _plateShow, null, _plateAlarm, _plateBand);
       }
 
       /* Single dynamic Graphics — clear once and redraw all dynamic bits
@@ -8892,6 +9102,12 @@ export class EntityRenderer {
        report at that point, and a bar over a bone pile reads as a
        fight still in progress. */
     const show = (now - seen) < PEER_HPBAR_HOLD_MS && frac < 0.999 && !other._isDead;
+    /* v2.3.2571: published so this peer's name plate can step aside for the
+       bar, the same swap the local player and every monster now make.  The
+       bar's OWN rule decides it -- PEER_HPBAR_HOLD_MS, already an 8 s window
+       around a fight -- so the plate inherits an anti-strobe hold instead of
+       inventing a third definition of "still fighting". */
+    display._peerBarUp = show;
     /* v2.3.1917: QA probe (tools/qa/mp/mp-duel.mjs).  Reports the LAST peer
        considered this frame, which in a duel is the opponent — enough to
        assert the bar armed, tracked a real fraction, and hid again. */
@@ -9834,7 +10050,20 @@ export class EntityRenderer {
          rule the local player follows. */
       /* v2.3.2513: 'gold' -- a player's plate wears the gold border (§5.2),
          whoever they are; the four difficulty bands are a monster's business. */
-      _updateNamePill(display, nextName, other.rpgLv || 1, !other._isDead, other.bro, false, 'gold');
+      /* v2.3.2571: ...and the plate steps aside for that peer's HP bar, over
+         the head, exactly as yours and a monster's do.  v2.3.1566 is the
+         standing rule here ("make it consistent and beneath other players
+         too") -- the plate has been one implementation for the player and
+         every peer since, and a swap that happened over your head but not
+         over theirs would be the same inconsistency pointing the other way. */
+      _updateNamePill(display, nextName, other.rpgLv || 1,
+        !other._isDead && !display._peerBarUp, other.bro, false, 'gold');
+      if (display._namePill) {
+        const _pH = (display._pillCss || 14) * PLATE_H_RATIO;
+        const _pS = display._pillZoom || 1;
+        const _pY = Math.round(PEER_HPBAR_Y - (_pH * _pS) / 2);
+        if (display._namePill.y !== _pY) display._namePill.y = _pY;
+      }
       /* v2.3.2345: QA probe (mp-brobadge) -- did the badge sprite actually get
          ART, not merely a `visible` flag.  Reads the texture off the sprite
          rather than the module cache: the bug this pins was a plate that
@@ -12502,16 +12731,59 @@ export class EntityRenderer {
        lives in the pill below the feet now, built here. */
     if (display._nameText.visible) display._nameText.visible = false;
     /* Hidden while dying so the plate doesn't hover over a corpse. */
-    /* v2.3.1895: ...and hidden while a resource bar is up (owner: "name plate
-       will disappear when mp is used").  The bars occupy the plate's own y,
-       so this is not a preference — they would overlap.
-       ONE FRAME STALE, deliberately: update() runs _updatePlayer before
-       _updatePlayerHud, so this reads the flag the previous frame's HUD pass
-       set.  16ms against a bar that holds for 1000, and reordering update()
+    /* ═══ v2.3.2571: YOUR PLATE DOES WHAT A MONSTER'S DOES ═══
+       Owner: "Same for the player."  The plate moves from under your feet up
+       onto PLAYER_BAND_Y -- the line your own HP bar is drawn on -- and fades
+       out as that bar fades in, so over your head there is exactly one thing
+       at a time: your name at rest, your health in a fight.
+
+       A HARD CUT, NOT A CROSS-FADE, AND THAT IS A CORRECTION.  The first cut
+       of this did cross-fade the plate against the bar (`alpha = 1 - barAlpha`)
+       on the reasoning that a 300 ms ramp already existed and was free.  The
+       screenshot killed it: both things carry TEXT in one spot, so every frame
+       of the ramp draws the HP number ON the name and you get "Hu65r 3" --
+       a legible plate and a legible bar producing an illegible sandwich
+       between them.  This is the shot-plateswap capture earning its keep; no
+       amount of reading the code would have shown it.
+       So the plate is simply ABSENT for the whole time the bar is up, fading
+       or not, and the bar fades alone.  The gate is the bar's own alpha, so
+       there is still no second timer: the bar holds HOLD_MS (2.5 s) after the
+       last HP change and bridges out-of-combat regen with HEAL_STALL_MS, and
+       the plate is exactly its complement -- which is also what makes this
+       match the monster's hard cut instead of being a second kind of swap.
+
+       v2.3.1895's `_resourceBarsUp` HIDE IS RETIRED.  Its stated reason was
+       that the MP/stamina spend bars "occupy the plate's own y ... they would
+       overlap" -- and that was true of a plate under the feet, which is where
+       those bars are.  The plate is over the head now, so the overlap is gone
+       and the condition would do nothing but blink your name off every time
+       you spent MP: a flicker with no cause, in the exact spot the owner is
+       asking us to make calmer.  Removed rather than left in as a no-op,
+       because a condition nobody can motivate is one somebody re-derives a
+       reason for later.
+
+       ONE FRAME STALE, deliberately (unchanged from v2.3.1895's note): update()
+       runs _updatePlayer before _updatePlayerHud, so the alpha read here is the
+       previous frame's.  16 ms against a 300 ms fade, and reordering update()
        to fix it would move the HUD pass ahead of the body placement it reads
        positions from — a real risk to buy an invisible one. */
     _updateNamePill(display, S.myName || 'Anon', (S.rpg && S.rpg.level) || 1,
-      !S._dying && !this._resourceBarsUp, S.rpg && S.rpg._bro, false, 'gold');   /* v2.3.2513: the gold border (§5.2) */
+      !S._dying, S.rpg && S.rpg._bro, false, 'gold');   /* v2.3.2513: the gold border (§5.2) */
+    if (display._namePill) {
+      const _pH = (display._pillCss || 15) * PLATE_H_RATIO;
+      const _pS = display._pillZoom || 1;
+      const _pY = Math.round(PLAYER_BAND_Y - (_pH * _pS) / 2);
+      if (display._namePill.y !== _pY) display._namePill.y = _pY;
+      /* 0.01 rather than 0: the fade lands on a tiny residual alpha rather
+         than exactly zero, and a plate that waits for a true 0 never comes
+         back. */
+      const _barA = Math.max(0, Math.min(1, display._hudHpAlpha || 0));
+      if (display._namePill.alpha !== 1) display._namePill.alpha = 1;
+      /* Hidden, not merely transparent: an alpha-0 Pixi node is still
+         measured, still uploaded and still walked every frame, and this one
+         carries two Text textures.  Every player in the room has one. */
+      if (_barA > 0.01) display._namePill.visible = false;
+    }
 
     /* v2.3.1193: my own threat skull — reads the formerly ORPHANED
        S._pvpSkullType / S._pvpSkullUntil anchors (InspectPlayerPanel
@@ -13277,7 +13549,8 @@ export class EntityRenderer {
       this._resourceBarsUp = false;
       if (typeof window !== 'undefined') {
         window.__btResourceBars = {
-          mp: 0, en: 0, mpY: RES_MP_Y, enY: RES_EN_Y, plateHidden: false,
+          mp: 0, en: 0, mpY: RES_MP_Y, enY: RES_EN_Y, barsUp: false,
+          plateVisible: !!(d && d._namePill && d._namePill.visible),
           mpGhostX: null, mpGhostW: 0, enGhostX: null, enGhostW: 0, dead: true,
         };
       }
@@ -13315,13 +13588,22 @@ export class EntityRenderer {
       if (d._hudStamSprite && d._hudStamSprite.visible) d._hudStamSprite.visible = false;
       if (d._hudStamTextFull && d._hudStamTextFull.visible) d._hudStamTextFull.visible = false;
       if (d._hudStamTextEmpty && d._hudStamTextEmpty.visible) d._hudStamTextEmpty.visible = false;
-      /* One answer for both bars: the plate hides while EITHER is up, or it
-         would flicker back in the gap between an MP spend and an energy one. */
+      /* Are either of the spend bars up.  v2.3.1895 used this to HIDE the name
+         plate, because the bars and the plate shared a y under the feet; the
+         plate moved over the head in v2.3.2571 and that hide is gone, so this
+         is now just the bars' own state, reported and not acted on. */
       this._resourceBarsUp = (_resAlphaMp > 0.01) || (_resAlphaEn > 0.01);
       if (typeof window !== 'undefined') {
         window.__btResourceBars = {
           mp: +_resAlphaMp.toFixed(3), en: +_resAlphaEn.toFixed(3),
-          mpY: RES_MP_Y, enY: RES_EN_Y, plateHidden: this._resourceBarsUp,
+          mpY: RES_MP_Y, enY: RES_EN_Y, barsUp: this._resourceBarsUp,
+          /* v2.3.2571: `plateHidden` (which restated the flag above) is
+             replaced by the plate's REAL visibility, read off the node.  The
+             claim mp-resbars needs has inverted -- spending MP must no longer
+             touch the name plate -- and an intent flag could not have shown
+             that either way.  TRAPS §33: assert the thing the game has. */
+          plateVisible: !!(d._namePill && d._namePill.visible
+            && (d._namePill.alpha == null || d._namePill.alpha > 0.01)),
           mpGhostX: d._hudMpEmpty._resGhostX, mpGhostW: d._hudMpEmpty._resGhostW,
           enGhostX: d._hudStamEmpty._resGhostX, enGhostW: d._hudStamEmpty._resGhostW,
           /* v2.3.1897: the gliding "-N" — text, x, and the bar edge it starts
@@ -13439,7 +13721,13 @@ export class EntityRenderer {
       ring._lastHpFrac = hpFrac;
 
       const cx = 0;
-      const cy = -(HP_RING_OUTER_R + 49); /* ~-73: above the head, lifted 15px (v2.3.459) */
+      const cy = PLAYER_BAND_Y; /* ~-73: above the head, lifted 15px (v2.3.459) */
+      /* v2.3.2571: published so the name plate can cross-fade against the bar
+         that is replacing it.  This is the bar's OWN fade (v2.3.1682's
+         contextual reveal, HOLD_MS then out), not a second timer -- the plate
+         is literally 1 minus the bar, so the two can never both be up and can
+         never both be down. */
+      d._hudHpAlpha = hpNewAlpha;
       const frameSp = d._hudHpBarFrame;
       const fillSp = d._hudHpBarFill;
       _ensureHudBarTextures();

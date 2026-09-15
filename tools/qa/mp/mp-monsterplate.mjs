@@ -83,19 +83,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
      a badge at the pill's right end, as digits alone.  So the assertion moves
      with it -- same claim (every plate carries its monster's real level), read
      off the node that now carries it. */
-  rec.ok('...with the level in the badge at the end of the pill',
+  /* v2.3.2571: the white circle is gone -- the level is plain digits a space
+     after the name, in the band's colour.  Same claim, same node (the level
+     keeps its own Text so it can keep its own ink); only the shape it is drawn
+     in has changed, so the assertion's WORDS move and its substance does not. */
+  rec.ok('...with the level set after the name, as digits',
     seen.plates.every((p) => /^\d+$/.test(p.badge || '')), seen.plates.map((p) => p.badge));
   rec.ok('...carrying the real level, not a placeholder',
     CAST.every((c) => seen.plates.some((p) => p.badge === String(c.level))),
     { got: seen.plates.map((p) => p.badge), want: CAST.map((c) => String(c.level)) });
 
-  /* BENEATH the monster.  Local y is measured from the monster's own origin,
-     which its art stands on, so positive is below the feet — a plate above
-     the head would be the old label with extra steps. */
-  rec.ok('...hanging beneath the monster, not over its head',
-    seen.plates.every((p) => p.y > 0), seen.plates.map((p) => p.y));
-  rec.ok('...close under it rather than adrift in the grass',
-    seen.plates.every((p) => p.y > 0 && p.y < 60), seen.plates.map((p) => p.y));
+  /* ═══ v2.3.2571: ABOVE THE HEAD, ON THE HP BAR'S OWN LINE ═══
+     Owner: "I want them to be above the head."  This assertion is INVERTED
+     from the one that stood here since v2.3.1918 ("hanging beneath the
+     monster, not over its head") -- that was the right test for the plate the
+     owner has now changed their mind about, and it is updated to the new
+     reality rather than relaxed: it still pins an exact side of the origin and
+     an exact distance, just the other side.
+
+     Local y is measured from the monster's own origin, which its art stands
+     on, so NEGATIVE is above it.  `y` is the plate's TOP (the capsule draws
+     downward from there), so the whole plate is above the origin whenever its
+     top is.
+
+     The second assertion is the one that carries the owner's real ask.  "Above
+     the head" on its own would be satisfied by a plate parked anywhere in the
+     sky; what was asked for is that the plate BECOMES the HP bar, which means
+     the two share a spot.  So the plate's own centre line is asserted against
+     the bar's, within a pixel — if they drift apart the swap stops reading as
+     a swap and starts reading as one thing leaving and another arriving. */
+  rec.ok('...riding above the monster, not beneath its feet',
+    seen.plates.every((p) => p.y < 0), seen.plates.map((p) => p.y));
+  rec.ok('...centred on the HP bar\'s own line, so the two swap in one spot',
+    seen.plates.every((p) => p.bandY != null && p.plateMidY != null
+      && Math.abs(p.plateMidY - p.bandY) <= 1),
+    seen.plates.map((p) => ({ arch: p.arch, bandY: p.bandY, plateMidY: p.plateMidY })));
+  rec.ok('...and clear of the sprite rather than adrift in the sky',
+    seen.plates.every((p) => p.y < 0 && p.y > -220), seen.plates.map((p) => p.y));
 
   /* The label that had to GO. */
   rec.ok('the old level text over the monster is gone',
@@ -181,8 +205,87 @@ export async function run({ browser, wsPort, webPort, rec }) {
       soft.borderAlpha < 1, soft);
     rec.ok(`...its name is lighter than the 700 it shipped at (${soft.nameWeight})`,
       Number(soft.nameWeight) < 700, soft);
-    rec.ok('...and the level badge is off-white rather than pure white',
-      soft.badgeFill !== 0xFFFFFF, { badgeFill: soft.badgeFill });
+    /* ═══ v2.3.2571: THE DISC IS GONE, SO THE ASSERTION ON IT MOVES ═══
+       This line used to read `soft.badgeFill !== 0xFFFFFF` -- the v2.3.2530
+       claim that the plate's brightest object had been stepped down from pure
+       white.  The disc is deleted outright now (the new mock has no circle),
+       which is a stronger version of that same claim, so the old assertion is
+       not weakened, it is SUPERSEDED: it is replaced by one that the deleted
+       disc makes true and that would fail the moment someone drew it again. */
+    rec.ok('the level no longer rides in a white disc (it was the brightest thing on the plate)',
+      soft.badgeFill === undefined, { badgeFill: soft.badgeFill });
+
+    /* ── THE FLOOR UNDER THE LEVEL, WHICH IS NEW AND IS A REAL RISK ────────
+       The mock sets the level in the band's colour.  Taken literally that puts
+       #FF3636 ("Danger") and #F3821F ("High") on the navy plate at 2.66:1 and
+       3.65:1 -- both under AA, and the Danger one is the plate a player most
+       needs to read.  The renderer therefore draws the digits in a per-band
+       TEXT TINT (PLATE_LEVEL_INK), the band hue lifted toward white only as
+       far as the floor demands.  Asserted here for the same reason the name's
+       contrast is: it is invisible from outside the renderer, and "the level
+       went dim on exactly one band" is not something a screenshot of a moving
+       scene would give up. */
+    rec.ok('the plate reported the ink it set the level in (guard)',
+      !!soft.levelInk && !!soft.levelInks, { levelInk: soft.levelInk, levelInks: soft.levelInks });
+    if (soft.levelInks) {
+      let worstLv = Infinity, worstLvAt = '';
+      for (const [band, ink] of Object.entries(soft.levelInks)) {
+        for (const [scene, bg] of Object.entries(C.SCENES)) {
+          const cr = C.contrast(ink, C.over(0x0B1F2D, soft.fillAlpha, bg));
+          if (cr < worstLv) { worstLv = cr; worstLvAt = `${band} over ${scene}`; }
+        }
+      }
+      console.log(`    level ink, worst band/scene: ${worstLv.toFixed(2)}:1 (${worstLvAt})`);
+      rec.ok(`every band's level digits clear AA over every ground `
+        + `(worst ${worstLv.toFixed(2)}:1 at ${worstLvAt}, floor 4.5)`,
+        worstLv >= 4.5, { worstLv, worstLvAt, levelInks: soft.levelInks });
+      /* The tints are a LIGHTENING, not a desaturation -- the move note 1 of
+         the knob block forbids.  So they carry the same duty the rings do:
+         four levels must still be four tellable-apart colours, at the same
+         ΔE00 12 floor.  Without this, "fix the contrast" could quietly wash
+         all four toward white and nobody would see it until they were in a
+         fight wondering what the number meant. */
+      /* The renderer reports the rings as NUMBERS (0x4BE54E, the form Pixi
+         strokes with) and the inks as STRINGS ('#4BE54E', the form a Text
+         style takes).  Compared raw, "the ink equals the band" is false for
+         every band and the two assertions below would pass for the wrong
+         reason -- a test that can only succeed is TRAPS §33 wearing a
+         different hat.  Normalised to one form first. */
+      const hexNum = (c) => (typeof c === 'string'
+        ? parseInt(String(c).replace('#', ''), 16) : c);
+      const lv = ['low', 'near', 'high', 'danger'];
+      let worstLvDe = Infinity, worstLvPair = '';
+      for (let i = 0; i < lv.length; i++) {
+        for (let j = i + 1; j < lv.length; j++) {
+          const d = C.deltaE00(soft.levelInks[lv[i]], soft.levelInks[lv[j]]);
+          if (d < worstLvDe) { worstLvDe = d; worstLvPair = `${lv[i]}/${lv[j]}`; }
+        }
+      }
+      rec.ok(`...and the four level tints stay tellable apart too `
+        + `(worst ΔE00 ${worstLvDe.toFixed(1)} at ${worstLvPair}, floor 12)`,
+        worstLvDe >= 12, { worstLvDe, worstLvPair, levelInks: soft.levelInks });
+      /* THE LIFT MUST NOT HAVE LEAKED INTO THE RING.  `high` and `danger` are
+         the two bands whose digits had to be lightened to clear AA; the rings
+         for those bands must still be the mock's SAMPLED values, or the fix
+         for the text would have quietly desaturated the border -- which is
+         precisely the one move the knob block forbids, arrived at sideways.
+         Written as "the ring and the digits differ for these two" because that
+         is the only shape a leak could not survive: if someone sets the ring
+         to the tint to make them match, this fails. */
+      rec.ok('...while the ring keeps the sampled band the digits had to leave',
+        hexNum(soft.bands.high) !== hexNum(soft.levelInks.high)
+        && hexNum(soft.bands.danger) !== hexNum(soft.levelInks.danger),
+        { ring: { high: soft.bands.high, danger: soft.bands.danger },
+          ink: { high: soft.levelInks.high, danger: soft.levelInks.danger } });
+      /* ...and the bands that did NOT need lifting are still byte-identical,
+         so "the number is the band colour" is literally true wherever it can
+         be, and the exception is only where legibility forced it. */
+      rec.ok('...and the bands that cleared AA on their own are the band colour exactly',
+        hexNum(soft.bands.low) === hexNum(soft.levelInks.low)
+        && hexNum(soft.bands.near) === hexNum(soft.levelInks.near),
+        { ring: { low: soft.bands.low, near: soft.bands.near },
+          ink: { low: soft.levelInks.low, near: soft.levelInks.near } });
+    }
 
     /* ── 2. THE FLOOR UNDER THE NAME ─────────────────────────────────────
        A translucent plate takes its background with it, so the name's contrast
@@ -420,8 +523,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const read = () => {
       const p = ((window.__btMonsterPlates || {}).plates || []).find((x) => x.badge === '42') || null;
       return p ? { hidden: p.hidden, visible: p.visible, hitByMeAgo: p.hitByMeAgo,
-        hpBar: p.hpBar } : null;
+        hpBar: p.hpBar, bandY: p.bandY, plateMidY: p.plateMidY } : null;
     };
+    /* v2.3.2571: the band's state BEFORE anything is engaged -- a monster that
+       is hurt but that you are not fighting.  Under the old rule the bar was
+       up for this (it keyed off "is this monster damaged"); under the new one
+       the PLATE is up and the bar is down, which is the half of the owner's
+       ask that is easy to miss: "less distracting" cuts both ways, and a
+       half-empty bar over something you are not fighting is exactly the noise
+       being removed. */
+    await sleep(400);
+    const hurtAtRest = read();
     S.lockedTarget = { type: 'monster', id: m.id, ref: m, src: 'auto' };
     S.autoAttack = false;
     await sleep(400);
@@ -441,7 +553,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await sleep(400);
     const longAgo = read();
     m._hitByMeAt = 0;
-    return { lockedOnly, engagedNow, released, justHit, longAgo };
+    /* And the case the old rule left EMPTY: engaged with the monster still at
+       full health.  The plate hid (engaged) and the bar hid (undamaged), so
+       there was nothing at all over the monster you were aiming at. */
+    m.curHp = m.maxHp;
+    S.lockedTarget = { type: 'monster', id: m.id, ref: m, src: 'tap', at: Date.now() };
+    await sleep(400);
+    const engagedFull = read();
+    S.lockedTarget = null;
+    m.curHp = Math.round(m.maxHp * 0.5);
+    await sleep(400);
+    return { hurtAtRest, lockedOnly, engagedNow, released, justHit, longAgo, engagedFull };
   });
   rec.ok('the engagement sub-test ran (guard)', !!(engaged && engaged.lockedOnly), engaged);
   if (engaged && engaged.lockedOnly) {
@@ -459,5 +581,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
       engaged.justHit.hidden === true, engaged.justHit);
     rec.ok('...and no longer, once the fight has moved on',
       engaged.longAgo.hidden === false, engaged.longAgo);
+
+    /* ═══════════════════════════════════════════════════════════════════
+       v2.3.2571: THE BAND HAS EXACTLY ONE OCCUPANT
+       ═══════════════════════════════════════════════════════════════════
+       Owner: the plate should "disappear (change to hp bar) when taking
+       damage", and go back to a plate when the fighting stops.  That is a
+       claim about a PAIR of things -- one up, one down, never both, never
+       neither -- so it is asserted as a pair at every step above rather than
+       as two independent visibility checks that could both be wrong in the
+       same direction.
+
+       The old suite only ever asked "is the bar still up while engaged",
+       which passed for a bar that was ALWAYS up. */
+    const barUp = (r) => !!(r && r.hpBar && r.hpBar.vis && r.hpBar.alpha > 0);
+    rec.ok('at rest the band shows the PLATE and no bar, even on a hurt monster',
+      engaged.hurtAtRest && engaged.hurtAtRest.hidden === false
+      && !barUp(engaged.hurtAtRest), engaged.hurtAtRest);
+    rec.ok('...the moment you engage it, that swaps: bar up, plate gone',
+      engaged.engagedNow.hidden === true && barUp(engaged.engagedNow),
+      engaged.engagedNow);
+    rec.ok('...and it swaps back when the fight moves on',
+      engaged.longAgo.hidden === false && !barUp(engaged.longAgo), engaged.longAgo);
+    /* The hole the old rule left, and the reason the bar's gate had to change
+       rather than just the plate's position. */
+    rec.ok('a monster you are aiming at but have not hit yet shows a FULL bar, not an empty band',
+      engaged.engagedFull && engaged.engagedFull.hidden === true
+      && barUp(engaged.engagedFull), engaged.engagedFull);
+    /* Both occupants on one line -- the same coincidence asserted on the
+       resting plates above, re-checked here against the bar the fight put up,
+       because that is the pairing the owner actually sees swap. */
+    rec.ok('...and whichever is up sits on the same line as the other',
+      engaged.engagedNow.bandY != null && engaged.hurtAtRest.plateMidY != null
+      && Math.abs(engaged.hurtAtRest.plateMidY - engaged.engagedNow.bandY) <= 1,
+      { restingPlateMid: engaged.hurtAtRest.plateMidY, fightingBar: engaged.engagedNow.bandY });
   }
 }
