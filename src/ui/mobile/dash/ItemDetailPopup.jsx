@@ -13,9 +13,10 @@ import {
 } from './inventoryLocks.js';
 import { thumbFor, iconFor, classify } from './InventoryPanel.jsx';
 import { firemakingBus } from '../firemakingBus.js';
-import { storeEnabled, storeList } from '@/ui/storeApi.js'; /* v2.3.2476: the general store */
+import { storeEnabled, storeGearEnabled, storeList } from '@/ui/storeApi.js'; /* v2.3.2476: the general store; v2.3.2531: gear */
 import { eatBus } from '../eatBus.js';
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
+import { GEAR_SELL, removeGearLocal } from './gearSellLocal.js'; /* v2.3.2531: which stash a gear card sells out of; v2.3.2532: and taking it out of ours */
 import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect, syncArmorChange, equipArmorFromStash, equipLegsFromStash } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin */
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
 import { playVw } from '../playViewport.js';
@@ -274,7 +275,14 @@ function resolveTarget(target) {
       info: 'Hold to block',
       delta,
       desc: (sh.gearBase === 'wood' ? 'Wooden' : tierLabel(sh)) + ' · Shield',
-      actions: { equip: true },
+      /* v2.3.2531: Sell -- the store can take gear now (store phase 3,
+         server/src/storegear.js).  Its OWN cap, not the store's: an older
+         worker refuses `kind: 'gear'`, so an ungated button would take the
+         piece off this card and put it nowhere.  v2.3.2532: the piece IS
+         spliced out of our own list once the worker confirms -- this
+         client never reads the gear stashes off the player_state echo,
+         so nothing else would take it off the card (gearSellLocal.js). */
+      actions: { equip: true, sell: storeGearEnabled() },
     };
   }
   if (target.kind === 'armor') {
@@ -331,7 +339,14 @@ function resolveTarget(target) {
       info: Math.round(dr * 100) + '% damage reduced',
       delta,
       desc: (ar.gearBase === 'wood' ? 'Leather' : tierLabel(ar)) + ' · Chest',
-      actions: { equip: true },
+      /* v2.3.2531: Sell -- the store can take gear now (store phase 3,
+         server/src/storegear.js).  Its OWN cap, not the store's: an older
+         worker refuses `kind: 'gear'`, so an ungated button would take the
+         piece off this card and put it nowhere.  v2.3.2532: the piece IS
+         spliced out of our own list once the worker confirms -- this
+         client never reads the gear stashes off the player_state echo,
+         so nothing else would take it off the card (gearSellLocal.js). */
+      actions: { equip: true, sell: storeGearEnabled() },
     };
   }
   /* v2.3.1701: the LEGS twin of stashArmor.  Same card, but every number is
@@ -359,7 +374,14 @@ function resolveTarget(target) {
       /* Quest armour carries no gearBase, so tierLabel is empty for it —
          don't render a leading separator for a tier it does not have. */
       desc: (tierLabel(ar) ? tierLabel(ar) + ' · ' : '') + 'Armor · Legs',
-      actions: { equip: true },
+      /* v2.3.2531: Sell -- the store can take gear now (store phase 3,
+         server/src/storegear.js).  Its OWN cap, not the store's: an older
+         worker refuses `kind: 'gear'`, so an ungated button would take the
+         piece off this card and put it nowhere.  v2.3.2532: the piece IS
+         spliced out of our own list once the worker confirms -- this
+         client never reads the gear stashes off the player_state echo,
+         so nothing else would take it off the card (gearSellLocal.js). */
+      actions: { equip: true, sell: storeGearEnabled() },
     };
   }
   /* v2.3.685: worn gear (the rendered steel chest/legs, gearCatalog slots) in
@@ -386,7 +408,14 @@ function resolveTarget(target) {
       name: g.name || gearName(g.slot, g.gearId),
       info: 'In bag',
       desc: 'Steel · ' + (g.slot === 'chest' ? 'Chest' : 'Legs'),
-      actions: { equip: true },
+      /* v2.3.2531: Sell -- the store can take gear now (store phase 3,
+         server/src/storegear.js).  Its OWN cap, not the store's: an older
+         worker refuses `kind: 'gear'`, so an ungated button would take the
+         piece off this card and put it nowhere.  v2.3.2532: the piece IS
+         spliced out of our own list once the worker confirms -- this
+         client never reads the gear stashes off the player_state echo,
+         so nothing else would take it off the card (gearSellLocal.js). */
+      actions: { equip: true, sell: storeGearEnabled() },
     };
   }
   return null;
@@ -1307,7 +1336,30 @@ export const ItemDetailPopup = () => {
     const price = Math.floor(Number(sellPrice) || 0);
     if (!(price >= 1)) { setSellErr('Put a price on it first'); return; }
     let body;
-    if (target.kind === 'stashWeapon') {
+    /* ═══ v2.3.2531: A GEAR PIECE IS NAMED, NOT INDEXED ═══
+       The weapon branch below sends an index because `weaponStash` is the
+       WORKER's list and this client mirrors it off the echo.  The gear
+       stashes are not that yet: the client is still the authority for its
+       own (gear-stash.md, "What this does NOT solve") and the worker's
+       copy is a snapshot in its own order, so an index would name a
+       different piece on its side.  So the piece's identifying fields go
+       up as a selector, the worker derives the lookup key with its own
+       signature function, and our index rides along only as a tie-break
+       between two identical pieces -- believed only if the worker's own
+       entry there agrees.
+
+       `sel` is NEVER the goods.  What is escrowed is the worker's own
+       object (handoff rule 16); everything here is only a way of saying
+       WHICH one.  Nothing is applied locally BEFORE the answer comes
+       back, so a Sell that is refused leaves the bag exactly as it was;
+       on success the piece is spliced out below. */
+    const gearSell = GEAR_SELL.get(target.kind);
+    if (gearSell) {
+      const g = gearSell;
+      const piece = target[g.prop];
+      if (!piece) { setSellErr('That piece moved — open it again'); return; }
+      body = { kind: 'gear', field: g.field, sel: piece, hint: target.index || 0, price };
+    } else if (target.kind === 'stashWeapon') {
       const S2 = getState();
       const stash = (S2 && S2.rpg && S2.rpg.weaponStash) || [];
       const idx = resolveStashIdx(stash, target.wpn, target.index);
@@ -1322,8 +1374,25 @@ export const ItemDetailPopup = () => {
     const r = await storeList(body);
     sellInFlight.current = false;
     setSellBusy(false);
-    if (r && r.ok) itemDetailBus.close();
-    else setSellErr((r && r.error) || 'The store could not take it');
+    if (r && r.ok) {
+      /* ═══ v2.3.2532: THE BAG STOPS SHOWING WHAT YOU NO LONGER OWN ═══
+         v2.3.2531 closed the popup and left the piece on its card, on
+         the strength of a comment saying the bag redraws off the
+         player_state echo.  It does not -- this client has never read
+         the gear stashes off that echo (gear-stash.md, "M3's first
+         problem", still open) -- so a listed plate stayed in the bag,
+         stayed in localStorage, and tapping Equip on it made the worker
+         accept it through stats_update while the buyer held the escrowed
+         one.  The real fix is reading the echo; this is the smaller one
+         that stops the bleeding.  Only ever on `ok`: the worker took
+         nothing when it refuses, so neither do we. */
+      if (gearSell) {
+        const S3 = getState();
+        const R3 = S3 && S3.rpg;
+        if (R3 && removeGearLocal(R3, gearSell.field, target[gearSell.prop], target.index)) persist(R3);
+      }
+      itemDetailBus.close();
+    } else setSellErr((r && r.error) || 'The store could not take it');
   };
   const onClose = () => itemDetailBus.close();
 
