@@ -96,7 +96,7 @@ const FILL = {
  * HP and ENERGY are untouched.  The owner named mana; stamina has the matching
  * sheet ready if he wants the pair. */
 /*
- * ═══ v2.3.2527: ...WHERE THE SURFACE ASKS FOR IT, WHICH IS NOWHERE YET ═══
+ * ═══ v2.3.2541: ...WHERE THE SURFACE ASKS FOR IT, WHICH IS NOWHERE YET ═══
  * Owner, on the newly-merged build: "the mana bar in the character creator menu
  * is showing the sliced block-style bars, and should be the full combat
  * resource bar that was there before."
@@ -124,7 +124,7 @@ const BLOCK_SHEET = { mana: '/icons/ui/blocks-mp.webp?v=2.3.2300' };
 const BLOCK_FRAMES = 6;   /* empty + five filled */
 const BLOCK_N = 5;
 
-/* v2.3.2527: `block` is the SURFACE's choice, not the kind's -- see the header.
+/* v2.3.2541: `block` is the SURFACE's choice, not the kind's -- see the header.
    A screen opts in; the default everywhere is the trough bar this component has
    drawn since v2.3.1311.  A kind with no sheet ignores it rather than throwing,
    so `block` on an HP row is a no-op and not a broken bar. */
