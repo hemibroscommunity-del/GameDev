@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  zoneflip: () => import('./mp-zoneflip.mjs'), /* v2.3.2541: the front/back switch is in front of the zone frames AND keeps its own taps */
   bowgate: () => import('./mp-bowgate.mjs'), /* v2.3.2543: the bow's fire gate tests the ray the player is SHOWN -- measured after the player walks, which is when the two used to drift apart */
   gearstash: () => import('./mp-gearstash.mjs'), /* v2.3.2523: the gear stashes move server-side -- the frame, the stored blob, and no double-adopt on reconnect */
   copperfeet: () => import('./mp-copperfeet.mjs'), /* v2.3.2519: the body's boot showing past the leg armour on a jog east */
@@ -149,7 +150,7 @@ const SCENARIOS = {
   jogsides: () => import('./mp-jogsides.mjs'), /* v2.3.2134: east and west are ONE mirrored sheet -- so an east-only bare shoulder is in the renderer, not the art */
   chatfeed: () => import('./mp-chatfeed.mjs'), /* v2.3.1980: players-online count + the world chat feed */
   lockaim: () => import('./mp-lockaim.mjs'), /* v2.3.1979: a locked-on bow shot has to actually hit */
-  bowshield: () => import('./mp-bowshield.mjs'), /* v2.3.2446: a bow has no shield button; the guard is a held, rotatable gesture */
+  bowshield: () => import('./mp-bowshield.mjs'), /* v2.3.2542: a bow HAS a shield button (D8), and the right control's double tap is bound to nothing -- neither the weapon swap nor the retired guard */
   swingsfx: () => import('./mp-swingsfx.mjs'), /* v2.3.2450: one whoosh leading the blade, one hit on contact, alternating pitch */
   rbutton: () => import('./mp-rbutton.mjs'), /* v2.3.2242: the right control is a button — hold to attack, swipe for special, a shield toggle beneath it */
   target: () => import('./mp-target.mjs'), /* v2.3.2243: the targeting perimeter, the lock that holds, the switch arrows, magic splash = arrow */

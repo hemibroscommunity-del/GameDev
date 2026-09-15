@@ -149,9 +149,14 @@ export function shieldButtonLive(S, perimeterPx) {
      the game: shieldAimAngle above now falls through to the NEAREST monster
      when there is no lock, which is the rung bow and staff always land on
      because they auto-acquire nothing.  So the button can express the arc
-     after all, and the right control's double tap is free to be the weapon
-     swap on every weapon instead of meaning one thing on a sword and another
-     on a bow.
+     after all.
+
+     v2.3.2542: ...and the double tap that freed up is bound to NOTHING now.
+     v2.3.2472 gave it the weapon swap; the owner took that back off it after
+     playing ("weapon swapping goes back to the LEFT joystick only").  The
+     gesture being unbound is NOT an invitation to put this guard back on it --
+     that would be two controls on one shield, which is the fight the backlog's
+     §0.2 warns about.  THIS BUTTON is what replaced the gesture.
 
      v2.3.2446's own words for what it was protecting -- "a button appearing
      under the thumb mid-block is the thing the owner asked to be rid of" --

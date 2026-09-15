@@ -2,55 +2,62 @@ import React from 'react';
 import { TARGET_PERIMETER_PX, getActiveWeapon, specialManaCost } from '@/data/index.js';
 import { specialAttack } from '@/game/playerActions.js';
 import { BOW_SPECIAL_QUEUE_MS } from '@/game/combatHelpers.js'; /* v2.3.2543: the queued special's own expiry, so the button and the fire site cannot disagree about how long a request stands */
-import { LBTN, ctlBottom } from '@/ui/panels/ShieldButton.jsx';
+import { ctlColumn, ctlBottom, CTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2542: the shared right-hand column */
 
-/* ═══ v2.3.2472: A SPECIAL ATTACK BUTTON, BESIDE THE MOVEMENT STICK ═══
+/* ═══ v2.3.2542: A SPECIAL ATTACK BUTTON, ORBITING THE ATTACK DISC ═══
  *
- * Owner (C1, backlog §2.4): a Special Attack button orbiting the LEFT stick,
- * as a second trigger for the same `doSpecialAttack` the flick fires.
+ * Owner, after playing the merged build on a phone: "Move the Special attack
+ * button to orbit the RIGHT joystick, not the left."  v2.3.2472 put it beside
+ * the movement stick, per the backlog's C1 brief; this is the same button, one
+ * screen-half over, and the reasons below are what change with the move.
  *
- * WHY A SECOND TRIGGER RATHER THAN A REPLACEMENT.  The flick stays: it is what
- * ControlsTutorial teaches, what QuestCoach's `special` mark rings, and what
- * mp-rbutton / mp-solospecial pin.  What it is not is reliable -- it is a
- * SPEED test (0.15 px/ms over 8px in under 400ms, BroTown's rE and bE), so a
- * deliberate thumb that is a shade too slow fires an ordinary swing instead,
- * and the player has no way to see which reading they got.  A labelled button
- * cannot be misread, shows its own cooldown, and can be pressed while the
- * right thumb is holding Attack -- which the flick, living on that same thumb,
- * can never be.
+ * WHY A SECOND TRIGGER RATHER THAN A REPLACEMENT.  Unchanged from v2.3.2472:
+ * the flick stays -- it is what ControlsTutorial teaches, what QuestCoach's
+ * `special` mark rings, and what mp-rbutton / mp-solospecial pin.  What it is
+ * not is reliable; it is a SPEED test (0.15 px/ms over 8px in under 400ms,
+ * BroTown's rE and bE), so a deliberate thumb that is a shade too slow fires an
+ * ordinary swing instead and the player has no way to see which reading they
+ * got.  A labelled button cannot be misread and shows its own cooldown.
  *
- * ═══ IT MUST SWALLOW ITS OWN TOUCHES ═══
- * This is the whole hazard of putting anything on the left side, and it is the
- * mechanism behind the v2.3.2123 world-chat incident and AbilityButtons'
- * standing note.  The movement input is NOT the little disc you can see: it is
- * [data-joyzone="L"], a fixed layer covering the entire left half at z6, and a
- * LEFT-ZONE SWIPE IS THE DODGE (BroTown's lE -> handleCanvasSwipe).  So a
- * button sitting over that layer has two jobs beyond looking like a button:
+ * ═══ IT MUST STILL SWALLOW ITS OWN TOUCHES -- FOR A DIFFERENT NEIGHBOUR ═══
+ * On the left the hazard was the movement layer: a press that fell through
+ * walked or dodged.  On the right there are TWO things underneath, and the
+ * owner named both:
  *
- *   1. It must take its own touches -- pointerEvents 'auto' at a z-index above
- *      the zone -- or the press falls through and dodges instead of casting.
- *   2. It must stopPropagation AND preventDefault on touchstart, so the press
- *      is not ALSO read by the zone underneath as the start of a walk or the
- *      first half of a dodge swipe.
+ *   1. THE ATTACK DISC (`.bt-rjoy-base`, z30, pointerEvents:'auto' whenever the
+ *      contextual button is live).  This button sits at z31 in the column that
+ *      hugs the disc's left edge, so the two do not overlap by construction
+ *      (ctlColumn pins the column's right edge 4px clear of the disc -- that is
+ *      D9's whole point) -- but "does not overlap" is a layout claim, and layout
+ *      moves.  preventDefault + stopPropagation on touchstart is the belt to
+ *      that braces: even if a future width brought the boxes together, the
+ *      press could not reach bS -> handleRBtnPress and fire a swing.
+ *   2. THE RIGHT ZONE (`[data-joyzone="R"]`, the full-height right HALF at z6).
+ *      It is the joystick: its rS presses through handleRBtnPress too, its rM
+ *      aims, and its rE forwards any short tap to the canvas as a lock-on click
+ *      (v2.3.816) -- so a press that leaked would lock on, swing, and re-aim.
  *
- * A finger that lands here therefore cannot move the character or dodge for
- * the duration of that touch.  That is the deliberate cost of the control, and
- * it is why it sits BESIDE the disc rather than over it: the stick's own
- * resting position stays clear, and the button is a place the thumb goes on
- * purpose.
+ * A touch that ENDS here is stopped for the same reason it was on the left:
+ * a release is classified, and this surface's release must not be read as the
+ * end of a tap, a flick, or -- for as long as any surface on this side ever
+ * classifies one again -- the first half of a pair.  v2.3.2542 unbound the
+ * right control's double tap (BroTown's handleRBtnPress), so there is nothing
+ * on this side counting taps today; the guard stays anyway, because the cost is
+ * two lines and the failure it prevents is silent.
  *
  * ═══ WHERE ═══
- * The mirror of the Block button's new home (D9): immediately to the INSIDE of
- * the left disc, level with its centre.  Measured from LBTN so it tracks the
- * disc if that ever moves.  At 390x844 that is x 99..147 -- comfortably inside
- * the left half (195), so unlike the right-hand column this one never has to
- * choose between the movement zone and the disc.
+ * Slot -1 of the D9 column: hugging the disc's left edge, one button below the
+ * Block button, in the band the shield vacated.  See CTL_SLOT in
+ * ShieldButton.jsx for why it goes BELOW the stack rather than on top of it.
+ * Measured through ctlColumn, so it tracks the disc and the other three
+ * controls at every width instead of carrying a fourth copy of the layout rule.
  *
  * ═══ WHEN ═══
- * The same shape of predicate as shieldButtonLive: a weapon in the active slot
- * and a fight on or about to be.  Deliberately NOT gated on affordability --
- * a button that vanishes when the mana runs out is a button the player cannot
- * learn; it greys and floats specialAttack's own "No mana!" popup instead.
+ * Unchanged: the same shape of predicate as shieldButtonLive -- a weapon in the
+ * active slot and a fight on or about to be.  Deliberately NOT gated on
+ * affordability: a button that vanishes when the mana runs out is a button the
+ * player cannot learn, so it greys and floats specialAttack's own "No mana!"
+ * popup instead.
  */
 const SPECIAL_CD_MS = 1500;   /* playerActions.specialAttack's own §4.5 gate */
 
@@ -142,10 +149,10 @@ export function SpecialButton(props) {
   }
   if (!specialButtonLive(S, TARGET_PERIMETER_PX)) return null;
 
-  var size = isLandscape ? 54 : 48;
-  var discW = isLandscape ? LBTN.wLand : LBTN.w;
-  var left = (isLandscape ? LBTN.leftLand : LBTN.left) + discW + 4;
-  var bottomPx = Math.round(LBTN.bottom + (discW - size) / 2);
+  /* v2.3.2542: the shared right-hand column decides the size, the right edge
+     and the slot height -- one rule for Block, Bash, Whirlwind and this. */
+  var col = ctlColumn(isLandscape);
+  var size = col.size;
 
   var cdLeft = Math.max(0, SPECIAL_CD_MS - (Date.now() - (S._lastSwipe || 0)));
   var cdFrac = cdLeft / SPECIAL_CD_MS;
@@ -159,8 +166,8 @@ export function SpecialButton(props) {
   var press = function (e) {
     /* Both, and in this order -- see the header.  preventDefault stops iOS
        synthesising a click (and the page's own touch-scroll absorber from
-       seeing it); stopPropagation keeps [data-joyzone="L"] beneath from
-       reading the same finger as a walk or a dodge swipe. */
+       seeing it); stopPropagation keeps [data-joyzone="R"] and the attack disc
+       beneath from reading the same finger as a lock-on, a swing or an aim. */
     e.preventDefault();
     e.stopPropagation();
     try { specialAttack(stateRef.current); } catch (err) { /* refusals float their own popup */ }
@@ -172,18 +179,19 @@ export function SpecialButton(props) {
     'data-special': queued ? 'queued' : (ready ? 'ready' : 'wait'),
     onTouchStart: press,
     onMouseDown: press,
-    /* A touch that ENDS here must not reach the zone either: lE classifies a
-       release, and a press-and-lift on this button would otherwise read as the
-       first tap of the left stick's weapon-swap double tap. */
+    /* v2.3.2542: a touch that ENDS here must not reach the zone either -- rE
+       classifies every release on that side, forwards a short one to the canvas
+       as a lock-on click (v2.3.816) and runs the flick test that fires the
+       special a SECOND time. */
     onTouchEnd: function (e) { e.preventDefault(); e.stopPropagation(); },
     onTouchMove: function (e) { e.stopPropagation(); },
     onContextMenu: function (e) { e.preventDefault(); },
     style: {
       position: 'fixed',
-      left: left,
-      bottom: ctlBottom(bottomPx),
+      right: col.right,
+      bottom: ctlBottom(col.bottomPx(CTL_SLOT.special)),
       width: size, height: size, borderRadius: '50%',
-      /* Above [data-joyzone="L"] (z6) and the disc's corner box (z30), the
+      /* Above [data-joyzone="R"] (z6) and the disc's corner box (z30), the
          same rung ShieldButton and AbilityButtons sit on. */
       zIndex: 31,
       touchAction: 'none',

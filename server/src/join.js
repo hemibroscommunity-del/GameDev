@@ -627,6 +627,15 @@ export const joinMethods = {
        value. */
     {
       const stored = await this._loadRpg(msg.id);
+      /* ═══ v2.3.2534: WARM THE PROVENANCE LEDGER FIRST ═══
+         `gear_prov:<playerId>` is one bounded storage GET (never a prefix
+         list -- rule 9), and it has to land BEFORE any gear is resolved
+         below, worn slots included.  A cold ledger resolves every piece as
+         `legacy`, which would mark a genuinely minted wardrobe unsellable
+         for the whole session and -- worse -- persist that reading on the
+         next save.  So it is loaded here, at the top of the gear block,
+         rather than beside the stash adoption that first needs it. */
+      await this._gearProvLoadOnJoin(msg.id);
       // v2.3.1148: lazy daily snapshot of the PRE-join blob (the
       // state the player last logged out with) -- the rollback
       // parachute that never existed.  Throttled to one per ~20h
@@ -667,15 +676,24 @@ export const joinMethods = {
         // (migrations.js) -- `stored` arrived here through _loadRpg,
         // so it is already migrated.  The bootstrap branch below
         // KEEPS its strip (client payloads are unmigrated writers).
-        this.playerState[msg.id].armor = stored.armor || null;
+        /* v2.3.2534: the four worn slots are resolved against the
+           provenance ledger on the way in (gearprov.js).  A stored piece
+           carrying a gid we minted is REBUILT from the ledger's own copy;
+           anything else keeps its fields and is marked `prov: 'legacy'`.
+           Even the stored blob goes through it, for the same reason the
+           amulet line below has always re-whitelisted a stored amulet: a
+           record written before this version, or by a path that has since
+           been closed, heals on the next reconnect rather than being
+           trusted because it happens to be ours (v2.3.1104 posture). */
+        this.playerState[msg.id].armor = this._gearProvResolve(msg.id, 'armor', stored.armor || null, null, true);
         /* v2.3.1679: the legs piece restores alongside the chest one.  Absent
            on every pre-v2.3.1679 record, which is correct — nobody had one. */
-        this.playerState[msg.id].legsArmor = stored.legsArmor || null;
-        this.playerState[msg.id].shield = stored.shield || null;
+        this.playerState[msg.id].legsArmor = this._gearProvResolve(msg.id, 'legsArmor', stored.legsArmor || null, null, true);
+        this.playerState[msg.id].shield = this._gearProvResolve(msg.id, 'shield', stored.shield || null, null, true);
         // v2.3.1180: amulet gem/tier feed the authoritative damage roll
         // (_computeAttackDamage) -- whitelist even the stored blob, so a
         // pre-slice forged amulet heals on this reconnect (gear.js).
-        this.playerState[msg.id].amulet = this._sanitizeAmulet(stored.amulet);
+        this.playerState[msg.id].amulet = this._gearProvResolve(msg.id, 'amulet', stored.amulet, (a) => this._sanitizeAmulet(a), true);
         this.playerState[msg.id].weaponStash = this._sanitizeWeaponList(stored.weaponStash);
         // v2.3.1192 (amulet forge): gold nugget/bar ledger.  Stored
         // wins; a record that predates the server ledger falls back to
@@ -803,14 +821,32 @@ export const joinMethods = {
         this.playerState[msg.id].staffWeapon = this._sanitizeWeapon(msg.data && msg.data.rpgStaffWeapon, true);
         this.playerState[msg.id].activeSlot = (msg.data && typeof msg.data.rpgActiveSlot === 'string') ? msg.data.rpgActiveSlot : 'melee';
         // v2.3.249: drop leather armor from the first-connect bootstrap too.
+        /* ═══ v2.3.2534: THE BOOTSTRAP IS A CLAIM, NOT A MINT ═══
+           This branch takes the worn gear a brand-new record asserts.  It
+           is the widest client-trust surface in the game for gear and this
+           version does NOT close it -- it labels it.  Every piece through
+           here resolves against a ledger that, for a first connect, is
+           empty, so every piece lands `prov: 'legacy'`: it works, it is
+           worn, it protects, and the store will not list it.
+
+           _gearProvResolve strips `gid` and `prov` from the claim before
+           anything else reads it, so this path cannot be used to assert
+           provenance -- which matters more here than anywhere, because a
+           brand-new character is free to make. */
         {
           const _bootArmor = (msg.data && msg.data.rpgArmor && typeof msg.data.rpgArmor === 'object') ? msg.data.rpgArmor : null;
-          this.playerState[msg.id].armor = (_bootArmor && _bootArmor.name === 'Leather Armor') ? null : (_bootArmor ? { ..._bootArmor } : null);
+          this.playerState[msg.id].armor = (_bootArmor && _bootArmor.name === 'Leather Armor') ? null : this._gearProvResolve(msg.id, 'armor', _bootArmor, null);
         }
-        this.playerState[msg.id].shield = (msg.data && msg.data.rpgShield && typeof msg.data.rpgShield === 'object') ? { ...msg.data.rpgShield } : null;
+        /* No legs line here on purpose: the client has never sent an
+           `rpgLegsArmor` seed (wsClient.js sends rpgArmor/rpgShield/rpgAmulet
+           only), and adding one now would OPEN a client-trust surface in a
+           change whose whole point is to close them.  A first-connect legs
+           piece arrives the way it always has -- through stats_update once
+           the player equips it (grids.js), where it is resolved and marked. */
+        this.playerState[msg.id].shield = this._gearProvResolve(msg.id, 'shield', (msg.data && msg.data.rpgShield && typeof msg.data.rpgShield === 'object') ? msg.data.rpgShield : null, null);
         // v2.3.1180: whitelist the client-supplied amulet (gem/tier feed
         // the authoritative damage roll -- gear.js _sanitizeAmulet).
-        this.playerState[msg.id].amulet = this._sanitizeAmulet(msg.data && msg.data.rpgAmulet);
+        this.playerState[msg.id].amulet = this._gearProvResolve(msg.id, 'amulet', msg.data && msg.data.rpgAmulet, (a) => this._sanitizeAmulet(a));
         // v2.3.1192 (amulet forge): first-connect capture of the
         // previously client-local nugget/bar ledger, clamped (amulet.js
         // bootstrap caps -- same rationale as BOOTSTRAP_COINS_CAP).
@@ -889,7 +925,18 @@ export const joinMethods = {
          data and stamp can never land apart.  Reads msg.data directly
          rather than the session copy -- these four seeds are ingest-only
          and never enter playerState (see _sanitizeJoinData). */
-      this._gearStashAdoptOnJoin(this.playerState[msg.id], stored, msg.data || null);
+      this._gearStashAdoptOnJoin(this.playerState[msg.id], stored, msg.data || null, msg.id);
+      /* ═══ v2.3.2534: ONE MINT, ONE PIECE ═══
+         Runs after the worn slots and all five lists are resolved, because
+         it is the only pass that can see them together.  A `gid` may appear
+         at most ONCE across a player's whole wardrobe: the first sighting
+         (worn beats stashed) keeps its proof, and any later copy of the same
+         id is DEMOTED to `legacy` -- kept, worn, usable, simply no longer
+         provable.  Nothing is deleted, which is the difference between this
+         and #643's reconciliation: that one guessed by name|base|tier that a
+         stash entry was a stale duplicate and destroyed genuine spares.  An
+         id is not a guess, and demotion is not destruction. */
+      this._gearProvDedupe(this.playerState[msg.id]);
       // Session-only equipment-derived values.  Always read from join
       // — recomputed client-side on every recalcDerived.
       // v2.3.1306: upper-bound def at ingest too (2100 = the grids.js

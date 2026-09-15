@@ -877,10 +877,25 @@ export const gridMethods = {
         // _armorDrMult's identical ×8 clamp — same ceiling, and the DR cap
         // (75%) still sits above it as the last word.  Keep the two in step.
         // Leather Armor rejected outright per v2.3.249 removal.
-        newArmor = { ...incoming };
-        if (typeof newArmor.tierMult === 'number') {
-          newArmor.tierMult = Math.max(0, Math.min(8, newArmor.tierMult));
-        }
+        /* ═══ v2.3.2534: THE EQUIP CLAIM IS RESOLVED, NOT COPIED ═══
+           This is the inbound path that actually feeds the damage-reduction
+           maths, so it is the one that matters -- and it is the shape of
+           #643's `_sv` finding: a mark stripped from the selector and not
+           from the path that counted.  _gearProvResolve strips BOTH `gid`
+           and `prov` from the claim before anything reads them, then either
+           rebuilds the piece from the ledger row that id names (rule 16 --
+           the server's own copy, so a forged gid on an inflated plate hands
+           back the modest plate that was actually minted) or marks the
+           claim `legacy` and keeps the existing clamp.
+           The clamp is unchanged and still runs on everything that is not a
+           ledger hit; a ledger row was clamped when it was minted.
+           PR 2 of this lane retires the describe-a-piece form entirely in
+           favour of naming one -- this version only labels it. */
+        newArmor = this._gearProvResolve(session.id, 'armor', incoming, (g) => {
+          const o = { ...g };
+          if (typeof o.tierMult === 'number') o.tierMult = Math.max(0, Math.min(8, o.tierMult));
+          return o;
+        });
       }
       // JSON-compare so an identical re-send doesn't trigger spurious
       // recompute + flush.
@@ -926,10 +941,12 @@ export const gridMethods = {
       const incomingL = payload.legsArmor;
       let newLegs = null;
       if (incomingL && typeof incomingL === 'object') {
-        newLegs = { ...incomingL };
-        if (typeof newLegs.tierMult === 'number') {
-          newLegs.tierMult = Math.max(0, Math.min(8, newLegs.tierMult));
-        }
+        /* v2.3.2534: same resolve as the chest piece above, same reasons. */
+        newLegs = this._gearProvResolve(session.id, 'legsArmor', incomingL, (g) => {
+          const o = { ...g };
+          if (typeof o.tierMult === 'number') o.tierMult = Math.max(0, Math.min(8, o.tierMult));
+          return o;
+        });
       }
       const oldSigL = ps.legsArmor ? JSON.stringify(ps.legsArmor) : 'null';
       const newSigL = newLegs ? JSON.stringify(newLegs) : 'null';

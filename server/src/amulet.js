@@ -150,6 +150,16 @@ export const amuletMethods = {
       // it is replaced, same as the client).  Shape is what
       // _sanitizeAmulet whitelists, by construction.
       ps.amulet = { tier: tierKey, gem: null, name: tier.label + ' Gold Amulet' };
+      /* v2.3.2534: a forged amulet is the most expensive thing in the game,
+         and this is the ONLY path that mints one -- so it is also the only
+         amulet that can ever be proved (gearprov.js).  Everything already on
+         a character predates the ledger and stays `legacy`: usable, not
+         sellable.  Note the mint REPLACES the worn amulet with no stash to
+         catch the old one (client parity, v2.3.1192) -- the replaced amulet's
+         row is left in the ledger rather than removed, because a row is a
+         record of a mint, not an inventory; PR 3's listing gate asks whether
+         the player still HOLDS the piece as well as whether we minted it. */
+      this._gearProvRecord(session.id, 'amulet', ps.amulet, 'forge');
       // Crafting XP -- client parity: addLifeSkillXp('blacksmithing',
       // at.minLvl * 3) at the craft site.
       this._addLifeSkillXp(ps, 'blacksmithing', (tier.minLvl || 1) * 3);
@@ -179,6 +189,12 @@ export const amuletMethods = {
       // site.  (The client's _questFlags.slottedGem write stays
       // client-side -- rule 18, the server must not write _questFlags
       // mid-session.)
+      /* v2.3.2534: the gem slot MUTATES a piece the server may have minted,
+         so the provenance row has to follow it (gearprov.js).  Without this
+         a reconnect rebuilds the amulet from its mint-time row and the gem
+         is gone -- which is not theory: it is what amulet.test.mjs caught
+         when the first cut of the resolve rebuilt every path. */
+      this._gearProvTouch(session.id, ps.amulet);
       this._addLifeSkillXp(ps, 'enchanting', 20);
 
     } else if (op === 'extract') {
@@ -228,6 +244,23 @@ export const amuletMethods = {
       if (!ps.lifeSkills.gems || typeof ps.lifeSkills.gems !== 'object') ps.lifeSkills.gems = {};
       for (const key of gained) ps.lifeSkills.gems[key] = (ps.lifeSkills.gems[key] || 0) + 1;
       this._stripGems(item, kind);
+      /* ═══ v2.3.2537: THE ROW FOLLOWS THIS MUTATION TOO ═══
+         _stripGems REWRITES the piece in place -- a shield loses its `gem`
+         and has its display name rebuilt.  A shield is something this server
+         mints (tut_1's Pine Shield is the first gear most characters own), so
+         without this the ledger's stored copy keeps the gem that was just
+         extracted.  The gem-SLOT op above already called this; the extract op
+         did not, which is the same miss in the same file.
+
+         It matters more than it looks: v2.3.2535 makes rebuilding a piece
+         from its row routine (equipping by name), and against a stale row
+         extract -> unequip -> re-equip hands the gem back.  Free gems on a
+         loop.  Caught by the review of #648 before that PR existed.
+
+         Called unconditionally: _gearProvTouch is a no-op for a piece with no
+         id, which covers the weapon and stash-weapon targets this op also
+         serves, so there is no branch here to get wrong later. */
+      this._gearProvTouch(session.id, item);
 
     } else {
       return; // unknown op -- deny by default
