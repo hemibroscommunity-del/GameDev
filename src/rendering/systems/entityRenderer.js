@@ -2850,11 +2850,39 @@ export const prewarmProgress = { done: 0, total: 0 };
    flash of default skin/pants the first time the player rolls.  That is the
    first-use hitch class CLAUDE.md's animation-preloading law exists to stop.
    Cost is 2 dirs x 9 frames = 18, against jog's ~140. */
-const PREWARM_POSES = ['stand', 'jog', 'hit', 'mine', 'dodge'];
+/* v2.3.2500 (owner: "the first item you pick up you are shirtless for about
+   half a second", and the animation-preload LAW, CLAUDE.md / TRAPS #12):
+   + 'pickup' and + 'fish'.  The gear SHEETS for these two poses are warmed by
+   preloadGear (gearSheets.js, same change); this list is the other half of the
+   gate -- it walks the same (pose, dir, frame) grid the renderer will ask for
+   so the BODY bake and the armour composite are warm too. */
+const PREWARM_POSES = ['stand', 'jog', 'hit', 'mine', 'dodge', 'pickup', 'fish'];
 /* The gather poses are authored SOUTH-ONLY -- walking them through all five
    dirs would bake four empty frames per pose and log four 404s per slot.
    Dodge is authored south + east for the same reason (see playerSprites). */
-const prewarmDirs = (pose, dirs) => (pose === 'mine' ? ['south'] : pose === 'dodge' ? ['south', 'east'] : dirs);
+const prewarmDirs = (pose, dirs) => ((pose === 'mine' || pose === 'pickup' || pose === 'fish') ? ['south']
+  : pose === 'dodge' ? ['south', 'east'] : dirs);
+
+/* ═══ v2.3.2500: WARM THE FRAME THE RENDERER WILL ACTUALLY ASK FOR ═══
+ *
+ * Two poses do not take the plain recoloured body, and a prewarm that ignores
+ * that warms nothing while costing the cache:
+ *
+ *  - FISH draws the RAW sheet by design (getFrame('fish','south') at both the
+ *    local and the remote draw site; the pink rod and line are baked art and
+ *    the body-region recolour would mis-paint them, v2.3.2304).  The masked
+ *    cache keys on the SOURCE TEXTURE's uid, so baking from getBodyFrame here
+ *    would file the result under a texture the renderer never presents -- a
+ *    miss at fishing time AND an eviction out of the 520-entry cap.
+ *  - PICKUP is never masked at all: both draw sites read `pose === 'pickup'
+ *    ? tex : _maskedBodyFrame(...)` (v2.3.1057 -- the per-frame bake inside
+ *    the 0.5 s freeze was 29 GPU uploads in a burst).  So its frames are
+ *    warmed (body sheet + gear sheets, which IS what was missing) and the
+ *    mask bake is skipped, exactly as the renderer skips it.
+ *
+ * Both rules are stated as the render path's own conditions so the two can be
+ * grepped against each other rather than drifting. */
+const _prewarmMasks = (pose) => pose !== 'pickup';
 
 /* v2.3.701: plan the WHOLE intro workload up front so the loading bar is
    monotonic.  Previously each pass added its own count to `total` when it
@@ -2995,7 +3023,9 @@ export async function prewarmMaskedBodyFrames(opts) {
       const fc = playerFrameCount(pose, dir) || 1;
       for (let f = 0; f < fc; f++) {
         prewarmProgress.done++;
-        const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor(), localBodyArt(false));
+        /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks. */
+        const tex = (pose === 'fish') ? getFrame('fish', 'south', f)
+          : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor(), localBodyArt(false));
         if (!tex) continue;
         const worn = [];
         for (const sl of slots) {
@@ -3006,6 +3036,9 @@ export async function prewarmMaskedBodyFrames(opts) {
           }
         }
         if (!worn.length) continue;
+        /* v2.3.2500: the gear sheet above is the half this pose was missing;
+           the mask is not baked for a pose the renderer never masks. */
+        if (!_prewarmMasks(pose)) continue;
         /* v2.3.1399: the fullset figure replaces these frames at runtime —
            baking them only burns VRAM (see _fullsetCoversBake). */
         if (_fullsetCoversBake(worn, pose, dir)) continue;
@@ -3084,7 +3117,9 @@ export async function prewarmAltWornSets(opts) {
         for (let f = 0; f < fc; f++) {
           if (seq !== _altPrewarmSeq) return;
           if (fast) prewarmProgress.done++;
-          const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor(), localBodyArt(false));
+          /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks. */
+          const tex = (pose === 'fish') ? getFrame('fish', 'south', f)
+            : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor(), localBodyArt(false));
           if (!tex) continue;
           const worn = [];
           for (const [sl, id] of set.worn) {
@@ -3092,6 +3127,7 @@ export async function prewarmAltWornSets(opts) {
             if (gt) worn.push({ k: sl + ':' + id, tex: gt });
           }
           if (!worn.length) continue;
+          if (!_prewarmMasks(pose)) continue;   /* v2.3.2500: see _prewarmMasks */
           /* v2.3.1399: skip the full-steel family's figure-covered jog
              bakes here too (see _fullsetCoversBake). */
           if (_fullsetCoversBake(worn, pose, dir)) continue;
@@ -6548,6 +6584,35 @@ export class EntityRenderer {
                                     400 ms / 15 = ~27 ms/frame -> ~37 fps, fast enough
                                     that the explosion reads as immediate. */
     const SNOWMAN_DEATH_MS = 500; /* user-requested 0.5 s shatter */
+    /* ═══ v2.3.2491: A BURST YOU NEVER SAW IS NOT A BURST ═══
+       The death window used to run on WALL CLOCK from the first frame that
+       OBSERVED alive=false, whether or not a single burst frame was ever
+       drawn in it.  400 ms is shorter than plenty of real frames on a phone
+       -- a per-zone texture upload, a GC pause, the loot pile's own sprite
+       landing -- and it is shorter than waiting for the death sheet to
+       finish loading, or for the corpse's display to be created at all (the
+       draw below is gated on `display && display._spriteBody`).  So the
+       whole window could elapse with nothing rendered, and the owner got
+       "it swells then freezes": the last ALIVE frame left on screen, the
+       explosion skipped, and nothing in the code able to tell "played" from
+       "missed" afterwards.
+       Two changes, because there are two ways to lose it:
+         - the clock STARTS on the frame the burst first renders, not on the
+           frame the death is noticed (covers a hitch, or a late sheet,
+           BEFORE the first frame).  Until then the corpse is held for the
+           window plus BURST_START_GRACE_MS rather than being culled.
+         - the clock then ADVANCES BY RENDERED FRAMES, with each step capped
+           at BURST_MAX_SKIP frames' worth (covers a hitch AFTER the first
+           frame, which starting the clock later does nothing about).  A long
+           frame therefore stretches the burst instead of eating it.  At a
+           normal frame rate the cap never binds and the timing is unchanged. */
+    const BURST_START_GRACE_MS = 2000;
+    const BURST_MAX_SKIP = 2;
+    /* Absolute ceiling on how long a corpse may be held for its burst, so a
+       clock that stops advancing for any reason (the death sheet freed
+       mid-animation, say) cannot leave a swollen corpse on the field
+       forever.  A hold that cannot be skipped must still be able to end. */
+    const BURST_MAX_STRETCH_MS = 2000;
     /* Variant death durations come from MONSTER_VARIANTS[key].deathMs;
        see monsterVariants.js for the per-variant config. */
 
@@ -6665,7 +6730,40 @@ export class EntityRenderer {
         };
       }
       if (!m.alive) {
-        const deathT = m._slimeDeathStart != null ? now - m._slimeDeathStart : null;
+        /* v2.3.2491: the burst clock, KEYED ON _slimeDeathStart.  That field
+           is nulled by both respawn paths already (wsClient's monster delta
+           and monsterCombat's local respawn), so keying on it gives a new
+           life a fresh clock without either of them having to learn about
+           this one.  A second field would have had to be added to both, and
+           the one that got missed would have surfaced as "the burst only
+           plays the first time a slime dies". */
+        let _bc = m._burstClock;
+        if (!_bc || _bc.key !== m._slimeDeathStart) {
+          _bc = m._burstClock = { key: m._slimeDeathStart, t: null, last: 0, win: 0 };
+        }
+        const _seenT = m._slimeDeathStart != null ? now - m._slimeDeathStart : null;
+        /* Still worth holding this corpse on screen?
+           Before the first drawn frame: hold for the caller's window plus the
+           start grace.  After it: the window of the branch that is ACTUALLY
+           DRAWING is the authority for every caller -- a blue slime is a
+           MONSTER_VARIANTS entry with no death sheet of its own, so its
+           variant window (1000 ms) would otherwise hold a peak-scaled corpse
+           long after the 400 ms splat that really played had finished. */
+        const _burstLive = (win) => {
+          if (_seenT == null) return false;
+          const w = _bc.win || win;
+          if (_seenT >= w + BURST_START_GRACE_MS + BURST_MAX_STRETCH_MS) return false;
+          return _bc.t != null ? _bc.t < w : _seenT < w + BURST_START_GRACE_MS;
+        };
+        /* Advance on a frame that is actually DRAWING, by the real elapsed
+           time but never by more than BURST_MAX_SKIP frames of the sheet. */
+        const _burstStep = (win, fc) => {
+          _bc.win = win;
+          if (_bc.t == null) { _bc.t = 0; }
+          else { _bc.t += Math.min(now - _bc.last, (win / Math.max(1, fc)) * BURST_MAX_SKIP); }
+          _bc.last = now;
+          return _bc.t;
+        };
         const variantDeathMs = variant ? (variant.deathMs || 1000) : 0;
         /* ═══ v2.3.2228: THE BURST PLAYS AT THE SIZE IT GREW TO ═══
            Owner: "play the slime explosion animation at the peak swell size",
@@ -6679,16 +6777,18 @@ export class EntityRenderer {
            Bounded by the death window it sits inside -- no timer, no reset
            pass -- and by the respawn clear above. */
         const _peakK = m._burstPeakFrom ? (m._burstScale || 3.5) : 1;
-        if (variant && deathT != null && deathT >= 0 && deathT < variantDeathMs) {
+        if (variant && _burstLive(variantDeathMs)) {
           activeIds.add(m.id);
         }
         if (variant && variantSprites && variantSprites.death && variantSprites.death.has()
-            && deathT != null && deathT >= 0 && deathT < variantDeathMs) {
+            && _burstLive(variantDeathMs)) {
           activeIds.add(m.id);
           const display = this.monsterDisplays.get(m.id);
           if (display && display._spriteBody) {
             const fc = variantSprites.death.count();
-            const t = deathT / (variant.deathMs || 1000);
+            /* v2.3.2491: the clock starts / advances HERE -- on a frame that
+               really draws, which is the only kind the player can see. */
+            const t = _burstStep(variantDeathMs, fc) / (variant.deathMs || 1000);
             const frameIdx = Math.max(0, Math.min(fc - 1, Math.floor(t * fc)));
             const tex = variantSprites.death.get(frameIdx);
             const sb = display._spriteBody;
@@ -6734,12 +6834,13 @@ export class EntityRenderer {
           }
           continue;
         }
-        if (isFodder && deathT != null && deathT >= 0 && deathT < SLIME_DEATH_MS && hasSlimeState('death')) {
+        if (isFodder && _burstLive(SLIME_DEATH_MS) && hasSlimeState('death')) {
           activeIds.add(m.id);
           const display = this.monsterDisplays.get(m.id);
           if (display && display._spriteBody) {
             const fc = slimeFrameCount('death');
-            const t = deathT / SLIME_DEATH_MS;
+            /* v2.3.2491: see the variant branch -- drawn frames drive it. */
+            const t = _burstStep(SLIME_DEATH_MS, fc) / SLIME_DEATH_MS;
             const frameIdx = Math.max(0, Math.min(fc - 1, Math.floor(t * fc)));
             const tex = getSlimeFrame('death', frameIdx, variant); /* v2.3.1534 */
             const sb = display._spriteBody;

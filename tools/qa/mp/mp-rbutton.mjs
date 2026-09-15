@@ -327,8 +327,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const sb = await P.page.evaluate(() => window.__centre('[data-shield]'));
   rec.ok('with a monster in the perimeter, a shield button is on screen', !!sb, sb);
   if (sb && disc) {
-    rec.ok('...directly BELOW the right button', sb.y > disc.y + disc.h / 2 - 2 && Math.abs(sb.x - disc.x) < 6,
-      { shield: { x: sb.x, y: sb.y }, disc: { x: disc.x, y: disc.y, h: disc.h } });
+    /* v2.3.2472 (owner decision D9): "Block left of the disc, abilities stacked
+       above it."  This row read "directly BELOW the right button" until then --
+       the band placement is what put the shield under the thumb that presses
+       Attack.  Both axes are asserted, because "left of" alone would pass for a
+       button that had also slid down into the old band. */
+    rec.ok('...LEFT of the right button and level with its centre (D9)',
+      sb.x < disc.x - disc.w / 2 && Math.abs(sb.y - disc.y) < 8,
+      { shield: { x: sb.x, y: sb.y }, disc: { x: disc.x, y: disc.y, w: disc.w, h: disc.h } });
   }
   /* ── v2.3.2246: the thumbnail has to READ while the toggle is OFF ── */
   const iconDown = await shieldIcon(P);
@@ -521,6 +527,53 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const afterDodge = await st(P);
   rec.ok('a left-side swipe dodges', afterDodge.roll === true, afterDodge);
   rec.ok('...and the dodge cancels the block', afterDodge.shield === false && afterDodge.droppedWhy === 'dodge', afterDodge);
+
+  /* ═══ v2.3.2472: THE SPECIAL BUTTON BESIDE THE MOVEMENT STICK ═══
+     A second trigger for the same specialAttack the flick fires (C1).  Two
+     claims, and the second is the whole hazard of putting anything on this
+     side: the movement input is [data-joyzone="L"], the ENTIRE left half at z6,
+     and a left-zone swipe is the DODGE.  So a press here must cast AND must not
+     be read by the zone underneath as the start of a walk or a dodge.
+
+     Driven with a real dispatched touch on the button, and then asserted on
+     STATE rather than on the press "working" -- el.dispatchEvent ignores
+     pointer-events entirely (TRAPS §67), so the visibility is asserted off the
+     computed style separately, as everywhere else in this file. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    /* Fight on, guard down, cooldown clear, mana full: the state the button
+       exists in.  The shield must be DOWN -- specialButtonLive hides it behind
+       a raised guard so the player cannot break their own block by accident. */
+    if (S._shieldUp) { const c = window.__centre('[data-shield]'); if (c) { window.__touch(c.el, 'touchstart', c.x, c.y, 70); window.__touch(c.el, 'touchend', c.x, c.y, 70); } }
+    S._lastSwipe = 0; S._hasUsedSwipe = false; S._dodgeRoll = null;
+    if (S.rpg) { S.rpg.mana = S.rpg.maxMana || 100; S.rpg.stamina = S.rpg.maxStamina || 100; }
+  });
+  await P.page.waitForTimeout(400);
+  const specVis = await P.page.evaluate(() => {
+    const el = document.querySelector('[data-special]');
+    if (!el) return { present: false };
+    const cs = getComputedStyle(el);
+    const b = el.getBoundingClientRect();
+    return { present: true, shown: cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.05,
+      pe: cs.pointerEvents, left: Math.round(b.left), right: Math.round(b.right), half: Math.round(window.innerWidth / 2) };
+  });
+  rec.ok('with a fight on and the guard down, a Special button is on screen beside the movement stick',
+    specVis.present === true && specVis.shown === true, specVis);
+  rec.ok('...and it takes touches itself, rather than letting them fall through to the movement zone',
+    specVis.pe === 'auto', specVis);
+  rec.ok('...sitting inside the LEFT half, where the movement zone is -- not over in the aim zone',
+    specVis.right <= specVis.half, specVis);
+  const specFired = await P.page.evaluate(() => {
+    const c = window.__centre('[data-special]');
+    window.__touch(c.el, 'touchstart', c.x, c.y, 71);
+    window.__touch(c.el, 'touchend', c.x, c.y, 71);
+    const S = window._gameState.current;
+    return { usedSwipe: !!S._hasUsedSwipe, lastSwipe: S._lastSwipe || 0, roll: !!S._dodgeRoll };
+  });
+  rec.ok('pressing it fires the special -- the same action the flick fires',
+    specFired.usedSwipe === true && specFired.lastSwipe > 0, specFired);
+  rec.ok('...and it SWALLOWS its own touch: no dodge roll from a press on the movement half',
+    specFired.roll === false, specFired);
 
   /* ── the button leaves when the fight does -- unless the shield is still up ── */
   await P.page.evaluate(() => { const c = window.__centre('[data-shield]'); window.__touch(c.el, 'touchstart', c.x, c.y, 50); window.__touch(c.el, 'touchend', c.x, c.y, 50); });

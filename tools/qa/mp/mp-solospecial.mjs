@@ -105,6 +105,46 @@ const orbSeries = async (P, samples, gapMs) => {
   return out.filter((s) => s.n === 3);
 };
 
+/* ═══ v2.3.2473: A BOW NEEDS SOMETHING ON ITS LINE BEFORE IT WILL FIRE ═══
+ * monsterCombat's sight gate looses an arrow only when a ray from the grip
+ * along the aim crosses a live hit circle (owner, backlog §2.5).  Two things
+ * in this file run straight into that: it measures the bow's ordinary BEAT by
+ * holding the attack and timing the gaps between shots -- which over an empty
+ * sky is now zero shots and no beat -- and it casts the special through
+ * _gameFns, which for a bow with an empty line is QUEUED rather than launched.
+ * Neither is a regression in what this file is about; both are the gate doing
+ * its job to a fixture written before it existed.
+ *
+ * So the bow rows stand a target a long way down the aim they already use.
+ * FAR (620px, inside the 675px plant cap) for two reasons: the arrows have to
+ * stay in the air long enough for the 8ms poll above to see them, and a
+ * monster close enough to stop the volley on arrival would be measuring impact
+ * rather than cadence.
+ *
+ * AND IT MAKES THE PRESS ROWS MEAN SOMETHING FOR THE FIRST TIME.  "No ordinary
+ * shot leads the special" was unfalsifiable for the bow over an empty sky
+ * before the gate existed either -- there were no ordinary shots to lead with,
+ * for a different reason.  Now the loop genuinely could fire one and is held
+ * off by the grace, which is the claim.
+ *
+ * THE MAGIC ROWS ARE LEFT EXACTLY AS THEY WERE.  The staff is not gated -- its
+ * bolts splash and home, and no part of the owner's ask is about magic -- so a
+ * monster in front of them would change what the orb-spacing assertions
+ * measure for no reason at all.
+ */
+const seedBowTarget = (P, on) => P.page.evaluate((a) => {
+  const S = window._gameState.current, F = window._gameFns || {};
+  if (!a.on) { S.monsters = []; S.lockedTarget = null; return { cleared: true }; }
+  S._serverMonsters = false;
+  const m = F.createMonster('solo-line', 'fodder', 2,
+    S.player.x + Math.cos(a.ang) * a.d, S.player.y + Math.sin(a.ang) * a.d, null);
+  m.alive = true; m.curHp = m.maxHp = 9000000; m.spd = 0; m.vx = 0; m.vy = 0; m.dmg = 0;
+  m.renderX = m.x; m.renderY = m.y;
+  S.monsters = [m];
+  S.lockedTarget = null;      /* a bow acquires nothing by itself -- the aim stays the fixture's */
+  return { mx: Math.round(m.x), my: Math.round(m.y) };
+}, { on: !!on, ang: 0.4, d: 620 });
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Solo', wsPort, webPort, viewport: PHONE, touch: true });
   await H.enterWorld(P);
@@ -129,6 +169,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   ]) {
     await H.equipWeapon(P, w.type, w.stash, w.slot);
     await P.page.waitForTimeout(1000);
+    /* v2.3.2473: a target on the bow's line; nothing at all for the staff. */
+    const _tgtBeat = await seedBowTarget(P, w.slot === 'ranged');
+    console.log(`    ${w.key} beat target: ${JSON.stringify(_tgtBeat)}`);
 
     /* ═══ WHAT IS THIS WEAPON'S ORDINARY BEAT?  ASK THE GAME. ═══
        "Bundled" is a GAP, not a count.  The player is holding the attack
@@ -293,6 +336,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   ]) {
     await H.equipWeapon(P, w.type, w.stash, w.slot);
     await P.page.waitForTimeout(900);
+    /* v2.3.2473: a target on the bow's line; nothing at all for the staff. */
+    const _tgtPress = await seedBowTarget(P, w.slot === 'ranged');
+    console.log(`    ${w.key} press target: ${JSON.stringify(_tgtPress)}`);
     await P.page.evaluate(() => {
       const S = window._gameState.current;
       S._aimAngle = 0.4; S._lastAimAngle = 0.4; S._facingAngle = 0.4; S._shieldUp = false;

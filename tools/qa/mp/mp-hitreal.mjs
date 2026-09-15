@@ -193,6 +193,42 @@ const ranged = (a) => a.slot === 'ranged' || a.slot === 'staff';
    timed, so an attempt is 1:1 with a shot or is reported as never fired. */
 const fire = (P, atk) => P.page.evaluate(({ sp, rg }) => new Promise((resolve) => {
   const S = window._gameState.current, F = window._gameFns || {};
+  if (sp && rg) {
+    /* ═══ v2.3.2473: A SPECIAL THAT WAS QUEUED IS NOT A SPECIAL THAT FIRED ═══
+       This reported ok the moment specialAttack() returned without throwing,
+       which was safe while the call always launched something.  A bow special
+       pressed with nothing on the sight line is now QUEUED instead (it spends
+       no mana and starts no cooldown), so an unverified ok scored it as a shot
+       that was fired and then mysteriously missed -- five of them in the frost
+       row, every one recorded as "unexplained".  A test that cannot tell "the
+       shot missed" from "there was no shot" is the same failure mode as
+       TRAPS §28's "not found": it reports the wrong thing confidently.
+       So the arrow count is the witness, exactly as the ranged branch below
+       already uses it.  Short poll, because the special launches synchronously
+       (playerActions pushes into S.arrows in the call) -- what is being waited
+       for is one frame of slack, not a cadence.
+
+       RANGED SPECIALS ONLY (`sp && rg`), and the first cut of this got it
+       wrong: `sword special` also carries special:true, and a melee special
+       pushes NO arrows at all -- it is a swing.  Witnessing it on S.arrows
+       would have voided all five attempts of every sword-special row and
+       reported the melee registry as broken.  The bow is the only weapon whose
+       special can be queued (the staff is not sight-gated), but the staff
+       special does push arrows, so including it costs nothing and keeps the
+       branch keyed on "is this a projectile" rather than on one weapon. */
+    const m0 = (S.arrows || []).length;
+    try { F.specialAttack(); } catch (e) { return resolve({ err: String(e) }); }
+    const t1 = Date.now();
+    const iv1 = setInterval(() => {
+      if ((S.arrows || []).length > m0) { clearInterval(iv1); return resolve({ ok: true, shot: true }); }
+      if (Date.now() - t1 > 400) {
+        clearInterval(iv1);
+        return resolve({ ok: false, why: 'special queued, never launched',
+          queued: !!window._gameState.current._bowSpecialQueued });
+      }
+    }, 16);
+    return;
+  }
   if (sp) { try { F.specialAttack(); } catch (e) { return resolve({ err: String(e) }); } return resolve({ ok: true }); }
   if (!rg) { try { F.swingAttack(); } catch (e) { return resolve({ err: String(e) }); } return resolve({ ok: true }); }
   const n0 = (S.arrows || []).length;
@@ -273,7 +309,38 @@ const targetById = (P, id) => P.page.evaluate((mid) => {
    field that means "the direction the player asked for" (v2.3.2261). */
 const aimAt = (P, t) => P.page.evaluate(({ ax, ay }) => {
   const S = window._gameState.current, R = S.rpg;
-  const ang = Math.atan2(ay - S.player.y, ax - S.player.x);
+  /* ═══ v2.3.2473: A BOW IS AIMED FROM THE GRIP, NOT FROM THE FEET ═══
+     This measured the angle from the player's ORIGIN, and the bow has fired
+     from the teal GRIP since v2.3.1979 -- whose note is about exactly this
+     geometry: "Measured from the player's feet (as it was), the arrow's flight
+     line came out PARALLEL to the line that hits, passing 9-32px to the side
+     of a 27px slime."  An angle taken from one point and flown from another
+     offset by ~28px is a line that misses by up to 28px at every range.
+
+     It never showed before because nothing checked: the bow fired whatever the
+     angle was and the arrow either connected or did not, and a row that landed
+     4 of 5 read as a live monster moving.  v2.3.2473's sight gate is the first
+     thing that asks the question, and it asks it from the grip -- so an aim
+     built from the feet now suppresses the shot outright and the row reports
+     "never fired".
+     Measured on this build before the fix: 13 of 15 verdant bow attempts never
+     fired, against a slime whose gate radius (25 + the arrow's 6.6) is 31.6 --
+     only just wider than the 28px offset, so the fixture was always on the
+     edge of missing and the gate simply made that visible.
+
+     Reads `S._bowGripX/Y` -- the same absolute point the fire site and the
+     sight gate both measure from (monsterCombat), with the same fallback to
+     the feet -- rather than re-deriving it from the player plus the published
+     offset.  One of those is the number the gate uses and the other is a copy
+     of it; on a walking player they disagree by a frame, and the whole defect
+     being fixed here is a fixture that aimed from a different point than the
+     game fires from.  So the first attempt of a row -- before the renderer has
+     painted a bow frame and published a grip -- behaves exactly as the shot
+     does, and every later one is exact. */
+  const _rangedNow = R && (R.activeSlot === 'ranged');
+  const _fx = (_rangedNow && typeof S._bowGripX === 'number') ? S._bowGripX : S.player.x;
+  const _fy = (_rangedNow && typeof S._bowGripY === 'number') ? S._bowGripY : S.player.y;
+  const ang = Math.atan2(ay - _fy, ax - _fx);
   S._aimAngle = ang; S._lastAimAngle = ang; S._aiming = true; S._aimSrc = 'stick';
   S._facingAngle = ang; S._targetFacingAngle = ang;
   S.swingTimer = 0; S._lastSwipe = 0; S._shieldUp = false;

@@ -96,9 +96,71 @@ export async function run({ browser, wsPort, webPort, rec }) {
      thing worth catching.  That the move mark then RETIRES, and that the
      coach falls silent again until tut_1, is owned by mp-coachearly.mjs,
      which drives a real joystick drag to prove it. */
+  /* ═══ v2.3.2495 WIDENED THIS BY EXACTLY ONE LESSON ═══
+     The first join after making a character now folds the dashboard and rings
+     the fold chip (owner), so `openDash` is legitimately the head lesson here
+     and `move` is behind it.  The guard this line provides is unchanged in
+     kind -- an 'equip' mark up here would still mean the questline lessons had
+     come unmoored from the questline -- it just names two permitted ids
+     instead of one. */
   const idle = await coach(P);
-  rec.ok('the only thing taught before the questline is how to move',
-    !idle || idle.id === 'move', idle);
+  rec.ok('the only things taught before the questline are the dashboard and how to move',
+    !idle || idle.id === 'openDash' || idle.id === 'move', idle);
+
+  /* ── 0b. THE FIRST JOIN STARTS FOLDED, AND SAYS HOW TO GET BACK ──
+     Owner: "on the FIRST join after character creation the dashboard must
+     start FOLDED with an attention ring on the fold chip, and the tutorial
+     then resumes."  Three claims, and each is worth its own line because they
+     fail independently: the band folds ITSELF (nobody tapped anything), the
+     mark rings the chip that unfolds it, and answering it hands the queue back
+     to the rest of the tutorial.
+
+     Driven through the real chip with real touch events rather than by calling
+     dashMinBus -- the lesson is about a control, and a scenario that set the
+     bus would prove the tracker and nothing about the thing being taught. */
+  const foldedAtJoin = await P.page.evaluate(() => {
+    const t = window.__btCoach && window.__btCoach();
+    return t ? t.dash : null;
+  });
+  rec.ok('a brand-new bro joins with the dashboard folded, without touching it',
+    !!(foldedAtJoin && foldedAtJoin.folded === true && foldedAtJoin.foldSpent === true),
+    foldedAtJoin);
+  const chip = await rectOf(P, '[data-dash-fold="min"]');
+  rec.ok('the fold chip is on screen while folded, so there is a way back (guard)', !!chip, chip);
+  if (chip && idle && idle.id === 'openDash' && idle.ring) {
+    const dx = Math.abs((idle.ring.left + idle.ring.width / 2) - (chip.left + chip.width / 2));
+    const dy = Math.abs((idle.ring.top + idle.ring.height / 2) - (chip.top + chip.height / 2));
+    rec.ok('the attention ring is measured onto the real fold chip',
+      dx < 6 && dy < 6, { ring: idle.ring, chip, dx, dy });
+  }
+  await P.page.screenshot({ path: 'tools/qa/mp/out/coach-0-folded.png' }).catch(() => {});
+  await P.page.evaluate(() => {
+    const el = document.querySelector('[data-dash-fold="min"]');
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    for (const type of ['pointerdown', 'pointerup']) {
+      el.dispatchEvent(new PointerEvent(type, {
+        clientX: r.left + r.width / 2, clientY: r.top + r.height / 2,
+        bubbles: true, cancelable: true, pointerId: 11, pointerType: 'touch',
+      }));
+    }
+  });
+  await P.page.waitForTimeout(900);
+  const opened = await P.page.evaluate(() => {
+    const t = window.__btCoach && window.__btCoach();
+    const el = document.querySelector('[data-coach]');
+    return { dash: t ? t.dash : null, done: !!(t && t.done && t.done.openDash),
+      mark: el ? el.getAttribute('data-coach') : null };
+  });
+  rec.ok('tapping the ringed chip opens the band and retires the lesson',
+    !!(opened.dash && opened.dash.folded === false && opened.done === true
+       && opened.mark !== 'openDash'), opened);
+  /* ...AND THE TUTORIAL RESUMES.  The whole point of putting this lesson first
+     is that it holds the queue; if it had not handed back, every mark after it
+     would be missing and the rest of this file would pass vacuously on
+     "no mark". */
+  rec.ok('...and the queue hands back to the walking lesson',
+    opened.mark === 'move' || opened.mark === null, opened);
 
   /* ── 1. the gear lesson, off the REAL quest ──
      Nothing is fabricated here on purpose.  The lesson's trigger is a claim
@@ -535,6 +597,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!(g1 && g1.id === 'blockRanged'), g1);
   rec.ok('...and it teaches the DOUBLE TAP, not the old shield button',
     !!(g1 && /double.?tap/i.test(g1.text) && !/shield button/i.test(g1.text)), g1 && g1.text);
+  /* ═══ v2.3.2495: THE SCREEN-SIZED OVAL ═══
+     Owner, of the first two minutes: a huge oval appears across the play field
+     after the weapon swap.  It was THIS lesson measuring its fallback anchor
+     `[data-joyzone="R"]` -- the fixed right half of the screen -- with
+     shape:'circle'.  The fallback is gone and a size guard now refuses any
+     mark bigger than a plausible control, so the assertion is about the
+     PROPERTY rather than the selector: whatever this lesson ends up anchored
+     to, its ring is button-sized and square-ish.
+     Two numbers, not one: the oval was 195 wide and ~600 tall, so a height
+     bound alone would have caught it and a width bound alone would not. */
+  if (g1 && g1.ring) {
+    const R = g1.ring;
+    const ar = R.width > 0 && R.height > 0 ? R.width / R.height : 0;
+    rec.ok('the guard ring is a control, not a half-screen oval',
+      R.width <= 200 && R.height <= 200 && ar > 0.55 && ar < 1.8, R);
+  }
+  const overs = await P.page.evaluate(() => {
+    const t = window.__btCoach && window.__btCoach();
+    return t ? t.oversize : null;
+  });
+  rec.ok('...and no mark anywhere in this run was refused for being absurd',
+    !!(overs && overs.n === 0), overs);
   await P.page.screenshot({ path: 'tools/qa/mp/out/coach-3-guard.png' });
 
   /* ═══ v2.3.2312: TAP THE MESSAGE, AND DO NOT SWING ═══

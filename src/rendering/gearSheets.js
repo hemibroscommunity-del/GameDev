@@ -377,8 +377,21 @@ export function preloadGear() {
      plays this same pose as an opening move, so it is reached constantly.
      south + east only -- the dodge strips are authored on that dominant-axis
      pair (dodgeSheetDir), exactly as prewarmDirs already assumes. */
+  /* v2.3.2500 (owner report: "the first item you pick up you are shirtless
+     for about half a second"): + 'pickup' and + 'fish', the last two gather
+     poses that ship gear art and were never warmed here.  This is the SAME
+     bug v2.3.2463 fixed for 'dodge', one pose over: getGearFrame's cold path
+     kicks buildSheet and returns NULL for that pass, so the first pickup of
+     the session drew the bare body for the whole PICKUP_DURATION_MS (500 ms,
+     playerSprites) while the shirt/chest/legs sheets fetched + recoloured +
+     sliced -- exactly the first-use load the animation-preload law forbids
+     (CLAUDE.md, TRAPS #12).  Both are authored SOUTH-ONLY (the sheets on disk
+     are pickup-south / fish-south for chest, legs and shirt alike), so they
+     ride the (pose, dirs) pair shape rather than the full DIRS loop, for the
+     same 404 reason 'mine' does. */
   const SETS = [['stand', DIRS], ['jog', DIRS], ['hit', DIRS],
-    ['mine', ['south']], ['dodge', ['south', 'east']]];
+    ['mine', ['south']], ['dodge', ['south', 'east']],
+    ['pickup', ['south']], ['fish', ['south']]];
   const tasks = [];
   for (const slot of GEAR_SLOTS) {
     /* v2.3.1197: preload EVERY catalog item per slot, not just the currently

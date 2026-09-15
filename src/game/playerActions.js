@@ -108,6 +108,40 @@ export function specialAttack(S) {
     var R = S.rpg;
     var now = Date.now();
 
+    /* ═══ v2.3.2473: A BOW SPECIAL WAITS FOR THE LINE, IT IS NOT WASTED ═══
+       Owner (backlog §2.5): with the bow now only loosing when its sight line
+       is on something (monsterCombat's gate), "a pressed special sets a flag
+       consumed at that same site so it fires on the next lined-up shot."
+
+       ABOVE EVERY REFUSAL AND EVERY SPEND, deliberately: a queued special has
+       not happened yet, so it must not take the mana, must not start the 1.5s
+       cooldown and must not stamp the swing clock.  All three are charged when
+       it actually goes out, because the fire site calls this function AGAIN on
+       the frame the line lands -- by then `_bowSight.d` is a number, this
+       branch is skipped, and the ordinary body below charges for a special
+       that is genuinely leaving.
+
+       BELOW the shield drop, though, and that is not an accident: pressing the
+       special is a request to attack whatever else happens, and "attacking" is
+       the owner's own first-named exit from a raised guard.  A queue that left
+       the shield up would also never fire, since the fire gate refuses while
+       `_shieldUp`.
+
+       BOW ONLY.  The staff is not gated by the sight line (its bolts splash
+       and home), and melee has no line to speak of, so neither can ever be in
+       a state this would defer.  `_bowSight` is null on those weapons anyway,
+       which is why the slot is tested rather than the field. */
+    if ((R.activeSlot === 'ranged') && !(S._bowSight && S._bowSight.d != null)) {
+      S._bowSpecialQueued = now;
+      /* The same courtesy the no-weapon and no-mana refusals get: a control
+         that silently does nothing is indistinguishable from a broken one. */
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Lining up...', '#D8A94D', { ts: now });
+      return;
+    }
+    /* A special that IS firing consumes any standing request, so a queued one
+       cannot go off a second time behind it. */
+    S._bowSpecialQueued = 0;
+
     /* §4.5 Swipe cooldown check */
     if (now - (S._lastSwipe || 0) < 1500) return;
 
