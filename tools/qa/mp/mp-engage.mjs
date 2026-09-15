@@ -148,6 +148,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
      so it belongs to the candidates that are NOT the target. */
   rec.ok('the renderer marks the candidate (probe: one mark, on this monster, as the target)',
     !!marks && marks.length === 1 && marks[0].id === 'qa_eng_1' && marks[0].target === true, marks);
+  /* v2.3.2472: MEASURED AT REST, ON PURPOSE.  The chip's first second is now a
+     flash -- the bob amplitude lerps 15 -> 6 over 1000ms, which lifts the top
+     of its swing by up to ~18 world px while it settles (the BOTTOM is pinned
+     by the standoff, which is what mp-lockchip's clearance assertions depend
+     on).  This assertion is about PLACEMENT, not about the flash, and a
+     150px band read mid-pop measures the cue rather than the position.  The
+     flash's own peak is bounded in mp-lockchip, where it belongs. */
+  await P.page.waitForTimeout(1100);
   const geo = await P.page.evaluate(() => {
     const S = window._gameState.current;
     const m = S.monsters[0];
@@ -339,6 +347,144 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(900);
   const settled = await P.page.evaluate(() => window.__btDiscVis());
   rec.ok('...and it is gone once the linger runs out', settled.R.shown === false, settled.R);
+
+  /* ═══ 5. THE MELEE REACH RING (v2.3.2472) ═══
+     Owner (F1): a light-red ring on the aggroed or locked monster, ONE ring,
+     radius = melee reach.
+
+     THE RING IS ASSERTED AS A PROMISE, NOT AS A DRAWING.  A ring that is
+     always painted and never changes would satisfy "there is a ring" and be
+     useless -- the whole content of this mark is "your sword lands from inside
+     here".  So the last check below stops looking at the mark entirely and
+     SWINGS: from inside the ring the slime loses health, from outside it does
+     not.  If those two ever disagree with what the ring says, the ring is
+     lying to the player and this scenario is the thing that notices.
+
+     (It is deliberately NOT asserted against the dash.  "Close enough to dash"
+     is not a state in this codebase: maybeSwordDash fires on the melee press
+     with any lock out to DASH_MAX_REACH_PX 900, and the 220px perimeter is
+     what supplies the lock.  A test that pinned this ring to a lunge would be
+     pinning a rule the game does not have.) */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.lockedTarget = null; S.monsters = []; S._targetCands = [];
+  });
+  await P.page.waitForTimeout(300);
+  /* OUT of reach: 120px east.  A slime's ring is 72 + 24 = 96 around its body
+     centre, and the player's feet are 23px below that centre, so the boundary
+     due east lands at sqrt(96^2 - 23^2) = ~93px.  120 clears it with margin. */
+  await seedFodder(P, 'qa_reach', 120, 0);
+  await P.page.waitForTimeout(600);
+  const reachFar = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const F = window._gameFns || {};
+    const m = (S.monsters || [])[0];
+    return {
+      ring: window.__btReachRing ? window.__btReachRing() : null,
+      bodyOff: F.monsterBodyOffsetY ? F.monsterBodyOffsetY('fodder') : null,
+      mx: m ? (m.renderX != null ? m.renderX : m.x) : null,
+      my: m ? (m.renderY != null ? m.renderY : m.y) : null,
+      px: S.player.x, py: S.player.y,
+      lock: S.lockedTarget ? S.lockedTarget.id : null,
+    };
+  });
+  rec.ok('a reach ring is drawn on the locked monster, and exactly one',
+    !!(reachFar.ring && reachFar.ring.id === 'qa_reach'), reachFar);
+  if (reachFar.ring) {
+    const R = reachFar.ring;
+    /* THE COMPOSITION RULE, not a number typed in here.  The renderer reports
+       the two terms it read out of the shared tables (GS_OUTER_RADIUS and
+       monsterMeleeHitRadius -- the same two the swing hit-test reads), so a
+       future retune of either moves this with it, and a radius hand-tuned in
+       the drawer fails instead of silently drawing a ring the swing does not
+       honour.  v2.3.2229 is the lesson: a speed changed and four hand-tuned
+       constants did not follow it. */
+    rec.ok(`...at the swing's own reach: ${R.r} = GS_OUTER_RADIUS ${R.outer} + hit radius ${R.hitR}`,
+      Math.abs(R.r - (R.outer + R.hitR)) < 0.5, R);
+    /* Centred on the BODY CENTRE, which is the point the reach test measures
+       to.  Centred at the feet it would be the right size and the wrong
+       circle, and on a skeleton (body offset 60) that is a 60px lie. */
+    rec.ok('...centred on the body centre the reach test measures to, not on the feet',
+      reachFar.bodyOff != null && Math.abs(R.y - (reachFar.my - reachFar.bodyOff)) < 0.5,
+      { ringY: R.y, feet: reachFar.my, bodyOff: reachFar.bodyOff });
+    const dFar = Math.hypot(reachFar.mx - reachFar.px, (reachFar.my - reachFar.bodyOff) - reachFar.py);
+    rec.ok(`...and at ${Math.round(dFar)}px it reads OUT of reach, agreeing with the arithmetic`,
+      R.inReach === false && dFar > R.r, { dFar, r: R.r });
+  }
+
+  /* IN reach: the same monster, walked in to 60px east. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const m = S.monsters[0];
+    m.x = S.player.x + 60; m.renderX = m.x;
+  });
+  await P.page.waitForTimeout(400);
+  const reachNear = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const F = window._gameFns || {};
+    const m = (S.monsters || [])[0];
+    const off = F.monsterBodyOffsetY ? F.monsterBodyOffsetY('fodder') : 23;
+    const mx = m ? (m.renderX != null ? m.renderX : m.x) : 0;
+    const my = m ? (m.renderY != null ? m.renderY : m.y) : 0;
+    return { ring: window.__btReachRing ? window.__btReachRing() : null,
+      d: Math.round(Math.hypot(mx - S.player.x, (my - off) - S.player.y)) };
+  });
+  rec.ok(`...and stepping inside it flips the ring to IN reach (${reachNear.d}px)`,
+    !!(reachNear.ring && reachNear.ring.inReach === true), reachNear);
+
+  /* ═══ AND THE SWING AGREES WITH THE RING ═══
+     Driven the way mp-feel drives one -- stamp swingTimer and isSwinging, the
+     two fields swingAttack sets -- and read off the monster's health rather
+     than off any mark, so this assertion shares nothing with the renderer it
+     is checking.  The contact delay is MELEE_CONTACT_MS (120), so the sample
+     waits well past it. */
+  const swingAt = (P2, dx) => P2.page.evaluate((d) => {
+    const S = window._gameState.current;
+    const m = S.monsters[0];
+    m.x = S.player.x + d; m.renderX = m.x;
+    m.y = S.player.y; m.renderY = m.y;
+    m.curHp = 5000; m.hp = 5000; m._hitThisSwing = false;
+    S._facing = 'right'; S._facingAngle = 0; S._aimAngle = 0;
+    S.lockedTarget = { type: 'monster', id: m.id, ref: m, src: 'tap' };
+    S.swingTimer = Date.now();
+    S.isSwinging = true;
+    return true;
+  }, dx);
+  const hpAfter = (P2) => P2.page.evaluate(() => {
+    const m = window._gameState.current.monsters[0];
+    return m ? m.curHp : null;
+  });
+  await swingAt(P, 60);
+  await P.page.waitForTimeout(600);
+  const hpIn = await hpAfter(P);
+  await swingAt(P, 200);
+  await P.page.waitForTimeout(600);
+  const hpOut = await hpAfter(P);
+  rec.ok(`a swing from INSIDE the ring lands (slime 5000 -> ${hpIn})`,
+    hpIn != null && hpIn < 5000, { hpIn });
+  rec.ok(`...and one from outside it does not (slime still ${hpOut})`,
+    hpOut === 5000, { hpOut });
+
+  /* A BOW NEVER RUNS THE SWING TEST, so it must not wear the ring: a reach
+     ring with a bow drawn would be a mark that means nothing, which is the
+     "two marks, one of them a lie" family this renderer has spent five
+     versions unpicking. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.rpg.activeSlot = 'ranged';
+    const m = S.monsters[0];
+    m.x = S.player.x + 60; m.renderX = m.x;
+    S.lockedTarget = { type: 'monster', id: m.id, ref: m, src: 'tap' };
+  });
+  await P.page.waitForTimeout(400);
+  const reachBow = await P.page.evaluate(() => ({
+    ring: window.__btReachRing ? window.__btReachRing() : null,
+    lock: window._gameState.current.lockedTarget
+      ? window._gameState.current.lockedTarget.id : null,
+  }));
+  rec.ok('a BOW gets no reach ring, even with the same monster tap-locked in front of it',
+    reachBow.ring === null && reachBow.lock === 'qa_reach', reachBow);
+  await P.page.evaluate(() => { window._gameState.current.rpg.activeSlot = 'melee'; });
 
   await P.page.screenshot({ path: H.REPO + '/tools/qa/mp/.last-engage.png' }).catch(() => {});
   await P.ctx.close().catch(() => {});

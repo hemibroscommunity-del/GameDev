@@ -860,8 +860,51 @@ export async function freeFrostImpactTex() {
   }
 }
 
-const DEBRIS_MS = 450;
+/* v2.3.2472: channel-wise lerp between two packed 0xRRGGBB colours.  Used by
+   the lock chip's first-second flash; kept at module scope because it is two
+   lines and a per-frame closure in the draw path is the kind of allocation
+   this file has had to unpick before. */
+function _mixHex(a, b, t) {
+  const k = t < 0 ? 0 : (t > 1 ? 1 : t);
+  const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+  const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+  return (((ar + (br - ar) * k) | 0) << 16)
+    | (((ag + (bg - ag) * k) | 0) << 8)
+    | ((ab + (bb - ab) * k) | 0);
+}
+
+/* ═══ v2.3.2472: THE FALLBACK IS THE SHIPPING EFFECT, SO MAKE IT ONE ═══
+ *
+ * Owner (§5.8): "Debris → use the fallback art for now.  Lane F1 makes the
+ * fallback burst and decals last about 5 s and read clearly; no sheets needed."
+ *
+ * WHAT WAS ACTUALLY WRONG.  Not the hit path -- that has worked since
+ * v2.3.2200 and fires from all three sites (melee sweep, projectile impact,
+ * and the monster_hit handler for peer/server-rolled hits).  It is that NONE
+ * of the five DEBRIS_BURSTS sheets above exist under public/sprites/effects/,
+ * so every hit in the game has always taken the placeholder branch: six tinted
+ * 32px dots, gone in 450ms.  The owner was not failing to see a broken effect,
+ * he was seeing a placeholder that was never meant to be the product.
+ *
+ * TWO CLOCKS, NOT ONE.  The sheet path keeps 450ms, because that number is not
+ * a taste call there -- it is the frame pacing of an 8-frame one-shot strip
+ * (~56ms a frame), and stretching it to 5s would play a future owner-generated
+ * burst at 625ms a frame, which is a slideshow.  The placeholder gets its own
+ * 5s, and the two cannot be confused for each other.
+ *
+ * THE PLACEHOLDER GREW A GROUND PHASE, because 5s of parametric flight is not
+ * a longer effect, it is chunks in low orbit: at the old 16.7ms frame units a
+ * particle would be ~5400px below the monster by the end.  So a chunk now
+ * flies for its own computed arc, LANDS, squashes flat and lies there for the
+ * rest of the 5s before fading -- which is what "debris" means and what makes
+ * the effect readable as a thing that happened rather than a flicker. */
+const DEBRIS_STRIP_MS = 450;     /* the SHEET path: 8 frames at ~56ms */
+const DEBRIS_FALLBACK_MS = 5000; /* the placeholder: fly, land, lie there */
+const DEBRIS_FADE_MS = 1400;     /* ...fading over its last stretch */
+const DEBRIS_GRAV = 0.11;        /* the 1/2-g term, in 60Hz frame units */
+const DEBRIS_PARTS = 7;
 const DEBRIS_MIN_GAP_MS = 150;   /* per-monster dedup, the _impactSpawned posture */
+const DEBRIS_MAX_BURSTS = 24;    /* hard cap, hitParticles posture */
 
 /* Minted soft-particle texture (the entityRenderer _shadowTex recipe:
    one canvas radial gradient, minted once, tinted per use — batches). */
@@ -4514,8 +4557,15 @@ export class EffectsRenderer {
            all -- so a report of rings alone could not tell "the chip replaced
            the reticle" from "the target lost its mark entirely", and those are
            a fix and a regression wearing the same number. */
+        /* v2.3.2472: + the melee reach ring.  It is drawn on engageRingGfx,
+           not on the overlay Graphics this probe wraps, so `count` above
+           cannot see it -- and a ring the tripwire cannot see is exactly the
+           thing the tripwire exists to stop happening quietly.  Reported
+           explicitly instead, so mp-lockrings can keep asserting "no RETICLE
+           circle on the target" while also asserting that the reach ring is
+           there and is the right size. */
         return { count: _lr._lockRings, radii: _lr._lockRingRadii || [],
-          chips: _lr._lockChips || 0 };
+          chips: _lr._lockChips || 0, reach: _lr._reachRing || null };
       };
     }
     try {
@@ -4601,6 +4651,124 @@ export class EffectsRenderer {
           _erg.stroke({ color: 0x14181A, width: 3.5 * _rk, alpha: 0.30 * t });
           _erg.ellipse(mx, my, rx, ry);
           _erg.stroke({ color: col, width: (isCur ? 2.4 : 1.5) * _rk, alpha: (isCur ? 0.85 : 0.5) * t });
+        }
+      }
+      /* ═══ v2.3.2472: THE MELEE REACH RING ═══
+         Owner (F1): a light-red ring on the aggroed or locked monster, ONE
+         ring, radius = melee reach.
+
+         WHAT IT MEANS, AND WHAT IT DELIBERATELY DOES NOT.  It means "your
+         sword lands from inside here" -- nothing else.  "Close enough to dash"
+         is NOT a state in this codebase and this ring must never be read as
+         one: the sword dash has no trigger radius at all (maybeSwordDash fires
+         on the melee press with ANY monster lock out to DASH_MAX_REACH_PX 900,
+         abilities.js), and the 220px TARGET_PERIMETER_PX is what supplies that
+         lock, not a lunge threshold.  Drawing a lunge ring would teach a rule
+         the game does not have.
+
+         THE RADIUS IS THE SWING TEST, READ OFF THE SWING TEST.  Both melee
+         reach checks in monsterCombat -- the sweep (~1784) and the engaged
+         auto-swing (~1428) -- are `hypot(player, BODY CENTRE) -
+         monsterMeleeHitRadius(arch) <= GS_OUTER_RADIUS`.  Rearranged, the set
+         of PLAYER FOOT positions that can land a swing is a disc of radius
+         GS_OUTER_RADIUS + monsterMeleeHitRadius centred on the monster's body
+         centre: 96px for a slime, 122 for a skeleton.  Both terms are the
+         shared tables the hit test itself reads, so a retune of either moves
+         the ring with it and the drawing cannot drift away from the rule.
+
+         A TRUE CIRCLE, NOT THE SQUASHED GROUND ELLIPSE ABOVE.  The candidate
+         rings are squashed 0.38 as a ground-plane convention, which is fine
+         for a footprint marker.  This one is a promise about whether a swing
+         will connect, and the test behind it is plain Euclidean distance in
+         world units with no y-scale anywhere -- so a squashed ring would say
+         "in reach" to a player standing north of a monster who is not, and
+         "out of reach" to one east of it who is.  A wrong ring is worse than
+         no ring; the perspective convention loses to the arithmetic.
+
+         CENTRED ON THE BODY CENTRE (renderY - monsterBodyOffsetY) for the same
+         reason: that is the point the reach is measured to.  It sits above the
+         feet, which is why the ring hangs around the monster's middle rather
+         than lying under it.
+
+         MELEE ONLY.  A bow or a staff never runs this test, so a reach ring
+         with one drawn would be decoration that means nothing.  Same slot
+         classifier targeting.autoAcquires uses, read inline rather than
+         imported -- this file already branches on S.rpg.activeSlot.
+
+         ON engageRingGfx, not the overlay Graphics: this is a ground/telegraph
+         mark like the rings above it, and it shares their clear(). */
+      const _rrSlot = S.rpg && S.rpg.activeSlot;
+      const _rrMelee = !(_rrSlot === 'ranged' || _rrSlot === 'staff');
+      this._reachRing = null;
+      if (_erg && _rrMelee && S.player && !S._zoneLoading) {
+        /* ONE RING.  The lock wins outright -- it is the monster you chose --
+           and only when there is no lock does the nearest monster that is
+           actually coming for you take it.  Never both: two reach rings would
+           be the "two circles on one monster" complaint in a new costume. */
+        let _rrM = (S.lockedTarget && S.lockedTarget.type === 'monster')
+          ? S.lockedTarget.ref : null;
+        if (_rrM && (_rrM.alive === false
+            || (typeof _rrM.curHp === 'number' && _rrM.curHp <= 0))) _rrM = null;
+        if (!_rrM) {
+          /* "Aggroed" reads BOTH writers, because neither covers both zone
+             kinds on its own: `tg` is the worker's live "who am I chasing"
+             field (wsClient keeps it in step with the wire), and `_aggroed` is
+             the local-AI/retaliation flag that the same handler CLEARS when
+             the wire disagrees.  Either one alone leaves half the game's
+             monsters unable to wear this ring. */
+          const _ms = S.monsters || [];
+          let _bd = Infinity;
+          for (let i = 0; i < _ms.length; i++) {
+            const m = _ms[i];
+            if (!m || m.alive === false) continue;
+            if (typeof m.curHp === 'number' && m.curHp <= 0) continue;
+            if (!((m.tg != null && m.tg === S.myId) || m._aggroed)) continue;
+            const ax = (m.renderX != null ? m.renderX : m.x);
+            const ay = (m.renderY != null ? m.renderY : m.y);
+            if (!Number.isFinite(ax) || !Number.isFinite(ay)) continue;
+            const dd = (ax - S.player.x) * (ax - S.player.x) + (ay - S.player.y) * (ay - S.player.y);
+            if (dd < _bd) { _bd = dd; _rrM = m; }
+          }
+        }
+        const _rrX = _rrM && (_rrM.renderX != null ? _rrM.renderX : _rrM.x);
+        const _rrFy = _rrM && (_rrM.renderY != null ? _rrM.renderY : _rrM.y);
+        if (_rrM && Number.isFinite(_rrX) && Number.isFinite(_rrFy)) {
+          const _rrArch = _rrM.arch || _rrM.archetype || _rrM.type;
+          const _rrR = GS_OUTER_RADIUS + (monsterMeleeHitRadius(_rrArch) || 24);
+          const _rrY = _rrFy - (monsterBodyOffsetY(_rrArch) || 23);
+          const _rrD = Math.hypot(_rrX - S.player.x, _rrY - S.player.y);
+          const _rrIn = _rrD <= _rrR;
+          /* The line weight is a SCREEN measurement, v2.3.2255's correction:
+             1.5 world px at the 0.60 a combat zone runs at is under one device
+             pixel, which is the whole reason "the red circle is hard to see"
+             survived two colour lifts. */
+          const _rrk = 1 / (S._worldScaleX > 0.01 ? S._worldScaleX : 1);
+          /* IN REACH IS THE STATE WORTH SEEING, so it is the one that is
+             brighter and heavier.  Out of reach the ring is a faint guide you
+             walk towards; the moment your feet cross it, it firms up -- which
+             is the answer to "can I hit this yet" without reading a number.
+             Both tones are light red (the owner's colour); the step is in
+             weight and alpha, not hue, so the ring never changes its meaning. */
+          _erg.circle(_rrX, _rrY, _rrR);
+          _erg.stroke({ color: 0x14181A, width: 3.2 * _rrk, alpha: _rrIn ? 0.34 : 0.20 });
+          _erg.circle(_rrX, _rrY, _rrR);
+          _erg.stroke({ color: _rrIn ? 0xFF6A6A : 0xFFA8A8,
+            width: (_rrIn ? 2.3 : 1.5) * _rrk, alpha: _rrIn ? 0.82 : 0.42 });
+          /* Published for the same reason every other mark in this region is:
+             a ring drawn at the wrong radius and a ring not drawn at all are
+             indistinguishable in a screenshot crop, and mp-engage asserts the
+             radius against the reach table rather than against a number typed
+             into the test. */
+          /* `outer` and `hitR` are published SEPARATELY from `r`, not as a
+             convenience: it is what lets mp-engage assert the COMPOSITION
+             rule (r === GS_OUTER_RADIUS + monsterMeleeHitRadius) rather than a
+             radius typed into the test, so a hand-tuned number pasted in here
+             one day fails the harness instead of quietly drawing a ring the
+             swing does not honour. */
+          this._reachRing = { id: _rrM.id, x: _rrX, y: _rrY, r: _rrR,
+            outer: GS_OUTER_RADIUS, hitR: monsterMeleeHitRadius(_rrArch) || 24,
+            arch: _rrArch, inReach: _rrIn, dist: Math.round(_rrD),
+            src: (S.lockedTarget && S.lockedTarget.ref === _rrM) ? 'lock' : 'aggro' };
         }
       }
       /* v2.3.2251: the same `_zoneLoading` guard the ground rings take -- marks
@@ -4863,7 +5031,48 @@ export class EffectsRenderer {
              bob in world units breathes by a third of its size at one zoom
              and a fifth at another, which is the correction v2.3.2263 made
              to the old reticle's pulse. */
-          const CHIP_BOB = 6;
+          /* ═══ v2.3.2472: THE FIRST SECOND OF A LOCK ANNOUNCES ITSELF ═══
+             F1: "stamp `at` on EVERY lock, then lerp the chip's colour and bob
+             amplitude over its first second."
+
+             WHY IT COULD NOT BE DONE BEFORE.  `lockedTarget.at` was stamped
+             only inside tapStealable, which never runs for an automatic lock
+             -- so the chip had no idea when it had appeared and could not tell
+             a target acquired this instant from one held for a minute.
+             targeting.js stamps `at` on every lock now (v2.3.2472); this is
+             the consumer.
+
+             WHAT MOVES: colour and bob amplitude, and nothing else.  The chip's
+             SIZE is pinned by mp-arrowshot, which measures the target's mark by
+             frame-differencing a 34px crop and gates it at 12..24 CSS px with
+             the upper bound there to catch a mark that has saturated its own
+             crop -- the first cut of this chip tripped exactly that.  A flash
+             that grew the chip would hand that failure back, so the flash is
+             carried entirely by brightness and travel.
+
+             AND IT IS PAID FOR OUT OF HEADROOM, the v2.3.2313 rule this block
+             already lives by: the standoff below is (amplitude + 5), so the
+             BOTTOM of the swing is the same pixel whatever the amplitude is.
+             The extra travel happens upward, in empty sky, and mp-lockchip's
+             worst-case clearance (>= 2px over the sprite's top edge) is
+             unchanged by construction rather than by luck.
+
+             1000ms, ease-out (1-t)^2 on the amplitude so the settle reads as a
+             landing rather than a stop. */
+          const LOCK_FLASH_MS = 1000;
+          const _cAt = (S.lockedTarget && typeof S.lockedTarget.at === 'number')
+            ? S.lockedTarget.at : 0;
+          /* Clamped both ways: a clock the browser has stepped backwards, or a
+             stamp from a lock that predates this build, must degrade to "not
+             flashing" rather than to a chip stuck at full flare forever. */
+          const _cAge = _cAt ? (now - _cAt) : LOCK_FLASH_MS;
+          const _cFl = (_cAge >= 0 && _cAge < LOCK_FLASH_MS)
+            ? 1 - (_cAge / LOCK_FLASH_MS) : 0;
+          const _cEase = _cFl * _cFl;
+          /* 6 at rest (v2.3.2314's amplitude, unchanged), 15 at the instant of
+             the lock.  The sweep mp-lockchip asserts (>= 8 for a full
+             peak-to-trough travel) only ever gets bigger during the flash. */
+          const CHIP_BOB = 6 + 9 * _cEase;
           const _cbob = Math.sin(now / 200) * CHIP_BOB * _ck;
           /* 16.4 CSS px across, 11 tall, plus a 2.6px rim -- so ~19 overall.
              mp-arrowshot already fixes a numeric meaning for "small/medium" on
@@ -4935,19 +5144,43 @@ export class EffectsRenderer {
           gfx.poly(_cpoly);
           gfx.stroke({ color: 0x14181A, width: 2.6 * _ck, alpha: 0.8 });
           gfx.poly(_cpoly);
-          gfx.fill({ color: _chot ? 0xFF3C3C : 0xF08A2E, alpha: 0.95 });
+          /* The flash lerps toward a hot white-gold, NOT toward a third hue.
+             The chip's colour already carries one meaning -- v2.3.2253's rule,
+             brass while merely locked, red while you are attacking -- and a new
+             colour would be a second meaning on the same channel.  Lightening
+             whatever the resting colour IS keeps that rule intact: a lock taken
+             mid-swing flashes a pale red and settles to red, a lock taken cold
+             flashes a pale gold and settles to orange. */
+          const _cRest = _chot ? 0xFF3C3C : 0xF08A2E;
+          const _cFill = _mixHex(_cRest, 0xFFF3D6, _cEase * 0.85);
+          gfx.fill({ color: _cFill, alpha: 0.95 });
           this._lockChips = 1;
           /* Pushed onto the same probe list the carets use, with target:true,
              so every scenario that asks __btAtkMark "which monster is the
              target" keeps its answer after the mark moved out of that loop. */
+          /* v2.3.2472: + the flash state.  The chip's colour and its bob
+             amplitude are the whole of the first-second cue, and neither
+             survives a screenshot: a still frame cannot say whether a pale
+             chip is flashing or whether the build simply painted it pale, and
+             the bob is a phase you would have to catch.  Reported, so
+             mp-lockchip can assert the CUE rather than a pixel. */
           _marks.push({ id: _lockChip.id, x: _cxp, y: _ctop, nearest: false,
-            target: true, hot: _chot, chip: true });
+            target: true, hot: _chot, chip: true,
+            color: _cFill, rest: _cRest, flash: +_cEase.toFixed(3),
+            bob: +CHIP_BOB.toFixed(2), at: _cAt || null });
         }
       }
       this._atkMarks = _marks;
       if (typeof window !== 'undefined' && !window.__btAtkMark) {
         const _self = this;
         window.__btAtkMark = function () { return (_self._atkMarks || []).slice(); };
+      }
+      /* v2.3.2472: the melee reach ring, on its own so a scenario that only
+         cares about reach does not have to arm the circle-counting wrapper
+         (which is opt-in precisely because it is a wrapper on a hot method). */
+      if (typeof window !== 'undefined' && !window.__btReachRing) {
+        const _selfR = this;
+        window.__btReachRing = function () { return _selfR._reachRing || null; };
       }
     } catch (e) {
       if (!this._candErrLogged) {
@@ -6386,7 +6619,33 @@ export class EffectsRenderer {
   _updateGroundSplatter(S) {
     const splatters = S.groundSplatter || [];
     if (!this._splatPool) this._splatPool = [];
+    /* ═══ v2.3.2472: THE MARKS WERE INVISIBLE BY CONSTRUCTION ═══
+       Owner (§5.8): the hit decals do not read.  They did not: a decal is
+       minted white and tinted with the material's DARK decal colour (goo
+       #1f7a55, stone #5b5b5b -- monsterVariants HIT_MATERIALS), drawn at
+       size/20 = 13..26 world px, at 0.35 alpha.  A dark green smudge at a
+       third opacity, a quarter the width of the slime that dropped it, on
+       grass.  Nothing was broken; the numbers never added up to a visible
+       mark.
+       Three changes, all here in the drawer so the spawn sites keep owning
+       WHAT a mark is (material, position, TTL) while this owns how it reads:
+       bigger, less transparent, and given a dark halo so a light material on
+       snow and a dark one on grass both have an edge.  The TTL is untouched at
+       8s and stays in lockstep with stateCleanup's filter -- the owner asked
+       for about 5s and these already outlast that; they were just not
+       there to be seen. */
+    /* The halo goes in its own container added FIRST, so every halo is under
+       every mark.  Interleaving them in one pool would put mark 3's halo over
+       mark 2's body, and a dark ring across a neighbouring splat reads as
+       grime rather than as an edge. */
+    if (!this._splatHaloLayer || this._splatHaloLayer.destroyed) {
+      this._splatHaloLayer = new Container();
+      this.splatLayer.addChildAt(this._splatHaloLayer, 0);
+      this._splatHaloPool = [];
+    }
+    if (!this._splatHaloPool) this._splatHaloPool = [];
     const pool = this._splatPool;
+    const halos = this._splatHaloPool;
     const now = Date.now();
     const GROUND_DECAL_MS = 8000, DECAL_FADE_MS = 2000;
     const tex = groundDecalTex();
@@ -6399,20 +6658,41 @@ export class EffectsRenderer {
         this.splatLayer.addChild(sp);
         pool[i] = sp;
       }
+      let ha = halos[i];
+      if (!ha || ha.destroyed) {
+        ha = new Sprite(tex);
+        ha.anchor.set(0.5, 0.5);
+        ha.tint = 0x14181A;
+        this._splatHaloLayer.addChild(ha);
+        halos[i] = ha;
+      }
       sp.x = d.x; sp.y = d.y;
+      ha.x = d.x; ha.y = d.y;
       /* Deterministic per-mark rotation from its timestamp — stable
          across frames without storing another field. */
       sp.rotation = ((d.ts || 0) % 628) / 100;
-      const s = (d.size || 4) / 20;
+      ha.rotation = sp.rotation;
+      /* size/13, not size/20: the spawn sites hand out size 4..8 (and bigger
+         on a kill), so a hit mark goes from ~13-26 world px across to ~20-39 --
+         roughly the base of the body that dropped it, which is what a splat
+         under a monster should be. */
+      const s = (d.size || 4) / 13;
       sp.scale.set(s * 1.25, s);   /* slightly squashed = lies on the ground */
+      ha.scale.set(s * 1.25 * 1.22, s * 1.22);
       if (d._tint == null) d._tint = cssToHex(d.color || '#4a0000');
       if (sp.tint !== d._tint) sp.tint = d._tint;
       const age = now - (d.ts || now);
-      sp.alpha = 0.35 * Math.max(0, Math.min(1, (GROUND_DECAL_MS - age) / DECAL_FADE_MS));
+      const k = Math.max(0, Math.min(1, (GROUND_DECAL_MS - age) / DECAL_FADE_MS));
+      sp.alpha = 0.72 * k;
+      ha.alpha = 0.30 * k;
       if (!sp.visible) sp.visible = true;
+      if (!ha.visible) ha.visible = true;
     }
     for (let i = splatters.length; i < pool.length; i++) {
       if (pool[i] && !pool[i].destroyed && pool[i].visible) pool[i].visible = false;
+    }
+    for (let i = splatters.length; i < halos.length; i++) {
+      if (halos[i] && !halos[i].destroyed && halos[i].visible) halos[i].visible = false;
     }
   }
 
@@ -6453,7 +6733,16 @@ export class EffectsRenderer {
 
   _spawnDebrisBurst(b, now) {
     if (!this._debrisFx) this._debrisFx = [];
-    if (this._debrisFx.length >= 24) return;   /* hard cap, hitParticles posture */
+    /* v2.3.2472: EVICT THE OLDEST, don't drop the newest.  At 450ms the cap
+       was nearly unreachable and returning early was free; at 5s a busy fight
+       sits on it permanently, and "return" there means the hit you just landed
+       is the one with no feedback -- the cap would silently reproduce the
+       complaint this change exists to fix.  A settled chunk from four seconds
+       ago disappearing is not something anyone can see. */
+    while (this._debrisFx.length >= DEBRIS_MAX_BURSTS) {
+      const _old = this._debrisFx.shift();
+      this._killDebrisFx(_old);
+    }
     const cfg = DEBRIS_BURSTS[b.kind];
     const ang = (typeof b.ang === 'number') ? b.ang : -Math.PI / 2;
     if (cfg && cfg.frames.length) {
@@ -6463,56 +6752,166 @@ export class EffectsRenderer {
       sp.x = b.x; sp.y = b.y;
       sp.scale.set(cfg.h / 256);
       this.particleLayer.addChild(sp);
-      this._debrisFx.push({ strip: sp, cfg, t0: now });
+      this._debrisFx.push({ strip: sp, cfg, t0: now, ms: DEBRIS_STRIP_MS });
     } else {
       const parts = [];
-      for (let i = 0; i < 6; i++) {
+      const tint = b.tint || 0xffffff;
+      for (let i = 0; i < DEBRIS_PARTS; i++) {
+        /* TWO SPRITES A CHUNK, and the second one is not decoration.  This
+           mark lands on town cobble, desert sand, grass and snow, and a
+           material tint on the ground that matches it is invisible -- goo
+           green on grass is the owner's exact case, and TRAPS §21 names this
+           family of false negative.  Every other mark in this renderer carries
+           a dark keyline for the same reason; a chunk gets one as an
+           under-sprite because a tinted Sprite has only one colour to give.
+           Same texture as the chunk, so both still batch. */
+        const rim = new Sprite(debrisDotTex());
+        rim.anchor.set(0.5, 0.5);
+        rim.tint = 0x14181A;
+        rim.x = b.x; rim.y = b.y;
         const sp = new Sprite(debrisDotTex());
         sp.anchor.set(0.5, 0.5);
-        sp.tint = b.tint || 0xffffff;
+        sp.tint = tint;
         sp.x = b.x; sp.y = b.y;
-        const sc = 0.3 + Math.random() * 0.4;
+        /* 0.55..1.15, up from 0.3..0.7: the dot texture is a 32px soft
+           particle, so the old range drew chunks 10-22px across at world
+           scale -- under a fingertip on the phone this is played on. */
+        const sc = 0.55 + Math.random() * 0.6;
         sp.scale.set(sc);
-        this.particleLayer.addChild(sp);
+        rim.scale.set(sc * 1.32);
         const a = ang + (Math.random() - 0.5) * 1.2;
         const spd = 1.6 + Math.random() * 2.6;
-        parts.push({ sp, x0: b.x, y0: b.y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd - 1.4, sc });
+        const vx = Math.cos(a) * spd;
+        const vy = Math.sin(a) * spd - 1.9;
+        /* WHERE THE GROUND IS.  The burst is queued at the monster's BODY
+           CENTRE (spawnHitDebris subtracts monsterBodyOffsetY), and the feet
+           are that offset below -- 23 world px on a slime, 60 on a skeleton.
+           The renderer is not handed the archetype, so rather than guess at a
+           table it cannot see, each chunk falls a fixed 16..40px: far enough to
+           read as landing, never so far that it lands behind the monster on
+           the tallest shape.  The chunks scatter over the base of the body,
+           which is where a chip off a monster belongs.
+           Landing time is SOLVED, not stepped: 0.11t^2 + vy*t = gy, so the
+           rest pose is one sqrt at spawn instead of a per-frame integration
+           that would drift with the frame rate (the same dt-safety the
+           parametric flight was written for). */
+        const gy = 16 + Math.random() * 24;
+        const tLand = (-vy + Math.sqrt(vy * vy + 4 * DEBRIS_GRAV * gy)) / (2 * DEBRIS_GRAV);
+        parts.push({ sp, rim, x0: b.x, y0: b.y, vx, vy, sc, gy, tLand,
+          xLand: b.x + vx * tLand, yLand: b.y + gy,
+          /* A chunk that has landed lies FLAT -- squashed on y, a touch wider
+             on x -- which is the same "this is on the ground" cue the splatter
+             sprites use.  Deterministic per chunk so it does not shimmer. */
+          spin: (Math.random() - 0.5) * 0.9 });
       }
-      this._debrisFx.push({ parts, t0: now });
+      /* EVERY RIM UNDER EVERY CHUNK, not each rim under its own chunk.  Added
+         one pair at a time, chunk 1's rim lands on top of chunk 0's body and
+         the burst muddies itself; Pixi draws in child order and there is no
+         z within a layer to lean on. */
+      for (const p of parts) this.particleLayer.addChild(p.rim);
+      for (const p of parts) this.particleLayer.addChild(p.sp);
+      this._debrisFx.push({ parts, t0: now, ms: DEBRIS_FALLBACK_MS });
     }
   }
 
-  _advanceDebrisBursts(now) {
-    const list = this._debrisFx;
-    if (!list || !list.length) return;
+  /* v2.3.2472: one disposer, because the cap eviction above and the expiry
+     sweep below both need it and a second copy would be the one that forgets
+     the rim sprite. */
+  _killDebrisFx(fx) {
+    if (!fx) return;
     const kill = (sp) => {
       if (!sp || sp.destroyed) return;
       if (sp.parent) sp.parent.removeChild(sp);   /* Pixi v8 zombie defence */
       sp.destroy();
     };
+    if (fx.strip) kill(fx.strip);
+    if (fx.parts) for (const p of fx.parts) { kill(p.sp); kill(p.rim); }
+  }
+
+  /* v2.3.2472: what debris is on screen right now.  The bursts are pooled
+     sprites with no DOM and no stable pixels -- a screenshot can say "there is
+     something green near the slime" and nothing at all about how long it
+     lasts, which is the entire ask (§5.8: "about 5 s ... read clearly").  So
+     the renderer reports its own queue and mp-feel asserts the lifetime and
+     the landing off that, the same posture as __btAtkMark and
+     __btMonsterHitReact. */
+  _debrisReport(now) {
+    const list = this._debrisFx || [];
+    return list.map((fx) => ({
+      age: now - fx.t0,
+      ms: fx.ms || DEBRIS_STRIP_MS,
+      sheet: !!fx.strip,
+      parts: fx.parts ? fx.parts.length : 0,
+      /* How many chunks have finished their arc and are lying on the ground.
+         "Landed" is the half of the effect that makes 5s legible rather than
+         absurd, and it is invisible to every other measure. */
+      landed: fx.parts
+        ? fx.parts.filter((p) => (now - fx.t0) / 16.7 >= p.tLand).length : 0,
+      alpha: fx.parts && fx.parts[0] && fx.parts[0].sp && !fx.parts[0].sp.destroyed
+        ? +fx.parts[0].sp.alpha.toFixed(3) : null,
+    }));
+  }
+
+  _advanceDebrisBursts(now) {
+    if (typeof window !== 'undefined' && !window.__btDebris) {
+      const _selfD = this;
+      window.__btDebris = function () { return _selfD._debrisReport(Date.now()); };
+    }
+    const list = this._debrisFx;
+    if (!list || !list.length) return;
     for (let i = list.length - 1; i >= 0; i--) {
       const fx = list[i];
       const age = now - fx.t0;
-      if (age >= DEBRIS_MS) {
-        if (fx.strip) kill(fx.strip);
-        if (fx.parts) for (const p of fx.parts) kill(p.sp);
+      /* v2.3.2472: the burst carries its OWN lifetime.  A sheet burst is the
+         pacing of its 8 frames; a placeholder burst is 5s of flight and
+         settle.  One shared constant could only ever be right for one of them.
+         `|| DEBRIS_STRIP_MS` covers a burst queued by an older frame across a
+         hot reload rather than leaving it immortal. */
+      const ms = fx.ms || DEBRIS_STRIP_MS;
+      if (age >= ms) {
+        this._killDebrisFx(fx);
         list.splice(i, 1);
         continue;
       }
-      const t01 = age / DEBRIS_MS;
+      const t01 = age / ms;
       if (fx.strip && !fx.strip.destroyed) {
         const fi = Math.min(7, Math.floor(t01 * 8));
         fx.strip.texture = fx.cfg.frames[fi];
         fx.strip.alpha = t01 > 0.8 ? (1 - t01) / 0.2 : 1;
       } else if (fx.parts) {
-        /* Parametric flight: x = x0 + v·t, y adds gravity's ½g·t² */
+        /* Parametric flight: x = x0 + v·t, y adds gravity's ½g·t² -- computed
+           from AGE, never integrated, so it is identical at 30fps and 120. */
         const tf = age / 16.7;   /* 60Hz-frame units */
+        /* One fade for the whole burst, over its last stretch.  Holding full
+           alpha until then is the point: the owner's complaint was that the
+           mark was gone before he looked at it, and a chunk that starts fading
+           immediately is a 5s effect that reads as a 1s one. */
+        const fade = age > (ms - DEBRIS_FADE_MS)
+          ? Math.max(0, (ms - age) / DEBRIS_FADE_MS) : 1;
         for (const p of fx.parts) {
-          if (p.sp.destroyed) continue;
-          p.sp.x = p.x0 + p.vx * tf;
-          p.sp.y = p.y0 + p.vy * tf + 0.06 * tf * tf;
-          p.sp.alpha = 1 - t01 * t01;
-          p.sp.scale.set(p.sc * (1 - t01 * 0.5));
+          if (!p.sp || p.sp.destroyed) continue;
+          let px, py, sx, sy;
+          if (tf < p.tLand) {
+            px = p.x0 + p.vx * tf;
+            py = p.y0 + p.vy * tf + DEBRIS_GRAV * tf * tf;
+            sx = p.sc; sy = p.sc;
+          } else {
+            /* LANDED.  Frozen where the arc put it, squashed flat so it reads
+               as lying on the ground rather than hanging in the air, and given
+               its own small rotation so seven identical dots do not look like
+               a pattern. */
+            px = p.xLand; py = p.yLand;
+            sx = p.sc * 1.15; sy = p.sc * 0.46;
+            if (p.sp.rotation !== p.spin) { p.sp.rotation = p.spin; p.rim.rotation = p.spin; }
+          }
+          p.sp.x = px; p.sp.y = py;
+          p.sp.alpha = fade;
+          p.sp.scale.set(sx, sy);
+          if (p.rim && !p.rim.destroyed) {
+            p.rim.x = px; p.rim.y = py;
+            p.rim.alpha = fade * 0.55;
+            p.rim.scale.set(sx * 1.32, sy * 1.32);
+          }
         }
       }
     }

@@ -37,6 +37,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       skeletonPx: V && V.skeleton ? V.skeleton.liveScalePx : null,
       mummyPx: V && V.mummy ? V.mummy.liveScalePx : null,
       skeletonSpd: V && V.skeleton ? V.skeleton.spd : null,
+      skeletonWalkDpf: V && V.skeleton ? V.skeleton.walkDistPerFrame : null,
+      goblinSpd: V && V.fireGoblin ? V.fireGoblin.spd : null,
+      goblinWalkDpf: V && V.fireGoblin ? V.fireGoblin.walkDistPerFrame : null,
       mummyFirstHit: !!(V && V.mummy && V.mummy.onFirstDamage),
       bodyOffSkeleton: G.monsterBodyOffsetY ? G.monsterBodyOffsetY('skeleton') : null,
       bodyOffMummy: G.monsterBodyOffsetY ? G.monsterBodyOffsetY('mummy') : null,
@@ -57,6 +60,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   rec.ok('the skeleton phase runs 25% faster (1.4 -> 1.75)',
     geo.skeletonSpd === 1.75, geo.skeletonSpd);
+  /* ═══ v2.3.2472: AND ITS LEGS KEEP UP WITH IT, RATHER THAN OUTRUNNING IT ═══
+     Owner (F1): the skeleton looks like it is sprinting in place.
+
+     THE ASSERTION IS THE CADENCE, NOT THE CONSTANT, because the constant on
+     its own means nothing -- the walk loop is DISTANCE-driven
+     (entityRenderer: frameIdx = floor(_walkDist / walkDistPerFrame) % 8), so
+     how frantic the legs look is speed / (frames x distPerFrame) and BOTH
+     terms move.  That is exactly how this broke: v2.3.116 set 3.0 against a
+     speed of 1.4, v2.3.2229 raised the speed to 1.75 for the same figure, and
+     the pacing constant did not follow -- so pinning 9.0 as a number would
+     leave the identical trap for the next speed change.  The server tick is
+     22ms, so 1.75 px/tick is ~79.5 px/s.
+
+     The band is 0.8..1.6 walk loops a second: below 0.8 an 8-frame strip
+     reads as a moonwalk (the figure slides faster than its feet), above 1.6
+     it reads as the running-in-place this fixes.  3.0 put it at ~3.3. */
+  if (geo.skeletonWalkDpf) {
+    const loops = (geo.skeletonSpd / 0.022) / (8 * geo.skeletonWalkDpf);
+    console.log(`    skeleton walk cadence -> ${loops.toFixed(2)} loops/s at ${Math.round(geo.skeletonSpd / 0.022)} px/s`);
+    rec.ok(`the skeleton's legs cycle at a stride, not a sprint-in-place (${loops.toFixed(2)} loops/s)`,
+      loops >= 0.8 && loops <= 1.6, { loops, dpf: geo.skeletonWalkDpf, spd: geo.skeletonSpd });
+    /* The house reference, in the same file and on the same 8-frame contract:
+       a fire goblin scurries a little faster than a skeleton strides.  This is
+       the check that would catch a "fix" that simply froze the legs. */
+    if (geo.goblinWalkDpf && geo.goblinSpd) {
+      const gLoops = (geo.goblinSpd / 0.022) / (8 * geo.goblinWalkDpf);
+      rec.ok(`...a shade calmer than the fire goblin's scurry (${loops.toFixed(2)} vs ${gLoops.toFixed(2)} loops/s)`,
+        loops < gLoops, { loops, gLoops });
+    }
+  } else {
+    rec.skip('the skeleton walk cadence', 'walkDistPerFrame not on the variant table');
+  }
   rec.ok('the mummy is flagged to turn on the first hit, not at a health fraction',
     geo.mummyFirstHit === true, geo);
 
