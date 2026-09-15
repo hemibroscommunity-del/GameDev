@@ -266,6 +266,43 @@ export function ctlColumn(isLandscape) {
 /* The CSS `bottom` every control in this cluster hangs from: the dashboard
    band, plus the slot's own offset.  One string builder so a change to the
    band variable cannot reach three files. */
+/* ═══ v2.3.2564: HOW HIGH THE COMBAT BAND REACHES ═══
+ *
+ * The owner, deciding §12.8: "Coach card move off the combat band".  The card
+ * needs a number for where that band ENDS, and the honest source is the same
+ * arithmetic the controls place themselves with -- not the DOM.
+ *
+ * WHY NOT MEASURE THE LIVE BOXES, which was the first cut and is the obvious
+ * move.  Half these controls come and go: Whirlwind is gone out of combat
+ * (v2.3.2561), Bash only exists with the guard raised, Special hides behind it.
+ * So a DOM sweep answers "how high is the band RIGHT NOW", and the card that
+ * reads it is not re-rendered when a button later appears underneath it.
+ * Measured: at 360 the card placed itself before Whirlwind arrived and then
+ * overlapped it by 14px, while the same code at 390 happened to be fine --
+ * a layout rule that depends on render order, which is a flake waiting to
+ * happen rather than a rule.
+ *
+ * Computed from the anchors instead: it covers every slot whether or not it is
+ * currently drawn, which is also what the owner actually asked for -- "the band
+ * is where the controls live and another button could land there later".
+ *
+ * Returned in the px-above-the-dashboard-band units the whole cluster uses, so
+ * a caller adds the band height the same way ctlBottom does. */
+export function combatBandTopPx(isLandscape) {
+  var l = leftCluster(isLandscape);
+  var c = ctlColumn(isLandscape);
+  var blk = blockAnchor(isLandscape);
+  var discR = isLandscape ? RBTN.wLand : RBTN.w;
+  var discL = isLandscape ? LBTN.wLand : LBTN.w;
+  return Math.max(
+    l.bottomPx(LCTL_SLOT.whirl) + l.size,      /* the left cluster's upper slot */
+    l.bottomPx(LCTL_SLOT.special) + l.size,
+    c.bottomPx(CTL_SLOT.bash) + c.size,        /* Shield Bash */
+    blk.bottomPx + blk.size,                   /* Block */
+    RBTN.bottom + discR,                       /* the attack disc */
+    LBTN.bottom + discL);                      /* the movement disc */
+}
+
 export function ctlBottom(px) {
   return 'calc(var(--sheet-h, var(--dash-h)) + ' + px + 'px)';
 }

@@ -173,6 +173,7 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
   const { w, h, tag } = V;
   const P = await H.newPlayer(browser, { name: `Geo${w}`, wsPort, webPort,
     touch: true, viewport: V.enterAt || { width: w, height: h } });
+  const land = w > h;
   await H.enterWorld(P);
   if (V.enterAt) {
     await P.page.setViewportSize({ width: w, height: h });
@@ -184,6 +185,157 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
       orient === 'landscape', { orient, w, h });
   }
   await P.page.waitForTimeout(2600);
+
+  /* ═══ v2.3.2564: PASS 0 -- WITH THE TUTORIAL CARD STILL UP ═══
+     Owner, deciding the question §12.8 left open: "Coach card move off the
+     combat band (doesn't seem like a big deal either way)."  So the card moved
+     (QuestCoach.jsx), and this is the row that proves it.
+
+     Deliberately FIRST and deliberately separate.  Every other pass in this
+     file retires the coach so it can measure the layout instead of the
+     tutorial -- which is right for them and is exactly why the overlap went
+     unseen for a version: the one scenario that hit-tested the band had
+     already switched the card off.  This pass keeps it up.
+
+     It also seeds WITHOUT the rAF shield pin the other passes use: the pin
+     rewrites `_shieldUp` every frame, so a real tap on Block would be undone
+     before it could be read.  Here the tap IS the measurement. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    if (!S.rpg.shield) S.rpg.shield = { name: 'Pine Shield', type: 'shield' };
+    S.rpg.weapon = { type: 'sword', name: 'Copper Sword', gearBase: 'copper', dmg: 3 };
+    S.rpg.activeSlot = 'melee';
+    S.rpg.stamina = S.rpg.maxStamina || 100;
+    S._serverMonsters = false;
+    const mx = S.player.x + 90, my = S.player.y;
+    const mon = { id: 'coach_fodder', arch: 'fodder', archetype: 'fodder', type: 'fodder',
+      x: mx, y: my, renderX: mx, renderY: my, spawnX: mx, spawnY: my, targetX: mx, targetY: my,
+      hp: 5000, curHp: 5000, maxHp: 5000, dmg: 0, level: 1, gold: 0, spd: 0, vx: 0, vy: 0,
+      alive: true, statuses: {}, _hitThisSwing: false, _atkCd: 0, _stunUntil: 0,
+      respawnAt: 0, moveTimer: 0, _stuckArrows: [] };
+    S.monsters = [mon];
+    S.lockedTarget = { type: 'monster', id: mon.id, ref: mon, src: 'tap' };
+    S._shieldUp = false;
+  });
+  await P.page.waitForTimeout(1200);
+  const coach = await P.page.evaluate(() => {
+    const card = document.querySelector('[data-coach-card]');
+    const box = (el) => { if (!el) return null; const b = el.getBoundingClientRect();
+      return { x: Math.round(b.left), y: Math.round(b.top), r2: Math.round(b.right),
+        b2: Math.round(b.bottom), w: Math.round(b.width), h: Math.round(b.height),
+        cx: Math.round(b.left + b.width / 2), cy: Math.round(b.top + b.height / 2) }; };
+    const controls = [];
+    for (const el of document.querySelectorAll('[data-shield],[data-ability],[data-special],.bt-rjoy-base,.bt-joystick-base')) {
+      const b = box(el);
+      if (!b || b.w <= 0) continue;
+      controls.push({ name: el.getAttribute('data-shield') != null ? 'block'
+        : el.getAttribute('data-ability') ? 'ability-' + el.getAttribute('data-ability')
+        : el.getAttribute('data-special') != null ? 'special'
+        : String(el.className).indexOf('bt-rjoy') >= 0 ? 'attack-disc' : 'move-disc', box: b });
+    }
+    /* Is the RING still on its target?  Moving the card must not move the
+       thing that points at the lesson's control. */
+    const ring = document.querySelector('[data-coach-ring]') || null;
+    return { card: box(card), lesson: card ? card.getAttribute('data-coach-card') : null,
+      ring: box(ring), controls, vh: window.innerHeight };
+  });
+  console.log(`    ${tag} COACH: ${JSON.stringify(coach)}`);
+  if (!coach.card) {
+    rec.skip(`${tag}: the coach card vs the combat band`,
+      'no tutorial card was up on this fixture at measure time');
+  } else {
+    const hit = (a, b) => !(a.r2 <= b.x || a.x >= b.r2 || a.b2 <= b.y || a.y >= b.b2);
+    const clashes = coach.controls.filter((c) => hit(coach.card, c.box)).map((c) => c.name);
+    /* MOVING IT MUST NOT BREAK IT.  Two ways a dodge can go wrong that an
+       overlap test cannot see: the card gets shoved off the screen (unreadable)
+       or the RING stops pointing at the control the lesson is about.  The ring
+       is a separate element anchored to the target rect, so it should not have
+       moved at all -- asserted, because "the card cleared the band" would still
+       pass if the lesson had quietly stopped gesturing at anything. */
+    rec.ok(`${tag}: ...and the card is still fully on screen and readable `
+      + `(y ${coach.card.y}..${coach.card.b2} of ${coach.vh}, x ${coach.card.x}..${coach.card.r2})`,
+      coach.card.y >= 0 && coach.card.b2 <= coach.vh && coach.card.x >= 0 && coach.card.h >= 40,
+      coach.card);
+    rec.ok(`${tag}: ...and the spotlight RING still sits on the lesson's own control, `
+      + `so it points at something (ring y ${coach.ring && coach.ring.y})`,
+      !!(coach.ring && coach.ring.h > 0 && coach.ring.w > 0), coach.ring);
+    rec.ok(`${tag}: the tutorial card (lesson "${coach.lesson}") overlaps NO combat control `
+      + `-- checked all ${coach.controls.length} of them, not just Block`,
+      clashes.length === 0, { card: coach.card, clashes, controls: coach.controls });
+    /* THE CLAIM THAT MATTERS: not "it does not overlap" but "the button works".
+       A real finger, through the browser's own hit testing -- the card is
+       pointerEvents:'auto' since v2.3.2312, so it really would eat the press. */
+    const blk = (coach.controls.find((c) => c.name === 'block') || {}).box;
+    if (!blk) {
+      rec.skip(`${tag}: a real tap on Block with the card up`, 'no Block button on this fixture');
+    } else {
+      const landed = await P.page.evaluate(([x, y]) => {
+        const el = document.elementFromPoint(x, y);
+        return !!(el && el.closest('[data-shield]'));
+      }, [blk.cx, blk.cy]);
+      /* ═══ THE PRESS IS DISPATCHED, AND THE REACH IS HIT-TESTED ═══
+         Two different claims needing two different instruments, which is the
+         whole lesson of TRAPS 67 read carefully rather than as "always use a
+         real finger":
+
+           - REACHABILITY -- is the button what a finger at this point hits, or
+             is the tutorial card on top of it?  Only hit testing can answer
+             that, and the `landed` row above does it with elementFromPoint.
+             This is the claim the whole change is about.
+           - THE HANDLER -- does the press raise the shield?  Dispatched here,
+             the way mp-rbutton drives this same button.
+
+         WHY NOT page.touchscreen.tap FOR THE SECOND ONE.  Measured: a single
+         tap delivers ONE touchstart AND ONE mousedown to this element, and
+         ShieldButton binds `press` to both (onTouchStart and onMouseDown, since
+         v2.3.2242).  So the tap fires toggleShield twice -- up, then straight
+         back down with _shieldDroppedWhy 'tap' -- and the row read as "the
+         button is dead" when the button had in fact worked perfectly, twice.
+
+         That is almost certainly this emulation and not an iPhone: `press`
+         calls preventDefault() on a cancelable touchstart, which is exactly
+         what suppresses the compatibility mouse events on iOS Safari, while
+         Chromium's CDP touch emulation delivers the synthesized mousedown
+         anyway.  It is NOT this change's to fix -- those two handlers predate
+         it by 300 versions -- and it is invisible on every other button here
+         because Whirl and Special are cooldown-gated, so their second fire is
+         refused and nothing shows.  Written down rather than silently worked
+         around; it is in the PR's own "found, not fixed" list. */
+      await P.page.evaluate(() => {
+        window.__blockTouched = 0;
+        const el = document.querySelector('[data-shield]');
+        if (el) el.addEventListener('touchstart', () => { window.__blockTouched++; }, true);
+        window.__touchOn = (sel, type, x, y) => {
+          const e2 = document.querySelector(sel);
+          if (!e2) return false;
+          const t = new Touch({ identifier: 77, target: e2, clientX: x, clientY: y });
+          const end = type === 'touchend';
+          e2.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true,
+            touches: end ? [] : [t], targetTouches: end ? [] : [t], changedTouches: [t] }));
+          return true;
+        };
+      });
+      await P.page.evaluate(([x, y]) => {
+        window.__touchOn('[data-shield]', 'touchstart', x, y);
+        window.__touchOn('[data-shield]', 'touchend', x, y);
+      }, [blk.cx, blk.cy]);
+      await P.page.waitForTimeout(400);
+      const after = await P.page.evaluate(() => {
+        const S = window._gameState.current;
+        return { up: !!S._shieldUp, droppedWhy: S._shieldDroppedWhy || null,
+          shieldActive: S.shieldActive || 0,
+          onCd: !!(S._shieldCdUntil && Date.now() < S._shieldCdUntil),
+          touches: window.__blockTouched || 0 };
+      });
+      const up = after.up;
+      rec.ok(`${tag}: a finger at Block's centre reaches BLOCK, not the tutorial card`, landed === true, { blk, landed });
+      rec.ok(`${tag}: ...and pressing it with the card up actually raises the shield `
+        + `-- the report mp-duelblock exists for ("I think I was unable to block")`,
+        up === true, { after, blk });
+      await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/coachband-${land ? 'landscape' : w + 'x' + h}.png` });
+      await P.page.evaluate(() => { window._gameState.current._shieldUp = false; });
+    }
+  }
 
   /* ── PASS A: shield UP.  Bash exists only here (v2.3.2252), and Special does
         NOT (specialButtonLive refuses from behind a raised guard). ── */
@@ -199,7 +351,6 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
   /* The attack disc is DERIVED, not queried: both joysticks fade after 2s of no
      input, so neither is reliably in the DOM when the shot is taken.  RBTN is
      right:50 bottom:70 w:96/108, anchored to the dashboard's top. */
-  const land = w > h;
   const discW = land ? 108 : 96;
   /* Prefer the disc the browser actually painted; fall back to the arithmetic
      only in portrait, where the dashboard band it hangs from exists. */

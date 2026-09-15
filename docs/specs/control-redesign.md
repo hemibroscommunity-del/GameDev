@@ -1300,7 +1300,7 @@ for this exact neighbour, now on `AbilityButtons` too. Proven with
 not hit-test (TRAPS §67); and the converse is asserted too — the movement
 surface still answers where no button covers it.
 
-### 12.8 Found by this pass, NOT fixed
+### 12.8 Found by this pass — raised, decided by the owner, fixed in v2.3.2564
 
 **The band below the attack disc is not empty during onboarding.** §12.2's note
 said "the band BELOW the disc is EMPTY … nothing lives there now". It is not:
@@ -1329,12 +1329,42 @@ Measured coverage: on a **360px** phone the card covers the Block button
 **completely**; on a **390** it covers 76% and the centre is unreachable. It
 only bites during onboarding, so it does not affect a player past the tutorial.
 
-Not fixed here because the fix is a design call that belongs to the owner and to
-the onboarding files, not to this layout change: either the coach card moves off
-the combat band, or Block does — and Block's position is what the owner just
-asked for. The scenarios retire the coach so they measure their own subject, and
-the finding is written down here and in the PR rather than hidden by that.
+**The owner decided it: "Coach card move off the combat band (doesn't seem like
+a big deal either way)."** So the card moved, not the buttons — shipped in the
+same PR, deliberately, so `main` never has a version where Block is unreachable
+during the tutorial.
 
-**Sideways, the coach card sits over the movement joystick's centre** — same
-overlay, same class of problem, found by `mp-abilslot`'s reachability probe.
-Also the onboarding layout's to fix.
+**What v2.3.2564 does.** `QuestCoach` lifts its card clear of the whole combat
+band, not merely clear of Block. The band's top comes from `combatBandTopPx()`
+in `ShieldButton.jsx` — the same arithmetic the controls place themselves with.
+
+**Why not measure the live boxes, which was the first cut.** Half these controls
+come and go: Whirlwind is gone out of combat (§12.6), Bash exists only with the
+guard raised, Special hides behind it. So a DOM sweep answers "how high is the
+band *right now*", and the card that reads it is not re-rendered when a button
+later appears underneath it. Measured: at 360 the card placed itself before
+Whirlwind arrived and then overlapped it by 14px, while the same code at 390
+happened to be fine — a layout rule that depends on render order. Computing from
+the anchors covers every slot whether or not it is currently drawn, which is also
+what the owner asked for: the band is where the controls live, and another button
+could land there later.
+
+**It still teaches.** The spotlight ring is a separate element anchored to the
+lesson's target, so only the words move — asserted, along with the card still
+being fully on screen.
+
+**What that cost, and a note for whoever needs it.** Driving the proof turned up
+something unrelated but worth recording: a single `page.touchscreen.tap` on the
+Block button delivers **one touchstart and one mousedown**, and `ShieldButton`
+binds `press` to both — so the tap toggles the shield up and straight back down.
+It is almost certainly this emulation rather than an iPhone (`press` calls
+`preventDefault()` on a cancelable touchstart, which is what suppresses the
+compatibility mouse events on iOS Safari), and it is invisible on every other
+control here because Whirl and Special are cooldown-gated, so their second fire
+is refused and nothing shows. **Not fixed** — those handlers predate this work by
+300 versions and the real-device behaviour cannot be confirmed from here.
+
+**And the landscape coach card still sits over the movement joystick's centre**
+— same overlay, different control, found by `mp-abilslot`'s reachability probe.
+The band dodge above is vertical and does not address a card that is beside the
+joystick rather than above it. Still the onboarding layout's to fix.
