@@ -423,7 +423,10 @@ export const HeroExpanded = () => {
      and no second copy anywhere, for the reason the v2.3.1878 note gives. */
   const offenseCells = () => [
     sheetRow('Damage', d.dmgText),
-    sheetRow('DPS', d.dps.toFixed(1)),
+    /* v2.3.2525: 2 dp, matching the ℹ️ explainer and the resting strip — the
+       same DPS shown three places must read the same in all three, and at
+       k = 5 one decimal could not tell two different weapons apart. */
+    sheetRow('DPS', d.dps.toFixed(2)),
     sheetRow('Crit', `${pct1(d.crit)}%`),
     /* v2.3.2199: % on a prog3x worker.  v2.3.2520: which is exactly why the
        display scale is applied to the FLAT form only -- a percentage is not a
@@ -1298,6 +1301,14 @@ export const HeroExpanded = () => {
                Held on the component (not a ref) so the strip re-renders when
                it changes; null = resting, which shows overall DPS instead. */
             const n1 = (v) => (Math.round(v * 10) / 10).toFixed(1);
+            /* ═══ v2.3.2525: DPS KEEPS THE RESOLUTION THE SCALE TOOK (owner) ═══
+               Owner: "Decimals are fine for tuning combat skills."  DPS is a
+               tuning number, not a damage number, and v2.3.2520 divided it by
+               DISPLAY_SCALE_K without widening the format — so a real gain of
+               +0.08 real DPS printed "+0.0" and a point that genuinely helped
+               looked like it did nothing.  One more decimal restores exactly
+               what the k = 5 divide removed (1 dp at 5x = 2 dp here). */
+            const n2 = (v) => (Math.round(v * 100) / 100).toFixed(2);
             /* ═══ v2.3.2222: THE ℹ️ WINDOW ═══
                Owner: "Small information ℹ️ next to the name.  Tapping it
                launches into a new window that describes its effect.  It
@@ -1335,8 +1346,8 @@ export const HeroExpanded = () => {
                        so the threshold keeps its meaning at any k; the printed
                        numbers stay scaled. */
                     rows.push(pv.dpsDelta * DISPLAY_SCALE_K > 0.049
-                      ? { label: 'DPS', now: n1(pv.dpsNow), after: n1(pv.dpsAfter), delta: '+' + n1(pv.dpsDelta) }
-                      : { label: 'DPS', now: n1(pv.dpsNow), after: null, delta: 'does not change damage' });
+                      ? { label: 'DPS', now: n2(pv.dpsNow), after: n2(pv.dpsAfter), delta: '+' + n2(pv.dpsDelta) }
+                      : { label: 'DPS', now: n2(pv.dpsNow), after: null, delta: 'does not change damage' });
                   } else {
                     rows.push({ label: 'DPS', now: '—', after: null, delta: 'equip a weapon to see' });
                   }
@@ -1641,7 +1652,8 @@ export const HeroExpanded = () => {
                is a contract -- mp-prog3 reads `N of M` off it) and in the
                title tooltip, and "no room left" still reads visually off the
                orb's `bt-pt-orb-full` state. */
-            const n2 = (v) => (Math.round(v * 100) / 100).toFixed(2);
+            /* v2.3.2525: n2 moved up beside n1 (the DPS readouts above need it
+               too) — one copy, per the no-second-copy rule cited just above. */
             /* The stat's own live value, in its own unit.  Falls back to the
                allocated total for the stats that have no separate readout, so
                a cell never renders blank. */
@@ -1981,7 +1993,7 @@ export const HeroExpanded = () => {
                     a new player reads the "tap the i" hint before the rows,
                     which is where a hint belongs. */}
                 {restDps
-                  ? <>Overall <span style={{ color: COL.text, fontWeight: 700 }}>DPS {n1(restDps.dps)}</span> with your {restDps.weaponName}. Tap the <b style={{ fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>i</b> on a stat to see what a point buys.</>
+                  ? <>Overall <span style={{ color: COL.text, fontWeight: 700 }}>DPS {n2(restDps.dps)}</span> with your {restDps.weaponName}. Tap the <b style={{ fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>i</b> on a stat to see what a point buys.</>
                   : 'Equip a weapon to see your DPS.'}
               </div>
               {/* ═══ v2.3.2326: THREE COLUMNS, NOT THREE STACKED ROWS ═══

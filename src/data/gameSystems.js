@@ -5141,7 +5141,24 @@ export function toDisplayHitDamage(hpBefore, hpAfter, rawDmg) {
     var raw = Number(rawDmg);
     return toDisplayDamage(isFinite(raw) && raw > 0 ? raw : Math.max(0, before - after));
   }
-  return toDisplayHp(before) - toDisplayHp(after);
+  /* ═══ v2.3.2525: A LANDED HIT NEVER READS "0" (owner directive) ═══
+     Owner: "I just want damage rendered during combat to be at least 1
+     damage (no decimals)."  This is the owner exercising the choice the
+     KNOWN AND ACCEPTED note above left them, so that note is now settled
+     rather than open, and the trade it describes is the one they took.
+
+     What it costs, stated plainly because it is a real cost: the displayed
+     hits no longer always sum to the displayed bar.  A venom tick of 3 at
+     k = 5 moved the bar by 0 whole points but now prints "1", so five such
+     ticks can read 1+1+1+1+1 against a bar that fell by 3.  The owner's
+     call is that a real hit reading "0" looks broken to a player, and a
+     small rounding disagreement does not.
+
+     ONLY when the hit actually took HP.  before === after is a hit that
+     did nothing (fully absorbed), and that still reads 0 rather than being
+     promoted to a phantom 1. */
+  if (before > after) return Math.max(1, toDisplayHp(before) - toDisplayHp(after));
+  return 0;
 }
 
 /* v2.3.1206: ONE display DMG/DPS formula for every readout.
