@@ -47,6 +47,31 @@ const PHONES = [{ width: 390, height: 844 }, { width: 390, height: 664 }];
    a cardinal aim passes on the axis-locked fire paths v2.3.2260 fixed. */
 const AIM = -Math.PI / 2 + 0.18;
 
+/* ═══ v2.3.2473: THE BOW NEEDS A TARGET ON ITS LINE BEFORE IT FIRES ═══
+ * monsterCombat's sight gate looses an arrow only when a ray from the grip
+ * along the aim crosses a live hit circle (owner, backlog §2.5), so the volley
+ * this file is built on no longer happens over an empty sky.  A single fodder
+ * is stood 500px up the AIM line: far enough that the arrows still fly most of
+ * the screen before they plant at its edge, and well inside the 675px cap so
+ * the gate opens.
+ *
+ * It is NOT a lock -- a bow auto-acquires nothing (v2.3.2258) and lockedTarget
+ * stays null -- so the beam's angle still comes from the aim exactly as before,
+ * which is what section 2 asserts.
+ */
+const TARGET_D = 500;
+const seedTarget = (P) => P.page.evaluate((a) => {
+  const S = window._gameState.current, F = window._gameFns || {};
+  S._serverMonsters = false;
+  const m = F.createMonster('jet-target', 'fodder', 2,
+    S.player.x + Math.cos(a.ang) * a.d, S.player.y + Math.sin(a.ang) * a.d, null);
+  m.alive = true; m.curHp = m.maxHp = 900000; m.spd = 0; m.vx = 0; m.vy = 0;
+  m.renderX = m.x; m.renderY = m.y;
+  S.monsters = [m];
+  S.lockedTarget = null;
+  return { mx: Math.round(m.x), my: Math.round(m.y), d: a.d };
+}, { ang: AIM, d: TARGET_D });
+
 const armBow = (P) => P.page.evaluate(() => {
   const S = window._gameState.current, R = S.rpg, F = window._gameFns || {};
   const t = ((F.WOODWORKING_TIERS || {}).pine) || { tierMult: 1 };
@@ -57,6 +82,7 @@ const armBow = (P) => P.page.evaluate(() => {
   S._serverMonsters = false;
   S.arrows = [];
   S._shieldUp = false;
+  S._bowSpecialQueued = 0;
   return { slot: R.activeSlot, wpn: R.rangedWeapon.type };
 });
 
@@ -162,8 +188,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(400);
 
     const armed = await armBow(P);
-    rec.ok(`${vp.height}: a pine bow is in hand, no lock, no monsters (guard)`,
+    rec.ok(`${vp.height}: a pine bow is in hand, no lock (guard)`,
       armed.wpn === 'bow' && armed.slot === 'ranged', armed);
+    const target = await seedTarget(P);   /* v2.3.2473: something for the line to be ON */
+    console.log(`    target: ${JSON.stringify(target)}`);
 
     /* ── HOLD THE VOLLEY ──────────────────────────────────────────────── */
     await hold(P, true);
@@ -232,12 +260,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (withArrow) {
       const mult = withArrow.arrows.find((a) => a.rangeMult != null).rangeMult;
       const want = 675 * mult;
-      rec.ok(`${vp.height}: the stream is exactly the arrow's own reach (${withArrow.beam.len.toFixed(0)} px vs ${want.toFixed(0)} px)`,
-        Math.abs(withArrow.beam.len - want) < 0.5, { beam: withArrow.beam.len, want, mult });
+      /* ═══ v2.3.2473: WITH A TARGET ON THE LINE IT STOPS AT HIM ═══
+         Owner (backlog §2.5): "clip the sight stream at the first hit distance
+         instead of BOW_RANGE_PX x bowRangeMult."  So the claim splits in two,
+         and the ORIGINAL one (the full reach) is re-made below with the line
+         cleared -- deleting it would have lost the pin on the shared constant.
+
+         The clipped length is compared against the renderer's own reported
+         `sightD`, not against a hand-computed distance: the gate and the line
+         read ONE answer (monsterCombat's S._bowSight), and that identity is
+         the property worth pinning.  The independent check is the second row:
+         it must be meaningfully SHORTER than the full reach, which a build
+         that quietly stopped clipping could not satisfy. */
+      rec.ok(`${vp.height}: the stream stops where the gate says the line lands (${withArrow.beam.len.toFixed(0)} px)`,
+        withArrow.beam.clipped === true && withArrow.beam.sightD != null
+        && Math.abs(withArrow.beam.len - withArrow.beam.sightD) < 0.5,
+        withArrow.beam);
+      rec.ok(`${vp.height}: ...which is well short of the ${want.toFixed(0)} px it would draw with nothing on the line`,
+        withArrow.beam.len < want - 100, { beam: withArrow.beam.len, want, mult, d: TARGET_D });
+      /* And the full reach, with the line empty -- the fire control is still
+         held, so the stream is still drawn even though no arrow can leave.
+         `mult` is the one captured from a LIVE arrow above, so this is still
+         the two ends of the shared constant being compared and not a second
+         copy of the renderer's own number. */
+      await P.page.evaluate(() => { const S = window._gameState.current; S.monsters = []; });
+      await hold(P, true);
+      await P.page.waitForTimeout(200);
+      const clear = await snap(P);
+      rec.ok(`${vp.height}: with nothing on the line the stream is exactly the arrow's own reach (${clear.beam ? clear.beam.len.toFixed(0) : '?'} px vs ${want.toFixed(0)} px)`,
+        !!clear.beam && clear.beam.clipped === false && Math.abs(clear.beam.len - want) < 0.5,
+        { beam: clear.beam, want, mult });
       /* The number this replaced, written down so a silent revert is loud:
          280 px was under half the arrow's reach. */
       rec.ok(`${vp.height}: ...which is far past the old 280 px stub`,
-        withArrow.beam.len > 600, { len: withArrow.beam.len });
+        !!clear.beam && clear.beam.len > 600, { len: clear.beam && clear.beam.len });
+      await seedTarget(P);   /* put it back for the screenshot below */
+      await P.page.waitForTimeout(150);
     }
     await shoot(P, out, `${tag}-volley-stream`);
 

@@ -86,6 +86,26 @@ var _segHitX = 0, _segHitY = 0;
    import from rendering/.  IF THE ART IS RECUT OR RESCALED, THESE MOVE WITH
    IT -- that is the standing cost of the copy, and it is written here so the
    next person re-cutting a sheet knows to look. */
+/* ═══ v2.3.2473: AN ARROW FLIES THREE TIMES AS FAST ═══
+ * Owner (backlog §2.5): 8 px/frame -- 480 px/s at 60fps -- crossed the bow's
+ * own 675px reach in 1.4 seconds, which reads as a lobbed stone rather than a
+ * loosed arrow, and is most of why a moving target had to be led by a body
+ * width.  24 px/frame is 1440 px/s: the full reach in under half a second.
+ *
+ * THREE GUARDS ARE MEASURED AGAINST THIS NUMBER and all three still hold:
+ *   - the sweep cap in _segGap (200px): the fastest legitimate advance is
+ *     ARROW_SPEED_PX x the Longshot cap 2.0 x _dtScale's clamp 3 = 144px, so
+ *     the cap still separates flight from a teleport.  The margin is thinner
+ *     than it was (144 vs 48) and is written out at the cap itself.
+ *   - the trail's own teleport check (effectsRenderer, raised with this).
+ *   - mp-arrowdt, which measures px/second and therefore only needed its
+ *     sample window shortening -- its claim is frame-rate independence, which
+ *     is a property of the integrator and not of this constant.
+ * The SERVER needs nothing: it never simulates a projectile and has no
+ * travel-time check (server/src/combat.js only gates zone, cadence and damage),
+ * so speed is client-only with no anticheat coupling.
+ * Range is untouched -- the 675px plant cap governs reach, not speed. */
+export var ARROW_SPEED_PX = 24;
 var PROJ_BODY = {
   /* back = anchor.x * drawnW, front = (1 - anchor.x) * drawnW, half = drawnH / 2 */
   arrow:        { back: 24.0, front: 28.5, half: 6.6 },   /* 128x32  @ 52.5/128, anchor .457 */
@@ -93,6 +113,73 @@ var PROJ_BODY = {
   arrowSpecial: { back: 24.6, front: 28.8, half: 10.9 },  /* 314x128 @ 0.17,     anchor .460 */
   magicSpecial: { back: 42.6, front: 24.0, half: 19.2 },  /* 222x128 @ 0.30,     anchor .639 */
 };
+/* ═══ v2.3.2473: THE HIT RADIUS, IN ONE PLACE ═══
+ * Lifted verbatim out of the per-monster loop below so the BOW'S NEW SIGHT GATE
+ * (firstSightHit, under this) can ask the same question the hit test answers.
+ * A gate that decided "the line is on him" with its own copy of these numbers
+ * would be right the day it shipped and wrong the next time one of them moved
+ * -- and the whole promise of the gate is that a shot it lets go is a shot that
+ * connects.  Same failure shape as the aim ladder (combatHelpers' own note).
+ *
+ * `opts` carries the two multipliers that used to read off the projectile:
+ * { isStaff, isSpecial }.  Everything else is the monster.
+ */
+export var SPECIAL_HIT_R_MULT = 3;   /* v2.3.222: special arrow has 3x damage radius */
+export function monsterProjRadius(m, S, opts) {
+  var _archProj = hitShapeOf(m.archetype || m.type);
+  /* ═══ v2.3.2243: MAGIC HITS AS WIDE AS AN ARROW ═══
+     Owner: "Magic attack radius will be nerfed to be same as
+     bow."  The staff bolt used to carry its own, wider radius
+     per archetype (30/38/40/44/50 vs the arrow's 18/27/26/32/40)
+     -- the splash was the staff's identity.  Now both weapons
+     read the ARROW column; the per-archetype numbers below are
+     the measured body sizes and stay.  Detonation (staffAoeMult)
+     and the x3 special still multiply the new base, so the
+     channel is nerfed with it rather than silently deleted. */
+  var _hitR = 18;
+  if (_archProj === 'fodder') {
+    /* Slime body is wider than the 18 px default — bump
+       the radius so arrows that visually hit the body
+       register.  Same intuition as the melee bonus.
+       v2.3.1824: 26 -> 27, the blob's measured half-width in
+       world px (48 frame-px * 0.75 * 1.5 / 2).  A small change,
+       but it is now a MEASURED number rather than a guess, and
+       it is paired with the anchor fix that finally puts the
+       centre it is measured from in the right place. */
+    _hitR = 27;   /* v2.3.2243: was staff 38 */
+  } else if (_archProj === 'fireGoblin') {
+    _hitR = 26;   /* v2.3.2243: was staff 40 */
+  } else if (_archProj === 'snowman') {
+    _hitR = 32;   /* v2.3.2243: was staff 44 */
+  } else if (_archProj === 'mummy') {
+    _hitR = 40;   /* v2.3.2243: was staff 50 */
+  } else if (_archProj === 'skeleton') {
+    /* v2.3.2229: 1.25x with the sprite (liveScalePx 96 -> 120).
+       Bow shots at a skeleton were already the tightest fit in
+       the game -- v2.3.1111's note names mummy/skeleton as the
+       case where a mis-aimed shot missed outright -- so a bigger
+       figure over an unchanged 40px circle would have been a
+       visible regression, not a cosmetic one. */
+    _hitR = 50;   /* v2.3.2243: was staff 63 */
+  } else {
+    /* v2.3.1536: sprite-less archetypes (the dungeon roster --
+       brute / swarm / sentinel / volatile / stalker / hexer)
+       render as a 48px-radius circle but had no case here, so
+       they kept the bare 18 default and a visibly-connecting
+       shot passed through (owner: "the special arrow correctly
+       hits the slime but not the procedural ones").  Match the
+       drawn body; keep the default for anything that returns 0. */
+    var _procR = monsterProceduralRadius(_archProj);
+    if (_procR > 0) _hitR = Math.max(_hitR, _procR);
+  }
+  /* v2.3.1136: Detonation channel widens staff bolt blasts
+     (+0.7%/pt, cap +69.3%) before the special multiplier. */
+  if (opts && opts.isStaff && S && S.rpg) _hitR *= staffAoeMult(S.rpg);
+  /* v2.3.222: special arrow has 3x damage radius. */
+  if (opts && opts.isSpecial) _hitR *= SPECIAL_HIT_R_MULT;
+  return _hitR;
+}
+
 /* Which body a projectile is drawn with.  Mirrors the branch order in
    effectsRenderer's projectile pass: special first, then staff-vs-bow.  `ice`
    rides with staff because it is the legacy "draw as orb" toggle every staff
@@ -116,6 +203,92 @@ function _projCapsule(a) {
   _capBx = a._renderX + c * bd.front;  _capBy = a._renderY + s2 * bd.front;
   return bd.half;
 }
+/* ═══ v2.3.2473: WHAT IS THE BOW ACTUALLY POINTED AT? ═══
+ *
+ * Owner (backlog §2.5): the bow should fire only when the line of sight is ON
+ * a monster, and the sight stream should STOP at whatever it is pointed at
+ * rather than running its full 675px through everything.
+ *
+ * One function answers both, which is the point: the fire gate
+ * (monsterCombat) and the drawn line (effectsRenderer) must never disagree
+ * about where the shot is going to land, or the guide is lying.  It lives HERE
+ * rather than in a module of its own because this file owns the radii it has
+ * to use -- monsterProjRadius above, and the arrow's own drawn half-thickness
+ * from PROJ_BODY.
+ *
+ * A RAY, NOT THE SWEPT CAPSULE.  The hit test below sweeps the arrow's drawn
+ * body across the step it took this frame; this is asked BEFORE any arrow
+ * exists, so there is no step to sweep.  The arrow's half-thickness is added to
+ * the monster's radius, which is exactly what the capsule test does
+ * (`_hitRE = _hitR + _hitHalf`); its LENGTH is deliberately not, because the
+ * gate is about the line, and the 28.5px the arrowhead leads by is slack in
+ * the shot's favour that the hit test will apply on its own.
+ *
+ * WHY THE PvP TARGET IS IN HERE TOO.  Without it a bow would be unable to fire
+ * a single arrow in a duel -- there are no monsters in an arena -- which is the
+ * kind of thing a gate like this breaks silently.  Same one-target rule the
+ * impact test uses (the duel opponent, or a tap-locked player in a lawless
+ * zone), so the gate can never open on a bystander the impact would refuse.
+ *
+ * Returns { dist, id, m } for the NEAREST thing on the line inside maxLen, or
+ * null.  `dist` is the distance from the origin to where the ray ENTERS that
+ * circle -- the near edge, which is where the drawn line should stop.
+ */
+export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
+  if (!S || typeof ox !== 'number' || typeof oy !== 'number' || !isFinite(ang)) return null;
+  var half = ((opts && opts.isSpecial) ? PROJ_BODY.arrowSpecial : PROJ_BODY.arrow).half;
+  var dx = Math.cos(ang), dy = Math.sin(ang);
+  var best = null;
+  /* The one place a ray meets a circle: project the centre onto the ray, and
+     the entry point is that projection minus the half-chord.  A centre BEHIND
+     the origin by more than its own radius can never be hit. */
+  var consider = function (cx, cy, r, id, ref) {
+    if (!isFinite(cx) || !isFinite(cy)) return;
+    var vx = cx - ox, vy = cy - oy;
+    var t = vx * dx + vy * dy;
+    if (t < -r) return;
+    var perp2 = (vx * vx + vy * vy) - t * t;
+    var r2 = r * r;
+    if (perp2 > r2) return;
+    var enter = t - Math.sqrt(Math.max(0, r2 - perp2));
+    if (enter < 0) enter = 0;          /* the origin is already inside it */
+    if (enter > maxLen) return;
+    if (!best || enter < best.dist) best = { dist: enter, id: id, m: ref };
+  };
+  var list = S.monsters;
+  if (list) {
+    for (var i = 0; i < list.length; i++) {
+      var m = list[i];
+      if (!m || !m.alive || isIntangible(m)) continue;
+      if (typeof m.curHp === 'number' && m.curHp <= 0) continue;
+      var mx = (typeof m.renderX === 'number' && isFinite(m.renderX)) ? m.renderX : m.x;
+      var my = (typeof m.renderY === 'number' && isFinite(m.renderY)) ? m.renderY : m.y;
+      var mArch = hitShapeOf(m.archetype || m.type);
+      consider(mx, my - monsterBodyOffsetY(mArch),
+        monsterProjRadius(m, S, opts) + half, m.id, m);
+    }
+  }
+  /* The duel opponent, or a player you tap-locked outside a safe zone -- the
+     same gate the impact report uses, so the two cannot disagree about who is
+     a legitimate target.  Body centre 24px above the feet, radius as the PvP
+     impact test computes it. */
+  if (S.others) {
+    var pid = null;
+    if (S._inDuel) pid = S._inDuel.opponent;
+    else if (S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.id
+             && !((ZONES[S.currentZone] || {}).safe)) pid = S.lockedTarget.id;
+    var o = pid != null ? S.others[pid] : null;
+    if (o) {
+      var oxp = (typeof o.renderX === 'number' && isFinite(o.renderX)) ? o.renderX : o.x;
+      var oyp = (typeof o.renderY === 'number' && isFinite(o.renderY)) ? o.renderY : o.y;
+      var pr = PVP_BODY_R;
+      if (opts && opts.isSpecial) pr *= 1.5;
+      consider(oxp, oyp - 24, Math.max(pr, PVP_BODY_R + half), 'p_' + pid, o);
+    }
+  }
+  return best;
+}
+
 function _segGap(px, py, ax, ay, bx, by) {
   var dx = bx - ax, dy = by - ay;
   var L = dx * dx + dy * dy;
@@ -123,10 +296,14 @@ function _segGap(px, py, ax, ay, bx, by) {
      freezes the arrow): fall back to the point test, which is what it was. */
   if (!(L > 0)) { _segHitX = bx; _segHitY = by; return Math.sqrt((px - bx) * (px - bx) + (py - by) * (py - by)); }
   /* A step this long is not flight.  The fastest legitimate advance is
-     8 * 2.0 * 3 = 48px; anything past this cap is a zone change, a respawn or
-     a tab that was backgrounded and resumed, and sweeping across it would
-     award hits along a line the arrow never travelled — the same class of
-     guard _updateProjectileTrail uses (its 80px teleport check). */
+     ARROW_SPEED_PX * 2.0 * 3 = 144px (v2.3.2473: it was 48 at 8px/frame) --
+     the Longshot cap times _dtScale's own x3 clamp -- and anything past this
+     cap is a zone change, a respawn or a tab that was backgrounded and
+     resumed, where sweeping across the gap would award hits along a line the
+     arrow never travelled.  The same class of guard _updateProjectileTrail
+     uses (its teleport check, raised alongside this).  200 stays: it is still
+     above the legitimate maximum, which is an EXACT bound rather than a
+     typical one because both terms are clamped. */
   if (L > 200 * 200) { _segHitX = bx; _segHitY = by; return Math.sqrt((px - bx) * (px - bx) + (py - by) * (py - by)); }
   var t = ((px - ax) * dx + (py - ay) * dy) / L;
   if (t < 0) t = 0; else if (t > 1) t = 1;
@@ -451,6 +628,7 @@ export function updateArrows(S, deps) {
                `life` becomes fractional — every reader compares or divides
                (`life <= 0`, `life / 20` for the fade), none index by it. */
             var _pdt = S._dtScale || 1;
+            var _dist0 = a.dist;   /* v2.3.2473: where this frame's step STARTED -- see the prev-point seed below */
             /* v2.3.2262: `speedPx` is an optional per-projectile override.  The
                magic special's three orbs each fly at their own speed (fast,
                medium, slow -- owner), and speed is otherwise a property of the
@@ -458,7 +636,7 @@ export function updateArrows(S, deps) {
                volley disagree with its own type.  Absent on everything else,
                which keeps the bow's _rangeMult path exactly as it was. */
             if (_released) a.dist += (a.speedPx != null ? a.speedPx
-              : (a.isStaff ? 5 : 8 * (a._rangeMult || 1))) * _pdt;
+              : (a.isStaff ? 5 : ARROW_SPEED_PX * (a._rangeMult || 1))) * _pdt;
             a.life -= _pdt;
             /* ═══ v2.3.2258: A LOOSED ARROW KEEPS THE LINE IT WAS SHOT ON ═══
                Owner: "Instead of the projectile changing course mid flight with
@@ -553,7 +731,40 @@ export function updateArrows(S, deps) {
                this is the only branch that FLIES — the stuck, held and
                planting branches above all freeze _renderX, and a segment
                built from one of those is not a flight path. */
-            a._prevX = a._renderX; a._prevY = a._renderY;
+            /* ═══ v2.3.2473: THE FIRST FLIGHT FRAME SWEEPS FROM ITS LAUNCH POINT ═══
+               `_renderX` does not exist yet on a projectile whose FIRST update
+               is a flying one -- anything without the bow's nock latch, which
+               is every staff bolt and the bow special (it carries no
+               `fromGrip`, so `_released` is true immediately).  `_prevX` came
+               out undefined there, and _projCapsule falls back to
+               `px = a._renderX`: the capsule became the arrow's drawn body
+               sitting at where it had ARRIVED, with nothing behind it, so that
+               first step went untested as a segment.
+
+               Seeding the previous point at the pre-step distance makes the
+               first frame sweep 14 -> 86 the way every later frame sweeps,
+               which is the geometry the drawn arrow actually travels.  It is
+               the same principle v2.3.2426 and v2.3.2433 shipped -- test the
+               segment the sprite crossed, not the point it stopped at -- and
+               v2.3.2473's 3x speed makes that untested first step three times
+               longer than it used to be.
+
+               HONEST ABOUT ITS EVIDENCE.  This was written to explain five bow
+               specials missing charging slimes in mp-hitreal, and IT DOES NOT
+               EXPLAIN THEM: a scenario that scripts exactly that charge, with
+               the frame rate throttled to pin _dtScale at its x3 clamp, hits
+               all four cases WITH this change and without it.  So the hitreal
+               misses have some other cause and are still open (reported on the
+               PR).  What is kept here is only the narrow claim the code
+               supports -- a segment test should test the whole segment -- and
+               the measurement that it changes no observed outcome, which is
+               why it is safe to keep rather than a fix to rely on. */
+            if (a._renderX == null || a._renderY == null) {
+              a._prevX = _bx + Math.cos(a.ang) * _dist0;
+              a._prevY = _by + Math.sin(a.ang) * _dist0;
+            } else {
+              a._prevX = a._renderX; a._prevY = a._renderY;
+            }
             a._renderX = _bx + Math.cos(a.ang) * a.dist;
             a._renderY = _by + Math.sin(a.ang) * a.dist;
             if (a.life <= 0) return false;
@@ -621,57 +832,12 @@ export function updateArrows(S, deps) {
                  variant used to miss every case here and keep the bare
                  default radius while monsterBodyOffsetY put its centre at
                  the feet.  See hitShapeOf. */
+              /* v2.3.2473: the radius table moved to monsterProjRadius (top of
+                 file) so the bow's sight gate can ask the same question this
+                 test answers.  `_archProj` is still needed below for the body
+                 centre, which is a different table. */
               var _archProj = hitShapeOf(m.archetype || m.type);
-              /* ═══ v2.3.2243: MAGIC HITS AS WIDE AS AN ARROW ═══
-                 Owner: "Magic attack radius will be nerfed to be same as
-                 bow."  The staff bolt used to carry its own, wider radius
-                 per archetype (30/38/40/44/50 vs the arrow's 18/27/26/32/40)
-                 -- the splash was the staff's identity.  Now both weapons
-                 read the ARROW column; the per-archetype numbers below are
-                 the measured body sizes and stay.  Detonation (staffAoeMult)
-                 and the x3 special still multiply the new base, so the
-                 channel is nerfed with it rather than silently deleted. */
-              var _hitR = 18;
-              if (_archProj === 'fodder') {
-                /* Slime body is wider than the 18 px default — bump
-                   the radius so arrows that visually hit the body
-                   register.  Same intuition as the melee bonus.
-                   v2.3.1824: 26 -> 27, the blob's measured half-width in
-                   world px (48 frame-px * 0.75 * 1.5 / 2).  A small change,
-                   but it is now a MEASURED number rather than a guess, and
-                   it is paired with the anchor fix that finally puts the
-                   centre it is measured from in the right place. */
-                _hitR = 27;   /* v2.3.2243: was staff 38 */
-              } else if (_archProj === 'fireGoblin') {
-                _hitR = 26;   /* v2.3.2243: was staff 40 */
-              } else if (_archProj === 'snowman') {
-                _hitR = 32;   /* v2.3.2243: was staff 44 */
-              } else if (_archProj === 'mummy') {
-                _hitR = 40;   /* v2.3.2243: was staff 50 */
-              } else if (_archProj === 'skeleton') {
-                /* v2.3.2229: 1.25x with the sprite (liveScalePx 96 -> 120).
-                   Bow shots at a skeleton were already the tightest fit in
-                   the game -- v2.3.1111's note names mummy/skeleton as the
-                   case where a mis-aimed shot missed outright -- so a bigger
-                   figure over an unchanged 40px circle would have been a
-                   visible regression, not a cosmetic one. */
-                _hitR = 50;   /* v2.3.2243: was staff 63 */
-              } else {
-                /* v2.3.1536: sprite-less archetypes (the dungeon roster --
-                   brute / swarm / sentinel / volatile / stalker / hexer)
-                   render as a 48px-radius circle but had no case here, so
-                   they kept the bare 18 default and a visibly-connecting
-                   shot passed through (owner: "the special arrow correctly
-                   hits the slime but not the procedural ones").  Match the
-                   drawn body; keep the default for anything that returns 0. */
-                var _procR = monsterProceduralRadius(_archProj);
-                if (_procR > 0) _hitR = Math.max(_hitR, _procR);
-              }
-              /* v2.3.1136: Detonation channel widens staff bolt blasts
-                 (+0.7%/pt, cap +69.3%) before the special multiplier. */
-              if (a.isStaff && S.rpg) _hitR *= staffAoeMult(S.rpg);
-              /* v2.3.222: special arrow has 3x damage radius. */
-              if (a.isSpecial) _hitR *= 3;
+              var _hitR = monsterProjRadius(m, S, a);
               /* v2.3.1111: hit-test against the RENDERED position when the
                  monster is interpolating (server-driven monsters draw at
                  renderX/Y, trailing the logic m.x by ~4 frames of motion) --
@@ -898,10 +1064,53 @@ export function updateArrows(S, deps) {
                    plus radial particle burst when a staff bolt collides. */
                 if (a.isStaff) {
                   var _orbColor = projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#a78bfa';
+                  /* ═══ v2.3.2505: THE CRASH HAPPENS WHERE THE ORB DID ═══
+                   *
+                   * Owner (F2): magic orbs "vanish" in Desert Winds.
+                   *
+                   * MEASURED, not reasoned -- the triage says outright that this
+                   * one cannot be judged from code (BACKLOG-TRIAGE-2026-09-14
+                   * §2.5), so mp-orbrange §6 flies real orbs at the real zone's
+                   * real monsters and reports where each one ends and where its
+                   * crash is drawn.  Every orb died on a HIT, with most of its
+                   * life left, at the distance of the monster it hit -- the range
+                   * is fine and nothing is vanishing.  What IS wrong is the
+                   * feedback: the crash ring and its 22 sparks were spawned at
+                   * `m.x, m.y` -- the monster's FEET -- while the hit test that
+                   * just fired is a circle at its BODY CENTRE (renderY minus
+                   * monsterBodyOffsetY).  Measured over six flights: the crash
+                   * landed 22-37 px below and 23-42 px to the side of the point
+                   * where the orb actually disappeared.
+                   *
+                   * WHY DESERT WINDS AND NOWHERE ELSE.  That gap IS the body
+                   * offset, and this zone is the game's tallest cast: every
+                   * archetype here re-skins to the mummy (offset 48), which
+                   * turns into the skeleton (60) on its first point of damage.
+                   * On a slime (23) the ring lands close enough to read as the
+                   * same event.  On a 120px skeleton the orb winks out at chest
+                   * height and a small ring flashes at its feet, mostly behind
+                   * the sprite -- which from the outside is exactly "it vanished
+                   * before it got there".
+                   *
+                   * The fix is the contact point: the orb's last rendered
+                   * position, which is the last place the player's eye had it, so
+                   * the crash continues the flight instead of jumping off it.
+                   * `m.x/m.y` stays as the fallback for a frame with no render
+                   * position yet, because that is what shipped.  Nothing about
+                   * the hit, the damage, the knockback or the wire changes --
+                   * this moves two rings and a particle spray.
+                   *
+                   * The knockback angle three lines below already reads
+                   * a._renderX/_renderY for the same reason; this block was the
+                   * one that did not. */
+                  var _orbFxX = (typeof a._renderX === 'number') ? a._renderX : m.x;
+                  var _orbFxY = (typeof a._renderY === 'number') ? a._renderY
+                    : (((typeof m.renderY === 'number') ? m.renderY : m.y)
+                       - monsterBodyOffsetY(m.archetype || m.type));
                   if (!S._impactRings) S._impactRings = [];
                   /* Outer expanding ring — the "crash" flash. */
                   S._impactRings.push({
-                    x: m.x, y: m.y, ts: Date.now(),
+                    x: _orbFxX, y: _orbFxY, ts: Date.now(),
                     color: _orbColor, maxR: 26, duration: 320,
                   });
                   /* Inner brighter ring 40 ms later for double-pulse
@@ -911,7 +1120,7 @@ export function updateArrows(S, deps) {
                      the first frame after spawn (same family of bug
                      as the swingTimer +300 player-flicker on cast). */
                   S._impactRings.push({
-                    x: m.x, y: m.y, ts: Date.now(), startDelay: 40,
+                    x: _orbFxX, y: _orbFxY, ts: Date.now(), startDelay: 40,
                     color: _orbColor, maxR: 14, duration: 220,
                   });
                   /* Dissipation — radial particle spray outward, with a
@@ -921,8 +1130,8 @@ export function updateArrows(S, deps) {
                     var _oa = (_op / 22) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
                     var _osp = 2 + Math.random() * 4;
                     S.hitParticles.push({
-                      x: m.x + Math.cos(_oa) * 4,
-                      y: m.y + Math.sin(_oa) * 4,
+                      x: _orbFxX + Math.cos(_oa) * 4,
+                      y: _orbFxY + Math.sin(_oa) * 4,
                       vx: Math.cos(_oa) * _osp,
                       vy: Math.sin(_oa) * _osp - 0.7,
                       life: 0.45 + Math.random() * 0.4,

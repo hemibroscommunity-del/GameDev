@@ -3387,6 +3387,28 @@ export function processGameEvent(type, payload, S, deps) {
                     'expired': 'Trade expired', 'busy': 'They are already trading',
                     'target-gone': 'Player unavailable', 'party-gone': 'Player unavailable',
                   }[payload.reason] || 'Trade cancelled';
+                  /* ═══ v2.3.2497: SAY IT IN THE CHAT LANE TOO ═══
+                     The popup below is a floating world label over your own
+                     head for about a second (v2.3.1235 chose it because the
+                     only toast mechanism in the game is ItemTooltip's
+                     salvage-undo queue, which is item-specific).  A trade
+                     ending is not a thing to miss while you are looking at the
+                     other player, and the server already tells BOTH sides
+                     (trade2.js _t2Cancel, and _t2ClearInvites for a declined
+                     invite since v2.3.2289) -- so the same sentence also goes
+                     to the chat log, which persists and scrolls back.
+                     BOTH, not instead: the popup is where your eyes already
+                     are, the line is what is still there a moment later.
+                     Same shape as the inbox and announce lines above (slice
+                     -50, an id, setChatLog with a fresh array so the feed's
+                     React state actually changes). */
+                  S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-50)), [{
+                    id: 'trade-' + Date.now(),
+                    name: '',
+                    text: '🤝 ' + _t2Why,
+                    ts: Date.now()
+                  }]);
+                  if (setChatLog) setChatLog(_toConsumableArray(S.chatLog));
                   pushDmgPopup(S, S.player.x, S.player.y - 40, _t2Why, '#ff5e6c');
                 }
               }

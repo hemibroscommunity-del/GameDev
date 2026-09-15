@@ -1835,6 +1835,30 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     this._hiddenAt = 0;
     if (away >= 2000) this._needsSessionReclaim = true;
   },
+  /* ═══ v2.3.2492: THE RETURN THAT LEFT NO RECORD ═══
+     noteHidden/noteVisible can only arm the reclaim when it SAW the page go
+     away, and the 2 s threshold above needs a measured absence to compare
+     against.  A bfcache restore gives neither: iOS does not reliably fire
+     visibilitychange on the way out (GameApp.jsx: "visibilitychange does not
+     always fire in that case"; wsClient.js: "when iOS bothers to fire it"),
+     so `_hiddenAt` is 0 on the way back in and noteVisible measures an
+     absence of nothing.  The page was frozen and thawed -- of course another
+     app could have taken the audio session, and the length of the freeze is
+     precisely what we cannot know.
+     That was the whole of the gap: the visibilitychange route recovers, the
+     pageshow route called resumeFromBackground and stopped, and the failure
+     it left behind is the one nothing downstream can detect -- the v2.3.1604
+     detached-route mode, where ctx reads 'running', the analyser reads a
+     healthy bus, and the sound has no path to the speaker.  Every detector is
+     blind to it by construction, so the only way out was a reload.
+     A restore is therefore treated as an absence of unknown length, which
+     rounds to "long".  The cost of arming when we did not need to is one
+     silent WAV and one context rebuild on the next tap -- decodes, not
+     downloads, since the mp3s stay in the HTTP cache. */
+  noteRestored: function noteRestored() {
+    this._hiddenAt = 0;
+    this._needsSessionReclaim = true;
+  },
   /* Called from the touch handler.  A gesture is the only moment iOS honours
      either half of this. */
   reclaimIfNeeded: function reclaimIfNeeded() {

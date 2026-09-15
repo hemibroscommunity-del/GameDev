@@ -24,13 +24,28 @@ async function speedAt(P, cdp, rate) {
   await cdp.send('Emulation.setCPUThrottlingRate', { rate });
   await P.page.waitForTimeout(600);
   /* Fresh arrow per sample, with a long life so the sample window cannot end
-     on an expiry, and dist 0 so it starts at the player rather than mid-flight
-     (near the screen edge it would begin PLANTING and stop advancing). */
+     on an expiry, and dist 0 so it starts at the beginning of its flight
+     rather than mid-way (near the screen edge it would begin PLANTING and stop
+     advancing).
+     ═══ v2.3.2473: IT LAUNCHES AT THE WEST EDGE NOW, NOT AT THE PLAYER ═══
+     The arrow is three times faster (projectiles.ARROW_SPEED_PX 8 -> 24), so
+     over this sample it covers ~576px instead of ~192.  Fired due east from a
+     player standing near the middle of a 1000px-wide view there is only about
+     475px of room before the screen-edge plant cap trips -- and a PLANTING
+     arrow stops advancing, which would have quietly turned this speed
+     measurement into a measurement of where the viewport ends.
+     `_pathX`/`_pathY` are the frozen launch point projectiles.js stamps on the
+     first flight frame (v2.3.2258); setting them here is how the fixture
+     places the flight without moving the player, and it gives the arrow the
+     full width of the view to cross. */
   await P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
     if (!S || !S.player) return;
+    const x0 = (S.camera ? S.camera.x : S.player.x - 400) + 40;
+    const y0 = S.player.y;
     S.arrows = [{
-      x: S.player.x, y: S.player.y, _renderX: S.player.x, _renderY: S.player.y,
+      x: x0, y: y0, _renderX: x0, _renderY: y0,
+      _pathX: x0, _pathY: y0,
       ang: 0, dist: 0, life: 100000, _released: true, _bornTs: Date.now(),
       _ox: 0, _oy: 0, _rangeMult: 1,
       _isStaffProj: false, isSpecial: false, ice: false, fromGrip: false,
