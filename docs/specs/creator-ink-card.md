@@ -492,3 +492,51 @@ Design button is dead until a shirt is actually worn"*. Both halves of that
 reason changed in this round, and the shirt is now the only flat-grid designer.
 Two hard-coded `pants` canvas ids inside it had to move with it — the ops blob
 is keyed by **canvas** (`shirtFront`), not by storage key (`bt-shirtart`).
+
+---
+
+# The card's editor gets a zone picker (v2.3.2472)
+
+The full write-up is in `docs/specs/tattoo-front-and-back.md`. This is what
+changed behind the door this document opens.
+
+## The mode strip and the Front/Back switch are gone
+
+The tattoo screen's body/face strip (v2.3.1978) and the Front/Back switch
+(v2.3.2150) are replaced by **tappable zone frames over the little worn
+preview**, plus a **flip button** under the figure and a label naming the side
+and the zone. The canvases, their storage keys and the wire are untouched — the
+picker only changes how one is CHOSEN.
+
+**§6a above is superseded.** The bug it records is real history and the
+regression it left behind is still defended, but not on the same element: the
+control that reaches the back canvases is the flip button now, it lives over the
+preview rather than in the head cell, and `mp-ccink` asserts the same property
+about it — above Done, inside the panel's own fold, needing no pan to reach.
+Its grid-area is no longer the point; being reachable still is.
+
+The shirt's front/back also leaves the mode strip it had used since v2.3.1939,
+so **every editor's strip now means the same thing**: pattern, or drawing. That
+is one fewer idiom on a screen that already had two for the same question.
+
+## What that costs the card's own pane
+
+`WornPreview` gained two optional props and both are inert unless used:
+
+- **`onZones`** — reports each body region's box as a fraction of the pane,
+  taken from the composite's own grid report. Passing it is also what turns
+  `reportGrids` on, so the card and the inspect view do no extra work.
+- the existing **`focus`** override (added at v2.3.2414 for this card) is now
+  used by the tattoo screens too, to keep the whole head in shot behind a frame.
+
+Callers that pass neither — this card included — are byte-identical to before.
+
+## The panel stops resizing when you switch canvas
+
+Worth knowing here because it touches `.bt-paint-note`, which this document's
+§2 gave the Designs button to: the caption is per-canvas and changes length, and
+with the picker above it the preview column became the taller of the two, so the
+caption started setting the panel's height. Since `.bt-modal-scrim` centres the
+panel, that moved the drawing canvas 14.3px whenever you picked a different
+canvas. The caption now reserves its tallest self (`min-height:120px`) and the
+zone label can never wrap. `mp-ccink` pins it.

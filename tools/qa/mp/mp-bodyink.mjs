@@ -133,38 +133,78 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await page.waitForSelector('.bt-bodyink-cv', { timeout: 20000 });
   await page.waitForTimeout(1800);
 
-  /* ── TWO OPTIONS, NAMED ──────────────────────────────────────────────── */
-  const tabs = await page.evaluate(() =>
-    [...document.querySelectorAll('.bt-paint-tabs .bt-cc-tab')].map((b) => b.textContent.trim().toLowerCase()));
-  rec.ok('the tattoo designer offers exactly two screens, body and face',
-    tabs.length === 2 && tabs[0] === 'body' && tabs[1] === 'face', { tabs });
+  /* ═══ v2.3.2472: TWO ZONES ON THE FIGURE, NOT TWO ROWS OF WORDS ═══
+     Until v2.3.2472 this read a body/face mode strip (v2.3.1978) and a
+     front/back switch (v2.3.2150), and the four assertions below are those four
+     carried across to the control that replaced both: the owner's zone picker,
+     which puts a tappable frame over the head and the torso of the little
+     figure and a flip button under him.
 
-  /* ═══ v2.3.2150: AND A FRONT/BACK SWITCH ═══
-     Owner, after the back canvas shipped: "I don't see a menu option that
-     toggles tattooing the back." There was none, and the reason is structural:
-     these screens have no canvas PICKER -- the tab frames a view and your
-     FINGER chooses the canvas, off a figure that faces the camera, so a back
-     canvas is unreachable by construction. That had also left the back of the
-     HEAD unreachable ever since v2.3.2043 added it.
-
-     Checked on its OWN class rather than folded into the tab count above: the
-     two things answer different questions ("which screen" vs "which way
-     round"), and sharing a selector is how a switch starts looking like two
-     more screens. */
-  const sideSwitch = await page.evaluate(() => {
-    const btns = [...document.querySelectorAll('[data-ink-side-btn]')];
+     What is asserted is deliberately the same PROPERTIES the old pair were
+     asserted on, because they are what a player needs and neither depends on
+     which widget provides it: there are exactly two places to draw, they are
+     named, there is a way to reach the BACK canvases at all (the thing the
+     owner could not find at v2.3.2150), and nothing has moved for someone who
+     never touches it. */
+  const zones = await page.evaluate(() => {
+    const btns = [...document.querySelectorAll('[data-zone-btn]')];
     return {
-      labels: btns.map((b) => b.getAttribute('data-ink-side-btn')),
-      visible: btns.filter((b) => b.offsetParent).length,
+      keys: btns.map((b) => b.getAttribute('data-zone-btn')),
+      visible: btns.filter((b) => b.offsetParent && !b.hidden).length,
       pressed: btns.filter((b) => b.getAttribute('aria-pressed') === 'true')
-        .map((b) => b.getAttribute('data-ink-side-btn')),
+        .map((b) => b.getAttribute('data-zone-btn')),
+      /* The selected frame is a different DRAWING (the glowing one), so "which
+         is selected" is legible in the art as well as in the ARIA. */
+      art: btns.map((b) => ((b.querySelector('img') || {}).getAttribute
+        ? b.querySelector('img').getAttribute('src') : '').replace(/^.*\//, '')),
+      /* No strip and no switch: two controls answering "which canvas" is the
+         hazard v2.3.2445 had to come back and fix one control over. */
+      strip: document.querySelectorAll('.bt-paint-tabs .bt-cc-tab').length,
+      oldSwitch: document.querySelectorAll('[data-ink-side-btn]').length,
     };
   });
-  rec.ok('the designer offers a FRONT/BACK switch, so the back canvases can be '
+  rec.ok('the tattoo designer offers exactly two zones, the head and the torso',
+    zones.keys.join(',') === 'face,body' && zones.visible === 2, zones);
+  rec.ok('...and the tattoo screen has no mode strip or front/back switch left '
+    + 'over -- one control decides which canvas, not three',
+    zones.strip === 0 && zones.oldSwitch === 0, zones);
+  rec.ok('...it opens on the TORSO with that frame glowing, so nobody who never '
+    + 'touches it sees any change',
+    zones.pressed.join(',') === 'body' && /zone-frame-lg-on/.test(zones.art[1] || '')
+      && /zone-frame-sm\.png/.test(zones.art[0] || ''), zones);
+
+  /* The flip button is the whole of "the back canvases can be reached at all",
+     which is the menu option the owner could not find at v2.3.2150. It is a
+     TOGGLE rather than a pair, so it carries the side it is currently showing
+     -- that attribute is what the helper below steers by. */
+  const flipState = () => page.evaluate(() => {
+    const b = document.querySelector('[data-zone-flip]');
+    return b ? { side: b.getAttribute('data-zone-flip'), visible: !!b.offsetParent } : null;
+  });
+  /* Turn the figure to `want` and leave it there. Reading before clicking (and
+     not simply clicking twice) is what keeps a caller from toggling PAST the
+     side it asked for -- the old two-button switch was idempotent and this is
+     not. */
+  const faceSide = async (want) => {
+    const st = await flipState();
+    if (!st) return false;
+    if (st.side !== want) { await page.click('[data-zone-flip]'); await page.waitForTimeout(900); }
+    const now = await flipState();
+    return !!now && now.side === want;
+  };
+  const flip0 = await flipState();
+  rec.ok('the designer offers a FLIP button, so the back canvases can be '
     + 'reached at all -- the menu option the owner could not find',
-    sideSwitch.visible === 2 && sideSwitch.labels.join(',') === 'front,back', sideSwitch);
-  rec.ok('...and it opens on FRONT, so nobody who never touches it sees any '
-    + 'change', sideSwitch.pressed.join(',') === 'front', sideSwitch);
+    !!flip0 && flip0.visible === true, flip0);
+  rec.ok('...and it opens on the FRONT', !!flip0 && flip0.side === 'front', flip0);
+  /* The label is the only thing on the screen that NAMES the canvas now, so a
+     player who cannot see which frame glows still knows where a stroke lands. */
+  const zoneLabel = () => page.evaluate(() => {
+    const l = document.querySelector('.bt-zone-label');
+    return l ? l.textContent.trim() : null;
+  });
+  rec.ok('...and the label names the side and the zone it is pointed at',
+    (await zoneLabel()) === 'Front • Chest + Arms', { label: await zoneLabel() });
 
   /* ═══ v2.3.2422: EVERY STROKE BELOW IS BLUE, ON PURPOSE ═══
      The assertions this file gained for the back view ask what is PAINTED on
@@ -367,8 +407,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     + 'Front selected (guard: if this fails the tap is missing and the back '
     + 'check below proves nothing)', ctrlAfter > ctrlBefore, { ctrlBefore, ctrlAfter });
 
-  const backBtn = await page.$('[data-ink-side-btn="back"]');
-  rec.ok('the Back switch is tappable (guard)', !!backBtn);
+  /* v2.3.2472: the flip button, not a Back button -- see the zone-picker block
+     above.  Only its PRESENCE is checked here: the two guards immediately below
+     read the FRONT view, so the turn itself has to wait for the click site
+     further down, exactly where the old Back button was clicked. */
+  const backBtn = await flipState();
+  rec.ok('the figure can be turned round to the back (guard)', !!backBtn);
   if (backBtn) {
     /* The editor as it stands with FRONT selected and a chest drawing on it --
        the picture the two assertions below are measured against. */
@@ -382,7 +426,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('guard: ...and on the worn preview beside it '
       + `(${frontPv} blue pixels)`, frontPv > 0, { frontPv });
 
-    await backBtn.click();
+    await faceSide('back');
     await page.waitForTimeout(1800);
     await pickColour(6);   /* everything drawn on the BACK is green */
 
@@ -496,14 +540,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
        everywhere in this file.  Missing this made the face section's separation
        check compare 0 against 0, which is a passing assertion that separates
        nothing (TRAPS #66). */
-    const frontBtn = await page.$('[data-ink-side-btn="front"]');
-    if (frontBtn) { await frontBtn.click(); await page.waitForTimeout(900); }
+    await faceSide('front');
     await pickColour(8);
   }
 
   /* ═══ FACE ═══════════════════════════════════════════════════════════ */
-  const tabBtns = await page.$$('.bt-paint-tabs .bt-cc-tab');
-  await tabBtns[1].click();
+  /* v2.3.2472: the HEAD frame on the little figure, where the `face` tab used
+     to be.  Same job -- point the editor at the head -- through the control the
+     owner asked for. */
+  await page.click('[data-zone-btn="face"]');
   await page.waitForTimeout(2000);
 
   const faceAim = await aimFor(page, 'face');
@@ -544,8 +589,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      head half was not.
      Same three questions as the torso: does the picture change, does the face
      drawing stay off it, and does the ink land in the right canvas. */
-  const faceBackBtn = await page.$('[data-ink-side-btn="back"]');
-  rec.ok('the Face screen offers the same Front/Back switch (guard)', !!faceBackBtn);
+  const faceBackBtn = await flipState();
+  rec.ok('the Face screen turns round with the same flip button (guard)', !!faceBackBtn);
   if (faceBackBtn) {
     const faceFrontFrame = await frame();
     const faceFrontBlue = await blue();
@@ -567,7 +612,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       + `(${faceFrontPink} pink pixels) -- an arm is the same arm either way`,
       faceFrontPink > 4, { faceFrontPink });
     const faceBefore = inked(arts.tattooFace);
-    await faceBackBtn.click();
+    await faceSide('back');
     await page.waitForTimeout(1800);
     await pickColour(6);
     const faceTurned = framesDiffer(faceFrontFrame, await frame());

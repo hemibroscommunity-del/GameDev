@@ -202,6 +202,96 @@ const TAB_SPOTS_BACK = {
   face: ['tattooHeadBack'],
 };
 
+/* ═══ v2.3.2472: TAP THE PART OF YOURSELF YOU WANT TO DRAW ON ═══
+ *
+ * Owner, with a mockup of the finished screen
+ * (docs/triage-2026-09-14/assets/tattoo-editor-mock.png) and a sheet of UI art
+ * (tools/gear/src-art/creator/tattoo-zone-ui.png): the little character beside
+ * the editor gets tappable frames over the head and the torso, a flip button
+ * turns him round, and a label under him names the side and the zone.
+ *
+ * ── WHAT THIS REPLACES, AND WHAT IT DELIBERATELY DOES NOT ──
+ * It replaces the two CONTROLS that chose a canvas: the tattoo screen's
+ * body/face mode strip (v2.3.1978) and the Front/Back switch (v2.3.2150). It
+ * does NOT touch the canvases themselves. TATTOO_SPOT, TATTOO_SPOT_BACK,
+ * PANTS_SPOT, BodyInk's BACK_TARGET / FRONT_OF and every stored drawing are
+ * exactly as they were -- the same four tattoo canvases, reached by tapping the
+ * part of the figure they are drawn on instead of by reading two rows of words.
+ * A zone here is a POINTER at an existing spot; if adding one ever seems to
+ * need a new canvas id, the model has been misread.
+ *
+ * Why it is a better control than the two it replaces, in one line each: the
+ * mode strip named the canvas ("body", "face") where the picker SHOWS it, and
+ * the Front/Back switch was a pair of words about a figure that was already
+ * standing there and could simply be turned round.
+ *
+ * ── ONE TABLE, THREE SCREENS ──
+ * The shirt and the trousers get the same picker with one zone, because their
+ * two sides are the same question the tattoo screens ask ("which way round am I
+ * drawing?") and answering it two different ways is what v2.3.2431 had to come
+ * back and fix. So the shirt's front/back stops being a MODE: its strip is
+ * pattern/drawing now, like the trousers', and every drawing screen resolves
+ * its side through `inkBack` alone.
+ *
+ * `region` is the key the composite reports its geometry under (playerDecal's
+ * grids, via WornPreview's `onZones`) -- NOT a canvas name. The head's canvas is
+ * `tattooFace` and the region it is drawn on is `face`, which is exactly the
+ * distinction BodyInk's keyForTarget exists for.
+ */
+const ZONE_ART = '/ui/paint/';
+/* The frames' aperture -- the hole that has to land on the body part -- as a
+   fraction of each PNG. Written by tools/ui/slice-zone-picker.mjs, which
+   normalises all four frames onto it so that tapping a zone cannot make its
+   frame jump; the two numbers are a pair and the tool prints its own. */
+const ZONE_APERTURE = 0.581;
+/* A frame is a TOUCH TARGET on a preview about 178px wide, so a zone whose art
+   is small (a head at a short build) would otherwise be a 30px tap. Grown about
+   its own centre to this, which is the floor Apple's own guidance puts a
+   control at and the reason this is stated in CSS px rather than as a fraction
+   of a pane that changes size. */
+const ZONE_MIN_PX = 44;
+/* ═══ v2.3.2472: A HEAD ZONE NEEDS THE WHOLE HEAD IN SHOT ═══
+   FOCUS.tattooFace is {cy .43, h .45}, a window over the UPPER BODY chosen at
+   v2.3.1978 when the pane's whole job was "what does it look like ON you" and
+   the face screen's own editor was already the head at full zoom. That window
+   opens at canvas y .205 and a bare head starts at .152, so it deliberately
+   crops the crown -- which is invisible when the pane is a picture and wrong
+   the moment a FRAME is drawn round the head: measured at 414x896, the top
+   11px of the face frame's aperture, and both its upper corners, fell outside
+   the pane.
+   So the picker's screens get a taller window, through the `focus` override
+   WornPreview already carries for the creator's ink card (v2.3.2414) -- which
+   means it still goes through the same feet-anchored build correction every
+   entry in FOCUS does, and no other caller of that pane changes. Only the
+   tattoo screens are listed: they are the only ones with a head zone, and the
+   shirt's and the trousers' single frames sit well inside their own windows.
+   The top edge is MEASURED back from the frame, not from the head: a frame is
+   its aperture plus 36% of it on every side (ZONE_APERTURE), so clearing the
+   crown is not enough -- at a .13 top the head fitted and the frame's two upper
+   corners still hung 8px over the pane's edge. .0985 is that 8px converted back
+   through the window (8/133 of a pane is .0315 of a .525 window) and taken off.
+   The bottom is where FOCUS already put it (.655). */
+const ZONE_FOCUS = { tattoo: { cy: 0.377, h: 0.557 } };
+const ZONES = {
+  tattoo: [
+    { key: 'face', region: 'face', size: 'sm', mode: 'face',
+      name: { front: 'Face', back: 'Back of Head' } },
+    { key: 'body', region: 'tattoo', size: 'lg', mode: 'body',
+      /* "Chest + Arms", not "Chest": the Body screen reaches both and your
+         finger picks (v2.3.1994), so the label has to promise what the frame
+         actually opens. */
+      name: { front: 'Chest + Arms', back: 'Back + Arms' } },
+  ],
+  shirt: [
+    { key: 'shirt', region: 'shirt', size: 'lg', mode: null,
+      name: { front: 'Shirt', back: 'Shirt' } },
+  ],
+  pants: [
+    { key: 'pants', region: 'pants', size: 'lg', mode: null,
+      name: { front: 'Pants', back: 'Pants' } },
+  ],
+};
+
 /* ── the toolbar's icons ──
    Drawn inline rather than shipped as art, for the reason the creator's pencil
    is (v2.3.1946): they are a handful of strokes, they inherit the button's own
@@ -467,11 +557,24 @@ function focusFor(target, heightId, override) {
    falls back to the LIVE STORE -- which is what the card wants and what the
    editor cannot use (a child's effects run before its parent's, so the panel's
    own persist-to-store effect has not run yet; see the header note above). */
-function WornPreview({ look, target, side, art, pat, className, label, fit, focus }) {
+function WornPreview({ look, target, side, art, pat, className, label, fit, focus, onZones }) {
   const boxRef = React.useRef(null);
   const offRef = React.useRef(null);
   const busyRef = React.useRef(false);
   const dirtyRef = React.useRef(false);
+  /* v2.3.2472: the zone picker's frames are placed off the composite's OWN grid
+     report, never off measured fractions of the pane. The alternative was a
+     table of head/torso boxes beside FOCUS, and FOCUS's own history says why
+     not: every window in it had to be re-derived when the build scaling landed
+     (v2.3.1953), and a hat or a tall build moves a head exactly the way it
+     moved those. The report is correct for this look, this build and this
+     facing by construction, which no typed fraction can be.
+     Held in a ref and reported from blit() rather than raised into state here:
+     this component re-composites on every stroke, and a setState per frame
+     would re-render the whole panel mid-gesture. */
+  const zonesRef = React.useRef(null);
+  const onZonesRef = React.useRef(onZones);
+  onZonesRef.current = onZones;
 
   /* Blit the finished composite into the visible box, cropped to the garment. */
   /* The build the composite is being drawn at — explicit from the caller when
@@ -520,7 +623,37 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
     const contain = fit === 'contain';
     const winH = contain ? base * Math.max(1, cssH / cssW) : base;
     const winW = contain ? base * Math.max(1, cssW / cssH) : base * (cssW / cssH);
-    ctx.drawImage(off, FIG_CX * S - winW / 2, f.cy * S - winH / 2, winW, winH, 0, 0, w, h);
+    const sx = FIG_CX * S - winW / 2, sy = f.cy * S - winH / 2;
+    ctx.drawImage(off, sx, sy, winW, winH, 0, 0, w, h);
+
+    /* ── v2.3.2472: where each body region landed, as fractions of THIS box ──
+       Two hops, both taken from the code that owns them rather than re-derived:
+       the composite reports the matrix it drew the body sheet through
+       (__btGridXform, characterPortrait v2.3.1965), and the window above is the
+       one this blit just used. Fractions, not pixels, so the caller can lay a
+       DOM frame over the canvas without caring about devicePixelRatio -- and so
+       a resize costs nothing but the next blit.
+       The REGION bbox (lx/ty/rx/by), not the grid box: a grid is forced to a
+       16px minimum and is wider than the arm it covers, which is the same
+       distinction BodyInk's regionAt is built on. */
+    const grids = off.__btGrids, m = off.__btGridXform;
+    if (!grids || !m || !onZonesRef.current) return;
+    const out = Object.create(null);
+    for (const key in grids) {
+      const g = grids[key] && grids[key][0];
+      if (!g) continue;
+      const pt = (px, py) => ({
+        x: ((m.a * px + m.c * py + m.e) - sx) / winW,
+        y: ((m.b * px + m.d * py + m.f) - sy) / winH,
+      });
+      const a = pt(g.lx, g.ty), b = pt(g.rx + 1, g.by + 1);
+      out[key] = { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y),
+        w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) };
+    }
+    /* Only when something actually moved: this runs on every stroke, and a new
+       object each time would re-render the picker sixty times a second. */
+    const sig = JSON.stringify(out);
+    if (sig !== zonesRef.current) { zonesRef.current = sig; onZonesRef.current(out); }
   }, [target, buildH, fit, focus]);
 
   React.useEffect(() => {
@@ -536,6 +669,11 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
         /* Half the creator stage's resolution: this box is ~125px, and the
            composite cost is paid on every stroke. */
         scale: Math.min(2, Math.round((typeof window !== 'undefined' && window.devicePixelRatio) || 1)),
+        /* v2.3.2472: only when a caller is placing zone frames on this pane.
+           The report makes the composite stamp every region whether it carries
+           ink or not (playerDecal's `wantPantsArt` rule and its siblings), which
+           is work the inspect card and the creator's ink card have no use for. */
+        reportGrids: !!onZonesRef.current,
       });
       if (target === 'shirt') {
         opts.shirtArt = art; opts.shirtPattern = pat;
@@ -660,6 +798,92 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
 }
 export { WornPreview };
 
+/* ═══ v2.3.2472: THE ZONE PICKER ═══
+ * The frames and the flip button, laid over the worn preview. See ZONES above
+ * for what this replaces and why.
+ *
+ * DOM elements over the canvas, not shapes painted INTO it, and that is the
+ * load-bearing choice here:
+ *   - a real <button> is a real touch target, with the browser's own tap
+ *     handling, focus ring and accessible name -- this is a phone control first
+ *     and the mockup puts it on a pane about 178px wide;
+ *   - the pane's pixels stay the composite's own. mp-bodyink reads
+ *     `.bt-paint-pv` with getImageData and counts blue/green/pink to prove which
+ *     canvas a stroke landed on; gold frames painted into that canvas would be
+ *     new pixels in every one of those counts.
+ */
+function ZonePicker({ zones, boxes, activeKey, side, onPick, onFlip, label, hint, children }) {
+  const box = boxes || null;
+  return (
+    <React.Fragment>
+      <div className="bt-zonepick" data-ink-side={side}>
+      {children}
+      {zones.map((z) => {
+        const r = box && box[z.region];
+        const on = z.key === activeKey;
+        const name = z.name[side] || z.name.front;
+        /* ── THE BUTTON IS THE ZONE; THE ART HANGS OUTSIDE IT ──
+           The frame's aperture is the hole that sits on the body part, and the
+           drawing around it is 36% of that again on every side (ZONE_APERTURE).
+           So the BUTTON is the region itself and the <img> is pushed out to the
+           padded box around it, rather than the button being the padded box.
+           That is a touch fix, not a tidiness one: the two padded boxes OVERLAP
+           (measured at 414x896, the head's reaches 29px into the torso's) and
+           the later button in the DOM wins a tap in the overlap -- so a thumb
+           on the bottom of the head would have selected the torso. The two
+           regions themselves do not overlap at all.
+           Placed by its CENTRE so that ZONE_MIN_PX grows a small zone
+           symmetrically: pinned at a corner, a head forced up to 44px would
+           creep down and right of the head it frames. */
+        const pad = (1 / ZONE_APERTURE - 1) / 2;
+        const style = r ? {
+          left: ((r.x + r.w / 2) * 100) + '%',
+          top: ((r.y + r.h / 2) * 100) + '%',
+          width: (r.w * 100) + '%',
+          height: (r.h * 100) + '%',
+          minWidth: ZONE_MIN_PX, minHeight: ZONE_MIN_PX,
+        } : null;
+        /* Percentages of the BUTTON, so the art keeps its ratio to the zone
+           even where ZONE_MIN_PX has grown the button past the region. */
+        const artStyle = { left: (-pad * 100) + '%', top: (-pad * 100) + '%',
+          width: ((1 + pad * 2) * 100) + '%', height: ((1 + pad * 2) * 100) + '%' };
+        return (
+          <button key={z.key} type="button" className={'bt-zone-frame' + (on ? ' bt-zone-frame--on' : '')}
+            data-zone-btn={z.key} aria-pressed={on}
+            /* The frame is a picture of a box with a hole in it, so the NAME is
+               the whole of what a screen reader gets -- and it says the side
+               too, because the same frame means two different canvases
+               depending on which way the figure is facing. */
+            aria-label={'Edit ' + name + ' (' + side + ')'}
+            title={'Edit ' + name + ' (' + side + ')'}
+            onClick={() => onPick(z)}
+            /* Hidden rather than dropped while the composite is still baking:
+               the buttons keep their place in the DOM, so the first report does
+               not shift focus or re-order anything. */
+            hidden={!style}
+            style={style || undefined}>
+            <img src={ZONE_ART + 'zone-frame-' + z.size + (on ? '-on' : '') + '.png'}
+              alt="" draggable={false} style={artStyle} />
+          </button>
+        );
+      })}
+      <button type="button" className="bt-zone-flip" data-zone-flip={side}
+        aria-label={side === 'back' ? 'Turn round to the front' : 'Turn round to the back'}
+        title={side === 'back' ? 'Turn round to the front' : 'Turn round to the back'}
+        onClick={onFlip}>
+        <img src={ZONE_ART + 'zone-flip.png'} alt="" draggable={false} />
+      </button>
+      </div>
+      {/* Live text, not the sheet's two label plates: those have their strings
+          baked into the artwork ("Front • Chest + Arms") where this one changes
+          with the side and the zone, and the owner's mockup draws both lines as
+          plain text on the panel with no plate around them. */}
+      <div className="bt-zone-label">{label}</div>
+      <div className="bt-zone-hint">{hint}</div>
+    </React.Fragment>
+  );
+}
+
 export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const cfg = TARGETS[target] || TARGETS.shirt;
   const isShirt = target === 'shirt';
@@ -683,10 +907,20 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      behind it rather than being deleted: a 16x16 grid is a better tool for a
      deliberate, symmetrical design than a finger on a zoomed limb, and
      throwing it away to answer the note would be a trade, not a fix. */
-  const MODES = isTattoo ? ['body', 'face']
-    : (cfg.pattern && canDraw)
-      ? (isShirt ? ['pattern', 'front', 'back'] : ['pattern', 'drawing'])
-      : null;
+  /* ═══ v2.3.2472: THE STRIP IS "WHICH TOOL", NEVER "WHICH CANVAS" ═══
+     Both of the canvas choices that used to live here are the zone picker's now
+     (see ZONES): the tattoo screen's body/face pair became two frames on the
+     figure, and the shirt's front/back became the flip button under it. What is
+     left is the one choice that is genuinely a different JOB rather than a
+     different surface -- tiling a pattern over the whole garment, or drawing on
+     it -- so the shirt's strip is the trousers' strip now, and the tattoo screen
+     has no strip at all.
+     That also retires the four-tab sizing below: there have not been more than
+     three since v2.3.1978 and there cannot be more than two now. */
+  const MODES = (!isTattoo && cfg.pattern && canDraw) ? ['pattern', 'drawing'] : null;
+  /* `mode` still carries the tattoo screen's body/face -- the picker SETS it
+     rather than replacing it, so TATTOO_SPOT, TAB_SPOTS and the region BodyInk
+     frames all keep working off the value they always have. */
   const [mode, setMode] = React.useState(isTattoo ? 'body' : (cfg.pattern ? 'pattern' : 'draw'));
   /* Read before `side` below, which is why it is not simply `mode ===
      'pattern'` inline down there -- see the temporal-dead-zone note on
@@ -711,10 +945,18 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      The PATTERN screen is excluded on purpose: a pattern tiles the entire
      garment, so it has no front and no back to choose between. */
   const isPants = target === 'pants';
-  const hasSides = isTattoo || (isPants && !onPatternMode);
-  /* The tattoo screens carry their own side, so the worn preview turns round
-     with the switch (WornPreview already faces north for 'back'). */
-  const side = hasSides ? (inkBack ? 'back' : 'front') : (mode === 'back' ? 'back' : 'front');
+  /* v2.3.2472: every screen you can DRAW on has two sides, and reaches them the
+     same way -- the flip button under the figure. The shirt is the one that
+     changed: its sides were two entries in the mode strip (v2.3.1939), which is
+     why `side` needed the `mode === 'back'` fallback that is gone below.
+     The PATTERN screen is still excluded, and still for v2.3.2428's reason: a
+     pattern tiles the entire garment, so it has no front and no back to choose
+     between. Shoes are excluded by `canDraw` -- a boot is eight screen pixels
+     and is pattern-only (v2.3.1944). */
+  const hasSides = canDraw && !onPatternMode;
+  /* The drawing screens carry their own side, so the worn preview turns round
+     with the flip button (WornPreview already faces north for 'back'). */
+  const side = hasSides && inkBack ? 'back' : 'front';
   const onPattern = onPatternMode;
   /* WHERE on the body this panel is currently painting.  For everything but a
      tattoo that is just the target; for a tattoo the mode picks it, and the
@@ -777,6 +1019,38 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      skull on "your tattoo".  Same expression as Clear's, so they cannot drift
      apart again. */
   const inkLabel = isShirt ? ('shirt ' + side) : scfg.label;
+
+  /* ── v2.3.2472: the zone picker's state, all of it derived ───────────────
+     There is no "which zone is selected" variable, on purpose. The selection IS
+     `mode` on the tattoo screens and is the only zone anywhere else, so the
+     frame that glows cannot drift from the canvas being inked -- which is the
+     failure v2.3.2445 had to come back and fix for the gallery's label, one
+     control over. */
+  const zones = (hasSides && ZONES[target]) || [];
+  const activeZone = zones.length > 1 ? mode : (zones[0] ? zones[0].key : null);
+  const activeZoneName = (() => {
+    const z = zones.find((q) => q.key === activeZone) || zones[0];
+    return z ? (z.name[side] || z.name.front) : '';
+  })();
+  const sideWord = side === 'back' ? 'Back' : 'Front';
+  /* Where each region sits on the worn preview, reported by the composite -- see
+     WornPreview's blit. Null until the first bake lands, which is what the
+     frames' `hidden` handles. */
+  const [zoneBoxes, setZoneBoxes] = React.useState(null);
+  /* Tapping a frame moves the MODE, which is what TATTOO_SPOT already reads;
+     the side stays where the flip button put it. A zone with no mode (the shirt,
+     the trousers) has nothing to set -- its screen has one canvas per side and
+     the frame is there to show you which, and to be the thing the label names.
+     `setBodySpot` goes with it: the Body screen lets your finger move the canvas
+     (v2.3.1994), so a tap on the HEAD frame after inking an arm has to clear
+     that or `spot` would keep answering `tattooArm` -- it stays in `reachable`
+     across the switch, which is exactly the case the tab strip never had. */
+  const pickZone = React.useCallback((z) => {
+    if (!z.mode) return;
+    setMode(z.mode);
+    setBodySpot(TATTOO_SPOT[z.mode] || 'tattoo');
+  }, []);
+
   /* Which stored drawing this panel is editing right now. */
   const artId = isShirt ? (side === 'back' ? 'shirtBack' : 'shirtFront') : spot;
   /* v2.3.1994: and the same answer for code that runs BETWEEN renders.  A body
@@ -2006,66 +2280,38 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             is already tight -- so it is one line above the mode strip, in the
             same cell, and adds only its own text height. */}
         <h2 className="bt-paint-title">{cfg.title || 'Design'}</h2>
+        {/* v2.3.2472: two entries at most, and never a canvas -- see MODES. The
+            four-tab sizing this block used to carry went with the tattoo
+            screen's body/face pair, which is the zone picker's job now. */}
         {MODES && (
           <div className="bt-paint-tabs" style={{ display: 'flex', gap: 6 }}>
             {MODES.map((m) => (
               <button key={m} type="button" onClick={() => setMode(m)}
                 className={'bt-cc-tab' + (mode === m ? ' bt-cc-tab--on' : '')}
-                style={{ flex: 1, minHeight: 34, textTransform: 'capitalize',
-                  /* see the label note below: the 2px side padding is what
-                     "chest" overruns by one pixel at four tabs */
-                  ...(MODES.length > 3 ? { paddingLeft: 1, paddingRight: 1 } : null) }}>
-                {/* v2.3.1965: the skin strip is FOUR tabs now, and at four the
-                    labels ellipsised to "Ch…" / "Ar…".  MEASURED rather than
-                    nudged: the button comes out 34px wide with 2px of padding
-                    each side, so a label has 30px, and "chest" wants 31px at
-                    the clamp's 12px and 28px at 10px.  A notch smaller only
-                    where there are four of them, rather than shrinking the
-                    shirt's three for company. */}
-                <span className="bt-cc-tab-label"
-                  style={MODES.length > 3 ? { fontSize: '11px', letterSpacing: 0 } : undefined}>{m}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* ═══ v2.3.2150: THE FRONT / BACK SWITCH ═══
-            Owner: "I don't see a menu option that toggles tattooing the back."
-            There was none -- see TATTOO_SPOT above for why the tabs alone could
-            never have offered one. It sits under the tabs rather than among
-            them because it is not a fifth place to draw: it is which way round
-            the character you are drawing on, and it applies to whichever tab is
-            active. The worn preview turns with it, so the switch shows its own
-            effect.
-
-            ITS OWN CLASS, not bt-paint-tabs: that selector means "which screen
-            am I on" and mp-bodyink asserts there are exactly two of them.
-            Sharing it would make this switch look like two more screens, both
-            to that test and to anyone reading the DOM. */}
-        {hasSides && (
-          /* marginTop retired with v2.3.2414's wrapper -- .bt-paint-head's own
-             gap is what separates it from the tabs now, and a margin on top of
-             that would double the space when both are present and leave a
-             stray 6px when the tabs are not. */
-          <div className="bt-paint-sideswitch" data-ink-side={inkBack ? 'back' : 'front'}
-            style={{ display: 'flex', gap: 6 }}>
-            {[['front', false], ['back', true]].map((opt) => (
-              <button key={opt[0]} type="button"
-                data-ink-side-btn={opt[0]}
-                aria-pressed={inkBack === opt[1]}
-                onClick={() => setInkBack(opt[1])}
-                className={'bt-cc-tab' + (inkBack === opt[1] ? ' bt-cc-tab--on' : '')}
-                style={{ flex: 1, minHeight: 30, textTransform: 'capitalize' }}>
-                <span className="bt-cc-tab-label">{opt[0]}</span>
+                style={{ flex: 1, minHeight: 34, textTransform: 'capitalize' }}>
+                <span className="bt-cc-tab-label">{m}</span>
               </button>
             ))}
           </div>
         )}
         </div>
 
-        {/* v2.3.1947: the character wearing what you are making. */}
+        {/* v2.3.1947: the character wearing what you are making.
+            v2.3.2472: ...and the thing you choose a canvas WITH. The front/back
+            switch that used to sit up in the head cell is the flip button under
+            the figure now, and the tattoo screen's mode strip is the two frames
+            over him -- see ZONES. */}
         <div className="bt-paint-side">
-          <WornPreview look={look} target={spot} side={side} art={art} pat={pat} />
+          {zones.length ? (
+            <ZonePicker zones={zones} boxes={zoneBoxes} activeKey={activeZone} side={side}
+              onPick={pickZone} onFlip={() => setInkBack((v) => !v)}
+              label={sideWord + ' • ' + activeZoneName} hint="Tap a zone to edit">
+              <WornPreview look={look} target={spot} side={side} art={art} pat={pat}
+                focus={ZONE_FOCUS[target]} onZones={setZoneBoxes} />
+            </ZonePicker>
+          ) : (
+            <WornPreview look={look} target={spot} side={side} art={art} pat={pat} />
+          )}
         </div>
         <div className="bt-paint-note">
           {onPattern ? 'A pattern fills the whole garment. Anything you draw goes on top of it.' : scfg.note}

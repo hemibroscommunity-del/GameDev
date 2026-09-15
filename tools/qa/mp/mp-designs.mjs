@@ -139,6 +139,21 @@ function catalogueInvariants(rec, tag) {
   rec.ok(`${tag}: every entry's rows still join to exactly its art string`, badArt === 0);
 }
 
+/* v2.3.2472: turn the little figure to `want` and leave it there.  The flip
+   button replaced the two-button Front/Back switch, and a toggle is not
+   idempotent -- clicking it blind walks PAST the side you asked for. */
+async function faceSide(P, want) {
+  const side = () => P.page.evaluate(() => {
+    const b = document.querySelector('[data-zone-flip]');
+    return b ? b.getAttribute('data-zone-flip') : null;
+  });
+  if ((await side()) !== want) {
+    await P.page.click('[data-zone-flip]').catch(() => {});
+    await P.page.waitForTimeout(900);
+  }
+  return (await side()) === want;
+}
+
 export async function run({ browser, wsPort, webPort, rec }) {
   catalogueInvariants(rec, 'designs');
   const P = await (await import('./harness.mjs')).newPlayer(browser, {
@@ -414,14 +429,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
      v2.3.2445: it named the screen, so on Face + Back the Clear button said
      "the whole back of head" while the gallery offered to ink "your tattoo" --
      two controls on one screen giving different answers. */
-  await P.page.evaluate(() => {
-    const b = [...document.querySelectorAll('.bt-paint-tabs .bt-cc-tab')]
-      .find((x) => /face/i.test((x.textContent || '').trim()));
-    if (b) b.click();
-  });
+  /* v2.3.2472: the head frame on the little figure and the flip button under
+     him, where the `face` tab and the Back switch used to be.  Same two moves
+     -- point the editor at the head, turn him round -- through the zone picker
+     that replaced both (PlayerPaint's ZONES).  The flip is a TOGGLE, so it is
+     steered by the side it reports rather than clicked blind. */
+  await P.page.click('[data-zone-btn="face"]').catch(() => {});
   await P.page.waitForTimeout(500);
-  await P.page.click('[data-ink-side-btn="back"]').catch(() => {});
-  await P.page.waitForTimeout(500);
+  await faceSide(P, 'back');
   const naming = await P.page.evaluate(() => {
     const clear = [...document.querySelectorAll('.bt-paint button')]
       .map((b) => b.getAttribute('title') || '')
@@ -443,14 +458,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (b) b.click();
   });
   await P.page.waitForTimeout(500);
-  await P.page.evaluate(() => {
-    const b = [...document.querySelectorAll('.bt-paint-tabs .bt-cc-tab')]
-      .find((x) => /body/i.test((x.textContent || '').trim()));
-    if (b) b.click();
-  });
+  await P.page.click('[data-zone-btn="body"]').catch(() => {});
   await P.page.waitForTimeout(500);
-  await P.page.click('[data-ink-side-btn="front"]').catch(() => {});
-  await P.page.waitForTimeout(500);
+  await faceSide(P, 'front');
 
   /* ── 8. Cancel is inert ── */
   await openGallery(P);

@@ -90,8 +90,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await page.waitForTimeout(300);
     await page.click('button.bt-cc-ink-pane');   /* v2.3.2414: the Design button is the ink CARD now */
     await page.waitForSelector('.bt-paint-tabs', { timeout: 20000 });
-    /* the shirt opens on PATTERN; its modes are pattern / front / back, so the
-       front drawing grid is the second tab -- the same position pants used. */
+    /* the shirt opens on PATTERN; the drawing screen is the second tab -- the
+       same position pants used.
+       v2.3.2472: its modes were pattern / front / back and are pattern /
+       drawing now, because the shirt's two SIDES moved onto the zone picker's
+       flip button (PlayerPaint's ZONES).  The second tab is still the one that
+       draws, so this click is unchanged; only what it is called is. */
     await page.click('.bt-paint-tabs button:nth-child(2)');
     /* ═══ v2.3.2430: THE SHIRT IS ON THE CHARACTER NOW ═══
        Owner: "The shirt canvas should be a preview of the shirt you're drawing
