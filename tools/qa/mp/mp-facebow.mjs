@@ -76,18 +76,40 @@ async function sample(P, tag, rec) {
     g.drawImage(im, 0, 0);
     const d = g.getImageData(0, 0, c.width, c.height).data;
     const rows = new Array(c.height).fill(0);
-    let ink = 0, top = -1, bot = -1;
+    let ink = 0;
     for (let y = 0; y < c.height; y++) {
       for (let x = 0; x < c.width; x++) {
         const i = (y * c.width + x) * 4;
         if (d[i + 3] < 40) continue;
         /* magenta: red AND blue both clear of green. */
-        if (d[i] > d[i + 1] + 22 && d[i + 2] > d[i + 1] + 22) {
-          rows[y]++; ink++;
-          if (top < 0) top = y;
-          bot = y;
-        }
+        if (d[i] > d[i + 1] + 22 && d[i + 2] > d[i + 1] + 22) { rows[y]++; ink++; }
       }
+    }
+    /* ═══ A ROW COUNTS ONLY IF IT IS ACTUALLY INKED ═══
+     * The first cut took the span from the FIRST to the LAST row holding a
+     * single magenta pixel, and that held right up until the character turned
+     * up wearing the crimson cape: its panels run down both sides of the torso
+     * and their darker tones pass a "red and blue both clear of green" test, so
+     * the measured reach on the standing control went from 14 rows to 42 and the
+     * ratio gate below stopped meaning anything.  Measured on that frame, the
+     * separation is not subtle -- the face is 100+ inked pixels per row and the
+     * cape's edge is one to three:
+     *
+     *     rows 380..659 (the face)      >= 100 px/row   = 14 source rows
+     *     rows 660..1219 (the cape)     1-3 px/row
+     *
+     * So the span is taken over rows carrying a real share of the ink's own
+     * widest row.  Derived from this frame's peak rather than a constant,
+     * because the crop scales with the zoom and a fixed pixel floor would drift
+     * with it.  What the claim is about is how far down the FACE the drawing
+     * reaches, and a row with two stray pixels in it is not the face. */
+    const peak = Math.max(0, ...rows);
+    const FLOOR = Math.max(1, peak * 0.25);
+    let top = -1, bot = -1;
+    for (let y = 0; y < c.height; y++) {
+      if (rows[y] < FLOOR) continue;
+      if (top < 0) top = y;
+      bot = y;
     }
     const S = 20;
     const big = document.createElement('canvas');
@@ -96,7 +118,7 @@ async function sample(P, tag, rec) {
     bg.imageSmoothingEnabled = false;
     bg.fillStyle = '#14202a'; bg.fillRect(0, 0, big.width, big.height);
     bg.drawImage(im, 0, 0, big.width, big.height);
-    return { ink, top, bot, h: c.height, w: c.width, rows, url: big.toDataURL('image/png') };
+    return { ink, top, bot, peak, h: c.height, w: c.width, rows, url: big.toDataURL('image/png') };
   }, png.toString('base64'));
   if (!res) { rec.ok(`a 20x render for "${tag}" (guard)`, false, null); return null; }
   mkdirSync(OUT, { recursive: true });
@@ -199,8 +221,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   for (const k of Object.keys(out)) {
     const s = out[k];
-    console.log(`    ${k}: ${s && s.ink} ink px, rows ${s && s.top}..${s && s.bot} `
-      + `of ${s && s.h}  (idle control: ${idle && idle.ink} px, rows ${idle && idle.top}..${idle && idle.bot})`);
+    console.log(`    ${k}: ${s && s.ink} ink px, inked rows ${s && s.top}..${s && s.bot} `
+      + `of ${s && s.h} (peak ${s && s.peak}/row)  (idle control: ${idle && idle.ink} px, `
+      + `rows ${idle && idle.top}..${idle && idle.bot}, peak ${idle && idle.peak})`);
   }
 
   rec.ok('both bow-shot frames were photographed with ink on them (guard)',
