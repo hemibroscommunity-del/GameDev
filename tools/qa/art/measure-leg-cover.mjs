@@ -1,4 +1,4 @@
-/* DOES THE LEG ARMOUR COVER THE BODY'S BOOTS? (v2.3.2510)
+/* DOES THE LEG ARMOUR COVER THE BODY'S BOOTS? (v2.3.2517)
  *
  * Owner (backlog triage 2026-09-14 §5.8): the COPPER leggings have "bluish
  * feet" on a jog east, and the answer is already settled -- "the body's SHOES
