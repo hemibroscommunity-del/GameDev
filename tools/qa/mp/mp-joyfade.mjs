@@ -180,5 +180,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and now it is lit, which is what tells you so',
     ctxVis && ctxVis.lit === true, ctxVis);
 
+  /* ═══ v2.3.2527: ...AND THE NEW NEIGHBOUR HAS NOT TAKEN THE DISC'S SURFACE ═══
+     The Special button moved to this side of the screen ("Move the Special
+     attack button to orbit the RIGHT joystick, not the left"), and this file is
+     where "the disc takes touches" is pinned -- so this is where the cost of
+     that move gets measured.  A sibling at z31 over a disc at z30 eats every
+     touch in the overlap (the D9 note in ShieldButton.jsx), and `pressable`
+     above cannot see that: pointer-events reads 'auto' on a disc that is
+     completely covered.
+
+     So this asks the question a finger asks, through the browser's own hit
+     testing: at the disc's centre, WHICH element would be hit?  TRAPS §67 is
+     this exact lesson -- a control can be perfect and unreachable, and only
+     hit testing can tell you.  Both directions, because each button has to be
+     reachable at its own middle for the layout to be worth anything. */
+  const reach = await P.page.evaluate(() => {
+    const at = (el) => {
+      if (!el) return null;
+      const b = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(Math.round(b.x + b.width / 2), Math.round(b.y + b.height / 2));
+      return { hit: hit ? (hit.getAttribute('data-special') ? 'special'
+        : hit.getAttribute('data-ability') ? 'ability-' + hit.getAttribute('data-ability')
+        : hit.getAttribute('data-shield') ? 'shield'
+        : hit.className && String(hit.className).indexOf('bt-rjoy-base') >= 0 ? 'disc'
+        : hit.getAttribute('data-joyzone') ? 'zone-' + hit.getAttribute('data-joyzone')
+        : hit.tagName) : null };
+    };
+    return { disc: at(document.querySelector('.bt-rjoy-base')),
+      special: at(document.querySelector('[data-special]')) };
+  });
+  console.log(`    reachability: ${JSON.stringify(reach)}`);
+  rec.ok('a finger at the attack disc\'s centre still lands on the DISC, not on the Special button '
+    + 'that moved in beside it', !!(reach.disc && reach.disc.hit === 'disc'), reach);
+  if (reach.special) {
+    rec.ok('...and a finger at the Special button\'s centre lands on the Special button',
+      reach.special.hit === 'special', reach);
+  } else {
+    rec.skip('the Special button is reachable at its own centre',
+      'no Special button in this fixture (specialButtonLive wants a weapon in the active slot)');
+  }
+
   await P.ctx.close().catch(() => {});
 }

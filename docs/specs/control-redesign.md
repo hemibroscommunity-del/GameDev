@@ -1,4 +1,4 @@
-# Control redesign — the contextual right button (v2.3.2242 → v2.3.2245; caught up to v2.3.2472 in §§10–11)
+# Control redesign — the contextual right button (v2.3.2242 → v2.3.2245; caught up to v2.3.2472 in §§10–11, and to v2.3.2527 in §12)
 
 Owner directive, 2026-09-03. Quoted in full because every decision below
 is measured against it:
@@ -868,7 +868,7 @@ that predicate to know which weapon is in hand.
 **A guard now survives a weapon swap.** v2.3.2446's drop-on-swap existed
 only because the destination weapon had no button to lower it with.
 
-### 11.2 The right double tap is the weapon swap (D8)
+### 11.2 The right double tap is the weapon swap (D8) — REVERSED, see §12.1
 
 Every weapon, same gesture, same window (`RBTN_DBL_MS` 300, press to
 press). v2.3.2269's reason for excluding melee — "adding a gesture there
@@ -902,6 +902,7 @@ Three controls that each placed themselves are now ONE column, owned by
 
 | Slot | Control | Bottom |
 |---|---|---|
+| −1 | Special (added in §12.2) | one size + 8px BELOW slot 0 |
 | 0 | **Block** | level with the disc's CENTRE |
 | 1 | Shield Bash | one size + 8px above |
 | 2 | Whirlwind | one more above |
@@ -927,7 +928,7 @@ owner** — if a phone check shows the movement stick catching, shrink
 The slide-from-attack-onto-the-shield latch (v2.3.2254) needs no change:
 it reads the live `[data-shield]` rect, so it follows the button.
 
-### 11.4 A Special Attack button beside the movement stick
+### 11.4 A Special Attack button beside the movement stick — MOVED, see §12.2
 
 `src/ui/panels/SpecialButton.jsx`, a second trigger for the same
 `specialAttack` the flick fires. The flick stays — it is what the
@@ -983,3 +984,208 @@ Probe: `window.__btDiscVis().R.ghost` (and `.ghostRect`).
 | 11.4 | Does dragging the right stick still break a raised guard? | **Yes**, and that is now correct rather than a bug: with nothing steering the arc from that stick, a drag means aim-and-attack, and "attack" is the owner's own first-named exit from a block. |
 | 11.5 | On a phone too narrow for both, does the column cross the movement zone or the disc? | **The movement zone**, at the far right edge of the left half. See §11.3. |
 | 11.6 | Is the Special button hidden when it cannot be afforded? | **No** — greyed. A control that disappears cannot be learned. |
+
+---
+
+## 12. The phone-play pass of 2026-09-15 (v2.3.2527)
+
+Three reports from the owner after playing the merged v2.3.2472 build on
+their phone. All three are the same gesture system, so they ship together —
+splitting them would have the two halves fighting over one classifier.
+
+### 12.1 The right double tap goes back to being unbound
+
+> Owner: "Revert the right-joystick double-tap weapon swap. Weapon swapping
+> goes back to the LEFT joystick only."
+
+§11.2 is reversed. `RBTN_DBL_MS`, `RBTN_DBL_DIST_SQ_PX`, the `_rTapAt` /
+`_rTapX` press clock, v2.3.2271's `_rTapLockWas` stash and the
+`_rDblConsumedAt` release suppression all go together: with no pair to
+recognise there is no press to consume, nothing to put back, and nothing to
+suppress. Every short tap on the right forwards to the canvas again, exactly
+as it did before v2.3.2269.
+
+**Weapon swap is the LEFT stick's double tap, and only that** — untouched
+since v2.3.97, and what the onboarding already teaches.
+
+#### The trap: the retired guard does NOT come back in its place
+
+The right double tap is free again, and the v2.3.2446 bow/staff
+double-tap-and-hold guard is the obvious thing to put back in it. **Do not.**
+That guard was retired (D8, §11.1) *because* the shield BUTTON came back for
+those weapons, and the owner is keeping the button. Restoring the gesture
+would put two controls on one guard — the gesture fight the backlog's §0.2
+names in as many words ("two gestures on one classifier"). Freeing the
+gesture and leaving it unbound is the intended end state.
+
+`mp-bowshield` §6 and §6c assert the absence directly, in both directions
+(no swap, no guard — including on a deliberate tap-tap-and-HOLD), so that
+edit fails in the harness rather than on a phone.
+
+#### `RBTN_DBL_MS` vs `maybeSwordDash`
+
+§11.2 had to argue that the swap was safe next to the melee lunge: the swap
+CONSUMED the second press before it could reach `maybeSwordDash`, and the
+2500 ms lunge cooldown was what made that acceptable. With the branch gone
+the argument is unnecessary — every press falls through to the lunge as it
+did before v2.3.2472. Tap one lunges; a quick second tap is an ordinary
+swing. Pinned by `mp-bowshield` §6b.
+
+### 12.2 The Special button orbits the RIGHT joystick
+
+> Owner: "Move the Special attack button to orbit the RIGHT joystick, not
+> the left."
+
+Same button, same predicate, same cooldown sweep (§11.4) — one screen-half
+over, and into the shared column rather than beside it:
+
+`SpecialButton.jsx` now measures through `ctlColumn()` and takes **slot −1**
+of the D9 column (`CTL_SLOT`, exported from `ShieldButton.jsx` so four
+controls cannot each keep their own idea of who sits where).
+
+**Why below Block rather than above Whirlwind.** Slot 3 works out at 283px
+above the dashboard band in landscape, on a 390px-tall screen — a combat
+button up among the health bars and a long way from the thumb holding
+Attack. Slot −1 puts it in the band D9 emptied ("nothing lives there now"),
+the closest free spot to the disc — which is right for the one control here
+meant to be pressed *while* the right thumb holds Attack.
+
+**It still swallows its own touches, for a different neighbour.** On the left
+the hazard was the movement layer. On the right there are two things under
+it, and the owner named both:
+
+1. **the attack disc** (`.bt-rjoy-base`, which takes touches whenever the
+   contextual button is live). The column pins its right edge 4px clear of
+   the disc, so they cannot overlap by construction — but that is a layout
+   claim and layout moves, so `preventDefault` + `stopPropagation` on
+   touchstart is the belt to that braces;
+2. **the right zone** (`[data-joyzone="R"]`, the full-height right half),
+   whose `rS` holds the attack down, whose `rM` aims, and whose `rE`
+   forwards a short tap to the canvas as a lock-on click (v2.3.816).
+
+So a tap on it must not swing, must not leave the attack held, and must not
+re-point the lock. Proven three ways, all with a REAL finger
+(`page.touchscreen`, TRAPS §67 — a dispatched event never hit-tests and so
+cannot tell a button that swallows its touch from one that does not):
+
+* `mp-solospecial` counts PROJECTILES: a tap on the button puts the
+  special's own shots in the air and **zero** ordinary ones, on bow and on
+  staff;
+* `mp-rbutton` reads the two flags: `autoAttack` is not left set and the
+  lock is unchanged;
+* `mp-joyfade` asks `elementFromPoint` at each control's centre: the disc's
+  centre still hits the disc, and the button's centre hits the button.
+
+The double-tap concern in the owner's report ("does not register as the
+disc's first tap of a double tap") is answered twice over: the release is
+swallowed, and after §12.1 there is no tap-pair classifier on that side at
+all.
+
+### 12.3 Whirlwind only in active melee combat
+
+> Owner: "Limit the whirl ability to active melee combat only. Right now it
+> can be used any time." And: "The button should read as unavailable rather
+> than silently doing nothing when the condition is not met."
+
+**The condition is the monster LOCK** — `monsterLock(S)`, now exported from
+`targeting.js` so this gate reads the game's own answer instead of writing a
+second copy of it.
+
+For a melee player `updateTargeting` maintains exactly the property this gate
+wants, every frame: it **acquires** the nearest monster automatically inside
+the 220px perimeter, **holds** it out to the 275px hysteresis ring,
+**re-points** it at whatever is next when the one you were fighting dies, and
+**drops** it the moment the ref is dead or out of the zone. So "a monster is
+locked" is true for as long as a fight is under way and false while you are
+walking around — and it is the same fact that lights the attack disc and puts
+the reticle on the ground, so the player can *see* the condition rather than
+having to be told it.
+
+#### Why not `S._engaged`, which is the obvious choice
+
+It is the fact the codebase literally calls engagement, and it was this
+gate's first cut. **It is too narrow**, and three independent review passes
+caught it before the owner could. `_updateEngagement` only ever arms it from
+a lock with `src: 'tap'`, and the only writers of that src are the two canvas
+tap-a-monster branches and `handleRBtnPress` *promoting an existing lock*. So
+it is false in the middle of real fights:
+
+| Case | What happens with `_engaged` |
+|---|---|
+| Hold Attack through a kill | The lock re-points to the next monster as `src:'auto'`; the dead one stops being holdable; 1500ms later (`ENGAGE_GRACE_MS`) the flag drops — thumb still down, pack still on you |
+| Press before anything is locked (walking into a pack) | The promotion is a no-op with no lock yet, no further press happens while the thumb is held, so the flag is false for that entire fight |
+| **Desktop, any fight** | The swing path never runs `handleRBtnPress` at all, so only a click landing within 40 CSS px of a monster's body centre arms it — and there is no greyed button on desktop to explain the refusal, only the popup |
+
+The hole never showed because `_engaged`'s only other consumer
+(`monsterCombat`'s auto-engage swing) is gated `!S.autoAttack` — it only
+matters when the thumb is *not* held, which is precisely the case the hole
+does not cover. `mp-rbutton` §C now pins this directly: it kills the monster
+that started the fight with the thumb still down and asserts the button stays
+live **while `S._engaged` is false**, so re-pointing this gate at the flag
+fails in the harness.
+
+`engagedStance()` — the other exported "engaged" — was rejected too: its
+`autoAttack` term is true while the thumb is down over an empty field ("any
+time", the complaint), and anything gated on `autoAttack` greys the instant
+the thumb *lifts*, which is the moment the player is reaching for this button.
+
+**Deliberately not the melee reach test.** `monsterCombat` composes
+engagement with `dist − monsterMeleeHitRadius <= GS_OUTER_RADIUS` (72) for the
+auto-engage swing. Copying that here would be wrong for this ability rather
+than stricter: whirl's own radius is **240**, so a 72px gate would refuse the
+exact cast the move exists for — the one that gathers a ring of monsters you
+are not yet toe to toe with. The lock says a fight is on; the ability's radius
+decides what it reaches.
+
+**It greys, it does not vanish.** The rule is a new `engaged` field on
+`abilityStatus`, beside `equipped` and `afford` — *not* a `visible` term.
+v2.3.2327 put the weapon rule into `visible` because an archer's Whirlwind
+could never become available; a sword's can, within seconds. So the button
+stays on screen at 0.45 with no brass edge, `data-engaged="0"`, and a press
+routes into `castAbility` on purpose, which floats **"Not in combat!"** — a
+greyed button that says nothing is the v2.3.1716 failure. A refused press
+costs no cooldown and no stamina (the check sits above both).
+
+The requirement is declared as data (`NEEDS_LOCK` in `src/game/abilities.js`)
+rather than an `if (kind ===` branch, matching `needsHeldShield` /
+`needsMeleeActive` — but it lives in the CLIENT file, not in the mirrored
+`data/abilities.js` table. That table is byte-compared against the worker's
+(`server/test/abilities.test.mjs`), so a field there means a `server/**` diff,
+and a `server/**` diff auto-deploys on merge and disconnects live players —
+for a flag the server would never read. The server cannot enforce this one
+anyway: which monster a client says it has locked is client-supplied, exactly
+like the slot `needsMeleeActive` reads.
+
+### 12.4 Judgement calls
+
+| # | Question | What I did |
+|---|---|---|
+| 12.1 | The right double tap is free — bind it to something? | **No.** Unbound is the end state; see the trap note in §12.1. |
+| 12.2 | Which slot for the Special button? | **−1**, below Block, in the band D9 emptied. Slot 3 would sit 283px up in landscape, among the health bars. |
+| 12.3 | Does the Special button keep the column's encroachment into the movement zone on a narrow phone? | **Yes** — it takes exactly the same left edge as Block (asserted), rather than a new bite of its own. On a 375 that is 7px, on a 360 14px; the alternative is sliding under the attack disc. |
+| 12.4 | Which "in combat" for whirl? | **The monster lock** (`monsterLock`), the fact that already lights the attack disc. NOT `S._engaged` (greys mid-fight and is unreachable on desktop — see §12.3), NOT `engagedStance()` (true over an empty field, and greys when the thumb lifts), NOT the melee reach test (tuned for a 72px swing; whirl reaches 240). |
+| 12.5 | Gate whirl by hiding the button, as v2.3.2327 hid it for a bow? | **No — grey it.** The owner asked for "unavailable", and unlike the bow case the condition clears within seconds of a fight starting. |
+| 12.6 | Whirl is out of combat and the player presses anyway — silent, or a popup? | **Popup**, and the press is routed for exactly that reason. A refused press costs no cooldown (asserted). |
+
+### 12.5 Found in this pass, NOT changed here
+
+* **The onboarding still teaches the retired guard gesture.**
+  `QuestCoach.jsx:622`'s `blockRanged` lesson reads *"With the bow or staff
+  out, double-tap Attack to raise your shield"* — a gesture v2.3.2472 deleted
+  and this pass deliberately does not restore. A new player who follows it
+  fires two ordinary shots and no guard goes up; the card does NOT strand
+  them (the tracker at `:993` credits the lesson on any raised guard with a
+  ranged/staff slot, which the D8 Block button satisfies), so they are misled
+  rather than blocked. `mp-questcoach` is 71/75 on `origin/main` for that
+  reason alone — four rows, all about the double-tap guard — before and after
+  this branch. The fix is copy plus an anchor change in the onboarding files
+  (the Block BUTTON is the lesson now), which is a different system and a
+  different lane's file.
+* **Element Burst places itself on top of the column.**
+  `ElementBurstButton.jsx` computes `right = 50 + discW + 10` at the disc's
+  centre height, independently of `ctlColumn` — which is the Block button's
+  slot 0 within a few pixels (at 390: burst 188..234, Block 192..240, both
+  at z31). It only renders for an enchanted weapon at level 6+, which is why
+  no fixture has caught it. `mp-btnlayout` now measures it against every
+  column button and SKIPs with a reason when the fixture has no burst
+  weapon, so the row is armed for whoever gives that button a slot.

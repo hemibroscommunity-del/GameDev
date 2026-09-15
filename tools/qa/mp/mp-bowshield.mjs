@@ -1,21 +1,30 @@
-/* THE SHIELD BUTTON IS BACK ON BOW AND STAFF, AND THE RIGHT DOUBLE TAP IS THE
- * WEAPON SWAP (v2.3.2472 — owner decisions D8 and D9).
+/* THE SHIELD BUTTON IS ON BOW AND STAFF, AND THE RIGHT CONTROL'S DOUBLE TAP IS
+ * BOUND TO NOTHING (v2.3.2527 — owner, after playing the merged build).
  *
- * ═══ THIS FILE WAS INVERTED ═══
- * Until v2.3.2472 it asserted the OPPOSITE of most of what it asserts now:
- * "on a BOW the shield button is gone", "double tap and hold raises the guard",
- * "the drag rotates the arc", "letting go drops it".  That was v2.3.2446, four
- * days old, and D8 reverses all three parts of it together because they were
- * one mechanism -- the button went away precisely because the guard had moved
- * onto a HOLD, and a hold has a direction where a button does not.
+ * ═══ THIS FILE HAS BEEN INVERTED TWICE.  READ THIS BEFORE CHANGING IT AGAIN ═══
+ * Until v2.3.2472 it asserted v2.3.2446's behaviour: "on a BOW the shield button
+ * is gone", "double tap and hold raises the guard", "the drag rotates the arc",
+ * "letting go drops it".  v2.3.2472 (owner decision D8) reversed all three parts
+ * of that together, because they were one mechanism, and took the freed double
+ * tap for the WEAPON SWAP.
  *
- * Give the direction back to the game (shieldAimAngle falls through to the
- * NEAREST monster when there is no lock) and the button works on those weapons
- * after all -- which frees the right control's double tap to be the weapon swap
- * on every weapon rather than meaning one thing on a sword and another on a
- * bow.  The retired assertions are kept in this header as history rather than
- * deleted silently, because "the test used to say the opposite" is exactly what
- * the next reader needs to know.
+ * v2.3.2527 takes the swap back off it.  Owner, on a phone: "Revert the
+ * right-joystick double-tap weapon swap.  Weapon swapping goes back to the LEFT
+ * joystick only."
+ *
+ * ═══ AND THE GUARD DOES NOT COME BACK WITH IT -- THAT IS THE TRAP ═══
+ * The obvious next edit to this file is to restore the v2.3.2446 rows the header
+ * above lists, on the reasoning that the right double tap is free again.  It is
+ * NOT free for that: the shield BUTTON is what replaced the gesture on those two
+ * weapons (D8, which the owner is keeping), so bringing the gesture back would
+ * put two controls on one guard -- the gesture fight the backlog's §0.2 warns
+ * about, "two gestures on one classifier".  §6 below asserts the ABSENCE
+ * directly, in both directions, so that edit fails here instead of on a phone.
+ *
+ * What the double tap does now is nothing: two taps are two taps, which on a
+ * bow is two shots and on a sword is a lunge and then a swing.  §6b pins the
+ * lunge specifically, because a swallowed second press was what v2.3.2472 had
+ * to balance against maybeSwordDash and the balance is gone with it.
  *
  * The arc is read as `_shieldAngle` rather than off the screen because that is
  * the number `_blockArcCovers` uses -- a cone drawn at one angle while the
@@ -128,8 +137,10 @@ const zonePt = (P) => P.page.evaluate((sel) => {
   return { x: Math.round(r.x + r.width * 0.5), y: Math.round(r.y + r.height * 0.26) };
 }, ZONE);
 
-/* Two taps in the SAME place, inside RBTN_DBL_MS (300).  `dx` offsets the
-   second tap so the 50px distance window (v2.3.2472) can be tested too. */
+/* Two taps in the SAME place, 90ms apart -- inside any double-tap window this
+   side of the screen has ever used (v2.3.2269's RBTN_DBL_MS was 300).  `dx`
+   offsets the second tap, so a pair can be driven both as a tight pair and as
+   two taps in different places. */
 const doubleTap = async (P, sel, id, dx) => {
   const p = sel === ZONE ? await zonePt(P)
     : await P.page.evaluate((s) => { const c = window.__centre(s); return c ? { x: Math.round(c.x), y: Math.round(c.y) } : null; }, sel);
@@ -248,32 +259,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('bowshield: a second tap lowers the guard on a bow', !down.up, down);
   rec.ok('bowshield: ...and the button is still on screen to raise it again', await shieldBtnShown(P));
 
-  /* ── 6. THE DOUBLE TAP NO LONGER RAISES A GUARD -- IT SWAPS THE WEAPON ──
-     The gesture this file used to spend four sections on.  Driven on BOTH
-     surfaces, because handleRBtnPress is what classifies it and both the zone's
-     rS and the disc's bS come through it. */
+  /* ── 6. THE DOUBLE TAP DOES NOTHING AT ALL NOW ──
+     Two claims per surface, and BOTH have to be made: the swap is gone
+     (v2.3.2527, the owner's ask) and the v2.3.2446 guard has NOT come back in
+     its place (the trap this file's header is about).  Driven on BOTH surfaces,
+     because handleRBtnPress is what used to classify the pair and both the
+     zone's rS and the disc's bS come through it -- a classifier restored on
+     either one would be a regression. */
   await gear(P, 'ranged');
   await P.page.waitForTimeout(400);
   const beforeZ = await st(P);
   await doubleTap(P, ZONE, 90);
   const afterZ = await st(P);
-  rec.ok('bowshield: a double tap on the right ZONE no longer raises a guard (v2.3.2446 retired)',
-    !afterZ.up, afterZ);
-  rec.ok('bowshield: ...it SWAPS THE WEAPON instead (D8)', afterZ.slot !== beforeZ.slot,
-    { before: beforeZ.slot, after: afterZ.slot });
-  rec.ok('bowshield: ...and does not leave the attack held down', !afterZ.auto, afterZ);
+  rec.ok('bowshield: a double tap on the right ZONE does NOT swap the weapon (v2.3.2527 -- '
+    + 'this row asserted the opposite at v2.3.2472)',
+    afterZ.slot === beforeZ.slot, { before: beforeZ.slot, after: afterZ.slot });
+  rec.ok('bowshield: ...and it does NOT raise a guard either -- v2.3.2446 is not restored by the '
+    + 'swap going away; the shield BUTTON is what replaced it', !afterZ.up, afterZ);
 
   await gear(P, 'ranged');
   await P.page.waitForTimeout(400);
   const beforeD = await st(P);
   await doubleTap(P, '.bt-rjoy-base', 94);
   const afterD = await st(P);
-  rec.ok('bowshield: ...and the same double tap on the DISC swaps too -- one gesture, both surfaces',
-    afterD.slot !== beforeD.slot && !afterD.up, { before: beforeD.slot, after: afterD });
+  rec.ok('bowshield: ...and the same is true on the DISC -- no swap, no guard, on either surface',
+    afterD.slot === beforeD.slot && !afterD.up, { before: beforeD.slot, after: afterD });
+  /* The shield is still reachable on this weapon, which is the half of D8 the
+     owner KEPT -- asserted right here so "no gesture" can never be read as "no
+     way to guard with a bow". */
+  rec.ok('bowshield: ...and the guard is still one tap away on the BUTTON, which is what the '
+    + 'retired gesture was replaced by', await shieldBtnShown(P));
 
-  /* ── 6b. MELEE gets the gesture too, and the first tap still lunges ──
-     v2.3.2269's reason for excluding melee was that tap one fires the lunge.
-     It still does; what is asserted is that tap two is not eaten by it. */
+  /* ── 6b. AND THE MELEE OPENER IS BACK TO ITSELF ──
+     v2.3.2472 CONSUMED the second press of a pair before it could reach
+     maybeSwordDash, and had to argue that the 2500ms lunge cooldown made that
+     safe.  With no pair to recognise, nothing is consumed: tap one lunges, and
+     that is the owner's own check ("a melee first tap must still lunge"). */
   await gear(P, 'melee');
   await P.page.evaluate(() => {
     const S = window._gameState.current;
@@ -295,29 +316,55 @@ export async function run({ browser, wsPort, webPort, rec }) {
       dashCd: window.__btAbilityStatus ? window.__btAbilityStatus('sworddash').cdLeft : null,
       lunged: !!(S._abilCd && S._abilCd.sworddash) };
   });
-  rec.ok('bowshield: a double tap on MELEE swaps the weapon too (v2.3.2269 excluded it; D8 does not)',
-    afterM.slot !== beforeM.slot, { before: beforeM.slot, after: afterM });
+  rec.ok('bowshield: a double tap on MELEE does not swap the weapon either',
+    afterM.slot === beforeM.slot, { before: beforeM.slot, after: afterM });
   /* Only claimed when the lunge was actually available -- a fixture without the
      ability equipped would make this row a tautology (TRAPS §33). */
   if (dashReady && dashReady.visible && dashReady.equipped && dashReady.afford) {
-    rec.ok('bowshield: ...and tap ONE still lunged -- the swap does not eat the melee opener',
-      afterM.lunged === true, { dashReady, afterM });
+    rec.ok('bowshield: ...and tap ONE still lunged -- RBTN_DBL_MS and maybeSwordDash have nothing '
+      + 'left to fight over', afterM.lunged === true, { dashReady, afterM });
   } else {
     rec.skip('bowshield: tap one still lunges', 'sworddash not available on this fixture: '
       + JSON.stringify(dashReady));
   }
 
-  /* ── 6c. AND THE TAPS HAVE TO LAND IN ONE PLACE (v2.3.2472) ──
-     The 50px window.  Without it, tapping two DIFFERENT monsters to switch
-     locks -- an ordinary thing to do on this half of the screen -- swaps the
-     player's weapon. */
+  /* ── 6c. A DOUBLE TAP AND HOLD IS NOT A GUARD EITHER (v2.3.2527) ──
+     v2.3.2472's 50px distance row stood here -- it proved that two taps in
+     DIFFERENT places were not a swap.  With no swap on this surface that claim
+     is vacuous, so the row is spent on the thing that can still go wrong
+     instead: the exact gesture v2.3.2446 shipped, tap-tap-and-HOLD, which is
+     what a hand restoring that code would make work again.  Held past the old
+     300ms window and sampled while the finger is still down, because the old
+     gesture raised the guard on the second touch-DOWN. */
   await gear(P, 'ranged');
   await P.page.waitForTimeout(400);
-  const beforeF = await st(P);
-  await doubleTap(P, ZONE, 102, 120);   /* second tap 120px away */
-  const afterF = await st(P);
-  rec.ok('bowshield: two taps 120px apart are NOT a double tap -- no swap (v2.3.2472 distance window)',
-    afterF.slot === beforeF.slot, { before: beforeF.slot, after: afterF.slot });
+  const beforeH = await st(P);
+  const heldPt = await zonePt(P);
+  await P.page.evaluate((pt) => {
+    const el = document.querySelector('[data-joyzone="R"]');
+    window.__touch(el, 'touchstart', pt.x, pt.y, 104);
+    window.__touch(el, 'touchend', pt.x, pt.y, 104);
+    return new Promise((res) => setTimeout(() => {
+      window.__touch(el, 'touchstart', pt.x, pt.y, 105);   /* and HOLD */
+      res(true);
+    }, 90));
+  }, heldPt);
+  await P.page.waitForTimeout(450);
+  const heldSt = await st(P);
+  const heldFlags = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return { hold: !!S._rShieldHold, steered: !!S._rShieldSteered };
+  });
+  await P.page.evaluate((pt) => {
+    const el = document.querySelector('[data-joyzone="R"]');
+    window.__touch(el, 'touchend', pt.x, pt.y, 105);
+  }, heldPt);
+  await P.page.waitForTimeout(250);
+  rec.ok('bowshield: tap-tap-and-HOLD on the zone raises no guard -- the v2.3.2446 gesture stays '
+    + 'retired (§0.2: two gestures on one classifier)',
+    !heldSt.up && heldFlags.hold === false, { heldSt, heldFlags });
+  rec.ok('bowshield: ...and holding does not swap the weapon on the way either',
+    heldSt.slot === beforeH.slot, { before: beforeH.slot, after: heldSt.slot });
 
   /* ── 7. a guard raised on melee SURVIVES the swap to a bow ──
      The inverse of v2.3.2446's rule, which dropped it: that drop existed only

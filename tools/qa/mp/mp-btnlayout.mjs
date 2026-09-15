@@ -67,8 +67,18 @@ const rects = (P) => P.page.evaluate(() => {
     mode: (bus && bus.state && bus.state.mode) || null,
     attack: one('.bt-rjoy-base'), shield: one('[data-shield]'),
     bash: one('[data-ability="bash"]'), whirl: one('[data-ability="whirl"]'),
-    /* v2.3.2472: the Special button and the movement disc it orbits. */
+    /* v2.3.2472: the Special button; v2.3.2527 moved it off the movement disc
+       and into the right-hand column, so the disc it must clear is the ATTACK
+       one now -- `ljoy` stays because the "it is not on the left any more" row
+       is worth keeping honest. */
     special: one('[data-special]'), ljoy: one('.bt-joystick-base'),
+    /* v2.3.2527: the Element Burst button places itself independently of
+       ctlColumn (ElementBurstButton.jsx: right = 50 + discW + 10, level with the
+       disc's centre), which is the column's slot 0 within a couple of pixels.
+       Measured here so a collision with the cluster is visible rather than
+       inferred; it only renders for an enchanted weapon at level 6+, so on this
+       fixture it is expected to be absent and the row below says so. */
+    burst: one('.bt-burst-btn'),
   };
 });
 
@@ -246,8 +256,30 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
      3. BLOCK IS THE BOTTOM OF THE STACK and level with the disc's centre --
         which is the whole point of the move, since the band placement is what
         put it under the attacking thumb. */
+  /* v2.3.2527: the Special button joins this column at slot -1 (CTL_SLOT).  It
+     is NOT in this list because the rows here run with the shield deliberately
+     UP -- specialButtonLive hides it behind a raised guard -- so it is measured
+     with the rest of the second pass further down. */
   const column = [['shield', r.shield], ['bash', r.bash], ['whirl', r.whirl]]
     .filter(([, b]) => b && b.shown);
+  /* ═══ v2.3.2527: NOTHING ELSE IS PARKED ON TOP OF THE COLUMN ═══
+     The cluster is four controls now, and one MORE button places itself in the
+     same strip without going through ctlColumn: Element Burst.  A silent
+     overlap between two z31 siblings is the failure D9's own note names ("a
+     sibling with a higher z-index eats every touch in the overlap"), and it
+     cannot be seen in a screenshot of a fixture that has no burst weapon.  So:
+     if it is on screen at all, it must not sit on a column button. */
+  if (r.burst && r.burst.shown) {
+    for (const [name, box] of column) {
+      const clear = box.right <= r.burst.left || box.left >= r.burst.right
+        || box.bottom <= r.burst.top || box.top >= r.burst.bottom;
+      rec.ok(`${tag}: the Element Burst button does not overlap ${name}`,
+        clear, { burst: r.burst, name, box });
+    }
+  } else {
+    rec.skip(`${tag}: Element Burst vs the column`,
+      'no burst button on this fixture (it needs an enchanted weapon at level 6+)');
+  }
   if (r.attack && r.attack.shown) {
     for (const [name, box] of column) {
       const clear = box.right <= r.attack.left
@@ -307,32 +339,78 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
   });
   rec.ok(`${tag}: guard: the shield starts DOWN for the slide test`, pre.shieldUp === false, pre);
 
-  /* ═══ v2.3.2472: THE SPECIAL BUTTON, THE LEFT STICK'S NEW NEIGHBOUR ═══
-     Measured HERE rather than with the column above, because it is hidden
-     while the guard is raised (specialButtonLive) and the rows above run with
-     the shield deliberately UP so the bash button exists.
+  /* ═══ v2.3.2527: THE SPECIAL BUTTON ORBITS THE ATTACK DISC NOW ═══
+     Owner, after playing the merged build: "Move the Special attack button to
+     orbit the RIGHT joystick, not the left."  Every row below asserted the
+     mirror image of itself at v2.3.2472 ("stays in the left half", "clears the
+     movement disc"); the left-half row is KEPT, inverted, because "it really
+     did leave the left side" is the half of the move a right-side assertion
+     cannot prove on its own.
 
-     Same rule as the column, mirrored.  Its whole hazard is that the movement
-     input is the ENTIRE left half ([data-joyzone="L"]) and a left-zone swipe is
-     the dodge: a button there has to clear the movement disc rather than sit on
-     it, and it must stay inside the left half -- straying right of centre would
-     put it in the AIM zone, which is a different control entirely. */
+     Measured HERE rather than with the column rows above because the button is
+     hidden while the guard is raised (specialButtonLive) and those rows run
+     with the shield deliberately UP so the bash button exists.
+
+     Its hazard moved with it.  On the left it was the movement layer; on the
+     right it is the attack disc and the right ZONE -- so the geometry claim
+     that matters is that it never laps onto the disc, which is what the D9
+     column guarantees by construction and what this measures rather than
+     assumes.  (That a press is not READ by those surfaces is a different claim
+     and lives in mp-rbutton, where it can be driven with a real finger.) */
   const r2 = await rects(P);
   if (r2.special && r2.special.shown) {
-    rec.ok(`${tag}: the Special button stays in the left half (right ${r2.special.right} <= ${Math.round(phone.width / 2)})`,
-      r2.special.right <= phone.width / 2, r2.special);
+    /* ═══ "IN THE RIGHT HALF" IS MEASURED AT THE CENTRE, NOT AT THE EDGE ═══
+       The first cut of this row asked for the whole box to clear 50vw and
+       failed at 375 and 360 -- correctly reporting a property the column
+       already has and that D9 chose on purpose: the band between the movement
+       zone and the disc is 34-49px wide, so ctlColumn pins the column's RIGHT
+       edge to the disc and lets the shortfall come out of the movement zone
+       (measured here: 7px over at 375, 14px at 360).  Every control in the
+       column does that, and the alternative -- sliding right, under the attack
+       disc -- is the one overlap that must never happen.
+       So the claim is the one that is actually about this button: the thumb
+       aims at its CENTRE, and that is on the attack side of the screen. */
+    rec.ok(`${tag}: the Special button's centre is in the attack half (${Math.round((r2.special.left + r2.special.right) / 2)} >= ${Math.round(phone.width / 2)})`,
+      (r2.special.left + r2.special.right) / 2 >= phone.width / 2, r2.special);
     rec.ok(`${tag}: ...and sits clear of the dashboard`,
       r2.special.bottom <= r2.dashTop, { special: r2.special, dashTop: r2.dashTop });
-    if (r2.ljoy) {
-      rec.ok(`${tag}: ...and clears the movement disc rather than covering it`,
-        r2.special.left >= r2.ljoy.right || r2.special.right <= r2.ljoy.left
-        || r2.special.bottom <= r2.ljoy.top || r2.special.top >= r2.ljoy.bottom,
-        { special: r2.special, ljoy: r2.ljoy });
+    if (r2.attack && r2.attack.shown) {
+      rec.ok(`${tag}: ...and never overlaps the ATTACK disc, on either axis (the whole point of the D9 column)`,
+        r2.special.right <= r2.attack.left || r2.special.left >= r2.attack.right
+        || r2.special.bottom <= r2.attack.top || r2.special.top >= r2.attack.bottom,
+        { special: r2.special, attack: r2.attack });
+    }
+    /* IN the column, not merely near it: one right edge, and BELOW Block --
+       slot -1, the band the shield vacated at D9 (CTL_SLOT's note). */
+    if (r2.shield && r2.shield.shown) {
+      rec.ok(`${tag}: ...sharing the column's right edge with Block (${r2.special.right} vs ${r2.shield.right})`,
+        Math.abs(r2.special.right - r2.shield.right) <= 1, { special: r2.special, shield: r2.shield });
+      /* ...and its LEFT edge too, which is the other half of "it is in the
+         column": it takes exactly the same bite out of the movement zone that
+         D9 already decided for Block, rather than a new one of its own. */
+      rec.ok(`${tag}: ...and the same left edge, so it adds no new encroachment on the movement zone`,
+        Math.abs(r2.special.left - r2.shield.left) <= 1, { special: r2.special, shield: r2.shield });
+      rec.ok(`${tag}: ...and stacked BELOW it, in the band under the disc`,
+        r2.special.top >= r2.shield.bottom, { special: r2.special, shield: r2.shield });
+    }
+    if (r2.whirl && r2.whirl.shown) {
+      rec.ok(`${tag}: ...with the ability stack still above Block, the other way`,
+        r2.whirl.bottom <= r2.special.top, { whirl: r2.whirl, special: r2.special });
+    }
+    if (r2.ljoy && r2.ljoy.shown) {
+      rec.ok(`${tag}: ...and it is nowhere near the movement disc any more`,
+        r2.special.left >= r2.ljoy.right, { special: r2.special, ljoy: r2.ljoy });
     }
   } else {
     rec.ok(`${tag}: guard: the Special button is on screen with a monster in the perimeter and the guard down`,
       false, r2.special);
   }
+
+  /* v2.3.2527: a SECOND capture, with the guard down -- the only state in which
+     the Special button exists, so the shot above (taken with the shield
+     deliberately UP so bash renders) cannot show the full cluster.  Two shots,
+     two states, because the cluster's membership changes between them. */
+  await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/btnlayout-${slug}-special.png` });
 
   const slid = await P.page.evaluate(() => {
     const a = window.__centre('.bt-rjoy-base');

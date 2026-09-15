@@ -528,17 +528,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('a left-side swipe dodges', afterDodge.roll === true, afterDodge);
   rec.ok('...and the dodge cancels the block', afterDodge.shield === false && afterDodge.droppedWhy === 'dodge', afterDodge);
 
-  /* ═══ v2.3.2472: THE SPECIAL BUTTON BESIDE THE MOVEMENT STICK ═══
-     A second trigger for the same specialAttack the flick fires (C1).  Two
-     claims, and the second is the whole hazard of putting anything on this
-     side: the movement input is [data-joyzone="L"], the ENTIRE left half at z6,
-     and a left-zone swipe is the DODGE.  So a press here must cast AND must not
-     be read by the zone underneath as the start of a walk or a dodge.
+  /* ═══ v2.3.2527: THE SPECIAL BUTTON, ORBITING THE ATTACK DISC ═══
+     Owner, after playing the merged build: "Move the Special attack button to
+     orbit the RIGHT joystick, not the left."  A second trigger for the same
+     specialAttack the flick fires (C1), one screen-half over from where
+     v2.3.2472 put it.
 
-     Driven with a real dispatched touch on the button, and then asserted on
-     STATE rather than on the press "working" -- el.dispatchEvent ignores
-     pointer-events entirely (TRAPS §67), so the visibility is asserted off the
-     computed style separately, as everywhere else in this file. */
+     THE HAZARD MOVED WITH IT, AND THE OWNER NAMED IT: "Make sure a tap on the
+     Special button does not also fire the attack disc beneath it, and does not
+     register as the disc's first tap of a double tap."  On the left the thing
+     underneath was the movement layer (a leaked press walked or dodged); here
+     it is the attack disc (`.bt-rjoy-base`, which takes touches whenever the
+     contextual button is live) and the right ZONE (whose rS sets autoAttack and
+     whose rE forwards a short tap to the canvas as a lock-on click).  So the
+     two tells are: the attack is not left HELD, and the lock is not re-pointed.
+
+     ═══ DRIVEN WITH A REAL FINGER, NOT A DISPATCHED EVENT ═══
+     TRAPS §67: el.dispatchEvent hands the event straight to the target and
+     never hit-tests, so it can neither prove the button is reachable nor prove
+     that the surfaces underneath were missed -- the two things this section is
+     about.  page.touchscreen goes through the browser's own hit testing at real
+     coordinates, which is what a thumb does. */
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     /* Fight on, guard down, cooldown clear, mana full: the state the button
@@ -554,26 +564,234 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!el) return { present: false };
     const cs = getComputedStyle(el);
     const b = el.getBoundingClientRect();
+    const disc = document.querySelector('.bt-rjoy-base');
+    const d = disc ? disc.getBoundingClientRect() : null;
     return { present: true, shown: cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.05,
-      pe: cs.pointerEvents, left: Math.round(b.left), right: Math.round(b.right), half: Math.round(window.innerWidth / 2) };
+      pe: cs.pointerEvents, left: Math.round(b.left), right: Math.round(b.right),
+      top: Math.round(b.top), bottom: Math.round(b.bottom),
+      cx: Math.round(b.x + b.width / 2), cy: Math.round(b.y + b.height / 2),
+      half: Math.round(window.innerWidth / 2),
+      disc: d ? { left: Math.round(d.left), right: Math.round(d.right),
+                  top: Math.round(d.top), bottom: Math.round(d.bottom) } : null };
   });
-  rec.ok('with a fight on and the guard down, a Special button is on screen beside the movement stick',
+  rec.ok('with a fight on and the guard down, a Special button is on screen beside the attack disc',
     specVis.present === true && specVis.shown === true, specVis);
-  rec.ok('...and it takes touches itself, rather than letting them fall through to the movement zone',
+  rec.ok('...and it takes touches itself, rather than letting them fall through to the zone',
     specVis.pe === 'auto', specVis);
-  rec.ok('...sitting inside the LEFT half, where the movement zone is -- not over in the aim zone',
-    specVis.right <= specVis.half, specVis);
-  const specFired = await P.page.evaluate(() => {
-    const c = window.__centre('[data-special]');
-    window.__touch(c.el, 'touchstart', c.x, c.y, 71);
-    window.__touch(c.el, 'touchend', c.x, c.y, 71);
+  rec.ok('...sitting in the RIGHT half now, with the attack controls -- not over on the movement side '
+    + '(v2.3.2527; this row asserted the opposite at v2.3.2472)',
+    specVis.left >= specVis.half, specVis);
+  if (specVis.disc) {
+    rec.ok('...and clear of the attack disc itself, so no finger can land on both',
+      specVis.right <= specVis.disc.left || specVis.left >= specVis.disc.right
+      || specVis.bottom <= specVis.disc.top || specVis.top >= specVis.disc.bottom,
+      specVis);
+  }
+  /* THE REAL TAP.  Sampled before and after, because "the disc also fired" is a
+     CHANGE in two flags rather than a state that can be read once. */
+  await P.page.evaluate(() => { const S = window._gameState.current; S.__swings = 0; S.autoAttack = false; });
+  const beforeSpec = await st(P);
+  await P.page.touchscreen.tap(specVis.cx, specVis.cy);
+  await P.page.waitForTimeout(260);
+  const afterSpec = await st(P);
+  rec.ok('a real finger on it fires the special -- the same action the flick fires',
+    afterSpec.usedSwipe === true && afterSpec.lastSwipe > 0, { beforeSpec, afterSpec });
+  rec.ok('...and it SWALLOWS its own touch: the attack disc underneath is not left holding the attack',
+    afterSpec.autoAttack === false, { beforeSpec, afterSpec });
+  rec.ok('...and the zone underneath does not forward a lock-on click, so the press cannot read as '
+    + 'the first tap of anything the disc classifies',
+    afterSpec.lock === beforeSpec.lock, { beforeSpec, afterSpec });
+  rec.ok('...and nothing dodged or rolled from it either', afterSpec.roll === false, afterSpec);
+
+  /* ═══ v2.3.2527: WHIRLWIND IS AVAILABLE ONLY IN A MELEE FIGHT ═══
+     Owner, after playing the merged build: "Limit the whirl ability to active
+     melee combat only.  Right now it can be used any time."  And: "The button
+     should read as unavailable rather than silently doing nothing when the
+     condition is not met."
+
+     THE CONDITION IS THE MONSTER LOCK -- `monsterLock(S)`, the same fact that
+     lights the attack disc -- and NOT `S._engaged`, which was this gate's first
+     cut.  The rows below are shaped by how that first cut failed review, because
+     a test that only proves the happy path is what let it look right:
+
+       §A  out of combat  -> on screen, dimmed, refuses out loud, costs nothing
+       §B  in combat      -> available, and the cast is accepted
+       §C  THE KILL       -> the monster that started the fight dies while the
+                            thumb is still down and another is in range.  This
+                            is the case `_engaged` got wrong (its mode is
+                            anchored to the ONE monster you tapped, so it
+                            expired 1.5s after that monster died -- greying the
+                            button in the middle of a pack, which is exactly
+                            when a player reaches for it).
+       §D  NO TAP AT ALL  -> a fight entered without ever tapping a monster or
+                            promoting a lock, which is the desktop attack path
+                            and the walk-into-a-pack path on a phone.  Also a
+                            `_engaged` hole: nothing there ever writes src:'tap'.
+
+     §C and §D are driven WITHOUT seeding a lock by hand -- the whole point is
+     that updateTargeting acquires and re-points it on its own, so a fixture
+     that wrote the lock itself would be testing the fixture. */
+  await P.page.evaluate(() => {
     const S = window._gameState.current;
-    return { usedSwipe: !!S._hasUsedSwipe, lastSwipe: S._lastSwipe || 0, roll: !!S._dodgeRoll };
+    const R = S.rpg;
+    /* A drawn sword: whirl's button exists only for the melee lane
+       (needsMeleeActive, v2.3.2327), and a fresh character's weapons are still
+       in the bag. */
+    if (R && !R.weapon) R.weapon = { type: 'sword', name: 'QA Sword', tierMult: 1, gearBase: 'copper' };
+    if (R) { R.activeSlot = 'melee'; R.stamina = R.maxStamina || 100; }
+    S._abilCd = null;
+    /* Out of combat: nothing to lock on to. */
+    S.monsters = []; S.lockedTarget = null; S._engaged = false; S._engagedId = null;
+    if (S.dmgNumbers) {
+      window.__popups = [];
+      const list = S.dmgNumbers;
+      const push = list.push.bind(list);
+      list.push = (p) => { try { window.__popups.push(p && p.text); } catch (e) {} return push(p); };
+    }
   });
-  rec.ok('pressing it fires the special -- the same action the flick fires',
-    specFired.usedSwipe === true && specFired.lastSwipe > 0, specFired);
-  rec.ok('...and it SWALLOWS its own touch: no dodge roll from a press on the movement half',
-    specFired.roll === false, specFired);
+  await P.page.waitForTimeout(600);
+  const whirlState = (P2) => P2.page.evaluate(() => {
+    const el = document.querySelector('[data-ability="whirl"]');
+    const S = window._gameState.current;
+    if (!el) return { present: false, lock: !!(S.lockedTarget && S.lockedTarget.ref) };
+    const cs = getComputedStyle(el);
+    const b = el.getBoundingClientRect();
+    return { present: true,
+      shown: cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.05,
+      opacity: Number(cs.opacity), engagedAttr: el.getAttribute('data-engaged'),
+      readyAttr: el.getAttribute('data-ready'),
+      st: window.__btAbilityStatus ? window.__btAbilityStatus('whirl') : null,
+      lock: !!(S.lockedTarget && S.lockedTarget.ref),
+      lockId: S.lockedTarget && S.lockedTarget.ref ? String(S.lockedTarget.ref.id) : null,
+      lockSrc: S.lockedTarget ? S.lockedTarget.src : null,
+      engagedFlag: !!S._engaged,
+      x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height / 2) };
+  });
+
+  /* ── §A out of combat ── */
+  const whirlOut = await whirlState(P);
+  rec.ok('out of combat the Whirlwind button is STILL ON SCREEN -- it reads unavailable rather than vanishing',
+    whirlOut.present === true && whirlOut.shown === true, whirlOut);
+  rec.ok('...and it reads as unavailable: dimmed, and saying so in its own state',
+    whirlOut.opacity < 0.6 && whirlOut.engagedAttr === '0' && whirlOut.readyAttr === '0', whirlOut);
+  rec.ok('...and the status it draws from agrees -- visible, but not in a fight',
+    !!(whirlOut.st && whirlOut.st.visible === true && whirlOut.st.engaged === false), whirlOut.st);
+  /* Pressing it anyway must SAY something.  Through the real button, because a
+     direct castAbility call would not prove the greyed button still routes. */
+  if (whirlOut.present) {
+    await P.page.touchscreen.tap(whirlOut.x, whirlOut.y);
+    await P.page.waitForTimeout(350);
+  }
+  const outPopups = await P.page.evaluate(() => (window.__popups || []).slice());
+  const outCd = await P.page.evaluate(() => (window.__btAbilityStatus ? window.__btAbilityStatus('whirl').cdLeft : -1));
+  rec.ok('pressing it out of combat refuses OUT LOUD rather than doing nothing silently',
+    outPopups.some((t) => typeof t === 'string' && /not in combat/i.test(t)), outPopups);
+  rec.ok('...and the refused press costs no cooldown, so the ability is ready the moment a fight starts',
+    outCd <= 0, { cdLeft: outCd });
+
+  /* ── §B in combat, acquired automatically ──
+     No hand-written lock: a monster is put in the zone and updateTargeting is
+     left to do what it does for a melee player. */
+  await seedFodder(P, 'whirl_a', 90);
+  await P.page.evaluate(() => { window.__popups = []; });
+  await P.page.waitForTimeout(700);
+  const whirlIn = await whirlState(P);
+  rec.ok('guard: walking into range acquires the lock on its own, with no tap (this is the real path)',
+    whirlIn.lock === true && whirlIn.lockId === 'whirl_a', whirlIn);
+  rec.ok('...and now the Whirlwind button is available: full strength, and marked ready',
+    whirlIn.opacity === 1 && whirlIn.engagedAttr === '1' && whirlIn.readyAttr === '1', whirlIn);
+  await P.page.touchscreen.tap(whirlIn.x, whirlIn.y);
+  await P.page.waitForTimeout(350);
+  const inAfter = await P.page.evaluate(() => ({
+    popups: (window.__popups || []).slice(),
+    cdLeft: window.__btAbilityStatus ? window.__btAbilityStatus('whirl').cdLeft : -1,
+  }));
+  rec.ok('in combat the same press is ACCEPTED -- no refusal, and the cooldown starts running',
+    !inAfter.popups.some((t) => typeof t === 'string' && /not in combat/i.test(t))
+    && inAfter.cdLeft > 0, inAfter);
+
+  /* ── §D no tap ever happened ──
+     Asserted before §C because §C needs a lock to kill.  `src` is read straight
+     off the lock: if this says 'auto' then nothing in this fixture has tapped
+     or promoted anything, and the button is live on the automatic lock alone.
+     That is the desktop attack path (no promotion exists there at all) and the
+     walk-into-a-pack path on a phone. */
+  rec.ok('...on an AUTOMATIC lock, with no tap and no press to promote it -- which is the whole '
+    + 'desktop attack path (src is ' + whirlIn.lockSrc + ')',
+    whirlIn.lockSrc === 'auto' && whirlIn.engagedAttr === '1', whirlIn);
+  rec.ok('...and it does NOT depend on S._engaged, which is false here (the flag the first cut of '
+    + 'this gate used, and the reason that cut was wrong)',
+    whirlIn.engagedFlag === false, whirlIn);
+
+  /* ── §C the monster that started the fight dies, another is in range ── */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const mk = (id, dx) => ({
+      id, arch: 'fodder', archetype: 'fodder', type: 'fodder',
+      x: S.player.x + dx, y: S.player.y, renderX: S.player.x + dx, renderY: S.player.y,
+      spawnX: S.player.x + dx, spawnY: S.player.y, targetX: S.player.x + dx, targetY: S.player.y,
+      hp: 5000, curHp: 5000, maxHp: 5000, dmg: 0, level: 1, gold: 0, spd: 0, vx: 0, vy: 0,
+      alive: true, statuses: {}, _hitThisSwing: false, _atkCd: 0, _stunUntil: 0,
+      respawnAt: 0, moveTimer: 0, _stuckArrows: [],
+    });
+    S._serverMonsters = false;
+    S.monsters = [mk('whirl_a', 80), mk('whirl_b', 120)];
+    /* The fight is with A, deliberately picked -- the state _engaged was built
+       for, so the row below is a fair comparison rather than a straw man. */
+    const a = S.monsters[0];
+    S.lockedTarget = { type: 'monster', id: a.id, ref: a, src: 'tap' };
+    S.autoAttack = true;       /* the thumb, held -- never lifted below */
+    S._abilCd = null;
+    window.__popups = [];
+  });
+  await P.page.waitForTimeout(700);
+  const preKill = await whirlState(P);
+  rec.ok('guard: with a tapped fight on A, whirl is available and the engagement flag is set too',
+    preKill.engagedAttr === '1' && preKill.engagedFlag === true, preKill);
+  /* Kill A the way the game leaves a corpse: the monster stays in the list with
+     alive:false (the server path never removes the entry; see wsClient's
+     in-place merge), which is exactly what made _engaged expire.
+     ═══ AND PUSH ITS RESPAWN OUT, OR IT IS NOT DEAD AT ALL ═══
+     The fixtures in this file carry `respawnAt: 0`, and with
+     `_serverMonsters` false the CLIENT owns respawns: monsterCombat's tick
+     revives any `!m.alive` monster once `Date.now() > m.respawnAt`
+     (monsterCombat.js:168-172), which for 0 is the very next frame.  The first
+     cut of this section killed A and read the state back 2.2s later to find it
+     alive, locked and engaged -- a row that would have "passed" the behaviour
+     it was written to break.  The guards below are what caught it. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const a = (S.monsters || []).find((m) => String(m.id) === 'whirl_a');
+    if (a) { a.curHp = 0; a.alive = false; a.respawnAt = Date.now() + 999999; }
+  });
+  /* Past ENGAGE_GRACE_MS (1500) with the thumb still down. */
+  await P.page.waitForTimeout(2200);
+  const postKill = await whirlState(P);
+  console.log('    after the kill: ' + JSON.stringify(postKill));
+  rec.ok('guard: the kill really did expire the old engagement mode (S._engaged is false now)',
+    postKill.engagedFlag === false, postKill);
+  rec.ok('guard: ...and the lock moved to the next monster on its own',
+    postKill.lock === true && postKill.lockId === 'whirl_b', postKill);
+  rec.ok('THE KILL CASE: whirl STAYS available when the monster that started the fight dies and '
+    + 'another is still on you -- the thumb never left the glass',
+    postKill.opacity === 1 && postKill.engagedAttr === '1', postKill);
+  await P.page.touchscreen.tap(postKill.x, postKill.y);
+  await P.page.waitForTimeout(350);
+  const postKillPopups = await P.page.evaluate(() => (window.__popups || []).slice());
+  rec.ok('...and the press mid-pack is accepted, not refused with "Not in combat!"',
+    !postKillPopups.some((t) => typeof t === 'string' && /not in combat/i.test(t)), postKillPopups);
+
+  /* Leave the fixture as the next section expects to find it: a monster in the
+     perimeter (so the shield button it reaches for is still on screen) and no
+     lock.  New assertions do not get to move the ground out from under old ones
+     -- see the note on the joystick block at the end of this file. */
+  await P.page.evaluate(() => { const S = window._gameState.current; S.autoAttack = false; });
+  await seedFodder(P, 'rb_after_whirl', 90);
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.lockedTarget = null; S._engaged = false; S._engagedId = null; S._abilCd = null;
+  });
+  await P.page.waitForTimeout(400);
 
   /* ── the button leaves when the fight does -- unless the shield is still up ── */
   await P.page.evaluate(() => { const c = window.__centre('[data-shield]'); window.__touch(c.el, 'touchstart', c.x, c.y, 50); window.__touch(c.el, 'touchend', c.x, c.y, 50); });

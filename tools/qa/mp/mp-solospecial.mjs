@@ -429,5 +429,92 @@ export async function run({ browser, wsPort, webPort, rec }) {
       r.normal === 0, r);
   }
 
+  /* ══════════ AND THE SAME PRESS, ON THE SPECIAL BUTTON (v2.3.2527) ══════════
+     Owner, after playing the merged build: "Move the Special attack button to
+     orbit the RIGHT joystick, not the left ... Make sure a tap on the Special
+     button does not also fire the attack disc beneath it."
+
+     THIS IS THE STRONGEST FORM OF THAT CLAIM, which is why it is here rather
+     than only in mp-rbutton: the surrounding file counts PROJECTILES, so "the
+     disc also fired" is a thing that can be seen leaving the bow rather than
+     inferred from a flag.  The whole hazard of the move is that this button now
+     sits on the attack side, over `[data-joyzone="R"]`, next to a disc that
+     fires on touchDOWN -- so a leak would put an ordinary shot in the air
+     alongside the special, which is exactly the defect this file exists for,
+     arriving through a new door.
+
+     Driven with page.touchscreen at the button's real coordinates: a dispatched
+     event would prove nothing here, because it never hit-tests and so could not
+     distinguish a button that swallows its touch from one that does not
+     (TRAPS §67).  And it needs no synthetic flick -- the button IS the second
+     trigger, so for once the real gesture is fully reproducible. */
+  const btnRows = [];
+  for (const w of [
+    { key: 'bow',   type: 'bow',   stash: 'rangedWeapon', slot: 'ranged', own: 1 },
+    { key: 'magic', type: 'staff', stash: 'staffWeapon',  slot: 'staff',  own: 3 },
+  ]) {
+    await H.equipWeapon(P, w.type, w.stash, w.slot);
+    await P.page.waitForTimeout(900);
+    const _tgtBtn = await seedBowTarget(P, w.slot === 'ranged');
+    await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      S._aimAngle = 0.4; S._lastAimAngle = 0.4; S._facingAngle = 0.4; S._shieldUp = false;
+      S.swingTimer = 0; S._lastSwipe = 0; S.autoAttack = false; S._atkPressAt = 0;
+      if (S.rpg) { S.rpg.mana = S.rpg.maxMana; }
+      /* specialButtonLive wants a fight ON.  The bow's target sits 620px out --
+         far outside the 220px perimeter, deliberately, so the arrows stay in
+         the air long enough to be counted -- and a bow holds no automatic lock,
+         so the honest way to say "a fight is happening" here is the one the
+         predicate already offers: damage taken a moment ago. */
+      S.lastDamageTaken = Date.now();
+    });
+    await P.page.waitForTimeout(400);
+    const box = await P.page.evaluate(() => {
+      const el = document.querySelector('[data-special]');
+      if (!el) return null;
+      const b = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      const disc = document.querySelector('.bt-rjoy-base');
+      const d = disc ? disc.getBoundingClientRect() : null;
+      return { x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height / 2),
+        shown: cs.display !== 'none' && Number(cs.opacity) > 0.05,
+        onDisc: !!(d && b.right > d.left && b.left < d.right && b.bottom > d.top && b.top < d.bottom) };
+    });
+    await watchArrows(P);
+    if (box && box.shown) await P.page.touchscreen.tap(box.x, box.y);
+    await P.page.waitForTimeout(1100);
+    const after = await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      return { auto: !!S.autoAttack, lastSwipe: S._lastSwipe || 0 };
+    });
+    await P.page.evaluate(() => { const S = window._gameState.current; S.autoAttack = false; S._atkPressAt = 0; });
+    const seen = await readArrows(P);
+    const sp = seen.filter((a) => a.special), no = seen.filter((a) => !a.special);
+    btnRows.push({ ...w, box, after, tgt: _tgtBtn, special: sp.length, normal: no.length,
+      noAt: no.map((a) => a.at) });
+  }
+
+  console.log('\n    ── a REAL tap on the Special BUTTON ──');
+  for (const r of btnRows) {
+    console.log(`    ${r.key.padEnd(6)} special ${r.special}/${r.own}   ordinary shots ${r.normal} at `
+      + `${JSON.stringify(r.noAt)}ms   [button ${JSON.stringify(r.box)}, autoAttack after ${r.after.auto}]`);
+  }
+  console.log('');
+
+  for (const r of btnRows) {
+    rec.ok(`${r.key} button: the Special button is on screen to be tapped (guard)`,
+      !!(r.box && r.box.shown), r.box);
+    rec.ok(`${r.key} button: ...and it does not sit on top of the attack disc (guard)`,
+      !!(r.box && r.box.onDisc === false), r.box);
+    rec.ok(`${r.key} button: a real tap on it casts the special`, r.special === r.own, r);
+    /* THE ASK: the disc beneath must not have fired.  Two independent tells --
+       no ordinary projectile left the bow, and the press did not leave the
+       auto-attack held down the way a press on the disc or the zone would. */
+    rec.ok(`${r.key} button: ...and the attack disc beneath it fires NOTHING (${r.normal} ordinary shot(s))`,
+      r.normal === 0, r);
+    rec.ok(`${r.key} button: ...and the press is not left holding the attack either`,
+      r.after.auto === false, r.after);
+  }
+
   await P.ctx.close().catch(() => {});
 }
