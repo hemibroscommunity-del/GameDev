@@ -1131,7 +1131,20 @@ export const BottomDashboard = () => {
             aria-label={mode === 'expanded' ? 'Minimize dashboard' : 'Expand dashboard'}
             aria-expanded={mode === 'expanded'}
             data-land-fold={mode === 'expanded' ? 'open' : 'min'}
-            style={{ ...chipStyle, flex: 'none', fontSize: 15, width: LAND_FOLD_CHIP_W }}
+            /* ═══ v2.3.2497: A 44pt BOX, AND THE GLYPH GROWS WITH IT ═══
+               The box goes to the house minimum (LAND_FOLD_CHIP_W, which is
+               where the reason lives).  HEIGHT has to be stated here because
+               chipStyle's 34 would otherwise leave a 44x34 target -- compliant
+               on one axis, which is exactly the half-fix v2.3.2320 found on the
+               nav buttons.
+               The glyph follows the box rather than staying at 15: .bt-chisel
+               draws its frame from a 9-sliced border-image whose 6px slices do
+               NOT scale with the element, so a bigger box is all middle, and a
+               15px arrow rattling in 32px of it reads as a mis-sized button
+               rather than a bigger one.  18 keeps the same optical weight
+               inside the frame that 15 had at 34. */
+            style={{ ...chipStyle, flex: 'none', fontSize: 18,
+              width: LAND_FOLD_CHIP_W, height: LAND_FOLD_CHIP_W }}
           >{mode === 'expanded' ? '▾' : '▴'}</button>
           {/* ═══ v2.3.2176: MINIMIZED MEANS MINIMIZED ═══
               Owner: the nav buttons "should've been hidden inside the main

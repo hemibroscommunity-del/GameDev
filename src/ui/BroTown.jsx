@@ -4905,8 +4905,31 @@ export var BroTown = function BroTown(_ref0) {
            buffer) so the WHOLE character stays above the dashboard -- the
            playable area ends right where the dashboard begins. */
         var _FOOT_MARGIN = 80;
+        /* ═══ v2.3.2497: ...AND THE MIRROR OF IT AT THE TOP ═══
+           Owner: the bro can walk under the zone rail.  He can, and it is the
+           v2.3.822 bug above with the sign flipped: `.bt-zone-header` is
+           `position:fixed; top:-4px` OVER the canvas (the canvas is the
+           viewport minus the BAND only, so nothing is subtracted for the rail),
+           and the camera clamps at y >= 0 -- so at any map's top edge the head
+           is drawn behind 46 CSS px of opaque rail.  Town included; town's top
+           edge is walkable.
+           TWO TERMS, because they are two different things and only one of them
+           is a world measurement.  ~57 world px is how far the figure extends
+           ABOVE P.y (the sprite is centre-anchored; v2.3.822 measured the same
+           distance below it for the feet).  The rail is a SCREEN measurement --
+           46 CSS px -- so it is converted at the live world scale, which also
+           means the clamp follows the zoom when the dashboard folds instead of
+           going stale.
+           No live exit sits on a top edge (zoneTransitions PORTAL_EDGE_INSET
+           names the top-edge markers as unused, and says "nothing covers the
+           top of the screen" -- which is the belief this fixes), so holding the
+           player off that edge cannot strand a portal.  A top-edge entry SPAWN
+           lands above the clamp and is nudged down on its first frame, which is
+           what the bottom edge already does. */
+        var _RAIL_CSS = 46;
+        var _HEAD_MARGIN = 57 + Math.round(_RAIL_CSS / Math.max(0.2, S._worldScaleY || 1));
         P.x = Math.max(hs, Math.min(ZONE_W - hs, P.x));
-        P.y = Math.max(hs, Math.min(ZONE_H - _FOOT_MARGIN, P.y));
+        P.y = Math.max(hs + _HEAD_MARGIN, Math.min(ZONE_H - _FOOT_MARGIN, P.y));
 
         /* ═══ ZONE TRANSITION — edge-based detection ═══ */
         var ptx = Math.floor(P.x / TILE),
