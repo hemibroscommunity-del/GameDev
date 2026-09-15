@@ -53,6 +53,23 @@ export function storeGearEnabled() {
   return !!(s && s._serverCaps && s._serverCaps.storeGear);
 }
 
+/* v2.3.2551: ...and can it be told WHICH piece by its server-assigned id
+   (`gid`) rather than by a selector?  Its own narrow cap again, and for
+   the same reason (TRAPS #9, the caps.gems lesson): a v2.3.2531 worker
+   advertises `storeGear` and knows nothing about `gid` -- it would go
+   looking for `body.sel`, find none, and answer "Invalid item".  So the
+   id only goes up when a worker has said it understands one; otherwise
+   the selector this client has always sent goes up instead, and the
+   worker resolves it against its own list exactly as before.
+
+   This gates only HOW the piece is named.  The ownership gate itself
+   (`_gearSellable`) runs on both paths, so an old client is not selling
+   anything a new one cannot -- it is just naming it less precisely. */
+export function storeGearRefEnabled() {
+  const s = S();
+  return !!(s && s._serverCaps && s._serverCaps.storeGearRef);
+}
+
 export function storeMyId() {
   const s = S();
   return (s && s.myId) || null;
@@ -98,9 +115,17 @@ export async function storeMine() {
 
 /* kind 'item'  -> { invKey, qty, price }
    kind 'weapon'-> { stashIndex, price }
-   kind 'gear'  -> { field, sel, hint, price }        (v2.3.2531)
+   kind 'gear'  -> { field, gid, price }              (v2.3.2551, caps.storeGearRef)
+                -> { field, sel, hint, price }        (v2.3.2531, older workers)
    The worker takes the goods from ITS OWN copy of your bag or stash; what
    goes up here only names which one (handoff rule 16).
+
+   v2.3.2551: a piece the worker MINTED carries its `gid`, and naming it
+   by that id is exact -- it finds the receipt directly, including for a
+   piece the worker's own stash snapshot has not adopted yet.  The
+   selector below is what an older worker understands, and is still sent
+   to one.  Either way the worker answers a refusal with a stable
+   `reason` (gearSellReason.js) so the player is told WHY.
 
    GEAR IS NAMED DIFFERENTLY FROM A WEAPON, and the difference matters.
    `weaponStash` is the server's list and this client mirrors it off the

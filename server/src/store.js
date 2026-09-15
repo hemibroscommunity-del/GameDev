@@ -20,12 +20,19 @@
  *
  * GEAR LISTINGS (v2.3.2531) are `kind: 'gear'` and live in storegear.js.
  * Read that module's header before touching them: it carries the two
- * things that make gear different from a weapon (a piece is named by a
- * SELECTOR, not an index, because the client's stash and ours drift out
- * of order; and TWO open trust holes -- a player can sell the armour off
- * their own back, and being in a stash is not proof of ownership -- both
- * accepted deliberately for the demo and both bounded by the same
- * `caps.storeGear` kill switch, not by a heuristic).
+ * things that make gear different from a weapon — how a piece is NAMED
+ * (by its server-assigned `gid`, or by a selector that finds one; never
+ * by an index, because the client's stash and ours drift out of order),
+ * and the GATE it has to pass.
+ *
+ * v2.3.2551: that gate is `_gearSellable` (gearprov.js) — the server
+ * minted it AND the player still holds it, not worn, not in the post —
+ * and the piece's provenance ROW is escrowed inside this record beside
+ * the goods (`rec.gearRow`), so the wake-time rebuild below recovers it
+ * with no second mechanism.  The two open trust holes this comment used
+ * to name ("sell the armour off your own back", "being in a stash is not
+ * proof of ownership") are CLOSED by that gate; `caps.storeGear` is kept
+ * as an ordinary live-ops kill switch rather than as their bound.
  * Everything else about a gear listing — the markers, the rebuild, the
  * credit-first settle, the opIds — is this file's, unchanged, and that is
  * the point: see _stGoodsCredit.
@@ -85,10 +92,10 @@
  * to PRIVILEGED_EVENTS. */
 
 import { SHOP_ITEMS } from './data.js';
-/* v2.3.2531: gear listings (storegear.js).  Only the field roster comes
-   from there at module scope -- every gear behaviour is a method on the
-   room, so this module keeps one import and no second copy of anything. */
-import { isGearField } from './storegear.js';
+/* v2.3.2531: gear listings live in storegear.js and every gear behaviour
+   is a METHOD on the room, so this module imports nothing from it at all
+   (v2.3.2551 dropped the last import, `isGearField`, when the duplicate
+   field check in `_stCreateListing` went -- see the note there). */
 
 export const STORE = {
   LISTING_EXPIRY: 86400000,   // 24h, same as the order book's listings
@@ -173,7 +180,17 @@ export const storeMethods = {
      beside them. */
   _stGoodsCredit(rec) {
     if (rec.kind === 'weapon') return { kind: 'weapon', payload: { weapon: rec.weapon } };
-    if (rec.kind === 'gear') return { kind: 'gear', payload: { field: rec.gearField, piece: rec.gear } };
+    /* v2.3.2551: ...and the piece's detached provenance ROW, which has
+       travelled inside this record since the escrow took it (rule 7: money
+       at rest lives in storage).  It is what makes the piece arrive
+       PROVABLE on the far side -- `_creditPlayer` grants it to the
+       recipient before the piece lands, and `_gearProvMarkDelivered` then
+       DERIVES the mark by asking the ledger rather than trusting this
+       payload.  A gear listing written before v2.3.2551 has no `gearRow`,
+       so `row` is undefined and the piece arrives `legacy`: usable,
+       unsellable, never refused.  That is the deploy-order answer for the
+       listings already resting on the shelf when this ships. */
+    if (rec.kind === 'gear') return { kind: 'gear', payload: { field: rec.gearField, piece: rec.gear, row: rec.gearRow || null } };
     return { kind: 'item', payload: { invKey: rec.invKey, count: rec.qty } };
   },
 
@@ -396,7 +413,7 @@ export const storeMethods = {
     const id = crypto.randomUUID();
     const escrowOp = 'store:' + id + ':esc';
     let invKey = null; let weapon = null; let qty = 1;
-    let gear = null; let gearField = null;   /* v2.3.2531 */
+    let gear = null; let gearField = null; let gearRow = null;   /* v2.3.2531; row v2.3.2551 */
 
     if (kind === 'item') {
       const k = typeof body.invKey === 'string' ? body.invKey : '';
@@ -440,11 +457,22 @@ export const storeMethods = {
        above, one call instead of eight lines, because getting that
        sequence wrong is how escrow goes missing. */
     if (kind === 'gear') {
-      if (!isGearField(body && body.field)) return { ok: false, settled: true, error: 'Invalid item' };
+      /* v2.3.2551: the field check that used to sit here is gone, not
+         moved -- `_stGearEscrow` already does it, and a second gate in
+         front of the first is how a refusal loses the `reason` the client
+         needs (it answered a bare 'Invalid item' with no reason string). */
       const got = this._stGearEscrow(playerId, ps, body);
-      if (!got.ok) return { ok: false, settled: true, error: got.error };
+      /* v2.3.2551: the REASON rides out with the error.  `_gearSellable`
+         answers a refusal with a stable string (`worn`, `in_mail`,
+         `legacy`, `cosmetic`, `not_held`, `wrong_slot`) and the client
+         keys its explanation off it -- #648 promised the player would be
+         told WHY a piece cannot be sold and nothing read the mark.  The
+         human sentence travels too, so a client that does not know a
+         future reason string still has something to show. */
+      if (!got.ok) return { ok: false, settled: true, reason: got.reason, error: got.error };
       gear = got.piece;
       gearField = got.field;
+      gearRow = got.row;
     }
 
     const now = Date.now();
@@ -461,6 +489,12 @@ export const storeMethods = {
          refund that did not know the list would have nowhere to put it. */
       gear,
       gearField,
+      /* v2.3.2551: the piece's detached provenance row, escrowed INSIDE
+         this record beside the goods rather than flagged in place.  That
+         means the store's existing wake-time rebuild is what recovers it
+         -- no second recovery mechanism, and no `escrowed: true` flag that
+         could strand a piece forever if a listing record went missing. */
+      gearRow,
       qty: (kind === 'weapon' || kind === 'gear') ? 1 : qty,
       cat: kind === 'weapon' ? 'weapon'
         : kind === 'gear' ? this._stGearCategory()

@@ -153,7 +153,7 @@ const CAP_GATES = [
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
   'laststand', 'party', 'partyChat', 'petLoot', 'pets', 'potionBag', 'prog3',
   'prog3Chan', 'prog3elem' /* v2.3.2512 */, 'prog3x', 'questTrack', 'sponsor', 'store',
-  'storeGear' /* v2.3.2531 */,
+  'storeGear' /* v2.3.2531 */, 'storeGearRef' /* v2.3.2551 */,
   't2bench', 't2simple', 't2uniform', 'trade', 'trade2', 'trade2Review',
   'trade2Weapons', 'weaponDrops', 'whisper',
 ];
@@ -169,7 +169,8 @@ const CAP_NOTES = {
   prog3Chan: 'per-weapon point pools',
   abil: 'special moves — the sword dash, shield bash and whirlwind',
   elemBurst: 'the elemental burst',
-  storeGear: 'selling armour, shields, legs, outfits and amulets in the store',
+  storeGear: 'selling armour, shields and legs in the store',
+  storeGearRef: 'naming a piece for sale by its receipt number instead of its description',
   blockScale: 'the shield block count',
 };
 

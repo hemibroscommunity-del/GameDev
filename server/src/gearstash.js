@@ -107,42 +107,30 @@ export const GEAR_STASH_SEED_KEYS = {
    blob.  Kept as one boolean rather than two parallel field lists. */
 const COSMETIC_FIELD = 'gearStash';
 
-/* ═══ v2.3.2532: THE PROVENANCE MARK LIVES HERE, NOT IN THE STORE ═══
-   `_sv` means "the SERVER wrote this piece" -- it is set in exactly one
-   place (_stGearApplyCredit, storegear.js) and read by exactly one
-   (strict-mode listing).  It is defined in THIS module because this is
-   where every sanitizer that could carry it or drop it lives, and a mark
-   whose name is declared in one file and honoured in another is a mark
-   the next sanitizer somebody adds will silently drop.  storegear.js
-   re-exports it as STORE_GEAR.PROV rather than spelling it a second time.
+/* ═══ v2.3.2552: THE `_sv` MARK IS RETIRED — THE LEDGER ANSWERS THIS NOW ═══
+   `_sv` was a boolean the server set on a piece it had written and stripped
+   off anything a client handed back.  It is gone, and so is `carryProv`,
+   the rule that carried it across a sanitize.  Written down rather than
+   silently deleted, because the next reader will find `_sv: true` sitting
+   in real stored blobs and needs to know it means nothing.
 
-   It has to survive a round trip through storage and be UNFORGEABLE off
-   the wire, and v2.3.2531 got both edges wrong in opposite directions
-   (found by the adversarial review of #643):
-     - FORGEABLE.  The join claim is the path that actually fills a
-       stash, and it sanitizes STRICT -- but strict only stripped the
-       three forge fields, so a modified client could mark its own forged
-       plate `_sv: true` and strict mode waved it through.  The store
-       stripped the mark off the SELECTOR, which is not the path that
-       fills anything.
-     - LOST.  `sanitizeCosmeticEntry` and `_sanitizeAmulet` do not copy,
-       they REBUILD from a whitelist, so a cosmetic or amulet the server
-       genuinely handed over lost its mark on the owner's next login and
-       became unlistable under strict mode.
-   Both edges are one rule: the mark is carried across a sanitize when
-   and only when the source was OURS (non-strict), and never when the
-   source came off the wire.  `carryProv` is that rule, applied at every
-   sanitize seam so no shape can opt out of it. */
-export const GEAR_PROV = '_sv';
+   It only ever drove ONE decision: `_stGearListable` (storegear.js), which
+   under the `store_gear_strict` live flag allowed only pieces carrying the
+   mark.  `gear_prov:<playerId>` answers the same question by a strictly
+   stronger means -- a server-assigned id looked up in the player's own
+   ledger -- and answers three more besides (is it worn, is it still in the
+   post, is it for this slot at all).  A boolean can be copied onto a blob;
+   a row cannot be copied into someone's ledger.  #643's own review found
+   `_sv` forgeable on the join claim precisely because a self-asserting flag
+   is only as strong as the completeness of its stripping, and gearprov.js
+   exists because of that finding.
 
-/* Carry `_sv` from a source blob onto its sanitized output.  `strict`
-   (the blob came off the wire) means never.  Returns `out` so it can
-   wrap a sanitizer call directly. */
-export function carryProv(src, out, strict) {
-  if (strict || !out || typeof out !== 'object') return out;
-  if (src && typeof src === 'object' && src[GEAR_PROV] === true) out[GEAR_PROV] = true;
-  return out;
-}
+   THE TOMBSTONE BELOW IS THE WHOLE REMOVAL PLAN.  `sanitizeGearPiece`
+   deletes the field unconditionally, in both modes, so every stored piece
+   sheds it on the next join and every escrowed piece sheds it on delivery.
+   Idempotent, fail-open, and no migration: a stray `_sv` is an unknown
+   field on a gear blob that nothing reads, so leaving it would cost
+   nothing except a future reader's afternoon. */
 
 const STR_CAP = 40;
 
@@ -226,6 +214,12 @@ export function sanitizeGearPiece(g, strict) {
      by 1 in _armorDrMult; dropping it keeps the stored copy honest
      rather than relying on every future reader being as careful.) */
   if (out.quality !== undefined && !QUALITY_GRADES[out.quality]) delete out.quality;
+  /* v2.3.2552: sweep out the retired `_sv` mark (see the note above).  This
+     is a shallow COPY, so a stored piece written before the retirement --
+     or a client claim asserting the mark it has learned to send -- would
+     otherwise carry it forward forever.  Unconditional, because there is no
+     mode in which the field means anything any more. */
+  delete out._sv;
   if (strict) {
     /* hardness and temper stay stripped in strict mode: unlike quality
        they are FORGE-MINTED (v2.3.1141 -- drops are server-minted, so
@@ -234,10 +228,6 @@ export function sanitizeGearPiece(g, strict) {
        ours.  Only quality moved out of this branch. */
     delete out.hardness;
     delete out.temper;
-    /* v2.3.2532: and the provenance mark.  This is a shallow COPY, so
-       without this line a client-claimed `_sv: true` rode the join claim
-       into the stash and strict-mode listing believed it (GEAR_PROV). */
-    delete out[GEAR_PROV];
   } else {
     if (typeof out.hardness === 'number') out.hardness = Math.max(0, Math.min(5, Math.floor(out.hardness)));
     if (typeof out.temper === 'number') out.temper = Math.max(0, Math.min(9999, Math.floor(out.temper)));
@@ -287,12 +277,16 @@ export function sanitizeStashList(field, arr, strict, amuletSanitizer, report) {
     else if (field === 'amuletStash') piece = amuletSanitizer ? amuletSanitizer(src) : null;
     else piece = sanitizeGearPiece(src, strict);
     if (!piece) continue;
-    /* v2.3.2532: one seam, both directions -- a stored piece keeps `_sv`
-       through a REBUILDING sanitizer, a claimed one can never gain it.
+    /* v2.3.2552: `carryProv` used to wrap this push, carrying `_sv` across
+       a REBUILDING sanitizer (_sanitizeAmulet and sanitizeCosmeticEntry
+       whitelist, so a mark the server had genuinely set was lost on the
+       round trip).  The mark is retired; `gid` needs no such help because
+       it is never CARRIED -- gearprov.js re-derives it from the ledger on
+       every inbound path, which is the whole reason it replaced `_sv`.
        A loop rather than three `.map`s because `.map(fn)` hands the
        callback the INDEX as its second argument, which is exactly how a
        `strict` flag becomes "false for entry 0, true for the rest". */
-    out.push(carryProv(src, piece, strict));
+    out.push(piece);
   }
   return out;
 }

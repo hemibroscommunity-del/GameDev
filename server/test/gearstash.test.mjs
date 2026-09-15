@@ -454,93 +454,126 @@ const clientClaim = () => ({
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   9. THE PROVENANCE MARK ACROSS A REAL JOIN (v2.3.2532)
+   9. PROVENANCE ACROSS A REAL JOIN (v2.3.2532, rewritten v2.3.2552)
    ══════════════════════════════════════════════════════════════════
-   `_sv` means "the server wrote this piece" and is the whole basis of
-   the store's strict-provenance mode (server/src/storegear.js).  The
-   v2.3.2531 slice got it wrong in BOTH directions, and neither was
-   visible from a test that called a sanitizer directly — which is why
-   these drive the actual join, the path that actually fills a stash:
+   This section used to be about `_sv`: a boolean meaning "the server
+   wrote this piece", which was the whole basis of the store's
+   strict-provenance mode.  v2.3.2531 got it wrong in BOTH directions and
+   neither was visible from a test that called a sanitizer directly —
+   FORGEABLE (nothing stripped it off the join claim, the path that
+   actually fills a stash) and LOST (the rebuilding sanitizers dropped a
+   mark the server had genuinely set).
 
-     - FORGEABLE.  The store stripped the mark off a listing SELECTOR
-       and nothing stripped it off the join claim, so a modified client
-       could mark its own forged plate `_sv: true` and strict mode
-       waved it through.  Strict mode was the hedge on an accepted
-       minting risk, so a forgeable mark is no hedge at all.
-     - LOST.  `sanitizeCosmeticEntry` and `_sanitizeAmulet` REBUILD
-       from a whitelist rather than copying, so an outfit or an amulet
-       the server genuinely handed over lost its mark on the owner's
-       next login and became unlistable under strict mode.
+   v2.3.2552 RETIRES `_sv`.  The question it answered is now answered by
+   `gear_prov:<playerId>` — a server-assigned id looked up in the player's
+   own ledger — and the store gates on `_gearSellable` rather than on a
+   flag.  The forgeable direction cannot exist for a derived field: there
+   is nothing to strip because nothing is ever carried.  The lost
+   direction cannot either, for the same reason.
 
-   Both are asserted through `_stGearListable`, the room method the
-   store actually asks, with the strict flag actually on. */
+   What is still worth driving through the REAL join, and is, is that a
+   claim cannot promote itself, and that the retired field is swept out of
+   the blobs that already carry it. */
 {
   const wsP = fakeWs('prov-claim');
   await join(room, wsP, 'bp_gs_prov', {
-    rpgArmorStash: [{ name: 'Forged Plate', gearBase: 'iron', tierMult: 3, tier: 't3', _sv: true }],
-    rpgGearStash: [{ slot: 'chest', gearId: 'forgedlook', name: 'Forged Look', _sv: true }],
-    rpgAmuletStash: [{ tier: 'mythic', gem: 'flame', name: 'Forged Amulet', _sv: true }],
+    rpgArmorStash: [{ name: 'Forged Plate', gearBase: 'iron', tierMult: 3, tier: 't3', gid: 'g-made-up', prov: 'minted', _sv: true }],
+    rpgGearStash: [{ slot: 'chest', gearId: 'forgedlook', name: 'Forged Look', gid: 'g-also-made-up', prov: 'minted', _sv: true }],
+    rpgAmuletStash: [{ tier: 'mythic', gem: 'flame', name: 'Forged Amulet', gid: 'g-nope', prov: 'minted', _sv: true }],
   });
   const psP = room.playerState['bp_gs_prov'];
-  check('a join claim cannot award itself the provenance mark',
-    psP.armorStash.length === 1 && psP.armorStash[0]._sv === undefined, psP.armorStash[0]);
-  check('...nor on a cosmetic claim', psP.gearStash[0]._sv === undefined, psP.gearStash[0]);
+  check('a join claim cannot award itself a receipt number',
+    psP.armorStash.length === 1 && psP.armorStash[0].gid === undefined
+      && psP.armorStash[0].prov === 'legacy', psP.armorStash[0]);
+  check('...nor on a cosmetic claim',
+    psP.gearStash[0].gid === undefined && psP.gearStash[0].prov === 'legacy', psP.gearStash[0]);
+  check('...and the retired `_sv` mark is swept off both on the way in',
+    psP.armorStash[0]._sv === undefined && psP.gearStash[0]._sv === undefined, psP.armorStash[0]);
   /* v2.3.2533: the AMULET leg of this section met a stronger rule while
      this branch was in flight.  v2.3.2527 (#641, finding 3) removed the
      client ear for rpgAmuletStash outright — `amuletStash` has no client
      source, so a claim for it can only be forged — which means a forged
-     amulet never lands and there is no mark left to strip.  §8c pins the
-     refusal itself; asserted here too so this section keeps covering all
-     three lists rather than going quiet about one of them. */
+     amulet never lands at all.  §8c pins the refusal itself; asserted
+     here too so this section keeps covering all three lists rather than
+     going quiet about one of them. */
   check('...and a forged amulet claim never arrives at all (v2.3.2527)',
     psP.amuletStash.length === 0, psP.amuletStash);
-  room._liveFlags = { store_gear_strict: true };
-  check('...so strict mode refuses the forged claim, which is the point',
-    room._stGearListable(psP.armorStash[0]) === false
-      && room._stGearListable(psP.gearStash[0]) === false, psP.armorStash[0]);
-  room._liveFlags = {};
-  /* The claim still ARRIVED — stripping the mark must not cost the
-     player the piece, only its provenance.  (The amulet is the deliberate
-     exception above: it is refused, not unmarked.) */
-  check('...and the pieces themselves are still there, just unmarked',
-    psP.armorStash[0].name === 'Forged Plate' && psP.gearStash[0].gearId === 'forgedlook',
-    psP.armorStash[0]);
+  /* The point of the strip, stated the way the store now asks it: not
+     "is the flag off" but "may this be sold", which is the question a
+     listing actually puts (storegear.js _stGearEscrow). */
+  check('...so the forged plate is refused as `legacy`, which is the point',
+    room._gearSellable('bp_gs_prov', 'armor', psP.armorStash[0]).reason === 'legacy',
+    room._gearSellable('bp_gs_prov', 'armor', psP.armorStash[0]));
+  check('...and the forged outfit is refused as `cosmetic` — a different answer, by design',
+    room._gearSellable('bp_gs_prov', 'gear', psP.gearStash[0]).reason === 'cosmetic',
+    room._gearSellable('bp_gs_prov', 'gear', psP.gearStash[0]));
+  /* The claim still ARRIVED — refusing to believe its provenance must not
+     cost the player the piece, only its sellability.  (The amulet is the
+     deliberate exception above: it is refused, not unmarked.) */
+  check('...and the pieces themselves are still there, just unproven',
+    psP.armorStash[0].name === 'Forged Plate' && psP.armorStash[0].tierMult === 3
+      && psP.gearStash[0].gearId === 'forgedlook', psP.armorStash[0]);
 }
 
-/* The reverse: a piece the SERVER wrote (a refund, an expiry, a
-   purchase — _stGearApplyCredit is the only writer) must still carry its
-   mark after a save, a restart and a fresh login, for all three shapes.
-   The cosmetic and the amulet are the ones that regressed, because
-   their sanitizers rebuild. */
+/* The reverse: a piece the SERVER really minted keeps its provenance
+   across a save, a restart and a fresh login — and, because the mark is
+   DERIVED from the ledger rather than carried on the blob, it keeps it
+   through the rebuilding sanitizers that used to lose `_sv`.
+   And the piece whose row is gone comes back usable and unproven, never
+   missing: the owner's decision, pinned. */
 {
   const store2 = new Map();
   const room2 = new GameRoom(makeState(store2), mockEnv);
+  const realPlate = { name: 'Server Plate', gearBase: 'iron', tierMult: 2, tier: 't2' };
+  await store2.set('gear_prov:bp_gs_svd', {
+    _v: 1, seq: 1, forgotten: 0,
+    list: [{ id: 'g-real-1', slot: 'armor', src: 'drop', at: Date.now(), p: { ...realPlate } }],
+  });
   await store2.set('rpg:bp_gs_svd', {
     _v: RPG_SCHEMA_VERSION, coins: 0, level: 1, gearStashCaptured: true,
-    armorStash: [{ name: 'Server Plate', gearBase: 'iron', tierMult: 2, tier: 't2', _sv: true }],
+    /* `_sv: true` is on these because real stored blobs carry it: the
+       field shipped in v2.3.2531 and was written by every store delivery
+       until v2.3.2552.  It must be swept, and must change nothing. */
+    armorStash: [{ ...realPlate, gid: 'g-real-1', _sv: true },
+                 { name: 'Orphaned Plate', gearBase: 'iron', tierMult: 2, tier: 't2', gid: 'g-row-is-gone', _sv: true }],
     legsStash: [], shieldStash: [],
     gearStash: [{ slot: 'chest', gearId: 'serverlook', name: 'Server Look', _sv: true }],
     amuletStash: [{ tier: 'regal', gem: 'frost', name: 'Server Amulet', _sv: true }],
   });
   await join(room2, fakeWs('prov-stored'), 'bp_gs_svd', {});
   const psS = room2.playerState['bp_gs_svd'];
-  check('a server-written plate keeps its mark across a login',
-    psS.armorStash[0] && psS.armorStash[0]._sv === true, psS.armorStash[0]);
-  check('a server-written COSMETIC keeps its mark across a login (it rebuilds)',
-    psS.gearStash[0] && psS.gearStash[0]._sv === true, psS.gearStash[0]);
-  check('a server-written AMULET keeps its mark across a login (it rebuilds)',
-    psS.amuletStash[0] && psS.amuletStash[0]._sv === true, psS.amuletStash[0]);
-  room2._liveFlags = { store_gear_strict: true };
-  check('...so strict mode lists all three, which is what it is for',
-    room2._stGearListable(psS.armorStash[0]) === true
-      && room2._stGearListable(psS.gearStash[0]) === true
-      && room2._stGearListable(psS.amuletStash[0]) === true);
-  room2._liveFlags = {};
+  const held = psS.armorStash.find((g) => g.name === 'Server Plate');
+  const orphan = psS.armorStash.find((g) => g.name === 'Orphaned Plate');
+  check('a genuinely minted plate is still proved across a login',
+    !!held && held.gid === 'g-real-1' && held.prov === 'minted', held);
+  check('...and the store will take it', room2._gearSellable('bp_gs_svd', 'armor', 'g-real-1').ok === true,
+    room2._gearSellable('bp_gs_svd', 'armor', 'g-real-1'));
+  check('a piece whose row is gone comes back USABLE and unproven, never missing',
+    !!orphan && orphan.tierMult === 2 && orphan.gid === undefined && orphan.prov === 'legacy', orphan);
+  check('...and is refused with the honest reason rather than silently',
+    room2._gearSellable('bp_gs_svd', 'armor', orphan).reason === 'legacy');
+  check('a cosmetic survives the login and is never sellable, by design',
+    psS.gearStash[0] && psS.gearStash[0].gearId === 'serverlook'
+      && room2._gearSellable('bp_gs_svd', 'gear', psS.gearStash[0]).reason === 'cosmetic', psS.gearStash[0]);
+  check('an amulet survives the login through the sanitizer that REBUILDS it',
+    psS.amuletStash[0] && psS.amuletStash[0].name === 'Server Amulet', psS.amuletStash[0]);
+  /* The tombstone: the retired field is gone from live state AND from the
+     blob that gets written back, so it does not need a migration. */
+  check('the retired `_sv` is swept off every stored list on the way in',
+    psS.armorStash.every((g) => g._sv === undefined)
+      && psS.gearStash.every((g) => g._sv === undefined)
+      && psS.amuletStash.every((g) => g._sv === undefined),
+    { a: psS.armorStash, g: psS.gearStash, m: psS.amuletStash });
   await room2._saveRpg('bp_gs_svd', psS);
   const savedS = store2.get('rpg:bp_gs_svd');
-  check('...and the mark survives _saveRpg\'s fixed field list too',
-    savedS.armorStash[0]._sv === true && savedS.gearStash[0]._sv === true
-      && savedS.amuletStash[0]._sv === true, savedS.gearStash[0]);
+  check('...and it does not come back through _saveRpg\'s fixed field list either',
+    savedS.armorStash.every((g) => g._sv === undefined)
+      && savedS.gearStash.every((g) => g._sv === undefined), savedS.gearStash[0]);
+  check('...while the receipt number itself DOES survive the save',
+    savedS.armorStash.some((g) => g.gid === 'g-real-1'), savedS.armorStash);
+  check('every part of the retired mark is gone from the room, not just unused',
+    typeof room2._stGearListable === 'undefined' && typeof room2._stGearStrip === 'undefined',
+    { listable: typeof room2._stGearListable, strip: typeof room2._stGearStrip });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
