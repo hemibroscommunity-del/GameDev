@@ -126,6 +126,40 @@ all — TRAPS #6 closed by shape rather than by discipline.
 Nothing is added to the rpg blob (rule 1). `gid` and `prov` ride **on**
 the existing gear objects, which are already stored whole.
 
+## Merging v2.3.2527 (#641) — what was kept, and why (v2.3.2540)
+
+`main` gained the lane-M2 gear-stash repair while this stack was in
+review, and it lands in the same function this lane edits
+(`_gearStashAdoptOnJoin`). The two changes **compose rather than
+disagree**, and the merge is resolved to keep each side's whole job:
+
+- **#641 decides *whether* the claim is read.** Its open door, its
+  `report.truncated` accounting, its `took`-based stamp and its removal
+  of `amuletStash` from the seed keys are kept verbatim. The stamp is a
+  record now, not a gate — which is precisely the thing #648's reviewer
+  said this lane needed.
+- **This lane decides *how* each entry resolves.** Every entry, stored
+  and claimed, still goes through `_gearProvResolve`.
+
+One mechanical detail worth knowing, because it looks like a divergence
+and is not: #641 records truncation *inside* `sanitizeStashList`, but
+the provenance resolve has to read `gid` **before** any sanitizer runs
+(`_sanitizeAmulet` and `sanitizeCosmeticEntry` rebuild a whitelisted
+object and would drop it). So the resolve is per-entry and the
+truncation check — the same `raw.length > GEAR_STASH_CAP` predicate, at
+the same point in the flow — sits beside it. Same condition, same
+effect on the stamp.
+
+**One behaviour of this lane's tests changed, in #641's favour.** #641
+stopped stripping `quality` from an adopted piece, because deleting it
+wrote every graded plate anyone had earned down as plain, permanently.
+A `gearprov.test.mjs` assertion required the strip and now pins what
+actually matters instead: a claimed piece keeps its grade and is still
+`legacy`, so it can never be listed whatever grade it claims. Armour has
+no anti-cheat damage ceiling for a forged grade to raise — the `[0,8]`
+clamp applies after the grade, with the 75% DR cap above it — so this
+opens nothing here.
+
 ## Four repairs from the review of #648 (v2.3.2537)
 
 1. **The gem-EXTRACT op now touches the row.** `_stripGems` rewrites a worn
@@ -319,14 +353,16 @@ Written here so PR 2 and PR 3 inherit them on purpose.
    to prune against what the player still actually holds, which needs
    PR 2 (the server owns equipping) and PR 3 (the stash is the
    authority) first.
-2. **Provenance only reaches the server's stash while adoption is
-   open.** A minted piece that lives in the client's bag reaches the
-   server's own `armorStash` through the join claim — and on today's
-   `main` that claim is ignored once `gearStashCaptured` is set (#640's
-   one-shot). **#641 is the open PR that keeps the door open**, and until
-   it merges, a minted piece in the bag of an already-stamped character
-   will not reach the server's stash list. Worn pieces are unaffected:
-   they resolve on every join regardless of the stamp.
+2. ~~**Provenance only reaches the server's stash while adoption is
+   open.**~~ **RESOLVED (v2.3.2540).** This said a minted piece in the
+   client's bag could not reach the server's own `armorStash` once
+   `gearStashCaptured` was set, because #640's capture was one-shot, and
+   named #641 as the open PR that would reopen the door. **#641 has
+   merged** (v2.3.2527): the claim is now read on *every* join, the stamp
+   records rather than gates, and the merge below keeps that control flow
+   exactly. So a minted piece in the bag reaches the server's list on the
+   next login, on a stamped character or not. Worn pieces were never
+   affected — they resolve on every join regardless.
 3. **Weapons have the same hole and are not covered** (see the
    enumeration above).
 4. **Cosmetics can never be proved** until something server-side mints
