@@ -77,8 +77,12 @@ export const GEAR_PROV_KEY = (playerId) => 'gear_prov:' + playerId;
 export const GEAR_PROV_V = 1;
 
 /* ═══ THE CAP, AND THE HOLE IN IT ═══
- * A ledger row is ~110 bytes, so 256 rows is ~28 KB against the DO
- * value limit.  At the live drop rates (MONSTER_ARMOR_DROPS: two pieces
+ * A ledger row is ~180-200 bytes on real pieces -- it stores the whole
+ * minted blob verbatim (`p`) plus the id, slot, source and timestamp --
+ * so 256 rows is ~50 KB against the DO value limit, not the ~28 KB an
+ * earlier draft of this comment claimed off a ~110-byte row.  Still
+ * comfortably inside the limit; corrected (v2.3.2537, review of #648) so
+ * that nobody later raises the cap on the strength of the wrong number.  At the live drop rates (MONSTER_ARMOR_DROPS: two pieces
  * at 1/500 each) 256 recorded pieces is on the order of 64,000 monster
  * kills, plus a handful of quest pieces and one amulet per forge press.
  *
@@ -198,6 +202,22 @@ export function normalizeProvLedger(rec) {
   return out;
 }
 
+/* ═══ v2.3.2537: A REBUILT PIECE SHARES NOTHING WITH ITS ROW ═══
+ * The rebuild and `_gearProvTouch` both used a shallow spread, so a piece
+ * and its ledger row aliased any nested value between them -- mutate the
+ * live piece and the record silently followed, which is precisely the
+ * drift the row exists to rule out.  Harmless while every gear shape is
+ * flat, and a real bug the first day a piece gains a nested field, which
+ * is the kind of latent defect that ships green and is found much later.
+ * JSON round-trip because these blobs are already JSON-serialisable by
+ * construction (they live in the rpg blob and on the wire); the shallow
+ * spread stays as the fallback so a surprise value can never throw a
+ * join. */
+export function clonePiece(p) {
+  if (!p || typeof p !== 'object') return p;
+  try { return JSON.parse(JSON.stringify(p)); } catch (e) { return { ...p }; }
+}
+
 /* Find one row by id.  Linear over at most GEAR_PROV_CAP rows, which is
    why the cap exists at all; an index would be a second structure to
    keep in step for no measurable gain at 256. */
@@ -292,7 +312,7 @@ export const gearProvMethods = {
        that a field added to a piece next year is carried by the rebuild
        without an edit here — the rebuild is what makes a forged gid
        worthless, and it can only be as complete as this copy. */
-    ledger.list.push({ id, slot, src: typeof src === 'string' ? src.slice(0, 24) : '', at: Date.now(), p: { ...piece } });
+    ledger.list.push({ id, slot, src: typeof src === 'string' ? src.slice(0, 24) : '', at: Date.now(), p: clonePiece(piece) });
     if (ledger.list.length > GEAR_PROV_CAP) {
       ledger.forgotten += ledger.list.length - GEAR_PROV_CAP;
       ledger.list = ledger.list.slice(ledger.list.length - GEAR_PROV_CAP);
@@ -346,7 +366,7 @@ export const gearProvMethods = {
         own.prov = PROV_MINTED;
         return own;
       }
-      const out = { ...row.p };
+      const out = clonePiece(row.p);
       delete out.gid;
       delete out.prov;
       out.gid = row.id;
@@ -393,12 +413,73 @@ export const gearProvMethods = {
     const ledger = this._gearProvOf(playerId);
     const row = ledger ? findProvRow(ledger, gid) : null;
     if (!row) return piece;
-    const p = { ...piece };
+    const p = clonePiece(piece);
     delete p.gid;
     delete p.prov;
     row.p = p;
     this._gearProvSave(playerId, ledger);
     return piece;
+  },
+
+  /* ═══ v2.3.2537: IDS DO NOT RIDE THE ROOM-WIDE BROADCAST ═══
+     `getAllPlayerData()` spreads a player's whole state into the
+     `state_sync` every other player receives, and a minted piece now carries
+     `gid` and `prov` -- so every player in the room learned the ids of
+     everyone else's gear.
+
+     Not a way IN: a gid is only ever looked up in the ledger of the player
+     who sent it, so knowing a stranger's id buys nothing (the module header
+     explains why).  It is fixed because it CONTRADICTS what this lane
+     already decided: the loot pickup deliberately copies each piece so the
+     public pile carries no gid, and then the bigger broadcast carried them
+     anyway.  Fixing the site you were looking at and not the class is the
+     TRAPS #13 shape.
+
+     SO THIS CROPS BY SHAPE, NOT BY A LIST OF FIELD NAMES.  The first cut
+     named the four worn slots and the five stash lists -- and missed
+     `_questGrantOverflow`, the in-memory scratch a quest turn-in parks
+     minted armour on, which is on playerState like everything else and rode
+     straight out.  An allowlist here is a list somebody has to remember to
+     extend every time a new field can hold a piece, and the test only caught
+     it because it was rewritten to search for `gid` instead of trusting its
+     own name.  A sweep cannot be forgotten.
+
+     Cheap: one `in` check per top-level field, and arrays are only walked up
+     to ARRAY_SCAN entries -- every gear-bearing list in the blob is capped
+     far below that (32 per gear stash, 8 weapons), so a longer array is by
+     construction not a gear list and is left alone rather than paid for.
+
+     `entry` is the caller's own fresh spread, so the replacement copies
+     never touch the live playerState -- asserted in the suite, because a
+     crop that stripped the server's own state would be far worse than the
+     leak.  Runs on the join path only (state_sync is not a tick message). */
+  _gearProvCropPeer(entry) {
+    if (!entry || typeof entry !== 'object') return entry;
+    const ARRAY_SCAN = 64;
+    const bare = (p) => {
+      if (!p || typeof p !== 'object' || Array.isArray(p)) return p;
+      if (!('gid' in p) && !('prov' in p)) return p;
+      const c = { ...p };
+      delete c.gid;
+      delete c.prov;
+      return c;
+    };
+    for (const k of Object.keys(entry)) {
+      const v = entry[k];
+      if (!v || typeof v !== 'object') continue;
+      if (Array.isArray(v)) {
+        if (!v.length || v.length > ARRAY_SCAN) continue;
+        let touched = false;
+        for (const e of v) {
+          if (e && typeof e === 'object' && !Array.isArray(e) && ('gid' in e || 'prov' in e)) { touched = true; break; }
+        }
+        if (touched) entry[k] = v.map(bare);
+        continue;
+      }
+      const c = bare(v);
+      if (c !== v) entry[k] = c;
+    }
+    return entry;
   },
 
   /* ═══ ONE MINT, ONE PIECE ═══
