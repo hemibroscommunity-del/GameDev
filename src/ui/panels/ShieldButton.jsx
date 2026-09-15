@@ -196,6 +196,23 @@ export function blockAnchor(isLandscape) {
  * narrow-phone band to fight over and no reason to carry ctlColumn's clamp.
  * What IS shared is the 44px floor.
  */
+/* ═══ v2.3.2563: THE iOS EDGE GUARD IS A REAL OBSTACLE, NOT JUST A STRIP ═══
+ * BroTown.jsx (~8449, v2.3.112) parks an 18px-wide transparent div down the
+ * screen's left edge at z40 and preventDefaults every touchstart inside it, so
+ * iOS does not read a swipe from the bezel as its back gesture.  It is ABOVE
+ * this cluster (z31) and it swallows the touch outright.
+ *
+ * That never mattered while nothing lived over there.  v2.3.2562 moved the
+ * Special button to `LBTN.left` (12), and 12 is INSIDE the guard: the leftmost
+ * 6px of a 48px button stopped answering, leaving 42px of reachable width
+ * against Apple's 44px minimum.  Found by review, confirmed with real taps --
+ * a tap at x=14 did nothing, a tap at x=20 fired.
+ *
+ * So the cluster starts at the guard's edge rather than the disc's.  Exported
+ * and consumed by BroTown's guard too, so the two cannot drift: one number,
+ * one place, which is the same rule RBTN and LBTN are here for. */
+export const EDGE_GUARD_PX = 18;
+
 export const LCTL_GAP = 10;         /* cluster <-> the movement disc */
 /* The owner's "enough space ... not accidentally pressing the other one", as a
    FRACTION of the button rather than a constant.  It was a flat 24px, which is
@@ -209,7 +226,8 @@ export const LCTL_SLOT = { special: 0, whirl: 1 };
 export function leftCluster(isLandscape) {
   var size = Math.max(CTL_MIN_SIZE, isLandscape ? 54 : 48);
   var discW = isLandscape ? LBTN.wLand : LBTN.w;
-  var left0 = isLandscape ? LBTN.leftLand : LBTN.left;
+  /* v2.3.2563: never start inside the iOS edge guard -- see EDGE_GUARD_PX. */
+  var left0 = Math.max(isLandscape ? LBTN.leftLand : LBTN.left, EDGE_GUARD_PX);
   /* The movement disc's top edge, in the same px-above-the-band units
      everything in this cluster is expressed in. */
   var discTop = LBTN.bottom + discW;

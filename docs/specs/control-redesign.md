@@ -893,7 +893,12 @@ The left stick's double tap still swaps too. They are different surfaces,
 each classifying its own taps, and the left one is what the onboarding
 already teaches.
 
-### 11.3 The combat column moves left of the disc (D9)
+### 11.3 The combat column moves left of the disc (D9) — ~~SUPERSEDED~~, see §12.7
+
+> **The slot table below described the layout from v2.3.2472 to v2.3.2562 and
+> is kept for that history only.** v2.3.2562 dismantled the column: Whirlwind
+> and Special moved to the left disc, Block to the diagonal bottom-left of the
+> attack disc, and only Shield Bash's row is still true. See §12.7.
 
 > D9: "Block left of the disc, abilities stacked above it."
 
@@ -928,7 +933,7 @@ owner** — if a phone check shows the movement stick catching, shrink
 The slide-from-attack-onto-the-shield latch (v2.3.2254) needs no change:
 it reads the live `[data-shield]` rect, so it follows the button.
 
-### 11.4 A Special Attack button beside the movement stick — MOVED, see §12.2
+### 11.4 A Special Attack button beside the movement stick — moved to the right in §12.2, then **back here** in §12.7
 
 `src/ui/panels/SpecialButton.jsx`, a second trigger for the same
 `specialAttack` the flick fires. The flick stays — it is what the
@@ -1042,6 +1047,9 @@ over, and into the shared column rather than beside it:
 `SpecialButton.jsx` now measures through `ctlColumn()` and takes **slot −1**
 of the D9 column (`CTL_SLOT`, exported from `ShieldButton.jsx` so four
 controls cannot each keep their own idea of who sits where).
+
+> **~~slot −1~~ — reversed by §12.7.** The owner moved this button back beside
+> the movement stick after playing it. It measures through `leftCluster()` now.
 
 **Why below Block rather than above Whirlwind.** Slot 3 works out at 283px
 above the dashboard band in landscape, on a 390px-tall screen — a combat
@@ -1163,10 +1171,86 @@ like the slot `needsMeleeActive` reads.
 |---|---|---|
 | 12.1 | The right double tap is free — bind it to something? | **No.** Unbound is the end state; see the trap note in §12.1. |
 | 12.2 | Which slot for the Special button? | **−1**, below Block, in the band D9 emptied. Slot 3 would sit 283px up in landscape, among the health bars. |
-| 12.3 | Does the Special button keep the column's encroachment into the movement zone on a narrow phone? | **Yes** — it takes exactly the same left edge as Block (asserted), rather than a new bite of its own. On a 375 that is 7px, on a 360 14px; the alternative is sliding under the attack disc. |
+| 12.3 | Does the Special button keep the column's encroachment into the movement zone on a narrow phone? | ~~**Yes** — it takes exactly the same left edge as Block.~~ **Moot since §12.7:** the button is on the other side of the screen now and shares no edge with Block. |
 | 12.4 | Which "in combat" for whirl? | **The monster lock** (`monsterLock`), the fact that already lights the attack disc. NOT `S._engaged` (greys mid-fight and is unreachable on desktop — see §12.3), NOT `engagedStance()` (true over an empty field, and greys when the thumb lifts), NOT the melee reach test (tuned for a 72px swing; whirl reaches 240). |
 | 12.5 | Gate whirl by hiding the button, as v2.3.2327 hid it for a bow? | ~~**No — grey it.**~~ **Reversed by the owner at v2.3.2561 after playing the merged build — hide it.** See §12.6 below. |
 | 12.6 | Whirl is out of combat and the player presses anyway — silent, or a popup? | **Popup**, and the cast is routed for exactly that reason. A refused cast costs no cooldown and no stamina (asserted). Unchanged by v2.3.2561, and more load-bearing than before — see §12.6. |
+
+### 12.5 Found in this pass, NOT changed here
+
+* **The onboarding still teaches the retired guard gesture.**
+  `QuestCoach.jsx:622`'s `blockRanged` lesson reads *"With the bow or staff
+  out, double-tap Attack to raise your shield"* — a gesture v2.3.2472 deleted
+  and this pass deliberately does not restore. A new player who follows it
+  fires two ordinary shots and no guard goes up; the card does NOT strand
+  them (the tracker at `:993` credits the lesson on any raised guard with a
+  ranged/staff slot, which the D8 Block button satisfies), so they are misled
+  rather than blocked. `mp-questcoach` is 71/75 on `origin/main` for that
+  reason alone — four rows, all about the double-tap guard — before and after
+  this branch. The fix is copy plus an anchor change in the onboarding files
+  (the Block BUTTON is the lesson now), which is a different system and a
+  different lane's file.
+* **Element Burst places itself on top of the column.**
+  `ElementBurstButton.jsx` computes `right = 50 + discW + 10` at the disc's
+  centre height, independently of `ctlColumn` — which is the Block button's
+  slot 0 within a few pixels (at 390: burst 188..234, Block 192..240, both
+  at z31). It only renders for an enchanted weapon at level 6+, which is why
+  no fixture has caught it. `mp-btnlayout` now measures it against every
+  column button and SKIPs with a reason when the fixture has no burst
+  weapon, so the row is armed for whoever gives that button a slot.
+
+### 12.6 v2.3.2561 — the button disappears, and why that is not a `visible` term
+
+Owner, after playing the v2.3.2542 build: **the Whirlwind button should
+disappear entirely when you are not in combat, instead of greying out.** That
+reverses judgement call 12.5 and nothing else. The *rule* is untouched — it is
+still `monsterLock(S)` (12.4 stands), still declared as data in `NEEDS_LOCK`,
+still reported as its own `engaged` field.
+
+**What changed is one line, and where it lives is the whole point.**
+`AbilityButtons` filters `st.engaged === false` out of its render list.
+`abilityStatus` still reports `visible: true, engaged: false` out of combat.
+
+The tempting one-line version — fold the lock into `visible` — breaks two
+things at once, because **`visible` is also the cast gate**: `castAbility`
+returns on `!st.visible` before it reaches any popup branch.
+
+1. The **"Not in combat!"** popup would stop firing on *every* path.
+2. Including the **desktop R key**, where `AbilityButtons` is `bt-desktop-hide`
+   and the popup is the only feedback that exists. Silence on desktop is the
+   v2.3.1716 failure v2.3.2542 was built to avoid.
+
+So the cast rule and the button rule are deliberately different rules now.
+`mp-rbutton` §A pins the split directly: the button is **absent from the DOM**,
+the status still reads `visible: true, engaged: false`, and the refusal is
+driven through a real `KeyR` press — which is the surface that would go silent.
+
+**No linger is needed, and that is a property of the gate rather than luck.**
+The right disc's contextual visibility (LANTERN-SLATE-SPEC, v2.3.2246) carries
+a 400ms linger because its input is *candidacy*, a hard 220px test that a
+monster pacing the boundary would strobe. This gate's input is the **lock**,
+which `targeting.js` acquires at 220 and holds out to 275 (`TARGET_HYST`). That
+55px dead band *is* the anti-strobe, already there — and it matters more for a
+button that appears and disappears than it did for one that brightened and
+dimmed, because a control flickering in and out of existence moves the thumb's
+target, where a flickering opacity did not.
+
+**A real unmount, not a CSS gate.** TRAPS §41 (a hidden control still measures,
+and still moves the hit-test) is the hazard here, and it does not bite: nothing
+anchors onboarding to this button — `ControlsTutorial` and `QuestCoach` ring
+`.bt-rjoy-base` and `[data-shield]`, never `[data-ability]` — so there is no
+coach mark left ringing empty air, and an unmounted node takes no taps.
+
+**Known consequence, accepted:** the ~48px the button occupied becomes
+right-joystick surface again while it is gone, so a tap there out of combat
+auto-attacks instead of floating a refusal. That is the same square behaving as
+the rest of the right half does, and out of combat there is nothing to hit.
+
+**The 200ms window is why 12.6 still stands.** `AbilityButtons` re-renders on a
+200ms tick, so for up to ~200ms after the lock drops the button is still painted
+and still pressable — the "on screen and dead" window v2.3.2252 named for Shield
+Bash. `castAbility` re-checks live state and refuses out loud, which is what
+keeps that press from dying quietly.
 
 ### 12.7 v2.3.2562 — the buttons move sides
 
@@ -1229,6 +1313,22 @@ This is **not new with Block**. The Special button has sat in that same band
 since v2.3.2542 with the same overlap, and it went unnoticed because the only
 scenario that hit-tests it (`mp-joyfade`) already retired the coach first.
 
+**But the swap matters more than "same overlap, different control" suggests,
+and this is the part worth acting on.** Special has a second way to fire it —
+the flick on the attack disc, which §11.4 says is what onboarding actually
+teaches. **Block has no second way on a phone.** `toggleShield`
+(`src/game/shieldToggle.js`) has exactly one caller in the whole client,
+`ShieldButton.jsx`; the double-tap that used to raise the shield was
+deliberately retired (TRAPS §78) and not restored, and the Q key is desktop-only
+(it reaches `raiseShieldToggle` by a different path). So while that card is over
+the button, a phone player mid-tutorial **cannot raise their shield at all** —
+which is the exact report `mp-duelblock` was written for: *"I think I was unable
+to block"*.
+
+Measured coverage: on a **360px** phone the card covers the Block button
+**completely**; on a **390** it covers 76% and the centre is unreachable. It
+only bites during onboarding, so it does not affect a player past the tutorial.
+
 Not fixed here because the fix is a design call that belongs to the owner and to
 the onboarding files, not to this layout change: either the coach card moves off
 the combat band, or Block does — and Block's position is what the owner just
@@ -1238,79 +1338,3 @@ the finding is written down here and in the PR rather than hidden by that.
 **Sideways, the coach card sits over the movement joystick's centre** — same
 overlay, same class of problem, found by `mp-abilslot`'s reachability probe.
 Also the onboarding layout's to fix.
-
-### 12.6 v2.3.2561 — the button disappears, and why that is not a `visible` term
-
-Owner, after playing the v2.3.2542 build: **the Whirlwind button should
-disappear entirely when you are not in combat, instead of greying out.** That
-reverses judgement call 12.5 and nothing else. The *rule* is untouched — it is
-still `monsterLock(S)` (12.4 stands), still declared as data in `NEEDS_LOCK`,
-still reported as its own `engaged` field.
-
-**What changed is one line, and where it lives is the whole point.**
-`AbilityButtons` filters `st.engaged === false` out of its render list.
-`abilityStatus` still reports `visible: true, engaged: false` out of combat.
-
-The tempting one-line version — fold the lock into `visible` — breaks two
-things at once, because **`visible` is also the cast gate**: `castAbility`
-returns on `!st.visible` before it reaches any popup branch.
-
-1. The **"Not in combat!"** popup would stop firing on *every* path.
-2. Including the **desktop R key**, where `AbilityButtons` is `bt-desktop-hide`
-   and the popup is the only feedback that exists. Silence on desktop is the
-   v2.3.1716 failure v2.3.2542 was built to avoid.
-
-So the cast rule and the button rule are deliberately different rules now.
-`mp-rbutton` §A pins the split directly: the button is **absent from the DOM**,
-the status still reads `visible: true, engaged: false`, and the refusal is
-driven through a real `KeyR` press — which is the surface that would go silent.
-
-**No linger is needed, and that is a property of the gate rather than luck.**
-The right disc's contextual visibility (LANTERN-SLATE-SPEC, v2.3.2246) carries
-a 400ms linger because its input is *candidacy*, a hard 220px test that a
-monster pacing the boundary would strobe. This gate's input is the **lock**,
-which `targeting.js` acquires at 220 and holds out to 275 (`TARGET_HYST`). That
-55px dead band *is* the anti-strobe, already there — and it matters more for a
-button that appears and disappears than it did for one that brightened and
-dimmed, because a control flickering in and out of existence moves the thumb's
-target, where a flickering opacity did not.
-
-**A real unmount, not a CSS gate.** TRAPS §41 (a hidden control still measures,
-and still moves the hit-test) is the hazard here, and it does not bite: nothing
-anchors onboarding to this button — `ControlsTutorial` and `QuestCoach` ring
-`.bt-rjoy-base` and `[data-shield]`, never `[data-ability]` — so there is no
-coach mark left ringing empty air, and an unmounted node takes no taps.
-
-**Known consequence, accepted:** the ~48px the button occupied becomes
-right-joystick surface again while it is gone, so a tap there out of combat
-auto-attacks instead of floating a refusal. That is the same square behaving as
-the rest of the right half does, and out of combat there is nothing to hit.
-
-**The 200ms window is why 12.6 still stands.** `AbilityButtons` re-renders on a
-200ms tick, so for up to ~200ms after the lock drops the button is still painted
-and still pressable — the "on screen and dead" window v2.3.2252 named for Shield
-Bash. `castAbility` re-checks live state and refuses out loud, which is what
-keeps that press from dying quietly.
-
-### 12.5 Found in this pass, NOT changed here
-
-* **The onboarding still teaches the retired guard gesture.**
-  `QuestCoach.jsx:622`'s `blockRanged` lesson reads *"With the bow or staff
-  out, double-tap Attack to raise your shield"* — a gesture v2.3.2472 deleted
-  and this pass deliberately does not restore. A new player who follows it
-  fires two ordinary shots and no guard goes up; the card does NOT strand
-  them (the tracker at `:993` credits the lesson on any raised guard with a
-  ranged/staff slot, which the D8 Block button satisfies), so they are misled
-  rather than blocked. `mp-questcoach` is 71/75 on `origin/main` for that
-  reason alone — four rows, all about the double-tap guard — before and after
-  this branch. The fix is copy plus an anchor change in the onboarding files
-  (the Block BUTTON is the lesson now), which is a different system and a
-  different lane's file.
-* **Element Burst places itself on top of the column.**
-  `ElementBurstButton.jsx` computes `right = 50 + discW + 10` at the disc's
-  centre height, independently of `ctlColumn` — which is the Block button's
-  slot 0 within a few pixels (at 390: burst 188..234, Block 192..240, both
-  at z31). It only renders for an enchanted weapon at level 6+, which is why
-  no fixture has caught it. `mp-btnlayout` now measures it against every
-  column button and SKIPs with a reason when the fixture has no burst
-  weapon, so the row is armed for whoever gives that button a slot.

@@ -304,6 +304,40 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
       aboveBand <= CEILING, { aboveBand, ceiling: CEILING, whirlTop: d.whirl.y, vh: h, dashTop: g.dashTop });
   }
 
+  /* ═══ v2.3.2563: THE iOS EDGE GUARD MUST NOT EAT PART OF A BUTTON ═══
+     BroTown parks an 18px transparent strip down the left edge at z40 and
+     preventDefaults every touchstart in it, so iOS does not read a bezel swipe
+     as its back gesture (v2.3.112).  It is ABOVE this cluster and swallows the
+     touch outright -- so when v2.3.2562 anchored Special at LBTN.left (12), the
+     leftmost 6px of it silently stopped answering and a 48px button became a
+     42px one, under Apple's 44px minimum.
+
+     Two rows, because the rect and the finger are different claims: the box
+     must start at or right of the guard, AND a real tap just inside its left
+     edge must actually fire.  The tap is the one that would have caught the
+     original bug -- the rect was always fine, it was the TOUCH that died. */
+  for (const [name, box] of [['Special', d.special], ['Whirlwind', d.whirl]]) {
+    if (!box) continue;
+    rec.ok(`${tag}: the ${name} button starts clear of the 18px iOS edge guard (left ${box.x})`,
+      box.x >= 18, { box, guard: 18 });
+  }
+  if (d.special) {
+    const before = await moveState(P);
+    /* 4px inside the button's own left edge: inside the control, and inside the
+       guard's old reach.  A tap here fired nothing before this fix. */
+    const edgeX = d.special.x + 4;
+    await P.page.evaluate(() => { const S = window._gameState.current; S._lastSwipe = 0; S.rpg.mana = S.rpg.maxMana || 100; });
+    await P.page.touchscreen.tap(edgeX, d.special.cy);
+    await P.page.waitForTimeout(400);
+    const spec = await P.page.evaluate(() => (window.__btSpecialBtn ? window.__btSpecialBtn() : null));
+    const after = await moveState(P);
+    rec.ok(`${tag}: ...and a REAL tap ${edgeX - d.special.x}px inside ${'Special'}'s left edge (x=${edgeX}) actually fires it `
+      + `-- the guard is not eating the near edge`,
+      !!(spec && spec.cdLeft > 0), { spec, edgeX, special: d.special });
+    rec.ok(`${tag}: ...and that edge tap does not walk the player either`,
+      after.x === before.x && after.y === before.y && after.held === false, { before, after });
+  }
+
   /* ═══ A REAL FINGER, BECAUSE THE ZONE UNDERNEATH IS THE MOVEMENT INPUT ═══
      page.touchscreen.tap goes through the browser's own hit testing; the
      `el.dispatchEvent` helper this file's neighbours use does not, and so
