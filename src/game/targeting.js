@@ -242,11 +242,11 @@ const AUTO_SWITCH_MARGIN = 0.88;
  * threshold, so "meaningfully nearer" means one thing in this file.  A tapped
  * lock with NOTHING nearer is never touched here, which is what keeps a distant
  * tapped target alive while you close on it. */
-/* v2.3.2496: TAP_PIN_MS (900) is retired with the steal it gated -- there is
+/* v2.3.2513: TAP_PIN_MS (900) is retired with the steal it gated -- there is
    nothing left to pin a tap against.  Named here rather than deleted silently
    because the paragraph above explains a rule in terms of it, and the next
    reader needs to know the constant is gone on purpose. */
-/* ═══ v2.3.2496: D3 -- A TAP IS ABSOLUTE, AND THE STEAL IS RETIRED ═══
+/* ═══ v2.3.2513: D3 -- A TAP IS ABSOLUTE, AND THE STEAL IS RETIRED ═══
  * Owner, asked to choose between the two directives above and the complaint
  * they produced: a tap lock is absolute until the monster dies or leaves the
  * 220px perimeter.  So the 900ms pin and the 12%-nearer steal are gone, and
@@ -335,7 +335,7 @@ export function autoAcquires(S) {
  * one, and engagedStance reads src === 'tap', so your expressed intent has
  * been quietly erased by walking past a slime.
  *
- * v2.3.2496 RETIRED THAT STEAL (D3), so the flip it describes can no longer
+ * v2.3.2513 RETIRED THAT STEAL (D3), so the flip it describes can no longer
  * happen on the walk itself -- but this flag is not retired with it. A tapped
  * monster that walks out of the perimeter releases the lock now (tapReleased),
  * and the lock legitimately comes and goes on a long approach, so "the game

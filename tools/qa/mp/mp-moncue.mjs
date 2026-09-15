@@ -234,7 +234,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!seen.alarmPlates && seen.alarmPlates.length > 1
       && seen.alarmPlates.filter((p) => p.alarm).length < seen.alarmPlates.length,
     { plates: seen.alarmPlates });
-  /* ═══ v2.3.2496: THE LV LINE IS GONE, AND SO IS THE INK PROBLEM ═══
+  /* ═══ v2.3.2513: THE LV LINE IS GONE, AND SO IS THE INK PROBLEM ═══
      This used to require the brass LV line to take the alarm ramp with it --
      the light-fill-keeps-the-dark-ink trap TRAPS §48 records, because #D8AA58
      measured 4.85:1 on the old dark alarm fill and the danger #ef4444 only
@@ -258,7 +258,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      assertion above, and leave the plate dark for the life of the monster.
      The key is the only thing that can tell those two apart from outside. */
   rec.ok('...and the plate was rebuilt for the alarm, not merely flagged for it',
-    !!(seen.alarm && /\|!\|/.test(String(seen.alarm.plate.pillKey || ''))),   /* v2.3.2496: the band follows `!` in the key */
+    !!(seen.alarm && /\|!\|/.test(String(seen.alarm.plate.pillKey || ''))),   /* v2.3.2513: the band follows `!` in the key */
     { pillKey: seen.alarm && seen.alarm.plate.pillKey });
 
   /* ═══ THE TWO ABOVE-HEAD MARKS DO NOT SIT ON EACH OTHER ═══

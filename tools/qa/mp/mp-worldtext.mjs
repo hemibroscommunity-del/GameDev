@@ -104,7 +104,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     reclosed.scale < open.scale - 0.001, { folded: open.scale, restored: reclosed.scale });
 
   /* ═══ 2. THE PLATE DOES NOT MOVE WITH THE ZOOM AT ALL ═══
-     ═══ v2.3.2496: D5 SETTLES WHAT THREE ROUNDS COULD NOT ═══
+     ═══ v2.3.2513: D5 SETTLES WHAT THREE ROUNDS COULD NOT ═══
      The history is worth keeping because it is the argument, and the owner has
      now ended it.  v2.3.2262 pinned the plate to a constant screen size (full
      1/w) and the answer was "nameplates are now way too large", 18 CSS px of

@@ -4561,11 +4561,11 @@ function createMonsterDisplay(monster) {
      so this shrinks the pill and its contents together rather than leaving
      small type rattling in a large box.  The RELATIONSHIP is preserved too --
      yours has been one step above your peers' since v2.3.1681. */
-  /* v2.3.2496: 8 -> 15, and the number changed units with D5 -- it is CSS
+  /* v2.3.2513: 8 -> 15, and the number changed units with D5 -- it is CSS
      pixels now, not world units, so this IS the size a phone shows (the owner's
      "about 14-15 CSS px").  The three rounds of coefficient-moving that got it
      to 8 are in setPlateZoom's note. */
-  _attachNamePill(hpUi, 15, MONSTER_SIZE_MULT);   /* v2.3.2154: 10 -> 12; v2.3.2265: 12 -> 8; v2.3.2496: 8 -> 15 CSS px */
+  _attachNamePill(hpUi, 15, MONSTER_SIZE_MULT);   /* v2.3.2154: 10 -> 12; v2.3.2265: 12 -> 8; v2.3.2513: 8 -> 15 CSS px */
   hpUi._namePill.y = size + 6;
 
   /* Single dynamic Graphics for everything that DOES change per frame:
@@ -4772,7 +4772,7 @@ function _hideExceptDeep(display, keep) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   v2.3.2496: THE NAMEPLATE, BUILT TO THE OWNER'S MOCKUP
+   v2.3.2513: THE NAMEPLATE, BUILT TO THE OWNER'S MOCKUP
    ═══════════════════════════════════════════════════════════════════════
    Mockup: docs/triage-2026-09-14/assets/nameplate-design.png (Frost Ridge,
    portrait), and the numbers below are MEASURED off it rather than taken from
@@ -4910,7 +4910,7 @@ function _attachNamePill(container, nameSize, sizeMult, host) {
   lvlT.anchor.set(0.5, 0);
   lvlT.y = nameSize + 4;
   pill.addChild(lvlT);
-  /* ═══ v2.3.2496: THE LEVEL MOVES INTO A WHITE CIRCLE ═══
+  /* ═══ v2.3.2513: THE LEVEL MOVES INTO A WHITE CIRCLE ═══
      The mock puts the level in a badge at the pill's right end, so it is its
      own Text with its own ink -- dark on white, the inverse of the name.  The
      CIRCLE itself is drawn into _pillBg rather than added as a second
@@ -4949,7 +4949,7 @@ function _attachNamePill(container, nameSize, sizeMult, host) {
   container._pillName = nameT;
   container._pillLevel = lvlT;
   container._pillH = nameSize * 2 + 7;
-  /* ═══ v2.3.2496: THE TWO NUMBERS THE CSS-PIXEL RULE NEEDS ═══
+  /* ═══ v2.3.2513: THE TWO NUMBERS THE CSS-PIXEL RULE NEEDS ═══
      `_pillCss` is the type size the plate is DESIGNED at, and after D5 that
      number is CSS pixels rather than world units -- see setPlateZoom.
      `_pillChain` is the fixed scale between this pill and the world container:
@@ -5057,7 +5057,7 @@ function _broBadgeTexture() {
  * Floored at 1 so zooming IN never shrinks the plate below its design size,
  * and still capped, now at the sqrt of the old cap for the same reason it had
  * one: a Text is a texture and every player in the room carries two. */
-/* ═══ v2.3.2496: D5 -- THE PLATE SETS ITS OWN SIZE, IN CSS PIXELS ═══
+/* ═══ v2.3.2513: D5 -- THE PLATE SETS ITS OWN SIZE, IN CSS PIXELS ═══
  *
  * Owner, in the plan: the pill reads at about 14-15 CSS px on a phone, and the
  * plate's size is a CSS-PIXEL value rather than a world-scaled font.  That is a
@@ -5097,7 +5097,7 @@ function _broBadgeTexture() {
 const PLATE_SCALE_MIN = 0.2;
 const PLATE_SCALE_MAX = 3;
 let _plateWorldScale = 1;
-/* ═══ v2.3.2496: THE NOTICE CUE KEEPS THE OLD SQRT RULE ═══
+/* ═══ v2.3.2513: THE NOTICE CUE KEEPS THE OLD SQRT RULE ═══
    The "!" that pops over a monster that has just spotted you (v2.3.2295) rode
    the plate's compensation because it wanted the same middle: a cue for the
    reader that neither vanishes when the camera pulls back nor dwarfs the
@@ -5145,7 +5145,7 @@ function _fitPlateToZoom(display) {
    In the key, a state change is a rebuild and nothing else is.
    Optional and last: every existing caller passes five arguments and is
    byte-identical. */
-/* v2.3.2496: `band` -- which plate this is.  One of the four difficulty bands
+/* v2.3.2513: `band` -- which plate this is.  One of the four difficulty bands
    ('low'|'near'|'high'|'danger') for a monster, 'gold' for a player, or absent
    for the NPC's legacy two-line rect.  In the KEY for the same reason `alarm`
    is: the rounded rect is rebuilt only when the key changes, so a colour
@@ -5163,7 +5163,7 @@ function _updateNamePill(display, name, level, visible, broId, alarm, band) {
        level, and "LV undefined" under a shopkeeper is worse than no plate.
        Every existing caller passes a number and is unaffected. */
     display._pillLevel.text = (typeof level === 'string') ? level : ('LV ' + level);
-    /* ═══ v2.3.2496: THE CAPSULE, OR THE OLD TWO-LINE RECT ═══
+    /* ═══ v2.3.2513: THE CAPSULE, OR THE OLD TWO-LINE RECT ═══
        A numeric level and a band mean the mockup's plate: one line, a white
        level badge, a coloured border.  A STRING level is an NPC's role and
        keeps the plate it already has (§5.2 leaves the NPC plate alone).  The
@@ -5224,7 +5224,7 @@ function _updateNamePill(display, name, level, visible, broId, alarm, band) {
   display._pillBand = band || null;
 }
 
-/* ═══ v2.3.2496: DRAW THE MOCKUP'S PLATE ═══
+/* ═══ v2.3.2513: DRAW THE MOCKUP'S PLATE ═══
    Called only from the rebuild branch above, so everything here runs on a text
    / band / alarm change and never per frame.
 
@@ -6056,10 +6056,10 @@ function createPlayerDisplay() {
   /* v2.3.1681 (owner: "Player name and level in the pill beneath character
      need to be slightly larger for legibility").  10 -> 13; the plate sizes
      itself off this number, so the background grows with the text. */
-  /* v2.3.2496: 10 -> 15 CSS px (see the monster plate's note and setPlateZoom).
+  /* v2.3.2513: 10 -> 15 CSS px (see the monster plate's note and setPlateZoom).
      Yours stays one step above your peers' -- 15 against their 14 -- which has
      been true since v2.3.1681. */
-  _attachNamePill(container, 15, undefined, uiLayer);   /* v2.3.2154: 13 -> 15; v2.3.2265: 15 -> 10; v2.3.2496: 10 -> 15 CSS px */
+  _attachNamePill(container, 15, undefined, uiLayer);   /* v2.3.2154: 13 -> 15; v2.3.2265: 15 -> 10; v2.3.2513: 10 -> 15 CSS px */
 
   /* v2.3.1193: the local player's own threat skull (red = my threat
      countdown is running, white = ignored/expired fight window).  One
@@ -6399,7 +6399,7 @@ function createOtherPlayerDisplay() {
 
   /* v2.3.1566 (owner): same plate the local player gets, one size down —
      a remote name should not out-shout your own. */
-  _attachNamePill(container, 14, undefined, uiLayer);   /* v2.3.1681: 9 -> 12, still one down from your own; v2.3.2154 lifts the pair to 15/14; v2.3.2265 brings them to 10/9; v2.3.2496: 9 -> 14 CSS px */
+  _attachNamePill(container, 14, undefined, uiLayer);   /* v2.3.1681: 9 -> 12, still one down from your own; v2.3.2154 lifts the pair to 15/14; v2.3.2265 brings them to 10/9; v2.3.2513: 9 -> 14 CSS px */
 
   /* v2.3.1193: threat skull above the nameplate (red = active threat
      countdown, white = ignored/expired fight window — see
@@ -8178,7 +8178,7 @@ export class EntityRenderer {
           name: _pui && _pui._pillName ? _pui._pillName.text : null,
           level: _pui && _pui._pillLevel ? _pui._pillLevel.text : null,
           levelFill: _pui && _pui._pillLevel ? String(_pui._pillLevel.style.fill) : null,
-          /* ═══ v2.3.2496: WHAT THE MOCKUP'S PLATE ACTUALLY IS ═══
+          /* ═══ v2.3.2513: WHAT THE MOCKUP'S PLATE ACTUALLY IS ═══
              The level lives in a white badge now, and the difficulty lives in
              the BORDER -- neither of which the two fields above can see (a
              Graphics cannot be read back, and the old LV line is hidden).  So
@@ -8209,7 +8209,7 @@ export class EntityRenderer {
              field on this probe. */
           nameSize: _pui && _pui._pillName ? Number(_pui._pillName.style.fontSize) : null,
           lvlSize: _pui && _pui._pillLevel ? Number(_pui._pillLevel.style.fontSize) : null,
-          /* v2.3.2496: the size a PLAYER sees, which after D5 is the only size
+          /* v2.3.2513: the size a PLAYER sees, which after D5 is the only size
              worth asserting -- nameSize above is the design number and says
              nothing about the screen until it is multiplied by these two. */
           cssSize: _pui && _pui._pillName
@@ -8247,7 +8247,7 @@ export class EntityRenderer {
            there is no "stopped attacking" message, so the plate has to time
            itself out. */
         const _plateAlarm = !!(m._atkMeUntil && now < m._atkMeUntil);
-        /* ═══ v2.3.2496: D4's PRECEDENCE, IN D4's ORDER ═══
+        /* ═══ v2.3.2513: D4's PRECEDENCE, IN D4's ORDER ═══
            Owner, and the order is the whole answer -- the three states used to
            contradict each other (a plate cannot be hidden AND red):
 
@@ -8408,7 +8408,7 @@ export class EntityRenderer {
              frame one is what made the old dot read as a glitch. */
           const _fade = age < 0.66 ? 1 : 1 - (age - 0.66) / 0.34;
           /* The same half-compensation the name plate USED to take (setPlateZoom,
-             and see _cueZoom there for why the two parted company at v2.3.2496):
+             and see _cueZoom there for why the two parted company at v2.3.2513):
              a cue for the READER should not shrink to nothing when the world
              zooms out, and should not be pinned so hard that it dwarfs the
              monster when it zooms in. */
@@ -9571,7 +9571,7 @@ export class EntityRenderer {
          factory); the plate below the feet is the nameplate now.  Dead
          peers lose it so it doesn't hover over a prone body — the same
          rule the local player follows. */
-      /* v2.3.2496: 'gold' -- a player's plate wears the gold border (§5.2),
+      /* v2.3.2513: 'gold' -- a player's plate wears the gold border (§5.2),
          whoever they are; the four difficulty bands are a monster's business. */
       _updateNamePill(display, nextName, other.rpgLv || 1, !other._isDead, other.bro, false, 'gold');
       /* v2.3.2345: QA probe (mp-brobadge) -- did the badge sprite actually get
@@ -12229,7 +12229,7 @@ export class EntityRenderer {
        to fix it would move the HUD pass ahead of the body placement it reads
        positions from — a real risk to buy an invisible one. */
     _updateNamePill(display, S.myName || 'Anon', (S.rpg && S.rpg.level) || 1,
-      !S._dying && !this._resourceBarsUp, S.rpg && S.rpg._bro, false, 'gold');   /* v2.3.2496: the gold border (§5.2) */
+      !S._dying && !this._resourceBarsUp, S.rpg && S.rpg._bro, false, 'gold');   /* v2.3.2513: the gold border (§5.2) */
 
     /* v2.3.1193: my own threat skull — reads the formerly ORPHANED
        S._pvpSkullType / S._pvpSkullUntil anchors (InspectPlayerPanel
@@ -12545,7 +12545,7 @@ export class EntityRenderer {
            the only thing that changes is the name moving out from under it --
            which gives the '!' more room, not less. */
         {
-          /* v2.3.2496: 9 -> 13 CSS px.  The NPC plate keeps its SHAPE (§5.2
+          /* v2.3.2513: 9 -> 13 CSS px.  The NPC plate keeps its SHAPE (§5.2
              leaves it as the two-line rect with the gold role line) and only
              takes the CSS-pixel rule, one step under the monsters' so the
              town's four standing NPCs do not shout over the field. */

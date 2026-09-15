@@ -1573,7 +1573,7 @@ export function processGameEvent(type, payload, S, deps) {
                      Clobbering it made curHp == hp on every hit, which
                      locked the bar percentage at 100%. */
                   hitM.curHp = Math.round(payload.hpPct * hitM.maxHp);
-                  /* ═══ v2.3.2496: "HIT BY YOU IN THE LAST 3s" (D4) ═══
+                  /* ═══ v2.3.2513: "HIT BY YOU IN THE LAST 3s" (D4) ═══
                      The nameplate hides while a monster is the fight you are
                      actually in, and one of the two facts that decides it is a
                      hit YOU landed -- which nothing recorded.  (`_hitFlash` is

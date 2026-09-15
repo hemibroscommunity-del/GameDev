@@ -20,7 +20,7 @@ import * as H from './harness.mjs';
 /* One of each shape the plate has to cope with: a sprite-bodied slime whose
    art is 96px tall over an 8px logical size, a plain procedural archetype,
    and a two-digit level far enough above the player to trip the danger tint. */
-/* ═══ v2.3.2496: AND ONE OF EACH DIFFICULTY BAND ═══
+/* ═══ v2.3.2513: AND ONE OF EACH DIFFICULTY BAND ═══
    The plate's border is now the monster's level RELATIVE TO THE PLAYER'S
    (D16), so the fixture has to span the four bands from wherever the player
    actually is.  `band` is what the renderer must answer for that level against
@@ -77,7 +77,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const names = seen.plates.map((p) => p.name);
   rec.ok('...naming the monster it belongs to',
     CAST.every((c) => names.includes(c.expect)), { got: names, want: CAST.map((c) => c.expect) });
-  /* ═══ v2.3.2496: THE LEVEL MOVED INTO A WHITE CIRCLE ═══
+  /* ═══ v2.3.2513: THE LEVEL MOVED INTO A WHITE CIRCLE ═══
      It used to be a second line reading "LV 42"; the owner's mockup puts it in
      a badge at the pill's right end, as digits alone.  So the assertion moves
      with it -- same claim (every plate carries its monster's real level), read
@@ -100,7 +100,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the old level text over the monster is gone',
     seen.plates.every((p) => !p.hasOldLvlText), seen.plates.map((p) => p.hasOldLvlText));
 
-  /* ═══ v2.3.2496: THE DANGER TINT BECOMES FOUR BANDS ═══
+  /* ═══ v2.3.2513: THE DANGER TINT BECOMES FOUR BANDS ═══
      v2.3.1144's warning is not dropped, it is graded: the border colour is the
      monster's level relative to yours, in the four bands the owner's mockup
      legends (Low / Near / High / Danger, D16).  The old assertion read the LV
@@ -192,7 +192,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /\|!\|/.test(String(alarmed.hotOn.pillKey || '')), alarmed.hotOn);
     rec.ok('...while the monsters standing next to it do not',
       alarmed.others.every((p) => p.alarm !== true), alarmed.others);
-    /* ═══ v2.3.2496: D4 -- "THE BORDER RULES DO NOT CHANGE" ═══
+    /* ═══ v2.3.2513: D4 -- "THE BORDER RULES DO NOT CHANGE" ═══
        The owner's answer moves the alarm to the plate's FILL and says the
        border is unaffected, which is what lets a red border ("this thing is
        far above you") and a red fill ("it is hitting you right now") coexist
@@ -226,7 +226,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('a monster plate reported its font sizes (guard)', !!sized, sized);
   rec.ok(`the monster's name is at least 12px (${sized && sized.nameSize})`,
     !!sized && sized.nameSize >= 12, sized);
-  /* ═══ v2.3.2496: D5 -- THE SIZE THE PLAYER ACTUALLY SEES ═══
+  /* ═══ v2.3.2513: D5 -- THE SIZE THE PLAYER ACTUALLY SEES ═══
      `nameSize` is the design number and says nothing about the screen until it
      is multiplied by the plate's scale, its container's, and the camera zoom --
      which is exactly how a plate designed at 8 ended up rendering at 6 CSS px
@@ -236,7 +236,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`...and on screen it is 13-17 CSS px, not the ~6 it used to be (${sized && sized.cssSize})`,
     !!sized && sized.cssSize >= 13 && sized.cssSize <= 17, sized);
 
-  /* ═══ v2.3.2496: D4's FIRST RULE -- THE PLATE GETS OUT OF A FIGHT ═══
+  /* ═══ v2.3.2513: D4's FIRST RULE -- THE PLATE GETS OUT OF A FIGHT ═══
      "HIDDEN while the monster is YOUR engaged target (locked, or hit by you
      within the last 3 s) -- the HP bar stays."  Both clauses are driven, and
      the HP bar is asserted alongside, because "hide the plate in combat" and
