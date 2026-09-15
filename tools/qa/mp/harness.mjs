@@ -837,7 +837,7 @@ export async function closeDest(P, { timeout = 6000 } = {}) {
   });
 }
 
-/* ═══ v2.3.2525: A FIRST JOIN ARRIVES WITH THE BAND FOLDED ═══
+/* ═══ v2.3.2526: A FIRST JOIN ARRIVES WITH THE BAND FOLDED ═══
  *
  * v2.3.2495 folds the dashboard on a brand-new bro's first join (owner: the
  * first thing a new player should see is the world, with a ring on the chip

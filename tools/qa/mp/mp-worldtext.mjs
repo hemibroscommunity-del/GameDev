@@ -53,7 +53,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(P);
   await P.page.waitForTimeout(3000);
 
-  /* ═══ v2.3.2525: A FIRST JOIN NOW ARRIVES FOLDED ═══
+  /* ═══ v2.3.2526: A FIRST JOIN NOW ARRIVES FOLDED ═══
      v2.3.2495 folds the band on a brand-new bro's first join, and every client
      here is one -- so the "press the chip to fold it" sequence below was
      pressing it to UNFOLD, measuring the zoom backwards and failing six
