@@ -1,4 +1,4 @@
-/* REFIT AN INVENTORY ICON INSIDE ITS OWN CANVAS (v2.3.2473).
+/* REFIT AN INVENTORY ICON INSIDE ITS OWN CANVAS (v2.3.2508).
  *
  * Owner (backlog triage 2026-09-14, art item 11): "armored legs icon too small
  * in the equipped slot."

@@ -47,7 +47,7 @@ const PLATES = [
   ['face-tattoo-jog-south', 'facebow-before-jog-south.png', 'BEFORE — south bow shot', 'facebow-after-jog-south.png', 'AFTER — south bow shot'],
   ['face-tattoo-control-idle', 'facebow-before-control-idle-south.png', 'BEFORE — standing (control)', 'facebow-after-control-idle-south.png', 'AFTER — standing, unchanged'],
   ['tee-shoulder-shield-or-not', 'teeshield-now-no-shield-worst.png', 'NO SHIELD — shoulder still bare', 'teeshield-now-with-shield-worst.png', 'WITH SHIELD — same defect, no worse'],
-  /* v2.3.2473 (the rebakes) */
+  /* v2.3.2508 (the rebakes) */
   ['bow-south-eye', 'boweye-before-f2.png', 'BEFORE — left eye a black socket', 'boweye-after-f2.png', 'AFTER — rebuilt from the right eye'],
   ['copper-feet-body-layer', 'copperfeet-now-layer-body.png', 'the BODY layer, boot band', 'copperfeet-now-layer-legs.png', 'the COPPER ARMOUR layer, same frame'],
 ];

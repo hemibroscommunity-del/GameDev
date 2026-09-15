@@ -126,7 +126,7 @@ if (wrote) {
   const r = spawnSync('python3', [path.join(ROOT, 'tools/webp_icons.py'), '--convert'],
     { cwd: ROOT, stdio: 'inherit' });
   if (r.status !== 0) {
-    /* ═══ v2.3.2473: A CHROMIUM FALLBACK, BECAUSE THIS SANDBOX HAS NO NUMPY ═══
+    /* ═══ v2.3.2508: A CHROMIUM FALLBACK, BECAUSE THIS SANDBOX HAS NO NUMPY ═══
        webp_icons.py needs numpy + Pillow and neither is installed here (npm
        works; PyPI is firewalled -- CLAUDE.md).  Without a fallback this script
        cannot finish in this environment at all: the metal icons stay .png while
