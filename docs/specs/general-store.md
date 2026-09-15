@@ -115,7 +115,7 @@ the wake-time rebuild (`_stEnsureIndex` → `_stConverge`) resolves it:
 | `rec.pendBid` | promote the bid if its debit stamp is present; otherwise drop it — no money moved |
 | `rec.releasing` | finish the release (`_stRelease` re-runs; every leg is idempotent through its opId) and delete the record — never re-list it |
 
-`rec.releasing` was added in **v2.3.2506**, after review. A cancel or an
+`rec.releasing` was added in **v2.3.2521**, after review. A cancel or an
 expiry is also three separate disk writes — refund the bid, mail the
 goods home, delete the record — and the worker restarts on every merge to
 `main` touching `server/**`. Before the marker existed, a death between

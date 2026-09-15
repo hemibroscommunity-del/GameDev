@@ -74,16 +74,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* The local roll's leftovers, exactly as monsterCombat would have set
        them for a collision it resolved but did not print. */
     S._ownCollisionRecent = { id: 'wildfire', name: 'Wildfire', color: '#ff9a3c', prefix: '', at: Date.now() };
+    /* v2.3.2520: dmg and hpPct now have to AGREE.  Since the display scale
+       shipped, a non-kill popup reports the change in DISPLAYED hp rather
+       than the raw dmg field (see toDisplayHitDamage), so a staged payload
+       claiming "21 damage" alongside an hpPct that says 40 was taken no
+       longer has one right answer.  A real worker always sends the two in
+       lockstep; this now does too.  200 -> 160 hp is 40 damage, hpPct 0.8. */
     window.__btDispatch({ type: 'monster_hit', payload: {
-      monsterId: 'fn-mon-1', zone: S.currentZone, dmg: 21, isCrit: false,
+      monsterId: 'fn-mon-1', zone: S.currentZone, dmg: 40, isCrit: false,
       attackerId: S.myId, collision: 'wildfire', slot: 'melee', hpPct: 0.8 } });
     return { pops: (S.dmgNumbers || []).map((d) => ({ t: String(d.text), y: Math.round(d.y - m.y) })) };
   });
   console.log('    popups after ONE worker collision hit', JSON.stringify(coll.pops));
   rec.ok('a worker collision hit produces exactly ONE damage number',
     coll.pops.length === 1, coll);
-  rec.ok('...and it carries the WORKER\'s damage, not a second local roll',
-    coll.pops.length === 1 && coll.pops[0].t.indexOf('21') >= 0, coll);
+  /* v2.3.2520: the number is the worker's damage THROUGH THE DISPLAY SCALE.
+     40 raw = displayed hp 40 -> 32, so the popup reads 8, which is also
+     round(40/k) -- the two halves of the consistency rule agree whenever the
+     worker's dmg and hpPct agree, which in real play is always. */
+  /* v2.3.2522: RENAMED to say what it now proves.  It used to read "it
+     carries the WORKER's damage", and since v2.3.2520 a non-kill popup does
+     not read payload.dmg at all -- it reports the change in DISPLAYED hp,
+     derived from the worker's hpPct.  Same guarantee (the number is the
+     worker's, not a second local roll) off a different field, so the claim
+     had to move with it or the next reader is misled about which field is
+     under test.  Review of PR #630, finding 5. */
+  rec.ok('...and it follows the WORKER\'s health percentage, not a second local roll',
+    coll.pops.length === 1 && coll.pops[0].t.indexOf('8') >= 0, coll);
   rec.ok('...wearing the collision\'s own name, not a bare weapon hit',
     coll.pops.length === 1 && /Wildfire/.test(coll.pops[0].t), coll);
   rec.ok('...on the burst\'s higher line, not the ordinary hit line',
@@ -94,13 +111,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const plain = await P.page.evaluate(() => {
     const S = window._gameState.current;
     S.dmgNumbers = [];
+    /* v2.3.2520: agreeing pair again -- 160 -> 140 hp is 20 damage,
+       hpPct 0.7.  Displayed: 32 -> 28, so the popup reads 4 = round(20/k). */
     window.__btDispatch({ type: 'monster_hit', payload: {
-      monsterId: 'fn-mon-1', zone: S.currentZone, dmg: 13, isCrit: false,
+      monsterId: 'fn-mon-1', zone: S.currentZone, dmg: 20, isCrit: false,
       attackerId: S.myId, slot: 'melee', hpPct: 0.7 } });
     return (S.dmgNumbers || []).map((d) => String(d.text));
   });
   rec.ok('control: an ordinary worker hit still prints its number',
-    plain.length === 1 && plain[0].indexOf('13') >= 0, { plain });
+    plain.length === 1 && plain[0].indexOf('4') >= 0, { plain });   /* v2.3.2520: 20 raw -> 4 displayed */
 
   /* ══ THE REST NEEDS A ZONE THE WORKER IS DRIVING, AND A REAL WEAPON ══
      The lunge and the dash bugs ARE the disagreement with the worker, so

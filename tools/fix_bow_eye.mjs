@@ -13,13 +13,27 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 
 const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
-const SCRATCH = '/tmp/claude-0/-home-user-GameDev/67ac1d82-015e-5dc1-bc02-24d0bfd493a3/scratchpad';
+/* v2.3.2519: was a hard-coded path from the session that wrote this file, which
+   no later session has.  The montage is a preview, so it goes somewhere that
+   always exists and can be overridden. */
+const SCRATCH = process.env.BT_SCRATCH || '/tmp';
 const APPLY = process.env.APPLY === '1';
-/* Only frame 0 (the bow "load" pose) has the oversized white-block camera-left
-   eye; frames 1/2 are a 3/4 turn and a dark-eyed release that are already fine.
-   Body + torso carry the (identical) in-game face; the base sheet isn't used for
-   south (bodyFrames exist), so leave it untouched. */
-const FIX_FRAMES = new Set([0]);
+/* ═══ v2.3.2519: FRAME 2 IS NOT FINE, AND THE NOTE BELOW IS WHY IT LOOKED IT ═══
+ * Owner (backlog triage 2026-09-14, art item 3): "south idle bow-shot, left
+ * eyeball all black."
+ *
+ * The v2.3.961 note called frame 2 "a dark-eyed release that is already fine".
+ * Rendered at 12x it is not: the camera-LEFT eye is a solid black rectangle with
+ * no sclera at all, beside a camera-right eye that has a proper white sclera and
+ * a pupil.  A character with one black eye socket is what the owner is seeing,
+ * and it is the SAME eye on the same sheet that v2.3.961 had to rebuild for
+ * frame 0 -- opposite failure (there it was an oversized white block), same
+ * cause: this eye was drawn wrong on every frame and patched one frame at a
+ * time.
+ *
+ * Frame 1 stays out.  It is a 3/4 turn where one eye is genuinely hidden by the
+ * nose, and the black-eye rule below would read that as the defect. */
+const FIX_FRAMES = new Set([0, 2]);
 const SHEETS = [
   { file: 'public/sprites/player/bow-south-body.png',  fw: 130 },
   { file: 'public/sprites/player/bow-south-torso.png', fw: 130 },
@@ -78,8 +92,20 @@ function processFrame(d,W,x0,fw){
      turn whose single visible eye is dark -> guarded out so we don't touch it.
      The right cluster must also be a plausible eye (>=2px), not the face edge. */
   const whiteCount=(g)=>g.reduce((n,[x,y])=>{const o=(y*W+x)*4;return n+(isWhite(d[o],d[o+1],d[o+2],d[o+3])?1:0);},0);
-  const lWhite=whiteCount(L), rW=rb.x1-rb.x0+1, lW=lb.x1-lb.x0+1;
-  if(lWhite<6 || lW<rW+2 || rW<2) return {skip:true,lWhite,lW,rW};
+  const lWhite=whiteCount(L), rWhite=whiteCount(R), rW=rb.x1-rb.x0+1, lW=lb.x1-lb.x0+1;
+  /* TWO defects, one repair.  v2.3.961's was an oversized WHITE BLOCK sclera on
+     the camera-left eye; v2.3.2519's (frame 2) is the opposite -- that eye is
+     solid dark with no sclera at all.  Both are fixed by stamping the
+     well-formed camera-right eye at the left eye's position, so the rule below
+     accepts either shape and nothing else:
+       WHITE-BLOCK: the left eye carries real white AND is wider than the right.
+       BLACK-SOCKET: the left eye carries NO white while the right one does.
+     The second is deliberately strict about the right eye having a sclera --
+     without that it would fire on the 3/4-turn frame, where both eyes are
+     legitimately dark, and repaint a face that is drawn correctly. */
+  const whiteBlock = (lWhite>=6 && lW>=rW+2 && rW>=2);
+  const blackSocket = (lWhite===0 && rWhite>=2 && rW>=2 && lW>=2);
+  if(!whiteBlock && !blackSocket) return {skip:true,lWhite,rWhite,lW,rW};
   // skin sample: a couple px below the left eye
   const sxo=((lb.y1+3)*W+Math.round(lb.cx))*4; const skin=[d[sxo],d[sxo+1],d[sxo+2],255];
   // erase left eye -> skin (pad 1px)
@@ -106,7 +132,7 @@ function processFrame(d,W,x0,fw){
     before.push({W,H,buf:Uint8ClampedArray.from(d)});
     const frames=Math.max(1,Math.round(W/sh.fw)); const log=[];
     const FIX=new Set(${JSON.stringify([...FIX_FRAMES])});
-    for(let f=0;f<frames;f++){ if(!FIX.has(f)){ log.push('f'+f+':untouched'); continue; } const r=processFrame(d,W,f*sh.fw,sh.fw); log.push(!r?('f'+f+':none'):(r.skip?('f'+f+':skip(lW='+r.lW+',rW='+r.rW+',wht='+r.lWhite+')'):('f'+f+':fix('+r.n+')'))); }
+    for(let f=0;f<frames;f++){ if(!FIX.has(f)){ log.push('f'+f+':untouched'); continue; } const r=processFrame(d,W,f*sh.fw,sh.fw); log.push(!r?('f'+f+':none'):(r.skip?('f'+f+':skip(lW='+r.lW+',rW='+r.rW+',lWht='+r.lWhite+',rWht='+r.rWhite+')'):('f'+f+':fix('+r.n+')'))); }
     x.putImageData(id,0,0);
     after.push({W,H,canvas:c});
     out.sheets.push({file:sh.file,log,png:c.toDataURL('image/png').split(',')[1]});

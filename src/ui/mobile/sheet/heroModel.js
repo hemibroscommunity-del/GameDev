@@ -3,6 +3,7 @@ import {
   calcMoveSpeed, passiveDodgeChance, getActiveWeapon, getWeaponCritStat,
   getEvasionPts, getDefenseBlockBonus, xpRequired, weaponXpRequired,
   buildSkillUnspent, getArmorDrPct,
+  DISPLAY_SCALE_K, toDisplayHp, /* v2.3.2521: the Build cards read in display units too */
 } from '../../../data/gameSystems.js';
 /* v2.3.1660: trained-skill rebuild mirrors — display branches only;
    the legacy formulas stay for old workers (rule 19). */
@@ -219,13 +220,22 @@ export function combatLevelProgress(R) {
    - vitality/endurance/mind capacity: +10 HP / +3 stam / +3.5 mana
      per point (calcMaxHp/Stam/Mana);
    - defense: the live DR% (with shield). */
+/* ═══ v2.3.2521: THE BUILD CARDS SPEAK IN DISPLAY UNITS ═══
+   v2.3.2520 scaled the Damage and HP rows but not these blurbs, so a card
+   said "+8.3 dmg with melee" and "+10 max HP" while the row two inches away
+   said "1-2" and "20".  Same lens, same screen.  The damage line divides by
+   k directly rather than going through toDisplayDamage: this is a FRACTIONAL
+   rate, and toDisplayDamage's round-and-floor-at-1 would turn 1.7 into 2 and
+   every small contribution into a flat "1".  HP uses toDisplayHp, matching
+   the pools everywhere else.  Stamina and the block percentage are untouched
+   — stamina is not scaled, and a percentage has no units to scale. */
 export function attributeEffect(R, key) {
-  const dmg = (v) => `+${((v || 0) * 0.1667).toFixed(1)} dmg`;
+  const dmg = (v) => `+${(((v || 0) * 0.1667) / DISPLAY_SCALE_K).toFixed(1)} dmg`;
   switch (key) {
     case 'power':     return `${dmg(R.power)} with melee`;
     case 'agility':   return `${dmg(R.agility)} with bows`;
     case 'mind':      return `${dmg(R.mind)} with staves`;
-    case 'vitality':  return `+${(R.vitality || 0) * 10} max HP`;
+    case 'vitality':  return `+${toDisplayHp((R.vitality || 0) * 10)} max HP`;
     case 'endurance': return `+${Math.round((R.endurance || 0) * 3)} max stamina`;
     /* v2.3.1311: this number is calcBlockReduction — shield BLOCK, not
        persistent mitigation (Iron Skin/armor aren't in it) — so say so. */

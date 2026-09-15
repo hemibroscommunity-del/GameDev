@@ -24,6 +24,7 @@ import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking
 import { peerCosmeticsFromWire, peerPassthroughFromWire, applyPeerCosmetics } from '@/networking/peerCosmetics.js';
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
+import { toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale */
 import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
@@ -1328,7 +1329,7 @@ export function setupWebSocket(ctx) {
                  S.myId, which silently dropped every heal); combat_credit
                  (same direct-send path) doesn't gate either. */
               if (msg.payload && msg.payload.refund > 0 && S.dmgNumbers && S.player) {
-                pushDmgPopup(S, S.player.x, S.player.y - 40, '+' + msg.payload.refund + ' HP', '#3dd497');
+                pushDmgPopup(S, S.player.x, S.player.y - 40, '+' + toDisplayDamage(msg.payload.refund) + ' HP', '#3dd497');   /* v2.3.2520: display scale */
               }
               /* v2.3.824: the zero-refund diagnostic floater ('lifesteal:
                  <reason>') was removed at the owner's request -- a melee kill
