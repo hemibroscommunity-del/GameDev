@@ -673,6 +673,7 @@ export function updateArrows(S, deps) {
                `life` becomes fractional — every reader compares or divides
                (`life <= 0`, `life / 20` for the fade), none index by it. */
             var _pdt = S._dtScale || 1;
+            var _dist0 = a.dist;   /* v2.3.2473: where this frame's step STARTED -- see the prev-point seed below */
             /* v2.3.2262: `speedPx` is an optional per-projectile override.  The
                magic special's three orbs each fly at their own speed (fast,
                medium, slow -- owner), and speed is otherwise a property of the
@@ -775,7 +776,40 @@ export function updateArrows(S, deps) {
                this is the only branch that FLIES — the stuck, held and
                planting branches above all freeze _renderX, and a segment
                built from one of those is not a flight path. */
-            a._prevX = a._renderX; a._prevY = a._renderY;
+            /* ═══ v2.3.2473: THE FIRST FLIGHT FRAME SWEEPS FROM ITS LAUNCH POINT ═══
+               `_renderX` does not exist yet on a projectile whose FIRST update
+               is a flying one -- anything without the bow's nock latch, which
+               is every staff bolt and the bow special (it carries no
+               `fromGrip`, so `_released` is true immediately).  `_prevX` came
+               out undefined there, and _projCapsule falls back to
+               `px = a._renderX`: the capsule became the arrow's drawn body
+               sitting at where it had ARRIVED, with nothing behind it, so that
+               first step went untested as a segment.
+
+               Seeding the previous point at the pre-step distance makes the
+               first frame sweep 14 -> 86 the way every later frame sweeps,
+               which is the geometry the drawn arrow actually travels.  It is
+               the same principle v2.3.2426 and v2.3.2433 shipped -- test the
+               segment the sprite crossed, not the point it stopped at -- and
+               v2.3.2473's 3x speed makes that untested first step three times
+               longer than it used to be.
+
+               HONEST ABOUT ITS EVIDENCE.  This was written to explain five bow
+               specials missing charging slimes in mp-hitreal, and IT DOES NOT
+               EXPLAIN THEM: a scenario that scripts exactly that charge, with
+               the frame rate throttled to pin _dtScale at its x3 clamp, hits
+               all four cases WITH this change and without it.  So the hitreal
+               misses have some other cause and are still open (reported on the
+               PR).  What is kept here is only the narrow claim the code
+               supports -- a segment test should test the whole segment -- and
+               the measurement that it changes no observed outcome, which is
+               why it is safe to keep rather than a fix to rely on. */
+            if (a._renderX == null || a._renderY == null) {
+              a._prevX = _bx + Math.cos(a.ang) * _dist0;
+              a._prevY = _by + Math.sin(a.ang) * _dist0;
+            } else {
+              a._prevX = a._renderX; a._prevY = a._renderY;
+            }
             a._renderX = _bx + Math.cos(a.ang) * a.dist;
             a._renderY = _by + Math.sin(a.ang) * a.dist;
             if (a.life <= 0) return false;
