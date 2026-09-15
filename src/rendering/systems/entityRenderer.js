@@ -7146,6 +7146,17 @@ function _drawResourceBar(gfx, sprite, kind, cur, max, y, now, n) {
    alpha so the number cannot outlive the thing it labels, which is the class
    of bug the stale probes in this file keep producing.  Text nodes are made
    once and parked; Pixi Text is expensive to churn. */
+/* ═══ v2.3.2573: NO CALLERS, AND A RAW PAIR THAT LOOKS LIKE AN HP READOUT ═══
+   Flagged in the v2.3.2572 review and left as a note rather than a change,
+   because changing it would be editing dead code.  Two facts for whoever
+   wires this back up:
+     - nothing in the tree calls this (checked by search, v2.3.2573).
+     - the `ceil / ceil` below is RAW, and it is the only string left in this
+       renderer that looks like an unscaled HP readout.  It is not one: this
+       labels the MANA and STAMINA bars, which §5.8 states are deliberately
+       off the display scale, so raw is correct for what it was written for.
+       If it is ever re-pointed at an HP bar it must go through toDisplayHp
+       like every other HP number did in v2.3.2572. */
 function _drawResourceLabel(label, cur, max, y, alpha) {
   if (!label) return;
   if (alpha <= 0.01) { label.visible = false; return; }
