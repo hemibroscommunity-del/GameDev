@@ -4945,16 +4945,18 @@ const PLATE_INK = 0x0B1F2D;          /* sampled: (11,31,45); see PLATE_FILL_ALPH
         band-coloured digits at ~13 CSS px since the white disc was dropped,
         and those digits sit at 4.52:1 in their worst case (`high` over pure
         white) against the same 4.5 floor.  That is TWO HUNDREDTHS of a point,
-        not the name's four-and-a-half.  The tints in PLATE_LEVEL_INK were
-        already lifted toward white exactly as far as the floor demanded, so
-        there is nothing left to give on that side either.
-        So the sentence above -- "PLATE_FILL_ALPHA can go a good deal lower"
-        -- is now FALSE as a general statement: it is true of the name and
-        false of the level.  A softer plate from here needs PLATE_LEVEL_INK
-        lifted further in the same change, and mp-monsterplate will fail the
-        moment it is not (it asserts the 4.5 floor across every band and every
-        ground, which is what makes this budget enforced rather than merely
-        written down).
+        not the name's four-and-a-half.
+        ── v2.3.2590 CLOSED THAT SECOND BUDGET ──
+        The digits are STROKED now (PLATE_LEVEL_STROKE), so they are read
+        against their own outline and their contrast no longer moves when this
+        alpha does.  The name is the single budget again, and these are its
+        measured values so the next nudge is arithmetic and not a guess:
+            alpha  0.82  0.78  0.74  0.70  0.66  0.62
+            name   8.41  7.30  6.34  5.51  4.81  4.21   <- 0.62 is under AA
+        At the shipped 0.70 the name holds 5.51 -- a full point of room -- and
+        0.66 is the last step before it is in trouble.  mp-monsterplate asserts
+        the floor over every ground, so this stays enforced rather than merely
+        written down.
    ──────────────────────────────────────────────────────────────────────── */
 
 /* THE BIGGEST LEVER, AND THE ONE TO REACH FOR FIRST.  How opaque the navy
@@ -4970,7 +4972,44 @@ const PLATE_INK = 0x0B1F2D;          /* sampled: (11,31,45); see PLATE_FILL_ALPH
    to sit.  The v2.3.2513 plate went to 1 because the mock's fill "samples
    identically over water and over grass", which is an argument about the
    COLOUR being right, not about it being opaque. */
-const PLATE_FILL_ALPHA = 0.82;
+/* ═══ v2.3.2590: 0.82 -> 0.70, THE SECOND STEP THIS NOTE ALREADY NAMED ═══
+   Owner, on the merged v2.3.2573 build: "The name plates are also a bit too
+   large and distracting. Maybe more muted background color and smaller
+   overall."  That is this knob, and the note above predicted the value.
+
+   IT WAS NOT REACHABLE UNTIL NOW, and that is worth writing down because the
+   next person will hit the same wall.  v2.3.2571 put the level in the band's
+   colour on this same translucent fill, and lowering alpha lightens the plate
+   over bright ground, so the DIGITS lost contrast faster than anything else:
+
+       alpha   0.82   0.78   0.74   0.70
+       digits  4.52   3.92   3.41   2.96      (floor 4.5)
+
+   -- i.e. the very first step this note suggested was already under AA.  The
+   escape hatch the note offered (lift PLATE_LEVEL_INK further) buys the
+   contrast back but spends the BAND SEPARATION doing it, because lifting four
+   hues toward white converges them:
+
+       alpha   0.82   0.78   0.74   0.70   0.66
+       ΔE00    23.4   21.0   18.4   15.0   10.0  <- under the floor of 12
+
+   and capping the lift so the tints still read as their own hue left no
+   muting available at all.  Measured, not reasoned: the search is in the PR.
+
+   So the fill alpha was freed by taking the digits OFF it entirely -- see
+   PLATE_LEVEL_STROKE.  With the digits stroked, their legibility no longer
+   depends on this number, the sampled band colours come back at full
+   strength, and the binding constraint becomes the NAME, which has room:
+
+       alpha   0.82   0.78   0.74   0.70   0.66   0.62
+       name    8.41   7.30   6.34   5.51   4.81   4.21  <- breaks here
+
+   0.70 leaves the name a full point over the floor and makes the plate 22%
+   quieter against the grounds it actually sits on (plate-vs-ground contrast
+   averaged over snow/meadow/cobble/cave/water: 3.81 -> 2.98).
+   "Still too heavy" -> 0.66 is the last step that keeps the name over AA.
+   "I can't read the names now" -> back toward 0.74. */
+const PLATE_FILL_ALPHA = 0.70;
 
 /* The name's ink.  Already a warm off-white rather than pure white (this is
    the value the factory has always drawn -- v2.3.2513's PLATE_NAME_FILL
@@ -5021,44 +5060,46 @@ const PLATE_BAND = {
   gold:   0xF5CC4A,   /* the player's own plate -- sampled (253,213,70) */
 };
 /* ═══════════════════════════════════════════════════════════════════════
-   v2.3.2571: THE LEVEL'S INK, BECAUSE THE BAND COLOUR IS NOT ALWAYS LEGIBLE
+   v2.3.2590: THE LEVEL IS STROKED, SO ITS LEGIBILITY LEFT THE FILL
    ═══════════════════════════════════════════════════════════════════════
-   The new mock drops the white circle and sets the level as plain digits in
-   the BAND COLOUR, a space after the name.  Taken literally that is a
-   regression on the one band that matters most: measured against the plate
-   fill composited over every ground in the game (the same arithmetic
-   mp-monsterplate runs on the name),
+   v2.3.2571 set the level in the band's colour directly on the plate, and had
+   to LIFT two of the four hues toward white (high +22%, danger +47%) because
+   #F3821F and #FF3636 measured 3.65 and 2.66 on the fill.  That worked, and it
+   quietly made this plate un-softenable: every further drop in
+   PLATE_FILL_ALPHA needed a bigger lift, and the lift converges the four hues
+   until the difficulty bands stop being tellable apart (ΔE00 10.0 at alpha
+   0.66, under the floor of 12).  One design decision had eaten the whole
+   softening budget, which is what the owner ran into one version later.
 
-       low    #4BE54E  5.75:1     near   #F0DE2F  6.92:1
-       high   #F3821F  3.65:1     danger #FF3636  2.66:1   <-- both under AA
+   THE FIX IS OLDER THAN THE PROBLEM AND LIVES IN THIS FILE.  v2.3.121 put a
+   dark stroke and shadow on the in-world HUD numbers for exactly this reason
+   -- "so the HUD numbers stay readable on bright bar backgrounds" -- because a
+   stroked glyph is read against its OWN outline rather than against whatever
+   is behind it.  Applied here, the digits stop caring what the fill is doing:
 
-   -- i.e. "Snowman 8" in Danger red would have been the LEAST readable thing
-   on a plate whose whole point is to be read at a glance.  #FF3636 is a
-   BORDER colour: a 2 px ring is judged as a hue against its neighbours, and
-   13 px of type is judged as ink against what is behind it.  Those are two
-   different jobs and it turns out they do not want the same value.
+       sampled band on the stroke:  low 10.99  near 13.23  high 6.99
+                                    danger 5.08  gold 11.86      (floor 4.5)
 
-   So the border keeps the sampled band colours EXACTLY -- the four-way
-   separation the knob block protects is untouched, because nothing about the
-   ring moves -- and the digits get a per-band TEXT TINT: the same hue lifted
-   toward white only as far as the AA floor demands (high +22%, danger +47%;
-   low, near and gold already clear it and are byte-identical to the band).
-   The reading "the number is the band colour" survives; what changes is that
-   it survives at 13 px on a phone.
+   all comfortably clear, and -- the part that matters beyond this round --
+   NONE of those numbers move when PLATE_FILL_ALPHA does.
 
-   NOT A DESATURATION.  The knob block's note 1 forbids desaturating the bands
-   because it collapses yellow into orange; lightening toward white is a
-   different move and is checked as such -- the four TINTS separate at worst
-   ΔE00 23.3 (high/danger), against the same floor of 12 the rings hold.
-   mp-monsterplate asserts both the contrast and the separation, so a future
-   "just use the band colour" would fail rather than quietly go dim. */
-const PLATE_LEVEL_INK = {
-  low:    '#4BE54E',   /* = band, 5.75:1 */
-  near:   '#F0DE2F',   /* = band, 6.92:1 */
-  high:   '#F69E50',   /* band lifted 22%, 4.52:1 */
-  danger: '#FF9A9A',   /* band lifted 47%, 4.71:1 */
-  gold:   '#F5CC4A',   /* = band, 6.20:1 */
-};
+   SO THE LIFTED TINTS ARE GONE AND THE SAMPLED BANDS ARE BACK.  PLATE_LEVEL_INK
+   is deleted rather than kept at its old values: the digits now draw straight
+   from PLATE_BAND, which means the ring and the number are the same colour by
+   construction instead of by two tables agreeing.  That is a STRONGER band
+   signal than v2.3.2571 shipped (the lifted high/danger were paler than their
+   rings) and one fewer place for the four colours to drift apart.
+
+   The stroke is deliberately the plate's own navy rather than black: it reads
+   as the glyph sitting IN the capsule rather than as an outline drawn over it,
+   and at 2px on ~13px type it is about one pixel of dark either side -- the
+   same restraint v2.3.2255 records for the attack carets. */
+/* Pixi strokes a Graphics with a number and a Text with a css string, and the
+   band table is numbers.  One converter, so the digit and the ring cannot
+   drift by way of a second hand-written hex literal. */
+function _hexOf(n) { return '#' + Number(n).toString(16).padStart(6, '0'); }
+const PLATE_LEVEL_STROKE = '#0A1620';
+const PLATE_LEVEL_STROKE_PX = 2;
 /* ═══ THE ATTACKING-YOU FILL, AND THE ONE NUMBER THE MOCK DOES NOT GIVE ═══
    D4: "the plate's BACKGROUND FILL turns bright red while the monster is
    attacking you; the border rules do not change."  The mock has no example of
@@ -5106,9 +5147,8 @@ const PLATE_ALARM_FILL_ALPHA = 1;
 const PLATE_ALARM_NAME_FILL = '#FFFFFF';
 const PLATE_ALARM_NAME_WEIGHT = '700';
 /* v2.3.2571: and the LEVEL's ink follows the name into the alarm state, for
-   the reason the name did.  The level is band-coloured digits on the plate now
-   (PLATE_LEVEL_INK), and every one of those tints is measured against the
-   NAVY fill -- on the alarm's red they collapse: low 2.71, near 3.27, high
+   the reason the name did.  The level is band-coloured digits, and on the
+   alarm's red fill those hues collapse: low 2.71, near 3.27, high
    1.72, danger 1.25.  A red "8" on a red plate is TRAPS §48 exactly, a second
    time on the same plate and in the same state the note above had to fix it
    for the name.  So the alarm overrides INK and never the BORDER: the ring
@@ -5118,10 +5158,39 @@ const PLATE_ALARM_LEVEL_FILL = '#FFFFFF';
 /* Geometry, as ratios of the name's type size so the whole plate scales from
    one number (the same "the plate sizes itself off this number" property the
    old pill had, which is what kept text from rattling in a fixed box). */
-const PLATE_H_RATIO = 1.8;      /* 26.7 / 14.3 measured */
-const PLATE_PAD_L_RATIO = 0.7;  /* 14.5 / 14.3, less the border */
-const PLATE_GAP_RATIO = 0.55;   /*  8.5 / 14.3 */
-const PLATE_PAD_R_RATIO = 0.3;
+/* ═══ v2.3.2590: "SMALLER OVERALL" IS TAKEN OUT OF THE CHROME, NOT THE TYPE ═══
+   Owner: "The name plates are also a bit too large and distracting."
+
+   The ratios below are the plate's PADDING and HEIGHT, i.e. the empty space
+   the capsule wraps around the words.  They come down; the type does not.
+   That ordering is the owner's own stated preference from the last time they
+   asked for a shrink -- "still keeping the text largeness mostly intact" --
+   and it is the right order on its own merits: the words are the content and
+   the capsule is the wrapper, so the wrapper gives first.
+
+   At the 15 CSS px the plate is designed at, and read off the renderer rather
+   than estimated:
+       height        27 -> 23 px   (1.80x the type -> 1.55x; mp-monsterplate
+                                    asserts the ratio, not the pixel count)
+       side padding  24 -> 18 px   (padL + gap + padR, so every plate is
+                                    exactly 6 px narrower whatever its name is)
+
+   The WIDTH moves least, and it is worth saying why rather than letting the
+   next person re-derive it: most of a plate's width is the NAME, which this
+   round does not touch.  So chrome alone cannot make the plate dramatically
+   narrower -- past this point the only lever left is the type size, and the
+   owner has twice asked for the text to stay ("still keeping the text
+   largeness mostly intact"), so that is their call to make and not a thing to
+   do quietly on their behalf.
+
+   PLATE_BORDER_PX is deliberately NOT in this list: the knob block above
+   records that a thinner ring costs band information twice over (less colour
+   AND fewer pixels to judge it by), and a plate that is smaller everywhere
+   except its ring is the one shape where 2 px is doing MORE work, not less. */
+const PLATE_H_RATIO = 1.55;     /* was 1.8 (26.7 / 14.3 measured off the mock) */
+const PLATE_PAD_L_RATIO = 0.5;  /* was 0.7 */
+const PLATE_GAP_RATIO = 0.42;   /* was 0.55 */
+const PLATE_PAD_R_RATIO = 0.25; /* was 0.3 */
 const PLATE_BADGE_TYPE_RATIO = 0.85;
 /* D4: "hit by you within the last 3 s" -- how long a landed hit keeps this
    monster counted as the fight you are in, so the plate stays down between
@@ -5211,7 +5280,8 @@ function _attachNamePill(container, nameSize, sizeMult, host) {
   const lvlNumT = new Text({ text: '', resolution: _pillRes, style: {
     fontFamily: 'Source Sans 3, sans-serif',
     fontSize: Math.max(8, Math.round(nameSize * PLATE_BADGE_TYPE_RATIO)),
-    fontWeight: '800', fill: PLATE_LEVEL_INK.near, align: 'center',
+    fontWeight: '800', fill: _hexOf(PLATE_BAND.near), align: 'center',
+    stroke: { color: PLATE_LEVEL_STROKE, width: PLATE_LEVEL_STROKE_PX },
   } });
   lvlNumT.anchor.set(0.5, 0.5);
   lvlNumT.visible = false;
@@ -5578,9 +5648,17 @@ function _drawPlateCapsule(display, level, broId, alarm, band) {
   if (lvlNum) {
     lvlNum.visible = true;
     lvlNum.text = String(level);
+    /* v2.3.2590: the SAMPLED band, not a lifted tint -- the stroke carries the
+       legibility now, so the digit and its ring are the same colour by
+       construction.  A Pixi style write regenerates the texture, so both are
+       guarded on a change like every other style on this plate. */
     const ink = alarm ? PLATE_ALARM_LEVEL_FILL
-      : (PLATE_LEVEL_INK[band] || PLATE_LEVEL_INK.near);
+      : _hexOf(PLATE_BAND[band] != null ? PLATE_BAND[band] : PLATE_BAND.near);
     if (String(lvlNum.style.fill) !== ink) lvlNum.style.fill = ink;
+    const _sw = alarm ? 0 : PLATE_LEVEL_STROKE_PX;
+    if (!lvlNum.style.stroke || lvlNum.style.stroke.width !== _sw) {
+      lvlNum.style.stroke = { color: PLATE_LEVEL_STROKE, width: _sw };
+    }
   }
   display._pillLevel.visible = false;
   /* The digits are measured, not reserved: the width is what this level
@@ -5643,8 +5721,15 @@ function _drawPlateCapsule(display, level, broId, alarm, band) {
     borderAlpha: PLATE_BORDER_ALPHA,
     borderPx: PLATE_BORDER_PX,
     borderColor: PLATE_BAND[band] || PLATE_BAND.near,
-    levelInk: alarm ? PLATE_ALARM_LEVEL_FILL : (PLATE_LEVEL_INK[band] || PLATE_LEVEL_INK.near),
-    levelInks: PLATE_LEVEL_INK,
+    levelInk: alarm ? PLATE_ALARM_LEVEL_FILL
+      : _hexOf(PLATE_BAND[band] != null ? PLATE_BAND[band] : PLATE_BAND.near),
+    /* v2.3.2590: the capsule's drawn height and the type size it was derived
+       from, so "smaller overall" is a measurement rather than a diff review --
+       the ratio between them IS the chrome this round took out. */
+    pillH: h,
+    pillTypePx: N,
+    levelStroke: alarm ? null : PLATE_LEVEL_STROKE,
+    levelStrokePx: alarm ? 0 : PLATE_LEVEL_STROKE_PX,
     nameFill: alarm ? PLATE_ALARM_NAME_FILL : PLATE_NAME_FILL,
     nameWeight: alarm ? PLATE_ALARM_NAME_WEIGHT : PLATE_NAME_WEIGHT,
     /* every band the renderer can stroke, so the four-way separation is
