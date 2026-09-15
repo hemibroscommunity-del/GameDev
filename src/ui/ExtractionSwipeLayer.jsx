@@ -194,21 +194,40 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
        the world->CSS conversion those needed is gone with them.) */
     const cueScreenPos = () => buttonCueScreenPos(stateRef && stateRef.current);
 
-    const onPointerDown = (e) => {
-      const ex = readyExtraction();
-      if (!ex) return;
+    /* ═══ v2.3.2514: THE FINGER THAT WAS ALREADY DOWN ═══
+     *
+     * Owner: the character stops following your thumb partway through a
+     * harvest and goes back to playing the demonstration.
+     *
+     * A harvest STARTS on the right button's touchstart (BroTown), and for a
+     * touch the browser fires `pointerdown` BEFORE `touchstart` -- so for the
+     * very finger that started the harvest, this layer's pointerdown ran while
+     * S._extraction was still null, bailed at `if (!ex) return`, and never
+     * opened a gesture.  A player who presses CHOP and simply keeps their
+     * thumb on the button through the wind-up therefore pumps into nothing:
+     * swipeRef stays null, every pointermove returns at its own guard, and the
+     * demo keeps playing because `_gestureDown` was never set.  Lifting and
+     * re-pressing was the only way through, which is exactly what it felt
+     * like.
+     *
+     * So every pointer that goes down is remembered here whether or not a
+     * harvest is ready, and the first MOVE of a remembered finger over the
+     * button, once the window has opened, adopts it (see onPointerMove).  A
+     * gesture needs movement to count anyway, so adopting on the first move
+     * loses nothing and costs no polling.
+     *
+     * Map, not object: pointerIds are browser-supplied, and an id-keyed plain
+     * object is the '__proto__' foot-gun this repo has stepped on three times
+     * (CLAUDE.md). */
+    const downPointers = new Map();   /* pointerId -> { x, y } */
+
+    const beginGesture = (ex, x, y, cue, pointerId) => {
       const S = stateRef.current;
-      const cue = cueScreenPos();
-      if (!cue) return;
-      const x = e.clientX, y = e.clientY;
-      /* v2.3.2245: ON the button, not merely near where a cue happened to be. */
-      if (Math.hypot(x - cue.x, y - cue.y) > cue.r + BUTTON_SLACK_PX) return;
 
       /* v2.3.2245: no tree-ward on a disc -- either horizontal stroke scores
          (the recognizer's existing rule for a tree directly above/below). */
       const treeward = 0;
       const node = nodeOf(S, ex);
-
       /* Resume the accumulator if this is a re-press within the same window,
          otherwise start fresh. Lives on the extraction record so progress and
          the cue meter persist across lifts. */
@@ -249,7 +268,31 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
          inference -- while the finger is on the glass there is no demo, no
          matter how long the frame took. */
       ex._gestureDown = true;
-      swipeRef.current = { startX: x, startY: y, samples: [{ x, y, t: performance.now() }] };
+      /* v2.3.2514: WHOSE finger this is.  onPointerUp used to clear the
+         gesture for ANY pointer that lifted -- the left thumb coming off the
+         movement stick killed the harvest stroke the right thumb was in the
+         middle of, and the demo came back 600ms later.  Recorded on the press
+         so the lift can be matched to it. */
+      swipeRef.current = { startX: x, startY: y, pointerId, samples: [{ x, y, t: performance.now() }] };
+    };
+
+    const onPointerDown = (e) => {
+      const x = e.clientX, y = e.clientY;
+      /* Remembered BEFORE any of the guards below: at this instant the
+         extraction may not exist yet (see the note above beginGesture).
+         The map is emptied by pointerup/pointercancel; the size guard is for
+         the pointer that goes down and never reports either (a lost capture,
+         a backgrounded tab), so a long session cannot accumulate ids.  A
+         hand has ten fingers, so 12 is already generous. */
+      if (downPointers.size > 12) downPointers.clear();
+      downPointers.set(e.pointerId, { x, y });
+      const ex = readyExtraction();
+      if (!ex) return;
+      const cue = cueScreenPos();
+      if (!cue) return;
+      /* v2.3.2245: ON the button, not merely near where a cue happened to be. */
+      if (Math.hypot(x - cue.x, y - cue.y) > cue.r + BUTTON_SLACK_PX) return;
+      beginGesture(ex, x, y, cue, e.pointerId);
     };
 
     /* Oscillation counter with hysteresis: counts a half-stroke each time the
@@ -315,11 +358,34 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
     };
 
     const onPointerMove = (e) => {
-      const sw = swipeRef.current;
+      const x = e.clientX, y = e.clientY;
+      if (downPointers.has(e.pointerId)) downPointers.set(e.pointerId, { x, y });
+      let sw = swipeRef.current;
+      /* v2.3.2514: ADOPT A FINGER THAT WAS DOWN BEFORE THE WINDOW OPENED.
+         See the note above beginGesture: the thumb that pressed CHOP is
+         already on the glass when `ready` arrives, and its pointerdown came
+         and went while there was nothing to start.  This is where it gets
+         picked up -- the first move, on the button, of a pointer we know is
+         down.  Deliberately NOT "any move at all": a left thumb steering the
+         character must not be mistaken for a chop. */
+      if (!sw && downPointers.has(e.pointerId)) {
+        const exNow = readyExtraction();
+        const cueNow = exNow ? cueScreenPos() : null;
+        if (exNow && cueNow && Math.hypot(x - cueNow.x, y - cueNow.y) <= cueNow.r + BUTTON_SLACK_PX) {
+          const d = downPointers.get(e.pointerId) || { x, y };
+          /* Start the stroke from where the finger WAS, not from where this
+             move landed, so the travel already made counts toward the first
+             half-stroke instead of being swallowed by the anchor. */
+          beginGesture(exNow, d.x, d.y, cueNow, e.pointerId);
+          sw = swipeRef.current;
+        }
+      }
       if (!sw) return;
+      /* v2.3.2514: one gesture, one finger.  A second pointer wandering over
+         the button must not feed the stroke the first one is making. */
+      if (sw.pointerId != null && e.pointerId !== sw.pointerId) return;
       const ex = readyExtraction();
       if (!ex || !ex._gesture) return;
-      const x = e.clientX, y = e.clientY;
       sw.samples.push({ x, y, t: performance.now() });
       if (e.cancelable) e.preventDefault();
 
@@ -400,7 +466,21 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       }
     };
 
-    const onPointerUp = () => {
+    const onPointerUp = (e) => {
+      const id = e && e.pointerId;
+      downPointers.delete(id);
+      /* ═══ v2.3.2514: ONLY THE FINGER THAT IS MAKING THE GESTURE ENDS IT ═══
+         This handler took no argument and cleared the press for ANY pointer.
+         Both thumbs are on the glass during a harvest -- the left one steers,
+         and on a phone it lifts and lands constantly -- so every one of those
+         lifts dropped swipeRef and cleared `_gestureDown` while the right
+         thumb was still chopping.  From there the right thumb's moves fell out
+         at `if (!sw) return`, the reps stopped counting and the demo came back
+         600ms later, which is the "animation stops following me" report.
+         Matching the id also means pointercancel for an unrelated touch (iOS
+         cancels liberally) no longer ends a stroke. */
+      const sw = swipeRef.current;
+      if (sw && sw.pointerId != null && id != null && id !== sw.pointerId) return;
       /* Pause: drop the active press but keep ex._gesture so a re-press resumes
          and the cue meter holds its progress. */
       swipeRef.current = null;
@@ -422,6 +502,12 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
         return {
           status: ex ? ex.status : null, skill: ex ? ex.skill : null,
           pressed: !!swipeRef.current, reps: ex ? +(ex.reps || 0).toFixed(2) : null,
+          /* v2.3.2514: the two facts the pointer fixes are about, neither of
+             which a screenshot can see -- whether the layer believes a finger
+             is on the button (the demo stands down on this) and WHICH finger
+             owns the stroke (so a second one lifting cannot end it). */
+          gestureDown: !!(ex && ex._gestureDown),
+          pointerId: swipeRef.current ? (swipeRef.current.pointerId ?? null) : null,
           progress: ex ? +(ex.progress || 0).toFixed(2) : null,
           frame01: ex ? +(ex.cueFrame01 || 0).toFixed(3) : null,
           cue: buttonCueScreenPos(S),

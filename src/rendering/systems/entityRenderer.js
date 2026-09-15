@@ -1505,7 +1505,31 @@ function _remoteBodyArt(other, mirror) {
  * That is five poses back, not the eight I first told the owner — chop, cook
  * and fire only LOOKED free.  Their entries stay because deleting them would
  * invite the next reader to re-derive all of this. */
-const _CAPE_HIDDEN_POSES = { swing: 1, bowshot: 1, chop: 1, cook: 1, fire: 1 };
+/* ═══ v2.3.2516: THE ROLL AND THE LOOT BEND TAKE THE CAPE OFF AGAIN ═══
+ * Owner (D6, backlog triage 2026-09-14 §5.8): "hide the cape on the dodge pose
+ * INCLUDING the loot bend."
+ *
+ * This reverses the v2.3.2129 paragraph directly above for TWO of its five
+ * poses, and the reason is that the paragraph reasoned about the wrong risk.
+ * It asked "does the cape still get DRAWN on this pose" and answered yes for
+ * every real-body pose, which is true.  What it never asked is whether the
+ * cape drawn there is drawn in the right PLACE.
+ *
+ * It is not, and only on these two.  The cape is a standing still pinned to
+ * the frame's crown (_lookupBodyTop, see _placeCape), so it tracks the head
+ * and hangs straight down from it.  That is correct for any pose where the
+ * figure stays upright -- mine, fish and hit all do, which is why those three
+ * stay OFF this list and keep the cape the owner paid for.  dodge and pickup
+ * are the two where the torso goes HORIZONTAL: the bro tucks into a roll, or
+ * folds down over a loot pile.  The crown follows him down, and a garment that
+ * hangs straight down from it then hangs into the ground while the body is
+ * bent away underneath -- the owner's words, "a cape hanging in mid-air while
+ * the player crouched".
+ *
+ * `pickup` is a separate pose string from `dodge` (see the pose ladder at
+ * ~9885 and the dodge branch at ~10033), so both are named; adding only
+ * `dodge` would leave the loot bend exactly as reported. */
+const _CAPE_HIDDEN_POSES = { swing: 1, bowshot: 1, chop: 1, cook: 1, fire: 1, dodge: 1, pickup: 1 };
 
 /* ═══ v2.3.2024: THE CAPE TRAILS WHEN HE RUNS ═══
  * Owner: "The cape needs to be rotated so the back of the character doesn't
@@ -1665,7 +1689,31 @@ function _placeCape(display, capeId, pose, dir, mirror, frameIdx) {
   const sb = display._spriteBody;
   const off = (!capeId || capeId === 'none' || _CAPE_HIDDEN_POSES[pose]);
   const tex = off ? null : getCapeTexture(capeId, dir);
-  if (!tex || !sb || !sb.visible) {
+  /* ═══ v2.3.2516: THE SOUTH BLOCK IS STILL A BODY ═══
+   * Owner (backlog triage 2026-09-14, art item 9): "no cape on the south shield
+   * block."
+   *
+   * `sb.visible` is the right question everywhere else -- a swing, a chop or a
+   * cook replaces the figure with a stand-in in another layer, and a cape left
+   * on the hidden body would hang in the air where the character used to be.
+   * South blocking WHILE MOVING is the one case where the body sprite is hidden
+   * and the character is still drawn right here: _placeSouthBlockLegs splits him
+   * into a frozen standing top band and a striding jog band (v2.3.1872) and
+   * hides `sb` only so it cannot draw a second pair of legs under them.
+   *
+   * Nothing else about the seat changes, and that is what makes this two lines
+   * instead of a second placement path: the bands are placed FROM sb's own
+   * transform (_placeBand copies x, scale, tint, alpha), so the cape computed
+   * off sb is already registered with the composite.  The pose reads 'stand'
+   * there (_blockPlanted), so the crown offset lands on the frozen top band's
+   * head, which is the one actually on screen.
+   *
+   * Read off the live band rather than off a flag because the bands are placed
+   * EARLIER in the same frame than this is called (the _southBlock block at
+   * ~10273 precedes the _placeCape line at ~10337), so this is this frame's
+   * truth and not last frame's. */
+  const _bandBody = !!(display._southTop && display._southTop.visible);
+  if (!tex || !sb || (!sb.visible && !_bandBody)) {
     if (spr.visible) spr.visible = false;
     if (back && back.visible) back.visible = false;
     /* v2.3.2186: and the hair clip goes with it.  Leaving _btReady set here
@@ -4265,7 +4313,28 @@ function heldWeaponInFront(wpnType, facingIdx, inFrontBase) {
      NE ("the body should mostly hide the bow").  E and W are side-on and S
      holds it clear in the near hand, so those keep the in-front order. */
   if (wpnType === 'bow') return facingIdx === 0 || facingIdx === 2;
-  return inFrontBase || facingIdx === 3;   /* greatsword: point-up, clears the torso */
+  /* ═══ v2.3.2516: SOUTHWEST GOES BEHIND, AND THAT RETIRES THE v2.3.1787 SW ═══
+   * Owner (D7, backlog triage 2026-09-14 §5.8): "greatsword at southwest goes
+   * BEHIND the body for jog/idle AND for the attack swing -- it is in the right
+   * hand, facing away from the camera; the character should occlude the swing
+   * instead of the blade passing through the body.  Southeast and east are
+   * unchanged."
+   *
+   * v2.3.1787 read as "SW SE and E need the sword layered in front of", and
+   * `|| facingIdx === 3` is the SW half of that.  SE (1) and E (0) are already
+   * in `inFrontBase` (inFrontInHand = 0,1,2,7), so dropping the SW term leaves
+   * the other two facings byte-identical and moves only the one the owner named
+   * twice.  Which hand the blade is in is what separates them: at SE and E the
+   * greatsword is on the camera side of the figure, at SW it is on the far
+   * side, and v2.3.1787 swept SW along with the two it could actually see.
+   *
+   * The plain sword and the staff have always been behind at SW (they are not
+   * `_heldInHand`, so they never reach this function and take inFrontInHand,
+   * which excludes 3).  This makes the greatsword agree with them rather than
+   * introducing a new rule.  The swing's own z-order is the matching half and
+   * lives in effectsRenderer's _updateSwordSwing -- see the v2.3.2516 note on
+   * _orderSwingWeapon's `behind` argument there. */
+  return inFrontBase;   /* greatsword: point-up, clears the torso -- E/SE only */
 }
 
 /* Weapon swing animation — matches the Canvas 2D drawSpriteCharacter
@@ -11498,6 +11567,27 @@ export class EntityRenderer {
             && _bodyRef.visible && _bodyRef.texture
             && !swingActive && isInCombat
             && (facingIdx === 0 && pose === 'jog');
+          /* ═══ v2.3.2516 QA probe: WHY the capsule did or did not run ═══
+             The owner's seventh report of a bare jog-east shoulder names the
+             SHIELD as the suspect, and the capsule is the only shield-shaped
+             thing in this region (it stamps a body clone over the arm so the arm
+             covers the slung shield, v2.3.200).  Whether it fires is decided by
+             six separate conditions across three nested blocks, and "it did not
+             fire" and "it fired and did the wrong thing" want completely
+             different fixes -- so each input is published rather than the
+             verdict alone.  mp-teeshield reads it; nothing in the game does.
+             House style: __btWeapon, __btSouthBlockBody, __btStandInCape. */
+          if (typeof window !== 'undefined') {
+            window.__btArmCapsule = {
+              on: !!useArmCapsule,
+              hasSprites: !!(handArm && armMask),
+              bodyVisible: !!(_bodyRef && _bodyRef.visible && _bodyRef.texture),
+              swingActive: !!swingActive, inCombat: !!isInCombat,
+              facingIdx, pose, facing: S._renderFacing || null,
+              shirtOn: !!(display._gearShirt && display._gearShirt.visible),
+              armShirtOn: !!(display._handArmShirt && display._handArmShirt.visible),
+            };
+          }
           if (useArmCapsule) {
             handArm.texture = _bodyRef.texture;
             handArm.x = _bodyRef.x;

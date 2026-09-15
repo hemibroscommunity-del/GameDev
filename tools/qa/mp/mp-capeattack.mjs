@@ -145,12 +145,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
     seen.map((s) => ({ tag: s.tag, hoodX: s.cape && s.cape.hoodX, hairX: s.cape && s.cape.hairX,
       gap: s.cape ? +Math.abs(s.cape.hoodX - s.cape.hairX).toFixed(2) : null })));
 
+  /* ═══ v2.3.2516: ONE STAND-IN IS NOW AN EXCEPTION, AND IT IS NAMED ═══
+     Owner (backlog triage 2026-09-14, art item 8): on the east jog bow attack
+     the cape "should drape over the waist, not behind".  East is the only
+     PROFILE the stand-ins have, and side-on "behind the body" stops being the
+     same picture as "behind in the world" -- dropped under the body the hem
+     that falls across the hip disappears into the torso and the cape reads as
+     cut off at the belt.  See _STAND_IN_CAPE_OVER_BODY in effectsRenderer.
+
+     The claim is SPLIT IN TWO rather than loosened, because "the panels are
+     under the body" is still the rule and a blanket assertion with a carve-out
+     would stop being able to fail.  The probe reports `overBody` -- whether
+     this (stand-in, direction) is in the exception table -- so each case is
+     asserted against the rule it is actually under. */
   rec.ok('...SPLIT the same way it is when you walk: the panels behind the '
-    + 'stand-in body and the hood in front, so the torso is not covered by a slab',
-    seen.every((s) => s.cape && s.cape.split && s.cape.backUnderBody === true),
-    seen.map((s) => ({ tag: s.tag, split: s.cape && s.cape.split,
+    + 'stand-in body and the hood in front, so the torso is not covered by a '
+    + 'slab. Every stand-in except the east bow shot, which is the v2.3.2516 '
+    + 'exception below',
+    seen.filter((s) => !(s.cape && s.cape.overBody))
+      .every((s) => s.cape && s.cape.split && s.cape.backUnderBody === true),
+    seen.map((s) => ({ tag: s.tag, split: s.cape && s.cape.split, over: s.cape && s.cape.overBody,
       under: s.cape && s.cape.backUnderBody, backIdx: s.cape && s.cape.backIdx,
       bodyIdx: s.cape && s.cape.bodyIdx })));
+
+  const bowEast = seen.find((s) => s.tag === 'bow-east');
+  rec.ok('...and the EAST BOW SHOT drapes the panels OVER the waist instead — '
+    + 'the one facing the owner reported, keyed by (stand-in, direction) so the '
+    + 'east SWORD swing, whose blade sweeps that same region, is untouched',
+    !!(bowEast && bowEast.cape && bowEast.cape.overBody === true
+       && bowEast.cape.backUnderBody === false),
+    bowEast && bowEast.cape);
 
   /* ═══ v2.3.2192: THE CLIP IS ASSERTED ON THE HAIR, NOT ON THE MASK ═══
      v2.3.2190 asserted only that the hood mask was READY, and shipped green.
