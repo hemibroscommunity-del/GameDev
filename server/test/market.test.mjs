@@ -1251,6 +1251,61 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
         removeGearLocal(R, 'gearStash', { slot: 'chest', gearId: 'steelchest' }, 0) === true
         && R.gearStash.length === 0, R.gearStash);
     }
+
+    /* ══ S12k. ...AND THE BAG HAS TO GET IT BACK ══ (v2.3.2530)
+       S12j is only half a story, and shipped alone it trades one bug for
+       another.  The splice takes a listed piece out of the bag because
+       the worker escrowed it — but the worker GIVES IT BACK on a
+       take-down, on the 24h expiry, and on a listing whose record could
+       not be written, and this client still does not read the gear
+       stashes off `player_state`.  So the returned piece lands in a list
+       nobody renders: you take your own listing down and the plate is
+       gone from your bag, with the worker holding it where you cannot
+       see it.  "Sold it twice" becomes "lost it".
+
+       The client half is a `kind: 'gear'` branch in gameEvents.js's
+       inbox_delivered handler, which adopts the piece the way
+       loot_credit and quest_reward_stashed already adopt dropped and
+       quest armour.  What is pinned HERE is the contract that branch
+       depends on: that a returned gear listing actually reaches the
+       socket as a gear delivery naming its list and carrying its piece.
+       Without these fields the client cannot put it anywhere. */
+    {
+      SEL.armorStash = [plate('Homecoming Plate')];
+      SEL.armor = null;
+      wsSel.sent.length = 0;
+      const back = await shop._stCreateListing({
+        playerId: GSEL, kind: 'gear', field: 'armorStash', sel: plate('Homecoming Plate'), price: 99,
+      });
+      check('client contract: (setup) the piece is listed', back.ok === true, back);
+      await shop._stCancel(back.listing.id, GSEL);
+      const deliveries = wsSel.sent.filter((m) => m.type === 'inbox_delivered');
+      const entries = deliveries.flatMap((m) => (m.payload && m.payload.entries) || []);
+      const gearEntry = entries.find((e) => e.kind === 'gear');
+      check('client contract: a returned piece arrives as a GEAR delivery, not an untyped one',
+        !!gearEntry, entries.map((e) => e.kind));
+      check('client contract: ...naming the list it belongs in',
+        gearEntry && gearEntry.payload && gearEntry.payload.field === 'armorStash', gearEntry && gearEntry.payload);
+      check('client contract: ...and carrying the piece itself, so the bag can show it again',
+        gearEntry && gearEntry.payload.piece && gearEntry.payload.piece.name === 'Homecoming Plate',
+        gearEntry && gearEntry.payload && gearEntry.payload.piece);
+      /* And the same on the EXPIRY path, which is the one no player
+         triggers on purpose and therefore the one nobody would notice. */
+      SEL.armorStash = [plate('Expired Homecoming')];
+      wsSel.sent.length = 0;
+      const back2 = await shop._stCreateListing({
+        playerId: GSEL, kind: 'gear', field: 'armorStash', sel: plate('Expired Homecoming'), price: 99,
+      });
+      shop._stIndex.get(back2.listing.id).expiresAt = Date.now() - 1;
+      shop._stLastSweep = 0;
+      await shop._stSweep();
+      const expEntry = wsSel.sent.filter((m) => m.type === 'inbox_delivered')
+        .flatMap((m) => (m.payload && m.payload.entries) || [])
+        .find((e) => e.kind === 'gear');
+      check('client contract: an EXPIRED gear listing comes home the same way',
+        !!expEntry && expEntry.payload.field === 'armorStash'
+        && expEntry.payload.piece.name === 'Expired Homecoming', expEntry && expEntry.payload);
+    }
   }
 
   // ── the order book next door is untouched ──

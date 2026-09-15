@@ -257,6 +257,23 @@ exactly as it was, because the worker took nothing. This is the smaller
 fix and it is named as such: **making the client a reader of the echoed
 stash is the real one, and it remains open.**
 
+**And the bag has to get it back (v2.3.2530).** The splice alone trades
+one bug for another. The worker *returns* the piece on a take-down, on the
+24 h expiry and on a listing whose record could not be written — and since
+the client still does not read the echoed stash, that return lands in a
+list nobody renders. You take your own listing down and the plate is gone
+from your bag, with the worker holding it where you cannot see it: "sold
+it twice" becomes "lost it". So `gameEvents.js`'s `inbox_delivered`
+handler gains a `kind: 'gear'` branch that adopts the piece into the local
+stash, exactly as `loot_credit` and `quest_reward_stashed` already adopt
+dropped and quest armour. The worker's copy stays the record; this is the
+bag catching up, and the hand-over's multiset merge converges the two on
+the next login rather than doubling them. Offline sellers ride the same
+line — the mail drains at join and arrives as the same event. `field` is
+matched against the five literal names, never used to index (TRAPS #6).
+`market.test.mjs` §S12k pins the wire contract that branch depends on, on
+both the cancel and the expiry path.
+
 ### Being in the stash is not proof of ownership — an accepted risk
 
 Adoption validates the **shape** of what a client claims and never whether
@@ -442,6 +459,8 @@ nothing on failure, and still nothing before the worker has answered.
 - `server/src/index.js` — the outer-worker route and the DO `fetch`
   branch, beside the market's.
 - `server/src/join.js` — `caps.store`, `caps.storeGear`.
+- `src/networking/gameEvents.js` — the `kind: 'gear'` branch of
+  `inbox_delivered` (v2.3.2530), which puts a returned piece back in the bag.
 - `src/ui/mobile/dash/gearSellLocal.js` — the gear cards' stash table and
   the local splice (v2.3.2529); pure, so `market.test.mjs` §S12j can
   import it.
