@@ -64,7 +64,7 @@ const DEMO_CYCLE_MS = { mining: 700, woodcutting: 700, fishing: 450, cooking: 16
    the demonstration back while the window is still open. */
 const DEMO_HOLD_MS = 600;
 
-/* ═══ v2.3.2511: ONE READING OF HOW FAR ALONG A HARVEST IS ═══
+/* ═══ v2.3.2514: ONE READING OF HOW FAR ALONG A HARVEST IS ═══
  *
  * Owner: a bar above the character's head that fills through the wind-up,
  * waits at the top for the window, and finishes as the strokes land.

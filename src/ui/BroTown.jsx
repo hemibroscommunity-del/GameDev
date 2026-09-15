@@ -52,7 +52,7 @@ import { TouchControls, RBTN_BODY_BG, RBTN_BODY_BG_HOT, RKNOB_BG, RKNOB_BG_HOT }
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger, beside the movement stick */
-import { GESTURE_TOOL_URLS, gestureDemo01, gestureCue01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245: the tool strips the button face plays; gestureDemo01 v2.3.2384; extractionMeter01 v2.3.2511 (shared with the bar above the head) */
+import { GESTURE_TOOL_URLS, gestureDemo01, gestureCue01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245: the tool strips the button face plays; gestureDemo01 v2.3.2384; extractionMeter01 v2.3.2514 (shared with the bar above the head) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 
@@ -5238,7 +5238,7 @@ export var BroTown = function BroTown(_ref0) {
             if (_ex) {
               var _c = _ring.firstChild;
               var _frac, _col;
-              /* v2.3.2511: the two fractions come from extractionMeter01
+              /* v2.3.2514: the two fractions come from extractionMeter01
                  (gesturePose.js) now, because the new bar above the
                  character's head shows the SAME wind-up and the same strokes.
                  Two meters on two copies of the arithmetic drift, and the

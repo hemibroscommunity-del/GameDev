@@ -98,7 +98,7 @@ import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */ } from '@/data/index.js';
-import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2511 (the wind-up bar reads the button ring's own numbers) */
+import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the wind-up bar reads the button ring's own numbers) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
@@ -10466,14 +10466,14 @@ export class EffectsRenderer {
        pace (gesturePose01).  The mining strike sparks + clink fire from the
        pump slam (ExtractionSwipeLayer onSlam), so nothing here is needed for
        them either. */
-    /* v2.3.2511: the wind-up bar over whichever figure is on screen -- see
+    /* v2.3.2514: the wind-up bar over whichever figure is on screen -- see
        _drawWindupBar.  Last, because it reads the stand-in sprites' final
        transforms to find the top of the head. */
     this._drawWindupBar(S, ex, now);
     void x; void y; void chopSign;
   }
 
-  /* ═══ v2.3.2511: THE WIND-UP, OVER THE CHARACTER'S HEAD ═══
+  /* ═══ v2.3.2514: THE WIND-UP, OVER THE CHARACTER'S HEAD ═══
    *
    * Owner: a progress bar above the head that fills while the harvest winds
    * up, and finishes as the strokes land.
@@ -10519,7 +10519,7 @@ export class EffectsRenderer {
        with the bro on a vista map exactly as the stand-ins do (v2.3.2287). */
     const pscale = zonePlayerScale(S.currentZone, S.player.x, S.player.y, TILE);
     let cx = S.player.x;
-    /* v2.3.2511: ...times the bro's build, because v2.3.2500 put that term on
+    /* v2.3.2514: ...times the bro's build, because v2.3.2500 put that term on
        every figure this bar sits over.  Identity today (both axes are locked
        at 1.00, buildCatalog v2.3.1995/1996) -- written so the bar cannot drift
        off a taller head the day a second height comes back. */
@@ -10560,7 +10560,7 @@ export class EffectsRenderer {
       const capW = Math.max(2 * pscale, H);
       gfx.roundRect(x0 + fillW - capW, y0, capW, H, r).fill({ color: 0xF0C878, alpha: pulse });
     }
-    /* v2.3.2511 QA probe: the fill fraction and phase, neither of which a
+    /* v2.3.2514 QA probe: the fill fraction and phase, neither of which a
        screenshot can read off an anti-aliased 46px bar. */
     if (typeof window !== 'undefined') {
       window.__btWindupBar = { bar01: +m.bar01.toFixed(3), windup: +m.windup.toFixed(3),
