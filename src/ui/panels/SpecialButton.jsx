@@ -1,6 +1,7 @@
 import React from 'react';
 import { TARGET_PERIMETER_PX, getActiveWeapon, specialManaCost } from '@/data/index.js';
 import { specialAttack } from '@/game/playerActions.js';
+import { BOW_SPECIAL_QUEUE_MS } from '@/game/combatHelpers.js'; /* v2.3.2543: the queued special's own expiry, so the button and the fire site cannot disagree about how long a request stands */
 import { ctlColumn, ctlBottom, CTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2542: the shared right-hand column */
 
 /* ═══ v2.3.2542: A SPECIAL ATTACK BUTTON, ORBITING THE ATTACK DISC ═══
@@ -60,6 +61,37 @@ import { ctlColumn, ctlBottom, CTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /
  */
 const SPECIAL_CD_MS = 1500;   /* playerActions.specialAttack's own §4.5 gate */
 
+/* ═══ v2.3.2543: A HELD SPECIAL IS A STATE OF THIS BUTTON, NOT A MESSAGE ═══
+ *
+ * Owner, after playing the merged bow rework: swiping the bow's special on a
+ * monster "often pops a message saying the ability is queued", and "the player
+ * does not need telling every time; they swiped, they expect a shot."
+ *
+ * The bow only looses when its sight line is on something (monsterCombat's
+ * gate), so a special pressed while the line is empty is REMEMBERED and fires
+ * on the first frame the line lands -- v2.3.2473's queue, and it is good
+ * behaviour worth keeping.  What was wrong is that it announced itself in a
+ * `pushDmgPopup` over the player's head, once per swipe, while they were
+ * aiming.  The feedback is not deleted (a control that silently does nothing
+ * is indistinguishable from a broken one -- the same note playerActions' own
+ * no-mana refusal carries); it MOVED to the one place the player is already
+ * looking when they press it, and it costs them no reading.
+ *
+ * WHY THE EXPIRY IS IMPORTED RATHER THAN RE-STATED.  `_bowSpecialQueued` is a
+ * timestamp, and monsterCombat drops it once it is older than
+ * BOW_SPECIAL_QUEUE_MS.  A button with its own copy of that number would light
+ * for a request the fire site had already abandoned (or go dark on one it was
+ * still holding) the first time either moved -- the same one-number-two-places
+ * failure as the origin bug in the report this ships with.
+ *
+ * DELIBERATELY NOT gated on the weapon: the queue is bow-only at the fire site
+ * (`R.activeSlot === 'ranged'`), so the flag is simply never set on anything
+ * else and testing the slot here would be a second copy of that rule too. */
+export function specialQueued(S) {
+  if (!S || !S._bowSpecialQueued) return false;
+  return (Date.now() - S._bowSpecialQueued) < BOW_SPECIAL_QUEUE_MS;
+}
+
 export function specialButtonLive(S, perimeterPx) {
   if (!S || !S.rpg || !S.player) return false;
   if (!getActiveWeapon(S.rpg)) return false;
@@ -109,7 +141,10 @@ export function SpecialButton(props) {
       var cd2 = Math.max(0, SPECIAL_CD_MS - (Date.now() - (s2._lastSwipe || 0)));
       return { live: specialButtonLive(s2, TARGET_PERIMETER_PX), cdLeft: cd2,
         mana: s2.rpg.mana, cost: specialManaCost(s2.rpg),
-        weapon: !!getActiveWeapon(s2.rpg), lock: !!(s2.lockedTarget && s2.lockedTarget.ref) };
+        weapon: !!getActiveWeapon(s2.rpg), lock: !!(s2.lockedTarget && s2.lockedTarget.ref),
+        /* v2.3.2543: the held-special state, which replaced a popup.  A
+           scenario can read a flag; it cannot read a ring. */
+        queued: specialQueued(s2) };
     };
   }
   if (!specialButtonLive(S, TARGET_PERIMETER_PX)) return null;
@@ -124,6 +159,9 @@ export function SpecialButton(props) {
   var cost = specialManaCost(S.rpg);
   var afford = (S.rpg.mana || 0) >= cost;
   var ready = cdLeft <= 0 && afford;
+  /* v2.3.2543: a swipe the bow is holding until its line lands.  See the
+     header -- this is where the 'Lining up...' popup went. */
+  var queued = specialQueued(S);
 
   var press = function (e) {
     /* Both, and in this order -- see the header.  preventDefault stops iOS
@@ -138,7 +176,7 @@ export function SpecialButton(props) {
 
   return React.createElement('div', {
     className: 'bt-desktop-hide',
-    'data-special': ready ? 'ready' : 'wait',
+    'data-special': queued ? 'queued' : (ready ? 'ready' : 'wait'),
     onTouchStart: press,
     onMouseDown: press,
     /* v2.3.2542: a touch that ENDS here must not reach the zone either -- rE
@@ -164,11 +202,20 @@ export function SpecialButton(props) {
          with a brass edge while it will do something.  No CSS filter at any
          state -- a filter on a DOM overlay compositing over the WebGL canvas
          is the documented iOS grain hazard (v2.3.948, v2.3.1236). */
-      background: ready
+      /* v2.3.2543: a held swipe reads as the LIT slate with a full brass rim --
+         the same two tokens the ready state already uses, turned up rather
+         than a new colour, so the button says "your press landed and is
+         waiting" without introducing a third visual language to learn.  Still
+         no CSS filter at any state: a filter on a DOM overlay compositing over
+         the WebGL canvas is the documented iOS grain hazard (v2.3.948,
+         v2.3.1236), and a pulsing one would be the same hazard in motion. */
+      background: (ready || queued)
         ? 'radial-gradient(circle, #34444B 0%, #202C32 100%)'
         : 'radial-gradient(circle, #1A2429 0%, #141C21 100%)',
-      border: '2px solid ' + (ready ? '#D8A85F' : 'rgba(238,242,235,.14)'),
-      boxShadow: ready ? 'inset 0 1px 0 rgba(255,255,255,.08)' : 'none',
+      border: (queued ? '3px solid #F0C878' : '2px solid ' + (ready ? '#D8A85F' : 'rgba(238,242,235,.14)')),
+      boxShadow: queued
+        ? 'inset 0 0 0 1px rgba(240,200,120,.35), inset 0 1px 0 rgba(255,255,255,.10)'
+        : (ready ? 'inset 0 1px 0 rgba(255,255,255,.08)' : 'none'),
       opacity: afford ? 1 : 0.55,
       WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
     },
@@ -188,7 +235,12 @@ export function SpecialButton(props) {
   React.createElement('span', {
     style: {
       fontSize: 11, fontWeight: 700, letterSpacing: '.04em', marginTop: 2,
-      color: ready ? '#F7F2E7' : '#687575', pointerEvents: 'none',
+      color: queued ? '#F0C878' : (ready ? '#F7F2E7' : '#687575'), pointerEvents: 'none',
     },
-  }, cdLeft > 0 ? (Math.ceil(cdLeft / 1000) + 's') : 'SPEC'));
+  },
+  /* v2.3.2543: AIM, because that is the ACTION the state is asking for -- the
+     shot goes the moment the line touches something, so the one useful thing
+     the player can do with this information is move the line.  'QUEUED' would
+     name the machinery instead, which is what the popup did. */
+  queued ? 'AIM' : (cdLeft > 0 ? (Math.ceil(cdLeft / 1000) + 's') : 'SPEC')));
 }

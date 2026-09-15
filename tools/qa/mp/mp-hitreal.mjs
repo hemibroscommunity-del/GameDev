@@ -328,18 +328,36 @@ const aimAt = (P, t) => P.page.evaluate(({ ax, ay }) => {
      only just wider than the 28px offset, so the fixture was always on the
      edge of missing and the gate simply made that visible.
 
-     Reads `S._bowGripX/Y` -- the same absolute point the fire site and the
-     sight gate both measure from (monsterCombat), with the same fallback to
-     the feet -- rather than re-deriving it from the player plus the published
-     offset.  One of those is the number the gate uses and the other is a copy
-     of it; on a walking player they disagree by a frame, and the whole defect
-     being fixed here is a fixture that aimed from a different point than the
-     game fires from.  So the first attempt of a row -- before the renderer has
-     painted a bow frame and published a grip -- behaves exactly as the shot
-     does, and every later one is exact. */
+     ═══ v2.3.2543: ...AND THE GRIP IT AIMS FROM IS THE LIVE ONE ═══
+     The paragraph above was right that this fixture must measure from whatever
+     point the gate casts from, and it named the wrong field.  It read the
+     ABSOLUTE `_bowGripX/Y`, on the stated grounds that this is "the number the
+     gate uses" and the published offset is only "a copy of it".  That was true
+     when it was written and is no longer: the owner's own report (the line is
+     on the monster and the bow will not fire, the line is off it and it does)
+     was that same absolute pair going stale.  effectsRenderer writes it inside
+     `_updateBowShot`, which returns unless `S._bowShowing` -- the 360ms of
+     BOW_SHOT_MS after a shot -- so between volleys it freezes at the world
+     point of the last shot while the player walks away from it.  The gate and
+     the fire site now read the LIVE grip (bowGripPoint, combatHelpers) and so
+     must this, or the fixture points from one place while the game tests from
+     another, which is the exact defect this comment was written about, with
+     the two ends swapped.
+
+     Preferring `_bowSight.ox/oy` is deliberate: that is not a copy of the
+     gate's origin, it is the origin the gate actually cast from on its last
+     frame, published beside the answer.  The offset expression behind it is
+     the fallback for the melee and staff rows (where `_bowSight` is null by
+     design) and for the first frame of a row, and the feet remain the floor
+     before the renderer has ever painted a bow. */
   const _rangedNow = R && (R.activeSlot === 'ranged');
-  const _fx = (_rangedNow && typeof S._bowGripX === 'number') ? S._bowGripX : S.player.x;
-  const _fy = (_rangedNow && typeof S._bowGripY === 'number') ? S._bowGripY : S.player.y;
+  const _sight = _rangedNow ? S._bowSight : null;
+  const _gripDX = (typeof S._bowGripDX === 'number') ? S._bowGripDX : 0;
+  const _gripDY = (typeof S._bowGripDY === 'number') ? S._bowGripDY : 0;
+  const _fx = (_sight && typeof _sight.ox === 'number') ? _sight.ox
+    : (_rangedNow ? S.player.x + _gripDX : S.player.x);
+  const _fy = (_sight && typeof _sight.oy === 'number') ? _sight.oy
+    : (_rangedNow ? S.player.y + _gripDY : S.player.y);
   const ang = Math.atan2(ay - _fy, ax - _fx);
   S._aimAngle = ang; S._lastAimAngle = ang; S._aiming = true; S._aimSrc = 'stick';
   S._facingAngle = ang; S._targetFacingAngle = ang;

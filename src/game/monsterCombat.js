@@ -41,7 +41,7 @@ import { STAFF_LIFE, BOW_RANGE_PX, toDisplayDamage } from '@/data/gameSystems.js
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */ } from '@/game/combatHelpers.js';
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
 import { firstSightHit } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii */
 import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
@@ -1462,8 +1462,14 @@ export function updateMonsterCombat(S, deps) {
              cap, so the gate cannot open on something the arrow could never
              reach. */
           if (_aSlot === 'ranged' && S.rpg && _eqWpn && !isPlayerDead(S)) {
-            var _bsX = (typeof S._bowGripX === 'number') ? S._bowGripX : P.x;
-            var _bsY = (typeof S._bowGripY === 'number') ? S._bowGripY : P.y;
+            /* v2.3.2543: the LIVE grip (player + published offset), which is the
+               point the sight line is drawn from.  Reading the absolute
+               `_bowGripX/Y` here is what made the gate test a ray from
+               wherever the player stood when they last fired -- see
+               bowGripPoint's note, and mp-bowgate for the 140px measurement. */
+            var _bsG = bowGripPoint(S);
+            var _bsX = _bsG ? _bsG.x : P.x;
+            var _bsY = _bsG ? _bsG.y : P.y;
             var _bsA = rangedAimAngle(S, _bsX, _bsY).ang;
             var _bsHit = null;
             try {
@@ -1471,7 +1477,8 @@ export function updateMonsterCombat(S, deps) {
                 BOW_RANGE_PX * (bowRangeMult(S.rpg) || 1), { isStaff: false, isSpecial: false });
             } catch (e) { _bsHit = null; }
             S._bowSight = { ang: _bsA, d: _bsHit ? _bsHit.dist : null,
-              id: _bsHit ? _bsHit.id : null, at: Date.now() };
+              id: _bsHit ? _bsHit.id : null, at: Date.now(),
+              ox: _bsX, oy: _bsY };
           } else if (S._bowSight) {
             S._bowSight = null;
           }
@@ -1512,8 +1519,15 @@ export function updateMonsterCombat(S, deps) {
                    Staff bolts have no grip offset (fromGrip is false and they
                    start at dist 14 from the player), so they keep the player
                    origin. */
-                var _shotX = (!isStaff && typeof S._bowGripX === 'number') ? S._bowGripX : P.x;
-                var _shotY = (!isStaff && typeof S._bowGripY === 'number') ? S._bowGripY : P.y;
+                /* v2.3.2543: the same live grip the GATE just tested from.  These
+                   two must not differ by so much as a pixel: the gate's whole
+                   promise is that a shot it lets go is a shot that connects, and
+                   it cannot promise that about a ray cast from somewhere else.
+                   (Under a lock rangedAimAngle's angle depends on this origin,
+                   so a stale point bent the shot as well as the test.) */
+                var _shotG = !isStaff ? bowGripPoint(S) : null;
+                var _shotX = _shotG ? _shotG.x : P.x;
+                var _shotY = _shotG ? _shotG.y : P.y;
                 var arrAngle;
                 /* v2.3.1111: aim at the BODY CENTRE, not the feet -- the
                    projectile hit-test uses the body-centre Y, and a
