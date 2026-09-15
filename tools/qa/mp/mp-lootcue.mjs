@@ -180,6 +180,36 @@ async function kill(P, { finishWithLunge = true, parkTo = 0 } = {}) {
       return c && c.alive !== false && (c.curHp == null || c.curHp > 0) ? c : null;
     };
     const maxHp = m.maxHp || m.curHp || 1;
+    /* ═══ WHY THIS BLOCK SOMETIMES SKIPS, AND WHY IT IS LEFT ALONE (v2.3.2550) ═══
+       "the monster survived the budget" turns up on maybe one run in three.
+       The first reading -- a loaded box starving the page's timers so too few
+       swings land -- was WRONG, and counting them is what showed it: 200
+       swings landed and the slime did not lose a hit point.  combat.js bounds
+       a melee `monster_damage` at PVE_MELEE_RANGE, 400 px, measured from the
+       WORKER's copy of the player, and BLOCK 1 parks the bro 300 px on each
+       axis -- 424 px -- so every swing after that is refused in silence.
+       The obvious fix (park closer, or walk back into range first) was tried
+       and MEASURED, and it is worse: it kills a second monster elsewhere in
+       the meadow, and mp-lootmagnet -- which runs next, with its own identity
+       but the SAME worker's monsters -- then failed its lunge, its walk to
+       the pile and its gold, in three different ways across three runs.
+
+       THE INTERFERENCE RUNS BOTH WAYS, which is the part worth remembering:
+       on a later run it was THIS scenario that came off worse, failing to
+       collect at all while mp-lootmagnet passed, and both files are green in
+       isolation (19/19 and 14/14).  Scenarios here are isolated by IDENTITY
+       -- a fresh context, a fresh bp_ passphrase, an untouched player -- and
+       not at all by world state: one meadow, one set of monsters, one
+       respawn clock, shared by whatever is running.  So a failure in a
+       multi-scenario run is not evidence about the code until the same
+       scenario has been run on its own.
+
+       Trading a skip this block reports honestly for an intermittent failure
+       somewhere else in the run is a bad trade, so the skip stays; `swings`
+       is kept so the next reader can tell the two cases apart at a glance --
+       a starved run shows a LOW count, an out-of-range bro shows a full one
+       against a monster still at full health. */
+    let swings = 0;
     const t0 = Date.now();
     while (Date.now() - t0 < 25000) {
       const c = alive();
@@ -187,7 +217,7 @@ async function kill(P, { finishWithLunge = true, parkTo = 0 } = {}) {
          threshold to dead, and then the "finished with a lunge" guard fails on
          a kill that was perfectly fine.  Measured -- it happened. */
       if (!c || (c.curHp != null && c.curHp <= maxHp * (lunge ? 0.5 : 0.02))) break;
-      hit(); await sleep(260);
+      hit(); swings++; await sleep(260);
     }
     let lunges = 0;
     if (lunge) {
@@ -206,7 +236,7 @@ async function kill(P, { finishWithLunge = true, parkTo = 0 } = {}) {
          enough that the finishing loop ran out and the block SKIPPED on a kill
          that was simply taking its time. */
       const t1 = Date.now();
-      while (Date.now() - t1 < 25000 && alive()) { hit(); await sleep(260); }
+      while (Date.now() - t1 < 25000 && alive()) { hit(); swings++; await sleep(260); }
     }
     const t3 = Date.now();
     while (Date.now() - t3 < 6000 && !seen) await sleep(50);
@@ -215,7 +245,7 @@ async function kill(P, { finishWithLunge = true, parkTo = 0 } = {}) {
     const t4 = Date.now();
     while (Date.now() - t4 < 1200 && seen && !askAt) await sleep(16);
     clearInterval(watcher);
-    return { lunges, dead: !alive(), seen, askAt, gold: S.rpg.coins };
+    return { lunges, swings, dead: !alive(), seen, askAt, gold: S.rpg.coins };
   }, { lunge: finishWithLunge, park: parkTo });
 }
 
@@ -352,7 +382,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (k2.none || !k2.dead || !k2.seen) {
     rec.skip('the ask is made while the coin is still flying in',
       k2.none ? 'no live monster to kill'
-        : !k2.dead ? 'the monster survived the budget' : 'the kill dropped no server pile');
+        /* The swing count is the diagnosis, so it goes in the reason rather
+           than being left for someone to dig out of the log: a FULL count
+           against a monster still at full health is the out-of-range case
+           described in kill(); a low one is a starved box. */
+        : !k2.dead ? `the monster survived ${k2.swings} swings `
+            + `(a full count here means out of melee range -- see the note in kill())`
+        : 'the kill dropped no server pile');
   } else if (k2.askAt) {
     rec.skip('the ask is made while the coin is still flying in',
       'the pile was asked for before the bro could be parked clear of it');
