@@ -454,7 +454,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     R.prog3.sk.staff = { level: 1, xp: 140 };
     try { window.__broDashPanelBus.toBar(); } catch (e) {}
   });
-  /* ═══ v2.3.2519: ...AND THE BAND HAS TO BE UNFOLDED TO HAVE A ROW AT ALL ═══
+  /* ═══ v2.3.2525: ...AND THE BAND HAS TO BE UNFOLDED TO HAVE A ROW AT ALL ═══
      toBar() puts the sheet away; it does not UNFOLD the band, and since
      v2.3.2495 a brand-new bro's first join arrives folded -- which is what
      this client is.  Folded, the three-column row is not rendered, so every
