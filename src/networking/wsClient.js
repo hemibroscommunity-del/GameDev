@@ -1478,7 +1478,31 @@ export function setupWebSocket(ctx) {
               try { console.log('[loot_pickup_rejected]', msg.payload, 'myId=', S.myId); } catch (e) {}
               var _rjPermanent = msg.payload.reason === 'no-pile' || msg.payload.reason === 'already-claimed' ||
                 msg.payload.reason === 'not-recipient' || msg.payload.reason === 'wrong-zone';
-              if ((msg.payload.reason === 'out-of-range' || _rjPermanent) && msg.payload.lootId && S.groundLoot) {
+              /* ═══ v2.3.2545: THE THIRD KIND OF NO, WHICH HAD NO HANDLER ═══
+                 v2.3.2490 sorted refusals into "permanent" (drop the pile) and
+                 "out-of-range" (re-arm fast), and its own note lists the
+                 reasons it deliberately left out as transient -- 'dead' and
+                 'disconnected' -- on the reasoning that they are temporary and
+                 will fix themselves.  They do, but nothing re-arms the ask:
+                 the reason falls out of the bottom of this handler, so
+                 `_pickupPending` stays set and the ONLY thing that clears it
+                 is groundLoot.js's 5 s watchdog.  Dying next to your own kill
+                 therefore costs five seconds of standing on top of coins you
+                 respawn beside in one, and 'no-ps' / 'no-loot-zone' (a room
+                 that has not finished rebuilding its zone) cost the same for a
+                 condition that clears in a tick.
+                 So: a third bucket that re-arms like out-of-range does, just
+                 slower (1 s, not 300 ms -- the thing it is waiting for is a
+                 respawn or a reconnect, not two steps) and WITHOUT spending
+                 the fast-retry budget below, which exists to stop a loop
+                 against a refusal that will not change.  'no-pet' stays out of
+                 all three on purpose: it can only come from a viaPet ask, and
+                 the pet's own 5 s watchdog (BroTown.jsx) is the right clock
+                 for it -- re-arming it here would make the pet re-ask every
+                 frame for as long as the worker has no pet on file. */
+              var _rjTransient = msg.payload.reason === 'dead' || msg.payload.reason === 'disconnected' ||
+                msg.payload.reason === 'no-ps' || msg.payload.reason === 'no-loot-zone';
+              if ((msg.payload.reason === 'out-of-range' || _rjPermanent || _rjTransient) && msg.payload.lootId && S.groundLoot) {
                 for (var _rjI = 0; _rjI < S.groundLoot.length; _rjI++) {
                   var _rjPile = S.groundLoot[_rjI];
                   if (_rjPile.lootId !== msg.payload.lootId) continue;
@@ -1492,6 +1516,29 @@ export function setupWebSocket(ctx) {
                     _rjPile._petPickupPending = false;
                     break;
                   }
+                  if (_rjTransient) {
+                    _rjPile._pickupPending = false;
+                    _rjPile._petPickupPending = false;
+                    _rjPile._pickupRetryAt = Date.now() + 1000;
+                    break;
+                  }
+                  /* ═══ v2.3.2545: EIGHT FAST TRIES, NOT EIGHT FOR ALL TIME ═══
+                     `_pickupTries` was never reset, so the budget was a
+                     LIFETIME one: a pile refused eight times in the second
+                     after it dropped -- which is what a stale worker-side
+                     position does, see the flushPendingMoveNow note on the
+                     loot_pickup send -- spent the whole budget before the
+                     player had finished walking to it, and every later ask,
+                     including the ones made standing directly on top of it,
+                     fell back to the 5 s watchdog for the rest of the pile's
+                     life.  That is the shape of "it just won't pick up".
+                     v2.3.2327's intent was to stop a fast SPIN against a
+                     refusal that is not changing, and a gap says that better
+                     than a total does: three quiet seconds means whatever was
+                     wrong is not the thing that is wrong now, so the next
+                     approach gets its eight tries back. */
+                  if (Date.now() - (_rjPile._lastRejectAt || 0) > 3000) _rjPile._pickupTries = 0;
+                  _rjPile._lastRejectAt = Date.now();
                   _rjPile._pickupTries = (_rjPile._pickupTries || 0) + 1;
                   if (_rjPile._pickupTries <= 8) {
                     _rjPile._pickupPending = false;
@@ -2732,6 +2779,18 @@ export function setupWebSocket(ctx) {
              sound, and a 0-coin share should not click.  Pet credits ring
              too -- the coins landed either way. */
           try { BT_AUDIO.play('coin-pickup', { vol: 0.45 }); } catch (_ce) {}
+          /* v2.3.2545: dev probe, house style (cf. window.__btLootSprites) and
+             gated on the harness's __btProbe flag so a real player never pays
+             for it.  tools/qa/mp/mp-lootcue.mjs counts this, which is what
+             lets "a refused pickup makes NO coin sound" be an assertion about
+             the SOUND rather than a re-reading of the code that plays it --
+             the one property that must hold if the cue is ever moved off the
+             worker's confirmation. */
+          try {
+            if (typeof window !== 'undefined' && window.__btProbe) {
+              window.__btCoinSfx = (window.__btCoinSfx || 0) + 1;
+            }
+          } catch (_pe) {}
         }
         if (payload.shard) {
           var _pickedShard = shardByKey(payload.shard);
@@ -3546,6 +3605,40 @@ export function setupWebSocket(ctx) {
           return;
         }
         if (msg.type === 'loot_pickup') {
+          /* ═══ v2.3.2545: THE PICKUP IS MEASURED FROM ps, SO SEND ps FIRST ═══
+             Owner, still: "coins sometimes magnetize toward the player without
+             ever being picked up."
+
+             _handleLootPickup (server/src/index.js) range-checks the grab
+             against ps.x/ps.y -- the WORKER's copy of where you are -- with
+             LOOT_PICKUP_RANGE 160 measured from the pile's anchor.  The client
+             asks from where it has actually walked to.  The adaptive position
+             rate holds a move for up to 66 ms while nobody shares your zone
+             (v2.3.1767), and the batch timer rounds that up to the next 33 ms
+             window, so the two copies are routinely a tenth of a second apart.
+
+             MEASURED, sampling the worker's own copy of the player at 120 ms
+             through a real 900 px lunge: 0, 0, 60, 1, 0, 85, 1, 1 px behind.
+             So the gap peaks at 60-85 px across the lunge and the beat after
+             it, which is exactly when a dash kill's pile lands -- and that
+             pile's anchor is 76-107 px away (mp-lootmagnet measured that
+             separately, and says so in its header).  85 + 107 is 192 against a
+             budget of 160.  Nothing in the client can see that refusal coming,
+             because the distance that decides it is one only the worker holds;
+             all the player sees is a coin that will not be picked up, mainly
+             after a melee dash, which is the report.
+             tools/qa/mp/mp-lootcue.mjs holds the gap at the ASK to <= 8 px
+             from here on.
+
+             This is v2.3.1765's fix, applied to the other message that is
+             range-checked from ps.  It is the same packet the batcher was
+             about to send, through the same validator and the same speed cap:
+             no new trust, no new field on the wire, and WebSocket ordering
+             guarantees the worker applies the position before the pickup.
+             Widening LOOT_PICKUP_RANGE was the alternative and it is worse --
+             160 px is already sized for this lag (see the constant's note) and
+             raising it buys cross-screen theft. */
+          flushPendingMoveNow();
           ws.send(JSON.stringify(msg));
           return;
         }

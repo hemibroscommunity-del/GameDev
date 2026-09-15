@@ -3307,3 +3307,35 @@ which is the desktop path.
 Related: §61 and §66 (a measurement taken in a state that cannot show the
 defect) — the first cut of the harness seeded `src:'tap'` by hand and so
 could only ever exercise the one path that worked.
+
+## 80. A control run that still contains the fix (v2.3.2545)
+
+**Tempting, and correct as a method:** to prove a new assertion really catches
+the bug it claims to catch, take the fix back out, rebuild, re-run, and check
+it goes red. That is exactly what should happen. It was done twice here and
+**both runs came back green**, which reads as "the new guard is worthless" and
+very nearly got a real guard deleted for it.
+
+**What actually happened.** The edit that was supposed to remove the fix was a
+string replace anchored on a comment that had been reworded an hour earlier. It
+matched nothing, raised, and printed its traceback into a log that was not the
+one being read. The `&&` chain after it went on to rebuild and re-run **the
+fixed build**. Twice. The green was the fix passing its own test.
+
+**The rule.** A control is not a control until you have READ THE CODE it was
+built from. `grep -c` the line you removed and check the count went down; check
+the exit status of the EDIT, not of the run after it. Every way a setup can
+fail open — a replace that matches nothing, a patch that lands on the wrong
+hunk, a build that quietly reuses a stale `dist/` — produces a clean run of the
+thing you were trying not to run, and it produces it in the direction that
+makes you doubt your test instead of your method.
+
+**And when the control finally ran**, it said something worth keeping: with the
+position flush removed, the worst of ten pickup asks waited **48 ms**
+for a position the worker could judge it by, against **5 ms** with the flush
+in. One ask would not have shown that — a single sample of "how long since the
+last batched move" is a coin toss on a 33 ms boundary, and the first version of
+this scenario asked once. Ten asks cannot all land on the same side.
+
+**Related:** §28 (a test that reports "not found" is worse than no test) — the
+same failure one level up: the harness is fine, the SETUP quietly did nothing.
