@@ -16,9 +16,9 @@
  * because those stashes were client-local (the server held only the
  * equipped slot) and handoff rule 16 forbids escrowing a blob the client
  * supplies.  Phase 2 (v2.3.2523, gearstash.js) moved those stashes
- * server-side; PHASE 3 (v2.3.2528) lists them.
+ * server-side; PHASE 3 (v2.3.2531) lists them.
  *
- * GEAR LISTINGS (v2.3.2528) are `kind: 'gear'` and live in storegear.js.
+ * GEAR LISTINGS (v2.3.2531) are `kind: 'gear'` and live in storegear.js.
  * Read that module's header before touching them: it carries the two
  * things that make gear different from a weapon (a piece is named by a
  * SELECTOR, not an index, because the client's stash and ours drift out
@@ -85,7 +85,7 @@
  * to PRIVILEGED_EVENTS. */
 
 import { SHOP_ITEMS } from './data.js';
-/* v2.3.2528: gear listings (storegear.js).  Only the field roster comes
+/* v2.3.2531: gear listings (storegear.js).  Only the field roster comes
    from there at module scope -- every gear behaviour is a method on the
    room, so this module keeps one import and no second copy of anything. */
 import { isGearField } from './storegear.js';
@@ -158,7 +158,7 @@ export const storeMethods = {
     return rec.qty > 1 ? rec.qty + 'x ' + n : n;
   },
 
-  /* ═══ v2.3.2528: ONE PLACE THAT SAYS WHAT A LISTING IS MADE OF ═══
+  /* ═══ v2.3.2531: ONE PLACE THAT SAYS WHAT A LISTING IS MADE OF ═══
      `_stSettle`, `_stRelease` and the create-path unwind each used to
      spell out the same `kind === 'weapon' ? weapon : item` ternary, in
      two halves (the credit kind and its payload) that had to agree.
@@ -373,7 +373,7 @@ export const storeMethods = {
     if (!playerId) return { ok: false, settled: true, error: 'Missing fields' };
     const p = Math.floor(Number(price) || 0);
     if (!(p >= 1 && p <= STORE.MAX_PRICE)) return { ok: false, settled: true, error: 'Invalid price' };
-    /* v2.3.2528: 'gear' joins the roster, and it is gated on its OWN
+    /* v2.3.2531: 'gear' joins the roster, and it is gated on its OWN
        narrow cap rather than on `caps.store` — the whole point of the
        flag is that the owner can switch gear listings off from live-ops
        without touching the store the rest of the game is using.  join.js
@@ -396,7 +396,7 @@ export const storeMethods = {
     const id = crypto.randomUUID();
     const escrowOp = 'store:' + id + ':esc';
     let invKey = null; let weapon = null; let qty = 1;
-    let gear = null; let gearField = null;   /* v2.3.2528 */
+    let gear = null; let gearField = null;   /* v2.3.2531 */
 
     if (kind === 'item') {
       const k = typeof body.invKey === 'string' ? body.invKey : '';
@@ -413,7 +413,7 @@ export const storeMethods = {
       if (!took.ok) return { ok: false, settled: true, error: 'You do not have that' };
       invKey = k;
     } else if (kind === 'weapon') {
-      /* v2.3.2528: `else if`, not `else`.  It was a bare `else` when
+      /* v2.3.2531: `else if`, not `else`.  It was a bare `else` when
          'weapon' was the only other kind, and the gear branch below
          silently fell into it -- a gear request went looking for
          `body.stashIndex` in the WEAPON stash and came back "Item not in
@@ -432,7 +432,7 @@ export const storeMethods = {
       this._queuePlayerStateFlush(playerId);
     }
 
-    /* v2.3.2528: the gear branch.  Everything it needs that a weapon does
+    /* v2.3.2531: the gear branch.  Everything it needs that a weapon does
        not — resolving a selector against the server's own list, the
        strict-provenance rule — is storegear.js's;
        what comes back is the server's own piece, already spliced out of
@@ -455,7 +455,7 @@ export const storeMethods = {
       kind,
       invKey,
       weapon,
-      /* v2.3.2528: the escrowed PIECE and which list it came out of.
+      /* v2.3.2531: the escrowed PIECE and which list it came out of.
          `gearField` is what the refund and the goods leg hand back, so it
          is part of the record from the moment the record exists — a
          refund that did not know the list would have nowhere to put it. */
@@ -482,7 +482,7 @@ export const storeMethods = {
       /* Nothing is stamped or credited yet, so this is a plain restore —
          through _creditPlayer so a seller who vanished between the escrow
          and the failure still gets their goods, in the mail. */
-      /* v2.3.2528: through the same derivation every other money path
+      /* v2.3.2531: through the same derivation every other money path
          uses, so a gear listing whose record could not be written hands
          the PIECE back rather than an `{ invKey: null }` the inbox would
          accept and quietly drop. */
@@ -616,7 +616,7 @@ export const storeMethods = {
      any OTHER live bid is refunded here, because the listing is gone. */
   async _stSettle(rec, buyerId, buyerName, price, paidBidSeq) {
     const label = this._stLabel(rec);
-    const goods = this._stGoodsCredit(rec);   /* v2.3.2528 */
+    const goods = this._stGoodsCredit(rec);   /* v2.3.2531 */
     await this._creditPlayer(buyerId, {
       opId: 'store:' + rec.id + ':goods', source: 'market',
       kind: goods.kind, payload: goods.payload,
@@ -675,7 +675,7 @@ export const storeMethods = {
         payload: { amount: rec.topBid.amount }, note: 'bid returned on ' + this._stLabel(rec),
       });
     }
-    const goods = this._stGoodsCredit(rec);   /* v2.3.2528 */
+    const goods = this._stGoodsCredit(rec);   /* v2.3.2531 */
     await this._creditPlayer(rec.sellerId, {
       opId: 'store:' + rec.id + ':refund', source: 'market',
       kind: goods.kind, payload: goods.payload,

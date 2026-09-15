@@ -27,11 +27,11 @@
  * and it ships here EMPTY and on the same rails so that the day it gets
  * one, no second migration and no second field-list edit is needed.
  *
- * ADOPTION, AND THE CRASH SHAPE IT HAS TO SURVIVE.  Adoption is the
+ * ADOPTION, AND THE TWO SHAPES IT HAS TO SURVIVE.  Adoption is the
  * v2.3.1021 weaponSkills / v2.3.1192 nugget-ledger / v2.3.1198 gems
- * posture: stored wins on every reconnect, and a record that predates
- * this slice folds the client's claim in ONCE.  Two failure modes, both
- * of which have bitten this codebase before:
+ * posture: the server's own copy is the record, and the client's local
+ * lists are folded into it.  Two failure modes, both of which have
+ * bitten this codebase before:
  *   - ADOPT TWICE.  #615's refund/delete crash window paid a listing out
  *     twice.  The same shape here would duplicate a player's armour on
  *     every reconnect.  Closed by a MULTISET UNION rather than a
@@ -39,12 +39,15 @@
  *     client's), never the sum.  Re-running the merge on its own output
  *     is therefore a no-op -- the merge converges whether it runs once,
  *     twice, or after a half-written restart.
- *   - LOSE THE STASH.  A stamp written when nothing was actually
- *     adopted burns the one-time capture forever, which is what would
- *     happen against a client that has not shipped the seed yet (the
- *     worker deploys before Pages does, and old tabs stay open for
- *     days).  Closed by stamping ONLY when the payload actually carried
- *     a stash array: no claim, no stamp, and the next join adopts.
+ *   - LOSE THE STASH.  A capture marked done for a browser whose gear
+ *     it never saw throws that wardrobe away for good.  v2.3.2523
+ *     closed only the narrowest version of this (a client that predates
+ *     the seed) and shipped three wider ones; v2.3.2527 closes the rest
+ *     by keeping adoption OPEN on every join and letting the stamp
+ *     record a capture rather than authorise one.  The long version is
+ *     on _gearStashAdoptOnJoin, below -- read that before changing the
+ *     stamp, because the idempotent merge above is what makes an open
+ *     door safe, and the two are one design.
  * The stash and the stamp land in the SAME `_saveRpg` put, so there is
  * no window where one exists without the other; a crash before that put
  * leaves both absent and the next join redoes the whole thing.
@@ -55,6 +58,8 @@
  * table), and every map keyed by a client-supplied string is a `Map`
  * (TRAPS #6).
  */
+
+import { QUALITY_GRADES } from './data.js';   /* v2.3.2527 -- see sanitizeGearPiece */
 
 /* Per-list ceiling.  The client has NO cap on these four lists today
    (equipActions.js caps weaponStash alone, at WEAPON_STASH_MAX = 8), so
@@ -75,13 +80,26 @@ export const GEAR_STASH_FIELDS = ['armorStash', 'legsStash', 'shieldStash', 'gea
 
 /* The join-payload key that seeds each field.  Written out rather than
    computed from the field name so both halves are greppable -- the
-   audits and precheck read literals, not string arithmetic. */
+   audits and precheck read literals, not string arithmetic.
+
+   v2.3.2527 (review finding 3): `amuletStash` HAS NO ENTRY HERE, and
+   that absence is the point.  It has no client stash to adopt from (no
+   unequip flow exists), so no honest client can ever send a claim for
+   it -- but v2.3.2523 still READ `rpgAmuletStash`, which meant a
+   modified client could mint itself up to GEAR_STASH_CAP amulets that
+   came out the far side VALIDATED by _sanitizeAmulet, i.e. legitimate
+   top-tier ones, the most expensive thing in the forge.  Nothing reads
+   the list today so nothing was lost, but a seed key for a list with no
+   client source is a claim the server should never have been willing to
+   hear.  The FIELD and its migration stay (an always-empty array costs
+   one slot; a field-list entry forgotten later costs a player their
+   gear -- the v2.3.1679 legs lesson).  Only the ear for it is gone.
+   The day an unequip flow ships, the key comes back in that same PR. */
 export const GEAR_STASH_SEED_KEYS = {
   armorStash: 'rpgArmorStash',
   legsStash: 'rpgLegsStash',
   shieldStash: 'rpgShieldStash',
   gearStash: 'rpgGearStash',
-  amuletStash: 'rpgAmuletStash',
 };
 
 /* `gearStash` is the COSMETIC list and has a different entry shape from
@@ -89,7 +107,7 @@ export const GEAR_STASH_SEED_KEYS = {
    blob.  Kept as one boolean rather than two parallel field lists. */
 const COSMETIC_FIELD = 'gearStash';
 
-/* ═══ v2.3.2529: THE PROVENANCE MARK LIVES HERE, NOT IN THE STORE ═══
+/* ═══ v2.3.2532: THE PROVENANCE MARK LIVES HERE, NOT IN THE STORE ═══
    `_sv` means "the SERVER wrote this piece" -- it is set in exactly one
    place (_stGearApplyCredit, storegear.js) and read by exactly one
    (strict-mode listing).  It is defined in THIS module because this is
@@ -99,7 +117,7 @@ const COSMETIC_FIELD = 'gearStash';
    re-exports it as STORE_GEAR.PROV rather than spelling it a second time.
 
    It has to survive a round trip through storage and be UNFORGEABLE off
-   the wire, and v2.3.2528 got both edges wrong in opposite directions
+   the wire, and v2.3.2531 got both edges wrong in opposite directions
    (found by the adversarial review of #643):
      - FORGEABLE.  The join claim is the path that actually fills a
        stash, and it sanitizes STRICT -- but strict only stripped the
@@ -178,11 +196,45 @@ export function sanitizeGearPiece(g, strict) {
   out.tierMult = (typeof out.tierMult === 'number' && out.tierMult > 0)
     ? Math.min(8, out.tierMult) : 1;
   if (typeof out.name === 'string') out.name = out.name.slice(0, STR_CAP);
+  /* ═══ v2.3.2527: QUALITY IS CLAMPED, NEVER STRIPPED (review finding 2) ═══
+     v2.3.2523 copied _sanitizeWeapon's strict posture wholesale and
+     deleted `quality` off a client-supplied piece.  That was wrong for
+     ARMOUR, and it was wrong destructively: adoption is the only moment
+     the server ever sees a legacy wardrobe, so every graded plate anyone
+     had ever earned would have been written down ungraded, for good.
+
+     Quality is not decoration on armour.  _armorDrMult (combat.js,
+     v2.3.1925) multiplies the piece's TIER by the grade -- an Elite
+     plate really does stop more damage -- and the item card mirrors it
+     to the digit.  Pricing M3's listings off the server's copy (rule 16)
+     would then have priced every pre-existing piece as plain.
+
+     It is safe to keep for the reason the weapon strip is NOT: the
+     weapon path strips because quality feeds the anti-cheat DAMAGE
+     ceiling, so a forged "godly" would raise its own cap.  Armour has no
+     such loop -- _armorDrMult applies the identical [0, 8] clamp AFTER
+     multiplying by the grade, and the 75% DR cap sits above that as the
+     last word, so no grade can escape either.  grids.js's stats_update
+     already accepts a client-supplied armour `quality` on the path that
+     actually feeds combat, for exactly that reason; this is the same
+     value arriving by a colder route into a list nothing wears.
+
+     What both modes do instead is the ENUM clamp _sanitizeWeapon's
+     non-strict branch uses: a grade the table does not know is dropped,
+     so `quality: 'transcendent'` cannot enter the blob and wait for a
+     future reader to believe it.  (An unknown grade already multiplies
+     by 1 in _armorDrMult; dropping it keeps the stored copy honest
+     rather than relying on every future reader being as careful.) */
+  if (out.quality !== undefined && !QUALITY_GRADES[out.quality]) delete out.quality;
   if (strict) {
-    delete out.quality;
+    /* hardness and temper stay stripped in strict mode: unlike quality
+       they are FORGE-MINTED (v2.3.1141 -- drops are server-minted, so
+       every legitimate one was written here and persists through
+       _saveRpg), and a join payload carrying them is by definition not
+       ours.  Only quality moved out of this branch. */
     delete out.hardness;
     delete out.temper;
-    /* v2.3.2529: and the provenance mark.  This is a shallow COPY, so
+    /* v2.3.2532: and the provenance mark.  This is a shallow COPY, so
        without this line a client-claimed `_sv: true` rode the join claim
        into the stash and strict-mode listing believed it (GEAR_PROV). */
     delete out[GEAR_PROV];
@@ -218,8 +270,15 @@ export function sanitizeCosmeticEntry(g) {
    they go through the room's own _sanitizeAmulet instead of a second
    copy of that whitelist -- which is why the sanitizer is passed IN:
    this module stays pure so migration v16 can call into it. */
-export function sanitizeStashList(field, arr, strict, amuletSanitizer) {
+export function sanitizeStashList(field, arr, strict, amuletSanitizer, report) {
   if (!Array.isArray(arr)) return [];
+  /* v2.3.2527: tell the caller when the CAP -- not the sanitizer -- ate
+     part of the claim, so it can decline to stamp a capture it knows is
+     incomplete (review finding 1c).  A rejected entry is deliberately
+     NOT truncation: junk is not a piece of gear, and treating it as one
+     would leave a player with a single malformed row permanently
+     unstamped for no gain. */
+  if (report && arr.length > GEAR_STASH_CAP) report.truncated = true;
   const cap = arr.slice(0, GEAR_STASH_CAP);
   const out = [];
   for (const src of cap) {
@@ -228,7 +287,7 @@ export function sanitizeStashList(field, arr, strict, amuletSanitizer) {
     else if (field === 'amuletStash') piece = amuletSanitizer ? amuletSanitizer(src) : null;
     else piece = sanitizeGearPiece(src, strict);
     if (!piece) continue;
-    /* v2.3.2529: one seam, both directions -- a stored piece keeps `_sv`
+    /* v2.3.2532: one seam, both directions -- a stored piece keeps `_sv`
        through a REBUILDING sanitizer, a claimed one can never gain it.
        A loop rather than three `.map`s because `.map(fn)` hands the
        callback the INDEX as its second argument, which is exactly how a
@@ -269,41 +328,126 @@ export function stashSig(field, g) {
  * Map, never a plain object: the keys are built from client-supplied
  * strings and '__proto__' is a legal name for a forged piece (TRAPS #6,
  * three incidents in one day). */
-export function mergeStashLists(field, held, claimed) {
+/* ═══ v2.3.2527: BACKFILL A GRADE ONTO A PIECE WE ALREADY HOLD ═══
+ * The other half of review finding 2, and it exists because v2.3.2523
+ * MERGED and deployed before the repair did: real stored records were
+ * written by the version that stripped `quality`, so armour on the
+ * server right now is graded `undefined` where the player's own copy
+ * says Elite.
+ *
+ * Re-opening the door (finding 1) does not fix those by itself, and it
+ * is worth being precise about why: `stashSig` keys armour on
+ * name|gearBase|tierMult|tier and NOT on quality -- deliberately, since
+ * a grade must not make one plate look like two.  So on the next join
+ * the merge recognises the player's graded plate as a plate it already
+ * holds, takes no surplus, and the stripped copy would sit there
+ * ungraded forever.
+ *
+ * So a matched pair backfills: if we hold the piece with NO grade and
+ * the claim carries a valid one, we take the grade.  Deliberately
+ * one-directional and absent-only -- it can never overwrite or
+ * downgrade a grade the server already has, so a client cannot use it
+ * to re-roll a piece.  It grants no power a client did not already
+ * have either: it could always claim a whole graded piece instead (the
+ * open trust boundary, finding 4), and grids.js already accepts a
+ * client-supplied armour quality on the live combat path.
+ *
+ * Idempotent, like everything else on this path: the second run finds
+ * the grade present and does nothing.  Only `quality` -- `hardness` and
+ * `temper` are forge-minted and stay stripped. */
+function healGradeFromClaim(field, heldPiece, claimedPiece) {
+  if (field === COSMETIC_FIELD || field === 'amuletStash') return;
+  if (!heldPiece || typeof heldPiece !== 'object') return;
+  if (heldPiece.quality !== undefined) return;
+  if (!claimedPiece || typeof claimedPiece !== 'object') return;
+  if (!QUALITY_GRADES[claimedPiece.quality]) return;
+  heldPiece.quality = claimedPiece.quality;
+}
+
+export function mergeStashLists(field, held, claimed, report) {
   const out = Array.isArray(held) ? held.slice(0, GEAR_STASH_CAP) : [];
   if (!Array.isArray(claimed) || !claimed.length) return out;
-  const heldCounts = new Map();
-  for (const g of out) {
-    const s = stashSig(field, g);
-    heldCounts.set(s, (heldCounts.get(s) || 0) + 1);
+  /* Signature -> the indexes in `out` holding it, in order.  An index
+     list rather than a bare count (v2.3.2527) because a matched pair
+     now has something to say to each other -- see healGradeFromClaim.
+     Indexes stay valid as the loop runs: the merge only ever APPENDS. */
+  const heldIdx = new Map();
+  for (let i = 0; i < out.length; i++) {
+    const s = stashSig(field, out[i]);
+    if (!heldIdx.has(s)) heldIdx.set(s, []);
+    heldIdx.get(s).push(i);
   }
   const takenCounts = new Map();
   for (const g of claimed) {
-    if (out.length >= GEAR_STASH_CAP) break;
+    /* v2.3.2527: the cap cut the claim short -- the caller must not
+       stamp this capture complete (review finding 1c). */
+    if (out.length >= GEAR_STASH_CAP) { if (report) report.truncated = true; break; }
     const s = stashSig(field, g);
     const taken = takenCounts.get(s) || 0;
+    const idxs = heldIdx.get(s);
     /* Only the SURPLUS of the claim over what we already hold. */
-    if (taken >= (heldCounts.get(s) || 0)) out.push(g);
+    if (taken >= (idxs ? idxs.length : 0)) out.push(g);
+    else healGradeFromClaim(field, out[idxs[taken]], g);
     takenCounts.set(s, taken + 1);
   }
   return out.slice(0, GEAR_STASH_CAP);
 }
 
 export const gearStashMethods = {
-  /* Join-time load + one-time adoption of the four client-local
-     stashes.  Called from _handleJoin for BOTH branches (stored record
-     and first-connect bootstrap), right after _gemsAdoptOnJoin and
-     before the join path's final _saveRpg -- the same seam, for the
-     same reason: the stamp has to ride the same put as the data.
+  /* ═══ v2.3.2527: THE DOOR STAYS OPEN (review finding 1) ═══
+     Join-time load + adoption of the four client-local stashes.  Called
+     from _handleJoin for BOTH branches (stored record and first-connect
+     bootstrap), right after _gemsAdoptOnJoin and before the join path's
+     final _saveRpg -- the same seam, for the same reason: the stamp has
+     to ride the same put as the data.
 
-       - always: the server's own copy is (re-)loaded and healed.  A
-         stored list is clamped non-strict (we wrote it); a first
-         connect starts empty.
-       - once: when the stored record carries no gearStashCaptured
-         stamp, the client's claim is folded in by multiset union.
-       - the stamp is set ONLY when the payload actually carried at
-         least one stash array, so a client that predates the seed
-         cannot burn the capture for a player whose gear it never sent.
+     v2.3.2523 made this a ONE-SHOT capture gated on `gearStashCaptured`,
+     and the stamp landed on the mere PRESENCE of a claim.  Those two
+     together lost gear, silently and permanently, for ordinary players:
+
+       - Sign in on a second device, in a private tab, or after clearing
+         site data, and that browser has no stash.  The old client sent
+         four empty arrays anyway, the server read "a claim" and stamped
+         CAPTURED -- and the real wardrobe back on the main phone was
+         never looked at again.  Reproduced by the review directly: two
+         plates and a shield gone from the server's record for good.
+       - Same ending when the client's shared seed budget ran out
+         part-way down the four lists, or when a list overflowed
+         GEAR_STASH_CAP: a partial capture, stamped done.
+
+     That is the #615 shape after all -- a broken record that LOOKS
+     healthy on the next wake, so nothing ever retries it.  The crash
+     half was closed in v2.3.2523; this half was not.  Three changes
+     close it, and all three are needed:
+
+       1. THE STAMP NO LONGER GATES ADOPTION.  The merge runs on every
+          join, against whatever the client offers.  This is safe BY
+          CONSTRUCTION, not by care: the merge is a multiset union, so
+          re-running it with a claim we already hold adds nothing
+          (`merge(merge(a,b),b) === merge(a,b)`, proven in §5 of the
+          suite).  Idempotence is exactly the property that lets a
+          door stay open.  A player whose wardrobe arrives on the
+          third join -- from the device that actually has it -- now
+          gets it captured on the third join.
+       2. THE STAMP RECORDS, IT DOES NOT AUTHORISE.  It is set only when
+          adoption actually TOOK something and the cap did not cut the
+          claim short, so it now means what it says: a real, complete
+          capture landed.  A device with nothing to offer no longer
+          writes "this player owns nothing" over a player who owns
+          plenty, because it no longer writes anything at all.
+          Monotone once true -- a later empty-handed join cannot unset
+          a capture that did happen.
+       3. THE CLIENT OMITS AN EMPTY LIST'S KEY (wsClient.js, same
+          version), so "I have nothing" and "I am not telling you about
+          this" stop arriving as the same four empty arrays.
+
+     What the open door does NOT close is the trust boundary: the claim
+     is checked for SHAPE, never for ownership, so a modified client can
+     still hand itself gear -- see the spec's "What this does NOT solve".
+     That was already true of the one-shot version (and of a brand-new
+     character, which anyone can make for free); keeping the door open
+     does not deepen it, and closing it was never what the gate bought.
+     M3 must not read "it is in the adopted list" as proof of ownership.
 
      Returns nothing; mutates ps.  Never throws -- a join must not fail
      because a stash was malformed. */
@@ -311,23 +455,27 @@ export const gearStashMethods = {
     if (!ps) return;
     const amuletSan = (a) => this._sanitizeAmulet(a);
     const claimed = new Map();   /* field -> sanitized claim (TRAPS #6: never a plain object) */
-    let sawClaim = false;
+    /* One report for the whole join: any list the cap cut short means
+       this capture is not the player's whole wardrobe, whichever list
+       it was. */
+    const report = { truncated: false };
     for (const f of GEAR_STASH_FIELDS) {
       const own = stored ? stored[f] : ps[f];
       ps[f] = sanitizeStashList(f, own, false, amuletSan);
-      const raw = md ? md[GEAR_STASH_SEED_KEYS[f]] : undefined;
-      if (Array.isArray(raw)) {
-        sawClaim = true;
-        claimed.set(f, sanitizeStashList(f, raw, true, amuletSan));
-      }
+      /* GEAR_STASH_SEED_KEYS has no amuletStash entry on purpose
+         (finding 3), so that list simply has no claim to read. */
+      const key = GEAR_STASH_SEED_KEYS[f];
+      const raw = (key && md) ? md[key] : undefined;
+      if (Array.isArray(raw)) claimed.set(f, sanitizeStashList(f, raw, true, amuletSan, report));
     }
-    if (stored && stored.gearStashCaptured) {
-      /* Captured already: stored wins forever, the claim is ignored.
-         (The stamp is re-asserted so it survives this save.) */
-      ps.gearStashCaptured = true;
-      return;
+    let took = 0;
+    for (const [f, list] of claimed) {
+      const before = ps[f].length;
+      ps[f] = mergeStashLists(f, ps[f], list, report);
+      took += ps[f].length - before;
     }
-    for (const [f, list] of claimed) ps[f] = mergeStashLists(f, ps[f], list);
-    if (sawClaim) ps.gearStashCaptured = true;
+    /* Already stamped stays stamped; a fresh stamp needs a capture that
+       both took something and was not cut short. */
+    ps.gearStashCaptured = !!(stored && stored.gearStashCaptured) || (took > 0 && !report.truncated);
   },
 };

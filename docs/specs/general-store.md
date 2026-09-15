@@ -23,13 +23,13 @@ price, at most one live bid — and every field it displays is derived from
 the server's own copy of the goods after escrow. Nothing in the request
 names what an item *is*, only which of the caller's own goods to list.
 
-## Scope (owner decision D11; gear added v2.3.2528)
+## Scope (owner decision D11; gear added v2.3.2531)
 
 | Listable | Not listable |
 |---|---|
 | stackable inventory items (`ps.inventory`) | the equipped slots |
 | weapons from the server weapon stash (`ps.weaponStash`) | anything the server does not hold a copy of |
-| **gear from the five server gear stashes** (v2.3.2528) | |
+| **gear from the five server gear stashes** (v2.3.2531) | |
 
 The rule behind that table has not changed and is the only rule here:
 **the store can escrow exactly what the server already holds by
@@ -42,7 +42,7 @@ to get there.
 
 > v2.3.2523: phase 2 shipped — the five gear stashes are rpg-blob
 > fields now (`docs/specs/gear-stash.md`).
-> **v2.3.2528: phase 3 has shipped too** — the store escrows them. The
+> **v2.3.2531: phase 3 has shipped too** — the store escrows them. The
 > section "Gear listings" below is the whole of it; read its first two
 > subsections before touching any gear path, because they are the two
 > ways this feature duplicates player property.
@@ -74,7 +74,7 @@ key, a gear piece's name/slot/tier/grade). **The escrowed weapon blob
 never goes on the wire, and neither does the escrowed gear piece** —
 `_stPublic` is a whitelist and `gear` is not on it.
 
-`caps.storeGear` (v2.3.2528) advertises the GEAR half specifically, and
+`caps.storeGear` (v2.3.2531) advertises the GEAR half specifically, and
 is separately switchable — see "Gear listings" below.
 
 `caps.store` (join.js) advertises the whole surface. The client gates its
@@ -148,7 +148,7 @@ reads. That matters: a storage await holds the whole room's input gate
 (rule 9's second edge, v2.3.2438).
 
 
-## Gear listings (v2.3.2528) — `server/src/storegear.js`
+## Gear listings (v2.3.2531) — `server/src/storegear.js`
 
 Phase 3. Armour, legs, shields, cosmetic layers and amulets can be put up
 like anything else. A gear listing is `kind: 'gear'` and is the **same
@@ -188,7 +188,7 @@ truthful, because they *are* the identity. A selector claiming a bigger
 `tierMult` does not list a bigger piece — it names a piece nobody holds,
 and is refused having taken nothing.
 
-### The worn slot — a known open hole (v2.3.2529)
+### The worn slot — a known open hole (v2.3.2532)
 
 **A piece equipped after the hand-over is recorded twice.** Adoption
 writes the stash as it stood; equipping is client-local and the client
@@ -199,7 +199,7 @@ armour they were paid for — one plate, two owners, and the buyer paid
 real gold for a copy. No modified client is needed: equipping a spare is
 the normal way to play.
 
-v2.3.2528 shipped `_stGearReconcileWorn` for this and **v2.3.2529 removed
+v2.3.2531 shipped `_stGearReconcileWorn` for this and **v2.3.2532 removed
 it**, because it was worse than the hole it closed. It deleted one stash
 entry whose signature matched the worn piece, assuming such an entry is
 the stale duplicate adoption left behind. Often it is not:
@@ -237,11 +237,11 @@ server stores no worn-cosmetic slot at all — there is no such field in
 are appearance), so what leaks there is a duplicate *look* and the buyer's
 gold, not power.
 
-### The client has to stop showing what it sold (v2.3.2529)
+### The client has to stop showing what it sold (v2.3.2532)
 
 The client does **not** read `armorStash` / `legsStash` / `shieldStash` /
 `gearStash` off the `player_state` echo — `gear-stash.md` names that as
-"M3's first problem" and it is still open. v2.3.2528 relied on a redraw
+"M3's first problem" and it is still open. v2.3.2531 relied on a redraw
 that therefore never happened: the listed piece stayed on its card and in
 localStorage, and tapping **Equip** on it made the worker accept it
 through `stats_update`, so the buyer got the escrowed plate and the seller
@@ -257,7 +257,7 @@ exactly as it was, because the worker took nothing. This is the smaller
 fix and it is named as such: **making the client a reader of the echoed
 stash is the real one, and it remains open.**
 
-**And the bag has to get it back (v2.3.2530).** The splice alone trades
+**And the bag has to get it back (v2.3.2533).** The splice alone trades
 one bug for another. The worker *returns* the piece on a take-down, on the
 24 h expiry and on a listing whose record could not be written — and since
 the client still does not read the echoed stash, that return lands in a
@@ -405,7 +405,7 @@ increment 1 · maximum price 999,999.
 | `src/ui/panels/buildings/ExchangePanel.jsx` | the same link, and the deletion of the legacy self-credit path |
 | `src/ui/mobile/StoreToast.jsx` + `storeToastBus.js` | "your thing sold", pushed from `gameEvents.js` on an `inbox_delivered` entry whose `source` is `market` |
 
-**Gear on the client (v2.3.2528).** Three small edits, no new screen:
+**Gear on the client (v2.3.2531).** Three small edits, no new screen:
 `storeApi.storeGearEnabled()` (the `_serverCaps.storeGear` gate); a Sell
 action on the four gear cards in `ItemDetailPopup.jsx` (`stashArmor`,
 `stashLegs`, `stashShield`, `stashGear`), whose confirm sends
@@ -445,7 +445,7 @@ The Sell sheet posts a key (or a stash index) and a price; a stackable or
 a weapon leaves the bag on the worker's side and the client redraws off
 the `player_state` echo. The stash index is re-resolved against the live
 stash immediately before sending, for the reason v2.3.2341 records on the
-Equip button. **Gear is the exception (v2.3.2529)**: the client is not a
+Equip button. **Gear is the exception (v2.3.2532)**: the client is not a
 reader of the echoed gear stashes, so a successful gear listing splices
 the piece out of the local list itself (`gearSellLocal.js`, above). Still
 nothing on failure, and still nothing before the worker has answered.
@@ -454,15 +454,15 @@ nothing on failure, and still nothing before the worker has answered.
 
 - `server/src/store.js` — the mixin (`Object.assign(GameRoom.prototype,
   storeMethods)` in `index.js`).
-- `server/src/storegear.js` — the gear mixin (v2.3.2528), assigned
+- `server/src/storegear.js` — the gear mixin (v2.3.2531), assigned
   immediately after it; `server/src/inbox.js` — `kind: 'gear'`.
 - `server/src/index.js` — the outer-worker route and the DO `fetch`
   branch, beside the market's.
 - `server/src/join.js` — `caps.store`, `caps.storeGear`.
 - `src/networking/gameEvents.js` — the `kind: 'gear'` branch of
-  `inbox_delivered` (v2.3.2530), which puts a returned piece back in the bag.
+  `inbox_delivered` (v2.3.2533), which puts a returned piece back in the bag.
 - `src/ui/mobile/dash/gearSellLocal.js` — the gear cards' stash table and
-  the local splice (v2.3.2529); pure, so `market.test.mjs` §S12j can
+  the local splice (v2.3.2532); pure, so `market.test.mjs` §S12j can
   import it.
 - `src/ui/panels/DevPanel.jsx` — `CAP_GATES` entries.
 - `server/test/market.test.mjs` — the store section (both surfaces are
@@ -486,13 +486,13 @@ nothing on failure, and still nothing before the worker has answered.
 - The sale notice fires for the old Exchange's sales as well, since both
   surfaces settle with `source: 'market'`.
 
-Gear (v2.3.2528):
+Gear (v2.3.2531):
 
 - **Gear may be listed even though the server cannot prove you own it.**
   The reasoning and the kill switch are in "Gear listings" above; this is
   the one default worth a second look before the game has real players.
 - **A worn piece IS listable** — the worn-slot hole is open and bounded by
-  the kill switch, not closed by a heuristic (v2.3.2529, above)
+  the kill switch, not closed by a heuristic (v2.3.2532, above)
 - Cosmetic layers *are* listable even though their worn state is invisible
   to the server; they carry no stats.
 - Gear files under the bag's **armor** chip, all five lists.

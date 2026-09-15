@@ -28,7 +28,7 @@
  *      deletes (never re-lists) stamped leftovers.
  */
 import { GameRoom } from '../src/index.js';
-import { GEAR_SELL, removeGearLocal } from '../../src/ui/mobile/dash/gearSellLocal.js';   /* v2.3.2529: the client half of a gear listing (S12j) */
+import { GEAR_SELL, removeGearLocal } from '../../src/ui/mobile/dash/gearSellLocal.js';   /* v2.3.2532: the client half of a gear listing (S12j) */
 
 function makeState() {
   const store = new Map();
@@ -416,10 +416,10 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
  *        the session-token gate (v2.3.1178) rejects a forged caller.
  *   S11. Guards: your own listing, the per-player cap, price bounds, an
  *        Object.prototype key, and goods you do not hold.
- *   S12. GEAR listings (v2.3.2528, storegear.js): escrow out of the
+ *   S12. GEAR listings (v2.3.2531, storegear.js): escrow out of the
  *        server's own gear stash and return on cancel, on expiry and
  *        across a simulated restart in each; the WORN-slot hole, which
- *        v2.3.2529 leaves OPEN and named rather than guessed at (§S12e —
+ *        v2.3.2532 leaves OPEN and named rather than guessed at (§S12e —
  *        the reconciliation that guessed deleted real spares); a stash
  *        entry that has CHANGED since the card was opened; the kill
  *        switch; the provenance mark in both directions; and (§S12j) the
@@ -791,7 +791,7 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
 
 
   /* ══════════════════════════════════════════════════════════════════
-     S12. GEAR LISTINGS (v2.3.2528 — server/src/storegear.js)
+     S12. GEAR LISTINGS (v2.3.2531 — server/src/storegear.js)
      ══════════════════════════════════════════════════════════════════
      Phase 3 of the store.  A gear listing is the SAME record travelling
      the SAME paths as a stackable or a weapon — the `sale`/`pendBid`/
@@ -806,7 +806,7 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
        - the WORN slot.  A piece equipped after the hand-over is recorded
          twice, once as `ps.armor` and still in `ps.armorStash`, so the
          seller can keep wearing the armour they just sold.  OPEN, and
-         §S12e says so: the v2.3.2528 reconciliation for it deleted real
+         §S12e says so: the v2.3.2531 reconciliation for it deleted real
          spares, so it is gone and the kill switch is the bound.
        - a stale SELECTOR.  The client's stash and the server's are in
          different orders, so a card opened a moment ago can name an
@@ -923,11 +923,11 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
     check('store gear: the record is deleted LAST and is gone', !st._store.has('store_listing:' + gSale.listing.id));
 
     /* ══ S12e. THE WORN SLOT: A KNOWN OPEN HOLE, AND THE SPARES IT
-           MUST NOT EAT (v2.3.2529) ══
-       v2.3.2528 shipped `_stGearReconcileWorn` here: before escrow it
+           MUST NOT EAT (v2.3.2532) ══
+       v2.3.2531 shipped `_stGearReconcileWorn` here: before escrow it
        deleted one stash entry whose signature matched the worn piece,
        on the theory that such an entry is the stale duplicate adoption
-       left behind.  v2.3.2529 REMOVED it, because the theory is wrong
+       left behind.  v2.3.2532 REMOVED it, because the theory is wrong
        often enough to cost people real armour — every player already
        wearing a plate when the hand-over ran holds only genuine spares,
        and the sweep ate one, on every request, in every slot, whether
@@ -1188,7 +1188,7 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
       strictYes.ok === true, strictYes);
     if (strictYes.ok) await shop._stCancel(strictYes.listing.id, GSEL);
     shop._liveFlags = {};
-    /* v2.3.2529: this used to assert `_stGearStrip` directly, which was
+    /* v2.3.2532: this used to assert `_stGearStrip` directly, which was
        false confidence — the strip never covered the JOIN CLAIM, and the
        claim is the path that actually fills a stash.  The real proof is
        a forged `_sv` surviving a real join and being refused by strict
@@ -1203,7 +1203,7 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
       && shop._stGearSanitize('amuletStash', { tier: 'regal', gem: 'frost', _sv: true }, false)._sv === true);
 
     /* ══ S12j. THE CLIENT'S OWN BAG STOPS SHOWING WHAT IT SOLD ══
-       The half the worker cannot do for you.  v2.3.2528 listed a piece
+       The half the worker cannot do for you.  v2.3.2531 listed a piece
        and left it sitting on its card: this client does not read the
        gear stashes off the `player_state` echo (gear-stash.md, "M3's
        first problem", still open) and the popup's success path only
@@ -1252,7 +1252,7 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
         && R.gearStash.length === 0, R.gearStash);
     }
 
-    /* ══ S12k. ...AND THE BAG HAS TO GET IT BACK ══ (v2.3.2530)
+    /* ══ S12k. ...AND THE BAG HAS TO GET IT BACK ══ (v2.3.2533)
        S12j is only half a story, and shipped alone it trades one bug for
        another.  The splice takes a listed piece out of the bag because
        the worker escrowed it — but the worker GIVES IT BACK on a

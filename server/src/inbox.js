@@ -145,7 +145,7 @@ export const inboxMethods = {
    *   kind 'gold'   payload { amount }
    *   kind 'item'   payload { invKey, count }
    *   kind 'weapon' payload { weapon }   (opaque blob, sanitized on apply)
-   *   kind 'gear'   payload { field, piece } (v2.3.2528 -- one of the five
+   *   kind 'gear'   payload { field, piece } (v2.3.2531 -- one of the five
    *                 gear stashes, gearstash.js; sanitized on apply)
    * Online -> applied to live playerState immediately (+ inbox_delivered
    * notification).  Offline, or online with a full weapon stash -> parked
@@ -198,7 +198,7 @@ export const inboxMethods = {
       ps.weaponStash.push(w);
       return true;
     }
-    /* v2.3.2528: a piece of GEAR — the goods leg of a store sale, the
+    /* v2.3.2531: a piece of GEAR — the goods leg of a store sale, the
        refund of a cancelled or expired gear listing, or the unwind of a
        listing whose record could not be written.  Delegated to
        storegear.js rather than spelled out here because which sanitizer

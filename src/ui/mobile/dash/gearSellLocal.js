@@ -1,6 +1,6 @@
-/* ═══ v2.3.2529: TAKE A LISTED PIECE OUT OF THE BAG YOU CAN SEE ═══
+/* ═══ v2.3.2532: TAKE A LISTED PIECE OUT OF THE BAG YOU CAN SEE ═══
  *
- * v2.3.2528 shipped the Sell button on the four gear cards and removed
+ * v2.3.2531 shipped the Sell button on the four gear cards and removed
  * nothing locally, on the strength of a comment that said "the bag
  * redraws off the player_state echo".  IT DOES NOT.  The client never
  * reads `armorStash` / `legsStash` / `shieldStash` / `gearStash` off

@@ -1243,12 +1243,12 @@ export function processGameEvent(type, payload, S, deps) {
                    still worth announcing, and a match on "25" would have
                    silenced that too. */
                 if (_e.source === 'daily') continue;
-                /* ═══ v2.3.2530: A PIECE OF GEAR COMING HOME ═══
+                /* ═══ v2.3.2533: A PIECE OF GEAR COMING HOME ═══
                    The comment above is right about gold, items and
                    weapons: the worker already applied them and the
                    player_state echo carries them, so this event is only a
                    message.  GEAR is the exception, and it is the other
-                   half of v2.3.2529's local splice.
+                   half of v2.3.2532's local splice.
 
                    That splice takes a listed piece out of the bag you can
                    see, because the worker has escrowed it.  But the worker

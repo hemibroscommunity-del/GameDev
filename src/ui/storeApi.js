@@ -41,7 +41,7 @@ export function storeEnabled() {
   return !!(s && s._serverCaps && s._serverCaps.store);
 }
 
-/* v2.3.2528: ...and is it running GEAR listings?  Its own narrow cap,
+/* v2.3.2531: ...and is it running GEAR listings?  Its own narrow cap,
    not a widening of `store`: an older worker knows nothing about
    `kind: 'gear'` and refuses the listing, so a Sell button on an armour
    card would take the piece off the screen and put it nowhere.  It is
@@ -98,7 +98,7 @@ export async function storeMine() {
 
 /* kind 'item'  -> { invKey, qty, price }
    kind 'weapon'-> { stashIndex, price }
-   kind 'gear'  -> { field, sel, hint, price }        (v2.3.2528)
+   kind 'gear'  -> { field, sel, hint, price }        (v2.3.2531)
    The worker takes the goods from ITS OWN copy of your bag or stash; what
    goes up here only names which one (handoff rule 16).
 

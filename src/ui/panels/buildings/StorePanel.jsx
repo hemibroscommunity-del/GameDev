@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { CATEGORIES } from '@/ui/mobile/dash/bagFilterBus.js';
 import { thumbFor, iconFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
-import { armorIconFor, gearIdIcon } from '@/rendering/gearVariants.js'; /* v2.3.2528: gear listing art */
+import { armorIconFor, gearIdIcon } from '@/rendering/gearVariants.js'; /* v2.3.2531: gear listing art */
 import { storeBrowse, storeMine, storeBuy, storeBid, storeAccept, storeCancel, storeEnabled, storeMyId } from '@/ui/storeApi.js';
 
 /* === StorePanel — buildingPanel === 'store' ===================== v2.3.2476
@@ -46,7 +46,7 @@ const MOD = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterS
 
 const WEAPON_GLYPH = { bow: '\u{1F3F9}', staff: '\u{1FA84}', greatsword: '⚔', sword: '⚔' };
 
-/* v2.3.2528: the fallback glyph per gear slot, for a piece whose painted
+/* v2.3.2531: the fallback glyph per gear slot, for a piece whose painted
    icon the table does not know (a quest piece with no metal, say). */
 const GEAR_GLYPH = { Chest: '\u{1F9BA}', Legs: '\u{1F456}', Shield: '\u{1F6E1}', Amulet: '\u{1F4FF}', Outfit: '\u{1F9BA}' };
 
@@ -105,7 +105,7 @@ function listingArt(l) {
     const g = WEAPON_GLYPH[(l.disp && l.disp.type) || ''] || '⚔';
     return <span style={{ fontSize: 22, lineHeight: '38px' }}>{g}</span>;
   }
-  /* v2.3.2528: a gear listing draws the same painted icon the bag draws
+  /* v2.3.2531: a gear listing draws the same painted icon the bag draws
      for that piece -- the item card reads its metal off the piece
      (armorIconFor(slot, mat), v2.3.1758) and so does this, off the
      server-derived `disp`.  A shape the icon table does not know falls
@@ -142,7 +142,7 @@ function subtitle(l) {
     if (d.hardness) bits.push('H' + d.hardness);
     return bits.join(' · ') || 'Weapon';
   }
-  /* v2.3.2528: the same subtitle shape as a weapon -- the facts the
+  /* v2.3.2531: the same subtitle shape as a weapon -- the facts the
      server derived off its own escrowed copy, in the order the item card
      reads them, and nothing this panel worked out for itself. */
   if (l.kind === 'gear') {

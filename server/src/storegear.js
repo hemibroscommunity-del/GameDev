@@ -1,4 +1,4 @@
-/* ═══ v2.3.2528: SELLING YOUR GEAR — STORE PHASE 3 (spec:
+/* ═══ v2.3.2531: SELLING YOUR GEAR — STORE PHASE 3 (spec:
  * docs/specs/general-store.md "Gear listings", docs/specs/gear-stash.md) ═══
  *
  * Phase 1 (v2.3.2475, store.js) built the general store: per-listing
@@ -22,7 +22,7 @@
  *   2. THE WORN SLOT: a known open hole, not a solved one
  *   3. WHAT IS *NOT* CLOSED, and why that is a decision
  *
- * v2.3.2529 revision: the worn-slot RECONCILIATION this module shipped
+ * v2.3.2532 revision: the worn-slot RECONCILIATION this module shipped
  * with is gone.  It deleted gear players genuinely own -- read section 2
  * before adding anything like it back.
  *
@@ -61,7 +61,7 @@
  * copy of one plate.  It needs no modified client -- equipping a spare
  * is the normal way to play.
  *
- * v2.3.2528 shipped a reconciliation for this and v2.3.2529 TOOK IT
+ * v2.3.2531 shipped a reconciliation for this and v2.3.2532 TOOK IT
  * BACK OUT, because it was worse than the hole.  It removed one stash
  * entry whose signature matched the worn piece, on the assumption that
  * such an entry is a stale duplicate.  Often it is not:
@@ -149,7 +149,7 @@
  * Do not read `_sv` as a value: it is a provenance mark, it multiplies
  * nothing, and strict-mode sanitizing strips it off anything a client
  * hands us -- at EVERY seam, the join claim included, which is where
- * v2.3.2528 left it forgeable (gearstash.js GEAR_PROV / carryProv).
+ * v2.3.2531 left it forgeable (gearstash.js GEAR_PROV / carryProv).
  */
 
 import { GEAR_STASH_FIELDS, GEAR_STASH_CAP, GEAR_PROV, carryProv, stashSig, sanitizeGearPiece, sanitizeCosmeticEntry } from './gearstash.js';
@@ -203,7 +203,7 @@ export const storeGearMethods = {
     if (field === 'amuletStash') out = this._sanitizeAmulet(piece);
     else if (field === 'gearStash') out = sanitizeCosmeticEntry(piece);
     else out = sanitizeGearPiece(piece, !!strict);
-    /* v2.3.2529: the same seam the join path uses (gearstash.js
+    /* v2.3.2532: the same seam the join path uses (gearstash.js
        carryProv).  Amulets and cosmetics are REBUILT by their
        sanitizers, so without this an escrow or a refund of one dropped
        its `_sv`; a wire blob (strict) can never gain it. */
@@ -211,7 +211,7 @@ export const storeGearMethods = {
   },
 
   /* Strip the provenance mark off anything that came from a client.
-     v2.3.2529: BELT AND BRACES only -- the strict sanitizers now strip it
+     v2.3.2532: BELT AND BRACES only -- the strict sanitizers now strip it
      themselves at every seam (gearstash.js GEAR_PROV), which is what
      closes the join claim, the path this one never covered.  Kept because
      the selector is the one blob built straight off a request body and a
@@ -311,8 +311,8 @@ export const storeGearMethods = {
     const field = body && body.field;
     if (!isGearField(field)) return { ok: false, error: 'Invalid item' };
 
-    /* v2.3.2529: nothing is reconciled against the WORN slot here.  The
-       v2.3.2528 attempt deleted gear players really own (see the header's
+    /* v2.3.2532: nothing is reconciled against the WORN slot here.  The
+       v2.3.2531 attempt deleted gear players really own (see the header's
        item 2) and is deliberately not replaced by another heuristic --
        "sell the armour off your own back" is a known open hole bounded by
        `caps.storeGear` until the server keeps a real ledger of what it
