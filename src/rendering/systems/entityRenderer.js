@@ -1505,7 +1505,7 @@ function _remoteBodyArt(other, mirror) {
  * That is five poses back, not the eight I first told the owner — chop, cook
  * and fire only LOOKED free.  Their entries stay because deleting them would
  * invite the next reader to re-derive all of this. */
-/* ═══ v2.3.2507: THE ROLL AND THE LOOT BEND TAKE THE CAPE OFF AGAIN ═══
+/* ═══ v2.3.2509: THE ROLL AND THE LOOT BEND TAKE THE CAPE OFF AGAIN ═══
  * Owner (D6, backlog triage 2026-09-14 §5.8): "hide the cape on the dodge pose
  * INCLUDING the loot bend."
  *
@@ -1689,7 +1689,7 @@ function _placeCape(display, capeId, pose, dir, mirror, frameIdx) {
   const sb = display._spriteBody;
   const off = (!capeId || capeId === 'none' || _CAPE_HIDDEN_POSES[pose]);
   const tex = off ? null : getCapeTexture(capeId, dir);
-  /* ═══ v2.3.2507: THE SOUTH BLOCK IS STILL A BODY ═══
+  /* ═══ v2.3.2509: THE SOUTH BLOCK IS STILL A BODY ═══
    * Owner (backlog triage 2026-09-14, art item 9): "no cape on the south shield
    * block."
    *
@@ -4277,7 +4277,7 @@ function heldWeaponInFront(wpnType, facingIdx, inFrontBase) {
      NE ("the body should mostly hide the bow").  E and W are side-on and S
      holds it clear in the near hand, so those keep the in-front order. */
   if (wpnType === 'bow') return facingIdx === 0 || facingIdx === 2;
-  /* ═══ v2.3.2507: SOUTHWEST GOES BEHIND, AND THAT RETIRES THE v2.3.1787 SW ═══
+  /* ═══ v2.3.2509: SOUTHWEST GOES BEHIND, AND THAT RETIRES THE v2.3.1787 SW ═══
    * Owner (D7, backlog triage 2026-09-14 §5.8): "greatsword at southwest goes
    * BEHIND the body for jog/idle AND for the attack swing -- it is in the right
    * hand, facing away from the camera; the character should occlude the swing
@@ -4296,7 +4296,7 @@ function heldWeaponInFront(wpnType, facingIdx, inFrontBase) {
    * `_heldInHand`, so they never reach this function and take inFrontInHand,
    * which excludes 3).  This makes the greatsword agree with them rather than
    * introducing a new rule.  The swing's own z-order is the matching half and
-   * lives in effectsRenderer's _updateSwordSwing -- see the v2.3.2507 note on
+   * lives in effectsRenderer's _updateSwordSwing -- see the v2.3.2509 note on
    * _orderSwingWeapon's `behind` argument there. */
   return inFrontBase;   /* greatsword: point-up, clears the torso -- E/SE only */
 }
@@ -11130,7 +11130,7 @@ export class EntityRenderer {
             && _bodyRef.visible && _bodyRef.texture
             && !swingActive && isInCombat
             && (facingIdx === 0 && pose === 'jog');
-          /* ═══ v2.3.2507 QA probe: WHY the capsule did or did not run ═══
+          /* ═══ v2.3.2509 QA probe: WHY the capsule did or did not run ═══
              The owner's seventh report of a bare jog-east shoulder names the
              SHIELD as the suspect, and the capsule is the only shield-shaped
              thing in this region (it stamps a body clone over the arm so the arm

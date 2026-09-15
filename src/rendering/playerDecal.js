@@ -841,7 +841,7 @@ export const ARM_BOX = { fillW: 1, fillH: 1, cy: 0.50 };
  * SHINS: the art wears shorts, so a bare lower leg is skin too, and an
  * unbounded "skin that is not torso and not head" mask reaches the ankles.
  */
-/* ═══ v2.3.2507: THE HEAD'S OWN BOX, WALKED DOWN FROM THE CROWN ═══
+/* ═══ v2.3.2509: THE HEAD'S OWN BOX, WALKED DOWN FROM THE CROWN ═══
  * Owner (backlog triage 2026-09-14, art item 4): on the jog south and east
  * BOW-SHOT frames the face tattoo covers only the top half of the face.
  *
@@ -924,13 +924,13 @@ export function splitSkinRegions(skin, torso, w, h, frameW) {
       }
     }
     if (top < 0) continue;            /* no torso in this frame: place nothing */
-    const head = _headBoxInFrame(skin, w, h, x0, x1);   /* v2.3.2507 */
+    const head = _headBoxInFrame(skin, w, h, x0, x1);   /* v2.3.2509 */
     for (let y = 0; y < h; y++) {
       const row = y * w;
       for (let x = x0; x < x1; x++) {
         if (!skin[row + x]) continue;
         if (y < top) face[row + x] = 1;
-        /* v2.3.2507: the rest of the head, when the band's first row cut it in
+        /* v2.3.2509: the rest of the head, when the band's first row cut it in
            half.  Bounded on BOTH axes by the walked box, so it cannot reach the
            chest (row) or an arm held up beside the ear (column). */
         else if (head && y <= head.bot && x >= head.l && x <= head.r) face[row + x] = 1;

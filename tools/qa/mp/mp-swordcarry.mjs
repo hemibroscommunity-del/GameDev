@@ -100,7 +100,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      is probably the shirt."  In front for E/SE/S/SW/NE, behind for W/NW/N —
      the facings where you are looking at his back.
 
-     ═══ v2.3.2507: SW COMES OUT, BY THE SAME OWNER ═══
+     ═══ v2.3.2509: SW COMES OUT, BY THE SAME OWNER ═══
      D7, backlog triage 2026-09-14 §5.8: "greatsword at southwest goes BEHIND
      the body for jog/idle AND for the attack swing -- it is in the right hand,
      facing away from the camera; the character should occlude the swing instead
