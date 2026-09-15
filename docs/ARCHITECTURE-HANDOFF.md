@@ -54,14 +54,14 @@ extended.
 
    | Prefix | Value | Owner (spec) |
    |---|---|---|
-   | `rpg:<playerId>` | the player blob (fixed field list) — v2.3.2523 adds the five GEAR STASHES (`armorStash`, `legsStash`, `shieldStash`, `gearStash`, `amuletStash`) + the `gearStashCaptured` adoption stamp; they are blob fields, not their own prefix | core (gear-stash.md) |
+   | `rpg:<playerId>` | the player blob (fixed field list) — v2.3.2523 adds the five GEAR STASHES (`armorStash`, `legsStash`, `shieldStash`, `gearStash`, `amuletStash`) + the `gearStashCaptured` adoption stamp; they are blob fields, not their own prefix. v2.3.2531 makes the store a WRITER of them (escrow) and stamps `_sv` on every piece the server itself hands back | core (gear-stash.md, general-store.md) |
    | `auth:<playerId>` | `{pfHash, createdAt}` SHA-256 of `btv1\|phrase` | identity.md |
    | `char:<playerId>` | `{name, look, createdAt}` the PERMANENT name + appearance; first write wins and a stored record beats the join payload | identity.md |
    | `inbox:<playerId>` | pending credit entries (offline mail) | inbox-escrow.md |
    | `oplog:<opId>` | timestamp; idempotency journal, pruned >48h | inbox-escrow.md |
    | `mkt_order:<orderId>` | resting order w/ escrowed item | marketplace.md |
    | `mkt_hist:<indexKey>` | rolling last-50 executed prices | marketplace.md |
-   | `store_listing:<listingId>` | one general-store listing: the escrowed goods (stackable or stash weapon), ask price, the live bid, and the in-flight sale/bid marker the wake-time rebuild converges on | general-store.md |
+   | `store_listing:<listingId>` | one general-store listing: the escrowed goods (stackable, stash weapon, or — v2.3.2531 — a piece of GEAR plus the stash field it came out of), ask price, the live bid, and the in-flight sale/bid/releasing marker the wake-time rebuild converges on | general-store.md |
    | `duelEscrow:<duelId>` | `{a, b, wager, startedAt}` | duels.md |
    | `clan:<clanId>` / `clan_by_player:<pid>` / `clan_war:<warId>` | clan registry + war snapshots | clans.md |
    | `arena_entry:<tid>:<pid>` | escrowed 100g tournament entry | arena.md |
