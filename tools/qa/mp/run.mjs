@@ -23,9 +23,9 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  teeshield: () => import('./mp-teeshield.mjs'), /* v2.3.2472: is the bare jog-east shoulder the shield's arm capsule, or the artist's unsleeved frames? */
-  facebow: () => import('./mp-facebow.mjs'), /* v2.3.2472: the face tattoo reaches the jaw on a moving bow shot */
-  arules: () => import('./mp-arules.mjs'), /* v2.3.2472: the sprite-art RULE fixes -- cape on the roll and the loot bend, and the cape the south block used to lose */
+  teeshield: () => import('./mp-teeshield.mjs'), /* v2.3.2507: is the bare jog-east shoulder the shield's arm capsule, or the artist's unsleeved frames? */
+  facebow: () => import('./mp-facebow.mjs'), /* v2.3.2507: the face tattoo reaches the jaw on a moving bow shot */
+  arules: () => import('./mp-arules.mjs'), /* v2.3.2507: the sprite-art RULE fixes -- cape on the roll and the loot bend, and the cape the south block used to lose */
   inkframes: () => import('./mp-inkframes.mjs'), /* v2.3.2470: a drawing must not pulse or spill as he runs */
   backprev: () => import('./mp-backprev.mjs'), /* v2.3.2467: the pedestal preview turns round and so do the drawings */
   solospecial: () => import('./mp-solospecial.mjs'), /* v2.3.2465: the swipe fires the special alone -- no ordinary shot leading or trailing it -- and the three magic orbs are evenly spaced */
