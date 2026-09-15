@@ -19,6 +19,12 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SRC = readFileSync(join(ROOT, 'src/data/gameDisplay.js'), 'utf8');
+/* v2.3.2492: the LISTENER source too.  The bfcache gap was not in any of the
+   functions below -- every one of them passed, and the harness said "all
+   pass" while the game went silent -- it was in which of them the pageshow
+   handler called.  Testing the audio module alone could never have seen
+   that, so the handler is extracted and RUN here as well, the same way. */
+const APP_SRC = readFileSync(join(ROOT, 'src/ui/GameApp.jsx'), 'utf8');
 function grab(name) {
   const marker = `BT_AUDIO.${name} = function `;
   const i = SRC.indexOf(marker);
@@ -38,10 +44,26 @@ const body = [
   ...['_teardownGlobalMusic', 'resumeFromBackground', '_rebuildSources', 'startGlobalMusic'].map(grab),
   ...['_ctxLive', '_wakeCtx', '_whenRunning', 'fadeIn', '_ensureAudible',
       '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck', '_rebuildContext',
-      '_reclaimSession', 'noteHidden', 'noteVisible', 'reclaimIfNeeded',
+      '_reclaimSession', 'noteHidden', 'noteVisible', 'noteRestored', 'reclaimIfNeeded',
       '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck', '_rebuildContext',
-      '_reclaimSession', 'noteHidden', 'noteVisible', 'reclaimIfNeeded'].map(grabProp),
+      '_reclaimSession', 'noteHidden', 'noteVisible', 'noteRestored', 'reclaimIfNeeded'].map(grabProp),
 ].join(',\n');
+
+/* Pull the real `const onPageShow = (e) => { ... };` out of GameApp.jsx and
+   return it as a callable, with BT_AUDIO and onResume injected.  Arrow-bodied
+   and terminated by `\n    };`, matching how it is written. */
+function grabPageShow() {
+  const marker = '    const onPageShow = (e) => {';
+  const i = APP_SRC.indexOf(marker);
+  if (i < 0) throw new Error('not found: onPageShow (has GameApp.jsx changed shape?)');
+  const end = APP_SRC.indexOf('\n    };', i);
+  if (end < 0) throw new Error('onPageShow: no terminator');
+  const src = APP_SRC.slice(i, end + '\n    };'.length);
+  return (BT_AUDIO, onResume) => {
+    const mk = eval(`(function (BT_AUDIO, onResume) {\n${src}\n  return onPageShow;\n})`);
+    return mk(BT_AUDIO, onResume);
+  };
+}
 
 globalThis.document = { hidden: false };
 let fail = 0;
@@ -528,6 +550,89 @@ function makeAudio(opts = {}) {
   ck('app switch: flag cleared', !!A._needsSessionReclaim, false);
   ck('app switch: a second touch does not reclaim again', A.reclaimIfNeeded(), false);
   ck('app switch: and nothing extra was rebuilt', ctxRebuilds, 1);
+}
+
+// ── 30. THE BFCACHE RETURN: a hide nothing recorded ────────────────────
+//   v2.3.2492.  Owner: background the game, come back, no sound until reload.
+//   The visibilitychange route (case 29) recovers.  This one is the OTHER
+//   way back in, and on iOS it is the common one: the page is frozen into the
+//   bfcache and thawed, and visibilitychange "does not always fire" on the way
+//   out (GameApp.jsx's own note).  So `_hiddenAt` is 0 on return, noteVisible
+//   measures an absence of nothing, and the reclaim is never armed.
+//
+//   That matters because the failure a long background actually produces is
+//   the one NOTHING downstream can see: ctx reads 'running', the analyser taps
+//   a healthy bus, and the sound has no route to the speaker.  Every detector
+//   in this file is blind to it by construction; reclaimIfNeeded is the only
+//   repair, and it does nothing unless something armed it.
+{
+  const { A } = makeAudio();
+  let wavs = 0, ctxRebuilds = 0, srcRebuilds = 0;
+  globalThis.Audio = function () { wavs++; return { setAttribute() {}, play: () => Promise.resolve() }; };
+  A.init = function () { ctxRebuilds++; this.ctx = { state: 'suspended', resume: () => Promise.resolve(), addEventListener() {}, removeEventListener() {} }; };
+  A._rebuildSources = function () { srcRebuilds++; };
+
+  /* The module half: a restore is an absence of unknown length, and arms. */
+  A._hiddenAt = 0;
+  A._needsSessionReclaim = false;
+  A.noteVisible();
+  ck('bfcache return: the MEASURED path cannot arm (no hide was recorded)',
+    !!A._needsSessionReclaim, false);
+  A.noteRestored();
+  ck('bfcache return: noteRestored arms it anyway', !!A._needsSessionReclaim, true);
+  ck('bfcache return: the next touch performs the reclaim', A.reclaimIfNeeded(), true);
+  ck('bfcache return: silent WAV replayed to re-claim the session', wavs, 1);
+  ck('bfcache return: context rebuilt to re-negotiate its route', ctxRebuilds, 1);
+  ck('bfcache return: sources rebuilt on the new context', srcRebuilds, 1);
+  ck('bfcache return: flag cleared, so a second touch is cheap',
+    A.reclaimIfNeeded(), false);
+
+  /* The WIRING half — the actual v2.3.2492 gap.  Every module function above
+     already passed before the fix; what was missing was the handler calling
+     one of them.  This runs the shipped onPageShow.
+     A handler that cannot be found is reported as a FAILING assertion rather
+     than allowed to throw out of the harness: against the pre-fix file the
+     handler is `() => onResume(true)` and does not match, and "the pageshow
+     handler does not take the event" is precisely the finding. */
+  let mkPageShow = null;
+  let grabErr = null;
+  try { mkPageShow = grabPageShow(); } catch (e) { grabErr = e && e.message; }
+  ck('pageshow: the handler is extractable (it must take the event to read .persisted)',
+    grabErr || 'ok', 'ok');
+  if (!mkPageShow) {
+    ck('pageshow(persisted): the handler arms the reclaim', 'handler not found', 'noteRestored');
+  } else {
+  const calls = [];
+  const stub = {
+    noteRestored() { calls.push('noteRestored'); },
+    noteVisible() { calls.push('noteVisible'); },
+  };
+  const onResumeCalls = [];
+  const onPageShow = mkPageShow(stub, (hard) => onResumeCalls.push(hard));
+
+  onPageShow({ persisted: true });
+  ck('pageshow(persisted): the handler arms the reclaim',
+    calls.join(','), 'noteRestored');
+  ck('pageshow(persisted): ...and still does the hard resume it always did',
+    onResumeCalls.join(','), 'true');
+
+  calls.length = 0; onResumeCalls.length = 0;
+  onPageShow({ persisted: false });
+  ck('pageshow(fresh load): takes the MEASURED path instead of force-arming',
+    calls.join(','), 'noteVisible');
+  ck('pageshow(fresh load): ...and still resumes hard',
+    onResumeCalls.join(','), 'true');
+
+  /* A handler that threw would take the resume down with it, and this one
+     runs on a path with no error boundary. */
+  calls.length = 0; onResumeCalls.length = 0;
+  const throwing = mkPageShow({ noteRestored() { throw new Error('nope'); } },
+    (hard) => onResumeCalls.push(hard));
+  let threw = false;
+  try { throwing({ persisted: true }); } catch (e) { threw = true; }
+  ck('pageshow: a throwing audio module does not break the resume', threw, false);
+  ck('pageshow: ...and the resume still ran', onResumeCalls.join(','), 'true');
+  }
 }
 
 console.log(fail ? `\n${fail} FAILED` : '\nall pass');

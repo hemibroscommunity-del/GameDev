@@ -1,6 +1,7 @@
 import React from 'react';
 import { BLACKSMITH_TIERS, BT_AUDIO, ELEMENTS, MKT_CATEGORIES, MKT_TIERS, MKT_WOOD_TIERS, WEAPON_TYPES, WOODWORKING_TIERS, estimateMktPrice } from '@/data/index.js';
 import { BT_API_BASE } from '@/networking/index.js';
+import { storeEnabled } from '@/ui/storeApi.js';   /* v2.3.2476 */
 import { _asyncToGenerator, _objectSpread, _regenerator, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -35,7 +36,8 @@ export function ExchangePanel(props) {
     setMktPrice = props.setMktPrice,
     setMktSellItem = props.setMktSellItem,
     setMktSubtype = props.setMktSubtype,
-    setMktTier = props.setMktTier;
+    setMktTier = props.setMktTier,
+    setBuildingPanel = props.setBuildingPanel;   /* v2.3.2476: the door to the general store */
   var _BLACKSMITH_TIERS$mkt, _BLACKSMITH_TIERS$mkt2, _MKT_CATEGORIES$mktCa, _R$weaponStash, _WEAPON_TYPES$mktSubt, _WEAPON_TYPES$o, _WEAPON_TYPES$st, _WEAPON_TYPES$st2, _WEAPON_TYPES$sw, _WOODWORKING_TIERS$mk, _WOODWORKING_TIERS$mk2, _data$cancelled, _data$cancelled2, _data$matchedOrder;
   /* v2.3.1118: market ops are settled by the GameRoom DO now, so every
      call carries the session's room -- a ?room=qa1 tester's escrow must
@@ -127,7 +129,29 @@ export function ExchangePanel(props) {
       letterSpacing: '.10em',
       color: '#F4F0E7'
     }
-  }, "Marketplace")), /*#__PURE__*/React.createElement("div", {
+  }, "Marketplace")),
+  /* ═══ v2.3.2476: THE OTHER SHELF ═══
+     This screen matches KINDS of weapon in a bucket; the general store sells
+     THIS one at the seller's own price, with bids. Two different things, both
+     live, so each says where the other is. Gated on the store cap, and on the
+     setter actually being passed, so it cannot appear as a button that does
+     nothing. */
+  (storeEnabled() && setBuildingPanel) ? /*#__PURE__*/React.createElement("button", {
+    type: 'button',
+    onClick: function onClick() { setBuildingPanel('store'); },
+    style: {
+      width: '100%', minHeight: 40, margin: '6px 0 8px', padding: '0 12px',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+      borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+      border: '1px solid #D8AA58', background: 'rgba(216,170,88,.15)', color: '#D8AA58',
+      fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em',
+      WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation'
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "General store"),
+     /*#__PURE__*/React.createElement("span", {
+       style: { fontSize: 11, fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: '#B6C1BE' }
+     }, "Buy now or bid ›")) : null,
+  /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',
@@ -653,39 +677,25 @@ export function ExchangePanel(props) {
             pushDmgPopup(S, S.player.x, S.player.y - 30, data.error || 'Failed!', '#D95C54');
             return _context0.a(2);
           case 8:
-            /* v2.3.1118: settlement is SERVER-SIDE when the worker sends
-               settled: true -- escrow was taken at placement from the
-               server's own copies, and match payouts/refunds arrive via
-               the authoritative player_state echo (or the inbox when a
-               party is offline).  The client-side mutations below were
-               the self-credit hole (free duplication with devtools);
-               they now run ONLY against a legacy worker without the
-               flag, keeping both deploy orders safe. */
-            if (!data.settled) {
-              /* Legacy worker: apply client-side effects */
-              if (mktMode === 'buy') {
-                R.coins -= mktPrice; /* escrow */
-              }
-              if (mktMode === 'sell' && mktSellItem !== null) {
-                R.weaponStash.splice(mktSellItem, 1);
-              }
-              if (data.matched) {
-                if (mktMode === 'buy') {
-                  refund = mktPrice - data.execPrice;
-                  if (refund > 0) R.coins += refund;
-                  if ((_data$matchedOrder = data.matchedOrder) !== null && _data$matchedOrder !== void 0 && _data$matchedOrder.item) {
-                    if (!R.weaponStash) R.weaponStash = [];
-                    R.weaponStash.push(data.matchedOrder.item);
-                  }
-                } else {
-                  R.coins += data.execPrice;
-                }
-              }
-              setRpgState(_objectSpread({}, R));
-              try {
-                localStorage.setItem('bt_rpg', JSON.stringify(R));
-              } catch (e) {}
-            }
+            /* ═══ v2.3.2476: THE LEGACY SELF-CREDIT PATH IS GONE ═══
+               Until now this branch ran whenever a response arrived WITHOUT
+               `settled: true`: it spliced the weapon out of the stash and
+               moved the coins itself. That was the deploy-order fallback for
+               a worker that predated server-side settlement (v2.3.1118), and
+               handoff rule zero says exactly what such a fallback is for --
+               "to be deleted once every worker in production advertises the
+               capability, not to be extended". Every worker has settled the
+               order book for hundreds of versions; what was left was a client
+               that still knew how to pay itself, one missing flag away from
+               free duplication.
+
+               So: no local mutation on either path. Escrow was taken from the
+               server's own copies at placement and every payout and refund
+               arrives on the authoritative player_state echo (or in the mail
+               when the other side is offline). If a response somehow lacks
+               the flag now, the honest outcome is that nothing changes on
+               screen until the echo says otherwise -- which is what the rest
+               of the economy already does. */
             /* _compStats gold tallies stay client-tracked on both paths
                (cosmetic lifetime counters, not wallet state). */
             if (data.matched) {
@@ -1096,24 +1106,9 @@ export function ExchangePanel(props) {
               case 2:
                 data = _context1.v;
                 if (data.ok) {
-                  /* v2.3.1118: settling workers refund the escrow
-                     server-side (player_state echo / inbox carries it);
-                     the local refund below is the legacy-worker path
-                     only -- double-crediting against a settling worker
-                     was the duplication hole. */
-                  if (!data.settled) {
-                    R2 = stateRef.current.rpg;
-                    /* Refund gold for buys, return item for sells */
-                    if (((_data$cancelled = data.cancelled) === null || _data$cancelled === void 0 ? void 0 : _data$cancelled.type) === 'buy') R2.coins += data.cancelled.price;
-                    if (((_data$cancelled2 = data.cancelled) === null || _data$cancelled2 === void 0 ? void 0 : _data$cancelled2.type) === 'sell' && data.cancelled.item) {
-                      if (!R2.weaponStash) R2.weaponStash = [];
-                      R2.weaponStash.push(data.cancelled.item);
-                    }
-                    setRpgState(_objectSpread({}, R2));
-                    try {
-                      localStorage.setItem('bt_rpg', JSON.stringify(R2));
-                    } catch (e) {}
-                  }
+                  /* v2.3.2476: the local refund that used to live here is
+                     gone with its twin on /place above -- the worker returns
+                     the escrow itself and the echo carries it. */
                   pushDmgPopup(S, S.player.x, S.player.y - 30, 'Order cancelled', 'rgba(255,255,255,.5)');
                   /* Refresh */
                   S._mktLastRefresh = null;
