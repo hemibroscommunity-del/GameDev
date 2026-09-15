@@ -490,20 +490,41 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
       { dpsD, min: dispR.min, cdMs: dispR.cdMs });
   }
 
-  // (c) the consistency rule.
+  // (c) the consistency rule, as the owner settled it in v2.3.2525.
   {
-    /* Successive non-kill hits must sum to the drop in the DISPLAYED bar —
-       this is the property the rule exists for, and the one a naive
-       round(dmg/k) gets wrong. */
+    /* THE RULE CHANGED, AND THIS SECTION CHANGED WITH IT.  Until v2.3.2525 a
+       non-kill popup was exactly the displayed-hp delta, so successive hits
+       summed to the drop in the bar and a hit that did not move a whole
+       displayed point read "0".  The owner chose the other side of that
+       trade -- "damage rendered during combat to be at least 1 damage" --
+       so the floor now wins and the sum is an UPPER bound on the bar drop
+       rather than an equality.  Both halves are pinned so neither can drift
+       back silently.
+
+       What survives: every hit still tracks the bar (a big hit reads big),
+       and the k = 1 identity above is untouched, because at k = 1 every
+       landed hit already moved the bar by at least one point. */
     const after = [40, 37, 31, 20, 9];          // hp after each hit, starting at 58
-    let hp = 58, sum = 0;
-    for (const a of after) { sum += toDisplayHitDamage(hp, a); hp = a; }
-    check('consistency: non-kill popups sum to the drop in DISPLAYED hp',
-      sum === toDisplayHp(58) - toDisplayHp(9),
-      { sum, exp: toDisplayHp(58) - toDisplayHp(9) });
-    check('consistency: a non-kill popup is the DISPLAYED-hp delta, not round(dmg/k)',
+    let hp = 58, sum = 0, zeros = 0;
+    for (const a of after) {
+      const shown = toDisplayHitDamage(hp, a);
+      if (shown === 0) zeros++;
+      sum += shown; hp = a;
+    }
+    const barDrop = toDisplayHp(58) - toDisplayHp(9);
+    check('consistency: no landed hit in a whole fight reads 0', zeros === 0, { zeros });
+    check('consistency: the hits still track the bar (sum >= drop, and not by much)',
+      sum >= barDrop && sum <= barDrop + after.length,
+      { sum, barDrop, hits: after.length });
+    check('consistency: a hit bigger than k is still the DISPLAYED-hp delta',
       toDisplayHitDamage(58, 40) === toDisplayHp(58) - toDisplayHp(40),
       toDisplayHitDamage(58, 40));
+    /* The owner's case, measured: root/venom at 3-4 damage a tick used to
+       print "-0" for roughly two ticks in five on a low-level character. */
+    check('consistency: a small tick that moves no whole point still reads 1',
+      toDisplayHitDamage(40, 37) === 1, toDisplayHitDamage(40, 37));
+    check('consistency: a hit that took NO hp still reads 0 (no phantom damage)',
+      toDisplayHitDamage(40, 40) === 0, toDisplayHitDamage(40, 40));
 
     /* The killing blow reports the ROLL, off the pre-overkill-clamp rawDmg
        the worker sends — otherwise the last hit of every fight prints the

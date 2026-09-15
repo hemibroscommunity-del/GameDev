@@ -733,8 +733,16 @@ export function InventoryPanel(props) {
        dmg × the coarse WEAPON_TYPES.speed scalar, which ignored crit
        entirely — crit-channel points now move BOTH sides of the stash
        compare.  SPD keeps the legacy scalar as a feel label. */
-    var stashDps = Math.round(calcDisplayDps(liveRpg, sw));
-    var curDps = current ? Math.round(calcDisplayDps(liveRpg, current)) : 0;
+    /* ═══ v2.3.2525: DON'T ROUND THE COMPARE TO NOTHING ═══
+       Math.round on a figure the k = 5 scale already shrank made two
+       genuinely different weapons show the SAME DPS, and the ▲/▼ upgrade
+       arrow beside them vanished — the compare quietly stopped answering
+       the one question it exists for.  Two decimals is the same resolution
+       the round gave before the scale, and DPS is a tuning number, so it
+       is allowed them (the DMG range beside it stays whole damage). */
+    var _r2 = function _r2(v) { return Math.round(v * 100) / 100; };
+    var stashDps = _r2(calcDisplayDps(liveRpg, sw));
+    var curDps = current ? _r2(calcDisplayDps(liveRpg, current)) : 0;
     var dpsDiff = stashDps - curDps;
     return /*#__PURE__*/React.createElement("div", {
       key: si,
@@ -823,13 +831,17 @@ export function InventoryPanel(props) {
         color: 'var(--ui-text)',
         fontVariantNumeric: 'tabular-nums'
       }
-    }, stashDps), dpsDiff !== 0 && /*#__PURE__*/React.createElement("span", {
+    /* v2.3.2525: both halves print via toFixed(2).  dpsDiff is a float
+       subtraction, so the bare value renders as 0.030000000000000027 on the
+       arrow — the format is what makes the extra resolution readable rather
+       than alarming. */
+    }, stashDps.toFixed(2)), dpsDiff !== 0 && /*#__PURE__*/React.createElement("span", {
       style: {
         color: dpsDiff > 0 ? '#55B98A' : '#D8635D',
         marginLeft: 2,
         fontSize: 11
       }
-    }, dpsDiff > 0 ? '▲' : '▼', Math.abs(dpsDiff)))), /*#__PURE__*/React.createElement("div", {
+    }, dpsDiff > 0 ? '▲' : '▼', Math.abs(dpsDiff).toFixed(2)))), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         gap: 4,
