@@ -140,5 +140,95 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and it expires on the 8s TTL (owner: 5-10 seconds)',
     afterTtl === 0, { afterTtl });
 
+  /* ═══ 4. THE DEBRIS BURST IS A THING YOU CAN SEE (v2.3.2504) ═══
+     Owner (§5.8): "Debris → use the fallback art for now.  Lane F1 makes the
+     fallback burst and decals last about 5 s and read clearly; no sheets
+     needed."
+
+     THE HIT PATH WAS NEVER THE PROBLEM.  Section 3 above already proves a hit
+     spawns debris, and it has since v2.3.2200.  What was wrong is that none of
+     the five DEBRIS_BURSTS sheets exist under public/sprites/effects/, so every
+     hit in the shipped game takes the PLACEHOLDER branch -- and the placeholder
+     was six dots that vanished in 450ms.  The owner was not looking at a broken
+     effect, he was looking at scaffolding.
+
+     So this asserts the placeholder's own contract, which is now the shipping
+     one: it runs for about five seconds, and the chunks LAND rather than
+     continuing into orbit.  The landing is the half that makes five seconds
+     legible instead of absurd -- at the old parametric flight a chunk would be
+     some 5400px below the monster by the end of a 5s burst -- and it is
+     invisible to every other measure, including a screenshot. */
+  const burst = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    if (S._debrisBursts) S._debrisBursts.length = 0;
+    window.__btDispatch({
+      type: 'monster_hit',
+      payload: { monsterId: 'qa-feel', attackerId: 'qa-someone-else', dmg: 5, hpPct: 0.7, isCrit: false },
+    });
+    return true;
+  });
+  await P.page.waitForTimeout(300);
+  const dbEarly = await P.page.evaluate(() => (window.__btDebris ? window.__btDebris() : null));
+  rec.ok('a hit spawns a debris burst the renderer is actually holding',
+    !!(dbEarly && dbEarly.length >= 1 && dbEarly[0].parts > 0), { burst, dbEarly });
+  if (dbEarly && dbEarly.length) {
+    /* ABOUT FIVE SECONDS, asserted as the burst's own declared lifetime rather
+       than by waiting five seconds and looking -- the sheet path keeps its
+       450ms (it is the pacing of an 8-frame strip, not a taste call) and the
+       two clocks must stay separable.  `sheet: false` is the guard that says
+       this run really is measuring the placeholder. */
+    rec.ok(`...on the placeholder path, running ~5s not ~0.45s (ms: ${dbEarly[0].ms})`,
+      dbEarly[0].sheet === false && dbEarly[0].ms >= 4000 && dbEarly[0].ms <= 6000, dbEarly[0]);
+    /* Still at full strength a beat in: the old placeholder faded from frame
+       one, so a "5 second" effect that starts dying immediately would read as
+       the same flicker with a longer tail. */
+    rec.ok(`...and still at full strength 300ms in (alpha ${dbEarly[0].alpha})`,
+      dbEarly[0].alpha != null && dbEarly[0].alpha > 0.9, dbEarly[0]);
+  }
+  /* The chunks come down.  ~1s is well past the longest computed arc, so all
+     of them should be resting on the ground by now. */
+  await P.page.waitForTimeout(1100);
+  const mid = await P.page.evaluate(() => (window.__btDebris ? window.__btDebris() : null));
+  rec.ok('...the chunks LAND and lie there instead of flying off into orbit',
+    !!(mid && mid.length && mid[0].landed === mid[0].parts && mid[0].parts > 0), mid && mid[0]);
+  rec.ok('...and the burst is still on screen well past the old 450ms',
+    !!(mid && mid.length && mid[0].age > 1200), mid && mid[0]);
+  /* A PICTURE, because "reads clearly" is the half of the ask no number can
+     answer -- the assertions above can prove a burst is alive and landed and
+     still say nothing about whether a player can SEE it (TRAPS §21: a mark the
+     same colour as the ground satisfies every count). Cropped tight on the
+     slime from its own reported position, the mp-arrowshot posture. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S._debrisBursts = S._debrisBursts || [];
+  });
+  const debrisBox = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    if (!S || !S.player || !S.camera) return null;
+    const r = document.querySelector('canvas').getBoundingClientRect();
+    const kx = S._worldScaleX || 1, ky = S._worldScaleY || 1;
+    /* Anchored on the PLAYER, not on the monster: the slime is 40px east of
+       him and the burst lands between them, and the player's position is the
+       one field that is never absent from the state this scenario leaves
+       behind. */
+    const cx = r.left + (S.player.x + 20 - S.camera.x) * kx;
+    const cy = r.top + (S.player.y - S.camera.y) * ky;
+    const half = 120;
+    const x = Math.max(0, Math.round(cx - half)), y = Math.max(0, Math.round(cy - half));
+    return { x, y, width: Math.min(innerWidth - x, half * 2), height: Math.min(innerHeight - y, half * 2) };
+  });
+  if (debrisBox && debrisBox.width > 40) {
+    await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/feel-debris.png`, clip: debrisBox })
+      .catch(() => {});
+    console.log('    debris crop -> tools/qa/mp/out/feel-debris.png');
+  }
+  /* AND IT ENDS.  A burst that never expires is a leak, and this renderer
+     pools sprites -- v2.3.2272 is the version that had to go find a bounded
+     residue that nothing was releasing. */
+  await P.page.waitForTimeout(5200);
+  const gone = await P.page.evaluate(() => (window.__btDebris ? window.__btDebris() : null));
+  rec.ok('...then it is reaped, rather than leaking sprites for the life of the page',
+    !!gone && gone.length === 0, gone);
+
   await P.ctx.close().catch(() => {});
 }
