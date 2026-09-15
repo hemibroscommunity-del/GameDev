@@ -1,5 +1,5 @@
 import React from 'react';
-import { RBTN } from './ShieldButton.jsx';
+import { RBTN, LBTN } from './ShieldButton.jsx'; /* v2.3.2472: LBTN -- the left disc's geometry, shared with SpecialButton */
 
 /* ═══ v2.3.2264: THE DISC SAYS "HOT", IT DOES NOT SAY "OFF" ═══
  * Owner, on v2.3.2263's see-through button: "the disc that holds the attack
@@ -141,8 +141,8 @@ export function TouchControls(props) {
          so hiding it costs no input at all. */
       opacity: 0,
       position: 'fixed',
-      bottom: 'calc(var(--sheet-h, var(--dash-h)) + 70px)', /* v2.3.1307: disc rides above the open sheet */
-      left: isLandscape ? 16 : 12,
+      bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + LBTN.bottom + 'px)', /* v2.3.1307: disc rides above the open sheet */
+      left: isLandscape ? LBTN.leftLand : LBTN.left,
       zIndex: 30,
       /* v2.3.816: visuals only -- touches are handled by lZoneRef beneath,
          so this corner box must not intercept them. */
@@ -152,8 +152,8 @@ export function TouchControls(props) {
          0.5 base (and BroTown's 0.85 drag re-stamp) for a 31% effective
          rest opacity. Removed; the ladder lives in BroTown's handlers
          (rest .5, ENGAGED .92 stamped by the move handlers). */
-            width: isLandscape ? 98 : 83,
-      height: isLandscape ? 98 : 83
+            width: isLandscape ? LBTN.wLand : LBTN.w,
+      height: isLandscape ? LBTN.wLand : LBTN.w
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-base",

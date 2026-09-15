@@ -2,36 +2,31 @@ import React from 'react';
 import { ABILITY_META } from '@/data/index.js';
 import { abilityStatus, castAbility } from '@/game/abilities.js';
 import { blockRingBus } from '@/ui/mobile/blockRingBus.js'; /* v2.3.2252: the bash button follows the shield's edge, not a 200ms poll */
-import { RBTN } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2254: the disc's real height, so this column cannot land on it */
+import { ctlColumn, ctlBottom } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2472: the one shared left-of-the-disc column (D9) */
 
-/* ═══ v2.3.2327: DOWN AND TO THE LEFT OF THE ATTACK DISC ═══
-   Owner: "The shield bash button too far away.  Put it down and to the left
-   of the attack button."
+/* ═══ v2.3.2472: STACKED ABOVE THE BLOCK BUTTON ═══
+   Owner decision D9: "Block left of the disc, abilities stacked above it."
 
-   It was ABOVE the disc (v2.3.2254 moved it up, when the ask was to get it off
-   the disc it was overlapping).  Measured on his phone at 390x844: the disc
-   sits at x 244..340 / y 435..531 and Bash was at x 324..372 / y 295..343 --
-   up and to the RIGHT of the disc's centre, and 140px from the thumb resting
-   on it.  That is the "too far away".
+   This is the third move for these two buttons and the first one that is not a
+   position of their own.  v2.3.2254 put the column ABOVE the disc; v2.3.2327
+   split it -- Shield Bash down and to the left, Whirlwind left where it was --
+   because the owner said bash was "too far away" and two 48px buttons plus a
+   gap did not fit in the 58px of band under the disc.  Neither placement had
+   anything to do with the other controls: three files each wrote their own
+   `right` expression and their own `bottom` constant.
 
-   THE BUDGET IS TIGHTER THAN IT LOOKS, and it is what shapes this.  The
-   movement joystick's touch zone is the whole LEFT HALF of the play area
-   (data-joyzone="L", x 0..195 at this width) -- not the little disc you can
-   see, the half-screen.  A button that strays over it does not merely sit on
-   top of the joystick, it stops the joystick's touchstart from running at all
-   (the v2.3.2123 world-chat incident, same mechanism).  So the entire usable
-   band for a control left of the disc is 50vw..disc-left = 195..244 = 49px on
-   a 390 phone, and it SHRINKS on a narrower one: at 360 it is 34px, less than
-   one button wide.
+   Now there is ONE column and ShieldButton owns its geometry (ctlColumn):
+   Block at slot 0, level with the disc's centre, Bash at slot 1 and Whirlwind
+   at slot 2 stacking upward from it.  The stack is vertical and unbounded
+   upward, so the v2.3.2327 squeeze that forced the split does not exist any
+   more -- the room that ran out was the band BELOW the disc, and nothing lives
+   there now.
 
-   Hence the clamp rather than a constant.  Preferred position is 4px left of
-   the disc; `50vw - size` is the hard floor that keeps the button's left edge
-   out of the movement zone at every width.  On a phone too narrow for both,
-   the button tucks against the disc's lower-left corner instead of crossing
-   the line -- overlapping a rounded disc's empty bounding-box corner costs a
-   few pixels of art, and crossing into the movement zone costs the player
-   their movement. */
-const DISC_EDGE_GAP = 4;
+   Slots are assigned by KIND, not by position in `live`, so Whirlwind does not
+   slide down into Bash's place on the frames where bash is hidden (it is
+   visible only while the shield is raised, which is most frames).  A button
+   that moves when its neighbour appears is a button the thumb misses. */
+const SLOT_OF = { bash: 1, whirl: 2 };
 
 /* ═══ v2.3.1733: THE ABILITY BUTTONS ═══
  *
@@ -93,40 +88,17 @@ export function AbilityButtons(props) {
   }
   if (!live.length) return null;
 
-  var size = isLandscape ? 54 : 48;
-  var discW = isLandscape ? RBTN.wLand : RBTN.w;
+  var col = ctlColumn(isLandscape);
+  var size = col.size;
 
-  /* ═══ EACH ABILITY GETS ITS OWN SLOT, NOT A SHARED COLUMN ═══
-     The first cut of the move kept the two as one stacked column and put the
-     column down-left.  Measured at 360x800 that does not fit: two 48px buttons
-     plus their gap is 106px tall, the room under the disc is 58, so the upper
-     one rode back up beside the disc and clipped its circle by ~8px.  Widening
-     is not available either -- the band between the movement zone (50vw) and
-     the disc is 49px at 390 and 34px at 360, under one button wide.
-
-     The stacking was the problem, and it was self-inflicted: the owner asked
-     for the SHIELD BASH button to move, not for Whirlwind to.  So bash takes
-     the new down-left slot and whirl keeps the one the column has always had,
-     above the disc.  Two single buttons in two places, no stack to overflow --
-     and they are rarely both up anyway, since bash needs a raised shield and
-     whirl now needs a drawn sword. */
+  /* One column, one rule: the slot number decides both axes.  The v2.3.2327
+     note that used to live here -- "two single buttons in two places, no stack
+     to overflow" -- described a workaround for a band that is no longer where
+     these buttons live. */
   var slotStyle = function (kind) {
-    if (kind === 'bash') {
-      return {
-        /* Left of the disc where the right half is wide enough, and hard
-           against the movement zone's edge where it is not. */
-        right: 'min(' + (RBTN.right + discW + DISC_EDGE_GAP) + 'px, calc(50vw - ' + size + 'px))',
-        /* The SAME baseline as the shield button (ShieldButton's +12), so the
-           two read as one row of controls under the disc. */
-        bottom: 'calc(var(--sheet-h, var(--dash-h)) + 12px)',
-      };
-    }
-    /* Whirlwind: unchanged from v2.3.2254 -- above the disc, derived from
-       RBTN so it clears the taller landscape disc too. */
     return {
-      right: isLandscape ? 22 : 18,
-      bottom: 'calc(var(--sheet-h, var(--dash-h)) + '
-        + (RBTN.bottom + discW + 34) + 'px)',
+      right: col.right,
+      bottom: ctlBottom(col.bottomPx(SLOT_OF[kind] || 1)),
     };
   };
 

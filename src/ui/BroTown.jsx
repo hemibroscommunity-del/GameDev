@@ -51,6 +51,7 @@ import { startBuildWatch } from '@/game/buildWatch.js';
 import { TouchControls, RBTN_BODY_BG, RBTN_BODY_BG_HOT, RKNOB_BG, RKNOB_BG_HOT } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack */
+import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger, beside the movement stick */
 import { GESTURE_TOOL_URLS, gestureDemo01, gestureCue01 } from '@/game/gesturePose.js'; /* v2.3.2245: the tool strips the button face plays; gestureDemo01 v2.3.2384 */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
@@ -102,6 +103,18 @@ export const JOY_FADE_MS = 2000;
  * the disc's bS come through it -- so a classifier anywhere else would miss
  * half the presses. */
 export const RBTN_DBL_MS = 300;
+/* v2.3.2472: how far outside the attack disc a monster still counts as "under"
+   it, in CSS px, for the ghosting rule in the visibility resolver.  Half a blue
+   slime's on-screen body width -- the point is that a sprite lapping onto the
+   button should ghost it before its centre arrives, not after. */
+export const GHOST_PAD = 18;
+/* v2.3.2472: and the right control's double tap must land in roughly ONE PLACE.
+   The gesture used to be bow-and-staff-only, where the taps compete with
+   nothing; as the universal weapon swap it shares this side of the screen with
+   tap-to-lock, and two deliberate taps on two DIFFERENT monsters 300ms apart
+   would otherwise read as a swap.  50px, the same window the left stick's cycle
+   gesture has used since v2.3.97 (DOUBLE_TAP_MAX_DIST_SQ_PX). */
+export const RBTN_DBL_DIST_SQ_PX = 2500;
 import { raiseShieldToggle, dropShield, shieldAimAngle } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { DuelRequestPanel } from './panels/DuelRequestPanel.jsx';
 import { ThreatIncomingPanel } from './panels/ThreatIncomingPanel.jsx';
@@ -5409,7 +5422,74 @@ export var BroTown = function BroTown(_ref0) {
              it that way immediately.  Transparency says "you can see through
              me", colour says "I am live"; the disc needs to say both at once.
              One stamp, same change-gated pattern as every write around it. */
-          var _bodyWant = _hot ? '0.45' : '1';
+          /* ═══ v2.3.2472: A FOURTH STATE -- OUTLINE, WHILE A MONSTER IS UNDER IT ═══
+             Owner (C1, backlog §2.4): the attack disc should ghost to an
+             outline when a monster is actually behind it.
+
+             v2.3.2263 already fades the disc's metal to 0.45 whenever `_hot`,
+             which is "a monster is in play" -- a proxy, and a coarse one: the
+             button dims through whole fights in which it is covering nothing
+             but grass, and it still hides the one slime that walks under it.
+             This is the real question instead, asked per frame: does any LIVE
+             monster project inside the disc's box?
+
+             THE PROJECTION IS THE RENDERER'S OWN, not a re-derivation:
+             `screen = (world - camera) * S._worldScaleX/Y` (v2.3.1090's
+             tap-to-lock, v2.3.1756's mouse aim -- both incidents were an
+             inverse of this transform written slightly differently).  The body
+             CENTRE is used rather than the feet, through the same
+             DATA.monsterBodyY table the tap path uses, or a tall monster would
+             stop counting while its head was still squarely over the button.
+
+             MEASURED AGAINST THE CANVAS, not the viewport.  The disc is a fixed
+             DOM element in viewport coordinates and the projection above lands
+             in canvas coordinates; in LANDSCAPE the two differ by --world-x
+             (game.css offsets .brotown-wrap), so subtracting the canvas's own
+             rect is what makes this correct sideways as well as upright.  Both
+             rects come from getBoundingClientRect, which is layout truth rather
+             than an assumption about either offset -- and they are cached for
+             400ms, because this runs every frame and a rect read forces layout.
+
+             PAD: the box is grown by GHOST_PAD so a monster whose sprite laps
+             onto the button counts before its centre does.  A blue slime's body
+             is about 36px across on screen; half of that is the honest figure.
+
+             It drops the painted METAL only.  The lit border, the label and the
+             ring are siblings above it (v2.3.2263's layer split) and keep full
+             strength, so the button still reads as a button -- this is the same
+             rule v2.3.2251 and v2.3.2264 were both written to protect. */
+          var _ghost = false;
+          if (_rd && _rOn && S.monsters && S.camera) {
+            var _grc = S._discRect;
+            if (!_grc || _now2 - (S._discRectAt || 0) > 400) {
+              S._discRectAt = _now2;
+              var _drb = _rd.getBoundingClientRect();
+              var _cvb = canvasRef.current ? canvasRef.current.getBoundingClientRect() : null;
+              if (_drb.width > 1 && _cvb && _cvb.width > 1) {
+                _grc = S._discRect = {
+                  l: _drb.left - _cvb.left - GHOST_PAD, r: _drb.right - _cvb.left + GHOST_PAD,
+                  t: _drb.top - _cvb.top - GHOST_PAD, b: _drb.bottom - _cvb.top + GHOST_PAD,
+                };
+              } else { _grc = S._discRect = null; }
+            }
+            if (_grc) {
+              var _gsx = S._worldScaleX || 1, _gsy = S._worldScaleY || 1;
+              var _gcx = S.camera.x, _gcy = S.camera.y;
+              for (var _gi = 0; _gi < S.monsters.length; _gi++) {
+                var _gm = S.monsters[_gi];
+                if (!_gm || !_gm.alive) continue;
+                if (typeof _gm.curHp === 'number' && _gm.curHp <= 0) continue;
+                var _gwx = (typeof _gm.renderX === 'number' && isFinite(_gm.renderX)) ? _gm.renderX : _gm.x;
+                if (typeof _gwx !== 'number' || !isFinite(_gwx)) continue;
+                var _gpx = (_gwx - _gcx) * _gsx;
+                if (_gpx < _grc.l || _gpx > _grc.r) continue;
+                var _gpy = (DATA.monsterBodyY(_gm) - _gcy) * _gsy;
+                if (_gpy >= _grc.t && _gpy <= _grc.b) { _ghost = true; break; }
+              }
+            }
+          }
+          S._discGhost = _ghost;   /* probe: __btDiscGhost, mp-joyfade / mp-btnlayout */
+          var _bodyWant = _ghost ? '0.08' : (_hot ? '0.45' : '1');
           var _rb = rBodyRef.current;
           if (_rb && _rb.style.opacity !== _bodyWant) _rb.style.opacity = _bodyWant;
           var _bgWant = _hot ? RBTN_BODY_BG_HOT : RBTN_BODY_BG;
@@ -5421,9 +5501,12 @@ export var BroTown = function BroTown(_ref0) {
           var _kbgWant = _hot ? RKNOB_BG_HOT : RKNOB_BG;
           if (_rk2 && _rk2.style.opacity !== _bodyWant) _rk2.style.opacity = _bodyWant;
           if (_rk2 && _rk2.style.backgroundImage !== _kbgWant) _rk2.style.backgroundImage = _kbgWant;
-          var _bcWant = _lit ? (_hot ? '#EAC675' : '#D8AA58') : 'transparent';
+          /* v2.3.2472: ...and an outline needs an OUTLINE.  A ghosted disc keeps
+             its brass edge even in the frames the lit rule would have hidden it,
+             or the control would vanish entirely rather than going see-through. */
+          var _bcWant = (_lit || _ghost) ? (_hot ? '#EAC675' : '#D8AA58') : 'transparent';
           if (_rd && _rd.style.borderColor !== _bcWant) _rd.style.borderColor = _bcWant;
-          var _bsWant = _lit
+          var _bsWant = (_lit || _ghost)
             ? (_hot ? '0 0 0 3px rgba(234,198,117,.22)' : '0 0 0 2px rgba(216,170,88,.16)')
             : 'none';
           if (_rd && _rd.style.boxShadow !== _bsWant) _rd.style.boxShadow = _bsWant;
@@ -5460,7 +5543,13 @@ export var BroTown = function BroTown(_ref0) {
                        R: { shown: !!s2._rBtnShown, liveMs: Math.max(0, (s2._rBtnLiveUntil || 0) - Date.now()),
                             cands: (s2._targetCands || []).length,
                             lock: !!(s2.lockedTarget && s2.lockedTarget.ref),
-                            node: !!s2._nearNode, ex: !!s2._extraction },
+                            node: !!s2._nearNode, ex: !!s2._extraction,
+                            /* v2.3.2472: the ghosting rule -- whether a monster
+                               is currently projecting under the disc, and the
+                               canvas-space box it was tested against.  "The
+                               disc is see-through" has two causes now (_hot and
+                               this) and a screenshot cannot tell them apart. */
+                            ghost: !!s2._discGhost, ghostRect: s2._discRect || null },
                        holds: discHoldProbe() };
             };
           }
@@ -6771,31 +6860,24 @@ export var BroTown = function BroTown(_ref0) {
            mouse plugged in. */
         if (S._shieldUp && S._shieldKb && typeof S._mouseAimAngle === 'number') {
           S._shieldAngle = S._mouseAimAngle;
-        } else if (S._shieldUp && S.lockedTarget && S.lockedTarget.ref && !S._rShieldSteered) {
+        } else if (S._shieldUp) {
           /* v2.3.2242: a raised shield faces the locked target every frame --
-             BlockRing's lerp used to do this; the toggle button has no
-             finger on it to steer, so the lock is the only steer there is. */
-          /* ═══ v2.3.2451: ...UNLESS A THUMB IS ACTUALLY STEERING IT ═══
-             The premise above is quoted exactly: "the toggle button has no
-             finger on it to steer".  v2.3.2446's hold gesture put a finger on
-             it, so this line became the SECOND half of the owner's report --
-             and the half that would have survived fixing the first.  With the
-             drop cured in rJoyAim the guard now stays up while you rotate, and
-             this branch would have spent every frame putting the arc straight
-             back on the locked monster, so the shield still would not turn.
-
-             A LOCK IS USUALLY PRESENT FOR THIS GESTURE, not rarely: the
-             double-tap branch in handleRBtnPress deliberately RESTORES the
-             lock its first tap took (v2.3.2271), so the common path into a
-             hold arrives holding one.
-
-             `_rShieldSteered` rather than `_rShieldHold`, so the two readings
-             of the gesture both get what they want: a hold with a MOTIONLESS
-             thumb keeps tracking the locked monster as it moves (the arc was
-             seeded from the lock by raiseShieldToggle, and this keeps it
-             there), and the first real drag hands the arc to the thumb for the
-             rest of the hold.  Set where _shieldAngle is written -- once on
-             each surface -- and cleared with the hold itself. */
+             BlockRing's lerp used to do this; the toggle button has no finger
+             on it to steer, so the game is the only steer there is.
+             ═══ v2.3.2472: ...AND WHEN THERE IS NO LOCK, THE NEAREST MONSTER ═══
+             Owner decision D8: with the button back on bow and staff it
+             "auto-aims at the nearest monster".  This branch used to REQUIRE a
+             lock, which those two weapons almost never have (they acquire
+             nothing automatically -- a tap is their only lock), so a raised
+             guard kept whatever angle raiseShieldToggle seeded it with and
+             never turned again as the fight moved.  The whole ladder lives in
+             shieldAimAngle (lock -> nearest -> remembered -> aim -> facing), so
+             calling it unconditionally is what hands those weapons the live
+             tracking melee has had since v2.3.2242 -- and it is a no-op when
+             there is nothing to point at, because the ladder then returns the
+             angle already stored.
+             v2.3.2451's `_rShieldSteered` term is gone with the hold gesture
+             that set it: nothing on the sticks steers the arc any more. */
           S._shieldAngle = shieldAimAngle(S);
         }
         if (S._shieldUp && S.rpg) {
@@ -7895,13 +7977,13 @@ export var BroTown = function BroTown(_ref0) {
        and the name popup for a swap that did not happen off the screen. */
     if (nextSlot === (S2.rpg.activeSlot || 'melee')) return;
     S2.rpg.activeSlot = nextSlot;
-    /* v2.3.2446: a guard raised on melee comes DOWN on the way to a bow.
-       The button is the only way to lower a toggled shield and v2.3.2446 takes
-       it away on the two-handed weapons, so without this the swap strands the
-       shield up with nothing on screen to drop it -- exactly the failure the
-       button's own "a RAISED shield keeps its button" note was written for,
-       arriving through a different door. */
-    if ((nextSlot === 'ranged' || nextSlot === 'staff') && S2._shieldUp) dropShield(S2, 'weapon-swap');
+    /* v2.3.2472: the guard SURVIVES the swap now.  v2.3.2446 dropped it on the
+       way to a bow or a staff because it had just taken the shield button away
+       on those weapons, so a raised guard would have stranded with nothing on
+       screen to lower it.  D8 gives the button back on every weapon, so the
+       hazard is gone -- and lowering a block because the player changed weapon
+       is a behaviour nobody asked for: the owner's three exits from a guard are
+       attack, tap again, and dodge. */
     /* Mark the session as having an explicit cycle so the player_state
        handler stops accepting the server's persisted activeSlot
        (defense in depth: if set_active_slot never reaches the worker
@@ -7925,8 +8007,8 @@ export var BroTown = function BroTown(_ref0) {
     var _S2$rpg$weapon2, _S2$rpg$rangedWeapon2;
     var S2 = stateRef.current;
     if (!S2.rpg || S2.rpg.activeSlot === slot) return;
-    /* v2.3.2446: the desktop's direct pick, same rule as the cycle above. */
-    if ((slot === 'ranged' || slot === 'staff') && S2._shieldUp) dropShield(S2, 'weapon-swap');
+    /* v2.3.2472: and the desktop's direct pick keeps the guard too -- same
+       rule as the cycle above. */
     S2.rpg.activeSlot = slot;
     setRpgState(_objectSpread({}, S2.rpg));
     var wpnName = slot === 'melee' ? (_S2$rpg$weapon2 = S2.rpg.weapon) === null || _S2$rpg$weapon2 === void 0 ? void 0 : _S2$rpg$weapon2.name : slot === 'ranged' ? (_S2$rpg$rangedWeapon2 = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon2 === void 0 ? void 0 : _S2$rpg$rangedWeapon2.name : 'Staff';
@@ -8132,7 +8214,10 @@ export var BroTown = function BroTown(_ref0) {
      frame while the button is held).
      v2.3.2251: and the lock is acquired automatically, every frame, by
      targeting.updateTargeting -- the press no longer acquires anything. */
-  var handleRBtnPress = useCallback(function () {
+  /* v2.3.2472: takes the touch point now, for the double-tap distance test
+     below.  Optional -- the desktop and the tutorial call it with nothing, and
+     a press with no coordinates simply cannot complete a pair. */
+  var handleRBtnPress = useCallback(function (pressX, pressY) {
     var base = rJoyRef.current;
     if (base) base.style.opacity = '0.92';
     var S = stateRef.current;
@@ -8186,121 +8271,112 @@ export var BroTown = function BroTown(_ref0) {
        this reads the existing lock rather than re-running the nearest search:
        a monster tapped at bow range, with a slime at your feet, keeps its lock
        -- promoting an already-tapped lock is a no-op. */
-    /* ═══ v2.3.2269: SECOND TAP RAISES THE GUARD (bow and staff only) ═══
-       Scoped on activeSlot, the same classifier targeting.js and the fire path
-       already branch on.  MELEE IS UNTOUCHED: it keeps the ShieldButton toggle
-       v2.3.2242 built for it, and adding a gesture there would collide with the
-       lunge this very function fires on a first tap.
+    /* ═══ v2.3.2472: A SECOND TAP SWAPS THE WEAPON, ON EVERY WEAPON ═══
+       Owner decision D8: the bow/staff double-tap-and-hold guard is retired,
+       "which frees the right double-tap for weapon swap".
 
-       THE FIRST SHOT STILL GOES OUT, deliberately.  A bow tap fires on press,
-       so the only way to suppress the first of a pair would be to hold every
-       shot for 300ms and see whether a second arrives -- which would put a
-       third of a second of latency on every arrow in the game to serve a
-       gesture used a few times a fight.  So the pair reads as "shoot, then
-       guard", which is also what it looks like on screen.
+       WHAT WAS HERE.  v2.3.2269 gave bow and staff a double tap that raised the
+       shield; v2.3.2446 turned its second tap into a steerable HOLD
+       (`_rShieldHold`), with v2.3.2271's lock stash and v2.3.2451's
+       `_rShieldSteered` arc-ownership rule hanging off it.  All of that is
+       gone: the shield is a BUTTON again on those weapons (shieldToggle's
+       shieldButtonLive), aimed by the nearest monster when there is no lock, so
+       the gesture has nothing left to express.
 
-       AND IT MUST NOT SET autoAttack.  monsterCombat's loop drops the shield
-       whenever autoAttack is true (`if (S.autoAttack && S._shieldUp)
-       dropShield(S, 'attack')`) -- that is the owner's own "attack" exit -- so
-       a raise that left the flag set would be undone by the next tick and the
-       guard would flicker rather than latch.  The press is consumed instead:
-       cleared, returned true, no swing, no lunge.
+       AND IT IS THE SAME GESTURE ON EVERY WEAPON NOW, which is the real gain.
+       The old rule meant the identical pair of taps raised a guard on a bow and
+       did nothing on a sword -- a control whose meaning depends on the weapon
+       is a control nobody learns.  v2.3.2269's own reason for excluding melee
+       ("adding a gesture there would collide with the lunge this very function
+       fires on a first tap") is answered rather than ignored: the lunge fires
+       on tap ONE and has a 2500ms cooldown (abilities.maybeSwordDash), so it
+       cannot fire again on tap two, and tap two is CONSUMED here before it can
+       reach maybeSwordDash at the bottom of this function.  The pair therefore
+       reads "lunge, then swap" on a sword and "shoot, then swap" on a bow --
+       the same shape v2.3.2269 shipped and for the same reason: the first tap
+       has already left the hand before anything can know a second is coming.
 
-       `_rTapAt` is zeroed on use so three quick taps read as raise-then-single
-       rather than raise-then-raise.  While the shield is already UP this branch
-       stands aside entirely and the press behaves normally -- it fires, and the
-       loop above drops the guard, which is "attack" and "tap again" arriving as
-       the same gesture because on this weapon they are the same control. */
-    var _slot = S.rpg && S.rpg.activeSlot;
-    if (_slot === 'ranged' || _slot === 'staff') {
-      var _nowTap = Date.now();
-      var _prevTap = S._rTapAt || 0;
-      S._rTapAt = _nowTap;
-      /* ═══ v2.3.2271: REMEMBER THE LOCK THE FIRST TAP IS ABOUT TO COST ═══
-         Suppressing the SECOND tap's forward is not enough, and the test that
-         found this says why: the FIRST tap of the pair forwards too, and a tap
-         on empty ground is the documented unlock (v2.3.816 -> the canvas
-         onClick).  A thumb doing a double tap lands wherever it likes, which on
-         the right half of the screen is usually empty ground -- so raising the
-         guard cost the player the lock every time, on tap one, before the
-         gesture had even been recognised.
-         It cannot be prevented, because nothing knows tap one is half of a pair
-         until tap two arrives.  So it is UNDONE instead: the lock is stashed
-         here, at press time, while it is still intact, and put back below if a
-         pair completes.  Delaying the forward by the double-tap window was the
-         alternative and it would have put 300ms of latency on every lock-on in
-         the game to serve this one gesture. */
-      if (!S._shieldUp) {
-        /* A NEW pair forgets the old one's stash, so a lock from a minute ago
-           can never be restored over a deliberate unlock. */
-        if (_prevTap === 0 || _nowTap - _prevTap > RBTN_DBL_MS) S._rTapLockWas = null;
-        var _ltNow = S.lockedTarget;
-        /* ONLY WHEN THERE IS ONE, and that `only` is the whole fix: the first
-           version wrote null here whenever the lock was absent -- which on the
-           SECOND press of a pair it always is, because the first press's
-           release has just cleared it.  The stash was therefore erased one
-           statement before the restore below read it, and the test said so. */
-        if (_ltNow && _ltNow.type === 'monster' && _ltNow.ref) {
-          S._rTapLockWas = { type: 'monster', id: _ltNow.id, ref: _ltNow.ref,
-            src: _ltNow.src, at: _ltNow.at };
-        }
+       The left stick's double tap (BroTown's lE) still swaps too, deliberately:
+       it is what mp-bowshield and the onboarding already use, and nothing about
+       this gesture conflicts with it -- they are different surfaces, each
+       classifying its own taps.
+
+       Measured press-to-press through `_rTapAt` / RBTN_DBL_MS exactly as the
+       guard gesture was, and for v2.3.2269's own reasons: the window spans a
+       whole tap rather than the gap between two, and the swap lands on the
+       second touch-DOWN, which is when the player expects it. */
+    var _nowTap = Date.now();
+    var _prevTap = S._rTapAt || 0;
+    var _haveXY = (typeof pressX === 'number' && typeof pressY === 'number');
+    var _nearPrev = _haveXY && typeof S._rTapX === 'number'
+      && (pressX - S._rTapX) * (pressX - S._rTapX)
+       + (pressY - S._rTapY) * (pressY - S._rTapY) < RBTN_DBL_DIST_SQ_PX;
+    S._rTapAt = _nowTap;
+    if (_haveXY) { S._rTapX = pressX; S._rTapY = pressY; } else { S._rTapX = null; }
+    /* ═══ v2.3.2271: REMEMBER THE LOCK THE FIRST TAP IS ABOUT TO COST ═══
+       Kept verbatim from the retired gesture, because the hazard is the
+       gesture's SHAPE and not what it did: the FIRST tap of the pair forwards
+       to the canvas (v2.3.816), and a tap on empty ground is the documented
+       unlock.  A thumb doing a double tap lands wherever it likes, so without
+       this a weapon swap would cost the player their lock every time, on tap
+       one, before the gesture had been recognised.  It cannot be prevented --
+       nothing knows tap one is half of a pair until tap two arrives -- so it is
+       UNDONE below instead. */
+    /* A NEW pair forgets the old one's stash, so a lock from a minute ago can
+       never be restored over a deliberate unlock. */
+    if (_prevTap === 0 || _nowTap - _prevTap > RBTN_DBL_MS) S._rTapLockWas = null;
+    var _ltNow = S.lockedTarget;
+    /* ONLY WHEN THERE IS ONE, and that `only` is the whole fix: the first
+       version wrote null here whenever the lock was absent -- which on the
+       SECOND press of a pair it always is, because the first press's release
+       has just cleared it.  The stash was erased one statement before the
+       restore below read it, and the test said so. */
+    if (_ltNow && _ltNow.type === 'monster' && _ltNow.ref) {
+      S._rTapLockWas = { type: 'monster', id: _ltNow.id, ref: _ltNow.ref,
+        src: _ltNow.src, at: _ltNow.at };
+    }
+    if (_prevTap > 0 && _nowTap - _prevTap <= RBTN_DBL_MS && _nearPrev) {
+      /* Zeroed on use so three quick taps read as swap-then-single rather than
+         swap-then-swap. */
+      S._rTapAt = 0;
+      S.autoAttack = false;
+      setAutoAttack(false);
+      S._aiming = false;
+      /* v2.3.2465's flick wait is for a press that is going to shoot.  This one
+         is not, so it must not leave a shot queued behind the swap. */
+      S._atkPressAt = 0;
+      /* ═══ v2.3.2271: AND THE SECOND TAP MUST NOT REACH THE CANVAS ═══
+         The ZONE's release forwards every short tap to the canvas as a
+         synthetic click (v2.3.816), which is the tap-to-lock path -- and that
+         path TOGGLES: tapping the monster you already have locked clears it,
+         and a tap on empty ground clears it outright.  So the pair would lock
+         and then UNLOCK the monster it was aimed at.
+         Stamped rather than returned because rS discards handleRBtnPress's
+         return value -- only the DISC reads it -- and the release that has to
+         be suppressed is a different handler on a different surface.  The
+         release compares this against its own press start, so it suppresses
+         exactly the press the gesture consumed and never a later one. */
+      S._rDblConsumedAt = Date.now();
+      /* Put back what tap one took, if it took anything and the monster is
+         still there to point at.  Presence is checked against S.monsters rather
+         than the ref's own fields -- an object that has left the zone keeps
+         `alive: true` forever, which is the ghost-lock bug v2.3.2261 was
+         written for, and restoring one here would recreate it. */
+      var _lw = S._rTapLockWas;
+      if (_lw && _lw.ref && !S.lockedTarget) {
+        var _live = (S.monsters || []).indexOf(_lw.ref) >= 0
+          && _lw.ref.alive !== false
+          && !(typeof _lw.ref.curHp === 'number' && _lw.ref.curHp <= 0);
+        if (_live) S.lockedTarget = _lw;
       }
-      if (!S._shieldUp && _prevTap > 0 && _nowTap - _prevTap <= RBTN_DBL_MS) {
-        S._rTapAt = 0;
-        S.autoAttack = false;
-        setAutoAttack(false);
-        S._aiming = false;
-        /* ═══ v2.3.2271: AND THE SECOND TAP MUST NOT REACH THE CANVAS ═══
-           The ZONE's release forwards every short tap to the canvas as a
-           synthetic click (v2.3.816), which is the tap-to-lock path -- and that
-           path TOGGLES: tapping the monster you already have locked clears it,
-           and a tap on empty ground clears it outright.  So the pair that
-           raises the guard was also locking and then UNLOCKING the monster,
-           and for bow and staff the tapped lock is the only lock there is
-           (v2.3.2258 gave those weapons no automatic one), taking the shield's
-           own aim with it.
-           Stamped rather than returned because rS discards handleRBtnPress's
-           return value -- only the DISC reads it -- and the release that has to
-           be suppressed is a different handler on a different surface.  The
-           release compares this against its own press start, so it suppresses
-           exactly the press the gesture consumed and never a later one. */
-        S._rShieldConsumedAt = Date.now();
-        /* Put back what tap one took, if it took anything and the monster is
-           still there to point at.  Presence is checked against S.monsters
-           rather than the ref's own fields -- an object that has left the zone
-           keeps `alive: true` forever, which is the ghost-lock bug v2.3.2261
-           was written for, and restoring one here would recreate it. */
-        var _lw = S._rTapLockWas;
-        if (_lw && _lw.ref && !S.lockedTarget) {
-          var _live = (S.monsters || []).indexOf(_lw.ref) >= 0
-            && _lw.ref.alive !== false
-            && !(typeof _lw.ref.curHp === 'number' && _lw.ref.curHp <= 0);
-          if (_live) S.lockedTarget = _lw;
-        }
-        S._rTapLockWas = null;
-        /* ═══ v2.3.2446: THE SECOND TAP OPENS A HOLD, NOT A LATCH ═══
-           Owner: "double tap and hold the right joystick to rotate shield
-           (with the arc included)", which is the gesture v2.3.2242 removed
-           and v2.3.2271 half-restored -- it raised the guard and left it up,
-           steered by the locked target rather than by the thumb.
-           The flag is what makes it a hold: the release handler below lowers
-           the guard, and the move handlers steer _shieldAngle from the drag
-           while it is set.  Only armed when the raise actually took, so a
-           refusal (no shield, or the stamina cooldown) leaves an ordinary
-           press behind rather than a finger that lowers a shield that never
-           went up. */
-        var _up = false;
-        try { _up = raiseShieldToggle(S); } catch (e) { /* refused: no shield, or on cooldown */ }
-        S._rShieldHold = !!_up;
-        /* v2.3.2451: every hold opens on the SEED angle raiseShieldToggle just
-           computed (the locked target, else the body facing) and only hands the
-           arc to the thumb once the thumb has actually dragged.  Cleared here
-           as well as on release so a hold can never inherit the previous one's
-           claim -- release clears it, but a raise that lands with the flag
-           somehow set would otherwise ignore the lock for its whole life. */
-        S._rShieldSteered = false;
-        return true;
-      }
+      S._rTapLockWas = null;
+      /* THE SWAP ITSELF goes through the shared cycle rather than writing
+         activeSlot here: it is the one path that also refuses a swap with
+         nowhere to go (one weapon, one slot -- v2.3.1845), tells the worker
+         (`set_active_slot`), floats the weapon name and stamps the swap flash.
+         A second copy of any of that would drift from the left stick's. */
+      try { _desktopCycleWeapon(); } catch (e) { /* a refused swap leaves an ordinary consumed press */ }
+      return true;
     }
     var _lt = S.lockedTarget;
     if (_lt && _lt.ref && _lt.type === 'monster' && _lt.src !== 'tap') {
@@ -8373,57 +8449,23 @@ export var BroTown = function BroTown(_ref0) {
        function -- abilities and the renderer have been reading a permanently
        undefined field ever since.  Restored with the rest of it. */
     S._lastAimAngle = angle;
-    /* ═══ v2.3.2451: STEERING A HELD GUARD IS NOT A REQUEST TO ATTACK ═══
-       Owner: "It holds the shield after double tapping until you rotate
-       directionally (right joystick) and it immediately drops the shield.
-       This is not the correct behavior.  You should be able to rotate the
-       shield while it's held."
+    /* ═══ v2.3.2472: THE HELD-GUARD GUARD IS GONE WITH THE HOLD ═══
+       v2.3.2451 withheld the two attack flags here whenever `_rShieldHold` was
+       set, because v2.3.2446 had made this very stick the shield's STEERING
+       control and the drag that aimed the arc was re-arming autoAttack with no
+       new press anywhere -- so monsterCombat's `if (S.autoAttack && S._shieldUp)
+       dropShield(S, 'attack')` read a rotation as a request to attack and the
+       guard fell the moment the thumb moved.
 
-       THIS LINE WAS THE DROP.  monsterCombat's auto-attack loop reads
-       `if (S.autoAttack && S._shieldUp) dropShield(S, 'attack')` -- v2.3.2248,
-       "asking to attack breaks the hold" -- and the safety argument for it is
-       written out beside it: "raiseShieldToggle clears autoAttack on the way
-       up, so the flag can only be true again because the player pressed AFTER
-       raising, which is exactly the intent this is reading."
-
-       That was true when it was written and v2.3.2446 falsified it.  The hold
-       gesture made the STICK a steering control for the arc, and rJoyAim runs
-       on every move of the stick -- so the drag that aims the shield re-armed
-       autoAttack with no new press anywhere, and the loop read a rotation as a
-       request to attack on the very next tick.  Hence the owner's word
-       "immediately": the guard survived exactly until the thumb moved.
-
-       `_aiming` goes with it.  raiseShieldToggle clears that too (v2.3.2246),
-       and it is the flag the aim reticle (effectsRenderer) and the free-aim
-       projectile angle (projectiles.js) both key on -- so leaving it live
-       would put an aim back up behind a raised shield even once the attack
-       itself was suppressed.
-
-       EVERYTHING ABOVE THIS LINE STILL RUNS, deliberately: the rod and knob
-       follow the thumb, and `_facing` keeps turning the body to look where the
-       shield points, which is what rM's own v2.3.2446 note promised ("rJoyAim
-       still runs underneath, so the body keeps turning to look where the
-       shield points").  Only the two attack flags are withheld.
-
-       MELEE IS UNTOUCHED.  A shield raised by the BUTTON never sets
-       `_rShieldHold` -- the flag is armed in one place, the double-tap branch
-       of handleRBtnPress -- so the melee toggle reaches this line with the
-       flag false and behaves exactly as it did. */
-    if (S._rShieldHold) return;
+       D8 retires that hold, so the premise is gone: nothing steers the arc from
+       this stick any more (shieldAimAngle points it at the lock, else the
+       nearest monster), and a drag here means exactly what it meant before
+       v2.3.2446 -- aim, and attack.  Breaking a raised guard is then the
+       CORRECT reading of it: "attack" is the owner's own first-named exit from
+       a block, and it is how the melee toggle has behaved since v2.3.2248. */
     S._aiming = true;
     S._aimSrc = 'stick';   /* v2.3.2261: the player's own aim, not a lock's */
     S.autoAttack = true;
-  }, []);
-  /* v2.3.2446: end a held guard, wherever the touch ended.  One copy, because
-     three surfaces can end one (the zone's rE, the disc's bE, and bE's two
-     early returns) and three copies of a broadcast-and-clear would drift. */
-  var _endShieldHold = useCallback(function () {
-    var S = stateRef.current;
-    if (!S || !S._rShieldHold) return;
-    S._rShieldHold = false;
-    S._rShieldSteered = false;   /* v2.3.2451: the thumb's claim on the arc ends with the thumb */
-    if (!S._shieldAutoReleased) { try { dropShield(S, 'hold-release'); } catch (e) { /* display only */ } }
-    S._shieldAutoReleased = false;
   }, []);
   var handleRBtnRelease = useCallback(function () {
     rJoyActive.current = false;
@@ -8441,14 +8483,9 @@ export var BroTown = function BroTown(_ref0) {
        release would have un-lit the button mid-fight for a frame. */
     var S = stateRef.current;
     if (!S) return;
-    /* v2.3.2446: the guard lasts exactly as long as the finger.  Here rather
-       than in the zone's rE because the disc presses through the same
-       handler, and a hold that could only be released on the surface it
-       started on would strand the shield on the other one.  `_shieldAutoReleased`
-       is respected the way the pre-2242 gesture respected it: a guard the
-       stamina loop already dropped is not dropped again, which would send a
-       second player_shield broadcast for one release. */
-    _endShieldHold();
+    /* v2.3.2472: nothing to end here any more -- the shield is a latching
+       BUTTON on every weapon again, so a release on this side never lowers it.
+       (v2.3.2446's `_endShieldHold()` call stood here.) */
     /* v2.3.2465: the flick window ends with the finger.  A tap that lifts
        inside it is not a flick and never will be, so its shot is released
        here rather than made to serve out a delay it cannot use. */
@@ -8700,7 +8737,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.2306: stamp the GESTURE, for the coach's chat lesson. A state
          stamp rather than a callback pushed into this control -- the coach
          polls state and never has hooks pushed at it, the same way
-         _hasUsedSwipe and _rShieldConsumedAt already work. It watches the tap
+         _hasUsedSwipe and _rDblConsumedAt already work. It watches the tap
          specifically: opening chat some other way is not the lesson. */
       try { stateRef.current._chatBySelfTap = Date.now(); } catch (_e0) {}
       try {
@@ -9000,7 +9037,7 @@ export var BroTown = function BroTown(_ref0) {
          a real cost in the other direction: this is the ATTACK control, and
          suppressing it whenever a townsperson is under the thumb would eat
          legitimate swings at a monster standing next to one. */
-      handleRBtnPress();
+      handleRBtnPress(t.clientX, t.clientY);   /* v2.3.2472: the double-tap distance test */
     };
     var rM = function rM(e) {
       if (rTouchId.current === null) return;
@@ -9024,27 +9061,10 @@ export var BroTown = function BroTown(_ref0) {
            fields bE keeps (bSwipe.lx/ly/lt) so the two surfaces classify the
            same gesture the same way. */
         rts2.lx = t.clientX; rts2.ly = t.clientY; rts2.lt = Date.now();
-        /* ═══ v2.3.2446: WHILE THE GUARD IS HELD, THE DRAG IS THE ARC ═══
-           The angle is taken RAW from the touch origin rather than through
-           rJoyAim, whose 4-way quantisation is right for a body facing and
-           wrong for a block arc -- the server measures a hit against
-           _shieldAngle itself (_blockArcCovers), so snapping it to 45 degrees
-           would widen or narrow the real cover by up to half a sector.
-           rJoyAim still runs underneath, so the body keeps turning to look
-           where the shield points. */
-        /* v2.3.2451: past the surface's own drag threshold, not on the first
-           stray pixel.  The angle is an atan2 of the deflection, so a thumb
-           resting still on the glass emits jitter with a MEANINGLESS direction
-           -- and now that a steer outranks the lock (see the loop's
-           `_rShieldSteered` note) that jitter would have taken the arc off the
-           monster and pointed it nowhere.  TAP_MAX_MOVE_SQ_PX is this
-           surface's existing "this is a drag, not a tap" line, reused rather
-           than a second threshold that can drift away from it. */
-        var _Ssh = stateRef.current;
-        if (_Ssh && _Ssh._rShieldHold && dxs * dxs + dys * dys > TAP_MAX_MOVE_SQ_PX) {
-          _Ssh._shieldAngle = Math.atan2(dys, dxs);
-          _Ssh._rShieldSteered = true;
-        }
+        /* v2.3.2472: v2.3.2446's arc-steering block stood here (a raw atan2
+           from the touch origin while `_rShieldHold` was set).  It went with the
+           hold: the shield is a button again on every weapon and its arc comes
+           from shieldAimAngle -- the lock, else the nearest monster. */
         /* THE ROTATION.  v2.3.2242's deleted handleRJoyMove, restored from
            588cf49: deflection from the touch ORIGIN (v2.3.949's relative drag),
            an 8px dead zone, the 4-way _facing quantisation, and the rod + knob
@@ -9120,8 +9140,8 @@ export var BroTown = function BroTown(_ref0) {
          see the note in handleRBtnPress.  Bounded to THIS press by comparing
          against its own start, so a stale stamp cannot swallow a later tap. */
       var _Sfw = stateRef.current;
-      var _shieldAte = !!(_Sfw && _Sfw._rShieldConsumedAt
-        && _Sfw._rShieldConsumedAt >= rts3.startAt);
+      var _shieldAte = !!(_Sfw && _Sfw._rDblConsumedAt
+        && _Sfw._rDblConsumedAt >= rts3.startAt);
       if (!rts3.moved && !_shieldAte && (endT - rts3.startAt) < TAP_MAX_DURATION_MS) {
         /* v2.3.816: a tap on the combat side forwards a synthetic click to
            the canvas so the existing tap-to-lock-on-target logic (monsters /
@@ -9207,7 +9227,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.2258: the opening lunge REPLACES this press's swing when it
          fires -- both would bill the same thumb twice, and castAbility has
          already set the swing window and the animation. */
-      if (handleRBtnPress() === true) return;
+      if (handleRBtnPress(t.clientX, t.clientY) === true) return;   /* v2.3.2472: ...from the disc too */
       doSwing();
     };
     var bM = function bM(e) {
@@ -9216,23 +9236,7 @@ export var BroTown = function BroTown(_ref0) {
       if (t) {
         e.preventDefault();
         bSwipe.lx = t.clientX; bSwipe.ly = t.clientY; bSwipe.lt = Date.now();
-        /* ═══ v2.3.2446: THE DISC STEERS THE ARC TOO ═══
-           The gesture is raised in handleRBtnPress, which BOTH surfaces press
-           through, so a hold begun on the disc has to be steerable on the
-           disc -- the first cut only taught the ZONE to rotate, and the arc
-           simply kept whatever raiseShieldToggle seeded, which is the locked
-           target or the body facing.  Caught by mp-bowshield: a drag due LEFT
-           reported the seed angle rather than pi, and the drag-down assertion
-           next to it passed only because the seed happened to equal it.
-           Same raw atan2 from the press origin as rM's, for the same reason:
-           _blockArcCovers measures the real angle, so quantising it would
-           move the cover the player actually gets. */
-        var _Sbs = stateRef.current;
-        var _bsdx = t.clientX - bSwipe.sx, _bsdy = t.clientY - bSwipe.sy;   /* v2.3.2451: see rM's threshold note */
-        if (_Sbs && _Sbs._rShieldHold && _bsdx * _bsdx + _bsdy * _bsdy > TAP_MAX_MOVE_SQ_PX) {
-          _Sbs._shieldAngle = Math.atan2(_bsdy, _bsdx);
-          _Sbs._rShieldSteered = true;
-        }
+        /* v2.3.2472: and the disc's copy of that steer went with it. */
         /* ═══ v2.3.2254: SLIDE DOWN FROM ATTACK ONTO THE SHIELD ═══
            Owner: "I'd like it if I can just slide my finger down from the
            attack button to the shield button and have it activate.  Right now
@@ -9325,12 +9329,6 @@ export var BroTown = function BroTown(_ref0) {
       bTouchId.current = null;
       /* v2.3.2245: a harvest press is not a swing and its release is not a
          flick -- a fast chop on the button must never fire the special. */
-      /* v2.3.2446: whatever else a release is, it ends a held guard.  These
-         two early returns skip handleRBtnRelease, which is where the hold is
-         normally dropped, so without this a press that began as the second
-         tap of the gesture and ended as one of these would strand the shield
-         up -- and on a bow there is no button left to lower it with. */
-      if (bSwipe.harvest || bSwipe.toShield) _endShieldHold();
       if (bSwipe.harvest) { bSwipe.harvest = false; rJoyActive.current = false; return; }
       /* v2.3.2254: ...and neither is a slide onto the shield.  Same reasoning
          one more time: the gesture that raised the guard must not also spend
@@ -12842,7 +12840,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2472: ...and the Special button orbits the LEFT stick, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one
