@@ -2,34 +2,39 @@ import React from 'react';
 import { ABILITY_META } from '@/data/index.js';
 import { abilityStatus, castAbility } from '@/game/abilities.js';
 import { blockRingBus } from '@/ui/mobile/blockRingBus.js'; /* v2.3.2252: the bash button follows the shield's edge, not a 200ms poll */
-import { ctlColumn, ctlBottom, CTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2472: the one shared left-of-the-disc column (D9); v2.3.2542: ...and its slot map */
+import { ctlColumn, ctlBottom, CTL_SLOT, leftCluster, LCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2472: the shared right-of-the-zone column (D9) -- Bash only since v2.3.2562; leftCluster is Whirlwind's new home */
 
-/* ═══ v2.3.2472: STACKED ABOVE THE BLOCK BUTTON ═══
-   Owner decision D9: "Block left of the disc, abilities stacked above it."
+/* ═══ v2.3.2562: THE TWO BUTTONS ARE ON OPPOSITE SIDES NOW ═══
+   Owner, after playing the merged build and sending a screenshot: "the
+   placement of the buttons isn't ideal.  I'd like the whirlwind and special
+   attack buttons diagonally above the left joystick ... and the shield block
+   button to the diagonal bottom left of that right joystick."
 
-   This is the third move for these two buttons and the first one that is not a
-   position of their own.  v2.3.2254 put the column ABOVE the disc; v2.3.2327
-   split it -- Shield Bash down and to the left, Whirlwind left where it was --
-   because the owner said bash was "too far away" and two 48px buttons plus a
-   gap did not fit in the 58px of band under the disc.  Neither placement had
-   anything to do with the other controls: three files each wrote their own
-   `right` expression and their own `bottom` constant.
+   So Whirlwind leaves the D9 column for the LEFT disc (leftCluster), beside the
+   Special button, and Shield Bash -- which the ask does not mention -- stays
+   exactly where it is, in what is left of the column (ctlColumn, CTL_SLOT).
 
-   Now there is ONE column and ShieldButton owns its geometry (ctlColumn):
-   Block at slot 0, level with the disc's centre, Bash at slot 1 and Whirlwind
-   at slot 2 stacking upward from it.  The stack is vertical and unbounded
-   upward, so the v2.3.2327 squeeze that forced the split does not exist any
-   more -- the room that ran out was the band BELOW the disc, and nothing lives
-   there now.
+   THE HISTORY, because this cluster has moved four times and each move was
+   made to undo the previous one's complaint:
+     v2.3.2254  a column ABOVE the disc.
+     v2.3.2327  split it -- Bash down and to the left ("too far away"),
+                Whirlwind left where it was -- because two 48px buttons plus a
+                gap did not fit in the 58px of band under the disc.
+     v2.3.2472  D9: one column LEFT of the disc, Block at slot 0 level with its
+                centre, Bash and Whirlwind stacking upward.  The squeeze that
+                forced the v2.3.2327 split did not apply to a vertical stack.
+     v2.3.2542  the Special button joined it at slot -1, and the slot map moved
+                to ShieldButton's CTL_SLOT so four controls were one list.
+     v2.3.2562  this: the column empties out to Bash alone.
 
-   Slots are assigned by KIND, not by position in `live`, so Whirlwind does not
-   slide down into Bash's place on the frames where bash is hidden (it is
-   visible only while the shield is raised, which is most frames).  A button
-   that moves when its neighbour appears is a button the thumb misses.
-
-   v2.3.2542: the map moved to ShieldButton's CTL_SLOT when the Special button
-   joined the column -- four controls in one stack is one list too many to keep
-   in four files' heads. */
+   WHAT SURVIVES ALL OF IT, and is the reason the moves stay cheap: slots are
+   assigned by CONTROL, never by position in `live`.  Bash does not slide when
+   Whirlwind is hidden out of combat (v2.3.2561) and Special does not slide when
+   Whirlwind is hidden beside it -- a button that moves when its neighbour
+   appears or vanishes is a button the thumb misses.  And no control here
+   computes its own anchor: ShieldButton owns both sides' geometry, because
+   three files writing three layout rules is what cost the owner v2.3.2254's
+   button behind the dashboard and v2.3.2327's bash too far away. */
 
 /* ═══ v2.3.1733: THE ABILITY BUTTONS ═══
  *
@@ -100,9 +105,10 @@ export function AbilityButtons(props) {
        rules now: abilityStatus still reports `engaged` honestly, castAbility
        still refuses out loud, and only the render list narrows.
 
-       Slots are assigned by KIND (CTL_SLOT), so Shield Bash does not slide up
-       into Whirlwind's place on the frames where whirl is gone -- the same
-       property the note at the top of this file relies on for the reverse case.
+       Slots are assigned by CONTROL (CTL_SLOT on the right, LCTL_SLOT on the
+       left), so nothing slides into Whirlwind's place on the frames where it is
+       gone -- not Shield Bash across the column, and since v2.3.2562 not the
+       Special button beside it either.
 
        No linger, and no CSS gate.  A real unmount rather than opacity/
        visibility, because a hidden-but-present box still answers
@@ -119,24 +125,36 @@ export function AbilityButtons(props) {
   }
   if (!live.length) return null;
 
-  var col = ctlColumn(isLandscape);
-  var size = col.size;
+  /* ═══ v2.3.2562: THESE TWO BUTTONS NO LONGER SHARE A SIDE ═══
+     Owner, after playing the merged build: Whirlwind belongs "diagonally above
+     the left joystick", beside the Special button; Shield Bash is not mentioned
+     in the ask and so does not move.  One component still renders both, because
+     what they share is their BEHAVIOUR (the same status, cooldown sweep, cast
+     routing and refusal) -- only the anchor differs, and the anchor is the one
+     thing neither of them computes for itself.  Each side's geometry comes from
+     its own shared helper in ShieldButton.jsx, so a third control arriving on
+     either side inherits the rule rather than copying it. */
+  var rcol = ctlColumn(isLandscape);
+  var lcol = leftCluster(isLandscape);
 
-  /* One column, one rule: the slot number decides both axes.  The v2.3.2327
-     note that used to live here -- "two single buttons in two places, no stack
-     to overflow" -- described a workaround for a band that is no longer where
-     these buttons live. */
-  var slotStyle = function (kind) {
+  var anchorOf = function (kind) {
+    if (Object.prototype.hasOwnProperty.call(LCTL_SLOT, kind)) {
+      return {
+        size: lcol.size,
+        left: lcol.leftPx(LCTL_SLOT[kind]),
+        bottom: ctlBottom(lcol.bottomPx(LCTL_SLOT[kind])),
+        onLeft: true,
+      };
+    }
+    /* hasOwnProperty, NOT `|| 1` (v2.3.2542): CTL_SLOT's members can legally be
+       0 or negative, and `0 || 1` is Shield Bash's own slot -- which would
+       stack an unknown control exactly on top of it at z31. */
     return {
-      right: col.right,
-      /* v2.3.2542: hasOwnProperty, NOT `|| 1`.  The private SLOT_OF this
-         replaced had no falsy member, so `|| 1` was a pure missing-key
-         fallback; the shared map has `block: 0` and `special: -1`, and
-         `0 || 1` is 1 -- Shield Bash's own slot.  Harmless while `kinds` is
-         ['bash','whirl'], and a button stacked exactly on top of Bash at z31
-         the day anything at slot 0 is routed through here. */
-      bottom: ctlBottom(col.bottomPx(
+      size: rcol.size,
+      right: rcol.right,
+      bottom: ctlBottom(rcol.bottomPx(
         Object.prototype.hasOwnProperty.call(CTL_SLOT, kind) ? CTL_SLOT[kind] : 1)),
+      onLeft: false,
     };
   };
 
@@ -151,7 +169,8 @@ export function AbilityButtons(props) {
        ~200ms window between the lock dropping and the next tick re-rendering,
        if a future change ever renders an unengaged ability for its own reason. */
     var ready = st.cdLeft <= 0 && st.afford && st.equipped && st.engaged !== false;
-    var slot = slotStyle(kind);
+    var anchor = anchorOf(kind);
+    var size = anchor.size;
     return React.createElement('div', {
       key: kind,
       className: 'bt-desktop-hide',
@@ -173,6 +192,17 @@ export function AbilityButtons(props) {
         e.stopPropagation();
         try { castAbility(stateRef.current, kind); } catch (err) {}
       },
+      /* ═══ v2.3.2562: THE RELEASE AND THE DRAG ARE STOPPED TOO ═══
+         Whirlwind sits over [data-joyzone="L"] now -- the full-height LEFT half
+         at z6, which is the MOVEMENT input: its touchstart begins a walk and a
+         swipe across it dodges.  Stopping only the touchstart would leave a
+         release, or a thumb that slid a few px, to be read as movement, so this
+         button carries the same three guards SpecialButton has carried since
+         v2.3.2472 for exactly this neighbour.  Bash is on the right and does not
+         need them; it gets them anyway, because a guard that is only on one of
+         two otherwise identical controls is a guard the next move will drop. */
+      onTouchEnd: function (e) { e.preventDefault(); e.stopPropagation(); },
+      onTouchMove: function (e) { e.stopPropagation(); },
       onClick: function (e) {
         e.preventDefault();
         e.stopPropagation();
@@ -180,9 +210,14 @@ export function AbilityButtons(props) {
       },
       style: {
         position: 'fixed',
-        right: slot.right,
-        bottom: slot.bottom,
+        /* One or the other, never both: an `undefined` here leaves the property
+           unset, so the button hangs from the side its anchor named. */
+        left: anchor.left,
+        right: anchor.right,
+        bottom: anchor.bottom,
+        /* Above the joystick zones (z6) and both discs' corner boxes (z30). */
         zIndex: 31,
+        pointerEvents: 'auto',
         width: size,
         height: size,
         borderRadius: '50%',

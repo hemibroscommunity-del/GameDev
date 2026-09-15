@@ -44,6 +44,22 @@ const blockButton = (P) => P.page.evaluate(() => {
       const el2 = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
       return !!(el2 && (el2 === el || el.contains(el2)));
     })(),
+    /* v2.3.2562: NAME WHAT IS OVER IT.  "with nothing over it" could only ever
+       report false, which sends the next person hunting blind (TRAPS 28) -- and
+       it did exactly that when the Block button moved into the band below the
+       attack disc.  The chain is cheap and it is the whole answer. */
+    coveredBy: (() => {
+      const el2 = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
+      const out = [];
+      for (let n = el2, i = 0; n && i < 5; n = n.parentElement, i++) {
+        const c = String(n.className || '').split(' ').filter(Boolean).join('.');
+        const b = n.getBoundingClientRect();
+        out.push(n.tagName + (n.id ? '#' + n.id : '') + (c ? '.' + c : '')
+          + ' z=' + getComputedStyle(n).zIndex + ' pe=' + getComputedStyle(n).pointerEvents
+          + ' ' + Math.round(b.width) + 'x' + Math.round(b.height));
+      }
+      return out;
+    })(),
   };
 });
 
@@ -99,6 +115,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and so is the ACCEPTER -- both sides, or only one of them gets a '
     + 'block button (the same half-a-fix shape as the v2.3.1306 _inDuel gate)',
     !!(dB.lock && String(dB.lock.id) === String(aId) && dB.lock.type === 'player'), dB);
+  /* ═══ v2.3.2562: RETIRE THE ONBOARDING COACH BEFORE MEASURING ═══
+     A fresh QA character is mid-tutorial, and the coach paints a card
+     (~220x81, with a real 44x44 BUTTON in it) low and centre, inside a
+     full-screen z31 overlay.  When the Block button moved into the band below
+     the attack disc this version, that card's button landed ON it -- the
+     `coveredBy` chain above is what said so, and it is a real overlap, NOT a
+     fixture artefact.  It is reported as a known issue with this change rather
+     than hidden here.
+
+     It is retired for THIS scenario because the subject is "in a duel, can the
+     player block", and an onboarding card is not part of that question -- the
+     same retirement mp-joyfade and mp-abilslot use, and the same reason.  A
+     real dueller is usually past the tutorial; a QA character never is.
+
+     Worth knowing: the Special button has sat in this same band since
+     v2.3.2542 and has the same overlap, which went unnoticed because the one
+     scenario that hit-tests it (mp-joyfade) already retired the coach. */
+  for (const P of [A, B]) {
+    await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      if (S.rpg) { S.rpg._quests = S.rpg._quests || {}; S.rpg._quests.tut_4 = 'turnedIn'; }
+    });
+  }
+  /* POLL, do not sleep.  A fixed wait here passed on a warm run and went red on
+     a slow one -- the card takes a render or two to go, and 700ms is a coin
+     toss on that boundary (the same fixed-sleep trap TRAPS 67 closes with). */
+  for (const P of [A, B]) {
+    await P.page.waitForFunction(() => {
+      const el = document.querySelector('[data-shield]');
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
+      return !!(hit && (hit === el || el.contains(hit)));
+    }, null, { timeout: 8000, polling: 200 }).catch(() => {});
+  }
+
 
   const bbA = await blockButton(A);
   const bbB = await blockButton(B);

@@ -16,12 +16,16 @@ import { toggleShield, shieldButtonLive } from '@/game/shieldToggle.js';
  * attack button, and matches the desktop Q key, which has been a toggle
  * since v2.3.1726.
  *
- * WHERE: v2.3.2472 (owner decision D9) moved it to the LEFT of the disc,
- * level with the disc's centre, with the ability buttons stacked above it --
- * see ctlColumn below.  It used to be centred directly under the disc, in the
- * 70px band between it and the dashboard; the band placement is what put it
- * under the thumb that presses Attack, and what made "a button appearing under
- * the thumb mid-block" the complaint v2.3.2446 answered by deleting it.
+ * WHERE: v2.3.2562 (owner, after playing it) put it at the DIAGONAL BOTTOM-LEFT
+ * of the attack disc, alone on that side -- see blockAnchor below.  Before that
+ * v2.3.2472 (decision D9) had it level with the disc's centre at the foot of a
+ * shared column, and before that it was centred directly under the disc, in the
+ * 70px band between it and the dashboard.  That original band placement is what
+ * put it under the thumb that presses Attack, and what made "a button appearing
+ * under the thumb mid-block" the complaint v2.3.2446 answered by deleting it --
+ * worth knowing, because v2.3.2562 moves it back DOWN into that band.  It is not
+ * the same mistake: the button is off to the LEFT of the disc, not centred under
+ * it, so it is not under the attacking thumb's travel.
  *
  * WHEN: shieldButtonLive -- a fight is on or about to be, and a shield is
  * equipped.  Polled at the same 200ms the ability buttons use.
@@ -87,31 +91,138 @@ export const CTL_GAP = 4;         /* column <-> disc */
 export const CTL_STACK_GAP = 8;   /* between stacked slots */
 export const CTL_MIN_SIZE = 44;   /* Apple's touch-target minimum */
 
-/* ═══ v2.3.2542: WHO SITS IN WHICH SLOT, IN ONE PLACE ═══
+/* ═══ v2.3.2542: ONE SLOT MAP, SHARED ═══
+ * The map is exported rather than private to each file (AbilityButtons had its
+ * own `SLOT_OF`, SpecialButton would have needed a second copy) for the reason
+ * ctlColumn itself exists: three files writing three layout rules is what cost
+ * the owner v2.3.2254 and v2.3.2327.  `bottomPx` is plain arithmetic on the
+ * slot number, so a negative slot needs no special case.
  *
- * Owner, after playing the merged build: "Move the Special attack button to
- * orbit the RIGHT joystick, not the left."  So the column gains a fourth
- * control, and with four of them the slot numbers stop being something each
- * file can keep in its own head -- AbilityButtons already had a private
- * `SLOT_OF` and SpecialButton would have needed a second copy of the same idea.
- * One exported map instead, for the reason ctlColumn itself exists: three files
- * writing three layout rules is what cost the owner v2.3.2254 and v2.3.2327.
+ * ONE NUMBER FROM THAT PASS IS STILL LOAD-BEARING and is why the left cluster
+ * below is built the way it is: v2.3.2542 rejected a slot that worked out at
+ * ~283px above the dashboard band on a 390px-tall landscape screen, because
+ * that puts a combat button "up among the health bars" -- which are drawn on
+ * the CANVAS, so no rect can catch it and only the number can. */
+/* ═══ v2.3.2562: THE COLUMN IS DOWN TO ONE CONTROL ═══
  *
- * SPECIAL IS SLOT -1 -- BELOW Block rather than above Whirlwind, and the sign
- * is deliberate:
- *   - it keeps the stack THREE high above the disc's centre line.  Slot 3 in
- *     landscape works out at 283px above the dashboard band on a 390px-tall
- *     screen, which puts a combat button up among the health bars and a long
- *     way from the thumb that is holding Attack;
- *   - the band BELOW the disc is EMPTY.  D9 moved the shield out of it and
- *     v2.3.2472's own note says "nothing lives there now" -- so this is the
- *     one free spot left in the cluster that is still next to the thumb;
- *   - and the Special is the one control here meant to be pressed WHILE the
- *     right thumb holds Attack (that is its whole advantage over the flick),
- *     so the closest slot to the disc is the right home for it.
- * ctlColumn's `bottomPx` is plain arithmetic on the slot number, so a negative
- * slot needs no special case -- it lands one button-plus-gap below slot 0. */
-export const CTL_SLOT = { special: -1, block: 0, bash: 1, whirl: 2 };
+ * Owner, after playing the merged build and sending a screenshot: "the
+ * placement of the buttons isn't ideal.  I'd like the whirlwind and special
+ * attack buttons diagonally above the left joystick (directionally above but
+ * diagonal to provide enough space between them for not accidentally pressing
+ * the other one) and the shield block button to the diagonal bottom left of
+ * that right joystick (as a mental separation for combat purpose further away
+ * from the other buttons on its own side)."
+ *
+ * So the D9 column is dismantled, and what is left of it is Shield Bash.
+ *   - Whirlwind and Special moved to the LEFT disc -- see leftCluster below.
+ *     For Special this UNDOES v2.3.2542, which had just moved it here from the
+ *     left ("Move the Special attack button to orbit the RIGHT joystick").
+ *     That is the owner's call after playing both, and the v2.3.2472 file that
+ *     first put it on the left is the better guide to the hazards now.
+ *   - Block moved DOWN, out of slot 0 and into the band below the disc -- see
+ *     blockAnchor below.
+ *   - BASH IS NOT MENTIONED IN THE ASK, so it does not move: it keeps slot 1
+ *     and therefore its exact pixels, which is the whole reason slots are keyed
+ *     by control rather than by position in a list.
+ *
+ * The slot machinery stays for it rather than being flattened into two
+ * literals.  ctlColumn still owns the width squeeze against the movement zone
+ * and the 44px floor, and that reasoning is not bash-specific -- the next
+ * control to want a place beside the disc should inherit it, not re-derive it.
+ */
+export const CTL_SLOT = { bash: 1 };
+
+/* ═══ v2.3.2562: BLOCK, ALONE, BELOW AND LEFT OF THE ATTACK DISC ═══
+ *
+ * "the shield block button to the diagonal bottom left of that right joystick
+ * (as a mental separation for combat purpose further away from the other
+ * buttons on its own side)".  The DISTANCE is the feature, so it is measured
+ * rather than eyeballed: mp-btnlayout asserts the clear gap to Bash.
+ *
+ * DOWN is where the room is.  It keeps the column's right edge -- 4px clear of
+ * the disc, which is ctlColumn's one inviolable rule (a sibling at z31 lying on
+ * the disc eats every touch in the overlap, and the disc is the control pressed
+ * most) -- and drops below the disc's BOTTOM edge into the band D9 emptied and
+ * v2.3.2542 briefly filled with the Special button.  That is diagonal from the
+ * disc on both axes, and it is as far from Bash as this side can put it without
+ * taking a second bite out of the movement zone.
+ *
+ * WHY NOT FURTHER LEFT, which would be the more literal reading of "diagonal".
+ * The band available left of the disc is `50vw .. disc-left`: 49px at 390 and
+ * 34px at 360.  The column already overhangs 50vw by a few px at narrow widths
+ * (see ctlColumn's note, a deliberate default).  Sliding Block further left
+ * would take a second, larger bite out of the surface that reads movement
+ * drags, to buy separation the vertical drop already provides.
+ */
+export function blockAnchor(isLandscape) {
+  var col = ctlColumn(isLandscape);
+  return {
+    size: col.size,
+    right: col.right,
+    /* Below the disc's bottom edge by one gap.  Stays above the dashboard band
+       by construction: RBTN.bottom is 70 and the button is at most 54 wide, so
+       the result is positive at every width -- asserted in mp-btnlayout, which
+       measures the real painted band rather than trusting that arithmetic. */
+    bottomPx: RBTN.bottom - col.size - CTL_GAP,
+  };
+}
+
+/* ═══ v2.3.2562: THE LEFT CLUSTER -- WHIRLWIND AND SPECIAL ═══
+ *
+ * "diagonally above the left joystick (directionally above but diagonal to
+ * provide enough space between them for not accidentally pressing the other
+ * one)".  Two requirements, and the second one is the measurable half.
+ *
+ * ABOVE: both sit clear of the movement disc's TOP edge (LBTN.bottom + its
+ * width), so neither covers the joystick's own circle.
+ *
+ * DIAGONAL, AND WHY THE TWO STEPS ARE DIFFERENT SIZES.  Special takes the lower
+ * slot, Whirlwind the upper -- up and to the RIGHT of it.  The HORIZONTAL step
+ * is a full button plus half a button (LCTL_THUMB_FRAC), which means the boxes are fully
+ * separated on that axis ALONE: whatever the vertical rise, they cannot touch.
+ * That makes the rise free to be smaller than a full button, and it needs to
+ * be: a full-button rise on both axes put the upper control ~283px above the
+ * band in landscape, which is where v2.3.2542 rejected a slot for being "up
+ * among the health bars".  So the rise is a little over half a button -- enough
+ * to read as a diagonal, cheap in height.
+ *
+ * The separation that results is a real number and the owner asked for a real
+ * gap, so mp-btnlayout asserts the centre-to-centre distance and the clear edge
+ * gap at every width instead of asserting "they do not overlap", which a
+ * shoulder-to-shoulder pair would also pass.
+ *
+ * NO SQUEEZE RULE HERE, unlike ctlColumn.  The cluster's far edge lands ~132px
+ * from the screen's left at 360, well inside the 180px half, so there is no
+ * narrow-phone band to fight over and no reason to carry ctlColumn's clamp.
+ * What IS shared is the 44px floor.
+ */
+export const LCTL_GAP = 10;         /* cluster <-> the movement disc */
+/* The owner's "enough space ... not accidentally pressing the other one", as a
+   FRACTION of the button rather than a constant.  It was a flat 24px, which is
+   half of a 48px portrait button but well under half of the 54px landscape one
+   -- so the gap silently got proportionally tighter on the orientation with
+   less room, which is backwards.  Half a button at every size instead, and
+   mp-abilslot floors it at exactly that so the two cannot drift apart. */
+export const LCTL_THUMB_FRAC = 0.5;
+export const LCTL_SLOT = { special: 0, whirl: 1 };
+
+export function leftCluster(isLandscape) {
+  var size = Math.max(CTL_MIN_SIZE, isLandscape ? 54 : 48);
+  var discW = isLandscape ? LBTN.wLand : LBTN.w;
+  var left0 = isLandscape ? LBTN.leftLand : LBTN.left;
+  /* The movement disc's top edge, in the same px-above-the-band units
+     everything in this cluster is expressed in. */
+  var discTop = LBTN.bottom + discW;
+  var rise = Math.round(size * 0.55);
+  var step = size + Math.round(size * LCTL_THUMB_FRAC);
+  return {
+    size: size,
+    /* Slot 0 sits at the disc's own left edge; each slot steps RIGHT by a full
+       button plus the thumb gap, which is what guarantees the separation. */
+    leftPx: function (slot) { return left0 + slot * step; },
+    bottomPx: function (slot) { return Math.round(discTop + LCTL_GAP + slot * rise); },
+  };
+}
 
 export function ctlColumn(isLandscape) {
   var base = isLandscape ? 54 : 48;
@@ -170,12 +281,13 @@ export function ShieldButton(props) {
 
   var on = !!S._shieldUp;
   var onCd = !!(S._shieldCdUntil && Date.now() < S._shieldCdUntil);
-  /* v2.3.2472 (D9): slot 0 of the left-of-the-disc column -- see ctlColumn. */
-  /* v2.3.2542: ...and the slot number now comes from the shared CTL_SLOT map
-     rather than a literal, so "which control is where" is one list. */
-  var col = ctlColumn(isLandscape);
-  var size = col.size;
-  var right = col.right;
+  /* v2.3.2472 (D9) put this in slot 0 of the left-of-the-disc column, level
+     with the disc's centre.  v2.3.2562 (owner, after playing it) moved it to
+     the diagonal bottom-left of the disc, on its own, for "mental separation
+     for combat purpose" -- see blockAnchor. */
+  var anchor = blockAnchor(isLandscape);
+  var size = anchor.size;
+  var right = anchor.right;
   var press = function (e) {
     e.preventDefault(); e.stopPropagation();
     try { toggleShield(stateRef.current); } catch (err) { /* refusal is silent-safe */ }
@@ -191,7 +303,7 @@ export function ShieldButton(props) {
     style: {
       position: 'fixed',
       right: right,
-      bottom: ctlBottom(col.bottomPx(CTL_SLOT.block)),
+      bottom: ctlBottom(anchor.bottomPx),
       width: size, height: size, borderRadius: '50%',
       zIndex: 31,
       touchAction: 'none',

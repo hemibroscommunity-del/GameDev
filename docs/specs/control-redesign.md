@@ -1168,6 +1168,77 @@ like the slot `needsMeleeActive` reads.
 | 12.5 | Gate whirl by hiding the button, as v2.3.2327 hid it for a bow? | ~~**No — grey it.**~~ **Reversed by the owner at v2.3.2561 after playing the merged build — hide it.** See §12.6 below. |
 | 12.6 | Whirl is out of combat and the player presses anyway — silent, or a popup? | **Popup**, and the cast is routed for exactly that reason. A refused cast costs no cooldown and no stamina (asserted). Unchanged by v2.3.2561, and more load-bearing than before — see §12.6. |
 
+### 12.7 v2.3.2562 — the buttons move sides
+
+Owner, after playing the merged build and sending a screenshot: *"the placement
+of the buttons isn't ideal. I'd like the whirlwind and special attack buttons
+diagonally above the left joystick (directionally above but diagonal to provide
+enough space between them for not accidentally pressing the other one) and the
+shield block button to the diagonal bottom left of that right joystick (as a
+mental separation for combat purpose further away from the other buttons on its
+own side)."*
+
+This dismantles the D9 column (§12.2) and **reverses §12.2's move of the Special
+button** to the attack side, which was itself only two versions old. That is the
+owner's call after playing both.
+
+| Control | Was | Now |
+|---|---|---|
+| Whirlwind | column slot 2, right of the movement zone | left cluster slot 1 — up and right of Special |
+| Special | column slot −1, below Block | left cluster slot 0 — above the movement disc |
+| Block | column slot 0, level with the disc's centre | diagonal bottom-left of the attack disc, alone |
+| **Shield Bash** | column slot 1 | **unchanged** — the ask does not mention it |
+
+**The gap is the requirement, so it is a number.** "Enough space … for not
+accidentally pressing the other one" is not "they do not overlap" — two buttons
+shoulder to shoulder also do not overlap, and that is the layout being
+complained about. The horizontal step is a full button plus half a button
+(`LCTL_THUMB_FRAC`), which separates the boxes on that axis *alone*, so the
+vertical rise is free to be small. Measured: **24px clear / 77px between centres
+at 360 and 390 portrait; 27px clear / 86px between centres in landscape.**
+
+The gap was first written as a flat 24px and that was wrong in a way only the
+landscape run caught: the button grows to 54px sideways, so a constant gap got
+*proportionally tighter* on the orientation with less room. It is a fraction now.
+
+**Why the rise is smaller than the step.** §12.2 rejected a slot that worked out
+~283px above the dashboard band on a 390px-tall landscape screen, for putting a
+control "up among the health bars" — which are drawn on the canvas, so no rect
+can catch it and only the number can. A full-button rise on both axes would have
+repeated it. `mp-abilslot` now asserts that ceiling directly.
+
+**The hazard is that the left half is the movement zone.** `[data-joyzone="L"]`
+is the full-height left half at z6; its touchstart begins a walk and a swipe
+dodges, and `lM`/`lE` are bound to *window*. Both buttons stop touchstart,
+touchend and touchmove — the guards `SpecialButton` has carried since v2.3.2472
+for this exact neighbour, now on `AbilityButtons` too. Proven with
+`page.touchscreen.tap` at real coordinates, never `dispatchEvent`, which does
+not hit-test (TRAPS §67); and the converse is asserted too — the movement
+surface still answers where no button covers it.
+
+### 12.8 Found by this pass, NOT fixed
+
+**The band below the attack disc is not empty during onboarding.** §12.2's note
+said "the band BELOW the disc is EMPTY … nothing lives there now". It is not:
+the onboarding coach paints a ~220×81 card containing a real 44×44 button low
+and centre, inside a full-screen z31 overlay, and it lands squarely on Block's
+new home. `mp-duelblock`'s "with nothing over it" row caught it — it now names
+the coverer instead of only reporting `false`.
+
+This is **not new with Block**. The Special button has sat in that same band
+since v2.3.2542 with the same overlap, and it went unnoticed because the only
+scenario that hit-tests it (`mp-joyfade`) already retired the coach first.
+
+Not fixed here because the fix is a design call that belongs to the owner and to
+the onboarding files, not to this layout change: either the coach card moves off
+the combat band, or Block does — and Block's position is what the owner just
+asked for. The scenarios retire the coach so they measure their own subject, and
+the finding is written down here and in the PR rather than hidden by that.
+
+**Sideways, the coach card sits over the movement joystick's centre** — same
+overlay, same class of problem, found by `mp-abilslot`'s reachability probe.
+Also the onboarding layout's to fix.
+
 ### 12.6 v2.3.2561 — the button disappears, and why that is not a `visible` term
 
 Owner, after playing the v2.3.2542 build: **the Whirlwind button should
