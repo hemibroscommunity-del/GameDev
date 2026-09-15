@@ -694,6 +694,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('a finger on the message lands on the MESSAGE, not the touch zone '
       + 'underneath it', !!(under && under.coach === true), under);
 
+    /* ═══ v2.3.2575: A DRAG ACROSS THE CARD IS NOT A DISMISSAL ═══
+       The card is pointerEvents:'auto' so it can be tapped away, and it floats
+       over the full-height `[data-joyzone]` layer that takes the movement
+       thumb.  So a player reaching for a control THROUGH the card used to be
+       answered with "lesson learned, never show this again" -- a permanent
+       per-browser record, for something they never did.
+
+       Driven through CDP touch rather than window.__touch: a dispatched event
+       does not hit-test (TRAPS §67), so it would be answered by whatever
+       element it was aimed at regardless of what is really on top, and the
+       whole question here is which of two stacked layers takes the press.
+       Playwright's touchscreen has tap() but no drag, hence the raw CDP.
+
+       Run BEFORE the tap below, so the tap still has a card to put down --
+       and so the pair reads as one statement: a drag keeps it, a tap ends it. */
+    {
+      const cdp = await P.page.context().newCDPSession(P.page);
+      const cx = cardBox.left + cardBox.width / 2, cy = cardBox.top + cardBox.height / 2;
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: cx, y: cy, id: 1 }] });
+      for (let i = 1; i <= 5; i++) {
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: cx + i * 14, y: cy, id: 1 }] });
+        await P.page.waitForTimeout(60);
+      }
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await P.page.waitForTimeout(600);
+      const dragged = await P.page.evaluate(() => {
+        const card = document.querySelector('[data-coach-card]');
+        const t = (window.__btCoach && window.__btCoach()) || {};
+        return { card: !!card, doneGuard: !!(t.done && t.done.blockRanged) };
+      });
+      rec.ok('dragging across the card does NOT retire the lesson',
+        dragged.card === true && dragged.doneGuard === false, dragged);
+    }
+
     await P.page.evaluate(() => {
       const S = window._gameState.current;
       S.autoAttack = false; S.isSwinging = false; S.swingTimer = 0;

@@ -141,6 +141,12 @@ const MARK_RECT_H_FRAC = 0.35;
 /* Module scope rather than a ref: there is one coach on screen, and measure()
    is a free function the probe can still report from. */
 let _oversize = { n: 0, id: null, w: 0, h: 0 };
+/* v2.3.2575: where the finger went down on the coach card, for the tap-vs-drag
+   test in _dismiss.  Module scope for the same reason _oversize is, and NOT a
+   ref: the card renders after `if (!view) return null`, so a hook declared
+   beside it would be a conditional hook.  One coach on screen, one press. */
+let _cardPressAt = null;
+const CARD_TAP_SLOP_PX = 12;
 function _markTooBig(L, r) {
   const vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
   const vh = (typeof window !== 'undefined' && window.innerHeight) || 844;
@@ -1283,8 +1289,56 @@ export function QuestCoach(props) {
      next zone change, is the same complaint again.  stopPropagation matters
      now that two nested elements carry this: the X sits inside the card, so
      without it a tap on the X would run the handler twice. */
+  /* ═══ v2.3.2575: A DRAG ACROSS THE CARD IS NOT "PUT THIS DOWN" ═══
+   *
+   * The card is pointerEvents:'auto' (v2.3.2312, the owner's third ask for
+   * "allow the user to just tap on the messages to dismiss it"), and it floats
+   * over `[data-joyzone="L"]` -- the full-height layer that actually takes the
+   * movement thumb, since the joystick DISC itself is pointerEvents:'none'.
+   * Measured at the pre-tutorial lessons: the card spans 8..228 x 462..543 and
+   * the zone is 0..195 x 0..792, so they overlap by 187x81 at 390 wide and
+   * 172x81 at 360.  A press inside that band is answered by the card.
+   *
+   * WHAT THAT COST, MEASURED WITH A REAL FINGER (CDP touch, which hit-tests --
+   * TRAPS §67).  Pressing and dragging inside the overlap walked the bro 0px
+   * AND retired the lesson for good.  The eaten press is the smaller half: a
+   * drag is a player reaching for a control, and answering it with "lesson
+   * learned, never show this again" credits them with something they did not
+   * do and cannot get back (the record is permanent, per browser).
+   *
+   * WHAT IS **NOT** BROKEN, because it reads like it should be.  The lesson
+   * still works by its own instructions: the ring points at the visible
+   * joystick disc, and a drag starting there walks the bro 170px with the card
+   * up.  So does anywhere else in the left half outside the card (158px).  The
+   * dead area is the card's own rectangle and nothing more.
+   *
+   * SO THE FIX IS THE NARROW ONE.  Dismiss on a TAP, not on any pointerup: if
+   * the finger travelled more than TAP_SLOP_PX it was going somewhere, and the
+   * card stays up.  A tap still puts it down, which is the behaviour the owner
+   * asked for three times (v2.3.2123 -> 2284 -> 2312) and which must not be
+   * traded away to fix this.
+   *
+   * WHAT THIS DELIBERATELY DOES NOT DO: make that drag reach the joystick.  It
+   * cannot without giving up tap-to-dismiss -- the card has to take the press
+   * to answer a tap at all -- and that trade is the owner's to make, not this
+   * change's.  The dead rectangle is therefore smaller (a drag no longer costs
+   * the lesson) but still there.  See the PR note. */
+  const _press = function (e) {
+    _cardPressAt = (e && typeof e.clientX === 'number')
+      ? { x: e.clientX, y: e.clientY } : null;
+  };
   const _dismiss = function (e) {
     if (e && e.stopPropagation) e.stopPropagation();
+    /* Fail OPEN: an up with no recorded down (a pointer that began on the X
+       and ended on the body, a synthetic event, a remount mid-press) dismisses
+       as it always did.  A card that will not close is a worse bug than one
+       that closes too easily -- three demo reviewers said so. */
+    const d0 = _cardPressAt;
+    _cardPressAt = null;
+    if (d0 && e && typeof e.clientX === 'number') {
+      const dx = e.clientX - d0.x, dy = e.clientY - d0.y;
+      if ((dx * dx + dy * dy) > (CARD_TAP_SLOP_PX * CARD_TAP_SLOP_PX)) return;
+    }
     try {
       const d = doneRef.current;
       d[view.id] = true;
@@ -1406,6 +1460,7 @@ export function QuestCoach(props) {
         WebkitTapHighlightColor: 'transparent',
         fontFamily: 'Source Sans 3,sans-serif',
       },
+      onPointerDown: _press,
       onPointerUp: _dismiss,
     },
       /* ═══ v2.3.2123: A WAY OUT OF THE LESSON ═══
@@ -1433,6 +1488,7 @@ export function QuestCoach(props) {
          again. */
       React.createElement('button', {
         'data-coach-dismiss': view.id,
+        onPointerDown: _press,
         onPointerUp: _dismiss,
         'aria-label': 'Dismiss tip',
         /* ═══ v2.3.2284: HALF A TOUCH TARGET IS WHY IT "WOULD NOT GO AWAY" ═══
