@@ -1,4 +1,4 @@
-/* THE BARE SHOULDER ON A JOG EAST: IS IT THE SHIELD? (v2.3.2507)
+/* THE BARE SHOULDER ON A JOG EAST: IS IT THE SHIELD? (v2.3.2509)
  *
  * Owner, a seventh time (backlog triage 2026-09-14 §5.8): "Tee shoulder, east —
  * while JOGGING, not in combat", and they suspect the shield's layering.

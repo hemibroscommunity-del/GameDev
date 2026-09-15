@@ -145,7 +145,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     seen.map((s) => ({ tag: s.tag, hoodX: s.cape && s.cape.hoodX, hairX: s.cape && s.cape.hairX,
       gap: s.cape ? +Math.abs(s.cape.hoodX - s.cape.hairX).toFixed(2) : null })));
 
-  /* ═══ v2.3.2507: ONE STAND-IN IS NOW AN EXCEPTION, AND IT IS NAMED ═══
+  /* ═══ v2.3.2509: ONE STAND-IN IS NOW AN EXCEPTION, AND IT IS NAMED ═══
      Owner (backlog triage 2026-09-14, art item 8): on the east jog bow attack
      the cape "should drape over the waist, not behind".  East is the only
      PROFILE the stand-ins have, and side-on "behind the body" stops being the
@@ -160,7 +160,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      asserted against the rule it is actually under. */
   rec.ok('...SPLIT the same way it is when you walk: the panels behind the '
     + 'stand-in body and the hood in front, so the torso is not covered by a '
-    + 'slab. Every stand-in except the east bow shot, which is the v2.3.2507 '
+    + 'slab. Every stand-in except the east bow shot, which is the v2.3.2509 '
     + 'exception below',
     seen.filter((s) => !(s.cape && s.cape.overBody))
       .every((s) => s.cape && s.cape.split && s.cape.backUnderBody === true),

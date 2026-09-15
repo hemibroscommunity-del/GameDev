@@ -17,7 +17,7 @@
  *     matters and it is here deliberately.
  *   - SW joins the in-front set for held weapons.
  *
- * ═══ v2.3.2507: SW LEAVES THE IN-FRONT SET, BY OWNER DECISION ═══
+ * ═══ v2.3.2509: SW LEAVES THE IN-FRONT SET, BY OWNER DECISION ═══
  * D7, backlog triage 2026-09-14 §5.8: "greatsword at southwest goes BEHIND the
  * body for jog/idle AND for the attack swing -- it is in the right hand, facing
  * away from the camera... Southeast and east are unchanged."  The rule lives in
@@ -32,7 +32,7 @@
  */
 import * as H from './harness.mjs';
 
-const FRONT = new Set(['east', 'southeast', 'south', 'northeast']);   /* v2.3.2507: -southwest (owner D7) */
+const FRONT = new Set(['east', 'southeast', 'south', 'northeast']);   /* v2.3.2509: -southwest (owner D7) */
 const ORDER = [['east', 0], ['southeast', 1], ['south', 2], ['southwest', 3],
                ['west', 4], ['northwest', 5], ['north', 6], ['northeast', 7]];
 
