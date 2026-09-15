@@ -18,6 +18,7 @@ import { capeStatusBus } from '../ui/mobile/capeStatusBus.js'; /* v2.3.2118 */
 import { storeToastBus } from '../ui/mobile/storeToastBus.js'; /* v2.3.2476 */
 import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
+import { toDisplayDamage, toDisplayHitDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale (§5.8 D1) */
 import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is a legacy number under prog3 */
 /* v2.3.1734: Element Burst paints the element's status onto the local
    monster objects (the server owns statuses and never syncs them) — see
@@ -1116,7 +1117,7 @@ export function processGameEvent(type, payload, S, deps) {
                    monster tick delta; here we just surface the heal as a
                    green "+N" over the boss and a rising two-note chime. */
                 if (typeof payload.heal === 'number' && payload.heal > 0) {
-                  pushDmgPopup(S, _dbaX, _dbaY - 45, '+' + payload.heal, '#22c55e');
+                  pushDmgPopup(S, _dbaX, _dbaY - 45, '+' + toDisplayDamage(payload.heal), '#22c55e');   /* v2.3.2520: display scale */
                 }
                 BT_AUDIO.beep(500, 0.12, 0.18, 'sine');
               } else {
@@ -1572,6 +1573,24 @@ export function processGameEvent(type, payload, S, deps) {
                      max-HP reference the HP bar uses as its denominator.
                      Clobbering it made curHp == hp on every hit, which
                      locked the bar percentage at 100%. */
+                  /* ═══ v2.3.2520: THE POPUP NUMBER, UNDER THE CONSISTENCY
+                     RULE (§5.8 D1 -- see toDisplayHitDamage) ═══
+                     Every popup below now prints _popDmg instead of
+                     payload.dmg.  A NON-KILL hit reports the change in
+                     DISPLAYED hp, so three hits in a row visibly add up to
+                     the drop in the bar the player is watching; the KILLING
+                     blow reports the roll itself, because the bar goes to
+                     zero however hard it landed.
+                     The BEFORE figure is the curHp we last displayed, which
+                     is exactly the number the previous popup was measured
+                     against.  When we have never seen this monster (first
+                     sighting, a zone join mid-fight) we reconstruct it from
+                     the server's own credited damage instead, which is the
+                     pre-hit HP by definition.
+                     NOTHING else changes: hitM.curHp, hpPct and the bar are
+                     the server's real numbers, untouched. */
+                  var _hpBefore = (typeof hitM.curHp === 'number' && isFinite(hitM.curHp))
+                    ? hitM.curHp : null;
                   hitM.curHp = Math.round(payload.hpPct * hitM.maxHp);
                   /* ═══ v2.3.2513: "HIT BY YOU IN THE LAST 3s" (D4) ═══
                      The nameplate hides while a monster is the fight you are
@@ -1586,21 +1605,23 @@ export function processGameEvent(type, payload, S, deps) {
                      round trip is nothing against a 3-second window.
                      entityRenderer reads it; nothing else does. */
                   if (payload.attackerId === S.myId) hitM._hitByMeAt = Date.now();
-                  /* ═══ v2.3.2481: THE KILLING BLOW SHOWS ITS REAL NUMBER ═══
-                     `payload.dmg` is the CREDITED damage — the worker clamps
-                     it to the monster's remaining HP so the HP bar and the
-                     kill-credit share stay honest — which is why the last hit
-                     of a fight always printed a tiny number no matter how hard
-                     it hit.  The worker now also sends `rawDmg`, the roll
-                     before that clamp, on the hits where the two differ.
-                     Display only, and only for the POPUP: the HP bar still
-                     reads hpPct, because the monster really did only have
-                     that much left to take.
-                     DEPLOY-ORDER (rule 19): an older worker sends no rawDmg
-                     and every number below falls back to `dmg`, which is
-                     exactly today's behaviour. */
-                  var _popDmg = (typeof payload.rawDmg === 'number'
-                    && payload.rawDmg > payload.dmg) ? payload.rawDmg : payload.dmg;
+                  var _hpAfter = hitM.curHp;
+                  if (_hpBefore === null || _hpBefore < _hpAfter) {
+                    _hpBefore = _hpAfter + (payload.dmg || 0);
+                  }
+                  /* v2.3.2481 wrote this as `rawDmg > dmg ? rawDmg : dmg`.
+                     v2.3.2520 does not replace that fix -- it CARRIES it:
+                     rawDmg goes straight into toDisplayHitDamage, which uses
+                     it for exactly the case v2.3.2481 wrote it for (the
+                     killing blow, hpAfter <= 0) and ignores it otherwise,
+                     where the consistency rule wants the change in DISPLAYED
+                     hp instead.  Keeping v2.3.2481's line here instead would
+                     print raw, unscaled numbers on every hit.
+                     DEPLOY-ORDER (rule 19): a worker that sends no rawDmg
+                     leaves it undefined and a kill falls back to the credited
+                     damage, which is what the player saw before either
+                     change. */
+                  var _popDmg = toDisplayHitDamage(_hpBefore, _hpAfter, payload.rawDmg);
                   /* ═══ v2.3.2372: THE LUNGE'S ELEMENT PIP RIDES THE REAL HIT ═══
                      The server owns statuses and never syncs them, so the
                      coloured pip and the ambient element particles are drawn
@@ -2009,7 +2030,7 @@ export function processGameEvent(type, payload, S, deps) {
                 var rOther = S.others && S.others[payload.targetId];
                 if (rOther && !rOther._isDead) {
                   rOther._hitFlash = Date.now();
-                  pushDmgPopup(S, rOther.x || 0, (rOther.y || 0) - 20, '-' + (payload.dmg || 0), '#ff5e6c');
+                  pushDmgPopup(S, rOther.x || 0, (rOther.y || 0) - 20, '-' + toDisplayDamage(payload.dmg || 0), '#ff5e6c');   /* v2.3.2520: display scale */
                 }
                 break;
               }
@@ -2295,7 +2316,7 @@ export function processGameEvent(type, payload, S, deps) {
               }
               /* v2.3.110: heart glyph alongside "-N" popup so the
                  loss-of-HP intent reads instantly. */
-              pushDmgPopup(S, S.player.x, S.player.y - 20, '-' + Math.ceil(dmgTaken2), '#ff5e6c', { iconKey: 'heart' });
+              pushDmgPopup(S, S.player.x, S.player.y - 20, '-' + toDisplayDamage(Math.ceil(dmgTaken2)), '#ff5e6c', { iconKey: 'heart' });   /* v2.3.2520: display scale */
               /* v2.3.1137: Second Wind — the worker healed us right after
                  this hit (defense channel, 10s cooldown); green popup.
                  The authoritative hp arrives via player_state as usual. */
@@ -2404,7 +2425,7 @@ export function processGameEvent(type, payload, S, deps) {
               var hurtOther = S.others && S.others[payload.id];
               if (!hurtOther) break;
               hurtOther._hitFlash = Date.now();
-              pushDmgPopup(S, hurtOther.x || 0, (hurtOther.y || 0) - 20, '-' + (payload.dmg || 0), '#ff5e6c');
+              pushDmgPopup(S, hurtOther.x || 0, (hurtOther.y || 0) - 20, '-' + toDisplayDamage(payload.dmg || 0), '#ff5e6c');   /* v2.3.2520: display scale */
               break;
             }
           case 'monster_dmg_at':
@@ -2758,7 +2779,7 @@ export function processGameEvent(type, payload, S, deps) {
                     pushDmgPopup(S, _pvX, _pvY, 'Blocked', '#607D8B');
                   } else if (typeof payload.dmgTaken === 'number') {
                     pushDmgPopup(S, _pvX, _pvY,
-                      '-' + Math.ceil(payload.dmgTaken) + (payload.isCrit ? '!' : ''),
+                      '-' + toDisplayDamage(Math.ceil(payload.dmgTaken)) + (payload.isCrit ? '!' : ''),   /* v2.3.2520: display scale */
                       payload.isCrit ? DMG_CRIT_COLOR : '#ff5e6c',
                       /* v2.3.2211: this one already SAID crit with a '!' and
                          a colour, and still drew at ordinary size. */
@@ -2793,7 +2814,7 @@ export function processGameEvent(type, payload, S, deps) {
                  new authoritative value.  Death is driven by the server's
                  player_died event. */
               if (window.__dmgLog) try { console.log('[dmg] net-pvp_hit', { amt: Math.ceil(dmgTaken), attacker: payload.attacker, blocked: payload.blocked }); } catch (e) {}
-              pushDmgPopup(S, S.player.x, S.player.y - 20, '-' + Math.ceil(dmgTaken), payload.blocked ? '#607D8B' : '#ff5e6c');
+              pushDmgPopup(S, S.player.x, S.player.y - 20, '-' + toDisplayDamage(Math.ceil(dmgTaken)), payload.blocked ? '#607D8B' : '#ff5e6c');   /* v2.3.2520: display scale */
               /* v2.3.1137: Second Wind fires in PvP too (see server
                  _applyDamage); mirror the green heal popup here. */
               /* v2.3.1314: Last Stand — the killing blow left us at 1 HP. */
@@ -2883,7 +2904,7 @@ export function processGameEvent(type, payload, S, deps) {
                  the new authoritative value.  Death is driven by the
                  server's player_died event. */
               if (window.__dmgLog) try { console.log('[dmg] net-player_attack', { amt: Math.ceil(_dmgTaken), attacker: payload.id, isCrit: isCrit }); } catch (e) {}
-              pushDmgPopup(S, S.player.x, S.player.y - 20, '-' + Math.ceil(_dmgTaken), '#ff5e6c');
+              pushDmgPopup(S, S.player.x, S.player.y - 20, '-' + toDisplayDamage(Math.ceil(_dmgTaken)), '#ff5e6c');   /* v2.3.2520: display scale */
               for (var _hp = 0; _hp < 6; _hp++) S.hitParticles.push({
                 x: S.player.x,
                 y: S.player.y,

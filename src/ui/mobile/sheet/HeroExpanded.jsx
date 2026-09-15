@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { infoPopupBus } from '../infoPopupBus.js';
 import { statInfo } from '../infoGlossary.js';
 import { COL, QUALITY_COLOR, panelStyle, getState } from '../dash/common.js';
-import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon, weaponForCat, swingCooldownMultFor } from '../../../data/gameSystems.js'; /* v2.3.1914: getActiveWeapon; v2.3.2231: weaponForCat; v2.3.2441: swingCooldownMultFor */
+import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon, weaponForCat, swingCooldownMultFor, toDisplayDamage, toDisplayHp, DISPLAY_SCALE_K } from '../../../data/gameSystems.js'; /* v2.3.1914: getActiveWeapon; v2.3.2231: weaponForCat; v2.3.2441: swingCooldownMultFor; v2.3.2521: DISPLAY_SCALE_K for the "does not change damage" cut-off */
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { CharacterView, FIGURE_W_FRAC } from './CharacterView.jsx'; /* v2.3.1815: the equip screen's own figure */
@@ -425,7 +425,12 @@ export const HeroExpanded = () => {
     sheetRow('Damage', d.dmgText),
     sheetRow('DPS', d.dps.toFixed(1)),
     sheetRow('Crit', `${pct1(d.crit)}%`),
-    sheetRow('Crit Dmg', p3 ? `+${Math.round(d.critDmg)}${d.critDmgPct ? '%' : ''}` : '—'), /* v2.3.2199: % on a prog3x worker */
+    /* v2.3.2199: % on a prog3x worker.  v2.3.2520: which is exactly why the
+       display scale is applied to the FLAT form only -- a percentage is not a
+       damage number and dividing it by k would be wrong. */
+    sheetRow('Crit Dmg', p3
+      ? `+${d.critDmgPct ? Math.round(d.critDmg) : toDisplayDamage(d.critDmg)}${d.critDmgPct ? '%' : ''}`
+      : '—'),
   ];
   const defenseCells = () => [
     sheetRow('Defense', p3 ? `${pct1(d.defPct)}%` : '—'),
@@ -1156,7 +1161,8 @@ export const HeroExpanded = () => {
                     flex: 'none', display: 'flex', flexDirection: 'column',
                     alignItems: 'stretch', justifyContent: 'center',
                   }}>
-                    {compactVital('hp', R.hp || 0, R.maxHp || 100)}
+                    {/* v2.3.2520: HP is scaled (§5.8 D2); EN and MP below are NOT. */}
+                    {compactVital('hp', toDisplayHp(R.hp || 0), toDisplayHp(R.maxHp || 100))}
                     {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
                     {compactVital('mana', R.mana || 0, R.maxMana || 100)}
                   </div>
@@ -1316,7 +1322,19 @@ export const HeroExpanded = () => {
                 if (pv) {
                   rows.push({ label: info.title, now: fmt(pv.statNow), after: pv.capped ? null : fmt(pv.statAfter) });
                   if (typeof pv.dpsDelta === 'number') {
-                    rows.push(pv.dpsDelta > 0.049
+                    /* ═══ v2.3.2521: TEST THE REAL FIGURE, NOT THE SHRUNK ONE ═══
+                       This 0.049 asks "is the gain smaller than the +0.1 this
+                       row would print" — a question about the UNSCALED DPS.
+                       v2.3.2520 divided calcDisplayDps by DISPLAY_SCALE_K and
+                       left the cut-off where it was, so it silently became
+                       "smaller than +0.5 real DPS" and four measured gains
+                       (sword/bow/staff Crit, bow Attack Speed: +0.07..+0.15)
+                       started reading "does not change damage" — the sheet
+                       telling the player a stat is worthless when it is not,
+                       about points they cannot take back.  Multiply back out
+                       so the threshold keeps its meaning at any k; the printed
+                       numbers stay scaled. */
+                    rows.push(pv.dpsDelta * DISPLAY_SCALE_K > 0.049
                       ? { label: 'DPS', now: n1(pv.dpsNow), after: n1(pv.dpsAfter), delta: '+' + n1(pv.dpsDelta) }
                       : { label: 'DPS', now: n1(pv.dpsNow), after: null, delta: 'does not change damage' });
                   } else {
@@ -1648,7 +1666,7 @@ export const HeroExpanded = () => {
                     return n2(mult > 0 ? 1 / mult : 1);
                   }
                 }
-                if (st.key === 'hp') return String(Math.round((R && R.maxHp) || 0));
+                if (st.key === 'hp') return String(toDisplayHp((R && R.maxHp) || 0));   /* v2.3.2520: display scale */
                 if (st.key === 'stam') return String(Math.round((R && R.maxStamina) || 0));
                 if (st.key === 'def') return pct1(d ? d.defPct : 0) + '%';
                 if (st.key === 'dodge') return pct1(d ? d.dodge : 0) + '%';

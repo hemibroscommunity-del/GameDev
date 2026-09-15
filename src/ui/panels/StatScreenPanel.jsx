@@ -1,5 +1,5 @@
 import React from 'react';
-import { BT_AUDIO, calcBlockReduction, calcCritChance, calcCritMult, calcDisplayDmgRange, calcMoveSpeed, getActiveWeapon, getDefenseBlockBonus, getWeaponCritDmgStat, getWeaponCritStat, weaponXpRequired, xpRequired } from '@/data/index.js';
+import { BT_AUDIO, calcBlockReduction, calcCritChance, calcCritMult, calcDisplayDmgRange, calcMoveSpeed, getActiveWeapon, getDefenseBlockBonus, getWeaponCritDmgStat, getWeaponCritStat, weaponXpRequired, xpRequired, toDisplayHp } from '@/data/index.js'; /* v2.3.2520: the display damage scale */
 import { prog3HasSkills, prog3SkillLevel, prog3XpRequired, prog3Pts, PROG3 } from '@/data/prog3.js'; /* v2.3.1901, v2.3.1902 */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
@@ -232,7 +232,8 @@ export function StatScreenPanel(props) {
     }
   }, [/* v2.3.1235: batch-2 rollout — bar colors onto the approved
         correction-pass semantic tokens (hp/stamina/mana). */
-  ['HP', rpgState.hp, rpgState.maxHp, '#E35D5B'], ['STA', Math.floor(rpgState.stamina || 0), rpgState.maxStamina || 100, '#DFAE4E'], ['MP', Math.floor(rpgState.mana || 0), rpgState.maxMana || 100, '#4F8FDE']].map(function (_ref78) {
+  /* v2.3.2520: HP is scaled (§5.8 D2); STA and MP are NOT. */
+  ['HP', toDisplayHp(rpgState.hp), toDisplayHp(rpgState.maxHp), '#E35D5B'], ['STA', Math.floor(rpgState.stamina || 0), rpgState.maxStamina || 100, '#DFAE4E'], ['MP', Math.floor(rpgState.mana || 0), rpgState.maxMana || 100, '#4F8FDE']].map(function (_ref78) {
     var _ref79 = _slicedToArray(_ref78, 4),
       l = _ref79[0],
       v = _ref79[1],

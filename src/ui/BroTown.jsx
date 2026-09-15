@@ -150,6 +150,7 @@ import { pageIsPinchZoomed } from '@/data/joinGate.js';   /* v2.3.2388 */
    at boot; the only reader is the NPC wander clamp, dormant while
    NPC_DATA is empty. */
 import { CLAN_WAR_REWARDS, PET_LOOT_RADIUS, TOWN_W, TOWN_H, calcDisplayHeal,
+  toDisplayDamage, /* v2.3.2520: the display damage scale */
   hasGatherTool } from '@/data/index.js';
 import { IntroVideo } from './IntroVideo.jsx';
 /* v2.3.1593: mayorWelcomeSeen dropped — its only caller was the greeting
@@ -6083,7 +6084,10 @@ export var BroTown = function BroTown(_ref0) {
                 nearestM.curHp -= petDmg;
                 S._petAtkCd = Date.now() + 1500; /* pet attacks every 1.5s */
                 /* Visual feedback — small damage number from pet */
-                pushDmgPopup(S, nearestM.x, monsterPopupY(nearestM, -10), pet.emoji + ' -' + petDmg, pet.color || '#59BF91');
+                /* v2.3.2521: was full-size — missed by v2.3.2520, so the pet's
+                   number sat next to your own scaled ones and read five times
+                   harder-hitting than you. */
+                pushDmgPopup(S, nearestM.x, monsterPopupY(nearestM, -10), pet.emoji + ' -' + toDisplayDamage(petDmg), pet.color || '#59BF91');
                 /* Pet attack particles */
                 for (var pp = 0; pp < 3; pp++) {
                   S.hitParticles.push({
@@ -7952,7 +7956,7 @@ export var BroTown = function BroTown(_ref0) {
       if (S.channel) {
         try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
       }
-      pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + actual + ' HP', '#59BF91');
+      pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + toDisplayDamage(actual) + ' HP', '#59BF91');   /* v2.3.2520: display scale */
       pushDmgPopup(S, S.player.x, S.player.y - 46, 'Ate cooked fish', '#D8A94D');
       try { BT_AUDIO.beep(620, 0.05, 0.07, 'sine'); } catch (e) {}
       setRpgState(_objectSpread({}, R));

@@ -45,7 +45,7 @@
  *   rec.pendBid  — a bid is being escrowed.  Promote it iff its debit
  *                  stamp is present; otherwise drop it — no money moved.
  *   rec.releasing — a cancel or an expiry is handing everything back
- *                  (v2.3.2506).  Finish the release and delete; never
+ *                  (v2.3.2521).  Finish the release and delete; never
  *                  re-list, or the goods and the bid go out twice.
  * Because only records CARRYING a marker need an oplog read, the rebuild
  * costs one paged list() and (almost always) zero extra storage reads —
@@ -194,7 +194,7 @@ export const storeMethods = {
      re-listed, false if it was resolved (and deleted) here.  Only records
      carrying an in-flight marker cost an oplog read. */
   async _stConverge(rec) {
-    /* v2.3.2506: a cancel or an expiry was mid-flight when the DO died.
+    /* v2.3.2521: a cancel or an expiry was mid-flight when the DO died.
        Finish it rather than putting it back on the shelf — every leg of
        _stRelease is idempotent through its own opId, so a refund that
        already landed reports `dup` and nobody is paid twice, and the
@@ -564,7 +564,7 @@ export const storeMethods = {
       await this.state.storage.delete('store_listing:' + rec.id);
       return;
     }
-    /* ── v2.3.2506: MARK BEFORE ANYTHING MOVES ────────────────────────
+    /* ── v2.3.2521: MARK BEFORE ANYTHING MOVES ────────────────────────
        What follows is three separate disk writes — refund the bid, mail
        the goods home, delete the record — and the worker restarts on
        EVERY merge to main that touches server/**, so the gap between them
