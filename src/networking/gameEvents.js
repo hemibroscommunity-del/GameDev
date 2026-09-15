@@ -15,6 +15,7 @@ import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3
 import { _onBroNonce, _onBroResult } from './broWallet.js'; /* v2.3.1576 */
 import { shopBus } from '../ui/mobile/shopBus.js';   /* v2.3.2050 */
 import { capeStatusBus } from '../ui/mobile/capeStatusBus.js'; /* v2.3.2118 */
+import { storeToastBus } from '../ui/mobile/storeToastBus.js'; /* v2.3.2476 */
 import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
 import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is a legacy number under prog3 */
@@ -1251,6 +1252,22 @@ export function processGameEvent(type, payload, S, deps) {
                   text: '📫 You received ' + _what + (_e.note ? ' (' + _e.note + ')' : ''),
                   ts: Date.now()
                 }]);
+                /* ═══ v2.3.2476: A SALE IS THE ONE DELIVERY YOU WAIT FOR ═══
+                   The store and the order book both settle the seller's gold
+                   through _creditPlayer with source 'market' and a note saying
+                   what sold and for how much (server/src/store.js), so the
+                   notice needs nothing new on the wire -- only somewhere to be
+                   seen.  The chat line above stays and is still the record;
+                   this is the same sentence as a card that shows itself for six
+                   seconds, because chat on a phone mid-fight is not a
+                   notification.
+                   NARROW ON PURPOSE: only 'market'.  Every other delivery keeps
+                   the chat line alone -- the daily reward was made silent
+                   deliberately (v2.3.2037) and a toast would put it back,
+                   louder. */
+                if (_e.source === 'market') {
+                  storeToastBus.push('You received ' + _what + (_e.note ? ' \u2014 ' + _e.note : ''));
+                }
               }
               if (_inbEntries.length && setChatLog) setChatLog(_toConsumableArray(S.chatLog));
               if (payload && payload.queued) {
@@ -1556,6 +1573,21 @@ export function processGameEvent(type, payload, S, deps) {
                      Clobbering it made curHp == hp on every hit, which
                      locked the bar percentage at 100%. */
                   hitM.curHp = Math.round(payload.hpPct * hitM.maxHp);
+                  /* ═══ v2.3.2481: THE KILLING BLOW SHOWS ITS REAL NUMBER ═══
+                     `payload.dmg` is the CREDITED damage — the worker clamps
+                     it to the monster's remaining HP so the HP bar and the
+                     kill-credit share stay honest — which is why the last hit
+                     of a fight always printed a tiny number no matter how hard
+                     it hit.  The worker now also sends `rawDmg`, the roll
+                     before that clamp, on the hits where the two differ.
+                     Display only, and only for the POPUP: the HP bar still
+                     reads hpPct, because the monster really did only have
+                     that much left to take.
+                     DEPLOY-ORDER (rule 19): an older worker sends no rawDmg
+                     and every number below falls back to `dmg`, which is
+                     exactly today's behaviour. */
+                  var _popDmg = (typeof payload.rawDmg === 'number'
+                    && payload.rawDmg > payload.dmg) ? payload.rawDmg : payload.dmg;
                   /* ═══ v2.3.2372: THE LUNGE'S ELEMENT PIP RIDES THE REAL HIT ═══
                      The server owns statuses and never syncs them, so the
                      coloured pip and the ambient element particles are drawn
@@ -1607,7 +1639,8 @@ export function processGameEvent(type, payload, S, deps) {
                      trailing second pulse read as "the flash is delayed"
                      (owner report, first playtest).  Everything
                      echo-driven now sits behind the same gate. */
-                  if (payload.attackerId !== S.myId || payload.ability || payload.thorns || payload.burst) {
+                  if (payload.attackerId !== S.myId || payload.ability || payload.thorns || payload.burst
+                      || payload.splash /* v2.3.2481: a splashed neighbour has no local hit site of its own */) {
                     hitM._hitFlash = Date.now();
                     if (hitM.curHp > 0) {
                       hitM._hitAnimStart = Date.now();
@@ -1647,7 +1680,9 @@ export function processGameEvent(type, payload, S, deps) {
                   if (payload.attackerId !== S.myId) {
                     enqueuePeerDamage(S, peerDmgKey(payload.monsterId, hitM.x || hitM.renderX, hitM.y || hitM.renderY), {
                       x: hitM.x || hitM.renderX, y: monsterPopupY(hitM, -20),
-                      text: '-' + payload.dmg, color: payload.isCrit ? DMG_CRIT_COLOR : '#ff8888',
+                      text: '-' + _popDmg,   /* v2.3.2481 */
+                      color: payload.isCrit ? DMG_CRIT_COLOR
+                        : (payload.splash ? '#c4b5fd' : '#ff8888'),   /* v2.3.2481: peer splash reads as splash too */
                       /* v2.3.2211: the server's crit gets the same treatment
                          the local swing gets -- big number + the crit mark.
                          These two doors painted the same event differently,
@@ -1709,12 +1744,18 @@ export function processGameEvent(type, payload, S, deps) {
                     var _colFresh = _colMem && _colMem.id === _colId && (Date.now() - _colMem.at) < 1500;
                     if (_colId) {
                       pushDmgPopup(S, (hitM.x || hitM.renderX) + 8, monsterPopupY(hitM, -35),
-                        (_colFresh ? _colMem.prefix : '') + '-' + payload.dmg
+                        (_colFresh ? _colMem.prefix : '') + '-' + _popDmg   /* v2.3.2481 */
                           + (_colFresh && _colMem.name ? ' ' + _colMem.name : ''),
                         _colFresh ? _colMem.color : '#fffbb0');
                     } else {
                       pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20),
-                        '-' + payload.dmg, payload.isCrit ? DMG_CRIT_COLOR : '#ffd08a',
+                        '-' + _popDmg,
+                        /* v2.3.2481: a SPLASH number wears the staff's violet
+                           rather than the weapon amber, so at a glance you can
+                           tell the bolt's own target from the neighbours it
+                           caught.  Crit colour still wins -- a crit is the
+                           louder fact. */
+                        payload.isCrit ? DMG_CRIT_COLOR : (payload.splash ? '#c4b5fd' : '#ffd08a'),
                         /* v2.3.2232: the weapon that dealt it, not a flat sword.
                            v2.3.2233: ...and that now includes the crit, which
                            carried a bladed burst on bow and staff hits alike. */
@@ -1726,7 +1767,7 @@ export function processGameEvent(type, payload, S, deps) {
                        local prediction (unlike swings), so our own thorns
                        hits DO need the popup or the block just silently
                        chips the monster's bar. */
-                    pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + payload.dmg + ' 🌵', '#a3e635');
+                    pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + _popDmg + ' 🌵', '#a3e635');   /* v2.3.2481 */
                   } else if (payload.burst) {
                     /* v2.3.1734: same gap, same fix.  An Element Burst is
                        resolved entirely server-side (no local prediction —
@@ -1734,7 +1775,7 @@ export function processGameEvent(type, payload, S, deps) {
                        this branch the caster's own biggest button would
                        land in silence on their own screen while every
                        OTHER player in the zone saw the numbers. */
-                    pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + payload.dmg, '#c084fc');
+                    pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + _popDmg, '#c084fc');   /* v2.3.2481 */
                   }
                   /* Hit particles — v2.3.2200b: same gate as the flash
                      above.  "For everyone" meant bystanders; for the
@@ -1742,7 +1783,8 @@ export function processGameEvent(type, payload, S, deps) {
                      round-trip after their contact-time debris, which
                      contributed to the same "feedback trails the hit"
                      read the double flash did. */
-                  if (payload.attackerId !== S.myId || payload.ability || payload.thorns || payload.burst) {
+                  if (payload.attackerId !== S.myId || payload.ability || payload.thorns || payload.burst
+                      || payload.splash /* v2.3.2481: a splashed neighbour has no local hit site of its own */) {
                     for (var hp2 = 0; hp2 < 3; hp2++) {
                       S.hitParticles.push({
                         x: hitM.x || hitM.renderX, y: hitM.y || hitM.renderY,
@@ -3345,6 +3387,28 @@ export function processGameEvent(type, payload, S, deps) {
                     'expired': 'Trade expired', 'busy': 'They are already trading',
                     'target-gone': 'Player unavailable', 'party-gone': 'Player unavailable',
                   }[payload.reason] || 'Trade cancelled';
+                  /* ═══ v2.3.2497: SAY IT IN THE CHAT LANE TOO ═══
+                     The popup below is a floating world label over your own
+                     head for about a second (v2.3.1235 chose it because the
+                     only toast mechanism in the game is ItemTooltip's
+                     salvage-undo queue, which is item-specific).  A trade
+                     ending is not a thing to miss while you are looking at the
+                     other player, and the server already tells BOTH sides
+                     (trade2.js _t2Cancel, and _t2ClearInvites for a declined
+                     invite since v2.3.2289) -- so the same sentence also goes
+                     to the chat log, which persists and scrolls back.
+                     BOTH, not instead: the popup is where your eyes already
+                     are, the line is what is still there a moment later.
+                     Same shape as the inbox and announce lines above (slice
+                     -50, an id, setChatLog with a fresh array so the feed's
+                     React state actually changes). */
+                  S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-50)), [{
+                    id: 'trade-' + Date.now(),
+                    name: '',
+                    text: '🤝 ' + _t2Why,
+                    ts: Date.now()
+                  }]);
+                  if (setChatLog) setChatLog(_toConsumableArray(S.chatLog));
                   pushDmgPopup(S, S.player.x, S.player.y - 40, _t2Why, '#ff5e6c');
                 }
               }

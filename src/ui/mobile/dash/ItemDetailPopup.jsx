@@ -13,6 +13,7 @@ import {
 } from './inventoryLocks.js';
 import { thumbFor, iconFor, classify } from './InventoryPanel.jsx';
 import { firemakingBus } from '../firemakingBus.js';
+import { storeEnabled, storeList } from '@/ui/storeApi.js'; /* v2.3.2476: the general store */
 import { eatBus } from '../eatBus.js';
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
 import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect, syncArmorChange, equipArmorFromStash, equipLegsFromStash } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin */
@@ -180,6 +181,14 @@ function resolveTarget(target) {
            the caps-audit suite can see the gate. */
         drink: isPotion && count > 0
           && !!(SR && SR._serverCaps && SR._serverCaps.potionBag),
+        /* v2.3.2476: Sell -- put this up in the general store at your own
+           price.  Gated on the store cap (storeApi.storeEnabled reads
+           _serverCaps.store) because an older worker has no /api/store
+           route at all: the button would post into a 404 and the item
+           would look like it had vanished.  Same shape as `open` and
+           `drink` above -- the worker takes the goods out of ITS copy of
+           the bag and holds them, so nothing here is credited locally. */
+        sell: count > 0 && storeEnabled(),
       },
     };
   }
@@ -239,7 +248,10 @@ function resolveTarget(target) {
       info: range ? ('Damage ' + range.dmgText + ' · DPS ' + range.dps) : null,
       delta,
       desc: tierLabel(wpn) + ' · ' + (wpn.type || '').charAt(0).toUpperCase() + (wpn.type || '').slice(1),
-      actions: { equip: true },
+      /* v2.3.2476: a stash weapon is the other half of what the store can
+         hold -- the worker takes it out of its own weaponStash by this
+         index (handoff rule 16), which is why the index rides along. */
+      actions: { equip: true, sell: storeEnabled() },
     };
   }
   if (target.kind === 'stashShield') {
@@ -437,6 +449,16 @@ const buttonStyle = (_variant) => ({
   fontWeight: 700,
 });
 
+/* v2.3.2476: the quantity steppers on the sell sheet.  44px is the touch
+   floor everywhere else in this card; these sit on one row with the count
+   between them, so they are square rather than flexed. */
+const stepStyle = {
+  width: 36, minHeight: 36, padding: 0, borderRadius: 8,
+  fontSize: 15, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
+  border: '1px solid rgba(238,242,235,.20)', background: '#2B3940', color: '#F7F2E7',
+  WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+};
+
 /* Compute an anchored position for the tooltip.
    Prefer right-of-anchor; flip to left if no room.  Clamp the whole
    popup inside the bottom dashboard rect when possible, otherwise
@@ -489,12 +511,37 @@ export const ItemDetailPopup = () => {
   const [, force] = useState(0);
   const cardRef = useRef(null);
   const [pos, setPos] = useState(null);
+  /* v2.3.2476: the Sell step lives INSIDE this card rather than opening a
+     second sheet over it.  The card is already anchored to the tile you
+     tapped and already knows which item it is about; a separate modal
+     would have to be told both, and would put a second dismiss layer over
+     a band that already has two. */
+  const [sellOpen, setSellOpen] = useState(false);
+  const [sellPrice, setSellPrice] = useState('');
+  const [sellQty, setSellQty] = useState(1);
+  const [sellBusy, setSellBusy] = useState(false);
+  const [sellErr, setSellErr] = useState('');
+  /* v2.3.2507: a REF, not the busy flag, is what stops a double tap.
+     `setSellBusy(true)` disables the button on the next render, and on a
+     phone the normal way to press something once is to press it twice --
+     two pointerups inside one frame both get through, and the worker
+     honours both: two listings, two escrows, one intended sale.  Nothing
+     is lost (each can be taken down) but the seller did not ask for it.
+     Raised as finding #3 on PR #615's review, which names this button. */
+  const sellInFlight = useRef(false);
 
   useEffect(() => {
     const u1 = itemDetailBus.subscribe(() => force((v) => v + 1));
     const u2 = subscribeLocks(() => force((v) => v + 1));
     return () => { u1(); u2(); };
   }, []);
+
+  /* A half-typed price belongs to the item it was typed for: opening the
+     card on something else (or closing it) starts over. */
+  useEffect(() => {
+    setSellOpen(false); setSellPrice(''); setSellQty(1); setSellErr(''); setSellBusy(false);
+    sellInFlight.current = false;
+  }, [itemDetailBus.state.open, itemDetailBus.state.target]);
 
   /* Measure popup size after render, then reposition.  setLayoutEffect
      so we don't flash at the unmeasured position. */
@@ -1234,6 +1281,49 @@ export const ItemDetailPopup = () => {
     if (locked) unlockItem(lockKey);
     else        lockItem(lockKey);
   };
+
+  /* ═══ v2.3.2476: SELL IT IN THE GENERAL STORE ═══
+     The bag is half of every shop in this game already (shopBus v2.3.2059,
+     tradeBagBus v2.3.2149); this is the same move for the store.
+
+     NOTHING IS APPLIED HERE.  The worker takes the stack or the weapon out
+     of ITS OWN copy of your bag and holds it in escrow -- what this sends
+     only NAMES which one (an inventory key, or a stash index), because a
+     client that hands over the item itself is a client that can hand over
+     an item it does not have (handoff rule 16).  The bag redraws off the
+     player_state echo that follows, never off a local splice: that is the
+     difference between this and the self-credit hole the old Exchange had.
+
+     The stash index is re-resolved against the LIVE stash right before it
+     is sent, for the reason v2.3.2341 records on the Equip button -- a
+     player_state echo can replace the array under a card that is already
+     open, and the index that was right when the card was built would then
+     list a different weapon. */
+  const sellMax = (target && target.kind === 'inventory')
+    ? Math.max(1, Math.floor(target.count || 1)) : 1;
+  const onSellConfirm = async () => {
+    if (sellInFlight.current) return;   /* v2.3.2507: one tap, one listing */
+    const price = Math.floor(Number(sellPrice) || 0);
+    if (!(price >= 1)) { setSellErr('Put a price on it first'); return; }
+    let body;
+    if (target.kind === 'stashWeapon') {
+      const S2 = getState();
+      const stash = (S2 && S2.rpg && S2.rpg.weaponStash) || [];
+      const idx = resolveStashIdx(stash, target.wpn, target.index);
+      if (idx < 0) { setSellErr('That weapon moved — open it again'); return; }
+      body = { kind: 'weapon', stashIndex: idx, price };
+    } else {
+      const qty = Math.max(1, Math.min(sellMax, Math.floor(Number(sellQty) || 1)));
+      body = { kind: 'item', invKey: target.key, qty, price };
+    }
+    sellInFlight.current = true;
+    setSellBusy(true); setSellErr('');
+    const r = await storeList(body);
+    sellInFlight.current = false;
+    setSellBusy(false);
+    if (r && r.ok) itemDetailBus.close();
+    else setSellErr((r && r.error) || 'The store could not take it');
+  };
   const onClose = () => itemDetailBus.close();
 
   /* Final unequip handler: dispatch on target.kind. */
@@ -1282,6 +1372,35 @@ export const ItemDetailPopup = () => {
           opacity: pos ? 1 : 0,
         }}
       >
+        {/* ═══ v2.3.2476: THE ANCHOR IS A HEADER ICON NOW ═══
+            It used to be a full-width button in the action row, sitting
+            among Equip / Eat / Sell as if it were the same kind of thing.
+            It is not: anchoring only pins the item to the top-left of your
+            own bag (inventoryLocks.js, an in-memory sort key) -- it moves
+            nothing, costs nothing and tells nobody.  Demoted to a 26px chip
+            in the card's own header, the pattern the loadout card's close
+            chip already uses, so the action row is left for actions that
+            actually do something.  Same toggle, same state; the ⚓ badge on
+            the portrait below still says when it is on. */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, minHeight: 26 }}>
+          <span style={{
+            fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em',
+            color: '#F0C878', opacity: locked ? 1 : 0,
+          }}>Anchored</span>
+          <button type="button"
+            aria-label={locked ? 'Unpin from the top of the bag' : 'Pin to the top of the bag'}
+            title={locked ? 'Unpin from the top of the bag' : 'Pin to the top of the bag'}
+            onPointerUp={(e) => { e.stopPropagation(); onToggleLock(); }}
+            style={{
+              flex: '0 0 auto', width: 26, height: 26, lineHeight: '24px', textAlign: 'center', padding: 0,
+              fontSize: 13, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+              border: '1px solid ' + (locked ? '#F0C878' : 'rgba(238, 242, 235, .14)'),
+              background: locked ? 'rgba(216,170,88,.15)' : 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
+              color: locked ? '#F0C878' : '#B9C1BF',
+              WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+            }}>⚓</button>
+        </div>
+
         <div style={{ position: 'relative', width: 80, height: 80, alignSelf: 'center' }}>
           {/* v2.3.1232: portrait sits in a recessed well (#121B20, slot radius) */}
           <div style={{
@@ -1364,11 +1483,61 @@ export const ItemDetailPopup = () => {
           {actions.capeOff  && <button onClick={onCapeOff} className={buttonClass('danger')}  style={buttonStyle('danger')}>Unequip</button>}
           {actions.equip    && <button onClick={onEquip}   className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
           {actions.unequip  && <button onClick={onUnequip} className={buttonClass('danger')} style={buttonStyle('danger')}>Unequip</button>}
-          <button onClick={onToggleLock} className={buttonClass()} style={buttonStyle()}>
-            {locked ? '⚓ Unanchor' : '⚓ Anchor'}
-          </button>
+          {actions.sell && !sellOpen && <button onClick={() => { setSellOpen(true); setSellErr(''); }} className={buttonClass()} style={buttonStyle()}>Sell</button>}
           <button onClick={onClose} className={buttonClass()} style={buttonStyle()}>X</button>
         </div>
+
+        {/* ═══ v2.3.2476: THE PRICE SHEET ═══
+            Your price, nobody else's -- the store has no suggested value and
+            no floor beyond one gold, because the whole point of it is that
+            the seller sets the price.  A stack asks how many as well, capped
+            at what you are holding; the worker checks that again against its
+            own copy, so a nudged number buys nothing. */}
+        {actions.sell && sellOpen && (
+          <div style={{
+            marginTop: 6, padding: 8, borderRadius: 8,
+            background: '#19252A', border: '1px solid ' + COL.divider,
+            display: 'flex', flexDirection: 'column', gap: 6,
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: COL.muted }}>
+              Sell in the general store
+            </div>
+            {sellMax > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ flex: 1, fontSize: 12, color: COL.text }}>How many</span>
+                <button type="button" onClick={() => setSellQty((q) => Math.max(1, (Math.floor(Number(q)) || 1) - 1))}
+                  style={stepStyle}>−</button>
+                <span style={{ minWidth: 34, textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#F7F2E7', fontVariantNumeric: 'tabular-nums' }}>
+                  {Math.max(1, Math.min(sellMax, Math.floor(Number(sellQty)) || 1))}
+                </span>
+                <button type="button" onClick={() => setSellQty((q) => Math.min(sellMax, (Math.floor(Number(q)) || 1) + 1))}
+                  style={stepStyle}>+</button>
+                <button type="button" onClick={() => setSellQty(sellMax)} style={{ ...stepStyle, width: 'auto', padding: '0 8px', fontSize: 11 }}>All</button>
+              </div>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ flex: 1, fontSize: 12, color: COL.text }}>Price in gold</span>
+              <input type="number" inputMode="numeric" value={sellPrice} placeholder="0"
+                onChange={(e) => setSellPrice(e.target.value)}
+                style={{
+                  width: 84, minHeight: 36, textAlign: 'right', padding: '0 7px',
+                  fontSize: 13, fontWeight: 700, fontFamily: 'inherit', color: '#F7F2E7',
+                  background: '#121B20', border: '1px solid rgba(238,242,235,.20)', borderRadius: 8,
+                }} />
+            </div>
+            {sellErr && <div style={{ fontSize: 11, fontWeight: 600, color: COL.danger }}>{sellErr}</div>}
+            <div style={{ fontSize: 11, color: COL.muted, lineHeight: 1.4 }}>
+              It leaves your bag now and comes back in 24 hours if nobody buys it.
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button onClick={onSellConfirm} disabled={sellBusy}
+                className={buttonClass('primary')} style={{ ...buttonStyle('primary'), opacity: sellBusy ? 0.5 : 1 }}>
+                {sellBusy ? 'Listing…' : 'Put it up'}
+              </button>
+              <button onClick={() => { setSellOpen(false); setSellErr(''); }} className={buttonClass()} style={buttonStyle()}>Back</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -7,6 +7,14 @@ import React from 'react';
    ranged/staff fallback to `weapon` and a copy here would drift. */
 import { getActiveWeapon } from '@/data/gameSystems.js';
 import { holdDisc, releaseDisc, discSideFor } from '@/game/controlVisibility.js'; /* v2.3.2246 */
+/* v2.3.2495: the two facts the dashboard lessons are about -- is the band
+   folded, and is the dashboard the thing on screen.  Both are module-scope
+   buses already (dashMinBus's own note explains why the fold is not component
+   state), so reading them here is the same POLL-THE-STATE rule every other
+   lesson in this file follows -- no hook is pushed into the fold button. */
+import { dashMinBus } from './dashMinBus.js';
+import { dashboardPanelBus } from './dashboardPanelBus.js';
+import { playIsLandscape } from './playViewport.js';
 
 /* ═══════════════════════════════════════════════════════════════════
    QUEST COACH — the controls are taught by the questline (v2.3.1796)
@@ -101,6 +109,54 @@ function saveDone(done) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(Object.assign({}, done))); } catch (_e) {}
 }
 
+/* ═══ v2.3.2495: NO MARK IS EVER BIGGER THAN A PLAUSIBLE CONTROL ═══
+   Owner, of the first two minutes: a screen-sized oval appears after the
+   weapon swap.  It was the `blockRanged` lesson measuring its FALLBACK anchor
+   `[data-joyzone="R"]` -- the fixed right half of the screen, ~195x600 on a
+   phone -- with shape:'circle', so border-radius 50% plus the pulse scale drew
+   an oval taller than the viewport.  The fallback is gone (see that lesson),
+   but a dropped anchor is not a fix on its own: ANY selector in this file can
+   one day resolve to a full-screen layer, and the failure mode is a mark that
+   covers the game rather than one that is missing.
+
+   So the rule is stated about the ANSWER rather than about that one selector:
+   a coach mark rings a CONTROL, and this UI's controls are small.  The biggest
+   thing any lesson legitimately points at is a 108px disc (.bt-rjoy-base), an
+   83/98px joystick box, a bag cell, a nav button or a More tile; the bro's own
+   tap circle is ~104-130px.  Anything wildly outside that is a mis-measure,
+   and a mis-measured mark is worth losing -- the lesson is skipped exactly as
+   an unreachable one is (and, unlike v2.3.2306's silent skip, it is COUNTED:
+   see `oversize` in the __btCoach probe, so a test can tell "refused because it
+   was absurd" from "never lived").
+
+   Circle marks are held to both a size cap and a squareness test, because
+   every round control in this UI is square and the joyzone oval failed both.
+   Rect marks get a looser cap -- a More tile is a full-width row -- but still
+   cannot be a full-height layer. */
+const MARK_CIRCLE_MIN_CAP = 160;   /* .bt-rjoy-base is 108 at its largest */
+const MARK_CIRCLE_VP_FRAC = 0.42;  /* ...or this much of the short axis, whichever is kinder */
+const MARK_RECT_W_FRAC = 0.92;
+const MARK_RECT_H_FRAC = 0.35;
+/* Module scope rather than a ref: there is one coach on screen, and measure()
+   is a free function the probe can still report from. */
+let _oversize = { n: 0, id: null, w: 0, h: 0 };
+function _markTooBig(L, r) {
+  const vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
+  const vh = (typeof window !== 'undefined' && window.innerHeight) || 844;
+  const w = r.width, h = r.height;
+  let bad = false;
+  if (L && L.shape === 'circle') {
+    const cap = Math.max(MARK_CIRCLE_MIN_CAP, Math.min(vw, vh) * MARK_CIRCLE_VP_FRAC);
+    const ar = (w > 0 && h > 0) ? (w / h) : 0;
+    bad = (w > cap || h > cap || ar < 0.55 || ar > 1.8);
+  } else {
+    bad = (w > vw * MARK_RECT_W_FRAC || h > vh * MARK_RECT_H_FRAC);
+  }
+  if (bad) _oversize = { n: _oversize.n + 1, id: (L && L.id) || null,
+                         w: Math.round(w), h: Math.round(h) };
+  return bad;
+}
+
 /* Measure a live control.  A zero-size or missing element yields null and
    its lesson is skipped for this tick — the same degrade-to-fewer-callouts
    rule ControlsTutorial has used since v2.3.1205, and the reason the
@@ -124,6 +180,7 @@ function measure(anchors, L, S) {
         bottom: wr.top + wr.height };
       if (okR.bottom < 0 || okR.top > window.innerHeight) return null;
       if (!reachable(el, okR, L.reach)) return null;
+      if (_markTooBig(L, wr)) return null;   /* v2.3.2495 */
       return { left: wr.left, top: wr.top, width: wr.width, height: wr.height, body: wr.body || (anchors[0] && anchors[0].body) };
     }
     /* v2.3.2306: an anchor-optional lesson degrades to a CARD, not to
@@ -141,6 +198,9 @@ function measure(anchors, L, S) {
     if (!r || r.width < 8 || r.height < 8) continue;
     if (r.bottom < 0 || r.top > window.innerHeight) continue;
     if (!reachable(el, r, a.reach)) continue;
+    /* v2.3.2495: `continue`, not `return null` -- an absurd rect is this
+       ANCHOR being wrong, so the next one still deserves its turn. */
+    if (_markTooBig(L, r)) continue;
     return { left: r.left, top: r.top, width: r.width, height: r.height, body: a.body };
   }
   return null;
@@ -252,6 +312,26 @@ function preTutorial(rpg) {
   return true;
 }
 
+/* ── IS THE DASHBOARD ACTUALLY ON SCREEN? ──
+   v2.3.2495.  The finish line for both dashboard lessons below, and it has to
+   be asked per ORIENTATION because the resting state means opposite things:
+   in portrait `bar` mode IS the dashboard (the three-column band -- BAG /
+   EQUIPPED / COMBAT -- is what rest draws, NavRail's `atRest` lights the
+   Dashboard button for exactly that reason), while sideways rest is the WORLD
+   with a single chip on it and the dashboard is a column you open
+   (v2.3.2176: "minimized means minimized").  A single mode test would have
+   credited every landscape player the instant the lesson armed. */
+function _dashShowing() {
+  try {
+    if (dashMinBus.min) return false;
+    const st = dashboardPanelBus.state || {};
+    if (playIsLandscape()) {
+      return st.mode === 'expanded' && dashboardPanelBus.root() === 'dashboard';
+    }
+    return st.mode === 'bar' || dashboardPanelBus.root() === 'dashboard';
+  } catch (_e) { return false; }
+}
+
 /* ── The lessons ──
    `live(rpg)`  — is there anything to teach right now?
    `done(rpg)`  — has the player done it? (checked before `live`, so a
@@ -259,6 +339,45 @@ function preTutorial(rpg) {
    `anchors`    — live-DOM targets, first REACHABLE one wins, each with the
                   wording that fits what it is pointing at. */
 const LESSONS = [
+  {
+    /* ═══ v2.3.2495: THE FIRST JOIN STARTS WITH THE WORLD, NOT THE BAND ═══
+       Owner: on the first join after making a character the dashboard should
+       start FOLDED, with an attention ring on the fold chip, and the tutorial
+       then resumes.
+
+       Two halves, and only one of them is here.  The FOLD itself is a one-shot
+       in the frame loop below (it needs `rpg`, which a lesson's `live` gets but
+       cannot act on).  This is the ring: the chip is the only control left on
+       the band when it is folded, and a band that folded itself without saying
+       how to get it back would be the exact trap dashMinBus's own note guards
+       against -- "navigation cannot hide with the thing it escapes".
+
+       FIRST IN THE ARRAY because the marks show one at a time in order, so
+       position is what makes the rest of the tutorial wait: `move` and
+       everything behind it resume the moment this one is answered.  It cannot
+       strand anybody -- a lesson that fails to measure is SKIPPED rather than
+       blocking (the file's degrade rule), and this one stops measuring the
+       instant the band is open because the selector carries the folded state.
+
+       THE SELECTOR CARRIES THE STATE ON PURPOSE.  `[data-dash-fold="min"]`
+       matches only while folded; the same chip is `="open"` once it is not.
+       So the mark cannot survive the tap that answers it even for the 80ms
+       until the tracker notices, and the two anchors are simply the portrait
+       chip (a word pill reading OPEN, v2.3.2266) and the landscape one (the
+       34px chip, v2.3.2171).  Untransformed, both -- TRAPS 65 does not bite
+       here. */
+    id: 'openDash',
+    shape: 'rect',
+    anchors: [
+      { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
+        body: 'Your bag, your gear and your stats live down here. Tap OPEN.' },
+      { sel: '[data-land-fold="min"]', reach: '[data-land-fold]',
+        body: 'Your bag, your gear and your stats live in here. Tap the arrow.' },
+    ],
+    label: 'Your dashboard',
+    live: function (rpg) { return preTutorial(rpg); },
+    done: null,     /* watched live -- see the fold tracker below */
+  },
   {
     /* ═══ v2.3.2130: DRAG TO MOVE ═══
        The most basic control in the game, and until now it was taught in
@@ -318,7 +437,21 @@ const LESSONS = [
        found, and because the dead names are still tempting.) */
     anchors: [
       { sel: '[data-tut="coach-gear"]', body: 'Tap it, then Equip.' },
-      { sel: '.bt-navrail [aria-label="Bag"]', body: 'Open your bag and equip your gear.' },
+      /* ═══ v2.3.2495: THE FALLBACK POINTED AT A BUTTON THAT NO LONGER EXISTS ═══
+         `.bt-navrail [aria-label="Bag"]` has matched nothing since v2.3.1654
+         took Bag out of the rail (the rail is Dashboard / Character / Quests /
+         Skills / More), so whenever the bag cell was not on screen this lesson
+         measured nothing and was skipped in silence -- the dead-name trap this
+         file's own comment two lines up warns about, still live two lines
+         down.  It matters more now that a first join starts FOLDED: with the
+         band folded the cell is not rendered at all, so the fallback IS the
+         path.  The fold chip is the honest answer -- it is what reveals the
+         bag -- and its selector carries the folded state, so it only ever
+         measures when that is really the problem. */
+      { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
+        body: 'Open your dashboard and equip your gear.' },
+      { sel: '[data-land-fold="min"]', reach: '[data-land-fold]',
+        body: 'Open your dashboard and equip your gear.' },
     ],
     label: 'Gear up',
     /* tut_1 hands over a Copper Great Sword and a Pine Shield.  They land
@@ -333,6 +466,53 @@ const LESSONS = [
     },
   },
   {
+    /* ═══ v2.3.2495: AFTER THE TURN-IN, SAY WHERE THE REWARD WENT ═══
+       Owner: once tut_1 is turned in, highlight the Dashboard nav button -- or
+       the fold chip if the dashboard is folded.
+
+       The reward for tut_1 is a bow and a staff, and they land in the STASHES
+       rather than in your hands (quest_reward_stashed).  The lesson right
+       behind this one, `equipAll`, rings the bag CELL -- which is only on
+       screen if the player is already looking at the dashboard.  So this is
+       the step before it: get them to the screen the reward is on, then the
+       next mark points at the reward.
+
+       THE ANCHOR ORDER IS THE OWNER'S "or".  `[data-dash-fold="min"]` matches
+       only while the band is folded, so a folded dashboard rings the chip that
+       opens it and an open one falls through to the rail's Dashboard button
+       (`[data-nav="dashboard"]`, NavRail) -- one lesson, and the DOM decides
+       which control is the right thing to point at.
+
+       ARMED, not evaluated as a `done()`.  A `done()` runs for every lesson on
+       every tick regardless of `live`, so it would have written this one
+       finished-forever the first time anybody glanced at the dashboard, hours
+       before the turn-in it is about -- v2.3.1809's cycle bug exactly.  It is
+       armed when it first goes LIVE and credited from that moment on (see the
+       tracker below), which also means a player who already has the dashboard
+       in front of them is credited instantly and never shown a mark pointing
+       at what they are looking at. */
+    id: 'dashAfterTurnIn',
+    shape: 'rect',
+    anchors: [
+      { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
+        body: 'Mayor Bro paid you in gear. Tap OPEN to find it.' },
+      { sel: '[data-land-fold="min"]', reach: '[data-land-fold]',
+        body: 'Mayor Bro paid you in gear. Open the dashboard to find it.' },
+      { sel: '[data-nav="dashboard"]', reach: '[data-nav="dashboard"]',
+        body: 'Mayor Bro paid you in gear. Tap Dashboard to find it.' },
+    ],
+    label: 'Your reward',
+    /* The same `tut_1 === 'turnedIn'` gate equipAll uses, and the same stash
+       test, so the two cannot disagree about when the weapons arrived -- and
+       once they are equipped there is nothing to go and look at. */
+    live: function (rpg) {
+      const q = rpg._quests || {};
+      if (q.tut_1 !== 'turnedIn') return false;
+      return (rpg.weaponStash || []).length > 0;
+    },
+    done: null,     /* watched live -- see the dashboard tracker below */
+  },
+  {
     /* ═══ v2.3.1801: THE TURN-IN HANDS YOU TWO MORE WEAPONS ═══
        Owner: "When player turns in quest and receives bow and staff there
        should be a tutorial requiring you equip them all and double tap the
@@ -344,7 +524,12 @@ const LESSONS = [
     shape: 'rect',
     anchors: [
       { sel: '[data-tut="coach-gear"]', body: 'Equip the bow and the staff too.' },
-      { sel: '.bt-navrail [aria-label="Bag"]', body: 'Open your bag — equip the bow and the staff.' },
+      /* v2.3.2495: same dead `aria-label="Bag"` fallback as the gear lesson,
+         replaced the same way -- see the note there. */
+      { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
+        body: 'Open your dashboard — equip the bow and the staff.' },
+      { sel: '[data-land-fold="min"]', reach: '[data-land-fold]',
+        body: 'Open your dashboard — equip the bow and the staff.' },
     ],
     label: 'Three weapons',
     /* Only after the turn-in that pays them.  Before that a leftover in the
@@ -412,10 +597,29 @@ const LESSONS = [
     /* The gesture is ON the attack button now, so the mark points there and
        needs no fallback -- the shield BUTTON's own coming-and-going was the
        only reason the old lesson carried two anchors. */
+    /* ═══ v2.3.2495: THE FALLBACK WAS THE SCREEN-SIZED OVAL ═══
+       The comment above has said "needs no fallback" since v2.3.2269 and the
+       array carried one anyway: `[data-joyzone="R"]`, the fixed right HALF of
+       the screen (position:fixed; right:0; top:0; width:50%; height:100% -
+       sheet).  Measured with shape:'circle' that is a ~195x600 rect at
+       border-radius 50%, plus the pulse's scale -- the oval the owner sees
+       across the play field right after the weapon swap.
+
+       It was reached, not hypothetical: measure() runs BEFORE the disc hold is
+       reconciled (the hold block below is at the end of the walk), so on the
+       tick this lesson first goes live the disc is still pointerEvents:'none',
+       elementsFromPoint answers the zone underneath, anchor #1 fails
+       reachable(), and anchor #2 -- the zone -- measures perfectly.
+
+       Dropping it costs nothing the hold does not already cover: v2.3.2246
+       takes the disc hold the moment a lesson is found LIVE, so the disc is
+       pressable (and so anchor #1 is reachable) from the very next tick, and a
+       lesson that measures null for one tick is skipped for one tick.  The
+       size guard at the top of this file is the belt to this braces: even if
+       some future anchor resolves to a layer this size, it can no longer be
+       drawn. */
     anchors: [{ sel: '.bt-rjoy-base', reach: '.bt-rjoy-base',
-                body: 'With the bow or staff out, double-tap Attack to raise your shield.' },
-              { sel: '[data-joyzone="R"]', reach: '[data-joyzone="R"]',
-                body: 'Double-tap the right side to raise your shield.' }],
+                body: 'With the bow or staff out, double-tap Attack to raise your shield.' }],
     label: 'Guard with the bow',
     /* Bow or staff IN HAND, a shield to raise, and the turn-in that paid them
        -- the same `tut_1 === 'turnedIn'` gate equipAll uses, so the two cannot
@@ -592,6 +796,11 @@ export function QuestCoach(props) {
   /* v2.3.2306: WHEN the chat lesson was first shown, so its tracker can tell a
      tap that answers it from one that happened at any point beforehand. */
   const chatArmed = React.useRef(0);
+  /* v2.3.2495: the two dashboard lessons' arm stamps, and the first-join fold.
+     `fold` is the one-shot that closed the band -- a REF, so it can only ever
+     happen once per mount however many frames run, and a player who opens the
+     band straight back up is never folded again. */
+  const dashArmed = React.useRef({ open: 0, nav: 0, fold: false });
   const blockRef = React.useRef({ ms: 0, sectors: 0, last: 0 });
   /* v2.3.2130: how far the bro has actually walked, in world px.  A ref for
      the same reason as the others -- it ticks every frame and only its
@@ -646,6 +855,42 @@ export function QuestCoach(props) {
             done.cycle = true; saveDone(done);
           }
         }
+      }
+      /* ═══ v2.3.2495: THE FIRST JOIN STARTS FOLDED ═══
+         Owner: on the first join after making a character the dashboard should
+         start folded, with the ring on the fold chip, and the tutorial then
+         resumes.
+
+         `preTutorial(rpg)` IS the first-join fact and no new flag is invented
+         for it: no tut quest has any record and the bro is level 3 or under,
+         which is the same test the `move` lesson has used since v2.3.2130.
+         Paired with the lesson's own per-browser completion record, the two
+         together mean "a brand-new bro who has not yet been shown this", so a
+         veteran on a new phone is folded at most once and a player who has
+         already answered the lesson is never folded again.
+
+         THROUGH THE BUS, not by writing localStorage or touching the band.
+         dashMinBus.set is the one road: it stamps the preference, tells both
+         subscribers, and pokes the window `resize` that BroTown's canvas
+         geometry already listens for.  Setting the key by hand would fold the
+         band without resizing the world and leave a black strip where the
+         columns row was -- the exact failure that bus note describes.
+
+         GUARDED BY A REF so it is a ONE-SHOT.  This runs every frame; without
+         it, a player who folded... unfolded... would be re-folded 60 times a
+         second and the band would be unclosable.  (It is also why this does
+         not re-run when `done.openDash` flips: the ref is already spent.) */
+      if (rpg && !done.openDash && !dashArmed.current.fold && preTutorial(rpg)) {
+        dashArmed.current.fold = true;
+        try { dashMinBus.set(true); } catch (_e) { /* a lesson must never break the frame */ }
+      }
+      /* v2.3.2495: and the answer to it -- the band is open again.  Armed
+         (`open` is stamped when the mark first measures) for the reason
+         v2.3.1809 records: the band is open by default, so an unarmed test
+         would have written this lesson finished before it was ever shown. */
+      if (!done.openDash && dashArmed.current.open) {
+        try { if (!dashMinBus.min) { done.openDash = true; saveDone(done); } }
+        catch (_e) { /* as above */ }
       }
       /* The special sets a permanent flag the moment one actually FIRES —
          specialAttack() writes it only after every refusal gate (dead,
@@ -750,6 +995,20 @@ export function QuestCoach(props) {
 
       /* ── pick and place the mark, ~12x a second ── */
       if ((tick++ % 5) !== 0) return;
+      /* ═══ v2.3.2495: THIS ONE TRACKER IS THROTTLED, AND ON PURPOSE ═══
+         Every watcher above runs at frame rate because they read plain object
+         fields, which is free.  This one does not: _dashShowing() asks
+         playIsLandscape(), which measures the shell element -- a LAYOUT read,
+         in a rAF loop, on the platform whose compositor this file already has
+         an incident about (see the pulse note below).  The fact it watches is
+         a UI mode change, so 12Hz is not merely enough, it is more resolution
+         than the thing being watched has.
+         Armed when the lesson goes LIVE rather than when its mark is shown, so
+         a player already looking at the dashboard is credited on that same
+         tick and never sees a mark pointing at what is in front of them. */
+      if (!done.dashAfterTurnIn && dashArmed.current.nav && _dashShowing()) {
+        done.dashAfterTurnIn = true; saveDone(done);
+      }
       if (!rpg || (!inTutorial(rpg) && !preTutorial(rpg))) {
         if (viewRef.current) { viewRef.current = null; setView(null); }
         /* v2.3.2246: the coach retired — let go of the discs. */
@@ -804,6 +1063,11 @@ export function QuestCoach(props) {
           const sd = discSideFor(a.sel);
           if (sd && wantSides.indexOf(sd) < 0) wantSides.push(sd);
         }
+        /* v2.3.2495: the post-turn-in lesson arms on LIVE, not on shown -- see
+           its note.  The walk reaches every live lesson up to the one that
+           measures, and this one sits ahead of the mark it leads into
+           (equipAll), so it is always reached while it matters. */
+        if (L.id === 'dashAfterTurnIn' && !dashArmed.current.nav) dashArmed.current.nav = now;
         /* v2.3.2306: the lesson and the live state go in too -- a
            world-anchored lesson (chatTap) brings its own rect. */
         const rect = measure(L.anchors, L, stateRef && stateRef.current);
@@ -812,6 +1076,9 @@ export function QuestCoach(props) {
         /* Arm the cycle counter the first time its mark is chosen, seeded with
            the slot the player is on so that one does not count as a swap. */
         if (L.id === 'chatTap' && !chatArmed.current) chatArmed.current = Date.now();
+        /* v2.3.2495: the fold lesson arms when it is SHOWN, because "the band
+           is open" is its finish line and the band is open by default. */
+        if (L.id === 'openDash' && !dashArmed.current.open) dashArmed.current.open = Date.now();
         if (L.id === 'cycle' && !cycleArmed.current) {
           seenSlots.current = Object.create(null);
           if (rpg) seenSlots.current[rpg.activeSlot || 'melee'] = true;
@@ -889,6 +1156,21 @@ export function QuestCoach(props) {
                     that finished from one that never opened, which is exactly
                     the failure the pre-tutorial gate is fixing. */
                  walkedPx: Math.round(walkRef.current.px), needPx: MOVE_PX,
+                 /* ═══ v2.3.2495: THE REFUSALS ARE COUNTED ═══
+                    A mark refused for being absurdly large looks, from outside,
+                    exactly like a lesson that never went live -- TRAPS 41's
+                    silent skip.  So the guard reports: `oversize.n` is how many
+                    times it has fired this session and the rest is the last
+                    one's lesson and rect, which is what a test asserts on. */
+                 oversize: Object.assign({}, _oversize),
+                 /* The dashboard lessons' two halves, same shape as chatArmed:
+                    when each armed, whether the first-join fold has been spent,
+                    and whether the finish line is true right now. */
+                 dash: { openArmed: dashArmed.current.open,
+                         navArmed: dashArmed.current.nav,
+                         folded: (function () { try { return !!dashMinBus.min; } catch (_e) { return null; } })(),
+                         foldSpent: !!dashArmed.current.fold,
+                         showing: _dashShowing() },
                  gate: (function () {
                    const r = (stateRef && stateRef.current && stateRef.current.rpg) || null;
                    if (!r) return 'none';

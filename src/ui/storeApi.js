@@ -1,0 +1,106 @@
+/* ═══ v2.3.2476: THE STORE'S ONE DOOR TO THE WORKER ═══
+ *
+ * Every store call needs the same three things -- the API base, the room
+ * the session actually belongs to, and this session's own economy token --
+ * and there are now three callers (the item card's Sell button, the Store
+ * panel, and the panel's own refresh).  The Exchange grew its copy of this
+ * plumbing inline three times over; one module instead.
+ *
+ * WHY THE ROOM IS IN EVERY URL (v2.3.1118, ExchangePanel's note): escrow
+ * mutates the wallet held by ONE Durable Object.  A `?room=qa1` tester's
+ * listing has to land in the DO that holds their blob, not brotown-1's.
+ *
+ * WHY THE TOKEN IS IN EVERY MUTATING CALL (v2.3.1178): player ids are
+ * public -- they are broadcast on join -- so "is that player online" was
+ * never authentication.  The worker validates the x-bt-auth header against
+ * the live session of the id the request claims to act for, and that token
+ * only ever reaches the one socket it was minted for.
+ *
+ * Every function here resolves to the worker's own answer object, or to a
+ * `{ ok: false, error }` of our own if the network never got there.  No
+ * caller ever applies a credit itself: the goods and the gold arrive on
+ * the authoritative player_state echo, which is the whole point of the
+ * server-settled store (handoff rule zero). */
+
+import { BT_API_BASE } from '@/networking/index.js';
+
+function S() {
+  try { return window._gameState && window._gameState.current; } catch (e) { return null; }
+}
+
+function room() {
+  try { return encodeURIComponent((S() && S()._currentRoom) || 'brotown-1'); } catch (e) { return 'brotown-1'; }
+}
+
+/* Is this worker running a store at all?  Read straight off _serverCaps so
+   the caps-audit suite can see the gate (server/test/caps-audit.test.mjs).
+   Against an older worker there is no /api/store route, so an ungated
+   button would post into a 404 -- see join.js's note on the flag. */
+export function storeEnabled() {
+  const s = S();
+  return !!(s && s._serverCaps && s._serverCaps.store);
+}
+
+export function storeMyId() {
+  const s = S();
+  return (s && s.myId) || null;
+}
+
+function headers() {
+  const h = { 'Content-Type': 'application/json' };
+  const s = S();
+  if (s && s._httpToken) h['x-bt-auth'] = s._httpToken;
+  return h;
+}
+
+async function post(path, body) {
+  try {
+    const res = await fetch(BT_API_BASE + '/api/store' + path + '?room=' + room(), {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ ...body, playerId: storeMyId() }),
+    });
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: 'No answer from the store' };
+  }
+}
+
+export async function storeBrowse(cat, cursor, limit) {
+  try {
+    const q = '?room=' + room()
+      + (cat && cat !== 'all' ? '&cat=' + encodeURIComponent(cat) : '')
+      + (cursor ? '&cursor=' + encodeURIComponent(cursor) : '')
+      + (limit ? '&limit=' + limit : '');
+    const res = await fetch(BT_API_BASE + '/api/store/browse' + q);
+    return await res.json();
+  } catch (e) { return { ok: false, error: 'No answer from the store' }; }
+}
+
+export async function storeMine() {
+  try {
+    const res = await fetch(BT_API_BASE + '/api/store/mine?room=' + room()
+      + '&playerId=' + encodeURIComponent(storeMyId() || ''));
+    return await res.json();
+  } catch (e) { return { ok: false, error: 'No answer from the store' }; }
+}
+
+/* kind 'item'  -> { invKey, qty, price }
+   kind 'weapon'-> { stashIndex, price }
+   The worker takes the goods from ITS OWN copy of your bag or stash; what
+   goes up here only names which one (handoff rule 16). */
+export const storeList = (body) => post('/list', body);
+export const storeBuy = (listingId) => post('/buy', { listingId });
+export const storeBid = (listingId, amount) => post('/bid', { listingId, amount });
+export const storeAccept = (listingId) => post('/accept', { listingId });
+
+export async function storeCancel(listingId) {
+  try {
+    const res = await fetch(BT_API_BASE + '/api/store/cancel?room=' + room()
+      + '&id=' + encodeURIComponent(listingId)
+      + '&playerId=' + encodeURIComponent(storeMyId() || ''), {
+      method: 'DELETE',
+      headers: (S() && S()._httpToken) ? { 'x-bt-auth': S()._httpToken } : undefined,
+    });
+    return await res.json();
+  } catch (e) { return { ok: false, error: 'No answer from the store' }; }
+}

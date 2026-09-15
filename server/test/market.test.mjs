@@ -382,5 +382,410 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
     { stash: vP.weaponStash.length, inbox: vInbox.length });
 }
 
+/* ════════════════════════════════════════════════════════════════════
+ * v2.3.2475 — THE GENERAL STORE (store.js), phase 1
+ *
+ * A second, per-LISTING surface beside the bucket order book above: one
+ * seller, one pile of goods, one ask price, at most one live bid.  Lives
+ * in this file because it shares every primitive the order book settles
+ * through (_creditPlayer, _escrowTakeItem, _escrowDebitGold, the oplog)
+ * and because the two must be shown NOT to interfere.
+ *
+ * Checks:
+ *   S1.  Listing escrows from the SERVER's own copy — a stackable through
+ *        _escrowTakeItem, a weapon by stash index — and every displayed
+ *        field is derived here, never taken from the request (market.js:66-69
+ *        is the hole this avoids).
+ *   S2.  Buy-now: buyer debited, goods delivered, seller paid, record gone.
+ *   S3.  Bids escrow gold; an outbid refunds the previous bidder exactly
+ *        once; a bid at or above the ask is a purchase.
+ *   S4.  The seller accepts the top bid — settles at the BID price, and
+ *        the already-escrowed gold is not charged twice.
+ *   S5.  Cancel and lazy expiry both return the goods AND refund the live
+ *        bid (rule 12: no alarms).
+ *   S6.  An offline counterparty settles into the mail (inbox:<pid>).
+ *   S7.  Double settlement is a no-op — the opIds are the wall (rule 5).
+ *   S8.  Crash convergence: an in-flight sale marker with its payment
+ *        stamp RESUMES on rebuild; one without it re-lists; a bid marker
+ *        whose debit never landed is dropped; and (v2.3.2506) a cancel or
+ *        an expiry that died between its refunds and its delete is
+ *        FINISHED on the next wake instead of going back on the shelf.
+ *   S9.  Browse pages, and the page is bounded (rule 9).
+ *   S10. HTTP surface: `settled: true` on every mutating response, and
+ *        the session-token gate (v2.3.1178) rejects a forged caller.
+ *   S11. Guards: your own listing, the per-player cap, price bounds, an
+ *        Object.prototype key, and goods you do not hold.
+ * ════════════════════════════════════════════════════════════════════ */
+{
+  /* Its own storage mock, honouring `limit`/`startAfter` — the rebuild
+     pages deliberately (an unbounded list() holds the room's input gate,
+     handoff rule 9 / v2.3.2438), and a mock that ignores paging would let
+     that regress silently. */
+  function makeStoreState() {
+    const store = new Map();
+    return {
+      storage: {
+        get: async (k) => store.get(k),
+        put: async (k, v) => { store.set(k, v); },
+        list: async (opts) => {
+          const keys = [...store.keys()].filter((k) => !opts?.prefix || k.startsWith(opts.prefix)).sort();
+          const out = new Map();
+          for (const k of keys) {
+            if (opts?.startAfter && k <= opts.startAfter) continue;
+            if (opts?.limit && out.size >= opts.limit) break;
+            out.set(k, store.get(k));
+          }
+          return out;
+        },
+        delete: async (k) => { store.delete(k); },
+      },
+      getWebSockets: () => [],
+      acceptWebSocket: () => {},
+      _store: store,
+    };
+  }
+
+  const st = makeStoreState();
+  const shop = new GameRoom(st, mockEnv);
+  const sJoin = async (ws, id, name) => {
+    shop.sessions.set(ws, { id: null, name: name || 'T', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+    await shop.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: name || 'T', phrase: 'p-' + id, data: { x: 0, y: 0, z: 'town' } }));
+  };
+  const wsSel = fakeWs('st-seller'); const wsBuy = fakeWs('st-buyer'); const wsOth = fakeWs('st-other');
+  await sJoin(wsSel, 'bp_st_sell', 'Sella');
+  await sJoin(wsBuy, 'bp_st_buy', 'Buya');
+  await sJoin(wsOth, 'bp_st_oth', 'Otha');
+  const SEL = shop.playerState['bp_st_sell'];
+  const BUY = shop.playerState['bp_st_buy'];
+  const OTH = shop.playerState['bp_st_oth'];
+  SEL.coins = 0; BUY.coins = 1000; OTH.coins = 1000;
+  SEL.inventory = { slime_gel: 5, manaShard: 2, ore_iron: 3 };
+  SEL.weaponStash = [{ name: 'Frost Bow', type: 'bow', tier: 'elemental', tierMult: 1.25, element1: 'frost', quality: 'rare', hardness: 2, temper: 10 }];
+  await shop._stEnsureIndex();
+
+  // ── S1. listing escrows the SERVER's copy; display is server-derived ──
+  const listItem = await shop._stCreateListing({
+    playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 2, price: 50,
+    // A modified client's lies, all ignored: the store reads its own copy.
+    cat: 'weapon', disp: { name: 'Godly Blade' }, sellerName: 'NotSella',
+  });
+  check('store: stackable listed', listItem.ok === true && listItem.settled === true, listItem);
+  check('store: the stack left the seller inventory at listing', SEL.inventory.slime_gel === 3, SEL.inventory);
+  check('store: the listed item is categorised by the SERVER (crafting, not the claimed weapon)',
+    listItem.listing.cat === 'crafting' && listItem.listing.disp.name === 'slime_gel', listItem.listing);
+
+  const listPot = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'manaShard', qty: 1, price: 30 });
+  check('store: a shop consumable files under potion, like the bag chip does',
+    listPot.ok === true && listPot.listing.cat === 'potion', listPot.listing);
+
+  const listWpn = await shop._stCreateListing({
+    playerId: 'bp_st_sell', kind: 'weapon', stashIndex: 0, price: 400,
+    item: { name: 'Forged Lie', tierMult: 8 },   // rule 16: ignored
+  });
+  check('store: weapon listed out of the server stash', listWpn.ok === true && SEL.weaponStash.length === 0, { r: listWpn, stash: SEL.weaponStash });
+  check('store: the weapon card is read off the escrowed blob, not the request',
+    listWpn.listing.disp.name === 'Frost Bow' && listWpn.listing.disp.tierMult === 1.25
+    && listWpn.listing.disp.element1 === 'frost' && listWpn.listing.cat === 'weapon', listWpn.listing);
+  check('store: the escrowed weapon blob is never put on the wire', listWpn.listing.weapon === undefined, listWpn.listing);
+  check('store: the escrow record holds the weapon', !!st._store.get('store_listing:' + listWpn.listing.id).weapon);
+
+  // ── S2. buy now ──
+  const bought = await shop._stBuyNow(listWpn.listing.id, 'bp_st_buy');
+  check('store: buy-now settles', bought.ok === true && bought.bought === true && bought.price === 400, bought);
+  check('store: buyer paid', BUY.coins === 600, BUY.coins);
+  check('store: buyer received the weapon', BUY.weaponStash.some((w) => w.name === 'Frost Bow'), BUY.weaponStash);
+  check('store: seller paid the ask', SEL.coins === 400, SEL.coins);
+  check('store: the listing record is deleted LAST and is gone', !st._store.has('store_listing:' + listWpn.listing.id));
+  check('store: both settlement legs are stamped', st._store.has('oplog:store:' + listWpn.listing.id + ':goods') && st._store.has('oplog:store:' + listWpn.listing.id + ':gold'));
+  const soldNote = wsSel.sent.filter((m) => m.type === 'inbox_delivered').pop();
+  check('store: the seller is told, through the mail the economy already has',
+    !!soldNote && soldNote.payload.entries.some((e) => e.source === 'market' && /sold to Buya for 400/.test(e.note)), soldNote && soldNote.payload);
+
+  // ── S7. double settlement is a no-op ──
+  const coinsBefore = SEL.coins; const stashBefore = BUY.weaponStash.length;
+  await shop._stSettle({ id: listWpn.listing.id, sellerId: 'bp_st_sell', kind: 'weapon', weapon: { name: 'Frost Bow' }, qty: 1, disp: { name: 'Frost Bow' }, topBid: null }, 'bp_st_buy', 'Buya', 400, null);
+  check('store: replaying a settlement pays nobody twice (rule 5)',
+    SEL.coins === coinsBefore && BUY.weaponStash.length === stashBefore, { coins: SEL.coins, stash: BUY.weaponStash.length });
+
+  // ── S3. bids ──
+  const auction = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'ore_iron', qty: 3, price: 300 });
+  const bid1 = await shop._stPlaceBid(auction.listing.id, 'bp_st_buy', 100);
+  check('store: a bid escrows the bidder gold', bid1.ok === true && BUY.coins === 500, { bid1, coins: BUY.coins });
+  const lowBid = await shop._stPlaceBid(auction.listing.id, 'bp_st_oth', 100);
+  check('store: a bid must beat the standing one', lowBid.ok === false, lowBid);
+  const bid2 = await shop._stPlaceBid(auction.listing.id, 'bp_st_oth', 150);
+  check('store: a higher bid takes the top', bid2.ok === true && OTH.coins === 850, { bid2, coins: OTH.coins });
+  check('store: the outbid player is refunded, exactly once', BUY.coins === 600, BUY.coins);
+  await shop._stPlaceBid(auction.listing.id, 'bp_st_oth', 160);   // raise own bid
+  check('store: raising your own bid refunds the earlier one', OTH.coins === 840, OTH.coins);
+  const ownBid = await shop._stPlaceBid(auction.listing.id, 'bp_st_sell', 200);
+  check('store: you cannot bid on your own listing', ownBid.ok === false, ownBid);
+
+  // ── S4. the seller accepts ──
+  const notSeller = await shop._stAcceptBid(auction.listing.id, 'bp_st_buy');
+  check('store: only the seller can accept a bid', notSeller.ok === false, notSeller);
+  const sellerCoinsPre = SEL.coins; const othCoinsPre = OTH.coins;
+  const accepted = await shop._stAcceptBid(auction.listing.id, 'bp_st_sell');
+  check('store: accept settles at the BID price', accepted.ok === true && accepted.price === 160, accepted);
+  check('store: the seller is paid the bid', SEL.coins === sellerCoinsPre + 160, SEL.coins);
+  check('store: the winning bidder is NOT charged twice (the bid was the escrow)', OTH.coins === othCoinsPre, OTH.coins);
+  check('store: the winner receives the goods', OTH.inventory.ore_iron === 3, OTH.inventory);
+  check('store: the listing is gone', !st._store.has('store_listing:' + auction.listing.id));
+
+  // ── S3b. a bid at or above the ask is simply a purchase ──
+  SEL.inventory.slime_gel = 5;
+  const cheap = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 20 });
+  const overBid = await shop._stPlaceBid(cheap.listing.id, 'bp_st_buy', 25);
+  check('store: a bid that reaches the ask buys it outright at the ask',
+    overBid.ok === true && overBid.bought === true && overBid.price === 20, overBid);
+
+  // ── S5. cancel refunds goods AND the live bid ──
+  const toCancel = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 2, price: 500 });
+  const gelBefore = SEL.inventory.slime_gel;
+  await shop._stPlaceBid(toCancel.listing.id, 'bp_st_buy', 90);
+  const buyCoinsPre = BUY.coins;
+  const cxl = await shop._stCancel(toCancel.listing.id, 'bp_st_sell');
+  check('store: cancel returns the goods', cxl.ok === true && SEL.inventory.slime_gel === gelBefore + 2, { cxl, inv: SEL.inventory });
+  check('store: cancel refunds the standing bid', BUY.coins === buyCoinsPre + 90, BUY.coins);
+  const notMine = await shop._stCancel('nope', 'bp_st_sell');
+  check('store: cancelling a listing that is gone fails cleanly', notMine.ok === false, notMine);
+
+  // ── S5b. lazy expiry (rule 12: no alarms) ──
+  const willExpire = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 500 });
+  await shop._stPlaceBid(willExpire.listing.id, 'bp_st_buy', 40);
+  const expGel = SEL.inventory.slime_gel; const expCoins = BUY.coins;
+  const expRec = shop._stIndex.get(willExpire.listing.id);
+  expRec.expiresAt = Date.now() - 1;
+  shop._stLastSweep = 0;
+  await shop._stSweep();
+  check('store: expiry returns the goods to the seller', SEL.inventory.slime_gel === expGel + 1, SEL.inventory);
+  check('store: expiry refunds the standing bid', BUY.coins === expCoins + 40, BUY.coins);
+  check('store: the expired listing is deleted', !st._store.has('store_listing:' + willExpire.listing.id));
+
+  // ── S6. an offline counterparty settles into the mail ──
+  const offSell = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 70 });
+  const sellerPs = shop.playerState['bp_st_sell'];
+  delete shop.playerState['bp_st_sell'];          // seller logs off mid-listing
+  const offBuy = await shop._stBuyNow(offSell.listing.id, 'bp_st_buy');
+  const sellerMail = st._store.get('inbox:bp_st_sell') || [];
+  check('store: an offline seller is paid into the mail',
+    offBuy.ok === true && sellerMail.some((e) => e.kind === 'gold' && e.payload.amount === 70 && e.source === 'market'), sellerMail);
+  shop.playerState['bp_st_sell'] = sellerPs;
+
+  // ── S8. crash convergence ──
+  // (a) a sale marker whose payment landed RESUMES on the next wake.
+  SEL.inventory.slime_gel = 4;
+  const crashA = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 60 });
+  {
+    const rec = st._store.get('store_listing:' + crashA.listing.id);
+    rec.sale = { buyerId: 'bp_st_buy', buyerName: 'Buya', price: 60, paid: false, bidSeq: null, at: Date.now() };
+    st._store.set('store_listing:' + crashA.listing.id, rec);
+    st._store.set('oplog:store:' + crashA.listing.id + ':pay', Date.now());   // the debit landed
+  }
+  const sellCoinsPre = SEL.coins; const buyGelPre = BUY.inventory ? (BUY.inventory.slime_gel || 0) : 0;
+  const room5 = new GameRoom(st, mockEnv);
+  room5.playerState = shop.playerState;   // same live players
+  await room5._stEnsureIndex();
+  check('store: a paid-for sale interrupted by a restart FINISHES on the next wake',
+    SEL.coins === sellCoinsPre + 60 && (BUY.inventory.slime_gel || 0) === buyGelPre + 1
+    && !st._store.has('store_listing:' + crashA.listing.id),
+    { coins: SEL.coins, inv: BUY.inventory });
+
+  // (b) a sale marker with no payment stamp goes back on the shelf.
+  const crashB = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 65 });
+  {
+    const rec = st._store.get('store_listing:' + crashB.listing.id);
+    rec.sale = { buyerId: 'bp_st_buy', buyerName: 'Buya', price: 65, paid: false, bidSeq: null, at: Date.now() };
+    st._store.set('store_listing:' + crashB.listing.id, rec);
+  }
+  const room6 = new GameRoom(st, mockEnv);
+  room6.playerState = shop.playerState;
+  await room6._stEnsureIndex();
+  check('store: a sale whose money never moved is re-listed, not lost',
+    room6._stIndex.has(crashB.listing.id) && !room6._stIndex.get(crashB.listing.id).sale
+    && !st._store.get('store_listing:' + crashB.listing.id).sale,
+    st._store.get('store_listing:' + crashB.listing.id));
+
+  // (c) a bid marker whose debit never landed is dropped; one that did is promoted.
+  const crashC = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 500 });
+  {
+    const rec = st._store.get('store_listing:' + crashC.listing.id);
+    rec.pendBid = { seq: 1, bidderId: 'bp_st_buy', bidderName: 'Buya', amount: 55, at: Date.now() };
+    st._store.set('store_listing:' + crashC.listing.id, rec);
+  }
+  const room7 = new GameRoom(st, mockEnv);
+  room7.playerState = shop.playerState;
+  await room7._stEnsureIndex();
+  check('store: a bid whose gold was never taken is dropped, not owed',
+    room7._stIndex.get(crashC.listing.id).topBid === null && !st._store.get('store_listing:' + crashC.listing.id).pendBid,
+    st._store.get('store_listing:' + crashC.listing.id));
+  {
+    const rec = st._store.get('store_listing:' + crashC.listing.id);
+    rec.pendBid = { seq: 2, bidderId: 'bp_st_buy', bidderName: 'Buya', amount: 55, at: Date.now() };
+    st._store.set('store_listing:' + crashC.listing.id, rec);
+    st._store.set('oplog:store:' + crashC.listing.id + ':bid:2', Date.now());   // the debit landed
+  }
+  const room8 = new GameRoom(st, mockEnv);
+  room8.playerState = shop.playerState;
+  await room8._stEnsureIndex();
+  check('store: a bid whose gold WAS taken is promoted on the next wake',
+    room8._stIndex.get(crashC.listing.id).topBid?.amount === 55,
+    st._store.get('store_listing:' + crashC.listing.id));
+  await room8._stCancel(crashC.listing.id, 'bp_st_sell');
+
+  /* (d)+(e) v2.3.2506 — the cancel/expiry crash window.
+     `_stRelease` refunds the bid, mails the goods home, then deletes the
+     record: three separate disk writes, and the worker restarts on every
+     merge to main that touches server/**.  Shipped without a marker, a
+     death between the refunds and the delete left a record carrying NO
+     in-flight flag, so the rebuild re-listed it holding goods it had
+     already returned and a bid it had already refunded — the item could
+     then be bought a second time, and an accepted stale bid paid the
+     seller gold nobody paid.  Both halves are measured the only way that
+     catches minting: count the goods and the gold in the WHOLE world
+     (live players plus whatever the shelf still holds in escrow) before
+     and after, and demand they match. */
+  const gelInWorld = () => {
+    let n = (SEL.inventory.slime_gel || 0) + (BUY.inventory.slime_gel || 0) + (OTH.inventory.slime_gel || 0);
+    for (const [k, r] of st._store) {
+      if (k.startsWith('store_listing:') && r && r.invKey === 'slime_gel') n += r.qty;
+    }
+    return n;
+  };
+  const goldInWorld = () => {
+    let g = SEL.coins + BUY.coins + OTH.coins;
+    for (const [k, r] of st._store) {
+      if (k.startsWith('store_listing:') && r && r.topBid) g += r.topBid.amount;   // escrowed bids
+    }
+    return g;
+  };
+  const realDelete = st.storage.delete;
+  const dieOnDeleteOf = (id) => {
+    st.storage.delete = async (k) => {
+      if (k === 'store_listing:' + id) throw new Error('simulated restart before the delete');
+      return realDelete(k);
+    };
+  };
+
+  // (d) a seller CANCEL that died before its delete.
+  SEL.inventory.slime_gel = (SEL.inventory.slime_gel || 0) + 2;
+  const gelPreD = gelInWorld(); const goldPreD = goldInWorld();
+  const crashD = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 2, price: 500 });
+  await shop._stPlaceBid(crashD.listing.id, 'bp_st_buy', 90);
+  dieOnDeleteOf(crashD.listing.id);
+  let diedD = false;
+  try { await shop._stCancel(crashD.listing.id, 'bp_st_sell'); } catch { diedD = true; }
+  st.storage.delete = realDelete;
+  check('store: (setup) the cancel refunded and then died before its delete',
+    diedD && st._store.has('store_listing:' + crashD.listing.id), { diedD });
+  const room9 = new GameRoom(st, mockEnv);
+  room9.playerState = shop.playerState;
+  await room9._stEnsureIndex();
+  check('store: a cancel interrupted before its delete does NOT come back on the shelf',
+    !room9._stIndex.has(crashD.listing.id) && !st._store.has('store_listing:' + crashD.listing.id),
+    st._store.get('store_listing:' + crashD.listing.id));
+  check('store: the interrupted cancel mints no item and no gold',
+    gelInWorld() === gelPreD && goldInWorld() === goldPreD,
+    { gel: gelInWorld(), wantGel: gelPreD, gold: goldInWorld(), wantGold: goldPreD });
+  const ghostBuy = await room9._stBuyNow(crashD.listing.id, 'bp_st_buy');
+  check('store: the cancelled listing cannot be bought a second time', ghostBuy.ok === false, ghostBuy);
+
+  // (e) the same window on the EXPIRY path (rule 12 — no alarms, the sweep
+  //     is the only thing that ever resolves these).
+  SEL.inventory.slime_gel = (SEL.inventory.slime_gel || 0) + 1;
+  const gelPreE = gelInWorld(); const goldPreE = goldInWorld();
+  const crashE = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 500 });
+  await shop._stPlaceBid(crashE.listing.id, 'bp_st_buy', 40);
+  shop._stIndex.get(crashE.listing.id).expiresAt = Date.now() - 1;
+  shop._stLastSweep = 0;
+  dieOnDeleteOf(crashE.listing.id);
+  let diedE = false;
+  try { await shop._stSweep(); } catch { diedE = true; }
+  st.storage.delete = realDelete;
+  check('store: (setup) the expiry refunded and then died before its delete',
+    diedE && st._store.has('store_listing:' + crashE.listing.id), { diedE });
+  const room10 = new GameRoom(st, mockEnv);
+  room10.playerState = shop.playerState;
+  await room10._stEnsureIndex();
+  check('store: an expiry interrupted before its delete does NOT come back on the shelf',
+    !room10._stIndex.has(crashE.listing.id) && !st._store.has('store_listing:' + crashE.listing.id),
+    st._store.get('store_listing:' + crashE.listing.id));
+  check('store: the interrupted expiry mints no item and no gold',
+    gelInWorld() === gelPreE && goldInWorld() === goldPreE,
+    { gel: gelInWorld(), wantGel: gelPreE, gold: goldInWorld(), wantGold: goldPreE });
+
+  // ── S9. browse pages ──
+  SEL.inventory.slime_gel = 20;
+  const madeIds = [];
+  for (let i = 0; i < 5; i++) {
+    const r = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10 + i });
+    if (r.ok) madeIds.push(r.listing.id);
+  }
+  const page1 = shop._stBrowse(null, null, 2);
+  check('store: browse returns ONE page, not the whole shelf', page1.listings.length === 2 && !!page1.nextCursor, page1);
+  const page2 = shop._stBrowse(null, page1.nextCursor, 2);
+  check('store: the cursor walks forward without repeating a row',
+    page2.listings.length === 2 && !page2.listings.some((l) => page1.listings.some((p) => p.id === l.id)), { page1: page1.listings.map((l) => l.id), page2: page2.listings.map((l) => l.id) });
+  check('store: the page size is capped', shop._stBrowse(null, null, 9999).listings.length <= 40);
+  const crafting = shop._stBrowse('crafting', null, 40);
+  check('store: browse filters by the same categories the bag chips use',
+    crafting.listings.length > 0 && crafting.listings.every((l) => l.cat === 'crafting'), crafting.listings.map((l) => l.cat));
+  check('store: a category with nothing in it is empty, not everything',
+    shop._stBrowse('armor', null, 40).listings.length === 0);
+
+  // ── S10. HTTP surface + the token gate ──
+  const sreq = (method, path, body, token) => shop.fetch(new Request('https://x' + path, {
+    method,
+    headers: token ? { 'x-bt-auth': token } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  }));
+  const browseRes = await sreq('GET', '/api/store/browse?cat=crafting&limit=3');
+  const browseBody = await browseRes.json();
+  check('store HTTP: browse read shape', browseRes.status === 200 && browseBody.ok === true && Array.isArray(browseBody.listings), browseBody);
+  const forged = await sreq('POST', '/api/store/buy', { playerId: 'bp_st_buy', listingId: madeIds[0] }, 'not-the-token');
+  check('store HTTP: a forged token is rejected (v2.3.1178)', forged.status === 403, await forged.json());
+  const buyRes = await sreq('POST', '/api/store/buy', { playerId: 'bp_st_buy', listingId: madeIds[0] });
+  const buyBody = await buyRes.json();
+  check('store HTTP: buy carries the settled deploy-order flag',
+    buyRes.status === 200 && buyBody.ok === true && buyBody.settled === true, buyBody);
+  const mineRes = await sreq('GET', '/api/store/mine?playerId=bp_st_sell');
+  const mineBody = await mineRes.json();
+  check('store HTTP: a seller can read their own shelf', mineBody.ok === true && mineBody.listings.length > 0, mineBody);
+  const cxlRes2 = await sreq('DELETE', '/api/store/cancel?id=' + madeIds[1] + '&playerId=bp_st_sell');
+  const cxlBody2 = await cxlRes2.json();
+  check('store HTTP: cancel carries the settled flag', cxlBody2.ok === true && cxlBody2.settled === true, cxlBody2);
+  const unknown = await sreq('POST', '/api/store/teleport', { playerId: 'bp_st_buy' });
+  check('store HTTP: an unknown store path is a 404, not a crash', unknown.status === 404);
+
+  // ── S11. guards ──
+  const own = await shop._stBuyNow(madeIds[2], 'bp_st_sell');
+  check('store: you cannot buy your own listing', own.ok === false, own);
+  const badPrice = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 0 });
+  check('store: a zero price is refused', badPrice.ok === false, badPrice);
+  const hugePrice = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10 ** 9 });
+  check('store: an absurd price is refused', hugePrice.ok === false, hugePrice);
+  const protoKey = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'constructor', qty: 1, price: 10 });
+  check('store: an Object.prototype key is not an item (TRAPS #6)', protoKey.ok === false, protoKey);
+  const notHeld = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'dragon_hoard', qty: 1, price: 10 });
+  check('store: you cannot list goods you do not hold', notHeld.ok === false, notHeld);
+  const tooMany = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10 });
+  check('store: the per-player listing cap holds',
+    (shop._stCounts.get('bp_st_sell') || 0) <= 10 && (tooMany.ok === false || (shop._stCounts.get('bp_st_sell') || 0) <= 10),
+    { count: shop._stCounts.get('bp_st_sell'), tooMany });
+  const offlineSeller = await shop._stCreateListing({ playerId: 'bp_st_ghost', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10 });
+  check('store: an offline player cannot list', offlineSeller.ok === false && offlineSeller.error === 'Not in game', offlineSeller);
+  const poor = await shop._stBuyNow(madeIds[2], 'bp_st_oth');
+  OTH.coins = 0;
+  const poor2 = await shop._stBuyNow(madeIds[3], 'bp_st_oth');
+  check('store: a buyer without the gold is refused and nothing is left half-sold',
+    poor2.ok === false && !st._store.get('store_listing:' + madeIds[3])?.sale, poor2);
+
+  // ── the order book next door is untouched ──
+  check('store: the order book still has its own index', !!room._mktIndex && typeof room._mktPlaceOrder === 'function');
+  check('store: the two surfaces use different storage prefixes',
+    [...st._store.keys()].every((k) => !k.startsWith('mkt_order:')), [...st._store.keys()].filter((k) => k.startsWith('mkt_')));
+  void poor; void listItem;
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

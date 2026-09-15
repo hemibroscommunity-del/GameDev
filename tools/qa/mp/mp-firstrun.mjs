@@ -260,6 +260,50 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and healing did not change the width', healed.canvasCssW === healBefore.canvasCssW,
     { before: healBefore.canvasCssW, after: healed.canvasCssW });
 
+  /* ═══ v2.3.2497: THE OTHER END OF "A WHOLE SCREEN" ═══
+     Owner: the bro can walk under the top rail.  This file is about the world
+     getting the screen it is owed rather than a strip, and the rail is the
+     other way that goes wrong: the canvas is the viewport minus the BAND only,
+     nothing is subtracted for `.bt-zone-header` (position:fixed, top:-4px,
+     painted OVER the canvas), and the camera stops at y >= 0 -- so at any
+     map's top edge the character is drawn behind 46 CSS px of opaque header.
+     _FOOT_MARGIN (v2.3.822) is the identical fix at the bottom, for the
+     dashboard; _HEAD_MARGIN is its mirror.
+
+     ASSERTED WHERE IT LANDS ON SCREEN, not against the constant.  Recomputing
+     the margin here would be TRAPS §37 -- the same arithmetic twice proves the
+     arithmetic, not the picture -- so the player is shoved at the top edge and
+     what is checked is whether his HEAD comes out below the rail's painted
+     bottom. */
+  const head = await page.evaluate(async () => {
+    const S = window._gameState && window._gameState.current;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    if (!S || !S.player) return null;
+    S.player.y = 4;              /* above any plausible clamp */
+    await sleep(800);            /* the clamp lives in the movement loop */
+    const c = document.querySelector('canvas.brotown-canvas') || document.querySelector('canvas');
+    const cr = c.getBoundingClientRect();
+    const hdr = document.querySelector('.bt-zone-header');
+    const hr = hdr ? hdr.getBoundingClientRect() : null;
+    const camY = (S.camera && S.camera.y) || 0;
+    /* ~57 world px of figure above P.y -- the distance v2.3.822 measured
+       below it for the feet, on a centre-anchored sprite. */
+    return {
+      py: Math.round(S.player.y),
+      headScreenY: Math.round(cr.top + (S.player.y - 57 - camY) * (S._worldScaleY || 1)),
+      railBottom: hr ? Math.round(hr.bottom) : null,
+      zone: S.currentZone,
+    };
+  });
+  console.log('    head margin: ' + JSON.stringify(head));
+  rec.ok('the head-margin probe ran (guard)', !!(head && head.py != null), head);
+  if (head) {
+    rec.ok('a bro shoved at the map\'s top edge is held off it',
+      head.py > 4, head);
+    rec.ok('...far enough that his head clears the zone rail, not merely the canvas',
+      head.railBottom != null && head.headScreenY >= head.railBottom, head);
+  }
+
   const errs = P.logs.filter((l) => String(l).startsWith('pageerror'));
   rec.ok('no page errors on a first run', errs.length === 0, errs.slice(0, 3));
   await ctx.close();

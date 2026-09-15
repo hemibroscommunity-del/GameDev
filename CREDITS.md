@@ -45,6 +45,7 @@ where something came from costs nothing and guessing later costs a lot.
 | Asset group | Path | Source | License |
 |---|---|---|---|
 | Sound effects, and creature / ambient audio | `public/sfx/`, `assets/sound effects/`, `public/audio/*.mp3` (`slime-idle`, `slime-death-v2`, `skeleton-death`, `snowman-death`, `tree-fall`, `wood-chop`) | **Pixabay** (https://pixabay.com) | [Pixabay Content License](https://pixabay.com/service/license-summary/) — free for commercial use, no attribution required. Credited here anyway. |
+| Coin pickup sound | `public/sfx/loot/coin-pickup.mp3` | "Spilled Coins" by **freesound_community**, id 101296 — supplied by the repository owner | **CONFIRM.** Recorded here as the Pixabay Content License, matching the row above and the way the file was supplied, but the owner has not yet confirmed which of the two possible origins it came from: Pixabay redistributes freesound_community uploads under the Pixabay Content License (no attribution required), while the same clip on Freesound itself may carry CC0 or CC-BY. Both permit the use; only CC-BY would require the attribution line, which is why this row exists either way. |
 
 > **Note on the Pixabay license.** It permits commercial use and modification
 > without attribution, but it does *not* permit redistributing the audio "as a

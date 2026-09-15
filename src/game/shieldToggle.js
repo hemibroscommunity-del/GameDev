@@ -22,6 +22,7 @@
 import { BT_AUDIO } from '@/data/index.js';
 import { blockRingBus } from '@/ui/mobile/blockRingBus.js';
 import { lockAimPoint } from '@/game/combatHelpers.js';
+import { targetCandidates } from '@/game/targeting.js'; /* v2.3.2472: the nearest-monster fallback below */
 
 /* Where the shield should point: at the locked target if there is one (the
    whole meaning of a lock), else wherever the body is facing.  Called on the
@@ -31,6 +32,33 @@ export function shieldAimAngle(S) {
   if (!S || !S.player) return 0;
   const pt = lockAimPoint(S.lockedTarget && S.lockedTarget.ref);
   if (pt) return Math.atan2(pt.y - S.player.y, pt.x - S.player.x);
+  /* ═══ v2.3.2472: NO LOCK? POINT IT AT THE NEAREST MONSTER ═══
+     Owner (D8): the shield button comes back for bow and staff and "auto-aims
+     at the nearest monster".  Those two weapons acquire NOTHING automatically
+     (v2.3.2258 gated auto-lock to melee -- a tap is their only lock), so
+     without this rung the ladder fell straight through to `_shieldAngle` and a
+     ranged player raising the guard got whatever angle the last gesture
+     happened to leave behind, most often the four-way body facing.  A block
+     arc is +/-60 degrees and the server measures it at impact
+     (_blockArcCovers), so "most often" is a guard that misses.
+
+     targetCandidates is the same nearest-first scan targeting.js runs for the
+     melee lock, called directly rather than read off `S._targetCands` -- that
+     array is deliberately EMPTY for bow and staff, which is exactly the case
+     this rung exists for.  Through lockAimPoint so the arc points at the body
+     centre, the same point the swing and the lock aim at; a candidate whose
+     ref has no usable position answers null and falls through to the rungs
+     below rather than aiming at the world origin.
+
+     BELOW the lock and ABOVE the remembered angle, deliberately: a monster you
+     tapped still outranks whatever is merely closest (that is what a lock is
+     for), and a remembered angle must not outrank a live threat or the guard
+     would stick to the first direction it was ever raised in. */
+  const near = targetCandidates(S)[0];
+  if (near) {
+    const np = lockAimPoint(near.m);
+    if (np) return Math.atan2(np.y - S.player.y, np.x - S.player.x);
+  }
   if (typeof S._shieldAngle === 'number') return S._shieldAngle;
   if (typeof S._aimAngle === 'number') return S._aimAngle;
   if (typeof S._facingAngle === 'number') return S._facingAngle;
@@ -109,25 +137,32 @@ export function toggleShield(S) {
    and a button that refuses is worse than no button. */
 export function shieldButtonLive(S, perimeterPx) {
   if (!S || !S.rpg || !S.rpg.shield) return false;
-  /* ═══ v2.3.2446: NO BUTTON ON A BOW OR A STAFF ═══
-     Owner: "When you use bow or staff there should be no shield button.  You
-     should be able to double tap and hold the right joystick to rotate shield
-     (with the arc included)."
-     A shield is its own equipment slot, so it stays equipped when you swap to
-     a two-handed weapon and this predicate -- which only ever asked whether
-     one was owned -- kept offering the button.  On those weapons the guard is
-     the HOLD gesture instead, which the button cannot express: it has no
-     direction, and the whole point of the gesture is that the thumb steers
-     the arc.
-     Ahead of the raised-shield escape below on purpose.  That escape exists so
-     a shield you TOGGLED on always has something to tap off, and under the
-     hold the shield lasts exactly as long as the finger does -- so there is
-     nothing to strand, and a button appearing under the thumb mid-block is
-     the thing the owner asked to be rid of.  The other way a raised shield
-     could meet this line -- raising it on melee and then swapping -- is closed
-     at the swap itself (BroTown's cycle and _desktopSelectSlot). */
-  var _slot = S.rpg.activeSlot || 'melee';
-  if (_slot === 'ranged' || _slot === 'staff') return false;
+  /* ═══ v2.3.2472: THE BUTTON COMES BACK FOR BOW AND STAFF ═══
+     Owner decision D8, reversing v2.3.2446 ("When you use bow or staff there
+     should be no shield button") four days later, and reversing all three of
+     its parts together because they were one mechanism: the button went away
+     because the guard moved onto a double-tap-and-HOLD on the right control,
+     and the hold is what made a button impossible -- it had no direction, and
+     the whole point of that gesture was that the thumb steered the arc.
+
+     Retiring the hold (BroTown's handleRBtnPress) gives the direction back to
+     the game: shieldAimAngle above now falls through to the NEAREST monster
+     when there is no lock, which is the rung bow and staff always land on
+     because they auto-acquire nothing.  So the button can express the arc
+     after all, and the right control's double tap is free to be the weapon
+     swap on every weapon instead of meaning one thing on a sword and another
+     on a bow.
+
+     v2.3.2446's own words for what it was protecting -- "a button appearing
+     under the thumb mid-block is the thing the owner asked to be rid of" --
+     are answered by the geometry rather than by hiding the control: the button
+     moved to the LEFT of the disc (D9, ShieldButton.jsx), out from under the
+     thumb that presses Attack.
+
+     The `activeSlot` read is gone entirely rather than inverted: with the
+     gesture retired there is no weapon-shaped reason left for this predicate
+     to know which weapon is in hand.  What it always asked -- is a shield
+     owned, and is a fight on -- is the whole question again. */
   /* v2.3.2242 (post-review): a RAISED shield keeps its button.  The first
      cut showed the button only "during combat", so a lock dropping or the
      last monster dying while the shield was up took the button away and
