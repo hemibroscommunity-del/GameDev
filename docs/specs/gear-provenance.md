@@ -475,11 +475,15 @@ The numbering is kept because other docs cite it.
 7. **Delete the `_sv` mark and `carryProv`.** ✅ Done (v2.3.2552) — the
    mark, `carryProv`, `_stGearStrip`, `_stGearListable` and the
    `store_gear_strict` flag are all gone. `sanitizeGearPiece` sweeps the
-   dead field off every piece it touches and `_gearProvResolve`'s trusted
-   branch does the same (that branch deliberately skips the sanitizer, so
-   it was the one place the residue could have survived on exactly the
-   *proven* pieces). No migration: a stray `_sv` is an inert unknown field
-   and blobs shed it on the next join.
+   dead field off every piece it touches, and **both** branches of
+   `_gearProvResolve` sweep it too: the *trusted* branch skips the
+   sanitizer deliberately (so a gem slotted after the mint is not
+   reverted), and the *legacy* branch is reached with `sanitize = null`
+   from the two worn-slot calls in join.js — which is how a claimed
+   `_sv: true` rode onto `ps.armor` / `ps.shield` and stayed there for
+   good until v2.3.2553 caught it by running the join. No migration: a
+   stray `_sv` is an inert unknown field and blobs shed it on the next
+   join.
 8. Keep its client-side splice and its `inbox_delivered` `kind:'gear'`
    branch. ✅ Kept, both. The splice matters less than it did — a
    surviving bag copy is now re-offered under a receipt the book no longer
@@ -570,7 +574,16 @@ Written here so PR 2 and PR 3 inherit them on purpose.
    path"). It comes out `legacy`, so it cannot be sold: the outcome is
    "sell once and keep an unsellable twin", not "sell twice". Closes when
    the browser reads the server's stash instead of its own.
-7. **`_creditPlayer` stamps its opId before it does the work.** Pre-existing
+7. **The server cannot tell a shield (or an amulet) on the arm from one
+   in the bag** (v2.3.2553). `_gearSellable` answers `worn` only for the
+   slots where an equip actually reaches the server — armour and legs —
+   because `ps.shield` and `ps.amulet` are ownership records, not arm
+   states, and there is no equip message for either. So a shield equipped
+   mid-session can still be listed. Narrowed rather than open-in-the-open
+   (it needs the browser's "in my bag" and "on my arm" views to have come
+   apart), and closing it needs an equip message for the slot behind its
+   own cap. See general-store.md, "The worn slot".
+8. **`_creditPlayer` stamps its opId before it does the work.** Pre-existing
    for every payout kind and not this lane's to change. The gear-specific
    shape: if the isolate dies between the awaited row grant and the
    fire-and-forget `_saveRpg`, the recipient holds a receipt for a piece

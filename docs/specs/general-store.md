@@ -208,7 +208,7 @@ truthful, because they *are* the identity. A selector claiming a bigger
 `tierMult` does not list a bigger piece — it names a piece nobody holds,
 and is refused having taken nothing.
 
-### The worn slot — CLOSED by an id, not a guess (v2.3.2551)
+### The worn slot — closed for the slots the server hears about (v2.3.2551, corrected v2.3.2553)
 
 **A piece equipped after the hand-over is recorded twice.** Adoption
 writes the stash as it stood; equipping is client-local and the client
@@ -259,8 +259,42 @@ what it looks like it does.
 
 `market.test.mjs` §S12e pins both halves — the worn plate refused with its
 reason, and the genuine spare of an identical plate still sellable — and
-`gearprov.test.mjs` §10 pins it through the listing path for the starter
-shield, the piece the game mints straight onto your body.
+`gearprov.test.mjs` §9(a) equips through the **real `stats_update` route**
+before asking the gate, rather than setting `ps.armor` by hand.
+
+> ### ⚠ v2.3.2553 — this is true for two slots, not four
+>
+> v2.3.2551 claimed the hole was closed outright. The review of #653
+> showed it is closed for **armour and legs**, where the server really does
+> learn when a piece goes on (`stats_update` / `<slot>Ref`, and combat
+> reads those slots for damage reduction) — and that claiming it for
+> **shields and amulets** cost a real bug in the other direction.
+>
+> `ps.shield` is not an arm state. `quests.js` says so where it mints one:
+> *"the server's OWNERSHIP record, not a statement about what is strapped
+> to the arm."* There is no shield equip message at all — `equipActions.js`
+> moves a shield between the **browser's** own lists and tells the worker
+> nothing — and blocking is computed client-side. An amulet has no unequip
+> flow either. Reading those fields as "worn" broke both ways:
+>
+> - **it refused a sale nobody could fix.** The tutorial Pine Shield is
+>   minted into `ps.shield` while `wsClient` puts the player's copy in
+>   their **bag** ("received in inventory first", the owner's call). So the
+>   bag card offered a Sell button and the worker answered *"You're wearing
+>   it — take it off first"* with nothing on the arm to take off, until a
+>   reload reset the field. **Day one, every character, no modified
+>   client.**
+> - **it permitted one it should not.** Equip a shield mid-session and the
+>   server never hears, so the field stays null from the join and the gate
+>   said yes to a shield on the arm.
+>
+> `GEAR_WORN_KNOWN_SLOTS` (gearprov.js) is now the roster and the gate asks
+> `worn` only for those two. **Selling a shield off your own arm is an open
+> hole again** — narrowed, because it needs the browser's "in my bag" and
+> "on my arm" views to have come apart, but open. Closing it needs an equip
+> message for the slot behind its own cap, which is its own change.
+> **Do not close it by matching the worn slot by VALUE** — that is this
+> section's own history, and it ate real spares.
 
 **Cosmetics are a separate answer, and permanently so.** The server stores
 no worn-cosmetic slot at all — there is no such field in `_saveRpg`'s
@@ -365,8 +399,11 @@ Two things survive from the old hedge, and one does not.
    to stay off, and nothing carried `_sv` before this, so nothing on the
    shelf changes hands differently. And a stored piece may still carry the
    dead field: `sanitizeGearPiece` (gearstash.js) sweeps it out
-   unconditionally and `_gearProvResolve`'s trusted branch does the same,
-   so blobs shed it on the next join rather than needing a migration.
+   unconditionally and **both** branches of `_gearProvResolve` do the same
+   — the trusted one, and (v2.3.2553) the legacy one, which the two
+   worn-slot calls in `join.js` reach with no sanitizer at all, so a
+   claimed `_sv: true` used to settle onto `ps.armor` / `ps.shield` and
+   stay. Blobs shed it on the next join rather than needing a migration.
 
 ### The player is told WHY (v2.3.2551)
 

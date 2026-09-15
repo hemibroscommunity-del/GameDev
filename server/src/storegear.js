@@ -92,7 +92,7 @@
  * between two identical pieces; it is checked against the signature
  * before it is believed.
  *
- * ── 2. THE WORN SLOT: CLOSED, BY AN ID RATHER THAN A GUESS ───────────
+ * ── 2. THE WORN SLOT: CLOSED FOR THE SLOTS THE SERVER HEARS ABOUT ────
  *
  * The hole was that adoption records the stash as it stood at that join,
  * so a piece equipped afterwards is recorded TWICE -- once as `ps.armor`,
@@ -115,7 +115,50 @@
  * first").  Two genuinely different plates have two different ids and
  * both stay sellable.  An id is not a guess.
  *
+ * ── v2.3.2553: WHAT THAT SENTENCE CAN AND CANNOT PROMISE ─────────────
+ *
+ * v2.3.2551 said flatly that the hole was CLOSED.  The review of #653
+ * showed it is closed for TWO of the four slots, and that claiming the
+ * other two cost a real bug, so the honest statement is written here
+ * instead:
+ *
+ *   ARMOUR and LEGS -- closed.  The server genuinely learns when one goes
+ *     on: `stats_update` carries the piece or its `<slot>Ref`
+ *     (`_gridsApplyArmor`, grids.js), and combat reads these slots for
+ *     per-hit damage reduction.  `gearprov.test.mjs` §9(a) now equips
+ *     through that real route before asking the gate, rather than setting
+ *     `ps.armor` by hand -- setting the slot directly proved only that the
+ *     gate refuses a slot that carries the id, and pinned nothing about
+ *     whether equipping puts it there.  That was the gap that hid the
+ *     next paragraph.
+ *
+ *   SHIELDS and AMULETS -- NOT closed, and the gate no longer pretends.
+ *     `ps.shield` is not an arm state: quests.js says where it mints one
+ *     that it is "the server's OWNERSHIP record, not a statement about
+ *     what is strapped to the arm", there is no shield equip message at
+ *     all (equipActions.js moves a shield between the BROWSER's own
+ *     lists), and blocking is computed client-side.  An amulet has no
+ *     unequip flow either.  Reading those fields as "worn" broke in BOTH
+ *     directions: it let a shield equipped mid-session be listed (the
+ *     server never heard, so the field was still null from the join), and
+ *     -- worse, because it needed no modified client and hit day one --
+ *     it answered "take it off first" for the tutorial Pine Shield, which
+ *     is minted into `ps.shield` while the browser puts the player's copy
+ *     in their BAG.  A refusal a player cannot act on is the exact thing
+ *     the reason strings exist to prevent.
+ *
+ * So: `GEAR_WORN_KNOWN_SLOTS` (gearprov.js) is the roster, the gate asks
+ * `worn` only for those, and selling a shield off your own arm is an OPEN
+ * hole again -- narrowed, since it needs the browser's "in my bag" and
+ * "on my arm" views to have come apart, but open.  Closing it needs an
+ * equip message for the slot and a cap to gate it, which is its own
+ * change and not this one.  DO NOT close it by matching the worn slot by
+ * VALUE instead: that is section 2's own history, and it ate real spares.
+ *
  * ── 3. BEING IN THE STASH IS NO LONGER THE QUESTION ──────────────────
+ *
+ * (This one really is closed; section 2's qualification is about WHERE a
+ * piece is, not about whether it is yours.)
  *
  * The old text here said: adoption validates the SHAPE of what a client
  * claims and never whether the player ever held it, so a modified client

@@ -108,6 +108,53 @@ export function isGearProvSlot(slot) {
   return typeof slot === 'string' && GEAR_PROV_SLOTS.indexOf(slot) !== -1;
 }
 
+/* ═══ v2.3.2553: THE SLOTS WHERE `ps[slot]` MEANS "ON THE BODY" ═══
+ * The sell gate refuses a piece the player is WEARING, and it can only do
+ * that where the server actually learns when a piece is put on.  For two
+ * of the four it does; for the other two `ps[slot]` means something else
+ * entirely, and reading it as "worn" was wrong in BOTH directions.
+ *
+ *   armor / legsArmor  -- the equip flow tells the server: `stats_update`
+ *     carries the piece or its `<slot>Ref` (grids.js `_gridsApplyArmor`),
+ *     and combat reads these for per-hit damage reduction.  They really
+ *     are what is on the body.
+ *   shield  -- NOT a statement about the arm, and quests.js says so where
+ *     it mints one: "`ps.shield` is the server's OWNERSHIP record, not a
+ *     statement about what is strapped to the arm."  There is no shield
+ *     equip message at all (`unequipShieldDirect`, equipActions.js, moves
+ *     it between the BROWSER's own lists and sends nothing), and blocking
+ *     is computed client-side, so nothing server-side ever needed to know.
+ *   amulet  -- the same shape: there is no unequip flow for an amulet
+ *     (InventoryPanel.jsx), so `ps.amulet` is an ownership record too.
+ *
+ * v2.3.2551 read all four as "on the body" and it broke in both
+ * directions, which is what a signal that is not the thing you think it
+ * is always does:
+ *   - FALSE REFUSAL, and this one hits every new character on day one.
+ *     The tutorial's Pine Shield is minted straight into `ps.shield`
+ *     while wsClient routes the player's own copy into their BAG ("received
+ *     in inventory first", the owner's call).  So the bag card offered a
+ *     Sell button and the worker answered "take it off first" with nothing
+ *     on the arm to take off -- until a reload, which resets `ps.shield`.
+ *     A refusal a player cannot act on is precisely what the reason
+ *     strings exist to prevent.
+ *   - FALSE PERMISSION.  Equip a shield mid-session and the server never
+ *     hears; `ps.shield` stays null from the join, so the gate said yes to
+ *     a shield on the arm.
+ * Both found by the review of #653, and both reproduced against a real
+ * GameRoom before this list existed.
+ *
+ * So the gate now answers `worn` only where it can KNOW, and for shields
+ * and amulets it does not pretend to.  What that leaves open is written
+ * down in general-store.md rather than papered over: the server cannot
+ * tell a shield on the arm from one in the bag, and closing that needs an
+ * equip message for the slot, which is its own change. */
+export const GEAR_WORN_KNOWN_SLOTS = Object.freeze(['armor', 'legsArmor']);
+
+export function gearWornKnown(slot) {
+  return typeof slot === 'string' && GEAR_WORN_KNOWN_SLOTS.indexOf(slot) !== -1;
+}
+
 /* v2.3.2536: which rpg-blob stash list holds a piece of each slot.  Two
    frozen tables rather than one object lookup keyed by a client string --
    `GEAR_PROV_FIELD['__proto__']` on a plain object would answer with an
@@ -395,6 +442,16 @@ export const gearProvMethods = {
        finding — a genuine mark lost on the round trip — and the reason
        `prov` is derived rather than carried. */
     delete clean.gid;
+    /* v2.3.2553: ...and the retired `_sv` mark.  The trusted branch above
+       already sweeps it, and `sanitizeGearPiece` sweeps it for every path
+       that HAS a sanitizer -- but the two WORN-slot calls in join.js pass
+       `sanitize = null` (there is no clamp for a bare armour/shield blob
+       there), so `bare` is handed straight back and a claimed `_sv: true`
+       rode onto `ps.armor` / `ps.shield` and stayed there for good.
+       Verified by running it, review of #653.  Cost nothing, since nothing
+       reads the field -- but the worn slots are the FIRST place a reader
+       looks, which is the whole reason the sweep exists. */
+    delete clean._sv;
     clean.prov = PROV_LEGACY;
     return clean;
   },
@@ -686,8 +743,15 @@ export const gearProvMethods = {
     /* Worn: refuse rather than strip the piece off the player's body.  A
        listing must never take what someone is using, and "unequip it
        first" is a thing a player can act on -- which is what the reason
-       strings are for. */
-    if (ps && ps[slot] && ps[slot].gid === row.id) return { ok: false, reason: 'worn' };
+       strings are for.
+
+       v2.3.2553: asked ONLY for the slots where `ps[slot]` really is what
+       is on the body (see GEAR_WORN_KNOWN_SLOTS above).  For a shield or
+       an amulet that field is an OWNERSHIP record, and reading it as
+       "worn" told every new character to take off a starter shield sitting
+       in their bag.  A gate that cannot know must not pretend to: an
+       answer a player cannot act on is worse than no answer. */
+    if (gearWornKnown(slot) && ps && ps[slot] && ps[slot].gid === row.id) return { ok: false, reason: 'worn' };
     return { ok: true, reason: 'ok', gid: row.id };
   },
 

@@ -1445,6 +1445,83 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
         SEL.legsStash);
     }
 
+    /* ══ S12n. THE DAY THIS DEPLOYS, AND THE HAPPY PATH OVER HTTP ══
+       (v2.3.2553, review of #653 -- three named gaps, all cheap.)
+
+       The FIRST is the case that actually happens on merge day: a gear
+       listing placed by a v2.3.2531 worker is already resting on the shelf
+       and has no `gearRow`, because the field did not exist when it was
+       written.  `_stGoodsCredit` sends `rec.gearRow || null`, so nothing
+       is granted and the piece must arrive LEGACY -- usable, unsellable,
+       never refused and never lost.  Nothing exercised that. */
+    {
+      const oldRec = {
+        id: 'legacy-listing-1', sellerId: GSEL, sellerName: 'Sella', kind: 'gear',
+        invKey: null, weapon: null,
+        gear: { name: 'Pre-Ledger Plate', gearBase: 'iron', mat: 'iron', tierMult: 2 },
+        gearField: 'armorStash',        /* and deliberately NO gearRow */
+        qty: 1, cat: 'armor', disp: { name: 'Pre-Ledger Plate', slot: 'Chest' },
+        askPrice: 50, createdAt: Date.now(), expiresAt: Date.now() + 1000,
+        bidSeq: 0, topBid: null, pendBid: null, bids: [], sale: null,
+      };
+      await st.storage.put('store_listing:' + oldRec.id, oldRec);
+      const roomOld = new GameRoom(st, mockEnv);
+      roomOld.playerState = shop.playerState;
+      roomOld._gearProvCache = shop._gearProvCache;
+      await roomOld._stEnsureIndex();
+      check('deploy day: a listing written before the receipt existed still rests',
+        roomOld._stIndex.has(oldRec.id), [...roomOld._stIndex.keys()]);
+      BUY.armorStash = [];
+      const oldBuy = await roomOld._stBuyNow(oldRec.id, 'bp_st_buy');
+      check('deploy day: ...and still SELLS rather than being refused', oldBuy.ok === true, oldBuy);
+      const got = BUY.armorStash.find((g) => g && g.name === 'Pre-Ledger Plate');
+      check('deploy day: ...the buyer gets the piece, at its real stats',
+        !!got && got.tierMult === 2, BUY.armorStash);
+      check('deploy day: ...marked legacy rather than carrying a receipt nothing backs',
+        got.prov === 'legacy' && got.gid === undefined, got);
+      check('deploy day: ...so the buyer cannot re-list it, and is told why',
+        shop._gearSellable('bp_st_buy', 'armor', got).reason === 'legacy',
+        shop._gearSellable('bp_st_buy', 'armor', got));
+    }
+
+    /* The SECOND: every successful gear listing in this section goes
+       through `_stCreateListing` directly; only the refusals went through
+       the real route, so the shape of a SUCCESSFUL answer over HTTP was
+       unpinned -- including `settled: true`, which is the deploy-order
+       contract (rule 19), and the absence of the goods from the wire. */
+    {
+      const sreq2 = (body) => shop.fetch(new Request('https://x/api/store/list?room=brotown-1', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      }));
+      shop._httpAuthCheck = () => true;   /* covered on its own in S10 */
+      SEL.armorStash = []; SEL.armor = null;
+      const httpGid = mintedPlate(GSEL, 'Counter Plate');
+      const okBody = await (await sreq2({ playerId: GSEL, kind: 'gear', field: 'armorStash', gid: httpGid, price: 77 })).json();
+      check('http: a successful gear listing answers ok + settled, over the real route',
+        okBody.ok === true && okBody.settled === true && !!okBody.listing, okBody);
+      check('http: ...carrying the derived card and NOT the goods or the receipt',
+        okBody.listing.disp.name === 'Counter Plate' && okBody.listing.askPrice === 77
+        && okBody.listing.gear === undefined && okBody.listing.gearRow === undefined, okBody.listing);
+      check('http: ...and no reason rides a success', okBody.reason === undefined, okBody);
+      if (okBody.ok) await shop._stCancel(okBody.listing.id, GSEL);
+    }
+
+    /* The THIRD: the SERVER's own id bound.  Only the browser's was
+       tested.  An over-long id must not reach a comparison or a Map key;
+       it falls through to the selector path and ends up `legacy`, which is
+       the right answer but was never asserted. */
+    {
+      SEL.armorStash = []; SEL.armor = null;
+      const boundGid = mintedPlate(GSEL, 'Bound Plate');
+      const tooLong = await shop._stCreateListing({
+        playerId: GSEL, kind: 'gear', field: 'armorStash', gid: 'g' + 'x'.repeat(60), price: 10,
+      });
+      check('store gear: an over-long id is not an id we issued, and is refused',
+        tooLong.ok === false && tooLong.reason === 'legacy', tooLong);
+      check('store gear: ...and refusing it took nothing',
+        SEL.armorStash.length === 1 && shop._gearSellable(GSEL, 'armor', boundGid).ok === true, SEL.armorStash);
+    }
+
     /* ══ S12m. THE REASON TABLE IS MIRRORED, AND PINNED ══
        The browser cannot ask the worker "would you refuse this?" once per
        card, so it carries its own copy of the sentences
