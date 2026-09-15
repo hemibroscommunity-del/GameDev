@@ -63,6 +63,9 @@ function check(name, cond, detail) {
 
 const state = makeState();
 const room = new GameRoom(state, mockEnv);
+/* v2.3.2538: kept so sections that stub _wsBySessionId can put it back --
+   see the note on the gear-lock stub in section 4b. */
+const _realWsBySessionId = room._wsBySessionId.bind(room);
 
 async function join(roomRef, ws, id, data) {
   roomRef.sessions.set(ws, { id: null, name: 'T', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
@@ -149,6 +152,23 @@ let questShieldGid = null;
   const over = ps._questGrantOverflow || [];
   check('quest armour handed to the client carries an id too',
     over.length === 1 && typeof over[0].gid === 'string' && over[0].prov === PROV_MINTED, over[0]);
+  /* v2.3.2538: and the id is genuinely ON THE WIRE, which is the contract
+     wsClient's `quest_reward_stashed` ingestion now reads.  The client half
+     has no unit suite, so the wire shape is what can be pinned here -- and
+     it is exactly the half that was broken: the worker was sending the id
+     and the browser was dropping it, so equip-by-name could never fire. */
+  {
+    const wsQ = fakeWs('Q');
+    room._wsBySessionId = (id) => (id === PID ? wsQ : null);
+    for (const piece of over) {
+      wsQ.send(JSON.stringify({ type: 'quest_reward_stashed', payload: { questId: 'test', item: piece } }));
+    }
+    const qm = wsQ.sent.filter((m) => m.type === 'quest_reward_stashed').pop();
+    check('...and that id is on the quest_reward_stashed wire, not just in memory',
+      !!qm && typeof qm.payload.item.gid === 'string' && qm.payload.item.gid === over[0].gid,
+      qm && qm.payload.item);
+    room._wsBySessionId = _realWsBySessionId;
+  }
   check('...recorded in the armor slot, not the shield slot',
     findProvRow(room._gearProvOf(PID), over[0].gid).slot === 'armor');
 
@@ -413,10 +433,15 @@ let amuletGid = null;
     ps.armor && ps.armor.name === 'Old Plate', ps.armor);
   room._prog3EquipOk = () => true;
 
+  /* v2.3.2538: the stub is RESTORED afterwards rather than left installed on
+     the file-wide shared room.  It happens to be harmless today (the real
+     _threatGearLocked also answers false with no lock), but a stub left
+     lying around is how a later section silently stops testing a gate. */
+  const _realLock = room._threatGearLocked;
   room._threatGearLocked = () => true;
   await send(room, ws, { type: 'stats_update', payload: { armorRef: armorGid } });
   check('...and the guard gear-lock', ps.armor && ps.armor.name === 'Old Plate', ps.armor);
-  room._threatGearLocked = () => false;
+  room._threatGearLocked = _realLock;
 
   await send(room, ws, { type: 'stats_update', payload: { armorRef: armorGid } });
   check('...and equips normally once both gates open', ps.armor && ps.armor.gid === armorGid, ps.armor);
