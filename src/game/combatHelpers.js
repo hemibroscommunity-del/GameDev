@@ -84,7 +84,7 @@ export function rangedAimAngle(S, originX, originY) {
   };
 }
 
-/* ═══ v2.3.2473: HOW LONG A QUEUED BOW SPECIAL WAITS FOR A LINE ═══
+/* ═══ v2.3.2508: HOW LONG A QUEUED BOW SPECIAL WAITS FOR A LINE ═══
  * The bow only looses when its line of sight is on something (monsterCombat's
  * sight gate), so a special pressed while the line is empty is REMEMBERED
  * rather than thrown away -- it goes out on the first frame the line lands.

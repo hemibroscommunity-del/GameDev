@@ -105,7 +105,7 @@ const orbSeries = async (P, samples, gapMs) => {
   return out.filter((s) => s.n === 3);
 };
 
-/* ═══ v2.3.2473: A BOW NEEDS SOMETHING ON ITS LINE BEFORE IT WILL FIRE ═══
+/* ═══ v2.3.2508: A BOW NEEDS SOMETHING ON ITS LINE BEFORE IT WILL FIRE ═══
  * monsterCombat's sight gate looses an arrow only when a ray from the grip
  * along the aim crosses a live hit circle (owner, backlog §2.5).  Two things
  * in this file run straight into that: it measures the bow's ordinary BEAT by
@@ -169,7 +169,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   ]) {
     await H.equipWeapon(P, w.type, w.stash, w.slot);
     await P.page.waitForTimeout(1000);
-    /* v2.3.2473: a target on the bow's line; nothing at all for the staff. */
+    /* v2.3.2508: a target on the bow's line; nothing at all for the staff. */
     const _tgtBeat = await seedBowTarget(P, w.slot === 'ranged');
     console.log(`    ${w.key} beat target: ${JSON.stringify(_tgtBeat)}`);
 
@@ -336,7 +336,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   ]) {
     await H.equipWeapon(P, w.type, w.stash, w.slot);
     await P.page.waitForTimeout(900);
-    /* v2.3.2473: a target on the bow's line; nothing at all for the staff. */
+    /* v2.3.2508: a target on the bow's line; nothing at all for the staff. */
     const _tgtPress = await seedBowTarget(P, w.slot === 'ranged');
     console.log(`    ${w.key} press target: ${JSON.stringify(_tgtPress)}`);
     await P.page.evaluate(() => {

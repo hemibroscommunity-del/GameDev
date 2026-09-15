@@ -37,14 +37,14 @@ import {
   monsterBodyOffsetY, monsterMeleeHitRadius, monsterProceduralRadius, TOWN_SPAWN /* v2.3.1777 */
 } from '@/data/index.js';
 import { prog3Live, prog3CatFor, prog3CritPct, prog3CritMult, prog3CritFlat } from '@/data/prog3.js'; /* v2.3.2218 */
-import { STAFF_LIFE, BOW_RANGE_PX } from '@/data/gameSystems.js'; /* v2.3.2387: one staff range for all four spawn sites; v2.3.2473: the sight gate's reach */
+import { STAFF_LIFE, BOW_RANGE_PX } from '@/data/gameSystems.js'; /* v2.3.2387: one staff range for all four spawn sites; v2.3.2508: the sight gate's reach */
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, BOW_SPECIAL_QUEUE_MS /* v2.3.2508 */ } from '@/game/combatHelpers.js';
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
-import { firstSightHit } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii */
-import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
+import { firstSightHit } from '@/game/projectiles.js'; /* v2.3.2508: the bow's on-target gate reads the hit test's own radii */
+import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2508: a queued bow special fires from the fire site */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
@@ -1432,7 +1432,7 @@ export function updateMonsterCombat(S, deps) {
               _engSwing = _eD <= GS_OUTER_RADIUS;
             }
           }
-          /* ═══ v2.3.2473: WHERE IS THE BOW ACTUALLY POINTING? ═══
+          /* ═══ v2.3.2508: WHERE IS THE BOW ACTUALLY POINTING? ═══
              Owner (backlog §2.5): the bow fires only when the line of sight is
              ON a monster, and the sight stream stops at whatever it is pointed
              at instead of running its full reach through everything.
@@ -1591,7 +1591,7 @@ export function updateMonsterCombat(S, deps) {
                    that needs to know where a shot is going.
                    Behaviour is unchanged: same order, same origin. */
                 arrAngle = rangedAimAngle(S, _shotX, _shotY).ang;
-                /* ═══ v2.3.2473: THE BOW ONLY LOOSES WHEN THE LINE IS ON SOMETHING ═══
+                /* ═══ v2.3.2508: THE BOW ONLY LOOSES WHEN THE LINE IS ON SOMETHING ═══
                    Owner (backlog §2.5).  `S._bowSight` was resolved a few
                    hundred lines above, before the cadence gate, from the same
                    grip and the same aim ladder this shot uses.
@@ -1658,7 +1658,7 @@ export function updateMonsterCombat(S, deps) {
                      (573px on a 390x844 phone) -- see the derivation on
                      STAFF_RANGE_PX in gameSystems.js.  The bow's 90 is
                      untouched: its reach is governed by the plant cap, not by
-                     life (v2.3.2473: 90 x 24 = 2160, further past 675 than the
+                     life (v2.3.2508: 90 x 24 = 2160, further past 675 than the
                      90 x 8 = 720 this note was written for). */
                   life: isStaff ? STAFF_LIFE : 90,
                   maxLife: isStaff ? STAFF_LIFE : 90,
@@ -1686,7 +1686,7 @@ export function updateMonsterCombat(S, deps) {
                   S._bowShotAng = arrAngle;
                   BT_AUDIO.play('arrow-fly', { vol: 0.85 });
                 }
-                }   /* v2.3.2473: end of `if (_mayLoose)` -- see the sight gate above */
+                }   /* v2.3.2508: end of `if (_mayLoose)` -- see the sight gate above */
               } else if (!S.isSwinging) {
                 S.swingTimer = Date.now();
                 S.isSwinging = true;

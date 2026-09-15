@@ -86,7 +86,7 @@ var _segHitX = 0, _segHitY = 0;
    import from rendering/.  IF THE ART IS RECUT OR RESCALED, THESE MOVE WITH
    IT -- that is the standing cost of the copy, and it is written here so the
    next person re-cutting a sheet knows to look. */
-/* ═══ v2.3.2473: AN ARROW FLIES THREE TIMES AS FAST ═══
+/* ═══ v2.3.2508: AN ARROW FLIES THREE TIMES AS FAST ═══
  * Owner (backlog §2.5): 8 px/frame -- 480 px/s at 60fps -- crossed the bow's
  * own 675px reach in 1.4 seconds, which reads as a lobbed stone rather than a
  * loosed arrow, and is most of why a moving target had to be led by a body
@@ -113,7 +113,7 @@ var PROJ_BODY = {
   arrowSpecial: { back: 24.6, front: 28.8, half: 10.9 },  /* 314x128 @ 0.17,     anchor .460 */
   magicSpecial: { back: 42.6, front: 24.0, half: 19.2 },  /* 222x128 @ 0.30,     anchor .639 */
 };
-/* ═══ v2.3.2473: THE HIT RADIUS, IN ONE PLACE ═══
+/* ═══ v2.3.2508: THE HIT RADIUS, IN ONE PLACE ═══
  * Lifted verbatim out of the per-monster loop below so the BOW'S NEW SIGHT GATE
  * (firstSightHit, under this) can ask the same question the hit test answers.
  * A gate that decided "the line is on him" with its own copy of these numbers
@@ -203,7 +203,7 @@ function _projCapsule(a) {
   _capBx = a._renderX + c * bd.front;  _capBy = a._renderY + s2 * bd.front;
   return bd.half;
 }
-/* ═══ v2.3.2473: WHAT IS THE BOW ACTUALLY POINTED AT? ═══
+/* ═══ v2.3.2508: WHAT IS THE BOW ACTUALLY POINTED AT? ═══
  *
  * Owner (backlog §2.5): the bow should fire only when the line of sight is ON
  * a monster, and the sight stream should STOP at whatever it is pointed at
@@ -296,7 +296,7 @@ function _segGap(px, py, ax, ay, bx, by) {
      freezes the arrow): fall back to the point test, which is what it was. */
   if (!(L > 0)) { _segHitX = bx; _segHitY = by; return Math.sqrt((px - bx) * (px - bx) + (py - by) * (py - by)); }
   /* A step this long is not flight.  The fastest legitimate advance is
-     ARROW_SPEED_PX * 2.0 * 3 = 144px (v2.3.2473: it was 48 at 8px/frame) --
+     ARROW_SPEED_PX * 2.0 * 3 = 144px (v2.3.2508: it was 48 at 8px/frame) --
      the Longshot cap times _dtScale's own x3 clamp -- and anything past this
      cap is a zone change, a respawn or a tab that was backgrounded and
      resumed, where sweeping across the gap would award hits along a line the
@@ -628,7 +628,7 @@ export function updateArrows(S, deps) {
                `life` becomes fractional — every reader compares or divides
                (`life <= 0`, `life / 20` for the fade), none index by it. */
             var _pdt = S._dtScale || 1;
-            var _dist0 = a.dist;   /* v2.3.2473: where this frame's step STARTED -- see the prev-point seed below */
+            var _dist0 = a.dist;   /* v2.3.2508: where this frame's step STARTED -- see the prev-point seed below */
             /* v2.3.2262: `speedPx` is an optional per-projectile override.  The
                magic special's three orbs each fly at their own speed (fast,
                medium, slow -- owner), and speed is otherwise a property of the
@@ -731,7 +731,7 @@ export function updateArrows(S, deps) {
                this is the only branch that FLIES — the stuck, held and
                planting branches above all freeze _renderX, and a segment
                built from one of those is not a flight path. */
-            /* ═══ v2.3.2473: THE FIRST FLIGHT FRAME SWEEPS FROM ITS LAUNCH POINT ═══
+            /* ═══ v2.3.2508: THE FIRST FLIGHT FRAME SWEEPS FROM ITS LAUNCH POINT ═══
                `_renderX` does not exist yet on a projectile whose FIRST update
                is a flying one -- anything without the bow's nock latch, which
                is every staff bolt and the bow special (it carries no
@@ -746,7 +746,7 @@ export function updateArrows(S, deps) {
                which is the geometry the drawn arrow actually travels.  It is
                the same principle v2.3.2426 and v2.3.2433 shipped -- test the
                segment the sprite crossed, not the point it stopped at -- and
-               v2.3.2473's 3x speed makes that untested first step three times
+               v2.3.2508's 3x speed makes that untested first step three times
                longer than it used to be.
 
                HONEST ABOUT ITS EVIDENCE.  This was written to explain five bow
@@ -832,7 +832,7 @@ export function updateArrows(S, deps) {
                  variant used to miss every case here and keep the bare
                  default radius while monsterBodyOffsetY put its centre at
                  the feet.  See hitShapeOf. */
-              /* v2.3.2473: the radius table moved to monsterProjRadius (top of
+              /* v2.3.2508: the radius table moved to monsterProjRadius (top of
                  file) so the bow's sight gate can ask the same question this
                  test answers.  `_archProj` is still needed below for the body
                  centre, which is a different table. */

@@ -1,4 +1,4 @@
-# The bow only shoots at something (v2.3.2473)
+# The bow only shoots at something (v2.3.2508)
 
 **Status:** shipped, client-only. Lane C of the 2026-09-14 backlog triage
 (`docs/BACKLOG-TRIAGE-2026-09-14.md` §2.5).

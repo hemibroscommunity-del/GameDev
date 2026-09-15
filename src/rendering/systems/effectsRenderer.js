@@ -4041,7 +4041,7 @@ export class EffectsRenderer {
    *  the eye strings into a linear path.
    *
    *  Trail position is captured ONCE per render frame.  At the
-   *  arrow's typical speed (v2.3.2473: 24 px/frame, was 8), an 8-point trail
+   *  arrow's typical speed (v2.3.2508: 24 px/frame, was 8), an 8-point trail
    *  covers ~192 px = a clear streak that doesn't lag behind reality. */
   /* v2.3.2287: the arrow probe's reader. Armed lazily like the rest -- no cost
      unless something calls it, and nothing in the game does. */
@@ -4052,7 +4052,7 @@ export class EffectsRenderer {
     if (!p._trail) p._trail = [];
     /* Skip recording if we just teleported (e.g. zone change reset).
        A jump in distance > TRAIL_TELEPORT_PX between samples means re-spawn.
-       ═══ v2.3.2473: 80 -> 260, BECAUSE THE ARROW GOT FASTER ═══
+       ═══ v2.3.2508: 80 -> 260, BECAUSE THE ARROW GOT FASTER ═══
        80px was chosen against 8px/frame.  At 24 (projectiles.ARROW_SPEED_PX)
        the fastest legitimate step is 24 x the Longshot cap 2.0 x _dtScale's
        clamp 3 = 144px, so the old threshold would have read an ordinary
@@ -5206,7 +5206,7 @@ export class EffectsRenderer {
          shoots" is the owner's whole ask here, and a scenario cannot measure a
          polygon.  Computed for the bow whether or not it is drawn, so a test
          can compare it against an arrow's real plant distance. */
-      /* ═══ v2.3.2473: ...AND IT STOPS AT WHAT IT IS POINTED AT ═══
+      /* ═══ v2.3.2508: ...AND IT STOPS AT WHAT IT IS POINTED AT ═══
          Owner (backlog §2.5): clip the stream at the first hit distance rather
          than drawing its full reach straight through the monster.
 
@@ -5251,7 +5251,7 @@ export class EffectsRenderer {
           return { visible: !!shouldDraw, ranged: !!isRanged, aimState: !!aimState,
             slot: slot || null, firing: !!bowFiring,
             angle: _beamAng, src: _beamSrc, len: _beamLen,   /* v2.3.2448 */
-            /* v2.3.2473: whether the stream stopped at a target, and the full
+            /* v2.3.2508: whether the stream stopped at a target, and the full
                reach it would have drawn without one -- "the line is short" has
                two causes (a clip, or a range multiplier) and a scenario cannot
                tell them apart from the length alone. */

@@ -2,7 +2,7 @@
 
 **Status:** superseded twice. The jet stream was switched off at v2.3.2448
 (`JET_STREAM_ENABLED = false`) and the sight beam came back at the arrow's own
-reach; v2.3.2473 then made that beam STOP at whatever the bow is pointed at and
+reach; v2.3.2508 then made that beam STOP at whatever the bow is pointed at and
 gated the shot itself on the same answer — see `bow-sight-gate.md`.  Kept for
 the history of this line, which has now moved five times.
 

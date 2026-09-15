@@ -108,7 +108,7 @@ export function specialAttack(S) {
     var R = S.rpg;
     var now = Date.now();
 
-    /* ═══ v2.3.2473: A BOW SPECIAL WAITS FOR THE LINE, IT IS NOT WASTED ═══
+    /* ═══ v2.3.2508: A BOW SPECIAL WAITS FOR THE LINE, IT IS NOT WASTED ═══
        Owner (backlog §2.5): with the bow now only loosing when its sight line
        is on something (monsterCombat's gate), "a pressed special sets a flag
        consumed at that same site so it fires on the next lined-up shot."

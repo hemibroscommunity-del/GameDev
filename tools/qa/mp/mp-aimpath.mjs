@@ -38,7 +38,7 @@ const offAxis = (a) => {
   return Math.min(r, q - r);
 };
 
-/* ═══ v2.3.2473: A BOW NEEDS SOMETHING ON ITS LINE BEFORE IT WILL FIRE ═══
+/* ═══ v2.3.2508: A BOW NEEDS SOMETHING ON ITS LINE BEFORE IT WILL FIRE ═══
  * The bow no longer looses at empty ground: monsterCombat's sight gate fires
  * only when a ray from the grip along the aim crosses a live target's hit
  * circle (owner, backlog §2.5).  Every block below that asserts an ANGLE has
@@ -80,7 +80,7 @@ const armRanged = (P, slot) => P.page.evaluate((slot) => {
   S.lockedTarget = null;
   S.arrows = [];
   S._shieldUp = false;
-  S._bowSpecialQueued = 0;   /* v2.3.2473: no request left over from the last block */
+  S._bowSpecialQueued = 0;   /* v2.3.2508: no request left over from the last block */
   return { slot: R.activeSlot, wpn: slot === 'staff' ? R.staffWeapon.type : R.rangedWeapon.type };
 }, slot);
 
@@ -92,7 +92,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const slot of ['ranged', 'staff']) {
     const armed = await armRanged(P, slot);
     rec.ok(`guard: a ${armed.wpn} is in hand with no lock`, !!armed.wpn, armed);
-    /* v2.3.2473: a target ON the diagonal this block aims down, so the bow's
+    /* v2.3.2508: a target ON the diagonal this block aims down, so the bow's
        sight gate lets the shot go.  See seedOnLine. */
     const onLine = await seedOnLine(P, DIAG, 300);
     console.log(`    ${slot} target on the line: ${JSON.stringify(onLine)}`);
@@ -223,7 +223,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     locked.aim != null && Math.abs(locked.aim - (-Math.PI / 2)) < 0.2, locked);
   /* Now the monster is gone -- killed and despawned, the ordinary end of a
      fight.  The lock's ref is stale from this frame on. */
-  /* ═══ v2.3.2473: SOMETHING ELSE HAS TO BE ON THE LINE ═══
+  /* ═══ v2.3.2508: SOMETHING ELSE HAS TO BE ON THE LINE ═══
      The phantom really is gone -- that is the whole subject of this block --
      but the bow will not loose at empty ground any more, so with the zone
      emptied there would be no shot to measure and the guard below would fail

@@ -194,7 +194,7 @@ const ranged = (a) => a.slot === 'ranged' || a.slot === 'staff';
 const fire = (P, atk) => P.page.evaluate(({ sp, rg }) => new Promise((resolve) => {
   const S = window._gameState.current, F = window._gameFns || {};
   if (sp && rg) {
-    /* ═══ v2.3.2473: A SPECIAL THAT WAS QUEUED IS NOT A SPECIAL THAT FIRED ═══
+    /* ═══ v2.3.2508: A SPECIAL THAT WAS QUEUED IS NOT A SPECIAL THAT FIRED ═══
        This reported ok the moment specialAttack() returned without throwing,
        which was safe while the call always launched something.  A bow special
        pressed with nothing on the sight line is now QUEUED instead (it spends
@@ -309,7 +309,7 @@ const targetById = (P, id) => P.page.evaluate((mid) => {
    field that means "the direction the player asked for" (v2.3.2261). */
 const aimAt = (P, t) => P.page.evaluate(({ ax, ay }) => {
   const S = window._gameState.current, R = S.rpg;
-  /* ═══ v2.3.2473: A BOW IS AIMED FROM THE GRIP, NOT FROM THE FEET ═══
+  /* ═══ v2.3.2508: A BOW IS AIMED FROM THE GRIP, NOT FROM THE FEET ═══
      This measured the angle from the player's ORIGIN, and the bow has fired
      from the teal GRIP since v2.3.1979 -- whose note is about exactly this
      geometry: "Measured from the player's feet (as it was), the arrow's flight
@@ -319,7 +319,7 @@ const aimAt = (P, t) => P.page.evaluate(({ ax, ay }) => {
 
      It never showed before because nothing checked: the bow fired whatever the
      angle was and the arrow either connected or did not, and a row that landed
-     4 of 5 read as a live monster moving.  v2.3.2473's sight gate is the first
+     4 of 5 read as a live monster moving.  v2.3.2508's sight gate is the first
      thing that asks the question, and it asks it from the grip -- so an aim
      built from the feet now suppresses the shot outright and the row reports
      "never fired".

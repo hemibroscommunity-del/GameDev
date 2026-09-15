@@ -47,7 +47,7 @@ const PHONES = [{ width: 390, height: 844 }, { width: 390, height: 664 }];
    a cardinal aim passes on the axis-locked fire paths v2.3.2260 fixed. */
 const AIM = -Math.PI / 2 + 0.18;
 
-/* ═══ v2.3.2473: THE BOW NEEDS A TARGET ON ITS LINE BEFORE IT FIRES ═══
+/* ═══ v2.3.2508: THE BOW NEEDS A TARGET ON ITS LINE BEFORE IT FIRES ═══
  * monsterCombat's sight gate looses an arrow only when a ray from the grip
  * along the aim crosses a live hit circle (owner, backlog §2.5), so the volley
  * this file is built on no longer happens over an empty sky.  A single fodder
@@ -190,7 +190,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const armed = await armBow(P);
     rec.ok(`${vp.height}: a pine bow is in hand, no lock (guard)`,
       armed.wpn === 'bow' && armed.slot === 'ranged', armed);
-    const target = await seedTarget(P);   /* v2.3.2473: something for the line to be ON */
+    const target = await seedTarget(P);   /* v2.3.2508: something for the line to be ON */
     console.log(`    target: ${JSON.stringify(target)}`);
 
     /* ── HOLD THE VOLLEY ──────────────────────────────────────────────── */
@@ -260,7 +260,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (withArrow) {
       const mult = withArrow.arrows.find((a) => a.rangeMult != null).rangeMult;
       const want = 675 * mult;
-      /* ═══ v2.3.2473: WITH A TARGET ON THE LINE IT STOPS AT HIM ═══
+      /* ═══ v2.3.2508: WITH A TARGET ON THE LINE IT STOPS AT HIM ═══
          Owner (backlog §2.5): "clip the sight stream at the first hit distance
          instead of BOW_RANGE_PX x bowRangeMult."  So the claim splits in two,
          and the ORIGINAL one (the full reach) is re-made below with the line

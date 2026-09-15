@@ -27,7 +27,7 @@ async function speedAt(P, cdp, rate) {
      on an expiry, and dist 0 so it starts at the beginning of its flight
      rather than mid-way (near the screen edge it would begin PLANTING and stop
      advancing).
-     ═══ v2.3.2473: IT LAUNCHES AT THE WEST EDGE NOW, NOT AT THE PLAYER ═══
+     ═══ v2.3.2508: IT LAUNCHES AT THE WEST EDGE NOW, NOT AT THE PLAYER ═══
      The arrow is three times faster (projectiles.ARROW_SPEED_PX 8 -> 24), so
      over this sample it covers ~576px instead of ~192.  Fired due east from a
      player standing near the middle of a 1000px-wide view there is only about
