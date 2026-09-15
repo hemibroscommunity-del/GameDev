@@ -5045,6 +5045,105 @@ export function getWeaponCritFlat(rpg) {
   return weaponCritFlatFor(rpg, (getActiveWeapon(rpg) || {}).type);
 }
 
+/* ═══ v2.3.2502: THE DISPLAY DAMAGE SCALE (§5.8 D1) ═══
+ *
+ * Owner ask, in their words: the combat numbers are too big to read at a
+ * glance on a phone.  A level-1 monster has 58 HP and a level-1 sword hits
+ * it for 5-8, so the first fight in the game is a wall of two-digit numbers
+ * that mean nothing to a new player.
+ *
+ * The owner chose the DISPLAY-ONLY option over re-basing the game's actual
+ * combat math (docs/specs/damage-scale-design.md argues the other side and
+ * is deliberately left open for them to read).  So: nothing below this line
+ * touches a single point of real damage.  The server, the wire protocol,
+ * every roll, every cap, every HP pool and every stored character are
+ * EXACTLY as they were.  This is a lens over the numbers on their way to
+ * the screen, and nothing else.
+ *
+ * k IS THE WHOLE KNOB.  Set DISPLAY_SCALE_K = 1 and every number in the
+ * game reads exactly as it did before this change — that is the property
+ * that makes this safe, and it is pinned by server/test/display-dps.test.mjs
+ * so it cannot rot.
+ *
+ * WHY 5.  k is the lowest damage roll a level-1 character can land, so that
+ * the weakest hit in the game reads as "1" and nothing has to read as zero.
+ * That roll is the SWORD's: base 6.67 × the melee variance band's 0.75 floor
+ * = 5.0.  Not the bow's — the bow was re-based upward in v2.3.2259 and its
+ * floor is now higher.  (docs/BALANCE-PLAN.md still carries the pre-2259
+ * figures and is stale on this point; the WEAPON_TYPES table above is the
+ * truth.)
+ *
+ * THE THREE HELPERS ARE ONE SYSTEM, and which one a call site wants is
+ * decided by what the player is looking at:
+ *
+ *   toDisplayDamage(n)   round(n/k), floored at 1 for any real damage.  The
+ *                        general one: a number standing on its own with no
+ *                        HP bar behind it — damage taken, a peer's hit, a
+ *                        heal, a damage range, a DPS readout.
+ *
+ *   toDisplayHp(n)       ceil(n/k).  Pools and bar labels.  CEIL, not round,
+ *                        because a monster with 1 HP left is alive and must
+ *                        not display 0 — the same reason the raw HP text has
+ *                        always been Math.ceil.
+ *
+ *   toDisplayHitDamage() the consistency rule (below).
+ *
+ * ── THE CONSISTENCY RULE ──
+ * Scaling a hit and the HP bar independently makes them disagree: three hits
+ * of "1" against a bar that only drops by 2 looks broken, and it is the one
+ * thing display-only rescaling can get visibly wrong.  So a NON-KILL popup
+ * does not report the hit at all — it reports THE CHANGE IN DISPLAYED HP,
+ * ceil(before/k) − ceil(after/k), which adds up to the bar the player is
+ * watching by construction.
+ *
+ * A KILL is the exception, and has to be: the bar goes to 0 no matter how
+ * hard the blow landed, so the displayed-HP delta would print the monster's
+ * remaining sliver instead of the hit.  The killing blow therefore reports
+ * round(rawDmg/k) — the roll BEFORE the server's overkill clamp, which rides
+ * monster_hit as `rawDmg` (added by the kill-blow PR).  Against a worker that
+ * does not send it we fall back to the credited damage, which is what the
+ * player saw before this change.
+ *
+ * KNOWN AND ACCEPTED: the rule can produce a 0 when a hit is smaller than k
+ * and does not cross a ceil boundary (before 12, after 11, k 5 → 3 − 3 = 0).
+ * That is the rule being honest — the bar genuinely did not move a whole
+ * point — and the alternative is a number that does not add up, which is the
+ * failure this rule exists to prevent.  If the owner would rather see a 1
+ * there, the fix is a Math.max(1, ...) on the return below and nothing else.
+ *
+ * NOT SCALED (§5.8's stated default): mana and stamina.  They are not combat
+ * damage, they have their own bars and their own costs, and the owner's ask
+ * was about damage.  Gold, XP and item prices are likewise untouched. */
+export const DISPLAY_SCALE_K = 5;
+
+export function toDisplayDamage(n) {
+  var v = Number(n) || 0;
+  if (v <= 0) return 0;
+  /* Floor of 1: any real damage must read as at least one point, or a weak
+     hit against a big target prints "-0" and looks like a miss. */
+  return Math.max(1, Math.round(v / DISPLAY_SCALE_K));
+}
+
+export function toDisplayHp(n) {
+  var v = Number(n) || 0;
+  if (v <= 0) return 0;
+  return Math.ceil(v / DISPLAY_SCALE_K);
+}
+
+/* The popup number for one landed hit — see THE CONSISTENCY RULE above.
+   `rawDmg` is optional and only consulted on a kill (hpAfter <= 0); pass the
+   monster_hit payload's rawDmg when it has one, and the credited damage or
+   nothing when it does not. */
+export function toDisplayHitDamage(hpBefore, hpAfter, rawDmg) {
+  var after = Number(hpAfter) || 0;
+  var before = Number(hpBefore) || 0;
+  if (after <= 0) {
+    var raw = Number(rawDmg);
+    return toDisplayDamage(isFinite(raw) && raw > 0 ? raw : Math.max(0, before - after));
+  }
+  return toDisplayHp(before) - toDisplayHp(after);
+}
+
 /* v2.3.1206: ONE display DMG/DPS formula for every readout.
    Three hand-rolled copies of this math existed (BottomDashboard
    loadout, ItemDetailPopup weaponDmgRange, InventoryPanel stash
@@ -5086,8 +5185,25 @@ export function getWeaponCritFlat(rpg) {
    The authoritative per-hit roll is server/src/combat.js
    _computeAttackDamage; this is only its expected-value mirror for UI.
 
-   Returns null / 0 for a missing or unknown weapon. */
-export function calcDisplayDmgRange(rpg, wpn) {
+   Returns null / 0 for a missing or unknown weapon.
+
+   ═══ v2.3.2502: RAW vs DISPLAYED ═══
+   This function now comes in two halves, and the split is load-bearing.
+
+   calcCombatDmgRange is the INTERNAL-UNIT range — the server-mirroring math
+   that has always lived here, unchanged to the last decimal.  It has one
+   consumer that is NOT a readout: monsterCombat.js reads its `max` as the
+   crit ANCHOR for the local damage prediction (v2.3.2213), mirroring
+   combat.js _critAnchor.  That number has to stay in the server's units or
+   the client predicts a crit five times smaller than the one the worker
+   pays, which is the lockstep class of bug v2.3.1144 cost us a week over.
+
+   calcDisplayDmgRange is that range with the display scale applied, and is
+   what every card, tooltip and dashboard already calls — so all of them
+   convert without being touched (including BottomDashboard.jsx, which
+   another lane is editing concurrently).  rawMin/rawMax ride along for any
+   caller that needs the real figure. */
+export function calcCombatDmgRange(rpg, wpn) {
   var w = wpn && WEAPON_TYPES[wpn.type];
   if (!w) return null;
   var statKey = EQUIP_STAT_MAP[wpn.type] || 'power';
@@ -5120,8 +5236,29 @@ export function calcDisplayDmgRange(rpg, wpn) {
     cdMs: cdMs,
   };
 }
+/* v2.3.2502: the player-facing half — see the RAW vs DISPLAYED note above. */
+export function calcDisplayDmgRange(rpg, wpn) {
+  var r = calcCombatDmgRange(rpg, wpn);
+  if (!r) return null;
+  var dMin = toDisplayDamage(r.min);
+  var dMax = toDisplayDamage(r.max);
+  return {
+    min: dMin,
+    max: dMax,
+    text: (dMin === dMax) ? String(dMin) : (dMin + '-' + dMax),
+    cdMs: r.cdMs,
+    rawMin: r.min,
+    rawMax: r.max,
+  };
+}
 export function calcDisplayDps(rpg, wpn) {
-  var r = calcDisplayDmgRange(rpg, wpn);
+  /* v2.3.2502: folded from the RAW range on purpose.  Every term below --
+     the crit anchor's `r.max * CRIT_ANCHOR_MULT` floor and the banked
+     critFlat added on top of it -- is in server units, so mixing a scaled
+     range with an unscaled flat would not be "DPS / k", it would be a
+     different formula.  Scale once, at the end: DPS is linear in damage, so
+     dividing the finished number by k is exact. */
+  var r = calcCombatDmgRange(rpg, wpn);
   if (!r) return 0;
   /* Crit fold: chance × extra multiplier, both resolved for THIS
      weapon's category channels (Precision/Executioner etc.) on top of
@@ -5156,7 +5293,7 @@ export function calcDisplayDps(rpg, wpn) {
      first cut folded critFlat inside the max and would have under-reported
      every legacy crit-flat build by the part the floor swallowed. */
   var critHit = Math.max(avg * critMult, r.max * CRIT_ANCHOR_MULT) + critFlat;
-  return (avg + critChance * (critHit - avg)) / (r.cdMs / 1000);
+  return ((avg + critChance * (critHit - avg)) / (r.cdMs / 1000)) / DISPLAY_SCALE_K;   /* v2.3.2502 */
 }
 
 /* v2.3.1207: ONE display heal formula for every fish readout — the

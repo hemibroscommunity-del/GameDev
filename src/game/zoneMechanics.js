@@ -21,7 +21,7 @@
    keeps them on their intended `|| 0` fallback path instead — zero
    effect on live play, and flagged in the PR for the owner's
    revive-or-remove decision on frozen-shore actions. */
-import { ZONES, BT_AUDIO, SNOWBALL_DMG_BASE, SNOWBALL_STUN_MS, SNOWMAN_DURATION, SNOWMAN_AGGRO_RADIUS, SLED_DURATION, TIDE_CYCLE_MS, DIVE_MAX_AIR, DIVE_AIR_DRAIN, DIVE_AIR_REFILL, DIVE_DAMAGE_RATE, DIVE_TREASURE_CHANCE, TORCH_DURATION } from '@/data/index.js';
+import { ZONES, BT_AUDIO, SNOWBALL_DMG_BASE, SNOWBALL_STUN_MS, SNOWMAN_DURATION, SNOWMAN_AGGRO_RADIUS, SLED_DURATION, TIDE_CYCLE_MS, DIVE_MAX_AIR, DIVE_AIR_DRAIN, DIVE_AIR_REFILL, DIVE_DAMAGE_RATE, DIVE_TREASURE_CHANCE, TORCH_DURATION, toDisplayDamage /* v2.3.2502: the display damage scale */ } from '@/data/index.js';
 import { _createForOfIteratorHelper } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
@@ -203,7 +203,7 @@ export function updateZoneMechanics(S, ptx, pty) {
                    Client-local zones keep the real death (catch-all runs). */
                 if (S._serverMonsters && S.rpg.hp < 1) S.rpg.hp = 1;
                 if (window.__dmgLog) try { console.log('[dmg] drowning', DIVE_DAMAGE_RATE); } catch (e) {}
-                pushDmgPopup(S, P.x, P.y - 20, '-' + DIVE_DAMAGE_RATE + ' (drowning!)', '#3498DB');
+                pushDmgPopup(S, P.x, P.y - 20, '-' + toDisplayDamage(DIVE_DAMAGE_RATE) + ' (drowning!)', '#3498DB');   /* v2.3.2502: display scale */
                 if (S.rpg.hp <= 0) {
                   S.rpg.hp = 0;
                   pushDmgPopup(S, P.x, P.y - 40, 'Drowned!', '#ff5e6c');

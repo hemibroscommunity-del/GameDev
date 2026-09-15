@@ -17,7 +17,7 @@ const STATUS_TO_ELEMENT = new Map();
 for (const el of Object.values(ELEMENTS || {})) {
   if (el && el.status) STATUS_TO_ELEMENT.set(el.status, el);
 }
-import { lookupCollision, PVP_THREAT_CONSENT_MS } from '@/data/gameSystems.js';
+import { lookupCollision, PVP_THREAT_CONSENT_MS, toDisplayHp } from '@/data/gameSystems.js'; /* v2.3.2502: the display damage scale */
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount, dodgeSheetDir } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX, HELD_SHIELD_PX } from '../backShield.js'; /* v2.3.1784; HELD_ v2.3.1798 */
@@ -8143,7 +8143,13 @@ export class EntityRenderer {
         display._hpText.alpha = 1;
         if (display._hpBarFill) display._hpBarFill.alpha = 1;
         if (display._hpBarFx) display._hpBarFx.alpha = 1;
-        const hpStr = String(Math.max(0, Math.ceil(curHp)));
+        /* v2.3.2502: the display scale (§5.8 D1).  CALL SITE ONLY -- the
+           plate's layout, geometry and colours below are untouched and
+           belong to the nameplate work landing in parallel.  toDisplayHp is
+           ceil(hp/k), which is the same Math.ceil this line always used with
+           the scale folded in, so a monster on its last point of HP still
+           reads 1 and never 0. */
+        const hpStr = String(toDisplayHp(curHp));
         if (display._hpText.text !== hpStr) display._hpText.text = hpStr;
       }
       display._lastHpPct = hpPct;

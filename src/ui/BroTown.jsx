@@ -150,6 +150,7 @@ import { pageIsPinchZoomed } from '@/data/joinGate.js';   /* v2.3.2388 */
    at boot; the only reader is the NPC wander clamp, dormant while
    NPC_DATA is empty. */
 import { CLAN_WAR_REWARDS, PET_LOOT_RADIUS, TOWN_W, TOWN_H, calcDisplayHeal,
+  toDisplayDamage, /* v2.3.2502: the display damage scale */
   hasGatherTool } from '@/data/index.js';
 import { IntroVideo } from './IntroVideo.jsx';
 /* v2.3.1593: mayorWelcomeSeen dropped — its only caller was the greeting
@@ -7944,7 +7945,7 @@ export var BroTown = function BroTown(_ref0) {
       if (S.channel) {
         try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
       }
-      pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + actual + ' HP', '#59BF91');
+      pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + toDisplayDamage(actual) + ' HP', '#59BF91');   /* v2.3.2502: display scale */
       pushDmgPopup(S, S.player.x, S.player.y - 46, 'Ate cooked fish', '#D8A94D');
       try { BT_AUDIO.beep(620, 0.05, 0.07, 'sine'); } catch (e) {}
       setRpgState(_objectSpread({}, R));

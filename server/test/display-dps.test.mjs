@@ -34,6 +34,13 @@
  * expected-value mirror for UI only. */
 import {
   calcDisplayDmgRange, calcDisplayDps, calcDisplayHeal, calcDisplayArmorHp,
+  /* ═══ v2.3.2502: the display damage scale (§5.8 D1) ═══
+     calcCombatDmgRange is the range this suite's fixtures have always
+     pinned -- the SERVER-unit math, unchanged.  calcDisplayDmgRange is now
+     that same range with the display scale applied, so every "matches hand
+     math exactly" check below moved to the raw half and the scaled half is
+     pinned against it.  §12 pins the scale itself. */
+  calcCombatDmgRange, DISPLAY_SCALE_K, toDisplayDamage, toDisplayHp, toDisplayHitDamage,
   getFishHealAmount, getArmorHp,
   getArmorDrPct, getArmorPieceDr, ARMOR_DR, /* v2.3.1697 */
   WEAPON_CHANNELS, WEAPON_CATEGORY, SWING_COOLDOWN,
@@ -186,13 +193,22 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   const critHitH = Math.max(avgH * critMult, expMax * 2) + critFlat;
   const expDps = (avgH + critChance * (critHitH - avgH)) / (600 / 1000);
 
+  /* v2.3.2502: the hand math above is in SERVER units and stays there — it is
+     the roll the worker will confirm, and the crit anchor reads it. */
+  const raw = calcCombatDmgRange(rpg, wpn);
+  check('fixture: RAW damage range matches hand math exactly',
+    !!raw && raw.min === expMin && raw.max === expMax && raw.text === expMin + '-' + expMax && raw.cdMs === 600,
+    { got: raw, expMin, expMax });
+  const sMin = toDisplayDamage(expMin), sMax = toDisplayDamage(expMax);
   const r = calcDisplayDmgRange(rpg, wpn);
-  check('fixture: damage range matches hand math exactly',
-    !!r && r.min === expMin && r.max === expMax && r.text === expMin + '-' + expMax && r.cdMs === 600,
-    { got: r, expMin, expMax });
+  check('fixture: DISPLAYED damage range is the hand math through the scale',
+    !!r && r.min === sMin && r.max === sMax
+      && r.text === (sMin === sMax ? String(sMin) : sMin + '-' + sMax)
+      && r.cdMs === 600 && r.rawMin === expMin && r.rawMax === expMax,
+    { got: r, sMin, sMax });
   const d = calcDisplayDps(rpg, wpn);
-  check('fixture: DPS matches hand math exactly',
-    Math.abs(d - expDps) < 1e-9, { got: d, exp: expDps });
+  check('fixture: DPS matches hand math exactly (through the scale)',
+    Math.abs(d - expDps / DISPLAY_SCALE_K) < 1e-9, { got: d, exp: expDps / DISPLAY_SCALE_K });
 }
 
 // ── 6. v2.3.1207: Tempo (atk-spd channel) folds into the period —
@@ -323,11 +339,15 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
 // readout must move with the accumulator and ignore stale counts.
 {
   const SWORD2 = { type: 'sword', tierMult: 1 };
-  const base = calcDisplayDmgRange({ power: 10 }, SWORD2);
-  const banked = calcDisplayDmgRange({ power: 10, weaponSpecs: { sword: { edge: 50 } }, t2Flat: { sword: { edge: 777 } } }, SWORD2);
+  /* v2.3.2502: raw half — 777 is a flat in SERVER units, so the check that it
+     lands whole belongs on the unscaled range (the scaled one would compare
+     777 against 777/k and fail for a reason that has nothing to do with the
+     accumulator this section is about). */
+  const base = calcCombatDmgRange({ power: 10 }, SWORD2);
+  const banked = calcCombatDmgRange({ power: 10, weaponSpecs: { sword: { edge: 50 } }, t2Flat: { sword: { edge: 777 } } }, SWORD2);
   check('t2bench: display range adds the banked damage flat (not the point count)',
     banked.min === base.min + 777 && banked.max === base.max + 777, { base, banked });
-  const zeroBank = calcDisplayDmgRange({ power: 10, weaponSpecs: { sword: { edge: 50 } }, t2Flat: { sword: { edge: 0 } } }, SWORD2);
+  const zeroBank = calcCombatDmgRange({ power: 10, weaponSpecs: { sword: { edge: 50 } }, t2Flat: { sword: { edge: 0 } } }, SWORD2);
   check('t2bench: zero banked flat beats a stale 50-point count when the accumulator is live',
     zeroBank.min === base.min && zeroBank.max === base.max, { base, zeroBank });
 }
@@ -370,13 +390,13 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   const avgX = (expMinX + expMaxX) / 2;
   const critHitX = Math.max(avgX * 2.1, expMaxX * 2);
   const expDpsX = (avgX + (0.01 + 50 * PROG3.ATK.crit.per) * (critHitX - avgX)) / (cdX / 1000);
-  const rX = calcDisplayDmgRange(p3rpg, SWORD);
+  const rX = calcCombatDmgRange(p3rpg, SWORD);           /* v2.3.2502: raw half */
   const dX = calcDisplayDps(p3rpg, SWORD);
   check('prog3x fixture: range carries the dmg stat pre-tier',
     !!rX && rX.min === expMinX && rX.max === expMaxX && Math.abs(rX.cdMs - cdX) < 1e-9,
     { got: rX, expMinX, expMaxX, cdX });
   check('prog3x fixture: DPS folds the percent critDmg, no flat',
-    Math.abs(dX - expDpsX) < 1e-9, { got: dX, exp: expDpsX });
+    Math.abs(dX - expDpsX / DISPLAY_SCALE_K) < 1e-9, { got: dX, exp: expDpsX / DISPLAY_SCALE_K });
 
   // The same character against an OLD worker (prog3x off): the dmg stat
   // is not in that worker's roll and its crits pay 1.5× + flat 2/pt —
@@ -387,13 +407,113 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   const avgL = (expMinL + expMaxL) / 2;
   const critHitL = Math.max(avgL * 1.5, expMaxL * 2) + 60 * 2;   /* flat rides ON TOP of the anchor */
   const expDpsL = (avgL + (0.01 + 50 * PROG3.ATK.crit.per) * (critHitL - avgL)) / (cdX / 1000);
-  const rL = calcDisplayDmgRange(p3rpg, SWORD);
+  const rL = calcCombatDmgRange(p3rpg, SWORD);           /* v2.3.2502: raw half */
   const dL = calcDisplayDps(p3rpg, SWORD);
   check('old-worker fallback: dmg stat leaves the range',
     !!rL && rL.min === expMinL && rL.max === expMaxL, { got: rL, expMinL, expMaxL });
   check('old-worker fallback: DPS predicts the flat +2 crit math',
-    Math.abs(dL - expDpsL) < 1e-9, { got: dL, exp: expDpsL });
+    Math.abs(dL - expDpsL / DISPLAY_SCALE_K) < 1e-9, { got: dL, exp: expDpsL / DISPLAY_SCALE_K });
   setProg3Enabled(false);
+}
+
+// ── 12. v2.3.2502: THE DISPLAY DAMAGE SCALE (§5.8 D1) ──
+// Display-only rescaling of every player-facing combat number.  Three
+// properties make it safe, and all three are pinned here rather than
+// trusted:
+//
+//  (a) k = 1 RESTORES TODAY'S NUMBERS EXACTLY.  This is the entire safety
+//      argument for shipping a lens over the numbers instead of re-basing
+//      the combat math, and it is the first thing that would quietly stop
+//      being true if someone "simplified" a helper.
+//  (b) THE RAW MATH IS UNTOUCHED.  calcCombatDmgRange must stay in server
+//      units: monsterCombat.js reads its `max` as the crit ANCHOR mirroring
+//      combat.js _critAnchor, so a scaled anchor would make the client
+//      predict a crit k times smaller than the one the worker pays — the
+//      prediction/authority divergence class of bug.
+//  (c) THE CONSISTENCY RULE.  A non-kill popup reports the change in
+//      DISPLAYED hp, so successive hits add up to the bar the player is
+//      watching; the killing blow reports the roll instead, because the bar
+//      goes to zero however hard it landed.
+{
+  const k = DISPLAY_SCALE_K;
+  check('scale: k is a positive integer', Number.isInteger(k) && k > 0, k);
+
+  /* (a) The k = 1 restore property.  Both helpers are written as
+     round(n/k) / ceil(n/k), so at k = 1 they are the identity on every
+     non-negative integer and the consistency rule collapses to
+     before − after.  Checked as arithmetic (k is a module constant and
+     cannot be reassigned from here) over the numbers that actually occur. */
+  const SAMPLES = [0, 1, 2, 3, 4, 5, 7, 8, 12, 58, 100, 999, 12345];
+  check('scale: at k = 1 round(n/k) is the identity on every integer',
+    SAMPLES.every((n) => (n <= 0 ? 0 : Math.max(1, Math.round(n / 1))) === n));
+  check('scale: at k = 1 ceil(n/k) is the identity on every integer',
+    SAMPLES.every((n) => (n <= 0 ? 0 : Math.ceil(n / 1)) === n));
+  check('scale: at k = 1 the consistency rule is plain before - after',
+    [[58, 50], [12, 11], [100, 1], [5, 4]].every(
+      ([b, a]) => (Math.ceil(b / 1) - Math.ceil(a / 1)) === b - a));
+
+  // toDisplayDamage — round, floored at 1 for any real damage.
+  check('toDisplayDamage: rounds to nearest',
+    toDisplayDamage(5 * k) === 5 && toDisplayDamage(10 * k) === 10,
+    { a: toDisplayDamage(5 * k), b: toDisplayDamage(10 * k) });
+  check('toDisplayDamage: any real damage reads at least 1 (never a "-0" popup)',
+    toDisplayDamage(1) >= 1 && toDisplayDamage(0.4) >= 1, toDisplayDamage(1));
+  check('toDisplayDamage: nothing, zero and negatives read 0',
+    toDisplayDamage(0) === 0 && toDisplayDamage(-7) === 0
+      && toDisplayDamage(undefined) === 0 && toDisplayDamage(null) === 0);
+
+  // toDisplayHp — CEIL, because a monster on its last point of HP is alive.
+  check('toDisplayHp: one point of HP never displays as 0', toDisplayHp(1) === 1, toDisplayHp(1));
+  check('toDisplayHp: an empty pool displays 0', toDisplayHp(0) === 0 && toDisplayHp(-3) === 0);
+  check('toDisplayHp: is ceil(n/k)',
+    toDisplayHp(k) === 1 && toDisplayHp(k + 1) === 2 && toDisplayHp(2 * k) === 2,
+    { a: toDisplayHp(k), b: toDisplayHp(k + 1) });
+
+  // (b) raw stays raw; displayed is raw through the scale.
+  {
+    const rpg = makeRpg();
+    const rawR = calcCombatDmgRange(rpg, SWORD);
+    const dispR = calcDisplayDmgRange(rpg, SWORD);
+    check('raw range is NOT scaled (monsterCombat reads it as the crit anchor)',
+      rawR.min === dispR.rawMin && rawR.max === dispR.rawMax, { rawR, dispR });
+    check('displayed range is the raw range through the scale',
+      dispR.min === toDisplayDamage(rawR.min) && dispR.max === toDisplayDamage(rawR.max),
+      { rawR, dispR });
+    check('for k > 1 the displayed range is strictly smaller than the raw one',
+      k === 1 || dispR.max < rawR.max, { k, disp: dispR.max, raw: rawR.max });
+    /* The exact raw-DPS-over-k equality is pinned by the §5 fixture against
+       hand math; here we only pin that DPS survived the scale as a live,
+       finite number in the displayed range's own order of magnitude. */
+    const dpsD = calcDisplayDps(rpg, SWORD);
+    check('displayed DPS is finite, positive, and in the displayed range\'s scale',
+      Number.isFinite(dpsD) && dpsD > 0 && dpsD >= dispR.min / (dispR.cdMs / 1000),
+      { dpsD, min: dispR.min, cdMs: dispR.cdMs });
+  }
+
+  // (c) the consistency rule.
+  {
+    /* Successive non-kill hits must sum to the drop in the DISPLAYED bar —
+       this is the property the rule exists for, and the one a naive
+       round(dmg/k) gets wrong. */
+    const after = [40, 37, 31, 20, 9];          // hp after each hit, starting at 58
+    let hp = 58, sum = 0;
+    for (const a of after) { sum += toDisplayHitDamage(hp, a); hp = a; }
+    check('consistency: non-kill popups sum to the drop in DISPLAYED hp',
+      sum === toDisplayHp(58) - toDisplayHp(9),
+      { sum, exp: toDisplayHp(58) - toDisplayHp(9) });
+    check('consistency: a non-kill popup is the DISPLAYED-hp delta, not round(dmg/k)',
+      toDisplayHitDamage(58, 40) === toDisplayHp(58) - toDisplayHp(40),
+      toDisplayHitDamage(58, 40));
+
+    /* The killing blow reports the ROLL, off the pre-overkill-clamp rawDmg
+       the worker sends — otherwise the last hit of every fight prints the
+       sliver of HP that was left instead of the blow that ended it. */
+    check('consistency: a kill reports round(rawDmg/k), not the sliver it clamped to',
+      toDisplayHitDamage(2, 0, 40 * k) === 40, toDisplayHitDamage(2, 0, 40 * k));
+    check('consistency: a kill with no rawDmg falls back to the credited damage (rule 19)',
+      toDisplayHitDamage(2 * k, 0) === toDisplayDamage(2 * k), toDisplayHitDamage(2 * k, 0));
+    check('consistency: a kill never reads 0', toDisplayHitDamage(1, 0, 1) >= 1);
+  }
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL PASS');

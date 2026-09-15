@@ -27,7 +27,7 @@ import {
   RESPAWN_BASE, RESPAWN_ESCALATE, RESPAWN_ESCALATE_WINDOW, RESPAWN_MAX, SPECIAL_ATK_MULT, specialAtkMultFor,
   SWING_ARC, SWING_COOLDOWN, weaponSwingMult /* v2.3.2265 */, SWING_RANGE, MELEE_CONTACT_MS /* v2.3.2200 */, TILE, WEAPON_TYPES, WELL_RESTED_XP_MULT,
   ZONES, ZONE_RESOURCES, applyStatus, awardWeaponXp, bowPierceCount, bowRangeMult, calcBlockReduction, calcCritChance,
-  calcCritMult, calcDisplayDmgRange, calcSpecialDmg, calcWeaponDmg, cleaveArcBonus, createDefaultCompStats, createDefaultLifeSkills,
+  calcCritMult, calcCombatDmgRange /* v2.3.2502: the RAW range -- the crit anchor is gameplay, not a readout */, calcSpecialDmg, calcWeaponDmg, cleaveArcBonus, createDefaultCompStats, createDefaultLifeSkills,
   CRIT_ANCHOR_MULT,
   createMonster, discoverCollision, discoverMonster, generateZoneMap, getActiveWeapon,
   getAttunementPts, getCollisionDeathFX, getDefenseBlockBonus, getEffectiveness, getElementDeathFX,
@@ -37,7 +37,7 @@ import {
   monsterBodyOffsetY, monsterMeleeHitRadius, monsterProceduralRadius, TOWN_SPAWN /* v2.3.1777 */
 } from '@/data/index.js';
 import { prog3Live, prog3CatFor, prog3CritPct, prog3CritMult, prog3CritFlat } from '@/data/prog3.js'; /* v2.3.2218 */
-import { STAFF_LIFE, BOW_RANGE_PX } from '@/data/gameSystems.js'; /* v2.3.2387: one staff range for all four spawn sites; v2.3.2473: the sight gate's reach */
+import { STAFF_LIFE, BOW_RANGE_PX, toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2387: one staff range for all four spawn sites; v2.3.2473: the sight gate's reach; v2.3.2502: the display damage scale */
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
@@ -615,7 +615,7 @@ export function updateMonsterCombat(S, deps) {
                       hurtPlayerLocal(S, _R6, finalDmg);
                       trackMonsterDamage(S, m.id, finalDmg);
                       if (window.__dmgLog) try { console.log('[dmg] boss-slam', { amt: finalDmg, archetype: m.archetype || m.type, blocked: blocked }); } catch (e) {}
-                      pushDmgPopup(S, P.x, P.y - 20, blocked ? 'BLOCK' : '-' + finalDmg, '#f5c542');
+                      pushDmgPopup(S, P.x, P.y - 20, blocked ? 'BLOCK' : '-' + toDisplayDamage(finalDmg), '#f5c542');   /* v2.3.2502: display scale */
                       if (blocked) {
                         try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
                       } else {
@@ -660,7 +660,7 @@ export function updateMonsterCombat(S, deps) {
                       hurtPlayerLocal(S, _R6, _finalDmg);
                       trackMonsterDamage(S, m.id, _finalDmg);
                       if (window.__dmgLog) try { console.log('[dmg] boss-sweep', { amt: _finalDmg, archetype: m.archetype || m.type, blocked: _blocked }); } catch (e) {}
-                      pushDmgPopup(S, P.x, P.y - 20, _blocked ? 'BLOCK' : '-' + _finalDmg, '#a855f7');
+                      pushDmgPopup(S, P.x, P.y - 20, _blocked ? 'BLOCK' : '-' + toDisplayDamage(_finalDmg), '#a855f7');   /* v2.3.2502: display scale */
                       if (_blocked) {
                         try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
                       } else {
@@ -732,7 +732,7 @@ export function updateMonsterCombat(S, deps) {
                   hurtPlayerLocal(S, _R6, _finalDmg2);
                   trackMonsterDamage(S, m.id, _finalDmg2);
                   if (window.__dmgLog) try { console.log('[dmg] boss-charge', { amt: _finalDmg2, archetype: m.archetype || m.type, blocked: _blocked2 }); } catch (e) {}
-                  pushDmgPopup(S, P.x, P.y - 20, _blocked2 ? 'BLOCK' : '-' + _finalDmg2, '#ea580c');
+                  pushDmgPopup(S, P.x, P.y - 20, _blocked2 ? 'BLOCK' : '-' + toDisplayDamage(_finalDmg2), '#ea580c');   /* v2.3.2502: display scale */
                   if (_blocked2) {
                     try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
                   } else {
@@ -1039,7 +1039,7 @@ export function updateMonsterCombat(S, deps) {
                         });
                       }
                     } else {
-                      pushDmgPopup(S, P.x, P.y - 30, '-' + dmgTaken, '#ff5e6c', { iconKey: 'heart' });
+                      pushDmgPopup(S, P.x, P.y - 30, '-' + toDisplayDamage(dmgTaken), '#ff5e6c', { iconKey: 'heart' });   /* v2.3.2502: display scale */
                     }
                   }
                   if (_R6.hp <= 0) {
@@ -1982,7 +1982,17 @@ export function updateMonsterCombat(S, deps) {
                    the same order the server uses. */
                 var _rangeTop = 0;
                 if (isCrit) {
-                  var _rng = calcDisplayDmgRange(_R6, _activeWpn);
+                  /* v2.3.2502: calcCOMBATDmgRange, not calcDisplayDmgRange.
+                     This anchor is GAMEPLAY -- it mirrors combat.js
+                     _critAnchor so the local prediction matches the damage
+                     the worker actually pays -- and the display scale that
+                     shipped in v2.3.2502 divides the DISPLAY range by 5.
+                     Reading the display half here would floor every
+                     predicted crit at a fifth of the server's floor, i.e.
+                     the exact prediction/authority divergence v2.3.2213
+                     was written to close.  The raw half is the old function
+                     under its new name, unchanged. */
+                  var _rng = calcCombatDmgRange(_R6, _activeWpn);
                   _rangeTop = (_rng && _rng.max) || 0;
                 }
                 /* v2.3.2218: the SPECIAL multiplier goes in BEFORE the crit,

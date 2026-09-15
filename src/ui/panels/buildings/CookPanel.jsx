@@ -1,5 +1,5 @@
 import React from 'react';
-import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, createDefaultCompStats, getCookingSweetSpot, getFishTierLevel } from '@/data/index.js';
+import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, createDefaultCompStats, getCookingSweetSpot, getFishTierLevel, toDisplayDamage } from '@/data/index.js'; /* v2.3.2502: the display damage scale */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -133,7 +133,7 @@ export function CookPanel(props) {
       color: '#F4F0E7',
       marginBottom: 4
     }
-  }, "Cooking: ", cookMinigame.fishName, " (Heals ", cookMinigame.healAmt, " HP)"), /*#__PURE__*/React.createElement("div", {
+  }, "Cooking: ", cookMinigame.fishName, " (Heals ", toDisplayDamage(cookMinigame.healAmt), " HP)"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#8D9B98',
@@ -333,7 +333,7 @@ export function CookPanel(props) {
           fontSize: 11,
           color: '#8D9B98'
         }
-      }, "Heals ", healAmt, " HP \xB7 Sweet spot: ", Math.round(spot.width * 100), "%")), /*#__PURE__*/React.createElement("button", {
+      }, "Heals ", toDisplayDamage(healAmt), " HP \xB7 Sweet spot: ", Math.round(spot.width * 100), "%")), /*#__PURE__*/React.createElement("button", {
         style: {
           /* v2.3.1235: batch-3 rollout — 44px hitbox floor; secondary =
              raised + strong hairline, 10px button radius. */
@@ -430,7 +430,7 @@ export function CookPanel(props) {
           fontSize: 11,
           color: '#8D9B98'
         }
-      }, "Heals ", healAmt, " HP")), /*#__PURE__*/React.createElement("button", {
+      }, "Heals ", toDisplayDamage(healAmt), " HP")), /*#__PURE__*/React.createElement("button", {
         /* v2.3.1235: state-correction — real disabled prop (the onClick
            atFull guard is unchanged underneath) + the approved disabled
            recipe (#1A292F fill, #8D9B98 text, .11 hairline, opacity 1). */
@@ -472,7 +472,7 @@ export function CookPanel(props) {
           try {
             localStorage.setItem('bt_rpg', JSON.stringify(R));
           } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + healed + ' HP', '#59BF91');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + toDisplayDamage(healed) + ' HP', '#59BF91');   /* v2.3.2502: display scale */
           BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
         }
       }, "Eat"));

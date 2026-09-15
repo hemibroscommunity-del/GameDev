@@ -1,5 +1,5 @@
 import React from 'react';
-import { AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, COLLISION_TABLE, ELEMENTS, MAX_PET_SLOTS, NUGGETS_PER_BAR, PET_LOOT_RADIUS, RARITY_TIERS, WEAPON_STASH_MAX, WEAPON_TYPES, calcDisplayDmgRange, calcDisplayDps, calcDisplayHeal, canEquipItem, discoveredCollisions, getAmuletBonus, getEquipReqLabel, getShieldBonus } from '@/data/index.js';
+import { AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, COLLISION_TABLE, ELEMENTS, MAX_PET_SLOTS, NUGGETS_PER_BAR, PET_LOOT_RADIUS, RARITY_TIERS, WEAPON_STASH_MAX, WEAPON_TYPES, calcDisplayDmgRange, calcDisplayDps, calcDisplayHeal, canEquipItem, discoveredCollisions, getAmuletBonus, getEquipReqLabel, getShieldBonus, toDisplayDamage } from '@/data/index.js'; /* v2.3.2502: the display damage scale */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -657,7 +657,7 @@ export function InventoryPanel(props) {
           try {
             localStorage.setItem('bt_rpg', JSON.stringify(R));
           } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + healed + ' HP', '#59BF91');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + toDisplayDamage(healed) + ' HP', '#59BF91');   /* v2.3.2502: display scale */
           /* (Eat handler patched to send eat_request -- see block above.) */
           /* v2.3.2077: `_serverMonsters` is FALSE in town -- it means "this
              zone has server-managed monsters", and wsClient sets it false on
@@ -673,7 +673,7 @@ export function InventoryPanel(props) {
         }
         /* v2.3.1235: batch-2 rollout \u2014 the \uD83D\uDC1F prefix was decorative
            emoji in button chrome (the fish name carries the meaning) */
-      }, fishName, " \xD7", qty, " (+", healAmt, "HP)");
+      }, fishName, " \xD7", qty, " (+", toDisplayDamage(healAmt), "HP)");
     })));
   }(), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: module header \u2014 11/600 uppercase .12em */
