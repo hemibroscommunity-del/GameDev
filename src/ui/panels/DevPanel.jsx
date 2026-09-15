@@ -152,9 +152,9 @@ const CAP_GATES = [
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
   'laststand', 'party', 'partyChat', 'petLoot', 'pets', 'potionBag', 'prog3',
-  'prog3Chan', 'prog3x', 'questTrack', 'sponsor', 'store', 't2bench', 't2simple',
-  't2uniform', 'trade', 'trade2', 'trade2Review', 'trade2Weapons', 'weaponDrops',
-  'whisper',
+  'prog3Chan', 'prog3elem' /* v2.3.2512 */, 'prog3x', 'questTrack', 'sponsor', 'store',
+  't2bench', 't2simple', 't2uniform', 'trade', 'trade2', 'trade2Review',
+  'trade2Weapons', 'weaponDrops', 'whisper',
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported
@@ -164,6 +164,7 @@ const CAP_GATES = [
 const CAP_NOTES = {
   prog3: 'the Points screen — combat levels read 0 without it',
   prog3x: 'the extra Points stats',
+  prog3elem: 'Elem Pwr per weapon, plus the Elem Resist and Max Mana stats',
   prog3Chan: 'per-weapon point pools',
   abil: 'special moves — the sword dash, shield bash and whirlwind',
   elemBurst: 'the elemental burst',

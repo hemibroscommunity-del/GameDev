@@ -265,6 +265,120 @@ stamina) regardless of what channel you earned the point through."*
 - Shield forging/equipping remains client-local (as in legacy) — its
   server gate lands if shields ever route through a server flow.
 
+## The attribute restructure (v2.3.2512)
+
+Three owner asks from the 2026-09-14 backlog triage (§2.1c, decision D12),
+shipped as one system because they share the allocation grid and one
+migration. Caps flag **`prog3elem`** (display-only; nothing new is sent).
+
+### ELEM PWR: one global stat → one per combat type
+
+`elem` moves from `PROG3.BODY` to `PROG3.ATK`, **cap and per-point value
+unchanged** (75 / +1 effective "power"). The owner's own split says attack
+power belongs to the type that produces it — a staff build's burn has as
+little to do with a bow as its crit does — and it is what lets the Points
+screen put ELEM PWR inside MELEE / BOW / STAFF beside DAMAGE and CRIT.
+
+Every reader goes through `elemAttackStat(ps, legacyName, cat)`, which now
+takes the category; the four call sites pass the slot **the server
+resolved**, never the client's claim:
+
+| Site | Category |
+|---|---|
+| `combat.js` `_applyWeaponElementStatus` | `cat` param, defaults `'sword'` (its one caller, the lunge, is melee-only by construction) |
+| `combat.js` `_handleMonsterDamage` (status + collision) | `_prog3CatFor(_effSlot)` |
+| `burst.js` | the burst's own `slot` |
+| `elemental.js` `resolveElementCollision` | `cat` param, passed from the hit site |
+
+An unrecognised or missing category falls back to `'sword'`: a reader that
+forgot to say loses the bonus rather than reading someone else's lane.
+
+Client mirror: `prog3ElemPower(rpg, cat)` in `src/data/prog3.js` is the ONE
+reader (three inline copies of the arithmetic were how the old one drifted).
+Statuses carry a `cat` stamp (`applyStatus`'s optional 5th argument); one
+without falls back to the lane the player is holding.
+
+### ELEM RESIST: the defensive half the elemental system never had
+
+New global `BODY.eres`, **−0.4 %/pt, −30 % at the 75-pt cap** — the same
+shape `dodge` uses, because it is the same kind of promise and a player
+should not have to learn two scales.
+
+**What it resists is a closed list** (a stat with nothing to resist is dead
+content), and the list is exactly the damage the server itself mints through
+an elemental source:
+
+| Source | File |
+|---|---|
+| The fire goblin's burning trail | `firetrail.js` `_fireTrailHitPlayer` |
+| The blue slime's death burst | `telegraph.js`, `kit.kind === 'burst'` |
+
+Nothing else is typed today: an ordinary monster swing, a brute's slam, a
+fodder's lunge, a snowball and every dungeon hit are untyped and are **not**
+resisted. The mechanism is `_applyDamage(ps, raw, isBlock, { elemental: true })`
+— declared by the CALLER, because "is this hit elemental" is knowledge the
+damage site has and `_applyDamage` does not. The day a new typed source
+lands, it passes the flag and joins the list with no change to the stat.
+
+Applied multiplicatively with `def`, immediately after it, with the floor-1
+clamp preserved: two 30 % cuts that add reach 60 %, two that multiply reach
+51 %, and only the second shape is safe against a future third layer.
+
+### MAX MANA: a stat, added to the derivation rather than replacing it
+
+New global `BODY.mana`, **+2.5/pt (= `MANA_PER_MAGIC_LEVEL`), cap 100 →
++250**. `maxMana` becomes:
+
+```
+floor(100 + magicLvl × MANA_PER_MAGIC_LEVEL + manaPts × BODY.mana.per)
+```
+
+Added, not replaced, so **at zero points every existing player's pool is
+byte-identical** — nobody loses a pool they already had. One point buys what
+one Magic level buys, so there is one number to reason about.
+
+**The block ladder moves with it**: `manaBlocks = blocksAt(magicLvl + manaPts)`.
+A special costs `maxMana / manaBlocks`, so growing the pool without growing
+the count would make each cast *more* expensive and buy exactly zero extra
+casts — the v2.3.1734 trap ("mana could not progress, by construction")
+re-entered through a different door. Mana now counts its investment on the
+same ladder stamina already counts its own allocated points on.
+
+### Migration v15 — `prog3-elem-per-weapon`
+
+`RPG_SCHEMA_VERSION` 14 → 15. `prog3MoveElemToAtk(p3)` deletes
+`prog3.alloc.elem` and **refunds** its points to `pool`.
+
+Refund, not copy and not a guess — the **v11 precedent**
+(`prog3-per-type-offense`) for identical reasons: copying into all three
+types would triple the investment for free, and picking one type would be
+guessing on the player's behalf. Refunding hands the choice back, which is
+the change.
+
+Idempotent (it returns false the moment `alloc.elem` is absent) and
+fail-open covered: `_sanitizeProg3` runs the same fold at the join boundary,
+because migrations fail open and the alloc loop walks OUR key list — without
+the heal a blob that missed v15 would have the points dropped with no refund.
+`prog3SplitAtk`'s hardcoded body-key list was rebuilt off `prog3FreshAlloc()`
+in the same version, for the same class of bug.
+
+The two arriving BODY channels need no migration work: they start at zero,
+`prog3FreshAlloc` carries them, `_sanitizeProg3` fills any blob that lacks
+them, and max mana is additive.
+
+### Pins
+
+`mirror-audit` §12 gained a **key-set** comparison for `PROG3.BODY` and
+`PROG3.ATK` in both directions. The existing scalar check compares only keys
+present on BOTH sides, which is forgiving by design — and had a hole with
+teeth: a stat that MOVES tables stops appearing in the shared set and the
+drift passes silently. This version was exactly that case.
+
+`prog3.test.mjs` pins the grid, the refund, the boundary heal, the mana
+arithmetic (unchanged at zero points, and that investing buys CASTS not just
+a longer bar) and the elemental cut. `mp-prog3` and `mp-statgrid` cover the
+Points screen.
+
 ## Known deviations / follow-ups
 
 - PvP: the legacy equipment-`def` mitigation (`100/(100+def)`) still

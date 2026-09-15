@@ -105,18 +105,45 @@ export const PROG3 = {
     hp:      { cap: 100, per: 8 },      // +8 max HP/pt → +800
     dodge:   { cap: 75,  per: 0.004 },  // +0.4%/pt → 30%
     stam:    { cap: 100, per: 3 },      // +3 max stamina/pt → +300
-    /* v2.3.2199: ELEMENTAL POWER — repairs the stat orphaning the elemental
-       rework left behind: burn/root/thorn DoT and element collisions still
-       read the LEGACY T1 stats (power/agility/mind/vitality), which are
-       frozen fossils for migrated veterans and 0 for every fresh prog3
-       character.  Each point = +1 effective "power" in those exact legacy
-       formulas via elemAttackStat (elemental.js) — burn 5+P×0.3/tick,
-       collision base+P×coeff.  BODY (not ATK) per the owner's own split:
-       elemental power describes the character, not the thing in hand — and
-       it is deliberately the one offense buyable with any lane's points.
-       Endgame fade is structural (no tierMult in the DoT formulas); if it
-       dies late, the dial is tier-coupling in a SEPARATE lockstep PR. */
-    elem:    { cap: 75,  per: 1 },      // +1 elemental power/pt → 75
+    /* ═══ v2.3.2512: ELEMENTAL RESISTANCE (owner ask, backlog D12) ═══
+       The defensive half of the elemental system, which until now had none:
+       the ONLY thing in the game that reduced elemental damage was the 5%
+       cooking buff, and the stone amulet's `elemResist` field was read by a
+       client-local AI path the server never consulted.
+
+       Shape copied from `dodge` deliberately — same cap, same per-point
+       percent — because it is the same kind of promise ("this much less of
+       a thing that happens to you") and a player should not have to learn
+       two scales.  −0.4%/pt, −30% at the 75-pt cap.
+
+       WHAT IT RESISTS is a closed list, stated here because a stat with
+       nothing to resist is dead content: damage the server itself minted
+       through an ELEMENTAL source — the fire goblin's trail (firetrail.js)
+       and the blue slime's death burst (telegraph.js SLIME_BURST).  Those
+       are the two typed damage sources that exist.  An ordinary monster
+       swing is NOT typed today, so it is not resisted; the day one is, its
+       call site passes `{ elemental: true }` to _applyDamage and it joins
+       the list with no change here. */
+    eres:    { cap: 75,  per: 0.004 },  // −0.4% elemental damage taken/pt → −30%
+    /* ═══ v2.3.2512: MAX MANA becomes a stat (owner ask) ═══
+       It was never allocatable: maxMana was `100 + magicLvl × 2.5`, derived
+       wholly from the Magic SKILL, so the only way to grow the pool was to
+       train Magic even for a melee build that only wants specials.
+
+       ADDED ON TOP of that derivation rather than replacing it, which is the
+       reading that leaves every current player's mana EXACTLY where it is at
+       zero points — nobody loses a pool they already had.  The per-point
+       value is MANA_PER_MAGIC_LEVEL, so "one point buys what one Magic level
+       buys" and there is one number to reason about, not two.
+
+       THE BLOCK LADDER MOVES WITH IT (see _prog3Recompute).  A special costs
+       maxMana / manaBlocks, so growing the pool without growing the count
+       would make each cast MORE expensive and buy exactly zero extra casts —
+       which is the v2.3.1734 trap ("mana could not progress, by
+       construction") re-entered through a different door.  Mana counts
+       `magicLvl + points` on the same ladder stamina already counts its own
+       allocated points on. */
+    mana:    { cap: 100, per: 2.5 },    // +2.5 max mana/pt → +250
   },
   ATK: {
     /* ═══ v2.3.2210: EVERY CHARACTER STARTS AT 1% ═══
@@ -166,6 +193,26 @@ export const PROG3 = {
        max, ~¼ of a maxed skill term.  ANTICHEAT LOCKSTEP: _maxWeaponDmg
        carries the same term, same commit. */
     dmg:     { cap: 75,  per: 0.5 },    // +0.5 damage/pt → +37.5, PER TYPE
+    /* ═══ v2.3.2512: ELEMENTAL POWER MOVES BODY → ATK (owner ask) ═══
+       Was a single GLOBAL channel (v2.3.2199).  The owner's own split says
+       attack power belongs to the combat type that produces it, and a staff
+       build's burn has as little to do with a bow as its crit does — the
+       reason the whole ATK block is per-type (v2.3.1668).  It is also the
+       only way the Points screen can read honestly: ELEM PWR now sits inside
+       MELEE / BOW / STAFF beside DAMAGE and CRIT, where the number that
+       scales it is.
+
+       Cap and per-point value are UNCHANGED (75 / +1 effective "power"), so
+       a point buys exactly what it bought — it just buys it for one weapon.
+       Every reader goes through elemAttackStat(ps, legacyName, cat), which
+       now needs the category; the four call sites pass the slot the server
+       already resolved, never the client's claim.
+
+       MIGRATION v15 REFUNDS already-placed points to the pool rather than
+       copying them into all three types (which would triple the investment)
+       or picking one (which would be guessing) — the v11 precedent, for the
+       identical reason. */
+    elem:    { cap: 75,  per: 1 },      // +1 elemental power/pt → 75, PER TYPE
   },
   /* ═══ v2.3.1727: THE RETUNE PROGRESSION-REDESIGN #13 DEFERRED ═══
    * Owner, after judging: "The players who are level 13 do not feel
@@ -287,9 +334,10 @@ export function prog3XpRequired(level) {
   return Math.ceil(280 * Math.pow(1.16, Math.max(0, (level || 1) - 1)));
 }
 
-/* v2.3.1668: the global BODY allocation.  v2.3.2199: + elem. */
+/* v2.3.1668: the global BODY allocation.  v2.3.2199: + elem.
+   v2.3.2512: elem LEAVES for ATK (per weapon); eres + mana arrive. */
 export function prog3FreshAlloc() {
-  return { def: 0, hp: 0, dodge: 0, stam: 0, elem: 0 };
+  return { def: 0, hp: 0, dodge: 0, stam: 0, eres: 0, mana: 0 };
 }
 /* v2.3.1668: the per-combat-type OFFENSE allocation, one block per skill.
  * Object.create(null) is not needed here — the keys are OUR constants, not
@@ -297,7 +345,7 @@ export function prog3FreshAlloc() {
  * read site can index it without a presence check. */
 export function prog3FreshAtk() {
   const out = {};
-  for (const cat of PROG3.SKILLS) out[cat] = { crit: 0, critDmg: 0, aspd: 0, dmg: 0 }; // v2.3.2199: + dmg
+  for (const cat of PROG3.SKILLS) out[cat] = { crit: 0, critDmg: 0, aspd: 0, dmg: 0, elem: 0 }; // v2.3.2199: + dmg; v2.3.2512: + elem
   return out;
 }
 /* Which table owns a stat name.  Returns null for anything unknown, which
@@ -393,14 +441,46 @@ export function prog3SplitAtk(p3) {
     delete a[k];
   }
   p3.atk = prog3FreshAtk();
-  p3.alloc = {
-    def: Math.max(0, Math.floor(Number(a.def) || 0)),
-    hp: Math.max(0, Math.floor(Number(a.hp) || 0)),
-    dodge: Math.max(0, Math.floor(Number(a.dodge) || 0)),
-    stam: Math.max(0, Math.floor(Number(a.stam) || 0)),
-  };
+  /* v2.3.2512: rebuilt off prog3FreshAlloc so a BODY stat added later is
+     carried rather than silently dropped by a hardcoded list — `elem` is the
+     stat that made that concrete: it was a BODY key between v2.3.2199 and
+     v2.3.2512 and this literal never mentioned it, so a v10-shaped blob
+     healed here lost it with no refund.  The ATK loop above already took it
+     (it walks PROG3.ATK, which now owns `elem`), so it is refunded, not
+     lost. */
+  const _fresh = prog3FreshAlloc();
+  for (const k of Object.keys(_fresh)) _fresh[k] = Math.max(0, Math.floor(Number(a[k]) || 0));
+  p3.alloc = _fresh;
   p3.pool = Math.max(0, Math.floor(Number(p3.pool) || 0)) + refund;
   return p3;
+}
+
+/* ═══ v2.3.2512: fold an elem-as-BODY blob into elem-as-ATK ═══
+ * Elemental power was a single GLOBAL channel from v2.3.2199 to v2.3.2512.
+ * Now it is per combat type, so a stored `alloc.elem` has nowhere to land.
+ *
+ * REFUNDED to the pool, exactly as v2.3.1668 refunded the three offense
+ * stats when they went per-type, and for exactly the same two reasons:
+ * copying the points into all three types would triple the investment for
+ * free, and picking one type to receive them would be guessing on the
+ * player's behalf.  Refunding hands the choice back, which IS the change.
+ *
+ * Idempotent: it returns false the moment `alloc.elem` is absent, so a
+ * re-run — or the join-boundary heal landing after the migration already
+ * ran — cannot double-refund.  Shared by migration v15 and _sanitizeProg3
+ * (the v11 pattern: migrations FAIL OPEN, so the boundary needs the same
+ * fold or a fail-open blob loses the points with no refund).
+ * Returns true when it changed something. */
+export function prog3MoveElemToAtk(p3) {
+  if (!p3 || typeof p3 !== 'object') return false;
+  const a = p3.alloc;
+  if (!a || typeof a !== 'object') return false;
+  if (!Object.prototype.hasOwnProperty.call(a, 'elem')) return false;
+  const n = Number(a.elem);
+  delete a.elem;
+  const refund = (Number.isFinite(n) && n > 0) ? Math.floor(n) : 0;
+  p3.pool = Math.min(9999, Math.max(0, Math.floor(Number(p3.pool) || 0)) + refund);
+  return true;
 }
 
 export const prog3Methods = {
@@ -420,6 +500,14 @@ export const prog3Methods = {
        Mutates a shallow copy so a caller's stored object is never edited
        as a side effect of sanitizing it. */
     if (!src.atk) src = prog3SplitAtk({ ...src, alloc: { ...(src.alloc || {}) } });
+    /* v2.3.2512 BOUNDARY HEAL, same reasoning one layer down: migration v15
+       moves elemental power out of the global alloc and refunds it, but
+       migrations fail open — without this, a blob that missed v15 would have
+       its `alloc.elem` dropped by the loop below (it walks OUR key list) and
+       the points would vanish with no refund.  Mutates a shallow copy, never
+       the caller's stored object. */
+    src = { ...src, alloc: { ...(src.alloc || {}) } };
+    prog3MoveElemToAtk(src);
     for (const cat of PROG3.SKILLS) {
       const s = src.sk && src.sk[cat];
       if (s && typeof s === 'object') {
@@ -579,12 +667,25 @@ export const prog3Methods = {
        draws). */
     const magicLvl = Math.max(1, Math.min(PROG3.LEVEL_CAP,
       (ps.prog3.sk && ps.prog3.sk.staff && ps.prog3.sk.staff.level) || 1));
-    ps.maxMana = Math.floor(100 + magicLvl * PROG3.MANA_PER_MAGIC_LEVEL);
+    /* v2.3.2512: MAX MANA is a stat now, ADDED to the Magic-level derivation
+       rather than replacing it — at zero points every existing player's pool
+       is byte-identical to what it was, which is the whole reason for adding
+       rather than replacing. */
+    const manaPts = this._prog3Pts(ps, 'mana');
+    ps.maxMana = Math.floor(100 + magicLvl * PROG3.MANA_PER_MAGIC_LEVEL
+      + manaPts * PROG3.BODY.mana.per);
     /* v2.3.2302: the block counts, computed in the SAME place and from the
        SAME inputs as the pools they divide -- that adjacency is the whole
        defence against the two drifting apart.  Derived, never stored: no new
        storage key, and join recomputes before the first cost is ever priced. */
-    ps.manaBlocks = blocksAt(magicLvl);
+    /* v2.3.2512: the ladder counts the PROGRESSION INPUT, and allocated mana
+       points are now part of that input — exactly as stamina's rung already
+       counts its allocated points.  Without this, buying max mana would make
+       every special MORE expensive (cost = maxMana / blocks) and buy zero
+       extra casts: the v2.3.1734 "mana could not progress, by construction"
+       trap, re-entered through a different door.  At zero points this is
+       blocksAt(magicLvl), i.e. unchanged. */
+    ps.manaBlocks = blocksAt(magicLvl + manaPts);
     ps.stamBlocks = blocksAt(stamPts);
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
     ps.hp = Math.min(ps.hp, ps.maxHp);
@@ -617,6 +718,16 @@ export const prog3Methods = {
   // accumulator; cap 30% at the 75-pt stat cap).
   _prog3DodgePct(ps) {
     return this._prog3Pts(ps, 'dodge') * PROG3.BODY.dodge.per;
+  },
+
+  /* v2.3.2512: the ELEMENTAL-damage multiplier — the defensive half of the
+     elemental system (owner ask D12).  −0.4%/pt, −30% at the 75-pt cap,
+     the same shape `dodge` uses.  Consumed in _applyDamage only when the
+     caller declares the damage elemental (`opts.elemental`), which today
+     means the fire trail and the slime burst; the closed list and the
+     reasoning live on PROG3.BODY.eres. */
+  _prog3ElemResistMult(ps) {
+    return 1 - this._prog3Pts(ps, 'eres') * PROG3.BODY.eres.per;
   },
 
   // Incoming-damage multiplier (§4 decision 9-B: % reduction, the
@@ -768,7 +879,7 @@ export const prog3Methods = {
       if (chan(cat) < 1 && anyPts < 1) return;
       from = cat;
       if (!p3.atk || typeof p3.atk !== 'object') p3.atk = prog3FreshAtk();
-      if (!p3.atk[cat] || typeof p3.atk[cat] !== 'object') p3.atk[cat] = { crit: 0, critDmg: 0, aspd: 0, dmg: 0 }; // v2.3.2199: + dmg
+      if (!p3.atk[cat] || typeof p3.atk[cat] !== 'object') p3.atk[cat] = prog3FreshAtk()[cat]; // v2.3.2512: one shape, one home (was an inline literal that drifted twice)
       cur = (typeof p3.atk[cat][stat] === 'number') ? p3.atk[cat][stat] : 0;
       if (cur >= cap) return;
       apply = () => { p3.atk[cat][stat] = cur + 1; return { stat, cat, pts: cur + 1 }; };

@@ -15,7 +15,8 @@ import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroS
 import {
   prog3Live, prog3HasSkills, prog3Pts, prog3AtkPts, prog3StatCap, prog3SkillLevel,
   prog3ActiveCat, prog3AtkMeta, prog3BodyMeta, PROG3_SKILL_META, prog3PoolFor,
-  prog3CritMult, prog3CritPct /* v2.3.2441 */ } from '../../../data/prog3.js';
+  prog3CritMult, prog3CritPct /* v2.3.2441 */,
+  PROG3, prog3ElemPower /* v2.3.2512: elem per weapon, elem resist, max mana */ } from '../../../data/prog3.js';
 import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
@@ -506,6 +507,42 @@ export const HeroExpanded = () => {
   const ptLandRef = useRef(new Map());
   const p3 = prog3Live(R);
   const buildCat = buildCatState || prog3ActiveCat(R);
+  /* ═══ v2.3.2512: OPENING A SECTION BRINGS ITS STATS INTO VIEW ═══
+     The owner's Points accordion stacks three 44px headers above the open
+     section's stats, and the sheet's scrolling window is ~191px on a phone
+     (measured, 390x844) — so the THIRD section's first stat row starts below
+     the fold by construction.  That is the v2.3.1660 incident exactly ("a
+     player who could not know a stat existed"), and v2.3.2441's side-by-side
+     selector row existed to dodge it.
+
+     The accordion cannot dodge it by geometry, so it answers it by MOVING:
+     opening a section scrolls that section's header to the top of the
+     scroller, which puts its stats in the middle of the window whichever of
+     the three you picked.  Cheaper and more honest than shrinking the header
+     below the 44px thumb target, which is the only other way the three would
+     fit — and mp-prog3 pins that target at three viewports.
+     Guarded end to end: this runs inside the sheet, on a browser that may
+     have no smooth-scroll and an element that may not be mounted yet. */
+  useEffect(() => {
+    if (laneClosed) return;
+    let raf = 0;
+    raf = requestAnimationFrame(() => {
+      try {
+        const head = document.querySelector(`[data-prog3-lane="${buildCat}"]`);
+        if (!head) return;
+        let sc = head.parentElement;
+        while (sc && !/auto|scroll/.test(getComputedStyle(sc).overflowY)) sc = sc.parentElement;
+        if (!sc || sc.scrollHeight - sc.clientHeight <= 4) return;
+        /* The header's offset inside the scroller, minus whatever is pinned
+           above it (the section tab bank is sticky at top 0). */
+        const top = head.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop;
+        const want = Math.max(0, top - HERO_TAB_H - 4);
+        if (Math.abs(sc.scrollTop - want) > 2) sc.scrollTop = want;
+      } catch (e) { /* a convenience scroll must never take the panel down */ }
+    });
+    return () => { if (raf) cancelAnimationFrame(raf); };
+  }, [buildCat, laneClosed]);
+
 
   /* ── the worn six, and what they are worth ── */
   const equipped = getEquippedSlots(R);
@@ -1325,7 +1362,7 @@ export const HeroExpanded = () => {
                "CRIT 2/4  DMG 1/4  SPD 0/4".  The rows themselves keep the
                full labels.  v2.3.2199: the new flat-damage stat takes DMG;
                critDmg (which had borrowed it) becomes CRIT+. */
-            const SHORT = { dmg: 'DMG', crit: 'CRIT', critDmg: 'CRIT+', aspd: 'SPD' };
+            const SHORT = { dmg: 'DMG', crit: 'CRIT', critDmg: 'CRIT+', aspd: 'SPD', elem: 'ELEM' }; /* v2.3.2512: + elem (now a per-weapon stat) */
             /* v2.3.2176: does this worker channel points?  Without the cap
                there is no breakdown to read, so everything falls back to the
                single shared pool the old worker enforces (rule 19). */
@@ -1596,6 +1633,10 @@ export const HeroExpanded = () => {
                   if (st.key === 'dmg') return d && d.dmgText ? String(d.dmgText) : '0';
                   if (st.key === 'crit') return pct1(prog3CritPct(R, buildCat)) + '%';
                   if (st.key === 'critDmg') return Math.round(prog3CritMult(R, buildCat) * 100) + '%';
+                  /* v2.3.2512: elemental power, per weapon — the effective
+                     "power" the burn/root/collision formulas read, through the
+                     one shared reader rather than a fourth inline copy. */
+                  if (st.key === 'elem') return String(Math.round(prog3ElemPower(R, buildCat)));
                   if (st.key === 'aspd') {
                     /* swingCooldownMultFor is a PERIOD multiplier (1 at rest,
                        0.50 at cap).  Players read attack speed, not swing
@@ -1611,7 +1652,13 @@ export const HeroExpanded = () => {
                 if (st.key === 'stam') return String(Math.round((R && R.maxStamina) || 0));
                 if (st.key === 'def') return pct1(d ? d.defPct : 0) + '%';
                 if (st.key === 'dodge') return pct1(d ? d.dodge : 0) + '%';
-                if (st.key === 'elem') return String(prog3Pts(R, 'elem'));
+                /* v2.3.2512: elem is an ATK stat now and is answered in the
+                   st.atk block above; what lands here is the two body stats
+                   that arrived with it.  MAX MANA reads the live pool (the
+                   same field the mana bar draws from, so the two screens
+                   cannot disagree); ELEM RESIST reads its own percentage. */
+                if (st.key === 'mana') return String(Math.round((R && R.maxMana) || 0));
+                if (st.key === 'eres') return pct1(prog3Pts(R, 'eres') * (PROG3.BODY.eres ? PROG3.BODY.eres.per : 0)) + '%';
               } catch (e) { /* a readout must never take the screen down */ }
               return '—';
             };
@@ -2028,33 +2075,59 @@ export const HeroExpanded = () => {
                 </>
               ) : (
                 <>
-                {/* THE SELECTOR ROW.  Sticky at the same offset the lane
-                    headers used, so the three weapons stay put while the stats
-                    scroll under them -- which is the property v2.3.2176 wanted
-                    and, stacked, never had. */}
-                <div style={{
-                  position: 'sticky', top: HERO_TAB_H + 2, zIndex: 1,
-                  flex: 'none', display: 'flex', gap: DASH_GAP,
-                  height: 44, marginBottom: 4, background: COL.bg,
-                }}>
-                  {PROG3_SKILL_META.map((sk) => {
-                    const open = !laneClosed && buildCat === sk.key;
-                    const lvl = prog3SkillLevel(R, sk.key);
-                    const lanePts = chanCaps ? prog3PoolFor(R, sk.key) : totalUnspent;
-                    return (
+                {/* ═══════════════════════════════════════════════════════════
+                    v2.3.2512: THE POINTS ACCORDION (owner mockup)
+                    ═══════════════════════════════════════════════════════════
+                    Owner's mock, `docs/triage-2026-09-14/assets/points-accordion.png`:
+                    one COLLAPSIBLE SECTION PER COMBAT SKILL, stacked — icon,
+                    name, the skill's point total and a chevron in the header —
+                    and below all three a SHARED STATS band carrying the three
+                    per-skill totals and the stats that belong to the character
+                    rather than to a weapon.
+
+                    THIS REVERSES v2.3.2441's selector row, knowingly.  That
+                    version replaced stacked lanes with three side-by-side tabs
+                    precisely so the first stat row landed at the same y
+                    whichever weapon you picked, and the note it left is worth
+                    keeping in mind: stacked, the third lane's first row used to
+                    fall below the fold.  It does not here, because the header
+                    is 30px rather than the 24-28px box plus its own body
+                    padding, and because SHARED STATS moved OUT of the open
+                    lane — so the tallest arrangement (Magic open) puts its
+                    first stat row ~102px into a 191px window, measured at
+                    390x844.  mp-prog3's "not just the default one" assertion
+                    still holds; its "at the same height for all three" twin
+                    cannot and was updated with this reason.
+
+                    WHY THE SHARED BAND MOVED OUT: in the mock it sits below
+                    the accordions, always visible, and that is also what makes
+                    the stack affordable — the body of an open lane is now five
+                    cells instead of eleven.
+
+                    EVERY CONTRACT IS CARRIED, unchanged: `data-prog3-lane`,
+                    the `", level N"` aria-label mp-prog3 finds the type
+                    selector by, `aria-expanded`, `aria-controls="bt-prog3-body"`
+                    on the id below, and exactly ONE
+                        `[aria-label*="points to spend"]` per lane.
+
+                    `data-prog3-points` is a new handle and a deliberate one:
+                    the allocation surface is no longer ONE element (the lane
+                    bodies and the shared band are siblings now), and a harness
+                    that has to guess at a common ancestor is a harness that
+                    breaks on the next wrapper.  mp-statgrid reads the whole
+                    grid through it. */}
+                <div data-prog3-points style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                {PROG3_SKILL_META.map((sk) => {
+                  const open = !laneClosed && buildCat === sk.key;
+                  const lvl = prog3SkillLevel(R, sk.key);
+                  const lanePts = chanCaps ? prog3PoolFor(R, sk.key) : totalUnspent;
+                  return (
+                    <div key={sk.key} style={{ flex: 'none', marginBottom: 4, minWidth: 0 }}>
                       <div
-                        key={sk.key}
                         role="button"
-                        /* EVERY ONE of these is a contract another file reads.
-                           data-prog3-lane is the handle (v2.3.2231); the
-                           aria-label's ", level N" is how mp-prog3 has found
-                           the type selector since v2.3.1668; aria-expanded is
-                           the collapse oracle.  The layout changed; the
-                           contract did not. */
                         data-prog3-lane={sk.key}
                         aria-label={`${sk.label}, level ${lvl}`}
                         aria-expanded={open}
-                        aria-pressed={open}
                         aria-controls="bt-prog3-body"
                         title={`${sk.label} — level ${lvl} — ${lanePts} point${lanePts === 1 ? '' : 's'} to spend`}
                         {...scrollTap(() => {
@@ -2063,220 +2136,181 @@ export const HeroExpanded = () => {
                           setLaneClosed(false);
                         })}
                         style={{
-                          flex: '1 1 0', minWidth: 0, height: '100%',
-                          boxSizing: 'border-box', position: 'relative',
-                          /* 2/5/3 rather than a round 4 all round: the content
-                             stack is icon 18 + gap 2 + LV line 15 = 35, and a
-                             44px box with 1px borders leaves 42.  At 4/4 that
-                             is 34 of room for 35 of content and the column
-                             overflows by a pixel top and bottom -- which reads
-                             as bad font rendering in a screenshot, not as a
-                             bug, and no existing assertion measures this box.
-                             2+3 leaves 37, so there are two pixels of slack
-                             that were chosen rather than inherited. */
-                          padding: '2px 5px 3px',
-                          borderRadius: 8,
+                          /* 44, not the 30 a first cut used: mp-prog3 has
+                             pinned "each is a real thumb target, not a strip"
+                             at 44 since v2.3.2214 and it is the iOS minimum.
+                             The owner's mock draws a shorter bar, but a header
+                             you have to aim at is worse than a header that is
+                             two pixels taller than the drawing. */
+                          height: 44, boxSizing: 'border-box', padding: '0 9px',
+                          display: 'flex', alignItems: 'center', gap: 7,
+                          borderRadius: open ? '9px 9px 0 0' : 9,
                           border: `1px solid ${open ? COL.accent : COL.tileBor}`,
+                          borderBottom: open ? 'none' : `1px solid ${COL.tileBor}`,
                           background: open ? COL.raised : COL.wellSoft,
                           /* Closed reads as a recessed well, open as the one
-                             raised member -- game.css's own depth doctrine
-                             (v2.3.1576), and it keeps the row from reading as
-                             a second bank of section tabs 4px below the real
-                             ones. */
+                             raised member — game.css's depth doctrine
+                             (v2.3.1576), kept from the row this replaces. */
                           boxShadow: open ? 'none' : 'inset 0 1px 3px rgba(0,0,0,.30)',
-                          display: 'flex', flexDirection: 'column',
-                          alignItems: 'center', justifyContent: 'center', gap: 2,
-                          cursor: 'pointer', touchAction: 'manipulation',
-                          overflow: 'hidden',
+                          cursor: 'pointer', touchAction: 'manipulation', overflow: 'hidden',
                         }}>
+                        <img src={sk.iconSrc} alt="" draggable={false}
+                          style={{ width: 18, height: 18, objectFit: 'contain', flex: 'none', opacity: open ? 1 : 0.8, pointerEvents: 'none' }} />
                         <span style={{
-                          display: 'flex', alignItems: 'center', gap: 4,
-                          maxWidth: '100%', minWidth: 0,
-                          /* v2.3.2441: the reserved corner is GONE with the
-                             badge that needed it.  v2.3.2382 added this because
-                             an absolutely-positioned pill cannot change
-                             scrollWidth, so a clipping check passed on a label
-                             sitting underneath a number ("MELE1", "MAGI1" at
-                             320).  With the count on its own line there is no
-                             overlay left to dodge, and the label gets those 16
-                             pixels back -- which is what pays for "MAGIC"
-                             rendering whole at 320. */
-                        }}>
-                          <img src={sk.iconSrc} alt="" draggable={false}
-                            style={{ width: 18, height: 18, objectFit: 'contain', flex: 'none', opacity: open ? 1 : 0.75, pointerEvents: 'none' }} />
-                          <span style={{
-                            /* lineHeight PINNED. Left to `normal` this is
-                               1.2-1.3 for Source Sans 3, which is how the 35px
-                               stack silently becomes 37 and overflows. */
-                            fontSize: 11.5, fontWeight: 800, letterSpacing: '.04em',
-                            lineHeight: 1, textTransform: 'uppercase',
-                            color: open ? COL.accent : COL.text,
-                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                          }}>{sk.label}</span>
-                        </span>
-                        {/* ═══ v2.3.2441: THE SECOND LINE IS THE POINTS ═══
-                            Owner: "Replace LV 2 up / LV 1 down / LV 1 down
-                            with remaining allocatable points."
-
-                            THIS REVERSES v2.3.2315, and deliberately: that
-                            version made "LV 2" and the arrow BIGGER because
-                            the owner twice asked for them to be legible.  The
-                            same owner has now drawn a mockup with neither on
-                            it.  The level is not lost -- it stays in this
-                            tab's aria-label, which is also why that string
-                            must not be touched: mp-prog3 has found this
-                            control by `aria-label*="level"` since v2.3.1668,
-                            and three other scenarios resolve through it.
-
-                            AND THE CORNER BADGE GOES WITH IT: "Do not
-                            duplicate the available-points count anywhere
-                            else."  That absolute pill said the same number
-                            this line now says, so it was exactly the
-                            duplicate the instruction names.  Its
-                            "N points to spend" wording moves into the title
-                            attribute, so nothing that could read it loses it. */}
-                        <span style={{
-                          display: 'flex', alignItems: 'center', gap: 4,
-                          fontVariantNumeric: 'tabular-nums', lineHeight: '15px',
-                        }}>
-                          <span style={{
-                            /* Gold when there is something to spend, muted at
-                               zero -- the owner's "3 PTS is gold/cream; 0 PTS
-                               is muted gray".  Still 13px: the SIZE v2.3.2315
-                               won is kept even though the text changed. */
-                            fontSize: 13, fontWeight: 800,
-                            color: lanePts > 0 ? COL.accent : COL.muted,
-                            lineHeight: '15px', whiteSpace: 'nowrap',
-                          }}
-                          /* The retired corner badge's label, moved here rather
-                             than deleted: mp-prog3 counts one
-                             `[aria-label*="points to spend"]` per weapon column
-                             and that is a real property -- every lane says what
-                             it has to spend.  An aria-label is not the VISIBLE
-                             duplicate the owner's "do not duplicate the
-                             available-points count anywhere else" forbids; it
-                             is the same number's only remaining home. */
+                          flex: 1, minWidth: 0,
+                          fontSize: 13, fontWeight: 800, letterSpacing: '.06em',
+                          textTransform: 'uppercase', lineHeight: 1,
+                          color: open ? COL.accent : COL.text,
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>{sk.label}</span>
+                        {/* The mock's right-hand pair: the skill's own mark and
+                            the points waiting on it.  The aria-label is the
+                            retired corner badge's, kept because mp-prog3 counts
+                            exactly one per lane. */}
+                        <img src={sk.iconSrc} alt="" draggable={false} aria-hidden="true"
+                          style={{ width: 15, height: 15, objectFit: 'contain', flex: 'none', opacity: 0.85, pointerEvents: 'none' }} />
+                        <span
                           aria-label={`${lanePts} points to spend on ${sk.label}`}
-                          >{lanePts} PTS</span>
-                        </span>
+                          style={{
+                            flex: 'none', minWidth: 12, textAlign: 'right',
+                            fontSize: 13, fontWeight: 800, lineHeight: 1,
+                            fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+                            color: lanePts > 0 ? COL.accent : COL.muted,
+                          }}>{lanePts}</span>
+                        <span aria-hidden="true" style={{
+                          flex: 'none', fontSize: 13, lineHeight: 1,
+                          color: open ? COL.accent : COL.text2,
+                        }}>{open ? '▲' : '▼'}</span>
                       </div>
-                    );
-                  })}
-                </div>
-
-                {/* THE BODY.  One block, a sibling of the selector rather than
-                    a child of a lane, so its first row lands at the same y for
-                    all three weapons.  `${sk.label} Attack` is gone: the lit
-                    column above already says which weapon these belong to, and
-                    the caption was 14px this screen cannot spare. */}
-                {!laneClosed && (
-                  <div id="bt-prog3-body" style={{
-                    display: 'flex',
-                    /* v2.3.2382 made this a ROW of two columns.  v2.3.2441
-                       makes it a COLUMN again -- of three bands (4 / 3 / 2)
-                       rather than of nine rows.  The id stays on THIS element:
-                       the selector's aria-controls points at it and mp-prog3
-                       resolves the body through it. */
-                    flexDirection: 'column',
-                    alignItems: 'stretch',
-                    gap: prog3TwoCol ? 4 : LANE_GAP,
-                    /* Flush with the tabs and the selector, not inset inside a
-                       lane box that no longer exists: 362 -> 378px of row at
-                       390, which is free label headroom. */
-                    padding: '2px 0 7px',
-                  }}>
-                    {prog3TwoCol ? (
-                      <>
-                        {/* ═══ v2.3.2441: 4 + 3 + 2, ONE COLUMN OF THREE BANDS ═══
-                            ATTACK STAYS FIRST IN DOCUMENT ORDER.  Several
-                            scenarios take the first
-                            `[role="button"][aria-label*=" of "]` and expect an
-                            attack cell; band order and DOM order agree, so
-                            offence-first reads the same to the eye and to the
-                            harness.
-
-                            NOT HARDCODED TO 4/3/2.  Against a worker without
-                            the prog3x caps, _resolveMetaRows drops `dmg` and
-                            `elem` (rule 19: never offer a stat the wire will
-                            refuse), so the bands become 3 + 2 + 2 on their own.
-                            The split is `the last TWO body stats get the wide
-                            cells`, which is why the order is built here rather
-                            than read positionally. */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%', minWidth: 0 }}>
-                          {sectionHead(`${(PROG3_SKILL_META.find((k) => k.key === buildCat) || {}).label || ''} Stats`)}
-                          <div style={{ display: 'flex', gap: 4, minWidth: 0 }}>
-                            {prog3AtkMeta().map((m) => statCell({ ...m, atk: true }, false))}
-                          </div>
-                          {sectionHead('Global Stats', 'Shared')}
+                      {open && (
+                        <div id="bt-prog3-body" style={{
+                          display: 'flex', flexDirection: 'column', gap: 4,
+                          padding: '4px 4px 5px', minWidth: 0,
+                          border: `1px solid ${COL.accent}`, borderTop: 'none',
+                          borderRadius: '0 0 9px 9px', background: COL.raised,
+                        }}>
                           {(() => {
-                            /* The owner's display order -- STAMINA | DODGE |
-                               ELEM PWR small, then DEFENSE | MAX HP wide --
-                               is a REORDER of PROG3_BODY_META (def, hp, dodge,
-                               stam, elem).  Reordered HERE, at the point of
-                               display, and never in the data: prog3BodyMeta()
-                               is read by the landscape branch and by the
-                               single-column fallback too, and rotating the
-                               source array would silently move both. */
-                            const body = prog3BodyMeta();
-                            const by = (k) => body.find((m) => m.key === k);
-                            const WIDE = ['def', 'hp'];
-                            const small = ['stam', 'dodge', 'elem'].map(by).filter(Boolean);
-                            const wide = WIDE.map(by).filter(Boolean);
-                            /* Anything the two lists above do not name (a stat
-                               added to the table tomorrow) still gets a cell,
-                               in the small band, rather than vanishing. */
-                            const named = new Set([...small, ...wide].map((m) => m.key));
-                            const rest = body.filter((m) => !named.has(m.key));
+                            /* FOUR ABREAST, THEN THE REST WIDE — the band shape
+                               v2.3.2441 measured and the mock keeps.  Not
+                               hardcoded to 4 + 1: against a worker without the
+                               caps flags _resolveMetaRows drops rows (rule 19:
+                               never offer a stat the wire will refuse), so the
+                               bands re-form on their own. */
+                            const rows = prog3AtkMeta();
+                            const small = rows.slice(0, 4);
+                            const wide = rows.slice(4);
                             return (
                               <>
-                                {(small.length + rest.length) > 0 && (
+                                {small.length > 0 && (
                                   <div style={{ display: 'flex', gap: 4, minWidth: 0 }}>
-                                    {[...small, ...rest].map((m) => statCell({ ...m, atk: false }, false))}
+                                    {small.map((m) => statCell({ ...m, atk: true }, false))}
                                   </div>
                                 )}
                                 {wide.length > 0 && (
                                   <div style={{ display: 'flex', gap: 4, minWidth: 0 }}>
-                                    {wide.map((m) => statCell({ ...m, atk: false }, true))}
+                                    {wide.map((m) => statCell({ ...m, atk: true }, true))}
                                   </div>
                                 )}
                               </>
                             );
                           })()}
-                          {/* THE SCROLL CUE.  Subtle and partially muted, and
-                              NOT a button -- aria-hidden, no role, no handler,
-                              so it adds nothing to the face count mp-infopop
-                              measures and nothing a screen reader must read. */}
-                          <div aria-hidden="true" style={{
-                            /* 13px muted, the size and glyph `.bt-cc-more`
-                               already uses for "there is more below"
-                               (game.css) -- house style rather than a second
-                               invention.  It earns its place here because
-                               v2.3.2288 deliberately KILLED the bottom
-                               scroll-edge fade on every section but Overview
-                               (owner: "the last row is faded at the bottom"),
-                               so this screen had no overflow cue at all. */
-                            height: 12, lineHeight: '12px', textAlign: 'center',
-                            fontSize: 13, color: COL.muted, opacity: 0.45, flex: 'none',
-                          }}>▾</div>
                         </div>
-                      </>
-                    ) : (
-                      <>
-                        {prog3AtkMeta().map((m) => statRow({ ...m, atk: true }))}
-                        <div style={{ marginTop: 5 }}>{groupHead2('Character', 'Shared')}</div>
-                        {prog3BodyMeta().map((m) => statRow({ ...m, atk: false }))}
-                      </>
-                    )}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  );
+                })}
 
-                {/* CLOSED, the three recap rows.  A collapsed lane used to
-                    carry its own "DMG 0/3 CRIT 0/3 CDMG 0/3" strip, and with
-                    the lanes gone that reading would have gone with them --
-                    so it moves here, where all three are visible at once
-                    instead of one at a time.  No role and no "level" in any
-                    label: three more [role="button"][aria-label*="level"]
-                    elements would break mp-infopop's face count. */}
+                {/* ═══ SHARED STATS ═══
+                    The mock's own heading, and its own right-hand recap: the
+                    three per-skill totals side by side, so "what is waiting
+                    where" reads at a glance without opening a lane.  These are
+                    aria-hidden on purpose — mp-prog3 counts one
+                    `[aria-label*="points to spend"]` per LANE and three more
+                    here would break that count for a number that is already
+                    said, visibly, three rows above. */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  lineHeight: 1, flex: 'none', height: 14, marginTop: 3,
+                }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 800, letterSpacing: '.10em',
+                    textTransform: 'uppercase', color: COL.text2,
+                    whiteSpace: 'nowrap', flex: 'none',
+                  }}>Shared Stats</span>
+                  <span aria-hidden="true" style={{ flex: 1, minWidth: 8, height: 1, background: COL.divider }} />
+                  <span aria-hidden="true" style={{
+                    flex: 'none', display: 'flex', alignItems: 'center', gap: 5,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {PROG3_SKILL_META.map((sk, i) => {
+                      const n = chanCaps ? prog3PoolFor(R, sk.key) : totalUnspent;
+                      return (
+                        <span key={sk.key} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                          {i > 0 && <span style={{ color: COL.divider, marginRight: 2 }}>|</span>}
+                          <img src={sk.iconSrc} alt="" draggable={false}
+                            style={{ width: 13, height: 13, objectFit: 'contain', flex: 'none', opacity: 0.85, pointerEvents: 'none' }} />
+                          <span style={{
+                            fontSize: 11.5, fontWeight: 800, lineHeight: 1,
+                            color: n > 0 ? COL.accent : COL.muted,
+                          }}>{n}</span>
+                        </span>
+                      );
+                    })}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, paddingBottom: 4 }}>
+                  {(() => {
+                    /* The owner's display order — MAX HP | DEFENSE | STAMINA |
+                       DODGE across, then MAX MANA and ELEM RESIST wide.
+                       Reordered HERE, at the point of display, and never in the
+                       data: prog3BodyMeta() is read by the landscape branch and
+                       by the single-column fallback too, and rotating the
+                       source array would silently move both. */
+                    const body = prog3BodyMeta();
+                    const by = (k) => body.find((m) => m.key === k);
+                    const SMALL = ['hp', 'def', 'stam', 'dodge'];
+                    const WIDE = ['mana', 'eres'];
+                    const small = SMALL.map(by).filter(Boolean);
+                    const wide = WIDE.map(by).filter(Boolean);
+                    /* Anything neither list names (a stat added tomorrow, or an
+                       older worker's row set) still gets a cell rather than
+                       vanishing — the v2.3.2441 rule, kept. */
+                    const named = new Set([...small, ...wide].map((m) => m.key));
+                    const rest = body.filter((m) => !named.has(m.key));
+                    return (
+                      <>
+                        {(small.length + rest.length) > 0 && (
+                          <div style={{ display: 'flex', gap: 4, minWidth: 0 }}>
+                            {[...small, ...rest].map((m) => statCell({ ...m, atk: false }, false))}
+                          </div>
+                        )}
+                        {wide.length > 0 && (
+                          <div style={{ display: 'flex', gap: 4, minWidth: 0 }}>
+                            {wide.map((m) => statCell({ ...m, atk: false }, true))}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                  {/* THE SCROLL CUE.  Subtle, and NOT a button — aria-hidden,
+                      no role, no handler, so it adds nothing to the face count
+                      mp-infopop measures.  It earns its place because v2.3.2288
+                      deliberately killed the bottom scroll-edge fade on every
+                      section but Overview, so this screen has no other overflow
+                      cue — and the accordion is taller than the selector row it
+                      replaces. */}
+                  <div aria-hidden="true" style={{
+                    height: 12, lineHeight: '12px', textAlign: 'center',
+                    fontSize: 13, color: COL.muted, opacity: 0.45, flex: 'none',
+                  }}>▾</div>
+                </div>
+                </div>
+
+                {/* CLOSED-ALL, the three recap rows: with every lane shut the
+                    per-skill offence totals would otherwise be unreadable
+                    without opening one.  No role and no "level" in any label —
+                    three more `[role="button"][aria-label*="level"]` elements
+                    would break mp-infopop's face count. */}
                 {laneClosed && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '2px 0 7px' }}>
                     {PROG3_SKILL_META.map((sk) => (

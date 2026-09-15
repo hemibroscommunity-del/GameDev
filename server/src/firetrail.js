@@ -223,7 +223,9 @@ export const fireTrailMethods = {
        the first one-shot in the game (TELEGRAPH.MAX_HIT_PCT, same rail). */
     const raw = Math.min(FIRE_TRAIL.DMG,
       Math.max(1, Math.floor((ps.maxHp || 100) * 0.5)));
-    const res = this._applyDamage(ps, raw, false);
+    /* v2.3.2512: burning ground is elemental damage by definition, so the
+       ELEM RESIST stat reads it (PROG3.BODY.eres names the closed list). */
+    const res = this._applyDamage(ps, raw, false, { elemental: true });
     /* Credit still goes to the goblin who lit it, so a player finished off
        by fire counts as his kill and the death message names a real
        monster.  The monster may already be dead -- _trackMonsterDamage only

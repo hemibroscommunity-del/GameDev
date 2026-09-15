@@ -64,10 +64,20 @@ export const COLLISION_BURST_CAP = 3.2;   // GDD §22 INV-16
  * COLLISION_BURST_CAP still binds (raw includes the stat term).  No
  * ceiling work needed. */
 import { PROG3 } from './prog3.js';
-export function elemAttackStat(ps, legacyStatName) {
+/* v2.3.2512: `cat` — WHICH WEAPON's elemental power.  Elemental power moved
+   from one global BODY channel to a per-combat-type ATK channel (owner's own
+   split: attack power belongs to the type that produces it), so every reader
+   must now say which type is swinging.  The callers pass the slot the SERVER
+   resolved (_effSlot / the burst's own slot), never the client's claim.
+   An unrecognised or missing cat falls back to 'sword', matching _wpnCat and
+   _computeAttackDamage's own slot resolution — a reader that forgot to say
+   loses the bonus rather than reading someone else's lane. */
+export function elemAttackStat(ps, legacyStatName, cat) {
   if (ps && ps.prog3) {
-    const v = ps.prog3.alloc && ps.prog3.alloc.elem;
-    const d = PROG3.BODY.elem;
+    const c = (cat === 'bow' || cat === 'staff') ? cat : 'sword';
+    const a = ps.prog3.atk && ps.prog3.atk[c];
+    const v = a && a.elem;
+    const d = PROG3.ATK.elem;
     return (typeof v === 'number') ? Math.max(0, Math.min(d.cap, v)) * d.per : 0;
   }
   return (ps && ps[legacyStatName]) || 0;
@@ -202,7 +212,9 @@ export function tickElementStatuses(m, dtSec, now) {
  * Returns null or {id, dmg, setupElement, consumed}.  Damage =
  * (base + serverStat*coeff) x resonance x volatile x effectiveness,
  * clamped to COLLISION_BURST_CAP x raw. */
-export function resolveElementCollision(m, triggerElement, attackerPs, isVolatile, now) {
+/* v2.3.2512: `cat` rides through to elemAttackStat — a collision is priced
+   off the elemental power of the weapon that TRIGGERED it. */
+export function resolveElementCollision(m, triggerElement, attackerPs, isVolatile, now, cat) {
   if (!m.statuses || !triggerElement) return null;
   let setup = null;
   let oldest = Infinity;
@@ -214,7 +226,7 @@ export function resolveElementCollision(m, triggerElement, attackerPs, isVolatil
   if (!setup) return null;
   const collision = lookupCollision(setup.element, triggerElement);
   if (!collision) return null;
-  const statValue = elemAttackStat(attackerPs, collision.stat); // v2.3.2199: prog3 reads `elem`, legacy unchanged
+  const statValue = elemAttackStat(attackerPs, collision.stat, cat); // v2.3.2199: prog3 reads `elem`; v2.3.2512: per weapon
   const raw = collision.base + statValue * collision.coeff;
   let dmg = raw;
   let resonating = false;
