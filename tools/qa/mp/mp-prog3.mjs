@@ -309,7 +309,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (!btn) { out.push({ k, err: 'no stat row' }); continue; }
       let sc = btn.parentElement;
       while (sc && getComputedStyle(sc).overflowY !== 'auto') sc = sc.parentElement;
-      /* ═══ v2.3.2483: MEASURED WHERE OPENING IT LEAVES YOU ═══
+      /* ═══ v2.3.2512: MEASURED WHERE OPENING IT LEAVES YOU ═══
          This used to force `scrollTop = 0` first, which was the right question
          while v2.3.2441's selector row made the answer independent of scroll.
          The owner's accordion stacks three 44px headers, so the third
@@ -354,7 +354,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    first stat row, per lane: ' + JSON.stringify(firstRowByLane));
   rec.ok('EVERY combat lane opens onto its first stat row, not just the default one',
     firstRowByLane.every((r) => r.full === true), firstRowByLane);
-  /* ═══ v2.3.2483: THE ACCORDION KEEPS THIS, BY MOVING INSTEAD ═══
+  /* ═══ v2.3.2512: THE ACCORDION KEEPS THIS, BY MOVING INSTEAD ═══
      This used to demand the SAME row position whichever lane you picked,
      which is what v2.3.2441's side-by-side selector row bought: one header
      bank, so the body started at one y.  The owner's Points mockup
@@ -417,7 +417,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the world-chat bell).  DRIFT IS THE POINT: a pixel-perfect tap passes on
      the broken build too, which is what a synthetic dispatch was really
      asserting all along. */
-  let lastTapAt = null;   /* v2.3.2483: why a tap was refused, for the guard below */
+  let lastTapAt = null;   /* v2.3.2512: why a tap was refused, for the guard below */
   const tapLane = async (key, drift = 18) => {
     const at = await P.page.evaluate((k) => {
       const el = document.querySelector(`[data-prog3-lane="${k}"]`);
@@ -471,7 +471,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...and tapping it again re-opens it, so the collapse is not a trap',
       l2.open.length === 1 && l2.open[0] === wasOpen, l2);
 
-    /* v2.3.2483: the scroll-to-the-bottom that used to stand here is GONE.
+    /* v2.3.2512: the scroll-to-the-bottom that used to stand here is GONE.
        It existed because v2.3.2315's stacked lanes pushed the other two
        headers ~413px below the panel with one open, so a tap aimed at an
        off-screen rect landed on whatever was really there.  The accordion
@@ -485,7 +485,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        header and the next, so the other two headers can be below the fold --
        measured at the harness default, bow's header lands at y 773..817 in a
        780px window and elementFromPoint answers NULL.  A tap aimed at a rect
-       that is off screen measures the wrong thing.  v2.3.2483 scrolls to the
+       that is off screen measures the wrong thing.  v2.3.2512 scrolls to the
        header ITSELF rather than to the bottom of the scroller: the bottom is
        the SHARED STATS band now, which is a different screen. */
     await P.page.evaluate((k) => {
@@ -493,7 +493,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
     }, other);
     await P.page.waitForTimeout(300);
-    /* v2.3.2483: NO DRIFT on this one, and its result is asserted.  The -18
+    /* v2.3.2512: NO DRIFT on this one, and its result is asserted.  The -18
        upward drift was tuned for headers pinned at the very top of the
        scroller; the accordion scrolls the section you opened to the top, so
        the OTHER two headers sit mid-panel where an 18px drag is a real scroll
@@ -563,7 +563,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        1 and the honest contract was "reachable from somewhere".  With the
        lanes side by side it is 3 at rest, which is the whole point of the
        change, so the printed number becomes the assertion. */
-    /* ═══ v2.3.2483: TWO AT REST, THREE ACROSS THE SCROLL ═══
+    /* ═══ v2.3.2512: TWO AT REST, THREE ACROSS THE SCROLL ═══
        v2.3.2326 raised this from "reachable from somewhere" to "all three at
        rest" because v2.3.2441's selector row put them side by side.  The
        owner's Points mock stacks them again as an accordion, so the open
@@ -594,7 +594,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.2441: the PORTRAIT tab's second line is the lane's remaining
        points now, not its level. */
     const pts = spans.find((x) => /^\d+\s+PTS$/.test((x.textContent || '').trim()));
-    /* v2.3.2483: the accordion header prints the bare count on the same line
+    /* v2.3.2512: the accordion header prints the bare count on the same line
        as the name, so there is no "N PTS" span to find on that branch. */
     const count = spans.find((x) => !x.children.length && /^\d+$/.test((x.textContent || '').trim()));
     const px = (el) => (el ? parseFloat(getComputedStyle(el).fontSize) : null);
@@ -614,7 +614,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Landscape still stacks accordions and still has both, so both are still
      checked there.  What is NOT weakened: the floor is still 12/13 and still
      read off the RENDERED style. */
-  /* v2.3.2483: and a third shape -- the accordion header prints the count on
+  /* v2.3.2512: and a third shape -- the accordion header prints the count on
      the SAME line as the name (the owner's mock), so there is no second line
      to find at all in portrait.  The property is unchanged and so is the
      floor: whatever the branch renders as the header's count must clear 12.
@@ -662,12 +662,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return at;
   });
   console.log('    navigation through the scroll: ' + JSON.stringify(navAlways));
-  /* v2.3.2483: the accordion stacks the three, so the one furthest from the
+  /* v2.3.2512: the accordion stacks the three, so the one furthest from the
      open section leaves the window -- see the note on the "at rest" assertion
      above.  Every one of them is still on screen somewhere in the scroll, and
      never fewer than two at once, which is what "the lanes are the navigation"
      actually needs. */
-  /* ═══ v2.3.2483: TWO AT A TIME, ALL THREE ACROSS THE SCROLL ═══
+  /* ═══ v2.3.2512: TWO AT A TIME, ALL THREE ACROSS THE SCROLL ═══
      "Never scroll away" was true of v2.3.2441's selector row, which was one
      44px bank at a fixed offset.  The owner's accordion makes the headers the
      navigation AND the content: with a section open its stats sit between its
@@ -994,12 +994,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
         if (!first) { out.push({ k, err: 'no stat row' }); continue; }
         let sc = first.parentElement;
         while (sc && getComputedStyle(sc).overflowY !== 'auto') sc = sc.parentElement;
-        /* v2.3.2483: measured where opening it leaves you — see the twin note
+        /* v2.3.2512: measured where opening it leaves you — see the twin note
            on the other copy of this loop earlier in the file. */
         await wait();
         const b = first.getBoundingClientRect();
         const p = sc ? sc.getBoundingClientRect() : null;
-        /* ═══ v2.3.2483: THE CEILING IS THE STUCK STACK, NOT A PARENT ═══
+        /* ═══ v2.3.2512: THE CEILING IS THE STUCK STACK, NOT A PARENT ═══
            This used to read `[data-prog3-lane]`.parentElement.bottom, which
            was exactly right while that parent WAS the selector bank (one row
            of three tabs, v2.3.2441).  With the owner's accordion each lane
@@ -1028,7 +1028,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     console.log(`    ${w}x${h} first stat row: ${JSON.stringify(rows)}`);
     rec.ok(`${w}x${h}: every weapon opens onto its first spendable stat`,
       rows.every((r) => r.full === true), rows);
-    /* v2.3.2483: still equal, now bought with the open-section scroll rather
+    /* v2.3.2512: still equal, now bought with the open-section scroll rather
        than with a side-by-side selector -- see the twin note earlier in the
        file.  8px of tolerance because a scroll lands where the layout puts it. */
     const tops = rows.filter((r) => r.top != null).map((r) => r.top);

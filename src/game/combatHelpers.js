@@ -84,6 +84,19 @@ export function rangedAimAngle(S, originX, originY) {
   };
 }
 
+/* ═══ v2.3.2473: HOW LONG A QUEUED BOW SPECIAL WAITS FOR A LINE ═══
+ * The bow only looses when its line of sight is on something (monsterCombat's
+ * sight gate), so a special pressed while the line is empty is REMEMBERED
+ * rather than thrown away -- it goes out on the first frame the line lands.
+ * It cannot wait forever: a request made while the player was pointing at
+ * nothing, fired half a minute later at whatever wandered past, is a special
+ * they did not ask for and cannot predict.  Two and a half seconds is longer
+ * than a sweep of the thumb and shorter than a change of mind.
+ * Lives here because both ends of the queue need it -- playerActions sets it,
+ * monsterCombat consumes it -- and a second copy would drift.
+ */
+export var BOW_SPECIAL_QUEUE_MS = 2500;
+
 export function lockAimPoint(t) {
   if (!t) return null;
   var x = (typeof t.renderX === 'number' && isFinite(t.renderX)) ? t.renderX : t.x;

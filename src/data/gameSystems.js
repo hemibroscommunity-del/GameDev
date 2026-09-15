@@ -35,7 +35,7 @@ import {
   prog3AtkPts, prog3CatFor, prog3DodgePct, prog3CritPct, prog3CritFlat,
   prog3CritMult, /* v2.3.2199: percent critDmg */
   prog3DmgTerm,
-  prog3ElemPower, isProg3ElemEnabled, /* v2.3.2483: elem per weapon; max mana as a stat */
+  prog3ElemPower, isProg3ElemEnabled, /* v2.3.2512: elem per weapon; max mana as a stat */
 } from './prog3.js';
 /* v2.3.1733: the char-10 milestone's max-stamina multiplier (mirror of the
    server's staminaMilestoneMult) — recalcDerived's prog3 branch is the
@@ -4018,7 +4018,7 @@ export function getEffectiveness(attackElem, targetElem) {
 /* ═══ STATUS EFFECT SYSTEM — §9 ═══ */
 
 /* Apply a status to a target. Returns true if applied. */
-/* v2.3.2483: `cat` — which combat type applied this status.  Elemental power
+/* v2.3.2512: `cat` — which combat type applied this status.  Elemental power
    is per weapon now, so the DoT tick and the collision roll below have to know
    which lane's points priced it (mirror of the server, which snapshots the
    power at application time for exactly this reason).  Optional: a caller that
@@ -4064,12 +4064,12 @@ export function applyStatus(target, statusId, source, now, cat) {
     element: Object.keys(ELEMENTS).find(function (e) {
       return ELEMENTS[e].status === statusId;
     }) || null,
-    cat: (cat === 'bow' || cat === 'staff' || cat === 'sword') ? cat : undefined /* v2.3.2483 */
+    cat: (cat === 'bow' || cat === 'staff' || cat === 'sword') ? cat : undefined /* v2.3.2512 */
   };
   return true;
 }
 
-/* v2.3.2483: the combat type whose elemental power prices a status — the one
+/* v2.3.2512: the combat type whose elemental power prices a status — the one
    it was stamped with, else the lane the player is currently holding.  ONE
    definition: the DoT tick and the collision roll must never disagree about
    which lane paid, or the same burn would read two different numbers. */
@@ -4104,7 +4104,7 @@ export function tickStatuses(target, dt, now, rpg, opts) {
       /* v2.3.2199: the allocated `elem` stat replaces the fossil T1 power
          for prog3 players — mirror of the server's elemAttackStat seam
          (elemental.js).  Display/prediction only; monster_hit is truth. */
-      /* v2.3.2483: elemental power is PER WEAPON now, so the reader must say
+      /* v2.3.2512: elemental power is PER WEAPON now, so the reader must say
          which weapon applied the status.  `status.cat` is stamped where the
          status is applied (mirror of the server's snapshot); an older status
          with none falls back to the melee lane, the same fallback the server
@@ -4552,7 +4552,7 @@ export function resolveCollision(target, triggerElement, source, rpg, now) {
   /* Calculate collision damage — §10.6.  v2.3.2199: prog3 players scale
      off the allocated `elem` stat (mirror of the server's elemAttackStat
      seam); legacy players keep the named T1 stat, byte for byte. */
-  /* v2.3.2483: per weapon — one shared reader (prog3ElemPower) rather than a
+  /* v2.3.2512: per weapon — one shared reader (prog3ElemPower) rather than a
      third inline copy of the same arithmetic. */
   var statValue = (rpg && rpg.prog3)
     ? prog3ElemPower(rpg, elemCatOf(rpg, setupStatus))
@@ -5419,7 +5419,7 @@ export function recalcDerived(rpg) {
        would snap it, which is the drift the mirror rule exists to stop. */
     rpg.maxStamina = Math.floor((100 + prog3Pts(rpg, 'stam') * PROG3.BODY.stam.per)
       * staminaMilestoneMult(p3lvl));
-    /* v2.3.2483: max mana is a stat now, ADDED to the Magic-level derivation
+    /* v2.3.2512: max mana is a stat now, ADDED to the Magic-level derivation
        (exact mirror of _prog3Recompute).  Gated on the caps flag so an old
        worker's pure-derivation pool is still what this predicts — its echo
        would take the difference back on the next flush either way, but the
@@ -5431,7 +5431,7 @@ export function recalcDerived(rpg) {
        the same inputs -- Magic LEVEL for mana, allocated stam POINTS for
        stamina.  A server echo overwrites these; this is the local prediction
        so the bar and the charge pie are right between echoes. */
-    /* v2.3.2483: ...and the ladder counts the allocated points alongside the
+    /* v2.3.2512: ...and the ladder counts the allocated points alongside the
        Magic level, mirroring the server — without it, buying mana would make
        every special more expensive and buy zero extra casts. */
     rpg.manaBlocks = blocksAt(prog3SkillLevel(rpg, 'staff') + _manaPts);

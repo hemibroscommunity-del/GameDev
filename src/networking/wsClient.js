@@ -24,7 +24,7 @@ import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking
 import { peerCosmeticsFromWire, peerPassthroughFromWire, applyPeerCosmetics } from '@/networking/peerCosmetics.js';
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setProg3ElemEnabled /* v2.3.2483 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -1113,7 +1113,7 @@ export function setupWebSocket(ctx) {
                    the "+3 points" banner copy (display only; see the
                    flag's note in data/prog3.js). */
                 setProg3XEnabled(!!(S._serverCaps && S._serverCaps.prog3x));
-                /* v2.3.2483: the attribute restructure (elem per weapon, the
+                /* v2.3.2512: the attribute restructure (elem per weapon, the
                    new Elem Resist and Max Mana body stats).  Display only, the
                    same shape as prog3x above — against an old worker the three
                    rows hide, the elemental readouts keep reading the GLOBAL
@@ -1370,12 +1370,53 @@ export function setupWebSocket(ctx) {
                  (recipient mismatch, already-claimed) is a permanent no for
                  this player and keeps the slow watchdog -- retrying those
                  fast would be the loop with none of the benefit. */
+              /* ═══ v2.3.2490: A PERMANENT NO IS NOT A RETRY ═══
+                 The v2.3.2327 note above got the out-of-range half right and
+                 left the other half broken.  "Every other reason ... keeps
+                 the slow watchdog" reads like restraint, but the slow
+                 watchdog is a FOREVER LOOP: groundLoot.js clears
+                 `_pickupPending` 5 s after the send and the pile is still
+                 sitting under the player, so it sends again, and again, for
+                 as long as that pile is on the ground -- which for a remnant
+                 skull is "until the tab closes" (the client never expires
+                 remnant piles).  The player sees a pile they cannot pick up
+                 and no reason why; the worker sees one request every 5 s per
+                 stuck pile per player.
+                 Four of those reasons say the pile is not this player's to
+                 have, ever, on any later frame:
+                   no-pile        -- the worker has no such pile (expired,
+                                     or already despawned)
+                   already-claimed-- someone else took it
+                   not-recipient  -- it was never ours
+                   wrong-zone     -- it belongs to another zone's list; the
+                                     worker measures ps.z, and we are not
+                                     going to teleport back into the pile
+                 So drop our local copy instead: `_expired` is the existing
+                 drop flag the ground-loot filter already honours, so the
+                 pile leaves the screen on the next frame and the ghost goes
+                 with it.  Deliberately NOT in the list: 'dead' (the player
+                 respawns in 5 s and death piles are recoverable), 'no-pet'
+                 and 'disconnected' (both transient), and 'out-of-range',
+                 which keeps its fast re-arm -- that one is the case where
+                 walking two steps really does fix it. */
               if (!msg.payload || !S || !S.player) break;
               try { console.log('[loot_pickup_rejected]', msg.payload, 'myId=', S.myId); } catch (e) {}
-              if (msg.payload.reason === 'out-of-range' && msg.payload.lootId && S.groundLoot) {
+              var _rjPermanent = msg.payload.reason === 'no-pile' || msg.payload.reason === 'already-claimed' ||
+                msg.payload.reason === 'not-recipient' || msg.payload.reason === 'wrong-zone';
+              if ((msg.payload.reason === 'out-of-range' || _rjPermanent) && msg.payload.lootId && S.groundLoot) {
                 for (var _rjI = 0; _rjI < S.groundLoot.length; _rjI++) {
                   var _rjPile = S.groundLoot[_rjI];
                   if (_rjPile.lootId !== msg.payload.lootId) continue;
+                  if (_rjPermanent) {
+                    /* A pile already credited to us is mid-despawn (the
+                       0.75 s pickup animation).  A losing race -- our pet's
+                       request answered after our own hand grabbed it --
+                       must not cut that short. */
+                    if (!_rjPile._collected) _rjPile._expired = true;
+                    _rjPile._pickupPending = false;
+                    _rjPile._petPickupPending = false;
+                    break;
+                  }
                   _rjPile._pickupTries = (_rjPile._pickupTries || 0) + 1;
                   if (_rjPile._pickupTries <= 8) {
                     _rjPile._pickupPending = false;
@@ -2592,6 +2633,20 @@ export function setupWebSocket(ctx) {
         if (payload.coins && payload.coins > 0) {
           if (R._compStats) R._compStats.totalGoldEarned = (R._compStats.totalGoldEarned || 0) + payload.coins;
           pushHudPopup(S, { target: 'goldIcon', text: '+' + payload.coins + ' G', color: '#f5c542' });
+          /* v2.3.2490: the coin pickup finally makes a noise.  What used to
+             be here (further down, at the end of this function) is
+             BT_AUDIO.beep + BT_AUDIO.collect, and BOTH have been no-ops
+             since v2.3.1103 -- the owner deleted all synthesised audio and
+             collect() is two beeps.  So the single most repeated moment in
+             the game has been silent ever since, while the call sites kept
+             reading as though it were not.  This is an owner-supplied
+             sample through the real sample path (SFX_MANIFEST 'coin-pickup'
+             in src/data/gameDisplay.js), NOT beep() revived.
+             Deliberately here in the coins branch rather than at the top of
+             the function: a shard-only or skull-only credit is not a coin
+             sound, and a 0-coin share should not click.  Pet credits ring
+             too -- the coins landed either way. */
+          try { BT_AUDIO.play('coin-pickup', { vol: 0.45 }); } catch (_ce) {}
         }
         if (payload.shard) {
           var _pickedShard = shardByKey(payload.shard);

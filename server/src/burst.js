@@ -211,7 +211,7 @@ export const burstMethods = {
          shown the element that killed it (matches the client's hit order
          in monsterCombat.js) and so a lethal burst still reads correctly
          in the nova payload. */
-      /* v2.3.2483: elemental power is per weapon — price the snapshot off the
+      /* v2.3.2512: elemental power is per weapon — price the snapshot off the
          category the burst is firing from, the same `slot` its damage roll
          and its trained XP already use. */
       applyElementStatus(m, element, session.id, elemAttackStat(ps, 'power', this._prog3CatFor(slot === 'ranged' ? 'bow' : slot)), now, this._attuneMult(ps)); // v2.3.2199: prog3 snapshots `elem`

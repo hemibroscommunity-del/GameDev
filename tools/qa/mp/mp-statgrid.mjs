@@ -1,11 +1,11 @@
 /* ═══ THE POINTS SCREEN IS AN ACCORDION OVER A SHARED BAND ═══
- * (v2.3.2483; was a 4 + 3 + 2 grid under a selector row, v2.3.2441)
+ * (v2.3.2512; was a 4 + 3 + 2 grid under a selector row, v2.3.2441)
  *
  * Owner, with a mockup (docs/triage-2026-09-14/assets/points-accordion.png):
  * one collapsible section per combat skill -- icon, name, its point total and
  * a chevron -- with the stats that belong to the character in a SHARED STATS
  * band below all three.  ELEM PWR moved into each skill's section (it is a
- * per-weapon stat since v2.3.2483) and MAX MANA and ELEM RESIST joined the
+ * per-weapon stat since v2.3.2512) and MAX MANA and ELEM RESIST joined the
  * shared band, so the bands are 4 + 1 (the open skill) and 4 + 2 (shared).
  *
  * The cell RECIPE did not change, which is why the geometry assertions below
@@ -43,7 +43,7 @@ const ROW = '[role="button"][aria-label*=" of "]';
 /* Every cell, grouped into the bands they actually render in — read off the
    measured top edge, not off an assumed order. */
 const readGrid = (P) => P.page.evaluate((ROWSEL) => {
-  /* v2.3.2483: the allocation surface is no longer ONE element.  The owner's
+  /* v2.3.2512: the allocation surface is no longer ONE element.  The owner's
      Points accordion puts each skill's stats inside its own collapsible
      section (#bt-prog3-body is the OPEN one) and the shared stats in a band
      BELOW all three, as siblings -- so reading the grid through the lane body
@@ -107,7 +107,7 @@ const readGrid = (P) => P.page.evaluate((ROWSEL) => {
 const readTabs = (P) => P.page.evaluate(() => (
   [...document.querySelectorAll('[data-prog3-lane]')].map((t) => {
     const spans = [...t.querySelectorAll('span')].filter((s) => !s.children.length);
-    /* v2.3.2483: the accordion header prints the bare count beside the skill
+    /* v2.3.2512: the accordion header prints the bare count beside the skill
        mark (the owner's mock), where the selector tab printed "N PTS".  Both
        shapes accepted so this reads whichever is shipping. */
     const pts = spans.find((s) => /^\d+(\s+PTS)?$/.test((s.textContent || '').trim()));
@@ -160,7 +160,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    heads: ' + JSON.stringify(g.heads));
 
   /* ════════ 1. FOUR BANDS: the open skill, then the shared stats ════════
-     v2.3.2483 -- the owner's Points accordion (docs/triage-2026-09-14/assets/
+     v2.3.2512 -- the owner's Points accordion (docs/triage-2026-09-14/assets/
      points-accordion.png) regroups what v2.3.2441's 4 + 3 + 2 laid out:
      ELEM PWR moved INTO each skill's section (it is a per-weapon stat now),
      and MAX MANA and ELEM RESIST joined the shared row.  So the open skill
@@ -198,7 +198,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { heights: [...new Set(g.cells.map((c) => c.h))] });
 
   /* ════════ 2. THE SECTIONS SAY WHOSE STATS THESE ARE ════════
-     v2.3.2483: the weapon divider is gone because the SECTION HEADER is now
+     v2.3.2512: the weapon divider is gone because the SECTION HEADER is now
      the label -- the open accordion says MELEE above its own cells, which is
      what the owner's mock draws.  What survives is the shared band's own
      heading, and the rule that a weapon's name appears exactly once. */
@@ -228,11 +228,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const tabs = await readTabs(P);
   console.log('    tabs: ' + JSON.stringify(tabs));
   rec.ok('all three weapon tabs are there (guard)', tabs.length === 3, tabs.length);
-  /* v2.3.2483: the accordion header prints the bare count beside the skill
+  /* v2.3.2512: the accordion header prints the bare count beside the skill
      mark; the selector tab it replaces printed "N PTS".  Either reads. */
   rec.ok('every section header says its remaining points',
     tabs.every((t) => /^\d+( PTS)?$/.test(t.ptsText || '')), tabs.map((t) => t.ptsText));
-  /* v2.3.2483: the caret is BACK, and deliberately -- an accordion without one
+  /* v2.3.2512: the caret is BACK, and deliberately -- an accordion without one
      does not say it can be opened.  The LEVEL staying off screen is the part
      of v2.3.2441's rule that survives (it is still in the aria-label). */
   rec.ok('...and no section header still shows a level on screen',
@@ -255,7 +255,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and a lane with none is muted',
     zero.length === 0 || zero.every((t) => /141,\s*155,\s*152/.test(t.ptsColor || '')),
     zero.map((t) => ({ k: t.k, c: t.ptsColor })));
-  /* v2.3.2483: the 44px selector ROW is gone -- the owner's mock stacks three
+  /* v2.3.2512: the 44px selector ROW is gone -- the owner's mock stacks three
      30px section headers instead, so the number this pinned no longer names
      anything on screen.  What is worth pinning is that the three are the SAME
      size (a header that grows for one skill is a layout bug) and that the
@@ -286,7 +286,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!g.chevron && !g.chevron.role && g.chevron.hidden === 'true', g.chevron);
 
   /* ════════ 6. THE PANEL DID NOT GROW ════════
-     v2.3.2483: this used to pin the CONTENT under 280px -- the height of the
+     v2.3.2512: this used to pin the CONTENT under 280px -- the height of the
      two-column body v2.3.2441 replaced -- because that version's ask was
      "without consuming any additional screen space".  The owner's accordion
      mock changes what that sentence can mean: three stacked section headers

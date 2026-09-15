@@ -314,10 +314,61 @@ export function worldViewport(canvas, zoneId) {
        and this is it; the reference floor is for the zones that are supposed to
        match each other, and the vista is explicitly not one of them. */
     scale = Math.max(scale, (land ? cssH : cssW) / _vref);
+  } else if (land) {
+    /* ═══ v2.3.2497: D10 -- SIDEWAYS, ONLY TOWN ZOOMS OUT ═══
+       Owner: "landscape zoom: town/worldview only; combat zones stay."
+
+       Sideways the game is ~40% more zoomed in than upright (measured: 0.824
+       against 0.587 on a 844x390 canvas) and the reason is this term.  In
+       portrait the two axes pick the TALL one -- 601/1024 = 0.587, the same
+       arithmetic a 32x32 combat zone's own floor gives, which is the whole
+       point of the reference floor.  Rotate the phone and the same max() picks
+       the WIDE one instead -- 844/1024 = 0.824 -- so every zone is held to a
+       reference that is now the long axis of the screen rather than the short
+       one.  Reading the SHORT axis sideways restores the rule's meaning: the
+       reference is "as much world as the scarce axis of this screen wants".
+
+       THE COMBAT ZONES DO NOT MOVE, by construction and not by a special case:
+       their own zone floor two blocks up is max(cssW/1024, cssH/1024), which is
+       that same 0.824, and it still wins.  That is what keeps v2.3.2247's "no
+       void" and v2.3.2257's "one character size" intact where the maps are only
+       1024 px wide and zooming out would show the tray.
+       Town is the zone this frees: 1664x1760 floors at max(844/1664, 390/1760)
+       = 0.507, which now wins over this term's 0.381 instead of losing to
+       0.824.  The vista takes the branch above and is unchanged -- and needs no
+       change, since its own rule already resolves to the same 0.667 in both
+       orientations.
+
+       The cost, stated plainly because it is a real one: sideways, town and a
+       combat zone are no longer the same character size.  That is the trade
+       D10 makes -- the owner asked for the wider view of the town he cannot
+       get in a 1024px-wide combat map. */
+    scale = Math.max(scale, cssH / FIGURE_REF_PX);
   } else {
     scale = Math.max(scale, cssW / FIGURE_REF_PX, cssH / FIGURE_REF_PX);
   }
   /* v2.3.2249: ...and never so far out that the character stops reading. */
   scale = Math.max(scale, FIGURE_SCALE_FLOOR);
   return { W: cssW / scale, H: cssH / scale, scale };
+}
+
+/* ═══ v2.3.2497: ASK THE RULE ABOUT A ZONE YOU ARE NOT STANDING IN ═══
+   D10 is a claim about TWO zones at once -- town zooms out sideways, a combat
+   zone does not -- and a scenario can only stand in one of them at a time.
+   Warping to the other costs a dev key, a panel, a loading screen and about a
+   minute, all to read one number that this function will answer directly.
+   So it answers directly: the probe takes a zone id and runs the real rule
+   against the live canvas, which is the same call BroTown and renderFrame
+   make. Read-only, in the house style (__btWorldProps, __btCoach,
+   __btMonsterPlates), and it computes nothing the game does not. */
+if (typeof window !== 'undefined') {
+  window.__btWorldView = function (zoneId) {
+    try {
+      const c = document.querySelector('canvas');
+      if (!c) return null;
+      const v = worldViewport(c, zoneId);
+      return { zone: zoneId || null, scale: +v.scale.toFixed(4),
+        W: Math.round(v.W), H: Math.round(v.H) };
+    } catch (_e) { return null; }
+  };
 }

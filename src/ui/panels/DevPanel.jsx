@@ -152,8 +152,9 @@ const CAP_GATES = [
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
   'laststand', 'party', 'partyChat', 'petLoot', 'pets', 'potionBag', 'prog3',
-  'prog3Chan', 'prog3elem' /* v2.3.2483 */, 'prog3x', 'questTrack', 'sponsor', 't2bench', 't2simple', 't2uniform',
-  'trade', 'trade2', 'trade2Review', 'trade2Weapons', 'weaponDrops', 'whisper',
+  'prog3Chan', 'prog3elem' /* v2.3.2512 */, 'prog3x', 'questTrack', 'sponsor', 'store',
+  't2bench', 't2simple', 't2uniform', 'trade', 'trade2', 'trade2Review',
+  'trade2Weapons', 'weaponDrops', 'whisper',
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported

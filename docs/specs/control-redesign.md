@@ -1,4 +1,4 @@
-# Control redesign — the contextual right button (v2.3.2242 → v2.3.2245)
+# Control redesign — the contextual right button (v2.3.2242 → v2.3.2245; caught up to v2.3.2472 in §§10–11)
 
 Owner directive, 2026-09-03. Quoted in full because every decision below
 is measured against it:
@@ -721,3 +721,265 @@ proposal in a real browser before it shipped.
 | 9.4 | Does the target keep the perimeter ring, or only the caret? | Ring **and** reticle; the caret goes to the others. |
 | 9.5 | Is "3 seconds" the pile or the whole burrow? | **The pile** (total move 4200ms), the same reading v2.3.2225 used. `PILE_MAX_MS 1800` makes the whole move 3s. |
 | 9.6 | Is "20 seconds" start-to-start or end-to-start? | **Both** — stamped at the start as the re-entry guard and re-stamped at the end, so 20s is a floor on downtime. Start-stamp alone gives 15.8s. |
+
+---
+
+## 10. What happened between v2.3.2251 and v2.3.2472 (written up retroactively)
+
+This document stopped at v2.3.2251 and the next 220 versions of control
+history lived only in code comments — which is why a reader coming to it
+fresh believed the right control was still a plain button. This section
+is the catch-up; §11 is the change that prompted it.
+
+### 10.1 The right side is TWO surfaces (v2.3.2258)
+
+> Owner: "I want both joysticks back and restore the previous behavior right
+> joystick for auto attack and rotation. BUT I also want the right joystick to
+> keep its contextual button properties that exist now. So if you walk up to a
+> tree for example the right joystick still lets you harvest as that button."
+
+Both, and they never needed a gesture classifier to tell them apart,
+because they were never the same element:
+
+| Surface | What it is | Handlers |
+|---|---|---|
+| **ZONE** `[data-joyzone="R"]` — the whole right half, z6 | the JOYSTICK. Press to auto-attack, drag to aim (relative drag from the touch origin, 4-way `_facing`, continuous `_aimAngle`), flick to fire the special, short tap forwards to the canvas as a lock-on click | `rS` / `rM` / `rE` |
+| **DISC** `.bt-rjoy-base` — the 96/108px circle, z30, `pointerEvents:auto` | the contextual BUTTON. HARVEST at a node, ATTACK otherwise; press / hold / flick | `bS` / `bM` / `bE` |
+
+A child's `pointerEvents:'auto'` beats a parent's `'none'`, so a thumb
+that lands on the disc gets the button and one that lands beside it gets
+the stick. **The disc deliberately does NOT steer the aim** (`bM` has no
+`rJoyAim` call): a first cut that let it steer broke the special, because
+setting `autoAttack` from a touchmove starts swinging mid-gesture and the
+flick that should have ended the press stops classifying as one.
+
+`rJoyAim` is the single copy of the aim math, shared by both surfaces
+with an explicit origin — two copies would drift, and the 4-way `_facing`
+quantisation in particular is the kind of thing that gets re-typed
+slightly differently and then disagrees with the renderer.
+
+### 10.2 The sticks fade instead of hiding (v2.3.2260)
+
+> Owner: "Make the joysticks both each appear when input is detected (or keep
+> the right joystick appeared if the contextual button is active) then fade to
+> disappearing after 2 seconds of no input."
+
+One boolean became three, because the old one was answering three
+questions with the same value:
+
+| | Rule |
+|---|---|
+| **PAINTED** | context, OR a finger on this side, OR input in the last `JOY_FADE_MS` (2000), OR an onboarding hold |
+| **PRESSABLE** | context OR an onboarding hold. **Not** recency — a disc that takes touches because you touched nearby a second ago is the swallowing bug again |
+| **LIT** | context only. Recency here would light the button brass for two seconds after any touch whether or not a press would do anything |
+
+The onboarding-hold term is not optional: QuestCoach hit-tests the disc's
+centre with `elementFromPoint` and silently skips its marks if the disc
+declines, and the marks are what request the hold (TRAPS §41).
+
+### 10.3 The disc gets out of the way (v2.3.2263, v2.3.2264)
+
+> Owner: "Attack button sometimes covers monster … maybe 50% transparency
+> during active combat?"
+
+Only the painted METAL fades (its own child layer, `rBodyRef`), not the
+element — CSS opacity applies to the whole subtree, and dimming the label
+and the lit edge would hand back v2.3.2251's complaint. 0.45, not 0.5:
+measured against the sprite, half strength still reads as a solid disc
+over foliage.
+
+> Owner, on that: "the disc … isn't [reading as active]. The problem is
+> implying the button is inactive when it's partially transparent."
+
+So the transparency stays and COLOUR carries the state: a warm amber wash
+(`#D68A3C` at 62%) layered *over* the sprite, because a background-colour
+paints under an opaque image. The knob is a separate sprite and takes
+both treatments too, or only the rim of the button is see-through.
+
+### 10.4 The guard gesture, and why it is gone again (v2.3.2269 → v2.3.2451)
+
+A four-step arc, all of it now retired by §11 and recorded because the
+reasoning is still load-bearing:
+
+- **v2.3.2269** — bow and staff got a double tap on the right control that
+  raised the shield, measured **press to press** (`RBTN_DBL_MS` 300) rather
+  than release to release like the left stick's cycle, so the guard goes up
+  on the second touch-DOWN.
+- **v2.3.2271** — the first tap of the pair forwards to the canvas, and a tap
+  on empty ground is the documented unlock, so raising the guard cost the
+  player their lock every time. Fixed by STASHING the lock at press time and
+  restoring it if a pair completes: nothing can know tap one is half of a
+  pair until tap two arrives, so it is undone rather than prevented.
+- **v2.3.2446** — the second tap opened a steerable HOLD (`_rShieldHold`); the
+  drag set `_shieldAngle` by a raw `atan2` (never through `rJoyAim`, whose
+  4-way quantisation would move the cover the server actually measures). The
+  shield BUTTON was hidden on those weapons in the same change.
+- **v2.3.2451** — rotating the held guard dropped it, because `rJoyAim` ends by
+  setting `autoAttack` and the combat loop reads that as "attacking breaks the
+  hold". Two faults, not one: cure that and the guard survives the rotation but
+  will not TURN, because the per-frame resolver was putting the arc back on the
+  locked target every frame. `_rShieldSteered` settled it — a motionless thumb
+  keeps tracking the lock, the first real drag hands the arc to the thumb.
+
+### 10.5 The press waits for the flick (v2.3.2465)
+
+> Owner: "When I swipe my finger the normal attack (default) is leading."
+
+A flick is only knowable on touch**end**, so the ordinary shot left before
+the game could know the press was a special. The first shot of a press now
+waits `ATK_PRESS_GRACE_MS` (`S._atkPressAt`, `_flickWait` at the fire site).
+It costs a HOLD, not a tap: the release clears the stamp, so a tap that ends
+inside the window fires on release.
+
+---
+
+## 11. The controls pass of 2026-09-14 (v2.3.2472)
+
+Owner decisions **D8** and **D9** from `docs/BACKLOG-TRIAGE-2026-09-14.md`
+§0.4, shipped together because they share one tap classifier.
+
+### 11.1 The shield button comes back for bow and staff (D8)
+
+> D8: "Shield for bow/staff: button returns, auto-aims at the nearest monster,
+> and the v2.3.2446 double-tap-hold guard is retired (which frees the right
+> double-tap for weapon swap). **Yes, all three together.**"
+
+All three, because they were one mechanism. The button went away in
+v2.3.2446 *because* the guard had moved onto a hold — a hold has a
+direction and a button does not. Give the direction back to the game and
+the button works again:
+
+`shieldAimAngle` (`src/game/shieldToggle.js`) gains a rung — **lock →
+nearest monster → remembered angle → aim → facing.** The nearest comes
+from `targeting.targetCandidates(S)[0]`, through `lockAimPoint` so it
+aims at the body centre like every other aim in the game. It is the rung
+bow and staff always land on, because those weapons acquire nothing
+automatically (v2.3.2258) — a tap is their only lock.
+
+The per-frame resolver in `BroTown.jsx` drops its `lockedTarget`
+requirement to match: a raised guard re-aims every frame whatever weapon
+is in hand, and the call is a no-op when there is nothing to point at
+(the ladder then returns the angle already stored).
+
+`shieldButtonLive` loses its `activeSlot` read entirely rather than
+inverting it: with the gesture gone there is no weapon-shaped reason for
+that predicate to know which weapon is in hand.
+
+**A guard now survives a weapon swap.** v2.3.2446's drop-on-swap existed
+only because the destination weapon had no button to lower it with.
+
+### 11.2 The right double tap is the weapon swap (D8)
+
+Every weapon, same gesture, same window (`RBTN_DBL_MS` 300, press to
+press). v2.3.2269's reason for excluding melee — "adding a gesture there
+would collide with the lunge this very function fires on a first tap" —
+is answered rather than ignored: the lunge fires on tap ONE and has a
+2500ms cooldown, so it cannot fire on tap two, and tap two is consumed
+before it can reach `maybeSwordDash`. The pair reads "lunge, then swap"
+on a sword and "shoot, then swap" on a bow.
+
+**New: the two taps must land within 50px of each other**
+(`RBTN_DBL_DIST_SQ_PX`, the left stick's own window since v2.3.97). The
+gesture used to be bow-and-staff-only, where the taps compete with
+nothing. As the universal swap it shares this side of the screen with
+tap-to-lock, and two deliberate taps on two *different* monsters 300ms
+apart would otherwise swap the player's weapon.
+
+v2.3.2271's lock stash and the release-side suppression survive
+unchanged (renamed `_rShieldConsumedAt` → `_rDblConsumedAt`): the hazard
+is the gesture's SHAPE, not what it did.
+
+The left stick's double tap still swaps too. They are different surfaces,
+each classifying its own taps, and the left one is what the onboarding
+already teaches.
+
+### 11.3 The combat column moves left of the disc (D9)
+
+> D9: "Block left of the disc, abilities stacked above it."
+
+Three controls that each placed themselves are now ONE column, owned by
+`ctlColumn()` in `ShieldButton.jsx`:
+
+| Slot | Control | Bottom |
+|---|---|---|
+| 0 | **Block** | level with the disc's CENTRE |
+| 1 | Shield Bash | one size + 8px above |
+| 2 | Whirlwind | one more above |
+
+Slots are assigned by KIND, not by position in the live list, so
+Whirlwind does not slide down into Bash's place on the frames where bash
+is hidden.
+
+**The column hugs the disc, and that is a reversal worth stating.**
+v2.3.2327 clamped Bash to `50vw - size` so it could never cross into the
+movement zone, sliding it RIGHT (under the disc) on a narrow phone — safe
+only because it sat in the band BELOW the disc, where an overlap costs
+nothing. Level with the disc's centre that same clamp would put a 48px
+circle over the widest part of the attack button, and a sibling with a
+higher z-index eats every touch in the overlap. So the anchor inverts:
+the column's right edge is pinned 4px left of the disc at every width,
+and on a phone narrower than ~388 CSS px the shortfall comes out of the
+movement zone instead (3px at 390, ~10px at 375). The button shrinks to
+fit the band first, down to a 44px floor. **Default taken without the
+owner** — if a phone check shows the movement stick catching, shrink
+`size` rather than moving the column right.
+
+The slide-from-attack-onto-the-shield latch (v2.3.2254) needs no change:
+it reads the live `[data-shield]` rect, so it follows the button.
+
+### 11.4 A Special Attack button beside the movement stick
+
+`src/ui/panels/SpecialButton.jsx`, a second trigger for the same
+`specialAttack` the flick fires. The flick stays — it is what the
+onboarding teaches — but it is a SPEED test, so a deliberate thumb a
+shade too slow fires an ordinary swing instead and the player cannot see
+which reading they got.
+
+Placed as the mirror of the Block button: immediately inside the left
+disc, level with its centre (x 99..147 at 390px, comfortably inside the
+left half).
+
+**It must swallow its own touches.** The movement input is
+`[data-joyzone="L"]`, a layer covering the entire left half at z6, and a
+left-zone swipe is the DODGE. So the button takes `pointerEvents:'auto'`
+at z31 and calls `preventDefault` + `stopPropagation` on touchstart,
+touchend and touchmove. A finger that lands here cannot move the
+character or dodge for that touch; that is the deliberate cost, and why
+the button sits BESIDE the disc rather than over it.
+
+Visible on the same shape of predicate as the shield button (a weapon in
+the active slot and a fight on or about to be), and deliberately not
+gated on affordability: a button that vanishes when the mana runs out is
+a button the player cannot learn. It greys and lets `specialAttack`
+float its own "No mana!" popup.
+
+### 11.5 The attack disc ghosts over a monster
+
+A fourth state in the visibility resolver, below `_hot`: when any live
+monster PROJECTS inside the disc's box, the painted metal drops to 0.08
+and the brass edge is forced on, so the control becomes an outline you
+can see straight through.
+
+`_hot` — "a monster is in play" — was a proxy, and a coarse one: it dims
+the button through whole fights in which it is covering nothing but
+grass, and it still hides the one slime that walks under it. The new test
+asks the real question per frame, using the renderer's own transform
+(`screen = (world − camera) × S._worldScaleX/Y`, the body CENTRE through
+`DATA.monsterBodyY`) measured against the **canvas** rect rather than the
+viewport, because in landscape the two differ by `--world-x`. Both rects
+are cached for 400ms; a `getBoundingClientRect` forces layout and this
+runs every frame. `GHOST_PAD` 18px grows the box so a sprite lapping onto
+the button counts before its centre arrives.
+
+Probe: `window.__btDiscVis().R.ghost` (and `.ghostRect`).
+
+### 11.6 Judgement calls
+
+| # | Question | What I did |
+|---|---|---|
+| 11.1 | Does the nearest-monster rung outrank a remembered `_shieldAngle`? | **Yes**, or the guard sticks to the first direction it was ever raised in. It sits BELOW the lock, because a monster you tapped still outranks whatever is merely closest. |
+| 11.2 | Does a weapon swap still lower a raised guard? | **No.** v2.3.2446's reason (no button on the destination weapon) is gone, and lowering a block because the player changed weapon is a behaviour nobody asked for. |
+| 11.3 | Does the right double tap need a distance window? | **Yes, 50px.** Without it, tapping two different monsters to switch locks swaps the weapon. |
+| 11.4 | Does dragging the right stick still break a raised guard? | **Yes**, and that is now correct rather than a bug: with nothing steering the arc from that stick, a drag means aim-and-attack, and "attack" is the owner's own first-named exit from a block. |
+| 11.5 | On a phone too narrow for both, does the column cross the movement zone or the disc? | **The movement zone**, at the far right edge of the left half. See §11.3. |
+| 11.6 | Is the Special button hidden when it cannot be afforded? | **No** — greyed. A control that disappears cannot be learned. |

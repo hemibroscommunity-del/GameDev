@@ -265,7 +265,7 @@ stamina) regardless of what channel you earned the point through."*
 - Shield forging/equipping remains client-local (as in legacy) — its
   server gate lands if shields ever route through a server flow.
 
-## The attribute restructure (v2.3.2483)
+## The attribute restructure (v2.3.2512)
 
 Three owner asks from the 2026-09-14 backlog triage (§2.1c, decision D12),
 shipped as one system because they share the allocation grid and one

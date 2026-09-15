@@ -19,7 +19,7 @@
 import { GameRoom } from '../src/index.js';
 import { runRpgMigrations, RPG_SCHEMA_VERSION } from '../src/migrations.js';
 import { PROG3, prog3XpRequired, prog3FromLegacy, prog3SplitAtk,
-  prog3StatDef, prog3FreshAtk /* v2.3.2483 */ } from '../src/prog3.js';
+  prog3StatDef, prog3FreshAtk /* v2.3.2512 */ } from '../src/prog3.js';
 import { BLACKSMITH_TIERS } from '../src/data.js';
 
 const mockState = {
@@ -84,7 +84,7 @@ function check(name, cond, detail) {
     blob.prog3.ppl === PROG3.POINTS_PER_LEVEL, blob.prog3.ppl);
   /* v2.3.1668: alloc is the BODY set only; offense lives in atk, keyed
      by combat type.  v2.3.2199: + elem / + dmg.
-     v2.3.2483: elem LEAVES for atk (per weapon); eres + mana arrive. */
+     v2.3.2512: elem LEAVES for atk (per weapon); eres + mana arrive. */
   check('body alloc starts zeroed',
     Object.values(blob.prog3.alloc).every((v) => v === 0)
       && Object.keys(blob.prog3.alloc).sort().join(',') === 'def,dodge,eres,hp,mana,stam', blob.prog3.alloc);
@@ -663,7 +663,7 @@ const psA = room.playerState.pa;
     healedTwice.pool === healed.pool && healedTwice.poolBy.sword === healed.poolBy.sword,
     { pool: healedTwice.pool });
   check('sanitize clamps the new stats',
-    /* v2.3.2483: elem is an ATK stat now, so a BODY `elem` is REFUNDED
+    /* v2.3.2512: elem is an ATK stat now, so a BODY `elem` is REFUNDED
        rather than clamped — pinned in its own section below. */
     room._sanitizeProg3({ sk: {}, alloc: {}, atk: { sword: { elem: 999 } }, pool: 0, ppl: 3 })
       .atk.sword.elem === PROG3.ATK.elem.cap
@@ -674,7 +674,7 @@ const psA = room.playerState.pa;
 
   /* elem feeds the DoT snapshot and the collision stat; legacy players
      keep their old read, byte for byte.
-     v2.3.2483: per weapon — the stat is read out of atk[cat].elem, and a
+     v2.3.2512: per weapon — the stat is read out of atk[cat].elem, and a
      reader that names no category falls back to 'sword'. */
   const p3ps = { prog3: { atk: { sword: { elem: 75 }, bow: { elem: 0 }, staff: { elem: 0 } } }, power: 500 };
   const legacyPs = { power: 40, agility: 15 };
@@ -701,7 +701,7 @@ const psA = room.playerState.pa;
     col && col.id === 'steam' && col.dmg >= Math.round(40 + 75 * 0.8), col);
 }
 
-/* ══ v2.3.2483: ELEM PWR per weapon, ELEM RESIST and MAX MANA as stats ══
+/* ══ v2.3.2512: ELEM PWR per weapon, ELEM RESIST and MAX MANA as stats ══
    Owner asks from the backlog triage (§2.1c, D12).  Three moves in one
    system, because they share the allocation grid and one migration:
      - ELEM PWR: one global BODY channel -> one ATK channel per combat type;

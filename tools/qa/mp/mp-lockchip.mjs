@@ -186,7 +186,105 @@ export async function run({ browser, wsPort, webPort, rec }) {
        room for the sampler missing the exact peaks. */
     rec.ok(`${who}: ...and it visibly bobs, not a wobble you have to be told about`,
       swing >= 8, { swing, samples: m.samples });
+    /* v2.3.2504: the sweep above starts 1400ms AFTER the lock, so everything
+       it measures is the RESTING chip -- the first-second flash is over before
+       the first sample. That is the right scope for these four assertions (the
+       resting look is what four earlier versions tuned), and it is why the
+       flash gets its own section at the foot of this file rather than a bound
+       smuggled in here on numbers that never saw it. */
   }
+
+  /* ═══ v2.3.2504: THE FIRST SECOND OF A LOCK ANNOUNCES ITSELF ═══
+     F1: "stamp `at` on EVERY lock, then lerp the chip's colour and bob
+     amplitude over its first second."
+
+     THE BUG WAS THE MISSING CLOCK, NOT THE MISSING ANIMATION.  `lockedTarget.at`
+     was stamped only inside tapStealable -- a function that returns before the
+     stamp for a bow or a staff, and is reached at all only on the tap-owned
+     branch -- so an AUTOMATIC lock, the one you get by walking up to a slime,
+     had no acquisition time at all.  There was nothing to animate FROM.  So the
+     assertions below are in two halves and the second is the load-bearing one:
+     a tap lock flashing proves the lerp works, and an AUTO lock flashing proves
+     the clock now exists for the case that never had one.
+
+     Read off __btAtkMark rather than off pixels: a still frame cannot tell a
+     chip that is flashing pale from a build that paints it pale, and the bob is
+     a phase you would have to catch.  The renderer reports both. */
+  const chipNow = () => P.page.evaluate(() => {
+    const k = (window.__btAtkMark ? window.__btAtkMark() : []).find((x) => x && x.chip);
+    const S = window._gameState.current;
+    return k ? { flash: k.flash, bob: k.bob, color: k.color, rest: k.rest,
+      at: k.at, src: S.lockedTarget && S.lockedTarget.src } : null;
+  });
+
+  /* Clear whatever the loop above left locked, then TAP a fresh target. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.lockedTarget = null;
+    const m = (S.monsters || []).find((x) => x && x.alive);
+    if (m) { S.player.x = m.x + 30; S.player.y = m.y + 20; }
+  });
+  await P.page.waitForTimeout(400);
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const m = (S.monsters || []).find((x) => x && x.alive);
+    S.lockedTarget = m ? { type: 'monster', id: m.id, ref: m, src: 'tap' } : null;
+  });
+  await P.page.waitForTimeout(150);
+  const fresh = await chipNow();
+  rec.ok('a lock one frame old carries a start time at all (this is what was missing)',
+    !!(fresh && fresh.at), fresh);
+  /* The flash is an ease-out over 1000ms, so 150ms in it is still most of the
+     way up -- 0.5 leaves room for a slow frame without accepting a chip that
+     has already settled. */
+  rec.ok(`...and the chip is mid-flash (${fresh && fresh.flash})`,
+    !!(fresh && fresh.flash > 0.5), fresh);
+  /* AMPLITUDE, not position: the standoff rises with the amplitude so the
+     bottom of the swing is the same pixel either way (the v2.3.2313 rule the
+     clearance assertions above depend on).  6 at rest, 15 at the instant of
+     the lock. */
+  rec.ok(`...bobbing harder than it will at rest (${fresh && fresh.bob}px vs 6)`,
+    !!(fresh && fresh.bob > 9), fresh);
+  /* AND NOT MUCH HARDER THAN THAT.  The amplitude is the whole lift: the
+     standoff is (amplitude + 5), so the bottom of the swing is the same pixel
+     at any amplitude and the TOP sits at -(2*amplitude + 5) from the band.
+     Bounding the amplitude therefore bounds how high the pop can throw the
+     chip, which is the guard the per-zone clearance readings above cannot give
+     (they sample after the flash has ended).  This file records the incident
+     it exists to prevent: a mark raised to clear a collision that was not
+     happening, ending 217px over a 64px slime. */
+  rec.ok(`...and not flung into the sky by it (amplitude ${fresh && fresh.bob}px, ceiling 16)`,
+    !!(fresh && fresh.bob <= 16), fresh);
+  /* LIGHTER than the resting colour, and lighter in every channel -- a mix
+     toward white-gold cannot darken one.  Asserted against the chip's OWN
+     resting colour rather than a literal, because that colour already carries
+     v2.3.2253's meaning (brass while merely locked, red while attacking) and
+     the flash must not become a second meaning on the same channel. */
+  const lighter = (a, b) => ((a >> 16) & 255) > ((b >> 16) & 255)
+    && ((a >> 8) & 255) >= ((b >> 8) & 255) && (a & 255) > (b & 255);
+  rec.ok(`...and painted lighter than its resting colour (0x${(fresh && fresh.color || 0).toString(16)} vs 0x${(fresh && fresh.rest || 0).toString(16)})`,
+    !!(fresh && lighter(fresh.color, fresh.rest)), fresh);
+
+  /* AND IT SETTLES.  A cue that never ends is not a cue -- it is just a
+     different chip, and the resting look is the one four earlier versions
+     tuned. */
+  await P.page.waitForTimeout(1300);
+  const settledChip = await chipNow();
+  rec.ok(`...then settles back to the resting chip within the second (flash ${settledChip && settledChip.flash}, bob ${settledChip && settledChip.bob})`,
+    !!(settledChip && settledChip.flash === 0 && settledChip.bob === 6), settledChip);
+  rec.ok('...at exactly its resting colour again',
+    !!(settledChip && settledChip.color === settledChip.rest), settledChip);
+
+  /* ═══ THE HALF THAT WAS BROKEN: AN AUTOMATIC LOCK ═══
+     Dropped without touching the monster, so the nearest-enemy rule in
+     targeting.js re-acquires it on its own with src 'auto'.  Before v2.3.2504
+     that lock had no `at` and the chip appeared fully settled from its first
+     frame -- which is the case the owner actually meets, every fight. */
+  await P.page.evaluate(() => { window._gameState.current.lockedTarget = null; });
+  await P.page.waitForTimeout(250);
+  const auto = await chipNow();
+  rec.ok(`an AUTOMATIC lock flashes too -- the case that had no clock at all (src ${auto && auto.src}, flash ${auto && auto.flash})`,
+    !!(auto && auto.src === 'auto' && auto.flash > 0.5), auto);
 
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/lockchip.png` }).catch(() => {});
   await P.ctx.close();

@@ -40,6 +40,31 @@
    number -- see calcDisplayDps, which mirrors it. */
 const CRIT_ANCHOR_MULT = 2;
 
+/* ═══ v2.3.2481: BASIC STAFF BOLTS SPLASH ═══
+   Owner ask: "50% splash on basic magic bolts."  Until now a staff bolt hit
+   exactly ONE monster (projectiles.js returns on the first hit and the staff
+   never pierces), and Detonation only widened that single-target hit radius.
+
+   This HAS to live on the server.  The client sends one `monster_damage` per
+   target and the worker rolls FULL damage for every one it receives, so a
+   client that simply sent a second event for the neighbour would deal 100%
+   to it, not 50% — a splash implemented client-side is an exploit, not a
+   feature.  So the worker does its own radius scan off the impact point,
+   the same shape the Element Burst uses (burst.js).
+
+   RADIUS_PX 60 is the owner's figure, scaled by Detonation exactly the way
+   the client scales the bolt's own hit radius (staffAoeMult: +1%/pt, capped
+   at 100 pts → ×2.0), so the channel the player already spent points in
+   keeps meaning the same thing.
+
+   MAX_TARGETS 3 is WEAPON_TYPES.staff.aoeCap, a client constant that has
+   been read nowhere since it was written — a bolt into a 12-monster pack
+   must not turn one event into twelve.
+   FRAC 0.5 is the "50%" and is taken off the PRIMARY's already-capped roll,
+   so the splash is bounded by _maxDmgForAttacker by arithmetic rather than
+   by a second clamp, and it visibly reads as half the number beside it. */
+const STAFF_SPLASH = { RADIUS_PX: 60, FRAC: 0.5, MAX_TARGETS: 3 };
+
 import {
   ELEMENT_STATUS, applyElementStatus, resolveElementCollision, fractureDmgMult,
   elemAttackStat, // v2.3.2199: prog3 `elem` stat resolver for the DoT power snapshot
@@ -109,7 +134,7 @@ export const combatMethods = {
      assumption keeps breaking (three incidents in one day).
      m.hp > 0 so a corpse never catches a burn, matching the guard on the
      inline copy below. */
-  /* v2.3.2483: `cat` — which weapon's elemental power prices the DoT.
+  /* v2.3.2512: `cat` — which weapon's elemental power prices the DoT.
      Defaults to 'sword' because the one caller (the lunge, abilities.js) is
      melee-only by construction: it rolls off ps.weapon and only fires with
      melee equipped. */
@@ -180,7 +205,7 @@ export const combatMethods = {
     return 1 - Math.min(MAX_DR, combined);
   },
 
-  /* v2.3.2483: `opts.elemental` marks damage the server minted through an
+  /* v2.3.2512: `opts.elemental` marks damage the server minted through an
      ELEMENTAL source (the fire trail, the slime burst).  It is the only
      thing the new ELEM RESIST stat reads — declared by the CALLER rather
      than sniffed here, because "is this hit elemental" is knowledge the
@@ -257,7 +282,7 @@ export const combatMethods = {
     if (_p3) {
       const _defMult = this._prog3DefMult(ps);
       if (_defMult < 1) dmgTaken = Math.max(1, Math.round(dmgTaken * _defMult));
-      /* v2.3.2483: ELEM RESIST, immediately after the general one and on the
+      /* v2.3.2512: ELEM RESIST, immediately after the general one and on the
          same terms — a percentage cut with the floor-1 clamp preserved, so a
          fully-resistant player still takes chip damage from a fire patch.
          Multiplicative with `def` rather than additive: two 30% cuts that
@@ -928,6 +953,12 @@ export const combatMethods = {
     // and any subsequent code reading m.hp sees a nonsensical value.
     m.hp -= actualDmg;
 
+    /* v2.3.2481: where the bolt actually landed, read BEFORE the knockback
+       below moves the monster — the splash must go off at the impact point,
+       not at wherever the shove put the target. */
+    const _impactX = m.x;
+    const _impactY = m.y;
+
     // Track per-player damage contribution for the kill-time share.
     // dmgByPlayer is created lazily so existing monster snapshots
     // without it stay compatible.
@@ -971,7 +1002,7 @@ export const combatMethods = {
       /* v2.3.2199: the snapshot prices the whole DoT (burn/root ticks and
          the thorn recoil read st.power) — prog3 players snapshot their
          allocated `elem` stat, legacy players their old power, one seam. */
-      /* v2.3.2483: elemental power is per weapon now, so the snapshot is
+      /* v2.3.2512: elemental power is per weapon now, so the snapshot is
          priced off the CATEGORY the server itself resolved (_effSlot), never
          the client's raw slot claim. */
       const _elCat = this._prog3CatFor(_effSlot === 'ranged' ? 'bow' : _effSlot);
@@ -983,7 +1014,7 @@ export const combatMethods = {
       const _w = _eff === 'ranged' ? attackerPs.rangedWeapon
                : _eff === 'staff' ? attackerPs.staffWeapon
                : attackerPs.weapon;
-      const col = resolveElementCollision(m, element, attackerPs, !!(_w && _w.isVolatile), _now, _elCat); /* v2.3.2483 */
+      const col = resolveElementCollision(m, element, attackerPs, !!(_w && _w.isVolatile), _now, _elCat); /* v2.3.2512 */
       if (col) {
         const colDmg = Math.min(col.dmg, Math.max(0, m.hp));
         m.hp -= colDmg;
@@ -992,6 +1023,10 @@ export const combatMethods = {
           type: 'monster_hit',
           payload: {
             monsterId: m.id, zone, dmg: colDmg, isCrit: false,
+            /* v2.3.2481: same overkill story as the ordinary hit above — an
+               elemental collision that finishes a monster printed the sliver
+               it was allowed to credit, not the detonation it rolled. */
+            ...(col.dmg > colDmg ? { rawDmg: col.dmg } : null),
             attackerId: session.id, collision: col.id, slot: _effSlot,   /* v2.3.2232 */
             hpPct: Math.max(0, m.hp / m.maxHp),
           },
@@ -1107,6 +1142,20 @@ export const combatMethods = {
         monsterId: m.id,
         zone,
         dmg: actualDmg,
+        /* ═══ v2.3.2481: THE KILLING BLOW SHOWS WHAT IT ACTUALLY HIT FOR ═══
+           Owner ask: the last hit on a monster always printed a small
+           number — 3 on a 40-damage swing — because `dmg` is the CREDITED
+           amount, clamped to the monster's remaining HP a few lines above.
+           The full roll existed only as the `rawDmg` local and never left
+           the worker, so the client had nothing better to print.
+
+           Sent ONLY when it differs (i.e. on an overkill hit), so ordinary
+           hits cost no extra bytes and an old client — which reads `dmg`
+           and ignores unknown fields — is unchanged either way.  Display
+           only: contribution (dmgByPlayer), trained XP and the HP bar all
+           keep using actualDmg above, because crediting the raw number
+           would let a player inflate XP by grinding a corpse. */
+        ...(rawDmg > actualDmg ? { rawDmg } : null),
         isCrit: rolled.isCrit,
         attackerId: session.id,
         /* ═══ v2.3.2232: WHICH WEAPON DEALT IT ═══
@@ -1129,10 +1178,91 @@ export const combatMethods = {
       }
     });
 
+    /* v2.3.2481: THE SPLASH.  Basic staff bolts only — a special is already
+       a three-bolt cone with its own cadence lane, and the owner's ask was
+       explicitly about the basic bolt.  Runs after the primary's own
+       monster_hit so the numbers arrive in the order they happened, and
+       before the kill check so a splash that finishes a neighbour resolves
+       inside the same event. */
+    if (_effSlot === 'staff' && !isSpecial) {
+      this._staffSplash(zone, m, _impactX, _impactY, session.id, attackerPs,
+        Math.max(1, Math.min(dmgCap, rolled.dmg)));
+    }
+
     // Kill check -- resolution moved VERBATIM to _resolveMonsterKill
     // (v2.3.1114) so the elemental DoT/collision path can share the same
     // contribution/loot/XP/lifesteal pipeline.
     if (m.hp <= 0) this._resolveMonsterKill(zone, m, session.id, attackerPs, slot);
+  },
+
+  /* ═══ v2.3.2481: staff-bolt splash (see STAFF_SPLASH at the top) ═══
+   *
+   * `primaryDmg` is the PRIMARY hit's roll AFTER _maxDmgForAttacker and
+   * BEFORE the overkill clamp — half of a number that is already under the
+   * attacker ceiling is still under it, so the splash needs no ceiling of
+   * its own and can never out-damage the bolt that caused it.  The target's
+   * own fracture multiplier applies per target, the same posture the primary
+   * hit takes (fracture is a property the server stamped on the TARGET, so
+   * it sits outside the attacker's cap).
+   *
+   * Damage goes through _applyMonsterDot — the shared pipeline (overkill
+   * clamp, contribution credit, dirty mark, monster_hit, kill resolution) —
+   * because a second copy of kill credit is exactly how credit silently
+   * diverges (its own v2.3.1569 header says so).  No new event type: the
+   * client paints the splash off the ordinary monster_hit events, which
+   * means an old client shows the numbers and simply skips the new flash.
+   *
+   * Deliberately NOT here: element status.  The bolt's element is applied to
+   * the monster the bolt hit; spraying burns onto three neighbours would
+   * multiply the DoT, not the hit, and that is a much larger balance change
+   * than the owner asked for. */
+  _staffSplash(zone, primary, ox, oy, attackerId, attackerPs, primaryDmg) {
+    if (typeof ox !== 'number' || typeof oy !== 'number') return 0;
+    const monsters = this.monsters[zone] || [];
+    if (monsters.length < 2) return 0;
+    const r = STAFF_SPLASH.RADIUS_PX * this._staffSplashMult(attackerPs);
+    const r2 = r * r;
+    const base = Math.max(1, Math.round(primaryDmg * STAFF_SPLASH.FRAC));
+    let hitCount = 0;
+    let dealt = 0;
+    for (const m of monsters) {
+      if (hitCount >= STAFF_SPLASH.MAX_TARGETS) break;
+      if (!m || m === primary || m.id === primary.id) continue;
+      if (!m.alive || m.hp <= 0) continue;
+      if (typeof m.x !== 'number' || typeof m.y !== 'number') continue;
+      const dx = m.x - ox;
+      const dy = m.y - oy;
+      if (dx * dx + dy * dy > r2) continue;
+      hitCount++;
+      /* Sticky aggro, copied from the primary hit above (and from the arrow
+         blast, which needed the same line for the same reason):
+         _applyMonsterDot is written for status ticks and does not stamp it,
+         and splashing a pack without pulling any of it would be farming
+         without consequence. */
+      m._aggroOverrideTarget = attackerId;
+      m._aggroOverrideUntil = Date.now() + 10000;
+      const dmg = Math.max(1, Math.round(base * this._fractureDmgMult(m)));
+      dealt += this._applyMonsterDot(zone, m, dmg, attackerId, null,
+        { splash: true, slot: 'staff' });
+    }
+    /* Trained XP on the same rule every other damage source follows (§9-A):
+       the weapon that dealt it earns it, priced off the CREDITED total, so
+       overkill on a splashed neighbour cannot inflate the rate. */
+    if (dealt > 0 && attackerPs && attackerPs.prog3) {
+      this._prog3AwardXp(attackerId, attackerPs, 'staff', dealt);
+    }
+    return dealt;
+  },
+
+  /* v2.3.2481: Detonation's splash-radius multiplier — the server mirror of
+     the client's staffAoeMult (gameSystems.js): +1%/pt of the staff `aoe`
+     channel, capped at 100 pts.  Read off the SERVER's own weaponSpecs copy,
+     which grids.js clamps to [0,99], so a forged client cannot widen it.
+     Fresh prog3 characters have no weaponSpecs and get ×1.0. */
+  _staffSplashMult(ps) {
+    const pts = (ps && ps.weaponSpecs && ps.weaponSpecs.staff
+      && ps.weaponSpecs.staff.detonation) || 0;
+    return 1 + Math.min(100, Math.max(0, pts)) * 0.01;
   },
 
   // v2.3.1114: kill resolution -- moved verbatim from _handleMonsterDamage

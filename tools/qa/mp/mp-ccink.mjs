@@ -676,12 +676,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
         });
         await P3.page.waitForTimeout(2000);
       }
-      /* v2.3.2430: the shirt opens on its PATTERN screen; `front` is where the
-         drawing is made, so that is the one to look at. */
+      /* v2.3.2430: the shirt opens on its PATTERN screen; the drawing is made on
+         the other one, so that is the one to look at.
+         v2.3.2503: and that one is `drawing` now, not `front`.  The shirt's
+         two SIDES were two entries in this strip (v2.3.1939); they are the zone
+         picker's flip button since v2.3.2503, which leaves the strip saying only
+         what it says on every other garment -- pattern, or draw. */
       if (tab === 'Shirt') {
         await P3.page.evaluate(() => {
           const b = [...document.querySelectorAll('.bt-paint-tabs .bt-cc-tab')]
-            .find((x) => /front/i.test(x.textContent || ''));
+            .find((x) => /draw/i.test(x.textContent || ''));
           if (b) b.click();
         });
         await P3.page.waitForTimeout(2400);
@@ -765,16 +769,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
            actually RESOLVES a back facing to that canvas -- which is the one a
            store check cannot see, and the one a mutation slipped through until
            this was written. */
-        const sideBtns = await P3.page.evaluate(() =>
-          [...document.querySelectorAll('[data-ink-side-btn]')].map((b) => b.getAttribute('data-ink-side-btn')));
-        rec.ok(`editors: the pants screen offers a Front/Back switch (${sideBtns.join(',')})`,
-          sideBtns.join(',') === 'front,back', { sideBtns });
-        if (sideBtns.length === 2) {
+        /* v2.3.2503: a FLIP button under the figure, not a pair of words above
+           it -- the zone picker replaced the Front/Back switch on every drawing
+           screen (PlayerPaint's ZONES).  The property asserted is the one that
+           matters and has not changed: the trousers have a way to reach their
+           far side, and it opens on the front. */
+        const flip = await P3.page.evaluate(() => {
+          const b = document.querySelector('[data-zone-flip]');
+          return b ? { side: b.getAttribute('data-zone-flip'), visible: !!b.offsetParent } : null;
+        });
+        rec.ok(`editors: the pants screen offers a flip button, opening on the `
+          + `front (${flip && flip.side})`,
+          !!flip && flip.visible === true && flip.side === 'front', { flip });
+        if (flip && flip.visible) {
           const before = await P3.page.evaluate(() => {
             const ink = (k) => { const v = localStorage.getItem(k) || ''; return [...v].filter((c) => c !== '0').length; };
             return { front: ink('bt-pantsart'), back: ink('bt-pantsart-back') };
           });
-          await P3.page.click('[data-ink-side-btn="back"]');
+          await P3.page.click('[data-zone-flip]');
           await P3.page.waitForTimeout(2200);
           /* ═══ v2.3.2461: THE BACK STROKE GOES SOMEWHERE ELSE ON PURPOSE ═══
              This used to aim at the region's centre -- the same point the four
@@ -921,35 +933,102 @@ export async function run({ browser, wsPort, webPort, rec }) {
        is the same failure as the Design button nobody noticed.
        Asserted against DONE rather than against a pixel row: "above the last
        button in the panel" is the property, and it survives the panel being
-       re-laid out again. */
+       re-laid out again -- which is exactly what it then had to do.
+
+       v2.3.2503: the switch is the zone picker's FLIP BUTTON now, and it lives
+       over the little figure instead of in the head cell, so "under the tabs"
+       is no longer the claim.  Everything else carries across unchanged,
+       because the regression this defends was never about the widget: a control
+       for reaching the back canvases that you can only find by discovering the
+       panel scrolls is the same failure whatever it looks like.  It also gains
+       the check the old one could not make -- a 44px touch target, because this
+       one is a thumb-sized button on a small preview rather than a full-width
+       row. */
     const swap = await Q.page.evaluate(() => {
       const p = document.querySelector('.bt-paint');
-      const sw = document.querySelector('.bt-paint-sideswitch');
+      const sw = document.querySelector('[data-zone-flip]');
       const done = [...p.querySelectorAll('button')].find((b) => (b.textContent || '').trim() === 'Done');
       if (!sw || !done) return null;
       const s2 = sw.getBoundingClientRect(), d = done.getBoundingClientRect();
       const pr = p.getBoundingClientRect();
-      const tabs = document.querySelector('.bt-paint-tabs');
-      const t = tabs && tabs.getBoundingClientRect();
+      const pv = document.querySelector('.bt-paint-pv');
+      const t = pv && pv.getBoundingClientRect();
       return { swTop: +s2.top.toFixed(1), swBottom: +s2.bottom.toFixed(1),
+        swW: +s2.width.toFixed(1), swH: +s2.height.toFixed(1),
         swOffsetTop: sw.offsetTop, doneTop: +d.top.toFixed(1),
         panelTop: +pr.top.toFixed(1), panelBottom: +pr.bottom.toFixed(1),
-        tabsBottom: t ? +t.bottom.toFixed(1) : null,
-        gridArea: getComputedStyle(sw).gridArea,
+        pvBottom: t ? +t.bottom.toFixed(1) : null,
         insideFold: s2.bottom <= pr.bottom + 0.5 && s2.top >= pr.top - 0.5 };
     });
-    rec.ok('front/back switch: it is on the tattoo screen at all (guard)', !!swap, swap);
+    rec.ok('flip button: it is on the tattoo screen at all (guard)', !!swap, swap);
     if (swap) {
-      rec.ok(`paint panel: the front/back switch sits UNDER THE TABS, where its `
-        + `own comment has claimed since v2.3.2150 (offsetTop ${swap.swOffsetTop}; `
-        + `it was 708, in an implicit grid row below everything)`,
-        swap.tabsBottom !== null && swap.swTop >= swap.tabsBottom - 1
-          && swap.swTop < swap.tabsBottom + 40, swap);
+      rec.ok(`paint panel: the flip button sits ON the worn preview, overlapping `
+        + `its bottom edge as the owner's mockup draws it (button ${swap.swTop}..`
+        + `${swap.swBottom}, preview bottom ${swap.pvBottom})`,
+        swap.pvBottom !== null && swap.swTop < swap.pvBottom
+          && swap.swBottom > swap.pvBottom, swap);
       rec.ok(`paint panel: ...above the Done button rather than below it `
         + `(${swap.swBottom} vs ${swap.doneTop})`, swap.swBottom < swap.doneTop, swap);
       rec.ok(`paint panel: ...and inside the panel's own fold, so it needs no `
         + `pan to reach -- which is the whole point of a control the owner `
         + `asked for by name`, swap.insideFold === true, swap);
+      rec.ok(`paint panel: ...and it is a real touch target (${swap.swW}x${swap.swH}, `
+        + `floor 44) -- it is a thumb-sized button on a ~133px preview, which is `
+        + `the way this control can fail on a phone and not on a pointer`,
+        swap.swW >= 43.5 && swap.swH >= 43.5, swap);
+      /* The frames are the other half of the same risk, and the bigger one:
+         they are sized from the composite's own region report, so a build or a
+         look that makes the head small is what would shrink them. */
+      const frames = await Q.page.evaluate(() =>
+        [...document.querySelectorAll('[data-zone-btn]')].map((b) => {
+          const r = b.getBoundingClientRect();
+          return { zone: b.getAttribute('data-zone-btn'),
+            w: +r.width.toFixed(1), h: +r.height.toFixed(1), hidden: !!b.hidden };
+        }));
+      rec.ok(`paint panel: ...and so is every zone frame `
+        + `(${frames.map((f) => `${f.zone} ${f.w}x${f.h}`).join(', ')})`,
+        frames.length > 0 && frames.every((f) => !f.hidden && f.w >= 43.5 && f.h >= 43.5),
+        { frames });
+
+      /* ═══ v2.3.2503: PICKING A ZONE MUST NOT MOVE THE EDITOR ═══
+         The caption under the picker is per-canvas, so it changes length when
+         you pick a different zone -- and .bt-modal-scrim CENTRES this panel, so
+         a panel whose height follows the caption slides everything inside it up
+         or down by half the difference.  Measured before .bt-paint-note got its
+         min-height: picking a different canvas at 390x844 resized the panel by
+         28.6px and moved the drawing canvas 14.3px down the screen.
+         That is a phone bug and not a cosmetic one: your next tap lands 14px
+         from where you aimed, on a control you are using with a thumb.  It
+         reached this suite as two dead corner taps in mp-skinink, whose cached
+         rect had gone stale -- a symptom two files away from its cause, which
+         is why the property is pinned HERE, on the panel, as itself. */
+      const before = await Q.page.evaluate(() => {
+        const p2 = document.querySelector('.bt-paint');
+        const cv = document.querySelector('.bt-bodyink-cv');
+        return { panelH: +p2.getBoundingClientRect().height.toFixed(1),
+          cvY: +cv.getBoundingClientRect().y.toFixed(1) };
+      });
+      await Q.page.click('[data-zone-btn="face"]');
+      await Q.page.waitForTimeout(1600);
+      const after = await Q.page.evaluate(() => {
+        const p2 = document.querySelector('.bt-paint');
+        const cv = document.querySelector('.bt-bodyink-cv');
+        return { panelH: +p2.getBoundingClientRect().height.toFixed(1),
+          cvY: +cv.getBoundingClientRect().y.toFixed(1),
+          note: (document.querySelector('.bt-paint-note') || {}).textContent || '' };
+      });
+      rec.ok(`paint panel: picking a different zone does not move the drawing `
+        + `canvas (y ${before.cvY} -> ${after.cvY}, panel ${before.panelH} -> `
+        + `${after.panelH})`,
+        Math.abs(after.cvY - before.cvY) < 1 && Math.abs(after.panelH - before.panelH) < 1,
+        { before, after });
+      /* Guard: the caption really did change, so the check above is not passing
+         because nothing happened. */
+      rec.ok('paint panel: ...guard -- the caption under it DID change, so that '
+        + 'is a stable panel and not an inert one',
+        /face/i.test(after.note), { note: after.note.slice(0, 60) });
+      await Q.page.click('[data-zone-btn="body"]');
+      await Q.page.waitForTimeout(1200);
     }
 
     /* The one behavioural half Chromium CAN answer: a real touch drag on a

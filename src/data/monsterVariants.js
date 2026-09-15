@@ -119,7 +119,25 @@ export const MONSTER_VARIANTS = {
     /* v2.3.116: explicit walkDistPerFrame doubles the default 1.5 so
        skeleton's chase animation cycles ~0.8 s instead of ~0.4 s --
        50% slower per user feedback ("too frantic"). */
-    walkDistPerFrame: 3.0,
+    /* ═══ v2.3.2504: IT WAS STILL SPRINTING IN PLACE ═══
+       Owner: the skeleton's legs cycle far faster than it travels.
+
+       ARITHMETIC, not taste.  The walk loop is DISTANCE-driven
+       (entityRenderer: frameIdx = floor(_walkDist / walkDistPerFrame) % fc),
+       the run strips are 8 frames (skeletonSprites RUN_MAP), and v2.3.2229
+       raised the skeleton's speed to 1.75 px per 22ms server tick = ~79 px/s.
+       At 3.0 that is 79 / (8 x 3) = ~3.3 full walk loops a second -- about
+       three times a human stride rate, which is exactly the "running in place"
+       read.  v2.3.116 set 3.0 against the OLD 1.4 speed and the 96px figure;
+       the speed went up 25% in v2.3.2229 and this constant did not follow.
+
+       9.0 puts it at 79 / (8 x 9) = ~1.1 loops/s.  The house reference is the
+       fire goblin two entries down -- also 8 frames, 1.5 px/tick, 6.0 per
+       frame = ~1.4 loops/s -- so a striding skeleton sits just under a
+       scurrying goblin, which is the relationship the two silhouettes suggest.
+       Client-visual only: nothing on the server or the wire reads this field
+       (`spd` is the mirrored one, and it is untouched). */
+    walkDistPerFrame: 9.0,
     deathMs: 1200,            /* 16-frame death sheet at ~75 ms/frame =
                                  1.2 s total -- crumble -> dust ->
                                  bone pile settling on the ground. */
@@ -205,7 +223,17 @@ export const MONSTER_VARIANTS = {
     remnantsScalePx: 48,
     /* Fireball on-screen size.  16 px was a bit small to read against
        the bright zone -- 50% bump per user (v2.3.13). */
-    projectileScalePx: 24,
+    /* v2.3.2504: and 24 still is.  Same complaint, same direction, one more
+       step: 24 -> 40.  The goblin himself is drawn at liveScalePx 96, so 40 is
+       a fireball a little under half his height -- a thing you flinch from
+       rather than a spark.  The field is stated in ON-SCREEN px and the
+       renderer divides by the source frame size (effectsRenderer ~3771), so
+       this is the only number that moves; no art, no hitbox.  The projectile's
+       DAMAGE geometry is the worker's (server-thrown fireballs are
+       displayOnly client-side, projectiles.js), so a bigger drawing cannot
+       widen what it hits -- it is honest about its own reach only in the sense
+       that it never had one to be honest about. */
+    projectileScalePx: 40,
     /* Movement is now server-authoritative.  The worker mirrors
        fireGoblin's spd (1.5) via _variantSpeed in
        brotown-server/src/index.js so server-driven positions move

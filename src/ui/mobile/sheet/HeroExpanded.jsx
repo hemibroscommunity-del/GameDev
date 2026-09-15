@@ -16,7 +16,7 @@ import {
   prog3Live, prog3HasSkills, prog3Pts, prog3AtkPts, prog3StatCap, prog3SkillLevel,
   prog3ActiveCat, prog3AtkMeta, prog3BodyMeta, PROG3_SKILL_META, prog3PoolFor,
   prog3CritMult, prog3CritPct /* v2.3.2441 */,
-  PROG3, prog3ElemPower /* v2.3.2483: elem per weapon, elem resist, max mana */ } from '../../../data/prog3.js';
+  PROG3, prog3ElemPower /* v2.3.2512: elem per weapon, elem resist, max mana */ } from '../../../data/prog3.js';
 import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
@@ -507,7 +507,7 @@ export const HeroExpanded = () => {
   const ptLandRef = useRef(new Map());
   const p3 = prog3Live(R);
   const buildCat = buildCatState || prog3ActiveCat(R);
-  /* ═══ v2.3.2483: OPENING A SECTION BRINGS ITS STATS INTO VIEW ═══
+  /* ═══ v2.3.2512: OPENING A SECTION BRINGS ITS STATS INTO VIEW ═══
      The owner's Points accordion stacks three 44px headers above the open
      section's stats, and the sheet's scrolling window is ~191px on a phone
      (measured, 390x844) — so the THIRD section's first stat row starts below
@@ -1362,7 +1362,7 @@ export const HeroExpanded = () => {
                "CRIT 2/4  DMG 1/4  SPD 0/4".  The rows themselves keep the
                full labels.  v2.3.2199: the new flat-damage stat takes DMG;
                critDmg (which had borrowed it) becomes CRIT+. */
-            const SHORT = { dmg: 'DMG', crit: 'CRIT', critDmg: 'CRIT+', aspd: 'SPD', elem: 'ELEM' }; /* v2.3.2483: + elem (now a per-weapon stat) */
+            const SHORT = { dmg: 'DMG', crit: 'CRIT', critDmg: 'CRIT+', aspd: 'SPD', elem: 'ELEM' }; /* v2.3.2512: + elem (now a per-weapon stat) */
             /* v2.3.2176: does this worker channel points?  Without the cap
                there is no breakdown to read, so everything falls back to the
                single shared pool the old worker enforces (rule 19). */
@@ -1633,7 +1633,7 @@ export const HeroExpanded = () => {
                   if (st.key === 'dmg') return d && d.dmgText ? String(d.dmgText) : '0';
                   if (st.key === 'crit') return pct1(prog3CritPct(R, buildCat)) + '%';
                   if (st.key === 'critDmg') return Math.round(prog3CritMult(R, buildCat) * 100) + '%';
-                  /* v2.3.2483: elemental power, per weapon — the effective
+                  /* v2.3.2512: elemental power, per weapon — the effective
                      "power" the burn/root/collision formulas read, through the
                      one shared reader rather than a fourth inline copy. */
                   if (st.key === 'elem') return String(Math.round(prog3ElemPower(R, buildCat)));
@@ -1652,7 +1652,7 @@ export const HeroExpanded = () => {
                 if (st.key === 'stam') return String(Math.round((R && R.maxStamina) || 0));
                 if (st.key === 'def') return pct1(d ? d.defPct : 0) + '%';
                 if (st.key === 'dodge') return pct1(d ? d.dodge : 0) + '%';
-                /* v2.3.2483: elem is an ATK stat now and is answered in the
+                /* v2.3.2512: elem is an ATK stat now and is answered in the
                    st.atk block above; what lands here is the two body stats
                    that arrived with it.  MAX MANA reads the live pool (the
                    same field the mana bar draws from, so the two screens
@@ -2076,7 +2076,7 @@ export const HeroExpanded = () => {
               ) : (
                 <>
                 {/* ═══════════════════════════════════════════════════════════
-                    v2.3.2483: THE POINTS ACCORDION (owner mockup)
+                    v2.3.2512: THE POINTS ACCORDION (owner mockup)
                     ═══════════════════════════════════════════════════════════
                     Owner's mock, `docs/triage-2026-09-14/assets/points-accordion.png`:
                     one COLLAPSIBLE SECTION PER COMBAT SKILL, stacked — icon,

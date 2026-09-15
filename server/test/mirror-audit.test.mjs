@@ -436,7 +436,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const missing = required.filter((k) => !(k in cli) || !(k in srv));
   check('the mana-rework / Element Burst constants exist on BOTH sides', missing.length === 0, missing);
 
-  /* ═══ v2.3.2483: THE KEY SETS, NOT JUST THE VALUES ═══
+  /* ═══ v2.3.2512: THE KEY SETS, NOT JUST THE VALUES ═══
      The subset comparison above is deliberately forgiving — the server owns
      curve functions the client never evaluates — but that forgiveness has a
      hole with teeth: a stat that MOVES tables (or is deleted from one side)
@@ -456,7 +456,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   }
   /* And the three stats this version moved or created, by name, so a future
      edit that quietly drops one fails here rather than in a player's build. */
-  check('elem is an ATK stat on BOTH sides (it left BODY in v2.3.2483)',
+  check('elem is an ATK stat on BOTH sides (it left BODY in v2.3.2512)',
     !!SRV_PROG3.ATK.elem && !!CLIENT_PROG3.ATK.elem
       && !SRV_PROG3.BODY.elem && !CLIENT_PROG3.BODY.elem,
     { srvAtk: SRV_PROG3.ATK.elem, cliAtk: CLIENT_PROG3.ATK.elem,

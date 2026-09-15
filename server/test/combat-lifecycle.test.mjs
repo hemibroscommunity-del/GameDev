@@ -1095,6 +1095,107 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
         .every((o) => room._isQuestObjectiveItem(o.invKey || (o.invPrefix + 'x'))));
     delete room.playerState[pid];
   }
+
+  /* ── v2.3.2491: RECOVERING YOUR BAG AND DYING AT ONCE ──
+   * Owner: dying and recovering "at the same time" loses the bag.
+   *
+   * The two halves are not independent.  A death pile spawns where you died,
+   * which is inside the pack that killed you.  You come back, walk onto it,
+   * and the credit sets a 500 ms PICKUP FREEZE on the client (movement and
+   * facing locked so the pickup animation reads).  The pack is still there.
+   * You die inside the freeze the game imposed, and _spawnDeathPile drops the
+   * bag you just picked up straight back where it can be taken or expire.
+   *
+   * The shield runs through the REAL pickup handler, not a hand-set flag,
+   * because the stamp has to survive the path the player actually takes.
+   *
+   * Every assertion below has a partner: a shielded item must be kept AND
+   * absent from the pile.  One without the other is the duplicate-mint bug
+   * the v2.3.1688 tool pass and the v2.3.1701 quest pass both had to avoid. */
+  {
+    const pid = 'redropper';
+    room.playerState[pid] = {
+      hp: 100, maxHp: 100, z: 'meadow', x: 3000, y: 3000,
+      dead: false, dying: false, disconnected: false,
+      inventory: { wood_kindling: 2 },   // carried BEFORE the recovery
+    };
+    const psR = room.playerState[pid];
+    const wsR = wsA;                     // any live socket; the sends are not asserted
+    const bySession = room._wsBySessionId;
+    room._wsBySessionId = (id) => (id === pid ? wsR : bySession.call(room, id));
+    const sessR = { id: pid, name: 'Redropper' };
+    const sessionById = room._sessionById;
+    room._sessionById = (id) => (id === pid ? sessR : sessionById.call(room, id));
+
+    /* The bag on the ground, exactly as a previous death left it. */
+    const bag = {
+      lootId: 'dd-' + pid + '-old', zone: 'meadow', x: 3000, y: 3000,
+      coins: 0, skull: null, shard: null,
+      recipients: [pid], shares: {}, killerName: 'Redropper', ts: Date.now(),
+      inventoryClaimed: false, claimedBy: {}, isDeathDrop: true,
+      deathItems: [{ key: 'gold_nugget', qty: 4 }, { key: 'wood_kindling', qty: 1 }],
+      ownerOnlyUntil: Date.now() + 60000, expiry: Date.now() + 120000,
+    };
+    if (!room.loot.meadow) room.loot.meadow = [];
+    room.loot.meadow.push(bag);
+    room._handleLootPickup(sessR, { lootId: bag.lootId, zone: 'meadow' });
+    check('recovery: the bag is back in the inventory',
+      psR.inventory.gold_nugget === 4 && psR.inventory.wood_kindling === 3, psR.inventory);
+    check('recovery: the pickup stamped what it handed over',
+      !!psR._lootRecovered && psR._lootRecovered.items.gold_nugget === 4
+      && psR._lootRecovered.items.wood_kindling === 1, psR._lootRecovered);
+
+    /* ...and now the pack finishes the job, inside the freeze. */
+    psR.hp = 0;
+    room._handlePlayerDeath(psR, pid, 'monster:pack');
+    check('a death inside the grace window KEEPS what was just recovered',
+      psR.inventory.gold_nugget === 4, psR.inventory);
+    check('...and only the newly-credited part of a shared key, not the whole stack',
+      psR.inventory.wood_kindling === 1, psR.inventory);
+    const rPile = (room.loot.meadow || []).find((l) => l.isDeathDrop && l.lootId.startsWith('dd-' + pid + '-')
+      && l.lootId !== bag.lootId);
+    const rKeys = (rPile && rPile.deathItems || []).map((i) => i.key);
+    check('...and the new pile does NOT carry a copy of the shielded items',
+      !rKeys.includes('gold_nugget'), rKeys);
+    check('...while the 2 kindling carried in BEFORE the recovery still drops',
+      (rPile && rPile.deathItems || []).some((i) => i.key === 'wood_kindling' && i.qty === 2), rKeys);
+    /* Second wipe, five seconds later.  Sparing at death alone is cosmetic
+       (the v2.3.1616 lesson, and the reason the shield is frozen at death
+       rather than re-tested against the clock here). */
+    psR.dying = true; psR.respawnAt = Date.now() - 1;
+    room._tickPlayerRespawn();
+    check('the respawn wipe keeps the recovered items too',
+      psR.inventory.gold_nugget === 4 && psR.inventory.wood_kindling === 1, psR.inventory);
+    check('...and the shield is spent, so the NEXT death starts clean',
+      !psR._deathShield && !psR._lootRecovered, { s: psR._deathShield, r: psR._lootRecovered });
+
+    /* THE CONTROL.  Without it every assertion above is also satisfied by a
+       build that simply stopped dropping anything: an old recovery is not
+       shielded, and dying then costs the bag exactly as it always has. */
+    psR.inventory = { gold_nugget: 4 };
+    psR._lootRecovered = { at: Date.now() - (room.DEATH_REDROP_GRACE_MS + 500),
+      items: { gold_nugget: 4 } };
+    psR.hp = 0; psR.dying = false; psR.dead = false;
+    /* The respawn above sent them to town, and a town death spawns no pile
+       at all (_spawnDeathPile refuses safe zones) -- which would have made
+       this control pass for the wrong reason. */
+    psR.z = 'meadow'; psR.x = 3000; psR.y = 3000;
+    /* By INDEX, not by lootId: the id is `dd-<player>-<Date.now()>` and the
+       suite runs two deaths inside the same millisecond, so the two piles can
+       share an id and a by-id lookup silently finds the earlier one. */
+    const nBefore = (room.loot.meadow || []).length;
+    room._handlePlayerDeath(psR, pid, 'monster:pack');
+    check('control: a recovery OLDER than the grace window is not shielded',
+      !psR.inventory.gold_nugget, psR.inventory);
+    const cPile = (room.loot.meadow || []).slice(nBefore).find((l) => l.isDeathDrop);
+    check('control: ...and those items are on the ground where they belong',
+      (cPile && cPile.deathItems || []).some((i) => i.key === 'gold_nugget' && i.qty === 4),
+      cPile && cPile.deathItems);
+
+    room._wsBySessionId = bySession;
+    room._sessionById = sessionById;
+    delete room.playerState[pid];
+  }
   delete room.playerState['well'];
 }
 
@@ -2026,11 +2127,14 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     !!fodderTele && fodderTele.payload.phase === 'telegraph'
     && fodderTele.payload.ability === 'lunge',
     fodderTele && fodderTele.payload);
+  /* v2.3.2482: the stalker kit was deleted (the pounce), so "slowest" is now
+     measured against every kit that EXISTS rather than against a hardcoded
+     pair -- which is the property the assertion was always about, and it
+     survives the next kit being added or removed. */
   check('telegraph: fodder\'s tell is the SLOWEST — a beginner\'s reaction time',
-    TELEGRAPH.KITS.fodder.windupMs > TELEGRAPH.KITS.brute.windupMs
-    && TELEGRAPH.KITS.fodder.windupMs > TELEGRAPH.KITS.stalker.windupMs,
-    { fodder: TELEGRAPH.KITS.fodder.windupMs, brute: TELEGRAPH.KITS.brute.windupMs,
-      stalker: TELEGRAPH.KITS.stalker.windupMs });
+    Object.entries(TELEGRAPH.KITS).every(([arch, k]) =>
+      arch === 'fodder' || TELEGRAPH.KITS.fodder.windupMs > k.windupMs),
+    Object.fromEntries(Object.entries(TELEGRAPH.KITS).map(([a, k]) => [a, k.windupMs])));
   check('telegraph: fodder carries NO damage spike (a cue, not a threat)',
     TELEGRAPH.KITS.fodder.dmgMult === 1.0
     && TELEGRAPH.KITS.fodder.dmgMult < TELEGRAPH.KITS.brute.dmgMult,
@@ -2063,6 +2167,31 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     basicWindupMs('swarm') === Math.min(...Object.keys(BASIC_WINDUP.MS)
       .filter((k) => k !== 'DEFAULT').map((k) => BASIC_WINDUP.MS[k])),
     { swarm: basicWindupMs('swarm'), table: BASIC_WINDUP.MS });
+
+  /* ══ v2.3.2482: THE STALKER'S POUNCE IS GONE (owner ask) ══
+     Stalkers spawn only in sky / Desert Winds and are re-skinned as mummies
+     there, so a 140px leap onto the player had no art to explain it.  The
+     kit is deleted; the archetype keeps the universal basic wind-up swing,
+     which is the half that must not go with it. */
+  check('pounce: the stalker kit is gone',
+    !TELEGRAPH.KITS.stalker, TELEGRAPH.KITS.stalker);
+  check('pounce: ...and no kit declares that kind any more (the leap branch is dead)',
+    Object.values(TELEGRAPH.KITS).every((k) => k.kind !== 'pounce'),
+    Object.values(TELEGRAPH.KITS).map((k) => k.kind));
+  check('pounce: ...but a stalker still has its basic wind-up',
+    basicWindupMs('stalker') > 0, basicWindupMs('stalker'));
+  {
+    /* Drive a real stalker through a real tick: it must swing, not cast. */
+    armBrute();
+    tm.arch = 'stalker';
+    tm._tgNextAt = 0;                     /* a kit WOULD be allowed to fire */
+    tick();
+    const st = abilities();
+    check('pounce: a stalker in reach winds up an ordinary SWING, never a cast',
+      st.length > 0 && st.every((e) => e.payload.phase !== 'telegraph')
+        && st.some((e) => e.payload.ability === 'swing'),
+      st.map((e) => e.payload));
+  }
 
   /* ═══ v2.3.2215: EVERY BASIC ATTACK HAS A WIND-UP ═══
      The kits above cover three archetypes on a multi-second cooldown; the
@@ -2302,6 +2431,174 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   psA.blocking = false; psA.ba = null; psA.blockStartT = 0;
   saved.forEach(({ m, alive, respawnAt, arch }) => { m.alive = alive; m.respawnAt = respawnAt; m.arch = arch; });
   psB.z = 'meadow';
+}
+
+/* ══ v2.3.2481: the killing blow's REAL number, and the staff splash ══
+   Two owner asks that share one handler.
+
+   (1) `dmg` on monster_hit has always been the CREDITED damage — clamped to
+       the monster's remaining HP — so the last hit of every fight printed a
+       sliver.  `rawDmg` is the roll before that clamp, sent only when the two
+       differ so an ordinary hit costs no extra bytes.  Nothing server-side
+       reads it back: contribution and trained XP must stay on the credited
+       number, which is what these assertions pin.
+
+   (2) Basic staff bolts splash 50% to nearby monsters.  It lives on the
+       server because the client sends one monster_damage per target and the
+       worker rolls FULL damage for each — a client-side splash would be an
+       exploit.  Pinned here: it fires for a basic bolt, not for a special,
+       not for melee; it is bounded by the target cap and the radius; and it
+       never exceeds half the primary's own roll. */
+{
+  psA.z = 'meadow'; psA.dead = false; psA.dying = false;
+  psA.weapon = { type: 'sword', tierMult: 1 };
+  psA.staffWeapon = { type: 'staff', tierMult: 1 };
+  psA.rangedWeapon = null;
+  psA.activeSlot = 'staff';
+  psA.weaponSpecs = {};
+
+  /* The hit-cadence floor (v2.3.1134) is per (player, monster) and this
+     block lands several hits on the SAME monster inside one millisecond, so
+     clear it between hits.  The floor itself is pinned positively in
+     anticheat.test.mjs; nothing here is about it. */
+  const nocad = () => { psA._monHitCad = new Map(); };
+
+  /* Fresh monsters pushed into the LIVE meadow list rather than reused from
+     the `meadowMonsters` capture at the top of the file: by this point in the
+     suite the room has re-spawned the zone at least once, so that capture is
+     no longer the array _handleMonsterDamage looks in (the handler resolves
+     by id out of room.monsters[zone], and a stale reference is simply never
+     found).  Every monster below is this section's own. */
+  const liveMeadow = room.monsters.meadow;
+  let _sxN = 0;
+  const freshMon = () => {
+    const sp = room._spawnZoneMonsters('meadow');
+    const m = sp && sp[0];
+    if (!m) throw new Error('combat-lifecycle: meadow spawns nothing');
+    m.id = 'sm-meadow-s' + (_sxN++);
+    m.alive = true; m.hp = m.maxHp = 99999; m.dmgByPlayer = {};
+    m._wanderPausedUntil = Date.now() + 600000;
+    liveMeadow.push(m);
+    return m;
+  };
+
+  /* ── (1) rawDmg ── */
+  const mo = freshMon();
+  mo.hp = 1;
+  mo.x = 5000; mo.y = 5000;                 /* alone: no splash to confuse it */
+  room.eventBuffer.length = 0;
+  nocad();
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: mo.id, zone: 'meadow', slot: 'melee' } }));
+  const hitO = room.eventBuffer.find((e) => e.type === 'monster_hit');
+  check('rawDmg: an overkill hit reports the full roll beside the credited one',
+    !!hitO && hitO.payload.dmg === 1 && typeof hitO.payload.rawDmg === 'number'
+      && hitO.payload.rawDmg > 1,
+    hitO && { dmg: hitO.payload.dmg, rawDmg: hitO.payload.rawDmg });
+  /* The whole point of the clamp: rawDmg is a LABEL.  HP came down by the
+     credited amount only, so the bar cannot go negative and the §7
+     contribution share (which is damage / max hp) cannot be inflated by
+     swinging hard at a monster with one point left. */
+  check('rawDmg: hp still came down by the CLAMPED amount, not the raw roll',
+    !!hitO && mo.hp === 0, { hp: mo.hp, dmg: hitO && hitO.payload.dmg, raw: hitO && hitO.payload.rawDmg });
+
+  const mf = freshMon();
+  mf.x = 5000; mf.y = 5000;
+  room.eventBuffer.length = 0;
+  nocad();
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: mf.id, zone: 'meadow', slot: 'melee' } }));
+  const hitF = room.eventBuffer.find((e) => e.type === 'monster_hit');
+  check('rawDmg: a non-overkill hit sends no rawDmg at all (wire stays small)',
+    !!hitF && hitF.payload.rawDmg === undefined, hitF && hitF.payload);
+
+  /* The shared status/burst/splash pipeline reports the same way — a burn
+     tick or an Element Burst that lands the last point of damage is exactly
+     the case the owner complained about. */
+  const md = freshMon();
+  md.hp = 1; md.x = 5000; md.y = 5000;
+  room.eventBuffer.length = 0;
+  room._applyMonsterDot('meadow', md, 50, 'pa', 'burn');
+  const hitD = room.eventBuffer.find((e) => e.type === 'monster_hit');
+  check('rawDmg: a DoT/burst tick reports its full roll too',
+    !!hitD && hitD.payload.dmg === 1 && hitD.payload.rawDmg === 50 && md.hp === 0,
+    hitD && hitD.payload);
+
+  /* ── (2) staff splash ── */
+  /* Park three monsters on top of each other and a fourth far away, so the
+     radius itself is under test and not just the loop. */
+  const sTgt = freshMon();
+  const sN1 = freshMon();
+  const sN2 = freshMon();
+  const sFar = freshMon();
+  const park = (m, x, y) => {
+    m.alive = true; m.hp = m.maxHp = 99999; m.dmgByPlayer = {};
+    m.x = x; m.y = y; m._wanderPausedUntil = Date.now() + 600000;
+  };
+  park(sTgt, 9000, 9000);
+  park(sN1, 9020, 9000);                    /*  20px away: inside 60 */
+  park(sN2, 9000, 9040);                    /*  40px away: inside 60 */
+  park(sFar, 9400, 9000);                   /* 400px away: outside   */
+
+  room.eventBuffer.length = 0;
+  nocad();
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: sTgt.id, zone: 'meadow', slot: 'staff' } }));
+  const sHits = room.eventBuffer.filter((e) => e.type === 'monster_hit');
+  const hitOn = (m) => sHits.find((e) => e.payload.monsterId === m.id);
+  const primary = hitOn(sTgt);
+  check('staff splash: the bolt\'s own target takes an ordinary, unsplashed hit',
+    !!primary && !primary.payload.splash, primary && primary.payload);
+  check('staff splash: both neighbours inside the radius are hit and tagged',
+    !!hitOn(sN1) && hitOn(sN1).payload.splash === true
+      && !!hitOn(sN2) && hitOn(sN2).payload.splash === true,
+    sHits.map((e) => ({ id: e.payload.monsterId, splash: e.payload.splash })));
+  check('staff splash: a monster outside the radius is untouched',
+    !hitOn(sFar) && sFar.hp === sFar.maxHp, { hp: sFar.hp });
+  check('staff splash: the splash is half the primary roll, never more',
+    !!primary && !!hitOn(sN1)
+      && hitOn(sN1).payload.dmg <= Math.ceil(primary.payload.dmg * 0.5) + 1
+      && hitOn(sN1).payload.dmg >= 1,
+    { primary: primary && primary.payload.dmg, splash: hitOn(sN1) && hitOn(sN1).payload.dmg });
+  check('staff splash: it carries the staff mark so the popup wears the right icon',
+    !!hitOn(sN1) && hitOn(sN1).payload.slot === 'staff', hitOn(sN1) && hitOn(sN1).payload);
+  check('staff splash: the neighbours are pulled onto the attacker (no free farming)',
+    sN1._aggroOverrideTarget === 'pa' && sN1._aggroOverrideUntil > Date.now(),
+    { t: sN1._aggroOverrideTarget, until: sN1._aggroOverrideUntil });
+
+  /* A SPECIAL does not splash: it is already a three-bolt cone. */
+  park(sTgt, 9000, 9000); park(sN1, 9020, 9000); park(sN2, 9000, 9040);
+  room.eventBuffer.length = 0;
+  nocad();
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: sTgt.id, zone: 'meadow', slot: 'staff', special: true } }));
+  const spHits = room.eventBuffer.filter((e) => e.type === 'monster_hit');
+  check('staff splash: a SPECIAL bolt does not splash',
+    spHits.length === 1 && spHits[0].payload.monsterId === sTgt.id,
+    spHits.map((e) => e.payload.monsterId));
+
+  /* And neither does a sword, standing in exactly the same place. */
+  park(sTgt, 9000, 9000); park(sN1, 9020, 9000); park(sN2, 9000, 9040);
+  room.eventBuffer.length = 0;
+  nocad();
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: sTgt.id, zone: 'meadow', slot: 'melee' } }));
+  const mlHits = room.eventBuffer.filter((e) => e.type === 'monster_hit');
+  check('staff splash: melee never splashes',
+    mlHits.length === 1 && mlHits[0].payload.monsterId === sTgt.id,
+    mlHits.map((e) => e.payload.monsterId));
+
+  /* Detonation widens the radius the same way it widens the bolt's own hit
+     circle on the client (+1%/pt, capped at 100): the far monster that was
+     out of reach at 60px comes into reach at 120px. */
+  park(sTgt, 9000, 9000); park(sFar, 9100, 9000);   /* 100px: outside 60, inside 120 */
+  park(sN1, -50000, -50000); park(sN2, -50000, -50000);
+  psA.weaponSpecs = { staff: { detonation: 100 } };
+  room.eventBuffer.length = 0;
+  nocad();
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: sTgt.id, zone: 'meadow', slot: 'staff' } }));
+  const detHits = room.eventBuffer.filter((e) => e.type === 'monster_hit');
+  check('staff splash: Detonation widens the radius (+1%/pt, capped at 100 pts)',
+    room._staffSplashMult(psA) === 2
+      && !!detHits.find((e) => e.payload.monsterId === sFar.id),
+    { mult: room._staffSplashMult(psA), ids: detHits.map((e) => e.payload.monsterId) });
+  psA.weaponSpecs = {};
+  psA.activeSlot = 'melee'; psA.staffWeapon = null;
 }
 
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);

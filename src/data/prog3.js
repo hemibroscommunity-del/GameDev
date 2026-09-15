@@ -36,7 +36,7 @@ export const PROG3 = {
     hp:      { cap: 100, per: 8 },      // +8 max HP/pt
     dodge:   { cap: 75,  per: 0.004 },  // +0.4% dodge/pt
     stam:    { cap: 100, per: 3 },      // +3 max stamina/pt
-    /* v2.3.2483: elem LEFT for ATK (per weapon); eres + mana arrive.  The
+    /* v2.3.2512: elem LEFT for ATK (per weapon); eres + mana arrive.  The
        reasoning for all three lives on the SERVER copy (server/src/prog3.js),
        which is the source of truth; these are its mirror and mirror-audit §12
        pins both the values AND the key sets. */
@@ -56,7 +56,7 @@ export const PROG3 = {
     critDmg: { cap: 100, per: 0.01 },   // +1% crit damage/pt, PER TYPE
     aspd:    { cap: 100, per: 0.0035 }, // −0.35% swing period/pt, PER TYPE
     dmg:     { cap: 75,  per: 0.5 },    // v2.3.2199: +0.5 damage/pt pre-tier, PER TYPE
-    elem:    { cap: 75,  per: 1 },      // v2.3.2483: +1 elemental power/pt, PER TYPE (was global BODY)
+    elem:    { cap: 75,  per: 1 },      // v2.3.2512: +1 elemental power/pt, PER TYPE (was global BODY)
   },
   /* v2.3.1727: the retune PROGRESSION-REDESIGN #13 deferred — the §7-A
      placeholders bought +17.7% damage over ten character levels, which the
@@ -128,7 +128,7 @@ export const PROG3_ATK_META = [
   /* Atk Speed's points SHORTEN the swing, so its total is a reduction — the
      label below says "faster" rather than printing a negative. */
   { key: 'aspd',    label: 'Atk Speed', perText: '−0.35% swing time',  pct: true, unit: '% faster', iconSrc: '/icons/ui/t2/sword-tempo.webp?v=2.3.1694' },
-  /* v2.3.2483: elemental power, now per weapon — burns/roots/thorns and
+  /* v2.3.2512: elemental power, now per weapon — burns/roots/thorns and
      element collisions from THIS weapon scale off it.  Same art it carried
      as a body stat (the detonation drawing is still the closest the repo
      has); swap the day a dedicated element-power icon exists. */
@@ -139,7 +139,7 @@ export const PROG3_BODY_META = [
   { key: 'hp',    label: 'Max HP',  perText: '+8 max HP',          unit: ' HP', iconSrc: '/icons/ui/hero/hp-heart.webp?v=2.3.1922' } /* v2.3.1922: plain heart */,
   { key: 'dodge', label: 'Dodge',   perText: '+0.4% dodge',        pct: true, unit: '%', iconSrc: '/icons/ui/hero/dodge.webp?v=2.3.1694' },
   { key: 'stam',  label: 'Stamina', perText: '+3 max stamina',     unit: ' stamina', iconSrc: '/icons/ui/hero/stamina.webp?v=2.3.1694' },
-  /* v2.3.2483: elemental power moved OUT of this table and into PROG3_ATK_META
+  /* v2.3.2512: elemental power moved OUT of this table and into PROG3_ATK_META
      (per weapon).  What arrives in its place is the defensive half the
      elemental system never had, plus the mana pool finally becoming something
      a player can choose to buy. */
@@ -154,7 +154,7 @@ function _resolveMetaRows(rows) {
   for (var i = 0; i < rows.length; i++) {
     var m = rows[i];
     if (m.capsProg3x && !_prog3x) continue;
-    /* v2.3.2483: rows that only exist on a worker carrying the elem/eres/mana
+    /* v2.3.2512: rows that only exist on a worker carrying the elem/eres/mana
        grid.  Same rule as capsProg3x above and for the same reason: never
        offer a stat the wire will silently refuse (rule 19). */
     if (m.capsProg3Elem && !_prog3elem) continue;
@@ -195,7 +195,7 @@ var _prog3x = false;
 export function setProg3XEnabled(on) { _prog3x = !!on; }
 export function isProg3XEnabled() { return _prog3x; }
 
-/* ═══ v2.3.2483: caps.prog3elem — the attribute restructure gate ═══
+/* ═══ v2.3.2512: caps.prog3elem — the attribute restructure gate ═══
    Elemental power moved from ONE global stat to one per combat type, and
    two new global stats arrived (Elem Resist, Max Mana).  Display-only, the
    capsProg3x pattern exactly: against an OLD worker the three rows hide

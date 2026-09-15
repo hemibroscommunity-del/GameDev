@@ -95,10 +95,66 @@ export function updateGroundLootPickup(S, deps) {
                drag; lDist still bounds the inner edge so the pile stops
                crawling once it visually reaches the player. */
             if (_magnetReady && _amPileRecipient && !loot._collected && sDist < magnetRange && lDist > 20) {
-              var pullStrength = (1 - lDist / magnetRange) * 3;
+              /* v2.3.2490: THREE FAULTS IN ONE LINE.  The pull used to be
+                 `(1 - lDist / magnetRange) * 3` with no clamp at either end.
+                 Once the VISUAL pile sat farther than magnetRange from the
+                 player that term went NEGATIVE and the "magnet" pushed the
+                 pile AWAY, accelerating as it went (-3 px/frame at 100 px,
+                 -6 at 150) for as long as the player stayed near the anchor
+                 -- which is exactly what fighting on the spot looks like.
+                 That is the "coins I cannot pick up" report: the server
+                 validates a pickup against the pile's ANCHOR
+                 (server/src/index.js _handleLootPickup, LOOT_PICKUP_RANGE
+                 160), so a pile that has run 160 px from its anchor can
+                 never be granted again -- the player chases the sprite, the
+                 worker measures the spot, every request comes back
+                 out-of-range.  A melee dash is the reliable way in:
+                 DASH_STOP_PX is 46 and magnetRange is 50, so a dash kill
+                 parks the player right on the sign change and any small
+                 step flips lDist across it.
+                 Faults 2 and 3: the strength was applied PER FRAME (2.4x
+                 stronger on a 144Hz desktop than on the phone this game is
+                 built for -- the v2.3.1771 class), and it could overshoot
+                 the player on a long frame.  Clamped, dt-scaled, and given
+                 a floor of 0.35 (about 1 px/frame at 60Hz) so the pull
+                 CONVERGES from outside magnetRange instead of stalling at
+                 zero.  That floor also pulls harder at the outer edge than
+                 the old curve did -- 1.05 px/frame instead of 0.24 at 46 px
+                 -- which is deliberate: 46 px is DASH_STOP_PX, so it is
+                 exactly where a dash kill parks the player, and it is the
+                 distance the owner's "it just won't pick up" reports are
+                 about.  Inside ~33 px the curve is unchanged. */
+              var _pullK = Math.max(0.35, 1 - lDist / magnetRange);
+              var pullStrength = Math.min(_pullK * 3 * (S._dtScale || 1), lDist);
               var pullAngle = Math.atan2(P.y - loot.y, P.x - loot.x);
               loot.x += Math.cos(pullAngle) * pullStrength;
               loot.y += Math.sin(pullAngle) * pullStrength;
+            }
+            /* v2.3.2490: HARD INVARIANT, enforced rather than assumed.  The
+               v2.3.1161 comment above already CLAIMS this ("the visual pile
+               can never stray farther than the magnet range from the
+               position the server validates") and the code never enforced
+               it: the anchor gated when the pull RAN, not how far it could
+               carry the sprite.  Anchor distance is the only distance the
+               worker will ever measure, so clamp the drift here, every
+               frame, for every pile -- including one that arrived drifted
+               (an older build's runaway surviving in a live session).
+               magnetRange, not LOOT_PICKUP_RANGE: 50 px is the design
+               intent and leaves the whole 160 px budget for the things the
+               client cannot control (the pile spawns at the monster's
+               centre, and the server's view of the player lags the move
+               throttle).  The projection only ever shaves a fraction of a
+               pixel in normal play, because the pull above is <= 3 px. */
+            var _driftX = loot.x - loot._sx,
+              _driftY = loot.y - loot._sy;
+            var _drift = Math.sqrt(_driftX * _driftX + _driftY * _driftY);
+            if (_drift > magnetRange) {
+              var _homeK = magnetRange / _drift;
+              loot.x = loot._sx + _driftX * _homeK;
+              loot.y = loot._sy + _driftY * _homeK;
+              /* lDist is stale the moment the pile moves, and every gate
+                 below (the not-yours beep, the pickup trigger) reads it. */
+              lDist = Math.sqrt(Math.pow(P.x - loot.x, 2) + Math.pow(_pickupOriginY - loot.y, 2));
             }
             /* Pickup gate matches the render delay (0.1 s) so the
                splat is on-screen and visible before it can be picked

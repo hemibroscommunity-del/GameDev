@@ -82,25 +82,40 @@
 import { BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST } from './data.js';
 
 /* Per-archetype kits.  `radius` is the execute-time hit radius, and it is
-   deliberately WIDER than MONSTER_ATTACK_RANGE (45): a telegraphed attack
-   you could escape by standing still would teach nothing. */
+   deliberately WIDER than MONSTER_ATTACK_RANGE: a telegraphed attack you
+   could escape by standing still would teach nothing.
+   v2.3.2482: that ring moved 45 -> 72 (the player's own melee reach), so the
+   radii moved with it at the SAME ratios they were authored at -- brute
+   55/45 = 1.22x -> 88, fodder 50/45 = 1.11x -> 80.  Leaving them at 55 and
+   50 would have put every kit INSIDE the ring the monster now stops at,
+   i.e. a signature cast that whiffs by construction every single time. */
 export const TELEGRAPH = {
   MAX_HIT_PCT: 0.5,       /* mirrors BOSS_ABILITIES.MAX_HIT_PCT — no one-shots */
   CAST_RANGE: 150,        /* start a cast only with the target this close */
   KITS: {
     brute: {
-      kind: 'slam', windupMs: 900, cooldownMs: 5000, dmgMult: 2.0, radius: 55,
+      kind: 'slam', windupMs: 900, cooldownMs: 5000, dmgMult: 2.0, radius: 88, /* v2.3.2482: was 55 */
     },
-    stalker: {
-      kind: 'pounce', windupMs: 700, cooldownMs: 6000, dmgMult: 1.5, radius: 46,
-      leap: 140,          /* px of dash toward the aim point at execute */
-    },
+    /* ═══ v2.3.2482: THE STALKER'S POUNCE IS GONE (owner ask) ═══
+       Was: `stalker: { kind: 'pounce', windupMs: 700, cooldownMs: 6000,
+       dmgMult: 1.5, radius: 46, leap: 140 }` (v2.3.1730).  Stalkers spawn
+       in exactly one place -- sky / Desert Winds -- and are re-skinned as
+       MUMMIES there (ZONE_VARIANT_MAP), so the move read as a mummy
+       teleporting 140px onto the player with no art to explain it.
+       Removing the KIT is the whole change: stalkers keep the universal
+       basic wind-up swing (BASIC_WINDUP.MS.stalker 400ms) and simply stop
+       having a signature cast.  The client's `pounce` label is left in
+       place -- mirror-audit requires every SERVER kit to have a client
+       label, not the reverse -- so re-adding the kit later needs no client
+       deploy.  Nothing persists: a worker deploy restarts the DO and
+       respawns every monster (handoff rule 11), so no stalker can come back
+       mid-cast with a kit that no longer exists. */
     /* v2.3.1812: the beginner's tell.  Slowest wind-up, longest cooldown,
        no damage multiplier — every number here is tuned to teach rather
        than to threaten.  See the header for why the cooldown is the part
        that keeps early-game free hits. */
     fodder: {
-      kind: 'lunge', windupMs: 1200, cooldownMs: 9000, dmgMult: 1.0, radius: 50,
+      kind: 'lunge', windupMs: 1200, cooldownMs: 9000, dmgMult: 1.0, radius: 80, /* v2.3.2482: was 50 */
     },
   },
 };
@@ -135,7 +150,8 @@ export const TELEGRAPH = {
  *
  * WHIFF_GRACE is the honest half of the trade: the resolve re-measures
  * against where the player is NOW, but through a ring 1.3x the contact
- * range.  At 1.0 every micro-step out of a 45px ring would whiff and
+ * range.  At 1.0 every micro-step out of the contact ring (45px when this
+ * was written, 72px since v2.3.2482) would whiff and
  * monsters would look broken; unbounded, walking away would never work
  * and the tell would be decoration.  1.3 means deliberate kiting escapes
  * and jitter does not.
@@ -315,7 +331,6 @@ export const telegraphMethods = {
         m._attackingUntil = Math.max(m._attackingUntil || 0, now + 100);
         return true;
       }
-      const aim = m._tgAim || { x: m.x, y: m.y };
       const targetId = m._tgTarget;
       m._tgPhase = null;
       m._tgUntil = 0;
@@ -325,18 +340,12 @@ export const telegraphMethods = {
       m.atkCd = now + this.MONSTER_ATTACK_CD;   /* no free basic swing after a cast */
       m._attackingUntil = now + 400;
 
-      if (kit.kind === 'pounce') {
-        /* The leap is a teleport-to-contact rather than a per-tick dash:
-           the dash belongs to the boss driver's _chargeUntil machinery,
-           and borrowing that here would mean owning its arena clamping
-           too.  Capped at `leap` so it closes a gap, never crosses a zone. */
-        const dx = aim.x - m.x, dy = aim.y - m.y;
-        const d = Math.sqrt(dx * dx + dy * dy) || 1;
-        const step = Math.min(kit.leap, d);
-        m.x += (dx / d) * step;
-        m.y += (dy / d) * step;
-        this._markMonsterDirty(zoneId, m.id);
-      }
+      /* v2.3.2482: the `kit.kind === 'pounce'` leap that stood here went
+         with the stalker kit above -- no kit declares that kind any more, so
+         the branch was unreachable.  It was a teleport-to-contact capped at
+         `kit.leap`, deliberately NOT the boss driver's per-tick _chargeUntil
+         dash (borrowing that would have meant owning its arena clamping
+         too).  Restore both halves together if a leap kit ever returns. */
 
       /* THE WHIFF.  Re-measured at execute against where the player is NOW,
          not where they were when the wind-up started — this single check is
@@ -449,7 +458,7 @@ export const telegraphMethods = {
       kit.flat ? Math.ceil(kit.flat) : Math.ceil(m.dmg * kit.dmgMult),
       Math.max(1, Math.floor((ps.maxHp || 100) * TELEGRAPH.MAX_HIT_PCT)),
     );
-    /* v2.3.2483: the blue slime's death burst is an ELEMENTAL blast and the
+    /* v2.3.2512: the blue slime's death burst is an ELEMENTAL blast and the
        new ELEM RESIST stat reads it; a brute's slam and a fodder's lunge are
        ordinary untyped hits and are not resisted (PROG3.BODY.eres carries
        the closed list and why it is closed). */
@@ -496,8 +505,13 @@ export const telegraphMethods = {
      from inside a ring it then whiffs against by construction (the
      snowman's relaxed 70/1.5 ring is exactly the case that would break). */
   _basicAtkGeom(m) {
+    /* v2.3.2482: the snowman's 70 was a RELAXATION of the old 45px default;
+       with the default now 72 (GS_OUTER_RADIUS) it would be a tightening, so
+       take whichever is larger.  His 1.5 Y-scale still does its own job.
+       This is the reach the wind-up re-measures against -- it MUST track
+       MONSTER_ATTACK_RANGE or monsters stop outside their own swing. */
     return m.arch === 'snowman'
-      ? { range: 70, yScale: 1.5 }
+      ? { range: Math.max(70, this.MONSTER_ATTACK_RANGE), yScale: 1.5 }
       : { range: this.MONSTER_ATTACK_RANGE, yScale: 3.0 };
   },
 

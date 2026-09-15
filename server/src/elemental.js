@@ -64,7 +64,7 @@ export const COLLISION_BURST_CAP = 3.2;   // GDD §22 INV-16
  * COLLISION_BURST_CAP still binds (raw includes the stat term).  No
  * ceiling work needed. */
 import { PROG3 } from './prog3.js';
-/* v2.3.2483: `cat` — WHICH WEAPON's elemental power.  Elemental power moved
+/* v2.3.2512: `cat` — WHICH WEAPON's elemental power.  Elemental power moved
    from one global BODY channel to a per-combat-type ATK channel (owner's own
    split: attack power belongs to the type that produces it), so every reader
    must now say which type is swinging.  The callers pass the slot the SERVER
@@ -212,7 +212,7 @@ export function tickElementStatuses(m, dtSec, now) {
  * Returns null or {id, dmg, setupElement, consumed}.  Damage =
  * (base + serverStat*coeff) x resonance x volatile x effectiveness,
  * clamped to COLLISION_BURST_CAP x raw. */
-/* v2.3.2483: `cat` rides through to elemAttackStat — a collision is priced
+/* v2.3.2512: `cat` rides through to elemAttackStat — a collision is priced
    off the elemental power of the weapon that TRIGGERED it. */
 export function resolveElementCollision(m, triggerElement, attackerPs, isVolatile, now, cat) {
   if (!m.statuses || !triggerElement) return null;
@@ -226,7 +226,7 @@ export function resolveElementCollision(m, triggerElement, attackerPs, isVolatil
   if (!setup) return null;
   const collision = lookupCollision(setup.element, triggerElement);
   if (!collision) return null;
-  const statValue = elemAttackStat(attackerPs, collision.stat, cat); // v2.3.2199: prog3 reads `elem`; v2.3.2483: per weapon
+  const statValue = elemAttackStat(attackerPs, collision.stat, cat); // v2.3.2199: prog3 reads `elem`; v2.3.2512: per weapon
   const raw = collision.base + statValue * collision.coeff;
   let dmg = raw;
   let resonating = false;

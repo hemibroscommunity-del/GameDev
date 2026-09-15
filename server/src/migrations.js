@@ -518,7 +518,7 @@ export const MIGRATIONS = [
   {
     v: 15,
     name: 'prog3-elem-per-weapon',
-    /* v2.3.2483 (owner ask, backlog triage §2.1c).  Elemental power was ONE
+    /* v2.3.2512 (owner ask, backlog triage §2.1c).  Elemental power was ONE
        global BODY channel from v2.3.2199; it is now an ATK channel allocated
        per combat type, alongside DAMAGE / CRIT / CRIT DMG / ATK SPD.
 
