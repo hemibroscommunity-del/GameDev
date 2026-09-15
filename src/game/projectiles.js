@@ -110,7 +110,7 @@ var PROJ_BODY = {
   /* back = anchor.x * drawnW, front = (1 - anchor.x) * drawnW, half = drawnH / 2 */
   arrow:        { back: 24.0, front: 28.5, half: 6.6 },   /* 128x32  @ 52.5/128, anchor .457 */
   magicBolt:    { back: 26.9, front: 12.2, half: 11.5 },  /* 217x128 @ 0.18,     anchor .688 */
-  arrowSpecial: { back: 24.6, front: 28.8, half: 10.9 },  /* 314x128 @ 0.17,     anchor .460 */
+  arrowSpecial: { back: 28.9, front: 33.9, half: 12.8 },  /* v2.3.2511: 314x128 @ 0.20 (was 0.17), anchor .460 */
   magicSpecial: { back: 42.6, front: 24.0, half: 19.2 },  /* 222x128 @ 0.30,     anchor .639 */
 };
 /* ═══ v2.3.2473: THE HIT RADIUS, IN ONE PLACE ═══
@@ -125,6 +125,12 @@ var PROJ_BODY = {
  * { isStaff, isSpecial }.  Everything else is the monster.
  */
 export var SPECIAL_HIT_R_MULT = 3;   /* v2.3.222: special arrow has 3x damage radius */
+/* v2.3.2511: and it may not reach more than half the special arrow's own drawn
+   length past the monster's own circle.  The special is drawn 62.8 world px
+   long (PROJ_BODY.arrowSpecial: a 314px sheet at ARROW_SPECIAL.scale 0.20), so
+   half of it is 31.4 -- see the cap at the bottom of monsterProjRadius.  If the
+   art is rescaled, this moves with it, exactly as the PROJ_BODY row does. */
+export var SPECIAL_HIT_R_CAP_PX = 31;
 export function monsterProjRadius(m, S, opts) {
   var _archProj = hitShapeOf(m.archetype || m.type);
   /* ═══ v2.3.2243: MAGIC HITS AS WIDE AS AN ARROW ═══
@@ -145,8 +151,25 @@ export function monsterProjRadius(m, S, opts) {
        world px (48 frame-px * 0.75 * 1.5 / 2).  A small change,
        but it is now a MEASURED number rather than a guess, and
        it is paired with the anchor fix that finally puts the
-       centre it is measured from in the right place. */
-    _hitR = 27;   /* v2.3.2243: was staff 38 */
+       centre it is measured from in the right place.
+       ═══ v2.3.2511: 27 -> 25, AND THE MEASUREMENT COVERS BOTH AXES ═══
+       Owner (backlog §2.5): arrows register on slimes they clearly miss.
+       Re-measured with tools/gear/measure-monster-body.mjs, which decodes the
+       shipped sheets frame by frame rather than trusting the arithmetic in the
+       line above: slime-idle-v5 is 24 frames, widths min 34 / median 48 / max
+       54 frame-px, and the blob is 41 frame-px tall (the same number
+       monsterBodyOffsetY's own derivation uses).  So 27 was right about ONE
+       axis -- the median frame's half-WIDTH -- and the body is an ellipse with
+       half-axes 27 across and 23 up.  A single circle at the larger axis is
+       46% too generous vertically before the arrow's own 6.6px half-thickness
+       is even added on top, which is the "passed clean over its head and
+       counted" the owner is describing.
+       25 is the mean of the two half-axes: the fairest single circle for that
+       ellipse, and still wider than the blob in its squashed frames.  With the
+       plain arrow's 6.6px capsule the effective radius is 31.6 -- an arrow
+       whose drawn EDGE touches the drawn blob, which is what a hit should
+       mean. */
+    _hitR = 25;   /* v2.3.2243: was staff 38.  v2.3.2511: 27 -> 25, measured */
   } else if (_archProj === 'fireGoblin') {
     _hitR = 26;   /* v2.3.2243: was staff 40 */
   } else if (_archProj === 'snowman') {
@@ -175,8 +198,30 @@ export function monsterProjRadius(m, S, opts) {
   /* v2.3.1136: Detonation channel widens staff bolt blasts
      (+0.7%/pt, cap +69.3%) before the special multiplier. */
   if (opts && opts.isStaff && S && S.rpg) _hitR *= staffAoeMult(S.rpg);
-  /* v2.3.222: special arrow has 3x damage radius. */
-  if (opts && opts.isSpecial) _hitR *= SPECIAL_HIT_R_MULT;
+  /* v2.3.222: special arrow has 3x damage radius.
+     ═══ v2.3.2511: ...UP TO A CAP TIED TO THE ART ═══
+     Owner (backlog §2.5): cap the special's radius multiplier.  A bare x3 is
+     not a radius, it is a compounding one -- it scales with whatever the
+     monster's own circle already is -- so the biggest targets got the biggest
+     blasts and the smallest got the most absurd ones.  Measured against the
+     shipped sprites: a slime's drawn body is 54 world px across, and x3 on the
+     old 27 gave an 81px radius plus the special arrow's 10.9px half-thickness
+     = 92, which is three and a half blob-widths of reach for a shot the player
+     sees as one arrow.  A skeleton's 50 gave 150, wider than the skeleton is
+     tall (120).
+     THE CAP IS THE PROJECTILE'S OWN DRAWN BODY.  The special arrow is drawn
+     62.8 world px long (PROJ_BODY.arrowSpecial, back 28.9 + front 33.9, after
+     v2.3.2511's own scale bump), so its blast may reach at most half that --
+     31px -- beyond the monster's own circle.  The rule is then "you can hit what the arrow could plausibly
+     sweep", which is a sentence the art can be re-measured against, rather
+     than a multiplier nobody can picture.
+     x3 still applies wherever it is the smaller of the two, so nothing with a
+     small circle loses its buff: the cap only bites above _hitR 15.5.
+     Effective radii after this, the capsule's 12.8 included -- slime 69 (was
+     92), fire goblin 70, snowman 76, mummy 84, skeleton 94 (was 161). */
+  if (opts && opts.isSpecial) {
+    _hitR = Math.min(_hitR * SPECIAL_HIT_R_MULT, _hitR + SPECIAL_HIT_R_CAP_PX);
+  }
   return _hitR;
 }
 
@@ -332,7 +377,7 @@ import {
   monsterBodyOffsetY, monsterProceduralRadius, trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
   BOW_RANGE_PX, /* v2.3.2448: the arrow's plant cap, shared with the sight stream */
 } from '@/data/index.js';
-import { baseArchetypeOf, hitShapeOf, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
+import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */ } from '@/game/combatHelpers.js';
@@ -1038,8 +1083,44 @@ export function updateArrows(S, deps) {
                     BT_AUDIO.collect();
                   }
                 }
-                if (a.isStaff) BT_AUDIO.magicHit({ vol: 0.3 });
-                else BT_AUDIO.play('arrow-hit', { vol: 0.6 });
+                /* ═══ v2.3.2511: AN ARROW SOUNDS LIKE WHAT IT HIT ═══
+                   Owner (backlog §2.5): melee hits have been material-keyed
+                   since v2.3.2452 -- goo and ember and flesh thud, bone
+                   cracks, stone rings -- and arrows and bolts kept playing one
+                   flat sample at everything.  So a slime and a skeleton, which
+                   sound completely different to a sword, sounded identical to
+                   a bow.
+
+                   THE SAME TABLE, NOT A SECOND ONE.  hitMaterialOf(arch).kind
+                   is the classifier the sword already uses (monsterCombat's
+                   swordHit call) and BT_AUDIO.swordHit is the mixer that owns
+                   the per-sample gain trim; routing through it is what keeps
+                   the two weapons agreeing about what a mummy sounds like, and
+                   it is why no new samples are needed.  `_swordHit` is a
+                   misleading name for it by now -- it has been "the
+                   material-keyed impact" since v2.3.2452 -- but renaming a
+                   function three call sites deep for tidiness is the kind of
+                   churn this repo pays for twice.
+
+                   THE VOLUME STAYS THE ARROW'S.  0.6 is what the flat
+                   'arrow-hit' was mixed at and what the owner has been hearing;
+                   handing swordHit the melee's 0.55 would have quietly
+                   re-levelled every ranged hit in the game.
+
+                   MAGIC KEEPS ITS OWN VOICE ON TOP.  A bolt is not a physical
+                   impact -- 'magic-hit'/'magic-hit2' is the spell landing --
+                   so the material sound is layered UNDER it at a lower level
+                   rather than replacing it: the player still hears magic, and
+                   still hears what the magic hit. */
+                var _hitMat = hitMaterialOf(m.archetype || m.type);
+                var _hitKind = (_hitMat && _hitMat.kind) || 'flesh';
+                if (a.isStaff) {
+                  BT_AUDIO.magicHit({ vol: 0.3 });
+                  try { BT_AUDIO.swordHit({ vol: 0.22 }, _hitKind); } catch (e) { /* audio is best-effort */ }
+                } else {
+                  try { BT_AUDIO.swordHit({ vol: 0.6 }, _hitKind); }
+                  catch (e) { BT_AUDIO.play('arrow-hit', { vol: 0.6 }); }
+                }
                 /* Blood spray on bow hits — particles fly along the
                    arrow's flight direction (a.ang). Skipped for staff
                    bolts since they have the dedicated magic-orb crash. */
@@ -1165,7 +1246,19 @@ export function updateArrows(S, deps) {
                 /* Staff projectiles are magic — no physical shaft to
                    leave embedded in the body.  Particle FX from
                    spawnWeaponHitFX above is the visual residue. */
-                if (!a.isStaff) {
+                /* ═══ v2.3.2511: ONE ARROW, NOT TWO ═══
+                   Owner (backlog §2.5): "two stuck arrows on a special".  Both
+                   halves were doing their job and neither knew about the
+                   other: this block pushes a plain `_stuckArrows` stub for
+                   EVERY non-staff arrow -- entityRenderer draws it as the
+                   headless pine shaft -- while the special ALSO sets
+                   `a.stuckIn = m` a hundred lines below, which rides the
+                   monster as the golden flame art for four seconds.  Two
+                   drawings of one arrow, which is exactly what the owner sees.
+                   The special's own art is the one to keep: it is the shot
+                   that was fired, it carries the chip tick, and it is what
+                   tells the player their heavy shot landed. */
+                if (!a.isStaff && !a.isSpecial) {
                   if (!m._stuckArrows) m._stuckArrows = [];
                   if (m._stuckArrows.length < 12) {
                     /* Place the impact on the side of the monster the
@@ -1205,10 +1298,35 @@ export function updateArrows(S, deps) {
                     var _saEntryDx = -Math.cos(a.ang);
                     var _saEntryDy = -Math.sin(a.ang);
                     var _saRx, _saRy, _saYAnchor;
+                    /* ═══ v2.3.2511: THE MUMMY AND THE SKELETON GET THEIR OWN ═══
+                       Owner (backlog §2.5): "arrows stick below the feet of the
+                       mummy and the skeleton."  They did, and this table is
+                       why: only fireGoblin and the slime had entries, so every
+                       other sprite-backed monster fell into the ELSE branch --
+                       `yAnchor 0`, which is the monster's own position, and
+                       since v2.3.1824 that position is the base of the drawn
+                       art.  So the arrow planted at the feet of a 96px mummy
+                       and a 120px skeleton while the shot that put it there
+                       was aimed at their chests.
+                       The numbers are not new guesses: they are the SAME body
+                       centres monsterBodyOffsetY already publishes (mummy 48,
+                       skeleton 60 -- half of liveScalePx x 0.75 x the 1.5 size
+                       multiplier), which is the point the hit test, the aim
+                       ladder and the damage popup all use.  An arrow that hit
+                       a chest should stick in that chest.
+                       Pulled back a little from the exact centre (-42 / -52)
+                       so the shaft sits in the torso rather than dead on the
+                       sternum, and the ellipse is the narrow one those two
+                       upright figures actually present: they are tall and thin,
+                       not round like the goblin. */
                     if (_saArch === 'fireGoblin') {
                       _saRx = 14; _saRy = 18; _saYAnchor = -30;
                     } else if (_saIsFodder) {
                       _saRx = 9; _saRy = 7; _saYAnchor = -17;
+                    } else if (hitShapeOf(_saArch) === 'mummy') {
+                      _saRx = 10; _saRy = 14; _saYAnchor = -42;
+                    } else if (hitShapeOf(_saArch) === 'skeleton') {
+                      _saRx = 10; _saRy = 16; _saYAnchor = -52;
                     } else {
                       _saRx = 6; _saRy = 6; _saYAnchor = 0;
                     }
@@ -1512,8 +1630,16 @@ export function updateArrows(S, deps) {
                   });
                   /* Impact feedback — sound + a few particles at the
                      target; damage number waits for the server pvp_hit. */
-                  if (a.isStaff) BT_AUDIO.magicHit({ vol: 0.3 });
-                  else { try { BT_AUDIO.play('arrow-hit', { vol: 0.6 }); } catch (e) {} }
+                  /* v2.3.2511: the same material routing as the monster hit
+                     above.  A player has no archetype, so 'flesh' -- exactly
+                     what monsterCombat passes for an NPC (v2.3.2452). */
+                  if (a.isStaff) {
+                    BT_AUDIO.magicHit({ vol: 0.3 });
+                    try { BT_AUDIO.swordHit({ vol: 0.22 }, 'flesh'); } catch (e) {}
+                  } else {
+                    try { BT_AUDIO.swordHit({ vol: 0.6 }, 'flesh'); }
+                    catch (e) { try { BT_AUDIO.play('arrow-hit', { vol: 0.6 }); } catch (e2) {} }
+                  }
                   if (!S.hitParticles) S.hitParticles = [];
                   for (var _pvpP = 0; _pvpP < 6; _pvpP++) {
                     var _pvpA = a.ang + (Math.random() - 0.5) * 0.8;
