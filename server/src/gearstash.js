@@ -195,7 +195,7 @@ export function sanitizeStashList(field, arr, strict, amuletSanitizer) {
    identity; amulets on tier+gem+name. */
 export function stashSig(field, g) {
   if (!g) return '';
-  /* v2.3.2531: a server-minted piece is identified by its ID, full stop.
+  /* v2.3.2534: a server-minted piece is identified by its ID, full stop.
      That is the whole point of gearprov.js: two pieces with different gids
      are two different pieces however identically they are named, and one
      piece carrying the same gid on both sides of a merge is ONE piece.  The
@@ -287,7 +287,7 @@ export const gearStashMethods = {
     let sawClaim = false;
     for (const f of GEAR_STASH_FIELDS) {
       const slot = GEAR_STASH_PROV_SLOT[f];
-      /* v2.3.2531: every entry, ours and theirs, goes through the provenance
+      /* v2.3.2534: every entry, ours and theirs, goes through the provenance
          resolve (gearprov.js) -- which strips `gid`/`prov` from the raw entry
          FIRST, then rebuilds the piece from the ledger's own copy if the id
          is one we minted for this player, and otherwise marks it `legacy`.

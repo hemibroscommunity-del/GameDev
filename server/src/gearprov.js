@@ -1,4 +1,4 @@
-/* ═══ v2.3.2531: GEAR PROVENANCE — THE SERVER RECORDS WHAT IT MINTS ═══
+/* ═══ v2.3.2534: GEAR PROVENANCE — THE SERVER RECORDS WHAT IT MINTS ═══
  * Spec: docs/specs/gear-provenance.md
  *
  * THE HOLE THIS CLOSES.  Until now the server handed out armour, legs,
@@ -102,7 +102,7 @@ export function isGearProvSlot(slot) {
   return typeof slot === 'string' && GEAR_PROV_SLOTS.indexOf(slot) !== -1;
 }
 
-/* v2.3.2533: which rpg-blob stash list holds a piece of each slot.  Two
+/* v2.3.2536: which rpg-blob stash list holds a piece of each slot.  Two
    frozen tables rather than one object lookup keyed by a client string --
    `GEAR_PROV_FIELD['__proto__']` on a plain object would answer with an
    inherited member (TRAPS #6), so both directions go through a guard. */
@@ -437,7 +437,7 @@ export const gearProvMethods = {
     }
   },
 
-  /* ═══ v2.3.2532: EQUIP BY NAME ═══
+  /* ═══ v2.3.2535: EQUIP BY NAME ═══
      Resolve a `<slot>Ref` from stats_update into the piece it names.
      The reference is a bare gid string and NOTHING else travels with it,
      which is the point: there is no blob on the wire to inflate, and the
@@ -477,10 +477,10 @@ export const gearProvMethods = {
     return !!(row && row.slot === slot);
   },
 
-  /* ═══ v2.3.2533: MAY THIS PLAYER SELL THIS PIECE? ═══
+  /* ═══ v2.3.2536: MAY THIS PLAYER SELL THIS PIECE? ═══
      ONE definition, with a REASON, because the client has to be able to
      say why a Sell button is greyed rather than failing silently (the
-     owner's decision in v2.3.2531: legacy gear is usable, not sellable,
+     owner's decision in v2.3.2534: legacy gear is usable, not sellable,
      and a player is owed an explanation).
 
      Reasons, all of them stable strings the client can key off:

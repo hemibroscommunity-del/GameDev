@@ -121,7 +121,7 @@ export function syncArmorChange(R, opts) {
          by doing nothing more than unequipping a piece of armour, on any
          worker without the v2.3.1624 server-side guard.  See
          src/game/t1Sync.js. */
-      /* ═══ v2.3.2532: NAME THE PIECE INSTEAD OF DESCRIBING IT ═══
+      /* ═══ v2.3.2535: NAME THE PIECE INSTEAD OF DESCRIBING IT ═══
          The worker now records every piece of gear it mints and gives it an
          id (`gid`).  When it advertises `caps.gearRef` we send the ID and
          nothing else, so the piece that gets equipped is the worker's own
@@ -131,7 +131,7 @@ export function syncArmorChange(R, opts) {
          THREE cases, and all three have to work:
            - worn piece HAS an id -> send `<slot>Ref: '<gid>'`;
            - nothing worn        -> send `<slot>Ref: null` (unequip);
-           - worn piece has NO id (every piece minted before v2.3.2531,
+           - worn piece has NO id (every piece minted before v2.3.2534,
              which is most of what anybody owns today) -> send the OBJECT,
              exactly as before.  The worker cannot look up a piece it never
              recorded, so the describe path has to stay for legacy gear.

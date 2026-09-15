@@ -1,4 +1,4 @@
-/* GEAR PROVENANCE (v2.3.2531; spec docs/specs/gear-provenance.md).
+/* GEAR PROVENANCE (v2.3.2534; spec docs/specs/gear-provenance.md).
  *
  * The server now records every piece of gear it mints, against the player
  * it minted it for, in `gear_prov:<playerId>`.  What this suite has to
@@ -347,7 +347,7 @@ let amuletGid = null;
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   4b. v2.3.2532 -- EQUIPPING BY NAME (`armorRef` / `legsArmorRef`)
+   4b. v2.3.2535 -- EQUIPPING BY NAME (`armorRef` / `legsArmorRef`)
    ════════════════════════════════════════════════════════════════════ */
 {
   const PID = 'bp_prov_ref';
@@ -583,7 +583,7 @@ let amuletGid = null;
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   9. v2.3.2533 -- CUSTODY: may this be sold, taking it, handing it over
+   9. v2.3.2536 -- CUSTODY: may this be sold, taking it, handing it over
    ════════════════════════════════════════════════════════════════════ */
 {
   const SELLER = 'bp_prov_sell';
@@ -622,7 +622,7 @@ let amuletGid = null;
 
   check('a piece already on the shelf cannot be listed a SECOND time',
     room._gearSellable(SELLER, 'armor', gid).reason === 'not_held');
-  /* This is the hole v2.3.2532 left open and named: a ref could equip a
+  /* This is the hole v2.3.2535 left open and named: a ref could equip a
      piece the player was no longer holding.  With the row gone, it cannot. */
   check('...and cannot be EQUIPPED by name while it is on the shelf',
     room._gearProvPieceByRef(SELLER, 'armor', gid) === null);

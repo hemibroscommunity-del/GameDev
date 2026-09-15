@@ -62,7 +62,7 @@ const WEAPON_CHANNEL_KEYS = {
 };
 
 export const gridMethods = {
-  /* ═══ v2.3.2532: ONE GATE FOR BOTH EQUIP LANES ═══
+  /* ═══ v2.3.2535: ONE GATE FOR BOTH EQUIP LANES ═══
      `stats_update` can now say what you are wearing in two ways -- by
      NAMING a recorded piece (`armorRef`) or by DESCRIBING one (`armor`,
      the legacy shape).  Both end here, so the gates cannot drift apart:
@@ -899,7 +899,7 @@ export const gridMethods = {
     // Without this, the worker's ps.armor stays stale, its echoed
     // player_state re-applies the old armor on the client, and the
     // local unequip silently undoes itself.
-    /* ═══ v2.3.2532: NAMING A PIECE BEATS DESCRIBING ONE ═══
+    /* ═══ v2.3.2535: NAMING A PIECE BEATS DESCRIBING ONE ═══
        `armorRef` is a bare id (or null to unequip).  Nothing else travels
        with it, so there is no blob on the wire to inflate: the piece that
        gets equipped is the server's OWN copy of what it minted
@@ -910,7 +910,7 @@ export const gridMethods = {
 
        The describe path below is untouched and still runs for everything
        the server cannot prove, which is every piece minted before
-       v2.3.2531.  Gated the other way round from usual: the SERVER accepts
+       v2.3.2534.  Gated the other way round from usual: the SERVER accepts
        both shapes whichever client it is talking to, and the CLIENT sends
        the ref only when `caps.gearRef` says the worker understands it
        (rule 19).  Old client + new worker: the object arrives and is
@@ -941,7 +941,7 @@ export const gridMethods = {
         // _armorDrMult's identical ×8 clamp — same ceiling, and the DR cap
         // (75%) still sits above it as the last word.  Keep the two in step.
         // Leather Armor rejected outright per v2.3.249 removal.
-        /* ═══ v2.3.2531: THE EQUIP CLAIM IS RESOLVED, NOT COPIED ═══
+        /* ═══ v2.3.2534: THE EQUIP CLAIM IS RESOLVED, NOT COPIED ═══
            This is the inbound path that actually feeds the damage-reduction
            maths, so it is the one that matters -- and it is the shape of
            #643's `_sv` finding: a mark stripped from the selector and not
@@ -961,7 +961,7 @@ export const gridMethods = {
           return o;
         });
       }
-      /* v2.3.2532: the compare + the two gates + the assign now live in
+      /* v2.3.2535: the compare + the two gates + the assign now live in
          _gridsApplyArmor, shared with the ref lane above.  Hoisted rather
          than copied so the describe path and the name path cannot drift
          into gating differently -- which is the bug shape that would let
@@ -981,7 +981,7 @@ export const gridMethods = {
        ABSENT means "no opinion", never "take it off": the field is only sent
        by the legs flows (equipActions.js syncArmorChange opts.legs), so a
        client that has not learned its legs piece cannot wipe it. */
-    /* v2.3.2532: the legs slot gets the same ref lane, same rules. */
+    /* v2.3.2535: the legs slot gets the same ref lane, same rules. */
     let _legsHandled = false;
     if ('legsArmorRef' in payload) {
       _legsHandled = true;
@@ -997,7 +997,7 @@ export const gridMethods = {
       const incomingL = payload.legsArmor;
       let newLegs = null;
       if (incomingL && typeof incomingL === 'object') {
-        /* v2.3.2531: same resolve as the chest piece above, same reasons. */
+        /* v2.3.2534: same resolve as the chest piece above, same reasons. */
         newLegs = this._gearProvResolve(session.id, 'legsArmor', incomingL, (g) => {
           const o = { ...g };
           if (typeof o.tierMult === 'number') o.tierMult = Math.max(0, Math.min(8, o.tierMult));
