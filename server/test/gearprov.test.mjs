@@ -264,8 +264,20 @@ let amuletGid = null;
   check('a REAL id in the WRONG slot buys nothing',
     !!byName('Godly Iron Plate') && byName('Godly Iron Plate').prov === PROV_LEGACY
       && !byName('Godly Iron Plate').gid, byName('Godly Iron Plate'));
-  check('...and the grade it tried to smuggle in was stripped',
-    !byName('Godly Iron Plate').quality, byName('Godly Iron Plate'));
+  /* v2.3.2540: this assertion USED to require the grade be stripped, which
+     was v2.3.2523's behaviour.  v2.3.2527 (#641, now on main) deliberately
+     stopped stripping it -- deleting `quality` off an adopted piece wrote
+     every graded plate anyone had earned down as plain, permanently, and
+     armour has no anti-cheat damage ceiling for a forged grade to raise
+     (the [0,8] clamp is applied AFTER the grade, with the 75% DR cap above
+     it).  So the grade survives, clamped to the known enum.
+     That is not a hole in THIS lane and the change is the right way round:
+     what the provenance gate cares about is that the piece is still
+     unprovable, so it can never be listed whatever grade it claims.  The
+     assertion now pins the property that actually matters. */
+  check('...and it is still unprovable, whatever grade it claims',
+    byName('Godly Iron Plate').prov === PROV_LEGACY && !byName('Godly Iron Plate').gid,
+    byName('Godly Iron Plate'));
   check('...while the real shield that id names is untouched and still proven',
     ps.shield && ps.shield.gid === realGid && ps.shield.prov === PROV_MINTED, ps.shield);
   check('every entry in the claimed stash landed unproven',

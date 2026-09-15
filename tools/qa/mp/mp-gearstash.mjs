@@ -121,6 +121,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     joins.length > 0 && ['rpgArmorStash', 'rpgLegsStash', 'rpgShieldStash', 'rpgGearStash']
       .every((k) => Array.isArray(joins[0].data[k])),
     joins.length ? Object.keys(joins[0].data).filter((k) => /Stash$/.test(k)) : 'no join captured');
+  /* v2.3.2527 (review finding 1b): a key is present only when it has
+     something in it.  This wardrobe fills all four, so all four are
+     here -- what is asserted is the converse: nothing arrives as the
+     bare `[]` that used to make "I own none" and "this browser does not
+     know" the same sentence, and the worker close the capture on it. */
+  rec.ok('...and no seed arrives as an empty array',
+    joins.length > 0 && !Object.keys(joins[0].data)
+      .some((k) => /^rpg.*Stash$/.test(k) && Array.isArray(joins[0].data[k]) && !joins[0].data[k].length),
+    joins.length ? Object.keys(joins[0].data).filter((k) => /^rpg.*Stash$/.test(k) && !joins[0].data[k].length) : null);
+  /* v2.3.2527 (review finding 3): the amulet list has no client source,
+     so an honest client never claims one -- and the worker no longer
+     reads the key even if one arrives. */
+  rec.ok('...and the client never sends an amulet claim',
+    joins.length > 0 && !('rpgAmuletStash' in joins[0].data),
+    joins.length ? Object.keys(joins[0].data).filter((k) => /Amulet/.test(k)) : null);
   rec.ok('...carrying the whole wardrobe, duplicate included',
     joins.length > 0 && joins[0].data.rpgArmorStash.length === 3
       && joins[0].data.rpgLegsStash.length === 1
@@ -140,7 +155,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { legs: blob.legsStash, shield: blob.shieldStash, gear: blob.gearStash });
   rec.ok('...an empty amuletStash (no client amulet stash exists yet)',
     Array.isArray(blob.amuletStash) && blob.amuletStash.length === 0, blob.amuletStash);
-  rec.ok('...and now the one-time capture stamp', blob.gearStashCaptured === true, blob.gearStashCaptured);
+  /* v2.3.2527: the stamp records a real, COMPLETE capture -- it took
+     something and the cap did not cut it short -- rather than merely
+     recording that a claim was heard.  It no longer gates adoption:
+     the next join's claim is merged in too (idempotently). */
+  rec.ok('...and now the capture stamp, a real capture having landed', blob.gearStashCaptured === true, blob.gearStashCaptured);
 
   const states = await P.page.evaluate('window.__gsStates');
   const echoed = {};
