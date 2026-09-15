@@ -498,6 +498,35 @@ export const gearProvMethods = {
     }
   },
 
+  /* ═══ v2.3.2535: EQUIP BY NAME ═══
+     Resolve a `<slot>Ref` from stats_update into the piece it names.
+     The reference is a bare gid string and NOTHING else travels with it,
+     which is the point: there is no blob on the wire to inflate, and the
+     piece that gets equipped is the server's own copy of what it minted.
+
+     Returns null when the id names nothing this player owns in this slot.
+     The caller treats that as a REFUSAL (keep what is currently worn),
+     not as a fallback to whatever else was in the payload -- a miss that
+     silently degraded into "accept the claimed blob" would make the ref
+     path decorative.
+
+     A legacy piece has no id and therefore cannot be equipped this way.
+     That is why the describe-a-piece path still exists, and it is the
+     reason it cannot simply be deleted once workers catch up -- see
+     gear-provenance.md, "Retiring the describe path". */
+  _gearProvPieceByRef(playerId, slot, ref) {
+    if (typeof ref !== 'string' || !ref || ref.length > 40) return null;
+    const ledger = this._gearProvOf(playerId);
+    const row = ledger ? findProvRow(ledger, ref) : null;
+    if (!row || row.slot !== slot) return null;
+    const out = { ...row.p };
+    delete out.gid;
+    delete out.prov;
+    out.gid = row.id;
+    out.prov = PROV_MINTED;
+    return out;
+  },
+
   /* Is this piece one the server can prove?  The single question PR 3's
      listing gate asks, kept here so there is one definition of
      "sellable provenance" rather than one per caller. */

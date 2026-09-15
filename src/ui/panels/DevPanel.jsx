@@ -150,7 +150,7 @@ const label = { color: COL.muted, font: '600 11px system-ui, sans-serif', letter
 const CAP_GATES = [
   'abil', 'amuletForge', 'areaChat', 'arena', 'blockScale', 'botfp', 'broVerify',
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
-  'gamble', 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
+  'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
   'laststand', 'party', 'partyChat', 'petLoot', 'pets', 'potionBag', 'prog3',
   'prog3Chan', 'prog3elem' /* v2.3.2512 */, 'prog3x', 'questTrack', 'sponsor', 'store',
   'storeGear' /* v2.3.2531 */,

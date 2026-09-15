@@ -121,10 +121,38 @@ export function syncArmorChange(R, opts) {
          by doing nothing more than unequipping a piece of armour, on any
          worker without the v2.3.1624 server-side guard.  See
          src/game/t1Sync.js. */
+      /* ═══ v2.3.2535: NAME THE PIECE INSTEAD OF DESCRIBING IT ═══
+         The worker now records every piece of gear it mints and gives it an
+         id (`gid`).  When it advertises `caps.gearRef` we send the ID and
+         nothing else, so the piece that gets equipped is the worker's own
+         copy rather than this blob -- there is no quality or tierMult on the
+         wire for anything to inflate.
+
+         THREE cases, and all three have to work:
+           - worn piece HAS an id -> send `<slot>Ref: '<gid>'`;
+           - nothing worn        -> send `<slot>Ref: null` (unequip);
+           - worn piece has NO id (every piece minted before v2.3.2534,
+             which is most of what anybody owns today) -> send the OBJECT,
+             exactly as before.  The worker cannot look up a piece it never
+             recorded, so the describe path has to stay for legacy gear.
+
+         Deploy-order safety (handoff rule 19): against a worker that has
+         NOT advertised the flag we send the object for everything, which is
+         byte-for-byte what this function did before.  Against a new worker
+         an old client likewise only ever sends the object, and the worker
+         still accepts it.  Safe in both directions. */
+      const _byRef = !!(S._serverCaps && S._serverCaps.gearRef);
+      const _ref = (slotVal) => (slotVal && typeof slotVal.gid === 'string' && slotVal.gid) ? slotVal.gid : null;
+      const _armorField = (_byRef && (!R.armor || _ref(R.armor)))
+        ? { armorRef: _ref(R.armor) }
+        : { armor: R.armor || null };
+      const _legsField = (_byRef && (!R.legsArmor || _ref(R.legsArmor)))
+        ? { legsArmorRef: _ref(R.legsArmor) }
+        : { legsArmor: R.legsArmor || null };
       S.channel.send({ type: 'stats_update', payload: {
-        armor: R.armor || null,
+        ..._armorField,
         maxHp: R.maxHp || 100,
-        ...(opts && opts.legs ? { legsArmor: R.legsArmor || null } : null),
+        ...(opts && opts.legs ? _legsField : null),
         ...t1StatsPayload(S, R),
         /* v2.3.1155: the five retired T2 stats are off the wire. */
       }});

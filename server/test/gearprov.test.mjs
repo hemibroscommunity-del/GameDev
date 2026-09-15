@@ -63,6 +63,9 @@ function check(name, cond, detail) {
 
 const state = makeState();
 const room = new GameRoom(state, mockEnv);
+/* v2.3.2544: kept so sections that stub _wsBySessionId can put it back --
+   see the note on the gear-lock stub in section 4b. */
+const _realWsBySessionId = room._wsBySessionId.bind(room);
 
 async function join(roomRef, ws, id, data) {
   roomRef.sessions.set(ws, { id: null, name: 'T', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
@@ -149,6 +152,23 @@ let questShieldGid = null;
   const over = ps._questGrantOverflow || [];
   check('quest armour handed to the client carries an id too',
     over.length === 1 && typeof over[0].gid === 'string' && over[0].prov === PROV_MINTED, over[0]);
+  /* v2.3.2544: and the id is genuinely ON THE WIRE, which is the contract
+     wsClient's `quest_reward_stashed` ingestion now reads.  The client half
+     has no unit suite, so the wire shape is what can be pinned here -- and
+     it is exactly the half that was broken: the worker was sending the id
+     and the browser was dropping it, so equip-by-name could never fire. */
+  {
+    const wsQ = fakeWs('Q');
+    room._wsBySessionId = (id) => (id === PID ? wsQ : null);
+    for (const piece of over) {
+      wsQ.send(JSON.stringify({ type: 'quest_reward_stashed', payload: { questId: 'test', item: piece } }));
+    }
+    const qm = wsQ.sent.filter((m) => m.type === 'quest_reward_stashed').pop();
+    check('...and that id is on the quest_reward_stashed wire, not just in memory',
+      !!qm && typeof qm.payload.item.gid === 'string' && qm.payload.item.gid === over[0].gid,
+      qm && qm.payload.item);
+    room._wsBySessionId = _realWsBySessionId;
+  }
   check('...recorded in the armor slot, not the shield slot',
     findProvRow(room._gearProvOf(PID), over[0].gid).slot === 'armor');
 
@@ -356,6 +376,93 @@ let amuletGid = null;
      off -- unchanged by any of this. */
   await send(room, wsC, { type: 'stats_update', payload: { armor: null } });
   check('unequip still empties the slot', ps.armor === null, ps.armor);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   4b. v2.3.2535 -- EQUIPPING BY NAME (`armorRef` / `legsArmorRef`)
+   ════════════════════════════════════════════════════════════════════ */
+{
+  const PID = 'bp_prov_ref';
+  const ws = fakeWs('R');
+  await join(room, ws, PID);
+  const ps = room.playerState[PID];
+  room._prog3EquipOk = () => true;
+
+  ps._questGrantOverflow = null;
+  room._grantQuestItem(ps, { kind: 'armor', name: 'Copper Torso', mat: 'copper', tierMult: 1 }, PID);
+  const armorGid = ps._questGrantOverflow[0].gid;
+  ps._questGrantOverflow = null;
+  room._grantQuestItem(ps, { kind: 'legs', name: 'Copper Greaves', mat: 'copper', tierMult: 1 }, PID);
+  const legsGid = ps._questGrantOverflow[0].gid;
+
+  await send(room, ws, { type: 'stats_update', payload: { armorRef: armorGid } });
+  check('naming a recorded piece equips the SERVER\'s copy of it',
+    ps.armor && ps.armor.name === 'Copper Torso' && ps.armor.gid === armorGid && ps.armor.prov === PROV_MINTED, ps.armor);
+  check('...and nothing about the piece travelled on the wire to inflate',
+    ps.armor.tierMult === 1 && !ps.armor.quality, ps.armor);
+
+  await send(room, ws, { type: 'stats_update', payload: { legsArmorRef: legsGid } });
+  check('the legs slot rides the same lane', ps.legsArmor && ps.legsArmor.gid === legsGid, ps.legsArmor);
+
+  /* A ref that names nothing is a REFUSAL, not a fall-through.  This is
+     the assertion that stops the lane being decorative: if a miss quietly
+     accepted whatever else was in the payload, naming a piece would be no
+     stronger than describing one. */
+  await send(room, ws, { type: 'stats_update', payload: { armorRef: 'g-never-issued' } });
+  check('a ref naming nothing keeps what is already worn',
+    ps.armor && ps.armor.gid === armorGid, ps.armor);
+  await send(room, ws, { type: 'stats_update', payload: { armorRef: legsGid } });
+  check('a ref naming a piece from ANOTHER slot is refused too',
+    ps.armor && ps.armor.gid === armorGid, ps.armor);
+  await send(room, ws, { type: 'stats_update', payload: { armorRef: '__proto__' } });
+  check("a ref of '__proto__' resolves to nothing and changes nothing",
+    ps.armor && ps.armor.gid === armorGid, ps.armor);
+
+  /* A ref NEVER falls through to a describe in the same message -- the
+     whole point of the ref winning is that the object beside it is
+     ignored, or a client could name a modest piece and describe a
+     godly one and have the second honoured. */
+  await send(room, ws, { type: 'stats_update', payload: { armorRef: 'g-never-issued', armor: { name: 'Godly Plate', tierMult: 8 } } });
+  check('a ref does NOT fall through to an object sent alongside it',
+    ps.armor && ps.armor.gid === armorGid && ps.armor.name === 'Copper Torso', ps.armor);
+
+  /* Null is unequip, on both lanes. */
+  await send(room, ws, { type: 'stats_update', payload: { armorRef: null } });
+  check('a null ref unequips', ps.armor === null, ps.armor);
+
+  /* The DESCRIBE lane still works, because a legacy piece has no id to
+     name -- which is why the old path cannot simply be deleted. */
+  await send(room, ws, { type: 'stats_update', payload: { armor: { name: 'Old Plate', tierMult: 2 } } });
+  check('the describe lane still equips a legacy piece (there is no id to name)',
+    ps.armor && ps.armor.name === 'Old Plate' && ps.armor.prov === PROV_LEGACY, ps.armor);
+
+  /* Both lanes go through ONE gate.  Proven by turning a gate on and
+     checking the ref lane obeys it -- a copied gate is the bug shape
+     where the new lane silently skips a check. */
+  room._prog3EquipOk = () => false;
+  await send(room, ws, { type: 'stats_update', payload: { armorRef: armorGid } });
+  check('the ref lane obeys the defence-point gate (one gate, not two)',
+    ps.armor && ps.armor.name === 'Old Plate', ps.armor);
+  room._prog3EquipOk = () => true;
+
+  /* v2.3.2544: the stub is RESTORED afterwards rather than left installed on
+     the file-wide shared room.  It happens to be harmless today (the real
+     _threatGearLocked also answers false with no lock), but a stub left
+     lying around is how a later section silently stops testing a gate. */
+  const _realLock = room._threatGearLocked;
+  room._threatGearLocked = () => true;
+  await send(room, ws, { type: 'stats_update', payload: { armorRef: armorGid } });
+  check('...and the guard gear-lock', ps.armor && ps.armor.name === 'Old Plate', ps.armor);
+  room._threatGearLocked = _realLock;
+
+  await send(room, ws, { type: 'stats_update', payload: { armorRef: armorGid } });
+  check('...and equips normally once both gates open', ps.armor && ps.armor.gid === armorGid, ps.armor);
+
+  /* Deploy-order: an OLD client that has never heard of refs sends only
+     objects, and the worker still takes them. */
+  await send(room, ws, { type: 'stats_update', payload: { armor: { name: 'Old Plate', tierMult: 2 } } });
+  check('an old client sending only the object is still understood',
+    ps.armor && ps.armor.name === 'Old Plate', ps.armor);
 }
 
 /* ════════════════════════════════════════════════════════════════════
