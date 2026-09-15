@@ -3076,6 +3076,38 @@ input{font-family:inherit}
   transition:transform 90ms cubic-bezier(.2,.8,.2,1);
 }
 .bt-paint-copy:active{transform:scale(.98)}
+/* ═══ v2.3.2497: THE DESIGNS BUTTON ASKS TO BE PRESSED ═══
+   Owner: the ready-made designs are the fastest way to a good-looking bro and
+   nobody finds them.  `.bt-paint-copy` above is deliberately quiet -- 6% fill,
+   a 20% hairline, 12px -- which is right for "Copy to back" (a utility you
+   reach for mid-stroke) and wrong for the one button on the screen that opens
+   a whole catalogue.
+   PRIMARY per LANTERN-SLATE: brass ground, dark ink.  The pulse is the
+   spec's own reusable finite one (bt-nav-pulse, transform-only -- no `filter`,
+   which is the documented iOS compositing trap over the WebGL canvas), played
+   TWICE after a beat and then never again.  "Finite alerts only, never an
+   ambient pulse" is the Motion rule, and this is an alert: it fires when the
+   paint screen opens and stops.
+
+   SELECTED BY ITS TITLE, which needs saying because it looks like a hack.
+   Three buttons share .bt-paint-copy -- Copy to back, Designs, and the
+   gallery's Cancel -- and promoting the class would promote a CANCEL button to
+   primary, which is the opposite of what a primary style is for.  The markup
+   offers no other hook, and PlayerPaint.jsx belongs to another lane's
+   in-flight work, so the style keys off the title the button already carries.
+   If that wording changes the button quietly returns to the quiet style --
+   a degradation, not a break. */
+.bt-paint-copy[title*="ready-made design"]{
+  background:#D8A85F;
+  border:1px solid rgba(32,23,13,.35);
+  color:#20170D;
+  font-weight:800;
+  letter-spacing:.02em;
+  animation:bt-nav-pulse 460ms ease-out 300ms 2;
+}
+@media (prefers-reduced-motion: reduce){
+  .bt-paint-copy[title*="ready-made design"]{animation:none}
+}
 
 /* v2.3.1950: the saved-design row.  Three thumbnails and an arming button, on
    one line, sized so a slot stays a comfortable target on a phone. */
