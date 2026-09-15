@@ -1243,9 +1243,52 @@ export function processGameEvent(type, payload, S, deps) {
                    still worth announcing, and a match on "25" would have
                    silenced that too. */
                 if (_e.source === 'daily') continue;
+                /* ═══ v2.3.2533: A PIECE OF GEAR COMING HOME ═══
+                   The comment above is right about gold, items and
+                   weapons: the worker already applied them and the
+                   player_state echo carries them, so this event is only a
+                   message.  GEAR is the exception, and it is the other
+                   half of v2.3.2532's local splice.
+
+                   That splice takes a listed piece out of the bag you can
+                   see, because the worker has escrowed it.  But the worker
+                   also GIVES IT BACK -- on a take-down, on the 24h expiry,
+                   on a listing whose record could not be written -- and
+                   this client never reads the gear stashes off
+                   player_state (gear-stash.md: making it a reader "is
+                   still open").  So without this branch the piece returns
+                   into a list nobody renders: you take your own listing
+                   down and the plate is simply gone from your bag, with
+                   the worker holding it where you cannot see it.  The
+                   splice on its own turns "sold it twice" into "lost it".
+
+                   So a gear delivery is adopted into the local stash here,
+                   which is exactly what loot_credit and
+                   quest_reward_stashed already do with dropped and quest
+                   armour (wsClient.js).  The worker's copy stays the
+                   record; this is the bag catching up with it, and the
+                   hand-over's multiset merge converges the two on the next
+                   login rather than doubling them.  Offline sellers are
+                   covered by the same line: the mail drains at join and
+                   arrives as this same event.
+
+                   `field` is matched against the five literal names rather
+                   than used to index anything -- it arrives over the wire
+                   (TRAPS #6). */
+                if (_e.kind === 'gear') {
+                  var _gf = _ep.field;
+                  var _gOk = _gf === 'armorStash' || _gf === 'legsStash' || _gf === 'shieldStash'
+                          || _gf === 'gearStash' || _gf === 'amuletStash';
+                  if (_gOk && _ep.piece && typeof _ep.piece === 'object' && S.rpg) {
+                    if (!Array.isArray(S.rpg[_gf])) S.rpg[_gf] = [];
+                    S.rpg[_gf].push(_ep.piece);
+                    try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
+                  }
+                }
                 var _what = _e.kind === 'gold' ? '+' + (_ep.amount || 0) + ' gold'
                   : _e.kind === 'item' ? (_ep.count || 1) + '× ' + (_ep.invKey || 'item')
                   : _e.kind === 'weapon' ? ((_ep.weapon && _ep.weapon.name) || 'a weapon')
+                  : _e.kind === 'gear' ? ((_ep.piece && _ep.piece.name) || 'a piece of gear')
                   : 'a delivery';
                 S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-50)), [{
                   id: 'inbox-' + Date.now() + '-' + _ie,

@@ -13,18 +13,22 @@
  *      field list (rule 1 -- a field missing from that list vanishes on
  *      the next save, which is how this class of bug ships green);
  *   3. RE-ADOPTION after a simulated restart adds nothing (the #615
- *      crash shape: a retry that pays twice).  Covered in both
- *      directions -- a stamped record ignores a fresh claim, and a
- *      crash that lost the save re-adopts to exactly one copy;
+ *      crash shape: a retry that pays twice), and a crash that lost the
+ *      save re-adopts to exactly one copy;
  *   4. genuine duplicates are NOT collapsed (two identical plates stay
  *      two) -- the merge is a multiset union, not a set union;
  *   5. an empty stash, a malformed stash and a character that never had
  *      gear all land as empty arrays rather than throwing or poisoning
  *      the blob;
  *   6. a client that sends NO stash keys (the old-tab / deploy-order
- *      case) does not burn the one-time capture;
+ *      case) does not burn the capture;
  *   7. the seeds are ingest-only: they never reach playerState, so they
- *      never reach the room-wide state_sync.
+ *      never reach the room-wide state_sync;
+ *   8. v2.3.2527 (§8, from the review of #640) -- the capture is not
+ *      one-shot and not lossy: a veteran joining from a browser with no
+ *      stash keeps their stored wardrobe and does not get it stamped
+ *      away; a claim the cap cut short does not stamp; a forged amulet
+ *      claim is refused; and armour GRADES survive adoption (§6).
  */
 import { GameRoom } from '../src/index.js';
 import { RPG_SCHEMA_VERSION, runRpgMigrations } from '../src/migrations.js';
@@ -156,16 +160,20 @@ const clientClaim = () => ({
     ps2.legsStash.length === 1 && ps2.shieldStash.length === 1 && ps2.gearStash.length === 2,
     { legs: ps2.legsStash.length, shield: ps2.shieldStash.length, gear: ps2.gearStash.length });
 
-  /* ...and a stamped record ignores a LARGER claim outright: once the
-     server holds the stash, the client's copy stops being a source. */
+  /* ...and v2.3.2527 (review finding 1): a stamped record does NOT stop
+     listening.  The one-shot gate is what lost gear -- a second device
+     could stamp a capture over a wardrobe it had never seen -- so the
+     merge now runs on every join and the surplus of a larger claim is
+     taken.  Held: 2x plate + 1x plate2, 1 shield.  Claimed: 6 plates, 2
+     shields.  Surplus is 4 plates and 1 shield, never the sum. */
   const room3 = new GameRoom(makeState(state._store), mockEnv);
   const ws3 = fakeWs('greedy');
   await join(room3, ws3, 'bp_gs_a', {
     rpgArmorStash: [plate(), plate(), plate(), plate(), plate(), plate()],
     rpgShieldStash: [shieldPiece(), shieldPiece()],
   });
-  check('a captured record ignores a later, bigger claim (stored wins forever)',
-    room3.playerState['bp_gs_a'].armorStash.length === 3 && room3.playerState['bp_gs_a'].shieldStash.length === 1,
+  check('the door stays open: a later, bigger claim contributes its SURPLUS',
+    room3.playerState['bp_gs_a'].armorStash.length === 7 && room3.playerState['bp_gs_a'].shieldStash.length === 2,
     { armor: room3.playerState['bp_gs_a'].armorStash.length, shield: room3.playerState['bp_gs_a'].shieldStash.length });
 }
 
@@ -238,8 +246,14 @@ const clientClaim = () => ({
   const wsE = fakeWs('empty');
   await join(room, wsE, 'bp_gs_empty', { rpgArmorStash: [], rpgLegsStash: [], rpgShieldStash: [], rpgGearStash: [] });
   const psE = room.playerState['bp_gs_empty'];
-  check('an empty claim adopts nothing and still stamps (they own nothing)',
-    GEAR_STASH_FIELDS.every((f) => psE[f].length === 0) && psE.gearStashCaptured === true, psE.gearStashCaptured);
+  /* v2.3.2527 (review finding 1a): four empty arrays are NOT a capture.
+     A brand-new character owning nothing and a veteran signing in from
+     a browser that has never seen their gear send the identical
+     payload, so the server cannot tell them apart -- and must therefore
+     not write either one down as done.  (The new client omits the keys
+     entirely; this asserts the old client's shape is harmless too.) */
+  check('an empty claim adopts nothing and does NOT stamp',
+    GEAR_STASH_FIELDS.every((f) => psE[f].length === 0) && !psE.gearStashCaptured, psE.gearStashCaptured);
 
   const wsM = fakeWs('malformed');
   await join(room, wsM, 'bp_gs_bad', {
@@ -255,8 +269,16 @@ const clientClaim = () => ({
   check('cosmetic entries missing slot or gearId are dropped; the name is bounded',
     psM.gearStash.length === 1 && psM.gearStash[0].name.length === 40, psM.gearStash);
   check('a client-supplied piece cannot smuggle server-minted forge fields',
-    psM.shieldStash.length === 1 && psM.shieldStash[0].quality === undefined
+    psM.shieldStash.length === 1
       && psM.shieldStash[0].hardness === undefined && psM.shieldStash[0].temper === undefined, psM.shieldStash[0]);
+  /* v2.3.2527 (review finding 2): quality is NOT one of them.  It is the
+     armour grade -- _armorDrMult multiplies tier by it -- and stripping
+     it on adoption would have written every graded piece anyone had
+     earned down as ungraded, permanently.  It is safe to keep because
+     the reader applies its [0, 8] clamp AFTER the grade (and grids.js
+     already accepts a client-supplied one on the live combat path). */
+  check('a real armour GRADE survives adoption (it is not decoration)',
+    psM.shieldStash[0].quality === 'godly', psM.shieldStash[0]);
   /* ...and none of that stopped the join. */
   check('the join still completed with a malformed claim', !!room.playerState['bp_gs_bad'].hp);
 
@@ -293,6 +315,225 @@ const clientClaim = () => ({
   check('player_state echoes the five stashes',
     echo && GEAR_STASH_FIELDS.every((f) => Array.isArray(echo.payload[f])) && echo.payload.armorStash.length === 3,
     echo && Object.keys(echo.payload).filter((k) => /Stash/.test(k)));
+}
+
+/* ── 8. v2.3.2527 — the three holes the review found in the capture ──
+   Each of these passed review-free in v2.3.2523 because no test asked. */
+{
+  /* ── 8a. finding 1a: A PRE-EXISTING CHARACTER JOINING FROM A BROWSER
+     THAT DOES NOT HAVE THEIR GEAR.  §6's empty-claim test only ever
+     covered a BRAND-NEW character id, where "they own nothing" happens
+     to be true -- which is precisely why it hid this.  Here the player
+     is a veteran with a real wardrobe on the server, and the join comes
+     from a second device / private tab / cleared Safari.  The old code
+     stamped CAPTURED off the four empty arrays and wrote the wardrobe
+     down as nothing, permanently.  Both client shapes are exercised:
+     the old client's four empty arrays, and the new client's no keys
+     at all. */
+  const vetStore = new Map();
+  await join(new GameRoom(makeState(vetStore), mockEnv), fakeWs('vet'), 'bp_gs_vet', clientClaim());
+  const vetFirst = vetStore.get('rpg:bp_gs_vet');
+  check('8a setup: the veteran\'s wardrobe is on the server',
+    vetFirst.armorStash.length === 3 && vetFirst.shieldStash.length === 1 && vetFirst.gearStashCaptured === true,
+    { armor: vetFirst.armorStash.length, shield: vetFirst.shieldStash.length });
+
+  /* Device two, old client: four empty arrays. */
+  const roomD2 = new GameRoom(makeState(vetStore), mockEnv);
+  await join(roomD2, fakeWs('device2-old'), 'bp_gs_vet',
+    { rpgArmorStash: [], rpgLegsStash: [], rpgShieldStash: [], rpgGearStash: [] });
+  const psD2 = roomD2.playerState['bp_gs_vet'];
+  check('device two sending four EMPTY lists does not erase the stored wardrobe',
+    psD2.armorStash.length === 3 && psD2.legsStash.length === 1 && psD2.shieldStash.length === 1
+      && psD2.gearStash.length === 2, { armor: psD2.armorStash.length, shield: psD2.shieldStash.length });
+
+  /* Device two, new client: the keys are omitted entirely. */
+  const roomD3 = new GameRoom(makeState(vetStore), mockEnv);
+  await join(roomD3, fakeWs('device2-new'), 'bp_gs_vet', {});
+  check('device two sending NO keys does not erase it either',
+    roomD3.playerState['bp_gs_vet'].armorStash.length === 3, roomD3.playerState['bp_gs_vet'].armorStash.length);
+
+  /* ...and the main phone, where the wardrobe actually lives, is still
+     heard when it comes back -- the whole point of the open door.  It
+     adds nothing, because the server already holds all of it. */
+  const roomD4 = new GameRoom(makeState(vetStore), mockEnv);
+  await join(roomD4, fakeWs('mainphone'), 'bp_gs_vet', clientClaim());
+  check('the main phone is still heard afterwards, and adds nothing it already sent',
+    roomD4.playerState['bp_gs_vet'].armorStash.length === 3, roomD4.playerState['bp_gs_vet'].armorStash.length);
+
+  /* The gear that a LATER join brings is adopted rather than refused --
+     this is the case a stamped, one-shot capture threw away. */
+  const roomD5 = new GameRoom(makeState(vetStore), mockEnv);
+  await join(roomD5, fakeWs('newpiece'), 'bp_gs_vet',
+    { rpgArmorStash: [plate(), plate(), plate2(), { name: 'Iron Plate', gearBase: 'iron', tierMult: 3, tier: 't3' }] });
+  check('a piece the server has never seen is still adopted on a later join',
+    roomD5.playerState['bp_gs_vet'].armorStash.length === 4,
+    roomD5.playerState['bp_gs_vet'].armorStash.map((g) => g.name));
+
+  /* ── 8d. finding 2, second half: A RECORD ALREADY WRITTEN UNGRADED
+     BY v2.3.2523 HEALS ON THE NEXT JOIN.  v2.3.2523 merged and
+     deployed before this repair did, so armour is stored on real
+     records with its grade stripped.  Re-opening the door does not fix
+     that by itself: stashSig does not key on quality (a grade must not
+     make one plate look like two), so the merge recognises the graded
+     claim as a plate it already holds and takes no surplus.  The
+     matched pair backfills the grade instead. */
+  const gradeStore = new Map();
+  const elite = () => ({ name: 'Copper Plate', gearBase: 'copper', tierMult: 2, tier: 't2', def: 7, quality: 'elite' });
+  /* Hand-build the damage v2.3.2523 did: the piece is stored, stamped
+     captured, and its grade is gone. */
+  await gradeStore.set('rpg:bp_gs_grade', {
+    _v: RPG_SCHEMA_VERSION, coins: 0,
+    armorStash: [{ name: 'Copper Plate', gearBase: 'copper', tierMult: 2, tier: 't2', def: 7 }],
+    legsStash: [], shieldStash: [], gearStash: [], amuletStash: [],
+    gearStashCaptured: true,
+  });
+  const roomG = new GameRoom(makeState(gradeStore), mockEnv);
+  await join(roomG, fakeWs('grade'), 'bp_gs_grade', { rpgArmorStash: [elite()] });
+  const psG = roomG.playerState['bp_gs_grade'];
+  check('a stripped grade is backfilled from the client\'s copy, not duplicated',
+    psG.armorStash.length === 1 && psG.armorStash[0].quality === 'elite', psG.armorStash);
+  check('...and it persisted', gradeStore.get('rpg:bp_gs_grade').armorStash[0].quality === 'elite');
+  /* One-directional and absent-only: a grade the server already holds
+     can never be overwritten or downgraded by a claim. */
+  const downgraded = mergeStashLists('armorStash', [elite()],
+    [{ name: 'Copper Plate', gearBase: 'copper', tierMult: 2, tier: 't2', def: 7, quality: 'normal' }]);
+  check('a claim cannot overwrite or downgrade a grade the server already holds',
+    downgraded.length === 1 && downgraded[0].quality === 'elite', downgraded);
+  /* Idempotent, like the rest of the merge. */
+  const healedOnce = mergeStashLists('armorStash', [plate()], [elite()]);
+  const healedTwice = mergeStashLists('armorStash', healedOnce, [elite()]);
+  check('the backfill is idempotent (no second copy on a re-run)',
+    healedOnce.length === 1 && healedTwice.length === 1 && healedTwice[0].quality === 'elite',
+    { once: healedOnce.length, twice: healedTwice.length });
+
+  /* ── 8b. finding 1c: A CLAIM THAT OVERFLOWS THE CAP MUST NOT STAMP.
+     The merge's cap was tested; the consequence of stamping over a
+     TRUNCATED capture was not.  32 pieces land, the rest do not, and
+     the record must not claim the capture was complete. */
+  const overStore = new Map();
+  const roomOv = new GameRoom(makeState(overStore), mockEnv);
+  await join(roomOv, fakeWs('overflow'), 'bp_gs_over',
+    { rpgArmorStash: Array.from({ length: GEAR_STASH_CAP + 5 }, plate2) });
+  const psOv = roomOv.playerState['bp_gs_over'];
+  check('an over-cap claim keeps exactly GEAR_STASH_CAP pieces', psOv.armorStash.length === GEAR_STASH_CAP, psOv.armorStash.length);
+  check('...and does NOT stamp the capture complete over the truncation', !psOv.gearStashCaptured, psOv.gearStashCaptured);
+  check('the truncated capture persisted un-stamped (so it is still visibly open)',
+    overStore.get('rpg:bp_gs_over').armorStash.length === GEAR_STASH_CAP
+      && overStore.get('rpg:bp_gs_over').gearStashCaptured === false,
+    overStore.get('rpg:bp_gs_over').gearStashCaptured);
+  /* A within-cap claim on the same character DOES stamp: the rule is
+     "not cut short", not "never overflowed". */
+  const roomOv2 = new GameRoom(makeState(overStore), mockEnv);
+  await join(roomOv2, fakeWs('overflow2'), 'bp_gs_over', { rpgLegsStash: [greaves()] });
+  check('a later claim that fits stamps normally', roomOv2.playerState['bp_gs_over'].gearStashCaptured === true);
+
+  /* ── 8c. finding 3: AN AMULET LIST ARRIVING FROM A CLIENT IS REFUSED.
+     `amuletStash` has no client source (no unequip flow), so a claim
+     for it can only be forged -- and _sanitizeAmulet would have passed
+     these as LEGITIMATE mythic amulets, the most expensive thing in the
+     forge.  The field and its migration stay; the ear for it is gone. */
+  const amuStore = new Map();
+  const roomAm = new GameRoom(makeState(amuStore), mockEnv);
+  await join(roomAm, fakeWs('amulet'), 'bp_gs_amu', {
+    rpgAmuletStash: Array.from({ length: 5 }, () => ({ tier: 'mythic', gem: 'flame', name: 'Mythic Flame' })),
+    rpgArmorStash: [plate()],
+  });
+  const psAm = roomAm.playerState['bp_gs_amu'];
+  check('a forged amulet claim is refused outright', psAm.amuletStash.length === 0, psAm.amuletStash);
+  check('...and it never reached storage either', amuStore.get('rpg:bp_gs_amu').amuletStash.length === 0);
+  check('...while the lists that DO have a client source still adopt', psAm.armorStash.length === 1, psAm.armorStash);
+  check('the refused seed key does not leak onto playerState (ingest-only set)',
+    !('rpgAmuletStash' in psAm), Object.keys(psAm).filter((k) => k.startsWith('rpg')));
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   9. THE PROVENANCE MARK ACROSS A REAL JOIN (v2.3.2532)
+   ══════════════════════════════════════════════════════════════════
+   `_sv` means "the server wrote this piece" and is the whole basis of
+   the store's strict-provenance mode (server/src/storegear.js).  The
+   v2.3.2531 slice got it wrong in BOTH directions, and neither was
+   visible from a test that called a sanitizer directly — which is why
+   these drive the actual join, the path that actually fills a stash:
+
+     - FORGEABLE.  The store stripped the mark off a listing SELECTOR
+       and nothing stripped it off the join claim, so a modified client
+       could mark its own forged plate `_sv: true` and strict mode
+       waved it through.  Strict mode was the hedge on an accepted
+       minting risk, so a forgeable mark is no hedge at all.
+     - LOST.  `sanitizeCosmeticEntry` and `_sanitizeAmulet` REBUILD
+       from a whitelist rather than copying, so an outfit or an amulet
+       the server genuinely handed over lost its mark on the owner's
+       next login and became unlistable under strict mode.
+
+   Both are asserted through `_stGearListable`, the room method the
+   store actually asks, with the strict flag actually on. */
+{
+  const wsP = fakeWs('prov-claim');
+  await join(room, wsP, 'bp_gs_prov', {
+    rpgArmorStash: [{ name: 'Forged Plate', gearBase: 'iron', tierMult: 3, tier: 't3', _sv: true }],
+    rpgGearStash: [{ slot: 'chest', gearId: 'forgedlook', name: 'Forged Look', _sv: true }],
+    rpgAmuletStash: [{ tier: 'mythic', gem: 'flame', name: 'Forged Amulet', _sv: true }],
+  });
+  const psP = room.playerState['bp_gs_prov'];
+  check('a join claim cannot award itself the provenance mark',
+    psP.armorStash.length === 1 && psP.armorStash[0]._sv === undefined, psP.armorStash[0]);
+  check('...nor on a cosmetic claim', psP.gearStash[0]._sv === undefined, psP.gearStash[0]);
+  /* v2.3.2533: the AMULET leg of this section met a stronger rule while
+     this branch was in flight.  v2.3.2527 (#641, finding 3) removed the
+     client ear for rpgAmuletStash outright — `amuletStash` has no client
+     source, so a claim for it can only be forged — which means a forged
+     amulet never lands and there is no mark left to strip.  §8c pins the
+     refusal itself; asserted here too so this section keeps covering all
+     three lists rather than going quiet about one of them. */
+  check('...and a forged amulet claim never arrives at all (v2.3.2527)',
+    psP.amuletStash.length === 0, psP.amuletStash);
+  room._liveFlags = { store_gear_strict: true };
+  check('...so strict mode refuses the forged claim, which is the point',
+    room._stGearListable(psP.armorStash[0]) === false
+      && room._stGearListable(psP.gearStash[0]) === false, psP.armorStash[0]);
+  room._liveFlags = {};
+  /* The claim still ARRIVED — stripping the mark must not cost the
+     player the piece, only its provenance.  (The amulet is the deliberate
+     exception above: it is refused, not unmarked.) */
+  check('...and the pieces themselves are still there, just unmarked',
+    psP.armorStash[0].name === 'Forged Plate' && psP.gearStash[0].gearId === 'forgedlook',
+    psP.armorStash[0]);
+}
+
+/* The reverse: a piece the SERVER wrote (a refund, an expiry, a
+   purchase — _stGearApplyCredit is the only writer) must still carry its
+   mark after a save, a restart and a fresh login, for all three shapes.
+   The cosmetic and the amulet are the ones that regressed, because
+   their sanitizers rebuild. */
+{
+  const store2 = new Map();
+  const room2 = new GameRoom(makeState(store2), mockEnv);
+  await store2.set('rpg:bp_gs_svd', {
+    _v: RPG_SCHEMA_VERSION, coins: 0, level: 1, gearStashCaptured: true,
+    armorStash: [{ name: 'Server Plate', gearBase: 'iron', tierMult: 2, tier: 't2', _sv: true }],
+    legsStash: [], shieldStash: [],
+    gearStash: [{ slot: 'chest', gearId: 'serverlook', name: 'Server Look', _sv: true }],
+    amuletStash: [{ tier: 'regal', gem: 'frost', name: 'Server Amulet', _sv: true }],
+  });
+  await join(room2, fakeWs('prov-stored'), 'bp_gs_svd', {});
+  const psS = room2.playerState['bp_gs_svd'];
+  check('a server-written plate keeps its mark across a login',
+    psS.armorStash[0] && psS.armorStash[0]._sv === true, psS.armorStash[0]);
+  check('a server-written COSMETIC keeps its mark across a login (it rebuilds)',
+    psS.gearStash[0] && psS.gearStash[0]._sv === true, psS.gearStash[0]);
+  check('a server-written AMULET keeps its mark across a login (it rebuilds)',
+    psS.amuletStash[0] && psS.amuletStash[0]._sv === true, psS.amuletStash[0]);
+  room2._liveFlags = { store_gear_strict: true };
+  check('...so strict mode lists all three, which is what it is for',
+    room2._stGearListable(psS.armorStash[0]) === true
+      && room2._stGearListable(psS.gearStash[0]) === true
+      && room2._stGearListable(psS.amuletStash[0]) === true);
+  room2._liveFlags = {};
+  await room2._saveRpg('bp_gs_svd', psS);
+  const savedS = store2.get('rpg:bp_gs_svd');
+  check('...and the mark survives _saveRpg\'s fixed field list too',
+    savedS.armorStash[0]._sv === true && savedS.gearStash[0]._sv === true
+      && savedS.amuletStash[0]._sv === true, savedS.gearStash[0]);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

@@ -16,6 +16,7 @@
  * name assertion is testing whatever the meadow happened to spawn.
  */
 import * as H from './harness.mjs';
+import * as C from './_colour.mjs';
 
 /* One of each shape the plate has to cope with: a sprite-bodied slime whose
    art is 96px tall over an 8px logical size, a plain procedural archetype,
@@ -146,6 +147,121 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the band follows the PLAYER levelling, not only the monster',
     bandOf(banded.at9, '7') !== bandOf(banded.at6, '7'), banded);
 
+  /* ═══════════════════════════════════════════════════════════════════
+     v2.3.2530: THE SOFTENING, AND THE INFORMATION IT WAS NOT ALLOWED TO COST
+     ═══════════════════════════════════════════════════════════════════════
+     Owner, on the v2.3.2513 plate seen on a real phone: "too harsh -- the
+     contrast is too high."  The answer is a block of named constants in
+     entityRenderer's nameplate region, and the reason it is asserted HERE
+     rather than left to the eye is that none of it can be read off the screen:
+     a Pixi Graphics cannot be read back, and a 2 px coloured ring over a
+     textured scene is exactly the crop TRAPS §21 says a colour count lies
+     about.  So the renderer reports the values it painted with (`soft`) and
+     the arithmetic is done on those.
+
+     THE POINT OF THESE ASSERTIONS IS THE FLOOR, NOT THE CURRENT NUMBERS.  The
+     owner is expected to ask for "softer still" more than once, and every one
+     of those rounds is three numbers in that block.  What must not happen in
+     any of those rounds is that a band pair, or the name, or the warning,
+     quietly stops being readable.  So the exact values are asserted loosely
+     (softened at all / still a warning) and the things that carry MEANING are
+     asserted as hard floors. */
+  const soft = await P.page.evaluate(() => {
+    const pl = ((window.__btMonsterPlates || {}).plates || []).find((p) => p.soft);
+    return pl ? pl.soft : null;
+  });
+  rec.ok('a plate reported the values it was painted with (guard)', !!soft, soft);
+  if (soft) {
+    /* ── 1. the softening actually landed ────────────────────────────────
+       Each of these was 1 / pure white / 700 in v2.3.2513, so each is a
+       statement that this change is on screen and not merely in the source. */
+    rec.ok(`the resting plate's fill is no longer opaque (${soft.fillAlpha})`,
+      soft.fillAlpha < 1, soft);
+    rec.ok(`...its difficulty border is softened too (${soft.borderAlpha})`,
+      soft.borderAlpha < 1, soft);
+    rec.ok(`...its name is lighter than the 700 it shipped at (${soft.nameWeight})`,
+      Number(soft.nameWeight) < 700, soft);
+    rec.ok('...and the level badge is off-white rather than pure white',
+      soft.badgeFill !== 0xFFFFFF, { badgeFill: soft.badgeFill });
+
+    /* ── 2. THE FLOOR UNDER THE NAME ─────────────────────────────────────
+       A translucent plate takes its background with it, so the name's contrast
+       is no longer one number -- it is a number per scene, and the binding
+       case is the brightest ground in the game (Frost Ridge snow), where the
+       navy washes out toward the scene and the gap to an off-white name is at
+       its narrowest.  Asserted against the WCAG AA body floor over every scene
+       including pure white, which no zone actually is. */
+    let worstCr = Infinity, worstScene = '';
+    for (const [name, bg] of Object.entries(C.SCENES)) {
+      const plate = C.over(0x0B1F2D, soft.fillAlpha, bg);
+      const cr = C.contrast(soft.nameFill, plate);
+      if (cr < worstCr) { worstCr = cr; worstScene = name; }
+    }
+    console.log(`    name contrast, worst scene: ${worstCr.toFixed(2)}:1 over ${worstScene}`);
+    rec.ok(`the name still clears AA over the worst ground in the game `
+      + `(${worstCr.toFixed(2)}:1 over ${worstScene}, floor 4.5)`,
+      worstCr >= 4.5, { worstCr, worstScene, soft });
+
+    /* ── 3. THE FLOOR UNDER THE FOUR BANDS ───────────────────────────────
+       The one thing a softening could destroy without looking like it had.
+       Yellow (`near`, −1..0) and orange (`high`, +1..+2) are adjacent bands
+       AND adjacent hues: desaturate both and they become the same ring at
+       2 px on a phone, and the plate goes on looking fine while it has stopped
+       answering "can I take this thing".
+
+       That is why the border is softened by ALPHA and never by moving the band
+       colours, and the assertion is written to hold whoever reads it next:
+       every pair, composited at whatever alpha the renderer currently uses,
+       over every ground a plate sits on, must stay past ΔE00 12.  For scale,
+       1 is the just-noticeable difference and ~10 is "nobody would call these
+       the same colour" -- 12 is a deliberately generous floor for a 2 px ring
+       glanced at mid-fight, and the shipped values clear it by a wide margin.
+
+       The bands are read from the RENDERER (`soft.bands`), not restated here:
+       a fixture that hard-coded the four colours would keep passing after
+       someone changed them, which is the failure this is here to prevent. */
+    const bandNames = ['low', 'near', 'high', 'danger'];
+    rec.ok('the renderer reported all four band colours (guard)',
+      !!soft.bands && bandNames.every((b) => soft.bands[b] != null), soft.bands);
+    if (soft.bands && bandNames.every((b) => soft.bands[b] != null)) {
+      const DE_FLOOR = 12;
+      let worstDe = Infinity, worstPair = '';
+      const rows = [];
+      for (const [scene, bg] of Object.entries(C.SCENES)) {
+        const cells = [];
+        for (let i = 0; i < bandNames.length; i++) {
+          for (let j = i + 1; j < bandNames.length; j++) {
+            const a = C.over(soft.bands[bandNames[i]], soft.borderAlpha, bg);
+            const b = C.over(soft.bands[bandNames[j]], soft.borderAlpha, bg);
+            const d = C.deltaE00(a, b);
+            cells.push(`${bandNames[i]}/${bandNames[j]}=${d.toFixed(1)}`);
+            if (d < worstDe) { worstDe = d; worstPair = `${bandNames[i]}/${bandNames[j]} over ${scene}`; }
+          }
+        }
+        rows.push(`      ${scene.padEnd(12)} ${cells.join('  ')}`);
+      }
+      console.log('    band separation (CIEDE2000, border composited at alpha '
+        + soft.borderAlpha + '):');
+      rows.forEach((r) => console.log(r));
+      /* Called out on its own line because it is the pair the owner named and
+         the one a future desaturation would kill first. */
+      const nearHigh = Math.min(...Object.values(C.SCENES).map((bg) =>
+        C.deltaE00(C.over(soft.bands.near, soft.borderAlpha, bg),
+          C.over(soft.bands.high, soft.borderAlpha, bg))));
+      rec.ok(`yellow "Near" and orange "High" stay distinct rings `
+        + `(worst ΔE00 ${nearHigh.toFixed(1)}, floor ${DE_FLOOR})`,
+        nearHigh >= DE_FLOOR, { nearHigh, borderAlpha: soft.borderAlpha });
+      rec.ok(`...and so does every other pair of the four `
+        + `(worst ΔE00 ${worstDe.toFixed(1)} at ${worstPair}, floor ${DE_FLOOR})`,
+        worstDe >= DE_FLOOR, { worstDe, worstPair, borderAlpha: soft.borderAlpha });
+      /* The band colours are still four DIFFERENT values -- the cheap check
+         that catches the crudest possible "softening", which is setting them
+         all to one muted colour. */
+      rec.ok('...because the four bands are still four different colours',
+        new Set(bandNames.map((b) => soft.bands[b])).size === 4, soft.bands);
+    }
+  }
+
   /* ═══ v2.3.2295: THE PLATE GOES RED WHILE IT IS HITTING YOU ═══
      Owner: "change the monster name plate to a red background when they're
      actively attacking you."
@@ -172,6 +288,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     target._atkMeUntil = Date.now() + 8000;
     await sleep(500);
     const on = (window.__btMonsterPlates || {}).plates || [];
+    /* v2.3.2530: `soft` rides along on the plate record, so both the alarm and
+       the resting read below carry the values each state was painted with. */
     const hotOn = on.find((p) => p.level === 'LV 42') || null;
     const others = on.filter((p) => p.level !== 'LV 42').map((p) => ({ level: p.level, alarm: p.alarm }));
     target._atkMeUntil = 0;
@@ -209,6 +327,51 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...and when it stops, the plate returns to its band',
       !!alarmed.hotOff && alarmed.hotOff.alarm === false
         && alarmed.hotOff.band === 'danger', alarmed.hotOff);
+
+    /* ═══ v2.3.2530: THE WARNING DID NOT GET SOFTENED WITH THE REST ═══
+       The owner asked for a softer plate; this state is the one thing on it
+       that is a WARNING rather than a label, and a warning quieted to match
+       its surroundings has been deleted.  So the softening is asserted to have
+       SKIPPED it -- and the relationship is asserted rather than the absolute
+       values, because every future "softer still" round moves the resting
+       numbers and none of them may move this one:
+
+         the alarm plate is OPAQUE while the resting plate is not,
+         its name is HEAVIER and BRIGHTER than the resting plate's,
+
+       which together are what makes a monster that is hitting you the loudest
+       plate on the screen -- more so after this change than before it, since
+       everything around it stepped back. */
+    const aSoft = alarmed.hotOn.soft, rSoft = alarmed.hotOff && alarmed.hotOff.soft;
+    rec.ok('both states reported what they painted with (guard)', !!(aSoft && rSoft),
+      { alarm: aSoft, resting: rSoft });
+    if (aSoft && rSoft) {
+      rec.ok(`the attacking-you plate stays fully opaque while the resting one `
+        + `does not (${aSoft.fillAlpha} vs ${rSoft.fillAlpha})`,
+        aSoft.fillAlpha === 1 && rSoft.fillAlpha < 1, { alarm: aSoft, resting: rSoft });
+      rec.ok(`...and its name stays heavier than the softened one `
+        + `(${aSoft.nameWeight} vs ${rSoft.nameWeight})`,
+        Number(aSoft.nameWeight) > Number(rSoft.nameWeight), { alarm: aSoft, resting: rSoft });
+      rec.ok('...and brighter, which is also the AA the fill was chosen for',
+        C.luminance(aSoft.nameFill) > C.luminance(rSoft.nameFill),
+        { alarm: aSoft.nameFill, resting: rSoft.nameFill });
+      /* v2.3.2513 picked #E03131 as "the brightest red that still passes AA for
+         the name", measured with WHITE ink -- but the factory drew #F4F0E7 and
+         nothing ever wired that constant up, so the shipped pairing was 4.04:1
+         and under the floor its own comment claimed.  Naming the alarm ink
+         fixes that, and this is the assertion that keeps the two in step: move
+         the red and this fails until the arithmetic is redone. */
+      const alarmCr = C.contrast(aSoft.nameFill, 0xE03131);
+      rec.ok(`...so the name on the red plate clears AA (${alarmCr.toFixed(2)}:1, floor 4.5)`,
+        alarmCr >= 4.5, { nameFill: aSoft.nameFill, alarmCr });
+      /* D4: "the border rules do not change."  The difficulty ring is drawn the
+         same in both states, which is what lets a red ring ("far above you")
+         and a red fill ("hitting you right now") sit together and still say two
+         different things. */
+      rec.ok('...while the difficulty ring is drawn identically in both states',
+        aSoft.borderAlpha === rSoft.borderAlpha && aSoft.borderPx === rSoft.borderPx,
+        { alarm: aSoft, resting: rSoft });
+    }
   }
 
   if (process.env.BT_SHOT) await P.page.screenshot({ path: process.env.BT_SHOT });
