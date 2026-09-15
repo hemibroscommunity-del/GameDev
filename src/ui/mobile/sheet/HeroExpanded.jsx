@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { infoPopupBus } from '../infoPopupBus.js';
 import { statInfo } from '../infoGlossary.js';
 import { COL, QUALITY_COLOR, panelStyle, getState } from '../dash/common.js';
-import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon, weaponForCat, swingCooldownMultFor, toDisplayDamage, toDisplayHp } from '../../../data/gameSystems.js'; /* v2.3.1914: getActiveWeapon; v2.3.2231: weaponForCat; v2.3.2441: swingCooldownMultFor */
+import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon, weaponForCat, swingCooldownMultFor, toDisplayDamage, toDisplayHp, DISPLAY_SCALE_K } from '../../../data/gameSystems.js'; /* v2.3.1914: getActiveWeapon; v2.3.2231: weaponForCat; v2.3.2441: swingCooldownMultFor; v2.3.2506: DISPLAY_SCALE_K for the "does not change damage" cut-off */
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { CharacterView, FIGURE_W_FRAC } from './CharacterView.jsx'; /* v2.3.1815: the equip screen's own figure */
@@ -1322,7 +1322,19 @@ export const HeroExpanded = () => {
                 if (pv) {
                   rows.push({ label: info.title, now: fmt(pv.statNow), after: pv.capped ? null : fmt(pv.statAfter) });
                   if (typeof pv.dpsDelta === 'number') {
-                    rows.push(pv.dpsDelta > 0.049
+                    /* ═══ v2.3.2506: TEST THE REAL FIGURE, NOT THE SHRUNK ONE ═══
+                       This 0.049 asks "is the gain smaller than the +0.1 this
+                       row would print" — a question about the UNSCALED DPS.
+                       v2.3.2502 divided calcDisplayDps by DISPLAY_SCALE_K and
+                       left the cut-off where it was, so it silently became
+                       "smaller than +0.5 real DPS" and four measured gains
+                       (sword/bow/staff Crit, bow Attack Speed: +0.07..+0.15)
+                       started reading "does not change damage" — the sheet
+                       telling the player a stat is worthless when it is not,
+                       about points they cannot take back.  Multiply back out
+                       so the threshold keeps its meaning at any k; the printed
+                       numbers stay scaled. */
+                    rows.push(pv.dpsDelta * DISPLAY_SCALE_K > 0.049
                       ? { label: 'DPS', now: n1(pv.dpsNow), after: n1(pv.dpsAfter), delta: '+' + n1(pv.dpsDelta) }
                       : { label: 'DPS', now: n1(pv.dpsNow), after: null, delta: 'does not change damage' });
                   } else {

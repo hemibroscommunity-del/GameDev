@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
+import { toDisplayHp } from '../../../data/gameSystems.js'; /* v2.3.2506: the display scale */
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — the flat
    label:value dump becomes a real readout: VITALS as spec meters
@@ -101,7 +102,13 @@ export const StatsPanel = () => {
   return (
     <div style={panelStyle}>
       <div style={secHdr}>Vitals</div>
-      <Meter label="HP"      cur={R.hp ?? 0}      max={R.maxHp ?? 1}      color={COL.hp} />
+      {/* v2.3.2506: this HP readout was missed by v2.3.2502's display scale,
+          so the Stats tab said "100 / 100" while the Hero sheet said
+          "20 / 20" for the same character one tap away.  toDisplayHp is the
+          right helper (ceil, so 1 HP left never reads 0) and it matches what
+          VitalBar and the stat screen already print.  MP and Stamina stay
+          RAW on purpose — mana and stamina are not scaled (§5.8's default). */}
+      <Meter label="HP"      cur={toDisplayHp(R.hp ?? 0)} max={toDisplayHp(R.maxHp ?? 1)} color={COL.hp} />
       <Meter label="MP"      cur={R.mana ?? 0}    max={R.maxMana ?? 1}    color={COL.mp} />
       <Meter label="Stamina" cur={R.stamina ?? 0} max={R.maxStamina ?? 1} color={COL.stam} />
 

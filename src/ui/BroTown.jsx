@@ -6076,7 +6076,10 @@ export var BroTown = function BroTown(_ref0) {
                 nearestM.curHp -= petDmg;
                 S._petAtkCd = Date.now() + 1500; /* pet attacks every 1.5s */
                 /* Visual feedback — small damage number from pet */
-                pushDmgPopup(S, nearestM.x, monsterPopupY(nearestM, -10), pet.emoji + ' -' + petDmg, pet.color || '#59BF91');
+                /* v2.3.2506: was full-size — missed by v2.3.2502, so the pet's
+                   number sat next to your own scaled ones and read five times
+                   harder-hitting than you. */
+                pushDmgPopup(S, nearestM.x, monsterPopupY(nearestM, -10), pet.emoji + ' -' + toDisplayDamage(petDmg), pet.color || '#59BF91');
                 /* Pet attack particles */
                 for (var pp = 0; pp < 3; pp++) {
                   S.hitParticles.push({

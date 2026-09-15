@@ -907,7 +907,10 @@ export function updateMonsterCombat(S, deps) {
                       if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: explodeDmg } });
                     }
                     S.screenShake = 8;
-                    pushDmgPopup(S, m.x, m.y - 20, 'BOOM -' + explodeDmg, '#ea580c');
+                    /* v2.3.2506: was full-size — v2.3.2502 converted the ordinary
+                       hit popup below and missed this one, so a volatile's death
+                       burst printed a raw number next to scaled ones. */
+                    pushDmgPopup(S, m.x, m.y - 20, 'BOOM -' + toDisplayDamage(explodeDmg), '#ea580c');
                     for (var ep = 0; ep < 30; ep++) {
                       S.hitParticles.push({
                         x: m.x,
@@ -988,7 +991,12 @@ export function updateMonsterCombat(S, deps) {
                         hurtPlayerLocal(S, _R6, pierceDmg);
                         trackMonsterDamage(S, m.id, pierceDmg);
                         if (window.__dmgLog) try { console.log('[dmg] sentinel-pierce', pierceDmg); } catch (e) {}
-                        pushDmgPopup(S, P.x + 10, P.y - 22, 'Pierce -' + pierceDmg, '#e8e8e8');
+                        /* v2.3.2506: was full-size.  This popup fires in the SAME
+                           blow as the '-N' at the foot of this block (converted in
+                           v2.3.2502), so one sentinel hit printed "-2" and
+                           "Pierce -9" together — the half-converted screen that
+                           makes the whole change look broken. */
+                        pushDmgPopup(S, P.x + 10, P.y - 22, 'Pierce -' + toDisplayDamage(pierceDmg), '#e8e8e8');
                       }
                     }
                     if (arch === 'stalker' && !shielded) {
@@ -998,7 +1006,9 @@ export function updateMonsterCombat(S, deps) {
                         hurtPlayerLocal(S, _R6, critDmg);
                         trackMonsterDamage(S, m.id, critDmg);
                         if (window.__dmgLog) try { console.log('[dmg] stalker-crit', critDmg); } catch (e) {}
-                        pushDmgPopup(S, P.x, P.y - 40, 'CRIT -' + critDmg, '#ff5e6c');
+                        /* v2.3.2506: was full-size — same blow, same block, same
+                           mismatch as the Pierce popup above. */
+                        pushDmgPopup(S, P.x, P.y - 40, 'CRIT -' + toDisplayDamage(critDmg), '#ff5e6c');
                         S.screenShake = Math.max(S.screenShake || 0, 4);
                       }
                     }
