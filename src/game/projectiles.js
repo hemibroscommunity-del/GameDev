@@ -628,6 +628,7 @@ export function updateArrows(S, deps) {
                `life` becomes fractional — every reader compares or divides
                (`life <= 0`, `life / 20` for the fade), none index by it. */
             var _pdt = S._dtScale || 1;
+            var _dist0 = a.dist;   /* v2.3.2473: where this frame's step STARTED -- see the prev-point seed below */
             /* v2.3.2262: `speedPx` is an optional per-projectile override.  The
                magic special's three orbs each fly at their own speed (fast,
                medium, slow -- owner), and speed is otherwise a property of the
@@ -730,7 +731,37 @@ export function updateArrows(S, deps) {
                this is the only branch that FLIES — the stuck, held and
                planting branches above all freeze _renderX, and a segment
                built from one of those is not a flight path. */
-            a._prevX = a._renderX; a._prevY = a._renderY;
+            /* ═══ v2.3.2473: THE FIRST FLIGHT FRAME HAS TO SWEEP TOO ═══
+               `_renderX` does not exist yet on a projectile's first flying
+               frame, so `_prevX` came out undefined and _projCapsule fell back
+               to `px = a._renderX` -- the NEW position.  The capsule was then
+               the arrow's drawn body sitting at where it had ARRIVED, with
+               nothing behind it: the whole first step went untested.
+
+               THAT WAS SURVIVABLE AT 8 px/frame AND IS NOT AT 24.  Measured on
+               the real server monsters (mp-hitreal, verdant): a bow special is
+               pushed at dist 14 and its first step is 24 x _dtScale's x3 clamp
+               = 72px, so its first tested position is 86px out and the capsule
+               reaches back only to 86 - 28.9 = 57.  A slime CHARGING the player
+               -- which is what they do -- gets inside that before the cast
+               resolves, and the arrow skips straight over it and flies on:
+               five of five specials missed a monster that had closed to under
+               60px, where the old 38px first position covered everything from
+               13px outward.  It is the near side of the same hole the segment
+               cap guards on the far side.
+
+               Seeding the previous point at the launch distance closes it: the
+               first frame now sweeps 14 -> 86 like every later frame sweeps,
+               which is the geometry the drawn arrow actually travels.  It can
+               only ADD hits the player already saw the arrow make, and it is
+               right at any speed -- the 8px version had the same hole, one
+               third as wide. */
+            if (a._renderX == null || a._renderY == null) {
+              a._prevX = _bx + Math.cos(a.ang) * _dist0;
+              a._prevY = _by + Math.sin(a.ang) * _dist0;
+            } else {
+              a._prevX = a._renderX; a._prevY = a._renderY;
+            }
             a._renderX = _bx + Math.cos(a.ang) * a.dist;
             a._renderY = _by + Math.sin(a.ang) * a.dist;
             if (a.life <= 0) return false;
