@@ -1,4 +1,4 @@
-/* ═══ v2.3.2531: GEAR PROVENANCE — THE SERVER RECORDS WHAT IT MINTS ═══
+/* ═══ v2.3.2534: GEAR PROVENANCE — THE SERVER RECORDS WHAT IT MINTS ═══
  * Spec: docs/specs/gear-provenance.md
  *
  * THE HOLE THIS CLOSES.  Until now the server handed out armour, legs,

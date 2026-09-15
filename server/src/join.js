@@ -616,7 +616,7 @@ export const joinMethods = {
        value. */
     {
       const stored = await this._loadRpg(msg.id);
-      /* ═══ v2.3.2531: WARM THE PROVENANCE LEDGER FIRST ═══
+      /* ═══ v2.3.2534: WARM THE PROVENANCE LEDGER FIRST ═══
          `gear_prov:<playerId>` is one bounded storage GET (never a prefix
          list -- rule 9), and it has to land BEFORE any gear is resolved
          below, worn slots included.  A cold ledger resolves every piece as
@@ -665,7 +665,7 @@ export const joinMethods = {
         // (migrations.js) -- `stored` arrived here through _loadRpg,
         // so it is already migrated.  The bootstrap branch below
         // KEEPS its strip (client payloads are unmigrated writers).
-        /* v2.3.2531: the four worn slots are resolved against the
+        /* v2.3.2534: the four worn slots are resolved against the
            provenance ledger on the way in (gearprov.js).  A stored piece
            carrying a gid we minted is REBUILT from the ledger's own copy;
            anything else keeps its fields and is marked `prov: 'legacy'`.
@@ -810,7 +810,7 @@ export const joinMethods = {
         this.playerState[msg.id].staffWeapon = this._sanitizeWeapon(msg.data && msg.data.rpgStaffWeapon, true);
         this.playerState[msg.id].activeSlot = (msg.data && typeof msg.data.rpgActiveSlot === 'string') ? msg.data.rpgActiveSlot : 'melee';
         // v2.3.249: drop leather armor from the first-connect bootstrap too.
-        /* ═══ v2.3.2531: THE BOOTSTRAP IS A CLAIM, NOT A MINT ═══
+        /* ═══ v2.3.2534: THE BOOTSTRAP IS A CLAIM, NOT A MINT ═══
            This branch takes the worn gear a brand-new record asserts.  It
            is the widest client-trust surface in the game for gear and this
            version does NOT close it -- it labels it.  Every piece through
@@ -915,7 +915,7 @@ export const joinMethods = {
          rather than the session copy -- these four seeds are ingest-only
          and never enter playerState (see _sanitizeJoinData). */
       this._gearStashAdoptOnJoin(this.playerState[msg.id], stored, msg.data || null, msg.id);
-      /* ═══ v2.3.2531: ONE MINT, ONE PIECE ═══
+      /* ═══ v2.3.2534: ONE MINT, ONE PIECE ═══
          Runs after the worn slots and all five lists are resolved, because
          it is the only pass that can see them together.  A `gid` may appear
          at most ONCE across a player's whole wardrobe: the first sighting

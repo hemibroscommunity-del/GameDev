@@ -1,4 +1,4 @@
-# Gear provenance — the server records what it mints (v2.3.2531)
+# Gear provenance — the server records what it mints (v2.3.2534)
 
 Spec + attach points for `server/src/gearprov.js`. Phase 1 of the gear
 provenance lane (PR 1 of 3: **record at mint** → equip names a recorded

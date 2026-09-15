@@ -877,7 +877,7 @@ export const gridMethods = {
         // _armorDrMult's identical ×8 clamp — same ceiling, and the DR cap
         // (75%) still sits above it as the last word.  Keep the two in step.
         // Leather Armor rejected outright per v2.3.249 removal.
-        /* ═══ v2.3.2531: THE EQUIP CLAIM IS RESOLVED, NOT COPIED ═══
+        /* ═══ v2.3.2534: THE EQUIP CLAIM IS RESOLVED, NOT COPIED ═══
            This is the inbound path that actually feeds the damage-reduction
            maths, so it is the one that matters -- and it is the shape of
            #643's `_sv` finding: a mark stripped from the selector and not
@@ -941,7 +941,7 @@ export const gridMethods = {
       const incomingL = payload.legsArmor;
       let newLegs = null;
       if (incomingL && typeof incomingL === 'object') {
-        /* v2.3.2531: same resolve as the chest piece above, same reasons. */
+        /* v2.3.2534: same resolve as the chest piece above, same reasons. */
         newLegs = this._gearProvResolve(session.id, 'legsArmor', incomingL, (g) => {
           const o = { ...g };
           if (typeof o.tierMult === 'number') o.tierMult = Math.max(0, Math.min(8, o.tierMult));

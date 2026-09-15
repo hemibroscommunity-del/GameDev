@@ -1,4 +1,4 @@
-/* GEAR PROVENANCE (v2.3.2531; spec docs/specs/gear-provenance.md).
+/* GEAR PROVENANCE (v2.3.2534; spec docs/specs/gear-provenance.md).
  *
  * The server now records every piece of gear it mints, against the player
  * it minted it for, in `gear_prov:<playerId>`.  What this suite has to
