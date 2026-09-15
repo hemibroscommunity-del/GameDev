@@ -225,6 +225,119 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...so the demo is not fighting the player\'s own motion',
     distinct(live, 'posF') <= 2, { seen: live.map((r) => r.posF) });
 
+  /* ═══ v2.3.2514: THE REAL POINTER PATH, WHICH NOTHING EVER EXERCISED ═══
+   *
+   * Everything above sets `ex._gestureDown` and `ex.cueFrame01` BY HAND, and
+   * that is honest about what it tests -- the demo's stand-down rule -- but it
+   * means the path that actually writes those fields, ExtractionSwipeLayer's
+   * three window listeners, has never been run by a test at all.  Both of the
+   * defects this pass fixes live in exactly that gap:
+   *
+   *   1. A harvest starts on the right button's TOUCHSTART, and a touch fires
+   *      `pointerdown` FIRST -- so the finger that started the harvest pressed
+   *      while there was no ready extraction, the layer bailed, and that
+   *      thumb's pumping was ignored for the whole window.  Reproduced below
+   *      by putting the record back into 'waiting' (the game loop flips it to
+   *      'ready' again on the next frame, since the wind-up is long past) and
+   *      pressing during it.
+   *   2. `onPointerUp` took no argument and ended the stroke for ANY pointer,
+   *      so the left thumb lifting off the movement stick killed the right
+   *      thumb's chop.  Reproduced by lifting a second pointer id.
+   *
+   * The events are constructed and dispatched rather than driven through
+   * Playwright's touchscreen because this needs TWO independent pointer ids
+   * with a press that straddles a state change; they are real PointerEvents
+   * going through the real listeners on window, which is the half that was
+   * missing. */
+  const RP_MAIN = 41, RP_OTHER = 42;
+  const rpProbe = () => P.page.evaluate(() => (window.__btHarvest ? window.__btHarvest() : null));
+  const rpDispatch = (type, id, x, y) => P.page.evaluate(([t, pid, cx, cy]) => {
+    window.dispatchEvent(new PointerEvent(t, { pointerId: pid, clientX: cx, clientY: cy,
+      pointerType: 'touch', bubbles: true, cancelable: true, isPrimary: pid === 41 }));
+  }, [type, id, x, y]);
+
+  const cue = await P.page.evaluate(() => (window.__btHarvest ? window.__btHarvest().cue : null));
+  rec.ok('the layer can say where the button is (guard)', !!(cue && cue.r), cue);
+  if (cue && cue.r) {
+    /* Back to 'waiting' AND press, in ONE evaluate.  Two round-trips would
+       let the game loop run in between -- the wind-up is long past, so it
+       flips the record straight back to 'ready' and the press then takes the
+       ordinary path, which is the opposite of the ordering under test.  (It
+       did exactly that on the first run of this block.) */
+    const pressedEarly = await P.page.evaluate(([pid, cx, cy]) => {
+      const ex = window._gameState.current._extraction;
+      if (ex) { ex.status = 'waiting'; ex._gesture = null; ex._gestureDown = false; ex.cueFrame01 = 0; ex.progress = 0; ex.reps = 0; }
+      window.dispatchEvent(new PointerEvent('pointerdown', { pointerId: pid, clientX: cx, clientY: cy,
+        pointerType: 'touch', bubbles: true, cancelable: true, isPrimary: true }));
+      return window.__btHarvest ? window.__btHarvest() : null;
+    }, [RP_MAIN, cue.x, cue.y]);
+    rec.ok('pressing before the window opens starts no gesture (as designed)',
+      !!pressedEarly && pressedEarly.pressed === false, pressedEarly);
+    /* The loop re-opens the window on its own -- windowOpensAt is long past. */
+    const reopened = await H.waitFor(P, (S) => (S._extraction ? S._extraction.status : null),
+      (v) => v === 'ready', { timeout: 8000, label: 'the window opens again' }).catch(() => null);
+    rec.ok('the window opens again with the finger still down (guard)', reopened === 'ready', { reopened });
+    /* A small move first: under STROKE_AMP (40px), so it adopts the finger
+       without counting a stroke and completing the cook (one flip does it). */
+    await rpDispatch('pointermove', RP_MAIN, cue.x, cue.y - 12);
+    const adopted = await rpProbe();
+    rec.ok('the thumb held through the wind-up is adopted when the window opens',
+      !!adopted && adopted.pressed === true && adopted.gestureDown === true, adopted);
+    rec.ok('...and the layer knows which finger owns it', !!adopted && adopted.pointerId === RP_MAIN, adopted);
+    /* Now make the window survive a real pump, and prove the phase moves. */
+    await P.page.evaluate(() => {
+      const ex = window._gameState.current._extraction;
+      if (ex) ex.repsTarget = 99;
+    });
+    const pumpSeen = [];
+    for (let i = 0; i < 4; i++) {
+      await rpDispatch('pointermove', RP_MAIN, cue.x, cue.y + (i % 2 ? 55 : -55));
+      await P.page.waitForTimeout(40);
+      pumpSeen.push(await rpProbe());
+    }
+    /* Sampled after EVERY move, not once at the end: the cook's phase advances
+       on the up-flick and rewinds on the settle, clamped at 0 -- so a pump that
+       ends on a down-stroke legitimately reads 0, and a single reading at the
+       end tells you nothing.  (It read 0 on the first run of this block for
+       exactly that reason.) */
+    const pumpMax = Math.max.apply(null, pumpSeen.map((r) => (r && r.frame01) || 0));
+    const pumped = pumpSeen[pumpSeen.length - 1];
+    rec.ok('...so a pump from that same finger drives the gesture phase',
+      pumpMax > 0, { pumpMax, seen: pumpSeen.map((r) => r && r.frame01) });
+    /* And the half-strokes were COUNTED -- the whole point of the adoption is
+       that this finger's work reaches the meter. */
+    rec.ok('...and its strokes count toward the harvest', !!pumped && pumped.reps > 0, pumped);
+
+    /* ── AND A SECOND FINGER LIFTING MUST NOT END IT ── */
+    await rpDispatch('pointerdown', RP_OTHER, 40, PHONE.height - 120);   /* the movement stick */
+    await rpDispatch('pointerup', RP_OTHER, 40, PHONE.height - 120);
+    const survived = await rpProbe();
+    rec.ok('another finger lifting does not end the stroke in progress',
+      !!survived && survived.pressed === true && survived.gestureDown === true, survived);
+    rec.ok('...and it is still the same finger that owns it',
+      !!survived && survived.pointerId === RP_MAIN, survived);
+
+    /* ── THE RIGHT FINGER LIFTING DOES ── */
+    await rpDispatch('pointerup', RP_MAIN, cue.x, cue.y);
+    const lifted = await rpProbe();
+    rec.ok('the gesturing finger lifting ends the press', !!lifted && lifted.pressed === false, lifted);
+    rec.ok('...and the demo is allowed back (the thumb is off the glass)',
+      !!lifted && lifted.gestureDown === false, lifted);
+  }
+
+  /* ═══ AND THE WIND-UP BAR OVER THE HEAD (v2.3.2514) ═══
+     The bar is 46 world px of anti-aliased Graphics over a character's head;
+     a screenshot cannot say what fraction it is at, so the renderer publishes
+     the reading it drew.  The STALL is the assertion that matters: `ready` has
+     had no timeout since v2.3.1416, so the bar has to sit at 95% and say "your
+     turn" rather than complete and look like a hang. */
+  const bar = await P.page.evaluate(() => window.__btWindupBar || null);
+  rec.ok('the wind-up bar is drawn over the harvesting figure', !!bar, bar);
+  if (bar) {
+    rec.ok('...and it stalls at 95% once the window is open', Math.abs(bar.bar01 - 0.95) < 0.06, bar);
+    rec.ok('...on the skill actually being harvested', bar.skill === 'cooking', bar);
+  }
+
   /* ═══ AND THE TIMER HALF, EXACTLY ═══
      The thumb-down flag covers a finger ON the glass; the HOLD covers the
      beat after it lifts.  That second branch cannot be measured in this
