@@ -95,14 +95,43 @@ const FILL = {
  *
  * HP and ENERGY are untouched.  The owner named mana; stamina has the matching
  * sheet ready if he wants the pair. */
+/*
+ * ═══ v2.3.2541: ...WHERE THE SURFACE ASKS FOR IT, WHICH IS NOWHERE YET ═══
+ * Owner, on the newly-merged build: "the mana bar in the character creator menu
+ * is showing the sliced block-style bars, and should be the full combat
+ * resource bar that was there before."
+ *
+ * The block treatment above keyed off `kind === 'mana'` alone, so it was a
+ * property of the COMPONENT rather than of the screen drawing it -- and every
+ * surface that renders a mana VitalBar got blocks whether or not it asked.
+ * There are three of them and all three are MENUS: the Character sheet's
+ * compact vitals row and its labelled row (HeroExpanded), and the stat
+ * explainer's demo bar (StatDemo).  None of them is the in-play HUD.
+ *
+ * The ask it was built from (BACKLOG-TRIAGE-2026-09-14 §5.8) was "mana bar IN
+ * LANDSCAPE".  That line had two candidates and the triage said so out loud at
+ * :739 -- this component's near-invisible border, or the in-world `bar-mp`
+ * pill -- and marked it "needs a screenshot" (D15).  The owner's report is that
+ * screenshot's answer: the blocks belong to the in-play HUD, which is the
+ * OTHER candidate and already draws them (the spend bar under the character,
+ * fxStrips.js v2.3.2300, untouched by this file either way).
+ *
+ * So `block` is a prop now, and no call site passes it: the character menu gets
+ * its full bar back in BOTH orientations -- the same menu must not change dress
+ * when a phone is turned sideways, which is how this would be reported again --
+ * and the block renderer stays one word away for a surface that does want it. */
 const BLOCK_SHEET = { mana: '/icons/ui/blocks-mp.webp?v=2.3.2300' };
 const BLOCK_FRAMES = 6;   /* empty + five filled */
 const BLOCK_N = 5;
 
-export const VitalBar = ({ kind, cur, max, thick, inset }) => {
+/* v2.3.2541: `block` is the SURFACE's choice, not the kind's -- see the header.
+   A screen opts in; the default everywhere is the trough bar this component has
+   drawn since v2.3.1311.  A kind with no sheet ignores it rather than throwing,
+   so `block` on an HP row is a no-op and not a broken bar. */
+export const VitalBar = ({ kind, cur, max, thick, inset, block = false }) => {
   const h = thick != null ? thick : (kind === 'hp' ? 10 : 8);
   const pct = Math.max(0, Math.min(100, (cur / (max || 1)) * 100));
-  const sheet = BLOCK_SHEET[kind];
+  const sheet = block ? BLOCK_SHEET[kind] : null;
   if (sheet) {
     /* FLOOR, the same rule fxStrips.blocksFor states: a block is a fifth of the
        pool and a special costs one, so "blocks showing" is "casts you can still

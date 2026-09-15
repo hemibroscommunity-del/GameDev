@@ -87,6 +87,32 @@ export const CTL_GAP = 4;         /* column <-> disc */
 export const CTL_STACK_GAP = 8;   /* between stacked slots */
 export const CTL_MIN_SIZE = 44;   /* Apple's touch-target minimum */
 
+/* ═══ v2.3.2542: WHO SITS IN WHICH SLOT, IN ONE PLACE ═══
+ *
+ * Owner, after playing the merged build: "Move the Special attack button to
+ * orbit the RIGHT joystick, not the left."  So the column gains a fourth
+ * control, and with four of them the slot numbers stop being something each
+ * file can keep in its own head -- AbilityButtons already had a private
+ * `SLOT_OF` and SpecialButton would have needed a second copy of the same idea.
+ * One exported map instead, for the reason ctlColumn itself exists: three files
+ * writing three layout rules is what cost the owner v2.3.2254 and v2.3.2327.
+ *
+ * SPECIAL IS SLOT -1 -- BELOW Block rather than above Whirlwind, and the sign
+ * is deliberate:
+ *   - it keeps the stack THREE high above the disc's centre line.  Slot 3 in
+ *     landscape works out at 283px above the dashboard band on a 390px-tall
+ *     screen, which puts a combat button up among the health bars and a long
+ *     way from the thumb that is holding Attack;
+ *   - the band BELOW the disc is EMPTY.  D9 moved the shield out of it and
+ *     v2.3.2472's own note says "nothing lives there now" -- so this is the
+ *     one free spot left in the cluster that is still next to the thumb;
+ *   - and the Special is the one control here meant to be pressed WHILE the
+ *     right thumb holds Attack (that is its whole advantage over the flick),
+ *     so the closest slot to the disc is the right home for it.
+ * ctlColumn's `bottomPx` is plain arithmetic on the slot number, so a negative
+ * slot needs no special case -- it lands one button-plus-gap below slot 0. */
+export const CTL_SLOT = { special: -1, block: 0, bash: 1, whirl: 2 };
+
 export function ctlColumn(isLandscape) {
   var base = isLandscape ? 54 : 48;
   var discW = isLandscape ? RBTN.wLand : RBTN.w;
@@ -100,7 +126,8 @@ export function ctlColumn(isLandscape) {
     size: size,
     right: RBTN.right + discW + CTL_GAP,
     /* Slot 0 sits level with the disc's centre; each slot above clears the
-       one below it.  Returned in px, to be added to the sheet band. */
+       one below it, and slot -1 clears it downward into the empty band (see
+       CTL_SLOT).  Returned in px, to be added to the sheet band. */
     bottomPx: function (slot) {
       return Math.round(RBTN.bottom + (discW - size) / 2 + slot * (size + CTL_STACK_GAP));
     },
@@ -144,6 +171,8 @@ export function ShieldButton(props) {
   var on = !!S._shieldUp;
   var onCd = !!(S._shieldCdUntil && Date.now() < S._shieldCdUntil);
   /* v2.3.2472 (D9): slot 0 of the left-of-the-disc column -- see ctlColumn. */
+  /* v2.3.2542: ...and the slot number now comes from the shared CTL_SLOT map
+     rather than a literal, so "which control is where" is one list. */
   var col = ctlColumn(isLandscape);
   var size = col.size;
   var right = col.right;
@@ -162,7 +191,7 @@ export function ShieldButton(props) {
     style: {
       position: 'fixed',
       right: right,
-      bottom: ctlBottom(col.bottomPx(0)),
+      bottom: ctlBottom(col.bottomPx(CTL_SLOT.block)),
       width: size, height: size, borderRadius: '50%',
       zIndex: 31,
       touchAction: 'none',

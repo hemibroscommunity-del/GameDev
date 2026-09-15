@@ -28,6 +28,7 @@ import { BT_AUDIO, abilityCfg, abilityStaminaCost, abilityUnlocked, isAbilitiesE
   meleeSwingSfx /* v2.3.2260: the lunge borrows the swing's own per-weapon sound */ } from '@/data/index.js';
 import { isPlayerDead, pushDmgPopup } from '@/game/combatHelpers.js';
 import { prog3ActiveCat } from '@/data/prog3.js';   /* v2.3.2327: whirlwind is the sword's */
+import { monsterLock } from '@/game/targeting.js';  /* v2.3.2542: whirlwind wants a fight under way */
 
 /* Local cooldown clocks, keyed by our OWN constant names (never a client- or
    wire-supplied string), so a plain object is safe here. */
@@ -187,6 +188,99 @@ export function resolveCastAngle(S) {
   return (typeof f === 'number') ? f : Math.PI / 2;
 }
 
+/* ═══ v2.3.2542: WHIRLWIND ONLY WHILE YOU ARE ACTUALLY IN A MELEE FIGHT ═══
+ *
+ * Owner, after playing the merged build on a phone: "Limit the whirl ability to
+ * active melee combat only.  Right now it can be used any time."
+ *
+ * ═══ WHICH "IN COMBAT" ═══
+ * Four facts in this client could answer that and they answer different
+ * questions:
+ *
+ *   m._atkMeUntil   per monster, "this one hit me in the last 2.6s"
+ *   m._aggroTs      per monster, "this one noticed me" -- a nameplate cue
+ *   S._engaged      targeting.js's engagement MODE, "I picked this fight"
+ *   the monster LOCK  "the game currently has a target for me"
+ *
+ * THE LOCK IS THE ONE, and it is `monsterLock(S)` rather than a fifth test
+ * written here, because updateTargeting already maintains exactly the property
+ * this gate wants, every frame: for a melee player it ACQUIRES the nearest
+ * monster automatically inside the 220px perimeter, HOLDS it out to the 275px
+ * hysteresis ring, RE-POINTS it at whatever is next when the one you were
+ * fighting dies, and DROPS it the moment the ref is dead or out of the zone.
+ * So "a monster is locked" is true for exactly as long as a fight is under way
+ * and false when you are walking around, which is the owner's ask, and it is
+ * the same fact that lights the attack disc and puts the reticle on the ground
+ * -- the player can SEE the condition without being told it.
+ *
+ * ═══ WHY NOT `S._engaged`, WHICH IS THE OBVIOUS CHOICE ═══
+ * It is the one the codebase literally calls engagement, and it was this gate's
+ * first cut.  It is too narrow, and review caught it before the owner did.
+ * `_updateEngagement` (targeting.js) only ever arms it from a lock with
+ * `src: 'tap'`, and the only writers of that src are the two canvas
+ * tap-a-monster branches and handleRBtnPress PROMOTING AN EXISTING lock.  Two
+ * ordinary things therefore leave it false in the middle of a real fight:
+ *
+ *   1. HOLD attack through a kill.  The lock re-points to the next monster as
+ *      `src: 'auto'`, the dead one stops being holdable, and 1500ms later
+ *      (ENGAGE_GRACE_MS) `_engaged` goes false -- with the thumb still down and
+ *      a pack still on you.  That is the exact moment a player reaches for
+ *      whirl, and the button would be greyed.
+ *   2. PRESS before anything is locked (walking into a pack).  The promotion in
+ *      handleRBtnPress is a no-op when there is no lock yet, no further press
+ *      happens while the thumb is held, and the auto rule's own lock is
+ *      `src: 'auto'` -- so `_engaged` is false for that entire fight.
+ *
+ * On DESKTOP it is worse: the swing path never runs handleRBtnPress at all, so
+ * nothing but a precise click on a monster body arms it, and there is no greyed
+ * button on desktop to explain the refusal (AbilityButtons is bt-desktop-hide)
+ * -- only the popup.  `_engaged` has one other consumer (monsterCombat's
+ * auto-engage swing) and that one is gated `!S.autoAttack`, i.e. it only
+ * matters when the thumb is NOT held, which is why the hole never showed.
+ * Do not re-point this gate at it.
+ *
+ * ═══ WHY NOT engagedStance(), THE OTHER EXPORTED "ENGAGED" ═══
+ * `autoAttack || a tapped lock`.  The autoAttack term makes it true while the
+ * thumb is down over an empty field -- "any time", which is the complaint --
+ * and the tap term brings back the holes above.  Worse, anything gated on
+ * autoAttack greys the moment the thumb LIFTS, which is precisely the instant
+ * the player is reaching for this button.
+ *
+ * ═══ AND DELIBERATELY NOT THE MELEE REACH TEST ═══
+ * monsterCombat composes engagement with `dist - monsterMeleeHitRadius <=
+ * GS_OUTER_RADIUS` (72) for the auto-engage SWING.  Copying that here would be
+ * wrong for this ability rather than stricter: whirl's own radius is 240
+ * (data/abilities.js), so a 72px gate would refuse the exact cast the move
+ * exists for -- the one that gathers a ring of monsters you are not yet toe to
+ * toe with.  The lock says a fight is on; the ability's radius decides what it
+ * reaches.
+ *
+ * ═══ IT GREYS, IT DOES NOT VANISH ═══
+ * Owner: "The button should read as unavailable rather than silently doing
+ * nothing when the condition is not met."  So this is NOT a `visible` term (a
+ * button that disappears between fights is a button nobody learns, and the
+ * reason v2.3.2327's weapon rule went INTO `visible` was that an archer's
+ * Whirlwind could never become available -- a sword's always can, within
+ * seconds).  It rides beside `equipped` and `afford` instead: the button stays
+ * on screen, dims, loses its brass edge, and castAbility floats a reason.
+ *
+ * ═══ WHY THIS IS NOT A FIELD IN THE MIRRORED TABLE ═══
+ * `needsHeldShield` and `needsMeleeActive` are declared in data/abilities.js,
+ * but that table is byte-compared against server/src/abilities.js
+ * (server/test/abilities.test.mjs: `JSON.stringify(STAM_ABILITIES) ===
+ * JSON.stringify(CLIENT_ABILITIES)`), so a new field there means editing the
+ * worker -- and a `server/**` diff auto-deploys on merge (.github/workflows/
+ * deploy-worker.yml), disconnecting live players for a flag the server would
+ * never read.  The server cannot enforce this one anyway: which monster a
+ * client says it has locked is client-supplied, exactly like the slot
+ * `needsMeleeActive` reads.  So it lives here, next to the code that reads it,
+ * as data rather than an `if (kind ===`. */
+/* Keyed by our OWN constant names (never a client- or wire-supplied string),
+   so a plain object is safe here -- the same note cdMap carries above.  (The
+   lookup is also unreachable for a '__proto__'-shaped key: abilityStatus
+   resolves abilityCfg(kind) first, and that table IS hasOwnProperty-guarded.) */
+const NEEDS_LOCK = { whirl: true };
+
 /* Everything the button needs to draw itself: unlocked, ready, affordable.
    One function so the button and the cast agree by construction. */
 export function abilityStatus(S, kind) {
@@ -221,11 +315,17 @@ export function abilityStatus(S, kind) {
   var visible = abilityUnlocked(level, kind)
     && (!needsHeld || (!!R.shield && !!(S && S._shieldUp)))
     && (!needsMelee || (prog3ActiveCat(R) === 'sword' && !!R.weapon));
+  /* v2.3.2542: ...and whirlwind additionally wants a fight actually under way.
+     Reported as its own field rather than folded into `visible` -- see
+     NEEDS_LOCK above.  `true` for every ability that does not ask for it, so
+     callers can read `st.engaged` unconditionally. */
+  var engaged = !NEEDS_LOCK[kind] || !!monsterLock(S);
   var now = Date.now();
   var readyAt = cdMap(S)[kind] || 0;
   var cost = abilityStaminaCost(R, kind);
   return {
     visible: visible,
+    engaged: engaged,
     cost: cost,
     cdLeft: Math.max(0, readyAt - now),
     cdFrac: readyAt > now ? Math.min(1, (readyAt - now) / cfg.cooldownMs) : 0,
@@ -260,6 +360,15 @@ export function castAbility(S, kind) {
     /* Say so.  The whole reason ability_rejected got a handler this version
        is that a silent refusal reads as a broken button (v2.3.1716). */
     pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough energy!', '#F2C14E', { ts: Date.now() });
+    return false;
+  }
+  /* v2.3.2542: and the same courtesy for the engagement rule -- the button is
+     greyed, so a press on it is a player asking why.  Below the affordability
+     check on purpose: "not enough energy" is the more actionable answer when
+     both are true, and this one is reachable from the desktop R key as well,
+     where there is no greyed button to look at. */
+  if (!st.engaged) {
+    pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not in combat!', '#D8A94D', { ts: Date.now() });
     return false;
   }
 
