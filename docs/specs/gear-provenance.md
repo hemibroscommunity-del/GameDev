@@ -1,4 +1,4 @@
-# Gear provenance — the server records what it mints (v2.3.2531)
+# Gear provenance — the server records what it mints (v2.3.2531–2532)
 
 Spec + attach points for `server/src/gearprov.js`. Phase 1 of the gear
 provenance lane (PR 1 of 3: **record at mint** → equip names a recorded
@@ -176,19 +176,76 @@ damage maths, traded, everything it does today — and carries
 `prov: 'legacy'` so the client can say *why* it cannot be listed instead
 of failing silently.
 
+## Equipping by name (v2.3.2532)
+
+`stats_update` can now say what you are wearing in two ways:
+
+| Shape | Meaning | Who sends it |
+|---|---|---|
+| `armorRef: '<gid>'` / `legsArmorRef: '<gid>'` | equip the piece the server recorded under that id | a client that has seen `caps.gearRef`, for a piece that HAS an id |
+| `armorRef: null` | unequip | same |
+| `armor: {...}` / `legsArmor: {...}` | the legacy describe-a-piece shape | everything else |
+
+A ref carries **nothing but the id**, so there is no blob on the wire to
+inflate: the piece that ends up worn is the server's own copy of what it
+minted (`_gearProvPieceByRef`).
+
+**A ref that names nothing is a refusal, not a fall-through.** It keeps
+whatever is currently worn, and it explicitly does *not* fall back to an
+`armor` object sent in the same message — otherwise a client could name a
+modest piece and describe a godly one and have the second honoured. The
+`player_state` echo that follows snaps the client's own list back, which
+is the self-correction the threat gear-lock and the defence-point gate
+have always relied on.
+
+**Both lanes go through one gate.** `_gridsApplyArmor` (grids.js) holds
+the JSON compare, the v2.3.1129 threat gear-lock, the v2.3.1661
+defence-point gate and the assignment, hoisted out of the legacy block
+rather than copied — a copied gate is exactly the shape where a new lane
+silently skips a check nobody re-read. The suite proves it by turning each
+gate on and watching the ref lane obey.
+
+### Retiring the describe path
+
+`caps.gearRef` is narrow and is **not** folded into `store` (TRAPS #9, the
+`caps.gems` lesson: a v2.3.2475 worker advertises the store and knows
+nothing about refs). Deploy-order safety both ways: an old worker never
+advertises it so the client keeps describing, and a new worker still
+accepts a description from an old client.
+
+The describe path can be deleted when **both** of these are true:
+
+1. every worker in production advertises `gearRef` — the ordinary rule-19
+   condition, and the easy half; and
+2. **every piece a player can equip is one the server holds by
+   reference.** This is the hard half and it is not satisfied today:
+   legacy gear has no id, so it *can only* be equipped by describing it.
+   Legacy gear never expires, so waiting does not fix this. It needs the
+   server's stash to be the authority for what a player owns (PR 3) plus
+   a way to name an unrecorded piece the server holds — addressing a
+   stash entry by index, the way the marketplace already does.
+
+Until (2), the describe path is load-bearing, and **this version does not
+close the equip trust hole** — it builds the path that will. A modified
+client can still describe a legacy piece with any stats it likes. What it
+cannot do, since v2.3.2531, is describe a piece and have it come out
+*provable*.
+
 ## Wire surface
 
 | Direction | Field | Note |
 |---|---|---|
 | server → client (`player_state`, `loot_credit`, `quest_reward_stashed`) | `gid`, `prov` on each gear object | echo; no client reads them yet |
 | client → server (join seeds, `stats_update`) | `gid` | **looked up, never trusted**; `prov` is stripped unconditionally |
+| client → server (`stats_update`, v2.3.2532) | `armorRef`, `legsArmorRef` | a bare id, or `null` to unequip; gated client-side on `caps.gearRef` |
 
 A `gid` is not a secret: it is only usable by the player whose ledger
 holds it. No new message type, so nothing is owed to `PRIVILEGED_EVENTS`.
 
-No caps flag, deliberately: nothing client-side gates on this yet, and
-`caps-audit.test.mjs` treats an advertised-but-unread flag as dead weight
-that *looks* like a live gate. PR 2 adds one when there is an op to gate.
+v2.3.2531 shipped no caps flag, deliberately: nothing client-side gated
+on it, and `caps-audit.test.mjs` treats an advertised-but-unread flag as
+dead weight that *looks* like a live gate. v2.3.2532 adds `caps.gearRef`,
+which the client genuinely reads.
 
 ## Deploy-order safety (rule 19/20)
 
@@ -231,7 +288,7 @@ Written here so PR 2 and PR 3 inherit them on purpose.
 
 ## Tests
 
-`server/test/gearprov.test.mjs` (73 assertions). Structured around the
+`server/test/gearprov.test.mjs` (86 assertions). Structured around the
 three ways this family of change has gone wrong here rather than around
 the happy path:
 
@@ -247,6 +304,12 @@ the happy path:
   claimed grade discarded;
 - §4 the inbound **`stats_update`** claim — the path that actually feeds
   the damage maths, and the shape of #643's missed strip;
+- §4b **equipping by name** (v2.3.2532): a ref equips the server's own
+  copy; a ref that names nothing, or names another slot, or is
+  `'__proto__'`, keeps what is worn; a ref does **not** fall through to an
+  object sent alongside it; both lanes obey the same two gates; the
+  describe lane still equips a legacy piece, and an old client sending
+  only objects is still understood;
 - §5 one mint, one piece: three copies of one id give one proof and two
   demotions, the piece **count never falls**, worn beats stashed, and two
   genuinely different pieces with identical names both stay provable;
