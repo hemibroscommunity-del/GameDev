@@ -1,0 +1,295 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { CATEGORIES } from '@/ui/mobile/dash/bagFilterBus.js';
+import { thumbFor, iconFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
+import { storeBrowse, storeMine, storeBuy, storeBid, storeAccept, storeCancel, storeEnabled, storeMyId } from '@/ui/storeApi.js';
+
+/* === StorePanel — buildingPanel === 'store' ===================== v2.3.2476
+ *
+ * The general store: everything other players have put up for sale, at the
+ * price they chose, with a Buy now and a Bid on each one.  The server half
+ * is server/src/store.js (docs/specs/general-store.md).
+ *
+ * THE PANEL COMPUTES NOTHING IT COULD BE WRONG ABOUT.  Every price, name,
+ * stat and category on screen is read out of the worker's answer -- the
+ * same posture shopBus takes with Shopkeeper Bro's prices, and for the same
+ * reason: the number you see is then necessarily the number you will be
+ * charged.  Nothing here credits or debits anything locally either; the
+ * gold and the goods arrive on the authoritative player_state echo.
+ *
+ * The category chips are the BAG's own roster (bagFilterBus.CATEGORIES,
+ * imported rather than re-listed) in the bag's own order, and the `cat` on
+ * each listing is derived by the server with a mirror of the bag's
+ * classify().  So a thing filed under Crafting in your bag is under
+ * Crafting here.
+ *
+ * Phase 1 sells stackables and stash weapons only.  Armour, shields, legs,
+ * cosmetics and amulets are still kept on the player's own device, so the
+ * worker cannot take one into escrow (handoff rule 16) -- the Armor chip is
+ * kept because the bag has it and an item KEY can still read as armour, but
+ * it will be thin until the gear stashes move server-side.
+ *
+ * Lantern Slate: the token block is duplicated per building panel by
+ * convention (see BankPanel's note) so the decomposed files stay
+ * dependency-free. */
+
+const LS = {
+  txt1: '#F4F0E7', txt2: '#B6C1BE', txt3: '#8D9B98', dis: '#667875',
+  panel: '#1E2E34', strip: '#27393F', raised: '#293B41', well: '#111E23',
+  border: 'rgba(229,237,233,.11)', borderStrong: 'rgba(229,237,233,.20)', divider: 'rgba(229,237,233,.11)',
+  brass: '#D8AA58', brassFill: 'rgba(216,170,88,.15)', onBrass: '#172126',
+  good: '#59BF91', bad: '#D95C54',
+};
+const WRAP = { margin: -20, background: LS.panel, borderRadius: 14, overflow: 'hidden', textAlign: 'left' };
+const BODY = { padding: '10px 12px 14px' };
+const MOD = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: LS.txt3, margin: '0 0 6px' };
+
+const WEAPON_GLYPH = { bow: '\u{1F3F9}', staff: '\u{1FA84}', greatsword: '⚔', sword: '⚔' };
+
+function header(gold) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border }}>
+      <img src="/icons/ui/bldg-exchange.webp" alt="" draggable={false}
+        style={{ width: 26, height: 26, objectFit: 'contain', flexShrink: 0 }}
+        onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 }}>General store</div>
+        <div style={{ fontSize: 11, color: LS.txt3, marginTop: 1 }}>What everyone is selling</div>
+      </div>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: LS.brass, fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: 13 }}>
+        <img src="/icons/popups/gold.webp" alt="" draggable={false} style={{ width: 15, height: 15, objectFit: 'contain' }}
+          onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+        {gold}
+      </span>
+    </div>
+  );
+}
+
+function chip(active, label, onTap, key) {
+  return (
+    <button key={key} type="button" onClick={onTap}
+      style={{
+        flex: '0 0 auto', minHeight: 32, padding: '0 10px', fontSize: 11, fontWeight: 700,
+        textTransform: 'uppercase', letterSpacing: '.06em', borderRadius: 9, cursor: 'pointer',
+        fontFamily: 'inherit', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+        border: '1px solid ' + (active ? LS.brass : LS.border),
+        background: active ? LS.brassFill : LS.raised,
+        color: active ? LS.brass : LS.txt2,
+      }}>{label}</button>
+  );
+}
+
+function pill(label, tone, onTap, disabled) {
+  const brass = tone === 'primary';
+  return (
+    <button type="button" onClick={onTap} disabled={disabled}
+      style={{
+        minHeight: 34, padding: '0 10px', fontSize: 11, fontWeight: 700, borderRadius: 9,
+        fontFamily: 'inherit', cursor: disabled ? 'default' : 'pointer',
+        WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+        opacity: disabled ? 0.45 : 1,
+        border: brass ? 'none' : '1px solid ' + LS.borderStrong,
+        background: brass ? LS.brass : 'transparent',
+        color: brass ? LS.onBrass : LS.txt2,
+      }}>{label}</button>
+  );
+}
+
+/* The picture for a listing, from the server's derived fields only. */
+function listingArt(l) {
+  if (l.kind === 'weapon') {
+    const g = WEAPON_GLYPH[(l.disp && l.disp.type) || ''] || '⚔';
+    return <span style={{ fontSize: 22, lineHeight: '38px' }}>{g}</span>;
+  }
+  const key = (l.disp && l.disp.invKey) || '';
+  const src = thumbFor(key);
+  if (src) return <img src={src} alt="" draggable={false} style={{ width: 30, height: 30, objectFit: 'contain' }} />;
+  return <span style={{ fontSize: 20, lineHeight: '38px' }}>{iconFor(key)}</span>;
+}
+
+function prettyName(l) {
+  const n = (l.disp && l.disp.name) || 'Item';
+  if (l.kind === 'weapon') return n;
+  return n.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function subtitle(l) {
+  if (l.kind === 'weapon') {
+    const d = l.disp || {};
+    const bits = [];
+    if (d.quality) bits.push(String(d.quality));
+    if (d.tier) bits.push(String(d.tier));
+    if (d.element1) bits.push(String(d.element1));
+    if (d.element2) bits.push(String(d.element2));
+    if (d.hardness) bits.push('H' + d.hardness);
+    return bits.join(' · ') || 'Weapon';
+  }
+  return (l.qty > 1 ? l.qty + ' of them' : 'One') + ' · ' + (l.cat || 'item');
+}
+
+export function StorePanel(props) {
+  const rpgState = props.rpgState || {};
+  const [tab, setTab] = useState('shelf');
+  const [cat, setCat] = useState('all');
+  const [rows, setRows] = useState([]);
+  const [mine, setMine] = useState([]);
+  const [bidding, setBidding] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState('');
+  const [noteOk, setNoteOk] = useState(true);
+  const [bidFor, setBidFor] = useState(null);     /* listing id being bid on */
+  const [bidText, setBidText] = useState('');
+  const myId = storeMyId();
+  const enabled = storeEnabled();
+
+  const refresh = useCallback(async (which) => {
+    if (!enabled) return;
+    if (which !== 'mine') {
+      const r = await storeBrowse(cat, null, 30);
+      if (r && r.ok) setRows(r.listings || []);
+      else setRows([]);
+    }
+    if (which !== 'shelf') {
+      const m = await storeMine();
+      if (m && m.ok) { setMine(m.listings || []); setBidding(m.bidding || []); }
+    }
+  }, [cat, enabled]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const say = (text, ok) => { setNote(text || ''); setNoteOk(ok !== false); };
+
+  /* One shape for every action: ask, show the worker's own sentence back,
+     then re-read both shelves.  Never a local credit -- the echo carries
+     the gold and the goods. */
+  const act = async (fn, okText) => {
+    if (busy) return;
+    setBusy(true);
+    const r = await fn();
+    setBusy(false);
+    if (r && r.ok) { say(okText, true); setBidFor(null); setBidText(''); }
+    else say((r && r.error) || 'The store said no', false);
+    refresh();
+  };
+
+  if (!enabled) {
+    return (
+      <div style={WRAP}>
+        {header(Math.floor(rpgState.coins || 0))}
+        <div style={{ ...BODY, fontSize: 12, color: LS.txt2, lineHeight: 1.5 }}>
+          The store is not open on this world yet. It arrives with the next
+          server update — everything else in town keeps working.
+        </div>
+      </div>
+    );
+  }
+
+  const row = (l, mineView) => {
+    const isMine = l.sellerId === myId;
+    const top = l.topBid;
+    const minBid = (top ? top.amount + 1 : 1);
+    return (
+      <div key={l.id} style={{
+        display: 'flex', alignItems: 'center', gap: 9, padding: '8px 9px',
+        background: LS.raised, border: '1px solid ' + LS.border, borderRadius: 10, marginBottom: 6,
+      }}>
+        <div style={{
+          width: 38, height: 38, flex: '0 0 auto', borderRadius: 8, background: LS.well,
+          border: '1px solid ' + LS.divider, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>{listingArt(l)}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: LS.txt1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {prettyName(l)}{l.kind !== 'weapon' && l.qty > 1 ? ' ×' + l.qty : ''}
+          </div>
+          <div style={{ fontSize: 11, color: LS.txt3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtitle(l)}</div>
+          <div style={{ fontSize: 11, color: LS.txt3, marginTop: 2 }}>
+            {mineView ? 'Yours' : 'From ' + (l.sellerName || 'someone')}
+            {top ? ' · top bid ' + top.amount + 'g (' + (top.name || 'someone') + ')' : ' · no bids'}
+          </div>
+        </div>
+        <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: LS.brass, fontVariantNumeric: 'tabular-nums' }}>{l.askPrice}g</span>
+          {mineView
+            ? (
+              <div style={{ display: 'flex', gap: 5 }}>
+                {top ? pill('Take ' + top.amount + 'g', 'primary', () => act(() => storeAccept(l.id), 'Sold for ' + top.amount + ' gold'), busy) : null}
+                {pill('Take down', 'quiet', () => act(() => storeCancel(l.id), 'Back in your bag'), busy)}
+              </div>
+            )
+            : isMine
+              ? <span style={{ fontSize: 11, color: LS.txt3 }}>Yours</span>
+              : (
+                <div style={{ display: 'flex', gap: 5 }}>
+                  {pill('Buy', 'primary', () => act(() => storeBuy(l.id), 'Bought for ' + l.askPrice + ' gold'), busy)}
+                  {pill('Bid', 'quiet', () => { setBidFor(bidFor === l.id ? null : l.id); setBidText(String(minBid)); }, busy)}
+                </div>
+              )}
+          {bidFor === l.id && !mineView && !isMine && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+              <input type="number" inputMode="numeric" value={bidText}
+                onChange={(e) => setBidText(e.target.value)}
+                style={{
+                  width: 72, minHeight: 34, textAlign: 'right', padding: '0 6px', fontSize: 12, fontWeight: 700,
+                  fontFamily: 'inherit', color: LS.txt1, background: LS.well,
+                  border: '1px solid ' + LS.borderStrong, borderRadius: 8,
+                }} />
+              {pill('Place', 'primary', () => act(() => storeBid(l.id, Math.floor(Number(bidText) || 0)), 'Bid placed'), busy)}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const shelf = rows.filter((l) => cat === 'all' || l.cat === cat);
+
+  return (
+    <div style={WRAP}>
+      {header(Math.floor(rpgState.coins || 0))}
+      <div style={BODY}>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+          {chip(tab === 'shelf', 'Shelf', () => { setTab('shelf'); refresh('shelf'); }, 't-shelf')}
+          {chip(tab === 'mine', 'Yours', () => { setTab('mine'); refresh('mine'); }, 't-mine')}
+        </div>
+
+        {tab === 'shelf' && (
+          <>
+            <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 6, marginBottom: 6 }}>
+              {CATEGORIES.map((c) => chip(cat === c.id, c.label, () => setCat(c.id), c.id))}
+            </div>
+            {shelf.length === 0
+              ? <div style={{ fontSize: 12, color: LS.txt3, padding: '10px 2px' }}>
+                  Nothing here yet. Open your bag, tap something and choose Sell to be the first.
+                </div>
+              : shelf.map((l) => row(l, false))}
+          </>
+        )}
+
+        {tab === 'mine' && (
+          <>
+            <div style={MOD}>Up for sale</div>
+            {mine.length === 0
+              ? <div style={{ fontSize: 12, color: LS.txt3, padding: '2px 2px 10px' }}>Nothing of yours is listed.</div>
+              : mine.map((l) => row(l, true))}
+            <div style={{ ...MOD, marginTop: 10 }}>Your bids</div>
+            {bidding.length === 0
+              ? <div style={{ fontSize: 12, color: LS.txt3, padding: '2px 2px' }}>
+                  You have no bids standing. Your gold is only held while your bid is the top one.
+                </div>
+              : bidding.map((l) => row(l, false))}
+          </>
+        )}
+
+        {note && (
+          <div style={{
+            marginTop: 8, fontSize: 12, fontWeight: 600, textAlign: 'center',
+            color: noteOk ? LS.good : LS.bad,
+          }}>{note}</div>
+        )}
+        <div style={{ marginTop: 10, fontSize: 11, color: LS.txt3, lineHeight: 1.45 }}>
+          Listings last 24 hours. If nobody buys, it comes back to you — and any
+          bid goes back to whoever made it. Armour and amulets can&apos;t be listed yet.
+        </div>
+      </div>
+    </div>
+  );
+}

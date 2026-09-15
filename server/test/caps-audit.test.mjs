@@ -50,13 +50,6 @@ function check(name, cond, detail) {
  * real client gate must be deleted (checked below). */
 const CAPS_ALLOWLIST = new Map([
   ['httpAuth', 'handshake negotiation field, not a feature gate — the client SENDS httpAuth:true in join (wsClient.js) rather than reading it from caps'],
-  /* v2.3.2475: the general store ships server-first, deliberately.  The
-     worker deploys on merge and the store's HTTP surface has to EXIST before
-     any client can be pointed at it; the Sell button and the Store panel that
-     read this flag land in the next PR of the same lane.  Check 5 below is
-     what makes this self-cleaning: the moment the client gate lands, this
-     entry FAILS the suite until it is deleted. */
-  ['store', 'advertised ahead of its client — the store panel and its _serverCaps.store gate land in the follow-up client PR (general-store.md); delete this entry with that PR'],
   /* v2.3.1660: the prog3 entry added at v2.3.1659 is deleted — the
      client gate shipped (wsClient setProg3Enabled), so the audit
      enforces it for real now. */
