@@ -1,4 +1,4 @@
-# Gear provenance — the server records what it mints (v2.3.2534–2536, repaired v2.3.2537–2538)
+# Gear provenance — the server records what it mints (v2.3.2534–2536, repaired v2.3.2537–2539)
 
 Spec + attach points for `server/src/gearprov.js`. Phase 1 of the gear
 provenance lane (PR 1 of 3: **record at mint** → equip names a recorded
@@ -303,7 +303,7 @@ owner's "legacy gear is usable, not sellable" decision:
 | `not_held` | we minted it, but the record is no longer in this player's ledger: sold, escrowed into a live listing, or aged out past the cap |
 | `no_player` | no session, so no loaded ledger |
 
-### The gate asks two questions, not one (v2.3.2538)
+### The gate asks two questions, not one (v2.3.2539)
 
 It first asked only *"is there a row?"*, treating a row as proof of
 **possession**. A row records a **mint**. The review of #650 ran both

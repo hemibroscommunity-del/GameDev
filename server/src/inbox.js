@@ -158,7 +158,7 @@ export const inboxMethods = {
   async _creditPlayer(playerId, entry) {
     if (await this._opSeen(entry.opId)) return 'dup';
     await this._opStamp(entry.opId);
-    /* ═══ v2.3.2538: THE ROW ONLY LANDS IF THE PIECE DOES ═══
+    /* ═══ v2.3.2539: THE ROW ONLY LANDS IF THE PIECE DOES ═══
        v2.3.2536 granted the provenance row FIRST and unconditionally, on
        the argument that an offline recipient has no output gate holding a
        message for them.  That argument is right about durability and wrong
@@ -191,7 +191,7 @@ export const inboxMethods = {
     return 'inboxed';
   },
 
-  /* v2.3.2538: would a gear credit fit right now?  Mirrors the capacity
+  /* v2.3.2539: would a gear credit fit right now?  Mirrors the capacity
      test in _applyCreditToPs's gear branch so the caller can decide whether
      to grant the row BEFORE applying -- the two must agree, which is why
      this reads the same cap from the same place rather than restating it. */
@@ -281,7 +281,7 @@ export const inboxMethods = {
          If the row write failed, the piece arrives legacy -- usable,
          unsellable -- instead of carrying a mark nothing backs.
 
-         v2.3.2538: and when the row DOES verify, the piece is rebuilt from
+         v2.3.2539: and when the row DOES verify, the piece is rebuilt from
          the row's own stored copy rather than from `payload.piece`.  Rule
          16's shape is "the server's own copy by reference, never the wire
          blob", and this funnel is the one every future producer will reach
@@ -359,7 +359,7 @@ export const inboxMethods = {
       const delivered = [];
       const remainder = [];
       for (const entry of box) {
-        /* v2.3.2538: a parked gear entry carries its row, and the row is
+        /* v2.3.2539: a parked gear entry carries its row, and the row is
            granted HERE -- at the moment the piece is really applied -- not
            when the credit was first attempted.  Granting is idempotent, so
            a retry converges on one row. */

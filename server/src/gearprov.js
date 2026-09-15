@@ -580,7 +580,7 @@ export const gearProvMethods = {
                       the same answer as 'legacy'
        'no_player' -- no session (the ledger is not loaded)
 
-     ═══ v2.3.2538: THE GATE ASKS TWO QUESTIONS, NOT ONE ═══
+     ═══ v2.3.2539: THE GATE ASKS TWO QUESTIONS, NOT ONE ═══
      It used to ask only "is there a row?", and treated the row as proof of
      POSSESSION.  It is not: a row records a MINT.  The review of #650 ran
      both consequences against a real GameRoom rather than reasoning about
@@ -701,7 +701,7 @@ export const gearProvMethods = {
       const at = list.findIndex((g) => g && g.gid === verdict.gid);
       if (at >= 0) {
         list.splice(at, 1);
-        /* v2.3.2538: and PERSIST it.  The splice used to live only in
+        /* v2.3.2539: and PERSIST it.  The splice used to live only in
            memory until some unrelated path happened to save, so a room
            restart in between left the stored blob still holding the piece
            while the ledger had lost its row -- it reloaded as `legacy`.

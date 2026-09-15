@@ -662,7 +662,7 @@ let amuletGid = null;
     payload: { field: 'armorStash', piece: taken.piece, row: taken.row }, note: 'bought',
   });
   check('an offline buyer\'s piece parks in the mail', res === 'inboxed', res);
-  /* ═══ v2.3.2538: THE RECORD DOES NOT LAND UNTIL THE PIECE DOES ═══
+  /* ═══ v2.3.2539: THE RECORD DOES NOT LAND UNTIL THE PIECE DOES ═══
      This assertion used to say the opposite, and asserting it was how the
      bug got written down as a feature.  v2.3.2536 granted the row up front
      so an offline buyer's proof was durable -- but `_applyCreditToPs` also
@@ -731,7 +731,7 @@ let amuletGid = null;
     (psB.armorStash || []).length);
 
   /* ════════════════════════════════════════════════════════════════
-     v2.3.2538 -- THE GATE ASKS WHETHER YOU HOLD IT, NOT ONLY WHETHER WE
+     v2.3.2539 -- THE GATE ASKS WHETHER YOU HOLD IT, NOT ONLY WHETHER WE
      MINTED IT.  Both cases below were found by the review of #650 and
      both print gear once #643 calls this.
      ════════════════════════════════════════════════════════════════ */
