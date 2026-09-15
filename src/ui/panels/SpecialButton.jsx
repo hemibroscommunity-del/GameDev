@@ -2,7 +2,7 @@ import React from 'react';
 import { TARGET_PERIMETER_PX, getActiveWeapon, specialManaCost } from '@/data/index.js';
 import { specialAttack } from '@/game/playerActions.js';
 import { BOW_SPECIAL_QUEUE_MS } from '@/game/combatHelpers.js'; /* v2.3.2543: the queued special's own expiry, so the button and the fire site cannot disagree about how long a request stands */
-import { ctlBottom, leftCluster, LCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2562: back to the LEFT disc, in the shared diagonal cluster */
+import { ctlBottom, rightCluster, RCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2574: back to the RIGHT disc, in the shared diagonal cluster above it */
 
 /* ═══ v2.3.2542: A SPECIAL ATTACK BUTTON, ORBITING THE ATTACK DISC ═══
  *
@@ -20,6 +20,10 @@ import { ctlBottom, leftCluster, LCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'
  * got.  A labelled button cannot be misread and shows its own cooldown.
  *
  * ═══ v2.3.2562: AND BACK TO THE LEFT AGAIN, WITH WHIRLWIND BESIDE IT ═══
+ * (SUPERSEDED by v2.3.2574 -- the owner corrected this one message later and
+ * the button is on the RIGHT disc now.  Kept because the hazard list it works
+ * out is the one that applies whenever anything sits over the movement half,
+ * and because the pair of them is the record of how this was settled.)
  * Owner, after playing the v2.3.2542 build and sending a screenshot: "I'd like
  * the whirlwind and special attack buttons diagonally above the left joystick
  * (directionally above but diagonal to provide enough space between them for
@@ -70,14 +74,27 @@ import { ctlBottom, leftCluster, LCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'
  * two lines and the failure it prevents is silent.
  *
  * ═══ WHERE ═══
- * v2.3.2562: slot 0 of the LEFT cluster -- the lower-left of the diagonal pair
- * above the movement disc, with Whirlwind up and to its right.  Measured
- * through leftCluster (ShieldButton.jsx) rather than with its own numbers, for
- * the reason ctlColumn existed: a control that writes its own layout rule
- * drifts from its neighbour, and the owner has paid for that twice
- * (v2.3.2254's button behind the dashboard, v2.3.2327's bash too far away).
+ * v2.3.2574: slot 0 of the RIGHT cluster -- the lower-RIGHT of the diagonal
+ * pair above the ATTACK disc, with Whirlwind up and to its left.  The owner,
+ * correcting the message v2.3.2562 was built from: "Spec and swirl need to be
+ * on the right joystick.  It was put on the left."
  *
- * ITS SLOT DOES NOT DEPEND ON WHIRLWIND BEING DRAWN.  Whirlwind disappears out
+ * So this button has now been on both sides twice (right at v2.3.2542, left at
+ * v2.3.2562, right again here), which is worth stating plainly rather than
+ * hiding: that is what it costs to settle a placement by playing it, and the
+ * only reason it stays cheap is that the anchor is one shared function.  The
+ * header's LEFT-side hazards above are kept verbatim for the same reason -- the
+ * next move may need them again.
+ *
+ * Measured through rightCluster (ShieldButton.jsx) rather than with its own
+ * numbers, for the reason ctlColumn existed: a control that writes its own
+ * layout rule drifts from its neighbour, and the owner has paid for that three
+ * times now (v2.3.2254's button behind the dashboard, v2.3.2327's bash too far
+ * away, and the Element Burst button's hand-rolled anchor sitting 8px from
+ * Shield Bash undetected until v2.3.2574 measured it).
+ *
+ * ITS SLOT DOES NOT DEPEND ON WHIRLWIND BEING DRAWN (and v2.3.2574 did not
+ * change that -- both moved, neither learned about the other).  Whirlwind disappears out
  * of combat as of v2.3.2561, and slots are keyed by control, so this button
  * holds its pixels whether or not its neighbour is on screen.  A control that
  * moves when its neighbour hides is worse than either problem alone, and
@@ -180,9 +197,9 @@ export function SpecialButton(props) {
   }
   if (!specialButtonLive(S, TARGET_PERIMETER_PX)) return null;
 
-  /* v2.3.2562: the shared LEFT cluster decides the size, the left edge and the
-     slot height -- one rule for this button and Whirlwind beside it. */
-  var col = leftCluster(isLandscape);
+  /* v2.3.2574: the shared RIGHT cluster decides the size, the right edge and
+     the slot height -- one rule for this button and Whirlwind beside it. */
+  var col = rightCluster(isLandscape);
   var size = col.size;
 
   var cdLeft = Math.max(0, SPECIAL_CD_MS - (Date.now() - (S._lastSwipe || 0)));
@@ -219,10 +236,10 @@ export function SpecialButton(props) {
     onContextMenu: function (e) { e.preventDefault(); },
     style: {
       position: 'fixed',
-      left: col.leftPx(LCTL_SLOT.special),
-      bottom: ctlBottom(col.bottomPx(LCTL_SLOT.special)),
+      right: col.rightPx(RCTL_SLOT.special),
+      bottom: ctlBottom(col.bottomPx(RCTL_SLOT.special)),
       width: size, height: size, borderRadius: '50%',
-      /* Above [data-joyzone="L"] (z6) and the movement disc's corner box (z30),
+      /* Above [data-joyzone="R"] (z6) and the attack disc's corner box (z30),
          the same rung ShieldButton and AbilityButtons sit on. */
       zIndex: 31,
       touchAction: 'none',
