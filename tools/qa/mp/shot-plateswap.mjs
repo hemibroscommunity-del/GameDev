@@ -102,6 +102,13 @@ async function main() {
       const runFight = async (swingMs, totalMs) => {
         S.lockedTarget = null;
         m._hitByMeAt = 0;
+        /* v2.3.2573: and the LOCK latch, or the previous case's 3 s hold is
+           still running when this one starts and the first case measured
+           reports a swap it did not cause (TRAPS §38 -- a sub-test injecting
+           over the previous one's live state).  Caught exactly that way: the
+           900ms case came back "bar -> plate" on a run where the tapping case
+           had just held the band. */
+        m._bandEngagedAt = 0;
         m.curHp = m.maxHp;
         await sleep(1200);                    /* settle back to the plate */
         let transitions = 0, last = null, frames = 0;
@@ -134,16 +141,74 @@ async function main() {
         while (!stop) await sleep(120);
         return { swingMs, totalMs, frames, transitions, ended: last, seq };
       };
+      /* ═══ v2.3.2573: THE HALF runFight DOES NOT REACH ═══
+         `_bandBar` is `_bandLocked || _bandHitByMe`, and everything above only
+         ever moves `_hitByMeAt` -- so the suite measured one of its two inputs
+         and reported "no strobe" for the whole band.  `_bandLocked` is
+         `engagedStance(S)`, which is `autoAttack || the lock was a tap`, and
+         that flips the instant a thumb goes down or comes up.
+         This is the real situation it models: you walk up to something, your
+         thumb is working the Attack button, and NOTHING IS LANDING yet --
+         auto-lock grabs anything inside 220px but melee reach is ~72px, so
+         there is a real window of swinging at air before the first hit starts
+         the 3s hold.  Blocked and dodged swings do the same. */
+      const runTapping = async (tapMs, totalMs) => {
+        S.lockedTarget = null;
+        m._hitByMeAt = 0;
+        m._bandEngagedAt = 0;
+        m.curHp = m.maxHp;
+        await sleep(1200);
+        let transitions = 0, last = null, frames = 0;
+        const seq = [];
+        const started = performance.now();
+        let nextTap = started, down = false, stop = false;
+        const tick = () => {
+          const now = performance.now();
+          if (now - started < totalMs && now >= nextTap) {
+            down = !down;
+            /* thumb down = a tap lock on this monster; thumb up = released.
+               No hit ever lands: _hitByMeAt stays 0 throughout. */
+            S.lockedTarget = down
+              ? { type: 'monster', id: m.id, ref: m, src: 'tap', at: Date.now() }
+              : null;
+            nextTap = now + tapMs;
+          }
+          const p = ((window.__btMonsterPlates || {}).plates || [])
+            .find((x) => x.id === m.id);
+          if (p) {
+            frames++;
+            const occ = (p.hpBar && p.hpBar.vis && p.hpBar.alpha > 0) ? 'bar'
+              : (p.hidden ? 'none' : 'plate');
+            if (last !== null && occ !== last) { transitions++; seq.push(occ); }
+            if (last === null) seq.push(occ);
+            last = occ;
+          }
+          if (now - started < totalMs + 3000) requestAnimationFrame(tick);
+          else stop = true;
+        };
+        requestAnimationFrame(tick);
+        while (!stop) await sleep(120);
+        S.lockedTarget = null;
+        return { tapMs, totalMs, frames, transitions, ended: last, seq, tapping: true };
+      };
+
       const out = [];
       /* a slow trade, a normal one, and a mashing-the-button one */
       out.push(await runFight(900, 9000));
       out.push(await runFight(450, 9000));
       out.push(await runFight(160, 9000));
+      /* and the same thumb, with nothing connecting */
+      out.push(await runTapping(600, 9000));
       return out;
     });
 
     console.log('\n── band swaps per fight (2 is the floor: one in, one out) ──');
     for (const f of flicker) {
+      if (f.tapping) {
+        console.log(`  TAPPING attack every ${f.tapMs}ms for ${f.totalMs / 1000}s with NO hits landing `
+          + `(${f.frames} frames sampled): ${f.transitions} transition(s): ${f.seq.join(' -> ')}`);
+        continue;
+      }
       const swingsLanded = Math.ceil(f.totalMs / f.swingMs);
       console.log(`  swing every ${String(f.swingMs).padStart(4)}ms over ${f.totalMs / 1000}s `
         + `(~${swingsLanded} hits, ${f.frames} frames sampled): `

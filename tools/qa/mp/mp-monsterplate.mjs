@@ -542,10 +542,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S.lockedTarget = { type: 'monster', id: m.id, ref: m, src: 'tap', at: Date.now() };
     await sleep(400);
     const engagedNow = read();
+    /* ═══ v2.3.2573: LETTING GO DOES NOT SNAP THE PLATE BACK ═══
+       The lock half used to have no hold, so releasing the button restored the
+       plate on the very next frame -- which is fine once, and a strobe when a
+       thumb is tapping.  It now carries the same PLATE_ENGAGED_MS window the
+       hit half does, so there are TWO facts to check where there was one:
+       shortly after release the plate is still down (that is the anti-strobe),
+       and once the window expires it comes back (that is the original claim,
+       unchanged in substance). */
     S.lockedTarget = null;
     await sleep(400);
+    const justReleased = read();
+    await sleep(3200);                  /* > PLATE_ENGAGED_MS */
     const released = read();
-    /* The other clause: a hit YOU landed keeps it down for three seconds. */
+    /* The other clause: a hit YOU landed keeps it down for three seconds.
+       The lock latch is cleared first so this measures the HIT window alone --
+       otherwise the tap above is still holding the band and the two clauses
+       cannot be told apart. */
+    m._bandEngagedAt = 0;
     m._hitByMeAt = Date.now();
     await sleep(400);
     const justHit = read();
@@ -553,6 +567,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await sleep(400);
     const longAgo = read();
     m._hitByMeAt = 0;
+    m._bandEngagedAt = 0;
     /* And the case the old rule left EMPTY: engaged with the monster still at
        full health.  The plate hid (engaged) and the bar hid (undamaged), so
        there was nothing at all over the monster you were aiming at. */
@@ -561,9 +576,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await sleep(400);
     const engagedFull = read();
     S.lockedTarget = null;
+    m._bandEngagedAt = 0;
     m.curHp = Math.round(m.maxHp * 0.5);
     await sleep(400);
-    return { hurtAtRest, lockedOnly, engagedNow, released, justHit, longAgo, engagedFull };
+
+    /* ═══ v2.3.2573: THE STROBE THE SUITE USED TO MISS ═══
+       Tapping the Attack button at a monster you have NOT hit yet -- the real
+       window between auto-lock (220px) and melee reach (~72px).  Before the
+       hold, every tap flipped the band; shot-plateswap measured 13 transitions
+       in 9 s.  Counted here as well as there so a regression fails the suite
+       rather than only showing up in a tool someone has to remember to run. */
+    m._hitByMeAt = 0;
+    m._bandEngagedAt = 0;
+    m.curHp = Math.round(m.maxHp * 0.5);
+    await sleep(700);
+    let taps = 0, lastOcc = null;
+    for (let i = 0; i < 8; i++) {
+      S.lockedTarget = (i % 2 === 0)
+        ? { type: 'monster', id: m.id, ref: m, src: 'tap', at: Date.now() }
+        : null;
+      await sleep(300);
+      const p = ((window.__btMonsterPlates || {}).plates || []).find((x) => x.badge === '42');
+      const occ = p ? (p.hidden ? 'bar' : 'plate') : null;
+      if (occ && lastOcc && occ !== lastOcc) taps++;
+      if (occ) lastOcc = occ;
+    }
+    S.lockedTarget = null;
+    m._bandEngagedAt = 0;
+    return { hurtAtRest, lockedOnly, engagedNow, justReleased, released,
+      justHit, longAgo, engagedFull, tapSwaps: taps };
   });
   rec.ok('the engagement sub-test ran (guard)', !!(engaged && engaged.lockedOnly), engaged);
   if (engaged && engaged.lockedOnly) {
@@ -575,7 +616,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...while its HP bar stays up, which is what you need mid-swing',
       !!(engaged.engagedNow.hpBar && engaged.engagedNow.hpBar.vis
          && engaged.engagedNow.hpBar.alpha > 0), engaged.engagedNow.hpBar);
-    rec.ok('...and gets it back when you let go',
+    rec.ok('...and does NOT snap back the instant you let go (v2.3.2573: the anti-strobe)',
+      engaged.justReleased.hidden === true, engaged.justReleased);
+    rec.ok('...but gets it back once the engage window expires',
       engaged.released.hidden === false, engaged.released);
     rec.ok('a hit you landed hides it for three seconds',
       engaged.justHit.hidden === true, engaged.justHit);
@@ -611,6 +654,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* Both occupants on one line -- the same coincidence asserted on the
        resting plates above, re-checked here against the bar the fight put up,
        because that is the pairing the owner actually sees swap. */
+    /* The measurement that would have caught v2.3.2573 before review did. */
+    rec.ok(`tapping attack with nothing landing does not strobe the band `
+      + `(${engaged.tapSwaps} swap(s) across 8 taps; the hold means at most 1)`,
+      engaged.tapSwaps <= 1, { tapSwaps: engaged.tapSwaps });
     rec.ok('...and whichever is up sits on the same line as the other',
       engaged.engagedNow.bandY != null && engaged.hurtAtRest.plateMidY != null
       && Math.abs(engaged.hurtAtRest.plateMidY - engaged.engagedNow.bandY) <= 1,

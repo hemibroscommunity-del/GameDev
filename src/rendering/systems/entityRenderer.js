@@ -4916,6 +4916,23 @@ const PLATE_INK = 0x0B1F2D;          /* sampled: (11,31,45); see PLATE_FILL_ALPH
      2. THE ATTACKING-YOU FILL is a warning and is DELIBERATELY EXEMPT -- see
         the alarm block below.  Softening the resting plate makes it louder by
         comparison, which is the right direction for a warning.
+        ── v2.3.2571: THE HP BAR DID NOT SUPERSEDE IT, AND HERE IS WHY ──
+        When the plate became the thing that swaps out for an HP bar, the
+        obvious question was whether an appearing bar is simply a louder
+        version of this warning and retires it.  It is not, and the two never
+        contend for one moment: the plate is drawn if and only if `_bandBar`
+        is false, and the alarm is a STATE OF THE PLATE, so a red plate and an
+        HP bar can never be up together.  What you get is a sequence -- a
+        monster you are NOT fighting walks up and starts on you, and its plate
+        goes red; you hit back, and the red plate becomes its HP bar.
+        They answer different questions, which is why both survive: the alarm
+        says WHICH THING is hitting you (it carries the name; a bar does not),
+        and the bar says HOW MUCH IS LEFT of the thing you are already
+        swinging at.  Retiring the alarm would have cost the name at exactly
+        the moment a player needs to identify what jumped them.
+        The alarm was EXTENDED rather than merely spared: PLATE_ALARM_LEVEL_FILL
+        was added because the band tints below measure 1.25-3.27:1 on the red
+        fill and would have been unreadable on it.
      3. THE NAME must stay readable at ~15 CSS px over a busy scene.  Softening
         contrast has a floor; past it one complaint is swapped for another.
         Measured worst case at the values below: the name holds 8.4:1 with the
@@ -4923,6 +4940,21 @@ const PLATE_INK = 0x0B1F2D;          /* sampled: (11,31,45); see PLATE_FILL_ALPH
         AA body-text floor.  That headroom is real and it is the budget any
         further nudge spends -- PLATE_FILL_ALPHA can go a good deal lower
         before the name is in trouble.
+        ── v2.3.2571: THERE IS NOW A SECOND, MUCH TIGHTER BUDGET ──
+        READ THIS BEFORE LOWERING PLATE_FILL_ALPHA AGAIN.  The level is plain
+        band-coloured digits at ~13 CSS px since the white disc was dropped,
+        and those digits sit at 4.52:1 in their worst case (`high` over pure
+        white) against the same 4.5 floor.  That is TWO HUNDREDTHS of a point,
+        not the name's four-and-a-half.  The tints in PLATE_LEVEL_INK were
+        already lifted toward white exactly as far as the floor demanded, so
+        there is nothing left to give on that side either.
+        So the sentence above -- "PLATE_FILL_ALPHA can go a good deal lower"
+        -- is now FALSE as a general statement: it is true of the name and
+        false of the level.  A softer plate from here needs PLATE_LEVEL_INK
+        lifted further in the same change, and mp-monsterplate will fail the
+        moment it is not (it asserts the 4.5 floor across every band and every
+        ground, which is what makes this budget enforced rather than merely
+        written down).
    ──────────────────────────────────────────────────────────────────────── */
 
 /* THE BIGGEST LEVER, AND THE ONE TO REACH FOR FIRST.  How opaque the navy
@@ -8517,17 +8549,64 @@ export class EntityRenderer {
       const _bandLocked = !!(S.lockedTarget && S.lockedTarget.type === 'monster'
         && S.lockedTarget.ref === m && engagedStance(S));
       const _bandHitByMe = !!(m._hitByMeAt && now - m._hitByMeAt < PLATE_ENGAGED_MS);
-      const _bandBar = _bandLocked || _bandHitByMe;
+      /* ═══ v2.3.2573: THE LOCK HALF NEEDS THE HOLD TOO ═══
+         `_bandHitByMe` carries a 3 s window and `_bandLocked` carried NONE --
+         engagedStance(S) is `autoAttack || the lock was a tap`, which flips
+         the frame a thumb goes down and the frame it comes up.  So the band
+         was steady through a fight (every landed hit re-arms the window) and
+         STROBED in the moment before one: you walk up, your thumb is working
+         the Attack button, and nothing is connecting yet -- auto-lock grabs
+         anything inside 220 px while melee reach is ~72 px, so there is a real
+         second or two of swinging at air, and blocked and dodged swings do the
+         same thing.
+
+         MEASURED, because the first version of shot-plateswap only ever moved
+         `_hitByMeAt` and therefore reported "no strobe" for a band whose other
+         input it never touched: tapping attack every 600 ms for 9 s with no
+         hits landing gave 13 transitions before this fix and 2 after.  The
+         tool now drives both halves (`runTapping`) so this cannot go back to
+         being measured on one input.
+
+         This flicker is OLDER than v2.3.2571 -- the same instant flip made the
+         plate blink off and on before the plate and the bar shared a spot --
+         but it was a name blinking off to nothing, and it is now a full red HP
+         bar blinking in and out, which is a far louder thing to do in exactly
+         the band the owner asked us to calm.  So it is fixed here rather than
+         left as pre-existing.
+
+         The hold is the SAME PLATE_ENGAGED_MS the hit half uses: "am I in a
+         fight with this thing" gets one definition, not two that can drift.
+         Latched on the monster next to `_hitByMeAt`, which is where the other
+         half of this answer already lives. */
+      if (_bandLocked) m._bandEngagedAt = now;
+      const _bandEngagedRecently = !!(m._bandEngagedAt
+        && now - m._bandEngagedAt < PLATE_ENGAGED_MS);
+      const _bandBar = _bandHitByMe || _bandEngagedRecently;
       if (!_bandBar) {
         display._hpHeart.alpha = 0;
         display._hpText.alpha = 0;
         if (display._hpBarFill) display._hpBarFill.alpha = 0;
         if (display._hpBarFx) { display._hpBarFx.clear(); display._hpBarFx.alpha = 0; }
+        /* v2.3.2573: parked, not merely transparent -- the same argument the
+           player's plate makes for itself a few hundred lines down.  An
+           alpha-0 Pixi node is still measured, still uploaded and still walked
+           every frame, and at rest that is now FOUR of them per monster on
+           screen rather than the occasional hurt one.  The alphas above are
+           kept as well as the flag: `hpBar.alpha` is what the QA probe reports
+           and what mp-monsterplate's "no bar at rest" assertion reads. */
+        if (display._hpHeart.visible) display._hpHeart.visible = false;
+        if (display._hpText.visible) display._hpText.visible = false;
+        if (display._hpBarFill && display._hpBarFill.visible) display._hpBarFill.visible = false;
+        if (display._hpBarFx && display._hpBarFx.visible) display._hpBarFx.visible = false;
       } else {
         display._hpHeart.alpha = 1;
         display._hpText.alpha = 1;
         if (display._hpBarFill) display._hpBarFill.alpha = 1;
         if (display._hpBarFx) display._hpBarFx.alpha = 1;
+        if (!display._hpHeart.visible) display._hpHeart.visible = true;
+        if (!display._hpText.visible) display._hpText.visible = true;
+        if (display._hpBarFill && !display._hpBarFill.visible) display._hpBarFill.visible = true;
+        if (display._hpBarFx && !display._hpBarFx.visible) display._hpBarFx.visible = true;
         /* v2.3.2520: the display scale (§5.8 D1).  CALL SITE ONLY -- the
            plate's layout, geometry and colours below are untouched and
            belong to the nameplate work landing in parallel.  toDisplayHp is
@@ -8665,7 +8744,14 @@ export class EntityRenderer {
           visible: !!(_pillNode && _pillNode.visible),
           name: _pui && _pui._pillName ? _pui._pillName.text : null,
           level: _pui && _pui._pillLevel ? _pui._pillLevel.text : null,
-          levelFill: _pui && _pui._pillLevel ? String(_pui._pillLevel.style.fill) : null,
+          /* v2.3.2573: this used to read _pillLevel -- the hidden two-line "LV n"
+             node the capsule replaced at v2.3.2513 -- so it reported the old
+             gold #D8AA58 while the digits on screen were the band tint.  Same
+             shape of stale probe as the `badgeFill` v2.3.2571 deleted, and
+             left behind in the same sweep; TRAPS §33.  Pointed at the node
+             that actually draws the level, so the two consumers (mp-moncue's
+             alarm payload, mp-monsterplate's size read) describe the screen. */
+          levelFill: _pui && _pui._pillLvlNum ? String(_pui._pillLvlNum.style.fill) : null,
           /* ═══ v2.3.2513: WHAT THE MOCKUP'S PLATE ACTUALLY IS ═══
              The level lives in a white badge now, and the difficulty lives in
              the BORDER -- neither of which the two fields above can see (a
@@ -8708,7 +8794,7 @@ export class EntityRenderer {
              measurement rather than a diff review. Read-only, like every other
              field on this probe. */
           nameSize: _pui && _pui._pillName ? Number(_pui._pillName.style.fontSize) : null,
-          lvlSize: _pui && _pui._pillLevel ? Number(_pui._pillLevel.style.fontSize) : null,
+          lvlSize: _pui && _pui._pillLvlNum ? Number(_pui._pillLvlNum.style.fontSize) : null,
           /* v2.3.2513: the size a PLAYER sees, which after D5 is the only size
              worth asserting -- nameSize above is the design number and says
              nothing about the screen until it is multiplied by these two. */
@@ -12788,14 +12874,18 @@ export class EntityRenderer {
       const _pS = display._pillZoom || 1;
       const _pY = Math.round(PLAYER_BAND_Y - (_pH * _pS) / 2);
       if (display._namePill.y !== _pY) display._namePill.y = _pY;
-      /* 0.01 rather than 0: the fade lands on a tiny residual alpha rather
-         than exactly zero, and a plate that waits for a true 0 never comes
-         back. */
       const _barA = Math.max(0, Math.min(1, display._hudHpAlpha || 0));
+      /* The plate NEVER fades -- it is full strength whenever it is up at all.
+         Pinned here because the thing it replaced did fade, and an alpha left
+         part-way by some future edit would put the name back under the HP
+         number this design took it out from under. */
       if (display._namePill.alpha !== 1) display._namePill.alpha = 1;
       /* Hidden, not merely transparent: an alpha-0 Pixi node is still
          measured, still uploaded and still walked every frame, and this one
-         carries two Text textures.  Every player in the room has one. */
+         carries two Text textures.  Every player in the room has one.
+         The threshold is the BAR's alpha, and it is 0.01 rather than 0
+         because that fade lands on a tiny residual rather than exactly zero
+         -- a plate that waited for a true 0 would never come back. */
       if (_barA > 0.01) display._namePill.visible = false;
     }
 
@@ -13736,11 +13826,17 @@ export class EntityRenderer {
 
       const cx = 0;
       const cy = PLAYER_BAND_Y; /* ~-73: above the head, lifted 15px (v2.3.459) */
-      /* v2.3.2571: published so the name plate can cross-fade against the bar
-         that is replacing it.  This is the bar's OWN fade (v2.3.1682's
-         contextual reveal, HOLD_MS then out), not a second timer -- the plate
-         is literally 1 minus the bar, so the two can never both be up and can
-         never both be down. */
+      /* v2.3.2571: published so the name plate knows whether this bar is up,
+         and steps aside for it.  This is the bar's OWN fade (v2.3.1682's
+         contextual reveal, HOLD_MS then out), not a second timer, which is
+         what keeps the swap free of a clock nobody tuned.
+
+         The plate is HIDDEN outright while this is above ~0, not faded
+         against it: an earlier cut of v2.3.2571 did cross-fade the two and
+         the screenshot showed why it cannot -- both carry TEXT in one spot,
+         so every frame of the ramp drew the HP number through the name
+         ("Hu65r 3").  _updatePlayer owns that rule; this line only publishes
+         the number it reads. */
       d._hudHpAlpha = hpNewAlpha;
       const frameSp = d._hudHpBarFrame;
       const fillSp = d._hudHpBarFill;
