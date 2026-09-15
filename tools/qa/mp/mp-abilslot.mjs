@@ -694,11 +694,21 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     /* An ENCHANTED weapon at level 6+ is the whole display gate
-       (prog3.burstRefusal): level, a weapon in the active slot, element1 on it,
-       and mana.  Set on the legacy level AND the prog3 blob, because
-       burstRefusal reads whichever of the two is live. */
+       (prog3.burstRefusal): the worker's prog3 cap, level, a weapon in the
+       active slot, element1 on it, and mana.
+       THE LEVEL IS THE FIDDLY ONE.  `rpg.level` is only read when prog3 is NOT
+       live; with the blob adopted the level is prog3CharLevel -- the SUM of the
+       three skill levels, each floored at 1.  So setting `prog3.lvl` does
+       nothing (there is no such field) and the honest seed is a skill level:
+       sword 6 puts the character at 6+1+1 = 8, clear of BURST_MIN_CHAR_LEVEL.
+       Both paths are seeded so the row does not depend on which is live. */
     S.rpg.level = 20;
-    if (S.rpg.prog3 && S.rpg.prog3.sk) S.rpg.prog3.lvl = 20;
+    if (!S.rpg.prog3) S.rpg.prog3 = {};
+    if (!S.rpg.prog3.sk) S.rpg.prog3.sk = {};
+    for (const k of ['sword', 'bow', 'staff']) {
+      if (!S.rpg.prog3.sk[k]) S.rpg.prog3.sk[k] = { level: 1, xp: 0 };
+    }
+    S.rpg.prog3.sk.sword.level = 6;
     S.rpg.weapon = { type: 'sword', name: 'Ember Sword', gearBase: 'copper', dmg: 5, element1: 'fire' };
     S.rpg.activeSlot = 'melee';
     S.rpg.mana = S.rpg.maxMana || 100;
@@ -709,9 +719,21 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
   console.log(`    ${tag} burst pass: burst=${JSON.stringify(e.burst)} bash=${JSON.stringify(e.bash)}`);
   if (!e.burst) {
     /* An honest skip beats an assertion that cannot fail: if the display gate
-       did not open, the rows below would be measuring nothing (TRAPS 66). */
+       did not open, the rows below would be measuring nothing (TRAPS 66).
+       The skip NAMES the inputs rather than shrugging -- a bare "the gate did
+       not open" is the shape of a report that sends the next person guessing
+       (TRAPS 28), and every one of these is a thing the fixture controls. */
+    const why = await P.page.evaluate(() => {
+      const S = window._gameState.current, R = S && S.rpg;
+      const sk = (R && R.prog3 && R.prog3.sk) || {};
+      return { caps: !!(S._serverCaps && S._serverCaps.prog3),
+        legacyLevel: (R && R.level) || 0,
+        skillLevels: { sword: sk.sword && sk.sword.level, bow: sk.bow && sk.bow.level, staff: sk.staff && sk.staff.level },
+        element1: R && R.weapon && R.weapon.element1, activeSlot: R && R.activeSlot,
+        mana: R && R.mana, maxMana: R && R.maxMana };
+    });
     rec.skip(`${tag}: the Element Burst rows`,
-      `the button's display gate did not open on this fixture (level/element/mana/caps) -- seeded state: ${JSON.stringify({ bash: !!e.bash, whirl: !!e.whirl })}`);
+      `the button's display gate did not open: ${JSON.stringify(why)}`);
   } else {
     rec.ok(`${tag}: the Element Burst button starts clear of the 18px iOS edge guard (left ${e.burst.x})`,
       e.burst.x >= 18, { burst: e.burst, guard: 18 });
