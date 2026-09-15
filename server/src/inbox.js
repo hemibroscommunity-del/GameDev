@@ -248,7 +248,7 @@ export const inboxMethods = {
       ps.weaponStash.push(w);
       return true;
     }
-    /* ═══ v2.3.2541: ONE GEAR APPLY, TWO JOBS ═══
+    /* ═══ v2.3.2546: ONE GEAR APPLY, TWO JOBS ═══
        #643 landed its own gear credit (`_stGearApplyCredit`, storegear.js)
        while this lane was in review, and both branches wrote a
        `kind === 'gear'` arm here.  They are not rivals -- they do

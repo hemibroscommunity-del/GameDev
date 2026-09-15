@@ -562,7 +562,7 @@ export const gearProvMethods = {
     return !!(row && row.slot === slot);
   },
 
-  /* ═══ v2.3.2541: MARK A DELIVERED PIECE FROM THE LEDGER ═══
+  /* ═══ v2.3.2546: MARK A DELIVERED PIECE FROM THE LEDGER ═══
      Called right after #643's `_stGearApplyCredit` has sanitized, capped
      and pushed the piece (inbox.js) -- see the note there for why the two
      compose instead of one replacing the other.
