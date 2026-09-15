@@ -562,6 +562,49 @@ export const gearProvMethods = {
     return !!(row && row.slot === slot);
   },
 
+  /* ═══ v2.3.2541: MARK A DELIVERED PIECE FROM THE LEDGER ═══
+     Called right after #643's `_stGearApplyCredit` has sanitized, capped
+     and pushed the piece (inbox.js) -- see the note there for why the two
+     compose instead of one replacing the other.
+
+     The mark is DERIVED, here as everywhere else in this module: the row
+     has already been granted (awaited, by the caller), so this ASKS THE
+     LEDGER rather than trusting the payload's claim about itself.  If the
+     row write failed, the piece keeps whatever #643's apply gave it and
+     stays unproven -- usable, unsellable -- rather than carrying a mark
+     nothing backs.
+
+     On a VERIFIED row the piece is rebuilt IN PLACE from the row's own
+     stored copy, which is rule 16's shape at the one funnel every future
+     producer will reach for: reading the payload's stats while verifying
+     only its id would leave the next caller free to reintroduce exactly
+     the gap this lane exists to close.  Rebuilt in place rather than
+     replaced so #643's own fields on the pushed object (its `_sv`) are
+     not silently dropped by this lane. */
+  _gearProvMarkDelivered(playerId, payload, landed) {
+    if (!landed || typeof landed !== 'object') return landed;
+    delete landed.gid;
+    delete landed.prov;
+    landed.prov = PROV_LEGACY;
+    const row = payload && payload.row;
+    const slot = row ? slotForGearField(payload.field) : null;
+    if (!row || !row.id || !slot || row.slot !== slot) return landed;
+    if (!this._gearProvOwned(playerId, slot, { gid: row.id })) return landed;
+    const src = row.p && typeof row.p === 'object' ? row.p : null;
+    if (src) {
+      for (const k of Object.keys(landed)) {
+        if (k === 'prov' || k === '_sv') continue;
+        delete landed[k];
+      }
+      Object.assign(landed, clonePiece(src));
+      delete landed.gid;
+      delete landed.prov;
+    }
+    landed.gid = row.id;
+    landed.prov = PROV_MINTED;
+    return landed;
+  },
+
   /* ═══ v2.3.2536: MAY THIS PLAYER SELL THIS PIECE? ═══
      ONE definition, with a REASON, because the client has to be able to
      say why a Sell button is greyed rather than failing silently (the

@@ -305,6 +305,34 @@ can sell the armour off their own back and keep wearing it. Escrow in M3
 must reconcile the worn slot against the list, or make the server the
 writer for equip/unequip first.
 
+> **v2.3.2531 — M3 has shipped the escrow half**
+> (`docs/specs/general-store.md`, "Gear listings"). It did *not* make the
+> client a reader of the echo; that is still open. Two consequences of
+> the drift above became live problems the moment a piece could be sold,
+> and both are handled there rather than here:
+> - **A piece equipped after adoption is recorded twice** — once as the
+>   worn slot, still in the stash — so escrowing from the stash sells the
+>   armour off the player's own back. v2.3.2531 reconciled the worn slot
+>   to close this; **v2.3.2532 removed that reconciliation**, because a
+>   `name|gearBase|tierMult|tier` match cannot tell a stale copy from a
+>   second identical plate and it deleted real spares. The hole is OPEN
+>   and bounded by the `caps.storeGear` kill switch; the real fix is the
+>   server recording gear when it mints it, which is where this spec's
+>   own "the server mints gear and then forgets it" leads.
+> - **The two lists are in different orders**, so a gear listing names its
+>   piece with a *selector* the server turns into a `stashSig` against its
+>   own copy, never with an index.
+> - **The client is still not a reader of the echo**, which is the first
+>   problem above and remains open. v2.3.2532 splices a listed piece out
+>   of the client's own list (`gearSellLocal.js`) so the bag stops showing
+>   what was sold — the smaller fix, not the real one.
+>
+> And the open trust boundary below is now load-bearing rather than
+> theoretical: the store accepts the risk deliberately behind
+> `caps.storeGear`, which live-ops can switch off without a deploy. Read
+> "Being in the stash is not proof of ownership" in the store spec before
+> changing anything about adoption.
+
 ## Tests
 
 `server/test/gearstash.test.mjs` (60 assertions): migration shape +

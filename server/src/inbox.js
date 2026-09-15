@@ -148,9 +148,10 @@ export const inboxMethods = {
    *   kind 'gold'   payload { amount }
    *   kind 'item'   payload { invKey, count }
    *   kind 'weapon' payload { weapon }   (opaque blob, sanitized on apply)
-   *   kind 'gear'   payload { field, piece, row }  (v2.3.2536 -- the
-   *                 server's own copy of a piece of armour/legs/shield/
-   *                 amulet/cosmetic, plus its detached provenance row)
+   *   kind 'gear'   payload { field, piece, row } -- one of the five gear
+   *                 stashes (v2.3.2531, gearstash.js; sanitized on apply),
+   *                 plus, since v2.3.2536, the piece's detached provenance
+   *                 row so the delivered copy can be marked from the ledger
    * Online -> applied to live playerState immediately (+ inbox_delivered
    * notification).  Offline, or online with a full weapon stash -> parked
    * in inbox:<id> and drained at the next join.  Returns 'delivered' |
@@ -247,63 +248,39 @@ export const inboxMethods = {
       ps.weaponStash.push(w);
       return true;
     }
-    /* ═══ v2.3.2536: GEAR RIDES THE SAME FUNNEL AS EVERYTHING ELSE ═══
-       Handoff rule 4 -- every payout goes through _creditPlayer, which
-       gets offline delivery, the oplog idempotency stamp and the
-       inbox_delivered notice for free.  Until now gear could not, because
-       the server had no gear stash to deliver into; v2.3.2523 gave it one
-       and v2.3.2534 gave the pieces identities, so the store, a trade or
-       any future producer can hand a player a piece of armour without
-       hand-rolling an inbox write.
+    /* ═══ v2.3.2541: ONE GEAR APPLY, TWO JOBS ═══
+       #643 landed its own gear credit (`_stGearApplyCredit`, storegear.js)
+       while this lane was in review, and both branches wrote a
+       `kind === 'gear'` arm here.  They are not rivals -- they do
+       different halves, so this composes them rather than picking one:
 
-       `payload` is `{field, piece, row}` -- the stash list it belongs in,
-       the server's own copy of the piece, and its detached provenance row
-       (from _gearProvTake).  The row is optional: a piece handed over
-       without one arrives `legacy`, which is the honest answer for gear
-       whose origin we cannot prove, rather than a refusal that would
-       strand the delivery.
+         - #643's apply knows WHICH SANITIZER a piece needs, which depends
+           on the list it belongs to (an amulet reaches the authoritative
+           damage roll and goes through _sanitizeAmulet; a cosmetic is a
+           {slot, gearId} pair).  It also does the cap check and the push.
+           Keeping it means this funnel does not grow a second, thinner
+           copy of that table.
+         - This lane adds the mark, DERIVED from the provenance ledger
+           rather than asserted: on a verified row the landed piece is
+           rebuilt from the row's own stored copy (rule 16 -- the server's
+           own copy by reference), so a producer cannot put inflated stats
+           beside a genuine id.
 
-       Rule 3's contract, exactly as the weapon branch above: a FULL stash
-       returns false so the entry stays QUEUED.  _saveRpg caps these lists,
-       so pushing past the cap would silently destroy the piece -- the
-       precise failure the weapon branch exists to avoid. */
+       Rule 3's contract is #643's and is unchanged: a FULL stash returns
+       false so the entry stays QUEUED, because _saveRpg caps these lists
+       and pushing past the cap would silently destroy the piece.
+
+       NOTE for the owner/reviewer: `_sv` (storegear.js) and `prov`/`gid`
+       (gearprov.js) are now TWO provenance marks on the same pieces. That
+       duplication is deliberate for now and flagged on the PR -- retiring
+       one is a design call, not something this merge should decide. */
     if (entry.kind === 'gear') {
-      const field = p.field;
-      if (!isGearStashField(field)) return true;   /* malformed: never wedge the inbox */
-      const slot = slotForGearField(field);
-      const piece = p.piece;
-      if (!piece || typeof piece !== 'object' || Array.isArray(piece)) return true;
-      if (!Array.isArray(ps[field])) ps[field] = [];
-      if (ps[field].length >= GEAR_STASH_CAP) return false;
-      /* The mark is DERIVED, here as everywhere else: _creditGearRow has
-         already landed the row (awaited, by the caller), so this ASKS THE
-         LEDGER rather than trusting the payload's own claim about itself.
-         If the row write failed, the piece arrives legacy -- usable,
-         unsellable -- instead of carrying a mark nothing backs.
-
-         v2.3.2539: and when the row DOES verify, the piece is rebuilt from
-         the row's own stored copy rather than from `payload.piece`.  Rule
-         16's shape is "the server's own copy by reference, never the wire
-         blob", and this funnel is the one every future producer will reach
-         for -- reading the payload's stats while verifying only its id
-         would leave the next caller free to reintroduce exactly the gap
-         this lane exists to close (review of #650). */
-      let out;
-      const verified = p.row && p.row.id && p.row.slot === slot
-        && this._gearProvOwned(playerId, slot, { gid: p.row.id });
-      if (verified) {
-        out = { ...(p.row.p || piece) };
-        delete out.gid;
-        delete out.prov;
-        out.gid = p.row.id;
-        out.prov = PROV_MINTED;
-      } else {
-        out = { ...piece };
-        delete out.gid;
-        delete out.prov;
-        out.prov = PROV_LEGACY;
-      }
-      ps[field].push(out);
+      const gField = p && p.field;
+      const beforeN = Array.isArray(ps[gField]) ? ps[gField].length : 0;
+      if (!this._stGearApplyCredit(ps, p)) return false;   /* full stash: stay queued */
+      const gList = ps[gField];
+      const landed = (Array.isArray(gList) && gList.length > beforeN) ? gList[gList.length - 1] : null;
+      if (landed) this._gearProvMarkDelivered(playerId, p, landed);
       return true;
     }
     return true;
