@@ -168,7 +168,7 @@ export const PROG3_ATK_META = [
   /* v2.3.2512: elemental power, per weapon — burns/roots/thorns and element
      collisions from THIS weapon scale off it.  The detonation drawing is
      still the closest the repo has; swap the day a dedicated icon exists. */
-  { key: 'elem',    label: 'Elemental', perText: '+1 elemental power',                 unit: ' power',                      iconSrc: '/icons/ui/t2/staff-detonation.webp?v=2.3.2199', capsProg3Elem: true },
+  { key: 'elem',    label: 'Element',   infoKey: 'Elemental', perText: '+1 elemental power',                 unit: ' power',                      iconSrc: '/icons/ui/t2/staff-detonation.webp?v=2.3.2199', capsProg3Elem: true },
   /* The RETIRED pair, drawn only against a worker that has not folded them
      into Luck — that worker still rolls off crit and critDmg, so those are
      the rows it must show (rule 19).  Same copy they shipped with. */
@@ -181,13 +181,34 @@ export const PROG3_ATK_META = [
    instead of borrowing the Magic lane's staff and the Defense row's shield
    — in a column of seven, two rows sharing one picture read as one stat. */
 export const PROG3_BODY_META = [
+  /* ═══ v2.3.2597: SHORTER LABELS, AND WHY `infoKey` EXISTS ═══
+     Owner, approving a set of shortenings so every stat name is one word:
+     Elem Resist -> Resist, Move Speed -> Speed, Elemental -> Element.  Half-
+     width cells in the new two-column category card are what they buy.
+
+     STORAGE KEYS DO NOT MOVE — `eres`, `move`, `elem` are persisted and
+     v2.3.2592 already records that renaming a saved field breaks saves.  Only
+     the label changes.
+
+     `infoKey` is the trap this rename walks into.  statInfo() looks an
+     explainer up BY LABEL (infoGlossary.js), and a `Speed` key already exists
+     there — it is the WEAPON's attack speed, "How quickly you swing, shoot or
+     cast".  Calling the shared movement stat "Speed" would therefore have
+     served that text for it: not a near-miss, a silent wrong answer, and
+     exactly the "a rename that leaves the explainer behind" failure.  So a
+     renamed stat carries the glossary key it was written against and the
+     lookup uses `infoKey || label`.  The two Speeds still cannot appear on
+     screen together — the player is inside one category at a time — but the
+     glossary is a global map and does not care what is on screen.
+     If the two ever DO read as confusable to a player, "Haste" is the
+     pre-agreed fallback for `move`. */
   { key: 'hp',    label: 'Max HP',      perText: '+8 max HP',                    unit: ' HP',             iconSrc: '/icons/ui/hero/hp-heart.webp?v=2.3.1922' } /* v2.3.1922: plain heart */,
   { key: 'def',   label: 'Defense',     perText: '−0.4% damage taken',           pct: true, unit: '% less damage', iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1694' },
   { key: 'mana',  label: 'Max Mana',    perText: '+2.5 max mana',                unit: ' mana',           iconSrc: '/icons/ui/hero/mana.webp?v=2.3.2592',             capsProg3Elem: true },
   { key: 'stam',  label: 'Stamina',     perText: '+3 max stamina',               unit: ' stamina',        iconSrc: '/icons/ui/hero/stamina.webp?v=2.3.1694' },
   { key: 'dodge', label: 'Dodge',       perText: '+0.4% dodge',                  pct: true, unit: '%',    iconSrc: '/icons/ui/hero/dodge.webp?v=2.3.1694' },
-  { key: 'move',  label: 'Move Speed',  perText: '+0.4% move speed',             pct: true, unit: '% faster', iconSrc: '/icons/ui/hero/move-speed.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'movement, not damage' },
-  { key: 'eres',  label: 'Elem Resist', perText: '−0.4% elemental damage taken', pct: true, unit: '% less elemental', iconSrc: '/icons/ui/hero/damage-reduction.webp?v=2.3.2592', capsProg3Elem: true },
+  { key: 'move',  label: 'Speed',       infoKey: 'Move Speed', perText: '+0.4% move speed',             pct: true, unit: '% faster', iconSrc: '/icons/ui/hero/move-speed.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'movement, not damage' },
+  { key: 'eres',  label: 'Resist',      infoKey: 'Elem Resist', perText: '−0.4% elemental damage taken', pct: true, unit: '% less elemental', iconSrc: '/icons/ui/hero/damage-reduction.webp?v=2.3.2592', capsProg3Elem: true },
 ];
 
 /* The rows the CONNECTED worker supports, with critDmg's copy resolved

@@ -169,6 +169,52 @@ export async function run({ browser, wsPort, webPort, rec }) {
       card && card.plus.map((p) => `${p.w}x${p.h}`).join(' '));
     rec.ok(`${label}: nothing in the card is cut off (measured to sub-pixel)`,
       !!card && card.clipped.length === 0, card && { clipped: card.clipped, cardW: card.cardW, row: card.rowParts });
+    /* ═══ v2.3.2597: WHAT TWO COLUMNS ACTUALLY COST ═══
+       The owner asked to TRY two columns inside the card, then moved the stat
+       values out to the confirm to pay for them. These are the numbers that say
+       whether that worked: the cell width, the widest label against the box it
+       has, the [+] against the size the reference shot gives it, and whether
+       the card still needs to scroll. */
+    const two = await P.page.evaluate(() => {
+      const c = document.querySelector('[data-prog3-card]');
+      if (!c) return null;
+      const grid = c.querySelector('div[style*="grid"]');
+      const plus = c.querySelector('[data-prog3-plus]');
+      const row = plus && plus.parentElement;
+      /* Every stat label in the card, with the box it actually has. */
+      const labels = [...c.querySelectorAll('[data-prog3-plus]')].map((b) => {
+        const sp = b.parentElement.querySelector('span');
+        if (!sp) return null;
+        const cs = getComputedStyle(sp);
+        const rg = document.createRange(); rg.selectNodeContents(sp);
+        return { t: sp.textContent, need: +rg.getBoundingClientRect().width.toFixed(2),
+          box: +(sp.getBoundingClientRect().width).toFixed(2) };
+      }).filter(Boolean);
+      labels.sort((a, b) => b.need - a.need);
+      /* Does the card still overflow its scroller? */
+      let sc = c.parentElement;
+      while (sc && !(sc.scrollHeight - sc.clientHeight > 4 && /auto|scroll/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+      return {
+        cols: grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').length : null,
+        cellW: row ? +row.getBoundingClientRect().width.toFixed(1) : null,
+        plus: plus ? { w: +plus.getBoundingClientRect().width.toFixed(1), h: +plus.getBoundingClientRect().height.toFixed(1) } : null,
+        widest: labels[0], labels: labels.map((l) => l.t),
+        cardH: +c.getBoundingClientRect().height.toFixed(1),
+        window: sc ? sc.clientHeight : null,
+        scrolls: sc ? (sc.scrollHeight - sc.clientHeight > 4) : null,
+      };
+    });
+    rec.ok(`${label}: inside the card the stats lay out in ${land ? 'ONE column (the ~191px pane cannot hold two)' : 'TWO columns'}`,
+      !!two && two.cols === (land ? 1 : 2), two && { cols: two.cols, cellW: two.cellW });
+    rec.ok(`${label}: the widest label still fits its half-width cell`,
+      !!two && two.widest && two.widest.need <= two.widest.box + 0.05,
+      two && { widest: two.widest, cellW: two.cellW });
+    rec.ok(`${label}: the [+] keeps the reference shot's prominence at half width (>= 44x26)`,
+      !!two && two.plus && two.plus.w >= 44 && two.plus.h >= 26, two && two.plus);
+    console.log(`    ${label} two-col: cell ${two && two.cellW}px  [+] ${two && two.plus && two.plus.w}x${two && two.plus.h}`
+      + `  widest "${two && two.widest && two.widest.t}" needs ${two && two.widest && two.widest.need} of ${two && two.widest && two.widest.box}`
+      + `  card ${two && two.cardH} in ${two && two.window}  scrolls=${two && two.scrolls}`);
+
     rec.ok(`${label}: every [+] keeps the "N of M" aria-label mp-prog3 parses`,
       !!card && card.labels.every((l) => / \d+ of \d+\./.test(l || '')), card && card.labels);
     await P.page.screenshot({ path: `${OUT}/catgrid-${label}-bow.png` });
@@ -201,12 +247,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const c = document.querySelector('[data-prog3-card]');
       if (!c) return null;
       const rows = [...c.querySelectorAll('[data-prog3-plus]')];
+      /* Shared is the worst case for height: SEVEN stats, so four grid rows
+         where a weapon has three. Its card height is the number that answers
+         "does two columns remove the scroll". */
+      let sc = c.parentElement;
+      while (sc && !(sc.scrollHeight - sc.clientHeight > 4 && /auto|scroll/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+      const lastRow = rows[rows.length - 1] && rows[rows.length - 1].parentElement.parentElement;
       return { key: c.getAttribute('data-prog3-card'), n: rows.length,
-        allPlus: rows.every((b) => b.getBoundingClientRect().height > 20) };
+        allPlus: rows.every((b) => b.getBoundingClientRect().height > 20),
+        cardH: +c.getBoundingClientRect().height.toFixed(1),
+        window: sc ? sc.clientHeight : null,
+        /* The odd seventh spans both columns rather than sitting beside a hole. */
+        lastSpans: lastRow ? /1 \/ -1|1\/-1/.test(lastRow.getAttribute('style') || '') : null };
     });
     rec.ok(`${label}: SHARED opens and shows all SEVEN of its stats, each with a [+]`,
       !!sh && sh.key === 'shared' && sh.n === 7 && sh.allPlus, sh);
+    console.log(`    ${label} SHARED: ${sh && sh.n} stats, card ${sh && sh.cardH} in ${sh && sh.window}`
+      + `  lastSpansBothColumns=${sh && sh.lastSpans}`);
+    rec.ok(`${label}: Shared's odd seventh stat spans both columns — not a half cell beside a hole`,
+      land ? true : (!!sh && sh.lastSpans === true), sh && { lastSpans: sh.lastSpans });
     await P.page.screenshot({ path: `${OUT}/catgrid-${label}-shared.png` });
+
+    /* ── THE ONE-COLUMN COMPARISON, for the owner to choose between ──
+       Two columns cost the [+] about a quarter of its width. `?p3cols=1`
+       renders the same card in one column with the [+] at its full reference
+       size, so the trade can be looked at rather than described. */
+    if (!land && label === '360-portrait') {
+      await P.page.evaluate(() => history.replaceState({}, '', `${location.pathname}?p3cols=1`));
+      await finger(P, '[data-prog3-back]');
+      await finger(P, '[data-prog3-lane="shared"]');
+      const one = await P.page.evaluate(() => {
+        const c = document.querySelector('[data-prog3-card]');
+        const plus = c && c.querySelector('[data-prog3-plus]');
+        return c ? { cardH: +c.getBoundingClientRect().height.toFixed(1),
+          plusW: plus ? +plus.getBoundingClientRect().width.toFixed(1) : null } : null;
+      });
+      console.log(`    360 ONE-COLUMN comparison: card ${one && one.cardH}  [+] ${one && one.plusW}px wide`);
+      await P.page.screenshot({ path: `${OUT}/catgrid-360-portrait-onecol.png` });
+      await P.page.evaluate(() => history.replaceState({}, '', location.pathname));
+    }
 
     /* ═══ WHAT "NO PAGE ERRORS" CAN HONESTLY MEAN IN THIS SANDBOX ═══
        Two requests can never succeed here and neither belongs to this change:

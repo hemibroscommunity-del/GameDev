@@ -1401,7 +1401,9 @@ export const HeroExpanded = () => {
                    on screen at once); a shared row belongs to none and takes
                    the weapon in hand for its numbers, as before. */
                 const laneCat = st.atk ? (cat || buildCat) : prog3ActiveCat(R);
-                const info = statInfo(st.label) || { title: st.label, body: st.perText + ' per point.' };
+                /* v2.3.2597: infoKey first — a shortened label may collide with
+                   another stat's glossary entry (see prog3.js). */
+                const info = statInfo(st.infoKey || st.label) || { title: st.label, body: st.perText + ' per point.' };
                 const pv = R ? previewStatPoint(R, st.key, laneCat) : null;
                 /* The row carries the NUMBER and, for a percentage, its sign
                    ("0.8% -> 1.2%", "40.0 -> 48.0"): the row's full unit is
@@ -1535,8 +1537,8 @@ export const HeroExpanded = () => {
                   infoPopupBus.open({
                     title: `Shared — Level ${prog3CharLevel(R)}`,
                     body: sharedCaps
-                      ? 'Every level-up in any combat skill also earns shared points. They buy the stats that belong to your character rather than to one weapon: HP, Defense, Mana, Stamina, Dodge, Move Speed and Elemental Resistance.'
-                      : 'The stats that belong to your character rather than to one weapon: HP, Defense, Mana, Stamina, Dodge and Elemental Resistance. Any combat point can be spent here.',
+                      ? 'Every level-up in any combat skill also earns shared points. They buy the stats that belong to your character rather than to one weapon: HP, Defense, Mana, Stamina, Dodge, Speed and Resist.'
+                      : 'The stats that belong to your character rather than to one weapon: HP, Defense, Mana, Stamina, Dodge and Resist. Any combat point can be spent here.',
                     note: n > 0 ? `You have ${n} shared point${n === 1 ? '' : 's'} to spend.` : 'Level up any combat skill to earn more.',
                   });
                   return;
@@ -1689,10 +1691,29 @@ export const HeroExpanded = () => {
                even "Luck" ellipsised. Each of these is trimmed just enough to
                hand the label ~43px, which fits "Resist", the longest short
                name, at 11.5px. */
-            const CARD_ICON = landPane ? 22 : 30;
-            const CARD_VAL_W = landPane ? 34 : 52;
-            const CARD_GAP = landPane ? 4 : 7;
-            const CARD_PLUS_W = landPane ? 44 : 60;
+            /* ═══ v2.3.2597: WHAT TWO COLUMNS COST, MEASURED ═══
+               The owner asked to TRY two columns and then paid for them by
+               moving the stat values out to the confirm. Measured after both
+               changes, at 360 with the [+] still at its reference width:
+
+                 cell 163px = icon 30 + orb 7 + [+] 60 + gaps 21 + padding 14
+                 leaves the LABEL 29px, and "Element" needs 61.81.
+
+               So two columns do NOT fit at 360 with the [+] as the reference
+               draws it. Something has to give and it is the [+] and the icon:
+               44 and 24 leave the label 66px at 360, which clears "Element"
+               with 4px to spare and "Special" with 13.
+               That is the honest trade and the owner should see it: two columns
+               cost a [+] about a quarter narrower than the shot, and an icon a
+               fifth smaller. `?p3cols=1` renders the same card in ONE column
+               with the [+] at its full 60 for the comparison. */
+            const forceOneCol = (() => {
+              try { return /[?&]p3cols=1\b/.test(window.location.search); } catch (e) { return false; }
+            })();
+            const twoCol = !landPane && !forceOneCol;
+            const CARD_ICON = twoCol ? 24 : 30;
+            const CARD_GAP = twoCol ? 4 : 7;
+            const CARD_PLUS_W = twoCol ? 44 : 60;
             /* ═══ THE [+] IS THE WHOLE THUMB TARGET NOW ═══
                The reference draws it 28.5px tall in a 46.6px row, and that was
                fine while the row itself was also tappable. The owner has since
@@ -1808,7 +1829,7 @@ export const HeroExpanded = () => {
                 <div key={lk} style={{
                   flex: 'none', width: '100%', minWidth: 0, height: CARD_ROW_H, boxSizing: 'border-box',
                   display: 'flex', alignItems: 'center', gap: CARD_GAP,
-                  padding: landPane ? '0 3px 0 6px' : '0 5px 0 9px',
+                  padding: twoCol ? '0 4px 0 6px' : (landPane ? '0 3px 0 6px' : '0 5px 0 9px'),
                   background: canSpend ? COL.accentFill : COL.wellSoft,
                   border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
                   borderRadius: 9, overflow: 'hidden',
@@ -1823,12 +1844,21 @@ export const HeroExpanded = () => {
                     style={{ width: CARD_ICON, height: CARD_ICON, objectFit: 'contain',
                       flex: 'none', pointerEvents: 'none',
                       filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.45))' }} />
-                  <span style={{
-                    flex: 'none', textAlign: 'right', minWidth: CARD_VAL_W,
-                    fontSize: landPane ? 12 : 13, fontWeight: 800, color: COL.text, lineHeight: 1,
-                    fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-                    overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>{statValueText(st, cat)}</span>
+                  {/* ═══ v2.3.2597: THE VALUE IS NOT HERE ANY MORE ═══
+                      Owner, solving the two-column squeeze themselves: "You can
+                      move the values to the second confirmation screen."  So a
+                      half-width cell carries the label, the icon and the [+],
+                      and nothing else — which is what lets the [+] keep the
+                      prominence the reference shot gives it at half width.
+                      The confirm already showed it: openSpendConfirm passes
+                      nowText/afterText from previewStatPoint and v2.3.2595
+                      renders them as a now -> after pair, so this is a removal,
+                      not new plumbing.
+                      WHAT IT COSTS, and the owner should see it named: the
+                      category panel stops saying what you HAVE and becomes a
+                      list of what you can BUY.  Reading a current value now
+                      takes a tap.  That is a real loss of at-a-glance
+                      information; nothing is built here to compensate for it. */}
                   <span style={{ flex: 'none', position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <span aria-hidden="true"
                       key={'orb' + pts}
@@ -1944,11 +1974,36 @@ export const HeroExpanded = () => {
                         cursor: 'pointer', touchAction: 'manipulation',
                       }}>i</button>
                   </div>
+                  {/* ═══ v2.3.2597: TWO COLUMNS INSIDE THE CARD ═══
+                      Owner: "Once inside the category panel try doing two
+                      columns to make the 6 fit efficiently."  A weapon's six
+                      become 3 x 2.
+                      SHARED HAS SEVEN, and a 2-wide grid would leave the last
+                      one alone in a half-width cell beside a hole — which reads
+                      as a missing cell, not as a deliberate seventh.  So the
+                      ODD LAST ONE SPANS BOTH COLUMNS: a full-width row at the
+                      bottom, obviously intentional, and it costs nothing
+                      because the row is the same height either way.  It also
+                      falls out of the same rule for any future odd count.
+                      Sideways the pane is ~191px, where two columns would be
+                      ~90px each — narrower than the single-column card already
+                      measured as tight — so landscape keeps ONE column. */}
                   <div style={{
-                    display: 'flex', flexDirection: 'column', gap: 5,
+                    display: 'grid',
+                    gridTemplateColumns: twoCol ? 'repeat(2, 1fr)' : '1fr',
+                    gap: twoCol ? 6 : 5,
                     padding: landPane ? '5px 5px 6px' : '6px 6px 7px', minWidth: 0,
                   }}>
-                    {metas.map((m) => catRow({ ...m, atk: !shared }, col.key))}
+                    {metas.map((m, i) => {
+                      const last = i === metas.length - 1;
+                      const odd = metas.length % 2 === 1;
+                      const span = twoCol && last && odd;
+                      return (
+                        <div key={m.key} style={span ? { gridColumn: '1 / -1', minWidth: 0 } : { minWidth: 0 }}>
+                          {catRow({ ...m, atk: !shared }, col.key)}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
