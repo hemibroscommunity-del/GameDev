@@ -31,10 +31,6 @@
  */
 import * as H from './harness.mjs';
 
-/* v2.3.2592: FOUR columns at every width — the owner's layout has no narrow
-   fallback (a lane you cannot see is the v2.3.1660 incident); below 360px
-   the cell titles step down to the 10px floor and four short names instead
-   (HeroExpanded NARROW_TITLE), which is what this file exists to verify. */
 /* v2.3.2594: ONE WEAPON PLUS SHARED is the most the screen will hold
    (owner), so the open pair is what this file measures — two columns of
    cells between two closed strips.  Four columns at every width still: the
@@ -42,13 +38,29 @@ import * as H from './harness.mjs';
    v2.3.1660 incident.  Below 360 the cell titles step down to the 10px floor
    and four short names instead (HeroExpanded NARROW_TITLE), which is what
    this file exists to verify. */
+/* ═══ v2.3.2597: THE NARROW FALLBACK IS BACK, WHICH IS WHAT THIS FILE IS FOR ═══
+   This file was written (v2.3.2382) to assert that the point rows go two
+   abreast and FALL BACK TO ONE when they cannot — its own header still says
+   320 is "below the floor. ONE column, deliberately". v2.3.2592's four-column
+   screen removed that fallback and the table above was changed to two columns
+   at every width to match.
+   The owner's category card brings the fallback back, for the same reason and
+   with the same shape of measurement: at 320 a half-width cell leaves the label
+   46px and "Element" wants 62, so below 360 the card is one column. So 320
+   returns to cols: 1, and the claim this file makes is once again "it never
+   clips at any size" rather than "it fits at 390". */
 const SIZES = [
   { w: 390, h: 844, cols: 2 },
   { w: 375, h: 812, cols: 2 },
-  { w: 320, h: 568, cols: 2 },
+  { w: 320, h: 568, cols: 1 },
 ];
 /* 6 for the open weapon + 7 shared. */
-const CELLS = 13;
+/* v2.3.2597: SIX, not thirteen.  The four-column screen this file was written
+   against put every stat of every lane on screen at once — 6 weapon + 7 shared.
+   The owner replaced it with a 2x2 category grid you drill into, so a weapon's
+   card carries its own six and Shared carries seven, and thirteen at once is a
+   state the screen can no longer reach.  openPointCols drills into `sword`. */
+const CELLS = 6;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   for (const S of SIZES) {
@@ -151,7 +163,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const b = document.querySelector('[data-prog3-points]') || document.getElementById('bt-prog3-body');
       if (!b) return { err: 'no prog3 body' };
       const cs = getComputedStyle(b);
-      const rows = [...b.querySelectorAll('[role="button"][aria-label*=" of "]')];
+      /* v2.3.2597: the ROW's own handle.  `[role="button"][aria-label*=" of "]`
+         now finds the [+] — the row stopped being the button when the owner
+         made its body inert — and measuring a 44px button as if it were the
+         row is how this read "rowW: 44" on a 163px row. */
+      const rows = [...b.querySelectorAll('[data-prog3-row]')];
       const clipped = [];
       for (const r of rows) {
         for (const el of r.querySelectorAll('span,div')) {
@@ -173,7 +189,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           ? rows.filter((r) => Math.abs(r.getBoundingClientRect().top
               - rows[0].getBoundingClientRect().top) < 2).length
           : 0,
-        firstRow: rows.length ? rows[0].getAttribute('aria-label') : null,
+        firstRow: rows.length ? (rows[0].querySelector('[data-prog3-plus]') || rows[0]).getAttribute('aria-label') : null,
         clipped,
       };
     });

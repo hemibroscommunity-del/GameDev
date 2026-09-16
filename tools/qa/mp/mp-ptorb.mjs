@@ -31,12 +31,20 @@
  */
 import * as H from './harness.mjs';
 
-const ROW = '[role="button"][aria-label*=" of "]';
+/* v2.3.2597: the ROW, not the spend control.  Until v2.3.2595 they were the
+   same element — the whole cell was the button — so `[role="button"]
+   [aria-label*=" of "]` found the row.  The owner has since made the row body
+   inert and the [+] the only control, so that selector now finds a 44px button
+   and everything below it (the orb, the row's own box) looks absent.  The row
+   has its own handle for exactly this. */
+const ROW = '[data-prog3-row]';
 
 /* The rows on screen right now, with what each one says. */
 const rowsNow = (P) => P.page.evaluate((ROW) => {
   return [...document.querySelectorAll(ROW)].map((el) => {
-    const label = el.getAttribute('aria-label') || '';
+    /* The "N of M" label lives on the [+] now, which is the control that
+       carries the contract; the row is just its container. */
+    const label = (el.querySelector('[data-prog3-plus]') || el).getAttribute('aria-label') || '';
     const m = label.match(/^([^,]+), (\d+) of (\d+)\./);
     const r = el.getBoundingClientRect();
     const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);

@@ -1740,7 +1740,22 @@ export const HeroExpanded = () => {
             const forceOneCol = (() => {
               try { return /[?&]p3cols=1\b/.test(window.location.search); } catch (e) { return false; }
             })();
-            const twoCol = !landPane && !forceOneCol;
+            /* ═══ AND TWO COLUMNS NEED A FLOOR ═══
+               Measured at 360 and 390 and shipped; mp-statcols then swept 320,
+               which this repo tests, and found every label clipped — "Element"
+               wanting 62px of a 44px box, "Special" 55, even "Range" 47.  The
+               cell there is 143px and, once the icon, orb, [+], gaps and
+               padding have taken theirs, 46px is all the label can have.
+               There is nothing left to trim: the [+] is already down to 44 from
+               the reference's 60 to buy two columns at all.
+               So two columns have a floor, the way prog3TwoCol did at 375
+               before this screen was rebuilt — "a layout that only fits the big
+               phone is not shipped".  Below it the card is one column, which
+               fits every label at every width and costs only scrolling.
+               360, not 375: at 360 the label box is 64px and "Element" needs
+               61.81, measured, so the boundary is set where the widest label
+               actually stops fitting rather than at a round number. */
+            const twoCol = !landPane && !forceOneCol && panelVw() >= 360;
             const CARD_ICON = twoCol ? 24 : 30;
             const CARD_GAP = twoCol ? 4 : 7;
             const CARD_PLUS_W = twoCol ? 44 : 60;
@@ -1856,7 +1871,18 @@ export const HeroExpanded = () => {
               const landDelta = ptLandRef.current.get(lk).delta || 1;
               const landed = landAt > 0 && (nowMs - landAt) < 1300;
               return (
-                <div key={lk} style={{
+                /* ═══ v2.3.2597: THE ROW IS NO LONGER THE BUTTON ═══
+                   It was, from v2.3.1668 to v2.3.2595 — the whole cell spent,
+                   and `[role="button"][aria-label*=" of "]` found the ROW.  The
+                   owner has since made the body inert and the [+] the only
+                   control, so that contract selector now legitimately finds the
+                   [+] (44px) and not the row (163px), which is what broke
+                   mp-ptorb's orb check and mp-statcols' width measurement:
+                   both were measuring a button while believing it was a row.
+                   The row keeps a handle of its own so "the row" stays
+                   addressable for what is genuinely about the row — its orb,
+                   its width, its height. */
+                <div key={lk} data-prog3-row={lk} style={{
                   flex: 'none', width: '100%', minWidth: 0, height: CARD_ROW_H, boxSizing: 'border-box',
                   display: 'flex', alignItems: 'center', gap: CARD_GAP,
                   padding: twoCol ? '0 4px 0 6px' : (landPane ? '0 3px 0 6px' : '0 5px 0 9px'),
@@ -1900,6 +1926,17 @@ export const HeroExpanded = () => {
                     )}
                   </span>
                   <button type="button"
+                    /* ═══ v2.3.2597: THE EXPLICIT role, WHICH IS A CONTRACT ═══
+                       "Every spend control is [role="button"][aria-label*=" of "]"
+                       — mp-prog3's own words, and mp-ptorb and mp-statcols both
+                       find rows with exactly that selector.  A <button> has an
+                       IMPLICIT button role, but `[role="button"]` is an
+                       attribute selector and matches only an explicit one, so
+                       dropping it silently took this control out of three
+                       scenarios' reach while the screen looked perfect.
+                       Redundant for a screen reader; load-bearing for the
+                       contract. */
+                    role="button"
                     data-prog3-plus={lk}
                     data-stat-info={st.key}
                     aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${pts} of ${cap}. ${st.perText} per point.`}
