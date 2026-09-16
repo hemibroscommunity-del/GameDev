@@ -23,11 +23,30 @@ import * as H from './harness.mjs';
 
 const OUT = `${H.REPO}/tools/qa/mp/out`;
 
-const seed = (P) => P.page.evaluate(() => {
-  const S = window._gameState && window._gameState.current; const R = S && S.rpg;
-  if (R && R.prog3) { R.prog3.pool = 15; R.prog3.poolBy = { sword: 4, bow: 10, staff: 1 }; R.prog3.shared = 16; }
-  if (S) S._serverCaps = Object.assign({}, S._serverCaps, { prog3Chan: true, prog3shared: true });
-});
+/* ═══ REAL POINTS, FROM THE WORKER ═══
+   A first cut seeded the pools in the BROWSER (R.prog3.pool = 15). Every layout
+   assertion passed on that and every SPEND assertion failed, because the server
+   had never heard of those points and was right to refuse the allocate — the
+   game is server-authoritative for progression (CLAUDE.md). The blob simply
+   never moved, which reads exactly like a dead [+] button and is not one.
+   So points are minted the way mp-statgrid mints them: the devkit's `levels`
+   award runs the worker's own _prog3AwardXp, which creates the lane points AND
+   the shared points on the server. If this ever fails, the spend assertions go
+   red rather than silently testing nothing. */
+async function seed(P, wsPort) {
+  const myId = await H.readState(P, (S) => S.myId);
+  await fetch(`http://127.0.0.1:${wsPort}/api/admin/dev/kit`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + H.ADMIN_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ playerId: myId, what: 'levels' }),
+  }).then((r) => r.json()).catch(() => null);
+  await P.page.waitForTimeout(1600);
+  return P.page.evaluate(() => {
+    const R = window._gameState && window._gameState.current && window._gameState.current.rpg;
+    const p = (R && R.prog3) || {};
+    return { pool: p.pool, shared: p.shared, poolBy: p.poolBy };
+  });
+}
 
 /* A REAL finger on the centre of a selector, after scrolling it into view.
    Returns false when the element is not there at all, so a miss reads as a
@@ -51,8 +70,24 @@ const has = (P, sel) => P.page.evaluate((s) => !!document.querySelector(s), sel)
 const pools = (P) => P.page.evaluate(() => {
   const R = window._gameState && window._gameState.current && window._gameState.current.rpg;
   const p = (R && R.prog3) || {};
-  return { pool: p.pool, shared: p.shared, poolBy: JSON.parse(JSON.stringify(p.poolBy || {})) };
+  const j = (o) => JSON.parse(JSON.stringify(o || {}));
+  return { pool: p.pool, shared: p.shared, poolBy: j(p.poolBy), atk: j(p.atk), alloc: j(p.alloc) };
 });
+
+/* Answer the confirm window with a real finger and WAIT FOR THE WORKER.
+   A spend is a round trip — the client only sends prog3_allocate, and the blob
+   moves when the server echoes — so this polls rather than sleeping once.
+   The same shape mp-statgrid used, which is where this coverage comes from. */
+async function answerConfirm(P, which, settle) {
+  const ok = await finger(P, `[data-prog3-spend-${which}]`);
+  if (!ok) return { err: 'no ' + which };
+  for (let i = 0; i < 40; i++) {
+    await P.page.waitForTimeout(100);
+    const now = await pools(P);
+    if (settle(now)) return { ok: true, now };
+  }
+  return { ok: false, now: await pools(P) };
+}
 
 async function openPoints(P) {
   await H.openDest(P, 'Character');
@@ -77,7 +112,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.enterWorld(P);
     await P.page.waitForTimeout(2400);
     if (land) { await P.page.setViewportSize(vp); await P.page.waitForTimeout(1100); }
-    await seed(P);
+    const seeded = await seed(P, wsPort);
+    rec.ok(`${label}: the worker minted real points to spend (guard — a client-side seed would make every spend below vacuous)`,
+      !!seeded && seeded.pool > 0 && seeded.shared > 0, seeded);
     if (land) {
       await P.page.evaluate(() => window.__broDashPanelBus && window.__broDashPanelBus.open('hero'));
       await P.page.waitForTimeout(900);
@@ -236,7 +273,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${label}: the window NAMES THE WEAPON — opened from a Bow row it says Bow`,
       !!confirm && /Bow/i.test(confirm.text), confirm && confirm.text.slice(0, 120));
     await P.page.screenshot({ path: `${OUT}/catgrid-${label}-confirm.png` });
-    await finger(P, '[data-prog3-spend-cancel]');
+
+    /* ═══ THE SPEND ITSELF, PORTED FROM mp-statgrid ═══
+       Driven once (the behaviour does not vary by viewport, and every run costs
+       a worker round trip). This is the coverage that must not be lost when the
+       four-column suites retire: that answering the window actually buys the
+       point, and that the WORKER charges the lane that owns it — "only the
+       point earned in the combat channel can be spent there". */
+    if (label === '390-portrait') {
+      const b4 = before;
+      const spent = await answerConfirm(P, 'confirm', (n) => n.pool !== b4.pool);
+      rec.ok(`${label}: answering the window actually buys the point`, !!spent.ok, spent.now && { pool: spent.now.pool });
+      const n = spent.now || {};
+      rec.ok(`${label}: ...and the WORKER charged the BOW lane, not the shared pool`,
+        !!spent.ok && (n.poolBy || {}).bow === (b4.poolBy || {}).bow - 1 && n.shared === b4.shared,
+        { beforeBow: (b4.poolBy || {}).bow, afterBow: (n.poolBy || {}).bow, beforeShared: b4.shared, afterShared: n.shared });
+      rec.ok(`${label}: ...and the other two weapon lanes did not move`,
+        !!spent.ok && (n.poolBy || {}).sword === (b4.poolBy || {}).sword && (n.poolBy || {}).staff === (b4.poolBy || {}).staff,
+        { before: b4.poolBy, after: n.poolBy });
+    } else {
+      await finger(P, '[data-prog3-spend-cancel]');
+    }
 
     /* ── SHARED: SEVEN ROWS, THE TIGHTEST CASE ── */
     await finger(P, '[data-prog3-back]');
@@ -262,6 +319,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     rec.ok(`${label}: SHARED opens and shows all SEVEN of its stats, each with a [+]`,
       !!sh && sh.key === 'shared' && sh.n === 7 && sh.allPlus, sh);
+    if (label === '390-portrait') {
+      /* The other half of the two-pool rule: a SHARED stat draws on the shared
+         pool and leaves every weapon lane alone. */
+      const b5 = await pools(P);
+      await finger(P, '[data-prog3-plus]');
+      const sSpent = await answerConfirm(P, 'confirm', (n) => n.shared !== b5.shared);
+      const n5 = sSpent.now || {};
+      rec.ok(`${label}: a SHARED stat spends the SHARED pool`,
+        !!sSpent.ok && n5.shared === b5.shared - 1,
+        { before: b5.shared, after: n5.shared });
+      rec.ok(`${label}: ...and no weapon lane paid for it`,
+        !!sSpent.ok && JSON.stringify(n5.poolBy) === JSON.stringify(b5.poolBy),
+        { before: b5.poolBy, after: n5.poolBy });
+    }
     console.log(`    ${label} SHARED: ${sh && sh.n} stats, card ${sh && sh.cardH} in ${sh && sh.window}`
       + `  lastSpansBothColumns=${sh && sh.lastSpans}`);
     rec.ok(`${label}: Shared's odd seventh stat spans both columns — not a half cell beside a hole`,
