@@ -33,6 +33,11 @@ import * as H from './harness.mjs';
 const PHONE = { width: 390, height: 844 };
 const ROW = '[role="button"][aria-label*=" of "]';
 const LANE_ORDER = ['sword', 'staff', 'bow', 'shared'];
+/* The closed strip's width, from HeroExpanded's COL_CLOSED_W.  Kept here as a
+   number the assertions read rather than inlined three times: it moved 58 ->
+   64 at v2.3.2595 when the owner reported clipped numbers on the strips, and
+   an inlined 58 is how a width check quietly stops meaning anything. */
+const CLOSED_W = 64;
 const LANE_STATS = ['Range', 'Power', 'Speed', 'Luck', 'Special', 'Elemental'];
 const SHARED_STATS = ['Max HP', 'Defense', 'Max Mana', 'Stamina', 'Dodge', 'Move Speed', 'Elem Resist'];
 
@@ -56,12 +61,21 @@ const readGrid = (P) => P.page.evaluate((ROWSEL) => {
         .filter((s) => !s.children.length && !s.hasAttribute('data-pt-orb')
           && !(s.parentElement && s.parentElement.hasAttribute('data-stat-info')))
         .map((s) => (s.textContent || '').trim()).filter(Boolean),
-      info: (() => {
-        const b = el.querySelector('[data-stat-info]');
+      /* v2.3.2595: `data-stat-info` is the CELL now, not a button in its
+         corner — the owner: "Remove the 'i' and just make the explanation
+         launch if they press any other part of the cell than the plus sign."
+         So what is read here is the [+] that took the corner's place, and
+         whether the cell itself carries the explainer handle. */
+      selfInfo: el.hasAttribute('data-stat-info'),
+      plus: (() => {
+        const b = el.querySelector('[data-prog3-plus]');
         if (!b) return null;
         const br = b.getBoundingClientRect();
         return { w: Math.round(br.width), h: Math.round(br.height),
-          cx: Math.round(br.left + br.width / 2), cy: Math.round(br.top + br.height / 2) };
+          l: Math.round(br.left), r: Math.round(br.right),
+          t: Math.round(br.top), b: Math.round(br.bottom),
+          cx: Math.round(br.left + br.width / 2), cy: Math.round(br.top + br.height / 2),
+          aria: b.getAttribute('aria-label') || '', dis: b.getAttribute('aria-disabled') };
       })(),
     };
   });
@@ -107,7 +121,12 @@ const readHeads = (P) => P.page.evaluate(() => (
         fs: parseFloat(getComputedStyle(badge).fontSize) } : null,
       badgeCount: [...t.querySelectorAll('[aria-label*="points to spend"]')].length,
       icon: img ? { ...rect(img), src: img.getAttribute('src') || '', fit: getComputedStyle(img).objectFit } : null,
-      label: label ? { ...rect(label), text: label.textContent.trim() } : null,
+      /* v2.3.2595: the WORD's own overflow, which is the owner's "I just want
+         each word to fit in the column".  A label that ellipsises has
+         scrollWidth > clientWidth and an unchanged bounding box, so the rect
+         alone cannot answer it. */
+      label: label ? { ...rect(label), text: label.textContent.trim(),
+        sw: Math.round(label.scrollWidth), cw: Math.round(label.clientWidth) } : null,
       lv: lv ? lv.textContent.trim() : null,
     };
   })
@@ -127,6 +146,18 @@ async function openPoints(P) {
    by the sheet's scroller, so it stayed green through two rounds of the
    owner reporting an accordion that would not collapse (v2.3.2326).  The
    drift is the point — every real thumb moves 15-20px on a 44px control. */
+async function touchDrift(P, x, y, drift = 16) {
+  const cdp = await P.page.context().newCDPSession(P.page);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  for (let i = 1; i <= 4; i++) {
+    await new Promise((r) => setTimeout(r, 20));
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y + (drift * i) / 4 }] });
+  }
+  await new Promise((r) => setTimeout(r, 20));
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+}
+
 async function tapHead(P, key, drift = 16) {
   const at = await P.page.evaluate((k) => {
     const el = document.querySelector(`[data-prog3-lane="${k}"]`);
@@ -138,15 +169,7 @@ async function tapHead(P, key, drift = 16) {
     return { x, y, onLane: !!(hit && hit.closest && hit.closest(`[data-prog3-lane="${k}"]`)) };
   }, key);
   if (!at || !at.onLane) return false;
-  const cdp = await P.page.context().newCDPSession(P.page);
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: at.x, y: at.y }] });
-  for (let i = 1; i <= 4; i++) {
-    await new Promise((r) => setTimeout(r, 20));
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: at.x, y: at.y + (drift * i) / 4 }] });
-  }
-  await new Promise((r) => setTimeout(r, 20));
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  await cdp.detach();
+  await touchDrift(P, at.x, at.y, drift);
   await P.page.waitForTimeout(320);   /* the 140ms width transition, with room */
   return true;
 }
@@ -346,7 +369,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     [...new Set(g.cells.map((c) => c.w))].length === 1 && [...new Set(g.cells.map((c) => c.h))].length === 1,
     { widths: [...new Set(g.cells.map((c) => c.w))], heights: [...new Set(g.cells.map((c) => c.h))], bodyW: g.bodyW });
   rec.ok('...and the open pair each take about a third of the body, the two strips the rest',
-    Math.abs(g.cells[0].w - (g.bodyW - 2 * 58 - 12) / 2) <= 6,
+    Math.abs(g.cells[0].w - (g.bodyW - 2 * CLOSED_W - 12) / 2) <= 6,
     { cellW: g.cells[0].w, bodyW: g.bodyW });
   rec.ok('...and the weapon\'s row lines up with Shared\'s (the grid is still a grid)',
     LANE_STATS.every((s, i) => g.cols.bow[i] && g.cols.shared[i] && g.cols.bow[i].y === g.cols.shared[i].y),
@@ -362,8 +385,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     heads.every((h) => h.role === 'button' && /, level \d+$/.test(h.aria || '') && h.h >= 44), heads.map((h) => [h.aria, h.h]));
   rec.ok('the lane headers are named the way every other screen names them (Melee / Magic / Bow) and the fourth is Shared',
     heads.map((h) => (h.aria || '').split(',')[0]).join('|') === 'Melee|Magic|Bow|Shared', heads.map((h) => h.aria));
-  rec.ok('each header carries its icon CENTRED (the owner: "combat icon centered above the label")',
-    heads.every((h) => h.icon && Math.abs(h.icon.cx - h.cx) <= 2), heads.map((h) => ({ k: h.k, icon: h.icon && h.icon.cx, head: h.cx })));
+  /* ═══ v2.3.2595: THE PAIR IS CENTRED, NOT THE ICON ON ITS OWN ═══
+     This measured the ICON's centre against the header's, which is what
+     v2.3.2592 shipped — and what the owner then reported as clipped numbers
+     on the three strips.  The two facts are the same fact: an icon pinned
+     dead-centre in a 64px strip leaves (32 - 11) = 21px to its left, and the
+     points pill needs up to 33, so the pill hung off the edge with
+     `overflow:hidden` hiding the evidence from every screenshot AND from
+     this check.  The owner's sentences describe an ARRANGEMENT — "combat
+     icon centered above the label", "points allocable will be to the left of
+     each icon" — so what is centred is the pill-and-icon PAIR, and the
+     pieces of the arrangement are each checked on their own below. */
+  rec.ok('each header carries its points and its icon as one CENTRED pair above the label',
+    heads.every((h) => { if (!h.icon || !h.badge) return false;
+      const cx = (Math.min(h.badge.l, h.icon.l) + Math.max(h.badge.r, h.icon.r)) / 2;
+      return Math.abs(cx - h.cx) <= 2; }),
+    heads.map((h) => ({ k: h.k, badge: h.badge && [h.badge.l, h.badge.r],
+      icon: h.icon && [h.icon.l, h.icon.r], head: h.cx })));
   rec.ok('...with the label UNDER the icon, and the level in the header\'s title and aria-label',
     heads.every((h) => h.label && h.icon && h.label.t >= h.icon.b - 1 && /level \d+/.test(h.title || '')),
     heads.map((h) => ({ k: h.k, label: h.label && h.label.text, title: h.title })));
@@ -371,10 +409,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
     heads.every((h) => h.badgeCount === 1 && h.badge && h.icon && h.badge.r <= h.icon.l + 1
       && h.badge.b > h.icon.t && h.badge.t < h.icon.b),
     heads.map((h) => ({ k: h.k, badge: h.badge && [h.badge.l, h.badge.r], icon: h.icon && [h.icon.l, h.icon.r] })));
-  rec.ok('a header with points to spend shows the count on brass, big enough to read',
-    heads.every((h) => h.badge && /^\d+$/.test(h.badge.text) && Number(h.badge.text) > 0
+  /* v2.3.2595, the owner: "Add a plus sign (as shown beneath the columns next
+     to each allocable area) before the number of points they have banked" —
+     the same + the cells carry, so the count reads as a quantity waiting to
+     be spent rather than as a level or as points already placed. */
+  rec.ok('a header with points to spend shows the count on brass, prefixed with a +, big enough to read',
+    heads.every((h) => h.badge && /^\+\d+$/.test(h.badge.text) && Number(h.badge.text.slice(1)) > 0
       && h.badge.visible && /216,\s*170,\s*88/.test(h.badge.bg || '') && h.badge.fs >= 12),
     heads.map((h) => h.badge));
+  /* ═══ v2.3.2595: NOTHING IN A HEADER IS CUT OFF ═══
+     Owner, on a shot of this exact screen with one weapon open: "it shows
+     clipped numbers for the other combat skills and shared pool.  You have
+     more room to shrink the melee column to give the others more space, I
+     just want each word to fit in the column."  Two failures in one sentence
+     and they are two different measurements: the NUMBER was outside its
+     column's box (clipped by the header's own overflow:hidden), and a WORD
+     that does not fit ellipsises, which changes scrollWidth and not the
+     bounding box.  Asked here because `heads` is read with one weapon open
+     beside Shared — the two 64px strips are the case the owner was looking
+     at, and the only one where either can happen. */
+  rec.ok('...and nothing in a header is cut off: the number sits inside its column and the word renders whole',
+    heads.every((h) => h.badge && h.label && h.head
+      && h.badge.l >= h.head.l - 1 && h.badge.r <= h.head.r + 1
+      && h.label.sw <= h.label.cw + 1),
+    heads.map((h) => ({ k: h.k, head: h.head && [h.head.l, h.head.r],
+      badge: h.badge && [h.badge.l, h.badge.r],
+      word: h.label && [h.label.text, h.label.sw, h.label.cw] })));
   /* The Shared column's picture is the CHARACTER, not a weapon: the owner's
      pick, and the honest one — those stats belong to the character, not to
      anything in its hands.  A cover-fit image that is not one of the three
@@ -445,7 +505,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* The picture goes here, AT REST. */
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/statgrid.png` }).catch(() => {});
 
-  /* ════════ 5. THE CENTRE OF EVERY CELL IS THE CELL ════════ */
+  /* ════════ 5. THE CELL EXPLAINS, THE QUARTER AT ITS EDGE SPENDS ════════
+     v2.3.2595, the owner, in one breath: "I also want the plus sign to add
+     points to be much larger, taking up about 25% of the cell and aligned
+     right border to border (all 3 sides).  Remove the 'i' and just make the
+     explanation launch if they press any other part of the cell than the plus
+     sign."
+     So the two jobs are split by GEOMETRY instead of by a 22px glyph in a
+     corner, and geometry is what this section measures.  The centre-of-cell
+     hit test is kept from v2.3.2441 (an inline info button once swallowed it,
+     invisibly in a screenshot) and now asks the opposite question: the middle
+     of a cell must NOT be the [+]. */
   const centres = await P.page.evaluate(async (ROWSEL) => {   /* the live screen: Bow + Shared */
     const wait = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     const out = [];
@@ -457,7 +527,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const hit = document.elementFromPoint(x, y);
       out.push({
         stat: (el.getAttribute('aria-label') || '').split(',')[0],
-        onInfo: !!(hit && hit.closest && hit.closest('[data-stat-info]')),
+        onPlus: !!(hit && hit.closest && hit.closest('[data-prog3-plus]')),
         inCell: !!(hit && hit.closest && hit.closest(ROWSEL) === el),
       });
     }
@@ -465,44 +535,131 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }, ROW);
   rec.ok('every cell was scrolled into view and its centre resolves to the cell itself (guard)',
     centres.length === 13 && centres.every((c) => c.inCell), centres.filter((c) => !c.inCell));
-  rec.ok('no cell\'s centre lands on its info button', centres.every((c) => !c.onInfo), centres.filter((c) => c.onInfo));
-  rec.ok('...and every cell still HAS an info button, in its top-right corner, clear of the middle',
-    g.cells.every((c) => c.info && c.info.w >= 22 && c.info.h >= 22 && c.info.cx > c.cx && c.info.cy < c.cy),
-    g.cells.filter((c) => !c.info || !(c.info.cx > c.cx && c.info.cy < c.cy)).map((c) => c.stat));
+  rec.ok('no cell\'s centre lands on its [+] — the middle of a cell is the explainer',
+    centres.every((c) => !c.onPlus), centres.filter((c) => c.onPlus));
+  rec.ok('...and the cell ITSELF carries the explainer handle the ℹ️ used to ("press any other part of the cell")',
+    g.cells.every((c) => c.selfInfo === true), g.cells.filter((c) => !c.selfInfo).map((c) => c.stat));
+  /* "About 25%" is read as a band, not a number: 22-30% of the cell's width
+     covers the rounding a 84-174px column does to a percentage without
+     admitting a [+] that has quietly become a glyph again or eaten a third of
+     the cell.  "Border to border (all 3 sides)" is three separate edges, so
+     it is three separate comparisons. */
+  rec.ok('every cell has a [+] of about a quarter of its width, flush to its top, right and bottom edges',
+    g.cells.every((c) => c.plus
+      && c.plus.w >= Math.round(c.w * 0.22) && c.plus.w <= Math.round(c.w * 0.30)
+      && Math.abs(c.plus.r - (c.x + c.w)) <= 2
+      && Math.abs(c.plus.t - c.y) <= 2 && Math.abs(c.plus.b - (c.y + c.h)) <= 2),
+    g.cells.slice(0, 4).map((c) => ({ stat: c.stat, cell: [c.x, c.y, c.w, c.h],
+      plus: c.plus && [c.plus.l, c.plus.t, c.plus.w, c.plus.h] })));
+  rec.ok('...and the [+] is a named control a screen reader can use, disabled when there is nothing to spend',
+    g.cells.every((c) => c.plus && /^Spend a point on /.test(c.plus.aria)
+      && (c.plus.dis === 'true' || c.plus.dis === 'false')),
+    g.cells.slice(0, 3).map((c) => c.plus && [c.plus.aria, c.plus.dis]));
 
   /* ════════ 6. A REAL FINGER SPENDS, AND THE RIGHT POOL PAYS ════════
      Proven by MUTATION against the worker: a lane spend must move THAT lane's
      count and nothing else; a shared spend must move the shared pool and
      nothing else.  The client's numbers are what the ack told it, so the
      truth is read from the admin surface. */
-  const spendAt = async (col, statName) => {
-    const before = await P.page.evaluate(([c, n]) => {
+  const readPts = (col, statName) => P.page.evaluate(([c, n]) => {
+    const el = [...document.querySelectorAll(`[data-prog3-col="${c}"] [role="button"][aria-label*=" of "]`)]
+      .find((e) => (e.getAttribute('aria-label') || '').startsWith(n));
+    const m = el && (el.getAttribute('aria-label') || '').match(/, (\d+) of (\d+)\./);
+    return m ? +m[1] : null;
+  }, [col, statName]);
+
+  /* ═══ v2.3.2595: A SPEND IS TWO GESTURES NOW ═══
+     Owner: "Add a second window asking if they're sure they want to spend the
+     point."  The [+] opens the question and only the answer sends, so this
+     taps the quarter, reads what the dialog SAYS (a confirm that names the
+     wrong stat or the wrong pool is worse than none), and then answers it.
+     `answer:'cancel'` runs the same gesture and backs out — the half that
+     proves the dialog is a real gate rather than a slide the point passes
+     through on its way to the worker. */
+  const spendAt = async (col, statName, { answer = 'confirm', drift = 8, atTop = false } = {}) => {
+    const before = await P.page.evaluate(([c, n, top]) => {
       const el = [...document.querySelectorAll(`[data-prog3-col="${c}"] [role="button"][aria-label*=" of "]`)]
         .find((e) => (e.getAttribute('aria-label') || '').startsWith(n));
       if (!el) return null;
-      el.scrollIntoView({ block: 'center' });
+      let sc = el;
+      for (; sc; sc = sc.parentElement) {
+        if (sc.scrollHeight - sc.clientHeight > 4) {
+          const oy = getComputedStyle(sc).overflowY;
+          if (oy === 'auto' || oy === 'scroll') break;
+        }
+      }
+      /* `atTop` parks the SCROLLER at 0 instead of centring the cell —
+         see the drift note below for why the two cannot be the same gesture. */
+      if (top && sc) sc.scrollTop = 0; else el.scrollIntoView({ block: 'center' });
+      const plus = el.querySelector('[data-prog3-plus]');
       const m = (el.getAttribute('aria-label') || '').match(/, (\d+) of (\d+)\./);
-      const r = el.getBoundingClientRect();
-      return { pts: m ? +m[1] : null, cap: m ? +m[2] : null,
+      const r = (plus || el).getBoundingClientRect();
+      const sr = sc ? sc.getBoundingClientRect() : null;
+      return { pts: m ? +m[1] : null, cap: m ? +m[2] : null, hasPlus: !!plus,
+        scrollTop: sc ? Math.round(sc.scrollTop) : null,
+        onScreen: !sr || (r.top >= sr.top - 1 && r.bottom <= sr.bottom + 1),
         x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
-    }, [col, statName]);
+    }, [col, statName, atTop]);
     if (!before || before.pts == null) return { err: 'no cell ' + statName + ' in ' + col };
-    const cdp = await P.page.context().newCDPSession(P.page);
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: before.x, y: before.y }] });
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: before.x + 5, y: before.y + 3 }] });
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await cdp.detach();
+    if (!before.hasPlus) return { err: 'no [+] on ' + statName + ' in ' + col };
+    if (!before.onScreen) return { err: 'the [+] on ' + statName + ' is not in the scroller\'s window', before };
+    /* ═══ WHY THE DRIFT AND THE SCROLL POSITION TRAVEL TOGETHER ═══
+       Measured here (tools/qa/mp, a [+] instrumented for its own events):
+
+         scroller at 0, drift  8   pointerdown touchstart pointerup touchend
+         scroller at 0, drift 16   pointerdown touchstart POINTERCANCEL touchend
+         scroller at 0, drift 24   pointerdown touchstart POINTERCANCEL touchend
+
+       and the dialog opened in ALL THREE — the cancelled ones through
+       scrollTap's touchend backstop, which is the whole of v2.3.2326.
+       But park the scroller mid-way (scrollIntoView block:'center', which is
+       what a spend on a cell below the fold needs) and a 16px downward drag
+       is a REAL scroll: the scroller moves, and scrollTap declines the tap on
+       purpose.  That is correct behaviour, not a bug, and it cost eleven red
+       assertions in this file before it was measured rather than assumed.
+       So: 8px for a cell that had to be scrolled to, 16px + `atTop` for the
+       sloppy-thumb case, where the drag is an overscroll that moves nothing.
+       A nested control that lost its `inner` flag fails the second one. */
+    await touchDrift(P, before.x, before.y, drift);
+    await P.page.waitForSelector('[data-prog3-spend]', { timeout: 4000 }).catch(() => {});
+    const dlg = await P.page.evaluate(() => {
+      const d = document.querySelector('[data-prog3-spend]');
+      if (!d) return null;
+      const txt = (s) => { const e = d.querySelector(s); return e ? (e.textContent || '').trim() : null; };
+      return {
+        stat: d.getAttribute('data-prog3-spend'),
+        title: txt('[data-prog3-spend-title]'),
+        ask: (d.querySelector('[data-prog3-spend-card]') || d).textContent.replace(/\s+/g, ' ').trim(),
+        rows: txt('[data-prog3-spend-rows]'),
+        confirm: txt('[data-prog3-spend-confirm]'),
+        cancel: txt('[data-prog3-spend-cancel]'),
+        infoBehind: !!document.querySelector('[data-infopopup]'),
+        z: parseInt(getComputedStyle(d).zIndex, 10) || 0,
+      };
+    });
+    if (!dlg) return { err: 'no confirm window for ' + statName, from: before.pts };
+    const btn = answer === 'cancel' ? '[data-prog3-spend-cancel]' : '[data-prog3-spend-confirm]';
+    const at = await P.page.evaluate((sel) => {
+      const b = document.querySelector(sel);
+      if (!b) return null;
+      const r = b.getBoundingClientRect();
+      return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2),
+        h: Math.round(r.height) };
+    }, btn);
+    if (!at) return { err: 'no ' + btn, dlg, from: before.pts };
+    await touchDrift(P, at.x, at.y, 6);
+    await P.page.waitForTimeout(300);
+    const gone = await P.page.evaluate(() => !document.querySelector('[data-prog3-spend]'));
+    if (answer === 'cancel') {
+      await P.page.waitForTimeout(700);
+      return { ok: (await readPts(col, statName)) === before.pts, dlg, gone, btnH: at.h, from: before.pts };
+    }
     for (let i = 0; i < 40; i++) {
       await P.page.waitForTimeout(100);
-      const now = await P.page.evaluate(([c, n]) => {
-        const el = [...document.querySelectorAll(`[data-prog3-col="${c}"] [role="button"][aria-label*=" of "]`)]
-          .find((e) => (e.getAttribute('aria-label') || '').startsWith(n));
-        const m = el && (el.getAttribute('aria-label') || '').match(/, (\d+) of (\d+)\./);
-        return m ? +m[1] : null;
-      }, [col, statName]);
-      if (now != null && now > before.pts) return { ok: true, from: before.pts, to: now };
+      const now = await readPts(col, statName);
+      if (now != null && now > before.pts) return { ok: true, dlg, gone, btnH: at.h, from: before.pts, to: now };
     }
-    return { ok: false, from: before.pts };
+    return { ok: false, dlg, gone, btnH: at.h, from: before.pts };
   };
 
   /* The MAGIC column, open beside Shared — the pair a player actually spends
@@ -520,9 +677,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const headsBefore = await readHeads(P);
   const s0 = await serverPools(wsPort, myId);
   rec.ok('the worker\'s blob carries both pools (guard)', !!s0 && s0.pool > 0 && s0.shared > 0, s0);
+  /* ═══ THE DIALOG IS A GATE, NOT A SLIDE ═══
+     Cancel FIRST, and against the WORKER — "are you sure" that spends the
+     point anyway is the worst outcome of the whole change, and the count on
+     screen is only what the ack said, so a client-side no-op would read as a
+     pass here if the server had moved.
+     On the TOP row with a 16px drift, which is the sloppy thumb the [+]'s
+     `inner` scrollTap flag exists for (see spendAt). */
+  const sPre = await serverPools(wsPort, myId);
+  const rNo = await spendAt('staff', 'Range for staff', { answer: 'cancel', drift: 16, atTop: true });
+  console.log('    CANCEL a Range spend: ' + JSON.stringify(rNo));
+  rec.ok('a sloppy thumb on the [+] still opens the confirm, and it names the stat, its lane and the pool that pays',
+    !!rNo.dlg && rNo.dlg.stat === 'range' && /Range/.test(rNo.dlg.title || '') && /Magic/.test(rNo.dlg.title || '')
+      && /Spend 1 Magic point\?/.test(rNo.dlg.ask || ''), rNo.dlg);
+  rec.ok('...and shows what the point buys, now -> after, rather than only asking',
+    !!rNo.dlg && !!rNo.dlg.rows && /→/.test(rNo.dlg.rows), rNo.dlg && rNo.dlg.rows);
+  rec.ok('...with a Cancel and a Spend point, both a real thumb tall, and it sits above the explainer layer',
+    !!rNo.dlg && rNo.dlg.cancel === 'Cancel' && rNo.dlg.confirm === 'Spend point'
+      && rNo.btnH >= 44 && rNo.dlg.z > 9400, { dlg: rNo.dlg, btnH: rNo.btnH });
+  rec.ok('...and tapping the [+] does NOT also open the stat explainer behind it',
+    !!rNo.dlg && rNo.dlg.infoBehind === false, rNo.dlg);
+  rec.ok('Cancel closes the window and spends NOTHING', rNo.ok === true && rNo.gone === true, rNo);
+  const sNo = await serverPools(wsPort, myId);
+  rec.ok('...and the worker was never asked: both pools and every allocation are where they were',
+    !!sPre && !!sNo && sNo.pool === sPre.pool && sNo.shared === sPre.shared
+      && JSON.stringify(sNo.atk) === JSON.stringify(sPre.atk)
+      && JSON.stringify(sNo.alloc) === JSON.stringify(sPre.alloc),
+    { before: sPre && { pool: sPre.pool, shared: sPre.shared, range: sPre.atk.staff && sPre.atk.staff.range },
+      after: sNo && { pool: sNo.pool, shared: sNo.shared, range: sNo.atk.staff && sNo.atk.staff.range } });
+
   const r1 = await spendAt('staff', 'Range for staff');
   console.log('    spend Range in the MAGIC column: ' + JSON.stringify(r1));
-  rec.ok(`a real finger in the MIDDLE of a lane cell buys a point (staff Range: ${r1.from} -> ${r1.to})`, r1.ok === true, r1);
+  rec.ok(`a real finger on a lane cell's [+], answered, buys a point (staff Range: ${r1.from} -> ${r1.to})`, r1.ok === true, r1);
   await P.page.waitForTimeout(600);
   const s1 = await serverPools(wsPort, myId);
   rec.ok('...and the WORKER charged it to the Magic lane: atk.staff.range +1, poolBy.staff −1, pool −1',
@@ -535,7 +721,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const r2 = await spendAt('shared', 'Dodge');
   console.log('    spend Dodge in the SHARED column: ' + JSON.stringify(r2));
-  rec.ok(`a real finger in the MIDDLE of a shared cell buys a point (Dodge: ${r2.from} -> ${r2.to})`, r2.ok === true, r2);
+  rec.ok(`a real finger on a shared cell's [+], answered, buys a point (Dodge: ${r2.from} -> ${r2.to})`, r2.ok === true, r2);
+  rec.ok('...and the shared confirm asks for a SHARED point, not a lane one',
+    !!r2.dlg && /Spend 1 shared point\?/.test(r2.dlg.ask || '') && /Shared/.test(r2.dlg.title || ''), r2.dlg);
   await P.page.waitForTimeout(600);
   const s2 = await serverPools(wsPort, myId);
   rec.ok('...and the WORKER charged it to the SHARED pool: alloc.dodge +1, shared −1',
@@ -548,7 +736,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* And the headers followed the ack: the Magic badge and the Shared badge
      each dropped by one, the other two did not move. */
   const heads2 = await readHeads(P);
-  const n = (hs, k) => { const h = hs.find((x) => x.k === k); return h && h.badge ? Number(h.badge.text) : null; };
+  /* v2.3.2595: the badge reads "+7" now, so the number is what follows the +. */
+  const n = (hs, k) => { const h = hs.find((x) => x.k === k);
+    return h && h.badge ? Number(String(h.badge.text).replace(/^\+/, '')) : null; };
   rec.ok('the column badges followed the acks: Magic −1, Shared −1, Melee and Bow unchanged',
     n(heads2, 'staff') === n(headsBefore, 'staff') - 1 && n(heads2, 'shared') === n(headsBefore, 'shared') - 1
       && n(heads2, 'sword') === n(headsBefore, 'sword') && n(heads2, 'bow') === n(headsBefore, 'bow'),

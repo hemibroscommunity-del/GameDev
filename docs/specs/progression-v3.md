@@ -561,22 +561,21 @@ would stop lining up the moment either was retuned. Three shapes only:
 | 1 open | 3 × 58 | 192 |
 | weapon + Shared | 2 × 58 | 125 each |
 
-**58px is the floor the owner's own header layout sets**: badge 19 + gap
-2 + icon 22, plus padding. Anything narrower and the points stop sitting
-to the LEFT of the icon, which is the one thing he specified about it.
-An open column never goes below 90px (the pair at 320), and the cells
-have been measured down to 74, so a cell never renders narrower than it
-has been checked at. The change animates over 140ms,
-the system's `fast` step, because the width IS the gesture.
+**64px is the floor the owner's own header layout sets** (58 until
+v2.3.2595 — see "The strips got wider" below): the points pill at its
+widest, the gap, and the 22px icon, plus a border each side and a little
+air. An open column never goes below 84px (the pair at 320). The change
+animates over 140ms, the system's `fast` step, because the width IS the
+gesture.
 
 A closed column keeps its box and its `[data-prog3-col]` handle and
 simply holds nothing — which is what makes the width animate instead of
 cells jumping between columns.
 
 **The header's tap is the toggle**, so the skill explainer moved to an
-ℹ️ the header draws only while open (a 58px strip already carries a
-badge, an icon and a name; a fourth thing in it would be the 13px glyph
-the thumb-target floor forbids). It is absolutely positioned in the
+ℹ️ the header draws only while open (a 64px strip already carries a
+points pill, an icon and a name; a fourth thing in it would be the 13px
+glyph the thumb-target floor forbids). It is absolutely positioned in the
 corner so the middle of the header always toggles — the v2.3.2441
 lesson, where an inline info button beside the centre silently ate the
 tap. `aria-expanded` and `aria-controls` ride the header.
@@ -620,3 +619,128 @@ says "reach, not damage" / "special attacks only" / "movement, not
 damage" instead of "does not change damage" for the stats whose job is
 not sustained DPS (`dpsNote` on the row metadata). `StatDemo` gains
 `luck` and `special` scenes; `range` and `move` open with no scene.
+
+## The cell is the explainer and the quarter is the spend (v2.3.2595)
+
+Five corrections from the owner, in one message, all about the act of
+spending a point:
+
+> "I also want the plus sign to add points to be much larger, taking up
+> about 25% of the cell and aligned right border to border (all 3
+> sides). Remove the 'i' and just make the explanation launch if they
+> press any other part of the cell than the plus sign. Also add a second
+> window asking if they're sure they want to spend the point. Add a plus
+> sign (as shown beneath the columns next to each allocable area) before
+> the number of points they have banked. In your screenshot where the
+> points can be allocated with the expanded melee column it shows clipped
+> numbers for the other combat skills and shared pool. You have more room
+> to shrink the melee column to give the others more space, I just want
+> each word to fit in the column."
+
+**The [+] is a real button, 25% of the cell, flush into its top, right
+and bottom edges.** Absolutely positioned at 0/0/0, which lands inside
+the 1px border; the right corners take the cell's 9px radius less that
+border. The cell's own `padding-right` is `calc(25% + 4px)` (`+ 2px`
+below 360) so a long value can never run underneath it.
+
+**The ℹ️ in the cell's corner is gone.** `data-stat-info` MOVED onto the
+cell: the handle and its meaning — "the thing you press to be told about
+this stat" — both survive, and only the element under them changed, so
+`mp-statdemo` and `mp-statpeek` keep working by selector. This is the
+reverse of the two weakenings the floor took before it: the explainer
+went from a 22×22 glyph (484px²) to everything but the right quarter of
+a 48px cell (~63×46, 2900px²), and the spend from "the whole cell" to a
+21×46 edge — narrower than a cell, nearly twice the area of the ℹ️ it
+replaces, under the thumb that reaches from the right of the phone.
+Since v2.3.1668 the whole row spent and the ℹ️ was the nested exception;
+now the whole cell explains and the [+] is the nested exception. It
+carries `inner: true` (scrollTap) and stops propagation, so a spend never
+also opens the explainer behind the confirm.
+
+**A spend asks first.** `prog3SpendBus` + `Prog3SpendConfirm` (z 9450,
+one above InfoPopup, because a stat's explainer and the confirm for that
+same stat can both be open after a fumbled double tap and the QUESTION
+has to be on top). It carries the same now → after pair the explainer
+prints, from the same `previewStatPoint` — a confirm that only says "are
+you sure" asks a question it has not given you the means to answer — and
+it is dismissable four ways (scrim, Cancel, Escape, ×), the InfoPopup
+rule.
+
+It is deliberately NOT the existing `spendConfirmBus` /
+`SpendPointConfirm`: that one APPLIES the point client-side and flushes
+`stats_update`, which is exactly what prog3 must never do. This one
+calls back into the row, which sends `prog3_allocate`; the worker's echo
+is the only thing that may move a count. Its `run` re-reads live state
+through `getState()` rather than closing over the render that opened it,
+because a dialog can sit open across a level-up, a zone change and
+several `player_state` echoes.
+
+**The banked count reads `+7`.** The same + the cells carry, so a header
+badge reads as a quantity waiting to be spent rather than as a level or
+as points already placed.
+
+### The strips got wider, and the pill moved
+
+The clipped numbers and the 25% [+] are the same change seen twice. A
+closed strip was 58px with the pill absolutely positioned off the icon's
+left edge so the icon could stay dead-centre — and an icon that is
+dead-centre needs (pill + gap + half the icon) × 2 of width to keep the
+pill on screen: 90px for a three-digit count. A closed strip cannot be
+90px. At 320 with one column open there are 296px for four columns, and
+three 90px strips would leave the OPEN one 26. So the pill hung off the
+left edge with `overflow:hidden` hiding the evidence.
+
+So **the pill and the icon are a centred pair** now. The arrangement the
+owner described is intact — the number is to the left of the icon, the
+name under them both — and it holds at every width instead of only on
+wide columns. The pill keeps its box at 0 points (visibility, not
+display): every lane carries exactly one `[aria-label*="points to
+spend"]` whatever it holds, and the icon does not jump sideways the
+moment a lane's last point is spent.
+
+With that, 64px holds the widest thing a header can show (a four-
+character pill ~33px, gap 3, icon 22 = 58px of row; "SHARED" is ~45px at
+11px/800/.06em), and the 18px the three strips gained come out of the
+open column — the trade the owner asked for in as many words. Measured:
+
+```
+                  390 (usable 366)   375 (351)   320 (296)
+  all shut            92 each          88          74
+  1 open        192 closed / 174     192 / 159   192 / 104
+  2 open        128 closed / 119     128 / 111   128 /  84
+```
+
+84px is the narrowest cell this layout ever draws. It needed three
+pixels below 360, taken from padding and the value row's gaps rather
+than from the type (the owner's own rule, v2.3.2441: "Reduce horizontal
+padding rather than shrinking the text excessively") — measured on the
+320×568 SE, where `1.0%` wanted 32px of value box and had 30.
+
+### What the harness pins
+
+- `mp-statcols` — two detectors per header at 390/375/320, at rest and
+  with one column open: `scrollWidth > clientWidth` catches a leaf that
+  ELLIPSISED, and a box comparison catches a leaf that is simply OUTSIDE
+  its column. The owner's report slipped past the first one, because a
+  pill hanging off the edge under `overflow:hidden` has a perfectly
+  happy scrollWidth.
+- `mp-statgrid` — the [+]'s geometry (22–30% of the cell, flush to three
+  edges), the centre of every cell resolving to the cell and never to
+  the [+], the `+N` badge, the pill-and-icon pair centred, and the
+  confirm end to end: what it says, that Cancel spends nothing *on the
+  worker*, and that answering it debits the right pool.
+- `mp-prog3` — the two targets' floors (explainer ≥ 40px, [+] a quarter
+  of the cell and ≥ 44px tall), with the counts that stop `Math.min()`
+  of an empty list passing vacuously.
+- `mp-ptorb` — the orb still flares on the worker's echo, now reached
+  through the [+] and the confirm.
+
+**Drift is not one number.** Measured with an instrumented [+]: with the
+scroller parked at 0, drifts of 8, 16 and 24px all open the confirm (the
+cancelled ones through scrollTap's touchend backstop, v2.3.2326). Park
+the scroller mid-way — which is what `scrollIntoView({block:'center'})`
+does for a cell below the fold — and a 16px drag is a REAL scroll: the
+scroller moves and scrollTap declines the tap, correctly. So the spend
+helper takes both a drift and an `atTop` flag, and the sloppy-thumb case
+runs on the top row where the drag is an overscroll that moves nothing.
+Eleven red assertions came from assuming otherwise.

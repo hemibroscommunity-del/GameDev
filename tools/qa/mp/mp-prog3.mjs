@@ -217,9 +217,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const all = rows();
     const firstIn = all.length ? inView(all[0]) : false;
     const heights = all.map((r) => Math.round(r.getBoundingClientRect().height));
+    /* ═══ v2.3.2595: THE TWO TARGETS IN A CELL ═══
+       Owner: "I also want the plus sign to add points to be much larger,
+       taking up about 25% of the cell and aligned right border to border (all
+       3 sides).  Remove the 'i' and just make the explanation launch if they
+       press any other part of the cell than the plus sign."
+       So a cell no longer contains an ℹ️ to measure.  It IS the explainer
+       (it carries `data-stat-info` itself) everywhere the [+] is not, and the
+       [+] is the spend.  Both are measured: the explainer as the cell minus
+       the quarter the [+] takes, the [+] as itself. */
     const targets = all.map((r) => {
-      const i = r.querySelector('[data-stat-info]');
-      return i ? Math.round(Math.min(i.getBoundingClientRect().width, i.getBoundingClientRect().height)) : null;
+      if (!r.hasAttribute('data-stat-info')) return null;
+      const p = r.querySelector('[data-prog3-plus]');
+      const pw = p ? p.getBoundingClientRect().width : 0;
+      const b = r.getBoundingClientRect();
+      return Math.round(Math.min(b.width - pw, b.height));
+    });
+    const plus = all.map((r) => {
+      const p = r.querySelector('[data-prog3-plus]');
+      if (!p) return null;
+      const b = p.getBoundingClientRect(), c = r.getBoundingClientRect();
+      return { w: Math.round(b.width), h: Math.round(b.height),
+        pct: Math.round((b.width / c.width) * 100),
+        flush: Math.abs(b.right - c.right) <= 2 && Math.abs(b.top - c.top) <= 2
+          && Math.abs(b.bottom - c.bottom) <= 2 };
     });
     /* REACHABLE means: there is a scroll position at which the last row is
        wholly visible between the pinned stack and the floor.  Scroll so its
@@ -243,6 +264,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
          screen with no info buttons at all.  This is the count that makes the
          floor mean something. */
       infoCount: targets.filter((t) => t != null).length,
+      minPlusW: Math.min(...plus.filter(Boolean).map((p) => p.w)),
+      minPlusH: Math.min(...plus.filter(Boolean).map((p) => p.h)),
+      plusPct: [...new Set(plus.filter(Boolean).map((p) => p.pct))],
+      plusFlush: plus.filter(Boolean).filter((p) => p.flush).length,
+      plusCount: plus.filter(Boolean).length,
       panel: Math.round(box().height), over: Math.max(0, el.scrollHeight - el.clientHeight) };
   });
   rec.ok('every one of the open lane\'s controls is rendered (present at once)',
@@ -260,28 +286,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !laneFit.err && laneFit.lastAtMax >= laneFit.minRow - 1, laneFit);
   rec.ok('...every row clears the 44pt line, which is what "twice as large" bought',
     !laneFit.err && laneFit.minRow >= 44, laneFit);
-  /* ═══ v2.3.2441: 30 ON A ROW, 22 IN A COMPACT CELL ═══
-     v2.3.2222 set 30 against a FULL-WIDTH row, where a 30px secondary control
-     sat beside a 26px icon, a label and a 38px [+] with room to spare.  The
-     owner's v2.3.2441 mockup puts four cells across 378px, and a 91.5px cell
-     cannot hold a 30px info button, an icon, a value AND a [+] without the
-     number losing.  So the floor is 22 where the cells are compact.
-
-     THIS IS A WEAKENING and is flagged as one in the PR rather than hidden
-     here.  Two things stop it being a quiet regression:
-       - 22 is still a real target, not the 13px glyph a first cut shipped
-         (which this assertion caught, doing exactly its job);
-       - the PRIMARY action did not shrink at all.  Spending a point is the
-         whole 91.5x48 cell, which is a bigger target than the [+] on the old
-         row ever was, and the row's own 48px height is unchanged.
-     Note the vacuity trap this assertion has: `Math.min()` of an empty list is
-     Infinity, so a screen with NO info buttons at all passes it.  The count
-     below is what stops that. */
-  rec.ok('...and every ℹ️ is a real thumb target, not a glyph (30 on a row, 22 in a compact cell)',
-    !laneFit.err && laneFit.minInfo >= 22, laneFit);
-  rec.ok('...and there is one on EVERY stat, so the floor above is not measuring an empty set',
+  /* ═══ v2.3.2595: THE ℹ️ IS GONE AND BOTH TARGETS GOT BIGGER ═══
+     The floor here was 30 on a full-width row (v2.3.2222), then 22 in a
+     compact cell (v2.3.2441) — each step a weakening, argued and flagged,
+     because a 91.5px cell could not hold an info button, an icon, a value and
+     a [+] without the number losing.  The owner ended the argument by taking
+     the ℹ️ out: the cell explains and a quarter-width [+] spends.
+     That is the opposite of another weakening.  The explainer went from a
+     22x22 glyph (484px²) to everything but the right quarter of a 48px cell
+     (~63x46, 2900px²), and the spend from the whole cell to a 21x46 edge —
+     narrower than a cell but nearly twice the area of the ℹ️ it replaces, and
+     in the one place a thumb reaching from the right of the phone lands
+     first.  Both floors are pinned here so neither can drift back.
+     The vacuity trap is unchanged and so is its answer: `Math.min()` of an
+     empty list is Infinity, so the counts below are what make the floors
+     mean something. */
+  rec.ok('...and the explainer target — the cell, less its [+] — is far more than the 22px glyph it replaces',
+    !laneFit.err && laneFit.minInfo >= 40, laneFit);
+  rec.ok('...on EVERY stat, so the floor above is not measuring an empty set',
     !laneFit.err && laneFit.infoCount === laneFit.cells,
     { infoCount: laneFit.infoCount, cells: laneFit.cells });
+  rec.ok('...and every cell has a [+] of about a quarter of its width, flush to three of its edges, a full row tall',
+    !laneFit.err && laneFit.plusCount === laneFit.cells && laneFit.plusFlush === laneFit.cells
+      && laneFit.plusPct.every((p) => p >= 22 && p <= 30)
+      && laneFit.minPlusH >= 44 && laneFit.minPlusW >= 20,
+    { pct: laneFit.plusPct, w: laneFit.minPlusW, h: laneFit.minPlusH,
+      flush: laneFit.plusFlush, count: laneFit.plusCount, cells: laneFit.cells });
 
   /* ═══ v2.3.2326: AND FOR EVERY LANE, NOT JUST THE ONE WE LANDED ON ═══
      The laneFit block above measures whichever lane prog3ActiveCat happens to
@@ -489,8 +519,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
        points now, not its level. */
     const pts = spans.find((x) => /^\d+\s+PTS$/.test((x.textContent || '').trim()));
     /* v2.3.2512: the accordion header prints the bare count on the same line
-       as the name, so there is no "N PTS" span to find on that branch. */
-    const count = spans.find((x) => !x.children.length && /^\d+$/.test((x.textContent || '').trim()));
+       as the name, so there is no "N PTS" span to find on that branch.
+       v2.3.2595: and it reads "+64" now — the owner asked for a plus before
+       the banked number, so the span this floor is read off no longer matches
+       a digits-only pattern.  An assertion that stops FINDING its element
+       reports `null >= 12`, which is a failure that says nothing about
+       legibility (the same trap v2.3.2441 documents below), so the pattern
+       follows the text. */
+    const count = spans.find((x) => !x.children.length && /^\+?\d+$/.test((x.textContent || '').trim()));
     const px = (el) => (el ? parseFloat(getComputedStyle(el).fontSize) : null);
     return { arrow: px(arrow), lv: px(lv), pts: px(pts), count: px(count),
       arrowColor: arrow ? getComputedStyle(arrow).color : null };

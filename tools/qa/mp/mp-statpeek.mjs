@@ -104,14 +104,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const pills = [...document.querySelectorAll('[data-prog3-col="sword"] [role="button"][aria-label*=" of "]')]
       .filter((d) => /^luck/i.test(d.getAttribute('aria-label') || ''));
     const el = pills[0];
-    const info = el && el.querySelector('[data-stat-info]');
+    /* v2.3.2595: the explainer handle moved from a button in the cell's
+       corner onto the CELL itself — the owner took the ℹ️ out ("make the
+       explanation launch if they press any other part of the cell than the
+       plus sign").  So the thing to press is the cell, and the guard below
+       is unchanged and more pointed than it was: pressing it must open a
+       window, not spend a point. */
+    const info = el && el.hasAttribute('data-stat-info') ? el : null;
     if (!info) return false;
     for (const type of ['pointerdown', 'pointerup']) {
       info.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch' }));
     }
     return true;
   });
-  rec.ok('the Luck row carries an ℹ️ and it could be tapped', pressed);
+  rec.ok('the Luck cell is itself the explainer handle and it could be pressed', pressed);
   await P.page.waitForTimeout(400);
   const popup = await P.page.evaluate(() => {
     const card = document.querySelector('[data-infopopup-card]');

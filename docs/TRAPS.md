@@ -3431,3 +3431,70 @@ real finger at real coordinates shows it, and only if the assertion checks
 **Related:** §67 (a synthesised gesture proves the handler, not the
 reachability) — same family: the event you dispatch is not the event the
 browser would have sent.
+
+## 83. `scrollWidth` cannot see a child that hangs outside its parent (v2.3.2595)
+
+**Tempting:** the screen has an ellipsis detector — every leaf with text is
+walked and `scrollWidth > clientWidth` reports anything that did not fit. Three
+scenarios run it at three widths. So if something were being cut off, it would
+be red.
+
+**Wrong: that test only sees a box that outgrew ITSELF.** An absolutely
+positioned child placed outside its parent's box has a perfectly happy
+`scrollWidth` — its own content fits its own border box — and the parent, being
+`overflow: hidden`, reports no overflow either, because the overflow was
+*painted away*, not laid out. Both elements are individually content.
+
+The points-column header shipped exactly this: the unspent-points pill was
+`position:absolute; right:50%; margin-right:15px` so the icon could stay
+dead-centre, and on a 58px closed strip its left edge landed at −5. The owner
+saw it in a screenshot ("it shows clipped numbers for the other combat skills
+and shared pool") after every assertion on that screen was green — the same way
+`MELE1` / `MAGI1` were caught by LOOKING, at v2.3.2326.
+
+**Overlap is a question about two boxes and so is containment.** Ask it about
+two boxes: every leaf's rect against its column's rect (`mp-statcols`,
+`outside`). Keep the ellipsis detector; it answers a different question.
+
+**And the layout lesson under it:** an icon pinned dead-centre costs
+`(badge + gap + half the icon) × 2` of width to keep the badge on screen, which
+is 90px for a three-digit count. If the container cannot be that wide, the icon
+cannot be dead-centre — centre the PAIR instead, and check the arrangement
+(number left of icon, name under both) rather than one element's centre.
+
+**Related:** §67 — both are "the assertion was green and the screen was wrong".
+
+## 84. A declined tap can be the browser being right (v2.3.2595)
+
+**Tempting:** the repo's own rule is that a QA tap must carry real drift,
+because a synthesised gesture proves the handler and not the reachability
+(§67), and 16px is the drift that makes `scrollTap`'s cancel path matter. So
+every tap gets 16px, and when eleven assertions go red the screen must be
+broken.
+
+**Wrong: whether a drifted tap survives depends on where the SCROLLER is.**
+`scrollTap` recovers a cancelled pointer only when the scroller did not move —
+that is the whole rule (v2.3.2326: "the browser took a gesture that turned out
+to be nothing"). Measured on an instrumented `[+]`:
+
+```
+  scroller at 0,  drift  8   pointerdown touchstart pointerup touchend   opens
+  scroller at 0,  drift 16   pointerdown touchstart POINTERCANCEL ...    opens
+  scroller at 0,  drift 24   pointerdown touchstart POINTERCANCEL ...    opens
+  scroller mid,   drift 16   the scroller really scrolls                 declined
+```
+
+A scenario that scrolls a cell into view with `scrollIntoView({block:'center'})`
+has parked the scroller in the middle on purpose, so a 16px drag there IS a
+scroll and declining it is correct. Eleven red rows in `mp-statgrid` came from
+assuming the opposite.
+
+**So drift and scroll position travel together:** a small drift (8px, under the
+cancel threshold) for a control that had to be scrolled to, and the sloppy
+16px+ thumb on a row at the END of the scroll, where the drag is an overscroll
+that moves nothing. Both are real gestures; only the second one tests the
+backstop.
+
+**Before filing a "tap does nothing" bug, log the events.** `pointerup` present
+means the handler ran; `pointercancel` plus a moved `scrollTop` means the
+browser scrolled and the screen is fine.

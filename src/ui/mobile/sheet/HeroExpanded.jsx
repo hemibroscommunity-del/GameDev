@@ -26,6 +26,7 @@ import { StatDemo, STAT_DEMO_KEYS } from './StatDemo.jsx';                      
 import { useScrollTap } from './scrollTap.js';                                  /* v2.3.2326: a tap the scroller confiscated is still a tap */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
 import { heroSectionBus } from './heroSectionBus.js';                            /* v2.3.1668 */
+import { prog3SpendBus } from './prog3SpendBus.js';                              /* v2.3.2595: the point spend asks first */
 import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
 import { playIsLandscape, panelVw } from '../playViewport.js';                    /* v2.3.2171: the sideways pane stacks; panelVw v2.3.2382 */
 
@@ -1527,17 +1528,33 @@ export const HeroExpanded = () => {
                until it has been. */
             const sharedIcon = portraitStore.get() || (S && S.myAvatar) || SHARED_ICON_FALLBACK;
             const COL_GAP = 4;
-            /* The points badge that sits LEFT of a column's icon.  Kept in the
-               DOM at 0 (hidden, not absent) so every lane carries exactly one
+            /* ═══ v2.3.2595: THE POINTS PILL AND THE ICON ARE ONE PAIR ═══
+               Owner: "Points allocable (if any) will be to the left of each
+               icon" — and, on a shot of one open column, that the numbers on
+               the OTHER three were clipped.  Both are true of the old
+               arrangement and they cannot both be fixed while the icon is
+               dead-centre: the pill hung off the icon's left edge by an
+               absolute offset, so keeping it on screen costs
+               (pill + gap + half the icon) x 2 of column — 90px for a
+               three-digit count.  A closed strip cannot be 90px.  At 320 with
+               one column open there are 296px for four columns, and three
+               90px strips would leave the OPEN one 26.
+               So the pill and the icon are a centred PAIR now.  The
+               arrangement the owner described is intact — the number is to
+               the LEFT of the icon, the name under them both — and it holds
+               at every width instead of only on wide columns.
+               The pill keeps its box at 0 points (visibility, not display)
+               for two reasons: every lane carries exactly one
                `[aria-label*="points to spend"]` whatever it holds, which is
                the count mp-prog3 and mp-statgrid have asserted since
-               v2.3.2176. */
+               v2.3.2176, and the icon does not JUMP sideways the moment a
+               lane's last point is spent. */
             const BADGE = {
-              position: 'absolute', right: '50%', marginRight: 15, top: '50%', transform: 'translateY(-50%)',
+              flex: '0 1 auto', minWidth: 19, height: 17, padding: '0 4px',
+              boxSizing: 'border-box', borderRadius: 999, overflow: 'hidden',
               /* 12px, the floor the owner set for a header's count
                  (v2.3.2315: "needs to increase in size for legibility";
                  mp-prog3 pins >= 12). */
-              minWidth: 19, height: 17, padding: '0 4px', boxSizing: 'border-box', borderRadius: 999,
               background: COL.accent, color: '#20170D', fontSize: 12, fontWeight: 900,
               lineHeight: '17px', textAlign: 'center', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
             };
@@ -1550,35 +1567,47 @@ export const HeroExpanded = () => {
                owner drew: the icon (with its badge) over the name.  The level
                moved into the title and aria-label. */
             const HEAD_H = 44;
-            /* ═══ v2.3.2593: HOW THE FOUR SHARE THE WIDTH ═══
-               A closed strip is 58px, which is what the owner's own header
-               layout costs at its smallest: badge 19 + gap 2 + icon 22 = 43,
-               plus 2px of padding each side and a little air.  Anything
-               narrower and the points would have to stop sitting to the LEFT
-               of the icon, which is the one thing he specified about it.
+            /* ═══ v2.3.2595: HOW THE FOUR SHARE THE WIDTH ═══
+               Owner, on a shot of the Melee column open: "it shows clipped
+               numbers for the other combat skills and shared pool.  You have
+               more room to shrink the melee column to give the others more
+               space, I just want each word to fit in the column."
+
+               A closed strip is 64px, which is the header's own contents at
+               their widest: the points pill at four characters ("+900", more
+               than a level-300 character can bank) is ~33px, the gap 3, the
+               icon 22 — 58px of row — and "SHARED", the longest of the four
+               names, ~45px at 11px/800/.06em.  Plus a border each side and a
+               little air.
+               It was 58, and 58 fit the NAME and clipped the NUMBER: the two
+               were not on one row then (see BADGE above), so the strip had to
+               hold twice the pill's offset rather than the pill itself.
 
                With every column shut they share the width equally — four
                strips is not a layout, it is the resting state, and four
-               58px strips against 378px of body would leave 146px of nothing.
+               64px strips against 378px of body would leave 122px of nothing.
                Once ANY column is open the closed ones drop to the strip and
                the open ones split what is left.  v2.3.2594 caps that at TWO
                (one weapon plus Shared), so there are exactly three shapes:
 
                    390px body 378, gaps 12, usable 366
                      all shut          92 each
-                     1 open   3 x 58 = 174 closed,  192 open
-                     2 open   2 x 58 = 116 closed,  125 each
+                     1 open   3 x 64 = 192 closed,  174 open
+                     2 open   2 x 64 = 128 closed,  119 each
                    320px body 308, gaps 12, usable 296
                      all shut          74 each
-                     1 open   174 closed, 122 open
-                     2 open   116 closed,  90 each
+                     1 open   192 closed, 104 open
+                     2 open   128 closed,  84 each
 
-               The narrowest an OPEN column ever gets is 90px, and the cells
-               have been measured down to 74 (NARROW below), so a cell never
-               renders narrower than it has already been checked at.
+               The 18px the three strips gained come out of the OPEN column,
+               which is the trade the owner asked for in as many words.  The
+               narrowest an open column now gets is 84px — a 48px cell whose
+               quarter-width [+] leaves ~56px for the title and the value, so
+               mp-statgrid sweeps 320/375/390 with two columns open and pins
+               that nothing in a cell ellipsises.
                Header and body read the same helper, or the two rows would
                stop lining up the moment one of them was retuned. */
-            const COL_CLOSED_W = 58;
+            const COL_CLOSED_W = 64;
             const isColOpen = (k) => openCols.indexOf(k) >= 0;
             const anyColOpen = openCols.length > 0;
             const colFlex = (k) => ((anyColOpen && !isColOpen(k))
@@ -1662,9 +1691,15 @@ export const HeroExpanded = () => {
                        whole gesture, so it is worth seeing happen. */
                     transition: 'flex-basis .14s var(--ease-ui, ease), flex-grow .14s var(--ease-ui, ease)',
                   }}>
-                  <div style={{ position: 'relative', width: '100%', height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '100%', height: 22, minWidth: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                    {/* v2.3.2595 (owner): "Add a plus sign ... before the
+                        number of points they have banked" — the same + the
+                        cells carry, so the badge reads as a quantity waiting
+                        to be spent rather than as a level or a count of
+                        something already placed. */}
                     <span aria-label={`${pts} points to spend on ${col.label}`}
-                      style={{ ...BADGE, visibility: pts > 0 ? 'visible' : 'hidden' }}>{pts}</span>
+                      style={{ ...BADGE, visibility: pts > 0 ? 'visible' : 'hidden' }}>{'+' + pts}</span>
                     <img src={iconSrc} alt="" draggable={false}
                       onError={shared ? (e) => { if (e.currentTarget.src.indexOf(SHARED_ICON_FALLBACK) < 0) e.currentTarget.src = SHARED_ICON_FALLBACK; } : undefined}
                       style={{
@@ -1683,7 +1718,7 @@ export const HeroExpanded = () => {
                       The header's tap is the collapse toggle now, so the
                       skill's explainer needs its own control — the same
                       arrangement the cells have, and for the same reason.
-                      Drawn only on an OPEN column: a 58px closed strip
+                      Drawn only on an OPEN column: a 64px closed strip
                       already carries a badge, an icon and a name, and a
                       fourth thing in it would be the 13px glyph mp-prog3's
                       thumb-target floor exists to forbid.  One tap opens the
@@ -2059,6 +2094,54 @@ export const HeroExpanded = () => {
             const NARROW_TITLE = { def: 'Def', stam: 'Stam', eres: 'Resist', move: 'Move', special: 'Spec', elem: 'Elem', mana: 'MP', hp: 'HP', aspd: 'Speed' };
             const cellTitle = (st) => (NARROW ? (NARROW_TITLE[st.key] || SHORT_TITLE[st.key] || st.label) : (SHORT_TITLE[st.key] || st.label));
             const CELL_H = 48;
+            /* ═══ v2.3.2595: THE [+] IS A QUARTER OF THE CELL ═══
+               Owner: "I also want the plus sign to add points to be much
+               larger, taking up about 25% of the cell and aligned right
+               border to border (all 3 sides)."  So it is a real button
+               flush into the cell's top, right and bottom edges — absolutely
+               positioned at 0/0/0, which lands inside the 1px border (an
+               absolute child is placed against the PADDING box), with the
+               right corners following the cell's 9px radius less that border.
+               The content is inset by the same percentage plus a little air,
+               so a long value can never run underneath it. */
+            const PLUS_PCT = 25;
+            /* ═══ AND THE SPEND ASKS FIRST ═══
+               Owner: "Add a second window asking if they're sure they want to
+               spend the point."  Built here rather than inside the overlay so
+               the confirm carries the same now -> after pair the explainer
+               prints (previewStatPoint, one reader) — a confirm that only
+               says "are you sure" asks a question it has not given you the
+               means to answer.
+               `run` re-reads the live state instead of closing over this
+               render's: a dialog can sit open across a level-up, a zone
+               change and several player_state echoes, and the channel it
+               sends on must be the one that exists when the player says yes. */
+            const openSpendConfirm = (st, cat) => {
+              try {
+                const laneMeta = PROG3_SKILL_META.find((k) => k.key === cat) || {};
+                const pv = R ? previewStatPoint(R, st.key, st.atk ? cat : prog3ActiveCat(R)) : null;
+                const fmt = (v) => (st.pct ? n1(v * 100) + '%' : n1(v));
+                prog3SpendBus.open({
+                  stat: st.key,
+                  label: st.label,
+                  laneLabel: st.atk ? (laneMeta.label || '') : 'Shared',
+                  poolLabel: st.atk ? `${laneMeta.label || ''} point` : 'shared point',
+                  iconSrc: st.iconSrc,
+                  perText: 'Each point: ' + st.perText,
+                  nowText: pv ? fmt(pv.statNow) : null,
+                  afterText: (pv && !pv.capped) ? fmt(pv.statAfter) : null,
+                  run: () => {
+                    const S2 = getState();
+                    const R2 = S2 && S2.rpg;
+                    if (!S2 || !S2.channel) return;
+                    S2.channel.send({
+                      type: 'prog3_allocate',
+                      payload: { stat: st.key, cat: st.atk ? cat : prog3SharedSpendCat(R2) },
+                    });
+                  },
+                });
+              } catch (e) { /* a confirm must never take the screen down */ }
+            };
             const statCell = (st, cat) => {
               const pts = st.atk ? prog3AtkPts(R, cat, st.key) : prog3Pts(R, st.key);
               const cap = prog3StatCap(R, st.key);
@@ -2066,7 +2149,6 @@ export const HeroExpanded = () => {
                  cell the SHARED pool (or, against an old worker, whatever lane
                  total that worker lets a body spend draw on). */
               const canSpend = (st.atk ? laneAvail(cat) : sharedAvail) > 0 && pts < cap;
-              const hasInfo = !!statInfo(st.label);
               /* The v2.3.2329 land-flare memory, unchanged -- same key, same
                  1300ms window, same v2.3.2336 refund clearing. */
               const lk = (st.atk ? cat + ':' : 'shared:') + st.key;
@@ -2081,13 +2163,23 @@ export const HeroExpanded = () => {
               return (
                 <div key={lk}
                   role="button"
+                  /* ═══ v2.3.2595: THE CELL EXPLAINS; THE [+] SPENDS ═══
+                     Owner: "Remove the 'i' and just make the explanation
+                     launch if they press any other part of the cell than the
+                     plus sign."  So the two jobs swap surfaces: the body of
+                     the cell is the explainer and the quarter at its right
+                     edge is the spend.
+                     `data-stat-info` MOVES here from the retired button
+                     rather than being deleted — it is the handle mp-statdemo
+                     and mp-statpeek reach for, and what they mean by it is
+                     "the thing you press to be told about this stat", which
+                     is now the cell.  The selector and its meaning both
+                     survive; only the element under it changed. */
+                  data-stat-info={st.key}
                   aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${pts} of ${cap}. ${st.perText} per point.`}
                   aria-disabled={!canSpend}
                   title={`${st.label} — ${pts} of ${cap} points — ${st.perText} per point`}
-                  {...scrollTap(() => {
-                    if (!canSpend || !S || !S.channel) return;
-                    S.channel.send({ type: 'prog3_allocate', payload: { stat: st.key, cat: st.atk ? cat : prog3SharedSpendCat(R) } });
-                  })}
+                  {...scrollTap(() => openStatInfo(st, cat))}
                   style={{
                     /* v2.3.2592: `flex: none` + full width, NOT `1 1 0`.  The
                        cell sits in a COLUMN flex container now, where a
@@ -2102,7 +2194,19 @@ export const HeroExpanded = () => {
                        pixels come from here, from the icon and from the [+]
                        rather than from the number -- the owner's "Reduce
                        horizontal padding rather than shrinking the text". */
-                    padding: '2px 2px 3px',
+                    /* v2.3.2595: 2 and 2 below 360, not 3 and 4.  Measured on
+                       the 320x568 SE with a weapon and Shared both open —
+                       84px cells, the narrowest this layout ever draws — where
+                       "1.0%" wanted 32px of value box and had 30.  The owner's
+                       rule for exactly this, from v2.3.2441: "Reduce
+                       horizontal padding rather than shrinking the text
+                       excessively."  So the three pixels come from the
+                       padding and the row's gaps (below), and the number keeps
+                       its 11.5px. */
+                    paddingTop: 2, paddingLeft: NARROW ? 2 : 3, paddingBottom: 3,
+                    /* The quarter the [+] occupies, plus a little air, so a
+                       wide value can never slide underneath it. */
+                    paddingRight: `calc(${PLUS_PCT}% + ${NARROW ? 2 : 4}px)`,
                     display: 'flex', flexDirection: 'column', justifyContent: 'center',
                     gap: 1,
                     position: 'relative',
@@ -2113,7 +2217,10 @@ export const HeroExpanded = () => {
                        edge and an idle one only the hairline. */
                     border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
                     borderRadius: 9,
-                    cursor: canSpend ? 'pointer' : 'default',
+                    /* The BODY is always pressable — the explainer works on a
+                       capped stat and on an empty pool, which is exactly when
+                       a player most wants to know what the thing does. */
+                    cursor: 'pointer',
                     opacity: canSpend ? 1 : 0.85,
                     touchAction: 'manipulation',
                     overflow: 'hidden',
@@ -2124,18 +2231,11 @@ export const HeroExpanded = () => {
                   <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2,
                     lineHeight: 1, flex: 'none',
-                    /* RESERVE THE CORNER, in flow.  The info button below is
-                       absolutely positioned, and v2.3.2382 paid for learning
-                       what that means: an absolute element cannot change
-                       scrollWidth, so a clipping check passes on a label that
-                       is sitting underneath it ("MELE1", "MAGI1" at 320).
-                       RIGHT ONLY.  A first cut reserved both sides to keep the
-                       title optically centred and that cost 44 of an 88px cell
-                       -- measured, it clipped DAMAGE, CRIT DMG, ATK SPD and
-                       ELEM POWER at once.  Centred in what is left is the
-                       right trade: 11px off true centre is not visible, an
-                       ellipsis is. */
-                    paddingRight: 22,
+                    /* v2.3.2595: the 22px corner reservation is gone with the
+                       ℹ️ it was reserving.  The [+] is a quarter of the cell
+                       now and the CELL's own padding-right holds it off, so
+                       the title gets the whole of what is left — which is
+                       what v2.3.2382's note asked for and could not have. */
                   }}>
                     <span style={{
                       /* 10px is the REPO'S TYPE FLOOR (v2.3.1239, re-armed at
@@ -2152,60 +2252,7 @@ export const HeroExpanded = () => {
                       minWidth: 0,
                     }}>{cellTitle(st)}</span>
                   </div>
-                  {/* ═══ THE INFO BUTTON LIVES IN THE CORNER, NOT THE MIDDLE ═══
-                      A first cut put it inline in the centred title row, and
-                      that broke SPENDING -- mp-ptorb's second spend stopped
-                      landing.  The reason is worth writing down because it is
-                      invisible in a screenshot: the cell's geometric centre is
-                      where a thumb goes and where every harness taps, and an
-                      inline button in a centred row sits within a few pixels of
-                      it.  The button stops propagation (it must -- otherwise
-                      reading about a stat would also buy it), so the tap was
-                      swallowed and the point never went.
-                      Absolutely positioned in the top-right, the centre of the
-                      cell is always inert text and always spends. */}
-                  {hasInfo && (
-                      <button type="button"
-                        data-stat-info={st.key}
-                        aria-label={`About ${st.label}`}
-                        {...scrollTap(() => openStatInfo(st, cat), { inner: true })}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                          /* ═══ 22, AND WHY IT IS NOT 30 ═══
-                             mp-prog3 has pinned `minInfo >= 30` since v2.3.2222
-                             -- "every info button is a real thumb target, not a
-                             glyph" -- and a first cut of this cell shipped it at
-                             13, which is exactly the glyph that rule exists to
-                             forbid.  30 cannot survive four cells abreast: a
-                             91.5px cell holding a 30px SECONDARY control beside
-                             an icon, a value and a [+] has nothing left for the
-                             number.  So this is 22 -- a real target, nearly
-                             double the 13 -- and the floor is restated in
-                             mp-prog3 as "30 on a full-width row, 22 in a compact
-                             cell".  That is a WEAKENING, and it is called out as
-                             one in the PR rather than buried here.
-                             What does NOT weaken: the PRIMARY action (spending
-                             the point) is the whole 91.5x48 cell. */
-                          /* NO z-index.  A first cut had `zIndex: 1` here as
-                             idle defensiveness, and it was a real bug: the
-                             sticky weapon-tab row is ALSO zIndex 1 (two
-                             declarations above), and the cells come after it in
-                             the DOM -- so equal z-index resolves on document
-                             order and every info button painted ON TOP of the
-                             MELEE/BOW/MAGIC tabs while the panel scrolled.
-                             Photographed.  Positioned elements already paint
-                             above the cell's own in-flow content, so the
-                             property bought nothing and cost that. */
-                          position: 'absolute', top: 1, right: 1,
-                          width: 22, height: 22, borderRadius: 999, padding: 0,
-                          background: 'transparent', border: `1px solid ${COL.borderStrong}`,
-                          color: COL.muted, fontSize: 11, fontWeight: 900,
-                          fontFamily: 'Georgia, "Times New Roman", serif', fontStyle: 'italic',
-                          lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          cursor: 'pointer', touchAction: 'manipulation',
-                        }}>i</button>
-                  )}
-                  {/* ICON · VALUE · ORB · [+]
+                  {/* ICON · VALUE · ORB
                       FOUR flex children, not three.  The orb used to live
                       INSIDE the value span, and that span has to be
                       `overflow:hidden; text-overflow:ellipsis` so a long value
@@ -2218,7 +2265,7 @@ export const HeroExpanded = () => {
                       `.bt-pt-plus` is `position:absolute; left:100%` and needs
                       a positioned ancestor to fly out of. */}
                   <div style={{
-                    display: 'flex', alignItems: 'center', gap: 2,
+                    display: 'flex', alignItems: 'center', gap: NARROW ? 1 : 2,
                     minWidth: 0, flex: 'none',
                   }}>
                     <img src={st.iconSrc} alt="" draggable={false}
@@ -2247,21 +2294,47 @@ export const HeroExpanded = () => {
                         <span aria-hidden="true" key={'plus' + pts} className="bt-pt-plus">{'+' + landDelta}</span>
                       )}
                     </span>
-                    {/* v2.3.2592: dropped below 360px, the v2.3.2382 trade —
-                        a 74px cell cannot hold an icon, a value, the orb AND a
-                        [+]; the glyph is decorative (the whole cell spends) and
-                        the accent fill is the cue that survives. */}
-                    {!NARROW && (
-                    <span aria-hidden="true" style={{
-                      flex: 'none', width: 15, height: 15, borderRadius: 5,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: canSpend ? COL.accent : 'transparent',
-                      border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
-                      color: canSpend ? '#20170D' : COL.muted,
-                      fontSize: 13, fontWeight: 900, lineHeight: 1,
-                    }}>+</span>
-                    )}
                   </div>
+                  {/* ═══ v2.3.2595: THE [+], A QUARTER OF THE CELL, FLUSH ═══
+                      Owner: "much larger, taking up about 25% of the cell and
+                      aligned right border to border (all 3 sides)."  A REAL
+                      button now, not the decorative glyph it was since
+                      v2.3.1668 — which is what lets the body of the cell take
+                      over the explainer without the two jobs fighting for one
+                      tap.
+                      0/0/0 puts it against the cell's padding box, i.e. inside
+                      the 1px border on all three sides; the right corners take
+                      the cell's 9px radius less that border.
+                      It stops propagation, or spending would also open the
+                      explainer behind the confirm — and `inner: true` is the
+                      scrollTap flag that keeps a nested control's tap from
+                      being read as the parent's (v2.3.2326).
+                      DISABLED IS A REAL STATE: with no points or at the cap
+                      the button refuses rather than opening a confirm whose
+                      only honest answer is no. */}
+                  <button type="button"
+                    data-prog3-plus={lk}
+                    aria-label={`Spend a point on ${st.label}${st.atk ? ' for ' + cat : ''}`}
+                    aria-disabled={!canSpend}
+                    {...scrollTap(() => { if (canSpend) openSpendConfirm(st, cat); }, { inner: true })}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      position: 'absolute', top: 0, right: 0, bottom: 0,
+                      width: `${PLUS_PCT}%`,
+                      boxSizing: 'border-box', padding: 0,
+                      borderRadius: '0 8px 8px 0',
+                      border: 'none',
+                      borderLeft: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
+                      background: canSpend ? COL.accent : 'transparent',
+                      color: canSpend ? '#20170D' : COL.disabled,
+                      /* Large, because it is the one thing on this screen the
+                         player came to press.  22 against a 48px cell reads as
+                         a button rather than a glyph at every column width. */
+                      fontSize: 22, fontWeight: 900, lineHeight: 1,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: canSpend ? 'pointer' : 'default',
+                      touchAction: 'manipulation',
+                    }}>+</button>
                 </div>
               );
             };
