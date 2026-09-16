@@ -3339,3 +3339,82 @@ this scenario asked once. Ten asks cannot all land on the same side.
 
 **Related:** §28 (a test that reports "not found" is worse than no test) — the
 same failure one level up: the harness is fine, the SETUP quietly did nothing.
+
+## 81. A pairwise layout test that names its pairs (v2.3.2574)
+
+**Tempting:** the combat buttons are all pinned through one shared helper
+(`ctlColumn`, `leftCluster`), two suites measure them at six phone widths in
+both orientations, and every clause of the owner's ask is a row. So the
+crowding question is covered.
+
+**It was not, and the number was 8px.** The Element Burst button
+(`ElementBurstButton.jsx`, v2.3.1734) placed itself with its own arithmetic —
+`right: 50 + discW + 10`, level with the disc's centre — which is `ctlColumn`
+slot 0 to within two pixels, arrived at independently in a file that does not
+import the slot map. Shield Bash sat one slot above it. Measured at v2.3.2574:
+**8px of clear air at 390, 7px at 360, 12px sideways** — the tightest pair of
+combat buttons in the shipped game, and well inside the "enough space ... for
+not accidentally pressing the other one" the owner had asked for three times.
+
+**Why two thorough suites could not see it.** Both asserted *named* pairs —
+`whirl` vs `special`, `block` vs `bash`, everything vs the attack disc — because
+each row was written to answer a specific owner message. `mp-btnlayout` even
+had a Burst row, `"the Element Burst button does not overlap {name}"`, and it
+was **green**: Burst does not *overlap* Bash, it sits 8px from it. An
+overlap test cannot express crowding, and the one pair nobody thought to name
+is the one that drifted. Worse, that row **skipped** at every width on its own
+fixture — Burst needs an enchanted weapon at level 6+, so the button was never
+on screen for the test that was watching it.
+
+**The rule: floor the MINIMUM over every painted pair, not a list of pairs.**
+
+```js
+const named = [['Block', d.shield], ['Bash', d.bash], ['Whirl', d.whirl],
+               ['Special', d.special], ['Burst', d.burst]].filter(r => r[1]);
+/* every i<j, worst one named and printed */
+```
+
+A pair list encodes the asks you have already had; a matrix covers the one you
+have not. And **print the worst pair's number even when it passes** — whether
+30px is enough for a real thumb is a judgement only the owner can make, and a
+bare `passed` denies them the chance (§71).
+
+**Corollary for the fixture:** a display gate that hides the control makes the
+row vacuous, so seed it. Burst's gate is `prog3CharLevel`, which is the **sum
+of the three skill levels** (each floored at 1) — not `rpg.level`, and there is
+no `prog3.lvl` field to set. `prog3.sk.sword.level = 6` puts the character at 8.
+An assertion against an absent button is a green row proving nothing (§66).
+
+**Receipt:** `shot-btnmove.mjs` prints the full gap table before and after;
+`mp-abilslot`'s clearance matrix is the standing guard.
+
+## 82. `onPointerDown` is not a touch guard (v2.3.2574)
+
+**Tempting:** a floating button over a live touch surface needs its press to
+stop there, so it carries `onPointerDown={e => { e.preventDefault();
+e.stopPropagation(); ... }}`. Pointer events are the modern unified API — they
+cover mouse and touch — so one handler is the tidy answer.
+
+**Wrong: a finger fires `pointerdown` AND `touchstart`, as two separate
+dispatches.** Stopping propagation on one says nothing about the other. The
+Element Burst button had exactly this handler, which was survivable while it
+sat over the attack disc, and became a live bug the moment v2.3.2574 moved it
+over `[data-joyzone="L"]` — the full-height left half at z6, whose `touchstart`
+begins a **walk**. The press would have fired the burst *and* walked the
+player. `lM`/`lE` are bound to **WINDOW** (BroTown ~9345), so the touch does
+not even need the zone element in its propagation path for the release and a
+few px of slide to be read as a drag and a dodge.
+
+**The shape that works** is the one `SpecialButton` has carried since v2.3.2472:
+fire from `onTouchStart`, stop `onTouchEnd` and `onTouchMove` too, and use
+`onMouseDown` — **not** `onPointerDown` — as the desktop door, or a single
+finger casts twice.
+
+**And it cannot be checked with a rect or a dispatched event.** The button's box
+was always correct; it was the *consequence* of the touch that was wrong. Only a
+real finger at real coordinates shows it, and only if the assertion checks
+**both halves** — the ability fired, AND the player did not move (§67).
+
+**Related:** §67 (a synthesised gesture proves the handler, not the
+reachability) — same family: the event you dispatch is not the event the
+browser would have sent.

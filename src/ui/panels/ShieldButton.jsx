@@ -130,7 +130,41 @@ export const CTL_MIN_SIZE = 44;   /* Apple's touch-target minimum */
  * and the 44px floor, and that reasoning is not bash-specific -- the next
  * control to want a place beside the disc should inherit it, not re-derive it.
  */
-export const CTL_SLOT = { bash: 1 };
+/* ═══ v2.3.2574: BASH COMES DOWN TO SLOT 0 ═══
+ *
+ * Owner, correcting the v2.3.2562 ask after playing it: "Spec and swirl need to
+ * be on the right joystick.  It was put on the left."
+ *
+ * So Special and Whirlwind cross back to the RIGHT disc and sit above it
+ * (rightCluster below).  That is the one thing the column could not survive:
+ * slot 1's TOP edge is 194px above the band at 390 and 213 in landscape, and
+ * the cluster's upper slot has to live in exactly that air.  Measured, with the
+ * cluster's step and rise free to vary:
+ *
+ *   bash left at slot 1  ->  best achievable clear gap between the upper
+ *                            cluster button and Bash is 15px, and only by
+ *                            lifting the pair to 282px above the band in
+ *                            landscape -- v2.3.2542 rejected 283 as "up among
+ *                            the health bars".
+ *   bash at slot 0       ->  24px at 390 and 360, 27px sideways, and the
+ *                            tallest control drops back under the disc's top.
+ *
+ * 15px between two 45px circles is the accidental press the owner asked to be
+ * rid of, so Bash moves.  DOWN, not away: slot 0 is level with the disc's
+ * CENTRE -- the thumb's resting height, 4px off the disc, the closest any
+ * button gets to it.  That matters because "bash too far away" is a complaint
+ * this repo has already paid for once (v2.3.2327), so the one direction it must
+ * not move is further out.
+ *
+ * WHAT THIS COST, said plainly: slot 0 is where the Element Burst button has
+ * been sitting since v2.3.1734 with its own hand-rolled anchor, so Burst had to
+ * move instead -- see leftCluster.  The right half holds four safe places (two
+ * above the disc, one beside it, one in the band below) and five controls want
+ * them; something had to leave.  Burst is the one that is least often on screen
+ * (it needs an enchanted weapon AND level 6+, where every other button here
+ * turns on moment-to-moment combat state), and its closeness to the disc is a
+ * preference its own comment states rather than a complaint anyone has filed. */
+export const CTL_SLOT = { bash: 0 };
 
 /* ═══ v2.3.2562: BLOCK, ALONE, BELOW AND LEFT OF THE ATTACK DISC ═══
  *
@@ -138,6 +172,26 @@ export const CTL_SLOT = { bash: 1 };
  * (as a mental separation for combat purpose further away from the other
  * buttons on its own side)".  The DISTANCE is the feature, so it is measured
  * rather than eyeballed: mp-btnlayout asserts the clear gap to Bash.
+ *
+ * ═══ v2.3.2574: BLOCK DID NOT MOVE, BUT ITS NEIGHBOURS DID ═══
+ * This anchor is byte-for-byte what v2.3.2562 shipped.  What changed around it
+ * is worth writing down, because the sentence above talks about a distance and
+ * that distance is not the same number any more:
+ *
+ *   to Special / Whirlwind   161 / 136px  ->  122 / 136px  (390, clear edge)
+ *   to its nearest neighbour  29px (Burst) ->   30px (Bash)
+ *
+ * The separation the owner actually asked for -- Block apart from Special and
+ * Whirlwind -- still holds with the disc's whole height between them, and it is
+ * the disc's height that provides it rather than luck: those two are above the
+ * disc's top edge and Block is below its bottom one.
+ *
+ * Its nearest neighbour is now Shield Bash where it used to be Element Burst,
+ * at the same distance to within a pixel, because both occupy ctlColumn slot 0
+ * and the two controls simply swapped places (CTL_SLOT, leftCluster).  Bash IS
+ * the closer of the two to Block in spirit as well: Block raises the shield and
+ * Bash exists only while it is raised, so the thumb that just pressed one is
+ * already where the other appears.
  *
  * DOWN is where the room is.  It keeps the column's right edge -- 4px clear of
  * the disc, which is ctlColumn's one inviolable rule (a sibling at z31 lying on
@@ -221,7 +275,30 @@ export const LCTL_GAP = 10;         /* cluster <-> the movement disc */
    less room, which is backwards.  Half a button at every size instead, and
    mp-abilslot floors it at exactly that so the two cannot drift apart. */
 export const LCTL_THUMB_FRAC = 0.5;
-export const LCTL_SLOT = { special: 0, whirl: 1 };
+/* ═══ v2.3.2574: THE LEFT CLUSTER IS THE ELEMENT BURST BUTTON'S NOW ═══
+ *
+ * Special and Whirlwind left it for the right disc (CTL_SLOT's note says why),
+ * and the Element Burst button -- evicted from the right-hand column by Bash --
+ * takes slot 0.  It is a straight swap of occupants, not a new rule.
+ *
+ * WHY BURST INHERITS THIS MACHINERY RATHER THAN KEEPING ITS OWN ANCHOR.  Before
+ * this it computed `right: 50 + discW + 10` and a bottom level with the disc's
+ * centre in ElementBurstButton.jsx -- which is ctlColumn slot 0 to within two
+ * pixels, arrived at independently.  That is the exact duplication ctlColumn was
+ * created to end, and it had already gone wrong without anyone measuring it:
+ * Burst's box sat 8px from Shield Bash at 390, 7px at 360 and 12px sideways,
+ * the tightest pair of combat buttons in the shipped game and well inside the
+ * "not accidentally pressing the other one" the owner is asking for.  Nothing
+ * caught it because no test compared those two boxes.  Burst reads its anchor
+ * from here now, so the next control to move cannot silently land on it.
+ *
+ * At 390 that puts Burst 131px clear of Bash instead of 8.  The cost is thumb
+ * travel: Burst is across the screen from the disc, against its own comment's
+ * wish to be reachable "without crossing the screen".  That is the trade this
+ * change makes deliberately and it is the first thing to revisit if the owner
+ * finds it awkward -- the remedy would be to shrink the right-hand controls
+ * rather than to put two buttons back within 8px of each other. */
+export const LCTL_SLOT = { burst: 0 };
 
 export function leftCluster(isLandscape) {
   var size = Math.max(CTL_MIN_SIZE, isLandscape ? 54 : 48);
@@ -239,6 +316,73 @@ export function leftCluster(isLandscape) {
        button plus the thumb gap, which is what guarantees the separation. */
     leftPx: function (slot) { return left0 + slot * step; },
     bottomPx: function (slot) { return Math.round(discTop + LCTL_GAP + slot * rise); },
+  };
+}
+
+/* ═══ v2.3.2574: THE RIGHT CLUSTER -- SPECIAL AND WHIRLWIND, ABOVE THE DISC ═══
+ *
+ * Owner: "Spec and swirl need to be on the right joystick.  It was put on the
+ * left."  That corrects v2.3.2562, which read the previous message ("diagonally
+ * above the left joystick") literally; the standing ask is the rest of that
+ * sentence -- "directionally above but diagonal to provide enough space between
+ * them for not accidentally pressing the other one" -- applied to the RIGHT
+ * disc.
+ *
+ * This is leftCluster's arithmetic mirrored, on purpose and not by copy: the
+ * two clusters differ only in which edge they hang from and which way the slots
+ * step, so the rules that were argued out for the left one hold here unchanged.
+ *   ABOVE: slot 0 clears the attack disc's TOP edge (RBTN.bottom + its width)
+ *     by RCTL_GAP, so neither button covers the disc.
+ *   DIAGONAL: slot 0 sits at the disc's own RIGHT edge; each slot steps LEFT by
+ *     a full button plus half a button (LCTL_THUMB_FRAC) and UP by a little
+ *     over half a button.  The horizontal step alone fully separates the boxes,
+ *     which is what lets the rise stay small -- and the rise MUST stay small,
+ *     because height is the binding constraint sideways (see below).
+ *
+ * MEASURED, because "enough space" is a number: 24px of clear air and 77px
+ * centre to centre at 390 and 360, 27px and 86px in landscape.  mp-abilslot
+ * asserts both and prints them, since whether it is enough for a real thumb is
+ * the owner's judgement and not this file's.
+ *
+ * WHY IT STEPS LEFT RATHER THAN RIGHT.  Slot 0 already hangs at RBTN.right
+ * (50px in from the screen edge, the disc's own margin) and stepping outward
+ * would put slot 1 within 2px of the edge -- under the rounded corner in
+ * portrait and under the Dynamic Island's inset in landscape, where iOS insets
+ * BOTH long edges (BroTown ~3290, v2.3.2177).  Leftward it stays inside the
+ * disc's margin at every width.
+ *
+ * AND WHY IT DOES NOT REACH THE MOVEMENT ZONE.  Slot 1's left edge lands 25px
+ * inside 50vw at 390 and 10px at 360, so unlike ctlColumn there is no band to
+ * fight over and no clamp to carry.  A third slot WOULD cross it (47px at 390),
+ * which is the real reason Bash could not simply join this cluster.
+ *
+ * THE HEIGHT, which is the number that decided this layout.  Slot 1's top lands
+ * 250px above the band in portrait and 272px sideways.  Sideways is the one
+ * that matters: the screen is 390px tall, the health bars are drawn on the
+ * CANVAS so no rect can catch a collision with them, and v2.3.2542 rejected a
+ * slot at ~283px for being "up among the health bars".  272 is under that and
+ * 10px above the 262 the left cluster shipped at -- the whole difference being
+ * that the attack disc is 108 wide sideways where the movement disc is 98, so
+ * its top edge starts 10px higher.  mp-abilslot measures the real gap to the
+ * health bars rather than trusting the 283. */
+export const RCTL_GAP = 10;         /* cluster <-> the attack disc */
+export const RCTL_SLOT = { special: 0, whirl: 1 };
+
+export function rightCluster(isLandscape) {
+  var size = Math.max(CTL_MIN_SIZE, isLandscape ? 54 : 48);
+  var discW = isLandscape ? RBTN.wLand : RBTN.w;
+  /* The attack disc's top edge, in the same px-above-the-band units the whole
+     cluster is expressed in. */
+  var discTop = RBTN.bottom + discW;
+  var rise = Math.round(size * 0.55);
+  var step = size + Math.round(size * LCTL_THUMB_FRAC);
+  return {
+    size: size,
+    /* Slot 0 hangs at the disc's own right margin; each slot steps LEFT by a
+       full button plus the thumb gap, which is what guarantees the separation
+       on the horizontal axis alone. */
+    rightPx: function (slot) { return RBTN.right + slot * step; },
+    bottomPx: function (slot) { return Math.round(discTop + RCTL_GAP + slot * rise); },
   };
 }
 
@@ -290,13 +434,24 @@ export function ctlColumn(isLandscape) {
  * a caller adds the band height the same way ctlBottom does. */
 export function combatBandTopPx(isLandscape) {
   var l = leftCluster(isLandscape);
+  var r = rightCluster(isLandscape);
   var c = ctlColumn(isLandscape);
   var blk = blockAnchor(isLandscape);
   var discR = isLandscape ? RBTN.wLand : RBTN.w;
   var discL = isLandscape ? LBTN.wLand : LBTN.w;
+  /* ═══ v2.3.2574: EVERY SLOT, STILL -- INCLUDING THE ONES THAT MOVED ═══
+     The list is exhaustive over the SLOT MAPS rather than over the controls
+     that happen to be mounted, which is the property the v2.3.2564 note
+     above is about: the card must clear a button that is not drawn yet.
+     Special and Whirlwind moved from the left cluster to the right one and
+     Burst took their place, so all three maps are read here.  The right
+     cluster's upper slot is now the tallest thing in the band (250px at 390,
+     272 sideways, against the left cluster's old 237/262), so a card that
+     silently kept the old number would overlap it by 10-13px. */
   return Math.max(
-    l.bottomPx(LCTL_SLOT.whirl) + l.size,      /* the left cluster's upper slot */
-    l.bottomPx(LCTL_SLOT.special) + l.size,
+    r.bottomPx(RCTL_SLOT.whirl) + r.size,      /* the right cluster's upper slot */
+    r.bottomPx(RCTL_SLOT.special) + r.size,
+    l.bottomPx(LCTL_SLOT.burst) + l.size,      /* Element Burst, over the movement disc */
     c.bottomPx(CTL_SLOT.bash) + c.size,        /* Shield Bash */
     blk.bottomPx + blk.size,                   /* Block */
     RBTN.bottom + discR,                       /* the attack disc */

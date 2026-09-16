@@ -274,16 +274,17 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
      overlap, and the disc is the control pressed most), and everything must
      clear the dashboard band.  Those rows are above and below this block.
 
-     BASH DOES NOT MOVE.  The ask does not mention it, so it keeps slot 1 of
-     what is left of the column -- asserted by the exact-pixel pin at the end of
-     this block, which is what would catch it being dragged along by a careless
-     edit to ctlColumn. */
-  /* The right-hand side is Bash and Block now; the Special button left it for
-     the left-hand cluster (v2.3.2562) and is measured in the second pass below,
-     because specialButtonLive hides it behind the raised guard these rows use. */
-  const rightSide = [['shield', r.shield], ['bash', r.bash]]
+     BASH DID MOVE, at v2.3.2574 -- down to slot 0, to clear the air above the
+     disc for Special and Whirlwind.  It is still pinned to an exact slot by the
+     row at the end of this block, which is what would catch it being dragged
+     along by a careless edit to ctlColumn. */
+  /* v2.3.2574: EVERYTHING combat-related is on the right-hand side now except
+     Element Burst, which went the other way.  The Special button is still
+     measured in the second pass below, because specialButtonLive hides it
+     behind the raised guard these rows use. */
+  const rightSide = [['shield', r.shield], ['bash', r.bash], ['whirl', r.whirl]]
     .filter(([, b]) => b && b.shown);
-  const leftSide = [['whirl', r.whirl]].filter(([, b]) => b && b.shown);
+  const leftSide = [['burst', r.burst]].filter(([, b]) => b && b.shown);
   /* ═══ v2.3.2542: NOTHING ELSE IS PARKED ON TOP OF THE CLUSTER ═══
      One MORE button places itself in this strip without going through
      ctlColumn: Element Burst.  A silent overlap between two z31 siblings is the
@@ -292,7 +293,9 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
      not sit on any combat button -- on either side, since v2.3.2562 put two of
      them across the screen. */
   if (r.burst && r.burst.shown) {
-    for (const [name, box] of [...rightSide, ...leftSide]) {
+    /* v2.3.2574: rightSide only -- `leftSide` IS the burst button now, and
+       comparing it with itself would report a guaranteed overlap. */
+    for (const [name, box] of rightSide) {
       const clear = box.right <= r.burst.left || box.left >= r.burst.right
         || box.bottom <= r.burst.top || box.top >= r.burst.bottom;
       rec.ok(`${tag}: the Element Burst button does not overlap ${name}`,
@@ -322,43 +325,80 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
       + `(block top ${r.shield.top} vs disc bottom ${r.attack.bottom})`,
       r.shield.top >= r.attack.bottom, { shield: r.shield, attack: r.attack });
   }
-  /* ── CLAIM 2: and it is FAR from Bash, which is the owner's actual reason ──
+  /* ── CLAIM 2: distance from the buttons the owner meant ──
      "a mental separation for combat purpose further away from the other buttons
      on its own side."  Distance is the feature, so it is a number, not an
-     absence of overlap.  One button height of clear air is the floor: less than
-     that and the two read as a pair again, which is what the move undid. */
+     absence of overlap.
+
+     v2.3.2574 SPLIT THIS ROW IN TWO, because the neighbour it measured moved.
+     It asked for one button height of air between Block and Bash and got 83px.
+     Bash has come down into slot 0 directly above Block (30px), so that floor
+     now fails -- and lowering it quietly would be the wrong fix, because the
+     buttons the owner was asking to be separated FROM were Special and
+     Whirlwind, not Bash.  So: a full button from those two, half a button from
+     Bash (the same floor the cluster pair is held to -- an accidental press is
+     an accidental press whichever two buttons it is between). */
   if (r.shield && r.bash && r.shield.shown && r.bash.shown) {
     const clearGap = r.shield.top - r.bash.bottom;
-    const floor = r.shield.bottom - r.shield.top;   /* one button height */
-    rec.ok(`${tag}: ...and Block is well clear of Shield Bash -- ${clearGap}px of air, `
-      + `at least one button height (${floor}px)`,
-      clearGap >= floor, { gap: clearGap, floor, shield: r.shield, bash: r.bash });
+    const half = Math.round((r.shield.bottom - r.shield.top) / 2);
+    rec.ok(`${tag}: ...and Block keeps half a button of air from Shield Bash above it -- ${clearGap}px `
+      + `(floor ${half}px). These two are the closest pair on screen since v2.3.2574.`,
+      clearGap >= half, { gap: clearGap, floor: half, shield: r.shield, bash: r.bash });
   }
-  /* ── CLAIM 3: Whirlwind is on the LEFT now, above the movement disc ── */
+  for (const [nm, box] of [['Special', r.special], ['Whirlwind', r.whirl]]) {
+    if (!r.shield || !r.shield.shown || !box || !box.shown) continue;
+    const dx = Math.max(0, Math.max(box.left - r.shield.right, r.shield.left - box.right));
+    const dy = Math.max(0, Math.max(box.top - r.shield.bottom, r.shield.top - box.bottom));
+    const gap = Math.round(Math.hypot(dx, dy));
+    const floor = r.shield.bottom - r.shield.top;
+    rec.ok(`${tag}: ...and Block is a WHOLE button clear of ${nm} -- ${gap}px, which is the `
+      + `separation the owner actually asked for (floor ${floor}px)`,
+      gap >= floor, { gap, floor, shield: r.shield, other: box, nm });
+  }
+  /* ── CLAIM 3 (v2.3.2574): Whirlwind is back on the RIGHT, ABOVE the attack disc ──
+     Owner, correcting the message the rows above were built from: "Spec and
+     swirl need to be on the right joystick.  It was put on the left."  The
+     inverted forms are kept in the log rather than deleted so that the next
+     person to move these two can see it has been asked both ways. */
   if (r.whirl && r.whirl.shown) {
-    rec.ok(`${tag}: Whirlwind is on the LEFT half of the screen now (right edge ${r.whirl.right} < ${Math.round(phone.width / 2)})`,
-      r.whirl.right <= phone.width / 2, { whirl: r.whirl, halfway: phone.width / 2 });
+    rec.ok(`${tag}: Whirlwind is on the RIGHT half of the screen (left edge ${r.whirl.left} >= ${Math.round(phone.width / 2)})`,
+      r.whirl.left >= phone.width / 2, { whirl: r.whirl, halfway: phone.width / 2 });
+    if (r.attack && r.attack.shown) {
+      rec.ok(`${tag}: ...and sits ABOVE the attack disc, not over its circle `
+        + `(whirl bottom ${r.whirl.bottom} vs disc top ${r.attack.top})`,
+        r.whirl.bottom <= r.attack.top, { whirl: r.whirl, attack: r.attack });
+    }
     if (r.ljoy && r.ljoy.shown) {
-      rec.ok(`${tag}: ...and sits ABOVE the movement disc, not over its circle `
-        + `(whirl bottom ${r.whirl.bottom} vs disc top ${r.ljoy.top})`,
-        r.whirl.bottom <= r.ljoy.top, { whirl: r.whirl, ljoy: r.ljoy });
+      rec.ok(`${tag}: ...and is clear of the MOVEMENT disc entirely, which is what the correction bought`,
+        r.whirl.left >= r.ljoy.right, { whirl: r.whirl, ljoy: r.ljoy });
     }
     if (r.bash && r.bash.shown) {
-      rec.ok(`${tag}: ...and is nowhere near Shield Bash any more -- they are on opposite sides`,
-        r.whirl.right < r.bash.left, { whirl: r.whirl, bash: r.bash });
+      /* They share a side again, so "opposite sides" is gone and a real gap
+         takes its place -- this is the pair whose crowding decided the whole
+         layout (ShieldButton's CTL_SLOT note: 15px was the best available with
+         Bash left in slot 1). */
+      const dx = Math.max(0, Math.max(r.whirl.left - r.bash.right, r.bash.left - r.whirl.right));
+      const dy = Math.max(0, Math.max(r.whirl.top - r.bash.bottom, r.bash.top - r.whirl.bottom));
+      const gap = Math.round(Math.hypot(dx, dy));
+      const half = Math.round((r.whirl.bottom - r.whirl.top) / 2);
+      rec.ok(`${tag}: ...and keeps ${gap}px of clear air from Shield Bash, which shares the side again `
+        + `(floor ${half}px -- Bash in slot 1 could only manage 15px, which is why it moved)`,
+        gap >= half, { gap, floor: half, whirl: r.whirl, bash: r.bash });
     }
   }
-  /* ── BASH HELD ITS PIXELS ──
-     The ask did not mention Bash, so it must not have drifted.  Its position is
-     ctlColumn slot 1: the column's right edge, and one button-plus-gap above
-     the disc's centre line.  Recomputed here from the disc's measured box
+  /* ── BASH IS PINNED TO ITS SLOT ──
+     v2.3.2574 moved it from ctlColumn slot 1 to slot 0, so this row's EXPECTED
+     value changes and its purpose does not: it is the exact-pixel pin that
+     catches Bash being dragged along by a careless edit to ctlColumn.  Slot 0 is
+     level with the disc's CENTRE, so the arithmetic gets simpler -- no
+     button-plus-gap term at all.  Recomputed from the disc's measured box
      rather than hard-coded, so the row survives a legitimate change to the
      disc's own geometry and only fires if BASH moved relative to it. */
   if (r.bash && r.bash.shown && r.attack && r.attack.shown) {
     const size = r.bash.bottom - r.bash.top;
     const discMidY = (r.attack.top + r.attack.bottom) / 2;
-    const wantBottom = discMidY + size / 2 - (size + 8);   /* CTL_STACK_GAP */
-    rec.ok(`${tag}: Shield Bash did NOT move -- still column slot 1 `
+    const wantBottom = discMidY + size / 2;                /* slot 0: centred on the disc's midline */
+    rec.ok(`${tag}: Shield Bash is in column slot 0, level with the disc's centre `
       + `(bottom ${r.bash.bottom}, expected ~${Math.round(wantBottom)})`,
       Math.abs(r.bash.bottom - wantBottom) <= 2, { bash: r.bash, attack: r.attack, wantBottom });
     rec.ok(`${tag}: ...and still hugs the disc's left edge, 4px clear (bash right ${r.bash.right}, disc left ${r.attack.left})`,
@@ -405,13 +445,20 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
      with the shield deliberately UP so the bash button exists.
 
      v2.3.2562: its hazard moved BACK with it.  On the right it was the attack
-     disc and the right zone; on the left it is the movement layer again
+     disc and the right zone; on the left it was the movement layer again
      ([data-joyzone="L"], the full-height left half at z6), so a press that
-     leaked would walk or dodge instead of firing.  The geometry claims here are
-     that it clears the movement DISC's circle and keeps a real gap from
-     Whirlwind beside it.  (That a press is not READ as movement is a different
-     claim and cannot be settled by a rect at all -- it is driven with a real
-     finger in mp-abilslot, because dispatchEvent does not hit-test, TRAPS 67.) */
+     leaked would walk or dodge instead of firing.
+
+     v2.3.2574: and it is on the RIGHT once more, so the hazard is the attack
+     disc and [data-joyzone="R"] again -- a leaked press locks on, swings and
+     re-aims rather than walking.  This button has now been on both halves
+     twice; the hazard lists for both sides are kept in SpecialButton.jsx's
+     header for that reason.  The geometry claims here are that it clears the
+     ATTACK disc's circle, stays inside the disc's own right margin, and keeps a
+     real gap from Whirlwind beside it.  (That a press is not READ as an attack
+     is a different claim and cannot be settled by a rect at all -- it is driven
+     with a real finger in mp-abilslot, because dispatchEvent does not hit-test,
+     TRAPS 67.) */
   const r2 = await rects(P);
   if (r2.special && r2.special.shown) {
     /* ═══ "IN THE RIGHT HALF" IS MEASURED AT THE CENTRE, NOT AT THE EDGE ═══
@@ -425,14 +472,15 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
        disc -- is the one overlap that must never happen.
        So the claim is the one that is actually about this button: the thumb
        aims at its CENTRE, and that is on the attack side of the screen. */
-    /* ═══ v2.3.2562: IT IS BACK ON THE LEFT, AND THE GAP IS THE POINT ═══
-       These rows asserted the attack half, the column's shared right edge and
-       the band below Block.  The owner has moved it back: "the whirlwind and
-       special attack buttons diagonally above the left joystick (directionally
-       above but diagonal to provide enough space between them for not
-       accidentally pressing the other one)".  So the claims become the two
-       halves of that sentence -- ABOVE the movement disc, and DIAGONAL to
-       Whirlwind with a gap big enough to matter.
+    /* ═══ v2.3.2574: AND BACK ON THE RIGHT, ABOVE THE ATTACK DISC ═══
+       Owner: "Spec and swirl need to be on the right joystick.  It was put on
+       the left."  The standing ask is the rest of the previous message --
+       "directionally above but diagonal to provide enough space between them
+       for not accidentally pressing the other one" -- applied to the RIGHT
+       disc.  So the claims are the two halves of that sentence: ABOVE the
+       attack disc, and DIAGONAL to Whirlwind with a gap big enough to matter.
+       Only the side and the direction of the step change; the gap rows below
+       are the ones worth reading and they are unchanged in shape.
 
        THE GAP IS A NUMBER, NOT AN ABSENCE OF OVERLAP.  "Enough space for not
        accidentally pressing the other one" is not "they do not touch": two
@@ -441,18 +489,25 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
        measured and floored, and the value is printed at every width so the
        owner can judge the number against their own thumb -- which is the one
        part of this nobody can settle from a test. */
-    rec.ok(`${tag}: the Special button is on the LEFT half now (right edge ${r2.special.right} <= ${Math.round(phone.width / 2)})`,
-      r2.special.right <= phone.width / 2, r2.special);
+    rec.ok(`${tag}: the Special button is on the RIGHT half now (left edge ${r2.special.left} >= ${Math.round(phone.width / 2)})`,
+      r2.special.left >= phone.width / 2, r2.special);
     rec.ok(`${tag}: ...and sits clear of the dashboard`,
       r2.special.bottom <= r2.dashTop, { special: r2.special, dashTop: r2.dashTop });
     if (r2.attack && r2.attack.shown) {
-      rec.ok(`${tag}: ...and is nowhere near the ATTACK disc any more`,
-        r2.special.right <= r2.attack.left, { special: r2.special, attack: r2.attack });
+      rec.ok(`${tag}: ...sitting ABOVE the attack disc rather than over its circle `
+        + `(special bottom ${r2.special.bottom} vs disc top ${r2.attack.top})`,
+        r2.special.bottom <= r2.attack.top, { special: r2.special, attack: r2.attack });
+      /* Nothing may be pushed out under a rounded corner or, sideways, under
+         the Dynamic Island's inset -- iOS insets BOTH long edges in landscape
+         (BroTown ~3290, v2.3.2177), so the disc's own 50px margin is the
+         safe line to hold. */
+      rec.ok(`${tag}: ...and does not reach past the disc's own right margin `
+        + `(special right ${r2.special.right}, disc right ${r2.attack.right}, screen ${phone.width})`,
+        r2.special.right <= r2.attack.right + 1, { special: r2.special, attack: r2.attack });
     }
     if (r2.ljoy && r2.ljoy.shown) {
-      rec.ok(`${tag}: ...sitting ABOVE the movement disc rather than over its circle `
-        + `(special bottom ${r2.special.bottom} vs disc top ${r2.ljoy.top})`,
-        r2.special.bottom <= r2.ljoy.top, { special: r2.special, ljoy: r2.ljoy });
+      rec.ok(`${tag}: ...and is clear of the MOVEMENT disc entirely`,
+        r2.special.left >= r2.ljoy.right, { special: r2.special, ljoy: r2.ljoy });
     }
     if (r2.whirl && r2.whirl.shown) {
       const sMidX = (r2.special.left + r2.special.right) / 2;
@@ -462,20 +517,22 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
       const size = r2.special.bottom - r2.special.top;
       const centres = Math.round(Math.hypot(wMidX - sMidX, wMidY - sMidY));
       /* The clear air between the two boxes. They are separated on the
-         HORIZONTAL axis by construction (leftCluster steps a full button plus
-         LCTL_THUMB_GAP sideways), so that is the axis the gap lives on. */
-      const gapX = Math.round(r2.whirl.left - r2.special.right);
+         HORIZONTAL axis by construction (rightCluster steps a full button plus
+         LCTL_THUMB_FRAC sideways), so that is the axis the gap lives on.
+         v2.3.2574: the step is LEFTWARD now, so Whirlwind's RIGHT edge is the
+         near one. */
+      const gapX = Math.round(r2.special.left - r2.whirl.right);
       console.log(`    ${tag} DIAGONAL: centres ${centres}px apart, clear gap ${gapX}px, button ${size}px`);
-      rec.ok(`${tag}: Whirlwind sits UP and to the RIGHT of Special -- a diagonal, not a stack or a row `
+      rec.ok(`${tag}: Whirlwind sits UP and to the LEFT of Special -- a diagonal, not a stack or a row `
         + `(dx ${Math.round(wMidX - sMidX)}, dy ${Math.round(wMidY - sMidY)})`,
-        wMidX > sMidX && wMidY < sMidY, { special: r2.special, whirl: r2.whirl });
+        wMidX < sMidX && wMidY < sMidY, { special: r2.special, whirl: r2.whirl });
       rec.ok(`${tag}: ...with real air between them -- ${gapX}px clear, at least half a button (${Math.round(size / 2)}px)`,
         gapX >= size / 2, { gapX, size, special: r2.special, whirl: r2.whirl });
       rec.ok(`${tag}: ...and their centres are more than a button apart (${centres}px vs ${size}px), `
         + `so a thumb aimed at one is not on the other`,
         centres > size * 1.4, { centres, size });
-      rec.ok(`${tag}: ...and Whirlwind is on the left half too, beside it`,
-        r2.whirl.right <= phone.width / 2, r2.whirl);
+      rec.ok(`${tag}: ...and Whirlwind is on the right half too, beside it`,
+        r2.whirl.left >= phone.width / 2, r2.whirl);
     }
   } else {
     rec.ok(`${tag}: guard: the Special button is on screen with a monster in the perimeter and the guard down`,

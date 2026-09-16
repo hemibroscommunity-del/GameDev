@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { RBTN } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2242: right-button geometry */
+import { ctlBottom, leftCluster, LCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2574: the shared cluster over the MOVEMENT disc -- this button no longer writes its own anchor */
 import { playIsLandscape } from './playViewport.js';
 import { PROG3, burstRefusal, burstWeapon } from '@/data/prog3.js';
 import { ELEMENTS } from '@/data/elements.js';
@@ -24,10 +24,42 @@ import { elementBurst } from '@/game/playerActions.js';
  * from its own state — burst.js _burstRefusal.  Deleting this component in
  * devtools buys nothing.)
  *
- * Sits on the LEFT of the right-joystick assembly, mirroring the charge
- * pie's placement above it, so the thumb that already lives there reaches
- * it without crossing the screen.  Same fixed-position idiom, same
- * --sheet-h keying, so it rides above an open sheet like the pie does.
+ * ═══ v2.3.2574: IT MOVED, AND IT STOPPED PLACING ITSELF ═══
+ *
+ * It used to sit "on the LEFT of the right-joystick assembly, mirroring the
+ * charge pie's placement above it, so the thumb that already lives there
+ * reaches it without crossing the screen" -- `right: 50 + discW + 10`, level
+ * with the disc's centre, worked out here.
+ *
+ * TWO THINGS WERE WRONG WITH THAT, and only the second one is why it moved.
+ *
+ * 1. THOSE NUMBERS WERE ctlColumn SLOT 0 TO WITHIN TWO PIXELS, arrived at
+ *    independently in this file.  That is the duplication ctlColumn exists to
+ *    end, and it had already gone wrong unnoticed: this button's box sat 8px
+ *    from Shield Bash at 390, 7px at 360 and 12px sideways -- the tightest pair
+ *    of combat buttons in the shipped game, and well inside the "enough space
+ *    ... for not accidentally pressing the other one" the owner has been asking
+ *    for.  Nothing caught it because no test ever compared these two boxes.
+ *
+ * 2. The owner moved Special and Whirlwind above the attack disc (v2.3.2574),
+ *    which pushed Shield Bash down into slot 0 -- here.  The right half has
+ *    four safe places and five controls wanted them.
+ *
+ * So this button takes the cluster over the MOVEMENT disc that Special and
+ * Whirlwind vacated, and reads its anchor from leftCluster instead of writing
+ * one.  It is the control that was chosen to cross the screen because it is the
+ * one least often on it: every other button here turns on moment-to-moment
+ * combat state, while this one needs an enchanted weapon AND level 6+.
+ *
+ * WHAT THAT COSTS, plainly: the "without crossing the screen" above is no
+ * longer true, and it was a real design intent rather than an accident.  It
+ * buys 131px of clear air to Shield Bash where there were 8.  If the owner
+ * finds the reach worse than the crowding was, the remedy is to shrink the
+ * right-hand controls and bring this one back to slot 0 -- not to put two
+ * buttons within 8px of each other again.
+ *
+ * Same fixed-position idiom, same --sheet-h keying (through ctlBottom now), so
+ * it still rides above an open sheet like the pie does.
  *
  * NO drop-shadow filter — v2.3.948's iOS incident (a CSS drop-shadow on a
  * DOM overlay compositing over the WebGL canvas produced grainy static on
@@ -79,29 +111,60 @@ export const ElementBurstButton = () => {
   const cdFrac = cdLeft / PROG3.BURST_CD_MS;
   const ready = !refusal && cdLeft <= 0;
 
-  /* Joystick footprint, same measurements SpecialChargePie works from:
-     bottom = var(--dash-h) + 70px, right = 50px, size 83 / 98. */
-  const joyW = isLandscape ? RBTN.wLand : RBTN.w;   /* v2.3.2242: the disc grew; one source of truth */
-  const bottomVal = 'calc(var(--sheet-h, var(--dash-h)) + ' + (70 + (joyW - SIZE) / 2) + 'px)';
-  const rightVal = (50 + joyW + 10) + 'px';
+  /* v2.3.2574: the anchor comes from the shared cluster, not from this file.
+     SIZE stays 46 rather than taking the cluster's 48/54: the rings below are
+     drawn at r=7/12/17 against it and re-tuning that artwork is a separate
+     change from moving the button.  A 46px box in a 48px slot simply leaves 2px
+     of slack at the slot's edge, which makes every clearance 2px BETTER than
+     the slot map promises, and 46 is still clear of Apple's 44px minimum. */
+  const clu = leftCluster(isLandscape);
+  const bottomVal = ctlBottom(clu.bottomPx(LCTL_SLOT.burst));
+  const leftVal = clu.leftPx(LCTL_SLOT.burst) + 'px';
 
+  /* ═══ v2.3.2574: A POINTER GUARD IS NOT A TOUCH GUARD ═══
+   *
+   * This was a single `onPointerDown` whose stopPropagation was there because
+   * "the canvas under this takes taps as attacks".  That was survivable beside
+   * the attack disc.  Over the MOVEMENT half it is not, for two reasons:
+   *
+   *   1. A finger fires BOTH `pointerdown` and `touchstart`, and they are
+   *      separate dispatches -- stopping propagation on one says nothing about
+   *      the other.  `[data-joyzone="L"]` listens on touchstart (lS), so the
+   *      press would fire the burst AND start the player walking.
+   *   2. lM / lE are bound to WINDOW (BroTown ~9345), so the touch does not
+   *      even need the zone element in its propagation path; the release and a
+   *      few px of slide get classified as a drag and a dodge.
+   *
+   * So it carries the same three guards SpecialButton has carried since
+   * v2.3.2472 for this exact neighbour, and fires from `touchstart` with
+   * `onMouseDown` as the desktop door -- NOT from pointerdown as well, or a
+   * single finger would cast twice.  mp-abilslot presses it with a real finger
+   * and asserts both halves: the burst went off, and the player did not move.
+   */
   const press = (e) => {
     e.preventDefault();
-    e.stopPropagation();   /* the canvas under this takes taps as attacks */
+    e.stopPropagation();
     if (!ready) return;
     elementBurst(S);
   };
+  /* A release and a slide are classified too -- see above. */
+  const swallowEnd = (e) => { e.preventDefault(); e.stopPropagation(); };
+  const swallowMove = (e) => { e.stopPropagation(); };
 
   return (
     <div
       className="bt-burst-btn"
-      onPointerDown={press}
+      onTouchStart={press}
+      onMouseDown={press}
+      onTouchEnd={swallowEnd}
+      onTouchMove={swallowMove}
+      onContextMenu={(e) => e.preventDefault()}
       role="button"
       aria-label="Element Burst"
       style={{
         position: 'fixed',
         bottom: bottomVal,
-        right: rightVal,
+        left: leftVal,
         width: SIZE,
         height: SIZE,
         zIndex: 31,
