@@ -140,6 +140,32 @@ function openColsWith(prev, key) {
   return prev.filter((x) => x === SHARED_LANE.key).concat([key]);
 }
 
+/* ═══ v2.3.2596: THE FOUR-EQUAL-WIDTH MOCKUP — A PROPOSAL, NOT A SHIP ═══
+ * Owner: "I want to see a mockup of what all of the 3 combat skills and shared
+ * stats column look like expanded but sharing equal width.  I THINK IT MIGHT
+ * ACTUALLY LOOK BETTER.  The icons need to be about 3x as large in each of the
+ * cells.  Also make the plus button 50% wider and increase the font size of
+ * each skill a bit."
+ *
+ * "I think it might" is the whole brief: this is something to LOOK at and
+ * decide, so it ships behind a URL flag and changes nothing by default.
+ * `?mock4=a` is the ask taken literally — four equal columns, a 3x (39px) icon
+ * in the SAME 48px cell, a 50%-wider [+], a bigger skill name.  It does not
+ * fit, and seeing it not fit is the point (the four asks compete for one
+ * width; see the measurement table in the PR).
+ * `?mock4=b` is the same four asks with the cell re-cut so the 3x icon
+ * actually renders: the icon takes its own row and the cell grows 48 -> 76.
+ * Anything else — including no query string at all — is the screen exactly as
+ * it ships today, byte for byte, which is what makes this branch safe to
+ * throw away.
+ */
+function prog3MockMode() {
+  try {
+    const m = /[?&]mock4=(a|b)\b/.exec(window.location.search);
+    return m ? m[1] : 'off';
+  } catch (e) { return 'off'; }
+}
+
 /* v2.3.1657: the v2.3.1332 chiseled text segments (segCls/seg) are retired
    with the text — see the icon chip row in the render. */
 
@@ -544,6 +570,10 @@ export const HeroExpanded = () => {
      the vitals (and the item card) alone.  Read per render: rotation
      closes the sheet (v2.3.2157), so this cannot flip under an open pane. */
   const landPane = playIsLandscape();
+  /* v2.3.2596: which mockup, if any.  Read per render like landPane above —
+     the owner flips it with a query string on the preview build. */
+  const mock4 = prog3MockMode();
+  const mockOn = mock4 !== 'off';
   /* ═══ v2.3.2382: THE POINT ROWS GO TWO ABREAST ═══
      Owner: "On the stat point application menu make it so that whatever
      primary combat skill you're on it's divided into two columns: on the left
@@ -1608,9 +1638,24 @@ export const HeroExpanded = () => {
                Header and body read the same helper, or the two rows would
                stop lining up the moment one of them was retuned. */
             const COL_CLOSED_W = 64;
-            const isColOpen = (k) => openCols.indexOf(k) >= 0;
-            const anyColOpen = openCols.length > 0;
-            const colFlex = (k) => ((anyColOpen && !isColOpen(k))
+            /* ═══ v2.3.2596 (MOCKUP): ALL FOUR OPEN, ALL FOUR EQUAL ═══
+               The owner asked to see the four "expanded but sharing equal
+               width".  Two readings were possible — the accordion stays and
+               this is merely how it looks when everything happens to be open,
+               or the accordion goes.  The second is the only one that can
+               HOLD the picture: v2.3.2594 caps the open set at two (one weapon
+               plus Shared) on the owner's own rule, so "all four open" is a
+               state the shipped accordion can never reach and a screenshot of
+               it would be of something unreachable.  So under the flag the
+               accordion is bypassed — every column reports open and every
+               column is `1 1 0` — while the real openCols state, the tap
+               handler and openColsWith are all left exactly as they are
+               underneath, ready to come back if the owner says no.
+               At 390 that is 91.5px a column; at 360, 84px.  Those two numbers
+               are what every other measurement here is up against. */
+            const isColOpen = (k) => (mockOn ? true : openCols.indexOf(k) >= 0);
+            const anyColOpen = mockOn ? true : openCols.length > 0;
+            const colFlex = (k) => ((!mockOn && anyColOpen && !isColOpen(k))
               ? { flex: `0 0 ${COL_CLOSED_W}px`, width: COL_CLOSED_W, minWidth: 0 }
               : { flex: '1 1 0', minWidth: 0 });
             /* v2.3.2594: close is always just close; open goes through the
@@ -1709,8 +1754,15 @@ export const HeroExpanded = () => {
                         filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.45))',
                       }} />
                   </div>
+                  {/* v2.3.2596 (MOCKUP): "increase the font size of each skill
+                      a bit" — this is the skill's NAME, the only text on this
+                      screen that names a skill rather than a stat.  11 -> 12.5,
+                      a 13.6% step: "a bit" is the owner's word, and the next
+                      notch up (14) starts ellipsising SHARED, the longest of
+                      the four, inside an 84px column at 360.  Well clear of the
+                      11px readability floor either way. */}
                   <span style={{
-                    fontSize: 11, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase',
+                    fontSize: mockOn ? 12.5 : 11, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase',
                     lineHeight: 1, color: pts > 0 ? COL.accent : COL.text,
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
                   }}>{col.label}</span>
@@ -2092,8 +2144,46 @@ export const HeroExpanded = () => {
                The aria-label keeps the full name either way. */
             const NARROW = panelVw() < 360;
             const NARROW_TITLE = { def: 'Def', stam: 'Stam', eres: 'Resist', move: 'Move', special: 'Spec', elem: 'Elem', mana: 'MP', hp: 'HP', aspd: 'Speed' };
-            const cellTitle = (st) => (NARROW ? (NARROW_TITLE[st.key] || SHORT_TITLE[st.key] || st.label) : (SHORT_TITLE[st.key] || st.label));
-            const CELL_H = 48;
+            /* v2.3.2596 (MOCKUP): a four-way split makes every column a
+               quarter-width one, so the mockup takes the SHORT WORDS this file
+               already keeps for 320-class phones — and only the words.  The
+               first cut reused the whole `NARROW` bundle, which also drops the
+               title to 10px and the value to 11.5, and 10px is UNDER the 11px
+               readability floor mp-textfloor pins as FLOOR = 11 (the comment a
+               few lines up calling 10px "the repo's type floor" is stale; the
+               v2.3.1235 rollout in dash/StatsPanel.jsx raised exactly that
+               number for exactly this reason).  A mockup is allowed to be
+               ugly; it is not allowed to quietly ship text under the floor and
+               call the result legible.  So the names shorten and the sizes
+               stay where the shipped screen has them. */
+            const mockTitles = NARROW || mockOn;
+            const cellTitle = (st) => (mockTitles ? (NARROW_TITLE[st.key] || SHORT_TITLE[st.key] || st.label) : (SHORT_TITLE[st.key] || st.label));
+            /* ═══ v2.3.2596 (MOCKUP): "ICONS ABOUT 3x AS LARGE IN EACH CELL" ═══
+               The cell icon is 13px today, so 3x is 39px, and 39 is what BOTH
+               variants draw — the difference is whether the cell is re-cut to
+               hold it.
+
+               VARIANT A leaves the cell at 48px and the icon inline beside the
+               value, exactly as it ships.  That cell has 29px of vertical room
+               between the title and the bottom padding (48 - 2 border - 2 pad
+               top - 11 title - 1 gap - 3 pad bottom), so a 39px icon overflows
+               by 10 and the cell's own `overflow: hidden` crops it.  Sideways
+               it is worse: at 360 the icon+value box is ~40px wide once the
+               50%-wider [+] has taken its share, and a 39px icon leaves ~0 for
+               the number.  This is the owner's ask rendered honestly rather
+               than quietly softened to something that fits.
+
+               VARIANT B buys the same 39px by giving the icon its OWN row —
+               the one axis where a quarter-width column still has room — and
+               growing the cell to hold it: 2 pad + 12.5 title + 3 + 39 icon +
+               3 + 13 value + 3 pad = 76.  Nothing is truncated and no text
+               drops below the floor.  What it costs is height, and the cost is
+               real: a 7-cell column goes from 48*7+4*6 = 360px to 76*7+4*6 =
+               556px in a ~191px window, so the screen the owner already
+               chose to scroll (v2.3.2222) scrolls about half again as far. */
+            const CELL_ICON = mockOn ? 39 : 13;
+            const CELL_STACK = mock4 === 'b';
+            const CELL_H = CELL_STACK ? 76 : 48;
             /* ═══ v2.3.2595: THE [+] IS A QUARTER OF THE CELL ═══
                Owner: "I also want the plus sign to add points to be much
                larger, taking up about 25% of the cell and aligned right
@@ -2104,7 +2194,14 @@ export const HeroExpanded = () => {
                right corners following the cell's 9px radius less that border.
                The content is inset by the same percentage plus a little air,
                so a long value can never run underneath it. */
-            const PLUS_PCT = 25;
+            /* v2.3.2596 (MOCKUP): "make the plus button 50% wider" — 25% of the
+               cell becomes 37.5%.  This is the ask that costs the most and
+               shows the least: the cell's padding-right is `PLUS_PCT% + air`,
+               so every point the [+] gains comes straight out of the box the
+               icon and the value share.  At 360 that box goes from ~48px to
+               ~40px, which is why the literal variant's 39px icon leaves the
+               number nowhere to go. */
+            const PLUS_PCT = mockOn ? 37.5 : 25;
             /* ═══ AND THE SPEND ASKS FIRST ═══
                Owner: "Add a second window asking if they're sure they want to
                spend the point."  Built here rather than inside the overlay so
@@ -2203,10 +2300,31 @@ export const HeroExpanded = () => {
                        excessively."  So the three pixels come from the
                        padding and the row's gaps (below), and the number keeps
                        its 11.5px. */
-                    paddingTop: 2, paddingLeft: NARROW ? 2 : 3, paddingBottom: 3,
+                    /* v2.3.2596 (MOCKUP): the left padding takes the narrow
+                       value too.  "POWER" wants 47px of title box and had 46 in
+                       an 84px cell at 360 — one pixel, in the three weapon
+                       columns, which is the whole difference between a word and
+                       "POW…".  Found by LOOKING at the strip: the sweep that
+                       was supposed to catch it used a `> 1` threshold and a
+                       1px overflow slipped under it (threshold since tightened
+                       in shot-mock4.mjs). */
+                    paddingTop: 2, paddingLeft: (NARROW || mockOn) ? 2 : 3, paddingBottom: 3,
                     /* The quarter the [+] occupies, plus a little air, so a
                        wide value can never slide underneath it. */
-                    paddingRight: `calc(${PLUS_PCT}% + ${NARROW ? 2 : 4}px)`,
+                    /* v2.3.2596 (MOCKUP): the 50%-wider [+] takes its extra
+                       width out of this padding, and at 360 that left "POWER"
+                       short of rendering whole in an 84px cell.  (The first
+                       reading of "how short" was 3px, then 1px, then 0.14px as
+                       the measurement got honest — see the note on the title
+                       span below.  Only the last figure is real; the padding
+                       here closes most of it and the letter-space closes the
+                       rest.)
+                       The owner's own rule for this exact squeeze, from
+                       v2.3.2441 and quoted above — "Reduce horizontal padding
+                       rather than shrinking the text excessively" — so the air
+                       beside the [+] goes to 2px and the word keeps its 11px
+                       rather than the label being abbreviated to "Pwr". */
+                    paddingRight: `calc(${PLUS_PCT}% + ${(NARROW || mockOn) ? 2 : 4}px)`,
                     display: 'flex', flexDirection: 'column', justifyContent: 'center',
                     gap: 1,
                     position: 'relative',
@@ -2250,6 +2368,21 @@ export const HeroExpanded = () => {
                       textTransform: 'uppercase', color: COL.text2, lineHeight: 1,
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       minWidth: 0,
+                      /* ═══ v2.3.2596 (MOCKUP): THE TRAILING LETTER-SPACE ═══
+                         `letter-spacing` is added after the LAST glyph too, so
+                         a nowrap span reserves .02em it never draws.  "POWER"
+                         wanted 46.64px of an 46.50px box at 360 — 0.14px, one
+                         seventh of a pixel — and that is the whole difference
+                         between POWER and "POW…" in the three weapon columns.
+                         A negative right margin of the same .02em gives back
+                         exactly the space that is not drawn, changing no
+                         letterform and no gap between letters.
+                         WORTH KNOWING: scrollWidth/clientWidth are INTEGERS and
+                         reported 47 vs 47 here, i.e. no overflow at all, for
+                         two passes running while the screenshot plainly showed
+                         the ellipsis.  Sub-pixel fit has to be measured with a
+                         Range, which is what the harness does now. */
+                      marginRight: mockOn ? '-.02em' : undefined,
                     }}>{cellTitle(st)}</span>
                   </div>
                   {/* ICON · VALUE · ORB
@@ -2264,14 +2397,32 @@ export const HeroExpanded = () => {
                       The `position:relative` moves with it, because
                       `.bt-pt-plus` is `position:absolute; left:100%` and needs
                       a positioned ancestor to fly out of. */}
+                  {/* v2.3.2596 (MOCKUP, variant b only): the icon on its own
+                      row.  Centred in what the [+] leaves, which at 360 is
+                      ~40px — enough for the full 39, with the drop-shadow the
+                      other icons on this screen all carry. */}
+                  {CELL_STACK && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      minWidth: 0, flex: 'none', height: CELL_ICON }}>
+                      <img src={st.iconSrc} alt="" draggable={false}
+                        style={{ width: CELL_ICON, height: CELL_ICON, objectFit: 'contain',
+                          flex: 'none', pointerEvents: 'none',
+                          filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.45))' }} />
+                    </div>
+                  )}
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: NARROW ? 1 : 2,
                     minWidth: 0, flex: 'none',
+                    /* Variant b centres the number under the icon; variant a
+                       and the shipped cell keep it beside one. */
+                    justifyContent: CELL_STACK ? 'center' : undefined,
                   }}>
+                    {!CELL_STACK && (
                     <img src={st.iconSrc} alt="" draggable={false}
-                      style={{ width: 13, height: 13, objectFit: 'contain',
+                      style={{ width: CELL_ICON, height: CELL_ICON, objectFit: 'contain',
                         flex: 'none', pointerEvents: 'none',
                         filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.45))' }} />
+                    )}
                     <span style={{
                       flex: 1, minWidth: 0, textAlign: 'center',
                       /* "Only modestly larger than their stat labels" (owner):
