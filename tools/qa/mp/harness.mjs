@@ -1452,3 +1452,93 @@ export async function launch() {
   if (existsSync(pinned)) opts.executablePath = pinned;
   return chromium.launch(opts);
 }
+
+/* ═══ v2.3.2593: OPEN THE POINTS SCREEN'S COLUMNS ═══
+ *
+ * The four columns are a HORIZONTAL ACCORDION and every one of them starts
+ * CLOSED (owner: "the default view should also to have them all closed"), so
+ * a scenario that wants to measure or tap a stat cell has to open its column
+ * first — before this, six scenarios each found the cells simply by being on
+ * the screen.
+ *
+ * It lives here rather than in each of them because the alternative is six
+ * copies of the same tap, which is how two of them would quietly keep tapping
+ * a header that had stopped toggling.
+ *
+ * A REAL CDP TOUCH WITH DRIFT, not a dispatched PointerEvent.  The repo has
+ * paid for that distinction twice: the header sits inside the sheet's
+ * scroller, which claims any touch that travels ~15px and fires pointercancel
+ * instead of pointerup — so a synthetic dispatch stayed green through two
+ * rounds of the owner reporting an accordion that would not collapse
+ * (v2.3.2326, and TRAPS §67: "a synthesised gesture proves the handler, not
+ * the reachability").  Every real thumb drifts that far.
+ *
+ * ═══ v2.3.2594: ONE WEAPON, PLUS SHARED ═══
+ * Owner: "You can only have one combat skill open at a time but you can have
+ * one combat skill and the shared column open at the same time."  So the
+ * three weapons are a radio group and asking for two of them leaves you with
+ * the LAST one — which is why the default is one weapon and Shared, the
+ * widest the screen can legally be, rather than a list of four that would
+ * quietly collapse to two and make every count downstream a guess.
+ *
+ * A scenario that needs all three weapons' cells opens them in turn and
+ * measures each; there is no state in which more than 13 cells exist.
+ *
+ * Pass `keys` to open a different pair.  Idempotent: a column that is
+ * already open is left alone rather than toggled shut, which is what makes
+ * it safe to call twice in one scenario.
+ */
+export async function openPointCols(P, keys = ['sword', 'shared'], { drift = 16 } = {}) {
+  const opened = [];
+  for (const k of keys) {
+    const at = await P.page.evaluate((key) => {
+      const el = document.querySelector(`[data-prog3-lane="${key}"]`);
+      if (!el) return { err: 'no column ' + key };
+      if (el.getAttribute('aria-expanded') === 'true') return { already: true };
+      /* ═══ SCROLL THE SHEET BACK TO THE TOP FIRST ═══
+         The header row is `position: sticky` inside the sheet's scroller, so
+         `scrollIntoView` on it is a no-op — it is already in view, stuck —
+         and it leaves whatever scroll position the caller was in.  Deep in a
+         scrolled panel the stuck row can sit under the section tabs, and
+         then `elementFromPoint` at its centre answers something else and the
+         tap is refused.  Measured: mp-statgrid's spend section opened one
+         column and got a different one back, because the centre-of-cell
+         sweep just before it had scrolled to the last cell.
+         Putting the scroller at 0 makes the header's position the same on
+         every call, which is the only way a helper six scenarios share can
+         promise the same thing to all of them. */
+      for (let n = el; n; n = n.parentElement) {
+        if (n.scrollHeight - n.clientHeight > 4 && /auto|scroll/.test(getComputedStyle(n).overflowY)) { n.scrollTop = 0; break; }
+      }
+      el.scrollIntoView({ block: 'center' });
+      const r = el.getBoundingClientRect();
+      const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
+      const hit = document.elementFromPoint(x, y);
+      /* A header below the fold answers null here, and a tap aimed at it
+         would land on whatever is really there — report it instead. */
+      if (!(hit && hit.closest && hit.closest(`[data-prog3-lane="${key}"]`))) return { err: 'column ' + key + ' not hittable' };
+      return { x, y };
+    }, k);
+    if (at.already) { opened.push(k); continue; }
+    /* A refused tap is reported through the return value (the caller's guard
+       sees the column missing) rather than thrown — but it must not be
+       silent, or six scenarios inherit a helper that can quietly do nothing. */
+    if (at.err) { console.log('    openPointCols: ' + at.err); continue; }
+    const cdp = await P.page.context().newCDPSession(P.page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: at.x, y: at.y }] });
+    for (let i = 1; i <= 4; i++) {
+      await new Promise((r) => setTimeout(r, 20));
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: at.x, y: at.y + (drift * i) / 4 }] });
+    }
+    await new Promise((r) => setTimeout(r, 20));
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await cdp.detach();
+    await P.page.waitForTimeout(320);   /* the 140ms width transition, with room */
+    opened.push(k);
+  }
+  /* What actually ended up open, read back rather than assumed — a caller
+     that guards on this gets a real answer when a header stops responding. */
+  return P.page.evaluate(() => [...document.querySelectorAll('[data-prog3-lane]')]
+    .filter((h) => h.getAttribute('aria-expanded') === 'true')
+    .map((h) => h.getAttribute('data-prog3-lane')));
+}

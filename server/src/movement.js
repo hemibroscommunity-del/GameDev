@@ -248,7 +248,19 @@ export const movementMethods = {
         const _m = Number(ps._buffs && ps._buffs.spdMul);
         _spdCap = (_m >= 1 && _m <= 2) ? _m : 1.15;   /* 1.15 = the cooked-food buff */
       }
-      const maxDist = 500 * _spdCap * dt + 80;
+      /* ═══ v2.3.2592: ...AND FOR THE MOVE SPEED STAT THE SERVER ITSELF STORED ═══
+         The seventh shared stat (prog3.js PROG3.BODY.move, +0.4%/pt, +30% at
+         the 75-pt cap) is client-consumed like attack speed: BroTown.jsx
+         multiplies the walk speed by prog3MoveMult.  The bound widens by the
+         SAME multiplier, read from the server's own allocation (never the
+         wire), so the headroom the 500 was sized with is preserved instead
+         of spent — a maxed stat on the fastest legitimate stack is ~358 px/s
+         against 650, not against 500.  A client cannot grant itself this:
+         the allocation is server-validated at spend time
+         (_handleProg3Allocate) and re-clamped on every read (_prog3Pts).
+         prog3.test.mjs pins the arithmetic against the client's constants. */
+      const _moveMult = (ps.prog3 && typeof this._prog3MoveMult === 'function') ? this._prog3MoveMult(ps) : 1;
+      const maxDist = 500 * _spdCap * _moveMult * dt + 80;
       const dx = msg.x - ps.x;
       const dy = msg.y - ps.y;
       if (dx * dx + dy * dy > maxDist * maxDist) {

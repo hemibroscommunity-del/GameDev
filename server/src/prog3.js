@@ -41,6 +41,62 @@
  * cleanup PR retires them after soak (§10 PR-6, v2.3.1155 precedent).
  */
 
+/* ═══ v2.3.2592: THE FOUR-COLUMN POINTS REDESIGN (owner, 2026-09-16) ═══
+ *
+ * Owner: "Right now spending and applying and using combat points is not a
+ * fun experience.  I'm proposing a layout shift and a redesign to the combat
+ * points themselves."  Three things changed together, because they share the
+ * allocation grid and one migration:
+ *
+ *   1. SIX STATS PER COMBAT TYPE — Range, Power, Speed, Luck, Special,
+ *      Elemental.  `dmg` (Power), `aspd` (Speed) and `elem` keep their
+ *      storage keys and their per-point values; `crit` and `critDmg` FOLD
+ *      into one `luck` stat that buys both halves of a crit at once; `range`
+ *      (reach) and `special` (special-attack damage) are new.
+ *   2. SEVEN SHARED STATS — HP, Def, MP, Stamina, Dodge, Move Speed, Elem
+ *      Resist.  `move` is the one arrival; the rest are the BODY table as it
+ *      stood.
+ *   3. A SECOND POOL.  Owner: "for every point earned through one of the 3
+ *      combat channels, you earn one 'shared' point too.  You get both points
+ *      but only the point earned in the combat channel can be spent there
+ *      (the point for shared can be allocated to any in that shared pool)."
+ *      So a level-up mints POINTS_PER_LEVEL lane points (stamped to the
+ *      earning skill, spendable ONLY on that skill's six) AND
+ *      SHARED_POINTS_PER_LEVEL shared points (spendable ONLY on the seven
+ *      shared stats).  This RETIRES the v2.3.2176 rule that a lane point may
+ *      buy a defensive stat — the shared pool is where that spend lives now.
+ *      `prog3.shared` holds the pool; `prog3.spl` stamps the rate it was
+ *      granted at (the `ppl` pattern) so the retro grant is idempotent.
+ *
+ * WHAT HAPPENS TO WHAT PLAYERS ALREADY HAVE (migration v17, and the same
+ * fold at the join boundary because migrations fail open):
+ *   - crit + critDmg points are REFUNDED into the lane that holds them
+ *     (pool AND poolBy[cat] both grow, so the parts-≤-whole invariant holds).
+ *     The v11/v15 precedent, and better than either: the stat was already
+ *     per-lane, so the refund lands in the lane that paid for it and nobody
+ *     has to guess.
+ *   - every character is GRANTED SHARED_POINTS_PER_LEVEL × (level − 1) per
+ *     skill, exactly what a fresh character reaching the same levels would
+ *     hold.  Body points already placed with lane points STAY placed: taking
+ *     them back would read as theft, and refunding the lane points that paid
+ *     for them is impossible to do honestly (nothing recorded which lane
+ *     paid).  A veteran therefore comes out slightly AHEAD of a fresh
+ *     character, by the body points they bought under the old rule — the
+ *     v10 defense-carry posture ("a one-time bonus"), chosen over any option
+ *     that strands or claws back earned points.
+ *   - the unchannelled remainder (`pool − Σ poolBy`, points that predate
+ *     v2.3.2176) stays spendable ANYWHERE — lane offense or shared — as it
+ *     always was.  The milestone bonus points (abilities.js) keep minting
+ *     into that remainder.
+ *
+ * Deploy-order (rule 19): the worker advertises `caps.prog3shared`.  The
+ * client gates DISPLAY on it — the three new lane rows, the move row, the
+ * luck readouts and the shared-pool counts; against an old worker it draws
+ * that worker's grid and pools.  Nothing NEW is sent: a prog3_allocate naming
+ * `luck` with a `cat` is shaped exactly like today's per-type spends, and an
+ * old worker's whitelist simply refuses the name.  Against a NEW worker an
+ * old client keeps sending `cat` on body spends, which this endpoint now
+ * ignores (the point comes off the shared pool). */
 export const PROG3 = {
   SKILLS: ['sword', 'bow', 'staff'], // storage keys; displayed Melee / Bow / Magic
   LEVEL_CAP: 100,                    // per trained skill
@@ -61,6 +117,18 @@ export const PROG3 = {
    * `ppl`, which is what makes the back-pay idempotent AND makes any
    * future rate change a one-line migration instead of archaeology. */
   POINTS_PER_LEVEL: 3,
+  /* ═══ v2.3.2592: ...AND THREE SHARED POINTS BESIDE THEM ═══
+   * "For every point earned through one of the 3 combat channels, you earn
+   * one 'shared' point too."  One-to-one with the lane mint by the owner's
+   * own words; kept as its own constant so the ratio is one dial.  Four
+   * readers: the level-up mint (_prog3AwardXp), the respec (prog3FromLegacy),
+   * the retro grant (prog3GrantSharedPoints / migration v17) and the client
+   * banner (mirror).  At this rate a character that trains all three skills
+   * to 100 has minted 891 shared points against 625 shared sinks, so every
+   * shared stat CAN be maxed by roughly character level 220 — the lane
+   * pools stay sharp (297 points against 525 sinks per lane).  If live play
+   * wants shared choices sharper too, this is the number to lower. */
+  SHARED_POINTS_PER_LEVEL: 3,
   /* ═══ v2.3.1668: BODY vs ATK (owner, 2026-08-11) ═══
    *
    * "The attack power (crit chance, attack speed, etc) are specific to the
@@ -144,8 +212,33 @@ export const PROG3 = {
        `magicLvl + points` on the same ladder stamina already counts its own
        allocated points on. */
     mana:    { cap: 100, per: 2.5 },    // +2.5 max mana/pt → +250
+    /* ═══ v2.3.2592: MOVE SPEED (owner ask, the four-column redesign) ═══
+       The seventh shared stat.  Movement is CLIENT-OWNED (BroTown.jsx reads
+       calcMoveSpeed and multiplies by prog3MoveMult), so the server's job is
+       the same as for `aspd`: store and validate the allocation, and keep
+       the anticheat bound honest.  The move bound (movement.js) is 500 px/s
+       sustained; a maxed stat on the fastest legitimate stack is 150 × 1.30
+       × 1.15 (food) × 1.065 (amulet) × 1.5 (Swift Draught, which already
+       widens the bound by 1.5) ≈ 358 px/s, and _prog3MoveMult widens the
+       bound by the same 1.30 regardless, so the headroom the bound was sized
+       with is preserved rather than spent.  Same shape as dodge/eres
+       (+0.4%/pt, cap 75 → +30%): one scale to learn. */
+    move:    { cap: 75,  per: 0.004 },  // +0.4% move speed/pt → +30%
   },
   ATK: {
+    /* ═══ v2.3.2592: RANGE — "max distance attacks can be effective" ═══
+       +0.5% reach per point, +50% at the 100-pt cap, PER TYPE.  Reach is
+       client-owned like attack speed: the bow's arrow plant cap
+       (BOW_RANGE_PX 675), the staff orb's life (STAFF_LIFE) and the melee
+       swing envelope (SWING_RANGE / GS_INNER_RADIUS / GS_OUTER_RADIUS) all
+       multiply by prog3RangeMult(rpg, cat).  Server bounds, checked rather
+       than assumed: the PvE melee proximity gate is 400 px against a maxed
+       outer reach of 108 + body + lag; ranged/staff have no PvE proximity
+       gate by design (combat.js); PvP RANGE_CAP (250 / 950 / 950) clamps the
+       client's claim and 675 × 1.5 = 1012 > 950 is clamped, not rejected.
+       It replaces the legacy per-weapon Longshot channel (+1%/pt to ×2.0),
+       which prog3 characters never had. */
+    range:   { cap: 100, per: 0.005 },  // +0.5% reach/pt → +50%, PER TYPE
     /* ═══ v2.3.2210: EVERY CHARACTER STARTS AT 1% ═══
        Owner: "I want crit chance to start at a flat 1% per damage type by
        default for each character."
@@ -153,30 +246,32 @@ export const PROG3 = {
        Before this, an unallocated character's crit roll was
        `Math.random() < 0` -- never true, in any weapon type, for the whole
        of the early game.  `base` is added to the allocated term rather than
-       folded into it, so the two stay legible: 1% is what you HAVE, +0.4%/pt
+       folded into it, so the two stay legible: 1% is what you HAVE, +0.3%/pt
        is what you BUY.  Per damage type by construction, because the whole
        ATK block is read per category (v2.3.1668).
 
-       The cap moves with it: 1% + 75 x 0.4% = 31%, not 30%.  Deliberate --
-       the owner asked for a floor, not a re-slice of the same 30%, and a
-       base that ate into the allocated range would make the first point
-       bought worth nothing.
+       Anticheat is NOT affected by the chance: _maxDmgForAttacker's ceiling
+       is built from the crit DAMAGE multiplier (dmgPer below).  Crit CHANCE
+       has never entered that arithmetic -- the ceiling already assumes the
+       crit happened.
 
-       Anticheat is NOT affected and does not move: _maxDmgForAttacker's
-       ceiling is built from critMult (the DAMAGE multiplier), which is
-       unchanged.  Crit CHANCE has never entered that arithmetic -- the
-       ceiling already assumes the crit happened. */
-    crit:    { cap: 75,  per: 0.004, base: 0.01 },  // 1% + 0.4%/pt → 31%, PER TYPE
-    /* v2.3.2199: critDmg becomes a PERCENT on the 1.5× multiplier (+1%/pt,
-       ×2.5 at the 100-pt cap), REVERSING v2.3.1659's "flat, not %, for the
-       §7 anti-compounding reason" — owner-approved in the 3-points balance
-       pass.  The flat +2 was monstrous early (+200 vs a ~26-damage swing at
-       char 13) and rounding error at endgame; a percent survives gear
-       scaling, and the compounding worry is bounded by the ×2.5 hard
-       ceiling.  Invested points KEEP their count — semantics change only,
-       no refund.  Roll + anticheat ceiling (combat.js) + client display
-       (calcDisplayDps, gated on caps.prog3x) all moved in this commit. */
-    critDmg: { cap: 100, per: 0.01 },   // +1% crit damage/pt → ×2.5, PER TYPE
+       ═══ v2.3.2592: LUCK — "crit chance and crit damage" in ONE stat ═══
+       The owner's list names Luck as both halves of a crit.  So `crit`
+       (0.4%/pt, cap 75 → 30%) and `critDmg` (+1%/pt, cap 100 → ×2.5) fold
+       into ONE stat with ONE 100-pt cap that lands on the SAME two endpoints:
+       `per` is the chance rate (0.3%/pt → 1% + 30% = 31%) and `dmgPer` the
+       damage rate (+1%/pt → ×2.5 at cap).  A point buys a little of both,
+       which is what "luck" should feel like; the critDmg half is worthless
+       without the chance half, and buying them together removes the trap
+       the old pair had (a critDmg-only build that never crit).  Placed
+       crit/critDmg points are REFUNDED to their lane by migration v17
+       (prog3FoldLuck) — hands the choice back, the v11/v15 precedent.
+       v2.3.2199's percent-on-the-multiplier reasoning stands for dmgPer:
+       the flat +2 was monstrous early and rounding error late; a percent
+       survives gear scaling, and compounding is bounded by the ×2.5
+       ceiling.  Roll + anticheat ceiling (combat.js) + client display all
+       move in this commit (the v2.3.1451 lockstep rule). */
+    luck:    { cap: 100, per: 0.003, dmgPer: 0.01, base: 0.01 },  // 1% + 0.3%/pt crit chance → 31%; +1%/pt crit damage → ×2.5, PER TYPE
     aspd:    { cap: 100, per: 0.0035 }, // −0.35% swing period/pt → −35%, PER TYPE
     // aspd note: 600ms base × 0.65 × the 0.7 lag headroom = 273ms >
     // the 210ms server cadence floor (combat.js), so the existing
@@ -213,6 +308,17 @@ export const PROG3 = {
        or picking one (which would be guessing) — the v11 precedent, for the
        identical reason. */
     elem:    { cap: 75,  per: 1 },      // +1 elemental power/pt → 75, PER TYPE
+    /* ═══ v2.3.2592: SPECIAL — "special attack damage" ═══
+       +1% special-attack damage per point, +75% at the 75-pt cap, PER TYPE.
+       Multiplies the per-weapon special multiplier (melee/bow 3×, each
+       staff orb 2×, v2.3.1397) at the roll: `× (1 + pts × per)`.  A special
+       costs a mana block, so the stat pays only when the pool does — it is
+       the one offense buy that scales the Magic/MP investment rather than
+       competing with it.  ANTICHEAT LOCKSTEP: _maxDmgForAttacker's
+       specialMult carries the same term off the LARGEST lane (the candidate
+       loop does not say which weapon won; loose rejects nothing, tight
+       rejects legit maxed specials), in the same commit. */
+    special: { cap: 75,  per: 0.01 },   // +1% special damage/pt → +75%, PER TYPE
   },
   /* ═══ v2.3.1727: THE RETUNE PROGRESSION-REDESIGN #13 DEFERRED ═══
    * Owner, after judging: "The players who are level 13 do not feel
@@ -337,7 +443,7 @@ export function prog3XpRequired(level) {
 /* v2.3.1668: the global BODY allocation.  v2.3.2199: + elem.
    v2.3.2512: elem LEAVES for ATK (per weapon); eres + mana arrive. */
 export function prog3FreshAlloc() {
-  return { def: 0, hp: 0, dodge: 0, stam: 0, eres: 0, mana: 0 };
+  return { def: 0, hp: 0, dodge: 0, stam: 0, eres: 0, mana: 0, move: 0 }; // v2.3.2592: + move
 }
 /* v2.3.1668: the per-combat-type OFFENSE allocation, one block per skill.
  * Object.create(null) is not needed here — the keys are OUR constants, not
@@ -345,7 +451,14 @@ export function prog3FreshAlloc() {
  * read site can index it without a presence check. */
 export function prog3FreshAtk() {
   const out = {};
-  for (const cat of PROG3.SKILLS) out[cat] = { crit: 0, critDmg: 0, aspd: 0, dmg: 0, elem: 0 }; // v2.3.2199: + dmg; v2.3.2512: + elem
+  /* v2.3.2199: + dmg; v2.3.2512: + elem; v2.3.2592: crit/critDmg fold into
+     luck, + range, + special.  Built off PROG3.ATK so a stat added to the
+     table cannot be missing from the fresh shape. */
+  for (const cat of PROG3.SKILLS) {
+    const lane = {};
+    for (const k of Object.keys(PROG3.ATK)) lane[k] = 0;
+    out[cat] = lane;
+  }
   return out;
 }
 /* Which table owns a stat name.  Returns null for anything unknown, which
@@ -370,6 +483,7 @@ export function prog3FromLegacy(src) {
   const sk = {};
   const poolBy = { sword: 0, bow: 0, staff: 0 };
   let pool = 0;
+  let shared = 0; /* v2.3.2592 */
   for (const cat of PROG3.SKILLS) {
     const old = (src && src.weaponSkills && typeof src.weaponSkills === 'object')
       ? src.weaponSkills[cat] : null;
@@ -384,6 +498,9 @@ export function prog3FromLegacy(src) {
        stranded at 1/level forever with no migration left to fix it. */
     pool += oldLevel * PROG3.POINTS_PER_LEVEL;
     poolBy[cat] = oldLevel * PROG3.POINTS_PER_LEVEL;
+    /* v2.3.2592: and the shared pool alongside, at the current rate, stamped
+       (spl) for the same join-boundary reason as ppl above. */
+    shared += oldLevel * PROG3.SHARED_POINTS_PER_LEVEL;
   }
   /* The defense-skill carry stays a one-time UNCHANNELLED bonus (§3's
      bonus-points pick, spendable anywhere) — it is not per-level minting
@@ -392,7 +509,8 @@ export function prog3FromLegacy(src) {
   /* v2.3.1733: `ms` starts at 0 so a respecced veteran is paid every
      milestone bonus point they have already earned, once, on their next
      level-up or join (see _prog3GrantMilestones). */
-  return { sk, alloc: prog3FreshAlloc(), atk: prog3FreshAtk(), pool, poolBy, ms: 0, ppl: PROG3.POINTS_PER_LEVEL };
+  return { sk, alloc: prog3FreshAlloc(), atk: prog3FreshAtk(), pool, poolBy, ms: 0, ppl: PROG3.POINTS_PER_LEVEL,
+    shared, spl: PROG3.SHARED_POINTS_PER_LEVEL /* v2.3.2592 */ };
 }
 
 /* ═══ v2.3.2199: THE RETRO GRANT (migration v14) ═══
@@ -435,7 +553,11 @@ export function prog3SplitAtk(p3) {
   if (p3.atk && typeof p3.atk === 'object') return p3;
   const a = (p3.alloc && typeof p3.alloc === 'object') ? p3.alloc : {};
   let refund = 0;
-  for (const k of Object.keys(PROG3.ATK)) {
+  /* v2.3.2592: the two RETIRED offense keys are walked too — a v10-shaped
+     blob healed here after the luck fold shipped would otherwise carry
+     crit/critDmg into the alloc rebuild below, which drops what it does not
+     know, with no refund. */
+  for (const k of [...Object.keys(PROG3.ATK), 'crit', 'critDmg']) {
     const n = Number(a[k]);
     if (Number.isFinite(n) && n > 0) refund += Math.floor(n);
     delete a[k];
@@ -483,6 +605,75 @@ export function prog3MoveElemToAtk(p3) {
   return true;
 }
 
+/* ═══ v2.3.2592: fold crit + critDmg into LUCK — the refund ═══
+ * The two old offense stats have nowhere to land now that one stat buys
+ * both halves of a crit.  Every placed point is REFUNDED into the lane that
+ * holds it: `pool` and `poolBy[cat]` grow by the same amount, so the
+ * parts-≤-whole invariant the sanitizer enforces is preserved by
+ * construction, and the player re-chooses — Luck, or Range, or Special —
+ * with the same lane budget they earned.  Better than the v11/v15 refunds
+ * in one way: those points had no lane on record and fell into the
+ * unchannelled remainder; these were per-lane already, so no guess is made.
+ * Idempotent (returns false once no lane carries either key) and shared by
+ * migration v17 and _sanitizeProg3, because migrations FAIL OPEN and a
+ * fail-open blob healed at join would otherwise have both keys dropped by
+ * the sanitizer's own-key loop with no refund.  Returns true when it
+ * changed something. */
+export function prog3FoldLuck(p3) {
+  if (!p3 || typeof p3 !== 'object') return false;
+  const atk = p3.atk;
+  if (!atk || typeof atk !== 'object') return false;
+  let changed = false;
+  for (const cat of PROG3.SKILLS) {
+    const lane = atk[cat];
+    if (!lane || typeof lane !== 'object') continue;
+    let refund = 0;
+    /* Bounded by the caps the retired stats HAD (75 / 100): storage is
+       server-written and a legitimately placed count can never exceed them,
+       so a larger number is a corrupt or hand-edited blob and must not mint
+       points on its way out.  The sanitizer's pool clamp bounds the total
+       regardless; this bounds each part. */
+    const RETIRED_CAP = { crit: 75, critDmg: 100 };
+    for (const k of ['crit', 'critDmg']) {
+      if (!Object.prototype.hasOwnProperty.call(lane, k)) continue;
+      const n = Number(lane[k]);
+      if (Number.isFinite(n) && n > 0) refund += Math.min(RETIRED_CAP[k], Math.floor(n));
+      delete lane[k];
+      changed = true;
+    }
+    if (refund > 0) {
+      if (!p3.poolBy || typeof p3.poolBy !== 'object') p3.poolBy = { sword: 0, bow: 0, staff: 0 };
+      p3.pool = Math.min(9999, Math.max(0, Math.floor(Number(p3.pool) || 0)) + refund);
+      p3.poolBy[cat] = Math.min(9999, Math.max(0, Math.floor(Number(p3.poolBy[cat]) || 0)) + refund);
+    }
+  }
+  return changed;
+}
+
+/* ═══ v2.3.2592: THE SHARED-POINT RETRO GRANT (migration v17) ═══
+ * Every stored character receives SHARED_POINTS_PER_LEVEL × (level − 1) per
+ * skill — earned level-ups ≡ level − 1, the v10/v14 convention — so a
+ * veteran holds exactly the shared points a fresh character reaching the
+ * same levels would mint.  Idempotent via the `spl` rate stamp (the `ppl`
+ * pattern: the grant is the DIFFERENCE between the stamped rate and the
+ * current one, so a future rate change is one constant, not archaeology);
+ * pure and blob-shaped, shared by migration v17 and the _sanitizeProg3
+ * boundary heal.  Max legitimate shared pool is 3 × 297 = 891 — under the
+ * 999 clamp with the same headroom `pool` has. */
+export function prog3GrantSharedPoints(p3) {
+  if (!p3 || typeof p3 !== 'object' || !p3.sk || typeof p3.sk !== 'object') return false;
+  const paid = Math.max(0, Math.min(PROG3.SHARED_POINTS_PER_LEVEL, Math.floor(Number(p3.spl) || 0)));
+  if (paid >= PROG3.SHARED_POINTS_PER_LEVEL) return false;
+  let shared = Math.max(0, Math.floor(Number(p3.shared) || 0));
+  for (const cat of PROG3.SKILLS) {
+    const lvl = Math.max(1, Math.min(PROG3.LEVEL_CAP, Math.floor(Number(p3.sk[cat] && p3.sk[cat].level) || 1)));
+    shared += (PROG3.SHARED_POINTS_PER_LEVEL - paid) * (lvl - 1);
+  }
+  p3.shared = Math.min(999, shared);
+  p3.spl = PROG3.SHARED_POINTS_PER_LEVEL;
+  return true;
+}
+
 export const prog3Methods = {
   // Shape-normalize a SERVER-stored prog3 (join adoption, admin
   // restores).  Never fed client input — the join payload is not a
@@ -508,6 +699,19 @@ export const prog3Methods = {
        the caller's stored object. */
     src = { ...src, alloc: { ...(src.alloc || {}) } };
     prog3MoveElemToAtk(src);
+    /* v2.3.2592 BOUNDARY HEAL, same reasoning again: migration v17 folds
+       crit/critDmg into luck and refunds them per lane, but a blob that
+       missed v17 would have both keys dropped by the loop below (it walks
+       PROG3.ATK) with no refund.  Copies each lane before folding so the
+       caller's stored object is never edited as a side effect. */
+    if (src.atk && typeof src.atk === 'object') {
+      const atkCopy = {};
+      for (const cat of Object.keys(src.atk)) {
+        atkCopy[cat] = (src.atk[cat] && typeof src.atk[cat] === 'object') ? { ...src.atk[cat] } : src.atk[cat];
+      }
+      src = { ...src, atk: atkCopy, poolBy: { ...(src.poolBy || {}) } };
+      prog3FoldLuck(src);
+    }
     for (const cat of PROG3.SKILLS) {
       const s = src.sk && src.sk[cat];
       if (s && typeof s === 'object') {
@@ -575,6 +779,17 @@ export const prog3Methods = {
     const ppl = Number(src.ppl);
     out.ppl = (Number.isFinite(ppl) && ppl >= 1) ? Math.min(PROG3.POINTS_PER_LEVEL, Math.floor(ppl)) : 1;
     prog3GrantRetroPoints(out);
+    /* v2.3.2592: the SHARED pool and its rate stamp, same discipline as
+       pool/ppl above — bounded, source-first (the fresh shape carries the
+       current rate, and adopting it before reading the source would mark a
+       pre-v17 blob paid without paying it), then the grant as a boundary
+       heal for fail-open blobs.  A dropped stamp is how a one-time grant
+       becomes one per join, so `spl` must survive this sanitizer. */
+    const sh = Number(src.shared);
+    out.shared = (Number.isFinite(sh) && sh > 0) ? Math.min(999, Math.floor(sh)) : 0;
+    const spl = Number(src.spl);
+    out.spl = (Number.isFinite(spl) && spl >= 1) ? Math.min(PROG3.SHARED_POINTS_PER_LEVEL, Math.floor(spl)) : 0;
+    prog3GrantSharedPoints(out);
     /* Re-run the parts-≤-whole clamp: the grant grows pool and poolBy by
        the same amounts, but its 999 pool ceiling can bind on a forged
        near-999 blob while the per-lane adds don't, and then the block
@@ -613,6 +828,24 @@ export const prog3Methods = {
     const v = p3 && p3.alloc && p3.alloc[stat];
     const def = PROG3.BODY[stat];
     return (typeof v === 'number' && def) ? Math.max(0, Math.min(def.cap, v)) : 0;
+  },
+
+  /* ═══ v2.3.2592: the LUCK, SPECIAL and MOVE terms, each read in ONE place ═══
+     combat.js (the roll and the anticheat ceiling), movement.js (the move
+     bound) and the client mirror (src/data/prog3.js) all state the same
+     arithmetic; keeping the server's copy behind four names is what lets a
+     retune of one constant land everywhere it must (the v2.3.1451 rule). */
+  _prog3CritChance(ps, cat) {
+    return PROG3.ATK.luck.base + this._prog3AtkPts(ps, cat, 'luck') * PROG3.ATK.luck.per;
+  },
+  _prog3CritMult(ps, cat) {
+    return 1.5 + this._prog3AtkPts(ps, cat, 'luck') * PROG3.ATK.luck.dmgPer;
+  },
+  _prog3SpecialMult(ps, cat) {
+    return 1 + this._prog3AtkPts(ps, cat, 'special') * PROG3.ATK.special.per;
+  },
+  _prog3MoveMult(ps) {
+    return 1 + this._prog3Pts(ps, 'move') * PROG3.BODY.move.per;
   },
 
   /* v2.3.2302: N blocks of one pool -- the ONLY cost primitive on the server.
@@ -776,6 +1009,9 @@ export const prog3Methods = {
       /* v2.3.2176: and the points remember WHICH skill earned them. */
       if (!p3.poolBy || typeof p3.poolBy !== 'object') p3.poolBy = { sword: 0, bow: 0, staff: 0 };
       p3.poolBy[cat] = (Number(p3.poolBy[cat]) || 0) + PROG3.POINTS_PER_LEVEL;
+      /* v2.3.2592: and the SHARED points beside them, one per lane point
+         (owner: "you earn one 'shared' point too"). */
+      p3.shared = Math.min(999, Math.max(0, Math.floor(Number(p3.shared) || 0)) + PROG3.SHARED_POINTS_PER_LEVEL);
       gained++;
     }
     if (sk.level >= PROG3.LEVEL_CAP) sk.xp = 0;
@@ -801,6 +1037,10 @@ export const prog3Methods = {
             type: 'prog3_level',
             payload: {
               skill: cat, level: sk.level, pool: p3.pool, charLevel: ps.level,
+              /* v2.3.2592: the shared pool rides too, so the four column
+                 headers move the moment the level lands.  Extra field on an
+                 existing PRIVILEGED event — an old client ignores it. */
+              shared: p3.shared,
               /* v2.3.1733: what THIS level unlocked, if anything, so the
                  level-up celebration can name it ("Shield Bash unlocked!")
                  instead of the player discovering a new button by accident.
@@ -847,58 +1087,63 @@ export const prog3Methods = {
     if (typeof stat !== 'string') return;
     const sd = prog3StatDef(stat);
     if (!sd) return;
-    if (!(p3.pool >= 1)) return;
 
-    /* ═══ v2.3.2176: WHICH POINT IS BEING SPENT ═══
+    /* ═══ v2.3.2176 / v2.3.2592: WHICH POINT IS BEING SPENT ═══
        `poolBy[cat]` is what that skill earned; the remainder of `pool` is
-       legacy/unchannelled and spendable anywhere (see the file header).
-       An OFFENSE spend may only draw the named skill's own points or that
-       remainder; a BODY spend draws the same way from whichever lane the
-       player is standing in, because the owner's rule is about where a
-       point may be SPENT on attack, not about defense. */
+       legacy/unchannelled and spendable anywhere (see the file header);
+       `shared` is the pool the level-up minted BESIDE the lane points.
+       An OFFENSE spend may only draw the named skill's own points or the
+       remainder.  A SHARED (body) spend draws the shared pool or the
+       remainder — never a lane's points: "only the point earned in the
+       combat channel can be spent there (the point for shared can be
+       allocated to any in that shared pool)".  The v2.3.2176 rule that a
+       lane point may buy a defensive stat is RETIRED by that sentence; the
+       `cat` an old client still sends on a body spend is ignored. */
     if (!p3.poolBy || typeof p3.poolBy !== 'object') p3.poolBy = { sword: 0, bow: 0, staff: 0 };
     const chan = (c) => (PROG3.SKILLS.indexOf(c) >= 0 ? Math.max(0, Number(p3.poolBy[c]) || 0) : 0);
-    const anyPts = Math.max(0, p3.pool - PROG3.SKILLS.reduce((n, c) => n + chan(c), 0));
-    /* Spend the CHANNELLED point first and keep the free one for a choice
-       the player may not have yet — spending the flexible point while a
-       matching one sits unused would quietly narrow their options. */
-    const takePoint = (c) => {
-      p3.pool -= 1;
-      if (chan(c) > 0) p3.poolBy[c] = chan(c) - 1;
-    };
+    const poolN = Math.max(0, Math.floor(Number(p3.pool) || 0));
+    const anyPts = Math.max(0, poolN - PROG3.SKILLS.reduce((n, c) => n + chan(c), 0));
+    const sharedN = Math.max(0, Math.floor(Number(p3.shared) || 0));
 
     const levelCap = ps.level || this._prog3CharLevel(ps);
     const cap = Math.min(sd.def.cap, levelCap);
 
-    let cur, apply, from;
+    let cur, apply, takePoint;
     if (sd.scope === 'atk') {
       const cat = payload && payload.cat;
       if (typeof cat !== 'string' || PROG3.SKILLS.indexOf(cat) < 0) return;
       /* THE RULE: "You can only apply offensive weapon damage to the combat
-         skills you leveled up in."  A Bow point cannot buy Melee crit. */
+         skills you leveled up in."  A Bow point cannot buy Melee luck, and
+         (v2.3.2592) neither can a shared point. */
       if (chan(cat) < 1 && anyPts < 1) return;
-      from = cat;
       if (!p3.atk || typeof p3.atk !== 'object') p3.atk = prog3FreshAtk();
       if (!p3.atk[cat] || typeof p3.atk[cat] !== 'object') p3.atk[cat] = prog3FreshAtk()[cat]; // v2.3.2512: one shape, one home (was an inline literal that drifted twice)
       cur = (typeof p3.atk[cat][stat] === 'number') ? p3.atk[cat][stat] : 0;
       if (cur >= cap) return;
       apply = () => { p3.atk[cat][stat] = cur + 1; return { stat, cat, pts: cur + 1 }; };
+      /* Spend the CHANNELLED point first and keep the free one for a choice
+         the player may not have yet — spending the flexible point while a
+         matching one sits unused would quietly narrow their options. */
+      takePoint = () => {
+        p3.pool = poolN - 1;
+        if (chan(cat) > 0) p3.poolBy[cat] = chan(cat) - 1;
+      };
     } else {
+      /* v2.3.2592: a SHARED stat takes a shared point, or a legacy
+         unchannelled one — the shared point first, for the same reason the
+         channelled point goes first above. */
+      if (sharedN < 1 && anyPts < 1) return;
       cur = (typeof p3.alloc[stat] === 'number') ? p3.alloc[stat] : 0;
       if (cur >= cap) return;
-      /* A BODY stat takes any point.  The client names the lane it is
-         standing in so the spend comes off that lane's count on screen;
-         an old client sends none, and then the largest channel pays --
-         never the flexible remainder, which is worth keeping for offense. */
-      const want = payload && payload.cat;
-      from = (typeof want === 'string' && PROG3.SKILLS.indexOf(want) >= 0 && chan(want) > 0)
-        ? want
-        : PROG3.SKILLS.reduce((best, c) => (chan(c) > chan(best) ? c : best), PROG3.SKILLS[0]);
       apply = () => { p3.alloc[stat] = cur + 1; return { stat, cat: null, pts: cur + 1 }; };
+      takePoint = () => {
+        if (sharedN > 0) p3.shared = sharedN - 1;
+        else p3.pool = poolN - 1;
+      };
     }
 
     const applied = apply();
-    takePoint(from);
+    takePoint();
     this._prog3Recompute(ps);
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
@@ -907,8 +1152,9 @@ export const prog3Methods = {
         ws.send(JSON.stringify({
           type: 'prog3_allocated',
           /* v2.3.2176: the breakdown rides the ack so the lane counts move
-             the moment the spend settles, not on the next player_state. */
-          payload: { ...applied, pool: p3.pool, poolBy: { ...p3.poolBy } },
+             the moment the spend settles, not on the next player_state.
+             v2.3.2592: and the shared pool with it. */
+          payload: { ...applied, pool: p3.pool, poolBy: { ...p3.poolBy }, shared: p3.shared },
         }));
       } catch (e) {}
       this._sendPlayerState(ws, session.id);

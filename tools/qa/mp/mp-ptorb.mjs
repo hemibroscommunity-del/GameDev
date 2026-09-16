@@ -42,8 +42,19 @@ const rowsNow = (P) => P.page.evaluate((ROW) => {
     const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
     const hit = document.elementFromPoint(x, y);
     const orb = el.querySelector('[data-pt-orb]');
+    /* v2.3.2595: the SPEND is the quarter-width [+] at the cell's right edge
+       now, not the middle of the cell — the middle opens the explainer (the
+       owner: "make the explanation launch if they press any other part of the
+       cell than the plus sign").  So the finger needs the [+]'s own centre,
+       and `x, y` below stays the cell's, because `onScreen` is a hit test
+       about the CELL. */
+    const pb = el.querySelector('[data-prog3-plus]');
+    const pr = pb ? pb.getBoundingClientRect() : null;
     return {
       stat: m ? m[1] : label, pts: m ? +m[2] : null, cap: m ? +m[3] : null,
+      hasPlus: !!pb,
+      px: pr ? Math.round(pr.left + pr.width / 2) : null,
+      py: pr ? Math.round(pr.top + pr.height / 2) : null,
       key: orb ? orb.getAttribute('data-pt-orb') : null,
       orbPresent: !!orb,
       landed: !!(orb && orb.getAttribute('data-landed') === '1'),
@@ -74,9 +85,21 @@ async function fingerTap(P, x, y, drift = 8) {
 }
 
 /* Spend on a row and wait for the WORKER's echo to move its count. Returns the
-   rows as they stood the moment the count changed. */
+   rows as they stood the moment the count changed.
+   v2.3.2595: a spend is TWO gestures — the [+] opens a confirm window and only
+   its "Spend point" sends (owner: "Add a second window asking if they're sure
+   they want to spend the point").  Both are real touches; mp-statgrid owns the
+   question of what that window SAYS, this one only needs the point to land. */
 async function spendAndWait(P, row, { timeout = 15000, freeze = false } = {}) {
-  await fingerTap(P, row.x, row.y);
+  await fingerTap(P, row.px != null ? row.px : row.x, row.py != null ? row.py : row.y);
+  await P.page.waitForSelector('[data-prog3-spend-confirm]', { timeout: 4000 }).catch(() => {});
+  const yes = await P.page.evaluate(() => {
+    const b = document.querySelector('[data-prog3-spend-confirm]');
+    if (!b) return null;
+    const r = b.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  });
+  if (yes) await fingerTap(P, yes.x, yes.y, 6);
   const t0 = Date.now();
   while (Date.now() - t0 < timeout) {
     const rows = await rowsNow(P);
@@ -123,6 +146,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first()
     .click({ timeout: 8000 }).catch(() => {});
   await P.page.waitForTimeout(900);
+  /* v2.3.2593: the four columns start CLOSED (owner), and the orb lives on a
+     stat cell — so they are opened before anything is looked for. */
+  await H.openPointCols(P);
 
   const open = await rowsNow(P);
   const shown = open.filter((r) => r.onScreen);
@@ -134,8 +160,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and NOTHING flares on opening the sheet (first sight seeds, never lights)',
     open.every((r) => !r.landed && !r.landClass && !r.plus), open.filter((r) => r.landed || r.plus).map((r) => r.stat));
 
-  const target = shown.find((r) => r.spendable && r.pts != null && r.pts < r.cap);
-  rec.ok('a spendable row is on screen to tap (guard)', !!target, shown.map((r) => [r.stat, r.spendable, r.pts, r.cap]));
+  const target = shown.find((r) => r.spendable && r.hasPlus && r.pts != null && r.pts < r.cap);
+  rec.ok('a spendable row is on screen with a [+] to tap (guard)', !!target,
+    shown.map((r) => [r.stat, r.spendable, r.hasPlus, r.pts, r.cap]));
   if (!target) { await P.ctx.close().catch(() => {}); return; }
   console.log(`    tapping ${target.stat} (${target.pts} of ${target.cap})`);
 
@@ -206,7 +233,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      900ms: the new row lights, the old one is dark again. */
   await P.page.waitForTimeout(1400);
   const again = await rowsNow(P);
-  const other = again.filter((r) => r.onScreen).find((r) => r.spendable && r.key !== target.key && r.pts != null && r.pts < r.cap);
+  const other = again.filter((r) => r.onScreen).find((r) => r.spendable && r.hasPlus && r.key !== target.key && r.pts != null && r.pts < r.cap);
   if (!other) {
     rec.skip('a second row lights while the first goes dark', 'no second spendable row on screen');
   } else {

@@ -9,7 +9,7 @@
    refs; the only external references are the module imports below. Each
    was `var X = function...` in the component; `export var` here keeps the
    bodies byte-identical and the cross-calls resolve within the module. */
-import { STAFF_LIFE } from '@/data/gameSystems.js'; /* v2.3.2387 */
+import { staffOrbLife, bowRangeMult } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: × the RANGE stat */
 import { BT_AUDIO, ELEMENTS, LUNGE_DAMAGE_MULT, LUNGE_DIRECTION_THRESHOLD, LUNGE_IFRAMES_MS, LUNGE_STAMINA_FRACTION, RETREAT_SHOT_DAMAGE_MULT, RETREAT_SHOT_STAMINA_FRACTION, RETREAT_STAFF_CONE_RAD, applyStatus, calcWeaponDmg, getActiveWeapon, rpgBlockSize } from '@/data/index.js';
 import { addBuildUse, pushDmgPopup, lockAimPoint } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
@@ -240,8 +240,9 @@ export var doRetreatShot = function (S, R, ang) {
       S.arrows.push({
         /* v2.3.1335: range -25%.  v2.3.2387: the staff's 68 becomes STAFF_LIFE
            (675px, the arrow's cap) -- gameSystems.js has the derivation. */
-        ang: a, dist: 14, dmg: shotDmg, life: isStaff ? STAFF_LIFE : 90,
-        maxLife: isStaff ? STAFF_LIFE : 90, hitIds: new Set(), isStaff: isStaff,
+        ang: a, dist: 14, dmg: shotDmg, life: isStaff ? staffOrbLife(R) : 90,
+        maxLife: isStaff ? staffOrbLife(R) : 90, hitIds: new Set(), isStaff: isStaff,
+        _rangeMult: isStaff ? 1 : bowRangeMult(R), /* v2.3.2592: the retreat shot reaches as far as an ordinary arrow */
         element: activeWpn.element1 || null, retreatShot: true
       });
     };

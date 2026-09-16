@@ -392,3 +392,355 @@ Points screen.
   persistence) opt their fixtures out of prog3 with a tagged comment —
   that coverage guards the fail-open path until the cleanup PR deletes
   it.
+
+## The four-column points redesign (v2.3.2592)
+
+Owner, 2026-09-16: *"Right now spending and applying and using combat
+points is not a fun experience. I'm proposing a layout shift and a
+redesign to the combat points themselves."* Three moves, shipped as one
+system because they share the allocation grid and one migration. Caps
+flag **`prog3shared`** (display-only; nothing new is sent).
+
+### The grid
+
+Six stats per combat type, in the owner's order, and seven shared ones.
+Storage keys stay where a stat already existed (renaming a persisted
+field breaks saves, rule 1); the label carries the new name.
+
+| Column | key | label | per point | cap | at cap | consumed by |
+|---|---|---|---|---|---|---|
+| lane | `range` | Range | +0.5 % reach | 100 | +50 % | client — bow plant cap, staff orb life, melee swing envelope + reach ring |
+| lane | `dmg` | Power | +0.5 damage pre-tier | 75 | +37.5 | server roll (unchanged) |
+| lane | `aspd` | Speed | −0.35 % swing period | 100 | −35 % | client cadence (unchanged) |
+| lane | `luck` | Luck | +0.3 % crit chance **and** +1 % crit damage (`per` / `dmgPer`), 1 % base | 100 | 31 % / ×2.5 | server roll + ceiling |
+| lane | `special` | Special | +1 % special-attack damage | 75 | +75 % | server roll + ceiling; client `specialAtkMultFor(type, rpg)` |
+| lane | `elem` | Elemental | +1 elemental power | 75 | 75 | unchanged |
+| shared | `hp` `def` `mana` `stam` `dodge` `eres` | | unchanged | | | |
+| shared | `move` | Move Speed | +0.4 % walk speed | 75 | +30 % | client — `BroTown.jsx` × `prog3MoveMult`; server widens the anti-teleport bound by the same multiplier from its own copy (`movement.js`) |
+
+`crit` + `critDmg` **fold into `luck`**, landing on the same two
+endpoints the pair had (31 % chance at cap, ×2.5 crit damage at cap) so
+a point buys a little of both and a crit-damage-only build that never
+crits is no longer possible. `range` replaces the legacy per-weapon
+Longshot channel prog3 characters never had; its semantics are the
+same (the arrow flies farther *and* faster — `projectiles.js` reads
+`_rangeMult` for both) and the 675 × 2.0 envelope that path was tested
+to is wider than the stat reaches.
+
+**Server bounds, checked rather than assumed.** The PvE melee proximity
+gate is 400 px against a maxed outer reach of 72 × 1.5 + body; the staff
+and bow have no PvE proximity gate at all; PvP `RANGE_CAP` clamps the
+client's claim (675 × 1.5 = 1012 > 950 clamps, not rejects). The move
+bound is `500 × spdCap × moveMult × dt + 80`, with `moveMult` read from
+the server's allocation, so a maxed stat keeps the headroom the 500 was
+sized with (the fastest legitimate stack ≈ 358 px/s against 650, or 975
+under a Swift Draught). `prog3.test.mjs` pins the arithmetic against the
+CLIENT's constants and drives `_handleMove` with and without the stat.
+
+**Anticheat lockstep.** `_maxDmgForAttacker` takes `critMult = 1.5 +
+max-lane luck × dmgPer` and `specialMult = 3.0 × (1 + max-lane special ×
+per)`; `_computeAttackDamage` applies `_prog3SpecialMult` before the crit
+branch so a special crit anchors off the scaled value. Roll, ceiling and
+client display move in the same commit (the v2.3.1451 rule); the 2 400-
+roll sample in `prog3.test.mjs` §6 runs with luck, special, range and
+dmg all at cap.
+
+### The second pool
+
+*"For every point earned through one of the 3 combat channels, you earn
+one 'shared' point too. You get both points but only the point earned in
+the combat channel can be spent there (the point for shared can be
+allocated to any in that shared pool)."*
+
+- `PROG3.SHARED_POINTS_PER_LEVEL = 3` — one per lane point, minted by
+  `_prog3AwardXp` into `prog3.shared` beside the `poolBy` stamp.
+- **A lane point can no longer buy a shared stat.** This retires the
+  v2.3.2176 rule; `_handleProg3Allocate` ignores the `cat` an old
+  client still sends on a body spend and takes the point off `shared`.
+  A shared point cannot buy offense. The unchannelled remainder
+  (`pool − Σ poolBy`, points that predate v2.3.2176) stays spendable
+  anywhere, and the milestone bonus points keep minting into it.
+- `prog3.spl` stamps the rate the blob was granted at (the `ppl`
+  pattern) so the retro grant is idempotent; the sanitizer preserves
+  it, bounds `shared` at 999 (legitimate max 891), and runs the grant as
+  a boundary heal.
+- Supply vs sinks: 891 shared points against 625 shared sinks, so every
+  shared stat *can* be maxed by roughly character level 220; the lane
+  pools stay sharp (297 points against 525 sinks per lane). If live play
+  wants shared choices sharper, `SHARED_POINTS_PER_LEVEL` is the dial.
+
+### Migration v17 — `prog3-luck-and-shared-points`
+
+`RPG_SCHEMA_VERSION` 16 → 17. Two folds, both idempotent, both re-run
+at the join boundary (`_sanitizeProg3`) because migrations fail open:
+
+- `prog3FoldLuck` — placed `crit` and `critDmg` points are **refunded
+  into the lane that held them** (`pool` *and* `poolBy[cat]`, so the
+  parts-≤-whole invariant holds by construction), bounded per stat by
+  the caps the retired pair had (75 / 100) so a hand-edited blob cannot
+  mint points on its way out. Refund, never copy, never guess — the
+  v11/v15 precedent, and stricter: these points were already per-lane.
+  `prog3SplitAtk` (v11) walks the two retired keys too, so a v10-shaped
+  fail-open blob healed today does not lose them.
+- `prog3GrantSharedPoints` — every character receives
+  `SHARED_POINTS_PER_LEVEL × (level − 1)` per skill, exactly what a fresh
+  character reaching the same levels mints. Body points already placed
+  with lane points **stay placed**: nothing recorded which lane paid, and
+  taking them back would read as theft. A veteran therefore comes out
+  slightly ahead of a fresh character, by the body points they bought
+  under the old rule — the v10 defense-carry posture, chosen over any
+  option that strands or claws back earned points.
+
+### Wire
+
+- caps: `prog3shared: true` (join.js). Display-only.
+- `prog3_allocate { stat, cat }` — unchanged shape; `luck` / `range` /
+  `special` / `move` flow through the same `prog3StatDef` whitelist, and
+  `crit` / `critDmg` are refused by it.
+- `prog3_level { …, shared }` and `prog3_allocated { …, shared }` — the
+  shared pool rides both (extra fields on PRIVILEGED events; an old
+  client ignores them).
+- `player_state.prog3` carries `{ sk, alloc, atk, pool, poolBy, shared,
+  ms, ppl, spl }`.
+- `player_projectile` (client relay) gains an additive `life` so a peer
+  mirrors the caster's longer flight; absent → the type's own life.
+
+### The client
+
+`src/data/prog3.js` mirrors the tables and keeps the retired pair in
+`PROG3_LEGACY_ATK` for old-worker prediction only (the `prog3CritFlat`
+posture): against a worker without the cap the crit readouts and DPS
+math predict that worker's `crit` / `critDmg` roll, the reach / special
+/ move multipliers read 1, the retired rows draw and the new ones hide,
+and the Shared column spends the lane total that worker still lets a
+body spend draw on (`prog3PoolShared`). `unspentPointsTotal` is
+`pool + shared`.
+
+**The Points screen** (`HeroExpanded.jsx`, portrait): four columns —
+MELEE | MAGIC | BOW | SHARED — under a sticky header row. Each header is
+`role=button` `[data-prog3-lane]` with the `, level N` aria-label, the
+points badge absolutely placed left of a centred icon (hidden at 0,
+never absent) and the label under it; the Shared header wears the
+character's portrait (`portraitStore`). Cells are the unchanged
+v2.3.2441 quarter-width recipe (`N of M` aria-label, `[data-stat-info]`,
+`[data-pt-orb]`), each bound to its column's lane; POWER prints that
+lane's own weapon range. Landscape keeps the stacked accordion with
+SHARED as a fourth lane.
+
+### The columns are a horizontal accordion (v2.3.2593)
+
+Owner: *"I do want the columns to close accordion style (opening and
+closing horizontally) ... the default view should also to have them all
+closed."*
+
+**One weapon at a time, plus Shared** (v2.3.2594). Owner: *"You can only
+have one combat skill open at a time but you can have one combat skill
+and the shared column open at the same time."* The three weapons are a
+radio group; Shared is an independent toggle. That is the pairing the
+screen is for — the question in hand is "this weapon, or my character?",
+and those are the two things that need to be side by side to answer it.
+Two weapons at once is a comparison nobody makes with a point to spend,
+and it costs both of them the width that makes their stats readable.
+
+`openCols` is a LIST of open keys rather than `openWeapon` + `sharedOpen`,
+because every reader asks the same question of every column — "are you
+open" — and splitting it would make Shared answer differently from the
+other three at every one of those sites. The rule itself is
+`openColsWith`, a pure function outside the component, because two entry
+points obey it (a header tap and a deep link from the dashboard's combat
+pills) and a rule with two implementations holds on one of them. It
+starts empty; `laneClosed` (the landscape accordion) starts `true` for
+the same instruction.
+
+Width comes from one helper both rows read, or the headers and the cells
+would stop lining up the moment either was retuned. Three shapes only:
+
+| State | Closed | Open (390px body) |
+|---|---|---|
+| all shut | 4 × 92 (equal share) | — |
+| 1 open | 3 × 58 | 192 |
+| weapon + Shared | 2 × 58 | 125 each |
+
+**64px is the floor the owner's own header layout sets** (58 until
+v2.3.2595 — see "The strips got wider" below): the points pill at its
+widest, the gap, and the 22px icon, plus a border each side and a little
+air. An open column never goes below 84px (the pair at 320). The change
+animates over 140ms, the system's `fast` step, because the width IS the
+gesture.
+
+A closed column keeps its box and its `[data-prog3-col]` handle and
+simply holds nothing — which is what makes the width animate instead of
+cells jumping between columns.
+
+**The header's tap is the toggle**, so the skill explainer moved to an
+ℹ️ the header draws only while open (a 64px strip already carries a
+points pill, an icon and a name; a fourth thing in it would be the 13px
+glyph the thumb-target floor forbids). It is absolutely positioned in the
+corner so the middle of the header always toggles — the v2.3.2441
+lesson, where an inline info button beside the centre silently ate the
+tap. `aria-expanded` and `aria-controls` ride the header.
+
+With everything shut the section shows one 11px line, *"Tap a column to
+spend its points."*, in place of the scroll chevron: four strips and
+nothing else would read as a broken screen, and there is nothing to
+scroll.
+
+**Harness:** `H.openPointCols(P, keys?)` (harness.mjs) opens columns
+with a real CDP touch carrying 16px of drift — the header sits in the
+sheet's scroller, which claims a touch that travels ~15px and fires
+`pointercancel` instead of `pointerup`, so a dispatched PointerEvent
+stayed green through two rounds of a collapse bug it claimed to pin
+(v2.3.2326, TRAPS §67). It also resets the scroller to 0 first: the
+header row is sticky, so `scrollIntoView` on it is a no-op and leaves the
+caller's scroll position, and deep in a scrolled panel the stuck row can
+sit under the section tabs where `elementFromPoint` answers something
+else. Measured — `mp-statgrid`'s spend section asked for one column and
+got a different one back, because the centre-of-cell sweep before it had
+scrolled to the last cell. Six scenarios call it; it is idempotent,
+logs a refused tap, and returns what actually ended up open, so a caller
+guards on a real answer.
+
+`mp-statgrid` owns the accordion itself: the resting state, open widens
+while the others narrow, close again, a second weapon replacing the
+first, Shared surviving a weapon switch underneath it, and 13 as the most
+cells that can ever be on screen. `mp-statcols` measures the closed strip
+at 390/375/320 — the narrowest thing on the screen, and the state a
+player now lands on every time.
+
+**Known, pre-existing, and NOT from this work:** `mp-freshpoints` and
+`mp-infopop` cannot find the dashboard's three combat cards
+(`[role="button"][aria-label*="level"]` filtered to `^(Melee|Bow|Magic)
+level`) and fail 12 assertions between them. Verified identical on
+`origin/main` in a clean worktree before this branch was written, so it
+is a stale selector or a retired card, not a regression here. Left for
+its own change rather than folded into this one.
+The ℹ️ window prints two rows for Luck (crit chance, crit damage) and
+says "reach, not damage" / "special attacks only" / "movement, not
+damage" instead of "does not change damage" for the stats whose job is
+not sustained DPS (`dpsNote` on the row metadata). `StatDemo` gains
+`luck` and `special` scenes; `range` and `move` open with no scene.
+
+## The cell is the explainer and the quarter is the spend (v2.3.2595)
+
+Five corrections from the owner, in one message, all about the act of
+spending a point:
+
+> "I also want the plus sign to add points to be much larger, taking up
+> about 25% of the cell and aligned right border to border (all 3
+> sides). Remove the 'i' and just make the explanation launch if they
+> press any other part of the cell than the plus sign. Also add a second
+> window asking if they're sure they want to spend the point. Add a plus
+> sign (as shown beneath the columns next to each allocable area) before
+> the number of points they have banked. In your screenshot where the
+> points can be allocated with the expanded melee column it shows clipped
+> numbers for the other combat skills and shared pool. You have more room
+> to shrink the melee column to give the others more space, I just want
+> each word to fit in the column."
+
+**The [+] is a real button, 25% of the cell, flush into its top, right
+and bottom edges.** Absolutely positioned at 0/0/0, which lands inside
+the 1px border; the right corners take the cell's 9px radius less that
+border. The cell's own `padding-right` is `calc(25% + 4px)` (`+ 2px`
+below 360) so a long value can never run underneath it.
+
+**The ℹ️ in the cell's corner is gone.** `data-stat-info` MOVED onto the
+cell: the handle and its meaning — "the thing you press to be told about
+this stat" — both survive, and only the element under them changed, so
+`mp-statdemo` and `mp-statpeek` keep working by selector. This is the
+reverse of the two weakenings the floor took before it: the explainer
+went from a 22×22 glyph (484px²) to everything but the right quarter of
+a 48px cell (~63×46, 2900px²), and the spend from "the whole cell" to a
+21×46 edge — narrower than a cell, nearly twice the area of the ℹ️ it
+replaces, under the thumb that reaches from the right of the phone.
+Since v2.3.1668 the whole row spent and the ℹ️ was the nested exception;
+now the whole cell explains and the [+] is the nested exception. It
+carries `inner: true` (scrollTap) and stops propagation, so a spend never
+also opens the explainer behind the confirm.
+
+**A spend asks first.** `prog3SpendBus` + `Prog3SpendConfirm` (z 9450,
+one above InfoPopup, because a stat's explainer and the confirm for that
+same stat can both be open after a fumbled double tap and the QUESTION
+has to be on top). It carries the same now → after pair the explainer
+prints, from the same `previewStatPoint` — a confirm that only says "are
+you sure" asks a question it has not given you the means to answer — and
+it is dismissable four ways (scrim, Cancel, Escape, ×), the InfoPopup
+rule.
+
+It is deliberately NOT the existing `spendConfirmBus` /
+`SpendPointConfirm`: that one APPLIES the point client-side and flushes
+`stats_update`, which is exactly what prog3 must never do. This one
+calls back into the row, which sends `prog3_allocate`; the worker's echo
+is the only thing that may move a count. Its `run` re-reads live state
+through `getState()` rather than closing over the render that opened it,
+because a dialog can sit open across a level-up, a zone change and
+several `player_state` echoes.
+
+**The banked count reads `+7`.** The same + the cells carry, so a header
+badge reads as a quantity waiting to be spent rather than as a level or
+as points already placed.
+
+### The strips got wider, and the pill moved
+
+The clipped numbers and the 25% [+] are the same change seen twice. A
+closed strip was 58px with the pill absolutely positioned off the icon's
+left edge so the icon could stay dead-centre — and an icon that is
+dead-centre needs (pill + gap + half the icon) × 2 of width to keep the
+pill on screen: 90px for a three-digit count. A closed strip cannot be
+90px. At 320 with one column open there are 296px for four columns, and
+three 90px strips would leave the OPEN one 26. So the pill hung off the
+left edge with `overflow:hidden` hiding the evidence.
+
+So **the pill and the icon are a centred pair** now. The arrangement the
+owner described is intact — the number is to the left of the icon, the
+name under them both — and it holds at every width instead of only on
+wide columns. The pill keeps its box at 0 points (visibility, not
+display): every lane carries exactly one `[aria-label*="points to
+spend"]` whatever it holds, and the icon does not jump sideways the
+moment a lane's last point is spent.
+
+With that, 64px holds the widest thing a header can show (a four-
+character pill ~33px, gap 3, icon 22 = 58px of row; "SHARED" is ~45px at
+11px/800/.06em), and the 18px the three strips gained come out of the
+open column — the trade the owner asked for in as many words. Measured:
+
+```
+                  390 (usable 366)   375 (351)   320 (296)
+  all shut            92 each          88          74
+  1 open        192 closed / 174     192 / 159   192 / 104
+  2 open        128 closed / 119     128 / 111   128 /  84
+```
+
+84px is the narrowest cell this layout ever draws. It needed three
+pixels below 360, taken from padding and the value row's gaps rather
+than from the type (the owner's own rule, v2.3.2441: "Reduce horizontal
+padding rather than shrinking the text excessively") — measured on the
+320×568 SE, where `1.0%` wanted 32px of value box and had 30.
+
+### What the harness pins
+
+- `mp-statcols` — two detectors per header at 390/375/320, at rest and
+  with one column open: `scrollWidth > clientWidth` catches a leaf that
+  ELLIPSISED, and a box comparison catches a leaf that is simply OUTSIDE
+  its column. The owner's report slipped past the first one, because a
+  pill hanging off the edge under `overflow:hidden` has a perfectly
+  happy scrollWidth.
+- `mp-statgrid` — the [+]'s geometry (22–30% of the cell, flush to three
+  edges), the centre of every cell resolving to the cell and never to
+  the [+], the `+N` badge, the pill-and-icon pair centred, and the
+  confirm end to end: what it says, that Cancel spends nothing *on the
+  worker*, and that answering it debits the right pool.
+- `mp-prog3` — the two targets' floors (explainer ≥ 40px, [+] a quarter
+  of the cell and ≥ 44px tall), with the counts that stop `Math.min()`
+  of an empty list passing vacuously.
+- `mp-ptorb` — the orb still flares on the worker's echo, now reached
+  through the [+] and the confirm.
+
+**Drift is not one number.** Measured with an instrumented [+]: with the
+scroller parked at 0, drifts of 8, 16 and 24px all open the confirm (the
+cancelled ones through scrollTap's touchend backstop, v2.3.2326). Park
+the scroller mid-way — which is what `scrollIntoView({block:'center'})`
+does for a cell below the fold — and a 16px drag is a REAL scroll: the
+scroller moves and scrollTap declines the tap, correctly. So the spend
+helper takes both a drift and an `atTop` flag, and the sloppy-thumb case
+runs on the top row where the drag is an overscroll that moves nothing.
+Eleven red assertions came from assuming otherwise.

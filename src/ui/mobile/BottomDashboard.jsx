@@ -60,6 +60,7 @@ import { QuestsPanel }        from './dash/QuestsPanel.jsx';
 import { QuestDetailPanel }   from './dash/QuestDetailPanel.jsx'; /* v2.3.1298 */
 import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
+import { Prog3SpendConfirm }   from './sheet/Prog3SpendConfirm.jsx';   /* v2.3.2595 */
 import { playVw, playVh, playIsLandscape } from './playViewport.js'; /* v2.3.2157: the band has a sideways shape */
 import { dashMinBus } from './dashMinBus.js';
 import { stampSheetH, unstampSheetH } from './sheetStamp.js'; /* v2.3.2197: one --sheet-h formula, shared with resize() + the watchdog */ /* v2.3.2119: fold the band to the identity row */
@@ -942,6 +943,11 @@ export const BottomDashboard = () => {
       {/* v2.3.911: build-skill point-spend confirmation window (floats above
           the dashboard at zIndex 60, over the Builds menu). */}
       <SpendPointConfirm />
+      {/* v2.3.2595: the prog3 twin — "are you sure you want to spend the
+          point?" (owner).  A separate component from the one above because
+          that one APPLIES the point client-side, which prog3 must never do;
+          see prog3SpendBus.js. */}
+      <Prog3SpendConfirm />
       <Tooltip tip={tooltip} onClose={() => setTooltip('')} />
 
       {/* ═══ v2.3.2157: THE LANDSCAPE SIDE SHEET ═══

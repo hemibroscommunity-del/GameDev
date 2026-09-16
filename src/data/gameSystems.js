@@ -34,6 +34,7 @@ import {
   PROG3, prog3Live, prog3CharLevel, prog3SkillLevel, prog3Pts,
   prog3AtkPts, prog3CatFor, prog3DodgePct, prog3CritPct, prog3CritFlat,
   prog3CritMult, /* v2.3.2199: percent critDmg */
+  prog3RangeMult, prog3SpecialMult, /* v2.3.2592: reach + special, client-consumed */
   prog3DmgTerm,
   prog3ElemPower, isProg3ElemEnabled, /* v2.3.2512: elem per weapon; max mana as a stat */
 } from './prog3.js';
@@ -3353,9 +3354,35 @@ export function bowPierceCount(rpg) {
    to the server's 250px cap at the player_attack send site (and again
    server-side — belt and braces). */
 export function bowRangeMult(rpg) {
+  /* v2.3.2592: under prog3 the reach is the allocated RANGE stat of the Bow
+     lane (+0.5%/pt, +50% at cap; 1 against a worker without it).  Same
+     semantics the Longshot channel had — the arrow flies farther AND
+     faster (projectiles.js reads _rangeMult for both), and the 675 × 2.0
+     envelope that path was tested to is wider than this stat reaches. */
+  if (prog3Live(rpg)) return prog3RangeMult(rpg, 'bow');
   /* v2.3.1343: +1%/pt — arrows fly twice as far/fast at the cap. */
   var pts = weaponChannelValueByRole(rpg, 'bow', 'range');
   return 1 + Math.min(100, pts) * 0.01;
+}
+/* ═══ v2.3.2592: REACH FOR THE OTHER TWO LANES ═══
+   Melee's swing envelope (SWING_RANGE / GS_INNER_RADIUS / GS_OUTER_RADIUS —
+   monsterCombat's hit test AND the renderer's reach ring, so what is drawn
+   is what hits) and the staff orb's flight (STAFF_LIFE) multiply by their
+   own lane's RANGE.  Legacy characters had no such channel: 1.  Server
+   bounds, checked: the PvE melee gate is 400 px against 72 × 1.5 + body,
+   and the staff has no PvE proximity gate at all (combat.js). */
+export function meleeRangeMult(rpg) {
+  return prog3Live(rpg) ? prog3RangeMult(rpg, 'sword') : 1;
+}
+export function staffRangeMult(rpg) {
+  return prog3Live(rpg) ? prog3RangeMult(rpg, 'staff') : 1;
+}
+/* The staff orb's life in ticks for THIS character — STAFF_LIFE scaled by
+   the Magic lane's reach.  One reader for the four spawn sites (basic
+   shot, retreat shot, special, and the peer mirror via the payload's
+   `life`), so a retune cannot half-land the way v2.3.2387 warned. */
+export function staffOrbLife(rpg) {
+  return Math.round(STAFF_LIFE * staffRangeMult(rpg));
 }
 
 /* v2.3.1136: Detonation — staff bolt hit-radius multiplier.  +0.7%/pt,
@@ -5020,7 +5047,7 @@ export function calcCritChance(power, ferocity) {
   /* v2.3.2210: the same flat 1% base the server's legacy branch now adds
      (combat.js), so a display fed by this path does not read 0% against a
      worker that will roll 1%. */
-  return Math.max(0, Math.min(1, PROG3.ATK.crit.base + pCrit + fCrit));
+  return Math.max(0, Math.min(1, PROG3.ATK.luck.base + pCrit + fCrit)); /* v2.3.2592: the base lives on luck now */
 }
 export function calcCritMult(power, critDmgPts) {
   if (arguments.length < 2) { critDmgPts = 0; }
@@ -5440,8 +5467,16 @@ export function xpRequired(level) {
    server/src/combat.js _computeAttackDamage + _maxDmgForAttacker —
    change BOTH or the anticheat cap rejects legit specials. */
 export const SPECIAL_ATK_MULT = 2.0;
-export function specialAtkMultFor(weaponType) {
-  return weaponType === 'staff' ? 2.0 : 3.0;
+/* v2.3.2592: × the allocated SPECIAL stat of the weapon's own lane when a
+   character is passed (+1%/pt, +75% at cap; 1 for legacy characters and
+   against a worker without the stat).  Callers that pass no rpg get the
+   bare per-weapon multiplier, exactly as before.  SERVER MIRROR: combat.js
+   _computeAttackDamage's `_prog3SpecialMult` term and _maxDmgForAttacker's
+   specialMult — change all three together or the anticheat cap rejects
+   legit specials. */
+export function specialAtkMultFor(weaponType, rpg) {
+  var base = weaponType === 'staff' ? 2.0 : 3.0;
+  return rpg ? base * prog3SpecialMult(rpg, prog3CatFor(weaponType)) : base;
 }
 
 /* Create a default player RPG state with the new stat system */

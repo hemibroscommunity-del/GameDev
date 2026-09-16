@@ -41,14 +41,16 @@
  */
 
 import { t2ReplayFlat } from './data.js';
-import { prog3FromLegacy, prog3SplitAtk, prog3GrantRetroPoints, prog3MoveElemToAtk } from './prog3.js';
+import { prog3FromLegacy, prog3SplitAtk, prog3GrantRetroPoints, prog3MoveElemToAtk,
+  prog3FoldLuck, prog3GrantSharedPoints /* v2.3.2592 */ } from './prog3.js';
 import { normalizeGearStashes } from './gearstash.js';
 
 /* v2.3.2523: 16, appended above the attributes restructure's v15
  * (v2.3.2512), which merged while this slice was in flight.  Migration
  * numbers are APPENDED and never renumbered (the recipe above), so a
  * blob stamped 15 runs v16 next and one stamped 16 has run both. */
-export const RPG_SCHEMA_VERSION = 16;
+/* v2.3.2592: 17 — the four-column points redesign (luck fold + shared pool). */
+export const RPG_SCHEMA_VERSION = 17;
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -577,6 +579,42 @@ export const MIGRATIONS = [
        nothing.  Partial-tolerant: any subset may be present already
        (an interrupted earlier pass, or a blob saved by this version). */
     run: normalizeGearStashes,
+  },
+  {
+    v: 17,
+    name: 'prog3-luck-and-shared-points',
+    /* v2.3.2592 (owner: the four-column points redesign).  Two folds that
+       ship together because they share the allocation grid:
+
+       LUCK.  `crit` and `critDmg` become ONE per-type stat, so a stored
+       `atk[cat].crit` / `atk[cat].critDmg` has nowhere to land.  prog3FoldLuck
+       REFUNDS both into the lane that holds them — `pool` AND `poolBy[cat]`,
+       so the parts-≤-whole invariant survives.  The v11/v15 precedent (refund,
+       never copy, never guess), and stricter than either: these points were
+       already per-lane, so they go back to the lane that paid for them.
+
+       SHARED POINTS.  "For every point earned through one of the 3 combat
+       channels, you earn one 'shared' point too."  prog3GrantSharedPoints
+       back-pays SHARED_POINTS_PER_LEVEL × (level − 1) per skill — exactly
+       what a fresh character reaching the same levels mints — stamped in
+       `spl` so it is idempotent (the v14 `ppl` pattern).  Body points already
+       placed with lane points under the retired v2.3.2176 rule STAY placed
+       (nothing recorded which lane paid, and taking them back would read as
+       theft); the veteran comes out slightly ahead of a fresh character, by
+       design (prog3.js header).
+
+       Both are idempotent (the fold returns false once no lane carries either
+       key; the grant returns false once `spl` is at the current rate) and
+       both run again at the join boundary (_sanitizeProg3), because migrations
+       FAIL OPEN and a blob that missed this one would otherwise have its crit
+       points dropped by the sanitizer's own-key loop with no refund. */
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      if (!blob.prog3 || typeof blob.prog3 !== 'object') return false;
+      const a = prog3FoldLuck(blob.prog3);
+      const b = prog3GrantSharedPoints(blob.prog3);
+      return a || b;
+    },
   },
 ];
 

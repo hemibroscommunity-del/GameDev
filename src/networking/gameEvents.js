@@ -1410,7 +1410,13 @@ export function processGameEvent(type, payload, S, deps) {
                    staff's extension too -- this is what YOU see of someone
                    ELSE's orb, so a stale 68 here would kill a remote caster's
                    orb at 340px on your screen while it flew 675 on theirs. */
-                life: payload.isStaff ? STAFF_LIFE : 90,
+                /* v2.3.2592: the caster's RANGE stat lengthens the flight, and
+                   the caster says how long (playerActions / monsterCombat put
+                   `life` on the payload).  Bounded; absent (an old client) ->
+                   the type's own life, exactly as before. */
+                life: (Number(payload.life) > 0)
+                  ? Math.min(600, Math.round(Number(payload.life)))
+                  : (payload.isStaff ? STAFF_LIFE : 90),
                 /* v2.3.2259: the staff special's three orbs share one ray and
                    are spaced in TIME (playerActions.js), so a peer needs the
                    same stagger or all three draw on top of each other and read

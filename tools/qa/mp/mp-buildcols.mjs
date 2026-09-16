@@ -18,8 +18,9 @@ import * as H from './harness.mjs';
 
 const seed = (P) => P.page.evaluate(() => {
   const S = window._gameState && window._gameState.current; const R = S && S.rpg;
-  if (R && R.prog3) { R.prog3.pool = 6; R.prog3.poolBy = { sword: 1, bow: 4, staff: 1 }; }
-  if (S) S._serverCaps = Object.assign({}, S._serverCaps, { prog3Chan: true });
+  /* v2.3.2592: + a shared pool, so the fourth column carries a badge too. */
+  if (R && R.prog3) { R.prog3.pool = 6; R.prog3.poolBy = { sword: 1, bow: 4, staff: 1 }; R.prog3.shared = 3; }
+  if (S) S._serverCaps = Object.assign({}, S._serverCaps, { prog3Chan: true, prog3shared: true });
 });
 
 /* press: always toggles.  pick: only opens.  The first cut used pick() twice
@@ -65,6 +66,10 @@ async function crop(P, name, sel, pad = 8) {
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
+  /* v2.3.2592: THE FOUR COLUMNS, PHOTOGRAPHED.  The accordion this file used
+     to open and close is gone — every lane is on screen at once, under a
+     sticky header row — so the frames worth looking at are simply the screen
+     at rest, at the two widths that matter, with points on every column. */
   for (const [w, h] of [[390, 844], [320, 568]]) {
     const P = await H.newPlayer(browser, { name: `Cols${w}`, wsPort, webPort,
       viewport: { width: w, height: h }, touch: true });
@@ -76,54 +81,54 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
       .first().click({ timeout: 8000 }).catch(() => {});
     await P.page.waitForTimeout(800);
+    /* v2.3.2593: the RESTING state first — four closed strips, which is what
+       a player now sees when they open this screen (owner: "the default view
+       should also to have them all closed"). */
+    await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/build-after-${w}-closed.png` });
+    /* Then one column open, which is the state the accordion is FOR: Melee
+       wide, the other three as strips. */
+    await H.openPointCols(P, ['sword']);
+    await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/build-after-${w}-one.png` });
+    /* Then the pair — a weapon and Shared, the most the screen holds
+       (v2.3.2594) and the state the measurements below are about. */
+    await H.openPointCols(P);
+    await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/build-after-${w}-grid.png` });
 
-    /* MAGIC, deliberately.  It is the lane that used to put its first stat row
-       under the fold -- entirely, at 320 -- so it is the frame that shows what
-       changed rather than the one that always looked fine. */
-    await pick(P, 'staff');
-    await P.page.waitForTimeout(300);
-    await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/build-after-${w}-magic.png` });
-    const magic = await P.page.evaluate(() => {
-      const first = document.querySelector('[role="button"][aria-label*=" of "]');
-      const sel = document.querySelector('[data-prog3-lane]').parentElement.getBoundingClientRect();
-      let sc = first && first.parentElement;
+    const grid = await P.page.evaluate(() => {
+      const heads = [...document.querySelectorAll('[data-prog3-lane]')];
+      const cols = [...document.querySelectorAll('[data-prog3-col]')];
+      const first = cols.map((c) => c.querySelector('[role="button"][aria-label*=" of "]'));
+      let sc = first[0] && first[0].parentElement;
       while (sc && getComputedStyle(sc).overflowY !== 'auto') sc = sc.parentElement;
       const p = sc ? sc.getBoundingClientRect() : null;
-      const b = first ? first.getBoundingClientRect() : null;
-      return b ? { top: Math.round(b.top), bottom: Math.round(b.bottom),
-        selBottom: Math.round(sel.bottom),
-        panelBottom: p ? Math.round(p.bottom) : null,
-        visible: Math.round(Math.max(0, Math.min(b.bottom, p ? p.bottom : 1e9) - Math.max(b.top, sel.bottom))) } : null;
+      const floor = p ? Math.min(p.bottom, window.innerHeight) : window.innerHeight;
+      const headRow = heads[0] && heads[0].parentElement;
+      const hb = headRow ? headRow.getBoundingClientRect() : null;
+      return {
+        heads: heads.map((x) => x.getAttribute('data-prog3-lane')),
+        cols: cols.map((x) => x.getAttribute('data-prog3-col')),
+        overflow: cols.map((c) => ({ k: c.getAttribute('data-prog3-col'),
+          x: c.scrollWidth - c.clientWidth })),
+        firstVisible: first.map((f) => {
+          if (!f) return null;
+          const b = f.getBoundingClientRect();
+          return Math.round(Math.max(0, Math.min(b.bottom, floor) - Math.max(b.top, hb ? hb.bottom : 0)));
+        }),
+        cellH: first[0] ? Math.round(first[0].getBoundingClientRect().height) : 0,
+      };
     });
-    console.log(`    ${w}: Magic first stat row ${JSON.stringify(magic)}`);
-    rec.ok(`${w}: with Magic picked, its first stat row is wholly on screen`,
-      !!magic && magic.visible >= 47, magic);
-
-    /* The closed state — what tapping the lit column again gets you. */
-    await press(P, 'staff');
-    await P.page.waitForTimeout(350);
-    const closed = await P.page.evaluate(() => ({
-      open: [...document.querySelectorAll('[data-prog3-lane]')]
-        .filter((x) => x.getAttribute('aria-expanded') === 'true').length,
-      recaps: document.querySelectorAll('[data-prog3-recap]').length,
-      numbers: [...document.querySelectorAll('[data-prog3-recap] span:last-child span')]
-        .map((s) => (s.textContent || '').trim()).length,
-    }));
-    await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/build-after-${w}-closed.png` });
-    console.log(`    ${w}: closed ${JSON.stringify(closed)}`);
-    rec.ok(`${w}: tapping the lit column again closes it to three recap rows`,
-      closed.open === 0 && closed.recaps === 3, closed);
-    /* Twelve: prog3AtkMeta() is FOUR attack stats, not three -- counted off
-       the live DOM rather than off memory, which is where the first cut of
-       this assertion got 9 from.  Four for each of the three weapons is the
-       whole of what a collapsed lane used to show one lane at a time, and it
-       is now on screen for all three at once. */
-    rec.ok(`${w}: ...carrying all twelve attack numbers, so nothing is lost by closing`,
-      closed.numbers === 12, closed);
+    console.log(`    ${w}: ${JSON.stringify(grid)}`);
+    rec.ok(`${w}: four headers over four columns — melee, staff, bow, shared`,
+      grid.heads.join(',') === 'sword,staff,bow,shared' && grid.cols.join(',') === 'sword,staff,bow,shared', grid);
+    /* v2.3.2594: only the OPEN pair has cells; the two strips have none, and
+       `null` is the honest reading for a column holding nothing. */
+    rec.ok(`${w}: the open pair's first cells are wholly on screen, under the header row`,
+      grid.firstVisible.filter((v) => v != null).length === 2
+        && grid.firstVisible.every((v) => v == null || v >= grid.cellH - 1), grid);
+    rec.ok(`${w}: no column scrolls sideways`,
+      grid.overflow.every((o) => o.x <= 1), grid.overflow);
 
     if (w === 390) {
-      await pick(P, 'staff');
-      await P.page.waitForTimeout(300);
       await crop(P, 'build-after-selector', '[data-prog3-lane]', 40);
     }
     await P.ctx.close().catch(() => {});

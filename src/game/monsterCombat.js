@@ -37,7 +37,7 @@ import {
   monsterBodyOffsetY, monsterMeleeHitRadius, monsterProceduralRadius, TOWN_SPAWN /* v2.3.1777 */
 } from '@/data/index.js';
 import { prog3Live, prog3CatFor, prog3CritPct, prog3CritMult, prog3CritFlat } from '@/data/prog3.js'; /* v2.3.2218 */
-import { STAFF_LIFE, BOW_RANGE_PX, toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2387: one staff range for all four spawn sites; v2.3.2473: the sight gate's reach; v2.3.2520: the display damage scale */
+import { BOW_RANGE_PX, toDisplayDamage, staffOrbLife, meleeRangeMult } from '@/data/gameSystems.js'; /* v2.3.2387: one staff range for all four spawn sites; v2.3.2473: the sight gate's reach; v2.3.2520: the display damage scale; v2.3.2592: the RANGE stat scales the orb's life and the melee envelope */
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
@@ -1439,7 +1439,7 @@ export function updateMonsterCombat(S, deps) {
               var _eY = ((typeof _eLt.renderY === 'number') ? _eLt.renderY : _eLt.y) - monsterBodyOffsetY(_eArch);
               var _eD = Math.sqrt((_eX - P.x) * (_eX - P.x) + (_eY - P.y) * (_eY - P.y))
                 - monsterMeleeHitRadius(_eArch);
-              _engSwing = _eD <= GS_OUTER_RADIUS;
+              _engSwing = _eD <= GS_OUTER_RADIUS * meleeRangeMult(S.rpg); /* v2.3.2592: the engage test reaches as far as the swing does */
             }
           }
           /* ═══ v2.3.2473: WHERE IS THE BOW ACTUALLY POINTING? ═══
@@ -1684,8 +1684,9 @@ export function updateMonsterCombat(S, deps) {
                      untouched: its reach is governed by the plant cap, not by
                      life (v2.3.2473: 90 x 24 = 2160, further past 675 than the
                      90 x 8 = 720 this note was written for). */
-                  life: isStaff ? STAFF_LIFE : 90,
-                  maxLife: isStaff ? STAFF_LIFE : 90,
+                  /* v2.3.2592: × the Magic lane's RANGE stat (staffOrbLife). */
+                  life: isStaff ? staffOrbLife(S.rpg) : 90,
+                  maxLife: isStaff ? staffOrbLife(S.rpg) : 90,
                   hitIds: new Set(),
                   isStaff: isStaff,
                   /* v2.3.1135: Piercing/Longshot channels — finite pierce
@@ -1698,7 +1699,12 @@ export function updateMonsterCombat(S, deps) {
                 });
                 /* Broadcast projectile to other players */
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
-                  id: S.myId, x: Math.round(P.x), y: Math.round(P.y), ang: arrAngle, isStaff: isStaff, ts: Date.now()
+                  id: S.myId, x: Math.round(P.x), y: Math.round(P.y), ang: arrAngle, isStaff: isStaff, ts: Date.now(),
+                  /* v2.3.2592: the RANGE stat lengthens the flight, so the peer
+                     mirror needs the life too or a remote orb dies at 675 px
+                     while it flew 1012 on the caster's screen (the v2.3.2387
+                     lesson).  Additive: an old client ignores it. */
+                  life: isStaff ? staffOrbLife(S.rpg) : Math.round(90 * (bowRangeMult(S.rpg) || 1)),
                 }});
                 S.swingTimer = Date.now(); /* Staff cooldown penalty applied at the gate above, not here */
                 if (isStaff) {
@@ -1784,7 +1790,11 @@ export function updateMonsterCombat(S, deps) {
             var _swingHitTarget = null;
             /* v2.3.222: sword special covers a full half-circle at 2x
                reach. Regular swing keeps the v2.3 SWING_RANGE / SWING_ARC. */
-            var _swingRange = S._specialAttack ? SWING_RANGE * 2 : SWING_RANGE;
+            /* v2.3.2592: × the Melee lane's RANGE stat (+50% at cap).  The
+               renderer's reach ring and aim preview scale by the same
+               meleeRangeMult, so what is drawn is what hits. */
+            var _mRm = meleeRangeMult(S.rpg);
+            var _swingRange = (S._specialAttack ? SWING_RANGE * 2 : SWING_RANGE) * _mRm;
             var _swingArc   = S._specialAttack ? Math.PI         : SWING_ARC;
             /* v2.3.940: ALL melee swings are "wild" -- a small 360° core around
                the player (any angle) UNION a wide forward half-circle at a
@@ -1794,8 +1804,8 @@ export function updateMonsterCombat(S, deps) {
                swing path only runs for an equipped melee weapon anyway.) */
             var _actWpn = S.rpg && getActiveWeapon(S.rpg);
             var _wildSwing = !!(_actWpn && (_actWpn.type === 'sword' || _actWpn.type === 'greatsword'));
-            var _gsInner = S._specialAttack ? GS_INNER_RADIUS * 1.25 : GS_INNER_RADIUS;
-            var _gsOuter = S._specialAttack ? GS_OUTER_RADIUS * 1.5  : GS_OUTER_RADIUS;
+            var _gsInner = (S._specialAttack ? GS_INNER_RADIUS * 1.25 : GS_INNER_RADIUS) * _mRm;
+            var _gsOuter = (S._specialAttack ? GS_OUTER_RADIUS * 1.5  : GS_OUTER_RADIUS) * _mRm;
             /* v2.3.1134: Cleave widens the normal forward arc (specials are
                already full-circle).  effectsRenderer adds the same bonus to
                the aim preview — keep them in lockstep. */
@@ -1917,7 +1927,7 @@ export function updateMonsterCombat(S, deps) {
                 m._hitThisSwing = true;
                 if (!_swingHitTarget) _swingHitTarget = m;
                 var isCrit = Math.random() < critChance;
-                var specialMult = S._specialAttack ? specialAtkMultFor(_activeWpn.type) : 1; /* v2.3.1397: melee special 3x (owner) */
+                var specialMult = S._specialAttack ? specialAtkMultFor(_activeWpn.type, _R6) : 1; /* v2.3.1397: melee special 3x (owner); v2.3.2592: × the SPECIAL stat */
 
                 /* §9 — Apply element status on hit */
                 var hitElement = S._specialAttack ? _activeWpn.element2 : _activeWpn.element1;
@@ -2824,7 +2834,7 @@ export function updateMonsterCombat(S, deps) {
               S.npcs.forEach(function (npc) {
                 if (!npc.alive || npc._hitThisSwing) return;
                 var nDist = Math.sqrt(Math.pow(npc.x - P.x, 2) + Math.pow(npc.y - P.y, 2));
-                if (nDist > SWING_RANGE) return;
+                if (nDist > SWING_RANGE * meleeRangeMult(S.rpg)) return; /* v2.3.2592 */
                 var nAngle = Math.atan2(npc.y - P.y, npc.x - P.x);
                 var naDiff = nAngle - baseAngle;
                 while (naDiff > Math.PI) naDiff -= Math.PI * 2;
@@ -2924,7 +2934,7 @@ export function updateMonsterCombat(S, deps) {
                PvP, take damage, and spam "Killed by …" messages. */
             if (S.channel) {
               var _ZONES$S$currentZone7;
-              var specialMult2 = S._specialAttack ? specialAtkMultFor(_activeWpn.type) : 1; /* v2.3.1397 */
+              var specialMult2 = S._specialAttack ? specialAtkMultFor(_activeWpn.type, _R6) : 1; /* v2.3.1397; v2.3.2592: × the SPECIAL stat */
               /* §19 PvP only works outside town and safe zones */
               var inSafeZone = (_ZONES$S$currentZone7 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone7 === void 0 ? void 0 : _ZONES$S$currentZone7.safe;
               var pvpLocked = S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.ref;
@@ -2958,7 +2968,7 @@ export function updateMonsterCombat(S, deps) {
                        (_resolvePvPAttack) — clamp here too so the claimed
                        range matches what the worker will honor. */
                     range: Math.min(250, Math.round((wpnType.range || SWING_RANGE)
-                      * (S.rpg && S.rpg.activeSlot === 'ranged' ? bowRangeMult(S.rpg) : 1))),
+                      * (S.rpg && S.rpg.activeSlot === 'ranged' ? bowRangeMult(S.rpg) : meleeRangeMult(S.rpg)))), /* v2.3.2592: melee reach claims its stat too, still clamped */
                     arc: wpnType.arc || SWING_ARC,
                     ts: Date.now(),
                     inDuel: !!S._inDuel,
@@ -3008,7 +3018,7 @@ export function updateMonsterCombat(S, deps) {
               if (_pvpPaintId && String(pid) !== _pvpPaintId) return;
               if (o._hitThisSwing) return;
               var oDist = Math.sqrt(Math.pow(o.x - P.x, 2) + Math.pow(o.y - P.y, 2));
-              if (oDist > SWING_RANGE) return;
+              if (oDist > SWING_RANGE * meleeRangeMult(S.rpg)) return; /* v2.3.2592 */
               var oAngle = Math.atan2(o.y - P.y, o.x - P.x);
               var aDiff = oAngle - baseAngle;
               while (aDiff > Math.PI) aDiff -= Math.PI * 2;

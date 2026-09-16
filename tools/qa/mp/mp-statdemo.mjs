@@ -125,8 +125,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(900);
   await tapSel(P, '[role="button"][data-section="Build"]');
   await P.page.waitForTimeout(900);
+  /* v2.3.2593: the Points screen's four columns start CLOSED (owner), and
+     every scene below is opened from a cell's ℹ️ inside one of them.
+     v2.3.2594: one weapon at a time, so each section below opens the column
+     it is about — starting with Melee and Shared, the pair this one reads. */
+  await H.openPointCols(P, ['sword', 'shared']);
 
-  const opened = await tapSel(P, '[data-stat-info="crit"]');
+  /* v2.3.2592: crit is LUCK now, and four columns are on screen at once —
+     the MELEE column's Luck ℹ️, named by column. */
+  const opened = await tapSel(P, '[data-prog3-col="sword"] [data-stat-info="luck"]');
   await P.page.waitForTimeout(700);
   const haveScene = await P.page.evaluate(() => !!document.querySelector('.bt-sd-stage'));
   rec.ok('the ℹ️ on a combat stat opens a window with a scene in it', opened && haveScene, { opened, haveScene });
@@ -185,16 +192,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(350);
-  /* Open the BOW lane while still HOLDING THE SWORD.  This is the state the
-     owner is pointing at: the popup will be captioned "· Bow" and the old
-     code drew a swordsman under that caption. */
-  const laneOpened = await tapSel(P, '[data-prog3-lane="bow"]');
-  await P.page.waitForTimeout(700);
+  /* Open the BOW column's Luck window while still HOLDING THE SWORD.  This is
+     the state the owner is pointing at: the popup will be captioned "· Bow"
+     and the old code drew a swordsman under that caption.  v2.3.2592: there
+     is no lane to open any more — the Bow column is always on screen — so
+     the ℹ️ is reached by its column. */
   const stillHoldingSword = await P.page.evaluate(() =>
     (window._gameState.current.rpg.activeSlot || 'melee') === 'melee');
-  rec.ok('the Bow lane could be opened while the sword is still equipped', laneOpened && stillHoldingSword,
+  await H.openPointCols(P, ['bow']);   /* v2.3.2594: one weapon at a time */
+  const laneOpened = await tapSel(P, '[data-prog3-col="bow"] [data-stat-info="luck"]');
+  rec.ok('the Bow column\'s ℹ️ could be tapped while the sword is still equipped', laneOpened && stillHoldingSword,
     { laneOpened, stillHoldingSword });
-  await tapSel(P, '[data-stat-info="crit"]');
   await P.page.waitForTimeout(900);
   const bowTitle = await P.page.evaluate(() => {
     const el = document.querySelector('[data-infopopup-title]');
@@ -233,9 +241,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      it. */
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(350);
-  const staffLane = await tapSel(P, '[data-prog3-lane="staff"]');
-  await P.page.waitForTimeout(700);
-  await tapSel(P, '[data-stat-info="crit"]');
+  await H.openPointCols(P, ['staff']);   /* v2.3.2594 */
+  const staffLane = await tapSel(P, '[data-prog3-col="staff"] [data-stat-info="luck"]');
   await P.page.waitForTimeout(900);
   const staffFace = await heroFacing(P, '.bt-sd-hero');
   rec.ok('the Magic lane puts the STAFF in his hands',
@@ -252,7 +259,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      following the open lane there would be the same error in reverse. */
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(350);
-  const bodyOpened = await tapSel(P, '[data-stat-info="def"]');
+  const bodyOpened = await tapSel(P, '[data-prog3-col="shared"] [data-stat-info="def"]');
   await P.page.waitForTimeout(800);
   const bodyFace = await heroFacing(P, '.bt-sd-hero');
   if (!bodyOpened || !bodyFace) {

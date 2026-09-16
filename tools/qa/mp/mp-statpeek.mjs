@@ -37,11 +37,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     R.activeSlot = 'melee';
     R.prog3.sk = R.prog3.sk || {};
     R.prog3.sk.sword = { level: 8, xp: 0 };
-    R.prog3.atk = { sword: { crit: 20, critDmg: 10, aspd: 5 } };
+    /* v2.3.2592: crit + critDmg are ONE stat, LUCK (1% + 0.3%/pt chance,
+       +1%/pt damage). */
+    R.prog3.atk = { sword: { luck: 20, aspd: 5 } };
     R.prog3.pool = Object.assign({}, R.prog3.pool, { unspent: 5 });
-    return { crit: R.prog3.atk.sword.crit };
+    return { luck: R.prog3.atk.sword.luck };
   });
-  rec.ok('a weapon and allocated crit could be seeded', !!seeded, seeded);
+  rec.ok('a weapon and allocated luck could be seeded', !!seeded, seeded);
   if (!seeded) { await P.ctx.close().catch(() => {}); return; }
 
   /* The allocation pills live under the BUILD section (SECTIONS is
@@ -57,6 +59,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      v2.3.1849 — so `[title="Build"]` matched nothing, this returned false, and
      the five assertions below reported an empty strip as though the readout
      were broken.  The section had simply never opened. */
+  /* v2.3.2593: the Points screen's columns start CLOSED (owner), and every
+     assertion below reaches for a cell's ℹ️ — so they are opened first. */
+  const openCols = () => H.openPointCols(P);
   const openSection = (name) => P.page.evaluate((n) => {
     const t = document.querySelector(`[role="button"][data-section="${n}"]`);
     if (!t) return false;
@@ -68,6 +73,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const onBuild = await openSection('Build');
   rec.ok('the Build section could be opened', onBuild);
   await P.page.waitForTimeout(800);
+  await openCols();   /* v2.3.2593: the four columns start shut */
 
   /* By CLASS, not by prose — the same contract lesson the quest turn-in
      button taught: a caption is owner-facing copy and gets reworded. */
@@ -93,17 +99,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return S && S.rpg && S.rpg.prog3 && S.rpg.prog3.pool ? S.rpg.prog3.pool.unspent : null;
   });
   const pressed = await P.page.evaluate(() => {
-    const pills = [...document.querySelectorAll('[role="button"][aria-label*=" of "]')]
-      .filter((d) => /crit/i.test(d.getAttribute('aria-label') || ''));
-    const el = pills.find((d) => !/crit dmg/i.test(d.getAttribute('aria-label') || '')) || pills[0];
-    const info = el && el.querySelector('[data-stat-info]');
+    /* v2.3.2592: the Luck cell of the MELEE column (four columns are on
+       screen; the first Luck row in document order is Melee's). */
+    const pills = [...document.querySelectorAll('[data-prog3-col="sword"] [role="button"][aria-label*=" of "]')]
+      .filter((d) => /^luck/i.test(d.getAttribute('aria-label') || ''));
+    const el = pills[0];
+    /* v2.3.2595: the explainer handle moved from a button in the cell's
+       corner onto the CELL itself — the owner took the ℹ️ out ("make the
+       explanation launch if they press any other part of the cell than the
+       plus sign").  So the thing to press is the cell, and the guard below
+       is unchanged and more pointed than it was: pressing it must open a
+       window, not spend a point. */
+    const info = el && el.hasAttribute('data-stat-info') ? el : null;
     if (!info) return false;
     for (const type of ['pointerdown', 'pointerup']) {
       info.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch' }));
     }
     return true;
   });
-  rec.ok('the Crit row carries an ℹ️ and it could be tapped', pressed);
+  rec.ok('the Luck cell is itself the explainer handle and it could be pressed', pressed);
   await P.page.waitForTimeout(400);
   const popup = await P.page.evaluate(() => {
     const card = document.querySelector('[data-infopopup-card]');
@@ -116,7 +130,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   rec.ok('...and a window opened rather than a point being spent',
     popup.open && popup.pool === poolBefore, { ...popup, poolBefore });
-  rec.ok('...carrying the crit scene', popup.demo === 'crit', popup);
+  rec.ok('...carrying the luck scene', popup.demo === 'luck', popup);
   const peek = popup.text;
   const mCrit = CRIT_RE.exec(peek);
   const mDps = DPS_RE.exec(peek);
@@ -138,7 +152,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      1.2% less damage" and ran off the card (v2.3.2222 capture).  Checked on
      the widest-worded stats, by the ellipsis/overflow detector the landscape
      sweep uses, so a reworded unit fails here by name. */
-  for (const key of ['def', 'aspd', 'critDmg', 'elem', 'hp', 'stam', 'dodge', 'dmg']) {
+  /* v2.3.2592: every row of the new grid, both columns' kinds — the Luck
+     window has TWO stat rows (chance and damage) and Range / Special / Move
+     Speed print a note instead of a DPS delta, all of which must fit. */
+  for (const key of ['def', 'aspd', 'luck', 'elem', 'hp', 'stam', 'dodge', 'dmg', 'range', 'special', 'move', 'mana', 'eres']) {
     await P.page.evaluate(() => { try { window.__btInfoPopup.close(); } catch (e) {} });
     await P.page.waitForTimeout(250);
     const tapped = await P.page.evaluate((k) => {
@@ -174,7 +191,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState && window._gameState.current;
     const R = S && S.rpg;
     if (R && R.prog3 && R.prog3.atk && R.prog3.atk.sword) {
-      R.prog3.atk.sword.crit = (R.prog3.atk.sword.crit || 0) + 1;
+      R.prog3.atk.sword.luck = (R.prog3.atk.sword.luck || 0) + 1;
     }
   });
   await P.page.waitForTimeout(500);
@@ -184,7 +201,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const R = S && S.rpg;
     const f = window._gameFns;
     if (!R || !f) return null;
-    return { crit: (R.prog3.atk.sword.crit || 0) * 0.4 };
+    /* 1% base + 0.3%/pt (PROG3.ATK.luck), as a display percentage. */
+    return { crit: 1 + (R.prog3.atk.sword.luck || 0) * 0.3 };
   });
   rec.ok('the point landed on the character', !!actual && Math.abs(actual.crit - promisedCrit) < 0.05,
     { promisedCrit, actual });

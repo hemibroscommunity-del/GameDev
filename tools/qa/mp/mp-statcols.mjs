@@ -31,11 +31,24 @@
  */
 import * as H from './harness.mjs';
 
+/* v2.3.2592: FOUR columns at every width — the owner's layout has no narrow
+   fallback (a lane you cannot see is the v2.3.1660 incident); below 360px
+   the cell titles step down to the 10px floor and four short names instead
+   (HeroExpanded NARROW_TITLE), which is what this file exists to verify. */
+/* v2.3.2594: ONE WEAPON PLUS SHARED is the most the screen will hold
+   (owner), so the open pair is what this file measures — two columns of
+   cells between two closed strips.  Four columns at every width still: the
+   layout has no narrow fallback, because a lane you cannot see is the
+   v2.3.1660 incident.  Below 360 the cell titles step down to the 10px floor
+   and four short names instead (HeroExpanded NARROW_TITLE), which is what
+   this file exists to verify. */
 const SIZES = [
   { w: 390, h: 844, cols: 2 },
   { w: 375, h: 812, cols: 2 },
-  { w: 320, h: 568, cols: 1 },
+  { w: 320, h: 568, cols: 2 },
 ];
+/* 6 for the open weapon + 7 shared. */
+const CELLS = 13;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   for (const S of SIZES) {
@@ -51,9 +64,91 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
       .first().click({ timeout: 8000 }).catch(() => {});
     await P.page.waitForTimeout(900);
+    /* ═══ v2.3.2593: THE CLOSED STRIP IS THE NARROWEST THING ON THIS SCREEN ═══
+       A shut column is 64px (v2.3.2595; 58 before) holding a points pill, an
+       icon and a name, and "SHARED" is the longest of the four — so the
+       resting state, not the open grid, is where a label runs out of room.
+       It is also the state a player now lands on every time they open this
+       screen (owner: "the default view should also to have them all closed"),
+       which makes it the one worth measuring first.
+
+       TWO detectors, because the owner's report ("it shows clipped numbers
+       for the other combat skills and shared pool") slipped past the first
+       one: scrollWidth > clientWidth catches a leaf that ELLIPSISED, and the
+       box check catches a leaf that is simply OUTSIDE its column, which is
+       what a pill hanging off the strip's left edge under `overflow:hidden`
+       does — its own scrollWidth is perfectly happy.  An ellipsis and a tight
+       fit look identical in a screenshot, and so do a clipped pill and a
+       narrow one. */
+    const shut = await P.page.evaluate(() => {
+      const heads = [...document.querySelectorAll('[data-prog3-lane]')];
+      const leaves = heads.flatMap((h) => {
+        const hr = h.getBoundingClientRect();
+        return [...h.querySelectorAll('*')]
+          .filter((e) => e.children.length === 0 && ((e.textContent || '').trim() || e.tagName === 'IMG'))
+          .map((e) => { const r = e.getBoundingClientRect();
+            return { t: (e.textContent || '').trim() || e.tagName, sw: e.scrollWidth, cw: e.clientWidth,
+              fs: parseFloat(getComputedStyle(e).fontSize),
+              out: Math.round(Math.max(hr.left - r.left, r.right - hr.right)),
+              k: h.getAttribute('data-prog3-lane') }; });
+      });
+      return {
+        n: heads.length,
+        open: heads.filter((h) => h.getAttribute('aria-expanded') === 'true').length,
+        w: heads.map((h) => Math.round(h.getBoundingClientRect().width)),
+        /* IMG is in `leaves` for the box check only — a replaced element's
+           scrollWidth/clientWidth says nothing about an ellipsis. */
+        clipped: leaves.filter((l) => l.t !== 'IMG' && l.sw > l.cw + 1),
+        outside: leaves.filter((l) => l.out > 1),
+        minFont: leaves.filter((l) => l.fs).length
+          ? Math.min(...leaves.filter((l) => l.fs && l.t !== 'IMG').map((l) => l.fs)) : null,
+      };
+    });
+    rec.ok(`${tag}: at rest all four columns are shut, sharing the width (guard)`,
+      shut.n === 4 && shut.open === 0 && new Set(shut.w).size === 1, shut);
+    rec.ok(`${tag}: ...with no column's name or count clipped in its strip`,
+      shut.clipped.length === 0, shut.clipped);
+    /* v2.3.2595, the owner's own words: "I just want each word to fit in the
+       column".  The number has to fit in it too. */
+    rec.ok(`${tag}: ...and every word, number and icon INSIDE its column's box, not hanging off an edge`,
+      shut.outside.length === 0, shut.outside);
+    rec.ok(`${tag}: ...and nothing in a strip below the 10px type floor`,
+      shut.minFont !== null && shut.minFont >= 10, { minFont: shut.minFont });
+
+    /* ONE OPEN is the narrowest a CLOSED strip ever gets (three of them
+       sharing the leftover), so it is the second state worth measuring. */
+    await H.openPointCols(P, ['sword']);
+    const oneOpen = await P.page.evaluate(() => {
+      const heads = [...document.querySelectorAll('[data-prog3-lane]')];
+      const leaves = heads.flatMap((h) => {
+        const hr = h.getBoundingClientRect();
+        return [...h.querySelectorAll('*')]
+          .filter((e) => e.children.length === 0 && ((e.textContent || '').trim() || e.tagName === 'IMG'))
+          .map((e) => { const r = e.getBoundingClientRect();
+            return { t: (e.textContent || '').trim() || e.tagName, sw: e.scrollWidth, cw: e.clientWidth,
+              out: Math.round(Math.max(hr.left - r.left, r.right - hr.right)),
+              k: h.getAttribute('data-prog3-lane') }; });
+      });
+      return { w: heads.map((h) => Math.round(h.getBoundingClientRect().width)),
+        /* IMG is in `leaves` for the box check only — a replaced element's
+           scrollWidth/clientWidth says nothing about an ellipsis. */
+        clipped: leaves.filter((l) => l.t !== 'IMG' && l.sw > l.cw + 1),
+        outside: leaves.filter((l) => l.out > 1) };
+    });
+    console.log(`    ${tag} one open: ${JSON.stringify(oneOpen.w)}`);
+    /* THE EXACT STATE THE OWNER SCREENSHOTTED, at the three widths: one
+       weapon open, three strips beside it.  This is where a 64px strip has
+       to hold "SHARED" and "+12" and where 58 did not. */
+    rec.ok(`${tag}: with one column open the other three are strips, and nothing in them is cut off`,
+      oneOpen.clipped.length === 0 && oneOpen.outside.length === 0, oneOpen);
+
+    /* Then the open PAIR — a weapon and Shared, the most the screen holds
+       and the state the cell measurements below are about. */
+    await H.openPointCols(P);
 
     const m = await P.page.evaluate(() => {
-      const b = document.getElementById('bt-prog3-body');
+      /* v2.3.2592: the whole four-column surface, not one lane's body. */
+      const b = document.querySelector('[data-prog3-points]') || document.getElementById('bt-prog3-body');
       if (!b) return { err: 'no prog3 body' };
       const cs = getComputedStyle(b);
       const rows = [...b.querySelectorAll('[role="button"][aria-label*=" of "]')];
@@ -84,8 +179,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
 
     rec.ok(`${tag}: the points panel is open (guard)`,
-      !m.err && m.rows === 9, m);
-    if (m.err || m.rows !== 9) { await P.ctx.close().catch(() => {}); continue; }
+      !m.err && m.rows === CELLS, m);
+    if (m.err || m.rows !== CELLS) { await P.ctx.close().catch(() => {}); continue; }
 
     /* ═══ v2.3.2441: THE TWO-COLUMN CLAIM IS RETIRED ═══
        v2.3.2382 made this a ROW of two columns on the owner's ask; v2.3.2441
@@ -105,9 +200,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* The BAND SHAPE, per width -- 4 across above 375, and the narrow fallback
        below it.  Asserted from the measured x/width of the cells rather than
        from a constant, so a change to the gap or the padding is visible here. */
-    rec.ok(`${tag}: the attack band runs ${S.cols === 2 ? 'FOUR' : 'fewer'} across`
+    rec.ok(`${tag}: the first row runs TWO across — the open weapon and Shared`
          + ` (${m.bandN} cells on the first row)`,
-      S.cols === 2 ? m.bandN === 4 : m.bandN >= 1, m);
+      m.bandN === S.cols, m);
 
     /* The whole reason the layout is allowed to change: nothing may clip. */
     rec.ok(`${tag}: ...and no label, count or caption is cut off`,

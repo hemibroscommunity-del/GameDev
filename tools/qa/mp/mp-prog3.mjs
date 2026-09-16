@@ -24,6 +24,11 @@ import { PROG3 } from '../../../src/data/prog3.js';
    this harness always runs against the local worker, which advertises
    it) — a hand-typed 7 here went stale the day the dmg/elem stats
    shipped, which is exactly the trap the v2.3.1727 note above names. */
+/* v2.3.2592: four columns — six stats per weapon, seven shared.
+   v2.3.2594: and at most ONE WEAPON plus SHARED open at a time (owner), so
+   the most a screen can ever hold is 6 + 7.  Derived from the tables the UI
+   itself maps, never hand-typed: a 9 here went stale the day the dmg/elem
+   stats shipped, which is the trap this file's v2.3.1727 note names. */
 const STAT_ROWS = Object.keys(PROG3.ATK).length + Object.keys(PROG3.BODY).length;
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -123,6 +128,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first()
     .click({ timeout: 8000 }).catch(() => {});
   await P.page.waitForTimeout(500);
+  /* ═══ v2.3.2593: THE COLUMNS START SHUT, SO OPEN THEM ═══
+     Owner: "the default view should also to have them all closed."  Every
+     assertion in this file is about the CELLS, so each of them now needs its
+     column open first — and the resting state is pinned once, here, rather
+     than assumed by silence everywhere else. */
+  const atRest = await P.page.evaluate(() => ({
+    open: [...document.querySelectorAll('[data-prog3-lane]')].filter((h) => h.getAttribute('aria-expanded') === 'true').length,
+    cells: document.querySelectorAll('[role="button"][aria-label*=" of "]').length,
+  }));
+  rec.ok('the Points screen opens with every column CLOSED and no stat on screen',
+    atRest.open === 0 && atRest.cells === 0, atRest);
+  const openedAll = await H.openPointCols(P);
+  rec.ok('...and a weapon and Shared can be opened together (guard for everything below)',
+    openedAll.length === 2 && openedAll.indexOf('sword') >= 0 && openedAll.indexOf('shared') >= 0, openedAll);
   const disabled = await P.page.locator('[role="button"][aria-disabled="true"][aria-label*=" of "]').count().catch(() => 0);
   rec.ok('every stat is unspendable with an empty pool', disabled === STAT_ROWS, { disabled, STAT_ROWS });
   /* The selector is icon+level chips, so the type names live in
@@ -131,8 +150,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      a screen reader gets. */
   const typeLabels = await P.page.locator('[role="button"][aria-label*="level"]')
     .evaluateAll((els) => els.map((e) => e.getAttribute('aria-label'))).catch(() => []);
-  rec.ok('the combat-type selector offers all three types',
-    ['Melee', 'Bow', 'Magic'].every((n) => typeLabels.some((l) => l && l.startsWith(n))), typeLabels);
+  rec.ok('the four column headers name the three combat types and Shared',
+    ['Melee', 'Bow', 'Magic', 'Shared'].every((n) => typeLabels.some((l) => l && l.startsWith(n))), typeLabels);
 
   /* ═══ v2.3.2222: THE LANE SCROLLS NOW, AND THAT IS THE DESIGN ═══
      History of this guard, because it has flipped and the flip is on
@@ -158,7 +177,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      A half-visible row at the fold is the scroll cue, and the lane headers
      stay sticky (asserted below) so the three weapons never leave. */
   const laneFit = await P.page.evaluate(async () => {
-    const btn = document.querySelector('[aria-label*="Crit"], [aria-label*="Defense"]');
+    const btn = document.querySelector('[aria-label*="Luck"], [aria-label*="Defense"]'); /* v2.3.2592: crit folded into Luck */
     if (!btn) return { err: 'no stat cell found' };
     let el = btn.parentElement;
     while (el && getComputedStyle(el).overflowY !== 'auto') el = el.parentElement;
@@ -198,9 +217,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const all = rows();
     const firstIn = all.length ? inView(all[0]) : false;
     const heights = all.map((r) => Math.round(r.getBoundingClientRect().height));
+    /* ═══ v2.3.2595: THE TWO TARGETS IN A CELL ═══
+       Owner: "I also want the plus sign to add points to be much larger,
+       taking up about 25% of the cell and aligned right border to border (all
+       3 sides).  Remove the 'i' and just make the explanation launch if they
+       press any other part of the cell than the plus sign."
+       So a cell no longer contains an ℹ️ to measure.  It IS the explainer
+       (it carries `data-stat-info` itself) everywhere the [+] is not, and the
+       [+] is the spend.  Both are measured: the explainer as the cell minus
+       the quarter the [+] takes, the [+] as itself. */
     const targets = all.map((r) => {
-      const i = r.querySelector('[data-stat-info]');
-      return i ? Math.round(Math.min(i.getBoundingClientRect().width, i.getBoundingClientRect().height)) : null;
+      if (!r.hasAttribute('data-stat-info')) return null;
+      const p = r.querySelector('[data-prog3-plus]');
+      const pw = p ? p.getBoundingClientRect().width : 0;
+      const b = r.getBoundingClientRect();
+      return Math.round(Math.min(b.width - pw, b.height));
+    });
+    const plus = all.map((r) => {
+      const p = r.querySelector('[data-prog3-plus]');
+      if (!p) return null;
+      const b = p.getBoundingClientRect(), c = r.getBoundingClientRect();
+      return { w: Math.round(b.width), h: Math.round(b.height),
+        pct: Math.round((b.width / c.width) * 100),
+        flush: Math.abs(b.right - c.right) <= 2 && Math.abs(b.top - c.top) <= 2
+          && Math.abs(b.bottom - c.bottom) <= 2 };
     });
     /* REACHABLE means: there is a scroll position at which the last row is
        wholly visible between the pinned stack and the floor.  Scroll so its
@@ -224,6 +264,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
          screen with no info buttons at all.  This is the count that makes the
          floor mean something. */
       infoCount: targets.filter((t) => t != null).length,
+      minPlusW: Math.min(...plus.filter(Boolean).map((p) => p.w)),
+      minPlusH: Math.min(...plus.filter(Boolean).map((p) => p.h)),
+      plusPct: [...new Set(plus.filter(Boolean).map((p) => p.pct))],
+      plusFlush: plus.filter(Boolean).filter((p) => p.flush).length,
+      plusCount: plus.filter(Boolean).length,
       panel: Math.round(box().height), over: Math.max(0, el.scrollHeight - el.clientHeight) };
   });
   rec.ok('every one of the open lane\'s controls is rendered (present at once)',
@@ -241,28 +286,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !laneFit.err && laneFit.lastAtMax >= laneFit.minRow - 1, laneFit);
   rec.ok('...every row clears the 44pt line, which is what "twice as large" bought',
     !laneFit.err && laneFit.minRow >= 44, laneFit);
-  /* ═══ v2.3.2441: 30 ON A ROW, 22 IN A COMPACT CELL ═══
-     v2.3.2222 set 30 against a FULL-WIDTH row, where a 30px secondary control
-     sat beside a 26px icon, a label and a 38px [+] with room to spare.  The
-     owner's v2.3.2441 mockup puts four cells across 378px, and a 91.5px cell
-     cannot hold a 30px info button, an icon, a value AND a [+] without the
-     number losing.  So the floor is 22 where the cells are compact.
-
-     THIS IS A WEAKENING and is flagged as one in the PR rather than hidden
-     here.  Two things stop it being a quiet regression:
-       - 22 is still a real target, not the 13px glyph a first cut shipped
-         (which this assertion caught, doing exactly its job);
-       - the PRIMARY action did not shrink at all.  Spending a point is the
-         whole 91.5x48 cell, which is a bigger target than the [+] on the old
-         row ever was, and the row's own 48px height is unchanged.
-     Note the vacuity trap this assertion has: `Math.min()` of an empty list is
-     Infinity, so a screen with NO info buttons at all passes it.  The count
-     below is what stops that. */
-  rec.ok('...and every ℹ️ is a real thumb target, not a glyph (30 on a row, 22 in a compact cell)',
-    !laneFit.err && laneFit.minInfo >= 22, laneFit);
-  rec.ok('...and there is one on EVERY stat, so the floor above is not measuring an empty set',
+  /* ═══ v2.3.2595: THE ℹ️ IS GONE AND BOTH TARGETS GOT BIGGER ═══
+     The floor here was 30 on a full-width row (v2.3.2222), then 22 in a
+     compact cell (v2.3.2441) — each step a weakening, argued and flagged,
+     because a 91.5px cell could not hold an info button, an icon, a value and
+     a [+] without the number losing.  The owner ended the argument by taking
+     the ℹ️ out: the cell explains and a quarter-width [+] spends.
+     That is the opposite of another weakening.  The explainer went from a
+     22x22 glyph (484px²) to everything but the right quarter of a 48px cell
+     (~63x46, 2900px²), and the spend from the whole cell to a 21x46 edge —
+     narrower than a cell but nearly twice the area of the ℹ️ it replaces, and
+     in the one place a thumb reaching from the right of the phone lands
+     first.  Both floors are pinned here so neither can drift back.
+     The vacuity trap is unchanged and so is its answer: `Math.min()` of an
+     empty list is Infinity, so the counts below are what make the floors
+     mean something. */
+  rec.ok('...and the explainer target — the cell, less its [+] — is far more than the 22px glyph it replaces',
+    !laneFit.err && laneFit.minInfo >= 40, laneFit);
+  rec.ok('...on EVERY stat, so the floor above is not measuring an empty set',
     !laneFit.err && laneFit.infoCount === laneFit.cells,
     { infoCount: laneFit.infoCount, cells: laneFit.cells });
+  rec.ok('...and every cell has a [+] of about a quarter of its width, flush to three of its edges, a full row tall',
+    !laneFit.err && laneFit.plusCount === laneFit.cells && laneFit.plusFlush === laneFit.cells
+      && laneFit.plusPct.every((p) => p >= 22 && p <= 30)
+      && laneFit.minPlusH >= 44 && laneFit.minPlusW >= 20,
+    { pct: laneFit.plusPct, w: laneFit.minPlusW, h: laneFit.minPlusH,
+      flush: laneFit.plusFlush, count: laneFit.plusCount, cells: laneFit.cells });
 
   /* ═══ v2.3.2326: AND FOR EVERY LANE, NOT JUST THE ONE WE LANDED ON ═══
      The laneFit block above measures whichever lane prog3ActiveCat happens to
@@ -284,163 +333,83 @@ export async function run({ browser, wsPort, webPort, rec }) {
      This loop selects each lane in turn and demands the same answer from all
      three.  It is expected to FAIL until the columns land: a guard that goes
      green the moment you write it is measuring nothing. */
-  const firstRowByLane = await P.page.evaluate(async () => {
+  /* ═══ v2.3.2593: EVERY COLUMN OPENS ONTO ITS FIRST STAT ═══
+     v2.3.2326 measured each lane this way because the lanes were a VERTICAL
+     accordion and the third one's first row used to fall under the fold
+     entirely at 320 — the v2.3.1660 incident, "a player who could not know a
+     stat existed", alive in production.  The columns close that by geometry:
+     whichever one you open, its first cell sits directly under the sticky
+     header row, so the lane-index dependence is gone rather than tuned away.
+     v2.3.2594: opened one at a time, because one weapon plus Shared is all
+     the screen will hold (owner) — which is also what makes this loop worth
+     keeping rather than reading four columns at once. */
+  const firstRowByLane = await (async () => {
     const out = [];
-    const wait = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-    /* Remember what was open, and put it back at the end. This probe walks all
-       three lanes, and everything below it is written against the lane
-       prog3ActiveCat picked -- leaving Magic open cost five later assertions
-       their screen the first time round. */
-    const was = (document.querySelector('[data-prog3-lane][aria-expanded="true"]') || {})
-      .dataset ? document.querySelector('[data-prog3-lane][aria-expanded="true"]').dataset.prog3Lane : null;
-    const press = async (el) => {
-      const r = el.getBoundingClientRect();
-      const o = { bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch',
-        clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
-      el.dispatchEvent(new PointerEvent('pointerdown', o));
-      el.dispatchEvent(new PointerEvent('pointerup', o));
-      await wait(); await new Promise((r2) => setTimeout(r2, 260));
-    };
-    for (const k of ['sword', 'bow', 'staff']) {
-      const head = document.querySelector(`[data-prog3-lane="${k}"]`);
-      if (!head) { out.push({ k, err: 'no lane' }); continue; }
-      if (head.getAttribute('aria-expanded') !== 'true') await press(head);
-      const btn = document.querySelector('[role="button"][aria-label*=" of "]');
-      if (!btn) { out.push({ k, err: 'no stat row' }); continue; }
-      let sc = btn.parentElement;
-      while (sc && getComputedStyle(sc).overflowY !== 'auto') sc = sc.parentElement;
-      /* ═══ v2.3.2512: MEASURED WHERE OPENING IT LEAVES YOU ═══
-         This used to force `scrollTop = 0` first, which was the right question
-         while v2.3.2441's selector row made the answer independent of scroll.
-         The owner's accordion stacks three 44px headers, so the third
-         section's stats cannot be above the fold at scrollTop 0 on a 191px
-         window at ANY header height that still clears the 44px thumb target.
-         The client answers that by SCROLLING the section it just opened to the
-         top (HeroExpanded's open effect), so the honest question is now "after
-         opening it, can you see its first stat" — which is the property the
-         v2.3.1660 incident was actually about.  Forcing the scroller back to
-         zero would be measuring a state the player never sees. */
-      await wait();
-      const b = btn.getBoundingClientRect();
-      const p = sc ? sc.getBoundingClientRect() : null;
-      /* The ceiling is the pinned stack, exactly as the block above defines it. */
-      let ceil = p ? p.top : 0;
-      if (sc) {
-        for (const e of sc.querySelectorAll('*')) {
-          const cs = getComputedStyle(e);
-          if (cs.position !== 'sticky') continue;
-          const bb = e.getBoundingClientRect();
-          const stuckAt = p.top + (parseFloat(cs.top) || 0);
-          if (bb.height > 0 && Math.abs(bb.top - stuckAt) <= 1.5 && bb.bottom > ceil) ceil = bb.bottom;
+    for (const k of ['sword', 'staff', 'bow', 'shared']) {
+      await H.openPointCols(P, [k]);
+      out.push(await P.page.evaluate(async (key) => {
+        const wait = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const first0 = document.querySelector('[role="button"][aria-label*=" of "]');
+        let sc = first0 && first0.parentElement;
+        while (sc && getComputedStyle(sc).overflowY !== 'auto') sc = sc.parentElement;
+        if (sc) sc.scrollTop = 0;
+        await wait();
+        const btn = document.querySelector(`[data-prog3-col="${key}"] [role="button"][aria-label*=" of "]`);
+        if (!btn) return { k: key, err: 'no stat cell' };
+        const b = btn.getBoundingClientRect();
+        const p = sc ? sc.getBoundingClientRect() : null;
+        /* The ceiling is the pinned stack, exactly as the block above defines it. */
+        let ceil = p ? p.top : 0;
+        if (sc) {
+          for (const e of sc.querySelectorAll('*')) {
+            const cs = getComputedStyle(e);
+            if (cs.position !== 'sticky') continue;
+            const bb = e.getBoundingClientRect();
+            const stuckAt = p.top + (parseFloat(cs.top) || 0);
+            if (bb.height > 0 && Math.abs(bb.top - stuckAt) <= 1.5 && bb.bottom > ceil) ceil = bb.bottom;
+          }
         }
-      }
-      const floor = p ? Math.min(p.bottom, window.innerHeight) : window.innerHeight;
-      out.push({ k, top: Math.round(b.top), h: Math.round(b.height),
-        visible: Math.round(Math.max(0, Math.min(b.bottom, floor) - Math.max(b.top, ceil))),
-        full: b.top >= ceil - 1 && b.bottom <= floor + 1 });
-    }
-    /* Put the screen back the way we found it. */
-    if (was) {
-      const back = document.querySelector(`[data-prog3-lane="${was}"]`);
-      if (back && back.getAttribute('aria-expanded') !== 'true') await press(back);
-      let sc0 = document.querySelector('[role="button"][aria-label*=" of "]');
-      sc0 = sc0 && sc0.parentElement;
-      while (sc0 && getComputedStyle(sc0).overflowY !== 'auto') sc0 = sc0.parentElement;
-      if (sc0) sc0.scrollTop = 0;
-      await wait();
+        const floor = p ? Math.min(p.bottom, window.innerHeight) : window.innerHeight;
+        return { k: key, top: Math.round(b.top), h: Math.round(b.height),
+          visible: Math.round(Math.max(0, Math.min(b.bottom, floor) - Math.max(b.top, ceil))),
+          full: b.top >= ceil - 1 && b.bottom <= floor + 1 };
+      }, k));
     }
     return out;
-  });
-  console.log('    first stat row, per lane: ' + JSON.stringify(firstRowByLane));
-  rec.ok('EVERY combat lane opens onto its first stat row, not just the default one',
-    firstRowByLane.every((r) => r.full === true), firstRowByLane);
-  /* ═══ v2.3.2512: THE ACCORDION KEEPS THIS, BY MOVING INSTEAD ═══
-     This used to demand the SAME row position whichever lane you picked,
-     which is what v2.3.2441's side-by-side selector row bought: one header
-     bank, so the body started at one y.  The owner's Points mockup
-     (docs/triage-2026-09-14/assets/points-accordion.png) stacks the three
-     skills as collapsible sections instead, so by construction the second
-     lane's body starts one header lower than the first and the third one
-     lower again.  Demanding equality would now be demanding the mock not be
-     built.
-
-     ...and the client keeps it anyway, which is why the assertion stayed.
-     Opening a section scrolls that section's header to the top of the
-     scroller (HeroExpanded's open effect), so the first stat row lands at the
-     same place whichever of the three you picked -- the lane-index dependence
-     is gone by construction again, just bought with a scroll instead of with
-     a side-by-side selector.  The tolerance widens from 1px to 8: a scroll
-     lands where the layout puts it, not on a pixel we chose. */
+  })();
+  console.log('    first stat cell, per column: ' + JSON.stringify(firstRowByLane));
+  rec.ok('EVERY column opens onto its first stat cell — nothing under the fold, whichever you pick',
+    firstRowByLane.length === 4 && firstRowByLane.every((r) => r.full === true), firstRowByLane);
   const tops = firstRowByLane.filter((r) => r.top != null).map((r) => r.top);
-  rec.ok('...at the same height for all three, so the choice cannot push it under the fold',
-    tops.length === 3 && (Math.max(...tops) - Math.min(...tops)) <= 8, { tops });
+  rec.ok('...at the same height for all four, because they share one header row',
+    tops.length === 4 && (Math.max(...tops) - Math.min(...tops)) <= 1, { tops });
+  await H.openPointCols(P);   /* back to the weapon + Shared pair the rest of this file measures */
 
 
-  /* ═══ v2.3.2315: THE ACCORDION ACTUALLY CLOSES ═══
-     Owner: "the stat allocation accordion menu doesn't collapse when I tap on
-     it."  It did not: the header called setBuildCat(sk.key), a SET rather
-     than a toggle, so tapping the open lane re-selected the lane it was
-     already on.
-
-     THREE TAPS, because a one-tap test cannot tell a toggle from a break.
-     "It closed" would also pass on a build that closed and could never
-     reopen, and "a second lane opens" would pass on the old set-only code --
-     which is the exact behaviour being replaced. So: close it, reopen it,
-     then move to a different lane. */
-  const laneState = () => P.page.evaluate(() => {
-    const rows = [...document.querySelectorAll('[data-prog3-lane]')];
-    return {
-      lanes: rows.length,
-      open: rows.filter((r) => r.getAttribute('aria-expanded') === 'true')
-        .map((r) => r.getAttribute('data-prog3-lane')),
-    };
-  });
-  /* ═══ v2.3.2326: THIS TEST WAS WHY THE BUG SHIPPED TWICE ═══
-     It dispatched PointerEvents STRAIGHT AT THE ELEMENT, which is not a tap --
-     it is a function call wearing a tap's clothes.  It cannot miss, cannot be
-     covered, cannot be cancelled, and cannot be stolen by a scroller, so it
-     was green through two rounds of the owner reporting the exact behaviour it
-     claims to pin ("the stat allocation accordion menu doesn't collapse",
-     then "tapping on the open accordion doesn't close it again").
-
-     What it could not see, measured with real CDP touch events on the running
-     game: the lane header lives in the sheet's scroller, and at ~15px of
-     finger travel the browser calls the touch a scroll, fires pointercancel,
-     and sends NO pointerup -- so the onPointerUp toggle never ran.  Every real
-     thumb drifts that far on a 28px row.
-
-         drift  0-12px   pointerup delivered      lane closes
-         drift 16-32px   POINTERCANCEL instead    nothing happens
-
-     So the tap is a REAL TOUCH now, through CDP, with drift -- the same
-     fingerTap idea mp-notifbell uses (v2.3.2175, for the same class of bug in
-     the world-chat bell).  DRIFT IS THE POINT: a pixel-perfect tap passes on
-     the broken build too, which is what a synthetic dispatch was really
-     asserting all along. */
-  let lastTapAt = null;   /* v2.3.2512: why a tap was refused, for the guard below */
+  /* ═══ v2.3.2593: THE HEADER TOGGLES; THE ℹ️ EXPLAINS ═══
+     Owner: "I do want the columns to close accordion style (opening and
+     closing horizontally)."  So the header's tap is the collapse toggle —
+     mp-statgrid owns the width half of that — and the skill's explainer
+     moved to an ℹ️ that the header only draws while it is open, which is the
+     pair this section checks: the explainer is still reachable, and reaching
+     for it never spends a point or collapses the column under your finger.
+     Tapped the way v2.3.2326 taught this file to tap: a REAL CDP touch with
+     the drift a thumb has, because the header lives in the sheet's scroller
+     and a synthetic dispatch cannot be confiscated by it (that dispatch was
+     green through two rounds of a bug it claimed to pin). */
+  let lastTapAt = null;
   const tapLane = async (key, drift = 18) => {
     const at = await P.page.evaluate((k) => {
       const el = document.querySelector(`[data-prog3-lane="${k}"]`);
       if (!el) return null;
       const r = el.getBoundingClientRect();
       const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
-      /* Report what is really at that point: a lane below the fold answers
-         nothing, and a tap aimed there measures the wrong screen. */
       const hit = document.elementFromPoint(x, y);
-      return { x, y, r: { t: Math.round(r.top), b: Math.round(r.bottom), h: Math.round(r.height) },
-        hitTag: hit ? hit.tagName : null,
-        hitLane: hit && hit.closest ? ((hit.closest('[data-prog3-lane]') || {}).getAttribute
-          ? hit.closest('[data-prog3-lane]').getAttribute('data-prog3-lane') : null) : null,
-        onLane: !!(hit && hit.closest && hit.closest(`[data-prog3-lane="${k}"]`)) };
+      return { x, y, onLane: !!(hit && hit.closest && hit.closest(`[data-prog3-lane="${k}"]`)) };
     }, key);
     lastTapAt = at;
     if (!at || !at.onLane) return false;
     const cdp = await P.page.context().newCDPSession(P.page);
-    /* Upward drift: these headers sit at the TOP of the scroller, so a
-       downward drag there is an overscroll that moves nothing, and an upward
-       one at the bottom likewise.  Either way the panel does not move, which
-       is precisely the case the fix has to recover -- a gesture the browser
-       confiscated for a scroll that never happened. */
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: at.x, y: at.y }] });
     for (let i = 1; i <= 4; i++) {
       await new Promise((r) => setTimeout(r, 22));
@@ -452,131 +421,86 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await cdp.detach();
     return true;
   };
+  const l0 = await P.page.evaluate(() =>
+    [...document.querySelectorAll('[data-prog3-lane]')].map((r) => r.getAttribute('data-prog3-lane')));
+  rec.ok('four column headers, all present at rest (guard)', l0.join(',') === 'sword,staff,bow,shared', l0);
 
-  const l0 = await laneState();
-  rec.ok('exactly one lane is open to begin with (guard)',
-    l0.lanes === 3 && l0.open.length === 1, l0);
-  const wasOpen = l0.open[0];
-  if (wasOpen) {
-    rec.ok('the open lane can be tapped (guard)', await tapLane(wasOpen), {});
-    await P.page.waitForTimeout(350);
-    const l1 = await laneState();
-    rec.ok('tapping the OPEN lane collapses it -- the whole ask',
-      l1.open.length === 0, { before: wasOpen, after: l1 });
+  /* THE TOGGLE, three taps — a one-tap test cannot tell a toggle from a
+     break: "it closed" also passes on a build that can never reopen, and
+     "it opened" also passes on the set-only code v2.3.2315 replaced. */
+  rec.ok('the Melee header can be tapped (guard)', await tapLane('sword'), { at: lastTapAt });
+  await P.page.waitForTimeout(400);
+  const t1 = await P.page.evaluate(() => (document.querySelector('[data-prog3-lane="sword"]') || {}).getAttribute
+    ? document.querySelector('[data-prog3-lane="sword"]').getAttribute('aria-expanded') : null);
+  rec.ok('tapping an OPEN column header collapses it — the accordion half of the ask', t1 === 'false', { t1 });
+  await tapLane('sword');
+  await P.page.waitForTimeout(400);
+  const t2 = await P.page.evaluate(() => {
+    const h = document.querySelector('[data-prog3-lane="sword"]');
+    const body = document.querySelector('[data-prog3-col="sword"]');
+    return { expanded: h && h.getAttribute('aria-expanded'),
+      cells: body ? body.querySelectorAll('[role="button"][aria-label*=" of "]').length : 0,
+      info: !!(h && h.querySelector('[data-lane-info]')) };
+  });
+  rec.ok('...and tapping it again re-opens it, with its stats and its ℹ️ — the collapse is not a trap',
+    t2.expanded === 'true' && t2.cells === 6 && t2.info === true, t2);
 
-    await tapLane(wasOpen);
-    await P.page.waitForTimeout(350);
-    const l2 = await laneState();
-    /* Without this a build that collapsed and stuck would look fixed. */
-    rec.ok('...and tapping it again re-opens it, so the collapse is not a trap',
-      l2.open.length === 1 && l2.open[0] === wasOpen, l2);
-
-    /* v2.3.2512: the scroll-to-the-bottom that used to stand here is GONE.
-       It existed because v2.3.2315's stacked lanes pushed the other two
-       headers ~413px below the panel with one open, so a tap aimed at an
-       off-screen rect landed on whatever was really there.  The accordion
-       puts all three headers within the first ~130px and the client scrolls
-       the open one to the top, so the other two are on screen at rest — and
-       scrolling to the very bottom now lands on the SHARED band instead,
-       which is how this started failing rather than passing. */
-    const other = ['sword', 'bow', 'staff'].find((k) => k !== wasOpen);
-    /* Scrolled into view first, on purpose and with a note (the v2.3.2315
-       reasoning, re-aimed): with one section open, its stats sit between that
-       header and the next, so the other two headers can be below the fold --
-       measured at the harness default, bow's header lands at y 773..817 in a
-       780px window and elementFromPoint answers NULL.  A tap aimed at a rect
-       that is off screen measures the wrong thing.  v2.3.2512 scrolls to the
-       header ITSELF rather than to the bottom of the scroller: the bottom is
-       the SHARED STATS band now, which is a different screen. */
-    await P.page.evaluate((k) => {
-      const el = document.querySelector(`[data-prog3-lane="${k}"]`);
-      if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
-    }, other);
-    await P.page.waitForTimeout(300);
-    /* v2.3.2512: NO DRIFT on this one, and its result is asserted.  The -18
-       upward drift was tuned for headers pinned at the very top of the
-       scroller; the accordion scrolls the section you opened to the top, so
-       the OTHER two headers sit mid-panel where an 18px drag is a real scroll
-       and the tap is legitimately cancelled.  Drift itself is still covered --
-       the two taps above this one carry it. */
-    const tappedOther = await tapLane(other, 0);
-    rec.ok('the other lane could be tapped at all (guard)', tappedOther === true, { other, at: lastTapAt });
-    await P.page.waitForTimeout(350);
-    const l3 = await laneState();
-    /* One at a time is the design, and the toggle must not have broken it. */
-    rec.ok('...while tapping a DIFFERENT lane still switches to it, one open at a time',
-      l3.open.length === 1 && l3.open[0] === other, { other, l3 });
-    /* Put the screen back the way the rest of this file expects it, from the
-       TOP of the scroller where a downward drift cannot move anything. */
-    await P.page.evaluate(() => {
-      const el = document.querySelector('[data-prog3-lane]');
-      for (let n = el; n; n = n.parentElement)
-        if (n.scrollHeight - n.clientHeight > 4 && /auto|scroll/.test(getComputedStyle(n).overflowY)) { n.scrollTop = 0; break; }
-    });
-    await P.page.waitForTimeout(250);
-    await tapLane(wasOpen);
-    await P.page.waitForTimeout(300);
-
-    /* ═══ v2.3.2326: AND THE OTHER TWO COMBAT TYPES ARE REACHABLE ═══
-       HeroExpanded's v2.3.2176 note says "the three weapons stay on screen at
-       all times ... the NAVIGATION is sticky", and that is how this screen is
-       supposed to avoid repeating the v2.3.1660 incident (things below an
-       uncued fold, with the scroll-edge fade deliberately off).
-
-       Measured at 390x844 with one lane open, it does not hold: the panel is
-       653..844 and the other two headers sit at 1257 and 1286 -- 413px below
-       it, with no cue.  Each header is sticky INSIDE ITS OWN LANE div, and a
-       collapsed lane IS its header, so it has no travel to stick through.
-       They do all appear together once you scroll to the bottom, which is
-       where the claim came from.
-
-       Asserted as "reachable from somewhere", which is the honest current
-       contract, and printed either way so the number is visible when this
-       screen is redesigned. */
-    const reach = await P.page.evaluate(() => {
-      const el = document.querySelector('[data-prog3-lane]');
-      let sc = null;
-      for (let n = el; n; n = n.parentElement)
-        if (n.scrollHeight - n.clientHeight > 4 && /auto|scroll/.test(getComputedStyle(n).overflowY)) { sc = n; break; }
-      const look = () => {
-        const p = sc ? sc.getBoundingClientRect() : null;
-        return [...document.querySelectorAll('[data-prog3-lane]')].map((x) => {
-          const b = x.getBoundingClientRect();
-          return { k: x.getAttribute('data-prog3-lane'), top: Math.round(b.top),
-            on: p ? (b.bottom > p.top + 1 && b.top < p.bottom - 1) : true };
-        });
-      };
-      const was = sc ? sc.scrollTop : 0;
-      if (sc) sc.scrollTop = 0;
-      const atTop = look();
-      if (sc) sc.scrollTop = sc.scrollHeight;
-      const atBottom = look();
-      if (sc) sc.scrollTop = was;
-      return { atTop, atBottom,
-        onAtTop: atTop.filter((l) => l.on).length,
-        onAtBottom: atBottom.filter((l) => l.on).length };
-    });
-    console.log('    lane reachability — at top: ' + JSON.stringify(reach.atTop));
-    console.log('                     at bottom: ' + JSON.stringify(reach.atBottom));
-    /* v2.3.2326: onAtTop, not onAtBottom.  This printed onAtTop and asserted
-       only the bottom, because when it was written the answer at the top was
-       1 and the honest contract was "reachable from somewhere".  With the
-       lanes side by side it is 3 at rest, which is the whole point of the
-       change, so the printed number becomes the assertion. */
-    /* ═══ v2.3.2512: TWO AT REST, THREE ACROSS THE SCROLL ═══
-       v2.3.2326 raised this from "reachable from somewhere" to "all three at
-       rest" because v2.3.2441's selector row put them side by side.  The
-       owner's Points mock stacks them again as an accordion, so the open
-       section's own stats sit BETWEEN two headers and the third cannot be at
-       rest on a 191px window without hiding the stats it exists to reveal.
-       What the assertion has always really protected -- you can get to any
-       combat type without hunting -- is measured as written: the open one and
-       at least one neighbour are visible without moving, and every one of the
-       three is on screen at one end of the scroll or the other. */
-    const everSeen = new Set([...reach.atTop, ...reach.atBottom].filter((l) => l.on).map((l) => l.k));
-    rec.ok('every combat type is reachable, and two are on screen without scrolling at all',
-      reach.onAtTop >= 2 && everSeen.size === 3, { reach, everSeen: [...everSeen] });
-  }
+  /* THE EXPLAINER, which the header tap used to carry and the ℹ️ carries
+     now.  Reaching for it must not collapse the column under your finger,
+     and must not spend — the two things a nested control on a tappable
+     surface gets wrong (v2.3.2441's inline info button ate the spend). */
+  const infoTapped = await P.page.evaluate(() => {
+    const b = document.querySelector('[data-lane-info="sword"]');
+    if (!b) return false;
+    const r = b.getBoundingClientRect();
+    for (const type of ['pointerdown', 'pointerup']) {
+      b.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 9,
+        pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }));
+    }
+    return true;
+  });
+  rec.ok('the open column carries an ℹ️ and it could be tapped (guard)', infoTapped === true, {});
+  await P.page.waitForTimeout(450);
+  const laneInfo = await P.page.evaluate(() => {
+    const card = document.querySelector('[data-infopopup-card]');
+    const title = document.querySelector('[data-infopopup-title]');
+    const h = document.querySelector('[data-prog3-lane="sword"]');
+    const S = window._gameState && window._gameState.current;
+    return { open: !!card, title: title ? (title.textContent || '').trim() : null,
+      stillOpen: h && h.getAttribute('aria-expanded'),
+      pool: (S && S.rpg && S.rpg.prog3 && S.rpg.prog3.pool) || 0,
+      shared: (S && S.rpg && S.rpg.prog3 && S.rpg.prog3.shared) || 0 };
+  });
+  rec.ok('the ℹ️ opens that skill\'s explainer, captioned for it',
+    laneInfo.open && /Melee/i.test(laneInfo.title || ''), laneInfo);
+  rec.ok('...without collapsing the column it sits on',
+    laneInfo.stillOpen === 'true', laneInfo);
+  rec.ok('...and without spending (both pools are what they were: empty)',
+    laneInfo.pool === 0 && laneInfo.shared === 0, laneInfo);
+  await P.page.keyboard.press('Escape');
+  await P.page.waitForTimeout(300);
+  const closedInfo = await P.page.evaluate(() => !document.querySelector('[data-infopopup-card]'));
+  rec.ok('...and Escape closes it', closedInfo === true, { closedInfo });
+  /* And the SHARED column says what its own points are for. */
+  const sharedTapped = await P.page.evaluate(() => {
+    const b = document.querySelector('[data-lane-info="shared"]');
+    if (!b) return false;
+    const r = b.getBoundingClientRect();
+    for (const type of ['pointerdown', 'pointerup']) {
+      b.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 9,
+        pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }));
+    }
+    return true;
+  });
+  rec.ok('the Shared column\'s ℹ️ could be tapped (guard)', sharedTapped === true, {});
+  await P.page.waitForTimeout(450);
+  const sharedInfo = await P.page.evaluate(() => {
+    const title = document.querySelector('[data-infopopup-title]');
+    return title ? (title.textContent || '').trim() : null;
+  });
+  rec.ok('...and it opens the shared-points explainer', /Shared/i.test(sharedInfo || ''), sharedInfo);
+  await P.page.keyboard.press('Escape');
+  await P.page.waitForTimeout(300);
 
   /* ═══ v2.3.2315: AND THE TWO THINGS HE HAS TO READ ARE READABLE ═══
      Owner: "the expand and unexpand up/down arrows and level label needs to
@@ -590,13 +514,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!lane) return null;
     const spans = [...lane.querySelectorAll('span')];
     const arrow = spans.find((x) => /[\u25B2\u25BC]/.test(x.textContent || ''));
-    const lv = spans.find((x) => /^LV\s/.test((x.textContent || '').trim()));
+    const lv = spans.find((x) => /^LV\s/i.test((x.textContent || '').trim())); /* v2.3.2592: the column caption is "Lv N" */
     /* v2.3.2441: the PORTRAIT tab's second line is the lane's remaining
        points now, not its level. */
     const pts = spans.find((x) => /^\d+\s+PTS$/.test((x.textContent || '').trim()));
     /* v2.3.2512: the accordion header prints the bare count on the same line
-       as the name, so there is no "N PTS" span to find on that branch. */
-    const count = spans.find((x) => !x.children.length && /^\d+$/.test((x.textContent || '').trim()));
+       as the name, so there is no "N PTS" span to find on that branch.
+       v2.3.2595: and it reads "+64" now — the owner asked for a plus before
+       the banked number, so the span this floor is read off no longer matches
+       a digits-only pattern.  An assertion that stops FINDING its element
+       reports `null >= 12`, which is a failure that says nothing about
+       legibility (the same trap v2.3.2441 documents below), so the pattern
+       follows the text. */
+    const count = spans.find((x) => !x.children.length && /^\+?\d+$/.test((x.textContent || '').trim()));
     const px = (el) => (el ? parseFloat(getComputedStyle(el).fontSize) : null);
     return { arrow: px(arrow), lv: px(lv), pts: px(pts), count: px(count),
       arrowColor: arrow ? getComputedStyle(arrow).color : null };
@@ -682,10 +612,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
      (or to none, which is what a taller open section would do) fails here. */
   const seenAcross = new Set(['top', 'mid', 'max']
     .flatMap((t) => (navAlways[t] || []).filter((l) => l.on).map((l) => l.k)));
-  rec.ok('never fewer than two combat types on screen, and all three within one scroll',
-    !navAlways.err && ['top', 'mid', 'max'].every((t) => navAlways[t].length === 3
-      && navAlways[t].filter((l) => l.on).length >= 2)
-      && seenAcross.size === 3,
+  /* ═══ v2.3.2592: ALL FOUR, AT EVERY SCROLL POSITION ═══
+     The header row is one sticky band across the top of the grid, so the
+     four column names never leave — which is what "the lanes are the
+     navigation" was always trying to say, finally true by construction. */
+  rec.ok('all four columns stay on screen at the top, middle and end of the scroll',
+    !navAlways.err && ['top', 'mid', 'max'].every((t) => navAlways[t].length === 4
+      && navAlways[t].filter((l) => l.on).length === 4)
+      && seenAcross.size === 4,
     { navAlways, seenAcross: [...seenAcross] });
   rec.ok('...and each is a real thumb target, not a strip',
     !navAlways.err && navAlways.top.every((l) => l.h >= 44), navAlways.top);
@@ -716,23 +650,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
      is at or above the first control's top, and the header sits at the top
      of its own lane, not somewhere inside it. */
   const pinned = await P.page.evaluate(() => {
-    const head = [...document.querySelectorAll('[role="button"][aria-label*="level"]')]
-      .find((l) => l.getAttribute('aria-expanded') === 'true');
-    if (!head) return { err: 'no open lane' };
-    /* v2.3.2326: the body is a SIBLING of the selector now, not a child of a
-       lane, which is the whole point -- it is why the first stat row lands at
-       the same y whichever weapon you picked.  So it is found the way the
-       markup says to find it, through aria-controls, rather than by walking up
-       to a parent that no longer holds it. */
-    const bodyId = head.getAttribute('aria-controls');
-    const body = bodyId && document.getElementById(bodyId);
-    const first = (body || head.parentElement).querySelector('[role="button"][aria-label*=" of "]');
+    /* v2.3.2592: the pinned thing is the HEADER ROW (four columns' names),
+       and the first stat it must never cover is the first cell of the grid. */
+    const head = document.querySelector('[data-prog3-lane]');
+    if (!head) return { err: 'no header' };
+    const row = head.parentElement;
+    const first = document.querySelector('[data-prog3-col] [role="button"][aria-label*=" of "]');
     if (!first) return { err: 'no stat row' };
-    const h = head.getBoundingClientRect(); const f = first.getBoundingClientRect();
-    return { overlap: Math.round(h.bottom - f.top), viaAriaControls: !!body };
+    const h = row.getBoundingClientRect(); const f = first.getBoundingClientRect();
+    return { overlap: Math.round(h.bottom - f.top), sticky: getComputedStyle(row).position };
   });
-  rec.ok('...and the pinned selector never covers the first stat it controls',
-    !pinned.err && pinned.overlap <= 1, pinned);
+  rec.ok('...and the pinned header row never covers the first stat it names',
+    !pinned.err && pinned.overlap <= 1 && pinned.sticky === 'sticky', pinned);
 
   const cells = await P.page.locator('[aria-disabled][role="button"][aria-label*=" of "]').count().catch(() => 0);
   rec.ok('all allocatable stats are present at once', cells === STAT_ROWS, { cells, STAT_ROWS });
@@ -888,14 +817,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await N.page.waitForTimeout(2200);
     await N.page.evaluate(() => {
       const S = window._gameState && window._gameState.current; const R = S && S.rpg;
-      if (R && R.prog3) { R.prog3.pool = 6; R.prog3.poolBy = { sword: 1, bow: 4, staff: 1 }; }
-      if (S) S._serverCaps = Object.assign({}, S._serverCaps, { prog3Chan: true });
+      /* v2.3.2592: + a shared pool, so the fourth column carries a badge too. */
+      if (R && R.prog3) { R.prog3.pool = 6; R.prog3.poolBy = { sword: 1, bow: 4, staff: 1 }; R.prog3.shared = 3; }
+      if (S) S._serverCaps = Object.assign({}, S._serverCaps, { prog3Chan: true, prog3shared: true });
     });
     const gotThere = await H.openDest(N, 'Character').then(() => true).catch(() => false);
     await N.page.waitForTimeout(500);
     await N.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
       .first().click({ timeout: 8000 }).catch(() => {});
     await N.page.waitForTimeout(800);
+    await H.openPointCols(N);   /* v2.3.2593: the columns start shut */
     rec.ok(`${w}x${h}: the Build screen opened with points to spend (guard)`, gotThere === true, { gotThere });
 
     const fit = await N.page.evaluate(() => {
@@ -920,8 +851,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       };
     });
     console.log(`    ${w}x${h} columns: ${JSON.stringify(fit)}`);
-    rec.ok(`${w}x${h}: three columns, each carrying its unspent-points badge (guard)`,
-      fit.n === 3 && fit.badges === 3, fit);
+    rec.ok(`${w}x${h}: four columns, each carrying its unspent-points badge (guard)`,
+      fit.n === 4 && fit.badges === 4, fit);
     rec.ok(`${w}x${h}: no column overflows its own box`,
       fit.boxes.every((b) => b.overflowY <= 1 && b.overflowX <= 1), fit.boxes);
     rec.ok(`${w}x${h}: ...and every column is still a 44px thumb target`,
@@ -969,45 +900,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
           overlap: Math.round(ox > 0 && oy > 0 ? ox * oy : 0) };
       }));
     console.log(`    ${w}x${h} badge vs label: ${JSON.stringify(badgeFit)}`);
-    rec.ok(`${w}x${h}: all three columns were actually measurable (guard)`,
+    rec.ok(`${w}x${h}: all four columns were actually measurable (guard)`,
       badgeFit.every((b) => !b.skip), badgeFit);
     rec.ok(`${w}x${h}: the points readout does not sit on top of the weapon's name`,
       badgeFit.every((b) => b.skip || b.overlap === 0), badgeFit);
 
     /* And the reason the whole change exists: the first spendable stat is
        fully on screen for EVERY weapon, at the width where it was not. */
-    const rows = await N.page.evaluate(async () => {
-      const wait = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      const out = [];
-      for (const k of ['sword', 'bow', 'staff']) {
-        const head = document.querySelector(`[data-prog3-lane="${k}"]`);
-        if (!head) { out.push({ k, err: 'no column' }); continue; }
-        if (head.getAttribute('aria-expanded') !== 'true') {
-          const r = head.getBoundingClientRect();
-          const o = { bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch',
-            clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
-          head.dispatchEvent(new PointerEvent('pointerdown', o));
-          head.dispatchEvent(new PointerEvent('pointerup', o));
-          await wait(); await new Promise((r2) => setTimeout(r2, 240));
-        }
-        const first = document.querySelector('[role="button"][aria-label*=" of "]');
-        if (!first) { out.push({ k, err: 'no stat row' }); continue; }
-        let sc = first.parentElement;
+    /* And the reason the whole change exists: the first spendable stat of
+       EVERY column is fully on screen at rest, at the width where the old
+       accordion put Magic's under the fold.  v2.3.2592: nothing to open. */
+    const rows = [];
+    for (const k of ['sword', 'staff', 'bow', 'shared']) {
+      await H.openPointCols(N, [k]);   /* v2.3.2594: one at a time */
+      rows.push(await N.page.evaluate(async (key) => {
+        const wait = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const first0 = document.querySelector('[role="button"][aria-label*=" of "]');
+        let sc = first0 && first0.parentElement;
         while (sc && getComputedStyle(sc).overflowY !== 'auto') sc = sc.parentElement;
-        /* v2.3.2512: measured where opening it leaves you — see the twin note
-           on the other copy of this loop earlier in the file. */
+        if (sc) sc.scrollTop = 0;
         await wait();
+        const first = document.querySelector(`[data-prog3-col="${key}"] [role="button"][aria-label*=" of "]`);
+        if (!first) return { k: key, err: 'no stat cell' };
         const b = first.getBoundingClientRect();
         const p = sc ? sc.getBoundingClientRect() : null;
-        /* ═══ v2.3.2512: THE CEILING IS THE STUCK STACK, NOT A PARENT ═══
-           This used to read `[data-prog3-lane]`.parentElement.bottom, which
-           was exactly right while that parent WAS the selector bank (one row
-           of three tabs, v2.3.2441).  With the owner's accordion each lane
-           header's parent is its own SECTION -- header plus, when open, its
-           stat rows -- so for the open lane that rectangle swallows the very
-           row being measured and every reading came back "visible: 0" for a
-           row plainly on screen.  Measured the same way the other block in
-           this file does instead: whatever is actually STUCK at the top. */
         let ceil = p ? p.top : 0;
         if (p && sc) {
           for (const e of sc.querySelectorAll('*')) {
@@ -1019,21 +935,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
           }
         }
         const floor = p ? Math.min(p.bottom, window.innerHeight) : window.innerHeight;
-        out.push({ k, top: Math.round(b.top),
+        return { k: key, top: Math.round(b.top),
           visible: Math.round(Math.max(0, Math.min(b.bottom, floor) - Math.max(b.top, ceil))),
-          full: b.top >= ceil - 1 && b.bottom <= floor + 1 });
-      }
-      return out;
-    });
-    console.log(`    ${w}x${h} first stat row: ${JSON.stringify(rows)}`);
-    rec.ok(`${w}x${h}: every weapon opens onto its first spendable stat`,
-      rows.every((r) => r.full === true), rows);
-    /* v2.3.2512: still equal, now bought with the open-section scroll rather
-       than with a side-by-side selector -- see the twin note earlier in the
-       file.  8px of tolerance because a scroll lands where the layout puts it. */
+          full: b.top >= ceil - 1 && b.bottom <= floor + 1 };
+      }, k));
+    }
+    console.log(`    ${w}x${h} first stat cell: ${JSON.stringify(rows)}`);
+    rec.ok(`${w}x${h}: every column opens onto its first spendable stat`,
+      rows.length === 4 && rows.every((r) => r.full === true), rows);
     const tops = rows.filter((r) => r.top != null).map((r) => r.top);
-    rec.ok(`${w}x${h}: ...at the same height for all three`,
-      tops.length === 3 && (Math.max(...tops) - Math.min(...tops)) <= 8, { tops });
+    rec.ok(`${w}x${h}: ...at the same height for all four`,
+      tops.length === 4 && (Math.max(...tops) - Math.min(...tops)) <= 1, { tops });
 
     await N.ctx.close().catch(() => {});
   }
@@ -1068,8 +980,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       .first().click({ timeout: 8000 }).then(() => true).catch(() => false);
     rec.ok(`${w}x${h}: ...and the Build tab with it (guard)`, onBuild === true, { onBuild });
     await M.page.waitForTimeout(700);
+    await H.openPointCols(M);   /* v2.3.2593: the columns start shut */
     const fitPhone = await M.page.evaluate(async () => {
-      const btn = document.querySelector('[aria-label*="Crit"], [aria-label*="Defense"]');
+      const btn = document.querySelector('[aria-label*="Luck"], [aria-label*="Defense"]'); /* v2.3.2592 */
       if (!btn) return { err: 'no stat cell found' };
       let el = btn.parentElement;
       while (el && getComputedStyle(el).overflowY !== 'auto') el = el.parentElement;

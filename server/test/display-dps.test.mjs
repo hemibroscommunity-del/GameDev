@@ -358,28 +358,32 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
 // critDmg fold, and the rule-19 fallback (prog3x off = the flat +2 math an
 // old worker actually rolls).
 {
-  const { setProg3Enabled, setProg3XEnabled, PROG3 } = await import('../../src/data/prog3.js');
+  const { setProg3Enabled, setProg3XEnabled, setProg3SharedEnabled, PROG3, PROG3_LEGACY_ATK } = await import('../../src/data/prog3.js');
+  /* v2.3.2592: crit + critDmg are ONE stat (LUCK) on a worker that folded
+     them; the fixture carries 50 luck points -> chance 1% + 50 × 0.3% =
+     16%, multiplier 1.5 + 50 × 1% = 2.0. */
   const p3rpg = {
     activeSlot: 'melee',
     prog3: {
       sk: { sword: { level: 40, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 1, xp: 0 } },
       alloc: { def: 0, hp: 0, dodge: 0, stam: 0, elem: 0 },
-      atk: { sword: { crit: 50, critDmg: 60, aspd: 20, dmg: 30 },
-             bow: { crit: 0, critDmg: 0, aspd: 0, dmg: 0 },
-             staff: { crit: 0, critDmg: 0, aspd: 0, dmg: 0 } },
+      atk: { sword: { luck: 50, aspd: 20, dmg: 30 },
+             bow: { luck: 0, aspd: 0, dmg: 0 },
+             staff: { luck: 0, aspd: 0, dmg: 0 } },
       pool: 0, poolBy: { sword: 0, bow: 0, staff: 0 }, ms: 0, ppl: 3,
     },
   };
   setProg3Enabled(true);
   setProg3XEnabled(true);
+  setProg3SharedEnabled(true);
   // By hand, the prog3x math: base = (6.67 + 40×1.5 + 30×0.5) × 2.0,
   /* v2.3.2210: the 0.01 in each crit term below is the flat base every
-     character now starts with (PROG3.ATK.crit.base).  Written as a LITERAL
+     character now starts with (PROG3.ATK.luck.base).  Written as a LITERAL
      rather than imported on purpose -- importing the constant would make
      these fixtures agree with the production formula by construction, which
      is the one thing a fixture must not do.  If the base is ever retuned,
      these three lines are supposed to fail and be changed deliberately. */
-  // period 600 × (1 − 20×0.0035), crit EV = 1 + 0.2 × (2.1 − 1), no flat.
+  // period 600 × (1 − 20×0.0035), crit EV = 1 + 0.16 × (2.0 − 1), no flat.
   const baseX = (6.67 + 40 * PROG3.DMG_PER_LEVEL.sword + 30 * PROG3.ATK.dmg.per) * 2.0;
   const cdX = 600 * (1 - 20 * PROG3.ATK.aspd.per);
   const expMinX = Math.round(baseX * 0.75), expMaxX = Math.round(baseX * 1.25);
@@ -388,30 +392,34 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
      The 2 is a literal here for the same reason 0.01 is -- a fixture that
      imports the constant agrees with production by construction. */
   const avgX = (expMinX + expMaxX) / 2;
-  const critHitX = Math.max(avgX * 2.1, expMaxX * 2);
-  const expDpsX = (avgX + (0.01 + 50 * PROG3.ATK.crit.per) * (critHitX - avgX)) / (cdX / 1000);
+  const critHitX = Math.max(avgX * 2.0, expMaxX * 2);
+  const expDpsX = (avgX + (0.01 + 50 * PROG3.ATK.luck.per) * (critHitX - avgX)) / (cdX / 1000);
   const rX = calcCombatDmgRange(p3rpg, SWORD);           /* v2.3.2520: raw half */
   const dX = calcDisplayDps(p3rpg, SWORD);
   check('prog3x fixture: range carries the dmg stat pre-tier',
     !!rX && rX.min === expMinX && rX.max === expMaxX && Math.abs(rX.cdMs - cdX) < 1e-9,
     { got: rX, expMinX, expMaxX, cdX });
-  check('prog3x fixture: DPS folds the percent critDmg, no flat',
+  check('prog3x fixture: DPS folds LUCK\'s percent crit damage, no flat (v2.3.2592)',
     Math.abs(dX - expDpsX / DISPLAY_SCALE_K) < 1e-9, { got: dX, exp: expDpsX / DISPLAY_SCALE_K });
 
-  // The same character against an OLD worker (prog3x off): the dmg stat
-  // is not in that worker's roll and its crits pay 1.5× + flat 2/pt —
-  // the readout must predict THAT (rule 19).
+  // The same character against an OLD worker (prog3x off, no shared grid):
+  // that worker's blob carries the retired crit/critDmg pair, the dmg stat
+  // is not in its roll and its crits pay 1.5× + flat 2/pt — the readout
+  // must predict THAT (rule 19).
   setProg3XEnabled(false);
+  setProg3SharedEnabled(false);
+  const p3legacy = JSON.parse(JSON.stringify(p3rpg));
+  p3legacy.prog3.atk.sword = { crit: 50, critDmg: 60, aspd: 20, dmg: 30 };
   const baseL = (6.67 + 40 * PROG3.DMG_PER_LEVEL.sword) * 2.0;
   const expMinL = Math.round(baseL * 0.75), expMaxL = Math.round(baseL * 1.25);
   const avgL = (expMinL + expMaxL) / 2;
   const critHitL = Math.max(avgL * 1.5, expMaxL * 2) + 60 * 2;   /* flat rides ON TOP of the anchor */
-  const expDpsL = (avgL + (0.01 + 50 * PROG3.ATK.crit.per) * (critHitL - avgL)) / (cdX / 1000);
-  const rL = calcCombatDmgRange(p3rpg, SWORD);           /* v2.3.2520: raw half */
-  const dL = calcDisplayDps(p3rpg, SWORD);
+  const expDpsL = (avgL + (0.01 + 50 * PROG3_LEGACY_ATK.crit.per) * (critHitL - avgL)) / (cdX / 1000);
+  const rL = calcCombatDmgRange(p3legacy, SWORD);           /* v2.3.2520: raw half */
+  const dL = calcDisplayDps(p3legacy, SWORD);
   check('old-worker fallback: dmg stat leaves the range',
     !!rL && rL.min === expMinL && rL.max === expMaxL, { got: rL, expMinL, expMaxL });
-  check('old-worker fallback: DPS predicts the flat +2 crit math',
+  check('old-worker fallback: DPS predicts the retired crit pair and the flat +2 crit math',
     Math.abs(dL - expDpsL / DISPLAY_SCALE_K) < 1e-9, { got: dL, exp: expDpsL / DISPLAY_SCALE_K });
   setProg3Enabled(false);
 }
