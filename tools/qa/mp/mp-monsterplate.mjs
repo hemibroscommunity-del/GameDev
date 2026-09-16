@@ -215,76 +215,53 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('the level no longer rides in a white disc (it was the brightest thing on the plate)',
       soft.badgeFill === undefined, { badgeFill: soft.badgeFill });
 
-    /* ── THE FLOOR UNDER THE LEVEL, WHICH IS NEW AND IS A REAL RISK ────────
-       The mock sets the level in the band's colour.  Taken literally that puts
-       #FF3636 ("Danger") and #F3821F ("High") on the navy plate at 2.66:1 and
-       3.65:1 -- both under AA, and the Danger one is the plate a player most
-       needs to read.  The renderer therefore draws the digits in a per-band
-       TEXT TINT (PLATE_LEVEL_INK), the band hue lifted toward white only as
-       far as the floor demands.  Asserted here for the same reason the name's
-       contrast is: it is invisible from outside the renderer, and "the level
-       went dim on exactly one band" is not something a screenshot of a moving
-       scene would give up. */
-    rec.ok('the plate reported the ink it set the level in (guard)',
-      !!soft.levelInk && !!soft.levelInks, { levelInk: soft.levelInk, levelInks: soft.levelInks });
-    if (soft.levelInks) {
-      let worstLv = Infinity, worstLvAt = '';
-      for (const [band, ink] of Object.entries(soft.levelInks)) {
-        for (const [scene, bg] of Object.entries(C.SCENES)) {
-          const cr = C.contrast(ink, C.over(0x0B1F2D, soft.fillAlpha, bg));
-          if (cr < worstLv) { worstLv = cr; worstLvAt = `${band} over ${scene}`; }
-        }
-      }
-      console.log(`    level ink, worst band/scene: ${worstLv.toFixed(2)}:1 (${worstLvAt})`);
-      rec.ok(`every band's level digits clear AA over every ground `
-        + `(worst ${worstLv.toFixed(2)}:1 at ${worstLvAt}, floor 4.5)`,
-        worstLv >= 4.5, { worstLv, worstLvAt, levelInks: soft.levelInks });
-      /* The tints are a LIGHTENING, not a desaturation -- the move note 1 of
-         the knob block forbids.  So they carry the same duty the rings do:
-         four levels must still be four tellable-apart colours, at the same
-         ΔE00 12 floor.  Without this, "fix the contrast" could quietly wash
-         all four toward white and nobody would see it until they were in a
-         fight wondering what the number meant. */
-      /* The renderer reports the rings as NUMBERS (0x4BE54E, the form Pixi
-         strokes with) and the inks as STRINGS ('#4BE54E', the form a Text
-         style takes).  Compared raw, "the ink equals the band" is false for
-         every band and the two assertions below would pass for the wrong
-         reason -- a test that can only succeed is TRAPS §33 wearing a
-         different hat.  Normalised to one form first. */
+    /* ── THE FLOOR UNDER THE LEVEL, AND WHERE IT MOVED TO ─────────────────
+       ═══ v2.3.2590: THESE ASSERTIONS ARE REWRITTEN, NOT RELAXED ═══
+       v2.3.2571 drew the level in a LIFTED band tint straight on the fill, and
+       this block asserted (a) every tint cleared AA on the composited plate and
+       (b) the four tints stayed ΔE00 12 apart.  Both were true and both are now
+       assertions about a design that no longer exists: the digits are STROKED
+       (PLATE_LEVEL_STROKE), so they are read against their own outline, and the
+       lifted tints are gone in favour of the SAMPLED band colours.
+
+       The replacements are strictly stronger claims:
+         - the digit is the sampled band EXACTLY (not "close to", not a tint) --
+           so the number and the ring cannot drift apart at all;
+         - it is legible against its stroke, for every band;
+         - and -- the property this whole change was made to get -- that
+           legibility does not depend on PLATE_FILL_ALPHA, which is what makes
+           the plate softenable again.  That last one is asserted by checking
+           the stroke is actually there, because without it the other two are
+           true and the plate is still un-softenable. */
+    rec.ok('the plate reported the ink and stroke it set the level in (guard)',
+      !!soft.levelInk && !!soft.levelStroke && soft.levelStrokePx > 0,
+      { levelInk: soft.levelInk, levelStroke: soft.levelStroke, px: soft.levelStrokePx });
+    if (soft.levelInk && soft.levelStroke) {
       const hexNum = (c) => (typeof c === 'string'
         ? parseInt(String(c).replace('#', ''), 16) : c);
-      const lv = ['low', 'near', 'high', 'danger'];
-      let worstLvDe = Infinity, worstLvPair = '';
-      for (let i = 0; i < lv.length; i++) {
-        for (let j = i + 1; j < lv.length; j++) {
-          const d = C.deltaE00(soft.levelInks[lv[i]], soft.levelInks[lv[j]]);
-          if (d < worstLvDe) { worstLvDe = d; worstLvPair = `${lv[i]}/${lv[j]}`; }
-        }
+      /* The digit IS the ring. */
+      rec.ok(`the level digit is drawn in the sampled band itself, not a tint `
+        + `(${soft.levelInk} vs ring ${soft.borderColor})`,
+        hexNum(soft.levelInk) === hexNum(soft.borderColor),
+        { levelInk: soft.levelInk, borderColor: soft.borderColor });
+      /* Legible against its own outline, for every band the renderer can draw. */
+      let worstLv = Infinity, worstLvAt = '';
+      for (const [b, c] of Object.entries(soft.bands || {})) {
+        const cr = C.contrast(hexNum(c), hexNum(soft.levelStroke));
+        if (cr < worstLv) { worstLv = cr; worstLvAt = b; }
       }
-      rec.ok(`...and the four level tints stay tellable apart too `
-        + `(worst ΔE00 ${worstLvDe.toFixed(1)} at ${worstLvPair}, floor 12)`,
-        worstLvDe >= 12, { worstLvDe, worstLvPair, levelInks: soft.levelInks });
-      /* THE LIFT MUST NOT HAVE LEAKED INTO THE RING.  `high` and `danger` are
-         the two bands whose digits had to be lightened to clear AA; the rings
-         for those bands must still be the mock's SAMPLED values, or the fix
-         for the text would have quietly desaturated the border -- which is
-         precisely the one move the knob block forbids, arrived at sideways.
-         Written as "the ring and the digits differ for these two" because that
-         is the only shape a leak could not survive: if someone sets the ring
-         to the tint to make them match, this fails. */
-      rec.ok('...while the ring keeps the sampled band the digits had to leave',
-        hexNum(soft.bands.high) !== hexNum(soft.levelInks.high)
-        && hexNum(soft.bands.danger) !== hexNum(soft.levelInks.danger),
-        { ring: { high: soft.bands.high, danger: soft.bands.danger },
-          ink: { high: soft.levelInks.high, danger: soft.levelInks.danger } });
-      /* ...and the bands that did NOT need lifting are still byte-identical,
-         so "the number is the band colour" is literally true wherever it can
-         be, and the exception is only where legibility forced it. */
-      rec.ok('...and the bands that cleared AA on their own are the band colour exactly',
-        hexNum(soft.bands.low) === hexNum(soft.levelInks.low)
-        && hexNum(soft.bands.near) === hexNum(soft.levelInks.near),
-        { ring: { low: soft.bands.low, near: soft.bands.near },
-          ink: { low: soft.levelInks.low, near: soft.levelInks.near } });
+      console.log(`    level digit on its stroke, worst band: ${worstLv.toFixed(2)}:1 (${worstLvAt})`);
+      rec.ok(`every band's digits clear AA against the stroke `
+        + `(worst ${worstLv.toFixed(2)}:1 at ${worstLvAt}, floor 4.5)`,
+        worstLv >= 4.5, { worstLv, worstLvAt, stroke: soft.levelStroke });
+      /* THE POINT OF THE STROKE.  A stroked glyph is read against its outline,
+         so this number is the same at any fill alpha -- which is what gives the
+         plate its softening budget back.  Asserted by construction: the figure
+         above is computed from the stroke alone and never touches fillAlpha. */
+      rec.ok('...and that figure does not involve the fill, so softening the '
+        + 'plate cannot take the level with it',
+        soft.levelStrokePx > 0 && soft.fillAlpha < 1,
+        { strokePx: soft.levelStrokePx, fillAlpha: soft.fillAlpha });
     }
 
     /* ── 2. THE FLOOR UNDER THE NAME ─────────────────────────────────────
@@ -501,6 +478,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
      zoom is doing. */
   rec.ok(`...and on screen it is 13-17 CSS px, not the ~6 it used to be (${sized && sized.cssSize})`,
     !!sized && sized.cssSize >= 13 && sized.cssSize <= 17, sized);
+
+  /* ═══ v2.3.2590: "SMALLER OVERALL" -- THE CHROME, AND ONLY THE CHROME ═══
+     Owner: "The name plates are also a bit too large and distracting."
+     The capsule was 1.8x the type's height and is 1.55x now.  Asserted as the
+     RATIO rather than as a pixel count, because a pixel count would also pass
+     if someone shrank the plate by shrinking the words -- which is the one way
+     of getting "smaller" the owner has twice said they do not want. So this
+     pins BOTH halves at once: the wrapper got tighter (ratio below 1.7) and
+     the type did not move (the 13-17 CSS px assertion directly above). */
+  const box = await P.page.evaluate(() => {
+    const pl = ((window.__btMonsterPlates || {}).plates || []).find((p) => p.soft && p.soft.pillH);
+    return pl ? { h: pl.soft.pillH, type: pl.soft.pillTypePx } : null;
+  });
+  rec.ok('a plate reported its capsule height (guard)', !!box, box);
+  if (box) {
+    const ratio = box.h / box.type;
+    console.log(`    capsule ${box.h}px around ${box.type}px type -> ratio ${ratio.toFixed(2)} (was 1.80)`);
+    rec.ok(`the capsule is tighter around the text than it was `
+      + `(${ratio.toFixed(2)}x the type height, was 1.80x)`,
+      ratio < 1.7, { ...box, ratio });
+    /* ...and not SO tight that the glyphs touch the border.  Descenders on a
+       name like "Jerry" need room, and a capsule that hugs the type is the
+       other way to fail this ask. */
+    rec.ok(`...without squeezing the type against the ring (${ratio.toFixed(2)}x, floor 1.35x)`,
+      ratio >= 1.35, { ...box, ratio });
+  }
 
   /* ═══ v2.3.2513: D4's FIRST RULE -- THE PLATE GETS OUT OF A FIGHT ═══
      "HIDDEN while the monster is YOUR engaged target (locked, or hit by you
