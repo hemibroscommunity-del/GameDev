@@ -35,13 +35,20 @@ import * as H from './harness.mjs';
    fallback (a lane you cannot see is the v2.3.1660 incident); below 360px
    the cell titles step down to the 10px floor and four short names instead
    (HeroExpanded NARROW_TITLE), which is what this file exists to verify. */
+/* v2.3.2594: ONE WEAPON PLUS SHARED is the most the screen will hold
+   (owner), so the open pair is what this file measures — two columns of
+   cells between two closed strips.  Four columns at every width still: the
+   layout has no narrow fallback, because a lane you cannot see is the
+   v2.3.1660 incident.  Below 360 the cell titles step down to the 10px floor
+   and four short names instead (HeroExpanded NARROW_TITLE), which is what
+   this file exists to verify. */
 const SIZES = [
-  { w: 390, h: 844, cols: 4 },
-  { w: 375, h: 812, cols: 4 },
-  { w: 320, h: 568, cols: 4 },
+  { w: 390, h: 844, cols: 2 },
+  { w: 375, h: 812, cols: 2 },
+  { w: 320, h: 568, cols: 2 },
 ];
-/* 3 lanes x 6 + 7 shared, all on screen at once. */
-const CELLS = 25;
+/* 6 for the open weapon + 7 shared. */
+const CELLS = 13;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   for (const S of SIZES) {
@@ -102,8 +109,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${tag}: with one column open the other three are strips, and nothing in them is cut off`,
       oneOpen.clipped.length === 0, oneOpen);
 
-    /* Then all four, which is the widest the layout has to be and the state
-       the cell measurements below are about. */
+    /* Then the open PAIR — a weapon and Shared, the most the screen holds
+       and the state the cell measurements below are about. */
     await H.openPointCols(P);
 
     const m = await P.page.evaluate(() => {
@@ -160,7 +167,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* The BAND SHAPE, per width -- 4 across above 375, and the narrow fallback
        below it.  Asserted from the measured x/width of the cells rather than
        from a constant, so a change to the gap or the padding is visible here. */
-    rec.ok(`${tag}: the first row runs FOUR across — melee, staff, bow, shared`
+    rec.ok(`${tag}: the first row runs TWO across — the open weapon and Shared`
          + ` (${m.bandN} cells on the first row)`,
       m.bandN === S.cols, m);
 

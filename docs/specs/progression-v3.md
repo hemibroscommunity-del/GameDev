@@ -533,29 +533,40 @@ Owner: *"I do want the columns to close accordion style (opening and
 closing horizontally) ... the default view should also to have them all
 closed."*
 
-`openCols` is a LIST of open keys, not one key — with all four shut the
-screen is otherwise empty until you tap, so holding a weapon and Shared
-open together is the useful state and the reason the columns sit beside
-each other rather than stacking. It starts empty; `laneClosed` (the
-landscape accordion) starts `true` for the same instruction.
+**One weapon at a time, plus Shared** (v2.3.2594). Owner: *"You can only
+have one combat skill open at a time but you can have one combat skill
+and the shared column open at the same time."* The three weapons are a
+radio group; Shared is an independent toggle. That is the pairing the
+screen is for — the question in hand is "this weapon, or my character?",
+and those are the two things that need to be side by side to answer it.
+Two weapons at once is a comparison nobody makes with a point to spend,
+and it costs both of them the width that makes their stats readable.
+
+`openCols` is a LIST of open keys rather than `openWeapon` + `sharedOpen`,
+because every reader asks the same question of every column — "are you
+open" — and splitting it would make Shared answer differently from the
+other three at every one of those sites. The rule itself is
+`openColsWith`, a pure function outside the component, because two entry
+points obey it (a header tap and a deep link from the dashboard's combat
+pills) and a rule with two implementations holds on one of them. It
+starts empty; `laneClosed` (the landscape accordion) starts `true` for
+the same instruction.
 
 Width comes from one helper both rows read, or the headers and the cells
-would stop lining up the moment either was retuned:
+would stop lining up the moment either was retuned. Three shapes only:
 
 | State | Closed | Open (390px body) |
 |---|---|---|
 | all shut | 4 × 92 (equal share) | — |
 | 1 open | 3 × 58 | 192 |
-| 2 open | 2 × 58 | 125 each |
-| 3 open | 1 × 58 | 102 each |
-| 4 open | — | 91 each (the flat grid) |
+| weapon + Shared | 2 × 58 | 125 each |
 
 **58px is the floor the owner's own header layout sets**: badge 19 + gap
 2 + icon 22, plus padding. Anything narrower and the points stop sitting
 to the LEFT of the icon, which is the one thing he specified about it.
-An open column never goes below 74px (four open at 320), which is the
-width the cells were already measured at, so a cell never renders
-narrower than it has been checked at. The change animates over 140ms,
+An open column never goes below 90px (the pair at 320), and the cells
+have been measured down to 74, so a cell never renders narrower than it
+has been checked at. The change animates over 140ms,
 the system's `fast` step, because the width IS the gesture.
 
 A closed column keeps its box and its `[data-prog3-col]` handle and
@@ -580,11 +591,30 @@ with a real CDP touch carrying 16px of drift — the header sits in the
 sheet's scroller, which claims a touch that travels ~15px and fires
 `pointercancel` instead of `pointerup`, so a dispatched PointerEvent
 stayed green through two rounds of a collapse bug it claimed to pin
-(v2.3.2326, TRAPS §67). Six scenarios call it; it is idempotent and
-returns what actually ended up open. `mp-statgrid` owns the accordion
-itself (resting state, open widens / others narrow, close again, two at
-once); `mp-statcols` measures the closed strip at 390/375/320, which is
-the narrowest thing on the screen and the state a player now lands on.
+(v2.3.2326, TRAPS §67). It also resets the scroller to 0 first: the
+header row is sticky, so `scrollIntoView` on it is a no-op and leaves the
+caller's scroll position, and deep in a scrolled panel the stuck row can
+sit under the section tabs where `elementFromPoint` answers something
+else. Measured — `mp-statgrid`'s spend section asked for one column and
+got a different one back, because the centre-of-cell sweep before it had
+scrolled to the last cell. Six scenarios call it; it is idempotent,
+logs a refused tap, and returns what actually ended up open, so a caller
+guards on a real answer.
+
+`mp-statgrid` owns the accordion itself: the resting state, open widens
+while the others narrow, close again, a second weapon replacing the
+first, Shared surviving a weapon switch underneath it, and 13 as the most
+cells that can ever be on screen. `mp-statcols` measures the closed strip
+at 390/375/320 — the narrowest thing on the screen, and the state a
+player now lands on every time.
+
+**Known, pre-existing, and NOT from this work:** `mp-freshpoints` and
+`mp-infopop` cannot find the dashboard's three combat cards
+(`[role="button"][aria-label*="level"]` filtered to `^(Melee|Bow|Magic)
+level`) and fail 12 assertions between them. Verified identical on
+`origin/main` in a clean worktree before this branch was written, so it
+is a stale selector or a retired card, not a regression here. Left for
+its own change rather than folded into this one.
 The ℹ️ window prints two rows for Luck (crit chance, crit damage) and
 says "reach, not damage" / "special attacks only" / "movement, not
 damage" instead of "does not change damage" for the stats whose job is

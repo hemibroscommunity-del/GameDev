@@ -89,7 +89,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
        wide, the other three as strips. */
     await H.openPointCols(P, ['sword']);
     await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/build-after-${w}-one.png` });
-    /* Then all four, the flat grid the measurements below are about. */
+    /* Then the pair — a weapon and Shared, the most the screen holds
+       (v2.3.2594) and the state the measurements below are about. */
     await H.openPointCols(P);
     await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/build-after-${w}-grid.png` });
 
@@ -119,8 +120,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     console.log(`    ${w}: ${JSON.stringify(grid)}`);
     rec.ok(`${w}: four headers over four columns — melee, staff, bow, shared`,
       grid.heads.join(',') === 'sword,staff,bow,shared' && grid.cols.join(',') === 'sword,staff,bow,shared', grid);
-    rec.ok(`${w}: every column's first cell is wholly on screen at rest, under the header row`,
-      grid.firstVisible.every((v) => v != null && v >= grid.cellH - 1), grid);
+    /* v2.3.2594: only the OPEN pair has cells; the two strips have none, and
+       `null` is the honest reading for a column holding nothing. */
+    rec.ok(`${w}: the open pair's first cells are wholly on screen, under the header row`,
+      grid.firstVisible.filter((v) => v != null).length === 2
+        && grid.firstVisible.every((v) => v == null || v >= grid.cellH - 1), grid);
     rec.ok(`${w}: no column scrolls sideways`,
       grid.overflow.every((o) => o.x <= 1), grid.overflow);
 

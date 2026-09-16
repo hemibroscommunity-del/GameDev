@@ -24,9 +24,12 @@ import { PROG3 } from '../../../src/data/prog3.js';
    this harness always runs against the local worker, which advertises
    it) — a hand-typed 7 here went stale the day the dmg/elem stats
    shipped, which is exactly the trap the v2.3.1727 note above names. */
-/* v2.3.2592: FOUR COLUMNS, all on screen at once — three lanes of six plus
-   the seven shared stats, 25 controls, none behind a collapsed header. */
-const STAT_ROWS = Object.keys(PROG3.ATK).length * PROG3.SKILLS.length + Object.keys(PROG3.BODY).length;
+/* v2.3.2592: four columns — six stats per weapon, seven shared.
+   v2.3.2594: and at most ONE WEAPON plus SHARED open at a time (owner), so
+   the most a screen can ever hold is 6 + 7.  Derived from the tables the UI
+   itself maps, never hand-typed: a 9 here went stale the day the dmg/elem
+   stats shipped, which is the trap this file's v2.3.1727 note names. */
+const STAT_ROWS = Object.keys(PROG3.ATK).length + Object.keys(PROG3.BODY).length;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Respec', wsPort, webPort });
@@ -137,8 +140,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the Points screen opens with every column CLOSED and no stat on screen',
     atRest.open === 0 && atRest.cells === 0, atRest);
   const openedAll = await H.openPointCols(P);
-  rec.ok('...and all four can be opened (guard for everything below)',
-    openedAll.length === 4, openedAll);
+  rec.ok('...and a weapon and Shared can be opened together (guard for everything below)',
+    openedAll.length === 2 && openedAll.indexOf('sword') >= 0 && openedAll.indexOf('shared') >= 0, openedAll);
   const disabled = await P.page.locator('[role="button"][aria-disabled="true"][aria-label*=" of "]').count().catch(() => 0);
   rec.ok('every stat is unspendable with an empty pool', disabled === STAT_ROWS, { disabled, STAT_ROWS });
   /* The selector is icon+level chips, so the type names live in
@@ -300,51 +303,57 @@ export async function run({ browser, wsPort, webPort, rec }) {
      This loop selects each lane in turn and demands the same answer from all
      three.  It is expected to FAIL until the columns land: a guard that goes
      green the moment you write it is measuring nothing. */
-  /* ═══ v2.3.2592: EVERY COLUMN SHOWS ITS FIRST STAT AT REST ═══
-     v2.3.2326 measured each lane by OPENING it, because the lanes were an
-     accordion and the third one's first row used to fall under the fold.
-     The four-column grid closes that class of bug by geometry: there is no
-     lane to open, and the first cell of every column sits on one row
-     directly under the sticky header row.  So this taps nothing and asks the
-     four columns the same question — is your first cell wholly in view,
-     between the stuck stack and the floor, at rest? */
-  const firstRowByLane = await P.page.evaluate(async () => {
-    const wait = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  /* ═══ v2.3.2593: EVERY COLUMN OPENS ONTO ITS FIRST STAT ═══
+     v2.3.2326 measured each lane this way because the lanes were a VERTICAL
+     accordion and the third one's first row used to fall under the fold
+     entirely at 320 — the v2.3.1660 incident, "a player who could not know a
+     stat existed", alive in production.  The columns close that by geometry:
+     whichever one you open, its first cell sits directly under the sticky
+     header row, so the lane-index dependence is gone rather than tuned away.
+     v2.3.2594: opened one at a time, because one weapon plus Shared is all
+     the screen will hold (owner) — which is also what makes this loop worth
+     keeping rather than reading four columns at once. */
+  const firstRowByLane = await (async () => {
     const out = [];
-    const first0 = document.querySelector('[role="button"][aria-label*=" of "]');
-    let sc = first0 && first0.parentElement;
-    while (sc && getComputedStyle(sc).overflowY !== 'auto') sc = sc.parentElement;
-    if (sc) sc.scrollTop = 0;
-    await wait();
     for (const k of ['sword', 'staff', 'bow', 'shared']) {
-      const btn = document.querySelector(`[data-prog3-col="${k}"] [role="button"][aria-label*=" of "]`);
-      if (!btn) { out.push({ k, err: 'no stat cell' }); continue; }
-      const b = btn.getBoundingClientRect();
-      const p = sc ? sc.getBoundingClientRect() : null;
-      /* The ceiling is the pinned stack, exactly as the block above defines it. */
-      let ceil = p ? p.top : 0;
-      if (sc) {
-        for (const e of sc.querySelectorAll('*')) {
-          const cs = getComputedStyle(e);
-          if (cs.position !== 'sticky') continue;
-          const bb = e.getBoundingClientRect();
-          const stuckAt = p.top + (parseFloat(cs.top) || 0);
-          if (bb.height > 0 && Math.abs(bb.top - stuckAt) <= 1.5 && bb.bottom > ceil) ceil = bb.bottom;
+      await H.openPointCols(P, [k]);
+      out.push(await P.page.evaluate(async (key) => {
+        const wait = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const first0 = document.querySelector('[role="button"][aria-label*=" of "]');
+        let sc = first0 && first0.parentElement;
+        while (sc && getComputedStyle(sc).overflowY !== 'auto') sc = sc.parentElement;
+        if (sc) sc.scrollTop = 0;
+        await wait();
+        const btn = document.querySelector(`[data-prog3-col="${key}"] [role="button"][aria-label*=" of "]`);
+        if (!btn) return { k: key, err: 'no stat cell' };
+        const b = btn.getBoundingClientRect();
+        const p = sc ? sc.getBoundingClientRect() : null;
+        /* The ceiling is the pinned stack, exactly as the block above defines it. */
+        let ceil = p ? p.top : 0;
+        if (sc) {
+          for (const e of sc.querySelectorAll('*')) {
+            const cs = getComputedStyle(e);
+            if (cs.position !== 'sticky') continue;
+            const bb = e.getBoundingClientRect();
+            const stuckAt = p.top + (parseFloat(cs.top) || 0);
+            if (bb.height > 0 && Math.abs(bb.top - stuckAt) <= 1.5 && bb.bottom > ceil) ceil = bb.bottom;
+          }
         }
-      }
-      const floor = p ? Math.min(p.bottom, window.innerHeight) : window.innerHeight;
-      out.push({ k, top: Math.round(b.top), h: Math.round(b.height),
-        visible: Math.round(Math.max(0, Math.min(b.bottom, floor) - Math.max(b.top, ceil))),
-        full: b.top >= ceil - 1 && b.bottom <= floor + 1 });
+        const floor = p ? Math.min(p.bottom, window.innerHeight) : window.innerHeight;
+        return { k: key, top: Math.round(b.top), h: Math.round(b.height),
+          visible: Math.round(Math.max(0, Math.min(b.bottom, floor) - Math.max(b.top, ceil))),
+          full: b.top >= ceil - 1 && b.bottom <= floor + 1 };
+      }, k));
     }
     return out;
-  });
+  })();
   console.log('    first stat cell, per column: ' + JSON.stringify(firstRowByLane));
-  rec.ok('EVERY column shows its first stat cell at rest — no lane to open, nothing under the fold',
+  rec.ok('EVERY column opens onto its first stat cell — nothing under the fold, whichever you pick',
     firstRowByLane.length === 4 && firstRowByLane.every((r) => r.full === true), firstRowByLane);
   const tops = firstRowByLane.filter((r) => r.top != null).map((r) => r.top);
-  rec.ok('...at the same height for all four, because they are one row',
+  rec.ok('...at the same height for all four, because they share one header row',
     tops.length === 4 && (Math.max(...tops) - Math.min(...tops)) <= 1, { tops });
+  await H.openPointCols(P);   /* back to the weapon + Shared pair the rest of this file measures */
 
 
   /* ═══ v2.3.2593: THE HEADER TOGGLES; THE ℹ️ EXPLAINS ═══
@@ -865,17 +874,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* And the reason the whole change exists: the first spendable stat of
        EVERY column is fully on screen at rest, at the width where the old
        accordion put Magic's under the fold.  v2.3.2592: nothing to open. */
-    const rows = await N.page.evaluate(async () => {
-      const wait = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      const out = [];
-      const first0 = document.querySelector('[role="button"][aria-label*=" of "]');
-      let sc = first0 && first0.parentElement;
-      while (sc && getComputedStyle(sc).overflowY !== 'auto') sc = sc.parentElement;
-      if (sc) sc.scrollTop = 0;
-      await wait();
-      for (const k of ['sword', 'staff', 'bow', 'shared']) {
-        const first = document.querySelector(`[data-prog3-col="${k}"] [role="button"][aria-label*=" of "]`);
-        if (!first) { out.push({ k, err: 'no stat cell' }); continue; }
+    const rows = [];
+    for (const k of ['sword', 'staff', 'bow', 'shared']) {
+      await H.openPointCols(N, [k]);   /* v2.3.2594: one at a time */
+      rows.push(await N.page.evaluate(async (key) => {
+        const wait = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const first0 = document.querySelector('[role="button"][aria-label*=" of "]');
+        let sc = first0 && first0.parentElement;
+        while (sc && getComputedStyle(sc).overflowY !== 'auto') sc = sc.parentElement;
+        if (sc) sc.scrollTop = 0;
+        await wait();
+        const first = document.querySelector(`[data-prog3-col="${key}"] [role="button"][aria-label*=" of "]`);
+        if (!first) return { k: key, err: 'no stat cell' };
         const b = first.getBoundingClientRect();
         const p = sc ? sc.getBoundingClientRect() : null;
         let ceil = p ? p.top : 0;
@@ -889,14 +899,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
           }
         }
         const floor = p ? Math.min(p.bottom, window.innerHeight) : window.innerHeight;
-        out.push({ k, top: Math.round(b.top),
+        return { k: key, top: Math.round(b.top),
           visible: Math.round(Math.max(0, Math.min(b.bottom, floor) - Math.max(b.top, ceil))),
-          full: b.top >= ceil - 1 && b.bottom <= floor + 1 });
-      }
-      return out;
-    });
+          full: b.top >= ceil - 1 && b.bottom <= floor + 1 };
+      }, k));
+    }
     console.log(`    ${w}x${h} first stat cell: ${JSON.stringify(rows)}`);
-    rec.ok(`${w}x${h}: every column shows its first spendable stat at rest`,
+    rec.ok(`${w}x${h}: every column opens onto its first spendable stat`,
       rows.length === 4 && rows.every((r) => r.full === true), rows);
     const tops = rows.filter((r) => r.top != null).map((r) => r.top);
     rec.ok(`${w}x${h}: ...at the same height for all four`,

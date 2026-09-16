@@ -120,6 +120,25 @@ const POINT_LANES = ['sword', 'staff', 'bow']
    render after a cold load): the sheet's own knight-bust art. */
 const SHARED_ICON_FALLBACK = '/icons/ui/hero/tab-overview.webp?v=2.3.2592';
 
+/* ═══ v2.3.2594: WHAT MAY BE OPEN AT ONCE ═══
+ * Owner: "You can only have one combat skill open at a time but you can have
+ * one combat skill and the shared column open at the same time."
+ *
+ * The three weapons are a radio group; Shared is an independent toggle.  A
+ * pure function over the open list, outside the component, because it is the
+ * rule BOTH entry points obey — a header tap and a deep link from the
+ * dashboard's combat pills — and a rule with two implementations is a rule
+ * that holds on one of them.
+ *
+ * Opening a weapon drops any other weapon and leaves Shared exactly as it
+ * was; opening Shared adds it and leaves the weapon alone.  Never called for
+ * a column that is already open (the callers toggle first), so it only ever
+ * has to answer "what does opening this look like". */
+function openColsWith(prev, key) {
+  if (key === SHARED_LANE.key) return prev.concat([key]);
+  return prev.filter((x) => x === SHARED_LANE.key).concat([key]);
+}
+
 /* v2.3.1657: the v2.3.1332 chiseled text segments (segCls/seg) are retired
    with the text — see the icon chip row in the render. */
 
@@ -154,11 +173,24 @@ export const HeroExpanded = () => {
 
      So a column is a HORIZONTAL accordion panel: closed it is a narrow strip
      carrying its icon, its waiting points and its name; open it takes the
-     width the closed ones give up and shows its stats.  Held as a LIST of
-     open keys rather than one open key, because with all four shut the screen
-     is otherwise empty until you tap — being able to hold Melee and Shared
-     open side by side is the whole reason the columns sit next to each other
-     rather than stacking.
+     width the closed ones give up and shows its stats.
+
+     ═══ v2.3.2594: ONE WEAPON, PLUS SHARED ═══
+     Owner: "You can only have one combat skill open at a time but you can
+     have one combat skill and the shared column open at the same time."
+
+     Which is the pairing the screen is FOR — the question a player is
+     actually answering is "this weapon, or my character?", and those are the
+     two things that need to be side by side to answer it.  Two weapons open
+     at once would be a comparison nobody makes with a point in hand, and it
+     costs both of them the width that makes their stats readable.
+
+     So the three weapons behave as a radio group and Shared is an
+     independent toggle.  Held as a LIST rather than as two pieces of state
+     (`openWeapon` + `sharedOpen`) because every reader asks the same
+     question of every column — "are you open" — and splitting it would make
+     the Shared column answer differently from the other three at every one
+     of those sites.
      An array, not a Set: it is React state, and a Set mutated in place does
      not re-render.  Order does not matter; membership does. */
   const [openCols, setOpenCols] = useState([]);
@@ -189,9 +221,12 @@ export const HeroExpanded = () => {
     if (_req.cat) {
       setBuildCat(_req.cat); setLaneClosed(false);
       /* v2.3.2593: ...and OPEN that column, or a COMBAT pill would deep-link
-         you to a closed strip.  Guarded so this render-phase update cannot
-         loop: it only ever grows the list, and only when the key is absent. */
-      setOpenCols((prev) => (prev.indexOf(_req.cat) >= 0 ? prev : prev.concat([_req.cat])));
+         you to a closed strip.  v2.3.2594: through the same one-weapon rule
+         the header taps take, so arriving from the dashboard leaves the
+         screen in a state a tap could also have produced.  Guarded so this
+         render-phase update cannot loop: it returns `prev` UNCHANGED when
+         the column is already open. */
+      setOpenCols((prev) => (prev.indexOf(_req.cat) >= 0 ? prev : openColsWith(prev, _req.cat)));
     }
   }
 
@@ -1526,21 +1561,21 @@ export const HeroExpanded = () => {
                strips is not a layout, it is the resting state, and four
                58px strips against 378px of body would leave 146px of nothing.
                Once ANY column is open the closed ones drop to the strip and
-               the open ones split what is left:
+               the open ones split what is left.  v2.3.2594 caps that at TWO
+               (one weapon plus Shared), so there are exactly three shapes:
 
                    390px body 378, gaps 12, usable 366
+                     all shut          92 each
                      1 open   3 x 58 = 174 closed,  192 open
                      2 open   2 x 58 = 116 closed,  125 each
-                     3 open   1 x 58 =  58 closed,  102 each
-                     4 open   91 each (the flat grid)
                    320px body 308, gaps 12, usable 296
+                     all shut          74 each
                      1 open   174 closed, 122 open
-                     3 open    58 closed,  79 each
-                     4 open    74 each
+                     2 open   116 closed,  90 each
 
-               The narrowest an OPEN column ever gets is 74px, which is the
-               width the cells were measured at for 320 (NARROW below), so a
-               cell never renders narrower than it has already been checked at.
+               The narrowest an OPEN column ever gets is 90px, and the cells
+               have been measured down to 74 (NARROW below), so a cell never
+               renders narrower than it has already been checked at.
                Header and body read the same helper, or the two rows would
                stop lining up the moment one of them was retuned. */
             const COL_CLOSED_W = 58;
@@ -1549,9 +1584,11 @@ export const HeroExpanded = () => {
             const colFlex = (k) => ((anyColOpen && !isColOpen(k))
               ? { flex: `0 0 ${COL_CLOSED_W}px`, width: COL_CLOSED_W, minWidth: 0 }
               : { flex: '1 1 0', minWidth: 0 });
+            /* v2.3.2594: close is always just close; open goes through the
+               one-weapon rule (openColsWith, above the component). */
             const toggleCol = (k) => setOpenCols((prev) => (prev.indexOf(k) >= 0
               ? prev.filter((x) => x !== k)
-              : prev.concat([k])));
+              : openColsWith(prev, k)));
             /* What a column HEADER says when tapped: the skill it belongs to,
                its level, and what its points may buy.  The dashboard's combat
                pills open the same explainer (DashColumns), so the two screens

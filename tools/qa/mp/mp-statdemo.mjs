@@ -126,8 +126,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await tapSel(P, '[role="button"][data-section="Build"]');
   await P.page.waitForTimeout(900);
   /* v2.3.2593: the Points screen's four columns start CLOSED (owner), and
-     every scene below is opened from a cell's ℹ️ inside one of them. */
-  await H.openPointCols(P);
+     every scene below is opened from a cell's ℹ️ inside one of them.
+     v2.3.2594: one weapon at a time, so each section below opens the column
+     it is about — starting with Melee and Shared, the pair this one reads. */
+  await H.openPointCols(P, ['sword', 'shared']);
 
   /* v2.3.2592: crit is LUCK now, and four columns are on screen at once —
      the MELEE column's Luck ℹ️, named by column. */
@@ -197,6 +199,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the ℹ️ is reached by its column. */
   const stillHoldingSword = await P.page.evaluate(() =>
     (window._gameState.current.rpg.activeSlot || 'melee') === 'melee');
+  await H.openPointCols(P, ['bow']);   /* v2.3.2594: one weapon at a time */
   const laneOpened = await tapSel(P, '[data-prog3-col="bow"] [data-stat-info="luck"]');
   rec.ok('the Bow column\'s ℹ️ could be tapped while the sword is still equipped', laneOpened && stillHoldingSword,
     { laneOpened, stillHoldingSword });
@@ -238,6 +241,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      it. */
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(350);
+  await H.openPointCols(P, ['staff']);   /* v2.3.2594 */
   const staffLane = await tapSel(P, '[data-prog3-col="staff"] [data-stat-info="luck"]');
   await P.page.waitForTimeout(900);
   const staffFace = await heroFacing(P, '.bt-sd-hero');

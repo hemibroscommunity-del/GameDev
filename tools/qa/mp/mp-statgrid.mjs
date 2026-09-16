@@ -261,34 +261,68 @@ export async function run({ browser, wsPort, webPort, rec }) {
     shutAgain.every((c) => c.open === false && c.cells === 0)
       && new Set(shutAgain.map((c) => c.headW)).size === 1, shutAgain);
 
-  /* TWO AT ONCE, which is why the columns sit side by side rather than
-     stacking: with all four shut the screen is empty until you tap, so
-     holding a weapon and Shared open together is the useful state. */
+  /* ════════ 0c. ONE WEAPON AT A TIME, PLUS SHARED ════════
+     Owner: "You can only have one combat skill open at a time but you can
+     have one combat skill and the shared column open at the same time."
+     Two rules, and each needs its own tap to tell them apart: a second
+     WEAPON must replace the first, and Shared must not disturb either. */
   await tapHead(P, 'sword');
+  await tapHead(P, 'bow');
+  const swapped = await readCols(P);
+  console.log('    weapon swapped: ' + JSON.stringify(swapped.map((c) => [c.k, c.open])));
+  rec.ok('opening a second WEAPON closes the first — only one combat skill at a time',
+    swapped.filter((c) => c.open).length === 1 && swapped.find((c) => c.k === 'bow').open === true
+      && swapped.find((c) => c.k === 'sword').open === false, swapped);
+  rec.ok('...and the one that closed gave its width back',
+    swapped.find((c) => c.k === 'sword').headW < swapped.find((c) => c.k === 'bow').headW / 1.8,
+    swapped.map((c) => [c.k, c.headW]));
+
   await tapHead(P, 'shared');
   const two = await readCols(P);
-  console.log('    two open: ' + JSON.stringify(two));
+  console.log('    weapon + shared: ' + JSON.stringify(two));
   const twoOpen = two.filter((c) => c.open), twoShut = two.filter((c) => !c.open);
-  rec.ok('two columns can be open at once — a weapon and Shared, side by side',
-    twoOpen.length === 2 && twoOpen.some((c) => c.k === 'sword') && twoOpen.some((c) => c.k === 'shared')
-      && twoOpen.find((c) => c.k === 'sword').cells === 6
+  rec.ok('a weapon and Shared CAN be open together — the pairing the screen is for',
+    twoOpen.length === 2 && twoOpen.some((c) => c.k === 'bow') && twoOpen.some((c) => c.k === 'shared')
+      && twoOpen.find((c) => c.k === 'bow').cells === 6
       && twoOpen.find((c) => c.k === 'shared').cells === 7, two);
   rec.ok('...sharing the open width evenly, still wider than the two closed strips',
     Math.abs(twoOpen[0].headW - twoOpen[1].headW) <= 1
       && twoShut.every((c) => c.headW < twoOpen[0].headW), two.map((c) => [c.k, c.headW]));
+  /* And Shared is INDEPENDENT in both directions: switching weapons under it
+     must leave it open, which is the half a single tap cannot show. */
+  await tapHead(P, 'staff');
+  const underShared = await readCols(P);
+  rec.ok('...and switching weapons underneath leaves Shared open — it is not part of the radio group',
+    underShared.find((c) => c.k === 'shared').open === true
+      && underShared.find((c) => c.k === 'staff').open === true
+      && underShared.find((c) => c.k === 'bow').open === false, underShared);
+  rec.ok('...so two is the most the screen can ever hold',
+    underShared.filter((c) => c.open).length === 2
+      && underShared.reduce((n, c) => n + c.cells, 0) === 13, underShared);
 
-  /* ════════ AND NOW THE FLAT GRID, WITH ALL FOUR OPEN ════════
-     Everything below measures the four columns together — the layout the
-     owner drew before the accordion was added to it. */
-  for (const k of ['staff', 'bow']) await tapHead(P, k);
-  const all = await readCols(P);
-  rec.ok('all four columns can be open at once (guard for everything below)',
-    all.every((c) => c.open) && all.reduce((n, c) => n + c.cells, 0) === 25, all);
-
-  const g = await readGrid(P);
-  rec.ok('the points body is open (guard)', !g.err && g.cells.length >= 7, g.err || g.cells.length);
-  if (g.err) { await P.ctx.close().catch(() => {}); return; }
-  console.log('    columns: ' + JSON.stringify(g.order) + '  cells: ' + g.cells.length);
+  /* ════════ AND NOW THE CELLS, ONE WEAPON AT A TIME ════════
+     Everything below measures the stats themselves.  Each weapon is opened
+     in turn — there is no state in which all three are on screen — and the
+     readings are merged, so the per-column assertions still ask about all
+     four columns. */
+  const gAll = { order: null, cols: {}, cells: [], bodyW: 0, chevron: null };
+  for (const k of ['sword', 'staff', 'bow']) {
+    await tapHead(P, k);                       /* Shared stays open under it */
+    const gk = await readGrid(P);
+    if (gk.err) { rec.ok('the points body is open (guard)', false, gk.err); await P.ctx.close().catch(() => {}); return; }
+    gAll.order = gk.order;
+    gAll.cols[k] = gk.cols[k] || [];
+    gAll.cols.shared = gk.cols.shared || [];
+    gAll.cells = gAll.cells.concat(gk.cells);
+    gAll.bodyW = gk.bodyW;
+    gAll.chevron = gk.chevron;
+  }
+  /* The LAST reading (Bow + Shared) is the live screen everything after this
+     measures against; gAll carries the three weapons' cells for the
+     per-column checks. */
+  const g = gAll;
+  rec.ok('the points body is open (guard)', g.cells.length >= 7, g.cells.length);
+  console.log('    columns: ' + JSON.stringify(g.order) + '  cells seen across the three weapons: ' + g.cells.length);
 
   /* ════════ 1. FOUR COLUMNS, IN THE OWNER'S ORDER, WITH THE OWNER'S ROWS ════════ */
   rec.ok('four columns, left to right: melee, staff (Magic), bow, shared',
@@ -303,14 +337,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`the shared column holds the seven shared stats, in order: ${SHARED_STATS.join(' / ')}`,
     (g.cols.shared || []).length === 7 && SHARED_STATS.every((s, i) => g.cols.shared[i] && g.cols.shared[i].stat === s),
     (g.cols.shared || []).map((c) => c.stat));
-  /* Every cell one size: a column that grew for one stat is a layout bug. */
-  rec.ok('every cell is exactly one width and one height (a quarter of the body)',
-    [...new Set(g.cells.map((c) => c.w))].length === 1 && [...new Set(g.cells.map((c) => c.h))].length === 1
-      && Math.abs(g.cells[0].w - g.bodyW / 4) <= 6,
+  /* Every cell one size: a column that grew for one stat is a layout bug.
+     v2.3.2594: a weapon and Shared split the open width evenly, so every
+     cell on screen is the same width as every other — measured across the
+     three weapon readings, which is three separate screens of the same
+     shape. */
+  rec.ok('every cell is exactly one width and one height',
+    [...new Set(g.cells.map((c) => c.w))].length === 1 && [...new Set(g.cells.map((c) => c.h))].length === 1,
     { widths: [...new Set(g.cells.map((c) => c.w))], heights: [...new Set(g.cells.map((c) => c.h))], bodyW: g.bodyW });
-  rec.ok('...and rows line up across the columns (the grid is a grid)',
-    LANE_STATS.every((s, i) => new Set(['sword', 'staff', 'bow'].map((k) => g.cols[k][i].y)).size === 1),
-    LANE_STATS.map((s, i) => ['sword', 'staff', 'bow'].map((k) => g.cols[k][i].y)));
+  rec.ok('...and the open pair each take about a third of the body, the two strips the rest',
+    Math.abs(g.cells[0].w - (g.bodyW - 2 * 58 - 12) / 2) <= 6,
+    { cellW: g.cells[0].w, bodyW: g.bodyW });
+  rec.ok('...and the weapon\'s row lines up with Shared\'s (the grid is still a grid)',
+    LANE_STATS.every((s, i) => g.cols.bow[i] && g.cols.shared[i] && g.cols.bow[i].y === g.cols.shared[i].y),
+    LANE_STATS.map((s, i) => [g.cols.bow[i] && g.cols.bow[i].y, g.cols.shared[i] && g.cols.shared[i].y]));
   rec.ok('...and every cell clears the 44pt line',
     g.cells.every((c) => c.h >= 44), [...new Set(g.cells.map((c) => c.h))]);
 
@@ -375,7 +415,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    header row through the scroll: ' + JSON.stringify(stickyWalk));
   rec.ok('the header row is declared sticky', heads.every((h) => h.sticky === 'sticky'), heads.map((h) => h.sticky));
   rec.ok('...and every header says whether it is open, for a screen reader and for the four scenarios that resolve through it',
-    heads.every((h) => h.expanded === 'true'), heads.map((h) => [h.k, h.expanded]));
+    heads.every((h) => h.expanded === 'true' || h.expanded === 'false')
+      && heads.filter((h) => h.expanded === 'true').length === 2, heads.map((h) => [h.k, h.expanded]));
   rec.ok('...and all four headers stay on screen at the top, middle and end of the scroll',
     !stickyWalk.err && ['top', 'mid', 'max'].every((t) => stickyWalk.at[t].length === 4 && stickyWalk.at[t].every((l) => l.on)),
     stickyWalk);
@@ -405,7 +446,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/statgrid.png` }).catch(() => {});
 
   /* ════════ 5. THE CENTRE OF EVERY CELL IS THE CELL ════════ */
-  const centres = await P.page.evaluate(async (ROWSEL) => {
+  const centres = await P.page.evaluate(async (ROWSEL) => {   /* the live screen: Bow + Shared */
     const wait = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     const out = [];
     for (const el of [...document.querySelectorAll(ROWSEL)]) {
@@ -423,7 +464,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return out;
   }, ROW);
   rec.ok('every cell was scrolled into view and its centre resolves to the cell itself (guard)',
-    centres.length >= 25 && centres.every((c) => c.inCell), centres.filter((c) => !c.inCell));
+    centres.length === 13 && centres.every((c) => c.inCell), centres.filter((c) => !c.inCell));
   rec.ok('no cell\'s centre lands on its info button', centres.every((c) => !c.onInfo), centres.filter((c) => c.onInfo));
   rec.ok('...and every cell still HAS an info button, in its top-right corner, clear of the middle',
     g.cells.every((c) => c.info && c.info.w >= 22 && c.info.h >= 22 && c.info.cx > c.cx && c.info.cy < c.cy),
@@ -464,6 +505,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { ok: false, from: before.pts };
   };
 
+  /* The MAGIC column, open beside Shared — the pair a player actually spends
+     from, and both pool rules under test on one screen.  Opened through the
+     harness helper rather than the local tap: it scrolls the header into
+     view, hit-tests it and reports what ended up open, which is what turns a
+     tap that quietly missed into a named guard rather than three failures
+     further down (it did exactly that on the first run of this section). */
+  const spendReady = await H.openPointCols(P, ['staff']);
+  rec.ok('Magic and Shared are the open pair for the spends below (guard)',
+    spendReady.length === 2 && spendReady.indexOf('staff') >= 0 && spendReady.indexOf('shared') >= 0,
+    spendReady);
+  /* Read the badges HERE, with that pair open, so the before/after below is
+     one screen's worth of change rather than a comparison across states. */
+  const headsBefore = await readHeads(P);
   const s0 = await serverPools(wsPort, myId);
   rec.ok('the worker\'s blob carries both pools (guard)', !!s0 && s0.pool > 0 && s0.shared > 0, s0);
   const r1 = await spendAt('staff', 'Range for staff');
@@ -496,9 +550,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const heads2 = await readHeads(P);
   const n = (hs, k) => { const h = hs.find((x) => x.k === k); return h && h.badge ? Number(h.badge.text) : null; };
   rec.ok('the column badges followed the acks: Magic −1, Shared −1, Melee and Bow unchanged',
-    n(heads2, 'staff') === n(heads, 'staff') - 1 && n(heads2, 'shared') === n(heads, 'shared') - 1
-      && n(heads2, 'sword') === n(heads, 'sword') && n(heads2, 'bow') === n(heads, 'bow'),
-    { before: LANE_ORDER.map((k) => n(heads, k)), after: LANE_ORDER.map((k) => n(heads2, k)) });
+    n(heads2, 'staff') === n(headsBefore, 'staff') - 1 && n(heads2, 'shared') === n(headsBefore, 'shared') - 1
+      && n(heads2, 'sword') === n(headsBefore, 'sword') && n(heads2, 'bow') === n(headsBefore, 'bow'),
+    { before: LANE_ORDER.map((k) => n(headsBefore, k)), after: LANE_ORDER.map((k) => n(heads2, k)) });
 
   await P.ctx.close().catch(() => {});
 }
