@@ -57,8 +57,20 @@ breaks is the useful part:
 - **50 elements clipped, 25 truncated**, at both 390 and 360.
 
 That is not a rendering bug to go fix. It is the four asks competing for one
-width: you are adding a fourth column to a row that currently holds three,
-*while* making everything inside the cells bigger.
+width — though **not** for the reason I first wrote here, and the correction
+matters:
+
+> **Correction.** An earlier version of this page said the squeeze came from
+> "adding a fourth column to a row that currently holds three." That was wrong.
+> The screen has had **four columns all along** — the three weapons plus Shared
+> — since the v2.3.2592 redesign. Nothing is being added.
+
+What actually shrinks the cells is that the four columns **share the width
+equally** instead of two being open and two being narrow strips. Today an open
+column is 119px wide at 390; with all four equal it is 91.5px. That is a **23%
+narrower cell**, and it is happening at the same time as everything inside the
+cell gets bigger. The squeeze is real; the cause is the equal split, not a new
+column.
 
 **B — your ask, re-cut to fit.** Same four changes, and the icon is still the
 full 3x (39px). The difference is that the icon gets **its own row** instead of
@@ -186,11 +198,17 @@ Add one of these to the end of it:
 - `?mock4=b` — variant B, the one that fits
 - no suffix at all — the screen exactly as it is today
 
-The expected address is:
+The branch preview address, as the Cloudflare bot reported it on the pull
+request (note it shortens the branch name — "mock", not "mockup"):
 
-https://claude-prog3-four-equal-mockup.gamedev-aix.pages.dev/?mock4=b
+https://claude-prog3-four-equal-mock.gamedev-aix.pages.dev/?mock4=b
 
-Use whatever link the bot posts if it differs — that one is authoritative.
+and for the literal version:
+
+https://claude-prog3-four-equal-mock.gamedev-aix.pages.dev/?mock4=a
+
+I could not open these myself — this sandbox blocks `*.pages.dev` — so they are
+the bot's reported address, not one I verified.
 
 ---
 
