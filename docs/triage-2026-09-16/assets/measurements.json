@@ -1,0 +1,1128 @@
+[
+  {
+    "shot": "390-portrait-before",
+    "mode": "off (ships today)",
+    "cols": [
+      {
+        "key": "sword",
+        "w": 119,
+        "cells": 6
+      },
+      {
+        "key": "staff",
+        "w": 64,
+        "cells": 0
+      },
+      {
+        "key": "bow",
+        "w": 64,
+        "cells": 0
+      },
+      {
+        "key": "shared",
+        "w": 119,
+        "cells": 7
+      }
+    ],
+    "cell": {
+      "w": 119,
+      "h": 48
+    },
+    "icon": {
+      "w": 13,
+      "h": 13
+    },
+    "plus": {
+      "w": 29.25,
+      "h": 46
+    },
+    "title": {
+      "text": "Range",
+      "font": "11px"
+    },
+    "value": {
+      "text": "+0%",
+      "font": "12.5px"
+    },
+    "skillFont": "11px",
+    "clipped": [],
+    "ellipsised": []
+  },
+  {
+    "shot": "390-portrait-a",
+    "mode": "a",
+    "cols": [
+      {
+        "key": "sword",
+        "w": 91.5,
+        "cells": 6
+      },
+      {
+        "key": "staff",
+        "w": 91.5,
+        "cells": 6
+      },
+      {
+        "key": "bow",
+        "w": 91.5,
+        "cells": 6
+      },
+      {
+        "key": "shared",
+        "w": 91.5,
+        "cells": 7
+      }
+    ],
+    "cell": {
+      "w": 91.5,
+      "h": 48
+    },
+    "icon": {
+      "w": 39,
+      "h": 39
+    },
+    "plus": {
+      "w": 33.56,
+      "h": 46
+    },
+    "title": {
+      "text": "Range",
+      "font": "11px"
+    },
+    "value": {
+      "text": "+0%",
+      "font": "12.5px"
+    },
+    "skillFont": "12.5px",
+    "clipped": [
+      {
+        "cell": 0,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 0,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 1,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 1,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 2,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 2,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 3,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 3,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 4,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 4,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 5,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 5,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 6,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 6,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 7,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 7,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 8,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 8,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 9,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 9,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 10,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 10,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 11,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 11,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 12,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 12,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 13,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 13,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 14,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 14,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 15,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 15,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 16,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 16,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 17,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 17,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 18,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 18,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 19,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 19,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 20,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 20,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 21,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 21,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 22,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 22,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 23,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 23,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 24,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 24,
+        "tag": "img",
+        "by": 1
+      }
+    ],
+    "ellipsised": [
+      {
+        "cell": 0,
+        "text": "+0%",
+        "by": 30.52
+      },
+      {
+        "cell": 1,
+        "text": "+0",
+        "by": 17.98
+      },
+      {
+        "cell": 2,
+        "text": "1.00",
+        "by": 29.66
+      },
+      {
+        "cell": 3,
+        "text": "1.0%",
+        "by": 33.48
+      },
+      {
+        "cell": 4,
+        "text": "+0%",
+        "by": 30.52
+      },
+      {
+        "cell": 5,
+        "text": "0",
+        "by": 7.52
+      },
+      {
+        "cell": 6,
+        "text": "+0%",
+        "by": 30.52
+      },
+      {
+        "cell": 7,
+        "text": "+0",
+        "by": 17.98
+      },
+      {
+        "cell": 8,
+        "text": "1.00",
+        "by": 29.66
+      },
+      {
+        "cell": 9,
+        "text": "1.0%",
+        "by": 33.48
+      },
+      {
+        "cell": 10,
+        "text": "+0%",
+        "by": 30.52
+      },
+      {
+        "cell": 11,
+        "text": "0",
+        "by": 7.52
+      },
+      {
+        "cell": 12,
+        "text": "+0%",
+        "by": 30.52
+      },
+      {
+        "cell": 13,
+        "text": "+0",
+        "by": 17.98
+      },
+      {
+        "cell": 14,
+        "text": "1.00",
+        "by": 29.66
+      },
+      {
+        "cell": 15,
+        "text": "1.0%",
+        "by": 33.48
+      },
+      {
+        "cell": 16,
+        "text": "+0%",
+        "by": 30.52
+      },
+      {
+        "cell": 17,
+        "text": "0",
+        "by": 7.52
+      },
+      {
+        "cell": 18,
+        "text": "24",
+        "by": 16.22
+      },
+      {
+        "cell": 19,
+        "text": "0%",
+        "by": 20.05
+      },
+      {
+        "cell": 20,
+        "text": "102",
+        "by": 24.91
+      },
+      {
+        "cell": 21,
+        "text": "100",
+        "by": 24.91
+      },
+      {
+        "cell": 22,
+        "text": "0%",
+        "by": 20.05
+      },
+      {
+        "cell": 23,
+        "text": "+0%",
+        "by": 30.52
+      },
+      {
+        "cell": 24,
+        "text": "0%",
+        "by": 20.05
+      }
+    ]
+  },
+  {
+    "shot": "390-portrait-b",
+    "mode": "b",
+    "cols": [
+      {
+        "key": "sword",
+        "w": 91.5,
+        "cells": 6
+      },
+      {
+        "key": "staff",
+        "w": 91.5,
+        "cells": 6
+      },
+      {
+        "key": "bow",
+        "w": 91.5,
+        "cells": 6
+      },
+      {
+        "key": "shared",
+        "w": 91.5,
+        "cells": 7
+      }
+    ],
+    "cell": {
+      "w": 91.5,
+      "h": 76
+    },
+    "icon": {
+      "w": 39,
+      "h": 39
+    },
+    "plus": {
+      "w": 33.56,
+      "h": 74
+    },
+    "title": {
+      "text": "Range",
+      "font": "11px"
+    },
+    "value": {
+      "text": "+0%",
+      "font": "12.5px"
+    },
+    "skillFont": "12.5px",
+    "clipped": [],
+    "ellipsised": []
+  },
+  {
+    "shot": "360-portrait-before",
+    "mode": "off (ships today)",
+    "cols": [
+      {
+        "key": "sword",
+        "w": 104,
+        "cells": 6
+      },
+      {
+        "key": "staff",
+        "w": 64,
+        "cells": 0
+      },
+      {
+        "key": "bow",
+        "w": 64,
+        "cells": 0
+      },
+      {
+        "key": "shared",
+        "w": 104,
+        "cells": 7
+      }
+    ],
+    "cell": {
+      "w": 104,
+      "h": 48
+    },
+    "icon": {
+      "w": 13,
+      "h": 13
+    },
+    "plus": {
+      "w": 25.5,
+      "h": 46
+    },
+    "title": {
+      "text": "Range",
+      "font": "11px"
+    },
+    "value": {
+      "text": "+0%",
+      "font": "12.5px"
+    },
+    "skillFont": "11px",
+    "clipped": [],
+    "ellipsised": []
+  },
+  {
+    "shot": "360-portrait-a",
+    "mode": "a",
+    "cols": [
+      {
+        "key": "sword",
+        "w": 84,
+        "cells": 6
+      },
+      {
+        "key": "staff",
+        "w": 84,
+        "cells": 6
+      },
+      {
+        "key": "bow",
+        "w": 84,
+        "cells": 6
+      },
+      {
+        "key": "shared",
+        "w": 84,
+        "cells": 7
+      }
+    ],
+    "cell": {
+      "w": 84,
+      "h": 48
+    },
+    "icon": {
+      "w": 39,
+      "h": 39
+    },
+    "plus": {
+      "w": 30.75,
+      "h": 46
+    },
+    "title": {
+      "text": "Range",
+      "font": "11px"
+    },
+    "value": {
+      "text": "+0%",
+      "font": "12.5px"
+    },
+    "skillFont": "12.5px",
+    "clipped": [
+      {
+        "cell": 0,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 0,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 1,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 1,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 2,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 2,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 3,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 3,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 4,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 4,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 5,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 5,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 6,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 6,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 7,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 7,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 8,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 8,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 9,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 9,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 10,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 10,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 11,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 11,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 12,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 12,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 13,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 13,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 14,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 14,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 15,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 15,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 16,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 16,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 17,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 17,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 18,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 18,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 19,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 19,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 20,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 20,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 21,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 21,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 22,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 22,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 23,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 23,
+        "tag": "img",
+        "by": 1
+      },
+      {
+        "cell": 24,
+        "tag": "span",
+        "by": 2
+      },
+      {
+        "cell": 24,
+        "tag": "img",
+        "by": 1
+      }
+    ],
+    "ellipsised": [
+      {
+        "cell": 0,
+        "text": "+0%",
+        "by": 31.7
+      },
+      {
+        "cell": 1,
+        "text": "+0",
+        "by": 19.17
+      },
+      {
+        "cell": 2,
+        "text": "1.00",
+        "by": 30.84
+      },
+      {
+        "cell": 3,
+        "text": "1.0%",
+        "by": 34.67
+      },
+      {
+        "cell": 4,
+        "text": "+0%",
+        "by": 31.7
+      },
+      {
+        "cell": 5,
+        "text": "0",
+        "by": 8.7
+      },
+      {
+        "cell": 6,
+        "text": "+0%",
+        "by": 31.7
+      },
+      {
+        "cell": 7,
+        "text": "+0",
+        "by": 19.17
+      },
+      {
+        "cell": 8,
+        "text": "1.00",
+        "by": 30.84
+      },
+      {
+        "cell": 9,
+        "text": "1.0%",
+        "by": 34.67
+      },
+      {
+        "cell": 10,
+        "text": "+0%",
+        "by": 31.7
+      },
+      {
+        "cell": 11,
+        "text": "0",
+        "by": 8.7
+      },
+      {
+        "cell": 12,
+        "text": "+0%",
+        "by": 31.7
+      },
+      {
+        "cell": 13,
+        "text": "+0",
+        "by": 19.17
+      },
+      {
+        "cell": 14,
+        "text": "1.00",
+        "by": 30.84
+      },
+      {
+        "cell": 15,
+        "text": "1.0%",
+        "by": 34.67
+      },
+      {
+        "cell": 16,
+        "text": "+0%",
+        "by": 31.7
+      },
+      {
+        "cell": 17,
+        "text": "0",
+        "by": 8.7
+      },
+      {
+        "cell": 18,
+        "text": "24",
+        "by": 17.41
+      },
+      {
+        "cell": 19,
+        "text": "0%",
+        "by": 21.23
+      },
+      {
+        "cell": 20,
+        "text": "102",
+        "by": 26.09
+      },
+      {
+        "cell": 21,
+        "text": "100",
+        "by": 26.09
+      },
+      {
+        "cell": 22,
+        "text": "0%",
+        "by": 21.23
+      },
+      {
+        "cell": 23,
+        "text": "+0%",
+        "by": 31.7
+      },
+      {
+        "cell": 24,
+        "text": "0%",
+        "by": 21.23
+      }
+    ]
+  },
+  {
+    "shot": "360-portrait-b",
+    "mode": "b",
+    "cols": [
+      {
+        "key": "sword",
+        "w": 84,
+        "cells": 6
+      },
+      {
+        "key": "staff",
+        "w": 84,
+        "cells": 6
+      },
+      {
+        "key": "bow",
+        "w": 84,
+        "cells": 6
+      },
+      {
+        "key": "shared",
+        "w": 84,
+        "cells": 7
+      }
+    ],
+    "cell": {
+      "w": 84,
+      "h": 76
+    },
+    "icon": {
+      "w": 39,
+      "h": 39
+    },
+    "plus": {
+      "w": 30.75,
+      "h": 74
+    },
+    "title": {
+      "text": "Range",
+      "font": "11px"
+    },
+    "value": {
+      "text": "+0%",
+      "font": "12.5px"
+    },
+    "skillFont": "12.5px",
+    "clipped": [],
+    "ellipsised": []
+  },
+  {
+    "shot": "390-landscape-before",
+    "mode": "off (ships today)",
+    "cols": [],
+    "cell": null,
+    "icon": null,
+    "plus": null,
+    "title": null,
+    "value": null,
+    "skillFont": "11.5px",
+    "clipped": [],
+    "ellipsised": []
+  },
+  {
+    "shot": "390-landscape-a",
+    "mode": "a",
+    "cols": [],
+    "cell": null,
+    "icon": null,
+    "plus": null,
+    "title": null,
+    "value": null,
+    "skillFont": "11.5px",
+    "clipped": [],
+    "ellipsised": []
+  },
+  {
+    "shot": "390-landscape-b",
+    "mode": "b",
+    "cols": [],
+    "cell": null,
+    "icon": null,
+    "plus": null,
+    "title": null,
+    "value": null,
+    "skillFont": "11.5px",
+    "clipped": [],
+    "ellipsised": []
+  },
+  {
+    "shot": "360-landscape-before",
+    "mode": "off (ships today)",
+    "cols": [],
+    "cell": null,
+    "icon": null,
+    "plus": null,
+    "title": null,
+    "value": null,
+    "skillFont": "11.5px",
+    "clipped": [],
+    "ellipsised": []
+  },
+  {
+    "shot": "360-landscape-a",
+    "mode": "a",
+    "cols": [],
+    "cell": null,
+    "icon": null,
+    "plus": null,
+    "title": null,
+    "value": null,
+    "skillFont": "11.5px",
+    "clipped": [],
+    "ellipsised": []
+  },
+  {
+    "shot": "360-landscape-b",
+    "mode": "b",
+    "cols": [],
+    "cell": null,
+    "icon": null,
+    "plus": null,
+    "title": null,
+    "value": null,
+    "skillFont": "11.5px",
+    "clipped": [],
+    "ellipsised": []
+  }
+]
