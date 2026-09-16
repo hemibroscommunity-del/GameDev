@@ -131,7 +131,15 @@ const boxes = (P) => P.page.evaluate(() => {
        derived only as the portrait fallback for the frames where the disc has
        faded out of the DOM. */
     attack: b('.bt-rjoy-base'),
-    bash: b('[data-ability="bash"]'), whirl: b('[data-ability="whirl"]') };
+    bash: b('[data-ability="bash"]'), whirl: b('[data-ability="whirl"]'),
+    /* v2.3.2574: the Element Burst button, which moved to the cluster over the
+       MOVEMENT disc.  Measured here because nothing ever measured it: it placed
+       itself with its own arithmetic and sat 8px from Bash in the shipped game
+       (ShieldButton's leftCluster note), which no assertion in this repo could
+       see because no test compared those two boxes.  It only renders for an
+       enchanted weapon at level 6+, so on this fixture it is expected ABSENT
+       and the rows that want it say so. */
+    burst: b('.bt-burst-btn') };
 });
 
 /* The movement state a leaked press would disturb.  `_lJoyHeld` is what lS
@@ -139,7 +147,13 @@ const boxes = (P) => P.page.evaluate(() => {
    would actually SEE go wrong. */
 const moveState = (P) => P.page.evaluate(() => {
   const S = window._gameState.current;
-  return { held: !!S._lJoyHeld, roll: !!S._dodgeRoll,
+  /* v2.3.2574: `autoAttack` joins it.  The cluster sits over [data-joyzone="R"]
+     now, and that zone's rS sets S.autoAttack on touchstart and forwards a
+     short release to the canvas as a lock-on click -- so on this side the leak
+     to watch for is a SWING, where on the movement half it was a walk.  Both
+     are reported, because Element Burst moved the other way and still needs
+     the walk half. */
+  return { held: !!S._lJoyHeld, roll: !!S._dodgeRoll, swing: !!S.autoAttack,
     x: Math.round(S.player.x), y: Math.round(S.player.y) };
 });
 
@@ -366,20 +380,29 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
   if (!disc) rec.skip(`${tag}: the rows measured against the attack disc`, 'the disc had faded out of the DOM when the shot was taken');
   if (!hasBand) rec.skip(`${tag}: the dashboard-clearance rows`, 'no dashboard band in this orientation (sideways it is the safe-area inset alone, v2.3.2168)');
 
-  /* ═══ v2.3.2562: BASH IS WHERE D9 PUT IT, AND THIS ASK DID NOT MOVE IT ═══
-     These rows used to ask for "down and to the LEFT of the attack disc"
-     (v2.3.2327's placement) and had been RED since v2.3.2472 moved bash into
-     the D9 column above the disc's centre line -- a stale assertion nobody
-     re-pointed.  The owner's new ask does not mention Bash, so the correct
-     claim is the one D9 makes and this change must preserve. */
+  /* ═══ v2.3.2574: BASH CAME DOWN TO THE DISC'S CENTRE LINE ═══
+     It kept the column and its 4px clearance; what changed is the slot, from 1
+     to 0.  The owner still has not mentioned Bash in any message -- it moved
+     because Special and Whirlwind now need the air above the disc, and slot 1's
+     top edge was in it (ShieldButton's CTL_SLOT note has the measurement).
+
+     THE ROW BELOW USED TO SAY "above the disc's centre line", and that is the
+     assertion this change had to flip rather than delete: level WITH the centre
+     is the claim now, and it is a tighter one -- it pins the slot instead of
+     allowing any height above a line.  The older history is still worth
+     keeping: these rows once asked for "down and to the LEFT of the disc"
+     (v2.3.2327's placement) and were RED from v2.3.2472 to v2.3.2562, a stale
+     assertion nobody re-pointed. */
   if (g.bash && disc) {
     rec.ok(`${tag}: Bash hugs the attack disc's left edge, 4px clear (bash right ${g.bash.r2}, disc left ${disc.x})`,
       Math.abs((disc.x - g.bash.r2) - 4) <= 1, { bash: g.bash, disc });
     if (hasBand) rec.ok(`${tag}: ...and clear of the dashboard`, g.bash.b2 <= g.dashTop, { b2: g.bash.b2, dashTop: g.dashTop });
     rec.ok(`${tag}: ...and overlaps neither the disc nor its rounded corner`,
       !hits(g.bash, disc), { bash: g.bash, disc });
-    rec.ok(`${tag}: ...sitting ABOVE the disc's centre line, which is where D9 put it`,
-      (g.bash.y + g.bash.h / 2) < (disc.y + disc.b2) / 2, { bash: g.bash, disc });
+    const bashMid = g.bash.y + g.bash.h / 2, discMid = (disc.y + disc.b2) / 2;
+    rec.ok(`${tag}: ...sitting LEVEL WITH the disc's centre line -- ctlColumn slot 0, the thumb's `
+      + `resting height (bash mid ${Math.round(bashMid)}, disc mid ${Math.round(discMid)})`,
+      Math.abs(bashMid - discMid) <= 2, { bashMid, discMid, bash: g.bash, disc });
   }
 
   /* ═══ CLAIM: BLOCK IS THE DIAGONAL BOTTOM-LEFT OF THE ATTACK DISC ═══
@@ -396,10 +419,38 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
       g.shield.y >= disc.b2, { shield: g.shield, disc });
     if (hasBand) rec.ok(`${tag}: ...and still clears the dashboard band (${g.shield.b2} <= ${g.dashTop})`,
       g.shield.b2 <= g.dashTop, { shield: g.shield, dashTop: g.dashTop });
+    /* ═══ v2.3.2574: WHICH NEIGHBOUR THE "MENTAL SEPARATION" IS FROM ═══
+       This row used to measure Block against Bash with a floor of one whole
+       button, and Bash was 83px away, so it passed comfortably.  Bash is now in
+       slot 0 directly above Block and the gap is 30px, so the old floor fails --
+       and re-pointing it rather than lowering it is the honest fix, because the
+       separation the OWNER asked for was never from Bash:
+
+         "the shield block button to the diagonal bottom left of that right
+          joystick (as a mental separation for combat purpose further away from
+          the other buttons on its own side)"
+
+       ...and the buttons that ask were Special and Whirlwind.  Those are the
+       ones measured against a full-button floor below.  Bash keeps a floor too,
+       at half a button -- the same standard the cluster pair is held to, since
+       an accidental press is an accidental press whichever two buttons it is
+       between.  Worth knowing for the phone check: Block and Bash are the
+       closest pair on screen now, at 30px. */
     if (g.bash) {
       const gap = g.shield.y - g.bash.b2;
-      rec.ok(`${tag}: ...and is well clear of Bash -- ${gap}px of air, the "mental separation" the owner asked for`,
-        gap >= g.shield.h, { gap, floor: g.shield.h, shield: g.shield, bash: g.bash });
+      rec.ok(`${tag}: ...and keeps half a button of air from Bash directly above it -- ${gap}px `
+        + `(floor ${Math.round(g.shield.h / 2)}px). These two are the closest pair on screen.`,
+        gap >= g.shield.h / 2, { gap, floor: Math.round(g.shield.h / 2), shield: g.shield, bash: g.bash });
+    }
+    for (const [nm, box] of [['Special', g.special], ['Whirlwind', g.whirl]]) {
+      if (!box) continue;
+      /* Clear air between the two rects, on whichever axis separates them. */
+      const dx = Math.max(0, Math.max(box.x - g.shield.r2, g.shield.x - box.r2));
+      const dy = Math.max(0, Math.max(box.y - g.shield.b2, g.shield.y - box.b2));
+      const gap = Math.round(Math.hypot(dx, dy));
+      rec.ok(`${tag}: ...and is a WHOLE button clear of ${nm} -- ${gap}px, which is the separation the `
+        + `owner actually asked for (floor ${g.shield.h}px)`,
+        gap >= g.shield.h, { gap, floor: g.shield.h, shield: g.shield, other: box, nm });
     }
   }
 
@@ -416,24 +467,47 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
     const dx = d.whirl.cx - d.special.cx;
     const dy = d.whirl.cy - d.special.cy;
     const centres = Math.round(Math.hypot(dx, dy));
-    const gapX = d.whirl.x - d.special.r2;
+    /* v2.3.2574: the step is LEFTWARD now, so the clear air is between
+       Whirlwind's RIGHT edge and Special's LEFT edge. */
+    const gapX = d.special.x - d.whirl.r2;
     const size = d.special.w;
     console.log(`    ${tag} DIAGONAL: centres ${centres}px apart, clear gap ${gapX}px, buttons ${size}px`);
-    rec.ok(`${tag}: both are on the LEFT half (whirl right ${d.whirl.r2}, special right ${d.special.r2}, half ${Math.round(w / 2)})`,
-      d.whirl.r2 <= w / 2 && d.special.r2 <= w / 2, d);
-    rec.ok(`${tag}: Whirlwind is UP and to the RIGHT of Special -- a diagonal, not a stack and not a row `
+    /* ═══ v2.3.2574: THE OTHER HALF, AND THE OTHER DIAGONAL ═══
+       Owner: "Spec and swirl need to be on the right joystick.  It was put on
+       the left."  So every side-and-direction row here inverts.  They are NOT
+       deleted and re-written from scratch on purpose: the pair of them is the
+       record that this layout has now been asked for both ways, and the next
+       person to move these buttons should see that before they move them. */
+    rec.ok(`${tag}: both are on the RIGHT half (whirl left ${d.whirl.x}, special left ${d.special.x}, half ${Math.round(w / 2)})`,
+      d.whirl.x >= w / 2 && d.special.x >= w / 2, d);
+    rec.ok(`${tag}: Whirlwind is UP and to the LEFT of Special -- a diagonal, not a stack and not a row `
       + `(dx ${dx}, dy ${dy})`,
-      dx > 0 && dy < 0, { whirl: d.whirl, special: d.special });
+      dx < 0 && dy < 0, { whirl: d.whirl, special: d.special });
     /* The owner's own reason, as a number. */
     rec.ok(`${tag}: ...with ${gapX}px of clear air between them, at least half a button (${Math.round(size / 2)}px)`,
       gapX >= size / 2, { gapX, size, whirl: d.whirl, special: d.special });
     rec.ok(`${tag}: ...and centres ${centres}px apart, more than a button and a half (${Math.round(size * 1.4)}px), `
       + `so a thumb aimed at one is not on the other`,
       centres > size * 1.4, { centres, size });
+    /* v2.3.2574: the disc they must clear is the ATTACK one now.  It fades
+       after 2s of no input like the movement disc does, so this asks only when
+       the browser actually painted it rather than asserting against a null. */
+    if (d.attack) {
+      rec.ok(`${tag}: ...and both sit ABOVE the attack disc rather than over its circle `
+        + `(special bottom ${d.special.b2}, whirl bottom ${d.whirl.b2}, disc top ${d.attack.y})`,
+        d.special.b2 <= d.attack.y && d.whirl.b2 <= d.attack.y, { special: d.special, whirl: d.whirl, attack: d.attack });
+      rec.ok(`${tag}: ...and neither reaches past the disc's own right margin, so nothing is pushed `
+        + `under a rounded corner or a landscape inset (special right ${d.special.r2}, disc right ${d.attack.r2}, screen ${w})`,
+        d.special.r2 <= d.attack.r2 + 1 && d.whirl.r2 <= d.attack.r2 + 1,
+        { special: d.special, whirl: d.whirl, attack: d.attack, w });
+    } else {
+      rec.skip(`${tag}: the cluster-vs-attack-disc rows`, 'the disc had faded out of the DOM when the shot was taken');
+    }
+    /* The movement disc is now the far side of the screen from this pair, and
+       that is worth one row: it is what the owner's correction bought. */
     if (d.ljoy) {
-      rec.ok(`${tag}: ...and both sit ABOVE the movement disc rather than over its circle `
-        + `(special bottom ${d.special.b2}, whirl bottom ${d.whirl.b2}, disc top ${d.ljoy.y})`,
-        d.special.b2 <= d.ljoy.y && d.whirl.b2 <= d.ljoy.y, { special: d.special, whirl: d.whirl, ljoy: d.ljoy });
+      rec.ok(`${tag}: ...and the pair is clear of the MOVEMENT disc entirely (whirl left ${d.whirl.x} > move-disc right ${d.ljoy.r2})`,
+        d.whirl.x >= d.ljoy.r2, { whirl: d.whirl, ljoy: d.ljoy });
     }
     /* ═══ THE HEIGHT CEILING, AND WHY IT IS THAT NUMBER ═══
        This is why landscape is in the view list at all.  The hazard is the
@@ -458,35 +532,22 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
   /* ═══ v2.3.2563: THE iOS EDGE GUARD MUST NOT EAT PART OF A BUTTON ═══
      BroTown parks an 18px transparent strip down the left edge at z40 and
      preventDefaults every touchstart in it, so iOS does not read a bezel swipe
-     as its back gesture (v2.3.112).  It is ABOVE this cluster and swallows the
-     touch outright -- so when v2.3.2562 anchored Special at LBTN.left (12), the
-     leftmost 6px of it silently stopped answering and a 48px button became a
-     42px one, under Apple's 44px minimum.
+     as its back gesture (v2.3.112).  It swallows the touch outright -- so when
+     v2.3.2562 anchored Special at LBTN.left (12), the leftmost 6px of it
+     silently stopped answering and a 48px button became a 42px one, under
+     Apple's 44px minimum.
 
-     Two rows, because the rect and the finger are different claims: the box
-     must start at or right of the guard, AND a real tap just inside its left
-     edge must actually fire.  The tap is the one that would have caught the
-     original bug -- the rect was always fine, it was the TOUCH that died. */
+     v2.3.2574: SPECIAL AND WHIRLWIND ARE NOT NEAR THAT EDGE ANY MORE -- they
+     moved to the right disc, and their edge hazard is the screen's RIGHT side,
+     asserted against the attack disc's own margin above.  The guard still has a
+     tenant, though: the Element Burst button inherited this cluster, so the
+     rows below follow it to PASS C rather than being dropped.  Keeping them
+     pointed at SOMETHING matters more than which control it is -- this is the
+     only place in the suite that knows the strip exists. */
   for (const [name, box] of [['Special', d.special], ['Whirlwind', d.whirl]]) {
     if (!box) continue;
-    rec.ok(`${tag}: the ${name} button starts clear of the 18px iOS edge guard (left ${box.x})`,
+    rec.ok(`${tag}: the ${name} button is nowhere near the 18px iOS edge guard now (left ${box.x})`,
       box.x >= 18, { box, guard: 18 });
-  }
-  if (d.special) {
-    const before = await moveState(P);
-    /* 4px inside the button's own left edge: inside the control, and inside the
-       guard's old reach.  A tap here fired nothing before this fix. */
-    const edgeX = d.special.x + 4;
-    await P.page.evaluate(() => { const S = window._gameState.current; S._lastSwipe = 0; S.rpg.mana = S.rpg.maxMana || 100; });
-    await P.page.touchscreen.tap(edgeX, d.special.cy);
-    await P.page.waitForTimeout(400);
-    const spec = await P.page.evaluate(() => (window.__btSpecialBtn ? window.__btSpecialBtn() : null));
-    const after = await moveState(P);
-    rec.ok(`${tag}: ...and a REAL tap ${edgeX - d.special.x}px inside ${'Special'}'s left edge (x=${edgeX}) actually fires it `
-      + `-- the guard is not eating the near edge`,
-      !!(spec && spec.cdLeft > 0), { spec, edgeX, special: d.special });
-    rec.ok(`${tag}: ...and that edge tap does not walk the player either`,
-      after.x === before.x && after.y === before.y && after.held === false, { before, after });
   }
 
   /* ═══ A REAL FINGER, BECAUSE THE ZONE UNDERNEATH IS THE MOVEMENT INPUT ═══
@@ -502,7 +563,14 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
     const fired = await P.page.evaluate(() => (window.__btAbilityStatus ? window.__btAbilityStatus('whirl').cdLeft : -1));
     rec.ok(`${tag}: a REAL finger on the Whirlwind button casts it (cooldown ${Math.round(fired)}ms)`,
       fired > 0, { fired, whirl: d.whirl });
-    rec.ok(`${tag}: ...and does NOT start a walk on the movement zone underneath it`,
+    /* v2.3.2574: the zone underneath is [data-joyzone="R"], so the leak to
+       catch is a SWING and a lock-on, not a walk.  The walk half is asserted
+       too and should now be trivially true -- which is the point: it is the row
+       that would go red if either button ever drifted back over the left half
+       without its guards being re-checked. */
+    rec.ok(`${tag}: ...and does NOT leak into the attack zone underneath it (no auto-attack started)`,
+      after.swing === false, { before, after, whirl: d.whirl });
+    rec.ok(`${tag}: ...and does not start a walk or a dodge either`,
       after.held === false && after.roll === false && after.x === before.x && after.y === before.y,
       { before, after });
   }
@@ -514,7 +582,9 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
     const spec = await P.page.evaluate(() => (window.__btSpecialBtn ? window.__btSpecialBtn() : null));
     rec.ok(`${tag}: a REAL finger on the Special button fires it (cooldown ${spec && Math.round(spec.cdLeft)}ms)`,
       !!(spec && spec.cdLeft > 0), spec);
-    rec.ok(`${tag}: ...and does NOT start a walk either`,
+    rec.ok(`${tag}: ...and does NOT leak into the attack zone underneath it (no auto-attack started)`,
+      after.swing === false, { before, after, special: d.special });
+    rec.ok(`${tag}: ...and does not start a walk or a dodge either`,
       after.held === false && after.roll === false && after.x === before.x && after.y === before.y,
       { before, after });
   }
@@ -590,6 +660,135 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
     console.log(`    ${tag} BLOCK reach at ${g.shield.cx},${g.shield.cy}: ${JSON.stringify(blockHit)}`);
     rec.ok(`${tag}: a finger at the Block button's centre lands on the Block button (got ${blockHit.name})`,
       blockHit.self === true, blockHit);
+  }
+
+  /* ═══ v2.3.2574: PASS C -- THE ELEMENT BURST BUTTON, MEASURED AT LAST ═══
+   *
+   * This button has been on screen since v2.3.1734 and no assertion in this
+   * repo has ever looked at its box.  That is how it came to sit 8px from
+   * Shield Bash at 390, 7px at 360 and 12px sideways -- the tightest pair of
+   * combat buttons in the shipped game, inside the very "enough space ... for
+   * not accidentally pressing the other one" the owner keeps asking for. It
+   * placed itself with `right: 50 + discW + 10`, which is ctlColumn slot 0 to
+   * within two pixels, worked out independently in its own file.
+   *
+   * It has moved to the cluster over the MOVEMENT disc, so three separate
+   * claims need a real measurement here:
+   *   1. the crowding is gone (a whole button of air, not 8px);
+   *   2. it clears the 18px iOS edge guard, which is the hazard it inherited
+   *      along with this cluster and which cost Special 6px of width at
+   *      v2.3.2563;
+   *   3. a REAL finger on it fires the burst and does NOT walk the player.
+   *      (3) is the one that matters most, because moving it here introduced a
+   *   live bug that a rect could never see: the button guarded only
+   *   `onPointerDown`, and a finger fires BOTH pointerdown and touchstart as
+   *   separate dispatches.  Over the attack disc that was survivable; over
+   *   [data-joyzone="L"], whose touchstart begins a walk and whose lM/lE are
+   *   bound to WINDOW, it would have fired the burst AND moved the player.
+   *   Pressed with page.touchscreen.tap rather than dispatchEvent, because a
+   *   dispatched event does not hit-test and so cannot see either half of that
+   *   (TRAPS 67).
+   *
+   * SHIELD UP, so Bash is on screen to be measured against. */
+  await setup(P, { shield: true, shieldUp: true, slot: 'melee' });
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    /* An ENCHANTED weapon at level 6+ is the whole display gate
+       (prog3.burstRefusal): the worker's prog3 cap, level, a weapon in the
+       active slot, element1 on it, and mana.
+       THE LEVEL IS THE FIDDLY ONE.  `rpg.level` is only read when prog3 is NOT
+       live; with the blob adopted the level is prog3CharLevel -- the SUM of the
+       three skill levels, each floored at 1.  So setting `prog3.lvl` does
+       nothing (there is no such field) and the honest seed is a skill level:
+       sword 6 puts the character at 6+1+1 = 8, clear of BURST_MIN_CHAR_LEVEL.
+       Both paths are seeded so the row does not depend on which is live. */
+    S.rpg.level = 20;
+    if (!S.rpg.prog3) S.rpg.prog3 = {};
+    if (!S.rpg.prog3.sk) S.rpg.prog3.sk = {};
+    for (const k of ['sword', 'bow', 'staff']) {
+      if (!S.rpg.prog3.sk[k]) S.rpg.prog3.sk[k] = { level: 1, xp: 0 };
+    }
+    S.rpg.prog3.sk.sword.level = 6;
+    S.rpg.weapon = { type: 'sword', name: 'Ember Sword', gearBase: 'copper', dmg: 5, element1: 'fire' };
+    S.rpg.activeSlot = 'melee';
+    S.rpg.mana = S.rpg.maxMana || 100;
+    S._lastBurstAt = 0;
+  });
+  await P.page.waitForTimeout(900);
+  const e = await boxes(P);
+  console.log(`    ${tag} burst pass: burst=${JSON.stringify(e.burst)} bash=${JSON.stringify(e.bash)}`);
+  if (!e.burst) {
+    /* An honest skip beats an assertion that cannot fail: if the display gate
+       did not open, the rows below would be measuring nothing (TRAPS 66).
+       The skip NAMES the inputs rather than shrugging -- a bare "the gate did
+       not open" is the shape of a report that sends the next person guessing
+       (TRAPS 28), and every one of these is a thing the fixture controls. */
+    const why = await P.page.evaluate(() => {
+      const S = window._gameState.current, R = S && S.rpg;
+      const sk = (R && R.prog3 && R.prog3.sk) || {};
+      return { caps: !!(S._serverCaps && S._serverCaps.prog3),
+        legacyLevel: (R && R.level) || 0,
+        skillLevels: { sword: sk.sword && sk.sword.level, bow: sk.bow && sk.bow.level, staff: sk.staff && sk.staff.level },
+        element1: R && R.weapon && R.weapon.element1, activeSlot: R && R.activeSlot,
+        mana: R && R.mana, maxMana: R && R.maxMana };
+    });
+    rec.skip(`${tag}: the Element Burst rows`,
+      `the button's display gate did not open: ${JSON.stringify(why)}`);
+  } else {
+    rec.ok(`${tag}: the Element Burst button starts clear of the 18px iOS edge guard (left ${e.burst.x})`,
+      e.burst.x >= 18, { burst: e.burst, guard: 18 });
+    rec.ok(`${tag}: ...and is at least Apple's 44px across (${e.burst.w}x${e.burst.h})`,
+      e.burst.w >= 44 && e.burst.h >= 44, { burst: e.burst });
+    if (e.bash) {
+      const dx = Math.max(0, Math.max(e.burst.x - e.bash.r2, e.bash.x - e.burst.r2));
+      const dy = Math.max(0, Math.max(e.burst.y - e.bash.b2, e.bash.y - e.burst.b2));
+      const gap = Math.round(Math.hypot(dx, dy));
+      rec.ok(`${tag}: ...and the Burst/Bash crowding is GONE -- ${gap}px of clear air, `
+        + `was 8px at 390 / 7px at 360 / 12px sideways before v2.3.2574 (floor ${e.burst.w}px)`,
+        gap >= e.burst.w, { gap, floor: e.burst.w, burst: e.burst, bash: e.bash });
+    }
+    /* ═══ THE REAL FINGER ═══ */
+    const before = await moveState(P);
+    const fired0 = await P.page.evaluate(() => (window._gameState.current._lastBurstAt || 0));
+    await P.page.touchscreen.tap(e.burst.cx, e.burst.cy);
+    await P.page.waitForTimeout(500);
+    const after = await moveState(P);
+    const fired1 = await P.page.evaluate(() => (window._gameState.current._lastBurstAt || 0));
+    rec.ok(`${tag}: a REAL finger on the Element Burst button fires it (_lastBurstAt ${fired0} -> ${fired1})`,
+      fired1 > fired0, { fired0, fired1, burst: e.burst });
+    /* Both numbers printed, because "0 before, 0 after" passing an inequality is
+       the shape of an assertion that proves nothing (TRAPS 66/71). */
+    rec.ok(`${tag}: ...and does NOT walk the player -- the movement zone is directly underneath it `
+      + `(pos ${before.x},${before.y} -> ${after.x},${after.y}, held ${before.held}->${after.held})`,
+      after.held === false && after.roll === false && after.x === before.x && after.y === before.y,
+      { before, after, burst: e.burst });
+  }
+
+  /* ═══ v2.3.2574: NOTHING ON SCREEN IS CLOSER THAN HALF A BUTTON ═══
+   * The row that would have caught the Burst/Bash crowding, written so it
+   * cannot miss the next one: every combat control that is actually painted,
+   * compared against every other, with the worst pair named and printed.
+   *
+   * Pairwise over whatever is live rather than a list of expected pairs -- a
+   * named-pair test is exactly what was absent for four years, because nobody
+   * thought to name THAT pair.  The floor is half a button, the same standard
+   * the owner's "enough space" was turned into for the cluster. */
+  {
+    const named = [['Block', e.shield], ['Bash', e.bash], ['Whirlwind', e.whirl],
+      ['Special', e.special], ['Burst', e.burst]].filter((r) => !!r[1]);
+    let worst = null;
+    for (let i = 0; i < named.length; i++) for (let j = i + 1; j < named.length; j++) {
+      const [an, a] = named[i], [bn, b] = named[j];
+      const dx = Math.max(0, Math.max(a.x - b.r2, b.x - a.r2));
+      const dy = Math.max(0, Math.max(a.y - b.b2, b.y - a.b2));
+      const gap = Math.round(Math.hypot(dx, dy));
+      if (!worst || gap < worst.gap) worst = { gap, pair: `${an}/${bn}`, a, b };
+    }
+    console.log(`    ${tag} CLEARANCE MATRIX (${named.length} live): worst ${worst ? worst.pair + ' ' + worst.gap + 'px' : 'n/a'}`);
+    if (!worst) rec.skip(`${tag}: the pairwise clearance floor`, 'fewer than two combat buttons were painted');
+    else rec.ok(`${tag}: the closest pair of combat buttons on screen is ${worst.pair} at ${worst.gap}px, `
+      + `at least half a button (24px) -- across ${named.length} live controls`,
+      worst.gap >= 24, worst);
   }
 
   /* ═══ WHIRL'S OWN RULE: SWORD ONLY -- AND SPECIAL MUST NOT MOVE WHEN IT GOES ═══
