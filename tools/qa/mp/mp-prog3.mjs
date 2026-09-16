@@ -125,6 +125,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first()
     .click({ timeout: 8000 }).catch(() => {});
   await P.page.waitForTimeout(500);
+  /* ═══ v2.3.2593: THE COLUMNS START SHUT, SO OPEN THEM ═══
+     Owner: "the default view should also to have them all closed."  Every
+     assertion in this file is about the CELLS, so each of them now needs its
+     column open first — and the resting state is pinned once, here, rather
+     than assumed by silence everywhere else. */
+  const atRest = await P.page.evaluate(() => ({
+    open: [...document.querySelectorAll('[data-prog3-lane]')].filter((h) => h.getAttribute('aria-expanded') === 'true').length,
+    cells: document.querySelectorAll('[role="button"][aria-label*=" of "]').length,
+  }));
+  rec.ok('the Points screen opens with every column CLOSED and no stat on screen',
+    atRest.open === 0 && atRest.cells === 0, atRest);
+  const openedAll = await H.openPointCols(P);
+  rec.ok('...and all four can be opened (guard for everything below)',
+    openedAll.length === 4, openedAll);
   const disabled = await P.page.locator('[role="button"][aria-disabled="true"][aria-label*=" of "]').count().catch(() => 0);
   rec.ok('every stat is unspendable with an empty pool', disabled === STAT_ROWS, { disabled, STAT_ROWS });
   /* The selector is icon+level chips, so the type names live in
@@ -333,11 +347,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     tops.length === 4 && (Math.max(...tops) - Math.min(...tops)) <= 1, { tops });
 
 
-  /* ═══ v2.3.2592: A COLUMN HEADER EXPLAINS ITS LANE, AND SPENDS NOTHING ═══
-     The accordion this section used to toggle (v2.3.2315/2326: close it,
-     reopen it, switch lanes, with a real drifting thumb) is gone — every
-     lane is open, always — so the header's tap has a new job: it opens the
-     skill's explainer, the same popup the dashboard's combat pills open.
+  /* ═══ v2.3.2593: THE HEADER TOGGLES; THE ℹ️ EXPLAINS ═══
+     Owner: "I do want the columns to close accordion style (opening and
+     closing horizontally)."  So the header's tap is the collapse toggle —
+     mp-statgrid owns the width half of that — and the skill's explainer
+     moved to an ℹ️ that the header only draws while it is open, which is the
+     pair this section checks: the explainer is still reachable, and reaching
+     for it never spends a point or collapses the column under your finger.
      Tapped the way v2.3.2326 taught this file to tap: a REAL CDP touch with
      the drift a thumb has, because the header lives in the sheet's scroller
      and a synthetic dispatch cannot be confiscated by it (that dispatch was
@@ -369,26 +385,75 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const l0 = await P.page.evaluate(() =>
     [...document.querySelectorAll('[data-prog3-lane]')].map((r) => r.getAttribute('data-prog3-lane')));
   rec.ok('four column headers, all present at rest (guard)', l0.join(',') === 'sword,staff,bow,shared', l0);
+
+  /* THE TOGGLE, three taps — a one-tap test cannot tell a toggle from a
+     break: "it closed" also passes on a build that can never reopen, and
+     "it opened" also passes on the set-only code v2.3.2315 replaced. */
   rec.ok('the Melee header can be tapped (guard)', await tapLane('sword'), { at: lastTapAt });
+  await P.page.waitForTimeout(400);
+  const t1 = await P.page.evaluate(() => (document.querySelector('[data-prog3-lane="sword"]') || {}).getAttribute
+    ? document.querySelector('[data-prog3-lane="sword"]').getAttribute('aria-expanded') : null);
+  rec.ok('tapping an OPEN column header collapses it — the accordion half of the ask', t1 === 'false', { t1 });
+  await tapLane('sword');
+  await P.page.waitForTimeout(400);
+  const t2 = await P.page.evaluate(() => {
+    const h = document.querySelector('[data-prog3-lane="sword"]');
+    const body = document.querySelector('[data-prog3-col="sword"]');
+    return { expanded: h && h.getAttribute('aria-expanded'),
+      cells: body ? body.querySelectorAll('[role="button"][aria-label*=" of "]').length : 0,
+      info: !!(h && h.querySelector('[data-lane-info]')) };
+  });
+  rec.ok('...and tapping it again re-opens it, with its stats and its ℹ️ — the collapse is not a trap',
+    t2.expanded === 'true' && t2.cells === 6 && t2.info === true, t2);
+
+  /* THE EXPLAINER, which the header tap used to carry and the ℹ️ carries
+     now.  Reaching for it must not collapse the column under your finger,
+     and must not spend — the two things a nested control on a tappable
+     surface gets wrong (v2.3.2441's inline info button ate the spend). */
+  const infoTapped = await P.page.evaluate(() => {
+    const b = document.querySelector('[data-lane-info="sword"]');
+    if (!b) return false;
+    const r = b.getBoundingClientRect();
+    for (const type of ['pointerdown', 'pointerup']) {
+      b.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 9,
+        pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }));
+    }
+    return true;
+  });
+  rec.ok('the open column carries an ℹ️ and it could be tapped (guard)', infoTapped === true, {});
   await P.page.waitForTimeout(450);
   const laneInfo = await P.page.evaluate(() => {
     const card = document.querySelector('[data-infopopup-card]');
     const title = document.querySelector('[data-infopopup-title]');
+    const h = document.querySelector('[data-prog3-lane="sword"]');
     const S = window._gameState && window._gameState.current;
     return { open: !!card, title: title ? (title.textContent || '').trim() : null,
+      stillOpen: h && h.getAttribute('aria-expanded'),
       pool: (S && S.rpg && S.rpg.prog3 && S.rpg.prog3.pool) || 0,
       shared: (S && S.rpg && S.rpg.prog3 && S.rpg.prog3.shared) || 0 };
   });
-  rec.ok('tapping a column header opens that skill\'s explainer, captioned for it',
+  rec.ok('the ℹ️ opens that skill\'s explainer, captioned for it',
     laneInfo.open && /Melee/i.test(laneInfo.title || ''), laneInfo);
-  rec.ok('...and spends nothing (both pools are what they were: empty)',
+  rec.ok('...without collapsing the column it sits on',
+    laneInfo.stillOpen === 'true', laneInfo);
+  rec.ok('...and without spending (both pools are what they were: empty)',
     laneInfo.pool === 0 && laneInfo.shared === 0, laneInfo);
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(300);
   const closedInfo = await P.page.evaluate(() => !document.querySelector('[data-infopopup-card]'));
   rec.ok('...and Escape closes it', closedInfo === true, { closedInfo });
-  /* And the SHARED header says what its points are for. */
-  rec.ok('the Shared header can be tapped (guard)', await tapLane('shared'), { at: lastTapAt });
+  /* And the SHARED column says what its own points are for. */
+  const sharedTapped = await P.page.evaluate(() => {
+    const b = document.querySelector('[data-lane-info="shared"]');
+    if (!b) return false;
+    const r = b.getBoundingClientRect();
+    for (const type of ['pointerdown', 'pointerup']) {
+      b.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 9,
+        pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }));
+    }
+    return true;
+  });
+  rec.ok('the Shared column\'s ℹ️ could be tapped (guard)', sharedTapped === true, {});
   await P.page.waitForTimeout(450);
   const sharedInfo = await P.page.evaluate(() => {
     const title = document.querySelector('[data-infopopup-title]');
@@ -716,6 +781,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await N.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
       .first().click({ timeout: 8000 }).catch(() => {});
     await N.page.waitForTimeout(800);
+    await H.openPointCols(N);   /* v2.3.2593: the columns start shut */
     rec.ok(`${w}x${h}: the Build screen opened with points to spend (guard)`, gotThere === true, { gotThere });
 
     const fit = await N.page.evaluate(() => {
@@ -869,6 +935,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       .first().click({ timeout: 8000 }).then(() => true).catch(() => false);
     rec.ok(`${w}x${h}: ...and the Build tab with it (guard)`, onBuild === true, { onBuild });
     await M.page.waitForTimeout(700);
+    await H.openPointCols(M);   /* v2.3.2593: the columns start shut */
     const fitPhone = await M.page.evaluate(async () => {
       const btn = document.querySelector('[aria-label*="Luck"], [aria-label*="Defense"]'); /* v2.3.2592 */
       if (!btn) return { err: 'no stat cell found' };

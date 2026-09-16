@@ -57,6 +57,54 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
       .first().click({ timeout: 8000 }).catch(() => {});
     await P.page.waitForTimeout(900);
+    /* ═══ v2.3.2593: THE CLOSED STRIP IS THE NARROWEST THING ON THIS SCREEN ═══
+       A shut column is 58px holding a badge, an icon and a name, and "SHARED"
+       is the longest of the four — so the resting state, not the open grid,
+       is where a label runs out of room.  It is also the state a player now
+       lands on every time they open this screen (owner: "the default view
+       should also to have them all closed"), which makes it the one worth
+       measuring first.  Same detector as below: scrollWidth > clientWidth on
+       every leaf, because at this size an ellipsis and a tight fit look
+       identical in a screenshot. */
+    const shut = await P.page.evaluate(() => {
+      const heads = [...document.querySelectorAll('[data-prog3-lane]')];
+      const leaves = heads.flatMap((h) => [...h.querySelectorAll('*')]
+        .filter((e) => e.children.length === 0 && (e.textContent || '').trim())
+        .map((e) => ({ t: (e.textContent || '').trim(), sw: e.scrollWidth, cw: e.clientWidth,
+          fs: parseFloat(getComputedStyle(e).fontSize) })));
+      return {
+        n: heads.length,
+        open: heads.filter((h) => h.getAttribute('aria-expanded') === 'true').length,
+        w: heads.map((h) => Math.round(h.getBoundingClientRect().width)),
+        clipped: leaves.filter((l) => l.sw > l.cw + 1),
+        minFont: leaves.length ? Math.min(...leaves.map((l) => l.fs)) : null,
+      };
+    });
+    rec.ok(`${tag}: at rest all four columns are shut, sharing the width (guard)`,
+      shut.n === 4 && shut.open === 0 && new Set(shut.w).size === 1, shut);
+    rec.ok(`${tag}: ...with no column's name or count clipped in its strip`,
+      shut.clipped.length === 0, shut.clipped);
+    rec.ok(`${tag}: ...and nothing in a strip below the 10px type floor`,
+      shut.minFont !== null && shut.minFont >= 10, { minFont: shut.minFont });
+
+    /* ONE OPEN is the narrowest a CLOSED strip ever gets (three of them
+       sharing the leftover), so it is the second state worth measuring. */
+    await H.openPointCols(P, ['sword']);
+    const oneOpen = await P.page.evaluate(() => {
+      const heads = [...document.querySelectorAll('[data-prog3-lane]')];
+      const leaves = heads.flatMap((h) => [...h.querySelectorAll('*')]
+        .filter((e) => e.children.length === 0 && (e.textContent || '').trim())
+        .map((e) => ({ t: (e.textContent || '').trim(), sw: e.scrollWidth, cw: e.clientWidth })));
+      return { w: heads.map((h) => Math.round(h.getBoundingClientRect().width)),
+        clipped: leaves.filter((l) => l.sw > l.cw + 1) };
+    });
+    console.log(`    ${tag} one open: ${JSON.stringify(oneOpen.w)}`);
+    rec.ok(`${tag}: with one column open the other three are strips, and nothing in them is cut off`,
+      oneOpen.clipped.length === 0, oneOpen);
+
+    /* Then all four, which is the widest the layout has to be and the state
+       the cell measurements below are about. */
+    await H.openPointCols(P);
 
     const m = await P.page.evaluate(() => {
       /* v2.3.2592: the whole four-column surface, not one lane's body. */

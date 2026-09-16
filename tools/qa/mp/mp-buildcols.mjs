@@ -81,6 +81,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
       .first().click({ timeout: 8000 }).catch(() => {});
     await P.page.waitForTimeout(800);
+    /* v2.3.2593: the RESTING state first — four closed strips, which is what
+       a player now sees when they open this screen (owner: "the default view
+       should also to have them all closed"). */
+    await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/build-after-${w}-closed.png` });
+    /* Then one column open, which is the state the accordion is FOR: Melee
+       wide, the other three as strips. */
+    await H.openPointCols(P, ['sword']);
+    await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/build-after-${w}-one.png` });
+    /* Then all four, the flat grid the measurements below are about. */
+    await H.openPointCols(P);
     await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/build-after-${w}-grid.png` });
 
     const grid = await P.page.evaluate(() => {

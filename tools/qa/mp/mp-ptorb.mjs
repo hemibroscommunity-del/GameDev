@@ -123,6 +123,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first()
     .click({ timeout: 8000 }).catch(() => {});
   await P.page.waitForTimeout(900);
+  /* v2.3.2593: the four columns start CLOSED (owner), and the orb lives on a
+     stat cell — so they are opened before anything is looked for. */
+  await H.openPointCols(P);
 
   const open = await rowsNow(P);
   const shown = open.filter((r) => r.onScreen);

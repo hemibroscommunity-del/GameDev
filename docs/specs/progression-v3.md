@@ -520,12 +520,71 @@ body spend draw on (`prog3PoolShared`). `unspentPointsTotal` is
 MELEE | MAGIC | BOW | SHARED — under a sticky header row. Each header is
 `role=button` `[data-prog3-lane]` with the `, level N` aria-label, the
 points badge absolutely placed left of a centred icon (hidden at 0,
-never absent), the label and `Lv N` under it, and a tap that opens the
-skill's explainer; the Shared header wears the character's portrait
-(`portraitStore`). Cells are the unchanged v2.3.2441 quarter-width
-recipe (`N of M` aria-label, `[data-stat-info]`, `[data-pt-orb]`), each
-bound to its column's lane; POWER prints that lane's own weapon range.
-Landscape keeps the stacked accordion with SHARED as a fourth lane.
+never absent) and the label under it; the Shared header wears the
+character's portrait (`portraitStore`). Cells are the unchanged
+v2.3.2441 quarter-width recipe (`N of M` aria-label, `[data-stat-info]`,
+`[data-pt-orb]`), each bound to its column's lane; POWER prints that
+lane's own weapon range. Landscape keeps the stacked accordion with
+SHARED as a fourth lane.
+
+### The columns are a horizontal accordion (v2.3.2593)
+
+Owner: *"I do want the columns to close accordion style (opening and
+closing horizontally) ... the default view should also to have them all
+closed."*
+
+`openCols` is a LIST of open keys, not one key — with all four shut the
+screen is otherwise empty until you tap, so holding a weapon and Shared
+open together is the useful state and the reason the columns sit beside
+each other rather than stacking. It starts empty; `laneClosed` (the
+landscape accordion) starts `true` for the same instruction.
+
+Width comes from one helper both rows read, or the headers and the cells
+would stop lining up the moment either was retuned:
+
+| State | Closed | Open (390px body) |
+|---|---|---|
+| all shut | 4 × 92 (equal share) | — |
+| 1 open | 3 × 58 | 192 |
+| 2 open | 2 × 58 | 125 each |
+| 3 open | 1 × 58 | 102 each |
+| 4 open | — | 91 each (the flat grid) |
+
+**58px is the floor the owner's own header layout sets**: badge 19 + gap
+2 + icon 22, plus padding. Anything narrower and the points stop sitting
+to the LEFT of the icon, which is the one thing he specified about it.
+An open column never goes below 74px (four open at 320), which is the
+width the cells were already measured at, so a cell never renders
+narrower than it has been checked at. The change animates over 140ms,
+the system's `fast` step, because the width IS the gesture.
+
+A closed column keeps its box and its `[data-prog3-col]` handle and
+simply holds nothing — which is what makes the width animate instead of
+cells jumping between columns.
+
+**The header's tap is the toggle**, so the skill explainer moved to an
+ℹ️ the header draws only while open (a 58px strip already carries a
+badge, an icon and a name; a fourth thing in it would be the 13px glyph
+the thumb-target floor forbids). It is absolutely positioned in the
+corner so the middle of the header always toggles — the v2.3.2441
+lesson, where an inline info button beside the centre silently ate the
+tap. `aria-expanded` and `aria-controls` ride the header.
+
+With everything shut the section shows one 11px line, *"Tap a column to
+spend its points."*, in place of the scroll chevron: four strips and
+nothing else would read as a broken screen, and there is nothing to
+scroll.
+
+**Harness:** `H.openPointCols(P, keys?)` (harness.mjs) opens columns
+with a real CDP touch carrying 16px of drift — the header sits in the
+sheet's scroller, which claims a touch that travels ~15px and fires
+`pointercancel` instead of `pointerup`, so a dispatched PointerEvent
+stayed green through two rounds of a collapse bug it claimed to pin
+(v2.3.2326, TRAPS §67). Six scenarios call it; it is idempotent and
+returns what actually ended up open. `mp-statgrid` owns the accordion
+itself (resting state, open widens / others narrow, close again, two at
+once); `mp-statcols` measures the closed strip at 390/375/320, which is
+the narrowest thing on the screen and the state a player now lands on.
 The ℹ️ window prints two rows for Luck (crit chance, crit damage) and
 says "reach, not damage" / "special attacks only" / "movement, not
 damage" instead of "does not change damage" for the stats whose job is

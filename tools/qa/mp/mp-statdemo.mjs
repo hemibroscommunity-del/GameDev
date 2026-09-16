@@ -125,6 +125,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(900);
   await tapSel(P, '[role="button"][data-section="Build"]');
   await P.page.waitForTimeout(900);
+  /* v2.3.2593: the Points screen's four columns start CLOSED (owner), and
+     every scene below is opened from a cell's ℹ️ inside one of them. */
+  await H.openPointCols(P);
 
   /* v2.3.2592: crit is LUCK now, and four columns are on screen at once —
      the MELEE column's Luck ℹ️, named by column. */

@@ -59,6 +59,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      v2.3.1849 — so `[title="Build"]` matched nothing, this returned false, and
      the five assertions below reported an empty strip as though the readout
      were broken.  The section had simply never opened. */
+  /* v2.3.2593: the Points screen's columns start CLOSED (owner), and every
+     assertion below reaches for a cell's ℹ️ — so they are opened first. */
+  const openCols = () => H.openPointCols(P);
   const openSection = (name) => P.page.evaluate((n) => {
     const t = document.querySelector(`[role="button"][data-section="${n}"]`);
     if (!t) return false;
@@ -70,6 +73,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const onBuild = await openSection('Build');
   rec.ok('the Build section could be opened', onBuild);
   await P.page.waitForTimeout(800);
+  await openCols();   /* v2.3.2593: the four columns start shut */
 
   /* By CLASS, not by prose — the same contract lesson the quest turn-in
      button taught: a caption is owner-facing copy and gets reworded. */

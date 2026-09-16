@@ -98,7 +98,7 @@ const readHeads = (P) => P.page.evaluate(() => (
     return {
       k: t.getAttribute('data-prog3-lane'),
       aria: t.getAttribute('aria-label'), title: t.getAttribute('title'),
-      role: t.getAttribute('role'),
+      role: t.getAttribute('role'), expanded: t.getAttribute('aria-expanded'),
       head: rect(t), cx: Math.round(hr.left + hr.width / 2), h: Math.round(hr.height),
       sticky: getComputedStyle(t.parentElement).position,
       badge: badge ? { ...rect(badge), text: (badge.textContent || '').trim(),
@@ -120,6 +120,53 @@ async function openPoints(P) {
     .first().click({ timeout: 8000 }).catch(() => {});
   await P.page.waitForTimeout(1000);
 }
+
+/* ═══ v2.3.2593: A REAL THUMB ON A COLUMN HEADER ═══
+   CDP touch with drift, not a dispatched PointerEvent, and the repo has paid
+   twice to learn the difference: a synthetic dispatch cannot be confiscated
+   by the sheet's scroller, so it stayed green through two rounds of the
+   owner reporting an accordion that would not collapse (v2.3.2326).  The
+   drift is the point — every real thumb moves 15-20px on a 44px control. */
+async function tapHead(P, key, drift = 16) {
+  const at = await P.page.evaluate((k) => {
+    const el = document.querySelector(`[data-prog3-lane="${k}"]`);
+    if (!el) return null;
+    el.scrollIntoView({ block: 'center' });
+    const r = el.getBoundingClientRect();
+    const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
+    const hit = document.elementFromPoint(x, y);
+    return { x, y, onLane: !!(hit && hit.closest && hit.closest(`[data-prog3-lane="${k}"]`)) };
+  }, key);
+  if (!at || !at.onLane) return false;
+  const cdp = await P.page.context().newCDPSession(P.page);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: at.x, y: at.y }] });
+  for (let i = 1; i <= 4; i++) {
+    await new Promise((r) => setTimeout(r, 20));
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: at.x, y: at.y + (drift * i) / 4 }] });
+  }
+  await new Promise((r) => setTimeout(r, 20));
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+  await P.page.waitForTimeout(320);   /* the 140ms width transition, with room */
+  return true;
+}
+
+/* Which columns are open, and how wide each one is — the two halves of a
+   horizontal accordion, read together so a column that "opened" without
+   taking any width cannot pass. */
+const readCols = (P) => P.page.evaluate(() => (
+  [...document.querySelectorAll('[data-prog3-lane]')].map((h) => {
+    const body = document.querySelector(`[data-prog3-col="${h.getAttribute('data-prog3-lane')}"]`);
+    return {
+      k: h.getAttribute('data-prog3-lane'),
+      open: h.getAttribute('aria-expanded') === 'true',
+      headW: Math.round(h.getBoundingClientRect().width),
+      bodyW: body ? Math.round(body.getBoundingClientRect().width) : null,
+      cells: body ? body.querySelectorAll('[role="button"][aria-label*=" of "]').length : 0,
+      info: !!h.querySelector('[data-lane-info]'),
+    };
+  })
+));
 
 /* The worker's own copy of the two pools and every allocation — the thing a
    spend is measured against. */
@@ -162,6 +209,82 @@ export async function run({ browser, wsPort, webPort, rec }) {
     pools0.shared >= 3, pools0);
 
   await openPoints(P);
+
+  /* ════════ 0. THE RESTING STATE: ALL FOUR SHUT ════════
+     Owner: "the default view should also to have them all closed."  Four
+     strips and a line telling you what to do — no cells, nothing spendable,
+     nothing to scroll. */
+  const rest = await readCols(P);
+  console.log('    at rest: ' + JSON.stringify(rest));
+  rec.ok('the screen opens with all four columns CLOSED (v2.3.2593)',
+    rest.length === 4 && rest.every((c) => c.open === false && c.cells === 0), rest);
+  rec.ok('...sharing the width equally, because four strips is not a layout',
+    rest.length === 4 && new Set(rest.map((c) => c.headW)).size === 1, rest.map((c) => c.headW));
+  const restHint = await P.page.evaluate(() => {
+    const body = document.querySelector('[data-prog3-points]');
+    if (!body) return null;
+    const hint = [...body.querySelectorAll('div')].find((d) => !d.children.length
+      && /tap a column/i.test(d.textContent || ''));
+    const chev = [...body.querySelectorAll('div')].find((d) => !d.children.length && (d.textContent || '').trim() === '▾');
+    return { hint: hint ? hint.textContent.trim() : null, chevron: !!chev };
+  });
+  rec.ok('...with a line saying what to do, and no scroll cue for a screen with nothing to scroll',
+    !!restHint && !!restHint.hint && restHint.chevron === false, restHint);
+  rec.ok('...and no column shows an ℹ️ while it is shut (a 58px strip is already full)',
+    rest.every((c) => c.info === false), rest.map((c) => [c.k, c.info]));
+
+  /* ════════ 0b. OPENING ONE WIDENS IT AND NARROWS THE REST ════════
+     The whole of "opening and closing horizontally": the open column takes
+     the width the closed ones give up.  Asserted as a RELATIONSHIP, not a
+     pixel count, so a retune of the strip width cannot break it. */
+  rec.ok('the Melee header can be tapped (guard)', await tapHead(P, 'sword'), {});
+  const one = await readCols(P);
+  console.log('    one open: ' + JSON.stringify(one));
+  const mel = one.find((c) => c.k === 'sword');
+  const shut = one.filter((c) => c.k !== 'sword');
+  rec.ok('tapping a column header OPENS it — its stats appear',
+    !!mel && mel.open === true && mel.cells === 6, mel);
+  rec.ok('...and it takes the width the other three give up (the horizontal accordion)',
+    !!mel && shut.every((c) => !c.open && c.headW < mel.headW / 1.8), one.map((c) => [c.k, c.headW]));
+  rec.ok('...while the closed three keep their strip, their badge and their name',
+    shut.every((c) => c.headW >= 40 && c.cells === 0), shut);
+  rec.ok('...and the body of the open column is exactly as wide as its header',
+    !!mel && Math.abs(mel.headW - mel.bodyW) <= 1, mel);
+  rec.ok('...and only NOW does it carry an ℹ️',
+    !!mel && mel.info === true && shut.every((c) => c.info === false), one.map((c) => [c.k, c.info]));
+
+  /* It must close again, or the accordion is a trap — the v2.3.2315 lesson,
+     which took three taps to state honestly then and takes three now. */
+  await tapHead(P, 'sword');
+  const shutAgain = await readCols(P);
+  rec.ok('tapping the OPEN column closes it again, back to four equal strips',
+    shutAgain.every((c) => c.open === false && c.cells === 0)
+      && new Set(shutAgain.map((c) => c.headW)).size === 1, shutAgain);
+
+  /* TWO AT ONCE, which is why the columns sit side by side rather than
+     stacking: with all four shut the screen is empty until you tap, so
+     holding a weapon and Shared open together is the useful state. */
+  await tapHead(P, 'sword');
+  await tapHead(P, 'shared');
+  const two = await readCols(P);
+  console.log('    two open: ' + JSON.stringify(two));
+  const twoOpen = two.filter((c) => c.open), twoShut = two.filter((c) => !c.open);
+  rec.ok('two columns can be open at once — a weapon and Shared, side by side',
+    twoOpen.length === 2 && twoOpen.some((c) => c.k === 'sword') && twoOpen.some((c) => c.k === 'shared')
+      && twoOpen.find((c) => c.k === 'sword').cells === 6
+      && twoOpen.find((c) => c.k === 'shared').cells === 7, two);
+  rec.ok('...sharing the open width evenly, still wider than the two closed strips',
+    Math.abs(twoOpen[0].headW - twoOpen[1].headW) <= 1
+      && twoShut.every((c) => c.headW < twoOpen[0].headW), two.map((c) => [c.k, c.headW]));
+
+  /* ════════ AND NOW THE FLAT GRID, WITH ALL FOUR OPEN ════════
+     Everything below measures the four columns together — the layout the
+     owner drew before the accordion was added to it. */
+  for (const k of ['staff', 'bow']) await tapHead(P, k);
+  const all = await readCols(P);
+  rec.ok('all four columns can be open at once (guard for everything below)',
+    all.every((c) => c.open) && all.reduce((n, c) => n + c.cells, 0) === 25, all);
+
   const g = await readGrid(P);
   rec.ok('the points body is open (guard)', !g.err && g.cells.length >= 7, g.err || g.cells.length);
   if (g.err) { await P.ctx.close().catch(() => {}); return; }
@@ -251,6 +374,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   console.log('    header row through the scroll: ' + JSON.stringify(stickyWalk));
   rec.ok('the header row is declared sticky', heads.every((h) => h.sticky === 'sticky'), heads.map((h) => h.sticky));
+  rec.ok('...and every header says whether it is open, for a screen reader and for the four scenarios that resolve through it',
+    heads.every((h) => h.expanded === 'true'), heads.map((h) => [h.k, h.expanded]));
   rec.ok('...and all four headers stay on screen at the top, middle and end of the scroll',
     !stickyWalk.err && ['top', 'mid', 'max'].every((t) => stickyWalk.at[t].length === 4 && stickyWalk.at[t].every((l) => l.on)),
     stickyWalk);

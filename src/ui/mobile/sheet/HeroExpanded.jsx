@@ -143,7 +143,25 @@ export const HeroExpanded = () => {
      closing everything. Hence a separate flag -- which also keeps buildCat
      a valid category at all times, so the seven stat controls, the point
      pools and the prog3_allocate payload need no null handling. */
-  const [laneClosed, setLaneClosed] = useState(false);
+  /* v2.3.2593 (owner): "the default view should also to have them all
+     closed" — sideways too, where the lanes have always been a vertical
+     accordion.  Portrait's four columns use `openCols` below. */
+  const [laneClosed, setLaneClosed] = useState(true);
+  /* ═══ v2.3.2593: THE COLUMNS OPEN AND CLOSE SIDEWAYS ═══
+     Owner: "I do want the columns to close accordion style (opening and
+     closing horizontally) ... the default view should also to have them all
+     closed."
+
+     So a column is a HORIZONTAL accordion panel: closed it is a narrow strip
+     carrying its icon, its waiting points and its name; open it takes the
+     width the closed ones give up and shows its stats.  Held as a LIST of
+     open keys rather than one open key, because with all four shut the screen
+     is otherwise empty until you tap — being able to hold Melee and Shared
+     open side by side is the whole reason the columns sit next to each other
+     rather than stacking.
+     An array, not a Set: it is React state, and a Set mutated in place does
+     not re-render.  Order does not matter; membership does. */
+  const [openCols, setOpenCols] = useState([]);
   /* v2.3.2326: the lane headers live inside the sheet's scroller, which eats
      any tap that drifts more than ~15px. See scrollTap.js. */
   const scrollTap = useScrollTap();
@@ -168,7 +186,13 @@ export const HeroExpanded = () => {
     /* v2.3.2315: and re-open, or a COMBAT pill would deep-link you to a lane
        that stays collapsed -- the request means "show me this", and honouring
        half of it is worse than ignoring it. */
-    if (_req.cat) { setBuildCat(_req.cat); setLaneClosed(false); }
+    if (_req.cat) {
+      setBuildCat(_req.cat); setLaneClosed(false);
+      /* v2.3.2593: ...and OPEN that column, or a COMBAT pill would deep-link
+         you to a closed strip.  Guarded so this render-phase update cannot
+         loop: it only ever grows the list, and only when the key is absent. */
+      setOpenCols((prev) => (prev.indexOf(_req.cat) >= 0 ? prev : prev.concat([_req.cat])));
+    }
   }
 
   const S = getState();
@@ -1491,6 +1515,43 @@ export const HeroExpanded = () => {
                owner drew: the icon (with its badge) over the name.  The level
                moved into the title and aria-label. */
             const HEAD_H = 44;
+            /* ═══ v2.3.2593: HOW THE FOUR SHARE THE WIDTH ═══
+               A closed strip is 58px, which is what the owner's own header
+               layout costs at its smallest: badge 19 + gap 2 + icon 22 = 43,
+               plus 2px of padding each side and a little air.  Anything
+               narrower and the points would have to stop sitting to the LEFT
+               of the icon, which is the one thing he specified about it.
+
+               With every column shut they share the width equally — four
+               strips is not a layout, it is the resting state, and four
+               58px strips against 378px of body would leave 146px of nothing.
+               Once ANY column is open the closed ones drop to the strip and
+               the open ones split what is left:
+
+                   390px body 378, gaps 12, usable 366
+                     1 open   3 x 58 = 174 closed,  192 open
+                     2 open   2 x 58 = 116 closed,  125 each
+                     3 open   1 x 58 =  58 closed,  102 each
+                     4 open   91 each (the flat grid)
+                   320px body 308, gaps 12, usable 296
+                     1 open   174 closed, 122 open
+                     3 open    58 closed,  79 each
+                     4 open    74 each
+
+               The narrowest an OPEN column ever gets is 74px, which is the
+               width the cells were measured at for 320 (NARROW below), so a
+               cell never renders narrower than it has already been checked at.
+               Header and body read the same helper, or the two rows would
+               stop lining up the moment one of them was retuned. */
+            const COL_CLOSED_W = 58;
+            const isColOpen = (k) => openCols.indexOf(k) >= 0;
+            const anyColOpen = openCols.length > 0;
+            const colFlex = (k) => ((anyColOpen && !isColOpen(k))
+              ? { flex: `0 0 ${COL_CLOSED_W}px`, width: COL_CLOSED_W, minWidth: 0 }
+              : { flex: '1 1 0', minWidth: 0 });
+            const toggleCol = (k) => setOpenCols((prev) => (prev.indexOf(k) >= 0
+              ? prev.filter((x) => x !== k)
+              : prev.concat([k])));
             /* What a column HEADER says when tapped: the skill it belongs to,
                its level, and what its points may buy.  The dashboard's combat
                pills open the same explainer (DashColumns), so the two screens
@@ -1527,6 +1588,7 @@ export const HeroExpanded = () => {
                level under that.  The Shared column's icon is the portrait. */
             const colHead = (col) => {
               const shared = !!col.shared;
+              const open = isColOpen(col.key);
               const pts = shared ? sharedAvail : laneAvail(col.key);
               const lvl = shared ? prog3CharLevel(R) : prog3SkillLevel(R, col.key);
               const iconSrc = shared ? sharedIcon : col.iconSrc;
@@ -1534,16 +1596,34 @@ export const HeroExpanded = () => {
                 <div key={col.key}
                   role="button"
                   data-prog3-lane={col.key}
+                  /* The aria-label is a CONTRACT four scenarios resolve
+                     through (`, level N`); `aria-expanded` is what the
+                     accordion adds to it, and what a screen reader needs to
+                     know a tap will open something rather than spend. */
                   aria-label={`${col.label}, level ${lvl}`}
+                  aria-expanded={open}
+                  aria-controls={`bt-prog3-col-${col.key}`}
                   title={`${col.label} — level ${lvl} — ${pts} point${pts === 1 ? '' : 's'} to spend`}
-                  {...scrollTap(() => openLaneInfo(col))}
+                  {...scrollTap(() => toggleCol(col.key))}
                   style={{
-                    flex: '1 1 0', minWidth: 0, height: HEAD_H, boxSizing: 'border-box',
+                    ...colFlex(col.key),
+                    height: HEAD_H, boxSizing: 'border-box',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
-                    borderRadius: 9, padding: '2px 2px',
-                    border: `1px solid ${pts > 0 ? COL.accent : COL.tileBor}`,
-                    background: pts > 0 ? COL.accentFill : COL.wellSoft,
+                    position: 'relative',
+                    /* The open column is the one raised member and keeps its
+                       bottom square against the cells it heads; the closed
+                       ones read as recessed wells (game.css's depth doctrine,
+                       v2.3.1576).  Brass still means "points waiting", open
+                       or shut, because that is the thing worth spotting. */
+                    borderRadius: open ? '9px 9px 0 0' : 9,
+                    border: `1px solid ${pts > 0 ? COL.accent : open ? COL.borderStrong : COL.tileBor}`,
+                    borderBottom: open ? 'none' : undefined,
+                    background: open ? (pts > 0 ? COL.accentFill : COL.raised) : (pts > 0 ? COL.accentFill : COL.wellSoft),
+                    boxShadow: open ? 'none' : 'inset 0 1px 3px rgba(0,0,0,.28)',
                     cursor: 'pointer', touchAction: 'manipulation', overflow: 'hidden',
+                    /* 140ms, the system's `fast` step: the width change is the
+                       whole gesture, so it is worth seeing happen. */
+                    transition: 'flex-basis .14s var(--ease-ui, ease), flex-grow .14s var(--ease-ui, ease)',
                   }}>
                   <div style={{ position: 'relative', width: '100%', height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <span aria-label={`${pts} points to spend on ${col.label}`}
@@ -1562,6 +1642,35 @@ export const HeroExpanded = () => {
                     lineHeight: 1, color: pts > 0 ? COL.accent : COL.text,
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
                   }}>{col.label}</span>
+                  {/* ═══ THE EXPLAINER MOVES TO AN ℹ️, AND ONLY WHEN OPEN ═══
+                      The header's tap is the collapse toggle now, so the
+                      skill's explainer needs its own control — the same
+                      arrangement the cells have, and for the same reason.
+                      Drawn only on an OPEN column: a 58px closed strip
+                      already carries a badge, an icon and a name, and a
+                      fourth thing in it would be the 13px glyph mp-prog3's
+                      thumb-target floor exists to forbid.  One tap opens the
+                      column; the ℹ️ is there when it does.
+                      Absolutely positioned in the corner so the middle of the
+                      header — where a thumb lands — always toggles (the
+                      v2.3.2441 lesson: an inline info button beside the
+                      centre silently ate the tap). */}
+                  {open && (
+                    <button type="button"
+                      data-lane-info={col.key}
+                      aria-label={`About ${col.label}`}
+                      {...scrollTap(() => openLaneInfo(col), { inner: true })}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        position: 'absolute', top: 1, right: 1,
+                        width: 22, height: 22, borderRadius: 999, padding: 0,
+                        background: 'transparent', border: `1px solid ${COL.borderStrong}`,
+                        color: COL.muted, fontSize: 11, fontWeight: 900,
+                        fontFamily: 'Georgia, "Times New Roman", serif', fontStyle: 'italic',
+                        lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', touchAction: 'manipulation',
+                      }}>i</button>
+                  )}
                 </div>
               );
             };
@@ -2379,24 +2488,48 @@ export const HeroExpanded = () => {
                   }}>
                     {POINT_LANES.map((col) => colHead(col))}
                   </div>
+                  {/* THE BODIES.  Same `colFlex` the headers take, so the two
+                      rows cannot stop lining up; a closed column keeps its
+                      box (and its `data-prog3-col` handle) and simply has
+                      nothing in it, which is what makes the width animate
+                      rather than the cells jumping between columns. */}
                   <div style={{ display: 'flex', gap: COL_GAP, alignItems: 'flex-start', minWidth: 0 }}>
                     {POINT_LANES.map((col) => (
                       <div key={col.key} data-prog3-col={col.key}
-                        style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', gap: COL_GAP }}>
-                        {(col.shared ? prog3BodyMeta() : prog3AtkMeta()).map((m) => statCell({ ...m, atk: !col.shared }, col.key))}
+                        id={`bt-prog3-col-${col.key}`}
+                        style={{ ...colFlex(col.key), display: 'flex', flexDirection: 'column', gap: COL_GAP,
+                          transition: 'flex-basis .14s var(--ease-ui, ease), flex-grow .14s var(--ease-ui, ease)' }}>
+                        {isColOpen(col.key)
+                          && (col.shared ? prog3BodyMeta() : prog3AtkMeta())
+                            .map((m) => statCell({ ...m, atk: !col.shared }, col.key))}
                       </div>
                     ))}
                   </div>
-                  {/* THE SCROLL CUE.  Subtle, and NOT a button — aria-hidden,
-                      no role, no handler, so it adds nothing to the face count
-                      mp-infopop measures.  It earns its place because v2.3.2288
-                      deliberately killed the bottom scroll-edge fade on every
-                      section but Overview, so this screen has no other overflow
-                      cue — and four columns of cells are taller than the window. */}
+                  {/* ═══ v2.3.2593: THE RESTING STATE SAYS WHAT TO DO ═══
+                      With every column shut this section is four strips and
+                      nothing else, which is the owner's ask and which would
+                      read as a broken screen without a line saying why.  One
+                      12px line, no border and no fill: it is a hint, not a
+                      control (the v2.3.2326 caption rule).  It replaces the
+                      scroll cue exactly when there is nothing to scroll. */}
+                  {!anyColOpen ? (
+                    <div style={{
+                      height: 14, lineHeight: '14px', textAlign: 'center', marginTop: 4,
+                      fontSize: 11, color: COL.text2, flex: 'none',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>Tap a column to spend its points.</div>
+                  ) : (
+                  /* THE SCROLL CUE.  Subtle, and NOT a button — aria-hidden,
+                     no role, no handler, so it adds nothing to the face count
+                     mp-infopop measures.  It earns its place because v2.3.2288
+                     deliberately killed the bottom scroll-edge fade on every
+                     section but Overview, so this screen has no other overflow
+                     cue — and an open column is taller than the window. */
                   <div aria-hidden="true" style={{
                     height: 12, lineHeight: '12px', textAlign: 'center',
                     fontSize: 13, color: COL.muted, opacity: 0.45, flex: 'none', marginTop: 2,
                   }}>▾</div>
+                  )}
                 </div>
               )}
               </>
