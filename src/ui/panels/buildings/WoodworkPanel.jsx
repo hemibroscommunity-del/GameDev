@@ -3,6 +3,7 @@ import { BT_AUDIO, REFORGE_BONUSES, STAT_LABELS, WEAPON_STASH_MAX, WEAPON_TYPES,
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 /* === WoodworkPanel — buildingPanel === 'woodwork' sub-panel === */
 /* v2.3.873: extracted verbatim from the buildingPanel === 'woodwork' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -290,11 +291,13 @@ export function WoodworkPanel(props) {
               reforgeBonus: null,
               hardenBonus: null
             };
+            var _wwLvlBefore = R.lifeSkills.woodworking.level;
             var leveled = addLifeSkillXp(R.lifeSkills, 'woodworking', wt.minLvl * 5);
             if (!R._questFlags) R._questFlags = {};
             R._questFlags.craftedWoodWeapon = true;
             pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Crafted ' + wt.label + ' ' + WEAPON_TYPES[wpnType].label + '!', '#8B6914');
             if (wt.slots > 0) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 42, wt.slots + ' gem slot' + (wt.slots > 1 ? 's' : '') + ' ready!', '#a855f7');
+            if (leveled) celebrateLifeSkillLevel(stateRef.current, 'woodworking', R.lifeSkills.woodworking.level, _wwLvlBefore); /* v2.3.2591 */
             if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 54, 'Woodworking Lv' + R.lifeSkills.woodworking.level + '!', '#D8A94D');
             BT_AUDIO.collect();
             setRpgState(_objectSpread({}, R));

@@ -2727,6 +2727,33 @@ BT_AUDIO.SFX_MANIFEST = {
      entry here, which is what satisfies the animation/asset preloading law
      -- no lazy first-use fetch on the frame a coin is grabbed. */
   'coin-pickup':   '/sfx/loot/coin-pickup.mp3',
+  /* ═══ v2.3.2591: THE LEVEL-UP STING (owner art) ═══
+     Owner: "a new level up notification ... the first is an audio that should
+     play simultaneously with the level up display."  Played by
+     src/ui/LevelUpBurst.jsx on the same commit that paints the burst's first
+     frame.
+
+     IT REPLACES SILENCE, not a sound.  BT_AUDIO.levelUp() below is built
+     entirely out of beep(), and beep() has been a no-op since v2.3.1103 when
+     the owner removed every procedurally-synthesised sound — so a level-up has
+     made no noise at all for a long time, and the call sites still read as
+     though it did.  levelUp() is left in place rather than deleted: it is
+     called from six files and its silence harms nothing.
+
+     HERE rather than fetched on first level-up, which satisfies the animation/
+     asset preloading LAW in CLAUDE.md for the audio half of this feature:
+     loadSfxManifest() fetches and DECODES every entry in this map at the
+     loading gate (replayed by unlock() when the gesture comes after it), so
+     the first level-up of a session plays instead of being the one silent one
+     — the v2.3.2452 failure, which is the same bug in the combat samples.
+
+     8.40s -> 3.22s, 268KB -> 100KB, by tools/trim_mp3.py: the sting is 2.24s
+     of sound and the source carried six further seconds of digital silence
+     after the tail fell below -54 dBFS.  A LOSSLESS frame-boundary cut, not a
+     re-encode — there is no mp3 encoder in the sandbox, so the 256kbps/48kHz
+     joint-stereo of the original is untouched.  mp3 per the v2.3.1610 rule
+     above (decodeAudioData refuses AAC outside Safari). */
+  'level-up':      '/sfx/levelup/level-up-v1.mp3',
 };
 
 /* Regular sword-hit alternation. The two samples cycle so a flurry of hits

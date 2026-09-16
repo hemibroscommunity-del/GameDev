@@ -3,6 +3,7 @@ import { BT_AUDIO, ELEMENTS, GEM_CUT_TIERS, ZONE_RESOURCES, addLifeSkillXp } fro
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 /* === GemcutPanel — buildingPanel === 'gemcut' sub-panel === */
 /* v2.3.875: extracted verbatim from the buildingPanel === 'gemcut' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -172,7 +173,17 @@ export function GemcutPanel(props) {
               pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Gem shattered!', '#D95C54');
               BT_AUDIO.beep(200, 0.06, 0.1, 'square');
             }
+            var _gcLvlBefore = sk.gemCutting.level;
             var leveled = addLifeSkillXp(sk, 'gemCutting', 15);
+            /* v2.3.2591: a CRAFTING level is a level too.  This site already decided a
+               level was worth telling the player about — it just told them in the world,
+               at the player's feet, under a modal panel they are looking at instead.  That
+               is the exact defect v2.3.1915 fixed for the gather trio ("I didn't even
+               notice my woodcutting went up 2 levels"), and the owner's ask here is for
+               the new notification on "both lifeskills and combat skills".  So the same
+               celebration fires, and the world popup stays as the in-world echo, exactly
+               as lifeSkillRewards.js leaves it for fishing/woodcutting/mining. */
+            if (leveled) celebrateLifeSkillLevel(stateRef.current, 'gemCutting', sk.gemCutting.level, _gcLvlBefore);
             if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 50, 'Gem Cutting Lv' + sk.gemCutting.level + '!', '#D8A94D');
             setRpgState(_objectSpread({}, R));
             try {

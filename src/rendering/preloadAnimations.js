@@ -46,6 +46,7 @@ import { preloadJogHeadOverlays } from './playerSkins.js'; /* v2.3.1376: their h
 import { ZONE_VARIANT_MAP, MONSTER_VARIANTS, variantsForZone } from '../data/monsterVariants.js'; /* v2.3.1405: per-zone variant scoping */
 import { loadMonsterRecolor, recolorFamilyOf, freeMonsterRecolor } from './monsterRecolor.js'; /* v2.3.1534: per-zone recolour; v2.3.2272: and its release */
 import { loadNpcSprites } from './npcSprites.js'; /* v2.3.1672: NPC figure art */
+import { preloadLevelUpBurst } from './levelUpBurstPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
    screen"): ZONE-SPECIFIC textures moved OFF the blocking pre-game gate —
@@ -237,6 +238,20 @@ export async function preloadWorldAnimations() {
        all, so the badge never once rendered.  Remove this line and it goes
        blank again, quietly. */
     broBadge: preloadBroBadge(),
+    /* ═══ v2.3.2591: the level-up burst + the skill icons it seats in the
+       medallion.  GLOBAL, not per-zone, and the reason is the whole point of
+       the asset: you can level up ANYWHERE — a monster kill in any combat
+       zone, a tree in Frost Ridge, a cook at the campfire, a point spent in
+       the Build sheet — so there is no zone to scope it to and the ZONE-ASSET
+       EXCEPTION does not reach it.
+       It is a DOM asset rather than a Pixi texture (the burst draws in the
+       overlay layer, like the banner it replaces, not in the world), which is
+       exactly the kind of thing a later reader assumes was forgotten and
+       "fixes" with a lazy first-use load.  It was not forgotten: 424KB
+       fetched on the frame the player first levels up is the mid-play hitch
+       the LAW exists to stop, landing on the most dramatic moment the game
+       has.  See levelUpBurstPreload.js. */
+    levelUpBurst: preloadLevelUpBurst(),
   };
 
   const names = Object.keys(groups);

@@ -47,6 +47,8 @@ import { LoginScreen } from './panels/LoginScreen.jsx';
 import { checkAccountLogin } from '@/networking/index.js';
 import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
+import LevelUpBurst from './LevelUpBurst.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner */
+import { LEVELUP_TOTAL_MS } from '@/data/levelUpBurst.js';
 import { startBuildWatch } from '@/game/buildWatch.js';
 import { TouchControls, RBTN_BODY_BG, RBTN_BODY_BG_HOT, RKNOB_BG, RKNOB_BG_HOT } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
@@ -11081,7 +11083,36 @@ export var BroTown = function BroTown(_ref0) {
       color: 'rgba(255,255,255,.45)',
       marginTop: 3
     }
-  }, "Step ", Math.min(tutorialStep + 1, 7), "/7"))), levelUpMsg && Date.now() - levelUpMsg.ts < 4000 && /*#__PURE__*/React.createElement("div", {
+  }, "Step ", Math.min(tutorialStep + 1, 7), "/7"))),
+  /* ═══ v2.3.2591: A LEVEL-UP IS THE OWNER'S ART NOW, NOT A TEXT BANNER ═══
+     Owner: "I want a new level up notification instead of the one that
+     currently exists upon leveling up both lifeskills and combat skills."
+
+     INSTEAD OF, so this is an either/or and not a second thing on screen.
+     The branch is HERE, at the render, rather than at the trigger sites, and
+     that is what makes "both lifeskills and combat skills" true without
+     having to find every one of them: the four client paths in
+     levelCelebration.js, the worker's prog3_level and combat_credit, the
+     legacy client loop in gameEvents.js and the seven crafting panels all
+     set this same `levelUpMsg`.  Catch it in one place and none can be
+     missed, now or later.
+
+     The OTHER kinds this slot carries keep the old banner, deliberately:
+     'warning' is the red zone-gate alert (zoneTransitions.js, v2.3.1160) and
+     the bare stat kinds are pushStatIncreaseNotice (combatHelpers.js).
+     Neither is a level-up and neither should wear a LEVEL UP medallion.
+
+     TWO IN QUICK SUCCESSION: replace-and-restart.  The newest level is the
+     truest state, it is what this single useState already did, and queueing
+     would be worse than it sounds — a ten-point Build spend would owe the
+     player half a minute of overlay.  Multi-level jumps are already
+     coalesced into one celebration at the final level upstream
+     (celebrateLevelUps), and the STING alone is rate-limited so a restart
+     flurry cannot machine-gun it (LevelUpBurst.playLevelUpSting). */
+  levelUpMsg && (levelUpMsg.kind === 'combat' || levelUpMsg.kind === 'life')
+    && Date.now() - levelUpMsg.ts < LEVELUP_TOTAL_MS
+    && /*#__PURE__*/React.createElement(LevelUpBurst, { key: levelUpMsg.ts, msg: levelUpMsg }),
+  levelUpMsg && levelUpMsg.kind !== 'combat' && levelUpMsg.kind !== 'life' && Date.now() - levelUpMsg.ts < 4000 && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       inset: 0,
