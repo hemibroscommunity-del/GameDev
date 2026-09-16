@@ -574,29 +574,74 @@ export async function run({ browser, wsPort, webPort, rec }) {
      to be seated with the bow and staff."
 
      So it is tested where it now lives -- after 5b, which is the turn-in that
-     pays the bow and the staff -- and it tests the NEW gesture: a double tap on
-     the Attack button raises the guard, and it latches.  The old section that
-     stood at 5 drove the melee ShieldButton and is gone with the lesson it
-     described.
+     pays the bow and the staff.
 
-     THE SLOT IS THE POINT.  The lesson is bow/staff-only and its tracker now
-     requires the slot to match, so this drives the gesture with the BOW active.
+     ═══ v2.3.2576: THIS SECTION DROVE A GESTURE THAT NO LONGER EXISTS ═══
+     It used to read "it tests the NEW gesture: a double tap on the Attack
+     button raises the guard, and it latches", and five of its rows have been
+     RED on main ever since v2.3.2472 retired that gesture in favour of the
+     Block button (owner decision D8), with v2.3.2542 leaving the right
+     control's pair of taps bound to nothing at all.  TRAPS §78 called those
+     rows correct and the GAME wrong, and that is the direction this change
+     runs: the lesson's copy and anchor now name the Block button, so these
+     rows drive the Block button.
+
+     NOT A WEAKENING.  Every property the old rows pinned is still pinned here,
+     through the control that exists: the guard goes up, the lesson counts it
+     and retires, it LATCHES with no finger on the control, a second tap drops
+     it, and raising it does not cost you the monster you had locked (which was
+     v2.3.2271's find, and is a real risk for any control living over the right
+     touch zone -- see ShieldButton's "every touch stops the event").  Nothing
+     is skipped and no assertion is deleted.
+
+     AND IT IS DRIVEN WITH A REAL FINGER.  The old rows used window.__touch,
+     which is dispatchEvent and does not hit-test -- TRAPS §67, the trap that
+     let a long-press test stay green for 173 versions over a control that
+     `pointer-events:none` had made unreachable.  page.touchscreen.tap goes
+     through the browser's own hit testing, so these rows prove the Block
+     button is REACHABLE at a phone width, not merely that its handler is
+     wired.
+
+     THE SLOT IS THE POINT.  The lesson is bow/staff-only and its tracker
+     requires the slot to match, so this drives the button with the BOW active.
      A melee raise must NOT complete it -- asserted below, because that is the
-     failure the tracker change exists to prevent and it is invisible otherwise. */
+     failure the tracker change exists to prevent and it is invisible otherwise.
+
+     THE MONSTER IS LOAD-BEARING.  `shieldButtonLive` shows the Block button
+     only when a fight is on or about to be, and the lesson now anchors to that
+     button -- so with an empty field the mark measures null and is skipped by
+     design.  One fodder monster inside the perimeter is what makes the control
+     (and therefore the lesson) exist at all; without it this section would
+     assert nothing and pass, which is the failure mode the file's own header
+     warns about. */
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     const R = S.rpg;
     R.activeSlot = 'ranged';
     S._shieldUp = false;
     S.autoAttack = false;
-    S._rTapAt = 0;
+    /* The fight that puts the Block button on screen. */
+    S._serverMonsters = false;
+    S.monsters = [{
+      id: 'qa_guard_m', arch: 'fodder', archetype: 'fodder', type: 'fodder',
+      x: S.player.x + 60, y: S.player.y, renderX: S.player.x + 60, renderY: S.player.y,
+      spawnX: S.player.x + 60, spawnY: S.player.y, targetX: S.player.x + 60, targetY: S.player.y,
+      hp: 500, curHp: 500, maxHp: 500, dmg: 0, level: 1, gold: 0, spd: 0, vx: 0, vy: 0,
+      alive: true, statuses: {}, _hitThisSwing: false, _atkCd: 0, _stunUntil: 0,
+      respawnAt: 0, moveTimer: 0, _stuckArrows: [],
+    }];
   });
   await P.page.waitForTimeout(600);
   const g1 = await waitCoach(P, 'blockRanged');
   rec.ok('after the turn-in and the weapons, the GUARD lesson appears',
     !!(g1 && g1.id === 'blockRanged'), g1);
-  rec.ok('...and it teaches the DOUBLE TAP, not the old shield button',
-    !!(g1 && /double.?tap/i.test(g1.text) && !/shield button/i.test(g1.text)), g1 && g1.text);
+  /* v2.3.2576: this row asserted the OPPOSITE until now -- "it teaches the
+     DOUBLE TAP, not the old shield button" -- and it passed, because the game
+     really was still saying it.  It is the row TRAPS §78 means when it says the
+     lesson "has been wrong since v2.3.2472": green for the wrong reason.  Both
+     directions are pinned so a revert of the copy cannot pass quietly. */
+  rec.ok('...and it teaches the BLOCK BUTTON, not the retired double tap',
+    !!(g1 && /block button/i.test(g1.text) && !/double.?tap/i.test(g1.text)), g1 && g1.text);
   /* ═══ v2.3.2495: THE SCREEN-SIZED OVAL ═══
      Owner, of the first two minutes: a huge oval appears across the play field
      after the weapon swap.  It was THIS lesson measuring its fallback anchor
@@ -649,6 +694,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('a finger on the message lands on the MESSAGE, not the touch zone '
       + 'underneath it', !!(under && under.coach === true), under);
 
+    /* ═══ v2.3.2577: A DRAG ACROSS THE CARD IS NOT A DISMISSAL ═══
+       The card is pointerEvents:'auto' so it can be tapped away, and it floats
+       over the full-height `[data-joyzone]` layer that takes the movement
+       thumb.  So a player reaching for a control THROUGH the card used to be
+       answered with "lesson learned, never show this again" -- a permanent
+       per-browser record, for something they never did.
+
+       Driven through CDP touch rather than window.__touch: a dispatched event
+       does not hit-test (TRAPS §67), so it would be answered by whatever
+       element it was aimed at regardless of what is really on top, and the
+       whole question here is which of two stacked layers takes the press.
+       Playwright's touchscreen has tap() but no drag, hence the raw CDP.
+
+       Run BEFORE the tap below, so the tap still has a card to put down --
+       and so the pair reads as one statement: a drag keeps it, a tap ends it. */
+    {
+      const cdp = await P.page.context().newCDPSession(P.page);
+      const cx = cardBox.left + cardBox.width / 2, cy = cardBox.top + cardBox.height / 2;
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: cx, y: cy, id: 1 }] });
+      for (let i = 1; i <= 5; i++) {
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: cx + i * 14, y: cy, id: 1 }] });
+        await P.page.waitForTimeout(60);
+      }
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await P.page.waitForTimeout(600);
+      const dragged = await P.page.evaluate(() => {
+        const card = document.querySelector('[data-coach-card]');
+        const t = (window.__btCoach && window.__btCoach()) || {};
+        return { card: !!card, doneGuard: !!(t.done && t.done.blockRanged) };
+      });
+      rec.ok('dragging across the card does NOT retire the lesson',
+        dragged.card === true && dragged.doneGuard === false, dragged);
+    }
+
     await P.page.evaluate(() => {
       const S = window._gameState.current;
       S.autoAttack = false; S.isSwinging = false; S.swingTimer = 0;
@@ -696,32 +775,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(400);
 
-  /* THE GESTURE ITSELF, through the real button and real touch events -- a
+  /* THE CONTROL ITSELF, through the real button and a REAL FINGER -- a
      scenario that called raiseShieldToggle directly would prove the lesson
-     watches state and nothing about the control the lesson is teaching. */
-  const rBtn = await rectOf(P, '.bt-rjoy-base');
-  rec.ok('the Attack button is on screen to double-tap (guard)', !!rBtn, rBtn);
-  if (rBtn) {
-    const tapTwice = async () => P.page.evaluate(() => {
-      const e = document.querySelector('.bt-rjoy-base');
-      const r = e.getBoundingClientRect();
-      const x = r.x + r.width / 2, y = r.y + r.height / 2;
-      window.__touch(e, 'touchstart', x, y, 71);
-      window.__touch(e, 'touchend', x, y, 71);
-      return new Promise((res) => setTimeout(() => {
-        window.__touch(e, 'touchstart', x, y, 72);
-        window.__touch(e, 'touchend', x, y, 72);
-        res(true);
-      }, 90));
-    });
-    await tapTwice();
+     watches state and nothing about the control the lesson is teaching.
+
+     v2.3.2576: this is the Block button now, and the finger is
+     page.touchscreen.tap rather than window.__touch.  dispatchEvent hands the
+     event straight to the target and never hit-tests (TRAPS §67), so it cannot
+     tell "the button works" from "the button is buried under the right touch
+     zone" -- and this button lives over that zone, at a phone width, which is
+     exactly the geometry §67 was written about. */
+  const sBtn = await rectOf(P, '[data-shield]');
+  rec.ok('the Block button is on screen to tap (guard)', !!sBtn, sBtn);
+  if (sBtn) {
+    const tapBlock = async () => {
+      const c = await rectOf(P, '[data-shield]');
+      await P.page.touchscreen.tap(c.left + c.width / 2, c.top + c.height / 2);
+    };
+    await tapBlock();
     await P.page.waitForTimeout(500);
     const up = await P.page.evaluate(() => {
       const S = window._gameState.current;
       return { shieldUp: !!S._shieldUp, slot: S.rpg && S.rpg.activeSlot,
         coach: window.__btCoach && window.__btCoach() };
     });
-    rec.ok('double-tapping Attack with the bow out RAISES the guard', up.shieldUp === true, up);
+    rec.ok('tapping Block with the bow out RAISES the guard', up.shieldUp === true, up);
     rec.ok('...and the lesson counts it', !!(up.coach && up.coach.raised), up.coach);
     const afterGuard = await coach(P);
     rec.ok('...and retires', !afterGuard || afterGuard.id !== 'blockRanged', { afterGuard, up });
@@ -732,22 +810,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const still = await P.page.evaluate(() => !!window._gameState.current._shieldUp);
     rec.ok('the guard STAYS up with no finger on the control', still === true, { still });
 
-    /* AND A SINGLE TAP ENDS IT, which is the owner's "tap the right joystick
-       again, attack" -- on this weapon they are the same control, so one tap
-       both shoots and drops the guard. */
-    await P.page.evaluate(() => {
-      const e = document.querySelector('.bt-rjoy-base');
-      const r = e.getBoundingClientRect();
-      const x = r.x + r.width / 2, y = r.y + r.height / 2;
-      window.__touch(e, 'touchstart', x, y, 73);
-      window.__touch(e, 'touchend', x, y, 73);
-    });
+    /* AND A SECOND TAP ENDS IT: "Tapping it once holds the shield, tapping it
+       again disengages it" (owner, v2.3.2242).  On the Block button the toggle
+       is the whole control, so this is the same finger arriving twice. */
+    await tapBlock();
     await P.page.waitForTimeout(600);
     const down = await P.page.evaluate(() => {
       const S = window._gameState.current;
       return { shieldUp: !!S._shieldUp, why: S._shieldDroppedWhy };
     });
-    rec.ok('a single tap afterwards drops the guard again', down.shieldUp === false, down);
+    rec.ok('a second tap afterwards drops the guard again', down.shieldUp === false, down);
 
     /* ═══ v2.3.2271: THE PAIR MUST NOT COST YOU THE LOCK ═══
        Found by an adversarial pass over the shipped v2.3.2269 gesture, not by
@@ -758,9 +830,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
        is the only lock there is, so the gesture was quietly disarming the
        player it was meant to protect.
 
-       Driven on the ZONE, not the disc: with no lock held the disc is
-       pointer-events:none for these weapons, so the zone is where a real
-       player's presses land, and the zone is the surface that forwards. */
+       v2.3.2576: THE RISK OUTLIVED THE GESTURE, so the row does too -- pointed
+       at the Block button, which is the control that raises the guard now.  It
+       is the same hazard and not a hypothetical one: the button is a sibling
+       laid OVER the right touch zone, so a tap that fell through it would be
+       forwarded to the canvas as a lock-on click and toggle the lock off,
+       exactly as the pair used to.  ShieldButton stops the event on every touch
+       for this reason ("a tap that fell through it would forward a lock-on
+       click to the canvas") and this is what proves it still does.
+
+       Tapped with a REAL finger (TRAPS §67) rather than dispatchEvent -- which
+       is the only way the question can even be asked, since falling through is
+       a hit-testing outcome and dispatchEvent does no hit testing. */
     await P.page.evaluate(() => {
       const S = window._gameState.current;
       S._shieldUp = false; S.rpg.activeSlot = 'ranged'; S._rTapAt = 0;
@@ -781,30 +862,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const S = window._gameState.current;
       return { lock: S.lockedTarget ? S.lockedTarget.id : null, shieldUp: !!S._shieldUp };
     });
-    rec.ok('a tapped lock is held before the pair (guard)',
+    rec.ok('a tapped lock is held before the Block tap (guard)',
       beforePair.lock === 'qa_lock_m' && beforePair.shieldUp === false, beforePair);
-    await P.page.evaluate(() => new Promise((res) => {
-      const z = document.querySelector('[data-joyzone="R"]');
-      const r = z.getBoundingClientRect();
-      const x = r.x + r.width / 2, y = r.y + r.height / 2;
-      window.__touch(z, 'touchstart', x, y, 81);
-      window.__touch(z, 'touchend', x, y, 81);
-      setTimeout(() => {
-        window.__touch(z, 'touchstart', x, y, 82);
-        window.__touch(z, 'touchend', x, y, 82);
-        res(true);
-      }, 90);
-    }));
+    {
+      const c = await rectOf(P, '[data-shield]');
+      rec.ok('the Block button is on screen over the right touch zone (guard)', !!c, c);
+      if (c) await P.page.touchscreen.tap(c.left + c.width / 2, c.top + c.height / 2);
+    }
     await P.page.waitForTimeout(600);
     const afterPair = await P.page.evaluate(() => {
       const S = window._gameState.current;
       return { lock: S.lockedTarget ? S.lockedTarget.id : null, shieldUp: !!S._shieldUp,
         shieldWhy: S._shieldDroppedWhy, lockWhy: S._lockDroppedWhy,
-        monsters: (S.monsters || []).map((m) => m.id), serverMon: !!S._serverMonsters,
-        stash: S._rTapLockWas ? S._rTapLockWas.id : null };
+        monsters: (S.monsters || []).map((m) => m.id), serverMon: !!S._serverMonsters };
     });
-    console.log('    after the zone pair: ' + JSON.stringify(afterPair));
-    rec.ok('double-tapping the ZONE raises the guard too, not just the disc',
+    console.log('    after the Block tap: ' + JSON.stringify(afterPair));
+    rec.ok('a real finger on the Block button raises the guard',
       afterPair.shieldUp === true, afterPair);
     rec.ok('...and the monster you had locked is STILL locked',
       afterPair.lock === 'qa_lock_m', { beforePair, afterPair });

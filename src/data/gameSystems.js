@@ -6074,7 +6074,11 @@ export const QUEST_CHAINS = {
          need it — and every line he was reciting now has an owner:
              swing   -> ControlsTutorial 'Attack'
              special -> ControlsTutorial 'Attack' + QuestCoach 'special'
-             shield  -> QuestCoach 'block'  (double-tap and HOLD, then turn)
+             shield  -> QuestCoach 'blockRanged'  (v2.3.2576: the Block
+                        BUTTON, one tap.  This line said "double-tap and
+                        HOLD, then turn" -- that gesture was retired at
+                        v2.3.2472 and the lesson's own copy was wrong with
+                        it until v2.3.2576.  See TRAPS §78.)
              swap    -> QuestCoach 'cycle', whose own comment already noted it
                         "lands on the same beat as the sentence" below
          So this was the same lesson twice, once as a wall of text you scroll
