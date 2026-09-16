@@ -583,17 +583,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
     specVis.present === true && specVis.shown === true, specVis);
   rec.ok('...and it takes touches itself, rather than letting them fall through to the zone',
     specVis.pe === 'auto', specVis);
-  /* ═══ v2.3.2562: AND BACK ON THE LEFT, WHICH IS THIS ROW'S THIRD ANSWER ═══
+  /* ═══ v2.3.2574: AND BACK ON THE RIGHT, WHICH IS THIS ROW'S FOURTH ANSWER ═══
      v2.3.2472 put the Special button beside the movement stick, v2.3.2542 moved
      it to the attack side ("Move the Special attack button to orbit the RIGHT
-     joystick"), and the owner has now moved it back: "the whirlwind and special
-     attack buttons diagonally above the left joystick".  The row inverts with
-     it each time rather than being deleted -- a control that has crossed the
-     screen three times is precisely the one worth pinning, and the pin is what
-     makes the next move a deliberate edit instead of a surprise. */
-  rec.ok('...sitting in the LEFT half now, above the movement stick -- not over on the attack side '
-    + '(v2.3.2562; this row has asserted each of the three placements in turn)',
-    specVis.right <= specVis.half, specVis);
+     joystick"), v2.3.2562 moved it back to the left ("the whirlwind and special
+     attack buttons diagonally above the left joystick"), and the owner has now
+     corrected that: "Spec and swirl need to be on the right joystick.  It was
+     put on the left."  So it is ABOVE the attack disc this time rather than
+     level with it -- which is why the row below asks for both facts, the half
+     AND the height, instead of the half alone as it did for three versions.
+
+     The row inverts with the button each time rather than being deleted -- a
+     control that has crossed the screen four times is precisely the one worth
+     pinning, and the pin is what makes the next move a deliberate edit instead
+     of a surprise.  It went red on exactly this change, which is the pin
+     working. */
+  rec.ok('...sitting in the RIGHT half now, above the attack disc -- not over on the movement side '
+    + '(v2.3.2574; this row has asserted each of the four placements in turn)',
+    specVis.left >= specVis.half, specVis);
+  if (specVis.disc) {
+    rec.ok('...and ABOVE the disc rather than beside it, which is what v2.3.2574 changed '
+      + `(special bottom ${specVis.bottom} vs disc top ${specVis.disc.top})`,
+      specVis.bottom <= specVis.disc.top, specVis);
+  }
   if (specVis.disc) {
     rec.ok('...and clear of the attack disc itself, so no finger can land on both',
       specVis.right <= specVis.disc.left || specVis.left >= specVis.disc.right

@@ -2,8 +2,22 @@ import React from 'react';
 import { ABILITY_META } from '@/data/index.js';
 import { abilityStatus, castAbility } from '@/game/abilities.js';
 import { blockRingBus } from '@/ui/mobile/blockRingBus.js'; /* v2.3.2252: the bash button follows the shield's edge, not a 200ms poll */
-import { ctlColumn, ctlBottom, CTL_SLOT, leftCluster, LCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2472: the shared right-of-the-zone column (D9) -- Bash only since v2.3.2562; leftCluster is Whirlwind's new home */
+import { ctlColumn, ctlBottom, CTL_SLOT, rightCluster, RCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2574: both buttons are on the RIGHT again -- Bash in the column (slot 0), Whirlwind in the cluster above the disc */
 
+/* ═══ v2.3.2574: BOTH BUTTONS ARE BACK ON THE RIGHT ═══
+   Owner, correcting the message v2.3.2562 was built from: "Spec and swirl need
+   to be on the right joystick.  It was put on the left."
+
+   So Whirlwind comes back across to the right disc and sits ABOVE it, beside
+   the Special button, in the mirrored cluster (rightCluster / RCTL_SLOT).
+   Shield Bash -- still not mentioned in any of the owner's messages -- had to
+   come DOWN one slot to make room, because the column's slot 1 is exactly the
+   air the cluster's upper button needs; ShieldButton's CTL_SLOT note carries
+   the measurement that forced it, and what it cost (the Element Burst button
+   moved to the left disc).
+
+   THE HISTORY BELOW STILL READS CORRECTLY as the record of what was tried; add
+   this pass to the end of it rather than rewriting it. */
 /* ═══ v2.3.2562: THE TWO BUTTONS ARE ON OPPOSITE SIDES NOW ═══
    Owner, after playing the merged build and sending a screenshot: "the
    placement of the buttons isn't ideal.  I'd like the whirlwind and special
@@ -105,10 +119,12 @@ export function AbilityButtons(props) {
        rules now: abilityStatus still reports `engaged` honestly, castAbility
        still refuses out loud, and only the render list narrows.
 
-       Slots are assigned by CONTROL (CTL_SLOT on the right, LCTL_SLOT on the
-       left), so nothing slides into Whirlwind's place on the frames where it is
-       gone -- not Shield Bash across the column, and since v2.3.2562 not the
-       Special button beside it either.
+       Slots are assigned by CONTROL (CTL_SLOT in the column, RCTL_SLOT in the
+       cluster above the disc, LCTL_SLOT over the movement disc), so nothing
+       slides into Whirlwind's place on the frames where it is gone -- not
+       Shield Bash below it and not the Special button beside it.  v2.3.2574
+       moved every one of those controls and none of them had to learn about
+       the others, which is the whole return on keying slots by control.
 
        No linger, and no CSS gate.  A real unmount rather than opacity/
        visibility, because a hidden-but-present box still answers
@@ -125,25 +141,28 @@ export function AbilityButtons(props) {
   }
   if (!live.length) return null;
 
-  /* ═══ v2.3.2562: THESE TWO BUTTONS NO LONGER SHARE A SIDE ═══
-     Owner, after playing the merged build: Whirlwind belongs "diagonally above
-     the left joystick", beside the Special button; Shield Bash is not mentioned
-     in the ask and so does not move.  One component still renders both, because
-     what they share is their BEHAVIOUR (the same status, cooldown sweep, cast
-     routing and refusal) -- only the anchor differs, and the anchor is the one
-     thing neither of them computes for itself.  Each side's geometry comes from
-     its own shared helper in ShieldButton.jsx, so a third control arriving on
-     either side inherits the rule rather than copying it. */
+  /* ═══ v2.3.2574: SAME SIDE AGAIN, DIFFERENT HEIGHTS ═══
+     Whirlwind sits in the cluster ABOVE the attack disc and Shield Bash beside
+     it, level with its centre.  One component still renders both, because what
+     they share is their BEHAVIOUR (the same status, cooldown sweep, cast routing
+     and refusal) -- only the anchor differs, and the anchor is the one thing
+     neither of them computes for itself.  Both helpers live in
+     ShieldButton.jsx, so a third control arriving in either place inherits the
+     rule rather than copying it -- which is exactly what went wrong for the
+     Element Burst button, whose hand-rolled anchor drifted to within 8px of
+     Bash without anything noticing (see leftCluster). */
   var rcol = ctlColumn(isLandscape);
-  var lcol = leftCluster(isLandscape);
+  var rclu = rightCluster(isLandscape);
 
   var anchorOf = function (kind) {
-    if (Object.prototype.hasOwnProperty.call(LCTL_SLOT, kind)) {
+    /* v2.3.2574: the cluster above the disc, checked first.  Same
+       hasOwnProperty test the column uses below and for the same reason --
+       RCTL_SLOT's members are legally 0. */
+    if (Object.prototype.hasOwnProperty.call(RCTL_SLOT, kind)) {
       return {
-        size: lcol.size,
-        left: lcol.leftPx(LCTL_SLOT[kind]),
-        bottom: ctlBottom(lcol.bottomPx(LCTL_SLOT[kind])),
-        onLeft: true,
+        size: rclu.size,
+        right: rclu.rightPx(RCTL_SLOT[kind]),
+        bottom: ctlBottom(rclu.bottomPx(RCTL_SLOT[kind])),
       };
     }
     /* hasOwnProperty, NOT `|| 1` (v2.3.2542): CTL_SLOT's members can legally be
@@ -154,7 +173,6 @@ export function AbilityButtons(props) {
       right: rcol.right,
       bottom: ctlBottom(rcol.bottomPx(
         Object.prototype.hasOwnProperty.call(CTL_SLOT, kind) ? CTL_SLOT[kind] : 1)),
-      onLeft: false,
     };
   };
 
@@ -193,14 +211,20 @@ export function AbilityButtons(props) {
         try { castAbility(stateRef.current, kind); } catch (err) {}
       },
       /* ═══ v2.3.2562: THE RELEASE AND THE DRAG ARE STOPPED TOO ═══
-         Whirlwind sits over [data-joyzone="L"] now -- the full-height LEFT half
-         at z6, which is the MOVEMENT input: its touchstart begins a walk and a
-         swipe across it dodges.  Stopping only the touchstart would leave a
-         release, or a thumb that slid a few px, to be read as movement, so this
-         button carries the same three guards SpecialButton has carried since
-         v2.3.2472 for exactly this neighbour.  Bash is on the right and does not
-         need them; it gets them anyway, because a guard that is only on one of
-         two otherwise identical controls is a guard the next move will drop. */
+         v2.3.2574: the zone underneath is [data-joyzone="R"] now rather than
+         "L" -- both buttons came back to the right side -- and the guards stay,
+         because the right half is a touch zone too (rZoneRef, z6, the lock-on
+         and attack surface).  A tap that fell through it would forward a lock-on
+         click to the canvas, which is the reason ShieldButton's header gives for
+         every control over there stopping its events.  Stopping only the
+         touchstart would leave a release, or a thumb that slid a few px, to be
+         read by the zone, so all three are stopped -- the same three
+         SpecialButton has carried since v2.3.2472.
+
+         KEEP THEM IF EITHER BUTTON EVER CROSSES BACK.  Over [data-joyzone="L"]
+         the same leak is worse: touchstart there begins a WALK and a swipe
+         dodges, and lM/lE are bound to WINDOW (BroTown ~9345), so a leak would
+         not even need the zone element in the propagation path. */
       onTouchEnd: function (e) { e.preventDefault(); e.stopPropagation(); },
       onTouchMove: function (e) { e.stopPropagation(); },
       onClick: function (e) {
