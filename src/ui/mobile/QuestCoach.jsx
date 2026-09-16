@@ -141,7 +141,7 @@ const MARK_RECT_H_FRAC = 0.35;
 /* Module scope rather than a ref: there is one coach on screen, and measure()
    is a free function the probe can still report from. */
 let _oversize = { n: 0, id: null, w: 0, h: 0 };
-/* v2.3.2575: where the finger went down on the coach card, for the tap-vs-drag
+/* v2.3.2577: where the finger went down on the coach card, for the tap-vs-drag
    test in _dismiss.  Module scope for the same reason _oversize is, and NOT a
    ref: the card renders after `if (!view) return null`, so a hook declared
    beside it would be a conditional hook.  One coach on screen, one press. */
@@ -601,7 +601,7 @@ const LESSONS = [
   {
     id: 'blockRanged',
     shape: 'circle',
-    /* ═══ v2.3.2574: THE LESSON TAUGHT A GESTURE THAT NO LONGER EXISTS ═══
+    /* ═══ v2.3.2576: THE LESSON TAUGHT A GESTURE THAT NO LONGER EXISTS ═══
        This said "double-tap Attack to raise your shield" and rang the ATTACK
        disc for it, from v2.3.2269 until now.  It has been wrong since
        v2.3.2472, which gave bow and staff the shield BUTTON back (owner
@@ -1289,7 +1289,7 @@ export function QuestCoach(props) {
      next zone change, is the same complaint again.  stopPropagation matters
      now that two nested elements carry this: the X sits inside the card, so
      without it a tap on the X would run the handler twice. */
-  /* ═══ v2.3.2575: A DRAG ACROSS THE CARD IS NOT "PUT THIS DOWN" ═══
+  /* ═══ v2.3.2577: A DRAG ACROSS THE CARD IS NOT "PUT THIS DOWN" ═══
    *
    * The card is pointerEvents:'auto' (v2.3.2312, the owner's third ask for
    * "allow the user to just tap on the messages to dismiss it"), and it floats

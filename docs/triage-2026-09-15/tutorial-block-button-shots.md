@@ -1,4 +1,4 @@
-# v2.3.2574 — the guard lesson, before and after
+# v2.3.2576 — the guard lesson, before and after
 
 Screenshots for PR #659. The tutorial's `blockRanged` lesson ("Guard with the
 bow") told new players to *"double-tap Attack to raise your shield"* — a gesture

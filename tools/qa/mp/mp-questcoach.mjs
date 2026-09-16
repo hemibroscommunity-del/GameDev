@@ -576,7 +576,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      So it is tested where it now lives -- after 5b, which is the turn-in that
      pays the bow and the staff.
 
-     ═══ v2.3.2574: THIS SECTION DROVE A GESTURE THAT NO LONGER EXISTS ═══
+     ═══ v2.3.2576: THIS SECTION DROVE A GESTURE THAT NO LONGER EXISTS ═══
      It used to read "it tests the NEW gesture: a double tap on the Attack
      button raises the guard, and it latches", and five of its rows have been
      RED on main ever since v2.3.2472 retired that gesture in favour of the
@@ -635,7 +635,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const g1 = await waitCoach(P, 'blockRanged');
   rec.ok('after the turn-in and the weapons, the GUARD lesson appears',
     !!(g1 && g1.id === 'blockRanged'), g1);
-  /* v2.3.2574: this row asserted the OPPOSITE until now -- "it teaches the
+  /* v2.3.2576: this row asserted the OPPOSITE until now -- "it teaches the
      DOUBLE TAP, not the old shield button" -- and it passed, because the game
      really was still saying it.  It is the row TRAPS §78 means when it says the
      lesson "has been wrong since v2.3.2472": green for the wrong reason.  Both
@@ -694,7 +694,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('a finger on the message lands on the MESSAGE, not the touch zone '
       + 'underneath it', !!(under && under.coach === true), under);
 
-    /* ═══ v2.3.2575: A DRAG ACROSS THE CARD IS NOT A DISMISSAL ═══
+    /* ═══ v2.3.2577: A DRAG ACROSS THE CARD IS NOT A DISMISSAL ═══
        The card is pointerEvents:'auto' so it can be tapped away, and it floats
        over the full-height `[data-joyzone]` layer that takes the movement
        thumb.  So a player reaching for a control THROUGH the card used to be
@@ -779,7 +779,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      scenario that called raiseShieldToggle directly would prove the lesson
      watches state and nothing about the control the lesson is teaching.
 
-     v2.3.2574: this is the Block button now, and the finger is
+     v2.3.2576: this is the Block button now, and the finger is
      page.touchscreen.tap rather than window.__touch.  dispatchEvent hands the
      event straight to the target and never hit-tests (TRAPS §67), so it cannot
      tell "the button works" from "the button is buried under the right touch
@@ -830,7 +830,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        is the only lock there is, so the gesture was quietly disarming the
        player it was meant to protect.
 
-       v2.3.2574: THE RISK OUTLIVED THE GESTURE, so the row does too -- pointed
+       v2.3.2576: THE RISK OUTLIVED THE GESTURE, so the row does too -- pointed
        at the Block button, which is the control that raises the guard now.  It
        is the same hazard and not a hypothetical one: the button is a sibling
        laid OVER the right touch zone, so a tap that fell through it would be

@@ -3238,7 +3238,7 @@ on both right-hand surfaces — no swap, no guard, including on a deliberate
 tap-tap-and-hold, which is the exact shape a restoration would make work
 again. A hand that re-adds the gesture goes red there rather than on a phone.
 
-**CLOSED at v2.3.2574:** `QuestCoach.jsx`'s `blockRanged` lesson had told
+**CLOSED at v2.3.2576:** `QuestCoach.jsx`'s `blockRanged` lesson had told
 players to *"double-tap Attack to raise your shield"* since v2.3.2269, and had
 been wrong since v2.3.2472. It now reads *"With the bow or staff out, tap the
 Block button to raise your shield"* and its mark rings `[data-shield]` instead
