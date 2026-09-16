@@ -8,7 +8,7 @@
    `stateRef.current._tutorialStep` read became `S._tutorialStep` (same
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
-import { STAFF_RANGE_PX } from '@/data/gameSystems.js'; /* v2.3.2387 */
+import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat */
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS } from '@/data/index.js';
 import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockAimPoint } from '@/game/combatHelpers.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
@@ -313,7 +313,7 @@ export function specialAttack(S) {
       S.arrows.push({
         ang: aimAng,
         dist: 14,
-        dmg: Math.round(wpnDmg * specialAtkMultFor('bow')), /* v2.3.1397: bow special 3x (owner) */
+        dmg: Math.round(wpnDmg * specialAtkMultFor('bow', R || {})), /* v2.3.1397: bow special 3x (owner); v2.3.2592: × the SPECIAL stat */
         baseDmg: _bowBase, /* v2.3.1402: lingering ground-tick base damage */
         life: 150, /* v2.3.1335: range -25% (the 675px plant cap governs reach) */
         maxLife: 150,
@@ -321,12 +321,14 @@ export function specialAttack(S) {
         isSpecial: true,
         isStaff: false,
         pierce: true,
+        _rangeMult: bowRangeMult(R || {}), /* v2.3.2592: the special reaches as far as an ordinary arrow does */
         element: hasElement || null
       });
       /* v2.3.840: broadcast the bow special so peers see the big golden
          arrow fly (mirrors the regular-arrow player_projectile path). */
       if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
-        id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: false, isSpecial: true, ts: now
+        id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: false, isSpecial: true, ts: now,
+        life: Math.round(90 * (bowRangeMult(R || {}) || 1)), /* v2.3.2592: peers see the stat's reach too */
       }});
       BT_AUDIO.beep(400, 0.12, 0.15, 'sine');
       setTimeout(function () {
@@ -412,7 +414,7 @@ export function specialAttack(S) {
          the swipe cooldown, by which time the first stamp has expired. */
       /* v2.3.2387: 560 -> STAFF_RANGE_PX (675), so the special reaches exactly
          as far as the basic orb and as far as an arrow. */
-      var _ORB_RANGE_PX = STAFF_RANGE_PX;
+      var _ORB_RANGE_PX = STAFF_RANGE_PX * staffRangeMult(R || {}); /* v2.3.2592: × the Magic lane's RANGE stat */
       var _ORB_SPEED = 5;              /* the staff's own bolt speed */
       var _ORB_SPEEDS = [_ORB_SPEED, _ORB_SPEED, _ORB_SPEED];
       for (var si = 0; si < 3; si++) {
@@ -423,7 +425,7 @@ export function specialAttack(S) {
           dist: 14,
           launchDelayMs: si * _ORB_GAP_MS,
           speedPx: _spd,
-          dmg: Math.round(_wpnDmg * specialAtkMultFor('staff')), /* v2.3.1397: 2x per orb, 0.6 haircut dropped (owner) */
+          dmg: Math.round(_wpnDmg * specialAtkMultFor('staff', R || {})), /* v2.3.1397: 2x per orb, 0.6 haircut dropped (owner); v2.3.2592: × the SPECIAL stat */
           life: _life,      /* v2.3.1335's 560px reach, solved per speed */
           maxLife: _life,
           hitIds: new Set(),
@@ -444,6 +446,7 @@ export function specialAttack(S) {
             id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: true, isSpecial: true,
             delayMs: _bcj * _ORB_GAP_MS,
             speedPx: _ORB_SPEEDS[_bcj],   /* v2.3.2262: peers see the same fast/medium/slow spread */
+            life: Math.round(_ORB_RANGE_PX / _ORB_SPEEDS[_bcj]), /* v2.3.2592: ...and the same reach */
             ts: now
           }});
         }

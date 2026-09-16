@@ -436,5 +436,41 @@ const legacyBlob = () => ({
     runRpgMigrations(bare).failed === null && bare._v === RPG_SCHEMA_VERSION, bare);
 }
 
+/* ── v17: crit + critDmg fold into LUCK (refunded per lane); shared points
+   back-paid (v2.3.2592) ── */
+{
+  const { PROG3 } = await import('../src/prog3.js');
+  const b = {
+    _v: 16,
+    prog3: {
+      sk: { sword: { level: 5, xp: 0 }, bow: { level: 2, xp: 0 }, staff: { level: 1, xp: 0 } },
+      alloc: { def: 1, hp: 0, dodge: 0, stam: 0, eres: 0, mana: 0 },
+      atk: { sword: { crit: 7, critDmg: 4, aspd: 1, dmg: 2, elem: 0 }, bow: { crit: 2, critDmg: 0, aspd: 0, dmg: 0, elem: 0 }, staff: {} },
+      pool: 6, poolBy: { sword: 4, bow: 1, staff: 0 }, ms: 5, ppl: 3,
+    },
+  };
+  const r = runRpgMigrations(b);
+  check('v17 refunds the crit pair into the lane that held it (pool AND poolBy)',
+    r.failed === null && b.prog3.pool === 6 + 11 + 2 && b.prog3.poolBy.sword === 4 + 11 && b.prog3.poolBy.bow === 1 + 2,
+    { pool: b.prog3.pool, poolBy: b.prog3.poolBy });
+  check('v17 deletes the retired keys and keeps the rest',
+    !('crit' in b.prog3.atk.sword) && !('critDmg' in b.prog3.atk.bow) && b.prog3.atk.sword.aspd === 1 && b.prog3.atk.sword.dmg === 2,
+    b.prog3.atk);
+  check('v17 back-pays SHARED_POINTS_PER_LEVEL × Σ(level−1), stamped in spl',
+    b.prog3.shared === PROG3.SHARED_POINTS_PER_LEVEL * (4 + 1 + 0) && b.prog3.spl === PROG3.SHARED_POINTS_PER_LEVEL,
+    { shared: b.prog3.shared, spl: b.prog3.spl });
+  check('v17 leaves placed body points where they are', b.prog3.alloc.def === 1, b.prog3.alloc);
+  check('v17 is idempotent (the spl stamp, and no keys left to fold)',
+    runRpgMigrations(b).changed === false && b.prog3.pool === 19, b.prog3);
+  const era = { _v: 9, weaponSkills: { sword: { level: 6, xp: 0 } }, defenseSkill: { level: 4 } };
+  runRpgMigrations(era);
+  check('a v10-era blob lands at the shared rate in one pass (no double grant)',
+    era.prog3.shared === 6 * PROG3.SHARED_POINTS_PER_LEVEL && era.prog3.spl === PROG3.SHARED_POINTS_PER_LEVEL,
+    { shared: era.prog3.shared });
+  const bare = { _v: 16 };
+  check('v17 survives a blob with no prog3 at all',
+    runRpgMigrations(bare).failed === null && bare._v === RPG_SCHEMA_VERSION, bare);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

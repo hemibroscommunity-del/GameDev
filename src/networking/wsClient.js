@@ -25,7 +25,7 @@ import { peerCosmeticsFromWire, peerPassthroughFromWire, applyPeerCosmetics } fr
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale */
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled, isProg3SharedEnabled /* v2.3.2592 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -1195,6 +1195,14 @@ export function setupWebSocket(ctx) {
                    stat that worker rolls off, and the mana prediction keeps
                    its pure Magic-level derivation. */
                 setProg3ElemEnabled(!!(S._serverCaps && S._serverCaps.prog3elem));
+                /* v2.3.2592: the four-column points redesign (six per-type
+                   stats with crit/critDmg folded into Luck, the Move Speed
+                   shared stat, and the SHARED point pool minted beside the
+                   lane points).  Display only, the same shape as the two
+                   flags above — against an old worker the client draws that
+                   worker's grid and pools (see the flag's note in
+                   data/prog3.js). */
+                setProg3SharedEnabled(!!(S._serverCaps && S._serverCaps.prog3shared));
                 /* v2.3.1733: stamina-abilities deploy-order gate.  The two
                    ability BUTTONS render and the `ability` message is sent
                    only while THIS worker claims caps.abil — an old worker
@@ -2281,7 +2289,22 @@ export function setupWebSocket(ctx) {
                  worker still mints 1, so the banner must promise what THAT
                  worker paid (rule 19). */
               var _pts = isProg3XEnabled() ? PROG3.POINTS_PER_LEVEL : 1;
-              _gains.push('+' + _pts + (_pts === 1 ? ' point' : ' points') + ' to spend');
+              /* v2.3.2592: a level-up mints lane points AND shared points on
+                 a worker carrying the shared pool, and the banner says both
+                 by name so the player knows there are two columns to visit
+                 — "+3 Melee points · +3 shared points".  An old worker mints
+                 only the lane points, and the banner says only that. */
+              if (isProg3SharedEnabled()) {
+                var _sh = PROG3.SHARED_POINTS_PER_LEVEL;
+                _gains.push('+' + _pts + ' ' + (p3meta ? p3meta.label : 'combat') + (_pts === 1 ? ' point' : ' points'));
+                _gains.push('+' + _sh + ' shared' + (_sh === 1 ? ' point' : ' points'));
+              } else {
+                _gains.push('+' + _pts + (_pts === 1 ? ' point' : ' points') + ' to spend');
+              }
+              /* v2.3.2592: the shared pool rides the level event; stamp it so
+                 the Shared column moves with the lane header, not a
+                 player_state round-trip later. */
+              if (S.rpg.prog3 && typeof p3l.shared === 'number') S.rpg.prog3.shared = p3l.shared;
               /* v2.3.1733: ...and name the MILESTONE, when this level crossed
                  one.  A new button appearing on the HUD with no explanation
                  is the same "level 13 doesn't feel different" problem in a
@@ -2489,6 +2512,7 @@ export function setupWebSocket(ctx) {
               }
               if (typeof p3a.pool === 'number') S.rpg.prog3.pool = p3a.pool;
               if (p3a.poolBy && typeof p3a.poolBy === 'object') S.rpg.prog3.poolBy = p3a.poolBy;
+              if (typeof p3a.shared === 'number') S.rpg.prog3.shared = p3a.shared; /* v2.3.2592: the shared pool's ack */
               recalcDerived(S.rpg);
               setRpgState(_objectSpread({}, S.rpg));
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}

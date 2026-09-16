@@ -85,14 +85,21 @@ function check(name, cond, detail) {
   /* v2.3.1668: alloc is the BODY set only; offense lives in atk, keyed
      by combat type.  v2.3.2199: + elem / + dmg.
      v2.3.2512: elem LEAVES for atk (per weapon); eres + mana arrive. */
+  /* v2.3.2592: + move (shared); crit/critDmg -> luck, + range, + special. */
   check('body alloc starts zeroed',
     Object.values(blob.prog3.alloc).every((v) => v === 0)
-      && Object.keys(blob.prog3.alloc).sort().join(',') === 'def,dodge,eres,hp,mana,stam', blob.prog3.alloc);
+      && Object.keys(blob.prog3.alloc).sort().join(',') === 'def,dodge,eres,hp,mana,move,stam', blob.prog3.alloc);
   check('per-type offense starts zeroed for all three skills',
     PROG3.SKILLS.every((c) => blob.prog3.atk[c]
-      && blob.prog3.atk[c].crit === 0 && blob.prog3.atk[c].critDmg === 0 && blob.prog3.atk[c].aspd === 0
-      && blob.prog3.atk[c].dmg === 0),
+      && Object.keys(blob.prog3.atk[c]).sort().join(',') === 'aspd,dmg,elem,luck,range,special'
+      && Object.values(blob.prog3.atk[c]).every((v) => v === 0)),
     blob.prog3.atk);
+  /* v2.3.2592: the respec mints the SHARED pool beside the lane pool, one
+     per lane point, and stamps the rate (so v17 cannot double-grant). */
+  check('the respec mints shared points at SHARED_POINTS_PER_LEVEL, stamped',
+    blob.prog3.shared === (7 + 0 + 100) * PROG3.SHARED_POINTS_PER_LEVEL
+      && blob.prog3.spl === PROG3.SHARED_POINTS_PER_LEVEL,
+    { shared: blob.prog3.shared, spl: blob.prog3.spl });
   check('legacy fields kept for rollback', blob.weaponSkills.sword.level === 7 && blob.t2Flat.defense.ironskin === 300);
   // Absent-only: a second pass (or a hand-reset _v) never re-derives.
   blob.prog3.sk.sword.level = 42;
@@ -219,24 +226,32 @@ const psA = room.playerState.pa;
 {
   const sess = { id: 'pa' };
   const p3 = psA.prog3;
-  p3.pool = 0;
+  /* v2.3.2592: hp is a SHARED stat now, so the pool that gates it is the
+     shared one — an empty shared pool (and no unchannelled remainder)
+     refuses, whatever the lane pools hold.  The level-up in §3 minted 3
+     shared points; zeroed here so the refusal is the thing under test. */
+  p3.pool = 0; p3.shared = 0;
   room._handleProg3Allocate(sess, { stat: 'hp' });
-  check('empty pool rejects', p3.alloc.hp === 0 && p3.pool === 0, p3);
-  p3.pool = 10;
+  check('empty pool rejects', p3.alloc.hp === 0 && p3.pool === 0 && p3.shared === 0, p3);
+  p3.pool = 10; p3.shared = 10;
   room._handleProg3Allocate(sess, { stat: 'coins' });
   room._handleProg3Allocate(sess, { stat: '__proto__' });
+  room._handleProg3Allocate(sess, { stat: 'crit', cat: 'sword' });     /* v2.3.2592: the retired names are refused too */
+  room._handleProg3Allocate(sess, { stat: 'critDmg', cat: 'sword' });
   room._handleProg3Allocate(sess, {});
-  check('bad stat names reject (pool untouched)', p3.pool === 10 && p3.alloc.hp === 0, p3);
+  check('bad stat names reject (pools untouched)', p3.pool === 10 && p3.shared === 10 && p3.alloc.hp === 0, p3);
   // §6-C: per-stat cap = min(stat cap, character level).  Char level is
   // 4 here, so the 5th hp point must bounce.
   for (let i = 0; i < 5; i++) room._handleProg3Allocate(sess, { stat: 'hp' });
-  check('per-stat cap = min(100, char level)', p3.alloc.hp === 4 && p3.pool === 6,
-    { hp: p3.alloc.hp, pool: p3.pool, level: psA.level });
+  check('per-stat cap = min(100, char level)', p3.alloc.hp === 4 && p3.shared === 6,
+    { hp: p3.alloc.hp, shared: p3.shared, level: psA.level });
+  check('...and a shared spend leaves the LANE pool alone (v2.3.2592)', p3.pool === 10, p3.pool);
   check('hp points land in maxHp (+8/pt)',
     psA.maxHp === 100 + psA.level * PROG3.HP_PER_LEVEL + 4 * PROG3.BODY.hp.per, psA.maxHp);
   const acks = msgsOfType(wsA, 'prog3_allocated');
-  check('prog3_allocated acks each landed point', acks.length === 4
-    && acks[3].payload.stat === 'hp' && acks[3].payload.pts === 4 && acks[3].payload.pool === 6,
+  check('prog3_allocated acks each landed point, carrying both pools', acks.length === 4
+    && acks[3].payload.stat === 'hp' && acks[3].payload.pts === 4
+    && acks[3].payload.pool === 10 && acks[3].payload.shared === 6,
     acks.map((a) => a.payload));
 
   /* ═══ v2.3.2176: POINTS REMEMBER THE SKILL THAT EARNED THEM ═══
@@ -244,30 +259,50 @@ const psA = room.playerState.pa;
      you leveled up in.  However you can apply that stat point to any
      defensive attribute ... regardless of what channel you earned the point
      through."  Four claims, each its own check. */
-  p3.alloc.hp = 0; p3.atk = { sword: { crit: 0, critDmg: 0, aspd: 0 },
-    bow: { crit: 0, critDmg: 0, aspd: 0 }, staff: { crit: 0, critDmg: 0, aspd: 0 } };
-  p3.pool = 2; p3.poolBy = { sword: 0, bow: 2, staff: 0 };
+  p3.alloc.hp = 0; p3.atk = prog3FreshAtk();
+  p3.pool = 2; p3.poolBy = { sword: 0, bow: 2, staff: 0 }; p3.shared = 0;
 
-  room._handleProg3Allocate(sess, { stat: 'crit', cat: 'sword' });
-  check('a BOW point cannot buy MELEE crit', p3.atk.sword.crit === 0 && p3.pool === 2,
+  room._handleProg3Allocate(sess, { stat: 'luck', cat: 'sword' });
+  check('a BOW point cannot buy MELEE luck', p3.atk.sword.luck === 0 && p3.pool === 2,
     { sword: p3.atk.sword, pool: p3.pool, poolBy: p3.poolBy });
 
-  room._handleProg3Allocate(sess, { stat: 'crit', cat: 'bow' });
-  check('...but it buys BOW crit, off BOW\'s own count',
-    p3.atk.bow.crit === 1 && p3.pool === 1 && p3.poolBy.bow === 1,
+  room._handleProg3Allocate(sess, { stat: 'luck', cat: 'bow' });
+  check('...but it buys BOW luck, off BOW\'s own count',
+    p3.atk.bow.luck === 1 && p3.pool === 1 && p3.poolBy.bow === 1,
     { bow: p3.atk.bow, pool: p3.pool, poolBy: p3.poolBy });
 
+  /* ═══ v2.3.2592: THE SECOND POOL ═══
+     Owner: "only the point earned in the combat channel can be spent there
+     (the point for shared can be allocated to any in that shared pool)."
+     This INVERTS the v2.3.2176 check that stood here ("a BOW point buys a
+     DEFENSIVE stat") — a lane point no longer can, and a shared point can
+     buy nothing else.  Both directions, each its own check. */
   room._handleProg3Allocate(sess, { stat: 'hp', cat: 'bow' });
-  check('a BOW point buys a DEFENSIVE stat (any channel may)',
-    p3.alloc.hp === 1 && p3.pool === 0 && p3.poolBy.bow === 0,
+  check('a BOW point can NO LONGER buy a shared stat (v2.3.2592)',
+    p3.alloc.hp === 0 && p3.pool === 1 && p3.poolBy.bow === 1,
     { hp: p3.alloc.hp, pool: p3.pool, poolBy: p3.poolBy });
+  p3.shared = 1;
+  room._handleProg3Allocate(sess, { stat: 'hp', cat: 'bow' });
+  check('...a SHARED point buys it, and the lane pool is untouched',
+    p3.alloc.hp === 1 && p3.shared === 0 && p3.pool === 1 && p3.poolBy.bow === 1,
+    { hp: p3.alloc.hp, shared: p3.shared, pool: p3.pool, poolBy: p3.poolBy });
+  p3.shared = 1; p3.pool = 0; p3.poolBy = { sword: 0, bow: 0, staff: 0 };
+  room._handleProg3Allocate(sess, { stat: 'luck', cat: 'bow' });
+  check('...and a SHARED point cannot buy any weapon\'s offense',
+    p3.atk.bow.luck === 1 && p3.shared === 1, { bow: p3.atk.bow, shared: p3.shared });
+  p3.shared = 0;
 
   /* Points banked before this rule existed have no channel on record, and
-     must stay spendable anywhere — the migration promise. */
+     must stay spendable anywhere — the migration promise.  v2.3.2592:
+     "anywhere" now means a lane's offense OR the shared column. */
   p3.pool = 1; p3.poolBy = { sword: 0, bow: 0, staff: 0 };
-  room._handleProg3Allocate(sess, { stat: 'crit', cat: 'staff' });
+  room._handleProg3Allocate(sess, { stat: 'luck', cat: 'staff' });
   check('a legacy point with no channel still buys any weapon\'s offense',
-    p3.atk.staff.crit === 1 && p3.pool === 0, { staff: p3.atk.staff, pool: p3.pool });
+    p3.atk.staff.luck === 1 && p3.pool === 0, { staff: p3.atk.staff, pool: p3.pool });
+  p3.pool = 1; p3.poolBy = { sword: 0, bow: 0, staff: 0 }; p3.shared = 0; p3.alloc.def = 0;
+  room._handleProg3Allocate(sess, { stat: 'def' });
+  check('...and a legacy point buys a shared stat too, off the lane total',
+    p3.alloc.def === 1 && p3.pool === 0 && p3.shared === 0, { def: p3.alloc.def, pool: p3.pool });
 
   /* A forged blob must not mint offense points by over-claiming a channel. */
   const forged = room._sanitizeProg3({ pool: 1, poolBy: { sword: 99, bow: 99, staff: 99 } });
@@ -278,9 +313,9 @@ const psA = room.playerState.pa;
   psA.prog3.sk.sword.level = 100; psA.prog3.sk.bow.level = 100; psA.prog3.sk.staff.level = 100;
   room._prog3Recompute(psA);
   check('char level caps at 300', psA.level === 300, psA.level);
-  p3.pool = 200; p3.alloc.dodge = 75;
+  p3.shared = 200; p3.alloc.dodge = 75;
   room._handleProg3Allocate(sess, { stat: 'dodge' });
-  check('dodge hard cap 75 binds', p3.alloc.dodge === 75 && p3.pool === 200, p3.alloc.dodge);
+  check('dodge hard cap 75 binds', p3.alloc.dodge === 75 && p3.shared === 200, p3.alloc.dodge);
 }
 
 // ── 5. Combat math: defense, dodge, dropped channels ──
@@ -335,7 +370,9 @@ const psA = room.playerState.pa;
      candidate weapon in the ceiling loop is genuinely maxed.
      v2.3.2199: + the flat-damage stat, maxed too, so the sampling proves
      the ceiling carries the new term. */
-  for (const c of PROG3.SKILLS) { psA.prog3.atk[c].crit = 75; psA.prog3.atk[c].critDmg = 100; psA.prog3.atk[c].dmg = 75; }
+  /* v2.3.2592: luck (both crit halves), special and range at cap too, so
+     the sampling proves the ceiling carries the special term. */
+  for (const c of PROG3.SKILLS) { psA.prog3.atk[c].luck = 100; psA.prog3.atk[c].dmg = 75; psA.prog3.atk[c].special = 75; psA.prog3.atk[c].range = 100; }
   psA._cursedUntil = 0; psA.amulet = null;
   for (const special of [false, true]) {
     const cap = room._maxDmgForAttacker(psA, special);
@@ -371,7 +408,7 @@ const psA = room.playerState.pa;
     const skLvl = psA.prog3.sk.sword.level;
     const effBase = room._weaponEffBase('sword', psA.weapon);
     const preVar = (effBase + skLvl * PROG3.DMG_PER_LEVEL.sword + 75 * PROG3.ATK.dmg.per) * 6;
-    const multiplied = preVar * 0.75 * 1.3 * (1.5 + 100 * PROG3.ATK.critDmg.per);
+    const multiplied = preVar * 0.75 * 1.3 * (1.5 + 100 * PROG3.ATK.luck.dmgPer);
     const anchored = preVar * 1.25 * 2;
     const expected = Math.round(Math.max(multiplied, anchored));
     check('crit damage = max(base × (1.5 + pts×0.01), 2 × range top) — the v2.3.2212 anchor', critRoll.dmg === expected,
@@ -391,6 +428,29 @@ const psA = room.playerState.pa;
     check('the dmg stat adds pts×0.5 inside the pre-tier sum',
       Math.abs(gap - expectedGap) <= 1 && invested.isCrit === false, { gap, expectedGap });
   }
+  /* ═══ v2.3.2592: THE SPECIAL STAT SCALES THE SPECIAL, AND ONLY THE SPECIAL ═══
+     Deterministic: same variance draw, no crit, with and without the 75
+     points — the special roll must grow by exactly (1 + 75 × per) and the
+     ordinary roll must not move at all. */
+  {
+    const roll = (special, spec) => {
+      Math.random = () => 0.999999;                  /* band top, and outside any crit chance */
+      psA.prog3.atk.sword.special = special;
+      const r = room._computeAttackDamage(psA, 'melee', spec);
+      Math.random = origRandom;
+      return r;
+    };
+    const specOn = roll(75, true), specOff = roll(0, true);
+    const normOn = roll(75, false), normOff = roll(0, false);
+    psA.prog3.atk.sword.special = 75;
+    const want = 1 + 75 * PROG3.ATK.special.per;
+    check('the special stat multiplies the SPECIAL roll by (1 + pts × per)',
+      !specOn.isCrit && !specOff.isCrit && Math.abs(specOn.dmg / specOff.dmg - want) < 0.02,
+      { on: specOn.dmg, off: specOff.dmg, ratio: specOn.dmg / specOff.dmg, want });
+    check('...and leaves the ORDINARY roll alone', normOn.dmg === normOff.dmg, { on: normOn.dmg, off: normOff.dmg });
+    check('...and the ceiling still covers a maxed special (lockstep)',
+      specOn.dmg <= room._maxDmgForAttacker(psA, true), { dmg: specOn.dmg, cap: room._maxDmgForAttacker(psA, true) });
+  }
 }
 
 // ── 7. Sanitizer bounds corrupt stored shapes ──
@@ -398,7 +458,7 @@ const psA = room.playerState.pa;
   const dirty = room._sanitizeProg3({
     sk: { sword: { level: 999, xp: -5 }, bow: 'nope' },
     alloc: { hp: 5000, dodge: 999, bogus: 9 },
-    atk: { sword: { crit: 999, critDmg: -3, bogus: 4 }, nosuchcat: { crit: 50 } },
+    atk: { sword: { luck: 999, range: -3, bogus: 4 }, nosuchcat: { luck: 50 } },
     pool: 1e9,
   });
   check('sanitize clamps sk levels to [1,100]', dirty.sk.sword.level === 100 && dirty.sk.bow.level === 1, dirty.sk);
@@ -406,7 +466,7 @@ const psA = room.playerState.pa;
   check('sanitize clamps body alloc to caps, drops unknown keys',
     dirty.alloc.hp === 100 && dirty.alloc.dodge === 75 && !('bogus' in dirty.alloc), dirty.alloc);
   check('sanitize clamps per-type offense and drops unknown cats/keys',
-    dirty.atk.sword.crit === 75 && dirty.atk.sword.critDmg === 0
+    dirty.atk.sword.luck === 100 && dirty.atk.sword.range === 0
       && !('bogus' in dirty.atk.sword) && !('nosuchcat' in dirty.atk), dirty.atk);
   check('sanitize bounds pool', dirty.pool === 999, dirty.pool);
 }
@@ -499,41 +559,43 @@ const psA = room.playerState.pa;
   check('v11 keeps body points where they were',
     split.alloc.def === 5 && split.alloc.hp === 3, split.alloc);
   check('v11 leaves every type at zero offense',
-    PROG3.SKILLS.every((c) => split.atk[c].crit === 0), split.atk);
+    PROG3.SKILLS.every((c) => split.atk[c].luck === 0 && split.atk[c].dmg === 0), split.atk);
   check('v11 is idempotent (no double refund)', prog3SplitAtk(split).pool === 17);
 
   /* The endpoint: an offense stat REQUIRES a category. */
-  p3.pool = 50;
-  for (const c of PROG3.SKILLS) p3.atk[c] = { crit: 0, critDmg: 0, aspd: 0 };
+  p3.pool = 50; p3.poolBy = { sword: 0, bow: 0, staff: 0 }; p3.shared = 5;
+  p3.atk = prog3FreshAtk();
   const poolBefore = p3.pool;
-  room._handleProg3Allocate(sess, { stat: 'crit' });                 // no cat
-  room._handleProg3Allocate(sess, { stat: 'crit', cat: 'trebuchet' }); // unknown cat
-  room._handleProg3Allocate(sess, { stat: 'crit', cat: '__proto__' });
+  room._handleProg3Allocate(sess, { stat: 'luck' });                 // no cat
+  room._handleProg3Allocate(sess, { stat: 'luck', cat: 'trebuchet' }); // unknown cat
+  room._handleProg3Allocate(sess, { stat: 'luck', cat: '__proto__' });
   check('an offense spend without a valid category is refused',
-    p3.pool === poolBefore && p3.atk.sword.crit === 0,
+    p3.pool === poolBefore && p3.atk.sword.luck === 0,
     { pool: p3.pool, sword: p3.atk.sword });
 
-  room._handleProg3Allocate(sess, { stat: 'crit', cat: 'bow' });
+  room._handleProg3Allocate(sess, { stat: 'luck', cat: 'bow' });
   check('an offense spend lands on the NAMED type only',
-    p3.atk.bow.crit === 1 && p3.atk.sword.crit === 0 && p3.atk.staff.crit === 0, p3.atk);
-  check('the offense spend debited the shared pool', p3.pool === poolBefore - 1, p3.pool);
+    p3.atk.bow.luck === 1 && p3.atk.sword.luck === 0 && p3.atk.staff.luck === 0, p3.atk);
+  check('the offense spend debited the lane pool', p3.pool === poolBefore - 1, p3.pool);
   const ack = msgsOfType(wsA, 'prog3_allocated').pop();
-  check('the ack names the category', ack && ack.payload.cat === 'bow' && ack.payload.stat === 'crit',
+  check('the ack names the category', ack && ack.payload.cat === 'bow' && ack.payload.stat === 'luck',
     ack && ack.payload);
 
-  /* A body stat still works with no category, and ignores a stray one. */
+  /* A body stat still works with no category, and ignores a stray one
+     (v2.3.2592: it comes off the SHARED pool whatever lane is named). */
+  p3.alloc.def = 0;
   room._handleProg3Allocate(sess, { stat: 'def', cat: 'bow' });
-  check('a body spend ignores a stray category', p3.alloc.def === 1, p3.alloc);
+  check('a body spend ignores a stray category', p3.alloc.def === 1 && p3.shared === 4 && p3.pool === poolBefore - 1, p3.alloc);
 
   /* THE POINT OF THE CHANGE: investing in one type must not arm another. */
   psA.weapon = { type: 'greatsword', tierMult: 1 };
   psA.rangedWeapon = { type: 'bow', tierMult: 1 };
   psA.staffWeapon = null;
   psA.amulet = null; psA._cursedUntil = 0;
-  for (const c of PROG3.SKILLS) p3.atk[c] = { crit: 0, critDmg: 0, aspd: 0 };
-  p3.atk.bow.crit = 75;                       // maxed BOW crit only
+  p3.atk = prog3FreshAtk();
+  p3.atk.bow.luck = 100;                      // maxed BOW luck only (31% crit)
   const origRandom = Math.random;
-  Math.random = () => 0.10;                   // inside 30%, outside 0%
+  Math.random = () => 0.10;                   // inside 31%, outside 1%
   const bowRoll = room._computeAttackDamage(psA, 'ranged', false);
   const meleeRoll = room._computeAttackDamage(psA, 'melee', false);
   Math.random = origRandom;
@@ -541,7 +603,7 @@ const psA = room.playerState.pa;
   check('maxed BOW crit does NOTHING for melee', meleeRoll.isCrit === false, meleeRoll);
 
   /* The ceiling must cover the best type, not the active one. */
-  for (const c of PROG3.SKILLS) p3.atk[c] = { crit: 75, critDmg: 100, aspd: 0 };
+  for (const c of PROG3.SKILLS) { p3.atk[c] = prog3FreshAtk()[c]; p3.atk[c].luck = 100; }
   let over = 0;
   const cap = room._maxDmgForAttacker(psA, false);
   for (let i = 0; i < 300; i++) {
@@ -631,7 +693,7 @@ const psA = room.playerState.pa;
     prog3: {
       sk: { sword: { level: 7, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 100, xp: 0 } },
       alloc: { def: 3, hp: 2, dodge: 0, stam: 0 },
-      atk: { sword: { crit: 1, critDmg: 0, aspd: 0 }, bow: { crit: 0, critDmg: 0, aspd: 0 }, staff: { crit: 0, critDmg: 0, aspd: 0 } },
+      atk: { sword: { luck: 1, aspd: 0 }, bow: { luck: 0, aspd: 0 }, staff: { luck: 0, aspd: 0 } },
       pool: 40, poolBy: { sword: 4, bow: 0, staff: 30 }, ms: 8,
     },
   };
@@ -731,7 +793,7 @@ const psA = room.playerState.pa;
     prog3: {
       sk: { sword: { level: 5, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 1, xp: 0 } },
       alloc: { def: 2, hp: 1, dodge: 0, stam: 0, elem: 30 },
-      atk: { sword: { crit: 0, critDmg: 0, aspd: 0, dmg: 0 }, bow: {}, staff: {} },
+      atk: { sword: { luck: 0, aspd: 0, dmg: 0 }, bow: {}, staff: {} },
       pool: 5, poolBy: { sword: 5, bow: 0, staff: 0 }, ppl: 3,
     },
   };
@@ -823,17 +885,16 @@ const psA = room.playerState.pa;
   const origRandom = Math.random;
   const fresh = {
     prog3: { sk: { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } },
-             atk: { sword: { crit: 0, critDmg: 0, aspd: 0, dmg: 0 },
-                    bow:   { crit: 0, critDmg: 0, aspd: 0, dmg: 0 },
-                    staff: { crit: 0, critDmg: 0, aspd: 0, dmg: 0 } },
+             atk: prog3FreshAtk(),
              alloc: {}, pool: 0 },
     power: 0, mind: 0, agility: 0, weaponSpecs: {},
     weapon: { type: 'sword', tierMult: 1 },
     rangedWeapon: { type: 'bow', tierMult: 1 },
     staffWeapon: { type: 'staff', tierMult: 1 },
   };
+  /* v2.3.2592: the base lives on LUCK now (crit folded into it). */
   check('the base is a real constant, not a literal buried in the roll',
-    PROG3.ATK.crit.base === 0.01, PROG3.ATK.crit.base);
+    PROG3.ATK.luck.base === 0.01, PROG3.ATK.luck.base);
   for (const [slot, cat] of [['melee', 'sword'], ['ranged', 'bow'], ['staff', 'staff']]) {
     Math.random = () => 0.005;              /* inside 1% */
     const hit = room._computeAttackDamage(fresh, slot, false);
@@ -846,16 +907,16 @@ const psA = room.playerState.pa;
       miss.isCrit === false, { slot, cat, miss: miss.isCrit });
   }
   /* Additive, not absorbed: the first point bought must still be worth its
-     0.4%, which is what a base folded INTO the allocated range would cost. */
-  fresh.prog3.atk.bow.crit = 1;
-  Math.random = () => 0.012;                /* between 1% and 1.4% */
+     0.3% (v2.3.2592: luck's chance half), which is what a base folded INTO
+     the allocated range would cost. */
+  fresh.prog3.atk.bow.luck = 1;
+  Math.random = () => 0.012;                /* between 1% and 1.3% */
   const bought = room._computeAttackDamage(fresh, 'ranged', false);
   Math.random = origRandom;
-  check('a bought point stacks ON TOP of the base (1% + 0.4%)',
+  check('a bought point stacks ON TOP of the base (1% + 0.3%)',
     bought.isCrit === true, { at: 0.012, isCrit: bought.isCrit });
   check('...and melee, which bought nothing, is unaffected by bow\'s point',
-    PROG3.ATK.crit.base + fresh.prog3.atk.sword.crit * PROG3.ATK.crit.per === 0.01,
-    fresh.prog3.atk.sword.crit);
+    room._prog3CritChance(fresh, 'sword') === 0.01, fresh.prog3.atk.sword.luck);
 }
 
 /* ═══ v2.3.2212: A CRIT ALWAYS BEATS THE BEST ORDINARY HIT ═══
@@ -874,9 +935,11 @@ const psA = room.playerState.pa;
   const origRandom = Math.random;
   const ps = {
     prog3: { sk: { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } },
-             atk: { sword: { crit: 75, critDmg: 0, aspd: 0, dmg: 0 },
-                    bow:   { crit: 75, critDmg: 0, aspd: 0, dmg: 0 },
-                    staff: { crit: 75, critDmg: 0, aspd: 0, dmg: 0 } },
+             /* v2.3.2592: maxed LUCK — 31% chance, and its ×2.5 multiplier
+                is exactly the case the anchor must not REDUCE. */
+             atk: { sword: { luck: 100, aspd: 0, dmg: 0 },
+                    bow:   { luck: 100, aspd: 0, dmg: 0 },
+                    staff: { luck: 100, aspd: 0, dmg: 0 } },
              alloc: {}, pool: 0 },
     power: 0, mind: 0, agility: 0, weaponSpecs: {},
     weapon: { type: 'sword', tierMult: 2 },
@@ -952,6 +1015,151 @@ const psA = room.playerState.pa;
       hi.dmg <= cap, { dmg: hi.dmg, cap });
   }
   Math.random = origRandom;
+}
+
+/* ═══ v2.3.2592: THE FOUR-COLUMN POINTS REDESIGN (owner, 2026-09-16) ═══
+   Six stats per combat type — Range, Power, Speed, LUCK (crit + critDmg in
+   one), Special, Elemental — seven shared ones (Move Speed arrives), and a
+   SECOND POOL: "for every point earned through one of the 3 combat channels,
+   you earn one 'shared' point too."  The economy checks live in §4 above
+   (they invert the v2.3.2176 rule in place); this section pins the grid,
+   the migration, the boundary heal, the mint, and the two client-consumed
+   stats' server bounds. */
+{
+  const { prog3FoldLuck, prog3GrantSharedPoints } = await import('../src/prog3.js');
+  const { setProg3Enabled, setProg3SharedEnabled, prog3MoveMult } = await import('../../src/data/prog3.js');
+  const { SPEED, calcMoveSpeed } = await import('../../src/data/gameSystems.js');
+
+  /* ── the grid ── */
+  check('the six per-type stats are exactly range/dmg/aspd/luck/special/elem',
+    Object.keys(PROG3.ATK).sort().join(',') === 'aspd,dmg,elem,luck,range,special', Object.keys(PROG3.ATK));
+  check('the seven shared stats are exactly def/dodge/eres/hp/mana/move/stam',
+    Object.keys(PROG3.BODY).sort().join(',') === 'def,dodge,eres,hp,mana,move,stam', Object.keys(PROG3.BODY));
+  check('luck carries BOTH halves of a crit: a chance rate, a damage rate and the 1% base',
+    PROG3.ATK.luck.per === 0.003 && PROG3.ATK.luck.dmgPer === 0.01 && PROG3.ATK.luck.base === 0.01 && PROG3.ATK.luck.cap === 100,
+    PROG3.ATK.luck);
+  check('...landing on the SAME endpoints the old pair had: 31% chance and ×2.5 at cap',
+    Math.abs(PROG3.ATK.luck.base + PROG3.ATK.luck.cap * PROG3.ATK.luck.per - 0.31) < 1e-9
+      && Math.abs(1.5 + PROG3.ATK.luck.cap * PROG3.ATK.luck.dmgPer - 2.5) < 1e-9);
+  check('the whitelist takes the new names through the same door and refuses the retired ones',
+    prog3StatDef('luck').scope === 'atk' && prog3StatDef('range').scope === 'atk'
+      && prog3StatDef('special').scope === 'atk' && prog3StatDef('move').scope === 'body'
+      && prog3StatDef('crit') === null && prog3StatDef('critDmg') === null);
+
+  /* ── migration v17: the luck fold refunds INTO THE LANE, and the shared grant ── */
+  const b17 = {
+    _v: 16,
+    prog3: {
+      sk: { sword: { level: 6, xp: 0 }, bow: { level: 3, xp: 0 }, staff: { level: 1, xp: 0 } },
+      alloc: { def: 2, hp: 1, dodge: 0, stam: 0, eres: 0, mana: 0 },
+      atk: { sword: { crit: 20, critDmg: 10, aspd: 5, dmg: 0, elem: 0 },
+             bow:   { crit: 3, critDmg: 0, aspd: 0, dmg: 0, elem: 0 },
+             staff: { crit: 0, critDmg: 0, aspd: 0, dmg: 0, elem: 0 } },
+      pool: 4, poolBy: { sword: 2, bow: 1, staff: 0 }, ms: 10, ppl: 3,
+    },
+  };
+  const r17 = runRpgMigrations(b17);
+  check('v17 runs clean to the current version', r17.failed === null && b17._v === RPG_SCHEMA_VERSION, { r17, v: b17._v });
+  check('v17 REFUNDS crit + critDmg into the LANE that held them (pool and poolBy both)',
+    b17.prog3.pool === 4 + 30 + 3 && b17.prog3.poolBy.sword === 2 + 30 && b17.prog3.poolBy.bow === 1 + 3 && b17.prog3.poolBy.staff === 0,
+    { pool: b17.prog3.pool, poolBy: b17.prog3.poolBy });
+  check('...and the retired keys are gone while everything else stays',
+    !('crit' in b17.prog3.atk.sword) && !('critDmg' in b17.prog3.atk.sword) && b17.prog3.atk.sword.aspd === 5
+      && b17.prog3.alloc.def === 2 && b17.prog3.alloc.hp === 1,
+    b17.prog3.atk.sword);
+  check('v17 grants SHARED_POINTS_PER_LEVEL × (level − 1) per skill, stamped',
+    b17.prog3.shared === PROG3.SHARED_POINTS_PER_LEVEL * (5 + 2 + 0) && b17.prog3.spl === PROG3.SHARED_POINTS_PER_LEVEL,
+    { shared: b17.prog3.shared, spl: b17.prog3.spl });
+  check('...and body points already placed with lane points STAY placed (never clawed back)',
+    b17.prog3.alloc.def === 2 && b17.prog3.alloc.hp === 1, b17.prog3.alloc);
+  const pool17 = b17.prog3.pool, shared17 = b17.prog3.shared;
+  check('v17 is idempotent (no double refund, no double grant)',
+    prog3FoldLuck(b17.prog3) === false && prog3GrantSharedPoints(b17.prog3) === false
+      && b17.prog3.pool === pool17 && b17.prog3.shared === shared17
+      && runRpgMigrations(b17).changed === false,
+    { pool: b17.prog3.pool, shared: b17.prog3.shared });
+  /* A v10-ERA blob runs v10→v17 in one pass: prog3FromLegacy mints shared at
+     the current rate AND stamps spl, so v17 must find nothing left to grant. */
+  const era = { _v: 9, weaponSkills: { sword: { level: 6, xp: 0 } } };
+  runRpgMigrations(era);
+  check('a v10-era blob lands at the shared rate in one pass (no double grant)',
+    era.prog3.shared === 6 * PROG3.SHARED_POINTS_PER_LEVEL && era.prog3.spl === PROG3.SHARED_POINTS_PER_LEVEL,
+    { shared: era.prog3.shared, spl: era.prog3.spl });
+
+  /* ── the boundary heal, because migrations fail open ── */
+  const bh = room._sanitizeProg3({
+    sk: { sword: { level: 10, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 1, xp: 0 } },
+    alloc: {}, atk: { sword: { crit: 999, critDmg: 5 }, bow: {}, staff: {} },
+    pool: 1, poolBy: { sword: 1 }, ppl: 3,
+  });
+  check('sanitize folds a crit-pair blob the same way, refund BOUNDED by the retired caps (75 + 5)',
+    bh.pool === 1 + 75 + 5 && bh.poolBy.sword === 1 + 75 + 5
+      && !('crit' in bh.atk.sword) && bh.atk.sword.luck === 0,
+    { pool: bh.pool, poolBy: bh.poolBy, sword: bh.atk.sword });
+  check('sanitize boundary-heals the shared grant on a spl-less blob (+3×9 on sword)',
+    bh.shared === 9 * PROG3.SHARED_POINTS_PER_LEVEL && bh.spl === PROG3.SHARED_POINTS_PER_LEVEL,
+    { shared: bh.shared, spl: bh.spl });
+  const bh2 = room._sanitizeProg3(bh);
+  check('...and a healed blob sanitizes to itself (no re-grant, no re-refund)',
+    bh2.shared === bh.shared && bh2.pool === bh.pool && bh2.spl === bh.spl, { shared: bh2.shared, pool: bh2.pool });
+  check('sanitize bounds the shared pool and clamps the new stats',
+    room._sanitizeProg3({ sk: {}, alloc: { move: 999 }, atk: { sword: { range: 999, special: 999 } }, pool: 0, shared: 1e9, ppl: 3, spl: 3 })
+      .shared === 999
+    && room._sanitizeProg3({ sk: {}, alloc: { move: 999 }, atk: {}, pool: 0, ppl: 3, spl: 3 }).alloc.move === PROG3.BODY.move.cap
+    && room._sanitizeProg3({ sk: {}, alloc: {}, atk: { sword: { range: 999, special: 999 } }, pool: 0, ppl: 3, spl: 3 }).atk.sword.range === PROG3.ATK.range.cap
+    && room._sanitizeProg3({ sk: {}, alloc: {}, atk: { sword: { range: 999, special: 999 } }, pool: 0, ppl: 3, spl: 3 }).atk.sword.special === PROG3.ATK.special.cap);
+
+  /* ── the mint: a level-up pays BOTH pools, and prog3_level says so ── */
+  {
+    const p3 = psA.prog3;
+    p3.sk.bow.level = 1; p3.sk.bow.xp = 0; p3.sk.sword.level = 1; p3.sk.staff.level = 1;
+    room._prog3Recompute(psA);
+    const poolB = p3.pool, byB = p3.poolBy.bow, shB = p3.shared;
+    room._prog3AwardXp('pa', psA, 'bow', prog3XpRequired(1), { flat: true });
+    check('a level-up mints POINTS_PER_LEVEL to the lane AND SHARED_POINTS_PER_LEVEL to the shared pool',
+      p3.pool === poolB + PROG3.POINTS_PER_LEVEL && p3.poolBy.bow === byB + PROG3.POINTS_PER_LEVEL
+        && p3.shared === shB + PROG3.SHARED_POINTS_PER_LEVEL,
+      { pool: [poolB, p3.pool], by: [byB, p3.poolBy.bow], shared: [shB, p3.shared] });
+    const lvl = msgsOfType(wsA, 'prog3_level').pop();
+    check('...and prog3_level carries the shared pool', lvl && lvl.payload.shared === p3.shared, lvl && lvl.payload);
+  }
+
+  /* ── MOVE SPEED: the anti-teleport bound widens by the server's OWN copy of the stat ── */
+  {
+    check('move mult reads the allocation (+30% at the 75-pt cap)',
+      Math.abs(room._prog3MoveMult({ prog3: { alloc: { move: 75 } } }) - 1.30) < 1e-9
+        && room._prog3MoveMult({ prog3: { alloc: {} } }) === 1);
+    /* The fastest legitimate stack the client can run, in px/s, against the
+       bound the worker actually applies to a prog3 player — read off the
+       CLIENT's constants, so a client-side speed retune fails here.  The
+       potion (×1.5) widens the bound too (movement.js _spdCap), so both
+       sides carry it. */
+    setProg3Enabled(true); setProg3SharedEnabled(true);
+    const capRpg = { prog3: { sk: { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } }, alloc: { move: PROG3.BODY.move.cap }, atk: {}, pool: 0 } };
+    const clientMult = prog3MoveMult(capRpg);
+    setProg3Enabled(false); setProg3SharedEnabled(false);
+    const worstPxPerSec = calcMoveSpeed(0, 0) / 5.0 * SPEED * 60 * clientMult * 1.15 * 1.065 * 1.5;
+    const bound = 500 * 1.5 * room._prog3MoveMult({ prog3: { alloc: { move: PROG3.BODY.move.cap } } });
+    check('client and server agree on the move multiplier at cap', Math.abs(clientMult - room._prog3MoveMult({ prog3: { alloc: { move: PROG3.BODY.move.cap } } })) < 1e-9, { clientMult });
+    check('the fastest legitimate maxed-move stack stays under the widened bound with headroom',
+      worstPxPerSec < bound * 0.75, { worstPxPerSec, bound });
+    /* And the handler itself: a move a maxed-stat player can legitimately
+       make in one second is accepted, while the same move from a player
+       with no points is refused — the widening is real, not a comment. */
+    const mkMover = (movePts) => ({
+      x: 0, y: 0, z: 'meadow', lastMoveAt: Date.now() - 1000,
+      prog3: { sk: { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } }, alloc: { move: movePts }, atk: prog3FreshAtk(), pool: 0 },
+    });
+    const dist = 500 * 1.3 + 80 - 5;   /* inside the widened bound, outside the plain one */
+    room.playerState.mvA = mkMover(75); room.playerState.mvB = mkMover(0);
+    room._handleMove({ id: 'mvA' }, null, { x: dist, y: 0, z: 'meadow' });
+    room._handleMove({ id: 'mvB' }, null, { x: dist, y: 0, z: 'meadow' });
+    check('a maxed-move player\'s legitimate move is accepted by the widened bound',
+      room.playerState.mvA.x === dist, { x: room.playerState.mvA.x });
+    check('...while the same move from a player with no move points is refused',
+      room.playerState.mvB.x === 0, { x: room.playerState.mvB.x });
+    delete room.playerState.mvA; delete room.playerState.mvB;
+  }
 }
 
 console.log(failures === 0 ? '\nprog3: ALL PASS' : `\nprog3: ${failures} FAILURE(S)`);

@@ -28,9 +28,20 @@ export const PROG3 = {
   /* v2.3.2199: 3 points per level-up (was 1) — the level banner reads
      this; the mint itself is the server's (prog3.js _prog3AwardXp). */
   POINTS_PER_LEVEL: 3,
+  /* v2.3.2592: ...and the SHARED points minted beside them, one per lane
+     point (owner: "you earn one 'shared' point too").  The level banner
+     reads this; the mint is the server's (prog3.js _prog3AwardXp). */
+  SHARED_POINTS_PER_LEVEL: 3,
   /* v2.3.1668: BODY is global, ATK is allocated per combat type — see
      the server's PROG3 block for the reasoning.  Mirror both or the
-     readouts drift from the rolls. */
+     readouts drift from the rolls.
+     v2.3.2592: the four-column redesign — SIX per-type stats (Range, Power,
+     Speed, Luck, Special, Elemental) and SEVEN shared ones (HP, Def, MP,
+     Stamina, Dodge, Move Speed, Elem Resist).  Storage keys stay where a
+     stat already existed (dmg / aspd / elem); crit + critDmg fold into
+     `luck`; range / special / move are new.  The reasoning lives on the
+     SERVER copy (server/src/prog3.js), which is the source of truth;
+     mirror-audit §12 pins values AND key sets. */
   BODY: {
     def:     { cap: 100, per: 0.004 },  // −0.4% damage taken/pt
     hp:      { cap: 100, per: 8 },      // +8 max HP/pt
@@ -42,21 +53,23 @@ export const PROG3 = {
        pins both the values AND the key sets. */
     eres:    { cap: 75,  per: 0.004 },  // −0.4% elemental damage taken/pt
     mana:    { cap: 100, per: 2.5 },    // +2.5 max mana/pt, ON TOP of the Magic-level pool
+    move:    { cap: 75,  per: 0.004 },  // v2.3.2592: +0.4% move speed/pt, client-consumed (BroTown.jsx)
   },
   ATK: {
+    range:   { cap: 100, per: 0.005 },  // v2.3.2592: +0.5% reach/pt, PER TYPE, client-consumed
     /* v2.3.2210: the flat 1% base every character starts with -- the
-       reasoning (and why the cap becomes 31%, and why anticheat does not
-       move) lives on the SERVER copy, server/src/prog3.js, which is the
-       source of truth; mirror-audit.test.mjs pins the two together. */
-    crit:    { cap: 75,  per: 0.004, base: 0.01 },  // 1% + 0.4%/pt, PER TYPE
-    /* v2.3.2199: critDmg went flat→percent (+1%/pt on the 1.5× crit
-       multiplier, ×2.5 at cap).  The reasoning lives on the SERVER copy;
-       the LEGACY flat (+2/pt) still exists as a display fallback against
-       an old worker — see prog3CritFlat below, NOT this constant. */
-    critDmg: { cap: 100, per: 0.01 },   // +1% crit damage/pt, PER TYPE
+       reasoning (and why anticheat does not move) lives on the SERVER copy,
+       server/src/prog3.js, which is the source of truth; mirror-audit pins
+       the two together.
+       v2.3.2592: crit + critDmg are ONE stat, LUCK: `per` is the crit-chance
+       rate (1% + 0.3%/pt → 31% at the 100-pt cap) and `dmgPer` the
+       crit-damage rate (+1%/pt → ×2.5).  The retired pair lives on in
+       PROG3_LEGACY_ATK below, for old-worker prediction only. */
+    luck:    { cap: 100, per: 0.003, dmgPer: 0.01, base: 0.01 },
     aspd:    { cap: 100, per: 0.0035 }, // −0.35% swing period/pt, PER TYPE
     dmg:     { cap: 75,  per: 0.5 },    // v2.3.2199: +0.5 damage/pt pre-tier, PER TYPE
     elem:    { cap: 75,  per: 1 },      // v2.3.2512: +1 elemental power/pt, PER TYPE (was global BODY)
+    special: { cap: 75,  per: 0.01 },   // v2.3.2592: +1% special-attack damage/pt, PER TYPE
   },
   /* v2.3.1727: the retune PROGRESSION-REDESIGN #13 deferred — the §7-A
      placeholders bought +17.7% damage over ten character levels, which the
@@ -86,6 +99,20 @@ export const PROG3 = {
   BURST_CD_MS: 3000,
   BURST_RADIUS: 70,
   BURST_DMG_MULT: 1.5,
+};
+
+/* ═══ v2.3.2592: THE RETIRED CRIT PAIR, FOR OLD-WORKER PREDICTION ONLY ═══
+   A worker that has not folded crit/critDmg into Luck (no
+   caps.prog3shared) still rolls off these two per-type stats, still echoes
+   them in the blob, and still refuses `luck` at its whitelist — so against
+   it the client must draw THESE rows and predict THIS math (rule 19).  Not
+   part of PROG3 (mirror-audit pins PROG3's key sets against the server's,
+   and these keys are gone there); the same posture as the literal 2 in
+   prog3CritFlat.  Delete with the fallback once every worker advertises
+   caps.prog3shared. */
+export const PROG3_LEGACY_ATK = {
+  crit:    { cap: 75,  per: 0.004, base: 0.01 },
+  critDmg: { cap: 100, per: 0.01 },
 };
 
 /* The Build screen's row order + copy.  `perText` states the per-point
@@ -121,30 +148,46 @@ export const PROG3 = {
    through prog3AtkMeta()/prog3BodyMeta() below, which resolve against
    the live caps flag — mapping the raw arrays would show stats an old
    worker silently refuses to allocate. */
+/* ═══ v2.3.2592: THE OWNER'S SIX, IN THE OWNER'S ORDER ═══
+   "Range, Power, Speed, Luck, Special, Elemental."  The LABEL carries the
+   new name; the storage KEY stays where the stat already existed (dmg /
+   aspd / elem) because renaming a persisted field breaks saves (rule 1).
+   `dpsNote` is what the ℹ️ window says in place of "does not change
+   damage" for a stat whose job is not sustained damage — "reach, not
+   damage" is an answer, "does not change damage" beside RANGE is a bug
+   report.  `capsProg3Shared` rows exist only on a worker carrying the
+   folded grid; `legacyOnly` rows exist only on one that does not. */
 export const PROG3_ATK_META = [
-  { key: 'dmg',     label: 'Damage',    perText: '+0.5 damage per hit', unit: ' dmg', iconSrc: '/icons/ui/hero/dps.webp?v=2.3.2199', capsProg3x: true },
-  { key: 'crit',    label: 'Crit',      perText: '+0.4% crit chance',  pct: true, unit: '%', iconSrc: '/icons/ui/hero/crit.webp?v=2.3.1694' },
-  { key: 'critDmg', label: 'Crit Dmg',  perText: '+1% crit damage', pct: true, unit: '% extra', perTextLegacy: '+2 damage on crits', unitLegacy: ' dmg', iconSrc: '/icons/ui/hero/damage.webp?v=2.3.1694' },
-  /* Atk Speed's points SHORTEN the swing, so its total is a reduction — the
+  { key: 'range',   label: 'Range',     perText: '+0.5% reach',                        pct: true, unit: '% farther',        iconSrc: '/icons/ui/t2/bow-longshot.webp?v=2.3.2592',     capsProg3Shared: true, dpsNote: 'reach, not damage' },
+  { key: 'dmg',     label: 'Power',     perText: '+0.5 damage per hit',                unit: ' dmg',                        iconSrc: '/icons/ui/hero/dps.webp?v=2.3.2199',            capsProg3x: true },
+  /* Speed's points SHORTEN the swing, so its total is a reduction — the
      label below says "faster" rather than printing a negative. */
-  { key: 'aspd',    label: 'Atk Speed', perText: '−0.35% swing time',  pct: true, unit: '% faster', iconSrc: '/icons/ui/t2/sword-tempo.webp?v=2.3.1694' },
-  /* v2.3.2512: elemental power, now per weapon — burns/roots/thorns and
-     element collisions from THIS weapon scale off it.  Same art it carried
-     as a body stat (the detonation drawing is still the closest the repo
-     has); swap the day a dedicated element-power icon exists. */
-  { key: 'elem',    label: 'Elem Pwr', perText: '+1 elemental power', unit: ' power', iconSrc: '/icons/ui/t2/staff-detonation.webp?v=2.3.2199', capsProg3Elem: true },
+  { key: 'aspd',    label: 'Speed',     perText: '−0.35% swing time',                  pct: true, unit: '% faster',         iconSrc: '/icons/ui/t2/sword-tempo.webp?v=2.3.1694' },
+  { key: 'luck',    label: 'Luck',      perText: '+0.3% crit chance, +1% crit damage', pct: true, unit: '% crit chance',    iconSrc: '/icons/ui/hero/crit.webp?v=2.3.1694',           capsProg3Shared: true },
+  { key: 'special', label: 'Special',   perText: '+1% special attack damage',          pct: true, unit: '% special damage', iconSrc: '/icons/ui/t2/staff-overload.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'special attacks only' },
+  /* v2.3.2512: elemental power, per weapon — burns/roots/thorns and element
+     collisions from THIS weapon scale off it.  The detonation drawing is
+     still the closest the repo has; swap the day a dedicated icon exists. */
+  { key: 'elem',    label: 'Elemental', perText: '+1 elemental power',                 unit: ' power',                      iconSrc: '/icons/ui/t2/staff-detonation.webp?v=2.3.2199', capsProg3Elem: true },
+  /* The RETIRED pair, drawn only against a worker that has not folded them
+     into Luck — that worker still rolls off crit and critDmg, so those are
+     the rows it must show (rule 19).  Same copy they shipped with. */
+  { key: 'crit',    label: 'Crit',      perText: '+0.4% crit chance',  pct: true, unit: '%',       iconSrc: '/icons/ui/hero/crit.webp?v=2.3.1694',   legacyOnly: true },
+  { key: 'critDmg', label: 'Crit Dmg',  perText: '+1% crit damage',    pct: true, unit: '% extra', perTextLegacy: '+2 damage on crits', unitLegacy: ' dmg', iconSrc: '/icons/ui/hero/damage.webp?v=2.3.1694', legacyOnly: true },
 ];
+/* The owner's seven shared stats, in the owner's order: HP, Def, MP,
+   Stamina, Dodge, Move Speed, Elem Resist.  `mana` and `eres` take the
+   hero-sheet art drawn for them (the water drop, the shield-and-arrow)
+   instead of borrowing the Magic lane's staff and the Defense row's shield
+   — in a column of seven, two rows sharing one picture read as one stat. */
 export const PROG3_BODY_META = [
-  { key: 'def',   label: 'Defense', perText: '−0.4% damage taken', pct: true, unit: '% less damage', iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1694' },
-  { key: 'hp',    label: 'Max HP',  perText: '+8 max HP',          unit: ' HP', iconSrc: '/icons/ui/hero/hp-heart.webp?v=2.3.1922' } /* v2.3.1922: plain heart */,
-  { key: 'dodge', label: 'Dodge',   perText: '+0.4% dodge',        pct: true, unit: '%', iconSrc: '/icons/ui/hero/dodge.webp?v=2.3.1694' },
-  { key: 'stam',  label: 'Stamina', perText: '+3 max stamina',     unit: ' stamina', iconSrc: '/icons/ui/hero/stamina.webp?v=2.3.1694' },
-  /* v2.3.2512: elemental power moved OUT of this table and into PROG3_ATK_META
-     (per weapon).  What arrives in its place is the defensive half the
-     elemental system never had, plus the mana pool finally becoming something
-     a player can choose to buy. */
-  { key: 'mana',  label: 'Max Mana',   perText: '+2.5 max mana',      unit: ' mana', iconSrc: '/icons/ui/hero/magic.webp?v=2.3.1311', capsProg3Elem: true },
-  { key: 'eres',  label: 'Elem Resist', perText: '−0.4% elemental damage taken', pct: true, unit: '% less elemental', iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1694', capsProg3Elem: true },
+  { key: 'hp',    label: 'Max HP',      perText: '+8 max HP',                    unit: ' HP',             iconSrc: '/icons/ui/hero/hp-heart.webp?v=2.3.1922' } /* v2.3.1922: plain heart */,
+  { key: 'def',   label: 'Defense',     perText: '−0.4% damage taken',           pct: true, unit: '% less damage', iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1694' },
+  { key: 'mana',  label: 'Max Mana',    perText: '+2.5 max mana',                unit: ' mana',           iconSrc: '/icons/ui/hero/mana.webp?v=2.3.2592',             capsProg3Elem: true },
+  { key: 'stam',  label: 'Stamina',     perText: '+3 max stamina',               unit: ' stamina',        iconSrc: '/icons/ui/hero/stamina.webp?v=2.3.1694' },
+  { key: 'dodge', label: 'Dodge',       perText: '+0.4% dodge',                  pct: true, unit: '%',    iconSrc: '/icons/ui/hero/dodge.webp?v=2.3.1694' },
+  { key: 'move',  label: 'Move Speed',  perText: '+0.4% move speed',             pct: true, unit: '% faster', iconSrc: '/icons/ui/hero/move-speed.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'movement, not damage' },
+  { key: 'eres',  label: 'Elem Resist', perText: '−0.4% elemental damage taken', pct: true, unit: '% less elemental', iconSrc: '/icons/ui/hero/damage-reduction.webp?v=2.3.2592', capsProg3Elem: true },
 ];
 
 /* The rows the CONNECTED worker supports, with critDmg's copy resolved
@@ -158,6 +201,11 @@ function _resolveMetaRows(rows) {
        grid.  Same rule as capsProg3x above and for the same reason: never
        offer a stat the wire will silently refuse (rule 19). */
     if (m.capsProg3Elem && !_prog3elem) continue;
+    /* v2.3.2592: the folded grid's rows exist only on a worker carrying it;
+       the retired crit pair exists only on one that does not.  Same rule as
+       the two flags above, both directions. */
+    if (m.capsProg3Shared && !_prog3shared) continue;
+    if (m.legacyOnly && _prog3shared) continue;
     if (m.key === 'critDmg' && !_prog3x) {
       out.push({ ...m, perText: m.perTextLegacy, unit: m.unitLegacy, pct: false });
     } else out.push(m);
@@ -207,6 +255,20 @@ export function isProg3XEnabled() { return _prog3x; }
 var _prog3elem = false;
 export function setProg3ElemEnabled(on) { _prog3elem = !!on; }
 export function isProg3ElemEnabled() { return _prog3elem; }
+
+/* ═══ v2.3.2592: caps.prog3shared — the four-column redesign gate ═══
+   Six per-type stats with crit/critDmg folded into LUCK and RANGE/SPECIAL
+   new, MOVE SPEED shared, and a SECOND POOL minted beside the lane points.
+   Display-only, the capsProg3x pattern: against an OLD worker the new rows
+   hide, the retired crit pair shows, the crit readouts and DPS math predict
+   what that worker rolls (PROG3_LEGACY_ATK), the reach / special / move
+   multipliers read 1, and the shared column spends lane points the way that
+   worker still allows.  Nothing new is ever SENT on this flag — a
+   prog3_allocate naming `luck` with a `cat` is shaped like today's other
+   per-type spends, and an old worker simply refuses it. */
+var _prog3shared = false;
+export function setProg3SharedEnabled(on) { _prog3shared = !!on; }
+export function isProg3SharedEnabled() { return _prog3shared; }
 
 /* The player's effective elemental power for a weapon — the client mirror of
    the server's elemAttackStat seam (server/src/elemental.js).  ONE definition,
@@ -345,7 +407,8 @@ export function prog3Pts(rpg, stat) {
 export function prog3AtkPts(rpg, cat, stat) {
   var a = rpg && rpg.prog3 && rpg.prog3.atk && rpg.prog3.atk[cat];
   var v = a && a[stat];
-  var cap = PROG3.ATK[stat] ? PROG3.ATK[stat].cap : 0;
+  var d = PROG3.ATK[stat] || PROG3_LEGACY_ATK[stat]; /* v2.3.2592: crit/critDmg still read against an old worker */
+  var cap = d ? d.cap : 0;
   return (typeof v === 'number') ? Math.max(0, Math.min(cap, v)) : 0;
 }
 /* greatsword shares the sword/melee category, matching the server. */
@@ -361,6 +424,19 @@ export function prog3ActiveCat(rpg) {
 export function prog3Pool(rpg) {
   var p = rpg && rpg.prog3 && rpg.prog3.pool;
   return (typeof p === 'number' && p > 0) ? Math.floor(p) : 0;
+}
+/* ═══ v2.3.2592: THE SHARED POOL ═══
+   Owner: "for every point earned through one of the 3 combat channels, you
+   earn one 'shared' point too ... the point for shared can be allocated to
+   any in that shared pool."  `prog3.shared` is that pool, server-minted
+   beside the lane points; a lane point can no longer buy a shared stat.
+   Against an OLD worker (no caps.prog3shared) there is no shared pool and
+   the body stats still spend lane points — prog3PoolShared says so by
+   returning what THAT worker would accept for a body spend, so the Shared
+   column's count is honest in either deploy order. */
+export function prog3Shared(rpg) {
+  var s = rpg && rpg.prog3 && rpg.prog3.shared;
+  return (typeof s === 'number' && s > 0) ? Math.floor(s) : 0;
 }
 
 /* §6-C double cap: the stat's own hard cap AND min(100, char level) —
@@ -396,13 +472,30 @@ export function prog3PoolAny(rpg) {
 export function prog3PoolFor(rpg, cat) {
   return prog3PoolBy(rpg, cat) + prog3PoolAny(rpg);
 }
+/* What the SHARED column can spend: the shared pool plus the free ones —
+   or, against a worker without the shared pool, the whole lane total
+   (every lane point bought body stats there).  v2.3.2592. */
+export function prog3PoolShared(rpg) {
+  if (!_prog3shared) return prog3Pool(rpg);
+  return prog3Shared(rpg) + prog3PoolAny(rpg);
+}
+/* The lane a body spend should NAME against an old worker (which takes the
+   point off a lane): the one with the most to spend.  Against a shared-pool
+   worker the name is ignored, so any lane will do.  v2.3.2592. */
+export function prog3SharedSpendCat(rpg) {
+  var best = PROG3.SKILLS[0];
+  for (var i = 1; i < PROG3.SKILLS.length; i++) {
+    if (prog3PoolBy(rpg, PROG3.SKILLS[i]) > prog3PoolBy(rpg, best)) best = PROG3.SKILLS[i];
+  }
+  return best;
+}
 
 export function prog3StatCap(rpg, stat) {
-  var d = PROG3.BODY[stat] || PROG3.ATK[stat];
+  var d = PROG3.BODY[stat] || PROG3.ATK[stat] || PROG3_LEGACY_ATK[stat]; /* v2.3.2592: the retired pair still caps against an old worker */
   return Math.min(d ? d.cap : 0, prog3CharLevel(rpg));
 }
 export function prog3IsAtkStat(stat) {
-  return !!PROG3.ATK[stat];
+  return !!(PROG3.ATK[stat] || PROG3_LEGACY_ATK[stat]);
 }
 
 export function prog3DodgePct(rpg) { return prog3Pts(rpg, 'dodge') * PROG3.BODY.dodge.per; }
@@ -412,22 +505,49 @@ export function prog3DodgePct(rpg) { return prog3Pts(rpg, 'dodge') * PROG3.BODY.
    predicted number downstream reads this one function -- the Hero screen's
    Crit row and calcDisplayDps's crit term both -- so the base reaches the
    display and the DPS estimate without either of them knowing about it. */
+/* v2.3.2592: the chance is the LUCK stat's `per` half on a worker that
+   folded the pair, and the retired crit stat against one that did not —
+   whichever the connected worker actually rolls (rule 19). */
 export function prog3CritPct(rpg, cat) {
-  return PROG3.ATK.crit.base
-    + prog3AtkPts(rpg, cat || prog3ActiveCat(rpg), 'crit') * PROG3.ATK.crit.per;
+  var c = cat || prog3ActiveCat(rpg);
+  if (_prog3shared) return PROG3.ATK.luck.base + prog3AtkPts(rpg, c, 'luck') * PROG3.ATK.luck.per;
+  return PROG3_LEGACY_ATK.crit.base + prog3AtkPts(rpg, c, 'crit') * PROG3_LEGACY_ATK.crit.per;
 }
 /* v2.3.2199: critDmg went flat→percent.  The multiplier is the live
    read; the FLAT survives only as the old-worker prediction (the
    literal 2 below is the retired per-point value, pinned so a new
    client still predicts the flat +2 crits an un-upgraded worker rolls
-   — the specialManaCost fallback pattern, rule 19). */
+   — the specialManaCost fallback pattern, rule 19).
+   v2.3.2592: and the multiplier is LUCK's `dmgPer` half on a folded worker. */
 export function prog3CritMult(rpg, cat) {
+  var c = cat || prog3ActiveCat(rpg);
+  if (_prog3shared) return 1.5 + prog3AtkPts(rpg, c, 'luck') * PROG3.ATK.luck.dmgPer;
   if (!_prog3x) return 1.5;
-  return 1.5 + prog3AtkPts(rpg, cat || prog3ActiveCat(rpg), 'critDmg') * PROG3.ATK.critDmg.per;
+  return 1.5 + prog3AtkPts(rpg, c, 'critDmg') * PROG3_LEGACY_ATK.critDmg.per;
 }
 export function prog3CritFlat(rpg, cat) {
-  if (_prog3x) return 0;
+  if (_prog3x || _prog3shared) return 0;
   return prog3AtkPts(rpg, cat || prog3ActiveCat(rpg), 'critDmg') * 2; /* legacy worker's flat */
+}
+/* ═══ v2.3.2592: the three CLIENT-CONSUMED multipliers ═══
+   SPECIAL scales the per-weapon special multiplier (specialAtkMultFor);
+   RANGE scales the bow's plant cap, the staff orb's life and the melee
+   swing envelope (gameSystems bowRangeMult / staffOrbLife / meleeRangeMult);
+   MOVE scales the walk speed (BroTown.jsx).  Each reads 1 against a worker
+   that does not carry the stat — a readout or a reach the wire would not
+   honour is the rule-19 bug these gates exist to prevent.  The server
+   mirrors the first (combat.js) and bounds the third (movement.js). */
+export function prog3SpecialMult(rpg, cat) {
+  if (!_prog3shared || !prog3Live(rpg)) return 1;
+  return 1 + prog3AtkPts(rpg, cat || prog3ActiveCat(rpg), 'special') * PROG3.ATK.special.per;
+}
+export function prog3RangeMult(rpg, cat) {
+  if (!_prog3shared || !prog3Live(rpg)) return 1;
+  return 1 + prog3AtkPts(rpg, cat || prog3ActiveCat(rpg), 'range') * PROG3.ATK.range.per;
+}
+export function prog3MoveMult(rpg) {
+  if (!_prog3shared || !prog3Live(rpg)) return 1;
+  return 1 + prog3Pts(rpg, 'move') * PROG3.BODY.move.per;
 }
 export function prog3DefPct(rpg) { return prog3Pts(rpg, 'def') * PROG3.BODY.def.per; }
 

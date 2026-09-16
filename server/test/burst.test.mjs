@@ -360,8 +360,8 @@ const setEligible = () => {
      elemental weapon. */
   setEligible();
   ps.prog3.sk.staff.level = PROG3.LEVEL_CAP;
-  ps.prog3.atk.staff.crit = PROG3.ATK.crit.cap;
-  ps.prog3.atk.staff.critDmg = PROG3.ATK.critDmg.cap;
+  ps.prog3.atk.staff.luck = PROG3.ATK.luck.cap;       /* v2.3.2592: both crit halves, maxed */
+  ps.prog3.atk.staff.special = PROG3.ATK.special.cap; /* v2.3.2592: a burst is not a special, but the ceiling must cover the stack either way */
   room._prog3Recompute(ps);
   ps.staffWeapon = { type: 'staff', tierMult: 3.0, element1: 'flame', isVolatile: true };
   ps.activeSlot = 'staff';

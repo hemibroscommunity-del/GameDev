@@ -4602,7 +4602,13 @@ export var BroTown = function BroTown(_ref0) {
         /* Agility-based movement speed */
         /* v2.3.1154: + Swiftness channel (Endurance grid, cap +10%) --
            client-owned; stays under the worker's 500 px/s move bound. */
-        var baseSpd = S.rpg ? calcMoveSpeed(S.rpg.agility || 0, (S.rpg.enduranceSpec || {}).swiftness || 0) / 5.0 * SPEED : SPEED;
+        /* v2.3.2592: × the allocated MOVE SPEED stat (prog3, +0.4%/pt, +30% at
+           cap; 1 for legacy characters and against a worker without it).  The
+           worker widens its anti-teleport bound by the same multiplier from
+           its own copy of the allocation (movement.js), so a maxed stat runs
+           at the same headroom under the bound as an unallocated one. */
+        var baseSpd = (S.rpg ? calcMoveSpeed(S.rpg.agility || 0, (S.rpg.enduranceSpec || {}).swiftness || 0) / 5.0 * SPEED : SPEED)
+          * DATA.prog3MoveMult(S.rpg);
         /* Food buff speed bonus.
            v2.3.2062: 1.15 is the COOKED-FOOD magnitude and stays the fallback;
            S._spdBuffMul carries a stronger buff's own number (the Swift

@@ -24,7 +24,7 @@
  * real answer to "should I put it here" rather than a gap in the tooltip.
  */
 import { calcDisplayDps, getActiveWeapon } from '../../../data/gameSystems.js';
-import { PROG3, prog3Pts, prog3AtkPts, prog3IsAtkStat, isProg3XEnabled } from '../../../data/prog3.js';
+import { PROG3, PROG3_LEGACY_ATK, prog3Pts, prog3AtkPts, prog3IsAtkStat, isProg3XEnabled } from '../../../data/prog3.js';
 
 /* The weapon a DPS readout should speak for.
  *
@@ -50,7 +50,12 @@ function statTotal(pts, cfg, stat) {
      rolls the flat +2/pt, and the tooltip must total what that worker
      pays (the prog3CritFlat fallback, rule 19). */
   if (stat === 'critDmg' && !isProg3XEnabled()) return pts * 2;
-  return pts * (cfg ? cfg.per : 0);
+  /* v2.3.2592: + the stat's BASE where it has one (luck's 1% crit chance,
+     and the retired crit's).  The cell prints the total WITH the base
+     (prog3CritPct), and a window that said 6.0% under a cell that said 7.0%
+     was the two screens disagreeing about one number — mp-statpeek caught
+     it against the character's real chance. */
+  return pts * (cfg ? cfg.per : 0) + ((cfg && cfg.base) || 0);
 }
 
 /** Preview one more point in `stat`.  `cat` is the weapon category an offense
@@ -59,7 +64,7 @@ function statTotal(pts, cfg, stat) {
 export function previewStatPoint(R, stat, cat) {
   if (!R || !R.prog3 || !stat) return null;
   const isAtk = prog3IsAtkStat(stat);
-  const cfg = isAtk ? PROG3.ATK[stat] : PROG3.BODY[stat];
+  const cfg = isAtk ? (PROG3.ATK[stat] || PROG3_LEGACY_ATK[stat]) : PROG3.BODY[stat]; /* v2.3.2592: the retired pair still previews against an old worker */
   if (!cfg) return null;
 
   const pts = isAtk ? prog3AtkPts(R, cat, stat) : prog3Pts(R, stat);
@@ -90,6 +95,12 @@ export function previewStatPoint(R, stat, cat) {
     capped,
     statNow: statTotal(pts, cfg, stat),
     statAfter: statTotal(pts + 1, cfg, stat),
+    /* v2.3.2592: LUCK buys two things per point, and a rate cannot answer
+       "what will my crit damage BE" any more than it could for the chance —
+       so the second half rides along as its own now/after pair, and the ℹ️
+       window prints two rows for it.  Absent for every single-rate stat. */
+    statNow2: cfg.dmgPer ? pts * cfg.dmgPer : null,
+    statAfter2: cfg.dmgPer ? (pts + 1) * cfg.dmgPer : null,
     dpsNow, dpsAfter,
     dpsDelta: (typeof dpsNow === 'number' && typeof dpsAfter === 'number') ? (dpsAfter - dpsNow) : null,
     weaponName: wpn ? (wpn.name || wpn.type || 'weapon') : null,

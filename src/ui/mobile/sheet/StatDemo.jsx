@@ -209,6 +209,32 @@ const SCENES = {
     sc.at(700);
     return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '60', kind: 'crit' }] } };
   },
+  /* ═══ v2.3.2592: LUCK — both halves of a crit in one scene ═══
+     Before: one hit in four goes gold.  After the point: one in two does,
+     AND the gold ones land harder — the two things a Luck point buys,
+     read against each other rather than captioned. */
+  luck: (shot) => {
+    const sc = new Script(shot);
+    sc.at(400).strike('10', 'hit', -8).at(800).strike('10', 'hit', 8)
+      .at(800).strike('10', 'hit', -8).at(800).strike('25', 'crit', 6);
+    sc.point();
+    sc.at(400).strike('10', 'hit', -8).at(800).strike('40', 'crit', 6)
+      .at(800).strike('10', 'hit', -8).at(800).strike('40', 'crit', 6);
+    sc.at(700);
+    return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '40', kind: 'crit' }] } };
+  },
+  /* ═══ v2.3.2592: SPECIAL — the big hit is the one that grows ═══
+     An ordinary hit and then the special, twice; after the point the
+     ordinary hit is unchanged and the special is half again as large,
+     which is the whole claim the stat makes. */
+  special: (shot) => {
+    const sc = new Script(shot);
+    sc.at(400).strike('10', 'hit', -8).at(900).strike('30', 'hit', 8);
+    sc.point();
+    sc.at(400).strike('10', 'hit', -8).at(900).strike('55', 'hit', 8);
+    sc.at(700);
+    return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '55', kind: 'hit' }] } };
+  },
   aspd: (shot) => {
     /* Same numbers, twice as many of them in the same time. */
     const sc = new Script(shot);

@@ -97,7 +97,7 @@ function _probeStandInSkin(key, cv, opts) {
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */ } from '@/data/index.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
 import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the wind-up bar reads the button ring's own numbers) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
@@ -5159,7 +5159,13 @@ export class EffectsRenderer {
         const _rrFy = _rrM && (_rrM.renderY != null ? _rrM.renderY : _rrM.y);
         if (_rrM && Number.isFinite(_rrX) && Number.isFinite(_rrFy)) {
           const _rrArch = _rrM.arch || _rrM.archetype || _rrM.type;
-          const _rrR = GS_OUTER_RADIUS + (monsterMeleeHitRadius(_rrArch) || 24);
+          /* v2.3.2592: the ring is drawn at the reach the swing ACTUALLY has —
+             GS_OUTER_RADIUS × the Melee lane's RANGE stat, the same multiplier
+             monsterCombat applies to its hit test.  `outer` below publishes
+             the scaled figure so mp-engage's composition rule (r === outer +
+             hitR) keeps meaning "what is drawn is what hits". */
+          const _rrOuter = GS_OUTER_RADIUS * meleeRangeMult(S.rpg);
+          const _rrR = _rrOuter + (monsterMeleeHitRadius(_rrArch) || 24);
           const _rrY = _rrFy - (monsterBodyOffsetY(_rrArch) || 23);
           const _rrD = Math.hypot(_rrX - S.player.x, _rrY - S.player.y);
           const _rrIn = _rrD <= _rrR;
@@ -5191,7 +5197,7 @@ export class EffectsRenderer {
              one day fails the harness instead of quietly drawing a ring the
              swing does not honour. */
           this._reachRing = { id: _rrM.id, x: _rrX, y: _rrY, r: _rrR,
-            outer: GS_OUTER_RADIUS, hitR: monsterMeleeHitRadius(_rrArch) || 24,
+            outer: _rrOuter, hitR: monsterMeleeHitRadius(_rrArch) || 24,
             arch: _rrArch, inReach: _rrIn, dist: Math.round(_rrD),
             src: (S.lockedTarget && S.lockedTarget.ref === _rrM) ? 'lock' : 'aggro' };
         }
@@ -5939,6 +5945,9 @@ export class EffectsRenderer {
              the swing window (owner: mimic the wind of the swing).  Softness is
              faked with a few concentric fills (no WebGL blur filter -- iOS-safe
              per the charge-pie drop-shadow incident).  Arrow stays below. */
+          /* v2.3.2592: the preview and the direction chip sit at the reach
+             the RANGE stat gives this swing (monsterCombat's _mRm). */
+          const _mRm = meleeRangeMult(S.rpg);
           if (meleeSwinging) {
             const p = Math.max(0, Math.min(1, (now - (S.swingTimer || now)) / SWORD_SWING_MS));
             const a = 0.07 * Math.sin(p * Math.PI);   // swell-in then fade-out -- very subtle (owner: almost unnoticeable)
@@ -5946,7 +5955,7 @@ export class EffectsRenderer {
             if (a > 0.004) {
               const LAYERS = [[12, 0.22], [8, 0.34], [4, 0.5], [0, 0.72]]; // [+px, weight] outer→inner
               for (const [pad, w] of LAYERS) {
-                _shape(GS_OUTER_RADIUS * grow + pad, GS_INNER_RADIUS * grow + pad);
+                _shape(GS_OUTER_RADIUS * _mRm * grow + pad, GS_INNER_RADIUS * _mRm * grow + pad);
                 gfx.fill({ color: 0xeaf3ff, alpha: a * w });
               }
             }
@@ -5956,8 +5965,8 @@ export class EffectsRenderer {
           const _ac = Math.cos(aimA), _as = Math.sin(aimA);
           const _px = -_as, _py = _ac;   // perpendicular
           const _hw = 7;                  // half base width
-          const _tipx = P.x + _ac * (GS_OUTER_RADIUS + 5), _tipy = P.y + _as * (GS_OUTER_RADIUS + 5);
-          const _bx = P.x + _ac * (GS_OUTER_RADIUS - 9),   _by = P.y + _as * (GS_OUTER_RADIUS - 9);
+          const _tipx = P.x + _ac * (GS_OUTER_RADIUS * _mRm + 5), _tipy = P.y + _as * (GS_OUTER_RADIUS * _mRm + 5);
+          const _bx = P.x + _ac * (GS_OUTER_RADIUS * _mRm - 9),   _by = P.y + _as * (GS_OUTER_RADIUS * _mRm - 9);
           gfx.moveTo(_tipx, _tipy);
           gfx.lineTo(_bx + _px * _hw, _by + _py * _hw);
           gfx.lineTo(_bx - _px * _hw, _by - _py * _hw);

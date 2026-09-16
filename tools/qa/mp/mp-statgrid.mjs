@@ -1,67 +1,57 @@
-/* ═══ THE POINTS SCREEN IS AN ACCORDION OVER A SHARED BAND ═══
- * (v2.3.2512; was a 4 + 3 + 2 grid under a selector row, v2.3.2441)
+/* ═══ THE POINTS SCREEN IS FOUR COLUMNS — MELEE | MAGIC | BOW | SHARED ═══
+ * (v2.3.2592; was an accordion over a shared band, v2.3.2512; a 4 + 3 + 2
+ * grid under a selector row, v2.3.2441)
  *
- * Owner, with a mockup (docs/triage-2026-09-14/assets/points-accordion.png):
- * one collapsible section per combat skill -- icon, name, its point total and
- * a chevron -- with the stats that belong to the character in a SHARED STATS
- * band below all three.  ELEM PWR moved into each skill's section (it is a
- * per-weapon stat since v2.3.2512) and MAX MANA and ELEM RESIST joined the
- * shared band, so the bands are 4 + 1 (the open skill) and 4 + 2 (shared).
+ * Owner: "Right now spending and applying and using combat points is not a
+ * fun experience ... The points section of the character tab should have a 4
+ * column layout: melee, staff, bow, and shared.  Each column label should
+ * have its combat icon centered above the label.  You can use the character
+ * portrait for the 'shared' icon.  Points allocable (if any) will be to the
+ * left of each icon."  And the economy under it: "for every point earned
+ * through one of the 3 combat channels, you earn one 'shared' point too.  You
+ * get both points but only the point earned in the combat channel can be spent
+ * there (the point for shared can be allocated to any in that shared pool)."
  *
- * The cell RECIPE did not change, which is why the geometry assertions below
- * still read the same relationships the v2.3.2441 note established:
+ * ── WHY THIS FILE, WHEN mp-prog3 AND mp-statcols ALSO OPEN THIS SCREEN ──
+ * They own different questions.  mp-prog3 asks what the panel DOES with an
+ * empty pool and whether every cell is reachable at three phone sizes;
+ * mp-statcols asks whether anything CLIPS at three widths.  Neither knows
+ * which column a cell is in, what a header carries, or whose pool a spend
+ * came off — which is the entire content of what the owner asked for.
  *
- * Owner, with a mockup: "the existing 2x2 stat-card layout becomes a dense but
- * clearly grouped 4 + 3 + 2 layout without consuming any additional screen
- * space", and twice over: "do not make the bottom menu taller, do not move its
- * top edge upward, do not reduce the visible game world."
- *
- * ── WHY THIS FILE, WHEN mp-prog3 AND mp-statcols ALREADY OPEN THIS SCREEN ──
- * They own different questions and neither can see this one.  mp-prog3 asks
- * what the panel DOES (what a spend costs, what the worker confirms, what a
- * dead pool greys out) and runs mostly at the harness's landscape default.
- * mp-statcols asks whether anything CLIPS, at three widths.  Neither knows how
- * many cells share a row, what a divider says, or whether the whole thing got
- * smaller -- which is the entire content of what the owner asked for.
- *
- * ── THE ONE THAT MATTERS MOST IS THE LAST ONE ──
- * `the centre of a cell SPENDS` is not a layout nicety.  The first cut of this
- * grid put the info button inline in the centred title row, a few pixels from
- * the cell's geometric centre -- which is where a thumb lands and where every
- * harness taps.  The info button stops propagation (it must, or reading about
- * a stat would also buy it), so the tap was swallowed and the point never
- * went.  It is invisible in a screenshot: the cell looks perfect.  mp-ptorb
- * caught it by accident because its SECOND spend happened to pick a cell whose
- * centre landed on the button.  That is luck, not coverage, so it is pinned
- * here on purpose, for every cell.
+ * ── THE ONES THAT MATTER MOST ARE THE LAST TWO ──
+ * A real finger in the middle of a LANE cell must debit that lane's pool and
+ * leave the shared pool alone, and a finger on a SHARED cell must do the
+ * reverse — read back from the WORKER's blob, because the client's counts
+ * are what the ack told it and the ack is what is under test.  That is the
+ * owner's second sentence, proven end to end through the screen he asked for.
+ * The centre-of-cell tap is kept from v2.3.2441 (an inline info button once
+ * swallowed it; invisible in a screenshot, so it stays pinned).
  */
 import * as H from './harness.mjs';
 
 const PHONE = { width: 390, height: 844 };
 const ROW = '[role="button"][aria-label*=" of "]';
+const LANE_ORDER = ['sword', 'staff', 'bow', 'shared'];
+const LANE_STATS = ['Range', 'Power', 'Speed', 'Luck', 'Special', 'Elemental'];
+const SHARED_STATS = ['Max HP', 'Defense', 'Max Mana', 'Stamina', 'Dodge', 'Move Speed', 'Elem Resist'];
 
-/* Every cell, grouped into the bands they actually render in — read off the
-   measured top edge, not off an assumed order. */
+/* Every cell, grouped into the COLUMN it renders in — read off the
+   `[data-prog3-col]` ancestor the client ships for exactly this, never off
+   an assumed x. */
 const readGrid = (P) => P.page.evaluate((ROWSEL) => {
-  /* v2.3.2512: the allocation surface is no longer ONE element.  The owner's
-     Points accordion puts each skill's stats inside its own collapsible
-     section (#bt-prog3-body is the OPEN one) and the shared stats in a band
-     BELOW all three, as siblings -- so reading the grid through the lane body
-     alone would now see five cells and no shared band at all.  The client
-     ships `[data-prog3-points]` around the whole surface for exactly this. */
-  const body = document.querySelector('[data-prog3-points]') || document.getElementById('bt-prog3-body');
+  const body = document.querySelector('[data-prog3-points]');
   if (!body) return { err: 'no prog3 body' };
   const cells = [...body.querySelectorAll(ROWSEL)].map((el) => {
     const r = el.getBoundingClientRect();
     const label = el.getAttribute('aria-label') || '';
+    const colEl = el.closest('[data-prog3-col]');
     return {
+      col: colEl ? colEl.getAttribute('data-prog3-col') : null,
       stat: label.split(',')[0].replace(/ for (sword|bow|staff)$/, '').trim(),
       aria: label,
-      x: Math.round(r.left), y: Math.round(r.top),
-      w: Math.round(r.width), h: Math.round(r.height),
+      x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height),
       cx: Math.round(r.left + r.width / 2), cy: Math.round(r.top + r.height / 2),
-      /* What the cell PRINTS, with the info glyph and the orb excluded — the
-         value the owner's mockup is about. */
       text: [...el.querySelectorAll('span')]
         .filter((s) => !s.children.length && !s.hasAttribute('data-pt-orb')
           && !(s.parentElement && s.parentElement.hasAttribute('data-stat-info')))
@@ -75,53 +65,50 @@ const readGrid = (P) => P.page.evaluate((ROWSEL) => {
       })(),
     };
   });
-  const bands = [];
-  for (const c of cells) {
-    const b = bands.find((z) => Math.abs(z.y - c.y) < 3);
-    if (b) b.cells.push(c); else bands.push({ y: c.y, cells: [c] });
-  }
-  bands.sort((a, z) => a.y - z.y);
-  /* The dividers: text + a thin rule, no box.  Found as the non-cell text
-     nodes inside the body. */
-  const heads = [...body.querySelectorAll('div')]
-    .filter((d) => !d.closest(ROWSEL) && d.children.length
-      && [...d.children].every((k) => k.tagName === 'SPAN'))
-    .map((d) => (d.textContent || '').trim().replace(/\s+/g, ' '))
-    .filter(Boolean);
+  const cols = {};
+  for (const c of cells) (cols[c.col] = cols[c.col] || []).push(c);
+  const order = [...body.querySelectorAll('[data-prog3-col]')].map((d) => d.getAttribute('data-prog3-col'));
   const chev = [...body.querySelectorAll('div')]
     .find((d) => !d.children.length && (d.textContent || '').trim() === '▾');
   const br = body.getBoundingClientRect();
   return {
-    bands: bands.map((b) => ({ y: b.y, n: b.cells.length, w: b.cells[0].w,
-      stats: b.cells.map((c) => c.stat) })),
-    cells, heads,
+    order, cols, cells,
     bodyH: Math.round(br.height), bodyW: Math.round(br.width),
     chevron: chev ? {
-      size: parseFloat(getComputedStyle(chev).fontSize),
       opacity: parseFloat(getComputedStyle(chev).opacity),
       role: chev.getAttribute('role'), hidden: chev.getAttribute('aria-hidden'),
     } : null,
   };
 }, ROW);
 
-const readTabs = (P) => P.page.evaluate(() => (
+/* The four column headers, with the geometry the owner's three sentences
+   are about: icon centred, badge to its left, name under it. */
+const readHeads = (P) => P.page.evaluate(() => (
   [...document.querySelectorAll('[data-prog3-lane]')].map((t) => {
+    const hr = t.getBoundingClientRect();
+    const badge = t.querySelector('[aria-label*="points to spend"]');
+    const img = t.querySelector('img');
     const spans = [...t.querySelectorAll('span')].filter((s) => !s.children.length);
-    /* v2.3.2512: the accordion header prints the bare count beside the skill
-       mark (the owner's mock), where the selector tab printed "N PTS".  Both
-       shapes accepted so this reads whichever is shipping. */
-    const pts = spans.find((s) => /^\d+(\s+PTS)?$/.test((s.textContent || '').trim()));
+    const name = (t.getAttribute('aria-label') || '').split(',')[0].trim();
+    const label = spans.find((s) => (s.textContent || '').trim() === name);
+    const lv = spans.find((s) => /^Lv\s+\d+$/i.test((s.textContent || '').trim()));
+    const rect = (el) => { if (!el) return null; const r = el.getBoundingClientRect();
+      return { l: Math.round(r.left), r: Math.round(r.right), t: Math.round(r.top), b: Math.round(r.bottom),
+        cx: Math.round(r.left + r.width / 2), w: Math.round(r.width), h: Math.round(r.height) }; };
     return {
       k: t.getAttribute('data-prog3-lane'),
-      aria: t.getAttribute('aria-label'),
-      title: t.getAttribute('title'),
-      text: (t.textContent || '').trim().replace(/\s+/g, ' '),
-      ptsText: pts ? pts.textContent.trim() : null,
-      ptsColor: pts ? getComputedStyle(pts).color : null,
-      ptsSize: pts ? parseFloat(getComputedStyle(pts).fontSize) : null,
-      /* The count must live in exactly ONE visible place per tab. */
-      countNodes: spans.filter((s) => /^\d+(\s+PTS)?$/.test((s.textContent || '').trim())).length,
-      h: Math.round(t.getBoundingClientRect().height),
+      aria: t.getAttribute('aria-label'), title: t.getAttribute('title'),
+      role: t.getAttribute('role'),
+      head: rect(t), cx: Math.round(hr.left + hr.width / 2), h: Math.round(hr.height),
+      sticky: getComputedStyle(t.parentElement).position,
+      badge: badge ? { ...rect(badge), text: (badge.textContent || '').trim(),
+        visible: getComputedStyle(badge).visibility !== 'hidden',
+        bg: getComputedStyle(badge).backgroundColor,
+        fs: parseFloat(getComputedStyle(badge).fontSize) } : null,
+      badgeCount: [...t.querySelectorAll('[aria-label*="points to spend"]')].length,
+      icon: img ? { ...rect(img), src: img.getAttribute('src') || '', fit: getComputedStyle(img).objectFit } : null,
+      label: label ? { ...rect(label), text: label.textContent.trim() } : null,
+      lv: lv ? lv.textContent.trim() : null,
     };
   })
 ));
@@ -134,6 +121,20 @@ async function openPoints(P) {
   await P.page.waitForTimeout(1000);
 }
 
+/* The worker's own copy of the two pools and every allocation — the thing a
+   spend is measured against. */
+async function serverPools(wsPort, myId) {
+  const admin = await H.adminPlayer(wsPort, myId);
+  const p3 = admin && admin.rpg && admin.rpg.prog3;
+  if (!p3) return null;
+  return {
+    pool: p3.pool || 0, shared: p3.shared || 0,
+    poolBy: { ...(p3.poolBy || {}) },
+    atk: JSON.parse(JSON.stringify(p3.atk || {})),
+    alloc: { ...(p3.alloc || {}) },
+  };
+}
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Grid', wsPort, webPort,
     viewport: PHONE, touch: true, dpr: 2 });
@@ -141,204 +142,145 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(1500);
   const myId = await H.readState(P, (S) => S.myId);
 
-  /* Real points from the worker's own level-up path, so the gold "N PTS" state
-     and a real spend are both exercised. */
+  /* Real points from the worker's own level-up path, so the gold badges and
+     both real spends are exercised: the devkit awards XP through
+     _prog3AwardXp, which mints the lane points AND the shared points. */
   await fetch(`http://127.0.0.1:${wsPort}/api/admin/dev/kit`, {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + H.ADMIN_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({ playerId: myId, what: 'levels' }),
   }).then((r) => r.json()).catch(() => null);
   await P.page.waitForTimeout(1500);
-  const pool = await H.readState(P, (S) => (S.rpg && S.rpg.prog3 && S.rpg.prog3.pool) || 0);
-  rec.ok('the worker minted a real point pool (guard)', pool >= 3, { pool });
+  const pools0 = await H.readState(P, (S) => ({
+    pool: (S.rpg && S.rpg.prog3 && S.rpg.prog3.pool) || 0,
+    shared: (S.rpg && S.rpg.prog3 && S.rpg.prog3.shared) || 0,
+    caps: !!(S._serverCaps && S._serverCaps.prog3shared),
+  }));
+  rec.ok('the worker advertises the shared-pool grid (guard)', pools0.caps === true, pools0);
+  rec.ok('the worker minted a real LANE pool (guard)', pools0.pool >= 3, pools0);
+  rec.ok('...and a real SHARED pool beside it — one per lane point (v2.3.2592)',
+    pools0.shared >= 3, pools0);
 
   await openPoints(P);
   const g = await readGrid(P);
   rec.ok('the points body is open (guard)', !g.err && g.cells.length >= 7, g.err || g.cells.length);
   if (g.err) { await P.ctx.close().catch(() => {}); return; }
-  console.log('    bands: ' + JSON.stringify(g.bands));
-  console.log('    heads: ' + JSON.stringify(g.heads));
+  console.log('    columns: ' + JSON.stringify(g.order) + '  cells: ' + g.cells.length);
 
-  /* ════════ 1. FOUR BANDS: the open skill, then the shared stats ════════
-     v2.3.2512 -- the owner's Points accordion (docs/triage-2026-09-14/assets/
-     points-accordion.png) regroups what v2.3.2441's 4 + 3 + 2 laid out:
-     ELEM PWR moved INTO each skill's section (it is a per-weapon stat now),
-     and MAX MANA and ELEM RESIST joined the shared row.  So the open skill
-     shows five stats (4 across + 1 wide) and the shared band shows six
-     (4 across + 2 wide).  The cell RECIPE is unchanged -- same four-abreast
-     width, same two-abreast wide cell -- which is why every geometry
-     assertion below still reads the same relationships. */
-  rec.ok('the stats fall into FOUR bands, top to bottom', g.bands.length === 4, g.bands);
-  rec.ok('...the first is the open skill\'s four, four across',
-    g.bands[0] && g.bands[0].n === 4
-    && ['Damage', 'Crit', 'Crit Dmg', 'Atk Speed'].every((s, i) => g.bands[0].stats[i] === s),
-    g.bands[0]);
-  rec.ok('...the second is that skill\'s ELEM PWR, on its own wide cell',
-    g.bands[1] && g.bands[1].n === 1 && g.bands[1].stats[0] === 'Elem Pwr', g.bands[1]);
-  rec.ok('...the third is MAX HP | DEFENSE | STAMINA | DODGE, four across',
-    g.bands[2] && g.bands[2].n === 4
-    && ['Max HP', 'Defense', 'Stamina', 'Dodge'].every((s, i) => g.bands[2].stats[i] === s),
-    g.bands[2]);
-  rec.ok('...and the fourth is the two BIG shared cells, MAX MANA and ELEM RESIST',
-    g.bands[3] && g.bands[3].n === 2
-    && g.bands[3].stats[0] === 'Max Mana' && g.bands[3].stats[1] === 'Elem Resist',
-    g.bands[3]);
-  /* The owner's "the same component language at a larger size" — asserted as a
-     RELATIONSHIP, not a pixel count, so a width retune cannot break it. */
-  rec.ok('...and the wide cells really are the larger ones (about half the width each)',
-    g.bands[3] && g.bands[0] && g.bands[3].w > g.bands[0].w
-    && Math.abs(g.bands[3].w - g.bodyW / 2) <= 10,
-    { quarter: g.bands[0].w, half: g.bands[3].w, bodyW: g.bodyW });
-  /* Every cell in a band is one size — the part of v2.3.1710's rule that a
-     banded grid can still keep. */
-  rec.ok('every cell in a band is exactly one width, and every cell one height',
-    g.bands.every((b) => [...new Set(b.cells === undefined ? [] : [])].length === 0)
-    && [...new Set(g.cells.map((c) => c.h))].length === 1
-    && g.bands.every((b) => [...new Set(g.cells.filter((c) => Math.abs(c.y - b.y) < 3).map((c) => c.w))].length === 1),
-    { heights: [...new Set(g.cells.map((c) => c.h))] });
+  /* ════════ 1. FOUR COLUMNS, IN THE OWNER'S ORDER, WITH THE OWNER'S ROWS ════════ */
+  rec.ok('four columns, left to right: melee, staff (Magic), bow, shared',
+    g.order.join(',') === LANE_ORDER.join(','), g.order);
+  for (const k of ['sword', 'staff', 'bow']) {
+    const col = g.cols[k] || [];
+    rec.ok(`the ${k} column holds the six lane stats, in order: ${LANE_STATS.join(' / ')}`,
+      col.length === 6 && LANE_STATS.every((s, i) => col[i] && col[i].stat === s)
+        && col.every((c) => new RegExp(` for ${k}$`).test(c.aria.split(',')[0])),
+      col.map((c) => c.aria.split(',')[0]));
+  }
+  rec.ok(`the shared column holds the seven shared stats, in order: ${SHARED_STATS.join(' / ')}`,
+    (g.cols.shared || []).length === 7 && SHARED_STATS.every((s, i) => g.cols.shared[i] && g.cols.shared[i].stat === s),
+    (g.cols.shared || []).map((c) => c.stat));
+  /* Every cell one size: a column that grew for one stat is a layout bug. */
+  rec.ok('every cell is exactly one width and one height (a quarter of the body)',
+    [...new Set(g.cells.map((c) => c.w))].length === 1 && [...new Set(g.cells.map((c) => c.h))].length === 1
+      && Math.abs(g.cells[0].w - g.bodyW / 4) <= 6,
+    { widths: [...new Set(g.cells.map((c) => c.w))], heights: [...new Set(g.cells.map((c) => c.h))], bodyW: g.bodyW });
+  rec.ok('...and rows line up across the columns (the grid is a grid)',
+    LANE_STATS.every((s, i) => new Set(['sword', 'staff', 'bow'].map((k) => g.cols[k][i].y)).size === 1),
+    LANE_STATS.map((s, i) => ['sword', 'staff', 'bow'].map((k) => g.cols[k][i].y)));
+  rec.ok('...and every cell clears the 44pt line',
+    g.cells.every((c) => c.h >= 44), [...new Set(g.cells.map((c) => c.h))]);
 
-  /* ════════ 2. THE SECTIONS SAY WHOSE STATS THESE ARE ════════
-     v2.3.2512: the weapon divider is gone because the SECTION HEADER is now
-     the label -- the open accordion says MELEE above its own cells, which is
-     what the owner's mock draws.  What survives is the shared band's own
-     heading, and the rule that a weapon's name appears exactly once. */
-  rec.ok('a SHARED STATS divider heads the shared band',
-    g.heads.some((h) => /^SHARED STATS/i.test(h)), g.heads);
-  rec.ok('the retired GLOBAL STATS / ATTACK / CHARACTER headers are gone',
-    !g.heads.some((h) => /^GLOBAL STATS/i.test(h) || /^ATTACK$/i.test(h)
-      || /^CHARACTER\s+SHARED$/i.test(h)), g.heads);
-  const openLane = await P.page.evaluate(() =>
-    (document.querySelector('[data-prog3-lane][aria-expanded="true"]') || {}).getAttribute
-      ? document.querySelector('[data-prog3-lane][aria-expanded="true"]').getAttribute('data-prog3-lane')
-      : null);
-  rec.ok('exactly one skill section is open, and it is the one whose stats are showing',
-    openLane === 'sword', { openLane });
+  /* ════════ 2. THE HEADER: ICON CENTRED, BADGE TO ITS LEFT, NAME UNDER IT ════════ */
+  const heads = await readHeads(P);
+  console.log('    heads: ' + JSON.stringify(heads.map((h) => ({ k: h.k, aria: h.aria, badge: h.badge && h.badge.text, lv: h.lv, h: h.h }))));
+  rec.ok('four column headers, one per column, in the same order', heads.map((h) => h.k).join(',') === LANE_ORDER.join(','), heads.map((h) => h.k));
+  rec.ok('each header is a real thumb target with the `, level N` aria-label four scenarios resolve through',
+    heads.every((h) => h.role === 'button' && /, level \d+$/.test(h.aria || '') && h.h >= 44), heads.map((h) => [h.aria, h.h]));
+  rec.ok('the lane headers are named the way every other screen names them (Melee / Magic / Bow) and the fourth is Shared',
+    heads.map((h) => (h.aria || '').split(',')[0]).join('|') === 'Melee|Magic|Bow|Shared', heads.map((h) => h.aria));
+  rec.ok('each header carries its icon CENTRED (the owner: "combat icon centered above the label")',
+    heads.every((h) => h.icon && Math.abs(h.icon.cx - h.cx) <= 2), heads.map((h) => ({ k: h.k, icon: h.icon && h.icon.cx, head: h.cx })));
+  rec.ok('...with the label UNDER the icon, and the level in the header\'s title and aria-label',
+    heads.every((h) => h.label && h.icon && h.label.t >= h.icon.b - 1 && /level \d+/.test(h.title || '')),
+    heads.map((h) => ({ k: h.k, label: h.label && h.label.text, title: h.title })));
+  rec.ok('...and exactly ONE points badge per header, sitting to the LEFT of the icon ("points allocable will be to the left of each icon")',
+    heads.every((h) => h.badgeCount === 1 && h.badge && h.icon && h.badge.r <= h.icon.l + 1
+      && h.badge.b > h.icon.t && h.badge.t < h.icon.b),
+    heads.map((h) => ({ k: h.k, badge: h.badge && [h.badge.l, h.badge.r], icon: h.icon && [h.icon.l, h.icon.r] })));
+  rec.ok('a header with points to spend shows the count on brass, big enough to read',
+    heads.every((h) => h.badge && /^\d+$/.test(h.badge.text) && Number(h.badge.text) > 0
+      && h.badge.visible && /216,\s*170,\s*88/.test(h.badge.bg || '') && h.badge.fs >= 12),
+    heads.map((h) => h.badge));
+  /* The Shared column's picture is the CHARACTER, not a weapon: the owner's
+     pick, and the honest one — those stats belong to the character, not to
+     anything in its hands.  A cover-fit image that is not one of the three
+     lane icons is the portrait (or its bust fallback before the bust is
+     drawn); the three lanes must keep their own art. */
+  const laneSrcs = heads.filter((h) => h.k !== 'shared').map((h) => h.icon && h.icon.src);
+  const shared = heads.find((h) => h.k === 'shared');
+  rec.ok('the Shared header wears the character portrait, not a weapon icon',
+    !!(shared && shared.icon && shared.icon.fit === 'cover' && !laneSrcs.includes(shared.icon.src)),
+    shared && shared.icon);
+  rec.ok('...and the three lanes wear their own weapon art',
+    laneSrcs.every((s) => /melee|bow|magic/.test(s || '')) && new Set(laneSrcs).size === 3, laneSrcs);
 
-  await P.page.locator('[data-prog3-lane="bow"]').first().click({ timeout: 6000 }).catch(() => {});
-  await P.page.waitForTimeout(900);
-  const gBow = await readGrid(P);
-  rec.ok('switching to Bow shows BOW\'s stats, so the cells always belong to the open section',
-    gBow.cells.some((c) => /for bow/.test(c.aria || ''))
-      && !gBow.cells.some((c) => /for sword/.test(c.aria || '')),
-    gBow.cells.map((c) => c.aria));
-  await P.page.locator('[data-prog3-lane="sword"]').first().click({ timeout: 6000 }).catch(() => {});
-  await P.page.waitForTimeout(900);
+  /* ════════ 3. THE HEADER ROW IS STICKY, SO THE COLUMNS KEEP THEIR NAMES ════════ */
+  const stickyWalk = await P.page.evaluate(async () => {
+    const wait = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    let sc = document.querySelector('[data-prog3-points]');
+    for (; sc; sc = sc.parentElement) {
+      if (sc.scrollHeight - sc.clientHeight > 4 && /auto|scroll/.test(getComputedStyle(sc).overflowY)) break;
+    }
+    if (!sc) return { err: 'no scroll container' };
+    const look = () => {
+      const p = sc.getBoundingClientRect();
+      return [...document.querySelectorAll('[data-prog3-lane]')].map((x) => {
+        const b = x.getBoundingClientRect();
+        return { k: x.getAttribute('data-prog3-lane'), top: Math.round(b.top),
+          on: b.bottom > p.top + 1 && b.top < p.bottom - 1 };
+      });
+    };
+    const at = {};
+    for (const [tag, pos] of [['top', 0], ['mid', sc.scrollHeight / 2], ['max', sc.scrollHeight]]) {
+      sc.scrollTop = pos; await wait();
+      at[tag] = look();
+    }
+    sc.scrollTop = 0; await wait();
+    return { at, win: Math.round(sc.getBoundingClientRect().height), sh: sc.scrollHeight };
+  });
+  console.log('    header row through the scroll: ' + JSON.stringify(stickyWalk));
+  rec.ok('the header row is declared sticky', heads.every((h) => h.sticky === 'sticky'), heads.map((h) => h.sticky));
+  rec.ok('...and all four headers stay on screen at the top, middle and end of the scroll',
+    !stickyWalk.err && ['top', 'mid', 'max'].every((t) => stickyWalk.at[t].length === 4 && stickyWalk.at[t].every((l) => l.on)),
+    stickyWalk);
+  rec.ok('...at one and the same height (stuck, not merely scrolled past)',
+    !stickyWalk.err && ['top', 'mid', 'max'].every((t) => new Set(stickyWalk.at[t].map((l) => l.top)).size === 1),
+    stickyWalk.at);
+  rec.ok('the stat area still lives inside the sheet\'s own scroller, which did not grow',
+    !stickyWalk.err && stickyWalk.win > 0 && stickyWalk.win <= 260, stickyWalk);
 
-  /* ════════ 3. THE TABS COUNT POINTS, NOT LEVELS ════════ */
-  const tabs = await readTabs(P);
-  console.log('    tabs: ' + JSON.stringify(tabs));
-  rec.ok('all three weapon tabs are there (guard)', tabs.length === 3, tabs.length);
-  /* v2.3.2512: the accordion header prints the bare count beside the skill
-     mark; the selector tab it replaces printed "N PTS".  Either reads. */
-  rec.ok('every section header says its remaining points',
-    tabs.every((t) => /^\d+( PTS)?$/.test(t.ptsText || '')), tabs.map((t) => t.ptsText));
-  /* v2.3.2512: the caret is BACK, and deliberately -- an accordion without one
-     does not say it can be opened.  The LEVEL staying off screen is the part
-     of v2.3.2441's rule that survives (it is still in the aria-label). */
-  rec.ok('...and no section header still shows a level on screen',
-    tabs.every((t) => !/LV\s*\d/.test(t.text)), tabs.map((t) => t.text));
-  /* "Do not duplicate the available-points count anywhere else." */
-  rec.ok('...and the count appears exactly ONCE per tab -- the corner badge is gone',
-    tabs.every((t) => t.countNodes === 1), tabs.map((t) => ({ k: t.k, n: t.countNodes })));
-  /* The aria-label is a CONTRACT: mp-prog3 has found this control by
-     `aria-label*="level"` since v2.3.1668, and three other files resolve
-     through it.  The level left the SCREEN, not the accessibility tree. */
-  rec.ok('...while the aria-label still names the level, which four scenarios resolve through',
-    tabs.every((t) => /, level \d+$/.test(t.aria || '')), tabs.map((t) => t.aria));
-  rec.ok('...and the tab still says how many points it has, for a screen reader',
-    tabs.every((t) => /point/.test(t.title || '')), tabs.map((t) => t.title));
-  const lit = tabs.filter((t) => !/^0( PTS)?$/.test(t.ptsText || ''));
-  const zero = tabs.filter((t) => /^0( PTS)?$/.test(t.ptsText || ''));
-  rec.ok('a lane with points to spend prints them in gold, not grey',
-    lit.length === 0 || lit.every((t) => /216,\s*170,\s*88/.test(t.ptsColor || '')),
-    lit.map((t) => ({ k: t.k, c: t.ptsColor })));
-  rec.ok('...and a lane with none is muted',
-    zero.length === 0 || zero.every((t) => /141,\s*155,\s*152/.test(t.ptsColor || '')),
-    zero.map((t) => ({ k: t.k, c: t.ptsColor })));
-  /* v2.3.2512: the 44px selector ROW is gone -- the owner's mock stacks three
-     30px section headers instead, so the number this pinned no longer names
-     anything on screen.  What is worth pinning is that the three are the SAME
-     size (a header that grows for one skill is a layout bug) and that the
-     stack is not taller than the row it replaces by more than its own two
-     extra headers. */
-  const headH = tabs.map((t) => t.h);
-  rec.ok('the three section headers are one size, and that size is a real thumb target',
-    headH.length === 3 && [...new Set(headH)].length === 1 && headH[0] >= 44, headH);
-
-  /* ════════ 4. THE CELL PRINTS A LIVE VALUE, NOT "N / M" ════════ */
-  const dmg = g.cells.find((c) => c.stat === 'Damage');
-  const hp = g.cells.find((c) => c.stat === 'Max HP');
+  /* ════════ 4. THE CELL PRINTS A LIVE VALUE ════════ */
+  const power = (g.cols.sword || []).find((c) => c.stat === 'Power');
+  const hp = (g.cols.shared || []).find((c) => c.stat === 'Max HP');
   rec.ok('a cell prints the stat\'s VALUE, not the old points-of-cap fraction',
-    !!dmg && !dmg.text.some((t) => /^\d+\s*\/\s*\d+$/.test(t)), dmg && dmg.text);
-  /* Max HP is the one whose truth is checkable from outside the panel. */
+    !!power && !power.text.some((t) => /^\d+\s*\/\s*\d+$/.test(t)), power && power.text);
+  /* Max HP is the one whose truth is checkable from outside the panel — in
+     display units (v2.3.2520: ceil(hp / 5)). */
   const realHp = await H.readState(P, (S) => (S.rpg && S.rpg.maxHp) || 0);
-  rec.ok('...and that value is the character\'s real one, not a local guess',
-    !!hp && hp.text.some((t) => t === String(Math.round(realHp))),
-    { printed: hp && hp.text, realHp });
-  /* The count did not vanish -- it moved to where a reader can still get it. */
+  rec.ok('...and that value is the character\'s real one, in display units, not a local guess',
+    !!hp && hp.text.some((t) => t === String(Math.ceil(realHp / 5))),
+    { printed: hp && hp.text, realHp, want: Math.ceil(realHp / 5) });
   rec.ok('the points-of-cap count survives in the aria-label, which mp-prog3 parses',
     g.cells.every((c) => /, \d+ of \d+\./.test(c.aria)), g.cells.slice(0, 2).map((c) => c.aria));
+  rec.ok('a muted chevron cues the rows below the fold, and it is a cue, not a button',
+    !!g.chevron && g.chevron.opacity < 0.7 && !g.chevron.role && g.chevron.hidden === 'true', g.chevron);
 
-  /* ════════ 5. THE SCROLL CUE ════════ */
-  rec.ok('a muted chevron cues the rows below the fold',
-    !!g.chevron && g.chevron.opacity < 0.7, g.chevron);
-  rec.ok('...and it is a cue, not a button -- nothing to tap and nothing to read out',
-    !!g.chevron && !g.chevron.role && g.chevron.hidden === 'true', g.chevron);
-
-  /* ════════ 6. THE PANEL DID NOT GROW ════════
-     v2.3.2512: this used to pin the CONTENT under 280px -- the height of the
-     two-column body v2.3.2441 replaced -- because that version's ask was
-     "without consuming any additional screen space".  The owner's accordion
-     mock changes what that sentence can mean: three stacked section headers
-     plus two more stats (ELEM PWR per skill, MAX MANA and ELEM RESIST shared)
-     cannot fit the same content box, and the mock draws them stacked anyway.
-
-     The ask itself survives intact, and it was never really about the content
-     box: "do not make the bottom menu taller, do not move its top edge upward,
-     do not reduce the visible game world."  That is the SHEET, and it is
-     unchanged -- what the accordion spends is scroll, not screen.  So the
-     assertion moves to the thing the owner actually protected: the scrolling
-     window this content sits in.  A content height that overflows it is
-     expected and is cued by the chevron pinned above. */
-  const win = await P.page.evaluate(() => {
-    let n = document.querySelector('[data-prog3-points]');
-    for (; n; n = n.parentElement) {
-      if (n.scrollHeight - n.clientHeight > 4 && /auto|scroll/.test(getComputedStyle(n).overflowY)) {
-        return { h: Math.round(n.getBoundingClientRect().height), sh: Math.round(n.scrollHeight) };
-      }
-    }
-    return null;
-  });
-  console.log('    scroller: ' + JSON.stringify(win) + '  content: ' + g.bodyH + 'px');
-  rec.ok('the stat area still lives inside the sheet\'s own scroller, which did not grow',
-    !!win && win.h > 0 && win.h <= 260, { win, content: g.bodyH });
-
-  /* The picture goes here, AT REST -- before section 7 scrolls the panel to
-     reach the cells below the fold.  A screenshot taken after that shows a
-     mid-scroll panel with its sticky header over the bands, which looks like a
-     layout bug and is only where the test left the scrollbar. */
-  await P.page.evaluate(() => {
-    const b = document.getElementById('bt-prog3-body');
-    let n = b && b.parentElement;
-    while (n && n !== document.body) {
-      if (/auto|scroll/.test(getComputedStyle(n).overflowY)) { n.scrollTop = 0; break; }
-      n = n.parentElement;
-    }
-  });
-  await P.page.waitForTimeout(500);
+  /* The picture goes here, AT REST. */
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/statgrid.png` }).catch(() => {});
 
-  /* ════════ 7. THE CENTRE OF A CELL SPENDS ════════
-     The defect this file exists for.  For every cell, the point under its
-     geometric centre must resolve to the cell itself and NOT to the info
-     button -- an inline info button in a centred title row sits within a few
-     pixels of that point, stops propagation, and silently eats the spend. */
+  /* ════════ 5. THE CENTRE OF EVERY CELL IS THE CELL ════════ */
   const centres = await P.page.evaluate(async (ROWSEL) => {
-    /* SCROLL TO EACH CELL FIRST.  `elementFromPoint` answers null for a point
-       outside the viewport, and null tests false for "is on the info button"
-       -- so a version of this that did not scroll reported a serene PASS for
-       the five cells below the fold, which are most of them.  That is the
-       shape of vacuous green this whole file is written against. */
     const wait = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     const out = [];
     for (const el of [...document.querySelectorAll(ROWSEL)]) {
@@ -351,33 +293,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
         stat: (el.getAttribute('aria-label') || '').split(',')[0],
         onInfo: !!(hit && hit.closest && hit.closest('[data-stat-info]')),
         inCell: !!(hit && hit.closest && hit.closest(ROWSEL) === el),
-        hit: hit ? (hit.tagName + (hit.className ? '.' + String(hit.className).slice(0, 20) : '')) : null,
       });
     }
     return out;
   }, ROW);
-  console.log('    centres: ' + JSON.stringify(centres));
-  rec.ok('every cell was scrolled into view and hit-tested (guard: a null hit '
-       + 'would make the assertions below vacuous)',
-    centres.length >= 7 && centres.every((c) => c.inCell && c.hit),
-    centres.filter((c) => !c.inCell));
-  rec.ok('no cell\'s centre lands on its info button',
-    centres.every((c) => !c.onInfo), centres.filter((c) => c.onInfo));
+  rec.ok('every cell was scrolled into view and its centre resolves to the cell itself (guard)',
+    centres.length >= 25 && centres.every((c) => c.inCell), centres.filter((c) => !c.inCell));
+  rec.ok('no cell\'s centre lands on its info button', centres.every((c) => !c.onInfo), centres.filter((c) => c.onInfo));
+  rec.ok('...and every cell still HAS an info button, in its top-right corner, clear of the middle',
+    g.cells.every((c) => c.info && c.info.w >= 22 && c.info.h >= 22 && c.info.cx > c.cx && c.info.cy < c.cy),
+    g.cells.filter((c) => !c.info || !(c.info.cx > c.cx && c.info.cy < c.cy)).map((c) => c.stat));
 
-  /* ═══ AND THE ONE THAT MATTERS: A REAL FINGER IN THE MIDDLE BUYS A POINT ═══
-     The hit-test above is a diagnostic, not the claim.  Proven by MUTATION: put
-     the info button back inline in the centred title row -- the exact layout
-     whose spend was being swallowed -- and every hit-test assertion above
-     stays green, because the geometric centre lands on an inner flex row
-     rather than on the button itself.  A test that survives the defect it was
-     written for is not a test.
-     So this taps, and reads the count back off the aria-label the worker's
-     echo rewrites.  One cell per BAND, because the three bands have three
-     different internal geometries and a defect in any one of them is a defect
-     a player meets. */
-  const spendAt = async (statName) => {
-    const before = await P.page.evaluate((n) => {
-      const el = [...document.querySelectorAll('[role="button"][aria-label*=" of "]')]
+  /* ════════ 6. A REAL FINGER SPENDS, AND THE RIGHT POOL PAYS ════════
+     Proven by MUTATION against the worker: a lane spend must move THAT lane's
+     count and nothing else; a shared spend must move the shared pool and
+     nothing else.  The client's numbers are what the ack told it, so the
+     truth is read from the admin surface. */
+  const spendAt = async (col, statName) => {
+    const before = await P.page.evaluate(([c, n]) => {
+      const el = [...document.querySelectorAll(`[data-prog3-col="${c}"] [role="button"][aria-label*=" of "]`)]
         .find((e) => (e.getAttribute('aria-label') || '').startsWith(n));
       if (!el) return null;
       el.scrollIntoView({ block: 'center' });
@@ -385,42 +319,61 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const r = el.getBoundingClientRect();
       return { pts: m ? +m[1] : null, cap: m ? +m[2] : null,
         x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
-    }, statName);
-    if (!before || before.pts == null) return { err: 'no cell ' + statName };
-    /* Real touch input at real coordinates, with the drift a thumb has --
-       scrollTap (v2.3.2326) exists because a tap with drift was being
-       confiscated by the scroller, and a dispatched event would not test it. */
+    }, [col, statName]);
+    if (!before || before.pts == null) return { err: 'no cell ' + statName + ' in ' + col };
     const cdp = await P.page.context().newCDPSession(P.page);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: before.x, y: before.y }] });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: before.x + 5, y: before.y + 3 }] });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await cdp.detach();
     for (let i = 0; i < 40; i++) {
       await P.page.waitForTimeout(100);
-      const now = await P.page.evaluate((n) => {
-        const el = [...document.querySelectorAll('[role="button"][aria-label*=" of "]')]
+      const now = await P.page.evaluate(([c, n]) => {
+        const el = [...document.querySelectorAll(`[data-prog3-col="${c}"] [role="button"][aria-label*=" of "]`)]
           .find((e) => (e.getAttribute('aria-label') || '').startsWith(n));
         const m = el && (el.getAttribute('aria-label') || '').match(/, (\d+) of (\d+)\./);
         return m ? +m[1] : null;
-      }, statName);
+      }, [col, statName]);
       if (now != null && now > before.pts) return { ok: true, from: before.pts, to: now };
     }
     return { ok: false, from: before.pts };
   };
 
-  for (const [band, statName] of [['four-across', 'Crit Dmg'], ['three-across', 'Dodge'], ['two-across', 'Max HP']]) {
-    const r = await spendAt(statName);
-    console.log(`    spend at the centre of ${statName} (${band}): ` + JSON.stringify(r));
-    rec.ok(`a real finger in the MIDDLE of a ${band} cell buys a point `
-         + `(${statName}: ${r.from} -> ${r.to})`, r.ok === true, r);
-  }
-  /* And the info button is still there and still reachable -- the fix for the
-     above must not be "delete the button". */
-  rec.ok('...and every cell still HAS an info button, in its corner',
-    g.cells.every((c) => c.info && c.info.w >= 22 && c.info.h >= 22),
-    g.cells.filter((c) => !c.info || c.info.w < 22).map((c) => c.stat));
-  rec.ok('...sitting in the top-right, clear of the middle',
-    g.cells.every((c) => c.info && c.info.cx > c.cx && c.info.cy < c.cy),
-    g.cells.filter((c) => c.info && !(c.info.cx > c.cx && c.info.cy < c.cy)).map((c) => c.stat));
+  const s0 = await serverPools(wsPort, myId);
+  rec.ok('the worker\'s blob carries both pools (guard)', !!s0 && s0.pool > 0 && s0.shared > 0, s0);
+  const r1 = await spendAt('staff', 'Range for staff');
+  console.log('    spend Range in the MAGIC column: ' + JSON.stringify(r1));
+  rec.ok(`a real finger in the MIDDLE of a lane cell buys a point (staff Range: ${r1.from} -> ${r1.to})`, r1.ok === true, r1);
+  await P.page.waitForTimeout(600);
+  const s1 = await serverPools(wsPort, myId);
+  rec.ok('...and the WORKER charged it to the Magic lane: atk.staff.range +1, poolBy.staff −1, pool −1',
+    !!s0 && !!s1 && (s1.atk.staff.range || 0) === (s0.atk.staff.range || 0) + 1
+      && s1.poolBy.staff === s0.poolBy.staff - 1 && s1.pool === s0.pool - 1,
+    { before: s0 && { pool: s0.pool, poolBy: s0.poolBy }, after: s1 && { pool: s1.pool, poolBy: s1.poolBy } });
+  rec.ok('...while the SHARED pool and the other two lanes did not move',
+    !!s0 && !!s1 && s1.shared === s0.shared && s1.poolBy.sword === s0.poolBy.sword && s1.poolBy.bow === s0.poolBy.bow,
+    { before: s0 && { shared: s0.shared, poolBy: s0.poolBy }, after: s1 && { shared: s1.shared, poolBy: s1.poolBy } });
+
+  const r2 = await spendAt('shared', 'Dodge');
+  console.log('    spend Dodge in the SHARED column: ' + JSON.stringify(r2));
+  rec.ok(`a real finger in the MIDDLE of a shared cell buys a point (Dodge: ${r2.from} -> ${r2.to})`, r2.ok === true, r2);
+  await P.page.waitForTimeout(600);
+  const s2 = await serverPools(wsPort, myId);
+  rec.ok('...and the WORKER charged it to the SHARED pool: alloc.dodge +1, shared −1',
+    !!s1 && !!s2 && (s2.alloc.dodge || 0) === (s1.alloc.dodge || 0) + 1 && s2.shared === s1.shared - 1,
+    { before: s1 && { shared: s1.shared, dodge: s1.alloc.dodge }, after: s2 && { shared: s2.shared, dodge: s2.alloc.dodge } });
+  rec.ok('...while the lane pools did not move ("only the point earned in the combat channel can be spent there")',
+    !!s1 && !!s2 && s2.pool === s1.pool && JSON.stringify(s2.poolBy) === JSON.stringify(s1.poolBy),
+    { before: s1 && { pool: s1.pool, poolBy: s1.poolBy }, after: s2 && { pool: s2.pool, poolBy: s2.poolBy } });
+
+  /* And the headers followed the ack: the Magic badge and the Shared badge
+     each dropped by one, the other two did not move. */
+  const heads2 = await readHeads(P);
+  const n = (hs, k) => { const h = hs.find((x) => x.k === k); return h && h.badge ? Number(h.badge.text) : null; };
+  rec.ok('the column badges followed the acks: Magic −1, Shared −1, Melee and Bow unchanged',
+    n(heads2, 'staff') === n(heads, 'staff') - 1 && n(heads2, 'shared') === n(heads, 'shared') - 1
+      && n(heads2, 'sword') === n(heads, 'sword') && n(heads2, 'bow') === n(heads, 'bow'),
+    { before: LANE_ORDER.map((k) => n(heads, k)), after: LANE_ORDER.map((k) => n(heads2, k)) });
 
   await P.ctx.close().catch(() => {});
 }

@@ -56,7 +56,7 @@ import {
    below silently exercises the legacy raw-stat path on the client and the
    prog3 path on the server, which are not mirrors of each other and never
    were. */
-import { setProg3Enabled, setProg3XEnabled, prog3CritPct, prog3CritMult, prog3CritFlat } from '../../src/data/prog3.js'; /* v2.3.2218 */
+import { setProg3Enabled, setProg3XEnabled, setProg3SharedEnabled, prog3CritPct, prog3CritMult, prog3CritFlat, PROG3_LEGACY_ATK } from '../../src/data/prog3.js'; /* v2.3.2218; v2.3.2592 */
 import { createGatherNode as clientGatherNode, WOODCUTTING_TIERS as CLIENT_WOOD_TIERS } from '../../src/data/lifeSkills.js';
 import { FISHING_TIERS } from '../../src/data/lifeSkills.js';
 import { AMULET_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP, GEM_DROP_RATES, GEM_EXTRACT_BASE_COST } from '../../src/data/items.js';
@@ -464,6 +464,17 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('eres and mana are BODY stats on BOTH sides',
     !!SRV_PROG3.BODY.eres && !!CLIENT_PROG3.BODY.eres
       && !!SRV_PROG3.BODY.mana && !!CLIENT_PROG3.BODY.mana);
+  /* v2.3.2592: the four-column grid's arrivals, by name, both sides — and
+     the retired pair GONE from both, because a client still carrying
+     ATK.crit would draw a row the worker refuses. */
+  check('luck / range / special are ATK stats and move is a BODY stat, on BOTH sides (v2.3.2592)',
+    !!SRV_PROG3.ATK.luck && !!CLIENT_PROG3.ATK.luck
+      && !!SRV_PROG3.ATK.range && !!CLIENT_PROG3.ATK.range
+      && !!SRV_PROG3.ATK.special && !!CLIENT_PROG3.ATK.special
+      && !!SRV_PROG3.BODY.move && !!CLIENT_PROG3.BODY.move);
+  check('...and the retired crit pair is gone from PROG3 on both sides',
+    !SRV_PROG3.ATK.crit && !SRV_PROG3.ATK.critDmg && !CLIENT_PROG3.ATK.crit && !CLIENT_PROG3.ATK.critDmg);
+  check('SHARED_POINTS_PER_LEVEL exists on BOTH sides', 'SHARED_POINTS_PER_LEVEL' in srv && 'SHARED_POINTS_PER_LEVEL' in cli);
 }
 
 // ── 13. Life-skill retune mirrors (v2.3.1765).  Two numbers the owner
@@ -786,26 +797,39 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
 
      First: the client's own prog3 crit helpers must equal the server's
      formula (these are what the fixed swing path calls). */
-  setProg3XEnabled(true);
-  const mkP3 = (crit, critDmg) => ({
+  /* v2.3.2592: ONE stat, LUCK, carries both halves — the client's helpers
+     must equal the server's _prog3CritChance / _prog3CritMult for every
+     allocation, on a worker that advertises the folded grid. */
+  setProg3XEnabled(true); setProg3SharedEnabled(true);
+  const mkP3 = (luck) => ({
     prog3: { v: 3, sk: { sword: { level: 40 }, bow: { level: 1 }, staff: { level: 1 } },
-      atk: { sword: { crit, critDmg, dmg: 0 }, bow: {}, staff: {} }, alloc: {}, poolBy: {} },
+      atk: { sword: { luck, dmg: 0 }, bow: {}, staff: {} }, alloc: {}, poolBy: {} },
   });
   let critDrift = null;
-  for (const [c, cd] of [[0, 0], [10, 10], [25, 25], [50, 75], [75, 100]]) {
-    const p = mkP3(c, cd);
-    const srvChance = SRV_PROG3.ATK.crit.base + c * SRV_PROG3.ATK.crit.per;
-    const srvMult = 1.5 + cd * SRV_PROG3.ATK.critDmg.per;
+  for (const l of [0, 10, 25, 50, 75, 100]) {
+    const p = mkP3(l);
+    const srvChance = room._prog3CritChance(p, 'sword');
+    const srvMult = room._prog3CritMult(p, 'sword');
     const cliChance = prog3CritPct(p, 'sword');
     const cliMult = prog3CritMult(p, 'sword');
     if (Math.abs(srvChance - cliChance) > 1e-9 || Math.abs(srvMult - cliMult) > 1e-9) {
-      critDrift = { c, cd, srvChance, cliChance, srvMult, cliMult }; break;
+      critDrift = { l, srvChance, cliChance, srvMult, cliMult }; break;
     }
   }
   check('crit parity: the client crit helpers equal the server roll across the allocation range',
     critDrift === null, critDrift);
   check('crit parity: ...and no flat term under prog3, matching combat.js',
-    prog3CritFlat(mkP3(75, 100), 'sword') === 0, prog3CritFlat(mkP3(75, 100), 'sword'));
+    prog3CritFlat(mkP3(100), 'sword') === 0, prog3CritFlat(mkP3(100), 'sword'));
+  /* And the RETIRED pair, against a worker that has not folded it: the
+     client must predict THAT worker's crit/critDmg roll (rule 19) — pinned
+     against the retired values the client keeps in PROG3_LEGACY_ATK. */
+  setProg3SharedEnabled(false);
+  const legacyP = { prog3: { v: 3, sk: { sword: { level: 40 }, bow: { level: 1 }, staff: { level: 1 } },
+    atk: { sword: { crit: 50, critDmg: 75, dmg: 0 }, bow: {}, staff: {} }, alloc: {}, poolBy: {} } };
+  check('crit parity (old worker): the client predicts the retired crit/critDmg roll',
+    Math.abs(prog3CritPct(legacyP, 'sword') - (PROG3_LEGACY_ATK.crit.base + 50 * PROG3_LEGACY_ATK.crit.per)) < 1e-9
+      && Math.abs(prog3CritMult(legacyP, 'sword') - (1.5 + 75 * PROG3_LEGACY_ATK.critDmg.per)) < 1e-9,
+    { chance: prog3CritPct(legacyP, 'sword'), mult: prog3CritMult(legacyP, 'sword') });
   setProg3XEnabled(false);
 
   /* Second: the swing path must actually CALL them.  The helpers being

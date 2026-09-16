@@ -392,3 +392,142 @@ Points screen.
   persistence) opt their fixtures out of prog3 with a tagged comment —
   that coverage guards the fail-open path until the cleanup PR deletes
   it.
+
+## The four-column points redesign (v2.3.2592)
+
+Owner, 2026-09-16: *"Right now spending and applying and using combat
+points is not a fun experience. I'm proposing a layout shift and a
+redesign to the combat points themselves."* Three moves, shipped as one
+system because they share the allocation grid and one migration. Caps
+flag **`prog3shared`** (display-only; nothing new is sent).
+
+### The grid
+
+Six stats per combat type, in the owner's order, and seven shared ones.
+Storage keys stay where a stat already existed (renaming a persisted
+field breaks saves, rule 1); the label carries the new name.
+
+| Column | key | label | per point | cap | at cap | consumed by |
+|---|---|---|---|---|---|---|
+| lane | `range` | Range | +0.5 % reach | 100 | +50 % | client — bow plant cap, staff orb life, melee swing envelope + reach ring |
+| lane | `dmg` | Power | +0.5 damage pre-tier | 75 | +37.5 | server roll (unchanged) |
+| lane | `aspd` | Speed | −0.35 % swing period | 100 | −35 % | client cadence (unchanged) |
+| lane | `luck` | Luck | +0.3 % crit chance **and** +1 % crit damage (`per` / `dmgPer`), 1 % base | 100 | 31 % / ×2.5 | server roll + ceiling |
+| lane | `special` | Special | +1 % special-attack damage | 75 | +75 % | server roll + ceiling; client `specialAtkMultFor(type, rpg)` |
+| lane | `elem` | Elemental | +1 elemental power | 75 | 75 | unchanged |
+| shared | `hp` `def` `mana` `stam` `dodge` `eres` | | unchanged | | | |
+| shared | `move` | Move Speed | +0.4 % walk speed | 75 | +30 % | client — `BroTown.jsx` × `prog3MoveMult`; server widens the anti-teleport bound by the same multiplier from its own copy (`movement.js`) |
+
+`crit` + `critDmg` **fold into `luck`**, landing on the same two
+endpoints the pair had (31 % chance at cap, ×2.5 crit damage at cap) so
+a point buys a little of both and a crit-damage-only build that never
+crits is no longer possible. `range` replaces the legacy per-weapon
+Longshot channel prog3 characters never had; its semantics are the
+same (the arrow flies farther *and* faster — `projectiles.js` reads
+`_rangeMult` for both) and the 675 × 2.0 envelope that path was tested
+to is wider than the stat reaches.
+
+**Server bounds, checked rather than assumed.** The PvE melee proximity
+gate is 400 px against a maxed outer reach of 72 × 1.5 + body; the staff
+and bow have no PvE proximity gate at all; PvP `RANGE_CAP` clamps the
+client's claim (675 × 1.5 = 1012 > 950 clamps, not rejects). The move
+bound is `500 × spdCap × moveMult × dt + 80`, with `moveMult` read from
+the server's allocation, so a maxed stat keeps the headroom the 500 was
+sized with (the fastest legitimate stack ≈ 358 px/s against 650, or 975
+under a Swift Draught). `prog3.test.mjs` pins the arithmetic against the
+CLIENT's constants and drives `_handleMove` with and without the stat.
+
+**Anticheat lockstep.** `_maxDmgForAttacker` takes `critMult = 1.5 +
+max-lane luck × dmgPer` and `specialMult = 3.0 × (1 + max-lane special ×
+per)`; `_computeAttackDamage` applies `_prog3SpecialMult` before the crit
+branch so a special crit anchors off the scaled value. Roll, ceiling and
+client display move in the same commit (the v2.3.1451 rule); the 2 400-
+roll sample in `prog3.test.mjs` §6 runs with luck, special, range and
+dmg all at cap.
+
+### The second pool
+
+*"For every point earned through one of the 3 combat channels, you earn
+one 'shared' point too. You get both points but only the point earned in
+the combat channel can be spent there (the point for shared can be
+allocated to any in that shared pool)."*
+
+- `PROG3.SHARED_POINTS_PER_LEVEL = 3` — one per lane point, minted by
+  `_prog3AwardXp` into `prog3.shared` beside the `poolBy` stamp.
+- **A lane point can no longer buy a shared stat.** This retires the
+  v2.3.2176 rule; `_handleProg3Allocate` ignores the `cat` an old
+  client still sends on a body spend and takes the point off `shared`.
+  A shared point cannot buy offense. The unchannelled remainder
+  (`pool − Σ poolBy`, points that predate v2.3.2176) stays spendable
+  anywhere, and the milestone bonus points keep minting into it.
+- `prog3.spl` stamps the rate the blob was granted at (the `ppl`
+  pattern) so the retro grant is idempotent; the sanitizer preserves
+  it, bounds `shared` at 999 (legitimate max 891), and runs the grant as
+  a boundary heal.
+- Supply vs sinks: 891 shared points against 625 shared sinks, so every
+  shared stat *can* be maxed by roughly character level 220; the lane
+  pools stay sharp (297 points against 525 sinks per lane). If live play
+  wants shared choices sharper, `SHARED_POINTS_PER_LEVEL` is the dial.
+
+### Migration v17 — `prog3-luck-and-shared-points`
+
+`RPG_SCHEMA_VERSION` 16 → 17. Two folds, both idempotent, both re-run
+at the join boundary (`_sanitizeProg3`) because migrations fail open:
+
+- `prog3FoldLuck` — placed `crit` and `critDmg` points are **refunded
+  into the lane that held them** (`pool` *and* `poolBy[cat]`, so the
+  parts-≤-whole invariant holds by construction), bounded per stat by
+  the caps the retired pair had (75 / 100) so a hand-edited blob cannot
+  mint points on its way out. Refund, never copy, never guess — the
+  v11/v15 precedent, and stricter: these points were already per-lane.
+  `prog3SplitAtk` (v11) walks the two retired keys too, so a v10-shaped
+  fail-open blob healed today does not lose them.
+- `prog3GrantSharedPoints` — every character receives
+  `SHARED_POINTS_PER_LEVEL × (level − 1)` per skill, exactly what a fresh
+  character reaching the same levels mints. Body points already placed
+  with lane points **stay placed**: nothing recorded which lane paid, and
+  taking them back would read as theft. A veteran therefore comes out
+  slightly ahead of a fresh character, by the body points they bought
+  under the old rule — the v10 defense-carry posture, chosen over any
+  option that strands or claws back earned points.
+
+### Wire
+
+- caps: `prog3shared: true` (join.js). Display-only.
+- `prog3_allocate { stat, cat }` — unchanged shape; `luck` / `range` /
+  `special` / `move` flow through the same `prog3StatDef` whitelist, and
+  `crit` / `critDmg` are refused by it.
+- `prog3_level { …, shared }` and `prog3_allocated { …, shared }` — the
+  shared pool rides both (extra fields on PRIVILEGED events; an old
+  client ignores them).
+- `player_state.prog3` carries `{ sk, alloc, atk, pool, poolBy, shared,
+  ms, ppl, spl }`.
+- `player_projectile` (client relay) gains an additive `life` so a peer
+  mirrors the caster's longer flight; absent → the type's own life.
+
+### The client
+
+`src/data/prog3.js` mirrors the tables and keeps the retired pair in
+`PROG3_LEGACY_ATK` for old-worker prediction only (the `prog3CritFlat`
+posture): against a worker without the cap the crit readouts and DPS
+math predict that worker's `crit` / `critDmg` roll, the reach / special
+/ move multipliers read 1, the retired rows draw and the new ones hide,
+and the Shared column spends the lane total that worker still lets a
+body spend draw on (`prog3PoolShared`). `unspentPointsTotal` is
+`pool + shared`.
+
+**The Points screen** (`HeroExpanded.jsx`, portrait): four columns —
+MELEE | MAGIC | BOW | SHARED — under a sticky header row. Each header is
+`role=button` `[data-prog3-lane]` with the `, level N` aria-label, the
+points badge absolutely placed left of a centred icon (hidden at 0,
+never absent), the label and `Lv N` under it, and a tap that opens the
+skill's explainer; the Shared header wears the character's portrait
+(`portraitStore`). Cells are the unchanged v2.3.2441 quarter-width
+recipe (`N of M` aria-label, `[data-stat-info]`, `[data-pt-orb]`), each
+bound to its column's lane; POWER prints that lane's own weapon range.
+Landscape keeps the stacked accordion with SHARED as a fourth lane.
+The ℹ️ window prints two rows for Luck (crit chance, crit damage) and
+says "reach, not damage" / "special attacks only" / "movement, not
+damage" instead of "does not change damage" for the stats whose job is
+not sustained DPS (`dpsNote` on the row metadata). `StatDemo` gains
+`luck` and `special` scenes; `range` and `move` open with no scene.

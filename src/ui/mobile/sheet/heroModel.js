@@ -9,6 +9,7 @@ import {
    the legacy formulas stay for old workers (rule 19). */
 import {
   prog3Live, prog3Pool, prog3CritPct, prog3CritFlat, prog3DodgePct,
+  prog3Shared, prog3MoveMult, /* v2.3.2592: the shared pool; the move stat */
   prog3CritMult, isProg3XEnabled, /* v2.3.2199: percent critDmg */
   prog3DefPct, prog3SkillLevel, prog3XpRequired, PROG3,
   PROG3_SKILL_META, /* v2.3.1848: bestWeaponProgress needs the icons */
@@ -64,7 +65,9 @@ export function unspentPointsTotal(R) {
   if (!R) return 0;
   /* v2.3.1660 (prog3): the rebuild has ONE pool — the badge and the
      identity chip both show it. */
-  if (prog3Live(R)) return prog3Pool(R);
+  /* v2.3.2592: TWO pools now — the lane points and the shared points — and
+     the badge counts both, because both are things waiting to be spent. */
+  if (prog3Live(R)) return prog3Pool(R) + prog3Shared(R);
   return COMBAT_SKILLS.reduce((n, s) => n + buildSkillUnspent(R, s.key), 0);
 }
 
@@ -304,7 +307,8 @@ export function deriveHeroStats(R) {
            merely stale, it described the wrong mechanic.
        The prog3 `def` stat — real, allocated, and previously shown
        NOWHERE — takes their place on the pane. */
-    speed: prog3Live(R) ? calcMoveSpeed(0, 0) : calcMoveSpeed(R.agility || 0, (R.enduranceSpec || {}).swiftness || 0),
+    speed: prog3Live(R) ? calcMoveSpeed(0, 0) * prog3MoveMult(R) /* v2.3.2592: no longer a constant — the MOVE SPEED stat moves it */
+      : calcMoveSpeed(R.agility || 0, (R.enduranceSpec || {}).swiftness || 0),
     block: calcBlockReduction(getDefenseBlockBonus(R), R.shield),
     gold: R.coins || 0,
   };

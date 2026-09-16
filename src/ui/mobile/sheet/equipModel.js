@@ -1,5 +1,5 @@
 import { calcDisplayDmgRange, calcDisplayDps, getArmorPieceDr, getArmorDrPct } from '../../../data/gameSystems.js';
-import { BLACKSMITH_TIERS, WOODWORKING_TIERS, WEAPON_TYPES, SWING_RANGE, bowRangeMult } from '../../../data/gameSystems.js'; /* v2.3.1845: item naming; v2.3.1846: the stat rows */
+import { BLACKSMITH_TIERS, WOODWORKING_TIERS, WEAPON_TYPES, SWING_RANGE, bowRangeMult, meleeRangeMult, staffRangeMult } from '../../../data/gameSystems.js'; /* v2.3.1845: item naming; v2.3.1846: the stat rows; v2.3.2592: every lane's reach */
 import { TILE } from '../../../data/constants.js'; /* v2.3.1846: range, in tiles */
 import { displayWeapon } from './statPreview.js'; /* v2.3.1766: one weapon-for-display rule */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
@@ -320,7 +320,8 @@ export function getEquipContribs(R) {
   const cdMs = range && range.cdMs ? range.cdMs : 0;
   const rangePx = wpn && WEAPON_TYPES[wpn.type]
     ? Math.min(250, Math.round((WEAPON_TYPES[wpn.type].range || SWING_RANGE)
-      * (WEAPON_TYPES[wpn.type].type === 'ranged' ? bowRangeMult(R) : 1)))
+      * (WEAPON_TYPES[wpn.type].type === 'ranged' ? bowRangeMult(R)
+        : wpn.type === 'staff' ? staffRangeMult(R) : meleeRangeMult(R)))) /* v2.3.2592: the card's RANGE row reads the lane's stat */
     : 0;
 
   /* The bottom strip: what this ONE item adds beyond its base numbers.

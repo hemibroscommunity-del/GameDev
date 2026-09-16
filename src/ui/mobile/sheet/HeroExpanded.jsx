@@ -3,12 +3,13 @@ import React, { useEffect, useRef, useState } from 'react';
    note on sheetRow.  The words live in infoGlossary so the hero sheet and
    anywhere else that ever shows these rows read from one copy. */
 import { infoPopupBus } from '../infoPopupBus.js';
-import { statInfo } from '../infoGlossary.js';
+import { statInfo, skillInfo } from '../infoGlossary.js'; /* v2.3.2592: skillInfo — the column headers explain their lane */
 import { COL, QUALITY_COLOR, panelStyle, getState } from '../dash/common.js';
-import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon, weaponForCat, swingCooldownMultFor, toDisplayDamage, toDisplayHp, DISPLAY_SCALE_K } from '../../../data/gameSystems.js'; /* v2.3.1914: getActiveWeapon; v2.3.2231: weaponForCat; v2.3.2441: swingCooldownMultFor; v2.3.2521: DISPLAY_SCALE_K for the "does not change damage" cut-off */
+import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon, weaponForCat, swingCooldownMultFor, toDisplayDamage, toDisplayHp, DISPLAY_SCALE_K, calcDisplayDmgRange /* v2.3.2592: each lane's own damage range */ } from '../../../data/gameSystems.js'; /* v2.3.1914: getActiveWeapon; v2.3.2231: weaponForCat; v2.3.2441: swingCooldownMultFor; v2.3.2521: DISPLAY_SCALE_K for the "does not change damage" cut-off */
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { CharacterView, FIGURE_W_FRAC } from './CharacterView.jsx'; /* v2.3.1815: the equip screen's own figure */
+import { portraitStore } from './portraitStore.js';                 /* v2.3.2592: the Shared column wears the character's portrait */
 import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroStats, unspentPointsTotal } from './heroModel.js';
 /* v2.3.1660: trained-skill rebuild — the Build section becomes the
    seven-stat allocation menu when the worker owns prog3. */
@@ -16,11 +17,12 @@ import {
   prog3Live, prog3HasSkills, prog3Pts, prog3AtkPts, prog3StatCap, prog3SkillLevel,
   prog3ActiveCat, prog3AtkMeta, prog3BodyMeta, PROG3_SKILL_META, prog3PoolFor,
   prog3CritMult, prog3CritPct /* v2.3.2441 */,
-  PROG3, prog3ElemPower /* v2.3.2512: elem per weapon, elem resist, max mana */ } from '../../../data/prog3.js';
+  PROG3, prog3ElemPower /* v2.3.2512: elem per weapon, elem resist, max mana */,
+  prog3CharLevel, prog3PoolShared, prog3SharedSpendCat, isProg3SharedEnabled /* v2.3.2592: the shared pool */ } from '../../../data/prog3.js';
 import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
-import { StatDemo } from './StatDemo.jsx';                                      /* v2.3.2222: the ℹ️ window's scene */
+import { StatDemo, STAT_DEMO_KEYS } from './StatDemo.jsx';                      /* v2.3.2222: the ℹ️ window's scene; v2.3.2592: only stats that HAVE one */
 import { useScrollTap } from './scrollTap.js';                                  /* v2.3.2326: a tap the scroller confiscated is still a tap */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
 import { heroSectionBus } from './heroSectionBus.js';                            /* v2.3.1668 */
@@ -99,6 +101,24 @@ let _lastSection = 'Overview';
 dashboardPanelBus.subscribe(() => {
   if (dashboardPanelBus.state.mode === 'bar') _lastSection = 'Overview';
 });
+
+/* ═══ v2.3.2592: THE FOUR COLUMNS OF THE POINTS SCREEN ═══
+   Owner's order — "melee, staff, bow, and shared" — which is NOT
+   PROG3_SKILL_META's (sword, bow, staff), so it is spelled out here, at the
+   display site, rather than by reordering a table three other screens map.
+   The lane LABELS are the skills' own (Melee / Magic / Bow): every other
+   screen names the staff skill Magic, and mp-prog3 pins that a lane is named
+   the way the dashboard names it.  The fourth column is the character:
+   `shared: true` is what statCell / colHead branch on, and it has no
+   iconSrc because its picture is the portrait (read at render). */
+const SHARED_LANE = { key: 'shared', label: 'Shared', shared: true };
+const POINT_LANES = ['sword', 'staff', 'bow']
+  .map((k) => PROG3_SKILL_META.find((m) => m.key === k))
+  .filter(Boolean)
+  .concat([SHARED_LANE]);
+/* The portrait's fallback when the bust has not been drawn yet (first
+   render after a cold load): the sheet's own knight-bust art. */
+const SHARED_ICON_FALLBACK = '/icons/ui/hero/tab-overview.webp?v=2.3.2592';
 
 /* v2.3.1657: the v2.3.1332 chiseled text segments (segCls/seg) are retired
    with the text — see the icon chip row in the render. */
@@ -533,6 +553,10 @@ export const HeroExpanded = () => {
      have no smooth-scroll and an element that may not be mounted yet. */
   useEffect(() => {
     if (laneClosed) return;
+    /* v2.3.2592: portrait has no lane to bring into view any more — the four
+       columns are always on screen and their header row is sticky — so this
+       is the landscape accordion's convenience only. */
+    if (!playIsLandscape()) return;
     let raf = 0;
     raf = requestAnimationFrame(() => {
       try {
@@ -1318,10 +1342,14 @@ export const HeroExpanded = () => {
                one point, and the DPS that point buys), the glossary supplies
                the words, and StatDemo supplies the picture.  One popup for
                all of it, through the bus the Overview labels already use. */
-            const openStatInfo = (st) => {
+            const openStatInfo = (st, cat) => {
               try {
+                /* v2.3.2592: the row says WHICH lane it belongs to now (four are
+                   on screen at once); a shared row belongs to none and takes
+                   the weapon in hand for its numbers, as before. */
+                const laneCat = st.atk ? (cat || buildCat) : prog3ActiveCat(R);
                 const info = statInfo(st.label) || { title: st.label, body: st.perText + ' per point.' };
-                const pv = R ? previewStatPoint(R, st.key, buildCat) : null;
+                const pv = R ? previewStatPoint(R, st.key, laneCat) : null;
                 /* The row carries the NUMBER and, for a percentage, its sign
                    ("0.8% -> 1.2%", "40.0 -> 48.0"): the row's full unit is
                    prose ("% less damage", " power") and it ran the Defense
@@ -1331,7 +1359,14 @@ export const HeroExpanded = () => {
                 const fmt = (v) => (st.pct ? n1(v * 100) + '%' : n1(v));
                 const rows = [];
                 if (pv) {
-                  rows.push({ label: info.title, now: fmt(pv.statNow), after: pv.capped ? null : fmt(pv.statAfter) });
+                  rows.push({ label: st.key === 'luck' ? 'Crit chance' : info.title, now: fmt(pv.statNow), after: pv.capped ? null : fmt(pv.statAfter) });
+                  /* v2.3.2592: LUCK buys two things per point; the second half
+                     gets its own row so "what will my crit damage BE" is
+                     answered beside "what will my crit chance BE". */
+                  if (typeof pv.statNow2 === 'number') {
+                    rows.push({ label: 'Crit damage', now: '+' + n1(pv.statNow2 * 100) + '%',
+                      after: pv.capped ? null : '+' + n1(pv.statAfter2 * 100) + '%' });
+                  }
                   if (typeof pv.dpsDelta === 'number') {
                     /* ═══ v2.3.2521: TEST THE REAL FIGURE, NOT THE SHRUNK ONE ═══
                        This 0.049 asks "is the gain smaller than the +0.1 this
@@ -1345,15 +1380,22 @@ export const HeroExpanded = () => {
                        about points they cannot take back.  Multiply back out
                        so the threshold keeps its meaning at any k; the printed
                        numbers stay scaled. */
+                    /* v2.3.2592: a stat whose JOB is not sustained damage
+                       (Range, Special, Move Speed) says what it does instead
+                       of "does not change damage" — beside RANGE that line is
+                       a bug report, not an answer.  The note rides the row's
+                       own metadata (dpsNote). */
                     rows.push(pv.dpsDelta * DISPLAY_SCALE_K > 0.049
                       ? { label: 'DPS', now: n2(pv.dpsNow), after: n2(pv.dpsAfter), delta: '+' + n2(pv.dpsDelta) }
-                      : { label: 'DPS', now: n2(pv.dpsNow), after: null, delta: 'does not change damage' });
+                      : { label: 'DPS', now: n2(pv.dpsNow), after: null, delta: st.dpsNote || 'does not change damage' });
                   } else {
                     rows.push({ label: 'DPS', now: '—', after: null, delta: 'equip a weapon to see' });
                   }
                 }
                 infoPopupBus.open({
-                  title: info.title + (st.atk ? ' · ' + ((PROG3_SKILL_META.find((k) => k.key === buildCat) || {}).label || '') : ''),
+                  title: info.title + (st.atk
+                    ? ' · ' + ((PROG3_SKILL_META.find((k) => k.key === laneCat) || {}).label || '')
+                    : ' · Shared'),
                   body: info.body, note: info.note,
                   perText: 'Each point: ' + st.perText,
                   /* ═══ v2.3.2231: THE FIGURE HOLDS THE LANE'S WEAPON ═══
@@ -1380,9 +1422,14 @@ export const HeroExpanded = () => {
                      own is the contradiction this fixes.  Bare hands is a
                      state the scene already draws (a character before the
                      tutorial sword). */
-                  demo: <StatDemo stat={st.key} iconSrc={st.iconSrc}
-                    weapon={R ? (st.atk ? weaponForCat(R, buildCat) : getActiveWeapon(R)) : null}
-                    shield={!!(R && R.shield)} />,
+                  /* v2.3.2592: only when a scene exists for the stat — StatDemo
+                     returns null otherwise, and the popup would still reserve
+                     the scene's margin around nothing. */
+                  demo: STAT_DEMO_KEYS.includes(st.key)
+                    ? <StatDemo stat={st.key} iconSrc={st.iconSrc}
+                        weapon={R ? (st.atk ? weaponForCat(R, laneCat) : getActiveWeapon(R)) : null}
+                        shield={!!(R && R.shield)} />
+                    : null,
                   rows, capped: !!(pv && pv.capped),
                 });
               } catch (e) { /* an explainer must never block a spend */ }
@@ -1391,7 +1438,8 @@ export const HeroExpanded = () => {
                "CRIT 2/4  DMG 1/4  SPD 0/4".  The rows themselves keep the
                full labels.  v2.3.2199: the new flat-damage stat takes DMG;
                critDmg (which had borrowed it) becomes CRIT+. */
-            const SHORT = { dmg: 'DMG', crit: 'CRIT', critDmg: 'CRIT+', aspd: 'SPD', elem: 'ELEM' }; /* v2.3.2512: + elem (now a per-weapon stat) */
+            /* v2.3.2592: the collapsed-lane recap those short forms fed is gone
+               with the accordion — every lane is open, always. */
             /* v2.3.2176: does this worker channel points?  Without the cap
                there is no breakdown to read, so everything falls back to the
                single shared pool the old worker enforces (rule 19). */
@@ -1400,7 +1448,123 @@ export const HeroExpanded = () => {
                from its own lane's points -- the owner's rule -- and a body
                row spends from the lane you are standing in, so both read the
                same number. */
-            const openPts = chanCaps ? prog3PoolFor(R, buildCat) : totalUnspent;
+            /* ═══ v2.3.2592: TWO POOLS, FOUR COLUMNS ═══
+               Owner: "for every point earned through one of the 3 combat
+               channels, you earn one 'shared' point too.  You get both points
+               but only the point earned in the combat channel can be spent
+               there (the point for shared can be allocated to any in that
+               shared pool)."
+               laneAvail(cat) is what a weapon column can spend — its own
+               channel plus the legacy unchannelled remainder — and sharedAvail
+               what the Shared column can.  Against a worker WITHOUT the shared
+               pool (no caps.prog3shared) prog3PoolShared answers with the
+               lane total that worker still lets a body spend draw on, so the
+               column is honest in either deploy order (rule 19). */
+            const sharedCaps = isProg3SharedEnabled();
+            const laneAvail = (cat) => (chanCaps ? prog3PoolFor(R, cat) : totalUnspent);
+            const sharedAvail = sharedCaps ? prog3PoolShared(R) : (chanCaps ? prog3PoolShared(R) : totalUnspent);
+            /* The Shared column's picture: the character's own bust, drawn by
+               BottomDashboard into portraitStore; the sheet's knight art
+               until it has been. */
+            const sharedIcon = portraitStore.get() || (S && S.myAvatar) || SHARED_ICON_FALLBACK;
+            const COL_GAP = 4;
+            /* The points badge that sits LEFT of a column's icon.  Kept in the
+               DOM at 0 (hidden, not absent) so every lane carries exactly one
+               `[aria-label*="points to spend"]` whatever it holds, which is
+               the count mp-prog3 and mp-statgrid have asserted since
+               v2.3.2176. */
+            const BADGE = {
+              position: 'absolute', right: '50%', marginRight: 15, top: '50%', transform: 'translateY(-50%)',
+              /* 12px, the floor the owner set for a header's count
+                 (v2.3.2315: "needs to increase in size for legibility";
+                 mp-prog3 pins >= 12). */
+              minWidth: 19, height: 17, padding: '0 4px', boxSizing: 'border-box', borderRadius: 999,
+              background: COL.accent, color: '#20170D', fontSize: 12, fontWeight: 900,
+              lineHeight: '17px', textAlign: 'center', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+            };
+            /* 44, not the 60 a first cut used.  The header row is STICKY, and
+               on a phone the sheet's scrolling window is ~191px: tabs (28) +
+               a 60px header pinned above the cells left ~98px — two rows —
+               of glass, and mp-statgrid's centred taps landed on the header's
+               bottom edge.  44 is the iOS thumb floor mp-prog3 pins on every
+               `[data-prog3-lane]`, and it is enough for the two things the
+               owner drew: the icon (with its badge) over the name.  The level
+               moved into the title and aria-label. */
+            const HEAD_H = 44;
+            /* What a column HEADER says when tapped: the skill it belongs to,
+               its level, and what its points may buy.  The dashboard's combat
+               pills open the same explainer (DashColumns), so the two screens
+               say one thing about one skill. */
+            const openLaneInfo = (col) => {
+              try {
+                if (col.shared) {
+                  const n = sharedAvail;
+                  infoPopupBus.open({
+                    title: `Shared — Level ${prog3CharLevel(R)}`,
+                    body: sharedCaps
+                      ? 'Every level-up in any combat skill also earns shared points. They buy the stats that belong to your character rather than to one weapon: HP, Defense, Mana, Stamina, Dodge, Move Speed and Elemental Resistance.'
+                      : 'The stats that belong to your character rather than to one weapon: HP, Defense, Mana, Stamina, Dodge and Elemental Resistance. Any combat point can be spent here.',
+                    note: n > 0 ? `You have ${n} shared point${n === 1 ? '' : 's'} to spend.` : 'Level up any combat skill to earn more.',
+                  });
+                  return;
+                }
+                const info = skillInfo(col.key);
+                const lvl = prog3SkillLevel(R, col.key);
+                const n = laneAvail(col.key);
+                infoPopupBus.open({
+                  title: `${info ? info.title : col.label} — Level ${lvl}`,
+                  body: (info ? info.body + ' ' : '') + `Its points buy only this weapon's six stats: Range, Power, Speed, Luck, Special and Elemental.`,
+                  note: n > 0 ? `You have ${n} ${col.label} point${n === 1 ? '' : 's'} to spend.` : `Fight with a ${col.label.toLowerCase()} weapon to earn more.`,
+                });
+              } catch (e) { /* an explainer must never block a spend */ }
+            };
+            /* ═══ THE COLUMN HEADER ═══
+               "Each column label should have its combat icon centered above
+               the label ... Points allocable (if any) will be to the left of
+               each icon."  So: icon dead-centre, the badge absolutely placed
+               off its left edge (never a flex sibling, which would push the
+               icon off centre by half the badge), the name under it, the
+               level under that.  The Shared column's icon is the portrait. */
+            const colHead = (col) => {
+              const shared = !!col.shared;
+              const pts = shared ? sharedAvail : laneAvail(col.key);
+              const lvl = shared ? prog3CharLevel(R) : prog3SkillLevel(R, col.key);
+              const iconSrc = shared ? sharedIcon : col.iconSrc;
+              return (
+                <div key={col.key}
+                  role="button"
+                  data-prog3-lane={col.key}
+                  aria-label={`${col.label}, level ${lvl}`}
+                  title={`${col.label} — level ${lvl} — ${pts} point${pts === 1 ? '' : 's'} to spend`}
+                  {...scrollTap(() => openLaneInfo(col))}
+                  style={{
+                    flex: '1 1 0', minWidth: 0, height: HEAD_H, boxSizing: 'border-box',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+                    borderRadius: 9, padding: '2px 2px',
+                    border: `1px solid ${pts > 0 ? COL.accent : COL.tileBor}`,
+                    background: pts > 0 ? COL.accentFill : COL.wellSoft,
+                    cursor: 'pointer', touchAction: 'manipulation', overflow: 'hidden',
+                  }}>
+                  <div style={{ position: 'relative', width: '100%', height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span aria-label={`${pts} points to spend on ${col.label}`}
+                      style={{ ...BADGE, visibility: pts > 0 ? 'visible' : 'hidden' }}>{pts}</span>
+                    <img src={iconSrc} alt="" draggable={false}
+                      onError={shared ? (e) => { if (e.currentTarget.src.indexOf(SHARED_ICON_FALLBACK) < 0) e.currentTarget.src = SHARED_ICON_FALLBACK; } : undefined}
+                      style={{
+                        width: 22, height: 22, flex: 'none', pointerEvents: 'none',
+                        objectFit: shared ? 'cover' : 'contain',
+                        borderRadius: shared ? 6 : 0, imageRendering: shared ? 'pixelated' : undefined,
+                        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.45))',
+                      }} />
+                  </div>
+                  <span style={{
+                    fontSize: 11, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase',
+                    lineHeight: 1, color: pts > 0 ? COL.accent : COL.text,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
+                  }}>{col.label}</span>
+                </div>
+              );
+            };
             /* ═══ v2.3.2222: THE ROWS ARE TWICE THE SIZE, AND THE LANE SCROLLS ═══
                Owner: "a larger display of the allocable combat stats.  The
                accordion type display will need to scroll down to show them
@@ -1436,10 +1600,13 @@ export const HeroExpanded = () => {
             const ICON = landPane ? 22 : 26;
             const INFO_W = landPane ? 30 : 34;
             const PLUS_W = landPane ? 34 : 38;
-            const statRow = (st) => {
-              const pts = st.atk ? prog3AtkPts(R, buildCat, st.key) : prog3Pts(R, st.key);
+            const statRow = (st, cat) => {
+              const pts = st.atk ? prog3AtkPts(R, cat, st.key) : prog3Pts(R, st.key);
               const cap = prog3StatCap(R, st.key);
-              const canSpend = openPts > 0 && pts < cap;
+              /* v2.3.2592: an offense cell spends its LANE's points, a shared
+                 cell the SHARED pool (or, against an old worker, whatever lane
+                 total that worker lets a body spend draw on). */
+              const canSpend = (st.atk ? laneAvail(cat) : sharedAvail) > 0 && pts < cap;
               const hasInfo = !!statInfo(st.label);
               /* ═══ v2.3.2329: THE POINT LANDS VISIBLY ═══
                  Owner: "When you spend combat points it's kind of ambiguous
@@ -1471,7 +1638,7 @@ export const HeroExpanded = () => {
                  otherwise drop the class, short enough that two quick spends on one row
                  each get their own (the element is keyed on the count, so the
                  second remounts and restarts the animation). */
-              const lk = (st.atk ? buildCat + ':' : '') + st.key;
+              const lk = (st.atk ? cat + ':' : 'shared:') + st.key;
               const nowMs = Date.now();
               const seen = ptLandRef.current.get(lk);
               if (!seen) ptLandRef.current.set(lk, { pts, at: 0 });
@@ -1492,7 +1659,7 @@ export const HeroExpanded = () => {
                   /* The aria-label is a CONTRACT, not prose: mp-prog3 finds
                      every allocation control by `aria-label*=" of "` and reads
                      the stat name off the text before the first comma. */
-                  aria-label={`${st.label}${st.atk ? ' for ' + buildCat : ''}, ${pts} of ${cap}. ${st.perText} per point.`}
+                  aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${pts} of ${cap}. ${st.perText} per point.`}
                   aria-disabled={!canSpend}
                   title={`${st.label} — ${st.perText} per point`}
                   /* v2.3.2326: the most important tap on this screen, and it
@@ -1511,7 +1678,7 @@ export const HeroExpanded = () => {
                          is global either way; the `cat` says which channel's
                          point pays for it, so the number the player just
                          watched on that lane is the number that moves. */
-                      payload: { stat: st.key, cat: buildCat },
+                      payload: { stat: st.key, cat: st.atk ? cat : prog3SharedSpendCat(R) },
                     });
                   })}
                   style={{
@@ -1574,7 +1741,7 @@ export const HeroExpanded = () => {
                       /* v2.3.2326: same scroller, same confiscated taps. The
                          stopPropagation moves inside the tap callback so the
                          row underneath still does not also spend a point. */
-                      {...scrollTap(() => openStatInfo(st), { inner: true })}
+                      {...scrollTap(() => openStatInfo(st, cat), { inner: true })}
                       onClick={(e) => e.stopPropagation()}
                       style={{
                         flex: 'none', width: st.half ? 30 : INFO_W, height: st.half ? 30 : INFO_W, borderRadius: 999, padding: 0,
@@ -1657,27 +1824,40 @@ export const HeroExpanded = () => {
             /* The stat's own live value, in its own unit.  Falls back to the
                allocated total for the stats that have no separate readout, so
                a cell never renders blank. */
-            const statValueText = (st) => {
+            const statValueText = (st, cat) => {
               try {
                 if (st.atk) {
-                  if (st.key === 'dmg') return d && d.dmgText ? String(d.dmgText) : '0';
-                  if (st.key === 'crit') return pct1(prog3CritPct(R, buildCat)) + '%';
-                  if (st.key === 'critDmg') return Math.round(prog3CritMult(R, buildCat) * 100) + '%';
+                  /* v2.3.2592: POWER prints the lane's OWN weapon's range (four
+                     lanes are on screen; the active weapon's number in all
+                     three would be a lie in two of them), and the allocated
+                     bonus alone for a lane with nothing in its slot. */
+                  if (st.key === 'dmg') {
+                    const w = R ? weaponForCat(R, cat) : null;
+                    const r = w ? calcDisplayDmgRange(R, w) : null;
+                    if (r && r.text) return String(r.text);
+                    return '+' + toDisplayDamage(prog3AtkPts(R, cat, 'dmg') * PROG3.ATK.dmg.per);
+                  }
+                  if (st.key === 'luck') return pct1(prog3CritPct(R, cat)) + '%';
+                  if (st.key === 'range') return '+' + Math.round(prog3AtkPts(R, cat, 'range') * PROG3.ATK.range.per * 100) + '%';
+                  if (st.key === 'special') return '+' + Math.round(prog3AtkPts(R, cat, 'special') * PROG3.ATK.special.per * 100) + '%';
+                  if (st.key === 'crit') return pct1(prog3CritPct(R, cat)) + '%';
+                  if (st.key === 'critDmg') return Math.round(prog3CritMult(R, cat) * 100) + '%';
                   /* v2.3.2512: elemental power, per weapon — the effective
                      "power" the burn/root/collision formulas read, through the
                      one shared reader rather than a fourth inline copy. */
-                  if (st.key === 'elem') return String(Math.round(prog3ElemPower(R, buildCat)));
+                  if (st.key === 'elem') return String(Math.round(prog3ElemPower(R, cat)));
                   if (st.key === 'aspd') {
                     /* swingCooldownMultFor is a PERIOD multiplier (1 at rest,
                        0.50 at cap).  Players read attack speed, not swing
                        period, so it is inverted -- 1.00 rising to 2.00. */
-                    /* buildCat is already 'sword'|'bow'|'staff' and
-                       prog3CatFor maps each of those to itself, so the lane id
-                       is a valid weaponType for this call. */
-                    const mult = swingCooldownMultFor(R, buildCat);
+                    /* cat is already 'sword'|'bow'|'staff' and prog3CatFor
+                       maps each of those to itself, so the lane id is a valid
+                       weaponType for this call. */
+                    const mult = swingCooldownMultFor(R, cat);
                     return n2(mult > 0 ? 1 / mult : 1);
                   }
                 }
+                if (st.key === 'move') return '+' + Math.round(prog3Pts(R, 'move') * PROG3.BODY.move.per * 100) + '%'; /* v2.3.2592 */
                 if (st.key === 'hp') return String(toDisplayHp((R && R.maxHp) || 0));   /* v2.3.2520: display scale */
                 if (st.key === 'stam') return String(Math.round((R && R.maxStamina) || 0));
                 if (st.key === 'def') return pct1(d ? d.defPct : 0) + '%';
@@ -1720,16 +1900,30 @@ export const HeroExpanded = () => {
                lookup -- so renaming the stat itself to win 20 pixels would
                break four scenarios and rename the stat everywhere else in the
                game as a side effect. */
-            const SHORT_TITLE = { aspd: 'Atk Spd', elem: 'Elem Pwr' };
+            /* v2.3.2592: the owner's names at the owner's length — HP / MP as
+               written, and the three that would ellipsise in an 88px cell at
+               375 (ELEMENTAL, MOVE SPEED, ELEM RESIST) shortened rather than
+               shrunk below the 10px floor. */
+            const SHORT_TITLE = { hp: 'HP', mana: 'MP', elem: 'Element', move: 'Move', eres: 'Resist', aspd: 'Speed', critDmg: 'Crit Dmg' };
+            /* Below 360px (320x568, which this repo tests) a quarter cell is
+               74px and the title column ~48px at the 10px floor: the four
+               longest names take one more step down rather than an ellipsis.
+               The aria-label keeps the full name either way. */
+            const NARROW = panelVw() < 360;
+            const NARROW_TITLE = { def: 'Def', stam: 'Stam', eres: 'Resist', move: 'Move', special: 'Spec', elem: 'Elem', mana: 'MP', hp: 'HP', aspd: 'Speed' };
+            const cellTitle = (st) => (NARROW ? (NARROW_TITLE[st.key] || SHORT_TITLE[st.key] || st.label) : (SHORT_TITLE[st.key] || st.label));
             const CELL_H = 48;
-            const statCell = (st, wide) => {
-              const pts = st.atk ? prog3AtkPts(R, buildCat, st.key) : prog3Pts(R, st.key);
+            const statCell = (st, cat) => {
+              const pts = st.atk ? prog3AtkPts(R, cat, st.key) : prog3Pts(R, st.key);
               const cap = prog3StatCap(R, st.key);
-              const canSpend = openPts > 0 && pts < cap;
+              /* v2.3.2592: an offense cell spends its LANE's points, a shared
+                 cell the SHARED pool (or, against an old worker, whatever lane
+                 total that worker lets a body spend draw on). */
+              const canSpend = (st.atk ? laneAvail(cat) : sharedAvail) > 0 && pts < cap;
               const hasInfo = !!statInfo(st.label);
               /* The v2.3.2329 land-flare memory, unchanged -- same key, same
                  1300ms window, same v2.3.2336 refund clearing. */
-              const lk = (st.atk ? buildCat + ':' : '') + st.key;
+              const lk = (st.atk ? cat + ':' : 'shared:') + st.key;
               const nowMs = Date.now();
               const seen = ptLandRef.current.get(lk);
               if (!seen) ptLandRef.current.set(lk, { pts, at: 0 });
@@ -1741,15 +1935,20 @@ export const HeroExpanded = () => {
               return (
                 <div key={lk}
                   role="button"
-                  aria-label={`${st.label}${st.atk ? ' for ' + buildCat : ''}, ${pts} of ${cap}. ${st.perText} per point.`}
+                  aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${pts} of ${cap}. ${st.perText} per point.`}
                   aria-disabled={!canSpend}
                   title={`${st.label} — ${pts} of ${cap} points — ${st.perText} per point`}
                   {...scrollTap(() => {
                     if (!canSpend || !S || !S.channel) return;
-                    S.channel.send({ type: 'prog3_allocate', payload: { stat: st.key, cat: buildCat } });
+                    S.channel.send({ type: 'prog3_allocate', payload: { stat: st.key, cat: st.atk ? cat : prog3SharedSpendCat(R) } });
                   })}
                   style={{
-                    flex: '1 1 0', minWidth: 0, height: CELL_H, boxSizing: 'border-box',
+                    /* v2.3.2592: `flex: none` + full width, NOT `1 1 0`.  The
+                       cell sits in a COLUMN flex container now, where a
+                       flex-basis of 0 is the main-axis (height) basis and
+                       silently overrides `height: 48` — measured: every cell
+                       collapsed to 11px on the first run of mp-statgrid. */
+                    flex: 'none', width: '100%', minWidth: 0, height: CELL_H, boxSizing: 'border-box',
                     /* 2px of side padding on a quarter cell, not 3.  Measured
                        at 375 (the narrowest two-column width, cells 87.75px):
                        "150%" wants 39px and the first cut left it 37, so CRIT
@@ -1757,7 +1956,7 @@ export const HeroExpanded = () => {
                        pixels come from here, from the icon and from the [+]
                        rather than from the number -- the owner's "Reduce
                        horizontal padding rather than shrinking the text". */
-                    padding: wide ? '2px 7px 3px' : '2px 2px 3px',
+                    padding: '2px 2px 3px',
                     display: 'flex', flexDirection: 'column', justifyContent: 'center',
                     gap: 1,
                     position: 'relative',
@@ -1801,11 +2000,11 @@ export const HeroExpanded = () => {
                          went up to the floor instead and the padding paid for
                          it.  Measured at 10/800/.02em: "CRIT DMG" is the
                          longest quarter-cell title and it renders whole. */
-                      fontSize: 11, fontWeight: 800, letterSpacing: '.02em',
+                      fontSize: NARROW ? 10 : 11, fontWeight: 800, letterSpacing: '.02em',
                       textTransform: 'uppercase', color: COL.text2, lineHeight: 1,
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       minWidth: 0,
-                    }}>{SHORT_TITLE[st.key] || st.label}</span>
+                    }}>{cellTitle(st)}</span>
                   </div>
                   {/* ═══ THE INFO BUTTON LIVES IN THE CORNER, NOT THE MIDDLE ═══
                       A first cut put it inline in the centred title row, and
@@ -1823,7 +2022,7 @@ export const HeroExpanded = () => {
                       <button type="button"
                         data-stat-info={st.key}
                         aria-label={`About ${st.label}`}
-                        {...scrollTap(() => openStatInfo(st), { inner: true })}
+                        {...scrollTap(() => openStatInfo(st, cat), { inner: true })}
                         onClick={(e) => e.stopPropagation()}
                         style={{
                           /* ═══ 22, AND WHY IT IS NOT 30 ═══
@@ -1873,11 +2072,11 @@ export const HeroExpanded = () => {
                       `.bt-pt-plus` is `position:absolute; left:100%` and needs
                       a positioned ancestor to fly out of. */}
                   <div style={{
-                    display: 'flex', alignItems: 'center', gap: wide ? 5 : 2,
+                    display: 'flex', alignItems: 'center', gap: 2,
                     minWidth: 0, flex: 'none',
                   }}>
                     <img src={st.iconSrc} alt="" draggable={false}
-                      style={{ width: wide ? 20 : 13, height: wide ? 20 : 13, objectFit: 'contain',
+                      style={{ width: 13, height: 13, objectFit: 'contain',
                         flex: 'none', pointerEvents: 'none',
                         filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.45))' }} />
                     <span style={{
@@ -1885,11 +2084,13 @@ export const HeroExpanded = () => {
                       /* "Only modestly larger than their stat labels" (owner):
                          12.5 over an 8.5 title, and 13.5 over 9.5 on the wide
                          pair.  Not a hero number. */
-                      fontSize: wide ? 13.5 : 12.5, fontWeight: 800,
+                      /* v2.3.2592: 11.5 in a 74px cell (320-class phones) — the
+                         width sweep clipped "1.0%" at 12.5 there. */
+                      fontSize: NARROW ? 11.5 : 12.5, fontWeight: 800,
                       color: COL.text, lineHeight: 1,
                       fontVariantNumeric: 'tabular-nums',
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    }}>{statValueText(st)}</span>
+                    }}>{statValueText(st, cat)}</span>
                     <span style={{ flex: 'none', position: 'relative', display: 'flex', alignItems: 'center' }}>
                       <span aria-hidden="true"
                         key={'orb' + pts}
@@ -1900,14 +2101,20 @@ export const HeroExpanded = () => {
                         <span aria-hidden="true" key={'plus' + pts} className="bt-pt-plus">{'+' + landDelta}</span>
                       )}
                     </span>
+                    {/* v2.3.2592: dropped below 360px, the v2.3.2382 trade —
+                        a 74px cell cannot hold an icon, a value, the orb AND a
+                        [+]; the glyph is decorative (the whole cell spends) and
+                        the accent fill is the cue that survives. */}
+                    {!NARROW && (
                     <span aria-hidden="true" style={{
-                      flex: 'none', width: wide ? 24 : 15, height: wide ? 24 : 15, borderRadius: 5,
+                      flex: 'none', width: 15, height: 15, borderRadius: 5,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       background: canSpend ? COL.accent : 'transparent',
                       border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
                       color: canSpend ? '#20170D' : COL.muted,
-                      fontSize: wide ? 17 : 13, fontWeight: 900, lineHeight: 1,
+                      fontSize: 13, fontWeight: 900, lineHeight: 1,
                     }}>+</span>
+                    )}
                   </div>
                 </div>
               );
@@ -2036,10 +2243,21 @@ export const HeroExpanded = () => {
                   was about his phone. */}
               {landPane ? (
                 <>
-                {PROG3_SKILL_META.map((sk) => {
+                {/* ═══ v2.3.2592: LANDSCAPE KEEPS THE STACKED LANES, PLUS A FOURTH ═══
+                    Sideways this column is ~190px wide — four columns of ~45px
+                    cannot hold a stat name (v2.3.2176 already records that
+                    width ellipsising lane labels to single letters) — so the
+                    accordion stays here, and the SHARED stats become a fourth
+                    lane of their own instead of living inside every weapon's
+                    section.  They are bought with a different pool now, and a
+                    Bow section that sold HP off the Bow's points would say the
+                    opposite of what the worker does. */}
+                {POINT_LANES.map((sk) => {
+                  const shared = !!sk.shared;
                   const open = !laneClosed && buildCat === sk.key;
-                  const lvl = prog3SkillLevel(R, sk.key);
-                  const lanePts = chanCaps ? prog3PoolFor(R, sk.key) : totalUnspent;
+                  const lvl = shared ? prog3CharLevel(R) : prog3SkillLevel(R, sk.key);
+                  const lanePts = shared ? sharedAvail : laneAvail(sk.key);
+                  const iconSrc = shared ? sharedIcon : sk.iconSrc;
                   return (
                     <div key={sk.key} style={{
                       flex: 'none', marginBottom: 3, borderRadius: 8,
@@ -2066,8 +2284,9 @@ export const HeroExpanded = () => {
                           background: open ? COL.raised : COL.wellSoft,
                           borderRadius: open ? '7px 7px 0 0' : 7,
                         }}>
-                        <img src={sk.iconSrc} alt="" draggable={false}
-                          style={{ width: 17, height: 17, objectFit: 'contain', flex: 'none', opacity: open ? 1 : 0.75, pointerEvents: 'none' }} />
+                        <img src={iconSrc} alt="" draggable={false}
+                          style={{ width: 17, height: 17, objectFit: shared ? 'cover' : 'contain', borderRadius: shared ? 4 : 0,
+                            flex: 'none', opacity: open ? 1 : 0.75, pointerEvents: 'none' }} />
                         <span style={{
                           flex: 'none', fontSize: 11.5, fontWeight: 800, letterSpacing: '.06em',
                           textTransform: 'uppercase', color: open ? COL.accent : COL.text,
@@ -2093,10 +2312,8 @@ export const HeroExpanded = () => {
                       </div>
                       {open && (
                         <div id="bt-prog3-body" style={{ display: 'flex', flexDirection: 'column', gap: LANE_GAP, padding: '2px 7px 7px' }}>
-                          {groupHead2(`${sk.label} Attack`)}
-                          {prog3AtkMeta().map((m) => statRow({ ...m, atk: true }))}
-                          <div style={{ marginTop: 5 }}>{groupHead2('Character', 'Shared')}</div>
-                          {prog3BodyMeta().map((m) => statRow({ ...m, atk: false }))}
+                          {groupHead2(shared ? 'Shared' : `${sk.label} Attack`, shared ? 'Character' : undefined)}
+                          {(shared ? prog3BodyMeta() : prog3AtkMeta()).map((m) => statRow({ ...m, atk: !shared }, sk.key))}
                         </div>
                       )}
                     </div>
@@ -2104,273 +2321,83 @@ export const HeroExpanded = () => {
                 })}
                 </>
               ) : (
-                <>
-                {/* ═══════════════════════════════════════════════════════════
-                    v2.3.2512: THE POINTS ACCORDION (owner mockup)
-                    ═══════════════════════════════════════════════════════════
-                    Owner's mock, `docs/triage-2026-09-14/assets/points-accordion.png`:
-                    one COLLAPSIBLE SECTION PER COMBAT SKILL, stacked — icon,
-                    name, the skill's point total and a chevron in the header —
-                    and below all three a SHARED STATS band carrying the three
-                    per-skill totals and the stats that belong to the character
-                    rather than to a weapon.
-
-                    THIS REVERSES v2.3.2441's selector row, knowingly.  That
-                    version replaced stacked lanes with three side-by-side tabs
-                    precisely so the first stat row landed at the same y
-                    whichever weapon you picked, and the note it left is worth
-                    keeping in mind: stacked, the third lane's first row used to
-                    fall below the fold.  It does not here, because the header
-                    is 30px rather than the 24-28px box plus its own body
-                    padding, and because SHARED STATS moved OUT of the open
-                    lane — so the tallest arrangement (Magic open) puts its
-                    first stat row ~102px into a 191px window, measured at
-                    390x844.  mp-prog3's "not just the default one" assertion
-                    still holds; its "at the same height for all three" twin
-                    cannot and was updated with this reason.
-
-                    WHY THE SHARED BAND MOVED OUT: in the mock it sits below
-                    the accordions, always visible, and that is also what makes
-                    the stack affordable — the body of an open lane is now five
-                    cells instead of eleven.
-
-                    EVERY CONTRACT IS CARRIED, unchanged: `data-prog3-lane`,
-                    the `", level N"` aria-label mp-prog3 finds the type
-                    selector by, `aria-expanded`, `aria-controls="bt-prog3-body"`
-                    on the id below, and exactly ONE
-                        `[aria-label*="points to spend"]` per lane.
-
-                    `data-prog3-points` is a new handle and a deliberate one:
-                    the allocation surface is no longer ONE element (the lane
-                    bodies and the shared band are siblings now), and a harness
-                    that has to guess at a common ancestor is a harness that
-                    breaks on the next wrapper.  mp-statgrid reads the whole
-                    grid through it. */}
                 <div data-prog3-points style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                {PROG3_SKILL_META.map((sk) => {
-                  const open = !laneClosed && buildCat === sk.key;
-                  const lvl = prog3SkillLevel(R, sk.key);
-                  const lanePts = chanCaps ? prog3PoolFor(R, sk.key) : totalUnspent;
-                  return (
-                    <div key={sk.key} style={{ flex: 'none', marginBottom: 4, minWidth: 0 }}>
-                      <div
-                        role="button"
-                        data-prog3-lane={sk.key}
-                        aria-label={`${sk.label}, level ${lvl}`}
-                        aria-expanded={open}
-                        aria-controls="bt-prog3-body"
-                        title={`${sk.label} — level ${lvl} — ${lanePts} point${lanePts === 1 ? '' : 's'} to spend`}
-                        {...scrollTap(() => {
-                          if (open) { setLaneClosed(true); return; }
-                          setBuildCat(sk.key);
-                          setLaneClosed(false);
-                        })}
-                        style={{
-                          /* 44, not the 30 a first cut used: mp-prog3 has
-                             pinned "each is a real thumb target, not a strip"
-                             at 44 since v2.3.2214 and it is the iOS minimum.
-                             The owner's mock draws a shorter bar, but a header
-                             you have to aim at is worse than a header that is
-                             two pixels taller than the drawing. */
-                          height: 44, boxSizing: 'border-box', padding: '0 9px',
-                          display: 'flex', alignItems: 'center', gap: 7,
-                          borderRadius: open ? '9px 9px 0 0' : 9,
-                          border: `1px solid ${open ? COL.accent : COL.tileBor}`,
-                          borderBottom: open ? 'none' : `1px solid ${COL.tileBor}`,
-                          background: open ? COL.raised : COL.wellSoft,
-                          /* Closed reads as a recessed well, open as the one
-                             raised member — game.css's depth doctrine
-                             (v2.3.1576), kept from the row this replaces. */
-                          boxShadow: open ? 'none' : 'inset 0 1px 3px rgba(0,0,0,.30)',
-                          cursor: 'pointer', touchAction: 'manipulation', overflow: 'hidden',
-                        }}>
-                        <img src={sk.iconSrc} alt="" draggable={false}
-                          style={{ width: 18, height: 18, objectFit: 'contain', flex: 'none', opacity: open ? 1 : 0.8, pointerEvents: 'none' }} />
-                        <span style={{
-                          flex: 1, minWidth: 0,
-                          fontSize: 13, fontWeight: 800, letterSpacing: '.06em',
-                          textTransform: 'uppercase', lineHeight: 1,
-                          color: open ? COL.accent : COL.text,
-                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        }}>{sk.label}</span>
-                        {/* The mock's right-hand pair: the skill's own mark and
-                            the points waiting on it.  The aria-label is the
-                            retired corner badge's, kept because mp-prog3 counts
-                            exactly one per lane. */}
-                        <img src={sk.iconSrc} alt="" draggable={false} aria-hidden="true"
-                          style={{ width: 15, height: 15, objectFit: 'contain', flex: 'none', opacity: 0.85, pointerEvents: 'none' }} />
-                        <span
-                          aria-label={`${lanePts} points to spend on ${sk.label}`}
-                          style={{
-                            flex: 'none', minWidth: 12, textAlign: 'right',
-                            fontSize: 13, fontWeight: 800, lineHeight: 1,
-                            fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-                            color: lanePts > 0 ? COL.accent : COL.muted,
-                          }}>{lanePts}</span>
-                        <span aria-hidden="true" style={{
-                          flex: 'none', fontSize: 13, lineHeight: 1,
-                          color: open ? COL.accent : COL.text2,
-                        }}>{open ? '▲' : '▼'}</span>
-                      </div>
-                      {open && (
-                        <div id="bt-prog3-body" style={{
-                          display: 'flex', flexDirection: 'column', gap: 4,
-                          padding: '4px 4px 5px', minWidth: 0,
-                          border: `1px solid ${COL.accent}`, borderTop: 'none',
-                          borderRadius: '0 0 9px 9px', background: COL.raised,
-                        }}>
-                          {(() => {
-                            /* FOUR ABREAST, THEN THE REST WIDE — the band shape
-                               v2.3.2441 measured and the mock keeps.  Not
-                               hardcoded to 4 + 1: against a worker without the
-                               caps flags _resolveMetaRows drops rows (rule 19:
-                               never offer a stat the wire will refuse), so the
-                               bands re-form on their own. */
-                            const rows = prog3AtkMeta();
-                            const small = rows.slice(0, 4);
-                            const wide = rows.slice(4);
-                            return (
-                              <>
-                                {small.length > 0 && (
-                                  <div style={{ display: 'flex', gap: 4, minWidth: 0 }}>
-                                    {small.map((m) => statCell({ ...m, atk: true }, false))}
-                                  </div>
-                                )}
-                                {wide.length > 0 && (
-                                  <div style={{ display: 'flex', gap: 4, minWidth: 0 }}>
-                                    {wide.map((m) => statCell({ ...m, atk: true }, true))}
-                                  </div>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                {/* ═══════════════════════════════════════════════════════════
+                    v2.3.2592: FOUR COLUMNS — MELEE | MAGIC | BOW | SHARED
+                    ═══════════════════════════════════════════════════════════
+                    Owner: "Right now spending and applying and using combat
+                    points is not a fun experience.  The points section of the
+                    character tab should have a 4 column layout: melee, staff,
+                    bow, and shared.  Each column label should have its combat
+                    icon centered above the label.  You can use the character
+                    portrait for the 'shared' icon.  Points allocable (if any)
+                    will be to the left of each icon."
 
-                {/* ═══ SHARED STATS ═══
-                    The mock's own heading, and its own right-hand recap: the
-                    three per-skill totals side by side, so "what is waiting
-                    where" reads at a glance without opening a lane.  These are
-                    aria-hidden on purpose — mp-prog3 counts one
-                    `[aria-label*="points to spend"]` per LANE and three more
-                    here would break that count for a number that is already
-                    said, visibly, three rows above. */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  lineHeight: 1, flex: 'none', height: 14, marginTop: 3,
-                }}>
-                  <span style={{
-                    fontSize: 11, fontWeight: 800, letterSpacing: '.10em',
-                    textTransform: 'uppercase', color: COL.text2,
-                    whiteSpace: 'nowrap', flex: 'none',
-                  }}>Shared Stats</span>
-                  <span aria-hidden="true" style={{ flex: 1, minWidth: 8, height: 1, background: COL.divider }} />
-                  <span aria-hidden="true" style={{
-                    flex: 'none', display: 'flex', alignItems: 'center', gap: 5,
-                    fontVariantNumeric: 'tabular-nums',
+                    THIS REPLACES v2.3.2512's accordion (and v2.3.2441's
+                    selector row before it), knowingly.  Every stat of every
+                    lane is on screen at once: nothing hides behind a collapsed
+                    header, no lane's first row can fall under the fold because
+                    of WHICH lane you picked (the v2.3.1660 incident, closed by
+                    geometry rather than by a scroll-to-lane effect), and the
+                    thing the owner called not fun — open a lane, spend, close
+                    it, open the next, find the shared band, spend again — is
+                    one screen with four columns and one gesture, a tap.
+
+                    WHAT IT COSTS IS HEIGHT.  Four lanes of 6-7 cells at 48px
+                    is ~400px in the sheet's ~191px window (measured at 390x844,
+                    v2.3.2441), where the accordion was ~300.  That is the trade
+                    the owner made at v2.3.2222 ("the owner has chosen the
+                    scroll") and makes again here by asking for every column at
+                    once.  Two things pay it down: the HEADER ROW IS STICKY, so
+                    the four names never leave while the cells scroll under
+                    them, and the chevron at the bottom still cues the rest
+                    (v2.3.2288 removed the scroll-edge fade on purpose).
+
+                    THE CELL IS UNCHANGED.  statCell is the v2.3.2441 recipe,
+                    measured at exactly this quarter width (91.5px at 390,
+                    87.75 at 375): title across the top, icon / live value / orb
+                    / [+] on one line, the ℹ️ in the corner, the WHOLE cell the
+                    tap target.  Every contract it carries is carried still —
+                    role=button + the `N of M` aria-label, [data-stat-info],
+                    [data-pt-orb] — and its two `wide` variants are gone,
+                    because no cell is wider than a column now.
+
+                    THE COLUMN HEADER is what `data-prog3-lane` names now:
+                    still role=button, still the `, level N` aria-label four
+                    scenarios resolve through, still exactly one
+                    `[aria-label*="points to spend"]` per lane (hidden at 0 —
+                    "points allocable (if any)").  Its tap opens the skill's
+                    explainer instead of toggling a section, because there is
+                    nothing left to toggle.  The SHARED header wears the
+                    character's own portrait (the owner's pick), which is also
+                    the honest picture: those stats belong to the character,
+                    not to anything in its hands. */}
+                  <div style={{
+                    display: 'flex', gap: COL_GAP, minWidth: 0,
+                    position: 'sticky', top: HERO_TAB_H + 2, zIndex: 1,
+                    background: COL.bg, padding: '2px 0 3px',
                   }}>
-                    {PROG3_SKILL_META.map((sk, i) => {
-                      const n = chanCaps ? prog3PoolFor(R, sk.key) : totalUnspent;
-                      return (
-                        <span key={sk.key} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                          {i > 0 && <span style={{ color: COL.divider, marginRight: 2 }}>|</span>}
-                          <img src={sk.iconSrc} alt="" draggable={false}
-                            style={{ width: 13, height: 13, objectFit: 'contain', flex: 'none', opacity: 0.85, pointerEvents: 'none' }} />
-                          <span style={{
-                            fontSize: 11.5, fontWeight: 800, lineHeight: 1,
-                            color: n > 0 ? COL.accent : COL.muted,
-                          }}>{n}</span>
-                        </span>
-                      );
-                    })}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, paddingBottom: 4 }}>
-                  {(() => {
-                    /* The owner's display order — MAX HP | DEFENSE | STAMINA |
-                       DODGE across, then MAX MANA and ELEM RESIST wide.
-                       Reordered HERE, at the point of display, and never in the
-                       data: prog3BodyMeta() is read by the landscape branch and
-                       by the single-column fallback too, and rotating the
-                       source array would silently move both. */
-                    const body = prog3BodyMeta();
-                    const by = (k) => body.find((m) => m.key === k);
-                    const SMALL = ['hp', 'def', 'stam', 'dodge'];
-                    const WIDE = ['mana', 'eres'];
-                    const small = SMALL.map(by).filter(Boolean);
-                    const wide = WIDE.map(by).filter(Boolean);
-                    /* Anything neither list names (a stat added tomorrow, or an
-                       older worker's row set) still gets a cell rather than
-                       vanishing — the v2.3.2441 rule, kept. */
-                    const named = new Set([...small, ...wide].map((m) => m.key));
-                    const rest = body.filter((m) => !named.has(m.key));
-                    return (
-                      <>
-                        {(small.length + rest.length) > 0 && (
-                          <div style={{ display: 'flex', gap: 4, minWidth: 0 }}>
-                            {[...small, ...rest].map((m) => statCell({ ...m, atk: false }, false))}
-                          </div>
-                        )}
-                        {wide.length > 0 && (
-                          <div style={{ display: 'flex', gap: 4, minWidth: 0 }}>
-                            {wide.map((m) => statCell({ ...m, atk: false }, true))}
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
+                    {POINT_LANES.map((col) => colHead(col))}
+                  </div>
+                  <div style={{ display: 'flex', gap: COL_GAP, alignItems: 'flex-start', minWidth: 0 }}>
+                    {POINT_LANES.map((col) => (
+                      <div key={col.key} data-prog3-col={col.key}
+                        style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', gap: COL_GAP }}>
+                        {(col.shared ? prog3BodyMeta() : prog3AtkMeta()).map((m) => statCell({ ...m, atk: !col.shared }, col.key))}
+                      </div>
+                    ))}
+                  </div>
                   {/* THE SCROLL CUE.  Subtle, and NOT a button — aria-hidden,
                       no role, no handler, so it adds nothing to the face count
                       mp-infopop measures.  It earns its place because v2.3.2288
                       deliberately killed the bottom scroll-edge fade on every
                       section but Overview, so this screen has no other overflow
-                      cue — and the accordion is taller than the selector row it
-                      replaces. */}
+                      cue — and four columns of cells are taller than the window. */}
                   <div aria-hidden="true" style={{
                     height: 12, lineHeight: '12px', textAlign: 'center',
-                    fontSize: 13, color: COL.muted, opacity: 0.45, flex: 'none',
+                    fontSize: 13, color: COL.muted, opacity: 0.45, flex: 'none', marginTop: 2,
                   }}>▾</div>
                 </div>
-                </div>
-
-                {/* CLOSED-ALL, the three recap rows: with every lane shut the
-                    per-skill offence totals would otherwise be unreadable
-                    without opening one.  No role and no "level" in any label —
-                    three more `[role="button"][aria-label*="level"]` elements
-                    would break mp-infopop's face count. */}
-                {laneClosed && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '2px 0 7px' }}>
-                    {PROG3_SKILL_META.map((sk) => (
-                      <div key={sk.key} data-prog3-recap={sk.key} style={{
-                        height: 22, boxSizing: 'border-box', padding: '0 6px',
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        borderRadius: 6, background: COL.wellSoft,
-                        border: `1px solid ${COL.tileBor}`,
-                      }}>
-                        <span style={{
-                          flex: 'none', width: 52, fontSize: 11, fontWeight: 800,
-                          letterSpacing: '.04em', textTransform: 'uppercase',
-                          color: COL.text2, lineHeight: '20px',
-                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        }}>{sk.label}</span>
-                        <span style={{
-                          flex: 1, minWidth: 0, display: 'flex', gap: 8,
-                          fontSize: 11, fontWeight: 700, color: COL.muted,
-                          lineHeight: '20px', fontVariantNumeric: 'tabular-nums',
-                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        }}>
-                          {prog3AtkMeta().map((m) => (
-                            <span key={m.key}>{SHORT[m.key]} {prog3AtkPts(R, sk.key, m.key)}/{prog3StatCap(R, m.key)}</span>
-                          ))}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                </>
               )}
               </>
             );

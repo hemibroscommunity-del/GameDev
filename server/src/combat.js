@@ -542,8 +542,12 @@ export const combatMethods = {
     // LARGEST lane's multiplier for the same over-cover reason as the
     // flat below (the candidate loop doesn't report which weapon won;
     // loose rejects nothing, tight rejects legit maxed crits).
+    /* v2.3.2592: critDmg folded into LUCK (prog3.js) — the multiplier half
+       is `dmgPer`, read off the largest lane for the over-cover reason
+       above.  _prog3CritMult is the roll's own reader; the ceiling takes
+       the max across lanes because the candidate loop is lane-blind. */
     const critMult = ps.prog3
-      ? 1.5 + Math.max(...PROG3.SKILLS.map((c) => this._prog3AtkPts(ps, c, 'critDmg'))) * PROG3.ATK.critDmg.per
+      ? 1.5 + Math.max(...PROG3.SKILLS.map((c) => this._prog3AtkPts(ps, c, 'luck'))) * PROG3.ATK.luck.dmgPer
       : 1.5 + (ps.power || 0) * 0.001;
     // v2.3.1451: the attacker's ACTUAL banked crit-dmg flat, max
     // across the three categories (the candidate loop in
@@ -565,7 +569,15 @@ export const combatMethods = {
     // v2.3.1397: per-weapon special mult (client specialAtkMultFor) —
     // melee/bow 3.0, staff 2.0.  The cap covers the LARGEST so no legit
     // special is rejected.
-    const specialMult = isSpecial ? 3.0 : 1.0;
+    /* v2.3.2592: × the allocated SPECIAL stat (+1%/pt, PER TYPE), off the
+       LARGEST lane — lockstep with _computeAttackDamage's `_prog3SpecialMult`
+       term, same commit.  Explicit here rather than eaten out of comboBoost's
+       headroom, so the 5× stays what it says it covers. */
+    const specialMult = isSpecial
+      ? 3.0 * (ps.prog3
+        ? 1 + Math.max(...PROG3.SKILLS.map((c) => this._prog3AtkPts(ps, c, 'special'))) * PROG3.ATK.special.per
+        : 1)
+      : 1.0;
     // Floor baseline-10 rescaled (100 ÷ 4.8 ≈ 21) so it doesn't sit ~10x
     // above a real hit.  Now a sanity backstop on the server's own roll
     // (monster damage is server-computed) AND the PvP dmgBase cap.
@@ -715,6 +727,13 @@ export const combatMethods = {
     // greatsword) and bow specials hit 3x, each staff orb 2x.  Mirrors
     // client specialAtkMultFor (src/data/gameSystems.js).
     if (isSpecial) base *= (type === 'staff' ? 2.0 : 3.0);
+    /* v2.3.2592: the allocated SPECIAL stat scales the special multiplier
+       for the weapon's own lane (+1%/pt, +75% at cap).  Applied HERE, before
+       the crit branch, so a special crit anchors off the scaled value the
+       same way it anchored off the ×3/×2 — _maxDmgForAttacker's specialMult
+       carries the same term (lockstep).  Mirrored by the client's
+       specialAtkMultFor(type, rpg). */
+    if (isSpecial && _p3) base *= this._prog3SpecialMult(ps, this._prog3CatFor(type));
     if (w && w.isVolatile) base *= 1.30;               // §4.7 volatile weapon
     /* v2.3.2058: 1.20 is the COOKED-FOOD magnitude and stays the default;
        _buffs.damageMul is set by anything that buffs damage by its own amount
@@ -748,21 +767,22 @@ export const combatMethods = {
          type by default"). Added here, not folded into `per`, so an
          unallocated character can crit at all -- this roll was
          `Math.random() < 0` for every new player before it. */
-      isCrit = Math.random() < PROG3.ATK.crit.base
-        + this._prog3AtkPts(ps, _atkCat, 'crit') * PROG3.ATK.crit.per;
-      /* v2.3.2199: critDmg is a percent on the multiplier now (×1.5 →
-         ×2.5 at the 100-pt cap), not a flat add — see the constant's
-         note in prog3.js for why the v2.3.1659 flat was reversed.
-         Ceiling lockstep: _maxDmgForAttacker's critMult carries the
-         same term and its critFlatCeil dropped to 0, this commit. */
-      if (isCrit) base = this._critAnchor(base * (1.5 + this._prog3AtkPts(ps, _atkCat, 'critDmg') * PROG3.ATK.critDmg.per), rangeTop);
+      /* v2.3.2592: crit and critDmg are ONE stat now — LUCK — read through
+         the two prog3.js helpers so the roll, the ceiling and the client
+         mirror state one formula: chance = 1% + pts × 0.3%, multiplier
+         = 1.5 + pts × 1% (×2.5 at the 100-pt cap).  v2.3.2199's percent-on-
+         the-multiplier reasoning is unchanged; see the constant's note.
+         Ceiling lockstep: _maxDmgForAttacker's critMult carries the same
+         dmgPer term and its critFlatCeil stays 0. */
+      isCrit = Math.random() < this._prog3CritChance(ps, _atkCat);
+      if (isCrit) base = this._critAnchor(base * this._prog3CritMult(ps, _atkCat), rangeTop);
     } else {
       const P = ps.power || 0;
       /* v2.3.2210: the legacy branch gets the same 1% floor, so "every
          character starts at 1%" is true of a pre-prog3 blob too (rule 19
          keeps this path alive for old workers). */
       const baseCrit = Math.max(0, Math.min(1,
-        PROG3.ATK.crit.base + 40 * P / (P + 200) / 100));
+        PROG3.ATK.luck.base + 40 * P / (P + 200) / 100)); /* v2.3.2592: the base lives on luck now */
       isCrit = Math.random() < baseCrit;
       const _critRate = t2CounterRate(this._wpnCritPts(ps, type));
       if (_critRate > 0) {

@@ -94,6 +94,48 @@ export const STAT_INFO = _mk({
     body: 'Cuts the damage you take from elemental sources — burning ground and the blue slime’s blast.',
     note: 'Separate from Defense, which cuts every kind of hit. The two stack.',
   },
+  /* ═══ v2.3.2592: THE FOUR-COLUMN POINTS SCREEN ═══
+     The owner's six per-type stats — Range, Power, Speed, Luck, Special,
+     Elemental — and the one new shared stat, Move Speed.  Power, Speed and
+     Elemental are the old Damage / Atk Speed / Elem Pwr rows under the
+     names the owner chose; those older keys stay above because the
+     Equipment screen's readouts and the landscape pane still say them, and
+     an explainer that silently disappears takes its ℹ️ with it. */
+  Range: {
+    title: 'Range',
+    body: 'How far away your attacks still land — arrows fly farther, orbs travel farther, swings reach farther.',
+    note: 'Bought per weapon: reach you buy for the bow does nothing for your sword. Reach, not damage.',
+  },
+  Power: {
+    title: 'Power',
+    body: 'Base damage on every hit with this weapon type.',
+    note: 'The strong, simple buy early on. Shown as a range because every swing rolls somewhere inside it.',
+  },
+  Speed: {
+    title: 'Attack speed',
+    body: 'How quickly you swing, shoot or cast with this weapon type. Faster means more hits in the same time.',
+    note: 'Multiplies with your damage — a fast weapon with a small hit can out-damage a slow heavy one.',
+  },
+  Luck: {
+    title: 'Luck',
+    body: 'Both halves of a critical hit at once: how often a hit comes out critical, and how much extra it adds when it does.',
+    note: 'Starts at 1% for every weapon. Every point buys a little of each, so a lucky build never has one without the other.',
+  },
+  Special: {
+    title: 'Special attack damage',
+    body: 'How much harder your special attack hits with this weapon type.',
+    note: 'A special costs a block of mana, so this pays off with a bigger mana pool. Ordinary hits are not changed.',
+  },
+  Elemental: {
+    title: 'Elemental power',
+    body: 'Makes this weapon’s element hit harder — burns, roots, thorns and element combos all grow with it.',
+    note: 'Bought per weapon. Only works with an enchanted weapon (one that carries an element).',
+  },
+  'Move Speed': {
+    title: 'Move speed',
+    body: 'How fast you walk and run.',
+    note: 'Movement, not damage — but getting to the fight, and out of it, faster is its own kind of power.',
+  },
   Defense: {
     title: 'Defense',
     body: 'Cuts the damage that gets through to you.',

@@ -31,11 +31,17 @@
  */
 import * as H from './harness.mjs';
 
+/* v2.3.2592: FOUR columns at every width — the owner's layout has no narrow
+   fallback (a lane you cannot see is the v2.3.1660 incident); below 360px
+   the cell titles step down to the 10px floor and four short names instead
+   (HeroExpanded NARROW_TITLE), which is what this file exists to verify. */
 const SIZES = [
-  { w: 390, h: 844, cols: 2 },
-  { w: 375, h: 812, cols: 2 },
-  { w: 320, h: 568, cols: 1 },
+  { w: 390, h: 844, cols: 4 },
+  { w: 375, h: 812, cols: 4 },
+  { w: 320, h: 568, cols: 4 },
 ];
+/* 3 lanes x 6 + 7 shared, all on screen at once. */
+const CELLS = 25;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   for (const S of SIZES) {
@@ -53,7 +59,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(900);
 
     const m = await P.page.evaluate(() => {
-      const b = document.getElementById('bt-prog3-body');
+      /* v2.3.2592: the whole four-column surface, not one lane's body. */
+      const b = document.querySelector('[data-prog3-points]') || document.getElementById('bt-prog3-body');
       if (!b) return { err: 'no prog3 body' };
       const cs = getComputedStyle(b);
       const rows = [...b.querySelectorAll('[role="button"][aria-label*=" of "]')];
@@ -84,8 +91,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
 
     rec.ok(`${tag}: the points panel is open (guard)`,
-      !m.err && m.rows === 9, m);
-    if (m.err || m.rows !== 9) { await P.ctx.close().catch(() => {}); continue; }
+      !m.err && m.rows === CELLS, m);
+    if (m.err || m.rows !== CELLS) { await P.ctx.close().catch(() => {}); continue; }
 
     /* ═══ v2.3.2441: THE TWO-COLUMN CLAIM IS RETIRED ═══
        v2.3.2382 made this a ROW of two columns on the owner's ask; v2.3.2441
@@ -105,9 +112,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* The BAND SHAPE, per width -- 4 across above 375, and the narrow fallback
        below it.  Asserted from the measured x/width of the cells rather than
        from a constant, so a change to the gap or the padding is visible here. */
-    rec.ok(`${tag}: the attack band runs ${S.cols === 2 ? 'FOUR' : 'fewer'} across`
+    rec.ok(`${tag}: the first row runs FOUR across — melee, staff, bow, shared`
          + ` (${m.bandN} cells on the first row)`,
-      S.cols === 2 ? m.bandN === 4 : m.bandN >= 1, m);
+      m.bandN === S.cols, m);
 
     /* The whole reason the layout is allowed to change: nothing may clip. */
     rec.ok(`${tag}: ...and no label, count or caption is cut off`,
