@@ -3,6 +3,7 @@ import { AMULET_GEM_STATS, AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, ELEMENTS, R
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 /* === EnchantPanel — buildingPanel === 'enchant' sub-panel === */
 /* v2.3.874: extracted verbatim from the buildingPanel === 'enchant' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -257,11 +258,13 @@ export function EnchantPanel(props) {
                 var e2n = elem.charAt(0).toUpperCase() + elem.slice(1);
                 w.name = e1n + e2n.toLowerCase() + ' ' + WEAPON_TYPES[w.type].label;
               }
+              var _enLvlBefore = sk.enchanting.level;
               var leveled = addLifeSkillXp(sk, 'enchanting', w.tier === 'fusion' ? 50 : 25);
               if (!R._questFlags) R._questFlags = {};
               R._questFlags.enchantedWeapon = true;
               R._questFlags.slottedGem = true;
               pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, elem + ' enchanted!', edef.color);
+              if (leveled) celebrateLifeSkillLevel(stateRef.current, 'enchanting', sk.enchanting.level, _enLvlBefore); /* v2.3.2591 */
               if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 50, 'Enchanting Lv' + sk.enchanting.level + '!', '#D8A94D');
               BT_AUDIO.collect();
               setRpgState(_objectSpread({}, R));

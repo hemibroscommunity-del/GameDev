@@ -4,6 +4,7 @@ import { btRpc, getBtPassphrase, getBtPlayerId, syncRpgToServer } from '@/networ
 import { _asyncToGenerator, _objectSpread, _regenerator, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 /* === MenuBar — the bottom action / menu button bar === */
 /* v2.3.894: extracted verbatim from the scrollable HUD button-bar div in
    BroTown.jsx's render (the horizontal-scroll row of buttons that open
@@ -287,9 +288,11 @@ export function MenuBar(props) {
         if (sk.activePet === null) sk.activePet = sk.pets.length - 1;
         m.alive = false;
         m.respawnAt = Date.now() + 60000;
+        var _trLvlBefore = sk.trapping.level;
         var leveled = addLifeSkillXp(sk, 'trapping', 15 + (m.level || 1) * 2);
         pushDmgPopup(S, m.x, m.y - 20, 'Captured ' + pet.name + '!', '#59BF91');
         pushDmgPopup(S, m.x, m.y - 35, pet.emoji + ' ' + pet.archetype + ' Lv' + (m.level || 1), pet.color);
+        if (leveled) celebrateLifeSkillLevel(S, 'trapping', sk.trapping.level, _trLvlBefore); /* v2.3.2591 */
         if (leveled) pushDmgPopup(S, S.player.x, S.player.y - 50, 'Trapping Lv' + sk.trapping.level + '!', '#D8A94D');
         S.lockedTarget = null;
         BT_AUDIO.collect();

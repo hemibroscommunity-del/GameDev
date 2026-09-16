@@ -2293,6 +2293,12 @@ export function setupWebSocket(ctx) {
               setLevelUpMsg({
                 kind: 'combat',
                 level: p3l.charLevel || ((S.rpg && S.rpg.level) || 3),
+                /* v2.3.2591: WHICH combat skill, not just its label.  The new
+                   level-up art seats that skill's icon in the medallion
+                   (LevelUpBurst.jsx) and needs the id to look it up — the
+                   label is for reading, and 'Melee' is not a key.  Note the
+                   ids here are prog3's own: sword / bow / staff. */
+                skill: p3l.skill || null,
                 skillLabel: p3meta ? p3meta.label : null,
                 skillLevel: p3l.level,
                 gains: _gains.join(' \xB7 '),

@@ -3,6 +3,7 @@ import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, createDefau
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 /* === CookPanel — buildingPanel === 'cook' sub-panel === */
 /* v2.3.879: extracted verbatim from the buildingPanel === 'cook'
    clause in BroTown.jsx (the cooking station: pick a fish, hit the
@@ -215,12 +216,22 @@ export function CookPanel(props) {
           if (!R.inventory) R.inventory = {};
           var cookedKey = 'cooked_' + cookMinigame.fishKey.replace('fish_', '');
           R.inventory[cookedKey] = (R.inventory[cookedKey] || 0) + 1;
+          var _ckLvlBefore = sk.cooking.level;
           var leveled = addLifeSkillXp(sk, 'cooking', Math.ceil(cookMinigame.tier * 3));
           if (!R._questFlags) R._questFlags = {};
           R._questFlags.cookedRecipe = true;
           if (!R._compStats) R._compStats = createDefaultCompStats();
           R._compStats.cookSuccess++;
           pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Cooked ' + cookMinigame.fishName + '!', '#59BF91');
+          /* v2.3.2591: a CRAFTING level is a level too.  This site already decided a
+             level was worth telling the player about — it just told them in the world,
+             at the player's feet, under a modal panel they are looking at instead.  That
+             is the exact defect v2.3.1915 fixed for the gather trio ("I didn't even
+             notice my woodcutting went up 2 levels"), and the owner's ask here is for
+             the new notification on "both lifeskills and combat skills".  So the same
+             celebration fires, and the world popup stays as the in-world echo, exactly
+             as lifeSkillRewards.js leaves it for fishing/woodcutting/mining. */
+          if (leveled) celebrateLifeSkillLevel(stateRef.current, 'cooking', sk.cooking.level, _ckLvlBefore);
           if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 45, 'Cooking Lv' + sk.cooking.level + '!', '#D8A94D');
           BT_AUDIO.collect();
           setCookMinigame(_objectSpread(_objectSpread({}, cookMinigame), {}, {
@@ -684,10 +695,12 @@ export function CookPanel(props) {
           S._manaBuff = Date.now() + dur;
         }
         /* Cooking XP */
+        var _ck2LvlBefore = sk.cooking.level;
         var leveled = addLifeSkillXp(sk, 'cooking', recipe.tier * 25);
         if (!R._questFlags) R._questFlags = {};
         R._questFlags.cookedRecipe = true;
         pushDmgPopup(S, S.player.x, S.player.y - 30, recipe.name + '!', '#ea580c');
+        if (leveled) celebrateLifeSkillLevel(S, 'cooking', sk.cooking.level, _ck2LvlBefore); /* v2.3.2591 */
         if (leveled) pushDmgPopup(S, S.player.x, S.player.y - 50, 'Cooking Lv' + sk.cooking.level + '!', '#D8A94D');
         setRpgState(_objectSpread({}, R));
         try {

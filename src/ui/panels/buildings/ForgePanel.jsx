@@ -3,6 +3,7 @@ import { AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, EQUIP_STAT_MAP, NUGGETS_PER_B
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 /* === ForgePanel — blacksmith forge (weapon/armor craft, reforge, harden, salvage) === */
 /* v2.3.872: first buildingPanel sub-panel extracted (REBUILD-PLAN UI
    decomposition). Moved verbatim from the buildingPanel === 'forge'
@@ -428,11 +429,13 @@ export function ForgePanel(props) {
           reforgeBonus: null,
           hardenBonus: null
         };
+        var _bsLvlBefore = R.lifeSkills.blacksmithing.level;
         var leveled = addLifeSkillXp(R.lifeSkills, 'blacksmithing', bt.minLvl * 5);
         if (!R._questFlags) R._questFlags = {};
         R._questFlags.forgedWeapon = true;
         pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Forged ' + bt.label + ' ' + WEAPON_TYPES[wpnType].label + '!', '#b0b0b0');
         if (bt.slots > 0) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 42, bt.slots + ' gem slot' + (bt.slots > 1 ? 's' : '') + ' ready!', '#a855f7');
+        if (leveled) celebrateLifeSkillLevel(stateRef.current, 'blacksmithing', R.lifeSkills.blacksmithing.level, _bsLvlBefore); /* v2.3.2591 */
         if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 54, 'Blacksmithing Lv' + R.lifeSkills.blacksmithing.level + '!', '#D8A94D');
         BT_AUDIO.collect();
         setRpgState(_objectSpread({}, R));
