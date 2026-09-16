@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  catgrid: () => import('./mp-catgrid.mjs'), /* v2.3.2597: the Points screen is four category buttons; drill into one at a time */
   zoneflip: () => import('./mp-zoneflip.mjs'), /* v2.3.2541: the front/back switch is in front of the zone frames AND keeps its own taps */
   bowgate: () => import('./mp-bowgate.mjs'), /* v2.3.2543: the bow's fire gate tests the ray the player is SHOWN -- measured after the player walks, which is when the two used to drift apart */
   gearstash: () => import('./mp-gearstash.mjs'), /* v2.3.2523: the gear stashes move server-side -- the frame, the stored blob, and no double-adopt on reconnect */
