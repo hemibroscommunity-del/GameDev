@@ -130,6 +130,41 @@ export const Prog3SpendConfirm = () => {
           <div style={{ marginTop: 7, fontSize: 11.5, color: COL.text2, lineHeight: 1.3 }}>{cur.perText}</div>
         )}
 
+        {/* ═══ v2.3.2597: THIS IS THE EXPLAINER NOW ═══
+            Owner: "having the confirmation window be the same as the
+            informational window ... It tells you what it does and asks you to
+            confirm point at the bottom."  With the row body inert and the [i]
+            explaining the CATEGORY, this window is the only place a stat's own
+            explanation can be read.
+            It gets its OWN handle rather than `data-stat-info`: that one stays
+            on the [+], which is what mp-statdemo and mp-statpeek TAP, and
+            putting it in both places would make a bare
+            `querySelector('[data-stat-info="luck"]')` ambiguous the moment the
+            window is open over the row it came from. */}
+        {cur.infoBody && (
+          <div data-prog3-spend-info={cur.stat} style={{
+            marginTop: 9, padding: '8px 10px', borderRadius: 9,
+            background: COL.well, border: `1px solid ${COL.border}`,
+          }}>
+            {cur.infoTitle && (
+              <div style={{ fontSize: 12, fontWeight: 800, color: COL.text, lineHeight: 1.2, marginBottom: 3 }}>
+                {cur.infoTitle}
+              </div>
+            )}
+            <div style={{ fontSize: 11.5, color: COL.text2, lineHeight: 1.35 }}>{cur.infoBody}</div>
+            {cur.infoNote && (
+              <div style={{ fontSize: 11, color: COL.muted, lineHeight: 1.3, marginTop: 4 }}>{cur.infoNote}</div>
+            )}
+          </div>
+        )}
+
+        {/* Why the button below refuses, when it does. */}
+        {cur.blocked && (
+          <div data-prog3-spend-blocked style={{
+            marginTop: 8, fontSize: 11.5, fontWeight: 700, color: COL.accent, lineHeight: 1.3,
+          }}>{cur.blocked}</div>
+        )}
+
         <div style={{ display: 'flex', gap: 8, marginTop: 13 }}>
           <button type="button" data-prog3-spend-cancel
             onPointerUp={(e) => { e.stopPropagation(); close(); }}
@@ -140,12 +175,17 @@ export const Prog3SpendConfirm = () => {
               cursor: 'pointer', touchAction: 'manipulation',
             }}>Cancel</button>
           <button type="button" data-prog3-spend-confirm
-            onPointerUp={(e) => { e.stopPropagation(); confirm(); }}
+            aria-disabled={!!cur.blocked}
+            onPointerUp={(e) => { e.stopPropagation(); if (!cur.blocked) confirm(); }}
             style={{
               flex: '1 1 0', minHeight: 44, borderRadius: 11,
-              background: COL.goldBg, border: 'none',
-              color: COL.goldText, fontSize: 13, fontWeight: 800,
-              cursor: 'pointer', touchAction: 'manipulation',
+              /* Greyed, but still mounted and still named: the window is the
+                 explainer as well now, so it opens on a capped or unaffordable
+                 stat by design and it is the BUTTON that refuses. */
+              background: cur.blocked ? 'transparent' : COL.goldBg,
+              border: cur.blocked ? `1px solid ${COL.border}` : 'none',
+              color: cur.blocked ? COL.muted : COL.goldText, fontSize: 13, fontWeight: 800,
+              cursor: cur.blocked ? 'default' : 'pointer', touchAction: 'manipulation',
             }}>Spend point</button>
         </div>
       </div>

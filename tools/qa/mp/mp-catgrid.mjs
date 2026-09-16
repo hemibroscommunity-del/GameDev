@@ -42,9 +42,11 @@ async function seed(P, wsPort) {
   }).then((r) => r.json()).catch(() => null);
   await P.page.waitForTimeout(1600);
   return P.page.evaluate(() => {
-    const R = window._gameState && window._gameState.current && window._gameState.current.rpg;
+    const S = window._gameState && window._gameState.current;
+    const R = S && S.rpg;
     const p = (R && R.prog3) || {};
-    return { pool: p.pool, shared: p.shared, poolBy: p.poolBy };
+    return { pool: p.pool, shared: p.shared, poolBy: p.poolBy,
+      caps: !!(S && S._serverCaps && S._serverCaps.prog3shared) };
   });
 }
 
@@ -115,6 +117,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const seeded = await seed(P, wsPort);
     rec.ok(`${label}: the worker minted real points to spend (guard — a client-side seed would make every spend below vacuous)`,
       !!seeded && seeded.pool > 0 && seeded.shared > 0, seeded);
+    /* Ported from mp-statgrid, which retires with the four-column layout it
+       tested: the worker advertises the shared pool, and mints one SHARED point
+       per lane point (v2.3.2592).  Neither is about layout, so neither should
+       have gone with it. */
+    rec.ok(`${label}: the worker advertises the shared-pool grid (guard)`, !!seeded && seeded.caps === true, seeded);
+    rec.ok(`${label}: ...and minted a real SHARED pool beside the lane pool — one per lane point (v2.3.2592)`,
+      !!seeded && seeded.pool >= 3 && seeded.shared >= 3, seeded);
     if (land) {
       await P.page.evaluate(() => window.__broDashPanelBus && window.__broDashPanelBus.open('hero'));
       await P.page.waitForTimeout(900);
@@ -270,6 +279,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const after = await pools(P);
     rec.ok(`${label}: ...and NOTHING was spent by opening it (a mis-tap costs a window, not a point)`,
       JSON.stringify(before) === JSON.stringify(after), { before, after });
+    /* ═══ THE WINDOW IS ALSO THE EXPLAINER ═══
+       With the row body inert and the card's [i] explaining the CATEGORY, this
+       window is the ONLY route to what an individual stat does. If it stops
+       carrying the explanation there is no way to read it at all — which is a
+       silent hole, not a visible break, so it is asserted. */
+    const expl = await P.page.evaluate(() => {
+      const el = document.querySelector('[data-prog3-spend-info]');
+      return el ? { stat: el.getAttribute('data-prog3-spend-info'), text: el.innerText.trim().slice(0, 160) } : null;
+    });
+    rec.ok(`${label}: ...and the window EXPLAINS the stat — the only route to that, now the row body is inert`,
+      !!expl && expl.text.length > 20, expl);
+
     rec.ok(`${label}: the window NAMES THE WEAPON — opened from a Bow row it says Bow`,
       !!confirm && /Bow/i.test(confirm.text), confirm && confirm.text.slice(0, 120));
     await P.page.screenshot({ path: `${OUT}/catgrid-${label}-confirm.png` });

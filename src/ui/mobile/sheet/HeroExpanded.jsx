@@ -1622,9 +1622,39 @@ export const HeroExpanded = () => {
                 const laneMeta = PROG3_SKILL_META.find((k) => k.key === cat) || {};
                 const pv = R ? previewStatPoint(R, st.key, st.atk ? cat : prog3ActiveCat(R)) : null;
                 const fmt = (v) => (st.pct ? n1(v * 100) + '%' : n1(v));
+                /* ═══ v2.3.2597: ONE WINDOW, NOT TWO ═══
+                   Owner: "I think having the confirmation window be the same as
+                   the informational window would be better. It tells you what
+                   it does and asks you to confirm point at the bottom."
+                   With the [+] the ONLY way in (the row body is inert) this is
+                   also the ONLY place a stat's explanation can be read, so the
+                   explainer's body and note travel with the confirm. Without
+                   them the screen had no route to "what does Special do?" at
+                   all — the card's [i] explains the CATEGORY, not the stat.
+                   `infoKey` first: a shortened label can collide with another
+                   stat's glossary entry (see prog3.js). */
+                const sInfo = statInfo(st.infoKey || st.label);
+                /* DISABLED IS A REAL STATE WITH A REASON.  Owner: "you can just
+                   gray out the plus sign and still launch the confirmation
+                   window when tapped but buttons grayed out with that
+                   explanation."  The window still opens and still explains —
+                   that is its main job now — and the bottom button refuses,
+                   saying which of the two reasons it is. */
+                const nowPts = st.atk ? prog3AtkPts(R, cat, st.key) : prog3Pts(R, st.key);
+                const capPts = prog3StatCap(R, st.key);
+                const availPts = st.atk ? laneAvail(cat) : sharedAvail;
+                const blocked = nowPts >= capPts
+                  ? `${st.label} is already at its cap.`
+                  : availPts <= 0
+                    ? `No ${st.atk ? (laneMeta.label || 'lane') : 'shared'} points to spend.`
+                    : null;
                 prog3SpendBus.open({
                   stat: st.key,
                   label: st.label,
+                  infoTitle: sInfo ? sInfo.title : null,
+                  infoBody: sInfo ? sInfo.body : null,
+                  infoNote: sInfo ? sInfo.note : null,
+                  blocked,
                   laneLabel: st.atk ? (laneMeta.label || '') : 'Shared',
                   poolLabel: st.atk ? `${laneMeta.label || ''} point` : 'shared point',
                   iconSrc: st.iconSrc,
