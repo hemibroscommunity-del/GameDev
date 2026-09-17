@@ -62,7 +62,7 @@ function header(gold) {
         style={{ width: 26, height: 26, objectFit: 'contain', flexShrink: 0 }}
         onError={(e) => { e.currentTarget.style.display = 'none'; }} />
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 }}>General store</div>
+        <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 }}>Auction Marketplace</div>
         <div style={{ fontSize: 11, color: LS.txt3, marginTop: 1 }}>What everyone is selling</div>
       </div>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: LS.brass, fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: 13 }}>
@@ -316,7 +316,7 @@ export function StorePanel(props) {
               this line has to stay one line at 360. */}
           <div style={{ fontSize: 11, color: LS.txt3, marginTop: 2, display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
             {mineView ? null : (
-              <PlayerIcon name={l.sellerName} color={l.sellerColor} avatar={l.sellerAvatar} size={18} />
+              <PlayerIcon name={l.sellerName} color={l.sellerColor} avatar={l.sellerAvatar} look={l.sellerLook} size={18} />
             )}
             <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {mineView ? 'Yours' : 'Seller: ' + (l.sellerName || 'someone')}

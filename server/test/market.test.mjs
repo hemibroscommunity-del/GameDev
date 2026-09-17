@@ -713,6 +713,79 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
     check('store icon: an icon costs no more than 300 bytes on a row', perRow <= 300,
       { perRow, icon: bytes - noIcons, total: bytes });
 
+    /* ── v2.3.2622: THE SELLER'S OWN FACE, NOT A LETTER ──
+       Owner: "Make the player's actual profile picture be there instead of
+       the M." The client draws it from the seller's cosmetics; this checks
+       the server stores the RIGHT ONES and no more. */
+    {
+      const ps = shop.playerState['bp_st_sell'];
+      Object.assign(ps, {
+        sk: 'tan', hr: 'short', hc: 'brown', fh: 'none', fhc: 'brown',
+        hw: 'cap', htc: 'red', ew: 'none', ewc: 'black', ec: 'blue',
+        st: 'tee', stc: 'green', bs: 'slim', hg: 'med', fr: 'med',
+        /* the nine DRAWING fields, each a fixed 256 chars -- these must NOT
+           travel: invisible on an 18px disc and 92KB on a full page. */
+        sa: 'a'.repeat(256), sb: 'b'.repeat(256), pa: 'c'.repeat(256),
+        pb: 'd'.repeat(256), ta: 'e'.repeat(256), tf: 'f'.repeat(256),
+        tm: '0'.repeat(256), tb: '1'.repeat(256), tr: '2'.repeat(256),
+      });
+      const faced = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 7 });
+      const look = shop._stIndex.get(faced.listing.id).sellerLook;
+      check('store face: the seller\'s bust set is snapshotted onto the record',
+        !!look && look.sk === 'tan' && look.hw === 'cap' && look.ec === 'blue', look);
+      check('store face: ...including the build fields the portrait fit reads',
+        !!look && look.bs === 'slim' && look.hg === 'med' && look.fr === 'med', look);
+      const drawings = ['sa', 'sb', 'pa', 'pb', 'ta', 'tf', 'tm', 'tb', 'tr'].filter((k) => look && look[k] !== undefined);
+      check('store face: ...and NONE of the nine 256-char drawing fields', drawings.length === 0, drawings);
+      check('store face: it survives the seller logging off (it is stored, not resolved live)',
+        (() => { const keep = shop.playerState['bp_st_sell']; delete shop.playerState['bp_st_sell'];
+          const w = shop._stPublic(shop._stIndex.get(faced.listing.id));
+          shop.playerState['bp_st_sell'] = keep;
+          return !!w.sellerLook && w.sellerLook.sk === 'tan' && w.sellerAvatar === null; })(),
+        'the avatar is resolved live and goes; the face is stored and stays');
+
+      /* A long value cannot ride in: one seller must not be able to push a
+         blob into every shelf page. */
+      ps.hr = 'z'.repeat(400);
+      const longHair = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 7 });
+      check('store face: an over-long cosmetic value is dropped, not stored',
+        shop._stIndex.get(longHair.listing.id).sellerLook.hr === undefined,
+        shop._stIndex.get(longHair.listing.id).sellerLook);
+      ps.hr = 'short';
+
+      /* THE PAGE COST, again, now that a face rides along. */
+      /* Measured with the seller OFFLINE, which is when the look ships: the
+         two are either-or now, so the worst case is one of them, not both. */
+      const keepPs = shop.playerState['bp_st_sell'];
+      delete shop.playerState['bp_st_sell'];
+      const faceRow = shop._stPublic(shop._stIndex.get(faced.listing.id));
+      shop.playerState['bp_st_sell'] = keepPs;
+      const rowsF = [];
+      for (let i = 0; i < 40; i++) rowsF.push({ ...faceRow, id: 'f-' + i });
+      const fBytes = JSON.stringify({ ok: true, listings: rowsF, nextCursor: null, total: 40 }).length;
+      const noLook = JSON.stringify({
+        ok: true, nextCursor: null, total: 40,
+        listings: rowsF.map(({ sellerLook, ...rest }) => rest),
+      }).length;
+      console.log(`    store face: a 40-row page is ${fBytes} bytes, ${fBytes - noLook} of them face `
+        + `(${Math.round((fBytes - noLook) / 40)}/row) -- against ~2300/row if the nine drawing fields rode along`);
+      check('store face: a full page with a face on every row stays under 32KB',
+        fBytes < 32768, { bytes: fBytes });
+
+      check('store face: the face and the avatar are never both on one row',
+        (() => {
+          shop.playerState['bp_st_sell'].avatar = ICON;
+          const on = shop._stPublic(shop._stIndex.get(faced.listing.id));
+          delete shop.playerState['bp_st_sell'].avatar;
+          const off = shop._stPublic(shop._stIndex.get(faced.listing.id));
+          return on.sellerAvatar === ICON && on.sellerLook === null
+            && off.sellerAvatar === null && !!off.sellerLook;
+        })());
+
+      await shop._stCancel(faced.listing.id, 'bp_st_sell');
+      await shop._stCancel(longHair.listing.id, 'bp_st_sell');
+    }
+
     // Tidy: clear the shelf for the sections after this one.
     await shop._stCancel(withIcon.listing.id, 'bp_st_sell');
     await shop._stCancel(badCol.listing.id, 'bp_st_sell');

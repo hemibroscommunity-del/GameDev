@@ -59,6 +59,7 @@ export const storeChatBus = {
     this.head = {
       item: p.item || null, askPrice: p.askPrice, expiresAt: p.expiresAt,
       sellerName: p.sellerName, sellerId: p.sellerId, amSeller: !!p.amSeller,
+      sellerLook: p.sellerLook || null,   /* v2.3.2622 */
     };
     this.threads = Array.isArray(p.threads) ? p.threads : [];
     if (!this.activeBuyer && this.threads.length) this.activeBuyer = this.threads[0].buyerId;

@@ -122,7 +122,18 @@ async function measureOrientation(P, rec, who) {
   /* ── 4. ...and still gone one menu deeper, which is where the owner
          actually met it ("even when you're in the vendor marketplace
          menus"). ── */
-  const through = await H.clickText(P, 'Player store').then(() => true).catch(() => false);
+  /* ═══ v2.3.2622: THE WAY THROUGH HAS BEEN CALLED TWO THINGS ═══
+     This read `clickText(P, 'Player store')`, which was the label when the
+     scenario shipped at v2.3.2617. v2.3.2618 made Market the only button in
+     the vendor panel and renamed it, and this test -- written one version
+     earlier and not re-run against the later branch -- went red without
+     anything being wrong with the game.
+     Accepting EITHER label rather than just the new one, deliberately: these
+     branches are a stack, and a scenario that only knows the newer name is
+     red on every commit before the rename. Whichever is on screen, the
+     assertion is the same -- the vendor panel offers a way through. */
+  const through = await H.clickText(P, 'Market').then(() => true)
+    .catch(() => H.clickText(P, 'Player store').then(() => true).catch(() => false));
   rec.ok(`${who}: the panel offers a way through to the player market`, through);
   if (through) {
     await P.page.waitForTimeout(1300);

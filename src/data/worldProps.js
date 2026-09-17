@@ -149,7 +149,7 @@ export const WORLD_PROPS = [
     id: 'general-store', zone: 'town', mapV: 17,
     sprite: '/sprites/props/general-store.png',
     x: 1290, y: 800, worldH: 200, blockW: 190, blockD: 85,
-    action: 'shop', label: 'GENERAL STORE',
+    action: 'shop', label: 'AUCTION MARKETPLACE',   /* v2.3.2622 (owner): was GENERAL STORE */
   },
   {
     /* ═══ THE FOUNTAIN, MOVED TO THE MIDDLE ═══
