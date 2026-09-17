@@ -1,4 +1,4 @@
-/* ═══ v2.3.2608: DOES A PEER SHRINK AND JUMP WHEN THEY SHOOT? ═══
+/* ═══ v2.3.2615: DOES A PEER SHRINK AND JUMP WHEN THEY SHOOT? ═══
  *
  * Owner: "Other players get smaller and move when they do bow shooting."
  *
@@ -28,7 +28,7 @@
  * different textures, and "it is right on frame 0 and wrong on frame 5" is a
  * failure a single sample passes.
  *
- * ═══ THIS SCENARIO FAILS ON PURPOSE (v2.3.2608) ═══
+ * ═══ THIS SCENARIO FAILS ON PURPOSE (v2.3.2615) ═══
  * It is the REPRODUCTION, and the fix is not in this branch.  Against the
  * current renderer it reports:
  *
