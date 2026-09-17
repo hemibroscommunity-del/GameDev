@@ -4,7 +4,10 @@ import { thumbFor, iconFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { armorIconFor, gearIdIcon } from '@/rendering/gearVariants.js'; /* v2.3.2531: gear listing art */
 import { storeBrowse, storeMine, storeBuy, storeBid, storeAccept, storeCancel, storeEnabled, storeMyId } from '@/ui/storeApi.js';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
-import { PlayerIcon } from '@/ui/PlayerIcon.jsx';   /* v2.3.2620: the same icon the player list draws */   /* v2.3.2618: "List an Item" opens the bag, which is where selling starts */
+import { PlayerIcon } from '@/ui/PlayerIcon.jsx';   /* v2.3.2620: the same icon the player list draws */
+import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
+import { StoreChatPanel } from './StoreChatPanel.jsx';   /* v2.3.2621 */
+import { storeChatEnabled, storeChatSend } from '@/ui/storeApi.js';   /* v2.3.2618: "List an Item" opens the bag, which is where selling starts */
 
 /* === StorePanel — buildingPanel === 'store' ===================== v2.3.2476
  *
@@ -226,6 +229,14 @@ export function StorePanel(props) {
   const [bidText, setBidText] = useState('');
   const myId = storeMyId();
   const enabled = storeEnabled();
+  const chatOn = storeChatEnabled();
+  /* Asking the worker for the thread is what OPENS it -- the bus only holds
+     what the worker sends back (storechat.js `_handleStoreDmOpen`). */
+  const onChatOpen = useCallback((listingId) => {
+    storeChatSend('store_dm_open', { listingId });
+  }, []);
+  const [chatSeq, setChatSeq] = useState(0);
+  useEffect(() => storeChatBus.subscribe(() => setChatSeq((n) => n + 1)), []);
 
   /* v2.3.2618: leave the store and land on the bag, open. Selling starts
      from an item card, so this is a way THERE, not a second sell flow. */
@@ -310,6 +321,33 @@ export function StorePanel(props) {
             <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {mineView ? 'Yours' : 'Seller: ' + (l.sellerName || 'someone')}
             </span>
+            {/* v2.3.2621: the mockup's little chat icon, on the seller's own
+                line. Gated on caps.storeChat -- against an older worker the
+                two message types would fall through to the default branch and
+                be rebroadcast to the whole room, so the icon must not exist
+                to be tapped (storeApi.storeChatEnabled). Shown on your own
+                listings too: that is where a seller reads what buyers asked. */}
+            {chatOn && (
+              <button type="button" aria-label={mineView ? 'Messages about your listing' : 'Message the seller'}
+                onClick={() => { storeChatBus.openFor(l.id); onChatOpen(l.id); }}
+                data-store-chat-icon
+                style={{
+                  flex: '0 0 auto', width: 26, height: 26, minHeight: 26, padding: 0,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13,
+                  border: '1px solid ' + LS.borderStrong, background: LS.raised, color: LS.txt2,
+                  position: 'relative',
+                  WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+                }}>
+                {'\u{1F4AC}'}
+                {storeChatBus.unreadFor(l.id) > 0 && (
+                  <span style={{
+                    position: 'absolute', top: -3, right: -3, minWidth: 8, height: 8,
+                    borderRadius: 4, background: LS.brass,
+                  }} />
+                )}
+              </button>
+            )}
           </div>
           <div style={{ fontSize: 11, marginTop: 1, display: 'flex', gap: 8, alignItems: 'baseline' }}>
             <span style={{ color: left.urgent ? LS.bad : LS.txt3 }}>{'\u{1F551} ' + left.text}</span>
@@ -356,6 +394,27 @@ export function StorePanel(props) {
   };
 
   const shelf = rows.filter((l) => cat === 'all' || l.cat === cat);
+
+  /* v2.3.2621: the thread takes over the card while it is open -- the mockup
+     draws it as its own screen, and .bt-inspect-card is the one surface the
+     building panel owns. Back returns to the shelf underneath, which is still
+     mounted and still holding its tab and filter. */
+  if (chatOn && storeChatBus.open) {
+    return (
+      <div>
+        <StoreChatPanel send={storeChatSend} myId={myId} />
+        <div style={{ margin: '-6px 0 0', padding: '0 14px 14px', background: LS.panel, borderRadius: '0 0 14px 14px' }}>
+          <button type="button" onClick={() => { storeChatBus.close(); refresh(); }}
+            style={{
+              width: '100%', minHeight: 40, fontSize: 12, fontWeight: 700, borderRadius: 9,
+              border: '1px solid ' + LS.borderStrong, background: 'transparent', color: LS.txt2,
+              fontFamily: 'inherit', cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+            }}>Back to the shelf</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={WRAP}>

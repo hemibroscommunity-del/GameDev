@@ -63,6 +63,7 @@ extended.
    | `mkt_order:<orderId>` | resting order w/ escrowed item | marketplace.md |
    | `mkt_hist:<indexKey>` | rolling last-50 executed prices | marketplace.md |
    | `store_listing:<listingId>` | one general-store listing: the escrowed goods (stackable, stash weapon, or — v2.3.2531 — a piece of GEAR plus the stash field it came out of and, v2.3.2551, its detached `gear_prov:` row as `gearRow`), ask price, the live bid, and the in-flight sale/bid/releasing marker the wake-time rebuild converges on | general-store.md |
+   | `store_thread:<listingId>` | `{t: {<buyerId>: [{f,n,x,ts}, ...]}, at}` — the message threads on ONE general-store listing (v2.3.2621). Keyed by the LISTING, not by the pair: a listing has one seller and N interested buyers, so `t` holds one conversation per buyer. One key rather than `store_thread:<listingId>:<buyerId>` because the seller's own view wants every conversation at once (one read, not THREADS_MAX — rule 9's second edge) and cleanup is one delete. Bounded on both axes (THREADS_MAX 5, MSGS_MAX 20, TEXT_MAX 200). DELETED with the listing, before the listing record, at all three ends | store-chat.md |
    | `duelEscrow:<duelId>` | `{a, b, wager, startedAt}` | duels.md |
    | `clan:<clanId>` / `clan_by_player:<pid>` / `clan_war:<warId>` | clan registry + war snapshots | clans.md |
    | `arena_entry:<tid>:<pid>` | escrowed 100g tournament entry | arena.md |
