@@ -1,6 +1,9 @@
 import React from 'react';
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js';
 import { ACE_FLIP_MIN_STAKE, ACE_FLIP_RISK_MULT, ACE_FLIP_WIN_CHANCE, aceFlipMaxStake, BT_AUDIO } from '@/data/index.js';
+import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '@/rendering/characterPortrait.js';
+import { thumbFor, ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';
+import { peerCosmeticsFromWire } from '@/networking/peerCosmetics.js';
 
 /* ═══ v2.3.2618: ACE'S COIN FLIP ═══
  *
@@ -45,6 +48,61 @@ function gold(amount, size, color) {
     style: { width: 15, height: 15, objectFit: 'contain' },
     onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('🪙')); },
   }), amount);
+}
+
+/* The bag's keys are identifiers, not labels ('cooked_fish_bass').  Same
+   shape as TradeWindowPanel's own labelFor -- panel-local by precedent,
+   because the one shared prettyName is private to ItemDetailPopup. */
+function labelFor(k) {
+  if (ITEM_NAMES[k]) return ITEM_NAMES[k];
+  return String(k || '')
+    .replace(/^(fish|cooked_fish|wood|ore|herb|remnants)_/, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+}
+
+/* ═══ THE PFP BESIDE EACH RECORD ═══
+   Owner: "Have it list the player pfp next to the record too."
+   Rendered from the `look` the server snapshotted into the row, through the
+   SAME recipe every other peer portrait uses (portraitOptsFromPeer ->
+   portraitDataUrl, as InspectPlayerPanel and the trade window do) -- so a
+   face on this board cannot drift from the same player's face anywhere else,
+   and no image bytes had to be stored to get it.  portraitHasSubject rejects
+   a row whose look is empty (a legacy record, or a player who joined before
+   character records existed); those fall back to a letter tile, which is the
+   honest answer rather than a default body that is nobody.
+
+   THE LOOK ARRIVES IN WIRE KEYS AND MUST BE RENAMED FIRST.  char:<pid>.look is
+   built from JOIN_COSMETIC_KEYS (join.js), which are the SHORT wire names --
+   sk, hr, hw, fh, st -- while portraitOptsFromPeer and portraitHasSubject both
+   read the LONG renderer fields (skin, hair, headwear, facialhair, shirt).
+   Handing the stored look straight to them silently fails every test in
+   portraitHasSubject, so EVERY row would have shown a letter tile forever and
+   the feature would have looked simply broken rather than wrong.
+   peerCosmeticsFromWire is the one rename table for exactly this (v2.3.1961,
+   the same call the join snapshot and the 2s relay make), so it is used here
+   rather than a second mapping that could drift from it. */
+function useBoardFaces(rows) {
+  var _s = React.useState({});
+  var faces = _s[0], setFaces = _s[1];
+  var sig = rows.map(function (r) { return r && r.pid; }).join(',');
+  React.useEffect(function () {
+    var alive = true;
+    rows.forEach(function (r) {
+      if (!r || !r.pid || !r.look) return;
+      var cos = peerCosmeticsFromWire(r.look);
+      if (!portraitHasSubject(cos)) return;
+      try {
+        portraitDataUrl(portraitOptsFromPeer(cos), true)
+          .then(function (u) {
+            if (alive && u) setFaces(function (m) { var n = Object.assign({}, m); n[r.pid] = u; return n; });
+          })
+          .catch(function () {});
+      } catch (e) { /* a portrait is never worth taking the board down for */ }
+    });
+    return function () { alive = false; };
+  }, [sig]);
+  return faces;
 }
 
 export function AceFlipPanel() {
@@ -94,6 +152,13 @@ export function AceFlipPanel() {
     return function () { clearTimeout(id); };
   }, [spinning]);
 
+  /* BEFORE the early return, and that is not style: this component returns
+     null whenever the dialog is shut, so a hook called after that line runs on
+     some renders and not others -- the Rules-of-Hooks crash TradeWindowPanel's
+     own header records having hit five times. */
+  var boardRows = (aceFlipBus.board.wins || []).concat(aceFlipBus.board.losses || []);
+  var faces = useBoardFaces(boardRows);
+
   if (!aceFlipBus.open) return null;
 
   var S = typeof window !== 'undefined' && window._gameState ? window._gameState.current : null;
@@ -131,6 +196,103 @@ export function AceFlipPanel() {
       st.channel.send({ type: 'broadcast', event: 'ace_flip_request', payload: { stake: stake } });
       BT_AUDIO.beep(520, 0.06, 0.05, 'triangle');
     } catch (e) { aceFlipBus.setPending(false); }
+  };
+
+  /* ── v2.3.2619: the item wager ── */
+  var bag = (S && S.rpg && S.rpg.inventory) || {};
+  var bagKeys = Object.keys(bag).filter(function (k) {
+    return (Number(bag[k]) || 0) > 0
+      && k !== '__proto__' && k !== 'constructor' && k !== 'prototype';
+  }).sort();
+  var staged = aceFlipBus.items;
+  var stagedKeys = Object.keys(staged);
+  var stagedTotal = stagedKeys.reduce(function (n, k) { return n + (staged[k] || 0); }, 0);
+  var itemsOk = (S && S._serverCaps && S._serverCaps.aceItems);
+  var canWager = stagedTotal > 0 && !aceFlipBus.pending;
+
+  var sendItems = function () {
+    if (!canWager) return;
+    if (!itemsOk) {
+      aceFlipBus.setNote('Ace shakes his head. "Gold only today, bro."');
+      return;
+    }
+    var out = {};
+    stagedKeys.forEach(function (k) { out[k] = staged[k]; });
+    aceFlipBus.setNote('');
+    aceFlipBus.setPending(true);
+    try {
+      S.channel.send({ type: 'broadcast', event: 'ace_item_flip_request', payload: { items: out } });
+      BT_AUDIO.beep(520, 0.06, 0.05, 'triangle');
+    } catch (e) { aceFlipBus.setPending(false); }
+  };
+
+  var tab = function (id, label) {
+    var on = aceFlipBus.mode === id;
+    return React.createElement('button', {
+      key: id,
+      onClick: function () {
+        aceFlipBus.setMode(id);
+        /* Ask for a fresh board when the Records tab is opened: it arrives on
+           join and after each flip, so another player's record set while this
+           dialog sat open would otherwise not be here. */
+        if (id === 'records' && itemsOk && S && S.channel) {
+          try { S.channel.send({ type: 'broadcast', event: 'ace_board_request', payload: {} }); } catch (e) {}
+        }
+      },
+      style: {
+        flex: 1, padding: '9px 4px', border: 'none', cursor: 'pointer',
+        background: on ? LS.panel : 'transparent',
+        color: on ? LS.brass : LS.txt3,
+        borderBottom: '2px solid ' + (on ? LS.brass : 'transparent'),
+        fontSize: 11.5, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase',
+      },
+    }, label);
+  };
+
+  var itemRow = function (k) {
+    var held = Math.floor(Number(bag[k]) || 0);
+    var q = staged[k] || 0;
+    var step = function (d) {
+      return function () { aceFlipBus.stageItem(k, Math.max(0, Math.min(held, q + d))); };
+    };
+    return React.createElement('div', {
+      key: k,
+      style: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 9, background: q > 0 ? LS.brassFill : 'transparent', border: '1px solid ' + (q > 0 ? LS.brass : LS.border), marginBottom: 5 },
+    },
+      React.createElement('img', {
+        src: thumbFor(k), alt: '', draggable: false,
+        style: { width: 26, height: 26, objectFit: 'contain', flexShrink: 0 },
+        onError: function (e) { e.currentTarget.style.visibility = 'hidden'; },
+      }),
+      React.createElement('div', { style: { flex: 1, minWidth: 0 } },
+        React.createElement('div', { style: { fontSize: 12, color: LS.txt1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, labelFor(k)),
+        React.createElement('div', { style: { fontSize: 10.5, color: LS.txt3 } }, 'have ' + held)),
+      React.createElement('button', { onClick: step(-1), disabled: q <= 0 || aceFlipBus.pending, style: { width: 26, height: 26, borderRadius: 7, border: '1px solid ' + LS.borderStrong, background: 'transparent', color: q > 0 ? LS.txt1 : LS.dis, fontSize: 15, lineHeight: 1, cursor: 'pointer' } }, '\u2212'),
+      React.createElement('span', { style: { minWidth: 26, textAlign: 'center', fontSize: 13, fontWeight: 700, color: q > 0 ? LS.brass : LS.dis, fontVariantNumeric: 'tabular-nums' } }, q),
+      React.createElement('button', { onClick: step(1), disabled: q >= held || aceFlipBus.pending, style: { width: 26, height: 26, borderRadius: 7, border: '1px solid ' + LS.borderStrong, background: 'transparent', color: q < held ? LS.txt1 : LS.dis, fontSize: 15, lineHeight: 1, cursor: 'pointer' } }, '+'),
+      React.createElement('button', { onClick: function () { aceFlipBus.stageItem(k, held); }, disabled: q >= held || aceFlipBus.pending, style: { padding: '4px 7px', borderRadius: 7, border: '1px solid ' + LS.borderStrong, background: 'transparent', color: q < held ? LS.txt2 : LS.dis, fontSize: 10.5, fontWeight: 700, cursor: 'pointer' } }, 'All'));
+  };
+
+  var boardRow = function (r, i, isWin) {
+    var face = r && faces[r.pid];
+    return React.createElement('div', {
+      key: (r && r.pid) || i,
+      style: { display: 'flex', alignItems: 'center', gap: 9, padding: '6px 8px', borderRadius: 9, background: i % 2 ? 'transparent' : LS.raised, marginBottom: 3 },
+    },
+      React.createElement('span', { style: { width: 16, textAlign: 'right', fontSize: 11, fontWeight: 700, color: LS.txt3, fontVariantNumeric: 'tabular-nums' } }, i + 1),
+      face
+        ? React.createElement('img', { src: face, alt: '', draggable: false, style: { width: 30, height: 30, borderRadius: 7, objectFit: 'cover', background: LS.well, flexShrink: 0 } })
+        : React.createElement('div', { style: { width: 30, height: 30, borderRadius: 7, background: LS.well, color: LS.txt3, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 } }, String((r && r.name) || '?').slice(0, 1).toUpperCase()),
+      React.createElement('div', { style: { flex: 1, minWidth: 0, fontSize: 12, color: LS.txt1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, (r && r.name) || 'Bro'),
+      gold((isWin ? '+' : '-') + ((r && r.amount) || 0), 12.5, isWin ? LS.win : LS.lose));
+  };
+
+  var boardList = function (rows, isWin, title) {
+    return React.createElement('div', { style: { marginBottom: 14 } },
+      React.createElement('div', { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: isWin ? LS.win : LS.lose, marginBottom: 6 } }, title),
+      rows.length
+        ? rows.map(function (r, i) { return boardRow(r, i, isWin); })
+        : React.createElement('div', { style: { fontSize: 12, color: LS.txt3, padding: '8px 2px' } }, 'Nobody yet. Could be you.'));
   };
 
   var chip = function (label, value, active) {
@@ -171,7 +333,50 @@ export function AceFlipPanel() {
         style: { border: 'none', background: 'transparent', color: LS.txt3, fontSize: 20, lineHeight: 1, cursor: 'pointer', padding: 4 },
       }, '×')),
 
-    React.createElement('div', { style: { padding: '13px 14px 15px' } },
+    /* ── v2.3.2619: three faces of the dialog ── */
+    React.createElement('div', {
+      style: { display: 'flex', background: LS.strip, borderBottom: '1px solid ' + LS.border },
+    }, tab('gold', 'Gold'), tab('items', 'Items'), tab('records', 'Records')),
+
+    aceFlipBus.mode === 'records' ? React.createElement('div', {
+      style: { padding: '13px 14px 15px', maxHeight: '58vh', overflowY: 'auto' },
+    },
+      React.createElement('div', { style: { fontSize: 12, color: LS.txt2, lineHeight: 1.45, marginBottom: 12 } },
+        'The book. Biggest single win and biggest single loss at my coin \u2014 gold only, one line each per bro.'),
+      boardList(aceFlipBus.board.wins || [], true, 'Biggest wins'),
+      boardList(aceFlipBus.board.losses || [], false, 'Biggest losses'))
+
+    : aceFlipBus.mode === 'items' ? React.createElement('div', {
+      style: { padding: '13px 14px 15px' },
+    },
+      React.createElement('div', { style: { fontSize: 12.5, color: LS.txt2, lineHeight: 1.45, marginBottom: 11 } },
+        aceFlipBus.note
+          ? aceFlipBus.note
+          : 'Stake whatever you like out of that bag. Double or nothing \u2014 same coin, same odds: ' + acePct + '% me, ' + youPct + '% you.'),
+      aceFlipBus.itemResult && !aceFlipBus.pending ? React.createElement('div', {
+        style: { textAlign: 'center', marginBottom: 11, fontSize: 14, fontWeight: 700, color: aceFlipBus.itemResult.won ? LS.win : LS.lose },
+      }, aceFlipBus.itemResult.won
+        ? 'Doubled \u2014 ' + (aceFlipBus.itemResult.total || 0) + ' more in the bag'
+        : 'Gone \u2014 Ace takes all ' + (aceFlipBus.itemResult.total || 0)) : null,
+      React.createElement('div', { style: { maxHeight: '38vh', overflowY: 'auto', marginBottom: 10 } },
+        bagKeys.length
+          ? bagKeys.map(itemRow)
+          : React.createElement('div', { style: { fontSize: 12, color: LS.txt3, padding: '12px 2px', textAlign: 'center' } }, 'Your bag is empty. Nothing to stake.')),
+      stagedTotal > 0 ? React.createElement('div', {
+        style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, fontSize: 12, color: LS.txt2 },
+      },
+        React.createElement('span', null, 'Staked: ', React.createElement('strong', { style: { color: LS.brass } }, stagedTotal), ' item', stagedTotal === 1 ? '' : 's'),
+        React.createElement('button', { onClick: function () { aceFlipBus.clearItems(); }, disabled: aceFlipBus.pending, style: { border: 'none', background: 'transparent', color: LS.txt3, fontSize: 11.5, cursor: 'pointer', textDecoration: 'underline' } }, 'Clear')) : null,
+      React.createElement('button', {
+        onClick: sendItems, disabled: !canWager,
+        style: {
+          width: '100%', padding: '13px 0', borderRadius: 11, border: 'none', cursor: canWager ? 'pointer' : 'default',
+          background: canWager ? LS.brass : 'rgba(216,170,88,.18)', color: canWager ? LS.onBrass : LS.dis,
+          fontSize: 14, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase',
+        },
+      }, aceFlipBus.pending ? 'Flipping\u2026' : (stagedTotal > 0 ? 'Double or nothing \u00b7 ' + stagedTotal : 'Stake something')))
+
+    : React.createElement('div', { style: { padding: '13px 14px 15px' } },
       React.createElement('div', { style: { fontSize: 12.5, color: LS.txt2, lineHeight: 1.45, marginBottom: 11 } },
         aceFlipBus.note
           ? aceFlipBus.note

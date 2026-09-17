@@ -33,9 +33,53 @@ export const aceFlipBus = {
   /* One line of Ace talking back -- a refusal, or what just happened. */
   note: '',
 
+  /* ═══ v2.3.2619 ═══ */
+  /* 'gold' | 'items' | 'records' -- which face of the dialog is showing. */
+  mode: 'gold',
+  /* {itemKey: qty} the player has staged for an ITEM wager.  A plain object
+     would be keyed by item ids, so Object.create(null): CLAUDE.md rule 4, and
+     these keys reach the server, where the same guard is repeated. */
+  items: Object.create(null),
+  /* The last item wager's outcome, {won, items, kinds, total} off the wire. */
+  itemResult: null,
+  /* {wins:[], losses:[]} -- Ace's hall of fame, server-owned like everything
+     else here.  Arrives on join and after each flip. */
+  board: { wins: [], losses: [] },
+
   setOpen(v) {
     this.open = !!v;
-    if (!this.open) { this.pending = false; this.result = null; this.note = ''; }
+    if (!this.open) {
+      this.pending = false; this.result = null; this.note = '';
+      this.itemResult = null; this.items = Object.create(null); this.mode = 'gold';
+    }
+    emit();
+  },
+  setMode(m) { this.mode = m; this.note = ''; emit(); },
+  /* Stage a quantity of one stack. 0 clears it, so the picker's minus button
+     and "none selected" are the same state rather than two. */
+  stageItem(key, qty) {
+    if (typeof key !== 'string' || !key) return;
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') return;
+    var q = Math.max(0, Math.floor(Number(qty) || 0));
+    if (q > 0) this.items[key] = q; else delete this.items[key];
+    emit();
+  },
+  clearItems() { this.items = Object.create(null); emit(); },
+  setBoard(b) {
+    this.board = {
+      wins: (b && Array.isArray(b.wins)) ? b.wins : [],
+      losses: (b && Array.isArray(b.losses)) ? b.losses : [],
+    };
+    emit();
+  },
+  settleItems(payload) {
+    this.itemResult = payload || null;
+    this.pending = false;
+    this.settled = (this.settled + 1) % 1000000;
+    /* The staged pile is gone either way -- doubled into the bag or taken --
+       so clearing it here stops a second tap re-staking what is no longer
+       held (the server would refuse it, but the button should not offer it). */
+    this.items = Object.create(null);
     emit();
   },
   setStake(v) { this.stake = Math.max(0, Math.floor(Number(v) || 0)); emit(); },

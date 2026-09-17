@@ -424,6 +424,10 @@ export const PRIVILEGED_EVENTS = new Set([
   // because the panel animates a WIN off it and a forged one would show
   // the whole room a payout the coins echo never backs.
   'ace_flip_result',
+  // v2.3.2619: the item wager's outcome and the hall-of-fame board.  Both
+  // server-emitted only -- a forged ace_board would let any client write the
+  // names, faces and numbers on a public record.
+  'ace_item_flip_result', 'ace_board',
   // v2.3.1125: clan registry echoes + war referee emissions.  NOTE
   // deny-listing clan_war_kill/end breaks OLD-client peer-scored wars
   // against this worker -- accepted, that relay was pure forgery
@@ -4974,8 +4978,31 @@ export class GameRoom {
         // v2.3.2618: Ace's coin flip (gamble.js).  Server rolls and
         // settles, same as the Hall above -- a client-side flip for
         // 3x the stake would be a solo gold faucet.
+        /* AWAITED, like the other async handlers in this switch: the flip
+           now writes the hall-of-fame board, and that is a read-modify-write.
+           A storage await holds the DO's input gate closed (rule 9), so
+           awaiting here is exactly what stops two players' flips interleaving
+           and losing a record -- and without it webSocketMessage resolves
+           before the board is written at all. */
         if (session.id) {
-          this._handleAceFlipRequest(session, msg.payload || msg);
+          await this._handleAceFlipRequest(session, msg.payload || msg);
+        }
+        break;
+
+      case 'ace_item_flip_request':
+        // v2.3.2619: the item wager, double or nothing (gamble.js).
+        // The request NAMES stacks; what is risked is what the server
+        // can see in the bag (rule 16), and the keys are proto-guarded
+        // because they come off the wire into a plain {} (rule 4).
+        if (session.id) {
+          await this._handleAceItemFlipRequest(session, msg.payload || msg);
+        }
+        break;
+
+      case 'ace_board_request':
+        // v2.3.2619: the biggest-win / biggest-loss board (gamble.js).
+        if (session.id) {
+          this._handleAceBoardRequest(session);
         }
         break;
 

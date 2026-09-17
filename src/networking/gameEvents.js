@@ -571,6 +571,33 @@ export function processGameEvent(type, payload, S, deps) {
               setRpgState(_objectSpread({}, _aR));
               break;
             }
+          case 'ace_item_flip_result':
+            {
+              /* v2.3.2619: the item wager, double or nothing.  Like the coin
+                 flip this is feedback ONLY -- the bag already changed
+                 server-side and arrives on the player_state echo (rule 20).
+                 Nothing here adds or removes an item. */
+              aceFlipBus.settleItems(payload);
+              var _aiN = payload.total || 0;
+              if (payload.won) {
+                if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, 'Doubled! +' + _aiN, '#3dd497');
+                S.screenShake = 3;
+                BT_AUDIO.collect();
+              } else {
+                if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, 'Lost ' + _aiN + ' items', '#ff5e6c');
+                BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
+              }
+              break;
+            }
+          case 'ace_board':
+            {
+              /* v2.3.2619: Ace's hall of fame (server-owned; arrives on join
+                 and after each flip).  Straight into the bus -- the panel
+                 renders each row's portrait from the `look` it carries, using
+                 the same shared recipe every other peer portrait uses. */
+              aceFlipBus.setBoard(payload);
+              break;
+            }
           case 'jackpot_state':
             {
               /* v2.3.1149: server-authoritative jackpot pool (private;
