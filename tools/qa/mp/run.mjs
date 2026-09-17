@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  sellericon: () => import('./mp-sellericon.mjs'), /* v2.3.2620: the seller icon on a listing, and the player list it was extracted from */
   listweek: () => import('./mp-listweek.mjs'), /* v2.3.2619: every listing runs a week and NOTHING asks -- the control must not exist */
   marketonly: () => import('./mp-marketonly.mjs'), /* v2.3.2618: Market is the only button in the vendor building, the shelf matches the mockup, and Shopkeeper Bro still stocks all five staples */
   vendorprompt: () => import('./mp-vendorprompt.mjs'), /* v2.3.2617: the Enter VENDOR prompt must not survive its own tap -- real finger taps at four viewports, asked of elementFromPoint (TRAPS §67) */

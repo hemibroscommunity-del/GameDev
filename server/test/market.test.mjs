@@ -635,6 +635,90 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
     await shop._stCancel(wk.listing.id, 'bp_st_sell');
   }
 
+  // ── S5d. THE SELLER'S ICON, AND WHAT A FULL PAGE COSTS (v2.3.2620) ──
+  // Owner: "Add the players tiny icon ... next to their listing."
+  // Two things have to be true at once: the icon has to be there, and a
+  // PAGE_MAX page of them must not turn a listing page into a payload.
+  {
+    const ICON = 'https://wsrv.nl/?url=' + 'x'.repeat(200) + '&w=64';
+    SEL.inventory.slime_gel = 80;
+    shop.playerState['bp_st_sell'].color = '#D8AA58';
+
+    const withIcon = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 9 });
+    check('store icon: the seller colour is snapshotted onto the record',
+      shop._stIndex.get(withIcon.listing.id).sellerColor === '#D8AA58',
+      shop._stIndex.get(withIcon.listing.id).sellerColor);
+
+    // Resolved LIVE, never stored -- so it appears when the seller is online...
+    shop.playerState['bp_st_sell'].avatar = ICON;
+    const onWire = shop._stPublic(shop._stIndex.get(withIcon.listing.id));
+    check('store icon: an online seller\'s avatar is on the wire', onWire.sellerAvatar === ICON, onWire.sellerAvatar);
+    check('store icon: ...and it was NOT written into the stored record',
+      shop._stIndex.get(withIcon.listing.id).sellerAvatar === undefined
+        && !('sellerAvatar' in st._store.get('store_listing:' + withIcon.listing.id)));
+
+    // ...and degrades to the colour disc when they are not.
+    const keepPs = shop.playerState['bp_st_sell'];
+    delete shop.playerState['bp_st_sell'];
+    const offWire = shop._stPublic(shop._stIndex.get(withIcon.listing.id));
+    check('store icon: an offline seller falls back to the colour disc',
+      offWire.sellerAvatar === null && offWire.sellerColor === '#D8AA58', offWire);
+    shop.playerState['bp_st_sell'] = keepPs;
+
+    // It lands in an <img src>: only https: and same-origin get through.
+    for (const bad of ['javascript:alert(1)', 'data:text/html,<script>', 'http://x', 'x'.repeat(600), 42, null]) {
+      shop.playerState['bp_st_sell'].avatar = bad;
+      const w = shop._stPublic(shop._stIndex.get(withIcon.listing.id));
+      if (w.sellerAvatar !== null) { check('store icon: refuses ' + String(bad).slice(0, 24), false, w.sellerAvatar); break; }
+    }
+    check('store icon: only https/same-origin avatars reach the panel', true);
+    shop.playerState['bp_st_sell'].color = '<script>';
+    const badCol = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 9 });
+    check('store icon: a colour that is not a colour is dropped, not stored',
+      shop._stIndex.get(badCol.listing.id).sellerColor === null,
+      shop._stIndex.get(badCol.listing.id).sellerColor);
+    shop.playerState['bp_st_sell'].color = '#D8AA58';
+    shop.playerState['bp_st_sell'].avatar = ICON;
+
+    /* ── THE PAGE COST. PAGE_MAX is 40; weigh a full one. ──
+       Measured on the PROJECTION rather than by escrowing forty real items:
+       _stPublic is what actually goes on the wire, and MAX_PER_PLAYER is 10
+       so no single seller can fill a page anyway. Every row below is the
+       most expensive one the store can produce -- a seller who is online AND
+       wearing a ~250-char Hemi Bro URL. Real pages are cheaper. */
+    const oneRow = shop._stPublic(shop._stIndex.get(withIcon.listing.id));
+    const rows40 = [];
+    for (let i = 0; i < 40; i++) rows40.push({ ...oneRow, id: 'row-' + i });
+    const bytes = JSON.stringify({ ok: true, listings: rows40, nextCursor: null, total: 40 }).length;
+    const noIcons = JSON.stringify({
+      ok: true, nextCursor: null, total: 40,
+      listings: rows40.map(({ sellerAvatar, sellerColor, ...rest }) => rest),
+    }).length;
+    const perRow = Math.round((bytes - noIcons) / 40);
+    console.log(`    store icon: a 40-row page is ${bytes} bytes, ${bytes - noIcons} of them icon `
+      + `(${perRow}/row) -- worst case, every seller online and wearing a Bro picture`);
+    // The bound that matters: a full page must stay well under the ~64KB a
+    // phone on a bad connection notices, even with every seller wearing one.
+    check('store icon: a full PAGE_MAX page stays under 32KB with every seller iconed',
+      bytes < 32768, { bytes, rows: 40 });
+    /* ...and a per-ROW bound on the icon itself.
+       This was a RATIO ("the icons are a minority of the page") and that was
+       the wrong shape: it divides two numbers that move for unrelated
+       reasons, so v2.3.2619 taking `durationMs` off the wire shrank the row
+       and tipped a passing 47% to a failing 51% without the icon costing one
+       byte more. An avatar URL is genuinely ~half of a small row; that is not
+       a regression, it is what a 250-char URL beside a short record looks
+       like. The absolute cost per row is the thing worth pinning, and it does
+       not move when a neighbouring field does. 300 against a measured 268. */
+    check('store icon: an icon costs no more than 300 bytes on a row', perRow <= 300,
+      { perRow, icon: bytes - noIcons, total: bytes });
+
+    // Tidy: clear the shelf for the sections after this one.
+    await shop._stCancel(withIcon.listing.id, 'bp_st_sell');
+    await shop._stCancel(badCol.listing.id, 'bp_st_sell');
+    delete shop.playerState['bp_st_sell'].avatar;
+  }
+
   // ── S6. an offline counterparty settles into the mail ──
   const offSell = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 70 });
   const sellerPs = shop.playerState['bp_st_sell'];
