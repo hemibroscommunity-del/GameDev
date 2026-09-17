@@ -448,6 +448,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
       const inks = spines.filter((x) => x.ink).map((x) => ({ k: x.label, c: ratio(x.ink, x.rgb) }));
       const worstInk = inks.reduce((a, b) => (b.c < a.c ? b : a), inks[0] || { k: '?', c: 0 });
+      /* v2.3.2599: the orb the owner asked to remove must be GONE, and the
+         stat's own icon — the thing they want bigger — must still be there.
+         Asserted together because the risk in "remove the small circle" is
+         removing the wrong round thing. */
+      const iconry = await P.page.evaluate(() => {
+        const rows = [...document.querySelectorAll('[data-prog3-row]')];
+        return { orbs: document.querySelectorAll('[data-pt-orb]').length,
+          icons: rows.filter((r) => r.querySelector('img')).length,
+          iconW: rows[0] && rows[0].querySelector('img')
+            ? +rows[0].querySelector('img').getBoundingClientRect().width.toFixed(1) : null };
+      });
+      rec.ok(`${label}: the point orb is gone from every row`, iconry.orbs === 0, iconry);
+      rec.ok(`${label}: ...and every row still has its stat icon, larger (${iconry.iconW}px, was 13 before the redesign)`,
+        iconry.icons === 7 && iconry.iconW >= 30, iconry);
+      console.log(`    icons: ${iconry.iconW}px (${(iconry.iconW / 13).toFixed(1)}x the original 13), orbs ${iconry.orbs}`);
+
       rec.ok(`${label}: every label still reads on its coloured cell (worst ${worstInk.k} ${worstInk.c.toFixed(2)}:1, AA 4.5)`,
         inks.length === 7 && worstInk.c >= 4.5, inks.map((i) => `${i.k} ${i.c.toFixed(1)}`));
       const edges = spines.filter((x) => x.plusBorder).map((x) => ({ k: x.label, c: ratio(x.plusBorder, x.rgb) }));

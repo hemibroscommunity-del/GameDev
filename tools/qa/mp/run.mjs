@@ -66,7 +66,6 @@ const SCENARIOS = {
   lootzone: () => import('./mp-lootzone.mjs'), /* v2.3.2342: a loot pile dropped in Ember does not land on Frost's ground */
   partpool: () => import('./mp-partpool.mjs'), /* v2.3.2331: the particle field is pooled sprites, not re-tessellated polygons */
   lootbob: () => import('./mp-lootbob.mjs'), /* v2.3.2329: the snowman's wreck, coin and shard bob + pulse like every other pile */
-  ptorb: () => import('./mp-ptorb.mjs'), /* v2.3.2329: a Build point landing flares its row's orb, and only its row */
   deathtex: () => import('./mp-deathtex.mjs'), /* v2.3.2328: dying releases the zone's art, like walking out does */
   btnmove: () => import('./shot-btnmove.mjs'), /* v2.3.2574: the combat-button layout, measured and photographed before/after -- prints a gap table, asserts nothing */
   abilslot: () => import('./mp-abilslot.mjs'), /* v2.3.2327: bash moves down-left of the disc; whirl is the sword's */

@@ -580,11 +580,6 @@ export const HeroExpanded = () => {
   /* v2.3.1660: one definition (heroModel) — under prog3 this is THE
      pool, so the tab badge and the points chip both show it. */
   const totalUnspent = unspentPointsTotal(R);
-  /* v2.3.2329: per-stat memory of the last count each row rendered, so a row
-     can tell a SERVER-CONFIRMED increment from any other re-render.  A Map
-     keyed by the row key (a fixed table + lane, never client-supplied -- but
-     the rule is the rule).  See the orb in statRow for what reads it. */
-  const ptLandRef = useRef(new Map());
   const p3 = prog3Live(R);
   const buildCat = buildCatState || prog3ActiveCat(R);
   /* ═══ v2.3.2512: OPENING A SECTION BRINGS ITS STATS INTO VIEW ═══
@@ -1699,7 +1694,21 @@ export const HeroExpanded = () => {
                61.81, measured, so the boundary is set where the widest label
                actually stops fitting rather than at a round number. */
             const twoCol = !landPane && !forceOneCol && panelVw() >= 360;
-            const CARD_ICON = twoCol ? 24 : 30;
+            /* ═══ v2.3.2599: THE STAT ICON, AS LARGE AS THE CELL HOLDS ═══
+               Owner: "make the stat icons larger."  The pressure that made this
+               hard is gone on three counts — the VALUES left the cell
+               (v2.3.2597), the labels became single words, and now the ORB has
+               gone too, which hands back its 7px plus its gap.
+               The budget at 360, the tight case: cell 163, less 2 of border, 10
+               of padding, 8 of gaps and the 44px [+] leaves 99 for the label and
+               the icon together, and "Element" — the longest label — wants
+               61.81 of it.  So 36 is what fits with room to spare, and a full-
+               width row (one column, or landscape) can take 44.
+               AGAINST THE ORIGINAL ASK: the cell icon was 13px when the owner
+               asked for "about 3x".  36 is 2.8x at 360 and the one-column row's
+               44 is 3.4x — so 3x is reachable now, which it was not when the
+               question was first asked. */
+            const CARD_ICON = twoCol ? 36 : 44;
             const CARD_GAP = twoCol ? 4 : 7;
             const CARD_PLUS_W = twoCol ? 44 : 60;
             /* ═══ THE [+] IS THE WHOLE THUMB TARGET NOW ═══
@@ -1805,14 +1814,6 @@ export const HeroExpanded = () => {
               /* The v2.3.2329 land-flare memory, unchanged — same key, same
                  1300ms window. */
               const lk = (st.atk ? cat + ':' : 'shared:') + st.key;
-              const nowMs = Date.now();
-              const seen = ptLandRef.current.get(lk);
-              if (!seen) ptLandRef.current.set(lk, { pts, at: 0 });
-              else if (pts > seen.pts) ptLandRef.current.set(lk, { pts, at: nowMs, delta: pts - seen.pts });
-              else if (pts !== seen.pts) ptLandRef.current.set(lk, { pts, at: 0 });
-              const landAt = ptLandRef.current.get(lk).at;
-              const landDelta = ptLandRef.current.get(lk).delta || 1;
-              const landed = landAt > 0 && (nowMs - landAt) < 1300;
               return (
                 /* ═══ v2.3.2597: THE ROW IS NO LONGER THE BUTTON ═══
                    It was, from v2.3.1668 to v2.3.2595 — the whole cell spent,
@@ -1851,9 +1852,11 @@ export const HeroExpanded = () => {
                   <span style={{
                     flex: 1, minWidth: 0,
                     fontSize: landPane ? 11.5 : 13, fontWeight: 800, letterSpacing: '.02em',
-                    /* Dark ON the fill, light off it.  Near-white on a pastel is
-                       the obvious way this goes wrong. */
-                    color: (colourOn && st.tint) ? '#20170D' : COL.text, lineHeight: 1,
+                    /* v2.3.2599: LIGHT again.  The dark flip existed because the
+                       fill was a light pastel; the deep fills measure 5.68:1 to
+                       11.29:1 against COL.text, so the label matches the rest of
+                       the panel instead of inverting inside it. */
+                    color: COL.text, lineHeight: 1,
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }}>{cardLabel(st)}</span>
                   <img src={st.iconSrc} alt="" draggable={false}
@@ -1875,16 +1878,20 @@ export const HeroExpanded = () => {
                       list of what you can BUY.  Reading a current value now
                       takes a tap.  That is a real loss of at-a-glance
                       information; nothing is built here to compensate for it. */}
-                  <span style={{ flex: 'none', position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <span aria-hidden="true"
-                      key={'orb' + pts}
-                      data-pt-orb={lk}
-                      data-landed={landed ? '1' : undefined}
-                      className={'bt-pt-orb' + (landed ? ' bt-pt-orb-land' : '') + (pts >= cap ? ' bt-pt-orb-full' : '')} />
-                    {landed && (
-                      <span aria-hidden="true" key={'plus' + pts} className="bt-pt-plus">{'+' + landDelta}</span>
-                    )}
-                  </span>
+                  {/* ═══ v2.3.2599: THE ORB IS GONE ═══
+                      Owner: "Remove the small circle icon to the left of the
+                      plus sign."  That is the v2.3.2329 point-landed orb — the
+                      7px dot and its `+1` flare — not the stat's own icon,
+                      which is the <img> above and which they want BIGGER.
+
+                      WORTH SAYING OUT LOUD: the orb existed because the owner
+                      reported "when you spend combat points it's kind of
+                      ambiguous whether it took effect or not".  With the VALUES
+                      also off the cell (v2.3.2597), a spent point now changes
+                      NOTHING visible on the row — the only confirmation is the
+                      now -> after line inside the window, before you commit.
+                      That is a real loss of after-the-fact feedback and it is
+                      flagged rather than quietly accepted. */}
                   <button type="button"
                     /* ═══ v2.3.2597: THE EXPLICIT role, WHICH IS A CONTRACT ═══
                        "Every spend control is [role="button"][aria-label*=" of "]"
@@ -1920,23 +1927,14 @@ export const HeroExpanded = () => {
                     style={{
                       flex: 'none', width: CARD_PLUS_W, height: CARD_PLUS_H,
                       boxSizing: 'border-box', padding: 0, borderRadius: 8,
-                      /* ═══ v2.3.2598: THE [+] NEEDS AN EDGE ON A COLOURED CELL ═══
-                         Gold against these thirteen fills measures 1.10:1 (Max
-                         HP) to 1.88:1 (Power) — every single one under the 3.0
-                         large-text floor, so the one control that spends a
-                         point would all but vanish on every stat.  Measured,
-                         not guessed: palette-fill.mjs.
-                         The fill stays gold, because gold is what "spendable"
-                         means on this screen and the owner asked for the [+] to
-                         be prominent; what it gains is a DARK OUTLINE, which
-                         runs 6.79:1 to 15.52:1 against the same fills and so
-                         always draws the button's shape.  Same lever the
-                         nameplate work used at v2.3.2590. */
-                      border: (colourOn && st.tint)
-                        ? `2px solid ${canSpend ? '#20170D' : 'rgba(32,23,13,.45)'}`
-                        : `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
-                      background: canSpend ? COL.accent : ((colourOn && st.tint) ? 'rgba(32,23,13,.10)' : 'transparent'),
-                      color: canSpend ? '#20170D' : ((colourOn && st.tint) ? 'rgba(32,23,13,.55)' : COL.muted),
+                      /* v2.3.2599: the dark outline v2.3.2598 needed is gone with
+                         the pastel that needed it.  Gold measured 1.10:1 to
+                         1.88:1 against the light fills — under the floor on all
+                         thirteen — and measures 3.02:1 to 6.00:1 against the
+                         deep ones, so the button holds its own edge again. */
+                      border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
+                      background: canSpend ? COL.accent : 'transparent',
+                      color: canSpend ? '#20170D' : COL.muted,
                       fontSize: landPane ? 19 : 22, fontWeight: 900, lineHeight: 1,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       cursor: 'pointer', touchAction: 'manipulation',
