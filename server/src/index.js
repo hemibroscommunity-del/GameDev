@@ -1072,6 +1072,11 @@ export class GameRoom {
     // recipient, single-claim) and emits a private loot_credit back to
     // the picker with their authorized share + any one-of inventory.
     this.loot = Object.create(null); // zoneId -> [pile, ...]  /* v2.3.1625: null-proto (TRAPS #6) */
+    /* v2.3.2613: one drop, one identity.  Bumped for every pile minted so two
+       kills at the same spawn slot inside LOOT_EXPIRY_MS can never share a
+       lootId -- see the long note in _spawnLootForKill for what that
+       collision did.  In-memory like the piles it numbers. */
+    this._lootSeq = 0;
     this.LOOT_EXPIRY_MS = 60000;
     // Death-drop timing: dying player has DEATH_PILE_OWNER_MS alone
     // to recover their dropped inventory; after that anyone in zone
@@ -3536,7 +3541,46 @@ export class GameRoom {
   //     armor, armorClaimed, recipients, shares: {pid: number}, killerName,
   //     ts, inventoryClaimed, claimedBy: {pid: true} }
   _spawnLootForKill(zone, monster, killerSessionId, recipients, shares) {
-    const lootId = 'mk-' + monster.id;
+    /* ═══ v2.3.2613: A PILE IS A DEATH, NOT A SPAWN SLOT ═══
+       Owner, more than once: "loot sometimes drops and magnetizes but is
+       unable to be picked up."
+
+       This was `'mk-' + monster.id`, and a monster id names a SPAWN SLOT that
+       outlives every monster standing in it.  RESPAWN_TIME is 18.75 s against
+       a 60 s LOOT_EXPIRY_MS, so one slot can be killed three times inside a
+       single pile's lifetime and every one of those kills minted a pile
+       carrying the same lootId.
+
+       One collision, four wrong answers, because every lookup on both sides
+       takes the FIRST match:
+         - _handleLootPickup's `list.find` range-checks the player against the
+           STALE pile, so someone standing on the pile they just made is
+           refused `out-of-range` measured from where the monster died LAST
+           time (reproduced at 300 px with the player at 0 px — drops.test.mjs)
+         - _despawnLoot's `list.findIndex` then removes that stale pile and
+           leaves the claimed one on the ground unclaimed, which becomes the
+           stale pile the NEXT pickup is measured against.  That is why the
+           fault persists across kills instead of clearing itself
+         - the client's loot_drop handler skips a pile whose id it already
+           holds (gameEvents.js), so the new pile is silently never drawn
+         - ...and its loot_despawn expires whichever local pile matches first
+
+       `out-of-range` is the one refusal the client deliberately RETRIES rather
+       than dropping the pile (wsClient.js, v2.3.2490), which is exactly why
+       the symptom is a pile that sits there magnetising forever instead of one
+       that disappears — and why it is intermittent: it only bites when two
+       consecutive deaths of one slot land more than LOOT_PICKUP_RANGE apart.
+       v2.3.2545 flushed the stale PLAYER position and helped a different half
+       of this report; the stale thing here is the PILE'S IDENTITY.
+
+       A counter, not Date.now(): an AoE or a DoT tick can resolve two kills in
+       the same millisecond.  Piles are in-memory only (rule 11), so a DO
+       restart resetting the counter is safe — the piles it could collide with
+       are gone with it.  The id stays opaque on the wire; the only other place
+       that builds an 'mk-' id is the client's legacy local-loot path
+       (gameEvents.js), which is gated on !S._serverLoot and never reconciled
+       against the worker's list. */
+    const lootId = 'mk-' + monster.id + '-' + (++this._lootSeq);
     // Use the variant if set (e.g. ember fodder -> fireGoblin, sky
     // fodder -> mummy) so _invKeyForSkull produces the correct
     // inventory key on pickup.  Falls back to the base archetype
