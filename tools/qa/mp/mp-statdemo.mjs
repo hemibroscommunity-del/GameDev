@@ -129,11 +129,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
      every scene below is opened from a cell's ℹ️ inside one of them.
      v2.3.2594: one weapon at a time, so each section below opens the column
      it is about — starting with Melee and Shared, the pair this one reads. */
-  await H.openPointCols(P, ['sword', 'shared']);
+  /* v2.3.2597: the Points screen is a 2x2 category grid you drill into, and the
+     explainer handle sits on the [+] — the owner made the cell body inert and
+     the [+] the only control, and the window it opens IS the explainer (one
+     window that explains and confirms at the bottom).  So the scope is the open
+     CARD, not a column, and openPointCols drills in rather than opening a pair. */
+  await H.openPointCols(P, ['sword']);
 
   /* v2.3.2592: crit is LUCK now, and four columns are on screen at once —
      the MELEE column's Luck ℹ️, named by column. */
-  const opened = await tapSel(P, '[data-prog3-col="sword"] [data-stat-info="luck"]');
+  const opened = await tapSel(P, '[data-prog3-card="sword"] [data-stat-info="luck"]');
   await P.page.waitForTimeout(700);
   const haveScene = await P.page.evaluate(() => !!document.querySelector('.bt-sd-stage'));
   rec.ok('the ℹ️ on a combat stat opens a window with a scene in it', opened && haveScene, { opened, haveScene });
@@ -200,7 +205,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const stillHoldingSword = await P.page.evaluate(() =>
     (window._gameState.current.rpg.activeSlot || 'melee') === 'melee');
   await H.openPointCols(P, ['bow']);   /* v2.3.2594: one weapon at a time */
-  const laneOpened = await tapSel(P, '[data-prog3-col="bow"] [data-stat-info="luck"]');
+  await H.openPointCols(P, ['bow']);
+  const laneOpened = await tapSel(P, '[data-prog3-card="bow"] [data-stat-info="luck"]');
   rec.ok('the Bow column\'s ℹ️ could be tapped while the sword is still equipped', laneOpened && stillHoldingSword,
     { laneOpened, stillHoldingSword });
   await P.page.waitForTimeout(900);
@@ -242,7 +248,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(350);
   await H.openPointCols(P, ['staff']);   /* v2.3.2594 */
-  const staffLane = await tapSel(P, '[data-prog3-col="staff"] [data-stat-info="luck"]');
+  await H.openPointCols(P, ['staff']);
+  const staffLane = await tapSel(P, '[data-prog3-card="staff"] [data-stat-info="luck"]');
   await P.page.waitForTimeout(900);
   const staffFace = await heroFacing(P, '.bt-sd-hero');
   rec.ok('the Magic lane puts the STAFF in his hands',
@@ -259,7 +266,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      following the open lane there would be the same error in reverse. */
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(350);
-  const bodyOpened = await tapSel(P, '[data-prog3-col="shared"] [data-stat-info="def"]');
+  await H.openPointCols(P, ['shared']);
+  const bodyOpened = await tapSel(P, '[data-prog3-card="shared"] [data-stat-info="def"]');
   await P.page.waitForTimeout(800);
   const bodyFace = await heroFacing(P, '.bt-sd-hero');
   if (!bodyOpened || !bodyFace) {

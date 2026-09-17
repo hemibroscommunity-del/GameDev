@@ -24,6 +24,7 @@ const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
   zonebanner: () => import('./mp-zonebanner.mjs'), /* v2.3.2596: the zone-entry banner plays its nine beats, docks into the top bar, frees its strip on the way out -- and stays silent in the ten zones with no art */
+  catgrid: () => import('./mp-catgrid.mjs'), /* v2.3.2597: the Points screen is four category buttons; drill into one at a time */
   zoneflip: () => import('./mp-zoneflip.mjs'), /* v2.3.2541: the front/back switch is in front of the zone frames AND keeps its own taps */
   bowgate: () => import('./mp-bowgate.mjs'), /* v2.3.2543: the bow's fire gate tests the ray the player is SHOWN -- measured after the player walks, which is when the two used to drift apart */
   gearstash: () => import('./mp-gearstash.mjs'), /* v2.3.2523: the gear stashes move server-side -- the frame, the stored blob, and no double-adopt on reconnect */
@@ -39,7 +40,6 @@ const SCENARIOS = {
   offgrid: () => import('./mp-inkoffgrid.mjs'), /* v2.3.2463: a placed design drags off the edge and is clipped */
   textfloor: () => import('./mp-textfloor.mjs'), /* v2.3.2466: the 11px floor, and that nothing got cut off reaching it */
   inkreach: () => import('./mp-inkreach.mjs'), /* v2.3.2461: the pants squares ARE the trousers, and the shirt's run further down */
-  statgrid: () => import('./mp-statgrid.mjs'), /* v2.3.2441: the Points screen is a 4+3+2 grid, in less room */
   devstall: () => import('./mp-devstall.mjs'), /* v2.3.2440: the panel answers even when the admin surface never does -- and names an off capability with no key at all */
   joingate: () => import('./mp-joingate.mjs'), /* v2.3.2439: the world waits for the server -- a dead room, a not-ready room and a dropped socket all hold the player out */
   hitreal: () => import('./mp-hitreal.mjs'), /* v2.3.2435: every weapon and special against the monsters the WORKER owns, moves and settles */
@@ -67,11 +67,9 @@ const SCENARIOS = {
   lootzone: () => import('./mp-lootzone.mjs'), /* v2.3.2342: a loot pile dropped in Ember does not land on Frost's ground */
   partpool: () => import('./mp-partpool.mjs'), /* v2.3.2331: the particle field is pooled sprites, not re-tessellated polygons */
   lootbob: () => import('./mp-lootbob.mjs'), /* v2.3.2329: the snowman's wreck, coin and shard bob + pulse like every other pile */
-  ptorb: () => import('./mp-ptorb.mjs'), /* v2.3.2329: a Build point landing flares its row's orb, and only its row */
   deathtex: () => import('./mp-deathtex.mjs'), /* v2.3.2328: dying releases the zone's art, like walking out does */
   btnmove: () => import('./shot-btnmove.mjs'), /* v2.3.2574: the combat-button layout, measured and photographed before/after -- prints a gap table, asserts nothing */
   abilslot: () => import('./mp-abilslot.mjs'), /* v2.3.2327: bash moves down-left of the disc; whirl is the sword's */
-  buildcols: () => import('./mp-buildcols.mjs'), /* v2.3.2326: the Build lanes as three columns, photographed */
   bowside: () => import('./mp-bowside.mjs'), /* v2.3.2325: the idle bow mirrors when the body does (SE is a mirrored SW) */
   goldrail: () => import('./mp-goldrail.mjs'), /* v2.3.2320: the purse moves to the zone rail and the nav buttons take its room */
   arrowblast: () => import('./mp-arrowblast.mjs'), /* v2.3.2279: the bow special's blast finale, end to end */

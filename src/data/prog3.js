@@ -158,17 +158,17 @@ export const PROG3_LEGACY_ATK = {
    report.  `capsProg3Shared` rows exist only on a worker carrying the
    folded grid; `legacyOnly` rows exist only on one that does not. */
 export const PROG3_ATK_META = [
-  { key: 'range',   label: 'Range',     perText: '+0.5% reach',                        pct: true, unit: '% farther',        iconSrc: '/icons/ui/t2/bow-longshot.webp?v=2.3.2592',     capsProg3Shared: true, dpsNote: 'reach, not damage' },
-  { key: 'dmg',     label: 'Power',     perText: '+0.5 damage per hit',                unit: ' dmg',                        iconSrc: '/icons/ui/hero/dps.webp?v=2.3.2199',            capsProg3x: true },
+  { key: 'range',   label: 'Range',     perText: '+0.5% reach',                        pct: true, unit: '% farther',        iconSrc: '/icons/ui/t2/bow-longshot.webp?v=2.3.2592',     capsProg3Shared: true, dpsNote: 'reach, not damage' , tint: '#842D95' },
+  { key: 'dmg',     label: 'Power',     perText: '+0.5 damage per hit',                unit: ' dmg',                        iconSrc: '/icons/ui/hero/dps.webp?v=2.3.2199',            capsProg3x: true , tint: '#5C5851' },
   /* Speed's points SHORTEN the swing, so its total is a reduction — the
      label below says "faster" rather than printing a negative. */
-  { key: 'aspd',    label: 'Speed',     perText: '−0.35% swing time',                  pct: true, unit: '% faster',         iconSrc: '/icons/ui/t2/sword-tempo.webp?v=2.3.1694' },
-  { key: 'luck',    label: 'Luck',      perText: '+0.3% crit chance, +1% crit damage', pct: true, unit: '% crit chance',    iconSrc: '/icons/ui/hero/crit.webp?v=2.3.1694',           capsProg3Shared: true },
-  { key: 'special', label: 'Special',   perText: '+1% special attack damage',          pct: true, unit: '% special damage', iconSrc: '/icons/ui/t2/staff-overload.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'special attacks only' },
+  { key: 'aspd',    label: 'Speed',     perText: '−0.35% swing time',                  pct: true, unit: '% faster',         iconSrc: '/icons/ui/t2/sword-tempo.webp?v=2.3.1694' , tint: '#2C4F59' },
+  { key: 'luck',    label: 'Luck',      perText: '+0.3% crit chance, +1% crit damage', pct: true, unit: '% crit chance',    iconSrc: '/icons/ui/hero/crit.webp?v=2.3.1694',           capsProg3Shared: true , tint: '#8E3B1F' },
+  { key: 'special', label: 'Special',   perText: '+1% special attack damage',          pct: true, unit: '% special damage', iconSrc: '/icons/ui/t2/staff-overload.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'special attacks only' , tint: '#326762' },
   /* v2.3.2512: elemental power, per weapon — burns/roots/thorns and element
      collisions from THIS weapon scale off it.  The detonation drawing is
      still the closest the repo has; swap the day a dedicated icon exists. */
-  { key: 'elem',    label: 'Elemental', perText: '+1 elemental power',                 unit: ' power',                      iconSrc: '/icons/ui/t2/staff-detonation.webp?v=2.3.2199', capsProg3Elem: true },
+  { key: 'elem',    label: 'Element',   infoKey: 'Elemental', perText: '+1 elemental power',                 unit: ' power',                      iconSrc: '/icons/ui/t2/staff-detonation.webp?v=2.3.2199', capsProg3Elem: true , tint: '#48239F' },
   /* The RETIRED pair, drawn only against a worker that has not folded them
      into Luck — that worker still rolls off crit and critDmg, so those are
      the rows it must show (rule 19).  Same copy they shipped with. */
@@ -181,13 +181,99 @@ export const PROG3_ATK_META = [
    instead of borrowing the Magic lane's staff and the Defense row's shield
    — in a column of seven, two rows sharing one picture read as one stat. */
 export const PROG3_BODY_META = [
-  { key: 'hp',    label: 'Max HP',      perText: '+8 max HP',                    unit: ' HP',             iconSrc: '/icons/ui/hero/hp-heart.webp?v=2.3.1922' } /* v2.3.1922: plain heart */,
-  { key: 'def',   label: 'Defense',     perText: '−0.4% damage taken',           pct: true, unit: '% less damage', iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1694' },
-  { key: 'mana',  label: 'Max Mana',    perText: '+2.5 max mana',                unit: ' mana',           iconSrc: '/icons/ui/hero/mana.webp?v=2.3.2592',             capsProg3Elem: true },
-  { key: 'stam',  label: 'Stamina',     perText: '+3 max stamina',               unit: ' stamina',        iconSrc: '/icons/ui/hero/stamina.webp?v=2.3.1694' },
-  { key: 'dodge', label: 'Dodge',       perText: '+0.4% dodge',                  pct: true, unit: '%',    iconSrc: '/icons/ui/hero/dodge.webp?v=2.3.1694' },
-  { key: 'move',  label: 'Move Speed',  perText: '+0.4% move speed',             pct: true, unit: '% faster', iconSrc: '/icons/ui/hero/move-speed.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'movement, not damage' },
-  { key: 'eres',  label: 'Elem Resist', perText: '−0.4% elemental damage taken', pct: true, unit: '% less elemental', iconSrc: '/icons/ui/hero/damage-reduction.webp?v=2.3.2592', capsProg3Elem: true },
+  /* ═══ v2.3.2599: PASTEL WAS THE GUESS, IDENTITY WAS THE ASK ═══
+     Owner: "Maybe pastel isn't the right color scheme.  I just want a color to
+     be associated with a certain skill."  So the requirement is IDENTITY — one
+     colour means one stat — and pastel was their guess at how to get it.  The
+     eight hues they named stay; lightness, saturation and rendering are ours.
+
+     THAT LOOSENING FIXES EVERY PROBLEM THE PASTEL FILL CREATED, and all four
+     came from the same cause: the fill was LIGHT on a dark panel.
+       - the label had to flip DARK, against a UI that is light-on-dark
+         everywhere else.  It stays light now.
+       - POWER'S WHITE was the brightest object on the screen, 2.47x the
+         darkest, so it won the eye by luminance alone.  Every fill is dark now
+         and nothing out-glares anything.
+       - DEFENSE'S GRAY read as DISABLED, the universal meaning of gray among
+         colours.  It is a deliberate cool slate instead.
+       - THE GOLD [+] measured 1.10:1 to 1.88:1 against the pastels — under the
+         floor on ALL THIRTEEN, i.e. the one control that spends a point was
+         invisible on every stat.  It now runs 3.02:1 to 6.00:1.
+
+     Searched rather than picked (tools/qa/mp/palette-deep.mjs), against three
+     hard floors at once: light text >= 4.5, gold [+] >= 3.0, and CIEDE2000 >= 12
+     between any two fills.  Result: ZERO pairs under the floor, where the
+     pastel set had two.  The worst pair sits at exactly 12.0 — thirteen
+     colours is close to the packing limit of a hue circle once two of them are
+     achromatic, so that is about as much room as this palette can have.
+
+     WHAT "WHITE" AND "GRAY" BECAME.  A fill cannot be white and carry light
+     text, so Power is a warm STONE and Defense a cool SLATE — the same
+     identities at a depth that works.  If the owner wants Power to read
+     literally white, that has to be carried by something other than the fill. */
+
+  /* v2.3.2597 (superseded, kept because the measurement still holds): the tint
+     was a light pastel then, and the reason it could not be a low-alpha wash
+     over the dark cell is unchanged — compositing keeps only `alpha` of the
+     distance between two colours, so at the 0.15 accentFill uses, 70 of 78
+     pairs fell under the floor.  Whatever the palette, the colour has to be
+     drawn at full strength. */
+  /* ═══ v2.3.2597: A COLOUR PER STAT, AND WHY IT IS NOT A CELL FILL ═══
+     Owner: "I'm interested to see how each cell being colored by meaning would
+     look.  Like power is always white, range is always purple ... pastel-like
+     colors", fixing eight of them: Power white, Range purple, HP red, MP blue,
+     Stamina green, Defense gray, Dodge yellow, Resist pink.  A stat's colour
+     names the STAT, not the weapon, so Power is the same white in all three.
+
+     THE OTHER FIVE WERE SEARCHED, NOT PICKED.  Chosen by eye, Range and Special
+     landed 8.5 apart on a floor of 12; chosen by maximin over a pastel grid
+     (tools/qa/mp/palette-opt.mjs) only TWO of the 78 pairs fall under the floor
+     and both are between colours the owner fixed — Power/Defense at 10.8 (white
+     against gray) and Range/Resist at 11.6 (purple against pink).  Neither is
+     mine to move; palette-fix.mjs reports what it would take.
+
+     AND IT CANNOT BE A CELL FILL.  This UI is dark (#16262C) under near-white
+     text, so a pastel has to be composited, and over()'s own docstring says the
+     cost: "two colours drawn at the same alpha over the same background keep
+     exactly `alpha` of the distance between them".  Measured with the repo's
+     own deltaE00: at alpha 0.50, 14 of 78 pairs fall under the floor; at 0.35,
+     31; at 0.25, 41; at 0.15 — the alpha accentFill already uses — 70 of 78,
+     i.e. the palette is gone.  Worse, the two requirements pull opposite ways:
+     at 0.50 the stat title reads 1.88:1 against its cell and fails contrast,
+     while at 0.15 it passes and nothing is distinguishable.  There is no alpha
+     that satisfies both.
+     So the colour is carried at FULL STRENGTH on a SMALL AREA — a 4px spine
+     down the row, drawn as an inset shadow so it costs no width at all — and
+     the cell keeps its dark background and its legible text. */
+
+  /* ═══ v2.3.2597: SHORTER LABELS, AND WHY `infoKey` EXISTS ═══
+     Owner, approving a set of shortenings so every stat name is one word:
+     Elem Resist -> Resist, Move Speed -> Speed, Elemental -> Element.  Half-
+     width cells in the new two-column category card are what they buy.
+
+     STORAGE KEYS DO NOT MOVE — `eres`, `move`, `elem` are persisted and
+     v2.3.2592 already records that renaming a saved field breaks saves.  Only
+     the label changes.
+
+     `infoKey` is the trap this rename walks into.  statInfo() looks an
+     explainer up BY LABEL (infoGlossary.js), and a `Speed` key already exists
+     there — it is the WEAPON's attack speed, "How quickly you swing, shoot or
+     cast".  Calling the shared movement stat "Speed" would therefore have
+     served that text for it: not a near-miss, a silent wrong answer, and
+     exactly the "a rename that leaves the explainer behind" failure.  So a
+     renamed stat carries the glossary key it was written against and the
+     lookup uses `infoKey || label`.  The two Speeds still cannot appear on
+     screen together — the player is inside one category at a time — but the
+     glossary is a global map and does not care what is on screen.
+     If the two ever DO read as confusable to a player, "Haste" is the
+     pre-agreed fallback for `move`. */
+  { key: 'hp',    label: 'Max HP',      perText: '+8 max HP',                    unit: ' HP',             iconSrc: '/icons/ui/hero/hp-heart.webp?v=2.3.1922' , tint: '#592C32' } /* v2.3.1922: plain heart */,
+  { key: 'def',   label: 'Defense',     perText: '−0.4% damage taken',           pct: true, unit: '% less damage', iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1694' , tint: '#485A7A' },
+  { key: 'mana',  label: 'Max Mana',    perText: '+2.5 max mana',                unit: ' mana',           iconSrc: '/icons/ui/hero/mana.webp?v=2.3.2592',             capsProg3Elem: true , tint: '#182D6D' },
+  { key: 'stam',  label: 'Stamina',     perText: '+3 max stamina',               unit: ' stamina',        iconSrc: '/icons/ui/hero/stamina.webp?v=2.3.1694' , tint: '#1E6642' },
+  { key: 'dodge', label: 'Dodge',       perText: '+0.4% dodge',                  pct: true, unit: '%',    iconSrc: '/icons/ui/hero/dodge.webp?v=2.3.1694' , tint: '#6D5C18' },
+  { key: 'move',  label: 'Speed',       infoKey: 'Move Speed', perText: '+0.4% move speed',             pct: true, unit: '% faster', iconSrc: '/icons/ui/hero/move-speed.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'movement, not damage' , tint: '#48661E' },
+  { key: 'eres',  label: 'Resist',      infoKey: 'Elem Resist', perText: '−0.4% elemental damage taken', pct: true, unit: '% less elemental', iconSrc: '/icons/ui/hero/damage-reduction.webp?v=2.3.2592', capsProg3Elem: true , tint: '#9F2357' },
 ];
 
 /* The rows the CONNECTED worker supports, with critDmg's copy resolved
