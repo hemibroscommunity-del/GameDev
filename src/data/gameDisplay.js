@@ -4176,6 +4176,10 @@ export const NPC_DATA = [{
   avatar: '🃏',
   color: '#3E9B4F',
   plateRole: 'Gambler',
+  /* v2.3.2618: walking up to him opens his coin flip, the same proximity
+     door Diego's `shop` uses (BroTown.jsx) -- and the same latch, so closing
+     it while still standing on him does not get one straight back. */
+  flip: true,
   x: 710, y: 1240,
   spawnX: 710, spawnY: 1240,
   renderX: 710, renderY: 1240,

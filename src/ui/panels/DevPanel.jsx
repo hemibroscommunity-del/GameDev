@@ -148,7 +148,7 @@ const label = { color: COL.muted, font: '600 11px system-ui, sans-serif', letter
  * the very system the owner is chasing was switched off.
  */
 const CAP_GATES = [
-  'abil', 'amuletForge', 'areaChat', 'arena', 'blockScale', 'botfp', 'broVerify',
+  'abil', 'aceFlip' /* v2.3.2618 */, 'amuletForge', 'areaChat', 'arena', 'blockScale', 'botfp', 'broVerify',
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
   'laststand', 'party', 'partyChat', 'petLoot', 'pets', 'potionBag', 'prog3',

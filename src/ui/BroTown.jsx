@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2213: the crit preview hook uses the real crit colour */
 import { shopBus } from './mobile/shopBus.js';   /* v2.3.2050: Shopkeeper Bro's window */
+import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js'; /* v2.3.2618 */
 import { uiBusyBus } from './mobile/uiBusyBus.js'; /* v2.3.2085: tell chrome outside this tree to stand aside */
 import { zonePlayerScale } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve */
 import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
@@ -5878,6 +5879,14 @@ export var BroTown = function BroTown(_ref0) {
             if (_pOk && _pq) {
               S._npcProxLatch = { npc: _pn, ready: _pqReady };
               setQuestPanel({ npc: _pn.name, quest: _pq.quest, status: _pq.status, npcRef: _pn });
+            } else if (_pOk && _pn.flip && !aceFlipBus.open) {
+              /* v2.3.2618: walking up to Ace opens his coin flip, the same
+                 proximity gate a quest giver and a shopkeeper use. The latch
+                 is what stops it reopening every frame after you close it
+                 while still standing next to him. */
+              S._npcProxLatch = { npc: _pn, ready: false };
+              aceFlipBus.setStake(0);
+              aceFlipBus.setOpen(true);
             } else if (_pOk && _pn.shop && !shopBus.open) {
               /* v2.3.2050: walking up to a shopkeeper opens his window, the
                  same proximity gate a quest giver uses -- _pOk already means
@@ -8587,6 +8596,14 @@ export var BroTown = function BroTown(_ref0) {
       S._npcProxLatch = { npc: npc, ready: _npcQuestReady(S, npcQ) };
       setQuestPanel({ npc: npc.name, quest: npcQ.quest, status: npcQ.status, npcRef: npc });
       return _mark('quest');
+    }
+    if (npc.flip) {
+      /* v2.3.2618: the tap door. Same latch as the proximity opener above --
+         both doors, one latch, or closing it on top of him gets one straight
+         back from the loop (the v2.3.1701 lesson). */
+      S._npcProxLatch = { npc: npc, ready: false };
+      try { aceFlipBus.setStake(0); aceFlipBus.setOpen(true); } catch (_e) {}
+      return _mark('flip');
     }
     if (npc.shop) {
       /* The latch matters here too: without it the per-frame proximity

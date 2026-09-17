@@ -420,6 +420,10 @@ export const PRIVILEGED_EVENTS = new Set([
   // v2.3.1124: gamble outcomes are server-rolled + privately sent;
   // forging one at the room is pure grief-popup surface.
   'gamble_result',
+  // v2.3.2618: Ace's coin flip, same reasoning -- and worse if relayed,
+  // because the panel animates a WIN off it and a forged one would show
+  // the whole room a payout the coins echo never backs.
+  'ace_flip_result',
   // v2.3.1125: clan registry echoes + war referee emissions.  NOTE
   // deny-listing clan_war_kill/end breaks OLD-client peer-scored wars
   // against this worker -- accepted, that relay was pure forgery
@@ -4963,6 +4967,15 @@ export class GameRoom {
         // the old "house").
         if (session.id) {
           this._handleGambleRequest(session, msg.payload || msg);
+        }
+        break;
+
+      case 'ace_flip_request':
+        // v2.3.2618: Ace's coin flip (gamble.js).  Server rolls and
+        // settles, same as the Hall above -- a client-side flip for
+        // 3x the stake would be a solo gold faucet.
+        if (session.id) {
+          this._handleAceFlipRequest(session, msg.payload || msg);
         }
         break;
 
