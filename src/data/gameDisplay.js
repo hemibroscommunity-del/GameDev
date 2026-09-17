@@ -1376,8 +1376,11 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      not content-hashed, so without it a returning player keeps the OLD score
      out of their HTTP cache forever.  ember's existing 2.3.1591 bump moves to
      2.3.2604 for the same reason — its bytes changed again.
-     sky/desert.mp3 is NOT in this swap and so is deliberately left at its
-     2.3.1589 bump: edit only the lines the change makes true. */
+     v2.3.2604 (later): the owner then sent a SIXTH and SEVENTH track, so sky
+     and GLOBAL_MUSIC are in the swap after all and take the same bump —
+     Desert.mp3 -> desert.mp3, Select_Your_Hero.mp3 -> login-theme.mp3.  All
+     SEVEN music files in public/audio/music/ now change bytes in one commit,
+     so all seven URLs carry ?v=2.3.2604 and none is left on an older bump. */
   ZONE_MUSIC: {
     town: '/audio/music/village.mp3?v=2.3.2604',
     worldview: '/audio/music/world.mp3?v=2.3.2604',
@@ -1412,7 +1415,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
        file is replaced.  Safe against the LRU: the map value is the cache key
        AND the only thing `trackUrl` is ever compared to (_zoneMusicUrl), so
        both sides move together. */
-    sky: '/audio/music/desert.mp3?v=2.3.1589',
+    sky: '/audio/music/desert.mp3?v=2.3.2604',
   },
   /* ═══ v2.3.1738: PER-ZONE AMBIENCE (owner art) ═══
      Owner: "use this to play as the 'wind' ambient sound effect to play in a
@@ -1531,58 +1534,82 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      login-theme's 3.0.  Shortest track so far and so the lightest resident at
      41.9 MB, comfortably inside the budget — a useful counterweight to the
      desert next door.
-     ═══ v2.3.2604: ALL FIVE ABOVE REPLACED BY THE OWNER'S OWN FILES ═══
-     Shipped VERBATIM apart from a lossless ID3 strip — the same call, for the
-     same reason, as v2.3.1589's desert: there is STILL no encoder in this
-     sandbox.  Re-verified rather than assumed: no ffmpeg/lame/sox on PATH, and
-     the ffmpeg playwright ships (ffmpeg-1011) is built --disable-everything
-     with only mjpeg/vp8/png/webm — it has no audio codec at all.  So the house
-     128 kbps / 44.1 kHz convention could not be applied to these five, and
-     re-encoding a lossy source down would cost quality to save bytes anyway.
-     All five are 48 kHz stereo VBR 186-201 kbps (encoder Lavc60.31, the same
-     family as desert.mp3).  Measured by decodeAudioData in Chromium, the path
-     the game actually uses — file / duration / resident @48 kHz:
-       village  Cozy_Town_Loop 2.76 MB 1m58.4s 43.4 MiB  (was 2.18/2m16.2s/49.8)
-       world    Worldview      4.45 MB 3m02.3s 66.8 MiB  (was 2.36/2m27.3s/53.9)
-       fire     Volcano_Watch  1.94 MB 1m17.2s 28.3 MiB  (was 2.46/2m33.8s/56.3)
-       frost    Icy_Peaks      2.09 MB 1m27.2s 31.9 MiB  (was 2.15/2m14.6s/49.3)
-       forest   Floral         1.93 MB 1m23.1s 30.4 MiB  (was 2.00/2m04.7s/45.7)
-     Net download +2.01 MB across the five; four of the five got SMALLER and
-     lighter in RAM.  The ID3v2.4 tags were 27.7-34.7 KB each (the house tracks
-     carry 45-169 B); stripping them saved 158,513 B and was verified lossless
-     by re-decoding at both 44.1 and 48 kHz — frames, peak, RMS and spectral
-     centroid all identical.
-     WORLDVIEW IS THE ONE TO WATCH, and it is a RAM story, not a download one.
-     At 3m02s it is the longest track in the game and decodes to 66.8 MiB at
-     48 kHz (61.3 at 44.1) against the 58.7 MiB (56 * 1048576) cache budget —
-     so it is now a SECOND over-budget track beside sky's desert, and unlike
-     the desert it sits on the HUB the player crosses constantly, which means
-     every pass through worldview evicts every other zone's buffer and the next
-     zone re-decodes.  That is the designed over-budget path (the just-decoded
-     and currently-playing buffers are never evicted) and it is safe, but it is
-     the busiest zone to spend it on.  Do NOT "fix" it by raising
-     ZONE_MUSIC_CACHE_MB — 56 is deliberately below two full tracks.  Note also
-     that a lower BITRATE would not help this at all: resident PCM is duration x
-     context rate x channels, so only MONO (halves it) or a shorter edit moves
-     it, on a machine that has LAME.  The download half is the smaller problem.
+     ═══ v2.3.2604: ALL SEVEN TRACKS REPLACED, AND RE-ENCODED IN-SANDBOX ═══
+     The owner sent seven new tracks, one per music file, and then: "Yes make
+     the files smaller size."  So unlike v2.3.1589's desert — which shipped
+     verbatim because nothing here could encode — these are re-encoded to the
+     house 128 kbps / 44.1 kHz, and the whole soundtrack got SMALLER while
+     every track changed.
+     HOW, given there is still no system encoder: `tools/audio/encode_music.mjs`
+     decodes each master in a real Chromium (decodeAudioData on an
+     OfflineAudioContext pinned to 44100 — the browser resamples the owner's
+     48 kHz masters, and it is the same decoder BT_AUDIO itself uses) and
+     encodes the PCM with lamejs, a pure-JS LAME port, in that same page.  The
+     "no encoder in this sandbox" note above is still TRUE of system tools and
+     was re-verified: no lame/ffmpeg/sox/opusenc/oggenc, and the ffmpeg
+     playwright bundles is built --disable-everything with no audio codec at
+     all.  The tool is committed so the next batch of music does not restart
+     from nothing, and it VERIFIES rather than trusts — it re-decodes its own
+     output and refuses to report success if rate, channel count or duration
+     drifted (observed drift 0.026-0.049 s, i.e. under one mp3 frame).
+     Masters are kept in docs/triage-2026-09-17/music/ on purpose: a re-encode
+     at a different setting needs them, and public/audio/music/ is OUTPUT —
+     never encode from there, it compounds loss.
+     Per track, file size and resident PCM at 44.1 kHz (was -> now):
+       village    Cozy_Town_Loop    2.08 -> 1.81 MB   45.8 -> 39.8 MiB  1m58s
+       world      Worldview         2.25 -> 2.78 MB   49.5 -> 61.3 MiB  3m02s
+       fire       Volcano_Watch     2.35 -> 1.47 MB   51.7 -> 26.0 MiB  1m17s
+       frost      Icy_Peaks         2.05 -> 1.33 MB   45.3 -> 29.4 MiB  1m27s
+       forest     Floral            1.90 -> 1.27 MB   41.9 -> 28.0 MiB  1m23s
+       login      Select_Your_Hero  1.56 -> 1.04 MB   34.4 -> 23.0 MiB  1m08s
+       desert     Desert            3.55 -> 1.47 MB   51.1 -> 32.3 MiB  1m36s
+     Net download 15.74 -> 11.17 MiB, i.e. 4.57 MiB SMALLER (-29%) across the
+     seven, and resident PCM falls for six of the seven.
+     BITRATE IS PER-TRACK, on the measurement, the way the v2.3.1583-1586 notes
+     above chose theirs.  Six tracks are 128 kbps.  ember/fire is 160, because
+     it is much the brightest of the new set (>15 kHz at -26.4 dB, against
+     -32 to -37 for the rest) and 128k costs it 4.5 dB up there where 160k
+     costs 1.8 — the same 2.7 dB for 0.29 MB.  On the other three bright-ish
+     candidates 160k bought almost nothing (world -3.9 -> -3.1, desert -3.7 ->
+     -3.9, login -3.3 -> -3.2 dB) and 192k only closed the gap by approaching
+     the master's own size, which would defeat the ask; so they stay at 128.
+     Read those deltas against ABSOLUTE level, as v2.3.1583 did for frost: a
+     3.9 dB loss on content already 37 dB down is a far smaller thing than
+     4.5 dB on content only 26 dB down, which is why fire is the one that pays.
+     ID3: the owner's masters carried 27.7-34.7 KB of tags each; lamejs emits
+     none, so the strip is now automatic rather than a separate pass.
+     WORLDVIEW IS THE ONE TO WATCH, and RE-ENCODING DOES NOT HELP IT.  At 3m02s
+     it is the longest track in the game and decodes to 61.3 MiB at 44.1 kHz
+     (66.8 at 48) against the 58.7 MiB (56 * 1048576) budget — the only one of
+     the seven over it, and it sits on the HUB the player crosses constantly,
+     so every pass evicts every other zone buffer and the next zone re-decodes.
+     Confirmed in a running client, not reasoned: touring town -> worldview ->
+     ember -> frost, the cache held exactly ONE track at every sample point.
+     That is the designed over-budget path and it is safe, but note WHY the
+     re-encode left it unchanged: resident PCM is duration x context rate x
+     channels x 4, so it is indifferent to bitrate.  ONLY a shorter edit or a
+     mono render moves it.  Do NOT "fix" it by raising ZONE_MUSIC_CACHE_MB —
+     56 is deliberately below two full tracks.
      LOOP SEAMS, measured because src.loop = true wraps the whole buffer end to
-     start: none of the five has digital silence at either edge (<0.001 s at
-     -60 dBFS head and tail).  All five do FADE OUT — but so does every track
-     they replace, by MORE, and the current set fades IN as well, so today's
-     seam is a 2-4 s near-silent hole and the new one is a shorter dip with a
+     start: none of the seven has digital silence at either edge (<0.001 s at
+     -60 dBFS, head and tail).  All of them fade out — but so did every track
+     they replace, by MORE, and the old set faded IN as well, so the old seam
+     was a 2-4 s near-silent hole and the new one is a shorter dip with a
      harder re-entry.  Fade depth (track RMS minus last 300 ms), new vs old:
      town 28.4 vs 37.9 dB, worldview 29.0 vs 36.2, ember 23.1 vs 27.6,
      frost 37.4 vs 54.0, meadow 25.5 vs 34.2.  Every one is an improvement on
-     what it replaces; not one of them makes looping worse.  A truly seamless
-     loop needs a trim or a fade-to-loop-point, which needs an encoder — it is
-     NOT something this swap regressed.
-     The new set also measures ~3 dB quieter (RMS -18.3 vs -15.5) and
-     consistently darker than the old (centroid: town 994 Hz vs 3873,
-     meadow 1556 vs 3670, frost 1282 vs 3135, worldview 2353 vs 4793; ember
-     3609 vs 3879 is the one close match).  That is the owner's taste, not a
-     defect — but it stacks on the two deliberate gain cuts below, so if the
-     music now reads as too quiet, those constants are the lever, not the files. */
-  GLOBAL_MUSIC: '/audio/music/login-theme.mp3',
+     what it replaces; not one makes looping worse.  A seamless loop needs a
+     trim or a fade-to-loop-point — a content edit, not an encode setting.
+     LOUDNESS: the new set measures about 3 dB QUIETER than the old (RMS -18.3
+     vs -15.5), and the encode itself takes a further uniform 0.45 dB.  Nothing
+     lands LOUDER than what it replaces, so the two owner gain cuts below stand
+     untouched — which is the point: GLOBAL_MUSIC_VOL and ZONE_MUSIC_VOL carry
+     two explicit owner decisions and were NOT adjusted to compensate.  If the
+     music now reads as too quiet, those constants are the lever, not the files.
+     The new set is also consistently darker (centroid: town 1002 Hz vs 3890,
+     meadow 1549 vs 3728, frost 1294 vs 3167, worldview 2234 vs 4811, ember
+     3222 vs 3923).  That is the owner's taste, not a defect. */
+  GLOBAL_MUSIC: '/audio/music/login-theme.mp3?v=2.3.2604',
   /* v2.3.1590 (owner: "make the music play 75% quieter") — BOTH music
      volumes cut to a quarter, together, so the session track and the zone
      tracks keep their existing relationship to each other and to SFX:
