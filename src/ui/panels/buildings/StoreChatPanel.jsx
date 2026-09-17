@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { storeChatBus } from '@/ui/mobile/storeChatBus.js';
 import { PlayerIcon } from '@/ui/PlayerIcon.jsx';
 import { thumbFor, iconFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
+import { storeOfferEnabled } from '@/ui/storeApi.js';   /* v2.3.2623 */
 
 /* === StoreChatPanel — "CHAT WITH MARVIN" ========================= v2.3.2621
  *
@@ -40,6 +41,25 @@ export const TEXT_MAX = 200;
    clamp and the same moderation as anything typed. */
 export const QUICK = ['Still available?', 'Would you take less?', 'I have a question'];
 
+/* ═══ v2.3.2623: THE SELLER'S ANSWERS ═══
+ * Owner: "the seller can have a few different replies. Like yes, I'll think
+ * about it, no, what's your offer?"
+ *
+ * Four, in the order a seller actually uses them. They are ENUMERATED, never
+ * free text: 'yes', 'think' and 'no' are settlement instructions the server
+ * validates against `OFFER_REPLIES`, and the words below are only how this
+ * screen renders those three ids. "What's your offer?" is the odd one out --
+ * it moves no money, so it is an ordinary chat line, which is why it is not
+ * in the server's reply list.
+ *
+ * 'yes' SELLS THE ITEM, so it says so on the button rather than just "Yes".
+ * A one-tap control that completes a sale must not read like small talk. */
+export const SELLER_REPLIES = [
+  { id: 'yes', label: (g) => 'Accept ' + g + 'g', tone: 'primary' },
+  { id: 'think', label: () => "I'll think about it", tone: 'quiet' },
+  { id: 'no', label: () => 'No', tone: 'quiet' },
+];
+
 function timeLeft(expiresAt) {
   const ms = (Number(expiresAt) || 0) - Date.now();
   if (!(ms > 0)) return 'expired';
@@ -67,6 +87,7 @@ function itemArt(item) {
 export function StoreChatPanel({ send, myId }) {
   const [, bump] = useState(0);
   const [text, setText] = useState('');
+  const [offer, setOffer] = useState('');
   const endRef = useRef(null);
   useEffect(() => storeChatBus.subscribe(() => bump((n) => n + 1)), []);
   useEffect(() => { if (endRef.current) endRef.current.scrollIntoView({ block: 'end' }); });
@@ -78,6 +99,8 @@ export function StoreChatPanel({ send, myId }) {
   const amSeller = !!head.amSeller;
   const thread = b.threads.find((t) => t.buyerId === b.activeBuyer) || b.threads[0] || null;
   const msgs = (thread && thread.msgs) || [];
+  const offerOn = storeOfferEnabled();
+  const myOffer = b.offers.find((o) => o.buyerId === myId) || null;
 
   const post = (t) => {
     const clean = String(t || '').slice(0, TEXT_MAX).trim();
@@ -182,9 +205,91 @@ export function StoreChatPanel({ send, myId }) {
 
         {b.err && <div style={{ fontSize: 11, fontWeight: 600, color: LS.bad, marginBottom: 6 }}>{b.err}</div>}
 
+        {/* ═══ v2.3.2623: THE OFFER ═══
+            A buyer names a number and their gold is taken there and then; the
+            seller answers each offer on its own row. Gated on caps.storeOffer
+            so the box cannot exist against a worker that would silently drop
+            it (storeApi.storeOfferEnabled). */}
+        {offerOn && !amSeller && (
+          <div style={{ marginBottom: 8, padding: 8, borderRadius: 9, background: LS.raised, border: '1px solid ' + LS.border }}>
+            {myOffer ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: LS.txt2 }}>
+                  Your offer of <strong style={{ color: LS.brass }}>{myOffer.gold}g</strong> is being held
+                  {myOffer.reply === 'think' ? ' — the seller is thinking about it' : ''}
+                </span>
+                <button type="button" onClick={() => send('store_offer_cancel', { listingId: b.listingId })}
+                  style={{
+                    minHeight: 34, padding: '0 10px', fontSize: 11, fontWeight: 700, borderRadius: 8,
+                    border: '1px solid ' + LS.borderStrong, background: 'transparent', color: LS.txt2,
+                    fontFamily: 'inherit', cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                  }}>Take it back</button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ flex: 1, fontSize: 12, color: LS.txt2 }}>Offer gold</span>
+                <input type="number" inputMode="numeric" value={offer} placeholder={String(head.askPrice || '')}
+                  onChange={(e) => setOffer(e.target.value)}
+                  style={{
+                    width: 86, minHeight: 36, textAlign: 'right', padding: '0 7px', fontSize: 13,
+                    fontWeight: 700, fontFamily: 'inherit', color: LS.txt1, background: LS.well,
+                    border: '1px solid ' + LS.borderStrong, borderRadius: 8,
+                  }} />
+                <button type="button" disabled={!(Math.floor(Number(offer)) > 0)}
+                  onClick={() => {
+                    const g = Math.floor(Number(offer)) || 0;
+                    if (g > 0) { send('store_offer', { listingId: b.listingId, gold: g }); setOffer(''); }
+                  }}
+                  style={{
+                    minHeight: 36, padding: '0 12px', fontSize: 12, fontWeight: 700, borderRadius: 8,
+                    border: 'none', background: LS.brass, color: LS.onBrass, fontFamily: 'inherit',
+                    opacity: Math.floor(Number(offer)) > 0 ? 1 : 0.45,
+                    cursor: Math.floor(Number(offer)) > 0 ? 'pointer' : 'default',
+                    WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+                  }}>Offer</button>
+              </div>
+            )}
+            <div style={{ fontSize: 10, color: LS.txt3, marginTop: 4, lineHeight: 1.4 }}>
+              Your gold is held while the seller decides, and comes straight back if they say no,
+              if you take it back, or if nobody answers in two days.
+            </div>
+          </div>
+        )}
+
+        {/* The seller's side: one row per offer, with the three answers. */}
+        {offerOn && amSeller && b.offers.length > 0 && (
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: LS.txt3, marginBottom: 6 }}>
+              Offers on this listing
+            </div>
+            {b.offers.map((o) => (
+              <div key={o.buyerId} style={{
+                display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+                padding: '7px 8px', marginBottom: 5, borderRadius: 9,
+                background: LS.raised, border: '1px solid ' + LS.border,
+              }}>
+                <span style={{ flex: 1, minWidth: 90, fontSize: 12, color: LS.txt1 }}>
+                  {o.buyerName} offers <strong style={{ color: LS.brass }}>{o.gold}g</strong>
+                </span>
+                {SELLER_REPLIES.map((r) => (
+                  <button key={r.id} type="button"
+                    onClick={() => send('store_offer_reply', { listingId: b.listingId, buyerId: o.buyerId, reply: r.id })}
+                    style={{
+                      minHeight: 32, padding: '0 9px', fontSize: 11, fontWeight: 700, borderRadius: 8,
+                      fontFamily: 'inherit', cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                      border: r.tone === 'primary' ? 'none' : '1px solid ' + LS.borderStrong,
+                      background: r.tone === 'primary' ? LS.brass : 'transparent',
+                      color: r.tone === 'primary' ? LS.onBrass : LS.txt2,
+                    }}>{r.label(o.gold)}</button>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* the three canned replies */}
         <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 6, marginBottom: 6 }}>
-          {QUICK.map((q) => (
+          {(amSeller ? ["What's your offer?"] : QUICK).map((q) => (
             <button key={q} type="button" onClick={() => post(q)}
               style={{
                 flex: '0 0 auto', minHeight: 34, padding: '0 10px', fontSize: 11, fontWeight: 600,
