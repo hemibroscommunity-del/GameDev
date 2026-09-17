@@ -4900,6 +4900,19 @@ html[data-orient="landscape"] .bt-dashboard{
    and the thing that crosses the gap is the projectile, not the man.  Small
    (5px against the lunge's 12) because the read here belongs to the arrow. */
 .bt-sd-hero--loose{animation:bt-sd-loose .26s ease-out 1}
+/* ═══ v2.3.2612: THE THREE NEW MOTIONS ═══
+   --short: the melee reach that does NOT get there.  Half the lunge of
+     bt-sd-lunge (6px against 12), so the two read against each other as
+     distance rather than as two unrelated wiggles.
+   --trek / --trekfast: ground covered.  Same path out and back, different
+     time over it — that is the only variable, because Move Speed is the only
+     thing the scene is claiming.  64px keeps him clear of the slime, which
+     sits at right:16 with a 128px cell. */
+.bt-sd-hero--short{animation:bt-sd-lungeshort .34s ease-out 1}
+@keyframes bt-sd-lungeshort{0%{transform:translateX(0)}35%{transform:translateX(6px)}100%{transform:translateX(0)}}
+.bt-sd-hero--trek{animation:bt-sd-trek 2.4s ease-in-out 1}
+.bt-sd-hero--trekfast{animation:bt-sd-trek 1.2s ease-in-out 1}
+@keyframes bt-sd-trek{0%{transform:translateX(0)}50%{transform:translateX(64px)}100%{transform:translateX(0)}}
 @keyframes bt-sd-loose{0%{transform:translateX(0)}30%{transform:translateX(-5px)}100%{transform:translateX(0)}}
 @keyframes bt-sd-sidestep{0%{transform:translateX(0);opacity:1}30%{transform:translateX(-18px);opacity:.6}70%{transform:translateX(-18px);opacity:.85}100%{transform:translateX(0);opacity:1}}
 /* the block mark on the hero's leading side, flashing once per orb */
@@ -4929,6 +4942,11 @@ html[data-orient="landscape"] .bt-dashboard{
 .bt-sd-shot{position:absolute;left:66px;bottom:56px;background-repeat:no-repeat;background-position:0 0;image-rendering:auto;animation:bt-sd-fly .2s linear 1 both,bt-sd-strip .2s steps(var(--sd-frames,1),jump-none) 1 both}
 @keyframes bt-sd-fly{from{transform:translateX(0)}to{transform:translateX(120px)}}
 .bt-sd-shot--bow{image-rendering:pixelated}
+/* v2.3.2612: the shot that falls short — a third of the flight, then gone.
+   It must OVERRIDE the flight in .bt-sd-shot, so it repeats both animations
+   (the strip stepping included) rather than relying on cascade order. */
+.bt-sd-shot--short{animation:bt-sd-flyshort .42s linear 1 both,bt-sd-strip .2s steps(var(--sd-frames,1),jump-none) 1 both}
+@keyframes bt-sd-flyshort{0%{transform:translateX(0);opacity:1}55%{transform:translateX(44px);opacity:1}100%{transform:translateX(56px);opacity:0}}
 /* combat numbers, in DMG_STYLE's dress: Source Sans 3 800, the black stroke
    under the fill (paint-order keeps the fill whole), rising as they fade */
 .bt-sd-pop{position:absolute;bottom:96px;display:inline-flex;align-items:center;gap:3px;font-family:'Source Sans 3',sans-serif;font-weight:800;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums;-webkit-text-stroke:3px #000;paint-order:stroke fill;text-shadow:0 1px 2px rgba(0,0,0,.6);animation:bt-sd-rise 1.05s ease-out 1 both;pointer-events:none}

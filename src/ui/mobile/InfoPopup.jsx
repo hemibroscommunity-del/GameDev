@@ -75,6 +75,23 @@ export const InfoPopup = () => {
           padding: '14px 14px 12px',
           boxShadow: '0 18px 40px rgba(4,9,12,.55)',
           position: 'relative',
+          /* ═══ v2.3.2616: THE CARD FITS THE SCREEN NOW ═══
+             It had no height limit, and the scrim centres it — so a card
+             taller than the viewport hung off BOTH ends equally and its
+             buttons went with it.  Measured at 360x360 (a phone in
+             landscape): "Spend point" and "Got it" sat 13 to 44px below the
+             bottom edge on every stat whose window carries a scene, and the
+             title was cut off above.  Unreachable, not just ugly — a tap at
+             the button's centre lands outside the viewport.
+             This PRE-DATES the new scenes: dmg, aspd, luck, hp and def have
+             had one since v2.3.2222 and all five overflowed.  It surfaced now
+             because Range is the first row of the Bow card and, until this
+             PR, was the one that had no scene and therefore a short window.
+             Capping the card and scrolling its middle is the fix rather than
+             shrinking the scene, because the scene is what the owner asked
+             for and the next long body would put it right back. */
+          maxHeight: '100%',
+          display: 'flex', flexDirection: 'column', minHeight: 0,
         }}>
         <button type="button" aria-label="Close" onPointerUp={close}
           style={{
@@ -86,10 +103,22 @@ export const InfoPopup = () => {
           }}>×</button>
 
         <div data-infopopup-title style={{
+          flex: 'none',
           fontSize: 15, fontWeight: 900, color: COL.accent,
           letterSpacing: '.01em', paddingRight: 28, marginBottom: 6,
         }}>{cur.title}</div>
 
+        {/* v2.3.2616: everything between the title and the buttons scrolls.
+            The title stays because it names what you are reading; the action
+            row stays because it is the way out, and the way out is the thing
+            that must never be off-screen.  The negative margin lets the
+            scrolled content keep the card's own 14px gutter while the
+            scrollbar rides the card's edge. */}
+        <div data-infopopup-scroll style={{
+          flex: '0 1 auto', minHeight: 0, overflowY: 'auto',
+          margin: '0 -14px', padding: '0 14px',
+          WebkitOverflowScrolling: 'touch',
+        }}>
         <div data-infopopup-body style={{
           fontSize: 13, lineHeight: 1.42, color: COL.text,
         }}>{cur.body}</div>
@@ -167,7 +196,9 @@ export const InfoPopup = () => {
           }}>{cur.action.blocked}</div>
         )}
 
-        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+        </div>{/* data-infopopup-scroll */}
+
+        <div style={{ flex: 'none', display: 'flex', gap: 8, marginTop: 12 }}>
           {cur.action && (
             <button type="button"
               data-infopopup-action

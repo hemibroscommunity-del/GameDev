@@ -46,7 +46,8 @@ import { preloadJogHeadOverlays } from './playerSkins.js'; /* v2.3.1376: their h
 import { ZONE_VARIANT_MAP, MONSTER_VARIANTS, variantsForZone } from '../data/monsterVariants.js'; /* v2.3.1405: per-zone variant scoping */
 import { loadMonsterRecolor, recolorFamilyOf, freeMonsterRecolor } from './monsterRecolor.js'; /* v2.3.1534: per-zone recolour; v2.3.2272: and its release */
 import { loadNpcSprites } from './npcSprites.js'; /* v2.3.1672: NPC figure art */
-import { preloadLevelUpBurst } from './levelUpBurstPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
+import { preloadLevelUpBurst } from './levelUpBurstPreload.js';
+import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
 import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
@@ -270,6 +271,17 @@ export async function preloadWorldAnimations() {
        the LAW exists to stop, landing on the most dramatic moment the game
        has.  See levelUpBurstPreload.js. */
     levelUpBurst: preloadLevelUpBurst(),
+    /* ═══ v2.3.2616: the stat explainer's scenes ═══
+       DOM assets again, and GLOBAL: the Build sheet opens from anywhere, so
+       there is no zone to scope them to.  Most of what a scene draws is
+       already covered above — the scenes deliberately reuse the slime strips
+       and the projectiles at the world's own URLs, so `slime` and `fx` answer
+       for them.  What was NOT covered, and was fetching on first open, is the
+       popup shield (nothing else in the client references that file) and
+       crit.webp at the scenes' own ?v= (the renderer loads it under a
+       different query string, which is a different cache key).
+       See statDemoPreload.js — it names both. */
+    statDemo: preloadStatDemo(),
   };
 
   const names = Object.keys(groups);

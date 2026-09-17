@@ -4,6 +4,7 @@ import { VitalBar, VITAL_ICONS } from './VitalBar.jsx';
 import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { prog3CatFor } from '@/data/prog3.js';   /* v2.3.2231: weapon type -> combat lane */
+import { SLIME, SLIME_PX, ORB_URL, SHOT, ICON } from '@/data/statDemoAssets.js';   /* v2.3.2616: shared with the preloader */
 
 /* ═══ v2.3.2222: WHAT A STAT IS FOR, SHOWN WITH THE GAME'S OWN PIECES ═══
  *
@@ -56,52 +57,12 @@ import { prog3CatFor } from '@/data/prog3.js';   /* v2.3.2231: weapon type -> co
    ~85px figure -- the proportion the world draws.  A strip's
    background-size is (frames * 128) x 128; the box hangs 33px below the
    stage so row 86 lands on the ground line (game.css .bt-sd-slime). */
-const SLIME_PX = 128;
-const SLIME = {
-  idle:  { url: '/sprites/monsters/slime-idle-v5.png',  frames: 24 },
-  hit:   { url: '/sprites/monsters/slime-hit-v1.png',   frames: 24 },
-  shoot: { url: '/sprites/monsters/slime-shoot-v2.png', frames: 8 },
-};
-const ORB_URL = '/sprites/monsters/slime-projectile-v1.png';
-/* ═══ v2.3.2231: WHAT LEAVES YOUR HANDS ═══
- * Owner: "Would it be better to show the character simulate attacking the
- * slime with a weapon?  Maybe the combat primary skill they are viewing the
- * stat demo through?"
- *
- * The scene's one attack beat was a LUNGE for everybody -- so the Bow and
- * Magic lanes showed a man stepping toward a slime three feet away and the
- * number simply appearing.  A ranged lane's whole tell is that the damage
- * crosses the gap, so it now does, with the world's own projectiles: the
- * pine arrow and the magic bolt effectsRenderer already loads
- * (_fxLoad at v2.3.1881 / v2.3.1334), at the same URLs, so the cache is what
- * answers here exactly as it does for the slime strips.
- *
- * BOTH SHEETS ARE DRAWN POINTING EAST, which is the direction this scene
- * fires in (hero left, slime right), so neither needs a rotation -- the
- * world rotates them by flight angle and 0 is the sheet as painted.
- * The bolt is a 4-frame strip stepped by CSS, the same technique the slime
- * uses; the arrow is a single cel.
- *
- * WHICH ONE is read off the WEAPON, not off the lane, and that is the more
- * useful rule of the two: an attack row is already handed its lane's weapon
- * (HeroExpanded v2.3.2231), so it follows the lane for free -- while a BODY
- * row, which has no lane, correctly follows whatever you are actually
- * holding.  No weapon: the lunge, which is what bare hands do. */
-const SHOT = {
-  bow:   { url: '/sprites/projectiles/arrow-pine.png?v=2.3.1881', w: 30, h: 8, frames: 1 },
-  staff: { url: '/sprites/projectiles/magic-bolt-v1.webp?v=2.3.1334', w: 34, h: 20, frames: 4 },
-};
-/* The combat renderer's popup icons, at the URLs it fetches them from
-   (_loadPopupIcon appends ?v=2.3.2201; hero/crit.webp is the Crit row's own
-   icon and is cached under that row's URL). */
-const ICON = {
-  crit:   '/icons/ui/hero/crit.webp?v=2.3.1694',
-  /* v2.3.2337: the renderer's heart is the 256 twin now (effectsRenderer
-     POPUP_ICON_SRC); same URL here for the same warm-cache reason, and a
-     21 px <img> has no use for the 1254 original either. */
-  heart:  '/icons/popups/heart-256.webp?v=2.3.2201',
-  shield: '/icons/popups/shield-defense.webp?v=2.3.2201',
-};
+/* ═══ v2.3.2616: THE ASSET LIST MOVED OUT ═══
+   SLIME / ORB_URL / SHOT / ICON now live in src/data/statDemoAssets.js, with
+   the notes on why each URL carries the ?v= it does.  They moved because the
+   PRELOADER needs the same list and must not import this component to get it
+   (statDemoPreload.js).  One list, two readers — a scene that adds an asset
+   adds it there and is warmed on the loading screen for free. */
 
 /* The character: CharacterView composites a 256 square; cropped to its
    measured figure window (FIGURE_W_FRAC) so the scene holds the person, not
@@ -157,6 +118,33 @@ class Script {
     this.at(380, (s) => ({ orb: 0, slime: { kind: 'idle', n: 0 }, ...land(s) }));
     return this;
   }
+  /* ═══ v2.3.2616: THE ATTACK THAT DOES NOT GET THERE ═══
+     Range's whole claim is reach, so the BEFORE half has to visibly fall
+     short.  Same loose, same lunge, same rhythm as strike() — what differs is
+     that the shot stops in the gap and fades, the slime is never touched, and
+     no damage number comes off it.  The grey "Short!" is the non-damage event
+     in the dress 'Dodged!' already established. */
+  fallShort() {
+    const ranged = !!(this.shot && SHOT[this.shot]);
+    this.at(0, (s) => ({
+      hero: { kind: ranged ? 'loose' : 'short', n: s.hero.n + 1 },
+      ...(ranged ? { shot: s.shot + 1, shotShort: 1 } : null),
+    }));
+    this.steps.push({ t: this.t + (ranged ? 260 : 340), patch: () => ({ hero: { kind: null, n: 0 } }) });
+    this.at(ranged ? 340 : 240, () => (ranged ? { shot: 0, shotShort: 0 } : {}));
+    this.pop('slime', 'Short!', 'miss');
+    return this;
+  }
+  /* ═══ v2.3.2616: GROUND COVERED ═══
+     Move Speed is read the way aspd reads attack speed — same span of time,
+     more of it done.  One round trip before the point, two after.  `fast` is
+     not a different path, only a shorter one in time, so what the eye compares
+     is distance per second and nothing else. */
+  trek(fast) {
+    this.at(0, (s) => ({ hero: { kind: fast ? 'trekfast' : 'trek', n: s.hero.n + 1 } }));
+    this.steps.push({ t: this.t + (fast ? 1200 : 2400), patch: () => ({ hero: { kind: null, n: 0 } }) });
+    return this;
+  }
   /* The point lands: the row's icon rises with a +1, and the bars refill. */
   point(reset) {
     this.at(500, (s) => ({ point: s.point + 1, ...(reset ? reset(s) : null) }));
@@ -167,7 +155,7 @@ class Script {
 
 const START = {
   pops: [], hero: { kind: null, n: 0 }, slime: { kind: 'idle', n: 0 },
-  orb: 0, shot: 0, point: 0, shield: 0, bar: null,
+  orb: 0, shot: 0, shotShort: 0, point: 0, shield: 0, bar: null,
 };
 
 /* Bars: `bar` is {kind, cur, max, base} where `base` is the max the trough
@@ -291,18 +279,45 @@ const SCENES = {
     sc.at(800);
     return { script: sc, still: { ...bar('hp', 100, 100), pops: [{ id: 1, side: 'hero', text: 'Dodged!', kind: 'dodged' }] } };
   },
+  /* ═══ v2.3.2616: STAMINA IS WHAT YOU BLOCK AND DODGE WITH ═══
+     Owner: "Change stamina info animation from shooting an orb to using
+     shield block or/and dodging."
+     The old scene had the hero swinging three times to drain the bar, and
+     strike() looses a projectile for a ranged weapon — so with a staff in hand
+     it was literally a man throwing orbs, which is what they saw.
+     It is also the wrong idea twice over. Stamina in this game pays for shield
+     bash (30% of the pool, and it needs a held shield) and for the contextual
+     dodge — server/src/abilities.js STAM_ABILITIES. So the scene now shows the
+     pool doing its actual job, and both of the moves the owner named.
+     BEFORE: three orbs come in. Block, dodge — and the pool is empty, so the
+     third one simply lands on you.
+     AFTER: the same three orbs against a pool half again as long, and there is
+     enough left to answer all three. The bar is the star of this scene; the
+     trough itself grows, which is what "more stamina" looks like. */
   stam: (shot) => {
-    /* Three swings empty the bar; with the point it is longer and the same
-       three leave half of it. */
     const sc = new Script(shot);
-    sc.at(0, () => bar('stamina', 90, 90));
-    sc.at(400);
-    for (let i = 0; i < 3; i++) sc.strike('10', 'hit', (i % 2) * 14 - 7, (s) => ({ bar: { ...s.bar, cur: Math.max(0, s.bar.cur - 30) } })).at(700);
-    sc.point(() => bar('stamina', 180, 180, 90));
-    sc.at(400);
-    for (let i = 0; i < 3; i++) sc.strike('10', 'hit', (i % 2) * 14 - 7, (s) => ({ bar: { ...s.bar, cur: Math.max(0, s.bar.cur - 30) } })).at(700);
+    const spend = (n) => (s) => ({ bar: { ...s.bar, cur: Math.max(0, s.bar.cur - n) } });
+    const guard = (s) => ({ ...spend(30)(s), shield: s.shield + 1 });
+    sc.at(0, () => bar('stamina', 60, 60));
+    sc.at(400).shoot(guard).pop('hero', 'Blocked!', 'dodged', -6);
+    sc.steps.push({ t: sc.t + 700, patch: () => ({ shield: 0 }) });
     sc.at(700);
-    return { script: sc, still: { ...bar('stamina', 90, 180, 90), pops: [{ id: 1, side: 'slime', text: '10', kind: 'hit' }] } };
+    sc.steps.push({ t: sc.t + 260, patch: (s) => ({ hero: { kind: 'dodge', n: s.hero.n + 1 } }) });
+    sc.shoot(spend(30)).pop('hero', 'Dodged!', 'dodged', 6);
+    sc.steps.push({ t: sc.t + 600, patch: () => ({ hero: { kind: null, n: 0 } }) });
+    /* Nothing left to spend, so the third one is simply taken. */
+    sc.at(700).shoot((s) => hurt(s, 0)).pop('hero', '-20', 'hurt');
+    sc.point(() => bar('stamina', 120, 120, 60));
+    sc.at(400).shoot(guard).pop('hero', 'Blocked!', 'dodged', -6);
+    sc.steps.push({ t: sc.t + 700, patch: () => ({ shield: 0 }) });
+    sc.at(700);
+    sc.steps.push({ t: sc.t + 260, patch: (s) => ({ hero: { kind: 'dodge', n: s.hero.n + 1 } }) });
+    sc.shoot(spend(30)).pop('hero', 'Dodged!', 'dodged', 6);
+    sc.steps.push({ t: sc.t + 600, patch: () => ({ hero: { kind: null, n: 0 } }) });
+    sc.at(700).shoot(guard).pop('hero', 'Blocked!', 'dodged', 0);
+    sc.steps.push({ t: sc.t + 700, patch: () => ({ shield: 0 }) });
+    sc.at(800);
+    return { script: sc, still: { ...bar('stamina', 30, 120, 60), shield: 1, pops: [{ id: 1, side: 'hero', text: 'Blocked!', kind: 'dodged' }] } };
   },
   elem: (shot) => {
     /* A hit, then the burn ticks it leaves; the point makes the ticks bite. */
@@ -314,6 +329,60 @@ const SCENES = {
     for (let i = 0; i < 3; i++) sc.at(550).pop('slime', '7', 'burn', (i % 2) * 16 - 8);
     sc.at(900);
     return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '7', kind: 'burn' }] } };
+  },
+  /* ═══ v2.3.2616: RANGE — REACH, NOT DAMAGE ═══
+     prog3.js says so in its own words (dpsNote: 'reach, not damage'), so the
+     number must NOT grow across the point or the scene teaches the wrong
+     thing. The same attack falls short twice, then the point lands, then the
+     same attack covers the gap and does the damage it always did.
+     It reads for every lane without a special case: a bow's arrow and a
+     staff's bolt stop in the air and fade, and bare hands / a sword lunge
+     visibly less far, because fallShort() branches exactly where strike()
+     does. */
+  range: (shot) => {
+    const sc = new Script(shot);
+    sc.at(400).fallShort().at(900).fallShort();
+    sc.point();
+    sc.at(400).strike('12', 'hit').at(900).strike('12', 'hit', 10);
+    sc.at(700);
+    return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '12', kind: 'hit' }] } };
+  },
+  /* ═══ v2.3.2616: MOVE SPEED — GROUND COVERED IN THE SAME TIME ═══
+     Read the way aspd reads attack speed, which is the idiom this file already
+     has: the span does not change, the amount done in it does. One trip out
+     and back before the point; two after. Nothing is captioned, and no damage
+     number appears at all — prog3.js calls this 'movement, not damage'. */
+  move: (shot) => {
+    const sc = new Script(shot);
+    sc.at(300).trek(false);
+    sc.at(2500);
+    sc.point();
+    sc.at(300).trek(true);
+    sc.at(1300).trek(true);
+    sc.at(1400);
+    return { script: sc, still: { hero: { kind: null, n: 0 } } };
+  },
+  /* ═══ v2.3.2616: ELEM RESIST — THE BURN SHRINKS, THE HIT DOES NOT ═══
+     "−0.4% elemental damage taken", and the word that matters is ELEMENTAL.
+     So the orb's own impact is the SAME -10 on both halves and only the burn
+     ticks after it fall, from -8 to -2. A scene that shrank both would be
+     claiming a flat damage reduction, which is a different stat.
+     It is the elem scene read from the other side: there the burn is something
+     you inflict and it grows, here it is something taken and it shrinks. */
+  eres: (shot) => {
+    const sc = new Script(shot);
+    /* 620ms apart and spread across 36px: a pop lives 1100ms, so two are on
+       screen at once and at the ±7 the other scenes use they land on top of
+       each other. Measured off the strip, not guessed. */
+    const tick = (n, i) => { sc.at(620, (s) => hurt(s, n)); sc.pop('hero', '-' + n, 'burn', (i - 1) * 18); };
+    sc.at(0, () => bar('hp', 100, 100));
+    sc.at(500).shoot((s) => hurt(s, 10)).pop('hero', '-10', 'hurt');
+    for (let i = 0; i < 3; i++) tick(8, i);
+    sc.point((s) => ({ bar: { ...s.bar, cur: s.bar.max } }));
+    sc.at(500).shoot((s) => hurt(s, 10)).pop('hero', '-10', 'hurt');
+    for (let i = 0; i < 3; i++) tick(2, i);
+    sc.at(900);
+    return { script: sc, still: { ...bar('hp', 84, 100), pops: [{ id: 1, side: 'hero', text: '-2', kind: 'burn' }] } };
   },
 };
 
@@ -328,6 +397,9 @@ const POP_STYLE = {
   hurt:   { color: '#ff5e6c', size: 21, icon: ICON.heart, iconH: 21, before: true },
   dodged: { color: '#3dd497', size: 21 },
   burn:   { color: ELEMENTS.flame.color, size: 21 },
+  /* v2.3.2616: a non-damage event, in 'Dodged!'s dress but muted — nothing
+     happened TO anybody, which is the whole point of the beat. */
+  miss:   { color: '#9AA7AC', size: 19 },
 };
 const Pop = ({ p }) => {
   const st = POP_STYLE[p.kind] || POP_STYLE.hit;
@@ -344,11 +416,14 @@ const Pop = ({ p }) => {
    each loose is a fresh element and therefore a fresh run of the CSS
    flight; the bolt additionally steps its 4-cel strip the way the slime
    steps its own (v2.3.2231). */
-const Shot = ({ cat, n }) => {
+const Shot = ({ cat, n, short: isShort }) => {
   const a = SHOT[cat];
   if (!a) return null;
   return (
-    <i key={'sh' + n} className={'bt-sd-shot bt-sd-shot--' + cat}
+    /* v2.3.2616: `short` flies a fraction of the way and fades, for Range's
+       before half.  A modifier class, not a second component — same sheet,
+       same stepping, only the flight differs. */
+    <i key={'sh' + n} className={'bt-sd-shot bt-sd-shot--' + cat + (isShort ? ' bt-sd-shot--short' : '')}
       style={{
         backgroundImage: `url(${a.url})`,
         width: a.w, height: a.h,
@@ -434,7 +509,7 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield }) => {
       </div>
       <Slime anim={s.slime} />
       {s.orb > 0 && <i key={'o' + s.orb} className="bt-sd-orb" style={{ backgroundImage: `url(${ORB_URL})` }} />}
-      {s.shot > 0 && <Shot cat={shot} n={s.shot} />}
+      {s.shot > 0 && <Shot cat={shot} n={s.shot} short={s.shotShort > 0} />}
       {s.pops.map((p) => <Pop key={p.id} p={p} />)}
       {s.point > 0 && (
         <span key={'p' + s.point} className="bt-sd-point">
