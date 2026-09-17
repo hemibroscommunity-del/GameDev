@@ -1,4 +1,4 @@
-/* MEASURE THE GENERAL STORE'S INTERIOR ART (v2.3.2617).
+/* MEASURE THE GENERAL STORE'S INTERIOR ART (v2.3.2620).
  *
  * VendorPanel places the storekeeper against numbers -- the room's alpha
  * bbox, the keeper strip's frame box, the row where his forearms are cut off
