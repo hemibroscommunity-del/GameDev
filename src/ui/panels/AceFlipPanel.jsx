@@ -37,6 +37,18 @@ var LS = {
   border: 'rgba(229,237,233,.11)', borderStrong: 'rgba(229,237,233,.20)',
   brass: '#D8AA58', brassFill: 'rgba(216,170,88,.15)', onBrass: '#172126',
   win: '#59BF91', lose: '#D95C54',
+  /* v2.3.2622 (owner: "a big YOU LOST! in bold red font ... conversely, if you
+     win, a big YOU WON! in bold blue font").  BLUE for the win and RED for the
+     loss is not an arbitrary pairing -- it is the coin's own two faces: the win
+     strip lands on a BLUE head and the loss strip on a RED skull, so the banner
+     and the picture above it agree.
+     Both are SAMPLED from the landing frames and then lifted for contrast: the
+     raw skull red is #A20B00, which scores 1.73:1 on this panel and is
+     unreadable, and the raw head blue #2583C7 only makes 3.44:1.  These score
+     5.73:1 and 4.03:1 against the #1E2E34 panel -- the blue clears normal-text
+     AA and the red clears the 3:1 bar that large bold text is held to, which is
+     what this banner is. */
+  bannerWin: '#57ADEA', bannerLose: '#EF5446',
 };
 var FRAME_W = 128, FRAME_H = 192, FRAMES = 11, STEP_MS = 55;
 /* ═══ v2.3.2621: THE COIN GIVES UP ROOM TO THE WORDS ═══
@@ -71,6 +83,40 @@ var COIN_H = Math.round(FRAME_H * COIN_SCALE);
  * waveform every time is what makes a repeated sample start to sound fake. */
 var TOSS_SFX = 'coin-flip';
 var TOSS_OPTS = { vol: 0.5, offset: 0.03, duration: 0.72 };
+
+/* ═══ v2.3.2622: THE VERDICT, SAID LOUDLY ═══
+   Owner wanted the outcome to read from across the room rather than as the
+   one-line receipt it was ("Heads -- you take 30").  So: the verdict at 34px
+   900-weight in the coin's own colour, then what it cost or paid underneath.
+   Shared by the gold tab and the items tab so the two can never drift into
+   describing the same event differently. */
+function verdict(won, detail) {
+  return React.createElement('div', {
+    style: { textAlign: 'center', margin: '2px 0 13px' },
+  },
+    React.createElement('div', {
+      style: {
+        fontSize: 34, fontWeight: 900, letterSpacing: '.04em', lineHeight: 1.05,
+        color: won ? LS.bannerWin : LS.bannerLose,
+        textShadow: '0 2px 0 rgba(0,0,0,.35)',
+      },
+    }, won ? 'YOU WON!' : 'YOU LOST!'),
+    React.createElement('div', {
+      style: { marginTop: 5, fontSize: 16, fontWeight: 700, color: won ? LS.bannerWin : LS.bannerLose },
+    }, detail));
+}
+
+/* v2.3.2622: what actually moved, named.  The owner asked to "list the minus
+   of whatever was taken", and for an item wager a bare count ("6 items") does
+   not say WHICH six -- the result carries the staked map, so it is spelled out
+   and only falls back to a count if the map is somehow missing. */
+function itemTally(r) {
+  var sign = r.won ? '+' : '−';
+  var m = r && r.items;
+  var keys = m ? Object.keys(m) : [];
+  if (!keys.length) return sign + (r.total || 0) + ' items';
+  return keys.map(function (k) { return sign + m[k] + ' ' + labelFor(k); }).join(', ');
+}
 
 function gold(amount, size, color) {
   return React.createElement('span', {
@@ -388,11 +434,9 @@ export function AceFlipPanel() {
         aceFlipBus.note
           ? aceFlipBus.note
           : 'Stake whatever you like out of that bag. Double or nothing \u2014 same coin, same odds: ' + acePct + '% me, ' + youPct + '% you.'),
-      aceFlipBus.itemResult && !aceFlipBus.pending ? React.createElement('div', {
-        style: { textAlign: 'center', marginBottom: 11, fontSize: 17, fontWeight: 700, color: aceFlipBus.itemResult.won ? LS.win : LS.lose },
-      }, aceFlipBus.itemResult.won
-        ? 'Doubled \u2014 ' + (aceFlipBus.itemResult.total || 0) + ' more in the bag'
-        : 'Gone \u2014 Ace takes all ' + (aceFlipBus.itemResult.total || 0)) : null,
+      aceFlipBus.itemResult && !aceFlipBus.pending
+        ? verdict(aceFlipBus.itemResult.won, itemTally(aceFlipBus.itemResult))
+        : null,
       React.createElement('div', { style: { maxHeight: '38vh', overflowY: 'auto', marginBottom: 10 } },
         bagKeys.length
           ? bagKeys.map(itemRow)
@@ -432,10 +476,9 @@ export function AceFlipPanel() {
         },
       })),
 
-      res && !aceFlipBus.pending ? React.createElement('div', {
-        style: { textAlign: 'center', marginBottom: 11, fontSize: 17, fontWeight: 700, color: res.won ? LS.win : LS.lose },
-      }, res.won ? 'Heads — you take ' : 'Skull — Ace takes ',
-        gold(Math.abs(res.delta || 0), 14, res.won ? LS.win : LS.lose)) : null,
+      res && !aceFlipBus.pending
+        ? verdict(res.won, (res.won ? '+' : '−') + Math.abs(res.delta || 0) + ' gold')
+        : null,
 
       /* ── stake ── */
       React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 } },
