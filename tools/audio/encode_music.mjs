@@ -1,4 +1,4 @@
-/* v2.3.2604: MUSIC RE-ENCODER — 128 kbps / 44.1 kHz, the house setting.
+/* v2.3.2614: MUSIC RE-ENCODER — 128 kbps / 44.1 kHz, the house setting.
  *
  * Owner: "Yes make the files smaller size."
  *

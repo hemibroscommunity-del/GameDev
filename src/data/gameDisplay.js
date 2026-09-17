@@ -1361,7 +1361,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      zero bytes) for every zone, so there's no music fetch and nothing 404s.
      To restore a track, re-add `<zoneId>: '/audio/music/<file>.mp3'` AND
      ship the file back into public/audio/music/. */
-  /* ═══ v2.3.2604: OWNER'S NEW SCORE — FIVE FILES REPLACED IN PLACE ═══
+  /* ═══ v2.3.2614: OWNER'S NEW SCORE — FIVE FILES REPLACED IN PLACE ═══
      The owner supplied five tracks named for where they go and asked to "use
      new music for the game".  They land at the EXISTING filenames rather than
      new ones, the v2.3.1587/1589 desert precedent, so nothing else has to
@@ -1376,7 +1376,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      not content-hashed, so without it a returning player keeps the OLD score
      out of their HTTP cache forever.  ember's existing 2.3.1591 bump moves to
      2.3.2604 for the same reason — its bytes changed again.
-     v2.3.2604 (later): the owner then sent a SIXTH and SEVENTH track, so sky
+     v2.3.2614 (later): the owner then sent a SIXTH and SEVENTH track, so sky
      and GLOBAL_MUSIC are in the swap after all and take the same bump —
      Desert.mp3 -> desert.mp3, Select_Your_Hero.mp3 -> login-theme.mp3.  All
      SEVEN music files in public/audio/music/ now change bytes in one commit,
@@ -1534,7 +1534,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      login-theme's 3.0.  Shortest track so far and so the lightest resident at
      41.9 MB, comfortably inside the budget — a useful counterweight to the
      desert next door.
-     ═══ v2.3.2604: ALL SEVEN TRACKS REPLACED, AND RE-ENCODED IN-SANDBOX ═══
+     ═══ v2.3.2614: ALL SEVEN TRACKS REPLACED, AND RE-ENCODED IN-SANDBOX ═══
      The owner sent seven new tracks, one per music file, and then: "Yes make
      the files smaller size."  So unlike v2.3.1589's desert — which shipped
      verbatim because nothing here could encode — these are re-encoded to the
