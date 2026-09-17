@@ -1,4 +1,5 @@
 import { SKILL_ROSTER } from './mobile/sheet/skillsModel.js';
+import { portraitSrc, PORTRAIT_FALLBACK_SRC } from './mobile/sheet/portraitStore.js'; /* v2.3.2615: a CHARACTER level wears the character */
 
 /* ═══ SKILL -> ICON ═══
  * Object.create(null), never a plain {}: this is keyed by skill ids that
@@ -45,6 +46,26 @@ export function levelUpIconFor(skill) {
   const k = typeof skill === 'string' ? skill : '';
   return (k && SKILL_ICON[k]) || FALLBACK_ICON;
 }
+
+/* ═══ v2.3.2615: WHAT GOES IN THE CIRCLE ═══
+ * Owner: "if it's combat level just show the character portrait in the center
+ * of the new level up animation."
+ *
+ * A SKILL level-up seats that skill's icon — v2.3.2591's rule, unchanged.  A
+ * CHARACTER level-up has no skill to seat, and the fallback it used to get was
+ * a generic XP glyph, which is the least informative thing the medallion can
+ * hold at the most important moment it has.  The character's own bust says
+ * whose level it is, and it is already drawn: BottomDashboard renders it from
+ * the live cosmetics into portraitStore, which is where the Shared column in
+ * the points panel reads it too.  One source, read through portraitSrc — not a
+ * second generator, and not a second fallback chain.
+ *
+ * `S` is threaded through for the middle step of that chain (S.myAvatar), the
+ * same way HeroExpanded threads it. */
+export function levelUpMedallionSrc(msg, S) {
+  if (msg && msg.kind === 'char') return portraitSrc(S);
+  return levelUpIconFor(msg && msg.skill);
+}
 export function levelUpLabelFor(msg) {
   if (!msg) return '';
   if (msg.skillLabel) return msg.skillLabel;                 /* prog3 sends one */
@@ -60,4 +81,10 @@ export function levelUpLabelFor(msg) {
 export const LEVELUP_ICON_URLS = Array.from(new Set([
   ...Object.keys(SKILL_ICON).map((k) => SKILL_ICON[k]),
   FALLBACK_ICON,
+  /* v2.3.2615: the character medallion's LAST resort.  The first two steps of
+     portraitSrc are data already in memory (a canvas data URL, or the avatar
+     the session joined with) and cost no fetch; this one is a file, so under
+     the preloading law it warms with the rest of the burst's art rather than
+     being fetched on the frame a player first levels their character. */
+  PORTRAIT_FALLBACK_SRC,
 ]));

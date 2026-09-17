@@ -2083,8 +2083,15 @@ export function processGameEvent(type, payload, S, deps) {
                       R.unspentT2 = 0; /* T2 retired — weapon points now come from per-category weapon-skill levels */
                       recalcDerived(R);
                       R.hp = R.maxHp; R.stamina = R.maxStamina; R.mana = R.maxMana;
-                      setLevelUpMsg({ kind: 'combat', level: R.level, ts: Date.now() });
-                      BT_AUDIO.levelUp();
+                      /* v2.3.2615: 'char' — this loop raises the CHARACTER
+                         level (5 build points = 1 level) with no skill
+                         attached, so the notification wears the character's
+                         portrait rather than a generic XP glyph.  And no
+                         BT_AUDIO.levelUp(): that is the pre-v2.3.2591 arpeggio,
+                         which was still playing under the new sting on every
+                         level-up — the owner's "it also played the legacy level
+                         up".  The overlay plays its own, once. */
+                      setLevelUpMsg({ kind: 'char', level: R.level, ts: Date.now() });
                     }
                   }
                   setRpgState(_objectSpread({}, R));

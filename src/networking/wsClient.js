@@ -46,6 +46,7 @@ import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js'
 import { getPattern } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 import { getEquip, syncArmorLayers, migrateTier1Armor } from '@/rendering/gearCatalog.js'; /* v2.3.1761 */
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
+import { pushLevelUpBurst } from '@/ui/levelUpBursts.js'; /* v2.3.2615: a prog3 level is a skill level AND a character level — two notifications, side by side */
 /* v2.3.1982: the "the world is full" screen — plain DOM, see its header
    for why it is not a React boot phase. */
 import { showRoomFull, hideRoomFull, roomFullOpen } from '@/ui/RoomFullScreen.js';
@@ -2001,6 +2002,56 @@ export function setupWebSocket(ctx) {
                  alloc, and the point pool all land here and the
                  recalc below re-derives level + pools from them. */
               if (msg.payload.prog3 && typeof msg.payload.prog3 === 'object') { S.rpg.prog3 = msg.payload.prog3; recalcDerived(S.rpg); }
+              /* ═══ v2.3.2615: BASELINE THE CELEBRATION HIGH-WATER AGAINST THE
+                 SERVER, NOT AGAINST localStorage ═══
+
+                 Owner: "I experienced a 'level up' (legacy notification) —
+                 I had increased combat level without ANY corresponding increase
+                 in one of the 3 combat skills."
+
+                 One of the two ways that happened, and this is the one where
+                 the CHARACTER level really is the number on screen.  No level
+                 was gained; the celebration's high-water was simply behind.
+
+                 celebrateLevelUps fires when `R.level > R._lastShownLevel`, and
+                 _lastShownLevel is seeded ONCE, at load, from the blob in
+                 localStorage (BroTown.jsx, v2.3.910).  The authoritative level
+                 arrives seconds later, right here.  Whenever the stored copy is
+                 behind the server — a new device, cleared data, private mode,
+                 or a Cloudflare PREVIEW URL, which is a different origin and so
+                 a different localStorage every single deploy — the seed is a
+                 level the player passed long ago and the server's real level is
+                 higher.  The next kill or loot pickup then "gains" the whole
+                 difference at once: full celebration, and on the build before
+                 this one that meant the legacy world text and the legacy chime
+                 as well.  Reproduced on a fresh context: the worker hands over
+                 a character at level 3 (1+1+1) while _lastShownLevel sits at 1.
+
+                 So the high-water is re-baselined at ADOPTION — the one moment
+                 in a session where the player is known to have gained nothing
+                 yet — and only then.  Not on later echoes: those carry real
+                 level-ups, and re-baselining on every one would mute the pool
+                 refill, the shake and the particles for levels genuinely
+                 earned.  The flag lives on S rather than on the blob because it
+                 is a fact about this SESSION, and a persisted one would stop
+                 the next session baselining at all.
+
+                 Upward only, for the same reason celebrateLevelUps clamps
+                 downward: a respec lowers the level, and a stale high-water
+                 left above it would mute every real celebration until the
+                 player climbed back past it. */
+              /* Not gated on prog3: `S.rpg.level = msg.payload.level` a few
+                 hundred lines up is unconditional, so a LEGACY character takes
+                 the authoritative level from the same join snapshot and has
+                 exactly the same stale-high-water window.  This sits below both
+                 adoption sites, so by here S.rpg.level is the server's on
+                 either track. */
+              if (!S._levelShownBaselined) {
+                S._levelShownBaselined = true;
+                var _adoptLvl = S.rpg.level || 1;
+                if ((S.rpg._lastShownLevel || 1) < _adoptLvl) S.rpg._lastShownLevel = _adoptLvl;
+                if ((S.rpg._lastCharLvlShown || 0) < _adoptLvl) S.rpg._lastCharLvlShown = _adoptLvl;
+              }
               /* v2.3.1624: the five T1 raw stats, adopted present-gated.
                  The server has always PERSISTED these but never echoed
                  them, so a client with no localStorage copy (new device,
@@ -2215,8 +2266,15 @@ export function setupWebSocket(ctx) {
               if (!msg.payload || !S.rpg) break;
               var cc = msg.payload;
               if (cc.leveled) {
-                setLevelUpMsg({ kind: 'combat', level: cc.newLevel || ((S.rpg && S.rpg.level) || 1), ts: Date.now() });
-                try { BT_AUDIO.levelUp && BT_AUDIO.levelUp(); } catch (e) {}
+                /* v2.3.2615: 'char', not 'combat'.  This is the legacy
+                   build-point path and the level it raises is the CHARACTER
+                   level with no skill attached — the notification wears the
+                   character's portrait (levelUpIcons.levelUpMedallionSrc).
+                   The BT_AUDIO.levelUp() that used to fire here is gone: it is
+                   the pre-v2.3.2591 arpeggio, and it was playing underneath the
+                   new sting on every level-up (the owner's "it also played the
+                   legacy level up").  The overlay plays its own. */
+                setLevelUpMsg({ kind: 'char', level: cc.newLevel || ((S.rpg && S.rpg.level) || 1), ts: Date.now() });
                 /* Pool restore on level-up: worker resets hp/stamina/mana
                    = max inside _addCombatXp and emits player_state alongside
                    this combat_credit, so R.* lands at max from the network.
@@ -2313,6 +2371,41 @@ export function setupWebSocket(ctx) {
                  an old worker sends neither and the banner reads as before. */
               if (p3l.bonusPoints > 0) _gains.push('+' + p3l.bonusPoints + ' bonus point');
               if (p3l.milestone) _gains.unshift(p3l.milestone + ' unlocked!');
+              /* ═══ v2.3.2615: A PROG3 LEVEL-UP IS TWO EVENTS, SO IT IS TWO
+                 NOTIFICATIONS ═══
+                 Owner: "I'd rather them both play side by side and if it's
+                 combat level just show the character portrait in the center of
+                 the new level up animation."
+                 One `prog3_level` really does carry two: the trained SKILL went
+                 up, and because character level is the sum of the three skill
+                 levels (prog3CharLevel), the CHARACTER level went up with it.
+                 They were being written into one React state cell in one tick,
+                 which keeps only the second — the overwrite the owner saw.
+                 The skill one still goes through setLevelUpMsg, so the funnel
+                 v2.3.2591 built stays the thing that catches every path.  The
+                 character one goes straight to the burst stack's bus, because a
+                 second setLevelUpMsg in the same tick is not a second message,
+                 it is the first one deleted.
+                 ONE ts for both: they are one event and the stack keys its
+                 dedup on ts + kind, so sharing it is correct and is what starts
+                 the two animations on the same frame. */
+              var _p3ts = Date.now();
+              /* The gains split along the same seam.  Damage and the lane's own
+                 points were bought by the WEAPON's level; max HP and the shared
+                 points belong to the character — shared points are minted per
+                 level-up and spend on the body, and HP_PER_LEVEL is multiplied
+                 by the CHARACTER level in both recompute paths.  Sending the
+                 whole list twice would tell the player they got it twice. */
+              var _charGains = [];
+              if (PROG3.HP_PER_LEVEL > 0) _charGains.push('+' + PROG3.HP_PER_LEVEL + ' max HP');
+              if (isProg3SharedEnabled()) {
+                var _sh2 = PROG3.SHARED_POINTS_PER_LEVEL;
+                _charGains.push('+' + _sh2 + ' shared' + (_sh2 === 1 ? ' point' : ' points'));
+              }
+              if (p3l.milestone) _charGains.unshift(p3l.milestone + ' unlocked!');
+              var _skillGains = _gains.filter(function (g) {
+                return _charGains.indexOf(g) < 0;
+              });
               setLevelUpMsg({
                 kind: 'combat',
                 level: p3l.charLevel || ((S.rpg && S.rpg.level) || 3),
@@ -2324,10 +2417,48 @@ export function setupWebSocket(ctx) {
                 skill: p3l.skill || null,
                 skillLabel: p3meta ? p3meta.label : null,
                 skillLevel: p3l.level,
-                gains: _gains.join(' \xB7 '),
-                ts: Date.now(),
+                gains: _skillGains.join(' \xB7 '),
+                ts: _p3ts,
               });
-              try { BT_AUDIO.levelUp && BT_AUDIO.levelUp(); } catch (e) {}
+              /* ═══ THE CHARACTER LEVEL, WHEN IT ACTUALLY MOVED ═══
+                 Not on every prog3_level: at CHAR_LEVEL_CAP the sum stops
+                 climbing while individual skills keep levelling, and a
+                 character-level celebration for a character level that did not
+                 change is the same class of untruth the owner reported in the
+                 first place.
+                 Below the cap it is not a comparison at all, it is arithmetic:
+                 character level IS the sum of the three trained levels, this
+                 event says one of them just went up, so the sum went up with
+                 it.  Stating it that way rather than diffing against the level
+                 we are holding is deliberate — `prog3_level` and the
+                 `player_state` carrying the new blob are two messages, and if
+                 the state landed first (a flush that coalesced, a reconnect
+                 replay) a diff would read "unchanged" and silently drop the
+                 character notification on the very level that produced it.
+                 The high-water is only the tiebreak AT the cap, where the
+                 arithmetic genuinely cannot tell.  It is clamped downward the
+                 way celebrateLevelUps clamps _lastShownLevel: a respec can
+                 lower the level, and a high-water left behind would mute every
+                 character level-up until the player climbed back past it. */
+              var _newChar = p3l.charLevel || 0;
+              if (_newChar > 0 && S.rpg) {
+                if ((S.rpg._lastCharLvlShown || 0) > _newChar) S.rpg._lastCharLvlShown = _newChar;
+                var _charRose = _newChar < PROG3.CHAR_LEVEL_CAP
+                  || _newChar > (S.rpg._lastCharLvlShown || 0);
+                S.rpg._lastCharLvlShown = _newChar;
+                if (_charRose) {
+                  pushLevelUpBurst({
+                    kind: 'char',
+                    level: _newChar,
+                    gains: _charGains.join(' \xB7 '),
+                    ts: _p3ts,
+                  });
+                }
+              }
+              /* v2.3.2615: no BT_AUDIO.levelUp() — see the combat_credit note
+                 above.  Two bursts still make ONE sound: playLevelUpSting is
+                 rate-limited to one per 450ms precisely so a pair that starts
+                 on the same frame does not double the fanfare. */
               break;
             }
           case 'quest_reward_stashed':
@@ -3133,13 +3264,42 @@ export function setupWebSocket(ctx) {
          was handed, not that the ladder computes one.  The alternative is
          levelling Magic to 100 in a headless browser. */
       try { window.__btRecalc = function (r) { return recalcDerived(r || S.rpg); }; } catch (e) {}
+      /* ═══ v2.3.2615: THE SAME SEAM FOR A WHOLE SOCKET MESSAGE ═══
+         __btDispatch reaches processGameEvent and __btLootCredit reaches one
+         handler; `prog3_level` is neither — it is handled in THIS file's own
+         switch, and what it does there is now the thing under test: one server
+         message has to raise TWO notifications (the trained skill, and the
+         character level that moved with it).  A rig that called the React
+         setter twice would be testing its own arithmetic, and one that called
+         the bus directly would skip the split entirely; both would pass on a
+         build where the handler emits one message, which is the build the
+         owner reported.
+         So this hands the rig the real socket frame and lets the real
+         onmessage do the work.  The payload SHAPE is not invented for the
+         test — server/src/prog3.js is what emits it.
+         Not a trust hole: this is a window handle inside the page, not the
+         wire.  Forging a message ACROSS the socket is what PRIVILEGED_EVENTS
+         in server/src/index.js prevents, and nothing here weakens it. */
+      try {
+        window.__btWsEvent = function (obj) {
+          if (!ws || typeof ws.onmessage !== 'function') return false;
+          ws.onmessage({ data: JSON.stringify(obj) });
+          return true;
+        };
+      } catch (e) {}
 
 
       ws.onclose = function (event) {
         S._realtimeStatus = 'disconnected';
-        /* v2.3.771: close-reason evidence.  NOTE this is the LIVE connection
-           stack -- src/networking/wsClient.js is dead code (not in the
-           bundle); fixes must land HERE. */
+        /* v2.3.771: close-reason evidence.
+           v2.3.2615: the note that used to sit here said "src/networking/
+           wsClient.js is dead code (not in the bundle); fixes must land HERE"
+           — which it said INSIDE src/networking/wsClient.js.  It was true of
+           BroTown.jsx's old inline copy and travelled with the text when the
+           connection stack was extracted (REBUILD-PLAN Phase 5).  This file IS
+           the live stack: BroTown.jsx:353 imports setupWebSocket from it.  A
+           stale "don't bother editing this" is an expensive comment to leave
+           lying around, so it is gone. */
         try {
           import('../debug/crashTrap.js').then(function (ct) {
             ct.recordCrash('ws-close', 'code=' + (event && event.code) + ' reason=' + ((event && event.reason) || '(none)'));

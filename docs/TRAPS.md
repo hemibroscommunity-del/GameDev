@@ -1,4 +1,4 @@
-# TRAPS — plausible-but-wrong moves (v2.3.1204)
+# TRAPS — plausible-but-wrong moves (v2.3.2615)
 
 A registry of changes that look obviously right and are known to be
 wrong. Each was attempted, or nearly attempted, by a competent session.
@@ -3548,3 +3548,110 @@ whatever the layout looks like.
 
 **Related:** §61 (a still-frame assertion cannot see a frozen animation) — the
 same defect, found by the same instrument, one layer down.
+
+---
+
+## 86. A retired system that still ticks, announcing itself in the words of the system that replaced it (v2.3.2615)
+
+**The report:** "I raised a combat level without leveling up any of my combat
+skills which should be impossible (it also played the legacy level up)."
+
+**The tempting move:** the owner is right that it is impossible, so a level was
+minted that should not have been, so this is a server progression bug. Go and
+read `_addCombatXp`, `_tryLevelUpFromBuildPoints`, `_handleBuildPointEarned`
+and find where the level leaked in.
+
+**Why it is wrong:** no level was minted, and the server was never involved.
+Character level under prog3 is `Σ` the three trained skill levels
+(`_prog3CharLevel`, mirrored by `prog3CharLevel`), `_recomputeMaxes` returns
+straight into `_prog3Recompute` for any blob with a `prog3` field, and both
+sides recompute it from the same sum. It genuinely cannot move without a skill
+moving — measured on a real kill, `tools/qa/mp/shot-levelup.mjs`: the stat
+crossed and the character level did not.
+
+What the owner saw was the LEGACY T1 track, which the prog3 rebuild never
+unwired. `distributeKillXpToBuild` still runs on every `monster_kill` with no
+prog3 gate; a crossing still calls `pushStatIncreaseNotice`; and that raised
+`{ kind: 'power' }`, which reached the old gold banner reading **LEVEL UP!**
+over **Level 24**. `BUILD_LABELS` calls those five stats Melee / Bow / Magic /
+Vitality / Stamina — the same words as the prog3 combat skills — and the banner
+printed neither the label nor the word "stat". Under prog3 those stats buy
+nothing at all: level, max HP, max stamina and max mana all derive from the
+prog3 blob on both sides, and the notice's own benefit line computes
+`maxHp - maxHp` and reads `+0 HP`.
+
+**The tell, and it is general:** a report that something *impossible* happened,
+where the impossible thing is *stated in words rather than read off a number*.
+Before opening the system that owns the number, find out whether the number
+moved. If it did not, the defect is in what was said, and it is usually an
+older system still talking.
+
+**The second tell:** a version-tagged replacement ("v2.3.2591 replaced the
+level-up notification for lifeskills and combat") that branched on a whitelist
+of kinds. Everything not on the list kept the old behaviour silently, and the
+one kind nobody thought of is the one the owner met. The same shape as §81 — a
+list encodes the cases you have already had.
+
+**Do instead:** suppress the retired system's CLAIM, not its arithmetic. The
+T1 stats still tick (they are the fail-open path for any blob prog3 adoption
+could not produce, and a legacy character's tick is real), but
+`pushStatIncreaseNotice` returns early on `prog3Live(R)` — the same guard
+`awardWeaponXp` has had since v2.3.1660, twelve lines away in
+`gameSystems.js`, for exactly the same reason. A dead counter announced
+politely is still a dead counter announced.
+
+**Receipt:** `tools/qa/mp/shot-levelup.mjs` drives one real `monster_kill`
+through `window.__btDispatch` at a seeded threshold and prints two rows — a
+prog3 character (crossed, level unmoved, **nothing shown**) and a legacy one
+(crossed, level unmoved, banner reading `SKILL UP! / Melee Level 24`). The
+before, captured on `origin/main` in a worktree, is in
+`docs/triage-2026-09-17/level-up-followup.md`.
+
+**Related:** §61 (both rows are about ABSENCE, which no single screenshot can
+assert); §81 (the whitelist that encodes the asks you have already had); §87 —
+the SECOND mechanism behind the same owner report, found only because the first
+answer was re-examined rather than defended. One report can have two causes, and
+a plausible diagnosis that explains all the symptoms is not thereby the only
+one.
+
+---
+
+## 87. A high-water seeded from localStorage, compared against a server-authoritative number (v2.3.2615)
+
+**The shape.** `celebrateLevelUps` fires when `R.level > R._lastShownLevel`.
+That high-water is seeded exactly once, at load, out of the blob in
+localStorage (`BroTown.jsx`, v2.3.910 — "so the on-kill VFX fires only for
+levels gained from here on"). The intent is right. The seed is taken from the
+wrong copy: the authoritative level arrives from the worker seconds later, in
+the join `player_state`.
+
+**Why it looks fine.** On the machine you develop on, the stored blob is always
+current, so the seed and the server agree and nothing ever fires. The defect is
+invisible to exactly the person most likely to look for it.
+
+**When it bites.** Any session where the stored copy is behind the server: a new
+device, cleared data, a private window, a Login Key on someone else's phone —
+and, the one that matters here, **a Cloudflare Pages PREVIEW URL**, which is a
+different origin and therefore a different localStorage for every deploy. A
+playtester living on preview links starts every session with the high-water at
+its default and the server's real level above it, and the next kill or loot
+pickup celebrates the whole difference as if it had just been earned. Measured
+on a fresh context against `origin/main`: level 3, high-water 1.
+
+**The tell, general form:** a "have I already shown this" marker initialised
+from one source and compared against a number owned by another. If the two can
+ever disagree at init, the marker is not a high-water, it is a guess.
+
+**Do instead:** baseline at ADOPTION — the moment the authoritative value first
+arrives — and only then. Not on every echo: later echoes carry the real changes,
+and re-baselining on those mutes the thing the marker exists to trigger. The
+one-shot flag belongs on the session (`S`), not on the persisted blob; a
+persisted one would stop the next session baselining at all.
+
+**Both halves need separate assertions**, or a fix that silences the spurious
+celebration by silencing every celebration passes (§61): `shot-levelup.mjs`
+asserts nothing is pending on a fresh join AND that a real skill level makes one
+pending again.
+
+**Related:** §86 — found in the same investigation, same report, different
+mechanism. Two independent ways to announce a level nobody gained.
