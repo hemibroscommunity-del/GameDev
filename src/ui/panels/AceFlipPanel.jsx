@@ -40,6 +40,25 @@ var LS = {
 };
 var FRAME_W = 128, FRAME_H = 192, FRAMES = 11, STEP_MS = 55;
 
+/* ═══ v2.3.2620: THE COIN'S OWN SOUND ═══
+ * Owner: "add a coin flip sound (there might already be one I uploaded
+ * before)."  There was not one -- the whole sfx tree has exactly one coin
+ * sample, `coin-pickup` (/sfx/loot/coin-pickup.mp3), the jingle that plays
+ * when gold is credited.  So the toss borrows it, PITCHED UP AND SHORTENED
+ * into a single metallic ting rather than the purse-jingle it is at 1.0: a
+ * flip is one coin leaving a thumb, not a handful landing in a bag, and
+ * played raw it would also be the exact sound the WIN pays out with a second
+ * later (gameEvents BT_AUDIO.collect), so the toss and the payout would be
+ * indistinguishable.
+ *
+ * ONE PLACE TO SWAP.  If a real coin-flip clip is ever uploaded, add it to
+ * BT_AUDIO.SFX_MANIFEST and change the key here -- nothing else moves.
+ * `coin-pickup` is in that manifest, and loadSfxManifest() eagerly fetches the
+ * whole manifest at boot, so the first toss of a session is never the silent
+ * one that a lazily-loaded sample would give (play() returns null on a miss). */
+var TOSS_SFX = 'coin-pickup';
+var TOSS_OPTS = { vol: 0.34, rate: 1.7, duration: 0.3 };
+
 function gold(amount, size, color) {
   return React.createElement('span', {
     style: { display: 'inline-flex', alignItems: 'center', gap: 4, color: color || LS.brass, fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: size || 14 },
@@ -194,7 +213,7 @@ export function AceFlipPanel() {
     aceFlipBus.setPending(true);
     try {
       st.channel.send({ type: 'broadcast', event: 'ace_flip_request', payload: { stake: stake } });
-      BT_AUDIO.beep(520, 0.06, 0.05, 'triangle');
+      try { BT_AUDIO.play(TOSS_SFX, TOSS_OPTS); } catch (_s) { /* never hold a bet on a sound */ }
     } catch (e) { aceFlipBus.setPending(false); }
   };
 
@@ -222,7 +241,7 @@ export function AceFlipPanel() {
     aceFlipBus.setPending(true);
     try {
       S.channel.send({ type: 'broadcast', event: 'ace_item_flip_request', payload: { items: out } });
-      BT_AUDIO.beep(520, 0.06, 0.05, 'triangle');
+      try { BT_AUDIO.play(TOSS_SFX, TOSS_OPTS); } catch (_s) { /* never hold a bet on a sound */ }
     } catch (e) { aceFlipBus.setPending(false); }
   };
 
