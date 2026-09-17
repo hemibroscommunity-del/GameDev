@@ -2099,13 +2099,14 @@ export const HeroExpanded = () => {
                       Owner: "Once inside the category panel try doing two
                       columns to make the 6 fit efficiently."  A weapon's six
                       become 3 x 2.
-                      SHARED HAS SEVEN, and a 2-wide grid would leave the last
-                      one alone in a half-width cell beside a hole — which reads
-                      as a missing cell, not as a deliberate seventh.  So the
-                      ODD LAST ONE SPANS BOTH COLUMNS: a full-width row at the
-                      bottom, obviously intentional, and it costs nothing
-                      because the row is the same height either way.  It also
-                      falls out of the same rule for any future odd count.
+                      SHARED HAS SEVEN.  v2.3.2597 gave the odd last one
+                      (Resist) both columns so it would not read as a missing
+                      cell beside a hole.  v2.3.2601 reverses that on the
+                      owner's word — "display resist as one column length not
+                      two" — so EVERY cell is the same width and the seventh
+                      simply sits in the left column with the right one empty.
+                      Nothing special-cases Resist by key: the rule is just
+                      "no spanning", which holds for any future odd count.
                       Sideways the pane is ~191px, where two columns would be
                       ~90px each — narrower than the single-column card already
                       measured as tight — so landscape keeps ONE column. */}
@@ -2115,16 +2116,11 @@ export const HeroExpanded = () => {
                     gap: twoCol ? 6 : 5,
                     padding: landPane ? '5px 5px 6px' : '6px 6px 7px', minWidth: 0,
                   }}>
-                    {metas.map((m, i) => {
-                      const last = i === metas.length - 1;
-                      const odd = metas.length % 2 === 1;
-                      const span = twoCol && last && odd;
-                      return (
-                        <div key={m.key} style={span ? { gridColumn: '1 / -1', minWidth: 0 } : { minWidth: 0 }}>
-                          {catRow({ ...m, atk: !shared }, col.key)}
-                        </div>
-                      );
-                    })}
+                    {metas.map((m) => (
+                      <div key={m.key} style={{ minWidth: 0 }}>
+                        {catRow({ ...m, atk: !shared }, col.key)}
+                      </div>
+                    ))}
                   </div>
                 </div>
               );

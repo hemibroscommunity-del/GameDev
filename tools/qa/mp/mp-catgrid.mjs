@@ -362,9 +362,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return { key: c.getAttribute('data-prog3-card'), n: rows.length,
         allPlus: rows.every((b) => b.getBoundingClientRect().height > 20),
         cardH: +c.getBoundingClientRect().height.toFixed(1),
+        cardW: +c.getBoundingClientRect().width.toFixed(1),
         window: sc ? sc.clientHeight : null,
-        /* The odd seventh spans both columns rather than sitting beside a hole. */
-        lastSpans: lastRow ? /1 \/ -1|1\/-1/.test(lastRow.getAttribute('style') || '') : null };
+        /* v2.3.2601: Resist, the odd seventh, is ONE column like every other
+           cell (it spanned both until the owner said otherwise). Measured as
+           rendered widths rather than read off a style attribute — the point
+           is that the cells are the same size on screen, not how that was
+           spelled. */
+        widths: rows.map((b) => +b.parentElement.parentElement.getBoundingClientRect().width.toFixed(1)),
+        lastW: lastRow ? +lastRow.getBoundingClientRect().width.toFixed(1) : null };
     });
     rec.ok(`${label}: SHARED opens and shows all SEVEN of its stats, each with a [+]`,
       !!sh && sh.key === 'shared' && sh.n === 7 && sh.allPlus, sh);
@@ -382,10 +388,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
         !!sSpent.ok && JSON.stringify(n5.poolBy) === JSON.stringify(b5.poolBy),
         { before: b5.poolBy, after: n5.poolBy });
     }
+    const ws = (sh && sh.widths) || [];
+    const spread = ws.length ? +(Math.max(...ws) - Math.min(...ws)).toFixed(1) : null;
     console.log(`    ${label} SHARED: ${sh && sh.n} stats, card ${sh && sh.cardH} in ${sh && sh.window}`
-      + `  lastSpansBothColumns=${sh && sh.lastSpans}`);
-    rec.ok(`${label}: Shared's odd seventh stat spans both columns — not a half cell beside a hole`,
-      land ? true : (!!sh && sh.lastSpans === true), sh && { lastSpans: sh.lastSpans });
+      + `  cells ${ws[0]}px, last ${sh && sh.lastW}px (spread ${spread})`);
+    rec.ok(`${label}: every Shared cell is the SAME width — Resist included, one column not two`,
+      ws.length === 7 && spread !== null && spread <= 1, { widths: ws, spread });
+    /* Same-width alone would also pass if EVERY cell went full width, so the
+       half-width claim is checked against the card it sits in. Landscape is one
+       column by design, so it is exempt. */
+    rec.ok(`${label}: ...and in two columns that width really is HALF the card, not a full row`,
+      land ? true : (!!sh && sh.lastW < sh.cardW * 0.6),
+      sh && { lastW: sh.lastW, cardW: sh.cardW });
     /* ═══ THE PER-STAT COLOURS, MEASURED AS RENDERED ═══
        Asserting the authored hex would prove nothing — the question the whole
        palette analysis turned on is whether the colours survive the way they
