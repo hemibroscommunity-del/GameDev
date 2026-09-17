@@ -610,14 +610,58 @@ export const ItemDetailPopup = () => {
 
   /* Measure popup size after render, then reposition.  setLayoutEffect
      so we don't flash at the unmeasured position. */
+  /* ═══ v2.3.2612: THE CARD IS RE-PLACED WHEN IT GROWS ═══
+   *
+   * Owner: "tapping 'sell' on an item currently goes nowhere (the button just
+   * does nothing)."
+   *
+   * It goes somewhere.  Sell sets `sellOpen`, the price sheet expands INSIDE
+   * this card, and the card gets about 215px taller -- but `pos` was computed
+   * once, from the height the card had while COLLAPSED, and this effect's
+   * dependencies are only open/target.  So the extra 215px grew downward from
+   * a top that was chosen for a shorter card, straight off the bottom of the
+   * screen.  The card carries `maxHeight: 60vh` and no `overflow`, so the
+   * sheet does not even get clipped into something a player might notice --
+   * it spills out of the card and off the viewport, silently.
+   *
+   * MEASURED, before the fix (mp-sellsheet, real finger per TRAPS §67): in
+   * landscape the sheet ended at y 543 on a 390-tall screen and y 537 on a
+   * 360-tall one -- 153px and 177px below the fold -- with NO scroll container
+   * anywhere above it to bring it back.  Portrait fitted with room to spare
+   * (-81px, -66px), which is why this reads as "sometimes it just does
+   * nothing": the state flipped every time, and whether you saw anything
+   * depended on the shape of your screen and how low the card was anchored.
+   *
+   * A ResizeObserver rather than adding `sellOpen` to the array above: the
+   * price sheet is not the only thing that can change this card's height (the
+   * quantity stepper appears only for a stack, an error sentence appears on a
+   * refusal), and a dependency list is a list of the growths somebody
+   * remembered.  Observing the box covers the ones nobody has written yet.
+   *
+   * Guarded against re-entry: `positionFor` moves left/top and never changes
+   * the card's SIZE, so it cannot feed itself -- and the equality check makes
+   * that a property of the code rather than of the reasoning. */
   useLayoutEffect(() => {
     if (!itemDetailBus.state.open) { setPos(null); return; }
     const el = cardRef.current;
-    if (!el) return;
-    const w = el.offsetWidth || 280;
-    const h = el.offsetHeight || 240;
-    const next = positionFor(itemDetailBus.state.target && itemDetailBus.state.target.anchor, w, h);
-    setPos(next);
+    if (!el) return undefined;
+    const place = () => {
+      const w = el.offsetWidth || 280;
+      /* offsetHeight is CLAMPED BY maxHeight, and the card's content routinely
+         exceeds it -- so the old reading told positionFor the card was 60vh
+         when it was drawing half as much again, and it placed a box it had the
+         wrong size for.  scrollHeight is what is actually being drawn. */
+      const h = Math.max(el.offsetHeight || 0, el.scrollHeight || 0) || 240;
+      const next = positionFor(itemDetailBus.state.target && itemDetailBus.state.target.anchor, w, h);
+      setPos((prev) => (prev && prev.left === next.left && prev.top === next.top) ? prev : next);
+    };
+    place();
+    /* Older WebViews without ResizeObserver keep exactly the behaviour they
+       had before this version -- placed once, on open. */
+    if (typeof ResizeObserver !== 'function') return undefined;
+    const ro = new ResizeObserver(place);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [itemDetailBus.state.open, itemDetailBus.state.target]);
 
   if (!itemDetailBus.state.open) return null;
@@ -1493,6 +1537,22 @@ export const ItemDetailPopup = () => {
           top:  pos ? pos.top  : -9999,
           width: 240,
           maxHeight: '60vh',
+          /* ═══ v2.3.2612: AND overflowY IS DELIBERATELY NOT SET ═══
+             `overflowY: 'auto'` is the obvious partner to the re-placement
+             above -- make the part past 60vh reachable instead of spilling --
+             and it was written, measured, and taken back out, because it is a
+             REGRESSION on this card.
+             In landscape the card's own content is already taller than 60vh
+             BEFORE the price sheet opens (60vh is 216px at 360x800 rotated).
+             Today that content spills outside the card, which looks untidy and
+             leaves every button on screen and tappable.  Clip it to a scroller
+             and the action row goes below the card's visible box: measured at
+             360-landscape, the Sell button then reported `coveredBy:
+             DIV.bt-noselect` -- the backdrop -- so the tap landed on the
+             backdrop and CLOSED the card.  That is the owner's exact
+             complaint, manufactured by the fix for it.
+             So the spill stays until this card is laid out to fit a short
+             viewport, which is a different change. */
           background: '#2B3940',
           border: '1px solid ' + COL.border,
           borderRadius: 10, /* v2.3.1232: card radius per Lantern Slate */
