@@ -126,6 +126,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
        honest one is that the sprite resolved art at all. */
     rec.ok('...and the shirt layer resolved its art (hidden under the plate, by rule)',
       !!g && g.shirt.hasTex, g);
+    /* ═══ v2.3.2607: THE COOK IS THE SAME SIZE ON BOTH SCREENS ═══
+       Owner: "Cooking animation about 5% too small."  62 -> 65.1.
+
+       The bump itself is one constant; this assertion is here because of where
+       the SECOND one was.  The remote stand-in's SPEC row carried its own
+       literal `h: 62`, and the warning above that row is the chop precedent:
+       v2.3.1476 moved the local chopper and not the copy, and every peer's
+       lumberjack was 18% larger than your own for ~230 versions because no
+       single-client test can see a figure it is not watching from another
+       client.  A 5% edit written into the local site alone would have been the
+       same bug, and the owner -- who can only see their OWN cook -- would have
+       reported it fixed.
+
+       So both numbers are checked against the shared constant AND against each
+       other.  "Both wrong by the same factor" is what a one-sided assertion
+       passes, which is why the peer figure is measured from its own scale
+       rather than assumed to match. */
+    const COOK_H = 65.1;   /* COOK_STANDIN_H (effectsRenderer) */
+    const peerCookH = (typeof cook.probe.scaleY === 'number')
+      ? Math.abs(cook.probe.scaleY) * 220 : null;
+    rec.ok(`a cooking PEER is drawn at the shared cook height (${COOK_H})`,
+      peerCookH != null && Math.abs(peerCookH - COOK_H) < 0.5,
+      { peerCookH, want: COOK_H, scaleY: cook.probe.scaleY });
+    const ownCook = await B.page.evaluate(() => (window.__btCookFigure ? window.__btCookFigure() : null));
+    rec.ok('...and so is the cook on his OWN screen, to the same number',
+      !!ownCook && typeof ownCook.drawnH === 'number'
+        && Math.abs(ownCook.drawnH - COOK_H) < 0.5,
+      ownCook);
+    /* The one that would have caught the drift. */
+    rec.ok('...and the two agree with EACH OTHER (the drift the chop copy had)',
+      !!ownCook && peerCookH != null && Math.abs(ownCook.drawnH - peerCookH) < 0.5,
+      { own: ownCook && ownCook.drawnH, peer: peerCookH });
+    /* The pan has to stay over the flames, and its offset is a fraction of the
+       height now rather than a literal that must be re-tuned by hand. */
+    rec.ok('...and the pan offset tracked the new height (11 * 65.1/62 = 11.55)',
+      !!ownCook && typeof ownCook.panDx === 'number' && Math.abs(ownCook.panDx - 11.55) < 0.2,
+      ownCook);
+
     rec.ok('...and the stand-in is still actually on screen (a peer that fails '
       + 'to draw VANISHES, it does not degrade)', !!cook.probe.visible, cook.probe);
   }
