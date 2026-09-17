@@ -266,6 +266,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     rec.ok(`${label}: every [+] keeps the "N of M" aria-label mp-prog3 parses`,
       !!card && card.labels.every((l) => / \d+ of \d+\./.test(l || '')), card && card.labels);
+    /* ═══ THE CARD'S [i] EXPLAINS THE CATEGORY ═══
+       Ported from mp-prog3, whose four-column accordion block retires with the
+       layout it tested.  This is not the per-stat glyph v2.3.2595 removed: it
+       is the LANE explainer, the same one the dashboard's combat pills open, so
+       the two screens say one thing about one skill.  Only driven at one
+       viewport — it is behaviour, not geometry. */
+    if (label === '390-portrait') {
+      const infoTapped = await finger(P, '[data-lane-info]');
+      const laneInfo = await P.page.evaluate(() => {
+        const el = document.querySelector('[data-infopopup]');
+        return el ? { title: el.getAttribute('data-infopopup'), text: el.innerText.slice(0, 120) } : null;
+      });
+      rec.ok(`${label}: the card's [i] opens the CATEGORY explainer, captioned for it`,
+        !!infoTapped && !!laneInfo && /bow/i.test(laneInfo.title + laneInfo.text), laneInfo);
+      /* ...and it is not the spend window: nothing here may commit a point. */
+      rec.ok(`${label}: ...and that explainer carries no spend action`,
+        await P.page.evaluate(() => !document.querySelector('[data-infopopup-action]')));
+      await P.page.keyboard.press('Escape');
+      await P.page.waitForTimeout(260);
+      rec.ok(`${label}: ...and Escape closes it`,
+        await P.page.evaluate(() => !document.querySelector('[data-infopopup]')));
+    }
+
     await P.page.screenshot({ path: `${OUT}/catgrid-${label}-bow.png` });
 
     /* ── THE [+] OPENS THE WINDOW, AND SPENDS NOTHING BY ITSELF ── */
