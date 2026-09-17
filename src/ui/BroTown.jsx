@@ -12234,13 +12234,54 @@ export var BroTown = function BroTown(_ref0) {
      SHOP.STAPLES), because this shop was their only source and deleting
      it without them would have removed them from the game rather than
      moved them. */
-    null, nearBuilding !== null && BUILDINGS[nearBuilding] && /*#__PURE__*/React.createElement("button", {
+    null, /* v2.3.2617 (owner: "get rid of the vendor pop up button after you
+       tap it because it's staying on even when you're in the vendor
+       marketplace menus"): the prompt is gated on buildingPanel as well as
+       proximity.  It was gated on PROXIMITY ALONE, and entering a building
+       does not move you -- enterBuilding() (src/game/interactions.js) sets
+       the panel and never touches S.nearBuilding, so the door you are
+       standing at stays "near" for as long as the panel is open.  The prompt
+       therefore survived its own tap, and because it is z35 fixed while the
+       panel is .bt-inspect z32 (zLayers.js), it survived ON TOP of the
+       marketplace the tap had just opened.
+       NOT a z-index fix: dropping it under the panel would leave a pulsing
+       "Enter VENDOR" button live behind the menus and still showing wherever
+       the panel does not cover it.  The owner asked for it to go away once
+       tapped, so it stops rendering. Walking away and back re-arms it
+       normally -- nearBuilding is untouched, which keeps the desktop E key
+       (desktopControls.js) and the mayor_1 visitedBuildings counter honest. */
+    buildingPanel === null && nearBuilding !== null && BUILDINGS[nearBuilding] && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
-    onTouchStart: function onTouchStart(e) {
-      e.preventDefault();
-      enterBuilding();
-    },
-    onMouseDown: function onMouseDown(e) {
+    /* ═══ v2.3.2617: ONE CLICK, NOT touchstart + THE MOUSEDOWN THAT FOLLOWS ═══
+       This opened on `onTouchStart` AND `onMouseDown`, and on a phone BOTH
+       fire for one finger: React 18 registers touchstart PASSIVELY, so the
+       `e.preventDefault()` these two handlers used to call could not suppress
+       the compatibility mouse events (TRAPS §78 records the same primitive
+       eating the shield button -- raised on touchstart, dropped again on the
+       mousedown behind it).
+       While the prompt stayed up after its own tap that was survivable: the
+       second event landed back on the prompt and re-entered the same
+       building, which is a no-op.  Hiding the prompt (the gate above) takes
+       that absorber away -- the compatibility mousedown/click then fall
+       through to whatever is newly underneath, which is the .bt-inspect
+       BACKDROP of the panel the tap just opened, whose onClick closes it.
+       Measured at 390x844: touchstart@bt-interact-prompt, then
+       mousedown@bt-inspect, click@bt-inspect, and the vendor panel was shut
+       again before it ever painted.  (It survived at 360x640 only because the
+       prompt's centre happens to fall on the CARD there, which stops
+       propagation -- the same tap, two geometries, two outcomes.)
+       So the gesture ends on `onClick`: the LAST event of the tap, one per
+       finger on touch and mouse alike, with nothing following it to fall
+       through.  This is tapDismiss.js's rule ("dismissing on pointerdown
+       unmounts the surface before the browser dispatches the synthesised
+       click, and that click then lands on whatever is underneath") applied to
+       the control that does the unmounting.  Safe because PixiJS's
+       autoPreventDefault is off for exactly this reason (pixiApp.js) -- the
+       synthesised click is not suppressed here.
+       Cost: the panel opens on release rather than on press, ~50-300ms later
+       on mobile.  That is the trade tapDismiss took, and a door is not a
+       combat control. */
+    onClick: function onClick(e) {
       e.preventDefault();
       enterBuilding();
     }

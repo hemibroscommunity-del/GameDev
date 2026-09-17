@@ -3655,3 +3655,75 @@ pending again.
 
 **Related:** §86 — found in the same investigation, same report, different
 mechanism. Two independent ways to announce a level nobody gained.
+
+## 88. The control that would not go away was absorbing a tap that had nowhere else to land (v2.3.2617)
+
+The owner: *"get rid of the vendor pop up button after you tap it because it's
+staying on even when you're in the vendor marketplace menus."*
+
+`.bt-interact-prompt` ("Enter VENDOR") was gated on PROXIMITY ALONE:
+
+```js
+nearBuilding !== null && BUILDINGS[nearBuilding] && <button className="bt-interact-prompt" …>
+```
+
+Entering a building does not move you — `enterBuilding()`
+(`src/game/interactions.js`) sets the panel and never touches
+`S.nearBuilding` — so the door stays "near" for as long as the panel is open.
+The prompt is `z35 position:fixed` and the building panel is `.bt-inspect`
+`z32` (`zLayers.js`), so it did not merely persist, it persisted **on top of
+the marketplace the tap had just opened**. The owner's report is exact.
+
+### The trap
+
+Adding `buildingPanel === null &&` to that gate is the whole fix, reads as
+obviously correct, and **broke entering the building at 390x844**.
+
+The prompt opened the door on `onTouchStart` *and* on `onMouseDown`, both
+calling `enterBuilding()`. On a phone a single finger fires both: React 18
+registers `touchstart` **passively**, so the `e.preventDefault()` those
+handlers called could never suppress the compatibility mouse events (§78
+records the same primitive eating the shield button — raised on touchstart,
+dropped again on the mousedown behind it).
+
+While the prompt stayed up, the second event landed back **on the prompt** and
+re-entered the same building, which is a no-op. Hiding the prompt takes that
+absorber away, and the compatibility events fall through to whatever is newly
+underneath — the `.bt-inspect` **backdrop**, whose `onClick` closes the panel.
+Traced with a real `touchscreen.tap` at 390x844:
+
+```
+pointerdown@bt-interact-prompt   touchstart@bt-interact-prompt
+mousedown@bt-inspect             click@bt-inspect        -> panel closed
+```
+
+The vendor panel was shut again before it ever painted. **The bug the owner
+reported was load-bearing for the bug it hid.**
+
+### Why one viewport passed and the other did not
+
+At 360x640 the identical tap works, because the prompt's centre (190,544)
+happens to fall on the `.bt-inspect-card`, which stops propagation; at 390x844
+its centre (205,744) falls on the backdrop beside the card. Same gesture, same
+code, two geometries, two outcomes — so a fix verified at one viewport is not
+verified. This is why the scenario measures four.
+
+### The rule
+
+**Before removing a control that sits over a surface, ask what its tap does
+after it is gone.** A control that unmounts on its own gesture must end that
+gesture on `onClick` — the last event of the tap, one per finger on touch and
+mouse alike, with nothing following it to fall through. This is
+`tapDismiss.js`'s rule ("dismissing on pointerdown unmounts the surface before
+the browser dispatches the synthesised click, and that click then lands on
+whatever is underneath") applied to the control doing the unmounting. Safe
+here because PixiJS's `autoPreventDefault` is off for exactly this reason
+(`pixiApp.js`). Cost: the panel opens on release, ~50-300ms later on mobile —
+the trade `tapDismiss` already took, and a door is not a combat control.
+
+**Related:** §78 (the same passive-touchstart double fire, on the shield
+button, still open on `main`); §67 — `mp-store.mjs` opens this very door with
+`dispatchEvent('mousedown')`, which emits no compatibility mouse events, so it
+was green throughout and could not have seen any of this. `mp-vendorprompt.mjs`
+taps with `page.touchscreen.tap` at measured coordinates and asks
+`document.elementFromPoint` what is on the glass.
