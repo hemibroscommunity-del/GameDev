@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { COL, getState } from './dash/common.js';
-import { ZONES } from '../../data/zones.js';
-import { DEPTH_CONFIG } from '../../data/lifeSkills.js';
 import { rosterCount } from '../../networking/charRoster.js'; /* v2.3.2421 */
+import { zoneTitle } from './zoneTitle.js'; /* v2.3.2596: shared with the zone-entry banner */
 
 /* v2.3.1333: zone header rail (owner + ChatGPT spec).  The floating
    zone label kept getting lost against bright world art, and the
@@ -51,21 +50,11 @@ const V = '?v=2.3.1333c'; /* v2.3.1333c: bigger logout glyph */
  * their second bro is precisely the one who needs the new wording).
  */
 
-/* Same zone + depth suffix the old floating label showed — the info
-   survives, only the housing changed.  Title stays white per spec
-   (the old per-element tint fought the recessed navy face). */
-function zoneTitle(S) {
-  const zoneId = (S && S.currentZone) || 'town';
-  const z = ZONES[zoneId];
-  const name = (z && z.name) || 'Town';
-  const depth = S && S._currentDepth;
-  if (depth && depth !== 'shallow' && zoneId !== 'town') {
-    const lr = (DEPTH_CONFIG[depth] && DEPTH_CONFIG[depth].lvlRange) || [1, 10];
-    return `${name} — ${depth.toUpperCase()} (Lv${lr[0]}-${lr[1]})`;
-  }
-  if (z && z.level && z.level[1] > 0) return `${name} (Lv${z.level[0]}-${z.level[1]})`;
-  return name;
-}
+/* v2.3.2596: zoneTitle moved to ./zoneTitle.js — VERBATIM, and only so the
+   zone-entry banner can print the same string on its way here.  The banner's
+   whole promise is "this wide thing becomes that small label", and two copies
+   of "how a zone is named" is exactly the pair that stays identical for a year
+   and then diverges, at which point the flourish turns into different words. */
 
 export const ZoneHeader = ({ onExit }) => {
   const [, force] = useState(0);
@@ -157,6 +146,12 @@ export const ZoneHeader = ({ onExit }) => {
         </button>
         <div
           className="bt-zone-header__title"
+          /* v2.3.2596: the zone-entry banner's DOCK TARGET.  A data hook rather
+             than the class name because the class is a style handle that a
+             restyle is free to rename, and the banner measures this box from
+             outside React (the same arrangement `data-purse` already gives the
+             trade receipt's gold toss one rail over). */
+          data-zone-title="1"
           onPointerDown={holdStart}
           onPointerUp={holdEnd}
           onPointerLeave={holdEnd}
