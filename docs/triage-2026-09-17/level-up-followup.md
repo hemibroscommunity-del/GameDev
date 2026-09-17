@@ -1,7 +1,9 @@
 # The level-up follow-up — the answer, and the pictures
 
 v2.3.2610. Companion page to the PR, because GitHub's PR-body API mangles
-markdown image syntax and most of this is pictures.
+markdown image syntax and most of this is pictures. Here it cannot — this is a
+committed file, not an API field — so the pictures are inline, with the path
+under each one in case your viewer does not show them.
 
 ---
 
@@ -38,6 +40,8 @@ nothing.
 
 ### Proof, from a real kill in the running game
 
+![BEFORE, on main: one kill, the hidden Melee counter 23 to 24, character level still 3, screen says LEVEL UP! Level 24](assets/levelup/before-main-t1-tick.jpg)
+
 `docs/triage-2026-09-17/assets/levelup/before-main-t1-tick.jpg`
 
 That is today's live build. One monster kill. The hidden Melee counter went
@@ -48,11 +52,15 @@ why the new art exists.)
 
 ### After
 
+![AFTER: the same counter crossing on a current character shows nothing at all](assets/levelup/after-t1-tick-prog3.jpg)
+
 `docs/triage-2026-09-17/assets/levelup/after-t1-tick-prog3.jpg`
 
 Same kill, same counter crossing, this branch: **nothing is shown at all.** The
 counter still ticks — it is still there as a safety net for very old save files
 — but the game no longer claims you levelled when you did not.
+
+![AFTER: on an old save the tick is real and reads SKILL UP! / Melee Level 24](assets/levelup/after-t1-tick-legacy.jpg)
 
 `docs/triage-2026-09-17/assets/levelup/after-t1-tick-legacy.jpg`
 
@@ -118,11 +126,19 @@ so the two can never disagree.
 
 ### Both, at your sizes
 
+![Both notifications side by side at 360 wide, portrait](assets/levelup/pair-360-portrait.jpg)
+
 `docs/triage-2026-09-17/assets/levelup/pair-360-portrait.jpg`
+
+![Both notifications side by side at 390 wide, portrait](assets/levelup/pair-390-portrait.jpg)
 
 `docs/triage-2026-09-17/assets/levelup/pair-390-portrait.jpg`
 
+![Both notifications side by side at 360 wide, landscape](assets/levelup/pair-360-landscape.jpg)
+
 `docs/triage-2026-09-17/assets/levelup/pair-360-landscape.jpg`
+
+![Both notifications side by side at 390 wide, landscape](assets/levelup/pair-390-landscape.jpg)
 
 `docs/triage-2026-09-17/assets/levelup/pair-390-landscape.jpg`
 
@@ -135,11 +151,19 @@ tile is labelled with the millisecond it was captured at. You can watch the two
 medallions grow together, the two captions arrive together, and both fade out
 together.
 
+![Filmstrip, 390 portrait: twelve frames the game really painted, labelled with the millisecond](assets/levelup/film-390-portrait.jpg)
+
 `docs/triage-2026-09-17/assets/levelup/film-390-portrait.jpg`
+
+![Filmstrip, 360 portrait: twelve frames the game really painted, labelled with the millisecond](assets/levelup/film-360-portrait.jpg)
 
 `docs/triage-2026-09-17/assets/levelup/film-360-portrait.jpg`
 
+![Filmstrip, 390 landscape: twelve frames the game really painted, labelled with the millisecond](assets/levelup/film-390-landscape.jpg)
+
 `docs/triage-2026-09-17/assets/levelup/film-390-landscape.jpg`
+
+![Filmstrip, 360 landscape: twelve frames the game really painted, labelled with the millisecond](assets/levelup/film-360-landscape.jpg)
 
 `docs/triage-2026-09-17/assets/levelup/film-360-landscape.jpg`
 
