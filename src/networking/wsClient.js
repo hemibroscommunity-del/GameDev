@@ -2002,6 +2002,56 @@ export function setupWebSocket(ctx) {
                  alloc, and the point pool all land here and the
                  recalc below re-derives level + pools from them. */
               if (msg.payload.prog3 && typeof msg.payload.prog3 === 'object') { S.rpg.prog3 = msg.payload.prog3; recalcDerived(S.rpg); }
+              /* ═══ v2.3.2610: BASELINE THE CELEBRATION HIGH-WATER AGAINST THE
+                 SERVER, NOT AGAINST localStorage ═══
+
+                 Owner: "I experienced a 'level up' (legacy notification) —
+                 I had increased combat level without ANY corresponding increase
+                 in one of the 3 combat skills."
+
+                 One of the two ways that happened, and this is the one where
+                 the CHARACTER level really is the number on screen.  No level
+                 was gained; the celebration's high-water was simply behind.
+
+                 celebrateLevelUps fires when `R.level > R._lastShownLevel`, and
+                 _lastShownLevel is seeded ONCE, at load, from the blob in
+                 localStorage (BroTown.jsx, v2.3.910).  The authoritative level
+                 arrives seconds later, right here.  Whenever the stored copy is
+                 behind the server — a new device, cleared data, private mode,
+                 or a Cloudflare PREVIEW URL, which is a different origin and so
+                 a different localStorage every single deploy — the seed is a
+                 level the player passed long ago and the server's real level is
+                 higher.  The next kill or loot pickup then "gains" the whole
+                 difference at once: full celebration, and on the build before
+                 this one that meant the legacy world text and the legacy chime
+                 as well.  Reproduced on a fresh context: the worker hands over
+                 a character at level 3 (1+1+1) while _lastShownLevel sits at 1.
+
+                 So the high-water is re-baselined at ADOPTION — the one moment
+                 in a session where the player is known to have gained nothing
+                 yet — and only then.  Not on later echoes: those carry real
+                 level-ups, and re-baselining on every one would mute the pool
+                 refill, the shake and the particles for levels genuinely
+                 earned.  The flag lives on S rather than on the blob because it
+                 is a fact about this SESSION, and a persisted one would stop
+                 the next session baselining at all.
+
+                 Upward only, for the same reason celebrateLevelUps clamps
+                 downward: a respec lowers the level, and a stale high-water
+                 left above it would mute every real celebration until the
+                 player climbed back past it. */
+              /* Not gated on prog3: `S.rpg.level = msg.payload.level` a few
+                 hundred lines up is unconditional, so a LEGACY character takes
+                 the authoritative level from the same join snapshot and has
+                 exactly the same stale-high-water window.  This sits below both
+                 adoption sites, so by here S.rpg.level is the server's on
+                 either track. */
+              if (!S._levelShownBaselined) {
+                S._levelShownBaselined = true;
+                var _adoptLvl = S.rpg.level || 1;
+                if ((S.rpg._lastShownLevel || 1) < _adoptLvl) S.rpg._lastShownLevel = _adoptLvl;
+                if ((S.rpg._lastCharLvlShown || 0) < _adoptLvl) S.rpg._lastCharLvlShown = _adoptLvl;
+              }
               /* v2.3.1624: the five T1 raw stats, adopted present-gated.
                  The server has always PERSISTED these but never echoed
                  them, so a client with no localStorage copy (new device,

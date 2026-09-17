@@ -68,9 +68,57 @@ For a character still genuinely running on the old system, the tick is real, so
 it keeps a message — but it now reads `SKILL UP!` / `Melee Level 24`, which is
 what it always meant.
 
-**So: nothing to fix in the progression maths. The problem was that the
-notification never said which kind of level it was talking about — which is
-exactly what points 2 and 3 fix.**
+---
+
+## 1b. And there is a SECOND way it could have happened — also found, also fixed
+
+After the first pass I went back and checked a third possibility: that no level
+was gained *at all* and the game simply announced one. It can, and it is
+probably the more likely of the two for a playtest session.
+
+The celebration decides whether to fire by comparing your level against a
+"highest level I have already celebrated" marker. That marker is set **once,
+when the page loads, from the copy of your character saved in your browser**.
+Your real level arrives from the server a second or two later.
+
+Whenever the browser's copy is behind the server, the marker starts too low —
+and the next monster you kill "gains" the whole difference in one go. Full
+celebration. No skill went up, because nothing went up.
+
+The browser's copy is behind whenever you are on a device or browser that has
+not played recently, in a private window, after clearing data — **and on every
+Cloudflare preview link**, because each preview deploy is a different web
+address and therefore a different browser storage. If you were playtesting on
+preview links, you would hit this constantly.
+
+Reproduced on today's live build, on a fresh browser:
+
+```
+  the worker hands over a character at level 3 (skills 1 + 1 + 1 = 3)
+  the "already celebrated" marker sits at 1
+  -> a celebration is pending for a level nobody earned
+```
+
+And on this branch:
+
+```
+  level 3, marker 3   -> nothing pending
+  then a REAL Bow level lands: level 4, marker 3   -> celebration pending again
+```
+
+Both halves matter and are checked separately: silencing the false one is easy
+if you do not mind silencing the real ones too, and nothing would have noticed.
+
+The fix sets the marker from the **server's** level at the moment the game
+first hears it — the one moment in a session when you are known to have gained
+nothing yet — and never again after that, so real level-ups still celebrate.
+
+---
+
+**So: nothing to fix in the progression maths. Nothing was ever minted, on
+either route. Both problems were notifications claiming something that had not
+happened — one because an old counter borrowed the word "level", and one
+because the celebration was comparing against a stale marker.**
 
 ---
 

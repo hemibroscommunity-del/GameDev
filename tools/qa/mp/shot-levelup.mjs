@@ -676,6 +676,74 @@ async function main() {
       await ctx.close().catch(() => {});
     }
 
+    /* ── pass 2d: THE CELEBRATION THAT FIRES FOR A LEVEL NOBODY GAINED ── */
+    /* Owner: "I experienced a 'level up' (legacy notification) — I had
+       increased combat level without ANY corresponding increase in one of the 3
+       combat skills."
+       The SECOND way that happens, and the one where the number on screen
+       really is the character level.  celebrateLevelUps fires on
+       `R.level > R._lastShownLevel`, and that high-water is seeded once, at
+       load, out of localStorage — while the authoritative level arrives from
+       the worker seconds later.  Any time the stored copy is behind (new
+       device, cleared data, private mode, or a Cloudflare PREVIEW URL, which
+       is a different origin and therefore a different localStorage on every
+       deploy) the next kill "gains" the whole difference in one go.
+
+       Both halves are asserted, and they fail separately, because a fix that
+       only silenced the spurious one would also silence every real level-up
+       and nothing here would notice (TRAPS §61's shape: a check that reads the
+       same on the working and the broken build).
+         (a) fresh context, nothing earned yet  -> no celebration pending
+         (b) a real skill level lands afterwards -> celebration pending again */
+    {
+      const ctx = await browser.newContext({
+        viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true,
+      });
+      const page = await ctx.newPage();
+      await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
+      await seedCoachDone(page);
+      await page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
+      const P = { ctx, page, logs: [], name: 'Baseline' };
+      await H.enterWorld(P);
+      await page.waitForTimeout(3000);
+
+      const readHW = () => page.evaluate(() => {
+        const R = window._gameState.current.rpg;
+        const sum = ['sword', 'bow', 'staff'].reduce(
+          (a, k) => a + Math.max(1, (R.prog3 && R.prog3.sk && R.prog3.sk[k] && R.prog3.sk[k].level) || 1), 0);
+        return {
+          level: R.level, lastShown: R._lastShownLevel || 1, skillSum: sum,
+          /* the exact test celebrateLevelUps runs */
+          wouldFire: (R.level || 1) > (R._lastShownLevel || 1),
+        };
+      });
+
+      const atJoin = await readHW();
+      console.log(`\n  THE HIGH-WATER`);
+      console.log(`    fresh context, nothing earned: level=${atJoin.level} (skills sum to ${atJoin.skillSum}) ` +
+        `high-water=${atJoin.lastShown}  ->  celebration pending: ${atJoin.wouldFire}`);
+
+      /* Now a REAL level-up: the worker echoes a prog3 blob with Bow one level
+         higher, through the real player_state handler.  This is the case the
+         guard must NOT swallow — if the baseline re-ran on every echo, the
+         player would never be celebrated again. */
+      const bumped = await page.evaluate(() => {
+        const R = window._gameState.current.rpg;
+        const sk = JSON.parse(JSON.stringify((R.prog3 && R.prog3.sk) || {}));
+        for (const k of ['sword', 'bow', 'staff']) if (!sk[k]) sk[k] = { level: 1, xp: 0 };
+        sk.bow.level = (sk.bow.level || 1) + 1;
+        const p3 = Object.assign({}, R.prog3, { sk });
+        window.__btWsEvent({ type: 'player_state', payload: { prog3: p3 } });
+        return true;
+      });
+      await page.waitForTimeout(300);
+      const afterLevel = await readHW();
+      console.log(`    after a real Bow level:        level=${afterLevel.level} (skills sum to ${afterLevel.skillSum}) ` +
+        `high-water=${afterLevel.lastShown}  ->  celebration pending: ${afterLevel.wouldFire}`);
+      findings.push({ shot: 'highwater', sent: bumped, atJoin, afterLevel });
+      await ctx.close().catch(() => {});
+    }
+
     /* ── pass 3: the two things that are not visible in a screenshot ── */
     /* ═══ PRELOADING IS LAW, SO IT IS CHECKED, NOT ASSERTED IN A COMMENT ═══
        CLAUDE.md: every animation asset is fully loaded during the loading
@@ -790,15 +858,23 @@ async function main() {
       && snL.crossed === true && snL.levelMoved === false && snL.bannerKind === 'power'
       && /SKILL UP!/.test(snL.bannerText) && /Melee Level/.test(snL.bannerText);
 
+    const hw = findings.find((f) => f.shot === 'highwater') || {};
+    const hwOk = !!(hw.atJoin && hw.afterLevel
+      && hw.atJoin.wouldFire === false          /* nothing earned -> nothing celebrated */
+      && hw.atJoin.level === hw.atJoin.skillSum /* and the level really is the sum */
+      && hw.afterLevel.level === hw.atJoin.level + 1
+      && hw.afterLevel.wouldFire === true);     /* a real level -> still celebrated */
+
     const pre = findings.find((f) => f.shot === 'preload') || {};
-    const ok = pairOk && statOk && strip.length === 8 && dx < 1 && dy < 1
+    const ok = pairOk && statOk && hwOk && strip.length === 8 && dx < 1 && dy < 1
       && findings.filter((f) => f.shot.startsWith('360') || f.shot.startsWith('390')).every((f) => f.mounted && f.iconComplete)
       && pre.report === 'fulfilled' && pre.audioDecoded === true
       && pre.portraitPresent === true && pre.portraitWarm === true
       && !!(pre.mute && pre.mute.whileMuted && pre.mute.whileOn);
     console.log(ok ? '\nPASS — icon locked to the circle, every hero shot mounted, both notifications play side by side at every framing '
                      + 'with no overlap and nothing off-screen, both animate, the T1 tick is silent under prog3 and named '
-                     + 'under legacy, assets warm before first use, mute respected'
+                     + 'under legacy, no celebration is pending for a level nobody earned (and one still is for a real '
+                     + 'one), assets warm before first use, mute respected'
                    : '\nFAIL — see the rows above');
     console.log(`\nwrote ${OUT}`);
     if (!ok) process.exitCode = 1;

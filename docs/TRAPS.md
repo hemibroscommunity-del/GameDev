@@ -3608,4 +3608,50 @@ before, captured on `origin/main` in a worktree, is in
 `docs/triage-2026-09-17/level-up-followup.md`.
 
 **Related:** §61 (both rows are about ABSENCE, which no single screenshot can
-assert); §81 (the whitelist that encodes the asks you have already had).
+assert); §81 (the whitelist that encodes the asks you have already had); §87 —
+the SECOND mechanism behind the same owner report, found only because the first
+answer was re-examined rather than defended. One report can have two causes, and
+a plausible diagnosis that explains all the symptoms is not thereby the only
+one.
+
+---
+
+## 87. A high-water seeded from localStorage, compared against a server-authoritative number (v2.3.2610)
+
+**The shape.** `celebrateLevelUps` fires when `R.level > R._lastShownLevel`.
+That high-water is seeded exactly once, at load, out of the blob in
+localStorage (`BroTown.jsx`, v2.3.910 — "so the on-kill VFX fires only for
+levels gained from here on"). The intent is right. The seed is taken from the
+wrong copy: the authoritative level arrives from the worker seconds later, in
+the join `player_state`.
+
+**Why it looks fine.** On the machine you develop on, the stored blob is always
+current, so the seed and the server agree and nothing ever fires. The defect is
+invisible to exactly the person most likely to look for it.
+
+**When it bites.** Any session where the stored copy is behind the server: a new
+device, cleared data, a private window, a Login Key on someone else's phone —
+and, the one that matters here, **a Cloudflare Pages PREVIEW URL**, which is a
+different origin and therefore a different localStorage for every deploy. A
+playtester living on preview links starts every session with the high-water at
+its default and the server's real level above it, and the next kill or loot
+pickup celebrates the whole difference as if it had just been earned. Measured
+on a fresh context against `origin/main`: level 3, high-water 1.
+
+**The tell, general form:** a "have I already shown this" marker initialised
+from one source and compared against a number owned by another. If the two can
+ever disagree at init, the marker is not a high-water, it is a guess.
+
+**Do instead:** baseline at ADOPTION — the moment the authoritative value first
+arrives — and only then. Not on every echo: later echoes carry the real changes,
+and re-baselining on those mutes the thing the marker exists to trigger. The
+one-shot flag belongs on the session (`S`), not on the persisted blob; a
+persisted one would stop the next session baselining at all.
+
+**Both halves need separate assertions**, or a fix that silences the spurious
+celebration by silencing every celebration passes (§61): `shot-levelup.mjs`
+asserts nothing is pending on a fresh join AND that a real skill level makes one
+pending again.
+
+**Related:** §86 — found in the same investigation, same report, different
+mechanism. Two independent ways to announce a level nobody gained.
