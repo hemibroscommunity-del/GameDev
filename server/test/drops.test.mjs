@@ -462,7 +462,7 @@ check('...and an iron WEAPON, at trained level 1',
 check('the defense gate still refuses a far higher tier (it was not just switched off)',
   room._prog3EquipOk(ironPs, 'armor', { gearBase: 'mythril', tierMult: 1.94 }) === false);
 
-/* ═══ v2.3.2604: TWO KILLS AT ONE SPAWN SLOT ARE TWO PILES ═══
+/* ═══ v2.3.2613: TWO KILLS AT ONE SPAWN SLOT ARE TWO PILES ═══
  *
  * Owner, more than once: "loot sometimes drops and magnetizes but is unable to
  * be picked up."

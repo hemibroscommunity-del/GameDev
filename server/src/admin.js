@@ -169,7 +169,7 @@ export const adminMethods = {
         return json({ ok: true, ...s, history: days, delta, alert });
       }
 
-      /* v2.3.2604: THE PILE, AS THE WORKER HAS IT.
+      /* v2.3.2613: THE PILE, AS THE WORKER HAS IT.
          Read-only operator view of this.loot, added for the "loot magnetises
          but will not pick up" hunt.  The bug is a DISAGREEMENT between what
          the client draws and what the worker holds, and until now only one

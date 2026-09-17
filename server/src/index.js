@@ -1072,7 +1072,7 @@ export class GameRoom {
     // recipient, single-claim) and emits a private loot_credit back to
     // the picker with their authorized share + any one-of inventory.
     this.loot = Object.create(null); // zoneId -> [pile, ...]  /* v2.3.1625: null-proto (TRAPS #6) */
-    /* v2.3.2604: one drop, one identity.  Bumped for every pile minted so two
+    /* v2.3.2613: one drop, one identity.  Bumped for every pile minted so two
        kills at the same spawn slot inside LOOT_EXPIRY_MS can never share a
        lootId -- see the long note in _spawnLootForKill for what that
        collision did.  In-memory like the piles it numbers. */
@@ -3541,7 +3541,7 @@ export class GameRoom {
   //     armor, armorClaimed, recipients, shares: {pid: number}, killerName,
   //     ts, inventoryClaimed, claimedBy: {pid: true} }
   _spawnLootForKill(zone, monster, killerSessionId, recipients, shares) {
-    /* ═══ v2.3.2604: A PILE IS A DEATH, NOT A SPAWN SLOT ═══
+    /* ═══ v2.3.2613: A PILE IS A DEATH, NOT A SPAWN SLOT ═══
        Owner, more than once: "loot sometimes drops and magnetizes but is
        unable to be picked up."
 
