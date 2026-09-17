@@ -721,7 +721,7 @@ function _spawnTownNpcs() {
      NPC") — two men did one job and only Diego had any stock. His NPC_DATA
      record went with him, so this is not a dormant entry waiting to be
      re-enabled; see the note at the end of NPC_DATA. */
-  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Diego', 'Lil Bro']; /* v2.3.1775 */
+  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Diego', 'Lil Bro', 'Ace']; /* v2.3.1775; + Ace v2.3.2617 */
 /* v2.3.2305: hoisted out of the frame loop, where it was a local `var` that a
    tap handler could not reach. Both doors into an NPC -- walking up to him and
    tapping him -- now measure reach with the SAME number instead of one of them
