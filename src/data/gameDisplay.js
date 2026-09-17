@@ -1375,16 +1375,26 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      the first time its file is replaced").  public/ is copied verbatim by vite,
      not content-hashed, so without it a returning player keeps the OLD score
      out of their HTTP cache forever.  ember's existing 2.3.1591 bump moves to
-     2.3.2604 for the same reason — its bytes changed again.
+     2.3.2614 for the same reason — its bytes changed again.
      v2.3.2614 (later): the owner then sent a SIXTH and SEVENTH track, so sky
      and GLOBAL_MUSIC are in the swap after all and take the same bump —
      Desert.mp3 -> desert.mp3, Select_Your_Hero.mp3 -> login-theme.mp3.  All
      SEVEN music files in public/audio/music/ now change bytes in one commit,
-     so all seven URLs carry ?v=2.3.2604 and none is left on an older bump. */
+     so all seven URLs carry ?v=2.3.2614 and none is left on an older bump.
+     The tag reads 2614 rather than the 2604 this work was built under because
+     four PRs took session-brief's suggested v2.3.2604 and #665 landed on it
+     first (the same collision as #666/#667) — so this renumbered off it.  Note
+     what that means for the ?v= values: they are CACHE-BUSTERS, so all that
+     matters is that they differ from what a returning player already has, and
+     none of these seven has ever shipped carrying 2604.  They move with the
+     comment purely so the file does not document one number and serve another.
+     Both sides still move together, which is the property the v2.3.1589 note
+     below depends on: the map value is the cache key AND the only thing
+     trackUrl is compared to (_zoneMusicUrl). */
   ZONE_MUSIC: {
-    town: '/audio/music/village.mp3?v=2.3.2604',
-    worldview: '/audio/music/world.mp3?v=2.3.2604',
-    frost: '/audio/music/frost.mp3?v=2.3.2604',
+    town: '/audio/music/village.mp3?v=2.3.2614',
+    worldview: '/audio/music/world.mp3?v=2.3.2614',
+    frost: '/audio/music/frost.mp3?v=2.3.2614',
     /* "fire zone" = Flame Fields, and the "lava zone" too — gameDisplay.js:916
        describes it as lava rivers cutting through scorched earth.
        v2.3.1591: ?v= added because this file's CONTENT was replaced (owner
@@ -1393,8 +1403,8 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
        filename.  Without it a returning player keeps the old track out of their
        HTTP cache forever, since public/ is copied verbatim by vite rather than
        content-hashed. */
-    ember: '/audio/music/fire.mp3?v=2.3.2604',
-    meadow: '/audio/music/forest.mp3?v=2.3.2604', /* owner: "forest meadow area where the
+    ember: '/audio/music/fire.mp3?v=2.3.2614',
+    meadow: '/audio/music/forest.mp3?v=2.3.2614', /* owner: "forest meadow area where the
                                           slimes are" — Starting Meadow, the
                                           green zone that spawns 10 plain
                                           slimes.  NOT mist, which is literally
@@ -1415,7 +1425,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
        file is replaced.  Safe against the LRU: the map value is the cache key
        AND the only thing `trackUrl` is ever compared to (_zoneMusicUrl), so
        both sides move together. */
-    sky: '/audio/music/desert.mp3?v=2.3.2604',
+    sky: '/audio/music/desert.mp3?v=2.3.2614',
   },
   /* ═══ v2.3.1738: PER-ZONE AMBIENCE (owner art) ═══
      Owner: "use this to play as the 'wind' ambient sound effect to play in a
@@ -1609,7 +1619,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      The new set is also consistently darker (centroid: town 1002 Hz vs 3890,
      meadow 1549 vs 3728, frost 1294 vs 3167, worldview 2234 vs 4811, ember
      3222 vs 3923).  That is the owner's taste, not a defect. */
-  GLOBAL_MUSIC: '/audio/music/login-theme.mp3?v=2.3.2604',
+  GLOBAL_MUSIC: '/audio/music/login-theme.mp3?v=2.3.2614',
   /* v2.3.1590 (owner: "make the music play 75% quieter") — BOTH music
      volumes cut to a quarter, together, so the session track and the zone
      tracks keep their existing relationship to each other and to SFX:
