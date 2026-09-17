@@ -11,6 +11,7 @@
 import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY } from '@/data/index.js';
 import { hitMaterialOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard */
 import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
+import { prog3Live } from '@/data/prog3.js';          /* v2.3.2610: is the T1 track still load-bearing for this character? */
 
 /* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
    Owner: "Tap to lock on enemy sometimes does not hit the target.  I was
@@ -279,6 +280,35 @@ function releasePeerDamage(S, now) {
 function pushStatIncreaseNotice(R, stat, beforeMax) {
   var S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
   if (!S || !S.dmgNumbers || !S.player) return;
+  /* ═══ v2.3.2610: A PROG3 CHARACTER MUST NOT BE TOLD THIS ═══
+   *
+   * Owner: "I raised a combat level without leveling up any of my combat skills
+   * which should be impossible (it also played the legacy level up)."
+   *
+   * It was not a level and nothing was minted — this line is what they saw.
+   * distributeKillXpToBuild still runs on every kill with no prog3 gate, so the
+   * legacy T1 stats (power / vitality / endurance / agility / mind) still tick
+   * over their thresholds, and every crossing fired the old gold banner reading
+   * "LEVEL UP!" over "Level 24".  BUILD_LABELS even calls them Melee / Bow /
+   * Magic — the same three words as the prog3 combat skills — so the message was
+   * indistinguishable from a combat level-up that had not happened.
+   *
+   * And under prog3 those stats buy NOTHING.  recalcDerived's prog3 branch
+   * (src/data/gameSystems.js) and the server's _prog3Recompute (server/src/
+   * prog3.js, reached because grids.js _recomputeMaxes returns to it whenever
+   * ps.prog3 exists) both derive level, maxHp, maxStamina and maxMana from the
+   * prog3 track alone.  Character level is the SUM of the three trained skill
+   * levels and cannot move without one of them moving — which is exactly why
+   * the owner was right that what they saw should be impossible.  The benefit
+   * line below proves the inertness on its own: it reads maxHp minus the maxHp
+   * from a moment ago, and for a prog3 character that difference is always 0.
+   *
+   * So the notice is suppressed rather than reworded.  A dead counter announced
+   * politely is still a dead counter announced, and the honest report of a
+   * prog3 vitality tick is nothing at all.  The stats keep ticking (the T1 track
+   * is still the fail-open path for any blob prog3 adoption could not produce,
+   * and a legacy character below still gets its banner) — only the claim goes. */
+  if (prog3Live(R)) return;
   var label = BUILD_LABELS[stat] || stat;
   var newVal = R[stat] || 0;
   var benefit = '';
@@ -305,7 +335,12 @@ function pushStatIncreaseNotice(R, stat, beforeMax) {
      the weapon icon. window._setLevelUpMsg is exposed inside the
      BroTown component each render. */
   if (typeof window !== 'undefined' && typeof window._setLevelUpMsg === 'function') {
-    window._setLevelUpMsg({ kind: stat, level: newVal, ts: Date.now() });
+    /* v2.3.2610: carry the LABEL.  A legacy character still gets this banner,
+       and it used to read a bare "LEVEL UP! / Level 24" with no hint that the
+       24 belonged to Melee rather than to the character — the same confusion
+       the prog3 guard above removes, one system older.  The banner names it
+       now (BroTown.jsx render site). */
+    window._setLevelUpMsg({ kind: stat, label: label, level: newVal, ts: Date.now() });
   }
 }
 

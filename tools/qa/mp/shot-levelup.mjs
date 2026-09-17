@@ -34,7 +34,7 @@
  *
  * Run: npm run build && node tools/qa/mp/shot-levelup.mjs
  */
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import * as H from './harness.mjs';
 /* The frame timings and the pin fraction are IMPORTED, never retyped.  A rig
    that keeps its own copy of the geometry stops testing the game the first
@@ -51,9 +51,23 @@ const OUT = process.argv[2] || 'tools/qa/out/levelup';
 const CASES = {
   combat: {
     kind: 'combat', level: 14, skill: 'bow', skillLabel: 'Bow', skillLevel: 9,
-    gains: '+1.5 damage · +8 max HP · +3 points to spend',
+    gains: '+1.5 damage · +3 Bow points',
   },
   life: { kind: 'life', skill: 'woodcutting', label: 'Woodcutting', level: 7, gained: 2 },
+  /* v2.3.2610: the character level.  No skill — the medallion is the player's
+     own portrait, which is the owner's ask. */
+  char: { kind: 'char', level: 14, gains: '+2 max HP · +3 shared points' },
+};
+
+/* ═══ v2.3.2610: THE REAL SOCKET FRAME ═══
+ * Shaped as server/src/prog3.js emits it.  Driven through window.__btWsEvent
+ * (wsClient.js) so the SPLIT is what is under test: one server message has to
+ * raise two notifications, and a rig that pushed two messages itself would
+ * pass on a build where the handler still raises one — the build the owner
+ * reported.  charLevel 14 = 6 + 7 + 1, a sum the client can also compute. */
+const PROG3_FRAME = {
+  type: 'prog3_level',
+  payload: { skill: 'bow', level: 7, charLevel: 14, shared: 3, bonusPoints: 0 },
 };
 
 const VIEWS = [
@@ -62,6 +76,11 @@ const VIEWS = [
   { name: '390-portrait',  width: 390, height: 844 },
   { name: '390-landscape', width: 844, height: 390 },
 ];
+
+/* v2.3.2610: the tray is 33dvh in portrait and absent in landscape — the same
+   line LevelUpBurst solves its caption fit against.  Nothing the burst draws
+   may cross it in portrait, and nothing may leave the viewport in either. */
+const worldBottomOf = (v) => (v.height >= v.width ? v.height * 0.67 : v.height);
 
 const FRAME_MS = LEVELUP_FRAMES.map((f) => f.ms);
 
@@ -144,9 +163,153 @@ const probe = (page) => page.evaluate(() => {
   };
 });
 
+/* ═══ v2.3.2610: EVERY burst on screen, not just the first ═══
+ * `probe` above answers about document.querySelector — the FIRST match — which
+ * was the whole truth while only one burst could exist and is now exactly the
+ * blind spot this change is about.  A second notification that failed to mount
+ * is invisible to a one-element probe, and so is a pair that overlaps. */
+const probeAll = (page) => page.evaluate(() => {
+  const out = [];
+  for (const root of document.querySelectorAll('[data-levelup-kind]')) {
+    const img = root.querySelector('[data-levelup-icon]');
+    const art = root.querySelector('[data-levelup-art]');
+    const cap = root.querySelector('[data-levelup-caption] > div');
+    if (!img || !art) continue;
+    const ir = img.getBoundingClientRect();
+    const ar = art.getBoundingClientRect();
+    const cr = cap ? cap.getBoundingClientRect() : null;
+    out.push({
+      kind: root.getAttribute('data-levelup-kind'),
+      col: Number(root.getAttribute('data-levelup-col')),
+      iconSrc: img.getAttribute('src'),
+      /* A data: URL is the portrait; the file name is enough for anything else
+         and printing 300KB of base64 into a log helps nobody. */
+      iconLabel: (img.getAttribute('src') || '').startsWith('data:')
+        ? 'portrait(data-url)' : (img.getAttribute('src') || '').split('/').pop(),
+      iconComplete: img.complete && img.naturalWidth > 0,
+      iconCx: ir.left + ir.width / 2, iconCy: ir.top + ir.height / 2, iconW: ir.width,
+      /* The painted extents that matter for crowding: the art's box and the
+         caption plate's box.  Both, because they are different widths and
+         either one can be the pair that touches. */
+      art: { l: ar.left, r: ar.right, t: ar.top, b: ar.bottom },
+      cap: cr ? { l: cr.left, r: cr.right, t: cr.top, b: cr.bottom } : null,
+      caption: cap ? cap.textContent : '',
+    });
+  }
+  return out;
+});
+
+/* TRAPS §81: floor the MINIMUM over every painted pair, and print the worst
+   one's number even when it passes — whether the gap is enough is a judgement
+   only the owner can make, and a bare `passed` denies them the chance.  Here
+   the pairs are (burst i, burst j) across BOTH of the boxes each burst paints,
+   which is four comparisons per pair rather than the one an art-only test
+   would have made. */
+/* ═══ v2.3.2610: FILMING TWO BURSTS THAT HAVE TO PLAY TOGETHER ═══
+ *
+ * page.screenshot() cannot film this and the first cut of this pass proved it:
+ * a full-viewport shot at dpr 2 costs ~1.2s on this box, so ten of them sample
+ * a 2.6s celebration about twice.  "Both played" is a claim about TIME — that
+ * two animations ran at once, not that two elements existed at one instant —
+ * and a sampler slower than the thing it samples cannot make it (TRAPS §61).
+ *
+ * So the frames come off Chromium's screencast, the same stream devtools
+ * records: a JPEG on every repaint, costing the page nothing, and each one is a
+ * frame the renderer actually painted at the moment it painted it.  Lifted from
+ * tools/qa/mp/mp-zonebanner.mjs, which made the same argument for the same
+ * reason one version earlier. */
+async function startFilm(page) {
+  const cdp = await page.context().newCDPSession(page);
+  const frames = [];
+  const t0 = Date.now();
+  cdp.on('Page.screencastFrame', (f) => {
+    frames.push({ t: Date.now() - t0, data: f.data });
+    cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => {});
+  });
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 80, everyNthFrame: 1 });
+  return { cdp, frames };
+}
+
+async function stopFilm(film) {
+  await film.cdp.send('Page.stopScreencast').catch(() => {});
+  await film.cdp.detach().catch(() => {});
+  return film.frames;
+}
+
+/* Tile the kept frames into one labelled sheet.  Composed in a Chromium page
+   rather than with an image library because the repo has no image library and
+   the browser is already running — the same move tools/sheet_montage.mjs
+   makes. */
+async function composeSheet(browser, frames, { cols, cellW, title }) {
+  const rows = Math.ceil(frames.length / cols);
+  const ctx = await browser.newContext({ viewport: { width: 32, height: 32 } });
+  const page = await ctx.newPage();
+  await page.setContent('<body style="margin:0"><canvas id="c"></canvas></body>');
+  const dataUrl = await page.evaluate(async ({ items, cols: C, cellW: W, rows: R, title: T }) => {
+    const imgs = await Promise.all(items.map((it) => new Promise((res) => {
+      const im = new Image();
+      im.onload = () => res(im);
+      im.onerror = () => res(null);
+      im.src = 'data:image/jpeg;base64,' + it.data;
+    })));
+    const first = imgs.find(Boolean);
+    if (!first) return null;
+    const k = W / first.naturalWidth;
+    const H = Math.round(first.naturalHeight * k);
+    const LAB = 22, PAD = 6, HEAD = 34;
+    const c = document.getElementById('c');
+    c.width = C * (W + PAD) + PAD;
+    c.height = HEAD + R * (H + LAB + PAD) + PAD;
+    const g = c.getContext('2d');
+    g.fillStyle = '#12191d'; g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = '#F7F2E7';
+    g.font = '600 18px sans-serif';
+    g.fillText(T, PAD + 2, 23);
+    g.font = '600 13px monospace';
+    imgs.forEach((im, i) => {
+      const cx = PAD + (i % C) * (W + PAD);
+      const cy = HEAD + Math.floor(i / C) * (H + LAB + PAD);
+      if (im) g.drawImage(im, cx, cy, W, H);
+      g.fillStyle = '#B9C1BF';
+      g.fillText(items[i].t + 'ms', cx + 2, cy + H + 15);
+    });
+    return c.toDataURL('image/jpeg', 0.84);
+  }, { items: frames, cols, cellW, rows, title });
+  await ctx.close().catch(() => {});
+  if (!dataUrl) return null;
+  return Buffer.from(dataUrl.split(',')[1], 'base64');
+}
+
+function worstGap(bursts) {
+  let worst = null;
+  for (let i = 0; i < bursts.length; i++) {
+    for (let j = i + 1; j < bursts.length; j++) {
+      for (const [an, a] of [['art', bursts[i].art], ['caption', bursts[i].cap]]) {
+        for (const [bn, b] of [['art', bursts[j].art], ['caption', bursts[j].cap]]) {
+          if (!a || !b) continue;
+          /* Horizontal clearance between two side-by-side boxes.  Negative
+             means they overlap, and by how much. */
+          const gap = Math.max(a.l, b.l) - Math.min(a.r, b.r);
+          /* Boxes that do not share any vertical span cannot crowd each other
+             however close their x ranges are. */
+          const vOverlap = Math.min(a.b, b.b) - Math.max(a.t, b.t);
+          if (vOverlap <= 0) continue;
+          if (worst == null || gap < worst.gap) {
+            worst = { gap, pair: `${bursts[i].kind}.${an} | ${bursts[j].kind}.${bn}` };
+          }
+        }
+      }
+    }
+  }
+  return worst;
+}
+
 async function main() {
   mkdirSync(`${OUT}/hero`, { recursive: true });
   mkdirSync(`${OUT}/filmstrip`, { recursive: true });
+  mkdirSync(`${OUT}/pair`, { recursive: true });
+  mkdirSync(`${OUT}/pairstrip`, { recursive: true });
+  mkdirSync(`${OUT}/statnotice`, { recursive: true });
   const wsPort = await H.freePort(), webPort = await H.freePort();
   const worker = await H.startWorker(wsPort);
   const srv = await H.serveDist(webPort);
@@ -256,6 +419,263 @@ async function main() {
       await ctx.close().catch(() => {});
     }
 
+    /* ── pass 2b: BOTH, SIDE BY SIDE, AT THE OWNER'S SIZES ── */
+    /* Owner: "I'd rather them both play side by side and if it's combat level
+       just show the character portrait in the center of the new level up
+       animation."
+       Driven by ONE real socket frame through the real onmessage, so what is
+       photographed is the handler's own decision to raise two notifications —
+       not the rig's.  On the build the owner reported this pass photographs a
+       single burst and fails on the count, which is the property TRAPS §61
+       asks for: a check that would read differently on the broken build. */
+    {
+      const ctx = await browser.newContext({
+        viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true,
+      });
+      const page = await ctx.newPage();
+      await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
+      await seedCoachDone(page);
+      await page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
+      const P = { ctx, page, logs: [], name: 'Pair' };
+      await H.enterWorld(P);
+      await page.waitForTimeout(2500);
+      await clearOnboarding(page);
+      await foldDash(page);
+      await page.waitForTimeout(600);
+
+      /* The character has to be ON a prog3 track for the handler's char-level
+         branch to have a previous level to compare against.  Seeded through
+         the blob the worker actually stores rather than by poking rpg.level,
+         which prog3 derives and would overwrite (TRAPS §81's corollary: a
+         fixture that sets the wrong field makes the row vacuous). */
+      await page.evaluate(() => {
+        const S = window._gameState && window._gameState.current;
+        if (!S || !S.rpg) return false;
+        if (!S.rpg.prog3) S.rpg.prog3 = {};
+        S.rpg.prog3.sk = { sword: { level: 6 }, bow: { level: 6 }, staff: { level: 1 } };
+        S.rpg._lastCharLvlShown = 13;
+        return true;
+      });
+
+      for (const view of VIEWS) {
+        await page.setViewportSize({ width: view.width, height: view.height });
+        await page.waitForTimeout(900);
+        await foldDash(page);
+        await clearOnboarding(page);
+        /* Re-baseline between views: the same frame is fired four times and
+           the char branch only fires on a level it has not shown. */
+        await page.evaluate(() => {
+          const S = window._gameState && window._gameState.current;
+          if (S && S.rpg) S.rpg._lastCharLvlShown = 13;
+        });
+        /* The camera rolls BEFORE the socket frame, so it catches the first
+           beat rather than joining part-way. */
+        const film = await startFilm(page);
+        const sent = await page.evaluate((f) => (window.__btWsEvent ? window.__btWsEvent(f) : false), PROG3_FRAME);
+        await page.waitForTimeout(900);  /* settled frame, caption up */
+        const bursts = await probeAll(page);
+        /* ═══ THE HIGH-WATER THE SECOND ANNOUNCEMENT IS SUPPRESSED BY ═══
+           R.level catches up to the new character level a beat later, when the
+           player_state carrying the new blob lands, and celebrateLevelUps then
+           has every reason to announce it again on the next kill.  It does not,
+           because it reads this stamp (levelCelebration.js).  The kill paths
+           that call it are local combat loops with no rig seam, so what is
+           asserted here is the INPUT to that guard: if this stops being
+           stamped, the suppression stops working, silently. */
+        const shownHW = await page.evaluate(() => {
+          const S = window._gameState && window._gameState.current;
+          return S && S.rpg ? (S.rpg._lastCharLvlShown || 0) : 0;
+        });
+        /* JPEG, unlike the hero shots: these are for the owner to LOOK at (they
+           go in the PR's companion page) and four 2x PNGs of a sunlit town is
+           6MB of repository for no extra truth.  The measurements that decide
+           pass/fail come off the DOM below, not off these pixels. */
+        await page.screenshot({ path: `${OUT}/pair/${view.name}.jpg`, type: 'jpeg', quality: 86 });
+
+        const wb = worldBottomOf(view);
+        const offscreen = bursts.filter((b) => b.art.l < 0 || b.art.r > view.width
+          || (b.cap && (b.cap.l < 0 || b.cap.r > view.width)));
+        const belowTray = bursts.filter((b) => b.cap && b.cap.b > wb);
+        const gap = worstGap(bursts);
+        findings.push({
+          shot: `pair-${view.name}`, sent, n: bursts.length,
+          kinds: bursts.map((b) => b.kind).join('+'),
+          gap: gap ? gap.gap : null, gapPair: gap ? gap.pair : '',
+          offscreen: offscreen.length, belowTray: belowTray.length,
+          allDecoded: bursts.every((b) => b.iconComplete),
+          portrait: bursts.some((b) => b.kind === 'char' && (b.iconSrc || '').startsWith('data:')),
+          shownHW,
+        });
+        console.log(`  ${bursts.length === 2 ? 'OK  ' : 'FAIL'} pair/${view.name}.jpg  ` +
+          `${bursts.length} burst(s) [${bursts.map((b) => `${b.kind}:${b.iconLabel}${b.iconComplete ? '' : ' NOT-DECODED'}`).join(', ')}]`);
+        /* Printed whether or not it passes — see TRAPS §81. */
+        console.log(`       worst painted-pair gap ${gap ? gap.gap.toFixed(1) + 'px  (' + gap.pair + ')' : 'n/a — fewer than two bursts'}` +
+          `   offscreen=${offscreen.length} captionBelowTray=${belowTray.length} charShownHighWater=${shownHW}`);
+        for (const b of bursts) console.log(`       col${b.col} ${b.kind}: ${JSON.stringify(b.caption)}`);
+
+        /* Let the whole celebration play under the camera, then cut the film
+           down to a readable sheet.  Thinned by INDEX rather than by time so
+           the cadence of the sheet matches the cadence of the repaints. */
+        await page.waitForTimeout(2200);
+        const all = await stopFilm(film);
+        const step = Math.max(1, Math.ceil(all.length / 12));
+        const kept = all.filter((_, i) => i % step === 0).slice(0, 12);
+        const sheet = await composeSheet(browser, kept, {
+          cols: 4, cellW: view.width >= view.height ? 300 : 210,
+          title: `Both notifications, one prog3_level — ${view.name} `
+            + `(${all.length} painted frames, every ${step}${step === 1 ? '' : 'th'} shown)`,
+        });
+        if (sheet) writeFileSync(`${OUT}/pairstrip/${view.name}.jpg`, sheet);
+        console.log(`       filmed ${all.length} painted frame(s) -> pairstrip/${view.name}.jpg`);
+        findings.push({ shot: `film-${view.name}`, painted: all.length });
+        await page.waitForTimeout(500);
+      }
+
+      /* ═══ AND IT HAS TO MOVE (TRAPS §61) ═══
+         Every reading above is one frame, and a pair of bursts frozen on frame
+         0 would satisfy all of them.  So: one more fire, sampled over its own
+         run with nothing touching the page, asserting on the DIFFERENCE — how
+         many distinct medallion widths each burst takes, and that BOTH of them
+         take more than one.  A burst whose art never advances is exactly the
+         failure a still-frame suite cannot see. */
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.waitForTimeout(700);
+      await foldDash(page);
+      await page.evaluate(() => {
+        const S = window._gameState && window._gameState.current;
+        if (S && S.rpg) S.rpg._lastCharLvlShown = 13;
+      });
+      await page.evaluate((f) => window.__btWsEvent(f), PROG3_FRAME);
+      const widths = { combat: new Set(), char: new Set() };
+      for (let i = 0; i < 10; i++) {
+        const bs = await probeAll(page);
+        for (const b of bs) if (widths[b.kind]) widths[b.kind].add(Math.round(b.iconW * 10) / 10);
+        await page.waitForTimeout(90);
+      }
+      const distinct = { combat: widths.combat.size, char: widths.char.size };
+      findings.push({ shot: 'pair-motion', ...distinct });
+      console.log(`\n  MOTION (both bursts sampled over one run, nothing touching the page)`);
+      console.log(`    distinct medallion widths — skill burst: ${distinct.combat}, character burst: ${distinct.char}  (1 means frozen)`);
+      await ctx.close().catch(() => {});
+    }
+
+    /* ── pass 2c: THE "IMPOSSIBLE" LEVEL ── */
+    /* Owner: "I raised a combat level without leveling up any of my combat
+       skills which should be impossible (it also played the legacy level up)."
+       It was not a level.  distributeKillXpToBuild still runs on every monster
+       kill with no prog3 gate, the legacy T1 stats still tick over their
+       thresholds, and a crossing fired the old gold banner reading "LEVEL UP!"
+       over "Level 24" — with BUILD_LABELS calling those stats Melee / Bow /
+       Magic, the same three words as the prog3 combat skills.
+       Driven THROUGH THE KILL, not by poking the message: window.__btDispatch
+       hands the real monster_kill payload to the real handler, which is the
+       only way to show that the crossing happens and that nothing is said
+       about it.  Two characters, one page: the same kill lands on a prog3 blob
+       and on a legacy one, and the difference between the two rows is the
+       whole fix. */
+    {
+      const ctx = await browser.newContext({
+        viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true,
+      });
+      const page = await ctx.newPage();
+      await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
+      await seedCoachDone(page);
+      await page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
+      const P = { ctx, page, logs: [], name: 'StatNotice' };
+      await H.enterWorld(P);
+      await page.waitForTimeout(2500);
+      await clearOnboarding(page);
+      await foldDash(page);
+      await page.waitForTimeout(600);
+
+      /* Put the T1 stat one tick under its own threshold and give it all of
+         the usage share, so ONE kill has to cross it.  xpRequired is the
+         client's own curve — read from the page rather than retyped, because a
+         rig with its own copy of a threshold stops testing the game the first
+         time the curve is tuned (the v2.3.2591 note about the pin fraction,
+         one file over). */
+      const armCrossing = (prog3) => page.evaluate((withProg3) => {
+        const S = window._gameState && window._gameState.current;
+        const R = S && S.rpg;
+        if (!R) return null;
+        if (withProg3) {
+          if (!R.prog3) R.prog3 = {};
+          R.prog3.sk = { sword: { level: 6 }, bow: { level: 6 }, staff: { level: 1 } };
+        } else {
+          delete R.prog3;
+        }
+        R.power = 23;
+        R._statLocks = null;
+        R._buildProg = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
+        /* All of the usage on power, and melee equipped, so the split sends the
+           whole award to one stat and the bow/staff vitality side-train does
+           not fire a second crossing in a second stat. */
+        R._buildUse = { power: 1, vitality: 0, endurance: 0, agility: 0, mind: 0 };
+        R.activeSlot = 'melee';
+        /* ═══ AND ZERO THE LEGACY LEVEL GATE ═══
+           A T1 crossing also ticks _buildPointsThisLvl, and five of those are a
+           legacy CHARACTER level (gameEvents.js, the `!S._serverMonsters`
+           branch) which raises its own notification.  Leaving it wherever the
+           session had got to would let that fire on top and make the row
+           unreadable: the question here is what ONE T1 crossing says, and the
+           answer has to not be contaminated by a different system's level. */
+        R._buildPointsThisLvl = 0;
+        /* Baseline the level from the blob we just wrote, so `before` is the
+           state the kill starts from and not the state the FIXTURE changed. */
+        if (window.__btRecalc) window.__btRecalc(R);
+        return { power: R.power, prog3: !!R.prog3, level: R.level };
+      }, prog3);
+
+      /* One kill, carrying enough XP to cross any threshold on the curve.  The
+         recipient list has to name US or the handler's award block is skipped
+         entirely — an assertion against a kill that awarded nothing is a green
+         row proving nothing (TRAPS §66). */
+      const myId = await page.evaluate(() => (window._gameState.current || {}).myId);
+      const kill = () => page.evaluate((me) => {
+        window.__btDispatch({
+          type: 'monster_kill',
+          /* Just over xpRequired(23) — ceil(500 * 1.1^22) = 4071 — so the stat
+             crosses EXACTLY ONCE.  A huge award would cross it twenty times,
+             and twenty notifications in one kill is a different question from
+             the one the owner asked. */
+          payload: { monsterId: 'qa-stat-1', recipients: [me], shares: { [me]: 1 }, xp: 4200, gold: 0 },
+        });
+      }, myId);
+
+      const readNotice = () => page.evaluate(() => {
+        const S = window._gameState && window._gameState.current;
+        const banner = document.querySelector('[data-levelup-banner]');
+        const burst = document.querySelector('[data-levelup-kind]');
+        const t = banner ? banner.textContent : '';
+        return {
+          power: S && S.rpg ? S.rpg.power : null,
+          level: S && S.rpg ? S.rpg.level : null,
+          bannerKind: banner ? banner.getAttribute('data-levelup-banner') : null,
+          bannerText: t.replace(/\s+/g, ' ').trim(),
+          burstKind: burst ? burst.getAttribute('data-levelup-kind') : null,
+        };
+      });
+
+      for (const [tag, withProg3] of [['prog3', true], ['legacy', false]]) {
+        await armCrossing(withProg3);
+        const before = await readNotice();
+        await kill();
+        await page.waitForTimeout(500);
+        const after = await readNotice();
+        await page.screenshot({ path: `${OUT}/statnotice/${tag}.jpg`, type: 'jpeg', quality: 86 });
+        const crossed = after.power === before.power + 1;
+        findings.push({ shot: `statnotice-${tag}`, withProg3, crossed,
+          levelMoved: after.level !== before.level, ...after });
+        console.log(`  statnotice/${tag}.jpg  T1 power ${before.power} -> ${after.power} ` +
+          `(${crossed ? 'CROSSED' : 'did not cross — fixture is vacuous'}), ` +
+          `character level ${before.level} -> ${after.level}`);
+        console.log(`       notification: ${after.bannerKind ? `banner[${after.bannerKind}] ${JSON.stringify(after.bannerText)}`
+          : (after.burstKind ? `burst[${after.burstKind}]` : 'NONE')}`);
+        await page.waitForTimeout(4200); /* let the banner age out before the next */
+      }
+      await ctx.close().catch(() => {});
+    }
+
     /* ── pass 3: the two things that are not visible in a screenshot ── */
     /* ═══ PRELOADING IS LAW, SO IT IS CHECKED, NOT ASSERTED IN A COMMENT ═══
        CLAUDE.md: every animation asset is fully loaded during the loading
@@ -275,18 +695,30 @@ async function main() {
 
       const warm = await page.evaluate(async () => {
         const A = window.BT_AUDIO || null;
+        const W = window.__btLevelUpWarm || null;
+        const pUrl = W ? W.portrait() : '';
         return {
           report: (window.__btPreloadReport && window.__btPreloadReport.levelUpBurst) || null,
           spriteReport: window.__btPreloadReport ? Object.keys(window.__btPreloadReport).length : 0,
           audioDecoded: !!(A && A._samples && A._samples['level-up']),
           audioInManifest: !!(A && A.SFX_MANIFEST && A.SFX_MANIFEST['level-up']),
           muted: A ? A.muted : null,
+          /* v2.3.2610: the character medallion.  Asked BY VALUE — "is this url
+             one of the bitmaps being held" — because a warm count going up
+             cannot tell a warmed portrait from a warmed skill icon, and the
+             frame where it was not ready looks identical to the frame where it
+             was, one repaint later. */
+          portraitPresent: !!pUrl,
+          portraitWarm: !!(W && pUrl && W.has(pUrl)),
+          heldCount: W ? W.count() : 0,
         };
       });
       console.log('\n  PRELOAD');
       console.log(`    preloadWorldAnimations().levelUpBurst = ${warm.report}  (of ${warm.spriteReport} groups)`);
       console.log(`    'level-up' in SFX_MANIFEST = ${warm.audioInManifest}`);
       console.log(`    sting DECODED before any level-up = ${warm.audioDecoded}`);
+      console.log(`    character portrait published        = ${warm.portraitPresent}`);
+      console.log(`    portrait DECODED before any level-up = ${warm.portraitWarm}  (${warm.heldCount} manifest bitmaps held)`);
 
       /* ═══ AND THE MUTE ═══
          The owner's sound toggle (SettingsPanel.jsx:103) writes BT_AUDIO.muted,
@@ -323,12 +755,50 @@ async function main() {
     console.log(`\n  ${strip.length}/8 frames mounted`);
     console.log(`  icon centre drift across the run: dx=${dx.toFixed(2)}px dy=${dy.toFixed(2)}px  (must be ~0)`);
     console.log(`  icon width, frame 0 -> 7: ${ws.map((w) => w.toFixed(1)).join(' -> ')}  (scales WITH the medallion)`);
+    /* ═══ v2.3.2610: THE SIDE-BY-SIDE ASSERTIONS ═══ */
+    const pairs = findings.filter((f) => f.shot.startsWith('pair-') && f.n != null);
+    const motion = findings.find((f) => f.shot === 'pair-motion') || {};
+    const worstAll = pairs.reduce((m, f) => (f.gap != null && (m == null || f.gap < m) ? f.gap : m), null);
+    console.log(`\n  SIDE BY SIDE`);
+    console.log(`  ${pairs.filter((f) => f.n === 2).length}/${pairs.length} framings showed BOTH notifications from one prog3_level`);
+    console.log(`  tightest painted-pair gap across all four framings: ${worstAll == null ? 'n/a' : worstAll.toFixed(1) + 'px'}`);
+    console.log(`  character medallion is the portrait data-url: ${pairs.every((f) => f.portrait)}`);
+    const films = findings.filter((f) => f.shot.startsWith('film-'));
+    console.log(`  filmed, painted frames per framing: ${films.map((f) => f.painted).join(', ')}`);
+    const pairOk = pairs.length === VIEWS.length
+      && pairs.every((f) => f.n === 2 && f.offscreen === 0 && f.belowTray === 0 && f.allDecoded
+        && f.portrait && f.shownHW === 14)
+      && worstAll != null && worstAll > 0
+      && motion.combat > 1 && motion.char > 1
+      /* A sheet built from three repaints is not a film. */
+      && films.length === VIEWS.length && films.every((f) => f.painted >= 20);
+
+    /* ═══ v2.3.2610: THE "IMPOSSIBLE" LEVEL, STATED AS TWO ROWS ═══ */
+    const sn3 = findings.find((f) => f.shot === 'statnotice-prog3') || {};
+    const snL = findings.find((f) => f.shot === 'statnotice-legacy') || {};
+    console.log(`\n  THE T1 STAT TICK`);
+    const shownAs = (f) => (f.bannerKind ? `banner[${f.bannerKind}] ${JSON.stringify(f.bannerText)}`
+      : (f.burstKind ? `burst[${f.burstKind}]` : 'nothing'));
+    console.log(`    prog3 character:  one T1 crossing=${sn3.crossed}  character level moved=${sn3.levelMoved}  shown=${shownAs(sn3)}`);
+    console.log(`    legacy character: one T1 crossing=${snL.crossed}  character level moved=${snL.levelMoved}  shown=${shownAs(snL)}`);
+    /* Both halves fail separately and both matter: a fixture that never crosses
+       the threshold proves nothing about the prog3 row, and a legacy row that
+       says nothing would be a regression for the characters the tick is real
+       for. */
+    const statOk = sn3.crossed === true && sn3.levelMoved === false
+      && sn3.bannerKind == null && sn3.burstKind == null
+      && snL.crossed === true && snL.levelMoved === false && snL.bannerKind === 'power'
+      && /SKILL UP!/.test(snL.bannerText) && /Melee Level/.test(snL.bannerText);
+
     const pre = findings.find((f) => f.shot === 'preload') || {};
-    const ok = strip.length === 8 && dx < 1 && dy < 1
+    const ok = pairOk && statOk && strip.length === 8 && dx < 1 && dy < 1
       && findings.filter((f) => f.shot.startsWith('360') || f.shot.startsWith('390')).every((f) => f.mounted && f.iconComplete)
       && pre.report === 'fulfilled' && pre.audioDecoded === true
+      && pre.portraitPresent === true && pre.portraitWarm === true
       && !!(pre.mute && pre.mute.whileMuted && pre.mute.whileOn);
-    console.log(ok ? '\nPASS — icon locked to the circle, every hero shot mounted, both assets warm before first use, mute respected'
+    console.log(ok ? '\nPASS — icon locked to the circle, every hero shot mounted, both notifications play side by side at every framing '
+                     + 'with no overlap and nothing off-screen, both animate, the T1 tick is silent under prog3 and named '
+                     + 'under legacy, assets warm before first use, mute respected'
                    : '\nFAIL — see the rows above');
     console.log(`\nwrote ${OUT}`);
     if (!ok) process.exitCode = 1;

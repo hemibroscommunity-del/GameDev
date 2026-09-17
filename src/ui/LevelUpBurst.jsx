@@ -1,5 +1,6 @@
 import React from 'react';
-import { levelUpIconFor, levelUpLabelFor } from './levelUpIcons.js';
+import { levelUpMedallionSrc, levelUpLabelFor } from './levelUpIcons.js';
+import { portraitStore } from './mobile/sheet/portraitStore.js'; /* v2.3.2610: a character level wears the character */
 import {
   LEVELUP_STRIP_SRC, LEVELUP_STRIP_W, LEVELUP_STRIP_H, LEVELUP_FRAMES,
   LEVELUP_HOLD_MS, LEVELUP_FADE_MS, LEVELUP_RUN_MS, LEVELUP_MAX_W, LEVELUP_MAX_H,
@@ -38,7 +39,24 @@ import { BT_AUDIO } from '../data/index.js';
  * is not following the medallion — the medallion is placed around it.
  */
 
-export default function LevelUpBurst({ msg }) {
+/* ═══ v2.3.2610: IT IS A COLUMN NOW, NOT THE SCREEN ═══
+ *
+ * Owner: "I'd rather them both play side by side."  A skill level and the
+ * character level it produced arrive in the same tick and used to overwrite
+ * each other in BroTown's single message slot; LevelUpBurstStack.jsx keeps up
+ * to two live at once and hands each one a COLUMN.
+ *
+ * Everything below that used to solve against the viewport width now solves
+ * against `colW` instead — the fit, the pin, and the caption plate's maximum.
+ * With `cols: 1` colW IS the viewport and every number is what v2.3.2591
+ * shipped, so a lone level-up is pixel-for-pixel unchanged; the two-column
+ * case is the only new geometry.  That is deliberate: one burst is still by
+ * far the common case and it should not pay for the rare one.
+ *
+ * `col` / `cols` rather than an x fraction because the caption has to be
+ * clamped to the same column the art is centred in, and passing one number
+ * that both derive from is what stops them disagreeing. */
+export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
   /* ═══ ITS OWN CLOCK, ON PURPOSE ═══
      The banner this replaces animated off a bare Date.now() read inside
      BroTown's render, which only advances when something ELSE re-renders that
@@ -48,17 +66,35 @@ export default function LevelUpBurst({ msg }) {
      here, started on mount and cancelled on unmount.  Nothing outside this
      component can change how the art plays. */
   const [clockMs, setClockMs] = React.useState(0);
+  const doneRef = React.useRef(onDone);
+  doneRef.current = onDone;
   React.useEffect(() => {
     let raf = 0;
     const t0 = msg.ts || Date.now();
     const step = () => {
       const e = Date.now() - t0;
       setClockMs(e);
-      if (e < LEVELUP_TOTAL_MS) raf = requestAnimationFrame(step);
+      if (e < LEVELUP_TOTAL_MS) { raf = requestAnimationFrame(step); return; }
+      /* v2.3.2610: tell the stack the column is free.  Reported from the clock
+         that owns the animation rather than from the render, because a render
+         that returns null has not necessarily happened — BroTown's tree only
+         re-renders when something else in it does, which is the whole reason
+         this component drives itself.  Never while a rig has the animation
+         frozen: a frozen burst is being photographed, not finishing. */
+      if (typeof window !== 'undefined' && typeof window.__btLevelUpFreeze === 'number') return;
+      if (typeof doneRef.current === 'function') doneRef.current();
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
   }, [msg.ts]);
+
+  /* The portrait is generated into portraitStore by BottomDashboard and can be
+     rewritten mid-session (the player changes a cosmetic).  Subscribing keeps a
+     character medallion showing the character they are actually playing — the
+     v2.3.1835 lesson, which is that a missing subscription does not break the
+     picture, it makes it stale, which is worse. */
+  const [, forcePortrait] = React.useState(0);
+  React.useEffect(() => portraitStore.subscribe(() => forcePortrait((v) => v + 1)), []);
 
   /* ═══ AN AUTOTEST HANDLE, BECAUSE THE FRAMES ARE 70ms LONG ═══
      window.__btLevelUpFreeze pins the animation to one instant so a rig can
@@ -98,13 +134,22 @@ export default function LevelUpBurst({ msg }) {
      (a changing backgroundSize would re-rasterize the strip every frame). */
   const vw = typeof window !== 'undefined' ? window.innerWidth : 390;
   const vh = typeof window !== 'undefined' ? window.innerHeight : 844;
-  let k = Math.min((vw * 0.86) / LEVELUP_MAX_W, (vh * 0.68) / LEVELUP_MAX_H);
+  /* v2.3.2610: the burst owns a COLUMN.  With cols === 1 this is the viewport
+     and the fill fraction is v2.3.2591's 0.86, so a single burst is unchanged.
+     Two columns get 0.92 OF THE COLUMN rather than 0.86 — the gutter between
+     them is already the full width of the art's transparent margins, and
+     giving back that 6% is what keeps the medallion big enough to read the
+     icon inside it at 360. */
+  const nCols = Math.max(1, cols | 0);
+  const colW = vw / nCols;
+  const colFill = nCols === 1 ? 0.86 : 0.92;
+  let k = Math.min((colW * colFill) / LEVELUP_MAX_W, (vh * 0.68) / LEVELUP_MAX_H);
 
   /* The one screen point the medallion's centre is pinned to.  0.40 rather
      than dead centre: the burst is taller below the medallion than above it
      (the banner unfurls downward), so centring the CIRCLE would put the whole
      composition low.  0.40 puts it back while clearing the zone header. */
-  const pinX = vw / 2;
+  const pinX = colW * (Math.min(nCols - 1, Math.max(0, col | 0)) + 0.5);
   const pinY = vh * LEVELUP_PIN_Y_FRAC;
 
   /* ═══ THE BURST MAY OVERLAP THE BAND.  THE CAPTION MAY NOT. ═══
@@ -121,7 +166,16 @@ export default function LevelUpBurst({ msg }) {
   const worldBottom = vh >= vw ? vh * 0.67 : vh;
   const _settled = LEVELUP_FRAMES[LEVELUP_FRAMES.length - 1];
   const _belowCircle = _settled.sh - _settled.oy;
-  const kCaption = (worldBottom - 8 - LEVELUP_CAPTION_BOX_H - LEVELUP_CAPTION_GAP - pinY) / _belowCircle;
+  /* v2.3.2610: a caption in half the width wraps to more lines, so the height
+     the fit reserves for it has to grow with the column count or the second
+     line lands under the tray — which is the exact clipping v2.3.2591 solved
+     for one column and would have re-introduced for two.  1.75x covers the
+     longest real caption ("Melee · Level 12" over a two-line gains list) at
+     360 with a column 180px wide; measured, not guessed — see
+     tools/qa/mp/shot-levelup.mjs, which fails the run if any caption plate
+     crosses the tray. */
+  const capBoxH = nCols === 1 ? LEVELUP_CAPTION_BOX_H : Math.round(LEVELUP_CAPTION_BOX_H * 1.75);
+  const kCaption = (worldBottom - 8 - capBoxH - LEVELUP_CAPTION_GAP - pinY) / _belowCircle;
   /* ...but not to the point of a medallion nobody can see: below this the
      caption is allowed to sit a little higher against the art instead. */
   k = Math.min(k, Math.max(kCaption, 0.32));
@@ -139,14 +193,23 @@ export default function LevelUpBurst({ msg }) {
   const iconR = f.r * k * LEVELUP_ICON_FILL;
   const label = levelUpLabelFor(msg);
   const lvl = msg.kind === 'life' ? msg.level : (msg.skillLevel != null ? msg.skillLevel : msg.level);
+  /* v2.3.2610: the character's own bust for a character level, that skill's
+     icon for a skill level.  S is read at use time the way the rest of this
+     tree reads it — the store it goes through is the points panel's. */
+  const _S = (typeof window !== 'undefined' && window._gameState) ? window._gameState.current : null;
+  const medallionSrc = levelUpMedallionSrc(msg, _S);
 
   /* The caption sits at a FIXED y — below where the SETTLED frame ends, not
      below the current one — so it does not hop about while the art grows. */
   const capY = Math.min(pinY + _belowCircle * k + LEVELUP_CAPTION_GAP,
-    worldBottom - 8 - LEVELUP_CAPTION_BOX_H);
+    worldBottom - 8 - capBoxH);
 
   return (
-    <div style={{ position: 'absolute', inset: 0, zIndex: 70, pointerEvents: 'none', opacity: alpha }}>
+    <div
+      data-levelup-kind={msg.kind}
+      data-levelup-col={String(col)}
+      style={{ position: 'absolute', inset: 0, zIndex: 70, pointerEvents: 'none', opacity: alpha }}
+    >
       <div style={{ position: 'absolute', left: pinX, top: pinY }}>
         <div
           aria-hidden="true"
@@ -170,7 +233,7 @@ export default function LevelUpBurst({ msg }) {
           }}
         />
         <img
-          src={levelUpIconFor(msg.skill)}
+          src={medallionSrc}
           alt=""
           draggable={false}
           data-levelup-icon=""
@@ -178,7 +241,13 @@ export default function LevelUpBurst({ msg }) {
             position: 'absolute',
             left: -iconR, top: -iconR,
             width: iconR * 2, height: iconR * 2,
-            objectFit: 'contain',
+            /* v2.3.2610: `cover` inside a circular clip for the PORTRAIT, which
+               is a head-and-shoulders bust with its own rectangle and would sit
+               in the medallion as a floating photo otherwise.  A skill icon is
+               already a transparent glyph drawn to fill its own box, so it
+               keeps `contain` and is not cropped. */
+            objectFit: msg.kind === 'char' ? 'cover' : 'contain',
+            borderRadius: msg.kind === 'char' ? '50%' : 0,
             /* a soft warm lift so the icon reads against the cream void
                without a plate, which Lantern Slate would not want here */
             filter: 'drop-shadow(0 1px 3px rgba(74,50,12,.45))',
@@ -188,7 +257,18 @@ export default function LevelUpBurst({ msg }) {
       <div
         data-levelup-caption=""
         style={{
-          position: 'absolute', left: 0, right: 0, top: capY,
+          /* ═══ v2.3.2610: THE CAPTION SPANS ITS COLUMN, NOT THE SCREEN ═══
+             This was `left: 0; right: 0` with the plate centred inside it, and
+             with one burst that is the same thing as centring on the column.
+             With two it is not: both plates centred themselves on the VIEWPORT
+             and sat on top of each other — measured at -166px of overlap at
+             360 — while the art either side of them was correctly apart.  The
+             medallion being in the right place is not the same claim as the
+             words being in the right place, and only the second one was being
+             checked.  (tools/qa/mp/shot-levelup.mjs floors the gap over every
+             painted pair now, art AND caption, which is what caught it.) */
+          position: 'absolute', left: colW * (nCols === 1 ? 0 : Math.min(nCols - 1, Math.max(0, col | 0))),
+          width: colW, top: capY,
           display: 'flex', justifyContent: 'center',
           fontFamily: 'Source Sans 3,sans-serif',
           /* the caption arrives once the burst has settled — during the run
@@ -206,7 +286,10 @@ export default function LevelUpBurst({ msg }) {
             standard hairline border.  Translucent-but-opaque-enough and NOT
             backdrop-filter, which the spec forbids outright on iOS Safari. */}
         <div style={{
-          maxWidth: '86%',
+          /* v2.3.2610: of the COLUMN, not of the screen — two plates each
+             claiming 86% of the viewport would overlap in the middle, which is
+             the "overlapping unreadably" the owner ruled out. */
+          maxWidth: nCols === 1 ? '86%' : Math.max(120, colW - 14),
           padding: '7px 14px 8px',
           borderRadius: 10,
           background: 'rgba(32,44,50,.88)',
@@ -225,17 +308,33 @@ export default function LevelUpBurst({ msg }) {
               the only place left that can hold it.  The lighter TREATMENT is
               untouched — celebrateLifeSkillLevel still fires no screen shake
               and half the particles. */}
-          <div style={{ fontSize: 18, fontWeight: 800, color: '#F7F2E7', letterSpacing: '.02em', lineHeight: 1.15 }}>
+          <div style={{
+            /* v2.3.2610: a two-column caption gets the smaller step of the
+               type scale.  18px "Woodcutting · Skill Level 7" in a 166px column
+               wraps to three lines and pushes the plate into the tray; 15px
+               holds it to two.  One column keeps 18. */
+            fontSize: nCols === 1 ? 18 : 15,
+            fontWeight: 800, color: '#F7F2E7', letterSpacing: '.02em', lineHeight: 1.15,
+          }}>
             {msg.kind === 'life'
               ? `${label || 'Skill'} · Skill Level ${lvl}${(msg.gained || 1) > 1 ? `  (+${msg.gained})` : ''}`
-              : (label ? `${label} · Level ${lvl}` : `Level ${lvl}`)}
+              /* ═══ v2.3.2610: SAY "CHARACTER", BECAUSE THAT IS THE CONFUSION ═══
+                 The owner's report was that they had gained a combat level
+                 without levelling a combat skill.  Character level IS the sum
+                 of the three skill levels (prog3CharLevel), so the two really
+                 are different numbers that both get called "level", and the
+                 notification never said which one it meant.  It does now, and
+                 the portrait in the medallion says it a second time. */
+              : msg.kind === 'char'
+                ? `Character · Level ${msg.level}`
+                : (label ? `${label} · Level ${lvl}` : `Level ${lvl}`)}
           </div>
           {/* v2.3.1727's gains line, kept: "you got stronger" is a claim and
               "+1.5 damage · +8 max HP" is the reason the owner asked for the
               retune.  The art says LEVEL UP and the icon says which skill;
               this is the only part that says what it BOUGHT. */}
-          {msg.kind === 'combat' && msg.gains ? (
-            <div style={{ fontSize: 12.5, color: '#B9C1BF', marginTop: 3, lineHeight: 1.25 }}>
+          {(msg.kind === 'combat' || msg.kind === 'char') && msg.gains ? (
+            <div style={{ fontSize: nCols === 1 ? 12.5 : 11, color: '#B9C1BF', marginTop: 3, lineHeight: 1.25 }}>
               {msg.gains}
             </div>
           ) : null}

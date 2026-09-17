@@ -20,12 +20,17 @@
      _lastShownLevel would hold the old high-water and mute every
      celebration until the player re-passed it.
 
-   `opts.light` is the in-sheet spend variant: banner + chime only —
+   `opts.light` is the in-sheet spend variant: the notification only —
    screen shake and a particle explosion under a modal sheet read as a
-   bug, not a party. */
+   bug, not a party.
 
-import { BT_AUDIO } from '@/data/index.js';
-import { pushDmgPopup } from '@/game/combatHelpers.js';
+   v2.3.2610: this file makes no SOUND any more and pushes no world text.
+   Both belonged to the celebration v2.3.2591 replaced, and both were still
+   firing under the new one — the owner's "it also played the legacy level
+   up".  The sting now lives with the art, in LevelUpBurst's own mount
+   effect, so there is exactly one place that decides what a level-up sounds
+   like.  (This is why neither BT_AUDIO nor pushDmgPopup is imported here any
+   more; if you find yourself re-adding one, that is the regression.) */
 
 /* ═══ v2.3.1915: A LIFE SKILL LEVEL IS A LEVEL ═══
  *
@@ -58,7 +63,16 @@ export function celebrateLifeSkillLevel(S, skill, toLevel, fromLevel) {
     ? window._setLevelUpMsg : null;
   if (setMsg) setMsg({ kind: 'life', skill: skill, label: label, level: to, gained: gained, ts: Date.now() });
 
-  try { BT_AUDIO.levelUp(); } catch (e) { void e; }
+  /* ═══ v2.3.2610: THE LEGACY FANFARE IS GONE ═══
+     Owner: "it also played the legacy level up."
+     BT_AUDIO.levelUp() (gameDisplay.js) is a seven-note square-wave arpeggio
+     with a sustained chord at 600ms — the celebration v2.3.2591 replaced.  It
+     was still being fired here, and on four other paths, UNDER the new sting
+     the burst plays from its own mount effect.  Both sounded, every time; the
+     art was new and half of what you heard was the thing it replaced.
+     Nothing takes its place at this call site on purpose: the sting belongs to
+     the overlay (LevelUpBurst.playLevelUpSting), where it starts on the same
+     commit that paints frame 0 — which is what makes "simultaneously" true. */
   if (!S) return true;
   S._levelUpFlash = Date.now();
   /* Half the combat burst, and no screen shake: loud enough to catch the eye
@@ -97,15 +111,41 @@ export function celebrateLevelUps(S, R, opts) {
 
   var setMsg = opts.setLevelUpMsg
     || (typeof window !== 'undefined' && typeof window._setLevelUpMsg === 'function' ? window._setLevelUpMsg : null);
-  if (setMsg) setMsg({ kind: 'combat', level: to, ts: Date.now() });
+  /* ═══ v2.3.2610: THIS IS A CHARACTER LEVEL, AND IT SAYS SO ═══
+     Owner: "if it's combat level just show the character portrait in the center
+     of the new level up animation."
+     Every path into this function raises R.level — the CHARACTER level — with
+     no skill attached, so 'combat' was never quite the right word for it and
+     the medallion fell through to a generic XP glyph.  'char' seats the
+     character's own portrait there instead (levelUpIcons.levelUpMedallionSrc).
+     The pools line moves onto the message too: the burst's caption is where
+     that information lives now, rather than in the world-space floaters this
+     used to push at the player's feet (removed below). */
+  /* ═══ ...BUT NOT TWICE FOR ONE LEVEL ═══
+     Under prog3 this function no longer OWNS the character level — the worker
+     announces it the moment it happens, in wsClient's prog3_level handler,
+     which pushes the 'char' burst with the real gains on it.  R.level catches
+     up a beat later when the player_state carrying the new blob lands, and
+     then the next kill arrives here with `to > from` and every reason to
+     believe it has news.  It does not: the player would see the same
+     "Character · Level 14" a second time, a few seconds after the first, which
+     is its own small version of the notification not being trustworthy.
+     `_lastCharLvlShown` is the high-water wsClient stamps when it announces
+     one, so this reads that rather than keeping a second record.  Only the
+     MESSAGE is suppressed — the pool refill, the shake and the particles below
+     still run, because those are the power moment and the worker does not
+     send them. */
+  var announced = (R._lastCharLvlShown || 0) >= to;
+  if (setMsg && !announced) setMsg({ kind: 'char', level: to, gains: 'HP \xB7 Stamina \xB7 Mana refilled', ts: Date.now() });
 
   if (opts.light) {
-    /* In-sheet spend: chime only. */
-    try { BT_AUDIO.levelUp(); } catch (e) { void e; }
+    /* In-sheet spend: the overlay's own sting, nothing else — a screen shake
+       and a particle explosion under a modal sheet read as a bug, not a party.
+       v2.3.2610: the legacy fanfare that used to fire here is gone with the
+       rest of them (see celebrateLifeSkillLevel's note). */
     return true;
   }
 
-  try { BT_AUDIO.collect(); } catch (e) { void e; }
   /* ═══ LEVEL UP BURST — celebratory particle explosion ═══ */
   S.screenShake = 8;
   S._levelUpFlash = Date.now();
@@ -124,16 +164,15 @@ export function celebrateLevelUps(S, R, opts) {
         size: 2 + Math.random() * 3
       });
     }
-    /* Rising level text */
-    pushDmgPopup(S, at.x, at.y - 50, 'LEVEL ' + to + '!', '#f5c542');
-    pushDmgPopup(S, at.x, at.y - 35, 'HP/MANA RESTORED', '#3dd497');
+    /* v2.3.2610: the world-space 'LEVEL N!' / 'HP/MANA RESTORED' floaters that
+       used to be pushed here are gone.  They are the old celebration's text,
+       drawn into the Pixi world at the player's feet, and they were still
+       playing under the new overlay — which is the second half of the owner's
+       "it also played the legacy level up", the half you can see rather than
+       hear.  Both facts they carried are in the burst's caption now (the level
+       in the headline, the refill in the gains line).  The PARTICLES and the
+       screen shake stay: those are the power moment, they are not text, and
+       nothing in the new art replaces them. */
   }
-  /* Ascending chime */
-  try {
-    BT_AUDIO.beep(523, 0.1, 0.08, 'sine');
-    setTimeout(function () { BT_AUDIO.beep(659, 0.08, 0.06, 'sine'); }, 100);
-    setTimeout(function () { BT_AUDIO.beep(784, 0.08, 0.06, 'sine'); }, 200);
-    setTimeout(function () { BT_AUDIO.beep(1047, 0.12, 0.1, 'sine'); }, 300);
-  } catch (e) { void e; }
   return true;
 }

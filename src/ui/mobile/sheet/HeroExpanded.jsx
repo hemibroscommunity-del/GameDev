@@ -9,7 +9,7 @@ import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon, weaponForCat, s
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { CharacterView, FIGURE_W_FRAC } from './CharacterView.jsx'; /* v2.3.1815: the equip screen's own figure */
-import { portraitStore } from './portraitStore.js';                 /* v2.3.2592: the Shared column wears the character's portrait */
+import { portraitStore, PORTRAIT_FALLBACK_SRC } from './portraitStore.js'; /* v2.3.2592: the Shared column wears the character's portrait */
 import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroStats, unspentPointsTotal } from './heroModel.js';
 /* v2.3.1660: trained-skill rebuild — the Build section becomes the
    seven-stat allocation menu when the worker owns prog3. */
@@ -118,7 +118,9 @@ const POINT_LANES = ['sword', 'staff', 'bow']
   .concat([SHARED_LANE]);
 /* The portrait's fallback when the bust has not been drawn yet (first
    render after a cold load): the sheet's own knight-bust art. */
-const SHARED_ICON_FALLBACK = '/icons/ui/hero/tab-overview.webp?v=2.3.2592';
+/* v2.3.2610: one definition, in portraitStore.js — the level-up medallion reads
+   the same chain for a character level-up and a second copy would drift. */
+const SHARED_ICON_FALLBACK = PORTRAIT_FALLBACK_SRC;
 
 /* v2.3.1657: the v2.3.1332 chiseled text segments (segCls/seg) are retired
    with the text — see the icon chip row in the render. */

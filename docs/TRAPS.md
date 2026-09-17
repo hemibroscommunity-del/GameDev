@@ -1,4 +1,4 @@
-# TRAPS — plausible-but-wrong moves (v2.3.1204)
+# TRAPS — plausible-but-wrong moves (v2.3.2610)
 
 A registry of changes that look obviously right and are known to be
 wrong. Each was attempted, or nearly attempted, by a competent session.
@@ -3548,3 +3548,64 @@ whatever the layout looks like.
 
 **Related:** §61 (a still-frame assertion cannot see a frozen animation) — the
 same defect, found by the same instrument, one layer down.
+
+---
+
+## 86. A retired system that still ticks, announcing itself in the words of the system that replaced it (v2.3.2610)
+
+**The report:** "I raised a combat level without leveling up any of my combat
+skills which should be impossible (it also played the legacy level up)."
+
+**The tempting move:** the owner is right that it is impossible, so a level was
+minted that should not have been, so this is a server progression bug. Go and
+read `_addCombatXp`, `_tryLevelUpFromBuildPoints`, `_handleBuildPointEarned`
+and find where the level leaked in.
+
+**Why it is wrong:** no level was minted, and the server was never involved.
+Character level under prog3 is `Σ` the three trained skill levels
+(`_prog3CharLevel`, mirrored by `prog3CharLevel`), `_recomputeMaxes` returns
+straight into `_prog3Recompute` for any blob with a `prog3` field, and both
+sides recompute it from the same sum. It genuinely cannot move without a skill
+moving — measured on a real kill, `tools/qa/mp/shot-levelup.mjs`: the stat
+crossed and the character level did not.
+
+What the owner saw was the LEGACY T1 track, which the prog3 rebuild never
+unwired. `distributeKillXpToBuild` still runs on every `monster_kill` with no
+prog3 gate; a crossing still calls `pushStatIncreaseNotice`; and that raised
+`{ kind: 'power' }`, which reached the old gold banner reading **LEVEL UP!**
+over **Level 24**. `BUILD_LABELS` calls those five stats Melee / Bow / Magic /
+Vitality / Stamina — the same words as the prog3 combat skills — and the banner
+printed neither the label nor the word "stat". Under prog3 those stats buy
+nothing at all: level, max HP, max stamina and max mana all derive from the
+prog3 blob on both sides, and the notice's own benefit line computes
+`maxHp - maxHp` and reads `+0 HP`.
+
+**The tell, and it is general:** a report that something *impossible* happened,
+where the impossible thing is *stated in words rather than read off a number*.
+Before opening the system that owns the number, find out whether the number
+moved. If it did not, the defect is in what was said, and it is usually an
+older system still talking.
+
+**The second tell:** a version-tagged replacement ("v2.3.2591 replaced the
+level-up notification for lifeskills and combat") that branched on a whitelist
+of kinds. Everything not on the list kept the old behaviour silently, and the
+one kind nobody thought of is the one the owner met. The same shape as §81 — a
+list encodes the cases you have already had.
+
+**Do instead:** suppress the retired system's CLAIM, not its arithmetic. The
+T1 stats still tick (they are the fail-open path for any blob prog3 adoption
+could not produce, and a legacy character's tick is real), but
+`pushStatIncreaseNotice` returns early on `prog3Live(R)` — the same guard
+`awardWeaponXp` has had since v2.3.1660, twelve lines away in
+`gameSystems.js`, for exactly the same reason. A dead counter announced
+politely is still a dead counter announced.
+
+**Receipt:** `tools/qa/mp/shot-levelup.mjs` drives one real `monster_kill`
+through `window.__btDispatch` at a seeded threshold and prints two rows — a
+prog3 character (crossed, level unmoved, **nothing shown**) and a legacy one
+(crossed, level unmoved, banner reading `SKILL UP! / Melee Level 24`). The
+before, captured on `origin/main` in a worktree, is in
+`docs/triage-2026-09-17/level-up-followup.md`.
+
+**Related:** §61 (both rows are about ABSENCE, which no single screenshot can
+assert); §81 (the whitelist that encodes the asks you have already had).
