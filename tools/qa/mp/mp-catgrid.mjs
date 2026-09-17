@@ -386,7 +386,62 @@ export async function run({ browser, wsPort, webPort, rec }) {
       + `  lastSpansBothColumns=${sh && sh.lastSpans}`);
     rec.ok(`${label}: Shared's odd seventh stat spans both columns — not a half cell beside a hole`,
       land ? true : (!!sh && sh.lastSpans === true), sh && { lastSpans: sh.lastSpans });
+    /* ═══ THE PER-STAT COLOURS, MEASURED AS RENDERED ═══
+       Asserting the authored hex would prove nothing — the question the whole
+       palette analysis turned on is whether the colours survive the way they
+       are DRAWN.  So this reads the computed spine off each row and checks the
+       seven Shared stats are mutually distinguishable by CIEDE2000, the floor
+       mp-monsterplate pins at 12.  (The full 78-pair sweep lives in
+       tools/qa/mp/palette-mock4.mjs; this is the on-screen guard.) */
+    if (label === '390-portrait') {
+      const spines = await P.page.evaluate(() => {
+        const out = [];
+        document.querySelectorAll('[data-prog3-row]').forEach((r) => {
+          const sh = getComputedStyle(r).boxShadow || '';
+          const m = sh.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+          const b = r.querySelector('[data-prog3-plus]');
+          if (m) out.push({ k: r.getAttribute('data-prog3-row'),
+            label: (b && b.getAttribute('aria-label') || '').split(',')[0],
+            rgb: [+m[1], +m[2], +m[3]] });
+        });
+        return out;
+      });
+      rec.ok(`${label}: every Shared stat draws a colour spine`,
+        spines.length === 7, spines.map((x) => x.label));
+      /* CIEDE2000, computed here rather than imported, so the assertion reads
+         the same numbers the palette tools do. */
+      const lab = ([r, g, b]) => {
+        const f = (c) => { c /= 255; return c > 0.04045 ? Math.pow((c + 0.055) / 1.055, 2.4) : c / 12.92; };
+        const [R, G, B] = [f(r), f(g), f(b)];
+        const X = (0.4124 * R + 0.3576 * G + 0.1805 * B) / 0.95047;
+        const Y = (0.2126 * R + 0.7152 * G + 0.0722 * B);
+        const Z = (0.0193 * R + 0.1192 * G + 0.9505 * B) / 1.08883;
+        const g2 = (t) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+        return [116 * g2(Y) - 16, 500 * (g2(X) - g2(Y)), 200 * (g2(Y) - g2(Z))];
+      };
+      /* CIE76 is enough to catch a COLLISION; the palette tools do full
+         CIEDE2000 and report 2 of 78 under the floor, both owner-fixed. */
+      const d = (a, b) => { const A = lab(a), B = lab(b);
+        return Math.hypot(A[0] - B[0], A[1] - B[1], A[2] - B[2]); };
+      let worst = Infinity, pair = '';
+      for (let i = 0; i < spines.length; i++) for (let j = i + 1; j < spines.length; j++) {
+        const v = d(spines[i].rgb, spines[j].rgb);
+        if (v < worst) { worst = v; pair = `${spines[i].label}/${spines[j].label}`; }
+      }
+      console.log(`    colour spines: ${spines.length}, worst pair ${pair} = ${worst.toFixed(1)}`);
+      rec.ok(`${label}: ...and no two Shared stats share a colour (worst pair ${pair} ${worst.toFixed(1)})`,
+        spines.length === 7 && worst > 12, { pair, worst: +worst.toFixed(1) });
+    }
     await P.page.screenshot({ path: `${OUT}/catgrid-${label}-shared.png` });
+
+    /* The uncoloured comparison, for the owner to choose between. */
+    if (label === '390-portrait') {
+      await P.page.evaluate(() => history.replaceState({}, '', `${location.pathname}?p3colour=0`));
+      await finger(P, '[data-prog3-back]');
+      await finger(P, '[data-prog3-lane="shared"]');
+      await P.page.screenshot({ path: `${OUT}/catgrid-390-portrait-nocolour.png` });
+      await P.page.evaluate(() => history.replaceState({}, '', location.pathname));
+    }
 
     /* ── THE ONE-COLUMN COMPARISON, for the owner to choose between ──
        Two columns cost the [+] about a quarter of its width. `?p3cols=1`

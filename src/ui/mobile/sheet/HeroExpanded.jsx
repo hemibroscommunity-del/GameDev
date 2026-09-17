@@ -1639,6 +1639,19 @@ export const HeroExpanded = () => {
                before (the retired NARROW_TITLE map) rather than a new
                invention.  The aria-label keeps the full stat name, so nothing a
                screen reader or a scenario reads is shortened. */
+            /* ═══ v2.3.2597: THE STAT'S COLOUR, AT FULL STRENGTH ═══
+               `?p3colour=0` turns it off, for the side-by-side the owner asked
+               for ("show the owner coloured and uncoloured versions").  On by
+               default because they asked to see it.
+               Why a 4px spine and not the cell's background: a pastel
+               composited over this dark cell loses all but `alpha` of its
+               separation — at the 0.15 accentFill already uses, 70 of the 78
+               pairs fall under the CIEDE2000 floor — and the alpha that would
+               keep them apart fails the title's contrast.  Full strength on a
+               small area is the only place both survive.  See prog3.js. */
+            const colourOn = (() => {
+              try { return !/[?&]p3colour=0\b/.test(window.location.search); } catch (e) { return true; }
+            })();
             const CARD_SHORT = { dmg: 'Power', range: 'Range', aspd: 'Speed', luck: 'Luck',
               special: 'Spec', elem: 'Elem', hp: 'HP', def: 'Def', mana: 'MP', stam: 'Stam',
               dodge: 'Dodge', move: 'Move', eres: 'Resist' };
@@ -1819,6 +1832,10 @@ export const HeroExpanded = () => {
                   background: canSpend ? COL.accentFill : COL.wellSoft,
                   border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
                   borderRadius: 9, overflow: 'hidden',
+                  /* An INSET shadow, not a border: it costs no width, which
+                     matters in a 163px half-width cell where the label already
+                     has only 64px. */
+                  boxShadow: (colourOn && st.tint) ? `inset 4px 0 0 ${st.tint}` : undefined,
                 }}>
                   <span style={{
                     flex: 1, minWidth: 0,

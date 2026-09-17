@@ -158,17 +158,17 @@ export const PROG3_LEGACY_ATK = {
    report.  `capsProg3Shared` rows exist only on a worker carrying the
    folded grid; `legacyOnly` rows exist only on one that does not. */
 export const PROG3_ATK_META = [
-  { key: 'range',   label: 'Range',     perText: '+0.5% reach',                        pct: true, unit: '% farther',        iconSrc: '/icons/ui/t2/bow-longshot.webp?v=2.3.2592',     capsProg3Shared: true, dpsNote: 'reach, not damage' },
-  { key: 'dmg',     label: 'Power',     perText: '+0.5 damage per hit',                unit: ' dmg',                        iconSrc: '/icons/ui/hero/dps.webp?v=2.3.2199',            capsProg3x: true },
+  { key: 'range',   label: 'Range',     perText: '+0.5% reach',                        pct: true, unit: '% farther',        iconSrc: '/icons/ui/t2/bow-longshot.webp?v=2.3.2592',     capsProg3Shared: true, dpsNote: 'reach, not damage' , tint: '#C9B6E4' },
+  { key: 'dmg',     label: 'Power',     perText: '+0.5 damage per hit',                unit: ' dmg',                        iconSrc: '/icons/ui/hero/dps.webp?v=2.3.2199',            capsProg3x: true , tint: '#F4F0E7' },
   /* Speed's points SHORTEN the swing, so its total is a reduction — the
      label below says "faster" rather than printing a negative. */
-  { key: 'aspd',    label: 'Speed',     perText: '−0.35% swing time',                  pct: true, unit: '% faster',         iconSrc: '/icons/ui/t2/sword-tempo.webp?v=2.3.1694' },
-  { key: 'luck',    label: 'Luck',      perText: '+0.3% crit chance, +1% crit damage', pct: true, unit: '% crit chance',    iconSrc: '/icons/ui/hero/crit.webp?v=2.3.1694',           capsProg3Shared: true },
-  { key: 'special', label: 'Special',   perText: '+1% special attack damage',          pct: true, unit: '% special damage', iconSrc: '/icons/ui/t2/staff-overload.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'special attacks only' },
+  { key: 'aspd',    label: 'Speed',     perText: '−0.35% swing time',                  pct: true, unit: '% faster',         iconSrc: '/icons/ui/t2/sword-tempo.webp?v=2.3.1694' , tint: '#97E7ED' },
+  { key: 'luck',    label: 'Luck',      perText: '+0.3% crit chance, +1% crit damage', pct: true, unit: '% crit chance',    iconSrc: '/icons/ui/hero/crit.webp?v=2.3.1694',           capsProg3Shared: true , tint: '#EDB997' },
+  { key: 'special', label: 'Special',   perText: '+1% special attack damage',          pct: true, unit: '% special damage', iconSrc: '/icons/ui/t2/staff-overload.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'special attacks only' , tint: '#EACDD1' },
   /* v2.3.2512: elemental power, per weapon — burns/roots/thorns and element
      collisions from THIS weapon scale off it.  The detonation drawing is
      still the closest the repo has; swap the day a dedicated icon exists. */
-  { key: 'elem',    label: 'Element',   infoKey: 'Elemental', perText: '+1 elemental power',                 unit: ' power',                      iconSrc: '/icons/ui/t2/staff-detonation.webp?v=2.3.2199', capsProg3Elem: true },
+  { key: 'elem',    label: 'Element',   infoKey: 'Elemental', perText: '+1 elemental power',                 unit: ' power',                      iconSrc: '/icons/ui/t2/staff-detonation.webp?v=2.3.2199', capsProg3Elem: true , tint: '#9D97ED' },
   /* The RETIRED pair, drawn only against a worker that has not folded them
      into Luck — that worker still rolls off crit and critDmg, so those are
      the rows it must show (rule 19).  Same copy they shipped with. */
@@ -181,6 +181,34 @@ export const PROG3_ATK_META = [
    instead of borrowing the Magic lane's staff and the Defense row's shield
    — in a column of seven, two rows sharing one picture read as one stat. */
 export const PROG3_BODY_META = [
+  /* ═══ v2.3.2597: A COLOUR PER STAT, AND WHY IT IS NOT A CELL FILL ═══
+     Owner: "I'm interested to see how each cell being colored by meaning would
+     look.  Like power is always white, range is always purple ... pastel-like
+     colors", fixing eight of them: Power white, Range purple, HP red, MP blue,
+     Stamina green, Defense gray, Dodge yellow, Resist pink.  A stat's colour
+     names the STAT, not the weapon, so Power is the same white in all three.
+
+     THE OTHER FIVE WERE SEARCHED, NOT PICKED.  Chosen by eye, Range and Special
+     landed 8.5 apart on a floor of 12; chosen by maximin over a pastel grid
+     (tools/qa/mp/palette-opt.mjs) only TWO of the 78 pairs fall under the floor
+     and both are between colours the owner fixed — Power/Defense at 10.8 (white
+     against gray) and Range/Resist at 11.6 (purple against pink).  Neither is
+     mine to move; palette-fix.mjs reports what it would take.
+
+     AND IT CANNOT BE A CELL FILL.  This UI is dark (#16262C) under near-white
+     text, so a pastel has to be composited, and over()'s own docstring says the
+     cost: "two colours drawn at the same alpha over the same background keep
+     exactly `alpha` of the distance between them".  Measured with the repo's
+     own deltaE00: at alpha 0.50, 14 of 78 pairs fall under the floor; at 0.35,
+     31; at 0.25, 41; at 0.15 — the alpha accentFill already uses — 70 of 78,
+     i.e. the palette is gone.  Worse, the two requirements pull opposite ways:
+     at 0.50 the stat title reads 1.88:1 against its cell and fails contrast,
+     while at 0.15 it passes and nothing is distinguishable.  There is no alpha
+     that satisfies both.
+     So the colour is carried at FULL STRENGTH on a SMALL AREA — a 4px spine
+     down the row, drawn as an inset shadow so it costs no width at all — and
+     the cell keeps its dark background and its legible text. */
+
   /* ═══ v2.3.2597: SHORTER LABELS, AND WHY `infoKey` EXISTS ═══
      Owner, approving a set of shortenings so every stat name is one word:
      Elem Resist -> Resist, Move Speed -> Speed, Elemental -> Element.  Half-
@@ -202,13 +230,13 @@ export const PROG3_BODY_META = [
      glossary is a global map and does not care what is on screen.
      If the two ever DO read as confusable to a player, "Haste" is the
      pre-agreed fallback for `move`. */
-  { key: 'hp',    label: 'Max HP',      perText: '+8 max HP',                    unit: ' HP',             iconSrc: '/icons/ui/hero/hp-heart.webp?v=2.3.1922' } /* v2.3.1922: plain heart */,
-  { key: 'def',   label: 'Defense',     perText: '−0.4% damage taken',           pct: true, unit: '% less damage', iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1694' },
-  { key: 'mana',  label: 'Max Mana',    perText: '+2.5 max mana',                unit: ' mana',           iconSrc: '/icons/ui/hero/mana.webp?v=2.3.2592',             capsProg3Elem: true },
-  { key: 'stam',  label: 'Stamina',     perText: '+3 max stamina',               unit: ' stamina',        iconSrc: '/icons/ui/hero/stamina.webp?v=2.3.1694' },
-  { key: 'dodge', label: 'Dodge',       perText: '+0.4% dodge',                  pct: true, unit: '%',    iconSrc: '/icons/ui/hero/dodge.webp?v=2.3.1694' },
-  { key: 'move',  label: 'Speed',       infoKey: 'Move Speed', perText: '+0.4% move speed',             pct: true, unit: '% faster', iconSrc: '/icons/ui/hero/move-speed.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'movement, not damage' },
-  { key: 'eres',  label: 'Resist',      infoKey: 'Elem Resist', perText: '−0.4% elemental damage taken', pct: true, unit: '% less elemental', iconSrc: '/icons/ui/hero/damage-reduction.webp?v=2.3.2592', capsProg3Elem: true },
+  { key: 'hp',    label: 'Max HP',      perText: '+8 max HP',                    unit: ' HP',             iconSrc: '/icons/ui/hero/hp-heart.webp?v=2.3.1922' , tint: '#F2A6A6' } /* v2.3.1922: plain heart */,
+  { key: 'def',   label: 'Defense',     perText: '−0.4% damage taken',           pct: true, unit: '% less damage', iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1694' , tint: '#C3CBCB' },
+  { key: 'mana',  label: 'Max Mana',    perText: '+2.5 max mana',                unit: ' mana',           iconSrc: '/icons/ui/hero/mana.webp?v=2.3.2592',             capsProg3Elem: true , tint: '#A6C8F0' },
+  { key: 'stam',  label: 'Stamina',     perText: '+3 max stamina',               unit: ' stamina',        iconSrc: '/icons/ui/hero/stamina.webp?v=2.3.1694' , tint: '#A9DDB4' },
+  { key: 'dodge', label: 'Dodge',       perText: '+0.4% dodge',                  pct: true, unit: '%',    iconSrc: '/icons/ui/hero/dodge.webp?v=2.3.1694' , tint: '#F0DC9A' },
+  { key: 'move',  label: 'Speed',       infoKey: 'Move Speed', perText: '+0.4% move speed',             pct: true, unit: '% faster', iconSrc: '/icons/ui/hero/move-speed.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'movement, not damage' , tint: '#D0ED97' },
+  { key: 'eres',  label: 'Resist',      infoKey: 'Elem Resist', perText: '−0.4% elemental damage taken', pct: true, unit: '% less elemental', iconSrc: '/icons/ui/hero/damage-reduction.webp?v=2.3.2592', capsProg3Elem: true , tint: '#F2B0D8' },
 ];
 
 /* The rows the CONNECTED worker supports, with critDmg's copy resolved
