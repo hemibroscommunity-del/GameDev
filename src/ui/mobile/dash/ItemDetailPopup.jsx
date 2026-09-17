@@ -610,7 +610,7 @@ export const ItemDetailPopup = () => {
 
   /* Measure popup size after render, then reposition.  setLayoutEffect
      so we don't flash at the unmeasured position. */
-  /* ═══ v2.3.2609: THE CARD IS RE-PLACED WHEN IT GROWS ═══
+  /* ═══ v2.3.2612: THE CARD IS RE-PLACED WHEN IT GROWS ═══
    *
    * Owner: "tapping 'sell' on an item currently goes nowhere (the button just
    * does nothing)."
@@ -1537,7 +1537,7 @@ export const ItemDetailPopup = () => {
           top:  pos ? pos.top  : -9999,
           width: 240,
           maxHeight: '60vh',
-          /* ═══ v2.3.2609: AND overflowY IS DELIBERATELY NOT SET ═══
+          /* ═══ v2.3.2612: AND overflowY IS DELIBERATELY NOT SET ═══
              `overflowY: 'auto'` is the obvious partner to the re-placement
              above -- make the part past 60vh reachable instead of spilling --
              and it was written, measured, and taken back out, because it is a

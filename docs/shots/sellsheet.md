@@ -1,4 +1,4 @@
-# v2.3.2609 — tapping Sell, before and after
+# v2.3.2612 — tapping Sell, before and after
 
 Owner: *"tapping 'sell' on an item currently goes nowhere (the button just does
 nothing) so I don't know what's built out for that."*
