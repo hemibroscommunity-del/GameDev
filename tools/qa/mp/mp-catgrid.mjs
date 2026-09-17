@@ -323,6 +323,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!confirm && /Bow/i.test(confirm.text), confirm && confirm.text.slice(0, 120));
     await P.page.screenshot({ path: `${OUT}/catgrid-${label}-confirm.png` });
 
+    /* ═══ v2.3.2605: THE WAY OUT MUST BE ON THE SCREEN ═══
+       The window had no height cap and the scrim centres it, so a card taller
+       than the viewport hung off both ends and took its buttons with it. At
+       360x360 — a phone in landscape — "Spend point" and "Got it" sat 13 to
+       44px BELOW the bottom edge on every stat whose window carries a scene,
+       which is nine of the thirteen. A tap at the button's centre lands
+       outside the viewport, so the window could not be dismissed at all.
+       This is asserted at EVERY viewport, not just the landscape ones, and on
+       the buttons rather than on the card: a card that scrolls its middle is
+       fine, a button below the fold is not. */
+    const reach = await P.page.evaluate(() => {
+      const card = document.querySelector('[data-infopopup-card]');
+      if (!card) return null;
+      const vh = window.innerHeight, vw = window.innerWidth;
+      const box = (sel) => { const e = card.querySelector(sel); if (!e) return null;
+        const r = e.getBoundingClientRect();
+        return { top: +r.top.toFixed(1), bottom: +r.bottom.toFixed(1),
+          off: +Math.max(0, r.bottom - vh, -r.top, r.right - vw, -r.left).toFixed(1) }; };
+      const cr = card.getBoundingClientRect();
+      return { vh, card: { h: +cr.height.toFixed(1), off: +Math.max(0, cr.bottom - vh, -cr.top).toFixed(1) },
+        action: box('[data-infopopup-action]'), close: box('[data-infopopup-close]'),
+        scrolls: !!card.querySelector('[data-infopopup-scroll]') };
+    });
+    rec.ok(`${label}: the window's buttons are ON the screen — both of them, fully`,
+      !!reach && !!reach.action && !!reach.close
+        && reach.action.off === 0 && reach.close.off === 0, reach);
+    rec.ok(`${label}: ...and the card itself never hangs off the viewport`,
+      !!reach && reach.card.off === 0 && reach.card.h <= reach.vh, reach && reach.card);
+    console.log(`    window: card ${reach && reach.card.h} of ${reach && reach.vh}, buttons off by ${reach && reach.action && reach.action.off}/${reach && reach.close && reach.close.off}`);
+
     /* ═══ THE SPEND ITSELF, PORTED FROM mp-statgrid ═══
        Driven once (the behaviour does not vary by viewport, and every run costs
        a worker round trip). This is the coverage that must not be lost when the

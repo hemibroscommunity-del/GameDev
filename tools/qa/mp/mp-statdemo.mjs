@@ -277,6 +277,85 @@ export async function run({ browser, wsPort, webPort, rec }) {
       bodyFace.weapon === 'greatsword', { bodyFace, note: 'bow lane is still open' });
   }
 
+  /* ══ 4b. THE FOUR SCENES OF v2.3.2605 ══
+     Owner, from their phone: an animation for Range, Move Speed and Elem
+     Resist, and Stamina's replaced because "shooting an orb" is the wrong
+     idea for it. Each is asserted on the thing that would actually be wrong
+     rather than on "a scene exists":
+       - Stamina must not loose a projectile. That WAS the complaint: the old
+         scene drove strike(), which fires the equipped weapon's shot, so with
+         a staff in hand it was a man throwing orbs. Watched across a whole
+         loop, not sampled once.
+       - Range must fall short before the point and connect after. A scene
+         that simply hit twice would be the damage scene wearing Range's name,
+         and prog3.js says of this stat, in its own words, "reach, not damage".
+       - Move Speed and Elem Resist need a scene at all, where before the
+         window opened with an empty stage. */
+  for (const [lane, key] of [['shared', 'stam'], ['bow', 'range'], ['shared', 'move'], ['shared', 'eres']]) {
+    await P.page.keyboard.press('Escape');
+    await P.page.waitForTimeout(350);
+    await H.openPointCols(P, [lane]);
+    const opened = await tapSel(P, `[data-prog3-card="${lane}"] [data-stat-info="${key}"]`);
+    await P.page.waitForTimeout(500);
+    if (!opened) { rec.skip(`${key} has a scene`, 'row not reachable'); continue; }
+    /* Sample the live stage across a full loop — a single frame proves
+       nothing about an animation. */
+    const seen = { scene: false, shot: 0, frames: 0, texts: {} };
+    for (let i = 0; i < 26; i++) {
+      const f = await P.page.evaluate(() => ({
+        scene: !!document.querySelector('[data-stat-demo]'),
+        shot: document.querySelectorAll('.bt-sd-shot').length,
+        pops: [...document.querySelectorAll('[data-sd-pop]')].map((e) => ({
+          t: e.textContent.trim(), side: /--slime/.test(e.className) ? 'slime' : 'hero' })),
+      }));
+      if (f.scene) seen.scene = true;
+      seen.shot += f.shot;
+      seen.frames++;
+      for (const p of f.pops) seen.texts[p.side + ':' + p.t] = (seen.texts[p.side + ':' + p.t] || 0) + 1;
+      await P.page.waitForTimeout(260);
+    }
+    rec.ok(`${key} opens a scene on its stage`, seen.scene, seen);
+    const texts = Object.keys(seen.texts);
+    if (key === 'stam') {
+      /* WHAT DISTINGUISHES THE NEW SCENE FROM THE OLD, and it is NOT the
+         projectile count. The old scene drove strike(), which looses a shot
+         only for a RANGED weapon — this rig fights with a greatsword (see the
+         body-stat check above), so `shot === 0` would have passed on the old
+         code too. It is kept because it costs nothing and holds the line for
+         whatever the rig equips later, but it is not what proves the fix.
+         These two are: the old scene put bare damage numbers on the SLIME
+         (three '10's a half, the hero attacking it), and the new one puts
+         Blocked!/Dodged! over the HERO. Neither can pass on the other. */
+      rec.ok('...and Stamina blocks and dodges — the moves it actually pays for',
+        texts.some((t) => /^hero:(Blocked|Dodged)/i.test(t)),
+        { texts, shots: seen.shot });
+      rec.ok('...and nothing in it attacks the slime any more (the "shooting an orb" report)',
+        seen.shot === 0 && !texts.some((t) => /^slime:\d+$/.test(t)), { texts, shots: seen.shot });
+    }
+    if (key === 'range') {
+      rec.ok('...and Range FALLS SHORT before the point and connects after (reach, not damage)',
+        texts.some((t) => /Short/i.test(t)) && texts.some((t) => /^slime:\d+$/.test(t)), { texts });
+    }
+    if (key === 'eres') {
+      /* The claim is "elemental damage taken", so the orb's own -10 must be
+         the SAME on both halves and only the burn ticks may fall. A scene
+         where both shrank would be teaching a flat damage reduction. */
+      rec.ok('...and Elem Resist shrinks the BURN while the hit itself is unchanged',
+        texts.includes('hero:-10') && texts.includes('hero:-8') && texts.includes('hero:-2'), { texts });
+    }
+    await P.page.screenshot({ path: `tools/qa/mp/out/statdemo-${key}.png` }).catch(() => {});
+  }
+
+  /* ══ 4c. THE PRELOADING LAW ══
+     CLAUDE.md: every animation asset loads on the gate, and a first-use fetch
+     is a regression the owner has reported personally. The scenes' DOM assets
+     now have a manifest group of their own, so the settle report names it —
+     and the popup shield, which nothing in the client referenced at all, is
+     warm before the intro lifts instead of on first open of the explainer. */
+  const pre = await P.page.evaluate(() => (window.__btPreloadReport || null));
+  rec.ok('the stat scenes\' assets are registered on the loading gate (preloading LAW)',
+    !!pre && pre.statDemo === 'fulfilled', pre && { statDemo: pre.statDemo, slime: pre.slime, fx: pre.fx });
+
   /* ── 5. THE EQUIPMENT FIGURE IS UNTOUCHED ── */
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(400);
