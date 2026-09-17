@@ -98,7 +98,33 @@ import { SHOP_ITEMS } from './data.js';
    field check in `_stCreateListing` went -- see the note there). */
 
 export const STORE = {
-  LISTING_EXPIRY: 86400000,   // 24h, same as the order book's listings
+  /* ═══ v2.3.2619: THE SELLER PICKS, WITHIN THESE BOUNDS ═══
+   * Owner: "Longest listing a week, shortest is 1 day."
+   *
+   * LISTING_EXPIRY stays, and stays 24h: it is the DEFAULT now rather than
+   * the only value. A request that names no duration -- every client built
+   * before this, and every one that talks to us without the `storeDuration`
+   * cap -- gets exactly the listing it used to get, which is what makes this
+   * deployable in either order (rule 19).
+   *
+   * The BOUNDS are the server's, not the dropdown's. market.js:66-69 is the
+   * written-down version of why: a client-supplied field is a claim, and the
+   * bound is what closes the destruction path. An unbounded duration here
+   * would not destroy goods, but it would let one modified client park a
+   * listing in `store_listing:` forever -- MAX_GLOBAL is 2000 and a
+   * permanent listing is a permanently occupied slot, so the ceiling is a
+   * shared resource and the floor of the expiry sweep is what recycles it.
+   * Hence: validated against DURATION_MIN/MAX below, never against whatever
+   * the client believes its own options are.
+   *
+   * Bounds rather than an allowlist of the five presets, deliberately. The
+   * presets are a UI choice and they will change; the CONTRACT is "between a
+   * day and a week". An allowlist would mean a client offering a 4-day
+   * option next month is refused by a worker that is perfectly able to
+   * settle it, which is the caps.gems shape TRAPS #9 warns about. */
+  LISTING_EXPIRY: 86400000,   // 24h — now the DEFAULT when none is asked for
+  DURATION_MIN: 86400000,     // 1 day  — owner: "shortest is 1 day"
+  DURATION_MAX: 604800000,    // 7 days — owner: "longest listing a week"
   MAX_PER_PLAYER: 10,         // ...and the same per-player ceiling
   MAX_GLOBAL: 2000,           // hard bound on the rebuild's list() (rule 9)
   SWEEP_INTERVAL: 60000,
@@ -210,6 +236,7 @@ export const storeMethods = {
       askPrice: o.askPrice,
       createdAt: o.createdAt,
       expiresAt: o.expiresAt,
+      durationMs: o.durationMs || null,   /* v2.3.2619; null on pre-2619 records */
       disp: o.disp,
       topBid: o.topBid ? { name: o.topBid.bidderName, bidderId: o.topBid.bidderId, amount: o.topBid.amount, at: o.topBid.at } : null,
       bidCount: Array.isArray(o.bids) ? o.bids.length : 0,
@@ -385,11 +412,36 @@ export const storeMethods = {
      is short an item nothing names (market.js's v2.3.1971 incident —
      "escrow that can't be written is escrow that never existed").  Hence
      the unwind below. */
+  /* ═══ v2.3.2619: HOW LONG THE SELLER ASKED FOR, IF WE BELIEVE THEM ═══
+   * Absent -> the 24h default, so an old client is unchanged (rule 19).
+   * Present -> it must be a finite whole number of ms inside the server's
+   * own bounds, or the request is REFUSED rather than clamped. Clamping
+   * would be the friendlier-looking choice and it is the wrong one: a
+   * seller who asked for a month and silently got a week has been told
+   * nothing, and the next thing they do is wonder where their sword went.
+   * A refusal with the bounds in it is a sentence the client can show.
+   *
+   * Returns {ok, ms} or {ok:false, error}. */
+  _stDuration(v) {
+    if (v === undefined || v === null || v === '') return { ok: true, ms: STORE.LISTING_EXPIRY };
+    const ms = Math.floor(Number(v));
+    if (!Number.isFinite(ms)) return { ok: false, error: 'Invalid listing duration' };
+    if (ms < STORE.DURATION_MIN || ms > STORE.DURATION_MAX) {
+      return { ok: false, error: 'Listings run from 1 day to 7 days' };
+    }
+    return { ok: true, ms };
+  },
+
   async _stCreateListing(body) {
     const { playerId, kind, price } = body || {};
     if (!playerId) return { ok: false, settled: true, error: 'Missing fields' };
     const p = Math.floor(Number(price) || 0);
     if (!(p >= 1 && p <= STORE.MAX_PRICE)) return { ok: false, settled: true, error: 'Invalid price' };
+    /* Checked BEFORE anything is escrowed: a refusal after the goods have
+       left the bag is a refund path, and the cheapest refund is the one
+       that never has to run. */
+    const dur = this._stDuration((body || {}).durationMs);
+    if (!dur.ok) return { ok: false, settled: true, error: dur.error };
     /* v2.3.2531: 'gear' joins the roster, and it is gated on its OWN
        narrow cap rather than on `caps.store` — the whole point of the
        flag is that the owner can switch gear listings off from live-ops
@@ -502,7 +554,16 @@ export const storeMethods = {
       disp: kind === 'gear' ? this._stGearDisplay(gearField, gear) : this._stDisplay(kind, invKey, weapon),
       askPrice: p,
       createdAt: now,
-      expiresAt: now + STORE.LISTING_EXPIRY,
+      /* v2.3.2619: the seller's choice, already bounds-checked above.
+         `expiresAt` was ALWAYS a per-record stored field -- the sweep reads
+         rec.expiresAt and the wake-time rebuild restores the record
+         verbatim -- so nothing downstream had to learn about per-listing
+         lifetimes. Only the number being written here changed.
+         `durationMs` is stored beside it so a listing can say what was
+         ASKED for, not just when it happens to end; a record written before
+         this version has none, and the UI falls back to the difference. */
+      durationMs: dur.ms,
+      expiresAt: now + dur.ms,
       bidSeq: 0,
       topBid: null,
       pendBid: null,

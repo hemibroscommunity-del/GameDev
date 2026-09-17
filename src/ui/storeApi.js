@@ -70,6 +70,25 @@ export function storeGearRefEnabled() {
   return !!(s && s._serverCaps && s._serverCaps.storeGearRef);
 }
 
+/* ═══ v2.3.2619: ...and will it let the seller CHOOSE how long? ═══
+ * Its own narrow flag, not a widening of `store`, for the ordinary rule-19
+ * reason and the caps.gems lesson (TRAPS #9): a v2.3.2475 worker advertises
+ * the store and knows nothing about `durationMs`. It would IGNORE the field
+ * and give the listing 24 hours -- and an ignored field is the worst of the
+ * three outcomes here, because the seller picked a week, was refused
+ * nothing, and finds their sword back in the bag six days early with no
+ * error to explain it. So the dropdown only appears once a worker has said
+ * it can settle the choice; otherwise the sheet says 24 hours, which is what
+ * that worker will actually do.
+ *
+ * Against a NEW worker an old client simply sends no duration and gets the
+ * same 24h default it always got (store.js `_stDuration`). Safe in either
+ * deploy order. */
+export function storeDurationEnabled() {
+  const s = S();
+  return !!(s && s._serverCaps && s._serverCaps.storeDuration);
+}
+
 export function storeMyId() {
   const s = S();
   return (s && s.myId) || null;

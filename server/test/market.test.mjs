@@ -574,6 +574,95 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
   check('store: expiry refunds the standing bid', BUY.coins === expCoins + 40, BUY.coins);
   check('store: the expired listing is deleted', !st._store.has('store_listing:' + willExpire.listing.id));
 
+  // ── S5c. PER-LISTING DURATION (v2.3.2619) ──
+  // Owner: "Longest listing a week, shortest is 1 day." The duration is a
+  // CLIENT-SUPPLIED field, so every case here is really one question: does
+  // the server decide, or does the request?
+  const DAY = 86400000;
+  {
+    SEL.inventory.slime_gel = 30;
+
+    // (a) Absent -> the 24h default. This is the deploy-order case (rule 19):
+    //     every client built before v2.3.2619 sends no duration at all and
+    //     must keep getting exactly the listing it used to get.
+    const dflt = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10 });
+    const dfltRec = shop._stIndex.get(dflt.listing.id);
+    check('store duration: a request with no duration still gets 24h',
+      dflt.ok === true && Math.abs((dfltRec.expiresAt - dfltRec.createdAt) - DAY) < 1000,
+      { span: dfltRec.expiresAt - dfltRec.createdAt });
+
+    // (b) The maximum the owner asked for.
+    const week = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10, durationMs: 7 * DAY });
+    const weekRec = shop._stIndex.get(week.listing.id);
+    check('store duration: a seller may ask for a week',
+      week.ok === true && Math.abs((weekRec.expiresAt - weekRec.createdAt) - 7 * DAY) < 1000,
+      { span: weekRec.expiresAt - weekRec.createdAt });
+    check('store duration: ...and what was asked for is on the wire',
+      week.listing.durationMs === 7 * DAY, week.listing.durationMs);
+
+    // (c) OUT OF BOUNDS IS REFUSED, NOT CLAMPED -- and refused before the
+    //     goods move, so a rejected listing costs the seller nothing. The
+    //     bag count is the real assertion here; `ok === false` alone would
+    //     pass just as well with an item stranded in escrow.
+    const gelPre = SEL.inventory.slime_gel;
+    const tooShort = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10, durationMs: 3600000 });
+    const tooLong = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10, durationMs: 30 * DAY });
+    check('store duration: under a day is refused', tooShort.ok === false, tooShort);
+    check('store duration: over a week is refused', tooLong.ok === false, tooLong);
+    check('store duration: a refused duration escrows nothing',
+      SEL.inventory.slime_gel === gelPre, { before: gelPre, after: SEL.inventory.slime_gel });
+
+    // (d) The shapes a hand-written request actually arrives in.
+    const junk = [];
+    for (const bad of ['abc', NaN, Infinity, -Infinity, -DAY, 0, {}, []]) {
+      const r = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10, durationMs: bad });
+      if (r.ok !== false) junk.push({ bad: String(bad), r });
+    }
+    check('store duration: nonsense durations are all refused', junk.length === 0, junk);
+    check('store duration: ...and none of them escrowed anything',
+      SEL.inventory.slime_gel === gelPre, { before: gelPre, after: SEL.inventory.slime_gel });
+
+    // (e) THE SWEEP NO LONGER SEES ONE LIFETIME. Listings used to share an
+    //     expiry, so index order (insertion) WAS expiry order; it is not any
+    //     more. A week-long listing created FIRST must survive a sweep that
+    //     resolves a day-long one created after it.
+    const longLived = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 11, durationMs: 7 * DAY });
+    const shortLived = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 12, durationMs: DAY });
+    shop._stIndex.get(shortLived.listing.id).expiresAt = Date.now() - 1;
+    const gelBeforeSweep = SEL.inventory.slime_gel;
+    shop._stLastSweep = 0;
+    await shop._stSweep();
+    check('store duration: the sweep resolves the expired short listing',
+      !st._store.has('store_listing:' + shortLived.listing.id)
+        && SEL.inventory.slime_gel === gelBeforeSweep + 1,
+      { gel: SEL.inventory.slime_gel, was: gelBeforeSweep });
+    check('store duration: ...and leaves the week-long one it was listed before',
+      st._store.has('store_listing:' + longLived.listing.id) && shop._stIndex.has(longLived.listing.id));
+
+    // (f) REBUILD ON WAKE. `expiresAt` was always a stored per-record field,
+    //     so this should survive a DO restart untouched -- assert it rather
+    //     than assume it, because "it happens to work today" is how a
+    //     rebuild quietly starts recomputing from a constant.
+    const roomD = new GameRoom(st, mockEnv);
+    roomD.playerState = shop.playerState;
+    await roomD._stEnsureIndex();
+    const woke = roomD._stIndex.get(longLived.listing.id);
+    check('store duration: a per-listing expiry survives the wake-time rebuild',
+      !!woke && woke.expiresAt === shop._stIndex.get(longLived.listing.id).expiresAt
+        && Math.abs((woke.expiresAt - woke.createdAt) - 7 * DAY) < 1000,
+      { woke: woke && woke.expiresAt - woke.createdAt });
+    roomD._stLastSweep = 0;
+    await roomD._stSweep();
+    check('store duration: ...and the rebuilt room does not sweep it early',
+      st._store.has('store_listing:' + longLived.listing.id) && roomD._stIndex.has(longLived.listing.id),
+      { left: woke && woke.expiresAt - Date.now() });
+
+    // Tidy: take the survivor back down so later sections start clean.
+    await shop._stCancel(longLived.listing.id, 'bp_st_sell');
+    await shop._stCancel(dflt.listing.id, 'bp_st_sell');
+    await shop._stCancel(week.listing.id, 'bp_st_sell');
+  }
+
   // ── S6. an offline counterparty settles into the mail ──
   const offSell = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 70 });
   const sellerPs = shop.playerState['bp_st_sell'];

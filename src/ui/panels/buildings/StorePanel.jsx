@@ -404,9 +404,12 @@ export function StorePanel(props) {
             color: noteOk ? LS.good : LS.bad,
           }}>{note}</div>
         )}
+        {/* v2.3.2619: no longer one lifetime, so the footer stops promising
+            one. Each row carries its own clock; this says what the range is. */}
         <div style={{ marginTop: 10, fontSize: 11, color: LS.txt3, lineHeight: 1.45 }}>
-          Listings last 24 hours. If nobody buys, it comes back to you — and any
-          bid goes back to whoever made it. Armour and amulets can&apos;t be listed yet.
+          Sellers choose how long a listing runs, from 1 day to 7 days — each row
+          shows what it has left. If nobody buys, it comes back to the seller, and
+          any bid goes back to whoever made it.
         </div>
       </div>
     </div>
