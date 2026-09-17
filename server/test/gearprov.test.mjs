@@ -805,7 +805,7 @@ let amuletGid = null;
           amulet are ownership records, so the gate never answers `worn`
           for them.  What that leaves open (the server cannot tell a shield
           on the arm from one in the bag) is written down in
-          general-store.md; what it CLOSES is a starter shield telling a
+          auction-house.md; what it CLOSES is a starter shield telling a
           brand-new player to take off something they are not wearing. */
   {
     const PIDS2 = 'bp_prov_ownrec';
@@ -1205,7 +1205,7 @@ let amuletGid = null;
     if (tutList.ok) await room._gearProvGrantRow(PIDT, tutList.row);
     /* The other half of the same wrong signal, stated so it is a decision
        and not an accident: the server CANNOT know a shield is on the arm,
-       so it does not claim to.  general-store.md says what that leaves
+       so it does not claim to.  auction-house.md says what that leaves
        open and what would close it. */
     check('starter shield: the gate does not pretend to know about a shield on the arm',
       room._gearSellable(PIDT, 'shield', psT.shield.gid).reason !== 'worn',

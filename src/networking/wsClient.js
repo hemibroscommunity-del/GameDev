@@ -3863,7 +3863,7 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
-        /* v2.3.2621: the general store's per-listing message threads
+        /* v2.3.2621: the auction house's per-listing message threads
            (storechat.js). Passthrough only -- the client names a listing and
            a line of text; the server stamps the sender, clamps the text and
            decides who may see it. */

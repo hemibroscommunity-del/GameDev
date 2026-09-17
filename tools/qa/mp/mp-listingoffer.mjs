@@ -88,6 +88,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.clickText(S, 'Put it up').catch(() => {});
       await S.page.waitForTimeout(2300);
 
+      /* Our own listing's id. run.mjs isolates scenarios by IDENTITY, not by
+         cleanup -- "every scenario creates new browser contexts, so it gets
+         new bp_ passphrases and therefore untouched server-side players" --
+         but the SHELF is one global thing (MAX_GLOBAL), so the other
+         scenarios' listings are sitting on it too. Asserting "the shelf is
+         empty" passed when this ran alone and failed the moment it ran in the
+         full set. Track the id. */
+      const mine = await S.page.evaluate(async (sid) => {
+        const base = (window.BT_API_BASE || '');
+        const room = (new URLSearchParams(location.search).get('room')) || 'brotown-1';
+        const res = await fetch(`${base}/api/store/browse?room=${room}&limit=40`);
+        const j = await res.json();
+        const rows = (j.listings || []).filter((l) => l.sellerId === sid && l.askPrice === 500);
+        rows.sort((a, b) => b.createdAt - a.createdAt);
+        return rows[0] ? rows[0].id : null;
+      }, sellerId);
+      rec.ok(`${phone.label}: the seller's listing is on the shelf`, !!mine, mine);
+
       /* ── THE BUYER OFFERS, AND THE GOLD LEAVES ── */
       rec.ok(`${phone.label}: the buyer reaches the market`, await openMarket(B));
       rec.ok(`${phone.label}: ...and opens the chat on the listing`, await openChat(B));
@@ -136,14 +154,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const bag = await H.readState(B, (st) => ((st.rpg || {}).inventory || {}).wood_oak || 0);
       rec.ok(`${phone.label}: ...and the buyer got the goods`, bag >= 1, { wood_oak: bag });
 
-      const gone = await B.page.evaluate(async () => {
+      const stillThere = await B.page.evaluate(async (id) => {
         const base = (window.BT_API_BASE || '');
         const room = (new URLSearchParams(location.search).get('room')) || 'brotown-1';
-        const res = await fetch(`${base}/api/store/browse?room=${room}`);
+        const res = await fetch(`${base}/api/store/browse?room=${room}&limit=40`);
         const j = await res.json();
-        return (j.listings || []).length;
-      });
-      rec.ok(`${phone.label}: ...and the listing has left the shelf`, gone === 0, { listings: gone });
+        return (j.listings || []).some((l) => l.id === id);
+      }, mine);
+      rec.ok(`${phone.label}: ...and THAT listing has left the shelf`, stillThere === false, { id: mine });
     } finally {
       await B.ctx.close().catch(() => {});
       await S.ctx.close().catch(() => {});

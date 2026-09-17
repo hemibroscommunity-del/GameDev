@@ -37,7 +37,7 @@ export function ExchangePanel(props) {
     setMktSellItem = props.setMktSellItem,
     setMktSubtype = props.setMktSubtype,
     setMktTier = props.setMktTier,
-    setBuildingPanel = props.setBuildingPanel;   /* v2.3.2476: the door to the general store */
+    setBuildingPanel = props.setBuildingPanel;   /* v2.3.2476: the door to the auction house */
   var _BLACKSMITH_TIERS$mkt, _BLACKSMITH_TIERS$mkt2, _MKT_CATEGORIES$mktCa, _R$weaponStash, _WEAPON_TYPES$mktSubt, _WEAPON_TYPES$o, _WEAPON_TYPES$st, _WEAPON_TYPES$st2, _WEAPON_TYPES$sw, _WOODWORKING_TIERS$mk, _WOODWORKING_TIERS$mk2, _data$cancelled, _data$cancelled2, _data$matchedOrder;
   /* v2.3.1118: market ops are settled by the GameRoom DO now, so every
      call carries the session's room -- a ?room=qa1 tester's escrow must
@@ -131,7 +131,7 @@ export function ExchangePanel(props) {
     }
   }, "Marketplace")),
   /* ═══ v2.3.2476: THE OTHER SHELF ═══
-     This screen matches KINDS of weapon in a bucket; the general store sells
+     This screen matches KINDS of weapon in a bucket; the auction house sells
      THIS one at the seller's own price, with bids. Two different things, both
      live, so each says where the other is. Gated on the store cap, and on the
      setter actually being passed, so it cannot appear as a button that does
@@ -147,7 +147,7 @@ export function ExchangePanel(props) {
       fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em',
       WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation'
     }
-  }, /*#__PURE__*/React.createElement("span", null, "Auction Marketplace"),
+  }, /*#__PURE__*/React.createElement("span", null, "Auction House"),
      /*#__PURE__*/React.createElement("span", {
        style: { fontSize: 11, fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: '#B6C1BE' }
      }, "Buy now or bid ›")) : null,

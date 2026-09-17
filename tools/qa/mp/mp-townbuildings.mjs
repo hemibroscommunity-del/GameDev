@@ -1,6 +1,6 @@
 /* THE BUILDINGS ARE PLACED, SOLID, AND YOU CAN WALK INTO THEM (v2.3.1778).
  *
- * Owner supplied a forge, a bank, an enchanter, a general store and the
+ * Owner supplied a forge, a bank, an enchanter, a auction house and the
  * mayor's house, to be placed on the clifftop plateau and "Not walkable".
  *
  * Three claims, and the middle one is the ask:
@@ -22,7 +22,7 @@
 import * as H from './harness.mjs';
 
 const PERSON_H = 120;
-const BUILDINGS = ['mayor-house', 'forge', 'bank', 'enchanter', 'general-store'];
+const BUILDINGS = ['mayor-house', 'forge', 'bank', 'enchanter', 'auction-house'];
 
 const props = (P) => P.page.evaluate(() => (window.__btWorldProps ? window.__btWorldProps() : []));
 const pos = (P) => H.readState(P, (S) => ({ x: Math.round(S.player.x), y: Math.round(S.player.y) }));
@@ -161,12 +161,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(400);
 
-  await doorOf('general-store');
+  await doorOf('auction-house');
   await P.page.keyboard.press('e');
   await P.page.waitForTimeout(900);
   /* Its panel is the VENDOR shop — matched on its own subtitle rather than on
      the word 'Shop', which appears nowhere in it. */
-  rec.ok('...and the general store', await H.seesText(P, 'Basic supplies'));
+  rec.ok('...and the auction house', await H.seesText(P, 'Basic supplies'));
 
   await P.ctx.close().catch(() => {});
 }

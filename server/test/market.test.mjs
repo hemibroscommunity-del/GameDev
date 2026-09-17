@@ -388,7 +388,7 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
 }
 
 /* ════════════════════════════════════════════════════════════════════
- * v2.3.2475 — THE GENERAL STORE (store.js), phase 1
+ * v2.3.2475 — THE AUCTION HOUSE (store.js), phase 1
  *
  * A second, per-LISTING surface beside the bucket order book above: one
  * seller, one pile of goods, one ask price, at most one live bid.  Lives

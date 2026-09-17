@@ -147,10 +147,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
         const who = `${phone.label} ${orient}`;
         rec.ok(`${who}: the market opens`, await openMarket(P));
-        /* v2.3.2622 (owner): "change 'general store' to 'Auction Marketplace'" */
-        rec.ok(`${who}: ...titled Auction Marketplace`, await H.seesText(P, 'Auction Marketplace'));
-        rec.ok(`${who}: ...with no "General store" left on it`,
-          !(await P.page.evaluate(() => /general store/i.test((document.querySelector('.bt-inspect-card') || {}).innerText || ''))));
+        /* v2.3.2624 (owner): "change everything to auction house". Was
+           "Auction Marketplace" at v2.3.2622 and "General store" before that. */
+        rec.ok(`${who}: ...titled Auction House`, await H.seesText(P, 'Auction House'));
+        rec.ok(`${who}: ...with no older name left on it`,
+          !(await P.page.evaluate(() => {
+            const t = (document.querySelector('.bt-inspect-card') || {}).innerText || '';
+            return /general store/i.test(t) || /auction marketplace/i.test(t);
+          })));
 
         /* The portrait composites asynchronously (a dozen sprite layers onto
            a 256px canvas), so the disc is legitimately on screen for a beat

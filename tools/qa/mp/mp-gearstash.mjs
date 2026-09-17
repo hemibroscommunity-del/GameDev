@@ -2,7 +2,7 @@
  *
  * Armour, legs, shields and cosmetic layers a player owns but is not
  * wearing lived only in their browser.  This slice gives the worker its
- * own copy, so that the general store can escrow them later.  The unit
+ * own copy, so that the auction house can escrow them later.  The unit
  * suite (server/test/gearstash.test.mjs) proves the adoption algebra
  * against a mocked storage; what it cannot prove is the half that runs
  * in a browser:

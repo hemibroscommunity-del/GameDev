@@ -3,7 +3,7 @@ import { storeEnabled } from '@/ui/storeApi.js';   /* v2.3.2476 */
 /* v2.3.2618: BT_AUDIO, _objectSpread and pushDmgPopup went with the
    shopkeeper's shelf -- they were the purchase handler's, and nothing else
    in this panel used them. */
-/* === VendorPanel — buildingPanel === 'shop' sub-panel === */
+/* === VendorPanel — buildingPanel === 'auctionhouse' sub-panel === */
 /* v2.3.882: extracted verbatim from the buildingPanel === 'shop'
    clause in BroTown.jsx (the in-building Vendor view: basic supplies
    for starting adventurers). Named VendorPanel to avoid colliding with
@@ -85,7 +85,7 @@ export function VendorPanel(props) {
      at that path, just no longer rendered -- see SHOP_STOCK below. */
   var storeOn = storeEnabled();
   return React.createElement("div", { style: LS_WRAP },
-    lsHeader('vendor', '🛒', "Vendor", "The player marketplace"),
+    lsHeader('auctionhouse', '⚖', "Auction House", "Buy and sell with players"),
     React.createElement("div", { style: LS_BODY },
       React.createElement("div", {
         style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }

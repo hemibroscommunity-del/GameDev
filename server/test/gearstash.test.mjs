@@ -2,7 +2,7 @@
  * docs/specs/gear-stash.md).
  *
  * The five gear lists (armour, legs, shield, cosmetic, amulet) became
- * rpg-blob fields in this version so that the general store can escrow
+ * rpg-blob fields in this version so that the auction house can escrow
  * them later (backlog §2.2, M2 -> M3).  What is proven here is the part
  * that can lose a player's property:
  *

@@ -431,7 +431,7 @@ export function processGameEvent(type, payload, S, deps) {
               handleWhisperEvent(payload, S, { setChatLog: setChatLog, setUnreadChats: setUnreadChats });
               break;
             }
-          /* v2.3.2621: the general store's per-listing threads
+          /* v2.3.2621: the auction house's per-listing threads
              (server/src/storechat.js).  All three are PRIVILEGED, so what
              arrives here is the room's own record of the conversation and
              never another client's claim.  Routed to a bus rather than into

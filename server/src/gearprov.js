@@ -146,7 +146,7 @@ export function isGearProvSlot(slot) {
  *
  * So the gate now answers `worn` only where it can KNOW, and for shields
  * and amulets it does not pretend to.  What that leaves open is written
- * down in general-store.md rather than papered over: the server cannot
+ * down in auction-house.md rather than papered over: the server cannot
  * tell a shield on the arm from one in the bag, and closing that needs an
  * equip message for the slot, which is its own change. */
 export const GEAR_WORN_KNOWN_SLOTS = Object.freeze(['armor', 'legsArmor']);

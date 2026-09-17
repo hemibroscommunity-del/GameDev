@@ -388,7 +388,7 @@ Summary of the wire-visible changes:
   place/cancel, arena join/leave); the server rejects requests whose
   `playerId` isn't backed by that player's own live-session token.
   Public `/api/leaderboard` is GET-only.
-- v2.3.2551 (general-store.md): `POST /api/store/list` with
+- v2.3.2551 (auction-house.md): `POST /api/store/list` with
   `kind: 'gear'` names the piece by its server-assigned `gid`
   (`{field, gid, price}`) when the worker advertises
   **`caps.storeGearRef`**, and by the v2.3.2531 selector
