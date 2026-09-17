@@ -9398,6 +9398,24 @@ export class EffectsRenderer {
       sp.x = (o.renderX != null) ? o.renderX : o.x;
       sp.y = ((o.renderY != null) ? o.renderY : o.y) + REMOTE_BOW_FOOT_DY;
       sp.visible = true;
+      /* v2.3.2615 QA probe -- the twin of __btBowFigure on the local path, and
+         it exists to make the two comparable at all.  Keyed by player id in a
+         Map (CLAUDE.md rule 4: the key is a client-supplied id). */
+      if (typeof window !== 'undefined') {
+        if (!window.__btPeerBowFigure) {
+          const _m = new Map();
+          window.__btPeerBowFigure = (pid) => (pid == null
+            ? Object.fromEntries(_m) : (_m.get(pid) || null));
+          window.__btPeerBowFigure._m = _m;
+        }
+        window.__btPeerBowFigure._m.set(id, {
+          visible: !!sp.visible,
+          scaleY: sp.scale.y,
+          drawnH: +(Math.abs(sp.scale.y) * cfg.fh).toFixed(2),
+          footY: +sp.y.toFixed(2),
+          x: +sp.x.toFixed(2),
+        });
+      }
       const place = (spr, tex) => {
         if (!spr) return;
         if (!tex) { spr.visible = false; return; }
@@ -10045,6 +10063,22 @@ export class EffectsRenderer {
     sp.scale.set(sgn, s);
     sp.x = S.player.x;
     sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
+    /* v2.3.2615 QA probe, house style (__btChopFigure, __btCookFigure) and the
+       twin of __btPeerBowFigure on the remote path.  `drawnH` is |scale.y| times
+       THIS POSE'S OWN frame height, which is the one quantity the two paths can
+       be compared on: both draw the same bow sheet, so the same figure at the
+       same build in the same zone must come out at the same number on both
+       screens.  It did not -- see the note at REMOTE_BOW_SCALE. */
+    if (typeof window !== 'undefined') {
+      window.__btBowFigure = () => ({
+        visible: !!sp.visible,
+        scaleY: sp.scale.y,
+        drawnH: +(Math.abs(sp.scale.y) * cfg.fh).toFixed(2),
+        footY: +sp.y.toFixed(2),
+        x: +sp.x.toFixed(2),
+        bodyH: (S._swordBodyH != null) ? +S._swordBodyH.toFixed(2) : null,
+      });
+    }
     /* v2.3.1784: same slung shield on the bow shot — both hands are on the
        bow, so the shield is on the back exactly as when walking.
        v2.3.1800: ...but NOT while blocking, where this same pose is holding

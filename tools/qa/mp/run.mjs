@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  bowsize: () => import('./mp-bowsize.mjs'), /* v2.3.2615: a peer's bow stand-in is the same size, and stands in the same place, as the shooter's own */
   exitmark: () => import('./mp-exitmark.mjs'), /* v2.3.2605: can you see the way out of a spoke -- measured against sand AND snow, at four viewports */
   sellcue: () => import('./mp-sellcue.mjs'), /* v2.3.2606: a server-settled sale rings the coin sound, a refused one does not, and the sound setting silences it */
   zonebanner: () => import('./mp-zonebanner.mjs'), /* v2.3.2596: the zone-entry banner plays its nine beats, docks into the top bar, frees its strip on the way out -- and stays silent in the ten zones with no art */
