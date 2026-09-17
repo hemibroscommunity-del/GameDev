@@ -401,7 +401,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       land ? true : (!!sh && sh.lastW < sh.cardW * 0.6),
       sh && { lastW: sh.lastW, cardW: sh.cardW });
 
-    /* v2.3.2604: inside a card there is no instruction line — the grid's one
+    /* v2.3.2611: inside a card there is no instruction line — the grid's one
        said it already and the [+] is the row's only control. Asserted by the
        TEXT rather than by counting elements, so it stays true if the line moves. */
     const hint = await P.page.evaluate(() => {
@@ -410,7 +410,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     rec.ok(`${label}: a category card carries NO "tap + to spend" line`, !!hint && hint.inCard === false, hint);
 
-    /* ═══ v2.3.2604: THE SHARED CARD'S LABELS, MEASURED ═══
+    /* ═══ v2.3.2611: THE SHARED CARD'S LABELS, MEASURED ═══
        The sub-pixel clip check above runs on the FIRST card opened, which is a
        weapon — and every weapon label is short. Shared carries the long ones
        ("Max Mana", "Stamina", "Defense") and was never measured, which is how
@@ -580,7 +580,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         worstRim.c >= 1.5, edgeInk.map((e) => `${e.k} ${e.c.toFixed(2)}`));
       console.log(`    rim: ${(edge[0] && edge[0].col || []).join(',')}, worst standoff ${worstRim.k} ${worstRim.c.toFixed(2)}:1`);
 
-    /* ═══ v2.3.2604: THE [+] FLUSH, AND ONE INSTRUCTION NOT TWO ═══
+    /* ═══ v2.3.2611: THE [+] FLUSH, AND ONE INSTRUCTION NOT TWO ═══
        Owner: "Move plus sign to the very edge of the cell there's some space
        showing", and "Remove 'tap + to spend a point' row".
        The [+]'s clearance is measured on all four sides against the cell's

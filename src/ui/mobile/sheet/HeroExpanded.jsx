@@ -1713,7 +1713,7 @@ export const HeroExpanded = () => {
             const CARD_SHORT = { dmg: 'Power', range: 'Range', aspd: 'Speed', luck: 'Luck',
               special: 'Spec', elem: 'Elem', hp: 'HP', def: 'Def', mana: 'MP', stam: 'Stam',
               dodge: 'Dodge', move: 'Move', eres: 'Resist' };
-            /* ═══ v2.3.2604: ONE LABEL DOES NOT FIT TWO COLUMNS ═══
+            /* ═══ v2.3.2611: ONE LABEL DOES NOT FIT TWO COLUMNS ═══
                Found while measuring the [+]'s clearance, and it pre-dates this
                branch: at 360 in two columns a cell leaves 67px for the label,
                and "Max Mana" needs 76.4 at 13px/800 — so it has been rendering
@@ -1868,7 +1868,7 @@ export const HeroExpanded = () => {
                 <div key={lk} data-prog3-row={lk} style={{
                   flex: 'none', width: '100%', minWidth: 0, height: CARD_ROW_H, boxSizing: 'border-box',
                   display: 'flex', alignItems: 'center', gap: CARD_GAP,
-                  /* ═══ v2.3.2604: NO RIGHT PADDING — THE [+] IS FLUSH ═══
+                  /* ═══ v2.3.2611: NO RIGHT PADDING — THE [+] IS FLUSH ═══
                      Owner: "Move plus sign to the very edge of the cell there's
                      some space showing."  Measured before touching anything:
                      the [+]'s gaps to the cell's border box were top 1, bottom
@@ -2303,7 +2303,7 @@ export const HeroExpanded = () => {
                 {/* The reference's own instruction line.  A hint, not a control
                     (the v2.3.2326 caption rule), and it says what the two-step
                     shape needs a first-time player to know.
-                    ═══ v2.3.2604: GRID ONLY ═══
+                    ═══ v2.3.2611: GRID ONLY ═══
                     Owner: "Remove 'tap + to spend a point' row on points menu."
                     It was the SECOND instruction in two screens — the grid
                     already says "Tap a category, then spend its points here",
