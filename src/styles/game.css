@@ -4965,3 +4965,181 @@ html[data-orient="landscape"] .bt-dashboard{
   .bt-sd-shield{opacity:1}
   .bt-sd-vital-w{transition:none}
 }
+
+/* ═══ v2.3.2596: ZONE-ENTRY BANNER ═══
+   Owner: "play this briefly across the upper center of the screen then dock
+   where it tells you what location you're in."
+
+   The PLAQUE is CSS, not art (Lantern Slate: "all chrome is CSS"), which is
+   also what lets it stretch to any zone name and keeps it in the same palette
+   as the rail it docks into.  The owner's art is the two ORNAMENTS, anchored
+   to the plaque's two ends and stepped through nine beats from one strip
+   (src/data/zoneBanner.js has the measured cell geometry).
+
+   ── THE PROPORTIONS ARE THE OWNER'S OWN, MEASURED ──
+   Each contact sheet carries a finished HERO banner above its nine beats —
+   the artist's answer to "what does this look like assembled" — so the three
+   numbers below are read off those four heroes rather than chosen:
+     ornament width   0.175 / 0.216 / 0.234 / 0.240 of the assembled width
+     bar height       0.26  / 0.28  / 0.31  / 0.36  of the assembled height
+     bar centre       0.637 / 0.672 / 0.680 / 0.693 down the ornament
+   The first cut ignored them, sized the ornaments off their own crop, and put
+   a 179px mountain either side of a 368px banner: the plaque became a sliver
+   between two boulders and the zone name ellipsed to "Wind Du...".
+
+   The one place this DEVIATES from the heroes is the bar's height, and
+   deliberately: the heroes are 1400px wide, where 0.30 of the height is a
+   103px bar with room to spare.  At 360px of phone the same ratio is a 25px
+   bar, and the zone name is the content.  Legibility wins; --zb-bar-h is set
+   from the text and the ornament is scaled around it.
+
+   TRANSFORM AND OPACITY ONLY.  This is position:fixed over the live WebGL
+   canvas, which is the iOS compositing arrangement TRAPS §42 records as the
+   grain hazard (v2.3.948 charge pie, v2.3.1236 joystick bases, v2.3.2320
+   purse) — no filter, no drop-shadow, no backdrop-filter anywhere below.
+
+   z-index 90: above the header rail it hands off to (20) and the world HUD
+   clusters (25-44), below every panel (100/120) and every veil (9500+), so a
+   banner can never land on top of something the player opened. */
+.bt-zone-banner{
+  position:fixed;
+  /* Upper centre, clear of the header rail (50px + inset) with a gap. */
+  top:calc(env(safe-area-inset-top,0px) + 66px);
+  left:50%;
+  /* Named as a token, not written straight into `width`, because every other
+     number below is derived from it — and a percentage inside those calcs
+     would resolve against the wrong box (or, in the height chain, be invalid
+     arithmetic: you cannot multiply a % by a px). */
+  --zb-w:min(98vw,430px);
+  width:var(--zb-w);
+  z-index:90;
+  /* A flourish that eats a tap is worse than no flourish: this lands over the
+     upper third of the world in portrait, which is ground the player walks
+     through.  No child re-enables it. */
+  pointer-events:none;
+  -webkit-user-select:none;user-select:none;
+  /* Per-theme, written by JS from the strip's MEASURED cell (zoneBanner.js) so
+     a near-square frost crop and a wide desert crop each sit on the bar at
+     their own aspect instead of being squashed into one box. */
+  --zb-cell-w:250px; --zb-cell-h:259px;
+  --zb-strip-w:2250px; --zb-strip-h:518px;
+  --zb-bar-h:34px;
+  --zb-orn-w:calc(var(--zb-w) * .26);
+  --zb-orn-h:calc(var(--zb-orn-w) * var(--zb-cell-h) / var(--zb-cell-w));
+  /* How far the ornament reaches past the plaque's end.  0.84 rather than 1.0
+     because the heroes show the art sitting just OUTSIDE the bar and barely
+     over it — a scan along each hero's bar centre line finds clean plaque from
+     its very first column, so the mountains do not cover the name. */
+  --zb-over:calc(var(--zb-orn-w) * .78);
+  /* Durations come from src/data/zoneBanner.js, written onto the element by
+     zoneBannerOverlay.js — one place to argue about the timing.  The fallbacks
+     keep the rule meaningful if it is ever inspected on a bare element. */
+  --zb-in-ms:140ms; --zb-name-ms:150ms; --zb-dock-ms:400ms;
+  height:var(--zb-orn-h);
+  transform:translateX(-50%);
+}
+.bt-zone-banner__plaque{
+  position:absolute;left:var(--zb-over);right:var(--zb-over);
+  /* The bar's centre sits 0.67 down the ornament — the mean of the owner's
+     four heroes, which is why the mountains rise above it and the icicles
+     hang below it exactly as they were drawn to. */
+  top:calc(var(--zb-orn-h) * .67 - var(--zb-bar-h) / 2);
+  height:var(--zb-bar-h);
+  display:flex;align-items:center;justify-content:center;
+  padding:0 6px;box-sizing:border-box;
+  border-radius:6px;
+  /* Lantern Slate panel-strong -> well, the same ramp the header rail's
+     recessed navy face uses.  No brass border: brass is focus/selection/
+     premium only (hard lock), and the art is carrying the gold anyway. */
+  background:linear-gradient(180deg,#22313A 0%,#182227 55%,#121B20 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),
+             inset 0 -1px 0 rgba(0,0,0,.45),
+             0 6px 18px rgba(4,7,9,.42);
+  opacity:0;transform:translateY(8px) scale(.94);
+  transition:opacity var(--zb-in-ms) ease-out, transform var(--zb-in-ms) cubic-bezier(.2,.8,.2,1);
+}
+.bt-zone-banner__name{
+  /* Same family/tracking as the header title it becomes, one step larger so
+     the dock reads as a settle rather than a jump. */
+  color:#F7F2E7;
+  font:700 15px/1.1 'Source Sans 3',sans-serif;letter-spacing:.045em;
+  text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  max-width:100%;
+  text-shadow:0 1px 3px rgba(0,0,0,.82);
+  opacity:0;transition:opacity var(--zb-name-ms) ease-out;
+}
+.bt-zone-banner__orn{
+  position:absolute;top:0;
+  width:var(--zb-orn-w);height:var(--zb-orn-h);
+  /* One strip, 9 columns x 2 rows, stepped by background-position from JS.
+     background-size names the WHOLE strip scaled by the same factor the cell
+     is, so the JS can step in SOURCE-cell pixels and the browser resamples
+     once. */
+  background-repeat:no-repeat;
+  background-size:calc(var(--zb-strip-w) * var(--zb-orn-w) / var(--zb-cell-w))
+                  calc(var(--zb-strip-h) * var(--zb-orn-h) / var(--zb-cell-h));
+  opacity:0;transition:opacity var(--zb-in-ms) ease-out, transform 260ms ease-in;
+}
+.bt-zone-banner__orn--l{left:0}
+.bt-zone-banner__orn--r{right:0}
+.bt-zone-banner.is-in .bt-zone-banner__plaque{opacity:1;transform:translateY(0) scale(1)}
+.bt-zone-banner.is-in .bt-zone-banner__orn{opacity:1}
+.bt-zone-banner.is-named .bt-zone-banner__name{opacity:1}
+/* ═══ THE DOCK ═══
+   The plaque flies to the header title (JS measures the target and writes the
+   transform — the rail moves with the safe-area inset, with the purse's digit
+   count, and in landscape with --world-x, so a typed offset would be right on
+   exactly one phone).  The ornaments do NOT follow it: they are the flourish,
+   they are finished once the name is readable, and scaling them down to a
+   150px label turns them into specks.  They slide outward and leave. */
+.bt-zone-banner.is-docking .bt-zone-banner__plaque{
+  transition:transform var(--zb-dock-ms) cubic-bezier(.4,0,.6,1),
+             opacity var(--zb-dock-ms) ease-in calc(var(--zb-dock-ms) * .35);
+  opacity:0;
+}
+.bt-zone-banner.is-docking .bt-zone-banner__orn{opacity:0}
+.bt-zone-banner.is-docking .bt-zone-banner__orn--l{transform:translateX(-16px)}
+.bt-zone-banner.is-docking .bt-zone-banner__orn--r{transform:translateX(16px)}
+/* The receiving end of the handoff, on the header rail's own title.
+   Transform + color only (no filter over the WebGL canvas, TRAPS §42). */
+@keyframes bt-zone-title-arrive{
+  0%{transform:scale(1.16);color:#FFF9E8}
+  60%{transform:scale(.99)}
+  100%{transform:scale(1);color:#F4F5F3}
+}
+.bt-zone-header__title.is-arriving{
+  animation:bt-zone-title-arrive 420ms cubic-bezier(.2,.8,.2,1) 1;
+}
+/* Reduced motion: the banner still appears and still says where you are — the
+   zone name is the CONTENT here — it just does not build, fly or pulse. */
+.bt-zone-banner.is-static .bt-zone-banner__plaque{transition:opacity 220ms linear;transform:none}
+.bt-zone-banner.is-static .bt-zone-banner__name{transition:opacity 220ms linear;opacity:1}
+.bt-zone-banner.is-static .bt-zone-banner__orn{transition:opacity 220ms linear}
+.bt-zone-banner.is-static.is-out .bt-zone-banner__plaque,
+.bt-zone-banner.is-static.is-out .bt-zone-banner__name,
+.bt-zone-banner.is-static.is-out .bt-zone-banner__orn{opacity:0}
+@media (prefers-reduced-motion: reduce){
+  .bt-zone-header__title.is-arriving{animation:none}
+}
+/* Landscape: the world is narrower than the screen and the header rail belongs
+   to the world's width (v2.3.2174), so the banner follows it rather than the
+   screen — otherwise it docks into a title that is not where it flew to.  The
+   screen is also only 360-390px TALL there, so the whole assembly shrinks. */
+html[data-orient="landscape"] .bt-zone-banner{
+  left:calc(var(--world-x,0px) + var(--play-w,100%) / 2);
+  /* --zb-w, not `width`: every other number is derived from the token, so
+     overriding the property alone would size the plaque and the ornaments off
+     the PORTRAIT width while the box was the landscape one.
+
+     AND NO PERCENTAGE IN IT.  A `%` here is not a shorthand for the parent's
+     width once the token is fed into --zb-orn-w and --zb-orn-h: it re-resolves
+     against whichever box each derived property lands on, so the ornament sized
+     itself from its own container and came out 60px wide with its frame step
+     running BACKWARDS off the strip (measured: ornW 60, offset +360, one beat,
+     all four landscape runs).  --play-w is the world's width in px, set by
+     BroTown's layout pass, which is the thing this actually means. */
+  --zb-w:min(calc(var(--play-w,100vw) * .64), 360px);
+  top:calc(env(safe-area-inset-top,0px) + 54px);
+  --zb-bar-h:28px;
+}
+html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14px}

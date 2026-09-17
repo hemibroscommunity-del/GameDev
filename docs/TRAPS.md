@@ -3498,3 +3498,53 @@ backstop.
 **Before filing a "tap does nothing" bug, log the events.** `pointerup` present
 means the handler ran; `pointercancel` plus a moved `scrollTop` means the
 browser scrolled and the screen is fine.
+
+---
+
+## 85. A `%` inside a custom property is not a share of the parent (v2.3.2596)
+
+**Tempting:** the zone banner sizes everything off one token, so a breakpoint is
+one line — `--zb-w` holds the banner's width and the ornament, the plaque inset
+and the ornament's height are all `calc()`s of it. In landscape the banner
+belongs to the world's width rather than the screen's, so the obvious override
+is the obvious one:
+
+```css
+html[data-orient="landscape"] .bt-zone-banner{ --zb-w:min(64%,360px); }
+```
+
+**Why it is wrong:** a custom property holds an unresolved *token*, not a value.
+`64%` is not computed where it is written — it is substituted into every place
+the token is used and resolved against **that** property's own box. So
+`width:var(--zb-w)` on the root resolved against the root's parent and was
+right, while `--zb-orn-w:calc(var(--zb-w) * .26)` landed in the ORNAMENT's
+`width` and resolved against the ornament's containing block, which is the root
+the token was supposed to be describing. Measured, all four landscape runs:
+
+```
+  ornament width   60px   (intended ~93px)
+  frame step       +360px per beat — POSITIVE, running backwards off the strip
+  distinct beats   1
+```
+
+One distinct beat, which is a frozen banner: the failure arrives as an animation
+that does not animate, not as a layout that looks wrong, so it is §61's shape as
+well as this one.
+
+**The tell:** a token that any derived value multiplies. The moment a custom
+property is arithmetic rather than a final value, every unit in it must be
+absolute — px, vw, vh, or another custom property that already is. A `%` or an
+`em` in there is a promise the substitution cannot keep.
+
+**Do instead:** name the thing the percentage meant. The landscape banner wanted
+the world's width, and `--play-w` already carries it in px (BroTown's layout
+pass sets it), so `--zb-w:min(calc(var(--play-w,100vw) * .64), 360px)` says that
+and resolves identically wherever it is substituted.
+
+**What caught it:** not the screenshots — the banner looked plausible in a still
+at either size. `mp-zonebanner` samples the ornament's `background-position` over
+time and asserts the number of DISTINCT values, and one value is one value
+whatever the layout looks like.
+
+**Related:** §61 (a still-frame assertion cannot see a frozen animation) — the
+same defect, found by the same instrument, one layer down.

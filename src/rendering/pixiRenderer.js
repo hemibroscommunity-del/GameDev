@@ -15,6 +15,7 @@ import { loadPlayerDeathSprites } from './playerDeathSprites.js';
 import { loadWeaponSprites } from './weaponSprites.js';
 import { loadShieldSprites } from './shieldSprites.js';
 import { preloadStartZoneMap } from './tiledMaps.js';
+import { noteZoneEntered } from '../ui/zoneBannerOverlay.js'; /* v2.3.2596: the one place that sees EVERY zone change */
 import { preloadGear } from './gearSheets.js';
 import { preloadCombatGear } from './combatGear.js';
 import { preloadBodyAll } from './playerSkins.js';
@@ -195,13 +196,25 @@ export async function initPixiRenderer(canvas) {
   let currentZone = null;
   let currentMap = null;
 
-  function onZoneChange(map, zoneId) {
+  function onZoneChange(map, zoneId, S) {
     if (zoneId === currentZone && map === currentMap) return;
     currentZone = zoneId;
     currentMap = map;
     tileRenderer.rebuild(app, map, zoneId);
     entityRenderer.clear();
     effectsRenderer.clear();
+    /* ═══ v2.3.2596: THE ZONE-ENTRY BANNER'S ONE TRIGGER ═══
+       This function is the single place in the client that observes every zone
+       change, whatever set it -- the hub walk-in, a respawn, the dev warp, a
+       dungeon exit -- because it watches S.currentZone rather than trusting any
+       one of the nine sites that assign it.  Hooking it here rather than at
+       those sites is what stops the banner from being a rule that half of them
+       remember.
+       It fires for a MAP swap on the same zone too, which is not an entry, so
+       the overlay tracks the zone id itself and ignores the repeat.  Failure is
+       silent by design: a flourish must never cost the player their zone
+       change. */
+    try { noteZoneEntered(zoneId, S); } catch (e) { /* never block the zone change */ }
     /* One-shot diagnostic: dump scene-graph state right after zone
        change so we can see what's detached / hidden / zeroed when
        sprites go invisible.  Only logs ONCE per zone enter. */
@@ -256,7 +269,7 @@ export async function initPixiRenderer(canvas) {
 
     // Detect zone changes
     if (S.currentZone !== currentZone || S.map !== currentMap) {
-      onZoneChange(S.map, S.currentZone);
+      onZoneChange(S.map, S.currentZone, S);
     }
 
     // Screen shake (decay handled in pre-render simulation phase)
