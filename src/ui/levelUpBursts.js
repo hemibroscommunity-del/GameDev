@@ -1,4 +1,4 @@
-/* ═══ v2.3.2610: TWO LEVEL-UPS CAN LAND AT ONCE, SO TWO CAN PLAY AT ONCE ═══
+/* ═══ v2.3.2615: TWO LEVEL-UPS CAN LAND AT ONCE, SO TWO CAN PLAY AT ONCE ═══
  *
  * Owner: "I'd rather them both play side by side and if it's combat level just
  * show the character portrait in the center of the new level up animation."

@@ -1,4 +1,4 @@
-# TRAPS — plausible-but-wrong moves (v2.3.2610)
+# TRAPS — plausible-but-wrong moves (v2.3.2615)
 
 A registry of changes that look obviously right and are known to be
 wrong. Each was attempted, or nearly attempted, by a competent session.
@@ -3551,7 +3551,7 @@ same defect, found by the same instrument, one layer down.
 
 ---
 
-## 86. A retired system that still ticks, announcing itself in the words of the system that replaced it (v2.3.2610)
+## 86. A retired system that still ticks, announcing itself in the words of the system that replaced it (v2.3.2615)
 
 **The report:** "I raised a combat level without leveling up any of my combat
 skills which should be impossible (it also played the legacy level up)."
@@ -3616,7 +3616,7 @@ one.
 
 ---
 
-## 87. A high-water seeded from localStorage, compared against a server-authoritative number (v2.3.2610)
+## 87. A high-water seeded from localStorage, compared against a server-authoritative number (v2.3.2615)
 
 **The shape.** `celebrateLevelUps` fires when `R.level > R._lastShownLevel`.
 That high-water is seeded exactly once, at load, out of the blob in

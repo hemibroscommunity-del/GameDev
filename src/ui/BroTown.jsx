@@ -47,7 +47,7 @@ import { LoginScreen } from './panels/LoginScreen.jsx';
 import { checkAccountLogin } from '@/networking/index.js';
 import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
-import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2610: up to two of them, side by side */
+import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
 import { TouchControls, RBTN_BODY_BG, RBTN_BODY_BG_HOT, RKNOB_BG, RKNOB_BG_HOT } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
@@ -11130,7 +11130,7 @@ export var BroTown = function BroTown(_ref0) {
      coalesced into one celebration at the final level upstream
      (celebrateLevelUps), and the STING alone is rate-limited so a restart
      flurry cannot machine-gun it (LevelUpBurst.playLevelUpSting). */
-  /* ═══ v2.3.2610: MOUNTED ALWAYS, AND IT OWNS ITS OWN LIFETIME ═══
+  /* ═══ v2.3.2615: MOUNTED ALWAYS, AND IT OWNS ITS OWN LIFETIME ═══
      Owner: "I'd rather them both play side by side."
      The guard that used to sit here — kind is combat-or-life AND the message
      is younger than LEVELUP_TOTAL_MS — was doing two jobs, and the second one
@@ -11145,11 +11145,11 @@ export var BroTown = function BroTown(_ref0) {
      kind filter moves inside pushLevelUpBurst, where 'warning' and the bare
      T1 stat kinds are rejected and fall through to the banner below. */
   /*#__PURE__*/React.createElement(LevelUpBurstStack, { msg: levelUpMsg }),
-  /* v2.3.2610: 'char' joins 'combat' and 'life' as a kind the STACK owns — it
+  /* v2.3.2615: 'char' joins 'combat' and 'life' as a kind the STACK owns — it
      is the character-level notification, and it wears the character's portrait
      in the medallion (levelUpIcons.levelUpMedallionSrc). */
   levelUpMsg && levelUpMsg.kind !== 'combat' && levelUpMsg.kind !== 'life' && levelUpMsg.kind !== 'char' && Date.now() - levelUpMsg.ts < 4000 && /*#__PURE__*/React.createElement("div", {
-    /* v2.3.2610: an autotest handle, same posture as data-levelup-art on the
+    /* v2.3.2615: an autotest handle, same posture as data-levelup-art on the
        burst.  A banner that did NOT appear photographs exactly like the world
        behind it, and "a prog3 character is never shown this" is a claim about
        absence — the only kind a screenshot cannot make on its own. */
@@ -11208,7 +11208,7 @@ export var BroTown = function BroTown(_ref0) {
     /* A life skill gets the same banner and the same place on screen — that
        is the part that decides whether it is seen — but says which kind of
        level it is rather than claiming a character level. */
-    /* ═══ v2.3.2610: A T1 STAT TICK IS NOT A LEVEL UP ═══
+    /* ═══ v2.3.2615: A T1 STAT TICK IS NOT A LEVEL UP ═══
        Owner: "I raised a combat level without leveling up any of my combat
        skills which should be impossible (it also played the legacy level up)."
        This headline is what they saw.  The only kinds that still reach this
@@ -11233,7 +11233,7 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.1915: a life-skill level names the SKILL and, when more than one
        arrived at once, says how many. "Level 7" is useless to someone who
        last looked at 5 — which is the owner's report exactly. */
-    /* v2.3.2610: ...and a bare T1 stat kind carries a label now, so it lands on
+    /* v2.3.2615: ...and a bare T1 stat kind carries a label now, so it lands on
        this same line instead of the unlabelled "Level 24" below.  BUILD_LABELS
        calls those stats Melee / Bow / Magic — the same three words as the prog3
        combat skills — which made an unlabelled level the most confusable line
@@ -11260,7 +11260,7 @@ export var BroTown = function BroTown(_ref0) {
       /* A life-skill level does NOT refill the pools (celebrateLevelUps does
          that, and only for character levels), so it must not say it did. */
       ? "Keep at it \u2014 better yields and faster gathers"
-    /* v2.3.2610: nor does a legacy T1 stat tick refill anything — it is a
+    /* v2.3.2615: nor does a legacy T1 stat tick refill anything — it is a
        training crossing, not a level, and it must not inherit the pools line. */
     : levelUpMsg.label ? "Training \u2014 keep using this style"
       : (levelUpMsg.gains || "You got stronger! HP \xB7 Stamina \xB7 Mana refilled")))),

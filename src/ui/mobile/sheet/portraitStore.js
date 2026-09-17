@@ -18,7 +18,7 @@ export const portraitStore = {
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
 };
 
-/* ═══ v2.3.2610: ONE PORTRAIT SOURCE, NAMED ONCE ═══
+/* ═══ v2.3.2615: ONE PORTRAIT SOURCE, NAMED ONCE ═══
  * The Shared column in the points panel (HeroExpanded.jsx) resolved the
  * character's picture with a three-step fallback written inline, and the
  * level-up burst now needs the SAME picture in its medallion — a character

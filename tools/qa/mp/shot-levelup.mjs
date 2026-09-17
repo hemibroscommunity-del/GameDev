@@ -54,12 +54,12 @@ const CASES = {
     gains: '+1.5 damage · +3 Bow points',
   },
   life: { kind: 'life', skill: 'woodcutting', label: 'Woodcutting', level: 7, gained: 2 },
-  /* v2.3.2610: the character level.  No skill — the medallion is the player's
+  /* v2.3.2615: the character level.  No skill — the medallion is the player's
      own portrait, which is the owner's ask. */
   char: { kind: 'char', level: 14, gains: '+2 max HP · +3 shared points' },
 };
 
-/* ═══ v2.3.2610: THE REAL SOCKET FRAME ═══
+/* ═══ v2.3.2615: THE REAL SOCKET FRAME ═══
  * Shaped as server/src/prog3.js emits it.  Driven through window.__btWsEvent
  * (wsClient.js) so the SPLIT is what is under test: one server message has to
  * raise two notifications, and a rig that pushed two messages itself would
@@ -77,7 +77,7 @@ const VIEWS = [
   { name: '390-landscape', width: 844, height: 390 },
 ];
 
-/* v2.3.2610: the tray is 33dvh in portrait and absent in landscape — the same
+/* v2.3.2615: the tray is 33dvh in portrait and absent in landscape — the same
    line LevelUpBurst solves its caption fit against.  Nothing the burst draws
    may cross it in portrait, and nothing may leave the viewport in either. */
 const worldBottomOf = (v) => (v.height >= v.width ? v.height * 0.67 : v.height);
@@ -163,7 +163,7 @@ const probe = (page) => page.evaluate(() => {
   };
 });
 
-/* ═══ v2.3.2610: EVERY burst on screen, not just the first ═══
+/* ═══ v2.3.2615: EVERY burst on screen, not just the first ═══
  * `probe` above answers about document.querySelector — the FIRST match — which
  * was the whole truth while only one burst could exist and is now exactly the
  * blind spot this change is about.  A second notification that failed to mount
@@ -205,7 +205,7 @@ const probeAll = (page) => page.evaluate(() => {
    the pairs are (burst i, burst j) across BOTH of the boxes each burst paints,
    which is four comparisons per pair rather than the one an art-only test
    would have made. */
-/* ═══ v2.3.2610: FILMING TWO BURSTS THAT HAVE TO PLAY TOGETHER ═══
+/* ═══ v2.3.2615: FILMING TWO BURSTS THAT HAVE TO PLAY TOGETHER ═══
  *
  * page.screenshot() cannot film this and the first cut of this pass proved it:
  * a full-viewport shot at dpr 2 costs ~1.2s on this box, so ten of them sample
@@ -771,7 +771,7 @@ async function main() {
           audioDecoded: !!(A && A._samples && A._samples['level-up']),
           audioInManifest: !!(A && A.SFX_MANIFEST && A.SFX_MANIFEST['level-up']),
           muted: A ? A.muted : null,
-          /* v2.3.2610: the character medallion.  Asked BY VALUE — "is this url
+          /* v2.3.2615: the character medallion.  Asked BY VALUE — "is this url
              one of the bitmaps being held" — because a warm count going up
              cannot tell a warmed portrait from a warmed skill icon, and the
              frame where it was not ready looks identical to the frame where it
@@ -823,7 +823,7 @@ async function main() {
     console.log(`\n  ${strip.length}/8 frames mounted`);
     console.log(`  icon centre drift across the run: dx=${dx.toFixed(2)}px dy=${dy.toFixed(2)}px  (must be ~0)`);
     console.log(`  icon width, frame 0 -> 7: ${ws.map((w) => w.toFixed(1)).join(' -> ')}  (scales WITH the medallion)`);
-    /* ═══ v2.3.2610: THE SIDE-BY-SIDE ASSERTIONS ═══ */
+    /* ═══ v2.3.2615: THE SIDE-BY-SIDE ASSERTIONS ═══ */
     const pairs = findings.filter((f) => f.shot.startsWith('pair-') && f.n != null);
     const motion = findings.find((f) => f.shot === 'pair-motion') || {};
     const worstAll = pairs.reduce((m, f) => (f.gap != null && (m == null || f.gap < m) ? f.gap : m), null);
@@ -841,7 +841,7 @@ async function main() {
       /* A sheet built from three repaints is not a film. */
       && films.length === VIEWS.length && films.every((f) => f.painted >= 20);
 
-    /* ═══ v2.3.2610: THE "IMPOSSIBLE" LEVEL, STATED AS TWO ROWS ═══ */
+    /* ═══ v2.3.2615: THE "IMPOSSIBLE" LEVEL, STATED AS TWO ROWS ═══ */
     const sn3 = findings.find((f) => f.shot === 'statnotice-prog3') || {};
     const snL = findings.find((f) => f.shot === 'statnotice-legacy') || {};
     console.log(`\n  THE T1 STAT TICK`);

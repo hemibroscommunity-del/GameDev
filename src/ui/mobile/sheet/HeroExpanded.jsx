@@ -118,7 +118,7 @@ const POINT_LANES = ['sword', 'staff', 'bow']
   .concat([SHARED_LANE]);
 /* The portrait's fallback when the bust has not been drawn yet (first
    render after a cold load): the sheet's own knight-bust art. */
-/* v2.3.2610: one definition, in portraitStore.js — the level-up medallion reads
+/* v2.3.2615: one definition, in portraitStore.js — the level-up medallion reads
    the same chain for a character level-up and a second copy would drift. */
 const SHARED_ICON_FALLBACK = PORTRAIT_FALLBACK_SRC;
 

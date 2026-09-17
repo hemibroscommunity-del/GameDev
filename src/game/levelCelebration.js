@@ -24,7 +24,7 @@
    screen shake and a particle explosion under a modal sheet read as a
    bug, not a party.
 
-   v2.3.2610: this file makes no SOUND any more and pushes no world text.
+   v2.3.2615: this file makes no SOUND any more and pushes no world text.
    Both belonged to the celebration v2.3.2591 replaced, and both were still
    firing under the new one — the owner's "it also played the legacy level
    up".  The sting now lives with the art, in LevelUpBurst's own mount
@@ -63,7 +63,7 @@ export function celebrateLifeSkillLevel(S, skill, toLevel, fromLevel) {
     ? window._setLevelUpMsg : null;
   if (setMsg) setMsg({ kind: 'life', skill: skill, label: label, level: to, gained: gained, ts: Date.now() });
 
-  /* ═══ v2.3.2610: THE LEGACY FANFARE IS GONE ═══
+  /* ═══ v2.3.2615: THE LEGACY FANFARE IS GONE ═══
      Owner: "it also played the legacy level up."
      BT_AUDIO.levelUp() (gameDisplay.js) is a seven-note square-wave arpeggio
      with a sustained chord at 600ms — the celebration v2.3.2591 replaced.  It
@@ -111,7 +111,7 @@ export function celebrateLevelUps(S, R, opts) {
 
   var setMsg = opts.setLevelUpMsg
     || (typeof window !== 'undefined' && typeof window._setLevelUpMsg === 'function' ? window._setLevelUpMsg : null);
-  /* ═══ v2.3.2610: THIS IS A CHARACTER LEVEL, AND IT SAYS SO ═══
+  /* ═══ v2.3.2615: THIS IS A CHARACTER LEVEL, AND IT SAYS SO ═══
      Owner: "if it's combat level just show the character portrait in the center
      of the new level up animation."
      Every path into this function raises R.level — the CHARACTER level — with
@@ -141,7 +141,7 @@ export function celebrateLevelUps(S, R, opts) {
   if (opts.light) {
     /* In-sheet spend: the overlay's own sting, nothing else — a screen shake
        and a particle explosion under a modal sheet read as a bug, not a party.
-       v2.3.2610: the legacy fanfare that used to fire here is gone with the
+       v2.3.2615: the legacy fanfare that used to fire here is gone with the
        rest of them (see celebrateLifeSkillLevel's note). */
     return true;
   }
@@ -164,7 +164,7 @@ export function celebrateLevelUps(S, R, opts) {
         size: 2 + Math.random() * 3
       });
     }
-    /* v2.3.2610: the world-space 'LEVEL N!' / 'HP/MANA RESTORED' floaters that
+    /* v2.3.2615: the world-space 'LEVEL N!' / 'HP/MANA RESTORED' floaters that
        used to be pushed here are gone.  They are the old celebration's text,
        drawn into the Pixi world at the player's feet, and they were still
        playing under the new overlay — which is the second half of the owner's

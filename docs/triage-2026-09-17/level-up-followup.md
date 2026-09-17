@@ -1,6 +1,6 @@
 # The level-up follow-up — the answer, and the pictures
 
-v2.3.2610. Companion page to the PR, because GitHub's PR-body API mangles
+v2.3.2615. Companion page to the PR, because GitHub's PR-body API mangles
 markdown image syntax and most of this is pictures. Here it cannot — this is a
 committed file, not an API field — so the pictures are inline, with the path
 under each one in case your viewer does not show them.

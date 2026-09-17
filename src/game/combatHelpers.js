@@ -11,7 +11,7 @@
 import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY } from '@/data/index.js';
 import { hitMaterialOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard */
 import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
-import { prog3Live } from '@/data/prog3.js';          /* v2.3.2610: is the T1 track still load-bearing for this character? */
+import { prog3Live } from '@/data/prog3.js';          /* v2.3.2615: is the T1 track still load-bearing for this character? */
 
 /* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
    Owner: "Tap to lock on enemy sometimes does not hit the target.  I was
@@ -280,7 +280,7 @@ function releasePeerDamage(S, now) {
 function pushStatIncreaseNotice(R, stat, beforeMax) {
   var S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
   if (!S || !S.dmgNumbers || !S.player) return;
-  /* ═══ v2.3.2610: A PROG3 CHARACTER MUST NOT BE TOLD THIS ═══
+  /* ═══ v2.3.2615: A PROG3 CHARACTER MUST NOT BE TOLD THIS ═══
    *
    * Owner: "I raised a combat level without leveling up any of my combat skills
    * which should be impossible (it also played the legacy level up)."
@@ -335,7 +335,7 @@ function pushStatIncreaseNotice(R, stat, beforeMax) {
      the weapon icon. window._setLevelUpMsg is exposed inside the
      BroTown component each render. */
   if (typeof window !== 'undefined' && typeof window._setLevelUpMsg === 'function') {
-    /* v2.3.2610: carry the LABEL.  A legacy character still gets this banner,
+    /* v2.3.2615: carry the LABEL.  A legacy character still gets this banner,
        and it used to read a bare "LEVEL UP! / Level 24" with no hint that the
        24 belonged to Melee rather than to the character — the same confusion
        the prog3 guard above removes, one system older.  The banner names it

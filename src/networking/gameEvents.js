@@ -2083,7 +2083,7 @@ export function processGameEvent(type, payload, S, deps) {
                       R.unspentT2 = 0; /* T2 retired — weapon points now come from per-category weapon-skill levels */
                       recalcDerived(R);
                       R.hp = R.maxHp; R.stamina = R.maxStamina; R.mana = R.maxMana;
-                      /* v2.3.2610: 'char' — this loop raises the CHARACTER
+                      /* v2.3.2615: 'char' — this loop raises the CHARACTER
                          level (5 build points = 1 level) with no skill
                          attached, so the notification wears the character's
                          portrait rather than a generic XP glyph.  And no

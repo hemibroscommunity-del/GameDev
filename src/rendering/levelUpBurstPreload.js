@@ -26,7 +26,7 @@
  */
 import { LEVELUP_STRIP_SRC } from '../data/levelUpBurst.js';
 import { LEVELUP_ICON_URLS } from '../ui/levelUpIcons.js';
-import { portraitStore } from '../ui/mobile/sheet/portraitStore.js'; /* v2.3.2610 */
+import { portraitStore } from '../ui/mobile/sheet/portraitStore.js'; /* v2.3.2615 */
 
 const _held = [];
 
@@ -48,7 +48,7 @@ function warm(url) {
   });
 }
 
-/* ═══ v2.3.2610: AND THE PORTRAIT ═══
+/* ═══ v2.3.2615: AND THE PORTRAIT ═══
  *
  * A CHARACTER level-up seats the player's own bust in the medallion instead of
  * a skill icon (owner directive 2026-09-17).  That picture is not a file — it

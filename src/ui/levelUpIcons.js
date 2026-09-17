@@ -1,5 +1,5 @@
 import { SKILL_ROSTER } from './mobile/sheet/skillsModel.js';
-import { portraitSrc, PORTRAIT_FALLBACK_SRC } from './mobile/sheet/portraitStore.js'; /* v2.3.2610: a CHARACTER level wears the character */
+import { portraitSrc, PORTRAIT_FALLBACK_SRC } from './mobile/sheet/portraitStore.js'; /* v2.3.2615: a CHARACTER level wears the character */
 
 /* ═══ SKILL -> ICON ═══
  * Object.create(null), never a plain {}: this is keyed by skill ids that
@@ -47,7 +47,7 @@ export function levelUpIconFor(skill) {
   return (k && SKILL_ICON[k]) || FALLBACK_ICON;
 }
 
-/* ═══ v2.3.2610: WHAT GOES IN THE CIRCLE ═══
+/* ═══ v2.3.2615: WHAT GOES IN THE CIRCLE ═══
  * Owner: "if it's combat level just show the character portrait in the center
  * of the new level up animation."
  *
@@ -81,7 +81,7 @@ export function levelUpLabelFor(msg) {
 export const LEVELUP_ICON_URLS = Array.from(new Set([
   ...Object.keys(SKILL_ICON).map((k) => SKILL_ICON[k]),
   FALLBACK_ICON,
-  /* v2.3.2610: the character medallion's LAST resort.  The first two steps of
+  /* v2.3.2615: the character medallion's LAST resort.  The first two steps of
      portraitSrc are data already in memory (a canvas data URL, or the avatar
      the session joined with) and cost no fetch; this one is a file, so under
      the preloading law it warms with the rest of the burst's art rather than

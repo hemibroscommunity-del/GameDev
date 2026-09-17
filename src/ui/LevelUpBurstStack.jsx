@@ -5,7 +5,7 @@ import {
   LEVELUP_MAX_SLOTS,
 } from './levelUpBursts.js';
 
-/* ═══ v2.3.2610: SIDE BY SIDE ═══
+/* ═══ v2.3.2615: SIDE BY SIDE ═══
  *
  * Owner: "It's possible it just overwrote the new combat skill level up
  * notification but I'd rather them both play side by side."

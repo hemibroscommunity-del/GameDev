@@ -46,7 +46,7 @@ import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js'
 import { getPattern } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 import { getEquip, syncArmorLayers, migrateTier1Armor } from '@/rendering/gearCatalog.js'; /* v2.3.1761 */
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
-import { pushLevelUpBurst } from '@/ui/levelUpBursts.js'; /* v2.3.2610: a prog3 level is a skill level AND a character level — two notifications, side by side */
+import { pushLevelUpBurst } from '@/ui/levelUpBursts.js'; /* v2.3.2615: a prog3 level is a skill level AND a character level — two notifications, side by side */
 /* v2.3.1982: the "the world is full" screen — plain DOM, see its header
    for why it is not a React boot phase. */
 import { showRoomFull, hideRoomFull, roomFullOpen } from '@/ui/RoomFullScreen.js';
@@ -2002,7 +2002,7 @@ export function setupWebSocket(ctx) {
                  alloc, and the point pool all land here and the
                  recalc below re-derives level + pools from them. */
               if (msg.payload.prog3 && typeof msg.payload.prog3 === 'object') { S.rpg.prog3 = msg.payload.prog3; recalcDerived(S.rpg); }
-              /* ═══ v2.3.2610: BASELINE THE CELEBRATION HIGH-WATER AGAINST THE
+              /* ═══ v2.3.2615: BASELINE THE CELEBRATION HIGH-WATER AGAINST THE
                  SERVER, NOT AGAINST localStorage ═══
 
                  Owner: "I experienced a 'level up' (legacy notification) —
@@ -2266,7 +2266,7 @@ export function setupWebSocket(ctx) {
               if (!msg.payload || !S.rpg) break;
               var cc = msg.payload;
               if (cc.leveled) {
-                /* v2.3.2610: 'char', not 'combat'.  This is the legacy
+                /* v2.3.2615: 'char', not 'combat'.  This is the legacy
                    build-point path and the level it raises is the CHARACTER
                    level with no skill attached — the notification wears the
                    character's portrait (levelUpIcons.levelUpMedallionSrc).
@@ -2371,7 +2371,7 @@ export function setupWebSocket(ctx) {
                  an old worker sends neither and the banner reads as before. */
               if (p3l.bonusPoints > 0) _gains.push('+' + p3l.bonusPoints + ' bonus point');
               if (p3l.milestone) _gains.unshift(p3l.milestone + ' unlocked!');
-              /* ═══ v2.3.2610: A PROG3 LEVEL-UP IS TWO EVENTS, SO IT IS TWO
+              /* ═══ v2.3.2615: A PROG3 LEVEL-UP IS TWO EVENTS, SO IT IS TWO
                  NOTIFICATIONS ═══
                  Owner: "I'd rather them both play side by side and if it's
                  combat level just show the character portrait in the center of
@@ -2455,7 +2455,7 @@ export function setupWebSocket(ctx) {
                   });
                 }
               }
-              /* v2.3.2610: no BT_AUDIO.levelUp() — see the combat_credit note
+              /* v2.3.2615: no BT_AUDIO.levelUp() — see the combat_credit note
                  above.  Two bursts still make ONE sound: playLevelUpSting is
                  rate-limited to one per 450ms precisely so a pair that starts
                  on the same frame does not double the fanfare. */
@@ -3264,7 +3264,7 @@ export function setupWebSocket(ctx) {
          was handed, not that the ladder computes one.  The alternative is
          levelling Magic to 100 in a headless browser. */
       try { window.__btRecalc = function (r) { return recalcDerived(r || S.rpg); }; } catch (e) {}
-      /* ═══ v2.3.2610: THE SAME SEAM FOR A WHOLE SOCKET MESSAGE ═══
+      /* ═══ v2.3.2615: THE SAME SEAM FOR A WHOLE SOCKET MESSAGE ═══
          __btDispatch reaches processGameEvent and __btLootCredit reaches one
          handler; `prog3_level` is neither — it is handled in THIS file's own
          switch, and what it does there is now the thing under test: one server
@@ -3292,7 +3292,7 @@ export function setupWebSocket(ctx) {
       ws.onclose = function (event) {
         S._realtimeStatus = 'disconnected';
         /* v2.3.771: close-reason evidence.
-           v2.3.2610: the note that used to sit here said "src/networking/
+           v2.3.2615: the note that used to sit here said "src/networking/
            wsClient.js is dead code (not in the bundle); fixes must land HERE"
            — which it said INSIDE src/networking/wsClient.js.  It was true of
            BroTown.jsx's old inline copy and travelled with the text when the
