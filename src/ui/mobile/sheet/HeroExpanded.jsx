@@ -1881,7 +1881,17 @@ export const HeroExpanded = () => {
                   borderRadius: 9, overflow: 'hidden',
                 }}>
                   <span style={{
-                    flex: 1, minWidth: 0,
+                    /* ═══ v2.3.2602: THE LABEL NO LONGER EATS THE ROW ═══
+                       Owner: "center the icon between the label and the plus
+                       sign on each cell."  The label was `flex: 1`, so it grew
+                       to fill everything the icon and [+] did not use and the
+                       icon ended up jammed against the [+] with no gap to be
+                       centred in.  `0 1 auto` makes it its own width and STILL
+                       shrinks with an ellipsis when the cell is too narrow —
+                       what changes is only that the slack now lives between the
+                       label and the [+], where the icon can sit in the middle
+                       of it (see the auto margins on the <img> below). */
+                    flex: '0 1 auto', minWidth: 0,
                     fontSize: landPane ? 11.5 : 13, fontWeight: 800, letterSpacing: '.02em',
                     /* v2.3.2599: LIGHT again.  The dark flip existed because the
                        fill was a light pastel; the deep fills measure 5.68:1 to
@@ -1890,9 +1900,21 @@ export const HeroExpanded = () => {
                     color: COL.text, lineHeight: 1,
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }}>{cardLabel(st)}</span>
+                  {/* v2.3.2602: auto margins, not two flex spacers.  A spacer
+                      either side would centre the icon just as well but adds two
+                      more `gap: CARD_GAP` to the row — 8px at 360, off a cell
+                      that only has 163 — and the gap is what the icon needs to
+                      sit in.  Auto margins split the leftover space evenly with
+                      no extra children, so the row keeps its two gaps.
+                      The centring is PER ROW, against that row's own label, so
+                      the icons do not line up vertically down a column (Power
+                      is narrower than Stamina).  That is what "centred between
+                      the label and the plus" means; a fixed icon column would
+                      align them but is a different design. */}
                   <img src={st.iconSrc} alt="" draggable={false}
                     style={{ width: CARD_ICON, height: CARD_ICON, objectFit: 'contain',
                       flex: 'none', pointerEvents: 'none',
+                      marginLeft: 'auto', marginRight: 'auto',
                       filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.45))' }} />
                   {/* ═══ v2.3.2597: THE VALUE IS NOT HERE ANY MORE ═══
                       Owner, solving the two-column squeeze themselves: "You can

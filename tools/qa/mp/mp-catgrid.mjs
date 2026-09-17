@@ -400,6 +400,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${label}: ...and in two columns that width really is HALF the card, not a full row`,
       land ? true : (!!sh && sh.lastW < sh.cardW * 0.6),
       sh && { lastW: sh.lastW, cardW: sh.cardW });
+
+    /* ═══ v2.3.2602: THE ICON CENTRED IN THE GAP ═══
+       Owner: "center the icon between the label and the plus sign on each
+       cell."  Centred in the space that is ACTUALLY LEFT — between the label's
+       right edge and the [+]'s left edge — not centred on the cell, which
+       would drift once one row's label is wider than another's.  So it is
+       measured per row against that row's own two neighbours.
+       The flex gap sets a MINIMUM clearance either side of the icon, and the
+       auto margins only distribute what is left over. So the contract that
+       actually has to hold at every width is SYMMETRY — left clearance equals
+       right — and it survives even when the leftover reaches zero, because the
+       two minimums are equal. `free` reports that leftover so a row running out
+       of it is visible rather than silently rounded away. */
+    const centred = await P.page.evaluate(() => {
+      return [...document.querySelectorAll('[data-prog3-row]')].map((r) => {
+        const lab = r.querySelector('span'), img = r.querySelector('img');
+        const plus = r.querySelector('[data-prog3-plus]');
+        if (!lab || !img || !plus) return null;
+        const l = lab.getBoundingClientRect(), i = img.getBoundingClientRect(), b = plus.getBoundingClientRect();
+        const gapL = i.left - l.right, gapR = b.left - i.right;
+        const min = parseFloat(getComputedStyle(r).columnGap) || 0;
+        return { k: (r.getAttribute('data-prog3-row') || '').split(':').pop(),
+          off: +((i.left + i.width / 2) - (l.right + b.left) / 2).toFixed(2),
+          gapL: +gapL.toFixed(2), gapR: +gapR.toFixed(2),
+          free: +(Math.min(gapL, gapR) - min).toFixed(2) };
+      }).filter(Boolean);
+    });
+    const worstOff = centred.reduce((a, b) => (Math.abs(b.off) > Math.abs(a.off) ? b : a), centred[0] || { k: '?', off: 99 });
+    const tightest = centred.reduce((a, b) => (b.free < a.free ? b : a), centred[0] || { k: '?', free: -99 });
+    console.log(`    icon centring: worst ${worstOff.k} ${worstOff.off}px off, least free space ${tightest.k} ${tightest.free}px`);
+    rec.ok(`${label}: every icon sits CENTRED in its own row's gap (worst ${worstOff.k} ${worstOff.off}px)`,
+      centred.length === 7 && Math.abs(worstOff.off) <= 0.75, centred.map((c) => `${c.k} ${c.off}`));
+    /* The one that has to hold on the longest label at the narrowest cell:
+       clearance is equal on both sides and never falls under the row's own gap,
+       so even a row with no leftover space still reads as centred. */
+    rec.ok(`${label}: ...and no icon is closer to the [+] than to the label, even where the leftover space runs out (least free ${tightest.k} ${tightest.free}px)`,
+      centred.length === 7 && centred.every((c) => Math.abs(c.gapL - c.gapR) <= 0.75 && c.free >= -0.01),
+      centred.map((c) => `${c.k} L${c.gapL} R${c.gapR} free${c.free}`));
     /* ═══ THE PER-STAT COLOURS, MEASURED AS RENDERED ═══
        Asserting the authored hex would prove nothing — the question the whole
        palette analysis turned on is whether the colours survive the way they
