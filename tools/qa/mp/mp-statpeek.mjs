@@ -99,25 +99,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return S && S.rpg && S.rpg.prog3 && S.rpg.prog3.pool ? S.rpg.prog3.pool.unspent : null;
   });
   const pressed = await P.page.evaluate(() => {
-    /* v2.3.2592: the Luck cell of the MELEE column (four columns are on
-       screen; the first Luck row in document order is Melee's). */
-    const pills = [...document.querySelectorAll('[data-prog3-col="sword"] [role="button"][aria-label*=" of "]')]
+    /* v2.3.2597: the Luck row of the OPEN Melee card.  There is no column to
+       scope by any more — one category is on screen at a time — and the
+       handle rides the [+], so this asks the card for its spend controls and
+       picks the Luck one. */
+    const pills = [...document.querySelectorAll('[data-prog3-card="sword"] [role="button"][aria-label*=" of "]')]
       .filter((d) => /^luck/i.test(d.getAttribute('aria-label') || ''));
     const el = pills[0];
-    /* v2.3.2595: the explainer handle moved from a button in the cell's
-       corner onto the CELL itself — the owner took the ℹ️ out ("make the
-       explanation launch if they press any other part of the cell than the
-       plus sign").  So the thing to press is the cell, and the guard below
-       is unchanged and more pointed than it was: pressing it must open a
-       window, not spend a point. */
-    const info = el && el.hasAttribute('data-stat-info') ? el : null;
+    /* v2.3.2597: and it moved again, onto the [+], because the owner then made
+       the cell body inert — "Make the cell body not launch any window anymore
+       ... (points or not)" — leaving the [+] the only control in the row.  The
+       handle follows the control, so `el` may be the [+] itself or a row
+       containing it.  The guard below is unchanged and still the pointed one:
+       pressing it must open a window, not spend a point. */
+    const info = el && el.hasAttribute('data-stat-info')
+      ? el
+      : (el && el.querySelector ? el.querySelector('[data-stat-info]') : null);
     if (!info) return false;
     for (const type of ['pointerdown', 'pointerup']) {
       info.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch' }));
     }
     return true;
   });
-  rec.ok('the Luck cell is itself the explainer handle and it could be pressed', pressed);
+  rec.ok('the Luck row\'s [+] is the explainer handle and it could be pressed', pressed);
   await P.page.waitForTimeout(400);
   const popup = await P.page.evaluate(() => {
     const card = document.querySelector('[data-infopopup-card]');
@@ -155,9 +159,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.2592: every row of the new grid, both columns' kinds — the Luck
      window has TWO stat rows (chance and damage) and Range / Special / Move
      Speed print a note instead of a DPS delta, all of which must fit. */
+  /* v2.3.2597: a stat is only on screen while ITS category's card is open, so
+     the sweep drills into the right one before reaching for each handle.  Under
+     the four-column screen all thirteen were mounted at once and a bare
+     querySelector found any of them; here the seven shared stats simply are not
+     in the DOM while a weapon card is open, which read as "tapped: false,
+     missing: true" on every one of them. */
+  const SHARED_STATS = ['hp', 'def', 'mana', 'stam', 'dodge', 'move', 'eres'];
   for (const key of ['def', 'aspd', 'luck', 'elem', 'hp', 'stam', 'dodge', 'dmg', 'range', 'special', 'move', 'mana', 'eres']) {
     await P.page.evaluate(() => { try { window.__btInfoPopup.close(); } catch (e) {} });
     await P.page.waitForTimeout(250);
+    await H.openPointCols(P, [SHARED_STATS.includes(key) ? 'shared' : 'sword']);
     const tapped = await P.page.evaluate((k) => {
       const i = document.querySelector(`[data-stat-info="${k}"]`);
       if (!i) return false;

@@ -100,9 +100,13 @@ async function fingerTap(P, x, y, drift = 8) {
    question of what that window SAYS, this one only needs the point to land. */
 async function spendAndWait(P, row, { timeout = 15000, freeze = false } = {}) {
   await fingerTap(P, row.px != null ? row.px : row.x, row.py != null ? row.py : row.y);
-  await P.page.waitForSelector('[data-prog3-spend-confirm]', { timeout: 4000 }).catch(() => {});
+  /* v2.3.2597: the spend moved to the bottom of the INFORMATION window.  The
+     owner asked for one window that explains the stat and confirms at the
+     bottom, so Prog3SpendConfirm is gone and InfoPopup's gold `action` is the
+     "yes".  Same two taps as before: the [+], then the button. */
+  await P.page.waitForSelector('[data-infopopup-action]', { timeout: 4000 }).catch(() => {});
   const yes = await P.page.evaluate(() => {
-    const b = document.querySelector('[data-prog3-spend-confirm]');
+    const b = document.querySelector('[data-infopopup-action]');
     if (!b) return null;
     const r = b.getBoundingClientRect();
     return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };

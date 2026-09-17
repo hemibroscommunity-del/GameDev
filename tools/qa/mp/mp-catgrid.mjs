@@ -81,7 +81,10 @@ const pools = (P) => P.page.evaluate(() => {
    moves when the server echoes — so this polls rather than sleeping once.
    The same shape mp-statgrid used, which is where this coverage comes from. */
 async function answerConfirm(P, which, settle) {
-  const ok = await finger(P, `[data-prog3-spend-${which}]`);
+  /* v2.3.2597: the spend lives at the bottom of the INFORMATION window now —
+     one window that explains and confirms, the owner's own arrangement — so
+     'confirm' is its gold action and 'cancel' is its close. */
+  const ok = await finger(P, which === 'confirm' ? '[data-infopopup-action]' : '[data-infopopup-close]');
   if (!ok) return { err: 'no ' + which };
   for (let i = 0; i < 40; i++) {
     await P.page.waitForTimeout(100);
@@ -270,7 +273,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const tappedPlus = await finger(P, '[data-prog3-plus]');
     rec.ok(`${label}: a real finger reaches a row's [+]`, tappedPlus);
     const confirm = await P.page.evaluate(() => {
-      const el = document.querySelector('[data-prog3-spend-confirm]');
+      const el = document.querySelector('[data-infopopup-action]');
       if (!el) return null;
       const root = el.closest('div[style]') ? el.closest('div[style]').parentElement : document.body;
       return { open: true, text: (root.innerText || '').slice(0, 400) };
@@ -285,8 +288,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
        carrying the explanation there is no way to read it at all — which is a
        silent hole, not a visible break, so it is asserted. */
     const expl = await P.page.evaluate(() => {
-      const el = document.querySelector('[data-prog3-spend-info]');
-      return el ? { stat: el.getAttribute('data-prog3-spend-info'), text: el.innerText.trim().slice(0, 160) } : null;
+      const el = document.querySelector('[data-infopopup-body]');
+      const demo = document.querySelector('[data-infopopup-demo]');
+      const rows = document.querySelector('[data-infopopup-rows]');
+      return el ? { text: el.innerText.trim().slice(0, 160), hasDemo: !!demo, hasRows: !!rows } : null;
     });
     rec.ok(`${label}: ...and the window EXPLAINS the stat — the only route to that, now the row body is inert`,
       !!expl && expl.text.length > 20, expl);
@@ -313,7 +318,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         !!spent.ok && (n.poolBy || {}).sword === (b4.poolBy || {}).sword && (n.poolBy || {}).staff === (b4.poolBy || {}).staff,
         { before: b4.poolBy, after: n.poolBy });
     } else {
-      await finger(P, '[data-prog3-spend-cancel]');
+      await finger(P, '[data-infopopup-close]');
     }
 
     /* ── SHARED: SEVEN ROWS, THE TIGHTEST CASE ── */

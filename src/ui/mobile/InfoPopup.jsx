@@ -161,25 +161,46 @@ export const InfoPopup = () => {
           }}>{cur.stat}</div>
         )}
 
+        {cur.action && cur.action.blocked && (
+          <div data-infopopup-blocked style={{
+            marginTop: 9, fontSize: 11.5, fontWeight: 700, color: COL.accent, lineHeight: 1.3,
+          }}>{cur.action.blocked}</div>
+        )}
+
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           {cur.action && (
             <button type="button"
               data-infopopup-action
+              /* ═══ v2.3.2597: A BLOCKED ACTION STAYS AND SAYS WHY ═══
+                 This window is the spend confirm now (the owner: "the
+                 confirmation window be the same as the informational window"),
+                 so it opens on a capped or unaffordable stat by design —
+                 explaining is its first job — and it is the BUTTON that
+                 refuses.  It keeps its name and carries no `disabled`
+                 attribute and no pointer-events block: either would make it
+                 look right and be unreachable, which is the failure mode
+                 TRAPS §67 is about. */
+              aria-disabled={!!cur.action.blocked}
               onPointerUp={(e) => {
                 e.stopPropagation();
+                if (cur.action.blocked) return;
                 const run = cur.action.run;
                 infoPopupBus.close();
                 try { if (run) run(); } catch (_e) {}
               }}
               style={{
                 flex: '1 1 auto', padding: '9px 10px',
-                background: COL.goldBg, color: COL.goldText,
-                border: 0, borderRadius: 9,
-                fontSize: 12.5, fontWeight: 900, cursor: 'pointer',
+                background: cur.action.blocked ? 'transparent' : COL.goldBg,
+                color: cur.action.blocked ? COL.muted : COL.goldText,
+                border: cur.action.blocked ? `1px solid ${COL.border}` : 0,
+                borderRadius: 9,
+                fontSize: 12.5, fontWeight: 900,
+                cursor: cur.action.blocked ? 'default' : 'pointer',
                 touchAction: 'manipulation',
               }}>{cur.action.label}</button>
           )}
           <button type="button" onPointerUp={close}
+            data-infopopup-close
             style={{
               flex: cur.action ? '0 0 auto' : '1 1 auto',
               padding: '9px 14px',

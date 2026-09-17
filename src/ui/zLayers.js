@@ -67,11 +67,10 @@
     9400      InfoPopup (v2.3.2131) -- opened from panels inside
               MoreOverlay, so it has to clear 9200, and it is an aside
               rather than a flow, so it stays under the modals
-    9450      Prog3SpendConfirm (v2.3.2595) -- the "are you sure" for a
-              point spend.  ONE above InfoPopup because a stat's explainer
-              and the confirm for that same stat can both be open after a
-              fumbled double tap, and the QUESTION has to be the one on
-              top; still under the modals, for InfoPopup's reason
+              (v2.3.2597: InfoPopup is ALSO the spend confirm now -- the
+              owner asked for one window that explains and confirms at the
+              bottom -- so the 9450 Prog3SpendConfirm layer is retired.  The
+              two could never stack again: there is only one window.)
     9999      name modal (.bt-name-modal)
    10000      account modal (AccountModal)
    99000+     inventory surface (InventorySurface 99000/99500,

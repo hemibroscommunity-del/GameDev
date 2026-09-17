@@ -1488,57 +1488,84 @@ export async function launch() {
  * already open is left alone rather than toggled shut, which is what makes
  * it safe to call twice in one scenario.
  */
-export async function openPointCols(P, keys = ['sword', 'shared'], { drift = 16 } = {}) {
-  const opened = [];
-  for (const k of keys) {
-    const at = await P.page.evaluate((key) => {
-      const el = document.querySelector(`[data-prog3-lane="${key}"]`);
-      if (!el) return { err: 'no column ' + key };
-      if (el.getAttribute('aria-expanded') === 'true') return { already: true };
-      /* ═══ SCROLL THE SHEET BACK TO THE TOP FIRST ═══
-         The header row is `position: sticky` inside the sheet's scroller, so
-         `scrollIntoView` on it is a no-op — it is already in view, stuck —
-         and it leaves whatever scroll position the caller was in.  Deep in a
-         scrolled panel the stuck row can sit under the section tabs, and
-         then `elementFromPoint` at its centre answers something else and the
-         tap is refused.  Measured: mp-statgrid's spend section opened one
-         column and got a different one back, because the centre-of-cell
-         sweep just before it had scrolled to the last cell.
-         Putting the scroller at 0 makes the header's position the same on
-         every call, which is the only way a helper six scenarios share can
-         promise the same thing to all of them. */
-      for (let n = el; n; n = n.parentElement) {
-        if (n.scrollHeight - n.clientHeight > 4 && /auto|scroll/.test(getComputedStyle(n).overflowY)) { n.scrollTop = 0; break; }
-      }
-      el.scrollIntoView({ block: 'center' });
-      const r = el.getBoundingClientRect();
-      const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
-      const hit = document.elementFromPoint(x, y);
-      /* A header below the fold answers null here, and a tap aimed at it
-         would land on whatever is really there — report it instead. */
-      if (!(hit && hit.closest && hit.closest(`[data-prog3-lane="${key}"]`))) return { err: 'column ' + key + ' not hittable' };
-      return { x, y };
-    }, k);
-    if (at.already) { opened.push(k); continue; }
-    /* A refused tap is reported through the return value (the caller's guard
-       sees the column missing) rather than thrown — but it must not be
-       silent, or six scenarios inherit a helper that can quietly do nothing. */
-    if (at.err) { console.log('    openPointCols: ' + at.err); continue; }
-    const cdp = await P.page.context().newCDPSession(P.page);
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: at.x, y: at.y }] });
-    for (let i = 1; i <= 4; i++) {
-      await new Promise((r) => setTimeout(r, 20));
-      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: at.x, y: at.y + (drift * i) / 4 }] });
+export async function openPointCols(P, keys = ['sword'], { drift = 16 } = {}) {
+  /* ═══ v2.3.2597: THE POINTS SCREEN DRILLS IN NOW ═══
+   * It was four side-by-side columns you opened and closed; it is a 2x2 grid of
+   * category buttons, and tapping one REPLACES the grid with that category's
+   * card.  So this helper's job changes from "open this set of columns" to "be
+   * inside this category", and one category is all there can be — a caller
+   * passing several gets the LAST.
+   *
+   * Five scenarios come through here, which is why it is worth keeping rather
+   * than rewriting each of them.  Two things bite and both are handled:
+   *   - the stat rows do not EXIST until a category is picked, so every one of
+   *     those scenarios failed on a `rows: 0` guard until this drilled in;
+   *   - while a card is open the OTHER categories are not on screen at all, so
+   *     switching lanes has to go back to the grid first.  mp-statdemo reads
+   *     Melee, then Bow, then Magic, and without the back-out the second and
+   *     third simply found nothing to tap.
+   *
+   * Still a REAL touch with drift (TRAPS §67): the tap must survive the
+   * scroller's slop the way a thumb does, and dispatchEvent would prove the
+   * handler while saying nothing about reachability.
+   */
+  const want = keys[keys.length - 1] || 'sword';
+  const open = await P.page.evaluate(() => {
+    const c = document.querySelector('[data-prog3-card]');
+    return c ? c.getAttribute('data-prog3-card') : null;
+  });
+  if (open === want) return [want];
+  if (open) {
+    const back = await P.page.evaluate(() => {
+      const b = document.querySelector('[data-prog3-back]');
+      if (!b) return null;
+      b.scrollIntoView({ block: 'center' });
+      const r = b.getBoundingClientRect();
+      return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+    });
+    /* CDP rather than page.touchscreen: `touchscreen.tap` throws unless the
+       CONTEXT was created with hasTouch, and not every caller here does that
+       (mp-statpeek does not).  Input.dispatchTouchEvent still goes through hit
+       testing, which is the property TRAPS §67 is about — the point is a real
+       touch, not which API delivers it. */
+    if (back) {
+      const c0 = await P.page.context().newCDPSession(P.page);
+      await c0.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: back.x, y: back.y }] });
+      await new Promise((r) => setTimeout(r, 30));
+      await c0.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await c0.detach();
+      await P.page.waitForTimeout(340);
     }
-    await new Promise((r) => setTimeout(r, 20));
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await cdp.detach();
-    await P.page.waitForTimeout(320);   /* the 140ms width transition, with room */
-    opened.push(k);
   }
-  /* What actually ended up open, read back rather than assumed — a caller
-     that guards on this gets a real answer when a header stops responding. */
-  return P.page.evaluate(() => [...document.querySelectorAll('[data-prog3-lane]')]
-    .filter((h) => h.getAttribute('aria-expanded') === 'true')
-    .map((h) => h.getAttribute('data-prog3-lane')));
+  const at = await P.page.evaluate((key) => {
+    const el = document.querySelector(`[data-prog3-lane="${key}"]`);
+    if (!el) return { err: 'no category ' + key };
+    /* Scroller to 0 first, so the button sits in the same place on every call
+       for every caller — the reason the old helper did it too. */
+    for (let n = el; n; n = n.parentElement) {
+      if (n.scrollHeight - n.clientHeight > 4 && /auto|scroll/.test(getComputedStyle(n).overflowY)) { n.scrollTop = 0; break; }
+    }
+    el.scrollIntoView({ block: 'center' });
+    const r = el.getBoundingClientRect();
+    const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
+    const hit = document.elementFromPoint(x, y);
+    if (!hit || !hit.closest(`[data-prog3-lane="${key}"]`)) return { err: 'category ' + key + ' is covered' };
+    return { x, y };
+  }, want);
+  if (at.err) { console.log('    openPointCols: ' + at.err); return []; }
+  const cdp = await P.page.context().newCDPSession(P.page);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: at.x, y: at.y }] });
+  for (let i = 1; i <= 4; i++) {
+    await new Promise((r) => setTimeout(r, 20));
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: at.x, y: at.y + (drift * i) / 4 }] });
+  }
+  await new Promise((r) => setTimeout(r, 20));
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+  await P.page.waitForTimeout(360);
+  /* What actually opened, read back rather than assumed. */
+  return P.page.evaluate(() => {
+    const c = document.querySelector('[data-prog3-card]');
+    return c ? [c.getAttribute('data-prog3-card')] : [];
+  });
 }

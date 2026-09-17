@@ -26,7 +26,6 @@ import { StatDemo, STAT_DEMO_KEYS } from './StatDemo.jsx';                      
 import { useScrollTap } from './scrollTap.js';                                  /* v2.3.2326: a tap the scroller confiscated is still a tap */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
 import { heroSectionBus } from './heroSectionBus.js';                            /* v2.3.1668 */
-import { prog3SpendBus } from './prog3SpendBus.js';                              /* v2.3.2595: the point spend asks first */
 import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
 import { playIsLandscape, panelVw } from '../playViewport.js';                    /* v2.3.2171: the sideways pane stacks; panelVw v2.3.2382 */
 
@@ -1395,7 +1394,22 @@ export const HeroExpanded = () => {
                one point, and the DPS that point buys), the glossary supplies
                the words, and StatDemo supplies the picture.  One popup for
                all of it, through the bus the Overview labels already use. */
-            const openStatInfo = (st, cat) => {
+            /* ═══ v2.3.2597: THE INFORMATION WINDOW *IS* THE CONFIRM ═══
+               Owner: "having the confirmation window be the same as the
+               informational window would be better.  It tells you what it does
+               and asks you to confirm point at the bottom."
+
+               The first cut of this merged the other way round — it bolted the
+               glossary's body onto Prog3SpendConfirm — and that quietly LOST
+               everything this window already had: the StatDemo scene, the
+               crit-chance / crit-damage pair Luck buys, and the DPS now -> after
+               row with the v2.3.2521 threshold and the `dpsNote` fallback.
+               mp-statdemo and mp-statpeek caught it; they assert the scene and
+               the DPS line, and neither survives a text-only confirm.
+               Merging in the owner's own direction keeps all of it: InfoPopup
+               already had an `action` slot rendering a gold button beside "Got
+               it", which is precisely "asks you to confirm at the bottom". */
+            const openStatInfo = (st, cat, spend) => {
               try {
                 /* v2.3.2592: the row says WHICH lane it belongs to now (four are
                    on screen at once); a shared row belongs to none and takes
@@ -1486,6 +1500,16 @@ export const HeroExpanded = () => {
                         shield={!!(R && R.shield)} />
                     : null,
                   rows, capped: !!(pv && pv.capped),
+                  /* The spend lives at the bottom of the explainer now.  When
+                     there is nothing to buy the button STAYS and refuses with
+                     the reason — the owner's "grayed out with that
+                     explanation" — because explaining is this window's first
+                     job and it must open on a capped stat too. */
+                  action: spend ? {
+                    label: 'Spend point',
+                    blocked: spend.blocked,
+                    run: spend.run,
+                  } : undefined,
                 });
               } catch (e) { /* an explainer must never block a spend */ }
             };
@@ -1606,109 +1630,15 @@ export const HeroExpanded = () => {
               } catch (e) { /* a readout must never take the screen down */ }
               return '—';
             };
-            /* ═══ AND THE SPEND ASKS FIRST ═══
-               Owner: "Add a second window asking if they're sure they want to
-               spend the point."  Built here rather than inside the overlay so
-               the confirm carries the same now -> after pair the explainer
-               prints (previewStatPoint, one reader) — a confirm that only
-               says "are you sure" asks a question it has not given you the
-               means to answer.
-               `run` re-reads the live state instead of closing over this
-               render's: a dialog can sit open across a level-up, a zone
-               change and several player_state echoes, and the channel it
-               sends on must be the one that exists when the player says yes. */
-            const openSpendConfirm = (st, cat) => {
-              try {
-                const laneMeta = PROG3_SKILL_META.find((k) => k.key === cat) || {};
-                const pv = R ? previewStatPoint(R, st.key, st.atk ? cat : prog3ActiveCat(R)) : null;
-                const fmt = (v) => (st.pct ? n1(v * 100) + '%' : n1(v));
-                /* ═══ v2.3.2597: ONE WINDOW, NOT TWO ═══
-                   Owner: "I think having the confirmation window be the same as
-                   the informational window would be better. It tells you what
-                   it does and asks you to confirm point at the bottom."
-                   With the [+] the ONLY way in (the row body is inert) this is
-                   also the ONLY place a stat's explanation can be read, so the
-                   explainer's body and note travel with the confirm. Without
-                   them the screen had no route to "what does Special do?" at
-                   all — the card's [i] explains the CATEGORY, not the stat.
-                   `infoKey` first: a shortened label can collide with another
-                   stat's glossary entry (see prog3.js). */
-                const sInfo = statInfo(st.infoKey || st.label);
-                /* DISABLED IS A REAL STATE WITH A REASON.  Owner: "you can just
-                   gray out the plus sign and still launch the confirmation
-                   window when tapped but buttons grayed out with that
-                   explanation."  The window still opens and still explains —
-                   that is its main job now — and the bottom button refuses,
-                   saying which of the two reasons it is. */
-                const nowPts = st.atk ? prog3AtkPts(R, cat, st.key) : prog3Pts(R, st.key);
-                const capPts = prog3StatCap(R, st.key);
-                const availPts = st.atk ? laneAvail(cat) : sharedAvail;
-                const blocked = nowPts >= capPts
-                  ? `${st.label} is already at its cap.`
-                  : availPts <= 0
-                    ? `No ${st.atk ? (laneMeta.label || 'lane') : 'shared'} points to spend.`
-                    : null;
-                prog3SpendBus.open({
-                  stat: st.key,
-                  label: st.label,
-                  infoTitle: sInfo ? sInfo.title : null,
-                  infoBody: sInfo ? sInfo.body : null,
-                  infoNote: sInfo ? sInfo.note : null,
-                  blocked,
-                  laneLabel: st.atk ? (laneMeta.label || '') : 'Shared',
-                  poolLabel: st.atk ? `${laneMeta.label || ''} point` : 'shared point',
-                  iconSrc: st.iconSrc,
-                  perText: 'Each point: ' + st.perText,
-                  nowText: pv ? fmt(pv.statNow) : null,
-                  afterText: (pv && !pv.capped) ? fmt(pv.statAfter) : null,
-                  run: () => {
-                    const S2 = getState();
-                    const R2 = S2 && S2.rpg;
-                    if (!S2 || !S2.channel) return;
-                    S2.channel.send({
-                      type: 'prog3_allocate',
-                      payload: { stat: st.key, cat: st.atk ? cat : prog3SharedSpendCat(R2) },
-                    });
-                  },
-                });
-              } catch (e) { /* a confirm must never take the screen down */ }
-            };
-            /* ═══════════════════════════════════════════════════════════
-               v2.3.2597: THE CATEGORY GRID AND THE CATEGORY CARD
-               ═══════════════════════════════════════════════════════════
-               Geometry is MEASURED off the owner's reference shot rather than
-               chosen — tools/qa/mp/measure-ref.mjs reads it out of the pixels.
-               The shot is a resized 941x1672 frame, not a device resolution, so
-               everything is taken as a fraction of screen width and scaled:
-
-                 row pitch    0.1194 of width -> 46.6px at 390, 43.0 at 360
-                 [+] button   59.7 x 28.5 at 390   (WIDE and short, about 2.1:1)
-                 card header  64.7 at 390
-
-               THE ONE THING THE SHOT DOES NOT SOLVE.  It pre-dates v2.3.2592:
-               it shows FOUR stats (Power, Crit, Attack Speed, Range) and Crit
-               has since folded into Luck.  A weapon has SIX stats today and
-               Shared has SEVEN.  At the shot's own pitch that is 358px of card
-               for a weapon and 405px for Shared, against a scrolling window of
-               ~191px — so the card is about twice the glass.
-               Shrinking rows to fit is not available: 191 less the 64.7 header
-               and 14 of padding leaves 112px for six rows, 18.7px each, which
-               is less than half the 44px thumb floor mp-prog3 pins.
-               So the card SCROLLS and its header is STICKY — the category you
-               are spending in never leaves the screen, which is the whole
-               safety property of a one-category-at-a-time design, while the
-               rows keep the reference's pitch and its thumb size. */
-            /* ═══ v2.3.2597: SIDEWAYS THE CARD IS ~200px, NOT ~370 ═══
-               The landscape pane is a fixed dashboard column (~220px) whatever
-               the viewport width — measured, the overflow numbers at 844x390
-               and 800x360 are identical to the pixel. In that width the row
-               "Elemental" + icon + value + [+] overflowed by 47.8px and the
-               header's "10 PTS AVAILABLE" by 84.8px.
-               So sideways the card takes SHORT NAMES and a short header, which
-               is what this file did for narrow columns before (the retired
-               NARROW_TITLE map) rather than a new invention. The aria-label
-               keeps the full stat name, so nothing a screen reader or a
-               scenario reads is shortened — only what is drawn. */
+            /* ═══ v2.3.2597: SIDEWAYS THE CARD IS ~191px, NOT ~370 ═══
+               The landscape pane is a fixed dashboard column whatever the
+               viewport width — measured, the overflow at 844x390 and 800x360 is
+               identical to the pixel.  At that width "Elemental" + icon +
+               value + [+] overflowed by 47.8px.  So sideways the card takes
+               SHORT NAMES, which is what this file did for narrow columns
+               before (the retired NARROW_TITLE map) rather than a new
+               invention.  The aria-label keeps the full stat name, so nothing a
+               screen reader or a scenario reads is shortened. */
             const CARD_SHORT = { dmg: 'Power', range: 'Range', aspd: 'Speed', luck: 'Luck',
               special: 'Spec', elem: 'Elem', hp: 'HP', def: 'Def', mana: 'MP', stam: 'Stam',
               dodge: 'Dodge', move: 'Move', eres: 'Resist' };
@@ -1942,7 +1872,20 @@ export const HeroExpanded = () => {
                     aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${pts} of ${cap}. ${st.perText} per point.`}
                     aria-disabled={!canSpend}
                     title={`${st.label} — ${pts} of ${cap} points — ${st.perText} per point`}
-                    {...scrollTap(() => openSpendConfirm(st, cat), { inner: true })}
+                    {...scrollTap(() => openStatInfo(st, cat, {
+                      blocked: (st.atk ? laneAvail(cat) : sharedAvail) <= 0
+                        ? `No ${st.atk ? ((PROG3_SKILL_META.find((k) => k.key === cat) || {}).label || 'lane') : 'shared'} points to spend.`
+                        : pts >= cap ? `${st.label} is already at its cap.` : null,
+                      run: () => {
+                        const S2 = getState();
+                        const R2 = S2 && S2.rpg;
+                        if (!S2 || !S2.channel) return;
+                        S2.channel.send({
+                          type: 'prog3_allocate',
+                          payload: { stat: st.key, cat: st.atk ? cat : prog3SharedSpendCat(R2) },
+                        });
+                      },
+                    }), { inner: true })}
                     onClick={(e) => e.stopPropagation()}
                     style={{
                       flex: 'none', width: CARD_PLUS_W, height: CARD_PLUS_H,
