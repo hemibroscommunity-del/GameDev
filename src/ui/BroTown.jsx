@@ -266,7 +266,7 @@ import { EYE_COLOR_CATALOG, getEyeColor, setEyeColor } from '@/rendering/traits/
 import { HEIGHT_CATALOG, DEFAULT_HEIGHT, getBuildHeight, setBuildHeight, getBuildFrame, wireHeight, wireFrame } from '@/rendering/traits/buildCatalog.js'; /* v2.3.1953; v2.3.1996: frame locked to medium — no FRAME_CATALOG/setBuildFrame here */
 import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js'; /* v2.3.1939; v2.3.1940 + pants/tattoo */
 import { clearAllArt } from '@/rendering/traits/artOps.js';   /* v2.3.2114/2115: Reset and Randomize clear the painted art */
-import { getPattern } from '@/rendering/traits/patternCatalog.js'; /* v2.3.1941 */
+import { getPattern, setPattern, clearPatterns, randomPattern } from '@/rendering/traits/patternCatalog.js'; /* v2.3.1941; v2.3.2604 reset/randomize */
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
 import { SHIRT_CATALOG, getShirt, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, getShirtColor, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
@@ -2437,6 +2437,17 @@ export var BroTown = function BroTown(_ref0) {
       var ewc = _ewCols && _ewCols.length ? rpick(_ewCols) : 'default';
       setEyewearColor(ewc); setEyewearColorSel(ewc);
     }
+    /* v2.3.2604: and the garment patterns, which no reroll had ever moved --
+       owner: "Those also survive 'randomize' (patterns kept)".  randomPattern
+       rolls from the same list the picker offers (shoes take four tiles, not
+       nine) and weights plain, so a reroll can only land a look the player
+       could have picked by hand.  Rolled on every pass of the flair loop
+       rather than once outside it, unlike clearAllArt: clearing an empty
+       canvas four times is wasted work, but a pattern that held still while
+       the rest of the bro flickered is the bug being fixed. */
+    setPattern('shirt', randomPattern('shirt'));
+    setPattern('pants', randomPattern('pants'));
+    setPattern('shoes', randomPattern('shoes'));
   };
   /* ═══ v2.3.2036: RESET — BACK TO THE BARE DEFAULT ═══
    *
@@ -2493,6 +2504,11 @@ export var BroTown = function BroTown(_ref0) {
    * survives this, which is what keeps a button that erases things honest. */
   var resetLook = function () {
     clearAllArt();   /* v2.3.2114 / v2.3.2115 */
+    /* v2.3.2604: the garment PATTERNS are a different store from the drawings
+       clearAllArt just emptied, and neither button had ever touched them.  See
+       patternCatalog's note -- and note this clears the SHIRT pattern too, which
+       the owner's report could not see because Reset also takes the shirt off. */
+    clearPatterns();
     setSkin('default'); setSkinSel('default');
     setPants('default'); setPantsSel('default');
     setShoes('default'); setShoesSel('default');
