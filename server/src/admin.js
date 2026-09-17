@@ -169,6 +169,45 @@ export const adminMethods = {
         return json({ ok: true, ...s, history: days, delta, alert });
       }
 
+      /* v2.3.2604: THE PILE, AS THE WORKER HAS IT.
+         Read-only operator view of this.loot, added for the "loot magnetises
+         but will not pick up" hunt.  The bug is a DISAGREEMENT between what
+         the client draws and what the worker holds, and until now only one
+         side of it could be read: /player gives ps.x/ps.y, nothing gave the
+         pile.  Every refusal reason in _handleLootPickup is decided from the
+         fields below, so a failure capture can now name the gate instead of
+         guessing at it.  Admin-gated like every other route here and it
+         MUTATES NOTHING. */
+      if (request.method === 'GET' && path === '/loot') {
+        const wantZone = url.searchParams.get('zone');
+        const now = Date.now();
+        const out = [];
+        for (const zoneId of Object.keys(this.loot)) {
+          if (wantZone && zoneId !== wantZone) continue;
+          for (const p of (this.loot[zoneId] || [])) {
+            out.push({
+              zone: zoneId,
+              lootId: p.lootId,
+              x: p.x, y: p.y,
+              ts: p.ts,
+              ageMs: now - (p.ts || 0),
+              expiry: p.expiry || null,
+              expired: p.expiry ? now > p.expiry : (now - p.ts > this.LOOT_EXPIRY_MS),
+              coins: p.coins || 0,
+              recipients: p.recipients || null,
+              shares: p.shares || null,
+              claimedBy: Object.keys(p.claimedBy || {}),
+              inventoryClaimed: !!p.inventoryClaimed,
+              weaponClaimed: !!p.weaponClaimed,
+              armorClaimed: !!p.armorClaimed,
+              isDeathDrop: !!p.isDeathDrop,
+              ownerOnlyUntil: p.ownerOnlyUntil || null,
+            });
+          }
+        }
+        return json({ ok: true, piles: out, pickupRange: this.LOOT_PICKUP_RANGE, ts: now });
+      }
+
       if (request.method === 'GET' && path === '/player') {
         const id = url.searchParams.get('id');
         if (!id) return json({ ok: false, error: 'id required' }, 400);

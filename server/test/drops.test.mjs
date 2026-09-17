@@ -462,5 +462,90 @@ check('...and an iron WEAPON, at trained level 1',
 check('the defense gate still refuses a far higher tier (it was not just switched off)',
   room._prog3EquipOk(ironPs, 'armor', { gearBase: 'mythril', tierMult: 1.94 }) === false);
 
+/* ═══ v2.3.2604: TWO KILLS AT ONE SPAWN SLOT ARE TWO PILES ═══
+ *
+ * Owner, more than once: "loot sometimes drops and magnetizes but is unable to
+ * be picked up."
+ *
+ * A pile used to be identified by the MONSTER it fell from -- `mk-<monster.id>`
+ * -- and a monster id names a SPAWN SLOT, not a death.  RESPAWN_TIME is
+ * 18.75 s against a 60 s LOOT_EXPIRY_MS, so the same slot can be killed three
+ * times inside one pile's lifetime, and every one of those kills minted a pile
+ * carrying the SAME lootId.
+ *
+ * One collision, four wrong answers, because every lookup on both sides takes
+ * the FIRST match:
+ *   - _handleLootPickup's `list.find` range-checks the player against the
+ *     STALE pile's position, so a player standing on the pile they just made
+ *     is refused `out-of-range` measured from where the monster died last time
+ *   - _despawnLoot's `list.findIndex` then removes the STALE pile, leaving the
+ *     one the player actually stood on unclaimed and invisible (the client
+ *     dropped its copy on the id-keyed loot_despawn)
+ *   - the client's loot_drop handler skips a pile whose id it already holds
+ *   - ...and its loot_despawn expires whichever local pile matches first
+ *
+ * `out-of-range` is the ONE refusal the client deliberately retries instead of
+ * dropping the pile (wsClient.js v2.3.2490), which is exactly why the symptom
+ * is a pile that sits there magnetising forever rather than one that vanishes.
+ * It is intermittent because it only bites when two consecutive deaths of one
+ * slot land further apart than LOOT_PICKUP_RANGE.
+ *
+ * This is the shape the fix has to hold: two piles, two ids, and the pickup
+ * paid and despawned against the pile the player is actually standing on.
+ * Asserted through the shipped entry points, not by reading the id format. */
+room.loot = {};
+room.eventBuffer = [];
+const F = mkPlayer('pF');
+const slot = { id: 'sm-meadow-7', arch: 'slime', variant: null, level: 5, x: 100, y: 100, gold: 10, xp: 10 };
+/* Every optional roll misses, so these are plain gold piles and the only
+   variable is the identity. */
+const firstKill = withRandom([1, 1, 1, 1, 1], () =>
+  room._spawnLootForKill('town', slot, 'pF', ['pF'], { pF: 1 }));
+/* The slot respawns and is killed again 300 px away -- well past the 160 px
+   LOOT_PICKUP_RANGE -- while the first pile is still on the ground. */
+const secondKill = withRandom([1, 1, 1, 1, 1], () =>
+  room._spawnLootForKill('town', { ...slot, x: 400, y: 100 }, 'pF', ['pF'], { pF: 1 }));
+
+check('two kills at one spawn slot both drop a pile (guard)',
+  !!firstKill && !!secondKill && room.loot.town.length === 2,
+  room.loot.town && room.loot.town.length);
+check('...and the two piles are far enough apart to matter (guard)',
+  Math.hypot(secondKill.x - firstKill.x, secondKill.y - firstKill.y) > room.LOOT_PICKUP_RANGE,
+  { gap: Math.round(Math.hypot(secondKill.x - firstKill.x, secondKill.y - firstKill.y)),
+    range: room.LOOT_PICKUP_RANGE });
+check('a second kill at the same spawn slot does NOT reuse the first pile’s id',
+  firstKill.lootId !== secondKill.lootId, { first: firstKill.lootId, second: secondKill.lootId });
+
+/* D walks onto the pile the second kill just made and asks for it. */
+F.x = 400; F.y = 100; F.z = 'town'; F.coins = 0;
+let refusal = null;
+room._wsBySessionId = () => ({ send: (raw) => {
+  try { const m = JSON.parse(raw); if (m.type === 'loot_pickup_rejected') refusal = m.payload; } catch (e) {}
+} });
+room._handleLootPickup({ id: 'pF', name: 'F' }, { lootId: secondKill.lootId, zone: 'town' });
+
+check('a player standing ON the pile they just made is not refused out-of-range',
+  refusal === null, refusal);
+check('...the pile they are standing on is the one that pays them',
+  secondKill.claimedBy.pF === true && firstKill.claimedBy.pF !== true,
+  { second: secondKill.claimedBy, first: firstKill.claimedBy });
+check('...they are actually paid', F.coins > 0, F.coins);
+/* The despawn has to take the SAME pile the credit came from.  When the two
+   shared an id this removed the older one and left the claimed pile on the
+   ground as a ghost -- which then became the stale pile the NEXT pickup was
+   measured against, and that is what made the fault persist across kills. */
+check('...and it is that pile which despawns, leaving the older one alone',
+  room.loot.town.length === 1 && room.loot.town[0].lootId === firstKill.lootId,
+  room.loot.town.map((p) => p.lootId));
+/* The older pile is still legitimate loot: it must still be claimable on its
+   own terms once the player walks back to it. */
+refusal = null;
+F.x = 100; F.y = 100;
+const coinsBefore = F.coins;
+room._handleLootPickup({ id: 'pF', name: 'F' }, { lootId: firstKill.lootId, zone: 'town' });
+check('the older pile is still claimable on its own id',
+  refusal === null && F.coins > coinsBefore, { refusal, coinsBefore, now: F.coins });
+room._wsBySessionId = () => null;
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 if (failures > 0) process.exit(1);
