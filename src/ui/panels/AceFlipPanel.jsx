@@ -1,6 +1,6 @@
 import React from 'react';
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js';
-import { ACE_FLIP_MIN_STAKE, ACE_FLIP_RISK_MULT, aceFlipMaxStake, BT_AUDIO } from '@/data/index.js';
+import { ACE_FLIP_MIN_STAKE, ACE_FLIP_RISK_MULT, ACE_FLIP_WIN_CHANCE, aceFlipMaxStake, BT_AUDIO } from '@/data/index.js';
 
 /* ═══ v2.3.2618: ACE'S COIN FLIP ═══
  *
@@ -102,6 +102,15 @@ export function AceFlipPanel() {
   var stake = Math.min(aceFlipBus.stake, maxStake);
   var risk = stake * ACE_FLIP_RISK_MULT;
   var canFlip = stake >= ACE_FLIP_MIN_STAKE && risk <= coins && !aceFlipBus.pending;
+  /* ═══ THE ODDS ARE DERIVED, NOT TYPED ═══
+     Owner asked Ace to say the split out loud.  Both numbers come off
+     ACE_FLIP_WIN_CHANCE (the mirror of the server's own constant) rather than
+     being written as "45" and "55" in three places, because a hardcoded
+     percentage does not fail loudly when the constant is retuned -- it just
+     quietly starts lying to the player about a bet they are about to take.
+     The stat boxes below read the same two values for the same reason. */
+  var youPct = Math.round(ACE_FLIP_WIN_CHANCE * 100);
+  var acePct = 100 - youPct;
   var res = aceFlipBus.result;
   var strip = res && res.won ? '/sprites/fx/coinflip-win.webp' : '/sprites/fx/coinflip-lose.webp';
 
@@ -166,7 +175,7 @@ export function AceFlipPanel() {
       React.createElement('div', { style: { fontSize: 12.5, color: LS.txt2, lineHeight: 1.45, marginBottom: 11 } },
         aceFlipBus.note
           ? aceFlipBus.note
-          : 'One flip. Land it and I pay you three times your stake — miss and I take three times off you. I win a little more often than you do. Still in?'),
+          : 'One flip. Land it and I pay you three times your stake — miss and I take three times off you. I win a little more often than you do: ' + acePct + '% me, ' + youPct + '% you. Still in?'),
 
       /* ── the coin ── */
       React.createElement('div', {
@@ -210,10 +219,10 @@ export function AceFlipPanel() {
         style: { display: 'flex', gap: 8, marginBottom: 12 },
       },
         React.createElement('div', { style: { flex: 1, background: LS.raised, border: '1px solid ' + LS.border, borderRadius: 9, padding: '8px 10px' } },
-          React.createElement('div', { style: { fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: LS.txt3, marginBottom: 2 } }, 'Win (45%)'),
+          React.createElement('div', { style: { fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: LS.txt3, marginBottom: 2 } }, 'Win (' + youPct + '%)'),
           gold('+' + risk, 14, LS.win)),
         React.createElement('div', { style: { flex: 1, background: LS.raised, border: '1px solid ' + LS.border, borderRadius: 9, padding: '8px 10px' } },
-          React.createElement('div', { style: { fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: LS.txt3, marginBottom: 2 } }, 'Lose (55%)'),
+          React.createElement('div', { style: { fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: LS.txt3, marginBottom: 2 } }, 'Lose (' + acePct + '%)'),
           gold('-' + risk, 14, LS.lose))),
 
       maxStake < ACE_FLIP_MIN_STAKE ? React.createElement('div', {
