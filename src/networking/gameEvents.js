@@ -323,6 +323,39 @@ export function processGameEvent(type, payload, S, deps) {
             const _sr = payload || {};
             if (_sr.ok && _sr.kind === 'shop_sell') {
               shopBus.setNote(`Sold ${_sr.sold} for ${_sr.paid} coins.`, true);
+              /* ═══ v2.3.2606: A SALE MAKES THE COIN NOISE ═══
+                 Owner: "Play gold sound when you sell stuff for money."
+
+                 The SAME sample and the same path the loot pickup uses
+                 (v2.3.2490, wsClient.js): SFX_MANIFEST 'coin-pickup' through
+                 BT_AUDIO.play.  Deliberately not a second audio road -- that
+                 one already carries the iOS unlock (the ctx is resumed on the
+                 first gesture and self-heals per play), and BT_AUDIO.play
+                 early-returns on `muted`, which is the flag SettingsPanel's
+                 sound toggle writes.  A hand-rolled Audio() here would be
+                 silent on iPhone Safari and deaf to that toggle.
+
+                 ON THE SERVER'S ANSWER, NOT ON THE TAP.  This case only runs
+                 for a `shop_result` the worker sent, and only in the `ok`
+                 branch -- selling is server-settled (server/src/index.js
+                 _shopSell), so a sound on the button press would ring for
+                 sales that then failed, and the refusal is right there in the
+                 else branch below.  `paid` is the worker's number.
+
+                 NOT GATED ON paid > 0: the shop refuses a worthless item
+                 rather than buying it for nothing, so an `ok` sell always
+                 moved coins.  The loot line takes the opposite care for the
+                 opposite reason -- a kill share really can credit 0. */
+              try { BT_AUDIO.play('coin-pickup', { vol: 0.45 }); } catch (_ce) { /* never block the sale on a sound */ }
+              /* Dev probe, house style and gated on the harness flag, exactly
+                 as the loot cue's (v2.3.2545).  mp-sellcue counts THIS, so
+                 "a refused sale makes no coin sound" is an assertion about the
+                 sound rather than a re-reading of the code that plays it. */
+              try {
+                if (typeof window !== 'undefined' && window.__btProbe) {
+                  window.__btSellSfx = (window.__btSellSfx || 0) + 1;
+                }
+              } catch (_pe) { /* ignore */ }
             } else if (_sr.ok && _sr.kind === 'shop_buy') {
               shopBus.setNote(`Bought ${_sr.bought} for ${_sr.cost} coins.`, true);
             } else {
