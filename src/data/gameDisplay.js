@@ -4094,9 +4094,20 @@ export const NPC_DATA = [{
   _questMarker: null,
   _hitThisSwing: false,
 }, {
-  /* ═══ v2.3.2617: ACE, THE CARD SHARP OUTSIDE THE GAMBLING DEN ═══
+  /* ═══ v2.3.2617: ACE THE GAMBLER, ON THE PLAZA ═══
      Owner supplied a walk sheet as a VIDEO and asked for the eight directions
      off it.  tools/import_npc_walk_video.py cut them; this is where he stands.
+
+     HIS PLATE READS "Ace" OVER "Gambler" (owner: "Also call him the
+     gambler").  Same shape as Diego's, and the same reason it is the ROLE
+     line that carries it rather than the name: `name` is load-bearing --
+     getNpcQuest keys on it and ACTIVE_NPCS in BroTown.jsx must contain it --
+     while `plateRole` is presentation only, the gold sub-line entityRenderer
+     passes to _updateNamePill.  So "also call him X" is a plateRole edit, and
+     costs nothing.  He shipped for about an hour as "Card Sharp"; the id
+     below and the art filenames still say cardsharp, which is deliberate --
+     renaming files to chase a subtitle churns the diff for no gain, and
+     nothing user-facing reads either one.
 
      HIS ART ONLY HAS THREE CAMERA ANGLES.  The sheet carries front, right
      profile and back -- no 3/4 views at all -- so `walk` below names eight
@@ -4164,12 +4175,12 @@ export const NPC_DATA = [{
   },
   avatar: '🃏',
   color: '#3E9B4F',
-  plateRole: 'Card Sharp',
+  plateRole: 'Gambler',
   x: 710, y: 1240,
   spawnX: 710, spawnY: 1240,
   renderX: 710, renderY: 1240,
   hp: 100, maxHp: 100,
-  noHp: true,          /* a card sharp in a safe town; a health bar reads as "fight this" */
+  noHp: true,          /* a gambler in a safe town; a health bar reads as "fight this" */
   alive: true,
   respawnAt: 0,
   /* 100, not Lil Bro's 130: the measurement above holds on a 100px disc, and
