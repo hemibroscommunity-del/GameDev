@@ -86,11 +86,19 @@ function lsGold(amount, size) {
  * leaning on it.  Drawn behind the painting he is simply invisible; that was
  * the first attempt and the preview showed an empty shop.
  *
- * HIS SIZE.  The figure is 24% of the room's width, centred at 45% and with
- * his forearms at 51% of the room's height.  That keeps him behind the red
- * counter runner with the lantern and the bell still visible past one elbow
- * and the books past the other -- a shopkeeper occludes some of his own
- * counter, but not the props that make it look like a shop.
+ * HIS SIZE.  The figure is 12% of the room's width, centred at 45% and with
+ * his forearms at 47% of the room's height.  He stands behind the counter
+ * rather than filling it: at this size the lantern, the bell, the books and
+ * the flowers are all still on the counter beside him, and he is in
+ * proportion to the shelves behind his head.
+ *
+ * The first cut had him at 24% and the owner asked for "about half or
+ * quarter that size".  Both were rendered: a QUARTER (6%) makes him the size
+ * of the jars on the shelf behind him and he stops reading as a person, so
+ * this is the half.  Note the base moved UP with the size, from 51% to 47% --
+ * in this room's projection a smaller figure is a figure standing further
+ * back, and further back is higher up the picture, so his hands meet the
+ * counter above where they did when he was twice as big.
  *
  * The geometry is expressed in ROOM-CONTENT PX and converted to percentages
  * here, so the scene scales with the panel and cannot drift between phone
@@ -101,14 +109,24 @@ var KEEPER_SRC = '/sprites/npc/storekeeper-bro-idle.png';
 var RM = { imgW: 1254, x0: 42, y0: 432, w: 720, h: 714 };  /* measured alpha bbox */
 var SCENE_H = 457;                                          /* rows of RM.h shown */
 var KF = { cell: 362, cellH: 724, x0: 18, y0: 200, x1: 361, y1: 580 }; /* frame 0 art */
+/* v2.3.2617b (owner: "he needs to be about half or quarter that size").
+   The three placement numbers, as fractions of the room's own box. A QUARTER
+   was tried too and is too small: at 6% he is the size of the jars on the
+   shelf behind him and stops reading as a person at all. Half is the one. */
+var KEEP_W = 0.12;    /* painted width, was 0.24 */
+var KEEP_CX = 0.45;   /* centre of that width */
+var KEEP_BASE = 0.47; /* the row his forearms rest on -- 0.51 when he was
+                         twice this size: a smaller man stands FURTHER BACK
+                         behind the counter, so his hands meet it higher up
+                         the picture, not lower. */
 var KEEP = (function () {
   var cw = KF.x1 - KF.x0 + 1;                 /* 344 painted px across */
-  var scale = (0.24 * RM.w) / cw;             /* he is 24% of the room wide */
+  var scale = (KEEP_W * RM.w) / cw;
   return {
     w: KF.cell * scale,                        /* the whole CELL, art is inset */
     h: KF.cellH * scale,
-    left: 0.45 * RM.w - (KF.x0 + cw / 2) * scale,   /* art centre at 45% */
-    top: 0.51 * RM.h - (KF.y1 + 1) * scale,         /* forearms at 51% */
+    left: KEEP_CX * RM.w - (KF.x0 + cw / 2) * scale,
+    top: KEEP_BASE * RM.h - (KF.y1 + 1) * scale,
   };
 })();
 var pc = function pc(v, of) { return (v / of * 100).toFixed(4) + '%'; };
