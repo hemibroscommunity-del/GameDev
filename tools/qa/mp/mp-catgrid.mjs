@@ -471,6 +471,88 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${label}: ...and the [+] keeps a visible edge on every fill (worst ${worstEdge.k} ${worstEdge.c.toFixed(2)}:1)`,
         edges.length === 7 && worstEdge.c >= 3, edges.map((e) => `${e.k} ${e.c.toFixed(1)}`));
       console.log(`    fills: worst label ${worstInk.k} ${worstInk.c.toFixed(2)}:1, worst [+] edge ${worstEdge.k} ${worstEdge.c.toFixed(2)}:1`);
+
+      /* ═══ v2.3.2600: THE GREY EDGE, AND THE TWO SEAMS ═══
+         Owner: "a gray border around each cell", and "make sure the cells don't
+         slide above the headers."  Both are asserted as RENDERED, because both
+         failed silently once already: `COL.panel` is not a palette key, so the
+         card header's background computed to rgba(0,0,0,0) and the rows scrolled
+         visibly through a header that was still there in the DOM.  A geometry
+         check alone would have called that fine. */
+      const edge = await P.page.evaluate(() => {
+        const rgb = (v) => { const m = (v || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/); return m ? [+m[1], +m[2], +m[3]] : null; };
+        const rows = [...document.querySelectorAll('[data-prog3-row]')];
+        return rows.map((r) => { const cs = getComputedStyle(r);
+          return { k: r.getAttribute('data-prog3-row'),
+            w: [cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, cs.borderLeftWidth].map(parseFloat),
+            col: rgb(cs.borderTopColor), fill: rgb(cs.backgroundColor) }; });
+      });
+      const allFour = edge.every((e) => e.w.every((w) => w >= 1));
+      const oneColour = new Set(edge.map((e) => (e.col || []).join(','))).size === 1;
+      const edgeInk = edge.map((e) => ({ k: e.k, c: ratio(e.col, e.fill) }));
+      const worstRim = edgeInk.reduce((a, b) => (b.c < a.c ? b : a), edgeInk[0] || { k: '?', c: 0 });
+      rec.ok(`${label}: every cell is ringed on all four sides by ONE grey border`,
+        edge.length === 7 && allFour && oneColour, edge.map((e) => `${e.k} ${e.w.join('/')}`));
+      rec.ok(`${label}: ...and that border stands off every fill it rings (worst ${worstRim.k} ${worstRim.c.toFixed(2)}:1)`,
+        worstRim.c >= 1.5, edgeInk.map((e) => `${e.k} ${e.c.toFixed(2)}`));
+      console.log(`    rim: ${(edge[0] && edge[0].col || []).join(',')}, worst standoff ${worstRim.k} ${worstRim.c.toFixed(2)}:1`);
+
+      /* Scroll the card HALF a row and look at the strip between the scroller's
+         own top edge and the card header's bottom.  Nothing in it may carry a
+         cell's fill: that is what "sliding above the headers" looks like, and it
+         is the one thing a hit-test cannot see. */
+      const seam = await P.page.evaluate(() => {
+        const t = [...document.querySelectorAll('[role="button"][aria-pressed]')]
+          .find((e) => /Equipment/i.test(e.getAttribute('aria-label') || ''));
+        if (!t) return null;
+        const row = t.parentElement;
+        let sc = row.parentElement;
+        while (sc && !(sc.scrollHeight - sc.clientHeight > 4 && /auto|scroll/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+        if (!sc) return null;
+        sc.scrollTop = 200;
+        const card = document.querySelector('[data-prog3-card]');
+        const hd = card && card.firstElementChild;
+        const sr = sc.getBoundingClientRect(), rr = row.getBoundingClientRect();
+        const hr = hd ? hd.getBoundingClientRect() : null;
+        const alpha = (v) => { const m = (v || '').match(/rgba\(\d+,\s*\d+,\s*\d+,\s*([\d.]+)\)/); return m ? +m[1] : 1; };
+        return { aboveTabs: +(rr.top - sr.top).toFixed(2),
+          tabsToHeader: hr ? +(hr.top - rr.bottom).toFixed(2) : null,
+          tabsOpaque: alpha(getComputedStyle(row).backgroundColor) === 1,
+          headOpaque: hd ? alpha(getComputedStyle(hd).backgroundColor) === 1 : false,
+          band: hr ? { x: Math.round(sr.left), y: Math.round(sr.top),
+            width: Math.round(sr.width), height: Math.max(1, Math.round(hr.bottom - sr.top)) } : null };
+      });
+      await P.page.waitForTimeout(260);
+      rec.ok(`${label}: the tab row pins FLUSH to the scroller's edge — no strip for cells to show through`,
+        !!seam && seam.aboveTabs === 0, seam && { aboveTabs: seam.aboveTabs });
+      rec.ok(`${label}: ...and the card header pins FLUSH under the tab row`,
+        !!seam && seam.tabsToHeader === 0, seam && { tabsToHeader: seam.tabsToHeader });
+      rec.ok(`${label}: ...and both headers are OPAQUE (a transparent sticky bar is still "sliding above")`,
+        !!seam && seam.tabsOpaque && seam.headOpaque, seam && { tabs: seam.tabsOpaque, head: seam.headOpaque });
+      if (seam && seam.band) {
+        const png = await P.page.screenshot({ clip: seam.band });
+        const bleed = await P.page.evaluate(async ({ src, fills }) => {
+          const img = new Image();
+          await new Promise((r, j) => { img.onload = r; img.onerror = j; img.src = src; });
+          const cv = document.createElement('canvas');
+          cv.width = img.width; cv.height = img.height;
+          const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0);
+          const d = cx.getImageData(0, 0, cv.width, cv.height).data;
+          let hits = 0, worst = null;
+          for (let i = 0; i < d.length; i += 4) {
+            for (const f of fills) {
+              if (Math.abs(d[i] - f[0]) <= 6 && Math.abs(d[i + 1] - f[1]) <= 6 && Math.abs(d[i + 2] - f[2]) <= 6) {
+                hits++; worst = [d[i], d[i + 1], d[i + 2]]; break;
+              }
+            }
+          }
+          return { px: cv.width * cv.height, hits, worst };
+        }, { src: `data:image/png;base64,${png.toString('base64')}`, fills: spines.map((x) => x.rgb) });
+        rec.ok(`${label}: mid-scroll, NO cell fill appears anywhere above the card header's bottom edge (${bleed.hits}/${bleed.px}px)`,
+          bleed.hits === 0, bleed);
+        console.log(`    seam band ${seam.band.height}px tall, ${bleed.hits} cell-coloured pixels`);
+        await P.page.screenshot({ path: `${OUT}/catgrid-seam.png`, clip: seam.band });
+      }
     }
     await P.page.screenshot({ path: `${OUT}/catgrid-${label}-shared.png` });
 

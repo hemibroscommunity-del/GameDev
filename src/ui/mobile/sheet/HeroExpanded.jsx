@@ -771,9 +771,28 @@ export const HeroExpanded = () => {
           count also rides the Build chip's aria-label, so nothing the text
           carried is lost to a screen reader. */}
       <div style={{
-        position: 'sticky', top: 0, zIndex: 2,
+        /* ═══ v2.3.2600: THE 4px BAND ABOVE THIS ROW ═══
+           Owner: "make sure the cells don't slide above the headers."  A sticky
+           offset is measured from the scrollport's PADDING box, and panelStyle
+           gives every panel `padding: 4px 6px 4px`.  So `top: 0` pinned this
+           row 4px BELOW the scroller's own top edge, and the stat cells scrolled
+           visibly through that 4px strip — measured: scroller top 653, row top
+           657.  Small, and exactly the thing being complained about.
+           `top: -4` pins the row's border box over the strip and `paddingTop: 4`
+           puts its contents back where they were, so nothing moves and the
+           background now covers the band.  `marginTop: -4` keeps the flow
+           height unchanged, because the padding would otherwise push every row
+           below it down by 4.
+           The panelStyle padding itself is NOT touched — every panel in the
+           dashboard shares it.
+           HEIGHT + 4, not height: this app is box-sizing: border-box, so adding
+           padding to a fixed height SHRINKS the tabs instead of growing the row
+           — measured, the row ended at 681 and opened a 4px strip between it
+           and the card header, i.e. the same bug moved rather than fixed. */
+        position: 'sticky', top: -4, zIndex: 2,
+        marginTop: -4, paddingTop: 4,
         display: 'flex', gap: DASH_GAP,
-        height: HERO_TAB_H, flex: '0 0 auto',
+        height: HERO_TAB_H + 4, flex: '0 0 auto',
         /* v2.3.2214: 4 -> 2. Every pixel above the open lane pushes its last
            stat toward the bottom of the phone; the lane headers' sticky
            offset below must move with this or they pin in the wrong place. */
@@ -1651,6 +1670,7 @@ export const HeroExpanded = () => {
               special: 'Spec', elem: 'Elem', hp: 'HP', def: 'Def', mana: 'MP', stam: 'Stam',
               dodge: 'Dodge', move: 'Move', eres: 'Resist' };
             const cardLabel = (st) => (landPane ? (CARD_SHORT[st.key] || st.label) : st.label);
+            const CELL_BORDER = '#9AA7AC';
             const CARD_ROW_H = landPane ? 42 : 46;
             /* ═══ SIDEWAYS, MEASURED RATHER THAN GUESSED ═══
                The landscape card is 191px and its row 177px. The first cut
@@ -1846,7 +1866,18 @@ export const HeroExpanded = () => {
                      all clear of AA 4.5.  See tools/qa/mp/palette-fill.mjs. */
                   background: (colourOn && st.tint) ? st.tint
                     : (canSpend ? COL.accentFill : COL.wellSoft),
-                  border: `1px solid ${(colourOn && st.tint) ? 'rgba(0,0,0,.30)' : (canSpend ? COL.accent : COL.tileBor)}`,
+                  /* ═══ v2.3.2600: A GRAY BORDER AROUND EVERY CELL ═══
+                     Owner's ask, and it does a job the fill cannot: thirteen
+                     deep colours butted against each other and against the dark
+                     sheet need an edge, or a cell's boundary is wherever its
+                     colour happens to stop.
+                     #9AA7AC is chosen for the worst case rather than the easy
+                     one — measured against all thirteen fills AND the
+                     uncoloured cell it runs 2.6:1 (Special, the closest) to
+                     6.3:1, so the outline reads on every stat.  The darker
+                     grays tried first sat at 1.4:1 against Special and Move and
+                     simply disappeared on them. */
+                  border: `1px solid ${CELL_BORDER}`,
                   borderRadius: 9, overflow: 'hidden',
                 }}>
                   <span style={{
@@ -1962,17 +1993,55 @@ export const HeroExpanded = () => {
                 <div data-prog3-card={col.key} style={{
                   display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0,
                   border: `2px solid ${COL.accent}`, borderRadius: 12,
-                  background: COL.panel, overflow: 'hidden',
+                  /* ═══ v2.3.2600: NO `overflow: hidden` ON THE CARD ═══
+                     This is what actually stopped the header sticking, and it
+                     is invisible in the numbers — the computed position stayed
+                     `sticky` and zIndex 1 the whole time, so every check said
+                     it was fine while the screenshot showed the header sliding
+                     up under the tab row with the cells behind it.
+                     `overflow: hidden` makes an element a SCROLL CONTAINER, and
+                     a sticky child sticks within its nearest scrolling
+                     ancestor.  So the header was dutifully sticking to the
+                     CARD, which never scrolls, instead of to the sheet's
+                     scroller — i.e. not sticking at all.
+                     It was only ever here to clip the 12px radius, and nothing
+                     reaches those corners: the rows sit inside the card's own
+                     padding and clip themselves. */
+                  background: COL.bg,
                 }}>
                   {/* STICKY, for the reason in the geometry note above: the card
                       is about twice the scrolling window, and the one thing that
                       must never scroll away is which category you are spending
                       in. */}
                   <div style={{
-                    position: 'sticky', top: 0, zIndex: 1, flex: 'none',
+                    /* ═══ v2.3.2600: THE HEADER WAS TRANSPARENT, AND STUCK TOO HIGH ═══
+                       Owner: "make sure the cells don't slide above the headers."
+                       Two real faults, both mine from v2.3.2597, and neither was
+                       a z-order problem — elementFromPoint at the header's own
+                       centre correctly returned the header the whole time:
+
+                       1. `background: COL.panel` — THERE IS NO `panel` KEY in
+                          the palette (it is bg / raised / well / wellSoft).  So
+                          it resolved to undefined and the computed background
+                          was rgba(0,0,0,0): a fully TRANSPARENT sticky bar with
+                          the stat rows scrolling visibly through it, which is
+                          exactly what "sliding above the header" looks like.
+                          An unknown key fails silently in an inline style —
+                          nothing warns, and it renders.
+                       2. `top: 0` sticks it to the top of the SHEET's scroller,
+                          which is where the Equipment/Points/Journey tab row
+                          already sits (sticky, top 0, zIndex 2).  So the card
+                          header slid up UNDER the tabs instead of halting
+                          beneath them.  HERO_TAB_H + 2 is what the four-column
+                          header row used for this same reason (v2.3.2592). */
+                    /* HERO_TAB_H, not +2: the +2 was the tab row's own
+                       marginBottom, and pinning the card header 2px lower left
+                       a 2px strip of scrolling cells between the two headers
+                       (measured: tabs end 685, header pinned 687).  Flush. */
+                    position: 'sticky', top: HERO_TAB_H, zIndex: 1, flex: 'none',
                     display: 'flex', alignItems: 'center', gap: landPane ? 5 : 8,
                     padding: landPane ? '5px 6px' : '6px 8px',
-                    background: COL.panel, borderBottom: `1px solid ${COL.tileBor}`,
+                    background: COL.bg, borderBottom: `1px solid ${COL.tileBor}`,
                   }}>
                     <button type="button"
                       data-prog3-back
