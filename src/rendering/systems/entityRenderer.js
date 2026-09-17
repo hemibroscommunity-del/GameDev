@@ -304,6 +304,12 @@ const NPC_SCALE_MULT = Object.assign(Object.create(null), {
      about an adult's shoulder, which is what the reference art looks like
      beside the grown-ups in the same street. */
   '/sprites/npc/lil-bro-walk-south.webp': 0.78,
+  /* v2.3.2617: Ace. Same normalisation as the rest -- the importer fits every
+     figure to 200px between hat and feet -- so 1.0 would draw him at the ~120px
+     the comment above measures, a shade under Mayor Bro's 132. He is a grown
+     man in a tall hat and reads as the showiest thing on the street, so 1.15
+     puts him at ~138: a little over the mayor, well under Diego's coat. */
+  '/sprites/npc/cardsharp-bro-walk-south.webp': 1.15,
 });
 const npcSpriteScale = (src) => NPC_SPRITE_SCALE * (NPC_SCALE_MULT[src] || 1);
 
