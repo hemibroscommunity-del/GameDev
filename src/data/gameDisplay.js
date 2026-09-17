@@ -2832,6 +2832,15 @@ BT_AUDIO.SFX_MANIFEST = {
      entry here, which is what satisfies the animation/asset preloading law
      -- no lazy first-use fetch on the frame a coin is grabbed. */
   'coin-pickup':   '/sfx/loot/coin-pickup.mp3',
+  /* v2.3.2621: the owner's coin-flip clip, for Ace's toss.  It REPLACES the
+     pitched-up borrow of coin-pickup that v2.3.2620 used as a stand-in -- see
+     AceFlipPanel's TOSS_* constants, which were written to make exactly this
+     swap a two-line change.  Trimmed at the play site rather than on disk
+     (offset/duration): the source is 1.224s but everything audible lands in
+     the first ~0.70s and the rest is silence, and the manifest's own footstep
+     and mine-strike rows set the precedent for isolating a clip's useful
+     seconds at the call. */
+  'coin-flip':     '/sfx/loot/coin-flip.mp3',
   /* ═══ v2.3.2591: THE LEVEL-UP STING (owner art) ═══
      Owner: "a new level up notification ... the first is an audio that should
      play simultaneously with the level up display."  Played by
