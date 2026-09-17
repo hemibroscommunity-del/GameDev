@@ -215,3 +215,57 @@ export function sanitizePattern(s, slot) { return parsePattern(s, slot) ? s : ''
 /* A short, stable key segment for a texture cache.  Already short — the value
    IS the key — but wrapped so call sites do not have to know that. */
 export function patternKey(s, slot) { return sanitizePattern(s, slot) || 'none'; }
+
+/* ═══ v2.3.2604: RESET AND RANDOMIZE REACH THE PATTERNS ═══
+ *
+ * Owner: "Character creation: 'Reset' doesn't reset shoe or pants patterns.
+ * Those also survive 'randomize' (patterns kept)."
+ *
+ * Correct, and it was THREE slots rather than the two reported.  The creator's
+ * two buttons (BroTown.jsx `resetLook` / `randomizeAppearance`) write the trait
+ * stores and `clearAllArt`, and `clearAllArt` clears the DRAWING canvases
+ * (playerArt's CANVASES) — a different store from this one.  Nothing in either
+ * button has ever called `setPattern`, so a shirt pattern survived them too.
+ *
+ * WHY ONLY TWO WERE VISIBLE, which is worth writing down because it is what
+ * makes the third easy to miss twice.  A shirt pattern is stencilled by
+ * `composeShirt` onto the SHIRT SHEET; Reset sets shirt to 'none', there is
+ * then no sheet, and the pattern paints nothing.  It looks reset and is not —
+ * pick a shirt again and the old pattern is still on it.  Trousers and boots
+ * are painted into the body art itself and have no 'none' (the v2.3.2036 note
+ * on resetLook makes the same point about their recolours), so their patterns
+ * stay on screen and the owner saw them.
+ *
+ * Both helpers live HERE rather than in the creator for the reason the
+ * v2.3.1944 shoes check gives: the slot rules — which tiles a boot may wear,
+ * what a palette index may be — are this file's business, and a roll written at
+ * the call site would be a second copy of them free to drift.  `patternsFor`
+ * is the same list the picker draws, so Randomize can only roll a look the
+ * player could also have chosen by hand (the v2.3.1494 broken-button rule). */
+
+/** Clear every garment pattern.  The Reset half. */
+export function clearPatterns() {
+  for (const k of SLOTS) setPattern(k, '');
+}
+
+/* PLAIN IS WEIGHTED, and deliberately not one option among ten.  Uniform over
+   [plain, ...tiles] is the obvious roll and it is wrong in practice: shirts
+   offer nine tiles, so nine rolls in ten would come back patterned and a plain
+   shirt would become the rare outcome.  Plain is the base state of a garment —
+   most clothes are — so it takes half the weight and the tiles share the rest.
+   The number is a taste call, stated rather than hidden: change the 0.5. */
+const PLAIN_SHARE = 0.5;
+
+/** A fresh random value for a slot — '' (plain) or "<tile>:<colourIndex>".
+ *  The Randomize half. */
+export function randomPattern(slot) {
+  if (!STORAGE_KEY[slot]) return '';
+  if (Math.random() < PLAIN_SHARE) return '';
+  const tiles = patternsFor(slot);
+  if (!tiles.length) return '';
+  const tile = tiles[Math.floor(Math.random() * tiles.length)];
+  /* 1..ART_PALETTE.length-1: index 0 is transparent (playerArt), and parsePattern
+     refuses it, so rolling it would silently hand back a plain garment. */
+  const idx = 1 + Math.floor(Math.random() * (ART_PALETTE.length - 1));
+  return formatPattern(tile.id, idx);
+}

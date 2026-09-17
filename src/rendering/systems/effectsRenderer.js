@@ -198,6 +198,50 @@ const STANDIN_REF_BODY_H = 84;
  * for woodcutting only, and those two are already independent. */
 export const CHOP_STANDIN_H = 104.5;
 
+/* ═══ v2.3.2607: THE COOK GROWS 5%, ON BOTH SCREENS ═══
+ *
+ * Owner: "Cooking animation about 5% too small."
+ *
+ * 62 -> 65.1.  WHAT THE NUMBER IS RELATIVE TO, because it is not a percentage
+ * of anything obvious: it is the cook's DRAWN HEIGHT IN WORLD PIXELS, and the
+ * scale that reaches the sprite is `h / 220` -- 220 being the cook strip's own
+ * frame height (`cook-strip.webp`, 213x220 cells).  So this is 62/220 = 0.282
+ * becoming 65.1/220 = 0.296, and every layer that copies the body's transform
+ * (shirt, chest, legs, head traits) follows for free.
+ *
+ * v2.3.1710 set 62 by measurement rather than taste: the cook is a CROUCH, so
+ * matching silhouettes made the figure wrong, and the head is what the eye
+ * reads -- the cook's is 85 art px against the standing body's 51, which put
+ * COOK_H 82 at 31.7px of head beside a 22.6px avatar.  62 landed it at 24.0px.
+ * 65.1 puts it at 25.2px against that same 22.6px avatar: still the closest a
+ * chunkier crouched painting gets, now 11% over instead of 6% under.  Nothing
+ * clips -- the sprite is a downscale of a 220px cell either way, it is anchored
+ * (0.5, 1) at the fire, and it grows upward into open ground.
+ *
+ * ── AND THIS IS WHY IT IS A SHARED CONSTANT NOW ──
+ * There were TWO 62s.  This one, and a literal `h: 62` in the remote stand-in's
+ * SPEC table, whose own comment carries the warning: chop drifted when
+ * v2.3.1476 moved the local figure and not the copy, and for ~230 versions
+ * every peer's lumberjack rendered 18% larger than your own -- invisible to
+ * single-client QA, which is why it survived that long.  v2.3.2273 closed that
+ * for chop by making both sites read CHOP_STANDIN_H; the same note then said
+ * "cook and fire still carry literals and still carry this warning."
+ *
+ * A 5% bump written into the local site alone is EXACTLY that bug again: the
+ * owner's own cook grows, every other player's stays where it was, and the one
+ * client that could notice is the one that cannot see it.  So the two sites now
+ * read one number, and the next resize cannot land on one figure only. */
+export const COOK_STANDIN_H = 65.1;
+
+/* The pan hangs to the cook's RIGHT and has to stay over the flames, so its
+ * offset tracks the figure's height.  Held as a FRACTION of that height rather
+ * than as pixels: v2.3.1429 and v2.3.1710 each had to remember to rescale an
+ * 11px literal by hand (the second one wrote the arithmetic out --
+ * `14 * 62/82 = 10.6`), and a constant that must be edited in step with another
+ * constant is the same shape as the drift above.  11/62 is that literal
+ * measured against the art it was tuned on. */
+export const COOK_PAN_DX = 11 / 62;
+
 /* ═══ v2.3.2356: THE CHOP LAYERS SHIP AT THE SIZE THEY ARE DRAWN ═══
  *
  * docs/OPTIMIZATION-ROADMAP.md P7 item 7.  chest/steelplate, legs/steelgreaves
@@ -8440,7 +8484,10 @@ export class EffectsRenderer {
          `gear` is the strip geometry for this pose -- pose/dir/frame-width --
          so the placer below reads one table instead of three literals. */
       chop: { frames: this._chopFrames, legless: this._chopLeglessFrames, h: CHOP_STANDIN_H, fh: 220, ms: 45, traitDir: 'east', from: 12, count: 12, gear: { pose: 'chop', dir: 'west', fw: CHOP_GEAR_FW } },
-      cook: { frames: this._cookFrames, legless: this._cookLeglessFrames, h: 62, fh: 220, ms: 60, traitDir: 'south', gear: { pose: 'cook', dir: 'south', fw: 213 } },
+      /* v2.3.2607: `h` is COOK_STANDIN_H now, not a literal 62.  This row is the
+         copy the warning above is about -- it is the one that did not move when
+         chop did, and the cook would have repeated it. */
+      cook: { frames: this._cookFrames, legless: this._cookLeglessFrames, h: COOK_STANDIN_H, fh: 220, ms: 60, traitDir: 'south', gear: { pose: 'cook', dir: 'south', fw: 213 } },
       /* v2.3.1749: `once` marks a strip that tells a STORY rather than
          cycling.  The firemaking frames run stand -> crouch -> spark -> flame
          -> stand-with-fire-lit, so the free-running `% frames.length` this
@@ -10519,7 +10566,10 @@ export class EffectsRenderer {
          avatar — 40% too big.  62 lands it at 24.0px, inside the owner's "about
          25%" and within 6% of a head-for-head match, which is as close as a
          chunkier crouched painting is going to get without looking shrunken. */
-      const COOK_H = 62, COOK_FRAME_MS = 60;
+      /* v2.3.2607: COOK_STANDIN_H, shared with the remote SPEC row below --
+         see its note for the 62 -> 65.1 bump and why a local-only edit would
+         have re-run the v2.3.1710 chop drift. */
+      const COOK_H = COOK_STANDIN_H, COOK_FRAME_MS = 60;
       const sp = this.cookSprite;
       /* v2.3.2245: the flip follows the thumb once the window is open (one
          up-flick on the button is one flip, capped at one per 1600ms -- the
@@ -10542,9 +10592,24 @@ export class EffectsRenderer {
          the same ratio (14 * 62/82 = 10.6).
          v2.3.2287: ...and it takes the curve for the same reason -- an offset
          in flat pixels slides the pan off a shrunken fire. */
-      sp.x = node.x - 11 * pscale;
+      sp.x = node.x - COOK_STANDIN_H * COOK_PAN_DX * pscale;   /* v2.3.2607 */
       sp.y = node.y + 8 * pscale;
       sp.visible = true;
+      /* v2.3.2607 QA probe, house style and the exact twin of __btChopFigure
+         above.  It exists for the reason that probe's note gives: the thing
+         that actually breaks on these figures is the LOCAL and PEER copies
+         disagreeing, and two figures of different sizes look fine on their own
+         screens.  mp-cookpeer compares this against remoteSkillProbe's scaleY,
+         so a future resize that lands on one site only fails loudly. */
+      if (typeof window !== 'undefined') {
+        window.__btCookFigure = () => ({
+          visible: !!sp.visible,
+          scaleY: sp.scale.y,
+          drawnH: +(Math.abs(sp.scale.y) * 220).toFixed(2),
+          panDx: +(COOK_STANDIN_H * COOK_PAN_DX * pscale).toFixed(2),
+          x: sp.x, y: sp.y,
+        });
+      }
       /* v2.3.1113: draw the player's shirt over the cook torso, copying the
          cook sprite's exact transform so the 213x220 shirt frame aligns with
          the body frame-for-frame. Hidden when no shirt is selected or a chest

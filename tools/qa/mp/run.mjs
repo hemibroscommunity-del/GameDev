@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  exitmark: () => import('./mp-exitmark.mjs'), /* v2.3.2605: can you see the way out of a spoke -- measured against sand AND snow, at four viewports */
   sellsheet: () => import('./mp-sellsheet.mjs'), /* v2.3.2609: why tapping Sell reads as nothing happening -- disabled variant, covered button, or a price sheet below the fold */
   zonebanner: () => import('./mp-zonebanner.mjs'), /* v2.3.2596: the zone-entry banner plays its nine beats, docks into the top bar, frees its strip on the way out -- and stays silent in the ten zones with no art */
   catgrid: () => import('./mp-catgrid.mjs'), /* v2.3.2597: the Points screen is four category buttons; drill into one at a time */
