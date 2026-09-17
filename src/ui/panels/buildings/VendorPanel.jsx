@@ -57,6 +57,98 @@ function lsGold(amount, size) {
     onError: function onError(e) { e.currentTarget.replaceWith(document.createTextNode('🪙')); }
   }), amount);
 }
+/* ═══ v2.3.2617: THE ROOM YOU WALKED INTO ═══
+ *
+ * Owner: the general store's interior painting, with the storekeeper behind
+ * the counter, appropriately sized.
+ *
+ * WHERE "INDOORS" IS.  BroTown has no walk-in interior: enterBuilding()
+ * (game/interactions.js) opens a panel, and the GENERAL STORE prop's
+ * `action: 'shop'` (worldProps.js) opens THIS one.  So this panel IS the
+ * inside of the shop, and until now it was a list on a flat slate.  The art
+ * goes at the top of it, above the goods, which is where you would be
+ * standing.
+ *
+ * EVERY NUMBER BELOW WAS MEASURED, none eyeballed (tools/qa/art/
+ * measure-store-interior.mjs prints them, and TRAPS §80 is about exactly the
+ * kind of "looks about right" that does not survive a second screen):
+ *
+ *   room PNG      1254x1254, art in alpha bbox x42..761, y432..1145
+ *                 -> 720x714 of actual room in a mostly empty canvas
+ *   keeper strip  2172x724 = SIX 362x724 frames; frame art occupies
+ *                 y200..580, so the figure is cropped at the forearms
+ *   scene slice   the top 457 of the room's 714 rows
+ *
+ * THE CROP IS THE POINT.  The strip is cut off at his forearms, so he cannot
+ * be composited *between* the back wall and the counter -- the room is one
+ * flat painting, there is no layer to slide him into.  He is drawn ON TOP
+ * with that cut landing on the counter's top surface, which reads as a man
+ * leaning on it.  Drawn behind the painting he is simply invisible; that was
+ * the first attempt and the preview showed an empty shop.
+ *
+ * HIS SIZE.  The figure is 24% of the room's width, centred at 45% and with
+ * his forearms at 51% of the room's height.  That keeps him behind the red
+ * counter runner with the lantern and the bell still visible past one elbow
+ * and the books past the other -- a shopkeeper occludes some of his own
+ * counter, but not the props that make it look like a shop.
+ *
+ * The geometry is expressed in ROOM-CONTENT PX and converted to percentages
+ * here, so the scene scales with the panel and cannot drift between phone
+ * widths: measured at 320/360/390/430 the box shows the identical slice.
+ */
+var ROOM_SRC = '/sprites/props/general-store-interior.png';
+var KEEPER_SRC = '/sprites/npc/storekeeper-bro-idle.png';
+var RM = { imgW: 1254, x0: 42, y0: 432, w: 720, h: 714 };  /* measured alpha bbox */
+var SCENE_H = 457;                                          /* rows of RM.h shown */
+var KF = { cell: 362, cellH: 724, x0: 18, y0: 200, x1: 361, y1: 580 }; /* frame 0 art */
+var KEEP = (function () {
+  var cw = KF.x1 - KF.x0 + 1;                 /* 344 painted px across */
+  var scale = (0.24 * RM.w) / cw;             /* he is 24% of the room wide */
+  return {
+    w: KF.cell * scale,                        /* the whole CELL, art is inset */
+    h: KF.cellH * scale,
+    left: 0.45 * RM.w - (KF.x0 + cw / 2) * scale,   /* art centre at 45% */
+    top: 0.51 * RM.h - (KF.y1 + 1) * scale,         /* forearms at 51% */
+  };
+})();
+var pc = function pc(v, of) { return (v / of * 100).toFixed(4) + '%'; };
+
+function storeScene() {
+  return React.createElement("div", {
+    style: {
+      position: 'relative', width: '100%', aspectRatio: RM.w + ' / ' + SCENE_H,
+      overflow: 'hidden', background: LS.panel,
+      borderBottom: '1px solid ' + LS.border,
+    }
+  },
+    React.createElement("img", {
+      src: ROOM_SRC, alt: '', draggable: false,
+      style: {
+        position: 'absolute', width: pc(RM.imgW, RM.w), height: 'auto',
+        left: pc(-RM.x0, RM.w), top: pc(-RM.y0, SCENE_H),
+      },
+      /* The room failing to load must not leave a tall empty slab above the
+         goods: the scene collapses and the panel reads as it did before. */
+      onError: function onError(e) {
+        var box = e.currentTarget.parentNode;
+        if (box && box.style) box.style.display = 'none';
+      }
+    }),
+    React.createElement("div", {
+      className: 'bt-store-keeper',
+      style: {
+        position: 'absolute',
+        width: pc(KEEP.w, RM.w), height: pc(KEEP.h, SCENE_H),
+        left: pc(KEEP.left, RM.w), top: pc(KEEP.top, SCENE_H),
+        backgroundImage: 'url(' + KEEPER_SRC + ')',
+        backgroundSize: '600% 100%',      /* six frames across */
+        backgroundPosition: '0% 0%',
+        backgroundRepeat: 'no-repeat',
+        pointerEvents: 'none',
+      }
+    }));
+}
+
 export function VendorPanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
@@ -76,6 +168,7 @@ export function VendorPanel(props) {
   var storeOn = storeEnabled();
   return React.createElement("div", { style: LS_WRAP },
     lsHeader('vendor', '🛒', "Vendor", "Basic supplies for starting adventurers"),
+    storeScene(),   /* v2.3.2617: the room, and the man behind the counter */
     React.createElement("div", { style: LS_BODY },
       storeOn && setBuildingPanel ? React.createElement("button", {
         type: 'button',
