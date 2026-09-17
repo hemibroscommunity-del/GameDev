@@ -1361,10 +1361,27 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      zero bytes) for every zone, so there's no music fetch and nothing 404s.
      To restore a track, re-add `<zoneId>: '/audio/music/<file>.mp3'` AND
      ship the file back into public/audio/music/. */
+  /* ═══ v2.3.2604: OWNER'S NEW SCORE — FIVE FILES REPLACED IN PLACE ═══
+     The owner supplied five tracks named for where they go and asked to "use
+     new music for the game".  They land at the EXISTING filenames rather than
+     new ones, the v2.3.1587/1589 desert precedent, so nothing else has to
+     move:
+       Cozy_Town_Loop -> village.mp3 (town)   Worldview  -> world.mp3 (worldview)
+       Volcano_Watch  -> fire.mp3 (ember)     Icy_Peaks  -> frost.mp3 (frost)
+       Floral         -> forest.mp3 (meadow)
+     So EVERY one of those five entries needs a ?v= this version, which is what
+     the v2.3.1589 note below says to do the first time an entry's bytes change
+     ("add a bump here on every future desert swap, or a ?v= to any other entry
+     the first time its file is replaced").  public/ is copied verbatim by vite,
+     not content-hashed, so without it a returning player keeps the OLD score
+     out of their HTTP cache forever.  ember's existing 2.3.1591 bump moves to
+     2.3.2604 for the same reason — its bytes changed again.
+     sky/desert.mp3 is NOT in this swap and so is deliberately left at its
+     2.3.1589 bump: edit only the lines the change makes true. */
   ZONE_MUSIC: {
-    town: '/audio/music/village.mp3',
-    worldview: '/audio/music/world.mp3',
-    frost: '/audio/music/frost.mp3',
+    town: '/audio/music/village.mp3?v=2.3.2604',
+    worldview: '/audio/music/world.mp3?v=2.3.2604',
+    frost: '/audio/music/frost.mp3?v=2.3.2604',
     /* "fire zone" = Flame Fields, and the "lava zone" too — gameDisplay.js:916
        describes it as lava rivers cutting through scorched earth.
        v2.3.1591: ?v= added because this file's CONTENT was replaced (owner
@@ -1373,8 +1390,8 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
        filename.  Without it a returning player keeps the old track out of their
        HTTP cache forever, since public/ is copied verbatim by vite rather than
        content-hashed. */
-    ember: '/audio/music/fire.mp3?v=2.3.1591',
-    meadow: '/audio/music/forest.mp3', /* owner: "forest meadow area where the
+    ember: '/audio/music/fire.mp3?v=2.3.2604',
+    meadow: '/audio/music/forest.mp3?v=2.3.2604', /* owner: "forest meadow area where the
                                           slimes are" — Starting Meadow, the
                                           green zone that spawns 10 plain
                                           slimes.  NOT mist, which is literally
@@ -1513,7 +1530,58 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      3.3 dB above 15 kHz here, worse than any other track including
      login-theme's 3.0.  Shortest track so far and so the lightest resident at
      41.9 MB, comfortably inside the budget — a useful counterweight to the
-     desert next door. */
+     desert next door.
+     ═══ v2.3.2604: ALL FIVE ABOVE REPLACED BY THE OWNER'S OWN FILES ═══
+     Shipped VERBATIM apart from a lossless ID3 strip — the same call, for the
+     same reason, as v2.3.1589's desert: there is STILL no encoder in this
+     sandbox.  Re-verified rather than assumed: no ffmpeg/lame/sox on PATH, and
+     the ffmpeg playwright ships (ffmpeg-1011) is built --disable-everything
+     with only mjpeg/vp8/png/webm — it has no audio codec at all.  So the house
+     128 kbps / 44.1 kHz convention could not be applied to these five, and
+     re-encoding a lossy source down would cost quality to save bytes anyway.
+     All five are 48 kHz stereo VBR 186-201 kbps (encoder Lavc60.31, the same
+     family as desert.mp3).  Measured by decodeAudioData in Chromium, the path
+     the game actually uses — file / duration / resident @48 kHz:
+       village  Cozy_Town_Loop 2.76 MB 1m58.4s 43.4 MiB  (was 2.18/2m16.2s/49.8)
+       world    Worldview      4.45 MB 3m02.3s 66.8 MiB  (was 2.36/2m27.3s/53.9)
+       fire     Volcano_Watch  1.94 MB 1m17.2s 28.3 MiB  (was 2.46/2m33.8s/56.3)
+       frost    Icy_Peaks      2.09 MB 1m27.2s 31.9 MiB  (was 2.15/2m14.6s/49.3)
+       forest   Floral         1.93 MB 1m23.1s 30.4 MiB  (was 2.00/2m04.7s/45.7)
+     Net download +2.01 MB across the five; four of the five got SMALLER and
+     lighter in RAM.  The ID3v2.4 tags were 27.7-34.7 KB each (the house tracks
+     carry 45-169 B); stripping them saved 158,513 B and was verified lossless
+     by re-decoding at both 44.1 and 48 kHz — frames, peak, RMS and spectral
+     centroid all identical.
+     WORLDVIEW IS THE ONE TO WATCH, and it is a RAM story, not a download one.
+     At 3m02s it is the longest track in the game and decodes to 66.8 MiB at
+     48 kHz (61.3 at 44.1) against the 58.7 MiB (56 * 1048576) cache budget —
+     so it is now a SECOND over-budget track beside sky's desert, and unlike
+     the desert it sits on the HUB the player crosses constantly, which means
+     every pass through worldview evicts every other zone's buffer and the next
+     zone re-decodes.  That is the designed over-budget path (the just-decoded
+     and currently-playing buffers are never evicted) and it is safe, but it is
+     the busiest zone to spend it on.  Do NOT "fix" it by raising
+     ZONE_MUSIC_CACHE_MB — 56 is deliberately below two full tracks.  Note also
+     that a lower BITRATE would not help this at all: resident PCM is duration x
+     context rate x channels, so only MONO (halves it) or a shorter edit moves
+     it, on a machine that has LAME.  The download half is the smaller problem.
+     LOOP SEAMS, measured because src.loop = true wraps the whole buffer end to
+     start: none of the five has digital silence at either edge (<0.001 s at
+     -60 dBFS head and tail).  All five do FADE OUT — but so does every track
+     they replace, by MORE, and the current set fades IN as well, so today's
+     seam is a 2-4 s near-silent hole and the new one is a shorter dip with a
+     harder re-entry.  Fade depth (track RMS minus last 300 ms), new vs old:
+     town 28.4 vs 37.9 dB, worldview 29.0 vs 36.2, ember 23.1 vs 27.6,
+     frost 37.4 vs 54.0, meadow 25.5 vs 34.2.  Every one is an improvement on
+     what it replaces; not one of them makes looping worse.  A truly seamless
+     loop needs a trim or a fade-to-loop-point, which needs an encoder — it is
+     NOT something this swap regressed.
+     The new set also measures ~3 dB quieter (RMS -18.3 vs -15.5) and
+     consistently darker than the old (centroid: town 994 Hz vs 3873,
+     meadow 1556 vs 3670, frost 1282 vs 3135, worldview 2353 vs 4793; ember
+     3609 vs 3879 is the one close match).  That is the owner's taste, not a
+     defect — but it stacks on the two deliberate gain cuts below, so if the
+     music now reads as too quiet, those constants are the lever, not the files. */
   GLOBAL_MUSIC: '/audio/music/login-theme.mp3',
   /* v2.3.1590 (owner: "make the music play 75% quieter") — BOTH music
      volumes cut to a quarter, together, so the session track and the zone
