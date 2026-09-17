@@ -271,7 +271,7 @@ export async function preloadWorldAnimations() {
        the LAW exists to stop, landing on the most dramatic moment the game
        has.  See levelUpBurstPreload.js. */
     levelUpBurst: preloadLevelUpBurst(),
-    /* ═══ v2.3.2605: the stat explainer's scenes ═══
+    /* ═══ v2.3.2612: the stat explainer's scenes ═══
        DOM assets again, and GLOBAL: the Build sheet opens from anywhere, so
        there is no zone to scope them to.  Most of what a scene draws is
        already covered above — the scenes deliberately reuse the slime strips

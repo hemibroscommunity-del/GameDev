@@ -277,7 +277,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       bodyFace.weapon === 'greatsword', { bodyFace, note: 'bow lane is still open' });
   }
 
-  /* ══ 4b. THE FOUR SCENES OF v2.3.2605 ══
+  /* ══ 4b. THE FOUR SCENES OF v2.3.2612 ══
      Owner, from their phone: an animation for Range, Move Speed and Elem
      Resist, and Stamina's replaced because "shooting an orb" is the wrong
      idea for it. Each is asserted on the thing that would actually be wrong

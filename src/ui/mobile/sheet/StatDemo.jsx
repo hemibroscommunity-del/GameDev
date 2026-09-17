@@ -4,7 +4,7 @@ import { VitalBar, VITAL_ICONS } from './VitalBar.jsx';
 import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { prog3CatFor } from '@/data/prog3.js';   /* v2.3.2231: weapon type -> combat lane */
-import { SLIME, SLIME_PX, ORB_URL, SHOT, ICON } from '@/data/statDemoAssets.js';   /* v2.3.2605: shared with the preloader */
+import { SLIME, SLIME_PX, ORB_URL, SHOT, ICON } from '@/data/statDemoAssets.js';   /* v2.3.2612: shared with the preloader */
 
 /* ═══ v2.3.2222: WHAT A STAT IS FOR, SHOWN WITH THE GAME'S OWN PIECES ═══
  *
@@ -57,7 +57,7 @@ import { SLIME, SLIME_PX, ORB_URL, SHOT, ICON } from '@/data/statDemoAssets.js';
    ~85px figure -- the proportion the world draws.  A strip's
    background-size is (frames * 128) x 128; the box hangs 33px below the
    stage so row 86 lands on the ground line (game.css .bt-sd-slime). */
-/* ═══ v2.3.2605: THE ASSET LIST MOVED OUT ═══
+/* ═══ v2.3.2612: THE ASSET LIST MOVED OUT ═══
    SLIME / ORB_URL / SHOT / ICON now live in src/data/statDemoAssets.js, with
    the notes on why each URL carries the ?v= it does.  They moved because the
    PRELOADER needs the same list and must not import this component to get it
@@ -118,7 +118,7 @@ class Script {
     this.at(380, (s) => ({ orb: 0, slime: { kind: 'idle', n: 0 }, ...land(s) }));
     return this;
   }
-  /* ═══ v2.3.2605: THE ATTACK THAT DOES NOT GET THERE ═══
+  /* ═══ v2.3.2612: THE ATTACK THAT DOES NOT GET THERE ═══
      Range's whole claim is reach, so the BEFORE half has to visibly fall
      short.  Same loose, same lunge, same rhythm as strike() — what differs is
      that the shot stops in the gap and fades, the slime is never touched, and
@@ -135,7 +135,7 @@ class Script {
     this.pop('slime', 'Short!', 'miss');
     return this;
   }
-  /* ═══ v2.3.2605: GROUND COVERED ═══
+  /* ═══ v2.3.2612: GROUND COVERED ═══
      Move Speed is read the way aspd reads attack speed — same span of time,
      more of it done.  One round trip before the point, two after.  `fast` is
      not a different path, only a shorter one in time, so what the eye compares
@@ -279,7 +279,7 @@ const SCENES = {
     sc.at(800);
     return { script: sc, still: { ...bar('hp', 100, 100), pops: [{ id: 1, side: 'hero', text: 'Dodged!', kind: 'dodged' }] } };
   },
-  /* ═══ v2.3.2605: STAMINA IS WHAT YOU BLOCK AND DODGE WITH ═══
+  /* ═══ v2.3.2612: STAMINA IS WHAT YOU BLOCK AND DODGE WITH ═══
      Owner: "Change stamina info animation from shooting an orb to using
      shield block or/and dodging."
      The old scene had the hero swinging three times to drain the bar, and
@@ -330,7 +330,7 @@ const SCENES = {
     sc.at(900);
     return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '7', kind: 'burn' }] } };
   },
-  /* ═══ v2.3.2605: RANGE — REACH, NOT DAMAGE ═══
+  /* ═══ v2.3.2612: RANGE — REACH, NOT DAMAGE ═══
      prog3.js says so in its own words (dpsNote: 'reach, not damage'), so the
      number must NOT grow across the point or the scene teaches the wrong
      thing. The same attack falls short twice, then the point lands, then the
@@ -347,7 +347,7 @@ const SCENES = {
     sc.at(700);
     return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '12', kind: 'hit' }] } };
   },
-  /* ═══ v2.3.2605: MOVE SPEED — GROUND COVERED IN THE SAME TIME ═══
+  /* ═══ v2.3.2612: MOVE SPEED — GROUND COVERED IN THE SAME TIME ═══
      Read the way aspd reads attack speed, which is the idiom this file already
      has: the span does not change, the amount done in it does. One trip out
      and back before the point; two after. Nothing is captioned, and no damage
@@ -362,7 +362,7 @@ const SCENES = {
     sc.at(1400);
     return { script: sc, still: { hero: { kind: null, n: 0 } } };
   },
-  /* ═══ v2.3.2605: ELEM RESIST — THE BURN SHRINKS, THE HIT DOES NOT ═══
+  /* ═══ v2.3.2612: ELEM RESIST — THE BURN SHRINKS, THE HIT DOES NOT ═══
      "−0.4% elemental damage taken", and the word that matters is ELEMENTAL.
      So the orb's own impact is the SAME -10 on both halves and only the burn
      ticks after it fall, from -8 to -2. A scene that shrank both would be
@@ -397,7 +397,7 @@ const POP_STYLE = {
   hurt:   { color: '#ff5e6c', size: 21, icon: ICON.heart, iconH: 21, before: true },
   dodged: { color: '#3dd497', size: 21 },
   burn:   { color: ELEMENTS.flame.color, size: 21 },
-  /* v2.3.2605: a non-damage event, in 'Dodged!'s dress but muted — nothing
+  /* v2.3.2612: a non-damage event, in 'Dodged!'s dress but muted — nothing
      happened TO anybody, which is the whole point of the beat. */
   miss:   { color: '#9AA7AC', size: 19 },
 };
@@ -420,7 +420,7 @@ const Shot = ({ cat, n, short: isShort }) => {
   const a = SHOT[cat];
   if (!a) return null;
   return (
-    /* v2.3.2605: `short` flies a fraction of the way and fades, for Range's
+    /* v2.3.2612: `short` flies a fraction of the way and fades, for Range's
        before half.  A modifier class, not a second component — same sheet,
        same stepping, only the flight differs. */
     <i key={'sh' + n} className={'bt-sd-shot bt-sd-shot--' + cat + (isShort ? ' bt-sd-shot--short' : '')}

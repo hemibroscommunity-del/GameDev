@@ -1,4 +1,4 @@
-/* The four new explainer scenes (v2.3.2605), looked at rather than reasoned
+/* The four new explainer scenes (v2.3.2612), looked at rather than reasoned
    about: opens each one and films the stage at six moments across its loop.
      node tools/qa/mp/probe-scenes.mjs [stat ...] */
 import * as H from './harness.mjs';

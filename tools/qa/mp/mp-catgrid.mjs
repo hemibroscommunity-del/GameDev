@@ -323,7 +323,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!confirm && /Bow/i.test(confirm.text), confirm && confirm.text.slice(0, 120));
     await P.page.screenshot({ path: `${OUT}/catgrid-${label}-confirm.png` });
 
-    /* ═══ v2.3.2605: THE WAY OUT MUST BE ON THE SCREEN ═══
+    /* ═══ v2.3.2612: THE WAY OUT MUST BE ON THE SCREEN ═══
        The window had no height cap and the scrim centres it, so a card taller
        than the viewport hung off both ends and took its buttons with it. At
        360x360 — a phone in landscape — "Spend point" and "Got it" sat 13 to

@@ -1,4 +1,4 @@
-/* ═══ v2.3.2605: THE STAT-DEMO SCENES' ASSETS, ON THE GATE ═══
+/* ═══ v2.3.2612: THE STAT-DEMO SCENES' ASSETS, ON THE GATE ═══
  *
  * CLAUDE.md's preloading LAW applied to the explainer scenes.  They are DOM
  * assets (CSS backgrounds and <img>), not Pixi textures, which is exactly the

@@ -4900,7 +4900,7 @@ html[data-orient="landscape"] .bt-dashboard{
    and the thing that crosses the gap is the projectile, not the man.  Small
    (5px against the lunge's 12) because the read here belongs to the arrow. */
 .bt-sd-hero--loose{animation:bt-sd-loose .26s ease-out 1}
-/* ═══ v2.3.2605: THE THREE NEW MOTIONS ═══
+/* ═══ v2.3.2612: THE THREE NEW MOTIONS ═══
    --short: the melee reach that does NOT get there.  Half the lunge of
      bt-sd-lunge (6px against 12), so the two read against each other as
      distance rather than as two unrelated wiggles.
@@ -4942,7 +4942,7 @@ html[data-orient="landscape"] .bt-dashboard{
 .bt-sd-shot{position:absolute;left:66px;bottom:56px;background-repeat:no-repeat;background-position:0 0;image-rendering:auto;animation:bt-sd-fly .2s linear 1 both,bt-sd-strip .2s steps(var(--sd-frames,1),jump-none) 1 both}
 @keyframes bt-sd-fly{from{transform:translateX(0)}to{transform:translateX(120px)}}
 .bt-sd-shot--bow{image-rendering:pixelated}
-/* v2.3.2605: the shot that falls short — a third of the flight, then gone.
+/* v2.3.2612: the shot that falls short — a third of the flight, then gone.
    It must OVERRIDE the flight in .bt-sd-shot, so it repeats both animations
    (the strip stepping included) rather than relying on cascade order. */
 .bt-sd-shot--short{animation:bt-sd-flyshort .42s linear 1 both,bt-sd-strip .2s steps(var(--sd-frames,1),jump-none) 1 both}
