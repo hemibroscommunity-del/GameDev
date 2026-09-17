@@ -47,6 +47,7 @@ import { ZONE_VARIANT_MAP, MONSTER_VARIANTS, variantsForZone } from '../data/mon
 import { loadMonsterRecolor, recolorFamilyOf, freeMonsterRecolor } from './monsterRecolor.js'; /* v2.3.1534: per-zone recolour; v2.3.2272: and its release */
 import { loadNpcSprites } from './npcSprites.js'; /* v2.3.1672: NPC figure art */
 import { preloadLevelUpBurst } from './levelUpBurstPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
+import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
    screen"): ZONE-SPECIFIC textures moved OFF the blocking pre-game gate —
@@ -92,6 +93,17 @@ export async function preloadZoneAssets(zoneId) {
       if (fam) tasks.push(Promise.resolve(loadMonsterRecolor(fam, mv.recolor)).catch(() => {}));
     }
   }
+  /* ═══ v2.3.2596: the zone-entry banner's ornament strip ═══
+     HERE rather than in preloadWorldAnimations, and that is the whole
+     decision: it is 171-319KB of art (~1.5MB decoded) that means nothing in
+     any zone but its own, so it is precisely what the ZONE-ASSET EXCEPTION in
+     CLAUDE.md carves out -- four of them on the pre-game gate would put ~1MB
+     of fetch onto the startup peak for three sheets the player will not see,
+     which is the iPhone RAM regression the owner reported in 2026-07.
+     AWAITED with the rest, so it is ready before the zone overlay lifts and
+     the first beat never waits on a fetch.  Resolves instantly for the ten
+     zones that have no banner.  See zoneBannerPreload.js. */
+  tasks.push(Promise.resolve(preloadZoneBanner(zoneId)).catch(() => {}));
   /* frost is the only snowman zone — its sprites + the ice-burst impact
      sheet (both ~2MB) load here instead of globally. */
   if (zoneId === 'frost') {
@@ -178,8 +190,14 @@ export async function freeZoneAssets(fromZoneId, toZoneId) {
     if (keptFam.has(fam + '|' + String(mv.recolor))) continue;
     try { freeMonsterRecolor(mv); } catch (e) { /* a colour that will not free is a leak, not a crash */ }
   }
+  /* v2.3.2596: and the zone-entry banner strip.  Same subtraction as the
+     sheets above -- a theme the destination also uses stays -- which is a
+     no-op today (no two zones share a theme) and will not be on the day one
+     does. */
+  let bannersFreed = [];
+  try { bannersFreed = freeZoneBanner(fromZoneId, toZoneId); } catch (e) { /* a strip that will not release is a leak, not a crash */ }
   await Promise.allSettled(tasks);
-  return { from: fromZoneId, to: toZoneId || null, dropped: drop };
+  return { from: fromZoneId, to: toZoneId || null, dropped: drop, banners: bannersFreed };
 }
 
 export async function preloadWorldAnimations() {
