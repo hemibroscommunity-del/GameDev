@@ -3057,6 +3057,29 @@ export function setupWebSocket(ctx) {
             pushDmgPopup(S, S.player.x, S.player.y - 34, 'STASHED: ' + (payload.weapon.name || 'Weapon') + _wQualTag, (_wQual && _wQual !== 'normal') ? '#f5c542' : _wColor, { ts: Date.now() + 1 });
           } else if (payload.weaponSoldFor) {
             pushDmgPopup(S, S.player.x, S.player.y - 34, '+' + payload.weaponSoldFor + 'G (sold, stash full)', '#f5c542', { ts: Date.now() + 1 });
+            /* ═══ v2.3.2606: ...AND THE AUTO-SALE RINGS TOO ═══
+               Owner: "Play gold sound when you sell stuff for money."  This is
+               the OTHER way a player sells something: the stash is full, so the
+               worker sells the drop and credits the coins instead.  The player
+               did not tap anything, but they did just get paid for an item, and
+               the popup two lines up already says so in gold.
+
+               Same sample, same path, same reasons as the shop sale next door
+               (gameEvents.js 'shop_result').  Server-confirmed by construction:
+               `weaponSoldFor` is a field on the worker's own credit payload and
+               the client never invents it.
+
+               THE LINE BELOW IS WHY THIS IS NEEDED RATHER THAN ALREADY DONE.
+               `BT_AUDIO.collect()` has been a NO-OP since v2.3.1103, when the
+               synthesised audio was deleted -- so this branch has looked like
+               it made a noise, and has been silent, for as long as the loot
+               pickup was (the v2.3.2490 note tells the same story). */
+            try { BT_AUDIO.play('coin-pickup', { vol: 0.45 }); } catch (_ce) { /* never block a credit on a sound */ }
+            try {
+              if (typeof window !== 'undefined' && window.__btProbe) {
+                window.__btSellSfx = (window.__btSellSfx || 0) + 1;
+              }
+            } catch (_pe) { /* ignore */ }
           }
           if (_wQual && _wQual !== 'normal') { try { BT_AUDIO.collect && BT_AUDIO.collect(); } catch (e) {} }
         }

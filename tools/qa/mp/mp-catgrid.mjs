@@ -401,6 +401,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
       land ? true : (!!sh && sh.lastW < sh.cardW * 0.6),
       sh && { lastW: sh.lastW, cardW: sh.cardW });
 
+    /* v2.3.2611: inside a card there is no instruction line — the grid's one
+       said it already and the [+] is the row's only control. Asserted by the
+       TEXT rather than by counting elements, so it stays true if the line moves. */
+    const hint = await P.page.evaluate(() => {
+      const t = document.body.innerText || '';
+      return { inCard: /Tap \+ to spend/i.test(t), grid: /Tap a category/i.test(t) };
+    });
+    rec.ok(`${label}: a category card carries NO "tap + to spend" line`, !!hint && hint.inCard === false, hint);
+
+    /* ═══ v2.3.2611: THE SHARED CARD'S LABELS, MEASURED ═══
+       The sub-pixel clip check above runs on the FIRST card opened, which is a
+       weapon — and every weapon label is short. Shared carries the long ones
+       ("Max Mana", "Stamina", "Defense") and was never measured, which is how
+       "Max Mana" came to render as an ellipsis at 360 unnoticed. Measured with
+       a Range because scrollWidth is an integer and hid a 0.14px overflow once
+       (v2.3.2597). */
+    const clip = await P.page.evaluate(() => {
+      return [...document.querySelectorAll('[data-prog3-row]')].map((r) => {
+        const lab = r.querySelector('span');
+        if (!lab) return null;
+        const rg = document.createRange(); rg.selectNodeContents(lab);
+        const nat = rg.getBoundingClientRect().width;
+        const box = lab.getBoundingClientRect().width;
+        return { t: lab.textContent, over: +(nat - box).toFixed(2) };
+      }).filter(Boolean);
+    });
+    const worstClip = clip.reduce((a, b) => (b.over > a.over ? b : a), clip[0] || { t: '?', over: 99 });
+    rec.ok(`${label}: no Shared label is cut off by its own cell (worst "${worstClip.t}" ${worstClip.over}px over)`,
+      clip.length === 7 && worstClip.over <= 0.05, clip.filter((c) => c.over > 0.05));
+    console.log(`    labels: worst "${worstClip.t}" ${worstClip.over}px over its box`);
+
     /* ═══ v2.3.2602: THE ICON CENTRED IN THE GAP ═══
        Owner: "center the icon between the label and the plus sign on each
        cell."  Centred in the space that is ACTUALLY LEFT — between the label's
@@ -548,6 +579,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${label}: ...and that border stands off every fill it rings (worst ${worstRim.k} ${worstRim.c.toFixed(2)}:1)`,
         worstRim.c >= 1.5, edgeInk.map((e) => `${e.k} ${e.c.toFixed(2)}`));
       console.log(`    rim: ${(edge[0] && edge[0].col || []).join(',')}, worst standoff ${worstRim.k} ${worstRim.c.toFixed(2)}:1`);
+
+    /* ═══ v2.3.2611: THE [+] FLUSH, AND ONE INSTRUCTION NOT TWO ═══
+       Owner: "Move plus sign to the very edge of the cell there's some space
+       showing", and "Remove 'tap + to spend a point' row".
+       The [+]'s clearance is measured on all four sides against the cell's
+       BORDER box, which is what separates the two things that look the same:
+       1px on every side is the grey border, and the [+] belongs inside it;
+       anything MORE than that is padding, which is the space they saw (it was
+       5 on the right — 1 border + 4 padding). */
+      const flush = await P.page.evaluate(() => {
+        const r = document.querySelector('[data-prog3-row]');
+        const b = r && r.querySelector('[data-prog3-plus]');
+        if (!r || !b) return null;
+        const c = r.getBoundingClientRect(), p = b.getBoundingClientRect();
+        return { top: +(p.top - c.top).toFixed(2), right: +(c.right - p.right).toFixed(2),
+          bottom: +(c.bottom - p.bottom).toFixed(2),
+          border: parseFloat(getComputedStyle(r).borderRightWidth) };
+      });
+      rec.ok(`${label}: the [+] is FLUSH to the cell — its only clearance is the 1px border itself`,
+        !!flush && flush.right <= flush.border + 0.01
+          && flush.top <= flush.border + 0.01 && flush.bottom <= flush.border + 0.01, flush);
+      console.log(`    [+] clearance: top ${flush && flush.top} right ${flush && flush.right} bottom ${flush && flush.bottom} (border ${flush && flush.border})`);
 
       /* Scroll the card HALF a row and look at the strip between the scroller's
          own top edge and the card header's bottom.  Nothing in it may carry a

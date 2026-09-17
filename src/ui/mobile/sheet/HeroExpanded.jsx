@@ -1668,10 +1668,6 @@ export const HeroExpanded = () => {
             const colourOn = (() => {
               try { return !/[?&]p3colour=0\b/.test(window.location.search); } catch (e) { return true; }
             })();
-            const CARD_SHORT = { dmg: 'Power', range: 'Range', aspd: 'Speed', luck: 'Luck',
-              special: 'Spec', elem: 'Elem', hp: 'HP', def: 'Def', mana: 'MP', stam: 'Stam',
-              dodge: 'Dodge', move: 'Move', eres: 'Resist' };
-            const cardLabel = (st) => (landPane ? (CARD_SHORT[st.key] || st.label) : st.label);
             const CELL_BORDER = '#9AA7AC';
             const CARD_ROW_H = landPane ? 42 : 46;
             /* ═══ SIDEWAYS, MEASURED RATHER THAN GUESSED ═══
@@ -1716,6 +1712,29 @@ export const HeroExpanded = () => {
                61.81, measured, so the boundary is set where the widest label
                actually stops fitting rather than at a round number. */
             const twoCol = !landPane && !forceOneCol && panelVw() >= 360;
+            const CARD_SHORT = { dmg: 'Power', range: 'Range', aspd: 'Speed', luck: 'Luck',
+              special: 'Spec', elem: 'Elem', hp: 'HP', def: 'Def', mana: 'MP', stam: 'Stam',
+              dodge: 'Dodge', move: 'Move', eres: 'Resist' };
+            /* ═══ v2.3.2611: ONE LABEL DOES NOT FIT TWO COLUMNS ═══
+               Found while measuring the [+]'s clearance, and it pre-dates this
+               branch: at 360 in two columns a cell leaves 67px for the label,
+               and "Max Mana" needs 76.4 at 13px/800 — so it has been rendering
+               as an ellipsis. (On main it had 63px, 13.4 short; taking the
+               right padding off the row gave 4 of that back and no more.)
+               Nothing caught it because the sub-pixel clip check only ran on
+               the first card opened, which is a weapon, and every weapon label
+               is short. The shared card was never measured. It is now.
+               Every other label fits with room: Stamina 62.2, Defense 61.7,
+               Max HP 56.6. So this shortens the ONE that does not, and only
+               where the squeeze exists — "Max MP" reads as the pair of "Max HP"
+               sitting next to it, which is the whole reason "Max Mana" was
+               spelled out in the first place.
+               Shrinking the type instead would have taken every label to 11px,
+               the readability floor, to fit one of them; shrinking the icon or
+               the [+] undoes what the owner asked for in v2.3.2599 and here. */
+            const CARD_TIGHT = { mana: 'Max MP' };
+            const cardLabel = (st) => (landPane ? (CARD_SHORT[st.key] || st.label)
+              : (twoCol ? (CARD_TIGHT[st.key] || st.label) : st.label));
             /* ═══ v2.3.2599: THE STAT ICON, AS LARGE AS THE CELL HOLDS ═══
                Owner: "make the stat icons larger."  The pressure that made this
                hard is gone on three counts — the VALUES left the cell
@@ -1851,7 +1870,20 @@ export const HeroExpanded = () => {
                 <div key={lk} data-prog3-row={lk} style={{
                   flex: 'none', width: '100%', minWidth: 0, height: CARD_ROW_H, boxSizing: 'border-box',
                   display: 'flex', alignItems: 'center', gap: CARD_GAP,
-                  padding: twoCol ? '0 4px 0 6px' : (landPane ? '0 3px 0 6px' : '0 5px 0 9px'),
+                  /* ═══ v2.3.2611: NO RIGHT PADDING — THE [+] IS FLUSH ═══
+                     Owner: "Move plus sign to the very edge of the cell there's
+                     some space showing."  Measured before touching anything:
+                     the [+]'s gaps to the cell's border box were top 1, bottom
+                     1, right 5, and the 5 is 1px border + 4px RIGHT PADDING.
+                     The [+] is the last flex child, so the row's right padding
+                     lands entirely on it — that is the space, not a stray
+                     margin or the radius. Padding goes to 0 on the right only;
+                     the top/bottom 1 stays because that IS the grey border, and
+                     the [+] belongs inside it.
+                     Two things fall out of it: the [+] gains those 4px of
+                     width, and so does the label — the 360 two-column row that
+                     had exactly 0px of leftover (v2.3.2602) now has 4. */
+                  padding: twoCol ? '0 0 0 6px' : (landPane ? '0 0 0 6px' : '0 0 0 9px'),
                   /* ═══ v2.3.2598: THE WHOLE CELL CARRIES THE STAT'S COLOUR ═══
                      Owner: "Don't make just the edge of the cell the different
                      colors make the whole background those different colors for
@@ -2272,12 +2304,24 @@ export const HeroExpanded = () => {
               <div data-prog3-points style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                 {/* The reference's own instruction line.  A hint, not a control
                     (the v2.3.2326 caption rule), and it says what the two-step
-                    shape needs a first-time player to know. */}
-                <div style={{
-                  height: 15, lineHeight: '15px', textAlign: 'center', marginBottom: 4,
-                  fontSize: 11, color: COL.text2, flex: 'none',
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                }}>{selLane ? 'Tap + to spend a point.' : 'Tap a category, then spend its points here.'}</div>
+                    shape needs a first-time player to know.
+                    ═══ v2.3.2611: GRID ONLY ═══
+                    Owner: "Remove 'tap + to spend a point' row on points menu."
+                    It was the SECOND instruction in two screens — the grid
+                    already says "Tap a category, then spend its points here",
+                    and by the time you are inside a card the [+] is the only
+                    control on the row and needs no caption.  Only the card's
+                    line goes; the grid's stays, because that one is telling a
+                    first-time player the two-step shape.
+                    It buys the card 19px (15 tall + 4 margin) of the ~191px
+                    scrolling window, which is where the card was overflowing. */}
+                {selLane ? null : (
+                  <div style={{
+                    height: 15, lineHeight: '15px', textAlign: 'center', marginBottom: 4,
+                    fontSize: 11, color: COL.text2, flex: 'none',
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>Tap a category, then spend its points here.</div>
+                )}
                 {selLane ? catCard(selLane) : catGrid()}
               </div>
               </>
