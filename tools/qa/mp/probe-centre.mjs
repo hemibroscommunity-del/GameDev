@@ -24,11 +24,17 @@ try {
   const rows = await P.page.evaluate(() => [...document.querySelectorAll('[data-prog3-row]')].map((r) => {
     const lab = r.querySelector('span'), img = r.querySelector('img'), plus = r.querySelector('[data-prog3-plus]');
     const l = lab.getBoundingClientRect(), i = img.getBoundingClientRect(), b = plus.getBoundingClientRect(), rr = r.getBoundingClientRect();
+    /* The BOX vs the TEXT. scrollWidth is an integer and hid a 0.14px overflow
+       once (v2.3.2597), so the text is measured with a Range. natural > box
+       means the label is being clipped to an ellipsis. */
+    const rg = document.createRange(); rg.selectNodeContents(lab);
+    const nat = rg.getBoundingClientRect().width;
     return { k: (r.getAttribute('data-prog3-row') || '').split(':').pop(), text: lab.textContent,
-      labW: +l.width.toFixed(1), iconInRow: +(i.left - rr.left).toFixed(1),
+      labW: +l.width.toFixed(1), natural: +nat.toFixed(1), clipped: +(nat - l.width).toFixed(2),
+      iconInRow: +(i.left - rr.left).toFixed(1),
       gapL: +(i.left - l.right).toFixed(2), gapR: +(b.left - i.right).toFixed(2) };
   }));
-  console.log(`@${W}  ` + rows.map((r) => `${r.text}[lab ${r.labW} | L ${r.gapL} R ${r.gapR} | x ${r.iconInRow}]`).join('\n     '));
+  console.log(`@${W}  ` + rows.map((r) => `${r.text}[box ${r.labW} text ${r.natural} over ${r.clipped} | L ${r.gapL} R ${r.gapR}]`).join('\n     '));
   for (const [tag, pos] of [['top', 0], ['bot', 99999]]) {
     const box = await P.page.evaluate((y) => {
       const c = document.querySelector('[data-prog3-card]');
