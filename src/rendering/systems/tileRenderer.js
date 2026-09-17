@@ -55,6 +55,26 @@ const PORTAL_BEAM_ALPHA = 1.25;
  * already halved for locked exits before it gets here.  The invitation is what
  * is removed, not the landmark. */
 const PORTAL_BEAM_LOCKED_TINT = 0x7c8798;
+/* ═══ v2.3.2605: THE WAY HOME HAS ITS OWN COLOUR ═══
+ * Owner: "Exit areas aren't obvious enough once you're in that zone."
+ *
+ * Every unlocked beam was tinted plain white, so the way OUT of a zone looked
+ * the same as the way IN and, more to the point, white is the one tint that
+ * reads as haze over both of the grounds this has to work on -- Flame Fields'
+ * lava-lit rock and Frost Ridge's snow are at opposite ends of the luminance
+ * range but both are pale and low-saturation where the beam falls.
+ *
+ * 0x3dd497 is NOT a new colour: it is the mint the halo pass has painted tile
+ * 9 with since the circles (`else if (ex.tile === 9)` below).  The beam simply
+ * never inherited it.  So the way home now reads in the colour the game
+ * already assigned to it, and a saturated mint separates from orange rock by
+ * hue and from white snow by saturation -- neither ground can swallow it the
+ * way white did.
+ *
+ * QUEST GOLD STILL OUTRANKS IT, unchanged: if the route points at this door it
+ * is the route's colour, because "the quest wants this one" is the more urgent
+ * thing to say and the player is only told it while it is true. */
+const PORTAL_BEAM_RETURN_TINT = 0x3dd497;
 
 /* ═══ v2.3.2121: THE QUEST ROAD ═══
  * Owner: "make it so that during quests there's a light gold path to the next
@@ -410,16 +430,56 @@ export class TileRenderer {
           zoneId: ex.zoneId, baseText: text });
       }
     } else {
-      /* Find tile-9 cells (return-to-town) and label one of them. */
-      let placed = 0;
-      for (let r = 0; r < rows && placed < 1; r++) {
+      /* ═══ v2.3.2605: THE WAY OUT IS LABELLED WHERE YOU CAN SEE IT ═══
+         Owner: "Exit areas aren't obvious enough once you're in that zone."
+
+         A spoke's way home (tile 9) WAS labelled.  The label was put in the
+         BLACK MARGIN OUTSIDE THE MAP: `_exitLabelPos` answers `y: -32` or
+         `x: cols * TILE + 40`, an edge annotation.  That is right for town,
+         whose exits hug the map edge and whose camera reaches the margin.  A
+         spoke's return marker is INTERIOR, so the label landed off the
+         playfield entirely and was on screen only once the player had walked
+         to the very edge of the map -- that is, only after finding the exit
+         the label exists to help them find.  From the seat it reads as no
+         label at all, which is exactly the report.
+
+         THE WORLDVIEW BRANCH ABOVE ALREADY MADE THIS FIX, for the same
+         reason and in the same words (v2.3.1303: "the worldview trail-heads
+         are INTERIOR ... so each label floats just above its portal halo").
+         Tile 9 was simply left behind on the edge path.  Same treatment and
+         the same -2.4-tile offset, so the two interior cases now agree.
+
+         AND EVERY MARKER, NOT JUST THE FIRST.  `placed < 1` stopped at
+         whichever tile-9 cell the top-left scan happened to meet first, so a
+         zone with ways out on more than one side (the v2.3.984 note lists the
+         bottom-edge markers that north/ne/nw entries use) left the others
+         bare -- which reads as "that one is not a real exit".
+
+         CLUSTERED, because a marker is a BLOCK of tiles and not one cell.
+         Labelling each cell of a 2x2 block stacks four copies of the same
+         word on the same spot, which is heavier than the single label it
+         replaces and shimmers as they overdraw.  Anything within three tiles
+         of a label already placed is the same doorway.
+
+         "Way Out" RATHER THAN "Town": the return goes to the hub you came
+         FROM (`_enteredFromHub`, zoneTransitions.js), so this label told a
+         player who walked in from the World View that the door led to Town.
+         Two words that are always true beat one that is sometimes wrong. */
+      const CLUSTER = 3;
+      const placedAt = [];
+      for (let r = 0; r < rows; r++) {
         const row = map[r];
         if (!row) continue;
-        for (let c = 0; c < cols && placed < 1; c++) {
-          if (row[c] === 9) {
-            labelsForFrame.push(this._exitLabelPos(c, r, cols, rows, 'Town', null));
-            placed++;
+        for (let c = 0; c < cols; c++) {
+          if (row[c] !== 9) continue;
+          let near = false;
+          for (const p of placedAt) {
+            if (Math.abs(p.c - c) <= CLUSTER && Math.abs(p.r - r) <= CLUSTER) { near = true; break; }
           }
+          if (near) continue;
+          placedAt.push({ r, c });
+          labelsForFrame.push({ text: 'Way Out', rotation: 0,
+            x: c * TILE + TILE / 2, y: r * TILE - TILE * 2.4 });
         }
       }
     }
@@ -495,6 +555,20 @@ export class TileRenderer {
       if (t.scale.x !== wantScale) t.scale.set(wantScale);
       if (t.anchor.y !== 0.5) t.anchor.set(0.5, 0.5);
       t.visible = true;
+    }
+    /* v2.3.2605: QA probe, house style (cf. `__btPortals` in update()).  It
+       reports where each label was PLACED and how big the map is, so
+       "the way out is labelled somewhere you can see it" is an assertion about
+       the world rect the label landed in rather than the test re-deriving
+       _exitLabelPos' arithmetic and agreeing with itself (TRAPS §35). */
+    if (typeof window !== 'undefined') {
+      const _lp = [];
+      for (let i = 0; i < this._zoneLabels.length; i++) {
+        const t = this._zoneLabels[i];
+        if (!t.visible) continue;
+        _lp.push({ text: t.text, x: Math.round(t.x), y: Math.round(t.y) });
+      }
+      window.__btZoneLabels = { zone: zoneId, mapW: cols * TILE, mapH: rows * TILE, labels: _lp };
     }
     /* v2.3.1822: the labels naming a GATED zone, so update() can flip them
        between "Frost Ridge" and "Frost Ridge / Locked" the moment the quest
@@ -1017,7 +1091,9 @@ export class TileRenderer {
              because the invitation would be a lie. */
           const _isQuestExit = !_locked && _questTo
             && Math.abs(_questTo.x - cx) < TILE && Math.abs(_questTo.y - cy) < TILE;
-          sp.tint = _locked ? PORTAL_BEAM_LOCKED_TINT : (_isQuestExit ? TRAIL_GOLD : 0xffffff);
+          sp.tint = _locked ? PORTAL_BEAM_LOCKED_TINT
+            : (_isQuestExit ? TRAIL_GOLD
+              : (ex.tile === 9 ? PORTAL_BEAM_RETURN_TINT : 0xffffff));   /* v2.3.2605 */
           if (_portalProbe) {
             const _pq = _portalProbe[_portalProbe.length - 1];
             if (_pq) _pq.questGold = !!_isQuestExit;
