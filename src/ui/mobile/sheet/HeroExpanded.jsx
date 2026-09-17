@@ -1829,18 +1829,31 @@ export const HeroExpanded = () => {
                   flex: 'none', width: '100%', minWidth: 0, height: CARD_ROW_H, boxSizing: 'border-box',
                   display: 'flex', alignItems: 'center', gap: CARD_GAP,
                   padding: twoCol ? '0 4px 0 6px' : (landPane ? '0 3px 0 6px' : '0 5px 0 9px'),
-                  background: canSpend ? COL.accentFill : COL.wellSoft,
-                  border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
+                  /* ═══ v2.3.2598: THE WHOLE CELL CARRIES THE STAT'S COLOUR ═══
+                     Owner: "Don't make just the edge of the cell the different
+                     colors make the whole background those different colors for
+                     each stat."  So the 4px spine of v2.3.2597 becomes a full
+                     opaque fill.
+                     An OPAQUE fill is a different problem from the tint that
+                     was rejected earlier: that one collapsed because
+                     compositing keeps only `alpha` of the distance between two
+                     colours, and at alpha 1 the separation is whatever the
+                     palette has — 2 of 78 pairs under the floor, both the
+                     owner's own.  What a fill breaks instead is TEXT, and the
+                     answer is to flip it: measured, #20170D on these thirteen
+                     runs 6.79:1 (Element, the darkest fill) to 15.52:1 (Power),
+                     all clear of AA 4.5.  See tools/qa/mp/palette-fill.mjs. */
+                  background: (colourOn && st.tint) ? st.tint
+                    : (canSpend ? COL.accentFill : COL.wellSoft),
+                  border: `1px solid ${(colourOn && st.tint) ? 'rgba(0,0,0,.30)' : (canSpend ? COL.accent : COL.tileBor)}`,
                   borderRadius: 9, overflow: 'hidden',
-                  /* An INSET shadow, not a border: it costs no width, which
-                     matters in a 163px half-width cell where the label already
-                     has only 64px. */
-                  boxShadow: (colourOn && st.tint) ? `inset 4px 0 0 ${st.tint}` : undefined,
                 }}>
                   <span style={{
                     flex: 1, minWidth: 0,
                     fontSize: landPane ? 11.5 : 13, fontWeight: 800, letterSpacing: '.02em',
-                    color: COL.text, lineHeight: 1,
+                    /* Dark ON the fill, light off it.  Near-white on a pastel is
+                       the obvious way this goes wrong. */
+                    color: (colourOn && st.tint) ? '#20170D' : COL.text, lineHeight: 1,
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }}>{cardLabel(st)}</span>
                   <img src={st.iconSrc} alt="" draggable={false}
@@ -1907,9 +1920,23 @@ export const HeroExpanded = () => {
                     style={{
                       flex: 'none', width: CARD_PLUS_W, height: CARD_PLUS_H,
                       boxSizing: 'border-box', padding: 0, borderRadius: 8,
-                      border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
-                      background: canSpend ? COL.accent : 'transparent',
-                      color: canSpend ? '#20170D' : COL.muted,
+                      /* ═══ v2.3.2598: THE [+] NEEDS AN EDGE ON A COLOURED CELL ═══
+                         Gold against these thirteen fills measures 1.10:1 (Max
+                         HP) to 1.88:1 (Power) — every single one under the 3.0
+                         large-text floor, so the one control that spends a
+                         point would all but vanish on every stat.  Measured,
+                         not guessed: palette-fill.mjs.
+                         The fill stays gold, because gold is what "spendable"
+                         means on this screen and the owner asked for the [+] to
+                         be prominent; what it gains is a DARK OUTLINE, which
+                         runs 6.79:1 to 15.52:1 against the same fills and so
+                         always draws the button's shape.  Same lever the
+                         nameplate work used at v2.3.2590. */
+                      border: (colourOn && st.tint)
+                        ? `2px solid ${canSpend ? '#20170D' : 'rgba(32,23,13,.45)'}`
+                        : `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
+                      background: canSpend ? COL.accent : ((colourOn && st.tint) ? 'rgba(32,23,13,.10)' : 'transparent'),
+                      color: canSpend ? '#20170D' : ((colourOn && st.tint) ? 'rgba(32,23,13,.55)' : COL.muted),
                       fontSize: landPane ? 19 : 22, fontWeight: 900, lineHeight: 1,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       cursor: 'pointer', touchAction: 'manipulation',

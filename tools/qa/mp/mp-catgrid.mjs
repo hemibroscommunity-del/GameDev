@@ -394,15 +394,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
        mp-monsterplate pins at 12.  (The full 78-pair sweep lives in
        tools/qa/mp/palette-mock4.mjs; this is the on-screen guard.) */
     if (label === '390-portrait') {
+      /* v2.3.2598: the colour is the cell's BACKGROUND now, not a spine — and
+         the label's ink and the [+]'s outline come with it, so all three are
+         read off the rendered cell rather than trusted. */
       const spines = await P.page.evaluate(() => {
         const out = [];
+        const rgb = (v) => { const m = (v || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/); return m ? [+m[1], +m[2], +m[3]] : null; };
         document.querySelectorAll('[data-prog3-row]').forEach((r) => {
-          const sh = getComputedStyle(r).boxShadow || '';
-          const m = sh.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
           const b = r.querySelector('[data-prog3-plus]');
-          if (m) out.push({ k: r.getAttribute('data-prog3-row'),
+          const lab = r.querySelector('span');
+          const bg = rgb(getComputedStyle(r).backgroundColor);
+          if (bg) out.push({ k: r.getAttribute('data-prog3-row'),
             label: (b && b.getAttribute('aria-label') || '').split(',')[0],
-            rgb: [+m[1], +m[2], +m[3]] });
+            rgb: bg,
+            ink: lab ? rgb(getComputedStyle(lab).color) : null,
+            plusBorder: b ? rgb(getComputedStyle(b).borderTopColor) : null });
         });
         return out;
       });
@@ -431,6 +437,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
       console.log(`    colour spines: ${spines.length}, worst pair ${pair} = ${worst.toFixed(1)}`);
       rec.ok(`${label}: ...and no two Shared stats share a colour (worst pair ${pair} ${worst.toFixed(1)})`,
         spines.length === 7 && worst > 12, { pair, worst: +worst.toFixed(1) });
+
+      /* ═══ WHAT AN OPAQUE FILL PUTS AT RISK ═══
+         A coloured cell only works if what sits ON it still reads.  Both are
+         measured as rendered: the label's ink, and the [+]'s outline, which
+         exists because gold against these fills is 1.10:1 to 1.88:1 — under the
+         floor on every one of the thirteen. */
+      const lum = ([r, g, b]) => { const f = (c) => { c /= 255; return c > 0.04045 ? Math.pow((c + 0.055) / 1.055, 2.4) : c / 12.92; };
+        return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+      const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+      const inks = spines.filter((x) => x.ink).map((x) => ({ k: x.label, c: ratio(x.ink, x.rgb) }));
+      const worstInk = inks.reduce((a, b) => (b.c < a.c ? b : a), inks[0] || { k: '?', c: 0 });
+      rec.ok(`${label}: every label still reads on its coloured cell (worst ${worstInk.k} ${worstInk.c.toFixed(2)}:1, AA 4.5)`,
+        inks.length === 7 && worstInk.c >= 4.5, inks.map((i) => `${i.k} ${i.c.toFixed(1)}`));
+      const edges = spines.filter((x) => x.plusBorder).map((x) => ({ k: x.label, c: ratio(x.plusBorder, x.rgb) }));
+      const worstEdge = edges.reduce((a, b) => (b.c < a.c ? b : a), edges[0] || { k: '?', c: 0 });
+      rec.ok(`${label}: ...and the [+] keeps a visible edge on every fill (worst ${worstEdge.k} ${worstEdge.c.toFixed(2)}:1)`,
+        edges.length === 7 && worstEdge.c >= 3, edges.map((e) => `${e.k} ${e.c.toFixed(1)}`));
+      console.log(`    fills: worst label ${worstInk.k} ${worstInk.c.toFixed(2)}:1, worst [+] edge ${worstEdge.k} ${worstEdge.c.toFixed(2)}:1`);
     }
     await P.page.screenshot({ path: `${OUT}/catgrid-${label}-shared.png` });
 
