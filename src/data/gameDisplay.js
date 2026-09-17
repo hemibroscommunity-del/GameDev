@@ -2841,6 +2841,15 @@ BT_AUDIO.SFX_MANIFEST = {
      and mine-strike rows set the precedent for isolating a clip's useful
      seconds at the call. */
   'coin-flip':     '/sfx/loot/coin-flip.mp3',
+  /* v2.3.2623: the owner's WIN and LOSE stings for Ace's result (both flips,
+     gold and items).  They replace BT_AUDIO.collect() and a sawtooth beep --
+     collect() is the gold-pickup sound the whole game uses, so the payout was
+     indistinguishable from walking over a coin pile.  Trimmed at the call like
+     coin-flip above: the marimba runs 2.54s but is done at ~1.55s, the negative
+     sting runs 1.49s and is done at ~0.65s; neither has any lead-in, so both
+     start at offset 0 and the verdict lands on the first frame of sound. */
+  'flip-win':      '/sfx/loot/flip-win.mp3',
+  'flip-lose':     '/sfx/loot/flip-lose.mp3',
   /* ═══ v2.3.2591: THE LEVEL-UP STING (owner art) ═══
      Owner: "a new level up notification ... the first is an audio that should
      play simultaneously with the level up display."  Played by
