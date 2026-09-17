@@ -75,7 +75,7 @@ export const InfoPopup = () => {
           padding: '14px 14px 12px',
           boxShadow: '0 18px 40px rgba(4,9,12,.55)',
           position: 'relative',
-          /* ═══ v2.3.2612: THE CARD FITS THE SCREEN NOW ═══
+          /* ═══ v2.3.2616: THE CARD FITS THE SCREEN NOW ═══
              It had no height limit, and the scrim centres it — so a card
              taller than the viewport hung off BOTH ends equally and its
              buttons went with it.  Measured at 360x360 (a phone in
@@ -108,7 +108,7 @@ export const InfoPopup = () => {
           letterSpacing: '.01em', paddingRight: 28, marginBottom: 6,
         }}>{cur.title}</div>
 
-        {/* v2.3.2612: everything between the title and the buttons scrolls.
+        {/* v2.3.2616: everything between the title and the buttons scrolls.
             The title stays because it names what you are reading; the action
             row stays because it is the way out, and the way out is the thing
             that must never be off-screen.  The negative margin lets the

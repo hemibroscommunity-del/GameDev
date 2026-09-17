@@ -1,4 +1,4 @@
-/* ═══ v2.3.2612: WHAT THE STAT SCENES DRAW, AS A LIST ═══
+/* ═══ v2.3.2616: WHAT THE STAT SCENES DRAW, AS A LIST ═══
  *
  * These URLs used to live inside StatDemo.jsx.  They are out here because the
  * PRELOADER has to know them (CLAUDE.md's animation-preloading law) and the
