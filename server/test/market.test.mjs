@@ -31,6 +31,7 @@ import { GameRoom } from '../src/index.js';
 import { GEAR_SELL, removeGearLocal } from '../../src/ui/mobile/dash/gearSellLocal.js';   /* v2.3.2532: the client half of a gear listing (S12j) */
 import { GEAR_SELL_REASON, gearSellReasonText, gearSellCheck, gearSellGid } from '../../src/ui/mobile/dash/gearSellReason.js';   /* v2.3.2551: the client half of a REFUSAL (S12m) */
 import { GEAR_REFUSAL } from '../src/storegear.js';   /* v2.3.2551: ...and the table it mirrors */
+import { STORE } from '../src/store.js';   /* v2.3.2619: the sweep arithmetic reads the real constants */
 import { QUEST_REWARDS, MONSTER_ARMOR_DROPS } from '../src/data.js';   /* v2.3.2554: the REAL copper/iron entries, so S12o cannot drift from the catalog */
 
 function makeState() {
@@ -574,93 +575,64 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
   check('store: expiry refunds the standing bid', BUY.coins === expCoins + 40, BUY.coins);
   check('store: the expired listing is deleted', !st._store.has('store_listing:' + willExpire.listing.id));
 
-  // ── S5c. PER-LISTING DURATION (v2.3.2619) ──
-  // Owner: "Longest listing a week, shortest is 1 day." The duration is a
-  // CLIENT-SUPPLIED field, so every case here is really one question: does
-  // the server decide, or does the request?
-  const DAY = 86400000;
+  // ── S5c. ONE WEEK, FIXED (v2.3.2619) ──
+  // Owner: "All listings are 7 days (1 week)." Not a default, not a choice.
   {
+    const DAY = 86400000;
     SEL.inventory.slime_gel = 30;
 
-    // (a) Absent -> the 24h default. This is the deploy-order case (rule 19):
-    //     every client built before v2.3.2619 sends no duration at all and
-    //     must keep getting exactly the listing it used to get.
-    const dflt = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10 });
-    const dfltRec = shop._stIndex.get(dflt.listing.id);
-    check('store duration: a request with no duration still gets 24h',
-      dflt.ok === true && Math.abs((dfltRec.expiresAt - dfltRec.createdAt) - DAY) < 1000,
-      { span: dfltRec.expiresAt - dfltRec.createdAt });
+    const wk = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10 });
+    const wkRec = shop._stIndex.get(wk.listing.id);
+    check('store week: a listing runs seven days',
+      Math.abs((wkRec.expiresAt - wkRec.createdAt) - 7 * DAY) < 1000,
+      { days: (wkRec.expiresAt - wkRec.createdAt) / DAY });
 
-    // (b) The maximum the owner asked for.
-    const week = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10, durationMs: 7 * DAY });
-    const weekRec = shop._stIndex.get(week.listing.id);
-    check('store duration: a seller may ask for a week',
-      week.ok === true && Math.abs((weekRec.expiresAt - weekRec.createdAt) - 7 * DAY) < 1000,
-      { span: weekRec.expiresAt - weekRec.createdAt });
-    check('store duration: ...and what was asked for is on the wire',
-      week.listing.durationMs === 7 * DAY, week.listing.durationMs);
-
-    // (c) OUT OF BOUNDS IS REFUSED, NOT CLAMPED -- and refused before the
-    //     goods move, so a rejected listing costs the seller nothing. The
-    //     bag count is the real assertion here; `ok === false` alone would
-    //     pass just as well with an item stranded in escrow.
-    const gelPre = SEL.inventory.slime_gel;
-    const tooShort = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10, durationMs: 3600000 });
-    const tooLong = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10, durationMs: 30 * DAY });
-    check('store duration: under a day is refused', tooShort.ok === false, tooShort);
-    check('store duration: over a week is refused', tooLong.ok === false, tooLong);
-    check('store duration: a refused duration escrows nothing',
-      SEL.inventory.slime_gel === gelPre, { before: gelPre, after: SEL.inventory.slime_gel });
-
-    // (d) The shapes a hand-written request actually arrives in.
-    const junk = [];
-    for (const bad of ['abc', NaN, Infinity, -Infinity, -DAY, 0, {}, []]) {
+    /* THE SERVER READS NO DURATION FROM THE CLIENT. Every one of these is a
+       request a modified client could send; all of them must be ignored
+       rather than validated, because there is no duration field at all. */
+    const asked = [];
+    for (const bad of [3600000, 30 * DAY, -DAY, 0, 'abc', Infinity, null, {}]) {
       const r = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10, durationMs: bad });
-      if (r.ok !== false) junk.push({ bad: String(bad), r });
+      if (!r.ok) { asked.push({ bad: String(bad), refused: r.error }); continue; }
+      const rec = shop._stIndex.get(r.listing.id);
+      if (Math.abs((rec.expiresAt - rec.createdAt) - 7 * DAY) >= 1000) {
+        asked.push({ bad: String(bad), got: (rec.expiresAt - rec.createdAt) / DAY });
+      }
+      await shop._stCancel(r.listing.id, 'bp_st_sell');
     }
-    check('store duration: nonsense durations are all refused', junk.length === 0, junk);
-    check('store duration: ...and none of them escrowed anything',
-      SEL.inventory.slime_gel === gelPre, { before: gelPre, after: SEL.inventory.slime_gel });
+    check('store week: a client-supplied duration cannot change it -- the field does not exist',
+      asked.length === 0, asked);
+    check('store week: ...and nothing about a duration goes out on the wire',
+      wk.listing.durationMs === undefined, Object.keys(wk.listing));
 
-    // (e) THE SWEEP NO LONGER SEES ONE LIFETIME. Listings used to share an
-    //     expiry, so index order (insertion) WAS expiry order; it is not any
-    //     more. A week-long listing created FIRST must survive a sweep that
-    //     resolves a day-long one created after it.
-    const longLived = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 11, durationMs: 7 * DAY });
-    const shortLived = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 12, durationMs: DAY });
-    shop._stIndex.get(shortLived.listing.id).expiresAt = Date.now() - 1;
-    const gelBeforeSweep = SEL.inventory.slime_gel;
+    /* THE SWEEP, at the new lifetime. The arithmetic is in store.js's header;
+       this pins the two numbers it turns on so a future retune cannot quietly
+       break the relationship. */
+    const duePerPass = STORE.MAX_GLOBAL * (STORE.SWEEP_INTERVAL / STORE.LISTING_EXPIRY);
+    check('store week: a full shelf expires far fewer than SWEEP_MAX per pass',
+      duePerPass < STORE.SWEEP_MAX, { duePerPass: Number(duePerPass.toFixed(3)), sweepMax: STORE.SWEEP_MAX });
+    console.log(`    store week: a FULL shelf (${STORE.MAX_GLOBAL}) expires ${duePerPass.toFixed(3)} listings `
+      + `per ${STORE.SWEEP_INTERVAL / 1000}s pass against SWEEP_MAX ${STORE.SWEEP_MAX} `
+      + `(${Math.round(STORE.SWEEP_MAX / duePerPass)}x headroom); sustainable rate `
+      + `~${Math.round(STORE.MAX_GLOBAL / (STORE.LISTING_EXPIRY / 86400000))} new listings/day`);
+
+    /* A LISTING MADE UNDER THE OLD 24h RULE still retires on its own clock:
+       expiresAt is stored per record, so the constant change is not
+       retroactive in either direction and needs no migration. */
+    const legacy = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10 });
+    const legRec = shop._stIndex.get(legacy.listing.id);
+    legRec.expiresAt = legRec.createdAt + DAY;          // as a pre-2619 record would be
+    await st._store.set('store_listing:' + legacy.listing.id, legRec);
+    const gelPre = SEL.inventory.slime_gel;
+    legRec.expiresAt = Date.now() - 1;
     shop._stLastSweep = 0;
     await shop._stSweep();
-    check('store duration: the sweep resolves the expired short listing',
-      !st._store.has('store_listing:' + shortLived.listing.id)
-        && SEL.inventory.slime_gel === gelBeforeSweep + 1,
-      { gel: SEL.inventory.slime_gel, was: gelBeforeSweep });
-    check('store duration: ...and leaves the week-long one it was listed before',
-      st._store.has('store_listing:' + longLived.listing.id) && shop._stIndex.has(longLived.listing.id));
+    check('store week: a listing created under the 24h rule still expires on ITS clock',
+      !st._store.has('store_listing:' + legacy.listing.id) && SEL.inventory.slime_gel === gelPre + 1);
+    check('store week: ...and the week-long one beside it is untouched',
+      st._store.has('store_listing:' + wk.listing.id));
 
-    // (f) REBUILD ON WAKE. `expiresAt` was always a stored per-record field,
-    //     so this should survive a DO restart untouched -- assert it rather
-    //     than assume it, because "it happens to work today" is how a
-    //     rebuild quietly starts recomputing from a constant.
-    const roomD = new GameRoom(st, mockEnv);
-    roomD.playerState = shop.playerState;
-    await roomD._stEnsureIndex();
-    const woke = roomD._stIndex.get(longLived.listing.id);
-    check('store duration: a per-listing expiry survives the wake-time rebuild',
-      !!woke && woke.expiresAt === shop._stIndex.get(longLived.listing.id).expiresAt
-        && Math.abs((woke.expiresAt - woke.createdAt) - 7 * DAY) < 1000,
-      { woke: woke && woke.expiresAt - woke.createdAt });
-    roomD._stLastSweep = 0;
-    await roomD._stSweep();
-    check('store duration: ...and the rebuilt room does not sweep it early',
-      st._store.has('store_listing:' + longLived.listing.id) && roomD._stIndex.has(longLived.listing.id),
-      { left: woke && woke.expiresAt - Date.now() });
-
-    // Tidy: take the survivor back down so later sections start clean.
-    await shop._stCancel(longLived.listing.id, 'bp_st_sell');
-    await shop._stCancel(dflt.listing.id, 'bp_st_sell');
-    await shop._stCancel(week.listing.id, 'bp_st_sell');
+    await shop._stCancel(wk.listing.id, 'bp_st_sell');
   }
 
   // ── S6. an offline counterparty settles into the mail ──

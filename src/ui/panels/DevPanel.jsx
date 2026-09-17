@@ -153,7 +153,7 @@ const CAP_GATES = [
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
   'laststand', 'party', 'partyChat', 'petLoot', 'pets', 'potionBag', 'prog3',
   'prog3Chan', 'prog3elem' /* v2.3.2512 */, 'prog3shared' /* v2.3.2592 */, 'prog3x', 'questTrack', 'sponsor', 'store',
-  'storeGear' /* v2.3.2531 */, 'storeGearRef' /* v2.3.2551 */, 'storeDuration' /* v2.3.2619 */,
+  'storeGear' /* v2.3.2531 */, 'storeGearRef' /* v2.3.2551 */,
   't2bench', 't2simple', 't2uniform', 'trade', 'trade2', 'trade2Review',
   'trade2Weapons', 'weaponDrops', 'whisper',
 ];
@@ -172,7 +172,6 @@ const CAP_NOTES = {
   elemBurst: 'the elemental burst',
   storeGear: 'selling armour, shields and legs in the store',
   storeGearRef: 'naming a piece for sale by its receipt number instead of its description',
-  storeDuration: 'letting the seller choose how long a listing runs, from 1 day to 7 days',
   blockScale: 'the shield block count',
 };
 

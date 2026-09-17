@@ -23,7 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  listduration: () => import('./mp-listduration.mjs'), /* v2.3.2619: the seller picks 1-7 days through the sheet, and the WORKER is what holds the chosen span */
+  listweek: () => import('./mp-listweek.mjs'), /* v2.3.2619: every listing runs a week and NOTHING asks -- the control must not exist */
   marketonly: () => import('./mp-marketonly.mjs'), /* v2.3.2618: Market is the only button in the vendor building, the shelf matches the mockup, and Shopkeeper Bro still stocks all five staples */
   vendorprompt: () => import('./mp-vendorprompt.mjs'), /* v2.3.2617: the Enter VENDOR prompt must not survive its own tap -- real finger taps at four viewports, asked of elementFromPoint (TRAPS §67) */
   exitmark: () => import('./mp-exitmark.mjs'), /* v2.3.2605: can you see the way out of a spoke -- measured against sand AND snow, at four viewports */

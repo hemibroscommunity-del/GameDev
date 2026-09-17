@@ -13,27 +13,7 @@ import {
 } from './inventoryLocks.js';
 import { thumbFor, iconFor, classify } from './InventoryPanel.jsx';
 import { firemakingBus } from '../firemakingBus.js';
-import { storeEnabled, storeGearEnabled, storeGearRefEnabled, storeDurationEnabled, storeList } from '@/ui/storeApi.js';
-
-/* ═══ v2.3.2619: HOW LONG A LISTING RUNS ═══
- * Owner: "Longest listing a week, shortest is 1 day." The mockup's dropdown
- * shows "24 hours"; these are the five steps chosen to fill the range --
- * a day, then the two short options people actually use for a quick sale,
- * then most-of-a-week and the full week. Five is enough to be useful and
- * few enough to read on a phone without scrolling the sheet.
- *
- * The SERVER does not know this list and must not: store.js validates
- * against its own DURATION_MIN/MAX bounds, so changing these five is a UI
- * decision that needs no worker deploy. A sixth option added here on a
- * Tuesday is settled by a worker shipped last month. */
-const SELL_DURATIONS = [
-  { days: 1, label: '24 hours' },
-  { days: 2, label: '2 days' },
-  { days: 3, label: '3 days' },
-  { days: 5, label: '5 days' },
-  { days: 7, label: '7 days (max)' },
-];
-const DAY_MS = 86400000; /* v2.3.2476: the general store; v2.3.2531: gear; v2.3.2551: naming a piece by its id */
+import { storeEnabled, storeGearEnabled, storeGearRefEnabled, storeList } from '@/ui/storeApi.js'; /* v2.3.2476: the general store; v2.3.2531: gear; v2.3.2551: naming a piece by its id */
 import { eatBus } from '../eatBus.js';
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
 import { GEAR_SELL, removeGearLocal } from './gearSellLocal.js'; /* v2.3.2531: which stash a gear card sells out of; v2.3.2532: and taking it out of ours */
@@ -604,15 +584,6 @@ export const ItemDetailPopup = () => {
   const [sellOpen, setSellOpen] = useState(false);
   const [sellPrice, setSellPrice] = useState('');
   const [sellQty, setSellQty] = useState(1);
-  /* v2.3.2619: how long the listing runs. Defaults to a day, which is both
-     the shortest the owner allows and exactly what every listing used to
-     get, so the sheet behaves identically for anyone who never touches it. */
-  const [sellDays, setSellDays] = useState(1);
-  /* Clamped to the offered presets before it travels: the server refuses an
-     out-of-bounds duration outright (it does not clamp), so a sheet that
-     could ever send one would be a sheet that sometimes just fails. */
-  const sellDaysMs = Math.max(1, Math.min(7, Math.floor(Number(sellDays) || 1))) * DAY_MS;
-  const sellDurationOn = storeDurationEnabled();
   const [sellBusy, setSellBusy] = useState(false);
   const [sellErr, setSellErr] = useState('');
   /* v2.3.2507: a REF, not the busy flag, is what stops a double tap.
@@ -1496,11 +1467,6 @@ export const ItemDetailPopup = () => {
       const qty = Math.max(1, Math.min(sellMax, Math.floor(Number(sellQty) || 1)));
       body = { kind: 'item', invKey: target.key, qty, price };
     }
-    /* v2.3.2619: only ever sent to a worker that advertised it can settle it.
-       Against an older worker the field is left off entirely and the listing
-       gets that worker's 24h -- which is also what the sheet told the seller
-       it would get, because the dropdown is gated on the same flag. */
-    if (storeDurationEnabled()) body.durationMs = sellDaysMs;
     sellInFlight.current = true;
     setSellBusy(true); setSellErr('');
     const r = await storeList(body);
@@ -1767,30 +1733,9 @@ export const ItemDetailPopup = () => {
                   background: '#121B20', border: '1px solid rgba(238,242,235,.20)', borderRadius: 8,
                 }} />
             </div>
-            {/* v2.3.2619: the mockup's "Listing Duration" row. Shown only when
-                the worker has said it can settle the choice -- otherwise the
-                line below simply says 24 hours, which is what that worker
-                will do (storeApi.storeDurationEnabled). */}
-            {sellDurationOn && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ flex: 1, fontSize: 12, color: COL.text }}>Listing duration</span>
-                <select value={sellDays} onChange={(e) => setSellDays(Number(e.target.value) || 1)}
-                  style={{
-                    minHeight: 36, padding: '0 7px', fontSize: 13, fontWeight: 700,
-                    fontFamily: 'inherit', color: '#F7F2E7', background: '#121B20',
-                    border: '1px solid rgba(238,242,235,.20)', borderRadius: 8,
-                  }}>
-                  {SELL_DURATIONS.map((d) => <option key={d.days} value={d.days}>{d.label}</option>)}
-                </select>
-              </div>
-            )}
             {sellErr && <div style={{ fontSize: 11, fontWeight: 600, color: COL.danger }}>{sellErr}</div>}
             <div style={{ fontSize: 11, color: COL.muted, lineHeight: 1.4 }}>
-              {sellDurationOn
-                ? 'It leaves your bag now and comes back in '
-                  + ((SELL_DURATIONS.find((d) => d.days === sellDays) || SELL_DURATIONS[0]).label.replace(' (max)', ''))
-                  + ' if nobody buys it.'
-                : 'It leaves your bag now and comes back in 24 hours if nobody buys it.'}
+              It leaves your bag now and comes back in a week if nobody buys it.
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               <button onClick={onSellConfirm} disabled={sellBusy}
