@@ -68,7 +68,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 1. ONLY THE RE-MEASURED PAIR IS BACK ── */
   rec.ok('the fountain and the house are drawn in town',
     ids.includes('fountain') && ids.includes('mayor-house'), ids);
-  /* v2.3.2062: the general store joined them -- re-measured onto town_v17
+  /* v2.3.2062: the auction house joined them -- re-measured onto town_v17
      because it is the only door the potion shelf opens from, and every such
      door was switched off (see worldProps.js). The claim is unchanged in
      substance: only props whose coordinates were measured against the map
@@ -76,7 +76,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      up to 2560 on a map 1664 wide. */
   /* ═══ v2.3.2065: THE OWNER'S BLUEPRINT ═══
      A mockup of where things go: mayor's house up the stairs, blacksmith
-     west, general store east, fountain dead centre, dressing around them.
+     west, auction house east, fountain dead centre, dressing around them.
 
      v2.3.2086: FOURTEEN NOW.  This used to assert that the bank and the
      enchanter were NOT placed, and that was the right assertion while it was
@@ -93,7 +93,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      it is what would have caught a careless re-enable. */
   /* v2.3.2088 (owner: "Remove the banners and bench-e"): eleven now. */
   const EXPECT = ['anvil', 'bank', 'bench-w', 'enchanter', 'forge', 'fountain',
-    'general-store', 'lamp-plaza-e', 'lamp-plaza-w', 'market-stall', 'mayor-house'];
+    'auction-house', 'lamp-plaza-e', 'lamp-plaza-w', 'market-stall', 'mayor-house'];
   rec.ok(`the blueprint's props are all placed (${ids.length})`,
     JSON.stringify(ids) === JSON.stringify(EXPECT), { got: ids, want: EXPECT });
   /* The two that came back are DOORS, not scenery: their whole point is the
@@ -110,9 +110,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      both, and the fountain sits between them rather than off to one side.
      Coordinates alone would pass just as well with the whole town shifted. */
   const at = (id) => byId(list, id);
-  const smith = at('forge'), store = at('general-store');
+  const smith = at('forge'), store = at('auction-house');
   const fount = at('fountain'), house = at('mayor-house');
-  rec.ok('the blacksmith is west of the general store',
+  rec.ok('the blacksmith is west of the auction house',
     smith.x < store.x - 400, { smith: smith.x, store: store.x });
   rec.ok('...the mayor\'s house is north of both',
     house.y < smith.y - 250 && house.y < store.y - 250,

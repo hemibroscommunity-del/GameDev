@@ -1,7 +1,7 @@
 /* ═══ v2.3.2531: SELLING YOUR GEAR — STORE PHASE 3 (spec:
- * docs/specs/general-store.md "Gear listings", docs/specs/gear-stash.md) ═══
+ * docs/specs/auction-house.md "Gear listings", docs/specs/gear-stash.md) ═══
  *
- * Phase 1 (v2.3.2475, store.js) built the general store: per-listing
+ * Phase 1 (v2.3.2475, store.js) built the auction house: per-listing
  * sales of stackables and stash WEAPONS, with gold escrow, resting
  * bids, credit-first settlement and lazy expiry.  Phase 2 (v2.3.2523,
  * gearstash.js) moved the five gear lists -- armour, legs, shields,

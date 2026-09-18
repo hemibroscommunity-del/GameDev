@@ -65,6 +65,12 @@ const COACH_OFF = () => {
   } catch (e) { /* private mode */ }
 };
 
+/* v2.3.2624: the door's panel is titled AUCTION HOUSE now, not "Vendor".
+   This check read the OLD header, so it would have gone red on the rename
+   while the door itself worked perfectly -- the fifth stale scenario in this
+   stack, and the first one made stale by the change it was run against.
+   Confirming a door by its sign is fine; the sign just has to be the
+   current one. */
 async function openVendor(P) {
   await H.hopTo(P, STORE_DOOR.x, STORE_DOOR.y);
   await P.page.waitForTimeout(700);
@@ -77,7 +83,7 @@ async function openVendor(P) {
   if (!box) return false;
   await P.page.touchscreen.tap(box.cx, box.cy);
   await P.page.waitForTimeout(1100);
-  return H.seesText(P, 'Vendor');
+  return H.seesText(P, 'Auction House');
 }
 
 /** What the store panel is actually showing, read off the DOM. */
@@ -165,7 +171,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
         const who = `${phone.label} ${orient}`;
 
-        rec.ok(`${who}: the vendor door opens`, await openVendor(P));
+        rec.ok(`${who}: the auction house door opens`, await openVendor(P));
 
         /* 1. ONE BUTTON. */
         const vendorBody = await P.page.evaluate(() => (document.querySelector('.bt-inspect-card')?.innerText) || '');

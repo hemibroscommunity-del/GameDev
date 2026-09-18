@@ -140,7 +140,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      matters: two `npc` marks close together are two townsfolk, which is fine
      and expected, so a blanket "no repeated glyph" would fail on legitimate
      content.  A trade glyph names a place you walk to -- there is one forge
-     and one general store -- so a second one is either a duplicate or a lie.
+     and one auction house -- so a second one is either a duplicate or a lie.
 
      Read from the renderer's own record of every mark it drew, which is the
      probe this bug forced into existence: the older __btMinimapMarks holds

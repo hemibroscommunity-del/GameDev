@@ -160,7 +160,8 @@ const BUILDING_ICON = {
   forge: 'forge',
   bank: 'bank',
   enchant: 'enchant',
-  shop: 'shop',
+  auctionhouse: 'shop',   /* v2.3.2624: the action renamed; the GLYPH asset
+                             keeps its own name, which is a separate namespace */
 };
 
 /* ═══ v2.3.2072: A TOWNSPERSON IS A PERSON ON THE MAP ═══
@@ -176,7 +177,7 @@ const BUILDING_ICON = {
    (v2.3.2065) and the forge grew to 2.5x (v2.3.2069). The forge's marker and
    the blacksmith now sit 327 world px apart — about 39 px on the minimap —
    so the map draws two hammers a thumb's width apart and neither one means
-   anything the other does not. The general store is worse: 194 world px, ~23
+   anything the other does not. The auction house is worse: 194 world px, ~23
    minimap px, two shop glyphs nearly on top of each other.
 
    AND IT POINTED AT THE WRONG MAN. Shopkeeper Bro is the one who actually
@@ -363,7 +364,7 @@ export class MinimapRenderer {
   /* ═══ v2.3.1783: ICONS, NOT COLOURED DOTS ═══
      Owner: "there needs to be better symbols on the minimap.  Stuff for
      portal, quest marker, icon representing what the building or NPC does
-     (blacksmith, general store, etc).  Monsters should also have an icon
+     (blacksmith, auction house, etc).  Monsters should also have an icon
      that makes sense."
 
      The first cut drew every marker as the same circle in a different colour.
@@ -526,7 +527,7 @@ export class MinimapRenderer {
       g.roundRect(5, 6, 22, 9, 2).fill(0xffffff).stroke(KL);   /* head */
       g.roundRect(13.5, 14, 5, 15, 2).fill(0xffffff).stroke(KL); /* haft */
     });
-    /* Satchel: the general store, and the man who runs it.  A coin was the
+    /* Satchel: the auction house, and the man who runs it.  A coin was the
        obvious choice and it is wrong — at this size a disc with a hole is the
        portal arch again, and two marks that mean different things must not
        share a silhouette. */

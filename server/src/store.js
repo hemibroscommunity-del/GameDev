@@ -1,4 +1,4 @@
-/* ═══ v2.3.2475: THE GENERAL STORE — PER-LISTING SALES (PHASE 1) ═══
+/* ═══ v2.3.2475: THE AUCTION HOUSE — PER-LISTING SALES (PHASE 1) ═══
  *
  * The order book next door (market.js) is a BUCKET book: five taxonomy
  * fields make an index key, a resting buy IS a bid for that whole bucket,

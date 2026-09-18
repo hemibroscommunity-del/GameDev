@@ -13,7 +13,7 @@ import {
 } from './inventoryLocks.js';
 import { thumbFor, iconFor, classify } from './InventoryPanel.jsx';
 import { firemakingBus } from '../firemakingBus.js';
-import { storeEnabled, storeGearEnabled, storeGearRefEnabled, storeList } from '@/ui/storeApi.js'; /* v2.3.2476: the general store; v2.3.2531: gear; v2.3.2551: naming a piece by its id */
+import { storeEnabled, storeGearEnabled, storeGearRefEnabled, storeList } from '@/ui/storeApi.js'; /* v2.3.2476: the auction house; v2.3.2531: gear; v2.3.2551: naming a piece by its id */
 import { eatBus } from '../eatBus.js';
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
 import { GEAR_SELL, removeGearLocal } from './gearSellLocal.js'; /* v2.3.2531: which stash a gear card sells out of; v2.3.2532: and taking it out of ours */
@@ -184,7 +184,7 @@ function resolveTarget(target) {
            the caps-audit suite can see the gate. */
         drink: isPotion && count > 0
           && !!(SR && SR._serverCaps && SR._serverCaps.potionBag),
-        /* v2.3.2476: Sell -- put this up in the general store at your own
+        /* v2.3.2476: Sell -- put this up in the auction house at your own
            price.  Gated on the store cap (storeApi.storeEnabled reads
            _serverCaps.store) because an older worker has no /api/store
            route at all: the button would post into a 404 and the item
@@ -1391,7 +1391,7 @@ export const ItemDetailPopup = () => {
     else        lockItem(lockKey);
   };
 
-  /* ═══ v2.3.2476: SELL IT IN THE GENERAL STORE ═══
+  /* ═══ v2.3.2476: SELL IT IN THE AUCTION HOUSE ═══
      The bag is half of every shop in this game already (shopBus v2.3.2059,
      tradeBagBus v2.3.2149); this is the same move for the store.
 
@@ -1708,7 +1708,7 @@ export const ItemDetailPopup = () => {
             display: 'flex', flexDirection: 'column', gap: 6,
           }}>
             <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: COL.muted }}>
-              Sell in the Auction Marketplace
+              Sell in the Auction House
             </div>
             {sellMax > 1 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

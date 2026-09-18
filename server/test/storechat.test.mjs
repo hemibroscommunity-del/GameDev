@@ -1,5 +1,5 @@
 /* Store-chat suite (v2.3.2621, storechat.js).  Per-listing message threads in
- * the general store.  Checks:
+ * the auction house.  Checks:
  *   1. caps.storeChat advertised; all three emitted types PRIVILEGED.
  *   2. Open: a buyer opening a live listing gets the item header, the price
  *      and the listing's own expiry; a listing that has ended answers `gone`.

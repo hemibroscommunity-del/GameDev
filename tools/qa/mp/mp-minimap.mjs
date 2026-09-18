@@ -159,7 +159,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── v2.3.1783: symbols, not a legend of coloured dots ─────────────
      Owner: "there needs to be better symbols on the minimap.  Stuff for
      portal, quest marker, icon representing what the building or NPC does
-     (blacksmith, general store, etc).  Monsters should also have an icon
+     (blacksmith, auction house, etc).  Monsters should also have an icon
      that makes sense."
 
      The census counts markers by WHICH MINTED TEXTURE each one is using, so
@@ -193,7 +193,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       ['forge', 'the forge'],          /* v2.3.2072: the man no longer carries it */
       ['bank', 'the bank'],
       ['enchant', 'the enchanter'],
-      ['shop', 'the general store'],   /* v2.3.2091: the storekeeper is gone */
+      ['shop', 'the auction house'],   /* v2.3.2091: the storekeeper is gone */
       ['house', "the mayor's house"],
     ]) {
       rec.ok(`${what} has its own symbol on the map`, (ic[key] || 0) > 0, { key, census: ic });
@@ -213,7 +213,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        and the double marks come straight back. */
     rec.ok('the anvil is drawn ONCE — the forge carries it, the blacksmith '
          + 'standing at it does not carry it too', (ic.forge || 0) === 1, { forge: ic.forge });
-    rec.ok('...and so is the satchel — the general store carries it alone',
+    rec.ok('...and so is the satchel — the auction house carries it alone',
       (ic.shop || 0) === 1, { shop: ic.shop });
     /* GUARD: they are genuinely DIFFERENT textures, not one glyph counted
        under several names. */
@@ -237,7 +237,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok("the mayor's house is on the map -- it is placed on the map that ships",
       !!pm && pm.some((m) => m.id === 'mayor-house'), pm);
     /* ═══ v2.3.2086: ALL FOUR SHOPFRONTS ARE ON THE MAP NOW ═══
-       This asserted the world of v2.3.2065: blacksmith and general store
+       This asserted the world of v2.3.2065: blacksmith and auction house
        measured onto town_v17 and marked, bank and enchanter still carrying
        v16 coordinates and therefore correctly absent.  v2.3.2086 re-measured
        the last two onto v17 (bank 1230,1290; enchanter 1050,700), so the
@@ -248,7 +248,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        is marked if and only if it is placed on the map that ships.  Naming all
        four rather than counting them, so a prop that quietly loses its mark
        fails here by name instead of hiding inside a total. */
-    for (const id of ['forge', 'general-store', 'bank', 'enchanter']) {
+    for (const id of ['forge', 'auction-house', 'bank', 'enchanter']) {
       rec.ok(`the ${id} is marked -- the blueprint placed it on town_v17`,
         !!pm && pm.some((m) => m.id === id), { want: id, marks: pm });
     }

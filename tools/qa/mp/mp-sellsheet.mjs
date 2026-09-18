@@ -7,7 +7,7 @@
  *
  * Their mental model is right and the flow IS built: ItemDetailPopup's Sell
  * sets `sellOpen`, which expands a price sheet INSIDE the same card -- "Sell in
- * the general store", a quantity stepper, a price box, Back and Confirm.  So
+ * the auction house", a quantity stepper, a price box, Back and Confirm.  So
  * the question is not what is missing, it is why pressing it reads as nothing
  * happening.
  *
@@ -81,7 +81,7 @@ const sellButton = (P) => P.page.evaluate(() => {
 /* The price sheet, found by the heading the card actually renders. */
 const sheet = (P) => P.page.evaluate(() => {
   const lab = [...document.querySelectorAll('div')]
-    .find((d) => (d.textContent || '').trim() === 'Sell in the general store');
+    .find((d) => (d.textContent || '').trim() === 'Sell in the auction house');
   if (!lab) return { open: false };
   /* The sheet is the labelled block's parent panel. */
   const box = lab.parentElement || lab;
@@ -135,7 +135,7 @@ const confirmBtn = (P) => P.page.evaluate(() => {
 /* The card's own scroller, for the §68 drag. */
 const cardScroll = (P) => P.page.evaluate(() => {
   const lab = [...document.querySelectorAll('div')]
-    .find((d) => (d.textContent || '').trim() === 'Sell in the general store');
+    .find((d) => (d.textContent || '').trim() === 'Sell in the auction house');
   if (!lab) return null;
   for (let e = lab.parentElement; e && e !== document.body; e = e.parentElement) {
     const st = getComputedStyle(e);

@@ -4406,7 +4406,7 @@ export const NPC_DATA = [{
    keys on the name, and _spawnTownNpcs' allowlist comment has warned about
    these two being confused since v2.3.2046.
 
-   HIS STALL STAYS.  The general store is scenery the blueprint puts on the
+   HIS STALL STAYS.  The auction house is scenery the blueprint puts on the
    east side and the owner asked for a person removed, not a building.  It
    reads as a shop that is closed today, which is a normal thing for a shop.
    `storekeeper-bro.webp` and its head crop stay on disk unreferenced -- art

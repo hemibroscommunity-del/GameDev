@@ -11,9 +11,9 @@ import { storeChatEnabled, storeChatSend } from '@/ui/storeApi.js';   /* v2.3.26
 
 /* === StorePanel — buildingPanel === 'store' ===================== v2.3.2476
  *
- * The general store: everything other players have put up for sale, at the
+ * The auction house: everything other players have put up for sale, at the
  * price they chose, with a Buy now and a Bid on each one.  The server half
- * is server/src/store.js (docs/specs/general-store.md).
+ * is server/src/store.js (docs/specs/auction-house.md).
  *
  * THE PANEL COMPUTES NOTHING IT COULD BE WRONG ABOUT.  Every price, name,
  * stat and category on screen is read out of the worker's answer -- the
@@ -62,7 +62,7 @@ function header(gold) {
         style={{ width: 26, height: 26, objectFit: 'contain', flexShrink: 0 }}
         onError={(e) => { e.currentTarget.style.display = 'none'; }} />
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 }}>Auction Marketplace</div>
+        <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 }}>Auction House</div>
         <div style={{ fontSize: 11, color: LS.txt3, marginTop: 1 }}>What everyone is selling</div>
       </div>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: LS.brass, fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: 13 }}>

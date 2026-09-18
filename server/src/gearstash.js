@@ -12,7 +12,7 @@
  * goldNuggets/goldBars were (v2.3.1192).  That is what this slice does.
  *
  * WHY IT MATTERS, and why it is its own PR: nothing client-local can be
- * escrowed.  The general store (v2.3.2475, store.js) lists stackables
+ * escrowed.  The auction house (v2.3.2475, store.js) lists stackables
  * and stash WEAPONS and nothing else, because rule 16 forbids taking
  * custody of a value blob the client supplied -- the server can only
  * escrow what it already holds by reference.  So armour, legs, shields,

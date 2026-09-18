@@ -33,7 +33,7 @@
  */
 import * as H from './harness.mjs';
 
-/* The general-store prop's anchor (src/data/worldProps.js); standing spot in
+/* The auction-house prop's anchor (src/data/worldProps.js); standing spot in
    front of its door -- buildingPropNear() wants 95px.  Same constant as
    mp-store, deliberately: if the door moves, both scenarios move together. */
 const STORE_DOOR = { x: 1290, y: 855 };
@@ -89,7 +89,7 @@ async function closePanel(P) {
 /** The whole gesture, at whatever viewport the page is currently in. */
 async function measureOrientation(P, rec, who) {
   const near = await H.readState(P, (S) => S.nearBuilding);
-  rec.ok(`${who}: standing at the general store raises the enter prompt`,
+  rec.ok(`${who}: standing at the auction house raises the enter prompt`,
     near !== null && near !== undefined, { near });
 
   /* ── 1. BEFORE THE TAP: it is there, and a finger can reach it ── */
