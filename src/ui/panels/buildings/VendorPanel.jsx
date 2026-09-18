@@ -57,7 +57,7 @@ function lsGold(amount, size) {
     onError: function onError(e) { e.currentTarget.replaceWith(document.createTextNode('🪙')); }
   }), amount);
 }
-/* ═══ v2.3.2620: THE ROOM YOU WALKED INTO ═══
+/* ═══ v2.3.2622: THE ROOM YOU WALKED INTO ═══
  *
  * Owner: the general store's interior painting, with the storekeeper behind
  * the counter, appropriately sized.
@@ -109,7 +109,7 @@ var KEEPER_SRC = '/sprites/npc/storekeeper-bro-idle.png';
 var RM = { imgW: 1254, x0: 42, y0: 432, w: 720, h: 714 };  /* measured alpha bbox */
 var SCENE_H = 457;                                          /* rows of RM.h shown */
 var KF = { cell: 362, cellH: 724, x0: 18, y0: 200, x1: 361, y1: 580 }; /* frame 0 art */
-/* v2.3.2620b (owner: "he needs to be about half or quarter that size").
+/* v2.3.2622b (owner: "he needs to be about half or quarter that size").
    The three placement numbers, as fractions of the room's own box. A QUARTER
    was tried too and is too small: at 6% he is the size of the jars on the
    shelf behind him and stops reading as a person at all. Half is the one. */
@@ -186,7 +186,7 @@ export function VendorPanel(props) {
   var storeOn = storeEnabled();
   return React.createElement("div", { style: LS_WRAP },
     lsHeader('vendor', '🛒', "Vendor", "Basic supplies for starting adventurers"),
-    storeScene(),   /* v2.3.2620: the room, and the man behind the counter */
+    storeScene(),   /* v2.3.2622: the room, and the man behind the counter */
     React.createElement("div", { style: LS_BODY },
       storeOn && setBuildingPanel ? React.createElement("button", {
         type: 'button',

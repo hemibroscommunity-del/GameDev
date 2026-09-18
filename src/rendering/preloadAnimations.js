@@ -48,7 +48,7 @@ import { loadMonsterRecolor, recolorFamilyOf, freeMonsterRecolor } from './monst
 import { loadNpcSprites } from './npcSprites.js'; /* v2.3.1672: NPC figure art */
 import { preloadLevelUpBurst } from './levelUpBurstPreload.js';
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
-import { preloadStoreInterior } from './storeInteriorPreload.js'; /* v2.3.2620: the general store's room + keeper */
+import { preloadStoreInterior } from './storeInteriorPreload.js'; /* v2.3.2622: the general store's room + keeper */
 import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
