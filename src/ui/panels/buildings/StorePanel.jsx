@@ -405,7 +405,10 @@ export function StorePanel(props) {
           }}>{note}</div>
         )}
         <div style={{ marginTop: 10, fontSize: 11, color: LS.txt3, lineHeight: 1.45 }}>
-          Listings last 24 hours. If nobody buys, it comes back to you — and any
+          {/* v2.3.2619: a store that expires in a week while the copy promises
+              24 hours is worse than the original -- every string that named
+              the old lifetime moved with the constant. */}
+          Listings last one week. If nobody buys, it comes back to you — and any
           bid goes back to whoever made it. Armour and amulets can&apos;t be listed yet.
         </div>
       </div>

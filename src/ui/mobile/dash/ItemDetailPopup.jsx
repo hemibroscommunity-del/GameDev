@@ -1735,7 +1735,7 @@ export const ItemDetailPopup = () => {
             </div>
             {sellErr && <div style={{ fontSize: 11, fontWeight: 600, color: COL.danger }}>{sellErr}</div>}
             <div style={{ fontSize: 11, color: COL.muted, lineHeight: 1.4 }}>
-              It leaves your bag now and comes back in 24 hours if nobody buys it.
+              It leaves your bag now and comes back in a week if nobody buys it.
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               <button onClick={onSellConfirm} disabled={sellBusy}

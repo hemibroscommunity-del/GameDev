@@ -98,7 +98,37 @@ import { SHOP_ITEMS } from './data.js';
    field check in `_stCreateListing` went -- see the note there). */
 
 export const STORE = {
-  LISTING_EXPIRY: 86400000,   // 24h, same as the order book's listings
+  /* ═══ v2.3.2619: ONE WEEK, FIXED. NOT A CHOICE. ═══
+   * Owner: "don't mess with different duration settings but keep it at one
+   * week. I don't see the point of listing something for a shorter time than
+   * that." There is no dropdown, no per-listing value and no duration on the
+   * wire -- the server never reads one, so there is nothing to validate.
+   *
+   * THE SWEEP ARITHMETIC, because a 7x lifetime looks like 7x the sweep load
+   * and is the opposite. Expiries are spread over the lifetime, so a longer
+   * one thins them out. At a FULL shelf (MAX_GLOBAL 2000) the expiries due in
+   * one SWEEP_INTERVAL (60s) are 2000 x 60/T:
+   *     T = 24h   ->  1.39 per pass   (SWEEP_MAX 20 = 14x headroom)
+   *     T = 7d    ->  0.198 per pass  (SWEEP_MAX 20 = 101x headroom)
+   * So SWEEP_INTERVAL, SWEEP_MAX and the bounded pass all hold with room to
+   * spare, and the scan itself is an in-memory walk of at most MAX_GLOBAL.
+   *
+   * WHAT DOES TIGHTEN IS THROUGHPUT, and this is the real cost of the change.
+   * Steady-state population = listing rate x lifetime, and MAX_GLOBAL caps it
+   * at 2000, so the sustainable rate of NEW listings falls 7x:
+   *     T = 24h   ->  ~2000 new listings/day before the shelf is full
+   *     T = 7d    ->  ~286 new listings/day
+   * Past that, _stCreateListing answers "Store is full". With MAX_PER_PLAYER
+   * 10 that is ~200 players simultaneously holding every slot, which is far
+   * beyond the current player base -- but it is the number to raise
+   * (MAX_GLOBAL) if the shelf ever starts refusing sellers, NOT the lifetime.
+   *
+   * LISTINGS ALREADY LIVE UNDER THE 24h RULE ARE UNAFFECTED and need no
+   * migration: `expiresAt` is computed at creation and STORED per record, so
+   * an existing listing keeps the expiry it was given and retires on its own
+   * 24h schedule. Only listings created after this deploy run a week. Nothing
+   * is stranded and nothing is extended retroactively. */
+  LISTING_EXPIRY: 604800000,  // 7 days, fixed
   MAX_PER_PLAYER: 10,         // ...and the same per-player ceiling
   MAX_GLOBAL: 2000,           // hard bound on the rebuild's list() (rule 9)
   SWEEP_INTERVAL: 60000,
