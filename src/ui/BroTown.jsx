@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2213: the crit preview hook uses the real crit colour */
 import { shopBus } from './mobile/shopBus.js';   /* v2.3.2050: Shopkeeper Bro's window */
+import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js'; /* v2.3.2618 */
 import { uiBusyBus } from './mobile/uiBusyBus.js'; /* v2.3.2085: tell chrome outside this tree to stand aside */
 import { zonePlayerScale } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve */
 import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
@@ -721,7 +722,7 @@ function _spawnTownNpcs() {
      NPC") — two men did one job and only Diego had any stock. His NPC_DATA
      record went with him, so this is not a dormant entry waiting to be
      re-enabled; see the note at the end of NPC_DATA. */
-  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Diego', 'Lil Bro']; /* v2.3.1775 */
+  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Diego', 'Lil Bro', 'Ace']; /* v2.3.1775; + Ace v2.3.2617 */
 /* v2.3.2305: hoisted out of the frame loop, where it was a local `var` that a
    tap handler could not reach. Both doors into an NPC -- walking up to him and
    tapping him -- now measure reach with the SAME number instead of one of them
@@ -5878,6 +5879,17 @@ export var BroTown = function BroTown(_ref0) {
             if (_pOk && _pq) {
               S._npcProxLatch = { npc: _pn, ready: _pqReady };
               setQuestPanel({ npc: _pn.name, quest: _pq.quest, status: _pq.status, npcRef: _pn });
+            /* v2.3.2620: ACE IS TAP-ONLY, and deliberately not here.  He had a
+               proximity opener like the two above (v2.3.2618); the owner asked
+               for "you have to tap on the joker to open up his dialog window".
+               The difference between him and a shopkeeper is that his window is
+               a BET: walking past a man who takes your gold should not put the
+               stake screen in front of you, and the plaza anchor he stands on
+               (gameDisplay.js, 228px from spawn) is walked across, not visited.
+               Said out loud rather than silently deleted, because the obvious
+               "fix" later is to add him back to this chain for consistency with
+               Diego -- that consistency is the thing the owner rejected.
+               His door is the tap handler's `npc.flip` branch. */
             } else if (_pOk && _pn.shop && !shopBus.open) {
               /* v2.3.2050: walking up to a shopkeeper opens his window, the
                  same proximity gate a quest giver uses -- _pOk already means
@@ -8587,6 +8599,16 @@ export var BroTown = function BroTown(_ref0) {
       S._npcProxLatch = { npc: npc, ready: _npcQuestReady(S, npcQ) };
       setQuestPanel({ npc: npc.name, quest: npcQ.quest, status: npcQ.status, npcRef: npc });
       return _mark('quest');
+    }
+    if (npc.flip) {
+      /* v2.3.2620: Ace's ONLY door (the proximity opener was removed -- see the
+         note in the frame loop).  And with no loop opener left to suppress, the
+         latch this used to arm is gone with it: the latch exists solely to stop
+         the per-frame opener re-firing, so arming it here now would do nothing
+         for Ace and would quietly suppress DIEGO's proximity window while you
+         stand next to Ace. */
+      try { aceFlipBus.setStake(0); aceFlipBus.setOpen(true); } catch (_e) {}
+      return _mark('flip');
     }
     if (npc.shop) {
       /* The latch matters here too: without it the per-frame proximity
