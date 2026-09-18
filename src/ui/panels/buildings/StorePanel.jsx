@@ -3,6 +3,7 @@ import { CATEGORIES } from '@/ui/mobile/dash/bagFilterBus.js';
 import { thumbFor, iconFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { armorIconFor, gearIdIcon } from '@/rendering/gearVariants.js'; /* v2.3.2531: gear listing art */
 import { storeBrowse, storeMine, storeBuy, storeBid, storeAccept, storeCancel, storeEnabled, storeMyId } from '@/ui/storeApi.js';
+import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';   /* v2.3.2618: "List an Item" opens the bag, which is where selling starts */
 
 /* === StorePanel — buildingPanel === 'store' ===================== v2.3.2476
  *
@@ -125,6 +126,23 @@ function listingArt(l) {
   return <span style={{ fontSize: 20, lineHeight: '38px' }}>{iconFor(key)}</span>;
 }
 
+/* ═══ v2.3.2618: HOW LONG THIS ONE HAS LEFT ═══
+ * The mockup puts "17h left" on every row, and the worker has always sent
+ * `expiresAt` (_stPublic, server/src/store.js) -- nothing new on the wire.
+ * Rendered from the server's timestamp rather than from a duration the
+ * client works out for itself, so a listing made before a server restart
+ * still reads correctly.
+ * Red under an hour, which is the mockup's own treatment of "2h left". */
+function timeLeft(expiresAt) {
+  const ms = (Number(expiresAt) || 0) - Date.now();
+  if (!(ms > 0)) return { text: 'expiring', urgent: true };
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return { text: mins + 'm left', urgent: true };
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return { text: hrs + 'h left', urgent: hrs < 2 };
+  return { text: Math.floor(hrs / 24) + 'd ' + (hrs % 24) + 'h left', urgent: false };
+}
+
 function prettyName(l) {
   const n = (l.disp && l.disp.name) || 'Item';
   if (l.kind === 'weapon' || l.kind === 'gear') return n;
@@ -157,9 +175,45 @@ function subtitle(l) {
   return (l.qty > 1 ? l.qty + ' of them' : 'One') + ' · ' + (l.cat || 'item');
 }
 
+/* ═══ v2.3.2618: THE PER-PLAYER CEILING, SHOWN ═══
+ * STORE.MAX_PER_PLAYER (server/src/store.js) has been 10 since the store
+ * shipped -- the owner's "max listings at one time per player 10 to start
+ * with" was ALREADY the value, so nothing changed for it. What was missing
+ * is that a player had no way to know the ceiling existed until the worker
+ * refused their eleventh listing. Mirrored here for display ONLY: the server
+ * enforces it, this just says what it is, and a drift shows up as a wrong
+ * caption rather than as a wrong refusal. */
+const MAX_PER_PLAYER = 10;
+
+/* The mockup's empty state: a sentence, a hint, and the way out of it.
+ * "List an Item" cannot list anything by itself -- selling starts from the
+ * bag's item card (ItemDetailPopup -> Sell), which is the only place that
+ * knows WHICH thing you mean -- so the button takes you there rather than
+ * opening a second sell flow that would have to be kept in step with it. */
+function emptyState(line, hint, onList) {
+  return (
+    <div style={{ padding: '18px 8px 8px', textAlign: 'center' }}>
+      <div style={{ fontSize: 13, color: LS.txt2, marginBottom: 4 }}>{line}</div>
+      <div style={{ fontSize: 11, color: LS.txt3, marginBottom: 14, lineHeight: 1.45 }}>{hint}</div>
+      {onList ? (
+        <button type="button" onClick={onList}
+          style={{
+            minHeight: 44, padding: '0 20px', fontSize: 13, fontWeight: 700, borderRadius: 10,
+            border: 'none', background: LS.brass, color: LS.onBrass, fontFamily: 'inherit',
+            cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+          }}>+ List an Item</button>
+      ) : null}
+    </div>
+  );
+}
+
 export function StorePanel(props) {
   const rpgState = props.rpgState || {};
   const [tab, setTab] = useState('shelf');
+  /* v2.3.2618: the mockup's YOUR LISTINGS screen is two tabs, not two
+     stacked sections -- on a 360 phone the "Your bids" heading sat below
+     the fold whenever you had more than two things up for sale. */
+  const [mineTab, setMineTab] = useState('listings');
   const [cat, setCat] = useState('all');
   const [rows, setRows] = useState([]);
   const [mine, setMine] = useState([]);
@@ -171,6 +225,13 @@ export function StorePanel(props) {
   const [bidText, setBidText] = useState('');
   const myId = storeMyId();
   const enabled = storeEnabled();
+
+  /* v2.3.2618: leave the store and land on the bag, open. Selling starts
+     from an item card, so this is a way THERE, not a second sell flow. */
+  const goList = useCallback(() => {
+    if (props.setBuildingPanel) props.setBuildingPanel(null);
+    try { dashboardPanelBus.open('bag'); } catch (e) { /* bus absent in a bare render */ }
+  }, [props]);
 
   const refresh = useCallback(async (which) => {
     if (!enabled) return;
@@ -218,6 +279,7 @@ export function StorePanel(props) {
     const isMine = l.sellerId === myId;
     const top = l.topBid;
     const minBid = (top ? top.amount + 1 : 1);
+    const left = timeLeft(l.expiresAt);
     return (
       <div key={l.id} style={{
         display: 'flex', alignItems: 'center', gap: 9, padding: '8px 9px',
@@ -232,9 +294,18 @@ export function StorePanel(props) {
             {prettyName(l)}{l.kind !== 'weapon' && l.kind !== 'gear' && l.qty > 1 ? ' ×' + l.qty : ''}
           </div>
           <div style={{ fontSize: 11, color: LS.txt3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtitle(l)}</div>
-          <div style={{ fontSize: 11, color: LS.txt3, marginTop: 2 }}>
-            {mineView ? 'Yours' : 'From ' + (l.sellerName || 'someone')}
-            {top ? ' · top bid ' + top.amount + 'g (' + (top.name || 'someone') + ')' : ' · no bids'}
+          {/* v2.3.2618: the mockup's two lower lines -- who is selling it,
+              then the clock and the top bid together. Split because the
+              seller line is about to carry their icon (and a chat button)
+              and the clock is not part of that. */}
+          <div style={{ fontSize: 11, color: LS.txt3, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {mineView ? 'Yours' : 'Seller: ' + (l.sellerName || 'someone')}
+          </div>
+          <div style={{ fontSize: 11, marginTop: 1, display: 'flex', gap: 8, alignItems: 'baseline' }}>
+            <span style={{ color: left.urgent ? LS.bad : LS.txt3 }}>{'\u{1F551} ' + left.text}</span>
+            <span style={{ color: LS.txt3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {top ? 'Top bid: ' + top.amount + 'g' : 'No bids'}
+            </span>
           </div>
         </div>
         <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
@@ -249,8 +320,11 @@ export function StorePanel(props) {
             : isMine
               ? <span style={{ fontSize: 11, color: LS.txt3 }}>Yours</span>
               : (
-                <div style={{ display: 'flex', gap: 5 }}>
-                  {pill('Buy', 'primary', () => act(() => storeBuy(l.id), 'Bought for ' + l.askPrice + ' gold'), busy)}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'stretch' }}>
+                  {/* v2.3.2618: "Buy 500g", not "Buy" -- the mockup puts the
+                      price ON the button, and a Buy whose cost you have to
+                      read off another line is how you tap one by accident. */}
+                  {pill('Buy ' + l.askPrice + 'g', 'primary', () => act(() => storeBuy(l.id), 'Bought for ' + l.askPrice + ' gold'), busy)}
                   {pill('Bid', 'quiet', () => { setBidFor(bidFor === l.id ? null : l.id); setBidText(String(minBid)); }, busy)}
                 </div>
               )}
@@ -288,25 +362,39 @@ export function StorePanel(props) {
               {CATEGORIES.map((c) => chip(cat === c.id, c.label, () => setCat(c.id), c.id))}
             </div>
             {shelf.length === 0
-              ? <div style={{ fontSize: 12, color: LS.txt3, padding: '10px 2px' }}>
-                  Nothing here yet. Open your bag, tap something and choose Sell to be the first.
-                </div>
+              ? emptyState(
+                  cat === 'all' ? 'Nothing is for sale right now.' : 'Nothing in this category right now.',
+                  cat === 'all' ? 'Be the first — open your bag, tap something and choose Sell.'
+                                : 'Try another category, or put one up yourself.',
+                  goList)
               : shelf.map((l) => row(l, false))}
           </>
         )}
 
         {tab === 'mine' && (
           <>
-            <div style={MOD}>Up for sale</div>
-            {mine.length === 0
-              ? <div style={{ fontSize: 12, color: LS.txt3, padding: '2px 2px 10px' }}>Nothing of yours is listed.</div>
-              : mine.map((l) => row(l, true))}
-            <div style={{ ...MOD, marginTop: 10 }}>Your bids</div>
-            {bidding.length === 0
-              ? <div style={{ fontSize: 12, color: LS.txt3, padding: '2px 2px' }}>
-                  You have no bids standing. Your gold is only held while your bid is the top one.
-                </div>
-              : bidding.map((l) => row(l, false))}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+              {chip(mineTab === 'listings', 'My Listings', () => setMineTab('listings'), 'm-list')}
+              {chip(mineTab === 'bids', 'My Bids', () => setMineTab('bids'), 'm-bids')}
+            </div>
+            {mineTab === 'listings' && (
+              mine.length === 0
+                ? emptyState(
+                    "You're not selling anything yet.",
+                    'Open your bag, tap something and choose Sell.',
+                    goList)
+                : <>
+                    <div style={MOD}>{mine.length + ' of ' + MAX_PER_PLAYER + ' slots used'}</div>
+                    {mine.map((l) => row(l, true))}
+                  </>
+            )}
+            {mineTab === 'bids' && (
+              bidding.length === 0
+                ? emptyState(
+                    'You have no bids standing.',
+                    'Your gold is only held while your bid is the top one.')
+                : bidding.map((l) => row(l, false))
+            )}
           </>
         )}
 
