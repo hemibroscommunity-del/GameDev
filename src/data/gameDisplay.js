@@ -2832,6 +2832,24 @@ BT_AUDIO.SFX_MANIFEST = {
      entry here, which is what satisfies the animation/asset preloading law
      -- no lazy first-use fetch on the frame a coin is grabbed. */
   'coin-pickup':   '/sfx/loot/coin-pickup.mp3',
+  /* v2.3.2621: the owner's coin-flip clip, for Ace's toss.  It REPLACES the
+     pitched-up borrow of coin-pickup that v2.3.2620 used as a stand-in -- see
+     AceFlipPanel's TOSS_* constants, which were written to make exactly this
+     swap a two-line change.  Trimmed at the play site rather than on disk
+     (offset/duration): the source is 1.224s but everything audible lands in
+     the first ~0.70s and the rest is silence, and the manifest's own footstep
+     and mine-strike rows set the precedent for isolating a clip's useful
+     seconds at the call. */
+  'coin-flip':     '/sfx/loot/coin-flip.mp3',
+  /* v2.3.2623: the owner's WIN and LOSE stings for Ace's result (both flips,
+     gold and items).  They replace BT_AUDIO.collect() and a sawtooth beep --
+     collect() is the gold-pickup sound the whole game uses, so the payout was
+     indistinguishable from walking over a coin pile.  Trimmed at the call like
+     coin-flip above: the marimba runs 2.54s but is done at ~1.55s, the negative
+     sting runs 1.49s and is done at ~0.65s; neither has any lead-in, so both
+     start at offset 0 and the verdict lands on the first frame of sound. */
+  'flip-win':      '/sfx/loot/flip-win.mp3',
+  'flip-lose':     '/sfx/loot/flip-lose.mp3',
   /* ═══ v2.3.2591: THE LEVEL-UP STING (owner art) ═══
      Owner: "a new level up notification ... the first is an audio that should
      play simultaneously with the level up display."  Played by
@@ -4087,6 +4105,120 @@ export const NPC_DATA = [{
     'My bro says the meadow’s got slimes.',
     'One day I’m gonna be a real adventurer.',
     'Did you see the fountain? It’s got FISH. Probably.',
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  /* ═══ v2.3.2617: ACE THE GAMBLER, ON THE PLAZA ═══
+     Owner supplied a walk sheet as a VIDEO and asked for the eight directions
+     off it.  tools/import_npc_walk_video.py cut them; this is where he stands.
+
+     HIS PLATE READS "Ace" OVER "Gambler" (owner: "Also call him the
+     gambler").  Same shape as Diego's, and the same reason it is the ROLE
+     line that carries it rather than the name: `name` is load-bearing --
+     getNpcQuest keys on it and ACTIVE_NPCS in BroTown.jsx must contain it --
+     while `plateRole` is presentation only, the gold sub-line entityRenderer
+     passes to _updateNamePill.  So "also call him X" is a plateRole edit, and
+     costs nothing.  He shipped for about an hour as "Card Sharp"; the id
+     below and the art filenames still say cardsharp, which is deliberate --
+     renaming files to chase a subtitle churns the diff for no gain, and
+     nothing user-facing reads either one.
+
+     HIS ART ONLY HAS THREE CAMERA ANGLES.  The sheet carries front, right
+     profile and back -- no 3/4 views at all -- so `walk` below names eight
+     files of which several are the same picture: the diagonals all borrow the
+     PROFILE, mirrored for the western half.  That is the importer's
+     DIAG_FROM decision and the reasoning is written down there; the short of
+     it is that a moving figure is read left-versus-right first, so a profile
+     gets all six non-vertical facings right about the thing players notice,
+     where borrowing front/back would get all six wrong.  It is also why this
+     entry needs no renderer change: eight names is eight names whether or not
+     the files behind them are distinct.
+
+     POSITION: (710, 1240), the open plaza south of the fountain.  He gets NO
+     thematic anchor, and that is a finding rather than a shrug: the obvious
+     move was to stand him outside the GAMBLING DEN, and the den DOES NOT EXIST
+     AS ART.  TOWN_BUILDINGS' gambler row is a collision rectangle whose own
+     header says the rectangles "don't have to line up with the town image",
+     town_v17.webp is a bare cobble plaza with no buildings painted into it at
+     all, and every building a player can actually see is a prop in
+     worldProps.js -- a list that has a mayor's house, a forge, a general
+     store, a fountain, a market stall, a bank and an enchanter, and no den.
+     Placing him on that rectangle would have parked him in empty cobble next
+     to nothing, with a comment here claiming he was outside a building.  He
+     works the crowd on the plaza instead, which is what the town can show.
+
+     MEASURED, NOT EYEBALLED, against town_v17.walk.json AND the prop list --
+     the wander step in BroTown.jsx clamps to the town bounds but does NOT test
+     walkability, so an anchor whose ring crosses solid ground walks him into it:
+       * 100% walkable on a 100px disc (108 sample points, all open);
+       * 228px from TOWN_SPAWN (910, 1130), clear of the NPC_PROX_CLEAR +
+         pathRadius = 225 that TRAPS §36 wants between a spawn and a
+         townsfolk's ring -- nobody lands already talking to him;
+       * 297px from the nearest other NPC, so no two rings overlap;
+       * 200px from the nearest prop (lamp-plaza-w), and his ring clears every
+         other prop's footprint -- the FIRST anchor tried, (1220, 700), was
+         inside the general store's 190px span at (1290, 800) and drew him
+         standing in the shopfront;
+       * 309px from the World View trail-head at tile (25, 48), whose reach is
+         two tiles, so his ring stops ~145px short of the exit and he never
+         loiters on a zone trigger.
+     Only nine anchors in the whole town satisfy all of that; this is the one
+     of them closest to spawn, so a new player actually meets him.
+
+     NAME: 'Ace'.  Checked against QUEST_CHAINS before choosing it -- getNpcQuest
+     keys on the NPC's NAME, so reusing 'Trader Tix', 'Scout', 'Enchantress',
+     'Healer Luna', 'Beastmaster Kai' or 'Veteran Ash' would silently switch a
+     dormant chain on and hang a '!' over a man who has nothing to say.  'Ace'
+     appears in none of them, so he stays questless.  The SAME trap is
+     documented on Diego and Blacksmith Bro; a rename here has to repeat the
+     check, and has to move ACTIVE_NPCS in BroTown.jsx with it or he stops
+     ticking entirely. */
+  id: 'card_sharp',
+  name: 'Ace',
+  /* The south strip. `sprite` is what npcSpriteScale keys on and what the
+     preloader lists; the renderer binds a sliced FRAME, never this strip. */
+  sprite: '/sprites/npc/cardsharp-bro-walk-south.webp',
+  /* Cropped from his own south frame by the importer, so the face in the
+     dialogue chip cannot drift from the man outside the den. */
+  portrait: '/sprites/npc/cardsharp-bro-head.webp',
+  walk: {
+    base: '/sprites/npc/cardsharp-bro-walk-',
+    frames: 4,
+    dirs: ['south', 'southwest', 'west', 'northwest',
+      'north', 'northeast', 'east', 'southeast'],
+  },
+  avatar: '🃏',
+  color: '#3E9B4F',
+  plateRole: 'Gambler',
+  /* v2.3.2618: walking up to him opens his coin flip, the same proximity
+     door Diego's `shop` uses (BroTown.jsx) -- and the same latch, so closing
+     it while still standing on him does not get one straight back. */
+  flip: true,
+  x: 710, y: 1240,
+  spawnX: 710, spawnY: 1240,
+  renderX: 710, renderY: 1240,
+  hp: 100, maxHp: 100,
+  noHp: true,          /* a gambler in a safe town; a health bar reads as "fight this" */
+  alive: true,
+  respawnAt: 0,
+  /* 100, not Lil Bro's 130: the measurement above holds on a 100px disc, and
+     the plaza's clean gap between the fountain, the lamp and the market stall
+     is not wide enough to give him more without crossing one of them. */
+  pathRadius: 100,
+  moveTimer: 0,
+  targetX: 710, targetY: 1240,
+  chatTimer: 9000,
+  chatBubble: null,
+  /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
+  phrases: [
+    'Pick a card. Any card. No, not that one.',
+    'The house always wins, bro. I am the house.',
+    'Lost my hat in a bet once. Won it back twice.',
+    'Luck is a skill. Mostly.',
   ],
   canFollow: false,
   followZones: [],

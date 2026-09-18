@@ -151,6 +151,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
           w: +l.getBoundingClientRect().width.toFixed(1),
           h: +l.getBoundingClientRect().height.toFixed(1),
           pts: l.querySelectorAll('[aria-label*="points to spend"]').length,
+          /* v2.3.2620: ...and the other reading, what this category has
+             already BOUGHT.  Always drawn (the "to spend" line is hidden at
+             zero), so a category with 40 points in it never looks identical
+             to an untouched one. */
+          applied: l.querySelectorAll('[aria-label*="points applied"]').length,
+          appliedText: (() => { const a = l.querySelector('[aria-label*="points applied"]');
+            return a ? (a.textContent || '').trim() : null; })(),
           overflowX: gb.width - g.scrollWidth,
         })),
       };
@@ -166,6 +173,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${label}: every category still carries its ", level N" aria-label`,
       !!grid && grid.lanes.every((l) => /, level \d+$/.test(l.label || '')),
       grid && grid.lanes.map((l) => l.label));
+    rec.ok(`${label}: ...and every category also says how many points are already IN it (v2.3.2620)`,
+      !!grid && grid.lanes.every((l) => l.applied === 1 && /^\d+ SPENT$/.test(l.appliedText || '')),
+      grid && grid.lanes.map((l) => `${l.key}:${l.appliedText}`));
     await P.page.screenshot({ path: `${OUT}/catgrid-${label}-grid.png` });
 
     /* ── DRILL IN, WITH A REAL FINGER ── */
@@ -266,6 +276,60 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     rec.ok(`${label}: every [+] keeps the "N of M" aria-label mp-prog3 parses`,
       !!card && card.labels.every((l) => / \d+ of \d+\./.test(l || '')), card && card.labels);
+
+    /* ═══ v2.3.2620: THE ROW SAYS WHAT IS ALREADY IN THE STAT ═══
+       Owner: "make it so that the current points applied to skills is shown on
+       the points panel."  Nothing on this screen said it before — v2.3.2597
+       moved the stat values out to the confirm and v2.3.2599 took the
+       point-landed orb, and the ALLOCATION itself was never on the cell in any
+       version, only in the aria-label and inside the per-stat window.
+       Asserted against the [+]'s own "N of M", not against a number this file
+       computes: the printed count and the cap the button refuses at have to be
+       the same pair, or the row explains a grey [+] with the wrong number. */
+    const applied = await P.page.evaluate(() => {
+      const c = document.querySelector('[data-prog3-card]');
+      if (!c) return null;
+      return [...c.querySelectorAll('[data-prog3-row]')].map((r) => {
+        const el = r.querySelector('[data-prog3-applied]');
+        const plus = r.querySelector('[data-prog3-plus]');
+        const m = /(\d+) of (\d+)\./.exec((plus && plus.getAttribute('aria-label')) || '');
+        const er = el && el.getBoundingClientRect(), br = plus && plus.getBoundingClientRect();
+        const ir = r.querySelector('img') && r.querySelector('img').getBoundingClientRect();
+        return { k: r.getAttribute('data-prog3-row'),
+          text: el ? (el.textContent || '').replace(/\s+/g, '') : null,
+          want: m ? m[1] : null,
+          /* v2.3.2621: WHERE it is, not just that it exists -- "to the left of
+             the plus sign" is half of what was asked for, and an element that
+             satisfies the text check while sitting under the label satisfies
+             nothing.  Between the icon and the [+], both edges. */
+          leftOfPlus: !!(er && br) && er.right <= br.left + 0.5,
+          rightOfIcon: !!(er && ir) && er.left >= ir.right - 0.5 };
+      });
+    });
+    rec.ok(`${label}: every stat row prints the points already applied to it`,
+      !!applied && applied.length === 6 && applied.every((a) => a.text && /^\d+$/.test(a.text)),
+      applied);
+    /* ═══ v2.3.2621: ZEROS ARE DRAWN ═══
+       Owner: "zeros if there are zeroes."  The load-bearing half: an untouched
+       stat prints `0` rather than a blank or a hidden element, because a column
+       of numbers with holes in it reads as a broken readout and the zeros are
+       the answer to "which of these have I never touched".  A fresh card is all
+       zeros, so this is the case that would have shipped broken. */
+    rec.ok(`${label}: ...including the ZEROS — an untouched stat prints 0, visibly, not a blank`,
+      !!applied && applied.filter((a) => a.text === '0').length > 0
+        && applied.every((a) => a.text !== ''),
+      applied && applied.map((a) => `${a.k}=${a.text}`));
+    rec.ok(`${label}: ...and it sits between the icon and the [+], which is where it was asked for`,
+      !!applied && applied.every((a) => a.leftOfPlus && a.rightOfIcon), applied);
+    rec.ok(`${label}: ...and it is the [+]'s own "N of M" — the printed count and the button's gate cannot drift`,
+      !!applied && applied.every((a) => a.text === a.want), applied);
+    /* The tile and the card are two readouts of one number, computed in two
+       places (laneSpent sums the meta rows; each row reads its own stat), so
+       they are checked against each other rather than each against itself. */
+    const tileSpent = Number(((grid && grid.lanes.find((l) => l.key === 'bow') || {}).appliedText || '').split(' ')[0]);
+    const rowsSpent = (applied || []).reduce((n, a) => n + Number(a.text || 0), 0);
+    rec.ok(`${label}: the BOW tile's total is exactly the sum of the BOW card's rows`,
+      Number.isFinite(tileSpent) && tileSpent === rowsSpent, { tileSpent, rowsSpent, rows: (applied || []).map((a) => a.text) });
     /* ═══ THE CARD'S [i] EXPLAINS THE CATEGORY ═══
        Ported from mp-prog3, whose four-column accordion block retires with the
        layout it tested.  This is not the per-stat glyph v2.3.2595 removed: it
@@ -370,6 +434,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${label}: ...and the other two weapon lanes did not move`,
         !!spent.ok && (n.poolBy || {}).sword === (b4.poolBy || {}).sword && (n.poolBy || {}).staff === (b4.poolBy || {}).staff,
         { before: b4.poolBy, after: n.poolBy });
+      /* ═══ v2.3.2620: AND THE ROW SHOWS IT ═══
+         v2.3.2599 said this out loud when it removed the orb: "a spent point
+         now changes NOTHING visible on the row — the only confirmation is the
+         now -> after line inside the window, before you commit."  The applied
+         count is that confirmation, so it is asserted where the spend happens:
+         the row the point went into reads one higher, and — the half that
+         catches a readout wired to the wrong lane or the wrong stat — no other
+         row moved at all. */
+      await P.page.waitForTimeout(500);
+      const after1 = await P.page.evaluate(() => {
+        const c = document.querySelector('[data-prog3-card]');
+        if (!c) return null;
+        return [...c.querySelectorAll('[data-prog3-row]')].map((r) => {
+          const el = r.querySelector('[data-prog3-applied]');
+          return { k: r.getAttribute('data-prog3-row'), text: el ? (el.textContent || '').replace(/\s+/g, '') : null };
+        });
+      });
+      const b4Row = (applied || []).find((a) => a.k === (after1 || [{}])[0].k);
+      const moved = (applied || []).filter((a) => {
+        const now = (after1 || []).find((x) => x.k === a.k);
+        return now && now.text !== a.text;
+      });
+      rec.ok(`${label}: ...and the ROW the point went into now reads one higher (the feedback v2.3.2599 removed with the orb)`,
+        !!after1 && !!b4Row && moved.length === 1 && moved[0].k === b4Row.k
+          && Number(after1[0].text) === Number(b4Row.text) + 1,
+        { before: b4Row, after: after1 && after1[0], moved: moved.map((m) => m.k) });
     } else {
       await finger(P, '[data-infopopup-close]');
     }
@@ -479,7 +569,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const lab = r.querySelector('span'), img = r.querySelector('img');
         const plus = r.querySelector('[data-prog3-plus]');
         if (!lab || !img || !plus) return null;
-        const l = lab.getBoundingClientRect(), i = img.getBoundingClientRect(), b = plus.getBoundingClientRect();
+        /* v2.3.2621: the icon's RIGHT-HAND NEIGHBOUR is the applied count now,
+           not the [+] -- the owner asked for "the number on the cells to the
+           left of the plus sign", so the row is label / icon / count / [+].
+           The contract v2.3.2602 wrote is unchanged in meaning ("center the
+           icon between the label and the plus sign" = centre it in the space
+           it actually has), so it is measured against whatever sits either
+           side of the icon rather than against a hard-coded [+].  Measuring to
+           the [+] through an element that is in the way would report every row
+           as off-centre by the width of the count, which is a true measurement
+           of the wrong distance. */
+        const rightEl = img.nextElementSibling || plus;
+        const l = lab.getBoundingClientRect(), i = img.getBoundingClientRect();
+        const b = rightEl.getBoundingClientRect();
         const gapL = i.left - l.right, gapR = b.left - i.right;
         const min = parseFloat(getComputedStyle(r).columnGap) || 0;
         return { k: (r.getAttribute('data-prog3-row') || '').split(':').pop(),
