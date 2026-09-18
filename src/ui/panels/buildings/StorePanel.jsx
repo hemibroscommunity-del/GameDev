@@ -3,7 +3,8 @@ import { CATEGORIES } from '@/ui/mobile/dash/bagFilterBus.js';
 import { thumbFor, iconFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { armorIconFor, gearIdIcon } from '@/rendering/gearVariants.js'; /* v2.3.2531: gear listing art */
 import { storeBrowse, storeMine, storeBuy, storeBid, storeAccept, storeCancel, storeEnabled, storeMyId } from '@/ui/storeApi.js';
-import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';   /* v2.3.2618: "List an Item" opens the bag, which is where selling starts */
+import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
+import { PlayerIcon } from '@/ui/PlayerIcon.jsx';   /* v2.3.2620: the same icon the player list draws */   /* v2.3.2618: "List an Item" opens the bag, which is where selling starts */
 
 /* === StorePanel — buildingPanel === 'store' ===================== v2.3.2476
  *
@@ -298,8 +299,17 @@ export function StorePanel(props) {
               then the clock and the top bid together. Split because the
               seller line is about to carry their icon (and a chat button)
               and the clock is not part of that. */}
-          <div style={{ fontSize: 11, color: LS.txt3, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {mineView ? 'Yours' : 'Seller: ' + (l.sellerName || 'someone')}
+          {/* v2.3.2620: the seller's tiny icon, from the SAME component the
+              player list draws (PlayerIcon) rather than a second renderer.
+              18px: the row already carries four lines and a price column, and
+              this line has to stay one line at 360. */}
+          <div style={{ fontSize: 11, color: LS.txt3, marginTop: 2, display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+            {mineView ? null : (
+              <PlayerIcon name={l.sellerName} color={l.sellerColor} avatar={l.sellerAvatar} size={18} />
+            )}
+            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {mineView ? 'Yours' : 'Seller: ' + (l.sellerName || 'someone')}
+            </span>
           </div>
           <div style={{ fontSize: 11, marginTop: 1, display: 'flex', gap: 8, alignItems: 'baseline' }}>
             <span style={{ color: left.urgent ? LS.bad : LS.txt3 }}>{'\u{1F551} ' + left.text}</span>

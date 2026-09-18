@@ -229,11 +229,66 @@ export const storeMethods = {
      server will hand them, and shipping the blob is how a client learns to
      re-post it.  (The order book does ship it; that is its legacy shape,
      not a pattern to copy.) */
+  /* ═══ v2.3.2620: THE SELLER'S ICON, AND WHAT IT COSTS ═══
+   * Owner: "Add the players tiny icon (similar to how the player icons are
+   * displayed elsewhere in the game) next to their listing."
+   *
+   * Elsewhere in the game that icon is exactly two things (PlayerListPanel,
+   * InspectPlayerPanel): the player's `avatar` when they have one, and a
+   * coloured disc bearing the first letter of their name when they do not.
+   * `avatar` is a Hemi Bro NFT image URL and only VERIFIED HOLDERS have one,
+   * so the disc is the common case, not the fallback-of-last-resort.
+   *
+   * WHAT IS STORED AND WHAT IS NOT, which is the whole design:
+   *
+   *   sellerColor  IS stored on the record, like sellerName. Seven characters.
+   *                It is what the disc needs, and the disc is what most
+   *                listings will draw, so it has to survive the seller
+   *                logging off.
+   *   sellerAvatar IS NOT stored. It is resolved HERE, per projection, off
+   *                playerState the room already holds.
+   *
+   * That asymmetry is deliberate and it is about rule 9's second edge. An
+   * avatar URL runs 150-250 chars (join.js caps cosmetics at 512). Stored,
+   * that is up to 512 bytes x MAX_GLOBAL 2000 = ~1MB of listing records --
+   * and the wake-time rebuild pages through EVERY one of them with the input
+   * gate held (LOAD_PAGE 500, so ~250KB of avatar per page, read before the
+   * room answers anything). Resolving live costs no storage, no extra reads,
+   * and no rebuild weight at all.
+   *
+   * The cost it DOES have is honest: an offline seller's listing shows the
+   * disc instead of their Bro picture. That is the same fallback the player
+   * list already shows for the majority of players, so it degrades into
+   * something the game draws everywhere rather than into a hole.
+   *
+   * NOTHING NEW IS EXPOSED. name, color and avatar are already broadcast to
+   * every player in the room (TRACK_COSMETIC_KEYS, index.js) and rendered at
+   * each other by PlayerListPanel. This ships the same three fields to the
+   * same audience. No zone, no position, no id beyond the sellerId the panel
+   * already had for its "this one is yours" check. */
+  _stColor(v) {
+    /* A CSS colour that is about to be a `background` — bounded, and only
+       the shape the character creator actually produces. */
+    return (typeof v === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(v)) ? v : null;
+  },
+
+  _stAvatar(pid) {
+    const ps = this.playerState[pid];
+    const v = ps && ps.avatar;
+    if (typeof v !== 'string' || !v || v.length > 512) return null;
+    /* It lands in an <img src>. https: and same-origin only — stricter than
+       the relay path this value already travels on, because a new render
+       site is the wrong place to widen a trust boundary. */
+    return (v.startsWith('https://') || v.startsWith('/')) ? v : null;
+  },
+
   _stPublic(o) {
     return {
       id: o.id,
       sellerId: o.sellerId,
       sellerName: o.sellerName,
+      sellerColor: o.sellerColor || null,          /* v2.3.2620: stored, 7 chars */
+      sellerAvatar: this._stAvatar(o.sellerId),    /* v2.3.2620: resolved live, never stored */
       kind: o.kind,
       cat: o.cat,
       qty: o.qty,
@@ -510,6 +565,9 @@ export const storeMethods = {
       id,
       sellerId: playerId,
       sellerName: (typeof ps.name === 'string' && ps.name) ? ps.name.slice(0, 24) : (this._stNameOf(playerId) || 'Someone'),
+      /* v2.3.2620: snapshotted beside the name and for the same reason --
+         the disc has to keep working once the seller has logged off. */
+      sellerColor: this._stColor(ps.color),
       kind,
       invKey,
       weapon,
