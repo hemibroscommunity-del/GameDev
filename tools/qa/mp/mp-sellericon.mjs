@@ -25,14 +25,20 @@ const COACH_OFF = () => {
   } catch (e) { /* private mode */ }
 };
 
-const STORE_DOOR = { x: 1290, y: 855 };
+/* v2.3.2626: the door is read from worldProps.js now (H.doorOf), not
+   hand-copied here.  Six scenarios each carried their own copy of
+   {x:1290,y:855}; moving the auction house onto the plaza turned all six
+   red at once, every failure being the test standing on empty cobble.
+   H.doorOf also picks a cell you can actually STAND on -- the naive spot
+   below this building's anchor is inside lamp-plaza-e's footprint. */
 const PHONES = [
   { label: '360', portrait: { width: 360, height: 640 }, landscape: { width: 640, height: 360 } },
   { label: '390', portrait: { width: 390, height: 844 }, landscape: { width: 844, height: 390 } },
 ];
 
 async function openMarket(P) {
-  await H.hopTo(P, STORE_DOOR.x, STORE_DOOR.y);
+      const _door = await H.doorOf('auction-house');
+      await H.hopTo(P, _door.x, _door.y);
   await P.page.waitForTimeout(700);
   const box = await P.page.evaluate(() => {
     const el = document.querySelector('.bt-interact-prompt');

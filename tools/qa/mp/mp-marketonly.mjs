@@ -25,7 +25,12 @@
  */
 import * as H from './harness.mjs';
 
-const STORE_DOOR = { x: 1290, y: 855 };
+/* v2.3.2626: the door is read from worldProps.js now (H.doorOf), not
+   hand-copied here.  Six scenarios each carried their own copy of
+   {x:1290,y:855}; moving the auction house onto the plaza turned all six
+   red at once, every failure being the test standing on empty cobble.
+   H.doorOf also picks a cell you can actually STAND on -- the naive spot
+   below this building's anchor is inside lamp-plaza-e's footprint. */
 
 /* The names the vendor building must NO LONGER show. These are SHOP_ITEMS'
    display labels (VendorPanel.SHOP_STOCK keeps them as a record). */
@@ -72,7 +77,8 @@ const COACH_OFF = () => {
    Confirming a door by its sign is fine; the sign just has to be the
    current one. */
 async function openVendor(P) {
-  await H.hopTo(P, STORE_DOOR.x, STORE_DOOR.y);
+      const _door = await H.doorOf('auction-house');
+      await H.hopTo(P, _door.x, _door.y);
   await P.page.waitForTimeout(700);
   const box = await P.page.evaluate(() => {
     const el = document.querySelector('.bt-interact-prompt');

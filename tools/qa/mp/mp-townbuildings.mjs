@@ -103,13 +103,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 3. the town is still one place ──
      Spawn is west of every building; the far east end is past all of them.
-     Walking the whole way proves no building pair walled the plateau off. */
+     Walking the whole way proves no building pair walled the plateau off.
+
+     ═══ v2.3.2626: THIS THRESHOLD WAS FROM A MAP THAT NO LONGER EXISTS ═══
+     It asked for x > 2400.  Town has been 52x55 tiles -- 1664 world px wide --
+     since v2.3.1813 replaced the 96x30 map, so 2400 is off the right-hand edge
+     of the world and NO run of this test could ever have passed it.  It has
+     been quietly red on main the whole time, which is why it never caught
+     anything: a check that cannot pass is not a check.  (Same class as the
+     stale x values worldProps.js warns about at the top of this file.)
+
+     1400 is measured, not guessed: flood-filling town_v17.walk.json with every
+     prop footprint stamped on, the contiguous eastward run along y=800 reaches
+     x=1476, and the furthest reachable cell on that row is x=1497.  1400
+     leaves ~76px of slack for the player's own half-width and for the walk
+     timing out a fraction early, and is still well past every building on the
+     east flank, which is the thing this line is actually claiming.
+
+     It is worth knowing what the OLD position did to this row: with the
+     auction house in the north-east corner the same walk stopped at x=1182,
+     because its footprint sat across the route.  Moving it onto the plaza is
+     what opened it. */
   await put(P, 1050, 800);
   await P.page.waitForTimeout(300);
   await hold(P, 'd', 12000);
   const east = await pos(P);
   rec.ok('you can still walk the length of town past the new buildings',
-    east.x > 2400, { reached: east, from: 1050 });
+    east.x > 1400, { reached: east, from: 1050, mapWidth: 1664 });
 
   /* ── 4. the doors ──
      v2.3.823 disabled these prompts for want of art; the art shipped. */

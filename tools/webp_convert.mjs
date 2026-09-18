@@ -21,8 +21,19 @@
  * screenshots and other places where nothing samples exact RGB.
  * The gate is tools/qa/qa-webp-lossless.mjs; precheck runs it.
  *
- * WHY this exists: this sandbox can't install image tooling (npm + PyPI are
- * both firewalled, and the bundled Playwright ffmpeg is stripped of libwebp).
+ * ═══ v2.3.2626: THE PREMISE BELOW IS NOW STALE — CHECK BEFORE REACHING HERE ═══
+ * `pip install Pillow numpy` SUCCEEDS in this sandbox (verified 2026-09-18
+ * while resizing the Auction House art). Pillow decodes and encodes with
+ * STRAIGHT alpha, so it does not have the premultiplied-canvas problem this
+ * whole file is a workaround for, and it can write WebP directly. Prefer it.
+ * This tool is kept because it needs no install at all, but a fresh
+ * `pip install Pillow` is the better first move now. Same lesson as CLAUDE.md's
+ * note about `npm install`: a "blocked" claim that nobody re-tests outlives the
+ * block and quietly costs you the better tool.
+ *
+ * WHY this exists: this sandbox could not install image tooling (npm + PyPI
+ * were believed firewalled, and the bundled Playwright ffmpeg is stripped of
+ * libwebp).
  * The one image engine present is the pre-installed Chromium, whose <canvas>
  * can encode WebP. So we drive a headless Chromium at a tiny local page that
  * loads each source image, (optionally) downscales it on a canvas, re-encodes

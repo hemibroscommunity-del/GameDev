@@ -42,6 +42,62 @@ import { tmpdir } from 'node:os';
    scenario that catches "a new player cannot play the game" had never run
    there.  harness.mjs lives at tools/qa/mp/, so the repo root is three up. */
 export const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+
+/* ═══ v2.3.2626: A DOOR IS WHERE THE DATA SAYS IT IS ═══
+   Six scenarios each carried their own copy of `const STORE_DOOR = {x:1290,
+   y:855}`, hand-copied from worldProps.js.  Moving the auction house onto the
+   plaza turned all six red at once -- 67 assertions -- and every one of them
+   was the test standing on empty cobble 300px from a building that works.
+
+   A hard-copied coordinate is a second source of truth for a position that
+   already has one, so read the real table instead.  `+55` is the standing
+   spot: south of the prop's ground line, inside the 95px prompt radius that
+   buildingPropNear uses, which is the same offset mp-townbuildings derives
+   its doors with.
+
+   Scenarios import this at module scope; worldProps.js is plain data with no
+   browser globals, so importing it in node is safe. */
+export async function doorOf(id, dy = 55) {
+  const m = await import(REPO + '/src/data/worldProps.js');
+  const p = m.propsForZone('town').find((q) => q.id === id);
+  if (!p) throw new Error('no town prop with id ' + id);
+  /* The naive answer -- straight down from the prop's ground line -- is not
+     always somewhere you can STAND.  lamp-plaza-e's footprint covers the cell
+     55px below the auction house's anchor, so a scenario aimed there walks
+     into a lamp post and reports "the door does not work".  So read the same
+     grid the game reads (town_v17.walk.json with every prop footprint stamped
+     on, exactly as stampPropFootprints does it) and return the closest
+     walkable cell to that ideal spot, still inside buildingPropNear's 95px. */
+  const TILE = 32, mw = 52 * TILE, mh = 55 * TILE;
+  let raw;
+  try {
+    raw = JSON.parse(await readFile(REPO + '/public/maps/town_v17.walk.json', 'utf8'));
+  } catch (e) {
+    return { x: p.x, y: p.y + dy };                       /* no mask: old behaviour */
+  }
+  const gw = raw.width, gh = raw.height;
+  const grid = raw.grid.map((r) => (typeof r === 'string' ? [...r].map((c) => c !== '0') : r.map(Boolean)));
+  for (const q of m.propsForZone('town')) {
+    const f = m.propFootprint(q);
+    if (!f) continue;
+    for (let gy = Math.max(0, Math.floor(f.y0 * gh / mh)); gy <= Math.min(gh - 1, Math.floor(f.y1 * gh / mh)); gy++)
+      for (let gx = Math.max(0, Math.floor(f.x0 * gw / mw)); gx <= Math.min(gw - 1, Math.floor(f.x1 * gw / mw)); gx++)
+        grid[gy][gx] = false;
+  }
+  const want = { x: p.x, y: p.y + dy };
+  let best = null;
+  for (let gy = 0; gy < gh; gy++) {
+    for (let gx = 0; gx < gw; gx++) {
+      if (!grid[gy][gx]) continue;
+      const wx = Math.round((gx + 0.5) * mw / gw), wy = Math.round((gy + 0.5) * mh / gh);
+      if (Math.hypot(wx - p.x, wy - p.y) >= 90) continue;          /* must raise the prompt */
+      const d = Math.hypot(wx - want.x, wy - want.y);
+      if (!best || d < best.d) best = { d, x: wx, y: wy };
+    }
+  }
+  if (!best) throw new Error('no walkable cell within the prompt radius of ' + id);
+  return { x: best.x, y: best.y };
+}
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png',
   '.webp': 'image/webp', '.mp3': 'audio/mpeg', '.json': 'application/json',

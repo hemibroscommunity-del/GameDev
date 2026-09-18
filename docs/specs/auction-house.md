@@ -522,7 +522,7 @@ Registered in `docs/ARCHITECTURE-HANDOFF.md` Part 1.
 
 ## Constants (`STORE`, `server/src/store.js`)
 
-24 h expiry · 10 listings per player · 2000 listings globally (the bound
+7 day expiry (fixed; v2.3.2619 — there is no duration control) · 10 listings per player · 2000 listings globally (the bound
 that keeps the rebuild's `list()` finite) · 60 s sweep interval, 20
 listings resolved per pass · browse page 20, capped at 40 · minimum bid
 increment 1 · maximum price 999,999.
