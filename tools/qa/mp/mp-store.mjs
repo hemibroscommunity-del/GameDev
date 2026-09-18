@@ -21,7 +21,12 @@ import * as H from './harness.mjs';
 
 /* The auction-house prop's own anchor (src/data/worldProps.js), and a
    standing spot in front of its door -- buildingPropNear() wants 95px. */
-const STORE_DOOR = { x: 1290, y: 855 };
+/* v2.3.2626: the door is read from worldProps.js now (H.doorOf), not
+   hand-copied here.  Six scenarios each carried their own copy of
+   {x:1290,y:855}; moving the auction house onto the plaza turned all six
+   red at once, every failure being the test standing on empty cobble.
+   H.doorOf also picks a cell you can actually STAND on -- the naive spot
+   below this building's anchor is inside lamp-plaza-e's footprint. */
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Shopper', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true });
@@ -103,7 +108,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ═══ 3. THE DOOR ═══ */
   await H.closeDest(P).catch(() => {});
   await P.page.waitForTimeout(400);
-  await H.hopTo(P, STORE_DOOR.x, STORE_DOOR.y);
+      const _door = await H.doorOf('auction-house');
+      await H.hopTo(P, _door.x, _door.y);
   await P.page.waitForTimeout(700);
   const near = await H.readState(P, (S) => S.nearBuilding);
   rec.ok('standing at the auction house raises the enter prompt', near !== null && near !== undefined, { near });

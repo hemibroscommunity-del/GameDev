@@ -91,9 +91,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
      two are the cheapest of the missing ten, because only the coordinates
      were stale.  The `oob` check below is the part that must never relax --
      it is what would have caught a careless re-enable. */
-  /* v2.3.2088 (owner: "Remove the banners and bench-e"): eleven now. */
-  const EXPECT = ['anvil', 'bank', 'bench-w', 'enchanter', 'forge', 'fountain',
-    'auction-house', 'lamp-plaza-e', 'lamp-plaza-w', 'market-stall', 'mayor-house'];
+  /* v2.3.2088 (owner: "Remove the banners and bench-e"): eleven now.
+     v2.3.2626: re-sorted.  This list is compared against a SORTED read of the
+     live props, and it was written alphabetically when the shop's id was
+     'general-store' -- sorting between 'fountain' and 'lamp-plaza-e'.
+     v2.3.2624 renamed it to 'auction-house', which sorts first, so the list
+     stopped matching itself while the game was entirely correct.  Renaming an
+     id moves it in every sorted list that names it. */
+  const EXPECT = ['anvil', 'auction-house', 'bank', 'bench-w', 'enchanter',
+    'forge', 'fountain', 'lamp-plaza-e', 'lamp-plaza-w', 'market-stall', 'mayor-house'];
   rec.ok(`the blueprint's props are all placed (${ids.length})`,
     JSON.stringify(ids) === JSON.stringify(EXPECT), { got: ids, want: EXPECT });
   /* The two that came back are DOORS, not scenery: their whole point is the

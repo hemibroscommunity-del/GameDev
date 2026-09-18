@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  ahshot: () => import('./mp-ahshot.mjs'), /* v2.3.2626: pictures of the Auction House art on the plaza, four viewports */
   listingoffer: () => import('./mp-listingoffer.mjs'), /* v2.3.2623: a real gold offer between two players -- escrowed on offer, settled on accept */
   listingdm: () => import('./mp-listingdm.mjs'), /* v2.3.2621: the chat icon on a listing, and a line typed by one player arriving on the other player's screen */
   sellericon: () => import('./mp-sellericon.mjs'), /* v2.3.2620: the seller icon on a listing, and the player list it was extracted from */
