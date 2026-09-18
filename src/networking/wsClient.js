@@ -2363,6 +2363,19 @@ export function setupWebSocket(ctx) {
                  the Shared column moves with the lane header, not a
                  player_state round-trip later. */
               if (S.rpg.prog3 && typeof p3l.shared === 'number') S.rpg.prog3.shared = p3l.shared;
+              /* v2.3.2620: the LANE pool and its channel breakdown, stamped the
+                 same way and for the same reason.  `pool` has ridden this event
+                 since v2.3.1660 and was never applied — so with `shared` landing
+                 here and `pool` waiting on the player_state flush, the unspent
+                 badge (pool + shared) moved in two visible steps on every
+                 level-up.  `poolBy` is new on the wire (v2.3.2620) and is what
+                 the per-lane counts read, so the Points grid's four tiles and
+                 the dashboard's combat badge now move on the same frame as the
+                 banner that announced the points.  Both are presence-gated: an
+                 older worker sends neither and the flush repairs it, exactly as
+                 before (rule 19). */
+              if (S.rpg.prog3 && typeof p3l.pool === 'number') S.rpg.prog3.pool = p3l.pool;
+              if (S.rpg.prog3 && p3l.poolBy && typeof p3l.poolBy === 'object') S.rpg.prog3.poolBy = p3l.poolBy;
               /* v2.3.1733: ...and name the MILESTONE, when this level crossed
                  one.  A new button appearing on the HUD with no explanation
                  is the same "level 13 doesn't feel different" problem in a

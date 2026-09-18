@@ -1041,6 +1041,18 @@ export const prog3Methods = {
                  headers move the moment the level lands.  Extra field on an
                  existing PRIVILEGED event — an old client ignores it. */
               shared: p3.shared,
+              /* v2.3.2620: ...and the CHANNEL breakdown with it, for the same
+                 reason and on the same terms (an extra field on a PRIVILEGED
+                 event; an old client ignores it).  `pool` and `shared` were
+                 already here while `poolBy` was not, which left the one readout
+                 that is PER LANE — the dashboard's combat badge, and the four
+                 tiles of the Points grid — waiting on the next player_state
+                 flush to learn which skill the points landed in.  The level-up
+                 celebration is exactly the moment a player goes looking for
+                 them, so the event that fires the celebration carries them.
+                 A copy, not the live object: prog3_allocated already sends
+                 `{ ...p3.poolBy }` for the same reason. */
+              poolBy: { ...(p3.poolBy || {}) },
               /* v2.3.1733: what THIS level unlocked, if anything, so the
                  level-up celebration can name it ("Shield Bash unlocked!")
                  instead of the player discovering a new button by accident.
