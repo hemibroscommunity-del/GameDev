@@ -36,7 +36,7 @@ export const WORLD_PROPS = [
        enchanter    70%, 33%   the north-east shelf, inside its fence
        forge        24%, 52%   west, clear of the cliff by ~60px of cobble
        auction-house 75%, 56%  east, facing the plaza across it
-       bank         60%, 82%   south, in what used to be empty ground
+       bank         78%, 71%   east, against the rocks, off the exit path
        fountain     44%, 66%   the middle, which is now a middle
 
      Percentages of the map, because that is what the layout renderer prints
@@ -393,7 +393,7 @@ export const WORLD_PROPS = [
      stall, and the north is the mayor's terrace. */
   {
     id: 'bank', zone: 'town', mapV: 17, sprite: '/sprites/props/bank.png',
-    x: 1306, y: 1889, worldH: 320, blockW: 220, blockD: 95,
+    x: 1697, y: 1636, worldH: 320, blockW: 220, blockD: 95,
     action: 'bank', label: 'BANK',
   },
   {

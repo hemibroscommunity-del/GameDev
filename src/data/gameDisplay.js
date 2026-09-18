@@ -3964,15 +3964,15 @@ export const NPC_DATA = [{
      with the scenery would silently delete onboarding rather than clear the
      map — a different thing from what "keep the buildings and NPCS removed"
      was asking for. */
-  x: 1177, y: 1021,   /* v2.3.2628: moved with town 52x55 -> 68x72 */
+  x: 1177, y: 1021,   /* v2.3.2628: moved with town 52x55 -> 68x72; v2.3.2629 moved the three OTHER copies of this position with it */
   /* v2.3.1794: MOVED WITH HIM.  The wander step steers an NPC toward
      spawnX/spawnY (pathRadius 0 means exactly that point, with no roaming), so
      leaving this at the old plaza spot spawned him outside his new house and
      then walked him back down the stairs over the next few seconds.  Caught by
      mp-townmap reading him at (985.3, 563.7) — the old coordinates, with the
      fractional drift of something mid-walk. */
-  spawnX: 900, spawnY: 780,   /* v2.3.1813: moves WITH x/y above — pathRadius 0 walks him to this exact point every frame, so leaving it behind drags him back to the old plaza */
-  renderX: 900, renderY: 780,   /* v2.3.1813: kept in step with x/y — these are the FIRST-FRAME draw position, and they were stale even against the previous (1055,300), so he popped across the plaza on frame one */
+  spawnX: 1177, spawnY: 1021,   /* v2.3.1813: moves WITH x/y above — pathRadius 0 walks him to this exact point every frame, so leaving it behind drags him back to the old plaza */
+  renderX: 1177, renderY: 1021,   /* v2.3.1813: kept in step with x/y — these are the FIRST-FRAME draw position, and they were stale even against the previous (1055,300), so he popped across the plaza on frame one */
   hp: 100, maxHp: 100,
   /* v2.3.1675 (owner: "remove his health bar he doesn't need one").  He is a
      quest giver in a safe town; a health bar over him reads as "fight this". */
@@ -3981,7 +3981,7 @@ export const NPC_DATA = [{
   respawnAt: 0,
   pathRadius: 0,
   moveTimer: 0,
-  targetX: 900, targetY: 780,   /* v2.3.1813: likewise — the initial wander target, before the first steer overwrites it */
+  targetX: 1177, targetY: 1021,   /* v2.3.1813: likewise — the initial wander target, before the first steer overwrites it */
   chatTimer: 8000,
   chatBubble: null,
   phrases: [
@@ -4084,9 +4084,9 @@ export const NPC_DATA = [{
      closest approach.  His circle still stops at x 1090, short of the bank's
      footprint at 1120, and at tile x 30 he is five tiles clear of the World
      View trail-head, whose reach is two. */
-  x: 1255, y: 1833,   /* v2.3.2628: moved with town 52x55 -> 68x72 */
-  spawnX: 960, spawnY: 1400,
-  renderX: 960, renderY: 1400,
+  x: 1255, y: 1833,   /* v2.3.2628: moved with town 52x55 -> 68x72; v2.3.2629 moved the three OTHER copies of this position with it */
+  spawnX: 1255, spawnY: 1833,
+  renderX: 1255, renderY: 1833,
   hp: 100, maxHp: 100,
   noHp: true,          /* a child in a safe town; a health bar reads as "fight this" */
   alive: true,
@@ -4096,7 +4096,7 @@ export const NPC_DATA = [{
      the disc above was measured over. */
   pathRadius: 130,
   moveTimer: 0,
-  targetX: 960, targetY: 1400,
+  targetX: 1255, targetY: 1833,
   chatTimer: 11000,
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
@@ -4198,9 +4198,9 @@ export const NPC_DATA = [{
      door Diego's `shop` uses (BroTown.jsx) -- and the same latch, so closing
      it while still standing on him does not get one straight back. */
   flip: true,
-  x: 928, y: 1623,   /* v2.3.2628: moved with town 52x55 -> 68x72 */
-  spawnX: 710, spawnY: 1240,
-  renderX: 710, renderY: 1240,
+  x: 928, y: 1623,   /* v2.3.2628: moved with town 52x55 -> 68x72; v2.3.2629 moved the three OTHER copies of this position with it */
+  spawnX: 928, spawnY: 1623,
+  renderX: 928, renderY: 1623,
   hp: 100, maxHp: 100,
   noHp: true,          /* a gambler in a safe town; a health bar reads as "fight this" */
   alive: true,
@@ -4210,7 +4210,7 @@ export const NPC_DATA = [{
      is not wide enough to give him more without crossing one of them. */
   pathRadius: 100,
   moveTimer: 0,
-  targetX: 710, targetY: 1240,
+  targetX: 928, targetY: 1623,
   chatTimer: 9000,
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
@@ -4272,9 +4272,9 @@ export const NPC_DATA = [{
      screen without touching anything, and the drawer covers the inspect
      card's actions (v2.3.2078). From the stall he is 532px away, and with
      the tighter radius below his drawer reaches only 130px. */
-  x: 562, y: 1780,   /* v2.3.2628: moved with town 52x55 -> 68x72 */
-  spawnX: 430, spawnY: 1360,
-  renderX: 430, renderY: 1360,
+  x: 562, y: 1780,   /* v2.3.2628: moved with town 52x55 -> 68x72; v2.3.2629 moved the three OTHER copies of this position with it */
+  spawnX: 562, spawnY: 1780,
+  renderX: 562, renderY: 1780,
   hp: 100, maxHp: 100,
   noHp: true,          /* a shopkeeper in a safe town; a health bar reads as "fight this" */
   alive: true,
@@ -4287,7 +4287,7 @@ export const NPC_DATA = [{
      rather than pacing the square. */
   pathRadius: 40,
   moveTimer: 0,
-  targetX: 430, targetY: 1360,
+  targetX: 562, targetY: 1780,
   chatTimer: 9000,
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
@@ -4366,16 +4366,16 @@ export const NPC_DATA = [{
      drawn in front of it (a higher y paints later), so he reads as standing
      AT it rather than behind it.  pathRadius stays 0 -- he is pinned, so this
      is the whole of his position and there is no wander ring to clear. */
-  x: 392, y: 1178,   /* v2.3.2628: moved with town 52x55 -> 68x72 */
-  spawnX: 300, spawnY: 900,
-  renderX: 300, renderY: 900,
+  x: 392, y: 1178,   /* v2.3.2628: moved with town 52x55 -> 68x72; v2.3.2629 moved the three OTHER copies of this position with it */
+  spawnX: 392, spawnY: 1178,
+  renderX: 392, renderY: 1178,
   hp: 100, maxHp: 100,
   noHp: true,
   alive: true,
   respawnAt: 0,
   pathRadius: 0,
   moveTimer: 0,
-  targetX: 300, targetY: 900,
+  targetX: 392, targetY: 1178,
   chatTimer: 11000,
   chatBubble: null,
   phrases: [

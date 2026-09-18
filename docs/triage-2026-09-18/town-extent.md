@@ -66,7 +66,7 @@ open, and the owner's new art on three of them.
 | enchanter | 70%, 33% | the north-east shelf, inside its fence |
 | forge | 24%, 52% | west, clear of the cliff by ~60px of cobble |
 | auction-house | 75%, 56% | east, facing the plaza across it |
-| bank | 60%, 82% | south, in what used to be empty ground |
+| bank | 78%, 71% | east of the fountain, against the rocks, off the exit path |
 | fountain | 44%, 66% | the middle, which is now a middle |
 
 **Prop sizes are unchanged.** A building is worth the same number of world px it
@@ -118,3 +118,46 @@ a resize in ways that did not mention a resize:
 - `townmap` **12/12**, `townbuildings` **12/12**, `marketonly` **68/68**, `store` **28/28** — real worker, real browser
 - `precheck` 0 FAIL, `npm run build` clean
 - `movespeed` and `arrowshot` each fail one assertion — **reproduced identically on `main`** in a clean worktree, so pre-existing and not this change
+
+
+## Follow-up: Mayor Bro in the cliff, and the bank on the exit path (v2.3.2629)
+
+> "Mayor bro needs to be moved off the rocks and the bank needs to be moved
+> further from the exit. Like directly east of the fountain but against the
+> rocks would be fine."
+
+### Mayor Bro was a bug in the resize, not a placement
+
+His anchor measured **100% cobble** on a 95px disc, so the data said he was
+fine — and in the game he was standing in the rock face. The reason is that
+`NPC_DATA` carries the position **four times**: `x/y`, `spawnX/spawnY`,
+`renderX/renderY` and `targetX/targetY`. v2.3.2628 scaled `x/y` for the bigger
+town and left the other three at their pre-resize values, for all five town
+NPCs.
+
+Mayor Bro has `pathRadius: 0`, which means the wander step steers him to
+`spawnX/spawnY` **every frame** — so he spawned at his new spot and then walked
+back to the old one, which after the resize is 41%, 34%: the cliff.
+
+The file's own v2.3.1813 comment describes this exact trap, three lines above
+the field that was left stale:
+
+> *"MOVED WITH HIM. The wander step steers an NPC toward spawnX/spawnY
+> (pathRadius 0 means exactly that point, with no roaming), so leaving this at
+> the old plaza spot spawned him outside his new house and then walked him back
+> down the stairs."*
+
+All 15 fields now move with `x/y`. Read back from a live game after letting the
+wander settle, the two pinned NPCs sit exactly on their anchors and the three
+wanderers are inside their radii.
+
+![mayor on cobble](assets/town-mayor-on-cobble.png)
+
+### The bank
+
+60%, 82% → **78%, 71%**. Directly east of the fountain (44%, 66%), against the
+east cliff, and **745px from the exit staircase** instead of 280px. It clears
+the auction house's ground line by 26px, so the two don't overlap, and the spot
+is 100% cobble under it with 99% on a 95px disc.
+
+![bank east](assets/town-bank-east.png)
