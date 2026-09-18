@@ -5879,14 +5879,17 @@ export var BroTown = function BroTown(_ref0) {
             if (_pOk && _pq) {
               S._npcProxLatch = { npc: _pn, ready: _pqReady };
               setQuestPanel({ npc: _pn.name, quest: _pq.quest, status: _pq.status, npcRef: _pn });
-            } else if (_pOk && _pn.flip && !aceFlipBus.open) {
-              /* v2.3.2618: walking up to Ace opens his coin flip, the same
-                 proximity gate a quest giver and a shopkeeper use. The latch
-                 is what stops it reopening every frame after you close it
-                 while still standing next to him. */
-              S._npcProxLatch = { npc: _pn, ready: false };
-              aceFlipBus.setStake(0);
-              aceFlipBus.setOpen(true);
+            /* v2.3.2620: ACE IS TAP-ONLY, and deliberately not here.  He had a
+               proximity opener like the two above (v2.3.2618); the owner asked
+               for "you have to tap on the joker to open up his dialog window".
+               The difference between him and a shopkeeper is that his window is
+               a BET: walking past a man who takes your gold should not put the
+               stake screen in front of you, and the plaza anchor he stands on
+               (gameDisplay.js, 228px from spawn) is walked across, not visited.
+               Said out loud rather than silently deleted, because the obvious
+               "fix" later is to add him back to this chain for consistency with
+               Diego -- that consistency is the thing the owner rejected.
+               His door is the tap handler's `npc.flip` branch. */
             } else if (_pOk && _pn.shop && !shopBus.open) {
               /* v2.3.2050: walking up to a shopkeeper opens his window, the
                  same proximity gate a quest giver uses -- _pOk already means
@@ -8598,10 +8601,12 @@ export var BroTown = function BroTown(_ref0) {
       return _mark('quest');
     }
     if (npc.flip) {
-      /* v2.3.2618: the tap door. Same latch as the proximity opener above --
-         both doors, one latch, or closing it on top of him gets one straight
-         back from the loop (the v2.3.1701 lesson). */
-      S._npcProxLatch = { npc: npc, ready: false };
+      /* v2.3.2620: Ace's ONLY door (the proximity opener was removed -- see the
+         note in the frame loop).  And with no loop opener left to suppress, the
+         latch this used to arm is gone with it: the latch exists solely to stop
+         the per-frame opener re-firing, so arming it here now would do nothing
+         for Ace and would quietly suppress DIEGO's proximity window while you
+         stand next to Ace. */
       try { aceFlipBus.setStake(0); aceFlipBus.setOpen(true); } catch (_e) {}
       return _mark('flip');
     }
