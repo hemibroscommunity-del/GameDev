@@ -1558,6 +1558,26 @@ export const HeroExpanded = () => {
             const sharedCaps = isProg3SharedEnabled();
             const laneAvail = (cat) => (chanCaps ? prog3PoolFor(R, cat) : totalUnspent);
             const sharedAvail = sharedCaps ? prog3PoolShared(R) : (chanCaps ? prog3PoolShared(R) : totalUnspent);
+            /* ═══ v2.3.2620: WHAT IS ALREADY IN A CATEGORY ═══
+               Owner: "make it so that the current points applied to skills is
+               shown on the points panel."  laneAvail answers what a category can
+               still SPEND; nothing on this screen answered what it has already
+               BOUGHT, at any level — not per stat, and not per category.
+               Summed over the rows the CONNECTED worker supports (prog3AtkMeta /
+               prog3BodyMeta), never the raw tables: those are the stats the card
+               below draws, so a tile's total is exactly the sum of the numbers
+               the card prints and the two can never disagree.  That also keeps
+               it honest across workers — a worker that has not folded crit and
+               critDmg into Luck draws (and therefore counts) the pair it
+               actually rolls, and one that has counts Luck (rule 19).  Points
+               sitting in a retired stat are not missing from the total either:
+               v2.3.2592 refunds them to the pool, where laneAvail sees them. */
+            const laneSpent = (col) => {
+              try {
+                if (col.shared) return prog3BodyMeta().reduce((n, m) => n + prog3Pts(R, m.key), 0);
+                return prog3AtkMeta().reduce((n, m) => n + prog3AtkPts(R, col.key, m.key), 0);
+              } catch (e) { return 0; }   /* a readout must never take the screen down */
+            };
             /* The Shared column's picture: the character's own bust, drawn by
                BottomDashboard into portraitStore; the sheet's knight art
                until it has been. */
@@ -1785,13 +1805,14 @@ export const HeroExpanded = () => {
                 {POINT_LANES.map((col) => {
                   const shared = !!col.shared;
                   const pts = shared ? sharedAvail : laneAvail(col.key);
+                  const spent = laneSpent(col);   /* v2.3.2620 */
                   const lvl = shared ? prog3CharLevel(R) : prog3SkillLevel(R, col.key);
                   const held = !shared && prog3ActiveCat(R) === col.key;
                   return (
                     <div key={col.key} role="button"
                       data-prog3-lane={col.key}
                       aria-label={`${col.label}, level ${lvl}`}
-                      title={`${col.label} — level ${lvl} — ${pts} point${pts === 1 ? '' : 's'} to spend`}
+                      title={`${col.label} — level ${lvl} — ${pts} point${pts === 1 ? '' : 's'} to spend — ${spent} already applied`}
                       {...scrollTap(() => setSelCat(col.key))}
                       style={{
                         height: GRID_H, boxSizing: 'border-box', minWidth: 0,
@@ -1823,6 +1844,31 @@ export const HeroExpanded = () => {
                             fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
                             visibility: pts > 0 ? 'visible' : 'hidden',
                           }}>{pts} PT{pts === 1 ? '' : 'S'}</span>
+                        {/* ═══ v2.3.2620: ...AND WHAT IS ALREADY IN IT ═══
+                            The line above is what this category can still spend
+                            and is deliberately INVISIBLE at zero (the tile keeps
+                            its height, and mp-catgrid pins exactly one
+                            "points to spend" per lane, hidden when there is
+                            nothing).  This one is the opposite reading and is
+                            always drawn: a category you have poured 40 points
+                            into should not look identical to an untouched one
+                            just because both are out of points today.
+                            It fits without growing the tile — GRID_H is 52
+                            (44 sideways) against 13 + 11.5 + 10 of type and 2 of
+                            gaps — and it is muted rather than gold so the gold
+                            on this screen keeps meaning "there is something to
+                            spend here". */}
+                        <span aria-label={`${spent} points applied to ${col.label}`}
+                          style={{
+                            /* text2, not muted: on a tile carrying points the
+                               background is accentFill, where muted measures
+                               4.06:1 — under AA for 10px type — and text2 6.35:1.
+                               The size difference carries the hierarchy. */
+                            fontSize: 10, fontWeight: 700, lineHeight: 1.1, color: COL.text2,
+                            letterSpacing: '.04em', fontVariantNumeric: 'tabular-nums',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            maxWidth: '100%',
+                          }}>{spent} SPENT</span>
                       </div>
                     </div>
                   );
@@ -1914,7 +1960,41 @@ export const HeroExpanded = () => {
                   border: `1px solid ${CELL_BORDER}`,
                   borderRadius: 9, overflow: 'hidden',
                 }}>
-                  <span style={{
+                  {/* ═══ v2.3.2620: THE ROW SAYS WHAT IS ALREADY IN THE STAT ═══
+                      Owner: "make it so that the current points applied to
+                      skills is shown on the points panel."
+
+                      It was not shown anywhere on this screen.  v2.3.2597 moved
+                      the stat VALUES out to the confirm window to buy two
+                      columns and named the cost in its own note — "the category
+                      panel stops saying what you HAVE and becomes a list of what
+                      you can BUY" — and v2.3.2599 then took the point-landed orb
+                      as well, leaving a spent point with nothing visible to
+                      change.  The allocation itself was never on the cell in any
+                      version: it lived only in the aria-label and inside the
+                      window you had to open per stat.
+
+                      WHAT THIS COSTS IN WIDTH: NOTHING, which is the whole
+                      reason it is a second LINE rather than a cell.  Every
+                      measurement this file records — the 163px two-column cell,
+                      the 44px [+], "Element" needing 61.81 of its 67px box — is
+                      horizontal, and the row is 46px tall carrying a single 13px
+                      line.  Stacked under the label the count takes 12.5 of the
+                      ~31px of air that were already there, and the label's own
+                      box is unchanged: the wrapper shrink-wraps to the WIDER of
+                      the two children and the count ("100/100" at 10.5px is
+                      ~42px) is narrower than every label at every width.
+                      `alignItems: flex-start` is what keeps that true — it
+                      leaves each line its own width instead of stretching the
+                      label to the column's.
+
+                      IT IS THE CAPPED TOTAL, not the raw allocation:
+                      prog3StatCap is the stat's own cap AND min(100, character
+                      level), which is exactly what the [+] refuses at, so the
+                      number the row prints and the button's behaviour cannot
+                      disagree — "12/12" is the answer to a [+] that has gone
+                      grey on a stat with 88 points of headroom left. */}
+                  <div style={{
                     /* ═══ v2.3.2602: THE LABEL NO LONGER EATS THE ROW ═══
                        Owner: "center the icon between the label and the plus
                        sign on each cell."  The label was `flex: 1`, so it grew
@@ -1924,16 +2004,60 @@ export const HeroExpanded = () => {
                        shrinks with an ellipsis when the cell is too narrow —
                        what changes is only that the slack now lives between the
                        label and the [+], where the icon can sit in the middle
-                       of it (see the auto margins on the <img> below). */
+                       of it (see the auto margins on the <img> below).
+                       v2.3.2620: it is the two-line block that carries the
+                       flex now; the label keeps the ellipsis that is its own. */
                     flex: '0 1 auto', minWidth: 0,
-                    fontSize: landPane ? 11.5 : 13, fontWeight: 800, letterSpacing: '.02em',
-                    /* v2.3.2599: LIGHT again.  The dark flip existed because the
-                       fill was a light pastel; the deep fills measure 5.68:1 to
-                       11.29:1 against COL.text, so the label matches the rest of
-                       the panel instead of inverting inside it. */
-                    color: COL.text, lineHeight: 1,
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>{cardLabel(st)}</span>
+                    /* STRETCH, not flex-start, and mp-catgrid is why.  The
+                       icon is centred between "the label and the plus sign"
+                       (v2.3.2602) and that check measures from the LABEL
+                       SPAN's right edge -- so with the lines shrink-wrapped
+                       individually, a row whose count is wider than its name
+                       ("HP" over "0/12") left the span 3.16px short of the
+                       block and the icon read as off-centre against it.
+                       Stretched, both lines are the block's width, the span's
+                       right edge IS the block's right edge, and the icon is
+                       centred against the text it actually sits beside.
+                       Text stays left-aligned; only the boxes grow. */
+                    display: 'flex', flexDirection: 'column',
+                    gap: 2, overflow: 'hidden',
+                  }}>
+                    <span style={{
+                      maxWidth: '100%',
+                      fontSize: landPane ? 11.5 : 13, fontWeight: 800, letterSpacing: '.02em',
+                      /* v2.3.2599: LIGHT again.  The dark flip existed because the
+                         fill was a light pastel; the deep fills measure 5.68:1 to
+                         11.29:1 against COL.text, so the label matches the rest of
+                         the panel instead of inverting inside it. */
+                      color: COL.text, lineHeight: 1,
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>{cardLabel(st)}</span>
+                    <span data-prog3-applied={lk}
+                      aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}: ${pts} of ${cap} points applied`}
+                      style={{
+                        maxWidth: '100%',
+                        fontSize: landPane ? 9.5 : 10.5, fontWeight: 800, letterSpacing: '.04em',
+                        lineHeight: 1, whiteSpace: 'nowrap',
+                        fontVariantNumeric: 'tabular-nums',
+                        /* ═══ THE SAME COLOUR AS THE LABEL, AND NOT GOLD ═══
+                           Two reasons, one measured and one about meaning.
+                           MEASURED: on the thirteen stat fills COL.text runs
+                           5.68:1 to 11.29:1 (the label's own figure, v2.3.2599),
+                           while the gold runs 3.02:1 to 6.00:1 — fine for the
+                           [+]'s 3:1 non-text floor and under AA's 4.5 for a
+                           10.5px number on five of the thirteen.  A count the
+                           player is meant to READ does not get the button's
+                           budget.  MEANING: gold on this screen is the spend
+                           affordance — the [+], the available count, the tile
+                           border — and this number is the opposite reading,
+                           what is already committed and cannot be spent again.
+                           The denominator is dimmed to 0.85, which is the
+                           lowest that still measures 4.61:1 on the worst fill. */
+                        color: COL.text,
+                      }}>
+                      {pts}<span style={{ opacity: 0.85, fontWeight: 700 }}>{'/' + cap}</span>
+                    </span>
+                  </div>
                   {/* v2.3.2602: auto margins, not two flex spacers.  A spacer
                       either side would centre the icon just as well but adds two
                       more `gap: CARD_GAP` to the row — 8px at 360, off a cell
@@ -1995,7 +2119,14 @@ export const HeroExpanded = () => {
                     data-stat-info={st.key}
                     aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${pts} of ${cap}. ${st.perText} per point.`}
                     aria-disabled={!canSpend}
-                    title={`${st.label} — ${pts} of ${cap} points — ${st.perText} per point`}
+                    /* v2.3.2620: ...and the long-press says what the stat READS
+                       right now, which is the other half of what v2.3.2597 took
+                       off the cell.  statValueText has been computed and unused
+                       on this screen since that commit moved the values out; the
+                       row's own line prints the POINTS and this prints what they
+                       bought ("31.0%", "1-2"), so the pair is back without
+                       either of them costing the cell a pixel. */
+                    title={`${st.label} — ${pts} of ${cap} points — now ${statValueText(st, cat)} — ${st.perText} per point`}
                     {...scrollTap(() => openStatInfo(st, cat, {
                       blocked: (st.atk ? laneAvail(cat) : sharedAvail) <= 0
                         ? `No ${st.atk ? ((PROG3_SKILL_META.find((k) => k.key === cat) || {}).label || 'lane') : 'shared'} points to spend.`
