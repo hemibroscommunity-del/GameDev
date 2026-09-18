@@ -1708,7 +1708,7 @@ export const ItemDetailPopup = () => {
             display: 'flex', flexDirection: 'column', gap: 6,
           }}>
             <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: COL.muted }}>
-              Sell in the general store
+              Sell in the Auction Marketplace
             </div>
             {sellMax > 1 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

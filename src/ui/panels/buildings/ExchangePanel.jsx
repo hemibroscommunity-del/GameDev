@@ -147,7 +147,7 @@ export function ExchangePanel(props) {
       fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em',
       WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation'
     }
-  }, /*#__PURE__*/React.createElement("span", null, "General store"),
+  }, /*#__PURE__*/React.createElement("span", null, "Auction Marketplace"),
      /*#__PURE__*/React.createElement("span", {
        style: { fontSize: 11, fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: '#B6C1BE' }
      }, "Buy now or bid ›")) : null,

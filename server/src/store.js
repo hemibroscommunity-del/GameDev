@@ -142,6 +142,26 @@ export const STORE = {
   MIN_BID_STEP: 1,
 };
 
+/* ═══ v2.3.2622: THE BUST SET ═══
+ * The wire keys a head-and-shoulders portrait actually reads, and no more.
+ * Deliberately EXCLUDES the nine drawing fields (sa/sb/pa/pb/ta/tf/tm/tb/tr):
+ * each is a fixed 256 chars and none of them is visible on an 18px disc, so
+ * they are 92KB of page weight for nothing. Deliberately INCLUDES bs/hg/fr --
+ * build size, height and frame -- because the portrait's fit math scales off
+ * them (PORTRAIT_FIT, buildCatalog.js) and a bust drawn at the wrong build is
+ * a different person.
+ * Short wire keys, as they sit on playerState (TRACK_COSMETIC_KEYS). */
+const STORE_BUST_KEYS = [
+  'sk',                      // skin
+  'hr', 'hc',                // hair + colour
+  'fh', 'fhc',               // facial hair + colour
+  'hw', 'htc',               // headwear + colour
+  'ew', 'ewc',               // eyewear + colour
+  'ec',                      // eye colour
+  'st', 'stc',               // shirt + colour (the shoulders)
+  'bs', 'hg', 'fr',          // build size / height / frame -- the fit math
+];
+
 /* The bag's potion filter is keyed off the shop's own consumables
    (isPotionKey -> POTION_THUMBS, src/ui/mobile/dash/InventoryPanel.jsx),
    and SHOP_ITEMS is the table that one mirrors.  Lowercased because the
@@ -266,6 +286,54 @@ export const storeMethods = {
    * each other by PlayerListPanel. This ships the same three fields to the
    * same audience. No zone, no position, no id beyond the sellerId the panel
    * already had for its "this one is yours" check. */
+  /* ═══ v2.3.2622: THE SELLER'S ACTUAL FACE ═══
+   * Owner: "Make the player's actual profile picture be there instead of the M."
+   *
+   * The M was the game's existing fallback for a player with no Hemi Bro
+   * picture, and most players have none -- so most listings showed a letter.
+   * What the owner wants is the BRO THEY BUILT, which the client can already
+   * draw for anybody: characterPortrait.js's `portraitOptsFromPeer`, the same
+   * recipe the inspect card, the trade window and the character picker use.
+   * It needs the seller's cosmetics.
+   *
+   * WHICH COSMETICS, AND WHY NOT ALL OF THEM. The peer set is 28 fields
+   * (PEER_COSMETIC_FIELDS, src/networking/peerCosmetics.js) and NINE of them
+   * are DRAWINGS -- shirt prints, pants prints, five tattoo zones -- each a
+   * fixed 256 characters (join.js cosmeticCap). Shipping the whole set would
+   * be ~2.3KB per listing and ~92KB on a PAGE_MAX page, for marks that are
+   * physically invisible on an 18px disc. So this is the BUST SET: the
+   * head-and-shoulders fields and nothing else. Measured at ~190 bytes.
+   *
+   * SNAPSHOTTED, not resolved live like sellerAvatar. The avatar could be
+   * resolved per projection because its fallback (the colour disc) is
+   * something the game draws everywhere anyway. This cannot: the whole point
+   * of the change is that the face is THERE, and a face that vanishes when
+   * the seller logs off is the complaint again with extra steps. The cost is
+   * ~190 bytes x MAX_GLOBAL 2000 = ~380KB of listing records, and ~95KB per
+   * LOAD_PAGE of the wake-time rebuild -- an order of magnitude under the
+   * ~1MB the full avatar URL would have cost (v2.3.2620), which is why that
+   * one is still resolved live and this one is not.
+   *
+   * NOTHING NEW IS EXPOSED: every one of these fields is already relayed to
+   * every player in the room (TRACK_COSMETIC_KEYS, index.js) and already
+   * drawn at each other by the inspect card. Same fields, same audience.
+   *
+   * Values are catalog ids the client's own sanitisers judge at the point
+   * they reach a canvas (the peerCosmetics.js posture: this is a rename
+   * table, not validation). Bounded here anyway -- short strings only -- so
+   * one seller cannot push a long blob into every shelf page. */
+  _stBustLook(ps) {
+    if (!ps) return null;
+    const out = {};
+    let any = false;
+    for (const k of STORE_BUST_KEYS) {
+      const v = ps[k];
+      if (typeof v === 'string' && v && v.length <= 24) { out[k] = v; any = true; }
+      else if (typeof v === 'number' && Number.isFinite(v)) { out[k] = v; any = true; }
+    }
+    return any ? out : null;
+  },
+
   _stColor(v) {
     /* A CSS colour that is about to be a `background` — bounded, and only
        the shape the character creator actually produces. */
@@ -283,12 +351,23 @@ export const storeMethods = {
   },
 
   _stPublic(o) {
+    const av = this._stAvatar(o.sellerId);
     return {
       id: o.id,
       sellerId: o.sellerId,
       sellerName: o.sellerName,
       sellerColor: o.sellerColor || null,          /* v2.3.2620: stored, 7 chars */
-      sellerAvatar: this._stAvatar(o.sellerId),    /* v2.3.2620: resolved live, never stored */
+      /* v2.3.2622: the bust set (~198 bytes/row), and ONLY when there is no
+         avatar to draw instead. The client prefers a Hemi Bro picture over a
+         composed portrait, so shipping both is one of the two wasted on every
+         row -- and both together took a full page to 29.7KB against a 32KB
+         bound, which is the kind of headroom that runs out on the next field.
+         Either-or takes the worst case back to ~22KB.
+         Safe because the avatar is a plain URL: a row already on screen keeps
+         drawing it after the seller logs off, and the next browse (any tab,
+         filter or action refreshes) ships the stored look instead. */
+      sellerLook: av ? null : (o.sellerLook || null),
+      sellerAvatar: av,                            /* v2.3.2620: resolved live, never stored */
       kind: o.kind,
       cat: o.cat,
       qty: o.qty,
@@ -573,6 +652,10 @@ export const storeMethods = {
       /* v2.3.2620: snapshotted beside the name and for the same reason --
          the disc has to keep working once the seller has logged off. */
       sellerColor: this._stColor(ps.color),
+      /* v2.3.2622: snapshotted beside the name and the colour, and for a
+         stronger version of the same reason -- the seller's FACE has to keep
+         working once they have logged off, which is the whole ask. */
+      sellerLook: this._stBustLook(ps),
       kind,
       invKey,
       weapon,

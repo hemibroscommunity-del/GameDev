@@ -151,7 +151,17 @@ export function StoreChatPanel({ send, myId }) {
             const mine = m.from === myId;
             return (
               <div key={m.ts + ':' + i} style={{ display: 'flex', gap: 7, flexDirection: mine ? 'row-reverse' : 'row', alignItems: 'flex-end' }}>
-                <PlayerIcon name={m.fromName} color={mine ? LS.brass : '#8D9B98'} size={26} />
+                {/* v2.3.2622: the other side's real bro on their bubbles.
+                    `head.sellerLook` is the only look this panel is given, so
+                    it is used for the seller's lines and the disc stands in
+                    for the buyer's -- a buyer's look is not on this wire and
+                    inventing a second lookup for it would be a bigger change
+                    than the mockup asks for. */}
+                <PlayerIcon
+                  name={m.fromName}
+                  color={mine ? LS.brass : '#8D9B98'}
+                  look={(!mine && m.from === head.sellerId) ? head.sellerLook : null}
+                  size={26} />
                 <div style={{ minWidth: 0, maxWidth: '76%' }}>
                   <div style={{ fontSize: 10, color: LS.txt3, marginBottom: 2, textAlign: mine ? 'right' : 'left' }}>
                     {mine ? 'You' : m.fromName}

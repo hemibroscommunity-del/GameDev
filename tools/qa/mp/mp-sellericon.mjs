@@ -65,6 +65,10 @@ async function readIcon(P) {
     const lr = line.getBoundingClientRect();
     return {
       tag: icon.tagName.toLowerCase(),
+      /* v2.3.2622: a composed portrait is a data: URL on an <img>; the disc
+         is a <div> with a letter. Which one is on screen is the question. */
+      isPortrait: icon.tagName.toLowerCase() === 'img' && /^data:image\//.test(icon.getAttribute('src') || ''),
+      srcHead: (icon.getAttribute('src') || '').slice(0, 24),
       w: Math.round(r.width), h: Math.round(r.height),
       round: cs.borderRadius,
       text: (icon.textContent || '').trim(),
@@ -118,8 +122,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and names the seller', !!row && row.sellerName === 'Marvin', row && row.sellerName);
   /* Nothing beyond what the room already broadcasts about that player. */
   const extra = row ? Object.keys(row).filter((k) => /^seller/.test(k)) : [];
-  rec.ok('...and nothing about the seller beyond id, name, colour and avatar',
-    extra.sort().join(',') === 'sellerAvatar,sellerColor,sellerId,sellerName', extra);
+  rec.ok('...and nothing about the seller beyond id, name, colour, avatar and look',
+    extra.sort().join(',') === 'sellerAvatar,sellerColor,sellerId,sellerLook,sellerName', extra);
+  /* v2.3.2622: the bust set, and specifically NOT the nine 256-char drawing
+     fields -- invisible at 18px and 92KB on a full page. */
+  const lk = row && row.sellerLook;
+  rec.ok('...and the look it sends is the seller\'s own cosmetics', !!lk && typeof lk.sk === 'string', lk);
+  const drawn = lk ? ['sa', 'sb', 'pa', 'pb', 'ta', 'tf', 'tm', 'tb', 'tr'].filter((k) => lk[k] !== undefined) : [];
+  rec.ok('...carrying none of the nine drawing fields', drawn.length === 0, drawn);
 
   /* Marvin STAYS in the room: the player-list half below needs a peer to
      draw, and closing him would have left it with nothing to check. */
@@ -137,18 +147,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
         const who = `${phone.label} ${orient}`;
         rec.ok(`${who}: the market opens`, await openMarket(P));
+        /* v2.3.2622 (owner): "change 'general store' to 'Auction Marketplace'" */
+        rec.ok(`${who}: ...titled Auction Marketplace`, await H.seesText(P, 'Auction Marketplace'));
+        rec.ok(`${who}: ...with no "General store" left on it`,
+          !(await P.page.evaluate(() => /general store/i.test((document.querySelector('.bt-inspect-card') || {}).innerText || ''))));
 
-        const ic = await readIcon(P);
+        /* The portrait composites asynchronously (a dozen sprite layers onto
+           a 256px canvas), so the disc is legitimately on screen for a beat
+           first. Poll for the face rather than sleeping a fixed time -- the
+           §67 lesson's sibling: a fixed sleep passes on a warm cache and
+           fails on a cold one. */
+        let ic = await readIcon(P);
+        for (let i = 0; i < 40 && ic && !ic.isPortrait && !ic.noIcon; i++) {
+          await P.page.waitForTimeout(250);
+          ic = await readIcon(P);
+        }
         rec.ok(`${who}: the listing has a seller line`, !ic.noSellerLine, ic);
         rec.ok(`${who}: ...with an icon before the name`, !ic.noIcon, ic);
         if (ic.noIcon || ic.noSellerLine) continue;
-        rec.ok(`${who}: ...drawn as the game's disc, with the seller's initial`,
-          ic.text === 'M' && /50%/.test(ic.round), ic);
-        rec.ok(`${who}: ...tiny (18px), not a portrait`, ic.w === 18 && ic.h === 18, ic);
+        /* v2.3.2622 (owner: "the player's actual profile picture ... instead
+           of the M"): the seller's own bro, composed from their cosmetics --
+           not a letter, and not a broken image either. */
+        rec.ok(`${who}: ...showing the seller's ACTUAL character, not a letter`,
+          ic.isPortrait === true, ic);
+        rec.ok(`${who}: ...and no initial is left on screen`, ic.text === '', ic);
+        rec.ok(`${who}: ...still round`, /50%/.test(ic.round), ic);
+        rec.ok(`${who}: ...still tiny (18px)`, ic.w === 18 && ic.h === 18, ic);
         rec.ok(`${who}: ...sitting on the seller's own line`, ic.onLine, ic);
         rec.ok(`${who}: ...without spilling out of the panel`, ic.overflows === false, ic);
-        rec.ok(`${who}: ...and without making the line taller than the icon`,
-          ic.lineH <= 24, ic);
+        /* The seller line is as tall as its TALLEST control, which since
+           v2.3.2621 is the 26px chat button, not this 18px face. Written as
+           24 when this test shipped at v2.3.2620 and left stale by the DM
+           work a version later -- the line grew and nobody re-ran the test
+           that measured it. 28 is the real ceiling: the button plus its
+           border, and anything above that means something new has landed on
+           the line and pushed the row. */
+        rec.ok(`${who}: ...without pushing the row taller than its own controls`,
+          ic.lineH <= 28, ic);
         await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/sellericon-${phone.label}-${orient}-shelf.png` });
 
         await P.page.evaluate(() => {

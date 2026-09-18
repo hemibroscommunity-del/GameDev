@@ -199,6 +199,10 @@ export const storeChatMethods = {
       expiresAt: rec.expiresAt,
       sellerId: rec.sellerId,
       sellerName: rec.sellerName,
+      /* v2.3.2622: the seller's bust set, so their own bro sits on their
+         bubbles instead of a letter. Already on the listing record -- no new
+         storage and no new read. */
+      sellerLook: rec.sellerLook || null,
       threads,
     });
   },
