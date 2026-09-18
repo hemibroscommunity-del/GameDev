@@ -19,7 +19,20 @@
  * same y sit on the same line.
  */
 export const WORLD_PROPS = [
-  /* ═══ v2.3.2630: THE ENCHANTER IS GONE, AND THE BANK TAKES ITS SHELF ═══
+  /* ═══ v2.3.2631: THE EAST LAMP GOES, IT WAS ON THE WAY OUT ═══
+     Owner: "Just remove the lamp post to the right of the fountain. It just
+     gets in the way of the exit path."
+
+     lamp-plaza-e stood at 55%,70% -- between the fountain (44%,66%) and the
+     staircase off the south edge (TOWN_EXITS, 48%,87%), so the walk from the
+     plaza to the way out ran straight into its 40x20 footprint.  It is the
+     only prop on that line.  lamp-plaza-w stays: it is west of the fountain,
+     nowhere near the path, and the pair's symmetry was never the point -- the
+     v2.3.2069 note that placed them says the east one mirrors the west "about
+     the fountain's axis", which is a reason to put it there, not a reason to
+     keep it when it blocks the exit.
+
+  ═══ v2.3.2630: THE ENCHANTER IS GONE, AND THE BANK TAKES ITS SHELF ═══
      Owner: "Remove the enchanter building and put the bank in its place."
 
      Only a PROP makes a door -- the proximity scan reads propsForZone and
@@ -61,6 +74,7 @@ export const WORLD_PROPS = [
        auction-house 75%, 56%  east, facing the plaza across it
        bank         78%, 71%   east, against the rocks, off the exit path
        fountain     44%, 66%   the middle, which is now a middle
+     (lamp-plaza-e was here too, until v2.3.2631 took it off the exit path.)
 
      Percentages of the map, because that is what the layout renderer prints
      and what the next move should be quoted in.  PROP SIZES ARE UNCHANGED:
@@ -301,11 +315,7 @@ export const WORLD_PROPS = [
     sprite: '/sprites/props/lamp-post.webp',
     x: 740, y: 1613, worldH: 150, blockW: 34, blockD: 20,
   },
-  {
-    id: 'lamp-plaza-e', zone: 'town', mapV: 17, mapIcon: null,
-    sprite: '/sprites/props/lamp-post.webp',
-    x: 1197, y: 1613, worldH: 150, blockW: 34, blockD: 20,
-  },
+
   /* ═══ v2.3.2071: BOTH BENCHES LOOK AT THE FOUNTAIN ═══
      Owner: "Position the benches so that lengthwise they face the fountain.
      Tallest back part should be furthest back from the fountains."
