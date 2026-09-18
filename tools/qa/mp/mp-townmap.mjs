@@ -35,8 +35,15 @@
 import * as H from './harness.mjs';
 
 /* v2.3.1813: 96x30 -> 52x55.  The new art is near-square where the old
-   plateau was wide; see src/data/zones.js for the aspect arithmetic. */
-const ZONE_W = 52, ZONE_H = 55, TILE = 32;
+   plateau was wide; see src/data/zones.js for the aspect arithmetic.
+   v2.3.2628: 52x55 -> 68x72.  Same art, a bigger box for it -- the owner
+   said half the town had gone missing, and 52x55 is where it went (v16's
+   plateau was 3072x960 world px, 46% wider than the square that replaced
+   it).  PINNED here on purpose: this constant is the tripwire that makes a
+   zone resize a deliberate act rather than something that drifts, so it is
+   meant to fail and be updated, and the two bounds checks below now read it
+   instead of repeating the numbers -- they went stale against it once. */
+const ZONE_W = 68, ZONE_H = 72, TILE = 32;
 
 const pos = (P) => H.readState(P, (S) => ({ x: Math.round(S.player.x), y: Math.round(S.player.y) }));
 const put = (P, x, y) => P.page.evaluate(({ px, py }) => {
@@ -61,7 +68,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const z = (window.__btZones || {})[S.currentZone] || null;
     return { id: S.currentZone, w: z && z.w, h: z && z.h };
   }).catch(() => null);
-  rec.ok('town is the new 52x55 zone, not the old 96x30 plateau',
+  rec.ok(`town is the ${ZONE_W}x${ZONE_H} zone the data declares`,
     !!(zone && zone.id === 'town' && zone.w === ZONE_W && zone.h === ZONE_H), zone);
 
   /* The map file itself — a zone resize with the OLD art still wired up would
@@ -129,7 +136,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const exits = await P.page.evaluate(() => (window.__btTownExits ? window.__btTownExits() : null));
   if (exits) {
-    const off = exits.filter((e) => e.tx < 0 || e.ty < 0 || e.tx >= 52 || e.ty >= 55);
+    const off = exits.filter((e) => e.tx < 0 || e.ty < 0 || e.tx >= ZONE_W || e.ty >= ZONE_H);
     rec.ok('the way out of town is on a tile the new zone actually has',
       exits.length > 0 && off.length === 0, { exits, off });
   }
@@ -171,7 +178,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      in the trees.  This passes while they are off, and the moment someone
      turns them on it demands the positions be fixed too. */
   const props = await P.page.evaluate(() => (window.__btWorldProps ? window.__btWorldProps() : []));
-  const outOfBounds = props.filter((p) => p.x >= 52 * 32 || p.y >= 55 * 32 || p.x <= 0 || p.y <= 0);
+  const outOfBounds = props.filter((p) => p.x >= ZONE_W * TILE || p.y >= ZONE_H * TILE || p.x <= 0 || p.y <= 0);
   rec.ok('town buildings are switched off, or else placed on the new map',
     props.length === 0 || outOfBounds.length === 0,
     { count: props.length, outOfBounds: outOfBounds.slice(0, 4) });

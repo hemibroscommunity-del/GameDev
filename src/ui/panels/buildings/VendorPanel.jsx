@@ -56,6 +56,125 @@ function lsGold(amount, size) {
     onError: function onError(e) { e.currentTarget.replaceWith(document.createTextNode('🪙')); }
   }), amount);
 }
+/* ═══ v2.3.2627: THE ROOM YOU WALKED INTO ═══
+ *
+ * Owner's auction-house interior painting, with a clerk behind the counter.
+ *
+ * WHY IT IS NOT THE GENERAL STORE.  v2.3.2624 put the owner's GENERAL STORE
+ * interior here, and then the building stopped being a general store: #686
+ * renamed it to the Auction House (worldProps.js, new exterior art and a new
+ * position on the plaza) and #678 took the shopkeeper's stock list out of
+ * this panel entirely -- the potions moved to Shopkeeper Bro, who walks the
+ * plaza.  A shopkeeper minding a shelf that is no longer here, in a room that
+ * is not the building you just walked into, is worse than no room at all, so
+ * the painting was swapped rather than the header re-worded.  The old
+ * general-store art is NOT kept unused: nothing references it, and a 1.4 MB
+ * orphan on the preload gate is the kind of thing nobody deletes later.
+ *
+ * WHERE "INDOORS" IS.  BroTown has no walk-in interior: enterBuilding()
+ * (game/interactions.js) opens a panel, and the AUCTION HOUSE prop's
+ * `action: 'auctionhouse'` (worldProps.js) opens THIS one.  So this panel IS
+ * the inside of the building, and until now it was a list on a flat slate.
+ * The art goes at the top of it, above the Market button, which is where you
+ * would be standing.
+ *
+ * EVERY NUMBER BELOW WAS MEASURED, none eyeballed (tools/qa/art/
+ * measure-auction-interior.mjs prints them, and TRAPS §80 is about exactly
+ * the kind of "looks about right" that does not survive a second screen):
+ *
+ *   room PNG      1288x773, fully opaque -- no alpha margin, so the bbox IS
+ *                 the canvas.  It ships PRE-CROPPED: the owner's 1448x1086
+ *                 raw runs on down to the floorboards and the rug, 20% of
+ *                 its height that this panel never shows, and those rows
+ *                 would have cost ~300 KB on the loading-screen gate for
+ *                 pixels behind the Market button.
+ *   keeper strip  2172x724 = SIX 362x724 frames; frame art occupies
+ *                 y200..580, so the figure is cropped at the forearms
+ *
+ * THE CROP IS THE POINT.  The strip is cut off at his forearms, so he cannot
+ * be composited *between* the back wall and the counter -- the room is one
+ * flat painting, there is no layer to slide him into.  He is drawn ON TOP
+ * with that cut landing on the counter's top surface, which reads as a man
+ * leaning on it.  Drawn behind the painting he is simply invisible; that was
+ * the first attempt on the old room and the preview showed an empty shop.
+ *
+ * WHERE HE STANDS, AND WHY THERE.  12% of the room's width, centred at 37%,
+ * forearms on 77% -- the row the counter's top surface runs along.  This room
+ * is a fully dressed composition, unlike the general store's, so the question
+ * was whether a figure fits at all rather than how big to draw him; four
+ * placements were rendered and looked at:
+ *   cx 45%  he leans over the open ledger and buries its left page
+ *   cx 40%  the lantern sits directly behind his head and pokes out of his hair
+ *   cx 27%  he is cramped into the window bay and covers the quill and crown
+ *   cx 37%  THIS ONE -- between the inkwell and the ledger, lantern clear
+ *           beside his head, ledger and gavel both readable to his right
+ * At 18% wide he swallows the shelf behind him and reads as a giant against
+ * the counter; 12% keeps him in proportion to it.
+ *
+ * The geometry is expressed in ROOM PX and converted to percentages here, so
+ * the scene scales with the panel and cannot drift between phone widths:
+ * measured at 320/360/390/430 the box shows the identical slice.
+ */
+var ROOM_SRC = '/sprites/props/auction-house-interior.png';
+var KEEPER_SRC = '/sprites/npc/storekeeper-bro-idle.png';
+var RM = { imgW: 1288, x0: 0, y0: 0, w: 1288, h: 773 };   /* opaque: bbox = canvas */
+var SCENE_H = 773;                                         /* rows of RM.h shown */
+var KF = { cell: 362, cellH: 724, x0: 18, y0: 200, x1: 361, y1: 580 }; /* frame 0 art */
+/* The three placement numbers, as fractions of the room's own box. See
+   "WHERE HE STANDS" above for the three placements that were rejected. */
+var KEEP_W = 0.12;    /* painted width */
+var KEEP_CX = 0.37;   /* centre of that width */
+var KEEP_BASE = 0.77; /* the row his forearms rest on: the counter's top
+                         surface, read off the 5%% ruler the measure tool
+                         draws rather than guessed at. */
+var KEEP = (function () {
+  var cw = KF.x1 - KF.x0 + 1;                 /* 344 painted px across */
+  var scale = (KEEP_W * RM.w) / cw;
+  return {
+    w: KF.cell * scale,                        /* the whole CELL, art is inset */
+    h: KF.cellH * scale,
+    left: KEEP_CX * RM.w - (KF.x0 + cw / 2) * scale,
+    top: KEEP_BASE * RM.h - (KF.y1 + 1) * scale,
+  };
+})();
+var pc = function pc(v, of) { return (v / of * 100).toFixed(4) + '%'; };
+
+function roomScene() {
+  return React.createElement("div", {
+    style: {
+      position: 'relative', width: '100%', aspectRatio: RM.w + ' / ' + SCENE_H,
+      overflow: 'hidden', background: LS.panel,
+      borderBottom: '1px solid ' + LS.border,
+    }
+  },
+    React.createElement("img", {
+      src: ROOM_SRC, alt: '', draggable: false,
+      style: {
+        position: 'absolute', width: pc(RM.imgW, RM.w), height: 'auto',
+        left: pc(-RM.x0, RM.w), top: pc(-RM.y0, SCENE_H),
+      },
+      /* The room failing to load must not leave a tall empty slab above the
+         goods: the scene collapses and the panel reads as it did before. */
+      onError: function onError(e) {
+        var box = e.currentTarget.parentNode;
+        if (box && box.style) box.style.display = 'none';
+      }
+    }),
+    React.createElement("div", {
+      className: 'bt-auction-keeper',
+      style: {
+        position: 'absolute',
+        width: pc(KEEP.w, RM.w), height: pc(KEEP.h, SCENE_H),
+        left: pc(KEEP.left, RM.w), top: pc(KEEP.top, SCENE_H),
+        backgroundImage: 'url(' + KEEPER_SRC + ')',
+        backgroundSize: '600% 100%',      /* six frames across */
+        backgroundPosition: '0% 0%',
+        backgroundRepeat: 'no-repeat',
+        pointerEvents: 'none',
+      }
+    }));
+}
+
 export function VendorPanel(props) {
   var rpgState = props.rpgState,
     setBuildingPanel = props.setBuildingPanel;
@@ -86,6 +205,7 @@ export function VendorPanel(props) {
   var storeOn = storeEnabled();
   return React.createElement("div", { style: LS_WRAP },
     lsHeader('auctionhouse', '⚖', "Auction House", "Buy and sell with players"),
+    roomScene(),    /* v2.3.2627: the room, and the clerk behind the counter */
     React.createElement("div", { style: LS_BODY },
       React.createElement("div", {
         style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }

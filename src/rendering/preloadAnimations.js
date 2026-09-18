@@ -48,6 +48,7 @@ import { loadMonsterRecolor, recolorFamilyOf, freeMonsterRecolor } from './monst
 import { loadNpcSprites } from './npcSprites.js'; /* v2.3.1672: NPC figure art */
 import { preloadLevelUpBurst } from './levelUpBurstPreload.js';
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
+import { preloadAuctionInterior } from './auctionInteriorPreload.js'; /* v2.3.2627: the auction house's room + clerk */
 import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
@@ -282,6 +283,7 @@ export async function preloadWorldAnimations() {
        different query string, which is a different cache key).
        See statDemoPreload.js — it names both. */
     statDemo: preloadStatDemo(),
+    auctionInterior: preloadAuctionInterior(),
   };
 
   const names = Object.keys(groups);

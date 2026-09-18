@@ -5161,3 +5161,36 @@ html[data-orient="landscape"] .bt-zone-banner{
   --zb-bar-h:28px;
 }
 html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14px}
+
+/* ═══ v2.3.2627: THE AUCTION HOUSE'S INTERIOR ═══
+   The owner's room painting, with the clerk behind the counter.  Was the
+   general store's room in v2.3.2624, until #686 renamed the building and
+   #678 took the shopkeeper's shelf out of its panel -- see VendorPanel.jsx.
+   Geometry is measured, not eyeballed: the room PNG is 1288x773, opaque,
+   already cropped to the rows the panel shows -- the sign, the shelves and
+   the counter, stopping before the floorboards, because this panel wants a
+   counter you are standing at rather than a room you are looking into.
+   Those numbers live in VendorPanel.jsx beside the element that uses them;
+   only the idle cycle needs a stylesheet, because @keyframes cannot be
+   written inline.
+
+   THE IDLE IS NOT A FLIPBOOK.  The six frames are expressions, not a walk
+   cycle, so a constant-rate steps(6) would read as a man vibrating.  He
+   holds the neutral frame for most of the loop and the others punctuate it
+   -- a blink, then a smile and a grin -- on step-end so the frames cut
+   rather than cross-fade.  Six frames of 362px in a 600%-wide background:
+   frame i sits at background-position-x i*20%. */
+@keyframes bt-auction-keeper-idle{
+  0%,54%{background-position-x:0%}      /* neutral */
+  55%,58%{background-position-x:80%}    /* blink */
+  59%,72%{background-position-x:0%}
+  73%,78%{background-position-x:20%}    /* small smile */
+  79%,84%{background-position-x:40%}    /* grin */
+  85%,100%{background-position-x:0%}
+}
+.bt-auction-keeper{animation:bt-auction-keeper-idle 11s step-end infinite}
+/* An expression loop is decoration; a reader who asked for less motion gets
+   the neutral frame and nothing moving. */
+@media (prefers-reduced-motion: reduce){
+  .bt-auction-keeper{animation:none;background-position-x:0%}
+}

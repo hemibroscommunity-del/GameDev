@@ -25,7 +25,39 @@ export const ZONES = {
        World View trail-head (TOWN_EXITS, effects.js) both moved with it;
        they are the only two coordinates anchored to this zone's shape, and
        both were re-checked against the new art rather than converted. */
-    id: 'town', name: 'Town', w: 52, h: 55,
+    /* ═══ v2.3.2628: THE TOWN IS BACK TO ITS OLD EXTENT ═══
+       Owner: "Something happened with the town map and half of it got lost.
+       It's supposed to be a fused map between two different maps to make it
+       larger like it was before."
+
+       The FUSION is intact and always was -- town_v17.webp is both painted
+       halves, and tools/maps/build-town-v17.mjs still reproduces it.  What
+       was lost is the SIZE, and it went at v2.3.1813 above: v16's plateau
+       was 96x30 tiles = 3072x960 world px, and the near-square v17 art
+       brought the zone to 52x55 = 1664x1760.  That is 46% narrower than the
+       town the owner had been walking around, which is what "half of it"
+       describes.
+
+       68x72 = 2176x2304 world px, an aspect of 0.9444 against the art's
+       1674x1774 = 0.9437 -- a 0.07% stretch, TIGHTER than the 52x55 box it
+       replaces (0.10%) and far tighter than v16's 0.8%.  The art is drawn
+       1.30x, uniformly.  That is not the v16 fusion's mistake: what made
+       that one look bad was one half upscaled 1.4x RELATIVE to the other,
+       so the seam joined sharp art to soft art.  Scaling the whole finished
+       map by the same factor has no seam to mismatch, and this painting has
+       no pixel grid to break.
+
+       Area goes 2.93M -> 5.01M world px, 1.71x, and past v16's 2.95M in
+       both axes.  PROP SIZES ARE DELIBERATELY UNCHANGED: a building is worth
+       the same number of world px as before, so it draws the same size on
+       screen and the extra room shows up as space BETWEEN buildings, which
+       is the second half of what the owner asked for.  Everything anchored
+       to this zone moved with it -- TOWN_SPAWN (constants.js), TOWN_EXITS
+       (effects.js), every town prop (worldProps.js) and every town NPC
+       (gameDisplay.js).  The walk mask is not one of them: town's collision
+       is prop footprints only (WALK_MASKS_ENABLED is false, tiledMaps.js
+       v2.3.1794), so there is no grid to re-derive. */
+    id: 'town', name: 'Town', w: 68, h: 72,
     element: null, level: [0, 0], music: 'town', safe: true,
     palette: { ground: '#4a6741', path: '#8b7355', accent: '#5a7a50' }
   },

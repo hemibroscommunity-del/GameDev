@@ -55,7 +55,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const p = (f.propsForZone ? f.propsForZone('town') : []).find((q) => q.id === 'forge');
     return p ? { x: p.x, y: p.y } : null;
   }).catch(() => null);
-  const at = forge || { x: 480, y: 900 };
+  const at = forge || { x: 522, y: 1198 };   /* v2.3.2628: fallback follows the moved forge */
   await put(P, at.x, at.y + 55);
   await P.page.waitForTimeout(700);
   await P.page.keyboard.press('e');
