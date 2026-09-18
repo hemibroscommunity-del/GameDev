@@ -111,8 +111,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const entered = await P.page.locator('.bt-interact-prompt').first().isVisible().catch(() => false);
   rec.ok('the prompt is on screen', entered);
   if (entered) {
-    await P.page.locator('.bt-interact-prompt').first().dispatchEvent('mousedown');
-    await P.page.waitForTimeout(900);
+    /* ═══ v2.3.2624: A REAL TAP, NOT A SYNTHETIC mousedown (TRAPS §67/§88) ═══
+       This line used to dispatch a bare 'mousedown' at the prompt.  That
+       worked only because the prompt happened to listen on mousedown; when
+       v2.3.2617 collapsed the enter gesture to a single onClick -- the fix for
+       the button that would not go away -- the synthetic event stopped opening
+       anything, and this scenario went red against a door that works fine for
+       a finger.  dispatchEvent does not hit-test and does not produce the
+       click that follows a real press, so it can only ever test the handler
+       you already guessed.  Tap the middle of the prompt like a thumb does. */
+    const pb = await P.page.evaluate(() => {
+      const el = document.querySelector('.bt-interact-prompt');
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { cx: Math.round(r.left + r.width / 2), cy: Math.round(r.top + r.height / 2) };
+    });
+    if (pb) await P.page.touchscreen.tap(pb.cx, pb.cy);
+    await P.page.waitForTimeout(1100);
     /* ═══ v2.3.2624: TWO ANCHORS THIS TEST HAD LOST ═══
        It asserted the door opened a panel headed "Vendor" and then clicked
        "Player store". v2.3.2618 made Market the only button and renamed that
@@ -129,7 +144,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        description of it -- the panel holds no item table of its own. */
     rec.ok('...showing the thing that was just listed', await H.seesText(P, '75g'));
     rec.ok('...named by the server, not by a local guess', await H.seesText(P, 'Wood Oak'));
-    await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/store.png' });
+    await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/store.png` });   /* v2.3.2624: was a hard-coded, wrong-cased absolute path */
 
     /* Your own listing offers no Buy -- the worker refuses it, and a button
        that only ever produces an error is worse than no button. */
@@ -143,7 +158,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const onYours = await H.clickText(P, 'Yours').then(() => true).catch(() => false);
     rec.ok('the Yours tab opens', onYours);
     await P.page.waitForTimeout(900);
-    rec.ok('...and lists what you have up for sale', await H.seesText(P, 'Up for sale'));
+    /* v2.3.2624: "Up for sale" was this tab's heading until v2.3.2618 rebuilt
+       it into My Listings / My Bids; the string is gone from the client
+       entirely.  Anchored instead on the slot counter, which is the one line
+       the tab cannot render without. */
+    rec.ok('...and lists what you have up for sale', await H.seesText(P, 'slots used'));
     const tookDown = await H.clickText(P, 'Take down').then(() => true).catch(() => false);
     rec.ok('a listing can be taken down from the panel', tookDown);
     await P.page.waitForTimeout(2200);

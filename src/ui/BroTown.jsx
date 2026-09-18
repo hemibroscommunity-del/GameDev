@@ -4978,7 +4978,7 @@ export var BroTown = function BroTown(_ref0) {
            so their Enter X proximity prompts were floating over empty painted
            ground", and left the instruction "Restore the BUILDINGS proximity
            scan here when building art ships."  It has — the owner supplied a
-           forge, a bank, an enchanter and a auction house, and they are placed
+           forge, a bank, an enchanter and an auction house, and they are placed
            in worldProps.js.
 
            The scan is driven off the PROPS, not off TOWN_BUILDINGS: the props
