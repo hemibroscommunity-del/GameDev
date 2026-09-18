@@ -14,6 +14,7 @@ import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3
    S is stateRef.current. */
 import { _onBroNonce, _onBroResult } from './broWallet.js'; /* v2.3.1576 */
 import { shopBus } from '../ui/mobile/shopBus.js';   /* v2.3.2050 */
+import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js'; /* v2.3.2618 */
 import { capeStatusBus } from '../ui/mobile/capeStatusBus.js'; /* v2.3.2118 */
 import { storeToastBus } from '../ui/mobile/storeToastBus.js'; /* v2.3.2476 */
 import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
@@ -537,6 +538,73 @@ export function processGameEvent(type, payload, S, deps) {
                 BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
               }
               setRpgState(_objectSpread({}, _gR));
+              break;
+            }
+          case 'ace_flip_result':
+            {
+              /* v2.3.2618: Ace's coin flip, server-rolled and privately sent.
+                 The coins already moved server-side and arrive on the
+                 authoritative player_state echo (rule 20) -- this event only
+                 says WHICH WAY the coin fell, so the panel can play the right
+                 strip and the world can get a popup.  Nothing here credits
+                 anything; a client that paid itself 3x a stake would be the
+                 solo gold faucet gamble.js's header exists to remember. */
+              var _aR = S.rpg;
+              if (!_aR) break;
+              if (!_aR._compStats) _aR._compStats = createDefaultCompStats();
+              var _aStake = payload.stake || 0;
+              var _aRisk = payload.risk || 0;
+              _aR._compStats.totalGambled += _aStake;
+              aceFlipBus.settle(payload);
+              if (payload.won) {
+                _aR._compStats.totalGambleWon += _aRisk;
+                _aR._compStats.totalGoldEarned += _aRisk;
+                if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + _aRisk + 'g!', '#3dd497');
+                S.screenShake = 3;
+              /* v2.3.2623: the owner's WIN/LOSE stings.  These replace
+                 BT_AUDIO.collect() and a sawtooth beep: collect() is the
+                 gold-PICKUP sound the whole game uses, so a payout here was
+                 indistinguishable from walking over a coin pile -- the one
+                 moment in this window that most needs its own sound.  Trimmed
+                 at the call (the clips carry dead tails); wrapped because a
+                 missing sample must never cost a settled bet. */
+                try { BT_AUDIO.play('flip-win', { vol: 0.5, duration: 1.6 }); } catch (_w) {}
+              } else {
+                _aR._compStats.totalGambleLost += _aRisk;
+                _aR._compStats.totalGoldSpent += _aRisk;
+                if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, '-' + _aRisk + 'g', '#ff5e6c');
+                try { BT_AUDIO.play('flip-lose', { vol: 0.5, duration: 0.7 }); } catch (_l) {}
+              }
+              setRpgState(_objectSpread({}, _aR));
+              break;
+            }
+          case 'ace_item_flip_result':
+            {
+              /* v2.3.2619: the item wager, double or nothing.  Like the coin
+                 flip this is feedback ONLY -- the bag already changed
+                 server-side and arrives on the player_state echo (rule 20).
+                 Nothing here adds or removes an item. */
+              aceFlipBus.settleItems(payload);
+              var _aiN = payload.total || 0;
+              if (payload.won) {
+                if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, 'Doubled! +' + _aiN, '#3dd497');
+                S.screenShake = 3;
+                /* v2.3.2623: same pair as the gold flip above -- one outcome,
+                   one sound, whichever tab it was bet from. */
+                try { BT_AUDIO.play('flip-win', { vol: 0.5, duration: 1.6 }); } catch (_w) {}
+              } else {
+                if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, 'Lost ' + _aiN + ' items', '#ff5e6c');
+                try { BT_AUDIO.play('flip-lose', { vol: 0.5, duration: 0.7 }); } catch (_l) {}
+              }
+              break;
+            }
+          case 'ace_board':
+            {
+              /* v2.3.2619: Ace's hall of fame (server-owned; arrives on join
+                 and after each flip).  Straight into the bus -- the panel
+                 renders each row's portrait from the `look` it carries, using
+                 the same shared recipe every other peer portrait uses. */
+              aceFlipBus.setBoard(payload);
               break;
             }
           case 'jackpot_state':

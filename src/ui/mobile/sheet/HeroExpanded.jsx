@@ -1558,6 +1558,26 @@ export const HeroExpanded = () => {
             const sharedCaps = isProg3SharedEnabled();
             const laneAvail = (cat) => (chanCaps ? prog3PoolFor(R, cat) : totalUnspent);
             const sharedAvail = sharedCaps ? prog3PoolShared(R) : (chanCaps ? prog3PoolShared(R) : totalUnspent);
+            /* ═══ v2.3.2620: WHAT IS ALREADY IN A CATEGORY ═══
+               Owner: "make it so that the current points applied to skills is
+               shown on the points panel."  laneAvail answers what a category can
+               still SPEND; nothing on this screen answered what it has already
+               BOUGHT, at any level — not per stat, and not per category.
+               Summed over the rows the CONNECTED worker supports (prog3AtkMeta /
+               prog3BodyMeta), never the raw tables: those are the stats the card
+               below draws, so a tile's total is exactly the sum of the numbers
+               the card prints and the two can never disagree.  That also keeps
+               it honest across workers — a worker that has not folded crit and
+               critDmg into Luck draws (and therefore counts) the pair it
+               actually rolls, and one that has counts Luck (rule 19).  Points
+               sitting in a retired stat are not missing from the total either:
+               v2.3.2592 refunds them to the pool, where laneAvail sees them. */
+            const laneSpent = (col) => {
+              try {
+                if (col.shared) return prog3BodyMeta().reduce((n, m) => n + prog3Pts(R, m.key), 0);
+                return prog3AtkMeta().reduce((n, m) => n + prog3AtkPts(R, col.key, m.key), 0);
+              } catch (e) { return 0; }   /* a readout must never take the screen down */
+            };
             /* The Shared column's picture: the character's own bust, drawn by
                BottomDashboard into portraitStore; the sheet's knight art
                until it has been. */
@@ -1731,10 +1751,28 @@ export const HeroExpanded = () => {
                spelled out in the first place.
                Shrinking the type instead would have taken every label to 11px,
                the readability floor, to fit one of them; shrinking the icon or
-               the [+] undoes what the owner asked for in v2.3.2599 and here. */
-            const CARD_TIGHT = { mana: 'Max MP' };
-            const cardLabel = (st) => (landPane ? (CARD_SHORT[st.key] || st.label)
-              : (twoCol ? (CARD_TIGHT[st.key] || st.label) : st.label));
+               the [+] undoes what the owner asked for in v2.3.2599 and here.
+               RETIRED at v2.3.2621 — the map, not the lesson.  Two columns take
+               CARD_SHORT wholesale now (the count needs the width), and every
+               short name is shorter than the one-off this held.  The
+               measurements above are kept because they are what the budget IS:
+               a 13px/800 label in a two-column cell has ~67px before the count
+               and ~43px after it, and the next person to reach for a full name
+               here needs those two numbers. */
+            /* ═══ v2.3.2621: TWO COLUMNS TAKE THE SHORT NAMES NOW ═══
+               The count the owner asked for sits between the icon and the [+]
+               and takes ~24px of a 163px cell with its gap.  Measured at 360,
+               the label box that leaves is ~43px, and the full names want up to
+               61.81 ("Element") — so with them the widest four labels ellipsise
+               and the card lies about which stat a row is.
+               The short set is the one landscape has used since v2.3.2597
+               (CARD_SHORT), not a new invention, and its widest ("Resist",
+               "Dodge", "Speed") is ~42px.  That also retires CARD_TIGHT: it
+               existed to shorten the ONE full name that did not fit two columns
+               ("Max Mana" → "Max MP", v2.3.2611), and CARD_SHORT is shorter than
+               it everywhere.  One column — below 360, or `?p3cols=1` — has the
+               room and keeps the full names. */
+            const cardLabel = (st) => ((landPane || twoCol) ? (CARD_SHORT[st.key] || st.label) : st.label);
             /* ═══ v2.3.2599: THE STAT ICON, AS LARGE AS THE CELL HOLDS ═══
                Owner: "make the stat icons larger."  The pressure that made this
                hard is gone on three counts — the VALUES left the cell
@@ -1749,9 +1787,39 @@ export const HeroExpanded = () => {
                asked for "about 3x".  36 is 2.8x at 360 and the one-column row's
                44 is 3.4x — so 3x is reachable now, which it was not when the
                question was first asked. */
-            const CARD_ICON = twoCol ? 36 : 44;
-            const CARD_GAP = twoCol ? 4 : 7;
-            const CARD_PLUS_W = twoCol ? 44 : 60;
+            /* ═══ v2.3.2621: THE ROW RE-BUDGETED FOR A FOURTH CHILD ═══
+               The owner's count sits between the icon and the [+], so the row
+               is four children and three gaps where it was three and two, and
+               it has to come out of a cell that did not grow.  Measured rather
+               than guessed, at the two widths that bind:
+
+                 360 two-col, cell 163: 2 border + 6 padding + 3 gaps + icon
+                   + count + [+] + LABEL = 163
+                 landscape, row 177: the same sum at its own sizes
+
+               and the label needs 48.45 ("Dodge" at 13px/800) in portrait,
+               42.9 (at 11.5px) sideways.  Shipping the count at the old sizes
+               left the label 48.0 and 31.0 respectively — i.e. clipped on four
+               labels sideways and by 0.45px at 360, which mp-catgrid caught.
+
+               WHAT PAID FOR IT, in the order the file's own rules allow: the
+               [+] first (sideways it was 60 against the 44 the two-column card
+               has always managed with, and mp-prog3's floor is 44), then the
+               gaps, then the icon.  The icon gives up the least because it is
+               the thing v2.3.2599 was asked to make bigger: 36 -> 32 in two
+               columns (2.8x -> 2.5x the original 13px) and 44 -> 40 sideways.
+               That leaves the label 52 and 48 — 3.5 and 5.1 clear.
+
+               THE ONE STATE THAT STILL SQUEEZES, named rather than hidden: the
+               count reserves two digits, and a stat at its cap prints THREE
+               ("100").  That costs ~8px and ellipsises the longest labels while
+               it is on screen.  It is the rarest cell on the screen (a maxed
+               stat on a character past level 100) and the alternative is
+               reserving that width on all thirteen rows forever, which would
+               cost the icon another 8px on every one of them. */
+            const CARD_ICON = twoCol ? 32 : (landPane ? 40 : 44);
+            const CARD_GAP = twoCol ? 3 : (landPane ? 5 : 7);
+            const CARD_PLUS_W = twoCol ? 44 : (landPane ? 48 : 60);
             /* ═══ THE [+] IS THE WHOLE THUMB TARGET NOW ═══
                The reference draws it 28.5px tall in a 46.6px row, and that was
                fine while the row itself was also tappable. The owner has since
@@ -1785,13 +1853,14 @@ export const HeroExpanded = () => {
                 {POINT_LANES.map((col) => {
                   const shared = !!col.shared;
                   const pts = shared ? sharedAvail : laneAvail(col.key);
+                  const spent = laneSpent(col);   /* v2.3.2620 */
                   const lvl = shared ? prog3CharLevel(R) : prog3SkillLevel(R, col.key);
                   const held = !shared && prog3ActiveCat(R) === col.key;
                   return (
                     <div key={col.key} role="button"
                       data-prog3-lane={col.key}
                       aria-label={`${col.label}, level ${lvl}`}
-                      title={`${col.label} — level ${lvl} — ${pts} point${pts === 1 ? '' : 's'} to spend`}
+                      title={`${col.label} — level ${lvl} — ${pts} point${pts === 1 ? '' : 's'} to spend — ${spent} already applied`}
                       {...scrollTap(() => setSelCat(col.key))}
                       style={{
                         height: GRID_H, boxSizing: 'border-box', minWidth: 0,
@@ -1823,6 +1892,31 @@ export const HeroExpanded = () => {
                             fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
                             visibility: pts > 0 ? 'visible' : 'hidden',
                           }}>{pts} PT{pts === 1 ? '' : 'S'}</span>
+                        {/* ═══ v2.3.2620: ...AND WHAT IS ALREADY IN IT ═══
+                            The line above is what this category can still spend
+                            and is deliberately INVISIBLE at zero (the tile keeps
+                            its height, and mp-catgrid pins exactly one
+                            "points to spend" per lane, hidden when there is
+                            nothing).  This one is the opposite reading and is
+                            always drawn: a category you have poured 40 points
+                            into should not look identical to an untouched one
+                            just because both are out of points today.
+                            It fits without growing the tile — GRID_H is 52
+                            (44 sideways) against 13 + 11.5 + 10 of type and 2 of
+                            gaps — and it is muted rather than gold so the gold
+                            on this screen keeps meaning "there is something to
+                            spend here". */}
+                        <span aria-label={`${spent} points applied to ${col.label}`}
+                          style={{
+                            /* text2, not muted: on a tile carrying points the
+                               background is accentFill, where muted measures
+                               4.06:1 — under AA for 10px type — and text2 6.35:1.
+                               The size difference carries the hierarchy. */
+                            fontSize: 10, fontWeight: 700, lineHeight: 1.1, color: COL.text2,
+                            letterSpacing: '.04em', fontVariantNumeric: 'tabular-nums',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            maxWidth: '100%',
+                          }}>{spent} SPENT</span>
                       </div>
                     </div>
                   );
@@ -1924,7 +2018,11 @@ export const HeroExpanded = () => {
                        shrinks with an ellipsis when the cell is too narrow —
                        what changes is only that the slack now lives between the
                        label and the [+], where the icon can sit in the middle
-                       of it (see the auto margins on the <img> below). */
+                       of it (see the auto margins on the <img> below).
+                       v2.3.2621: "between the label and the plus sign" now
+                       means between the label and the COUNT, because the count
+                       is what sits on the icon's right.  Same rule, new
+                       neighbour — see the count below. */
                     flex: '0 1 auto', minWidth: 0,
                     fontSize: landPane ? 11.5 : 13, fontWeight: 800, letterSpacing: '.02em',
                     /* v2.3.2599: LIGHT again.  The dark flip existed because the
@@ -1950,6 +2048,57 @@ export const HeroExpanded = () => {
                       flex: 'none', pointerEvents: 'none',
                       marginLeft: 'auto', marginRight: 'auto',
                       filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.45))' }} />
+                  {/* ═══ v2.3.2621: THE COUNT, ON THE CELL, LEFT OF THE [+] ═══
+                      Owner: "I want to see the number on the cells to the left
+                      of the plus sign and zeros if there are zeroes."
+
+                      v2.3.2620 put it under the label, on the reasoning that a
+                      second LINE costs no width and the row had 31px of unused
+                      height.  That is still true and is no longer the point: the
+                      owner has looked at it and asked for the slot the value
+                      used to occupy before v2.3.2597 emptied it — label, icon,
+                      NUMBER, [+] — which reads as a table down the card instead
+                      of as a caption under each name.
+
+                      "ZEROS IF THERE ARE ZEROES" is the load-bearing half and it
+                      is why this is not conditional in any way.  An untouched
+                      stat prints `0`, not a blank and not a hidden element: a
+                      column of numbers with holes in it reads as a broken
+                      readout, and a player scanning for where their points went
+                      needs the zeros as much as the totals — they are the answer
+                      to "which of these have I never touched".
+
+                      WHAT IT COSTS, named because this file measures rather than
+                      guesses: the two-column cell at 360 is 163px, and inserting
+                      a number plus its gap takes ~24 of them from the label.  The
+                      label pays with the SHORT names the landscape card has used
+                      since v2.3.2597 (CARD_SHORT, an existing owner-approved set,
+                      not a new invention) — see cardLabel.  The cap is not drawn:
+                      "12" is the number that was asked for, and "12/66" needs
+                      half again the width for a denominator that never changes.
+                      It stays in the aria-label and the long-press title, which
+                      is where the [+]'s own "N of M" already lives.
+
+                      Colour: COL.text, the label's own, measured 5.68:1 to
+                      11.29:1 on the thirteen stat fills (v2.3.2599).  NOT the
+                      gold — that runs 3.02:1 to 6.00:1, fine for the [+]'s 3:1
+                      non-text floor and under AA for a 12px number on five of
+                      the thirteen, and on this screen gold means "there is
+                      something to spend" while this number is the opposite
+                      reading: what is already committed. */}
+                  <span data-prog3-applied={lk}
+                    aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}: ${pts} of ${cap} points applied`}
+                    style={{
+                      /* Two digits reserved, right-aligned, so the numbers
+                         line up down the card and a 9 -> 10 does not shuffle
+                         the icon beside it.  See the budget note on CARD_ICON
+                         for what three digits cost. */
+                      flex: 'none', minWidth: landPane ? 17 : 18, textAlign: 'right',
+                      fontSize: landPane ? 12 : 13.5, fontWeight: 900,
+                      lineHeight: 1, whiteSpace: 'nowrap',
+                      fontVariantNumeric: 'tabular-nums',
+                      color: COL.text,
+                    }}>{pts}</span>
                   {/* ═══ v2.3.2597: THE VALUE IS NOT HERE ANY MORE ═══
                       Owner, solving the two-column squeeze themselves: "You can
                       move the values to the second confirmation screen."  So a
@@ -1995,7 +2144,14 @@ export const HeroExpanded = () => {
                     data-stat-info={st.key}
                     aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${pts} of ${cap}. ${st.perText} per point.`}
                     aria-disabled={!canSpend}
-                    title={`${st.label} — ${pts} of ${cap} points — ${st.perText} per point`}
+                    /* v2.3.2620: ...and the long-press says what the stat READS
+                       right now, which is the other half of what v2.3.2597 took
+                       off the cell.  statValueText has been computed and unused
+                       on this screen since that commit moved the values out; the
+                       row's own line prints the POINTS and this prints what they
+                       bought ("31.0%", "1-2"), so the pair is back without
+                       either of them costing the cell a pixel. */
+                    title={`${st.label} — ${pts} of ${cap} points — now ${statValueText(st, cat)} — ${st.perText} per point`}
                     {...scrollTap(() => openStatInfo(st, cat, {
                       blocked: (st.atk ? laneAvail(cat) : sharedAvail) <= 0
                         ? `No ${st.atk ? ((PROG3_SKILL_META.find((k) => k.key === cat) || {}).label || 'lane') : 'shared'} points to spend.`
