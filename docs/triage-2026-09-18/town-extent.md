@@ -63,10 +63,9 @@ open, and the owner's new art on three of them.
 | prop | position | why there |
 |---|---|---|
 | mayor-house | 46%, 27% | the north terrace, up the painted stairs |
-| enchanter | 70%, 33% | the north-east shelf, inside its fence |
 | forge | 24%, 52% | west, clear of the cliff by ~60px of cobble |
 | auction-house | 75%, 56% | east, facing the plaza across it |
-| bank | 78%, 71% | east of the fountain, against the rocks, off the exit path |
+| bank | 70%, 33% | the north-east shelf, where the enchanter stood |
 | fountain | 44%, 66% | the middle, which is now a middle |
 
 **Prop sizes are unchanged.** A building is worth the same number of world px it
@@ -155,9 +154,36 @@ wanderers are inside their radii.
 
 ### The bank
 
-60%, 82% → **78%, 71%**. Directly east of the fountain (44%, 66%), against the
-east cliff, and **745px from the exit staircase** instead of 280px. It clears
-the auction house's ground line by 26px, so the two don't overlap, and the spot
-is 100% cobble under it with 99% on a 95px disc.
+60%, 82% → 78%, 71% — directly east of the fountain, against the east cliff and
+745px from the exit staircase instead of 280px.
 
-![bank east](assets/town-bank-east.png)
+## The enchanter comes off the map (v2.3.2630)
+
+> "Remove the enchanter building and put the bank in its place."
+
+Done — the enchanter's prop is deleted and the bank moves to its shelf at
+70%, 33%, superseding the 78%, 71% spot above.
+
+Only a **prop** makes a door: the proximity scan reads `propsForZone` and
+`p.action`, and `BUILDINGS` supplies only the label, icon and action for
+whatever the scan finds. Most of that table already has no prop (marketplace,
+kitchen, tavern, woodworker, gambling den, gem cutter), so the `enchanting`
+row is left alone — deleting it would be churn against a catalogue that is
+already mostly doorless, and it is what brings the building back.
+
+**Two things this costs**, both worth knowing before it is undone:
+
+1. **Gear enchanting has no other way in.** `buildingPanel === 'enchant'` is
+   reached only from that door; the Pet House's "Enchant" tab is pet
+   enchanting, a different system. "Slot gems into gear" is off the map until
+   a door for it exists again.
+2. **The town is down to three doors** — forge, bank, auction house. `mayor_1`
+   ("Visit 3 buildings in town") declares `needsDoor: 3` and unlocks
+   `zone_exits`, so the whole world hangs off three distinct doors existing,
+   and its own check wants three distinct visits. Three is exactly the
+   minimum: it still passes, with no slack. A fourth door going away takes the
+   world with it — the wall v2.3.2087 wrote that guard to prevent.
+
+`mp-townbuildings` used to walk to the enchanter's door. That assertion is
+replaced by one that pins what the removal put at risk: the town still has the
+three distinct doors `mayor_1` needs.

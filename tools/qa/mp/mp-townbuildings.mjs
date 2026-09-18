@@ -1,6 +1,6 @@
 /* THE BUILDINGS ARE PLACED, SOLID, AND YOU CAN WALK INTO THEM (v2.3.1778).
  *
- * Owner supplied a forge, a bank, an enchanter, an auction house and the
+ * Owner supplied a forge, a bank, an auction house and the
  * mayor's house, to be placed on the clifftop plateau and "Not walkable".
  *
  * Three claims, and the middle one is the ask:
@@ -22,7 +22,11 @@
 import * as H from './harness.mjs';
 
 const PERSON_H = 120;
-const BUILDINGS = ['mayor-house', 'forge', 'bank', 'enchanter', 'auction-house'];
+/* v2.3.2630: the enchanter is off the map at the owner's request (its prop is
+   gone; worldProps.js explains what that costs).  The guard below turns a
+   missing building into one named failure instead of a pile of confusing
+   ones, so this list has to follow the map. */
+const BUILDINGS = ['mayor-house', 'forge', 'bank', 'auction-house'];
 
 const props = (P) => P.page.evaluate(() => (window.__btWorldProps ? window.__btWorldProps() : []));
 const pos = (P) => H.readState(P, (S) => ({ x: Math.round(S.player.x), y: Math.round(S.player.y) }));
@@ -174,12 +178,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(400);
 
-  await doorOf('enchanter');
-  await P.page.keyboard.press('e');
-  await P.page.waitForTimeout(900);
-  rec.ok('...and so does the enchanter', await H.seesText(P, 'Enchant'));
-  await P.page.keyboard.press('Escape');
-  await P.page.waitForTimeout(400);
+  /* v2.3.2630: the enchanter's door used to be checked here.  Its prop is
+     gone, so instead this pins the thing that removal PUT AT RISK: mayor_1
+     ("Visit 3 buildings in town", needsDoor 3) unlocks 'zone_exits', so the
+     whole world hangs off three distinct doors existing.  Three is what is
+     left -- exactly the minimum -- and the day a fourth goes the quest hides
+     itself and walls the chain, which is what v2.3.2087 wrote that guard for. */
+  const doors = await P.page.evaluate(() =>
+    (window.__btWorldProps ? window.__btWorldProps() : []).filter((p) => p.action).map((p) => p.action));
+  rec.ok('town still has the three distinct doors mayor_1 needs to unlock the world',
+    new Set(doors).size >= 3, { doors });
 
   await doorOf('auction-house');
   await P.page.keyboard.press('e');

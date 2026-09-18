@@ -19,7 +19,31 @@
  * same y sit on the same line.
  */
 export const WORLD_PROPS = [
-  /* ═══ v2.3.2628: SPREAD ACROSS THE BIGGER PLATEAU ═══
+  /* ═══ v2.3.2630: THE ENCHANTER IS GONE, AND THE BANK TAKES ITS SHELF ═══
+     Owner: "Remove the enchanter building and put the bank in its place."
+
+     Only a PROP makes a door -- the proximity scan reads propsForZone and
+     p.action (BroTown.jsx), and BUILDINGS supplies only the label, icon and
+     action for whatever the scan finds.  Most of that table already has no
+     prop (marketplace, kitchen, tavern, woodworker, gambling den, gem cutter),
+     so the 'enchanting' row is LEFT ALONE: deleting it would be churn against
+     a catalogue that is already mostly doorless, and it is what brings the
+     building back if the owner wants it somewhere else.
+
+     TWO THINGS THIS COSTS, both worth knowing before it is undone:
+
+     1. Gear enchanting has NO other way in.  `buildingPanel === 'enchant'`
+        (BroTown.jsx) is reached only from this door; the Pet House's "Enchant"
+        tab is pet enchanting, a different system.  So "Slot gems into gear" is
+        off the map until a door for it exists again.
+     2. The town is down to THREE doors -- forge, bank, auction house.  mayor_1
+        ("Visit 3 buildings in town") declares `needsDoor: 3` and unlocks
+        'zone_exits', so the whole world hangs off it, and its own check wants
+        three DISTINCT visits.  Three doors is exactly the minimum: it still
+        passes, with no slack at all.  A fourth door going away takes the world
+        with it, which is the wall v2.3.2087 wrote that guard to prevent.
+
+  ═══ v2.3.2628: SPREAD ACROSS THE BIGGER PLATEAU ═══
      Owner, with the map: "These buildings need to be more spread out there."
 
      zones.js took town from 52x55 to 68x72 tiles the same day (the size the
@@ -29,11 +53,10 @@ export const WORLD_PROPS = [
      the auction house's, the enchanter nearly touched it, and the whole
      southern half of the plaza was empty cobble.
 
-     So the five doors were re-placed around the plaza's edge, each in its
-     own quarter, with the open middle left open:
+     So the doors were re-placed around the plaza's edge, each in its own
+     quarter, with the open middle left open:
 
        mayor-house  46%, 27%   the north terrace, up the painted stairs
-       enchanter    70%, 33%   the north-east shelf, inside its fence
        forge        24%, 52%   west, clear of the cliff by ~60px of cobble
        auction-house 75%, 56%  east, facing the plaza across it
        bank         78%, 71%   east, against the rocks, off the exit path
@@ -393,24 +416,10 @@ export const WORLD_PROPS = [
      stall, and the north is the mayor's terrace. */
   {
     id: 'bank', zone: 'town', mapV: 17, sprite: '/sprites/props/bank.png',
-    x: 1697, y: 1636, worldH: 320, blockW: 220, blockD: 95,
+    x: 1523, y: 760, worldH: 320, blockW: 220, blockD: 95,
     action: 'bank', label: 'BANK',
   },
-  {
-    /* NORTH-EAST, not stacked under the bank.  The first placement put it at
-       (1180, 1000), which the layout render showed crowding the auction house:
-       220 of spire drawn through a shop 190 wide, and Storekeeper Bro standing
-       in the seam.  There is not room on the east flank for two 300px
-       buildings AND the store between the plaza and the wall -- the clear run
-       is about 550px and they want 620.
-       So it takes the empty quarter instead: the cobble between the mayor's
-       terrace and the store, which held nothing at all.  Art spans y 400..700
-       and x 940..1160, clear of the mayor's house (its art ends at x 925) and
-       of the store (its footprint starts at x 1195). */
-    id: 'enchanter', zone: 'town', mapV: 17, sprite: '/sprites/props/enchanter.png',
-    x: 1523, y: 760, worldH: 300, blockW: 220, blockD: 95,
-    action: 'enchant', label: 'ENCHANTER',
-  },
+
 ];
 
 /** The footprint a prop blocks, or null when it is scenery you walk past.
