@@ -7,6 +7,7 @@ import { ChatBubble } from './mobile/ChatBubble.jsx';
 import { WorldChatFeed } from './mobile/WorldChatFeed.jsx'; /* v2.3.2037 */
 import { InstallHint } from './mobile/InstallHint.jsx'; /* v2.3.2159 */
 import { ShopkeeperPanel } from './panels/ShopkeeperPanel.jsx';   /* v2.3.2050 */
+import { AceFlipPanel } from './panels/AceFlipPanel.jsx';       /* v2.3.2618 */
 import { XpFlyOverlay } from './XpFlyOverlay.jsx';
 import { InventorySurface } from './mobile/InventorySurface.jsx';
 import { inventoryBus } from './mobile/inventoryBus.js';
@@ -673,6 +674,7 @@ export const GameApp = () => {
           by a bus that a WebSocket handler and the game loop both write to, and
           neither of those has a route to BroTown's React state. */}
       <ShopkeeperPanel />
+      <AceFlipPanel />
       {/* InventorySurface, InspectCard, MoreOverlay are no longer mounted — */}
       {/* the bottom dashboard nests their content inside the --dash-h band. */}
       {/* Their buses still exist and are exercised by debug commands.      */}

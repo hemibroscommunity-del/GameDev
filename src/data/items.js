@@ -136,6 +136,24 @@ export const QUEST_AP_REWARD = 5;
 export const GAMBLE_WIN_CHANCE = 0.40;
 export const GAMBLE_MIN_BET = 10;
 export const GAMBLE_MAX_BET = 10000;
+/* ═══ v2.3.2618: ACE'S COIN FLIP ═══
+   Owner: "You can triple your money or lose 3x of your bag (you can only bet
+   what you can lose 3x of).  The odds are 55% him winning, 45% you winning."
+   MIRROR of server/src/gamble.js ACE_FLIP -- keep in sync, exactly as the
+   GAMBLE_* trio above mirrors that file's Hall constants.  The server is the
+   only thing that rolls; these exist so the panel can draw the same bounds it
+   will be judged by, and never so it can settle. */
+export const ACE_FLIP_MIN_STAKE = 10;
+export const ACE_FLIP_RISK_MULT = 3;
+/* The PLAYER's chance. Ace takes the other 55% -- the edge is in the coin,
+   not in the payout, which is symmetric at 3x either way. */
+export const ACE_FLIP_WIN_CHANCE = 0.45;
+/* The largest stake a bag can back: it is the LOSS that must be affordable,
+   so this is coins/3, not coins.  The panel clamps to it and the server
+   re-checks it (never trust the client's arithmetic). */
+export function aceFlipMaxStake(coins) {
+  return Math.floor(Math.max(0, Number(coins) || 0) / ACE_FLIP_RISK_MULT);
+}
 export const JACKPOT_HOUSE_CUT = 0.10;
 export const JACKPOT_MIN_DEPOSIT = 50;
 
