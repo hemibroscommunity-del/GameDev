@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  vendorprompt: () => import('./mp-vendorprompt.mjs'), /* v2.3.2617: the Enter VENDOR prompt must not survive its own tap -- real finger taps at four viewports, asked of elementFromPoint (TRAPS §67) */
   exitmark: () => import('./mp-exitmark.mjs'), /* v2.3.2605: can you see the way out of a spoke -- measured against sand AND snow, at four viewports */
   sellcue: () => import('./mp-sellcue.mjs'), /* v2.3.2606: a server-settled sale rings the coin sound, a refused one does not, and the sound setting silences it */
   sellsheet: () => import('./mp-sellsheet.mjs'), /* v2.3.2612: why tapping Sell reads as nothing happening -- disabled variant, covered button, or a price sheet below the fold */
