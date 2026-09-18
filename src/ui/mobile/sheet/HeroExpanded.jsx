@@ -1751,10 +1751,28 @@ export const HeroExpanded = () => {
                spelled out in the first place.
                Shrinking the type instead would have taken every label to 11px,
                the readability floor, to fit one of them; shrinking the icon or
-               the [+] undoes what the owner asked for in v2.3.2599 and here. */
-            const CARD_TIGHT = { mana: 'Max MP' };
-            const cardLabel = (st) => (landPane ? (CARD_SHORT[st.key] || st.label)
-              : (twoCol ? (CARD_TIGHT[st.key] || st.label) : st.label));
+               the [+] undoes what the owner asked for in v2.3.2599 and here.
+               RETIRED at v2.3.2621 — the map, not the lesson.  Two columns take
+               CARD_SHORT wholesale now (the count needs the width), and every
+               short name is shorter than the one-off this held.  The
+               measurements above are kept because they are what the budget IS:
+               a 13px/800 label in a two-column cell has ~67px before the count
+               and ~43px after it, and the next person to reach for a full name
+               here needs those two numbers. */
+            /* ═══ v2.3.2621: TWO COLUMNS TAKE THE SHORT NAMES NOW ═══
+               The count the owner asked for sits between the icon and the [+]
+               and takes ~24px of a 163px cell with its gap.  Measured at 360,
+               the label box that leaves is ~43px, and the full names want up to
+               61.81 ("Element") — so with them the widest four labels ellipsise
+               and the card lies about which stat a row is.
+               The short set is the one landscape has used since v2.3.2597
+               (CARD_SHORT), not a new invention, and its widest ("Resist",
+               "Dodge", "Speed") is ~42px.  That also retires CARD_TIGHT: it
+               existed to shorten the ONE full name that did not fit two columns
+               ("Max Mana" → "Max MP", v2.3.2611), and CARD_SHORT is shorter than
+               it everywhere.  One column — below 360, or `?p3cols=1` — has the
+               room and keeps the full names. */
+            const cardLabel = (st) => ((landPane || twoCol) ? (CARD_SHORT[st.key] || st.label) : st.label);
             /* ═══ v2.3.2599: THE STAT ICON, AS LARGE AS THE CELL HOLDS ═══
                Owner: "make the stat icons larger."  The pressure that made this
                hard is gone on three counts — the VALUES left the cell
@@ -1769,9 +1787,39 @@ export const HeroExpanded = () => {
                asked for "about 3x".  36 is 2.8x at 360 and the one-column row's
                44 is 3.4x — so 3x is reachable now, which it was not when the
                question was first asked. */
-            const CARD_ICON = twoCol ? 36 : 44;
-            const CARD_GAP = twoCol ? 4 : 7;
-            const CARD_PLUS_W = twoCol ? 44 : 60;
+            /* ═══ v2.3.2621: THE ROW RE-BUDGETED FOR A FOURTH CHILD ═══
+               The owner's count sits between the icon and the [+], so the row
+               is four children and three gaps where it was three and two, and
+               it has to come out of a cell that did not grow.  Measured rather
+               than guessed, at the two widths that bind:
+
+                 360 two-col, cell 163: 2 border + 6 padding + 3 gaps + icon
+                   + count + [+] + LABEL = 163
+                 landscape, row 177: the same sum at its own sizes
+
+               and the label needs 48.45 ("Dodge" at 13px/800) in portrait,
+               42.9 (at 11.5px) sideways.  Shipping the count at the old sizes
+               left the label 48.0 and 31.0 respectively — i.e. clipped on four
+               labels sideways and by 0.45px at 360, which mp-catgrid caught.
+
+               WHAT PAID FOR IT, in the order the file's own rules allow: the
+               [+] first (sideways it was 60 against the 44 the two-column card
+               has always managed with, and mp-prog3's floor is 44), then the
+               gaps, then the icon.  The icon gives up the least because it is
+               the thing v2.3.2599 was asked to make bigger: 36 -> 32 in two
+               columns (2.8x -> 2.5x the original 13px) and 44 -> 40 sideways.
+               That leaves the label 52 and 48 — 3.5 and 5.1 clear.
+
+               THE ONE STATE THAT STILL SQUEEZES, named rather than hidden: the
+               count reserves two digits, and a stat at its cap prints THREE
+               ("100").  That costs ~8px and ellipsises the longest labels while
+               it is on screen.  It is the rarest cell on the screen (a maxed
+               stat on a character past level 100) and the alternative is
+               reserving that width on all thirteen rows forever, which would
+               cost the icon another 8px on every one of them. */
+            const CARD_ICON = twoCol ? 32 : (landPane ? 40 : 44);
+            const CARD_GAP = twoCol ? 3 : (landPane ? 5 : 7);
+            const CARD_PLUS_W = twoCol ? 44 : (landPane ? 48 : 60);
             /* ═══ THE [+] IS THE WHOLE THUMB TARGET NOW ═══
                The reference draws it 28.5px tall in a 46.6px row, and that was
                fine while the row itself was also tappable. The owner has since
@@ -1960,41 +2008,7 @@ export const HeroExpanded = () => {
                   border: `1px solid ${CELL_BORDER}`,
                   borderRadius: 9, overflow: 'hidden',
                 }}>
-                  {/* ═══ v2.3.2620: THE ROW SAYS WHAT IS ALREADY IN THE STAT ═══
-                      Owner: "make it so that the current points applied to
-                      skills is shown on the points panel."
-
-                      It was not shown anywhere on this screen.  v2.3.2597 moved
-                      the stat VALUES out to the confirm window to buy two
-                      columns and named the cost in its own note — "the category
-                      panel stops saying what you HAVE and becomes a list of what
-                      you can BUY" — and v2.3.2599 then took the point-landed orb
-                      as well, leaving a spent point with nothing visible to
-                      change.  The allocation itself was never on the cell in any
-                      version: it lived only in the aria-label and inside the
-                      window you had to open per stat.
-
-                      WHAT THIS COSTS IN WIDTH: NOTHING, which is the whole
-                      reason it is a second LINE rather than a cell.  Every
-                      measurement this file records — the 163px two-column cell,
-                      the 44px [+], "Element" needing 61.81 of its 67px box — is
-                      horizontal, and the row is 46px tall carrying a single 13px
-                      line.  Stacked under the label the count takes 12.5 of the
-                      ~31px of air that were already there, and the label's own
-                      box is unchanged: the wrapper shrink-wraps to the WIDER of
-                      the two children and the count ("100/100" at 10.5px is
-                      ~42px) is narrower than every label at every width.
-                      `alignItems: flex-start` is what keeps that true — it
-                      leaves each line its own width instead of stretching the
-                      label to the column's.
-
-                      IT IS THE CAPPED TOTAL, not the raw allocation:
-                      prog3StatCap is the stat's own cap AND min(100, character
-                      level), which is exactly what the [+] refuses at, so the
-                      number the row prints and the button's behaviour cannot
-                      disagree — "12/12" is the answer to a [+] that has gone
-                      grey on a stat with 88 points of headroom left. */}
-                  <div style={{
+                  <span style={{
                     /* ═══ v2.3.2602: THE LABEL NO LONGER EATS THE ROW ═══
                        Owner: "center the icon between the label and the plus
                        sign on each cell."  The label was `flex: 1`, so it grew
@@ -2005,59 +2019,19 @@ export const HeroExpanded = () => {
                        what changes is only that the slack now lives between the
                        label and the [+], where the icon can sit in the middle
                        of it (see the auto margins on the <img> below).
-                       v2.3.2620: it is the two-line block that carries the
-                       flex now; the label keeps the ellipsis that is its own. */
+                       v2.3.2621: "between the label and the plus sign" now
+                       means between the label and the COUNT, because the count
+                       is what sits on the icon's right.  Same rule, new
+                       neighbour — see the count below. */
                     flex: '0 1 auto', minWidth: 0,
-                    /* STRETCH, not flex-start, and mp-catgrid is why.  The
-                       icon is centred between "the label and the plus sign"
-                       (v2.3.2602) and that check measures from the LABEL
-                       SPAN's right edge -- so with the lines shrink-wrapped
-                       individually, a row whose count is wider than its name
-                       ("HP" over "0/12") left the span 3.16px short of the
-                       block and the icon read as off-centre against it.
-                       Stretched, both lines are the block's width, the span's
-                       right edge IS the block's right edge, and the icon is
-                       centred against the text it actually sits beside.
-                       Text stays left-aligned; only the boxes grow. */
-                    display: 'flex', flexDirection: 'column',
-                    gap: 2, overflow: 'hidden',
-                  }}>
-                    <span style={{
-                      maxWidth: '100%',
-                      fontSize: landPane ? 11.5 : 13, fontWeight: 800, letterSpacing: '.02em',
-                      /* v2.3.2599: LIGHT again.  The dark flip existed because the
-                         fill was a light pastel; the deep fills measure 5.68:1 to
-                         11.29:1 against COL.text, so the label matches the rest of
-                         the panel instead of inverting inside it. */
-                      color: COL.text, lineHeight: 1,
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    }}>{cardLabel(st)}</span>
-                    <span data-prog3-applied={lk}
-                      aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}: ${pts} of ${cap} points applied`}
-                      style={{
-                        maxWidth: '100%',
-                        fontSize: landPane ? 9.5 : 10.5, fontWeight: 800, letterSpacing: '.04em',
-                        lineHeight: 1, whiteSpace: 'nowrap',
-                        fontVariantNumeric: 'tabular-nums',
-                        /* ═══ THE SAME COLOUR AS THE LABEL, AND NOT GOLD ═══
-                           Two reasons, one measured and one about meaning.
-                           MEASURED: on the thirteen stat fills COL.text runs
-                           5.68:1 to 11.29:1 (the label's own figure, v2.3.2599),
-                           while the gold runs 3.02:1 to 6.00:1 — fine for the
-                           [+]'s 3:1 non-text floor and under AA's 4.5 for a
-                           10.5px number on five of the thirteen.  A count the
-                           player is meant to READ does not get the button's
-                           budget.  MEANING: gold on this screen is the spend
-                           affordance — the [+], the available count, the tile
-                           border — and this number is the opposite reading,
-                           what is already committed and cannot be spent again.
-                           The denominator is dimmed to 0.85, which is the
-                           lowest that still measures 4.61:1 on the worst fill. */
-                        color: COL.text,
-                      }}>
-                      {pts}<span style={{ opacity: 0.85, fontWeight: 700 }}>{'/' + cap}</span>
-                    </span>
-                  </div>
+                    fontSize: landPane ? 11.5 : 13, fontWeight: 800, letterSpacing: '.02em',
+                    /* v2.3.2599: LIGHT again.  The dark flip existed because the
+                       fill was a light pastel; the deep fills measure 5.68:1 to
+                       11.29:1 against COL.text, so the label matches the rest of
+                       the panel instead of inverting inside it. */
+                    color: COL.text, lineHeight: 1,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>{cardLabel(st)}</span>
                   {/* v2.3.2602: auto margins, not two flex spacers.  A spacer
                       either side would centre the icon just as well but adds two
                       more `gap: CARD_GAP` to the row — 8px at 360, off a cell
@@ -2074,6 +2048,57 @@ export const HeroExpanded = () => {
                       flex: 'none', pointerEvents: 'none',
                       marginLeft: 'auto', marginRight: 'auto',
                       filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.45))' }} />
+                  {/* ═══ v2.3.2621: THE COUNT, ON THE CELL, LEFT OF THE [+] ═══
+                      Owner: "I want to see the number on the cells to the left
+                      of the plus sign and zeros if there are zeroes."
+
+                      v2.3.2620 put it under the label, on the reasoning that a
+                      second LINE costs no width and the row had 31px of unused
+                      height.  That is still true and is no longer the point: the
+                      owner has looked at it and asked for the slot the value
+                      used to occupy before v2.3.2597 emptied it — label, icon,
+                      NUMBER, [+] — which reads as a table down the card instead
+                      of as a caption under each name.
+
+                      "ZEROS IF THERE ARE ZEROES" is the load-bearing half and it
+                      is why this is not conditional in any way.  An untouched
+                      stat prints `0`, not a blank and not a hidden element: a
+                      column of numbers with holes in it reads as a broken
+                      readout, and a player scanning for where their points went
+                      needs the zeros as much as the totals — they are the answer
+                      to "which of these have I never touched".
+
+                      WHAT IT COSTS, named because this file measures rather than
+                      guesses: the two-column cell at 360 is 163px, and inserting
+                      a number plus its gap takes ~24 of them from the label.  The
+                      label pays with the SHORT names the landscape card has used
+                      since v2.3.2597 (CARD_SHORT, an existing owner-approved set,
+                      not a new invention) — see cardLabel.  The cap is not drawn:
+                      "12" is the number that was asked for, and "12/66" needs
+                      half again the width for a denominator that never changes.
+                      It stays in the aria-label and the long-press title, which
+                      is where the [+]'s own "N of M" already lives.
+
+                      Colour: COL.text, the label's own, measured 5.68:1 to
+                      11.29:1 on the thirteen stat fills (v2.3.2599).  NOT the
+                      gold — that runs 3.02:1 to 6.00:1, fine for the [+]'s 3:1
+                      non-text floor and under AA for a 12px number on five of
+                      the thirteen, and on this screen gold means "there is
+                      something to spend" while this number is the opposite
+                      reading: what is already committed. */}
+                  <span data-prog3-applied={lk}
+                    aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}: ${pts} of ${cap} points applied`}
+                    style={{
+                      /* Two digits reserved, right-aligned, so the numbers
+                         line up down the card and a 9 -> 10 does not shuffle
+                         the icon beside it.  See the budget note on CARD_ICON
+                         for what three digits cost. */
+                      flex: 'none', minWidth: landPane ? 17 : 18, textAlign: 'right',
+                      fontSize: landPane ? 12 : 13.5, fontWeight: 900,
+                      lineHeight: 1, whiteSpace: 'nowrap',
+                      fontVariantNumeric: 'tabular-nums',
+                      color: COL.text,
+                    }}>{pts}</span>
                   {/* ═══ v2.3.2597: THE VALUE IS NOT HERE ANY MORE ═══
                       Owner, solving the two-column squeeze themselves: "You can
                       move the values to the second confirmation screen."  So a

@@ -764,17 +764,21 @@ committing a point changed nothing visible on the row. The allocation
 itself lived only in the `[+]`'s aria-label and inside the per-stat
 window.
 
-- **Every stat row** prints `N/CAP` under its name — the points applied,
-  over the cap the `[+]` actually refuses at (`prog3StatCap`: the stat's
-  own cap AND `min(100, character level)`), so the number and the button
-  cannot disagree. It costs **no width**: the label block is two lines in
-  a 46px row that was carrying one 13px line, and the block shrink-wraps
-  to the wider of the two, which is the label at every width the screen
-  supports (`100/100` is ~42px; `Element`, the longest label, 61.81).
-  The lines are `align-items: stretch` so the label span's right edge
-  stays the block's right edge — mp-catgrid measures the icon's centring
-  from that edge (v2.3.2602), and shrink-wrapping each line individually
-  put the icon 3.16px off on any row whose count is wider than its name.
+- **Every stat row** prints the count between the icon and the `[+]` —
+  the slot the stat VALUE occupied before v2.3.2597 emptied it, so the
+  row reads label / icon / number / `[+]` and the numbers line up down
+  the card. Owner, on the first cut (which put it under the label):
+  *"I want to see the number on the cells to the left of the plus sign
+  and zeros if there are zeroes."*
+  **The zeros are the load-bearing half.** An untouched stat prints `0`
+  — not a blank, not a hidden element. A column with holes in it reads as
+  a broken readout, and the zeros are the answer to "which of these have
+  I never touched". Nothing about the count is conditional.
+  The cap is not drawn beside it. `12` is the number that was asked for;
+  `12/66` needs half again the width for a denominator that never
+  changes. It stays in the aria-label and the long-press title, beside
+  the `[+]`'s own "N of M" — and the count IS that N, asserted, so the
+  printed number and the gate the button applies cannot drift.
 - **Every category tile** on the 2×2 grid prints `N SPENT` under its
   name, always — the "points to spend" line above it is hidden at zero,
   so without this a category holding 40 points looked identical to an
@@ -786,10 +790,40 @@ window.
 - **Colour.** Both readouts are text-coloured, not gold. Measured on the
   thirteen stat fills, `COL.text` runs 5.68:1–11.29:1 and the gold
   3.02:1–6.00:1 — fine for the `[+]`'s 3:1 non-text floor, under AA for a
-  10.5px number on five of the thirteen. Gold on this screen means "there
+  12px number on five of the thirteen. Gold on this screen means "there
   is something to spend"; this number is the opposite reading.
 - The row's long-press title carries the stat's live VALUE again
   (`statValueText`, computed and unused on this screen since v2.3.2597).
+
+### What the fourth child cost, measured
+
+The row is four children and three gaps where it was three and two, out
+of a cell that did not grow. The two widths that bind are the 163px
+two-column cell at 360 and the 177px landscape row, and the label needs
+48.45 (`Dodge` at 13px/800) portrait, 42.9 (at 11.5px) sideways. At the
+old sizes the count left it 48.0 and 31.0 — clipped on four labels
+sideways and by 0.45px at 360, both caught by `mp-catgrid` rather than by
+reasoning.
+
+Paid for in the order this file's own rules allow: the `[+]` first
+(sideways it was 60 against the 44 the two-column card has always managed
+with, and mp-prog3's floor is 44 → 48), then the gaps (7→5 sideways,
+4→3 in two columns), then the icon — which gives up least because it is
+what v2.3.2599 was asked to make *bigger*: 36→32 in two columns
+(2.8x→2.5x the original 13px) and 44→40 sideways. The label ends up
+with 52 and 48, i.e. 3.5 and 5.1 clear.
+
+Two columns also take the **short** labels now (`CARD_SHORT`, the set
+landscape has used since v2.3.2597 — not a new invention), which retires
+the one-off `CARD_TIGHT` of v2.3.2611. One column, below 360 or via
+`?p3cols=1`, keeps the full names.
+
+**The state that still squeezes, named rather than hidden:** the count
+reserves two digits, and a stat *at its cap* prints three (`100`). That
+costs ~8px and ellipsises the longest labels while it is on screen. It is
+the rarest cell on the screen — a maxed stat on a character past level
+100 — and the alternative is reserving that width on all thirteen rows
+forever, which would cost the icon another 8px on every one of them.
 
 ### Three readouts were counting the wrong pool
 
@@ -825,8 +859,17 @@ window.
 
 ### What the harness pins
 
-`mp-catgrid` gains four assertions: every row prints `N/CAP`; that pair
-is the `[+]`'s own "N of M"; the BOW tile's total equals the sum of the
-BOW card's rows; and — the one that covers what v2.3.2599 removed — the
-row a point is spent into reads one higher afterwards, with no other row
-moving.
+`mp-catgrid` gains six assertions: every row prints its count; the zeros
+are drawn (the case a fresh card is entirely made of); the count sits
+between the icon and the `[+]`, measured on both edges, because "to the
+left of the plus sign" is half of what was asked for; it equals the
+`[+]`'s own N; the BOW tile's total equals the sum of the BOW card's
+rows; and — the one that covers what v2.3.2599 removed — the row a point
+is spent into reads one higher afterwards, with no other row moving.
+
+Its icon-centring check (v2.3.2602) now measures the icon against
+whatever sits either side of it rather than against a hard-coded `[+]`.
+The contract is unchanged in meaning — centre the icon in the space it
+actually has — but measuring *through* the count to the `[+]` would
+report every row as off-centre by the count's width, which is a true
+measurement of the wrong distance.
