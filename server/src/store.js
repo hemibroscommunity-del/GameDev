@@ -345,7 +345,12 @@ export const storeMethods = {
       const paid = rec.sale.paid || (await this._opSeen('store:' + rec.id + ':pay'));
       if (paid) {
         await this._stSettle(rec, rec.sale.buyerId, rec.sale.buyerName, rec.sale.price, rec.sale.bidSeq || null);
-        await this.state.storage.delete('store_listing:' + rec.id);
+        /* v2.3.2621: the conversation goes with the listing it was about, and
+       goes FIRST -- a crash between the two then leaves a listing whose
+       thread is empty (which heals itself) rather than a thread nothing
+       will ever delete (storechat.js). */
+    await this._scDropThreads(rec.id);
+    await this.state.storage.delete('store_listing:' + rec.id);
         return false;
       }
       // The money never moved: the listing simply goes back on the shelf.
@@ -653,6 +658,11 @@ export const storeMethods = {
     const buyerName = rec.sale.buyerName;
     await this._stSettle(rec, buyerId, buyerName, price, null);
     this._stRemoveFromIndex(rec);
+    /* v2.3.2621: the conversation goes with the listing it was about, and
+       goes FIRST -- a crash between the two then leaves a listing whose
+       thread is empty (which heals itself) rather than a thread nothing
+       will ever delete (storechat.js). */
+    await this._scDropThreads(rec.id);
     await this.state.storage.delete('store_listing:' + rec.id);
     return { ok: true, settled: true, bought: true, price, listing: this._stPublic(rec) };
   },
@@ -727,6 +737,11 @@ export const storeMethods = {
 
     await this._stSettle(rec, bid.bidderId, bid.bidderName, bid.amount, bid.seq);
     this._stRemoveFromIndex(rec);
+    /* v2.3.2621: the conversation goes with the listing it was about, and
+       goes FIRST -- a crash between the two then leaves a listing whose
+       thread is empty (which heals itself) rather than a thread nothing
+       will ever delete (storechat.js). */
+    await this._scDropThreads(rec.id);
     await this.state.storage.delete('store_listing:' + rec.id);
     return { ok: true, settled: true, accepted: true, price: bid.amount, listing: this._stPublic(rec) };
   },
@@ -764,7 +779,12 @@ export const storeMethods = {
   async _stRelease(rec, why) {
     if (await this._opSeen('store:' + rec.id + ':goods')) {
       this._stRemoveFromIndex(rec);
-      await this.state.storage.delete('store_listing:' + rec.id);
+      /* v2.3.2621: the conversation goes with the listing it was about, and
+       goes FIRST -- a crash between the two then leaves a listing whose
+       thread is empty (which heals itself) rather than a thread nothing
+       will ever delete (storechat.js). */
+    await this._scDropThreads(rec.id);
+    await this.state.storage.delete('store_listing:' + rec.id);
       return;
     }
     /* ── v2.3.2521: MARK BEFORE ANYTHING MOVES ────────────────────────
@@ -804,6 +824,11 @@ export const storeMethods = {
       note: why,
     });
     this._stRemoveFromIndex(rec);
+    /* v2.3.2621: the conversation goes with the listing it was about, and
+       goes FIRST -- a crash between the two then leaves a listing whose
+       thread is empty (which heals itself) rather than a thread nothing
+       will ever delete (storechat.js). */
+    await this._scDropThreads(rec.id);
     await this.state.storage.delete('store_listing:' + rec.id);
   },
 
