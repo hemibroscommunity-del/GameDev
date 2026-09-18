@@ -32,7 +32,7 @@ const WALK_MS = 2500;
    60fps is ~1140px, which fits inside it with room to spare — and BOTH
    samples now start at the west end, so the slow one is not measuring the
    distance the fast one left over. */
-const LANE = { x: 300, y: 1140 };
+const LANE = { x: 392, y: 1493 };   /* v2.3.2628: same fraction of the enlarged town */
 
 async function walkAndMeasure(P, cdp, throttleRate) {
   /* Back to the lane head BEFORE the throttle goes on: hopTo needs a

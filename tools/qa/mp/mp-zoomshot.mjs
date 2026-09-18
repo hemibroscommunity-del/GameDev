@@ -23,7 +23,7 @@ import * as H from './harness.mjs';
 
 /* A spot in town with ground, buildings and a horizon in frame, so the shot
    shows the character IN a scene rather than alone on a texture. */
-const SPOT = { x: 830, y: 980 };
+const SPOT = { x: 1088, y: 1290 };   /* v2.3.2628: same fraction of the enlarged town */
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const tag = process.env.BT_ZOOM_TAG || 'x';

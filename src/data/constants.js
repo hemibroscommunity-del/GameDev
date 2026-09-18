@@ -136,4 +136,7 @@ export const CLAN_LOGO_SIZE = 8;
    disc clear of all twelve footprints at the player's own half-width, and an
    unobstructed straight run south to the gate stairs. All three properties
    are checked by walking, not by eye (mp-townexit). */
-export const TOWN_SPAWN = { x: 910, y: 1130 };
+/* v2.3.2628: moved with the zone when town went 52x55 -> 68x72 (zones.js).
+   Same FRACTION of the plateau it was verified at, not a fresh guess:
+   910/1664 and 1130/1760 carried onto 2176x2304. */
+export const TOWN_SPAWN = { x: 1190, y: 1479 };

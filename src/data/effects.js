@@ -283,7 +283,11 @@ export function getCollisionDeathFX(deathX, deathY, collisionId, killAngle, body
    the bottom rows that render under the dashboard.
    tools/qa/mp/mp-townlock.mjs hardcodes this marker — kept in step. */
 export const TOWN_EXITS = [
-  { zoneId: 'worldview', tx: 25, ty: 48, dir: 'south', label: 'World View ↓', color: '#cdb27a' },
+  /* v2.3.2628: tile coords, so they moved with town's 52x55 -> 68x72
+     (zones.js).  Same fraction of the map -- 25/52 and 48/55 carried
+     onto the new grid -- which keeps this on the painted staircase at
+     the plateau's south edge rather than re-deriving a verified spot. */
+  { zoneId: 'worldview', tx: 33, ty: 63, dir: 'south', label: 'World View ↓', color: '#cdb27a' },
 ];
 
 /* The World View is the second hub (see zoneTransitions hub logic). Trails

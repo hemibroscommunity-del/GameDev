@@ -12,7 +12,7 @@
  */
 import * as H from './harness.mjs';
 
-const SPOT = { x: 830, y: 980 };
+const SPOT = { x: 1088, y: 1290 };   /* v2.3.2628: same fraction of the enlarged town */
 
 /* The touch helpers are installed per-scenario (mp-rbutton does the same):
    dispatching a real TouchEvent is the only way to drive the attack button,

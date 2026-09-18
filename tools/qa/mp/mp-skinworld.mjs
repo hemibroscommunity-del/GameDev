@@ -211,7 +211,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      townsperson within 240px of either path, and tile x=31 all the way — six
      tiles clear of the World View trail-head at (25, 48), whose reach is
      TOWN_EXIT_R = 2 in Manhattan tiles. */
-  await H.hopTo(P, 1000, 1420);
+  await H.hopTo(P, 1307, 1858);   /* v2.3.2628: same fraction of the enlarged town */
   await P.page.waitForTimeout(500);
   await P.page.keyboard.down('d');
   await P.page.waitForTimeout(700);
@@ -219,7 +219,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (let i = 0; i < 4; i++) { await P.page.waitForTimeout(140); jog.push(await inkCount('jog-east-' + i, RUN_PAD)); }
   await P.page.keyboard.up('d');
   await P.page.waitForTimeout(600);
-  await H.hopTo(P, 1000, 1420);
+  await H.hopTo(P, 1307, 1858);   /* v2.3.2628: same fraction of the enlarged town */
   await P.page.waitForTimeout(400);
   await P.page.keyboard.down('s');
   await P.page.waitForTimeout(700);

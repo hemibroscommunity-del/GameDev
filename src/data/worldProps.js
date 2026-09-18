@@ -19,7 +19,41 @@
  * same y sit on the same line.
  */
 export const WORLD_PROPS = [
-  /* ═══ v2.3.2065: THE TOWN, LAID OUT TO THE OWNER'S BLUEPRINT ═══
+  /* ═══ v2.3.2628: SPREAD ACROSS THE BIGGER PLATEAU ═══
+     Owner, with the map: "These buildings need to be more spread out there."
+
+     zones.js took town from 52x55 to 68x72 tiles the same day (the size the
+     owner said had gone missing), and every position below moved with it.
+     They did NOT simply scale: scaling preserves crowding exactly, and the
+     layout was crowded -- rendered at v2.3.2626 the bank's art overlapped
+     the auction house's, the enchanter nearly touched it, and the whole
+     southern half of the plaza was empty cobble.
+
+     So the five doors were re-placed around the plaza's edge, each in its
+     own quarter, with the open middle left open:
+
+       mayor-house  46%, 27%   the north terrace, up the painted stairs
+       enchanter    70%, 33%   the north-east shelf, inside its fence
+       forge        24%, 52%   west, clear of the cliff by ~60px of cobble
+       auction-house 75%, 56%  east, facing the plaza across it
+       bank         60%, 82%   south, in what used to be empty ground
+       fountain     44%, 66%   the middle, which is now a middle
+
+     Percentages of the map, because that is what the layout renderer prints
+     and what the next move should be quoted in.  PROP SIZES ARE UNCHANGED:
+     a building is the same number of world px it was, so it draws the same
+     size on screen and the 1.71x of extra ground shows up as distance
+     between buildings rather than bigger buildings.
+
+     VERIFIED BY LOOKING, not by arithmetic: tools/maps/render-town-layout.mjs
+     draws this table onto the live art at world scale (a node port of the
+     python one, which cannot run in this sandbox -- Pillow is not installed,
+     and a layout picture that only renders on someone else's machine is one
+     nobody checks).  Both nudges after the first pass came from that picture:
+     the forge at 22% had its left wall in the cliff and the auction house at
+     78% hung its sign over the east fence.
+
+  ═══ v2.3.2065: THE TOWN, LAID OUT TO THE OWNER'S BLUEPRINT ═══
      The owner supplied a mockup of where things go: mayor's house up the
      stairs, blacksmith west, auction house east, fountain dead centre, a
      market stall and banners toward the south gate.
@@ -112,7 +146,7 @@ export const WORLD_PROPS = [
        player bumping into thin air a body-length from the door. */
     id: 'mayor-house', zone: 'town', mapV: 17,
     sprite: '/sprites/props/mayor-house.png',
-    x: 760, y: 470, worldH: 400, blockW: 330, blockD: 150,
+    x: 1001, y: 622, worldH: 400, blockW: 330, blockD: 150,
     /* No action: Mayor Bro stands outside handing out the tutorial, and a
        door that opens a panel he already covers is a second, worse way to
        talk to him. */
@@ -138,7 +172,7 @@ export const WORLD_PROPS = [
        somewhere, and taking it eastward keeps the building off the trees
        while leaving the plaza's middle clear. */
     id: 'forge', zone: 'town', mapV: 17, sprite: '/sprites/props/forge.png',
-    x: 480, y: 900, worldH: 500, blockW: 470, blockD: 200,
+    x: 522, y: 1198, worldH: 500, blockW: 470, blockD: 200,
     action: 'forge', label: 'BLACKSMITH',
   },
   {
@@ -195,9 +229,15 @@ export const WORLD_PROPS = [
        against 94.35% before (the missing cells are the off-plateau trees, and
        are pre-existing); all four doors keep a standable cell within the 95px
        prompt radius, this one at 7px. */
+    /* v2.3.2628: the owner sent new art for this building, the mayor's
+       house and the bank.  Imported through tools/import-building-art.mjs
+       -- trimmed to the alpha bbox, downscaled PREMULTIPLIED (a straight
+       RGBA average leaves a dark halo round the roofline) and re-encoded
+       with adaptive row filters.  514x512, 462KB, which is the same
+       shelf the rest of the family sits on. */
     id: 'auction-house', zone: 'town', mapV: 17,
     sprite: '/sprites/props/auction-house.png',
-    x: 1150, y: 1020, worldH: 360, blockW: 210, blockD: 144,
+    x: 1632, y: 1290, worldH: 360, blockW: 210, blockD: 144,
     action: 'auctionhouse', label: 'AUCTION HOUSE',
   },
   {
@@ -211,7 +251,7 @@ export const WORLD_PROPS = [
     mapIcon: null,   /* not a building: no roof glyph on the minimap */
     sprite: '/sprites/props/fountain.webp',
     anim: { frames: 8, fps: 12 },
-    x: 860, y: 1080, worldH: 170, blockW: 165, blockD: 62,
+    x: 957, y: 1521, worldH: 170, blockW: 165, blockD: 62,
   },
   {
     /* The market stall, south-west, where the blueprint's produce awning is.
@@ -220,7 +260,7 @@ export const WORLD_PROPS = [
     id: 'market-stall', zone: 'town', mapV: 17,
     mapIcon: null,
     sprite: '/sprites/props/market-stall.png',
-    x: 430, y: 1310, worldH: 150, blockW: 185, blockD: 60,
+    x: 522, y: 1705, worldH: 150, blockW: 185, blockD: 60,
   },
   /* ═══ DRESSING ═══
      From the owner's props sheet (tools/import_town_props.py). Sized against
@@ -236,12 +276,12 @@ export const WORLD_PROPS = [
        side. */
     id: 'lamp-plaza-w', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/lamp-post.webp',
-    x: 590, y: 1080, worldH: 150, blockW: 34, blockD: 20,
+    x: 740, y: 1613, worldH: 150, blockW: 34, blockD: 20,
   },
   {
     id: 'lamp-plaza-e', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/lamp-post.webp',
-    x: 1130, y: 1080, worldH: 150, blockW: 34, blockD: 20,
+    x: 1197, y: 1613, worldH: 150, blockW: 34, blockD: 20,
   },
   /* ═══ v2.3.2071: BOTH BENCHES LOOK AT THE FOUNTAIN ═══
      Owner: "Position the benches so that lengthwise they face the fountain.
@@ -298,7 +338,7 @@ export const WORLD_PROPS = [
        have without new art. */
     id: 'bench-w', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/bench.webp',
-    x: 730, y: 975, worldH: 75, blockW: 72, blockD: 34, flipX: true,
+    x: 653, y: 1428, worldH: 75, blockW: 72, blockD: 34, flipX: true,
   },
   /* ═══ v2.3.2088: THE GATE BANNERS ARE GONE ═══
      Owner: "Remove the banners and bench-e."
@@ -324,7 +364,7 @@ export const WORLD_PROPS = [
        same thing in this pass. */
     id: 'anvil', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/anvil.png',
-    x: 640, y: 960, worldH: 46, blockW: 46, blockD: 24,
+    x: 566, y: 1336, worldH: 46, blockW: 46, blockD: 24,
   },
 
   /* ═══ STILL UNPLACED: measured against town_v16 (96x30 tiles) ═══
@@ -353,7 +393,7 @@ export const WORLD_PROPS = [
      stall, and the north is the mayor's terrace. */
   {
     id: 'bank', zone: 'town', mapV: 17, sprite: '/sprites/props/bank.png',
-    x: 1230, y: 1290, worldH: 320, blockW: 220, blockD: 95,
+    x: 1306, y: 1889, worldH: 320, blockW: 220, blockD: 95,
     action: 'bank', label: 'BANK',
   },
   {
@@ -368,7 +408,7 @@ export const WORLD_PROPS = [
        and x 940..1160, clear of the mayor's house (its art ends at x 925) and
        of the store (its footprint starts at x 1195). */
     id: 'enchanter', zone: 'town', mapV: 17, sprite: '/sprites/props/enchanter.png',
-    x: 1050, y: 700, worldH: 300, blockW: 220, blockD: 95,
+    x: 1523, y: 760, worldH: 300, blockW: 220, blockD: 95,
     action: 'enchant', label: 'ENCHANTER',
   },
 ];

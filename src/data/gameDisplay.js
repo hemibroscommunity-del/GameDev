@@ -3964,7 +3964,7 @@ export const NPC_DATA = [{
      with the scenery would silently delete onboarding rather than clear the
      map — a different thing from what "keep the buildings and NPCS removed"
      was asking for. */
-  x: 900, y: 780,
+  x: 1177, y: 1021,   /* v2.3.2628: moved with town 52x55 -> 68x72 */
   /* v2.3.1794: MOVED WITH HIM.  The wander step steers an NPC toward
      spawnX/spawnY (pathRadius 0 means exactly that point, with no roaming), so
      leaving this at the old plaza spot spawned him outside his new house and
@@ -4084,7 +4084,7 @@ export const NPC_DATA = [{
      closest approach.  His circle still stops at x 1090, short of the bank's
      footprint at 1120, and at tile x 30 he is five tiles clear of the World
      View trail-head, whose reach is two. */
-  x: 960, y: 1400,
+  x: 1255, y: 1833,   /* v2.3.2628: moved with town 52x55 -> 68x72 */
   spawnX: 960, spawnY: 1400,
   renderX: 960, renderY: 1400,
   hp: 100, maxHp: 100,
@@ -4198,7 +4198,7 @@ export const NPC_DATA = [{
      door Diego's `shop` uses (BroTown.jsx) -- and the same latch, so closing
      it while still standing on him does not get one straight back. */
   flip: true,
-  x: 710, y: 1240,
+  x: 928, y: 1623,   /* v2.3.2628: moved with town 52x55 -> 68x72 */
   spawnX: 710, spawnY: 1240,
   renderX: 710, renderY: 1240,
   hp: 100, maxHp: 100,
@@ -4272,7 +4272,7 @@ export const NPC_DATA = [{
      screen without touching anything, and the drawer covers the inspect
      card's actions (v2.3.2078). From the stall he is 532px away, and with
      the tighter radius below his drawer reaches only 130px. */
-  x: 430, y: 1360,
+  x: 562, y: 1780,   /* v2.3.2628: moved with town 52x55 -> 68x72 */
   spawnX: 430, spawnY: 1360,
   renderX: 430, renderY: 1360,
   hp: 100, maxHp: 100,
@@ -4366,7 +4366,7 @@ export const NPC_DATA = [{
      drawn in front of it (a higher y paints later), so he reads as standing
      AT it rather than behind it.  pathRadius stays 0 -- he is pinned, so this
      is the whole of his position and there is no wander ring to clear. */
-  x: 300, y: 900,
+  x: 392, y: 1178,   /* v2.3.2628: moved with town 52x55 -> 68x72 */
   spawnX: 300, spawnY: 900,
   renderX: 300, renderY: 900,
   hp: 100, maxHp: 100,

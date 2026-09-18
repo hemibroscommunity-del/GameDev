@@ -68,7 +68,16 @@ export async function doorOf(id, dy = 55) {
      grid the game reads (town_v17.walk.json with every prop footprint stamped
      on, exactly as stampPropFootprints does it) and return the closest
      walkable cell to that ideal spot, still inside buildingPropNear's 95px. */
-  const TILE = 32, mw = 52 * TILE, mh = 55 * TILE;
+  /* v2.3.2628: the zone's size is READ, not repeated.  These were literal
+     52 and 55, so when town grew to 68x72 this helper went on mapping world
+     px onto the walk grid with the old box: every door landed on the wrong
+     cell and the auction house's came out on the cliff, which surfaced as
+     "no walkable cell within the prompt radius" rather than as anything
+     about a resize.  The grid is normalised to the map, so reading w/h is
+     all it takes to follow the zone. */
+  const TILE = 32;
+  const { ZONES } = await import(REPO + '/src/data/zones.js');
+  const mw = ZONES.town.w * TILE, mh = ZONES.town.h * TILE;
   let raw;
   try {
     raw = JSON.parse(await readFile(REPO + '/public/maps/town_v17.walk.json', 'utf8'));
@@ -953,7 +962,12 @@ export async function unfoldBand(P, { timeout = 6000 } = {}) {
  * four probe colours (pink/green/blue/red) in the box a figure crop covers.
  * The plaza spawn is NOT such a patch since v2.3.2069 put the fountain there.
  */
-export const TOWN_CLEAN_SPOT = { x: 1000, y: 1460 };
+/* v2.3.2628: re-measured after town went 52x55 -> 68x72 (zones.js) and the
+   props were spread across the bigger plateau.  The old spot is now 130px
+   from the fountain and the bank stands near where it used to be clear.
+   (1350,1350) is 100% cobble over the whole figure crop and 288px from the
+   nearest prop -- the farthest open patch the plaza has. */
+export const TOWN_CLEAN_SPOT = { x: 1350, y: 1350 };
 
 /* ═══ v2.3.2435: EQUIP A WEAPON, AND MEAN THE SLOT AS WELL ═══
  *
