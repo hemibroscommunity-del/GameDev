@@ -561,12 +561,19 @@ export function processGameEvent(type, payload, S, deps) {
                 _aR._compStats.totalGoldEarned += _aRisk;
                 if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + _aRisk + 'g!', '#3dd497');
                 S.screenShake = 3;
-                BT_AUDIO.collect();
+              /* v2.3.2623: the owner's WIN/LOSE stings.  These replace
+                 BT_AUDIO.collect() and a sawtooth beep: collect() is the
+                 gold-PICKUP sound the whole game uses, so a payout here was
+                 indistinguishable from walking over a coin pile -- the one
+                 moment in this window that most needs its own sound.  Trimmed
+                 at the call (the clips carry dead tails); wrapped because a
+                 missing sample must never cost a settled bet. */
+                try { BT_AUDIO.play('flip-win', { vol: 0.5, duration: 1.6 }); } catch (_w) {}
               } else {
                 _aR._compStats.totalGambleLost += _aRisk;
                 _aR._compStats.totalGoldSpent += _aRisk;
                 if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, '-' + _aRisk + 'g', '#ff5e6c');
-                BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
+                try { BT_AUDIO.play('flip-lose', { vol: 0.5, duration: 0.7 }); } catch (_l) {}
               }
               setRpgState(_objectSpread({}, _aR));
               break;
@@ -582,10 +589,12 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.won) {
                 if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, 'Doubled! +' + _aiN, '#3dd497');
                 S.screenShake = 3;
-                BT_AUDIO.collect();
+                /* v2.3.2623: same pair as the gold flip above -- one outcome,
+                   one sound, whichever tab it was bet from. */
+                try { BT_AUDIO.play('flip-win', { vol: 0.5, duration: 1.6 }); } catch (_w) {}
               } else {
                 if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, 'Lost ' + _aiN + ' items', '#ff5e6c');
-                BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
+                try { BT_AUDIO.play('flip-lose', { vol: 0.5, duration: 0.7 }); } catch (_l) {}
               }
               break;
             }

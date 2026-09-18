@@ -37,8 +37,86 @@ var LS = {
   border: 'rgba(229,237,233,.11)', borderStrong: 'rgba(229,237,233,.20)',
   brass: '#D8AA58', brassFill: 'rgba(216,170,88,.15)', onBrass: '#172126',
   win: '#59BF91', lose: '#D95C54',
+  /* v2.3.2622 (owner: "a big YOU LOST! in bold red font ... conversely, if you
+     win, a big YOU WON! in bold blue font").  BLUE for the win and RED for the
+     loss is not an arbitrary pairing -- it is the coin's own two faces: the win
+     strip lands on a BLUE head and the loss strip on a RED skull, so the banner
+     and the picture above it agree.
+     Both are SAMPLED from the landing frames and then lifted for contrast: the
+     raw skull red is #A20B00, which scores 1.73:1 on this panel and is
+     unreadable, and the raw head blue #2583C7 only makes 3.44:1.  These score
+     5.73:1 and 4.03:1 against the #1E2E34 panel -- the blue clears normal-text
+     AA and the red clears the 3:1 bar that large bold text is held to, which is
+     what this banner is. */
+  bannerWin: '#57ADEA', bannerLose: '#EF5446',
 };
 var FRAME_W = 128, FRAME_H = 192, FRAMES = 11, STEP_MS = 55;
+/* ═══ v2.3.2621: THE COIN GIVES UP ROOM TO THE WORDS ═══
+ * Owner: "make the texter larger in the dialog window. Shrink the area of coin
+ * flip if need be."  The type went up across the panel and the coin came down
+ * to 72% -- 128x192 becomes 92x138, roughly the 54px the larger text needed.
+ *
+ * SCALED WITH backgroundSize, NOT width/height.  The coin is one frame of an
+ * 11-frame STRIP seen through a window, so shrinking the window alone would
+ * CROP the frame instead of scaling it: the whole strip has to scale with the
+ * window, and the per-frame offset with the strip.  That is why all three
+ * numbers are derived here rather than typed at the style site. */
+var COIN_SCALE = 0.72;
+var COIN_W = Math.round(FRAME_W * COIN_SCALE);
+var COIN_H = Math.round(FRAME_H * COIN_SCALE);
+
+/* ═══ v2.3.2621: THE COIN'S OWN SOUND ═══
+ * v2.3.2620 had no coin-flip clip to use -- the sfx tree held exactly one coin
+ * sample, `coin-pickup`, the jingle for gold being credited -- so the toss
+ * borrowed it pitched up as a stand-in.  The owner has now supplied the real
+ * thing ("You can use this"), and this is the two-line swap that note promised.
+ *
+ * TRIMMED AT THE CALL, NOT ON DISK.  The clip is 1.224s but everything audible
+ * lands in the first ~0.70s (measured: the strike peaks in the 0.05-0.10s
+ * block, the tail is gone by 0.70, the rest is digital silence).  offset skips
+ * the few ms of lead-in so the strike is instant on the tap; duration drops the
+ * dead tail.  Same technique as the manifest's footstep and mine-strike rows,
+ * and it leaves the source file untouched for anyone re-cutting it later.
+ *
+ * NO pitchVar override is set, so play() applies its own +/-6% wobble -- which
+ * is wanted here: this sound fires repeatedly in one sitting, and an identical
+ * waveform every time is what makes a repeated sample start to sound fake. */
+var TOSS_SFX = 'coin-flip';
+var TOSS_OPTS = { vol: 0.5, offset: 0.03, duration: 0.72 };
+
+/* ═══ v2.3.2622: THE VERDICT, SAID LOUDLY ═══
+   Owner wanted the outcome to read from across the room rather than as the
+   one-line receipt it was ("Heads -- you take 30").  So: the verdict at 34px
+   900-weight in the coin's own colour, then what it cost or paid underneath.
+   Shared by the gold tab and the items tab so the two can never drift into
+   describing the same event differently. */
+function verdict(won, detail) {
+  return React.createElement('div', {
+    style: { textAlign: 'center', margin: '2px 0 13px' },
+  },
+    React.createElement('div', {
+      style: {
+        fontSize: 34, fontWeight: 900, letterSpacing: '.04em', lineHeight: 1.05,
+        color: won ? LS.bannerWin : LS.bannerLose,
+        textShadow: '0 2px 0 rgba(0,0,0,.35)',
+      },
+    }, won ? 'YOU WON!' : 'YOU LOST!'),
+    React.createElement('div', {
+      style: { marginTop: 5, fontSize: 16, fontWeight: 700, color: won ? LS.bannerWin : LS.bannerLose },
+    }, detail));
+}
+
+/* v2.3.2622: what actually moved, named.  The owner asked to "list the minus
+   of whatever was taken", and for an item wager a bare count ("6 items") does
+   not say WHICH six -- the result carries the staked map, so it is spelled out
+   and only falls back to a count if the map is somehow missing. */
+function itemTally(r) {
+  var sign = r.won ? '+' : '−';
+  var m = r && r.items;
+  var keys = m ? Object.keys(m) : [];
+  if (!keys.length) return sign + (r.total || 0) + ' items';
+  return keys.map(function (k) { return sign + m[k] + ' ' + labelFor(k); }).join(', ');
+}
 
 function gold(amount, size, color) {
   return React.createElement('span', {
@@ -194,7 +272,7 @@ export function AceFlipPanel() {
     aceFlipBus.setPending(true);
     try {
       st.channel.send({ type: 'broadcast', event: 'ace_flip_request', payload: { stake: stake } });
-      BT_AUDIO.beep(520, 0.06, 0.05, 'triangle');
+      try { BT_AUDIO.play(TOSS_SFX, TOSS_OPTS); } catch (_s) { /* never hold a bet on a sound */ }
     } catch (e) { aceFlipBus.setPending(false); }
   };
 
@@ -222,7 +300,7 @@ export function AceFlipPanel() {
     aceFlipBus.setPending(true);
     try {
       S.channel.send({ type: 'broadcast', event: 'ace_item_flip_request', payload: { items: out } });
-      BT_AUDIO.beep(520, 0.06, 0.05, 'triangle');
+      try { BT_AUDIO.play(TOSS_SFX, TOSS_OPTS); } catch (_s) { /* never hold a bet on a sound */ }
     } catch (e) { aceFlipBus.setPending(false); }
   };
 
@@ -244,7 +322,7 @@ export function AceFlipPanel() {
         background: on ? LS.panel : 'transparent',
         color: on ? LS.brass : LS.txt3,
         borderBottom: '2px solid ' + (on ? LS.brass : 'transparent'),
-        fontSize: 11.5, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase',
+        fontSize: 13.5, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase',
       },
     }, label);
   };
@@ -265,8 +343,8 @@ export function AceFlipPanel() {
         onError: function (e) { e.currentTarget.style.visibility = 'hidden'; },
       }),
       React.createElement('div', { style: { flex: 1, minWidth: 0 } },
-        React.createElement('div', { style: { fontSize: 12, color: LS.txt1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, labelFor(k)),
-        React.createElement('div', { style: { fontSize: 10.5, color: LS.txt3 } }, 'have ' + held)),
+        React.createElement('div', { style: { fontSize: 14, color: LS.txt1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, labelFor(k)),
+        React.createElement('div', { style: { fontSize: 12, color: LS.txt3 } }, 'have ' + held)),
       React.createElement('button', { onClick: step(-1), disabled: q <= 0 || aceFlipBus.pending, style: { width: 26, height: 26, borderRadius: 7, border: '1px solid ' + LS.borderStrong, background: 'transparent', color: q > 0 ? LS.txt1 : LS.dis, fontSize: 15, lineHeight: 1, cursor: 'pointer' } }, '\u2212'),
       React.createElement('span', { style: { minWidth: 26, textAlign: 'center', fontSize: 13, fontWeight: 700, color: q > 0 ? LS.brass : LS.dis, fontVariantNumeric: 'tabular-nums' } }, q),
       React.createElement('button', { onClick: step(1), disabled: q >= held || aceFlipBus.pending, style: { width: 26, height: 26, borderRadius: 7, border: '1px solid ' + LS.borderStrong, background: 'transparent', color: q < held ? LS.txt1 : LS.dis, fontSize: 15, lineHeight: 1, cursor: 'pointer' } }, '+'),
@@ -279,20 +357,20 @@ export function AceFlipPanel() {
       key: (r && r.pid) || i,
       style: { display: 'flex', alignItems: 'center', gap: 9, padding: '6px 8px', borderRadius: 9, background: i % 2 ? 'transparent' : LS.raised, marginBottom: 3 },
     },
-      React.createElement('span', { style: { width: 16, textAlign: 'right', fontSize: 11, fontWeight: 700, color: LS.txt3, fontVariantNumeric: 'tabular-nums' } }, i + 1),
+      React.createElement('span', { style: { width: 18, textAlign: 'right', fontSize: 13, fontWeight: 700, color: LS.txt3, fontVariantNumeric: 'tabular-nums' } }, i + 1),
       face
         ? React.createElement('img', { src: face, alt: '', draggable: false, style: { width: 30, height: 30, borderRadius: 7, objectFit: 'cover', background: LS.well, flexShrink: 0 } })
         : React.createElement('div', { style: { width: 30, height: 30, borderRadius: 7, background: LS.well, color: LS.txt3, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 } }, String((r && r.name) || '?').slice(0, 1).toUpperCase()),
-      React.createElement('div', { style: { flex: 1, minWidth: 0, fontSize: 12, color: LS.txt1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, (r && r.name) || 'Bro'),
-      gold((isWin ? '+' : '-') + ((r && r.amount) || 0), 12.5, isWin ? LS.win : LS.lose));
+      React.createElement('div', { style: { flex: 1, minWidth: 0, fontSize: 14.5, color: LS.txt1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, (r && r.name) || 'Bro'),
+      gold((isWin ? '+' : '-') + ((r && r.amount) || 0), 14.5, isWin ? LS.win : LS.lose));
   };
 
   var boardList = function (rows, isWin, title) {
     return React.createElement('div', { style: { marginBottom: 14 } },
-      React.createElement('div', { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: isWin ? LS.win : LS.lose, marginBottom: 6 } }, title),
+      React.createElement('div', { style: { fontSize: 12.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: isWin ? LS.win : LS.lose, marginBottom: 7 } }, title),
       rows.length
         ? rows.map(function (r, i) { return boardRow(r, i, isWin); })
-        : React.createElement('div', { style: { fontSize: 12, color: LS.txt3, padding: '8px 2px' } }, 'Nobody yet. Could be you.'));
+        : React.createElement('div', { style: { fontSize: 14, color: LS.txt3, padding: '8px 2px' } }, 'Nobody yet. Could be you.'));
   };
 
   var chip = function (label, value, active) {
@@ -304,7 +382,7 @@ export function AceFlipPanel() {
         border: '1px solid ' + (active ? LS.brass : LS.borderStrong),
         background: active ? LS.brassFill : 'transparent',
         color: value < ACE_FLIP_MIN_STAKE ? LS.dis : (active ? LS.brass : LS.txt2),
-        fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+        fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
       },
     }, label);
   };
@@ -314,7 +392,7 @@ export function AceFlipPanel() {
     style: { position: 'fixed', inset: 0, zIndex: 4000, background: 'rgba(8,14,17,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 },
   }, React.createElement('div', {
     onClick: function (e) { e.stopPropagation(); },
-    style: { width: '100%', maxWidth: 380, background: LS.panel, borderRadius: 14, overflow: 'hidden', border: '1px solid ' + LS.border, boxShadow: '0 18px 48px rgba(0,0,0,.5)' },
+    style: { width: '100%', maxWidth: 410, background: LS.panel, borderRadius: 14, overflow: 'hidden', border: '1px solid ' + LS.border, boxShadow: '0 18px 48px rgba(0,0,0,.5)' },
   },
     /* ── header: his own portrait, so the face in the chip is the man outside ── */
     React.createElement('div', {
@@ -322,12 +400,15 @@ export function AceFlipPanel() {
     },
       React.createElement('img', {
         src: '/sprites/npc/cardsharp-bro-head.webp', alt: '', draggable: false,
-        style: { width: 42, height: 42, borderRadius: 8, objectFit: 'cover', background: LS.well, flexShrink: 0 },
+        /* v2.3.2621 (owner: "map the joker profile picture bigger"): 42 -> 64.
+           The file is 192px of real portrait art, so this shows more of what
+           is already there rather than upscaling it. */
+        style: { width: 64, height: 64, borderRadius: 10, objectFit: 'cover', background: LS.well, flexShrink: 0 },
         onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('🃏')); },
       }),
       React.createElement('div', { style: { minWidth: 0, flex: 1 } },
-        React.createElement('div', { style: { fontSize: 13, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: LS.txt1 } }, 'Ace'),
-        React.createElement('div', { style: { fontSize: 11, color: LS.txt3, marginTop: 1 } }, 'Gambler')),
+        React.createElement('div', { style: { fontSize: 17, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: LS.txt1 } }, 'Ace'),
+        React.createElement('div', { style: { fontSize: 13.5, color: LS.txt3, marginTop: 2 } }, 'Gambler')),
       React.createElement('button', {
         onClick: close, 'aria-label': 'Close',
         style: { border: 'none', background: 'transparent', color: LS.txt3, fontSize: 20, lineHeight: 1, cursor: 'pointer', padding: 4 },
@@ -341,7 +422,7 @@ export function AceFlipPanel() {
     aceFlipBus.mode === 'records' ? React.createElement('div', {
       style: { padding: '13px 14px 15px', maxHeight: '58vh', overflowY: 'auto' },
     },
-      React.createElement('div', { style: { fontSize: 12, color: LS.txt2, lineHeight: 1.45, marginBottom: 12 } },
+      React.createElement('div', { style: { fontSize: 15, color: LS.txt2, lineHeight: 1.5, marginBottom: 13 } },
         'The book. Biggest single win and biggest single loss at my coin \u2014 gold only, one line each per bro.'),
       boardList(aceFlipBus.board.wins || [], true, 'Biggest wins'),
       boardList(aceFlipBus.board.losses || [], false, 'Biggest losses'))
@@ -349,21 +430,19 @@ export function AceFlipPanel() {
     : aceFlipBus.mode === 'items' ? React.createElement('div', {
       style: { padding: '13px 14px 15px' },
     },
-      React.createElement('div', { style: { fontSize: 12.5, color: LS.txt2, lineHeight: 1.45, marginBottom: 11 } },
+      React.createElement('div', { style: { fontSize: 15, color: LS.txt2, lineHeight: 1.5, marginBottom: 12 } },
         aceFlipBus.note
           ? aceFlipBus.note
           : 'Stake whatever you like out of that bag. Double or nothing \u2014 same coin, same odds: ' + acePct + '% me, ' + youPct + '% you.'),
-      aceFlipBus.itemResult && !aceFlipBus.pending ? React.createElement('div', {
-        style: { textAlign: 'center', marginBottom: 11, fontSize: 14, fontWeight: 700, color: aceFlipBus.itemResult.won ? LS.win : LS.lose },
-      }, aceFlipBus.itemResult.won
-        ? 'Doubled \u2014 ' + (aceFlipBus.itemResult.total || 0) + ' more in the bag'
-        : 'Gone \u2014 Ace takes all ' + (aceFlipBus.itemResult.total || 0)) : null,
+      aceFlipBus.itemResult && !aceFlipBus.pending
+        ? verdict(aceFlipBus.itemResult.won, itemTally(aceFlipBus.itemResult))
+        : null,
       React.createElement('div', { style: { maxHeight: '38vh', overflowY: 'auto', marginBottom: 10 } },
         bagKeys.length
           ? bagKeys.map(itemRow)
-          : React.createElement('div', { style: { fontSize: 12, color: LS.txt3, padding: '12px 2px', textAlign: 'center' } }, 'Your bag is empty. Nothing to stake.')),
+          : React.createElement('div', { style: { fontSize: 14, color: LS.txt3, padding: '12px 2px', textAlign: 'center' } }, 'Your bag is empty. Nothing to stake.')),
       stagedTotal > 0 ? React.createElement('div', {
-        style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, fontSize: 12, color: LS.txt2 },
+        style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, fontSize: 14, color: LS.txt2 },
       },
         React.createElement('span', null, 'Staked: ', React.createElement('strong', { style: { color: LS.brass } }, stagedTotal), ' item', stagedTotal === 1 ? '' : 's'),
         React.createElement('button', { onClick: function () { aceFlipBus.clearItems(); }, disabled: aceFlipBus.pending, style: { border: 'none', background: 'transparent', color: LS.txt3, fontSize: 11.5, cursor: 'pointer', textDecoration: 'underline' } }, 'Clear')) : null,
@@ -372,38 +451,39 @@ export function AceFlipPanel() {
         style: {
           width: '100%', padding: '13px 0', borderRadius: 11, border: 'none', cursor: canWager ? 'pointer' : 'default',
           background: canWager ? LS.brass : 'rgba(216,170,88,.18)', color: canWager ? LS.onBrass : LS.dis,
-          fontSize: 14, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase',
+          fontSize: 16, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase',
         },
       }, aceFlipBus.pending ? 'Flipping\u2026' : (stagedTotal > 0 ? 'Double or nothing \u00b7 ' + stagedTotal : 'Stake something')))
 
     : React.createElement('div', { style: { padding: '13px 14px 15px' } },
-      React.createElement('div', { style: { fontSize: 12.5, color: LS.txt2, lineHeight: 1.45, marginBottom: 11 } },
+      React.createElement('div', { style: { fontSize: 15, color: LS.txt2, lineHeight: 1.5, marginBottom: 12 } },
         aceFlipBus.note
           ? aceFlipBus.note
           : 'One flip. Land it and I pay you three times your stake — miss and I take three times off you. I win a little more often than you do: ' + acePct + '% me, ' + youPct + '% you. Still in?'),
 
       /* ── the coin ── */
       React.createElement('div', {
-        style: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: FRAME_H, background: LS.well, borderRadius: 11, border: '1px solid ' + LS.border, marginBottom: 12, overflow: 'hidden' },
+        style: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: COIN_H, background: LS.well, borderRadius: 11, border: '1px solid ' + LS.border, marginBottom: 12, overflow: 'hidden' },
       }, React.createElement('div', {
         style: {
-          width: FRAME_W, height: FRAME_H,
+          width: COIN_W, height: COIN_H,
           backgroundImage: 'url(' + strip + ')',
           backgroundRepeat: 'no-repeat',
-          backgroundPosition: '-' + (frame * FRAME_W) + 'px 0',
+          /* the WHOLE strip scales, so the window still frames exactly one coin */
+          backgroundSize: (COIN_W * FRAMES) + 'px ' + COIN_H + 'px',
+          backgroundPosition: '-' + (frame * COIN_W) + 'px 0',
           imageRendering: 'auto',
         },
       })),
 
-      res && !aceFlipBus.pending ? React.createElement('div', {
-        style: { textAlign: 'center', marginBottom: 11, fontSize: 14, fontWeight: 700, color: res.won ? LS.win : LS.lose },
-      }, res.won ? 'Heads — you take ' : 'Skull — Ace takes ',
-        gold(Math.abs(res.delta || 0), 14, res.won ? LS.win : LS.lose)) : null,
+      res && !aceFlipBus.pending
+        ? verdict(res.won, (res.won ? '+' : '−') + Math.abs(res.delta || 0) + ' gold')
+        : null,
 
       /* ── stake ── */
       React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 } },
-        React.createElement('span', { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: LS.txt3 } }, 'Your stake'),
-        React.createElement('span', { style: { fontSize: 11, color: LS.txt3 } }, 'Bag ', gold(coins, 11))),
+        React.createElement('span', { style: { fontSize: 12.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: LS.txt3 } }, 'Your stake'),
+        React.createElement('span', { style: { fontSize: 12.5, color: LS.txt3 } }, 'Bag ', gold(coins, 13))),
       /* THE LADDER IS BUILT, NOT LISTED.  A fixed Min / quarter / half / Max
          row reads as broken on a small bag: at 105 gold the max stake is 35,
          so the quarter is 8 -- BELOW the 10 minimum -- and the row rendered
@@ -424,21 +504,21 @@ export function AceFlipPanel() {
         style: { display: 'flex', gap: 8, marginBottom: 12 },
       },
         React.createElement('div', { style: { flex: 1, background: LS.raised, border: '1px solid ' + LS.border, borderRadius: 9, padding: '8px 10px' } },
-          React.createElement('div', { style: { fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: LS.txt3, marginBottom: 2 } }, 'Win (' + youPct + '%)'),
-          gold('+' + risk, 14, LS.win)),
+          React.createElement('div', { style: { fontSize: 11.5, letterSpacing: '.12em', textTransform: 'uppercase', color: LS.txt3, marginBottom: 3 } }, 'Win (' + youPct + '%)'),
+          gold('+' + risk, 17, LS.win)),
         React.createElement('div', { style: { flex: 1, background: LS.raised, border: '1px solid ' + LS.border, borderRadius: 9, padding: '8px 10px' } },
-          React.createElement('div', { style: { fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: LS.txt3, marginBottom: 2 } }, 'Lose (' + acePct + '%)'),
-          gold('-' + risk, 14, LS.lose))),
+          React.createElement('div', { style: { fontSize: 11.5, letterSpacing: '.12em', textTransform: 'uppercase', color: LS.txt3, marginBottom: 3 } }, 'Lose (' + acePct + '%)'),
+          gold('-' + risk, 17, LS.lose))),
 
       maxStake < ACE_FLIP_MIN_STAKE ? React.createElement('div', {
-        style: { fontSize: 12, color: LS.lose, textAlign: 'center', padding: '10px 0' },
-      }, 'You need ', gold(ACE_FLIP_MIN_STAKE * ACE_FLIP_RISK_MULT, 12, LS.lose), ' in the bag to cover his smallest bet.')
+        style: { fontSize: 14, color: LS.lose, textAlign: 'center', padding: '10px 0' },
+      }, 'You need ', gold(ACE_FLIP_MIN_STAKE * ACE_FLIP_RISK_MULT, 14, LS.lose), ' in the bag to cover his smallest bet.')
         : React.createElement('button', {
           onClick: send, disabled: !canFlip,
           style: {
             width: '100%', padding: '13px 0', borderRadius: 11, border: 'none', cursor: canFlip ? 'pointer' : 'default',
             background: canFlip ? LS.brass : 'rgba(216,170,88,.18)', color: canFlip ? LS.onBrass : LS.dis,
-            fontSize: 14, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase',
+            fontSize: 16, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase',
           },
         }, aceFlipBus.pending ? 'Flipping…' : (stake < ACE_FLIP_MIN_STAKE ? 'Pick a stake' : 'Flip for ' + risk + 'g')))));
 }
