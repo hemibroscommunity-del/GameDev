@@ -1,4 +1,4 @@
-/* ═══ v2.3.2622: THE GENERAL STORE'S INTERIOR, ON THE GATE ═══
+/* ═══ v2.3.2624: THE GENERAL STORE'S INTERIOR, ON THE GATE ═══
  *
  * CLAUDE.md's preloading LAW applied to the shop panel's room art and the
  * storekeeper's idle strip.  Both are DOM assets -- an <img> and a CSS
