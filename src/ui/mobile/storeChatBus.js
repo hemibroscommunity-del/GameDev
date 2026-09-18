@@ -26,6 +26,7 @@ export const storeChatBus = {
   activeBuyer: null,   /* which conversation the seller is reading */
   err: '',
   loading: false,
+  offers: [],          /* v2.3.2623: [{buyerId, buyerName, gold, at, expiresAt, reply}] */
   unread: Object.create(null),
 
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
@@ -38,6 +39,7 @@ export const storeChatBus = {
     this.activeBuyer = null;
     this.err = '';
     this.loading = true;
+    this.offers = [];
     delete this.unread[listingId];
     emit();
   },
@@ -62,6 +64,10 @@ export const storeChatBus = {
       sellerLook: p.sellerLook || null,   /* v2.3.2622 */
     };
     this.threads = Array.isArray(p.threads) ? p.threads : [];
+    /* v2.3.2623: opening is the authoritative read of the offers too -- a
+       seller whose panel was shut when one landed has no other way to learn
+       of it. */
+    this.offers = Array.isArray(p.offers) ? p.offers : [];
     if (!this.activeBuyer && this.threads.length) this.activeBuyer = this.threads[0].buyerId;
     emit();
   },
@@ -81,6 +87,21 @@ export const storeChatBus = {
       if (!this.activeBuyer) this.activeBuyer = t.buyerId;
     }
     t.msgs.push(p.msg);
+    emit();
+  },
+
+  /* store_offer_state -- the whole offer picture for this listing. */
+  setOffers(p) {
+    if (!p || p.listingId !== this.listingId) return;
+    this.offers = Array.isArray(p.offers) ? p.offers : [];
+    this.err = '';
+    if (p.sold) this.err = 'Sold.';
+    emit();
+  },
+
+  setOfferErr(p) {
+    if (!p || p.listingId !== this.listingId) return;
+    this.err = (p && p.error) || 'The store could not take that offer.';
     emit();
   },
 

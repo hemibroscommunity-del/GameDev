@@ -203,6 +203,15 @@ export const storeChatMethods = {
          bubbles instead of a letter. Already on the listing record -- no new
          storage and no new read. */
       sellerLook: rec.sellerLook || null,
+      /* ═══ v2.3.2623: THE OFFERS COME WITH THE THREAD ═══
+         They were delivered ONLY by the live `store_offer_state` event, which
+         a seller whose panel was shut when the offer landed never receives --
+         so they opened the chat and were told nobody had asked, while the
+         buyer's gold sat escrowed against their listing. Found by
+         mp-listingoffer, which is the whole reason it drives two clients.
+         Opening is now the authoritative read, and the live event is the
+         update; every other field on this payload already works that way. */
+      offers: this._soPublic ? this._soPublic(rec) : [],
       threads,
     });
   },

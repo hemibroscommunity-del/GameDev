@@ -90,6 +90,18 @@ export function storeChatSend(type, payload) {
   try { if (s && s.channel) s.channel.send({ type, payload }); } catch (e) { /* offline */ }
 }
 
+/* ═══ v2.3.2623: ...and can a buyer make a gold OFFER on a listing? ═══
+ * Narrow and mandatory. An older worker has no case for `store_offer`, so
+ * the request falls through to its default branch and is rebroadcast as
+ * chatter: the buyer sees their offer "sent", no gold moves, and no seller
+ * can ever accept it. A money control that silently does nothing is worse
+ * than an absent one, so the offer box must not exist against a worker that
+ * cannot settle it. */
+export function storeOfferEnabled() {
+  const s = S();
+  return !!(s && s._serverCaps && s._serverCaps.storeOffer);
+}
+
 export function storeMyId() {
   const s = S();
   return (s && s.myId) || null;

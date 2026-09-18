@@ -334,6 +334,11 @@ export const storeMethods = {
     return any ? out : null;
   },
 
+  /* v2.3.2623: the store's own price ceiling, so storeoffer.js bounds an
+     offer against the same number a listing is bounded by rather than
+     keeping a second copy of it. */
+  _stMaxPrice() { return STORE.MAX_PRICE; },
+
   _stColor(v) {
     /* A CSS colour that is about to be a `background` — bounded, and only
        the shape the character creator actually produces. */
@@ -442,6 +447,19 @@ export const storeMethods = {
         await this._stPromoteBid(rec, pb);
       } else {
         rec.pendBid = null;
+        await this.state.storage.put('store_listing:' + rec.id, rec);
+      }
+    }
+    /* v2.3.2623: an OFFER caught mid-escrow by the restart, converged the
+       same way and for the same reason: promote it iff its debit stamp is
+       present, drop it otherwise, because then no money moved. Without this
+       a buyer's gold could be taken by the debit and belong to nothing. */
+    if (rec.pendOffer) {
+      const po = rec.pendOffer;
+      if (await this._opSeen('store:' + rec.id + ':offer:' + po.seq)) {
+        await this._soPromote(rec, po);
+      } else {
+        rec.pendOffer = null;
         await this.state.storage.put('store_listing:' + rec.id, rec);
       }
     }
@@ -853,6 +871,16 @@ export const storeMethods = {
         payload: { amount: rec.topBid.amount }, note: 'bid returned on ' + label,
       });
     }
+    /* v2.3.2623: ...and every ESCROWED OFFER, for the same reason and with
+       the same guard. The listing is gone, so nobody's gold may stay locked
+       against it. `rec.sale.offerSeq` names the offer whose escrow WAS the
+       payment (an accepted offer) and so must not also be refunded -- exactly
+       what paidBidSeq does for the standing bid one line up.
+       Here rather than at each call site DELIBERATELY: buy-now, accept-bid
+       and accept-offer all funnel through this function, so "a sale left
+       somebody's gold locked" has one place to be wrong instead of three. */
+    await this._soReleaseAll(rec, 'offer returned on ' + label,
+      (rec.sale && rec.sale.offerSeq) || null);
   },
 
   /* ── cancel / expiry ───────────────────────────────────────────────
@@ -900,6 +928,11 @@ export const storeMethods = {
         payload: { amount: rec.topBid.amount }, note: 'bid returned on ' + this._stLabel(rec),
       });
     }
+    /* v2.3.2623: and every escrowed offer -- cancel, expiry and the
+       crash-release all come through here (storeoffer.js). After the
+       `releasing` marker above, so a crash mid-refund converges rather than
+       re-listing a record whose gold has already gone home. */
+    await this._soReleaseAll(rec, 'offer returned on ' + this._stLabel(rec), null);
     const goods = this._stGoodsCredit(rec);   /* v2.3.2531 */
     await this._creditPlayer(rec.sellerId, {
       opId: 'store:' + rec.id + ':refund', source: 'market',
@@ -939,5 +972,17 @@ export const storeMethods = {
       if (due.length >= STORE.SWEEP_MAX) break;
     }
     for (const rec of due) await this._stRelease(rec, 'listing expired');
+    /* v2.3.2623: offers expire sooner than the listing they sit on (48h vs a
+       week), so gold is not locked for a week by a seller who never answered.
+       Bounded by the same pass: at most MAX_PER_LISTING offers per record and
+       at most SWEEP_MAX records looked at, so this cannot become the
+       unbounded walk rule 9 warns about. */
+    let looked = 0;
+    for (const rec of this._stIndex.values()) {
+      if (looked++ >= STORE.SWEEP_MAX) break;
+      if (rec.sale || rec.releasing || !rec.offers) continue;
+      if (!Object.keys(rec.offers).length) continue;
+      await this._soSweepRec(rec, now);
+    }
   },
 };

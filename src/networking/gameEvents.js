@@ -446,6 +446,14 @@ export function processGameEvent(type, payload, S, deps) {
           case 'store_dm_error':
             storeChatBus.setErr(payload || {});
             break;
+          /* v2.3.2623: the escrowed-offer answers.  PRIVILEGED, so what
+             arrives is the room's own record of whose gold it is holding. */
+          case 'store_offer_state':
+            storeChatBus.setOffers(payload || {});
+            break;
+          case 'store_offer_error':
+            storeChatBus.setOfferErr(payload || {});
+            break;
           case 'whisper_error':
             {
               handleWhisperErrorEvent(payload, S, { setChatLog: setChatLog });

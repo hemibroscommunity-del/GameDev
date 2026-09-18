@@ -3880,6 +3880,11 @@ export function setupWebSocket(ctx) {
            (storechat.js). Passthrough only -- the client names a listing and
            a line of text; the server stamps the sender, clamps the text and
            decides who may see it. */
+        if (msg.type === 'store_offer' || msg.type === 'store_offer_cancel'
+            || msg.type === 'store_offer_reply') {   /* v2.3.2623 */
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'store_dm' || msg.type === 'store_dm_open') {
           ws.send(JSON.stringify(msg));
           return;
