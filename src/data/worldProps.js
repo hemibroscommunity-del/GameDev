@@ -21,7 +21,7 @@
 export const WORLD_PROPS = [
   /* ═══ v2.3.2065: THE TOWN, LAID OUT TO THE OWNER'S BLUEPRINT ═══
      The owner supplied a mockup of where things go: mayor's house up the
-     stairs, blacksmith west, general store east, fountain dead centre, a
+     stairs, blacksmith west, auction house east, fountain dead centre, a
      market stall and banners toward the south gate.
 
      EVERY POSITION IS DERIVED, not eyeballed. The blueprint is a REDRAW of
@@ -142,14 +142,63 @@ export const WORLD_PROPS = [
     action: 'forge', label: 'BLACKSMITH',
   },
   {
-    /* GENERAL STORE, east side, mirroring the forge. Its shelf is where the
+    /* AUCTION HOUSE, east side, mirroring the forge. Its shelf is where the
        potions are bought from -- Shopkeeper Bro sells them too (v2.3.2063),
        and having both is the blueprint's own arrangement: a shop you walk
        into and a merchant who walks up to you. */
-    id: 'general-store', zone: 'town', mapV: 17,
-    sprite: '/sprites/props/general-store.png',
-    x: 1290, y: 800, worldH: 200, blockW: 190, blockD: 85,
-    action: 'shop', label: 'GENERAL STORE',
+    /* v2.3.2624 (owner: "change everything to auction house"): id, sprite and
+       action all renamed with the label.  The id is NOT persisted -- the only
+       thing that records a visit is `stats.visitedBuildings`, which holds the
+       BUILDINGS *index* (a number), not this string -- so there is nothing to
+       migrate.  Checked before renaming, per the rule that a rename must not
+       lose anyone's data. */
+    /* ═══ v2.3.2626: THE OWNER'S AUCTION HOUSE ART, AND IN OFF THE EDGE ═══
+       Owner sent building art and asked for it "closer to town".  Both halves
+       are measured rather than eyeballed, the way every other position here
+       was.
+
+       THE ART.  1254x1254 raw, 1179x1172 once the transparent margin is
+       trimmed -- so very nearly square (aspect 1.006).  Downscaled to 515x512
+       to match the family (bank 511x512, mayor-house 494x512) through a
+       PREMULTIPLIED resize: RGBA resized straight lets transparent black bleed
+       into every antialiased edge and leaves a dark halo round the roofline.
+       469KB, which is bank-sized (463KB), so no download regression.
+
+       THE SIZE.  200 -> 360.  At 200 it was drawn 206 across and read as a
+       market stall next to a 500px forge and a 320px bank; it was also the one
+       building in town SHORTER than the 216 floor mp-townbuildings uses for
+       "clearly bigger than a person" (120 x 1.8).  360 makes it a peer of the
+       bank and the enchanter without becoming the forge.
+
+       THE FOOTPRINT.  blockW/blockD are 0.58 and 0.40 of the drawn sprite,
+       which covers 86% opaque pixels -- squarely in family (bank 86%,
+       enchanter 94%, forge 82%, mayor-house 80%).  Narrower and deeper than
+       its neighbours because this art stands on a diamond cobble APRON: a
+       wide, shallow rectangle would block two big empty triangles either side
+       of the apron's front point, which is bumping into thin air.
+
+       WHY (1150,1020) AND NOT CLOSER.  Distance to the fountain goes 513 ->
+       296, and it comes 220px south out of the north-east corner onto the
+       plaza proper, facing the fountain.  Closer than that is not available:
+       every position further north or west draws the roof over the
+       ENCHANTER's facade (measured as real sprite-pixel overlap, not bounding
+       boxes -- at y=1020 it touches 0.9% of the enchanter, at y=990 5.5%, at
+       y=970 10.2%), and the middle of the plaza is not where the blueprint
+       puts this building.  lamp-plaza-e ends up standing in front of the
+       steps; that was rendered and looked at rather than argued about, and it
+       reads as a street lamp lighting the entrance.
+
+       WHAT THE MOVE FIXES.  The old corner position walled off the eastern
+       plateau: walking east along y=800 used to stop dead at x=1182.  It now
+       runs to x=1476.  Reachability is otherwise unchanged -- the town mask
+       with every footprint stamped on flood-fills to 94.26% from the exit,
+       against 94.35% before (the missing cells are the off-plateau trees, and
+       are pre-existing); all four doors keep a standable cell within the 95px
+       prompt radius, this one at 7px. */
+    id: 'auction-house', zone: 'town', mapV: 17,
+    sprite: '/sprites/props/auction-house.png',
+    x: 1150, y: 1020, worldH: 360, blockW: 210, blockD: 144,
+    action: 'auctionhouse', label: 'AUCTION HOUSE',
   },
   {
     /* ═══ THE FOUNTAIN, MOVED TO THE MIDDLE ═══
@@ -289,7 +338,7 @@ export const WORLD_PROPS = [
      since the v17 art landed.
 
      WHY THEY WERE WORTH FINDING.  Twelve building panels are written and
-     working; only TWO had a door on the current map (forge and general-store,
+     working; only TWO had a door on the current map (forge and auction-house,
      the two with `action` above).  These two are the cheapest of the ten
      missing: the art ships, the panels ship, and only the coordinates were
      stale.  The other eight need either new art or a decision to reach them
@@ -309,7 +358,7 @@ export const WORLD_PROPS = [
   },
   {
     /* NORTH-EAST, not stacked under the bank.  The first placement put it at
-       (1180, 1000), which the layout render showed crowding the general store:
+       (1180, 1000), which the layout render showed crowding the auction house:
        220 of spire drawn through a shop 190 wide, and Storekeeper Bro standing
        in the seam.  There is not room on the east flank for two 300px
        buildings AND the store between the plaza and the wall -- the clear run

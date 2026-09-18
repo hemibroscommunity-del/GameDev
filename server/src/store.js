@@ -1,4 +1,4 @@
-/* ═══ v2.3.2475: THE GENERAL STORE — PER-LISTING SALES (PHASE 1) ═══
+/* ═══ v2.3.2475: THE AUCTION HOUSE — PER-LISTING SALES (PHASE 1) ═══
  *
  * The order book next door (market.js) is a BUCKET book: five taxonomy
  * fields make an index key, a resting buy IS a bid for that whole bucket,
@@ -98,7 +98,37 @@ import { SHOP_ITEMS } from './data.js';
    field check in `_stCreateListing` went -- see the note there). */
 
 export const STORE = {
-  LISTING_EXPIRY: 86400000,   // 24h, same as the order book's listings
+  /* ═══ v2.3.2619: ONE WEEK, FIXED. NOT A CHOICE. ═══
+   * Owner: "don't mess with different duration settings but keep it at one
+   * week. I don't see the point of listing something for a shorter time than
+   * that." There is no dropdown, no per-listing value and no duration on the
+   * wire -- the server never reads one, so there is nothing to validate.
+   *
+   * THE SWEEP ARITHMETIC, because a 7x lifetime looks like 7x the sweep load
+   * and is the opposite. Expiries are spread over the lifetime, so a longer
+   * one thins them out. At a FULL shelf (MAX_GLOBAL 2000) the expiries due in
+   * one SWEEP_INTERVAL (60s) are 2000 x 60/T:
+   *     T = 24h   ->  1.39 per pass   (SWEEP_MAX 20 = 14x headroom)
+   *     T = 7d    ->  0.198 per pass  (SWEEP_MAX 20 = 101x headroom)
+   * So SWEEP_INTERVAL, SWEEP_MAX and the bounded pass all hold with room to
+   * spare, and the scan itself is an in-memory walk of at most MAX_GLOBAL.
+   *
+   * WHAT DOES TIGHTEN IS THROUGHPUT, and this is the real cost of the change.
+   * Steady-state population = listing rate x lifetime, and MAX_GLOBAL caps it
+   * at 2000, so the sustainable rate of NEW listings falls 7x:
+   *     T = 24h   ->  ~2000 new listings/day before the shelf is full
+   *     T = 7d    ->  ~286 new listings/day
+   * Past that, _stCreateListing answers "Store is full". With MAX_PER_PLAYER
+   * 10 that is ~200 players simultaneously holding every slot, which is far
+   * beyond the current player base -- but it is the number to raise
+   * (MAX_GLOBAL) if the shelf ever starts refusing sellers, NOT the lifetime.
+   *
+   * LISTINGS ALREADY LIVE UNDER THE 24h RULE ARE UNAFFECTED and need no
+   * migration: `expiresAt` is computed at creation and STORED per record, so
+   * an existing listing keeps the expiry it was given and retires on its own
+   * 24h schedule. Only listings created after this deploy run a week. Nothing
+   * is stranded and nothing is extended retroactively. */
+  LISTING_EXPIRY: 604800000,  // 7 days, fixed
   MAX_PER_PLAYER: 10,         // ...and the same per-player ceiling
   MAX_GLOBAL: 2000,           // hard bound on the rebuild's list() (rule 9)
   SWEEP_INTERVAL: 60000,
@@ -111,6 +141,26 @@ export const STORE = {
   MAX_QTY: 9999,
   MIN_BID_STEP: 1,
 };
+
+/* ═══ v2.3.2622: THE BUST SET ═══
+ * The wire keys a head-and-shoulders portrait actually reads, and no more.
+ * Deliberately EXCLUDES the nine drawing fields (sa/sb/pa/pb/ta/tf/tm/tb/tr):
+ * each is a fixed 256 chars and none of them is visible on an 18px disc, so
+ * they are 92KB of page weight for nothing. Deliberately INCLUDES bs/hg/fr --
+ * build size, height and frame -- because the portrait's fit math scales off
+ * them (PORTRAIT_FIT, buildCatalog.js) and a bust drawn at the wrong build is
+ * a different person.
+ * Short wire keys, as they sit on playerState (TRACK_COSMETIC_KEYS). */
+const STORE_BUST_KEYS = [
+  'sk',                      // skin
+  'hr', 'hc',                // hair + colour
+  'fh', 'fhc',               // facial hair + colour
+  'hw', 'htc',               // headwear + colour
+  'ew', 'ewc',               // eyewear + colour
+  'ec',                      // eye colour
+  'st', 'stc',               // shirt + colour (the shoulders)
+  'bs', 'hg', 'fr',          // build size / height / frame -- the fit math
+];
 
 /* The bag's potion filter is keyed off the shop's own consumables
    (isPotionKey -> POTION_THUMBS, src/ui/mobile/dash/InventoryPanel.jsx),
@@ -199,11 +249,130 @@ export const storeMethods = {
      server will hand them, and shipping the blob is how a client learns to
      re-post it.  (The order book does ship it; that is its legacy shape,
      not a pattern to copy.) */
+  /* ═══ v2.3.2620: THE SELLER'S ICON, AND WHAT IT COSTS ═══
+   * Owner: "Add the players tiny icon (similar to how the player icons are
+   * displayed elsewhere in the game) next to their listing."
+   *
+   * Elsewhere in the game that icon is exactly two things (PlayerListPanel,
+   * InspectPlayerPanel): the player's `avatar` when they have one, and a
+   * coloured disc bearing the first letter of their name when they do not.
+   * `avatar` is a Hemi Bro NFT image URL and only VERIFIED HOLDERS have one,
+   * so the disc is the common case, not the fallback-of-last-resort.
+   *
+   * WHAT IS STORED AND WHAT IS NOT, which is the whole design:
+   *
+   *   sellerColor  IS stored on the record, like sellerName. Seven characters.
+   *                It is what the disc needs, and the disc is what most
+   *                listings will draw, so it has to survive the seller
+   *                logging off.
+   *   sellerAvatar IS NOT stored. It is resolved HERE, per projection, off
+   *                playerState the room already holds.
+   *
+   * That asymmetry is deliberate and it is about rule 9's second edge. An
+   * avatar URL runs 150-250 chars (join.js caps cosmetics at 512). Stored,
+   * that is up to 512 bytes x MAX_GLOBAL 2000 = ~1MB of listing records --
+   * and the wake-time rebuild pages through EVERY one of them with the input
+   * gate held (LOAD_PAGE 500, so ~250KB of avatar per page, read before the
+   * room answers anything). Resolving live costs no storage, no extra reads,
+   * and no rebuild weight at all.
+   *
+   * The cost it DOES have is honest: an offline seller's listing shows the
+   * disc instead of their Bro picture. That is the same fallback the player
+   * list already shows for the majority of players, so it degrades into
+   * something the game draws everywhere rather than into a hole.
+   *
+   * NOTHING NEW IS EXPOSED. name, color and avatar are already broadcast to
+   * every player in the room (TRACK_COSMETIC_KEYS, index.js) and rendered at
+   * each other by PlayerListPanel. This ships the same three fields to the
+   * same audience. No zone, no position, no id beyond the sellerId the panel
+   * already had for its "this one is yours" check. */
+  /* ═══ v2.3.2622: THE SELLER'S ACTUAL FACE ═══
+   * Owner: "Make the player's actual profile picture be there instead of the M."
+   *
+   * The M was the game's existing fallback for a player with no Hemi Bro
+   * picture, and most players have none -- so most listings showed a letter.
+   * What the owner wants is the BRO THEY BUILT, which the client can already
+   * draw for anybody: characterPortrait.js's `portraitOptsFromPeer`, the same
+   * recipe the inspect card, the trade window and the character picker use.
+   * It needs the seller's cosmetics.
+   *
+   * WHICH COSMETICS, AND WHY NOT ALL OF THEM. The peer set is 28 fields
+   * (PEER_COSMETIC_FIELDS, src/networking/peerCosmetics.js) and NINE of them
+   * are DRAWINGS -- shirt prints, pants prints, five tattoo zones -- each a
+   * fixed 256 characters (join.js cosmeticCap). Shipping the whole set would
+   * be ~2.3KB per listing and ~92KB on a PAGE_MAX page, for marks that are
+   * physically invisible on an 18px disc. So this is the BUST SET: the
+   * head-and-shoulders fields and nothing else. Measured at ~190 bytes.
+   *
+   * SNAPSHOTTED, not resolved live like sellerAvatar. The avatar could be
+   * resolved per projection because its fallback (the colour disc) is
+   * something the game draws everywhere anyway. This cannot: the whole point
+   * of the change is that the face is THERE, and a face that vanishes when
+   * the seller logs off is the complaint again with extra steps. The cost is
+   * ~190 bytes x MAX_GLOBAL 2000 = ~380KB of listing records, and ~95KB per
+   * LOAD_PAGE of the wake-time rebuild -- an order of magnitude under the
+   * ~1MB the full avatar URL would have cost (v2.3.2620), which is why that
+   * one is still resolved live and this one is not.
+   *
+   * NOTHING NEW IS EXPOSED: every one of these fields is already relayed to
+   * every player in the room (TRACK_COSMETIC_KEYS, index.js) and already
+   * drawn at each other by the inspect card. Same fields, same audience.
+   *
+   * Values are catalog ids the client's own sanitisers judge at the point
+   * they reach a canvas (the peerCosmetics.js posture: this is a rename
+   * table, not validation). Bounded here anyway -- short strings only -- so
+   * one seller cannot push a long blob into every shelf page. */
+  _stBustLook(ps) {
+    if (!ps) return null;
+    const out = {};
+    let any = false;
+    for (const k of STORE_BUST_KEYS) {
+      const v = ps[k];
+      if (typeof v === 'string' && v && v.length <= 24) { out[k] = v; any = true; }
+      else if (typeof v === 'number' && Number.isFinite(v)) { out[k] = v; any = true; }
+    }
+    return any ? out : null;
+  },
+
+  /* v2.3.2623: the store's own price ceiling, so storeoffer.js bounds an
+     offer against the same number a listing is bounded by rather than
+     keeping a second copy of it. */
+  _stMaxPrice() { return STORE.MAX_PRICE; },
+
+  _stColor(v) {
+    /* A CSS colour that is about to be a `background` — bounded, and only
+       the shape the character creator actually produces. */
+    return (typeof v === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(v)) ? v : null;
+  },
+
+  _stAvatar(pid) {
+    const ps = this.playerState[pid];
+    const v = ps && ps.avatar;
+    if (typeof v !== 'string' || !v || v.length > 512) return null;
+    /* It lands in an <img src>. https: and same-origin only — stricter than
+       the relay path this value already travels on, because a new render
+       site is the wrong place to widen a trust boundary. */
+    return (v.startsWith('https://') || v.startsWith('/')) ? v : null;
+  },
+
   _stPublic(o) {
+    const av = this._stAvatar(o.sellerId);
     return {
       id: o.id,
       sellerId: o.sellerId,
       sellerName: o.sellerName,
+      sellerColor: o.sellerColor || null,          /* v2.3.2620: stored, 7 chars */
+      /* v2.3.2622: the bust set (~198 bytes/row), and ONLY when there is no
+         avatar to draw instead. The client prefers a Hemi Bro picture over a
+         composed portrait, so shipping both is one of the two wasted on every
+         row -- and both together took a full page to 29.7KB against a 32KB
+         bound, which is the kind of headroom that runs out on the next field.
+         Either-or takes the worst case back to ~22KB.
+         Safe because the avatar is a plain URL: a row already on screen keeps
+         drawing it after the seller logs off, and the next browse (any tab,
+         filter or action refreshes) ships the stored look instead. */
+      sellerLook: av ? null : (o.sellerLook || null),
+      sellerAvatar: av,                            /* v2.3.2620: resolved live, never stored */
       kind: o.kind,
       cat: o.cat,
       qty: o.qty,
@@ -260,7 +429,12 @@ export const storeMethods = {
       const paid = rec.sale.paid || (await this._opSeen('store:' + rec.id + ':pay'));
       if (paid) {
         await this._stSettle(rec, rec.sale.buyerId, rec.sale.buyerName, rec.sale.price, rec.sale.bidSeq || null);
-        await this.state.storage.delete('store_listing:' + rec.id);
+        /* v2.3.2621: the conversation goes with the listing it was about, and
+       goes FIRST -- a crash between the two then leaves a listing whose
+       thread is empty (which heals itself) rather than a thread nothing
+       will ever delete (storechat.js). */
+    await this._scDropThreads(rec.id);
+    await this.state.storage.delete('store_listing:' + rec.id);
         return false;
       }
       // The money never moved: the listing simply goes back on the shelf.
@@ -273,6 +447,19 @@ export const storeMethods = {
         await this._stPromoteBid(rec, pb);
       } else {
         rec.pendBid = null;
+        await this.state.storage.put('store_listing:' + rec.id, rec);
+      }
+    }
+    /* v2.3.2623: an OFFER caught mid-escrow by the restart, converged the
+       same way and for the same reason: promote it iff its debit stamp is
+       present, drop it otherwise, because then no money moved. Without this
+       a buyer's gold could be taken by the debit and belong to nothing. */
+    if (rec.pendOffer) {
+      const po = rec.pendOffer;
+      if (await this._opSeen('store:' + rec.id + ':offer:' + po.seq)) {
+        await this._soPromote(rec, po);
+      } else {
+        rec.pendOffer = null;
         await this.state.storage.put('store_listing:' + rec.id, rec);
       }
     }
@@ -480,6 +667,13 @@ export const storeMethods = {
       id,
       sellerId: playerId,
       sellerName: (typeof ps.name === 'string' && ps.name) ? ps.name.slice(0, 24) : (this._stNameOf(playerId) || 'Someone'),
+      /* v2.3.2620: snapshotted beside the name and for the same reason --
+         the disc has to keep working once the seller has logged off. */
+      sellerColor: this._stColor(ps.color),
+      /* v2.3.2622: snapshotted beside the name and the colour, and for a
+         stronger version of the same reason -- the seller's FACE has to keep
+         working once they have logged off, which is the whole ask. */
+      sellerLook: this._stBustLook(ps),
       kind,
       invKey,
       weapon,
@@ -565,6 +759,11 @@ export const storeMethods = {
     const buyerName = rec.sale.buyerName;
     await this._stSettle(rec, buyerId, buyerName, price, null);
     this._stRemoveFromIndex(rec);
+    /* v2.3.2621: the conversation goes with the listing it was about, and
+       goes FIRST -- a crash between the two then leaves a listing whose
+       thread is empty (which heals itself) rather than a thread nothing
+       will ever delete (storechat.js). */
+    await this._scDropThreads(rec.id);
     await this.state.storage.delete('store_listing:' + rec.id);
     return { ok: true, settled: true, bought: true, price, listing: this._stPublic(rec) };
   },
@@ -639,6 +838,11 @@ export const storeMethods = {
 
     await this._stSettle(rec, bid.bidderId, bid.bidderName, bid.amount, bid.seq);
     this._stRemoveFromIndex(rec);
+    /* v2.3.2621: the conversation goes with the listing it was about, and
+       goes FIRST -- a crash between the two then leaves a listing whose
+       thread is empty (which heals itself) rather than a thread nothing
+       will ever delete (storechat.js). */
+    await this._scDropThreads(rec.id);
     await this.state.storage.delete('store_listing:' + rec.id);
     return { ok: true, settled: true, accepted: true, price: bid.amount, listing: this._stPublic(rec) };
   },
@@ -667,6 +871,16 @@ export const storeMethods = {
         payload: { amount: rec.topBid.amount }, note: 'bid returned on ' + label,
       });
     }
+    /* v2.3.2623: ...and every ESCROWED OFFER, for the same reason and with
+       the same guard. The listing is gone, so nobody's gold may stay locked
+       against it. `rec.sale.offerSeq` names the offer whose escrow WAS the
+       payment (an accepted offer) and so must not also be refunded -- exactly
+       what paidBidSeq does for the standing bid one line up.
+       Here rather than at each call site DELIBERATELY: buy-now, accept-bid
+       and accept-offer all funnel through this function, so "a sale left
+       somebody's gold locked" has one place to be wrong instead of three. */
+    await this._soReleaseAll(rec, 'offer returned on ' + label,
+      (rec.sale && rec.sale.offerSeq) || null);
   },
 
   /* ── cancel / expiry ───────────────────────────────────────────────
@@ -676,7 +890,12 @@ export const storeMethods = {
   async _stRelease(rec, why) {
     if (await this._opSeen('store:' + rec.id + ':goods')) {
       this._stRemoveFromIndex(rec);
-      await this.state.storage.delete('store_listing:' + rec.id);
+      /* v2.3.2621: the conversation goes with the listing it was about, and
+       goes FIRST -- a crash between the two then leaves a listing whose
+       thread is empty (which heals itself) rather than a thread nothing
+       will ever delete (storechat.js). */
+    await this._scDropThreads(rec.id);
+    await this.state.storage.delete('store_listing:' + rec.id);
       return;
     }
     /* ── v2.3.2521: MARK BEFORE ANYTHING MOVES ────────────────────────
@@ -709,6 +928,11 @@ export const storeMethods = {
         payload: { amount: rec.topBid.amount }, note: 'bid returned on ' + this._stLabel(rec),
       });
     }
+    /* v2.3.2623: and every escrowed offer -- cancel, expiry and the
+       crash-release all come through here (storeoffer.js). After the
+       `releasing` marker above, so a crash mid-refund converges rather than
+       re-listing a record whose gold has already gone home. */
+    await this._soReleaseAll(rec, 'offer returned on ' + this._stLabel(rec), null);
     const goods = this._stGoodsCredit(rec);   /* v2.3.2531 */
     await this._creditPlayer(rec.sellerId, {
       opId: 'store:' + rec.id + ':refund', source: 'market',
@@ -716,6 +940,11 @@ export const storeMethods = {
       note: why,
     });
     this._stRemoveFromIndex(rec);
+    /* v2.3.2621: the conversation goes with the listing it was about, and
+       goes FIRST -- a crash between the two then leaves a listing whose
+       thread is empty (which heals itself) rather than a thread nothing
+       will ever delete (storechat.js). */
+    await this._scDropThreads(rec.id);
     await this.state.storage.delete('store_listing:' + rec.id);
   },
 
@@ -743,5 +972,17 @@ export const storeMethods = {
       if (due.length >= STORE.SWEEP_MAX) break;
     }
     for (const rec of due) await this._stRelease(rec, 'listing expired');
+    /* v2.3.2623: offers expire sooner than the listing they sit on (48h vs a
+       week), so gold is not locked for a week by a seller who never answered.
+       Bounded by the same pass: at most MAX_PER_LISTING offers per record and
+       at most SWEEP_MAX records looked at, so this cannot become the
+       unbounded walk rule 9 warns about. */
+    let looked = 0;
+    for (const rec of this._stIndex.values()) {
+      if (looked++ >= STORE.SWEEP_MAX) break;
+      if (rec.sale || rec.releasing || !rec.offers) continue;
+      if (!Object.keys(rec.offers).length) continue;
+      await this._soSweepRec(rec, now);
+    }
   },
 };

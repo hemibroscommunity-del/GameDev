@@ -1,4 +1,5 @@
 import React from 'react';
+import { PlayerIcon } from '@/ui/PlayerIcon.jsx';   /* v2.3.2620 */
 
 /* === PlayerListPanel — the showPlayerList modal === */
 /* v2.3.886: extracted verbatim from the showPlayerList JSX subtree in
@@ -37,16 +38,16 @@ export function PlayerListPanel(props) {
         setInspectPlayer(p);
         setShowPlayerList(false);
       }
-    }, p.avatar ? /*#__PURE__*/React.createElement("img", {
-      className: "bt-plist-av",
-      src: p.avatar,
-      alt: ""
-    }) : /*#__PURE__*/React.createElement("div", {
-      className: "bt-plist-dot",
-      style: {
-        background: p.color
-      }
-    }, p.name.charAt(0).toUpperCase()), /*#__PURE__*/React.createElement("div", {
+    }, /* v2.3.2620: was two inline branches (an img.bt-plist-av, or a
+         div.bt-plist-dot with the initial).  The marketplace needed the same
+         icon and a second copy of the rule is how the two would drift, so the
+         rule moved to PlayerIcon and this is now its first caller.  28px and
+         24px were the two CSS sizes here; the component draws one disc at the
+         avatar's 28 so a row's height no longer depends on whether the player
+         owns a Hemi Bro. */
+    /*#__PURE__*/React.createElement(PlayerIcon, {
+      name: p.name, color: p.color, avatar: p.avatar, size: 28
+    }), /*#__PURE__*/React.createElement("div", {
       style: {
         minWidth: 0
       }

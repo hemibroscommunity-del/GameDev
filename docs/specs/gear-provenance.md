@@ -5,7 +5,7 @@ lane, all three steps now shipped: **record at mint** (#648) → equip names
 a recorded piece (#649) → the custody primitives (#650) → **the store
 sells only what the server recorded** (v2.3.2551), with `_sv` retired
 (v2.3.2552). The store half is specified in
-`docs/specs/general-store.md` "Gear listings"; what is here is the ledger
+`docs/specs/auction-house.md` "Gear listings"; what is here is the ledger
 and the gate it answers with.
 
 ## Why
@@ -106,7 +106,7 @@ the next reader does not have to re-derive it:
   `_creditPlayer` call in those modules is `kind:'gold'` or `kind:'item'`.
   No gear.
 - **Shopkeeper Bro (`shop.js`)** — sells no gear.
-- **The general store (`store.js`)** — delivers stackables and stash
+- **The auction house (`store.js`)** — delivers stackables and stash
   weapons only today. Gear delivery arrives with PR 3 / #643.
 
 ## Storage
@@ -582,7 +582,7 @@ Written here so PR 2 and PR 3 inherit them on purpose.
    mid-session can still be listed. Narrowed rather than open-in-the-open
    (it needs the browser's "in my bag" and "on my arm" views to have come
    apart), and closing it needs an equip message for the slot behind its
-   own cap. See general-store.md, "The worn slot".
+   own cap. See auction-house.md, "The worn slot".
 8. **`_creditPlayer` stamps its opId before it does the work.** Pre-existing
    for every payout kind and not this lane's to change. The gear-specific
    shape: if the isolate dies between the awaited row grant and the

@@ -13,12 +13,12 @@
 > does NOT solve* for M3 to inherit on purpose rather than by accident.
 
 The five gear lists a player owns but is not wearing now live in the rpg
-blob, on the server. Phase 2 of the general-store lane (backlog
+blob, on the server. Phase 2 of the auction-house lane (backlog
 §2.2, M1 → **M2** → M3): it moves the *holding*, not the selling.
 
 ## Why
 
-`docs/specs/general-store.md` states the blocker in its own scope table:
+`docs/specs/auction-house.md` states the blocker in its own scope table:
 the store can list stackables and stash weapons and nothing else, because
 armour, legs, shields, cosmetic gear and amulets were **client-local**.
 Handoff rule 16 forbids taking custody of a value blob the client
@@ -309,7 +309,7 @@ must reconcile the worn slot against the list, or make the server the
 writer for equip/unequip first.
 
 > **v2.3.2531 — M3 has shipped the escrow half**
-> (`docs/specs/general-store.md`, "Gear listings"). It did *not* make the
+> (`docs/specs/auction-house.md`, "Gear listings"). It did *not* make the
 > client a reader of the echo; that is still open. Two consequences of
 > the drift above became live problems the moment a piece could be sold,
 > and both are handled there rather than here:

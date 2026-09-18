@@ -38,7 +38,7 @@ function mkt(P, method, path, body) {
   }, { m: method, p: path, b: body || null });
 }
 
-/* v2.3.2476: the same trick for the general store's own surface.  Issued
+/* v2.3.2476: the same trick for the auction house's own surface.  Issued
    from inside the player's page for the same reason: the session token the
    worker checks is minted for THAT socket and lives nowhere else. */
 function st(P, method, path, body) {
@@ -80,13 +80,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
        the prompt was off").
        The real reason is that no PLACED town prop carries action 'exchange'.
        Of the twelve buildings, exactly two have a door in town today — the
-       forge and the general store — because the props that carry the other
+       forge and the auction house — because the props that carry the other
        ten actions are the v16 set still held behind propIsPlaced, or tiles
        from the procedural town that no longer exists. That is a content gap
        for the owner, not something a test can route around. */
     rec.skip('the Marketplace panel can be opened from town',
       'no placed town prop carries action \'exchange\', so ExchangePanel has no '
-      + 'door — 2 of 12 buildings are reachable in town (forge, general-store). '
+      + 'door — 2 of 12 buildings are reachable in town (forge, auction-house). '
       + 'Server-side order book still checked below.');
   }
 
@@ -149,7 +149,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { now: await coins(B), expected: bCoins0 });
 
   /* ═══════════════════════════════════════════════════════════════════
-     v2.3.2476 — THE GENERAL STORE, the other shelf in the same room.
+     v2.3.2476 — THE AUCTION HOUSE, the other shelf in the same room.
      Two real identities, the real Durable Object, the real HTTP surface:
      one lists something out of their bag, the other bids on it, is
      outbid-refunded, and finally buys one outright.  Stackables rather

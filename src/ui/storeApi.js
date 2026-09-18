@@ -70,6 +70,38 @@ export function storeGearRefEnabled() {
   return !!(s && s._serverCaps && s._serverCaps.storeGearRef);
 }
 
+/* ═══ v2.3.2621: ...and does it carry per-listing message threads? ═══
+ * Narrow, and MANDATORY rather than a nicety. An older worker has no case for
+ * `store_dm` / `store_dm_open`, so both would fall through to its default
+ * branch and be REBROADCAST to the whole room -- a private haggle over a
+ * sword shouted at everybody, which is the worst possible failure and the
+ * same one chatlanes.js argues about for /w. So the icon must not exist to be
+ * tapped against such a worker. */
+export function storeChatEnabled() {
+  const s = S();
+  return !!(s && s._serverCaps && s._serverCaps.storeChat);
+}
+
+/* The two store-chat types go over the WEBSOCKET, not the store's HTTP
+   surface: they are a relay to another player's screen, which is what the
+   socket is for, and the shim passes both through (wsClient.js). */
+export function storeChatSend(type, payload) {
+  const s = S();
+  try { if (s && s.channel) s.channel.send({ type, payload }); } catch (e) { /* offline */ }
+}
+
+/* ═══ v2.3.2623: ...and can a buyer make a gold OFFER on a listing? ═══
+ * Narrow and mandatory. An older worker has no case for `store_offer`, so
+ * the request falls through to its default branch and is rebroadcast as
+ * chatter: the buyer sees their offer "sent", no gold moves, and no seller
+ * can ever accept it. A money control that silently does nothing is worse
+ * than an absent one, so the offer box must not exist against a worker that
+ * cannot settle it. */
+export function storeOfferEnabled() {
+  const s = S();
+  return !!(s && s._serverCaps && s._serverCaps.storeOffer);
+}
+
 export function storeMyId() {
   const s = S();
   return (s && s.myId) || null;

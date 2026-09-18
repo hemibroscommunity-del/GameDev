@@ -31,6 +31,7 @@ import { GameRoom } from '../src/index.js';
 import { GEAR_SELL, removeGearLocal } from '../../src/ui/mobile/dash/gearSellLocal.js';   /* v2.3.2532: the client half of a gear listing (S12j) */
 import { GEAR_SELL_REASON, gearSellReasonText, gearSellCheck, gearSellGid } from '../../src/ui/mobile/dash/gearSellReason.js';   /* v2.3.2551: the client half of a REFUSAL (S12m) */
 import { GEAR_REFUSAL } from '../src/storegear.js';   /* v2.3.2551: ...and the table it mirrors */
+import { STORE } from '../src/store.js';   /* v2.3.2619: the sweep arithmetic reads the real constants */
 import { QUEST_REWARDS, MONSTER_ARMOR_DROPS } from '../src/data.js';   /* v2.3.2554: the REAL copper/iron entries, so S12o cannot drift from the catalog */
 
 function makeState() {
@@ -387,7 +388,7 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
 }
 
 /* ════════════════════════════════════════════════════════════════════
- * v2.3.2475 — THE GENERAL STORE (store.js), phase 1
+ * v2.3.2475 — THE AUCTION HOUSE (store.js), phase 1
  *
  * A second, per-LISTING surface beside the bucket order book above: one
  * seller, one pile of goods, one ask price, at most one live bid.  Lives
@@ -573,6 +574,223 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
   check('store: expiry returns the goods to the seller', SEL.inventory.slime_gel === expGel + 1, SEL.inventory);
   check('store: expiry refunds the standing bid', BUY.coins === expCoins + 40, BUY.coins);
   check('store: the expired listing is deleted', !st._store.has('store_listing:' + willExpire.listing.id));
+
+  // ── S5c. ONE WEEK, FIXED (v2.3.2619) ──
+  // Owner: "All listings are 7 days (1 week)." Not a default, not a choice.
+  {
+    const DAY = 86400000;
+    SEL.inventory.slime_gel = 30;
+
+    const wk = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10 });
+    const wkRec = shop._stIndex.get(wk.listing.id);
+    check('store week: a listing runs seven days',
+      Math.abs((wkRec.expiresAt - wkRec.createdAt) - 7 * DAY) < 1000,
+      { days: (wkRec.expiresAt - wkRec.createdAt) / DAY });
+
+    /* THE SERVER READS NO DURATION FROM THE CLIENT. Every one of these is a
+       request a modified client could send; all of them must be ignored
+       rather than validated, because there is no duration field at all. */
+    const asked = [];
+    for (const bad of [3600000, 30 * DAY, -DAY, 0, 'abc', Infinity, null, {}]) {
+      const r = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10, durationMs: bad });
+      if (!r.ok) { asked.push({ bad: String(bad), refused: r.error }); continue; }
+      const rec = shop._stIndex.get(r.listing.id);
+      if (Math.abs((rec.expiresAt - rec.createdAt) - 7 * DAY) >= 1000) {
+        asked.push({ bad: String(bad), got: (rec.expiresAt - rec.createdAt) / DAY });
+      }
+      await shop._stCancel(r.listing.id, 'bp_st_sell');
+    }
+    check('store week: a client-supplied duration cannot change it -- the field does not exist',
+      asked.length === 0, asked);
+    check('store week: ...and nothing about a duration goes out on the wire',
+      wk.listing.durationMs === undefined, Object.keys(wk.listing));
+
+    /* THE SWEEP, at the new lifetime. The arithmetic is in store.js's header;
+       this pins the two numbers it turns on so a future retune cannot quietly
+       break the relationship. */
+    const duePerPass = STORE.MAX_GLOBAL * (STORE.SWEEP_INTERVAL / STORE.LISTING_EXPIRY);
+    check('store week: a full shelf expires far fewer than SWEEP_MAX per pass',
+      duePerPass < STORE.SWEEP_MAX, { duePerPass: Number(duePerPass.toFixed(3)), sweepMax: STORE.SWEEP_MAX });
+    console.log(`    store week: a FULL shelf (${STORE.MAX_GLOBAL}) expires ${duePerPass.toFixed(3)} listings `
+      + `per ${STORE.SWEEP_INTERVAL / 1000}s pass against SWEEP_MAX ${STORE.SWEEP_MAX} `
+      + `(${Math.round(STORE.SWEEP_MAX / duePerPass)}x headroom); sustainable rate `
+      + `~${Math.round(STORE.MAX_GLOBAL / (STORE.LISTING_EXPIRY / 86400000))} new listings/day`);
+
+    /* A LISTING MADE UNDER THE OLD 24h RULE still retires on its own clock:
+       expiresAt is stored per record, so the constant change is not
+       retroactive in either direction and needs no migration. */
+    const legacy = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 10 });
+    const legRec = shop._stIndex.get(legacy.listing.id);
+    legRec.expiresAt = legRec.createdAt + DAY;          // as a pre-2619 record would be
+    await st._store.set('store_listing:' + legacy.listing.id, legRec);
+    const gelPre = SEL.inventory.slime_gel;
+    legRec.expiresAt = Date.now() - 1;
+    shop._stLastSweep = 0;
+    await shop._stSweep();
+    check('store week: a listing created under the 24h rule still expires on ITS clock',
+      !st._store.has('store_listing:' + legacy.listing.id) && SEL.inventory.slime_gel === gelPre + 1);
+    check('store week: ...and the week-long one beside it is untouched',
+      st._store.has('store_listing:' + wk.listing.id));
+
+    await shop._stCancel(wk.listing.id, 'bp_st_sell');
+  }
+
+  // ── S5d. THE SELLER'S ICON, AND WHAT A FULL PAGE COSTS (v2.3.2620) ──
+  // Owner: "Add the players tiny icon ... next to their listing."
+  // Two things have to be true at once: the icon has to be there, and a
+  // PAGE_MAX page of them must not turn a listing page into a payload.
+  {
+    const ICON = 'https://wsrv.nl/?url=' + 'x'.repeat(200) + '&w=64';
+    SEL.inventory.slime_gel = 80;
+    shop.playerState['bp_st_sell'].color = '#D8AA58';
+
+    const withIcon = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 9 });
+    check('store icon: the seller colour is snapshotted onto the record',
+      shop._stIndex.get(withIcon.listing.id).sellerColor === '#D8AA58',
+      shop._stIndex.get(withIcon.listing.id).sellerColor);
+
+    // Resolved LIVE, never stored -- so it appears when the seller is online...
+    shop.playerState['bp_st_sell'].avatar = ICON;
+    const onWire = shop._stPublic(shop._stIndex.get(withIcon.listing.id));
+    check('store icon: an online seller\'s avatar is on the wire', onWire.sellerAvatar === ICON, onWire.sellerAvatar);
+    check('store icon: ...and it was NOT written into the stored record',
+      shop._stIndex.get(withIcon.listing.id).sellerAvatar === undefined
+        && !('sellerAvatar' in st._store.get('store_listing:' + withIcon.listing.id)));
+
+    // ...and degrades to the colour disc when they are not.
+    const keepPs = shop.playerState['bp_st_sell'];
+    delete shop.playerState['bp_st_sell'];
+    const offWire = shop._stPublic(shop._stIndex.get(withIcon.listing.id));
+    check('store icon: an offline seller falls back to the colour disc',
+      offWire.sellerAvatar === null && offWire.sellerColor === '#D8AA58', offWire);
+    shop.playerState['bp_st_sell'] = keepPs;
+
+    // It lands in an <img src>: only https: and same-origin get through.
+    for (const bad of ['javascript:alert(1)', 'data:text/html,<script>', 'http://x', 'x'.repeat(600), 42, null]) {
+      shop.playerState['bp_st_sell'].avatar = bad;
+      const w = shop._stPublic(shop._stIndex.get(withIcon.listing.id));
+      if (w.sellerAvatar !== null) { check('store icon: refuses ' + String(bad).slice(0, 24), false, w.sellerAvatar); break; }
+    }
+    check('store icon: only https/same-origin avatars reach the panel', true);
+    shop.playerState['bp_st_sell'].color = '<script>';
+    const badCol = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 9 });
+    check('store icon: a colour that is not a colour is dropped, not stored',
+      shop._stIndex.get(badCol.listing.id).sellerColor === null,
+      shop._stIndex.get(badCol.listing.id).sellerColor);
+    shop.playerState['bp_st_sell'].color = '#D8AA58';
+    shop.playerState['bp_st_sell'].avatar = ICON;
+
+    /* ── THE PAGE COST. PAGE_MAX is 40; weigh a full one. ──
+       Measured on the PROJECTION rather than by escrowing forty real items:
+       _stPublic is what actually goes on the wire, and MAX_PER_PLAYER is 10
+       so no single seller can fill a page anyway. Every row below is the
+       most expensive one the store can produce -- a seller who is online AND
+       wearing a ~250-char Hemi Bro URL. Real pages are cheaper. */
+    const oneRow = shop._stPublic(shop._stIndex.get(withIcon.listing.id));
+    const rows40 = [];
+    for (let i = 0; i < 40; i++) rows40.push({ ...oneRow, id: 'row-' + i });
+    const bytes = JSON.stringify({ ok: true, listings: rows40, nextCursor: null, total: 40 }).length;
+    const noIcons = JSON.stringify({
+      ok: true, nextCursor: null, total: 40,
+      listings: rows40.map(({ sellerAvatar, sellerColor, ...rest }) => rest),
+    }).length;
+    const perRow = Math.round((bytes - noIcons) / 40);
+    console.log(`    store icon: a 40-row page is ${bytes} bytes, ${bytes - noIcons} of them icon `
+      + `(${perRow}/row) -- worst case, every seller online and wearing a Bro picture`);
+    // The bound that matters: a full page must stay well under the ~64KB a
+    // phone on a bad connection notices, even with every seller wearing one.
+    check('store icon: a full PAGE_MAX page stays under 32KB with every seller iconed',
+      bytes < 32768, { bytes, rows: 40 });
+    /* ...and a per-ROW bound on the icon itself.
+       This was a RATIO ("the icons are a minority of the page") and that was
+       the wrong shape: it divides two numbers that move for unrelated
+       reasons, so v2.3.2619 taking `durationMs` off the wire shrank the row
+       and tipped a passing 47% to a failing 51% without the icon costing one
+       byte more. An avatar URL is genuinely ~half of a small row; that is not
+       a regression, it is what a 250-char URL beside a short record looks
+       like. The absolute cost per row is the thing worth pinning, and it does
+       not move when a neighbouring field does. 300 against a measured 268. */
+    check('store icon: an icon costs no more than 300 bytes on a row', perRow <= 300,
+      { perRow, icon: bytes - noIcons, total: bytes });
+
+    /* ── v2.3.2622: THE SELLER'S OWN FACE, NOT A LETTER ──
+       Owner: "Make the player's actual profile picture be there instead of
+       the M." The client draws it from the seller's cosmetics; this checks
+       the server stores the RIGHT ONES and no more. */
+    {
+      const ps = shop.playerState['bp_st_sell'];
+      Object.assign(ps, {
+        sk: 'tan', hr: 'short', hc: 'brown', fh: 'none', fhc: 'brown',
+        hw: 'cap', htc: 'red', ew: 'none', ewc: 'black', ec: 'blue',
+        st: 'tee', stc: 'green', bs: 'slim', hg: 'med', fr: 'med',
+        /* the nine DRAWING fields, each a fixed 256 chars -- these must NOT
+           travel: invisible on an 18px disc and 92KB on a full page. */
+        sa: 'a'.repeat(256), sb: 'b'.repeat(256), pa: 'c'.repeat(256),
+        pb: 'd'.repeat(256), ta: 'e'.repeat(256), tf: 'f'.repeat(256),
+        tm: '0'.repeat(256), tb: '1'.repeat(256), tr: '2'.repeat(256),
+      });
+      const faced = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 7 });
+      const look = shop._stIndex.get(faced.listing.id).sellerLook;
+      check('store face: the seller\'s bust set is snapshotted onto the record',
+        !!look && look.sk === 'tan' && look.hw === 'cap' && look.ec === 'blue', look);
+      check('store face: ...including the build fields the portrait fit reads',
+        !!look && look.bs === 'slim' && look.hg === 'med' && look.fr === 'med', look);
+      const drawings = ['sa', 'sb', 'pa', 'pb', 'ta', 'tf', 'tm', 'tb', 'tr'].filter((k) => look && look[k] !== undefined);
+      check('store face: ...and NONE of the nine 256-char drawing fields', drawings.length === 0, drawings);
+      check('store face: it survives the seller logging off (it is stored, not resolved live)',
+        (() => { const keep = shop.playerState['bp_st_sell']; delete shop.playerState['bp_st_sell'];
+          const w = shop._stPublic(shop._stIndex.get(faced.listing.id));
+          shop.playerState['bp_st_sell'] = keep;
+          return !!w.sellerLook && w.sellerLook.sk === 'tan' && w.sellerAvatar === null; })(),
+        'the avatar is resolved live and goes; the face is stored and stays');
+
+      /* A long value cannot ride in: one seller must not be able to push a
+         blob into every shelf page. */
+      ps.hr = 'z'.repeat(400);
+      const longHair = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 7 });
+      check('store face: an over-long cosmetic value is dropped, not stored',
+        shop._stIndex.get(longHair.listing.id).sellerLook.hr === undefined,
+        shop._stIndex.get(longHair.listing.id).sellerLook);
+      ps.hr = 'short';
+
+      /* THE PAGE COST, again, now that a face rides along. */
+      /* Measured with the seller OFFLINE, which is when the look ships: the
+         two are either-or now, so the worst case is one of them, not both. */
+      const keepPs = shop.playerState['bp_st_sell'];
+      delete shop.playerState['bp_st_sell'];
+      const faceRow = shop._stPublic(shop._stIndex.get(faced.listing.id));
+      shop.playerState['bp_st_sell'] = keepPs;
+      const rowsF = [];
+      for (let i = 0; i < 40; i++) rowsF.push({ ...faceRow, id: 'f-' + i });
+      const fBytes = JSON.stringify({ ok: true, listings: rowsF, nextCursor: null, total: 40 }).length;
+      const noLook = JSON.stringify({
+        ok: true, nextCursor: null, total: 40,
+        listings: rowsF.map(({ sellerLook, ...rest }) => rest),
+      }).length;
+      console.log(`    store face: a 40-row page is ${fBytes} bytes, ${fBytes - noLook} of them face `
+        + `(${Math.round((fBytes - noLook) / 40)}/row) -- against ~2300/row if the nine drawing fields rode along`);
+      check('store face: a full page with a face on every row stays under 32KB',
+        fBytes < 32768, { bytes: fBytes });
+
+      check('store face: the face and the avatar are never both on one row',
+        (() => {
+          shop.playerState['bp_st_sell'].avatar = ICON;
+          const on = shop._stPublic(shop._stIndex.get(faced.listing.id));
+          delete shop.playerState['bp_st_sell'].avatar;
+          const off = shop._stPublic(shop._stIndex.get(faced.listing.id));
+          return on.sellerAvatar === ICON && on.sellerLook === null
+            && off.sellerAvatar === null && !!off.sellerLook;
+        })());
+
+      await shop._stCancel(faced.listing.id, 'bp_st_sell');
+      await shop._stCancel(longHair.listing.id, 'bp_st_sell');
+    }
+
+    // Tidy: clear the shelf for the sections after this one.
+    await shop._stCancel(withIcon.listing.id, 'bp_st_sell');
+    await shop._stCancel(badCol.listing.id, 'bp_st_sell');
+    delete shop.playerState['bp_st_sell'].avatar;
+  }
 
   // ── S6. an offline counterparty settles into the mail ──
   const offSell = await shop._stCreateListing({ playerId: 'bp_st_sell', kind: 'item', invKey: 'slime_gel', qty: 1, price: 70 });

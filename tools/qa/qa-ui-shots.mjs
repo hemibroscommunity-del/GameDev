@@ -50,7 +50,7 @@ const FIX = {
 
 const BUILDINGS = ['shop', 'bank', 'enchant', 'cook', 'farm', 'gamble', 'party', 'exchange', 'forge', 'woodwork', 'gemcut'];
 const BUILDING_LABEL = {
-  shop: 'general-store', bank: 'bank', enchant: 'enchanter', cook: 'kitchen',
+  auctionhouse: 'auction-house', bank: 'bank', enchant: 'enchanter', cook: 'kitchen',
   farm: 'farm', gamble: 'gambling-den', party: 'arena', exchange: 'marketplace',
   forge: 'forge', woodwork: 'woodworker', gemcut: 'gem-cutter',
 };

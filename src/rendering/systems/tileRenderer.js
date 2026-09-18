@@ -495,7 +495,7 @@ export class TileRenderer {
        force-set to null every frame" — it is computed every frame now, from
        buildingPropNear matching a prop's `action` against the BUILDINGS
        table.  What is true is narrower and worth stating exactly: TWO of the
-       twelve are reachable (the forge and the general store), because those
+       twelve are reachable (the forge and the auction house), because those
        are the only PLACED town props carrying an action.  The other ten point
        at the v16 set still held behind propIsPlaced, or at tiles from the
        procedural town that no longer exists.  A player cannot tell "not built yet" from "I can't find

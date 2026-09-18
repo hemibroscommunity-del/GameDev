@@ -9,7 +9,7 @@
    reuses bldg-farm (same building family, different location). */
 export const TOWN_BUILDINGS = [
   { id: 'marketplace', bx: 2,  by: 2,  bw: 5, bh: 4, label: 'MARKETPLACE',  icon: '🏪', iconSrc: '/icons/ui/bldg-exchange.webp?v=2.3.1224', desc: 'Buy and sell items',    action: 'exchange', color: '#5b52ff' },
-  { id: 'vendor',      bx: 33, by: 2,  bw: 5, bh: 4, label: 'VENDOR',       icon: '🛒', iconSrc: '/icons/ui/bldg-vendor.webp?v=2.3.1224',   desc: 'Buy consumables',       action: 'shop',     color: '#3dd497' },
+  { id: 'auctionhouse', bx: 33, by: 2, bw: 5, bh: 4, label: 'AUCTION HOUSE', icon: '⚖', iconSrc: '/icons/ui/bldg-auctionhouse.webp?v=2.3.2624', desc: 'Buy and sell with players', action: 'auctionhouse', color: '#3dd497' },
   { id: 'bank',        bx: 9,  by: 33, bw: 5, bh: 4, label: 'BANK',         icon: '🏦', iconSrc: '/icons/ui/bldg-bank.webp?v=2.3.1224',     desc: 'Safe item storage',     action: 'bank',     color: '#f5c542' },
   { id: 'enchanting',  bx: 33, by: 33, bw: 5, bh: 4, label: 'ENCHANTER',    icon: '✨', iconSrc: '/icons/ui/bldg-enchant.webp?v=2.3.1224',  desc: 'Slot gems into gear',   action: 'enchant',  color: '#a78bfa' },
   { id: 'cooking',     bx: 16, by: 3,  bw: 4, bh: 3, label: 'KITCHEN',      icon: '🍳', iconSrc: '/icons/ui/bldg-cook.webp?v=2.3.1224',     desc: 'Cook food buffs',       action: 'cook',     color: '#ea580c' },

@@ -23,6 +23,13 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  ahshot: () => import('./mp-ahshot.mjs'), /* v2.3.2626: pictures of the Auction House art on the plaza, four viewports */
+  listingoffer: () => import('./mp-listingoffer.mjs'), /* v2.3.2623: a real gold offer between two players -- escrowed on offer, settled on accept */
+  listingdm: () => import('./mp-listingdm.mjs'), /* v2.3.2621: the chat icon on a listing, and a line typed by one player arriving on the other player's screen */
+  sellericon: () => import('./mp-sellericon.mjs'), /* v2.3.2620: the seller icon on a listing, and the player list it was extracted from */
+  listweek: () => import('./mp-listweek.mjs'), /* v2.3.2619: every listing runs a week and NOTHING asks -- the control must not exist */
+  marketonly: () => import('./mp-marketonly.mjs'), /* v2.3.2618: Market is the only button in the vendor building, the shelf matches the mockup, and Shopkeeper Bro still stocks all five staples */
+  vendorprompt: () => import('./mp-vendorprompt.mjs'), /* v2.3.2617: the Enter VENDOR prompt must not survive its own tap -- real finger taps at four viewports, asked of elementFromPoint (TRAPS §67) */
   exitmark: () => import('./mp-exitmark.mjs'), /* v2.3.2605: can you see the way out of a spoke -- measured against sand AND snow, at four viewports */
   sellcue: () => import('./mp-sellcue.mjs'), /* v2.3.2606: a server-settled sale rings the coin sound, a refused one does not, and the sound setting silences it */
   sellsheet: () => import('./mp-sellsheet.mjs'), /* v2.3.2612: why tapping Sell reads as nothing happening -- disabled variant, covered button, or a price sheet below the fold */
@@ -35,7 +42,7 @@ const SCENARIOS = {
   teeshield: () => import('./mp-teeshield.mjs'), /* v2.3.2516: is the bare jog-east shoulder the shield's arm capsule, or the artist's unsleeved frames? */
   facebow: () => import('./mp-facebow.mjs'), /* v2.3.2516: the face tattoo reaches the jaw on a moving bow shot */
   arules: () => import('./mp-arules.mjs'), /* v2.3.2516: the sprite-art RULE fixes -- cape on the roll and the loot bend, and the cape the south block used to lose */
-  store: () => import('./mp-store.mjs'), /* v2.3.2476: the general store -- list from the bag, walk to the door, see it on the shelf */
+  store: () => import('./mp-store.mjs'), /* v2.3.2476: the auction house -- list from the bag, walk to the door, see it on the shelf */
   stuckarrow: () => import('./mp-stuckarrow.mjs'), /* v2.3.2511: one arrow sticks, and it sticks in the body */
   inkframes: () => import('./mp-inkframes.mjs'), /* v2.3.2470: a drawing must not pulse or spill as he runs */
   backprev: () => import('./mp-backprev.mjs'), /* v2.3.2467: the pedestal preview turns round and so do the drawings */

@@ -143,10 +143,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ═══ v2.3.2091: THE VENDOR IS AT THE MARKET STALL ═══
      This has now been re-pointed twice and the history is the point.  v2.3.2078
      moved it OFF the market stall, because the storekeeper's pitch was the
-     general store and the stall was explicitly scenery -- worldProps called it
+     auction house and the stall was explicitly scenery -- worldProps called it
      "a painted front, there is nobody behind it".  v2.3.2080 then put Diego
      behind that front, and v2.3.2091 removed the storekeeper entirely, so the
-     stall is a manned pitch again and the general store is the empty one.
+     stall is a manned pitch again and the auction house is the empty one.
      Same property throughout: the man who sells things stands where the art
      says things are sold. */
   const shop = (props || []).find((p) => p.id === 'market-stall');

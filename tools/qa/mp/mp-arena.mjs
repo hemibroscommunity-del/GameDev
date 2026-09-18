@@ -47,7 +47,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        is missing is a PLACED town prop carrying action 'party'. */
     rec.skip('the arena panel can be opened from town',
       'no placed town prop carries action \'party\', so PartyPanel has no door — '
-      + '2 of 12 buildings are reachable in town (forge, general-store). '
+      + '2 of 12 buildings are reachable in town (forge, auction-house). '
       + 'Server-side queue still checked below.');
   }
 

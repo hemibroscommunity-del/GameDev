@@ -34,7 +34,9 @@ import {
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
 import { marketMethods } from './market.js';
-import { storeMethods } from './store.js';   /* v2.3.2475: the per-listing general store */
+import { storeMethods } from './store.js';   /* v2.3.2475: the per-listing auction house */
+import { storeChatMethods } from './storechat.js';   /* v2.3.2621: talking about one listing */
+import { storeOfferMethods } from './storeoffer.js';   /* v2.3.2623: escrowed offers on one listing */
 import { storeGearMethods } from './storegear.js';   /* v2.3.2531: gear listings (store phase 3) */
 import { shopMethods } from './shop.js';   /* v2.3.2047: Shopkeeper Bro's public pile */
 // v2.3.1119 (heavy-systems PR4): server-settled trades -- the relay
@@ -228,7 +230,7 @@ async function routeHttp(request, env) {
       return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(mktRoom)).fetch(request);
     }
 
-    /* v2.3.2475: the general store rides the same route shape as the order
+    /* v2.3.2475: the auction house rides the same route shape as the order
        book above, and for the same reason -- its escrow mutates the wallets
        and stashes this room owns, so it has to be the room that answers.
        Separate path so the two surfaces can be reasoned about (and rate-
@@ -371,6 +373,17 @@ export const PRIVILEGED_EVENTS = new Set([
      that is not there, so they are denied on the relay like every other
      server-emitted type (CLAUDE.md wire section). */
   'shop_state', 'shop_result', 'shop_quoted',
+  /* v2.3.2621: the auction house's message threads (storechat.js).  All
+     three are SERVER-EMITTED.  Unlisted, a client could forge a line
+     from a seller (`store_dm`), hand a buyer a whole fabricated
+     conversation (`store_dm_thread`), or fake a refusal to make the
+     real seller look unreachable (`store_dm_error`). */
+  'store_dm', 'store_dm_thread', 'store_dm_error',
+  /* v2.3.2623: the escrowed-offer answers (storeoffer.js).  Both are
+     SERVER-EMITTED and both are about MONEY.  Unlisted, a client could
+     forge a `store_offer_state` showing a seller gold that was never
+     escrowed, or a fake acceptance on a buyer's screen. */
+  'store_offer_state', 'store_offer_error',
   // Pool / progression mirrors
   'player_state', 'player_died',
   // 'player_respawned' intentionally OMITTED: the client broadcasts it
@@ -4232,7 +4245,7 @@ export class GameRoom {
     if (url.pathname.startsWith('/api/market')) {
       return this._marketFetch(request);
     }
-    // v2.3.2475: general-store HTTP surface -- see store.js.
+    // v2.3.2475: auction-house HTTP surface -- see store.js.
     if (url.pathname.startsWith('/api/store')) {
       return this._storeFetch(request);
     }
@@ -4895,6 +4908,34 @@ export class GameRoom {
         if (session.id) this._handleWhisper(session, msg.payload || msg);
         break;
 
+      /* v2.3.2621: the auction house's per-listing message threads
+         (storechat.js).  Own validated cases for the same reason the two
+         lanes above are: an explicit case never reaches the default
+         branch's relay token bucket, so the module carries its own -- and
+         falling through to that branch would REBROADCAST a private haggle
+         to the whole room. */
+      case 'store_dm':
+        if (session.id) this._handleStoreDm(session, msg.payload || msg);
+        break;
+      case 'store_dm_open':
+        if (session.id) this._handleStoreDmOpen(session, msg.payload || msg);
+        break;
+
+      /* v2.3.2623: escrowed offers (storeoffer.js).  These MOVE GOLD, so
+         they are explicit validated cases like every other settlement
+         surface -- never the default branch, which would relay them
+         unsettled -- and the module carries its own rate limit because an
+         explicit case never reaches the relay token bucket. */
+      case 'store_offer':
+        if (session.id) this._handleStoreOffer(session, msg.payload || msg);
+        break;
+      case 'store_offer_cancel':
+        if (session.id) this._handleStoreOfferCancel(session, msg.payload || msg);
+        break;
+      case 'store_offer_reply':
+        if (session.id) this._handleStoreOfferReply(session, msg.payload || msg);
+        break;
+
       // v2.3.1323: friends system (friends.js) -- request/accept/decline/
       // remove handshake (rule 14/15: accepts validated against stored
       // requests, forged accepts dropped) + friend-gated DMs on the
@@ -5403,7 +5444,9 @@ Object.assign(GameRoom.prototype, chatLaneMethods); /* v2.3.2136 */
 Object.assign(GameRoom.prototype, broVerifyMethods); /* v2.3.1576 */
 Object.assign(GameRoom.prototype, eventCapeMethods); /* v2.3.2026 */
 Object.assign(GameRoom.prototype, marketMethods);
-Object.assign(GameRoom.prototype, storeMethods);   /* v2.3.2475: the general store */
+Object.assign(GameRoom.prototype, storeMethods);   /* v2.3.2475: the auction house */
+Object.assign(GameRoom.prototype, storeChatMethods);   /* v2.3.2621: its message threads */
+Object.assign(GameRoom.prototype, storeOfferMethods);   /* v2.3.2623: and its escrowed offers */
 Object.assign(GameRoom.prototype, storeGearMethods);   /* v2.3.2531: gear listings */
 Object.assign(GameRoom.prototype, shopMethods);   /* v2.3.2047 */
 // v2.3.1119: trade settlement mixin (same pattern).

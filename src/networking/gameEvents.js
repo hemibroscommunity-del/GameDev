@@ -39,6 +39,7 @@ import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
 import { pushAbilityRings } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave */
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
+import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
 
 /* ═══ v2.3.2232: THE DAMAGE NUMBER NAMES THE WEAPON THAT DEALT IT ═══
  *
@@ -431,6 +432,28 @@ export function processGameEvent(type, payload, S, deps) {
               handleWhisperEvent(payload, S, { setChatLog: setChatLog, setUnreadChats: setUnreadChats });
               break;
             }
+          /* v2.3.2621: the auction house's per-listing threads
+             (server/src/storechat.js).  All three are PRIVILEGED, so what
+             arrives here is the room's own record of the conversation and
+             never another client's claim.  Routed to a bus rather than into
+             the chat log: these belong to a listing, not to a channel. */
+          case 'store_dm_thread':
+            storeChatBus.setThread(payload || {});
+            break;
+          case 'store_dm':
+            storeChatBus.addMsg(payload || {});
+            break;
+          case 'store_dm_error':
+            storeChatBus.setErr(payload || {});
+            break;
+          /* v2.3.2623: the escrowed-offer answers.  PRIVILEGED, so what
+             arrives is the room's own record of whose gold it is holding. */
+          case 'store_offer_state':
+            storeChatBus.setOffers(payload || {});
+            break;
+          case 'store_offer_error':
+            storeChatBus.setOfferErr(payload || {});
+            break;
           case 'whisper_error':
             {
               handleWhisperErrorEvent(payload, S, { setChatLog: setChatLog });

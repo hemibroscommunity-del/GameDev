@@ -6297,7 +6297,7 @@ export const QUEST_CHAINS = {
        world can pay out on — and neither is a call to make from here.
        v2.3.2087: THREE, not `true`.  The check below wants three DISTINCT
        buildings and this asked whether ONE door existed, so with the forge and
-       the general store live the quest was offered and could not be finished —
+       the auction house live the quest was offered and could not be finished —
        which stopped mayor_2 and mayor_3 behind it and left `zone_exits`
        locked. The number it needs is the number it asks for. */
     needsDoor: 3,
@@ -6352,7 +6352,7 @@ export const QUEST_CHAINS = {
        (FarmPanel's "visit your farm"; the World View has no farm trail-head).
        So the door this quest actually needs is the FARM's — named rather than
        asking "is there any door", because the four town props that exist are
-       the forge, the bank, the enchanter and the general store, and turning
+       the forge, the bank, the enchanter and the auction house, and turning
        the props back on would otherwise un-hide this quest while the farm
        stayed shut.  NOTE if that door ever ships: the tile-10 half is still
        `false` and does not have to be re-enabled — the workshop route is a
@@ -6963,7 +6963,7 @@ export function questObjectiveDone(quest, S, rpgFallback) {
  * life_2 to the quest after mayor_2 and called it fixed — and worse, turning
  * the props back on would have un-hidden mayor_3 while the farm stayed
  * shut, because the four town props that exist are the forge, the bank, the
- * enchanter and the general store.  There is no farm door in the table at all,
+ * enchanter and the auction house.  There is no farm door in the table at all,
  * so mayor_3 names the one it needs.
  *
  * DERIVED, NOT HARDCODED, on purpose — same shape as LIVE_QUEST_GIVERS.  The
@@ -6982,7 +6982,7 @@ var _doorCount = 0;
  * ═══ v2.3.2087: A COUNT, BECAUSE "ANY" WAS NOT WHAT THE QUEST NEEDED ═══
  * mayor_1 is "Visit 3 buildings in town" and declared `needsDoor: true`, so
  * this was asked whether ONE door existed.  Two did -- the forge and the
- * general store -- so the quest was offered, and its own check wants
+ * auction house -- so the quest was offered, and its own check wants
  * `visitedBuildings.size >= 3`, which two doors can never reach.  Offered and
  * impossible: exactly the dead end the note above was written to prevent,
  * reappearing one level down, in the guard itself.

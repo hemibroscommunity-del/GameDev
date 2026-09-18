@@ -304,7 +304,7 @@ client and server in the same commit, with the mirror-audit and
 display-dps fixtures updated and a shrink migration for banked flats.
 Prove hits-to-kill parity within tolerance in the PR body.
 
-**M1 — store phase 1.** Read §2.2 and `general-store.md`. Server: a
+**M1 — store phase 1.** Read §2.2 and `auction-house.md`. Server: a
 per-listing model (item or stash weapon, any price, seller-set), buy-now
 and resting bids with gold escrow, credit-first settlement through
 `_creditPlayer`, lazy expiry, new storage prefixes registered in the
