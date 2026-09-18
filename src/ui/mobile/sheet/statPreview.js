@@ -23,7 +23,7 @@
  * all exactly 0).  A body stat therefore reports no DPS change, which is a
  * real answer to "should I put it here" rather than a gap in the tooltip.
  */
-import { calcDisplayDps, getActiveWeapon } from '../../../data/gameSystems.js';
+import { calcDisplayDps, getActiveWeapon, weaponForCat } from '../../../data/gameSystems.js';
 import { PROG3, PROG3_LEGACY_ATK, prog3Pts, prog3AtkPts, prog3IsAtkStat, isProg3XEnabled } from '../../../data/prog3.js';
 
 /* The weapon a DPS readout should speak for.
@@ -87,7 +87,22 @@ export function previewStatPoint(R, stat, cat) {
     after = copy;
   } catch (e) { return null; }
 
-  const wpn = displayWeapon(R);
+  /* ═══ v2.3.2620: AN OFFENSE STAT IS PREVIEWED ON ITS OWN LANE'S WEAPON ═══
+     `cat` names the lane the player is standing in, and every offense stat is
+     allocated PER COMBAT TYPE — but the DPS half of this preview was computed
+     on displayWeapon(R), whatever is in hand.  calcDisplayDps resolves its
+     crit/speed channels from the weapon PASSED IN (gameSystems v2.3.1668), so
+     reading Bow's Power while holding a sword applied the point to
+     atk.bow.dmg and then measured the SWORD: the delta came back 0 and the
+     window told the player, of a stat whose entire job is damage, that it
+     "does not change damage".
+     The scene beside these numbers already took the lane's weapon (v2.3.2231,
+     for the same contradiction one layer up); this is the arithmetic half of
+     that fix.  An empty lane slot yields NO weapon rather than borrowing the
+     one you hold — the caller already prints "equip a weapon to see" for a
+     null DPS, which is the honest answer, and lending it the sword would
+     reproduce exactly the lie above. */
+  const wpn = (isAtk && cat) ? weaponForCat(R, cat) : displayWeapon(R);
   const dpsNow = wpn ? calcDisplayDps(R, wpn) : null;
   const dpsAfter = wpn ? calcDisplayDps(after, wpn) : null;
 
