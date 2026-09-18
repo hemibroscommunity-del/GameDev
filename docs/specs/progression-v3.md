@@ -744,3 +744,132 @@ scroller moves and scrollTap declines the tap, correctly. So the spend
 helper takes both a drift and an `atTop` flag, and the sloppy-thumb case
 runs on the top row where the drag is an overscroll that moves nothing.
 Eleven red assertions came from assuming otherwise.
+
+## What a stat already holds, and where each point goes (v2.3.2620)
+
+Owner: *"make it so that the current points applied to skills is shown
+on the points panel and make sure all points are routed correctly."*
+
+Two asks. The first is a gap this file already predicted; the second is
+three readouts that were counting the wrong pool.
+
+### The Points panel says what is already spent
+
+Nothing on the Points screen stated a stat's allocation, at any level.
+The card rows never carried it — v2.3.2597 moved the stat VALUES out to
+the confirm window to buy two columns and named the cost in its own note
+("the category panel stops saying what you HAVE and becomes a list of
+what you can BUY"), and v2.3.2599 then removed the point-landed orb, so
+committing a point changed nothing visible on the row. The allocation
+itself lived only in the `[+]`'s aria-label and inside the per-stat
+window.
+
+- **Every stat row** prints the count between the icon and the `[+]` —
+  the slot the stat VALUE occupied before v2.3.2597 emptied it, so the
+  row reads label / icon / number / `[+]` and the numbers line up down
+  the card. Owner, on the first cut (which put it under the label):
+  *"I want to see the number on the cells to the left of the plus sign
+  and zeros if there are zeroes."*
+  **The zeros are the load-bearing half.** An untouched stat prints `0`
+  — not a blank, not a hidden element. A column with holes in it reads as
+  a broken readout, and the zeros are the answer to "which of these have
+  I never touched". Nothing about the count is conditional.
+  The cap is not drawn beside it. `12` is the number that was asked for;
+  `12/66` needs half again the width for a denominator that never
+  changes. It stays in the aria-label and the long-press title, beside
+  the `[+]`'s own "N of M" — and the count IS that N, asserted, so the
+  printed number and the gate the button applies cannot drift.
+- **Every category tile** on the 2×2 grid prints `N SPENT` under its
+  name, always — the "points to spend" line above it is hidden at zero,
+  so without this a category holding 40 points looked identical to an
+  untouched one. Summed over the rows the *connected worker* supports
+  (`prog3AtkMeta` / `prog3BodyMeta`), so a tile's total is exactly the
+  sum of the numbers its card prints, on any worker (rule 19). Points
+  stranded in a retired stat are not missing from it either: v2.3.2592
+  refunds those to the pool, where the "to spend" line sees them.
+- **Colour.** Both readouts are text-coloured, not gold. Measured on the
+  thirteen stat fills, `COL.text` runs 5.68:1–11.29:1 and the gold
+  3.02:1–6.00:1 — fine for the `[+]`'s 3:1 non-text floor, under AA for a
+  12px number on five of the thirteen. Gold on this screen means "there
+  is something to spend"; this number is the opposite reading.
+- The row's long-press title carries the stat's live VALUE again
+  (`statValueText`, computed and unused on this screen since v2.3.2597).
+
+### What the fourth child cost, measured
+
+The row is four children and three gaps where it was three and two, out
+of a cell that did not grow. The two widths that bind are the 163px
+two-column cell at 360 and the 177px landscape row, and the label needs
+48.45 (`Dodge` at 13px/800) portrait, 42.9 (at 11.5px) sideways. At the
+old sizes the count left it 48.0 and 31.0 — clipped on four labels
+sideways and by 0.45px at 360, both caught by `mp-catgrid` rather than by
+reasoning.
+
+Paid for in the order this file's own rules allow: the `[+]` first
+(sideways it was 60 against the 44 the two-column card has always managed
+with, and mp-prog3's floor is 44 → 48), then the gaps (7→5 sideways,
+4→3 in two columns), then the icon — which gives up least because it is
+what v2.3.2599 was asked to make *bigger*: 36→32 in two columns
+(2.8x→2.5x the original 13px) and 44→40 sideways. The label ends up
+with 52 and 48, i.e. 3.5 and 5.1 clear.
+
+Two columns also take the **short** labels now (`CARD_SHORT`, the set
+landscape has used since v2.3.2597 — not a new invention), which retires
+the one-off `CARD_TIGHT` of v2.3.2611. One column, below 360 or via
+`?p3cols=1`, keeps the full names.
+
+**The state that still squeezes, named rather than hidden:** the count
+reserves two digits, and a stat *at its cap* prints three (`100`). That
+costs ~8px and ellipsises the longest labels while it is on screen. It is
+the rarest cell on the screen — a maxed stat on a character past level
+100 — and the alternative is reserving that width on all thirteen rows
+forever, which would cost the icon another 8px on every one of them.
+
+### Three readouts were counting the wrong pool
+
+- **The dashboard's combat badge** (`DashColumns`) read the whole
+  `prog3Pool` and used `_p3PoolFrom` to pick which of the three pills
+  showed it. That was right in v2.3.1687, when the pool was single; it
+  has been wrong since v2.3.2176 gave points a channel, in both
+  directions at once. Level Melee then Bow and the stamp says `bow`: the
+  Melee pill hides three real Melee points, while the Bow pill advertises
+  six — the whole pool — for a lane that can spend three. It now reads
+  `poolBy[cat]` plus the unchannelled remainder, and only the remainder
+  keeps the `_p3PoolFrom` attribution (it really is spendable in any
+  lane; a lane's own points always show). Both degrade to the old numbers
+  against a worker with no `poolBy`.
+- **The DPS half of the stat preview** (`statPreview`) applied the point
+  to the lane being read and then measured the weapon in hand.
+  `calcDisplayDps` resolves its crit/speed channels from the weapon
+  passed in (v2.3.1668), so reading Bow's Power while holding a sword
+  came back +0.0000 and the window told the player, of a stat whose whole
+  job is damage, that it "does not change damage". It now measures the
+  lane's own weapon (`weaponForCat`) — the same resolution the scene
+  beside it already used (v2.3.2231) — and an empty lane slot yields no
+  weapon, so the row reads "equip a weapon to see" rather than borrowing
+  the sword and reproducing the lie. Measured on a level-5/5/5 fixture:
+  Bow Power +0.2081 DPS where it had read 0.
+- **`prog3_level` now carries `poolBy`**, and the client stamps both it
+  and `pool`. `pool` had ridden this event since v2.3.1660 and was never
+  applied, so with `shared` landing on the event (v2.3.2592) and `pool`
+  waiting for the player_state flush, the unspent badge (`pool + shared`)
+  moved in two visible steps on every level-up. Extra fields on an
+  existing PRIVILEGED event; an old worker sends neither and the flush
+  repairs it exactly as before (rule 19).
+
+### What the harness pins
+
+`mp-catgrid` gains six assertions: every row prints its count; the zeros
+are drawn (the case a fresh card is entirely made of); the count sits
+between the icon and the `[+]`, measured on both edges, because "to the
+left of the plus sign" is half of what was asked for; it equals the
+`[+]`'s own N; the BOW tile's total equals the sum of the BOW card's
+rows; and — the one that covers what v2.3.2599 removed — the row a point
+is spent into reads one higher afterwards, with no other row moving.
+
+Its icon-centring check (v2.3.2602) now measures the icon against
+whatever sits either side of it rather than against a hard-coded `[+]`.
+The contract is unchanged in meaning — centre the icon in the space it
+actually has — but measuring *through* the count to the `[+]` would
+report every row as off-centre by the count's width, which is a true
+measurement of the wrong distance.

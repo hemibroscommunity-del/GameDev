@@ -85,6 +85,7 @@ extended.
    | `cadence:<scope>:<subject>` | `{period, streak, ts}` lazy daily/weekly settle | cadence.md |
    | `jackpot:draw` | `{period, pool, entries}` weekly pool (escrowed) | cadence.md |
    | `liveflags` | `{name: bool\|num}` live-ops flags (kill switches, xp_mult) | liveops.md |
+   | `ace_board` | `{wins:[], losses:[]}` — Ace's hall of fame (v2.3.2619): the ten biggest single WINS and ten biggest single LOSSES at his coin flip, each `{pid, name, amount, kind, at, look}`. `look` is a snapshot of `char:<pid>`'s cosmetics so the client can draw the player's portrait with its own shared recipe — no image bytes here, and the face stays the one that took the bet. One entry per player per board (best only), so one rich player cannot fill all ten rows. A single bounded key, never a prefix | ace-coin-flip.md |
    | `motd` | `{text, ts}` sticky announcement, delivered on join | liveops.md |
    | `metrics:<yyyymmdd>` | daily economy snapshot (ring of 30) | liveops.md |
    | `friends:<pid>` | `{list, reqIn, reqOut}` mutual-friend graph + pending requests | friends.md |
