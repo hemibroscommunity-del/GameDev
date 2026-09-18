@@ -8,7 +8,7 @@ import { COMBAT_SKILLS, skillLevel, weaponSkillProgress } from '../sheet/heroMod
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { requestT2Category } from './T2Panel.jsx';
 import { heroSectionBus } from '../sheet/heroSectionBus.js';
-import { prog3Live, prog3HasSkills, prog3Pool, prog3SkillLevel, prog3CatFor } from '../../../data/prog3.js';
+import { prog3Live, prog3HasSkills, prog3PoolBy, prog3PoolAny, prog3SkillLevel, prog3CatFor } from '../../../data/prog3.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
 import { registerXpCard, displayXp, xpCounting } from '../../xpLanding.js'; /* v2.3.1874 */
 /* v2.3.2131: the XP digits left the card face for a popup (owner). */
@@ -395,10 +395,29 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
        the level cap, where "how far to the next level" has no answer and the
        pill shows the icon and the level alone. */
     const xp = p3cat ? weaponSkillProgress(rpg, p3cat) : null;
-    const p3Pool = p3 ? prog3Pool(rpg) : 0;
+    /* ═══ v2.3.2620: THE BADGE COUNTS THE POINTS THIS SKILL CAN ACTUALLY SPEND ═══
+       It read the WHOLE pool (prog3Pool) and leaned on `_p3PoolFrom` to decide
+       which of the three pills was allowed to show it.  That was right in
+       v2.3.1687, when there was one undifferentiated pool; it has been wrong
+       since v2.3.2176 gave points a channel, and wrong in both directions at
+       once.  Level Melee, then level Bow: the stamp now says 'bow', so the
+       Melee pill hides three real Melee points (a badge the player never sees
+       is a level-up they never spend) while the Bow pill shows SIX — the whole
+       pool — for a lane that can only spend three of them.  With the shared
+       pool live (v2.3.2592) it is worse still: prog3Pool excludes `shared`, so
+       whatever it showed was never the total either.
+       `prog3PoolBy` is what this lane earned and can always spend here.  The
+       unchannelled remainder (`prog3PoolAny` — points banked before channels
+       existed, and the milestone bonus) really is spendable in any lane, so it
+       keeps the v2.3.1687 attribution rather than lighting all three chips for
+       one level-up.  Both degrade to today's numbers against a worker with no
+       poolBy at all: the breakdown is absent, every point is 'any', and the
+       stamp decides — which is exactly the old behaviour (rule 19). */
     const p3From = rpg && rpg._p3PoolFrom;
+    const p3Own = p3 ? prog3PoolBy(rpg, p3cat) : 0;
+    const p3Any = p3 ? prog3PoolAny(rpg) : 0;
     const unspent = p3
-      ? ((!p3From || p3From === p3cat) ? p3Pool : 0)
+      ? p3Own + ((!p3From || p3From === p3cat) ? p3Any : 0)
       : buildSkillUnspent(rpg, s.key);
     return (
       <div key={s.key}

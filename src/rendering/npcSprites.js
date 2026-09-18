@@ -23,6 +23,14 @@ import { Assets, Rectangle, Texture } from 'pixi.js';
 import { NPC_DATA } from '../data/gameDisplay.js';
 import { propSpriteSources, propAnimStrips } from '../data/worldProps.js'; /* v2.3.1775: scenery shares this registry; v2.3.2061: + animated strips */
 
+/* v2.3.2618: art an NPC's DIALOG needs warm, as opposed to art the world
+   draws.  Ace's coin lands on one of these two strips the instant the server
+   answers, so both ride the intro gate. */
+export const NPC_DIALOG_FX = [
+  '/sprites/fx/coinflip-win.webp',
+  '/sprites/fx/coinflip-lose.webp',
+];
+
 /* Keys are asset paths that come from data, so Object.create(null): a plain {}
    silently no-ops on '__proto__' (CLAUDE.md — three incidents in one day). */
 const _tex = Object.create(null);
@@ -62,6 +70,13 @@ export function npcSpriteSources() {
        forbids. */
     for (const src of walkStripSources(n)) out.push(src);
   }
+  /* v2.3.2618: Ace's coin-flip strips.  They are DOM <img> in his dialog,
+     not Pixi textures, so like the portraits above this only warms the HTTP
+     cache -- which is the whole point: the win strip is the frame a player
+     stares at, and fetching it at the moment the coin lands is the first-use
+     hitch CLAUDE.md's preloading law forbids.  Listed here rather than in a
+     second list because a second list is how an asset gets forgotten. */
+  out.push(...NPC_DIALOG_FX);
   /* v2.3.1775: world props load through the same registry and therefore the
      same intro gate.  They are static scenery, so a lazy first-sighting load
      would be exactly the hitch CLAUDE.md's preloading law forbids — and the
