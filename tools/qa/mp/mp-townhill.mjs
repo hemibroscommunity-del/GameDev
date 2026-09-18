@@ -23,7 +23,14 @@
  */
 import * as H from './harness.mjs';
 
-const TOWN_W = 52 * 32, TOWN_H = 55 * 32;
+/* v2.3.2631: READ, not repeated.  These were literal 52 and 55, so when town
+   grew to 68x72 (v2.3.2628) the in-bounds checks below started rejecting the
+   south half of the map -- shopkeeper_bro at y 1778 read as "outside the
+   world" on a map 2304 tall.  Third file to be caught by the same literal
+   after harness.doorOf and mp-townmap; this one is off the CI path, which is
+   why it stayed red longer. */
+const { ZONES } = await import(H.REPO + '/src/data/zones.js');
+const TOWN_W = ZONES.town.w * 32, TOWN_H = ZONES.town.h * 32;
 const props = (P) => P.page.evaluate(() => (window.__btWorldProps ? window.__btWorldProps() : []));
 const byId = (list, id) => list.find((p) => p.id === id) || null;
 
@@ -98,15 +105,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
      v2.3.2624 renamed it to 'auction-house', which sorts first, so the list
      stopped matching itself while the game was entirely correct.  Renaming an
      id moves it in every sorted list that names it. */
-  const EXPECT = ['anvil', 'auction-house', 'bank', 'bench-w', 'enchanter',
-    'forge', 'fountain', 'lamp-plaza-e', 'lamp-plaza-w', 'market-stall', 'mayor-house'];
+  /* v2.3.2630: the enchanter's prop is gone at the owner's request.
+     v2.3.2631: and lamp-plaza-e, which stood on the walk to the exit. */
+  const EXPECT = ['anvil', 'auction-house', 'bank', 'bench-w',
+    'forge', 'fountain', 'lamp-plaza-w', 'market-stall', 'mayor-house'];
   rec.ok(`the blueprint's props are all placed (${ids.length})`,
     JSON.stringify(ids) === JSON.stringify(EXPECT), { got: ids, want: EXPECT });
   /* The two that came back are DOORS, not scenery: their whole point is the
      panel behind them, so the action is asserted rather than just the id. */
   const acts = Object.fromEntries(list.filter((p) => p.action).map((p) => [p.id, p.action]));
-  rec.ok('...and the bank and the enchanter are doors that open their panels',
-    acts.bank === 'bank' && acts.enchanter === 'enchant', acts);
+  /* v2.3.2630: the enchanter was the other half of this claim.  Its prop is
+     gone, so what is asserted now is the set of doors the town HAS -- three,
+     which is exactly what mayor_1 (needsDoor 3, unlocks 'zone_exits') needs.
+     Stated as the whole set rather than one id, because the risk removal
+     introduced is the COUNT, not the bank. */
+  rec.ok('...and the three doors the world unlocks on are all present',
+    acts.bank === 'bank' && acts.forge === 'forge'
+      && acts['auction-house'] === 'auctionhouse'
+      && Object.keys(acts).length === 3, acts);
   const oob = list.filter((p) => p.x <= 0 || p.y <= 0 || p.x >= TOWN_W || p.y >= TOWN_H);
   rec.ok('every prop that IS drawn stands on the map that ships', oob.length === 0, oob);
 
@@ -123,9 +139,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...the mayor\'s house is north of both',
     house.y < smith.y - 250 && house.y < store.y - 250,
     { house: house.y, smith: smith.y, store: store.y });
+  /* v2.3.2631: a SHARE of the span, not a pixel tolerance.  This was
+     "the two gaps differ by under 200px", tuned when the plaza was 1664 wide
+     and the shops 620px apart.  v2.3.2628 spread them to 1110px apart, so the
+     same layout -- fountain plainly between them, nearer the forge -- failed a
+     bar that had quietly become 18% of the span instead of 32%.  "Not beside
+     one" is a proportion, so it is measured as one: neither gap may be under a
+     third of the distance between the shops. */
+  const span = store.x - smith.x;
+  const gapW = fount.x - smith.x, gapE = store.x - fount.x;
   rec.ok('...and the fountain sits between the two shops, not beside one',
-    Math.abs((fount.x - smith.x) - (store.x - fount.x)) < 200,
-    { toSmith: fount.x - smith.x, toStore: store.x - fount.x });
+    gapW > span / 3 && gapE > span / 3,
+    { toSmith: gapW, toStore: gapE, span, floor: Math.round(span / 3) });
   rec.ok('...south of them, in the open plaza',
     fount.y > smith.y && fount.y > store.y, { fount: fount.y, smith: smith.y });
 
@@ -202,9 +227,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Not "somewhere in town": north of the plaza and above the cliff line the
      terrace sits on. TOWN_SPAWN is (815,1010), so a smaller y is further up
      the map, and the terrace's clear cobble is y 320..470. */
+  /* v2.3.2631: FRACTIONS of the map, not pixels.  320..480 was the terrace's
+     band on a 1760-tall town; v2.3.2628 made it 2304 tall and the same terrace
+     moved to y 622, outside a window that had not moved with it.  The terrace
+     is a feature of the ART, so its band is a share of the art's height and
+     survives the next resize the way the relationship checks above do. */
+  const terraceY0 = TOWN_H * 0.15, terraceY1 = TOWN_H * 0.32;
   rec.ok(`the house stands on the northern terrace, not down in the plaza `
-       + `(y ${house && house.y} against a spawn at 1010)`,
-    house && house.y >= 320 && house.y <= 480, house);
+       + `(y ${house && house.y}, terrace ${Math.round(terraceY0)}..${Math.round(terraceY1)})`,
+    house && house.y >= terraceY0 && house.y <= terraceY1, house);
   /* ═══ v2.3.2069: THE SPRITE OVERHANGS ON PURPOSE NOW ═══
      This used to require the whole drawn house inside the terrace's clear
      cobble (x 655..835), which was right while it was 159 wide. The owner
@@ -231,8 +262,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const fpMid = fpr && (fpr.x0 + fpr.x1) / 2;
   rec.ok('...with its FOOTPRINT centred on the terrace, so it stands there '
        + 'rather than hanging off it',
-    !!fpr && fpMid >= 655 && fpMid <= 835 && fpr.y1 >= 400 && fpr.y1 <= 500,
-    { fpr, mid: fpMid });
+    !!fpr && fpMid >= TOWN_W * 0.38 && fpMid <= TOWN_W * 0.52
+      && fpr.y1 >= TOWN_H * 0.22 && fpr.y1 <= TOWN_H * 0.32,
+    { fpr, mid: fpMid, wantX: [Math.round(TOWN_W * 0.38), Math.round(TOWN_W * 0.52)],
+      wantY: [Math.round(TOWN_H * 0.22), Math.round(TOWN_H * 0.32)] });
   rec.ok('...and covering the ground floor, not a strip of it',
     !!fpr && (fpr.x1 - fpr.x0) > house.width * 0.7,
     { fpW: fpr && fpr.x1 - fpr.x0, drawnW: Math.round(house.width) });
