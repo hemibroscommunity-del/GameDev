@@ -159,17 +159,91 @@ export async function run({ browser, wsPort, webPort, rec }) {
       keeper.y > shop.y, { keeperY: keeper.y, shopY: shop.y });
   }
 
-  /* Scenery must not paint over the characters standing among it.  Pixi paints
-     in child order, so this is the property itself rather than a proxy for it:
-     both props are added before any NPC display. */
-  const order = await P.page.evaluate(() => (window.__btEntityOrder ? window.__btEntityOrder() : null));
-  const lastProp = Math.max(order.indexOf('prop_anvil'), order.indexOf('prop_market-stall'));
-  const firstNpc = order.findIndex((l) => /^npc_/.test(l));
-  rec.ok('the props are painted BEHIND the characters, not over them',
-    lastProp >= 0 && firstNpc >= 0 && lastProp < firstNpc, { order, lastProp, firstNpc });
+  /* ═══ v2.3.2633: DRAW ORDER IS A FUNCTION OF POSITION NOW ═══
+     This assertion used to read "every prop comes before every NPC", which
+     was the literal truth while props were added in table order and never
+     moved.  Roadmap item 1 made draw order depend on where things stand, so
+     that sentence is no longer the property -- it is one arrangement of the
+     town, and it broke the moment sorting started working (measured: the
+     mayor's house and the bank sort behind the mayor, the forge and anvil in
+     front of him, which is correct and which the old check called a
+     failure).
+
+     The property is the RULE, so the rule is what is checked: the entity
+     layer is ordered back-to-front by each object's GROUND-CONTACT LINE.
+     That holds for any layout, survives the next time the town is respread,
+     and is what actually makes a character walk behind a building. */
+  const depth = await P.page.evaluate(() => (window.__btEntityDepth ? window.__btEntityDepth() : null));
+  rec.ok('the entity layer publishes a depth key (guard)',
+    Array.isArray(depth) && depth.length > 1, { n: depth && depth.length });
+
+  const inversions = [];
+  for (let i = 1; i < (depth || []).length; i++) {
+    if (depth[i].y < depth[i - 1].y) inversions.push({ after: depth[i - 1], before: depth[i] });
+  }
+  rec.ok('the entity layer is sorted back-to-front by ground-contact line',
+    (depth || []).length > 1 && inversions.length === 0, { inversions, depth });
+
+  /* The key Pixi sorted on must BE the ground line -- if these ever diverge
+     the order above could be right by accident. */
+  const badKey = (depth || []).filter((d) => Math.abs(d.z - d.y) > 1);
+  rec.ok('...and the sort key is the ground line itself, not the sprite position',
+    badKey.length === 0, { badKey });
+
+  /* The thing the whole item was for: both sides of the rule are actually
+     exercised in town, so this is not a test that would pass on a map where
+     every prop happens to sit north of every character. */
+  const dProps = depth.filter((d) => /^prop_/.test(d.label));
+  const dNpcs = depth.filter((d) => /^npc_/.test(d.label));
+  const behind = dProps.filter((p0) => dNpcs.some((n) => n.y > p0.y)).length;
+  const front = dProps.filter((p0) => dNpcs.some((n) => n.y < p0.y)).length;
+  rec.ok('town exercises BOTH sides — some props draw behind a character, some in front',
+    behind > 0 && front > 0, { behind, front });
 
   rec.ok('every prop resolved a texture (not an invisible placeholder)',
     props.every((p) => p.width > 0 && p.height > 0), props);
+
+  /* ═══ v2.3.2633: THE HEADLINE — WALKING BEHIND A BUILDING ═══
+     The sort above orders props against MONSTERS and NPCs, all of which
+     share the entity layer.  The player's own body does not: it lives in
+     `player`, above that layer, which is why before this change no building
+     could ever occlude it from any position.
+
+     So an occluder picks its SIDE of the player layer each frame, and that
+     choice is what gets asserted here, from both sides of the same building,
+     with nothing moving except the player.  Reported as the layer the prop
+     is actually parented to, which is the mechanism itself rather than a
+     proxy for it. */
+  const bldg = (props || []).find((p) => p.id === 'auction-house')
+    || (props || []).find((p) => p.blocks);
+  rec.ok('a building to stand behind (guard)', !!bldg, bldg && { id: bldg.id, x: bldg.x, y: bldg.y });
+
+  if (bldg) {
+    const layerOf = async (id) => {
+      const list = await P.page.evaluate(() => (window.__btWorldProps ? window.__btWorldProps() : null));
+      const hit = (list || []).find((p) => p.id === id);
+      return hit ? hit.layer : null;
+    };
+
+    /* SOUTH of the building: the player is nearer the camera, so the
+       building must be behind them, in the sorted entity layer. */
+    await H.hopTo(P, bldg.x, bldg.y + 150);
+    const south = await layerOf(bldg.id);
+    rec.ok('standing SOUTH of the building, it draws BEHIND the player',
+      south === 'entities', { layer: south, playerAt: 'south' });
+
+    /* NORTH of it — behind the building from the camera's point of view.
+       This is the case that was impossible before: the building has to come
+       forward, over the body. */
+    await H.hopTo(P, bldg.x, bldg.y - 150);
+    const north = await layerOf(bldg.id);
+    rec.ok('...and standing BEHIND it, the building draws OVER the player',
+      north === 'gatherNodesFront', { layer: north, playerAt: 'north' });
+
+    rec.ok('...so the same building changed sides without moving an inch',
+      south === 'entities' && north === 'gatherNodesFront' && south !== north,
+      { south, north, prop: { x: bldg.x, y: bldg.y } });
+  }
 
   await P.ctx.close().catch(() => {});
 }

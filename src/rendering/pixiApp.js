@@ -276,6 +276,18 @@ function buildScene(app) {
   for (const name of WORLD_LAYER_NAMES) {
     const layer = new Container();
     layer.label = name;
+    /* ═══ v2.3.2633: THE TWO LAYERS THAT SORT BY DEPTH ═══
+       Roadmap item 1.  Everything that can occlude or be occluded lives in
+       one of these two, and inside them draw order is computed from each
+       object's GROUND-CONTACT LINE every frame (see rendering/depthSort.js)
+       rather than being the order things happened to be added in.
+
+       Only these two.  Turning it on layer-wide would cost a sort per layer
+       per frame for stacks whose order is deliberate and fixed — the ground
+       splatter, the telegraphs, the HUD — and buy nothing: a vignette has no
+       ground line.  Pixi only re-sorts a layer when a child's zIndex has
+       actually changed, so a still scene does no work. */
+    if (name === 'entities' || name === 'gatherNodesFront') layer.sortableChildren = true;
     worldContainer.addChild(layer);
     layers[name] = layer;
   }

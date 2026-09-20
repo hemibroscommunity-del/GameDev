@@ -4,6 +4,7 @@
  * Uses PixiJS Graphics for procedural particles and Text for damage numbers.
  */
 import { Assets, BitmapFont, BitmapText, CanvasTextMetrics, Container, Graphics, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
+import { wantsFront } from '../depthSort.js'; /* v2.3.2633: dynamic tree occlusion by ground-contact line */
 
 /* v2.3.1358 (owner directive: ALL animations ready before first use —
    see CLAUDE.md "Animation preloading is LAW"): every Assets.load in
@@ -7572,15 +7573,42 @@ export class EffectsRenderer {
            fallthrough is gone: with trees up, fish down and ore down, nothing
            was left on the old default, so an unnamed type silently landing
            above monsters would be a bug rather than a default. */
+        /* ═══ v2.3.2633: A TREE IS ONLY IN FRONT WHEN YOU ARE BEHIND IT ═══
+           Roadmap item 1.  v2.3.1500 answered the owner's "walking behind a
+           tree should be occluded by it" by pinning trees ABOVE the player
+           permanently.  That is correct for the case it was written for and
+           wrong for its opposite: standing SOUTH of a trunk, the canopy
+           painted over the player's head, and there was no way for it not
+           to, because draw order did not depend on position.
+
+           It does now.  The trunk's ground-contact line -- `node.y`, the
+           foot of the tree, not the top of its canopy -- decides each frame
+           which side of the player layer the tree lives on.  Behind it, you
+           are hidden exactly as v2.3.1500 intended; in front, you walk out
+           from under it.  Within either layer the tree then sorts against
+           everything else by the same contact line.
+
+           The mining target's overlay promotion (v2.3.854) still wins over
+           all of it, and ore and fishing holes are unchanged -- neither is
+           tall enough to occlude anything, which is why v2.3.1593 put them
+           below the entities in the first place. */
+        const _pgY = (S.player && Number.isFinite(S.player.y)) ? S.player.y : NaN;
+        const _treeLayer = wantsFront(node.y, _pgY, node._pixiSprite.parent === this.nodeFrontLayer)
+          ? this.nodeFrontLayer : this.nodeLayer;
         const _wantLayer = _isMineTarget ? this.overlayLayer
           : node.nodeType === 'fishSpot' ? this.lootLayer
-            : node.nodeType === 'tree' ? this.nodeFrontLayer
+            : node.nodeType === 'tree' ? _treeLayer
               : node.nodeType === 'oreVein' ? this.nodeBackLayer
                 : this.nodeBackLayer;
         if (node._pixiSprite.parent !== _wantLayer) {
           if (_wantLayer === this.overlayLayer) _wantLayer.addChild(node._pixiSprite);
           else _wantLayer.addChildAt(node._pixiSprite, 0);
         }
+        /* The depth key for the sorted layer.  gatherNodes is NOT sortable
+           (its order there is "under the player", which needs no sort), so
+           this only bites in nodeFrontLayer -- where a tree must interleave
+           with the buildings that moved up alongside it. */
+        node._pixiSprite.zIndex = Math.round(node.y || 0);
       } else if (node.nodeType === 'tree') {
         /* v2.3.1275: procedural fallbacks get the same +50% as the
            sprites so nodes don't visibly shrink once textures resolve. */
