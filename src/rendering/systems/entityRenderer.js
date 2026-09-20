@@ -399,43 +399,36 @@ function _drawQuestBadge(g, fill) {
   g.fill({ color: fill });
 }
 
-/* v2.3.1300: shared ground-shadow texture — ONE 64x32 radial-gradient
-   ellipse minted lazily on a canvas and reused by every entity shadow
-   sprite, so all shadows batch into a single draw call (same recipe as
-   the recolor caches / _hpFillTex shared source).  Never a per-frame
-   Graphics redraw — the monster-body lesson at createMonsterDisplay. */
-let _shadowTexCache = null;
-function _shadowTex() {
-  if (_shadowTexCache) return _shadowTexCache;
-  const cv = document.createElement('canvas');
-  cv.width = 64; cv.height = 32;
-  const c = cv.getContext('2d');
-  const g = c.createRadialGradient(32, 16, 2, 32, 16, 30);
-  /* v2.3.1300c: ~45% darker (owner: increase intensity). */
-  g.addColorStop(0, 'rgba(0,0,0,0.48)');
-  g.addColorStop(0.6, 'rgba(0,0,0,0.22)');
-  g.addColorStop(1, 'rgba(0,0,0,0)');
-  c.save();
-  c.translate(32, 16); c.scale(1, 0.5); c.translate(-32, -16);
-  c.fillStyle = g;
-  c.fillRect(0, -16, 64, 64);
-  c.restore();
-  _shadowTexCache = Texture.from(cv);
-  _shadowTexCache.source.scaleMode = 'linear';
-  return _shadowTexCache;
-}
-/* v2.3.1300: mint one entity ground shadow (soft 3/4 ellipse, feet-
-   centered).  Sized in container-local units — the container-level
-   PLAYER_SIZE_MULT / MONSTER_SIZE_MULT / zone pscale scale it along
-   with the body for free.  _shadowW lets the walk-bob hook wobble the
-   width cheaply (two property writes on frames already being touched). */
-function _mintShadow(w) {
-  const s = new Sprite(_shadowTex());
-  s.anchor.set(0.5, 0.5);
-  s.width = w; s.height = w * 0.38;
-  s._shadowW = w;
-  return s;
-}
+/* ═══ v2.3.2632: THE ELLIPSE GROUND SHADOWS ARE GONE ═══
+   Owner: "the elliptical shadows put in the game looked worse than nothing
+   so those need to be out."
+
+   The last of a retreat this file has been making for a year.  v2.3.1365
+   deleted the PLAYER's ("do not re-add one here"); v2.3.1704 deleted the
+   SLIMES' ("it's way beneath the monster"); this deletes the remainder --
+   mummy, skeleton, fire goblin, snowman and the procedural circles -- so
+   nothing in the world draws one and there is no half-state to explain.
+
+   WHY IT NEVER WORKED, since the next person will be tempted to re-add it.
+   A shared radial ellipse is a shadow for a scene lit from directly above.
+   BroTown's maps are painted with their own light: the town's buildings
+   throw long shadows to one side, and a symmetrical blob under a monster
+   agrees with none of them.  It read as a smudge on the ground rather than
+   as the monster's own shadow -- which is what the owner is describing, and
+   it is a property of the technique, not of the tuning.  Darkening it
+   (v2.3.1300c) or re-anchoring it (v2.3.1824) could not have fixed that.
+
+   WHAT WOULD.  A shadow that agrees with the map needs a light DIRECTION
+   per zone and a silhouette that matches the pose -- the character's own
+   frame, tinted, squashed and skewed along that direction.  That is a real
+   feature with a real cost (it breaks the single-draw-call batching this
+   block existed to get), and it belongs in the depth roadmap
+   (docs/DEPTH-ROADMAP.md), not in a tuning pass here.
+
+   The character creator's preview shadow is SEPARATE and still on -- it is
+   `groundShadow: true` in characterCreatorEffects.js, drawn on a portrait
+   under a light the creator controls, not in the world under a painted map.
+   mp-ccstand asserts it, and nothing here touches it. */
 /* Build (or return) a display-owned cropped view of the full-bar texture.
    The Texture is RECREATED when the crop width changes (integer source
    px, so at most one realloc per hp change): Pixi 8's Sprite.width
@@ -4506,58 +4499,8 @@ function createMonsterDisplay(monster) {
   const variantKey = MONSTER_VARIANTS[archKey] ? archKey : null;
   const isSnowman = archKey === 'snowman';
 
-  /* v2.3.1300: ground shadow at child 0 — feet are at y=size (the
-     circle's bottom edge / the sprite's bottom-center anchor line).
-     Inherits the container-level MONSTER_SIZE_MULT.
-
-     ═══ v2.3.1704: NO SHADOW UNDER A SLIME ═══
-     Owner (playtest): "Remove the shadow beneath the slimes (blue slimes)
-     it's way beneath the monster."
-
-     WHY IT LANDED THERE, measured rather than guessed.  The slime sheet is
-     128px cells and the blob's opaque pixels stop at row ~85 — every frame
-     of slime-idle-v5 has ~42px of empty cell BELOW the body.  The sprite is
-     anchored bottom-centre at the feet line, so the shadow, which is pinned
-     to that same line, sits 42 * (96/128) * MONSTER_SIZE_MULT ≈ 48 world px
-     under the blob.  Screenshotted at 390x844: blob bottom at y=255, an 8px-
-     tall ellipse centred at y=294 — a detached smudge in the middle of the
-     road, which is exactly what the owner is describing.
-
-     WHY REMOVE RATHER THAN RE-ANCHOR.  Two reasons, and the first is the
-     stronger: v2.3.1365 already deleted the PLAYER's ground shadow at this
-     owner's request ("do not re-add one here"), so a shadowless slime is the
-     game's existing visual language, not a new look invented here.  Second,
-     the art carries no baked shadow of its own to match against — decoded
-     the sheet to check, there is no soft low-alpha ellipse under the body —
-     so re-anchoring would mean AUTHORING a shadow the owner just asked to be
-     rid of.  The offset fix is one line (`shadow.y = size - 32`) if they
-     ever want the grounding back; this is the deliberate cheaper answer to
-     what they actually said.
-
-     ═══ v2.3.1824: THE GEOMETRY ABOVE IS NO LONGER TRUE ═══
-     The 42 empty rows are still in the art, but the sprite is anchored on
-     the blob's base row now (SLIME_BASE_ROW), so a shadow at
-     `shadow.y = size` would land roughly under the blob rather than 48px
-     adrift.  Leaving the slimes shadowless anyway: the owner asked for that
-     directly, and the player has no shadow either (v2.3.1365).  Kept as a
-     note rather than deleted, because this measurement is what made the
-     anchor bug findable.
-
-     GATED PER-VARIANT, deliberately: `isFodder` is the useSlimeSheets test,
-     so it covers ALL FOUR slimes — plain fodder, blueSlime (the Verdant
-     Wilds one the owner was looking at), mossSlime and mireWisp — because
-     they share the sheet and therefore share the empty-cell geometry.
-     Everything else (mummy/skeleton/fireGoblin/snowman/the procedural
-     circles) keeps its shadow untouched; their art fills its cell and their
-     shadows are not what was reported. */
-  if (!isFodder) {
-    const shadow = _mintShadow(size * 2.2);
-    shadow.y = size;
-    container.addChildAt(shadow, 0);
-    container._shadow = shadow;
-  } else {
-    container._shadow = null;
-  }
+  /* v2.3.2632: no ground shadow on any monster -- see the note at the top
+     of this file where _mintShadow used to live. */
 
   const spriteBody = (isFodder || variantKey || isSnowman) ? new Sprite() : null;
   if (spriteBody) {
