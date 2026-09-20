@@ -5,7 +5,6 @@
 import { Assets, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCount } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs; v2.3.2061: animated props */
 import { propsForZone, propFootprint } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
-import { wantsFront, applyGroundSort } from '../depthSort.js'; /* v2.3.2633: depth by ground-contact line */
 import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
@@ -326,6 +325,7 @@ if (typeof window !== 'undefined') window.__btWorldProps = () => _propsDrawn.sli
    used to be the storekeeper, who left town in v2.3.2091).  Labelled children
    only; the rest are unnamed graphics. */
 let _entityLayerRef = null;
+let _frontLayerRef = null;
 if (typeof window !== 'undefined') {
   window.__btEntityOrder = () => (_entityLayerRef
     ? _entityLayerRef.children.map((c) => c.label).filter(Boolean) : null);
@@ -341,6 +341,19 @@ if (typeof window !== 'undefined') {
      zIndex is reported too: it is the key Pixi actually sorted on, so a
      disagreement between it and y localises the bug to applyGroundSort
      rather than to the sort. */
+  /* v2.3.2635: which LAYER each ground-standing thing is in, keyed by label,
+     across BOTH sorted layers -- the entity layer (under the player) and the
+     front layer (over him). The whole feature is "is this drawn in front of
+     me or behind me", and that question is answered by the parent, so the
+     parent is what gets published. */
+  window.__btDepthLayers = () => {
+    const out = {};
+    const take = (layer) => { if (!layer) return;
+      for (const c of layer.children) if (c && c.label) out[c.label] = layer.label; };
+    take(_entityLayerRef);
+    take(_frontLayerRef);
+    return out;
+  };
   window.__btEntityDepth = () => (_entityLayerRef
     ? _entityLayerRef.children
       .filter((c) => c && c.label)
@@ -7259,6 +7272,7 @@ export class EntityRenderer {
        an older scene graph, which restores the pre-2633 "props are always
        behind" behaviour rather than crashing. */
     this.propFrontLayer = propFrontLayer || entityLayer;
+    if (typeof window !== 'undefined') _frontLayerRef = this.propFrontLayer;
     /* v2.3.1713: the layer above gatherNodesFront that the gathering figures
        draw in.  The local body borrows it for the mine/fish poses only (see
        _updatePlayer); null on an older scene graph, which just leaves the
@@ -7284,16 +7298,9 @@ export class EntityRenderer {
     this._updateNPCs(S, now);
     this._updatePet(S, now);
     this._updatePlayerHud(S, now);
-    /* ═══ v2.3.2633: THE DEPTH KEY, APPLIED LAST ═══
-       After every sub-update has moved its display to this frame's position,
-       so no key is computed from a stale y.  One pass over each sorted
-       layer; Pixi re-sorts only if a key actually changed.
-
-       This is what makes a monster pass behind a fountain and an NPC stand
-       in front of the stall he sells at -- both fall out of the same rule,
-       because every display in this layer is positioned at its feet. */
-    applyGroundSort(this.entityLayer);
-    if (this.propFrontLayer !== this.entityLayer) applyGroundSort(this.propFrontLayer);
+    /* v2.3.2635: the depth pass moved OUT of here and into the frame loop.
+       effectsRenderer runs after this and places the trees and ore, so
+       sorting here graded them on last frame's positions. */
   }
 
   _updateMonsters(S, now) {
@@ -13110,10 +13117,7 @@ export class EntityRenderer {
   _updateProps(S) {
     if (typeof window !== 'undefined') _entityLayerRef = this.entityLayer;
     const props = propsForZone(S.currentZone);
-    /* The player's own ground line, for the front/back test below.  The body
-       is anchored at the feet exactly as the props are, so the two numbers
-       are comparable without any correction. */
-    const _playerGroundY = (S.player && Number.isFinite(S.player.y)) ? S.player.y : NaN;
+
     /* id -> prop, so the probe below can ask for a footprint by the same id
        the display map is keyed on. */
     const _propById = Object.create(null);
@@ -13170,19 +13174,13 @@ export class EntityRenderer {
       spr.x = p.x;
       spr.y = p.y;
       spr.visible = spr.texture !== Texture.EMPTY;
-      /* ═══ v2.3.2633: WHICH SIDE OF THE PLAYER THIS PROP IS ON ═══
-         `p.y` is the prop's ground-contact line -- the anchor is (0.5, 1),
-         so this is the base of the building and not the top of its art.
-         That distinction is the whole point: the mayor's house is 512px
-         tall, and sorting by where its roof is would hide the player behind
-         it from half a screen north of the front door.
-
-         South of the player -> the layer above `player`, so it occludes.
-         North -> the entity layer, where it sorts against the monsters and
-         NPCs by the same rule. */
-      const _want = wantsFront(p.y, _playerGroundY, spr.parent === this.propFrontLayer)
-        ? this.propFrontLayer : this.entityLayer;
-      if (spr.parent !== _want) _want.addChild(spr);
+      /* v2.3.2635: the front/back choice that lived here now happens for
+         EVERY ground-standing object at once, in the frame loop's single
+         depth pass (rendering/depthSort.js) -- props were the only things
+         getting it, which is why the player still drew straight through
+         npcs and monsters. `p.y` is still what decides it: the anchor is
+         (0.5, 1), so that is the base of the building and not the top of
+         its art. */
     }
     /* A zone change leaves the previous zone's props behind otherwise. */
     for (const [id, spr] of this.propDisplays) {

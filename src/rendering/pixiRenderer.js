@@ -3,6 +3,7 @@
  * Manages the PixiJS application and orchestrates all render systems.
  */
 import { createPixiApp } from './pixiApp.js';
+import { applyDepthBuckets } from './depthSort.js'; /* v2.3.2635: one depth pass per frame */
 import { TileRenderer } from './systems/tileRenderer.js';
 import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out */
 import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
@@ -351,6 +352,17 @@ export async function initPixiRenderer(canvas) {
     catch (e) { if (!update._effectsErr) { update._effectsErr = true; console.error('[pixi-render] effectsRenderer threw', e && e.message, e && e.stack); } }
     const _t3 = performance.now();
     update._lastStages.effectsMs = _t3 - _t2;
+    /* ═══ v2.3.2635: DEPTH, AFTER EVERYTHING HAS MOVED ═══
+       One pass over the two sorted layers, here rather than inside either
+       renderer, because BOTH of them place things that stand on the ground:
+       entityRenderer puts down the monsters, npcs, peers, pet and props, and
+       effectsRenderer puts down the trees and ore right after it. Bucketing
+       at the end of entityRenderer would have sorted the nodes on last
+       frame's positions -- a frame of lag that shows up as a flicker exactly
+       when the player crosses something, which is the one moment this
+       feature exists for. */
+    try { applyDepthBuckets(layers.entities, layers.gatherNodesFront, S.player && S.player.y); }
+    catch (e) { if (!update._depthErr) { update._depthErr = true; console.error('[pixi-render] depth sort threw', e && e.message); } }
     try { minimap.update(S, cssW, cssH, canvas); }
     catch (e) { if (!update._miniErr) { update._miniErr = true; console.error('[pixi-render] minimap threw', e && e.message, e && e.stack); } }
 

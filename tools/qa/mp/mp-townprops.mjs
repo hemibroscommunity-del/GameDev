@@ -294,5 +294,46 @@ export async function run({ browser, wsPort, webPort, rec }) {
       { south, north, prop: { x: bldg.x, y: bldg.y } });
   }
 
+  /* ═══ v2.3.2635: THE PLAYER GOES BEHIND PEOPLE TOO ═══
+     Owner: "I want character to show behind other NPCs if he's behind things
+     and other objects."
+
+     v2.3.2633 gave this to PROPS only, so the building above already worked
+     while the player still painted straight through Mayor Bro -- `entities`
+     sits under `player` in the layer stack, and npcs, monsters, peers and
+     the pet all live in it. The depth pass now buckets every ground-standing
+     object around the player, so an npc south of him draws OVER him.
+
+     Asserted from both sides of the same npc, with nobody moving but the
+     player, and read as the npc's PARENT LAYER, which is the mechanism
+     rather than a proxy for it. */
+  const npcAt = (await H.readState(P, () => {
+    const S = window._gameState.current;
+    const n = (S.npcs || [])[0];
+    return n ? { id: n.id, x: n.x, y: n.y } : null;
+  }));
+  rec.ok('an NPC to stand behind (guard)', !!npcAt, npcAt);
+
+  if (npcAt) {
+    const layerOfNpc = async () => {
+      const map = await P.page.evaluate(() => (window.__btDepthLayers ? window.__btDepthLayers() : {}));
+      const key = Object.keys(map).find((k) => /^npc_/.test(k) && k.includes(npcAt.id));
+      return key ? map[key] : Object.entries(map).filter(([k]) => /^npc_/.test(k)).map(([, v]) => v)[0] || null;
+    };
+    await H.hopTo(P, npcAt.x, npcAt.y + 140);      /* player SOUTH of him */
+    const nBack = await layerOfNpc();
+    rec.ok('standing south of an NPC, the NPC draws BEHIND the player',
+      nBack === 'entities', { layer: nBack, npc: npcAt.id });
+
+    await H.hopTo(P, npcAt.x, npcAt.y - 140);      /* player NORTH -- behind him */
+    const nFront = await layerOfNpc();
+    rec.ok('...and standing behind an NPC, the NPC draws OVER the player',
+      nFront === 'gatherNodesFront', { layer: nFront, npc: npcAt.id });
+
+    rec.ok('...so the player passes behind people, not just buildings',
+      nBack === 'entities' && nFront === 'gatherNodesFront',
+      { south: nBack, north: nFront });
+  }
+
   await P.ctx.close().catch(() => {});
 }

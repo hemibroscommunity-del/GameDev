@@ -101,3 +101,51 @@ export function applyGroundSort(layer) {
     c.zIndex = Number.isFinite(y) ? Math.round(y) : 0;
   }
 }
+
+/**
+ * Put every ground-standing object on the correct SIDE of the player, then
+ * sort each side by ground-contact line.
+ *
+ * ═══ WHY THIS IS A CORRECT TOTAL ORDER, NOT A HACK ═══
+ * The local player's body cannot simply join the sorted layer: it lives in
+ * `player`, and v2.3.1713's gathering-gesture promotion and a good deal of
+ * other code depend on that. So the player stays put and everything else
+ * moves around it -- into `entities` (drawn under the player) when it stands
+ * north of him, into the front layer (drawn over him) when it stands south.
+ *
+ * That is not an approximation. Both buckets are partitioned by the SAME key
+ * the sort uses, with the player's own ground line as the pivot, so the
+ * concatenation back-bucket + player + front-bucket is exactly the order a
+ * single sort over all three would produce. Two objects in different buckets
+ * are already correctly ordered by the partition; two in the same bucket are
+ * ordered by the sort.
+ *
+ * v2.3.2635: before this, `entities` sat below `player` in the layer stack
+ * and nothing could move, so the player drew over EVERY npc, monster and pet
+ * from any position -- standing behind Mayor Bro painted straight through
+ * him. v2.3.2633 gave props this treatment; this gives it to everything that
+ * stands on the ground, in one pass, so a new kind of entity cannot be added
+ * without it.
+ *
+ * @param {import('pixi.js').Container} backLayer   drawn UNDER the player
+ * @param {import('pixi.js').Container} frontLayer  drawn OVER the player
+ * @param {number} playerGroundY  the player's ground-contact line
+ */
+export function applyDepthBuckets(backLayer, frontLayer, playerGroundY) {
+  if (!backLayer || !frontLayer) return;
+  if (backLayer === frontLayer) { applyGroundSort(backLayer); return; }
+  /* Snapshot both child lists before moving anything -- addChild mutates the
+     array being walked, and a live walk silently skips every other child. */
+  const moving = [];
+  for (const c of backLayer.children) moving.push(c);
+  for (const c of frontLayer.children) moving.push(c);
+  for (let i = 0; i < moving.length; i++) {
+    const c = moving[i];
+    if (!c || !c.parent) continue;
+    const isFront = c.parent === frontLayer;
+    const want = wantsFront(c.y, playerGroundY, isFront) ? frontLayer : backLayer;
+    if (c.parent !== want) want.addChild(c);
+  }
+  applyGroundSort(backLayer);
+  applyGroundSort(frontLayer);
+}
