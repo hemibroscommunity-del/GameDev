@@ -1,4 +1,4 @@
-# BroTown Depth Upgrade Roadmap — existing game (v2.3.2632)
+# BroTown Depth Upgrade Roadmap — existing game (v2.3.2633)
 
 The costed companion to `docs/WORLD-DEPTH-PLAN.md`. That document is the
 world art **constitution** — what a BroTown map should feel like. This one
@@ -16,10 +16,14 @@ principle nobody schedules:
 
 ## The finding this roadmap is built on
 
-**Nothing in the renderer sorts by depth.** Searched 2026-09-20:
-`sortableChildren`, `sortChildren` and `zIndex` have zero matches in
-`src/rendering/`. Props are added to `entityLayer` in table order and stay
-there; the player cannot pass behind a tree, a building corner or a rock.
+**Nothing in the renderer sorted by depth.** Searched 2026-09-20:
+`sortableChildren`, `sortChildren` and `zIndex` had zero matches in
+`src/rendering/`. Props were added to `entityLayer` in table order and stayed
+there; the player could not pass behind a tree, a building corner or a rock.
+
+> **Fixed in v2.3.2633 — item 1 below.** The finding is kept in the past
+> tense rather than deleted, because it is the reason the rest of this
+> roadmap is ordered the way it is.
 
 That reframes the whole problem. **A large part of the "painted canvas"
 feeling is architectural, not artistic.** The same paintings will read
@@ -66,6 +70,9 @@ foreground rock, y-sorted props and particles all supply that evidence.
 
 ### 1. Dynamic spatial occlusion — walk behind and in front of things
 
+**SHIPPED v2.3.2633.** What follows is what was asked for; the notes at the
+end of this item record what it actually took.
+
 **Cost** small · **Perf risk** low · **Payoff** very high · **Scope** every map, instantly
 
 Turn on depth sorting for the entity layer and give every sprite a sort key.
@@ -85,6 +92,40 @@ Two things to get right, because both are cheap now and expensive later:
   every frame; break ties on a fixed id.
 
 Nothing else on this list changes as many screens for as little work.
+
+**How it shipped (v2.3.2633).** `src/rendering/depthSort.js` holds the rule;
+`entities` and `gatherNodesFront` are the two sortable layers.
+
+Two things the plan did not anticipate:
+
+- **The local player's body is not in the entity layer.** It lives in
+  `player`, above it, and a lot of code depends on that — including the
+  gathering-gesture promotion of v2.3.1713. Rather than move the body,
+  occluders choose which *side* of the player layer to sit on each frame
+  (`wantsFront`), then sort by ground line within it. Same result, far
+  smaller blast radius.
+- **Trees were already pinned in front of the player** by v2.3.1500, which
+  answered "walking behind a tree should hide me" by making trees occlude
+  from *every* position. That is now the same ground-line test, so standing
+  south of a trunk no longer paints its canopy over your head.
+
+A 2px hysteresis band sits on the front/back decision: without it an
+occluder standing exactly on the player's line flips layer on every
+sub-pixel wobble of the walk and reads as a flicker. Stability inside a
+layer is free — `Array.prototype.sort` has been stable since ES2019, so
+equal keys keep the order they had.
+
+`mp-townprops` asserts the rule rather than one arrangement of the town: the
+entity layer is monotonic in ground line, the sort key equals that line, and
+the auction house changes sides when the player walks around it. The old
+"every prop draws before every NPC" assertion was the static rule this item
+removes, and it was rewritten rather than deleted.
+
+**What this item did NOT do.** Monsters and trees still sort by bucket, not
+against each other: a tree is in front of the player or behind them, and the
+monsters sort among themselves in the entity layer. Full tree-vs-monster
+ordering needs the nodes to join the sorted layer, which is a bigger change
+and was not worth bundling here.
 
 ### 2. Exploit the depth assets already in the art
 

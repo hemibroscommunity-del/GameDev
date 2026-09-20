@@ -137,7 +137,11 @@ export async function initPixiRenderer(canvas) {
   /* v2.3.1713: layers.gestureFront is passed so the player's own body can be
      lifted above the trees for the mine/fish gestures (which have no stand-in
      figure) — see EntityRenderer._updatePlayer. */
-  const entityRenderer = new EntityRenderer(layers.entities, layers.player, layers.monsterUi, layers.gestureFront);
+  /* v2.3.2633: + gatherNodesFront, the layer ABOVE `player`.  Props that stand
+     south of the player are re-parented into it each frame so a building can
+     occlude the body -- see rendering/depthSort.js for why the split exists
+     rather than the body simply joining the sorted layer. */
+  const entityRenderer = new EntityRenderer(layers.entities, layers.player, layers.monsterUi, layers.gestureFront, layers.gatherNodesFront);
   const effectsRenderer = new EffectsRenderer(layers);
   /* v2.3.221: FPS counter only mounts with ?dev=1. */
   const _devUI = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search);
