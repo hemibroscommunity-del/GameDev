@@ -134,6 +134,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the layer is the fact the fix turns on. WORLD_LAYER_NAMES is ordered, so
      "below the player" is checkable as an index rather than trusted. */
   const order = await P.page.evaluate(() => (window.__btLayerOrder || null));
+  /* ═══ v2.3.2636: HIT EFFECTS UNDER THE PLAYER, ARROWS STILL OVER HIM ═══
+     Owner: "make the character layer in front of the effects (after monsters
+     get hit you made effects)."  Both halves are asserted together because
+     they pull in opposite directions and the fix for one is the regression
+     for the other: `particles` moved below `player`, and `projectiles` must
+     NOT follow it -- an arrow in flight is above the player by design
+     (v2.3.1915), which the rest of this scenario checks behaviourally.
+
+     Stated as the RULE rather than as indices, so reordering the stack
+     elsewhere cannot quietly satisfy it. */
+  rec.ok('hit effects draw UNDER the player, so a burst cannot cover the character',
+    !!order && order.indexOf('particles') >= 0
+      && order.indexOf('particles') < order.indexOf('player'),
+    { particles: order && order.indexOf('particles'), player: order && order.indexOf('player'), order });
+  rec.ok('...but still OVER the monster they belong to, and under its health bar',
+    !!order && order.indexOf('particles') > order.indexOf('entities')
+      && order.indexOf('particles') < order.indexOf('monsterUi'), order);
+  rec.ok('...and arrows in flight did NOT move down with them',
+    !!order && order.indexOf('projectiles') > order.indexOf('player'), order);
   const inAir = await read('flying');
   rec.ok('an arrow in FLIGHT is still drawn above the player',
     !!inAir && inAir.ground === 0, inAir);

@@ -53,9 +53,33 @@ import { Application, Cache, Container } from 'pixi.js';
  */
 const WORLD_LAYER_NAMES = [
   'tiles', 'groundDetails', 'groundSplatter', 'groundLoot',
-  'telegraphs', 'gatherNodesBack', 'entities', 'gatherNodes', 'monsterUi', 'player',
+  'telegraphs', 'gatherNodesBack', 'entities', 'gatherNodes',
+  /* ═══ v2.3.2636: HIT EFFECTS GO UNDER THE PLAYER ═══
+     Owner: "make the character layer in front of the effects (after monsters
+     get hit you made effects)."
+
+     `particles` used to sit between `projectiles` and `damageNumbers`, above
+     everything, so every impact burst painted over the character who caused
+     it -- you swing, and the debris you knocked off the monster covers your
+     own body. One of the effectsRenderer sites even records the old
+     behaviour as a feature ("particleLayer renders above entities/player, so
+     the flash sits over the snowman"); it still sits over the snowman, it
+     just no longer sits over you.
+
+     Placed HERE, between the gather nodes and the monster UI, because that
+     is the one slot that keeps all three true at once: effects still draw
+     over the monsters they belong to (`entities` is below), they stay under
+     the monster health bars (`monsterUi` is above) so a burst cannot hide
+     the bar it is reducing, and they are under the player.
+
+     `projectiles` deliberately does NOT move: an arrow in FLIGHT is above
+     the player by design (v2.3.1915 moved only the SPENT ones down to
+     groundLoot, and mp-arrowhead asserts both halves). Damage numbers and
+     overlayWorld stay on top for the obvious reason. */
+  'particles',
+  'monsterUi', 'player',
   'gatherNodesFront', 'gestureFront',
-  'projectiles', 'particles', 'damageNumbers', 'overlayWorld',
+  'projectiles', 'damageNumbers', 'overlayWorld',
 ];
 const SCREEN_LAYER_NAMES = ['atmosphere', 'screenFX', 'hud'];
 export const LAYER_NAMES = [...WORLD_LAYER_NAMES, ...SCREEN_LAYER_NAMES];
