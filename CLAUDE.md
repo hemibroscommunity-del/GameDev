@@ -38,12 +38,18 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/UI-BIBLE.md` (UI design law + icon-generation prompts, v2.3.1222),
   `docs/LANTERN-SLATE-SPEC.md` (the UI visual system — colors, depth,
   components; supersedes UI-BIBLE Part 2, v2.3.1227),
+  `docs/DEPTH-ROADMAP.md` (the costed depth work, code-aware),
   `docs/specs/*.md`, `docs/WIRE-PROTOCOL.md`, `docs/BALANCE-PLAN.md`,
   `docs/OPTIMIZATION-ROADMAP.md`, `docs/REBUILD-PLAN.md` (client
   decomposition), `docs/STATE-SCHEMA.md` (client S object; pre-dates
   v2.3.1116 — trust for shape, not for the new systems).
   Content-facing systems found in code may also be dormant
   (collectibles) — confirm with the owner before building on one.
+  `docs/WORLD-DEPTH-PLAN.md` is the owner's world ART CONSTITUTION and is
+  INTENT, not description: it asks for things the renderer cannot do yet
+  (dynamic occlusion above all). Never read it as evidence a feature
+  exists; work from `docs/DEPTH-ROADMAP.md`, which costs it against the
+  actual renderer.
 
 The server previously lived in a separate `brotown-server` repo, now
 archived. Do not push there or build patches against it.
