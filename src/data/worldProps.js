@@ -183,7 +183,7 @@ export const WORLD_PROPS = [
        player bumping into thin air a body-length from the door. */
     id: 'mayor-house', zone: 'town', mapV: 17,
     sprite: '/sprites/props/mayor-house.png',
-    x: 1001, y: 622, worldH: 400, blockW: 330, blockD: 150,
+    x: 1001, y: 622, worldH: 550, blockW: 454, blockD: 206,
     /* No action: Mayor Bro stands outside handing out the tutorial, and a
        door that opens a panel he already covers is a second, worse way to
        talk to him. */
@@ -274,7 +274,7 @@ export const WORLD_PROPS = [
        shelf the rest of the family sits on. */
     id: 'auction-house', zone: 'town', mapV: 17,
     sprite: '/sprites/props/auction-house.png',
-    x: 1632, y: 1290, worldH: 360, blockW: 210, blockD: 144,
+    x: 1632, y: 1290, worldH: 550, blockW: 321, blockD: 220,
     action: 'auctionhouse', label: 'AUCTION HOUSE',
   },
   {
@@ -288,7 +288,7 @@ export const WORLD_PROPS = [
     mapIcon: null,   /* not a building: no roof glyph on the minimap */
     sprite: '/sprites/props/fountain.webp',
     anim: { frames: 8, fps: 12 },
-    x: 957, y: 1521, worldH: 170, blockW: 165, blockD: 62,
+    x: 957, y: 1521, worldH: 260, blockW: 252, blockD: 95,
   },
   {
     /* The market stall, south-west, where the blueprint's produce awning is.
@@ -297,7 +297,7 @@ export const WORLD_PROPS = [
     id: 'market-stall', zone: 'town', mapV: 17,
     mapIcon: null,
     sprite: '/sprites/props/market-stall.png',
-    x: 522, y: 1705, worldH: 150, blockW: 185, blockD: 60,
+    x: 522, y: 1705, worldH: 185, blockW: 228, blockD: 74,
   },
   /* ═══ DRESSING ═══
      From the owner's props sheet (tools/import_town_props.py). Sized against
@@ -313,7 +313,7 @@ export const WORLD_PROPS = [
        side. */
     id: 'lamp-plaza-w', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/lamp-post.webp',
-    x: 740, y: 1613, worldH: 150, blockW: 34, blockD: 20,
+    x: 740, y: 1613, worldH: 250, blockW: 57, blockD: 33,
   },
 
   /* ═══ v2.3.2071: BOTH BENCHES LOOK AT THE FOUNTAIN ═══
@@ -397,7 +397,7 @@ export const WORLD_PROPS = [
        same thing in this pass. */
     id: 'anvil', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/anvil.png',
-    x: 566, y: 1336, worldH: 46, blockW: 46, blockD: 24,
+    x: 566, y: 1336, worldH: 52, blockW: 52, blockD: 27,
   },
 
   /* ═══ STILL UNPLACED: measured against town_v16 (96x30 tiles) ═══
@@ -426,7 +426,7 @@ export const WORLD_PROPS = [
      stall, and the north is the mayor's terrace. */
   {
     id: 'bank', zone: 'town', mapV: 17, sprite: '/sprites/props/bank.png',
-    x: 1523, y: 760, worldH: 320, blockW: 220, blockD: 95,
+    x: 1495, y: 760, worldH: 520, blockW: 357, blockD: 154,
     action: 'bank', label: 'BANK',
   },
 

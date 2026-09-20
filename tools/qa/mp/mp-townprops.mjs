@@ -203,6 +203,55 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('every prop resolved a texture (not an invisible placeholder)',
     props.every((p) => p.width > 0 && p.height > 0), props);
 
+  /* ═══ v2.3.2634: EVERY OBJECT IS THE SIZE OF THE THING IT IS ═══
+     Owner: "almost no object is properly fitted to its dimensions."
+
+     It was true, and nothing here could see it: the only scale assertions in
+     this file were the anvil and the stall, so four buildings drawn by one
+     artist on one ~512px canvas shipped at art scales of 1.075, 0.781, 0.703
+     and 0.625 -- a 1.7x spread -- and no test had an opinion.
+
+     PERSON_H is the yardstick and it converts to metres, so each prop can be
+     asked the only question that matters: is it the size of the thing it is
+     meant to be?  Bands are generous (a fantasy town hall may be grand) but
+     they are bands, and a prop that drifts out of one is a prop nobody
+     measured. */
+  const M = PERSON_H / 1.7;                     /* world px per metre */
+  const BANDS = {
+    'mayor-house':   [6.5, 9.5, 'a grand two-storey town house'],
+    'forge':         [6.0, 8.5, 'a smithy with a tall chimney'],
+    'auction-house': [6.5, 9.5, 'a two-storey hall with a cupola'],
+    'bank':          [6.0, 9.0, 'a two-storey civic building'],
+    'fountain':      [2.5, 4.5, 'a plaza fountain with a centre jet'],
+    'market-stall':  [2.0, 3.2, 'a market awning you walk under'],
+    'lamp-plaza-w':  [2.8, 4.5, 'a street lamp, above head height'],
+    'bench-w':       [0.7, 1.4, 'a bench with a back'],
+    'anvil':         [0.4, 1.1, 'an anvil on its stump'],
+  };
+  const offBand = [];
+  for (const p of props || []) {
+    const band = BANDS[p.id];
+    if (!band) continue;
+    const m = p.height / M;
+    if (m < band[0] || m > band[1]) offBand.push({ id: p.id, m: +m.toFixed(1), band: band.slice(0, 2), is: band[2] });
+  }
+  rec.ok('every prop is the size of the thing it is meant to be (metres vs a person)',
+    offBand.length === 0, { offBand, personH: PERSON_H, pxPerMetre: +M.toFixed(1) });
+
+  /* The family test, which is the bug in one line: four buildings drawn at
+     one scale must RENDER at one scale.  Compared as drawn heights because
+     that is what the player sees; the art is ~512 tall for three of them and
+     465 for the forge, so a 20% band absorbs the art difference and nothing
+     like the 1.7x spread this replaced. */
+  const fam = ['mayor-house', 'forge', 'auction-house', 'bank']
+    .map((id) => (props || []).find((p) => p.id === id)).filter(Boolean);
+  const hs = fam.map((p) => p.height);
+  const spread = hs.length ? Math.max(...hs) / Math.min(...hs) : 0;
+  rec.ok('all four town buildings guard (guard)', fam.length === 4, { found: fam.map((p) => p.id) });
+  rec.ok('...and they render at ONE scale, not four (drawn heights within 20%)',
+    fam.length === 4 && spread <= 1.2,
+    { spread: +spread.toFixed(2), heights: fam.map((p) => ({ id: p.id, h: Math.round(p.height) })) });
+
   /* ═══ v2.3.2633: THE HEADLINE — WALKING BEHIND A BUILDING ═══
      The sort above orders props against MONSTERS and NPCs, all of which
      share the entity layer.  The player's own body does not: it lives in
@@ -243,6 +292,47 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...so the same building changed sides without moving an inch',
       south === 'entities' && north === 'gatherNodesFront' && south !== north,
       { south, north, prop: { x: bldg.x, y: bldg.y } });
+  }
+
+  /* ═══ v2.3.2635: THE PLAYER GOES BEHIND PEOPLE TOO ═══
+     Owner: "I want character to show behind other NPCs if he's behind things
+     and other objects."
+
+     v2.3.2633 gave this to PROPS only, so the building above already worked
+     while the player still painted straight through Mayor Bro -- `entities`
+     sits under `player` in the layer stack, and npcs, monsters, peers and
+     the pet all live in it. The depth pass now buckets every ground-standing
+     object around the player, so an npc south of him draws OVER him.
+
+     Asserted from both sides of the same npc, with nobody moving but the
+     player, and read as the npc's PARENT LAYER, which is the mechanism
+     rather than a proxy for it. */
+  const npcAt = (await H.readState(P, () => {
+    const S = window._gameState.current;
+    const n = (S.npcs || [])[0];
+    return n ? { id: n.id, x: n.x, y: n.y } : null;
+  }));
+  rec.ok('an NPC to stand behind (guard)', !!npcAt, npcAt);
+
+  if (npcAt) {
+    const layerOfNpc = async () => {
+      const map = await P.page.evaluate(() => (window.__btDepthLayers ? window.__btDepthLayers() : {}));
+      const key = Object.keys(map).find((k) => /^npc_/.test(k) && k.includes(npcAt.id));
+      return key ? map[key] : Object.entries(map).filter(([k]) => /^npc_/.test(k)).map(([, v]) => v)[0] || null;
+    };
+    await H.hopTo(P, npcAt.x, npcAt.y + 140);      /* player SOUTH of him */
+    const nBack = await layerOfNpc();
+    rec.ok('standing south of an NPC, the NPC draws BEHIND the player',
+      nBack === 'entities', { layer: nBack, npc: npcAt.id });
+
+    await H.hopTo(P, npcAt.x, npcAt.y - 140);      /* player NORTH -- behind him */
+    const nFront = await layerOfNpc();
+    rec.ok('...and standing behind an NPC, the NPC draws OVER the player',
+      nFront === 'gatherNodesFront', { layer: nFront, npc: npcAt.id });
+
+    rec.ok('...so the player passes behind people, not just buildings',
+      nBack === 'entities' && nFront === 'gatherNodesFront',
+      { south: nBack, north: nFront });
   }
 
   await P.ctx.close().catch(() => {});

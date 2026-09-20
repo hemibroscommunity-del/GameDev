@@ -4,7 +4,6 @@
  * Uses PixiJS Graphics for procedural particles and Text for damage numbers.
  */
 import { Assets, BitmapFont, BitmapText, CanvasTextMetrics, Container, Graphics, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
-import { wantsFront } from '../depthSort.js'; /* v2.3.2633: dynamic tree occlusion by ground-contact line */
 
 /* v2.3.1358 (owner directive: ALL animations ready before first use —
    see CLAUDE.md "Animation preloading is LAW"): every Assets.load in
@@ -1725,6 +1724,11 @@ export class EffectsRenderer {
     this.lootLayer = layers.groundLoot;
     this.splatLayer = layers.groundSplatter;
     this.nodeLayer = layers.gatherNodes;
+    /* v2.3.2635: node SPRITES live here now (see _wantLayer below) so they
+       sort against the player, npcs, monsters and props by ground line. The
+       node Graphics -- tier badges, proximity tips -- stay in nodeLayer,
+       which is what they were always for. */
+    this.entityLayer = layers.entities || layers.gatherNodes;
     /* v2.3.1500: above the player — trees only (see _wantLayer below). */
     this.nodeFrontLayer = layers.gatherNodesFront || layers.gatherNodes;
     /* v2.3.1593: below entities — ore only, so monsters walk in front of it.
@@ -7574,6 +7578,13 @@ export class EffectsRenderer {
            was left on the old default, so an unnamed type silently landing
            above monsters would be a bug rather than a default. */
         /* ═══ v2.3.2633: A TREE IS ONLY IN FRONT WHEN YOU ARE BEHIND IT ═══
+           v2.3.2635: and it is the SHARED depth pass that decides, not this
+           file -- tree and ore sprites join `entities` with everything else
+           that stands on the ground, and the frame loop buckets and sorts
+           the lot against the player's own ground line. Before that, a tree
+           north of the player sat in gatherNodes, which is above `entities`,
+           so it drew over an npc standing south of it.
+
            Roadmap item 1.  v2.3.1500 answered the owner's "walking behind a
            tree should be occluded by it" by pinning trees ABOVE the player
            permanently.  That is correct for the case it was written for and
@@ -7588,26 +7599,24 @@ export class EffectsRenderer {
            from under it.  Within either layer the tree then sorts against
            everything else by the same contact line.
 
-           The mining target's overlay promotion (v2.3.854) still wins over
-           all of it, and ore and fishing holes are unchanged -- neither is
-           tall enough to occlude anything, which is why v2.3.1593 put them
-           below the entities in the first place. */
-        const _pgY = (S.player && Number.isFinite(S.player.y)) ? S.player.y : NaN;
-        const _treeLayer = wantsFront(node.y, _pgY, node._pixiSprite.parent === this.nodeFrontLayer)
-          ? this.nodeFrontLayer : this.nodeLayer;
+           A FISHING HOLE IS STILL FLAT (v2.3.1464, owner: a pond lies on the
+           ground, so a monster walking over it should cover it) and stays in
+           lootLayer, where it has no ground line to sort by. The active
+           mining target keeps its overlay promotion (v2.3.854) so the ore
+           still hides the baked rock in the swing sheet. Everything else --
+           trees and ore alike -- sorts by where it meets the ground, which
+           is what v2.3.1593 ("make monsters appear in front of ore") was
+           approximating with a fixed layer. */
         const _wantLayer = _isMineTarget ? this.overlayLayer
           : node.nodeType === 'fishSpot' ? this.lootLayer
-            : node.nodeType === 'tree' ? _treeLayer
-              : node.nodeType === 'oreVein' ? this.nodeBackLayer
-                : this.nodeBackLayer;
+            : this.entityLayer;
         if (node._pixiSprite.parent !== _wantLayer) {
-          if (_wantLayer === this.overlayLayer) _wantLayer.addChild(node._pixiSprite);
-          else _wantLayer.addChildAt(node._pixiSprite, 0);
+          if (_wantLayer === this.lootLayer) _wantLayer.addChildAt(node._pixiSprite, 0);
+          else _wantLayer.addChild(node._pixiSprite);
         }
-        /* The depth key for the sorted layer.  gatherNodes is NOT sortable
-           (its order there is "under the player", which needs no sort), so
-           this only bites in nodeFrontLayer -- where a tree must interleave
-           with the buildings that moved up alongside it. */
+        /* The ground line. The shared pass re-reads this every frame, but
+           setting it here means a node is never sorted on a stale key in the
+           frame it first appears. */
         node._pixiSprite.zIndex = Math.round(node.y || 0);
       } else if (node.nodeType === 'tree') {
         /* v2.3.1275: procedural fallbacks get the same +50% as the
