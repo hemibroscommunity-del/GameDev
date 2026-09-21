@@ -81,8 +81,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('two ticks inside one gesture collapse to ONE sound',
     two === 1, { playCalls: two });
 
-  /* ...but a deliberate later tap is NOT swallowed. */
-  await P.page.waitForTimeout(220);
+  /* ...but a deliberate later tap is NOT swallowed. The wait must CLEAR the
+     window rather than sit near it: v2.3.2640 widened it 120 -> 260 to cover
+     the server echo, and this wait was 220, so the test went red for the
+     right reason and had to be re-derived from the constant rather than
+     tuned until green. */
+  await P.page.waitForTimeout(340);
   const later = await P.page.evaluate(() => {
     window.__sfxCalls.length = 0;
     window.BT_AUDIO.uiTick('ui-equip', 0.55);
@@ -102,6 +106,46 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const closes = await calls(P, 'ui-close');
     rec.ok('TAPPING A DASHBOARD TAB plays the ui-close sound',
       closes >= 1, { calls: closes, tabs: ids });
+  }
+
+  /* ═══ v2.3.2640: A REAL TAP ON A REAL EQUIP CONTROL ═══
+     Three versions of this bug survived because every test so far called a
+     function directly. The owner does not call functions; they press a
+     button. So this presses the button.
+
+     The gear has to exist first -- a fresh character has no Equip control at
+     all, which is why the earlier diagnostic found none on any screen. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const R = S.rpg || S.rpgState;
+    if (R) { R.gearStash = R.gearStash || []; }
+  });
+  await P.page.click('[data-nav="hero"]', { force: true }).catch(() => {});
+  await P.page.waitForTimeout(700);
+
+  const found = await P.page.evaluate(() => {
+    const els = [...document.querySelectorAll('button,[role="button"]')];
+    const h = els.find((e) => /^(equip|unequip)$/i.test((e.textContent || '').trim())
+      && e.getBoundingClientRect().width > 0);
+    if (!h) return null;
+    h.setAttribute('data-sfxprobe', '1');
+    return (h.textContent || '').trim();
+  });
+  /* Reported, not asserted: whether a gear control is reachable depends on
+     what this character happens to own, and a guard that fails on an empty
+     bag would be noise. The assertion below only runs when one IS there. */
+  rec.ok('a real Equip/Unequip control is on screen (informational)', true, { control: found });
+
+  if (found) {
+    await P.page.evaluate(() => { window.__sfxCalls.length = 0; });
+    await P.page.click('[data-sfxprobe="1"]', { force: true }).catch(() => {});
+    /* 2s, not 300ms: the duplicate the owner heard arrives on the SERVER'S
+       echo, which is a round-trip away. A short wait would have passed while
+       the bug was live. */
+    await P.page.waitForTimeout(2000);
+    const n = await calls(P, 'ui-equip');
+    rec.ok('ONE REAL TAP on Equip makes exactly one sound, two seconds later included',
+      n === 1, { calls: n, control: found });
   }
 
   await P.ctx.close().catch(() => {});

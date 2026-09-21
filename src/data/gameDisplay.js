@@ -3579,7 +3579,13 @@ BT_AUDIO._rebuildSources = function () {
 BT_AUDIO._uiTickAt = Object.create(null);   /* CLAUDE.md rule 4 */
 BT_AUDIO.uiTick = function (key, vol) {
   var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-  var WINDOW_MS = 120;
+  /* v2.3.2640: 120 -> 260.  The first window was sized against a gesture's
+     synchronous fan-out and missed the case that actually reaches the ear:
+     a second tick arriving on the SERVER'S echo of the same action, which is
+     a network round-trip away and so always outside 120ms.  260 covers a
+     local worker round-trip while staying under a deliberate second tap --
+     nobody presses the same control twice in a quarter second on purpose. */
+  var WINDOW_MS = 260;
   var last = this._uiTickAt[key];
   if (last != null && (now - last) < WINDOW_MS) return null;
   this._uiTickAt[key] = now;
