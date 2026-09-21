@@ -2889,7 +2889,16 @@ BT_AUDIO.SFX_MANIFEST = {
      Both are short UI ticks rather than world sounds, so they are quieter
      than the fanfares above: a sound you hear on every tap has to sit under
      the ones you hear on an achievement, or it becomes the loudest thing in
-     the game. mp3, per the v2.3.1610 rule. */
+     the game. mp3, per the v2.3.1610 rule.
+
+     v2.3.2641: BOTH TRIMMED, losslessly, at frame boundaries
+     (tools/trim_mp3_tail.mjs -- there is no mp3 encoder in this sandbox, so
+     a re-encode was never an option). As uploaded, equip decoded to 0.94s
+     and close to 0.78s, of which only the first 0.34s and 0.16s were
+     audible; the remainder was digital silence. 29KB/24KB -> 13KB each at
+     0.42s, with the measured peaks unchanged, so nothing audible was lost.
+     mp-uisfx asserts the length now: a sample longer than the gesture is
+     what lets rapid taps pile up. */
   'ui-equip':      '/sfx/ui/equip.mp3',
   'ui-close':      '/sfx/ui/close.mp3',
   /* v2.3.2637: the owner's NEW quest-completion sound, superseding the
@@ -3576,20 +3585,46 @@ BT_AUDIO._rebuildSources = function () {
    MEANT to overlap (a flurry of sword hits is many samples at once, and
    v2.3.1798 rotates three swing samples precisely so they can layer). This
    is for UI chrome only, which is why it is its own entry point. */
-BT_AUDIO._uiTickAt = Object.create(null);   /* CLAUDE.md rule 4 */
+BT_AUDIO._uiTickAt = Object.create(null);    /* CLAUDE.md rule 4 */
+BT_AUDIO._uiVoice = Object.create(null);
 BT_AUDIO.uiTick = function (key, vol) {
+  /* ═══ v2.3.2641: ONE VOICE PER UI KEY ═══
+     Owner asked whether the files were too large. They are not -- 25-30KB --
+     but MEASURING them answered the real question. ui-equip decodes to 0.94s
+     of which only the first 0.34s is audible; the rest is silence padding.
+
+     0.34s of audible sound is LONGER THAN THE 260ms WINDOW this function
+     used to rely on, so two taps a third of a second apart both passed the
+     guard and then genuinely overlapped. Widening the window is the wrong
+     lever: it would start swallowing taps the player means, and it would
+     have to be re-tuned every time a sample changes length.
+
+     A time window was the wrong shape of answer. UI chrome wants ONE VOICE:
+     a new tick STOPS the previous one for the same key and takes over. That
+     is correct for any sample length, needs no tuning, and makes "multiple
+     of the same sound at the same time" structurally impossible rather than
+     unlikely.
+
+     The short window stays as well, and now does the one job it is actually
+     right for: collapsing the several calls a single gesture makes (a
+     handler plus the server's echo of the same action) so one gesture is one
+     RESTART, not a restart that cuts off its own first 30ms. */
   var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-  /* v2.3.2640: 120 -> 260.  The first window was sized against a gesture's
-     synchronous fan-out and missed the case that actually reaches the ear:
-     a second tick arriving on the SERVER'S echo of the same action, which is
-     a network round-trip away and so always outside 120ms.  260 covers a
-     local worker round-trip while staying under a deliberate second tap --
-     nobody presses the same control twice in a quarter second on purpose. */
   var WINDOW_MS = 260;
   var last = this._uiTickAt[key];
   if (last != null && (now - last) < WINDOW_MS) return null;
   this._uiTickAt[key] = now;
-  try { return this.play(key, { vol: vol == null ? 0.55 : vol }); } catch (e) { return null; }
+  /* Stop the voice still sounding from the last tap of this same control. */
+  var prev = this._uiVoice[key];
+  if (prev && prev.src) {
+    try { prev.src.stop(0); } catch (e) { /* already ended -- fine */ }
+    try { prev.src.disconnect(); } catch (e) { /* ignore */ }
+  }
+  this._uiVoice[key] = null;
+  var v = null;
+  try { v = this.play(key, { vol: vol == null ? 0.55 : vol }); } catch (e) { v = null; }
+  this._uiVoice[key] = v;
+  return v;
 };
 
 BT_AUDIO.play = function (key, opts) {
