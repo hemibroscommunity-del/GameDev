@@ -163,7 +163,15 @@ export function turnInQuest(S, questPanel, deps, xpCat) {
      turn-in silent, which is exactly how 19 SFX shipped mute before
      v2.3.1610. */
   var _qcSfx = null;
-  try { _qcSfx = BT_AUDIO.play('quest-complete', { vol: 0.9 }); } catch (e) { _qcSfx = null; }
+  /* v2.3.2637: the owner's NEW completion sound, superseding the v2.3.1746
+     fanfare ("Level up sound is actually a sound that should play the moment
+     you complete a quest"). The v2.3.1610 test below is kept exactly as it
+     was and matters more now, not less: BT_AUDIO.play returns null when the
+     sample is not decoded yet, and treating that as success is how 19 SFX
+     once shipped mute. The old fanfare is the FALLBACK rather than deleted,
+     so a cold cache still celebrates instead of going silent. */
+  try { _qcSfx = BT_AUDIO.play('quest-complete-v2', { vol: 0.9 }); } catch (e) { _qcSfx = null; }
+  if (!_qcSfx) { try { _qcSfx = BT_AUDIO.play('quest-complete', { vol: 0.9 }); } catch (e) { _qcSfx = null; } }
   if (!_qcSfx) BT_AUDIO.levelUp();
   /* v2.3.1745: the banner carries the REWARD on the completed side — it is
      the one moment the numbers are worth reading, and the world popup that
