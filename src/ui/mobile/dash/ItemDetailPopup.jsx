@@ -838,7 +838,7 @@ export const ItemDetailPopup = () => {
           /* v2.3.2637: the dashboard's own equip/unequip -- the same one
              sample as the inventory toggle, because to the player it is the
              same gesture whichever screen it happens on. */
-          try { BT_AUDIO.play('ui-equip', { vol: 0.55 }); } catch (e) { /* sfx is never load-bearing */ }
+          BT_AUDIO.uiTick('ui-equip', 0.55);   /* v2.3.2639: deduped */
           if (on) {
             R2.gearStash.push({ slot, gearId, name: gearName(slot, gearId) });
             setEquip(slot, 'none');
@@ -1508,7 +1508,7 @@ export const ItemDetailPopup = () => {
   /* v2.3.2637: closing a window, which is the owner's other ui-close case.
      One definition, used by the backdrop tap and the X alike. */
   const onClose = () => {
-    try { BT_AUDIO.play('ui-close', { vol: 0.5 }); } catch (e) { /* sfx is never load-bearing */ }
+    BT_AUDIO.uiTick('ui-close', 0.5);
     itemDetailBus.close();
   };
 
@@ -1788,13 +1788,18 @@ function persist(R) {
    Same dead gate as the quest messages in v2.3.1684 (src/game/quests.js);
    gate on the CHANNEL, which is the only thing that was ever being asked. */
 function syncWeaponSlot(msg) {
-  /* v2.3.2638: the WEAPON half of the owner's missing equip sound. Every
-     weapon equip and unequip this popup performs goes out through here
-     (equip_request and unequip_request alike), so this is the one place that
-     covers both without firing twice for one gesture. equipActions.js has
-     its own private syncWeaponSlot for the cores it owns; that path is
-     ticked at the core, not here, so the two cannot overlap. */
-  try { BT_AUDIO.play('ui-equip', { vol: 0.55 }); } catch (e) { /* sfx is never load-bearing */ }
+  /* v2.3.2638: the WEAPON half of the owner's equip sound goes out through
+     here.  v2.3.2639 GATES IT BY MESSAGE TYPE, which 2638 did not: this
+     function carries three kinds of message and four of its seven calls are
+     `set_active_slot`, which is switching which weapon is in hand, not
+     equipping anything.  Worse, ONE gesture sends two -- unequipping a ranged
+     weapon sends unequip_request and then set_active_slot to drop the hand
+     back to melee -- so the owner heard the sample twice, on top of itself.
+     uiTick's window would collapse that anyway; the gate means the sound is
+     also not simply WRONG on a slot switch. */
+  if (msg && (msg.type === 'equip_request' || msg.type === 'unequip_request')) {
+    BT_AUDIO.uiTick('ui-equip', 0.55);
+  }
   const S = getState();
   if (S && S.channel) {
     try { S.channel.send(msg); } catch (e) {}

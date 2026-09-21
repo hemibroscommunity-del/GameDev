@@ -1,4 +1,5 @@
 import React from 'react';
+import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2639: the tab-tap sound */
 import { COL } from './common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { playIsLandscape } from '../playViewport.js'; /* v2.3.2158: the tap decides by shape */
@@ -105,6 +106,20 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
             role="button" aria-label={d.label} aria-pressed={on} title={d.label}
             onPointerUp={(e) => {
               e.stopPropagation();
+              /* ═══ v2.3.2639: THE TAB TAP, WHERE THE TAP ACTUALLY IS ═══
+                 Owner: "the tapping other tabs did not play any sound."
+                 v2.3.2637 put it on dashboardPanelBus.tapDestination, which
+                 reads like the right chokepoint and has NO CALLERS -- this
+                 rail calls open() and toBar() directly.  So the sound went on
+                 dead code and the tabs were silent.
+                 Here instead: this handler IS the gesture the owner described,
+                 it fires for every one of the rail's buttons and for both
+                 outcomes (open a destination, or drop back to rest), and it
+                 cannot be reached by the programmatic open() calls that would
+                 have made open() itself a noisy place to put it.
+                 Deduped by uiTick, so the pointer event firing twice on a
+                 slow tap still makes one sound. */
+              BT_AUDIO.uiTick('ui-close', 0.5);
               /* ═══ v2.3.2158: SIDEWAYS, THE DASHBOARD BUTTON IS THE BAG ═══
                  Owner, on a real iPhone in landscape: "The one thing I don't
                  understand is where my bag went.  I see the thin bar at the
