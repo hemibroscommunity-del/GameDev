@@ -1424,13 +1424,22 @@ export var BroTown = function BroTown(_ref0) {
     gearWorn = _useStateGear2[0],
     setGearWorn = _useStateGear2[1];
   var toggleGearSlot = useCallback(function (slot) {
+    /* ═══ v2.3.2640: THE TICK IS NOT A SIDE EFFECT OF A setState UPDATER ═══
+       Owner, third report: "still problems with it sounding duplicated".
+
+       v2.3.2637 put this call INSIDE the setGearWorn updater below. A
+       setState updater must be PURE: React is free to invoke it more than
+       once for a single dispatch, and does -- so one tap on Equip could ask
+       for the sound twice, from inside a function whose contract says it may
+       run again. That is a real double-play and no amount of picking better
+       call sites would have fixed it, because the site was right and the
+       PLACE within it was wrong.
+
+       Out here it runs exactly once per gesture, which is what a gesture
+       sound means. */
+    BT_AUDIO.uiTick('ui-equip', 0.55);
     setGearWorn(function (g) {
       var worn = !g[slot];
-      /* v2.3.2637: one sample for equip AND unequip, by owner instruction.
-         Fired HERE rather than inside setEquip: that is the shared store
-         setter and it also runs on login restore, which would play the tick
-         once per worn slot every time the game loads. */
-      BT_AUDIO.uiTick('ui-equip', 0.55);   /* v2.3.2639: deduped */
       setEquip(slot, worn ? GEAR_DEFAULT_ID[slot] : 'none');
       var ng = Object.assign({}, g);
       ng[slot] = worn;

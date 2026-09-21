@@ -59,9 +59,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* The two UI ticks must be SHORT -- they fire on every tap, and a sound
      that outlasts the gesture stacks on itself. The quest sound is allowed
      to be a fanfare, so it is deliberately not held to this. */
+  /* ═══ v2.3.2641: A UI TICK IS SHORT, AND THAT IS MEASURED ═══
+     The owner asked whether the files were too large. They were not -- but
+     measuring answered a question nobody had asked: ui-equip was 0.94s, of
+     which only the first 0.34s was audible and the rest digital silence.
+     A sample longer than a gesture is what makes rapid taps pile up, so the
+     length is now a TESTED property rather than an accident of the upload.
+     0.6s is generous for a UI tick and still well under the old 0.94. */
   for (const k of ['ui-equip', 'ui-close']) {
     const d = decoded[k] || {};
-    rec.ok(`...and ${k} is a tick, not a tune (under 2s)`, !d.err && d.seconds < 2, d);
+    rec.ok(`...and ${k} is a tick, not a tune (under 0.6s)`,
+      !d.err && d.seconds > 0.05 && d.seconds < 0.6, d);
   }
 
   await P.ctx.close().catch(() => {});
