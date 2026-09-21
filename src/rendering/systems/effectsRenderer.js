@@ -7885,8 +7885,13 @@ export class EffectsRenderer {
     sp.rotation = ang + Math.PI / 2;
     sp.x = (m.x != null ? m.x : m.renderX) || 0;
     sp.y = ((m.y != null ? m.y : m.renderY) || 0) - IMPACT_CENTER_DY;
-    /* particleLayer renders above entities/player, so the flash sits over the
-       snowman, and it's world-space so it lands at the snowman's position. */
+    /* particleLayer renders above `entities`, so the flash sits over the
+       snowman, and it's world-space so it lands at the snowman's position.
+       v2.3.2636: it no longer renders above `player` -- the owner asked for
+       the character to be in front of the hit effects, so the layer moved
+       below `player` in WORLD_LAYER_NAMES. The half of this note that
+       mattered (over the snowman) still holds; the half that said "/player"
+       was describing the bug. */
     this.particleLayer.addChild(sp);
     this._snowmanImpacts.push({ sp, startedAt: now });
   }
