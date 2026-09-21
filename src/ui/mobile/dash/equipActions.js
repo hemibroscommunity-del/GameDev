@@ -10,6 +10,7 @@
    InventoryPanel — importing back would create a cycle. */
 
 import { getState } from './common.js';
+import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2638: the equip tick */
 import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: one gate, every sender */
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
 import { recalcDerived, WEAPON_STASH_MAX } from '../../../data/gameSystems.js';
@@ -38,7 +39,28 @@ function gearName(slot, gearId) {
   return (c && c.name) || 'Armor';
 }
 
+/* ═══ v2.3.2638: THE EQUIP TICK, AT THE SHARED CORE ═══
+   Owner: "When I equipped and unequipped it didn't make a sound."
+
+   v2.3.2637 put the ui-equip sound on toggleGearSlot and on ItemDetailPopup's
+   own inline gear branch, and missed THIS FILE -- which is where the real
+   work happens. These seven functions are the shared cores that both the
+   dashboard InventoryPanel and ItemDetailPopup call, so unequipping a weapon,
+   a shield, armour, legs or a gear slot, and equipping armour or legs back
+   out of the stash, were all silent.
+
+   The lesson is the one v2.3.2637 applied to ui-close and failed to apply
+   here: wire the CHOKEPOINT, not a caller. One helper, called by each of the
+   seven entry points.
+
+   NOT in syncArmorChange -- that is an internal helper the others call, so
+   the sound would fire twice for one gesture. */
+function _equipTick() {
+  try { BT_AUDIO.play('ui-equip', { vol: 0.55 }); } catch (e) { /* sfx is never load-bearing */ }
+}
+
 export function unequipWeaponSlot(slot /* 'weapon' | 'ranged' | 'staff' */) {
+  _equipTick();
   const S = getState();
   if (!S || !S.rpg) return;
   const R = S.rpg;
@@ -88,6 +110,7 @@ export function unequipWeaponSlot(slot /* 'weapon' | 'ranged' | 'staff' */) {
 }
 
 export function unequipShieldDirect() {
+  _equipTick();
   const S = getState();
   if (!S || !S.rpg) return;
   const R = S.rpg;
@@ -161,6 +184,7 @@ export function syncArmorChange(R, opts) {
 }
 
 export function unequipArmorDirect() {
+  _equipTick();
   const S = getState();
   if (!S || !S.rpg) return;
   const R = S.rpg;
@@ -183,6 +207,7 @@ export function unequipArmorDirect() {
    including the `legs: true` push without which the worker keeps the piece
    and the next full player_state puts it back on. */
 export function unequipLegsDirect() {
+  _equipTick();
   const S = getState();
   if (!S || !S.rpg) return;
   const R = S.rpg;
@@ -214,6 +239,7 @@ export function unequipLegsDirect() {
    both callers share them — the alternative is a second copy of "wear a piece"
    that drifts from this one the first time either is touched. */
 export function equipArmorFromStash(piece) {
+  _equipTick();
   const S = getState();
   if (!S || !S.rpg || !piece) return false;
   const R = S.rpg;
@@ -231,6 +257,7 @@ export function equipArmorFromStash(piece) {
 }
 
 export function equipLegsFromStash(piece) {
+  _equipTick();
   const S = getState();
   if (!S || !S.rpg || !piece) return false;
   const R = S.rpg;
@@ -249,6 +276,7 @@ export function equipLegsFromStash(piece) {
 }
 
 export function unequipGearDirect(slot) {
+  _equipTick();
   const S = getState();
   if (!S || !S.rpg) return;
   const R = S.rpg;

@@ -1788,6 +1788,13 @@ function persist(R) {
    Same dead gate as the quest messages in v2.3.1684 (src/game/quests.js);
    gate on the CHANNEL, which is the only thing that was ever being asked. */
 function syncWeaponSlot(msg) {
+  /* v2.3.2638: the WEAPON half of the owner's missing equip sound. Every
+     weapon equip and unequip this popup performs goes out through here
+     (equip_request and unequip_request alike), so this is the one place that
+     covers both without firing twice for one gesture. equipActions.js has
+     its own private syncWeaponSlot for the cores it owns; that path is
+     ticked at the core, not here, so the two cannot overlap. */
+  try { BT_AUDIO.play('ui-equip', { vol: 0.55 }); } catch (e) { /* sfx is never load-bearing */ }
   const S = getState();
   if (S && S.channel) {
     try { S.channel.send(msg); } catch (e) {}
