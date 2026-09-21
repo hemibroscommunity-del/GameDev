@@ -178,7 +178,7 @@ export function QuestPanel(props) {
      the X, the backdrop, and the decline branch -- and three copies is three
      chances for the next exit added to be the silent one. */
   var _closeQuestPanel = function () {
-    try { BT_AUDIO.play('ui-close', { vol: 0.5 }); } catch (e) { /* sfx is never load-bearing */ }
+    BT_AUDIO.uiTick('ui-close', 0.5);
     setQuestPanel(null);
   };
   /* v2.3.1685: which skill this turn-in's XP trains (see XpChooser). Local

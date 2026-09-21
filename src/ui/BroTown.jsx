@@ -1430,7 +1430,7 @@ export var BroTown = function BroTown(_ref0) {
          Fired HERE rather than inside setEquip: that is the shared store
          setter and it also runs on login restore, which would play the tick
          once per worn slot every time the game loads. */
-      try { BT_AUDIO.play('ui-equip', { vol: 0.55 }); } catch (e) { /* sfx is never load-bearing */ }
+      BT_AUDIO.uiTick('ui-equip', 0.55);   /* v2.3.2639: deduped */
       setEquip(slot, worn ? GEAR_DEFAULT_ID[slot] : 'none');
       var ng = Object.assign({}, g);
       ng[slot] = worn;

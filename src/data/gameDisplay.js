@@ -3550,6 +3550,42 @@ BT_AUDIO._rebuildSources = function () {
   try { this.startGlobalMusic(); } catch (e) {}
 };
 
+/* ═══ v2.3.2639: ONE UI TICK PER GESTURE ═══
+   Owner: "It works intermittently and sounds like multiple of the same sound
+   is playing at the same time.  It also crashed the game once."
+
+   All three symptoms are the same fault: the ui ticks were fired from places
+   that run MORE THAN ONCE for a single tap.  Unequipping a ranged weapon, for
+   example, sends unequip_request AND set_active_slot, and v2.3.2638 ticked on
+   both -- two overlapping copies of a 0.3s sample, which is exactly what
+   "multiple of the same sound" sounds like.  Overlap also means unbounded
+   buffer sources under a fast tap, which is the likeliest cause of the crash.
+
+   Fixing each call site one at a time is how this bug got two versions deep
+   already.  So the guard goes HERE, once, where every UI tick has to pass:
+   the same key cannot restart inside WINDOW_MS.  A gesture that reaches this
+   through three different code paths now makes one sound, and no future call
+   site can reintroduce the stacking.
+
+   120ms is chosen to be longer than any single gesture's fan-out and shorter
+   than a deliberate second tap -- a person cannot meaningfully tap the same
+   control twice inside it, and the game's own double-tap handling uses far
+   wider windows.
+
+   Deliberately NOT applied to BT_AUDIO.play at large: combat sounds are
+   MEANT to overlap (a flurry of sword hits is many samples at once, and
+   v2.3.1798 rotates three swing samples precisely so they can layer). This
+   is for UI chrome only, which is why it is its own entry point. */
+BT_AUDIO._uiTickAt = Object.create(null);   /* CLAUDE.md rule 4 */
+BT_AUDIO.uiTick = function (key, vol) {
+  var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  var WINDOW_MS = 120;
+  var last = this._uiTickAt[key];
+  if (last != null && (now - last) < WINDOW_MS) return null;
+  this._uiTickAt[key] = now;
+  try { return this.play(key, { vol: vol == null ? 0.55 : vol }); } catch (e) { return null; }
+};
+
 BT_AUDIO.play = function (key, opts) {
   if (this.muted || !this.ctx) return null;
   /* v2.3.130: iOS Safari suspends the AudioContext on tab-switch,

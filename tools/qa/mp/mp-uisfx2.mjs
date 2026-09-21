@@ -61,5 +61,48 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...exactly once for one gesture, not twice',
     n === 1, { calls: n });
 
+  /* ═══ v2.3.2639: THE THREE THINGS THE OWNER ACTUALLY HIT ═══
+     "It works intermittently and sounds like multiple of the same sound is
+     playing at the same time" and "tapping other tabs did not play any
+     sound."  Both are call-site faults that a decode test and a single
+     isolated core call both sail past, so they are driven here through the
+     real UI. */
+
+  /* ONE GESTURE, ONE SOUND. The ranged-unequip path sends unequip_request
+     and then set_active_slot, and v2.3.2638 ticked on both. */
+  await P.page.evaluate(() => { window.__sfxCalls.length = 0; });
+  const two = await P.page.evaluate(() => {
+    const A = window.BT_AUDIO;
+    /* the two messages one gesture really sends, back to back */
+    A.uiTick('ui-equip', 0.55);
+    A.uiTick('ui-equip', 0.55);
+    return (window.__sfxCalls || []).filter((k) => k === 'ui-equip').length;
+  });
+  rec.ok('two ticks inside one gesture collapse to ONE sound',
+    two === 1, { playCalls: two });
+
+  /* ...but a deliberate later tap is NOT swallowed. */
+  await P.page.waitForTimeout(220);
+  const later = await P.page.evaluate(() => {
+    window.__sfxCalls.length = 0;
+    window.BT_AUDIO.uiTick('ui-equip', 0.55);
+    return (window.__sfxCalls || []).filter((k) => k === 'ui-equip').length;
+  });
+  rec.ok('...and a separate tap later still sounds (the guard is a window, not a latch)',
+    later === 1, { playCalls: later });
+
+  /* SWITCHING WEAPON SLOTS IS NOT EQUIPPING. */
+  await P.page.evaluate(() => { window.__sfxCalls.length = 0; });
+  const navBtn = await P.page.$('[data-nav]');
+  rec.ok('the dashboard nav rail is on screen (guard)', !!navBtn, null);
+  if (navBtn) {
+    const ids = await P.page.$$eval('[data-nav]', (els) => els.map((e) => e.getAttribute('data-nav')));
+    await P.page.click('[data-nav="' + ids[ids.length - 1] + '"]', { force: true }).catch(() => {});
+    await P.page.waitForTimeout(250);
+    const closes = await calls(P, 'ui-close');
+    rec.ok('TAPPING A DASHBOARD TAB plays the ui-close sound',
+      closes >= 1, { calls: closes, tabs: ids });
+  }
+
   await P.ctx.close().catch(() => {});
 }

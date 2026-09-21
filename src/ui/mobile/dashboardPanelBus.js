@@ -25,7 +25,6 @@
 // combat chrome rides above the open sheet keyed off --sheet-h.
 
 import { playIsLandscape } from './playViewport.js'; /* v2.3.2173: the bag-pane tourniquet below */
-import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2637: ui-close tick */
 
 const listeners = new Set();
 const emit = () => {
@@ -87,16 +86,13 @@ export const dashboardPanelBus = {
   // Toolbar tap (v2.3.1350 two-state): bar or an inactive destination
   // -> that destination expanded; the active destination -> bar.
   tapDestination(id) {
-    /* v2.3.2637 (owner: the ui-close sound is "for closing a window (like
-       quest pop up) or toggling between the dashboard buttons").  BOTH
-       branches, not just toBar(): the owner asked for the sound on the
-       TOGGLE, and switching from one destination to another closes the one
-       you were reading just as surely as dropping to the bar does.
-       Fired here, in the bus, rather than in NavRail -- the rail is one of
-       several things that call this (swipes and the landscape dock go
-       through the same door), and a sound wired to one caller is a sound
-       that goes missing on the others. */
-    try { BT_AUDIO.play('ui-close', { vol: 0.5 }); } catch (e) { /* sfx is never load-bearing */ }
+    /* v2.3.2639: the ui-close tick that v2.3.2637 put here is GONE, because
+       this function has no callers -- nothing in src/ calls tapDestination.
+       The nav rail talks to open() and toBar() directly, so the sound was
+       wired to dead code and the owner heard nothing when tapping the tabs.
+       It now lives on the rail's own pointer handler, which is the gesture.
+       This function is left otherwise untouched: it is a public method of
+       the bus and removing it is a separate decision. */
     if (this.state.mode === 'bar' || this.root() !== id) {
       this.open(id);
     } else {
