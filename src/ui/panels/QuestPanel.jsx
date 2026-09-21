@@ -1,4 +1,5 @@
 import React from 'react';
+import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2637: ui-close tick */
 import { acceptQuest, turnInQuest } from '@/game/quests.js';
 import { NPC_DATA } from '@/data/gameDisplay.js';
 import { prog3Live, PROG3_SKILL_META } from '@/data/prog3.js';
@@ -171,6 +172,15 @@ export function QuestPanel(props) {
     questPanel = props.questPanel,
     setQuestPanel = props.setQuestPanel,
     setRpgState = props.setRpgState;
+  /* v2.3.2637: the quest pop-up is the owner's own example of the ui-close
+     case ("closing a window (like quest pop up)").  ONE helper rather than
+     the sound copied onto each exit: this panel closes from three places --
+     the X, the backdrop, and the decline branch -- and three copies is three
+     chances for the next exit added to be the silent one. */
+  var _closeQuestPanel = function () {
+    try { BT_AUDIO.play('ui-close', { vol: 0.5 }); } catch (e) { /* sfx is never load-bearing */ }
+    setQuestPanel(null);
+  };
   /* v2.3.1685: which skill this turn-in's XP trains (see XpChooser). Local
      to the open dialogue — closing it and coming back asks again, which is
      right: it is a decision about THIS payout, not a saved preference. */
@@ -299,10 +309,10 @@ export function QuestPanel(props) {
          An offer stays dismissible (nothing is owed yet) and so does a
          progress check-in (there is nothing to lose and its CTA is 'Close'). */
       lockScrim: !_isOffer && _canTurnIn,
-      onClose: function () { return setQuestPanel(null); },
+      onClose: function () { return _closeQuestPanel(); },
       onDone: function () {
         if (_hasDecision) setStage('act');
-        else setQuestPanel(null);
+        else _closeQuestPanel();
       },
     });
   }
@@ -319,7 +329,7 @@ export function QuestPanel(props) {
       : null,
     confirmClass: _isOffer ? null : 'bt-quest-turnin',
     confirmDisabled: !_isOffer && _needsXpChoice && !xpCat,
-    onClose: function () { return setQuestPanel(null); },
+    onClose: function () { return _closeQuestPanel(); },
     onConfirm: function () {
       if (_isOffer) {
         acceptQuest(stateRef.current, questPanel,

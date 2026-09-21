@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2637: ui-equip tick */
 import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey } from './InventoryPanel.jsx';   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
@@ -834,6 +835,10 @@ export const ItemDetailPopup = () => {
             refresh();
             return;
           }
+          /* v2.3.2637: the dashboard's own equip/unequip -- the same one
+             sample as the inventory toggle, because to the player it is the
+             same gesture whichever screen it happens on. */
+          try { BT_AUDIO.play('ui-equip', { vol: 0.55 }); } catch (e) { /* sfx is never load-bearing */ }
           if (on) {
             R2.gearStash.push({ slot, gearId, name: gearName(slot, gearId) });
             setEquip(slot, 'none');
@@ -1500,7 +1505,12 @@ export const ItemDetailPopup = () => {
       setSellErr(why || (r && r.error) || 'The store could not take it');
     }
   };
-  const onClose = () => itemDetailBus.close();
+  /* v2.3.2637: closing a window, which is the owner's other ui-close case.
+     One definition, used by the backdrop tap and the X alike. */
+  const onClose = () => {
+    try { BT_AUDIO.play('ui-close', { vol: 0.5 }); } catch (e) { /* sfx is never load-bearing */ }
+    itemDetailBus.close();
+  };
 
   /* Final unequip handler: dispatch on target.kind. */
   const onUnequip = () => {

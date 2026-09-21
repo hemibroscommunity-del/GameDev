@@ -2877,6 +2877,29 @@ BT_AUDIO.SFX_MANIFEST = {
      joint-stereo of the original is untouched.  mp3 per the v2.3.1610 rule
      above (decodeAudioData refuses AAC outside Safari). */
   'level-up':      '/sfx/levelup/level-up-v1.mp3',
+  /* ═══ v2.3.2637: OWNER-SUPPLIED UI SOUNDS ═══
+     Owner: "One sound whenever you equip an item or unequip an item from
+     your inventory (same sound)" and "for closing a window (like quest pop
+     up) or toggling between the dashboard buttons".
+
+     ONE sample for equip AND unequip, by instruction -- the pair is one
+     gesture to the player ("I changed what I'm wearing"), not two events
+     needing two voices.
+
+     Both are short UI ticks rather than world sounds, so they are quieter
+     than the fanfares above: a sound you hear on every tap has to sit under
+     the ones you hear on an achievement, or it becomes the loudest thing in
+     the game. mp3, per the v2.3.1610 rule. */
+  'ui-equip':      '/sfx/ui/equip.mp3',
+  'ui-close':      '/sfx/ui/close.mp3',
+  /* v2.3.2637: the owner's NEW quest-completion sound, superseding the
+     v2.3.1746 fanfare above. Supplied under the filename "level up" but
+     assigned by its instruction -- "actually a sound that should play the
+     moment you complete a quest" -- not by its name; the existing 'level-up'
+     key is a DIFFERENT sound for an actual level and is untouched.
+     58KB against the old 114KB, and shorter, which suits the moment: the
+     completion banner is 2.2s and this resolves inside it. */
+  'quest-complete-v2': '/sfx/quest/quest-complete-v2.mp3',
 };
 
 /* Regular sword-hit alternation. The two samples cycle so a flurry of hits

@@ -1426,6 +1426,11 @@ export var BroTown = function BroTown(_ref0) {
   var toggleGearSlot = useCallback(function (slot) {
     setGearWorn(function (g) {
       var worn = !g[slot];
+      /* v2.3.2637: one sample for equip AND unequip, by owner instruction.
+         Fired HERE rather than inside setEquip: that is the shared store
+         setter and it also runs on login restore, which would play the tick
+         once per worn slot every time the game loads. */
+      try { BT_AUDIO.play('ui-equip', { vol: 0.55 }); } catch (e) { /* sfx is never load-bearing */ }
       setEquip(slot, worn ? GEAR_DEFAULT_ID[slot] : 'none');
       var ng = Object.assign({}, g);
       ng[slot] = worn;
