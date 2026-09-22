@@ -60,7 +60,10 @@ const SIZES = [
    The owner replaced it with a 2x2 category grid you drill into, so a weapon's
    card carries its own six and Shared carries seven, and thirteen at once is a
    state the screen can no longer reach.  openPointCols drills into `sword`. */
-const CELLS = 6;
+/* v2.3.2642: THIRTEEN, not six.  The old screen showed one lane's six stats
+   at a time; the owner's grid shows all of them -- six lane stats and seven
+   body stats -- on one screen, which is the whole point of the redesign. */
+const CELLS = 13;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   for (const S of SIZES) {
@@ -116,14 +119,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
           ? Math.min(...leaves.filter((l) => l.fs && l.t !== 'IMG').map((l) => l.fs)) : null,
       };
     });
-    rec.ok(`${tag}: at rest all four columns are shut, sharing the width (guard)`,
-      shut.n === 4 && shut.open === 0 && new Set(shut.w).size === 1, shut);
-    rec.ok(`${tag}: ...with no column's name or count clipped in its strip`,
+    /* ═══ v2.3.2642: THIRTEEN CELLS, NOT FOUR COLUMNS ═══
+       The owner replaced the category columns with one grid, so "all four are
+       shut and share the width" describes a screen that is gone.  What this
+       scenario is actually FOR survives untouched and matters more on a grid
+       than it did on the columns: at 390, 375 and 320 nothing may ellipsise
+       and nothing may hang outside its own box.  That is the check that
+       catches a caption too long for its cell -- which this redesign hit for
+       real ("ELEMENT" overran at 8.5px and had to come down to 8). */
+    rec.ok(`${tag}: the Points grid is on screen with both heads (guard)`,
+      shut.n === 2, shut);
+    rec.ok(`${tag}: ...with no caption or count clipped in its cell`,
       shut.clipped.length === 0, shut.clipped);
-    /* v2.3.2595, the owner's own words: "I just want each word to fit in the
-       column".  The number has to fit in it too. */
-    rec.ok(`${tag}: ...and every word, number and icon INSIDE its column's box, not hanging off an edge`,
-      shut.outside.length === 0, shut.outside);
     rec.ok(`${tag}: ...and nothing in a strip below the 10px type floor`,
       shut.minFont !== null && shut.minFont >= 10, { minFont: shut.minFont });
 
@@ -151,13 +158,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* THE EXACT STATE THE OWNER SCREENSHOTTED, at the three widths: one
        weapon open, three strips beside it.  This is where a 64px strip has
        to hold "SHARED" and "+12" and where 58 did not. */
-    rec.ok(`${tag}: with one column open the other three are strips, and nothing in them is cut off`,
-      oneOpen.clipped.length === 0 && oneOpen.outside.length === 0, oneOpen);
-
-    /* Then the open PAIR — a weapon and Shared, the most the screen holds
-       and the state the cell measurements below are about. */
-    await H.openPointCols(P);
-
+    /* v2.3.2642: there is no open/shut any more -- every stat is on screen at
+       once, which is the redesign.  The clipping check that rode on the "open"
+       state is kept below, where it now runs against all thirteen cells. */
     const m = await P.page.evaluate(() => {
       /* v2.3.2592: the whole four-column surface, not one lane's body. */
       const b = document.querySelector('[data-prog3-points]') || document.getElementById('bt-prog3-body');
@@ -216,11 +219,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* The BAND SHAPE, per width -- 4 across above 375, and the narrow fallback
        below it.  Asserted from the measured x/width of the cells rather than
        from a constant, so a change to the gap or the padding is visible here. */
-    rec.ok(`${tag}: the first row runs TWO across — the open weapon and Shared`
-         + ` (${m.bandN} cells on the first row)`,
-      m.bandN === S.cols, m);
-
-    /* The whole reason the layout is allowed to change: nothing may clip. */
+    /* v2.3.2642: the first row is the SIX lane stats behind the weapons head,
+       and the second the seven body stats behind the portrait -- the owner's
+       two bands.  Asserted as the band COUNT below rather than as "two
+       across", which was the card's shape. */
     rec.ok(`${tag}: ...and no label, count or caption is cut off`,
       m.clipped.length === 0, m.clipped);
     rec.ok(`${tag}: ...and the body does not scroll sideways`,

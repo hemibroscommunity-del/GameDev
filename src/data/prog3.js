@@ -164,7 +164,16 @@ export const PROG3_LEGACY_ATK = {
    with nothing to tell them apart.  `short` is the caption the owner's own
    glyph sheet uses, which is also the shortest form a player has already been
    taught to read.  `label` is untouched: it is what the confirm window, the
-   long-press title and every aria-label still say, and those have the room. */
+   long-press title and every aria-label still say, and those have the room.
+
+   ELEM, not ELEMENT, and that is a deliberate departure from the sheet's own
+   caption.  At 320px -- the narrowest viewport mp-statcols drives -- the cell
+   is 37px wide and "ELEMENT" wants 42, so it ellipsised.  The alternatives
+   were worse: dropping the type below 8px starts costing legibility on the
+   one word the cell exists to say, and a width-conditional label would put a
+   second spelling of every stat into the codebase.  The row already reads
+   MP, STAM, DEF and RESIST, so an abbreviation here is in keeping rather than
+   an exception. */
 export const PROG3_ATK_META = [
   { key: 'range',   label: 'Range', short: 'RANGE',     perText: '+0.5% reach',                        pct: true, unit: '% farther',        iconSrc: '/icons/ui/stat/range.png?v=2.3.2642',     capsProg3Shared: true, dpsNote: 'reach, not damage' , tint: '#842D95' },
   { key: 'dmg',     label: 'Power', short: 'POWER',     perText: '+0.5 damage per hit',                unit: ' dmg',                        iconSrc: '/icons/ui/stat/dmg.png?v=2.3.2642',            capsProg3x: true , tint: '#5C5851' },
@@ -176,7 +185,7 @@ export const PROG3_ATK_META = [
   /* v2.3.2512: elemental power, per weapon — burns/roots/thorns and element
      collisions from THIS weapon scale off it.  The detonation drawing is
      still the closest the repo has; swap the day a dedicated icon exists. */
-  { key: 'elem',    label: 'Element', short: 'ELEMENT',   infoKey: 'Elemental', perText: '+1 elemental power',                 unit: ' power',                      iconSrc: '/icons/ui/stat/elem.png?v=2.3.2642', capsProg3Elem: true , tint: '#48239F' },
+  { key: 'elem',    label: 'Element', short: 'ELEM',   infoKey: 'Elemental', perText: '+1 elemental power',                 unit: ' power',                      iconSrc: '/icons/ui/stat/elem.png?v=2.3.2642', capsProg3Elem: true , tint: '#48239F' },
   /* The RETIRED pair, drawn only against a worker that has not folded them
      into Luck — that worker still rolls off crit and critDmg, so those are
      the rows it must show (rule 19).  Same copy they shipped with. */
