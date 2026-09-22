@@ -325,6 +325,20 @@ capped mechanic in §4c are untouched.
   (noticeability band, never-smaller, the vigor/ironskin anchors,
   crit-pair parity, decay monotonicity).
 
+## 4e. Relative point value — **DESIGN NOTE v2.3.2642** (owner ask 2026-09-22)
+
+The §4d ask, made again of the prog3 allocation grid: *"points carry a lot
+of weight at or under the current level monster with a pretty steep decay
+as the combat levels go up (benefit nearly gone after 5 combat levels)…
+trade slow but universal point value for relative point value."* §4d locked
+a point's value at spend time and let monsters outgrow it; this evaluates the
+point against the monster you are fighting, per hit — 100 % at or below
+your character level, −20 % per level above, 0 at +5 — and reprices the
+seven per-hit stats 2.5–3× heavier with caps that many times smaller (same
+effect at cap, reached by level ~25–40). Measured with the real server roll
+and sink in `tools/relative-points-sim.mjs`; decisions, call sites, the v18
+migration and the tests are in `docs/specs/relative-points.md`. Not shipped.
+
 ## 5. Hardening v1 (rare chase) — adopted spec
 
 GDD §4.6c verbatim, flagged for a future server-side PR:

@@ -392,6 +392,13 @@ Points screen.
   persistence) opt their fixtures out of prog3 with a tagged comment —
   that coverage guards the fail-open path until the cleanup PR deletes
   it.
+- **Proposed, not shipped (v2.3.2642):** relative point value — placed
+  points at full strength against monsters at or below your character
+  level, fading 20 % per level above, gone at +5, with the seven per-hit
+  stats repriced 2.5–3× heavier and capped in that many fewer points.
+  Design note + referee: `docs/specs/relative-points.md`,
+  `tools/relative-points-sim.mjs`. Nothing in this spec changes until the
+  owner marks its checklist.
 
 ## The four-column points redesign (v2.3.2592)
 
