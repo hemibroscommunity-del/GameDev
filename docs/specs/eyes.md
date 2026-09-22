@@ -1,4 +1,4 @@
-# Eye styles (v2.3.2643)
+# Eye styles (v2.3.2644)
 
 **Shipped:** Sleepy Eyes, One Eye, Demon Eyes, WTF Eyes — south, southwest and
 east, plus their runtime mirrors.
@@ -140,9 +140,9 @@ Its test: a pixel that sits off **all three** base-colour segments
 endpoints, because the resampling blend band along every edge lies *on* those
 segments — which is what lets the tolerance stay tight enough to keep the Sleepy
 style's near-black navy (63 off the ink→skin segment, against under 12 for the
-widest blend band on these sheets). Then: blobs under `--min-blob` go (speckle),
-each survivor reaches `--grow` px into adjacent ink so a drawn eye keeps its own
-outline, and holes are filled so a pupil inside a white eye survives.
+widest blend band on these sheets). Then blobs under `--min-blob` go (speckle),
+and the drawing's own dark parts are brought back — see below, because how that
+is done is the whole of the One Eye's missing pupil.
 
 It finds the skin rather than assuming it — the WTF sheet came back at
 `rgb(227,152,79)` against `rgb(201,133,77)` for the other three, the same lesson

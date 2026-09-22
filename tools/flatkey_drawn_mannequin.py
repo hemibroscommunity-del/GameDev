@@ -37,9 +37,12 @@ Three colour classes describe an untouched mannequin cell completely -- the
 magenta backdrop, one flat skin tone, and near-black ink -- plus the blends
 between them that the generator's resampling leaves along every edge.  A pixel
 that sits off all three of those segments was painted by hand, and that is the
-whole test.  Blobs under --min-blob are dropped (resampling speckle), then each
-surviving blob is grown by --grow into adjacent ink so a drawn eye keeps its own
-outline, and its holes are filled so a pupil inside a white eye survives.
+whole test.  Blobs under --min-blob are dropped (resampling speckle), and the
+drawing's own dark parts -- an eye's outline AND its pupil, both near-black and
+so both read as mannequin by that test -- are brought back by FOLLOWING the ink
+that touches the art rather than reaching a fixed distance into it.  v2.3.2644;
+the reasoning, and the hollow pupil that forced it, is on the propagation itself
+in key_sheet().
 
 Run from the repo root:
 
