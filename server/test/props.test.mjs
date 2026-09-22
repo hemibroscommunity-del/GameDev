@@ -21,7 +21,7 @@
  * and owns the cross-check that both sides resolve the same lines.
  */
 import { GameRoom } from '../src/index.js';
-import { attackBlocked, ZONE_PROPS } from '../src/props.js';
+import { attackBlocked, slideMove, ZONE_PROPS } from '../src/props.js';
 
 const mockState = {
   storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
@@ -129,6 +129,48 @@ check('...and emits no monster_attack event for the blocked swing',
 ps.x = 900; ps.y = 900;
 const openGround = strikeFrom(900, 950);
 check('on open ground nothing is blocked', openGround > 0, { openGround });
+
+/* ── 3. monsters stop at props too (v2.3.2646) ──
+   The ridge box is x 329..531, y 528..570; slideMove pads by the player's own
+   collision half-width (10), so the effective wall is x 319..541, y 518..580. */
+{
+  const at = (x, y, nx, ny) => slideMove('frost', x, y, nx, ny);
+
+  const straightIn = at(430, 500, 430, 522);
+  check('a monster walking straight into the ridge is stopped',
+    straightIn.x === 430 && straightIn.y === 500, straightIn);
+
+  const clear = at(430, 480, 430, 490);
+  check('...but an unobstructed step is taken in full',
+    clear.x === 430 && clear.y === 490, clear);
+
+  /* THE SLIDE is the whole reason this is not a flat refusal: a diagonal into
+     the rock face must keep its legal component, or the monster sticks and
+     vibrates against the wall for as long as you stand behind it. */
+  const diag = at(430, 500, 445, 522);
+  check('a diagonal into the face SLIDES along it rather than sticking',
+    diag.x === 445 && diag.y === 500, diag);
+
+  /* Past the west end of the ridge (x < 319) the same southward step is legal,
+     which is what "walking around it" looks like. */
+  const around = at(300, 500, 300, 522);
+  check('...and the same step past the end of the ridge is free',
+    around.x === 300 && around.y === 522, around);
+
+  /* A monster spawned or leashed INSIDE a footprint must be able to leave;
+     trapping it makes a monster you cannot fight. */
+  const inside = at(430, 550, 430, 560);
+  check('a monster already inside the ridge can still move',
+    inside.x === 430 && inside.y === 560, inside);
+
+  /* Zones with no props must not pay for a test they cannot fail. */
+  const empty = slideMove('meadow', 0, 0, 10, 10);
+  check('a zone with no props takes every move',
+    empty.x === 10 && empty.y === 10, empty);
+  const unknown = slideMove('__proto__', 0, 0, 10, 10);
+  check('an unknown zone takes every move',
+    unknown.x === 10 && unknown.y === 10, unknown);
+}
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

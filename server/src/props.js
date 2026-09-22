@@ -117,3 +117,60 @@ export function attackBlocked(zoneId, x0, y0, x1, y1) {
   }
   return false;
 }
+
+/* ═══ v2.3.2646: AND MONSTERS STOP AT THEM TOO ═══
+ *
+ * v2.3.2645 made a prop stop an ATTACK.  It left the sillier half untouched:
+ * the worker has no collision of any kind, so a snowman walked straight
+ * THROUGH the rock ridge whose hits it could no longer land past.  A monster
+ * gliding through a rock is more obviously broken than one whose swing is
+ * refused, and it undercuts the cover rule -- take cover and the thing you
+ * are hiding from simply walks into you.
+ *
+ * ── AXIS SLIDE, NOT A FLAT REFUSAL ──
+ * Refusing any blocked step is the naive version and it STICKS: a monster
+ * chasing diagonally into a flat rock face stops dead and vibrates against it
+ * for as long as you stand there, because every tick asks for the same
+ * rejected move.  Trying the two axes separately lets it slide along the face
+ * and round the corner, which is the standard cheap fix and looks like it is
+ * walking around the rock rather than failing to walk into it.
+ *
+ * ── A POINT TEST IS ENOUGH HERE, AND HERE IS WHY ──
+ * No swept test: a monster's step is m.spd per tick -- a snowman chases at
+ * ~18px/s, so under 2px a tick -- against footprints 27 to 220px deep.  There
+ * is no step size in the game that can tunnel one.  If a fast archetype is
+ * ever added, this is the assumption to revisit.
+ *
+ * `pad` matches the player's own collision half-width (PLAYER_HS = 10,
+ * zoneTransitions.js) so a monster stops the same distance off a rock as you
+ * do; without it the two would crowd to different lines against the same wall
+ * and the rock would look like it had two edges.
+ *
+ * ── STARTING INSIDE NEVER BLOCKS ──
+ * Same rule as the attack test, for the same reason: monsters are spawned and
+ * leashed without consulting geometry, so one WILL end up inside a footprint.
+ * Trapping it there forever is worse than letting it walk out, and a monster
+ * that cannot leave a rock is a monster you cannot fight.
+ */
+const MONSTER_PAD = 10;
+
+/** Resolve a desired move against the zone's props.
+ *  Returns the position actually taken — the full move, an axis slide, or the
+ *  original point. */
+export function slideMove(zoneId, x, y, nx, ny, pad) {
+  const boxes = boxesFor(zoneId);
+  if (!boxes.length) return { x: nx, y: ny };
+  const p = pad === undefined ? MONSTER_PAD : pad;
+  const blocked = (px, py) => {
+    for (let i = 0; i < boxes.length; i++) {
+      const b = boxes[i];
+      if (px > b.x0 - p && px < b.x1 + p && py > b.y0 - p && py < b.y1 + p) return true;
+    }
+    return false;
+  };
+  if (blocked(x, y)) return { x: nx, y: ny };   /* already inside: walk out freely */
+  if (!blocked(nx, ny)) return { x: nx, y: ny };
+  if (!blocked(nx, y)) return { x: nx, y };      /* slide along the face, X */
+  if (!blocked(x, ny)) return { x, y: ny };      /* ...or Y */
+  return { x, y };
+}

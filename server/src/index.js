@@ -163,7 +163,7 @@ import { arrowBlastMethods } from './arrowblast.js'; /* v2.3.2279: the bow speci
 // v2.3.1983: population-scaled spawns -- monsters and gather nodes sized to
 // how many players are standing in THAT zone -- see spawnscale.js.
 import { spawnScaleMethods } from './spawnscale.js';
-import { attackBlocked } from './props.js'; /* v2.3.2645: a rock in the way stops a monster's hit */
+import { attackBlocked, slideMove } from './props.js'; /* v2.3.2645: a rock stops a monster's hit; v2.3.2646: and its feet */
 
 /* ═══ v2.3.2113: AN ERROR IN HERE MUST NOT LOOK LIKE AN OUTAGE ═══
  * Owner, of tools/draw: "This tool says can't reach the game server anymore."
@@ -2106,8 +2106,14 @@ export class GameRoom {
                 m._kbDebt -= repay;
                 if (m._kbDebt < 0.01) m._kbDebt = 0;
               }
-              m.x += (dx / dist) * step;
-              m.y += (dy / dist) * step;
+              /* v2.3.2646: props stop the chase too -- see slideMove. The
+                 three movement sites (chase, leash, wander) all route through
+                 it rather than each growing its own test, because a monster
+                 that respects a rock while chasing and glides through it while
+                 wandering is worse than one that ignores it consistently. */
+              const _mv = slideMove(zoneId, m.x, m.y, m.x + (dx / dist) * step, m.y + (dy / dist) * step);
+              m.x = _mv.x;
+              m.y = _mv.y;
               this._markMonsterDirty(zoneId, m.id);
             }
           }
@@ -2255,8 +2261,12 @@ export class GameRoom {
           } else if (distSpawn > WANDER_LEASH) {
             const dxL = m.spawnX - m.x;
             const dyL = m.spawnY - m.y;
-            m.x += (dxL / distSpawn) * m.spd * ccMoveMult;
-            m.y += (dyL / distSpawn) * m.spd * ccMoveMult;
+            /* v2.3.2646: the walk home respects props as well. */
+            const _mvL = slideMove(zoneId, m.x, m.y,
+              m.x + (dxL / distSpawn) * m.spd * ccMoveMult,
+              m.y + (dyL / distSpawn) * m.spd * ccMoveMult);
+            m.x = _mvL.x;
+            m.y = _mvL.y;
             this._markMonsterDirty(zoneId, m.id);
             m._wanderTx = null;
             m._wanderTy = null;
@@ -2292,8 +2302,12 @@ export class GameRoom {
               m._wanderPausedUntil = now + WANDER_PAUSE_MIN_MS
                 + Math.random() * (WANDER_PAUSE_MAX_MS - WANDER_PAUSE_MIN_MS);
             } else {
-              m.x += (dxw / distw) * m.spd * ccMoveMult;
-              m.y += (dyw / distw) * m.spd * ccMoveMult;
+              /* v2.3.2646: ...and so does the idle wander. */
+              const _mvW = slideMove(zoneId, m.x, m.y,
+                m.x + (dxw / distw) * m.spd * ccMoveMult,
+                m.y + (dyw / distw) * m.spd * ccMoveMult);
+              m.x = _mvW.x;
+              m.y = _mvW.y;
               this._markMonsterDirty(zoneId, m.id);
             }
           }
