@@ -290,7 +290,7 @@ Everything done to the art since the import, and how to redo it:
 | the bro's own ear painted out beside the new one (SW, NE) | the SW/NE PNGs | `node tools/species-cover-ears.mjs --id monkey` after any re-import |
 | muzzle pulled back 3px jogging east/west | `meta.poseNudge.jog.east` | — |
 | MEASURED pose sizes, not the legacy hat guesses | `meta.poseFit` + `meta.scaleByPose` | — |
-| 196 of 231 frames fixed one by one | `tools/species-fixes/monkey.json` → `frames/*.png` + `meta.frameOverlays` | `python3 tools/species_frames.py bake --id monkey` |
+| 196 of 231 frames fixed one by one (eyes, rotation, parts) | `tools/species-fixes/monkey.json` → `frames/*.png` + `meta.frameOverlays` | `python3 tools/species_frames.py bake --id monkey` |
 
 **See every frame** with `python3 tools/species_contact_sheet.py --id monkey
 --out <dir>` (one labelled sheet per animation; `*` marks a baked frame, drawn
@@ -314,7 +314,17 @@ north and northeast jog/pickup/fish/mine frame — each ear is moved so it
 overlaps the head side by exactly what it does at stand (4px south/north, 3px
 the NE far ear), which is what hides the human ear; fish — a crown-relative
 fur patch for the right ear's last 2px; mine 0-3, 12-13 — the pickaxe is
-drawn in front of the piece.
+drawn in front of the piece; every mine frame — the head tilts ~18° clockwise
+(measured from the eye line, 15-25° across the strip), so the muzzle does too
+(v2.3.2654); pickup 16-27 and fish — EYES (v2.3.2654): the art draws them as
+solid dark blobs there and `eyeMask.json` has no entry for those frames, so no
+eye colour is ever painted and on fur they read as black holes; the overlay
+paints the eye's white stripe (left half of the eye, below the lid, in
+`eyeColorCatalog`'s `white`) the way a standing eye has one. **That eyeMask gap
+is pre-existing and affects every player**, not just the monkey: a blue-eyed
+human loses the blue while fishing and in the back half of a pickup (mine has
+no eyeMask entry either). The real fix is extending `eyeMask.json`, which is
+its own reviewed job.
 
 **The renderer contract, for whoever wires the species layer:**
 

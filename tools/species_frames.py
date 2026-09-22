@@ -27,6 +27,13 @@ A fix is expressed against the normal placement, per frame (or frame range
         is the TOPMOST opaque pixel, which on a few hit frames (north 3-4,
         northeast 3-5) is the raised fist, not the head -- the parts are then
         placed against the real head.
+    "eyes": [[x0, x1, y0, y1], ...]
+        v2.3.2654: paint the eye's white stripe (EYE_WHITE) over the body's
+        DARK pixels inside the box.  Standing, an eye is a black block with a
+        white stripe down its left side (the region eyeMask.json recolours);
+        on pickup 16-27 and every fish frame the art draws the eye as a solid
+        dark blob and eyeMask has no entry, so on fur it reads as a black hole.
+        The boxes are generated from the eye blobs, not hand-drawn.
     "front": [[x0, x1, y0, y1], ...]
         inside the box, the body's TOOL pixels -- blue-grey metal (not skin,
         blue >= red, lum > 90: the pickaxe) plus the dark outline touching
@@ -262,6 +269,21 @@ def apply_front(layer, body_raw, boxes):
     return layer
 
 
+EYE_WHITE = (238, 241, 245)    # eyeColorCatalog.js 'white' -- the art's own is 206-255
+
+
+def apply_eyes(layer, body_raw, boxes):
+    dark = (body_raw[:, :, 3] > 40) & (lum(body_raw) < 90)
+    for x0, x1, y0, y1 in boxes:
+        box = np.zeros_like(dark)
+        box[y0:y1 + 1, x0:x1 + 1] = True
+        m = box & dark & (layer[:, :, 3] == 0)
+        for i in range(3):
+            layer[:, :, i] = np.where(m, EYE_WHITE[i], layer[:, :, i])
+        layer[:, :, 3] = np.where(m, 255, layer[:, :, 3])
+    return layer
+
+
 def expand(spec):
     """{"1-3": x, "5": y} -> {1: x, 2: x, 3: x, 5: y}"""
     out = {}
@@ -279,6 +301,8 @@ def fixed_layer(pose, d, f, meta, tops, tex, fix, tone):
     layer = place(pose, d, f, meta, tops, tex, fix)
     if fix.get('cover'):
         layer = apply_cover(layer, raw, fix['cover'], tone, muzzle_tan(tex, d))
+    if fix.get('eyes'):
+        layer = apply_eyes(layer, raw, fix['eyes'])
     if fix.get('front'):
         layer = apply_front(layer, raw, fix['front'])
     return layer
