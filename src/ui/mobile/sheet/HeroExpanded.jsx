@@ -1425,7 +1425,7 @@ export const HeroExpanded = () => {
                Merging in the owner's own direction keeps all of it: InfoPopup
                already had an `action` slot rendering a gold button beside "Got
                it", which is precisely "asks you to confirm at the bottom". */
-            /* ═══ v2.3.2644: ONE DEFINITION OF "SPEND THIS POINT" ═══
+            /* ═══ v2.3.2645: ONE DEFINITION OF "SPEND THIS POINT" ═══
                The confirm window can now CHANGE which weapon the point goes
                to (the tab row the owner drew), which means the window has to
                be able to rebuild its own spend for the lane you picked --
@@ -1553,7 +1553,7 @@ export const HeroExpanded = () => {
                     blocked: spend.blocked,
                     run: spend.run,
                   } : undefined,
-                  /* ═══ v2.3.2644: THE LANE IS CHOSEN HERE NOW ═══
+                  /* ═══ v2.3.2645: THE LANE IS CHOSEN HERE NOW ═══
                      Owner: "The button to change which of the 3 combat skills
                      it's applied to ... is a tab in the confirm window.  This
                      should be for every allocable stat."
@@ -2028,7 +2028,7 @@ export const HeroExpanded = () => {
                Defaults to the weapon you are holding (prog3ActiveCat), which
                is the reading this file has used for buildCat since v2.3.1668.
                ═══════════════════════════════════════════════════════════ */
-            /* ═══ v2.3.2644: BIGGER TYPE, SMALLER GLYPH, TALLER CELL ═══
+            /* ═══ v2.3.2645: BIGGER TYPE, SMALLER GLYPH, TALLER CELL ═══
                Owner: "There is some room at the bottom of the screen to expand
                a little bit.  The numbers and font need to be larger and the
                icons can shrink a bit."
@@ -2121,7 +2121,7 @@ export const HeroExpanded = () => {
 
             /* The head of each row: the weapons cell picks which lane the six
                stats above belong to, the portrait just names the shared row. */
-            /* ═══ v2.3.2644: THE WEAPON ROW IS A LABEL, NOT A CONTROL ═══
+            /* ═══ v2.3.2645: THE WEAPON ROW IS A LABEL, NOT A CONTROL ═══
                Owner: "The weapon icon row is not meant to be button.  The
                button to change which of the 3 combat skills it's applied to is
                shown in the second attached image.  It's a tab in the confirm
@@ -2613,7 +2613,7 @@ export const HeroExpanded = () => {
                   cue that there is more, which this screen has instead of a
                   scroll-edge fade (the fade was removed at v2.3.2288 because
                   the owner said "the last row is faded at the bottom"). */}
-              {/* ═══ v2.3.2644: THE DPS STRIP IS GONE ═══
+              {/* ═══ v2.3.2645: THE DPS STRIP IS GONE ═══
                   Owner: "remove the top row explainer about DPS."  It carried
                   two things and both have somewhere better to be: the resting
                   DPS is on the Equipment screen beside the weapon that earns

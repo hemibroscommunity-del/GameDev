@@ -211,7 +211,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${label}: ...and no caption is clipped (every cell prints a label)`,
       !!grid && grid.labels.every((t) => t && t.trim().length > 1), grid && grid.labels);
 
-    /* ═══ THE HEAD IS A LABEL; THE CONFIRM WINDOW PICKS THE LANE (v2.3.2644) ═══
+    /* ═══ THE HEAD IS A LABEL; THE CONFIRM WINDOW PICKS THE LANE (v2.3.2645) ═══
        Owner: "The weapon icon row is not meant to be button.  The button to
        change which of the 3 combat skills it's applied to ... is a tab in the
        confirm window."  So the old "tapping the head switches the lane"
@@ -264,7 +264,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${label}: ...which opens the spend window`, !!win0, win0);
     rec.ok(`${label}: ...and NOTHING was spent by opening it (a mis-tap costs a window, not a point)`,
       JSON.stringify(await pools(P)) === JSON.stringify(before));
-    rec.ok(`${label}: the window carries the THREE weapon tabs (v2.3.2644)`,
+    rec.ok(`${label}: the window carries the THREE weapon tabs (v2.3.2645)`,
       !!win0 && win0.keys.length === 3, win0 && win0.keys);
     rec.ok(`${label}: ...opened on the lane the cell belonged to`,
       !!win0 && win0.active === lane0, { want: lane0, got: win0 && win0.active });

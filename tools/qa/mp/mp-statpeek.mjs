@@ -82,7 +82,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return el ? (el.innerText || '') : '';
   });
 
-  /* ═══ v2.3.2644: THE STRIP IS GONE BY INSTRUCTION ═══
+  /* ═══ v2.3.2645: THE STRIP IS GONE BY INSTRUCTION ═══
      Owner: "remove the top row explainer about DPS."  So "at rest the strip
      carries the overall DPS" is now asserting a row the owner asked to have
      taken out, and the honest form of it is the ABSENCE -- the kind of thing
@@ -117,7 +117,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      wrong cell rather than the cell answering wrongly.
      So the lane is now SELECTED, by tapping the weapons head until it reads
      sword -- the grid's own control, the way a player would. */
-  /* ═══ v2.3.2644: THE LANE IS PICKED IN THE WINDOW NOW ═══
+  /* ═══ v2.3.2645: THE LANE IS PICKED IN THE WINDOW NOW ═══
      The head cell stopped being a control in the same change that moved the
      lane choice into the confirm window's tab row, so cycling it selects
      nothing.  The requirement above is unchanged and is the reason this block
@@ -174,7 +174,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     return act() === 'sword';
   });
-  rec.ok('...and the window\'s tabs could aim it at the SWORD lane (v2.3.2644 — the head no longer selects)', aimed);
+  rec.ok('...and the window\'s tabs could aim it at the SWORD lane (v2.3.2645 — the head no longer selects)', aimed);
   await P.page.waitForTimeout(400);
   const popup = await P.page.evaluate(() => {
     const card = document.querySelector('[data-infopopup-card]');
