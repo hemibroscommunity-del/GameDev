@@ -133,35 +133,72 @@ eyes are not a layer" — and an ear is the same kind of thing.
    disk resolutions. None of the rejected anchors agree with themselves that
    closely.
 
-### Why Stage 2 is not shipped
+### Stage 2a — the review harness (SHIPPED v2.3.2644)
 
-That fourth anchor reaches **297 of 823 frames**, and the gaps are *inside*
-animation cycles. `jog-east` anchors frames 0,5,6,10,11,12,14,19,20,24,25,26 of
-28 — so **the ears would strobe on and off as you run**, which is worse than
-having none. `north` and `northeast` have no coverage at all, because from
-behind there are no eyes to mask — and turning your back should not make ears
-vanish.
+The blocker at v2.3.2643 was coverage: the reviewed-iris rule fired on only 297
+of 823 frames, with gaps *inside* cycles, so ears would have strobed as the
+player ran. Two things fixed most of that, and a third stopped a real bug from
+shipping.
 
-**And "just fix the walker" is also dead, measured.** Combining
-`_headBoxInFrame`'s run-overlap walk with `derive_body_anchors.py`'s
-peak-then-neck logic covers 573/823 frames but agrees with the eye-anchored
-placement only 65.5% of the time, and every disagreement is a pose where a
-**raised arm touches the head** (`bow-east` 25-51px out, `bow-south` 108px).
-Once the arm is contiguous with the skull they are genuinely one run, and no
-geometric test separates them. That is why the eye tool shipped reviewed data
-instead of a cleverer predicate.
+**Interpolation, because a head does not teleport.** The sparse measured frames
+became seeds and the frames between them are lerped along the strip. A run
+cycle moves the head a couple of pixels per frame, so between two measured
+frames a straight line is bounded on both sides by a measurement — not a search
+that can be wrong. **Reviewed on `jog-east`: the interpolated ears are
+indistinguishable from the measured ones across all 28 frames and stay locked
+to a head that bobs ~6px.** The result is that *every sheet with any iris data
+ends up 100% covered*, which is what removed the strobing.
 
-So the real Stage 2 cost is **its own reviewed landmark pass**: a derivation
-robust across all 823 frames, checked as a contact sheet the way
-`tools/eyes/extract-eye-mask.mjs` was, including a back-of-head landmark for
-north/northeast. Then the painter (`_paintEars` in the recolour pass, ear
-profiles scaled to head width, skin tone + outline), and a visual iteration
-pass — the ears are ~4px at play scale, so how they read is a judgement that
-needs looking at, not just measuring.
+**The walker was rejected by looking at it.** The silhouette walker had been
+allowed on strips with no iris (north/northeast). The contact sheet showed it
+placing the ears **on the shoulders** — its "widest row" is the deltoid line,
+not the ear line. Removed rather than shipped; that is what the red tier was
+for, and it cost 192 frames of fake coverage.
 
-`tools/ears/derive-ear-anchors.mjs` is committed as the foundation: it proves
-the attachment rule, and it records all three dead ends so the next session
-does not re-walk them.
+**The ear rule itself was wrong in profile.** Drawing both ears put one of them
+**on the character's nose and mouth** on every `east` frame. Now in
+`src/rendering/earSides.js`: profile facings paint the rear ear only, and
+because the renderer draws `west` from the flipped `east` sheet, authoring it
+once for east is automatically correct for west. Front, back and 3/4 views keep
+both ears (checked on `stand-south` and `stand-southwest`).
+
+None of those three were findable by measurement. They came from rendering the
+proposal onto the real frames and looking, which is the whole argument for the
+harness.
+
+### Where the coverage actually stands
+
+Counting only sheets that *should* have ears (armour overlays have the helmet
+erased and take the head from a `*-head` sheet; `*-weapon` sheets have no head;
+`welcome-bro` is an orphan nothing references):
+
+**417 of 712 frames — 59%.** And the shape of the remainder is clean: no sheet
+is partially covered. A sheet either has iris data and interpolates to 100%, or
+has none and sits at 0.
+
+| | state |
+|---|---|
+| **Done** (east / south / southwest) | `stand` `jog` `attack` `bow` `sword` `dodge` `pickup` — all 100% |
+| **No landmark** (33 sheets, 295 frames) | everything `north` / `northeast`, plus `hit` (all five dirs), `fish`, `mine`, `bow-south-body/torso` |
+
+So a player walking toward the camera or in profile has ears; facing away, or
+mid-recoil, mining or fishing, does not.
+
+**The gap is not fixable by extending the eye tool.** It was re-run at
+v2.3.2644 and finds the same 34 sheets / 302 frames: its skin-based iris
+discriminator genuinely cannot find eyes in the `hit` (face distorted by
+recoil), `mine`, `fish` or back-facing sheets. So those 33 sheets need a
+landmark of their own — a crown-anchored one is the obvious candidate, since
+`body-tops.json` gives the topmost opaque pixel with no detection at all and is
+therefore trustworthy — followed by its own contact-sheet review. That is the
+next piece of work, and it is the last thing between here and the painter.
+
+### What is left after that
+
+The painter (`_paintEars` in the recolour pass, ear profiles scaled to head
+width, skin tone plus outline), then the species axis and its wiring, then a
+visual pass at play scale — the ears are ~4px there, so how they *read* is a
+judgement, not a measurement.
 
 ### The muzzle and the eyes
 

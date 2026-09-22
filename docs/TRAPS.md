@@ -3877,3 +3877,57 @@ that closing the gap actually needs.
 **Related:** §53 (a canvas round-trip destroys the rim pixels any of this is
 measured from — which is why the tooling here reads PNGs through `tools/png.mjs`
 and never a 2D canvas).
+
+## 91. Coverage that came from the tier you were about to delete (v2.3.2644)
+
+**Tempting:** you have a per-frame placement in confidence tiers — some
+measured, some guessed — and the headline number looks good. 703 of 823 frames.
+Ship it, or at worst spot-check the measured ones.
+
+**Wrong, twice over, and only looking at it shows either.**
+
+### The guessed tier was not slightly off, it was somewhere else
+
+The species ears were placed in three tiers: `eye` (scan out from a
+human-reviewed iris), `interp` (lerp between two `eye` frames), and `walk` (a
+silhouette walker, used only on strips with no iris — north/northeast, where
+you are looking at the back of the head). The walker agreed with the measured
+placement 65.5% of the time where both fired, which sounds like a tuning
+problem.
+
+Rendered onto the actual frames, it put **the ears on the shoulders**. Its
+"widest row" is the deltoid line, not the ear line. Not a constant away from
+right — a different body part. It was 192 of those 703 frames, so deleting it
+cost 27% of the headline coverage and *gained* correctness.
+
+### The other 27% was load-bearing, and is fine
+
+`interp` sounds like the weaker idea and is the strong one, because it is
+bounded on both sides by a measurement rather than by a search. A head moves a
+couple of pixels per animation frame and does not teleport, so across
+`jog-east`'s 28 frames the interpolated ears are indistinguishable from the
+measured ones. It is what turns "297 sparse frames" into "every sheet with any
+iris data is 100% covered", which is what removed the strobing that blocked
+v2.3.2643.
+
+**So confidence tiers are not a ranking you can trust by name.** One guess was
+worthless and one was as good as a measurement; which was which came from the
+contact sheet, not from how they were derived.
+
+### And the rule being placed was wrong independently of where
+
+Same review, separate bug: painting an ear on *both* sides of the head put one
+of them **on the character's nose and mouth** in every profile frame. The
+geometry was right and the anatomy was wrong. Fixed in
+`src/rendering/earSides.js` — profile paints the rear ear only, and since the
+renderer draws `west` from the flipped `east` sheet, authoring it once for east
+covers both.
+
+**The rule:** before shipping a per-frame placement, **render the proposal onto
+the frames and look at it**, tier by tier. `tools/eyes/extract-eye-mask.mjs`
+said this first — *"the runtime only ever applies a list someone has looked
+at"* — and every one of the three findings here was invisible to measurement.
+
+**Receipt:** `node tools/ears/ear-anchors.mjs --report` for the tiers,
+`node tools/ears/ear-contact-sheet.mjs --cell 224 --only stand-east` for the
+profile bug. §90 has the four anchors that never worked at all.
