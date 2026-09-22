@@ -1591,13 +1591,30 @@ export class GameRoom {
        telegraphed ability at once.  Gating each caller instead would be four
        places to keep in step and a fifth that gets forgotten.
 
-       `atkX/atkY` is where the attack came FROM -- the thrower for a ball, the
-       monster for a swing -- which is exactly the endpoint the line has to be
-       measured from, and it is already computed for the block arc below.  For
-       an in-flight snowball that is the RELEASE point, not the monster's
-       current position: a ball thrown on a clear line is not retroactively
-       stopped by the thrower wandering behind a rock, which is the honest
-       reading of "committed" that v2.3.1640 gave the ball already.
+       `atkX/atkY` is where the attack came FROM for the CONTACT attacks --
+       telegraph.js passes m.x/m.y for both the swing and the burrow surface --
+       which is exactly the endpoint the line has to be measured from, and it is
+       already computed for the block arc below.
+
+       v2.3.2656 -- READ THIS BEFORE TRUSTING THE LINE ABOVE.  The original
+       version of this comment claimed atkX/atkY was "the thrower for a ball,
+       the monster for a swing", and that the snowball case measured from the
+       RELEASE point.  That was wrong, and wrong in the direction that hides
+       itself: the ranged caller (the in-flight snowball at the top of the
+       monster loop) passes the PLAYER's position, because the event's
+       attackerX/attackerY must be the impact point to clear the client's 160px
+       guard -- as the header above this method says in as many words.  So for
+       a thrown ball this test measured a zero-length segment from the player to
+       themselves and blocked nothing, while the comment asserted otherwise.
+       Snowballs sailed through rocks for four commits.
+
+       So this is NOT the one choke point for line-of-sight, whatever it is for
+       damage: the ranged path tests its own flight line (release -> aim point)
+       at the impact tick, where both ends are actually known.  Two tests,
+       because there are genuinely two geometries -- a contact attack comes from
+       the attacker, a thrown one comes from wherever it was released, and no
+       single pair of coordinates is honestly both.  If you add a third attack
+       shape, ask which of those it is before assuming this line covers it.
 
        SILENT, like the dodge and the harvester shield: no monster_attack
        event, so the client draws nothing rather than a "0" it would have to
@@ -1936,8 +1953,48 @@ export class GameRoom {
              believed they took. */
           const _hit = _tps && (typeof _ptx !== 'number' ||
             Math.hypot((_tps.x || 0) - _ptx, (_tps.y || 0) - _pty) <= this.SNOWBALL_HIT_RADIUS);
+          /* ═══ v2.3.2656: A ROCK IN THE WAY STOPS THE BALL TOO ═══
+             Owner: "snowmen are still throwing snowballs through the props."
+             They were, and the reason is a bad assumption in v2.3.2652.
+
+             That change put one line-of-sight test in _monsterStrikePlayer
+             because it is the ONE choke point every monster->player hit funnels
+             through, and asserted in its own comment that the atkX/atkY it
+             measures from is "the thrower for a ball, the monster for a swing".
+             That is true of the two MELEE callers (telegraph.js passes m.x/m.y
+             for the swing and the burrow, and those really are blocked).  It is
+             false here: this call site passes _tps.x/_tps.y -- the PLAYER's own
+             position -- because the event's attackerX/attackerY must be the
+             IMPACT point or the client's 160px attacker-distance guard drops
+             the hit (see the header on _monsterStrikePlayer).  So the test it
+             ran for a snowball was a zero-length segment from the player to
+             themselves, which cannot cross anything.  It never blocked a ball.
+
+             The honest fix is not to bend atkX/atkY -- that field has a real
+             job -- but to test the line the ball actually flew, here, where
+             both of its ends are known: release point (frozen at throw,
+             telegraph.js) to aim point (frozen in the same breath).  Neither
+             end is the player's current position, and that is deliberate: the
+             ball is committed to the line it was thrown on, so walking sideways
+             into cover after the throw does not retroactively save you, and the
+             thrower wandering behind a rock does not retroactively stop it.
+
+             AHEAD of the shield-arc branch below, because a ball that hit a
+             rock never reached the shield -- crediting a block there would draw
+             a BLOCK popup for an attack that died 200px away.  Silent, like the
+             dodge and the harvester shield: the client already draws the ball
+             bursting against the prop (projectiles.js), which is the feedback.
+
+             Pre-v2.3.2656 balls already in the air across a deploy carry no
+             _projFrom*, so fall back to the thrower's position: slightly wrong
+             for one flight, rather than throwing on a missing field. */
+          const _pfx = typeof m._projFromX === 'number' ? m._projFromX : m.x;
+          const _pfy = typeof m._projFromY === 'number' ? m._projFromY : m.y;
+          const _lineBlocked = _tps && attackBlocked(zoneId, _pfx, _pfy,
+            typeof _ptx === 'number' ? _ptx : (_tps.x || 0),
+            typeof _pty === 'number' ? _pty : (_tps.y || 0));
           /* Still in the same zone, alive, and not mid-respawn. */
-          if (_hit && _tps.z === zoneId && !_tps.dying && (_tps.hp || 0) > 0) {
+          if (!_lineBlocked && _hit && _tps.z === zoneId && !_tps.dying && (_tps.hp || 0) > 0) {
             /* v2.3.1705: …and facing it.  The direction is taken from the
                THROWER (m), not from the ball's landing point: the ball lands on
                the player, so its own position carries no direction, and a

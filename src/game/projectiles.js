@@ -1749,8 +1749,33 @@ export function updateSlimeProjectiles(S) {
                applies).  Two lines, correct either way. */
             proj.life -= _sdt;
             if (proj.life <= 0) { queueSnowballBurst(S, proj); return false; }
+            var _ppx = proj.x, _ppy = proj.y;
             proj.x += Math.cos(proj.ang) * proj.speed * _sdt;
             proj.y += Math.sin(proj.ang) * proj.speed * _sdt;
+            /* v2.3.2656: burst against a prop instead of flying through it.
+               Owner: "snowmen are still throwing snowballs through the props."
+               The server half of that (the damage) is fixed at the impact tick;
+               this is the half you can SEE, and without it the fix reads as
+               broken -- a ball that visibly passes through a rock and then does
+               nothing looks like a missing hit, not like cover.
+
+               Tested on the STEP segment (previous point -> new point), not on
+               the new point alone: at 6-11px per frame a point test walks
+               straight over a thin blocker some frames and not others, which is
+               the frame-rate-dependent flicker the arrow path already avoids
+               the same way (v2.3.2650).
+
+               Placed before the player-contact test below so a ball that hits
+               cover 10px short of the player bursts on the rock rather than on
+               the bro.  Applies to the display-only server ball and the legacy
+               local slime alike: neither should cross solid scenery, and the
+               server agrees about the damage for the one that carries any. */
+            var _propHit = attackBlockPoint(S.currentZone, _ppx, _ppy, proj.x, proj.y);
+            if (_propHit) {
+              proj.x = _propHit.x; proj.y = _propHit.y;
+              queueSnowballBurst(S, proj);
+              return false;
+            }
             var pdx = P.x - proj.x, pdy = P.y - proj.y;
             if (pdx * pdx + pdy * pdy > 16 * 16) return true;
             /* v2.3.1640: a server-thrown projectile (the snowman's

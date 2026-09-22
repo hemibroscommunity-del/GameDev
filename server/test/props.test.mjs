@@ -118,11 +118,16 @@ check('a monster attacking THROUGH the ridge lands nothing', throughRidge === 0,
 /* ...and the refusal is silent: no monster_attack on the wire, matching the
    dodge and the harvester shield. A "0" would be a number the client has to
    explain. */
-ws.sent.length = 0;
+/* v2.3.2656: read the EVENT BUFFER, not ws.sent.  This assertion used to
+   filter ws.sent, which the tick never writes to -- the buffer is flushed on a
+   later broadcast -- so it passed whether or not an event was pushed and could
+   not fail.  Caught while proving the new ranged assertions non-vacuous: the
+   same check further down stayed green with the ball landing for 14 damage. */
+room.eventBuffer.length = 0;
 strikeFrom(430, 480);
-const noisy = ws.sent.filter((m) => m && m.event === 'monster_attack');
+const noisy = room.eventBuffer.filter((e) => e && e.type === 'monster_attack');
 check('...and emits no monster_attack event for the blocked swing',
-  noisy.length === 0, { sent: ws.sent.map((m) => m && m.event).filter(Boolean) });
+  noisy.length === 0, { buffered: room.eventBuffer.map((e) => e && e.type).filter(Boolean) });
 
 /* The player standing clear of any prop takes damage as before -- the guard
    must not have made every hit a miss. */
@@ -170,6 +175,99 @@ check('on open ground nothing is blocked', openGround > 0, { openGround });
   const unknown = slideMove('__proto__', 0, 0, 10, 10);
   check('an unknown zone takes every move',
     unknown.x === 10 && unknown.y === 10, unknown);
+}
+
+/* ── 4. THE THROWN BALL (v2.3.2656) ──
+   Owner: "snowmen are still throwing snowballs through the props."  They were.
+
+   Section 2 above drives _monsterStrikePlayer DIRECTLY, passing an attacker
+   position -- which faithfully reproduces the two MELEE call sites and passed
+   happily while the ranged one was broken, because the ranged caller passes the
+   PLAYER's position as atkX/atkY (it must: the event's attacker point has to be
+   the impact point to clear the client's 160px guard).  The block there was
+   therefore measuring a zero-length line from the player to themselves.
+
+   So this section drives the REAL resolution through _tickMonsters instead of
+   calling anything by hand.  That is the whole lesson of the bug: the geometry
+   helper was right, the choke point was right for the callers it was written
+   against, and the one call site nobody exercised was the one that was wrong.
+   TRAPS §33 again, one level up -- a test that reproduces a call site by
+   re-typing its arguments is testing your belief about that call site. */
+{
+  /* Park every frost monster far away so no melee swing can pollute the HP
+     measurement; the ball under test carries its own release point and does
+     not need the thrower to be anywhere near. */
+  for (const mm of (room.monsters.frost || [])) { mm.x = 5000; mm.y = 5000; mm._projImpactAt = 0; }
+  const ball = (room.monsters.frost || [])[0];
+
+  /* Throw one, by hand-setting exactly what telegraph.js freezes at release. */
+  function throwBall(fromX, fromY, aimX, aimY, opts) {
+    ps.x = (opts && opts.px !== undefined) ? opts.px : 430;
+    ps.y = (opts && opts.py !== undefined) ? opts.py : 640;
+    ps.z = 'frost'; ps.dying = false; ps._graceUntil = 0;
+    ps.hp = ps.maxHp || 100;
+    ps.blocking = false; ps.shieldEnd = 0;
+    const before = ps.hp;
+    ball.x = (opts && opts.mx !== undefined) ? opts.mx : 5000;
+    ball.y = (opts && opts.my !== undefined) ? opts.my : 5000;
+    ball._projImpactAt = Date.now() - 1;      /* already landed */
+    ball._projTargetId = 'p1';
+    ball._projTx = aimX; ball._projTy = aimY;
+    if (fromX === null) { delete ball._projFromX; delete ball._projFromY; }
+    else { ball._projFromX = fromX; ball._projFromY = fromY; }
+    room._tickMonsters();
+    return before - ps.hp;
+  }
+
+  /* THE BUG, pinned.  Released north of the ridge, aimed at a player standing
+     south of it: the flight line crosses the box. */
+  const throughRidge = throwBall(430, 480, 430, 640);
+  check('a snowball thrown THROUGH the ridge lands nothing',
+    throughRidge === 0, { throughRidge });
+
+  /* ...and the control, or the check above passes for any reason at all. */
+  const openGround = throwBall(900, 820, 900, 900, { px: 900, py: 900 });
+  check('...while one thrown across open ground still hurts',
+    openGround > 0, { openGround });
+
+  /* THE DISCRIMINATING PAIR.  These two are what separate the fix from the bug
+     it replaced -- both would pass if the test measured from the thrower's
+     CURRENT position, and both fail if it measures from the player's.
+     Here the thrower stands in the clear and the ball was released behind the
+     ridge: the ball is stopped, because the ball is what has to get through. */
+  const releasedBehind = throwBall(430, 480, 430, 640, { mx: 900, my: 900 });
+  check('a ball RELEASED behind the ridge is stopped even though the thrower has walked clear',
+    releasedBehind === 0, { releasedBehind });
+
+  /* ...and the mirror: released on a clear line, the thrower then wandering
+     behind the rock does not retroactively stop a ball already in the air. */
+  const wanderedBehind = throwBall(900, 820, 900, 900, { px: 900, py: 900, mx: 430, my: 480 });
+  check('...and a ball already in flight is NOT stopped by the thrower wandering behind one',
+    wanderedBehind > 0, { wanderedBehind });
+
+  /* The refusal is silent, like the swing's: no monster_attack on the wire. */
+  room.eventBuffer.length = 0;
+  throwBall(430, 480, 430, 640);
+  const noisyBall = room.eventBuffer.filter((e) => e && e.type === 'monster_attack');
+  check('...and a ball stopped by a prop emits no monster_attack',
+    noisyBall.length === 0, { buffered: room.eventBuffer.map((e) => e && e.type).filter(Boolean) });
+  /* ...and the counterpart that makes the line above mean something: an
+     UNBLOCKED ball does put one on the buffer, so "no event" is a real
+     observation rather than a sink nothing ever reaches. */
+  room.eventBuffer.length = 0;
+  throwBall(900, 820, 900, 900, { px: 900, py: 900 });
+  check('...while a ball that lands DOES emit one (so the check above can fail)',
+    room.eventBuffer.some((e) => e && e.type === 'monster_attack'),
+    { buffered: room.eventBuffer.map((e) => e && e.type).filter(Boolean) });
+
+  /* A ball in the air across a deploy carries no _projFrom*; it must fall back
+     to the thrower rather than throwing on a missing field. */
+  const legacyClear = throwBall(null, null, 900, 900, { px: 900, py: 900, mx: 900, my: 820 });
+  check('a pre-2656 ball with no release point falls back to the thrower (clear)',
+    legacyClear > 0, { legacyClear });
+  const legacyBlocked = throwBall(null, null, 430, 640, { mx: 430, my: 480 });
+  check('...and is blocked when THAT line crosses the ridge',
+    legacyBlocked === 0, { legacyBlocked });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
