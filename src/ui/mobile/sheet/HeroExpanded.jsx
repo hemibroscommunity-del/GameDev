@@ -2103,7 +2103,7 @@ export const HeroExpanded = () => {
                its height, whichever binds first.  The portrait has no stack
                to make room for, so it takes the cell short of its padding. */
             const LANE_ICON = Math.round(Math.max(18, Math.min(34, Math.min(CELL_H * 0.42, HEAD_W * 0.60))));
-            /* v2.3.2661: HEAD_W - 14, not - 10.  The portrait now carries a
+            /* v2.3.2667: HEAD_W - 14, not - 10.  The portrait now carries a
                badge pinned 3px past its top-right corner, and in the narrow
                landscape pane the portrait filled the head so exactly that
                the badge poked a pixel past the header's edge -- mp-catgrid
@@ -2144,7 +2144,7 @@ export const HeroExpanded = () => {
                        carrying a label; on a 44px cell whose content is a
                        COLOURED GLYPH, thirteen full-bleed fills fight the
                        artwork they are framing. */
-                    /* ═══ v2.3.2658: THE OUTLINE IS THE GLYPH'S OWN COLOUR ═══
+                    /* ═══ v2.3.2665: THE OUTLINE IS THE GLYPH'S OWN COLOUR ═══
                        Owner: "I'd rather have the cell outline be whatever the
                        main icon color is."  `tint` is the v2.3.2598 palette,
                        picked for the old pastel FILLS before these glyphs
@@ -2200,7 +2200,7 @@ export const HeroExpanded = () => {
                the owner drew it -- next to the points it would spend, at the
                moment you are deciding to spend one.  That is a better place
                for it than a cell you had to know was a control. */
-            /* ═══ v2.3.2661: WHAT EACH POOL STILL HAS, ON ITS OWN HEADER ═══
+            /* ═══ v2.3.2667: WHAT EACH POOL STILL HAS, ON ITS OWN HEADER ═══
                Owner: "I want a badge on a fill background on each row header
                showing how many allocable points there still are.  One number
                on each combat type icon (melee, bow, staff) then just one for
@@ -2228,7 +2228,7 @@ export const HeroExpanded = () => {
                portrait's, because in a 21px header the portrait is wider than
                the room it has. */
             const HEAD_COMPACT = HEAD_W < 34;
-            /* ═══ v2.3.2663: THE OWNER'S OWN BADGE ART ═══
+            /* ═══ v2.3.2669: THE OWNER'S OWN BADGE ART ═══
                Owner, with a sheet of a round badge, a pill badge and the
                numerals 0-9 and "+": "Use this sprite sheet for the tiny
                numbers.  I want to see if it looks good."
@@ -2247,13 +2247,13 @@ export const HeroExpanded = () => {
             const headBadge = (n, key, pin) => {
               const live = n > 0;
               const c = HEAD_COMPACT;
-              /* ═══ v2.3.2663: THE SIDEWAYS PANE KEEPS THE PLAIN PILL ═══
+              /* ═══ v2.3.2669: THE SIDEWAYS PANE KEEPS THE PLAIN PILL ═══
                  A landscape header is ~18px wide inside, and the sprite pill
                  for "64" is 22px at the smallest size its numerals still read
                  at -- mp-catgrid measured it clipped off the header's left
                  edge.  The art cannot shrink further without the numerals
                  turning to mush, so there (and only there) the badge is the
-                 v2.3.2661 brass pill in 7px type, which fits.  Portrait, the
+                 v2.3.2667 brass pill in 7px type, which fits.  Portrait, the
                  layout the owner approved from a capture, is all sprite. */
               if (c) {
                 return (
@@ -2282,7 +2282,7 @@ export const HeroExpanded = () => {
                      sword, staff and bow are all drawn pointing up-right, so
                      the top-right corner is the part that says which weapon
                      it is.  7px out, the badge clips the corner instead. */
-                  /* v2.3.2663: the owner chose this top-right placement off
+                  /* v2.3.2669: the owner chose this top-right placement off
                      the capture ("this image nearly has it") -- the badges
                      stay put and the WEAPONS move out from under them; see
                      LANE_NUDGE on the icons below. */
@@ -2367,7 +2367,7 @@ export const HeroExpanded = () => {
                        percentages are the cell's own box, so it re-fits at
                        every width without a second breakpoint. */
                     ? (
-                      /* v2.3.2661: the stack gives up 4px on the right and
+                      /* v2.3.2667: the stack gives up 4px on the right and
                          2px on top, so the LAST weapon's badge and the FIRST
                          one's can overhang their icons by the same amount as
                          the middle one's without being cut off by the
@@ -2376,7 +2376,7 @@ export const HeroExpanded = () => {
                         {POINT_LANES.filter((c) => !c.shared).map((c, i, a) => {
                           const on = c.key === buildCat;
                           const t = a.length > 1 ? i / (a.length - 1) : 0;
-                          /* v2.3.2661: the icon and its badge move as one box,
+                          /* v2.3.2667: the icon and its badge move as one box,
                              so the count stays pinned to ITS weapon's corner
                              wherever the diagonal puts it. */
                           return (
@@ -2389,7 +2389,7 @@ export const HeroExpanded = () => {
                             }}>
                             <img src={c.iconSrc} alt="" draggable={false} style={{
                               width: '100%', height: '100%', objectFit: 'contain', display: 'block',
-                              /* ═══ v2.3.2663: THE WEAPON STEPS OUT FROM UNDER ITS BADGE ═══
+                              /* ═══ v2.3.2669: THE WEAPON STEPS OUT FROM UNDER ITS BADGE ═══
                                  Owner, on the top-right capture: "you just need
                                  to nudge all weapon icons diagonally
                                  (southwest)".  The badge is pinned to the BOX
@@ -2400,7 +2400,7 @@ export const HeroExpanded = () => {
                                  A fraction of the icon, not a pixel count, so
                                  the nudge scales with the icon at every width. */
                               transform: `translate(${-LANE_NUDGE}px, ${LANE_NUDGE}px)`,
-                              /* v2.3.2660: all three at full strength (owner:
+                              /* v2.3.2666: all three at full strength (owner:
                                  "have all of the icons in the first row not
                                  dimmed").  The dimming was the head's way of
                                  saying WHICH weapon's numbers the six cells

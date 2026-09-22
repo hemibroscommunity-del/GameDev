@@ -174,7 +174,7 @@ export const PROG3_LEGACY_ATK = {
    second spelling of every stat into the codebase.  The row already reads
    MP, STAM, DEF and RESIST, so an abbreviation here is in keeping rather than
    an exception. */
-/* v2.3.2658: `edge` is each glyph's main colour, measured off the PNG by
+/* v2.3.2665: `edge` is each glyph's main colour, measured off the PNG by
    tools/glyph_edge_colors.mjs -- the Points grid outlines every cell in it so
    the frame matches the picture (owner).  Re-run the tool when a glyph is
    re-exported; do not hand-pick. */

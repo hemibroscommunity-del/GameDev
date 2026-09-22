@@ -1,4 +1,4 @@
-/* v2.3.2658: the dominant colour of each stat glyph, for the Points grid's
+/* v2.3.2665: the dominant colour of each stat glyph, for the Points grid's
    cell outline (owner: "I'd rather have the cell outline be whatever the main
    icon color is").
    Measured off the shipped PNGs rather than picked by eye, so a re-exported

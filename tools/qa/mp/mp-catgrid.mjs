@@ -202,7 +202,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       grid && grid.imgs.map((i) => i && i.src));
 
     /* ── THE INSTRUCTION: NO COUNTS IN THE STAT CELLS ── */
-    /* v2.3.2661: the owner has since put a remaining-points badge on each ROW
+    /* v2.3.2667: the owner has since put a remaining-points badge on each ROW
        HEADER (below), so "no counts in the grid" narrows to what it always
        meant for the cells: a stat cell shows what it has BOUGHT, never what is
        left.  The word check still holds grid-wide -- the badges are bare
@@ -210,7 +210,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${label}: the stat cells show NO points-remaining words — that lives on the header badges and in the confirm window`,
       !!grid && !/\bPTS?\b|AVAILABLE|SPENT/i.test(grid.gridText), grid && { text: grid.gridText.slice(0, 160) });
 
-    /* ═══ v2.3.2661: ONE BADGE PER POOL, AND IT IS THE WORKER'S NUMBER ═══
+    /* ═══ v2.3.2667: ONE BADGE PER POOL, AND IT IS THE WORKER'S NUMBER ═══
        Owner: "a badge on a fill background on each row header showing how many
        allocable points there still are.  One number on each combat type icon
        (melee, bow, staff) then just one for the character."
@@ -225,7 +225,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const r = b.getBoundingClientRect();
         const head = b.closest('[data-prog3-lane]');
         const hr = head ? head.getBoundingClientRect() : null;
-        /* v2.3.2663: the count is drawn in the owner's numeral SPRITES, so
+        /* v2.3.2669: the count is drawn in the owner's numeral SPRITES, so
            it has no text -- it is read back off the images actually on
            screen (d6.png d4.png -> "64"), which is a stronger check than
            text was: a wrong or missing file shows up as a wrong number.
@@ -234,7 +234,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const cs = getComputedStyle(b);
         out[b.getAttribute('data-prog3-head-badge')] = {
           /* sideways the header is too narrow for the sprite pill and the
-             badge is the plain brass one (v2.3.2663) -- its text IS the count */
+             badge is the plain brass one (v2.3.2669) -- its text IS the count */
           sprite: imgs.length > 0,
           text: imgs.length
             ? imgs.map((i) => { const m = /\/(d(\d)|plus)\.png/.exec(i.getAttribute('src') || ''); return !m ? '?' : m[2] != null ? m[2] : '+'; }).join('')
@@ -262,14 +262,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     const b0 = await badges();
     const badgeText = (n) => (n > 99 ? '99+' : String(n || 0));
-    rec.ok(`${label}: FOUR badges — one on each weapon, one on the character (v2.3.2661)`,
+    rec.ok(`${label}: FOUR badges — one on each weapon, one on the character (v2.3.2667)`,
       ['sword', 'bow', 'staff', 'shared'].every((k) => b0.out[k]) && Object.keys(b0.out).length === 4, Object.keys(b0.out));
     rec.ok(`${label}: ...each weapon's badge is what that weapon can spend, as the worker holds it`,
       ['sword', 'bow', 'staff'].every((k) => b0.out[k] && b0.out[k].text === badgeText(b0.spend[k])),
       { badges: Object.fromEntries(Object.entries(b0.out).map(([k, v]) => [k, v.text])), spend: b0.spend, poolBy: b0.poolBy, free: b0.free });
     rec.ok(`${label}: ...and the character's badge is what the shared pool can spend`,
       !!b0.out.shared && b0.out.shared.text === badgeText(b0.spend.shared), { badge: b0.out.shared && b0.out.shared.text, spend: b0.spend.shared });
-    rec.ok(`${label}: ...on the owner's badge art — round for one digit, the pill for two or more (v2.3.2663; plain brass sideways, where the art cannot fit)`,
+    rec.ok(`${label}: ...on the owner's badge art — round for one digit, the pill for two or more (v2.3.2669; plain brass sideways, where the art cannot fit)`,
       Object.values(b0.out).every((v) => (land ? v.bg === 'plain' : v.sprite && v.bg === (v.text.length === 1 ? 'circle' : 'pill'))),
       Object.fromEntries(Object.entries(b0.out).map(([k, v]) => [k, { text: v.text, bg: v.bg }])));
     rec.ok(`${label}: ...and every numeral sprite actually decoded (a wrong path is an invisible box)`,
@@ -380,7 +380,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       });
       rec.ok(`${label}: ...and the grid is now showing the lane you aimed at`,
         headNow === laneNow, { want: laneNow, got: headNow });
-      /* v2.3.2661: the badge is live -- the spend just made must show up on
+      /* v2.3.2667: the badge is live -- the spend just made must show up on
          the weapon that paid for it, and only there */
       await P.page.waitForTimeout(300);
       const b1 = await badges();
