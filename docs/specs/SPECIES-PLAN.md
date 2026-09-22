@@ -290,16 +290,22 @@ Everything done to the art since the import, and how to redo it:
 | the bro's own ear painted out beside the new one (SW, NE) | the SW/NE PNGs | `node tools/species-cover-ears.mjs --id monkey` after any re-import |
 | muzzle pulled back 3px jogging east/west | `meta.poseNudge.jog.east` | — |
 | MEASURED pose sizes, not the legacy hat guesses | `meta.poseFit` + `meta.scaleByPose` | — |
-| 170 of 231 frames fixed one by one | `tools/species-fixes/monkey.json` → `frames/*.png` + `meta.frameOverlays` | `python3 tools/species_frames.py bake --id monkey` |
+| 196 of 231 frames fixed one by one | `tools/species-fixes/monkey.json` → `frames/*.png` + `meta.frameOverlays` | `python3 tools/species_frames.py bake --id monkey` |
 
 **See every frame** with `python3 tools/species_contact_sheet.py --id monkey
 --out <dir>` (one labelled sheet per animation; `*` marks a baked frame, drawn
 from the baked strip so the sheet shows the shipped data). `--zoom
 pose-dir:a-b` draws frames big with a coordinate grid, for writing fixes.
 
-**The fixes, and why each exists:** hit-east — the head snaps back, so the
-muzzle moves onto the mouth and the gritted teeth are covered; hit-south —
-same, the grimace slides right; hit-north/-northeast — the turned head shows
+**The fixes, and why each exists:** hit-east — the head bows forward, so the
+muzzle moves onto the mouth, ROTATES clockwise with the head (34-44°, measured
+per frame from the eye-to-mouth line against stand-east's) and the gritted
+teeth are covered; hit-south — same, the head rolls the other way, so the
+muzzle turns counter-clockwise to lie along the teeth line (40-55°) (v2.3.2653:
+`rot` in the fix format, rotated at 4x and brought back down by majority colour
+so the outline stays one clean pixel); hit-southwest 0-1 — the bowed head's
+human ear covered, 2-5 and every jog-southwest frame — ears set to stand's
+overlap (far ear 1px, near ear 15px incl. its fur patch); hit-north/-northeast — the turned head shows
 the human ear mid-head (covered), and on north 3-4 / northeast 3-5 body-tops is
 the raised FIST (see TRAPS §94) so those frames carry a `crown` override;
 pickup and jog-south — the eyes sit 2-13px lower against the crown than at

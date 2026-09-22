@@ -12,8 +12,9 @@ into small overlay images drawn instead of the piece for just those frames.
 
 A fix is expressed against the normal placement, per frame (or frame range
 "a-b"), in the body's 256-space:
-    "<part>": {"dx": 0, "dy": 0, "s": 1.0, "hide": false}
-        move / scale (about its own centre) / drop one PART of the piece.  The
+    "<part>": {"dx": 0, "dy": 0, "s": 1.0, "rot": 0, "hide": false}
+        move / scale / rotate (degrees CLOCKWISE on screen; both about the
+        part's own centre) / drop one PART of the piece.  The
         parts are the piece's separate blobs: "muzzle" (the lowest blob, on
         facings that have one), then the ears left-to-right, "earL" / "earR"
         (or "ear" when there is only one).
@@ -159,34 +160,59 @@ def place(pose, d, f, meta, tops, tex, ops=None):
         ys, xs = np.nonzero(img[:, :, 3] > 16)
         if not len(xs):
             continue
-        # per-part scale about the part's own centre (in the placed image)
         ratio = op.get('s', 1.0)
-        cx, cy = xs.mean(), ys.mean()
+        rot = op.get('rot', 0)
         ox = top[0] + n[0] + pn[0] - a[0] * mul + op.get('dx', 0)
         oy = top[1] + n[1] + pn[1] - a[1] * mul + op.get('dy', 0)
-        if ratio != 1.0:
-            # inverse map every destination pixel in the part's scaled bbox
-            x0, x1 = xs.min(), xs.max()
-            y0, y1 = ys.min(), ys.max()
-            nx0 = int(np.floor(cx + (x0 - cx) * ratio)) - 1
-            nx1 = int(np.ceil(cx + (x1 - cx) * ratio)) + 1
-            ny0 = int(np.floor(cy + (y0 - cy) * ratio)) - 1
-            ny1 = int(np.ceil(cy + (y1 - cy) * ratio)) + 1
-            for yy in range(ny0, ny1 + 1):
-                for xx in range(nx0, nx1 + 1):
-                    sx = int(round(cx + (xx - cx) / ratio))
-                    sy = int(round(cy + (yy - cy) / ratio))
-                    if 0 <= sx < sz and 0 <= sy < sz and img[sy, sx, 3] > 16:
-                        X, Y = int(round(xx + ox)), int(round(yy + oy))
-                        if 0 <= X < FRAME and 0 <= Y < FRAME:
-                            layer[Y, X] = img[sy, sx]
-        else:
+        if ratio == 1.0 and not rot:
             X = np.round(xs + ox).astype(int)
             Y = np.round(ys + oy).astype(int)
             ok = (X >= 0) & (Y >= 0) & (X < FRAME) & (Y < FRAME)
             layer[Y[ok], X[ok]] = img[ys[ok], xs[ok]]
+            continue
+        # scale and/or rotate about the part's own bbox centre
+        x0, x1, y0, y1 = xs.min(), xs.max(), ys.min(), ys.max()
+        crop = img[y0:y1 + 1, x0:x1 + 1].astype(np.uint8)
+        out = transform(crop, ratio, rot)
+        cx, cy = (x0 + x1) / 2 + ox, (y0 + y1) / 2 + oy
+        h, w = out.shape[:2]
+        px0, py0 = int(round(cx - (w - 1) / 2)), int(round(cy - (h - 1) / 2))
+        oy_, ox_ = np.nonzero(out[:, :, 3] > 16)
+        X, Y = ox_ + px0, oy_ + py0
+        ok = (X >= 0) & (Y >= 0) & (X < FRAME) & (Y < FRAME)
+        layer[Y[ok], X[ok]] = out[oy_[ok], ox_[ok]]
     layer[:, :, 3] = np.where(layer[:, :, 3] > 16, 255, 0)
     return layer
+
+
+UP = 4
+
+
+def transform(crop, ratio, rot):
+    """scale by `ratio` and rotate `rot` degrees CLOCKWISE (screen), pixel-art
+    safe: done at UPx nearest-neighbour, then brought back down by taking each
+    UPxUP block's most common colour -- so the outline stays one clean pixel
+    and no in-between colours appear (the RotSprite idea, simplified)."""
+    im = Image.fromarray(crop, 'RGBA')
+    big = im.resize((max(1, round(im.width * UP * ratio)), max(1, round(im.height * UP * ratio))), Image.NEAREST)
+    if rot:
+        big = big.rotate(-rot, resample=Image.NEAREST, expand=True)
+    b = np.array(big)
+    H, W = b.shape[0] // UP * UP + UP, b.shape[1] // UP * UP + UP
+    pad = np.zeros((H, W, 4), np.uint8)
+    pad[:b.shape[0], :b.shape[1]] = b
+    pad[:, :, 3] = np.where(pad[:, :, 3] > 16, 255, 0)
+    h, w = H // UP, W // UP
+    out = np.zeros((h, w, 4), np.uint8)
+    blocks = pad.reshape(h, UP, w, UP, 4).transpose(0, 2, 1, 3, 4).reshape(h, w, UP * UP, 4)
+    key = (blocks[..., 0].astype(np.int64) << 24 | blocks[..., 1].astype(np.int64) << 16
+           | blocks[..., 2].astype(np.int64) << 8 | blocks[..., 3])
+    for yy in range(h):
+        for xx in range(w):
+            v, c = np.unique(key[yy, xx], return_counts=True)
+            k = v[c.argmax()]
+            out[yy, xx] = [(k >> 24) & 255, (k >> 16) & 255, (k >> 8) & 255, k & 255]
+    return out.astype(int)
 
 
 def muzzle_tan(tex, d):
