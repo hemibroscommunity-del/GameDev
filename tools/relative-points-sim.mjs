@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* relative-points-sim — the referee for the RELATIVE POINT VALUE redesign
- * (docs/specs/relative-points.md, v2.3.2647).
+ * (docs/specs/relative-points.md, v2.3.2659).
  *
  *   node tools/relative-points-sim.mjs            # every table
  *   node tools/relative-points-sim.mjs --quick    # fewer samples

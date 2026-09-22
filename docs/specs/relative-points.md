@@ -1,6 +1,6 @@
 # Relative point value — "your points are your edge" (design note)
 
-**v2.3.2647. DESIGN NOTE ONLY — no combat code ships with it.** Written for
+**v2.3.2659. DESIGN NOTE ONLY — no combat code ships with it.** Written for
 the owner to approve (or re-dial) before the implementation PR. Every number
 below is measured by driving the game's own shipped formulas — the real server
 damage roll and the real damage sink — never a re-typed copy. The sim asserts
