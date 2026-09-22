@@ -1,4 +1,4 @@
-/* ═══ v2.3.2645: THE WORKER LEARNS WHERE THE SCENERY IS ═══
+/* ═══ v2.3.2650: THE WORKER LEARNS WHERE THE SCENERY IS ═══
  *
  * Owner: "I would like it if these props could block my and enemy attacks."
  *
@@ -118,9 +118,9 @@ export function attackBlocked(zoneId, x0, y0, x1, y1) {
   return false;
 }
 
-/* ═══ v2.3.2646: AND MONSTERS STOP AT THEM TOO ═══
+/* ═══ v2.3.2651: AND MONSTERS STOP AT THEM TOO ═══
  *
- * v2.3.2645 made a prop stop an ATTACK.  It left the sillier half untouched:
+ * v2.3.2650 made a prop stop an ATTACK.  It left the sillier half untouched:
  * the worker has no collision of any kind, so a snowman walked straight
  * THROUGH the rock ridge whose hits it could no longer land past.  A monster
  * gliding through a rock is more obviously broken than one whose swing is

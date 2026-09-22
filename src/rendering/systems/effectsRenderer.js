@@ -97,9 +97,9 @@ function _probeStandInSkin(key, cv, opts) {
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
-import { footprintFrames } from '@/rendering/footprintSprites.js'; /* v2.3.2647: prints in the snow */
+import { footprintFrames } from '@/rendering/footprintSprites.js'; /* v2.3.2652: prints in the snow */
 
-/* v2.3.2647: how a print reads and how long it lasts.  PRINT_TTL_MS is
+/* v2.3.2652: how a print reads and how long it lasts.  PRINT_TTL_MS is
    mirrored by stateCleanup's filter -- the array and the drawer must expire on
    the same number or the pool draws entries the cleaner has already dropped
    (or worse, keeps sprites for entries that will never be cleaned). */
@@ -3191,7 +3191,7 @@ export class EffectsRenderer {
     this._updateAtmosphere(S, viewW, viewH, now);
     this._updateGroundLoot(S, now);
     this._updateGroundSplatter(S);
-    this._updateFootprints(S, now);   /* v2.3.2647: prints in the snow */
+    this._updateFootprints(S, now);   /* v2.3.2652: prints in the snow */
     this._updateGatherNodes(S, now);
     this._updateMonsterImpacts(S, now);
     this._updateDebrisBursts(S, now);   /* v2.3.2200: material hit debris */
@@ -7132,7 +7132,7 @@ export class EffectsRenderer {
     }
   }
 
-  /* ── Footprints (v2.3.2647) ── */
+  /* ── Footprints (v2.3.2652) ── */
   /* The four source frames are a FADE, not a loop: the pair disperses as it
      ages, which is what a print in snow actually does.  So the frame is picked
      from AGE rather than from a clock -- a print spawned this second and one

@@ -41,7 +41,7 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/DEPTH-ROADMAP.md` (the costed depth work, code-aware),
   `docs/ART-ASSET-PHASES.md` (what environment art to commission, at what
   size, in what order — the decoded-RGBA budget and the free-standing
-  vs edge-cropped test live here, v2.3.2643),
+  vs edge-cropped test live here, v2.3.2648),
   `docs/specs/*.md`, `docs/WIRE-PROTOCOL.md`, `docs/BALANCE-PLAN.md`,
   `docs/OPTIMIZATION-ROADMAP.md`, `docs/REBUILD-PLAN.md` (client
   decomposition), `docs/STATE-SCHEMA.md` (client S object; pre-dates
@@ -199,7 +199,7 @@ Two protocol versions coexist; both must keep working:
     monster variant + the frost snowman), stacking ~60MB onto the
     startup peak for assets you don't use in the zone you're standing in.
     Those THREE categories (FIVE since v2.3.2596's zone banner and
-    v2.3.2644's decor props) now load PER-ZONE via `preloadZoneAssets(zoneId)`
+    v2.3.2649's decor props) now load PER-ZONE via `preloadZoneAssets(zoneId)`
     (`preloadAnimations.js`) behind a brief per-zone loading overlay on
     zone entry (`src/game/zoneTransitions.js`, the `S._zoneLoading` gate),
     and the previous zone's ~4MB map is freed on exit (`freeZoneMap`,
@@ -212,7 +212,7 @@ Two protocol versions coexist; both must keep working:
     system, register it in `preloadZoneAssets` (not the global manifest)
     and free it on exit; anything global still registers in
     `preloadWorldAnimations`. **And whatever DISPLAYS it must drop its
-    texture reference on the way out, not merely hide it** — v2.3.2644:
+    texture reference on the way out, not merely hide it** — v2.3.2649:
     the prop sprites hid but kept `spr.texture`, harmless while all prop
     art was global, and once decor was actually freed the second visit to
     a zone rendered a destroyed source ("Cannot read properties of null

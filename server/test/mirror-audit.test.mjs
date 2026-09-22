@@ -58,7 +58,7 @@ import {
    were. */
 import { setProg3Enabled, setProg3XEnabled, setProg3SharedEnabled, prog3CritPct, prog3CritMult, prog3CritFlat, PROG3_LEGACY_ATK } from '../../src/data/prog3.js'; /* v2.3.2218; v2.3.2592 */
 import { createGatherNode as clientGatherNode, WOODCUTTING_TIERS as CLIENT_WOOD_TIERS } from '../../src/data/lifeSkills.js';
-/* v2.3.2645: prop blockers — the worker's first piece of world geometry. */
+/* v2.3.2650: prop blockers — the worker's first piece of world geometry. */
 import { ZONE_PROPS as SRV_ZONE_PROPS, attackBlocked as srvAttackBlocked } from '../src/props.js';
 import {
   WORLD_PROPS as CLIENT_WORLD_PROPS, propsForZone as clientPropsForZone,
@@ -1076,7 +1076,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
 }
 
 // ── PROP BLOCKERS: the worker's copy must match the client's ──
-/* v2.3.2645: props block attacks, which is the first rule the worker has ever
+/* v2.3.2650: props block attacks, which is the first rule the worker has ever
    had that needs to know where the scenery is.  server/src/props.js is a
    hand-copied mirror of worldProps.js for the usual reason (the worker bundle
    imports nothing from src/), and this is the guard that stops it drifting --

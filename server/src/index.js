@@ -163,7 +163,7 @@ import { arrowBlastMethods } from './arrowblast.js'; /* v2.3.2279: the bow speci
 // v2.3.1983: population-scaled spawns -- monsters and gather nodes sized to
 // how many players are standing in THAT zone -- see spawnscale.js.
 import { spawnScaleMethods } from './spawnscale.js';
-import { attackBlocked, slideMove } from './props.js'; /* v2.3.2645: a rock stops a monster's hit; v2.3.2646: and its feet */
+import { attackBlocked, slideMove } from './props.js'; /* v2.3.2650: a rock stops a monster's hit; v2.3.2651: and its feet */
 
 /* ═══ v2.3.2113: AN ERROR IN HERE MUST NOT LOOK LIKE AN OUTAGE ═══
  * Owner, of tools/draw: "This tool says can't reach the game server anymore."
@@ -1581,7 +1581,7 @@ export class GameRoom {
        fixed.  Silent, like a dodge: no monster_attack event, so the client
        draws nothing rather than a "0" it would have to explain. */
     if (this._extractionShielded(targetId, now)) return;
-    /* ═══ v2.3.2645: A ROCK IN THE WAY STOPS IT ═══
+    /* ═══ v2.3.2650: A ROCK IN THE WAY STOPS IT ═══
        Owner: "I would like it if these props could block my and enemy
        attacks."
 
@@ -2115,7 +2115,7 @@ export class GameRoom {
                 m._kbDebt -= repay;
                 if (m._kbDebt < 0.01) m._kbDebt = 0;
               }
-              /* v2.3.2646: props stop the chase too -- see slideMove. The
+              /* v2.3.2651: props stop the chase too -- see slideMove. The
                  three movement sites (chase, leash, wander) all route through
                  it rather than each growing its own test, because a monster
                  that respects a rock while chasing and glides through it while
@@ -2270,7 +2270,7 @@ export class GameRoom {
           } else if (distSpawn > WANDER_LEASH) {
             const dxL = m.spawnX - m.x;
             const dyL = m.spawnY - m.y;
-            /* v2.3.2646: the walk home respects props as well. */
+            /* v2.3.2651: the walk home respects props as well. */
             const _mvL = slideMove(zoneId, m.x, m.y,
               m.x + (dxL / distSpawn) * m.spd * ccMoveMult,
               m.y + (dyL / distSpawn) * m.spd * ccMoveMult);
@@ -2311,7 +2311,7 @@ export class GameRoom {
               m._wanderPausedUntil = now + WANDER_PAUSE_MIN_MS
                 + Math.random() * (WANDER_PAUSE_MAX_MS - WANDER_PAUSE_MIN_MS);
             } else {
-              /* v2.3.2646: ...and so does the idle wander. */
+              /* v2.3.2651: ...and so does the idle wander. */
               const _mvW = slideMove(zoneId, m.x, m.y,
                 m.x + (dxw / distw) * m.spd * ccMoveMult,
                 m.y + (dyw / distw) * m.spd * ccMoveMult);

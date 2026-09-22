@@ -1,4 +1,4 @@
-/* ═══ v2.3.2647: SNOW FOOTPRINTS — the game's first grounding cue ═══
+/* ═══ v2.3.2652: SNOW FOOTPRINTS — the game's first grounding cue ═══
  *
  * Owner supplied a four-frame footprint-pair fade.  It lands in a game that
  * has NO grounding cue at all: the shared contact-shadow ellipse was removed
@@ -83,7 +83,7 @@ export async function freeFootprints(fromZoneId, toZoneId) {
   if (toZoneId && FOOTPRINT_ART[toZoneId] && FOOTPRINT_ART[toZoneId].url === FOOTPRINT_ART[fromZoneId].url) return false;
   /* Drop the slices BEFORE the unload: the renderer reads footprintFrames on a
      per-frame path, and handing back a Texture whose source has just been
-     destroyed is a torn frame rather than a miss (v2.3.2644's lesson, which
+     destroyed is a torn frame rather than a miss (v2.3.2649's lesson, which
      CLAUDE.md's ZONE-ASSET EXCEPTION now states as a rule). */
   delete _frames[fromZoneId];
   try { await unloadBundle(bundleOf(fromZoneId)); } catch (e) { /* still in use / already gone */ }

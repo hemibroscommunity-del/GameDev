@@ -431,7 +431,7 @@ export const WORLD_PROPS = [
   },
 
   /* ═══════════════════════════════════════════════════════════════════════
-     v2.3.2644: FROST RIDGE DECOR — the first props outside town
+     v2.3.2649: FROST RIDGE DECOR — the first props outside town
      ═══════════════════════════════════════════════════════════════════════
      Six free-standing masses, commissioned and measured under
      docs/ART-ASSET-PHASES.md.  They exist to be WALKED BEHIND: dynamic
@@ -497,7 +497,7 @@ export const WORLD_PROPS = [
 
 ];
 
-/* ═══ v2.3.2644: WHICH PROPS RIDE THE STARTUP GATE, AND WHICH DO NOT ═══
+/* ═══ v2.3.2649: WHICH PROPS RIDE THE STARTUP GATE, AND WHICH DO NOT ═══
  *
  * Until frost got decor, every prop was a town prop and `propSpriteSources()`
  * could hand the whole table to the intro gate without anybody noticing. That
@@ -529,7 +529,7 @@ export function zoneDecorSources(zoneId) {
   return [...new Set([
     ...WORLD_PROPS.filter((p) => p.zone === zoneId && propIsPlaced(p) && !propIsResident(p))
       .map((p) => p.sprite),
-    /* v2.3.2648: the foreground pieces ride the SAME per-zone list.  They are
+    /* v2.3.2653: the foreground pieces ride the SAME per-zone list.  They are
        the same kind of thing -- a transparent PNG that means nothing outside
        one zone -- so giving them a second loader and a second free path would
        be two things to keep in step for no gain, and the day one of them is
@@ -539,7 +539,7 @@ export function zoneDecorSources(zoneId) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   v2.3.2648: THE NEAR-CAMERA FOREGROUND
+   v2.3.2653: THE NEAR-CAMERA FOREGROUND
    ═══════════════════════════════════════════════════════════════════════════
    DEPTH-ROADMAP item 5.  Until now an EDGE-CROPPED asset -- a canopy whose
    branches run off its own canvas, a mountain shoulder cut at the bottom --
@@ -550,7 +550,7 @@ export function zoneDecorSources(zoneId) {
 
    ── WHY THESE ARE NOT PROPS ──
    A prop is a thing standing IN the world: it sorts by where it touches the
-   ground, it blocks your feet, and since v2.3.2645 it stops a shot.  A
+   ground, it blocks your feet, and since v2.3.2650 it stops a shot.  A
    foreground piece is none of those.  It is between the camera and the world,
    it touches nothing, and it must never block or occlude for gameplay
    purposes -- you cannot take cover behind a branch that is hanging in front
@@ -697,7 +697,7 @@ export function propSpriteSources() {
      preloading ~1MB of art for objects no zone will ask for is a cost paid on
      the startup gate -- the one place in this game where bytes are most
      expensive. They come back with their positions, in the same change. */
-  /* v2.3.2644: ...and for the same reason, only the RESIDENT zones' props.
+  /* v2.3.2649: ...and for the same reason, only the RESIDENT zones' props.
      Zone decor loads per-zone through zoneDecorSources() -- see the note above
      RESIDENT_ZONES. Filtering here rather than at the call site because this
      function IS the gate's definition of "prop art", and a second caller that
@@ -711,7 +711,7 @@ export function propSpriteSources() {
 /** Props that are ANIMATED — `{id, sprite, frames}` — for the strip slicer.
  *  Separate from propSpriteSources because the loader needs the frame count
  *  to cut the strip, and the manifest only needs the url. */
-/* v2.3.2644: resident-only, matching propSpriteSources. This slicer runs once,
+/* v2.3.2649: resident-only, matching propSpriteSources. This slicer runs once,
    behind the intro gate, off textures the gate loaded -- so an ANIMATED prop in
    a per-zone table would find nothing in the registry and silently render as a
    still. No such prop exists today (frost's six are all stills). Adding one
@@ -729,7 +729,7 @@ export function propAnimStrips() {
 if (typeof window !== 'undefined') window.__btTownPropsEnabled = () => TOWN_PROPS_ENABLED;
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   v2.3.2645: A PROP STOPS AN ATTACK, NOT JUST A FOOT
+   v2.3.2650: A PROP STOPS AN ATTACK, NOT JUST A FOOT
    ═══════════════════════════════════════════════════════════════════════════
    Owner: "I would like it if these props could block my and enemy attacks."
 
@@ -801,7 +801,7 @@ function pointInBox(x, y, b) {
   return x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1;
 }
 
-/* ═══ v2.3.2645: THE BLOCKER SET IS BUILT ONCE PER ZONE, NOT PER CALL ═══
+/* ═══ v2.3.2650: THE BLOCKER SET IS BUILT ONCE PER ZONE, NOT PER CALL ═══
    attackBlockPoint runs PER ARROW PER FRAME (projectiles.js), and the first
    cut of this rebuilt the list on every one of those calls -- a fresh array
    plus one object per prop, ten arrows in flight, sixty times a second.  That
