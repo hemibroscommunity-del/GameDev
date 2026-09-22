@@ -381,6 +381,7 @@ import {
 import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
+import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot */
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */ } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
@@ -833,6 +834,57 @@ export function updateArrows(S, deps) {
                 a._plantY = a._renderY;
                 a._fallVy = 2;        // initial downward kick -> "sharply downward"
                 a.life = 999;         // plantedAt governs removal now, not life
+                return true;
+              }
+            }
+            /* ═══ v2.3.2652: A PROP IN THE FLIGHT PATH STOPS THE SHOT ═══
+               Owner: "I would like it if these props could block my and enemy
+               attacks."
+
+               BEFORE the monster loop, because a shot that hit the rock never
+               reached the monster behind it -- testing after would let a
+               single frame's step register the hit and then stop the arrow,
+               which is the same frame-clock bug v2.3.2426 fixed for hits.
+
+               GROUND SPACE, not flight space.  The arrow is drawn from the bow
+               GRIP (_bx/_by = P.x+_ox, P.y+_oy), so _renderX/_renderY sit a
+               grip's offset above the shooter's feet, while a prop footprint
+               is a box on the floor.  Subtracting the same offset the flight
+               was built from puts both in the coordinates movement and depth
+               sorting already use -- at dist 0 that returns exactly P.x/P.y,
+               which is the check that says the conversion is right.
+
+               The SEGMENT this frame, for the reason the header gives: the
+               step runs to 48px and a point test would sample either side of
+               a 42px-deep footprint and never see it.
+
+               This is the half of the feature the CLIENT owns. A ranged hit is
+               decided entirely here (the worker only clamps range/arc and
+               deliberately has no proximity gate on ranged at all, so that the
+               bow special can keep chipping while you kite) -- so refusing to
+               claim the hit IS the block, and the worker needs no matching
+               test to agree with it. */
+            if (_released && !a.planting) {
+              var _gp = attackBlockPoint(S.currentZone,
+                a._prevX - _ox, a._prevY - _oy,
+                a._renderX - _ox, a._renderY - _oy);
+              if (_gp) {
+                /* Put it back into flight space to draw, so the arrow stops
+                   against the face of the rock it is drawn against. */
+                var _impX = _gp.x + _ox, _impY = _gp.y + _oy;
+                if (a.isStaff) {
+                  /* Magic has no plant animation -- it is spent on contact,
+                     the same as reaching its range. */
+                  a._renderX = _impX; a._renderY = _impY;
+                  return false;
+                }
+                a._renderX = _impX; a._renderY = _impY;
+                a.planting = true;
+                a._plantX = _impX;
+                a._plantStartY = _impY;
+                a._plantY = _impY;
+                a._fallVy = 2;
+                a.life = 999;        // plantedAt governs removal now, not life
                 return true;
               }
             }
@@ -1697,8 +1749,33 @@ export function updateSlimeProjectiles(S) {
                applies).  Two lines, correct either way. */
             proj.life -= _sdt;
             if (proj.life <= 0) { queueSnowballBurst(S, proj); return false; }
+            var _ppx = proj.x, _ppy = proj.y;
             proj.x += Math.cos(proj.ang) * proj.speed * _sdt;
             proj.y += Math.sin(proj.ang) * proj.speed * _sdt;
+            /* v2.3.2657: burst against a prop instead of flying through it.
+               Owner: "snowmen are still throwing snowballs through the props."
+               The server half of that (the damage) is fixed at the impact tick;
+               this is the half you can SEE, and without it the fix reads as
+               broken -- a ball that visibly passes through a rock and then does
+               nothing looks like a missing hit, not like cover.
+
+               Tested on the STEP segment (previous point -> new point), not on
+               the new point alone: at 6-11px per frame a point test walks
+               straight over a thin blocker some frames and not others, which is
+               the frame-rate-dependent flicker the arrow path already avoids
+               the same way (v2.3.2650).
+
+               Placed before the player-contact test below so a ball that hits
+               cover 10px short of the player bursts on the rock rather than on
+               the bro.  Applies to the display-only server ball and the legacy
+               local slime alike: neither should cross solid scenery, and the
+               server agrees about the damage for the one that carries any. */
+            var _propHit = attackBlockPoint(S.currentZone, _ppx, _ppy, proj.x, proj.y);
+            if (_propHit) {
+              proj.x = _propHit.x; proj.y = _propHit.y;
+              queueSnowballBurst(S, proj);
+              return false;
+            }
             var pdx = P.x - proj.x, pdy = P.y - proj.y;
             if (pdx * pdx + pdy * pdy > 16 * 16) return true;
             /* v2.3.1640: a server-thrown projectile (the snowman's
