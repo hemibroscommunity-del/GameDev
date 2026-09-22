@@ -958,7 +958,7 @@ export function InventoryPanel(props) {
            playing the loot 'collect' sound, so equipping a weapon here made
            a sound, just not THIS one, which is why it read as inconsistent
            rather than silent. */
-        BT_AUDIO.uiTick('ui-equip', 0.55);
+        BT_AUDIO.uiEquip();   /* v2.3.2643: gain + offset live in uiEquip, not here */
       }
     }, "Equip" /* v2.3.1235: batch-2 rollout \u2014 the sword emoji prefix was
       decorative emoji in button chrome */), /*#__PURE__*/React.createElement("button", {

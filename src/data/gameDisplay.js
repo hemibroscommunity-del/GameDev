@@ -2899,6 +2899,35 @@ BT_AUDIO.SFX_MANIFEST = {
      0.42s, with the measured peaks unchanged, so nothing audible was lost.
      mp-uisfx asserts the length now: a sample longer than the gesture is
      what lets rapid taps pile up. */
+  /* ═══ v2.3.2643: THE OWNER'S NEW EQUIP SOUND ═══
+     Owner: "Use this new sound for item equip."  It REPLACES the v2.3.2637
+     file at the same key and path, so every call site is untouched and there
+     is no second key to keep straight.
+
+     It is a different KIND of sound from the one it replaces -- a soft
+     leather/buckle rustle that swells to its peak at 0.30s, where the old one
+     was a bright metallic tick.  Two measured consequences, both handled at
+     the play site (BT_AUDIO.uiEquip) rather than left to each caller:
+
+     0.100s OF LEADING SILENCE.  A tenth of a second is not a rounding error
+     on a UI response -- it is the difference between the sound belonging to
+     your tap and trailing it.  Skipped with start(offset), the footstep /
+     armor-hit pattern.
+
+     IT IS QUIET.  Peak 0.167 against the old file's 0.815, and RMS 0.036
+     against 0.248 -- a five- to sevenfold difference, so the vol:0.55 the old
+     sample was tuned at would have shipped a sound most players would report
+     as missing.  uiEquip plays it at 3.0, which puts its peak at 0.50 (the old
+     one landed at 0.448) with no clipping risk, since gain is a multiplier and
+     0.167 * 3.0 is what reaches the bus.  This is the v2.3.1798 swing-table
+     pattern: there is no encoder in this sandbox to normalise the file, so the
+     correction lives at the gain node and the measurement lives here.
+
+     TRIMMED 0.816s -> 0.480s (15.9KB -> 9.4KB), losslessly, at frame
+     boundaries -- everything after 0.44s is below 0.003 RMS.  Doing that
+     needed a TOOL FIX: this upload is MPEG-2 Layer III at 24kHz and
+     tools/trim_mp3_tail.mjs parsed MPEG-1 only, silently reporting a trim it
+     had not performed (see its header).  mp3 either way, per v2.3.1610. */
   'ui-equip':      '/sfx/ui/equip.mp3',
   'ui-close':      '/sfx/ui/close.mp3',
   /* ═══ v2.3.2642: THE CLICK, AND WHAT IT TAKES BACK FROM ui-close ═══
@@ -3748,6 +3777,19 @@ BT_AUDIO.uiClickNow = function (vol) {
    here would not be a rounding error, it would be a 50-year one. */
 BT_AUDIO._now = function () {
   return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+};
+/* v2.3.2643: the equip sound's offset and its unusual gain, in ONE place.
+   Five call sites play this key (BroTown, InventoryPanel, equipActions and
+   ItemDetailPopup twice) and all five used to carry a hand-written 0.55.  A
+   sample swap that changes the right number by a factor of five is exactly
+   the change that leaves one of five behind, and the one left behind is
+   inaudible rather than broken -- so nothing reports it.  See SFX_MANIFEST
+   for what was measured. */
+BT_AUDIO.UI_EQUIP_VOL = 3.0;
+BT_AUDIO.UI_EQUIP_OFFSET = 0.095;
+BT_AUDIO.uiEquip = function (vol) {
+  return this.uiTick('ui-equip', vol == null ? this.UI_EQUIP_VOL : vol,
+    { offset: this.UI_EQUIP_OFFSET });
 };
 BT_AUDIO.uiClick = function (vol, since) {
   var self = this;

@@ -16,11 +16,28 @@ Three UI sounds exist, and each has one job:
 |---|---|---|
 | `ui-click` | `public/sfx/ui/click.mp3` | navigating — any button in any menu |
 | `ui-close` | `public/sfx/ui/close.mp3` | a dialog/window closing |
-| `ui-equip` | `public/sfx/ui/equip.mp3` | equipping **or** unequipping (v2.3.2637: one sound, by instruction) |
+| `ui-equip` | `public/sfx/ui/equip.mp3` | equipping **or** unequipping (v2.3.2637: one sound, by instruction; sample replaced v2.3.2643) |
 
 `ui-click` is deliberately quieter in effect than `ui-close` (0.85 gain on a
 0.540-peak sample vs 0.5 on a 0.975-peak one). A sound you hear on *every* tap
 has to sit under one you hear when something happens.
+
+**Gain and offset belong to the key, not the caller.** Each sound has one entry
+point that owns its numbers — `BT_AUDIO.uiEquip()`, `uiClickNow()`, and the
+delegate's `uiTick('ui-close', 0.5)`. Call those; do not hand-write a volume at
+a call site. v2.3.2643 is the reason: replacing the equip sample changed the
+right gain by a factor of five across five call sites, and the one you forget
+goes *inaudible*, not broken — so nothing reports it. Two of these numbers look
+strange and are measured, not guessed:
+
+- `UI_EQUIP_VOL = 3.0` — the sample peaks at 0.167 where the old one peaked at
+  0.815. Gain is a multiplier, so what reaches the bus is 0.50, the same level
+  the old file played at. There is no encoder in this sandbox to normalise the
+  file, so the correction lives at the gain node (the v2.3.1798 swing-table
+  pattern).
+- `UI_EQUIP_OFFSET = 0.095` / `UI_CLICK_OFFSET = 0.042` — leading silence in
+  the uploads, skipped with `start(offset)` so the sound belongs to the tap
+  instead of trailing it.
 
 ## How a button gets its sound
 
@@ -91,8 +108,19 @@ itself so the dashboard tabs never depend on the delegate.
   `.bt-dashboard`, and `[data-zone-title]`, which is a long-press handle), and a
   spill test that no world control resolves to a menu sound.
 
-Adding a sound? Ship it as **mp3** (v2.3.1610: `decodeAudioData` refuses AAC
-outside Safari), register it in `BT_AUDIO.SFX_MANIFEST` so the loading gate
-preloads it, and prove it with `tools/qa/mp/audio-formats.mjs`. Trim trailing
-silence with `tools/trim_mp3_tail.mjs` — a lossless frame-boundary cut; there is
-no mp3 encoder in the sandbox.
+Adding or replacing a sound? Ship it as **mp3** (v2.3.1610: `decodeAudioData`
+refuses AAC outside Safari), register it in `BT_AUDIO.SFX_MANIFEST` so the
+loading gate preloads it, and prove it with `tools/qa/mp/audio-formats.mjs`.
+
+Then **measure it before you wire it** — `node tools/audio_analyze.mjs <file>`
+decodes through a real Chromium and prints peak, RMS envelope and the active
+region. Two numbers decide the wiring: where the sound actually starts (the
+offset) and how loud it is against the sample it sits beside (the gain).
+A replacement sample is rarely the same loudness as the one it replaces.
+
+Trim trailing silence with `tools/trim_mp3_tail.mjs` — a lossless
+frame-boundary cut; there is no mp3 encoder in the sandbox. It handles MPEG-1,
+2 and 2.5 Layer III, and **fails loudly** rather than reporting a trim it did
+not perform (v2.3.2643 — it parsed MPEG-1 only and silently "trimmed" an
+MPEG-2 upload to a file of the same length). Always re-measure the output:
+the peak must be unchanged, or the cut was not lossless.

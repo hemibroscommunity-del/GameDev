@@ -46,7 +46,6 @@ import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js'
 import { getPattern } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 import { getEquip, syncArmorLayers, migrateTier1Armor } from '@/rendering/gearCatalog.js'; /* v2.3.1761 */
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
-import { pushLevelUpBurst } from '@/ui/levelUpBursts.js'; /* v2.3.2615: a prog3 level is a skill level AND a character level — two notifications, side by side */
 /* v2.3.1982: the "the world is full" screen — plain DOM, see its header
    for why it is not a React boot phase. */
 import { showRoomFull, hideRoomFull, roomFullOpen } from '@/ui/RoomFullScreen.js';
@@ -2384,41 +2383,41 @@ export function setupWebSocket(ctx) {
                  an old worker sends neither and the banner reads as before. */
               if (p3l.bonusPoints > 0) _gains.push('+' + p3l.bonusPoints + ' bonus point');
               if (p3l.milestone) _gains.unshift(p3l.milestone + ' unlocked!');
-              /* ═══ v2.3.2615: A PROG3 LEVEL-UP IS TWO EVENTS, SO IT IS TWO
-                 NOTIFICATIONS ═══
-                 Owner: "I'd rather them both play side by side and if it's
-                 combat level just show the character portrait in the center of
-                 the new level up animation."
-                 One `prog3_level` really does carry two: the trained SKILL went
-                 up, and because character level is the sum of the three skill
-                 levels (prog3CharLevel), the CHARACTER level went up with it.
-                 They were being written into one React state cell in one tick,
-                 which keeps only the second — the overwrite the owner saw.
-                 The skill one still goes through setLevelUpMsg, so the funnel
-                 v2.3.2591 built stays the thing that catches every path.  The
-                 character one goes straight to the burst stack's bus, because a
-                 second setLevelUpMsg in the same tick is not a second message,
-                 it is the first one deleted.
-                 ONE ts for both: they are one event and the stack keys its
-                 dedup on ts + kind, so sharing it is correct and is what starts
-                 the two animations on the same frame. */
+              /* ═══ v2.3.2643: ONE PROG3 LEVEL-UP, ONE NOTIFICATION ═══
+                 Owner: "for leveling up don't show both the character and the
+                 skill level up anymore, just show the skill level up."
+
+                 v2.3.2615 read this message as TWO events, and it is: the
+                 trained SKILL went up, and because character level is the sum
+                 of the three skill levels (prog3CharLevel) the CHARACTER level
+                 went up with it.  Both were announced, side by side, on the
+                 owner's own instruction at the time.  They have now looked at
+                 it in play and decided the second one is not worth a
+                 notification — which is consistent: it is the first one
+                 restated as a sum, and it moves for no reason the player did
+                 not already just see.
+
+                 So the skill burst is the only one raised here.  It still goes
+                 through setLevelUpMsg, which keeps the funnel v2.3.2591 built
+                 as the thing that catches every path (LevelUpBurstStack pushes
+                 it onto the bus from there).  The bus and its two slots stay —
+                 a life-skill level landing while a combat burst plays still
+                 needs them; what is gone is this handler raising a pair by
+                 itself.
+
+                 AND ONE LIST OF GAINS.  v2.3.2615 split the line in two along
+                 the same seam ("sending the whole list twice would tell the
+                 player they got it twice"): damage and the lane's own points
+                 to the skill, max HP and the shared point to the character.
+                 With one burst that split has nothing left to prevent, and
+                 keeping it would silently drop what the character half
+                 carried — the max HP, the shared point, and the MILESTONE
+                 unlock, which is the loudest thing a level can buy.  So the
+                 one burst carries the whole line again, as it did before the
+                 split.  It has the room: LevelUpBurst picks its caption type
+                 scale and column width off the live burst COUNT (nCols), and
+                 a lone burst gets the wide column and the larger step. */
               var _p3ts = Date.now();
-              /* The gains split along the same seam.  Damage and the lane's own
-                 points were bought by the WEAPON's level; max HP and the shared
-                 points belong to the character — shared points are minted per
-                 level-up and spend on the body, and HP_PER_LEVEL is multiplied
-                 by the CHARACTER level in both recompute paths.  Sending the
-                 whole list twice would tell the player they got it twice. */
-              var _charGains = [];
-              if (PROG3.HP_PER_LEVEL > 0) _charGains.push('+' + PROG3.HP_PER_LEVEL + ' max HP');
-              if (isProg3SharedEnabled()) {
-                var _sh2 = PROG3.SHARED_POINTS_PER_LEVEL;
-                _charGains.push('+' + _sh2 + ' shared' + (_sh2 === 1 ? ' point' : ' points'));
-              }
-              if (p3l.milestone) _charGains.unshift(p3l.milestone + ' unlocked!');
-              var _skillGains = _gains.filter(function (g) {
-                return _charGains.indexOf(g) < 0;
-              });
               setLevelUpMsg({
                 kind: 'combat',
                 level: p3l.charLevel || ((S.rpg && S.rpg.level) || 3),
@@ -2430,48 +2429,46 @@ export function setupWebSocket(ctx) {
                 skill: p3l.skill || null,
                 skillLabel: p3meta ? p3meta.label : null,
                 skillLevel: p3l.level,
-                gains: _skillGains.join(' \xB7 '),
+                gains: _gains.join(' \xB7 '),
                 ts: _p3ts,
               });
-              /* ═══ THE CHARACTER LEVEL, WHEN IT ACTUALLY MOVED ═══
-                 Not on every prog3_level: at CHAR_LEVEL_CAP the sum stops
-                 climbing while individual skills keep levelling, and a
-                 character-level celebration for a character level that did not
-                 change is the same class of untruth the owner reported in the
-                 first place.
-                 Below the cap it is not a comparison at all, it is arithmetic:
-                 character level IS the sum of the three trained levels, this
-                 event says one of them just went up, so the sum went up with
-                 it.  Stating it that way rather than diffing against the level
-                 we are holding is deliberate — `prog3_level` and the
-                 `player_state` carrying the new blob are two messages, and if
-                 the state landed first (a flush that coalesced, a reconnect
-                 replay) a diff would read "unchanged" and silently drop the
-                 character notification on the very level that produced it.
-                 The high-water is only the tiebreak AT the cap, where the
-                 arithmetic genuinely cannot tell.  It is clamped downward the
-                 way celebrateLevelUps clamps _lastShownLevel: a respec can
-                 lower the level, and a high-water left behind would mute every
-                 character level-up until the player climbed back past it. */
+              /* ═══ v2.3.2643: THE CHARACTER LEVEL STOPS ANNOUNCING ITSELF ═══
+                 Owner: "for leveling up don't show both the character and the
+                 skill level up anymore, just show the skill level up."
+
+                 v2.3.2615 raised TWO bursts here because one prog3_level
+                 genuinely is two facts — a trained skill went up, and the
+                 character level went up with it, since character level IS the
+                 sum of the three trained levels (prog3CharLevel).  True, and
+                 that is exactly why the second one is not worth a
+                 notification: it is the first one restated as a sum.  This is
+                 the only place in the live game that ever showed a pair — the
+                 three other `kind: 'char'` sites (combat_credit,
+                 gameEvents' build-point loop, celebrateLevelUps) are the
+                 pre-prog3 paths, where the character level is the only level
+                 a player has and announcing it is right.  They are left alone.
+
+                 ═══ THE STAMP STAYS, AND IT IS NOT DEAD CODE ═══
+                 `_lastCharLvlShown` is not bookkeeping for the burst that just
+                 went away.  celebrateLevelUps reads it as its `announced`
+                 guard: R.level catches up a beat later when the player_state
+                 carrying the new blob lands, and the next kill would otherwise
+                 arrive there with every reason to announce "Character · Level
+                 14".  Stop stamping it and the character notification comes
+                 BACK, by a different door, a few seconds later — which is the
+                 exact thing being removed here.  So the arithmetic below is
+                 kept whole, including the downward clamp for a respec; only
+                 the push is gone. */
               var _newChar = p3l.charLevel || 0;
               if (_newChar > 0 && S.rpg) {
                 if ((S.rpg._lastCharLvlShown || 0) > _newChar) S.rpg._lastCharLvlShown = _newChar;
-                var _charRose = _newChar < PROG3.CHAR_LEVEL_CAP
-                  || _newChar > (S.rpg._lastCharLvlShown || 0);
                 S.rpg._lastCharLvlShown = _newChar;
-                if (_charRose) {
-                  pushLevelUpBurst({
-                    kind: 'char',
-                    level: _newChar,
-                    gains: _charGains.join(' \xB7 '),
-                    ts: _p3ts,
-                  });
-                }
               }
               /* v2.3.2615: no BT_AUDIO.levelUp() — see the combat_credit note
-                 above.  Two bursts still make ONE sound: playLevelUpSting is
-                 rate-limited to one per 450ms precisely so a pair that starts
-                 on the same frame does not double the fanfare. */
+                 above.  v2.3.2643: and now one burst, so the sting's 450ms
+                 rate limit (playLevelUpSting) has nothing left to collapse
+                 here — it stays for the life-skill flurry it was also
+                 protecting. */
               break;
             }
           case 'quest_reward_stashed':

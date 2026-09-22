@@ -838,7 +838,7 @@ export const ItemDetailPopup = () => {
           /* v2.3.2637: the dashboard's own equip/unequip -- the same one
              sample as the inventory toggle, because to the player it is the
              same gesture whichever screen it happens on. */
-          BT_AUDIO.uiTick('ui-equip', 0.55);   /* v2.3.2639: deduped */
+          BT_AUDIO.uiEquip();   /* v2.3.2639: deduped.  v2.3.2643: gain + offset in uiEquip */
           if (on) {
             R2.gearStash.push({ slot, gearId, name: gearName(slot, gearId) });
             setEquip(slot, 'none');
@@ -1798,7 +1798,7 @@ function syncWeaponSlot(msg) {
      uiTick's window would collapse that anyway; the gate means the sound is
      also not simply WRONG on a slot switch. */
   if (msg && (msg.type === 'equip_request' || msg.type === 'unequip_request')) {
-    BT_AUDIO.uiTick('ui-equip', 0.55);
+    BT_AUDIO.uiEquip();   /* v2.3.2643: gain + offset live in uiEquip, not here */
   }
   const S = getState();
   if (S && S.channel) {

@@ -419,15 +419,23 @@ async function main() {
       await ctx.close().catch(() => {});
     }
 
-    /* ── pass 2b: BOTH, SIDE BY SIDE, AT THE OWNER'S SIZES ── */
-    /* Owner: "I'd rather them both play side by side and if it's combat level
-       just show the character portrait in the center of the new level up
-       animation."
+    /* ── pass 2b: ONE NOTIFICATION, AT THE OWNER'S SIZES ── */
+    /* ═══ v2.3.2643: THE PAIR PASS BECOMES THE SINGLE PASS ═══
+       Owner: "for leveling up don't show both the character and the skill
+       level up anymore, just show the skill level up."
+
+       v2.3.2615 built this pass to prove ONE prog3_level raised TWO
+       notifications.  The owner has now asked for the opposite, so the pass
+       is INVERTED rather than deleted: same socket frame, same four framings,
+       same probe — and the count, the kinds and the medallion all read the
+       other way.  Deleting it would have left the new behaviour with no
+       evidence at all, and "we removed a notification" is precisely the claim
+       a screenshot cannot make on its own (TRAPS §61: absence needs a check
+       that would read differently on the build before the change).
+
        Driven by ONE real socket frame through the real onmessage, so what is
-       photographed is the handler's own decision to raise two notifications —
-       not the rig's.  On the build the owner reported this pass photographs a
-       single burst and fails on the count, which is the property TRAPS §61
-       asks for: a check that would read differently on the broken build. */
+       photographed is the handler's own decision — not the rig's.  On the
+       PREVIOUS build this pass photographs two bursts and fails on the count. */
     {
       const ctx = await browser.newContext({
         viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true,
@@ -506,7 +514,7 @@ async function main() {
           portrait: bursts.some((b) => b.kind === 'char' && (b.iconSrc || '').startsWith('data:')),
           shownHW,
         });
-        console.log(`  ${bursts.length === 2 ? 'OK  ' : 'FAIL'} pair/${view.name}.jpg  ` +
+        console.log(`  ${bursts.length === 1 && bursts.every((b) => b.kind !== 'char') ? 'OK  ' : 'FAIL'} pair/${view.name}.jpg  ` +
           `${bursts.length} burst(s) [${bursts.map((b) => `${b.kind}:${b.iconLabel}${b.iconComplete ? '' : ' NOT-DECODED'}`).join(', ')}]`);
         /* Printed whether or not it passes — see TRAPS §81. */
         console.log(`       worst painted-pair gap ${gap ? gap.gap.toFixed(1) + 'px  (' + gap.pair + ')' : 'n/a — fewer than two bursts'}` +
@@ -522,7 +530,7 @@ async function main() {
         const kept = all.filter((_, i) => i % step === 0).slice(0, 12);
         const sheet = await composeSheet(browser, kept, {
           cols: 4, cellW: view.width >= view.height ? 300 : 210,
-          title: `Both notifications, one prog3_level — ${view.name} `
+          title: `One notification, one prog3_level — ${view.name} `
             + `(${all.length} painted frames, every ${step}${step === 1 ? '' : 'th'} shown)`,
         });
         if (sheet) writeFileSync(`${OUT}/pairstrip/${view.name}.jpg`, sheet);
@@ -532,12 +540,14 @@ async function main() {
       }
 
       /* ═══ AND IT HAS TO MOVE (TRAPS §61) ═══
-         Every reading above is one frame, and a pair of bursts frozen on frame
-         0 would satisfy all of them.  So: one more fire, sampled over its own
-         run with nothing touching the page, asserting on the DIFFERENCE — how
-         many distinct medallion widths each burst takes, and that BOTH of them
-         take more than one.  A burst whose art never advances is exactly the
-         failure a still-frame suite cannot see. */
+         Every reading above is one frame, and a burst frozen on frame 0 would
+         satisfy all of them.  So: one more fire, sampled over its own run with
+         nothing touching the page, asserting on the DIFFERENCE — how many
+         distinct medallion widths the burst takes.  A burst whose art never
+         advances is exactly the failure a still-frame suite cannot see.
+         v2.3.2643: the `char` counter is KEPT and must stay at zero.  Counting
+         a thing that should not exist is how absence is measured — dropping
+         the counter would turn this row into one that cannot fail. */
       await page.setViewportSize({ width: 390, height: 844 });
       await page.waitForTimeout(700);
       await foldDash(page);
@@ -554,8 +564,9 @@ async function main() {
       }
       const distinct = { combat: widths.combat.size, char: widths.char.size };
       findings.push({ shot: 'pair-motion', ...distinct });
-      console.log(`\n  MOTION (both bursts sampled over one run, nothing touching the page)`);
-      console.log(`    distinct medallion widths — skill burst: ${distinct.combat}, character burst: ${distinct.char}  (1 means frozen)`);
+      console.log(`\n  MOTION (sampled over one run, nothing touching the page)`);
+      console.log(`    distinct medallion widths — skill burst: ${distinct.combat} (1 means frozen), `
+        + `character burst: ${distinct.char} (MUST be 0 — it is not shown any more)`);
       await ctx.close().catch(() => {});
     }
 
@@ -823,21 +834,31 @@ async function main() {
     console.log(`\n  ${strip.length}/8 frames mounted`);
     console.log(`  icon centre drift across the run: dx=${dx.toFixed(2)}px dy=${dy.toFixed(2)}px  (must be ~0)`);
     console.log(`  icon width, frame 0 -> 7: ${ws.map((w) => w.toFixed(1)).join(' -> ')}  (scales WITH the medallion)`);
-    /* ═══ v2.3.2615: THE SIDE-BY-SIDE ASSERTIONS ═══ */
+    /* ═══ v2.3.2643: THE ONE-NOTIFICATION ASSERTIONS ═══
+       Owner: "just show the skill level up."  Every row below used to read the
+       other way; see the pass header for why it is inverted rather than
+       deleted. */
     const pairs = findings.filter((f) => f.shot.startsWith('pair-') && f.n != null);
     const motion = findings.find((f) => f.shot === 'pair-motion') || {};
-    const worstAll = pairs.reduce((m, f) => (f.gap != null && (m == null || f.gap < m) ? f.gap : m), null);
-    console.log(`\n  SIDE BY SIDE`);
-    console.log(`  ${pairs.filter((f) => f.n === 2).length}/${pairs.length} framings showed BOTH notifications from one prog3_level`);
-    console.log(`  tightest painted-pair gap across all four framings: ${worstAll == null ? 'n/a' : worstAll.toFixed(1) + 'px'}`);
-    console.log(`  character medallion is the portrait data-url: ${pairs.every((f) => f.portrait)}`);
+    console.log(`\n  ONE NOTIFICATION PER LEVEL`);
+    console.log(`  ${pairs.filter((f) => f.n === 1).length}/${pairs.length} framings showed EXACTLY ONE notification from one prog3_level`);
+    console.log(`  any framing that still showed a character burst: ${pairs.filter((f) => /char/.test(f.kinds || '')).length}`);
+    console.log(`  the one shown is the SKILL burst: ${pairs.every((f) => f.kinds === 'combat')}`);
     const films = findings.filter((f) => f.shot.startsWith('film-'));
     console.log(`  filmed, painted frames per framing: ${films.map((f) => f.painted).join(', ')}`);
+    /* ═══ THE STAMP IS STILL ASSERTED, AND THAT IS THE POINT ═══
+       `shownHW === 14` is not left over from the removed burst.  Dropping the
+       character NOTIFICATION while also dropping `_lastCharLvlShown` would
+       bring the character notification straight back by another door:
+       celebrateLevelUps reads that stamp as its `announced` guard, and without
+       it the next kill announces "Character · Level 14" a few seconds later.
+       So the stamp outlives the burst it used to accompany, and this row is
+       what says so. */
     const pairOk = pairs.length === VIEWS.length
-      && pairs.every((f) => f.n === 2 && f.offscreen === 0 && f.belowTray === 0 && f.allDecoded
-        && f.portrait && f.shownHW === 14)
-      && worstAll != null && worstAll > 0
-      && motion.combat > 1 && motion.char > 1
+      && pairs.every((f) => f.n === 1 && f.kinds === 'combat' && !f.portrait
+        && f.offscreen === 0 && f.belowTray === 0 && f.allDecoded
+        && f.shownHW === 14)
+      && motion.combat > 1 && motion.char === 0
       /* A sheet built from three repaints is not a film. */
       && films.length === VIEWS.length && films.every((f) => f.painted >= 20);
 
@@ -871,10 +892,11 @@ async function main() {
       && pre.report === 'fulfilled' && pre.audioDecoded === true
       && pre.portraitPresent === true && pre.portraitWarm === true
       && !!(pre.mute && pre.mute.whileMuted && pre.mute.whileOn);
-    console.log(ok ? '\nPASS — icon locked to the circle, every hero shot mounted, both notifications play side by side at every framing '
-                     + 'with no overlap and nothing off-screen, both animate, the T1 tick is silent under prog3 and named '
-                     + 'under legacy, no celebration is pending for a level nobody earned (and one still is for a real '
-                     + 'one), assets warm before first use, mute respected'
+    console.log(ok ? '\nPASS — icon locked to the circle, every hero shot mounted, ONE notification per prog3_level at every '
+                     + 'framing (the skill one; no character burst anywhere) with nothing off-screen, it animates, the '
+                     + 'character high-water is still stamped so the suppressed announcement cannot return by another '
+                     + 'door, the T1 tick is silent under prog3 and named under legacy, no celebration is pending for a '
+                     + 'level nobody earned (and one still is for a real one), assets warm before first use, mute respected'
                    : '\nFAIL — see the rows above');
     console.log(`\nwrote ${OUT}`);
     if (!ok) process.exitCode = 1;

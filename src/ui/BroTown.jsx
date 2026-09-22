@@ -1437,7 +1437,7 @@ export var BroTown = function BroTown(_ref0) {
 
        Out here it runs exactly once per gesture, which is what a gesture
        sound means. */
-    BT_AUDIO.uiTick('ui-equip', 0.55);
+    BT_AUDIO.uiEquip();   /* v2.3.2643: gain + offset live in uiEquip, not here */
     setGearWorn(function (g) {
       var worn = !g[slot];
       setEquip(slot, worn ? GEAR_DEFAULT_ID[slot] : 'none');
