@@ -45,8 +45,8 @@ import { preloadFullsetFigures } from './gearSheets.js'; /* v2.3.1376: fullset k
 import { preloadJogHeadOverlays } from './playerSkins.js'; /* v2.3.1376: their head overlays */
 import { ZONE_VARIANT_MAP, MONSTER_VARIANTS, variantsForZone } from '../data/monsterVariants.js'; /* v2.3.1405: per-zone variant scoping */
 import { loadMonsterRecolor, recolorFamilyOf, freeMonsterRecolor } from './monsterRecolor.js'; /* v2.3.1534: per-zone recolour; v2.3.2272: and its release */
-import { loadFootprints, freeFootprints } from './footprintSprites.js'; /* v2.3.2652: per-zone ground reaction */
-import { loadNpcSprites, loadZoneDecor, freeZoneDecor } from './npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2649: + per-zone decor props */
+import { loadFootprints, freeFootprints } from './footprintSprites.js'; /* v2.3.2654: per-zone ground reaction */
+import { loadNpcSprites, loadZoneDecor, freeZoneDecor } from './npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2651: + per-zone decor props */
 import { preloadLevelUpBurst } from './levelUpBurstPreload.js';
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
 import { preloadAuctionInterior } from './auctionInteriorPreload.js'; /* v2.3.2627: the auction house's room + clerk */
@@ -107,7 +107,7 @@ export async function preloadZoneAssets(zoneId) {
      the first beat never waits on a fetch.  Resolves instantly for the ten
      zones that have no banner.  See zoneBannerPreload.js. */
   tasks.push(Promise.resolve(preloadZoneBanner(zoneId)).catch(() => {}));
-  /* ═══ v2.3.2649: the zone's DECOR PROPS ═══
+  /* ═══ v2.3.2651: the zone's DECOR PROPS ═══
      HERE rather than in preloadWorldAnimations for the same reason as the
      banner above: frost's six masses are ~2.4MB of decoded RGBA that mean
      nothing in any other zone, and twelve zones of kits on the startup gate is
@@ -117,7 +117,7 @@ export async function preloadZoneAssets(zoneId) {
      without the await that retry IS a first-sighting load. Resolves instantly
      for the eleven zones that have no decor yet. */
   tasks.push(Promise.resolve(loadZoneDecor(zoneId)).catch(() => {}));
-  /* v2.3.2652: and the zone's footprint art, on the same terms -- 0.139MB for
+  /* v2.3.2654: and the zone's footprint art, on the same terms -- 0.139MB for
      frost, nothing for the eleven zones with no strip of their own. Awaited so
      the FIRST step a player takes already has its texture; a lazy load here
      would mean the opening stride of every zone entry leaves nothing behind. */
@@ -214,7 +214,7 @@ export async function freeZoneAssets(fromZoneId, toZoneId) {
      does. */
   let bannersFreed = [];
   try { bannersFreed = freeZoneBanner(fromZoneId, toZoneId); } catch (e) { /* a strip that will not release is a leak, not a crash */ }
-  /* v2.3.2649: and the decor props. Same subtraction as the sheets above -- a
+  /* v2.3.2651: and the decor props. Same subtraction as the sheets above -- a
      sprite the destination also uses stays -- which is a no-op today (only
      frost has decor) and will not be on the day a reusable-neutral piece is
      shared between biomes, which is what docs/ART-ASSET-PHASES.md asks for. */
@@ -222,7 +222,7 @@ export async function freeZoneAssets(fromZoneId, toZoneId) {
   tasks.push(Promise.resolve(freeZoneDecor(fromZoneId, toZoneId))
     .then((d) => { decorFreed = d || []; })
     .catch(() => { /* a texture that will not release is a leak, not a crash */ }));
-  /* v2.3.2652: and the footprint strip, with the same keep-what-the-
+  /* v2.3.2654: and the footprint strip, with the same keep-what-the-
      destination-uses subtraction (a no-op today -- only frost has prints). */
   let printsFreed = false;
   tasks.push(Promise.resolve(freeFootprints(fromZoneId, toZoneId))

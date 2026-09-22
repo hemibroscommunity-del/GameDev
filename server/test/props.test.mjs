@@ -1,4 +1,4 @@
-/* Props block attacks (v2.3.2650).
+/* Props block attacks (v2.3.2652).
  *
  * Owner: "I would like it if these props could block my and enemy attacks."
  *
@@ -130,7 +130,7 @@ ps.x = 900; ps.y = 900;
 const openGround = strikeFrom(900, 950);
 check('on open ground nothing is blocked', openGround > 0, { openGround });
 
-/* ── 3. monsters stop at props too (v2.3.2651) ──
+/* ── 3. monsters stop at props too (v2.3.2653) ──
    The ridge box is x 329..531, y 528..570; slideMove pads by the player's own
    collision half-width (10), so the effective wall is x 319..541, y 518..580. */
 {

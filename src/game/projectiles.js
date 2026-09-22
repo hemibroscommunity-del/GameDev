@@ -381,7 +381,7 @@ import {
 import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
-import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2650: a prop in the flight path stops the shot */
+import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot */
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */ } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
@@ -837,7 +837,7 @@ export function updateArrows(S, deps) {
                 return true;
               }
             }
-            /* ═══ v2.3.2650: A PROP IN THE FLIGHT PATH STOPS THE SHOT ═══
+            /* ═══ v2.3.2652: A PROP IN THE FLIGHT PATH STOPS THE SHOT ═══
                Owner: "I would like it if these props could block my and enemy
                attacks."
 

@@ -1,4 +1,4 @@
-/* ═══ FROST'S DECOR LOADS WITH ITS ZONE, AND NOT BEFORE  (v2.3.2649) ═══
+/* ═══ FROST'S DECOR LOADS WITH ITS ZONE, AND NOT BEFORE  (v2.3.2651) ═══
  *
  * Frost Ridge got six free-standing props (worldProps.js) so that the dynamic
  * occlusion of v2.3.2633 finally applies somewhere outside town.  Their art is
@@ -132,7 +132,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 2. ALL SIX ARE DRAWN, AT THE RIGHT SIZE ── */
   const frostBundles = await decorBundles(P);
-  /* v2.3.2653: the count is DERIVED from the two tables the game reads rather
+  /* v2.3.2655: the count is DERIVED from the two tables the game reads rather
      than written as a number here. The first cut said `=== DECOR.length` and
      went red the moment the foreground pieces joined the same per-zone bundle
      list -- the code was right and the test was stale, which is the failure
@@ -174,7 +174,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/zonedecor-frost.png` })
     .catch(() => { /* a screenshot is evidence, not an assertion */ });
 
-  /* ── 3b. THE PROPS STOP ATTACKS (v2.3.2650) ──
+  /* ── 3b. THE PROPS STOP ATTACKS (v2.3.2652) ──
      Owner: "I would like it if these props could block my and enemy attacks."
 
      The worker's half is unit-tested (server/test/props.test.mjs) against the
@@ -203,7 +203,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the block reports the near face as the impact point',
     !!los.point && Math.abs(los.point.y - 528) < 1.5, { point: los.point });
 
-  /* ── 3d. THE NEAR-CAMERA FOREGROUND (v2.3.2653) ──
+  /* ── 3d. THE NEAR-CAMERA FOREGROUND (v2.3.2655) ──
      DEPTH-ROADMAP item 5. Three of the first four assets commissioned for this
      game were edge-cropped and could not be drawn by ANY code path until this
      layer existed, so the load-bearing assertion is simply that they are on
@@ -240,7 +240,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     iFg > order.indexOf('projectiles') && iFg < order.indexOf('damageNumbers') && iFg > order.indexOf('player'),
     { order });
 
-  /* ── 3c. FOOTPRINTS (v2.3.2652) ──
+  /* ── 3c. FOOTPRINTS (v2.3.2654) ──
      The game's first grounding cue. Two things are worth pinning: the art is
      PER-ZONE (so it must be resident in frost and gone in town), and the
      prints are spawned by DISTANCE rather than by the step timer -- so a real

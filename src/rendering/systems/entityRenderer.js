@@ -321,7 +321,7 @@ const _npcDrawn = Object.create(null);
 /* v2.3.1775: what scenery is on screen and how big it is drawn. */
 const _propsDrawn = [];
 if (typeof window !== 'undefined') window.__btWorldProps = () => _propsDrawn.slice();
-/* v2.3.2653: the same probe for the foreground pieces.  Published separately
+/* v2.3.2655: the same probe for the foreground pieces.  Published separately
    rather than folded into __btWorldProps because they are a different kind of
    object -- no ground line, no footprint, never sorted -- and a test that had
    to filter them back out of the prop list would be asserting the filter. */
@@ -7329,7 +7329,7 @@ function _drawResourceSpent(label, gfx, kind, y, alpha) {
 export class EntityRenderer {
   constructor(entityLayer, playerLayer, monsterUiLayer, gestureLayer, propFrontLayer, foregroundLayer) {
     this.entityLayer = entityLayer;
-    /* v2.3.2653: the near-camera layer (pixiApp WORLD_LAYER_NAMES). null on an
+    /* v2.3.2655: the near-camera layer (pixiApp WORLD_LAYER_NAMES). null on an
        older scene graph, which simply draws no foreground rather than
        throwing -- the same posture propFrontLayer and gestureLayer take. */
     this.foregroundLayer = foregroundLayer || null;
@@ -7363,7 +7363,7 @@ export class EntityRenderer {
     this._updateOtherPlayers(S, now);
     this._updatePlayer(S, now);
     this._updateProps(S);
-    this._updateForeground(S);   /* v2.3.2653: near-camera framing art */
+    this._updateForeground(S);   /* v2.3.2655: near-camera framing art */
     this._updateNPCs(S, now);
     this._updatePet(S, now);
     this._updatePlayerHud(S, now);
@@ -13262,7 +13262,7 @@ export class EntityRenderer {
     for (const [id, spr] of this.propDisplays) {
       if (!live.has(id)) {
         spr.visible = false;
-        /* ═══ v2.3.2649: AND IT MUST DROP THE TEXTURE, NOT JUST HIDE ═══
+        /* ═══ v2.3.2651: AND IT MUST DROP THE TEXTURE, NOT JUST HIDE ═══
            Hiding alone was correct while every prop was a town prop, because
            town art is global and never freed.  Zone decor IS freed on the way
            out (freeZoneDecor), and this sprite is the last thing holding a
@@ -13331,7 +13331,7 @@ export class EntityRenderer {
     }
   }
 
-  /* ═══ v2.3.2653: THE NEAR-CAMERA FOREGROUND ═══
+  /* ═══ v2.3.2655: THE NEAR-CAMERA FOREGROUND ═══
      Edge-cropped framing art -- a canopy, a mountain shoulder -- drawn between
      the camera and everything else.  See ZONE_FOREGROUND (worldProps.js) for
      why these are a separate table from props rather than a flag on one.
@@ -13375,7 +13375,7 @@ export class EntityRenderer {
       spr.alpha = f.alpha != null ? f.alpha : 1;
       spr.visible = spr.texture !== Texture.EMPTY;
     }
-    /* Same lesson as v2.3.2649's props: a display that outlives its texture
+    /* Same lesson as v2.3.2651's props: a display that outlives its texture
        must DROP the reference, not merely hide.  This art is per-zone and IS
        freed on the way out, so a sprite still holding it would come back
        visible on re-entry pointing at a destroyed source. */

@@ -80,7 +80,7 @@ const WORLD_LAYER_NAMES = [
   'monsterUi', 'player',
   'gatherNodesFront', 'gestureFront',
   'projectiles',
-  /* ═══ v2.3.2653: THE NEAR-CAMERA FOREGROUND ═══
+  /* ═══ v2.3.2655: THE NEAR-CAMERA FOREGROUND ═══
      DEPTH-ROADMAP item 5, and the layer whose absence meant an edge-cropped
      canopy could not be drawn by anything at all (docs/ART-ASSET-PHASES.md §3
      -- three of the first four assets commissioned for this game were held for

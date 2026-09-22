@@ -1,4 +1,4 @@
-# snow-footprints-strip.png — raw, NOT yet wired (v2.3.2650)
+# snow-footprints-strip.png — raw, NOT yet wired (v2.3.2652)
 
 A footprint pair pressed into snow, fading out over four frames. Delivered by
 the owner alongside the frost decor; **nothing renders it yet.**

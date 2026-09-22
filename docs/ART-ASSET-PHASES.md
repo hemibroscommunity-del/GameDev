@@ -1,6 +1,6 @@
 # BroTown Environment Art — Phased Asset Plan
 
-*v2.3.2647; §4/§6 corrected v2.3.2648; Phases 1–3 shipped v2.3.2649–2653.*
+*v2.3.2649; §4/§6 corrected v2.3.2650; Phases 1–3 shipped v2.3.2651–2655.*
 
 A commissioning plan for environment art: what to ask a generator for, at
 what size, in what order, and which of it the renderer can actually put on
@@ -40,7 +40,7 @@ correctly with no further engineering. That is the cheapest depth in the
 game and it is where the art budget should go first.
 
 What it did *not* give you was a near-camera framing layer — that arrived
-separately at v2.3.2653. See §3.
+separately at v2.3.2655. See §3.
 
 ## 2. The only budget number that matters: decoded RGBA
 
@@ -92,7 +92,7 @@ before the art is made". This is that cap:
 It is a per-zone figure because only one zone's art is resident at a time
 (`preloadZoneAssets` / `freeZoneAssets`), so the cap is also the peak.
 
-> **Corrected at v2.3.2653.** This originally also said "no more than 8 decor
+> **Corrected at v2.3.2655.** This originally also said "no more than 8 decor
 > assets", and that count was wrong — not too tight, but *measuring the wrong
 > thing*. It was a proxy for the megabytes, and it punishes exactly the assets
 > that deserve encouraging: frost's footprint strip is 0.139 MB, 2% of the cap,
@@ -103,7 +103,7 @@ It is a per-zone figure because only one zone's art is resident at a time
 > worry behind it, and 10 sprites is nothing — town has drawn 9 props plus
 > NPCs plus monsters since v2.3.2065.
 
-**Anything per-zone must load per-zone.** Until v2.3.2649 prop art did not:
+**Anything per-zone must load per-zone.** Until v2.3.2651 prop art did not:
 `propSpriteSources()` handed the whole table to the *global* startup gate, so
 a frost prop added the obvious way would have downloaded on every player's
 loading screen and stayed decoded for the life of the page. It now returns
@@ -122,13 +122,13 @@ asset can go in the game. This is:
 |---|---|---|
 | **Shape** | complete object, ink nowhere near its canvas edge, sits on a base | subject runs off its own canvas edge; a corner or border piece |
 | **Has a ground-contact line?** | yes — the bottom of the art | no |
-| **Consumed by** | `WORLD_PROPS` + `depthSort.js` | `ZONE_FOREGROUND` + the `foreground` layer (v2.3.2653) |
+| **Consumed by** | `WORLD_PROPS` + `depthSort.js` | `ZONE_FOREGROUND` + the `foreground` layer (v2.3.2655) |
 | **Ships** | today, art-only change | today — but read the placement rule below |
 
 `depthSort.js` sorts everything in the world by its **ground-contact line**,
 which it reads as the sprite's `y` — and every world sprite is anchored
 bottom-centre. An asset with no base has no sortable position, which is why
-until v2.3.2653 an edge-cropped piece could not be drawn by anything at all.
+until v2.3.2655 an edge-cropped piece could not be drawn by anything at all.
 
 **Both kinds now ship**, but they are still not interchangeable: a
 free-standing prop is *in* the world (it sorts, it blocks, it stops a shot);
@@ -166,7 +166,7 @@ late:
 
 ## 4. How big a world is, and how big the art has to be
 
-> **Corrected at v2.3.2648.** The first cut of this section reasoned from
+> **Corrected at v2.3.2650.** The first cut of this section reasoned from
 > `REF_VIEW_W = 390 × WORLD_ZOOM(3.0) = 1170` world px and concluded that one
 > world px is 0.67–1.0 *device* px, so a 1:1 texture-to-world ratio was
 > "already generous". **That was wrong by about 2.5×**, because `REF_VIEW_W`
@@ -337,7 +337,7 @@ The size table, the RGBA cap, the free-standing test and the brief template
 below. Plus `tools/import-decor-art.mjs`, so a delivered asset is measured
 rather than eyeballed.
 
-### Phase 1 — per-zone decor, and the first free-standing masses · **shipped v2.3.2649**
+### Phase 1 — per-zone decor, and the first free-standing masses · **shipped v2.3.2651**
 
 **Code first, and it is small.** Per-zone decor loading does not exist:
 prop art rides the global startup gate (§2). It needs
@@ -350,7 +350,7 @@ prop art rides the global startup gate (§2). It needs
   and the zone banner already work,
 - `propSpriteSources()` split so only global props reach the startup gate.
 
-**Frost shipped at v2.3.2649** — all six placed, 2.41 MB of the 6.00 MB cap.
+**Frost shipped at v2.3.2651** — all six placed, 2.41 MB of the 6.00 MB cap.
 `zoneDecorSources(zoneId)` splits per-zone art off the startup gate,
 `loadZoneDecor` / `freeZoneDecor` (`npcSprites.js`) load and release it
 through `loadTracked` / `unloadBundle`, and both are wired into
@@ -375,7 +375,7 @@ art.
 
 **Placement caution:** every prop blocks, since v2.3.2073 ("make sure the
 objects are unwalkable"), so each one adds a `blockW`/`blockD` collision box
-to a live zone — and since v2.3.2650 that same box is **cover**: a shot whose
+to a live zone — and since v2.3.2652 that same box is **cover**: a shot whose
 line crosses it is refused, for the player's arrows (client-side, in
 `projectiles.js`) and for a monster's hit (`_monsterStrikePlayer`, the worker's
 one choke point). One box, one rule: *if you could not walk that line, a shot
@@ -386,7 +386,7 @@ flat over-blocked by the mask; repaint to open it"*
 (`src/rendering/tiledMaps.js:177`) — so placements want checking against the
 mask, not just against the painting.
 
-### Phase 2 — grounding cues · **first cue shipped v2.3.2652**
+### Phase 2 — grounding cues · **first cue shipped v2.3.2654**
 
 `DEPTH-ROADMAP` §7, which was at zero. Footprints, snow puffs, dust, impact
 scuffs, harvest puffs, pickup glints. 128 px, cheap, no light-direction
@@ -395,7 +395,7 @@ ellipse was reaching for. Each needs a draw site; the fx-strip machinery
 (`src/rendering/fxStrips.js`) is the pattern to follow, and anything global
 registers in `preloadWorldAnimations` per the preloading law.
 
-### Phase 3 — near-camera foreground framing · **shipped v2.3.2653**
+### Phase 3 — near-camera foreground framing · **shipped v2.3.2655**
 
 **`DEPTH-ROADMAP` item 5.** Cropped canopies, cliff lips and branches drawn in
 front of the player and cut off by the screen edge.

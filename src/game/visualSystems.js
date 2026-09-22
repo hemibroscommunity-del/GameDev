@@ -8,7 +8,7 @@
    simulation. Only capture is BT_AUDIO (footsteps); S is stateRef.current
    and the block reads S.player directly. */
 import { BT_AUDIO } from '@/data/index.js';
-import { zoneLeavesPrints } from '@/rendering/footprintSprites.js'; /* v2.3.2652 */
+import { zoneLeavesPrints } from '@/rendering/footprintSprites.js'; /* v2.3.2654 */
 
 /* World px between footprint PAIRS, and the live cap.  PRINT_TTL_MS lives in
    the renderer with the fade it drives; stateCleanup filters on the same
@@ -75,7 +75,7 @@ export function updateVisualSystems(S) {
           }
         }
 
-        /* ═══ v2.3.2652: PRINTS IN THE SNOW ═══
+        /* ═══ v2.3.2654: PRINTS IN THE SNOW ═══
            The visible half of a footstep, in the zones that have the art.
 
            BY DISTANCE, NOT BY THE STEP TIMER ABOVE.  That timer is a fixed

@@ -1,4 +1,4 @@
-/* EVERY PRE-CUT EDGE OF A FOREGROUND PIECE MUST LIE OUTSIDE THE MAP (v2.3.2653).
+/* EVERY PRE-CUT EDGE OF A FOREGROUND PIECE MUST LIE OUTSIDE THE MAP (v2.3.2655).
  *
  *   node tools/dev/check-foreground-crops.mjs
  *
@@ -8,7 +8,7 @@
  * cut is off-screen.  A cut that lands inside the playfield draws as a hard
  * straight seam: a pasted rectangle over the map.
  *
- * WHY THIS IS A SCRIPT AND NOT AN ASSERTION IN THE SCENARIO.  v2.3.2653 put
+ * WHY THIS IS A SCRIPT AND NOT AN ASSERTION IN THE SCENARIO.  v2.3.2655 put
  * the peak in the north-east with its bottom cut at y 370 -- a seam straight
  * across the middle of frost -- and FOUR passing browser assertions covered
  * that exact piece: it was drawn, on the foreground layer, at its declared
@@ -36,7 +36,7 @@ const TILE = 32;
    as opposed to a few antialiased pixels grazing the canvas bound.
 
    CHOSEN FROM THE MEASURED DISTRIBUTION, not picked to make the suite pass.
-   Across the three pieces shipped at v2.3.2653 the edge runs are:
+   Across the three pieces shipped at v2.3.2655 the edge runs are:
 
      frost-peak-corner    top 1%   bottom 100%  left 73%  right 3%
      frost-pine-canopy-a  top 1%   bottom 1%    left 24%  right 1%

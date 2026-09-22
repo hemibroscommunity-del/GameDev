@@ -1,4 +1,4 @@
-/* IMPORT ENVIRONMENT DECOR ART A GENERATOR PRODUCED  (v2.3.2647).
+/* IMPORT ENVIRONMENT DECOR ART A GENERATOR PRODUCED  (v2.3.2649).
  *
  *   node tools/import-decor-art.mjs <in.png...> [--long=512] [--world=N]
  *                                   [--out=dir] [--name=id] [--report]
@@ -203,7 +203,7 @@ for (const SRC of SRCS) {
     console.log(`                  layer that does not exist yet (DEPTH-ROADMAP item 5).`);
   }
   if (WORLD) {
-    /* ═══ v2.3.2648: THE FIRST VERSION OF THIS WARNING WAS WRONG ═══
+    /* ═══ v2.3.2650: THE FIRST VERSION OF THIS WARNING WAS WRONG ═══
        It reasoned from REF_VIEW_W = 390 * WORLD_ZOOM(3.0) = 1170 world px and
        warned past 1.5x, which understated the requirement by about 2.5x.
        REF_VIEW_W is a TARGET a combat zone never reaches: worldViewport()

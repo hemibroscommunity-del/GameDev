@@ -850,7 +850,7 @@ if (changedServer.length) {
 }
 
 /* ---- 9b. foreground-crops -------------------------------------------
-   v2.3.2653.  ZONE_FOREGROUND places EDGE-CROPPED art, and the crop only
+   v2.3.2655.  ZONE_FOREGROUND places EDGE-CROPPED art, and the crop only
    reads while the cut is off-screen; a cut that lands inside the playfield
    draws as a hard seam across the map.  The bug that prompted this shipped
    with FOUR passing browser assertions on the very piece that was broken --

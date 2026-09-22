@@ -32,7 +32,7 @@ the same frame. `blockD` is a starting point — tune it on the art's own base.
 **2.41 MB of 6.00 MB, 6 assets of 8** — inside the per-zone decor cap in
 `docs/ART-ASSET-PHASES.md` §2, with room for two more.
 
-**All six are placed and live as of v2.3.2649** (`WORLD_PROPS`, `zone: 'frost'`).
+**All six are placed and live as of v2.3.2651** (`WORLD_PROPS`, `zone: 'frost'`).
 Positions were chosen off the walk mask and the painting together, keeping the
 nw-entry arrival at (864, 768), the return portal below it and the painted dirt
 path clear. `tools/qa/mp/mp-zonedecor.mjs` pins the behaviour.

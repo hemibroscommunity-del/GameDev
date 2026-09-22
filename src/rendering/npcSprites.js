@@ -21,8 +21,8 @@
  */
 import { Assets, Rectangle, Texture } from 'pixi.js';
 import { NPC_DATA } from '../data/gameDisplay.js';
-import { propSpriteSources, propAnimStrips, zoneDecorSources } from '../data/worldProps.js'; /* v2.3.1775: scenery shares this registry; v2.3.2061: + animated strips; v2.3.2649: + per-zone decor */
-import { loadTracked, unloadBundle } from './zoneTextures.js'; /* v2.3.2649: zone decor is freed on exit like every other per-zone sheet */
+import { propSpriteSources, propAnimStrips, zoneDecorSources } from '../data/worldProps.js'; /* v2.3.1775: scenery shares this registry; v2.3.2061: + animated strips; v2.3.2651: + per-zone decor */
+import { loadTracked, unloadBundle } from './zoneTextures.js'; /* v2.3.2651: zone decor is freed on exit like every other per-zone sheet */
 
 /* v2.3.2618: art an NPC's DIALOG needs warm, as opposed to art the world
    draws.  Ace's coin lands on one of these two strips the instant the server
@@ -209,7 +209,7 @@ export function getNpcTexture(src) {
   return (src && _tex[src]) || null;
 }
 
-/* ═══ v2.3.2649: ZONE DECOR LOADS AND UNLOADS WITH ITS ZONE ═══
+/* ═══ v2.3.2651: ZONE DECOR LOADS AND UNLOADS WITH ITS ZONE ═══
  *
  * The props above ride the intro gate because they are town's, and town is
  * always one step away. Frost's six masses are not: they are ~1MB of fetch and

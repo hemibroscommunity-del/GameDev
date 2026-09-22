@@ -7,7 +7,7 @@
    marks expired ground loot. `_now` is block-local. Captures: S (param)
    + the two combo constants imported below. S is stateRef.current. */
 import { SWING_COOLDOWN } from '@/data/index.js';
-import { PRINT_TTL_MS } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2652: one TTL, not two */
+import { PRINT_TTL_MS } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2654: one TTL, not two */
 
 export function updateStateCleanup(S) {
         /* ── State cleanup flags ── */
@@ -26,7 +26,7 @@ export function updateStateCleanup(S) {
            owner's "stays for about 5-10 seconds" spec.  Keep this TTL
            and the renderer's GROUND_DECAL_MS in lockstep. */
         if (S.groundSplatter) S.groundSplatter = S.groundSplatter.filter(function(sp) { return _now - sp.ts < 8000; });
-        /* v2.3.2652: footprints, on the SAME number the renderer fades them
+        /* v2.3.2654: footprints, on the SAME number the renderer fades them
            by -- imported rather than re-typed, because the two drifting apart
            means either the pool draws entries this filter has dropped or the
            array grows past what the pool will ever show.  The groundSplatter
