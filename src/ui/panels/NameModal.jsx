@@ -31,6 +31,7 @@ import { HAIR_COLOR_CATALOG, setHairColor } from '@/rendering/traits/hairColorCa
 import { HAT_COLOR_CATALOG, hatColorsFor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { eyewearColorsFor, eyewearPaints, setEyewearColor } from '@/rendering/traits/eyewearColorCatalog.js';   /* v2.3.2424 */
 import { EYE_COLOR_CATALOG, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
+import { EYE_STYLE_CATALOG, setEyeStyle, eyeStyleHasOptions } from '@/rendering/traits/eyeStyleCatalog.js';   /* v2.3.2642 */
 import { HEADWEAR_CATALOG, headwearIsSolid, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
@@ -172,6 +173,7 @@ export function NameModal(props) {
     eyeColorSel = props.eyeColorSel,
     setEyeColorSel = props.setEyeColorSel,
     headwearSel = props.headwearSel,
+    eyeStyleSel = props.eyeStyleSel,        /* v2.3.2642 */
     eyewearSel = props.eyewearSel,          /* v2.3.2361 */
     eyewearColorSel = props.eyewearColorSel,   /* v2.3.2424 */
     joinTown = props.joinTown,
@@ -190,6 +192,7 @@ export function NameModal(props) {
     setHairSel = props.setHairSel,
     setHatColorSel = props.setHatColorSel,
     setHeadwearSel = props.setHeadwearSel,
+    setEyeStyleSel = props.setEyeStyleSel,   /* v2.3.2642 */
     setEyewearSel = props.setEyewearSel,   /* v2.3.2361 */
     setEyewearColorSel = props.setEyewearColorSel,   /* v2.3.2424 */
     setNameInput = props.setNameInput,
@@ -257,8 +260,27 @@ export function NameModal(props) {
        never added to _TABS either.  Two halves of one wrong shape, and because
        the second half hid the first, nothing threw and it looked shipped.
        Now the same shape as skin: catalog + sel + set, no colors row. */
-    eyes: { label: 'Eyes', kind: 'swatch', spriteCat: null, catalog: EYE_COLOR_CATALOG, sel: eyeColorSel,
-      set: function (id) { setEyeColor(id); setEyeColorSel(id); }, colors: null },
+    /* ═══ v2.3.2642: THE EYES TAB PICKS A SHAPE **AND** A COLOUR ═══
+       Owner, with four mannequin sheets: "I want these as 'eyes' choices --
+       Sleepy eyes, one eye, demon eyes, wtf eyes."
+
+       It was a swatch-only category (the shape above, from v2.3.1929) because
+       eye colour was the only thing there was to pick.  There is a sprite to
+       pick now, so it takes the standard two-step shape every trait tab has:
+       the STYLE in the option strip, the eye COLOUR in the row below it.  No
+       new tab -- a second eye tab beside this one would have split one feature
+       across two places, and this tab is already called Eyes.
+
+       `colorsWhenNone` is the one thing it needs that no other tab does.  The
+       strip's normal rule blanks the colour row when the pick is 'none', which
+       is right everywhere else (there is no hat to paint) and exactly backwards
+       here: 'none' IS the real eyes, so it is the pick where the colour row
+       matters most.  The row stays live on every pick -- see eyeStyleCatalog.js
+       for why it is not hidden behind a style either. */
+    eyes: { label: 'Eyes', kind: 'thumb', spriteCat: 'eyestyle', catalog: EYE_STYLE_CATALOG, sel: eyeStyleSel,
+      set: function (id) { setEyeStyle(id); setEyeStyleSel(id); },
+      colors: recolorEnabled('eyes') ? EYE_COLOR_CATALOG : null, colorsWhenNone: true,
+      colorSel: eyeColorSel, setColor: function (id) { setEyeColor(id); setEyeColorSel(id); } },
     /* v2.3.1308 (round-7): 'Skin' → 'Skin Tone' — it recolors the whole
        body, and the plain label read as head-only inside the Head group. */
     skin: { label: 'Skin Tone', kind: 'swatch', spriteCat: null, catalog: SKIN_CATALOG, sel: skinSel,
@@ -310,9 +332,18 @@ export function NameModal(props) {
   /* v2.3.1494: drop disabled recolor-only types from the defs -- activeCat is
      remembered across sessions, so a stale 'skin' would otherwise select a tab
      that is no longer offered. */
-  ['skin', 'pants', 'shoes', 'eyes'].forEach(function (t) {
+  /* v2.3.2642: 'eyes' is OFF this list.  It was a recolour-only category when
+     the list was written, so switching eye colour off left it with nothing to
+     do; it has a sprite picker now, and dropping the whole tab would take the
+     four eye styles with it.  The colour row alone goes (`colors:` above reads
+     recolorEnabled), and the tab survives on its styles -- unless there are no
+     styles either, which is the line below. */
+  ['skin', 'pants', 'shoes'].forEach(function (t) {
     if (!recolorEnabled(t)) delete _typeDefs[t];
   });
+  /* ...and then there really is nothing left to pick: no styles AND no colour.
+     Same gate as the Eyewear one below, for the same v2.3.2268 reason. */
+  if (!eyeStyleHasOptions() && !recolorEnabled('eyes')) delete _typeDefs.eyes;
   /* v2.3.2361: no Eyewear tab until there is eyewear to pick.  A tab whose
      only option is the one already selected is worse than no tab (the
      v2.3.2268 reasoning that removed Build), so the def goes the same way the
@@ -486,7 +517,7 @@ export function NameModal(props) {
     /* Both build rows are up in the grid (see _items).  The block still
        renders — ghosted — because every tab must reserve the same height. */
     ? null
-    : (_colorList && _colorList.length > 0 && _def.sel !== 'none')
+    : (_colorList && _colorList.length > 0 && (_def.colorsWhenNone || _def.sel !== 'none'))   /* v2.3.2642: the Eyes tab's colour row means the REAL eyes, so 'none' is the pick it matters most on */
     /* v2.3.2035: the 'default' entry is FILTERED OUT of the swatch row -- the
        text button above is what picks it now.
        This is the owner's actual complaint, not tidiness.  Every catalog's
@@ -555,6 +586,7 @@ export function NameModal(props) {
       hairSel: hairSel, hairColorSel: hairColorSel,
       facialHairSel: facialHairSel, beardColorSel: beardColorSel,
       headwearSel: headwearSel, hatColorSel: hatColorSel, eyeColor: eyeColorSel,
+      eyeStyleSel: eyeStyleSel,   /* v2.3.2642 */
       eyewearSel: eyewearSel,   /* v2.3.2361 */
       /* v2.3.2424: `eyewearColor`, NOT `eyewearColorSel` -- portraitLook reads
          the former, and a near-miss key here is silent: the designer would
@@ -565,7 +597,7 @@ export function NameModal(props) {
       buildHeight: heightSel, buildFrame: frameSel   /* v2.3.1953 */
     });
   }, [skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel,
-    headwearSel, hatColorSel, eyeColorSel, eyewearSel, eyewearColorSel /* v2.3.2424 */,
+    headwearSel, hatColorSel, eyeColorSel, eyeStyleSel /* v2.3.2642 */, eyewearSel, eyewearColorSel /* v2.3.2424 */,
     shirtSel, shirtColorSel, heightSel, frameSel, inkRev]);
   var _stripRef = React.useRef(null);
   var _colorRowRef = React.useRef(null);

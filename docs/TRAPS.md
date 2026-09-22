@@ -1,4 +1,4 @@
-# TRAPS — plausible-but-wrong moves (v2.3.2615)
+# TRAPS — plausible-but-wrong moves (v2.3.2642)
 
 A registry of changes that look obviously right and are known to be
 wrong. Each was attempted, or nearly attempted, by a competent session.
@@ -3727,3 +3727,70 @@ button, still open on `main`); §67 — `mp-store.mjs` opens this very door with
 was green throughout and could not have seen any of this. `mp-vendorprompt.mjs`
 taps with `page.touchscreen.tap` at measured coordinates and asks
 `document.elementFromPoint` what is on the glass.
+
+## 89. A fraction of a bounding box is a guess dressed as a measurement (v2.3.2642)
+
+**Tempting:** you need to assert that a face-worn piece landed on the eye line,
+and the numbers are right there — a head is "the top 28% of the figure", the
+eyes are "40% down the head" (`resolveBodyAnchor` says so, `mp-ccshades` uses
+the same head band). So derive the window from the captured figure's bounding
+box and assert the piece's changed rows fall inside it.
+
+**Why it looks right:** both fractions are real, both are written down in the
+repo, and the check reads like a measurement rather than an eyeball.
+
+**Wrong:** those fractions describe the **256 sprite frame**. The creator's
+preview is a composite — a different crop, a devicePixelRatio scale, a baked
+ground shadow that extends the figure's bounding box below its feet — so the
+same feature sits at a different fraction of *that* box. `mp-eyestyle.mjs`
+shipped this in its first cut and failed all four eye styles against art that
+was correctly placed: it computed a window of rows 39-98 for pieces that
+correctly occupy rows 94-145. Four red assertions, nothing wrong with the
+thing under test.
+
+**The fix, and the rule:** ask the game where the eyes are instead of deriving
+it. Picking an eye **colour** repaints the iris pixels and nothing else
+(`eyeMask.json`), so the diff between two eye colours **is** the eye row — on
+that canvas, at that scale, for that character. Each style then has to cover
+it, and a piece on the forehead overlaps nothing. **If an assertion needs to
+know where a feature is, find a control that moves only that feature and diff
+it.** A percentage of a bounding box is only ever a measurement of the box.
+
+**Related:** §67 (a scenario that was green throughout the defect it existed to
+catch). Same file also learned that the creator **re-frames its preview per
+tab** (`pickPreviewCat`), so two captures taken on different tabs differ by
+74,801px of crop movement and nothing else — compare captures from the same
+tab, and assert their dimensions match before believing the diff.
+
+## 90. A sheet drawn on the real mannequin cannot go straight into the importer (v2.3.2642)
+
+**Tempting:** `import_headwear_green.py` already handles a person who is not
+green (`person_key`, v2.3.2367, from the cyan sheet) and already strips a
+figure that was drawn with an outline (`strip_figure_outline`, v2.3.2362). An
+eye-style sheet is drawn on the mannequin as generated — tan skin, black
+outline, nose and mouth present — so it has both of those properties and should
+just import.
+
+**Wrong, twice over.** `person_key` takes the modal non-backdrop colour, and on
+a sheet the generator letterboxed, the white page margin is 23% of the image
+against the skin's smaller share: the import keys on `rgb(254,254,253)` and
+dies with `could not register ANY cell`. And even keyed on the skin, the face's
+own nose, mouth and ear marks are near-black ink nowhere near the silhouette's
+edge, so `strip_figure_outline` correctly leaves them alone — and they land in
+the piece. An "eyes" sprite with a mouth baked into it draws a second mouth
+over the real one.
+
+**Why the sheet is like that, and why that is not the artist's mistake:** you
+cannot draw an eye onto a head that has no face. Every other trait can be drawn
+on a flat green silhouette because it sits *on* the figure; a facial feature
+has to be drawn *in place of* one.
+
+**The fix:** `tools/flatkey_drawn_mannequin.py` re-keys such a sheet into the
+flat-green form the importer was promised, and nothing downstream changes. Its
+test is that a pixel off **all three** base-colour segments (magenta-skin,
+magenta-ink, ink-skin) was painted by hand — segments rather than endpoints,
+because the resampling blend band lies *on* those segments, which is what lets
+the tolerance stay tight enough to keep the Sleepy style's near-black navy (63
+off the ink→skin segment, against under 12 for the widest blend).
+
+**Receipt:** `docs/specs/eyes.md` §2; the four import logs.

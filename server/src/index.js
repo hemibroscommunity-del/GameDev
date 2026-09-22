@@ -637,6 +637,15 @@ export const TRACK_COSMETIC_KEYS = new Set([
      does not recognise, so a forged value can only select a colour that
      catalog already holds -- it cannot paint an arbitrary RGB. */
   'ewc',
+  /* v2.3.2642: 'es' is the eye STYLE id -- a short catalog id exactly like 'ew'
+     above it, and NOT the same thing as 'ec', which is the colour of the eyes
+     painted into the body sheets.  Display-only on the same terms: the
+     receiving client asks its own EYE_STYLE_CATALOG folder for the art, so a
+     forged id loads no texture and paints nothing.  On BOTH gates in one
+     change -- this list and JOIN_COSMETIC_KEYS in join.js -- because a key on
+     one and not the other is the v2.3.1939 shape, which here would be eyes
+     that arrive on join and revert on the first two-second relay. */
+  'es',
   /* v2.3.1939: the drawn shirt, front and back.  Display-only like every
      cosmetic here: the receiving client rejects anything that is not exactly
      256 hex characters, so a forged value paints nothing rather than something

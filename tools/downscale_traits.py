@@ -32,7 +32,7 @@ Run from the repo root:
     python3 tools/downscale_traits.py            # report only
     python3 tools/downscale_traits.py --apply
     [--to 128]        target edge, default 128
-    [--cats headwear,hair,facialhair,shirt,eyewear]
+    [--cats headwear,hair,facialhair,shirt,eyewear,eyestyle]
     [--stash-hi]      keep the 256 original in hi/ before halving (see below)
 
 v2.3.2361: --stash-hi, and eyewear in the default list.  The importers write
@@ -56,7 +56,7 @@ DIRS = ['south', 'southwest', 'east', 'northeast', 'north']
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--to', type=int, default=128)
-    ap.add_argument('--cats', default='headwear,hair,facialhair,shirt,eyewear')   # v2.3.2361: + eyewear
+    ap.add_argument('--cats', default='headwear,hair,facialhair,shirt,eyewear,eyestyle')   # v2.3.2361: + eyewear; v2.3.2642: + eyestyle
     ap.add_argument('--apply', action='store_true')
     ap.add_argument('--stash-hi', action='store_true',
                     help='copy each 256 direction frame to hi/ before halving it, '

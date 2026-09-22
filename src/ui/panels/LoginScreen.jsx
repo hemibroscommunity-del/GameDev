@@ -158,12 +158,14 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
         import('@/rendering/traits/facialHairCatalog.js'),
         import('@/rendering/traits/headwearCatalog.js'),
         import('@/rendering/traits/eyewearCatalog.js'),   /* v2.3.2361 */
-      ]).then(([hair, beard, hat, eyewear]) => {
+        import('@/rendering/traits/eyeStyleCatalog.js'),   /* v2.3.2642 */
+      ]).then(([hair, beard, hat, eyewear, eyeStyle]) => {
         if (cancelled) return;
         try {
           m.prewarmPortraitDirs({
             hair: hair.getHair(), facialHair: beard.getFacialHair(), headwear: hat.getHeadwear(),
             eyewear: eyewear.getEyewear(),   /* v2.3.2361 */
+            eyeStyle: eyeStyle.getEyeStyle(),   /* v2.3.2642 */
           });
         } catch (e) { /* a cold cache is the status quo, never an error */ }
       }).catch(() => {});

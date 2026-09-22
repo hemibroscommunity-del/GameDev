@@ -25,7 +25,7 @@ Run from the repo root:
     python3 tools/preview_headwear.py --ids wizard-hat,mickey-ears --out sheet.png
     [--pose stand|jog]  which pose's bodies to stand the hat on (default both)
     [--frame N]         which frame of that pose (default 0)
-    [--category headwear|hair|eyewear]  which trait folder (v2.3.2361)
+    [--category headwear|hair|eyewear|eyestyle]  which trait folder (v2.3.2361, v2.3.2642)
 
 v2.3.2361: a direction the item does not ship (no png, no anchor -- glasses
 from behind) is drawn as the bare body, so the omission is visible as such
@@ -137,7 +137,7 @@ def main():
     ap.add_argument('--out', default='headwear-preview.png')
     ap.add_argument('--pose', default='stand,jog')
     ap.add_argument('--frame', type=int, default=0)
-    ap.add_argument('--category', default='headwear', choices=['headwear', 'hair', 'eyewear'])   # v2.3.2361
+    ap.add_argument('--category', default='headwear', choices=['headwear', 'hair', 'eyewear', 'eyestyle'])   # v2.3.2361; v2.3.2642: + eyestyle
     args = ap.parse_args()
 
     ids = [i.strip() for i in args.ids.split(',') if i.strip()]
