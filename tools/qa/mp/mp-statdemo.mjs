@@ -44,6 +44,33 @@ const tapSel = (P, sel) => P.page.evaluate((s) => {
   return true;
 }, sel);
 
+/* ═══ v2.3.2642: REACHING A STAT IN THE OWNER'S GRID ═══
+   The Points screen used to drill into a per-lane CARD, so every selector here
+   was `[data-prog3-card="<lane>"] [data-stat-info="<key>"]`.  There is no card
+   any more -- thirteen cells sit on one screen and the weapons head at the
+   front of the lane row picks WHICH lane those six belong to.
+
+   So reaching a lane stat is two steps, and the second one is the same tap it
+   always was.  Body stats need no switch: their seven cells are always the
+   shared row.  The assertions this feeds are untouched -- what changed is the
+   route to the control, not what the control is supposed to do. */
+const openStat = async (P, lane, key) => {
+  if (lane && lane !== 'shared') {
+    for (let i = 0; i < 4; i++) {
+      const now = await P.page.evaluate(() => {
+        const h = document.querySelector('[data-prog3-grid] [data-prog3-lane]');
+        return h ? h.getAttribute('data-prog3-lane') : null;
+      });
+      if (now === lane) break;
+      /* the head is the control; tapping it advances to the next weapon */
+      const ok = await tapSel(P, '[data-prog3-grid] [data-prog3-lane]:not([data-prog3-lane="shared"])');
+      if (!ok) return false;
+      await P.page.waitForTimeout(160);
+    }
+  }
+  return tapSel(P, `[data-prog3-row="${lane === 'shared' ? 'shared' : lane}:${key}"]`);
+};
+
 /* The scene's own figure, as the compositor left it.  characterPortrait
    stamps the direction it actually drew onto the canvas (__btDir/__btMirror,
    v2.3.?  see its tail), which is the only honest read: `dir` names a view,
@@ -138,7 +165,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* v2.3.2592: crit is LUCK now, and four columns are on screen at once —
      the MELEE column's Luck ℹ️, named by column. */
-  const opened = await tapSel(P, '[data-prog3-card="sword"] [data-stat-info="luck"]');
+  const opened = await openStat(P, 'sword', 'luck');
   await P.page.waitForTimeout(700);
   const haveScene = await P.page.evaluate(() => !!document.querySelector('.bt-sd-stage'));
   rec.ok('the ℹ️ on a combat stat opens a window with a scene in it', opened && haveScene, { opened, haveScene });
@@ -206,7 +233,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     (window._gameState.current.rpg.activeSlot || 'melee') === 'melee');
   await H.openPointCols(P, ['bow']);   /* v2.3.2594: one weapon at a time */
   await H.openPointCols(P, ['bow']);
-  const laneOpened = await tapSel(P, '[data-prog3-card="bow"] [data-stat-info="luck"]');
+  const laneOpened = await openStat(P, 'bow', 'luck');
   rec.ok('the Bow column\'s ℹ️ could be tapped while the sword is still equipped', laneOpened && stillHoldingSword,
     { laneOpened, stillHoldingSword });
   await P.page.waitForTimeout(900);
@@ -249,7 +276,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(350);
   await H.openPointCols(P, ['staff']);   /* v2.3.2594 */
   await H.openPointCols(P, ['staff']);
-  const staffLane = await tapSel(P, '[data-prog3-card="staff"] [data-stat-info="luck"]');
+  const staffLane = await openStat(P, 'staff', 'luck');
   await P.page.waitForTimeout(900);
   const staffFace = await heroFacing(P, '.bt-sd-hero');
   rec.ok('the Magic lane puts the STAFF in his hands',
@@ -267,7 +294,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(350);
   await H.openPointCols(P, ['shared']);
-  const bodyOpened = await tapSel(P, '[data-prog3-card="shared"] [data-stat-info="def"]');
+  const bodyOpened = await openStat(P, 'shared', 'def');
   await P.page.waitForTimeout(800);
   const bodyFace = await heroFacing(P, '.bt-sd-hero');
   if (!bodyOpened || !bodyFace) {
@@ -295,7 +322,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.keyboard.press('Escape');
     await P.page.waitForTimeout(350);
     await H.openPointCols(P, [lane]);
-    const opened = await tapSel(P, `[data-prog3-card="${lane}"] [data-stat-info="${key}"]`);
+    const opened = await openStat(P, lane, key);
     await P.page.waitForTimeout(500);
     if (!opened) { rec.skip(`${key} has a scene`, 'row not reachable'); continue; }
     /* Sample the live stage across a full loop — a single frame proves

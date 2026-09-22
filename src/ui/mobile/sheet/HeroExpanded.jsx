@@ -2037,9 +2037,16 @@ export const HeroExpanded = () => {
             const headCell = (kind) => {
               const isLane = kind === 'lane';
               const next = () => {
+                /* v2.3.2642: setBuildCat, NOT setSelCat.  `selCat` is the
+                   drilled-in lane of the card this screen no longer opens;
+                   `buildCatState` is what `buildCat` reads, and `buildCat` is
+                   what the six cells above are showing.  Setting the wrong one
+                   left the head cycling a value nothing rendered -- the grid
+                   stayed on Melee however many times it was tapped, which is
+                   what mp-catgrid caught. */
                 const order = POINT_LANES.filter((c) => !c.shared).map((c) => c.key);
                 const i = order.indexOf(buildCat);
-                setSelCat(order[(i + 1) % order.length] || order[0]);
+                setBuildCat(order[(i + 1) % order.length] || order[0]);
               };
               return (
                 <div

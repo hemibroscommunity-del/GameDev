@@ -99,11 +99,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return S && S.rpg && S.rpg.prog3 && S.rpg.prog3.pool ? S.rpg.prog3.pool.unspent : null;
   });
   const pressed = await P.page.evaluate(() => {
-    /* v2.3.2597: the Luck row of the OPEN Melee card.  There is no column to
-       scope by any more — one category is on screen at a time — and the
-       handle rides the [+], so this asks the card for its spend controls and
-       picks the Luck one. */
-    const pills = [...document.querySelectorAll('[data-prog3-card="sword"] [role="button"][aria-label*=" of "]')]
+    /* v2.3.2642: the Luck CELL of the owner's grid.  There is no card to
+       scope by any more -- all thirteen stats are on one screen, and the
+       lane's six belong to whichever weapon the head cell is showing.  The
+       seed above puts the luck points on SWORD, and sword is the lane a fresh
+       character holds (prog3ActiveCat), so the Luck cell on screen is the one
+       this wants without switching anything.
+       Kept as an aria-label match rather than a `[data-prog3-row="sword:luck"]`
+       lookup on purpose: what this scenario is about is that the handle a
+       PLAYER can find opens a window, and the label is what names it. */
+    const pills = [...document.querySelectorAll('[data-prog3-grid] [role="button"][aria-label*=" of "]')]
       .filter((d) => /^luck/i.test(d.getAttribute('aria-label') || ''));
     const el = pills[0];
     /* v2.3.2597: and it moved again, onto the [+], because the owner then made
