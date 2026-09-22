@@ -165,6 +165,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/zonedecor-frost.png` })
     .catch(() => { /* a screenshot is evidence, not an assertion */ });
 
+  /* ── 3b. THE PROPS STOP ATTACKS (v2.3.2645) ──
+     Owner: "I would like it if these props could block my and enemy attacks."
+
+     The worker's half is unit-tested (server/test/props.test.mjs) against the
+     one choke point every monster->player hit goes through. THIS is the
+     client's half, and it has to be checked in the built bundle rather than in
+     node: the rule is compiled into the shipped client, and a scenario that
+     imported the module would be testing the source rather than the build. */
+  const ridge = await P.page.evaluate(() =>
+    ((window.__btBlockers && window.__btBlockers('frost')) || []).length);
+  rec.ok('the client exposes frost\'s blocker boxes', ridge === 6, { ridge });
+
+  /* frost-rock-ridge: x 430, y 570, blockW 202, blockD 42 -> box 329..531 x
+     528..570. Both endpoints outside it, the line straight through. */
+  const los = await P.page.evaluate(() => ({
+    through: window.__btAttackBlocked('frost', 430, 480, 430, 640),
+    beside: window.__btAttackBlocked('frost', 300, 480, 300, 640),
+    fromInside: window.__btAttackBlocked('frost', 430, 550, 430, 700),
+    point: window.__btBlockPoint('frost', 430, 480, 430, 640),
+  }));
+  rec.ok('a line through the rock ridge is blocked', los.through === true, los);
+  rec.ok('...one beside it is not', los.beside === false, los);
+  rec.ok('...and a shooter standing inside it is never blocked by it',
+    los.fromInside === false, los);
+  /* The impact point is what an arrow is planted at, so it must be the NEAR
+     face of the box (y 528) rather than anywhere inside it. */
+  rec.ok('the block reports the near face as the impact point',
+    !!los.point && Math.abs(los.point.y - 528) < 1.5, { point: los.point });
+
   /* ── 4. LEAVING RELEASES IT ── */
   await openPanel(P);
   await tap(P, 'Town');

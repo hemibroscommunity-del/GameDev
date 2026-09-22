@@ -53,6 +53,21 @@
  * of launch offset.  OFFSET is swept too — a shot through the middle has the
  * longest chord (2R), a grazing one almost none, and grazing shots are the
  * ones a player calls a miss that should have hit.
+ *
+ * ═══ v2.3.2645: THIS SCENARIO IS NOISY AT speed 48, AND IT IS NOT YOURS ═══
+ * Measured four runs on an unchanged tree while chasing what looked like a
+ * regression: 140, 146, 149, 149 of 150.  Every loss sits at speed 48 -- the
+ * top of SPEEDS, where the step (44-52px after _dtScale) is twice the 22px
+ * hitbox -- so the count moves with whatever else the box is doing, because
+ * the frame time is what sets the step.  The lost rows print `pathMin` inside
+ * the hitbox and `pointMin` at 50-65px, which is that race and nothing else.
+ *
+ * So a run in the low 140s is NOT evidence that a change broke hit
+ * registration.  Before blaming a diff, get three runs of the base for a
+ * distribution rather than one; a single baseline sample here means nothing.
+ * (v2.3.2645 lost half an hour to exactly that, and the change under
+ * suspicion turned out to be provably inert -- the shot line in this scenario
+ * runs 60px clear of every town prop.)
  */
 import * as H from './harness.mjs';
 

@@ -345,7 +345,13 @@ art.
 
 **Placement caution:** every prop blocks, since v2.3.2073 ("make sure the
 objects are unwalkable"), so each one adds a `blockW`/`blockD` collision box
-to a live zone. Frost's walk mask already has a known fault — *"north ice
+to a live zone — and since v2.3.2645 that same box is **cover**: a shot whose
+line crosses it is refused, for the player's arrows (client-side, in
+`projectiles.js`) and for a monster's hit (`_monsterStrikePlayer`, the worker's
+one choke point). One box, one rule: *if you could not walk that line, a shot
+cannot fly it.* So a footprint is now a gameplay decision as much as a
+collision one, and `server/src/props.js` must gain any new blocker too —
+`mirror-audit` fails if it does not. Frost's walk mask already has a known fault — *"north ice
 flat over-blocked by the mask; repaint to open it"*
 (`src/rendering/tiledMaps.js:177`) — so placements want checking against the
 mask, not just against the painting.

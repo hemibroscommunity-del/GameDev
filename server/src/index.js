@@ -163,6 +163,7 @@ import { arrowBlastMethods } from './arrowblast.js'; /* v2.3.2279: the bow speci
 // v2.3.1983: population-scaled spawns -- monsters and gather nodes sized to
 // how many players are standing in THAT zone -- see spawnscale.js.
 import { spawnScaleMethods } from './spawnscale.js';
+import { attackBlocked } from './props.js'; /* v2.3.2645: a rock in the way stops a monster's hit */
 
 /* ═══ v2.3.2113: AN ERROR IN HERE MUST NOT LOOK LIKE AN OUTAGE ═══
  * Owner, of tools/draw: "This tool says can't reach the game server anymore."
@@ -1571,6 +1572,29 @@ export class GameRoom {
        fixed.  Silent, like a dodge: no monster_attack event, so the client
        draws nothing rather than a "0" it would have to explain. */
     if (this._extractionShielded(targetId, now)) return;
+    /* ═══ v2.3.2645: A ROCK IN THE WAY STOPS IT ═══
+       Owner: "I would like it if these props could block my and enemy
+       attacks."
+
+       HERE for the same reason the harvester shield above is here: this is the
+       ONE choke point every monster->player hit funnels through, so one test
+       covers the swing, the thrown snowball, the burrow surface and every
+       telegraphed ability at once.  Gating each caller instead would be four
+       places to keep in step and a fifth that gets forgotten.
+
+       `atkX/atkY` is where the attack came FROM -- the thrower for a ball, the
+       monster for a swing -- which is exactly the endpoint the line has to be
+       measured from, and it is already computed for the block arc below.  For
+       an in-flight snowball that is the RELEASE point, not the monster's
+       current position: a ball thrown on a clear line is not retroactively
+       stopped by the thrower wandering behind a rock, which is the honest
+       reading of "committed" that v2.3.1640 gave the ball already.
+
+       SILENT, like the dodge and the harvester shield: no monster_attack
+       event, so the client draws nothing rather than a "0" it would have to
+       explain.  The player sees the swing animation stop at the rock, which is
+       the feedback -- the number would be noise. */
+    if (targetPs && attackBlocked(zoneId, atkX, atkY, targetPs.x, targetPs.y)) return;
     /* ═══ v2.3.1686: THE BLOCK IS RESOLVED HERE, AT IMPACT ═══
        Owner: "it seems like snowman don't launch projectiles while the
        character is blocking, which isn't the correct behavior. It should

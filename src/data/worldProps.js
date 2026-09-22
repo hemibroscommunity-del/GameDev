@@ -636,3 +636,144 @@ export function propAnimStrips() {
    outside, and a scenario that treated the two the same would either fail
    every run while they are off or pass silently once they come back. */
 if (typeof window !== 'undefined') window.__btTownPropsEnabled = () => TOWN_PROPS_ENABLED;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v2.3.2645: A PROP STOPS AN ATTACK, NOT JUST A FOOT
+   ═══════════════════════════════════════════════════════════════════════════
+   Owner: "I would like it if these props could block my and enemy attacks."
+
+   Props have blocked MOVEMENT since v2.3.2073 and blocked SIGHT since
+   v2.3.2633 (you pass behind them).  The one thing they did not do is stop a
+   shot, so a rock you were visibly hiding behind was cover in every sense
+   except the one that matters in a fight.
+
+   ── THE BLOCKER IS THE FOOTPRINT, NOT THE PAINTING ──
+   `propFootprint` is the same box that stops you walking, and reusing it is
+   the whole design rather than a shortcut.  A second, taller "attack box"
+   would mean the rock you cannot walk through and the rock arrows cannot
+   cross are different rocks, and no player would be able to tell where either
+   one ends.  One box, one rule: **if you could not walk that line, a shot
+   cannot fly it.**
+
+   It also means a prop with no footprint -- the anvil, the market stall,
+   scenery you stroll past -- blocks nothing, which is correct: you can
+   already walk through it.
+
+   ── WHY AN ENDPOINT INSIDE A BLOCKER DOES NOT BLOCK ──
+   Monsters do not collide with props (the worker has no walkability of any
+   kind), so a snowman can and does stand inside the rock ridge.  If "inside"
+   counted as blocked he would be permanently unable to attack and the player
+   permanently unable to answer -- a monster in a rock would be an invincible
+   turret.  Standing in it is treated as standing next to it.
+
+   ── BOTH SIDES RUN THIS, AND THAT IS DELIBERATE ──
+   The client gates the shots it CLAIMS (projectiles.js: a ranged hit is
+   decided entirely client-side and the worker only clamps range/arc) and the
+   worker gates the damage it APPLIES (monster->player, and the player's claim
+   against a monster).  Either half alone is safe to deploy: an old worker
+   with a new client just takes the client's word as before, and a new worker
+   with an old client simply refuses a hit the client predicted -- which is
+   the ordinary prediction miss `monster_hit` already exists to correct.  No
+   caps gate needed, and that is worth saying out loud because the reflex in
+   this repo is to add one.
+
+   The worker's copy is server/src/props.js; server/test/mirror-audit.test.mjs
+   asserts the two tables agree, so this cannot drift silently. */
+
+/** Where the segment (x0,y0)->(x1,y1) ENTERS the axis-aligned box `b`, as the
+ *  parameter t in [0,1], or -1 if it never does.  Slab method.
+ *  The entry parameter rather than a bare boolean because a projectile has to
+ *  stop AT the rock: planting it at the frame's end point would bury it inside
+ *  (an arrow steps up to 48px a frame), and planting at the frame's start
+ *  would leave it hanging short. */
+function segEnterT(x0, y0, x1, y1, b) {
+  const dx = x1 - x0, dy = y1 - y0;
+  let t0 = 0, t1 = 1;
+  /* Each axis narrows the surviving span of t. A zero component means the
+     segment is parallel to that pair of edges: it can only cross if it
+     already lies between them. */
+  const axes = [[dx, x0, b.x0, b.x1], [dy, y0, b.y0, b.y1]];
+  for (let i = 0; i < 2; i++) {
+    const d = axes[i][0], p = axes[i][1], lo = axes[i][2], hi = axes[i][3];
+    if (d === 0) { if (p < lo || p > hi) return -1; continue; }
+    let a = (lo - p) / d, c = (hi - p) / d;
+    if (a > c) { const s = a; a = c; c = s; }
+    if (a > t0) t0 = a;
+    if (c < t1) t1 = c;
+    if (t0 > t1) return -1;
+  }
+  return t0;
+}
+
+/** Is a point inside a blocker box? */
+function pointInBox(x, y, b) {
+  return x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1;
+}
+
+/* ═══ v2.3.2645: THE BLOCKER SET IS BUILT ONCE PER ZONE, NOT PER CALL ═══
+   attackBlockPoint runs PER ARROW PER FRAME (projectiles.js), and the first
+   cut of this rebuilt the list on every one of those calls -- a fresh array
+   plus one object per prop, ten arrows in flight, sixty times a second.  That
+   is precisely the per-frame garbage projectiles.js's own header warns about
+   ("an allocation here is the kind of per-frame garbage v2.3.2331 spent a
+   version removing"), and it showed up exactly where you would expect: in
+   mp-hitsweep, whose losses are a FRAME-CLOCK race at the 48px step, the
+   registered count fell from ~149/150 to 142-148 with no shot anywhere near a
+   prop.  Longer frames -> bigger steps -> more shots sampled either side of
+   the hitbox.
+
+   WORLD_PROPS is a static table, so one build per zone is all that is ever
+   needed.  Object.create(null) because the key is a zone id (CLAUDE.md
+   rule 4). */
+const _blockerCache = Object.create(null);
+
+/** Every blocking footprint in a zone — the LOS obstacle set.
+ *  The returned array is SHARED and must not be mutated by callers. */
+export function zoneBlockers(zoneId) {
+  if (!zoneId) return [];
+  const hit = Object.prototype.hasOwnProperty.call(_blockerCache, zoneId) ? _blockerCache[zoneId] : null;
+  if (hit) return hit;
+  const out = [];
+  for (const p of propsForZone(zoneId)) {
+    const f = propFootprint(p);
+    if (f) out.push(f);
+  }
+  _blockerCache[zoneId] = out;
+  return out;
+}
+
+/** Where a shot along (x0,y0)->(x1,y1) MEETS the first prop in its way, or
+ *  null if the line is clear.  Both points are GROUND points — a character's
+ *  feet, a monster's base — the same coordinates movement and depth sorting
+ *  already use, so a projectile drawn at bow-grip height has to be converted
+ *  down before it is asked (see projectiles.js).
+ *  The NEAREST blocker wins: with two props on one line an arrow must stop at
+ *  the first, not the furthest. */
+export function attackBlockPoint(zoneId, x0, y0, x1, y1) {
+  if (!Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(x1) || !Number.isFinite(y1)) return null;
+  const boxes = zoneBlockers(zoneId);
+  let best = -1;
+  for (let i = 0; i < boxes.length; i++) {
+    const b = boxes[i];
+    /* An endpoint inside the box is "at" the prop, not behind it. */
+    if (pointInBox(x0, y0, b) || pointInBox(x1, y1, b)) continue;
+    const t = segEnterT(x0, y0, x1, y1, b);
+    if (t >= 0 && (best < 0 || t < best)) best = t;
+  }
+  if (best < 0) return null;
+  return { x: x0 + (x1 - x0) * best, y: y0 + (y1 - y0) * best, t: best };
+}
+
+/** Does a prop stand between these two ground points? */
+export function attackBlocked(zoneId, x0, y0, x1, y1) {
+  return !!attackBlockPoint(zoneId, x0, y0, x1, y1);
+}
+
+/* Dev probe, house style: the blocker set a scenario is reasoning about, and
+   a direct answer for one line. A test that recomputed the geometry itself
+   would be asserting its own arithmetic rather than the game's. */
+if (typeof window !== 'undefined') {
+  window.__btBlockers = (z) => zoneBlockers(z);
+  window.__btAttackBlocked = (z, x0, y0, x1, y1) => attackBlocked(z, x0, y0, x1, y1);
+  window.__btBlockPoint = (z, x0, y0, x1, y1) => attackBlockPoint(z, x0, y0, x1, y1);
+}
