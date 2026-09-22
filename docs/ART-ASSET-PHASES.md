@@ -1,4 +1,4 @@
-# BroTown Environment Art — Phased Asset Plan (v2.3.2642)
+# BroTown Environment Art — Phased Asset Plan (v2.3.2642; §4 and §6 corrected v2.3.2643)
 
 A commissioning plan for environment art: what to ask a generator for, at
 what size, in what order, and which of it the renderer can actually put on
@@ -132,29 +132,69 @@ late:
   anyway, but a subject floating in a 1254² canvas is a sign the generator
   was not told a size, which is also how it ends up over-resolved.
 
-## 4. Size table, taken from the art that already ships
+## 4. How big a world is, and how big the art has to be
 
-The design-target phone shows `REF_VIEW_W = 390 × WORLD_ZOOM(3.0) = 1170`
-world pixels across a 390 CSS-pixel screen (`src/game/worldViewport.js`,
-`src/data/constants.js`). So one world pixel is 0.33 CSS pixels, and at
-devicePixelRatio 2–3 that is **0.67–1.0 device pixels**.
+> **Corrected at v2.3.2643.** The first cut of this section reasoned from
+> `REF_VIEW_W = 390 × WORLD_ZOOM(3.0) = 1170` world px and concluded that one
+> world px is 0.67–1.0 *device* px, so a 1:1 texture-to-world ratio was
+> "already generous". **That was wrong by about 2.5×**, because `REF_VIEW_W`
+> is a *target* that a combat zone never reaches. `worldViewport()` floors the
+> scale per zone — `max(scale, cssW / (z.w × TILE), cssH / (z.h × TILE))`,
+> v2.3.2247, so that a map smaller than the viewport is never surrounded by
+> empty tray. A 32×32 zone is only 1024 world px deep, and a phone is tall, so
+> the **height** term wins and the zone zooms *in*.
 
-**Texture pixels beyond an asset's own world size are never resolved on the
-primary platform.** A 1:1 ratio of texture pixels to world pixels is already
-generous. The shipped buildings sit exactly there — 512 px of art drawn at
-500–550 world px — and the small props are well past it (the anvil is 256 px
-of art at `worldH: 52`, a 4.9× over-resolve; the bench 209 px at 75).
+Evaluating the real formula for frost (1024×1024 world px):
 
-Non-town zones are 32×32 tiles at `TILE = 32`, so **1024×1024 world px** —
-the whole zone is roughly one screen wide. Town is 68×72 tiles (2176×2304).
-A person is 120 world px tall (`NPC_SPRITE_SCALE`).
+| Canvas | dpr | scale | Visible world px | **Device px per world px** |
+|---|---|---|---|---|
+| 375×553 (SE) | 2 | 0.540 | 694 | 1.08 |
+| 390×844 (13/14) | 3 | 0.824 | **473** | **2.47** |
+| 430×932 (14 Pro Max) | 3 | 0.910 | 472 | 2.73 |
+| 402×874 (16 Pro) | 3 | 0.854 | 471 | 2.56 |
+
+It lands at ~472 on every modern iPhone, because once the height term wins
+the visible width is just `1024 × (cssW / cssH)` and the aspect barely moves.
+
+**So a decor texture wants roughly 2–2.5× its world size**, and the ceiling
+matters more than the floor: past ~3× nothing is resolved on any iPhone.
+The shipped buildings are *under*-resolved by this measure (512 px of art at
+500–550 world px is 0.95×) and the small props are right (the anvil is 256 px
+at `worldH: 52`, 4.9× — over, but it is a 0.25 MB texture, so nobody cares).
+
+Town is 68×72 tiles (2176×2304) — far more world than any canvas wants, so it
+never reaches its own floor and sits nearer the `REF_VIEW_W` figure.
+
+### The scale the map is painted at — the constraint nothing recorded
+
+Measured on `frost_v5.webp` with a world-pixel ruler: **the map's own
+near-field pine trees are 95–115 world px tall.** A person is 120 world px
+(`NPC_SPRITE_SCALE`; the *visible body* inside that 256 px frame is ~75).
+
+**In BroTown's painted zones a tree is about as tall as a person.** That is
+not physical, it is the scale the paintings are drawn at, and any new prop has
+to obey it or it reads as a giant. Verified by looking, not by arithmetic: the
+first pass at the frost decor was sized 280–320 (physically plausible for a
+pine) and rendered onto the live map at ~3× the scale of every baked tree in
+the same frame.
+
+Useful anchors, for a prop that should read as a near-field landmark rather
+than background dressing:
+
+| Subject | worldH |
+|---|---|
+| shrub / brush clump | 70–90 |
+| rock mound, ice outcrop | 100–140 |
+| pine, pine clump | 140–180 |
+| wide low ridge / snowbank | 110–130 (and 200–300 *wide*) |
+| deliberate hero tree | 200 |
 
 | Class | World size | Art long edge | RGBA | Examples |
 |---|---|---|---|---|
 | Ground cue, particle, puff | 20–60 | **128** | 0.06 MB | footprint, snow puff, dust, sparkle |
-| Small prop | 50–120 | **256** | 0.25 MB | shrub, stump, small rock, stake, sign |
-| Medium mass | 120–300 | **384** | 0.56 MB | rock cluster, pine clump, snowbank |
-| Large mass / canopy / ridge | 300–550 | **512** | 1.00 MB | cliff lip, ridge, big canopy, building |
+| Small prop | 70–110 | **256** | 0.25 MB | shrub, stump, small rock, stake, sign |
+| Medium mass | 110–180 | **384** | 0.56 MB | rock cluster, pine clump, ice mound |
+| Large / wide mass | 180–300 | **512** | 1.00 MB | ridge, snowbank, hero tree, building |
 | — | — | *never above 512* | — | — |
 
 512 is a ceiling, not a default. Nothing in this game needs more, and the
@@ -198,7 +238,9 @@ snow displacement, dust, partial burial, a scuff where a foot lands. That is
 also the draft plan's "grounding cue kit", and it is the one part of it that
 needs no new code capability beyond a place to draw it.
 
-## 6. Batch 1, measured
+## 6. The frost batches, measured
+
+### Batch 1 — four overlays, one usable
 
 Four frost overlays, run through `tools/import-decor-art.mjs --report`:
 
@@ -215,8 +257,34 @@ map, the alpha is clean, the snow reads. What went wrong is entirely size
 and framing, which is what §2–§4 exist to fix.
 
 The ridge processes to 512×243 / 0.47 MB / 204 KB on disk with no visible
-loss. Suggested placement values from the tool: `worldH: 260, blockW: 438,
-blockD: 91`.
+loss.
+
+### Batch 2, measured — five midground masses, all usable
+
+| Asset | Texture | RGBA | `worldH` | draws | `blockW` | `blockD` |
+|---|---|---|---|---|---|---|
+| `frost-pine-pair` | 357×384 | 0.52 MB | 160 | 149×160 | 119 | 56 |
+| `frost-pine-ridge` | 378×384 | 0.55 MB | 150 | 148×150 | 118 | 53 |
+| `frost-rock-mound` | 384×335 | 0.49 MB | 130 | 149×130 | 119 | 46 |
+| `frost-ice-mound` | 256×179 | 0.17 MB | 100 | 143×100 | 114 | 35 |
+| `frost-snow-shrubs` | 256×218 | 0.21 MB | 80 | 94×80 | 75 | 28 |
+| `frost-rock-ridge` (batch 1) | 512×243 | 0.47 MB | 120 | 253×120 | 202 | 42 |
+| **frost total** | | **2.41 MB** | | | | |
+
+**All five are free-standing**, so all five place with today's renderer. Frost
+now sits at **2.41 MB of its 6.00 MB cap across 6 of 8 assets**, with room for
+two more. Each also arrived at 1254² / 6.00 MB, so the same 11–28× RGBA
+reduction applies; the raw exports are in
+`assets/prop-source/decor-frost/`.
+
+The `worldH` column is the one thing here that is a judgement rather than a
+measurement, and it was got wrong first: see §4's painted-scale note. The
+first pass sized these 280–320 — physically right for a pine, ~3× the scale
+of every tree baked into the same map. They were re-sized against the map's
+own 95–115 world px pines and checked by rendering them onto the live art at
+world scale beside a player figure, which is the method the town respread
+used (`tools/maps/render-town-layout.mjs`, v2.3.2628) and the only one that
+catches this.
 
 One measurement worth recording because it cuts against the received wisdom:
 the premultiplied downscale (§8, lesson 2) moved the partial-alpha edge
@@ -250,9 +318,11 @@ prop art rides the global startup gate (§2). It needs
   and the zone banner already work,
 - `propSpriteSources()` split so only global props reach the startup gate.
 
-**Then the art**, free-standing only, ~4–6 pieces per zone inside the cap:
-rock clusters, pine clumps, snowbanks, boulder groups, frozen stumps, dead
-shrubs. Frost first — batch 1's ridge is the first one and is ready.
+**The art for frost is already in hand** — batch 2's five masses plus batch
+1's ridge, six assets at 2.41 MB of the 6.00 MB cap, sized and with
+`blockW`/`blockD` starting values (§6). So Phase 1 for frost is now purely
+the code above plus a placement pass. Other zones want the same shape:
+free-standing only, 4–6 pieces, inside the cap.
 
 **Placement caution:** every prop blocks, since v2.3.2073 ("make sure the
 objects are unwalkable"), so each one adds a `blockW`/`blockD` collision box

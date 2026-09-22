@@ -203,15 +203,22 @@ for (const SRC of SRCS) {
     console.log(`                  layer that does not exist yet (DEPTH-ROADMAP item 5).`);
   }
   if (WORLD) {
-    /* The design phone shows REF_VIEW_W = 390 * WORLD_ZOOM(3.0) = 1170 world
-       px across a 390 CSS px screen, so one world px is 0.33 CSS px and, at
-       devicePixelRatio 2-3, 0.67-1.0 DEVICE px.  Texture pixels beyond the
-       asset's own world size are therefore never resolved on the primary
-       platform.  1.0x world is the family's own convention (the buildings are
-       512px art at 500-550 worldH); this warns past 1.5x. */
+    /* ═══ v2.3.2643: THE FIRST VERSION OF THIS WARNING WAS WRONG ═══
+       It reasoned from REF_VIEW_W = 390 * WORLD_ZOOM(3.0) = 1170 world px and
+       warned past 1.5x, which understated the requirement by about 2.5x.
+       REF_VIEW_W is a TARGET a combat zone never reaches: worldViewport()
+       floors the scale per zone (v2.3.2247) so a map smaller than the viewport
+       is never ringed with empty tray, and a 32x32 zone is only 1024 world px
+       deep against a tall phone -- so the HEIGHT term wins and the zone zooms
+       IN.  Evaluated for frost, every modern iPhone lands at ~472 visible
+       world px and 2.5-2.7 DEVICE px per world px.  So ~2-2.5x world is the
+       target and 3x is where nothing further is resolved. */
     const worldW = Math.round(WORLD * (bw / bh));
-    const ratio = dh / WORLD;
-    console.log(`   at worldH ${WORLD}  the prop draws ${worldW}x${WORLD} world px; texture is ${ratio.toFixed(2)}x its world size${ratio > 1.5 ? '  <-- OVER-RESOLVED, the phone cannot show it' : ''}`);
+    const ratio = Math.max(dw, dh) / Math.max(WORLD, worldW);
+    const note = ratio > 3 ? '  <-- OVER-RESOLVED, no iPhone can show this much'
+      : ratio < 1.2 ? '  <-- UNDER-RESOLVED, it will look soft'
+      : '';
+    console.log(`   at worldH ${WORLD}  the prop draws ${worldW}x${WORLD} world px; texture is ${ratio.toFixed(2)}x its world size (want 2-2.5x)${note}`);
     console.log(`   suggested   worldH: ${WORLD}, blockW: ${Math.round(worldW * 0.8)}, blockD: ${Math.round(WORLD * 0.35)}   (tune blockD on the art's own base)`);
   }
 

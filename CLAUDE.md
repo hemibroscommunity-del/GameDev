@@ -41,7 +41,7 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/DEPTH-ROADMAP.md` (the costed depth work, code-aware),
   `docs/ART-ASSET-PHASES.md` (what environment art to commission, at what
   size, in what order — the decoded-RGBA budget and the free-standing
-  vs edge-cropped test live here, v2.3.2642),
+  vs edge-cropped test live here, v2.3.2643),
   `docs/specs/*.md`, `docs/WIRE-PROTOCOL.md`, `docs/BALANCE-PLAN.md`,
   `docs/OPTIMIZATION-ROADMAP.md`, `docs/REBUILD-PLAN.md` (client
   decomposition), `docs/STATE-SCHEMA.md` (client S object; pre-dates
@@ -49,10 +49,14 @@ remnant to migrate server-side, not a mode to preserve.
   Content-facing systems found in code may also be dormant
   (collectibles) — confirm with the owner before building on one.
   `docs/WORLD-DEPTH-PLAN.md` is the owner's world ART CONSTITUTION and is
-  INTENT, not description: it asks for things the renderer cannot do yet
-  (dynamic occlusion above all). Never read it as evidence a feature
-  exists; work from `docs/DEPTH-ROADMAP.md`, which costs it against the
-  actual renderer.
+  INTENT, not description: it asks for things the renderer cannot do yet.
+  Never read it as evidence a feature exists; work from
+  `docs/DEPTH-ROADMAP.md`, which costs it against the actual renderer.
+  (Dynamic occlusion WAS the headline example here and no longer is —
+  it shipped v2.3.2633–2635, `src/rendering/depthSort.js`. The still-
+  missing one is a near-camera FOREGROUND layer: `WORLD_LAYER_NAMES` has
+  no foreground entry, so edge-cropped framing art cannot be drawn at
+  all — roadmap item 5.)
 
 The server previously lived in a separate `brotown-server` repo, now
 archived. Do not push there or build patches against it.
