@@ -1,4 +1,4 @@
-# Eye styles (v2.3.2645)
+# Eye styles (v2.3.2646)
 
 **Shipped:** Sleepy Eyes, One Eye, Demon Eyes, WTF Eyes — south, southwest and
 east, plus their runtime mirrors.
@@ -482,49 +482,72 @@ what "Blue" is, or about whether the feature is on.
 ### What a swatch paints, per style
 
 The eyewear lesson (v2.3.2424) applies unchanged: "biggest material wins" lands
-on a different **part** depending on the item, so the part is pinned per style
-in `traitMaterials.MAIN_MATERIAL` and **named** in the picker. Measured with
-`segmentMaterials` over the three shipped facings, pooled:
+on a different **part** depending on the item, so the part is decided per style
+and **named** in the picker. Measured with `segmentMaterials` over the three
+shipped facings, pooled:
 
-| style | decomposition | pinned | the picker says |
-|---|---|---|---|
-| Sleepy Eyes | hue230 42% · dark 32% · hue348 11% · hue278 7% · light 7% | `230` | Lids |
-| One Eye | light 86% · dark 10% · hue13 5% | `dark` | Pupil |
-| Demon Eyes | hue38 86% · hue15 12% · light 2% | `all` | Flames |
-| WTF Eyes | light 72% · dark 28% | `dark` | Pupils |
+| style | decomposition | the swatch paints | how | the picker says |
+|---|---|---|---|---|
+| Sleepy Eyes | hue230 42% · dark 32% · hue348 11% · hue278 7% · light 7% | pin `230` | retint | Lids |
+| Demon Eyes | hue38 86% · hue15 12% · light 2% | pin `all` | retint | Flames |
+| One Eye | light 86% · dark 10% · hue13 5% | spare `light` | **replace** | Pupil |
+| WTF Eyes | light 72% · dark 28% | spare `light` | **replace** | Pupils |
 
-**Three of the four would take the wrong part from "biggest wins".** One Eye
-and WTF are mostly the *white* of the eye, and painting that is a coloured
-eyeball, not a coloured eye — what a player means by "green eyes" is the iris,
-so both pin `dark`. Sleepy pins its navy: the lid **is** the style's colour,
-while the 32% dark is the outline and the 11% pink inner-corner highlight is the
-only bright thing on the piece, and both have to survive. Demon pins `all`,
-because a flame's two tones are one material to the eye and sparing either
-leaves it half recoloured.
+**Sleepy** pins its navy: the lid **is** the style's colour, while the 32% dark
+is the outline and the 11% pink inner-corner highlight is the only bright thing
+on the piece, and both have to survive. **Demon** pins `all`, because a flame's
+two tones are one material to the eye and sparing either leaves it half
+recoloured. Both live in `traitMaterials.MAIN_MATERIAL`, keyed **`eyes:<id>`**
+rather than the bare id every other entry uses — that table is one namespace
+across every category, and `demon` is exactly the sort of id a hat could be
+given next year, at which point the hat would silently inherit a pin measured on
+a pair of eyes.
 
-The pins are keyed **`eyes:<id>`**, not the bare id every other entry in that
-table uses. `MAIN_MATERIAL` is one namespace across every category, and `demon`
-or `wtf` is exactly the sort of id a hat could be given next year — at which
-point the hat would silently inherit a pin measured on a pair of eyes.
+### One Eye and WTF do not fit a pin at all (v2.3.2646)
 
-### And the reference is the material's own (`matRef`)
+Owner, on the first cut of this section: *"the pupil for the one eye is only
+getting recolored around a jagged edge not the whole pupil. Also the wtf eye
+pupil area isn't getting recolored."*
 
-`recolorHairToCanvas` is a brightness-**ratio** retint: each pixel's luminance
-is divided by a reference and the chosen colour multiplied by the result. Every
-caller until now passed the sprite's mean luminance, which is right while the
-recoloured part **is** most of the sprite.
+Both were true, and both came from forcing these two through machinery built for
+a hat. Two faults, stacked:
 
-It is wrong here twice over. One Eye is 86% white, so its pupil divides ~34 by
-~276 and every swatch comes out black. This is the same wall `eyeColorCatalog`
-hit on the painted-in iris in v2.3.1928, and it answered by replacing the iris
-outright rather than retinting it.
+**1. The pupil is not one material.** Pinning `dark` looks obviously right — it
+is the only non-white thing on either piece. It isn't: One Eye's pupil
+decomposes into the near-black band **and** a dark red one, and six of the nine
+pupil pixels on its southwest cell are the red. A positive pin paints part of a
+pupil and leaves the rest. A part that spans materials cannot be named by an
+index into them, however carefully the index is chosen — so these two say what
+they are the other way round, **`spare: 'light'`**: the white, and everything
+that is not the white.
 
-So the profile carries **`matRef`**: the mean luminance of the pixels the swatch
-actually paints. A flat material then lands *on* the swatch (k ≈ 1 — the flat
-replacement, for free) while a shaded one keeps its shading around it, so
-Sleepy's lid and Demon's flame gradient both survive where a flat fill would
-have destroyed them. One number, one `||`, and the same pass serves all four.
-Only this module sets it.
+**2. A ratio cannot colour a near-black material, in either direction.**
+`recolorHairToCanvas` multiplies the chosen colour by (pixel luminance /
+reference). WTF's pupil core sits at luminance **1–8** against a material mean
+of 18, so red `(178,58,48)` came out `(10,3,3)` — still black. One Eye's pupil
+spans **10 to 104** about a mean of 14, so its core came out dark red while its
+rim multiplied past 255 on all three channels and blew out to **white**. A
+coloured jagged edge round a black pupil, exactly as reported.
+
+`eyeColorCatalog` reached this conclusion about the painted-in iris in v2.3.1928
+and answered it by **replacing** the iris outright. This spec quoted that
+finding and then shipped a ratio pass anyway, with a better reference. A better
+reference does not rescue a ratio: the mean is dragged up by the anti-aliased
+rim, which is what pushed the core down and the rim through the ceiling. So
+these two carry **`flat`** and replace — the same answer, and the same behaviour
+the real iris has had for seven hundred versions.
+
+Neither fault is legible from the creator canvas at that size, which is why the
+first cut of the scenario passed against both. See "What is asserted" below.
+
+### `matRef`, for the two that do retint
+
+Sleepy and Demon keep the ratio pass, because their colour carries real shading
+that a flat fill would destroy. Their reference is the mean luminance of the
+pixels the swatch paints rather than of the whole sprite (**`matRef`**): on a
+piece that is mostly something else, the sprite mean puts the painted material
+far from k = 1 and the swatch stops meaning what it says. One `||` in the shared
+pass; only this module sets it.
 
 ### Where it is applied
 
@@ -550,10 +573,14 @@ widened here.
 ### What is asserted
 
 `mp-eyestyle.mjs` points 4(b) and 8. That a swatch changes *something* is read
-off the canvas; that it changes the **right** thing is read off the bake, via
-`window.__btEyeStyleColor`, because a pin that stops matching does not throw —
+off the canvas — and that alone passed against **both** of the bugs above, which
+is the lesson. What it changes and how is read off the bake, via
+`window.__btEyeStyleColor`, because none of it throws when it goes wrong:
 `mainMaterial` falls back to "biggest" and One Eye quietly becomes a coloured
-eyeball. So the probe reports the chosen material and the assertion is that it
-is the pinned one, `matRef` is checked to sit at least 3× below `ref` on the two
-styles that pin `dark`, each style must bake a texture for all three facings,
-`none` must bake none, and an unlisted style must offer no colour at all.
+eyeball; a ratio pass on a black pupil quietly stays black.
+
+So the probe reports the chosen material, and the assertions are that Sleepy and
+Demon paint the pinned one with `matRef` at or below `ref`, that One Eye and WTF
+spare the `light` material with **no** positive pin and carry `flat`, that each
+style bakes a texture for all three facings, that `none` bakes none, and that an
+unlisted style offers no colour at all.

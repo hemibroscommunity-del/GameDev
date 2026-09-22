@@ -221,18 +221,26 @@ MAIN_MATERIAL['white-glass'] = 'light';    /* the LENS, 60% -- the dark 40% is t
  * prefixed key (eyeStyleColorCatalog._pooledProfile); nothing else does.
  *
  * Measured the same way as everything above (segmentMaterials over the three
- * shipped facings, pooled).  THREE OF THE FOUR WOULD TAKE THE WRONG PART FROM
+ * shipped facings, pooled).  Both of these would take the wrong part from
  * "biggest wins", which is the whole reason they are pinned. */
 MAIN_MATERIAL['eyes:sleepy'] = 230;        /* the navy LID, 42% -- it is what the style's colour IS.
                                               The 32% dark is the outline, and the 11% pink inner-corner
                                               highlight is the only bright thing on the piece: both stay. */
-MAIN_MATERIAL['eyes:one-eye'] = 'dark';    /* the PUPIL, 10% against 86% white.  "Biggest" would paint the
-                                              sclera, which is a coloured eyeBALL, not a coloured eye --
-                                              what a player means by green eyes is the iris. */
-MAIN_MATERIAL['eyes:wtf'] = 'dark';        /* the PUPILS, 28% against 72% white.  Same reasoning. */
 MAIN_MATERIAL['eyes:demon'] = 'all';       /* hue38 86% and hue15 12% are one flame to the eye, and sparing
                                               either leaves it half recoloured; the 2% light is its hottest
                                               core and recolours with it. */
+/* ONE EYE AND WTF ARE DELIBERATELY ABSENT (v2.3.2646), and it cost an owner
+ * report to learn why: "the pupil for the one eye is only getting recolored
+ * around a jagged edge not the whole pupil.  Also the wtf eye pupil area isn't
+ * getting recolored."  Both pinned 'dark' here, which looks obviously right --
+ * the pupil is the only non-white thing on either piece.
+ *   It is not ONE material.  One Eye's pupil decomposes into the near-black
+ * band AND a dark red one, and six of the nine pupil pixels on its southwest
+ * cell are the red, so a positive pin painted part of a pupil and left the
+ * rest.  A part that spans materials cannot be named by an index into them,
+ * however carefully the index is chosen.  Those two say what they are the other
+ * way round -- spare the white, paint everything else -- which is not a pin and
+ * so does not live in this table.  See eyeStyleColorCatalog.EYE_STYLE_PAINTS. */
 
 /** Which material index recolours for this trait; -1 means recolour everything. */
 export function mainMaterial(traitId, mats) {

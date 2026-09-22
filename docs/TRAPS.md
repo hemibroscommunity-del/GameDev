@@ -1,4 +1,4 @@
-# TRAPS — plausible-but-wrong moves (v2.3.2645)
+# TRAPS — plausible-but-wrong moves (v2.3.2646)
 
 A registry of changes that look obviously right and are known to be
 wrong. Each was attempted, or nearly attempted, by a competent session.
@@ -3871,7 +3871,7 @@ window version and correct. Ask each layer about itself.
 
 **Receipt:** `tools/qa/mp/mp-eyestyle.mjs` point 4(b); `docs/specs/eyes.md` §5.
 
-## 93. A ratio retint referenced to the sprite turns a dark material black (v2.3.2645)
+## 93. A ratio retint cannot colour a near-black material, and a better reference does not save it (v2.3.2646)
 
 **Tempting:** you want a new trait to take a colour swatch. Every recolour in
 the game goes through `recolorHairToCanvas`, which divides each pixel's
@@ -3884,18 +3884,59 @@ exactly as eyewear does.
 bug it guards against is real, and the pinning question (frame or lens, lids or
 pupils) is the one that usually needs thought.
 
-**Wrong when the pinned material is much DARKER than the sprite.** The
-reference decides what the swatch means: pixels at the reference come out *as*
-the swatch. One Eye is 86% white, so its 86%-white sprite references ~276 while
-the pupil a swatch paints sits at ~34 — k = 0.12, and every colour in the
-palette renders as black. Nothing throws; the row simply looks broken.
+**Wrong when the painted material is near-black,** which a pupil, an iris or a
+keyline always is. The reference decides what the swatch means — pixels *at* the
+reference come out *as* the swatch — and One Eye is 86% white, so referenced to
+the sprite (~276) its pupil (~34) renders at k = 0.12: black in every colour.
 
-**The rule:** reference the retint to **the material being painted**, not to the
-sprite (`matRef`). It degrades to the old behaviour whenever the painted part
-*is* most of the sprite, it gives a flat material the outright replacement that
-`eyeColorCatalog` had to special-case in v2.3.1928 (a flat material sits at its
-own mean, so k ≈ 1), and it keeps the shading a flat fill would destroy.
+**And the obvious fix is not enough.** Referencing the material's own mean
+instead (`matRef`) looks like it solves it, and this session shipped that. It
+does not: the mean is dragged up by the anti-aliased rim, so the *core* is still
+pushed below it and the *rim* is pushed above. WTF's pupil (luminance 1–8 about
+a mean of 18) stayed black; One Eye's (10–104 about a mean of 14) came out dark
+red in the middle with a rim that multiplied past 255 on all three channels and
+blew out **white**. The owner's report was "only getting recolored around a
+jagged edge not the whole pupil. Also the wtf eye pupil area isn't getting
+recolored."
 
-**Receipt:** `src/rendering/traits/eyeStyleColorCatalog.js`; the assertion in
-`mp-eyestyle.mjs` that `matRef` sits at least 3× below `ref` on the two styles
-that pin `dark` (14.2 vs 240.1, 18.0 vs 199.4).
+**The rule:** a near-black material is **replaced**, not scaled — which is the
+conclusion `eyeColorCatalog` already reached about the painted-in iris in
+v2.3.1928, and which this session quoted in a comment while doing the other
+thing. Keep the ratio pass for materials that carry real shading (Sleepy's lid,
+Demon's flame); use `flat` where the art has no luminance headroom to carry a
+colour. `matRef` still earns its place for the retinting half.
+
+**Related:** §94 (the other half of the same report — the pupil was not one
+material either).
+
+**Receipt:** `src/rendering/traits/eyeStyleColorCatalog.js`; `docs/specs/eyes.md`
+§6; the `flat` assertions in `mp-eyestyle.mjs` point 8.
+
+## 94. A part that spans two materials cannot be named by a pin (v2.3.2646)
+
+**Tempting:** `traitMaterials.MAIN_MATERIAL` pins which material a swatch
+paints, and it has answered every case since v2.3.1926 — the gold rim, the lens,
+the straw. An eye style whose art is a white eye with a pupil in it is the
+easiest call on the list: the pupil is the only non-white thing, so pin `dark`.
+
+**Why it looks right:** the decomposition agrees. One Eye reads light 86% /
+dark 10% / hue13 5%, and the 5% is small enough to look like anti-aliasing.
+
+**Wrong: the 5% is part of the pupil.** Those pixels are a dark *red*, and on
+One Eye's southwest cell **six of the nine** pupil pixels are that red rather
+than the near-black band. Pinning `dark` painted a fraction of the pupil and
+left the rest — and because a pin can only ever name one material, no choice of
+pin was going to be right.
+
+**The rule:** when the part you mean is "everything except X", say that. These
+two pieces are *the white, and everything that is not the white*, so they carry
+`spare: 'light'` and no positive pin — the negative of `main`, added to the
+shared pass for exactly this. Reach for it whenever a part is defined by what it
+is not; a percentage small enough to dismiss as anti-aliasing deserves a look at
+*which pixels* before it is dismissed.
+
+**Related:** §93 (the other half of the same report).
+
+**Receipt:** `eyeStyleColorCatalog.EYE_STYLE_PAINTS`; the "spares the white"
+assertions in `mp-eyestyle.mjs` point 8; the two pins removed from
+`MAIN_MATERIAL`, with the reason left in their place.

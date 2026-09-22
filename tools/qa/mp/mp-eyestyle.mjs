@@ -84,10 +84,18 @@
  *    and a pin that silently stopped matching (an art edit, a renamed kind)
  *    falls back to "biggest" without anything throwing.  The probe reports the
  *    chosen material, and the assertion is that it is the pinned one.
- *    It also checks `matRef` against `ref`: a ratio retint referenced to the
- *    whole sprite turns a dark material black (One Eye divides 34 by 276), and
- *    the material-own reference is the fix, so the two numbers being far apart
- *    on those two styles IS the fix being in place.
+ *    Two of the four are not a pin at all, and asserting that is the point.
+ *    Owner, on the first cut: "the pupil for the one eye is only getting
+ *    recolored around a jagged edge not the whole pupil.  Also the wtf eye
+ *    pupil area isn't getting recolored."  Their pupils span TWO materials (six
+ *    of the nine pupil pixels on One Eye's southwest cell are a dark red, not
+ *    the near-black band), so they spare the white instead of pinning a dark;
+ *    and a ratio pass cannot colour a near-black material in either direction
+ *    (WTF's core stayed black, One Eye's rim multiplied past 255 on all three
+ *    channels and blew out WHITE), so they replace outright.  Neither of those
+ *    is legible from the canvas at creator scale -- the first cut of this file
+ *    asserted the swatch changed SOMETHING and passed against both bugs -- so
+ *    both are read off the bake.
  *
  * 7. BOTH SLOTS ARE WORN AT ONCE.  The entire reason eye styles are their own
  *    slot rather than four more eyewear entries is that you can wear Demon Eyes
@@ -400,28 +408,50 @@ export async function run({ browser, wsPort, webPort, rec }) {
      numbers being far apart is that fix being present rather than assumed. */
   const PIN = [
     { id: 'sleepy', kind: 'hue', hue: 230, part: 'Lids' },
-    { id: 'one-eye', kind: 'dark', part: 'Pupil' },
     { id: 'demon', kind: 'all', part: 'Flames' },
-    { id: 'wtf', kind: 'dark', part: 'Pupils' },
+    /* v2.3.2646: these two SPARE the white and replace everything else
+       outright.  Both halves of that are asserted, because both were wrong
+       first and neither is visible from the canvas at this size.  Owner: "the
+       pupil for the one eye is only getting recolored around a jagged edge not
+       the whole pupil.  Also the wtf eye pupil area isn't getting recolored." */
+    { id: 'one-eye', spare: 'light', flat: true, part: 'Pupil' },
+    { id: 'wtf', spare: 'light', flat: true, part: 'Pupils' },
   ];
   for (const p of PIN) {
     const prof = await P.page.evaluate((id) => (window.__btEyeStyleColor
       ? window.__btEyeStyleColor.ref(id) : null), p.id);
     if (!prof) { rec.ok(`${p.id}: the recolour probe answered (guard)`, false, null); continue; }
-    const m = p.kind === 'all' ? null : prof.mats[prof.main];
-    const hit = p.kind === 'all'
-      ? prof.main === -1
-      : !!m && m.kind === p.kind && (p.hue === undefined || Math.abs(m.hue - p.hue) <= 20);
-    rec.ok(`${p.id}: the swatch paints the PINNED material (${p.kind}${p.hue ? ' ~' + p.hue : ''}) `
-         + `and not whichever is biggest -- chose ${p.kind === 'all' ? 'every pixel' : JSON.stringify(m)}`,
-      hit, { pin: p, main: prof.main, mats: prof.mats });
-    if (p.kind === 'dark') {
-      /* The whole reason matRef exists.  One Eye is 86% white: referenced to
-         the sprite its pupil divides ~34 by ~276 and every colour comes out
-         black.  A factor of three apart is the fix being in place. */
-      rec.ok(`${p.id}: the retint is referenced to its own dark material, not to `
-           + `the sprite (matRef ${prof.matRef.toFixed(1)} vs ref ${prof.ref.toFixed(1)})`,
-        prof.matRef * 3 < prof.ref, { matRef: prof.matRef, ref: prof.ref });
+    if (p.spare) {
+      /* A part that spans two materials cannot be named by an index into them:
+         One Eye's pupil is the near-black band AND a dark red one, and six of
+         the nine pupil pixels on its southwest cell are the red. */
+      const sp = prof.mats[prof.spare];
+      rec.ok(`${p.id}: the swatch spares the white and paints everything else, `
+           + `rather than pinning one material -- spared ${JSON.stringify(sp)}, no positive pin `
+           + `(main ${prof.main})`,
+        prof.main === -1 && !!sp && sp.kind === p.spare, { prof: { main: prof.main, spare: prof.spare }, mats: prof.mats });
+      /* And REPLACES rather than scales.  A ratio cannot colour a near-black
+         material in either direction: WTF's core (luminance 1-8 against a mean
+         of 18) stayed black, One Eye's rim (up to 104 against a mean of 14)
+         multiplied past 255 on all three channels and blew out white. */
+      rec.ok(`${p.id}: ...and replaces it outright instead of scaling it, the answer `
+           + `eyeColorCatalog reached for the painted-in iris in v2.3.1928`,
+        prof.flat === true, { flat: prof.flat });
+    } else {
+      const m = p.kind === 'all' ? null : prof.mats[prof.main];
+      const hit = p.kind === 'all'
+        ? prof.main === -1
+        : !!m && m.kind === p.kind && (p.hue === undefined || Math.abs(m.hue - p.hue) <= 20);
+      rec.ok(`${p.id}: the swatch paints the PINNED material (${p.kind}${p.hue ? ' ~' + p.hue : ''}) `
+           + `and not whichever is biggest -- chose ${p.kind === 'all' ? 'every pixel' : JSON.stringify(m)}`,
+        hit, { pin: p, main: prof.main, mats: prof.mats });
+      /* The ratio pass these two keep is referenced to the material the swatch
+         paints, not to the sprite: on a piece that is mostly something else the
+         sprite mean puts it far from k = 1 and the swatch stops meaning what it
+         says.  Sleepy's lid sits at 48 against a sprite reference of ~90. */
+      rec.ok(`${p.id}: the retint is referenced to the material it paints, not to `
+           + `the whole sprite (matRef ${prof.matRef.toFixed(1)} vs ref ${prof.ref.toFixed(1)})`,
+        prof.flat === false && prof.matRef <= prof.ref, { matRef: prof.matRef, ref: prof.ref, flat: prof.flat });
     }
     const texDirs = await P.page.evaluate(async (id) => {
       if (!window.__btEyeStyleColor) return null;

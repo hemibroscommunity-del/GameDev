@@ -20,39 +20,58 @@
  *
  * ── WHAT A SWATCH PAINTS, PER STYLE ──
  * The eyewear lesson (v2.3.2424) applies unchanged: the "biggest material"
- * rule lands on a different PART depending on the piece, so the part is PINNED
- * per style in traitMaterials.MAIN_MATERIAL and NAMED in the picker by
- * eyeStylePaints below.  Measured with segmentMaterials over the three shipped
- * facings, pooled:
+ * rule lands on a different PART depending on the piece, so the part is pinned
+ * per style and NAMED in the picker by eyeStylePaints below.  Measured with
+ * segmentMaterials over the three shipped facings, pooled:
  *
  *     sleepy    hue230 42%   dark 32%   hue348 11%   hue278 7%   light 7%
  *     one-eye   light  86%   dark 10%   hue13 5%
  *     demon     hue38  86%   hue15 12%  light 2%
  *     wtf       light  72%   dark 28%
  *
- * Three of the four would take the WRONG part from "biggest wins": One Eye and
- * WTF would paint the white of the eye, which is a coloured eyeball rather than
- * a coloured eye.  What the player means by "green eyes" is the iris, so those
- * two pin `dark` -- the pupil.  Sleepy pins its navy (the lid IS its colour;
+ * SLEEPY pins its navy in traitMaterials.MAIN_MATERIAL (the lid IS its colour;
  * the dark is the outline and the pink inner-corner highlight must survive).
- * Demon pins 'all', because a flame's two tones are one material to the eye and
- * sparing either leaves it half recoloured.
+ * DEMON pins 'all' there, because a flame's two tones are one material to the
+ * eye and sparing either leaves it half recoloured.
  *
- * ── AND THE REFERENCE IS THE MATERIAL'S OWN ──
- * recolorHairToCanvas is a brightness-RATIO retint: it divides each pixel's
- * luminance by a reference and multiplies the chosen colour by that.  Every
- * other caller passes the sprite's mean luminance, which is right when the
- * recoloured part IS most of the sprite.  It is wrong here twice over: One Eye
- * is 86% white, so its pupil divides ~34 by ~240 and every swatch comes out
- * black.  eyeColorCatalog.js hit the same wall on the painted-in eyes in
- * v2.3.1928 and answered it by replacing the iris outright.
+ * ── ONE EYE AND WTF DO NOT FIT A PIN AT ALL, AND THAT IS THE BUG (v2.3.2646) ──
+ * Owner, on the first cut: "the pupil for the one eye is only getting
+ * recolored around a jagged edge not the whole pupil.  Also the wtf eye pupil
+ * area isn't getting recolored."  Both were true, and both came from forcing
+ * these two through machinery built for a hat.  Two faults, stacked:
  *
- * So the profile carries `matRef`, the mean luminance of the pixels the swatch
- * actually paints.  A flat material then lands on the swatch itself (k ~ 1,
- * i.e. the flat replacement eye colour has always done), and a shaded one keeps
- * its shading around it -- Sleepy's lid and Demon's flame gradient both
- * survive, which a flat fill would have destroyed.  One number, and the same
- * pass serves all four.
+ * (1) THE PUPIL IS NOT ONE MATERIAL.  Pinning `dark` looks obviously right --
+ *     it is the only non-white thing on the piece.  It is not: One Eye's pupil
+ *     decomposes into the near-black band AND a dark red one, and on its
+ *     southwest cell SIX of the nine pupil pixels are the red.  A positive pin
+ *     paints part of a pupil and leaves the rest.  What these two pieces
+ *     actually are is "the white, and everything that is not the white", so
+ *     they SPARE the light material instead of pinning a dark one.
+ *
+ * (2) A RATIO CANNOT COLOUR A NEAR-BLACK MATERIAL, in either direction.
+ *     recolorHairToCanvas multiplies the chosen colour by (pixel luminance /
+ *     reference).  WTF's pupil core sits at luminance 1-8 against a material
+ *     mean of 18, so red (178,58,48) came out (10,3,3) -- still black.  One
+ *     Eye's pupil spans 10 to 104 about a mean of 14, so its core came out dark
+ *     red while its rim multiplied past 255 on all three channels and blew out
+ *     to WHITE.  A coloured jagged edge round a black pupil: exactly what was
+ *     reported.
+ *
+ *     eyeColorCatalog.js reached this conclusion about the painted-in iris in
+ *     v2.3.1928 and answered it by REPLACING the iris outright.  This file
+ *     quoted that finding and then shipped a ratio pass anyway, with a better
+ *     reference (`matRef`, below).  A better reference does not rescue a ratio
+ *     -- the mean is dragged up by the anti-aliased rim, which is what pushed
+ *     the core down and the rim through the ceiling.  So these two styles
+ *     REPLACE: `flat`, the same answer and the same behaviour the real iris
+ *     has had since v2.3.1928.
+ *
+ * ── matRef, FOR THE TWO THAT DO RETINT ──
+ * Sleepy and Demon keep the ratio pass, because their colour carries real
+ * shading that a flat fill would destroy.  The reference is still the mean
+ * luminance of the pixels the swatch paints rather than of the whole sprite:
+ * on a piece that is mostly something else, the sprite mean puts the painted
+ * material far from k = 1 and the swatch stops meaning what it says.
  */
 
 import { Texture } from 'pixi.js';
@@ -74,14 +93,25 @@ export const EYE_STYLE_COLOR_CATALOG = EYE_COLOR_CATALOG;
    keyed by bare trait id across every category, and 'demon' or 'wtf' is
    exactly the sort of id a hat could take later. */
 export const EYE_STYLE_PAINTS = Object.create(null);   /* rule 4: id-keyed map */
-EYE_STYLE_PAINTS['sleepy'] = 'Lids';
-EYE_STYLE_PAINTS['one-eye'] = 'Pupil';
-EYE_STYLE_PAINTS['demon'] = 'Flames';
-EYE_STYLE_PAINTS['wtf'] = 'Pupils';
+/* `part` is the label.  With neither `spare` nor `flat`, the style takes the
+   positive pin in MAIN_MATERIAL and the ratio retint -- the path every other
+   recolourable trait uses. */
+EYE_STYLE_PAINTS['sleepy'] = { part: 'Lids' };
+EYE_STYLE_PAINTS['demon'] = { part: 'Flames' };
+/* ...and these two spare the white and replace everything else outright, for
+   the two reasons in the header. */
+EYE_STYLE_PAINTS['one-eye'] = { part: 'Pupil', spare: 'light', flat: true };
+EYE_STYLE_PAINTS['wtf'] = { part: 'Pupils', spare: 'light', flat: true };
+
+/** The rule for a style, or null if it offers no colour. */
+function paintRule(id) {
+  return (id && id !== 'none' && EYE_STYLE_PAINTS[id]) || null;
+}
 
 /** What a swatch paints on this style, or null if it offers no colour. */
 export function eyeStylePaints(id) {
-  return (id && id !== 'none' && EYE_STYLE_PAINTS[id]) || null;
+  const r = paintRule(id);
+  return r ? r.part : null;
 }
 
 /** The RGB a style's paintable part should take, or null for its own colours.
@@ -136,15 +166,22 @@ function _pooledProfile(imgs, id) {
     }
   }
   const mats = segmentMaterials(chunks);
-  const main = mainMaterial('eyes:' + id, mats);
-  /* matRef: the mean luminance of the PAINTED pixels only -- the header's
-     whole argument.  main < 0 means 'all', where the painted set is every
-     opaque pixel and this is the sprite mean by another route. */
+  const rule = paintRule(id) || {};
+  /* Exactly one of the two is set.  `spare` names a material to LEAVE ALONE
+     and paints the rest; otherwise the positive pin in MAIN_MATERIAL decides
+     which single material is painted (-1 there means 'all'). */
+  const spare = rule.spare ? mats.findIndex((m) => m.kind === rule.spare) : -1;
+  const main = spare >= 0 ? -1 : mainMaterial('eyes:' + id, mats);
+  /* matRef: the mean luminance of the PAINTED pixels only.  Unused under
+     `flat`, and computed anyway so the QA probe can report it. */
   let mSum = 0, mN = 0;
   for (const d of chunks) {
     for (let i = 0; i < d.length; i += 4) {
       if (d[i + 3] <= 30) continue;
-      if (main >= 0 && materialIndex(d[i], d[i + 1], d[i + 2], mats) !== main) continue;
+      if (main >= 0 || spare >= 0) {
+        const mi = materialIndex(d[i], d[i + 1], d[i + 2], mats);
+        if (main >= 0 ? mi !== main : mi === spare) continue;
+      }
       mSum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
       mN++;
     }
@@ -154,6 +191,8 @@ function _pooledProfile(imgs, id) {
     matRef: Math.max(1, mN ? mSum / mN : 1),
     mats,
     main,
+    spare,
+    flat: !!rule.flat,
   };
 }
 
@@ -232,7 +271,7 @@ if (typeof window !== 'undefined') {
   window.__btEyeStyleColor = {
     paints: eyeStylePaints,
     target: eyeStyleColorTarget,
-    ref: (id) => getEyeStyleRef(id).then((p) => (p ? { matRef: p.matRef, ref: p.ref, main: p.main, mats: p.mats.map((m) => ({ kind: m.kind, hue: m.hue, share: m.share })) } : null)),
+    ref: (id) => getEyeStyleRef(id).then((p) => (p ? { matRef: p.matRef, ref: p.ref, main: p.main, spare: p.spare, flat: p.flat, mats: p.mats.map((m) => ({ kind: m.kind, hue: m.hue, share: m.share })) } : null)),
     textures: (id, colorId) => {
       const t = getColoredEyeStyleTextures(id, colorId);
       return t ? Object.keys(t).sort() : null;

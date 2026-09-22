@@ -262,10 +262,33 @@ export function recolorHairToCanvas(img, hairColor, refOverride) {
   /* main < 0 means "no material is special here" -- either the trait has none
      or its entry says 'all' -- so every pixel recolours, which is today's map. */
   const main = prof ? prof.main : -1;
-  const mats = (prof && main >= 0) ? prof.mats : null;
+  /* v2.3.2646: `spare` is the NEGATIVE of `main` -- paint every material except
+     this one.  Some parts are not a material: One Eye is a white eye with a
+     pupil in it, and the pupil decomposes into the near-black band PLUS a dark
+     red one (6 of the 9 pupil pixels on its southwest cell are the red), so a
+     single positive pin paints part of a pupil and leaves the rest.  What the
+     piece actually is, is "the white, and everything that is not the white",
+     and that is what this expresses.  Only eyeStyleColorCatalog sets it. */
+  const spare = (prof && prof.spare >= 0) ? prof.spare : -1;
+  const mats = (prof && (main >= 0 || spare >= 0)) ? prof.mats : null;
+  /* v2.3.2646: `flat` replaces the painted material outright instead of
+     scaling it.  A RATIO cannot express a near-black material in either
+     direction, which is the whole of v2.3.1928's finding about the painted-in
+     iris and is why that feature replaces rather than retints.  Measured on
+     these two: WTF's pupil core sits at luminance 1-8 against a material mean
+     of 18, so red (178,58,48) came out (10,3,3) -- still black; and One Eye's
+     pupil spans 10 to 104 about a mean of 14, so its core came out dark red
+     while its rim multiplied past 255 on all three channels and blew out to
+     WHITE.  One control reading as "a jagged coloured edge round a black
+     pupil", which is exactly what the owner reported. */
+  const flat = !!(prof && prof.flat);
   for (let i = 0; i < d.length; i += 4) {
     if (d[i + 3] > 30) {
-      if (mats && materialIndex(d[i], d[i + 1], d[i + 2], mats) !== main) continue;
+      if (mats) {
+        const mi = materialIndex(d[i], d[i + 1], d[i + 2], mats);
+        if (main >= 0 ? mi !== main : mi === spare) continue;
+      }
+      if (flat) { d[i] = tr; d[i + 1] = tg; d[i + 2] = tb; continue; }
       const k = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / ref;
       d[i] = Math.min(255, Math.round(tr * k));
       d[i + 1] = Math.min(255, Math.round(tg * k));
