@@ -157,18 +157,26 @@ export const PROG3_LEGACY_ATK = {
    damage" is an answer, "does not change damage" beside RANGE is a bug
    report.  `capsProg3Shared` rows exist only on a worker carrying the
    folded grid; `legacyOnly` rows exist only on one that does not. */
+/* ═══ v2.3.2642: `short` — THE GRID'S LABEL ═══
+   The owner's points grid puts thirteen stats across two rows, so a cell is
+   ~44px wide and `label` does not fit: "Defense" rendered "DEFE…", "Max Mana"
+   "MAX …", and the two Speeds (swing speed and move speed) were BOTH "SPEED"
+   with nothing to tell them apart.  `short` is the caption the owner's own
+   glyph sheet uses, which is also the shortest form a player has already been
+   taught to read.  `label` is untouched: it is what the confirm window, the
+   long-press title and every aria-label still say, and those have the room. */
 export const PROG3_ATK_META = [
-  { key: 'range',   label: 'Range',     perText: '+0.5% reach',                        pct: true, unit: '% farther',        iconSrc: '/icons/ui/t2/bow-longshot.webp?v=2.3.2592',     capsProg3Shared: true, dpsNote: 'reach, not damage' , tint: '#842D95' },
-  { key: 'dmg',     label: 'Power',     perText: '+0.5 damage per hit',                unit: ' dmg',                        iconSrc: '/icons/ui/hero/dps.webp?v=2.3.2199',            capsProg3x: true , tint: '#5C5851' },
+  { key: 'range',   label: 'Range', short: 'RANGE',     perText: '+0.5% reach',                        pct: true, unit: '% farther',        iconSrc: '/icons/ui/stat/range.png?v=2.3.2642',     capsProg3Shared: true, dpsNote: 'reach, not damage' , tint: '#842D95' },
+  { key: 'dmg',     label: 'Power', short: 'POWER',     perText: '+0.5 damage per hit',                unit: ' dmg',                        iconSrc: '/icons/ui/stat/dmg.png?v=2.3.2642',            capsProg3x: true , tint: '#5C5851' },
   /* Speed's points SHORTEN the swing, so its total is a reduction — the
      label below says "faster" rather than printing a negative. */
-  { key: 'aspd',    label: 'Speed',     perText: '−0.35% swing time',                  pct: true, unit: '% faster',         iconSrc: '/icons/ui/t2/sword-tempo.webp?v=2.3.1694' , tint: '#2C4F59' },
-  { key: 'luck',    label: 'Luck',      perText: '+0.3% crit chance, +1% crit damage', pct: true, unit: '% crit chance',    iconSrc: '/icons/ui/hero/crit.webp?v=2.3.1694',           capsProg3Shared: true , tint: '#8E3B1F' },
-  { key: 'special', label: 'Special',   perText: '+1% special attack damage',          pct: true, unit: '% special damage', iconSrc: '/icons/ui/t2/staff-overload.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'special attacks only' , tint: '#326762' },
+  { key: 'aspd',    label: 'Speed', short: 'SPEED',     perText: '−0.35% swing time',                  pct: true, unit: '% faster',         iconSrc: '/icons/ui/stat/aspd.png?v=2.3.2642' , tint: '#2C4F59' },
+  { key: 'luck',    label: 'Luck', short: 'LUCK',      perText: '+0.3% crit chance, +1% crit damage', pct: true, unit: '% crit chance',    iconSrc: '/icons/ui/stat/luck.png?v=2.3.2642',           capsProg3Shared: true , tint: '#8E3B1F' },
+  { key: 'special', label: 'Special', short: 'SPECIAL',   perText: '+1% special attack damage',          pct: true, unit: '% special damage', iconSrc: '/icons/ui/stat/special.png?v=2.3.2642',   capsProg3Shared: true, dpsNote: 'special attacks only' , tint: '#326762' },
   /* v2.3.2512: elemental power, per weapon — burns/roots/thorns and element
      collisions from THIS weapon scale off it.  The detonation drawing is
      still the closest the repo has; swap the day a dedicated icon exists. */
-  { key: 'elem',    label: 'Element',   infoKey: 'Elemental', perText: '+1 elemental power',                 unit: ' power',                      iconSrc: '/icons/ui/t2/staff-detonation.webp?v=2.3.2199', capsProg3Elem: true , tint: '#48239F' },
+  { key: 'elem',    label: 'Element', short: 'ELEMENT',   infoKey: 'Elemental', perText: '+1 elemental power',                 unit: ' power',                      iconSrc: '/icons/ui/stat/elem.png?v=2.3.2642', capsProg3Elem: true , tint: '#48239F' },
   /* The RETIRED pair, drawn only against a worker that has not folded them
      into Luck — that worker still rolls off crit and critDmg, so those are
      the rows it must show (rule 19).  Same copy they shipped with. */
@@ -267,13 +275,13 @@ export const PROG3_BODY_META = [
      glossary is a global map and does not care what is on screen.
      If the two ever DO read as confusable to a player, "Haste" is the
      pre-agreed fallback for `move`. */
-  { key: 'hp',    label: 'Max HP',      perText: '+8 max HP',                    unit: ' HP',             iconSrc: '/icons/ui/hero/hp-heart.webp?v=2.3.1922' , tint: '#592C32' } /* v2.3.1922: plain heart */,
-  { key: 'def',   label: 'Defense',     perText: '−0.4% damage taken',           pct: true, unit: '% less damage', iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1694' , tint: '#485A7A' },
-  { key: 'mana',  label: 'Max Mana',    perText: '+2.5 max mana',                unit: ' mana',           iconSrc: '/icons/ui/hero/mana.webp?v=2.3.2592',             capsProg3Elem: true , tint: '#182D6D' },
-  { key: 'stam',  label: 'Stamina',     perText: '+3 max stamina',               unit: ' stamina',        iconSrc: '/icons/ui/hero/stamina.webp?v=2.3.1694' , tint: '#1E6642' },
-  { key: 'dodge', label: 'Dodge',       perText: '+0.4% dodge',                  pct: true, unit: '%',    iconSrc: '/icons/ui/hero/dodge.webp?v=2.3.1694' , tint: '#6D5C18' },
-  { key: 'move',  label: 'Speed',       infoKey: 'Move Speed', perText: '+0.4% move speed',             pct: true, unit: '% faster', iconSrc: '/icons/ui/hero/move-speed.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'movement, not damage' , tint: '#48661E' },
-  { key: 'eres',  label: 'Resist',      infoKey: 'Elem Resist', perText: '−0.4% elemental damage taken', pct: true, unit: '% less elemental', iconSrc: '/icons/ui/hero/damage-reduction.webp?v=2.3.2592', capsProg3Elem: true , tint: '#9F2357' },
+  { key: 'hp',    label: 'Max HP', short: 'HP',      perText: '+8 max HP',                    unit: ' HP',             iconSrc: '/icons/ui/stat/hp.png?v=2.3.2642' , tint: '#592C32' } /* v2.3.1922: plain heart */,
+  { key: 'def',   label: 'Defense', short: 'DEF',     perText: '−0.4% damage taken',           pct: true, unit: '% less damage', iconSrc: '/icons/ui/stat/def.png?v=2.3.2642' , tint: '#485A7A' },
+  { key: 'mana',  label: 'Max Mana', short: 'MP',    perText: '+2.5 max mana',                unit: ' mana',           iconSrc: '/icons/ui/stat/mana.png?v=2.3.2642',             capsProg3Elem: true , tint: '#182D6D' },
+  { key: 'stam',  label: 'Stamina', short: 'STAM',     perText: '+3 max stamina',               unit: ' stamina',        iconSrc: '/icons/ui/stat/stam.png?v=2.3.2642' , tint: '#1E6642' },
+  { key: 'dodge', label: 'Dodge', short: 'DODGE',       perText: '+0.4% dodge',                  pct: true, unit: '%',    iconSrc: '/icons/ui/stat/dodge.png?v=2.3.2642' , tint: '#6D5C18' },
+  { key: 'move',  label: 'Speed', short: 'MOVE',       infoKey: 'Move Speed', perText: '+0.4% move speed',             pct: true, unit: '% faster', iconSrc: '/icons/ui/stat/move.png?v=2.3.2642',   capsProg3Shared: true, dpsNote: 'movement, not damage' , tint: '#48661E' },
+  { key: 'eres',  label: 'Resist', short: 'RESIST',      infoKey: 'Elem Resist', perText: '−0.4% elemental damage taken', pct: true, unit: '% less elemental', iconSrc: '/icons/ui/stat/eres.png?v=2.3.2642', capsProg3Elem: true , tint: '#9F2357' },
 ];
 
 /* The rows the CONNECTED worker supports, with critDmg's copy resolved

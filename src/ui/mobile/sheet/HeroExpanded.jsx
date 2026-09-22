@@ -1924,6 +1924,179 @@ export const HeroExpanded = () => {
               </div>
             );
 
+            /* ═══════════════════════════════════════════════════════════
+               v2.3.2642: THE OWNER'S POINTS GRID
+               Owner, with a mockup: "I want the menu under the points tab to
+               look like this and use these color glyphs instead.  The points
+               remaining can just exist in the points confirmation window."
+
+               WHAT THIS REPLACES.  The two-step shape -- a 2x2 of MELEE /
+               MAGIC / BOW / SHARED, then a drilled-in card of that lane's stat
+               rows.  The mockup puts ALL THIRTEEN stats on one screen: six lane
+               stats in a row behind a weapons cell, seven body stats in a row
+               behind the portrait.  Two taps become one, and a player can see
+               the whole build at once, which is the thing the accordion and
+               then the card were both working around.
+
+               NO POINTS-REMAINING HERE, by instruction.  Every "N PTS" and
+               "N SPENT" line the tiles carried is gone; the confirm window is
+               where a count belongs, because that is the moment you are
+               deciding to spend one.  That is also what buys the room for
+               thirteen cells: the tiles were 52px tall to fit three lines of
+               type, and a cell that shows a glyph and a number needs far less.
+
+               THE HANDLES ARE KEPT.  `data-prog3-row`, `data-prog3-plus`,
+               `data-stat-info` and `data-prog3-lane` all survive on the new
+               cells, with the same key format, because nine QA files resolve
+               through them and a rename would be a silent loss of coverage
+               rather than a visible failure (TRAPS §29).  The CELL is the
+               button now -- there is no separate [+] to press -- so the row
+               handle and the plus handle land on the same element.  That is a
+               real change to what "the row" is, and mp-statcols measures it.
+
+               WHICH LANE THE TOP ROW MEANS.  The weapons cell at its head, and
+               it is the control: tapping it moves to the next lane, and the
+               confirm window carries the lane's own count once you are in it.
+               Defaults to the weapon you are holding (prog3ActiveCat), which
+               is the reading this file has used for buildCat since v2.3.1668.
+               ═══════════════════════════════════════════════════════════ */
+            const GLYPH = twoCol ? 30 : (landPane ? 26 : 34);
+            const CELL_H = twoCol ? 56 : (landPane ? 50 : 62);
+            const statCell = (st, cat) => {
+              const pts = st.atk ? prog3AtkPts(R, cat, st.key) : prog3Pts(R, st.key);
+              const cap = prog3StatCap(R, st.key);
+              const lk = (st.atk ? cat + ':' : 'shared:') + st.key;
+              const avail = st.atk ? laneAvail(cat) : sharedAvail;
+              const canSpend = avail > 0 && pts < cap;
+              return (
+                <div key={lk}
+                  data-prog3-row={lk}
+                  data-prog3-plus={lk}
+                  data-stat-info={st.key}
+                  role="button"
+                  aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${pts} of ${cap}. ${st.perText} per point.`}
+                  aria-disabled={!canSpend}
+                  title={`${st.label} — ${pts} of ${cap} points — now ${statValueText(st, cat)} — ${st.perText} per point`}
+                  {...scrollTap(() => openStatInfo(st, cat, {
+                    blocked: avail <= 0
+                      ? `No ${st.atk ? ((PROG3_SKILL_META.find((k) => k.key === cat) || {}).label || 'lane') : 'shared'} points to spend.`
+                      : pts >= cap ? `${st.label} is already at its cap.` : null,
+                    run: () => {
+                      const S2 = getState();
+                      const R2 = S2 && S2.rpg;
+                      if (!S2 || !S2.channel) return;
+                      S2.channel.send({
+                        type: 'prog3_allocate',
+                        payload: { stat: st.key, cat: st.atk ? cat : prog3SharedSpendCat(R2) },
+                      });
+                    },
+                  }))}
+                  style={{
+                    height: CELL_H, minWidth: 0, boxSizing: 'border-box',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    justifyContent: 'center', gap: 1,
+                    /* The stat's own colour on the border only.  v2.3.2598 put
+                       it on the whole fill, which was right for a 163px row
+                       carrying a label; on a 44px cell whose content is a
+                       COLOURED GLYPH, thirteen full-bleed fills fight the
+                       artwork they are framing. */
+                    border: `1px solid ${st.tint || COL.tileBor}`,
+                    borderRadius: 9,
+                    background: COL.wellSoft,
+                    cursor: 'pointer', touchAction: 'manipulation', overflow: 'hidden',
+                  }}>
+                  {/* v2.3.2642: 8px and NO letter-spacing, measured against the
+                      longest caption.  "ELEMENT" is 7 characters into a cell
+                      that is (panel - head cell - 6 gaps) / 6 wide -- about
+                      44px on a 390pt phone -- and at 8.5px with .04em it
+                      overran by roughly a character.  Tracking is the cheaper
+                      of the two to give up: it is decoration here, where the
+                      caption is one short word in caps, and dropping a further
+                      half-pixel of size would start costing legibility on the
+                      stat NAME, which is the thing the cell is for. */}
+                  <span style={{
+                    fontSize: 8, fontWeight: 800, lineHeight: 1,
+                    textTransform: 'uppercase', color: COL.text2,
+                    maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>{st.short || st.label}</span>
+                  <img src={st.iconSrc} alt="" draggable={false} style={{
+                    width: GLYPH, height: GLYPH, flex: 'none', objectFit: 'contain',
+                    pointerEvents: 'none',
+                  }} />
+                  <span style={{
+                    fontSize: 11, fontWeight: 800, lineHeight: 1,
+                    fontVariantNumeric: 'tabular-nums',
+                    color: pts > 0 ? COL.text : COL.text2,
+                  }}>{pts}</span>
+                </div>
+              );
+            };
+
+            /* The head of each row: the weapons cell picks which lane the six
+               stats above belong to, the portrait just names the shared row. */
+            const headCell = (kind) => {
+              const isLane = kind === 'lane';
+              const next = () => {
+                const order = POINT_LANES.filter((c) => !c.shared).map((c) => c.key);
+                const i = order.indexOf(buildCat);
+                setSelCat(order[(i + 1) % order.length] || order[0]);
+              };
+              return (
+                <div
+                  data-prog3-lane={isLane ? buildCat : 'shared'}
+                  role={isLane ? 'button' : undefined}
+                  aria-label={isLane
+                    ? `${(PROG3_SKILL_META.find((k) => k.key === buildCat) || {}).label || buildCat}, level ${prog3SkillLevel(R, buildCat)}`
+                    : `Shared, level ${prog3CharLevel(R)}`}
+                  title={isLane ? 'Tap to switch weapon' : 'Shared stats'}
+                  {...(isLane ? scrollTap(next) : {})}
+                  style={{
+                    height: CELL_H, minWidth: 0, boxSizing: 'border-box',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2,
+                    border: `1px solid ${isLane ? COL.accent : COL.tileBor}`,
+                    borderRadius: 9, background: COL.wellSoft,
+                    cursor: isLane ? 'pointer' : 'default', touchAction: 'manipulation',
+                    overflow: 'hidden',
+                  }}>
+                  {isLane
+                    ? POINT_LANES.filter((c) => !c.shared).map((c) => (
+                        <img key={c.key} src={c.iconSrc} alt="" draggable={false} style={{
+                          width: GLYPH * 0.62, height: GLYPH * 0.62, objectFit: 'contain',
+                          /* the lane you are spending into is lit; the other
+                             two are dimmed rather than hidden, so the cell
+                             still reads as "the weapons" and shows its state */
+                          opacity: c.key === buildCat ? 1 : 0.34,
+                          pointerEvents: 'none',
+                        }} />
+                      ))
+                    : (
+                      <img src={sharedIcon} alt="" draggable={false}
+                        onError={(e) => { if (e.currentTarget.src.indexOf(SHARED_ICON_FALLBACK) < 0) e.currentTarget.src = SHARED_ICON_FALLBACK; }}
+                        style={{
+                          width: GLYPH, height: GLYPH, objectFit: 'cover', borderRadius: 6,
+                          imageRendering: 'pixelated', pointerEvents: 'none',
+                        }} />
+                    )}
+                </div>
+              );
+            };
+
+            const statGrid = () => (
+              /* 2px of side padding so the outermost cell's border is not
+                 flush against the panel edge -- at 0 the Element and Resist
+                 cells lost their right border to the clip. */
+              <div data-prog3-grid style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0, padding: '0 2px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.15fr repeat(6, 1fr)', gap: 4, minWidth: 0 }}>
+                  {headCell('lane')}
+                  {prog3AtkMeta().map((st) => statCell({ ...st, atk: true }, buildCat))}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.15fr repeat(7, 1fr)', gap: 4, minWidth: 0 }}>
+                  {headCell('shared')}
+                  {prog3BodyMeta().map((st) => statCell({ ...st, atk: false }, null))}
+                </div>
+              </div>
+            );
+
             /* ═══ ONE STAT ROW ═══
                Label left, icon, live value, and the wide [+] down the right
                edge — the shot's arrangement.
@@ -2458,27 +2631,19 @@ export const HeroExpanded = () => {
                   both orientations render this.  That deletes the landscape
                   branch, statRow, and the lane-header accordion with it. */}
               <div data-prog3-points style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                {/* The reference's own instruction line.  A hint, not a control
-                    (the v2.3.2326 caption rule), and it says what the two-step
-                    shape needs a first-time player to know.
-                    ═══ v2.3.2611: GRID ONLY ═══
-                    Owner: "Remove 'tap + to spend a point' row on points menu."
-                    It was the SECOND instruction in two screens — the grid
-                    already says "Tap a category, then spend its points here",
-                    and by the time you are inside a card the [+] is the only
-                    control on the row and needs no caption.  Only the card's
-                    line goes; the grid's stays, because that one is telling a
-                    first-time player the two-step shape.
-                    It buys the card 19px (15 tall + 4 margin) of the ~191px
-                    scrolling window, which is where the card was overflowing. */}
-                {selLane ? null : (
-                  <div style={{
-                    height: 15, lineHeight: '15px', textAlign: 'center', marginBottom: 4,
-                    fontSize: 11, color: COL.text2, flex: 'none',
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>Tap a category, then spend its points here.</div>
-                )}
-                {selLane ? catCard(selLane) : catGrid()}
+                {/* ═══ v2.3.2642: ONE SCREEN, NO CAPTION ═══
+                    The instruction line said "Tap a category, then spend its
+                    points here" -- it existed to explain the TWO-STEP shape,
+                    and there is no second step now.  A caption describing a
+                    flow the screen no longer has is worse than none.
+
+                    `selLane`/`catCard` are left in place and unreferenced from
+                    here on purpose: the drilled-in card is still the landscape
+                    T2 path's neighbour and deleting a 300-line render in the
+                    same change that restructures the grid would make one diff
+                    carry two risks.  It is dead on this screen and should come
+                    out in its own commit. */}
+                {statGrid()}
               </div>
               </>
             );
