@@ -571,6 +571,15 @@ export const telegraphMethods = {
          (the v2.3.1686 rule, unchanged). */
       m._projTx = ps.x;
       m._projTy = ps.y;
+      /* v2.3.2657: ...and frozen the same way, where it was thrown FROM.
+         The ball's flight line is release -> aim point, and BOTH ends have to
+         be remembered for anything to test it later: the monster keeps walking
+         during the ~900ms flight, so m.x/m.y at impact is not where the ball
+         left his hand.  Used by the prop line-of-sight check at the impact
+         tick (index.js) -- the ball is committed to the line it was thrown on,
+         exactly as the aim point is already frozen against the target moving. */
+      m._projFromX = m.x;
+      m._projFromY = m.y;
       this.eventBuffer.push({
         type: 'monster_projectile',
         payload: {

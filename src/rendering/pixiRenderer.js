@@ -142,7 +142,7 @@ export async function initPixiRenderer(canvas) {
      south of the player are re-parented into it each frame so a building can
      occlude the body -- see rendering/depthSort.js for why the split exists
      rather than the body simply joining the sorted layer. */
-  const entityRenderer = new EntityRenderer(layers.entities, layers.player, layers.monsterUi, layers.gestureFront, layers.gatherNodesFront);
+  const entityRenderer = new EntityRenderer(layers.entities, layers.player, layers.monsterUi, layers.gestureFront, layers.gatherNodesFront, layers.foreground); /* v2.3.2655: + the near-camera layer */
   const effectsRenderer = new EffectsRenderer(layers);
   /* v2.3.221: FPS counter only mounts with ?dev=1. */
   const _devUI = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search);
