@@ -44,31 +44,36 @@ const tapSel = (P, sel) => P.page.evaluate((s) => {
   return true;
 }, sel);
 
-/* ═══ v2.3.2642: REACHING A STAT IN THE OWNER'S GRID ═══
-   The Points screen used to drill into a per-lane CARD, so every selector here
-   was `[data-prog3-card="<lane>"] [data-stat-info="<key>"]`.  There is no card
-   any more -- thirteen cells sit on one screen and the weapons head at the
-   front of the lane row picks WHICH lane those six belong to.
+/* ═══ v2.3.2644: REACHING A LANE'S STAT, NOW THAT THE HEAD IS A LABEL ═══
+   v2.3.2642 reached one by cycling the weapons head until it read the lane it
+   wanted.  The owner has since taken the head OUT of the control set ("the
+   weapon icon row is not meant to be button") and put the lane choice in the
+   confirm window as a tab row, so that route no longer exists and this file's
+   four bow/staff assertions were failing on the route, not on the scene.
 
-   So reaching a lane stat is two steps, and the second one is the same tap it
-   always was.  Body stats need no switch: their seven cells are always the
-   shared row.  The assertions this feeds are untouched -- what changed is the
-   route to the control, not what the control is supposed to do. */
+   The new route is the player's: open the stat from whichever lane the grid is
+   showing, then aim the window with its own tabs.  The window re-opens on the
+   lane you pick -- same title, same scene, rebuilt for that weapon -- which is
+   exactly what these assertions are about, so they are untouched below.
+   A BODY stat has no lane to pick and is opened in one tap, as before. */
 const openStat = async (P, lane, key) => {
-  if (lane && lane !== 'shared') {
-    for (let i = 0; i < 4; i++) {
-      const now = await P.page.evaluate(() => {
-        const h = document.querySelector('[data-prog3-grid] [data-prog3-lane]');
-        return h ? h.getAttribute('data-prog3-lane') : null;
-      });
-      if (now === lane) break;
-      /* the head is the control; tapping it advances to the next weapon */
-      const ok = await tapSel(P, '[data-prog3-grid] [data-prog3-lane]:not([data-prog3-lane="shared"])');
-      if (!ok) return false;
-      await P.page.waitForTimeout(160);
-    }
+  /* `$=":key"` rather than a full id: the lane row shows SOME weapon's six
+     cells and which one is not this helper's business -- the tab is. */
+  const ok = await tapSel(P, `[data-prog3-row$=":${key}"]`);
+  if (!ok) return false;
+  await P.page.waitForTimeout(300);
+  if (!lane || lane === 'shared') return true;
+  for (let i = 0; i < 3; i++) {
+    const now = await P.page.evaluate(() => {
+      const t = [...document.querySelectorAll('[data-infopopup-lanes] [data-infopopup-lane]')]
+        .find((e) => e.getAttribute('aria-pressed') === 'true');
+      return t ? t.getAttribute('data-infopopup-lane') : null;
+    });
+    if (now === lane) return true;
+    if (!(await tapSel(P, `[data-infopopup-lane="${lane}"]`))) return false;
+    await P.page.waitForTimeout(300);
   }
-  return tapSel(P, `[data-prog3-row="${lane === 'shared' ? 'shared' : lane}:${key}"]`);
+  return false;
 };
 
 /* The scene's own figure, as the compositor left it.  characterPortrait

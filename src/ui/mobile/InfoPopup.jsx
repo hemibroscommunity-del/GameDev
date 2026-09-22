@@ -138,6 +138,64 @@ export const InfoPopup = () => {
             letterSpacing: '.02em',
           }}>{cur.perText}</div>
         )}
+        {/* ═══ v2.3.2644: WHICH WEAPON THIS POINT GOES INTO ═══
+            Owner, with a mockup: "The button to change which of the 3 combat
+            skills it's applied to ... It's a tab in the confirm window.  This
+            should be for every allocable stat."
+
+            It belongs here rather than on the grid for the reason the mockup
+            makes obvious: the choice and its CONSEQUENCE are the same glance.
+            Each tab carries that lane's spendable count, so picking Bow and
+            seeing "1" is one read, and the commit button below names the lane
+            it will charge -- the owner's stated reason the confirm exists at
+            all is "so the user doesn't accidentally spend the wrong weapon
+            point type".
+
+            A tab is a real 44px target and the row is scrollable sideways
+            rather than squeezing three of them into whatever is left: on a
+            320px card three tabs plus their gaps is tight, and a tab too
+            small to hit is worse than one you have to nudge to. */}
+        {cur.lanes && cur.lanes.options && cur.lanes.options.length > 0 && (
+          <div data-infopopup-lanes style={{
+            marginTop: 10, display: 'flex', gap: 6,
+            overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+          }}>
+            {cur.lanes.options.map((o) => {
+              const on = o.key === cur.lanes.active;
+              return (
+                <div key={o.key} role="button"
+                  data-infopopup-lane={o.key}
+                  aria-pressed={on}
+                  aria-label={`${o.label}, ${o.pts} point${o.pts === 1 ? '' : 's'} to spend`}
+                  onPointerUp={(e) => { e.stopPropagation(); if (!on && cur.lanes.onPick) cur.lanes.onPick(o.key); }}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    flex: '1 1 0', minWidth: 92, minHeight: 44,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    padding: '6px 8px', boxSizing: 'border-box',
+                    border: `${on ? 2 : 1}px solid ${on ? COL.accent : 'rgba(229,237,233,0.20)'}`,
+                    borderRadius: 10,
+                    background: on ? 'rgba(216,170,88,.12)' : 'rgba(9,14,17,.42)',
+                    cursor: 'pointer', touchAction: 'manipulation',
+                  }}>
+                  {o.icon && <img src={o.icon} alt="" draggable={false} style={{
+                    width: 22, height: 22, objectFit: 'contain', flex: 'none', pointerEvents: 'none',
+                  }} />}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.1 }}>
+                    <span style={{
+                      fontSize: 10.5, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase',
+                      color: on ? COL.accent : COL.muted,
+                    }}>{o.label}</span>
+                    <span style={{
+                      fontSize: 13, fontWeight: 900, fontVariantNumeric: 'tabular-nums',
+                      color: on ? COL.text : COL.muted,
+                    }}>{o.pts}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
         {cur.demo && (
           <div data-infopopup-demo style={{ marginTop: 10 }}>{cur.demo}</div>
         )}
@@ -188,6 +246,16 @@ export const InfoPopup = () => {
             fontSize: 14, fontWeight: 900, color: COL.text,
             fontVariantNumeric: 'tabular-nums', textAlign: 'center',
           }}>{cur.stat}</div>
+        )}
+
+        {/* v2.3.2644: "Melee points available: 2" -- the owner's own line, and
+            the reason the grid no longer carries a count anywhere.  Drawn even
+            at zero, because "0 available" is the answer to the question the
+            disabled button raises. */}
+        {cur.availText && (
+          <div data-infopopup-avail style={{
+            marginTop: 9, fontSize: 12.5, fontWeight: 800, color: COL.accent,
+          }}>{cur.availText}</div>
         )}
 
         {cur.action && cur.action.blocked && (

@@ -211,47 +211,103 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${label}: ...and no caption is clipped (every cell prints a label)`,
       !!grid && grid.labels.every((t) => t && t.trim().length > 1), grid && grid.labels);
 
-    /* ── THE WEAPONS HEAD PICKS THE LANE ── */
+    /* ═══ THE HEAD IS A LABEL; THE CONFIRM WINDOW PICKS THE LANE (v2.3.2644) ═══
+       Owner: "The weapon icon row is not meant to be button.  The button to
+       change which of the 3 combat skills it's applied to ... is a tab in the
+       confirm window."  So the old "tapping the head switches the lane"
+       assertion tested a control that has been deliberately removed, and the
+       coverage it carried -- you can aim a point at a weapon other than the
+       one on screen, and the WORKER charges that weapon -- moves onto the
+       tabs.  Both halves are asserted: the head does nothing, and the tabs do
+       what the head used to. */
     const lane0 = grid && grid.heads[0];
+    const headCtl = await P.page.evaluate(() => {
+      const h = document.querySelector('[data-prog3-grid] [data-prog3-lane]');
+      return h ? { role: h.getAttribute('role'), cursor: getComputedStyle(h).cursor } : null;
+    });
+    rec.ok(`${label}: the weapons head is not a control any more (no button role)`,
+      !!headCtl && headCtl.role !== 'button', headCtl);
     await finger(P, '[data-prog3-lane]:not([data-prog3-lane="shared"])');
-    const lane1 = await P.page.evaluate(() => {
+    const laneAfterHead = await P.page.evaluate(() => {
       const h = document.querySelector('[data-prog3-grid] [data-prog3-lane]');
       return h ? h.getAttribute('data-prog3-lane') : null;
     });
-    rec.ok(`${label}: tapping the weapons head switches which lane the six stats belong to`,
-      !!lane0 && !!lane1 && lane1 !== lane0, { from: lane0, to: lane1 });
+    rec.ok(`${label}: ...and tapping it changes nothing — it NAMES the row`,
+      !!lane0 && laneAfterHead === lane0, { was: lane0, now: laneAfterHead });
+    rec.ok(`${label}: ...and it did not open a window either`,
+      !(await has(P, '[data-infopopup-action]')));
 
-    /* ── A SPEND STILL GOES TO THE RIGHT POOL ── */
+    /* ── A SPEND STILL GOES TO THE RIGHT POOL — AIMED FROM THE TABS ── */
     const before = await pools(P);
-    /* the lane the head is showing now is the lane the confirm must name */
-    const laneNow = lane1 || lane0;
-    const tappedStat = await finger(P, `[data-prog3-row^="${laneNow}:"]`);
+    const tappedStat = await finger(P, `[data-prog3-row^="${lane0}:"]`);
     rec.ok(`${label}: a real finger reaches a lane stat cell (hit-tested, not dispatched)`, tappedStat);
 
-    const confirm = await P.page.evaluate(() => {
+    const readWin = () => P.page.evaluate(() => {
       const w = document.querySelector('[data-infopopup]') || document.querySelector('[data-infopopup-action]');
       if (!w) return null;
       const root = w.closest('[data-infopopup]') || w.parentElement;
-      return { text: (root && root.textContent || '').slice(0, 400) };
+      const tabs = [...document.querySelectorAll('[data-infopopup-lanes] [data-infopopup-lane]')];
+      const r = (e) => e.getBoundingClientRect();
+      const act = tabs.find((t) => t.getAttribute('aria-pressed') === 'true');
+      const av = document.querySelector('[data-infopopup-avail]');
+      return {
+        text: (root && root.textContent || '').slice(0, 400),
+        keys: tabs.map((t) => t.getAttribute('data-infopopup-lane')),
+        active: act ? act.getAttribute('data-infopopup-lane') : null,
+        minH: tabs.length ? Math.min(...tabs.map((t) => +r(t).height.toFixed(1))) : 0,
+        right: tabs.length ? Math.max(...tabs.map((t) => +r(t).right.toFixed(1))) : 0,
+        avail: av ? (av.textContent || '') : null,
+        vw: window.innerWidth,
+      };
     });
-    rec.ok(`${label}: ...which opens the spend window`, !!confirm, confirm);
+    const win0 = await readWin();
+    rec.ok(`${label}: ...which opens the spend window`, !!win0, win0);
     rec.ok(`${label}: ...and NOTHING was spent by opening it (a mis-tap costs a window, not a point)`,
       JSON.stringify(await pools(P)) === JSON.stringify(before));
+    rec.ok(`${label}: the window carries the THREE weapon tabs (v2.3.2644)`,
+      !!win0 && win0.keys.length === 3, win0 && win0.keys);
+    rec.ok(`${label}: ...opened on the lane the cell belonged to`,
+      !!win0 && win0.active === lane0, { want: lane0, got: win0 && win0.active });
+    rec.ok(`${label}: ...each tab is a real 44px thumb target`,
+      !!win0 && win0.minH >= 43.5, win0 && { minH: win0.minH });
+    rec.ok(`${label}: ...and the tab row does not hang off the viewport`,
+      !!win0 && win0.right <= win0.vw + 0.5, win0 && { right: win0.right, vw: win0.vw });
+    rec.ok(`${label}: the window says how many points that pool has (the owner's "points remaining", moved here)`,
+      !!win0 && /points available:\s*\d+/i.test(win0.avail || ''), win0 && { avail: win0.avail });
 
+    /* Aim it somewhere else: the whole reason the tabs exist. */
+    const want = (win0 && win0.keys.find((k) => k !== lane0)) || null;
+    await finger(P, `[data-infopopup-lane="${want}"]`);
+    const win1 = await readWin();
+    rec.ok(`${label}: tapping another tab re-aims the window at that weapon`,
+      !!win1 && win1.active === want, { want, got: win1 && win1.active });
+    rec.ok(`${label}: ...without spending anything (the tab chooses; the gold button charges)`,
+      JSON.stringify(await pools(P)) === JSON.stringify(before));
+
+    const laneNow = want || lane0;
     const laneLabel = { sword: 'Melee', bow: 'Bow', staff: 'Magic' }[laneNow] || laneNow;
     rec.ok(`${label}: the window NAMES THE WEAPON — the owner's stated reason the confirm exists`,
-      !!confirm && new RegExp(laneLabel, 'i').test(confirm.text), { want: laneLabel, got: confirm && confirm.text.slice(0, 120) });
+      !!win1 && new RegExp(laneLabel, 'i').test(win1.text), { want: laneLabel, got: win1 && win1.text.slice(0, 120) });
 
     const spent = await answerConfirm(P, 'confirm', (n) => n.pool !== before.pool || JSON.stringify(n.poolBy) !== JSON.stringify(before.poolBy));
     rec.ok(`${label}: answering the window actually buys the point`, !!spent.ok, spent.now && { pool: spent.now.pool });
     if (spent.ok) {
       const n = spent.now || {};
-      rec.ok(`${label}: ...and the WORKER charged that lane, not the shared pool`,
-        n.shared === before.shared, { lane: laneNow, sharedBefore: before.shared, sharedAfter: n.shared });
+      rec.ok(`${label}: ...and the WORKER charged the lane THE TAB named, not the shared pool`,
+        n.shared === before.shared && (n.poolBy || {})[laneNow] === (before.poolBy || {})[laneNow] - 1,
+        { lane: laneNow, before: before.poolBy, after: n.poolBy, sharedBefore: before.shared, sharedAfter: n.shared });
       const otherMoved = Object.keys(before.poolBy || {}).filter((k) => k !== laneNow
         && (before.poolBy[k] !== (n.poolBy || {})[k]));
       rec.ok(`${label}: ...and the other weapon lanes did not move`,
         otherMoved.length === 0, { otherMoved, before: before.poolBy, after: n.poolBy });
+      /* the grid behind the window follows the tab, so closing it does not
+         drop you back onto a lane you did not just spend into */
+      const headNow = await P.page.evaluate(() => {
+        const h = document.querySelector('[data-prog3-grid] [data-prog3-lane]');
+        return h ? h.getAttribute('data-prog3-lane') : null;
+      });
+      rec.ok(`${label}: ...and the grid is now showing the lane you aimed at`,
+        headNow === laneNow, { want: laneNow, got: headNow });
     }
 
     /* ── A BODY STAT SPENDS THE SHARED POOL ── */
@@ -264,6 +320,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${label}: ...and no weapon lane paid for it`,
       !!sSpent.ok && JSON.stringify((sSpent.now || {}).poolBy) === JSON.stringify(b2.poolBy),
       { before: b2.poolBy, after: sSpent.now && sSpent.now.poolBy });
+
+    /* A body stat has no weapon to choose -- its point comes out of the shared
+       pool whatever you are holding -- so its window carries the ONE shared
+       tab.  Asserted because "every allocable stat gets the tabs" is easy to
+       read as "every stat gets three", which would be three buttons that all
+       do the same thing. */
+    await finger(P, '[data-prog3-row^="shared:"]');
+    const sharedWin = await P.page.evaluate(() => {
+      const tabs = [...document.querySelectorAll('[data-infopopup-lanes] [data-infopopup-lane]')];
+      const av = document.querySelector('[data-infopopup-avail]');
+      return { keys: tabs.map((t) => t.getAttribute('data-infopopup-lane')), avail: av ? av.textContent : null };
+    });
+    rec.ok(`${label}: a SHARED stat's window carries one tab — the shared pool, which is the only thing that can pay`,
+      !!sharedWin && sharedWin.keys.length === 1 && sharedWin.keys[0] === 'shared', sharedWin);
+    rec.ok(`${label}: ...and it says what that pool holds`,
+      !!sharedWin && /shared points available:\s*\d+/i.test(sharedWin.avail || ''), sharedWin);
+    await finger(P, '[data-infopopup-close]');
 
     /* ═══ WHAT "NO PAGE ERRORS" CAN HONESTLY MEAN IN THIS SANDBOX ═══
        Two requests can never succeed here and neither belongs to this change:

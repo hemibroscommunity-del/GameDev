@@ -82,9 +82,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return el ? (el.innerText || '') : '';
   });
 
-  /* ── resting state: the overall DPS the owner asked for ── */
+  /* ═══ v2.3.2644: THE STRIP IS GONE BY INSTRUCTION ═══
+     Owner: "remove the top row explainer about DPS."  So "at rest the strip
+     carries the overall DPS" is now asserting a row the owner asked to have
+     taken out, and the honest form of it is the ABSENCE -- the kind of thing
+     that creeps back one line at a time unless a test objects.
+     Nothing is lost from this scenario's real subject: the DPS numbers it
+     exists to check are the ones inside the ℹ️ window, asserted below and
+     untouched. */
   const resting = await stripText();
-  rec.ok('at rest the strip carries the overall DPS', /DPS\s*[\d.]+/.test(resting), resting.slice(0, 200));
+  rec.ok('the DPS explainer strip is gone from the top of the Points screen (owner)',
+    resting === '', resting.slice(0, 200));
 
   /* ── tap CRIT's ℹ️: the stat total from baseline, and the DPS it buys ──
      v2.3.2222: the readout moved from a press-to-peek strip into the ℹ️
@@ -109,18 +117,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
      wrong cell rather than the cell answering wrongly.
      So the lane is now SELECTED, by tapping the weapons head until it reads
      sword -- the grid's own control, the way a player would. */
-  await P.page.evaluate(async () => {
-    const tap = (el) => { for (const t of ['pointerdown', 'pointerup'])
-      el.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerId: 7, pointerType: 'touch' })); };
-    for (let i = 0; i < 4; i++) {
-      const head = document.querySelector('[data-prog3-grid] [data-prog3-lane]:not([data-prog3-lane="shared"])');
-      if (!head) return;
-      if (head.getAttribute('data-prog3-lane') === 'sword') return;
-      tap(head);
-      await new Promise((r) => setTimeout(r, 160));
-    }
-  });
-  await P.page.waitForTimeout(320);
+  /* ═══ v2.3.2644: THE LANE IS PICKED IN THE WINDOW NOW ═══
+     The head cell stopped being a control in the same change that moved the
+     lane choice into the confirm window's tab row, so cycling it selects
+     nothing.  The requirement above is unchanged and is the reason this block
+     exists -- this scenario must press SWORD's Luck, not whichever lane the
+     grid happens to open on -- so it is met the new way: open the cell, then
+     tab the window onto sword before reading its numbers.  Done after the
+     press, just below, because the tabs only exist once the window is up. */
 
   const pressed = await P.page.evaluate(() => {
     /* v2.3.2642: the Luck CELL of the owner's grid.  There is no card to
@@ -151,6 +155,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return true;
   });
   rec.ok('the Luck row\'s [+] is the explainer handle and it could be pressed', pressed);
+  await P.page.waitForTimeout(400);
+  /* ...and NOW aim it at sword, per the block above. */
+  const aimed = await P.page.evaluate(async () => {
+    const tap = (el) => { for (const t of ['pointerdown', 'pointerup'])
+      el.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerId: 7, pointerType: 'touch' })); };
+    const act = () => {
+      const t = [...document.querySelectorAll('[data-infopopup-lanes] [data-infopopup-lane]')]
+        .find((e) => e.getAttribute('aria-pressed') === 'true');
+      return t ? t.getAttribute('data-infopopup-lane') : null;
+    };
+    for (let i = 0; i < 3; i++) {
+      if (act() === 'sword') return true;
+      const tab = document.querySelector('[data-infopopup-lane="sword"]');
+      if (!tab) return false;
+      tap(tab);
+      await new Promise((r) => setTimeout(r, 260));
+    }
+    return act() === 'sword';
+  });
+  rec.ok('...and the window\'s tabs could aim it at the SWORD lane (v2.3.2644 — the head no longer selects)', aimed);
   await P.page.waitForTimeout(400);
   const popup = await P.page.evaluate(() => {
     const card = document.querySelector('[data-infopopup-card]');

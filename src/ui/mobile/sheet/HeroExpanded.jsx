@@ -1425,6 +1425,33 @@ export const HeroExpanded = () => {
                Merging in the owner's own direction keeps all of it: InfoPopup
                already had an `action` slot rendering a gold button beside "Got
                it", which is precisely "asks you to confirm at the bottom". */
+            /* ═══ v2.3.2644: ONE DEFINITION OF "SPEND THIS POINT" ═══
+               The confirm window can now CHANGE which weapon the point goes
+               to (the tab row the owner drew), which means the window has to
+               be able to rebuild its own spend for the lane you picked --
+               it can no longer just carry the one the cell handed it.  So the
+               spend moves here, beside the window that uses it, and the cells
+               call it too: one rule for what is blocked and what gets sent,
+               instead of a copy per caller that can drift. */
+            const spendFor = (st, cat) => {
+              const pts = st.atk ? prog3AtkPts(R, cat, st.key) : prog3Pts(R, st.key);
+              const cap = prog3StatCap(R, st.key);
+              const avail = st.atk ? laneAvail(cat) : sharedAvail;
+              return {
+                blocked: avail <= 0
+                  ? `No ${st.atk ? ((PROG3_SKILL_META.find((k) => k.key === cat) || {}).label || 'lane') : 'shared'} points to spend.`
+                  : pts >= cap ? `${st.label} is already at its cap.` : null,
+                run: () => {
+                  const S2 = getState();
+                  const R2 = S2 && S2.rpg;
+                  if (!S2 || !S2.channel) return;
+                  S2.channel.send({
+                    type: 'prog3_allocate',
+                    payload: { stat: st.key, cat: st.atk ? cat : prog3SharedSpendCat(R2) },
+                  });
+                },
+              };
+            };
             const openStatInfo = (st, cat, spend) => {
               try {
                 /* v2.3.2592: the row says WHICH lane it belongs to now (four are
@@ -1526,6 +1553,47 @@ export const HeroExpanded = () => {
                     blocked: spend.blocked,
                     run: spend.run,
                   } : undefined,
+                  /* ═══ v2.3.2644: THE LANE IS CHOSEN HERE NOW ═══
+                     Owner: "The button to change which of the 3 combat skills
+                     it's applied to ... is a tab in the confirm window.  This
+                     should be for every allocable stat."
+                     The grid's weapon cell stopped being a control in the same
+                     change, so this row is the ONLY way to aim a point at a
+                     weapon -- it has to appear whenever there is a point to
+                     aim, which is why it is built for a capped or broke stat
+                     too (you can tab off a lane with nothing left in it).
+                     Each tab carries that lane's spendable count, so the choice
+                     and the reason for it are the same glance.
+                     A BODY stat has no such choice -- its point comes out of
+                     the shared pool whatever you are holding -- so it gets the
+                     one Shared tab rather than three that would all do the
+                     same thing.  Keeping the row present for it is the "every
+                     allocable stat" half: the window always says which pool is
+                     paying. */
+                  lanes: {
+                    active: st.atk ? laneCat : 'shared',
+                    options: st.atk
+                      ? POINT_LANES.filter((c) => !c.shared).map((c) => ({
+                          key: c.key, label: c.label, icon: c.iconSrc, pts: laneAvail(c.key),
+                        }))
+                      : [{ key: 'shared', label: 'Shared', icon: sharedIcon, pts: sharedAvail }],
+                    onPick: st.atk ? ((k) => {
+                      /* the grid behind the window follows the tab, so closing
+                         it does not drop you back onto a different lane than
+                         the one you just spent into */
+                      try { setBuildCat(k); } catch (e) { /* never block a spend */ }
+                      openStatInfo(st, k, spend ? spendFor(st, k) : null);
+                    }) : null,
+                  },
+                  /* The owner's "Melee points available: 2" -- the number the
+                     tabs are about, spelled out for the lane in front of you. */
+                  availText: (() => {
+                    const n = st.atk ? laneAvail(laneCat) : sharedAvail;
+                    const who = st.atk
+                      ? ((PROG3_SKILL_META.find((k) => k.key === laneCat) || {}).label || 'Lane')
+                      : 'Shared';
+                    return `${who} points available: ${n}`;
+                  })(),
                 });
               } catch (e) { /* an explainer must never block a spend */ }
             };
@@ -1960,8 +2028,40 @@ export const HeroExpanded = () => {
                Defaults to the weapon you are holding (prog3ActiveCat), which
                is the reading this file has used for buildCat since v2.3.1668.
                ═══════════════════════════════════════════════════════════ */
-            const GLYPH = twoCol ? 30 : (landPane ? 26 : 34);
-            const CELL_H = twoCol ? 56 : (landPane ? 50 : 62);
+            /* ═══ v2.3.2644: BIGGER TYPE, SMALLER GLYPH, TALLER CELL ═══
+               Owner: "There is some room at the bottom of the screen to expand
+               a little bit.  The numbers and font need to be larger and the
+               icons can shrink a bit."
+               The glyph was the largest thing in the cell and the number the
+               smallest, which is backwards for a screen whose job is to show
+               you where your points went.  ~30px of it comes free from the DPS
+               strip that came out above; the rest is the glyph giving back
+               4-6px. */
+            /* ═══ DERIVED FROM THE CELL, NOT FROM A BREAKPOINT ═══
+               The first cut sized these off `twoCol`, which is a CARD-layout
+               flag (panelVw >= 360), so its "else" branch is the NARROWEST
+               phone -- and it therefore handed the 320 the BIGGEST caption.
+               mp-statcols caught it immediately (POWER, SPECIAL, DODGE and
+               RESIST all ellipsised at 320): four captions unreadable on the
+               small phone in the name of making type bigger on the large one.
+               So the sizes come off the cell's own width instead.  The lane
+               row is a 1.15fr head plus six 1fr cells with 4px gaps, and the
+               panel's chrome around it measured 56px at 320 -- the caption box
+               there is 37px, which is where the divisor comes from.  Every
+               width then gets the largest type that actually fits it, which is
+               what the owner asked for ("the numbers and font need to be
+               larger") without it costing the small screen its labels.
+               4.7 is the caption's own measured ratio: "SPECIAL", the longest
+               of the thirteen, wants 4.63px of width per px of font size at
+               weight 800, so a cell of width W holds it at W/4.63 and the
+               divisor keeps a hair of slack. */
+            const CELL_W = Math.max(22, (panelVw() - 56) / 7.15);
+            const GLYPH = Math.round(Math.max(20, Math.min(30, CELL_W * 0.60)));
+            /* Height stays capped sideways: the landscape pane is short and a
+               tall cell there costs the second row its place on screen. */
+            const CELL_H = landPane ? 58 : Math.round(Math.max(60, Math.min(78, CELL_W * 1.60)));
+            const CAP_FS = Math.max(7.5, Math.min(10.5, CELL_W / 4.7));
+            const NUM_FS = Math.max(12.5, Math.min(18, CELL_W * 0.38));
             const statCell = (st, cat) => {
               const pts = st.atk ? prog3AtkPts(R, cat, st.key) : prog3Pts(R, st.key);
               const cap = prog3StatCap(R, st.key);
@@ -1977,20 +2077,7 @@ export const HeroExpanded = () => {
                   aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${pts} of ${cap}. ${st.perText} per point.`}
                   aria-disabled={!canSpend}
                   title={`${st.label} — ${pts} of ${cap} points — now ${statValueText(st, cat)} — ${st.perText} per point`}
-                  {...scrollTap(() => openStatInfo(st, cat, {
-                    blocked: avail <= 0
-                      ? `No ${st.atk ? ((PROG3_SKILL_META.find((k) => k.key === cat) || {}).label || 'lane') : 'shared'} points to spend.`
-                      : pts >= cap ? `${st.label} is already at its cap.` : null,
-                    run: () => {
-                      const S2 = getState();
-                      const R2 = S2 && S2.rpg;
-                      if (!S2 || !S2.channel) return;
-                      S2.channel.send({
-                        type: 'prog3_allocate',
-                        payload: { stat: st.key, cat: st.atk ? cat : prog3SharedSpendCat(R2) },
-                      });
-                    },
-                  }))}
+                  {...scrollTap(() => openStatInfo(st, cat, spendFor(st, cat)))}
                   style={{
                     height: CELL_H, minWidth: 0, boxSizing: 'border-box',
                     display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -2015,7 +2102,7 @@ export const HeroExpanded = () => {
                       half-pixel of size would start costing legibility on the
                       stat NAME, which is the thing the cell is for. */}
                   <span style={{
-                    fontSize: 8, fontWeight: 800, lineHeight: 1,
+                    fontSize: CAP_FS, fontWeight: 800, lineHeight: 1,
                     textTransform: 'uppercase', color: COL.text2,
                     maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>{st.short || st.label}</span>
@@ -2024,7 +2111,7 @@ export const HeroExpanded = () => {
                     pointerEvents: 'none',
                   }} />
                   <span style={{
-                    fontSize: 11, fontWeight: 800, lineHeight: 1,
+                    fontSize: NUM_FS, fontWeight: 900, lineHeight: 1,
                     fontVariantNumeric: 'tabular-nums',
                     color: pts > 0 ? COL.text : COL.text2,
                   }}>{pts}</span>
@@ -2034,36 +2121,31 @@ export const HeroExpanded = () => {
 
             /* The head of each row: the weapons cell picks which lane the six
                stats above belong to, the portrait just names the shared row. */
+            /* ═══ v2.3.2644: THE WEAPON ROW IS A LABEL, NOT A CONTROL ═══
+               Owner: "The weapon icon row is not meant to be button.  The
+               button to change which of the 3 combat skills it's applied to is
+               shown in the second attached image.  It's a tab in the confirm
+               window.  This should be for every allocable stat."
+               So the head cell stops being tappable and goes back to naming
+               the row, and the lane CHOICE moves into the confirm window where
+               the owner drew it -- next to the points it would spend, at the
+               moment you are deciding to spend one.  That is a better place
+               for it than a cell you had to know was a control. */
             const headCell = (kind) => {
               const isLane = kind === 'lane';
-              const next = () => {
-                /* v2.3.2642: setBuildCat, NOT setSelCat.  `selCat` is the
-                   drilled-in lane of the card this screen no longer opens;
-                   `buildCatState` is what `buildCat` reads, and `buildCat` is
-                   what the six cells above are showing.  Setting the wrong one
-                   left the head cycling a value nothing rendered -- the grid
-                   stayed on Melee however many times it was tapped, which is
-                   what mp-catgrid caught. */
-                const order = POINT_LANES.filter((c) => !c.shared).map((c) => c.key);
-                const i = order.indexOf(buildCat);
-                setBuildCat(order[(i + 1) % order.length] || order[0]);
-              };
               return (
                 <div
                   data-prog3-lane={isLane ? buildCat : 'shared'}
-                  role={isLane ? 'button' : undefined}
                   aria-label={isLane
                     ? `${(PROG3_SKILL_META.find((k) => k.key === buildCat) || {}).label || buildCat}, level ${prog3SkillLevel(R, buildCat)}`
                     : `Shared, level ${prog3CharLevel(R)}`}
-                  title={isLane ? 'Tap to switch weapon' : 'Shared stats'}
-                  {...(isLane ? scrollTap(next) : {})}
+                  title={isLane ? 'Weapon stats — pick the weapon when you spend' : 'Shared stats'}
                   style={{
                     height: CELL_H, minWidth: 0, boxSizing: 'border-box',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2,
                     border: `1px solid ${isLane ? COL.accent : COL.tileBor}`,
                     borderRadius: 9, background: COL.wellSoft,
-                    cursor: isLane ? 'pointer' : 'default', touchAction: 'manipulation',
-                    overflow: 'hidden',
+                    cursor: 'default', overflow: 'hidden',
                   }}>
                   {isLane
                     ? POINT_LANES.filter((c) => !c.shared).map((c) => (
@@ -2332,20 +2414,7 @@ export const HeroExpanded = () => {
                        bought ("31.0%", "1-2"), so the pair is back without
                        either of them costing the cell a pixel. */
                     title={`${st.label} — ${pts} of ${cap} points — now ${statValueText(st, cat)} — ${st.perText} per point`}
-                    {...scrollTap(() => openStatInfo(st, cat, {
-                      blocked: (st.atk ? laneAvail(cat) : sharedAvail) <= 0
-                        ? `No ${st.atk ? ((PROG3_SKILL_META.find((k) => k.key === cat) || {}).label || 'lane') : 'shared'} points to spend.`
-                        : pts >= cap ? `${st.label} is already at its cap.` : null,
-                      run: () => {
-                        const S2 = getState();
-                        const R2 = S2 && S2.rpg;
-                        if (!S2 || !S2.channel) return;
-                        S2.channel.send({
-                          type: 'prog3_allocate',
-                          payload: { stat: st.key, cat: st.atk ? cat : prog3SharedSpendCat(R2) },
-                        });
-                      },
-                    }), { inner: true })}
+                    {...scrollTap(() => openStatInfo(st, cat, spendFor(st, cat)), { inner: true })}
                     onClick={(e) => e.stopPropagation()}
                     style={{
                       flex: 'none', width: CARD_PLUS_W, height: CARD_PLUS_H,
@@ -2544,26 +2613,15 @@ export const HeroExpanded = () => {
                   cue that there is more, which this screen has instead of a
                   scroll-edge fade (the fade was removed at v2.3.2288 because
                   the owner said "the last row is faded at the bottom"). */}
-              <div aria-live="polite" className="bt-stat-peek" style={{
-                marginBottom: 4, height: 14, lineHeight: '14px', padding: '0 2px',
-                fontSize: 11, color: COL.text2,
-                fontVariantNumeric: 'tabular-nums',
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>
-                {/* v2.3.2222: the strip is the RESTING readout only now (what a
-                    point buys moved into the ℹ️ window), and it sits ABOVE the
-                    lanes rather than below.  Measured: with Melee open, the two
-                    collapsed lanes plus this strip under the last stat row
-                    were more than a scroll-to-the-end could fit beneath the
-                    pinned tabs + header, so ELEM POWER slid under them at max
-                    scroll.  Up here it costs ~30px of rows at rest and buys
-                    the last row fully visible at the end on every phone -- and
-                    a new player reads the "tap the i" hint before the rows,
-                    which is where a hint belongs. */}
-                {restDps
-                  ? <>Overall <span style={{ color: COL.text, fontWeight: 700 }}>DPS {n2(restDps.dps)}</span> with your {restDps.weaponName}. Tap the <b style={{ fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>i</b> on a stat to see what a point buys.</>
-                  : 'Equip a weapon to see your DPS.'}
-              </div>
+              {/* ═══ v2.3.2644: THE DPS STRIP IS GONE ═══
+                  Owner: "remove the top row explainer about DPS."  It carried
+                  two things and both have somewhere better to be: the resting
+                  DPS is on the Equipment screen beside the weapon that earns
+                  it, and "tap the i to see what a point buys" described a
+                  control that no longer exists -- the whole CELL opens the
+                  window now, so there is nothing to point at.
+                  It also bought the grid ~30px, which is where the taller
+                  numbers below come from. */}
               {/* ═══ v2.3.2326: THREE COLUMNS, NOT THREE STACKED ROWS ═══
                   Owner: "I think 3 accordion columns rather than 3 accordion
                   rows per combat primary combat skill might work better."
