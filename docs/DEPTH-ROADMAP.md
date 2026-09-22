@@ -163,6 +163,15 @@ foreground plates (see the rule above). Each one is a small transparent PNG
 that can be reused across maps, and each is another texture on the per-zone
 budget, so this needs a cap per zone agreed before the art is made.
 
+> **The cap is now set (v2.3.2642): 6.00 MB of decoded RGBA per zone —
+> the cost of the zone's own map — and at most 8 decor assets, at a 512 px
+> long-edge ceiling.** `docs/ART-ASSET-PHASES.md` carries it, with the size
+> table and the commissioning briefs. It was set because the first frost
+> batch came back at 6.00 MB *per asset* (1254², the size of a whole map)
+> and three of its four pieces were edge-cropped — no ground-contact line,
+> so nothing in the renderer can place them. **This item is what unblocks
+> those three**; free-standing masses need no code and ship under item 1.
+
 ### 6. Atmospheric distance
 
 **Cost** small-medium · **Perf risk** low · **Payoff** medium · **Scope** both

@@ -39,6 +39,9 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/LANTERN-SLATE-SPEC.md` (the UI visual system — colors, depth,
   components; supersedes UI-BIBLE Part 2, v2.3.1227),
   `docs/DEPTH-ROADMAP.md` (the costed depth work, code-aware),
+  `docs/ART-ASSET-PHASES.md` (what environment art to commission, at what
+  size, in what order — the decoded-RGBA budget and the free-standing
+  vs edge-cropped test live here, v2.3.2642),
   `docs/specs/*.md`, `docs/WIRE-PROTOCOL.md`, `docs/BALANCE-PLAN.md`,
   `docs/OPTIMIZATION-ROADMAP.md`, `docs/REBUILD-PLAN.md` (client
   decomposition), `docs/STATE-SCHEMA.md` (client S object; pre-dates
