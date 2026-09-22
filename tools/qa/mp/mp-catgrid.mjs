@@ -113,11 +113,25 @@ async function openPoints(P) {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   for (const [label, vp, land, who] of [
-    ['390-portrait', { width: 390, height: 844 }, false, 'Grid'],
-    ['844-landscape', { width: 844, height: 390 }, true, 'GridLand'],
+    ['390-portrait', { width: 390, height: 844 }, false, 'Catgrida'],
+    ['360-portrait', { width: 360, height: 800 }, false, 'Catgridb'],
+    ['390-landscape', { width: 844, height: 390 }, true, 'Catgridc'],
+    ['360-landscape', { width: 800, height: 360 }, true, 'Catgridd'],
   ]) {
-    const P = await H.newPlayer(browser, { name: who, wsPort, webPort, viewport: vp, touch: true });
+    /* ═══ ENTER IN PORTRAIT, THEN ROTATE ═══
+       Restored verbatim from the pre-v2.3.2642 file after the rewrite dropped
+       it and spent a run finding out why.  The character creator cannot be
+       completed sideways -- entering straight into 844x390 leaves the Enter
+       button un-clickable and `H.enterWorld` times out 30s later, before a
+       single line of Points code runs.  So every player joins portrait and
+       the sideways cases rotate afterwards.
+       The four viewports are the pre-existing set too: the rewrite had cut
+       them to two, which quietly dropped the 360-wide coverage. */
+    const P = await H.newPlayer(browser, { name: who, wsPort, webPort,
+      viewport: land ? { width: 390, height: 844 } : vp, touch: true });
     await H.enterWorld(P);
+    await P.page.waitForTimeout(2400);
+    if (land) { await P.page.setViewportSize(vp); await P.page.waitForTimeout(1100); }
     const seeded = await seed(P, wsPort);
     rec.ok(`${label}: the worker minted real points to spend (guard — a client-side seed would make every spend below vacuous)`,
       !!seeded && seeded.pool > 0, seeded);
@@ -125,7 +139,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${label}: ...and minted a real SHARED pool beside the lane pool (v2.3.2592)`,
       !!seeded && seeded.shared > 0, seeded);
 
-    await openPoints(P);
+    /* Sideways the nav rail's "More" never becomes visible, so `openPoints`
+       (which goes through it) times out waiting for it -- the rewrite hit
+       this after the rotate fix and it is the second half of the same
+       pre-existing knowledge.  Landscape opens the panel through the bus
+       directly, exactly as the pre-v2.3.2642 file did. */
+    if (land) {
+      await P.page.evaluate(() => window.__broDashPanelBus && window.__broDashPanelBus.open('hero'));
+      await P.page.waitForTimeout(900);
+      await P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
+        .first().click({ timeout: 8000 }).catch(() => {});
+      await P.page.waitForTimeout(700);
+    } else {
+      await openPoints(P);
+    }
 
     /* ── THE GRID ── */
     const grid = await P.page.evaluate(() => {
