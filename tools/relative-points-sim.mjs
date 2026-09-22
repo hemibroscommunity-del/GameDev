@@ -8,21 +8,32 @@
  * WHAT IT ANSWERS.  The owner's ask: "whenever you allocate points, those
  * points carry a lot of weight at or under the current level monster with a
  * pretty steep decay as the combat levels go up (benefit nearly gone after 5
- * combat levels)".  Four questions, each its own table:
+ * combat levels)".  Eight sections, each its own table, in the order the
+ * design was argued:
  *   1. THE EDGE CURVE — what fraction of a point's value applies at each
  *      level gap (the one rule the whole design is).
  *   2. "DO I FEEL A LEVEL-UP?" — one level's worth of points (3 lane + 3
  *      shared) placed into ONE stat, against an at-level monster: hits to
  *      kill / hits to die, TODAY vs PROPOSED, at several character levels.
+ *      2b does the same for FIVE level-ups' worth.
  *   3. "THE WALL" — a fully-invested mid-game build against monsters from
  *      5 levels below to 5 above: today (universal points) vs proposed
  *      (points fade with the gap).
  *   4. "IS THE TOP END UNCHANGED?" — a maxed build at level 100 against a
- *      level-100 monster, today vs proposed (the design keeps every stat's
- *      at-cap effect; only the points-to-cap changes).
- * Plus the migration conversion for a few sample allocations, and the
- * anticheat sample (every proposed roll ≤ the ceiling), because a reprice
- * that trips the ceiling rejects legitimate hits (the v2.3.1451 rule).
+ *      level-100 monster, today vs proposed.
+ *   5. the migration conversion for a few sample allocations.
+ *   6. the anticheat sample — every proposed roll ≤ the ceiling, because a
+ *      reprice that trips it rejects legitimate hits (the v2.3.1451 rule).
+ *   7. PURE BUILDS — one lane deep vs three lanes shallow, the cross-train
+ *      incentive and the yardstick that removes it (this table is the whole
+ *      evidence for decision 2), one stat only, and when the relative game
+ *      ends.  Added when the owner asked what the design does to pure builds;
+ *      it overturned this note's first recommendation.
+ *   8. UNCAPPED — added when the owner said they dislike capping.  The curves,
+ *      the immunity check a cap was actually protecting, whether uncapping the
+ *      DAMAGE stats changes anything, and anticheat with nothing capped.  It
+ *      overturned the recommendation a second time, so §3.1 of the note (not
+ *      §3) is the shape this file recommends.
  *
  * HOW IT WORKS, and the one rule it follows (balance-sim's, verify-prog3-
  * retune's): IMPORT THE SHIPPED FORMULAS, NEVER RESTATE THEM.  It builds a
@@ -35,6 +46,11 @@
  * is EXACTLY what the shipped implementation computes.  When the code PR
  * lands, swap that scaling for the real `edge` argument and the numbers must
  * not move — that is the check that the implementation matches the note.
+ *
+ * §8's UNCAPPED tables need one more step, because a diminishing curve is not
+ * linear in its point count: `per` is set to value(pts)/pts for the cell being
+ * measured, which is the same arithmetic through the same linear reader (see
+ * applyUncapped).  §1-§7 use the plain linear path above.
  *
  * Monster stats come from the live spawn curves (MONSTER_HP_CURVE +
  * ARCHETYPES + monsterHpFlat, the same objects _makeZoneMonster reads), NOT
