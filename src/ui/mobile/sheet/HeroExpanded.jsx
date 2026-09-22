@@ -2067,7 +2067,14 @@ export const HeroExpanded = () => {
                of the thirteen, wants 4.63px of width per px of font size at
                weight 800, so a cell of width W holds it at W/4.63 and the
                divisor keeps a hair of slack. */
-            const CELL_W = Math.max(22, (panelVw() - 56) / 7.15);
+            /* 56 was the panel's chrome around the grid when a row WAS the
+               grid; v2.3.2656's tray adds its own 1px border and 4px padding
+               on each side, so a column lost 10/7.15 = 1.4px of width and the
+               caption -- which fits with under a pixel of slack by design --
+               tipped SPECIAL and DODGE into an ellipsis at 390.  Caught in a
+               capture, not by arithmetic: the number is measured against the
+               real screen either way, so the tray belongs IN it. */
+            const CELL_W = Math.max(22, (panelVw() - 66) / 7.15);
             /* v2.3.2648: a quarter off every glyph (owner: "shrink each icon
                25%.  Too large").  The cell keeps its height, so what the
                glyph gives up goes to the caption and the number -- which is
@@ -2085,7 +2092,13 @@ export const HeroExpanded = () => {
             const HEAD_W = CELL_W * 1.15;
             /* Height stays capped sideways: the landscape pane is short and a
                tall cell there costs the second row its place on screen. */
-            const CELL_H = landPane ? 58 : Math.round(Math.max(60, Math.min(78, CELL_W * 1.60)));
+            /* v2.3.2656: the tray each row now sits in costs 10px a row (its
+               border and padding, top and bottom), so the cell gives that
+               back -- the grid has to keep ending at the bottom of the
+               screen, which is what v2.3.2645 was for.  Measured, not
+               guessed: 75 -> 65 at 390 puts the grid's foot back on 842 of
+               844, and 60 -> 52 at 320 on 562 of 568. */
+            const CELL_H = landPane ? 52 : Math.round(Math.max(52, Math.min(68, CELL_W * 1.40)));
             /* One weapon icon: the full width of the head cell, a third of
                its height, whichever binds first.  The portrait has no stack
                to make room for, so it takes the cell short of its padding. */
@@ -2112,7 +2125,14 @@ export const HeroExpanded = () => {
                   style={{
                     height: CELL_H, minWidth: 0, boxSizing: 'border-box',
                     display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    justifyContent: 'center', gap: 1,
+                    /* v2.3.2656: caption to the top, number to the floor, glyph
+                       in the space between (owner: "numbers are good size but
+                       have room to move down a bit within the cells").  The
+                       cell used to centre the three as one block, which left
+                       the number floating mid-cell with dead space under it --
+                       the room the owner is pointing at.  Nothing resizes; the
+                       three just take the height they already had. */
+                    justifyContent: 'space-between', padding: '5px 0 4px', gap: 1,
                     /* The stat's own colour on the border only.  v2.3.2598 put
                        it on the whole fill, which was right for a 163px row
                        carrying a label; on a 44px cell whose content is a
@@ -2175,8 +2195,22 @@ export const HeroExpanded = () => {
                     height: CELL_H, minWidth: 0, boxSizing: 'border-box',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     padding: 3,
-                    border: `1px solid ${isLane ? COL.accent : COL.tileBor}`,
-                    borderRadius: 9, background: COL.wellSoft,
+                    /* ═══ v2.3.2656: THE HEAD BELONGS TO ITS ROW ═══
+                       Owner: "is there a way to visually connect the row
+                       headers to the rows?  Right now they're floating
+                       distinct cells."  They were: same border, same fill,
+                       same radius as the six stat cells beside them, so the
+                       weapons read as a seventh stat rather than as the
+                       heading of the six.
+                       So the head gives up its box entirely -- no border, no
+                       fill, no radius -- and the ROW gains one (the tray in
+                       statGrid below).  What is left between the head and the
+                       stats is a single hairline, which is a divider inside
+                       one surface instead of a gap between two.  That is the
+                       Lantern Slate reading of a table head, and it needs no
+                       new colour: COL.well is the tray role and COL.wellSoft
+                       the cell role, so the chips sit IN something. */
+                    borderRight: `1px solid ${isLane ? COL.edgeWarm : COL.divider}`,
                     cursor: 'default', overflow: 'hidden',
                   }}>
                   {isLane
@@ -2232,16 +2266,35 @@ export const HeroExpanded = () => {
               );
             };
 
+            /* ═══ v2.3.2656: A ROW IS A TRAY, NOT SEVEN LOOSE TILES ═══
+               The header connects to its row by being INSIDE the same
+               surface as it: one bordered, filled band per row, with the
+               cells as chips on it and the head as a label at its left, cut
+               off by a hairline.  COL.well is Lantern Slate's tray role and
+               COL.wellSoft its cell role (docs/LANTERN-SLATE-SPEC.md), so
+               the depth reads correctly without inventing a colour -- the
+               cells are LIGHTER than the tray they sit in, the way every
+               other well in the game works.
+               The weapon row's edge is the warm one, which also says which
+               of the two rows the lit weapon belongs to. */
+            const bandStyle = (isLane) => ({
+              display: 'grid', gap: 4, minWidth: 0,
+              padding: 4, boxSizing: 'border-box',
+              background: COL.well,
+              border: `1px solid ${isLane ? COL.edgeWarm : COL.border}`,
+              borderRadius: 12,
+            });
+
             const statGrid = () => (
               /* 2px of side padding so the outermost cell's border is not
                  flush against the panel edge -- at 0 the Element and Resist
                  cells lost their right border to the clip. */
               <div data-prog3-grid style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0, padding: '0 2px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.15fr repeat(6, 1fr)', gap: 4, minWidth: 0 }}>
+                <div data-prog3-band="lane" style={{ ...bandStyle(true), gridTemplateColumns: '1.15fr repeat(6, 1fr)' }}>
                   {headCell('lane')}
                   {prog3AtkMeta().map((st) => statCell({ ...st, atk: true }, buildCat))}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.15fr repeat(7, 1fr)', gap: 4, minWidth: 0 }}>
+                <div data-prog3-band="shared" style={{ ...bandStyle(false), gridTemplateColumns: '1.15fr repeat(7, 1fr)' }}>
                   {headCell('shared')}
                   {prog3BodyMeta().map((st) => statCell({ ...st, atk: false }, null))}
                 </div>

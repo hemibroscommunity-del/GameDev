@@ -172,14 +172,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
          row is how this read "rowW: 44" on a 163px row. */
       const rows = [...b.querySelectorAll('[data-prog3-row]')];
       const clipped = [];
+      /* ═══ v2.3.2656: MEASURE THE TEXT, NOT THE BOX ═══
+         scrollWidth > clientWidth catches a clip only when the element is
+         WIDER than its content box.  These captions are shrink-to-fit flex
+         items with maxWidth:100%, so when the word does not fit the SPAN
+         shrinks with it and scrollWidth shrinks too -- the ellipsis appears
+         and the two numbers stay equal.  v2.3.2656's tray narrowed every
+         column by 1.4px, SPECIAL and DODGE ellipsised at 390, and this loop
+         reported nothing; the capture is what showed it.
+         So the natural width is measured directly: a clone of the same text
+         in the same font, laid out with no width limit at all.  The old test
+         stays underneath it -- it is right about every element that IS wider
+         than its text, which is most of them. */
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;left:-9999px;top:0;white-space:nowrap;width:auto;visibility:hidden';
+      document.body.appendChild(probe);
       for (const r of rows) {
         for (const el of r.querySelectorAll('span,div')) {
-          if (el.children.length === 0 && (el.textContent || '').trim()
-              && el.scrollWidth > el.clientWidth + 1) {
-            clipped.push({ t: (el.textContent || '').trim(), want: el.scrollWidth, got: el.clientWidth });
+          const t = (el.textContent || '').trim();
+          if (el.children.length || !t) continue;
+          if (el.scrollWidth > el.clientWidth + 1) {
+            clipped.push({ t, want: el.scrollWidth, got: el.clientWidth, how: 'scroll' });
+            continue;
           }
+          const cs2 = getComputedStyle(el);
+          probe.style.font = cs2.font || `${cs2.fontWeight} ${cs2.fontSize}/${cs2.lineHeight} ${cs2.fontFamily}`;
+          probe.style.fontWeight = cs2.fontWeight;
+          probe.style.fontSize = cs2.fontSize;
+          probe.style.fontFamily = cs2.fontFamily;
+          probe.style.letterSpacing = cs2.letterSpacing;
+          probe.style.textTransform = cs2.textTransform;
+          probe.textContent = t;
+          const want = probe.getBoundingClientRect().width;
+          const got = el.getBoundingClientRect().width;
+          if (want > got + 0.5) clipped.push({ t, want: +want.toFixed(1), got: +got.toFixed(1), how: 'measured' });
         }
       }
+      probe.remove();
       return {
         dir: cs.flexDirection,
         w: +b.getBoundingClientRect().width.toFixed(1),
