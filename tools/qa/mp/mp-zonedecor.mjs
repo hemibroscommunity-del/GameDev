@@ -132,8 +132,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 2. ALL SIX ARE DRAWN, AT THE RIGHT SIZE ── */
   const frostBundles = await decorBundles(P);
-  rec.ok('in frost, all six decor sprites are resident',
-    frostBundles.length === DECOR.length, { frostBundles });
+  /* v2.3.2648: the count is DERIVED from the two tables the game reads rather
+     than written as a number here. The first cut said `=== DECOR.length` and
+     went red the moment the foreground pieces joined the same per-zone bundle
+     list -- the code was right and the test was stale, which is the failure
+     mode a magic number guarantees eventually. */
+  const wantBundles = await P.page.evaluate(() =>
+    ((window.__btBlockers && window.__btBlockers('frost')) || []).length
+    + ((window.__btForeground && window.__btForeground()) || []).length);
+  rec.ok('in frost, every per-zone sprite is resident (props + foreground)',
+    frostBundles.length === wantBundles && frostBundles.length >= DECOR.length,
+    { got: frostBundles.length, want: wantBundles, frostBundles });
 
   const drawn = await propsDrawn(P);
   const byId = Object.create(null);
@@ -194,6 +203,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the block reports the near face as the impact point',
     !!los.point && Math.abs(los.point.y - 528) < 1.5, { point: los.point });
 
+  /* ── 3d. THE NEAR-CAMERA FOREGROUND (v2.3.2648) ──
+     DEPTH-ROADMAP item 5. Three of the first four assets commissioned for this
+     game were edge-cropped and could not be drawn by ANY code path until this
+     layer existed, so the load-bearing assertion is simply that they are on
+     screen -- and on the right layer, because a foreground piece that lands in
+     `entities` would be sorted against the player and occlude him from the
+     wrong side. */
+  const fg = await P.page.evaluate(() => (window.__btForeground && window.__btForeground()) || []);
+  rec.ok('all three frost foreground pieces are drawn', fg.length === 3,
+    { ids: fg.map((f) => f.id) });
+  rec.ok('...each on the foreground layer, not in with the props',
+    fg.length > 0 && fg.every((f) => f.layer === 'foreground'),
+    fg.map((f) => ({ id: f.id, layer: f.layer })));
+  rec.ok('...each drawn at its declared worldH (260), not its texture height',
+    fg.length > 0 && fg.every((f) => Math.abs(f.height - 260) <= 1),
+    fg.map((f) => ({ id: f.id, h: Math.round(f.height) })));
+  /* The peak is MIRRORED so one asset frames both sides of a map -- the reuse
+     ART-ASSET-PHASES §4 asks for. If the flip silently stopped working the
+     piece would still draw, just cropped on the wrong edge. */
+  /* Matched by PREFIX, not by the full id: these ids carry the corner they
+     sit in ('fg-peak-se'), and the corner is exactly what moves when a
+     placement is corrected -- as it was once already this version. A test
+     that pins the corner fails on a fix rather than on a regression. */
+  const peak = fg.find((f) => String(f.id).indexOf('fg-peak') === 0);
+  rec.ok('...and the peak is mirrored (one asset, both sides of a map)',
+    !!peak && peak.flipX === true, peak || null);
+
+  /* The foreground layer must sit ABOVE projectiles (a branch covers an arrow)
+     and BELOW damageNumbers (a canopy must never hide the number that tells
+     you how much you just took). Asserted off the published order rather than
+     a screenshot, which would fail for ten unrelated reasons. */
+  const order = await P.page.evaluate(() => window.__btLayerOrder || []);
+  const iFg = order.indexOf('foreground');
+  rec.ok('the foreground layer sits above projectiles and below the damage numbers',
+    iFg > order.indexOf('projectiles') && iFg < order.indexOf('damageNumbers') && iFg > order.indexOf('player'),
+    { order });
+
   /* ── 3c. FOOTPRINTS (v2.3.2647) ──
      The game's first grounding cue. Two things are worth pinning: the art is
      PER-ZONE (so it must be resident in frost and gone in town), and the
@@ -246,6 +292,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const afterBundles = await decorBundles(P);
   rec.ok('leaving frost RELEASES its decor (the half v2.3.1405 forgot)',
     afterBundles.length === 0, { afterBundles });
+
+  const fgAfter = await P.page.evaluate(() => (window.__btForeground && window.__btForeground()) || []);
+  rec.ok('...and no foreground piece is drawn back in town', fgAfter.length === 0,
+    { ids: fgAfter.map((f) => f.id) });
 
   const printAfter = await P.page.evaluate(() =>
     (window.__btFootprints && window.__btFootprints()) || []);

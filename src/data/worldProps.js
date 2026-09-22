@@ -526,10 +526,101 @@ function propIsResident(p) {
  *  Empty for the resident hubs, whose props are on the global manifest. */
 export function zoneDecorSources(zoneId) {
   if (!zoneId || RESIDENT_ZONES.has(zoneId)) return [];
-  return [...new Set(
-    WORLD_PROPS.filter((p) => p.zone === zoneId && propIsPlaced(p) && !propIsResident(p))
-      .map((p) => p.sprite).filter(Boolean),
-  )];
+  return [...new Set([
+    ...WORLD_PROPS.filter((p) => p.zone === zoneId && propIsPlaced(p) && !propIsResident(p))
+      .map((p) => p.sprite),
+    /* v2.3.2648: the foreground pieces ride the SAME per-zone list.  They are
+       the same kind of thing -- a transparent PNG that means nothing outside
+       one zone -- so giving them a second loader and a second free path would
+       be two things to keep in step for no gain, and the day one of them is
+       forgotten is the day a zone leaks a texture. */
+    ...foregroundForZone(zoneId).map((f) => f.sprite),
+  ].filter(Boolean))];
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v2.3.2648: THE NEAR-CAMERA FOREGROUND
+   ═══════════════════════════════════════════════════════════════════════════
+   DEPTH-ROADMAP item 5.  Until now an EDGE-CROPPED asset -- a canopy whose
+   branches run off its own canvas, a mountain shoulder cut at the bottom --
+   could not be drawn by anything in this game.  `depthSort.js` places every
+   world object by its ground-contact line, and a cropped piece has none;
+   three of the first four assets ever commissioned for BroTown were held for
+   want of this table (docs/ART-ASSET-PHASES.md §3).
+
+   ── WHY THESE ARE NOT PROPS ──
+   A prop is a thing standing IN the world: it sorts by where it touches the
+   ground, it blocks your feet, and since v2.3.2645 it stops a shot.  A
+   foreground piece is none of those.  It is between the camera and the world,
+   it touches nothing, and it must never block or occlude for gameplay
+   purposes -- you cannot take cover behind a branch that is hanging in front
+   of the lens.  Sharing the WORLD_PROPS table would mean a `foreground: true`
+   flag that half the prop code then has to remember to skip, which is how a
+   canopy ends up with a collision box.  A separate table cannot make that
+   mistake.
+
+   ── ANCHORED AT THE CENTRE, ON PURPOSE ──
+   Props anchor bottom-centre because their bottom edge IS their ground line.
+   These have no ground line, so the centre is the only honest anchor: the
+   piece is placed where its mass should sit and the crop falls where it
+   falls.
+
+   ── THE PLACEMENT RULE, LEARNED THE HARD WAY ──
+   EVERY PRE-CUT EDGE OF THE ART MUST LIE OUTSIDE THE MAP.  These assets are
+   already cropped in the source, so a cut that lands inside the playfield
+   draws as a hard straight seam -- the pasted-rectangle look this table
+   exists to avoid.  It is not enough to be "near an edge": a piece cut across
+   its bottom needs its bottom edge past y = mapH, not merely low down.
+
+   In a 32x32 zone the camera NEVER SCROLLS VERTICALLY -- the view is 1024
+   world px tall against a 1024px map (worldViewport's per-zone floor,
+   v2.3.2247) -- so the top and bottom of the view are always the top and
+   bottom of the map.  A bottom-cut piece therefore has exactly one home: a
+   bottom corner.  Horizontally the camera does scroll, so a side cut only
+   has to clear the map edge.
+
+   `flipX` earns its keep here more than anywhere: a piece cropped on its LEFT
+   becomes a piece cropped on its RIGHT for free, so one canopy frames both
+   sides of a map.  ART-ASSET-PHASES §4 says to ask for one good asset rather
+   than a handed pair; this is where that pays.
+*/
+export const ZONE_FOREGROUND = {
+  frost: [
+    {
+      /* Cropped on its LEFT only (22% of that edge is ink); the other three
+         edges are the art's own foliage, so only that one has to hide.
+         MIRRORED, which turns the left cut into a right cut and lets the east
+         edge carry it -- the flip earning its keep exactly as advertised. */
+      id: 'fg-canopy-e', sprite: '/sprites/props/frost-pine-canopy-a.png',
+      x: 990, y: 620, worldH: 260, flipX: true,
+    },
+    {
+      /* Cropped bottom AND left (67% / 43%).  The south-west corner is the
+         only placement that puts both cuts off the map at once. */
+      id: 'fg-canopy-sw', sprite: '/sprites/props/frost-pine-canopy-b.png',
+      x: 90, y: 980, worldH: 260,
+    },
+    {
+      /* Cut clean across its whole bottom edge (100%) and up its left (73%),
+         so it needs a BOTTOM corner -- mirrored, the south-east one: a crag
+         mass rising into frame from the lower right.
+         The first placement put it in the NORTH-east, where the content
+         matched frost's own ice cliffs beautifully and the bottom cut landed
+         at y 370 -- a hard horizontal seam straight across the map, which is
+         precisely the pasted-rectangle look this table exists to prevent.
+         A screenshot caught it. All four assertions covering this piece
+         passed while it was broken, because "is it drawn, on the right layer,
+         at the right size" cannot see a seam. */
+      id: 'fg-peak-se', sprite: '/sprites/props/frost-peak-corner.png',
+      x: 950, y: 960, worldH: 260, flipX: true,
+    },
+  ],
+};
+
+/** The near-camera pieces for a zone, or an empty list. */
+export function foregroundForZone(zoneId) {
+  if (!zoneId) return [];
+  return (Object.prototype.hasOwnProperty.call(ZONE_FOREGROUND, zoneId) && ZONE_FOREGROUND[zoneId]) || [];
 }
 
 /** The footprint a prop blocks, or null when it is scenery you walk past.

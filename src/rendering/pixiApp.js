@@ -79,7 +79,24 @@ const WORLD_LAYER_NAMES = [
   'particles',
   'monsterUi', 'player',
   'gatherNodesFront', 'gestureFront',
-  'projectiles', 'damageNumbers', 'overlayWorld',
+  'projectiles',
+  /* ═══ v2.3.2648: THE NEAR-CAMERA FOREGROUND ═══
+     DEPTH-ROADMAP item 5, and the layer whose absence meant an edge-cropped
+     canopy could not be drawn by anything at all (docs/ART-ASSET-PHASES.md §3
+     -- three of the first four assets commissioned for this game were held for
+     want of it).
+
+     HERE, and the two neighbours are the whole argument.  ABOVE `projectiles`
+     because a branch between you and the camera covers an arrow in flight as
+     surely as it covers the body -- put it below and an arrow draws over the
+     tree it is passing behind.  BELOW `damageNumbers` and `overlayWorld`
+     because a canopy that hides the number telling you how much you just took
+     is a canopy that costs you the fight; UI is not scenery and never occludes.
+     Unlike `entities`/`gatherNodesFront` this layer is NOT depth-sorted: a
+     foreground piece is nearer the camera than everything by construction, so
+     there is no ground line to sort it by. */
+  'foreground',
+  'damageNumbers', 'overlayWorld',
 ];
 const SCREEN_LAYER_NAMES = ['atmosphere', 'screenFX', 'hud'];
 export const LAYER_NAMES = [...WORLD_LAYER_NAMES, ...SCREEN_LAYER_NAMES];

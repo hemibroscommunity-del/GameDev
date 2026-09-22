@@ -4,7 +4,7 @@
  */
 import { Assets, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCount } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs; v2.3.2061: animated props */
-import { propsForZone, propFootprint } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
+import { propsForZone, propFootprint, foregroundForZone } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
 import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
@@ -319,6 +319,12 @@ const _npcDrawn = Object.create(null);
 /* v2.3.1775: what scenery is on screen and how big it is drawn. */
 const _propsDrawn = [];
 if (typeof window !== 'undefined') window.__btWorldProps = () => _propsDrawn.slice();
+/* v2.3.2648: the same probe for the foreground pieces.  Published separately
+   rather than folded into __btWorldProps because they are a different kind of
+   object -- no ground line, no footprint, never sorted -- and a test that had
+   to filter them back out of the prop list would be asserting the filter. */
+const _fgDrawn = [];
+if (typeof window !== 'undefined') window.__btForeground = () => _fgDrawn.slice();
 /* v2.3.1775: the entity layer's child order — Pixi paints in this order, so it
    is what decides whether a stall covers the vendor standing at it or the
    other way round (Diego at the market stall since v2.3.2080; the example
@@ -7263,8 +7269,12 @@ function _drawResourceSpent(label, gfx, kind, y, alpha) {
 }
 
 export class EntityRenderer {
-  constructor(entityLayer, playerLayer, monsterUiLayer, gestureLayer, propFrontLayer) {
+  constructor(entityLayer, playerLayer, monsterUiLayer, gestureLayer, propFrontLayer, foregroundLayer) {
     this.entityLayer = entityLayer;
+    /* v2.3.2648: the near-camera layer (pixiApp WORLD_LAYER_NAMES). null on an
+       older scene graph, which simply draws no foreground rather than
+       throwing -- the same posture propFrontLayer and gestureLayer take. */
+    this.foregroundLayer = foregroundLayer || null;
     this.playerLayer = playerLayer;
     /* v2.3.2633: the sorted layer ABOVE `player`.  A prop whose ground line
        is south of the player's moves here for the frame, which is how a
@@ -7295,6 +7305,7 @@ export class EntityRenderer {
     this._updateOtherPlayers(S, now);
     this._updatePlayer(S, now);
     this._updateProps(S);
+    this._updateForeground(S);   /* v2.3.2648: near-camera framing art */
     this._updateNPCs(S, now);
     this._updatePet(S, now);
     this._updatePlayerHud(S, now);
@@ -13251,6 +13262,70 @@ export class EntityRenderer {
           frameX: _fr ? Math.round(_fr.x) : null,
           frameW: _fr ? Math.round(_fr.width) : null,
           layer: _layer });
+      }
+    }
+  }
+
+  /* ═══ v2.3.2648: THE NEAR-CAMERA FOREGROUND ═══
+     Edge-cropped framing art -- a canopy, a mountain shoulder -- drawn between
+     the camera and everything else.  See ZONE_FOREGROUND (worldProps.js) for
+     why these are a separate table from props rather than a flag on one.
+
+     DELIBERATELY NOT DEPTH-SORTED and deliberately not occluding anything for
+     gameplay: a branch in front of the lens is nearer than the whole world by
+     construction, so there is nothing to sort it against, and you cannot take
+     cover behind it.  The layer sits above `projectiles` and below
+     `damageNumbers` for exactly that reason (pixiApp).
+
+     Scaled to `worldH` like a prop, for the same reason a prop is: re-exporting
+     the source at a different resolution must not silently resize the object.
+     Anchored CENTRE, unlike a prop -- these have no ground line, so the bottom
+     edge means nothing. */
+  _updateForeground(S) {
+    if (!this.foregroundLayer) return;
+    const list = foregroundForZone(S.currentZone);
+    if (!this.fgDisplays) this.fgDisplays = new Map();
+    const live = new Set();
+    for (const f of list) {
+      live.add(f.id);
+      let spr = this.fgDisplays.get(f.id);
+      if (!spr) {
+        spr = new Sprite(Texture.EMPTY);
+        spr.anchor.set(0.5, 0.5);
+        spr.label = `fg_${f.id}`;
+        this.foregroundLayer.addChild(spr);
+        this.fgDisplays.set(f.id, spr);
+      }
+      if (spr.texture === Texture.EMPTY) {
+        const t = getNpcTexture(f.sprite);
+        if (t) {
+          spr.texture = t;
+          const h = t.height || 1;
+          const k = (f.worldH || h) / h;
+          spr.scale.set(f.flipX ? -k : k, k);
+        }
+      }
+      spr.x = f.x;
+      spr.y = f.y;
+      spr.alpha = f.alpha != null ? f.alpha : 1;
+      spr.visible = spr.texture !== Texture.EMPTY;
+    }
+    /* Same lesson as v2.3.2644's props: a display that outlives its texture
+       must DROP the reference, not merely hide.  This art is per-zone and IS
+       freed on the way out, so a sprite still holding it would come back
+       visible on re-entry pointing at a destroyed source. */
+    for (const [id, spr] of this.fgDisplays) {
+      if (!live.has(id)) { spr.visible = false; spr.texture = Texture.EMPTY; }
+    }
+    if (typeof window !== 'undefined') {
+      _fgDrawn.length = 0;
+      for (const [id, spr] of this.fgDisplays) {
+        if (!spr.visible) continue;
+        _fgDrawn.push({ id, x: spr.x, y: spr.y,
+          width: Math.abs(spr.texture.width * spr.scale.x),
+          height: Math.abs(spr.texture.height * spr.scale.y),
+          flipX: spr.scale.x < 0,
+          layer: spr.parent && spr.parent.label ? spr.parent.label : null });
       }
     }
   }

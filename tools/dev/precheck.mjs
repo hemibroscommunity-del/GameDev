@@ -849,6 +849,29 @@ if (changedServer.length) {
   } else add('PASS', 'hairmask-parity', 'no trait-placement changes — check skipped');
 }
 
+/* ---- 9b. foreground-crops -------------------------------------------
+   v2.3.2648.  ZONE_FOREGROUND places EDGE-CROPPED art, and the crop only
+   reads while the cut is off-screen; a cut that lands inside the playfield
+   draws as a hard seam across the map.  The bug that prompted this shipped
+   with FOUR passing browser assertions on the very piece that was broken --
+   drawn, right layer, right size, correctly mirrored -- because a seam is a
+   relationship between the art's alpha and the map's bounds, and nothing in
+   the scene graph knows about either.  A screenshot caught it once; this is
+   so a screenshot never has to again. */
+{
+  const touched = changed.filter((f) => f === 'src/data/worldProps.js'
+    || /^public\/sprites\/props\/.+\.(png|webp)$/.test(f));
+  if (touched.length) {
+    const r = spawnSync('node', ['tools/dev/check-foreground-crops.mjs'],
+      { cwd: root, encoding: 'utf8', timeout: 60 * 1000 });
+    if (r.status === 0) add('PASS', 'foreground-crops', 'every foreground piece keeps its cut edges off-map');
+    else {
+      const tail = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').slice(-10).join('\n    ');
+      add('FAIL', 'foreground-crops', `check-foreground-crops.mjs exited ${r.status ?? 'timeout'}:\n    ${tail}`);
+    }
+  } else add('PASS', 'foreground-crops', 'no foreground art or placement changes — check skipped');
+}
+
 /* ---- 10. hairmask rule ----------------------------------------------
    v2.3.1960.  The hair-clip masks are a LOOK decision baked into 155 PNGs and
    nothing on the PR path ever looked at them, so both ways they rot were

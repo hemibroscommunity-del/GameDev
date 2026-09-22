@@ -1,4 +1,6 @@
-# BroTown Environment Art — Phased Asset Plan (v2.3.2642; §4/§6 corrected v2.3.2643; Phase 1 shipped v2.3.2644)
+# BroTown Environment Art — Phased Asset Plan
+
+*v2.3.2642; §4/§6 corrected v2.3.2643; Phases 1–3 shipped v2.3.2644–2648.*
 
 A commissioning plan for environment art: what to ask a generator for, at
 what size, in what order, and which of it the renderer can actually put on
@@ -37,7 +39,8 @@ the bottleneck.** A free-standing prop dropped into a zone occludes
 correctly with no further engineering. That is the cheapest depth in the
 game and it is where the art budget should go first.
 
-What it does *not* give you is a near-camera framing layer. See §3.
+What it did *not* give you was a near-camera framing layer — that arrived
+separately at v2.3.2648. See §3.
 
 ## 2. The only budget number that matters: decoded RGBA
 
@@ -84,12 +87,21 @@ fifth zone map's worth of texture for four decorative overlays.
 before the art is made". This is that cap:
 
 > **A zone's decor may not cost more decoded texture than the zone's own
-> map: 6.00 MB, and no more than 8 decor assets.**
+> map: 6.00 MB. No single asset may exceed a 512 px long edge.**
 
-Memorable, and it lands in the right place — at 512 long edge that is six
-large pieces, or a mix of large and small. It is a per-zone figure because
-only one zone's art is resident at a time (`preloadZoneAssets` /
-`freeZoneAssets`), so the cap is also the peak.
+It is a per-zone figure because only one zone's art is resident at a time
+(`preloadZoneAssets` / `freeZoneAssets`), so the cap is also the peak.
+
+> **Corrected at v2.3.2648.** This originally also said "no more than 8 decor
+> assets", and that count was wrong — not too tight, but *measuring the wrong
+> thing*. It was a proxy for the megabytes, and it punishes exactly the assets
+> that deserve encouraging: frost's footprint strip is 0.139 MB, 2% of the cap,
+> and a count limit treats it as one-eighth of the budget. Frost now carries
+> **10 assets for 4.2 MB** and is comfortably inside the limit that matters.
+> The MB cap bounds the total and the 512 ceiling bounds any one asset; a
+> count adds nothing except a wrong signal. Scene complexity was the other
+> worry behind it, and 10 sprites is nothing — town has drawn 9 props plus
+> NPCs plus monsters since v2.3.2065.
 
 **Anything per-zone must load per-zone.** Until v2.3.2644 prop art did not:
 `propSpriteSources()` handed the whole table to the *global* startup gate, so
@@ -110,19 +122,37 @@ asset can go in the game. This is:
 |---|---|---|
 | **Shape** | complete object, ink nowhere near its canvas edge, sits on a base | subject runs off its own canvas edge; a corner or border piece |
 | **Has a ground-contact line?** | yes — the bottom of the art | no |
-| **Consumed by** | `WORLD_PROPS` + `depthSort.js` | **nothing — no code path exists** |
-| **Ships** | today, art-only change | after `DEPTH-ROADMAP` item 5 |
+| **Consumed by** | `WORLD_PROPS` + `depthSort.js` | `ZONE_FOREGROUND` + the `foreground` layer (v2.3.2648) |
+| **Ships** | today, art-only change | today — but read the placement rule below |
 
 `depthSort.js` sorts everything in the world by its **ground-contact line**,
 which it reads as the sprite's `y` — and every world sprite is anchored
-bottom-centre. An asset with no base has no sortable position, and there is
-no screen-space foreground layer to hang it on instead: `WORLD_LAYER_NAMES`
-(`src/rendering/pixiApp.js:54`) has no foreground entry, and a search of
-`src/rendering/`, `src/data/` and `src/game/` for a foreground, decor or
-map-overlay concept returns nothing.
+bottom-centre. An asset with no base has no sortable position, which is why
+until v2.3.2648 an edge-cropped piece could not be drawn by anything at all.
 
-**Commission free-standing pieces until item 5 lands.** They are the ones
-that pay off immediately.
+**Both kinds now ship**, but they are still not interchangeable: a
+free-standing prop is *in* the world (it sorts, it blocks, it stops a shot);
+an edge-cropped piece is *in front of* the world (it never sorts, never
+blocks, and must never be cover).
+
+### The placement rule for edge-cropped art
+
+**Every pre-cut edge must lie outside the map.** The crop is what makes a
+piece read as continuing past the frame; a cut that lands inside the playfield
+draws as a hard straight seam — a pasted rectangle over the painting.
+
+"Near an edge" is not enough. In a 32×32 zone the camera **never scrolls
+vertically** (a 1024 px view over a 1024 px map — `worldViewport`'s per-zone
+floor, v2.3.2247), so a piece cut across its bottom has exactly one home: a
+bottom corner. Horizontally the camera does scroll, so a side cut only has to
+clear the map edge.
+
+`tools/dev/check-foreground-crops.mjs` enforces this and precheck runs it. It
+exists because the first placement shipped a 100%-cut bottom edge at y 370 —
+a seam straight across frost — with **four passing browser assertions** on
+that exact piece (drawn, right layer, right size, correctly mirrored). None
+of them can see a seam: a seam is a relationship between the art's alpha and
+the map's bounds, and nothing in the scene graph knows about either.
 
 Two consequences for the brief, both cheap to state and expensive to discover
 late:
@@ -356,26 +386,40 @@ flat over-blocked by the mask; repaint to open it"*
 (`src/rendering/tiledMaps.js:177`) — so placements want checking against the
 mask, not just against the painting.
 
-### Phase 2 — grounding cues
+### Phase 2 — grounding cues · **first cue shipped v2.3.2647**
 
-`DEPTH-ROADMAP` §7, currently at zero. Footprints, snow puffs, dust, impact
+`DEPTH-ROADMAP` §7, which was at zero. Footprints, snow puffs, dust, impact
 scuffs, harvest puffs, pickup glints. 128 px, cheap, no light-direction
 commitment, and they fix the floating-sticker feeling that the removed
 ellipse was reaching for. Each needs a draw site; the fx-strip machinery
 (`src/rendering/fxStrips.js`) is the pattern to follow, and anything global
 registers in `preloadWorldAnimations` per the preloading law.
 
-### Phase 3 — near-camera foreground framing
+### Phase 3 — near-camera foreground framing · **shipped v2.3.2648**
 
-**`DEPTH-ROADMAP` item 5, and the only phase that is blocked on a renderer
-feature.** Cropped canopies, cliff lips and branches drawn in front of the
-player and cut off by the screen edge. Needs a foreground layer in
-`WORLD_LAYER_NAMES` and a per-zone overlay list. Its perf risk is the
-roadmap's own *"medium — watch this one"*.
+**`DEPTH-ROADMAP` item 5.** Cropped canopies, cliff lips and branches drawn in
+front of the player and cut off by the screen edge.
 
-Batch 1's three cropped pieces are held for this phase. **Do not commission
-more of them until the layer exists** — that is where the wasted generation
-budget went.
+`foreground` joined `WORLD_LAYER_NAMES` above `projectiles` (a branch between
+you and the camera covers an arrow as surely as it covers a body) and below
+`damageNumbers` (a canopy must never hide the number telling you what you just
+took). `ZONE_FOREGROUND` (`worldProps.js`) is the per-zone list; the pieces
+ride the same `zoneDecorSources` bundle as the props, so they load and free
+with the zone and need no second path.
+
+**Batch 1's three held canopies all ship in frost**, which is what this phase
+was for. They are a separate table from `WORLD_PROPS` on purpose: a prop sorts
+by its ground line, blocks feet and stops shots, and a foreground piece must
+do none of those — sharing the table would mean a `foreground: true` flag that
+half the prop code has to remember to skip, which is how a canopy ends up with
+a collision box.
+
+**Known trade-off, not yet resolved.** `monsterUi` (name plate and health bar)
+sits *below* `foreground` in the stack, so a canopy can clip a monster's health
+bar near a map edge. The fix is to lift `monsterUi` above `foreground` — but
+that layer sits below `player` today and v2.3.2636 deliberately tuned what may
+and may not cover it, so moving it is its own change with its own screenshots.
+Flagged rather than done.
 
 ### Phase 4 — biome kits
 
