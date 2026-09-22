@@ -59,7 +59,7 @@ import { getHeadwear, HEADWEAR_CATALOG, headwearUnderHair, headwearBehindBeard }
 import { getFacialHair, FACIALHAIR_CATALOG } from '../traits/facialHairCatalog.js';
 import { getEyewear, EYEWEAR_CATALOG } from '../traits/eyewearCatalog.js';   /* v2.3.2361: the eyewear slot */
 import { getEyewearColor, getColoredEyewearTextures } from '../traits/eyewearColorCatalog.js';   /* v2.3.2424 */
-import { getEyeStyle, EYE_STYLE_CATALOG } from '../traits/eyeStyleCatalog.js';   /* v2.3.2642: the eye-style slot */
+import { getEyeStyle, EYE_STYLE_CATALOG } from '../traits/eyeStyleCatalog.js';   /* v2.3.2643: the eye-style slot */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
@@ -633,7 +633,7 @@ function _loadTraitDir(e, category, id, dir, attempt) {
 function _ensureHeadwearLoaded(id) { return _ensureTraitLoaded('headwear', id); }
 function _ensureFacialHairLoaded(id) { return _ensureTraitLoaded('facialhair', id); }
 function _ensureEyewearLoaded(id) { return _ensureTraitLoaded('eyewear', id); }   /* v2.3.2361 */
-function _ensureEyeStyleLoaded(id) { return _ensureTraitLoaded('eyestyle', id); }   /* v2.3.2642 */
+function _ensureEyeStyleLoaded(id) { return _ensureTraitLoaded('eyestyle', id); }   /* v2.3.2643 */
 function _ensureHairLoaded(id) { return _ensureTraitLoaded('hair', id); }
 
 /* Body anchor schemas, loaded once and shared by every player + hat.
@@ -1288,7 +1288,7 @@ function _placeEyewear(display, ewId, ewColorId, pose, dir, mirror, frameIdx, bo
   const tune = (entry && entry.meta && entry.meta.poseFit) ? null : hairPoseTune(pose, dir);
   _placeTrait(display._eyewearSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale, tune);
 }
-/* ═══ v2.3.2642: EYE STYLES ═══
+/* ═══ v2.3.2643: EYE STYLES ═══
    The fifth head trait, and eyewear's twin: same crown-anchored _placeTrait,
    same eye-line drop from the positive crownNudge Y the importer measured off
    the mannequin, same v2.3.1487 pose rule (a piece carrying `poseFit` had its
@@ -3916,7 +3916,7 @@ function _clipStandInHair(sprites, hatId, dir, mirror, cwx, cwy, scaleVal, fit) 
 /** Place hat + beard + eyewear + eye style + hair (the player's current
  *  selection) on a stand-in skill sprite.  sprites = { hat, beard, eyewear,
  *  eyestyle, hair } owned by the caller (v2.3.2361: + eyewear;
- *  v2.3.2642: + eyestyle). */
+ *  v2.3.2643: + eyestyle). */
 export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
   if (!sprites) return;
   /* hair first (renders behind the hat in the caller's child order), then
@@ -3931,7 +3931,7 @@ export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
   if (fhCol && fhEntry) fhEntry = { tex: fhCol, meta: fhEntry.meta, fallbackTex: fhEntry.tex }; /* v2.3.1305 */
   _placeStandaloneTrait(sprites.beard, fhEntry, dir, mirror, cwx, cwy, scaleVal);
 
-  /* v2.3.2642: the eye style, just under the eyewear.  Same argument as the
+  /* v2.3.2643: the eye style, just under the eyewear.  Same argument as the
      line below it -- a face that loses its eyes for the quarter-second of every
      swing is exactly the failure TRAPS #15 records. */
   _placeStandaloneTrait(sprites.eyestyle, _ensureEyeStyleLoaded(getEyeStyle()), dir, mirror, cwx, cwy, scaleVal);
@@ -3958,7 +3958,7 @@ export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
    used to composite a REMOTE player's hair/beard/hat onto their attack stand-in
    (MP parity).  looks = { hair, hairColor, facialhair, facialHairColor,
    eyewear, eyeStyle, headwear, hatColor } (v2.3.2361: + eyewear;
-   v2.3.2642: + eyeStyle). */
+   v2.3.2643: + eyeStyle). */
 export function placeSkillTraitsFor(sprites, looks, cwx, cwy, dir, mirror, scaleVal) {
   if (!sprites || !looks) return;
   let hairEntry = _ensureHairLoaded(looks.hair);
@@ -3971,7 +3971,7 @@ export function placeSkillTraitsFor(sprites, looks, cwx, cwy, dir, mirror, scale
   if (fhCol && fhEntry) fhEntry = { tex: fhCol, meta: fhEntry.meta, fallbackTex: fhEntry.tex }; /* v2.3.1305 */
   _placeStandaloneTrait(sprites.beard, fhEntry, dir, mirror, cwx, cwy, scaleVal);
 
-  _placeStandaloneTrait(sprites.eyestyle, _ensureEyeStyleLoaded(looks.eyeStyle), dir, mirror, cwx, cwy, scaleVal);   /* v2.3.2642 */
+  _placeStandaloneTrait(sprites.eyestyle, _ensureEyeStyleLoaded(looks.eyeStyle), dir, mirror, cwx, cwy, scaleVal);   /* v2.3.2643 */
   _placeStandaloneTrait(sprites.eyewear, _ensureEyewearLoaded(looks.eyewear), dir, mirror, cwx, cwy, scaleVal);   /* v2.3.2361 */
 
   let hwEntry2 = _ensureHeadwearLoaded(looks.headwear);
@@ -3991,7 +3991,7 @@ export function hideSkillTraits(sprites) {
   if (sprites.hat) sprites.hat.visible = false;
   if (sprites.beard) sprites.beard.visible = false;
   if (sprites.eyewear) sprites.eyewear.visible = false;   /* v2.3.2361 */
-  if (sprites.eyestyle) sprites.eyestyle.visible = false;   /* v2.3.2642 */
+  if (sprites.eyestyle) sprites.eyestyle.visible = false;   /* v2.3.2643 */
   if (sprites.hair) sprites.hair.visible = false;
   /* v2.3.1776: drop the clip with them.  A hair sprite that is hidden while
      still holding a mask keeps Pixi doing the stencil work for something
@@ -4121,7 +4121,7 @@ function _orderTraitsAndWeapon(display, facingIdx, hatId) {
     const wc = display._weaponContainer;
     if (wc && wc.visible) {
       let ref = -1;
-      for (const s of [display._headwearSprite, display._facialHairSprite, display._eyewearSprite, display._eyeStyleSprite, display._hairSprite, display._shirtSprite]) {   /* v2.3.2361: + eyewear; v2.3.2642: + the eye style */
+      for (const s of [display._headwearSprite, display._facialHairSprite, display._eyewearSprite, display._eyeStyleSprite, display._hairSprite, display._shirtSprite]) {   /* v2.3.2361: + eyewear; v2.3.2643: + the eye style */
         if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
       }
       if (ref >= 0) {
@@ -4229,7 +4229,7 @@ export function preloadTraits() {
     ['hair', HAIR_CATALOG],
     ['facialhair', FACIALHAIR_CATALOG],
     ['eyewear', EYEWEAR_CATALOG],   /* v2.3.2361: on the gate from day one (CLAUDE.md: preloading is LAW); costs nothing while the catalog is only 'none' */
-    ['eyestyle', EYE_STYLE_CATALOG],   /* v2.3.2642: the same law -- every style loads on the gate, not on first sighting */
+    ['eyestyle', EYE_STYLE_CATALOG],   /* v2.3.2643: the same law -- every style loads on the gate, not on first sighting */
   ];
   for (const [category, catalog] of cats) {
     for (const entry of catalog) {
@@ -6257,7 +6257,7 @@ function createPlayerDisplay() {
   capeHoodMask.visible = false;
   container.addChild(capeHoodMask);
 
-  /* v2.3.2642: the eye style.  ABOVE the hair and the hood, BELOW the eyewear:
+  /* v2.3.2643: the eye style.  ABOVE the hair and the hood, BELOW the eyewear:
      glasses go over your eyes whatever your eyes are, so this is the first of
      the two face layers.  Crown-anchored like the beard -- see _placeEyeStyle
      and eyeStyleCatalog.js. */
@@ -6627,7 +6627,7 @@ function createPlayerDisplay() {
   container._capeHoodMask = capeHoodMask;             /* v2.3.2186 */
   container._headwearSprite = headwearSprite;
   container._eyewearSprite = eyewearSprite;            /* v2.3.2361 */
-  container._eyeStyleSprite = eyeStyleSprite;          /* v2.3.2642 */
+  container._eyeStyleSprite = eyeStyleSprite;          /* v2.3.2643 */
   container._nftFront = nftFront;
   container._nftBack = nftBack;
   container._weaponContainer = weaponContainer;
@@ -6797,7 +6797,7 @@ function createOtherPlayerDisplay() {
   capeHoodMask.visible = false;
   container.addChild(capeHoodMask);
 
-  /* v2.3.2642: the eye style.  ABOVE the hair and the hood, BELOW the eyewear:
+  /* v2.3.2643: the eye style.  ABOVE the hair and the hood, BELOW the eyewear:
      glasses go over your eyes whatever your eyes are, so this is the first of
      the two face layers.  Crown-anchored like the beard -- see _placeEyeStyle
      and eyeStyleCatalog.js. */
@@ -6894,7 +6894,7 @@ function createOtherPlayerDisplay() {
   container._capeHoodMask = capeHoodMask;             /* v2.3.2186 */
   container._headwearSprite = headwearSprite;
   container._eyewearSprite = eyewearSprite;            /* v2.3.2361 */
-  container._eyeStyleSprite = eyeStyleSprite;          /* v2.3.2642 */
+  container._eyeStyleSprite = eyeStyleSprite;          /* v2.3.2643 */
   container._nftFront = nftFront;
   container._nftBack = nftBack;
   container._weaponContainer = weaponContainer;
@@ -9921,7 +9921,7 @@ export class EntityRenderer {
           _placeCape(display, other.cape, pose, dir, mirror, frameIdx);   /* v2.3.2023 */
           _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul, other.hair); /* v2.3.1561: hair id for the floating halo */
           _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
-          _placeEyeStyle(display, other.eyeStyle, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2642: under the eyewear */
+          _placeEyeStyle(display, other.eyeStyle, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2643: under the eyewear */
           _placeEyewear(display, other.eyewear, other.eyewearColor, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2361; v2.3.2424 + colour */
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
           _crownOverride = null;
@@ -9931,7 +9931,7 @@ export class EntityRenderer {
           if (display._headwearSprite) display._headwearSprite.visible = false;
           if (display._facialHairSprite) display._facialHairSprite.visible = false;
         if (display._eyewearSprite) display._eyewearSprite.visible = false;   /* v2.3.2361 */
-        if (display._eyeStyleSprite) display._eyeStyleSprite.visible = false;   /* v2.3.2642 */
+        if (display._eyeStyleSprite) display._eyeStyleSprite.visible = false;   /* v2.3.2643 */
         if (display._shirtSprite) display._shirtSprite.visible = false;
           if (display._hairSprite) display._hairSprite.visible = false;
         }
@@ -9941,7 +9941,7 @@ export class EntityRenderer {
         if (display._headwearSprite) display._headwearSprite.visible = false;
         if (display._facialHairSprite) display._facialHairSprite.visible = false;
         if (display._eyewearSprite) display._eyewearSprite.visible = false;   /* v2.3.2361 */
-        if (display._eyeStyleSprite) display._eyeStyleSprite.visible = false;   /* v2.3.2642 */
+        if (display._eyeStyleSprite) display._eyeStyleSprite.visible = false;   /* v2.3.2643 */
         if (display._shirtSprite) display._shirtSprite.visible = false;
         if (display._hairSprite) display._hairSprite.visible = false;
       }
@@ -10225,7 +10225,7 @@ export class EntityRenderer {
           if (display._spriteBody) display._spriteBody.visible = false;
           if (body) body.visible = false;
           _hideBodyRegions(display);
-          for (const _k of ['_headwearSprite', '_facialHairSprite', '_eyewearSprite', '_eyeStyleSprite', '_hairSprite', '_shirtSprite',   /* v2.3.2361: + eyewear; v2.3.2642: + the eye style */
+          for (const _k of ['_headwearSprite', '_facialHairSprite', '_eyewearSprite', '_eyeStyleSprite', '_hairSprite', '_shirtSprite',   /* v2.3.2361: + eyewear; v2.3.2643: + the eye style */
             '_gearShirt', '_gearLegs', '_gearChest', '_gearShoulders', '_gearHead']) {
             if (display[_k]) display[_k].visible = false;
           }
@@ -11492,7 +11492,7 @@ export class EntityRenderer {
         _placeCape(display, getCape(), pose, dir, mirror, frameIdx);   /* v2.3.2023 */
         _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale, getHair()); /* v2.3.1561: hair id for the floating halo */
         _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
-        _placeEyeStyle(display, getEyeStyle(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2642: under the eyewear */
+        _placeEyeStyle(display, getEyeStyle(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2643: under the eyewear */
         _placeEyewear(display, getEyewear(), getEyewearColor(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2361; v2.3.2424 + colour */
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
         _crownOverride = null;
@@ -11541,7 +11541,7 @@ export class EntityRenderer {
         if (display._headwearSprite) display._headwearSprite.visible = false;
         if (display._facialHairSprite) display._facialHairSprite.visible = false;
         if (display._eyewearSprite) display._eyewearSprite.visible = false;   /* v2.3.2361 */
-        if (display._eyeStyleSprite) display._eyeStyleSprite.visible = false;   /* v2.3.2642 */
+        if (display._eyeStyleSprite) display._eyeStyleSprite.visible = false;   /* v2.3.2643 */
         if (display._shirtSprite) display._shirtSprite.visible = false;
         if (display._hairSprite) display._hairSprite.visible = false;
       }
@@ -11564,7 +11564,7 @@ export class EntityRenderer {
       if (display._headwearSprite) display._headwearSprite.visible = false;
       if (display._facialHairSprite) display._facialHairSprite.visible = false;
       if (display._eyewearSprite) display._eyewearSprite.visible = false;   /* v2.3.2361 */
-      if (display._eyeStyleSprite) display._eyeStyleSprite.visible = false;   /* v2.3.2642 */
+      if (display._eyeStyleSprite) display._eyeStyleSprite.visible = false;   /* v2.3.2643 */
       if (display._hairSprite) display._hairSprite.visible = false;
       if (display._shirtSprite) display._shirtSprite.visible = false;
       /* Hide the worn gear too -- otherwise the equipped armour stands in

@@ -637,7 +637,7 @@ export const TRACK_COSMETIC_KEYS = new Set([
      does not recognise, so a forged value can only select a colour that
      catalog already holds -- it cannot paint an arbitrary RGB. */
   'ewc',
-  /* v2.3.2642: 'es' is the eye STYLE id -- a short catalog id exactly like 'ew'
+  /* v2.3.2643: 'es' is the eye STYLE id -- a short catalog id exactly like 'ew'
      above it, and NOT the same thing as 'ec', which is the colour of the eyes
      painted into the body sheets.  Display-only on the same terms: the
      receiving client asks its own EYE_STYLE_CATALOG folder for the art, so a

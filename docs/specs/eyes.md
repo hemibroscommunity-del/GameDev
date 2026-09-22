@@ -1,4 +1,4 @@
-# Eye styles (v2.3.2642)
+# Eye styles (v2.3.2643)
 
 **Shipped:** Sleepy Eyes, One Eye, Demon Eyes (all five facings), WTF Eyes.
 

@@ -70,7 +70,7 @@ export const JOIN_COSMETIC_KEYS = [
   'ewc',  /* v2.3.2424: the eyewear COLOUR.  On this gate AND TRACK_COSMETIC_KEYS in
              index.js, together: one without the other is the v2.3.1939 shape, and here
              it would be glasses that join the right colour and revert on the first relay. */
-  'es',   /* v2.3.2642: the eye STYLE -- a short catalog id like hw/fh/ew, and a
+  'es',   /* v2.3.2643: the eye STYLE -- a short catalog id like hw/fh/ew, and a
              different thing from 'ec' above, which is the colour of the eyes the
              body sheets paint.  Both gates in the same change, for the reason the
              'ewc' note gives. */

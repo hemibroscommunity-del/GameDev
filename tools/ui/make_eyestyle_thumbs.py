@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.2642: cut the picker tiles for the EYESTYLE slot — the eyes ON A FACE.
+"""v2.3.2643: cut the picker tiles for the EYESTYLE slot — the eyes ON A FACE.
 
 Why this is not the generic thumb
 ---------------------------------

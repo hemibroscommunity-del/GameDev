@@ -1,4 +1,4 @@
-# TRAPS — plausible-but-wrong moves (v2.3.2642)
+# TRAPS — plausible-but-wrong moves (v2.3.2643)
 
 A registry of changes that look obviously right and are known to be
 wrong. Each was attempted, or nearly attempted, by a competent session.
@@ -3736,7 +3736,7 @@ was green throughout and could not have seen any of this. `mp-vendorprompt.mjs`
 taps with `page.touchscreen.tap` at measured coordinates and asks
 `document.elementFromPoint` what is on the glass.
 
-## 89. A fraction of a bounding box is a guess dressed as a measurement (v2.3.2642)
+## 89. A fraction of a bounding box is a guess dressed as a measurement (v2.3.2643)
 
 **Tempting:** you need to assert that a face-worn piece landed on the eye line,
 and the numbers are right there — a head is "the top 28% of the figure", the
@@ -3770,7 +3770,7 @@ tab** (`pickPreviewCat`), so two captures taken on different tabs differ by
 74,801px of crop movement and nothing else — compare captures from the same
 tab, and assert their dimensions match before believing the diff.
 
-## 90. A sheet drawn on the real mannequin cannot go straight into the importer (v2.3.2642)
+## 90. A sheet drawn on the real mannequin cannot go straight into the importer (v2.3.2643)
 
 **Tempting:** `import_headwear_green.py` already handles a person who is not
 green (`person_key`, v2.3.2367, from the cyan sheet) and already strips a

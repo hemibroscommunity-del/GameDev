@@ -326,12 +326,12 @@ function renderTraitCanvas(traitImg, meta, crown, dir, liftY, mulX) {
 
 /** Composite the portrait into `canvas` (sized to FRAME).  Layers, in
  *  order: skin-recolored body, hair (recolored), facial hair, eye style
- *  (v2.3.2642), eyewear (v2.3.2361), headwear.
+ *  (v2.3.2643), eyewear (v2.3.2361), headwear.
  *  Unknown / 'none' / 'default' selections are skipped.  Resolves when the
  *  draw completes (after async asset loads).  Safe to call repeatedly. */
 export async function drawCharacterPortrait(canvas, opts) {
   if (!canvas) return;
-  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, eyewear, eyewearColor, eyeStyle, shirt, shirtColor, dir, gear, weapon, shield } = opts || {};   /* v2.3.2361: + eyewear; v2.3.2424: + eyewearColor; v2.3.2642: + eyeStyle */
+  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, eyewear, eyewearColor, eyeStyle, shirt, shirtColor, dir, gear, weapon, shield } = opts || {};   /* v2.3.2361: + eyewear; v2.3.2424: + eyewearColor; v2.3.2643: + eyeStyle */
   /* v2.3.1580 (owner: traits still soft after the v2.3.1579 re-bake).
      OPT-IN supersampling.  This canvas has always composited at a fixed
      256 with no devicePixelRatio scaling -- the WORLD canvas is DPR-aware
@@ -385,7 +385,7 @@ export async function drawCharacterPortrait(canvas, opts) {
   const wantFh = facialHair && facialHair !== 'none';
   const wantHw = headwear && headwear !== 'none';
   const wantEw = eyewear && eyewear !== 'none';   /* v2.3.2361 */
-  const wantEs = eyeStyle && eyeStyle !== 'none';   /* v2.3.2642 */
+  const wantEs = eyeStyle && eyeStyle !== 'none';   /* v2.3.2643 */
   /* ═══ v2.3.1815: WORN ARMOUR ═══
      Owner: "Should show armor worn etc if player is wearing it."
 
@@ -443,7 +443,7 @@ export async function drawCharacterPortrait(canvas, opts) {
        reason -- keyed per facing the chosen colour lands on a different tone
        per angle, so the glasses would change shade as the preview rotates. */
     (wantEw && eyewearColor) ? getEyewearRef(eyewear).catch(() => 0) : 0,
-    /* v2.3.2642: the eye style, in the same batch and for the same reason --
+    /* v2.3.2643: the eye style, in the same batch and for the same reason --
        it is a face layer, so a sequential await would show the portrait blink
        its real eyes before the style lands on them.  No recolour reference:
        a style is the colours it was drawn in (eyeStyleCatalog.js). */
@@ -903,7 +903,7 @@ export async function drawCharacterPortrait(canvas, opts) {
     const _capeFront = _capeSplit ? capeHoodImg : capeImg;
     if (_capeFront) ctx.drawImage(_capeFront, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
   }
-  /* v2.3.2642: the eye style -- under the eyewear, for the reason
+  /* v2.3.2643: the eye style -- under the eyewear, for the reason
      eyeStyleCatalog.js gives (glasses go over your eyes whatever your eyes
      are), and this is the third place that single decision has to be spelled
      out: the two child orders in entityRenderer and this draw order.  Plain
@@ -948,7 +948,7 @@ export async function drawCharacterPortrait(canvas, opts) {
  *  wait on the network.  The promise caches above make the subsequent draws
  *  hit memory; expected misses (e.g. hairmask 404s) are harmless. */
 export function prewarmPortraitDirs(opts) {
-  const { hair, facialHair, headwear, eyewear, eyeStyle } = opts || {};   /* v2.3.2361: + eyewear; v2.3.2642: + eyeStyle */
+  const { hair, facialHair, headwear, eyewear, eyeStyle } = opts || {};   /* v2.3.2361: + eyewear; v2.3.2643: + eyeStyle */
   /* v2.3.2516: the cape too.  ANIMATION PRELOADING IS LAW (CLAUDE.md): a cape
      that fetched on the first rotate would pop in over a figure the player is
      already looking at, which is the first-use hitch the law exists to stop.
@@ -967,7 +967,7 @@ export function prewarmPortraitDirs(opts) {
     if (hair && hair !== 'none') loadTraitBest('hair', hair, DIR);
     if (facialHair && facialHair !== 'none') loadTraitBest('facialhair', facialHair, DIR);
     if (eyewear && eyewear !== 'none') loadTraitBest('eyewear', eyewear, DIR);   /* v2.3.2361 */
-    if (eyeStyle && eyeStyle !== 'none') loadTraitBest('eyestyle', eyeStyle, DIR);   /* v2.3.2642 */
+    if (eyeStyle && eyeStyle !== 'none') loadTraitBest('eyestyle', eyeStyle, DIR);   /* v2.3.2643 */
     if (headwear && headwear !== 'none') {
       loadTraitBest('headwear', headwear, DIR);
       loadImage(`/sprites/traits/headwear/${headwear}/hairmask/${DIR}.png?v=${TRAIT_VER}`).catch(() => {});
@@ -1040,7 +1040,7 @@ export function portraitOptsFromPeer(o) {
     hatColor: hatColorTarget(c.hatColor, c.headwear),          /* v2.3.1927 */
     eyewear: c.eyewear,                                        /* v2.3.2361 */
     eyewearColor: eyewearColorTarget(c.eyewearColor, c.eyewear),   /* v2.3.2424 */
-    eyeStyle: c.eyeStyle,                                      /* v2.3.2642 */
+    eyeStyle: c.eyeStyle,                                      /* v2.3.2643 */
     shirt: c.shirt,
     shirtColor: shirtColorTarget(c.shirtColor),
     eyeColor: c.eyeColor,                                      /* v2.3.1930 */

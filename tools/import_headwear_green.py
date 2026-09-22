@@ -188,7 +188,7 @@ DARK = 90            # per-channel ceiling for "near-black"
 # v2.3.2361: categories worn ON THE FACE, placed by the head rather than the
 # shoulders (see the EYEWEAR section of the header).  A future facial-hair
 # import through this tool belongs here too: the crown is visible under a beard.
-# v2.3.2642: eyestyle joins it -- an eye style IS the face, so it is placed by
+# v2.3.2643: eyestyle joins it -- an eye style IS the face, so it is placed by
 # the head for the same reason a pair of glasses is.
 FACE_WORN = ('eyewear', 'eyestyle')
 EYE_MASK = 'src/rendering/eyeMask.json'
@@ -712,7 +712,7 @@ def main():
     # on the same mannequin and share _placeTrait, so the only differences are
     # which folder they land in and the category recorded in meta -- and hair is
     # the thing that gets CLIPPED by a hat, so it never sets clipsHair.
-    ap.add_argument('--category', default='headwear', choices=['headwear', 'hair', 'eyewear', 'eyestyle'])   # v2.3.2361: + eyewear; v2.3.2642: + eyestyle
+    ap.add_argument('--category', default='headwear', choices=['headwear', 'hair', 'eyewear', 'eyestyle'])   # v2.3.2361: + eyewear; v2.3.2643: + eyestyle
     ap.add_argument('--clear-lens', action='store_true',
                     help='ERASE the lens over the eyes, leaving the frame (v2.3.2366): a '
                          'sheet whose lenses came back as a transparency checkerboard')

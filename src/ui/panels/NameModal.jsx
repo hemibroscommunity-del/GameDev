@@ -31,7 +31,7 @@ import { HAIR_COLOR_CATALOG, setHairColor } from '@/rendering/traits/hairColorCa
 import { HAT_COLOR_CATALOG, hatColorsFor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { eyewearColorsFor, eyewearPaints, setEyewearColor } from '@/rendering/traits/eyewearColorCatalog.js';   /* v2.3.2424 */
 import { EYE_COLOR_CATALOG, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
-import { EYE_STYLE_CATALOG, setEyeStyle, eyeStyleHasOptions } from '@/rendering/traits/eyeStyleCatalog.js';   /* v2.3.2642 */
+import { EYE_STYLE_CATALOG, setEyeStyle, eyeStyleHasOptions } from '@/rendering/traits/eyeStyleCatalog.js';   /* v2.3.2643 */
 import { HEADWEAR_CATALOG, headwearIsSolid, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
@@ -173,7 +173,7 @@ export function NameModal(props) {
     eyeColorSel = props.eyeColorSel,
     setEyeColorSel = props.setEyeColorSel,
     headwearSel = props.headwearSel,
-    eyeStyleSel = props.eyeStyleSel,        /* v2.3.2642 */
+    eyeStyleSel = props.eyeStyleSel,        /* v2.3.2643 */
     eyewearSel = props.eyewearSel,          /* v2.3.2361 */
     eyewearColorSel = props.eyewearColorSel,   /* v2.3.2424 */
     joinTown = props.joinTown,
@@ -192,7 +192,7 @@ export function NameModal(props) {
     setHairSel = props.setHairSel,
     setHatColorSel = props.setHatColorSel,
     setHeadwearSel = props.setHeadwearSel,
-    setEyeStyleSel = props.setEyeStyleSel,   /* v2.3.2642 */
+    setEyeStyleSel = props.setEyeStyleSel,   /* v2.3.2643 */
     setEyewearSel = props.setEyewearSel,   /* v2.3.2361 */
     setEyewearColorSel = props.setEyewearColorSel,   /* v2.3.2424 */
     setNameInput = props.setNameInput,
@@ -260,7 +260,7 @@ export function NameModal(props) {
        never added to _TABS either.  Two halves of one wrong shape, and because
        the second half hid the first, nothing threw and it looked shipped.
        Now the same shape as skin: catalog + sel + set, no colors row. */
-    /* ═══ v2.3.2642: THE EYES TAB PICKS A SHAPE **AND** A COLOUR ═══
+    /* ═══ v2.3.2643: THE EYES TAB PICKS A SHAPE **AND** A COLOUR ═══
        Owner, with four mannequin sheets: "I want these as 'eyes' choices --
        Sleepy eyes, one eye, demon eyes, wtf eyes."
 
@@ -332,7 +332,7 @@ export function NameModal(props) {
   /* v2.3.1494: drop disabled recolor-only types from the defs -- activeCat is
      remembered across sessions, so a stale 'skin' would otherwise select a tab
      that is no longer offered. */
-  /* v2.3.2642: 'eyes' is OFF this list.  It was a recolour-only category when
+  /* v2.3.2643: 'eyes' is OFF this list.  It was a recolour-only category when
      the list was written, so switching eye colour off left it with nothing to
      do; it has a sprite picker now, and dropping the whole tab would take the
      four eye styles with it.  The colour row alone goes (`colors:` above reads
@@ -517,7 +517,7 @@ export function NameModal(props) {
     /* Both build rows are up in the grid (see _items).  The block still
        renders — ghosted — because every tab must reserve the same height. */
     ? null
-    : (_colorList && _colorList.length > 0 && (_def.colorsWhenNone || _def.sel !== 'none'))   /* v2.3.2642: the Eyes tab's colour row means the REAL eyes, so 'none' is the pick it matters most on */
+    : (_colorList && _colorList.length > 0 && (_def.colorsWhenNone || _def.sel !== 'none'))   /* v2.3.2643: the Eyes tab's colour row means the REAL eyes, so 'none' is the pick it matters most on */
     /* v2.3.2035: the 'default' entry is FILTERED OUT of the swatch row -- the
        text button above is what picks it now.
        This is the owner's actual complaint, not tidiness.  Every catalog's
@@ -586,7 +586,7 @@ export function NameModal(props) {
       hairSel: hairSel, hairColorSel: hairColorSel,
       facialHairSel: facialHairSel, beardColorSel: beardColorSel,
       headwearSel: headwearSel, hatColorSel: hatColorSel, eyeColor: eyeColorSel,
-      eyeStyleSel: eyeStyleSel,   /* v2.3.2642 */
+      eyeStyleSel: eyeStyleSel,   /* v2.3.2643 */
       eyewearSel: eyewearSel,   /* v2.3.2361 */
       /* v2.3.2424: `eyewearColor`, NOT `eyewearColorSel` -- portraitLook reads
          the former, and a near-miss key here is silent: the designer would
@@ -597,7 +597,7 @@ export function NameModal(props) {
       buildHeight: heightSel, buildFrame: frameSel   /* v2.3.1953 */
     });
   }, [skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel,
-    headwearSel, hatColorSel, eyeColorSel, eyeStyleSel /* v2.3.2642 */, eyewearSel, eyewearColorSel /* v2.3.2424 */,
+    headwearSel, hatColorSel, eyeColorSel, eyeStyleSel /* v2.3.2643 */, eyewearSel, eyewearColorSel /* v2.3.2424 */,
     shirtSel, shirtColorSel, heightSel, frameSel, inkRev]);
   var _stripRef = React.useRef(null);
   var _colorRowRef = React.useRef(null);

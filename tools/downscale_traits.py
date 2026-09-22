@@ -56,7 +56,7 @@ DIRS = ['south', 'southwest', 'east', 'northeast', 'north']
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--to', type=int, default=128)
-    ap.add_argument('--cats', default='headwear,hair,facialhair,shirt,eyewear,eyestyle')   # v2.3.2361: + eyewear; v2.3.2642: + eyestyle
+    ap.add_argument('--cats', default='headwear,hair,facialhair,shirt,eyewear,eyestyle')   # v2.3.2361: + eyewear; v2.3.2643: + eyestyle
     ap.add_argument('--apply', action='store_true')
     ap.add_argument('--stash-hi', action='store_true',
                     help='copy each 256 direction frame to hi/ before halving it, '

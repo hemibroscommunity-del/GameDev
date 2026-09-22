@@ -1,4 +1,4 @@
-/* ═══ v2.3.2642: EYE STYLES — THE FIFTH HEAD TRAIT ═══
+/* ═══ v2.3.2643: EYE STYLES — THE FIFTH HEAD TRAIT ═══
  *
  * Owner, with four mannequin sheets: "I want these as 'eyes' choices —
  * Sleepy eyes, one eye, demon eyes, wtf eyes."
@@ -68,14 +68,14 @@ export const EYE_STYLE_CATALOG = [
      name says, so the name matches what the tile shows rather than arguing
      with it. */
   { id: 'none', name: 'None' },
-  /* v2.3.2642: navy half-lidded eyes with a pale highlight in the inner corner.
+  /* v2.3.2643: navy half-lidded eyes with a pale highlight in the inner corner.
      The subtlest of the four -- it is the same eye the body sheets paint, drawn
      droopy -- and the one that most wants the real eyes underneath hidden,
      which the import measured at 73-81% coverage of the whole eye box on the
      standing bodies.  The remainder is a sliver of the base eye's black top
      edge, which reads as a lash rather than as a second eye. */
   { id: 'sleepy', name: 'Sleepy Eyes' },
-  /* v2.3.2642: one big white cyclops eye with a black pupil, CENTRED between
+  /* v2.3.2643: one big white cyclops eye with a black pupil, CENTRED between
      the two real eyes rather than over either of them.  The importer's eye
      check reports that as 57% / 57% and flags it LOW, which is the eyewear
      heuristic ("the lenses are not over the eyes") firing on a piece that is
@@ -83,13 +83,13 @@ export const EYE_STYLE_CATALOG = [
      belongs.  Symmetric, so unlike the Golden Monocle and the Eye Patch it does
      not swap sides when the character faces west. */
   { id: 'one-eye', name: 'One Eye' },
-  /* v2.3.2642: flames instead of eyes, and the only one of the four that ships
+  /* v2.3.2643: flames instead of eyes, and the only one of the four that ships
      ALL FIVE facings -- the flames stand off the sides of the head, so the
      owner drew them on the three-quarter-back and back cells too, where every
      other face-worn piece in the repo omits north.  100% eye coverage on south
      and east, 94/86% on southwest. */
   { id: 'demon', name: 'Demon Eyes' },
-  /* v2.3.2642: two wide white eyes set further apart than the real ones, pupils
+  /* v2.3.2643: two wide white eyes set further apart than the real ones, pupils
      down in the inner corners.  Drawn on a sheet whose mannequin came back at a
      lighter skin tone -- rgb(227,152,79) against rgb(201,133,77) for the other
      three -- which is why flatkey_drawn_mannequin.py finds the skin rather than

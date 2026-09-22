@@ -39,7 +39,7 @@ import { setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
 import { setArt, sanitizeArt } from '@/rendering/traits/playerArt.js';
 import { setPattern, sanitizePattern } from '@/rendering/traits/patternCatalog.js';
 import { setEyeColor } from '@/rendering/traits/eyeColorCatalog.js';
-import { setEyeStyle } from '@/rendering/traits/eyeStyleCatalog.js';   /* v2.3.2642 */
+import { setEyeStyle } from '@/rendering/traits/eyeStyleCatalog.js';   /* v2.3.2643 */
 
 /* Wire key -> setter.  The keys are the join.data cosmetic abbreviations
    (JOIN_COSMETIC_KEYS in server/src/join.js) because the record is built
@@ -56,7 +56,7 @@ const LOOK_SETTERS = {
   fhc: setFacialHairColor,
   ew: setEyewear,   /* v2.3.2361: the setter refuses an id its catalog lacks, so a retired pair falls back to none */
   ewc: setEyewearColor,   /* v2.3.2424: beside htc, its exact counterpart -- a colour the pair no longer offers renders native (eyewearColorTarget), so a retired swatch cannot show a look the picker refuses */
-  es: setEyeStyle,   /* v2.3.2642: the eye STYLE, not the eye colour ('ec', in the drawings block below).  Same guarantee as 'ew': the setter refuses an id its catalog lacks, so a retired style falls back to the eyes the body sheets paint */
+  es: setEyeStyle,   /* v2.3.2643: the eye STYLE, not the eye colour ('ec', in the drawings block below).  Same guarantee as 'ew': the setter refuses an id its catalog lacks, so a retired style falls back to the eyes the body sheets paint */
   st: setShirt,
   stc: setShirtColor,
   pt: setPants,

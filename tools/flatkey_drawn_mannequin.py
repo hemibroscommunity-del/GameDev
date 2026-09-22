@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.2642: turn a sheet drawn ON THE REAL MANNEQUIN into the flat-keyed sheet
+"""v2.3.2643: turn a sheet drawn ON THE REAL MANNEQUIN into the flat-keyed sheet
 import_headwear_green.py requires.
 
 WHY THIS EXISTS

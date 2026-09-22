@@ -73,7 +73,7 @@ export const PEER_COSMETIC_FIELDS = Object.freeze({
   fhc: 'facialHairColor',
   ew: 'eyewear',             /* v2.3.2361: the eyewear slot, in the table so every road relays it */
   ewc: 'eyewearColor',       /* v2.3.2424: the pair's chosen colour, beside htc/fhc/stc */
-  es: 'eyeStyle',            /* v2.3.2642: the eye-style slot, in the table so every road relays it */
+  es: 'eyeStyle',            /* v2.3.2643: the eye-style slot, in the table so every road relays it */
   st: 'shirt',
   stc: 'shirtColor',
   ec: 'eyeColor',            /* v2.3.1930 */
