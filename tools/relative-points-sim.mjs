@@ -8,7 +8,7 @@
  * WHAT IT ANSWERS.  The owner's ask: "whenever you allocate points, those
  * points carry a lot of weight at or under the current level monster with a
  * pretty steep decay as the combat levels go up (benefit nearly gone after 5
- * combat levels)".  Eight sections, each its own table, in the order the
+ * combat levels)".  Nine sections, each its own table, in the order the
  * design was argued:
  *   1. THE EDGE CURVE — what fraction of a point's value applies at each
  *      level gap (the one rule the whole design is).
@@ -34,6 +34,13 @@
  *      DAMAGE stats changes anything, and anticheat with nothing capped.  It
  *      overturned the recommendation a second time, so §3.1 of the note (not
  *      §3) is the shape this file recommends.
+ *   9. THE FIRST HOUR — levels 3 to 10, where the owner expects players to
+ *      quit.  The climb, the felt unit (a whole HIT, not a percent), what one
+ *      POINT does against what one LEVEL-UP does, what a level-10 character is
+ *      actually fighting in the shipped world, and the double-cap dial.  This
+ *      is the only section that samples the DISPLAYED number rather than the
+ *      roll, because a change that does not move the printed integer is a
+ *      change the player does not see.
  *
  * HOW IT WORKS, and the one rule it follows (balance-sim's, verify-prog3-
  * retune's): IMPORT THE SHIPPED FORMULAS, NEVER RESTATE THEM.  It builds a
