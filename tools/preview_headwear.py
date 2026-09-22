@@ -25,7 +25,7 @@ Run from the repo root:
     python3 tools/preview_headwear.py --ids wizard-hat,mickey-ears --out sheet.png
     [--pose stand|jog]  which pose's bodies to stand the hat on (default both)
     [--frame N]         which frame of that pose (default 0)
-    [--category headwear|hair|eyewear]  which trait folder (v2.3.2361)
+    [--category headwear|hair|eyewear|eyestyle]  which trait folder (v2.3.2361, v2.3.2643)
 
 v2.3.2361: a direction the item does not ship (no png, no anchor -- glasses
 from behind) is drawn as the bare body, so the omission is visible as such
@@ -71,8 +71,18 @@ def pose_trait_mul(meta, pose, d):
     return 0.67 if (pose == 'jog' and d == 'east') else 1.0
 
 
-def place(hat, meta, tops, pose, d, frame, hid=None):
-    """One composited 256 frame: the hat over the body, by _placeTrait's rules."""
+def place(hat, meta, tops, pose, d, frame, hid=None, body_fx=None):
+    """One composited 256 frame: the hat over the body, by _placeTrait's rules.
+
+    v2.3.2645: `body_fx` is an optional callable applied to the 256-space BODY
+    frame before the trait is composited onto it, for the one runtime step that
+    happens below a trait rather than in _placeTrait -- playerSkins._blankEyes,
+    which paints the drawn-in eyes out with skin under an eye style.  A preview
+    that skipped it would show the base eyes through and around the piece, which
+    is the opposite of what the game draws (the header's own rule: reproduce
+    every term, or it is a second opinion rather than a check).  Default None
+    leaves the body exactly as it is on disk, so every existing caller is
+    unchanged."""
     key = f'{pose}-{d}-{frame}'
     if key not in tops:
         return None
@@ -80,7 +90,8 @@ def place(hat, meta, tops, pose, d, frame, hid=None):
         strip0 = Image.open(BODY.format(pose=pose, dir=d)).convert('RGBA')
         fw0 = strip0.height
         bare = strip0.crop((frame * fw0, 0, (frame + 1) * fw0, fw0))
-        return bare if fw0 == FRAME else bare.resize((FRAME, FRAME), Image.NEAREST)
+        bare = bare if fw0 == FRAME else bare.resize((FRAME, FRAME), Image.NEAREST)
+        return body_fx(bare) if body_fx else bare
     strip = Image.open(BODY.format(pose=pose, dir=d)).convert('RGBA')
     # v2.3.1408 stores the walk/action poses at 128 (DISPLAY_DS=2) while stand
     # is still 256; body-tops.json is in 256-space for BOTH, so the small
@@ -89,6 +100,8 @@ def place(hat, meta, tops, pose, d, frame, hid=None):
     body = strip.crop((frame * fw, 0, (frame + 1) * fw, fw))
     if fw != FRAME:
         body = body.resize((FRAME, FRAME), Image.NEAREST)
+    if body_fx:
+        body = body_fx(body)
 
     tune_mul, tune_dy = JOG_EW_HAT_TUNE.get(hid, (1.0, 0.0)) \
         if (pose == 'jog' and d == 'east') else (1.0, 0.0)
@@ -137,7 +150,7 @@ def main():
     ap.add_argument('--out', default='headwear-preview.png')
     ap.add_argument('--pose', default='stand,jog')
     ap.add_argument('--frame', type=int, default=0)
-    ap.add_argument('--category', default='headwear', choices=['headwear', 'hair', 'eyewear'])   # v2.3.2361
+    ap.add_argument('--category', default='headwear', choices=['headwear', 'hair', 'eyewear', 'eyestyle'])   # v2.3.2361; v2.3.2643: + eyestyle
     args = ap.parse_args()
 
     ids = [i.strip() for i in args.ids.split(',') if i.strip()]

@@ -58,6 +58,12 @@ import {
    were. */
 import { setProg3Enabled, setProg3XEnabled, setProg3SharedEnabled, prog3CritPct, prog3CritMult, prog3CritFlat, PROG3_LEGACY_ATK } from '../../src/data/prog3.js'; /* v2.3.2218; v2.3.2592 */
 import { createGatherNode as clientGatherNode, WOODCUTTING_TIERS as CLIENT_WOOD_TIERS } from '../../src/data/lifeSkills.js';
+/* v2.3.2652: prop blockers — the worker's first piece of world geometry. */
+import { ZONE_PROPS as SRV_ZONE_PROPS, attackBlocked as srvAttackBlocked } from '../src/props.js';
+import {
+  WORLD_PROPS as CLIENT_WORLD_PROPS, propsForZone as clientPropsForZone,
+  propFootprint as clientPropFootprint, attackBlocked as clientAttackBlocked,
+} from '../../src/data/worldProps.js';
 import { FISHING_TIERS } from '../../src/data/lifeSkills.js';
 import { AMULET_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP, GEM_DROP_RATES, GEM_EXTRACT_BASE_COST } from '../../src/data/items.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../src/data/monsterVariants.js';
@@ -1070,6 +1076,66 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     /bt-zone-header__title/.test(header) && /onPointerDown=\{holdStart\}/.test(header), {});
   check('devkit: ...and the panel is still what it opens',
     /DevPanel\.jsx/.test(header), {});
+}
+
+// ── PROP BLOCKERS: the worker's copy must match the client's ──
+/* v2.3.2652: props block attacks, which is the first rule the worker has ever
+   had that needs to know where the scenery is.  server/src/props.js is a
+   hand-copied mirror of worldProps.js for the usual reason (the worker bundle
+   imports nothing from src/), and this is the guard that stops it drifting --
+   the same treatment the spawn tables got after v2.3.1147.
+   A drifted footprint does not crash: it silently blocks a shot the client
+   claimed, or lets one through the client refused, which is invisible in play
+   and infuriating to debug. */
+{
+  const cliZones = [...new Set(CLIENT_WORLD_PROPS.map((p) => p.zone))];
+  const srvZones = Object.keys(SRV_ZONE_PROPS);
+  check('props: the worker knows about the same zones the client places props in',
+    cliZones.length === srvZones.length && cliZones.every((z) => srvZones.includes(z)),
+    { cliZones, srvZones });
+
+  for (const z of cliZones) {
+    /* The client's own filter decides what is real: propsForZone applies the
+       town mapV gate, and only props WITH a footprint block anything. Deriving
+       the expectation from the same functions the game calls is the point --
+       a list rebuilt by hand here would be a third copy to keep in sync. */
+    const want = clientPropsForZone(z).filter((p) => clientPropFootprint(p))
+      .map((p) => ({ id: p.id, x: p.x, y: p.y, blockW: p.blockW, blockD: p.blockD }))
+      .sort((a, b) => (a.id < b.id ? -1 : 1));
+    const got = (SRV_ZONE_PROPS[z] || [])
+      .map((p) => ({ id: p.id, x: p.x, y: p.y, blockW: p.blockW, blockD: p.blockD }))
+      .sort((a, b) => (a.id < b.id ? -1 : 1));
+    check(`props: ${z} blockers match the client exactly`,
+      JSON.stringify(want) === JSON.stringify(got), { want, got });
+  }
+
+  /* And the GEOMETRY agrees, not just the table. Two identical tables read by
+     two different slab tests would still disagree, and the failure mode is the
+     same invisible one. Sampled across the frost blockers rather than
+     re-deriving the maths, which would only assert the test's own arithmetic. */
+  {
+    const probes = [
+      ['frost', 430, 480, 430, 660, true],    /* straight through the rock ridge */
+      ['frost', 430, 480, 430, 520, false],   /* stops short of it */
+      ['frost', 100, 100, 200, 200, false],   /* open ice */
+      ['frost', 600, 200, 600, 320, true],    /* through the ice mound */
+      ['frost', 430, 550, 430, 700, false],   /* starts INSIDE the ridge: never blocks */
+      /* Clean through the mayor's house: its box is x 774..1228, y 416..622,
+         so both endpoints must sit OUTSIDE it or the inside-endpoint rule
+         (correctly) declines to block. */
+      ['town', 1001, 300, 1001, 700, true],
+      ['town', 1001, 500, 1001, 700, false],  /* starts inside it: never blocks */
+    ];
+    let agree = true; const disagreements = [];
+    for (const [z, x0, y0, x1, y1, expect] of probes) {
+      const srv = srvAttackBlocked(z, x0, y0, x1, y1);
+      const cli = clientAttackBlocked(z, x0, y0, x1, y1);
+      if (srv !== cli || srv !== expect) {
+        agree = false; disagreements.push({ z, x0, y0, x1, y1, expect, srv, cli });
+      }
+    }
+    check('props: client and worker resolve the same lines the same way', agree, disagreements);
+  }
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

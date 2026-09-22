@@ -142,7 +142,7 @@ export async function initPixiRenderer(canvas) {
      south of the player are re-parented into it each frame so a building can
      occlude the body -- see rendering/depthSort.js for why the split exists
      rather than the body simply joining the sorted layer. */
-  const entityRenderer = new EntityRenderer(layers.entities, layers.player, layers.monsterUi, layers.gestureFront, layers.gatherNodesFront);
+  const entityRenderer = new EntityRenderer(layers.entities, layers.player, layers.monsterUi, layers.gestureFront, layers.gatherNodesFront, layers.foreground); /* v2.3.2655: + the near-camera layer */
   const effectsRenderer = new EffectsRenderer(layers);
   /* v2.3.221: FPS counter only mounts with ?dev=1. */
   const _devUI = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search);
@@ -640,6 +640,14 @@ export async function initPixiRenderer(canvas) {
           ? +(pd._eyewearSprite.getBounds().height).toFixed(2) : 0,
         eyewearScaleRatio: pd._eyewearSprite && pd._eyewearSprite.visible && sb.scale.y
           ? +(Math.abs(pd._eyewearSprite.scale.y) / Math.abs(sb.scale.y)).toFixed(5) : 0,
+        /* v2.3.2643: the eye style, by the same two measures as the eyewear
+           above it -- it is the other face layer, and the one most likely to
+           show a placement slip, because a sprite that is 2px off the eye row
+           reads as a second pair of eyes rather than as a nudged hat. */
+        eyeStylePx: pd._eyeStyleSprite && pd._eyeStyleSprite.visible
+          ? +(pd._eyeStyleSprite.getBounds().height).toFixed(2) : 0,
+        eyeStyleScaleRatio: pd._eyeStyleSprite && pd._eyeStyleSprite.visible && sb.scale.y
+          ? +(Math.abs(pd._eyeStyleSprite.scale.y) / Math.abs(sb.scale.y)).toFixed(5) : 0,
       };
     },
     /* v2.3.1882: where the block pieces sit in the PLAYER DISPLAY'S OWN local
