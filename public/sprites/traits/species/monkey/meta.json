@@ -1,0 +1,88 @@
+{
+  "category": "species",
+  "fullFrame": true,
+  "note": "Imported by tools/import_headwear_green.py from a sheet whose person was painted flat #00FF00. The hat is simply everything that is neither the magenta backdrop nor the green person, so no head can leak into the frame and no colour heuristic can eat a hat pixel. The green silhouette also registers the cell against the mannequin on the WHOLE body rather than the torso alone. anchors are the hat bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. v2.3.2648: species anatomy (ears, muzzle). Face-worn for PLACEMENT, but deliberately NOT seated onto the eyes the way eyewear is: a muzzle sits below them and ears beside them, so maximising eye coverage would drag the piece onto the face. The import checks the opposite instead -- that the eyes stay clear. v2.3.2361: placed BY THE HEAD -- the vertical axis is calibrated on the drawn crown and cut line against the mannequin's, so a sheet returned at a different aspect still lands the piece where it was drawn on the face; the horizontal axis and the width come from the shoulder fit. Checked against the iris row the game paints (eyeMask.json).",
+  "bboxes": {
+    "south": [
+      95,
+      6,
+      66,
+      31
+    ],
+    "southwest": [
+      95,
+      6,
+      67,
+      30
+    ],
+    "east": [
+      101,
+      6,
+      54,
+      30
+    ],
+    "northeast": [
+      97,
+      6,
+      62,
+      21
+    ],
+    "north": [
+      96,
+      6,
+      64,
+      18
+    ]
+  },
+  "anchors": {
+    "south": [
+      128,
+      6
+    ],
+    "southwest": [
+      129,
+      6
+    ],
+    "east": [
+      128,
+      6
+    ],
+    "northeast": [
+      128,
+      6
+    ],
+    "north": [
+      128,
+      6
+    ]
+  },
+  "crownNudge": {
+    "south": [
+      1,
+      14
+    ],
+    "southwest": [
+      0,
+      22
+    ],
+    "east": [
+      1,
+      18
+    ],
+    "northeast": [
+      -1,
+      20
+    ],
+    "north": [
+      0,
+      16
+    ]
+  },
+  "scale": {
+    "south": 1,
+    "southwest": 1,
+    "east": 1,
+    "northeast": 1,
+    "north": 1
+  }
+}

@@ -55,8 +55,35 @@
  * Reads PNGs through tools/png.mjs, never a 2D canvas: TRAPS §53, a canvas
  * backing store is premultiplied and cannot round-trip these edges.
  *
+ * ── --merge, for green-silhouette sheets (v2.3.2648) ──
+ * A sheet for import_headwear_green.py paints the PERSON flat #00FF00 and leaves
+ * the piece in colour. Generators do this imperfectly in one specific way: they
+ * repaint the fur and forget the eyes, so the eye WHITES come back white inside
+ * a green head. Left alone they are "neither magenta nor green" and the
+ * importer takes them as part of the piece -- two white patches floating over
+ * the game's own eyes. `--merge "#ffffff>#00ff00"` folds one palette colour
+ * into another AT THE VOTE, so an eye white counts as a green vote rather than
+ * being repainted afterwards, and the block it sits in resolves as person.
+ *
  *   node tools/clean-generated-sheet.mjs --in gen.png --mannequin m.png --out clean.png
  *   ... [--palette "#1f0d1c,#573618,#492b18,#957459,#ffffff"] [--upscale 5] [--report]
+ *   ... [--merge "#ffffff>#00ff00"]   (both colours must be in the palette)
+ *   ... [--key "#00ff00"]             (a person key: see below)
+ *
+ * ── --key: A BLEND OF TWO KEYS IS NOT PIECE (v2.3.2648) ──
+ * Where the green person meets the magenta backdrop, the re-render anti-aliases
+ * the edge into blends around rgb(128,128,128) -- and the palette colour nearest
+ * to that grey is not green or magenta but the muzzle TAN (#957459, 46 away,
+ * against 221 to either key). Nearest-colour snapping therefore minted tan
+ * wherever a block straddled the silhouette and the blends out-voted both
+ * keys: 21 isolated tan pixels on the monkey sheet, which the importer then
+ * carried into every facing as specks -- 6 of them on south alone, one of them
+ * the piece's topmost pixel and therefore its bbox anchor.
+ * The fix is to treat the whole LINE between the two keys as key. A sample
+ * nearer to the backdrop<->key segment than to any other palette colour
+ * resolves to whichever end it lies closer to, and can never become piece.
+ * Real piece colours sit well off that line (the tan is 45 from it, black 208),
+ * so nothing drawn is affected; only the edge between two keys is.
  */
 import fs from 'node:fs';
 import { decode, encode } from './png.mjs';
@@ -75,6 +102,31 @@ const PALETTE = arg('--palette', '#1f0d1c,#573618,#492b18,#957459,#ffffff')
   });
 const FULL = [BG, ...PALETTE];
 
+/* --key: the person's key colour. Must be in the palette; the backdrop is magenta. */
+const KEY_ARG = arg('--key', null);
+let KEY_IDX = -1;
+if (KEY_ARG) {
+  const kc = (() => { const m = KEY_ARG.trim().replace('#', '').toLowerCase();
+    return [parseInt(m.slice(0, 2), 16), parseInt(m.slice(2, 4), 16), parseInt(m.slice(4, 6), 16)]; })();
+  KEY_IDX = FULL.findIndex((f) => f[0] === kc[0] && f[1] === kc[1] && f[2] === kc[2]);
+  if (KEY_IDX <= 0) { console.error(`--key ${KEY_ARG}: must be in the palette (and not magenta)`); process.exit(1); }
+}
+
+/* --merge "FROM>TO[,FROM>TO...]": a palette colour that should vote as another. */
+const hex = (s) => { const m = s.trim().replace('#', '').toLowerCase();
+  return [parseInt(m.slice(0, 2), 16), parseInt(m.slice(2, 4), 16), parseInt(m.slice(4, 6), 16)]; };
+const idxOf = (c) => FULL.findIndex((f) => f[0] === c[0] && f[1] === c[1] && f[2] === c[2]);
+const MERGE = FULL.map((_, i) => i);
+for (const pair of (arg('--merge', '') || '').split(',').filter(Boolean)) {
+  const [from, to] = pair.split('>').map(hex);
+  const a = idxOf(from), b = idxOf(to);
+  if (a < 0 || b < 0) {
+    console.error(`--merge ${pair}: both colours must be in the palette (magenta is #ff00ff)`);
+    process.exit(1);
+  }
+  MERGE[a] = b;
+}
+
 /* Background is the magenta field -- however smeared the re-render left it --
    AND the near-white letterboxing an image model pads its canvas with. The
    white bars are what made the first run of this tool sample a full-width band
@@ -88,6 +140,16 @@ const near = (r, g, b) => {
   for (let i = 0; i < FULL.length; i++) {
     const d = (FULL[i][0] - r) ** 2 + (FULL[i][1] - g) ** 2 + (FULL[i][2] - b) ** 2;
     if (d < bd) { bd = d; bi = i; }
+  }
+  if (KEY_IDX > 0 && bi !== 0 && bi !== KEY_IDX) {
+    /* distance to the backdrop<->key segment; nearer than the winner = key */
+    const K = FULL[KEY_IDX], ux = K[0] - BG[0], uy = K[1] - BG[1], uz = K[2] - BG[2];
+    const L2 = ux * ux + uy * uy + uz * uz;
+    let t = ((r - BG[0]) * ux + (g - BG[1]) * uy + (b - BG[2]) * uz) / L2;
+    t = Math.max(0, Math.min(1, t));
+    const qx = BG[0] + t * ux, qy = BG[1] + t * uy, qz = BG[2] + t * uz;
+    const ds = (r - qx) ** 2 + (g - qy) ** 2 + (b - qz) ** 2;
+    if (ds < bd) return t < 0.5 ? 0 : KEY_IDX;
   }
   return bi;
 };
@@ -202,7 +264,7 @@ for (let k = 0; k < 5; k++) {
         for (let x = ax; x < bx && x < gen.width; x++) {
           const i = (y * gen.width + x) * 4;
           if (gen.data[i + 3] < 24) { tally[0]++; continue; }
-          tally[near(gen.data[i], gen.data[i + 1], gen.data[i + 2])]++;
+          tally[MERGE[near(gen.data[i], gen.data[i + 1], gen.data[i + 2])]]++;
         }
       }
       let bi = 0;
