@@ -1752,7 +1752,7 @@ export function updateSlimeProjectiles(S) {
             var _ppx = proj.x, _ppy = proj.y;
             proj.x += Math.cos(proj.ang) * proj.speed * _sdt;
             proj.y += Math.sin(proj.ang) * proj.speed * _sdt;
-            /* v2.3.2656: burst against a prop instead of flying through it.
+            /* v2.3.2657: burst against a prop instead of flying through it.
                Owner: "snowmen are still throwing snowballs through the props."
                The server half of that (the damage) is fixed at the impact tick;
                this is the half you can SEE, and without it the fix reads as

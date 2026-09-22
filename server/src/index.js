@@ -1596,7 +1596,7 @@ export class GameRoom {
        which is exactly the endpoint the line has to be measured from, and it is
        already computed for the block arc below.
 
-       v2.3.2656 -- READ THIS BEFORE TRUSTING THE LINE ABOVE.  The original
+       v2.3.2657 -- READ THIS BEFORE TRUSTING THE LINE ABOVE.  The original
        version of this comment claimed atkX/atkY was "the thrower for a ball,
        the monster for a swing", and that the snowball case measured from the
        RELEASE point.  That was wrong, and wrong in the direction that hides
@@ -1953,7 +1953,7 @@ export class GameRoom {
              believed they took. */
           const _hit = _tps && (typeof _ptx !== 'number' ||
             Math.hypot((_tps.x || 0) - _ptx, (_tps.y || 0) - _pty) <= this.SNOWBALL_HIT_RADIUS);
-          /* ═══ v2.3.2656: A ROCK IN THE WAY STOPS THE BALL TOO ═══
+          /* ═══ v2.3.2657: A ROCK IN THE WAY STOPS THE BALL TOO ═══
              Owner: "snowmen are still throwing snowballs through the props."
              They were, and the reason is a bad assumption in v2.3.2652.
 
@@ -1985,7 +1985,7 @@ export class GameRoom {
              dodge and the harvester shield: the client already draws the ball
              bursting against the prop (projectiles.js), which is the feedback.
 
-             Pre-v2.3.2656 balls already in the air across a deploy carry no
+             Pre-v2.3.2657 balls already in the air across a deploy carry no
              _projFrom*, so fall back to the thrower's position: slightly wrong
              for one flight, rather than throwing on a missing field. */
           const _pfx = typeof m._projFromX === 'number' ? m._projFromX : m.x;

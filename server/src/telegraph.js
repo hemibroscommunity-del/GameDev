@@ -571,7 +571,7 @@ export const telegraphMethods = {
          (the v2.3.1686 rule, unchanged). */
       m._projTx = ps.x;
       m._projTy = ps.y;
-      /* v2.3.2656: ...and frozen the same way, where it was thrown FROM.
+      /* v2.3.2657: ...and frozen the same way, where it was thrown FROM.
          The ball's flight line is release -> aim point, and BOTH ends have to
          be remembered for anything to test it later: the monster keeps walking
          during the ~900ms flight, so m.x/m.y at impact is not where the ball

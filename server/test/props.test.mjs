@@ -118,7 +118,7 @@ check('a monster attacking THROUGH the ridge lands nothing', throughRidge === 0,
 /* ...and the refusal is silent: no monster_attack on the wire, matching the
    dodge and the harvester shield. A "0" would be a number the client has to
    explain. */
-/* v2.3.2656: read the EVENT BUFFER, not ws.sent.  This assertion used to
+/* v2.3.2657: read the EVENT BUFFER, not ws.sent.  This assertion used to
    filter ws.sent, which the tick never writes to -- the buffer is flushed on a
    later broadcast -- so it passed whether or not an event was pushed and could
    not fail.  Caught while proving the new ranged assertions non-vacuous: the
@@ -177,7 +177,7 @@ check('on open ground nothing is blocked', openGround > 0, { openGround });
     unknown.x === 10 && unknown.y === 10, unknown);
 }
 
-/* ── 4. THE THROWN BALL (v2.3.2656) ──
+/* ── 4. THE THROWN BALL (v2.3.2657) ──
    Owner: "snowmen are still throwing snowballs through the props."  They were.
 
    Section 2 above drives _monsterStrikePlayer DIRECTLY, passing an attacker
@@ -263,7 +263,7 @@ check('on open ground nothing is blocked', openGround > 0, { openGround });
   /* A ball in the air across a deploy carries no _projFrom*; it must fall back
      to the thrower rather than throwing on a missing field. */
   const legacyClear = throwBall(null, null, 900, 900, { px: 900, py: 900, mx: 900, my: 820 });
-  check('a pre-2656 ball with no release point falls back to the thrower (clear)',
+  check('a pre-2657 ball with no release point falls back to the thrower (clear)',
     legacyClear > 0, { legacyClear });
   const legacyBlocked = throwBall(null, null, 430, 640, { mx: 430, my: 480 });
   check('...and is blocked when THAT line crosses the ridge',
