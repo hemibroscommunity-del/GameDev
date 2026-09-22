@@ -85,5 +85,14 @@
     "northeast": 1,
     "north": 1
   },
-  "earCover": "v2.3.2650: southwest/northeast carry fur painted over the bro's own ear by tools/species-cover-ears.mjs, baked in Monkey Brown (85,56,23) -- the species must pin that skin. Re-run the tool after any re-import."
+  "earCover": "v2.3.2650: southwest/northeast carry fur painted over the bro's own ear by tools/species-cover-ears.mjs, baked in Monkey Brown (85,56,23) -- the species must pin that skin. Re-run the tool after any re-import.",
+  "poseNudge": {
+    "jog": {
+      "east": [
+        -3,
+        0
+      ]
+    }
+  },
+  "poseNudgeNote": "v2.3.2651: poseNudge.jog.east [-3,0] pulls the whole piece back 3px while jogging east/west -- the muzzle overhung the face by 3-4px there (2px at stand). Measured assuming the species layer is placed like eyewear (hairPoseTune: jog-east scale 0.67*1.40). Check with tools/species_contact_sheet.py."
 }
