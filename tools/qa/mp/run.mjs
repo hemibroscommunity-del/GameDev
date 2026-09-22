@@ -225,7 +225,6 @@ const SCENARIOS = {
   townprops: () => import('./mp-townprops.mjs'), /* v2.3.1775: anvil, stall, the man at it */
   uisfx: () => import('./mp-uisfx.mjs'), /* v2.3.2637: the owner's three sounds decode */
   uisfx2: () => import('./mp-uisfx2.mjs'), /* v2.3.2638: the sound actually FIRES */
-  ptsshot: () => import('./mp-ptsshot.mjs'),
   logout: () => import('./mp-logout.mjs'), /* v2.3.1840: log out lands on the login door */
   southsword: () => import('./mp-southsword.mjs'), /* v2.3.1839: the south idle blade off his face */
   tutspecial: () => import('./mp-tutspecial.mjs'), /* v2.3.1838: a REAL special, shield slung not held */

@@ -98,6 +98,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState && window._gameState.current;
     return S && S.rpg && S.rpg.prog3 && S.rpg.prog3.pool ? S.rpg.prog3.pool.unspent : null;
   });
+  /* ═══ v2.3.2642: SAY WHICH LANE, DO NOT ASSUME IT ═══
+     The old screen made this explicit for free: the scenario tapped the SWORD
+     card, so the Luck row it then pressed could only be sword's. The owner's
+     grid shows ONE lane's six stats at a time and defaults to the weapon in
+     hand, which this fixture sets client-side -- so the default can legitimately
+     be a different lane, and it was: the pill under test read "Luck for STAFF,
+     0 of 10", i.e. a lane with no weapon and no points. That is what produced
+     "1.0% -> 1.3%" and "DPS — (equip a weapon)", and it was the test asking the
+     wrong cell rather than the cell answering wrongly.
+     So the lane is now SELECTED, by tapping the weapons head until it reads
+     sword -- the grid's own control, the way a player would. */
+  await P.page.evaluate(async () => {
+    const tap = (el) => { for (const t of ['pointerdown', 'pointerup'])
+      el.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerId: 7, pointerType: 'touch' })); };
+    for (let i = 0; i < 4; i++) {
+      const head = document.querySelector('[data-prog3-grid] [data-prog3-lane]:not([data-prog3-lane="shared"])');
+      if (!head) return;
+      if (head.getAttribute('data-prog3-lane') === 'sword') return;
+      tap(head);
+      await new Promise((r) => setTimeout(r, 160));
+    }
+  });
+  await P.page.waitForTimeout(320);
+
   const pressed = await P.page.evaluate(() => {
     /* v2.3.2642: the Luck CELL of the owner's grid.  There is no card to
        scope by any more -- all thirteen stats are on one screen, and the
