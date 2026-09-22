@@ -25,6 +25,25 @@ copy of the placement maths would drift away from the renderer, and the tile
 would stop matching the character (preview_headwear.py's own header makes the
 same argument).
 
+v2.3.2645: AND IT ERASES THE BASE EYE FIRST, the way the game does.  Owner:
+"The 'one eye' thumbnail in the trait picker is a bit messed up."  It was: the
+first cut composited the piece over the body sheet exactly as it ships, so the
+character's own painted eyes were still under it.  The One Eye is a single
+shape centred BETWEEN them, so neither of them was covered — their white ran out
+either side of the piece and joined it into one wide band across the face, and
+their dark top edges sat on it.  What the tile showed was a smear over the nose;
+what the game shows is one eye, because the body bake paints the drawn-in eyes
+out with sampled skin under a style (playerSkins._blankEyes, regions from
+eyeBlankMask.json).  `blank_eyes` below is that step, and it is applied through
+place(body_fx=...) so the placement maths stays in one file.
+
+v2.3.2645: it also composites the 256px `hi/` art rather than the 128px shipped
+frame, for the same reason characterPortrait does (v2.3.1579).  The tile is an
+UPSCALE of a head that is 64 px wide in the body sheet, so feeding it the
+downscaled art throws away the resolution the tile then tries to magnify: the
+One Eye's pupil is 4 px at 256 and a grey smudge at 128.  Falls back to the
+shipped frame if a piece has no hi/.
+
 Run from the repo root:
     python3 tools/ui/make_eyestyle_thumbs.py                 # every id in the folder
     python3 tools/ui/make_eyestyle_thumbs.py --ids demon,wtf
@@ -43,6 +62,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 TRAITS = os.path.join(REPO, 'public/sprites/traits/eyestyle')
 TOPS = os.path.join(REPO, 'public/sprites/player/body-tops.json')
 ANCHORS = os.path.join(REPO, 'public/sprites/player/body-anchors.json')
+EYE_BLANK = os.path.join(REPO, 'src/rendering/eyeBlankMask.json')
 
 _spec = importlib.util.spec_from_file_location(
     'preview_headwear', os.path.join(REPO, 'tools/preview_headwear.py'))
@@ -53,6 +73,47 @@ TILE = 128           # what the picker renders the tile at; the grid scales it d
 PAD_X = 6            # 256-space px of skin kept either side of the head
 PAD_TOP = 4
 PAD_BOT = 2
+
+
+def blank_eyes(im, boxes):
+    """Paint the body's own eyes out with skin — the tile's copy of
+    playerSkins._blankEyes, term for term.
+
+    Same shape as the renderer's: sample the face in the two rings just outside
+    each box (2 and 3 px out, never the 1 px ring, which is the eye's own
+    anti-aliasing and fills a shade too dark), take a per-channel MEDIAN so one
+    stray sample cannot drag the fill, and paint every non-transparent pixel of
+    the box with it.  The colour is sampled rather than tabled for the reason
+    the mask's own header gives: the player picks a skin tone at runtime and no
+    table would stay in step with it.  Boxes come from eyeBlankMask.json, which
+    is already in the 256-space these stand frames are in.
+    """
+    a = np.array(im).astype(int)
+    h, w, _ = a.shape
+    for bx, by, bw, bh in boxes:
+        x0, x1 = bx, min(w, bx + bw)
+        y0, y1 = by, min(h, by + bh)
+        if x1 <= x0 or y1 <= y0:
+            continue
+        acc = []
+
+        def vote(x, y):
+            if 0 <= x < w and 0 <= y < h and a[y, x, 3] >= 200:
+                acc.append(a[y, x, :3])
+
+        for ring in (2, 3):
+            for x in range(x0 - ring, x1 + ring):
+                vote(x, y0 - ring)
+                vote(x, y1 + ring - 1)
+            for y in range(y0 - ring, y1 + ring):
+                vote(x0 - ring, y)
+                vote(x1 + ring - 1, y)
+        if len(acc) < 8:                     # too little face round it to be sure
+            continue
+        fill = np.median(np.array(acc), axis=0).round().astype(int)
+        box = a[y0:y1, x0:x1]
+        box[box[:, :, 3] >= 40, :3] = fill   # never paint into transparency
+    return Image.fromarray(a.astype(np.uint8))
 
 
 def head_crop(d):
@@ -77,13 +138,16 @@ def tile_for(tid, d):
         return None
     art = {}
     for dd in _pv.DIRS:
-        p = os.path.join(folder, f'{dd}.png')
+        hi = os.path.join(folder, 'hi', f'{dd}.png')
+        p = hi if os.path.exists(hi) else os.path.join(folder, f'{dd}.png')
         art[dd] = Image.open(p).convert('RGBA') if os.path.exists(p) else None
     tops = json.load(open(TOPS))
+    boxes = json.load(open(EYE_BLANK)).get(f'stand-{d}', [[]])[0]
     cwd = os.getcwd()
     os.chdir(REPO)                      # place() reads the body sheets by relative path
     try:
-        full = _pv.place(art, meta, tops, 'stand', d, 0, hid=tid)
+        full = _pv.place(art, meta, tops, 'stand', d, 0, hid=tid,
+                         body_fx=(lambda im: blank_eyes(im, boxes)) if boxes else None)
     finally:
         os.chdir(cwd)
     if full is None:
