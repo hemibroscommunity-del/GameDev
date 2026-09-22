@@ -198,7 +198,8 @@ Two protocol versions coexist; both must keep working:
     loaded ALL zone-specific art up front (12 zone maps ~48MB + every
     monster variant + the frost snowman), stacking ~60MB onto the
     startup peak for assets you don't use in the zone you're standing in.
-    Those THREE categories now load PER-ZONE via `preloadZoneAssets(zoneId)`
+    Those THREE categories (FIVE since v2.3.2596's zone banner and
+    v2.3.2644's decor props) now load PER-ZONE via `preloadZoneAssets(zoneId)`
     (`preloadAnimations.js`) behind a brief per-zone loading overlay on
     zone entry (`src/game/zoneTransitions.js`, the `S._zoneLoading` gate),
     and the previous zone's ~4MB map is freed on exit (`freeZoneMap`,
@@ -210,7 +211,12 @@ Two protocol versions coexist; both must keep working:
     — still preloads up front on the gate. If you add a new PER-ZONE
     system, register it in `preloadZoneAssets` (not the global manifest)
     and free it on exit; anything global still registers in
-    `preloadWorldAnimations`.
+    `preloadWorldAnimations`. **And whatever DISPLAYS it must drop its
+    texture reference on the way out, not merely hide it** — v2.3.2644:
+    the prop sprites hid but kept `spr.texture`, harmless while all prop
+    art was global, and once decor was actually freed the second visit to
+    a zone rendered a destroyed source ("Cannot read properties of null
+    (reading 'alphaMode')", caught by mp-zonechurn).
 - Code comments carry version tags (e.g. `v2.3.694:`) explaining WHY a
   change exists, often with incident history. Match this style; the
   comments are the project's institutional memory.

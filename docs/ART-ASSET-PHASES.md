@@ -1,4 +1,4 @@
-# BroTown Environment Art — Phased Asset Plan (v2.3.2642; §4 and §6 corrected v2.3.2643)
+# BroTown Environment Art — Phased Asset Plan (v2.3.2642; §4/§6 corrected v2.3.2643; Phase 1 shipped v2.3.2644)
 
 A commissioning plan for environment art: what to ask a generator for, at
 what size, in what order, and which of it the renderer can actually put on
@@ -91,12 +91,14 @@ large pieces, or a mix of large and small. It is a per-zone figure because
 only one zone's art is resident at a time (`preloadZoneAssets` /
 `freeZoneAssets`), so the cap is also the peak.
 
-**Anything per-zone must load per-zone.** Today prop art does not:
-`propSpriteSources()` feeds the *global* startup gate via
-`src/rendering/npcSprites.js:84`, so a frost prop added naively downloads on
-every player's loading screen and stays resident for the life of the page.
-Fixing that is Phase 1 code work (§7), not an art constraint — but it is the
-reason no zone decor exists yet.
+**Anything per-zone must load per-zone.** Until v2.3.2644 prop art did not:
+`propSpriteSources()` handed the whole table to the *global* startup gate, so
+a frost prop added the obvious way would have downloaded on every player's
+loading screen and stayed decoded for the life of the page. It now returns
+only the resident hubs' props; everything else goes through
+`zoneDecorSources(zoneId)` → `loadZoneDecor` / `freeZoneDecor`, awaited behind
+the per-zone overlay and released on exit. **The split is derived from the
+zone, not flagged per prop** — a flag is a thing to forget.
 
 ## 3. The split that decides whether art is usable: free-standing vs cropped
 
@@ -305,7 +307,7 @@ The size table, the RGBA cap, the free-standing test and the brief template
 below. Plus `tools/import-decor-art.mjs`, so a delivered asset is measured
 rather than eyeballed.
 
-### Phase 1 — per-zone decor, and the first free-standing masses
+### Phase 1 — per-zone decor, and the first free-standing masses · **shipped v2.3.2644**
 
 **Code first, and it is small.** Per-zone decor loading does not exist:
 prop art rides the global startup gate (§2). It needs
@@ -318,11 +320,28 @@ prop art rides the global startup gate (§2). It needs
   and the zone banner already work,
 - `propSpriteSources()` split so only global props reach the startup gate.
 
-**The art for frost is already in hand** — batch 2's five masses plus batch
-1's ridge, six assets at 2.41 MB of the 6.00 MB cap, sized and with
-`blockW`/`blockD` starting values (§6). So Phase 1 for frost is now purely
-the code above plus a placement pass. Other zones want the same shape:
-free-standing only, 4–6 pieces, inside the cap.
+**Frost shipped at v2.3.2644** — all six placed, 2.41 MB of the 6.00 MB cap.
+`zoneDecorSources(zoneId)` splits per-zone art off the startup gate,
+`loadZoneDecor` / `freeZoneDecor` (`npcSprites.js`) load and release it
+through `loadTracked` / `unloadBundle`, and both are wired into
+`preloadZoneAssets` / `freeZoneAssets`. `tools/qa/mp/mp-zonedecor.mjs` pins
+the four properties that matter: none of it is resident in town, all six draw
+in frost at their declared `worldH`, they sort on the correct side of the
+player, and leaving frost releases them.
+
+One thing this cost, recorded because the next per-zone art system will hit
+it too: **a display that outlives its texture must drop the reference, not
+just hide.** `_updateProps` hid a departed zone's props but kept
+`spr.texture`, which was harmless while every prop was town's and global.
+With decor actually being freed, re-entering frost found a sprite still
+holding the destroyed texture — and because both the re-assign and `visible`
+are guarded on `texture === Texture.EMPTY`, it turned itself back on and
+rendered a null source (`mp-zonechurn`, second lap). Resetting to
+`Texture.EMPTY` on the way out closes it.
+
+Other zones want the same shape: free-standing only, 4–6 pieces, inside the
+cap. The code is now zone-agnostic, so a second biome is a data change plus
+art.
 
 **Placement caution:** every prop blocks, since v2.3.2073 ("make sure the
 objects are unwalkable"), so each one adds a `blockW`/`blockD` collision box

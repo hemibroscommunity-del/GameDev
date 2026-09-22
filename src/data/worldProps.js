@@ -430,7 +430,107 @@ export const WORLD_PROPS = [
     action: 'bank', label: 'BANK',
   },
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     v2.3.2644: FROST RIDGE DECOR — the first props outside town
+     ═══════════════════════════════════════════════════════════════════════
+     Six free-standing masses, commissioned and measured under
+     docs/ART-ASSET-PHASES.md.  They exist to be WALKED BEHIND: dynamic
+     occlusion shipped at v2.3.2633 (depthSort.js) and until now the only
+     things in the world that could occlude anybody were nine town buildings,
+     so nine-tenths of the game got nothing out of it.
+
+     ── WHY THESE SIZES LOOK SMALL ──
+     A pine here is 160 world px against a 120 world px person, and that is
+     not a mistake.  frost_v5.webp's OWN near-field pines measure 95-115 world
+     px with a world-pixel ruler on the art, so in this game's paintings a
+     tree is about as tall as a person.  The first pass sized these 280-320 --
+     physically right for a pine -- and rendered at ~3x the scale of every
+     baked tree in the same frame.  Verified by LOOKING (the props drawn onto
+     the live art at world scale beside a player figure), which is the method
+     the town respread used at v2.3.2628 and the only one that catches this.
+
+     ── POSITIONS ──
+     Chosen off the walk mask and the painting together, in world px, with
+     three fixed points kept clear: the nw-entry arrival at (864, 768), the
+     return portal on the bottom-edge row below it, and the painted dirt path
+     that runs roughly x 540-660 through the y 500-800 band.  Each prop sits
+     BESIDE that path rather than on it -- the point is to walk past and
+     behind them, and a prop in the road is just a wall.
+
+     EVERY ONE OF THESE BLOCKS, because blockW/blockD is what makes a prop
+     solid (v2.3.2073, and stampPropFootprints stamps them onto frost's real
+     mask exactly as it does town's).  Footprints were checked against each
+     other and against the two portal points; none overlaps. */
+  {
+    id: 'frost-pine-pair', zone: 'frost', sprite: '/sprites/props/frost-pine-pair.png',
+    x: 360, y: 700, worldH: 160, blockW: 119, blockD: 56,
+  },
+  {
+    /* The west snow/grass edge, mirroring the pine pair across the field. */
+    id: 'frost-pine-ridge', zone: 'frost', sprite: '/sprites/props/frost-pine-ridge.png',
+    x: 270, y: 380, worldH: 150, blockW: 118, blockD: 53,
+  },
+  {
+    /* Wide and low, laid across the snow/grass transition. 253 across, so it
+       is the one piece here big enough to hide a walking figure outright --
+       which is why it sits mid-map where the player crosses rather than in a
+       corner. Its east edge stops at x 531, just short of the path. */
+    id: 'frost-rock-ridge', zone: 'frost', sprite: '/sprites/props/frost-rock-ridge.png',
+    x: 430, y: 570, worldH: 120, blockW: 202, blockD: 42,
+  },
+  {
+    id: 'frost-rock-mound', zone: 'frost', sprite: '/sprites/props/frost-rock-mound.png',
+    x: 800, y: 470, worldH: 130, blockW: 119, blockD: 46,
+  },
+  {
+    /* Up on the ice flat, where the ice crystals in the art belong. */
+    id: 'frost-ice-mound', zone: 'frost', sprite: '/sprites/props/frost-ice-mound.png',
+    x: 600, y: 260, worldH: 100, blockW: 114, blockD: 35,
+  },
+  {
+    /* Small, on the south grass the player crosses on arrival -- near enough
+       to read on the first screen, far enough (170px) not to crowd the
+       arrival point. */
+    id: 'frost-snow-shrubs', zone: 'frost', sprite: '/sprites/props/frost-snow-shrubs.png',
+    x: 700, y: 830, worldH: 80, blockW: 75, blockD: 28,
+  },
+
 ];
+
+/* ═══ v2.3.2644: WHICH PROPS RIDE THE STARTUP GATE, AND WHICH DO NOT ═══
+ *
+ * Until frost got decor, every prop was a town prop and `propSpriteSources()`
+ * could hand the whole table to the intro gate without anybody noticing. That
+ * stops being true the moment a second zone has art: twelve zones' worth of
+ * decor on the pre-game gate is ~2.4MB of fetch and, far worse, tens of MB of
+ * decoded RGBA resident for the life of the page for art you can only see in
+ * one zone. That is precisely the iPhone RAM regression the ZONE-ASSET
+ * EXCEPTION in CLAUDE.md was written for (v2.3.1405), and the leak half of it
+ * that v2.3.2272 had to go back and fix.
+ *
+ * So the split is DERIVED rather than flagged per prop. A flag is a thing to
+ * forget; residency is a property of the ZONE, and these two are the same
+ * hubs `freeZoneMap` already refuses to unload (tiledMaps.js) -- town because
+ * you are always one step from it, worldview because it is the junction every
+ * spoke hangs off. Anything else is somewhere you visit.
+ */
+const RESIDENT_ZONES = new Set(['town', 'worldview']);
+
+/** Is this prop's art global (rides the intro gate) or per-zone? */
+function propIsResident(p) {
+  return !!p && RESIDENT_ZONES.has(p.zone);
+}
+
+/** The decor sprites for ONE zone — loaded by `preloadZoneAssets` behind the
+ *  per-zone overlay and released by `freeZoneAssets` on the way out.
+ *  Empty for the resident hubs, whose props are on the global manifest. */
+export function zoneDecorSources(zoneId) {
+  if (!zoneId || RESIDENT_ZONES.has(zoneId)) return [];
+  return [...new Set(
+    WORLD_PROPS.filter((p) => p.zone === zoneId && propIsPlaced(p) && !propIsResident(p))
+      .map((p) => p.sprite).filter(Boolean),
+  )];
+}
 
 /** The footprint a prop blocks, or null when it is scenery you walk past.
  *  Returned as world-pixel bounds from the prop's bottom-centre anchor. */
@@ -499,21 +599,34 @@ export function propsForZone(zoneId) {
   return WORLD_PROPS.filter((p) => p.zone === zoneId && propIsPlaced(p));
 }
 
-/** Every distinct prop sprite — the preload manifest's source list. */
+/** Every distinct GLOBAL prop sprite — the preload manifest's source list. */
 export function propSpriteSources() {
   /* v2.3.2061: only the props that can actually be DRAWN. The four v16
      buildings are held back until someone re-measures them (propIsPlaced), and
      preloading ~1MB of art for objects no zone will ask for is a cost paid on
      the startup gate -- the one place in this game where bytes are most
      expensive. They come back with their positions, in the same change. */
-  return [...new Set(WORLD_PROPS.filter(propIsPlaced).map((p) => p.sprite).filter(Boolean))];
+  /* v2.3.2644: ...and for the same reason, only the RESIDENT zones' props.
+     Zone decor loads per-zone through zoneDecorSources() -- see the note above
+     RESIDENT_ZONES. Filtering here rather than at the call site because this
+     function IS the gate's definition of "prop art", and a second caller that
+     forgot the filter would put the whole world back on the startup peak. */
+  return [...new Set(
+    WORLD_PROPS.filter((p) => propIsPlaced(p) && propIsResident(p))
+      .map((p) => p.sprite).filter(Boolean),
+  )];
 }
 
 /** Props that are ANIMATED — `{id, sprite, frames}` — for the strip slicer.
  *  Separate from propSpriteSources because the loader needs the frame count
  *  to cut the strip, and the manifest only needs the url. */
+/* v2.3.2644: resident-only, matching propSpriteSources. This slicer runs once,
+   behind the intro gate, off textures the gate loaded -- so an ANIMATED prop in
+   a per-zone table would find nothing in the registry and silently render as a
+   still. No such prop exists today (frost's six are all stills). Adding one
+   means slicing it in the per-zone loader, not relaxing this filter. */
 export function propAnimStrips() {
-  return WORLD_PROPS.filter((p) => propIsPlaced(p) && p.anim && p.anim.frames > 1)
+  return WORLD_PROPS.filter((p) => propIsPlaced(p) && propIsResident(p) && p.anim && p.anim.frames > 1)
     .map((p) => ({ id: p.id, sprite: p.sprite, frames: p.anim.frames }));
 }
 

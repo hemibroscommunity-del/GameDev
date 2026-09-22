@@ -21,7 +21,8 @@
  */
 import { Assets, Rectangle, Texture } from 'pixi.js';
 import { NPC_DATA } from '../data/gameDisplay.js';
-import { propSpriteSources, propAnimStrips } from '../data/worldProps.js'; /* v2.3.1775: scenery shares this registry; v2.3.2061: + animated strips */
+import { propSpriteSources, propAnimStrips, zoneDecorSources } from '../data/worldProps.js'; /* v2.3.1775: scenery shares this registry; v2.3.2061: + animated strips; v2.3.2644: + per-zone decor */
+import { loadTracked, unloadBundle } from './zoneTextures.js'; /* v2.3.2644: zone decor is freed on exit like every other per-zone sheet */
 
 /* v2.3.2618: art an NPC's DIALOG needs warm, as opposed to art the world
    draws.  Ace's coin lands on one of these two strips the instant the server
@@ -206,4 +207,75 @@ export function loadNpcSprites() {
 /** The loaded Texture for a sprite path, or null if it never resolved. */
 export function getNpcTexture(src) {
   return (src && _tex[src]) || null;
+}
+
+/* ═══ v2.3.2644: ZONE DECOR LOADS AND UNLOADS WITH ITS ZONE ═══
+ *
+ * The props above ride the intro gate because they are town's, and town is
+ * always one step away. Frost's six masses are not: they are ~1MB of fetch and
+ * ~2.4MB of decoded RGBA that mean nothing anywhere else, which is exactly
+ * what the ZONE-ASSET EXCEPTION in CLAUDE.md carves out -- and, multiplied by
+ * twelve zones as other biomes get kits, exactly the resident-texture climb
+ * v2.3.2272 had to go back and fix.
+ *
+ * THIS DOES NOT WEAKEN THE PRELOADING LAW. `preloadZoneAssets` AWAITS this
+ * behind the per-zone loading overlay, so the art is warm before the overlay
+ * lifts -- a deliberate loading SCREEN, not the unawaited first-sighting
+ * `Assets.load` the law forbids. entityRenderer's `_updateProps` re-checks
+ * `getNpcTexture` every frame while a prop's texture is EMPTY, so the sprite
+ * picks its texture up the moment this resolves and nothing has to be told.
+ *
+ * ── ONE BUNDLE PER SPRITE, NOT PER ZONE ──
+ * zoneTextures' monster bundles are per-LOADER because two variants share a
+ * sheet; here the sharing is per FILE -- ART-ASSET-PHASES calls for
+ * reusable-neutral pieces used by several biomes, so the day a rock cluster is
+ * in both frost and hollows, a per-zone bundle would tear it out from under
+ * the zone being walked INTO. Keyed by the sprite path, the subtraction below
+ * is exact and that day needs no change here.
+ */
+function decorBundle(src) { return 'decor:' + src; }
+
+/** Load one zone's decor into the same registry the renderer reads.
+ *  Resolves to the number of sprites loaded; 0 for a zone with no decor and
+ *  for the resident hubs, whose props are on the global manifest. */
+export async function loadZoneDecor(zoneId) {
+  const srcs = zoneDecorSources(zoneId);
+  if (!srcs.length) return 0;
+  await Promise.allSettled(srcs.map((src) => Promise.resolve(
+    loadTracked(decorBundle(src), npcArtUrl(src)),
+  ).then((tex) => {
+    if (!tex) return;
+    /* NEAREST, matching every other prop in this registry (see loadNpcSprites).
+       These are sized so the texture lands at ~1:1 DEVICE pixels on the common
+       iPhone -- 2-2.5x their world size against 2.5-2.7 device px per world px
+       (docs/ART-ASSET-PHASES.md §4) -- which is the scale nearest is honest at. */
+    if (tex.source) { try { tex.source.scaleMode = 'nearest'; } catch (e) { /* older pixi */ } }
+    _tex[src] = tex;
+  }).catch(() => { /* a missing file leaves the prop invisible, not broken */ })));
+  return srcs.length;
+}
+
+/** Release the decor the departing zone used and the destination does not.
+ *  Resolves to the sprite paths actually dropped, so a caller (and the
+ *  texture-drift probe) can tell "freed nothing" from "was never loaded". */
+export async function freeZoneDecor(fromZoneId, toZoneId) {
+  if (!fromZoneId) return [];
+  const going = zoneDecorSources(fromZoneId);
+  if (!going.length) return [];
+  /* The same subtraction freeZoneAssets does for the variant sheets, and for
+     the same reason: freeing "what the old zone used" without removing "what
+     the new zone uses" unloads art a prop standing in front of you is drawn
+     from. No destination means nothing is kept, which is only correct when
+     there is no destination. */
+  const keeping = new Set(toZoneId ? zoneDecorSources(toZoneId) : []);
+  const drop = going.filter((s) => !keeping.has(s));
+  for (const src of drop) {
+    /* Out of the registry FIRST. getNpcTexture is a plain property read on a
+       per-frame path, and handing back a texture whose source has just been
+       destroyed is a torn frame rather than a miss -- the miss is harmless
+       (the prop waits at Texture.EMPTY), the torn texture is not. */
+    delete _tex[src];
+    try { await unloadBundle(decorBundle(src)); } catch (e) { /* still in use / already gone */ }
+  }
+  return drop;
 }

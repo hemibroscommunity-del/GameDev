@@ -13184,7 +13184,28 @@ export class EntityRenderer {
     }
     /* A zone change leaves the previous zone's props behind otherwise. */
     for (const [id, spr] of this.propDisplays) {
-      if (!live.has(id)) spr.visible = false;
+      if (!live.has(id)) {
+        spr.visible = false;
+        /* ═══ v2.3.2644: AND IT MUST DROP THE TEXTURE, NOT JUST HIDE ═══
+           Hiding alone was correct while every prop was a town prop, because
+           town art is global and never freed.  Zone decor IS freed on the way
+           out (freeZoneDecor), and this sprite is the last thing holding a
+           reference to the destroyed source.  Two ways that bites, and the
+           second one is the one that actually threw:
+
+             - The assignment below is guarded on `texture === Texture.EMPTY`,
+               so a sprite still holding the OLD texture never re-assigns. Walk
+               back into frost and it keeps the destroyed one...
+             - ...and `visible` is set from that same test, so it is turned
+               back ON. Pixi then renders a texture whose source is null:
+               "Cannot read properties of null (reading 'alphaMode')", which is
+               what mp-zonechurn caught on its second lap through frost.
+
+           Resetting to EMPTY closes both: an invisible sprite is skipped by the
+           renderer, and the next entry re-assigns from the freshly loaded
+           texture. Free for town props, whose art is still in the registry. */
+        spr.texture = Texture.EMPTY;
+      }
     }
     if (typeof window !== 'undefined') {
       _propsDrawn.length = 0;
