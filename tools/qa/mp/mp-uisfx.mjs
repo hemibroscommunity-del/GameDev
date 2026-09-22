@@ -9,7 +9,10 @@
    cannot get from a file that is missing, misnamed, or not audio. */
 import * as H from './harness.mjs';
 
-const KEYS = ['ui-equip', 'ui-close', 'quest-complete-v2'];
+/* v2.3.2642: 'ui-click' joins them -- the owner's menu-navigation sound.
+   Same reason as the original three: a key in the registry proves a string
+   exists, not that a sound plays. */
+const KEYS = ['ui-equip', 'ui-close', 'ui-click', 'quest-complete-v2'];
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Ears', wsPort, webPort });
@@ -66,7 +69,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      A sample longer than a gesture is what makes rapid taps pile up, so the
      length is now a TESTED property rather than an accident of the upload.
      0.6s is generous for a UI tick and still well under the old 0.94. */
-  for (const k of ['ui-equip', 'ui-close']) {
+  for (const k of ['ui-equip', 'ui-close', 'ui-click']) {
     const d = decoded[k] || {};
     rec.ok(`...and ${k} is a tick, not a tune (under 0.6s)`,
       !d.err && d.seconds > 0.05 && d.seconds < 0.6, d);

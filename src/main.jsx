@@ -4,6 +4,7 @@ import { GameApp } from './ui/GameApp.jsx';
 import { debugBus } from './debug/debugBus.js';
 import { installPerfHud } from './debug/perfHud.js';
 import { installCrashTrap } from './debug/crashTrap.js';
+import { installUiSfxDelegate } from './ui/uiSfxDelegate.js';
 import './styles/game.css';
 
 /* Debug console intercept is handled by debugBus.initFromUrl() alone now.
@@ -25,5 +26,15 @@ installCrashTrap();
    Activates with ?perf=1 or ?debug=1.  Survives the React overlay
    vanishing after PLAY -- used to diagnose the reported 2x slowdown. */
 installPerfHud();
+
+/* v2.3.2642: the menu click / dialog close sounds (owner: "Use the click
+   sound for navigating through the menus ... Use the close sound for closing
+   the dialog window that appear in game").  ONE delegated listener rather
+   than a handler per button -- see src/ui/uiSfxDelegate.js for why, and for
+   what it deliberately cannot reach (the world controls).
+   Installed HERE, beside the other document-level installers, and BEFORE the
+   render: it listens in the capture phase on `document`, so it needs no
+   element to exist yet and it catches panels that mount into portals. */
+installUiSfxDelegate();
 
 createRoot(document.getElementById('root')).render(<GameApp />);
