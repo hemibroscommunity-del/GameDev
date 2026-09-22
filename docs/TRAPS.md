@@ -3788,3 +3788,75 @@ the repo references it, so the recolour never bakes it, and it is bright enough
 that leaving it in moved Alabaster's aggregate from 1.4% to 35% and drowned
 every real sheet. Excluded because it is not recoloured — not because the
 number was inconvenient.
+
+## 90. Three head anchors that look load-bearing and are not (v2.3.2643)
+
+**Tempting:** you need to place something on the player's head per frame — an
+ear, a marking, anything anatomical — and the repo appears to offer three ready
+answers. Use one.
+
+**Wrong:** all three fail, in different ways, and none of them fails loudly.
+Measured:
+
+### `TRAIT_CATEGORIES` / `resolveBodyAnchor` (`traitCategories.js`)
+
+It reads exactly like the intended extension point — `attachAt: 'head.eyes'`,
+`spriteAnchor`, `widthRatio`, and a comment that says *"Adding a new trait
+category? Add a row here."* **It has no consumers.** `grep -rn
+"TRAIT_CATEGORIES\|resolveBodyAnchor" src/` returns only the file itself. Hair,
+hats, beards and eyewear are placed by `entityRenderer.js` and
+`characterPortrait.js` off `body-tops.json`. A row added here places nothing,
+and nothing errors — you get an invisible feature and a plausible-looking diff.
+
+### `body-anchors.json`'s head box
+
+306 per-frame head boxes, derived by `tools/derive_body_anchors.py`. Reliable on
+`stand`, `mine` and `fish`; **wrong on the moving poses**, because the neck
+detector merges into the shoulders:
+
+```
+stand-south   head 64 x 61     <- plausible
+jog-south     head 95 x 85     <- the same head, 50% wider
+hit-south     head 108 x 84    <- shoulders
+```
+
+Anything pinned to those edges on a jog frame sits ~15px off the head.
+
+### `_headBoxInFrame` (`playerDecal.js`, v2.3.2516)
+
+The face-tattoo walker, and the most convincing of the three because it is
+live, recent, and carefully written. It breaks out of its walk as soon as the
+crown's first skin run is narrow relative to the next row, which on real sheets
+means: **1px head for `stand-east` and `stand-north`, 6px for `hit-south`.**
+
+This is **not a bug to fix**, and that is the trap's sharpest edge. Its own
+header says so: *"a sheet where the walk fails, or ends above the collar,
+renders exactly as it does today; the worst case is the bug that is already
+shipped, not a new one."* For a face REGION that is sound — the clause can only
+ever add pixels. Borrow it for something that must be positioned and the same
+silence becomes a missing or floating feature.
+
+### The rule
+
+**A head anchor is only as good as the frames it covers, so measure its
+coverage before you build on it — and prefer a landmark a human has reviewed.**
+The one anchor that survived is the reviewed iris in `eyeMask.json`: scan
+outward from it to the silhouette edge and you get the head's edge from local
+information only. Its receipt is self-agreement across sheets — `stand-south`
+51px and `jog-south` 54px in the same 256-space, from sheets stored at
+different disk resolutions. None of the three above agree with themselves that
+closely.
+
+And even that one is only **297 of 823 frames**, with gaps *inside* cycles
+(`jog-east`: 12 of 28), so ears driven off it would strobe as the player runs.
+Coverage, not correctness, is what stopped Stage 2 of the species work from
+shipping.
+
+**Receipt:** `node tools/ears/derive-ear-anchors.mjs --report` prints the
+per-sheet coverage and the head-width range; its header records all three dead
+ends. `docs/specs/SPECIES-PLAN.md` Stage 2 costs the reviewed landmark pass
+that closing the gap actually needs.
+
+**Related:** §53 (a canvas round-trip destroys the rim pixels any of this is
+measured from — which is why the tooling here reads PNGs through `tools/png.mjs`
+and never a 2D canvas).

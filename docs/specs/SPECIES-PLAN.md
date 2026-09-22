@@ -1,4 +1,4 @@
-# Playable species — what it costs, what shipped (v2.3.2642)
+# Playable species — what it costs, what shipped (v2.3.2643)
 
 Owner ask: *"What's the feasibility of adding new species to play as? I'm
 wanting to add alien and monkey"*, with a reference sprite for each.
@@ -7,7 +7,7 @@ This is the costed answer, written against the code rather than against the
 GDD (which is stale — see CLAUDE.md). **Stage 1 has shipped**; stages 2 and 3
 are scoped here so the next session does not re-derive any of it.
 
-## The finding that makes this cheap
+## What makes the COLOUR cheap (and only the colour)
 
 Both reference sprites are the **same body**: identical pose, identical olive
 trousers, identical grey boots, identical proportions, identical outline. The
@@ -20,10 +20,13 @@ only differences are:
 | ears | pointed, outside the head silhouette | round, outside the head silhouette |
 | body | unchanged | unchanged |
 
-The renderer is already built around exactly that split — skin is a
-recolourable region, the face is an addressable region, and head-attached
-sprites are a trait category. So the expensive thing (a new body rig) is not
-what these two references need.
+The renderer is built around the first two of those: skin is a recolourable
+region and the face is an addressable one. So a new body rig — the genuinely
+expensive thing — is not what these references need.
+
+The third, head-attached sprites, is where the first draft of this document was
+wrong: it assumed a trait-category registry that turned out to have no
+consumers. The ears are the real work. See Stage 2.
 
 ## Stage 1 — SHIPPED in v2.3.2642
 
@@ -64,34 +67,107 @@ hide colour, but it is still a bald human silhouette. This is expected and is
 the honest state of Stage 1: it proves the colour half and the pipeline, and it
 is the cheap half.
 
-## Stage 2 — the face and the ears (~1-2 weeks, no new body animation)
+## Stage 2 — the face and the ears
 
-This is where it stops being a recolour and becomes a species.
+**v2.3.2643: this section was materially wrong when first written and is
+rewritten from measurement.** It claimed "the machinery mostly exists". Three
+of the four things it leaned on do not work, each rejected with a measurement
+rather than an opinion. The ear ANATOMY is real work, not wiring.
 
-**Ears** are the cheaper half despite being outside the silhouette.
-`TRAIT_CATEGORIES` (`src/rendering/traitCategories.js`) already attaches
-sprites at `head.center` / `head.eyes` with a `widthRatio`, and
-`body-tops.json` carries a per-frame head-crown pin — **231 frames** today
-(`stand-east-0`, `jog-southwest-5`, …), which is the poses the trait system
-already sticks to, not all 823. It is **auto-derived** by
-`tools/derive_body_tops.py`, so extending the coverage to a pose the ears must
-also appear on (bow, sword, the armoured variants) is a tool run against the
-sheets, not hand work — but it IS a step, so budget it rather than assuming
-the pins are already there. `body-anchors.json` (306 entries) and
-`tools/fit-headwear-scale.mjs` cover the rest of the placement. Cost is the
-art (one small sprite per source direction) plus one new category row.
+### The owner's second reference (v2.3.2643)
 
-**Muzzle / brow** rides the face-decal path that already exists:
-`playerDecal.js` has `FACE_BOX`, `stampRegion` and `splitSkinRegions`, and
-`playerArt.js` already does *direction-aware* face decals — v2.3.2042
+Two 32x32 head portraits, far better spec than the full-body pair. Measured:
+
+- **Identical head silhouette** in both — the outline occupies the same cells;
+  only the fill and the features differ. Core head `x 7..22` (16px wide),
+  `y 8..26` (19px tall).
+- **Alien** — skin lit `(201,251,252)`, shade `(156,224,224)`; outline
+  `(31,13,28)`. Pointed ear: rows 15-17, protruding 2px, profile `1,2,1`.
+  16% of head height, 12.5% of head width, centre 42% down from the crown.
+- **Monkey** — fur `(69,46,20)`, shade `(59,40,19)`, **lighter muzzle**
+  `(133,112,87)` (lum 115 against the fur's 50). Round ear: rows 15-19,
+  protruding 2px, profile `1,2,2,2,1`. 26% of head height, 12.5% of head
+  width, centre 47% down.
+- The monkey also has a **cigar and smoke**. Read as a joke/accessory, not
+  species anatomy, and deliberately out of scope — flag it if it was meant.
+
+The two ear centres (42% / 47% down) straddle the head's own widest row (~49%),
+which is what makes "attach at the widest row" the right rule: the ear then
+tracks a head that bobs, instead of a fixed fraction that does not.
+
+### Ears are ANATOMY, not an accessory
+
+That decides the design. A hat is a sticker over the head and can be a trait
+sprite; an ear is part of the body, must carry the body's own skin tone, and
+must never drift from the skull. So ears follow the **eyes**: derive the
+geometry offline, ship it as data, paint it in the recolour pass the bake
+already runs. `eyeMask.json`'s header makes the same case for the iris — "the
+eyes are not a layer" — and an ear is the same kind of thing.
+
+### Four candidate anchors, three dead — with receipts
+
+1. **`TRAIT_CATEGORIES` (`traitCategories.js`)** advertises precisely this: an
+   `attachAt: 'head.eyes'` registry with a `widthRatio`, and a comment saying
+   "Adding a new trait category? Add a row here." **It has no consumers** —
+   grep the repo. Hair, hats, beards and eyewear are actually placed by
+   `entityRenderer.js` and `characterPortrait.js` off `body-tops.json`. A row
+   added here places nothing. *(The first version of this document cited this
+   file as evidence the machinery existed. It was not checked. That was the
+   error.)*
+2. **`body-anchors.json`'s head box** is wrong on the moving poses: `stand-south`
+   64px, `jog-south` **95px**, `hit-south` **108px** — the neck detector merged
+   into the shoulders. Ears pinned to those edges float ~15px off the head.
+3. **`_headBoxInFrame` (`playerDecal.js`, v2.3.2516)**, the face-tattoo walker,
+   breaks out the moment the crown's first skin run is narrow: measured, a
+   **1px** head for `stand-east` and `stand-north`, **6px** for `hit-south`.
+   That is *fine there and not a bug* — its own header says a failed walk
+   leaves the face region exactly as it was, because it can only ever add. An
+   ear is not additive that way, so it cannot be the anchor.
+4. **The reviewed eye row — works, but is not dense enough.** `eyeMask.json`
+   holds human-reviewed iris rects for 32 sheets / 417 frames; ears sit on the
+   eye line, so scanning outward from a reviewed iris to the silhouette edge
+   gives the attachment point using only local information.
+   `tools/ears/derive-ear-anchors.mjs` implements it and it is *correct where it
+   fires*: `stand-south` measures a 51px head and `jog-south` 54px in the same
+   256-space — the same head at the same size, from sheets drawn at different
+   disk resolutions. None of the rejected anchors agree with themselves that
+   closely.
+
+### Why Stage 2 is not shipped
+
+That fourth anchor reaches **297 of 823 frames**, and the gaps are *inside*
+animation cycles. `jog-east` anchors frames 0,5,6,10,11,12,14,19,20,24,25,26 of
+28 — so **the ears would strobe on and off as you run**, which is worse than
+having none. `north` and `northeast` have no coverage at all, because from
+behind there are no eyes to mask — and turning your back should not make ears
+vanish.
+
+So the real Stage 2 cost is **its own reviewed landmark pass**: a derivation
+robust across all 823 frames, checked as a contact sheet the way
+`tools/eyes/extract-eye-mask.mjs` was, including a back-of-head landmark for
+north/northeast. Then the painter (`_paintEars` in the recolour pass, ear
+profiles scaled to head width, skin tone + outline), and a visual iteration
+pass — the ears are ~4px at play scale, so how they read is a judgement that
+needs looking at, not just measuring.
+
+`tools/ears/derive-ear-anchors.mjs` is committed as the foundation: it proves
+the attachment rule, and it records all three dead ends so the next session
+does not re-walk them.
+
+### The muzzle and the eyes
+
+**The muzzle** (the monkey's lighter face patch) rides the face-decal path:
+`FACE_BOX`, `stampRegion` and `splitSkinRegions` in `playerDecal.js`, and
+`playerArt.js` already does direction-aware face decals — v2.3.2042
 specifically taught it that "a face tattoo does not revolve to the back of a
-head", which is the hard part of this problem and is already solved. The
-species face layer is built-in art on that path rather than a player drawing.
+head", which is the hard part and is already solved. Unlike the ears this is
+*inside* the existing silhouette, so it needs no new landmark.
 
-**Eyes** need nothing new: `eyeMask.json` pre-masks the eye pixels across 32
-sheets / 417 frames and `eyeColorCatalog` picks the colour. The monkey's white
-sclera is the existing `white` option (v2.3.1929); the alien's black eyes are
-the art's own default.
+**The eyes** need little new: `eyeMask.json` already masks the iris across those
+417 frames and `EYE_COLOR_CATALOG` recolours it. The alien's black eyes are the
+art's own default; the monkey's pale eyes are close to the existing `white`
+option (v2.3.1929). What a species axis adds is *presetting* them, not new
+rendering.
 
 ### Stage 2's three plumbing traps
 
@@ -100,13 +176,13 @@ the art's own default.
    (`server/src/index.js`). The code flags this shape three separate times:
    v2.3.1939 put a drawing key on one gate only and the result was a print
    that "appeared on join and vanished on the first two-second relay". For a
-   species that means the player joins as an alien and turns human to
-   everyone two seconds later.
+   species that means joining as an alien and turning human to everyone two
+   seconds later.
 2. **The two-letter key space is nearly full.** Taken: `bt bl hw fh hr sk hc
    htc fhc st stc ec ew ewc sa sb pa pb ta tf tm tb tr sp pp fp hg fr`. Note
    `sp` is the shirt *pattern*, not species. `rc` and `sc` are free.
 3. **A new appearance key is NOT permanent for an existing character.** See
-   below — this one is load-bearing and is not a species problem.
+   below — load-bearing, and not a species problem.
 
 ## The permanence hole (pre-existing, affects Stage 2)
 
