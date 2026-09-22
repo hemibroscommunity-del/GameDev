@@ -44,10 +44,16 @@
  *    (a) DEMON EYES is drawn with no dark pixel in it at either resolution, so
  *        while it is worn, any hard-dark pixel in the eye window can only be the
  *        old eye. The bare face's own count is the control.
- *    (b) With a style on, changing the eye COLOUR must change nothing at all.
- *        That is exact rather than approximate: the bake paints the iris or
- *        erases it, never both (playerSkins.recolorBodyToCanvas), so a single
- *        changed pixel means an iris survived under the style.
+ *    (b) With a style on, changing the eye COLOUR must change nothing OUTSIDE
+ *        the eye window.  That is exact rather than approximate: the bake
+ *        paints the iris or erases it, never both
+ *        (playerSkins.recolorBodyToCanvas), so a changed pixel out on the cheek
+ *        means an iris survived under the style.
+ *        v2.3.2645: it used to assert ZERO changed pixels anywhere, which was
+ *        right while a worn style swallowed the colour row whole.  The owner
+ *        then asked for the styles themselves to take the colour, so the same
+ *        swatch now repaints the style's own pupils (point 8) and the honest
+ *        form of this assertion is "nothing outside the eyes", not "nothing".
  *
  * 5. THE ONE EYE HAS A PUPIL, checked on the committed art rather than through
  *    the renderer. Owner: "Looks like one eye lost its black pupil." The
@@ -66,6 +72,22 @@
  *    this repo keeps hitting -- v2.3.1788's "the attack stand-ins wear the
  *    WALKING skin", v2.3.2431's missing frame width -- so it is asserted from
  *    the cache keys the world bake actually produced, which name the style.
+ *
+ * 8. THE COLOUR ROW PAINTS THE STYLE, AND PAINTS THE PART THAT WAS PINNED.
+ *    Owner: "None of the eyes are recolorable (don't know if they can be)."
+ *    Two claims, and the second is the one that rots quietly.  That a swatch
+ *    changes SOMETHING is read off the canvas.  That it changes the right thing
+ *    is read off the bake: three of the four styles would take the wrong
+ *    material from the "biggest wins" rule the hats use -- One Eye and WTF are
+ *    mostly the WHITE of the eye, so "biggest" paints a coloured eyeball rather
+ *    than a coloured eye -- so each is PINNED in traitMaterials.MAIN_MATERIAL,
+ *    and a pin that silently stopped matching (an art edit, a renamed kind)
+ *    falls back to "biggest" without anything throwing.  The probe reports the
+ *    chosen material, and the assertion is that it is the pinned one.
+ *    It also checks `matRef` against `ref`: a ratio retint referenced to the
+ *    whole sprite turns a dark material black (One Eye divides 34 by 276), and
+ *    the material-own reference is the fix, so the two numbers being far apart
+ *    on those two styles IS the fix being in place.
  *
  * 7. BOTH SLOTS ARE WORN AT ONCE.  The entire reason eye styles are their own
  *    slot rather than four more eyewear entries is that you can wear Demon Eyes
@@ -282,6 +304,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     bareDark > 40, { bareDark, win });
 
   /* ── 3. each style covers the real eyes, and leaves none of them showing ── */
+  let wornBox = null;   /* v2.3.2645: the last style's own footprint, for 4(b) below */
   for (const style of WANT) {
     const picked = await pickTile(P, style);
     rec.ok(`${style} is pickable (guard)`, picked.ok === true, picked);
@@ -290,6 +313,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const worn = await grab(P);
     if (!worn || worn.err) { rec.ok(`${style}: canvas still readable (guard)`, false, worn); continue; }
     const d = diff(none, worn);
+    wornBox = d;
     console.log(`    ${style}: ${JSON.stringify(d)}`);
     rec.ok(`${style} changes the picture (${d.n}px)`, d.n > 60, d);
     if (d.maxY < 0) continue;
@@ -315,10 +339,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   }
 
-  /* ── 4(b). with a style on, the eye colour has nothing left to paint ──
-     Exact, not approximate: the bake recolours the iris or erases it, never
-     both, so one changed pixel here means an iris survived under the style.
-     Run on WTF Eyes, which is still the pick from the loop above. */
+  /* ── 4(b) + 8. the colour row paints the STYLE, and only the style ──
+     Two things at once, on WTF Eyes, which is still the pick from the loop
+     above.  The swatch has to change something (the owner's ask) and it has to
+     change nothing outside the eye window (the erase still holding: a changed
+     pixel on the cheek would be an iris that survived under the style).
+     WTF pins `dark`, so what moves here is its two pupils. */
   await P.page.evaluate(() => {
     const row = document.querySelector('.bt-cc-colors');
     const el = row && [...row.querySelectorAll('button')].find((b) => (b.getAttribute('title') || '') === 'Red');
@@ -335,15 +361,89 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const styledDefault = await grab(P);
   if (styledRed && !styledRed.err && styledDefault && !styledDefault.err
       && styledRed.w === styledDefault.w) {
-    const irisLeft = diff(styledRed, styledDefault);
-    console.log('    eye colour under a style changes: ' + JSON.stringify(irisLeft));
-    rec.ok(`with a style worn, the eye-colour swatch has nothing left to paint `
-         + `(${irisLeft.n}px changed between Red and Default)`,
-      irisLeft.n === 0, irisLeft);
+    const painted = diff(styledRed, styledDefault);
+    console.log('    eye colour under a style changes: ' + JSON.stringify(painted));
+    rec.ok(`with WTF Eyes worn, the eye-colour swatch repaints the STYLE's pupils `
+         + `(${painted.n}px changed between Red and Default)`,
+      painted.n > 0, painted);
+    /* Inside the STYLE's own footprint, entirely.  This is what is left of the
+       v2.3.2643 assertion that nothing changed at all: the erase is still doing
+       its job if every pixel the swatch moves is one the style drew.
+
+       NOT the eye window, which is what the first cut of this line used and is
+       wrong for the same family of reason TRAPS §89 records.  That window is
+       derived from the IRISES -- where the body sheet paints eyes -- and a
+       style is not obliged to stay inside it: WTF's two eyes are wider than the
+       real pair, so its left pupil sits 10px outside and the check failed on a
+       face that was perfectly clean.  The footprint is the style's diff against
+       the bare face, measured in the loop above, which is by construction every
+       pixel this style can legitimately move. */
+    const box = wornBox;
+    const outside = !box || (painted.n > 0 && (painted.minX < box.minX || painted.maxX > box.maxX
+      || painted.minY < box.minY || painted.maxY > box.maxY));
+    rec.ok(`...and every pixel it moves is one the style itself drew, so no iris `
+         + `survived the erase under it (painted ${painted.minX}..${painted.maxX} x `
+         + `${painted.minY}..${painted.maxY}, the style occupies `
+         + `${box && box.minX}..${box && box.maxX} x ${box && box.minY}..${box && box.maxY})`,
+      painted.n > 0 && !outside, { painted, box });
   } else {
     rec.ok('both eye-colour captures readable and the same size (guard)', false,
       { a: styledRed && [styledRed.w, styledRed.err], b: styledDefault && [styledDefault.w, styledDefault.err] });
   }
+
+  /* ── 8. ...and it paints the PART that was pinned, read off the bake ──
+     A pin that stops matching does not throw: mainMaterial falls back to
+     "biggest", which on One Eye and WTF is the white of the eye.  So the probe
+     is asked which material was actually chosen, and matched against what
+     traitMaterials.js pinned.  `matRef` vs `ref` is the other half: on a dark
+     material the sprite-wide reference turns every swatch black, and the two
+     numbers being far apart is that fix being present rather than assumed. */
+  const PIN = [
+    { id: 'sleepy', kind: 'hue', hue: 230, part: 'Lids' },
+    { id: 'one-eye', kind: 'dark', part: 'Pupil' },
+    { id: 'demon', kind: 'all', part: 'Flames' },
+    { id: 'wtf', kind: 'dark', part: 'Pupils' },
+  ];
+  for (const p of PIN) {
+    const prof = await P.page.evaluate((id) => (window.__btEyeStyleColor
+      ? window.__btEyeStyleColor.ref(id) : null), p.id);
+    if (!prof) { rec.ok(`${p.id}: the recolour probe answered (guard)`, false, null); continue; }
+    const m = p.kind === 'all' ? null : prof.mats[prof.main];
+    const hit = p.kind === 'all'
+      ? prof.main === -1
+      : !!m && m.kind === p.kind && (p.hue === undefined || Math.abs(m.hue - p.hue) <= 20);
+    rec.ok(`${p.id}: the swatch paints the PINNED material (${p.kind}${p.hue ? ' ~' + p.hue : ''}) `
+         + `and not whichever is biggest -- chose ${p.kind === 'all' ? 'every pixel' : JSON.stringify(m)}`,
+      hit, { pin: p, main: prof.main, mats: prof.mats });
+    if (p.kind === 'dark') {
+      /* The whole reason matRef exists.  One Eye is 86% white: referenced to
+         the sprite its pupil divides ~34 by ~276 and every colour comes out
+         black.  A factor of three apart is the fix being in place. */
+      rec.ok(`${p.id}: the retint is referenced to its own dark material, not to `
+           + `the sprite (matRef ${prof.matRef.toFixed(1)} vs ref ${prof.ref.toFixed(1)})`,
+        prof.matRef * 3 < prof.ref, { matRef: prof.matRef, ref: prof.ref });
+    }
+    const texDirs = await P.page.evaluate(async (id) => {
+      if (!window.__btEyeStyleColor) return null;
+      window.__btEyeStyleColor.textures(id, 'green');       /* kicks the bake */
+      await new Promise((r) => setTimeout(r, 1200));
+      return window.__btEyeStyleColor.textures(id, 'green');
+    }, p.id);
+    rec.ok(`${p.id}: the world bake produced a recoloured texture for every facing `
+         + `the art ships (${JSON.stringify(texDirs)})`,
+      Array.isArray(texDirs) && texDirs.length === 3, { texDirs });
+  }
+  /* 'none' has no art and must never bake one, and an unlisted style falls back
+     to native rather than rendering something the picker does not offer. */
+  const noneTex = await P.page.evaluate(() => (window.__btEyeStyleColor
+    ? window.__btEyeStyleColor.textures('none', 'green') : 'no-probe'));
+  rec.ok('the "none" pick bakes no recoloured texture -- there is no art to paint',
+    noneTex === null, { noneTex });
+  const unlisted = await P.page.evaluate(() => (window.__btEyeStyleColor
+    ? window.__btEyeStyleColor.paints('no-such-style') : 'no-probe'));
+  rec.ok('an unlisted style offers no colour at all, so a saved appearance naming '
+       + 'one falls back to its native art',
+    unlisted === null, { unlisted });
 
   /* ── 7. glasses go OVER eyes, and both are worn at once ──
      BOTH CAPTURES ARE TAKEN ON THE EYEWEAR TAB, which is the whole trick here.

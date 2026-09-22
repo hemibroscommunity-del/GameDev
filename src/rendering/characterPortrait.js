@@ -19,6 +19,7 @@ import { skinTarget, pantsTarget, shoesTarget, recolorBodyToCanvas } from './pla
 import EYE_MASK from './eyeMask.json';                              /* v2.3.1928 */
 import EYE_BLANK from './eyeBlankMask.json';                        /* v2.3.2643 */
 import { eyeColorTarget } from './traits/eyeColorCatalog.js';
+import { eyeStyleColorTarget, getEyeStyleRef } from './traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 /* v2.3.2193: the colour-id -> target maps, for portraitOptsFromPeer below. */
 import { hairColorTarget } from './traits/hairColorCatalog.js';
 import { hatColorTarget } from './traits/hatColorCatalog.js';
@@ -233,7 +234,20 @@ export function recolorHairToCanvas(img, hairColor, refOverride) {
      was drawn with.  A single-material trait recolours every pixel, so its
      output is identical either way. */
   const prof = (refOverride && typeof refOverride === 'object') ? refOverride : null;
-  let ref = prof ? prof.ref : refOverride;
+  /* v2.3.2645: a profile may carry `matRef` -- the mean luminance of the pixels
+     the chosen material actually covers -- and when it does, that is the
+     reference instead of the sprite's.
+     This is a RATIO retint, so the reference decides what the swatch means: the
+     pixels at the reference come out AS the swatch and everything else keeps its
+     relation to them.  Referencing the whole sprite is right while the recoloured
+     part is most of it, which held for every caller until the eye styles.  One
+     Eye is 86% white and its pupil is the part a swatch paints: 34 / (240 * 1.15)
+     is 0.12, so every colour came out black -- the same wall eyeColorCatalog.js
+     hit on the painted-in iris at v2.3.1928 and answered by replacing it
+     outright.  A material-own reference gets that flat replacement for free (a
+     flat material sits AT its own mean, k ~ 1) while keeping the shading a flat
+     fill would have destroyed.  Only eyeStyleColorCatalog sets it. */
+  let ref = prof ? (prof.matRef || prof.ref) : refOverride;
   if (!ref) {
     let sum = 0, n = 0, maxL = 1;
     for (let i = 0; i < d.length; i += 4) {
@@ -387,6 +401,12 @@ export async function drawCharacterPortrait(canvas, opts) {
   const wantHw = headwear && headwear !== 'none';
   const wantEw = eyewear && eyewear !== 'none';   /* v2.3.2361 */
   const wantEs = eyeStyle && eyeStyle !== 'none';   /* v2.3.2643 */
+  /* v2.3.2645: hoisted above the batch below, which now needs it -- the eye
+     colour drives the STYLE's recolour as well as the painted-in iris (see
+     eyeStyleColorCatalog.js: one control, not two).  Still read again at its
+     old site for the body bake; one `const` either way. */
+  const _eyeColorId = (opts && opts.eyeColor) || null;
+  const _esColor = wantEs ? eyeStyleColorTarget(_eyeColorId, eyeStyle) : null;   /* v2.3.2645 */
   /* ═══ v2.3.1815: WORN ARMOUR ═══
      Owner: "Should show armor worn etc if player is wearing it."
 
@@ -410,7 +430,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      stages (body-tops -> body sprite -> traits), so on a cold load the preview
      sat blank-white for ~3 network round-trips; now it's one.  All loads are
      cached after the first draw, so later redraws/rotations are instant. */
-  const [bodyTops, bodyImg, shirtImg, legsImg, chestImg, shouldersImg, hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg, hatRef, ewImg, ewMeta, ewRef, esImg, esMeta] = await Promise.all([
+  const [bodyTops, bodyImg, shirtImg, legsImg, chestImg, shouldersImg, hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg, hatRef, ewImg, ewMeta, ewRef, esImg, esMeta, esRef] = await Promise.all([
     loadBodyTops(),
     loadImage(`/sprites/player/stand-${DIR}.png?v=${SPRITE_VERSION}`),
     /* v2.3.757: the LAYERED shirt sheet (white-base, tinted below) -- the
@@ -446,10 +466,14 @@ export async function drawCharacterPortrait(canvas, opts) {
     (wantEw && eyewearColor) ? getEyewearRef(eyewear).catch(() => 0) : 0,
     /* v2.3.2643: the eye style, in the same batch and for the same reason --
        it is a face layer, so a sequential await would show the portrait blink
-       its real eyes before the style lands on them.  No recolour reference:
-       a style is the colours it was drawn in (eyeStyleCatalog.js). */
+       its real eyes before the style lands on them.
+       v2.3.2645: and its recolour reference with it, pooled across the facings
+       exactly as the hat's and the glasses' are (v2.3.1109, v2.3.2424) -- keyed
+       per facing the swatch lands on a different tone and the eyes would change
+       shade as the preview rotates. */
     wantEs ? loadTraitBest('eyestyle', eyeStyle, DIR) : null,
     wantEs ? loadMeta('eyestyle', eyeStyle) : null,
+    _esColor ? getEyeStyleRef(eyeStyle).catch(() => 0) : 0,
   ]);
   const crown = (bodyTops && bodyTops[`stand-${DIR}-0`]) || [FRAME / 2, 33];
 
@@ -639,7 +663,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      bug -- it just made other people's faces subtly wrong.  Every caller now
      names whose eyes it means, including the creator (its own live selection),
      and an omission costs the effect rather than borrowing yours. */
-  const _eyeId = (opts && opts.eyeColor) || null;
+  const _eyeId = _eyeColorId;   /* v2.3.2645: hoisted to the top of the draw; see wantEs */
   /* v2.3.1940: the drawn pants print and the chest tattoo.  These are baked
      INTO the body (they are regions of the body sheet, not separate sprites),
      so unlike the shirt print they go in with the recolour rather than after it.
@@ -913,10 +937,15 @@ export async function drawCharacterPortrait(canvas, opts) {
   /* v2.3.2643: the eye style -- under the eyewear, for the reason
      eyeStyleCatalog.js gives (glasses go over your eyes whatever your eyes
      are), and this is the third place that single decision has to be spelled
-     out: the two child orders in entityRenderer and this draw order.  Plain
-     placeTrait, no recolour, and it draws only on the facings its meta has an
-     anchor for -- three of the four ship no north or northeast frame. */
-  if (esImg && esMeta) placeTrait(ctx, esImg, esMeta, crown, DIR);
+     out: the two child orders in entityRenderer and this draw order.  It draws
+     only on the facings its meta has an anchor for -- three of the four ship no
+     north or northeast frame.
+     v2.3.2645: no longer "plain placeTrait, no recolour".  Owner: "None of the
+     eyes are recolorable."  The Eyes tab's colour row drives the STYLE as well
+     as the painted-in iris now, through the same recolorHairToCanvas pass the
+     glasses below take -- see eyeStyleColorCatalog.js for what a swatch paints
+     on each style and why the reference is the material's own. */
+  if (esImg && esMeta) placeTrait(ctx, _esColor ? recolorHairToCanvas(esImg, _esColor, esRef) : esImg, esMeta, crown, DIR);
   /* v2.3.2361: eyewear -- after the hair (frames sit in front of a fringe) and
      before the hat (a brim crosses the top of the frames), the same order the
      world renderer builds its sprites in.  Plain placeTrait: no recolour, no

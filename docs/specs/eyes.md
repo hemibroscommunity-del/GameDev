@@ -72,10 +72,12 @@ decided either way: the renderer reads `meta.anchors`, so a facing existing is
 data, exactly as a facing disappearing is, and a re-import without the flag
 brings them back.
 
-**No recolour.** A style is the colours it was drawn in. The colour row on the
-Eyes tab is the **eye colour** — the recolour of the real irises underneath
-(`eyeMask.json`, v2.3.1928) — and it is unchanged, though §3 below means it has
-nothing left to paint while a style is on.
+**The styles take the eye colour** (v2.3.2645). Owner: *"None of the eyes are
+recolorable (don't know if they can be)."* For two days they were not — §3's
+erase had removed the iris the colour row paints, so the swatches lit up and the
+face did not move. The **same** swatch and the **same** saved value now retint
+the worn style's own art, which is why this added nothing to the wire and
+nothing to the server: `ec` has been relayed since v2.3.1930. See §6.
 
 **The colour row stays live on `none`.** The picker's standing rule blanks a
 colour row when the pick is `none`; that is right everywhere else (there is no
@@ -425,9 +427,19 @@ worker and a real Chromium. What it establishes, beyond the guards:
   style covers **100%** of it without hanging onto the mouth;
 - **the erase leaves nothing behind**, two ways. Demon Eyes is drawn with no
   dark pixel at either resolution, so the hard-dark count in the eye window must
-  fall from the bare face's 1264 to **0**; and with any style on, switching eye
-  colour between Red and Default must change **0 pixels**, which is exact —
-  the bake recolours the iris or erases it, never both.
+  fall from the bare face's 1264 to **0**; and with a style on, every pixel that
+  switching eye colour between Red and Default moves must be **inside the
+  style's own footprint** — a changed pixel outside it is an iris that survived
+  the erase. (Until v2.3.2645 this asserted **0** changed pixels anywhere, which
+  was right while a worn style swallowed the colour row whole. §6 is why it is
+  not any more. The footprint, and not the eye window: that window is derived
+  from the irises, and WTF's eyes are wider than the real pair, so its left
+  pupil sits 10px outside one — TRAPS §89's family of mistake, caught by the
+  scenario rather than shipped.)
+- the colour row **paints the style, and paints the pinned part**: the bake is
+  asked which material it chose and matched against `MAIN_MATERIAL`, and
+  `matRef` is checked to be far below `ref` on the two styles that pin `dark`
+  — see §6;
 - the **world** bake was handed the style, read off the cache keys it actually
   produced (`es:demon`, nine sheets across stand and jog) rather than from a
   40px screenshot — the creator and the walking figure are different code paths
@@ -446,3 +458,102 @@ footprint at all — it uses a style with no dark pixels in it as the probe.
 
 `cd server && npm test` — all suites green; the cosmetic-key suites are driven
 off `JOIN_COSMETIC_KEYS` (v2.3.2445) so they followed the new key on their own.
+
+---
+
+## 6. Recolouring a style (v2.3.2645)
+
+Owner: *"None of the eyes are recolorable (don't know if they can be)."*
+
+**One control, not two.** The Eyes tab has had a colour row since v2.3.1928 and
+it means one thing — *what colour are your eyes* — so a style worn in that tab
+answers to it. A second swatch row with its own saved value would ask the
+player to set their eye colour twice and then watch the two disagree. That
+decision is also why this touches **no wire key and no server file**: `ec` has
+been relayed since v2.3.1930, so a peer wearing green Demon Eyes already
+arrives with everything needed to draw them.
+
+`src/rendering/traits/eyeStyleColorCatalog.js` is therefore the smallest module
+of its kind in the repo: no palette, no store, only the bake. It re-exports
+`EYE_COLOR_CATALOG` and delegates the `recolorEnabled('eyes')` gate to
+`eyeColorTarget`, so the style and the painted-in iris can never disagree about
+what "Blue" is, or about whether the feature is on.
+
+### What a swatch paints, per style
+
+The eyewear lesson (v2.3.2424) applies unchanged: "biggest material wins" lands
+on a different **part** depending on the item, so the part is pinned per style
+in `traitMaterials.MAIN_MATERIAL` and **named** in the picker. Measured with
+`segmentMaterials` over the three shipped facings, pooled:
+
+| style | decomposition | pinned | the picker says |
+|---|---|---|---|
+| Sleepy Eyes | hue230 42% · dark 32% · hue348 11% · hue278 7% · light 7% | `230` | Lids |
+| One Eye | light 86% · dark 10% · hue13 5% | `dark` | Pupil |
+| Demon Eyes | hue38 86% · hue15 12% · light 2% | `all` | Flames |
+| WTF Eyes | light 72% · dark 28% | `dark` | Pupils |
+
+**Three of the four would take the wrong part from "biggest wins".** One Eye
+and WTF are mostly the *white* of the eye, and painting that is a coloured
+eyeball, not a coloured eye — what a player means by "green eyes" is the iris,
+so both pin `dark`. Sleepy pins its navy: the lid **is** the style's colour,
+while the 32% dark is the outline and the 11% pink inner-corner highlight is the
+only bright thing on the piece, and both have to survive. Demon pins `all`,
+because a flame's two tones are one material to the eye and sparing either
+leaves it half recoloured.
+
+The pins are keyed **`eyes:<id>`**, not the bare id every other entry in that
+table uses. `MAIN_MATERIAL` is one namespace across every category, and `demon`
+or `wtf` is exactly the sort of id a hat could be given next year — at which
+point the hat would silently inherit a pin measured on a pair of eyes.
+
+### And the reference is the material's own (`matRef`)
+
+`recolorHairToCanvas` is a brightness-**ratio** retint: each pixel's luminance
+is divided by a reference and the chosen colour multiplied by the result. Every
+caller until now passed the sprite's mean luminance, which is right while the
+recoloured part **is** most of the sprite.
+
+It is wrong here twice over. One Eye is 86% white, so its pupil divides ~34 by
+~276 and every swatch comes out black. This is the same wall `eyeColorCatalog`
+hit on the painted-in iris in v2.3.1928, and it answered by replacing the iris
+outright rather than retinting it.
+
+So the profile carries **`matRef`**: the mean luminance of the pixels the swatch
+actually paints. A flat material then lands *on* the swatch (k ≈ 1 — the flat
+replacement, for free) while a shaded one keeps its shading around it, so
+Sleepy's lid and Demon's flame gradient both survive where a flat fill would
+have destroyed them. One number, one `||`, and the same pass serves all four.
+Only this module sets it.
+
+### Where it is applied
+
+- **World** — `_placeEyeStyle` takes a colour id and swaps in
+  `getColoredEyeStyleTextures`, exactly as `_placeEyewear` does: the recoloured
+  textures reuse the **base** meta (a retint moves no pixel, so anchors and
+  `scaleByPose` are unchanged) and `fallbackTex` keeps the native art on screen
+  while the bake is in flight, so a colour change never blanks the face. Both
+  call sites pass a colour — `getEyeColor()` for you, `other.eyeColor` for a
+  peer.
+- **Portrait** — one `recolorHairToCanvas` in the eye-style draw, with the
+  profile loaded in the same concurrent batch as the art and **pooled** across
+  facings (v2.3.1109's reason: keyed per facing the swatch lands on a different
+  tone and the eyes change shade as the preview rotates).
+- **Picker** — `colorLabel: eyeStylePaints(eyeStyleSel)`, in the row beside
+  *Default* that already existed for eyewear, so it costs no sheet height. Null
+  on `none`, where the row means the eyes themselves.
+
+**Not** in `_placeStandaloneTrait` (the skill stand-in figures), which carries
+no colour for eyewear either — the same pre-existing limit, noted rather than
+widened here.
+
+### What is asserted
+
+`mp-eyestyle.mjs` points 4(b) and 8. That a swatch changes *something* is read
+off the canvas; that it changes the **right** thing is read off the bake, via
+`window.__btEyeStyleColor`, because a pin that stops matching does not throw —
+`mainMaterial` falls back to "biggest" and One Eye quietly becomes a coloured
+eyeball. So the probe reports the chosen material and the assertion is that it
+is the pinned one, `matRef` is checked to sit at least 3× below `ref` on the two
+styles that pin `dark`, each style must bake a texture for all three facings,
+`none` must bake none, and an unlisted style must offer no colour at all.

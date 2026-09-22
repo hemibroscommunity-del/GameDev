@@ -211,6 +211,29 @@ MAIN_MATERIAL['goggles'] = 202;            /* the LENS, 80% -- a coloured lens i
 MAIN_MATERIAL['laser-glasses'] = 237;      /* the LENS, 43%, over a 34% frame and a 20% red accent that must survive */
 MAIN_MATERIAL['white-glass'] = 'light';    /* the LENS, 60% -- the dark 40% is the frame and keeps its colour */
 
+/* ═══ v2.3.2645: EYE STYLES ═══
+ * Owner: "None of the eyes are recolorable (don't know if they can be)."
+ *
+ * Keyed 'eyes:<id>', NOT the bare id every entry above uses.  This table is one
+ * namespace across every category, and 'demon' or 'wtf' is exactly the sort of
+ * id a hat could be given next year -- at which point the hat would silently
+ * inherit a pin measured on a pair of eyes.  The eyestyle bake passes the
+ * prefixed key (eyeStyleColorCatalog._pooledProfile); nothing else does.
+ *
+ * Measured the same way as everything above (segmentMaterials over the three
+ * shipped facings, pooled).  THREE OF THE FOUR WOULD TAKE THE WRONG PART FROM
+ * "biggest wins", which is the whole reason they are pinned. */
+MAIN_MATERIAL['eyes:sleepy'] = 230;        /* the navy LID, 42% -- it is what the style's colour IS.
+                                              The 32% dark is the outline, and the 11% pink inner-corner
+                                              highlight is the only bright thing on the piece: both stay. */
+MAIN_MATERIAL['eyes:one-eye'] = 'dark';    /* the PUPIL, 10% against 86% white.  "Biggest" would paint the
+                                              sclera, which is a coloured eyeBALL, not a coloured eye --
+                                              what a player means by green eyes is the iris. */
+MAIN_MATERIAL['eyes:wtf'] = 'dark';        /* the PUPILS, 28% against 72% white.  Same reasoning. */
+MAIN_MATERIAL['eyes:demon'] = 'all';       /* hue38 86% and hue15 12% are one flame to the eye, and sparing
+                                              either leaves it half recoloured; the 2% light is its hottest
+                                              core and recolours with it. */
+
 /** Which material index recolours for this trait; -1 means recolour everything. */
 export function mainMaterial(traitId, mats) {
   const want = MAIN_MATERIAL[traitId];

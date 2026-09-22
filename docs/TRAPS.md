@@ -1,4 +1,4 @@
-# TRAPS — plausible-but-wrong moves (v2.3.2643)
+# TRAPS — plausible-but-wrong moves (v2.3.2645)
 
 A registry of changes that look obviously right and are known to be
 wrong. Each was attempted, or nearly attempted, by a competent session.
@@ -3842,3 +3842,60 @@ One Eye is not.
 
 **Related:** §89 (two earlier shapes of the same assertion, both measuring the
 face instead of the art).
+
+## 92. A landmark found in the base art does not bound a layer drawn over it (v2.3.2645)
+
+**Tempting:** you have located the character's eyes honestly — by diffing two
+eye colours, which repaints the irises and nothing else, so the changed pixels
+**are** the eyes on this canvas at this scale (that is §89's fix). Pad it a
+little and you have an "eye window". Now assert that a worn eye style's
+recolour only moves pixels inside it.
+
+**Why it looks right:** the window is measured, not guessed, and it came from
+the game's own answer rather than a fraction of a bounding box. It is the
+reference every other check in `mp-eyestyle.mjs` is built on, and those all
+pass.
+
+**Wrong, because the window describes the BODY SHEET and the thing under test
+is a sprite drawn over it.** Nothing obliges a drawn eye to sit where a painted
+one does: WTF Eyes is two *wide* eyes with the pupils out at the corners, so its
+left pupil lands 10px outside a window derived from the real irises. The
+assertion failed against a face that was perfectly clean — the same family of
+error as §89, one level up: a landmark that is exact for one layer is only a
+guess about another.
+
+**The rule:** bound a layer by **its own** footprint. The style's diff against
+the bare face is, by construction, every pixel that style can legitimately move,
+so "the recolour moved nothing the style did not draw" is both stronger than the
+window version and correct. Ask each layer about itself.
+
+**Receipt:** `tools/qa/mp/mp-eyestyle.mjs` point 4(b); `docs/specs/eyes.md` §5.
+
+## 93. A ratio retint referenced to the sprite turns a dark material black (v2.3.2645)
+
+**Tempting:** you want a new trait to take a colour swatch. Every recolour in
+the game goes through `recolorHairToCanvas`, which divides each pixel's
+luminance by a reference and multiplies the chosen colour by the result, and
+every caller passes the sprite's own mean luminance (pooled across facings, per
+v2.3.1109). Point the new trait at it and pin which material the swatch paints,
+exactly as eyewear does.
+
+**Why it looks right:** it is the shape seven traits already use, the pooling
+bug it guards against is real, and the pinning question (frame or lens, lids or
+pupils) is the one that usually needs thought.
+
+**Wrong when the pinned material is much DARKER than the sprite.** The
+reference decides what the swatch means: pixels at the reference come out *as*
+the swatch. One Eye is 86% white, so its 86%-white sprite references ~276 while
+the pupil a swatch paints sits at ~34 — k = 0.12, and every colour in the
+palette renders as black. Nothing throws; the row simply looks broken.
+
+**The rule:** reference the retint to **the material being painted**, not to the
+sprite (`matRef`). It degrades to the old behaviour whenever the painted part
+*is* most of the sprite, it gives a flat material the outright replacement that
+`eyeColorCatalog` had to special-case in v2.3.1928 (a flat material sits at its
+own mean, so k ≈ 1), and it keeps the shading a flat fill would destroy.
+
+**Receipt:** `src/rendering/traits/eyeStyleColorCatalog.js`; the assertion in
+`mp-eyestyle.mjs` that `matRef` sits at least 3× below `ref` on the two styles
+that pin `dark` (14.2 vs 240.1, 18.0 vs 199.4).

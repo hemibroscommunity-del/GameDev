@@ -33,13 +33,18 @@
  * IT DOES NOT REPLACE THE EYE COLOUR TAB, IT SITS ABOVE IT.  The character's
  * own eyes are painted into the body sheets and recoloured through eyeMask.json
  * (v2.3.1928); that is still what you see with 'none' selected, and it is still
- * what the colour row under the picker changes.  With a style on, the erase
- * above means the colour row is painting something that is no longer there --
- * measured, and asserted by mp-eyestyle.mjs: switching eye colour under a style
- * changes zero pixels.  The row is deliberately left in place anyway rather
- * than hidden per-selection: it is the same control it has always been, it
- * comes straight back when you pick 'none', and a control that disappears when
- * you touch an unrelated tile reads as a bug.
+ * what the colour row under the picker changes.
+ *
+ * ...AND WITH A STYLE ON, THAT ROW PAINTS THE STYLE (v2.3.2645).  Owner: "None
+ * of the eyes are recolorable (don't know if they can be)."  For two days they
+ * were not: the erase above had removed the iris the row was painting, so the
+ * swatches lit up and the face did not change -- the comment here used to say
+ * so and call it acceptable.  It was not; a control that does nothing is a
+ * broken control however well the reason is documented.  The SAME swatch, the
+ * same saved 'ec' value, now retints the worn style's own art, which is why
+ * nothing was added to the wire or the server for it.  What a swatch lands on
+ * differs per style (the pupil, the lids, the flames) and the picker names the
+ * part: eyeStyleColorCatalog.js.
  *
  * WHERE IT DRAWS.  Above the hair, below the eyewear, below the hat.  Declared
  * once by the sprites' child order in entityRenderer / the draw order in

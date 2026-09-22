@@ -60,6 +60,7 @@ import { getFacialHair, FACIALHAIR_CATALOG } from '../traits/facialHairCatalog.j
 import { getEyewear, EYEWEAR_CATALOG } from '../traits/eyewearCatalog.js';   /* v2.3.2361: the eyewear slot */
 import { getEyewearColor, getColoredEyewearTextures } from '../traits/eyewearColorCatalog.js';   /* v2.3.2424 */
 import { getEyeStyle, EYE_STYLE_CATALOG } from '../traits/eyeStyleCatalog.js';   /* v2.3.2643: the eye-style slot */
+import { getColoredEyeStyleTextures } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
@@ -1293,13 +1294,25 @@ function _placeEyewear(display, ewId, ewColorId, pose, dir, mirror, frameIdx, bo
    same eye-line drop from the positive crownNudge Y the importer measured off
    the mannequin, same v2.3.1487 pose rule (a piece carrying `poseFit` had its
    scaleByPose measured per pose, so it must NOT also take the by-eye jog-east
-   correction on top).  No recolour -- an eye style is the colours it was drawn
-   in, and the Eyes tab's colour row still means the REAL eyes underneath.
+   correction on top).
    The slot's draw order (above hair, BELOW the eyewear) is the sprites' child
    order in createPlayerDisplay / the remote display -- see eyeStyleCatalog.js
-   for why glasses go over your eyes whatever your eyes are. */
-function _placeEyeStyle(display, esId, pose, dir, mirror, frameIdx, bodyScale) {
-  const entry = _ensureEyeStyleLoaded(esId);
+   for why glasses go over your eyes whatever your eyes are.
+   v2.3.2645: and it takes a colour.  "No recolour -- an eye style is the
+   colours it was drawn in" is what this comment said for two days, until the
+   owner asked: "None of the eyes are recolorable (don't know if they can be)."
+   The colour is the EYE colour -- the same 'ec' the painted-in iris has used
+   since v2.3.1930, which is why nothing had to be added to the wire for a peer
+   to arrive wearing green Demon Eyes.  Retinted exactly as _placeEyewear does
+   it: the recoloured textures reuse the BASE meta (a retint moves no pixel, so
+   the anchors and scaleByPose are unchanged) and fallbackTex keeps the native
+   art on screen while the bake is in flight, so a colour change never blanks
+   the face. */
+function _placeEyeStyle(display, esId, esColorId, pose, dir, mirror, frameIdx, bodyScale) {
+  const baseEntry = _ensureEyeStyleLoaded(esId);
+  let entry = baseEntry;
+  const colored = getColoredEyeStyleTextures(esId, esColorId);
+  if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta, fallbackTex: baseEntry.tex };
   const tune = (entry && entry.meta && entry.meta.poseFit) ? null : hairPoseTune(pose, dir);
   _placeTrait(display._eyeStyleSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale, tune);
 }
@@ -9921,7 +9934,7 @@ export class EntityRenderer {
           _placeCape(display, other.cape, pose, dir, mirror, frameIdx);   /* v2.3.2023 */
           _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul, other.hair); /* v2.3.1561: hair id for the floating halo */
           _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
-          _placeEyeStyle(display, other.eyeStyle, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2643: under the eyewear */
+          _placeEyeStyle(display, other.eyeStyle, other.eyeColor, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2643: under the eyewear; v2.3.2645: + THEIR eye colour */
           _placeEyewear(display, other.eyewear, other.eyewearColor, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2361; v2.3.2424 + colour */
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
           _crownOverride = null;
@@ -11493,7 +11506,7 @@ export class EntityRenderer {
         _placeCape(display, getCape(), pose, dir, mirror, frameIdx);   /* v2.3.2023 */
         _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale, getHair()); /* v2.3.1561: hair id for the floating halo */
         _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
-        _placeEyeStyle(display, getEyeStyle(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2643: under the eyewear */
+        _placeEyeStyle(display, getEyeStyle(), getEyeColor(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2643: under the eyewear; v2.3.2645: + the eye colour */
         _placeEyewear(display, getEyewear(), getEyewearColor(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2361; v2.3.2424 + colour */
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
         _crownOverride = null;

@@ -30,6 +30,7 @@ import { HAIR_CATALOG, setHair } from '@/rendering/traits/hairCatalog.js';
 import { HAIR_COLOR_CATALOG, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, hatColorsFor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { eyewearColorsFor, eyewearPaints, setEyewearColor } from '@/rendering/traits/eyewearColorCatalog.js';   /* v2.3.2424 */
+import { eyeStylePaints } from '@/rendering/traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { EYE_COLOR_CATALOG, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { EYE_STYLE_CATALOG, setEyeStyle, eyeStyleHasOptions } from '@/rendering/traits/eyeStyleCatalog.js';   /* v2.3.2643 */
 import { HEADWEAR_CATALOG, headwearIsSolid, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
@@ -275,11 +276,22 @@ export function NameModal(props) {
        strip's normal rule blanks the colour row when the pick is 'none', which
        is right everywhere else (there is no hat to paint) and exactly backwards
        here: 'none' IS the real eyes, so it is the pick where the colour row
-       matters most.  The row stays live on every pick -- see eyeStyleCatalog.js
-       for why it is not hidden behind a style either. */
+       matters most.
+
+       v2.3.2645: AND IT NOW PAINTS THE STYLE TOO.  Owner: "None of the eyes are
+       recolorable (don't know if they can be)."  They are -- the same swatch,
+       the same saved value, applied to the worn style's own art instead of to
+       an iris the style has erased (eyeStyleColorCatalog.js).  A second colour
+       row would have asked the player to choose their eye colour twice.
+       `colorLabel` names the part the swatch lands on, the eyewear rule from
+       v2.3.2424: it is the pupil on One Eye and WTF, the lids on Sleepy and the
+       flames on Demon, and a row that does not say so is lying about what it
+       does.  It is null on 'none', where the row means the eyes themselves and
+       the label would be answering a question nobody asked. */
     eyes: { label: 'Eyes', kind: 'thumb', spriteCat: 'eyestyle', catalog: EYE_STYLE_CATALOG, sel: eyeStyleSel,
       set: function (id) { setEyeStyle(id); setEyeStyleSel(id); },
       colors: recolorEnabled('eyes') ? EYE_COLOR_CATALOG : null, colorsWhenNone: true,
+      colorLabel: eyeStylePaints(eyeStyleSel),   /* v2.3.2645 */
       colorSel: eyeColorSel, setColor: function (id) { setEyeColor(id); setEyeColorSel(id); } },
     /* v2.3.1308 (round-7): 'Skin' → 'Skin Tone' — it recolors the whole
        body, and the plain label read as head-only inside the Head group. */
@@ -1749,13 +1761,14 @@ export function NameModal(props) {
       onClick: function () { if (_colors) _def.setColor('default'); }
     }, "Default"),
     /* ═══ v2.3.2424: THE ROW SAYS WHICH PART IT PAINTS ═══
-       Only eyewear sets colorLabel, and only because eyewear is the one
-       category where the answer VARIES between items: the recolour paints the
-       biggest material, which is the FRAME on the golden pair, the monocle and
-       the Thug Lifes, and the LENS on the goggles, the lasers and the white
-       glass (measured -- see eyewearColorCatalog.js).  Without this the same
-       swatch does two different things on two tabs of the same picker and
-       never says so.
+       Eyewear and, since v2.3.2645, eye styles set colorLabel, and both for
+       the same reason: they are the categories where the answer VARIES between
+       items.  The recolour paints one measured material, which is the FRAME on
+       the golden pair, the monocle and the Thug Lifes and the LENS on the
+       goggles, the lasers and the white glass (eyewearColorCatalog.js) -- and
+       the PUPIL on One Eye and WTF, the LIDS on Sleepy, the FLAMES on Demon
+       (eyeStyleColorCatalog.js).  Without this the same swatch does two
+       different things on two tabs of the same picker and never says so.
 
        In the EXISTING head row beside Default, deliberately: that row is
        always rendered on every tab, so this costs no height and the

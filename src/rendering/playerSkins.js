@@ -906,9 +906,12 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
   if (eyeT && eyeRects && !eyeBlankRects) { _eyeT = eyeT; _paintEyes(d, cv.width, cv.height, eyeRects, FW); }
   /* v2.3.2643: ...or erase it instead.  The two are exclusive by the `&&` above
      rather than by draw order: recolouring an iris and then painting over it
-     is work nobody sees, and the exclusion says out loud that a worn eye style
-     makes the eye-colour pick invisible (eyeStyleCatalog.js explains why the
-     control stays on screen anyway). */
+     is work nobody sees.
+     v2.3.2645: and the eye-colour pick is NOT lost when that happens, which is
+     what this comment used to say.  It moves: the same swatch retints the worn
+     style's own art in the trait layer above this bake (eyeStyleColorCatalog.js).
+     So the exclusion here says only that the body sheet stops carrying the
+     colour -- not that the player stopped choosing one. */
   if (eyeBlankRects) _blankEyes(d, cv.width, cv.height, eyeBlankRects, FW);
   ctx.putImageData(imgData, 0, 0);
   /* v2.3.1962: hand the grids back on the canvas rather than through a second
