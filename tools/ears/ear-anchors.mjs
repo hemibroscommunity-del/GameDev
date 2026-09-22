@@ -90,7 +90,11 @@ import { decode } from '../png.mjs';
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const DIR = path.join(REPO, 'public/sprites/player');
 const EYE = JSON.parse(fs.readFileSync(path.join(REPO, 'src/rendering/eyeMask.json'), 'utf8'));
-const SPACE = 256, ALPHA = 32;
+const ALPHA = 32;
+/* eyeMask.json is authored in 256-space whatever the sheet's own frame is, so
+   an iris row is scaled by h/256 -- NOT by the sheet's S, which is h/fh. The
+   two differ on exactly the strips this version re-admitted. */
+const EYE_SPACE = 256;
 
 /* A head narrower or wider than this is not a head: a hand, a hilt, a bow held
    across the face, or a frame whose landmark landed off it. Refuse rather than
@@ -102,34 +106,38 @@ const SPACE = 256, ALPHA = 32;
    through and the review sheet is where it showed. */
 const MIN_HEAD = 20, MAX_HEAD = 78;
 
-/* ═══ v2.3.2645: THE BOW AND SWORD STRIPS ARE EXCLUDED, DELIBERATELY ═══
-   Everything here works in "256-space": a coordinate divided by h/256, which is
-   right for every sheet whose frame is square and stored at some scale of
-   256x256 -- stand, jog, hit, attack, pickup, mine, fish, dodge.
+/* ═══ v2.3.2646: EVERY SHEET CARRIES THE SPACE ITS NUMBERS ARE IN ═══
+   v2.3.2645 excluded the bow and sword strips because they are not 256-square,
+   and the exclusion was right at the time for a reason worth keeping: this file
+   USED to emit a bare array per sheet, so a consumer had to assume a space.
+   Most sheets are some scale of 256x256; sword-east's frame is 402x246. A file
+   mixing the two places ears correctly almost everywhere and is silently
+   wrong on the bow, which is unfixable from the consumer's side.
 
-   The bow and sword strips are NOT that, in two compounding ways, and both were
-   found by rendering them:
-     1. Their frames are not square and not 256 wide. playerSkins.js v2.3.2431
-        had to learn the same thing ("those are 122, 128, 130, 154, 160, 214,
-        320, 340 and 402 px per frame"), and the authoritative table is the
-        stand-in block in effectsRenderer.js. The square guess had sword-east at
-        18 frames when it has 11 -- its strip is stored HALF-RES and upscaled in
-        the loader -- and bow-north at 1 when it has 3.
-     2. Fixing the frame COUNT is not enough, which is the part worth recording.
-        sword-east's native frame is 402x246, so dividing x by h/256 puts it in
-        a space whose frame is 418 wide, not 256 -- a different coordinate system
-        from every other sheet in this file. The review sheet showed the result
-        plainly: the ear alone in empty black, the head off-frame.
+   The fix is to stop assuming. Each sheet now emits its own frame size:
 
-   So they emit NOTHING rather than something plausible-looking in the wrong
-   space. A painter consuming a file where most entries are 256-space and a few
-   are 418-space would place ears correctly almost everywhere and be silently,
-   unfixably wrong on the bow -- which is exactly the class of bug this whole
-   exercise keeps producing. They need their own pass, in their own space, with
-   their own review; docs/specs/SPECIES-PLAN.md scopes it.
+     { "stand-south": { fw: 256, fh: 256, frames: [[L,R,y,tier], ...] },
+       "bow-east":    { fw: 214, fh: 241, frames: [ ... ] } }
 
-   Listed rather than pattern-matched so the exclusion is auditable. */
-const EXCLUDED_STRIPS = {
+   Coordinates are FRAME-LOCAL in that sheet's own native frame. A painter
+   scales by fw/fh and cannot mix spaces even by accident, because there is no
+   longer a default to get wrong. That is what lets the strips back in.
+
+   FRAME GEOMETRY, and why it is a table. playerSkins.js v2.3.2431 --
+   "THE FRAME WIDTH IS AN ARGUMENT, NOT A CONSTANT" -- records this reaching
+   production: the bow strips are 3 frames and floor(w/256) said otherwise, so
+   "on three of the five bow facings the block pose showed NO tattoo at all".
+   Measured again here, the square guess had sword-east at 18 frames when it has
+   11 (its strip is stored HALF-RES on disk, upscaled in the loader) and
+   bow-north at 1 when it has 3.
+
+   These mirror the stand-in tables in effectsRenderer.js (bow ~line 2584,
+   sword ~line 2184), which are the originals. The INTEGER CHECK is what
+   protects the copy: with the right (fw, fh) the frame count comes out whole,
+   and a drifted number almost never will -- so a stale table becomes a loud
+   refusal instead of a wrong window. Anything not listed is 256-square and is
+   asserted to be so. TRAPS §93. */
+const STRIP_GEOM = {
   'bow-east': [214, 241], 'bow-southwest': [154, 233], 'bow-south': [130, 234],
   'bow-northwest': [160, 248], 'bow-north': [122, 260],
   'sword-south': [320, 320], 'sword-east': [402, 246], 'sword-north': [340, 227],
@@ -138,15 +146,27 @@ function stripKey(base) {
   const m = base.match(/^((?:bow|sword)-(?:east|southwest|south|northwest|north))(?:-|$)/);
   return m ? m[1] : null;
 }
-/* A sheet this file can speak about at all: square frame, integer count. */
-function isSupported(base, w, h) {
+/* The native frame size for a sheet, and the frame count that follows from it.
+   Throws rather than guess: a non-whole frame count means the table is stale
+   against effectsRenderer, or a new strip needs a row. */
+function geomFor(base, w, h) {
   const k = stripKey(base);
-  if (k && EXCLUDED_STRIPS[k]) return false;
-  return Math.abs(w / h - Math.round(w / h)) <= 0.02;
+  const [fw, fh] = (k && STRIP_GEOM[k]) ? STRIP_GEOM[k] : [256, 256];
+  const fwDisk = fw * (h / fh);          /* the strip may be stored half-res */
+  const exact = w / fwDisk;
+  const n = Math.round(exact);
+  if (!(n >= 1) || Math.abs(exact - n) > 0.02) {
+    throw new Error(`${base}: ${w}x${h} against frame ${fw}x${fh} gives ${exact.toFixed(3)} frames, not whole -- STRIP_GEOM is stale against effectsRenderer, or this sheet needs a row`);
+  }
+  /* S  : disk px per NATIVE-frame px (the space we emit in)
+     SE : disk px per 256-space px (the space eyeMask is authored in).
+     They are equal for a 256-square sheet and differ on every strip. */
+  return { fw, fh, frameW: Math.round(fwDisk), n, S: h / fh, SE: h / EYE_SPACE };
 }
 function frameOf(file) {
+  const base = file.replace(/\.png$/, '');
   const { width: w, height: h, data } = decode(fs.readFileSync(path.join(DIR, file)));
-  return { w, h, data, frameW: h, n: Math.max(1, Math.round(w / h)), S: h / SPACE };
+  return { w, h, data, ...geomFor(base, w, h) };
 }
 
 /* ── the head's SIDES: the width plateau below the crown ── */
@@ -166,7 +186,7 @@ function frameOf(file) {
    v2.3.2644 had to leave bare. */
 const HEAD_SEARCH = 32, PLATEAU_TOL = 2;
 function headPlateau(sh, f, irisY) {
-  const { w, h, data, frameW, S } = sh;
+  const { w, h, data, frameW, S, SE } = sh;
   const x0 = f * frameW;
   const span = (y) => {
     let a = -1, b = -1;
@@ -185,8 +205,10 @@ function headPlateau(sh, f, irisY) {
      whatever is raised nearby. */
   let from = crown, to = crown + Math.round(HEAD_SEARCH * S);
   if (irisY != null) {
-    from = Math.max(0, Math.round((irisY - 24) * S));
-    to = Math.round((irisY + 8) * S);
+    /* irisY is 256-space (eyeMask), so it scales by SE, not S. */
+    const irisDisk = irisY * SE;
+    from = Math.max(0, Math.round(irisDisk - 24 * S));
+    to = Math.round(irisDisk + 8 * S);
   }
   const prof = [];
   for (let y = Math.max(0, from); y < Math.min(h, to); y++) {
@@ -260,11 +282,9 @@ function fill(tuples, tiers) {
   }
 }
 
-const out = {}, report = [], skipped = [];
+const out = {}, report = [];
 for (const file of fs.readdirSync(DIR).filter((f) => f.endsWith('.png')).sort()) {
   const base = file.replace(/\.png$/, '');
-  const probe = decode(fs.readFileSync(path.join(DIR, file)));
-  if (!isSupported(base, probe.width, probe.height)) { skipped.push(base); continue; }
   const sh = frameOf(file);
   const rects = EYE[base];
   const tuples = new Array(sh.n).fill(null);
@@ -277,8 +297,10 @@ for (const file of fs.readdirSync(DIR).filter((f) => f.endsWith('.png')).sort())
     let y, tier;
     if (ic != null) {
       /* The iris IS the ear line. The plateau only has to supply the sides,
-         and it was searched around this iris, so no crown guard applies. */
-      y = ic; tier = 'eye';
+         and it was searched around this iris, so no crown guard applies.
+         Converted 256-space -> disk -> native frame, which is a no-op on a
+         256-square sheet and is NOT on a strip. */
+      y = (ic * sh.SE) / sh.S; tier = 'eye';
     } else {
       /* No iris: the crown has to carry the ear line, so both guards apply --
          a crown far above the plateau is a raised weapon, pickaxe or rod. */
@@ -291,7 +313,9 @@ for (const file of fs.readdirSync(DIR).filter((f) => f.endsWith('.png')).sort())
 
   fill(tuples, tiers);
   const got = tuples.filter(Boolean).length;
-  if (got) out[base] = tuples.map((t, q) => (t ? [...t, tiers[q]] : null));
+  if (got) {
+    out[base] = { fw: sh.fw, fh: sh.fh, frames: tuples.map((t, q) => (t ? [...t, tiers[q]] : null)) };
+  }
   report.push([base, sh.n, got,
     tiers.filter((t) => t === 'eye').length,
     tiers.filter((t) => t === 'crown').length,
@@ -306,10 +330,6 @@ if (process.argv.includes('--report')) {
     console.log(`${r[0].padEnd(26)} ${String(r[1]).padStart(6)} ${String(r[2]).padStart(7)} ${String(r[3]).padStart(5)} ${String(r[4]).padStart(5)} ${String(r[5]).padStart(7)}${flag}`);
   }
   console.log(`\nplaced ${sum(2)}/${sum(1)} frames  (eye ${sum(3)}, crown ${sum(4)}, interp ${sum(5)})`);
-  if (skipped.length) {
-    console.log(`\nEXCLUDED (non-256-square frames -- see the header): ${skipped.length} sheet(s)`);
-    console.log('  ' + skipped.join(' '));
-  }
   const gaps = report.filter((r) => r[2] < r[1]);
   console.log(`sheets still with gaps: ${gaps.length}${gaps.length ? ' -> ' + gaps.map((g) => g[0]).join(' ') : ''}`);
   process.exit(0);

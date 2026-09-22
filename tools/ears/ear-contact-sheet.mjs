@@ -81,8 +81,14 @@ for (const base of Object.keys(A).sort()) {
   const file = path.join(DIR, `${base}.png`);
   if (!fs.existsSync(file)) continue;
   const { width: w, height: h, data } = decode(fs.readFileSync(file));
-  const frameW = h, S = h / 256;
-  const tuples = A[base];
+  /* v2.3.2646: the record carries its own frame size, so the cell sampler works
+     in the sheet's native space instead of assuming 256-square. That assumption
+     is what put the sword-east ear alone in empty black (TRAPS §93). */
+  const rec = A[base];
+  const tuples = rec.frames || rec;
+  const fw = rec.fw || 256, fh = rec.fh || 256;
+  const S = h / fh;
+  const frameW = Math.round(fw * S);
   const rows = Math.ceil(tuples.length / COLS);
   const OW = COLS * (CELL + PAD) + PAD, OH = rows * (CELL + PAD) + PAD;
   const out = new Uint8Array(OW * OH * 4);

@@ -208,43 +208,49 @@ A third guard came from the review: the head-width ceiling. A loose 110 let
 `bow-east` through with a **100px "head"** — the plateau swallowing the bow. The
 measured range is 41–54, with the dodge roll at 73, so the cap is now 78.
 
+### Stage 2c — every sheet carries its own space (v2.3.2646)
+
+v2.3.2645 excluded the bow and sword strips because they are not 256-square.
+That was right *given the file format*: the anchor file emitted a bare array per
+sheet, so a consumer had to assume a coordinate space — and a file mixing
+256-space with `sword-east`'s 402×246 frame places ears correctly almost
+everywhere and is silently wrong on the bow, unfixably from the consumer's side.
+
+**The fix was to stop assuming.** Each sheet now carries its own frame size:
+
+```
+{ "stand-south": { fw: 256, fh: 256, frames: [[L,R,y,tier], ...] },
+  "sword-east":  { fw: 402, fh: 246, frames: [ ... 11 frames ... ] },
+  "bow-south":   { fw: 130, fh: 234, frames: [ ... 3 frames ... ] } }
+```
+
+Coordinates are frame-local in that sheet's *own* native frame. A painter scales
+by `fw`/`fh` and cannot mix spaces even by accident, because there is no default
+left to get wrong. That is what let the strips back in.
+
+Two scales had to be separated to make it work, and the distinction is easy to
+miss: `eyeMask.json` is authored in **256-space whatever the sheet's frame is**,
+so an iris row scales by `h/256`, while everything emitted scales by `h/fh`.
+They are identical on a 256-square sheet and differ on exactly the strips this
+stage re-admitted.
+
 ### Where the coverage actually stands
 
-Two corrections to the numbers this document carried earlier, both from
-v2.3.2645 and both found by rendering rather than counting.
-
-**The 823-frame total was wrong.** It came from `round(width / height)`, which
-assumes a square frame. True for `stand` / `jog` / `hit` / `attack` / `pickup`
-/ `mine` / `fish` / `dodge`; false for the bow and sword strips, whose frames
-are 122, 130, 154, 160, 214, 320, 340 and 402 px wide. The square guess had
-`sword-east` at 18 frames when it has **11** — that strip is stored half-res on
-disk and upscaled in the loader — and `bow-north` at 1 when it has 3.
-`playerSkins.js` v2.3.2431 had to learn the identical lesson; the authoritative
-table is the stand-in block in `effectsRenderer.js`.
-
-**And fixing the frame count was not enough**, which is the part worth keeping.
-Everything here works in "256-space" — a coordinate divided by `h/256` — which
-is right only for a frame that is square and some scale of 256×256.
-`sword-east`'s native frame is 402×246, so that division puts it in a space
-whose frame is 418 wide: *a different coordinate system from every other sheet
-in the file.* The review sheet showed it plainly — the ear alone in empty black
-with the head off-frame.
-
-So the bow and sword strips now emit **nothing**, rather than something
-plausible-looking in the wrong space. A painter reading a file where most
-entries are 256-space and forty sheets are not would place ears correctly
-almost everywhere and be silently wrong on the bow, which is the exact class of
-bug this work keeps turning up.
+**682 of 694 frames that should have ears — 98%.**
 
 | | state |
 |---|---|
-| **Supported** — `stand` `jog` `hit` `attack` `pickup` `mine` `fish` `dodge`, all directions | **547 of 548 frames (99.8%)**; the only miss is `welcome-bro`, an orphan nothing references |
-| **Excluded** — the bow and sword strips (40 sheets, of which 24 would need ears) | non-square frames in their own coordinate space; needs its own pass and its own review |
+| **Placed** | `stand` `jog` `hit` `attack` `pickup` `mine` `fish` `dodge` (all directions) and the `sword` strips |
+| **Short** | `bow-east`, `bow-north`, `bow-northwest`, `bow-southwest` — 12 frames. The bow is held across the face, so neither the crown nor a plateau around the iris finds the skull |
+
+Sheets that legitimately have no ear are excluded from the count: `*-armored`
+(the helmet is erased and the head comes from a `*-head` sheet), `*-weapon` (no
+head), and `welcome-bro` (an orphan nothing references).
 
 Reviewed on the contact sheet: `stand-south`, `stand-north`, `stand-east`
-(profile, rear ear only), all 23 frames of `jog-north`, all 28 of `jog-east`,
-and `hit-south` through its recoil — the last of which had no coverage at all
-before this stage.
+(profile — rear ear only), all 23 frames of `jog-north`, all 28 of `jog-east`,
+`hit-south` through its recoil, and all 11 of `sword-east` — the last of which
+was the frame that exposed the mixed-space bug in the first place.
 
 ### What is left after that
 
