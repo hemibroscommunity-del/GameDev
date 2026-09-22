@@ -38,12 +38,12 @@
  *
  * 4. NOTHING OF THE OLD EYE IS LEFT SHOWING.  Owner, on the first cut: "I still
  *    see some remnants around the eyes where you stickered over the old ones."
- *    Two assertions, because there were two remnants.
- *    (a) Every pixel of the base eye must have CHANGED. The base eye's footprint
- *        is read off the bare capture -- the not-skin pixels in the eye band --
- *        so the test knows where the old eye was without being told, and a
- *        sliver of black top edge peeking out one pixel to the left of a style
- *        fails it.
+ *    Two assertions, and NEITHER of them looks for the old eye on the face --
+ *    two attempts to do that are written up on the `win` block below, and both
+ *    reported hundreds of remnants against a face that was clean.
+ *    (a) DEMON EYES is drawn with no dark pixel in it at either resolution, so
+ *        while it is worn, any hard-dark pixel in the eye window can only be the
+ *        old eye. The bare face's own count is the control.
  *    (b) With a style on, changing the eye COLOUR must change nothing at all.
  *        That is exact rather than approximate: the bake paints the iris or
  *        erases it, never both (playerSkins.recolorBodyToCanvas), so a single
