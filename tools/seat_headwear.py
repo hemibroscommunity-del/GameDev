@@ -190,7 +190,7 @@ def main():
     args = ap.parse_args()
 
     total = 0
-    for cat in ('headwear', 'hair', 'eyewear'):   # v2.3.2361: + eyewear
+    for cat in ('headwear', 'hair', 'eyewear', 'eyestyle'):   # v2.3.2361: + eyewear; v2.3.2643: + eyestyle
         base = f'{TRAITS}/{cat}'
         if not os.path.isdir(base):
             continue
