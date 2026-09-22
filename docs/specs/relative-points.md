@@ -1,10 +1,11 @@
 # Relative point value — "your points are your edge" (design note)
 
-**v2.3.2642. DESIGN NOTE ONLY — no combat code ships with it.** Written for
+**v2.3.2645. DESIGN NOTE ONLY — no combat code ships with it.** Written for
 the owner to approve (or re-dial) before the implementation PR. Every number
-below is measured against `main` at v2.3.2641 by driving the game's own
-shipped formulas — the real server damage roll and the real damage sink —
-not re-typed copies of them:
+below is measured by driving the game's own shipped formulas — the real server
+damage roll and the real damage sink — never a re-typed copy. The sim asserts
+its own "today" column against the live `PROG3` tables and throws if either
+has drifted, so these numbers cannot quietly go stale as `main` moves:
 
 ```
 node tools/relative-points-sim.mjs          # every table in this note
@@ -40,12 +41,15 @@ fighting a monster close in level to them."*
   Dodge, Resist (the three shared stats that change a hit taken). Universal:
   HP, Mana, Stamina, Move Speed, Speed and Range — pools and reach, which are
   not evaluated against any particular monster. (§3)
-- **Every relative point gets 2.5–3× heavier, and its stat caps in 2.5–3×
-  fewer points.** The effect a stat has AT ITS CAP does not change (−40 %
-  damage taken, 30 % dodge, +37.5 damage, ×2.4–2.5 crits, +75 % specials).
-  What changes is that you get there by character level ~25–40 instead of
-  ~75–100, and that none of it carries upward. That is the "trade slow and
-  universal for fast and relative" in one move. (§3, §4)
+- **Every relative point gets 2.5–3× heavier, and NOTHING IS CAPPED.** The
+  four percentage stats change shape to a front-loaded curve `p/(p+K)` that
+  approaches but never reaches 100 %; Power, Special, Element and crit damage
+  stay linear. `K` is picked so the curve passes exactly through what a cap
+  would have given (40 Defense points is −40 % either way), so every number
+  in §4 holds and uncapping only adds a tail. A point is never refused and
+  never worthless, the first point is worth 7× the hundredth, and the
+  anticheat ceiling holds at 33 % of its limit with everything at 297 points.
+  (§3.1, sim §8)
 - **What it feels like, measured.** One level-up's points into Power at
   character level 3 takes a brute from 10.8 swings to 7.9 (−27 %; today −11
   %). Five level-ups' points into Defense at level 20 buys +19 % survival
@@ -191,6 +195,14 @@ is the contrast between the two halves.
 
 ## 3. What each stat does now
 
+> **Read §3.1 first.** The table below is the CAPPED version (decision 5-A),
+> and it is no longer the recommendation. The owner, 2026-09-22: *"I don't
+> really like the idea of capping. What happens if you let it go uncapped?"*
+> Measured, uncapping is the better shape and costs nothing in this table —
+> §3.1's curve passes exactly through every endpoint below and keeps going.
+> The table stays because it is the reference every number in §4 was measured
+> at, and because those numbers are unchanged by §3.1.
+
 The rule for the reprice: **keep every stat's effect at its cap, reach the
 cap in fewer points, make each point that much heavier.** A bigger cap
 effect would break the top end at your own level (−100 % damage taken is
@@ -209,6 +221,99 @@ today's. So the endpoints stay and the points-to-cap shrink.
 | HP, Mana, Stamina | shared, universal | unchanged | unchanged | | | |
 | Move Speed | shared, universal | unchanged | unchanged | | | |
 | Speed `aspd`, Range | lane, universal | unchanged | unchanged | | | |
+
+### 3.1 Uncapped — the recommended shape (sim §8)
+
+A cap does two jobs, and only one of them is a design choice:
+
+- **Safety.** A percentage stat at −1 %/pt reaches −100 % at 100 points.
+  That is immunity, and it is arithmetic rather than taste. Measured: a
+  Melee 100 character has earned 297 shared points, and split across a
+  linear Defense and Dodge that is **100 % reduction and 100 % dodge —
+  unplayable**, at a point total the game hands out for free.
+- **Scarcity.** Running you out of room to force a build choice. This is the
+  design-y job, and it is the one the owner is rejecting. **The edge already
+  does it better:** pouring everything into Power still leaves you defenceless
+  and helpless against +5 content, which is opportunity cost without a wall.
+
+So: **no stat has a cap, and the four percentage stats change shape.** Linear
+where linear is safe, a front-loaded curve where it is not.
+
+| stat | shape | at 10 | at 25 | at 40 | at 100 | at 297 | at 891 |
+|---|---|---|---|---|---|---|---|
+| Defense | `p/(p+60)` | −14 % | −29 % | **−40 %** | −63 % | −83 % | −94 % |
+| Dodge | `p/(p+70)` | 13 % | 26 % | 36 % | 59 % | 81 % | 93 % |
+| Resist | `p/(p+70)` | −13 % | −26 % | −36 % | −59 % | −81 % | −93 % |
+| Luck, crit chance | `1 % + p/(p+70)` | 14 % | 27 % | 37 % | 60 % | 82 % | 94 % |
+| Luck, crit damage | linear `+3 %` | ×1.8 | ×2.3 | ×2.7 | ×4.5 | ×10.4 | ×28.2 |
+| Power | linear `+1.5` | +15 | **+38** | +60 | +150 | +446 | +1337 |
+| Special | linear `+3 %` | +30 % | **+75 %** | +120 % | +300 % | +891 % | +2673 % |
+| Element | linear `+3` | +30 | **+75** | +120 | +300 | +891 | +2673 |
+
+Four things this buys, each measured:
+
+**1. Every number already in this note survives.** `K` is chosen so the curve
+passes through the capped endpoint: 40 Defense points is −40 % on the curve
+and −40 % capped, 30 Dodge is 30 % either way. So §4's whole table holds and
+uncapping only adds a tail.
+
+**2. It serves the owner's ask BETTER than the linear cap did.** The curve is
+front-loaded, so the immediate difference the ask is about is larger:
+
+| the next Defense point is worth | 1st | 40th | 100th | 297th |
+|---|---|---|---|---|
+| | **1.67 %** | 0.60 % | 0.23 % | 0.05 % |
+
+A point is never refused and never worthless. That is the whole of the
+objection to capping, answered without giving anything up.
+
+**3. Uncapping the DAMAGE stats changes nothing at the top, because the cap
+was never what held them.** Melee 100, worldbreaker greatsword, against the
+biggest monster in the game (a level-100 brute, 756 HP):
+
+| Power | mean swing | hits to kill |
+|---|---|---|
+| no points at all | 1,271 | 1.00 |
+| capped at 25 | 1,571 | 1.00 |
+| uncapped at 297 | 4,834 | 1.00 |
+
+The skill term alone is 150 against a weapon base of 10, so a finished
+character one-shots everything with zero points spent. Power, Special,
+Element and crit damage can be plainly linear and uncapped.
+
+**4. Anticheat holds, by construction.** 2,400 rolls with Power, Luck and
+Special at 297 each, on the worst legitimate kit under a Fury Tonic, peak at
+**33 % of the ceiling** — because `_maxWeaponDmg` and `_maxDmgForAttacker`
+read the same constants the roll does, so removing a cap raises both together
+(the v2.3.1451 rule). This is the gate that decides shippability and it is
+green.
+
+**What uncapping genuinely costs, and it is one thing.** A build that spends
+*every* shared point it will ever earn on avoidance:
+
+| build | shared points | Defense | Dodge | damage through |
+|---|---|---|---|---|
+| char 40 (Melee 38) | 111 | 48 % | 44 % | 29.0 % |
+| char 102 (Melee 100) | 297 | 71 % | 68 % | 9.2 % |
+| char 300 (100/100/100) | 891 | 88 % | 86 % | 1.6 % |
+
+The floor-1 clamp in `_applyDamage` means damage through never actually
+reaches zero, but 1.6 % against a 1,900 HP health bar is unkillable by
+at-level monsters — and the edge does not save it, because monsters cap at
+level 100 and so does a trained skill, so a finished character never faces
+anything above itself. **This is a taste call and there is precedent for
+accepting it:** BALANCE-PLAN §4c already records "near-unkillable max tank
+builds" as an owner-accepted extreme of the kid-simple reprice, on the
+grounds that the game is PvE-focused and imbalance is policy. Decision 12
+in §10 is whether to accept it again, raise the `K`s, or floor the combined
+damage-through (a cap on the product, which still never refuses a point).
+
+**The one implementation note.** Element is the only uncapped linear stat
+whose consumer has no ceiling of its own: burn/root/thorn ticks read the
+power snapshot and `_applyMonsterDot` has no attacker cap (only collisions
+carry `COLLISION_BURST_CAP`). Not a cheat surface — the stat is server-owned
+and spend-gated — but at 891 elemental power a burn tick is 272, so the DoT
+formulas want a look in the same PR.
 
 **The one endpoint that moves:** Luck's crit-damage half lands at ×2.40
 instead of ×2.50, the price of "+3 %" being a round number (×2.5 needs
@@ -397,10 +502,16 @@ more shared points — and it is the same size as today's (5.4 → 8.4 → 12.8)
 decision 2-B leaves cross-training exactly as attractive as it is now, and no
 more. **That is why the recommendation flipped.**
 
-#### 4.6c A single-stat build becomes impossible to sustain
+#### 4.6c A single-stat build, under the two shapes
 
-Caps are 2.5–3× smaller, so "everything into Defense" runs out of room. A
-melee specialist's shared points against the new 40-point Defense cap:
+**Uncapped (§3.1, the recommendation), a single-stat build never dead-ends** —
+it just pays less per point as it deepens: −40 % at 40 Defense points, −63 % at
+100, −83 % at 297. Nothing forces you out of a stat, and the opportunity cost
+of staying in it is the diminishing return rather than a wall.
+
+The table below is what the CAPPED version did instead, kept because it is
+what decision 5-A still means if the owner prefers the wall after all. A
+melee specialist's shared points against a 40-point Defense cap:
 
 | char level | shared points earned | today: Defense | proposed: Defense | forced elsewhere |
 |---|---|---|---|---|
@@ -413,17 +524,23 @@ melee specialist's shared points against the new 40-point Defense cap:
 Below character level ~40 the §6-C double cap is what binds, exactly as it does
 today, so the early game changes only by the weight of a point. Past 40 the
 stat cap binds and the surplus must go to Dodge, then Resist, then the pools.
-A pure one-stat build is therefore **self-terminating**: it is a real choice for
-the first forty levels and then the game hands you breadth whether you wanted
-it or not. Today you can pour 100 into Defense and still have 197 points of
-room, so purity is available forever and never pays off.
+Under that version a pure one-stat build is **self-terminating**: a real choice
+for the first forty levels, and then the game hands you breadth whether you
+wanted it or not. That is precisely what the owner objected to, and §3.1 is the
+answer — uncapped, purity stays available at every level and keeps paying, just
+less steeply.
 
 #### 4.6d The consequence to weigh: the relative game ends around level 40
 
-| | today | proposed |
-|---|---|---|
-| relative LANE stats all at cap | **never** (325 points of sinks against the 297 a Melee 100 earns) | character level 38 |
-| relative SHARED stats all at cap | character level 100 | character level 40 |
+| | today | capped (5-A) | uncapped (§3.1) |
+|---|---|---|---|
+| relative LANE stats all at cap | **never** (325 points of sinks against the 297 a Melee 100 earns) | character level 38 | no cap to reach |
+| relative SHARED stats all at cap | character level 100 | character level 40 | no cap to reach |
+
+**Uncapping removes this phase boundary**, which is the second reason to prefer
+it: every point from level 3 to 300 goes on buying relative power, so the
+"level 40 and the relative game is over" cliff below simply does not happen.
+What follows describes the capped version, and is the cost of choosing 5-A.
 
 So the design splits a character into two phases. **Level 3 to ~40 is the
 relative game** — every point is loud, the order you buy them in is the build,
@@ -454,8 +571,9 @@ new storage key, no new client→server event.
 
 | where | change |
 |---|---|
-| `prog3.js` `PROG3` | new per/cap values on the seven stats (each tagged `relative: true` so the client's row metadata and the sanitizer's cap clamps read the table, not a list); `PROG3.EDGE = { FADE_PER_LEVEL: 0.20, BELOW_BONUS: 0 }`; `prog3Edge(yardstick, monsterLevel)` exported, plus the two readers that supply it: `_prog3LaneYardstick(ps, cat)` (that lane's trained level) and `_prog3BodyYardstick(ps)` (the highest trained level). Two named functions rather than a raw level at each call site, because "which level does this compare against" is the decision the whole design turns on and it must have one home |
-| `prog3.js` readers | `_prog3CritChance / _prog3CritMult / _prog3SpecialMult / _prog3DefMult / _prog3DodgePct / _prog3ElemResistMult` take an optional `edge` (default 1) and multiply the POINT COUNT by it — the 1 % crit base stays outside, so an unallocated character rolls exactly what it rolls today at every gap |
+| `prog3.js` `PROG3` | new per-point values, and **`cap` becomes `bound`** on the seven stats — no longer a design limit, just the storage clamp every read already applies (999, the sanitizer's existing number; points are server-minted so the real limit is the point supply). Each stat gains `relative: true` and, for the four percentage ones, `curveK`, so the client's row metadata and the readers work off the table rather than a list. Plus `PROG3.EDGE = { FADE_PER_LEVEL: 0.20, BELOW_BONUS: 0 }`, `prog3Edge(yardstick, monsterLevel)`, and the two readers that supply the yardstick: `_prog3LaneYardstick(ps, cat)` (that lane's trained level) and `_prog3BodyYardstick(ps)` (the highest trained level). Two named functions rather than a raw level at each call site, because "which level does this compare against" is the decision the whole design turns on and it must have one home |
+| `prog3.js` `prog3Curve(pts, K)` | `pts / (pts + K)`, the ONE definition of the diminishing shape, mirrored client-side. The four percentage readers below call it; nothing else states the arithmetic. The §6-C double cap `min(bound, characterLevel)` stays exactly as it is — it is a pacing rule, not a ceiling, and it is the only thing that still stops an early rush |
+| `prog3.js` readers | `_prog3CritChance / _prog3CritMult / _prog3SpecialMult / _prog3DefMult / _prog3DodgePct / _prog3ElemResistMult` take an optional `edge` (default 1) and apply it to the POINT COUNT, which is where the design puts it: `prog3Curve(pts × edge, K)` for the four percentage stats, `pts × edge × per` for the linear ones. The 1 % crit base stays outside the product, so an unallocated character rolls exactly what it rolls today at every gap. Edge on the count rather than on the result matters for a curve: `curve(p × 0.5)` is the value of half the investment, while `curve(p) × 0.5` would be half a value the curve never promised |
 | `combat.js` `_computeAttackDamage(ps, slot, isSpecial, opts)` | `opts.edge` (default 1); the Power term becomes `dmgPts × per × edge`, and the crit / special readers receive it |
 | `combat.js` `_handleMonsterDamage` | `edge = prog3Edge(this._prog3LaneYardstick(attackerPs, this._prog3CatFor(_effSlot)), m.level)` — the lane the SERVER resolved, never the client's claim; passed to the roll, to `elemAttackStat` for the status snapshot and to `resolveElementCollision` |
 | `combat.js` `_staffSplash` | inherits the primary hit's number (it is defined as "half the number beside it", v2.3.2481); neighbours are not re-priced by their own level — accepted, documented |
@@ -491,10 +609,25 @@ and the surplus is **refunded to the pool that paid** — lane points back to
 their lane (`pool` and `poolBy[cat]` together, the parts-≤-whole invariant by
 construction), shared points back to `shared`. The v6 `uniform-t2-caps`
 precedent ("halved per-point with points doubled — power-neutral") rather
-than the v11/v15/v17 full refunds, because a cap SHRINK cannot keep the count
-(60 Defense points do not fit in a cap of 40) and a full refund would hand
-every veteran a character with no defense the moment the worker deploys.
-Nobody's effect shrinks; everybody gets points back.
+than the v11/v15/v17 full refunds, because a full refund would hand every
+veteran a character with no defense the moment the worker deploys. Nobody's
+effect shrinks; everybody gets points back.
+
+Under **5-B** the conversion inverts the curve instead of dividing a rate:
+a stat holding `n` points at the old linear value `r = n × per` keeps
+`ceil(K × r / (1 − r))` points, which is the point count that reads the same
+percentage on the new curve. Linear stats (Power, Special, Element, crit
+damage) divide by the weight ratio as below. Worked, for Defense (`K` 60,
+old −0.4 %/pt):
+
+| placed today | old value | → kept | new value | refunded |
+|---|---|---|---|---|
+| 100 | −40 % | 40 | −40 % | 60 |
+| 60 | −24 % | 19 | −24 % | 41 |
+| 25 | −10 % | 7 | −10 % | 18 |
+| 7 | −2.8 % | 2 | −3.2 % | 5 |
+
+The table below is the same exercise under **5-A**, kept for that option.
 
 | placed today | effect | → kept | effect | refunded |
 |---|---|---|---|---|
@@ -547,16 +680,16 @@ Nobody's effect shrinks; everybody gets points back.
   client's two rolls and displayed range, balance-sim, `BAND_TOP` in the
   prog3 suite). This note does not touch them; listed because the reprice PR
   will be in that file.
-- **Supply vs sinks changes shape.** Lane: 297 points earned against 305
-  sinks (was 525) — a level-100 lane can now fill ~96 % of its column, where
-  today it fills ~56 %. Shared: 891 against 475 (was 625) — already fully
-  maxable today by ~level 220, now by ~level 160. The mid-game squeeze the
-  double cap creates is unchanged (at character 30 a lane holds at most 165
-  double-capped slots against the 81 points a Melee-28 specialist has). If the endgame lane should stay
-  scarce, the dials are `POINTS_PER_LEVEL` or the two universal lane caps
-  (Speed, Range), and neither is recommended in this note: at level 100
-  nothing is above you, so completeness there costs nothing the edge was
-  meant to protect.
+- **Supply vs sinks stops being a question under 5-B**, which is most of the
+  reason to prefer it: with no cap there is nothing to fill, so a point always
+  has somewhere to go and "I finished my column" never happens. Scarcity comes
+  from the diminishing return and from the edge instead of from a wall. The
+  mid-game pacing guard is unchanged and is now the only limit: the §6-C double
+  cap still holds every stat at `min(bound, character level)`, so a character
+  30 cannot hold more than 30 points in anything however many it has banked.
+  (Under 5-A the sink totals were lane 305 against the 297 a Melee 100 earns,
+  and shared 475 against 891 — i.e. both columns finishable, which is the
+  phase boundary §4.6d describes.)
 - **`_prog3AtkPts` / `_prog3Pts` clamp to the cap at every read.** The
   migration must run before those clamps see a blob, or a 60-point Defense
   reads as 40 with nothing refunded (§6).
@@ -592,11 +725,25 @@ Nobody's effect shrinks; everybody gets points back.
 - `_handleMonsterDamage` against a monster 5 levels above a maxed attacker
   lands the no-points number; the same monster at the attacker's level lands
   the invested one;
-- the §6 anticheat sample re-run at the new caps (lockstep), and once more
-  with `BELOW_BONUS` at its maximum if it is ever non-zero;
-- migration v18: the conversion table in §6 row by row, idempotence via the
-  stamp, the join-boundary heal on a blob that skipped it, parts ≤ whole
-  after a lane refund, and that a blob already at the new caps is untouched.
+- **the curve, and the two things about it that can silently break** (5-B):
+  `prog3Curve(pts, K)` matches the §3.1 table at 10 / 25 / 40 / 100 / 297 /
+  891 points; it passes through the 5-A endpoint exactly (40 Defense points is
+  −40 % on both shapes, which is what makes §4's numbers survive); it is
+  strictly increasing and strictly below 1 at every point count the storage
+  bound allows, so no investment can reach immunity; and the edge is applied to
+  the COUNT, asserted by `curve(2p, K)` at edge 0.5 equalling `curve(p, K)`;
+- the combined avoidance product at the three §3.1 investments, pinned as a
+  number rather than an inequality, so decision 12's answer cannot drift
+  silently later;
+- the anticheat sample re-run with Power, Luck and Special at the storage
+  bound (lockstep), and once more with `BELOW_BONUS` at its maximum if it is
+  ever non-zero;
+- the Element DoT at the storage bound: a burn tick priced off 999 elemental
+  power stays inside whatever ceiling the same PR gives `_applyMonsterDot`;
+- migration v18: the conversion table in §6 row by row (the curve inversion
+  under 5-B), idempotence via the stamp, the join-boundary heal on a blob that
+  skipped it, parts ≤ whole after a lane refund, that no conversion ever
+  LOWERS a stat's value, and that an already-converted blob is untouched.
 
 `server/test/mirror-audit.test.mjs` needs no edit: it compares every scalar
 and both key sets between `server/src/prog3.js` and `src/data/prog3.js`, so
@@ -642,12 +789,13 @@ Recommended default in bold; the rest of the note explains each row.
 | 2 | "Your level" | A: character level (the plate's number) · **B: the lane's own skill for lane stats, highest skill for shared** · C: highest trained skill for everything | **B** (the sim overturned A — §2, §4.6b) | |
 | 3 | Below your level | **A: full strength, no bonus** · B: +10 %/level below, capped at 150 % | **A** | |
 | 4 | Which stats are relative | **A: the seven in §3** · B: the seven + Speed (`aspd`, as a fast-universal stat at cap 35) · C: lane stats only (Defense/Dodge/Resist stay universal) | **A** | |
-| 5 | Weight | **A: ×2.5 shared / ×3 lane, caps ÷ the same** · B: ×2 everywhere (Defense 0.8 %/50, Power 1.0/37) · C: ×5 (Defense 2 %/20, Power 2.5/15 — every relative stat capped by character level ~25) | **A** | |
-| 6 | Luck's crit-damage endpoint | **A: +3 %/pt → ×2.4** · B: +3.33 %/pt → ×2.5 exactly | **A** | |
+| 5 | Weight and shape | A: ×2.5–3 heavier with hard caps (§3) · **B: UNCAPPED — same weight, the four percentage stats on `p/(p+K)` through the same endpoints (§3.1)** · C: ×2 everywhere with caps | **B** (the owner dislikes caps, and the sim says uncapped is the better shape anyway) | |
+| 6 | Luck's crit-damage endpoint | **A: +3 %/pt (moot under 5-B — uncapped, so there is no endpoint to land on; it reads ×2.4 at the 30 points 5-A would have capped at)** · B: +3.33 %/pt, if 5-A is chosen after all | **A** | |
 | 7 | Migration | **A: convert by value, refund surplus (v6 precedent)** · B: full refund of the seven stats (v17 precedent) | **A** | |
 | 8 | PvP | **A: unchanged (edge 1), own PR later** · B: both players' character levels wired through now | **A** | |
 | 9 | Rollout | **A: server+mirrors PR, then the migration PR** · B: one PR | **A** | |
 | 10 | Depth zones | **A: restore the commented bands as the next content PR** · B: keep the world at 1–2 (the fade is dungeon-only) | **A** | |
+| 12 | The endgame avoidance extreme, given 5-B | **A: accept it (the BALANCE-PLAN §4c precedent: "near-unkillable max tank builds", PvE-focused)** · B: raise the `K`s so a maxed avoidance build lands nearer 20 % damage through · C: floor the combined damage-through (a cap on the product, never on a stat) | **A** | |
 | 11 | The nameplate border, given decision 2-B | **A: the plate follows the same yardstick (the active lane's level) so its colour predicts your point strength** · B: the plate keeps the character level from the 2026-09-14 mock and the colour means difficulty only | **A** (client-only) | |
 
 ---

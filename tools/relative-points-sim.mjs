@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* relative-points-sim — the referee for the RELATIVE POINT VALUE redesign
- * (docs/specs/relative-points.md, v2.3.2642).
+ * (docs/specs/relative-points.md, v2.3.2645).
  *
  *   node tools/relative-points-sim.mjs            # every table
  *   node tools/relative-points-sim.mjs --quick    # fewer samples
@@ -449,6 +449,155 @@ console.log('\n7d. WHEN THE RELATIVE GAME ENDS, and what a character level costs
   console.log(`      cross   Bow/Magic 1 -> 4 each  : ${pad(Math.round(2 * (cum(4) - cum(1))).toLocaleString(), 9)} xp for  +6 char level  (and +18 pts, but 18 of them in lanes a sword cannot use)`);
   console.log(`      cross   Bow/Magic 1 -> 10 each : ${pad(Math.round(2 * (cum(10) - cum(1))).toLocaleString(), 9)} xp for +18 char level`);
   console.log(`      cross   Bow/Magic 1 -> 20 each : ${pad(Math.round(2 * (cum(20) - cum(1))).toLocaleString(), 9)} xp for +38 char level`);
+}
+applyTables(TODAY);
+
+/* ═══ 8. UNCAPPED — what happens if no relative stat has a hard cap ═══
+ *
+ * Owner, 2026-09-22: "I don't really like the idea of capping.  What happens
+ * if you let it go uncapped?"
+ *
+ * A cap does two different jobs and only one of them is a design choice:
+ *   SAFETY — stop a PERCENTAGE stat reaching 100 %.  Defense at −1 %/pt hits
+ *     immunity at 100 points; Dodge hits never-miss.  That is arithmetic, not
+ *     taste, and no amount of "just let it ride" survives it.
+ *   SCARCITY — force a build choice by running you out of room.  That is the
+ *     design-y one, and it is the one the owner is rejecting.
+ *
+ * So this section measures the only honest way to grant the ask: keep every
+ * stat uncapped and change the SHAPE of the three that cannot be linear.
+ *   linear, uncapped     Power, Luck's crit DAMAGE, Special, Element
+ *   diminishing, uncapped  Defense, Dodge, Resist, Luck's crit CHANCE
+ *     value = p / (p + K), the standard armour curve.  Front-loaded (the
+ *     first point is worth ~7x the hundredth), asymptotic to 1 so it can
+ *     never reach immunity, and K is chosen so the curve passes EXACTLY
+ *     through the capped proposal's endpoint — §4's whole table still holds
+ *     at those point counts, and everything past them is a new tail.
+ *
+ * HOW IT IS APPLIED HERE.  The shipped readers are linear (pts x per), so a
+ * curve is fed through them by setting `per` to value(pts)/pts for the cell
+ * being measured — identical arithmetic, and it keeps the sim driving the
+ * REAL _applyDamage / _computeAttackDamage rather than a copy. */
+const UNCAPPED = {
+  K: { def: 60, dodge: 70, eres: 70, luck: 70 },   /* through the capped endpoints */
+  LIN: { dmg: 1.5, critDmg: 0.03, special: 0.03, elem: 3 },
+};
+const curve = (p, K) => (p <= 0 ? 0 : p / (p + K));
+/* Set the tables so a linear reader reproduces the curve at THIS point count,
+   with the edge applied to the count (where the design puts it). */
+function applyUncapped(pts, E) {
+  const e = (E == null) ? 1 : E;
+  for (const k of ['def', 'dodge', 'eres']) {
+    const n = pts[k] || 0;
+    PROG3.BODY[k].cap = 99999;
+    PROG3.BODY[k].per = n > 0 ? curve(n * e, UNCAPPED.K[k]) / n : 0;
+  }
+  PROG3.ATK.luck.cap = 99999;
+  const L = pts.luck || 0;
+  PROG3.ATK.luck.per = L > 0 ? curve(L * e, UNCAPPED.K.luck) / L : 0;
+  PROG3.ATK.luck.dmgPer = UNCAPPED.LIN.critDmg * e;   /* linear, edge on the value */
+  for (const [k, v] of Object.entries({ dmg: 'dmg', special: 'special', elem: 'elem' })) {
+    PROG3.ATK[v].cap = 99999;
+    PROG3.ATK[v].per = UNCAPPED.LIN[k] * e;
+  }
+}
+
+console.log('\n8a. THE CURVES — every stat uncapped, and where the capped proposal\'s endpoint sits on them');
+console.log('    p/(p+K) for the four percentage stats; the rest stay linear.  ✳ marks the capped endpoint.');
+console.log('    stat     |     10 |     25 |     40 |    100 |    297 |    891 | capped proposal');
+{
+  const row = (name, f, capPts, capTxt) => {
+    const cells = [10, 25, 40, 100, 297, 891].map((n) => pad(f(n) + (n === capPts ? '✳' : ''), 6));
+    console.log(`    ${name.padEnd(8)} | ${cells.join(' | ')} | ${capTxt}`);
+  };
+  row('Defense', (n) => (curve(n, 60) * 100).toFixed(0) + '%', 40, '40 pts = −40 %');
+  row('Dodge', (n) => (curve(n, 70) * 100).toFixed(0) + '%', 30, '30 pts = 30 %');
+  row('Resist', (n) => (curve(n, 70) * 100).toFixed(0) + '%', 30, '30 pts = 30 %');
+  row('Luck cr%', (n) => (1 + curve(n, 70) * 100).toFixed(0) + '%', 30, '30 pts = 31 %');
+  row('Luck crX', (n) => '×' + (1.5 + n * 0.03).toFixed(1), 30, '30 pts = ×2.4');
+  row('Power', (n) => '+' + (n * 1.5).toFixed(0), 25, '25 pts = +37.5');
+  row('Special', (n) => '+' + (n * 3).toFixed(0) + '%', 25, '25 pts = +75 %');
+  row('Element', (n) => '+' + (n * 3).toFixed(0), 25, '25 pts = +75');
+  console.log('    marginal value of the NEXT Defense point:  1st 1.67 %  ·  40th 0.60 %  ·  100th 0.23 %  ·  297th 0.05 %');
+}
+
+console.log('\n8b. THE IMMUNITY CHECK — the one thing a cap was actually protecting');
+console.log('    a pure-avoidance build spending EVERY shared point it has ever earned, split Defense/Dodge:');
+console.log('    build              | shared pts | Defense | Dodge | damage through | vs a linear −1 %/pt stat');
+for (const [name, sharedPts] of [['char 40  (Melee 38)', 111], ['char 102 (Melee 100)', 297], ['char 300 (100/100/100)', 891]]) {
+  const d = Math.floor(sharedPts / 2), g = sharedPts - d;
+  const dr = curve(d, 60), gr = curve(g, 70);
+  const through = (1 - dr) * (1 - gr);
+  const linear = Math.max(0, 1 - d * 0.01) * Math.max(0, 1 - g * 0.01);
+  console.log(`    ${name.padEnd(18)} | ${pad(sharedPts, 10)} | ${pad((dr * 100).toFixed(0) + '%', 7)} | ${pad((gr * 100).toFixed(0) + '%', 5)} | ${pad((through * 100).toFixed(1) + '%', 14)} | ${linear <= 0 ? 'IMMUNE (0 %) — unplayable' : (linear * 100).toFixed(1) + '%'}`);
+}
+console.log('    (the floor-1 clamp in _applyDamage still applies, so "damage through" never reaches zero in practice)');
+
+console.log('\n8c. UNCAPPED IN PLAY — the same fixture as §4, at three character levels, vs an AT-LEVEL brute');
+console.log('    striker: every lane point into Power then Luck.  tank: every shared point into Defense then Dodge.');
+console.log('    char | build   |    capped: hits / survive |  uncapped: hits / survive');
+for (const [charLevel, sk] of [[40, 38], [102, 100]]) {
+  const bru = monster('brute', Math.min(100, charLevel));
+  const lanePts = 3 * (sk - 1), sharedPts = 3 * (charLevel - 3);
+  /* capped */
+  applyTables(PROPOSED);
+  let lane = spend(lanePts, ['dmg', 'luck', 'special', 'elem', 'aspd', 'range'], { ...PROG3.ATK, ...PROPOSED.ATK }, charLevel, 1).out;
+  let shared = spend(sharedPts, ['def', 'dodge', 'eres', 'hp', 'stam', 'mana', 'move'], { ...PROG3.BODY, ...PROPOSED.BODY }, charLevel, 1).out;
+  setBuild({ sword: sk, bow: 1, staff: 1 }, lane, shared);
+  const cS = `${pad(f1(hitsToKill(bru)), 4)} / ${pad(f1(hitsToDie(bru)), 4)}`;
+  /* uncapped — everything into the two front stats, no cap to stop it */
+  const uLane = { dmg: Math.ceil(lanePts / 2), luck: Math.floor(lanePts / 2) };
+  const uShared = { def: Math.ceil(sharedPts / 2), dodge: Math.floor(sharedPts / 2) };
+  applyUncapped({ ...uLane, ...uShared }, 1);
+  setBuild({ sword: sk, bow: 1, staff: 1 }, uLane, uShared);
+  const uS = `${pad(f1(hitsToKill(bru)), 4)} / ${pad(f1(hitsToDie(bru)), 4)}`;
+  console.log(`    ${pad(charLevel, 4)} | striker |  ${cS}              |  ${uS}`);
+}
+applyTables(TODAY);
+
+console.log('\n8d. DOES UNCAPPING THE DAMAGE STATS EVEN MATTER? — Melee 100, worldbreaker greatsword (tierMult 7.84)');
+{
+  const bru = monster('brute', 100);
+  const meanRoll = () => { let t = 0; for (let i = 0; i < HITS; i++) t += room._computeAttackDamage(ps, 'melee', false).dmg; return t / HITS; };
+  const cells = [];
+  for (const [label, tables, lane] of [
+    ['no points at all ', PROPOSED, {}],
+    ['Power capped   25', PROPOSED, { dmg: 25 }],
+    ['Power uncapped 297', null, { dmg: 297 }]]) {
+    if (tables) applyTables(tables); else applyUncapped({ dmg: 297 }, 1);
+    setBuild({ sword: 100, bow: 1, staff: 1 }, lane, {});
+    ps.weapon = { type: 'greatsword', tierMult: 7.84 };
+    cells.push(`    ${label.padEnd(19)} mean swing ${pad(Math.round(meanRoll()), 5)}  vs the brute's ${bru.hp} hp  ->  ${f2(hitsToKill(bru))} hits`);
+  }
+  console.log(cells.join('\n'));
+  console.log(`    The skill term alone is 100 × 1.5 = 150 against a weapon base of 10, so the TOP END was never`);
+  console.log(`    what the cap was protecting — a Melee 100 with endgame gear already one-shots the biggest`);
+  console.log(`    monster in the game with zero points spent.`);
+}
+applyTables(TODAY);
+
+console.log('\n8e. ANTICHEAT with nothing capped — the check that decides whether this is shippable');
+{
+  applyUncapped({ dmg: 297, luck: 297, special: 297 }, 1);
+  setBuild({ sword: 100, bow: 100, staff: 100 }, {}, {});
+  ps.weapon = { type: 'sword', tierMult: 6, isVolatile: true };
+  ps.rangedWeapon = { type: 'bow', tierMult: 6 };
+  ps.staffWeapon = { type: 'staff', tierMult: 6 };
+  for (const c of PROG3.SKILLS) { ps.prog3.atk[c].luck = 297; ps.prog3.atk[c].dmg = 297; ps.prog3.atk[c].special = 297; }
+  ps._buffs = { damageMul: 2.0 };
+  let ok = true, worst = 0;
+  for (const special of [false, true]) {
+    const cap = room._maxDmgForAttacker(ps, special);
+    for (let i = 0; i < 400; i++) for (const slot of ['melee', 'ranged', 'staff']) {
+      const { dmg } = room._computeAttackDamage(ps, slot, special);
+      worst = Math.max(worst, dmg / cap);
+      if (dmg > cap) ok = false;
+    }
+  }
+  console.log(`    ${ok ? 'PASS' : 'FAIL'} — peak roll at ${(worst * 100).toFixed(1)}% of the ceiling.`);
+  console.log(`    It holds for the same reason it holds when capped: _maxWeaponDmg / _maxDmgForAttacker read the`);
+  console.log(`    SAME constants the roll does, so removing a cap raises both by construction (the v2.3.1451 rule).`);
+  ps._buffs = null; ps.rangedWeapon = null; ps.staffWeapon = null;
 }
 applyTables(TODAY);
 console.log('\n(done — see docs/specs/relative-points.md for what these tables decide)');
