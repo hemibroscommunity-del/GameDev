@@ -3852,8 +3852,25 @@ And even that one is only **297 of 823 frames**, with gaps *inside* cycles
 Coverage, not correctness, is what stopped Stage 2 of the species work from
 shipping.
 
+### And the obvious fix, also measured and also dead
+
+"Just combine them" is the natural next thought: `_headBoxInFrame`'s
+run-overlap walk refuses a *detached* raised fist, and
+`derive_body_anchors.py`'s peak-then-neck logic knows the narrow crown is not
+the neck, so together neither weakness applies. Built and measured: 573/823
+frames covered, **65.5%** agreement with the eye-anchored placement where both
+fire.
+
+The residue is not tuning. Every disagreement is a pose where a raised arm
+**touches** the head — `bow-east` 25-51px out, `attack-east` 26px, `bow-south`
+108px — and once the arm is contiguous with the skull the overlap test joins
+them, because they genuinely are one run. Nothing separates them without
+knowing which pixels are an arm, which is semantic, not geometric. That is why
+`tools/eyes/extract-eye-mask.mjs` shipped human-reviewed data rather than a
+cleverer predicate, and it is the same answer here.
+
 **Receipt:** `node tools/ears/derive-ear-anchors.mjs --report` prints the
-per-sheet coverage and the head-width range; its header records all three dead
+per-sheet coverage and the head-width range; its header records all four dead
 ends. `docs/specs/SPECIES-PLAN.md` Stage 2 costs the reviewed landmark pass
 that closing the gap actually needs.
 

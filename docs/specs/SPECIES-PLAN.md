@@ -104,7 +104,7 @@ geometry offline, ship it as data, paint it in the recolour pass the bake
 already runs. `eyeMask.json`'s header makes the same case for the iris — "the
 eyes are not a layer" — and an ear is the same kind of thing.
 
-### Four candidate anchors, three dead — with receipts
+### Five candidate anchors, four dead — with receipts
 
 1. **`TRAIT_CATEGORIES` (`traitCategories.js`)** advertises precisely this: an
    `attachAt: 'head.eyes'` registry with a `widthRatio`, and a comment saying
@@ -141,6 +141,15 @@ animation cycles. `jog-east` anchors frames 0,5,6,10,11,12,14,19,20,24,25,26 of
 having none. `north` and `northeast` have no coverage at all, because from
 behind there are no eyes to mask — and turning your back should not make ears
 vanish.
+
+**And "just fix the walker" is also dead, measured.** Combining
+`_headBoxInFrame`'s run-overlap walk with `derive_body_anchors.py`'s
+peak-then-neck logic covers 573/823 frames but agrees with the eye-anchored
+placement only 65.5% of the time, and every disagreement is a pose where a
+**raised arm touches the head** (`bow-east` 25-51px out, `bow-south` 108px).
+Once the arm is contiguous with the skull they are genuinely one run, and no
+geometric test separates them. That is why the eye tool shipped reviewed data
+instead of a cleverer predicate.
 
 So the real Stage 2 cost is **its own reviewed landmark pass**: a derivation
 robust across all 823 frames, checked as a contact sheet the way

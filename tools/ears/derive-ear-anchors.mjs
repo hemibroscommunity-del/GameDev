@@ -40,6 +40,23 @@
  * silhouette to its edge, and that edge is where the ear attaches. Only local
  * information around a reviewed landmark, so no global head box can go wrong.
  *
+ * ── AND A FOURTH, MEASURED AND REJECTED (v2.3.2643) ──
+ * The obvious next move is "fix the walker": combine _headBoxInFrame's
+ * run-overlap walk (which correctly refuses a DETACHED raised fist) with
+ * derive_body_anchors.py's peak-then-neck logic (which knows the narrow crown
+ * is not the neck), so neither one's weakness applies. It was built and
+ * measured: 573/823 frames covered, but only 65.5% agreement with the
+ * eye-anchored placement on the frames where both fire.
+ *
+ * The residue is not a tuning problem. Every remaining disagreement is a pose
+ * where a raised arm TOUCHES the head -- bow-east (25-51px out), attack-east
+ * (26px), bow-south (108px) -- and once the arm is contiguous with the skull,
+ * the overlap test joins it because they genuinely are one run. No silhouette
+ * analysis separates them without knowing which pixels are an arm, which is
+ * semantic. So this is not a walker that needs another constant; it is the
+ * reason tools/eyes/extract-eye-mask.mjs shipped HUMAN-REVIEWED data instead of
+ * a cleverer predicate, and the ears need the same.
+ *
  * Its receipt is cross-pose agreement: stand-south measures a 51px head and
  * jog-south 54px in the same 256-space -- the same head at the same size, from
  * two sheets drawn at different disk resolutions. The rejected anchors do not
