@@ -32,8 +32,13 @@
  *   8. UNCAPPED — added when the owner said they dislike capping.  The curves,
  *      the immunity check a cap was actually protecting, whether uncapping the
  *      DAMAGE stats changes anything, and anticheat with nothing capped.  It
- *      overturned the recommendation a second time, so §3.1 of the note (not
- *      §3) is the shape this file recommends.
+ *      overturned the recommendation a second time.  8f is the owner's own
+ *      answer to it ("remove the caps completely until it hits something
+ *      ridiculous like 90% for dodge"): linear, no stat cap, a 90 % ceiling —
+ *      when the ceiling becomes reachable, the tank it builds against the
+ *      curve, the combined floor that tames it, and anticheat.  §3.2 of the
+ *      note (5-C, the owner's pick) is the shape this file now measures as
+ *      the plan.
  *   9. THE FIRST HOUR — levels 3 to 10, where the owner expects players to
  *      quit.  The climb, the felt unit (a whole HIT, not a percent), what one
  *      POINT does against what one LEVEL-UP does, what a level-10 character is
@@ -620,6 +625,118 @@ console.log('\n8e. ANTICHEAT with nothing capped — the check that decides whet
   console.log(`    ${ok ? 'PASS' : 'FAIL'} — peak roll at ${(worst * 100).toFixed(1)}% of the ceiling.`);
   console.log(`    It holds for the same reason it holds when capped: _maxWeaponDmg / _maxDmgForAttacker read the`);
   console.log(`    SAME constants the roll does, so removing a cap raises both by construction (the v2.3.1451 rule).`);
+  ps._buffs = null; ps.rangedWeapon = null; ps.staffWeapon = null;
+}
+applyTables(TODAY);
+
+/* ═══ 8f. THE OWNER'S SHAPE — linear, no stat cap, a 90 % ceiling (decision 5-C) ═══
+ *
+ * Owner, 2026-09-22, after reading 8a-8e: "I do want to remove the caps
+ * completely until it hits something ridiculous like 90% for dodge."
+ *
+ * So: every relative stat stays LINEAR at §3's per-point weight (−1 %/pt
+ * Defense, +1 %/pt Dodge, −1 %/pt Resist, +1 %/pt crit chance), there is no
+ * point cap below the ceiling, and the four percentage stats stop at 90 %.
+ * Power, Special, Element and crit damage have no ceiling at all.
+ *
+ * Said plainly, because it decides how the spend UI behaves: on a linear
+ * stat a ceiling on the PERCENT is a cap on the POINTS — 90 % at 1 %/pt is
+ * 90 points, and a 91st point would buy nothing.  What changes against 5-A
+ * is where it sits (Dodge 30 → 90 points, Defense 40 → 90), and that it sits
+ * at a number the owner calls ridiculous rather than one that shapes builds.
+ *
+ * Applied here the direct way: the shipped readers are min(cap, pts) × per,
+ * so a 90-point cap at 1 %/pt IS the ceiling, exactly.  Luck is the one stat
+ * whose ceiling must clamp the percent and not the points, because its crit
+ * DAMAGE half stays linear — so it goes through the value(pts)/pts path. */
+const CEIL = { PCT: 0.90, PTS: 90, LUCK_PTS: 89 };   /* luck has a 1 % base */
+function applyCeiling(lanePts) {
+  for (const k of ['def', 'dodge', 'eres']) Object.assign(PROG3.BODY[k], { per: 0.01, cap: CEIL.PTS });
+  const L = (lanePts && lanePts.luck) || 0;
+  Object.assign(PROG3.ATK.luck, { cap: 99999, dmgPer: 0.03, per: L > 0 ? Math.min(L, CEIL.LUCK_PTS) * 0.01 / L : 0 });
+  Object.assign(PROG3.ATK.dmg, { per: 1.5, cap: 99999 });
+  Object.assign(PROG3.ATK.special, { per: 0.03, cap: 99999 });
+  Object.assign(PROG3.ATK.elem, { per: 3, cap: 99999 });
+}
+
+console.log('\n8f. THE OWNER\'S SHAPE (5-C) — linear at §3\'s weight, NO stat cap, the four percentage stats stop at 90 %');
+console.log('    WHEN CAN ANYONE REACH IT?  Linear at 1 %/pt, 90 % is 90 points.  The §6-C per-level bound');
+console.log('    (no stat holds more points than your character level) is what paces the approach:');
+console.log('    stat          | points to 90 % | earliest char, bound = charLevel | bound = 2 × charLevel (decision 13-A)');
+for (const [name, pts, loosened] of [['Dodge', 90, true], ['Resist', 90, true], ['Defense', 90, false], ['Luck crit %', 89, true]]) {
+  console.log(`    ${name.padEnd(13)} | ${pad(pts, 14)} | ${pad('char ' + pts, 32)} | ${loosened ? 'char ' + Math.ceil(pts / 2) : 'char ' + pts + ' (13-A keeps def at 1 ×)'}`);
+}
+console.log('    Below character 10 no stat can hold more than 10 points, so NOTHING in §4.7 comes near the ceiling:');
+console.log('    5-C is EXACTLY the linear per-point weight §4 and §4.7 were measured at, with no cap in reach.');
+
+console.log('\n    THE TANK UNDER EACH SHAPE — every shared point into Defense, then Dodge, then Resist, then HP;');
+console.log('    vs an AT-LEVEL brute (physical, so Resist does not apply).  "swings" = brute hits to kill you, real sink.');
+console.log('    char | skills      | 5-B curve, bound L         | 5-C ceiling, bound L       | 5-C + 13-A (dodge/eres 2L)');
+{
+  const place = (sharedPts, bound, ceil) => {
+    const out = {}; let left = sharedPts;
+    for (const k of ['def', 'dodge', 'eres']) {
+      const room2 = Math.min(bound(k), ceil == null ? Infinity : ceil);
+      const take = Math.min(left, room2);
+      if (take > 0) { out[k] = take; left -= take; }
+    }
+    return { out, left };
+  };
+  for (const [L, skills] of [[20, { sword: 18 }], [40, { sword: 38 }], [63, { sword: 61 }], [90, { sword: 88 }], [102, { sword: 100 }], [300, { sword: 100, bow: 100, staff: 100 }]]) {
+    const sharedPts = 3 * (L - 3);
+    const bru = monster('brute', Math.min(100, L));
+    const cells = [];
+    for (const [shape, bound] of [
+      ['curve', () => L],
+      ['ceil', () => L],
+      ['ceil', (k) => (k === 'def' ? L : 2 * L)]]) {
+      const { out, left } = place(sharedPts, bound, shape === 'ceil' ? CEIL.PTS : null);
+      const hp = Math.min(left, PROG3.BODY.hp.cap, L);
+      const shared = { ...out, hp };
+      let dr, gr;
+      if (shape === 'curve') { applyUncapped(out, 1); dr = curve(out.def || 0, 60); gr = curve(out.dodge || 0, 70); }
+      else { applyCeiling({}); dr = Math.min(CEIL.PCT, (out.def || 0) * 0.01); gr = Math.min(CEIL.PCT, (out.dodge || 0) * 0.01); }
+      setBuild(skills, {}, shared);
+      const through = (1 - dr) * (1 - gr);
+      cells.push(`${pad((dr * 100).toFixed(0), 2)}/${pad((gr * 100).toFixed(0), 2)} % · ${pad((through * 100).toFixed(1) + '%', 5)} · ${pad(f1(hitsToDie(bru)), 5)}`);
+      applyTables(TODAY);
+    }
+    const sk = `${skills.sword}/${skills.bow || 1}/${skills.staff || 1}`;
+    console.log(`    ${pad(L, 4)} | ${sk.padEnd(11)} | ${cells[0].padEnd(26)} | ${cells[1].padEnd(26)} | ${cells[2]}`);
+  }
+  console.log('    cells are Defense/Dodge % · damage through · swings.  The floor-1 clamp keeps "through" above zero in play.');
+  /* Decision 12-C, the combined floor: Defense and Dodge together never cut a
+     hit below 10 %.  With Dodge at its 90 % ceiling that floor leaves Defense
+     nothing to add, which is exactly a character with Dodge 90 and Defense 0
+     — so it is measured as that, through the same sink. */
+  for (const L of [90, 102]) {
+    applyCeiling({});
+    setBuild({ sword: L - 2 }, {}, { dodge: 90, eres: Math.min(L, 90), hp: Math.min(PROG3.BODY.hp.cap, L) });
+    console.log(`    12-C floor, char ${L}: Dodge 90 %, Defense adds nothing past the floor · 10.0% through · ${f1(hitsToDie(monster('brute', Math.min(100, L))))} swings`);
+    applyTables(TODAY);
+  }
+}
+applyTables(TODAY);
+
+console.log('\n    ANTICHEAT under the ceiling — Power, Luck and Special at 297 each (crit chance clamps at 90 %)');
+{
+  applyCeiling({ luck: 297 });
+  setBuild({ sword: 100, bow: 100, staff: 100 }, {}, {});
+  ps.weapon = { type: 'sword', tierMult: 6, isVolatile: true };
+  ps.rangedWeapon = { type: 'bow', tierMult: 6 };
+  ps.staffWeapon = { type: 'staff', tierMult: 6 };
+  for (const c of PROG3.SKILLS) { ps.prog3.atk[c].luck = 297; ps.prog3.atk[c].dmg = 297; ps.prog3.atk[c].special = 297; }
+  ps._buffs = { damageMul: 2.0 };
+  let ok = true, worst = 0;
+  for (const special of [false, true]) {
+    const cap = room._maxDmgForAttacker(ps, special);
+    for (let i = 0; i < 400; i++) for (const slot of ['melee', 'ranged', 'staff']) {
+      const { dmg } = room._computeAttackDamage(ps, slot, special);
+      worst = Math.max(worst, dmg / cap);
+      if (dmg > cap) ok = false;
+    }
+  }
+  console.log(`    ${ok ? 'PASS' : 'FAIL'} — peak roll at ${(worst * 100).toFixed(1)}% of the ceiling (crit chance ${(room._prog3CritChance(ps, 'sword') * 100).toFixed(0)} %).`);
   ps._buffs = null; ps.rangedWeapon = null; ps.staffWeapon = null;
 }
 applyTables(TODAY);

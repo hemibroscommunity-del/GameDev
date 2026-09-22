@@ -41,15 +41,17 @@ fighting a monster close in level to them."*
   Dodge, Resist (the three shared stats that change a hit taken). Universal:
   HP, Mana, Stamina, Move Speed, Speed and Range — pools and reach, which are
   not evaluated against any particular monster. (§3)
-- **Every relative point gets 2.5–3× heavier, and NOTHING IS CAPPED.** The
-  four percentage stats change shape to a front-loaded curve `p/(p+K)` that
-  approaches but never reaches 100 %; Power, Special, Element and crit damage
-  stay linear. `K` is picked so the curve passes exactly through what a cap
-  would have given (40 Defense points is −40 % either way), so every number
-  in §4 holds and uncapping only adds a tail. A point is never refused and
-  never worthless, the first point is worth 7× the hundredth, and the
-  anticheat ceiling holds at 33 % of its limit with everything at 297 points.
-  (§3.1, sim §8)
+- **Every relative point gets 2.5–3× heavier, and there are NO STAT CAPS —
+  your pick (5-C).** Every stat stays linear (−1 % damage taken per Defense
+  point, +1 % per Dodge point, +1.5 damage per Power point); the four
+  percentage stats stop only at a ridiculous **90 %**, and Power, Special,
+  Element and crit damage never stop. The per-level bound means nobody can
+  reach 90 % before character 90. It is exactly the weight every number in
+  §4 and §4.7 was measured at, and the anticheat ceiling holds at 33 % of its
+  limit with everything at 297 points. The one thing it costs is the tank:
+  two stats at 90 % multiply to 1 % damage through, so decision 12 now
+  recommends one combined floor — ridiculous at ONE thing. (§3.2, sim §8f;
+  §3.1 is the curve this replaced.)
 - **What it feels like, measured.** One level-up's points into Power at
   character level 3 takes a brute from 10.8 swings to 7.9 (−27 %; today −11
   %). Five level-ups' points into Defense at level 20 buys +19 % survival
@@ -204,8 +206,9 @@ is the contrast between the two halves.
 
 ## 3. What each stat does now
 
-> **Read §3.1 first.** The table below is the CAPPED version (decision 5-A),
-> and it is no longer the recommendation. The owner, 2026-09-22: *"I don't
+> **Read §3.2 first — it is the owner's pick (5-C).** §3.1 is the curve it
+> replaced. The table below is the CAPPED version (decision 5-A), and it is
+> no longer the recommendation; its per-point column is still exactly 5-C's. The owner, 2026-09-22: *"I don't
 > really like the idea of capping. What happens if you let it go uncapped?"*
 > Measured, uncapping is the better shape and costs nothing in this table —
 > §3.1's curve passes exactly through every endpoint below and keeps going.
@@ -231,7 +234,12 @@ today's. So the endpoints stay and the points-to-cap shrink.
 | Move Speed | shared, universal | unchanged | unchanged | | | |
 | Speed `aspd`, Range | lane, universal | unchanged | unchanged | | | |
 
-### 3.1 Uncapped — the recommended shape (sim §8)
+### 3.1 Uncapped on a curve — the shape 5-C replaced (sim §8a–e)
+
+> **Superseded by §3.2**, the owner's 2026-09-22 pick: linear with a 90 %
+> ceiling instead of this curve. Kept because its immunity arithmetic, the
+> "uncapping damage changes nothing at the top" table and the anticheat
+> result all still apply to 5-C.
 
 A cap does two jobs, and only one of them is a design choice:
 
@@ -351,6 +359,95 @@ still binds first — at character level 20 no stat can hold more than 20
 points whatever its cap says. Below roughly character level 25–40 that level
 cap is the binding one, not the new stat caps, so the early game changes ONLY
 by the per-point weight.
+
+### 3.2 The owner's shape — linear to a 90 % ceiling (5-C, owner's pick; sim §8f)
+
+> Owner, 2026-09-22, after reading §3.1: *"I do want to remove the caps
+> completely until it hits something ridiculous like 90% for dodge."*
+
+**The rule.** Every relative stat keeps §3's per-point weight and stays
+**linear** — −1 % damage taken per Defense point, +1 % per Dodge point, −1 %
+per Resist point, +1 % crit chance per Luck point. There is **no stat cap**.
+The four percentage stats stop at **90 %**; Power, Special, Element and crit
+damage never stop. No curve, no `K`.
+
+**One thing to know before you mark it, said plainly:** on a linear stat a
+ceiling on the *percent* is a cap on the *points* — 90 % at 1 %/pt is 90
+points, and a 91st Dodge point would buy nothing, so the spend screen should
+show the stat as full rather than take the point. What changes against 5-A
+is where the stop sits: Dodge 30 → 90 points, Defense 40 → 90. It moves from
+a number that shapes every build to one you called ridiculous. That is the
+ask, and the sim says it delivers it.
+
+**What it keeps — everything already measured.** 5-C is exactly the linear
+weight §4 and §4.7 were measured at. Below character 10 no stat can hold more
+than 10 points (§6-C), so the ceiling is nowhere near reach in the first hour:
+every number in §4.7 — 6 → 21 on screen, seven of eight level-ups dropping a
+whole hit — is 5-C's number, unchanged. Anticheat holds: Power, Luck and
+Special at 297 each, crit chance at its 90 % ceiling, peak roll **33.0 % of
+the limit** (PASS, lockstep by construction as in §3.1).
+
+**When the ceiling becomes reachable** is set by the per-level bound, not by
+the ceiling itself:
+
+| stat | points to 90 % | earliest, bound = character level (today) | bound = 2 × character level |
+|---|---|---|---|
+| Dodge, Resist | 90 | character 90 | character 45 |
+| Defense | 90 | character 90 | character 90 (13-A keeps Defense at 1×) |
+| Luck, crit chance | 89 (1 % base) | character 89 | character 45 |
+
+**What it costs — measured, and it is the tank.** Every shared point into
+Defense, then Dodge, then Resist, then HP, against a brute at your level,
+through the real `_applyDamage`. Cells are damage through · monster swings
+to kill you:
+
+| character | 5-B curve (§3.1) | **5-C, ceiling 90 %** | 5-C + loosened bound on Dodge |
+|---|---|---|---|
+| 20 (Melee 18) | 58 % · 10.1 | 64 % · 9.2 | 55 % · 10.7 |
+| 40 (Melee 38) | 38 % · 11.6 | 36 % · 12.8 | 17 % · 25.8 |
+| 63 (Melee 61) | 26 % · 14.5 | **14 % · 27.4** | 3.7 % · 100 |
+| 90 (Melee 88) | 18 % · 17.0 | **1.0 % · 329** | 1.0 % · 329 |
+| 102 (Melee 100) | 15 % · 18.4 | 1.0 % · 344 | 1.0 % · 352 |
+| 300 (all 100) | 3.2 % · 230 | 1.0 % · 1,071 | 1.0 % · 1,010 |
+
+At 1 % through a hit mostly either misses or chips, so the swing counts in
+that band are noisy run to run (±10 %); the 5-B and 5-C columns up to
+character 63 are stable.
+
+Through character 40 the two shapes are the same game. After that 5-C pulls
+away fast, because two stats at 90 % multiply: 10 % of hits land × 10 % of
+their damage = **1 % through**. A pure-avoidance character 90 survives about 330
+at-level brute swings, where the curve gave 17. That is the ridiculous
+number doing what it says — but it arrives at character 90, a third of the
+way to the cap, not at the end. Two decisions follow from it, and both
+recommendations changed:
+
+- **Decision 12 (the avoidance extreme)** — recommendation moves from *accept*
+  to **one combined floor: Defense and Dodge together never cut a hit below
+  10 %** — "you can be ridiculous at ONE thing." Each stat still reaches its
+  own 90 %, a pure-Dodge build still gets exactly what you asked for, and a
+  character 90 stacking both lands at **about 60 swings** instead of about
+  330 (measured, sim §8f — the Defense points the floor strands go into HP). The reason
+  is your own line: the endgame is meant to hinge on the rarest armour and
+  weapons, not on pure stats alone, and a stat-only build that at-level
+  monsters cannot kill from character 90 on would settle the endgame before
+  the gear does. *Accept* is still a legitimate pick; it is what the words
+  "ridiculous like 90 %" literally allow.
+- **Decision 13 (the per-level bound)** — the early-game loosening now stops
+  at the damage stats. Loosening Dodge and Resist to 2 × character level
+  puts a 3.7 %-through tank at character 63 (about 100 swings). Loosening Power,
+  Luck, Special and Element is what made level 10 louder (§4.7e — 6–21 → 9–29
+  on screen came from Power alone), and none of those four has a safety
+  edge: damage is uncapped anyway and crit chance at 90 % is inside the
+  anticheat ceiling. So **the bound stays on Defense, Dodge and Resist and
+  loosens on the four damage stats.**
+
+**Implementation is simpler than 5-B.** No curve helper, no `K`, no inverse
+in the migration: the readers keep `pts × edge × per` and clamp the result
+with `Math.min(0.90, …)`; the spend handler refuses a point once the stat
+reads 90 % at edge 1. The migration is 5-A's division table (§6), and no
+existing character converts anywhere near the ceiling — today's largest
+holding, 100 Defense at 0.4 %, becomes 40 points.
 
 ---
 
@@ -697,7 +794,7 @@ new storage key, no new client→server event.
 |---|---|
 | `prog3.js` `PROG3` | new per-point values, and **`cap` becomes `bound`** on the seven stats — no longer a design limit, just the storage clamp every read already applies (999, the sanitizer's existing number; points are server-minted so the real limit is the point supply). Each stat gains `relative: true` and, for the four percentage ones, `curveK`, so the client's row metadata and the readers work off the table rather than a list. Plus `PROG3.EDGE = { FADE_PER_LEVEL: 0.20, BELOW_BONUS: 0 }`, `prog3Edge(yardstick, monsterLevel)`, and the two readers that supply the yardstick: `_prog3LaneYardstick(ps, cat)` (that lane's trained level) and `_prog3BodyYardstick(ps)` (the highest trained level). Two named functions rather than a raw level at each call site, because "which level does this compare against" is the decision the whole design turns on and it must have one home |
 | `prog3.js` `prog3Curve(pts, K)` | `pts / (pts + K)`, the ONE definition of the diminishing shape, mirrored client-side. The four percentage readers below call it; nothing else states the arithmetic. The §6-C double cap `min(bound, characterLevel)` stays exactly as it is — it is a pacing rule, not a ceiling, and it is the only thing that still stops an early rush |
-| `prog3.js` readers | `_prog3CritChance / _prog3CritMult / _prog3SpecialMult / _prog3DefMult / _prog3DodgePct / _prog3ElemResistMult` take an optional `edge` (default 1) and apply it to the POINT COUNT, which is where the design puts it: `prog3Curve(pts × edge, K)` for the four percentage stats, `pts × edge × per` for the linear ones. The 1 % crit base stays outside the product, so an unallocated character rolls exactly what it rolls today at every gap. Edge on the count rather than on the result matters for a curve: `curve(p × 0.5)` is the value of half the investment, while `curve(p) × 0.5` would be half a value the curve never promised |
+| `prog3.js` readers | `_prog3CritChance / _prog3CritMult / _prog3SpecialMult / _prog3DefMult / _prog3DodgePct / _prog3ElemResistMult` take an optional `edge` (default 1) and apply it to the POINT COUNT, which is where the design puts it: `prog3Curve(pts × edge, K)` for the four percentage stats, `pts × edge × per` for the linear ones. The 1 % crit base stays outside the product, so an unallocated character rolls exactly what it rolls today at every gap. Edge on the count rather than on the result matters for a curve: `curve(p × 0.5)` is the value of half the investment, while `curve(p) × 0.5` would be half a value the curve never promised. **Under 5-C (the owner's pick) there is no curve:** every reader is `pts × edge × per`, and the four percentage readers clamp the result at `PROG3.CEILING` (0.90) — crit chance clamps its percent, not its points, so crit damage keeps growing |
 | `combat.js` `_computeAttackDamage(ps, slot, isSpecial, opts)` | `opts.edge` (default 1); the Power term becomes `dmgPts × per × edge`, and the crit / special readers receive it |
 | `combat.js` `_handleMonsterDamage` | `edge = prog3Edge(this._prog3LaneYardstick(attackerPs, this._prog3CatFor(_effSlot)), m.level)` — the lane the SERVER resolved, never the client's claim; passed to the roll, to `elemAttackStat` for the status snapshot and to `resolveElementCollision` |
 | `combat.js` `_staffSplash` | inherits the primary hit's number (it is defined as "half the number beside it", v2.3.2481); neighbours are not re-priced by their own level — accepted, documented |
@@ -736,6 +833,12 @@ precedent ("halved per-point with points doubled — power-neutral") rather
 than the v11/v15/v17 full refunds, because a full refund would hand every
 veteran a character with no defense the moment the worker deploys. Nobody's
 effect shrinks; everybody gets points back.
+
+Under **5-C** (the owner's pick) the conversion is exactly the **5-A** table
+at the end of this section: same per-point weight, so kept = `ceil(old value
+÷ new per)`, and the ceiling never binds — today's largest holding, 100
+Defense at 0.4 %, converts to 40 points, far below 90. The 5-B inversion
+directly below is kept for that option.
 
 Under **5-B** the conversion inverts the curve instead of dividing a rate:
 a stat holding `n` points at the old linear value `r = n × per` keeps
@@ -813,7 +916,12 @@ The table below is the same exercise under **5-A**, kept for that option.
   30 cannot hold more than 30 points in anything however many it has banked.
   (Under 5-A the sink totals were lane 305 against the 297 a Melee 100 earns,
   and shared 475 against 891 — i.e. both columns finishable, which is the
-  phase boundary §4.6d describes.)
+  phase boundary §4.6d describes.) **Under 5-C** the lane column never fills
+  (Power, Special and Element have no ceiling), and the shared column fills
+  at 645 points — Defense, Dodge and Resist at 90 each plus the universal
+  stats' unchanged caps — which is about character 218, against about 162
+  under 5-A. Past that a shared point has nowhere to go; nobody gets there
+  before a two-lane-maxed character.
 - **`_prog3AtkPts` / `_prog3Pts` clamp to the cap at every read.** The
   migration must run before those clamps see a blob, or a 60-point Defense
   reads as 40 with nothing refunded (§6).
@@ -849,6 +957,12 @@ The table below is the same exercise under **5-A**, kept for that option.
 - `_handleMonsterDamage` against a monster 5 levels above a maxed attacker
   lands the no-points number; the same monster at the attacker's level lands
   the invested one;
+- **the ceiling, under 5-C (the owner's pick):** each of the four percentage
+  readers returns exactly 0.90 at 90 points (89 for Luck) and at 999, and
+  0.89 at 89; crit damage keeps growing past the crit-chance ceiling; the
+  spend handler refuses a point once a stat reads 90 % at edge 1 and the
+  point stays in the pool; the combined Defense × Dodge floor of decision 12-C,
+  if picked, pinned at 10 % through with both stats at 90;
 - **the curve, and the two things about it that can silently break** (5-B):
   `prog3Curve(pts, K)` matches the §3.1 table at 10 / 25 / 40 / 100 / 297 /
   891 points; it passes through the 5-A endpoint exactly (40 Defense points is
@@ -913,14 +1027,14 @@ Recommended default in bold; the rest of the note explains each row.
 | 2 | "Your level" | A: character level (the plate's number) · **B: the lane's own skill for lane stats, highest skill for shared** · C: highest trained skill for everything | **B** (the sim overturned A — §2, §4.6b) | |
 | 3 | Below your level | **A: full strength, no bonus** · B: +10 %/level below, capped at 150 % | **A** | |
 | 4 | Which stats are relative | **A: the seven in §3** · B: the seven + Speed (`aspd`, as a fast-universal stat at cap 35) · C: lane stats only (Defense/Dodge/Resist stay universal) | **A** | |
-| 5 | Weight and shape | A: ×2.5–3 heavier with hard caps (§3) · **B: UNCAPPED — same weight, the four percentage stats on `p/(p+K)` through the same endpoints (§3.1)** · C: ×2 everywhere with caps | **B** (the owner dislikes caps, and the sim says uncapped is the better shape anyway) | |
-| 6 | Luck's crit-damage endpoint | **A: +3 %/pt (moot under 5-B — uncapped, so there is no endpoint to land on; it reads ×2.4 at the 30 points 5-A would have capped at)** · B: +3.33 %/pt, if 5-A is chosen after all | **A** | |
+| 5 | Weight and shape | A: ×2.5–3 heavier with hard caps (§3) · B: uncapped on a curve, `p/(p+K)` (§3.1) · **C: no stat caps — linear at §3's weight, the four percentage stats stop at 90 % (§3.2)** · D: ×2 everywhere with caps | **C** | **C — 2026-09-22: "remove the caps completely until it hits something ridiculous like 90% for dodge"** |
+| 6 | Luck's crit-damage endpoint | **A: +3 %/pt (moot under 5-C — crit damage has no ceiling, so there is no endpoint to land on)** · B: +3.33 %/pt, only if 5-A were chosen | **A** | |
 | 7 | Migration | **A: convert by value, refund surplus (v6 precedent)** · B: full refund of the seven stats (v17 precedent) | **A** | |
 | 8 | PvP | **A: unchanged (edge 1), own PR later** · B: both players' character levels wired through now | **A** | |
 | 9 | Rollout | **A: server+mirrors PR, then the migration PR** · B: one PR | **A** | |
 | 10 | Depth zones | **A: restore the commented bands as the next content PR** · B: keep the world at 1–2 (the fade is dungeon-only) | **A** | |
-| 13 | The §6-C double cap in the early game (§4.7e) | **A: keep `min(cap, charLevel)` on `def` only (it guards the armour-tier gate) and loosen the other six to `min(cap, 2 × charLevel)`** · B: keep it on all seven as today · C: drop it entirely | **A** | |
-| 12 | The endgame avoidance extreme, given 5-B | **A: accept it (the BALANCE-PLAN §4c precedent: "near-unkillable max tank builds", PvE-focused)** · B: raise the `K`s so a maxed avoidance build lands nearer 20 % damage through · C: floor the combined damage-through (a cap on the product, never on a stat) | **A** | |
+| 13 | The §6-C per-level bound in the early game (§4.7e) | A: keep it on `def` only, loosen the other six to 2 × character level · **B: keep it on Defense, Dodge and Resist; loosen Power, Luck, Special and Element to 2 × character level** · C: keep it on all seven as today · D: drop it entirely | **B** (changed with 5-C: loosening Dodge and Resist puts a 3.7 %-through tank at character 63 — §3.2; the level-10 gain came from Power alone) | |
+| 12 | The avoidance extreme, given 5-C | A: accept it — two stats at 90 % is 1 % through, about 330 at-level brute swings from character 90 (the BALANCE-PLAN §4c precedent) · B: a lower ceiling on Defense only · **C: one combined floor — Defense and Dodge together never cut a hit below 10 %; each still reaches its own 90 % ("ridiculous at ONE thing"), about 60 swings at character 90** | **C** (changed with 5-C: under the curve this extreme arrived at character 300, under the ceiling it arrives at 90, and the endgame is meant to hinge on gear, not stats alone) | |
 | 11 | The nameplate border, given decision 2-B | **A: the plate follows the same yardstick (the active lane's level) so its colour predicts your point strength** · B: the plate keeps the character level from the 2026-09-14 mock and the colour means difficulty only | **A** (client-only) | |
 
 ---
