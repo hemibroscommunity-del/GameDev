@@ -56,7 +56,10 @@ import {
    below silently exercises the legacy raw-stat path on the client and the
    prog3 path on the server, which are not mirrors of each other and never
    were. */
-import { setProg3Enabled, setProg3XEnabled, setProg3SharedEnabled, prog3CritPct, prog3CritMult, prog3CritFlat, PROG3_LEGACY_ATK } from '../../src/data/prog3.js'; /* v2.3.2218; v2.3.2592 */
+import { setProg3Enabled, setProg3XEnabled, setProg3SharedEnabled, setProg3RelEnabled, setProg3ElemEnabled, prog3CritPct, prog3CritMult, prog3CritFlat, PROG3_LEGACY_ATK, PROG3_LINEAR,
+  prog3Curve as cliCurve, prog3Edge as cliEdge, prog3DodgePct, prog3DefPct, prog3PowerMult, prog3SpecialMult, prog3MoveMult, prog3ElemPower } from '../../src/data/prog3.js'; /* v2.3.2218; v2.3.2592; v2.3.2659 */
+import { prog3Curve as srvCurve, prog3Edge as srvEdge } from '../src/prog3.js'; /* v2.3.2659 */
+import { elemAttackStat as srvElem } from '../src/elemental.js'; /* v2.3.2659 */
 import { createGatherNode as clientGatherNode, WOODCUTTING_TIERS as CLIENT_WOOD_TIERS } from '../../src/data/lifeSkills.js';
 /* v2.3.2652: prop blockers — the worker's first piece of world geometry. */
 import { ZONE_PROPS as SRV_ZONE_PROPS, attackBlocked as srvAttackBlocked } from '../src/props.js';
@@ -806,7 +809,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   /* v2.3.2592: ONE stat, LUCK, carries both halves — the client's helpers
      must equal the server's _prog3CritChance / _prog3CritMult for every
      allocation, on a worker that advertises the folded grid. */
-  setProg3XEnabled(true); setProg3SharedEnabled(true);
+  setProg3XEnabled(true); setProg3SharedEnabled(true); setProg3RelEnabled(true); /* v2.3.2659: a relative worker */
   const mkP3 = (luck) => ({
     prog3: { v: 3, sk: { sword: { level: 40 }, bow: { level: 1 }, staff: { level: 1 } },
       atk: { sword: { luck, dmg: 0 }, bow: {}, staff: {} }, alloc: {}, poolBy: {} },
@@ -824,6 +827,58 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   }
   check('crit parity: the client crit helpers equal the server roll across the allocation range',
     critDrift === null, critDrift);
+
+  /* ═══ v2.3.2659: EVERY CURVE READER, BOTH SIDES, WITH AND WITHOUT A MONSTER ═══
+     The curve and the edge are stated once per side (prog3Curve / prog3Edge);
+     these pin the two sides' functions to each other and every reader built
+     on them, at edge 1 (a readout) and against monsters above the yardstick
+     (the roll), so a one-sided retune fails here rather than in a player's
+     damage popup. */
+  let curveDrift = null;
+  for (const q of [0, 0.5, 1, 3, 5, 10, 40, 999]) for (const k of [7, 10]) {
+    if (Math.abs(srvCurve(q, k) - cliCurve(q, k)) > 1e-12) { curveDrift = { q, k }; break; }
+  }
+  for (const [y, m] of [[10, null], [10, 5], [10, 10], [10, 11], [10, 13], [10, 15], [10, 40], [1, 3]]) {
+    if (Math.abs(srvEdge(y, m) - cliEdge(y, m)) > 1e-12) { curveDrift = { y, m }; break; }
+  }
+  check('curve parity: prog3Curve and prog3Edge are the same function on both sides', curveDrift === null, curveDrift);
+  const mkRel = (pts) => ({ activeSlot: 'melee',
+    prog3: { v: 3, sk: { sword: { level: 20 }, bow: { level: 1 }, staff: { level: 1 } },
+      atk: { sword: { luck: pts, dmg: pts, special: pts, elem: pts }, bow: {}, staff: {} },
+      alloc: { def: pts, dodge: pts, eres: pts, move: pts }, poolBy: {} } });
+  setProg3Enabled(true); setProg3ElemEnabled(true); /* a relative worker carries the per-weapon elem grid too */
+  let relDrift = null;
+  scan: for (const pts of [0, 1, 5, 20, 90]) for (const mlvl of [undefined, 20, 22, 24, 30]) {
+    const p = mkRel(pts);
+    const pairs = [
+      ['crit', room._prog3CritChance(p, 'sword', mlvl), prog3CritPct(p, 'sword', mlvl)],
+      ['critMult', room._prog3CritMult(p, 'sword', mlvl), prog3CritMult(p, 'sword', mlvl)],
+      ['power', room._prog3PowerMult(p, 'sword', mlvl), prog3PowerMult(p, 'sword', mlvl)],
+      ['special', room._prog3SpecialMult(p, 'sword', mlvl), prog3SpecialMult(p, 'sword', mlvl)],
+      ['dodge', room._prog3DodgePct(p, mlvl), prog3DodgePct(p, mlvl)],
+      ['def', 1 - room._prog3DefMult(p, mlvl), prog3DefPct(p, mlvl)],
+      ['elem', srvElem(p, 'power', 'sword', mlvl), prog3ElemPower(p, 'sword', mlvl)],
+      ['move', room._prog3MoveMult(p), prog3MoveMult(p)],
+    ];
+    const bad = pairs.find(([, a, b]) => Math.abs(a - b) > 1e-9);
+    if (bad) { relDrift = { pts, mlvl, stat: bad[0], server: bad[1], client: bad[2] }; break scan; }
+  }
+  check('curve parity: every curve reader equals its server twin, at edge 1 and against stronger monsters',
+    relDrift === null, relDrift);
+  /* And against a LINEAR worker (no caps.prog3rel) the same readers must
+     predict that worker's pts × per, off PROG3_LINEAR (rule 19). */
+  setProg3RelEnabled(false);
+  const lin = mkRel(50);
+  check('linear worker: the readers fall back to PROG3_LINEAR exactly',
+    Math.abs(prog3CritPct(lin, 'sword') - (PROG3_LINEAR.luck.base + 50 * PROG3_LINEAR.luck.per)) < 1e-9
+      && Math.abs(prog3CritMult(lin, 'sword') - (1.5 + 50 * PROG3_LINEAR.luck.dmgPer)) < 1e-9
+      && Math.abs(prog3DodgePct(lin) - 50 * PROG3_LINEAR.dodge.per) < 1e-9
+      && Math.abs(prog3DefPct(lin) - 50 * PROG3_LINEAR.def.per) < 1e-9
+      && prog3PowerMult(lin, 'sword') === 1,
+    { crit: prog3CritPct(lin, 'sword'), dodge: prog3DodgePct(lin) });
+  setProg3RelEnabled(true);
+  setProg3ElemEnabled(false);
+  setProg3Enabled(false);
   check('crit parity: ...and no flat term under prog3, matching combat.js',
     prog3CritFlat(mkP3(100), 'sword') === 0, prog3CritFlat(mkP3(100), 'sword'));
   /* And the RETIRED pair, against a worker that has not folded it: the

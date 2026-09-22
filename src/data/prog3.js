@@ -42,21 +42,28 @@ export const PROG3 = {
      `luck`; range / special / move are new.  The reasoning lives on the
      SERVER copy (server/src/prog3.js), which is the source of truth;
      mirror-audit §12 pins values AND key sets. */
+  /* v2.3.2659: RELATIVE POINT VALUE — the curve stats read max × q/(q+k)
+     (q = points × the EDGE for the seven that change a hit) instead of
+     pts × per; `cap` on them is the 999 storage bound and `lvlBound` loosens
+     the per-level bound on the four damage stats.  The reasoning lives on
+     the SERVER copy (server/src/prog3.js); these rows are its mirror, and
+     mirror-audit §12 pins values AND key sets.  Against a worker without
+     caps.prog3rel the readers below fall back to PROG3_LINEAR. */
   BODY: {
-    def:     { cap: 100, per: 0.004 },  // −0.4% damage taken/pt
+    def:     { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2659: damage-taken cut on the curve
     hp:      { cap: 100, per: 8 },      // +8 max HP/pt
-    dodge:   { cap: 75,  per: 0.004 },  // +0.4% dodge/pt
+    dodge:   { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2659: 5 pts 37.5 %
     stam:    { cap: 100, per: 3 },      // +3 max stamina/pt
     /* v2.3.2512: elem LEFT for ATK (per weapon); eres + mana arrive.  The
        reasoning for all three lives on the SERVER copy (server/src/prog3.js),
        which is the source of truth; these are its mirror and mirror-audit §12
        pins both the values AND the key sets. */
-    eres:    { cap: 75,  per: 0.004 },  // −0.4% elemental damage taken/pt
+    eres:    { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2659: elemental-damage cut on the curve
     mana:    { cap: 100, per: 2.5 },    // +2.5 max mana/pt, ON TOP of the Magic-level pool
-    move:    { cap: 75,  per: 0.004 },  // v2.3.2592: +0.4% move speed/pt, client-consumed (BroTown.jsx)
+    move:    { cap: 999, max: 0.35, k: 10 },  // v2.3.2659: move speed on the curve, client-consumed (BroTown.jsx)
   },
   ATK: {
-    range:   { cap: 100, per: 0.005 },  // v2.3.2592: +0.5% reach/pt, PER TYPE, client-consumed
+    range:   { cap: 999, max: 0.55, k: 10 },  // v2.3.2659: reach on the curve, PER TYPE, client-consumed
     /* v2.3.2210: the flat 1% base every character starts with -- the
        reasoning (and why anticheat does not move) lives on the SERVER copy,
        server/src/prog3.js, which is the source of truth; mirror-audit pins
@@ -65,11 +72,11 @@ export const PROG3 = {
        rate (1% + 0.3%/pt → 31% at the 100-pt cap) and `dmgPer` the
        crit-damage rate (+1%/pt → ×2.5).  The retired pair lives on in
        PROG3_LEGACY_ATK below, for old-worker prediction only. */
-    luck:    { cap: 100, per: 0.003, dmgPer: 0.01, base: 0.01 },
-    aspd:    { cap: 100, per: 0.0035 }, // −0.35% swing period/pt, PER TYPE
-    dmg:     { cap: 75,  per: 0.5 },    // v2.3.2199: +0.5 damage/pt pre-tier, PER TYPE
-    elem:    { cap: 75,  per: 1 },      // v2.3.2512: +1 elemental power/pt, PER TYPE (was global BODY)
-    special: { cap: 75,  per: 0.01 },   // v2.3.2592: +1% special-attack damage/pt, PER TYPE
+    luck:    { cap: 999, max: 0.60, dmgMax: 2.0, base: 0.01, k: 7, rel: true, lvlBound: 2 },  // v2.3.2659: crit chance + multiplier on the curve
+    aspd:    { cap: 999, max: 0.39, k: 10 },  // v2.3.2659: swing period cut on the curve, PER TYPE
+    dmg:     { cap: 999, max: 1.0, k: 7, rel: true, lvlBound: 2 },  // v2.3.2659: Power — a MULTIPLIER on (base + skill), PER TYPE
+    elem:    { cap: 999, max: 120, k: 10, rel: true, lvlBound: 2 },  // v2.3.2659: elemental power on the curve, PER TYPE
+    special: { cap: 999, max: 1.5, k: 7, rel: true, lvlBound: 2 },  // v2.3.2659: special damage on the curve, PER TYPE
   },
   /* v2.3.1727: the retune PROGRESSION-REDESIGN #13 deferred — the §7-A
      placeholders bought +17.7% damage over ten character levels, which the
@@ -99,6 +106,29 @@ export const PROG3 = {
   BURST_CD_MS: 3000,
   BURST_RADIUS: 70,
   BURST_DMG_MULT: 1.5,
+  /* v2.3.2659: the edge's fade per level above you, and the base-damage
+     floor under Dodge × Defense — the server's two new scalars. */
+  EDGE_FADE: 0.20,
+  FLOOR: 0.10,
+};
+
+/* ═══ v2.3.2659: THE RETIRED LINEAR ROWS, FOR OLD-WORKER PREDICTION ONLY ═══
+   A worker without caps.prog3rel still rolls `pts × per` against these caps,
+   so against it every reader below predicts THIS math (rule 19) — the
+   PROG3_LEGACY_ATK posture.  Not part of PROG3 (mirror-audit compares
+   PROG3's rows with the server's, and these are gone there).  Delete with
+   the fallback once every worker advertises caps.prog3rel. */
+export const PROG3_LINEAR = {
+  def:     { cap: 100, per: 0.004 },
+  dodge:   { cap: 75,  per: 0.004 },
+  eres:    { cap: 75,  per: 0.004 },
+  move:    { cap: 75,  per: 0.004 },
+  range:   { cap: 100, per: 0.005 },
+  luck:    { cap: 100, per: 0.003, dmgPer: 0.01, base: 0.01 },
+  aspd:    { cap: 100, per: 0.0035 },
+  dmg:     { cap: 75,  per: 0.5 },
+  elem:    { cap: 75,  per: 1 },
+  special: { cap: 75,  per: 0.01 },
 };
 
 /* ═══ v2.3.2592: THE RETIRED CRIT PAIR, FOR OLD-WORKER PREDICTION ONLY ═══
@@ -158,17 +188,17 @@ export const PROG3_LEGACY_ATK = {
    report.  `capsProg3Shared` rows exist only on a worker carrying the
    folded grid; `legacyOnly` rows exist only on one that does not. */
 export const PROG3_ATK_META = [
-  { key: 'range',   label: 'Range',     perText: '+0.5% reach',                        pct: true, unit: '% farther',        iconSrc: '/icons/ui/t2/bow-longshot.webp?v=2.3.2592',     capsProg3Shared: true, dpsNote: 'reach, not damage' , tint: '#842D95' },
-  { key: 'dmg',     label: 'Power',     perText: '+0.5 damage per hit',                unit: ' dmg',                        iconSrc: '/icons/ui/hero/dps.webp?v=2.3.2199',            capsProg3x: true , tint: '#5C5851' },
+  { key: 'range',   label: 'Range',     perText: '+0.5% reach', perTextRel: 'reach farther — the first points count most',                        pct: true, unit: '% farther',        iconSrc: '/icons/ui/t2/bow-longshot.webp?v=2.3.2592',     capsProg3Shared: true, dpsNote: 'reach, not damage' , tint: '#842D95' },
+  { key: 'dmg',     label: 'Power',     perText: '+0.5 damage per hit', perTextRel: 'hit harder — the first points count most', unitRel: '% more damage', pctRel: true,                unit: ' dmg',                        iconSrc: '/icons/ui/hero/dps.webp?v=2.3.2199',            capsProg3x: true , tint: '#5C5851' },
   /* Speed's points SHORTEN the swing, so its total is a reduction — the
      label below says "faster" rather than printing a negative. */
-  { key: 'aspd',    label: 'Speed',     perText: '−0.35% swing time',                  pct: true, unit: '% faster',         iconSrc: '/icons/ui/t2/sword-tempo.webp?v=2.3.1694' , tint: '#2C4F59' },
-  { key: 'luck',    label: 'Luck',      perText: '+0.3% crit chance, +1% crit damage', pct: true, unit: '% crit chance',    iconSrc: '/icons/ui/hero/crit.webp?v=2.3.1694',           capsProg3Shared: true , tint: '#8E3B1F' },
-  { key: 'special', label: 'Special',   perText: '+1% special attack damage',          pct: true, unit: '% special damage', iconSrc: '/icons/ui/t2/staff-overload.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'special attacks only' , tint: '#326762' },
+  { key: 'aspd',    label: 'Speed',     perText: '−0.35% swing time', perTextRel: 'swing faster — the first points count most',                  pct: true, unit: '% faster',         iconSrc: '/icons/ui/t2/sword-tempo.webp?v=2.3.1694' , tint: '#2C4F59' },
+  { key: 'luck',    label: 'Luck',      perText: '+0.3% crit chance, +1% crit damage', perTextRel: 'more crits, and bigger — the first points count most', pct: true, unit: '% crit chance',    iconSrc: '/icons/ui/hero/crit.webp?v=2.3.1694',           capsProg3Shared: true , tint: '#8E3B1F' },
+  { key: 'special', label: 'Special',   perText: '+1% special attack damage', perTextRel: 'stronger specials — the first points count most',          pct: true, unit: '% special damage', iconSrc: '/icons/ui/t2/staff-overload.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'special attacks only' , tint: '#326762' },
   /* v2.3.2512: elemental power, per weapon — burns/roots/thorns and element
      collisions from THIS weapon scale off it.  The detonation drawing is
      still the closest the repo has; swap the day a dedicated icon exists. */
-  { key: 'elem',    label: 'Element',   infoKey: 'Elemental', perText: '+1 elemental power',                 unit: ' power',                      iconSrc: '/icons/ui/t2/staff-detonation.webp?v=2.3.2199', capsProg3Elem: true , tint: '#48239F' },
+  { key: 'elem',    label: 'Element',   infoKey: 'Elemental', perText: '+1 elemental power', perTextRel: 'stronger burns and combos — the first points count most',                 unit: ' power',                      iconSrc: '/icons/ui/t2/staff-detonation.webp?v=2.3.2199', capsProg3Elem: true , tint: '#48239F' },
   /* The RETIRED pair, drawn only against a worker that has not folded them
      into Luck — that worker still rolls off crit and critDmg, so those are
      the rows it must show (rule 19).  Same copy they shipped with. */
@@ -268,13 +298,17 @@ export const PROG3_BODY_META = [
      If the two ever DO read as confusable to a player, "Haste" is the
      pre-agreed fallback for `move`. */
   { key: 'hp',    label: 'Max HP',      perText: '+8 max HP',                    unit: ' HP',             iconSrc: '/icons/ui/hero/hp-heart.webp?v=2.3.1922' , tint: '#592C32' } /* v2.3.1922: plain heart */,
-  { key: 'def',   label: 'Defense',     perText: '−0.4% damage taken',           pct: true, unit: '% less damage', iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1694' , tint: '#485A7A' },
+  { key: 'def',   label: 'Defense',     perText: '−0.4% damage taken', perTextRel: 'take less damage — the first points count most',           pct: true, unit: '% less damage', iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1694' , tint: '#485A7A' },
   { key: 'mana',  label: 'Max Mana',    perText: '+2.5 max mana',                unit: ' mana',           iconSrc: '/icons/ui/hero/mana.webp?v=2.3.2592',             capsProg3Elem: true , tint: '#182D6D' },
   { key: 'stam',  label: 'Stamina',     perText: '+3 max stamina',               unit: ' stamina',        iconSrc: '/icons/ui/hero/stamina.webp?v=2.3.1694' , tint: '#1E6642' },
-  { key: 'dodge', label: 'Dodge',       perText: '+0.4% dodge',                  pct: true, unit: '%',    iconSrc: '/icons/ui/hero/dodge.webp?v=2.3.1694' , tint: '#6D5C18' },
-  { key: 'move',  label: 'Speed',       infoKey: 'Move Speed', perText: '+0.4% move speed',             pct: true, unit: '% faster', iconSrc: '/icons/ui/hero/move-speed.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'movement, not damage' , tint: '#48661E' },
-  { key: 'eres',  label: 'Resist',      infoKey: 'Elem Resist', perText: '−0.4% elemental damage taken', pct: true, unit: '% less elemental', iconSrc: '/icons/ui/hero/damage-reduction.webp?v=2.3.2592', capsProg3Elem: true , tint: '#9F2357' },
+  { key: 'dodge', label: 'Dodge',       perText: '+0.4% dodge', perTextRel: 'dodge more hits — the first points count most',                  pct: true, unit: '%',    iconSrc: '/icons/ui/hero/dodge.webp?v=2.3.1694' , tint: '#6D5C18' },
+  { key: 'move',  label: 'Speed',       infoKey: 'Move Speed', perText: '+0.4% move speed', perTextRel: 'move faster — the first points count most',             pct: true, unit: '% faster', iconSrc: '/icons/ui/hero/move-speed.webp?v=2.3.2592',   capsProg3Shared: true, dpsNote: 'movement, not damage' , tint: '#48661E' },
+  { key: 'eres',  label: 'Resist',      infoKey: 'Elem Resist', perText: '−0.4% elemental damage taken', perTextRel: 'take less elemental damage — the first points count most', pct: true, unit: '% less elemental', iconSrc: '/icons/ui/hero/damage-reduction.webp?v=2.3.2592', capsProg3Elem: true , tint: '#9F2357' },
 ];
+
+/* v2.3.2659: the one sentence the ℹ️ window adds under a stat that fades
+   (`fades` rows) — what "relative" means, in the Points screen's own terms. */
+export const PROG3_FADE_NOTE = 'Full strength against monsters at your level or below. Weaker against stronger ones, and gone 5 levels up.';
 
 /* The rows the CONNECTED worker supports, with critDmg's copy resolved
    to that worker's semantics.  UI maps these, never the raw arrays. */
@@ -294,6 +328,14 @@ function _resolveMetaRows(rows) {
     if (m.legacyOnly && _prog3shared) continue;
     if (m.key === 'critDmg' && !_prog3x) {
       out.push({ ...m, perText: m.perTextLegacy, unit: m.unitLegacy, pct: false });
+    } else if (_prog3rel && m.perTextRel) {
+      /* v2.3.2659: a CURVE row on a relative worker — the copy says the first
+         points count most rather than quoting a flat rate that is only true of
+         the first point; `curve` tells the screen not to append "per point";
+         `fades` marks the seven that weaken against a stronger monster. */
+      var _row = PROG3.ATK[m.key] || PROG3.BODY[m.key];
+      out.push({ ...m, perText: m.perTextRel, unit: m.unitRel || m.unit,
+        pct: m.pctRel != null ? m.pctRel : m.pct, curve: true, fades: !!(_row && _row.rel) });
     } else out.push(m);
   }
   return out;
@@ -356,6 +398,69 @@ var _prog3shared = false;
 export function setProg3SharedEnabled(on) { _prog3shared = !!on; }
 export function isProg3SharedEnabled() { return _prog3shared; }
 
+/* ═══ v2.3.2659: caps.prog3rel — RELATIVE POINT VALUE ═══
+   A worker advertising this rolls the CURVE (PROG3 rows above) with the
+   EDGE; one without it rolls the linear PROG3_LINEAR math.  Every reader
+   below asks this flag which to predict, so a readout never promises a
+   number the connected worker would not produce (rule 19).  Display only:
+   nothing new is ever sent on it. */
+var _prog3rel = false;
+export function setProg3RelEnabled(on) { _prog3rel = !!on; }
+export function isProg3RelEnabled() { return _prog3rel; }
+
+/* The server's prog3Curve / prog3Edge / prog3Yardstick / prog3StatValue,
+   mirrored line for line (server/src/prog3.js).  The client has no monster in
+   hand for a readout, so its readers pass no level — edge 1, "against a
+   monster at or below your level" — which is also what the Points screen
+   promises in its legend. */
+export function prog3Curve(q, k) {
+  return q > 0 ? q / (q + k) : 0;
+}
+export function prog3Edge(yourLevel, monsterLevel) {
+  var m = Number(monsterLevel);
+  if (monsterLevel == null || !isFinite(m)) return 1;
+  var gap = Math.max(0, m - Math.max(1, Number(yourLevel) || 1));
+  return Math.max(0, 1 - gap * PROG3.EDGE_FADE);
+}
+export function prog3Yardstick(rpg, cat) {
+  if (cat) return prog3SkillLevel(rpg, cat);
+  var best = 1;
+  for (var i = 0; i < PROG3.SKILLS.length; i++) best = Math.max(best, prog3SkillLevel(rpg, PROG3.SKILLS[i]));
+  return best;
+}
+export function prog3StatValue(rpg, stat, cat, monsterLevel) {
+  var atk = !!PROG3.ATK[stat];
+  var d = PROG3.ATK[stat] || PROG3.BODY[stat];
+  if (!d || !(d.k > 0)) return 0;
+  var c = atk ? ((cat === 'bow' || cat === 'staff') ? cat : 'sword') : null;
+  var pts = atk ? prog3AtkPts(rpg, c, stat) : prog3Pts(rpg, stat);
+  if (pts <= 0) return 0;
+  var edge = d.rel ? prog3Edge(prog3Yardstick(rpg, c), monsterLevel) : 1;
+  return prog3Curve(pts * edge, d.k);
+}
+/* A stat's points as an OLD (linear) worker counts them — clamped to that
+   worker's cap, which the blob it wrote never exceeds anyway. */
+function _linPts(rpg, stat, cat) {
+  var raw = cat ? prog3AtkPts(rpg, cat, stat) : prog3Pts(rpg, stat);
+  var L = PROG3_LINEAR[stat];
+  return L ? Math.min(L.cap, raw) : raw;
+}
+/* What `pts` points of `stat` read as, at edge 1 — the Points screen's
+   now → after pair (statPreview.js) totals through this, so a preview and
+   the cell above it can never disagree about the curve.  Fractions for the
+   percent stats (luck = crit chance, with its base), power for elem, and the
+   multiplier's bonus fraction for dmg/special/range/move/aspd. */
+export function prog3StatAmount(stat, pts) {
+  var d = PROG3.ATK[stat] || PROG3.BODY[stat];
+  if (!d) return 0;
+  if (_prog3rel && d.k > 0) {
+    var v = prog3Curve(pts, d.k);
+    return (d.base || 0) + d.max * v;
+  }
+  var L = PROG3_LINEAR[stat] || d;
+  return Math.min(L.cap, pts) * (L.per || 0) + (L.base || 0);
+}
+
 /* The player's effective elemental power for a weapon — the client mirror of
    the server's elemAttackStat seam (server/src/elemental.js).  ONE definition,
    because three separate readers (the DoT tick, the collision roll, the stat
@@ -363,16 +468,15 @@ export function isProg3SharedEnabled() { return _prog3shared; }
    drifts.  Against an OLD worker (_prog3elem false) it reads the GLOBAL body
    stat that worker still rolls off, so predictions keep matching the wire in
    either deploy order. */
-export function prog3ElemPower(rpg, cat) {
+export function prog3ElemPower(rpg, cat, mlvl) {
   if (!(rpg && rpg.prog3)) return 0;
   if (!_prog3elem) {
     var g = (rpg.prog3.alloc && rpg.prog3.alloc.elem) || 0;
     return Math.max(0, Math.min(75, g)) * 1;   /* the retired BODY.elem cap/per */
   }
   var c = (cat === 'bow' || cat === 'staff') ? cat : 'sword';
-  var a = rpg.prog3.atk && rpg.prog3.atk[c];
-  var v = (a && a.elem) || 0;
-  return Math.max(0, Math.min(PROG3.ATK.elem.cap, v)) * PROG3.ATK.elem.per;
+  if (_prog3rel) return PROG3.ATK.elem.max * prog3StatValue(rpg, 'elem', c, mlvl); /* v2.3.2659: curve + edge */
+  return _linPts(rpg, 'elem', c) * PROG3_LINEAR.elem.per;
 }
 
 /* ═══ v2.3.1734: caps.elemBurst — the deploy-order gate for BOTH halves
@@ -578,13 +682,23 @@ export function prog3SharedSpendCat(rpg) {
 
 export function prog3StatCap(rpg, stat) {
   var d = PROG3.BODY[stat] || PROG3.ATK[stat] || PROG3_LEGACY_ATK[stat]; /* v2.3.2592: the retired pair still caps against an old worker */
-  return Math.min(d ? d.cap : 0, prog3CharLevel(rpg));
+  /* v2.3.2659: on a relative worker the curve stats have no design cap (999
+     is storage) and the per-level bound doubles on the four damage stats —
+     the server's _handleProg3Allocate, mirrored so [+] greys where it refuses. */
+  if (_prog3rel) return Math.min(d ? d.cap : 0, prog3CharLevel(rpg) * ((d && d.lvlBound) || 1));
+  var L = PROG3_LINEAR[stat];
+  return Math.min(L ? L.cap : (d ? d.cap : 0), prog3CharLevel(rpg));
 }
 export function prog3IsAtkStat(stat) {
   return !!(PROG3.ATK[stat] || PROG3_LEGACY_ATK[stat]);
 }
 
-export function prog3DodgePct(rpg) { return prog3Pts(rpg, 'dodge') * PROG3.BODY.dodge.per; }
+/* v2.3.2659: the curve + edge on a relative worker; `mlvl` is the attacker's
+   level when one is in hand, omitted for readouts (edge 1). */
+export function prog3DodgePct(rpg, mlvl) {
+  if (_prog3rel) return PROG3.BODY.dodge.max * prog3StatValue(rpg, 'dodge', null, mlvl);
+  return _linPts(rpg, 'dodge') * PROG3_LINEAR.dodge.per;
+}
 /* v2.3.1668: crit/critDmg read the ACTIVE weapon's block unless a
    category is named (loadout previews pass one explicitly). */
 /* v2.3.2210: base + allocated, mirroring the server's roll exactly.  Every
@@ -594,9 +708,10 @@ export function prog3DodgePct(rpg) { return prog3Pts(rpg, 'dodge') * PROG3.BODY.
 /* v2.3.2592: the chance is the LUCK stat's `per` half on a worker that
    folded the pair, and the retired crit stat against one that did not —
    whichever the connected worker actually rolls (rule 19). */
-export function prog3CritPct(rpg, cat) {
+export function prog3CritPct(rpg, cat, mlvl) {
   var c = cat || prog3ActiveCat(rpg);
-  if (_prog3shared) return PROG3.ATK.luck.base + prog3AtkPts(rpg, c, 'luck') * PROG3.ATK.luck.per;
+  if (_prog3shared && _prog3rel) return PROG3.ATK.luck.base + PROG3.ATK.luck.max * prog3StatValue(rpg, 'luck', c, mlvl); /* v2.3.2659 */
+  if (_prog3shared) return PROG3_LINEAR.luck.base + _linPts(rpg, 'luck', c) * PROG3_LINEAR.luck.per;
   return PROG3_LEGACY_ATK.crit.base + prog3AtkPts(rpg, c, 'crit') * PROG3_LEGACY_ATK.crit.per;
 }
 /* v2.3.2199: critDmg went flat→percent.  The multiplier is the live
@@ -605,9 +720,10 @@ export function prog3CritPct(rpg, cat) {
    client still predicts the flat +2 crits an un-upgraded worker rolls
    — the specialManaCost fallback pattern, rule 19).
    v2.3.2592: and the multiplier is LUCK's `dmgPer` half on a folded worker. */
-export function prog3CritMult(rpg, cat) {
+export function prog3CritMult(rpg, cat, mlvl) {
   var c = cat || prog3ActiveCat(rpg);
-  if (_prog3shared) return 1.5 + prog3AtkPts(rpg, c, 'luck') * PROG3.ATK.luck.dmgPer;
+  if (_prog3shared && _prog3rel) return 1.5 + PROG3.ATK.luck.dmgMax * prog3StatValue(rpg, 'luck', c, mlvl); /* v2.3.2659 */
+  if (_prog3shared) return 1.5 + _linPts(rpg, 'luck', c) * PROG3_LINEAR.luck.dmgPer;
   if (!_prog3x) return 1.5;
   return 1.5 + prog3AtkPts(rpg, c, 'critDmg') * PROG3_LEGACY_ATK.critDmg.per;
 }
@@ -623,19 +739,46 @@ export function prog3CritFlat(rpg, cat) {
    that does not carry the stat — a readout or a reach the wire would not
    honour is the rule-19 bug these gates exist to prevent.  The server
    mirrors the first (combat.js) and bounds the third (movement.js). */
-export function prog3SpecialMult(rpg, cat) {
+export function prog3SpecialMult(rpg, cat, mlvl) {
   if (!_prog3shared || !prog3Live(rpg)) return 1;
-  return 1 + prog3AtkPts(rpg, cat || prog3ActiveCat(rpg), 'special') * PROG3.ATK.special.per;
+  var c = cat || prog3ActiveCat(rpg);
+  if (_prog3rel) return 1 + PROG3.ATK.special.max * prog3StatValue(rpg, 'special', c, mlvl); /* v2.3.2659 */
+  return 1 + _linPts(rpg, 'special', c) * PROG3_LINEAR.special.per;
 }
 export function prog3RangeMult(rpg, cat) {
   if (!_prog3shared || !prog3Live(rpg)) return 1;
-  return 1 + prog3AtkPts(rpg, cat || prog3ActiveCat(rpg), 'range') * PROG3.ATK.range.per;
+  var c = cat || prog3ActiveCat(rpg);
+  if (_prog3rel) return 1 + PROG3.ATK.range.max * prog3StatValue(rpg, 'range', c, null); /* v2.3.2659: curve, no edge */
+  return 1 + _linPts(rpg, 'range', c) * PROG3_LINEAR.range.per;
 }
 export function prog3MoveMult(rpg) {
   if (!_prog3shared || !prog3Live(rpg)) return 1;
-  return 1 + prog3Pts(rpg, 'move') * PROG3.BODY.move.per;
+  if (_prog3rel) return 1 + PROG3.BODY.move.max * prog3StatValue(rpg, 'move', null, null); /* v2.3.2659: curve, no edge */
+  return 1 + _linPts(rpg, 'move') * PROG3_LINEAR.move.per;
 }
-export function prog3DefPct(rpg) { return prog3Pts(rpg, 'def') * PROG3.BODY.def.per; }
+export function prog3DefPct(rpg, mlvl) {
+  if (_prog3rel) return PROG3.BODY.def.max * prog3StatValue(rpg, 'def', null, mlvl); /* v2.3.2659 */
+  return _linPts(rpg, 'def') * PROG3_LINEAR.def.per;
+}
+/* v2.3.2659: Resist's cut, one reader (the Points cell printed it inline). */
+export function prog3EresPct(rpg, mlvl) {
+  if (_prog3rel) return PROG3.BODY.eres.max * prog3StatValue(rpg, 'eres', null, mlvl);
+  return _linPts(rpg, 'eres') * PROG3_LINEAR.eres.per;
+}
+/* v2.3.2659: the swing-period cut the Speed stat buys (swingCooldownMultFor
+   turns it into the period multiplier), curve on a relative worker. */
+export function prog3AspdCut(rpg, cat) {
+  var c = cat || prog3ActiveCat(rpg);
+  if (_prog3rel) return PROG3.ATK.aspd.max * prog3StatValue(rpg, 'aspd', c, null);
+  return _linPts(rpg, 'aspd', c) * PROG3_LINEAR.aspd.per;
+}
+/* v2.3.2659: POWER — the multiplier on (weapon base + skill term), pre-tier,
+   exactly where the server's _computeAttackDamage applies it.  1 against a
+   linear worker, whose flat Power prog3DmgTerm still adds. */
+export function prog3PowerMult(rpg, cat, mlvl) {
+  if (!_prog3rel || !prog3Live(rpg)) return 1;
+  return 1 + PROG3.ATK.dmg.max * prog3StatValue(rpg, 'dmg', cat || prog3ActiveCat(rpg), mlvl);
+}
 
 /* The trained-level damage term replacing stat × 0.1667 — mirrors the
    server's _computeAttackDamage branch (specials scale on Magic and
@@ -645,6 +788,8 @@ export function prog3DmgTerm(rpg, weaponType) {
   /* v2.3.2199: + the allocated flat-damage stat, pre-tier like the
      server's roll.  Gated on prog3x: an old worker doesn't add it, and
      a readout that promises damage the wire won't confirm is a bug. */
+  /* v2.3.2659: on a relative worker Power is a multiplier (prog3PowerMult),
+     not a term here — the flat add survives only as the linear worker's. */
   return prog3SkillLevel(rpg, cat) * PROG3.DMG_PER_LEVEL[cat]
-    + (_prog3x ? prog3AtkPts(rpg, cat, 'dmg') * PROG3.ATK.dmg.per : 0);
+    + (_prog3x && !_prog3rel ? _linPts(rpg, 'dmg', cat) * PROG3_LINEAR.dmg.per : 0);
 }

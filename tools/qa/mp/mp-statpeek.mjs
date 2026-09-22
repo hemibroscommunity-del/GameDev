@@ -213,8 +213,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const R = S && S.rpg;
     const f = window._gameFns;
     if (!R || !f) return null;
-    /* 1% base + 0.3%/pt (PROG3.ATK.luck), as a display percentage. */
-    return { crit: 1 + (R.prog3.atk.sword.luck || 0) * 0.3 };
+    /* v2.3.2659: Luck is on the CURVE against a relative worker (the local
+       worker this runs against advertises caps.prog3rel): 1 % base + 60 % ×
+       p/(p + 7), as a display percentage.  Literals, so a production retune
+       that forgets this scenario fails here instead of agreeing with itself. */
+    const L = R.prog3.atk.sword.luck || 0;
+    return { crit: 1 + 60 * L / (L + 7) };
   });
   rec.ok('the point landed on the character', !!actual && Math.abs(actual.crit - promisedCrit) < 0.05,
     { promisedCrit, actual });

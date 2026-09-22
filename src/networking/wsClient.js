@@ -25,7 +25,7 @@ import { peerCosmeticsFromWire, peerPassthroughFromWire, applyPeerCosmetics } fr
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale */
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled, isProg3SharedEnabled /* v2.3.2592 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled, isProg3SharedEnabled /* v2.3.2592 */, setProg3RelEnabled /* v2.3.2659 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -1206,6 +1206,11 @@ export function setupWebSocket(ctx) {
                    worker's grid and pools (see the flag's note in
                    data/prog3.js). */
                 setProg3SharedEnabled(!!(S._serverCaps && S._serverCaps.prog3shared));
+                /* v2.3.2659: relative point value — the curve stats and the
+                   edge.  Display only, like the flags above: against an old
+                   worker every readout keeps predicting that worker's linear
+                   math (PROG3_LINEAR in data/prog3.js). */
+                setProg3RelEnabled(!!(S._serverCaps && S._serverCaps.prog3rel));
                 /* v2.3.1733: stamina-abilities deploy-order gate.  The two
                    ability BUTTONS render and the `ability` message is sent
                    only while THIS worker claims caps.abil — an old worker

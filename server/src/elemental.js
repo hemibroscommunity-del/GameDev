@@ -63,7 +63,7 @@ export const COLLISION_BURST_CAP = 3.2;   // GDD §22 INV-16
  * prog3 allocation, DoT/collision damage is minted server-side, and
  * COLLISION_BURST_CAP still binds (raw includes the stat term).  No
  * ceiling work needed. */
-import { PROG3 } from './prog3.js';
+import { PROG3, prog3StatValue } from './prog3.js'; // v2.3.2659: + the curve/edge reader
 /* v2.3.2512: `cat` — WHICH WEAPON's elemental power.  Elemental power moved
    from one global BODY channel to a per-combat-type ATK channel (owner's own
    split: attack power belongs to the type that produces it), so every reader
@@ -72,13 +72,15 @@ import { PROG3 } from './prog3.js';
    An unrecognised or missing cat falls back to 'sword', matching _wpnCat and
    _computeAttackDamage's own slot resolution — a reader that forgot to say
    loses the bonus rather than reading someone else's lane. */
-export function elemAttackStat(ps, legacyStatName, cat) {
+/* v2.3.2659: elemental power is on the CURVE (max 120, k 10: 5 points = 40
+   power, where +1/pt gave 5) and takes the EDGE against `monsterLevel`, the
+   level of the monster the status or collision lands on — omitted, edge 1.
+   The power SNAPSHOT a status takes here therefore already carries the edge
+   of the monster it is on, so burn/root/thorn ticks need no further change. */
+export function elemAttackStat(ps, legacyStatName, cat, monsterLevel) {
   if (ps && ps.prog3) {
     const c = (cat === 'bow' || cat === 'staff') ? cat : 'sword';
-    const a = ps.prog3.atk && ps.prog3.atk[c];
-    const v = a && a.elem;
-    const d = PROG3.ATK.elem;
-    return (typeof v === 'number') ? Math.max(0, Math.min(d.cap, v)) * d.per : 0;
+    return PROG3.ATK.elem.max * prog3StatValue(ps, 'elem', c, monsterLevel);
   }
   return (ps && ps[legacyStatName]) || 0;
 }
@@ -226,7 +228,7 @@ export function resolveElementCollision(m, triggerElement, attackerPs, isVolatil
   if (!setup) return null;
   const collision = lookupCollision(setup.element, triggerElement);
   if (!collision) return null;
-  const statValue = elemAttackStat(attackerPs, collision.stat, cat); // v2.3.2199: prog3 reads `elem`; v2.3.2512: per weapon
+  const statValue = elemAttackStat(attackerPs, collision.stat, cat, m.level); // v2.3.2199: prog3 reads `elem`; v2.3.2512: per weapon; v2.3.2659: + edge
   const raw = collision.base + statValue * collision.coeff;
   let dmg = raw;
   let resonating = false;

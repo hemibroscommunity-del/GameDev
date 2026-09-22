@@ -92,7 +92,8 @@ export const STAT_INFO = _mk({
   'Elem Resist': {
     title: 'Elemental resistance',
     body: 'Cuts the damage you take from elemental sources — burning ground and the blue slime’s blast.',
-    note: 'Separate from Defense, which cuts every kind of hit. The two stack.',
+    /* v2.3.2659: an elemental hit meets Resist alone now (combat.js). */
+    note: 'The only thing that stops elemental damage — Dodge and Defense guard against ordinary hits, and burning ground can’t be dodged.',
   },
   /* ═══ v2.3.2592: THE FOUR-COLUMN POINTS SCREEN ═══
      The owner's six per-type stats — Range, Power, Speed, Luck, Special,
@@ -108,7 +109,8 @@ export const STAT_INFO = _mk({
   },
   Power: {
     title: 'Power',
-    body: 'Base damage on every hit with this weapon type.',
+    /* v2.3.2659: Power multiplies (weapon base + skill) instead of adding. */
+    body: 'Makes every hit with this weapon type bigger — a percentage on top of your weapon and your skill.',
     note: 'The strong, simple buy early on. Shown as a range because every swing rolls somewhere inside it.',
   },
   Speed: {
