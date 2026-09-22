@@ -325,7 +325,7 @@ capped mechanic in §4c are untouched.
   (noticeability band, never-smaller, the vigor/ironskin anchors,
   crit-pair parity, decay monotonicity).
 
-## 4e. Relative point value — **DESIGN NOTE v2.3.2645** (owner ask 2026-09-22)
+## 4e. Relative point value — **DESIGN NOTE v2.3.2647** (owner ask 2026-09-22)
 
 The §4d ask, made again of the prog3 allocation grid: *"points carry a lot
 of weight at or under the current level monster with a pretty steep decay
