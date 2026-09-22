@@ -49,7 +49,17 @@
  *        erases it, never both (playerSkins.recolorBodyToCanvas), so a single
  *        changed pixel means an iris survived under the style.
  *
- * 5. THE WORLD SPRITE GETS IT TOO, not only the creator's preview. The erase
+ * 5. THE ONE EYE HAS A PUPIL, checked on the committed art rather than through
+ *    the renderer. Owner: "Looks like one eye lost its black pupil." The
+ *    flat-keying pre-pass recovered the dark parts of a drawing by dilating the
+ *    art and taking whatever ink that landed on, which finds a thin outline and
+ *    guts a solid block: the pupil is a 20px square whose bottom runs past the
+ *    white sclera, so it imported as a hollow arch. The 256px frame carried
+ *    FOUR dark pixels where the fixed one carries twenty-four, and that
+ *    six-fold gap is the assertion. Static, because the defect is in the art
+ *    and a browser adds nothing to seeing it.
+ *
+ * 6. THE WORLD SPRITE GETS IT TOO, not only the creator's preview. The erase
  *    lives in the body bake, and the bake draws remote players as well as you,
  *    so the style has to be HANDED to it at seven call sites rather than read
  *    from a store (the v2.3.1930 rule). That is precisely the shape of omission
@@ -57,7 +67,7 @@
  *    WALKING skin", v2.3.2431's missing frame width -- so it is asserted from
  *    the cache keys the world bake actually produced, which name the style.
  *
- * 6. BOTH SLOTS ARE WORN AT ONCE.  The entire reason eye styles are their own
+ * 7. BOTH SLOTS ARE WORN AT ONCE.  The entire reason eye styles are their own
  *    slot rather than four more eyewear entries is that you can wear Demon Eyes
  *    AND sunglasses.  So this puts the Thug Life shades on, then Demon Eyes on
  *    top, and asserts the face changed AND the shades are still the picked
@@ -142,6 +152,25 @@ function bounds(cap) {
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
+  /* ── 5. the One Eye's pupil is solid, read off the art ──
+     Before the browser, because it needs nothing from it.  The 256px `hi/`
+     frame is the one the portrait loads (loadTraitBest), so it is the one
+     measured; `dark` is the same near-black threshold the remnant probe uses. */
+  {
+    const { readFileSync } = await import('node:fs');
+    const { decode } = await import('../../png.mjs');
+    const px = decode(readFileSync(H.REPO + '/public/sprites/traits/eyestyle/one-eye/hi/south.png'));
+    let dark = 0;
+    for (let i = 0; i < px.data.length; i += 4) {
+      if (px.data[i + 3] < 120) continue;
+      const l = 0.299 * px.data[i] + 0.587 * px.data[i + 1] + 0.114 * px.data[i + 2];
+      if (l < 90) dark++;
+    }
+    rec.ok(`the One Eye's pupil is a solid block, not the rim of a hollow one `
+         + `(${dark} dark px in the 256 frame; the hollowed import had 4)`,
+      dark >= 12, { dark });
+  }
+
   const P = await H.newPlayer(browser, { name: 'Eyes', wsPort, webPort,
     viewport: PHONE, touch: true, dpr: 2 });
   await P.page.waitForSelector('[data-tut="login-create"]', { timeout: 30000 });
@@ -316,7 +345,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       { a: styledRed && [styledRed.w, styledRed.err], b: styledDefault && [styledDefault.w, styledDefault.err] });
   }
 
-  /* ── 6. glasses go OVER eyes, and both are worn at once ──
+  /* ── 7. glasses go OVER eyes, and both are worn at once ──
      BOTH CAPTURES ARE TAKEN ON THE EYEWEAR TAB, which is the whole trick here.
      The creator re-frames its preview per tab (pickPreviewCat), so the canvas
      is a different SIZE on the Eyes tab than on the Eyewear one -- the first
@@ -380,7 +409,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        + 'slots are worn together rather than replacing each other',
     stillOn.found === true && stillOn.on === true, { stillOn });
 
-  /* ── 5. into the world, where the body is baked by a different path ──
+  /* ── 6. into the world, where the body is baked by a different path ──
      The creator composites through characterPortrait; the walking figure goes
      through getBodyFrame, and the two only agree if the style was threaded to
      both.  bodySheetKey writes `es:<id>` into the cache key of any sheet baked

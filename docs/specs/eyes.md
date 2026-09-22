@@ -20,10 +20,10 @@ the style in the option strip, the eye colour in the row below it. No tenth tab.
 
 | style | eye coverage (south / southwest / east) | notes |
 |---|---|---|
-| Sleepy Eyes | 73/79 · 81/81 · 64 | navy half-lids, pale inner highlight |
-| One Eye | 57/57 · 43/29 · 74 | **centred** cyclops eye — see below |
+| Sleepy Eyes | 100/100 · 100/100 · 100 | navy half-lids, pale inner highlight |
+| One Eye | 57/57 · 43/29 · 80 | **centred** cyclops eye — see below |
 | Demon Eyes | 100/100 · 94/86 · 94 | flames; the erase probe (§3) |
-| WTF Eyes | 71/76 · 86/90 · 73 | wide-set, pupils in the inner corners |
+| WTF Eyes | 86/86 · 100/100 · 99 | wide-set, pupils in the inner corners |
 
 Those are the importer's own numbers against the `stand` bodies, the same
 measurement `docs/specs/eyewear.md` tabulates and with the same qualifier: it is
@@ -147,6 +147,25 @@ outline, and holes are filled so a pupil inside a white eye survives.
 It finds the skin rather than assuming it — the WTF sheet came back at
 `rgb(227,152,79)` against `rgb(201,133,77)` for the other three, the same lesson
 eyewear learned from the cyan mannequin (v2.3.2367).
+
+**The dark parts of a drawing are FOLLOWED, not reached into.** An eye's
+outline and its pupil are both near-black, so both read as mannequin by the test
+above and have to be recovered — by starting from the ink that *touches* the
+art and propagating through connected ink, bounded to `--grow × 6` (under two
+game pixels at the scale these cells are drawn, which crosses any pupil and
+cannot get round a head).
+
+The first cut dilated the art by `--grow` and took whatever ink that landed on.
+That recovers an *outline* — a thin thing, everywhere within `--grow` of the
+colour it edges — and guts anything solid. The One Eye's pupil is a 20px block
+whose top and sides touch the white sclera and whose bottom runs past it, so the
+dilation caught only its rim, `binary_fill_holes` could not close a shape that
+is open at the bottom, and it imported as a hollow arch: *"Looks like one eye
+lost its black pupil"* (owner). The 256px frame carried **4** dark pixels where
+the fixed one carries **24**; `mp-eyestyle.mjs` asserts that statically, because
+the defect is in the art and a browser adds nothing to seeing it. Both of WTF
+Eyes' pupils were hollow the same way, and Sleepy Eyes was missing its dark lid
+— which is why its coverage went from 73-81% to 100%.
 
 **Its per-cell report is the `--omit` list.** A cell that keyed 0px is a facing
 the style is not drawn on, and it says so:
@@ -344,7 +363,7 @@ gate and peers simply see the default eyes; an old client ignores the key.
 `node tools/dev/precheck.mjs` — green, including `look-parity` (the new stored
 key is restored) and the storage-key registry.
 
-`node tools/qa/mp/run.mjs eyestyle` — 41 assertions, all green, against a real
+`node tools/qa/mp/run.mjs eyestyle` — 42 assertions, all green, against a real
 worker and a real Chromium. What it establishes, beyond the guards:
 
 - all four styles are in the Eyes tab, with `None` first;
@@ -361,6 +380,8 @@ worker and a real Chromium. What it establishes, beyond the guards:
   produced (`es:demon`, nine sheets across stand and jog) rather than from a
   40px screenshot — the creator and the walking figure are different code paths
   and the threading is the part most likely to be missed;
+- the **One Eye's pupil is solid**, measured on the committed 256px art (24
+  dark pixels; the hollowed import had 4) — see §2 step 3;
 - the Thug Life shades and Demon Eyes are worn **together**, with the shades
   still the picked eyewear afterwards.
 

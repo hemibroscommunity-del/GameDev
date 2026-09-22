@@ -155,15 +155,31 @@ def key_sheet(rgb, min_blob=MIN_BLOB, grow=GROW, tol=BASE_TOL):
         sizes = np.array(ndi.sum(art, lab, range(1, k + 1)))
         art = np.isin(lab, [i + 1 for i in np.nonzero(sizes >= min_blob)[0]])
 
-    # A drawn eye has its own outline, which IS near-black and so reads as base.
-    # Reach into ink that touches the art, and fill what that encloses, so the
-    # outline and the pupil come with the eye -- bounded by `grow`, which is
-    # under one game pixel, so the face's own outline cannot be reached from
-    # here unless the art is already touching it.
+    # ── THE DARK PARTS OF THE DRAWING COME WITH IT ──
+    # A drawn eye has an outline and a pupil, and both are near-black, so both
+    # read as base by the test above.  They are recovered by starting from the
+    # ink that TOUCHES the art and following it.
+    #
+    # FOLLOWING it, not reaching a fixed distance into it (v2.3.2644).  The
+    # first cut dilated the art by `grow` and took whatever ink that landed on,
+    # which recovers an outline -- a thin thing, everywhere within `grow` of the
+    # colour it edges -- and guts anything solid.  The One Eye's pupil is a
+    # 20px block whose top and sides touch the white sclera and whose bottom
+    # runs past it, so the dilation caught its rim, `binary_fill_holes` could
+    # not close a shape that is open at the bottom, and it imported as a hollow
+    # arch: "Looks like one eye lost its black pupil".
+    #
+    # So the seed is the same ring of touching ink, and it then propagates
+    # through connected ink.  BOUNDED, because a piece whose art touches the
+    # mannequin's own outline would otherwise swallow the whole silhouette: the
+    # reach is `grow * 6`, under two game pixels at the scale these cells are
+    # drawn, which crosses any pupil and cannot get round a head.
     if art.any():
-        near = ndi.binary_dilation(art, np.ones((3, 3)), iterations=grow)
+        st = np.ones((3, 3))
+        near = ndi.binary_dilation(art, st, iterations=grow)
         dark = (rgb.max(2) < 110) & fig
-        art = ndi.binary_fill_holes(art | (near & dark))
+        reach = ndi.binary_dilation(art, st, iterations=grow * 6)
+        art = ndi.binary_fill_holes(art | ndi.binary_propagation(near & dark, mask=dark & reach))
 
     out = np.empty_like(rgb)
     out[:] = MAGENTA

@@ -84,10 +84,8 @@ export const EYE_STYLE_CATALOG = [
   { id: 'none', name: 'None' },
   /* v2.3.2643: navy half-lidded eyes with a pale highlight in the inner corner.
      The subtlest of the four -- it is the same eye the body sheets paint, drawn
-     droopy -- and the one that most wants the real eyes underneath hidden,
-     which the import measured at 73-81% coverage of the whole eye box on the
-     standing bodies.  The remainder is a sliver of the base eye's black top
-     edge, which reads as a lash rather than as a second eye. */
+     droopy.  100% coverage of the whole eye box on every facing since v2.3.2644
+     recovered its dark lid (73-81% before that; see docs/specs/eyes.md §2). */
   { id: 'sleepy', name: 'Sleepy Eyes' },
   /* v2.3.2643: one big white cyclops eye with a black pupil, CENTRED between
      the two real eyes rather than over either of them.  The importer's eye
@@ -97,6 +95,11 @@ export const EYE_STYLE_CATALOG = [
      belongs.  Symmetric, so unlike the Golden Monocle and the Eye Patch it does
      not swap sides when the character faces west. */
   { id: 'one-eye', name: 'One Eye' },
+  /* v2.3.2644: and its PUPIL is the reason the flat-keying pre-pass follows
+     connected ink instead of reaching a fixed distance into it.  Owner: "Looks
+     like one eye lost its black pupil."  The pupil is a solid 20px block whose
+     bottom runs past the white sclera, so a fixed reach caught only its rim and
+     it imported hollow.  mp-eyestyle.mjs asserts the fix on the art itself. */
   /* v2.3.2643: flames instead of eyes.  100% eye coverage on south and east,
      94/86% on southwest.  The owner's sheet DOES draw flames on the two rear
      cells and they imported cleanly; they are omitted at his request (see the
