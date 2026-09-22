@@ -84,5 +84,6 @@
     "east": 1,
     "northeast": 1,
     "north": 1
-  }
+  },
+  "earCover": "v2.3.2650: southwest/northeast carry fur painted over the bro's own ear by tools/species-cover-ears.mjs, baked in Monkey Brown (85,56,23) -- the species must pin that skin. Re-run the tool after any re-import."
 }
