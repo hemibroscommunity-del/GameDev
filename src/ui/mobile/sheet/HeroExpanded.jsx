@@ -2254,11 +2254,18 @@ export const HeroExpanded = () => {
                               left: `calc(${t * 100}% - ${t * LANE_ICON}px)`,
                               top: `calc(${t * 100}% - ${t * LANE_ICON}px)`,
                               width: LANE_ICON, height: LANE_ICON, objectFit: 'contain',
-                              /* the lane you are spending into is lit AND on
-                                 top; the other two are dimmed rather than
-                                 hidden, so the cell still reads as "the
-                                 weapons" and shows its state */
-                              opacity: on ? 1 : 0.34,
+                              /* v2.3.2660: all three at full strength (owner:
+                                 "have all of the icons in the first row not
+                                 dimmed").  The dimming was the head's way of
+                                 saying WHICH weapon's numbers the six cells
+                                 show, from when the head was the lane
+                                 switch; that choice lives in the confirm
+                                 window's tabs now, so the head is a label
+                                 for "the weapons" and reads as one.  The lane
+                                 in use still sits on top of the stack --
+                                 a quiet cue that costs the other two
+                                 nothing. */
+                              opacity: 1,
                               zIndex: on ? 2 : 1,
                               pointerEvents: 'none',
                             }} />
