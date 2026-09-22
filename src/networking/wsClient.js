@@ -46,6 +46,7 @@ import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js'
 import { getPattern } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 import { getEquip, syncArmorLayers, migrateTier1Armor } from '@/rendering/gearCatalog.js'; /* v2.3.1761 */
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
+import { pushMilestone } from '@/ui/milestoneUnlock.js'; /* v2.3.2645: a milestone rung gets its own card, after the burst */
 /* v2.3.1982: the "the world is full" screen — plain DOM, see its header
    for why it is not a React boot phase. */
 import { showRoomFull, hideRoomFull, roomFullOpen } from '@/ui/RoomFullScreen.js';
@@ -2477,6 +2478,41 @@ export function setupWebSocket(ctx) {
               if (_newChar > 0 && S.rpg) {
                 if ((S.rpg._lastCharLvlShown || 0) > _newChar) S.rpg._lastCharLvlShown = _newChar;
                 S.rpg._lastCharLvlShown = _newChar;
+              }
+              /* ═══ v2.3.2645: THE MILESTONE, WITH ITS OWN NOTIFICATION ═══
+                 Owner: "Yes give milestone unlocks their own notification."
+                 This is where the gains line's "Element Burst unlocked!" clause
+                 went when v2.3.2644 removed that line.  Pushed onto its OWN bus,
+                 not through setLevelUpMsg: that cell already carries the skill
+                 level from this same tick, and two writes in one tick keep only
+                 the second -- the v2.3.2615 overwrite, which is the bug that
+                 created the burst stack in the first place.
+                 The card opens as the burst FINISHES (milestoneUnlock.js), so a
+                 level that crosses a rung reads as two beats in a row rather
+                 than two overlays at once -- the thing the owner had removed at
+                 v2.3.2643.
+                 Rungs the ladder says give nothing (4 and 8) are dropped by
+                 pushMilestone itself, so this call site does not have to know
+                 which rungs are real.
+
+                 GATED ON THE WORKER'S OWN WORD, not on our mirror of the
+                 ladder.  `p3l.milestone` is the server saying it crossed a
+                 rung AND granted what the rung owes (_prog3GrantMilestones
+                 runs immediately before the send).  Announcing off
+                 MILESTONES[charLevel] instead would have a new client tell a
+                 player on an OLD worker that they just earned a bonus point
+                 that worker never minted -- rule 19 in its display costume,
+                 and the same class of untruth as a celebration for a level
+                 nobody earned. */
+              if (p3l.milestone) {
+                try {
+                  pushMilestone({
+                    level: _newChar,
+                    label: p3l.milestone || null,
+                    bonusPoints: p3l.bonusPoints,
+                    ts: _p3ts,
+                  });
+                } catch (e) { /* a celebration must never break the level-up */ }
               }
               /* v2.3.2615: no BT_AUDIO.levelUp() — see the combat_credit note
                  above.  v2.3.2643: and now one burst, so the sting's 450ms
