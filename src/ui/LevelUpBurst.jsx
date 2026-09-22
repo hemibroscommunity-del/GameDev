@@ -130,6 +130,10 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
      points"), which wraps to two lines in one wide column and put the plate
      13px under the tray at 360 and 390 portrait.  The rig caught it
      (shot-levelup's captionBelowTray row), which is what that row is for.
+     (v2.3.2644 then removed the gains line entirely on the owner's word, so
+     that particular overflow is history -- but the lesson is not, and it is
+     why this stays measured: the caption's contents have now changed twice in
+     two versions, and a constant was wrong within hours both times.)
 
      Estimating the wrap from string length and a guessed glyph width would
      be the same mistake with a longer fuse -- it would be right for today's
@@ -229,10 +233,18 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
      tools/qa/mp/shot-levelup.mjs, which fails the run if any caption plate
      crosses the tray. */
   /* v2.3.2643: the measured plate wins as soon as it exists; the constants
-     remain the frame-0 fallback (and the floor -- a plate measured mid-fade
-     is never allowed to reserve LESS than one that has settled). */
+     are the frame-0 fallback, for the one frame before the measurement lands.
+     v2.3.2644: and it REPLACES them rather than flooring them.  The floor was
+     harmless while the caption was two lines and the constant was the honest
+     size of two lines.  With the gains line gone (see the caption below) the
+     plate is ONE line -- about 36px against the constant's 58 -- and a floor
+     would hold 22px of reserved space the caption no longer needs, shrinking
+     the art on exactly the short screens the reservation exists to protect.
+     Taking the measurement straight is safe because it is a settled layout
+     read, not a mid-animation one: opacity does not affect layout, and the
+     caption's text cannot change during a burst. */
   const _capGuess = nCols === 1 ? LEVELUP_CAPTION_BOX_H : Math.round(LEVELUP_CAPTION_BOX_H * 1.75);
-  const capBoxH = Math.max(_capGuess, capH);
+  const capBoxH = capH > 0 ? capH : _capGuess;
   const kCaption = (worldBottom - 8 - capBoxH - LEVELUP_CAPTION_GAP - pinY) / _belowCircle;
   /* ...but not to the point of a medallion nobody can see: below this the
      caption is allowed to sit a little higher against the art instead. */
@@ -388,15 +400,29 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
                 ? `Character · Level ${msg.level}`
                 : (label ? `${label} · Level ${lvl}` : `Level ${lvl}`)}
           </div>
-          {/* v2.3.1727's gains line, kept: "you got stronger" is a claim and
-              "+1.5 damage · +8 max HP" is the reason the owner asked for the
-              retune.  The art says LEVEL UP and the icon says which skill;
-              this is the only part that says what it BOUGHT. */}
-          {(msg.kind === 'combat' || msg.kind === 'char') && msg.gains ? (
-            <div style={{ fontSize: nCols === 1 ? 12.5 : 11, color: '#B9C1BF', marginTop: 3, lineHeight: 1.25 }}>
-              {msg.gains}
-            </div>
-          ) : null}
+          {/* ═══ v2.3.2644: THE GAINS LINE IS GONE ═══
+              Owner: "Don't include the specific stat increases, just the name
+              of the skill and level.  It's way too tiny to read anyway."
+
+              v2.3.1727 added it to answer "I DO want leveling to feel more
+              powerful" -- the theory being that "+1.5 damage · +6 max HP"
+              earns the claim the art is making.  The owner has now watched it
+              in play and the theory does not survive contact: at 11-12.5px
+              under a burst that is itself moving, and on screen for about two
+              seconds, it is not read.  A line nobody reads does not make a
+              level feel powerful -- it makes the caption longer, and it was
+              long enough to push the plate under the dashboard tray
+              (v2.3.2643).  The art carries the moment, the medallion says
+              which skill, and the caption above says which level.  That is
+              the whole notification now.
+
+              REMOVED HERE, AT THE RENDER, not at each sender: this is a
+              presentation decision, and one deletion covers every kind and
+              every trigger site.  wsClient still BUILDS `gains` (see the
+              v2.3.1727 note there) -- it is the only place a prog3 milestone
+              unlock is named, and that wants its own notification rather than
+              a silent deletion.  Flagged to the owner; until they decide, the
+              string is computed and not shown. */}
         </div>
       </div>
     </div>

@@ -2337,7 +2337,21 @@ export function setupWebSocket(ctx) {
                  it from a health bar, which is exactly how ten levels can
                  pass without feeling like anything.  Built here rather than
                  in the banner because the constants already live on this
-                 side of the import graph. */
+                 side of the import graph.
+
+                 ═══ v2.3.2644: NOTHING RENDERS THIS TODAY ═══
+                 Owner: "Don't include the specific stat increases, just the
+                 name of the skill and level.  It's way too tiny to read
+                 anyway."  So the burst's caption dropped the line
+                 (LevelUpBurst.jsx) and `gains` rides the message unread.
+                 It is still BUILT, for one reason: this is the only place a
+                 prog3 MILESTONE unlock is named, and a milestone is a new
+                 ability button appearing on the HUD with no explanation --
+                 the exact problem v2.3.1733 added the line to solve.  That
+                 deserves its own notification rather than disappearing inside
+                 a stat list nobody reads; it is flagged to the owner.
+                 If they decide against one, delete this block and the `gains`
+                 field with it rather than leaving a string computed forever. */
               var _dmgPer = (PROG3.DMG_PER_LEVEL && PROG3.DMG_PER_LEVEL[p3l.skill]) || 0;
               var _gains = [];
               if (_dmgPer > 0) _gains.push('+' + _dmgPer + ' damage');
