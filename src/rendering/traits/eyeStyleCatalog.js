@@ -70,11 +70,18 @@
  *   3. python3 tools/tune_headwear.py --category eyestyle --id <id> --fit-pose jog
  *        (and mine, fish, hit, pickup)
  *   4. python3 tools/downscale_traits.py --cats eyestyle --stash-hi --apply
- *   5. python3 tools/ui/make_eyestyle_thumbs.py
+ *   5. python3 tools/eyes/seat_eye_halves.py --id <id> --apply
+ *        <- v2.3.2645, and the other step eyewear does not have.  The importer
+ *           seats the WHOLE piece, so it can only fix an error both eyes share;
+ *           a pair drawn wider apart than the mannequin's needs its two halves
+ *           moved in OPPOSITE directions.  A no-op on a style that measures
+ *           right, which is three of the four.
+ *   6. python3 tools/ui/make_eyestyle_thumbs.py
  *        <- NOT slice_eyewear_thumbs.py, and NOT the thumb the importer writes.
  *           A cropped eye on transparency is unreadable as a tile; this one
- *           composites the piece onto the game's own head so the tile is a FACE.
- *   6. Add one { id, name } entry to EYE_STYLE_CATALOG below.
+ *           composites the piece onto the game's own head -- with the base eye
+ *           erased, as in play -- so the tile is a FACE.
+ *   7. Add one { id, name } entry to EYE_STYLE_CATALOG below.
  */
 export const EYE_STYLE_CATALOG = [
   /* 'none' is the eyes the body sheets paint -- the tile helper draws its
@@ -110,9 +117,16 @@ export const EYE_STYLE_CATALOG = [
      uses to prove the erase: while it is worn, any dark pixel left in the eye
      window can only be the old eye. */
   { id: 'demon', name: 'Demon Eyes' },
-  /* v2.3.2643: two wide white eyes set further apart than the real ones, pupils
-     down in the inner corners.  Drawn on a sheet whose mannequin came back at a
-     lighter skin tone -- rgb(227,152,79) against rgb(201,133,77) for the other
+  /* v2.3.2643: two wide white eyes, pupils down in the inner corners.
+     v2.3.2645: NO LONGER SET WIDER THAN THE FACE'S OWN.  Owner: "The wtf eyes
+     are spaced a bit too far apart."  They were, on south only, by 2px at 256
+     either side -- and that is a fault no crownNudge can fix, because the two
+     halves have to move in OPPOSITE directions.  tools/eyes/seat_eye_halves.py
+     is the tool for it: it splits the per-eye error into the common part (the
+     importer's seating) and the spread part (its own) and applies only the
+     second, so it cannot undo a seating.  South eye coverage went 86/86 ->
+     100/100 by the importer's own measure.  Drawn on a sheet whose mannequin
+     came back at a lighter skin tone -- rgb(227,152,79) against rgb(201,133,77) for the other
      three -- which is why flatkey_drawn_mannequin.py finds the skin rather than
      assuming it, the same lesson eyewear learned from the cyan sheet
      (v2.3.2367).  Its east cell also came back at a different aspect (vertical

@@ -1,4 +1,4 @@
-# Eye styles (v2.3.2644)
+# Eye styles (v2.3.2645)
 
 **Shipped:** Sleepy Eyes, One Eye, Demon Eyes, WTF Eyes — south, southwest and
 east, plus their runtime mirrors.
@@ -23,7 +23,7 @@ the style in the option strip, the eye colour in the row below it. No tenth tab.
 | Sleepy Eyes | 100/100 · 100/100 · 100 | navy half-lids, pale inner highlight |
 | One Eye | 57/57 · 43/29 · 80 | **centred** cyclops eye — see below |
 | Demon Eyes | 100/100 · 94/86 · 94 | flames; the erase probe (§3) |
-| WTF Eyes | 86/86 · 100/100 · 99 | wide-set, pupils in the inner corners |
+| WTF Eyes | 100/100 · 100/100 · 99 | wide white eyes, pupils in the inner corners |
 
 Those are the importer's own numbers against the `stand` bodies, the same
 measurement `docs/specs/eyewear.md` tabulates and with the same qualifier: it is
@@ -202,7 +202,44 @@ python3 tools/downscale_traits.py --cats eyestyle --stash-hi --apply
 
 128px art, 256 originals kept in `hi/` (the portrait loads those first).
 
-### Step 7: cut the picker tiles
+### Step 7: seat each eye on the eye the game paints (v2.3.2645)
+
+```
+python3 tools/eyes/seat_eye_halves.py --id <id>            # measure only
+python3 tools/eyes/seat_eye_halves.py --id <id> --apply
+```
+
+Owner, on the first cut of WTF: *"The wtf eyes are spaced a bit too far
+apart."* They were — on south, by 2px at 256 either side.
+
+Step 4's importer already seats each facing onto the eye row, but a
+`crownNudge` moves the **whole piece**, so it can only fix an error both eyes
+share. A pair drawn wider apart than the mannequin's is the other kind: the two
+halves have to move in **opposite** directions. This tool measures both drawn
+eyes against both painted ones and splits the error in two —
+
+```
+common = (dl + dr) / 2     the piece is off-centre    -> the importer's
+spread = (dl - dr) / 2     the eyes are mis-spaced    -> this tool's
+```
+
+— and applies only `spread`. It cannot undo a seating, and re-running it is a
+no-op. On the four shipped styles it moves exactly one cell (WTF south, ±2px,
+which took its eye coverage from 86/86 to 100/100) and reports `+0` for
+everything else, including WTF's own southwest, which measured correct.
+
+The shift is always **even**, because the 256px `hi/` frame is the master and
+the shipped 128px one is a BOX halving of it: an odd shift is half a pixel in
+the frame the world draws, and the halving would resolve it as half-lit columns
+down both edges of the eye — the exact anti-aliased remnant §3 exists to
+remove. A fault under 1px at 128 is reported and left alone rather than smeared
+away. The 128 frame is re-derived from the shifted master, never edited.
+
+It rewrites `meta.bboxes` to match the new art, and **refuses** to write if the
+bbox centre moved — that would mean the shift was not spread-only and
+`anchors`/`crownNudge` owed the difference.
+
+### Step 8: cut the picker tiles
 
 ```
 python3 tools/ui/make_eyestyle_thumbs.py [--ids …] [--check]
@@ -218,7 +255,22 @@ piece composited onto the game's own head through `preview_headwear.place()`,
 which is itself a term-for-term mirror of `_placeTrait`. Writes `thumb.png`
 (south) and `thumb-sw.png` (southwest).
 
-### Step 8: one catalogue line
+**It erases the base eye first, and composites the `hi/` art** (v2.3.2645).
+Owner: *"The 'one eye' thumbnail in the trait picker is a bit messed up."* It
+was: the tile went onto the body sheet exactly as it ships, with the
+character's own painted eyes still on it, while in play those eyes are gone
+(§3). It shows worst on One Eye, which is centred **between** the two real eyes
+and so covers neither — their white ran out either side of the piece and joined
+it into one wide band across the nose. `place()` now takes an optional
+`body_fx` applied to the body frame before the trait goes on, and the tile
+passes `blank_eyes`, its copy of `playerSkins._blankEyes`. The `hi/` art
+matters for the same reason the portrait prefers it (v2.3.1579): the tile
+**magnifies** a head that is 64px wide in the body sheet, and One Eye's pupil
+is 4px at 256 and a grey smudge at 128.
+
+`--check` byte-compares against what is on disk, so the tiles stay derivable.
+
+### Step 9: one catalogue line
 
 ```js
 { id: 'sleepy', name: 'Sleepy Eyes' },
