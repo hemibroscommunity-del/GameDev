@@ -2138,7 +2138,19 @@ export const HeroExpanded = () => {
                        carrying a label; on a 44px cell whose content is a
                        COLOURED GLYPH, thirteen full-bleed fills fight the
                        artwork they are framing. */
-                    border: `1px solid ${st.tint || COL.tileBor}`,
+                    /* ═══ v2.3.2658: THE OUTLINE IS THE GLYPH'S OWN COLOUR ═══
+                       Owner: "I'd rather have the cell outline be whatever the
+                       main icon color is."  `tint` is the v2.3.2598 palette,
+                       picked for the old pastel FILLS before these glyphs
+                       existed -- which is why RANGE wore a purple frame round a
+                       cyan arrow and LUCK a rust one round a white star.
+                       `edge` is measured off each shipped PNG
+                       (tools/glyph_edge_colors.mjs), so the frame and the
+                       picture it frames are the same colour by construction,
+                       and a re-exported glyph is re-measured rather than
+                       re-guessed.  `tint` itself is left alone: the card that
+                       still uses it as a fill was contrast-tuned for it. */
+                    border: `1px solid ${st.edge || st.tint || COL.tileBor}`,
                     borderRadius: 9,
                     background: COL.wellSoft,
                     cursor: 'pointer', touchAction: 'manipulation', overflow: 'hidden',
