@@ -34,6 +34,7 @@ import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
   BLACKSMITH_TIERS, WOODWORKING_TIERS, SKILL_GUILDS, GUILD_QUESTS,
   QUALITY_MULTS, RARITY_TIERS,
+  ARMOR_DR, /* v2.3.2664: the armour grades' ceiling lifts */
   DAMAGE_CHANNEL_FLAT, WEAPON_CHANNELS, T2_UNITS as CLIENT_T2_UNITS,
   GEM_CUT_TIERS, WEAPON_TYPES,
   /* v2.3.1451: bench-locked T2 mirrors */
@@ -224,6 +225,15 @@ tierMirror('WOODWORKING', SRV.WOODWORKING_TIERS, WOODWORKING_TIERS);
 {
   const bad = Object.entries(SRV.QUALITY_GRADES).filter(([k, v]) => QUALITY_MULTS[k] !== v.mult).map(([k]) => k);
   check('QUALITY_GRADES <-> QUALITY_MULTS', bad.length === 0, bad);
+}
+{
+  /* v2.3.2664: how far one piece of each grade raises armour's 75 % ceiling.
+     combat.js _armorDrMult reads it off QUALITY_GRADES; the item cards and the
+     Hero pane read ARMOR_DR.LIFT.  Checked both ways, so a grade added on one
+     side only fails here. */
+  const keys = new Set([...Object.keys(SRV.QUALITY_GRADES), ...Object.keys(ARMOR_DR.LIFT)]);
+  const bad = [...keys].filter((k) => !SRV.QUALITY_GRADES[k] || SRV.QUALITY_GRADES[k].armorLift !== ARMOR_DR.LIFT[k]);
+  check('QUALITY_GRADES armorLift <-> ARMOR_DR.LIFT', bad.length === 0, bad);
 }
 {
   const bad = Object.entries(SRV.AMULET_TIER_POWER).filter(([k, v]) => !AMULET_TIERS[k] || AMULET_TIERS[k].basePower !== v).map(([k]) => k);

@@ -402,6 +402,12 @@ const DR_CASES = [
      implementations, so this case is really asking whether BOTH of them
      clamp — one that forgot would diverge here and nowhere else. */
   { tierMult: 8, quality: 'godly' },
+  /* v2.3.2664: the grades' own ceilings — a rare or elite piece high on the
+     ladder stops at 77.5 % / 80 %, and both sides must stop it there. */
+  { tierMult: 5, quality: 'rare' },
+  { tierMult: 8, quality: 'rare' },
+  { tierMult: 5, quality: 'elite' },
+  { tierMult: 8, quality: 'normal' },
 ];
 /* v2.3.2664: the client predicts the gear-quality worker's math only when
    that worker advertises caps.gearq — which this worker does. */
@@ -422,12 +428,13 @@ check('a godly chest mitigates measurably more than a normal one',
   drGodly > drNormal + 0.05, { normal: drNormal, godly: drGodly });
 /* ...v2.3.2664: and GODLY is now allowed past the 0.75 ceiling — on purpose
    (owner: "literally one in millions so make it basically game breaking
-   good"): each godly piece lifts the ceiling 10 points, and no single piece
-   passes 90 %, so nothing reaches immunity.  Rare and elite stay under 0.75. */
+   good").  Each piece's grade lifts the ceiling (rare 2.5, elite 5, godly 10
+   points) and a piece alone stops at the ceiling it gives on its own, so
+   nothing reaches immunity. */
 const drElite = 1 - room._armorDrMult({ armor: { tierMult: 2.0, quality: 'elite' }, legsArmor: null });
-check('...a godly chest breaks the 75 % ceiling by design, and stops at its lifted 85 %',
+check('...a godly iron chest breaks the 75 % ceiling by design, and stays under its lifted 85 %',
   drGodly > 0.75 && drGodly <= 0.85 + 1e-9, drGodly);
-check('...while rare and elite stay inside the ordinary ladder', drElite <= 0.75, drElite);
+check('...while an elite iron chest stays inside the ordinary ladder', drElite <= 0.75, drElite);
 setGearQEnabled(false);
 
 /* ═══ 8. THE IRON PIECES CAN ACTUALLY BE WORN (v2.3.2124) ═══

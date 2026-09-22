@@ -798,13 +798,17 @@ export const GUILD_QUESTS = [
  * ×5 is "basically game breaking" on purpose — a godly weapon one-shots what
  * a normal one needs four or five swings for — and it is priced by the odds:
  * 1 in 2,000,000 (hardening.js Q_GODLY), "literally one in millions".
- * Armour reads the same table on its TIER (combat.js _armorDrMult), and each
- * godly piece also lifts the reduction ceiling.  Rare/elite odds unchanged. */
+ * Armour reads the same `mult` on its TIER (combat.js _armorDrMult), and
+ * `armorLift` is how far one piece of that grade RAISES the 75 % reduction
+ * ceiling — a full set's ceiling is 75 % normal, 80 % rare, 85 % elite, 95 %
+ * godly — so the grades still differ at the top of the armour ladder, where
+ * the tier alone would pin every grade to the same 75 %.  Rare/elite odds
+ * unchanged.  armorLift <-> src/data/gameSystems.js ARMOR_DR.LIFT. */
 export const QUALITY_GRADES = {
-  normal: { mult: 1.00 },
-  rare:   { mult: 1.30 },
-  elite:  { mult: 1.75 },
-  godly:  { mult: 5.00 },
+  normal: { mult: 1.00, armorLift: 0 },
+  rare:   { mult: 1.30, armorLift: 0.025 },
+  elite:  { mult: 1.75, armorLift: 0.05 },
+  godly:  { mult: 5.00, armorLift: 0.10 },
 };
 /* v2.3.2664: a weapon's grade multiplier, one reader (roll + ceiling). */
 export function weaponQualityMult(w) {

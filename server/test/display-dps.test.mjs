@@ -311,10 +311,13 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
     ['forged tierMult past the ceiling', { armor: { tierMult: 999 }, legsArmor: { tierMult: 999 } }],
     ['missing tierMult falls back to 1', { armor: {}, legsArmor: {} }],
     ['a client that never learned legsArmor', { armor: { tierMult: 4 } }],
-    /* v2.3.2664: the grades on armour, and the godly lift on the ceiling. */
-    ['rare mid tier', { armor: { tierMult: 2, quality: 'rare' }, legsArmor: { tierMult: 2, quality: 'elite' } }],
+    /* v2.3.2664: the grades on armour, and each grade's lift on the ceiling. */
+    ['rare chest, elite legs, iron', { armor: { tierMult: 2, quality: 'rare' }, legsArmor: { tierMult: 2, quality: 'elite' } }],
     ['one godly piece lifts the ceiling to 85 %', { armor: { tierMult: 8, quality: 'godly' }, legsArmor: { tierMult: 8 } }],
-    ['a godly set lifts it to 95 %', { armor: { tierMult: 1.12, quality: 'godly' }, legsArmor: { tierMult: 1.12, quality: 'godly' } }],
+    ['a godly set from the first tier', { armor: { tierMult: 1, quality: 'godly' }, legsArmor: { tierMult: 1, quality: 'godly' } }],
+    ['a rare set at the top tier stops at its 80 %', { armor: { tierMult: 5, quality: 'rare' }, legsArmor: { tierMult: 5, quality: 'rare' } }],
+    ['an elite set at the top tier stops at its 85 %', { armor: { tierMult: 5, quality: 'elite' }, legsArmor: { tierMult: 5, quality: 'elite' } }],
+    ['an unknown grade reads as normal', { armor: { tierMult: 3, quality: '__proto__' }, legsArmor: { tierMult: 3, quality: 'mythic' } }],
   ];
   /* v2.3.2664: the server rolls the gear-quality math; the client predicts it
      on a worker advertising caps.gearq. */
@@ -324,11 +327,26 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
       Math.abs(getArmorDrPct(ps) - drOf(ps)) < 1e-12,
       { client: getArmorDrPct(ps), server: drOf(ps) });
   }
-  check('armour DR (v2.3.2664): each tier step doubled — a tierMult-2 chest is 40 %, legs 27 %',
-    Math.abs(getArmorPieceDr({ tierMult: 2 }, 'chest') - 0.40) < 1e-12
-      && Math.abs(getArmorPieceDr({ tierMult: 2 }, 'legs') - 0.27) < 1e-12);
-  check('armour DR (v2.3.2664): a godly set reaches 95 %, and nothing reaches 100 %',
-    Math.abs(getArmorDrPct({ armor: { tierMult: 8, quality: 'godly' }, legsArmor: { tierMult: 8, quality: 'godly' } }) - 0.95) < 1e-12);
+  /* v2.3.2664: armour tiers are WHOLE steps (copper 1, iron 2, ...), and the
+     ladder is five of them: set 44 / 53.1 / 61.5 / 69.1 / 75 %. */
+  const setDr = (tm, q) => getArmorDrPct({ armor: { tierMult: tm, quality: q }, legsArmor: { tierMult: tm, quality: q } });
+  check('armour DR (v2.3.2664): +7.5 % chest / +5 % legs per tier — iron is 37.5 % and 25 %',
+    Math.abs(getArmorPieceDr({ tierMult: 2 }, 'chest') - 0.375) < 1e-12
+      && Math.abs(getArmorPieceDr({ tierMult: 2 }, 'legs') - 0.25) < 1e-12);
+  const ladder = [1, 2, 3, 4, 5, 6].map((tm) => setDr(tm));
+  check('armour DR (v2.3.2664): the normal ladder is 44 / 53.1 / 61.5 / 69.1 / 75 %, and the sixth tier adds nothing',
+    [0.44, 0.53125, 0.615, 0.69125, 0.75, 0.75].every((v, i) => Math.abs(ladder[i] - v) < 1e-12), ladder);
+  check('armour DR (v2.3.2664): at the top tier the grades still differ — normal 75, rare 80, elite 85 %',
+    Math.abs(setDr(5) - 0.75) < 1e-12 && Math.abs(setDr(5, 'rare') - 0.80) < 1e-12
+      && Math.abs(setDr(5, 'elite') - 0.85) < 1e-12, [setDr(5), setDr(5, 'rare'), setDr(5, 'elite')]);
+  check('armour DR (v2.3.2664): a godly iron set is 92 % (a sixth of what a normal one lets through), under its 95 % ceiling',
+    Math.abs(setDr(2, 'godly') - (1 - 0.175 * 0.45)) < 1e-12
+      && setDr(8, 'godly') < 0.95 && (1 - setDr(2)) / (1 - setDr(2, 'godly')) > 5.9,
+    { godlyIron: setDr(2, 'godly'), normalIron: setDr(2) });
+  check('armour DR (v2.3.2664): a piece alone never reads past the ceiling it gives on its own',
+    getArmorPieceDr({ tierMult: 8 }, 'chest') === 0.75
+      && Math.abs(getArmorPieceDr({ tierMult: 8, quality: 'elite' }, 'chest') - 0.80) < 1e-12
+      && Math.abs(getArmorDrPct({ armor: { tierMult: 8, quality: 'elite' } }) - 0.80) < 1e-12);
   /* Against an OLD worker the readout predicts that worker's steps (rule 19). */
   setGearQEnabled(false);
   check('armour DR, old worker: the retired +5 % / +3.5 % steps and the flat 75 % ceiling',

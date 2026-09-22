@@ -178,22 +178,46 @@ export const combatMethods = {
      reaches 65% / 44.5%, i.e. 0.806 combined, which the cap then holds at
      0.75.  Cap is the LAST word: no combination of tiers makes a player
      immune. */
-  /* ═══ v2.3.2664: ARMOUR TIER STEPS DOUBLE, AND GODLY LIFTS THE CEILING ═══
+  /* ═══ v2.3.2664: A FIVE-TIER ARMOUR LADDER, AND THE GRADE RAISES THE CEILING ═══
      Owner: "I also want armor ... tier to really matter - especially
-     differences between normal, rare, elite, and godly".  At +5 % / +3.5 %
-     per tierMult step a forge upgrade moved the combined reduction about ONE
-     point (copper 45 % → iron 46 %).  Doubled to +10 % / +7 %, each early step
-     is 2–3 points and the ladder reaches the 75 % ceiling at sunstone instead
-     of never below the very top.  Each PIECE now stops at 85 % — exactly the
-     ceiling one godly piece lifts to, so a godly chest's own card and the
-     wearer's total say the same number — and no tier × grade product can
-     make one piece total.
-     Godly (1 in 2,000,000 per piece) is the one thing allowed past 75 %: each
-     godly piece worn lifts the ceiling by 10 points — one godly piece 85 %,
-     a godly set 95 %.  That is the owner's "basically game breaking good". */
+     differences between normal, rare, elite, and godly", then, on copper and
+     iron: "Im planning for the next tier up to require a certain defense
+     points ... Everything in the game is still flexible at this point,
+     including the tier names and the number of them."
+
+     ARMOUR TIERS ARE WHOLE STEPS (v2.3.1925b, docs/specs/monster-drops.md
+     "Two ladders, one metal"): copper is tierMult 1.0, iron 2.0, and the next
+     tier is 3.0 — NOT the blacksmith table's 1.12 / 1.25 / 1.40, which is the
+     weapon ladder.  (This change was first written on the weapon scale by
+     mistake and doubled the steps to +10 % / +7 %; on the real scale that
+     pinned every normal set from the FOURTH tier up to the same 75 %.)
+
+     +7.5 % chest / +5 % legs per tier makes a five-tier ladder, each tier
+     about a fifth more survival than the last:
+         tier      1 copper   2 iron   3        4        5
+         chest       30 %     37.5 %   45 %     52.5 %   60 %
+         legs        20 %     25 %     30 %     35 %     40 %
+         set         44.0 %   53.1 %   61.5 %   69.1 %   75 % (the cap)
+     Iron moves from 50.3 % to 53.1 %; copper is unchanged.
+
+     THE GRADE RAISES THE CEILING.  The grade still multiplies the TIER
+     (v2.3.1925 below), so a rare iron set is 58 %, elite 65 %.  But one flat
+     75 % cap would make rare, elite and normal read the same at the top of
+     the ladder, so each piece's grade lifts it (QUALITY_GRADES.armorLift):
+     a full set's ceiling is 75 % normal, 80 % rare, 85 % elite, 95 % godly.
+     A piece alone stops at the ceiling it would give on its own (75 % +
+     its lift), so an item card and the wearer's total never disagree.
+     Godly (1 in 2,000,000 per piece) is "basically game breaking good": a
+     godly iron set is 92 % — a sixth of the damage a normal iron set lets
+     through.  Nothing reaches immunity. */
   _armorDrMult(ps) {
     if (!ps) return 1;
-    const MAX_DR = 0.75 + 0.10 * [ps.armor, ps.legsArmor].filter((a) => a && a.quality === 'godly').length;
+    /* hasOwnProperty, not a bare lookup: a stored grade of '__proto__' would
+       otherwise read Object.prototype and turn the whole product into NaN. */
+    const grade = (a) => ((a && Object.prototype.hasOwnProperty.call(QUALITY_GRADES, a.quality))
+      ? QUALITY_GRADES[a.quality] : QUALITY_GRADES.normal);
+    const MAX_DR = 0.75 + (ps.armor ? grade(ps.armor).armorLift : 0)
+      + (ps.legsArmor ? grade(ps.legsArmor).armorLift : 0);
     const piece = (a, base, perTier) => {
       if (!a) return 0;
       /* ═══ v2.3.1925: QUALITY MULTIPLIES THE TIER, NOT THE REDUCTION ═══
@@ -207,12 +231,12 @@ export const combatMethods = {
          built for, and it keeps quality meaning the same thing it means on a
          weapon: the ITEM is exceptional, your character is unchanged.
          Clamped by the same [0,8] as before, so no grade can escape it. */
-      const q = QUALITY_GRADES[a && a.quality] ? QUALITY_GRADES[a.quality].mult : 1;
-      const tm = Math.max(0, Math.min(8, (Number(a.tierMult) || 1) * q));
-      return Math.min(0.85, base + perTier * (tm - 1));   /* v2.3.2664: a piece stops at 85 % */
+      const g = grade(a);
+      const tm = Math.max(0, Math.min(8, (Number(a.tierMult) || 1) * g.mult));
+      return Math.min(0.75 + g.armorLift, base + perTier * (tm - 1));   /* v2.3.2664: a piece stops at its own ceiling */
     };
-    const chest = piece(ps.armor, 0.30, 0.10);   /* v2.3.2664: +10 % per tier step (was 5 %) */
-    const legs = piece(ps.legsArmor, 0.20, 0.07); /* v2.3.2664: +7 % (was 3.5 %) */
+    const chest = piece(ps.armor, 0.30, 0.075);   /* v2.3.2664: +7.5 % per tier (was 5 %) */
+    const legs = piece(ps.legsArmor, 0.20, 0.05); /* v2.3.2664: +5 % (was 3.5 %) */
     if (chest <= 0 && legs <= 0) return 1;
     const combined = 1 - (1 - chest) * (1 - legs);
     return 1 - Math.min(MAX_DR, combined);

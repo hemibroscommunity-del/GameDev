@@ -4934,12 +4934,15 @@ export function getArmorHp(armor, vitality) {
    Display-only: the server settles every hit. */
 export const ARMOR_DR = {
   MAX: 0.75,
-  /* v2.3.2664: per-tier steps doubled, a piece stops at 85 %, and each
-     godly piece lifts the ceiling 10 points (server combat.js _armorDrMult). */
-  chest: { base: 0.30, perTier: 0.10 },
-  legs: { base: 0.20, perTier: 0.07 },
-  PIECE_MAX: 0.85,
-  GODLY_LIFT: 0.10,
+  /* v2.3.2664: a five-tier ladder on armour's own whole-step scale (copper
+     1.0, iron 2.0, ...): +7.5 % chest / +5 % legs per tier — set 44 / 53.1 /
+     61.5 / 69.1 / 75 %.  Each piece's grade RAISES the ceiling by LIFT (a
+     full set: 75 % normal, 80 % rare, 85 % elite, 95 % godly) and a piece
+     alone stops at MAX + its own lift.  Server: combat.js _armorDrMult;
+     LIFT <-> data.js QUALITY_GRADES[*].armorLift (mirror-audit). */
+  chest: { base: 0.30, perTier: 0.075 },
+  legs: { base: 0.20, perTier: 0.05 },
+  LIFT: { normal: 0, rare: 0.025, elite: 0.05, godly: 0.10 },
 };
 /* The retired steps, for a worker without caps.gearq (rule 19). */
 export const ARMOR_DR_LEGACY = {
@@ -4957,22 +4960,30 @@ export function getArmorPieceDr(item, slot) {
      multiply the reduction instead.  This pair has to agree to the digit:
      the server's number is what damage is actually computed with, and this
      one is what the item card promises. */
-  var q = (_gearQ ? QUALITY_MULTS : QUALITY_MULTS_LEGACY)[item.quality] || 1;
+  var qm = _gearQ ? QUALITY_MULTS : QUALITY_MULTS_LEGACY;
+  var q = Object.prototype.hasOwnProperty.call(qm, item.quality) ? qm[item.quality] : 1;
   var tm = Math.max(0, Math.min(8, (Number(item.tierMult) || 1) * q));
   var v = cfg.base + cfg.perTier * (tm - 1);
-  return _gearQ ? Math.min(ARMOR_DR.PIECE_MAX, v) : v;
+  return _gearQ ? Math.min(ARMOR_DR.MAX + _armorLift(item), v) : v;
+}
+/* v2.3.2664: how far one piece's grade raises the ceiling (server mirror:
+   QUALITY_GRADES[*].armorLift).  hasOwnProperty so '__proto__' reads 0. */
+function _armorLift(item) {
+  var q = item && item.quality;
+  return Object.prototype.hasOwnProperty.call(ARMOR_DR.LIFT, q) ? ARMOR_DR.LIFT[q] : 0;
 }
 
-/* Total incoming-damage reduction from worn armor, 0..0.75 (v2.3.2664: up to
-   0.95 with godly pieces, on a caps.gearq worker). */
+/* Total incoming-damage reduction from worn armor, 0..0.75 (v2.3.2664: the
+   grade of each worn piece raises that ceiling, up to 0.95 for a godly set,
+   on a caps.gearq worker). */
 export function getArmorDrPct(rpg) {
   if (!rpg) return 0;
   var chest = getArmorPieceDr(rpg.armor, 'chest');
   var legs = getArmorPieceDr(rpg.legsArmor, 'legs');
   if (chest <= 0 && legs <= 0) return 0;
-  /* v2.3.2664: each godly piece worn lifts the ceiling (server mirror). */
-  var godly = (rpg.armor && rpg.armor.quality === 'godly' ? 1 : 0) + (rpg.legsArmor && rpg.legsArmor.quality === 'godly' ? 1 : 0);
-  var max = _gearQ ? ARMOR_DR.MAX + ARMOR_DR.GODLY_LIFT * godly : ARMOR_DR_LEGACY.MAX;
+  var max = _gearQ
+    ? ARMOR_DR.MAX + (rpg.armor ? _armorLift(rpg.armor) : 0) + (rpg.legsArmor ? _armorLift(rpg.legsArmor) : 0)
+    : ARMOR_DR_LEGACY.MAX;
   return Math.min(max, 1 - (1 - chest) * (1 - legs));
 }
 
@@ -5035,9 +5046,9 @@ export function calcWeaponDmg(weaponType, statValOrRpg, tierMult, wpn) {
 /* ═══ v2.3.2664: GEAR THAT MATTERS — caps.gearq ═══
    The server (data.js QUALITY_GRADES / weaponTierFactor, combat.js) now
    multiplies a weapon's WHOLE hit by its grade (normal 1 / rare 1.3 / elite
-   1.75 / godly 5) and its tier factor (tierMult^1.5), and doubles armour's
-   per-tier reduction with a godly lift on the ceiling.  These are the
-   mirrors.  Against a worker without caps.gearq every reader below predicts
+   1.75 / godly 5) and its tier factor (tierMult^1.5), and makes armour a
+   five-tier ladder (+7.5 % / +5 % per whole tier) whose ceiling each piece's
+   grade raises (ARMOR_DR.LIFT).  These are the mirrors.  Against a worker without caps.gearq every reader below predicts
    that worker's math instead — quality on the base at the old ×1.2/1.5/3,
    tierMult straight, the old armour steps — so a readout never promises a hit
    the connected worker will not roll (rule 19). */

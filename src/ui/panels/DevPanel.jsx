@@ -168,7 +168,7 @@ const CAP_NOTES = {
   prog3elem: 'Elem Pwr per weapon, plus the Elem Resist and Max Mana stats',
   prog3Chan: 'per-weapon point pools',
   prog3shared: 'the four-column Points screen — Luck, Range, Special, Move Speed and the shared point pool',
-  gearq: 'gear that matters — weapon grade on the whole hit, steeper tiers, godly armour past 75 %',
+  gearq: 'gear that matters — weapon grade on the whole hit, steeper tiers, a five-tier armour ladder whose ceiling the grade raises',
   abil: 'special moves — the sword dash, shield bash and whirlwind',
   elemBurst: 'the elemental burst',
   storeGear: 'selling armour, shields and legs in the store',

@@ -41,11 +41,15 @@ instead of only its 10-point base — on the base it faded to +12.5 % for a
 godly blade by skill 100 (`data.js weaponQualityMult`, applied by
 `_computeAttackDamage` and `_maxWeaponDmg`). `_weaponEffBase` carries hardness
 alone. The weapon's tier enters the roll as `tierMult^1.5`
-(`weaponTierFactor`, each forge tier ~+18 % instead of ~+11 %). Armour: per-tier
-steps doubled (+10 % / +7 % per tierMult step), each piece stops at 85 %, and
-each godly piece lifts the 75 % ceiling by 10 points (a godly set: 95 %). The
-client mirrors all of it behind `caps.gearq`, predicting the old math against
-an older worker. Measured at Melee 8 with an iron greatsword against an
+(`weaponTierFactor`, each forge tier ~+18 % instead of ~+11 %). Armour, on its
+own whole-step scale (copper 1.0, iron 2.0 — `monster-drops.md` "Two ladders,
+one metal"): +7.5 % chest / +5 % legs per tier, a five-tier ladder whose sets
+read 44 / 53.1 / 61.5 / 69.1 / 75 %; the grade still multiplies the tier, and
+each piece's grade also raises the 75 % ceiling (`QUALITY_GRADES.armorLift`:
+rare +2.5, elite +5, godly +10 points — a full set's ceiling is 75 / 80 / 85 /
+95 %), so the grades stay apart at the top of the ladder. A godly iron set is
+92 %. The client mirrors all of it behind `caps.gearq`, predicting the old math
+against an older worker. Measured at Melee 8 with an iron greatsword against an
 at-level brute: normal 4.6 hits, rare 3.7, elite 2.9, godly 1.15.
 
 Rolled ONCE at server mint, immutable. **v1 rolls at the forge only**

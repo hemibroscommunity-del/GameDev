@@ -42,6 +42,32 @@ whole time.
 - A weapon multiplies its base damage by `tierMult` straight off
   `BLACKSMITH_TIERS`, where iron genuinely is 1.25.
 
+**The armour ladder (v2.3.2664).** The steps are +7.5 % chest / +5 % legs per
+whole tier, so the ladder is five tiers long and each is about a fifth more
+survival than the last:
+
+| tier | chest | legs | set |
+|---|---|---|---|
+| 1 copper | 30 % | 20 % | 44.0 % |
+| 2 iron | 37.5 % | 25 % | **53.1 %** (was 50.3 %) |
+| 3 | 45 % | 30 % | 61.5 % |
+| 4 | 52.5 % | 35 % | 69.1 % |
+| 5 | 60 % | 40 % | 75 % (the normal ceiling) |
+
+A grade multiplies the tier (rare iron set 58 %, elite 65 %, godly 92 %), and
+each piece's grade also raises the ceiling — a full set's is 75 % normal, 80 %
+rare, 85 % elite, 95 % godly — so rare and elite still differ at tiers 4 and 5.
+
+**Before adding tier 3: give armour its own Defense requirement.** The equip
+gate (`gear.js _prog3EquipOk`) prices a piece with no `gearBase` by reading
+its `tierMult` on the WEAPON scale — `round((tierMult − 1) × 6) × 5` — which is
+how iron once asked for 30 Defense (v2.3.2124 exempted iron by material rather
+than fix the road). A tier-3 piece minted like these drops (`tierMult: 3.0`)
+would ask for **60** Defense, tier 4 for 90. The client never gates a piece
+without a `gearBase` at all (`canEquipItem`), so the player would tap Equip and
+the worker would silently refuse. The next tier needs an armour-rung
+requirement on both sides (the owner's plan: "maybe 5 or 10" Defense points).
+
 The gem is a plain stackable. `prettyName('rare_gem')` already renders
 "Rare Gem"; the only client addition is one `thumbFor` row pointing at
 `/icons/ui/cur-gem.webp`, the gem picture the bag panel already uses for its
