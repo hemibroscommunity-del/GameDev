@@ -53,12 +53,55 @@ import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/
    so any channel above 231 clips on the highlight rim.  Only Alabaster is
    knowingly over that line -- near-white skin having a blown-out highlight is
    what near-white skin looks like -- and the rest stay at or under it so their
-   shading keeps its hue. */
+   shading keeps its hue.
+
+   v2.3.2642, MEASURED CORRECTION to the paragraph above -- read it before
+   trusting 231.  k=1.10 is the STAND sheets only.  Across all 82 sheets the
+   brightest skin pixel is k=1.552 (jog-south-head, and jog-south/-legs,
+   attack-south, fish-south, pickup-south and dodge-south all run >1.50), so a
+   TRUE zero-clip ceiling is 255/1.552 = 164 -- which would forbid the entire
+   light half of this list, Ivory and Pale included.  That is not a bug to fix:
+   the k>1.10 pixels are 0.10% of jog-south's skin and 1.48% of hit-south's, a
+   specular rim a few pixels wide, and at p99 the ceiling is ~228-245, which is
+   where 231 actually comes from.  So treat 231 as the practical ceiling it is,
+   and expect a light tone to clip a fraction of a percent -- Alabaster clips
+   13.74% of hit-south and has shipped that way for a long time.  The number
+   worth checking for a NEW light tone is its clip share against Alabaster's,
+   not against zero.  Receipt: docs/TRAPS.md §89. */
 export const SKIN_CATALOG = [
   { id: 'default',   name: 'Default',   swatch: '#cd864b', target: null },
   { id: 'alabaster', name: 'Alabaster', swatch: '#f9ece2', target: [249, 236, 226] },
   { id: 'porcelain', name: 'Porcelain', swatch: '#f5ddcd', target: [245, 221, 205] },
   { id: 'ivory',     name: 'Ivory',     swatch: '#f2dabc', target: [242, 218, 188] },
+  /* ═══ v2.3.2642: THE SPECIES BASE TONES (alien, monkey) ═══
+     Owner asked what it would take to play as an alien and a monkey, and
+     supplied a reference for each.  These two rows are the COLOUR half of that
+     answer and nothing more: measured off the owner's own art, not invented.
+     The face and the ears -- the alien's points, the monkey's muzzle and round
+     ears -- are outside the body silhouette or inside the face region, and
+     neither is a recolour.  See docs/specs/SPECIES-PLAN.md for what they cost.
+
+     Named for a COLOUR, not a species, on purpose.  A saved appearance stores
+     the id (see the header note), so these ids are permanent; when the real
+     species axis lands it selects a tone from this catalog rather than
+     duplicating one, and a player who just likes cyan skin is not an alien.
+
+     ALIEN CYAN is the owner reference's lit hide scaled to a 231 max channel.
+     The raw measurement is (207,250,250) -- reference p90, lum 237 -- and it is
+     NOT what ships, because _retint multiplies the target by each pixel's own
+     luminance over SKIN_REF, so 250 * k blows out on every pixel with k > 1.02.
+     `node tools/skin_clip.mjs 207,250,250` scores that raw value at 13.40% of
+     all skin pixels clipped, which would make it the worst tone in this list --
+     worse than Alabaster's 11.81%.  The value that ships clips 0.38%, i.e.
+     within a rounding step of `fair` (0.33%) and well under ivory and rosy
+     (3.28%), all three of which ship today.  Its 231 max channel is under pale
+     (240), rosy (242), ivory (242), porcelain (245) and alabaster (249) too.
+     Hue is identical to the reference; only the level moved.
+
+     Do not "restore" the raw reference value: see docs/TRAPS.md §89, which
+     also corrects this file's own k=1.10 / 231-ceiling claim above.  1.10 is
+     the STAND sheets' brightest pixel; jog-south-head runs k=1.552. */
+  { id: 'aliencyan',   name: 'Alien Cyan',   swatch: '#bfe7e7', target: [191, 231, 231], species: true },
   { id: 'rosy',      name: 'Rosy',      swatch: '#f2c9b8', target: [242, 201, 184] },
   { id: 'pale',      name: 'Pale',      swatch: '#f0cdaa', target: [240, 205, 170] },
   { id: 'fair',      name: 'Fair',      swatch: '#e6c29b', target: [230, 194, 155] },
@@ -69,7 +112,30 @@ export const SKIN_CATALOG = [
   { id: 'brown',     name: 'Brown',     swatch: '#9b6941', target: [155, 105, 65] },
   { id: 'deep',      name: 'Deep',      swatch: '#6e4b32', target: [112, 76, 50] },
   { id: 'ebony',     name: 'Ebony',     swatch: '#50382a', target: [82, 56, 39] },
+  /* v2.3.2642: MONKEY BROWN -- the owner reference's lit fur, (85,56,23).  It
+     lands at luminance 60.9, a hair under ebony's 61.8, which is why it sits
+     here and not beside 'brown': measured, not placed by eye, the way the
+     header note above says this list is ordered.  Nearly ebony's level but
+     warmer (blue 23 vs 39), which is the whole difference between dark skin
+     and dark fur.  No clipping risk at all -- max channel 85, and
+     tools/skin_clip.mjs scores it at 0.000%.
+
+     The reference's LIGHTER muzzle (measured #91765e, lum 123) is deliberately
+     not here: one skin target cannot paint two tones, and the muzzle is a face-
+     region layer.  docs/specs/SPECIES-PLAN.md costs it. */
+  { id: 'monkeybrown', name: 'Monkey Brown', swatch: '#553817', target: [85, 56, 23], species: true },
 ];
+
+/* v2.3.2642: what the creator's dice may roll.  `species: true` tones are
+   DELIBERATE picks, not variety -- a 1-in-16 roll turning a bro cyan reads as a
+   broken button, which is the same objection the v2.3.1494 note raises about
+   rolling a disabled recolor and the v2.3.1927 one about rolling a colour the
+   hat's picker hides.  The tones stay fully available in the picker; they are
+   only out of the RANDOM pool.  This flag is also what a future species axis
+   reads to find its base tones, so it is not a throwaway.
+
+   The PICKER still renders SKIN_CATALOG -- filtering there would hide them. */
+export const SKIN_ROLL_CATALOG = SKIN_CATALOG.filter((c) => !c.species);
 
 export const PANTS_CATALOG = [
   { id: 'default', name: 'Default', swatch: '#6a7a45', target: null },

@@ -259,7 +259,7 @@ import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/h
 import { FACIALHAIR_CATALOG, getFacialHair, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { EYEWEAR_CATALOG, getEyewear, setEyewear } from '@/rendering/traits/eyewearCatalog.js';   /* v2.3.2361 */
 import { HAIR_CATALOG, getHair, setHair } from '@/rendering/traits/hairCatalog.js';
-import { SKIN_CATALOG, PANTS_CATALOG, SHOES_CATALOG, getSkin, setSkin, getPants, setPants, getShoes, setShoes } from '@/rendering/playerSkins.js';
+import { SKIN_CATALOG, SKIN_ROLL_CATALOG, PANTS_CATALOG, SHOES_CATALOG, getSkin, setSkin, getPants, setPants, getShoes, setShoes } from '@/rendering/playerSkins.js';
 import { HAIR_COLOR_CATALOG, getHairColor, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, hatColorsFor, getHatColor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { eyewearColorsFor, getEyewearColor, setEyewearColor } from '@/rendering/traits/eyewearColorCatalog.js';   /* v2.3.2424 */
@@ -2415,7 +2415,10 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.1494: only roll what is still offered.  Rolling a disabled recolor
        would look like a broken button -- the swatch changes, the character
        does not -- and would still persist and broadcast the dead pick. */
-    if (recolorEnabled('skin')) { var sk = rpick(SKIN_CATALOG); setSkin(sk); setSkinSel(sk); }
+    /* v2.3.2642: SKIN_ROLL_CATALOG, not SKIN_CATALOG -- the species base tones
+       are out of the random pool (see the note on that export).  The picker
+       below still lists all of SKIN_CATALOG. */
+    if (recolorEnabled('skin')) { var sk = rpick(SKIN_ROLL_CATALOG); setSkin(sk); setSkinSel(sk); }
     if (recolorEnabled('pants')) { var pt = rpick(PANTS_CATALOG); setPants(pt); setPantsSel(pt); }
     if (recolorEnabled('shoes')) { var sh = rpick(SHOES_CATALOG); setShoes(sh); setShoesSel(sh); }
     /* v2.3.1953: roll the build too.  Randomize is how most people first see

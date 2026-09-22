@@ -3727,3 +3727,64 @@ button, still open on `main`); §67 — `mp-store.mjs` opens this very door with
 was green throughout and could not have seen any of this. `mp-vendorprompt.mjs`
 taps with `page.touchscreen.tap` at measured coordinates and asks
 `document.elementFromPoint` what is on the glass.
+
+## 89. A colour measured off the reference art is not the catalog target (v2.3.2642)
+
+**Tempting:** the owner supplies reference art for a new skin tone, you
+measure its lit skin — the alien reference reads (207,250,250) at its p90 —
+and that measurement goes in `SKIN_CATALOG.target`. It is the owner's own
+art, sampled rather than invented, so it cannot be wrong.
+
+**Wrong:** `target` is not a colour the renderer paints, it is a colour the
+renderer *scales*. `_retint` (playerSkins.js) multiplies it by every pixel's
+own luminance over `SKIN_REF`, so `target` only lands as-measured on the
+pixels where k = 1.0, and every brighter pixel gets `target * k` clamped at
+255. At 250 that clamps wherever k > 1.02. Scored across all 72 recoloured
+sheets, the raw reference value clips **13.40%** of skin pixels — which would
+make it the worst-clipping tone in the list, past Alabaster's 11.81%. The
+value that shipped, (191,231,231), is the same hue scaled to a 231 max
+channel and clips **0.38%**, next to `fair` (0.33%). The measurement was
+right; using it directly was not.
+
+### The second half: a ceiling measured on one pose
+
+`playerSkins.js`'s header said, and had said for a long time, "the sheets'
+brightest skin pixel runs k=1.10, so any channel above 231 clips". Believing
+that number is the trap's other door — it is the **stand** sheets. Measured
+across all 82:
+
+```
+jog-south-head   k=1.552      <- global max
+jog-south/-legs  k=1.552
+attack-south     k=1.546
+fish-south       k=1.540
+pickup-south     k=1.538
+dodge-south      k=1.531
+stand-south      k=1.102      <- what the comment measured
+```
+
+So the TRUE zero-clip ceiling is 255/1.552 = **164**, which would forbid the
+whole light half of the shipping catalog — Ivory, Pale, Porcelain and
+Alabaster included. Neither 231 nor 164 is the usable number, and this is why
+"make it not clip" is the wrong goal: the k>1.10 pixels are 0.10% of
+jog-south's skin and 1.48% of hit-south's, a specular rim a few pixels wide.
+At p99 the ceiling is ~228-245, which is where 231 actually came from.
+
+**The rule:** the bar for a new light tone is **its clip share against a tone
+that already ships**, not against zero. Alabaster is the reference because it
+is the brightest shipping tone, and it has blown its highlight rim in every
+build for a long time without anyone filing it.
+
+**Receipt:** `node tools/skin_clip.mjs` scores the whole catalog and prints
+the global kmax; `node tools/skin_clip.mjs r,g,b` scores one candidate against
+Alabaster. `node tools/qa/qa-skin-tone.mjs` then shoots the real client
+wearing each tone, because a clip share is not a judgement about how a colour
+looks. Both were written for this entry. The header paragraph in
+`playerSkins.js` carries the correction inline, since that is where the next
+person will read 231 and believe it.
+
+**Note on the orphan:** `skin_clip.mjs` excludes `welcome-bro.png`. Nothing in
+the repo references it, so the recolour never bakes it, and it is bright enough
+that leaving it in moved Alabaster's aggregate from 1.4% to 35% and drowned
+every real sheet. Excluded because it is not recoloured — not because the
+number was inconvenient.
