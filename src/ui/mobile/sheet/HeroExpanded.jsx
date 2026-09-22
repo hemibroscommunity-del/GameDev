@@ -2108,6 +2108,7 @@ export const HeroExpanded = () => {
                landscape pane the portrait filled the head so exactly that
                the badge poked a pixel past the header's edge -- mp-catgrid
                measured it.  4px of slack each side holds the 3px overhang. */
+            const LANE_NUDGE = Math.round(LANE_ICON * 0.26);
             const HEAD_ICON = Math.round(Math.max(22, Math.min(40, Math.min(CELL_H - 14, HEAD_W - 14))));
             const CAP_FS = Math.max(7.5, Math.min(10.5, CELL_W / 4.7));
             const NUM_FS = Math.max(12.5, Math.min(18, CELL_W * 0.38));
@@ -2227,35 +2228,91 @@ export const HeroExpanded = () => {
                portrait's, because in a 21px header the portrait is wider than
                the room it has. */
             const HEAD_COMPACT = HEAD_W < 34;
+            /* ═══ v2.3.2663: THE OWNER'S OWN BADGE ART ═══
+               Owner, with a sheet of a round badge, a pill badge and the
+               numerals 0-9 and "+": "Use this sprite sheet for the tiny
+               numbers.  I want to see if it looks good."
+               Sliced by tools/slice_badge_sheet.mjs into public/icons/ui/badge.
+               One character sits on the ROUND badge; two or three on the PILL,
+               which is drawn as a border-image so its rounded ends stay round
+               and only the middle stretches -- a "99+" and a "64" share one
+               piece of art instead of the pill being squashed to fit.
+               The numerals are images laid in a row, not text, so the count
+               has no font size of its own: it is as tall as the art makes it.
+               A pool at 0 keeps its badge and goes grey (grayscale + dim),
+               the same "0 still answers the question" rule as before, in the
+               art's own shapes rather than a second palette. */
+            const BADGE = '/icons/ui/badge/';
+            const BADGE_V = '?v=2.3.2662';
             const headBadge = (n, key, pin) => {
               const live = n > 0;
               const c = HEAD_COMPACT;
+              /* ═══ v2.3.2663: THE SIDEWAYS PANE KEEPS THE PLAIN PILL ═══
+                 A landscape header is ~18px wide inside, and the sprite pill
+                 for "64" is 22px at the smallest size its numerals still read
+                 at -- mp-catgrid measured it clipped off the header's left
+                 edge.  The art cannot shrink further without the numerals
+                 turning to mush, so there (and only there) the badge is the
+                 v2.3.2661 brass pill in 7px type, which fits.  Portrait, the
+                 layout the owner approved from a capture, is all sprite. */
+              if (c) {
+                return (
+                  <span data-prog3-head-badge={key} data-count={n} aria-hidden="true" style={{
+                    position: 'absolute', zIndex: 5, ...(pin || { top: -3, right: -3 }),
+                    minWidth: 12, height: 12, padding: '0 1px', boxSizing: 'border-box',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    borderRadius: 8,
+                    background: live ? COL.accent : COL.raised, color: live ? COL.onAccent : COL.muted,
+                    boxShadow: `0 0 0 1.5px ${COL.well}`,
+                    fontSize: 7, fontWeight: 900, lineHeight: 1, letterSpacing: '-0.04em',
+                    fontVariantNumeric: 'tabular-nums', pointerEvents: 'none', whiteSpace: 'nowrap',
+                  }}>{n > 99 ? '99+' : n}</span>
+                );
+              }
+              const chars = (n > 99 ? '99+' : String(Math.max(0, n | 0))).split('');
+              const bh = c ? 12 : 16;                  /* badge height */
+              const gh = Math.round(bh * 0.66);        /* numeral height */
+              const round = chars.length === 1;
+              const cap = Math.round(bh * 0.42);       /* pill end drawn this wide */
               return (
-                <span data-prog3-head-badge={key} aria-hidden="true" style={{
+                <span data-prog3-head-badge={key} data-count={n} aria-hidden="true" style={{
                   position: 'absolute', zIndex: 5,
                   /* Off the icon's corner rather than on it: the first cut
-                     sat 3px out and a 15px pill covered the TIP of every
-                     weapon -- the sword, staff and bow are all drawn
-                     pointing up-right, so the top-right corner is the part
-                     that says which weapon it is.  7px out, the pill clips
-                     the corner instead of the blade. */
+                     sat 3px out and covered the TIP of every weapon -- the
+                     sword, staff and bow are all drawn pointing up-right, so
+                     the top-right corner is the part that says which weapon
+                     it is.  7px out, the badge clips the corner instead. */
+                  /* v2.3.2663: the owner chose this top-right placement off
+                     the capture ("this image nearly has it") -- the badges
+                     stay put and the WEAPONS move out from under them; see
+                     LANE_NUDGE on the icons below. */
                   ...(pin || (c ? { top: -3, right: -3 } : { top: -5, right: -7 })),
-                  /* 10px, the floor mp-statcols holds a header's text to;
-                     8.5 read fine and failed it, and a count is exactly the
-                     text that has to be read at a glance. */
-                  minWidth: c ? 12 : 15, height: c ? 12 : 14, padding: c ? '0 1px' : '0 2px', boxSizing: 'border-box',
+                  height: bh, minWidth: bh, boxSizing: 'border-box',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  borderRadius: 8,
-                  background: live ? COL.accent : COL.raised,
-                  color: live ? COL.onAccent : COL.muted,
-                  /* a ring in the tray's own colour lifts the badge off the
-                     artwork under it without adding a new colour */
-                  boxShadow: `0 0 0 1.5px ${COL.well}`,
-                  fontSize: c ? 7 : 10, fontWeight: 900, lineHeight: 1,
-                  letterSpacing: c ? '-0.04em' : 0,
-                  fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
-                  whiteSpace: 'nowrap',
-                }}>{n > 99 ? '99+' : n}</span>
+                  ...(round
+                    ? { background: `url(${BADGE}circle.png${BADGE_V}) center / 100% 100% no-repeat` }
+                    : {
+                        /* the pill's ends are half its height in the art (32 of
+                           64px); drawn `cap` wide, the digits overlap them a
+                           little, which is how the art itself is spaced */
+                        borderStyle: 'solid', borderWidth: `0 ${cap}px`,
+                        borderImage: `url(${BADGE}pill.png${BADGE_V}) 0 32 fill / 0 ${cap}px stretch`,
+                      }),
+                  filter: live ? 'none' : 'grayscale(1) brightness(0.62)',
+                  pointerEvents: 'none', whiteSpace: 'nowrap',
+                }}>
+                  {chars.map((ch, i) => (
+                    <img key={i} alt="" draggable={false}
+                      src={`${BADGE}${ch === '+' ? 'plus' : 'd' + ch}.png${BADGE_V}`}
+                      style={{
+                        height: ch === '+' ? Math.round(gh * 0.8) : gh, width: 'auto',
+                        /* the numerals carry their own dark outer ring; a
+                           pixel of overlap reads as one number, not three
+                           stickers side by side */
+                        marginLeft: i ? -1 : 0, display: 'block', pointerEvents: 'none',
+                      }} />
+                  ))}
+                </span>
               );
             };
             const headCell = (kind) => {
@@ -2332,6 +2389,17 @@ export const HeroExpanded = () => {
                             }}>
                             <img src={c.iconSrc} alt="" draggable={false} style={{
                               width: '100%', height: '100%', objectFit: 'contain', display: 'block',
+                              /* ═══ v2.3.2663: THE WEAPON STEPS OUT FROM UNDER ITS BADGE ═══
+                                 Owner, on the top-right capture: "you just need
+                                 to nudge all weapon icons diagonally
+                                 (southwest)".  The badge is pinned to the BOX
+                                 and the art moves inside it, so each count
+                                 stays exactly where the owner approved it
+                                 while the sword, staff and bow slide down-left
+                                 and their tips come out from under the pill.
+                                 A fraction of the icon, not a pixel count, so
+                                 the nudge scales with the icon at every width. */
+                              transform: `translate(${-LANE_NUDGE}px, ${LANE_NUDGE}px)`,
                               /* v2.3.2660: all three at full strength (owner:
                                  "have all of the icons in the first row not
                                  dimmed").  The dimming was the head's way of

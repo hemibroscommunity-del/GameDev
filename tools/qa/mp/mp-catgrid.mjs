@@ -225,9 +225,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const r = b.getBoundingClientRect();
         const head = b.closest('[data-prog3-lane]');
         const hr = head ? head.getBoundingClientRect() : null;
+        /* v2.3.2663: the count is drawn in the owner's numeral SPRITES, so
+           it has no text -- it is read back off the images actually on
+           screen (d6.png d4.png -> "64"), which is a stronger check than
+           text was: a wrong or missing file shows up as a wrong number.
+           naturalWidth guards against a path that 404s into an empty box. */
+        const imgs = [...b.querySelectorAll('img')];
+        const cs = getComputedStyle(b);
         out[b.getAttribute('data-prog3-head-badge')] = {
-          text: (b.textContent || '').trim(),
-          bg: getComputedStyle(b).backgroundColor,
+          /* sideways the header is too narrow for the sprite pill and the
+             badge is the plain brass one (v2.3.2663) -- its text IS the count */
+          sprite: imgs.length > 0,
+          text: imgs.length
+            ? imgs.map((i) => { const m = /\/(d(\d)|plus)\.png/.exec(i.getAttribute('src') || ''); return !m ? '?' : m[2] != null ? m[2] : '+'; }).join('')
+            : (b.textContent || '').trim(),
+          decoded: imgs.every((i) => i.naturalWidth > 0),
+          bg: /circle\.png/.test(cs.backgroundImage) ? 'circle' : /pill\.png/.test(cs.borderImageSource) ? 'pill'
+            : (cs.backgroundColor && !/rgba\(0, 0, 0, 0\)|transparent/.test(cs.backgroundColor) ? 'plain' : null),
           inHead: !!hr && r.left >= hr.left - 0.5 && r.right <= hr.right + 0.5 && r.top >= hr.top - 0.5 && r.bottom <= hr.bottom + 0.5,
           box: [r.left, r.top, r.right, r.bottom].map((v) => +v.toFixed(1)),
           head: hr ? [hr.left, hr.top, hr.right, hr.bottom].map((v) => +v.toFixed(1)) : null,
@@ -255,8 +269,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       { badges: Object.fromEntries(Object.entries(b0.out).map(([k, v]) => [k, v.text])), spend: b0.spend, poolBy: b0.poolBy, free: b0.free });
     rec.ok(`${label}: ...and the character's badge is what the shared pool can spend`,
       !!b0.out.shared && b0.out.shared.text === badgeText(b0.spend.shared), { badge: b0.out.shared && b0.out.shared.text, spend: b0.spend.shared });
-    rec.ok(`${label}: ...on a filled background, not bare text (the owner's "badge on a fill")`,
-      Object.values(b0.out).every((v) => v.bg && !/rgba\(0, 0, 0, 0\)|transparent/.test(v.bg)), Object.values(b0.out).map((v) => v.bg));
+    rec.ok(`${label}: ...on the owner's badge art — round for one digit, the pill for two or more (v2.3.2663; plain brass sideways, where the art cannot fit)`,
+      Object.values(b0.out).every((v) => (land ? v.bg === 'plain' : v.sprite && v.bg === (v.text.length === 1 ? 'circle' : 'pill'))),
+      Object.fromEntries(Object.entries(b0.out).map(([k, v]) => [k, { text: v.text, bg: v.bg }])));
+    rec.ok(`${label}: ...and every numeral sprite actually decoded (a wrong path is an invisible box)`,
+      Object.values(b0.out).every((v) => v.decoded), Object.fromEntries(Object.entries(b0.out).map(([k, v]) => [k, v.decoded])));
     rec.ok(`${label}: ...and every badge sits inside its header, not clipped off its edge`,
       Object.values(b0.out).every((v) => v.inHead), b0.out);
 
