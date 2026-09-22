@@ -239,7 +239,15 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
               rather than the viewport so the pair always reads as one
               lockup"), and the shimmer had to be told which of the two boxes
               it belonged to (v2.3.2208, a 22px miss).  One image has one box
-              and cannot drift from itself. */}
+              and cannot drift from itself.
+              v2.3.2642: SAME ELEMENT, NEW ART.  Owner, with the file: "I want
+              the second one on the splash page to replace the current one" --
+              the same lockup redrawn with the gold BRO TOWN mark and its gem
+              sword in place of the old silver one.  Nothing here changes: the
+              path, the shimmer and the sizing are the ones v2.3.2458 tuned,
+              and the file behind them is re-cut by
+              tools/ui/fit-title-lockups.mjs (alpha-trimmed, 760x628 where the
+              first cut was 760x638, and 145 KB where it was 486 KB). */}
           <span className="bt-login-logowrap">
             <img
               src={art('logo-full')}

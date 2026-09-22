@@ -2147,6 +2147,14 @@ beside the art (white RGB, the source's alpha copied exactly, lossy WebP:
 fetched once, each silhouette once, 0.38 MB less in the `/ui/welcome` family,
 and the shimmer photographed on the lettering with the mask swapped.
 
+**The three files in the table are gone (v2.3.2458, v2.3.2642), the rule is
+not.** The splash and the trait picker each collapsed to ONE owner-supplied
+lockup with its sword drawn in, so the pairs above are now
+`title/logo-full.png` + `title/logo-full-mask.webp` and
+`title/brotown-lockup.png` + `title/brotown-lockup-mask.webp`, both cut by
+`tools/ui/fit-title-lockups.mjs` — which emits the silhouette in the same run
+as the art precisely so the next lockup cannot arrive without one.
+
 **Rule to apply next time:** when the same URL appears twice in a load, do not
 assume the browser will collapse it — check whether the two consumers are the
 same KIND of resource. `<img>` and CSS `background-image` share; a mask does
