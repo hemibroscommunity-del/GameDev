@@ -17,7 +17,9 @@
 
 import { skinTarget, pantsTarget, shoesTarget, recolorBodyToCanvas } from './playerSkins.js';
 import EYE_MASK from './eyeMask.json';                              /* v2.3.1928 */
+import EYE_BLANK from './eyeBlankMask.json';                        /* v2.3.2643 */
 import { eyeColorTarget } from './traits/eyeColorCatalog.js';
+import { eyeStyleColorTarget, getEyeStyleRef } from './traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 /* v2.3.2193: the colour-id -> target maps, for portraitOptsFromPeer below. */
 import { hairColorTarget } from './traits/hairColorCatalog.js';
 import { hatColorTarget } from './traits/hatColorCatalog.js';
@@ -232,7 +234,20 @@ export function recolorHairToCanvas(img, hairColor, refOverride) {
      was drawn with.  A single-material trait recolours every pixel, so its
      output is identical either way. */
   const prof = (refOverride && typeof refOverride === 'object') ? refOverride : null;
-  let ref = prof ? prof.ref : refOverride;
+  /* v2.3.2645: a profile may carry `matRef` -- the mean luminance of the pixels
+     the chosen material actually covers -- and when it does, that is the
+     reference instead of the sprite's.
+     This is a RATIO retint, so the reference decides what the swatch means: the
+     pixels at the reference come out AS the swatch and everything else keeps its
+     relation to them.  Referencing the whole sprite is right while the recoloured
+     part is most of it, which held for every caller until the eye styles.  One
+     Eye is 86% white and its pupil is the part a swatch paints: 34 / (240 * 1.15)
+     is 0.12, so every colour came out black -- the same wall eyeColorCatalog.js
+     hit on the painted-in iris at v2.3.1928 and answered by replacing it
+     outright.  A material-own reference gets that flat replacement for free (a
+     flat material sits AT its own mean, k ~ 1) while keeping the shading a flat
+     fill would have destroyed.  Only eyeStyleColorCatalog sets it. */
+  let ref = prof ? (prof.matRef || prof.ref) : refOverride;
   if (!ref) {
     let sum = 0, n = 0, maxL = 1;
     for (let i = 0; i < d.length; i += 4) {
@@ -247,10 +262,33 @@ export function recolorHairToCanvas(img, hairColor, refOverride) {
   /* main < 0 means "no material is special here" -- either the trait has none
      or its entry says 'all' -- so every pixel recolours, which is today's map. */
   const main = prof ? prof.main : -1;
-  const mats = (prof && main >= 0) ? prof.mats : null;
+  /* v2.3.2646: `spare` is the NEGATIVE of `main` -- paint every material except
+     this one.  Some parts are not a material: One Eye is a white eye with a
+     pupil in it, and the pupil decomposes into the near-black band PLUS a dark
+     red one (6 of the 9 pupil pixels on its southwest cell are the red), so a
+     single positive pin paints part of a pupil and leaves the rest.  What the
+     piece actually is, is "the white, and everything that is not the white",
+     and that is what this expresses.  Only eyeStyleColorCatalog sets it. */
+  const spare = (prof && prof.spare >= 0) ? prof.spare : -1;
+  const mats = (prof && (main >= 0 || spare >= 0)) ? prof.mats : null;
+  /* v2.3.2646: `flat` replaces the painted material outright instead of
+     scaling it.  A RATIO cannot express a near-black material in either
+     direction, which is the whole of v2.3.1928's finding about the painted-in
+     iris and is why that feature replaces rather than retints.  Measured on
+     these two: WTF's pupil core sits at luminance 1-8 against a material mean
+     of 18, so red (178,58,48) came out (10,3,3) -- still black; and One Eye's
+     pupil spans 10 to 104 about a mean of 14, so its core came out dark red
+     while its rim multiplied past 255 on all three channels and blew out to
+     WHITE.  One control reading as "a jagged coloured edge round a black
+     pupil", which is exactly what the owner reported. */
+  const flat = !!(prof && prof.flat);
   for (let i = 0; i < d.length; i += 4) {
     if (d[i + 3] > 30) {
-      if (mats && materialIndex(d[i], d[i + 1], d[i + 2], mats) !== main) continue;
+      if (mats) {
+        const mi = materialIndex(d[i], d[i + 1], d[i + 2], mats);
+        if (main >= 0 ? mi !== main : mi === spare) continue;
+      }
+      if (flat) { d[i] = tr; d[i + 1] = tg; d[i + 2] = tb; continue; }
       const k = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / ref;
       d[i] = Math.min(255, Math.round(tr * k));
       d[i + 1] = Math.min(255, Math.round(tg * k));
@@ -325,13 +363,13 @@ function renderTraitCanvas(traitImg, meta, crown, dir, liftY, mulX) {
 }
 
 /** Composite the portrait into `canvas` (sized to FRAME).  Layers, in
- *  order: skin-recolored body, hair (recolored), facial hair, eyewear
- *  (v2.3.2361), headwear.
+ *  order: skin-recolored body, hair (recolored), facial hair, eye style
+ *  (v2.3.2643), eyewear (v2.3.2361), headwear.
  *  Unknown / 'none' / 'default' selections are skipped.  Resolves when the
  *  draw completes (after async asset loads).  Safe to call repeatedly. */
 export async function drawCharacterPortrait(canvas, opts) {
   if (!canvas) return;
-  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, eyewear, eyewearColor, shirt, shirtColor, dir, gear, weapon, shield } = opts || {};   /* v2.3.2361: + eyewear; v2.3.2424: + eyewearColor */
+  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, eyewear, eyewearColor, eyeStyle, shirt, shirtColor, dir, gear, weapon, shield } = opts || {};   /* v2.3.2361: + eyewear; v2.3.2424: + eyewearColor; v2.3.2643: + eyeStyle */
   /* v2.3.1580 (owner: traits still soft after the v2.3.1579 re-bake).
      OPT-IN supersampling.  This canvas has always composited at a fixed
      256 with no devicePixelRatio scaling -- the WORLD canvas is DPR-aware
@@ -385,6 +423,13 @@ export async function drawCharacterPortrait(canvas, opts) {
   const wantFh = facialHair && facialHair !== 'none';
   const wantHw = headwear && headwear !== 'none';
   const wantEw = eyewear && eyewear !== 'none';   /* v2.3.2361 */
+  const wantEs = eyeStyle && eyeStyle !== 'none';   /* v2.3.2643 */
+  /* v2.3.2645: hoisted above the batch below, which now needs it -- the eye
+     colour drives the STYLE's recolour as well as the painted-in iris (see
+     eyeStyleColorCatalog.js: one control, not two).  Still read again at its
+     old site for the body bake; one `const` either way. */
+  const _eyeColorId = (opts && opts.eyeColor) || null;
+  const _esColor = wantEs ? eyeStyleColorTarget(_eyeColorId, eyeStyle) : null;   /* v2.3.2645 */
   /* ═══ v2.3.1815: WORN ARMOUR ═══
      Owner: "Should show armor worn etc if player is wearing it."
 
@@ -408,7 +453,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      stages (body-tops -> body sprite -> traits), so on a cold load the preview
      sat blank-white for ~3 network round-trips; now it's one.  All loads are
      cached after the first draw, so later redraws/rotations are instant. */
-  const [bodyTops, bodyImg, shirtImg, legsImg, chestImg, shouldersImg, hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg, hatRef, ewImg, ewMeta, ewRef] = await Promise.all([
+  const [bodyTops, bodyImg, shirtImg, legsImg, chestImg, shouldersImg, hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg, hatRef, ewImg, ewMeta, ewRef, esImg, esMeta, esRef] = await Promise.all([
     loadBodyTops(),
     loadImage(`/sprites/player/stand-${DIR}.png?v=${SPRITE_VERSION}`),
     /* v2.3.757: the LAYERED shirt sheet (white-base, tinted below) -- the
@@ -442,6 +487,16 @@ export async function drawCharacterPortrait(canvas, opts) {
        reason -- keyed per facing the chosen colour lands on a different tone
        per angle, so the glasses would change shade as the preview rotates. */
     (wantEw && eyewearColor) ? getEyewearRef(eyewear).catch(() => 0) : 0,
+    /* v2.3.2643: the eye style, in the same batch and for the same reason --
+       it is a face layer, so a sequential await would show the portrait blink
+       its real eyes before the style lands on them.
+       v2.3.2645: and its recolour reference with it, pooled across the facings
+       exactly as the hat's and the glasses' are (v2.3.1109, v2.3.2424) -- keyed
+       per facing the swatch lands on a different tone and the eyes would change
+       shade as the preview rotates. */
+    wantEs ? loadTraitBest('eyestyle', eyeStyle, DIR) : null,
+    wantEs ? loadMeta('eyestyle', eyeStyle) : null,
+    _esColor ? getEyeStyleRef(eyeStyle).catch(() => 0) : 0,
   ]);
   const crown = (bodyTops && bodyTops[`stand-${DIR}-0`]) || [FRAME / 2, 33];
 
@@ -631,7 +686,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      bug -- it just made other people's faces subtly wrong.  Every caller now
      names whose eyes it means, including the creator (its own live selection),
      and an omission costs the effect rather than borrowing yours. */
-  const _eyeId = (opts && opts.eyeColor) || null;
+  const _eyeId = _eyeColorId;   /* v2.3.2645: hoisted to the top of the draw; see wantEs */
   /* v2.3.1940: the drawn pants print and the chest tattoo.  These are baked
      INTO the body (they are regions of the body sheet, not separate sprites),
      so unlike the shirt print they go in with the recolour rather than after it.
@@ -682,8 +737,14 @@ export async function drawCharacterPortrait(canvas, opts) {
          touch on the body can be run backwards into a cell.  Nothing else
          passes it, and without it not a byte of this changes. */
       report: !!(opts && opts.reportGrids) } : null;
+  /* v2.3.2643: with a style worn, ERASE the real eyes under it and fill with
+     this figure's own skin (playerSkins._blankEyes).  It goes through the same
+     one function the world body does, so the creator preview, the character
+     sheet, the inspect card and the friends list cannot disagree with the
+     sprite about whether a remnant shows. */
   const _bodyCv = recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME,
-    eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`], _bodyArt);
+    eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`], _bodyArt, undefined, undefined,
+    wantEs ? EYE_BLANK[`stand-${DIR}`] : null);
   ctx.drawImage(_bodyCv, 0, 0);
   /* Stamped on the OUTPUT canvas, beside __btDir, because that is where the
      caller can reach it.  The grids are in the BODY SHEET's own 256-space.
@@ -896,6 +957,18 @@ export async function drawCharacterPortrait(canvas, opts) {
     const _capeFront = _capeSplit ? capeHoodImg : capeImg;
     if (_capeFront) ctx.drawImage(_capeFront, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
   }
+  /* v2.3.2643: the eye style -- under the eyewear, for the reason
+     eyeStyleCatalog.js gives (glasses go over your eyes whatever your eyes
+     are), and this is the third place that single decision has to be spelled
+     out: the two child orders in entityRenderer and this draw order.  It draws
+     only on the facings its meta has an anchor for -- three of the four ship no
+     north or northeast frame.
+     v2.3.2645: no longer "plain placeTrait, no recolour".  Owner: "None of the
+     eyes are recolorable."  The Eyes tab's colour row drives the STYLE as well
+     as the painted-in iris now, through the same recolorHairToCanvas pass the
+     glasses below take -- see eyeStyleColorCatalog.js for what a swatch paints
+     on each style and why the reference is the material's own. */
+  if (esImg && esMeta) placeTrait(ctx, _esColor ? recolorHairToCanvas(esImg, _esColor, esRef) : esImg, esMeta, crown, DIR);
   /* v2.3.2361: eyewear -- after the hair (frames sit in front of a fringe) and
      before the hat (a brim crosses the top of the frames), the same order the
      world renderer builds its sprites in.  Plain placeTrait: no recolour, no
@@ -934,7 +1007,7 @@ export async function drawCharacterPortrait(canvas, opts) {
  *  wait on the network.  The promise caches above make the subsequent draws
  *  hit memory; expected misses (e.g. hairmask 404s) are harmless. */
 export function prewarmPortraitDirs(opts) {
-  const { hair, facialHair, headwear, eyewear } = opts || {};   /* v2.3.2361: + eyewear */
+  const { hair, facialHair, headwear, eyewear, eyeStyle } = opts || {};   /* v2.3.2361: + eyewear; v2.3.2643: + eyeStyle */
   /* v2.3.2516: the cape too.  ANIMATION PRELOADING IS LAW (CLAUDE.md): a cape
      that fetched on the first rotate would pop in over a figure the player is
      already looking at, which is the first-use hitch the law exists to stop.
@@ -953,6 +1026,7 @@ export function prewarmPortraitDirs(opts) {
     if (hair && hair !== 'none') loadTraitBest('hair', hair, DIR);
     if (facialHair && facialHair !== 'none') loadTraitBest('facialhair', facialHair, DIR);
     if (eyewear && eyewear !== 'none') loadTraitBest('eyewear', eyewear, DIR);   /* v2.3.2361 */
+    if (eyeStyle && eyeStyle !== 'none') loadTraitBest('eyestyle', eyeStyle, DIR);   /* v2.3.2643 */
     if (headwear && headwear !== 'none') {
       loadTraitBest('headwear', headwear, DIR);
       loadImage(`/sprites/traits/headwear/${headwear}/hairmask/${DIR}.png?v=${TRAIT_VER}`).catch(() => {});
@@ -1025,6 +1099,7 @@ export function portraitOptsFromPeer(o) {
     hatColor: hatColorTarget(c.hatColor, c.headwear),          /* v2.3.1927 */
     eyewear: c.eyewear,                                        /* v2.3.2361 */
     eyewearColor: eyewearColorTarget(c.eyewearColor, c.eyewear),   /* v2.3.2424 */
+    eyeStyle: c.eyeStyle,                                      /* v2.3.2643 */
     shirt: c.shirt,
     shirtColor: shirtColorTarget(c.shirtColor),
     eyeColor: c.eyeColor,                                      /* v2.3.1930 */

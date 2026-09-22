@@ -180,7 +180,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--id', required=True)
     ap.add_argument('--category', default='headwear',
-                    choices=['headwear', 'hair', 'eyewear'],
+                    choices=['headwear', 'hair', 'eyewear', 'eyestyle'],   # v2.3.2643: + eyestyle
                     help='which trait folder holds --id (v2.3.2361)')
     ap.add_argument('--scale',
                     help='comma list, e.g. "southwest=0.85,east=1.30" '
