@@ -102,6 +102,48 @@ const SPACE = 256, ALPHA = 32;
    through and the review sheet is where it showed. */
 const MIN_HEAD = 20, MAX_HEAD = 78;
 
+/* ═══ v2.3.2645: THE BOW AND SWORD STRIPS ARE EXCLUDED, DELIBERATELY ═══
+   Everything here works in "256-space": a coordinate divided by h/256, which is
+   right for every sheet whose frame is square and stored at some scale of
+   256x256 -- stand, jog, hit, attack, pickup, mine, fish, dodge.
+
+   The bow and sword strips are NOT that, in two compounding ways, and both were
+   found by rendering them:
+     1. Their frames are not square and not 256 wide. playerSkins.js v2.3.2431
+        had to learn the same thing ("those are 122, 128, 130, 154, 160, 214,
+        320, 340 and 402 px per frame"), and the authoritative table is the
+        stand-in block in effectsRenderer.js. The square guess had sword-east at
+        18 frames when it has 11 -- its strip is stored HALF-RES and upscaled in
+        the loader -- and bow-north at 1 when it has 3.
+     2. Fixing the frame COUNT is not enough, which is the part worth recording.
+        sword-east's native frame is 402x246, so dividing x by h/256 puts it in
+        a space whose frame is 418 wide, not 256 -- a different coordinate system
+        from every other sheet in this file. The review sheet showed the result
+        plainly: the ear alone in empty black, the head off-frame.
+
+   So they emit NOTHING rather than something plausible-looking in the wrong
+   space. A painter consuming a file where most entries are 256-space and a few
+   are 418-space would place ears correctly almost everywhere and be silently,
+   unfixably wrong on the bow -- which is exactly the class of bug this whole
+   exercise keeps producing. They need their own pass, in their own space, with
+   their own review; docs/specs/SPECIES-PLAN.md scopes it.
+
+   Listed rather than pattern-matched so the exclusion is auditable. */
+const EXCLUDED_STRIPS = {
+  'bow-east': [214, 241], 'bow-southwest': [154, 233], 'bow-south': [130, 234],
+  'bow-northwest': [160, 248], 'bow-north': [122, 260],
+  'sword-south': [320, 320], 'sword-east': [402, 246], 'sword-north': [340, 227],
+};
+function stripKey(base) {
+  const m = base.match(/^((?:bow|sword)-(?:east|southwest|south|northwest|north))(?:-|$)/);
+  return m ? m[1] : null;
+}
+/* A sheet this file can speak about at all: square frame, integer count. */
+function isSupported(base, w, h) {
+  const k = stripKey(base);
+  if (k && EXCLUDED_STRIPS[k]) return false;
+  return Math.abs(w / h - Math.round(w / h)) <= 0.02;
+}
 function frameOf(file) {
   const { width: w, height: h, data } = decode(fs.readFileSync(path.join(DIR, file)));
   return { w, h, data, frameW: h, n: Math.max(1, Math.round(w / h)), S: h / SPACE };
@@ -218,9 +260,11 @@ function fill(tuples, tiers) {
   }
 }
 
-const out = {}, report = [];
+const out = {}, report = [], skipped = [];
 for (const file of fs.readdirSync(DIR).filter((f) => f.endsWith('.png')).sort()) {
   const base = file.replace(/\.png$/, '');
+  const probe = decode(fs.readFileSync(path.join(DIR, file)));
+  if (!isSupported(base, probe.width, probe.height)) { skipped.push(base); continue; }
   const sh = frameOf(file);
   const rects = EYE[base];
   const tuples = new Array(sh.n).fill(null);
@@ -262,6 +306,10 @@ if (process.argv.includes('--report')) {
     console.log(`${r[0].padEnd(26)} ${String(r[1]).padStart(6)} ${String(r[2]).padStart(7)} ${String(r[3]).padStart(5)} ${String(r[4]).padStart(5)} ${String(r[5]).padStart(7)}${flag}`);
   }
   console.log(`\nplaced ${sum(2)}/${sum(1)} frames  (eye ${sum(3)}, crown ${sum(4)}, interp ${sum(5)})`);
+  if (skipped.length) {
+    console.log(`\nEXCLUDED (non-256-square frames -- see the header): ${skipped.length} sheet(s)`);
+    console.log('  ' + skipped.join(' '));
+  }
   const gaps = report.filter((r) => r[2] < r[1]);
   console.log(`sheets still with gaps: ${gaps.length}${gaps.length ? ' -> ' + gaps.map((g) => g[0]).join(' ') : ''}`);
   process.exit(0);

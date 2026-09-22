@@ -3985,3 +3985,50 @@ the back-facing sheets — coverage 417 → 660 of 712). The plateau matches a h
 read exactly on `stand-north` and within 1px on `stand-south`.
 `node tools/ears/ear-anchors.mjs --report`; §91 has the harness, §90 the five
 anchors that never worked.
+
+## 93. The frame is not square, and the count is only half the problem (v2.3.2645)
+
+**Tempting:** you are walking a sprite strip offline and need the frame width.
+The sheets are 256×256 logical frames, and every strip in
+`public/sprites/player` is a horizontal row of them, so `frameW = height` and
+`frames = round(width / height)`. It is right on the first dozen sheets you
+test.
+
+**Wrong on thirty of them**, and the repo has already paid for this once.
+`playerSkins.js` v2.3.2431 — *"THE FRAME WIDTH IS AN ARGUMENT, NOT A
+CONSTANT"* — records the same mistake reaching production: a per-frame ink probe
+showed the bow strips at 3 frames where `floor(w/256)` had claimed otherwise, and
+*"on three of the five bow facings the block pose showed NO tattoo at all"*. The
+authoritative frame table is the stand-in block in `effectsRenderer.js`; the
+widths are 122, 128, 130, 154, 160, 214, 320, 340 and 402.
+
+Measured again in the ear work: the square guess had **`sword-east` at 18 frames
+when it has 11** (its strip is stored half-res on disk and upscaled in the
+loader) and **`bow-north` at 1 when it has 3**. An anchor computed across those
+boundaries is not slightly off — it is measuring a window straddling two
+figures.
+
+### The half nobody warns you about
+
+Fixing the count is not enough. Offline tooling here normalises to "256-space"
+by dividing coordinates by `h/256`, which is only meaningful for a frame that is
+**square and some scale of 256×256**. `sword-east`'s native frame is 402×246, so
+that division lands it in a space whose frame is 418 wide — a *different
+coordinate system* from every other sheet in the same output file.
+
+The failure is invisible in aggregate and obvious in a picture: the ear rendered
+alone in empty black with the head off-frame. Coverage percentages said 94%.
+
+### The rule
+
+**Before walking a strip offline, assert that `width / height` is a whole
+number, and refuse the sheet if it is not.** A sheet whose frame is not
+256-square does not belong in a 256-space data file at all; it needs its own
+pass in its own space. Emitting nothing for it is correct — a mixed-space file
+places most things right and is silently, unfixably wrong on the rest, which is
+worse than a gap you can see.
+
+**Receipt:** `node tools/ears/ear-anchors.mjs --report` now prints the excluded
+sheets by name (40 of them) and reaches 547/548 on the ones it can speak about.
+The exclusion list is written out rather than pattern-matched so it is
+auditable. §92 has the 4px bias in the same data; §91 the harness.

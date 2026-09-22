@@ -210,22 +210,41 @@ measured range is 41–54, with the dodge roll at 73, so the cap is now 78.
 
 ### Where the coverage actually stands
 
-Counting only sheets that *should* have ears (armour overlays have the helmet
-erased and take the head from a `*-head` sheet; `*-weapon` sheets have no head;
-`welcome-bro` is an orphan nothing references):
+Two corrections to the numbers this document carried earlier, both from
+v2.3.2645 and both found by rendering rather than counting.
 
-**660 of 712 frames — 93%**, up from 417.
+**The 823-frame total was wrong.** It came from `round(width / height)`, which
+assumes a square frame. True for `stand` / `jog` / `hit` / `attack` / `pickup`
+/ `mine` / `fish` / `dodge`; false for the bow and sword strips, whose frames
+are 122, 130, 154, 160, 214, 320, 340 and 402 px wide. The square guess had
+`sword-east` at 18 frames when it has **11** — that strip is stored half-res on
+disk and upscaled in the loader — and `bow-north` at 1 when it has 3.
+`playerSkins.js` v2.3.2431 had to learn the identical lesson; the authoritative
+table is the stand-in block in `effectsRenderer.js`.
 
-Re-reviewed on the contact sheet: `stand-south` and `stand-north` seated
-correctly, and the `crown` tier holds across all 23 frames of `jog-north` —
-which is the case that matters, since that is a player running away from the
-camera.
+**And fixing the frame count was not enough**, which is the part worth keeping.
+Everything here works in "256-space" — a coordinate divided by `h/256` — which
+is right only for a frame that is square and some scale of 256×256.
+`sword-east`'s native frame is 402×246, so that division puts it in a space
+whose frame is 418 wide: *a different coordinate system from every other sheet
+in the file.* The review sheet showed it plainly — the ear alone in empty black
+with the head off-frame.
 
-**Still bare, 50 frames:** `bow` (22 — the bow is held across the face, so
-neither the crown nor a plateau around the iris finds the skull) and
-`sword-south-body` / `-torso` (28). These want hand-authored seeds, which
-interpolation then spreads: with interpolation proven, a strip needs only two or
-three, not one per frame.
+So the bow and sword strips now emit **nothing**, rather than something
+plausible-looking in the wrong space. A painter reading a file where most
+entries are 256-space and forty sheets are not would place ears correctly
+almost everywhere and be silently wrong on the bow, which is the exact class of
+bug this work keeps turning up.
+
+| | state |
+|---|---|
+| **Supported** — `stand` `jog` `hit` `attack` `pickup` `mine` `fish` `dodge`, all directions | **547 of 548 frames (99.8%)**; the only miss is `welcome-bro`, an orphan nothing references |
+| **Excluded** — the bow and sword strips (40 sheets, of which 24 would need ears) | non-square frames in their own coordinate space; needs its own pass and its own review |
+
+Reviewed on the contact sheet: `stand-south`, `stand-north`, `stand-east`
+(profile, rear ear only), all 23 frames of `jog-north`, all 28 of `jog-east`,
+and `hit-south` through its recoil — the last of which had no coverage at all
+before this stage.
 
 ### What is left after that
 
