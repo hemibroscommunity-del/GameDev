@@ -59,12 +59,14 @@ fighting a monster close in level to them."*
   only the universal HP points). Today
   that same character reads 2.7 / 9.9 at level 20 and 2.8 / 8.0 at level 25:
   monster level barely matters. (§4)
-- **Pure builds come out ahead, and the relative game is a level-3-to-40 arc.**
-  A one-lane specialist keeps a 2.3× kill advantage over a three-lane spread at
-  the same character level, resting on the universal half (skill damage and the
-  weapon tier its lane unlocks). A single-stat build stops being possible: the
-  smaller caps fill by character level ~40 and force breadth after that, and
-  from 40 to 300 every remaining point is a universal one. (§4.6)
+- **Pure builds come out ahead.** A one-lane specialist keeps a 2.3× kill
+  advantage over a three-lane spread at the same character level, widening to
+  3.5× five levels up where nobody's points count — and that advantage now
+  rests on the universal half, which is skill damage and the weapon tier the
+  lane unlocks. Uncapped, a single-stat build also never dead-ends and there is
+  no level-40 cliff where the relative game finishes; both of those were
+  artefacts of capping, and §4.6c–d record them as the cost of choosing 5-A
+  instead. (§4.6)
 - **The catch you need to know before saying go.** Every world zone is
   pinned to level 1–2 monsters by your own directive (v2.3.1160, "I have not
   made more depth zones yet since the game is still a demo"). So today the
@@ -354,6 +356,11 @@ term). "Hits" is the mean number of swings to kill through the real roll
 (variance, crits, the anchor, overkill). "Survive" is how many of the
 monster's swings it takes to kill you through the real sink (dodge roll,
 defense cut, floor 1).
+
+**These were measured at the §3 point counts, and they hold under §3.1's
+uncapped curve too** — that is what picking `K` to pass through the capped
+endpoint buys. Where a cell says 40 Defense points, both shapes read −40 %.
+What uncapping adds is everything past those counts, which §3.1 tabulates.
 
 ### 4.1 One level-up's points (3) into one stat, against an at-level brute
 
