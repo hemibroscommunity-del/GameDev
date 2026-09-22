@@ -43,6 +43,7 @@ import {
   calcCombatDmgRange, DISPLAY_SCALE_K, toDisplayDamage, toDisplayHp, toDisplayHitDamage,
   getFishHealAmount, getArmorHp,
   getArmorDrPct, getArmorPieceDr, ARMOR_DR, /* v2.3.1697 */
+  setGearQEnabled, /* v2.3.2664: the gear-quality worker */
   WEAPON_CHANNELS, WEAPON_CATEGORY, SWING_COOLDOWN,
   T2_UNITS, /* v2.3.1415: critDmg fixture derives from the unit table */
 } from '../../src/data/gameSystems.js';
@@ -310,12 +311,29 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
     ['forged tierMult past the ceiling', { armor: { tierMult: 999 }, legsArmor: { tierMult: 999 } }],
     ['missing tierMult falls back to 1', { armor: {}, legsArmor: {} }],
     ['a client that never learned legsArmor', { armor: { tierMult: 4 } }],
+    /* v2.3.2664: the grades on armour, and the godly lift on the ceiling. */
+    ['rare mid tier', { armor: { tierMult: 2, quality: 'rare' }, legsArmor: { tierMult: 2, quality: 'elite' } }],
+    ['one godly piece lifts the ceiling to 85 %', { armor: { tierMult: 8, quality: 'godly' }, legsArmor: { tierMult: 8 } }],
+    ['a godly set lifts it to 95 %', { armor: { tierMult: 1.12, quality: 'godly' }, legsArmor: { tierMult: 1.12, quality: 'godly' } }],
   ];
+  /* v2.3.2664: the server rolls the gear-quality math; the client predicts it
+     on a worker advertising caps.gearq. */
+  setGearQEnabled(true);
   for (const [label, ps] of cases) {
     check(`armour DR mirror: ${label}`,
       Math.abs(getArmorDrPct(ps) - drOf(ps)) < 1e-12,
       { client: getArmorDrPct(ps), server: drOf(ps) });
   }
+  check('armour DR (v2.3.2664): each tier step doubled — a tierMult-2 chest is 40 %, legs 27 %',
+    Math.abs(getArmorPieceDr({ tierMult: 2 }, 'chest') - 0.40) < 1e-12
+      && Math.abs(getArmorPieceDr({ tierMult: 2 }, 'legs') - 0.27) < 1e-12);
+  check('armour DR (v2.3.2664): a godly set reaches 95 %, and nothing reaches 100 %',
+    Math.abs(getArmorDrPct({ armor: { tierMult: 8, quality: 'godly' }, legsArmor: { tierMult: 8, quality: 'godly' } }) - 0.95) < 1e-12);
+  /* Against an OLD worker the readout predicts that worker's steps (rule 19). */
+  setGearQEnabled(false);
+  check('armour DR, old worker: the retired +5 % / +3.5 % steps and the flat 75 % ceiling',
+    Math.abs(getArmorPieceDr({ tierMult: 2 }, 'chest') - 0.35) < 1e-12
+      && Math.abs(getArmorDrPct({ armor: { tierMult: 8, quality: 'godly' }, legsArmor: { tierMult: 8, quality: 'godly' } }) - 0.75) < 1e-12);
   /* The properties the numbers rest on, stated once on the client side so
      a future edit to the mirror alone still trips something. */
   check('armour DR: base torso is 30%, base legs 20%',

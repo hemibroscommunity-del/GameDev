@@ -4934,31 +4934,46 @@ export function getArmorHp(armor, vitality) {
    Display-only: the server settles every hit. */
 export const ARMOR_DR = {
   MAX: 0.75,
+  /* v2.3.2664: per-tier steps doubled, a piece stops at 85 %, and each
+     godly piece lifts the ceiling 10 points (server combat.js _armorDrMult). */
+  chest: { base: 0.30, perTier: 0.10 },
+  legs: { base: 0.20, perTier: 0.07 },
+  PIECE_MAX: 0.85,
+  GODLY_LIFT: 0.10,
+};
+/* The retired steps, for a worker without caps.gearq (rule 19). */
+export const ARMOR_DR_LEGACY = {
+  MAX: 0.75,
   chest: { base: 0.30, perTier: 0.05 },
   legs: { base: 0.20, perTier: 0.035 },
 };
 
 /* One worn piece's own reduction, before stacking (for per-item cards). */
 export function getArmorPieceDr(item, slot) {
-  var cfg = ARMOR_DR[slot];
+  var cfg = (_gearQ ? ARMOR_DR : ARMOR_DR_LEGACY)[slot];
   if (!item || !cfg) return 0;
   /* v2.3.1925: quality multiplies the TIER, mirroring the server's
      _armorDrMult exactly — see the long note there for why it cannot
      multiply the reduction instead.  This pair has to agree to the digit:
      the server's number is what damage is actually computed with, and this
      one is what the item card promises. */
-  var q = QUALITY_MULTS[item.quality] || 1;
+  var q = (_gearQ ? QUALITY_MULTS : QUALITY_MULTS_LEGACY)[item.quality] || 1;
   var tm = Math.max(0, Math.min(8, (Number(item.tierMult) || 1) * q));
-  return cfg.base + cfg.perTier * (tm - 1);
+  var v = cfg.base + cfg.perTier * (tm - 1);
+  return _gearQ ? Math.min(ARMOR_DR.PIECE_MAX, v) : v;
 }
 
-/* Total incoming-damage reduction from worn armor, 0..0.75. */
+/* Total incoming-damage reduction from worn armor, 0..0.75 (v2.3.2664: up to
+   0.95 with godly pieces, on a caps.gearq worker). */
 export function getArmorDrPct(rpg) {
   if (!rpg) return 0;
   var chest = getArmorPieceDr(rpg.armor, 'chest');
   var legs = getArmorPieceDr(rpg.legsArmor, 'legs');
   if (chest <= 0 && legs <= 0) return 0;
-  return Math.min(ARMOR_DR.MAX, 1 - (1 - chest) * (1 - legs));
+  /* v2.3.2664: each godly piece worn lifts the ceiling (server mirror). */
+  var godly = (rpg.armor && rpg.armor.quality === 'godly' ? 1 : 0) + (rpg.legsArmor && rpg.legsArmor.quality === 'godly' ? 1 : 0);
+  var max = _gearQ ? ARMOR_DR.MAX + ARMOR_DR.GODLY_LIFT * godly : ARMOR_DR_LEGACY.MAX;
+  return Math.min(max, 1 - (1 - chest) * (1 - legs));
 }
 
 /* §4.4 Weapon Damage.  Second arg accepts either:
@@ -4995,7 +5010,7 @@ export function calcWeaponDmg(weaponType, statValOrRpg, tierMult, wpn) {
      callers keep legacy math (they are legacy-path readouts). */
   var _p3 = (statValOrRpg && typeof statValOrRpg === 'object' && prog3Live(statValOrRpg)) ? statValOrRpg : null;
   var statTerm = _p3 ? prog3DmgTerm(_p3, weaponType) : statVal * 0.1667;
-  var base = (weaponEffBase(w.base, wpn) + statTerm) * tierMult; // baseline-10: 0.8 ÷ 4.8
+  var base = (weaponEffBase(w.base, wpn) + statTerm) * weaponTierFactor(tierMult) * weaponQualityMult(wpn); // baseline-10: 0.8 ÷ 4.8; v2.3.2664: tier factor + grade
   /* v2.3.1451: bench-locked banked flat when live (rpg object passed
      + worker capability); legacy accelerating flat otherwise. */
   var flat = _p3 ? 0
@@ -5017,11 +5032,38 @@ export function calcWeaponDmg(weaponType, statValOrRpg, tierMult, wpn) {
    doesn't pass the weapon computes exactly what it did before.
    NOTE: `hardness` (numeric 0-5) is NOT the legacy `hardenBonus`
    reforge affix — distinct systems, distinct fields. */
-export var QUALITY_MULTS = { normal: 1.00, rare: 1.20, elite: 1.50, godly: 3.00 };
+/* ═══ v2.3.2664: GEAR THAT MATTERS — caps.gearq ═══
+   The server (data.js QUALITY_GRADES / weaponTierFactor, combat.js) now
+   multiplies a weapon's WHOLE hit by its grade (normal 1 / rare 1.3 / elite
+   1.75 / godly 5) and its tier factor (tierMult^1.5), and doubles armour's
+   per-tier reduction with a godly lift on the ceiling.  These are the
+   mirrors.  Against a worker without caps.gearq every reader below predicts
+   that worker's math instead — quality on the base at the old ×1.2/1.5/3,
+   tierMult straight, the old armour steps — so a readout never promises a hit
+   the connected worker will not roll (rule 19). */
+var _gearQ = false;
+export function setGearQEnabled(on) { _gearQ = !!on; }
+export function isGearQEnabled() { return _gearQ; }
+export var QUALITY_MULTS = { normal: 1.00, rare: 1.30, elite: 1.75, godly: 5.00 };
+export var QUALITY_MULTS_LEGACY = { normal: 1.00, rare: 1.20, elite: 1.50, godly: 3.00 };
+export var WEAPON_TIER_EXP = 1.5;
+/* The damage factor a weapon's tier contributes (the server's weaponTierFactor). */
+export function weaponTierFactor(tierMult) {
+  var tm = Number(tierMult) || 1;
+  if (!_gearQ) return tm;
+  return tm > 0 ? Math.pow(tm, WEAPON_TIER_EXP) : 1;
+}
+/* The grade multiplier on a weapon's whole hit (the server's weaponQualityMult). */
+export function weaponQualityMult(wpn) {
+  if (!_gearQ || !wpn) return 1;
+  return QUALITY_MULTS[wpn.quality] || 1;
+}
 export function weaponEffBase(rawBase, wpn) {
   if (!wpn) return rawBase;
   var h = typeof wpn.hardness === 'number' ? Math.max(0, Math.min(5, wpn.hardness)) : 0;
-  var q = QUALITY_MULTS[wpn.quality] || 1;
+  /* v2.3.2664: on a gear-quality worker the grade rides the whole hit
+     (weaponQualityMult), not the base; an old worker still puts it here. */
+  var q = _gearQ ? 1 : (QUALITY_MULTS_LEGACY[wpn.quality] || 1);
   return (rawBase + h * 1.0417) * q;
 }
 
@@ -5264,7 +5306,8 @@ export function calcCombatDmgRange(rpg, wpn) {
   /* v2.3.1660 (prog3): trained level × K replaces the stat term —
      the readout mirrors the server roll it predicts. */
   var base = (weaponEffBase(w.base, wpn)
-    + (prog3Live(rpg) ? prog3DmgTerm(rpg, wpn.type) : statVal * 0.1667)) * (wpn.tierMult || 1);
+    + (prog3Live(rpg) ? prog3DmgTerm(rpg, wpn.type) : statVal * 0.1667))
+    * weaponTierFactor(wpn.tierMult || 1) * weaponQualityMult(wpn); /* v2.3.2664: tier factor + grade, the roll's order */
   /* v2.3.1207: Tempo folds into the period (see header); the staff's
      +300ms cast penalty is added AFTER the mult, unscaled, matching
      the auto-attack gate. */
@@ -5421,7 +5464,7 @@ export function calcSpecialDmg(weaponType, rpg, tierMult, wpn) {
   var mind = (rpg && rpg.mind) || 0;
   var _p3s = (rpg && prog3Live(rpg)) ? rpg : null;
   var _term = _p3s ? prog3DmgTerm(_p3s, weaponType) : mind * 0.1667;
-  var base = (weaponEffBase(w.base, wpn) + _term) * (tierMult || 1); // baseline-10: 0.8 ÷ 4.8
+  var base = (weaponEffBase(w.base, wpn) + _term) * weaponTierFactor(tierMult || 1) * weaponQualityMult(wpn); // baseline-10: 0.8 ÷ 4.8; v2.3.2664
   if (weaponType === 'staff') return base * (0.5 + Math.random() * 1.15);
   if (weaponType === 'bow')   return base * (0.6 + Math.random() * 0.2);
   return base * (0.75 + Math.random() * 0.5);

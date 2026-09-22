@@ -30,9 +30,23 @@ other.
 | Grade | Mult | Rate |
 |---|---|---|
 | Normal | ×1.00 | 90.1% |
-| Rare | ×1.20 | 9% |
-| Elite | ×1.50 | 0.9% |
-| Godly | ×3.00 | 1 in 400,000 |
+| Rare | ×1.30 | 9% |
+| Elite | ×1.75 | 0.9% |
+| Godly | ×5.00 | 1 in 2,000,000 |
+
+**v2.3.2664 (owner: "especially differences between normal, rare, elite, and
+godly (literally one in millions so make it basically game breaking good)"):**
+the grade now multiplies a weapon's **whole hit**, after the tier factor,
+instead of only its 10-point base — on the base it faded to +12.5 % for a
+godly blade by skill 100 (`data.js weaponQualityMult`, applied by
+`_computeAttackDamage` and `_maxWeaponDmg`). `_weaponEffBase` carries hardness
+alone. The weapon's tier enters the roll as `tierMult^1.5`
+(`weaponTierFactor`, each forge tier ~+18 % instead of ~+11 %). Armour: per-tier
+steps doubled (+10 % / +7 % per tierMult step), each piece stops at 85 %, and
+each godly piece lifts the 75 % ceiling by 10 points (a godly set: 95 %). The
+client mirrors all of it behind `caps.gearq`, predicting the old math against
+an older worker. Measured at Melee 8 with an iron greatsword against an
+at-level brute: normal 4.6 hits, rare 3.7, elite 2.9, godly 1.15.
 
 Rolled ONCE at server mint, immutable. **v1 rolls at the forge only**
 (the sole server-side weapon mint). Monster weapon drops are still

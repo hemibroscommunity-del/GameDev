@@ -783,13 +783,47 @@ export const GUILD_QUESTS = [
 /* v2.3.1131: quality grades (BALANCE-PLAN §4.6b, adopted from GDD --
  * the CANONICAL table).  Multiplies EFFECTIVE WEAPON BASE only
  * (pre-stat, pre-tierMult); rolled ONCE at server mint, immutable.
- *   QUALITY_GRADES <-> src/data/gameSystems.js QUALITY_MULTS  */
+ *   QUALITY_GRADES <-> src/data/gameSystems.js QUALITY_MULTS
+ *
+ * ═══ v2.3.2664: QUALITY MULTIPLIES THE WHOLE HIT, AND GODLY BREAKS THE GAME ═══
+ * Owner, 2026-09-22: "I also want armor, weapon, etc tier to really matter -
+ * especially differences between normal, rare, elite, and godly (literally one
+ * in millions so make it basically game breaking good)."
+ *
+ * Multiplying only the 10-point weapon BASE is what made quality vanish: the
+ * skill term is 1.5/level, so by skill 100 a godly ×3.0 blade hit +12.5 %
+ * harder than a normal one.  So a weapon's grade now multiplies its WHOLE hit,
+ * after tierMult (weaponQualityMult, combat.js), at every level:
+ *   normal ×1.0 · rare ×1.3 · elite ×1.75 · godly ×5.0
+ * ×5 is "basically game breaking" on purpose — a godly weapon one-shots what
+ * a normal one needs four or five swings for — and it is priced by the odds:
+ * 1 in 2,000,000 (hardening.js Q_GODLY), "literally one in millions".
+ * Armour reads the same table on its TIER (combat.js _armorDrMult), and each
+ * godly piece also lifts the reduction ceiling.  Rare/elite odds unchanged. */
 export const QUALITY_GRADES = {
   normal: { mult: 1.00 },
-  rare:   { mult: 1.20 },
-  elite:  { mult: 1.50 },
-  godly:  { mult: 3.00 },
+  rare:   { mult: 1.30 },
+  elite:  { mult: 1.75 },
+  godly:  { mult: 5.00 },
 };
+/* v2.3.2664: a weapon's grade multiplier, one reader (roll + ceiling). */
+export function weaponQualityMult(w) {
+  return (w && QUALITY_GRADES[w.quality]) ? QUALITY_GRADES[w.quality].mult : 1;
+}
+/* ═══ v2.3.2664: A WEAPON TIER MATTERS — tierMult ^ 1.5 in the damage roll ═══
+ * Each forge tier was ~+11 % damage (copper 1.12 → iron 1.25 → steel 1.40…),
+ * which a player cannot feel.  The roll now reads tierMult^1.5, so each step
+ * is ~+18 % (copper ×1.19, iron ×1.40, steel ×1.66, abyssal ×3.72,
+ * worldbreaker ×21.9).  The TABLE is untouched — tierMult still drives the
+ * tier gate's fallback index, armour, prices and every other reader — only
+ * the damage factor bends.  ANTICHEAT LOCKSTEP: _maxWeaponDmg multiplies by
+ * the same weaponTierFactor, and the client's readouts
+ * (src/data/gameSystems.js) mirror both helpers. */
+export const WEAPON_TIER_EXP = 1.5;
+export function weaponTierFactor(tierMult) {
+  const tm = Number(tierMult) || 1;
+  return tm > 0 ? Math.pow(tm, WEAPON_TIER_EXP) : 1;
+}
 
 /* v2.3.1139 (item I): amulet elemDmg mirror for _computeAttackDamage.
  *   AMULET_TIER_POWER <-> src/data/items.js AMULET_TIERS basePower

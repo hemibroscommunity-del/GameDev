@@ -45,7 +45,7 @@ import { MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY, MONSTER_IRON_
    compared directly.  mirror-audit.test.mjs already reaches across the same
    boundary for the constant tables; this reaches for the function, because
    what has to agree here is the arithmetic, not a number. */
-import { getArmorPieceDr } from '../../src/data/gameSystems.js';
+import { getArmorPieceDr, setGearQEnabled /* v2.3.2664 */ } from '../../src/data/gameSystems.js';
 
 function makeState() {
   const store = new Map();
@@ -403,6 +403,9 @@ const DR_CASES = [
      clamp — one that forgot would diverge here and nowhere else. */
   { tierMult: 8, quality: 'godly' },
 ];
+/* v2.3.2664: the client predicts the gear-quality worker's math only when
+   that worker advertises caps.gearq — which this worker does. */
+setGearQEnabled(true);
 const drBad = [];
 for (const c of DR_CASES) {
   const srv = room._armorDrMult({ armor: { ...c }, legsArmor: null });
@@ -417,11 +420,15 @@ const drNormal = 1 - room._armorDrMult({ armor: { tierMult: 2.0, quality: 'norma
 const drGodly = 1 - room._armorDrMult({ armor: { tierMult: 2.0, quality: 'godly' }, legsArmor: null });
 check('a godly chest mitigates measurably more than a normal one',
   drGodly > drNormal + 0.05, { normal: drNormal, godly: drGodly });
-/* ...and cannot escape the ladder the formula was built for.  Multiplying the
-   REDUCTION instead of the tier would put this at 0.90 and leave the 0.75
-   clamp doing all the work. */
-check('...without running straight into the 0.75 clamp',
-  drGodly < 0.70, drGodly);
+/* ...v2.3.2664: and GODLY is now allowed past the 0.75 ceiling — on purpose
+   (owner: "literally one in millions so make it basically game breaking
+   good"): each godly piece lifts the ceiling 10 points, and no single piece
+   passes 90 %, so nothing reaches immunity.  Rare and elite stay under 0.75. */
+const drElite = 1 - room._armorDrMult({ armor: { tierMult: 2.0, quality: 'elite' }, legsArmor: null });
+check('...a godly chest breaks the 75 % ceiling by design, and stops at its lifted 85 %',
+  drGodly > 0.75 && drGodly <= 0.85 + 1e-9, drGodly);
+check('...while rare and elite stay inside the ordinary ladder', drElite <= 0.75, drElite);
+setGearQEnabled(false);
 
 /* ═══ 8. THE IRON PIECES CAN ACTUALLY BE WORN (v2.3.2124) ═══
  * Owner: "There should not be a 30 defense requirement on iron chest plate.

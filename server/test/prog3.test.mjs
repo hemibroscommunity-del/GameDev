@@ -407,7 +407,9 @@ const psA = room.playerState.pa;
   {
     const skLvl = psA.prog3.sk.sword.level;
     const effBase = room._weaponEffBase('sword', psA.weapon);
-    const preVar = (effBase + skLvl * PROG3.DMG_PER_LEVEL.sword + 75 * PROG3.ATK.dmg.per) * 6;
+    /* v2.3.2664: the tier FACTOR is tierMult^1.5 (data.js weaponTierFactor);
+       a literal here, for the reason above. */
+    const preVar = (effBase + skLvl * PROG3.DMG_PER_LEVEL.sword + 75 * PROG3.ATK.dmg.per) * Math.pow(6, 1.5);
     const multiplied = preVar * 0.75 * 1.3 * (1.5 + 100 * PROG3.ATK.luck.dmgPer);
     const anchored = preVar * 1.25 * 2;
     const expected = Math.round(Math.max(multiplied, anchored));
@@ -424,7 +426,7 @@ const psA = room.playerState.pa;
     psA.prog3.atk.sword.dmg = pts;
     Math.random = origRandom;
     const gap = invested.dmg - bare.dmg;
-    const expectedGap = Math.round(75 * PROG3.ATK.dmg.per * 6 * (0.75 + 0.999999 * 0.5) * 1.3);
+    const expectedGap = Math.round(75 * PROG3.ATK.dmg.per * Math.pow(6, 1.5) * (0.75 + 0.999999 * 0.5) * 1.3);  /* v2.3.2664: tier factor */
     check('the dmg stat adds pts×0.5 inside the pre-tier sum',
       Math.abs(gap - expectedGap) <= 1 && invested.isCrit === false, { gap, expectedGap });
   }
@@ -951,7 +953,7 @@ const psA = room.playerState.pa;
   const TYPE = { melee: 'sword', ranged: 'bow', staff: 'staff' };
   for (const slot of ['melee', 'ranged', 'staff']) {
     const w = slot === 'melee' ? ps.weapon : slot === 'ranged' ? ps.rangedWeapon : ps.staffWeapon;
-    const preVar = (room._weaponEffBase(TYPE[slot], w) + PROG3.DMG_PER_LEVEL[TYPE[slot]]) * 2;
+    const preVar = (room._weaponEffBase(TYPE[slot], w) + PROG3.DMG_PER_LEVEL[TYPE[slot]]) * Math.pow(2, 1.5);  /* v2.3.2664: tier factor */
     const rangeTop = preVar * BAND_TOP[slot];
     /* A SEQUENCE, not one value.  _computeAttackDamage draws variance first
        and the crit roll second, so a single stub cannot ask for "best roll
@@ -988,7 +990,7 @@ const psA = room.playerState.pa;
      recovers the multiplier the code actually used. */
   {
     const w = ps.staffWeapon;
-    const preVar = (room._weaponEffBase('staff', w) + PROG3.DMG_PER_LEVEL.staff) * 2;
+    const preVar = (room._weaponEffBase('staff', w) + PROG3.DMG_PER_LEVEL.staff) * Math.pow(2, 1.5);  /* v2.3.2664: tier factor */
     /* crit would multiply on top and hide the band, so the second draw is
        forced to 1 -- above any crit chance -- exactly as the loop above
        forces 0.0 to guarantee one. */

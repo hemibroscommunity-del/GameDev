@@ -69,7 +69,7 @@ import {
   ELEMENT_STATUS, applyElementStatus, resolveElementCollision, fractureDmgMult,
   elemAttackStat, // v2.3.2199: prog3 `elem` stat resolver for the DoT power snapshot
 } from './elemental.js';
-import { AMULET_TIER_POWER, t2CounterRate, QUALITY_GRADES /* v2.3.1925 */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+import { AMULET_TIER_POWER, t2CounterRate, QUALITY_GRADES /* v2.3.1925 */, weaponTierFactor, weaponQualityMult /* v2.3.2664 */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 import { BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST } from './data.js'; // v2.3.1919: a blocked PvP hit costs stamina too
 import { LIVEOPS } from './liveops.js';
 import { PROG3 } from './prog3.js'; // v2.3.1659: the trained-skill combat rebuild config
@@ -178,9 +178,22 @@ export const combatMethods = {
      reaches 65% / 44.5%, i.e. 0.806 combined, which the cap then holds at
      0.75.  Cap is the LAST word: no combination of tiers makes a player
      immune. */
+  /* ═══ v2.3.2664: ARMOUR TIER STEPS DOUBLE, AND GODLY LIFTS THE CEILING ═══
+     Owner: "I also want armor ... tier to really matter - especially
+     differences between normal, rare, elite, and godly".  At +5 % / +3.5 %
+     per tierMult step a forge upgrade moved the combined reduction about ONE
+     point (copper 45 % → iron 46 %).  Doubled to +10 % / +7 %, each early step
+     is 2–3 points and the ladder reaches the 75 % ceiling at sunstone instead
+     of never below the very top.  Each PIECE now stops at 85 % — exactly the
+     ceiling one godly piece lifts to, so a godly chest's own card and the
+     wearer's total say the same number — and no tier × grade product can
+     make one piece total.
+     Godly (1 in 2,000,000 per piece) is the one thing allowed past 75 %: each
+     godly piece worn lifts the ceiling by 10 points — one godly piece 85 %,
+     a godly set 95 %.  That is the owner's "basically game breaking good". */
   _armorDrMult(ps) {
     if (!ps) return 1;
-    const MAX_DR = 0.75;
+    const MAX_DR = 0.75 + 0.10 * [ps.armor, ps.legsArmor].filter((a) => a && a.quality === 'godly').length;
     const piece = (a, base, perTier) => {
       if (!a) return 0;
       /* ═══ v2.3.1925: QUALITY MULTIPLIES THE TIER, NOT THE REDUCTION ═══
@@ -196,10 +209,10 @@ export const combatMethods = {
          Clamped by the same [0,8] as before, so no grade can escape it. */
       const q = QUALITY_GRADES[a && a.quality] ? QUALITY_GRADES[a.quality].mult : 1;
       const tm = Math.max(0, Math.min(8, (Number(a.tierMult) || 1) * q));
-      return base + perTier * (tm - 1);
+      return Math.min(0.85, base + perTier * (tm - 1));   /* v2.3.2664: a piece stops at 85 % */
     };
-    const chest = piece(ps.armor, 0.30, 0.05);
-    const legs = piece(ps.legsArmor, 0.20, 0.035);
+    const chest = piece(ps.armor, 0.30, 0.10);   /* v2.3.2664: +10 % per tier step (was 5 %) */
+    const legs = piece(ps.legsArmor, 0.20, 0.07); /* v2.3.2664: +7 % (was 3.5 %) */
     if (chest <= 0 && legs <= 0) return 1;
     const combined = 1 - (1 - chest) * (1 - legs);
     return 1 - Math.min(MAX_DR, combined);
@@ -494,7 +507,9 @@ export const combatMethods = {
           + this._prog3AtkPts(ps, _cat, 'dmg') * PROG3.ATK.dmg.per;
       }
       const channelFlat = isSpecial ? 0 : this._wpnDmgFlat(ps, w.type); // reads 0 under prog3 (_t2Flat gate)
-      const base = (this._weaponEffBase(w.type, w) + bonus) * (w.tierMult || 1) + channelFlat;
+      /* v2.3.2664: the tier FACTOR (tierMult^1.5) and the weapon's grade, exactly
+         where the roll applies them — lockstep by construction. */
+      const base = (this._weaponEffBase(w.type, w) + bonus) * weaponTierFactor(w.tierMult || 1) * weaponQualityMult(w) + channelFlat;
       if (base > max) max = base;
     }
     return max;
@@ -657,7 +672,10 @@ export const combatMethods = {
       statTerm = _skLvl * PROG3.DMG_PER_LEVEL[_cat]
         + this._prog3AtkPts(ps, _cat, 'dmg') * PROG3.ATK.dmg.per;
     }
-    let base = (this._weaponEffBase(type, w) + statTerm) * tierMult;
+    /* v2.3.2664: × the tier FACTOR (tierMult^1.5 — each forge tier ~+18 %) and
+       × the weapon's GRADE on the whole hit (normal 1 / rare 1.3 / elite 1.75
+       / godly 5), both from data.js; _maxWeaponDmg carries the same two. */
+    let base = (this._weaponEffBase(type, w) + statTerm) * weaponTierFactor(tierMult) * weaponQualityMult(w);
     /* Per-type variance -- same rolls as the client.
        v2.3.2212: the band is a TABLE now, read twice: once to roll, and
        once for the crit anchor below.  Two literals would have drifted the
