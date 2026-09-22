@@ -97,6 +97,19 @@ function _probeStandInSkin(key, cv, opts) {
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
+import { footprintFrames } from '@/rendering/footprintSprites.js'; /* v2.3.2647: prints in the snow */
+
+/* v2.3.2647: how a print reads and how long it lasts.  PRINT_TTL_MS is
+   mirrored by stateCleanup's filter -- the array and the drawer must expire on
+   the same number or the pool draws entries the cleaner has already dropped
+   (or worse, keeps sprites for entries that will never be cleaned). */
+export const PRINT_TTL_MS = 9000;
+const PRINT_W = 32;        /* world px across a PAIR -- a stride, not a boot.
+                              40 first, which rendered at 54% of the visible
+                              body height (~74 world px) and read as clown
+                              feet; 32 is ~43% and still reads at phone size. */
+const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
+
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
 import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the wind-up bar reads the button ring's own numbers) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
@@ -3178,6 +3191,7 @@ export class EffectsRenderer {
     this._updateAtmosphere(S, viewW, viewH, now);
     this._updateGroundLoot(S, now);
     this._updateGroundSplatter(S);
+    this._updateFootprints(S, now);   /* v2.3.2647: prints in the snow */
     this._updateGatherNodes(S, now);
     this._updateMonsterImpacts(S, now);
     this._updateDebrisBursts(S, now);   /* v2.3.2200: material hit debris */
@@ -7116,6 +7130,63 @@ export class EffectsRenderer {
         this._knownLoot.delete(l);
       }
     }
+  }
+
+  /* ── Footprints (v2.3.2647) ── */
+  /* The four source frames are a FADE, not a loop: the pair disperses as it
+     ages, which is what a print in snow actually does.  So the frame is picked
+     from AGE rather than from a clock -- a print spawned this second and one
+     spawned four seconds ago must not be showing the same frame, which is
+     exactly what a shared wall clock would do (the fountain wants that, a
+     decal never does).
+     Drawn on the splat layer, which sits UNDER the player: a print is in the
+     ground, and one drawn over your boots would read as a sticker. */
+  _updateFootprints(S, now) {
+    const prints = S.footprints || [];
+    const frames = footprintFrames(S.currentZone);
+    if (!this._printPool) this._printPool = [];
+    const pool = this._printPool;
+    if (!frames || !frames.length) {
+      /* No art for this zone (or it has been freed on the way out): hide the
+         pool rather than destroying it.  Hiding costs nothing and keeps a
+         zone re-entry from re-allocating the whole pool. */
+      for (let i = 0; i < pool.length; i++) if (pool[i]) pool[i].visible = false;
+      return;
+    }
+    for (let i = 0; i < prints.length; i++) {
+      const d = prints[i];
+      const age = now - (d.ts || 0);
+      let sp = pool[i];
+      if (!sp || sp.destroyed) {
+        sp = new Sprite(frames[0]);
+        sp.anchor.set(0.5, 0.5);
+        this.splatLayer.addChild(sp);
+        pool[i] = sp;
+      }
+      if (age >= PRINT_TTL_MS) { sp.visible = false; continue; }
+      /* ROTATION HAS A +PI/2, AND IT IS NOT OPTIONAL.
+         The art is drawn with the TOES POINTING NORTH (-y) -- measured, not
+         assumed: split frame 0 in half and the top is 87px of ink against the
+         bottom's 83, and a print is wider at the toe pad than at the heel.
+         `ang` is atan2(dy,dx), measured from +x. So pointing the print along
+         the walk needs a quarter turn.
+         The first cut of this line asserted the art pointed EAST and used the
+         angle bare -- while the comment beside it said a stray +PI/2 here
+         would be "invisible in code review and obvious in play". It was both.
+         A screenshot of the trail caught it; nothing else would have. */
+      const fi = Math.min(frames.length - 1, Math.floor((age / PRINT_TTL_MS) * frames.length));
+      if (sp.texture !== frames[fi]) sp.texture = frames[fi];
+      sp.x = d.x; sp.y = d.y;
+      sp.rotation = (d.ang || 0) + Math.PI / 2;
+      sp.width = PRINT_W;
+      sp.height = PRINT_W * (frames[fi].height / (frames[fi].width || 1));
+      /* Alpha rides the last third on top of the frame fade, so the final
+         frame leaves rather than popping out. */
+      const t = age / PRINT_TTL_MS;
+      sp.alpha = PRINT_ALPHA * (t < 0.66 ? 1 : 1 - (t - 0.66) / 0.34);
+      sp.visible = true;
+    }
+    for (let i = prints.length; i < pool.length; i++) if (pool[i]) pool[i].visible = false;
   }
 
   /* ── Ground Splatter ── */

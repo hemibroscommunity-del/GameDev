@@ -45,6 +45,7 @@ import { preloadFullsetFigures } from './gearSheets.js'; /* v2.3.1376: fullset k
 import { preloadJogHeadOverlays } from './playerSkins.js'; /* v2.3.1376: their head overlays */
 import { ZONE_VARIANT_MAP, MONSTER_VARIANTS, variantsForZone } from '../data/monsterVariants.js'; /* v2.3.1405: per-zone variant scoping */
 import { loadMonsterRecolor, recolorFamilyOf, freeMonsterRecolor } from './monsterRecolor.js'; /* v2.3.1534: per-zone recolour; v2.3.2272: and its release */
+import { loadFootprints, freeFootprints } from './footprintSprites.js'; /* v2.3.2647: per-zone ground reaction */
 import { loadNpcSprites, loadZoneDecor, freeZoneDecor } from './npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2644: + per-zone decor props */
 import { preloadLevelUpBurst } from './levelUpBurstPreload.js';
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
@@ -116,6 +117,11 @@ export async function preloadZoneAssets(zoneId) {
      without the await that retry IS a first-sighting load. Resolves instantly
      for the eleven zones that have no decor yet. */
   tasks.push(Promise.resolve(loadZoneDecor(zoneId)).catch(() => {}));
+  /* v2.3.2647: and the zone's footprint art, on the same terms -- 0.139MB for
+     frost, nothing for the eleven zones with no strip of their own. Awaited so
+     the FIRST step a player takes already has its texture; a lazy load here
+     would mean the opening stride of every zone entry leaves nothing behind. */
+  tasks.push(Promise.resolve(loadFootprints(zoneId)).catch(() => {}));
   /* frost is the only snowman zone — its sprites + the ice-burst impact
      sheet (both ~2MB) load here instead of globally. */
   if (zoneId === 'frost') {
@@ -216,8 +222,14 @@ export async function freeZoneAssets(fromZoneId, toZoneId) {
   tasks.push(Promise.resolve(freeZoneDecor(fromZoneId, toZoneId))
     .then((d) => { decorFreed = d || []; })
     .catch(() => { /* a texture that will not release is a leak, not a crash */ }));
+  /* v2.3.2647: and the footprint strip, with the same keep-what-the-
+     destination-uses subtraction (a no-op today -- only frost has prints). */
+  let printsFreed = false;
+  tasks.push(Promise.resolve(freeFootprints(fromZoneId, toZoneId))
+    .then((f) => { printsFreed = !!f; })
+    .catch(() => { /* same posture as the decor above */ }));
   await Promise.allSettled(tasks);
-  return { from: fromZoneId, to: toZoneId || null, dropped: drop, banners: bannersFreed, decor: decorFreed };
+  return { from: fromZoneId, to: toZoneId || null, dropped: drop, banners: bannersFreed, decor: decorFreed, prints: printsFreed };
 }
 
 export async function preloadWorldAnimations() {

@@ -8,6 +8,13 @@
    simulation. Only capture is BT_AUDIO (footsteps); S is stateRef.current
    and the block reads S.player directly. */
 import { BT_AUDIO } from '@/data/index.js';
+import { zoneLeavesPrints } from '@/rendering/footprintSprites.js'; /* v2.3.2647 */
+
+/* World px between footprint PAIRS, and the live cap.  PRINT_TTL_MS lives in
+   the renderer with the fade it drives; stateCleanup filters on the same
+   number and the two are asserted in lockstep there. */
+var PRINT_GAP = 46;
+var PRINT_MAX = 40;
 
 export function updateVisualSystems(S) {
         /* ── Screen shake decay ── */
@@ -66,6 +73,52 @@ export function updateVisualSystems(S) {
             S._footstepTimer -= 6;
             if (S.stats) S.stats.steps++;
           }
+        }
+
+        /* ═══ v2.3.2647: PRINTS IN THE SNOW ═══
+           The visible half of a footstep, in the zones that have the art.
+
+           BY DISTANCE, NOT BY THE STEP TIMER ABOVE.  That timer is a fixed
+           6 dt-units -- ~10 a second whatever your speed -- so pinning prints
+           to it would space them by SPEED: a smear when you dawdle and a
+           dotted line when you sprint, which is backwards.  Distance gives one
+           pair every PRINT_GAP px however fast you cross it, which is what a
+           trail is.
+
+           The gap is a little wider than the art (95px of frame drawn at ~40
+           world px) so consecutive pairs read as separate prints rather than a
+           continuous furrow.
+
+           Spawned from the LAST position, not the current one: the print
+           belongs where the foot was when it came down. */
+        if (_fIsMoving && zoneLeavesPrints(S.currentZone)) {
+          var _pLast = S._printLast;
+          if (!_pLast) { S._printLast = { x: S.player.x, y: S.player.y }; }
+          else {
+            var _pdx = S.player.x - _pLast.x, _pdy = S.player.y - _pLast.y;
+            if (_pdx * _pdx + _pdy * _pdy >= PRINT_GAP * PRINT_GAP) {
+              if (!S.footprints) S.footprints = [];
+              S.footprints.push({
+                x: _pLast.x, y: _pLast.y,
+                /* Rotated to the direction of travel so the toes point the way
+                   you went.  A pair of prints that always faces south would be
+                   wallpaper, not a trail. */
+                ang: Math.atan2(_pdy, _pdx),
+                ts: Date.now(),
+              });
+              /* Hard cap, like every other decal pool here: the renderer's
+                 sprite pool is sized off this array, so an uncapped walk would
+                 grow the scene graph for the life of the session. */
+              if (S.footprints.length > PRINT_MAX) {
+                S.footprints.splice(0, S.footprints.length - PRINT_MAX);
+              }
+              S._printLast = { x: S.player.x, y: S.player.y };
+            }
+          }
+        } else if (!_fIsMoving) {
+          /* Standing still resets the anchor, so the first step after a pause
+             is a fresh gap rather than a print dropped the instant you move. */
+          S._printLast = null;
         }
 
         /* ── Other player interpolation ── */

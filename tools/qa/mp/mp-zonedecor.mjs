@@ -194,6 +194,48 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the block reports the near face as the impact point',
     !!los.point && Math.abs(los.point.y - 528) < 1.5, { point: los.point });
 
+  /* ── 3c. FOOTPRINTS (v2.3.2647) ──
+     The game's first grounding cue. Two things are worth pinning: the art is
+     PER-ZONE (so it must be resident in frost and gone in town), and the
+     prints are spawned by DISTANCE rather than by the step timer -- so a real
+     walk has to produce them. hopTo cannot be used here: it teleports by
+     writing S.player.x/y and leaves vx/vy at 0, and the spawner is gated on
+     actually moving. */
+  const printArt = await P.page.evaluate(() =>
+    (window.__btFootprints && window.__btFootprints()) || []);
+  rec.ok('frost holds its footprint art', printArt.indexOf('frost') >= 0, { printArt });
+
+  /* A REAL key press, not a written velocity. The first cut of this set
+     S.player.vx directly and measured `moved: 0` -- the loop does not
+     integrate vx into position, it derives vx FROM the input each frame, so
+     writing it is writing to an output. Pressing the key is the only honest
+     way to make the bro walk. */
+  await P.page.evaluate(() => { window._gameState.current.footprints = []; });
+  const walkStart = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+  await H.nudge(P, 'd', 2200);
+  const walk = await P.page.evaluate((w0) => {
+    const S = window._gameState.current;
+    const f = S.footprints || [];
+    const x0 = w0.x, y0 = w0.y;
+    return {
+      moved: Math.round(Math.hypot(S.player.x - x0, S.player.y - y0)),
+      n: f.length,
+      first: f[0] ? { ang: f[0].ang, hasTs: !!f[0].ts } : null,
+      /* The gap between consecutive pairs should be ~PRINT_GAP (46), not the
+         per-frame step: that is what "by distance" means. */
+      gap: f.length > 1 ? Math.round(Math.hypot(f[1].x - f[0].x, f[1].y - f[0].y)) : null,
+    };
+  }, walkStart);
+  rec.ok('walking in frost actually moved the bro (guard)', walk.moved > 60, walk);
+  rec.ok('...and left footprints behind', walk.n > 0, walk);
+  rec.ok('...spaced by distance (~46px), not by frame', 
+    walk.gap === null || (walk.gap >= 40 && walk.gap <= 56), walk);
+  rec.ok('...each carrying a travel angle and a timestamp',
+    !!walk.first && walk.first.hasTs && Number.isFinite(walk.first.ang), walk);
+
+  await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/zonedecor-footprints.png` })
+    .catch(() => { /* evidence, not an assertion */ });
+
   /* ── 4. LEAVING RELEASES IT ── */
   await openPanel(P);
   await tap(P, 'Town');
@@ -204,6 +246,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const afterBundles = await decorBundles(P);
   rec.ok('leaving frost RELEASES its decor (the half v2.3.1405 forgot)',
     afterBundles.length === 0, { afterBundles });
+
+  const printAfter = await P.page.evaluate(() =>
+    (window.__btFootprints && window.__btFootprints()) || []);
+  rec.ok('...and the footprint art is released with it',
+    printAfter.indexOf('frost') < 0, { printAfter });
 
   const afterProps = await propsDrawn(P);
   rec.ok('and no frost prop is drawn back in town',
