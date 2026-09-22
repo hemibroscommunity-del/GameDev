@@ -60,7 +60,7 @@ if (!EAR) { console.error('--species must be monkey or alien'); process.exit(1);
 const OUT_RATIO = 0.125;
 
 const CELL = +arg('--cell', 96), COLS = +arg('--cols', 8), PAD = 3;
-const TIER_RGB = { eye: [80, 200, 110], interp: [225, 195, 70], walk: [225, 90, 80] };
+const TIER_RGB = { eye: [80, 200, 110], interp: [225, 195, 70], crown: [235, 140, 60], walk: [225, 90, 80] };
 const BG = [16, 18, 24];
 
 /* profile sampled for an ear `h` rows tall */
@@ -92,7 +92,7 @@ for (const base of Object.keys(A).sort()) {
     const i = (y * OW + x) * 4;
     out[i] = rgb[0]; out[i + 1] = rgb[1]; out[i + 2] = rgb[2]; out[i + 3] = a;
   };
-  const tierCount = { eye: 0, interp: 0, walk: 0 };
+  const tierCount = { eye: 0, interp: 0, crown: 0, walk: 0 };
 
   tuples.forEach((t, f) => {
     const cx = PAD + (f % COLS) * (CELL + PAD), cy = PAD + Math.floor(f / COLS) * (CELL + PAD);

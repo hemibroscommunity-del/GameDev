@@ -3931,3 +3931,57 @@ at"* — and every one of the three findings here was invisible to measurement.
 **Receipt:** `node tools/ears/ear-anchors.mjs --report` for the tiers,
 `node tools/ears/ear-contact-sheet.mjs --cell 224 --only stand-east` for the
 profile bug. §90 has the four anchors that never worked at all.
+
+## 92. A review can be too lenient to catch a 4-pixel bug (v2.3.2645)
+
+**Tempting:** you built the review harness (§91), rendered the proposal onto
+every frame, looked at the sheets, found three real bugs and fixed them. The
+placement is reviewed. Ship it.
+
+**Wrong:** it shipped with the ear line **four pixels low on every frame that
+had one**, and the review passed it.
+
+### The bug
+
+`eyeMask.json` stores an iris as a **stack of 1-row rects** — `stand-south` is
+fourteen of them, rows 53..59. The anchor took the ear line as
+`max(ry + rh/2)`, reading like "the middle of the iris". Over a stack of 1-row
+rects that is the middle of the *last row*: 59.5, rounded to 60, when the iris
+centre is 56.
+
+Four pixels put the ear on the jaw. Worse, the head's sides were then measured
+by scanning outward *at that row* — and on this art the shoulders begin at row
+55, so the scan left the head and stopped at the deltoid. `stand-south` recorded
+a **51px** head where the art says **43**.
+
+### Why looking at it did not catch it
+
+The review cells were 96px for a ~45px head, so roughly 2x. A 4px error is 8
+screen pixels in a cell where the ear itself is ~12 — it reads as "about right",
+and it was accepted as such. **The review was lower-resolution than the bug.**
+
+What caught it was dumping the frame as ASCII in 256-space, one character per
+pixel with column numbers, and counting: eyes at rows 51..59, head edges at
+x=106 and x=148, shoulders starting at row 55. Against that, `[102, 152, 60]` is
+obviously three separate errors.
+
+### The rule
+
+**Review at the precision of the thing being reviewed.** A rendered overlay
+answers "is this roughly on the head" and will happily pass a systematic
+few-pixel bias; a numeric read of the pixels answers "is this the right row and
+column". Pixel-art placement needs the second, at least once per pose family,
+and the first for everything else.
+
+Corollary, from the same session: **a plausibility bound is a review finding,
+not a guess.** The head-width cap was a loose 110 and let `bow-east` through
+with a 100px "head" — the detector had swallowed the bow. The measured range
+across everything that verifies against a reviewed iris is 41–54, dodge 73. The
+cap is 78 now, and it rejects that frame instead of placing an ear on a weapon.
+
+**Receipt:** the fix decoupled the ear line (iris *centre*) from the head sides
+(the width *plateau* below the crown, which needs no iris and so also reached
+the back-facing sheets — coverage 417 → 660 of 712). The plateau matches a hand
+read exactly on `stand-north` and within 1px on `stand-south`.
+`node tools/ears/ear-anchors.mjs --report`; §91 has the harness, §90 the five
+anchors that never worked.

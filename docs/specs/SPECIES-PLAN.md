@@ -166,32 +166,66 @@ None of those three were findable by measurement. They came from rendering the
 proposal onto the real frames and looking, which is the whole argument for the
 harness.
 
+### Stage 2b — the plateau anchor, and a bug in Stage 2a (v2.3.2645)
+
+**Stage 2a shipped a systematic error.** The ear line was taken as
+`max(ry + rh/2)` over the iris rects — which is the **bottom** of the iris, not
+its middle, because the mask stores an iris as a stack of 1-row rects.
+`stand-south`'s rows 53..59 gave 60 instead of 56. Four pixels low put the ear
+on the jaw, and the outward scan from there ran into the **shoulder**: that head
+measured 51px wide where the art says 43.
+
+**The contact sheet did not catch it.** 4px on a 96px review cell reads as
+"about right", and it was accepted. What caught it was hand-reading the sheet as
+ASCII in 256-space and counting columns. That is the second lesson of TRAPS §92:
+a review has to be as precise as the thing being reviewed.
+
+**The fix decoupled the two measurements**, because they need different
+evidence:
+
+- **Ear line** ← the iris *centre*, where an iris exists.
+- **Head sides** ← the **width plateau** below the crown. A skull widens from
+  the crown, holds near-constant through the ear line, then the shoulders add a
+  second, separate widening. The longest near-constant run is the head.
+
+Two bounds make the plateau work, both found by getting it wrong: search only
+`crown..crown+32` (unbounded, the **torso** is a longer plateau and wins —
+`stand-south` returned the chest at 64px), and compare each row to the run's
+*first* width rather than a running median (a median drifts up as the head
+widens and closes the run early).
+
+**Receipt:** it matches a hand read of the art exactly on `stand-north`
+(107..147) and within 1px on `stand-south` (106..149 vs 106..148). And because
+it needs no iris, it reaches the back-facing sheets Stage 2a had to leave bare.
+
+For frames with no iris the ear line is a calibrated drop below the crown —
+`0.53 × head width`, measured across every frame that has both (0.477–0.609, a
+tight band). Two guards reject a "crown" that is really a raised weapon: the
+drop band itself (`sword-south`'s sword tip scores 3.77) and the gap between
+crown and plateau (`sword-south` 0.58 head-widths, `stand-south` 0.23).
+
+A third guard came from the review: the head-width ceiling. A loose 110 let
+`bow-east` through with a **100px "head"** — the plateau swallowing the bow. The
+measured range is 41–54, with the dodge roll at 73, so the cap is now 78.
+
 ### Where the coverage actually stands
 
 Counting only sheets that *should* have ears (armour overlays have the helmet
 erased and take the head from a `*-head` sheet; `*-weapon` sheets have no head;
 `welcome-bro` is an orphan nothing references):
 
-**417 of 712 frames — 59%.** And the shape of the remainder is clean: no sheet
-is partially covered. A sheet either has iris data and interpolates to 100%, or
-has none and sits at 0.
+**660 of 712 frames — 93%**, up from 417.
 
-| | state |
-|---|---|
-| **Done** (east / south / southwest) | `stand` `jog` `attack` `bow` `sword` `dodge` `pickup` — all 100% |
-| **No landmark** (33 sheets, 295 frames) | everything `north` / `northeast`, plus `hit` (all five dirs), `fish`, `mine`, `bow-south-body/torso` |
+Re-reviewed on the contact sheet: `stand-south` and `stand-north` seated
+correctly, and the `crown` tier holds across all 23 frames of `jog-north` —
+which is the case that matters, since that is a player running away from the
+camera.
 
-So a player walking toward the camera or in profile has ears; facing away, or
-mid-recoil, mining or fishing, does not.
-
-**The gap is not fixable by extending the eye tool.** It was re-run at
-v2.3.2644 and finds the same 34 sheets / 302 frames: its skin-based iris
-discriminator genuinely cannot find eyes in the `hit` (face distorted by
-recoil), `mine`, `fish` or back-facing sheets. So those 33 sheets need a
-landmark of their own — a crown-anchored one is the obvious candidate, since
-`body-tops.json` gives the topmost opaque pixel with no detection at all and is
-therefore trustworthy — followed by its own contact-sheet review. That is the
-next piece of work, and it is the last thing between here and the painter.
+**Still bare, 50 frames:** `bow` (22 — the bow is held across the face, so
+neither the crown nor a plateau around the iris finds the skull) and
+`sword-south-body` / `-torso` (28). These want hand-authored seeds, which
+interpolation then spreads: with interpolation proven, a strip needs only two or
+three, not one per frame.
 
 ### What is left after that
 
