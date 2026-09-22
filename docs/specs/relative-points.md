@@ -29,6 +29,12 @@ fighting a monster close in level to them."*
   above you, and is worth nothing at 5 levels above.** Your trained skill
   levels and your gear are untouched by it — they are the universal half.
   Your points are the relative half. (§2)
+- **"Your level" is the LANE's trained skill**, not the character level — the
+  sim overturned this note's first draft. Character level is a sum, so raising
+  two untrained skills buys 18 character levels for the XP that buys 3 Melee
+  levels, and under a character-level yardstick that is a 170×-cheaper way to
+  make your points count. The lane's own level is ungameable and is the number
+  that already gates your weapon. (§2, §4.6b)
 - **Seven stats become relative; six stay universal.** Relative: Power, Luck,
   Special, Element (the four lane stats that change a hit) and Defense,
   Dodge, Resist (the three shared stats that change a hit taken). Universal:
@@ -49,6 +55,12 @@ fighting a monster close in level to them."*
   only the universal HP points). Today
   that same character reads 2.7 / 9.9 at level 20 and 2.8 / 8.0 at level 25:
   monster level barely matters. (§4)
+- **Pure builds come out ahead, and the relative game is a level-3-to-40 arc.**
+  A one-lane specialist keeps a 2.3× kill advantage over a three-lane spread at
+  the same character level, resting on the universal half (skill damage and the
+  weapon tier its lane unlocks). A single-stat build stops being possible: the
+  smaller caps fill by character level ~40 and force breadth after that, and
+  from 40 to 300 every remaining point is a universal one. (§4.6)
 - **The catch you need to know before saying go.** Every world zone is
   pinned to level 1–2 monsters by your own directive (v2.3.1160, "I have not
   made more depth zones yet since the game is still a demo"). So today the
@@ -125,19 +137,43 @@ nameplate already draws (`plateBandFor`, entityRenderer.js, from the
 constant away if live play wants +1 to sting harder — `EDGE.CURVE` in the
 decision table.
 
-**Why "your level" is the character level** (Melee + Bow + Magic, the number
-on your own plate), not the skill you are swinging: it is the ONE level the
-game already compares to monsters everywhere it does so — the nameplate band,
-the dungeon's monster-level cap (`ps.level`, dungeon.js), the zone entrance
-warning (`player level + 5`, zoneTransitions.js). A second comparison the
-screen never shows is a rule players cannot see. The known wrinkle, stated
-rather than hidden: because character level is a SUM, a 20/20/20 character
-reads level 60 on a seventh of the XP a 40/1/1 character spent to read 42,
-and so gets full points against monsters the specialist does not. That
-imbalance already exists in the plate and the dungeon cap; if it ever bites,
-the fix belongs in the character-level formula, not in a second level for
-the edge. The alternative ("lane stats compare to the lane's own skill,
-shared stats to your highest skill") is costed in §10.
+**Why "your level" is the LANE's own trained skill** — Melee's points measure
+against your Melee level, Bow's against your Bow level, and the shared stats
+against your highest trained skill. Not the character level, and this note's
+first draft had it the other way round. **The sim overturned it** (§4.6b),
+because character level is a SUM and the exponential XP curve makes the
+cheapest levels the ones you have not trained:
+
+| from Melee 40 / 1 / 1 | XP | character levels bought |
+|---|---|---|
+| deepen Melee 40 → 43 | 320,467 | +3 |
+| raise Bow and Magic 1 → 10 each | 9,818 | **+18** |
+
+Against a level-50 brute, a Melee 40 character with no off-skills reads
+character level 42 and gets **0 %** of their points; the same Melee 40, same
+abyssal greatsword, same skill damage, with Bow and Magic at 10 reads level 60
+and gets **100 %**. Measured, that is 5.1 monster swings survived against 23.3
+— for 9,818 XP. A yardstick you can lift 170× more cheaply by NOT training the
+skill you fight with is not a difficulty measure, it is an exploit, and it
+punishes exactly the specialist the trained-skill system was built for.
+
+The lane's own level cannot be gamed: it is the number that already gates your
+weapon tier (`tierIndex × 5`) and already sets your damage term (`skill × 1.5`),
+so your points, your gear and your damage finally agree about which monsters
+you belong in front of. It is also on screen already — the Points screen's
+column headers carry each lane's level, and the dashboard's three combat cards
+read `<skill> level N`. Shared stats take your **highest** skill so a defensive
+point cannot be priced off a lane you never trained, and so switching weapons
+never changes how tough you are.
+
+**What this costs, and it is a real cost:** the nameplate's difficulty border
+compares the monster to your CHARACTER level (`plateBandFor`), so under this
+yardstick the colour on the plate no longer predicts your point strength.
+Decision 11 in §10 is whether the plate follows the same yardstick (a
+client-only change, and arguably a better plate — "how does this monster
+compare to the weapon in my hands") or stays as the owner's 2026-09-14 mock
+specified it. Character level keeps every other job it has: the plate, the
+dungeon monster cap, HP per level, and the §6-C double cap.
 
 **Below your level: no bonus.** Edge is 100 %, never more. Lower monsters
 already die faster; making points worth MORE than their face value there
@@ -310,6 +346,102 @@ so the edge never fades for a maxed character — which is the right reading of
   (10.8 → 7.9), not the printed digit; by level 10 the printed number moves
   too.
 
+### 4.6 What it does to PURE builds
+
+Three different things are called a pure build, and the design treats them
+differently. Every table below is the sim's §7 (`7a`–`7d`).
+
+#### 4.6a One lane deep beats three lanes shallow, and by slightly less
+
+A Melee 40 / Bow 1 / Magic 1 specialist and a 14 / 14 / 14 spread both read
+character level 42 and have both earned the same 117 shared points. The
+specialist has 117 points in the Melee lane; the spread has 39 (a lane point
+can only buy its own lane's stats). Both fully invested, against a brute:
+
+| build | today, Lv 42 | today, Lv 47 | proposed, Lv 42 | proposed, Lv 47 |
+|---|---|---|---|---|
+| specialist 40/1/1 (abyssal, ×2.40) | 1.5 hits / 6.5 survived | 1.7 / 5.7 | **1.2 / 15.1** | 2.0 / 5.5 |
+| spread 14/14/14 (iron, ×1.25) | 4.0 / 6.5 | 4.4 / 5.8 | **2.8 / 14.9** | 6.9 / 5.5 |
+| specialist's kill advantage | 2.7× | 2.6× | **2.3×** | 3.5× |
+
+The specialist stays far ahead, and the reason matters: **their advantage moves
+almost entirely onto the universal half.** Both builds cap Power at 25 now, so
+the point-derived damage converges; what is left between them is the skill
+damage term (60 against 21) and the weapon tier their lane unlocks (abyssal
+×2.40 against iron ×1.25 — the forge gate reads the LANE, not the character
+level). That is the design working as stated: points are your edge at your own
+level, and depth is what makes you strong in absolute terms.
+
+Note the last column. Against a monster 5 above them, the specialist's
+advantage *widens* to 3.5× — with nobody's points counting, only trained depth
+and gear are left, and that is all the specialist's.
+
+#### 4.6b Purity in the LANE sense is what decision 2 is about
+
+The table in §2: with a character-level yardstick, a Melee 40 specialist gets
+0 % of their points against a level-50 brute while an otherwise identical
+Melee 40 with Bow and Magic at 10 gets 100 %, for 9,818 XP against the 320,467
+a comparable Melee gain costs. Measured against that brute:
+
+| build (all Melee 40, same greatsword) | char | today | yardstick = char level | yardstick = the lane |
+|---|---|---|---|---|
+| pure 40/1/1 | 42 | 1.8 / 5.4 | 0 % · 2.0 / 5.1 | 0 % · 2.0 / 5.1 |
+| cross 40/10/10 | 60 | 1.6 / 8.4 | 100 % · **1.4 / 23.3** | 0 % · 2.0 / 9.9 |
+| cross 40/20/20 | 80 | 1.5 / 12.8 | 100 % · **1.4 / 30.7** | 0 % · 2.0 / 12.8 |
+
+Under the lane yardstick the kill count is identical down the column, which is
+the correct answer: the same weapon in the same hands against the same monster
+should hit the same, whatever else you have dabbled in. The survival gain that
+remains (5.1 → 9.9 → 12.8) is the universal half — HP per character level and
+more shared points — and it is the same size as today's (5.4 → 8.4 → 12.8). So
+decision 2-B leaves cross-training exactly as attractive as it is now, and no
+more. **That is why the recommendation flipped.**
+
+#### 4.6c A single-stat build becomes impossible to sustain
+
+Caps are 2.5–3× smaller, so "everything into Defense" runs out of room. A
+melee specialist's shared points against the new 40-point Defense cap:
+
+| char level | shared points earned | today: Defense | proposed: Defense | forced elsewhere |
+|---|---|---|---|---|
+| 14 | 33 | 14 pts → −5.6 % | 14 pts → **−14 %** | 19 |
+| 22 | 57 | 22 → −8.8 % | 22 → **−22 %** | 35 |
+| 40 | 111 | 40 → −16 % | **40 → −40 % (capped)** | 71 |
+| 52 | 147 | 52 → −20.8 % | 40 → −40 % | 107 |
+| 82 | 237 | 82 → −32.8 % | 40 → −40 % | 197 |
+
+Below character level ~40 the §6-C double cap is what binds, exactly as it does
+today, so the early game changes only by the weight of a point. Past 40 the
+stat cap binds and the surplus must go to Dodge, then Resist, then the pools.
+A pure one-stat build is therefore **self-terminating**: it is a real choice for
+the first forty levels and then the game hands you breadth whether you wanted
+it or not. Today you can pour 100 into Defense and still have 197 points of
+room, so purity is available forever and never pays off.
+
+#### 4.6d The consequence to weigh: the relative game ends around level 40
+
+| | today | proposed |
+|---|---|---|
+| relative LANE stats all at cap | **never** (325 points of sinks against the 297 a Melee 100 earns) | character level 38 |
+| relative SHARED stats all at cap | character level 100 | character level 40 |
+
+So the design splits a character into two phases. **Level 3 to ~40 is the
+relative game** — every point is loud, the order you buy them in is the build,
+and a level-up is felt immediately, which is the ask. **Level 40 to 300 is the
+universal game** — the relative stats are done, and every further point buys
+HP, Mana, Stamina, Move Speed, Speed or Range, which is the slow, universal
+feel this design was meant to trade away.
+
+Stated plainly because it is the biggest thing the owner is buying: the ask is
+fully delivered for the first forty levels and structurally cannot be delivered
+past them, because a relative stat that keeps growing forever is a relative
+stat with no cap. What carries a character from 40 to 300 is the universal
+half, which keeps compounding: skill damage (+1.5 per level, to +150), the
+weapon tier ladder (to ×7.84), the pools, and the milestone ladder. If the
+relative arc should run longer, the dial is MORE relative stats or higher caps
+with the per-point value held (which re-slows the points, undoing the ask) —
+not a change to the edge.
+
 ---
 
 ## 5. Where it plugs into the code
@@ -322,12 +454,12 @@ new storage key, no new client→server event.
 
 | where | change |
 |---|---|
-| `prog3.js` `PROG3` | new per/cap values on the seven stats (each tagged `relative: true` so the client's row metadata and the sanitizer's cap clamps read the table, not a list); `PROG3.EDGE = { FADE_PER_LEVEL: 0.20, BELOW_BONUS: 0 }`; `prog3Edge(playerLevel, monsterLevel)` exported |
+| `prog3.js` `PROG3` | new per/cap values on the seven stats (each tagged `relative: true` so the client's row metadata and the sanitizer's cap clamps read the table, not a list); `PROG3.EDGE = { FADE_PER_LEVEL: 0.20, BELOW_BONUS: 0 }`; `prog3Edge(yardstick, monsterLevel)` exported, plus the two readers that supply it: `_prog3LaneYardstick(ps, cat)` (that lane's trained level) and `_prog3BodyYardstick(ps)` (the highest trained level). Two named functions rather than a raw level at each call site, because "which level does this compare against" is the decision the whole design turns on and it must have one home |
 | `prog3.js` readers | `_prog3CritChance / _prog3CritMult / _prog3SpecialMult / _prog3DefMult / _prog3DodgePct / _prog3ElemResistMult` take an optional `edge` (default 1) and multiply the POINT COUNT by it — the 1 % crit base stays outside, so an unallocated character rolls exactly what it rolls today at every gap |
 | `combat.js` `_computeAttackDamage(ps, slot, isSpecial, opts)` | `opts.edge` (default 1); the Power term becomes `dmgPts × per × edge`, and the crit / special readers receive it |
-| `combat.js` `_handleMonsterDamage` | `edge = prog3Edge(attackerPs.level, m.level)`; passed to the roll, to `elemAttackStat` for the status snapshot and to `resolveElementCollision` |
+| `combat.js` `_handleMonsterDamage` | `edge = prog3Edge(this._prog3LaneYardstick(attackerPs, this._prog3CatFor(_effSlot)), m.level)` — the lane the SERVER resolved, never the client's claim; passed to the roll, to `elemAttackStat` for the status snapshot and to `resolveElementCollision` |
 | `combat.js` `_staffSplash` | inherits the primary hit's number (it is defined as "half the number beside it", v2.3.2481); neighbours are not re-priced by their own level — accepted, documented |
-| `combat.js` `_applyDamage(ps, raw, isBlock, opts)` | `opts.attackerLevel`; `edge = prog3Edge(ps.level, attackerLevel)` scales the def / dodge / eres point counts. Absent → 1, so every caller that does not say keeps today's behaviour byte-for-byte |
+| `combat.js` `_applyDamage(ps, raw, isBlock, opts)` | `opts.attackerLevel`; `edge = prog3Edge(this._prog3BodyYardstick(ps), attackerLevel)` scales the def / dodge / eres point counts — the highest trained skill, so how tough you are never changes with the weapon in your hands. Absent `attackerLevel` → 1, so every caller that does not say keeps today's behaviour byte-for-byte |
 | `index.js` `_monsterStrikePlayer` | passes `{ attackerLevel: m.level }` — the melee swing and the snowball impact |
 | `telegraph.js` `_telegraphHitPlayer`, `dungeon.js` `_dungeonBossHitPlayer`, `firetrail.js` `_fireTrailHitPlayer` | pass the attacking monster's level; the fire patch stamps its goblin's `level` at creation (today it carries only `mid`, and the goblin may be dead when the patch burns) |
 | `elemental.js` `elemAttackStat(ps, legacy, cat, edge)` | multiplies the `elem` point count; the power SNAPSHOT taken at status-apply time therefore already carries the edge of the monster it is on, so burn / root / thorn ticks and the thorn recoil need no further change |
@@ -444,6 +576,12 @@ Nobody's effect shrinks; everybody gets points back.
 `server/test/prog3.test.mjs`:
 
 - the edge table above, exactly, including `BELOW_BONUS` 0 and the +6 floor;
+- **the yardstick, which is the pin that matters most** (§4.6b is the bug it
+  prevents): `_prog3LaneYardstick` returns that lane's trained level and
+  `_prog3BodyYardstick` the highest, so raising a character's OFF-skills
+  changes neither a lane's edge nor its roll — assert the same damage from
+  Melee 40/1/1 and Melee 40/20/20 against the same monster, and assert a body
+  spend's edge is unchanged by which weapon is equipped;
 - `_computeAttackDamage` with edge 0 / 0.5 / 1 on a Power + Luck + Special
   build: the Power term scales linearly, the crit chance scales but the 1 %
   base does not, the special multiplier scales, and edge 0 equals the
@@ -501,7 +639,7 @@ Recommended default in bold; the rest of the note explains each row.
 | # | decision | options | rec | owner pick |
 |---|---|---|---|---|
 | 1 | The curve | **A: linear −20 % per level, 0 at +5** · B: front-loaded 100/70/45/25/10/0 · C: −25 %/level, 0 at +4 | **A** | |
-| 2 | "Your level" | **A: character level (the plate's number)** · B: the lane's own skill for lane stats, highest skill for shared · C: highest trained skill for everything | **A** | |
+| 2 | "Your level" | A: character level (the plate's number) · **B: the lane's own skill for lane stats, highest skill for shared** · C: highest trained skill for everything | **B** (the sim overturned A — §2, §4.6b) | |
 | 3 | Below your level | **A: full strength, no bonus** · B: +10 %/level below, capped at 150 % | **A** | |
 | 4 | Which stats are relative | **A: the seven in §3** · B: the seven + Speed (`aspd`, as a fast-universal stat at cap 35) · C: lane stats only (Defense/Dodge/Resist stay universal) | **A** | |
 | 5 | Weight | **A: ×2.5 shared / ×3 lane, caps ÷ the same** · B: ×2 everywhere (Defense 0.8 %/50, Power 1.0/37) · C: ×5 (Defense 2 %/20, Power 2.5/15 — every relative stat capped by character level ~25) | **A** | |
@@ -510,6 +648,7 @@ Recommended default in bold; the rest of the note explains each row.
 | 8 | PvP | **A: unchanged (edge 1), own PR later** · B: both players' character levels wired through now | **A** | |
 | 9 | Rollout | **A: server+mirrors PR, then the migration PR** · B: one PR | **A** | |
 | 10 | Depth zones | **A: restore the commented bands as the next content PR** · B: keep the world at 1–2 (the fade is dungeon-only) | **A** | |
+| 11 | The nameplate border, given decision 2-B | **A: the plate follows the same yardstick (the active lane's level) so its colour predicts your point strength** · B: the plate keeps the character level from the 2026-09-14 mock and the colour means difficulty only | **A** (client-only) | |
 
 ---
 
@@ -529,3 +668,13 @@ simulated incoming hits per cell (`--quick`: 400 / 1 000). Table 4.4 is the
 one place the two builds' point counts differ on purpose (250 + 175 today
 against 80 + 70 proposed), because "same effect at cap, fewer points" is the
 claim being checked.
+
+The §7 build tables (§4.6 here) construct a whole character rather than a
+fixture: given three skill levels they derive the character level, the lane
+budget (`3 × (lane level − 1)`, which is what `poolBy` holds) and the shared
+budget (`3 ×` every level-up), spend them down a striker/tank order against
+both the stat cap and the §6-C double cap, and equip the weapon tier that
+lane's level actually unlocks (`tierIndex × 5`, the shipped forge gate). The
+two yardsticks in 7b are the only difference between decision 2's options, so
+that table is the whole of the evidence for it. The XP figures come from
+`prog3XpRequired`, the shipped curve.

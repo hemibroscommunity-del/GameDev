@@ -41,7 +41,7 @@
  * from the pinned [1,2] zone bands — this sim asks what a level-N monster
  * would be, which is what the depth zones and dungeon waves spawn. */
 import { GameRoom } from '../server/src/index.js';
-import { PROG3 } from '../server/src/prog3.js';
+import { PROG3, prog3XpRequired } from '../server/src/prog3.js';
 import { MONSTER_HP_CURVE, ARCHETYPES, monsterStat, monsterHpFlat, BLACKSMITH_TIERS } from '../server/src/data.js';
 
 const QUICK = process.argv.includes('--quick');
@@ -302,6 +302,153 @@ console.log('\n6. ANTICHEAT — 2 400 proposed rolls at every relative stat\'s c
   }
   console.log(`   ${ok ? 'PASS' : 'FAIL'} — peak roll at ${(worst * 100).toFixed(1)}% of the ceiling (the ceiling reads the same constants: lockstep by construction)`);
   ps._buffs = null; ps.rangedWeapon = null; ps.staffWeapon = null;
+}
+applyTables(TODAY);
+
+/* ═══ 7. PURE BUILDS — the specialist against the spread ═══
+ *
+ * The edge reads CHARACTER level (Σ trained skills), the weapon tier gate and
+ * the skill damage term read the LANE's own trained level, and a lane point
+ * can only buy its own lane's stats.  So "pure" has two meanings and this
+ * section measures both:
+ *   7a  one lane deep (40/1/1) vs three lanes shallow (14/14/14) at the SAME
+ *       character level, both fully invested — today vs proposed.
+ *   7b  the cross-train incentive the edge creates: same Melee investment,
+ *       off-skills raised to lift character level.
+ *   7c  one stat only, until the cap stops it.
+ *   7d  when the relative game ends, and what a character level costs in XP
+ *       deepened vs cross-trained (arithmetic off the shipped curve). */
+function setBuild(skills, lane, shared) {
+  for (const c of PROG3.SKILLS) {
+    ps.prog3.sk[c].level = Math.max(1, Math.min(100, Math.floor(skills[c] || 1)));
+    for (const k of Object.keys(PROG3.ATK)) ps.prog3.atk[c][k] = 0;
+  }
+  for (const k of Object.keys(PROG3.BODY)) ps.prog3.alloc[k] = 0;
+  for (const k of Object.keys(lane || {})) ps.prog3.atk.sword[k] = lane[k];
+  for (const k of Object.keys(shared || {})) ps.prog3.alloc[k] = shared[k];
+  ps.weapon = { type: 'greatsword', tierMult: tierMultFor(ps.prog3.sk.sword.level) };
+  room._prog3Recompute(ps);           /* sets ps.level = Σ, maxHp, pools */
+  ps.hp = ps.maxHp;
+  return ps.level;
+}
+/* Spend a budget down an order, respecting the stat cap AND the §6-C double
+   cap min(cap, charLevel).  Returns what was placed and what had nowhere to go. */
+const LANE_ORDER = ['dmg', 'luck', 'special', 'elem', 'aspd', 'range'];
+const SHARED_ORDER = ['def', 'dodge', 'eres', 'hp', 'stam', 'mana', 'move'];
+const RELATIVE = new Set(['dmg', 'luck', 'special', 'elem', 'def', 'dodge', 'eres']);
+function spend(budget, order, table, charLevel, E) {
+  const out = {}; let left = budget;
+  for (const k of order) {
+    const cap = Math.min(table[k].cap, charLevel);
+    const take = Math.min(left, cap);
+    if (take > 0) { out[k] = RELATIVE.has(k) ? take * (E == null ? 1 : E) : take; left -= take; }
+    if (left <= 0) break;
+  }
+  return { out, left };
+}
+/* A whole character: skills, then every point it has earned, spent in order. */
+function build(skills, tables, E, laneOrder, sharedOrder) {
+  const charLevel = (skills.sword || 1) + (skills.bow || 1) + (skills.staff || 1);
+  const laneBudget = 3 * ((skills.sword || 1) - 1);     /* poolBy.sword */
+  const sharedBudget = 3 * (charLevel - 3);             /* every level-up mints shared */
+  const atkT = { ...PROG3.ATK, ...tables.ATK };
+  const bodyT = { ...PROG3.BODY, ...tables.BODY };
+  /* E is either one number (both halves) or { lane, shared } — decision 2's
+     two options differ only in WHICH level the edge measures against. */
+  const eL = (E && typeof E === 'object') ? E.lane : E;
+  const eS = (E && typeof E === 'object') ? E.shared : E;
+  const L = spend(laneBudget, laneOrder || LANE_ORDER, atkT, charLevel, eL);
+  const S = spend(sharedBudget, sharedOrder || SHARED_ORDER, bodyT, charLevel, eS);
+  return { charLevel, lane: L.out, shared: S.out, laneLeft: L.left, sharedLeft: S.left, laneBudget, sharedBudget };
+}
+
+console.log('\n7a. ONE LANE DEEP vs THREE LANES SHALLOW — same character level 42, both fully invested');
+console.log('    specialist 40/1/1 (abyssal greatsword, tierMult 2.40) · spread 14/14/14 (iron, 1.25 — the tier gate reads the LANE)');
+console.log('    build       | vs Lv 42 brute: hits / survive |  vs Lv 47 brute: hits / survive');
+for (const [label, tables] of [['today   ', TODAY], ['proposed', PROPOSED]]) {
+  applyTables(tables);
+  const rows = [];
+  for (const [name, skills] of [['specialist 40/1/1', { sword: 40, bow: 1, staff: 1 }],
+                                ['spread     14/14/14', { sword: 14, bow: 14, staff: 14 }]]) {
+    const cells = [];
+    for (const mLvl of [42, 47]) {
+      const E = tables === PROPOSED ? edge(skills.sword + skills.bow + skills.staff, mLvl) : 1;
+      const b = build(skills, tables, E);
+      setBuild(skills, b.lane, b.shared);
+      const bru = monster('brute', mLvl);
+      cells.push(`${pad(f1(hitsToKill(bru)), 4)} / ${pad(f1(hitsToDie(bru)), 4)}`);
+    }
+    rows.push(`    ${label} ${name.padEnd(19)} | ${cells[0].padEnd(14)} | ${cells[1]}`);
+  }
+  console.log(rows.join('\n'));
+}
+applyTables(TODAY);
+
+console.log('\n7b. THE CROSS-TRAIN INCENTIVE, and the yardstick that removes it');
+console.log('    identical Melee 40 in every row: same abyssal greatsword, same skill damage, same Melee lane depth.');
+console.log('    Only the OFF-SKILLS differ, which is the cheapest XP in the game (7d).  vs a Lv 50 brute.');
+console.log('    decision 2-A: the edge measures the CHARACTER level (Σ skills).  2-B: the LANE\'s own skill (shared: your best).');
+console.log('    build            | char |  today      | 2-A edge / hits / survive | 2-B edge / hits / survive');
+for (const [name, skills] of [['pure  40/1/1  ', { sword: 40, bow: 1, staff: 1 }],
+                              ['cross 40/10/10', { sword: 40, bow: 10, staff: 10 }],
+                              ['cross 40/20/20', { sword: 40, bow: 20, staff: 20 }]]) {
+  const charLevel = skills.sword + skills.bow + skills.staff;
+  const bru = monster('brute', 50);
+  applyTables(TODAY);
+  let b = build(skills, TODAY, 1); setBuild(skills, b.lane, b.shared);
+  const t = `${pad(f1(hitsToKill(bru)), 4)} / ${pad(f1(hitsToDie(bru)), 4)}`;
+  applyTables(PROPOSED);
+  /* 2-A — one yardstick, the character level. */
+  const eA = edge(charLevel, 50);
+  b = build(skills, PROPOSED, eA); setBuild(skills, b.lane, b.shared);
+  const pA = `${pad(Math.round(eA * 100) + '%', 4)} / ${pad(f1(hitsToKill(bru)), 4)} / ${pad(f1(hitsToDie(bru)), 4)}`;
+  /* 2-B — lane stats against the lane's own trained level, shared against the
+     highest trained skill.  Both are fixed by what you actually trained, so
+     neither can be lifted by cheap off-skill XP. */
+  const best = Math.max(skills.sword, skills.bow, skills.staff);
+  const eB = { lane: edge(skills.sword, 50), shared: edge(best, 50) };
+  b = build(skills, PROPOSED, eB); setBuild(skills, b.lane, b.shared);
+  const pB = `${pad(Math.round(eB.lane * 100) + '%', 4)} / ${pad(f1(hitsToKill(bru)), 4)} / ${pad(f1(hitsToDie(bru)), 4)}`;
+  console.log(`    ${name}   |  ${pad(charLevel, 3)} | ${t} | ${pA}        | ${pB}`);
+}
+applyTables(TODAY);
+
+console.log('\n7c. ONE STAT ONLY — a pure Defense build, and where the surplus has to go');
+console.log('    char | shared pts | today: placed in def (cap 100) | proposed: placed in def (cap 40) + spill');
+for (const S of [12, 20, 38, 50, 80]) {
+  const charLevel = S + 2, sharedBudget = 3 * (charLevel - 3);
+  const tDef = Math.min(100, charLevel, sharedBudget);
+  const pDef = Math.min(40, charLevel, sharedBudget);
+  console.log(`    ${pad(charLevel, 4)} | ${pad(sharedBudget, 10)} | ${pad(tDef, 3)} pts -> ${pad((tDef * 0.4).toFixed(1) + '%', 6)}          | ${pad(pDef, 3)} pts -> ${pad((pDef * 1.0).toFixed(1) + '%', 6)} + ${pad(sharedBudget - pDef, 3)} elsewhere`);
+}
+
+console.log('\n7d. WHEN THE RELATIVE GAME ENDS, and what a character level costs');
+{
+  const relLane = (t) => ['dmg', 'luck', 'special', 'elem'].reduce((n, k) => n + t.ATK[k].cap, 0);
+  const relShared = (t) => ['def', 'dodge', 'eres'].reduce((n, k) => n + t.BODY[k].cap, 0);
+  /* A specialist's lane/shared budgets are both 3 × (Melee − 1) + the two
+     off-skills' 0; solve for the Melee level that fills each, and take the
+     double cap into account (a stat cannot exceed the character level). */
+  const fillAt = (sinks, biggestCap) => {
+    for (let S = 1; S <= 100; S++) {
+      const charLevel = S + 2, budget = 3 * (S - 1);
+      if (budget >= sinks && charLevel >= biggestCap) return charLevel;
+    }
+    return null;
+  };
+  const tL = fillAt(relLane(TODAY), Math.max(...['dmg', 'luck', 'special', 'elem'].map((k) => TODAY.ATK[k].cap)));
+  const pL = fillAt(relLane(PROPOSED), Math.max(...['dmg', 'luck', 'special', 'elem'].map((k) => PROPOSED.ATK[k].cap)));
+  const tS = fillAt(relShared(TODAY), Math.max(...['def', 'dodge', 'eres'].map((k) => TODAY.BODY[k].cap)));
+  const pS = fillAt(relShared(PROPOSED), Math.max(...['def', 'dodge', 'eres'].map((k) => PROPOSED.BODY[k].cap)));
+  console.log(`    relative LANE stats all at cap:   today ${tL === null ? 'NEVER (' + relLane(TODAY) + ' sinks vs 297 lane points at Melee 100)' : 'char ' + tL}   proposed char ${pL}`);
+  console.log(`    relative SHARED stats all at cap: today ${tS === null ? 'NEVER' : 'char ' + tS}   proposed char ${pS}`);
+  console.log(`    (sinks: lane ${relLane(TODAY)} -> ${relLane(PROPOSED)},  shared ${relShared(TODAY)} -> ${relShared(PROPOSED)})`);
+  const cum = (n) => { let t = 0; for (let l = 1; l < n; l++) t += prog3XpRequired(l); return t; };
+  console.log('\n    XP per character level, from Melee 40 / 1 / 1 (char 42) — the edge makes this a real choice:');
+  console.log(`      deepen  Melee 40 -> 43         : ${pad(Math.round(cum(43) - cum(40)).toLocaleString(), 9)} xp for  +3 char level  (and +4.5 skill damage, +9 Melee lane pts)`);
+  console.log(`      cross   Bow/Magic 1 -> 4 each  : ${pad(Math.round(2 * (cum(4) - cum(1))).toLocaleString(), 9)} xp for  +6 char level  (and +18 pts, but 18 of them in lanes a sword cannot use)`);
+  console.log(`      cross   Bow/Magic 1 -> 10 each : ${pad(Math.round(2 * (cum(10) - cum(1))).toLocaleString(), 9)} xp for +18 char level`);
+  console.log(`      cross   Bow/Magic 1 -> 20 each : ${pad(Math.round(2 * (cum(20) - cum(1))).toLocaleString(), 9)} xp for +38 char level`);
 }
 applyTables(TODAY);
 console.log('\n(done — see docs/specs/relative-points.md for what these tables decide)');
