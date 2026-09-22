@@ -4032,3 +4032,23 @@ worse than a gap you can see.
 sheets by name (40 of them) and reaches 547/548 on the ones it can speak about.
 The exclusion list is written out rather than pattern-matched so it is
 auditable. §92 has the 4px bias in the same data; §91 the harness.
+
+## 94. body-tops is the topmost pixel, and on a flinch that is a fist (v2.3.2652)
+
+**Tempting:** `body-tops.json` is "the crown" -- every hat, hair, beard and
+eyewear piece is pinned to it -- so when a trait lands wrong on one frame, the
+fix is in the trait's meta.
+
+**Wrong on five frames.** `body-tops` is measured as the TOPMOST opaque pixel of
+the frame, not the head. On `hit-north` 3-4 and `hit-northeast` 3-5 the flinch
+raises an arm above the head, and the recorded crown is the fist:
+`hit-north-3` says `[172, 47]`, the head's top is at `[95, 52]`. Every trait
+already in the game rides the fist for those frames (the flinch lasts 250ms,
+which is why nobody has reported it). A per-trait nudge cannot fix it: the
+error is 77px on one frame and 3px on the next.
+
+**The species pieces work around it** with a per-frame `crown` in
+`tools/species-fixes/<id>.json` (`tools/species_frames.py`). The real fix, for
+every trait at once, is correcting those five `body-tops` entries -- but hats,
+hair and the hair-clip masks were all dialled in against the current values,
+so it needs its own before/after pass over every trait, not a drive-by edit.

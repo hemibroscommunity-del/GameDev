@@ -274,6 +274,61 @@ art's own default; the monkey's pale eyes are close to the existing `white`
 option (v2.3.1929). What a species axis adds is *presetting* them, not new
 rendering.
 
+### Stage 2d — the monkey piece and its per-frame fixes (v2.3.2647–2652)
+
+The ears and muzzle ended up as drawn ART, not the painter above: the owner
+had ChatGPT draw them on the mannequin, `tools/clean-generated-sheet.mjs` and
+`tools/import_headwear_green.py --category species` imported them to
+`public/sprites/traits/species/monkey/` (one 256 image per facing plus
+`meta.json`, placed by `_placeTrait`'s crown anchor like any trait). Nothing
+in the game loads it yet.
+
+Everything done to the art since the import, and how to redo it:
+
+| what | where | redo with |
+|---|---|---|
+| the bro's own ear painted out beside the new one (SW, NE) | the SW/NE PNGs | `node tools/species-cover-ears.mjs --id monkey` after any re-import |
+| muzzle pulled back 3px jogging east/west | `meta.poseNudge.jog.east` | — |
+| MEASURED pose sizes, not the legacy hat guesses | `meta.poseFit` + `meta.scaleByPose` | — |
+| 170 of 231 frames fixed one by one | `tools/species-fixes/monkey.json` → `frames/*.png` + `meta.frameOverlays` | `python3 tools/species_frames.py bake --id monkey` |
+
+**See every frame** with `python3 tools/species_contact_sheet.py --id monkey
+--out <dir>` (one labelled sheet per animation; `*` marks a baked frame, drawn
+from the baked strip so the sheet shows the shipped data). `--zoom
+pose-dir:a-b` draws frames big with a coordinate grid, for writing fixes.
+
+**The fixes, and why each exists:** hit-east — the head snaps back, so the
+muzzle moves onto the mouth and the gritted teeth are covered; hit-south —
+same, the grimace slides right; hit-north/-northeast — the turned head shows
+the human ear mid-head (covered), and on north 3-4 / northeast 3-5 body-tops is
+the raised FIST (see TRAPS §94) so those frames carry a `crown` override;
+pickup and jog-south — the eyes sit 2-13px lower against the crown than at
+stand, so the muzzle drops per frame by the eyeMask measurement; every south,
+north and northeast jog/pickup/fish/mine frame — each ear is moved so it
+overlaps the head side by exactly what it does at stand (4px south/north, 3px
+the NE far ear), which is what hides the human ear; fish — a crown-relative
+fur patch for the right ear's last 2px; mine 0-3, 12-13 — the pickaxe is
+drawn in front of the piece.
+
+**The renderer contract, for whoever wires the species layer:**
+
+1. Place it like eyewear (`_placeEyewear`): `_placeTrait` with the piece's
+   meta. `meta.poseFit` is set, so the tune must be `null` (no
+   `hairPoseTune`) — the measured `scaleByPose` already is the head ratio.
+2. BEFORE the normal placement, look up
+   `meta.frameOverlays[pose + '-' + dir][frameIdx]` →
+   `[sx, sy, w, h, x, y]`. If present, draw the strip
+   `frames/<pose>-<dir>.png` cropped to `(sx, sy, w, h)` with its TOP-LEFT on
+   body pixel `(x, y)` of the 256-space frame — sprite anchor (0,0) at
+   `spriteBody.x + (x - 128) * s * m`, `spriteBody.y + (y - 128) * s`, scale
+   `(s * m, s)` where `s = |bodyScale|` and `m` the mirror sign. No anchor,
+   nudge or pose scale: it is already in body space, and mirrors with the body.
+3. Preload the strips with the piece (CLAUDE.md animation-preloading law:
+   register them in `preloadWorldAnimations`). They are 40KB on disk,
+   ~1.4MB of GPU as 10 textures.
+4. The fur is baked in Monkey Brown (85,56,23): the species must pin that
+   skin tone.
+
 ### Stage 2's three plumbing traps
 
 1. **BOTH wire gates, in the same change.** A species id must go in
