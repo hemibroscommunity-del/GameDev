@@ -201,9 +201,64 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!grid && grid.imgs.every((i) => i && /\/icons\/ui\/stat\//.test(i.src)),
       grid && grid.imgs.map((i) => i && i.src));
 
-    /* ── THE INSTRUCTION: NO COUNTS IN THE GRID ── */
-    rec.ok(`${label}: the grid shows NO points-remaining — by instruction, that lives in the confirm window`,
+    /* ── THE INSTRUCTION: NO COUNTS IN THE STAT CELLS ── */
+    /* v2.3.2661: the owner has since put a remaining-points badge on each ROW
+       HEADER (below), so "no counts in the grid" narrows to what it always
+       meant for the cells: a stat cell shows what it has BOUGHT, never what is
+       left.  The word check still holds grid-wide -- the badges are bare
+       numbers. */
+    rec.ok(`${label}: the stat cells show NO points-remaining words — that lives on the header badges and in the confirm window`,
       !!grid && !/\bPTS?\b|AVAILABLE|SPENT/i.test(grid.gridText), grid && { text: grid.gridText.slice(0, 160) });
+
+    /* ═══ v2.3.2661: ONE BADGE PER POOL, AND IT IS THE WORKER'S NUMBER ═══
+       Owner: "a badge on a fill background on each row header showing how many
+       allocable points there still are.  One number on each combat type icon
+       (melee, bow, staff) then just one for the character."
+       Read against the WORKER's pools (R.prog3.poolBy / .shared), not against
+       the client helper that draws them -- a badge that agreed with its own
+       formula and not with the server would pass a test of the formula. */
+    const badges = () => P.page.evaluate(() => {
+      const R = window._gameState && window._gameState.current && window._gameState.current.rpg;
+      const p = (R && R.prog3) || {};
+      const out = {};
+      for (const b of document.querySelectorAll('[data-prog3-grid] [data-prog3-head-badge]')) {
+        const r = b.getBoundingClientRect();
+        const head = b.closest('[data-prog3-lane]');
+        const hr = head ? head.getBoundingClientRect() : null;
+        out[b.getAttribute('data-prog3-head-badge')] = {
+          text: (b.textContent || '').trim(),
+          bg: getComputedStyle(b).backgroundColor,
+          inHead: !!hr && r.left >= hr.left - 0.5 && r.right <= hr.right + 0.5 && r.top >= hr.top - 0.5 && r.bottom <= hr.bottom + 0.5,
+          box: [r.left, r.top, r.right, r.bottom].map((v) => +v.toFixed(1)),
+          head: hr ? [hr.left, hr.top, hr.right, hr.bottom].map((v) => +v.toFixed(1)) : null,
+        };
+      }
+      /* What a pool can SPEND, from the worker's raw fields: a weapon's own
+         channel plus the points no channel has claimed yet (pool minus the
+         sum of the channels) -- the same "free" points the confirm window's
+         "Melee points available" counts.  Computed here from the blob, not by
+         calling the client helper the badge itself uses, so a badge and a
+         helper that were wrong together would still fail. */
+      const pb = p.poolBy || {};
+      const total = typeof p.pool === 'number' ? Math.floor(p.pool) : 0;
+      const free = Math.max(0, total - ['sword', 'bow', 'staff'].reduce((n, k) => n + (pb[k] || 0), 0));
+      const spend = { shared: (p.shared || 0) + free };
+      for (const k of ['sword', 'bow', 'staff']) spend[k] = (pb[k] || 0) + free;
+      return { out, spend, poolBy: JSON.parse(JSON.stringify(pb)), shared: p.shared, free };
+    });
+    const b0 = await badges();
+    const badgeText = (n) => (n > 99 ? '99+' : String(n || 0));
+    rec.ok(`${label}: FOUR badges — one on each weapon, one on the character (v2.3.2661)`,
+      ['sword', 'bow', 'staff', 'shared'].every((k) => b0.out[k]) && Object.keys(b0.out).length === 4, Object.keys(b0.out));
+    rec.ok(`${label}: ...each weapon's badge is what that weapon can spend, as the worker holds it`,
+      ['sword', 'bow', 'staff'].every((k) => b0.out[k] && b0.out[k].text === badgeText(b0.spend[k])),
+      { badges: Object.fromEntries(Object.entries(b0.out).map(([k, v]) => [k, v.text])), spend: b0.spend, poolBy: b0.poolBy, free: b0.free });
+    rec.ok(`${label}: ...and the character's badge is what the shared pool can spend`,
+      !!b0.out.shared && b0.out.shared.text === badgeText(b0.spend.shared), { badge: b0.out.shared && b0.out.shared.text, spend: b0.spend.shared });
+    rec.ok(`${label}: ...on a filled background, not bare text (the owner's "badge on a fill")`,
+      Object.values(b0.out).every((v) => v.bg && !/rgba\(0, 0, 0, 0\)|transparent/.test(v.bg)), Object.values(b0.out).map((v) => v.bg));
+    rec.ok(`${label}: ...and every badge sits inside its header, not clipped off its edge`,
+      Object.values(b0.out).every((v) => v.inHead), b0.out);
 
     /* ── IT FITS ── */
     rec.ok(`${label}: nothing in the grid hangs off the viewport`,
@@ -308,6 +363,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       });
       rec.ok(`${label}: ...and the grid is now showing the lane you aimed at`,
         headNow === laneNow, { want: laneNow, got: headNow });
+      /* v2.3.2661: the badge is live -- the spend just made must show up on
+         the weapon that paid for it, and only there */
+      await P.page.waitForTimeout(300);
+      const b1 = await badges();
+      rec.ok(`${label}: ...and THAT weapon's badge went down by one, live`,
+        !!b1.out[laneNow] && b1.out[laneNow].text === badgeText(b1.spend[laneNow])
+          && Number(b1.out[laneNow].text) === Number(b0.out[laneNow].text) - 1,
+        { lane: laneNow, before: b0.out[laneNow] && b0.out[laneNow].text, after: b1.out[laneNow] && b1.out[laneNow].text });
     }
 
     /* ── A BODY STAT SPENDS THE SHARED POOL ── */

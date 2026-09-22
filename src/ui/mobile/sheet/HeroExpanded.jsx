@@ -2103,7 +2103,12 @@ export const HeroExpanded = () => {
                its height, whichever binds first.  The portrait has no stack
                to make room for, so it takes the cell short of its padding. */
             const LANE_ICON = Math.round(Math.max(18, Math.min(34, Math.min(CELL_H * 0.42, HEAD_W * 0.60))));
-            const HEAD_ICON = Math.round(Math.max(22, Math.min(40, Math.min(CELL_H - 14, HEAD_W - 10))));
+            /* v2.3.2661: HEAD_W - 14, not - 10.  The portrait now carries a
+               badge pinned 3px past its top-right corner, and in the narrow
+               landscape pane the portrait filled the head so exactly that
+               the badge poked a pixel past the header's edge -- mp-catgrid
+               measured it.  4px of slack each side holds the 3px overhang. */
+            const HEAD_ICON = Math.round(Math.max(22, Math.min(40, Math.min(CELL_H - 14, HEAD_W - 14))));
             const CAP_FS = Math.max(7.5, Math.min(10.5, CELL_W / 4.7));
             const NUM_FS = Math.max(12.5, Math.min(18, CELL_W * 0.38));
             const statCell = (st, cat) => {
@@ -2194,14 +2199,74 @@ export const HeroExpanded = () => {
                the owner drew it -- next to the points it would spend, at the
                moment you are deciding to spend one.  That is a better place
                for it than a cell you had to know was a control. */
+            /* ═══ v2.3.2661: WHAT EACH POOL STILL HAS, ON ITS OWN HEADER ═══
+               Owner: "I want a badge on a fill background on each row header
+               showing how many allocable points there still are.  One number
+               on each combat type icon (melee, bow, staff) then just one for
+               the character on the second row header."
+               This partly reverses v2.3.2642's "no points-remaining anywhere
+               in the grid", by the same owner and deliberately: the STAT
+               cells still carry no remaining count (a cell shows what it has
+               bought), and the count moves to the one place a pool has a
+               picture -- its header.  Three weapons, three pools, three
+               badges; one shared pool, one badge.
+               Pinned to each icon's top-right corner.  The diagonal leaves
+               exactly those corners free -- each icon's next neighbour starts
+               below and right of it -- so no badge sits on another weapon.
+               A pool at 0 keeps its badge, muted, rather than vanishing: "0"
+               is an answer to "how many are left", and a badge that comes and
+               goes would make the three weapons look unlike each other for
+               no reason a player can see.  Past 99 it reads 99+, because a
+               44px cell cannot hold a three-digit pill beside an icon. */
+            /* COMPACT: the sideways pane squeezes a header to ~21px, narrower
+               than a normal "99+" pill (27px) -- mp-catgrid measured it
+               clipped there, and then clipped again at 7.5px (22px wide).  So
+               below 34px of header the badge is a 7px pill with its padding
+               and tracking pared to fit a three-character count, and the
+               character's badge pins to the HEADER's corner instead of the
+               portrait's, because in a 21px header the portrait is wider than
+               the room it has. */
+            const HEAD_COMPACT = HEAD_W < 34;
+            const headBadge = (n, key, pin) => {
+              const live = n > 0;
+              const c = HEAD_COMPACT;
+              return (
+                <span data-prog3-head-badge={key} aria-hidden="true" style={{
+                  position: 'absolute', zIndex: 5,
+                  /* Off the icon's corner rather than on it: the first cut
+                     sat 3px out and a 15px pill covered the TIP of every
+                     weapon -- the sword, staff and bow are all drawn
+                     pointing up-right, so the top-right corner is the part
+                     that says which weapon it is.  7px out, the pill clips
+                     the corner instead of the blade. */
+                  ...(pin || (c ? { top: -3, right: -3 } : { top: -5, right: -7 })),
+                  /* 10px, the floor mp-statcols holds a header's text to;
+                     8.5 read fine and failed it, and a count is exactly the
+                     text that has to be read at a glance. */
+                  minWidth: c ? 12 : 15, height: c ? 12 : 14, padding: c ? '0 1px' : '0 2px', boxSizing: 'border-box',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  borderRadius: 8,
+                  background: live ? COL.accent : COL.raised,
+                  color: live ? COL.onAccent : COL.muted,
+                  /* a ring in the tray's own colour lifts the badge off the
+                     artwork under it without adding a new colour */
+                  boxShadow: `0 0 0 1.5px ${COL.well}`,
+                  fontSize: c ? 7 : 10, fontWeight: 900, lineHeight: 1,
+                  letterSpacing: c ? '-0.04em' : 0,
+                  fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
+                  whiteSpace: 'nowrap',
+                }}>{n > 99 ? '99+' : n}</span>
+              );
+            };
             const headCell = (kind) => {
               const isLane = kind === 'lane';
               return (
                 <div
                   data-prog3-lane={isLane ? buildCat : 'shared'}
                   aria-label={isLane
-                    ? `${(PROG3_SKILL_META.find((k) => k.key === buildCat) || {}).label || buildCat}, level ${prog3SkillLevel(R, buildCat)}`
-                    : `Shared, level ${prog3CharLevel(R)}`}
+                    ? `${(PROG3_SKILL_META.find((k) => k.key === buildCat) || {}).label || buildCat}, level ${prog3SkillLevel(R, buildCat)}. `
+                      + POINT_LANES.filter((c) => !c.shared).map((c) => `${c.label} ${laneAvail(c.key)} to spend`).join(', ')
+                    : `Shared, level ${prog3CharLevel(R)}. ${sharedAvail} to spend`}
                   title={isLane ? 'Weapon stats — pick the weapon when you spend' : 'Shared stats'}
                   style={{
                     height: CELL_H, minWidth: 0, boxSizing: 'border-box',
@@ -2223,6 +2288,7 @@ export const HeroExpanded = () => {
                        new colour: COL.well is the tray role and COL.wellSoft
                        the cell role, so the chips sit IN something. */
                     borderRight: `1px solid ${isLane ? COL.edgeWarm : COL.divider}`,
+                    position: 'relative',
                     cursor: 'default', overflow: 'hidden',
                   }}>
                   {isLane
@@ -2244,16 +2310,28 @@ export const HeroExpanded = () => {
                        percentages are the cell's own box, so it re-fits at
                        every width without a second breakpoint. */
                     ? (
-                      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                      /* v2.3.2661: the stack gives up 4px on the right and
+                         2px on top, so the LAST weapon's badge and the FIRST
+                         one's can overhang their icons by the same amount as
+                         the middle one's without being cut off by the
+                         header's edge. */
+                      <div style={{ position: 'relative', width: 'calc(100% - 4px)', height: 'calc(100% - 2px)', margin: '2px 4px 0 0' }}>
                         {POINT_LANES.filter((c) => !c.shared).map((c, i, a) => {
                           const on = c.key === buildCat;
                           const t = a.length > 1 ? i / (a.length - 1) : 0;
+                          /* v2.3.2661: the icon and its badge move as one box,
+                             so the count stays pinned to ITS weapon's corner
+                             wherever the diagonal puts it. */
                           return (
-                            <img key={c.key} src={c.iconSrc} alt="" draggable={false} style={{
+                            <div key={c.key} style={{
                               position: 'absolute',
                               left: `calc(${t * 100}% - ${t * LANE_ICON}px)`,
                               top: `calc(${t * 100}% - ${t * LANE_ICON}px)`,
-                              width: LANE_ICON, height: LANE_ICON, objectFit: 'contain',
+                              width: LANE_ICON, height: LANE_ICON,
+                              zIndex: on ? 2 : 1, pointerEvents: 'none',
+                            }}>
+                            <img src={c.iconSrc} alt="" draggable={false} style={{
+                              width: '100%', height: '100%', objectFit: 'contain', display: 'block',
                               /* v2.3.2660: all three at full strength (owner:
                                  "have all of the icons in the first row not
                                  dimmed").  The dimming was the head's way of
@@ -2266,21 +2344,30 @@ export const HeroExpanded = () => {
                                  a quiet cue that costs the other two
                                  nothing. */
                               opacity: 1,
-                              zIndex: on ? 2 : 1,
                               pointerEvents: 'none',
                             }} />
+                            {headBadge(laneAvail(c.key), c.key)}
+                            </div>
                           );
                         })}
                       </div>
                     )
                     : (
-                      <img src={sharedIcon} alt="" draggable={false}
-                        onError={(e) => { if (e.currentTarget.src.indexOf(SHARED_ICON_FALLBACK) < 0) e.currentTarget.src = SHARED_ICON_FALLBACK; }}
-                        style={{
-                          width: HEAD_ICON, height: HEAD_ICON, objectFit: 'cover', borderRadius: 6,
-                          imageRendering: 'pixelated', pointerEvents: 'none',
-                        }} />
+                      <div style={{ position: 'relative', width: HEAD_ICON, height: HEAD_ICON, pointerEvents: 'none' }}>
+                        <img src={sharedIcon} alt="" draggable={false}
+                          onError={(e) => { if (e.currentTarget.src.indexOf(SHARED_ICON_FALLBACK) < 0) e.currentTarget.src = SHARED_ICON_FALLBACK; }}
+                          style={{
+                            width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6, display: 'block',
+                            imageRendering: 'pixelated', pointerEvents: 'none',
+                          }} />
+                        {/* 3px out, not 7: the portrait nearly fills its
+                            header, so the weapons' 7px overhang ran this
+                            badge into the divider (a clipped "99+" in the
+                            390 capture). */}
+                        {!HEAD_COMPACT && headBadge(sharedAvail, 'shared', { top: -5, right: -3 })}
+                      </div>
                     )}
+                  {!isLane && HEAD_COMPACT && headBadge(sharedAvail, 'shared', { top: 1, right: 1 })}
                 </div>
               );
             };
