@@ -42,7 +42,7 @@ for (const S of SIZES) {
       cluster: R('.bt-cc-cluster'),
       clusterZ: (()=>{ const e=document.querySelector('.bt-cc-cluster'); return e?getComputedStyle(e).zIndex:null; })(),
       colLeftZ: (()=>{ const e=document.querySelector('.bt-cc-col-left'); return e?getComputedStyle(e).zIndex:null; })(),
-      sword: R('.bt-cc-logo-sword'),
+      logo: R('.bt-cc-logo'),   /* v2.3.2642: the sword is inside the lockup now */
       ink,
       hitAtCueCentre: (()=>{ const e=document.querySelector('.bt-cc-spincue'); if(!e) return null;
         const b=e.getBoundingClientRect(); const el=document.elementFromPoint(b.x+b.width/2, b.y+b.height/2);

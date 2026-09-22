@@ -2060,10 +2060,32 @@ input{font-family:inherit}
 @media (max-height:560px){.bt-cc-hemi{height:12px}}
 /* v2.3.1251: ~22% smaller (approved mockup) — 32vw/150 → 25vw/117.  The
    sword + shines are wrap-relative %, so they track the new size. */
-.bt-cc-logo{position:relative;z-index:1;width:min(var(--cc-leftw),168px);height:auto;display:block;pointer-events:none}
-.bt-cc-logo-sword{position:absolute;left:63.5%;top:19%;height:115%;width:auto;pointer-events:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,.55))}
+/* ═══ v2.3.2642: ONE LOCKUP, AND IT IS WIDE ═══
+   The owner's new BRO TOWN art carries the sword inside the wordmark, so
+   .bt-cc-logo-sword (and .bt-cc-sword-shine with it) is deleted rather than
+   left pointing at a file nothing shows — the same clean-up v2.3.2458 did on
+   the splash, and for the reason stated there: a selector that matches
+   nothing is what a later edit re-points at something else.
+
+   THE WIDTH HAD TO GROW WITH THE SHAPE.  The old art was a compact mark,
+   560x329 (1.70:1) whose ink filled 99% of its own box, so 168px of it drew
+   ~98px of lettering.  The new one is a wide single line, 732x298 (2.46:1),
+   and its letters are 55.7% of its height (measured -- the rest is the blade
+   above and below them), so the SAME 168px would draw them at ~38px.  Width
+   is what carries letter height for a wordmark, so the cap is the column
+   itself -- var(--cc-leftw), clamp(150px,44vw,360px) -- with a 248px ceiling
+   for desktop, where the column reaches 360px and an unbounded mark reads as
+   a billboard.  Measured: 390x844 gives 171.6x69.8 (the column binds, so the
+   mark spans it exactly, lettering ~39px) and 1280-wide gives 248x101 (the
+   ceiling binds, lettering ~56px).  The lockup is ~29px shorter in flow on a
+   phone than the old one was, which is the headroom the note on
+   .bt-cc-title's padding is about.  Spanning the column is what this art
+   wants: it is a banner, not a badge. */
+.bt-cc-logo{position:relative;z-index:1;width:min(var(--cc-leftw),248px);height:auto;display:block;pointer-events:none}
 @media (max-height:720px){
-  .bt-cc-logo{width:min(20vw,94px)}
+  /* was 20vw/94px against the tall mark; the same proportional step for a
+     mark that is 1.45x wider per unit of height. */
+  .bt-cc-logo{width:min(30vw,140px)}
 }
 /* v2.3.827: CSS specular shine — a narrow bright band (the standard
    shimmer gradient) swept across each asset and CLIPPED to the artwork's
@@ -2078,7 +2100,7 @@ input{font-family:inherit}
    widened to 13% so the pass stays a graceful ~1.3s rather than a snap at
    the shorter cycle; sword offset half a cycle (5s) so the two alternate
    roughly every 5s. */
-.bt-cc-logo-shine,.bt-cc-sword-shine{pointer-events:none;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.85) 50%,transparent 60%);background-size:220% 100%;background-repeat:no-repeat;mix-blend-mode:screen;animation:bt-cc-shine 10s ease-in-out infinite}
+.bt-cc-logo-shine{pointer-events:none;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.85) 50%,transparent 60%);background-size:220% 100%;background-repeat:no-repeat;mix-blend-mode:screen;animation:bt-cc-shine 10s ease-in-out infinite}
 /* v2.3.2333 (docs/TRAPS.md §52): the masks point at *-mask.webp SILHOUETTES,
    not at the art the <img> beside them shows.  A CSS mask is a different
    resource destination from an image and does not share its cache entry, so
@@ -2087,10 +2109,12 @@ input{font-family:inherit}
    and did nothing for the mask.  A mask reads only alpha, so each silhouette
    is white RGB + the source's alpha, lossy WebP (alpha kept exact).  No
    preload for these: a preload that misses its consumer adds a request. */
-.bt-cc-logo-shine{position:absolute;inset:0;z-index:2;-webkit-mask:url('/ui/welcome/logo-brotown-mask.webp') center/contain no-repeat;mask:url('/ui/welcome/logo-brotown-mask.webp') center/contain no-repeat}
-.bt-cc-sword-shine{position:absolute;left:63.5%;top:19%;height:115%;aspect-ratio:185/480;z-index:0;-webkit-mask:url('/ui/welcome/sword-mask.webp') center/contain no-repeat;mask:url('/ui/welcome/sword-mask.webp') center/contain no-repeat;animation-delay:5s}
+/* v2.3.2642: one asset, so one shine — the sword's own glint is part of the
+   lockup's silhouette now, which is also why the half-cycle offset that made
+   the two alternate is gone with it. */
+.bt-cc-logo-shine{position:absolute;inset:0;z-index:2;-webkit-mask:url('/ui/welcome/title/brotown-lockup-mask.webp') center/contain no-repeat;mask:url('/ui/welcome/title/brotown-lockup-mask.webp') center/contain no-repeat}
 @keyframes bt-cc-shine{0%{background-position:220% 0}13%{background-position:-120% 0}100%{background-position:-120% 0}}
-@media (prefers-reduced-motion:reduce){.bt-cc-logo-shine,.bt-cc-sword-shine{animation:none;opacity:0}}
+@media (prefers-reduced-motion:reduce){.bt-cc-logo-shine{animation:none;opacity:0}}
 
 
 /* v2.3.736: CSS twinkle — two copies of the transparent star sheet, one
@@ -3616,6 +3640,35 @@ input{font-family:inherit}
    the two columns are siblings rather than stacked. */
 .bt-cc-shell{position:relative;z-index:2;display:flex;flex-direction:column;width:100%;flex:1 1 auto;min-height:0;max-width:900px;margin:0 auto}
 /* v2.3.1527: the logo lives in the CHARACTER column now, not across the top. */
+/* ═══ v2.3.2642: THE 0.16 LOOKS LIKE THE SWORD'S OVERHANG.  IT IS NOT. ═══
+   The obvious read, once the owner's new lockup carries its own blade: this
+   padding was reserving room for the old absolutely-positioned sword that
+   hung ~0.16 of the column's width below the wordmark's box, so with the
+   blade inside the art it is dead space and can go back to the stage.  It was
+   cut to 0.05 on exactly that reasoning, and MEASURED AGAINST A BUILD OF THE
+   PREVIOUS COMMIT it made the picture worse, not better:
+
+     px between the TALLEST head the game can build (every hair x every hat,
+     walked) and the title's lowest ink -- previous commit, then this art at
+     0.05, then this art at 0.16.  Negative is overlap:
+       390x844 dpr2   -31.4  ->   +7.1  ->  +16.5
+       390x664 dpr3   -15.0  ->  -23.4  ->   +1.2
+       320x568 dpr2   -16.0  ->  -17.8  ->   -3.3
+     and the DEFAULT head, which is the one mp-ccfeet's 15px floor measures:
+       390x844          3.0  ->  +41.6  ->  +51.0
+       390x664          5.6  ->   +0.6  ->  +21.5
+       320x568          2.9  ->   +1.2  ->  +15.7
+
+   WHY GIVING THE STAGE ROOM MOVES THE CHARACTER INTO THE TITLE: .bt-cc-stage
+   is already at its max-height on a phone (min(var(--cc-leftw),34vh,420px)),
+   so slack handed back to the column cannot make it taller -- margin-block:
+   auto SPLITS that slack, and half of it goes above the stage as blank sky
+   while the character rides up with the box.  Every point taken off this
+   padding therefore buys the character half a point of lift and costs the
+   headroom it was supposed to free.  The number stays where v2.3.1527 put
+   it; what the new art buys is the overhang it no longer spends BELOW this
+   box plus the ~29px of flow height the shorter lockup gives back, which is
+   why every gap above improves at 0.16 rather than merely holding. */
 .bt-cc-title{flex:0 0 auto;display:flex;align-items:center;justify-content:center;min-height:0;padding-bottom:calc(var(--cc-leftw)*0.16)}
 .bt-cc-cols{flex:1 1 auto;min-height:0;display:flex;flex-direction:row;align-items:stretch;gap:8px}
 /* Left column. The doubled class outranks .bt-name-box's max-width, same
@@ -4320,7 +4373,9 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
    painting.  No wide fuzzy glow: "reduce the fuzzy glow". */
 /* v2.3.2458: ONE image now, and it is TALLER than the old wordmark -- it
    carries BRO TOWN and the sword that used to be a second element below it
-   (760x638, where logo-plain was 700x452).  So the height cap has to grow
+   (760x638 -- 760x628 since the owner's v2.3.2642 redraw, which is the same
+   lockup with the new gold BRO TOWN mark in it -- where logo-plain was
+   700x452).  So the height cap has to grow
    with it or the art letterboxes inside its own element and reads smaller
    than the pair it replaced: 30vh of a 844px phone is 253px, which at this
    aspect would hold the width to 301px.  46vh gives the lockup the room the
