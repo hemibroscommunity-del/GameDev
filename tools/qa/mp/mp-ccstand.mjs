@@ -108,17 +108,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
      STAGE and the logo was moved on top of the stage at v2.3.1527.  A true
      guard over the wrong edge.
 
-     The ceiling is the SWORD, not the wordmark: .bt-cc-logo-sword is a
-     115%-tall sprite pinned at top:19%, so its tip hangs to ~134% of the
-     logo's own height and is the lowest ink the logo group puts on the
-     stage.  Measuring .bt-cc-logo would repeat the original mistake one
-     element over.
+     The ceiling WAS the SWORD, not the wordmark: .bt-cc-logo-sword was a
+     115%-tall sprite pinned at top:19%, so its tip hung to ~134% of the
+     logo's own height and was the lowest ink the logo group put on the
+     stage.  Measuring .bt-cc-logo would have repeated the original mistake
+     one element over.
+
+     v2.3.2642: THE SWORD IS INSIDE THE WORDMARK NOW, so .bt-cc-logo IS the
+     right element -- the owner's new lockup draws the blade into the art and
+     the separate sprite is gone.  This is not the mistake above coming back:
+     what made .bt-cc-logo wrong then was ink OUTSIDE its box, and there is
+     none now (the art is alpha-trimmed by tools/ui/fit-title-lockups.mjs, so
+     the element's bottom edge is the blade's tip to within a pixel).  If a
+     later change hangs anything off the title again, this is the assertion
+     that has to move with it.
 
      And it has to be measured on the TALLEST head the game can produce, not
      the default one: bald-with-no-hat clears by 84px and tells you nothing.
      So this walks every hair and every hat, keeps the highest head each
      produces, and checks that one. */
-  const swordBottom = async () => (await rect(P, '.bt-cc-logo-sword')).bottom;
+  const logoBottom = async () => (await rect(P, '.bt-cc-logo')).bottom;
   const openCat = (name) => P.page.evaluate((n) => {
     const b = [...document.querySelectorAll('[role="tab"],button')]
       .find((e) => new RegExp('^' + n + '$', 'i').test((e.textContent || '').trim()));
@@ -176,8 +185,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('every hair and hat could be tried (guard)',
     !!hair && !!hats && hair.n > 1 && hats.n > 1, { hair, hats });
   const worst = await inkSpan(P);
-  const sword = await swordBottom();
-  const gap = worst && worst.pageTop ? Math.round(worst.pageTop - sword) : null;
+  const logo = await logoBottom();
+  const gap = worst && worst.pageTop ? Math.round(worst.pageTop - logo) : null;
   /* ═══ WHAT COUNTS AS CLEAR IS THE OWNER'S CALL, NOT MINE ═══
      v2.3.2201 set this at 12px, reasoning from the 9px that had just been
      reported.  Then the owner looked at 21px -- which passes a 12px bar --
@@ -226,8 +235,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      pins the overlap at what was actually accepted, so a later change that
      makes the head sink further into the sword still fails here instead of
      passing unnoticed. */
-  rec.ok(`the tallest head the game can build clears the logo's sword (${gap}px)`,
-    gap !== null && gap >= -12, { gap, head: worst && worst.pageTop, swordBottom: sword, hair, hats });
+  rec.ok(`the tallest head the game can build clears the logo (${gap}px)`,
+    gap !== null && gap >= -12, { gap, head: worst && worst.pageTop, logoBottom: logo, hair, hats });
 
   /* ═══ v2.3.2202: THE MEASURED FIGURE IS THE BODY, NOT ITS SHADOW ═══
      Owner, twice: "the shoes are transparent" / "Shoes appear semi

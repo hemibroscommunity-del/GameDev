@@ -935,14 +935,30 @@ export function NameModal(props) {
   }, /*#__PURE__*/React.createElement("div", {
     /* v2.3.801: painted gold BRO TOWN lettering.  v2.3.806: gem sword
        flanks the lettering.  v2.3.1251: ~22% smaller (handoff) — size
-       lives in .bt-cc-logo; the sword tracks it via wrap-relative %. */
+       lives in .bt-cc-logo; the sword tracks it via wrap-relative %.
+       ═══ v2.3.2642: ONE LOCKUP, THE OWNER'S OWN FILE ═══
+       Owner, with the art: "The first image shows the BroTown logo I want on
+       the trait picker instead of the current one."  The sword is drawn INTO
+       the wordmark in it, so the pair of <img>s that used to be composed here
+       (logo-brotown.webp under an absolutely-positioned sword.webp) collapses
+       to one — the same move the splash made at v2.3.2458, for the same
+       reason: the two had to be held in proportion by hand (left:63.5%,
+       top:19%, height:115%, plus a gem-in-the-O alignment solved in
+       wrap-relative % at v2.3.808), and one image cannot drift from itself.
+       IT ALSO RETIRES AN OVERHANG.  The old sword hung BELOW its wrapper —
+       tip at ~134% of the wordmark's height — over the stage the character
+       stands on, which is the collision the owner reported at v2.3.2201 and
+       what .bt-cc-title's padding-bottom was reserving room for.  The new
+       lockup's blade ends inside its own box (the art is alpha-trimmed by
+       tools/ui/fit-title-lockups.mjs), so the title's box is now the whole
+       ceiling — see that padding in game.css and the guards in mp-ccstand. */
     className: "bt-cc-logo-wrap"
   }, /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/sword.webp', alt: '', className: "bt-cc-logo-sword"
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "bt-cc-sword-shine", "aria-hidden": true
-  }), /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-logo"
+    /* No ?v= cache-bust on purpose: this is a NEW path, so there is no stale
+       edge copy to defeat — and the <link rel=preload> in index.html has to
+       match this URL exactly or it adds a request instead of saving one
+       (docs/TRAPS.md §52). */
+    src: '/ui/welcome/title/brotown-lockup.png', alt: 'BRO TOWN', className: "bt-cc-logo"
   }), /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-logo-shine", "aria-hidden": true
   }))), /*#__PURE__*/React.createElement("section", {

@@ -105,8 +105,12 @@ const rect = (P, sel) => P.page.evaluate((s) => {
  * and no more: pay for a second round of clearance out of the character and
  * this goes red, which is the point. */
 const SIZES = [
-  { w: 390, h: 664, air: 2, minDrawnH: 145, minSwordGap: 15 },
-  { w: 320, h: 568, air: 2, minDrawnH: 115, minSwordGap: 15 },
+  /* v2.3.2642: minSwordGap -> minLogoGap.  The sword sprite that used to hang
+     below the title is drawn into the owner's new lockup, so the ceiling is
+     the title element's own bottom edge; the floor stays 15px because it is
+     the owner's accepted clearance, not a property of the old sprite. */
+  { w: 390, h: 664, air: 2, minDrawnH: 145, minLogoGap: 15 },
+  { w: 320, h: 568, air: 2, minDrawnH: 115, minLogoGap: 15 },
 ];
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -123,11 +127,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     const ink = await inkSpan(P);
     const plate = await rect(P, '.bt-cc-cluster');
-    const sword = await rect(P, '.bt-cc-logo-sword');
-    rec.ok(`${tag}: the character, the plate and the sword are all on screen (guard)`,
-      !!ink && !ink.empty && !ink.err && !!plate && plate.h > 40 && !!sword,
-      { ink, plate, sword });
-    if (!ink || ink.empty || ink.err || !plate || !sword) { await P.ctx.close().catch(() => {}); continue; }
+    const logo = await rect(P, '.bt-cc-logo');
+    rec.ok(`${tag}: the character, the plate and the title are all on screen (guard)`,
+      !!ink && !ink.empty && !ink.err && !!plate && plate.h > 40 && !!logo,
+      { ink, plate, logo });
+    if (!ink || ink.empty || ink.err || !plate || !logo) { await P.ctx.close().catch(() => {}); continue; }
 
     const cover = ink.feet - plate.top;   /* positive = the plate is over his boots */
     rec.ok(`${tag}: the lion backplate starts BELOW his boots `
@@ -138,10 +142,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
          + `(drawn ${ink.drawnH.toFixed(1)}px, floor ${S.minDrawnH})`,
       ink.drawnH >= S.minDrawnH, { drawnH: ink.drawnH, floor: S.minDrawnH });
 
-    const gap = ink.head - sword.bottom;
-    rec.ok(`${tag}: ...and he was not pushed up into the logo's sword to pay for it `
-         + `(${gap.toFixed(1)}px, floor ${S.minSwordGap})`,
-      gap >= S.minSwordGap, { gap, head: ink.head, swordBottom: sword.bottom });
+    const gap = ink.head - logo.bottom;
+    rec.ok(`${tag}: ...and he was not pushed up into the logo to pay for it `
+         + `(${gap.toFixed(1)}px, floor ${S.minLogoGap})`,
+      gap >= S.minLogoGap, { gap, head: ink.head, logoBottom: logo.bottom });
 
     await P.ctx.close().catch(() => {});
   }
