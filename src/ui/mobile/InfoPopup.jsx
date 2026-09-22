@@ -102,11 +102,40 @@ export const InfoPopup = () => {
             cursor: 'pointer', touchAction: 'manipulation',
           }}>×</button>
 
+        {/* ═══ v2.3.2648: THE TITLE CAN CARRY ITS OWN PICTURES ═══
+            Owner: "on the confirmation window where it names the stat and
+            combat type ('power - melee') also include its icon after each
+            label.  So power icon after power and the melee icon after
+            melee."
+            `titleParts` is optional and `title` stays the plain string --
+            it is what `data-infopopup` is keyed on and what a screen reader
+            reads, and three QA scenarios match the window by the words in
+            it.  So the icons are added BESIDE the text rather than in place
+            of any of it. */}
         <div data-infopopup-title style={{
           flex: 'none',
           fontSize: 15, fontWeight: 900, color: COL.accent,
           letterSpacing: '.01em', paddingRight: 28, marginBottom: 6,
-        }}>{cur.title}</div>
+          display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap',
+        }}>
+          {cur.titleParts && cur.titleParts.length
+            ? cur.titleParts.map((part, i) => (
+                <React.Fragment key={(part.label || '') + i}>
+                  {i > 0 && <span style={{ opacity: 0.5, fontWeight: 700 }}>·</span>}
+                  <span>{part.label}</span>
+                  {part.icon && (
+                    <img src={part.icon} alt="" draggable={false} style={{
+                      width: 19, height: 19, objectFit: 'contain', flex: 'none',
+                      /* the portrait is a photo-ish tile, the stat glyphs are
+                         flat art -- the radius only shows on the former */
+                      borderRadius: part.round ? 4 : 0,
+                      pointerEvents: 'none',
+                    }} />
+                  )}
+                </React.Fragment>
+              ))
+            : cur.title}
+        </div>
 
         {/* v2.3.2616: everything between the title and the buttons scrolls.
             The title stays because it names what you are reading; the action

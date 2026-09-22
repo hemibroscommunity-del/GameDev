@@ -1504,10 +1504,22 @@ export const HeroExpanded = () => {
                     rows.push({ label: 'DPS', now: '—', after: null, delta: 'equip a weapon to see' });
                   }
                 }
+                /* v2.3.2648: the same two words the title has always said, as
+                   parts, so each can be followed by its own icon (owner).
+                   The lane's icon is the weapon's, the shared row's is your
+                   portrait -- the same two pictures the grid's head cells
+                   use, so the window and the screen behind it agree. */
+                const laneMeta = st.atk ? (PROG3_SKILL_META.find((k) => k.key === laneCat) || {}) : null;
                 infoPopupBus.open({
                   title: info.title + (st.atk
-                    ? ' · ' + ((PROG3_SKILL_META.find((k) => k.key === laneCat) || {}).label || '')
+                    ? ' · ' + (laneMeta.label || '')
                     : ' · Shared'),
+                  titleParts: [
+                    { label: info.title, icon: st.iconSrc },
+                    st.atk
+                      ? { label: laneMeta.label || '', icon: laneMeta.iconSrc }
+                      : { label: 'Shared', icon: sharedIcon, round: true },
+                  ],
                   body: info.body, note: info.note,
                   perText: 'Each point: ' + st.perText,
                   /* ═══ v2.3.2231: THE FIGURE HOLDS THE LANE'S WEAPON ═══
@@ -2056,10 +2068,29 @@ export const HeroExpanded = () => {
                weight 800, so a cell of width W holds it at W/4.63 and the
                divisor keeps a hair of slack. */
             const CELL_W = Math.max(22, (panelVw() - 56) / 7.15);
-            const GLYPH = Math.round(Math.max(20, Math.min(30, CELL_W * 0.60)));
+            /* v2.3.2648: a quarter off every glyph (owner: "shrink each icon
+               25%.  Too large").  The cell keeps its height, so what the
+               glyph gives up goes to the caption and the number -- which is
+               the same direction as v2.3.2645's ask and this is the rest of
+               it.  Still derived from the cell's width, so the shrink holds
+               at every screen: 0.60 -> 0.45, and the clamp with it. */
+            const GLYPH = Math.round(Math.max(15, Math.min(22, CELL_W * 0.45)));
+            /* ═══ v2.3.2648: THE HEAD CELLS HAVE THEIR OWN SIZE ═══
+               They used to size off GLYPH, so shrinking the stat glyphs would
+               have shrunk the weapons and the portrait with them -- and the
+               weapons were the thing the owner called "super tiny and look
+               silly" at 0.62 OF the old glyph.  A head cell is 1.15x as wide
+               as a stat cell and carries no caption and no number, so it has
+               room the stat cells do not, and it should use its own. */
+            const HEAD_W = CELL_W * 1.15;
             /* Height stays capped sideways: the landscape pane is short and a
                tall cell there costs the second row its place on screen. */
             const CELL_H = landPane ? 58 : Math.round(Math.max(60, Math.min(78, CELL_W * 1.60)));
+            /* One weapon icon: the full width of the head cell, a third of
+               its height, whichever binds first.  The portrait has no stack
+               to make room for, so it takes the cell short of its padding. */
+            const LANE_ICON = Math.round(Math.max(18, Math.min(34, Math.min(CELL_H * 0.42, HEAD_W * 0.60))));
+            const HEAD_ICON = Math.round(Math.max(22, Math.min(40, Math.min(CELL_H - 14, HEAD_W - 10))));
             const CAP_FS = Math.max(7.5, Math.min(10.5, CELL_W / 4.7));
             const NUM_FS = Math.max(12.5, Math.min(18, CELL_W * 0.38));
             const statCell = (st, cat) => {
@@ -2142,27 +2173,58 @@ export const HeroExpanded = () => {
                   title={isLane ? 'Weapon stats — pick the weapon when you spend' : 'Shared stats'}
                   style={{
                     height: CELL_H, minWidth: 0, boxSizing: 'border-box',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: 3,
                     border: `1px solid ${isLane ? COL.accent : COL.tileBor}`,
                     borderRadius: 9, background: COL.wellSoft,
                     cursor: 'default', overflow: 'hidden',
                   }}>
                   {isLane
-                    ? POINT_LANES.filter((c) => !c.shared).map((c) => (
-                        <img key={c.key} src={c.iconSrc} alt="" draggable={false} style={{
-                          width: GLYPH * 0.62, height: GLYPH * 0.62, objectFit: 'contain',
-                          /* the lane you are spending into is lit; the other
-                             two are dimmed rather than hidden, so the cell
-                             still reads as "the weapons" and shows its state */
-                          opacity: c.key === buildCat ? 1 : 0.34,
-                          pointerEvents: 'none',
-                        }} />
-                      ))
+                    /* ═══ v2.3.2648: THREE WEAPONS DOWN THE DIAGONAL ═══
+                       Owner: "try making the first row (with all 3 combat
+                       icons) diagonally aligned so they fit better.  Right now
+                       those icons are super tiny and look silly."
+                       In a row they had to share the cell's WIDTH three ways
+                       -- about 17px each at 390, which is where "tiny" comes
+                       from -- while the cell's 75px of HEIGHT went unused.
+                       Down the diagonal each one gets the width of the whole
+                       cell and a third of its height, so they come out ~31px:
+                       nearly double, from the same box.  They overlap a little
+                       and that is the point -- a fanned stack of three cards,
+                       which reads as a SET rather than as three shrunken
+                       buttons, and the lit one sits on top of the other two.
+                       i/2 of the free space, so the first is flush top-left,
+                       the last flush bottom-right and the middle centred; the
+                       percentages are the cell's own box, so it re-fits at
+                       every width without a second breakpoint. */
+                    ? (
+                      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                        {POINT_LANES.filter((c) => !c.shared).map((c, i, a) => {
+                          const on = c.key === buildCat;
+                          const t = a.length > 1 ? i / (a.length - 1) : 0;
+                          return (
+                            <img key={c.key} src={c.iconSrc} alt="" draggable={false} style={{
+                              position: 'absolute',
+                              left: `calc(${t * 100}% - ${t * LANE_ICON}px)`,
+                              top: `calc(${t * 100}% - ${t * LANE_ICON}px)`,
+                              width: LANE_ICON, height: LANE_ICON, objectFit: 'contain',
+                              /* the lane you are spending into is lit AND on
+                                 top; the other two are dimmed rather than
+                                 hidden, so the cell still reads as "the
+                                 weapons" and shows its state */
+                              opacity: on ? 1 : 0.34,
+                              zIndex: on ? 2 : 1,
+                              pointerEvents: 'none',
+                            }} />
+                          );
+                        })}
+                      </div>
+                    )
                     : (
                       <img src={sharedIcon} alt="" draggable={false}
                         onError={(e) => { if (e.currentTarget.src.indexOf(SHARED_ICON_FALLBACK) < 0) e.currentTarget.src = SHARED_ICON_FALLBACK; }}
                         style={{
-                          width: GLYPH, height: GLYPH, objectFit: 'cover', borderRadius: 6,
+                          width: HEAD_ICON, height: HEAD_ICON, objectFit: 'cover', borderRadius: 6,
                           imageRendering: 'pixelated', pointerEvents: 'none',
                         }} />
                     )}
