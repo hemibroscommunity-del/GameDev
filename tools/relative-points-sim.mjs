@@ -38,7 +38,11 @@
  *      when the ceiling becomes reachable, the tank it builds against the
  *      curve, the combined floor that tames it, and anticheat.  §3.2 of the
  *      note (5-C, the owner's pick) is the shape this file now measures as
- *      the plan.
+ *      the plan.  8g is the owner's next two picks on top of it — the
+ *      combined 10 % floor (12-C) and the per-level bound kept on the three
+ *      avoidance stats (13-B) — measured WITH armour on, and the armour gate
+ *      those picks collide with (decision 14: armour tiers gate on Defense
+ *      POINTS, and every point is now 2.5x heavier).
  *   9. THE FIRST HOUR — levels 3 to 10, where the owner expects players to
  *      quit.  The climb, the felt unit (a whole HIT, not a percent), what one
  *      POINT does against what one LEVEL-UP does, what a level-10 character is
@@ -740,6 +744,116 @@ console.log('\n    ANTICHEAT under the ceiling — Power, Luck and Special at 29
   ps._buffs = null; ps.rangedWeapon = null; ps.staffWeapon = null;
 }
 applyTables(TODAY);
+
+/* ═══ 8g. THE PICKS — 5-C + 12-C + 13-B, and the armour gate they collide with ═══
+ *
+ * Owner, 2026-09-22: "Yes do combined floor and keep per level limit on
+ * those 3."  So the configuration is now:
+ *   5-C   linear, no stat cap, the four percentage stats stop at 90 %;
+ *   12-C  Dodge x Defense (x Resist, on an elemental hit) never lets less
+ *         than 10 % of a hit through — enforced on the CUT, after the dodge
+ *         roll: cut = max(defMult x eMult, 0.10 / (1 - dodge)).  Armour, the
+ *         resist buff and the legacy soaks apply AFTER it and are NOT floored:
+ *         the floor is on what POINTS buy, and gear is where the owner wants
+ *         the endgame decided;
+ *   13-B  Defense, Dodge and Resist keep the per-level bound (points <=
+ *         character level); the four damage stats loosen to 2 x.
+ *
+ * THE COLLISION.  Armour tiers gate on allocated Defense POINTS
+ * (_prog3GearOk 'defense', PROGRESSION-REDESIGN §6 — the owner's own ask):
+ * rung r above copper needs 5r points, so the top armour asks 90.  Every
+ * shape in this note makes a Defense point 2.5x heavier, so the SAME 90
+ * points is 90 % Defense instead of 36 % — the ridiculous number becomes the
+ * price of the best armour, for every build.  8g measures the gate options
+ * with real armour on, through the real _armorDrMult:
+ *   14-A  keep 5 points per rung (top armour: 90 points = 90 % Defense);
+ *   14-C  2 points per rung (the same Defense PERCENT today's gate asks —
+ *         36 % for the top) AND character level >= 5 per rung (the same
+ *         PACING today's gate gives, via the per-level bound).
+ *
+ * The floor is applied here the same way everything else is: through the
+ * real sink, by setting Defense's per-point value so pts x per reads the
+ * floored cut at this build (identical arithmetic in the linear reader). */
+const FLOOR = 0.10;
+const TIER_ORDER = Object.keys(BLACKSMITH_TIERS);
+const COPPER = TIER_ORDER.indexOf('copper');
+/* Wear the best armour pair a gate allows: rung above copper, chest + legs. */
+function wearRung(rung) {
+  if (rung < 0) { ps.armor = null; ps.legsArmor = null; return null; }
+  const key = TIER_ORDER[Math.min(TIER_ORDER.length - 1, COPPER + rung)];
+  const tm = BLACKSMITH_TIERS[key].tierMult;
+  ps.armor = { tierMult: tm, gearBase: key };
+  ps.legsArmor = { tierMult: tm, gearBase: key };
+  return key;
+}
+/* Mean damage through (fraction of a raw hit) and swings-to-die, at-level brute. */
+function tankCell(L) {
+  const bru = monster('brute', Math.min(100, L));
+  const through = dmgTakenPerHit(bru) / bru.dmg;
+  return { through, swings: hitsToDie(bru) };
+}
+const skillsFor = (L) => (L > 102 ? { sword: 100, bow: 100, staff: 100 } : { sword: L - 2 });
+
+console.log('\n8g. THE PICKS (5-C + 12-C floor + 13-B bound) — the strongest legitimate tank, with and without armour');
+console.log('    vs an AT-LEVEL brute.  Build: Dodge to its limit, then only as much Defense as still counts');
+console.log('    (or the armour gate demands), then HP.  Armour = the best pair the gate allows at that level.');
+console.log('    cells: damage through · brute swings to kill you');
+console.log('    char | TODAY + best armour (gate: 5 pts/rung)  | PICKS, no armour     | PICKS + best armour, gate 14-C');
+for (const L of [20, 40, 63, 90, 102, 300]) {
+  const shared = 3 * (L - 3), cells = [];
+  /* TODAY: dodge 0.4 %/pt cap 75, def 0.4 %/pt cap 100, bound L; the gate
+     reads def points at 5 per rung, so def points ARE the armour. */
+  {
+    applyTables(TODAY);
+    let left = shared;
+    const dodge = Math.min(75, L, left); left -= dodge;
+    const def = Math.min(100, L, left); left -= def;
+    const hp = Math.min(PROG3.BODY.hp.cap, L, left);
+    setBuild(skillsFor(L), {}, { dodge, def, hp });
+    const key = wearRung(Math.min(18, Math.floor(def / 5)));
+    const c = tankCell(L);
+    cells.push(`${pad((c.through * 100).toFixed(1) + '%', 6)} · ${pad(f1(c.swings), 6)}  (${key})`);
+    wearRung(-1);
+  }
+  /* PICKS */
+  for (const armoured of [false, true]) {
+    applyCeiling({});
+    let left = shared;
+    const dodge = Math.min(CEIL.PTS, L, left); left -= dodge;
+    const dodgePct = Math.min(CEIL.PCT, dodge * 0.01);
+    /* Defense that still counts under the floor at edge 1. */
+    const useful = Math.max(0, Math.ceil((1 - FLOOR / (1 - dodgePct)) * 100 - 1e-9));
+    const rung = armoured ? Math.min(18, Math.floor(L / 5)) : -1;          /* 14-C pacing: level >= 5r */
+    const gateDef = armoured ? 2 * Math.max(0, rung) : 0;                  /* 14-C value: 2 pts/rung */
+    const def = Math.min(CEIL.PTS, L, left, Math.max(useful, gateDef)); left -= def;
+    const hp = Math.min(PROG3.BODY.hp.cap, L, left);
+    setBuild(skillsFor(L), {}, { dodge, def, hp });
+    /* the floor, on the cut */
+    const cut = Math.max(1 - def * 0.01, FLOOR / (1 - dodgePct));
+    PROG3.BODY.def.per = def > 0 ? (1 - cut) / def : 0;
+    const key = wearRung(rung);
+    const c = tankCell(L);
+    cells.push(`${pad((c.through * 100).toFixed(1) + '%', 6)} · ${pad(f1(c.swings), 6)}${armoured ? `  (${key}, def ${def})` : `  (def ${def})`}`);
+    wearRung(-1);
+    applyTables(TODAY);
+  }
+  console.log(`    ${pad(L, 4)} | ${cells[0].padEnd(39)} | ${cells[1].padEnd(20)} | ${cells[2]}`);
+}
+applyTables(TODAY);
+
+console.log('\n    THE GATE ITSELF — what wearing the TOP armour (18 rungs above copper) demands of a character 90 with');
+console.log('    no Dodge at all, under each gate.  The armour is the same; only what the gate forces you to hold moves.');
+for (const [label, defPts] of [['today (5 pts/rung, 0.4 %/pt)  ', 90], ['14-A (5 pts/rung, 1 %/pt)     ', 90], ['14-C (2 pts/rung, 1 %/pt)     ', 36]]) {
+  if (label.startsWith('today')) applyTables(TODAY); else applyCeiling({});
+  setBuild({ sword: 88 }, {}, { def: defPts, hp: 90 });
+  wearRung(18);
+  const c = tankCell(90);
+  const defPct = defPts * PROG3.BODY.def.per * 100;
+  console.log(`    ${label} | holds ${pad(defPts, 2)} Defense = ${pad(defPct.toFixed(0), 2)} %  | ${pad((c.through * 100).toFixed(1) + '%', 6)} through · ${pad(f1(c.swings), 6)} swings`);
+  wearRung(-1);
+  applyTables(TODAY);
+}
+console.log('    14-C reproduces today\'s top-armour wearer exactly; 14-A turns every top-armour wearer into a tank.');
 
 /* ═══ 9. THE FIRST HOUR — character level 3 to 10 ═══
  *

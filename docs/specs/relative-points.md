@@ -48,10 +48,19 @@ fighting a monster close in level to them."*
   Element and crit damage never stop. The per-level bound means nobody can
   reach 90 % before character 90. It is exactly the weight every number in
   §4 and §4.7 was measured at, and the anticheat ceiling holds at 33 % of its
-  limit with everything at 297 points. The one thing it costs is the tank:
-  two stats at 90 % multiply to 1 % damage through, so decision 12 now
-  recommends one combined floor — ridiculous at ONE thing. (§3.2, sim §8f;
-  §3.1 is the curve this replaced.)
+  limit with everything at 297 points. The one thing it cost was the tank —
+  two stats at 90 % multiply to 1 % damage through — so you also picked **one
+  combined floor** (your points never let less than 10 % of a hit through;
+  ridiculous at ONE thing) and **kept the per-level limit on Defense, Dodge
+  and Resist** while the four damage stats loosen to 2 × your level. (§3.2,
+  sim §8f–g; §3.1 is the curve this replaced.)
+- **One coupling to decide before the code PR: the armour gate (decision 14,
+  §3.3).** Armour unlocks by Defense POINTS, and every point is now 2.5×
+  heavier, so the unchanged gate would force 90 % Defense on anyone in top
+  armour and lock veterans out of their own armour after the migration. The
+  recommended fix asks for the same Defense *percent* and the same character
+  level as today (36 points and level 90 for the top armour), which
+  reproduces today's top-armour wearer exactly.
 - **What it feels like, measured.** One level-up's points into Power at
   character level 3 takes a brute from 10.8 swings to 7.9 (−27 %; today −11
   %). Five level-ups' points into Defense at level 20 buys +19 % survival
@@ -390,11 +399,11 @@ the limit** (PASS, lockstep by construction as in §3.1).
 **When the ceiling becomes reachable** is set by the per-level bound, not by
 the ceiling itself:
 
-| stat | points to 90 % | earliest, bound = character level (today) | bound = 2 × character level |
+| stat | points to 90 % | earliest, bound = character level (today) | under 13-B, the owner's pick |
 |---|---|---|---|
-| Dodge, Resist | 90 | character 90 | character 45 |
-| Defense | 90 | character 90 | character 90 (13-A keeps Defense at 1×) |
-| Luck, crit chance | 89 (1 % base) | character 89 | character 45 |
+| Dodge, Resist | 90 | character 90 | character 90 (bound kept; loosening it would make this 45) |
+| Defense | 90 | character 90 | character 90 (bound kept) |
+| Luck, crit chance | 89 (1 % base) | character 89 | character 45 (bound loosened to 2 ×) |
 
 **What it costs — measured, and it is the tank.** Every shared point into
 Defense, then Dodge, then Resist, then HP, against a brute at your level,
@@ -419,35 +428,135 @@ away fast, because two stats at 90 % multiply: 10 % of hits land × 10 % of
 their damage = **1 % through**. A pure-avoidance character 90 survives about 330
 at-level brute swings, where the curve gave 17. That is the ridiculous
 number doing what it says — but it arrives at character 90, a third of the
-way to the cap, not at the end. Two decisions follow from it, and both
-recommendations changed:
+way to the cap, not at the end. Two decisions follow from it, and the owner
+picked both on 2026-09-22 — *"Yes do combined floor and keep per level limit
+on those 3"*:
 
-- **Decision 12 (the avoidance extreme)** — recommendation moves from *accept*
-  to **one combined floor: Defense and Dodge together never cut a hit below
-  10 %** — "you can be ridiculous at ONE thing." Each stat still reaches its
-  own 90 %, a pure-Dodge build still gets exactly what you asked for, and a
-  character 90 stacking both lands at **about 60 swings** instead of about
-  330 (measured, sim §8f — the Defense points the floor strands go into HP). The reason
-  is your own line: the endgame is meant to hinge on the rarest armour and
-  weapons, not on pure stats alone, and a stat-only build that at-level
-  monsters cannot kill from character 90 on would settle the endgame before
-  the gear does. *Accept* is still a legitimate pick; it is what the words
-  "ridiculous like 90 %" literally allow.
-- **Decision 13 (the per-level bound)** — the early-game loosening now stops
-  at the damage stats. Loosening Dodge and Resist to 2 × character level
-  puts a 3.7 %-through tank at character 63 (about 100 swings). Loosening Power,
-  Luck, Special and Element is what made level 10 louder (§4.7e — 6–21 → 9–29
-  on screen came from Power alone), and none of those four has a safety
-  edge: damage is uncapped anyway and crit chance at 90 % is inside the
-  anticheat ceiling. So **the bound stays on Defense, Dodge and Resist and
-  loosens on the four damage stats.**
+- **Decision 12 → C: one combined floor. Your points can never let less than
+  10 % of a hit through** — "ridiculous at ONE thing." Each stat still reaches
+  its own 90 %, so a pure-Dodge build gets exactly what was asked for, and a
+  character 90 stacking Dodge and Defense lands at **about 60 swings** instead
+  of about 330 (sim §8f–g). The owner's reason, in their words: the endgame
+  will depend on the rarest armours and weapons for dominance, not pure stats
+  alone.
+- **Decision 13 → B: the per-level bound stays on Defense, Dodge and Resist**
+  (none of them holds more points than your character level) **and loosens to
+  2 × character level on Power, Luck, Special and Element.** Loosening Dodge
+  and Resist too would have put a 3.7 %-through tank at character 63 (about
+  100 swings). The louder level 10 came from Power alone (§4.7e: 6–21 → 9–29
+  on screen), and none of the four damage stats has a safety edge — damage is
+  uncapped anyway and crit chance at 90 % is inside the anticheat ceiling.
+  The six universal stats keep today's `min(cap, character level)`.
+
+**How the floor works, exactly** — the spec the code PR implements:
+
+- **It covers what POINTS buy:** Dodge, Defense, and Resist on an elemental
+  hit. Resist is in it although the pick named Defense and Dodge, because
+  without it an elemental hit on a 90 / 90 / 90 build lets 1 % through — the
+  exact thing the floor exists to stop.
+- **It is enforced on the cut, after the dodge roll,** so Dodge always rolls at
+  its full value: `cut = max(defMult × (elemental ? eResMult : 1), 0.10 / (1 −
+  dodge))`, applied as ONE multiplication in `_applyDamage` where the Defense
+  and Resist cuts are applied today. At zero points both sides are 1 and
+  nothing changes; Dodge never exceeds 0.90, so the right-hand side never
+  exceeds 1.
+- **It reads the edge-scaled stats.** Against a monster above you your Dodge
+  fades, the floor loosens with it, and the Defense it was holding back comes
+  back to life. So the floor never makes a point worthless everywhere — only
+  against monsters at or below you — and it never refuses a spend.
+- **Armour, the cooking resist buff and the legacy soaks sit outside it and
+  are not floored** (the buff applies just before the cut, as today; armour
+  and the soaks just after). The floor is on stats; gear is where the owner wants the endgame
+  decided. That has a measured cost, and it is the number to look at before
+  the code PR (sim §8g): the strongest legitimate tank at character 90 in top
+  armour lets **2.6 %** through and survives **about 250** at-level brute
+  swings, where today's best tank (Dodge 30 %, Defense 36 %, the same armour)
+  lets 11.4 % through and survives 55. In other words, under the picks your
+  stats alone do what stats plus top armour do today, and top armour takes it
+  the rest of the way. If that is too much, the floor can be extended over
+  armour as well (a total that never drops below, say, 5 % — which roughly
+  halves those 250 swings); that is one constant and touches nothing else in
+  this note.
+
+The strongest legitimate tank under the picks — Dodge to its limit, then only
+as much Defense as still counts (or the armour gate of §3.3 demands), then HP
+— against a brute at your level, with the best armour pair the gate allows.
+Cells are damage through · monster swings to kill you:
+
+| character | today + best armour | picks, no armour | picks + best armour (gate 14-C) |
+|---|---|---|---|
+| 20 | 42 % · 19.7 (obsidian) | 65 % · 12.9 | 33 % · 25.5 (obsidian) |
+| 40 | 33 % · 24.1 (dragonbone) | 36 % · 22.3 | 17 % · 48.2 (dragonbone) |
+| 63 | 21 % · 33.6 (sunstone) | 14 % · 50.6 | 5.1 % · 141 (sunstone) |
+| 90 | 11 % · 55.1 (worldbreaker) | 10.1 % · 58.5 | **2.6 % · 248** (worldbreaker) |
+| 102 | 11 % · 55.3 | 10.1 % · 59.4 | 2.5 % · 226 |
+| 300 (all 100) | 10.5 % · 97.6 | 10.1 % · 109 | 2.3 % · 432 |
+
+The floor holds the no-armour column at 10 % from character 90 on, as
+designed — exactly 10 % in expectation; a rerun moves these cells by a few
+percent, because at 90 % Dodge only about one sampled hit in ten lands. Below
+character 90 it is the per-level bound that sets the pace.
 
 **Implementation is simpler than 5-B.** No curve helper, no `K`, no inverse
 in the migration: the readers keep `pts × edge × per` and clamp the result
-with `Math.min(0.90, …)`; the spend handler refuses a point once the stat
-reads 90 % at edge 1. The migration is 5-A's division table (§6), and no
-existing character converts anywhere near the ceiling — today's largest
-holding, 100 Defense at 0.4 %, becomes 40 points.
+at 0.90; the floor is one `Math.max` in `_applyDamage`; the spend handler
+refuses a Defense, Dodge or Resist point once that stat reads 90 % at edge 1
+(Luck keeps taking points — crit chance holds at 90 % and crit damage keeps
+growing). The migration is 5-A's division table (§6), and no existing
+character converts anywhere near the ceiling — today's largest holding, 100
+Defense at 0.4 %, becomes 40 points.
+
+### 3.3 The armour gate these picks collide with (decision 14, sim §8g)
+
+Armour (both pieces) and shields unlock by **allocated Defense points** —
+the owner's own ask in PROGRESSION-REDESIGN §6 ("armor tiers gate on the
+allocated defense stat"), enforced by `_prog3GearOk(ps, 'defense', …)` from
+`gear.js` (shields) and `grids.js` (`_gridsApplyArmor`, both body pieces).
+Each rung above copper needs 5 points, so the top armour asks 90. And the
+per-level bound was introduced to pace exactly that (PROGRESSION-REDESIGN
+§6: "a fresh account that dumps every point into defense can wear endgame
+armor at character level 20").
+
+Every shape in this note makes a Defense point 2.5× heavier. Left alone, the
+gate keeps asking for the same 90 points — which now means **90 % Defense.**
+Your ridiculous number becomes the price of the best armour, for every build.
+Measured, a character 90 in the top armour with no Dodge at all:
+
+| gate | Defense it forces you to hold | damage through | brute swings to kill you |
+|---|---|---|---|
+| today (5 points per rung, 0.4 %/pt) | 90 points = 36 % | 16.3 % | 38.9 |
+| **14-A**: keep 5 points per rung | 90 points = **90 %** | 2.3 % | 272 |
+| **14-C**: 2 points per rung, **and** character level ≥ 5 per rung | 36 points = 36 % | 16.3 % | 38.9 |
+
+**14-C reproduces today's top-armour wearer exactly.** It asks for the same
+Defense *percent* today's gate asks for (2 % per rung, 36 % for the top) and
+keeps today's *pacing* (top armour at character 90, which is where the
+per-level bound puts it today), and Defense allocation still gates armour.
+(14-B, the 2-points half alone, keeps the percent but lets top armour on from
+character 36.) Three more things 14-C fixes that 14-A cannot:
+
+- **The migration.** v18 converts Defense by value (90 points at 0.4 % → 36).
+  Under 14-A every veteran's converted points fall below their own armour's
+  requirement: pieces already worn are grandfathered, but the first swap locks
+  them out of gear they own until they re-spend their refund on Defense.
+  Under 14-C the gate reads the same value the conversion preserves, and the
+  level half is implied by today's gate (you could only hold 5r Defense points
+  at character ≥ 5r), so nobody loses access.
+- **The fallback path.** Armour with no `gearBase` prices its rung off
+  `tierMult`, capped at rung 19 with no copper offset — 95 points under 14-A,
+  above the 90-point ceiling, so a future rare drop at that tier could never
+  be worn. Under 14-C it asks 38 points and character 95. No such drop exists
+  today (copper is rung 0, iron is exempt since v2.3.2124), which is why this
+  is a trap and not yet a bug.
+- **The Dodge tank.** Under 14-A a pure-Dodge character who wants top armour
+  must also hold 90 % Defense. Under 14-C it holds 36 points, which the floor
+  zeroes against at-level monsters while Dodge is at 90 % — so those points
+  are the armour's price and nothing else (they come back against monsters
+  above you).
+
+The cost of 14-C is one more comparison in `_prog3GearOk` and its client
+mirror, and a two-part requirement on the forge and inventory line ("Defense
+36 · Level 90" where it reads "Defense 90" today).
 
 ---
 
@@ -772,20 +881,24 @@ character, same 21 points, three rules:
 | no level cap | 21 | 9–30 | 2.7 |
 
 Loosening it is the difference between a level-10 build that is spread thin and
-one that has committed. **And the rule is narrower than it looks:** §6-C was
-introduced to stop a fresh character dumping into Defense and wearing endgame
-armour at level 20, because armour tiers gate on allocated defense points. That
-reasoning applies to `def` and to nothing else. Decision 13 is whether to keep
-the cap on `def` alone and loosen the rest — the early game gets its spike, the
-gear gate keeps its guard, and the edge still means a concentrated build only
-dominates at its own level.
+one that has committed. **The rule does two jobs, and only one of them has to
+stay everywhere.** PROGRESSION-REDESIGN §6 introduced it to stop a fresh
+character dumping into Defense and wearing endgame armour at level 20 (armour
+tiers gate on allocated defense points — §3.3); progression-v3 also leaned on
+it to force an early spread. Under 5-C it gains a third: it is what paces the
+avoidance stats toward their 90 % ceiling (§3.2). The owner's pick, **13-B**,
+keeps it on Defense, Dodge and Resist and loosens it to 2 × character level on
+the four damage stats — the early game gets its spike, the armour gate and
+the ceiling keep their pacing, and the edge still means a concentrated build
+only dominates at its own level.
 
 ---
 
 ## 5. Where it plugs into the code
 
 Everything server-side is one new function and one new optional argument,
-threaded to the sites that already know the monster. No new message type, no
+threaded to the sites that already know the monster — plus, for the owner's
+picks, one ceiling, one floor, one loosened bound and one gate comparison. No new message type, no
 new storage key, no new client→server event.
 
 ### 5.1 Server
@@ -793,12 +906,16 @@ new storage key, no new client→server event.
 | where | change |
 |---|---|
 | `prog3.js` `PROG3` | new per-point values, and **`cap` becomes `bound`** on the seven stats — no longer a design limit, just the storage clamp every read already applies (999, the sanitizer's existing number; points are server-minted so the real limit is the point supply). Each stat gains `relative: true` and, for the four percentage ones, `curveK`, so the client's row metadata and the readers work off the table rather than a list. Plus `PROG3.EDGE = { FADE_PER_LEVEL: 0.20, BELOW_BONUS: 0 }`, `prog3Edge(yardstick, monsterLevel)`, and the two readers that supply the yardstick: `_prog3LaneYardstick(ps, cat)` (that lane's trained level) and `_prog3BodyYardstick(ps)` (the highest trained level). Two named functions rather than a raw level at each call site, because "which level does this compare against" is the decision the whole design turns on and it must have one home |
-| `prog3.js` `prog3Curve(pts, K)` | `pts / (pts + K)`, the ONE definition of the diminishing shape, mirrored client-side. The four percentage readers below call it; nothing else states the arithmetic. The §6-C double cap `min(bound, characterLevel)` stays exactly as it is — it is a pacing rule, not a ceiling, and it is the only thing that still stops an early rush |
+| `prog3.js` `prog3Curve(pts, K)` | **5-B only — not needed under 5-C, the owner's pick.** `pts / (pts + K)`, the ONE definition of the diminishing shape, mirrored client-side. The four percentage readers below call it; nothing else states the arithmetic. The §6-C double cap `min(bound, characterLevel)` stays exactly as it is — it is a pacing rule, not a ceiling, and it is the only thing that still stops an early rush |
 | `prog3.js` readers | `_prog3CritChance / _prog3CritMult / _prog3SpecialMult / _prog3DefMult / _prog3DodgePct / _prog3ElemResistMult` take an optional `edge` (default 1) and apply it to the POINT COUNT, which is where the design puts it: `prog3Curve(pts × edge, K)` for the four percentage stats, `pts × edge × per` for the linear ones. The 1 % crit base stays outside the product, so an unallocated character rolls exactly what it rolls today at every gap. Edge on the count rather than on the result matters for a curve: `curve(p × 0.5)` is the value of half the investment, while `curve(p) × 0.5` would be half a value the curve never promised. **Under 5-C (the owner's pick) there is no curve:** every reader is `pts × edge × per`, and the four percentage readers clamp the result at `PROG3.CEILING` (0.90) — crit chance clamps its percent, not its points, so crit damage keeps growing |
+| `prog3.js` `PROG3` under **5-C** | `CEILING: 0.90` and `FLOOR: 0.10` beside the per-point values. Defense, Dodge and Resist take `cap: 90` (the ceiling, in points, at 1 %/pt); Power, Special, Element and Luck take the storage bound. The four percentage readers return `Math.min(PROG3.CEILING, …)` — crit chance clamps its PERCENT, not its points, so Luck's crit damage keeps growing |
+| `prog3.js` `_handleProg3Allocate` (**13-B**) | the per-level bound becomes per-stat: `2 × charLevel` for Power, Luck, Special and Element; `charLevel` for Defense, Dodge, Resist and the six universal stats, as today. A Defense, Dodge or Resist point is refused once that stat reads 90 % at edge 1, and stays in the pool |
+| `prog3.js` `_prog3GearOk(ps, 'defense', req)` (**14-C**) | `defPts ≥ req × 2 / 5 && charLevel ≥ req`. `req` is today's `5 × rung` everywhere it is computed, so the callers do not change: `gear.js` `_prog3EquipOk` (shields, and the no-`gearBase` fallback) and `grids.js` `_gridsApplyArmor` (both body pieces). Weapons and amulets keep their skill gate untouched |
 | `combat.js` `_computeAttackDamage(ps, slot, isSpecial, opts)` | `opts.edge` (default 1); the Power term becomes `dmgPts × per × edge`, and the crit / special readers receive it |
 | `combat.js` `_handleMonsterDamage` | `edge = prog3Edge(this._prog3LaneYardstick(attackerPs, this._prog3CatFor(_effSlot)), m.level)` — the lane the SERVER resolved, never the client's claim; passed to the roll, to `elemAttackStat` for the status snapshot and to `resolveElementCollision` |
 | `combat.js` `_staffSplash` | inherits the primary hit's number (it is defined as "half the number beside it", v2.3.2481); neighbours are not re-priced by their own level — accepted, documented |
 | `combat.js` `_applyDamage(ps, raw, isBlock, opts)` | `opts.attackerLevel`; `edge = prog3Edge(this._prog3BodyYardstick(ps), attackerLevel)` scales the def / dodge / eres point counts — the highest trained skill, so how tough you are never changes with the weapon in your hands. Absent `attackerLevel` → 1, so every caller that does not say keeps today's behaviour byte-for-byte |
+| `combat.js` `_applyDamage` — the **12-C** floor | replaces the two separate multiplications (Defense, then Resist on an elemental hit) with one: `cut = Math.max(defMult × (opts.elemental ? eMult : 1), PROG3.FLOOR / (1 − dodgePct))`, then `dmgTaken = Math.max(1, Math.round(dmgTaken × cut))`. `dodgePct` is the edge-scaled value the roll just used. The cooking resist buff (before), armour and the legacy soaks (after) are untouched and outside the floor. One rounding instead of two moves an elemental hit by at most 1 — pinned in §8 |
 | `index.js` `_monsterStrikePlayer` | passes `{ attackerLevel: m.level }` — the melee swing and the snowball impact |
 | `telegraph.js` `_telegraphHitPlayer`, `dungeon.js` `_dungeonBossHitPlayer`, `firetrail.js` `_fireTrailHitPlayer` | pass the attacking monster's level; the fire patch stamps its goblin's `level` at creation (today it carries only `mid`, and the goblin may be dead when the patch burns) |
 | `elemental.js` `elemAttackStat(ps, legacy, cat, edge)` | multiplies the `elem` point count; the power SNAPSHOT taken at status-apply time therefore already carries the edge of the monster it is on, so burn / root / thorn ticks and the thorn recoil need no further change |
@@ -812,6 +929,9 @@ new storage key, no new client→server event.
 | where | change |
 |---|---|
 | `src/data/prog3.js` | the seven constants and `EDGE` mirrored (mirror-audit §12 already compares `PROG3.ATK` / `PROG3.BODY` scalars AND key sets, so a one-sided edit fails CI); `prog3Edge()` mirrored for the readouts |
+| `src/data/prog3.js` under **5-C** | `CEILING` and `FLOOR` join the mirrored scalars (mirror-audit §12 compares them, so a one-sided edit fails CI); `prog3DodgePct` and the other percentage readouts clamp at 90 % |
+| `src/data/gameSystems.js` `prog3GearReq` (**14-C**) | armour and shield return both halves — Defense ≥ 2 per rung AND level ≥ 5 per rung — and `met` needs both; the forge and inventory line reads "Defense 36 · Lv 90". Gated on `caps.prog3rel`, so against an old worker it keeps printing that worker's 5-per-rung gate truthfully |
+| stats panel (`heroModel.js` and the Points screen) | when the 12-C floor binds at edge 1, the Defense and Resist rows say so (*"held by the 10 % floor — counts again vs stronger monsters"*) instead of printing a percentage the hit will not see |
 | readouts (`prog3DmgTerm`, `calcDisplayDps`, `calcDisplayDmgRange`, `statPreview`) | predict at edge 1 — the number you will see against a monster at or below your level — and say so once, in the Points screen's one-line legend |
 | Points screen (`HeroExpanded.jsx`) | relative rows carry a small edge glyph beside the count; the ℹ️ window's second line reads *"Full strength vs Lv ≤ N (your level). Fades to nothing at Lv N+5."* with N live; row copy from the kid sentences in §3 |
 | nameplate legend | the four bands gain their point strength: **near = full, high = 60–80 %, danger = 40 % → 0**. No change to the plate itself — its border already tells the player which band a monster is in |
@@ -839,6 +959,17 @@ at the end of this section: same per-point weight, so kept = `ceil(old value
 ÷ new per)`, and the ceiling never binds — today's largest holding, 100
 Defense at 0.4 %, converts to 40 points, far below 90. The 5-B inversion
 directly below is kept for that option.
+
+**The armour gate survives the conversion only under 14-C (§3.3).** The gate
+reads Defense POINTS, and the conversion shrinks them 2.5× by design. Under
+14-C the gate asks 2 points per rung — the same value the conversion
+preserves — so a veteran who held `p ≥ 5r` points for rung `r` keeps
+`ceil(0.4 p) ≥ 2r` and still qualifies; the level half (`charLevel ≥ 5r`) is
+implied, because the per-level bound let them hold `5r` points only at
+character `≥ 5r`. Under 14-A the same veteran falls below their own armour's
+requirement: worn pieces are grandfathered, but the first swap locks them out
+until they re-spend their refund on Defense. So 14-C is a prerequisite of
+this migration, not a separate nicety, and ships in the same PR.
 
 Under **5-B** the conversion inverts the curve instead of dividing a rate:
 a stat holding `n` points at the old linear value `r = n × per` keeps
@@ -888,6 +1019,16 @@ The table below is the same exercise under **5-A**, kept for that option.
 
 ## 7. Couplings and traps — what to watch
 
+- **Armour and shields gate on Defense POINTS (§3.3, decision 14).** Any
+  change to Defense's per-point value changes what that gate forces a player
+  to hold — under every shape in this note, 2.5× more. The rule that keeps it
+  honest: the gate prices the Defense PERCENT and the character level, never
+  the raw point count, so a future retune of `PROG3.BODY.def.per` moves the
+  gate's point figure with it (`ceil(req × 0.004 / def.per)` for the value
+  half — today's 0.4 %/pt reads back as `req` itself).
+  The no-`gearBase` fallback (rung up to 19, no copper offset) is the path a
+  future rare armour drop will take — its requirement must stay under the
+  90-point ceiling, which 14-C guarantees (38) and 14-A breaks (95).
 - **The world is pinned at level 1–2** (data.js `ZONES`, v2.3.1160, owner
   directive; the intended bands sit beside each zone as comments: meadow
   1–10, frost/tidal 8–25, verdant/mist 22–40, hollows/sky 38–58, ember/thunder
@@ -957,12 +1098,27 @@ The table below is the same exercise under **5-A**, kept for that option.
 - `_handleMonsterDamage` against a monster 5 levels above a maxed attacker
   lands the no-points number; the same monster at the attacker's level lands
   the invested one;
-- **the ceiling, under 5-C (the owner's pick):** each of the four percentage
-  readers returns exactly 0.90 at 90 points (89 for Luck) and at 999, and
-  0.89 at 89; crit damage keeps growing past the crit-chance ceiling; the
-  spend handler refuses a point once a stat reads 90 % at edge 1 and the
-  point stays in the pool; the combined Defense × Dodge floor of decision 12-C,
-  if picked, pinned at 10 % through with both stats at 90;
+- **the ceiling (5-C):** Defense, Dodge and Resist read 0.89 at 89 points
+  and exactly 0.90 at 90 and at 999; crit chance reads 0.90 at 89 Luck
+  points (1 % base) and at 999, while crit damage keeps growing past it; the
+  spend handler refuses a Defense, Dodge or Resist point at 90 % (edge 1) and
+  the point stays in the pool, but keeps taking Luck points;
+- **the floor (12-C):** with Dodge and Defense both at 90 %, damage through is
+  pinned at 10 % (a number, not an inequality); an elemental hit on 90 / 90 /
+  90 is 10 %, not 1 % (Resist is inside the floor); at zero points
+  `_applyDamage` is byte-identical to today; with Dodge at 90 % a monster
+  five levels above you sees the full Defense cut again (the floor reads the
+  edge-scaled Dodge); worn armour still cuts a floored hit (it is outside the
+  floor); and an elemental hit with unfloored points differs from today's
+  two-rounding path by at most 1;
+- **the per-level bound (13-B):** at character 10 a spend of an 11th Power
+  point succeeds (bound 20) and an 11th Defense, Dodge or Resist point is
+  refused (bound 10); the six universal stats keep `min(cap, charLevel)`;
+- **the armour gate (14-C):** the top armour (18 rungs above copper) equips at
+  36 Defense and character 90, and is refused at 35 Defense or character 89;
+  a veteran blob wearing rung `r` at `5r` points still qualifies after the v18
+  conversion, for every `r`; the no-`gearBase` fallback at rung 19 asks 38 and
+  95; weapons and amulets gate exactly as before;
 - **the curve, and the two things about it that can silently break** (5-B):
   `prog3Curve(pts, K)` matches the §3.1 table at 10 / 25 / 40 / 100 / 297 /
   891 points; it passes through the 5-A endpoint exactly (40 Defense points is
@@ -970,9 +1126,9 @@ The table below is the same exercise under **5-A**, kept for that option.
   strictly increasing and strictly below 1 at every point count the storage
   bound allows, so no investment can reach immunity; and the edge is applied to
   the COUNT, asserted by `curve(2p, K)` at edge 0.5 equalling `curve(p, K)`;
-- the combined avoidance product at the three §3.1 investments, pinned as a
-  number rather than an inequality, so decision 12's answer cannot drift
-  silently later;
+- (5-B only) the combined avoidance product at the three §3.1 investments,
+  pinned as a number rather than an inequality — under 5-C the floor bullet
+  above does this job;
 - the anticheat sample re-run with Power, Luck and Special at the storage
   bound (lockstep), and once more with `BELOW_BONUS` at its maximum if it is
   ever non-zero;
@@ -1033,9 +1189,10 @@ Recommended default in bold; the rest of the note explains each row.
 | 8 | PvP | **A: unchanged (edge 1), own PR later** · B: both players' character levels wired through now | **A** | |
 | 9 | Rollout | **A: server+mirrors PR, then the migration PR** · B: one PR | **A** | |
 | 10 | Depth zones | **A: restore the commented bands as the next content PR** · B: keep the world at 1–2 (the fade is dungeon-only) | **A** | |
-| 13 | The §6-C per-level bound in the early game (§4.7e) | A: keep it on `def` only, loosen the other six to 2 × character level · **B: keep it on Defense, Dodge and Resist; loosen Power, Luck, Special and Element to 2 × character level** · C: keep it on all seven as today · D: drop it entirely | **B** (changed with 5-C: loosening Dodge and Resist puts a 3.7 %-through tank at character 63 — §3.2; the level-10 gain came from Power alone) | |
-| 12 | The avoidance extreme, given 5-C | A: accept it — two stats at 90 % is 1 % through, about 330 at-level brute swings from character 90 (the BALANCE-PLAN §4c precedent) · B: a lower ceiling on Defense only · **C: one combined floor — Defense and Dodge together never cut a hit below 10 %; each still reaches its own 90 % ("ridiculous at ONE thing"), about 60 swings at character 90** | **C** (changed with 5-C: under the curve this extreme arrived at character 300, under the ceiling it arrives at 90, and the endgame is meant to hinge on gear, not stats alone) | |
+| 13 | The §6-C per-level bound in the early game (§4.7e) | A: keep it on `def` only, loosen the other six to 2 × character level · **B: keep it on Defense, Dodge and Resist; loosen Power, Luck, Special and Element to 2 × character level** · C: keep it on all seven as today · D: drop it entirely | **B** (changed with 5-C: loosening Dodge and Resist puts a 3.7 %-through tank at character 63 — §3.2; the level-10 gain came from Power alone) | **B — 2026-09-22: "keep per level limit on those 3"** |
+| 12 | The avoidance extreme, given 5-C | A: accept it — two stats at 90 % is 1 % through, about 330 at-level brute swings from character 90 (the BALANCE-PLAN §4c precedent) · B: a lower ceiling on Defense only · **C: one combined floor — Defense and Dodge together never cut a hit below 10 %; each still reaches its own 90 % ("ridiculous at ONE thing"), about 60 swings at character 90** | **C** (changed with 5-C: under the curve this extreme arrived at character 300, under the ceiling it arrives at 90, and the endgame is meant to hinge on gear, not stats alone) | **C — 2026-09-22: "Yes do combined floor"** (Resist included for elemental hits; armour stays outside the floor — §3.2) |
 | 11 | The nameplate border, given decision 2-B | **A: the plate follows the same yardstick (the active lane's level) so its colour predicts your point strength** · B: the plate keeps the character level from the 2026-09-14 mock and the colour means difficulty only | **A** (client-only) | |
+| 14 | The armour gate, given heavier Defense points (§3.3) | A: keep 5 Defense points per rung — top armour forces 90 % Defense on every wearer, and v18 locks veterans out of their own armour · B: 2 points per rung only — today's Defense percent, but top armour from character 36 instead of 90 · **C: 2 points per rung AND character level ≥ 5 per rung — today's percent and today's pacing, migration-safe** | **C** (a prerequisite of the migration — §6) | |
 
 ---
 
