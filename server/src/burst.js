@@ -117,7 +117,7 @@ export const burstMethods = {
   _burstRefusal(ps, now) {
     if (!ps) return 'no_player';
     if (ps.dying || ps.dead || ps.disconnected) return 'dead';
-    /* v2.3.2646: no character-level gate.  The level-6 gate was the
+    /* v2.3.2662: no character-level gate.  The level-6 gate was the
        milestone ladder's rung 6, and the ladder is gone (abilities.js
        tombstone) -- the owner never made it.  The weapon's element is the
        gate now, and it always was the one that mattered. */

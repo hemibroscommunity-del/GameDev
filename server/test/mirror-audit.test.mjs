@@ -432,7 +432,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     bad.length === 0, bad);
   /* The four v2.3.1734 additions by name, so a mirror that silently
      LOSES one fails here rather than quietly passing the subset check. */
-  /* v2.3.2646: BURST_MIN_CHAR_LEVEL left the list -- it was the milestone
+  /* v2.3.2662: BURST_MIN_CHAR_LEVEL left the list -- it was the milestone
      ladder's rung 6 and is deleted on both sides (abilities.test.mjs pins
      that it stays deleted). */
   const required = ['SPECIAL_MANA_COST', 'MANA_PER_MAGIC_LEVEL', 'BURST_MANA_COST', 'BURST_CD_MS', 'BURST_RADIUS', 'BURST_DMG_MULT'];

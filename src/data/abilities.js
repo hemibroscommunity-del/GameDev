@@ -145,7 +145,7 @@ export const STAM_ABILITIES = {
   },
 };
 
-/* v2.3.2646: the MILESTONES mirror that lived here is gone with the server's
+/* v2.3.2662: the MILESTONES mirror that lived here is gone with the server's
    ladder (server/src/abilities.js tombstone).  The one piece an old worker
    still settles -- the level-10 stamina multiplier -- is predicted by
    legacyStaminaMult in data/prog3.js, gated on caps.milestonesRetired. */

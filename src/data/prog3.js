@@ -94,7 +94,7 @@ export const PROG3 = {
   /* v2.3.1734: Element Burst (COMBAT-OVERHAUL-PLAN PR 6).  Display
      gates only — the server validates every one of these from its own
      copy of the weapon and pools.
-     v2.3.2646: BURST_MIN_CHAR_LEVEL left this table with the milestone
+     v2.3.2662: BURST_MIN_CHAR_LEVEL left this table with the milestone
      ladder (the server dropped it in the same version); the old-worker
      copy is LEGACY_BURST_MIN_CHAR_LEVEL below. */
   BURST_MANA_COST: 25,
@@ -391,11 +391,11 @@ var _burstCaps = false;
 export function setElemBurstEnabled(on) { _burstCaps = !!on; }
 export function isElemBurstEnabled() { return _burstCaps; }
 
-/* ═══ v2.3.2646: THE MILESTONE LADDER IS GONE (caps.milestonesRetired) ═══
+/* ═══ v2.3.2662: THE MILESTONE LADDER IS GONE (caps.milestonesRetired) ═══
    Owner: "Just remove the milestones from the game I did not make those."
    The worker dropped the ladder (server/src/abilities.js tombstone): no
    level-6 gate on Element Burst, no x1.25 max stamina at level 10.  A worker
-   older than v2.3.2646 still settles both, so until this flag arrives the
+   older than v2.3.2662 still settles both, so until this flag arrives the
    client keeps PREDICTING them -- display only, nothing is ever sent on it
    (rule 19).  The two numbers below are that old worker's, frozen: they are
    not a mirror of anything live and must never be retuned. */
@@ -456,7 +456,7 @@ export function burstWeapon(rpg) {
 export function burstRefusal(rpg, weapon, lastCastAt) {
   if (!_burstCaps) return 'caps';
   if (!rpg) return 'no_player';
-  /* v2.3.2646: the level gate applies only against an old worker -- see
+  /* v2.3.2662: the level gate applies only against an old worker -- see
      setMilestonesRetired above. */
   if (!_milestonesRetired) {
     var lvl = prog3Live(rpg) ? prog3CharLevel(rpg) : (rpg.level || 0);

@@ -1437,7 +1437,7 @@ export var BroTown = function BroTown(_ref0) {
 
        Out here it runs exactly once per gesture, which is what a gesture
        sound means. */
-    BT_AUDIO.uiEquip();   /* v2.3.2643: gain + offset live in uiEquip, not here */
+    BT_AUDIO.uiEquip();   /* v2.3.2659: gain + offset live in uiEquip, not here */
     setGearWorn(function (g) {
       var worn = !g[slot];
       setEquip(slot, worn ? GEAR_DEFAULT_ID[slot] : 'none');
@@ -12952,7 +12952,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until the worker advertises caps.abil (AbilityButtons.jsx; v2.3.2646: no level gate -- the milestone ladder is gone). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2542: ...and the Special button orbits the ATTACK disc, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until the worker advertises caps.abil (AbilityButtons.jsx; v2.3.2662: no level gate -- the milestone ladder is gone). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2542: ...and the Special button orbits the ATTACK disc, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one

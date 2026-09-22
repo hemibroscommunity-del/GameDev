@@ -27,7 +27,7 @@ installCrashTrap();
    vanishing after PLAY -- used to diagnose the reported 2x slowdown. */
 installPerfHud();
 
-/* v2.3.2642: the menu click / dialog close sounds (owner: "Use the click
+/* v2.3.2658: the menu click / dialog close sounds (owner: "Use the click
    sound for navigating through the menus ... Use the close sound for closing
    the dialog window that appear in game").  ONE delegated listener rather
    than a handler per button -- see src/ui/uiSfxDelegate.js for why, and for

@@ -151,7 +151,7 @@ const CAP_GATES = [
   'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'blockScale', 'botfp', 'broVerify',
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
-  'laststand', 'milestonesRetired' /* v2.3.2646 */, 'party', 'partyChat', 'petLoot', 'pets', 'potionBag', 'prog3',
+  'laststand', 'milestonesRetired' /* v2.3.2662 */, 'party', 'partyChat', 'petLoot', 'pets', 'potionBag', 'prog3',
   'prog3Chan', 'prog3elem' /* v2.3.2512 */, 'prog3shared' /* v2.3.2592 */, 'prog3x', 'questTrack', 'sponsor', 'store',
   'storeGear' /* v2.3.2531 */, 'storeGearRef' /* v2.3.2551 */, 'storeChat' /* v2.3.2621 */, 'storeOffer' /* v2.3.2623 */,
   't2bench', 't2simple', 't2uniform', 'trade', 'trade2', 'trade2Review',

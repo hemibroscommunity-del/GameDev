@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { controlsTutorialBus } from './controlsTutorialBus.js';
 import { holdDisc, releaseDisc } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves; a tour that points at them says so */
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2642: ui-close tick */
+import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2658: ui-close tick */
 
 /* v2.3.1205: REBUILT as live DOM-anchored annotations (previously a
    frozen screenshot with eyeballed coordinates that every HUD change
@@ -219,7 +219,7 @@ export const ControlsTutorial = () => {
 
   if (!open || steps.length === 0) return null;
 
-  /* ═══ v2.3.2642: THE TUTORIAL POP-UP IS THE OWNER'S OTHER EXAMPLE ═══
+  /* ═══ v2.3.2658: THE TUTORIAL POP-UP IS THE OWNER'S OTHER EXAMPLE ═══
      Owner: "Use the close sound for closing the dialog window that appear in
      game (like for quests and tutorials pop ups and stuff like that)."
      ONE helper, the QuestPanel shape, because this tour has THREE exits --
@@ -334,7 +334,7 @@ export const ControlsTutorial = () => {
            taps exactly there, and a backdrop handler would silently skip the
            step they were obeying. v2.3.1235 also removed backdrop-tap-to-close
            once already as an owner correction; this does not re-litigate it. */
-        /* v2.3.2642: the card is a div, so the menu-click delegate would not
+        /* v2.3.2658: the card is a div, so the menu-click delegate would not
            see it -- but tapping it to move on IS navigating the tutorial, and
            the owner asked for the click there.  On the LAST step it closes
            instead, and onClose's ui-close cancels this click before it plays. */

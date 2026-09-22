@@ -1,4 +1,4 @@
-/* ═══ v2.3.2642: ONE LISTENER FOR EVERY MENU BUTTON ═══
+/* ═══ v2.3.2658: ONE LISTENER FOR EVERY MENU BUTTON ═══
  *
  * Owner: "Use the click sound for navigating through the menus (tapping the
  * dashboard buttons or any of the buttons in any of those menus).  Use the
@@ -106,7 +106,7 @@ export function installUiSfxDelegate(doc) {
   if (!d || installed) return;
   installed = true;
 
-  /* v2.3.2642: the routing decision on the autotest surface (the v2.3.2123
+  /* v2.3.2658: the routing decision on the autotest surface (the v2.3.2123
      idiom), so tools/qa/mp/mp-uisfx3.mjs tests the GAME's copy of the rule
      instead of its own re-implementation of it -- which is the only version
      of this test that can fail when the rule changes. */

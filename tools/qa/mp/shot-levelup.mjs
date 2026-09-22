@@ -420,7 +420,7 @@ async function main() {
     }
 
     /* ── pass 2b: ONE NOTIFICATION, AT THE OWNER'S SIZES ── */
-    /* ═══ v2.3.2643: THE PAIR PASS BECOMES THE SINGLE PASS ═══
+    /* ═══ v2.3.2659: THE PAIR PASS BECOMES THE SINGLE PASS ═══
        Owner: "for leveling up don't show both the character and the skill
        level up anymore, just show the skill level up."
 
@@ -545,7 +545,7 @@ async function main() {
          nothing touching the page, asserting on the DIFFERENCE — how many
          distinct medallion widths the burst takes.  A burst whose art never
          advances is exactly the failure a still-frame suite cannot see.
-         v2.3.2643: the `char` counter is KEPT and must stay at zero.  Counting
+         v2.3.2659: the `char` counter is KEPT and must stay at zero.  Counting
          a thing that should not exist is how absence is measured — dropping
          the counter would turn this row into one that cannot fail. */
       await page.setViewportSize({ width: 390, height: 844 });
@@ -834,7 +834,7 @@ async function main() {
     console.log(`\n  ${strip.length}/8 frames mounted`);
     console.log(`  icon centre drift across the run: dx=${dx.toFixed(2)}px dy=${dy.toFixed(2)}px  (must be ~0)`);
     console.log(`  icon width, frame 0 -> 7: ${ws.map((w) => w.toFixed(1)).join(' -> ')}  (scales WITH the medallion)`);
-    /* ═══ v2.3.2643: THE ONE-NOTIFICATION ASSERTIONS ═══
+    /* ═══ v2.3.2659: THE ONE-NOTIFICATION ASSERTIONS ═══
        Owner: "just show the skill level up."  Every row below used to read the
        other way; see the pass header for why it is inverted rather than
        deleted. */

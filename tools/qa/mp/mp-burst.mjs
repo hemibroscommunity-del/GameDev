@@ -168,7 +168,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     (wire.element_burst || 0) >= 1, wire);
 
   /* The worker heard it and REFUSED it: a level-3 character with a plain
-     starter sword fails the enchant gate (v2.3.2646: there is no level gate
+     starter sword fails the enchant gate (v2.3.2662: there is no level gate
      any more -- the milestone ladder is gone), so its mana must be untouched.  A worker that had accepted this would have
      spent BURST_MANA_COST. */
   const manaPostBurst = await srvMana(wsPort, myId);
@@ -179,7 +179,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ═══ 3. THE BUTTON HIDES ITSELF ═══ */
   /* It renders nothing until the character has an enchanted weapon in hand,
      which is the whole reason it can be mounted unconditionally in GameApp.
-     (v2.3.2646: "level 6 with an enchanted weapon" until the milestone
+     (v2.3.2662: "level 6 with an enchanted weapon" until the milestone
      ladder was removed; the enchant is the gate now.) */
   const gate = await P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;

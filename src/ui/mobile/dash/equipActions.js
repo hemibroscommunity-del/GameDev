@@ -56,7 +56,7 @@ function gearName(slot, gearId) {
    NOT in syncArmorChange -- that is an internal helper the others call, so
    the sound would fire twice for one gesture. */
 function _equipTick() {
-  BT_AUDIO.uiEquip();   /* v2.3.2639: deduped -- see uiTick.  v2.3.2643: gain + offset live in uiEquip */
+  BT_AUDIO.uiEquip();   /* v2.3.2639: deduped -- see uiTick.  v2.3.2659: gain + offset live in uiEquip */
 }
 
 export function unequipWeaponSlot(slot /* 'weapon' | 'ranged' | 'staff' */) {

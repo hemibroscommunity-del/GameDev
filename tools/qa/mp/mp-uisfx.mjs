@@ -9,7 +9,7 @@
    cannot get from a file that is missing, misnamed, or not audio. */
 import * as H from './harness.mjs';
 
-/* v2.3.2642: 'ui-click' joins them -- the owner's menu-navigation sound.
+/* v2.3.2658: 'ui-click' joins them -- the owner's menu-navigation sound.
    Same reason as the original three: a key in the registry proves a string
    exists, not that a sound plays. */
 const KEYS = ['ui-equip', 'ui-close', 'ui-click', 'quest-complete-v2'];

@@ -9,7 +9,7 @@
  * time is reached. Every byte written is a byte from the source, so the audio
  * that remains is bit-identical -- no generation loss, no re-encode.
  *
- * ═══ v2.3.2643: MPEG-2 AND 2.5, AND A TOOL THAT CANNOT LIE ═══
+ * ═══ v2.3.2659: MPEG-2 AND 2.5, AND A TOOL THAT CANNOT LIE ═══
  *
  * v2.3.2641 parsed MPEG *Version 1* only -- every other frame header was
  * skipped by the `verBits !== 3` guard. That is not a gap that shows up as an

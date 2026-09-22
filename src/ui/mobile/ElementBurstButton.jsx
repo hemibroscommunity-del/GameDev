@@ -160,7 +160,7 @@ export const ElementBurstButton = () => {
       onTouchMove={swallowMove}
       onContextMenu={(e) => e.preventDefault()}
       role="button"
-      /* v2.3.2642: the ONE world control drawn as role="button", so the menu
+      /* v2.3.2658: the ONE world control drawn as role="button", so the menu
          click delegate (src/ui/uiSfxDelegate.js) would otherwise tick on it.
          This is a combat ability -- it has the burst's own sound, and a menu
          click over a fight is wrong. */

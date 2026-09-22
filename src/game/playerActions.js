@@ -530,7 +530,7 @@ export function elementBurst(S) {
   if (refusal) {
     var msg = {
       caps: null,   /* old worker: the ability doesn't exist there — stay silent */
-      level: 'Element Burst unlocks at level ' + LEGACY_BURST_MIN_CHAR_LEVEL,   /* v2.3.2646: old workers only */
+      level: 'Element Burst unlocks at level ' + LEGACY_BURST_MIN_CHAR_LEVEL,   /* v2.3.2662: old workers only */
       no_weapon: 'No weapon equipped!',
       no_element: 'Element Burst needs an enchanted weapon',
       mana: 'Not enough mana!',

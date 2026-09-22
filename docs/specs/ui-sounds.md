@@ -1,4 +1,4 @@
-# UI sounds — the menu click and the dialog close (v2.3.2642)
+# UI sounds — the menu click and the dialog close (v2.3.2658)
 
 What a tap in the menus sounds like, and where to change it. Code is the
 source of truth; this is the map.
@@ -16,7 +16,7 @@ Three UI sounds exist, and each has one job:
 |---|---|---|
 | `ui-click` | `public/sfx/ui/click.mp3` | navigating — any button in any menu |
 | `ui-close` | `public/sfx/ui/close.mp3` | a dialog/window closing |
-| `ui-equip` | `public/sfx/ui/equip.mp3` | equipping **or** unequipping (v2.3.2637: one sound, by instruction; sample replaced v2.3.2643) |
+| `ui-equip` | `public/sfx/ui/equip.mp3` | equipping **or** unequipping (v2.3.2637: one sound, by instruction; sample replaced v2.3.2659) |
 
 `ui-click` is deliberately quieter in effect than `ui-close` (0.85 gain on a
 0.540-peak sample vs 0.5 on a 0.975-peak one). A sound you hear on *every* tap
@@ -25,7 +25,7 @@ has to sit under one you hear when something happens.
 **Gain and offset belong to the key, not the caller.** Each sound has one entry
 point that owns its numbers — `BT_AUDIO.uiEquip()`, `uiClickNow()`, and the
 delegate's `uiTick('ui-close', 0.5)`. Call those; do not hand-write a volume at
-a call site. v2.3.2643 is the reason: replacing the equip sample changed the
+a call site. v2.3.2659 is the reason: replacing the equip sample changed the
 right gain by a factor of five across five call sites, and the one you forget
 goes *inaudible*, not broken — so nothing reports it. Two of these numbers look
 strange and are measured, not guessed:
@@ -121,6 +121,6 @@ A replacement sample is rarely the same loudness as the one it replaces.
 Trim trailing silence with `tools/trim_mp3_tail.mjs` — a lossless
 frame-boundary cut; there is no mp3 encoder in the sandbox. It handles MPEG-1,
 2 and 2.5 Layer III, and **fails loudly** rather than reporting a trim it did
-not perform (v2.3.2643 — it parsed MPEG-1 only and silently "trimmed" an
+not perform (v2.3.2659 — it parsed MPEG-1 only and silently "trimmed" an
 MPEG-2 upload to a file of the same length). Always re-measure the output:
 the peak must be unchanged, or the cut was not lossless.

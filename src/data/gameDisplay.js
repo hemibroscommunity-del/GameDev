@@ -2899,7 +2899,7 @@ BT_AUDIO.SFX_MANIFEST = {
      0.42s, with the measured peaks unchanged, so nothing audible was lost.
      mp-uisfx asserts the length now: a sample longer than the gesture is
      what lets rapid taps pile up. */
-  /* ═══ v2.3.2643: THE OWNER'S NEW EQUIP SOUND ═══
+  /* ═══ v2.3.2659: THE OWNER'S NEW EQUIP SOUND ═══
      Owner: "Use this new sound for item equip."  It REPLACES the v2.3.2637
      file at the same key and path, so every call site is untouched and there
      is no second key to keep straight.
@@ -2930,7 +2930,7 @@ BT_AUDIO.SFX_MANIFEST = {
      had not performed (see its header).  mp3 either way, per v2.3.1610. */
   'ui-equip':      '/sfx/ui/equip.mp3',
   'ui-close':      '/sfx/ui/close.mp3',
-  /* ═══ v2.3.2642: THE CLICK, AND WHAT IT TAKES BACK FROM ui-close ═══
+  /* ═══ v2.3.2658: THE CLICK, AND WHAT IT TAKES BACK FROM ui-close ═══
      Owner: "Use the click sound for navigating through the menus (tapping
      the dashboard buttons or any of the buttons in any of those menus).
      Use the close sound for closing the dialog window that appear in game
@@ -3674,7 +3674,7 @@ BT_AUDIO.uiTick = function (key, vol, opts) {
   var last = this._uiTickAt[key];
   if (last != null && (now - last) < WINDOW_MS) return null;
   this._uiTickAt[key] = now;
-  /* ═══ v2.3.2642: A NAMED SOUND OUTRANKS THE GENERIC CLICK ═══
+  /* ═══ v2.3.2658: A NAMED SOUND OUTRANKS THE GENERIC CLICK ═══
      The delegated listener (src/ui/uiSfxDelegate.js) offers a 'ui-click' for
      EVERY button in the menus, which is what the owner asked for -- but some
      of those buttons already have a sound of their own (equip, close).  Two
@@ -3704,7 +3704,7 @@ BT_AUDIO.uiTick = function (key, vol, opts) {
   this._uiVoice[key] = null;
   var v = null;
   var _o = { vol: vol == null ? 0.55 : vol };
-  /* v2.3.2642: offset/duration passthrough, so a UI sample can be isolated to
+  /* v2.3.2658: offset/duration passthrough, so a UI sample can be isolated to
      its useful slice at the call the way footstep and mine-strike are. */
   if (opts && opts.offset) _o.offset = opts.offset;
   if (opts && opts.duration != null) _o.duration = opts.duration;
@@ -3714,7 +3714,7 @@ BT_AUDIO.uiTick = function (key, vol, opts) {
   return v;
 };
 
-/* ═══ v2.3.2642: THE GENERIC NAVIGATION CLICK ═══
+/* ═══ v2.3.2658: THE GENERIC NAVIGATION CLICK ═══
    Owner: "Use the click sound for navigating through the menus (tapping the
    dashboard buttons or any of the buttons in any of those menus)."
 
@@ -3778,7 +3778,7 @@ BT_AUDIO.uiClickNow = function (vol) {
 BT_AUDIO._now = function () {
   return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
 };
-/* v2.3.2643: the equip sound's offset and its unusual gain, in ONE place.
+/* v2.3.2659: the equip sound's offset and its unusual gain, in ONE place.
    Five call sites play this key (BroTown, InventoryPanel, equipActions and
    ItemDetailPopup twice) and all five used to carry a hand-written 0.55.  A
    sample swap that changes the right number by a factor of five is exactly

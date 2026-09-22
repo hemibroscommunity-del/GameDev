@@ -67,7 +67,7 @@ function check(name, cond, detail) {
   check('STAM_ABILITIES server === client (a drifted cost is a lying button)',
     JSON.stringify(STAM_ABILITIES) === JSON.stringify(CLIENT_ABILITIES),
     { server: STAM_ABILITIES, client: CLIENT_ABILITIES });
-  /* ═══ v2.3.2646: THE MILESTONE LADDER IS GONE ═══
+  /* ═══ v2.3.2662: THE MILESTONE LADDER IS GONE ═══
      Owner: "Just remove the milestones from the game I did not make those."
      v2.3.1733-1734 pinned the ladder's mirror here (MILESTONES server ===
      client, rung 6 === Element Burst === PROG3.BURST_MIN_CHAR_LEVEL).  The
@@ -105,7 +105,7 @@ await room.webSocketMessage(wsA, JSON.stringify({
 }));
 const psA = room.playerState.pa;
 {
-  /* v2.3.2646: the worker tells clients the ladder is gone. */
+  /* v2.3.2662: the worker tells clients the ladder is gone. */
   const sync = msgsOfType(wsA, 'state_sync')[0];
   const caps = sync && (sync.caps || (sync.payload && sync.payload.caps));
   check('join advertises caps.milestonesRetired', !!(caps && caps.milestonesRetired === true),
@@ -512,7 +512,7 @@ const setCharLevel = (lvl) => {
     STAM_ABILITIES.bash.dmgMult < 1 && plain.dmg > 0, STAM_ABILITIES.bash.dmgMult);
 }
 
-// ── 7. The ladder's old rungs pay nothing (v2.3.2646) ──
+// ── 7. The ladder's old rungs pay nothing (v2.3.2662) ──
 {
   check('the milestone payout method is gone', typeof room._prog3GrantMilestones === 'undefined',
     typeof room._prog3GrantMilestones);
@@ -526,7 +526,7 @@ const setCharLevel = (lvl) => {
     psA.maxStamina === stam9, { at9: stam9, at10: psA.maxStamina });
 
   /* ROLLBACK SAFETY: the `ms` high-water still survives the sanitizer, so a
-     worker rolled back to v2.3.2645 does not re-pay the level-5 point. */
+     worker rolled back to v2.3.2661 does not re-pay the level-5 point. */
   psA.prog3.ms = 10;
   check('...and the sanitizer still keeps the old paid-through marker (rollback safety)',
     room._sanitizeProg3(psA.prog3).ms === 10,

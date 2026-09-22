@@ -37,9 +37,9 @@ import {
   prog3RangeMult, prog3SpecialMult, /* v2.3.2592: reach + special, client-consumed */
   prog3DmgTerm,
   prog3ElemPower, isProg3ElemEnabled, /* v2.3.2512: elem per weapon; max mana as a stat */
-  legacyStaminaMult, /* v2.3.2646: the retired level-10 stamina rung, old workers only */
+  legacyStaminaMult, /* v2.3.2662: the retired level-10 stamina rung, old workers only */
 } from './prog3.js';
-/* v2.3.2646: staminaMilestoneMult left this import with the milestone
+/* v2.3.2662: staminaMilestoneMult left this import with the milestone
    ladder; the old-worker prediction is legacyStaminaMult (imported above). */
 import { blocksAt } from './abilities.js';
 
@@ -5606,7 +5606,7 @@ export function recalcDerived(rpg) {
        exact mirror of the server's _prog3Recompute line.  Without it the
        bar would read 100 while the worker spent from 125 and every echo
        would snap it, which is the drift the mirror rule exists to stop.
-       v2.3.2646: the ladder is gone; legacyStaminaMult is 1 against a worker
+       v2.3.2662: the ladder is gone; legacyStaminaMult is 1 against a worker
        advertising caps.milestonesRetired and x1.25 at 10+ against an older
        one, because that is what each of them actually settles. */
     rpg.maxStamina = Math.floor((100 + prog3Pts(rpg, 'stam') * PROG3.BODY.stam.per)

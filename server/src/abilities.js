@@ -19,7 +19,7 @@
  *          60 px.  The swarm-breaker; the only thing in the kit that scales
  *          with how badly you are surrounded.
  *
- *   2. THE MILESTONE LADDER -- REMOVED at v2.3.2646 (see the tombstone
+ *   2. THE MILESTONE LADDER -- REMOVED at v2.3.2662 (see the tombstone
  *      below).  The owner never designed it; a level pays stats only.
  *
  * SERVER IS THE ONLY REFEREE (constraint 4 of the PR brief).  Every cast is
@@ -44,7 +44,7 @@
 
 /* NO IMPORT FROM prog3.js, deliberately.  prog3.js imports the block
    ladder (blocksAt / blockSize) FROM here -- it imported staminaMilestoneMult
-   too until v2.3.2646 retired the milestones -- so pulling PROG3 back the
+   too until v2.3.2662 retired the milestones -- so pulling PROG3 back the
    other way would make a module cycle whose
    failure mode is a TDZ ReferenceError at worker boot — green in every unit
    test that imports the pair in the lucky order.  The dependency runs one
@@ -425,7 +425,7 @@ export const LUNGE = {
   pullTo: 0,
 };
 
-/* ═══ v2.3.2646: THE MILESTONE LADDER IS GONE ═══
+/* ═══ v2.3.2662: THE MILESTONE LADDER IS GONE ═══
    Owner: "Just remove the milestones from the game I did not make those."
 
    v2.3.1733 built a character-level ladder here -- 4 'Sturdy Arm',
@@ -441,7 +441,7 @@ export const LUNGE = {
    Points ALREADY paid stay paid -- they are in the pool or spent, and a
    claw-back could leave spent allocations with nothing funding them.  The
    `ms` high-water that recorded the payments still survives _sanitizeProg3
-   (prog3.js) for one reason: rollback.  A worker rolled back to v2.3.2645
+   (prog3.js) for one reason: rollback.  A worker rolled back to v2.3.2661
    would otherwise re-pay every player the level-5 point on their next join.
    Clients learn of the change through caps.milestonesRetired (join.js) and
    keep the old stamina/burst predictions against an older worker (rule 19). */
@@ -464,7 +464,7 @@ export const LUNGE = {
    pool path folds amulet and gear bonuses into those, so a gear-derived count
    would make one block stop being one cast the moment you swapped a necklace.
 
-   Its own ladder, and NOT one of the milestones v2.3.2646 removed: this one
+   Its own ladder, and NOT one of the milestones v2.3.2662 removed: this one
    is keyed on the progression INPUT (Magic level / stam points), not on
    character level, and it was never a reward rung -- it is how a block keeps
    meaning one special as the pool grows. */

@@ -120,7 +120,7 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                  Deduped by uiTick, so the pointer event firing twice on a
                  slow tap still makes one sound.
 
-                 ═══ v2.3.2642: THE CLICK, NOT THE CLOSE ═══
+                 ═══ v2.3.2658: THE CLICK, NOT THE CLOSE ═══
                  Owner: "Use the click sound for navigating through the menus
                  (tapping the dashboard buttons ...)".  These ARE the dashboard
                  buttons.  v2.3.2639 played 'ui-close' here because a close

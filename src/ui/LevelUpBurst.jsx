@@ -120,17 +120,17 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
      clock between them. */
   React.useEffect(() => { playLevelUpSting(); }, [msg.ts]);
 
-  /* ═══ v2.3.2643: THE CAPTION'S REAL HEIGHT, NOT AN ASSUMED LINE COUNT ═══
+  /* ═══ v2.3.2659: THE CAPTION'S REAL HEIGHT, NOT AN ASSUMED LINE COUNT ═══
      The fit below reserves room for the caption plate so it cannot run under
      the dashboard tray.  That reservation used to be a constant picked per
      COLUMN COUNT -- 58px for one column, 1.75x for two -- which was true for
-     as long as the caption's contents were fixed.  v2.3.2643 changed them:
+     as long as the caption's contents were fixed.  v2.3.2659 changed them:
      with the character burst gone, the one remaining burst carries the whole
      gains line ("+1.5 damage · +6 max HP · +3 Bow points · +3 shared
      points"), which wraps to two lines in one wide column and put the plate
      13px under the tray at 360 and 390 portrait.  The rig caught it
      (shot-levelup's captionBelowTray row), which is what that row is for.
-     (v2.3.2644 then removed the gains line entirely on the owner's word, so
+     (v2.3.2660 then removed the gains line entirely on the owner's word, so
      that particular overflow is history -- but the lesson is not, and it is
      why this stays measured: the caption's contents have now changed twice in
      two versions, and a constant was wrong within hours both times.)
@@ -232,9 +232,9 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
      360 with a column 180px wide; measured, not guessed — see
      tools/qa/mp/shot-levelup.mjs, which fails the run if any caption plate
      crosses the tray. */
-  /* v2.3.2643: the measured plate wins as soon as it exists; the constants
+  /* v2.3.2659: the measured plate wins as soon as it exists; the constants
      are the frame-0 fallback, for the one frame before the measurement lands.
-     v2.3.2644: and it REPLACES them rather than flooring them.  The floor was
+     v2.3.2660: and it REPLACES them rather than flooring them.  The floor was
      harmless while the caption was two lines and the constant was the honest
      size of two lines.  With the gains line gone (see the caption below) the
      plate is ONE line -- about 36px against the constant's 58 -- and a floor
@@ -326,7 +326,7 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
       </div>
       <div
         data-levelup-caption=""
-        ref={capRef}                 /* v2.3.2643: measured, see the fit above */
+        ref={capRef}                 /* v2.3.2659: measured, see the fit above */
         style={{
           /* ═══ v2.3.2615: THE CAPTION SPANS ITS COLUMN, NOT THE SCREEN ═══
              This was `left: 0; right: 0` with the plate centred inside it, and
@@ -400,7 +400,7 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
                 ? `Character · Level ${msg.level}`
                 : (label ? `${label} · Level ${lvl}` : `Level ${lvl}`)}
           </div>
-          {/* ═══ v2.3.2644: THE GAINS LINE IS GONE ═══
+          {/* ═══ v2.3.2660: THE GAINS LINE IS GONE ═══
               Owner: "Don't include the specific stat increases, just the name
               of the skill and level.  It's way too tiny to read anyway."
 
@@ -412,7 +412,7 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
               seconds, it is not read.  A line nobody reads does not make a
               level feel powerful -- it makes the caption longer, and it was
               long enough to push the plate under the dashboard tray
-              (v2.3.2643).  The art carries the moment, the medallion says
+              (v2.3.2659).  The art carries the moment, the medallion says
               which skill, and the caption above says which level.  That is
               the whole notification now.
 

@@ -417,7 +417,7 @@ export const PROG3 = {
    * construction (only enchanted weapons have one).
    * Server validates the gates — element, mana, cooldown — from ITS copy
    * of the weapon; the client's button is a display gate.
-   * v2.3.2646: the character-level gate (BURST_MIN_CHAR_LEVEL: 6, the
+   * v2.3.2662: the character-level gate (BURST_MIN_CHAR_LEVEL: 6, the
    * milestone ladder's rung 6) is gone with the ladder -- the owner never
    * made it.  Burst is open from level 1. */
   BURST_MANA_COST: 25,
@@ -426,7 +426,7 @@ export const PROG3 = {
   BURST_DMG_MULT: 1.5,
 };
 
-/* v2.3.2646: the milestone ladder (staminaMilestoneMult, MILESTONES) that
+/* v2.3.2662: the milestone ladder (staminaMilestoneMult, MILESTONES) that
    used to be imported here is gone -- see the tombstone in abilities.js. */
 import { blocksAt, blockSize } from './abilities.js';
 
@@ -505,9 +505,9 @@ export function prog3FromLegacy(src) {
      bonus-points pick, spendable anywhere) — it is not per-level minting
      and does not triple. */
   pool += clampLvl(src && src.defenseSkill && src.defenseSkill.level);
-  /* v2.3.1733: `ms` = the milestone high-water.  v2.3.2646: the ladder is
+  /* v2.3.1733: `ms` = the milestone high-water.  v2.3.2662: the ladder is
      gone and nothing pays against this any more; it is still stamped 0 so a
-     worker ROLLED BACK past v2.3.2646 finds the shape it expects. */
+     worker ROLLED BACK past v2.3.2662 finds the shape it expects. */
   return { sk, alloc: prog3FreshAlloc(), atk: prog3FreshAtk(), pool, poolBy, ms: 0, ppl: PROG3.POINTS_PER_LEVEL,
     shared, spl: PROG3.SHARED_POINTS_PER_LEVEL /* v2.3.2592 */ };
 }
@@ -761,8 +761,8 @@ export const prog3Methods = {
        have already been paid.  It has to survive this sanitizer or every join
        would re-pay the bonus point — a sanitizer that drops a field is how a
        one-off grant becomes an infinite one.  Bounded by the char-level cap.
-       v2.3.2646: the ladder is gone and THIS worker never pays against `ms`,
-       but it is kept for ROLLBACK: a worker rolled back to v2.3.2645 reads it,
+       v2.3.2662: the ladder is gone and THIS worker never pays against `ms`,
+       but it is kept for ROLLBACK: a worker rolled back to v2.3.2661 reads it,
        and without it would re-pay every player the level-5 point. */
     const ms = Number(src.ms);
     if (Number.isFinite(ms) && ms > 0) out.ms = Math.min(PROG3.CHAR_LEVEL_CAP, Math.floor(ms));
@@ -886,7 +886,7 @@ export const prog3Methods = {
     ps.level = this._prog3CharLevel(ps);
     ps.maxHp = Math.floor(100 + ps.level * PROG3.HP_PER_LEVEL
       + this._prog3Pts(ps, 'hp') * PROG3.BODY.hp.per);
-    /* v2.3.2646: no level multiplier.  v2.3.1733's char-10 "Second Wind"
+    /* v2.3.2662: no level multiplier.  v2.3.1733's char-10 "Second Wind"
        milestone (x1.25 on the whole pool) went with the ladder -- the owner
        never made it.  Mirrored by recalcDerived's prog3 branch
        (src/data/gameSystems.js), which keeps the x1.25 only against an older
@@ -1019,7 +1019,7 @@ export const prog3Methods = {
       // the celebration moves server-side (§8): recompute + full
       // resource restore (the v2.3.1414 rule), persist, notify.
       this._prog3Recompute(ps);
-      /* v2.3.2646: the milestone payout that ran here (v2.3.1733) is gone
+      /* v2.3.2662: the milestone payout that ran here (v2.3.1733) is gone
          with the ladder -- see the tombstone in abilities.js. */
       if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
       if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
@@ -1049,7 +1049,7 @@ export const prog3Methods = {
                  `{ ...p3.poolBy }` for the same reason. */
               poolBy: { ...(p3.poolBy || {}) },
               /* v2.3.1733: the ability list rides the level-up.
-                 v2.3.2646: `milestone` and `bonusPoints` no longer do -- the
+                 v2.3.2662: `milestone` and `bonusPoints` no longer do -- the
                  ladder that filled them is gone.  An older client reading a
                  missing field sees `undefined`, which it already handled as
                  "this level crossed no rung". */

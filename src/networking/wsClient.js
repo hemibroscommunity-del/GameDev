@@ -25,7 +25,7 @@ import { peerCosmeticsFromWire, peerPassthroughFromWire, applyPeerCosmetics } fr
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale */
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled /* v2.3.2592 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, setMilestonesRetired /* v2.3.2646 */, PROG3_SKILL_META } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled /* v2.3.2592 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, setMilestonesRetired /* v2.3.2662 */, PROG3_SKILL_META } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -1203,7 +1203,7 @@ export function setupWebSocket(ctx) {
                    worker's grid and pools (see the flag's note in
                    data/prog3.js). */
                 setProg3SharedEnabled(!!(S._serverCaps && S._serverCaps.prog3shared));
-                /* v2.3.2646: the milestone ladder is gone on a worker that
+                /* v2.3.2662: the milestone ladder is gone on a worker that
                    says so.  Display only: against an older worker the client
                    keeps predicting its level-6 Burst gate and its x1.25
                    stamina at level 10 (data/prog3.js setMilestonesRetired). */
@@ -2334,8 +2334,8 @@ export function setupWebSocket(ctx) {
                  it rides along in bt_rpg so a reload keeps the attribution,
                  and _saveRpg's fixed field list ignores it server-side. */
               if (typeof p3l.skill === 'string') S.rpg._p3PoolFrom = p3l.skill;
-              /* v2.3.2646: the v2.3.1727 "what the level bought" line
-                 (`gains`) was built here and, since v2.3.2644, rendered
+              /* v2.3.2662: the v2.3.1727 "what the level bought" line
+                 (`gains`) was built here and, since v2.3.2660, rendered
                  nowhere.  It stayed only to carry the milestone name; the
                  milestones are gone, so the line is too. */
               /* v2.3.2592: the shared pool rides the level event; stamp it so
@@ -2355,7 +2355,7 @@ export function setupWebSocket(ctx) {
                  before (rule 19). */
               if (S.rpg.prog3 && typeof p3l.pool === 'number') S.rpg.prog3.pool = p3l.pool;
               if (S.rpg.prog3 && p3l.poolBy && typeof p3l.poolBy === 'object') S.rpg.prog3.poolBy = p3l.poolBy;
-              /* ═══ v2.3.2643: ONE PROG3 LEVEL-UP, ONE NOTIFICATION ═══
+              /* ═══ v2.3.2659: ONE PROG3 LEVEL-UP, ONE NOTIFICATION ═══
                  Owner: "for leveling up don't show both the character and the
                  skill level up anymore, just show the skill level up."
 
@@ -2377,7 +2377,7 @@ export function setupWebSocket(ctx) {
                  needs them; what is gone is this handler raising a pair by
                  itself.
 
-                 (v2.3.2646: the list of gains that used to ride this burst is
+                 (v2.3.2662: the list of gains that used to ride this burst is
                  gone -- see the note above the pool stamps.) */
               var _p3ts = Date.now();
               setLevelUpMsg({
@@ -2393,7 +2393,7 @@ export function setupWebSocket(ctx) {
                 skillLevel: p3l.level,
                 ts: _p3ts,
               });
-              /* ═══ v2.3.2643: THE CHARACTER LEVEL STOPS ANNOUNCING ITSELF ═══
+              /* ═══ v2.3.2659: THE CHARACTER LEVEL STOPS ANNOUNCING ITSELF ═══
                  Owner: "for leveling up don't show both the character and the
                  skill level up anymore, just show the skill level up."
 
@@ -2426,7 +2426,7 @@ export function setupWebSocket(ctx) {
                 S.rpg._lastCharLvlShown = _newChar;
               }
               /* v2.3.2615: no BT_AUDIO.levelUp() — see the combat_credit note
-                 above.  v2.3.2643: and now one burst, so the sting's 450ms
+                 above.  v2.3.2659: and now one burst, so the sting's 450ms
                  rate limit (playLevelUpSting) has nothing left to collapse
                  here — it stays for the life-skill flurry it was also
                  protecting. */
