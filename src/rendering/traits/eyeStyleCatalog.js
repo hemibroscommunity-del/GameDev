@@ -20,29 +20,43 @@
  * reason eyewear is) and it seats each facing onto the eye row the game paints,
  * so there is no by-eye tuning round.
  *
+ * THE REAL EYE IS ERASED UNDER A STYLE, NOT COVERED BY IT (v2.3.2643).  Owner:
+ * "I still see some remnants around the eyes where you stickered over the old
+ * ones, can that be cleaned up with whatever skin color it is (the ones that
+ * gets changed with custom skin color choice)?"  No drawn shape covers another
+ * drawn shape exactly, so the first cut left the base eye's black top edge and
+ * a brown anti-aliased ring showing round every style.  The body bake now paints
+ * the whole eye out and fills it with skin SAMPLED FROM THE FACE ITSELF, so it
+ * follows the skin-tone pick with no table to keep in step -- playerSkins
+ * `_blankEyes`, the region from eyeBlankMask.json.
+ *
  * IT DOES NOT REPLACE THE EYE COLOUR TAB, IT SITS ABOVE IT.  The character's
  * own eyes are painted into the body sheets and recoloured through eyeMask.json
  * (v2.3.1928); that is still what you see with 'none' selected, and it is still
- * what the colour row under the picker changes.  A style is a sprite drawn OVER
- * those eyes, so while one is selected the colour row is changing something you
- * can no longer see -- the styles here each cover the whole eye (measured at
- * import: the pieces land on the eye row and hide it).  The row is deliberately
- * left in place anyway rather than hidden per-selection: it is the same control
- * it has always been, it comes straight back when you pick 'none', and a
- * control that disappears when you touch an unrelated tile reads as a bug.
+ * what the colour row under the picker changes.  With a style on, the erase
+ * above means the colour row is painting something that is no longer there --
+ * measured, and asserted by mp-eyestyle.mjs: switching eye colour under a style
+ * changes zero pixels.  The row is deliberately left in place anyway rather
+ * than hidden per-selection: it is the same control it has always been, it
+ * comes straight back when you pick 'none', and a control that disappears when
+ * you touch an unrelated tile reads as a bug.
  *
  * WHERE IT DRAWS.  Above the hair, below the eyewear, below the hat.  Declared
  * once by the sprites' child order in entityRenderer / the draw order in
  * characterPortrait, not per item.
  *
- * DIRECTIONS.  Eyes are invisible from behind, so three of the four ship south,
- * southwest and east only -- the beard precedent (v2.3.1530): omit BOTH the png
- * and the meta.anchors entry and the renderer hides the piece on that facing
- * without a retry or a crash report.  DEMON IS THE EXCEPTION and ships all five:
- * the flames stand off the sides of the head, so they are visible from
- * three-quarter back and from straight behind, and the owner drew them there.
- * Nothing in the code decided that -- the renderer reads meta.anchors, so a
- * facing existing is data (v2.3.2379's Golden Monocle made the same point).
+ * DIRECTIONS.  South, southwest and east, and their runtime mirrors.  Nothing
+ * from behind -- the beard precedent (v2.3.1530): omit BOTH the png and the
+ * meta.anchors entry and the renderer hides the piece on that facing without a
+ * retry or a crash report.
+ *   DEMON SHIPPED ALL FIVE FOR ONE COMMIT and no longer does.  The owner drew
+ * the flames on the back-of-the-head cells and they imported cleanly, so the
+ * first cut kept them; he then asked for them dropped -- "You can ignore the
+ * demon eyes in the back of the head I just wanted south, southwest (and
+ * mirror) and east (and mirror)".  Worth knowing because nothing in the CODE
+ * decided either way: the renderer reads meta.anchors, so a facing existing is
+ * data (v2.3.2379's Golden Monocle made the same point), and re-importing
+ * without `--omit northeast,north` would bring them straight back.
  *
  * To add a style (the full recipe is docs/specs/eyes.md):
  *   1. python3 tools/flatkey_drawn_mannequin.py --art sheet.png --out keyed.png
@@ -83,11 +97,15 @@ export const EYE_STYLE_CATALOG = [
      belongs.  Symmetric, so unlike the Golden Monocle and the Eye Patch it does
      not swap sides when the character faces west. */
   { id: 'one-eye', name: 'One Eye' },
-  /* v2.3.2643: flames instead of eyes, and the only one of the four that ships
-     ALL FIVE facings -- the flames stand off the sides of the head, so the
-     owner drew them on the three-quarter-back and back cells too, where every
-     other face-worn piece in the repo omits north.  100% eye coverage on south
-     and east, 94/86% on southwest. */
+  /* v2.3.2643: flames instead of eyes.  100% eye coverage on south and east,
+     94/86% on southwest.  The owner's sheet DOES draw flames on the two rear
+     cells and they imported cleanly; they are omitted at his request (see the
+     DIRECTIONS note in the header), so this ships the same three facings as the
+     other styles.
+     It is also the repo's only all-bright face piece -- minimum luminance 106
+     at 128px and 102 at 256 -- which is what makes it the probe mp-eyestyle.mjs
+     uses to prove the erase: while it is worn, any dark pixel left in the eye
+     window can only be the old eye. */
   { id: 'demon', name: 'Demon Eyes' },
   /* v2.3.2643: two wide white eyes set further apart than the real ones, pupils
      down in the inner corners.  Drawn on a sheet whose mannequin came back at a

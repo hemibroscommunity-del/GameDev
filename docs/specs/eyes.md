@@ -1,6 +1,7 @@
 # Eye styles (v2.3.2643)
 
-**Shipped:** Sleepy Eyes, One Eye, Demon Eyes (all five facings), WTF Eyes.
+**Shipped:** Sleepy Eyes, One Eye, Demon Eyes, WTF Eyes — south, southwest and
+east, plus their runtime mirrors.
 
 Owner, with four mannequin sheets: *"I want these as 'eyes' choices — Sleepy
 eyes, one eye, demon eyes, wtf eyes."*
@@ -17,12 +18,12 @@ Where they appear: the creator's existing **Eyes** tab, which was a colour-only
 tab (v2.3.1929) and now takes the standard two-step shape every trait tab has —
 the style in the option strip, the eye colour in the row below it. No tenth tab.
 
-| style | facings | eye coverage (south / southwest / east) | notes |
-|---|---|---|---|
-| Sleepy Eyes | S, SW, E | 73/79 · 81/81 · 64 | navy half-lids, pale inner highlight |
-| One Eye | S, SW, E | 57/57 · 43/29 · 74 | **centred** cyclops eye — see below |
-| Demon Eyes | **all five** | 100/100 · 94/86 · 94 | flames; visible from behind |
-| WTF Eyes | S, SW, E | 71/76 · 86/90 · 73 | wide-set, pupils in the inner corners |
+| style | eye coverage (south / southwest / east) | notes |
+|---|---|---|
+| Sleepy Eyes | 73/79 · 81/81 · 64 | navy half-lids, pale inner highlight |
+| One Eye | 57/57 · 43/29 · 74 | **centred** cyclops eye — see below |
+| Demon Eyes | 100/100 · 94/86 · 94 | flames; the erase probe (§3) |
+| WTF Eyes | 71/76 · 86/90 · 73 | wide-set, pupils in the inner corners |
 
 Those are the importer's own numbers against the `stand` bodies, the same
 measurement `docs/specs/eyewear.md` tabulates and with the same qualifier: it is
@@ -58,17 +59,23 @@ places because three places draw a character: the two child orders in
 stand-in set order in `effectsRenderer.js` (`_STAND_IN_TRAIT_KEYS`), and the
 draw order in `characterPortrait.js`. No per-item flags.
 
-**Not every facing ships.** Three of the four are invisible from behind and
-omit `northeast` and `north` — the beard precedent (v2.3.1530): no png and no
-`meta.anchors` entry, and the renderer hides the piece there without a retry or
-a crash report. **Demon Eyes ships all five**, because the flames stand off the
-sides of the head and the owner drew them on the three-quarter-back and back
-cells. Nothing in the code decided that: the renderer reads `meta.anchors`, so a
-facing existing is data, exactly as a facing disappearing is.
+**Three facings, and the two rear ones are omitted.** The beard precedent
+(v2.3.1530): no png and no `meta.anchors` entry, and the renderer hides the
+piece there without a retry or a crash report.
+
+**Demon Eyes shipped all five for one commit**, because the owner's sheet draws
+the flames on the back-of-the-head cells and they imported cleanly. He then
+asked for them gone — *"You can ignore the demon eyes in the back of the head I
+just wanted south, southwest (and mirror) and east (and mirror)"* — so it was
+re-imported with `--omit northeast,north` like the rest. Nothing in the code
+decided either way: the renderer reads `meta.anchors`, so a facing existing is
+data, exactly as a facing disappearing is, and a re-import without the flag
+brings them back.
 
 **No recolour.** A style is the colours it was drawn in. The colour row on the
 Eyes tab is the **eye colour** — the recolour of the real irises underneath
-(`eyeMask.json`, v2.3.1928) — and it is unchanged.
+(`eyeMask.json`, v2.3.1928) — and it is unchanged, though §3 below means it has
+nothing left to paint while a style is on.
 
 **The colour row stays live on `none`.** The picker's standing rule blanks a
 colour row when the pick is `none`; that is right everywhere else (there is no
@@ -204,7 +211,83 @@ catalogue.
 
 ---
 
-## 3. What had to be wired, and where
+## 3. Erasing the eye under the style (v2.3.2643)
+
+Owner, on the first cut: *"I still see some remnants around the eyes where you
+stickered over the old ones, can that be cleaned up with whatever skin color it
+is (the ones that gets changed with custom skin color choice)?"*
+
+No drawn shape covers another drawn shape exactly. What showed round the edges
+was the base eye's hard black top edge and a sliver of sclera — which reads as a
+second eye behind the first — so the real eye is now **painted out** under a
+style rather than merely covered.
+
+**The colour is sampled, the region is shipped.** The fill has to follow the
+skin-tone pick, which is a runtime recolour, so `playerSkins._blankEyes` takes
+the per-channel **median of a ring of cheek and brow pixels** read off the
+canvas *after* the retint — whatever the player's skin has become, including a
+tone added years from now, with no table to keep in step. The region comes from
+`src/rendering/eyeBlankMask.json`, derived offline by
+`tools/eyes/extract-eye-blank.mjs` and reviewed as a contact sheet, the same
+rule `eyeMask.json` beside it follows: the frame loop never searches for an eye.
+
+**Two tables, not one.** `eyeMask.json` records the **iris**, because that is
+what the eye-colour feature repaints. An erase needs the opposite — everything
+that is not skin. The blank table is a strict superset (34 sheets against 32)
+and is derived from the same reviewed `irisIn` predicate, each iris grown to its
+own eye by the walk `import_headwear_green.eye_boxes` already uses to measure
+eyewear coverage.
+
+**Three numbers that were each wrong once, and are worth keeping:**
+
+- **Sample two pixels out, not one.** The box is tight on the eye, so the pixels
+  immediately beside it are the eye's own anti-aliasing. Measured on
+  `stand-south`, the one-pixel ring reads rgb(183,120,66) and rgb(200,136,83)
+  with nothing appearing more than twice; two and three pixels out it is flat
+  rgb(198-199,128-131,71-73). The first cut sampled at one pixel and filled the
+  socket with rgb(173,114,70) against a face of rgb(199,129,72) — the same
+  visible rectangle, in a different colour.
+- **Median, not mode and not mean.** The sheets are dithered by a pixel or two,
+  so no triple dominates (the best count in a three-pixel ring is 8 of ~50) and
+  a mode picks noise; a mean is dragged dark by the head outline the ring
+  catches on the side views.
+- **Pad the box by one *sheet* pixel.** Erasing only the eye's hard pixels left
+  its anti-aliased brown ring behind, which at game size is a brown rectangle
+  where the eye used to be. The pad is applied at extraction, where the sheet's
+  own scale is known — one disk pixel is 2px of 256-space pad on the 128px
+  sheets and 1px on the 256px ones. The fill is skin, so a pad that overshoots
+  paints skin onto skin; one that undershoots is visible.
+
+**Where it reaches.** Everywhere the body is baked: `getBodyFrame` (so every
+pose and both the local and remote paths), the **head overlay** an armoured
+player's fullset figure draws its face from (`getPickupHeadFrame` — missing this
+would have left the erase working on everyone except a knight), and
+`characterPortrait`, so the creator, the character sheet, the inspect card and
+the friends list cannot disagree with the sprite.
+
+**Where it does not.** The `mine`, `fish` and `hit` faces are drawn squinting
+with no white in them, so the extractor finds no eye and they bake unchanged —
+the same set the eye **colour** already skips, for the same reason. The
+swing/bow/chop stand-in strips (`effectsRenderer`) bake through their own cache,
+keyed on skin/pants/shoes alone, and pass no eye data at all; they have never
+carried the eye colour either, and extending that boundary is a separate change.
+
+**Passed in, never read from a store.** `eyeStyleId` is an argument at every
+call site for the v2.3.1930 reason `eyeId` is: these functions bake **remote**
+players too, and a store read would put your eyes on a stranger's face. The
+local prewarms are the exception and say so — they prewarm the local player by
+definition.
+
+**It is in the cache key** (`bodySheetKey`'s `es:` segment) and deliberately
+**empty when no style is worn**, the v2.3.1940 rule for the drawings: a player
+with no style keeps the exact key they had before this version, so their sheets
+stay shared and prewarmed. It has to be in the key at all because the bake
+differs — a blanked sheet handed to a player with no style would leave them with
+no eyes.
+
+---
+
+## 4. What had to be wired, and where
 
 One system, five layers, and the list is here so the next face slot is a
 checklist rather than a search.
@@ -256,12 +339,12 @@ gate and peers simply see the default eyes; an old client ignores the key.
 
 ---
 
-## 4. Verification
+## 5. Verification
 
 `node tools/dev/precheck.mjs` — green, including `look-parity` (the new stored
 key is restored) and the storage-key registry.
 
-`node tools/qa/mp/run.mjs eyestyle` — 34 assertions, all green, against a real
+`node tools/qa/mp/run.mjs eyestyle` — 41 assertions, all green, against a real
 worker and a real Chromium. What it establishes, beyond the guards:
 
 - all four styles are in the Eyes tab, with `None` first;
@@ -269,8 +352,24 @@ worker and a real Chromium. What it establishes, beyond the guards:
 - the eye row is located by diffing two eye colours — the game's own answer to
   "where are the eyes", not a fraction of a bounding box (TRAPS §89) — and each
   style covers **100%** of it without hanging onto the mouth;
+- **the erase leaves nothing behind**, two ways. Demon Eyes is drawn with no
+  dark pixel at either resolution, so the hard-dark count in the eye window must
+  fall from the bare face's 1264 to **0**; and with any style on, switching eye
+  colour between Red and Default must change **0 pixels**, which is exact —
+  the bake recolours the iris or erases it, never both.
+- the **world** bake was handed the style, read off the cache keys it actually
+  produced (`es:demon`, nine sheets across stand and jog) rather than from a
+  40px screenshot — the creator and the walking figure are different code paths
+  and the threading is the part most likely to be missed;
 - the Thug Life shades and Demon Eyes are worn **together**, with the shades
   still the picked eyewear afterwards.
+
+Two things the remnant assertion got wrong before it got right, both recorded in
+TRAPS §89: a padded rectangle round the irises swept in the nose, the bridge
+shading and the ear notches and reported ~1000 false remnants per style; a flood
+outward from the irises leaked through that same shading into the nose and
+called 2888px "eye" on a face whose eyes are about 300. What works uses no
+footprint at all — it uses a style with no dark pixels in it as the probe.
 
 `cd server && npm test` — all suites green; the cosmetic-key suites are driven
 off `JOIN_COSMETIC_KEYS` (v2.3.2445) so they followed the new key on their own.

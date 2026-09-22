@@ -36,7 +36,28 @@
  *    cover it.  A piece that lands on the forehead overlaps nothing and fails,
  *    which is the failure the slot's placement maths exists to prevent.
  *
- * 4. BOTH SLOTS ARE WORN AT ONCE.  The entire reason eye styles are their own
+ * 4. NOTHING OF THE OLD EYE IS LEFT SHOWING.  Owner, on the first cut: "I still
+ *    see some remnants around the eyes where you stickered over the old ones."
+ *    Two assertions, because there were two remnants.
+ *    (a) Every pixel of the base eye must have CHANGED. The base eye's footprint
+ *        is read off the bare capture -- the not-skin pixels in the eye band --
+ *        so the test knows where the old eye was without being told, and a
+ *        sliver of black top edge peeking out one pixel to the left of a style
+ *        fails it.
+ *    (b) With a style on, changing the eye COLOUR must change nothing at all.
+ *        That is exact rather than approximate: the bake paints the iris or
+ *        erases it, never both (playerSkins.recolorBodyToCanvas), so a single
+ *        changed pixel means an iris survived under the style.
+ *
+ * 5. THE WORLD SPRITE GETS IT TOO, not only the creator's preview. The erase
+ *    lives in the body bake, and the bake draws remote players as well as you,
+ *    so the style has to be HANDED to it at seven call sites rather than read
+ *    from a store (the v2.3.1930 rule). That is precisely the shape of omission
+ *    this repo keeps hitting -- v2.3.1788's "the attack stand-ins wear the
+ *    WALKING skin", v2.3.2431's missing frame width -- so it is asserted from
+ *    the cache keys the world bake actually produced, which name the style.
+ *
+ * 6. BOTH SLOTS ARE WORN AT ONCE.  The entire reason eye styles are their own
  *    slot rather than four more eyewear entries is that you can wear Demon Eyes
  *    AND sunglasses.  So this puts the Thug Life shades on, then Demon Eyes on
  *    top, and asserts the face changed AND the shades are still the picked
@@ -187,7 +208,51 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(1600);
 
-  /* ── 3. each style covers the real eyes ── */
+  /* ── the eye window, and a count of hard-dark pixels in it ──
+     THE REMNANT TEST, and it took two wrong shapes to find the right one. A
+     padded rectangle round the irises swept in the nose, the nose-bridge
+     shading and the ear notches -- all legitimately not-skin, all legitimately
+     unchanged by an eye style -- and reported ~1000 "remnants" per style
+     against a face that was clean. A flood outward from the irises leaked
+     through that same bridge shading into the nose and reported 2888px of
+     "eye" on a head whose eyes are about 300.
+
+     What works needs no footprint at all. DEMON EYES is drawn with NO DARK
+     PIXEL IN IT -- minimum luminance 106, against a near-black threshold of 90
+     -- so while it is worn, any hard-dark pixel in the eye window can only be
+     the old eye. The bare face's own count is the control: it has to be well
+     above zero, or the test would pass on a blank canvas.
+
+     DEMON ONLY, and One Eye is the reason to say so. Its 128px frame is just as
+     bright (minimum 167) and it still failed this probe with 52 dark pixels:
+     the portrait loads `hi/south.png`, the 256px original, and THAT carries the
+     cyclops pupil at luminance 83. A style is only a valid probe if BOTH its
+     frames are clear, because which one is on screen depends on the surface. */
+  const DARK = 90;
+  const win = (() => {
+    const p2 = Math.max(4, Math.round(eyeH / 2));
+    return { x0: Math.max(0, eye.minX - p2), x1: Math.min(none.w - 1, eye.maxX + p2),
+      y0: Math.max(0, eye.minY - p2), y1: Math.min(none.h - 1, eye.maxY + p2) };
+  })();
+  const darkIn = (cap) => {
+    let n = 0;
+    for (let y = win.y0; y <= win.y1; y++) {
+      for (let x = win.x0; x <= win.x1; x++) {
+        const i = (y * cap.w + x) * 4;
+        if (cap.data[i + 3] < 200) continue;
+        const l = 0.299 * cap.data[i] + 0.587 * cap.data[i + 1] + 0.114 * cap.data[i + 2];
+        if (l < DARK) n++;
+      }
+    }
+    return n;
+  };
+  const bareDark = darkIn(none);
+  console.log(`    the bare face has ${bareDark} hard-dark px in the eye window ${JSON.stringify(win)}`);
+  rec.ok(`the bare face's own eyes are ${bareDark} hard-dark px in the eye window -- `
+       + `the control the remnant test would fail without (guard)`,
+    bareDark > 40, { bareDark, win });
+
+  /* ── 3. each style covers the real eyes, and leaves none of them showing ── */
   for (const style of WANT) {
     const picked = await pickTile(P, style);
     rec.ok(`${style} is pickable (guard)`, picked.ok === true, picked);
@@ -210,9 +275,48 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${style} does not hang below the eyes onto the mouth `
          + `(bottom ${d.maxY} vs eyes ${eye.maxY}, one eye-height of slack)`,
       d.maxY <= eye.maxY + eyeH, { d, eye, eyeH });
+    /* The remnant probe, on the two styles that can carry it: their own art
+       holds no dark pixel, so a dark pixel in the eye window is the old eye. */
+    if (style === 'Demon Eyes') {
+      const darkLeft = darkIn(worn);
+      rec.ok(`${style} is drawn with no dark pixels at either resolution, so the `
+           + `${darkLeft} hard-dark px left in the eye window is all that remains `
+           + `of the old eye (the bare face has ${bareDark})`,
+        darkLeft === 0, { style, darkLeft, bareDark, win });
+    }
   }
 
-  /* ── 4. glasses go OVER eyes, and both are worn at once ──
+  /* ── 4(b). with a style on, the eye colour has nothing left to paint ──
+     Exact, not approximate: the bake recolours the iris or erases it, never
+     both, so one changed pixel here means an iris survived under the style.
+     Run on WTF Eyes, which is still the pick from the loop above. */
+  await P.page.evaluate(() => {
+    const row = document.querySelector('.bt-cc-colors');
+    const el = row && [...row.querySelectorAll('button')].find((b) => (b.getAttribute('title') || '') === 'Red');
+    if (el) el.click();
+  });
+  await P.page.waitForTimeout(1600);
+  const styledRed = await grab(P);
+  await P.page.evaluate(() => {
+    const row = document.querySelector('.bt-cc-colors');
+    const el = row && [...row.querySelectorAll('button')].find((b) => (b.textContent || '').trim() === 'Default');
+    if (el) el.click();
+  });
+  await P.page.waitForTimeout(1600);
+  const styledDefault = await grab(P);
+  if (styledRed && !styledRed.err && styledDefault && !styledDefault.err
+      && styledRed.w === styledDefault.w) {
+    const irisLeft = diff(styledRed, styledDefault);
+    console.log('    eye colour under a style changes: ' + JSON.stringify(irisLeft));
+    rec.ok(`with a style worn, the eye-colour swatch has nothing left to paint `
+         + `(${irisLeft.n}px changed between Red and Default)`,
+      irisLeft.n === 0, irisLeft);
+  } else {
+    rec.ok('both eye-colour captures readable and the same size (guard)', false,
+      { a: styledRed && [styledRed.w, styledRed.err], b: styledDefault && [styledDefault.w, styledDefault.err] });
+  }
+
+  /* ── 6. glasses go OVER eyes, and both are worn at once ──
      BOTH CAPTURES ARE TAKEN ON THE EYEWEAR TAB, which is the whole trick here.
      The creator re-frames its preview per tab (pickPreviewCat), so the canvas
      is a different SIZE on the Eyes tab than on the Eyewear one -- the first
@@ -275,4 +379,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the Thug Life shades are STILL the picked eyewear, so the two '
        + 'slots are worn together rather than replacing each other',
     stillOn.found === true && stillOn.on === true, { stillOn });
+
+  /* ── 5. into the world, where the body is baked by a different path ──
+     The creator composites through characterPortrait; the walking figure goes
+     through getBodyFrame, and the two only agree if the style was threaded to
+     both.  bodySheetKey writes `es:<id>` into the cache key of any sheet baked
+     with a style, and __btBodySheetKeys reports the keys that really got baked
+     -- so this reads the world's own answer rather than asking it to look
+     right in a 40px screenshot. */
+  await H.enterWorld(P);
+  await P.page.waitForTimeout(2500);
+  const keysOff = await P.page.evaluate(() => (window.__btBodySheetKeys ? window.__btBodySheetKeys() : null));
+  rec.ok('the world baked some body sheets and the probe can read their keys (guard)',
+    Array.isArray(keysOff) && keysOff.length > 0, { n: keysOff && keysOff.length });
+  const set = await P.page.evaluate(() => {
+    if (!window.__btSetEyeStyle) return false;
+    window.__btSetEyeStyle('demon');
+    return true;
+  });
+  rec.ok('the eye style can be set in the world (guard)', set === true, null);
+  await P.page.waitForTimeout(2500);
+  const keysOn = await P.page.evaluate(() => (window.__btBodySheetKeys ? window.__btBodySheetKeys() : []));
+  const withStyle = keysOn.filter((k) => k.indexOf('es:demon') >= 0);
+  console.log('    world body sheets carrying the style: ' + JSON.stringify(withStyle.slice(0, 4)));
+  rec.ok(`the WORLD body bake was handed the eye style -- ${withStyle.length} sheet(s) `
+       + `keyed es:demon, so the walking figure is erased the same way the preview is`,
+    withStyle.length > 0, { withStyle: withStyle.slice(0, 6), total: keysOn.length });
+
+  const errs = P.logs.filter((l) => String(l).startsWith('pageerror'));
+  rec.ok('no page errors', errs.length === 0, errs.slice(0, 3));
+  await P.ctx.close();
 }

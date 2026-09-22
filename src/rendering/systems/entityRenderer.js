@@ -2140,7 +2140,7 @@ function _placeSouthBlockLegs(display, sb, o) {
   if (!o || !o.active || !sb || !o.standTex) return park();
   const cut = jogWaistRow(o.dir, o.jogFrame);
   if (!cut || cut <= 0 || cut >= 256) return park();
-  const jogRaw = getBodyFrame(o.skin, o.pants, o.shoes, 'jog', o.dir, o.jogFrame, o.shirtT, o.shirtKey, o.eyeId, o.bodyArt);
+  const jogRaw = getBodyFrame(o.skin, o.pants, o.shoes, 'jog', o.dir, o.jogFrame, o.shirtT, o.shirtKey, o.eyeId, o.bodyArt, o.eyeStyleId);   /* v2.3.2643 */
   if (!jogRaw) return park();
   /* The jog half's mask needs the jog frame's OWN gear silhouettes; reusing
      the standing frame's would erase the body along last frame's plate edge. */
@@ -3120,7 +3120,7 @@ export async function prewarmMaskedBodyFrames(opts) {
         prewarmProgress.done++;
         /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks. */
         const tex = (pose === 'fish') ? getFrame('fish', 'south', f)
-          : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor(), localBodyArt(false));
+          : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor(), localBodyArt(false), getEyeStyle());   /* v2.3.2643 */
         if (!tex) continue;
         const worn = [];
         for (const sl of slots) {
@@ -3214,7 +3214,7 @@ export async function prewarmAltWornSets(opts) {
           if (fast) prewarmProgress.done++;
           /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks. */
           const tex = (pose === 'fish') ? getFrame('fish', 'south', f)
-            : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor(), localBodyArt(false));
+            : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor(), localBodyArt(false), getEyeStyle());   /* v2.3.2643 */
           if (!tex) continue;
           const worn = [];
           for (const [sl, id] of set.worn) {
@@ -3319,7 +3319,7 @@ function _hideBodyRegions(display) {
 /* Place the pickup head overlay on the (reused) _bodyHead sprite at the body
    sprite's exact transform.  No-op (leaves _bodyHead as the caller left it --
    hidden) outside the pickup pose or before the sheet loads. */
-function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, frameIdx, phase) {
+function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, frameIdx, phase, eyeStyleId) {
   const hd = display._bodyHead;
   if (!hd || !sb) return;
   /* v2.3.1389: `phase` (jog cycle 0..1) picks the head frame on the SAME
@@ -3327,7 +3327,7 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
      is now 25 frames matching the armor, so head and armor bob as one.
      Dirs whose head count equals the body count resolve to the same
      frame either way; non-jog callers omit it. */
-  const t = getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, phase);
+  const t = getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, phase, eyeStyleId);   /* v2.3.2643 */
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
   hd.x = sb.x; hd.y = sb.y;
@@ -9799,8 +9799,8 @@ export class EntityRenderer {
            The durable fix is re-cut fish art with the rod on its own layer. */
         let tex = pose === 'fish'
           ? getFrame('fish', 'south', frameIdx)
-          : getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt);
-        if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt);
+          : getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle);   /* v2.3.2643: THEIR style */
+        if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle);   /* v2.3.2643 */
         if (tex) {
           /* Reassign texture whenever it differs — same self-heal as
              the local player path, fixes invisible-after-zone-change. */
@@ -9888,9 +9888,9 @@ export class EntityRenderer {
           try {
             /* v2.3.1394: jog overlay only over the fullset figure (see local path). */
             /* v2.3.1479: same armour gate as the local path. */
-            if ((pose !== 'jog' || _fsR) && ((pose !== 'hit' && pose !== 'mine') || _rworn.length > 0)) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase);
+            if ((pose !== 'jog' || _fsR) && ((pose !== 'hit' && pose !== 'mine') || _rworn.length > 0)) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase, other.eyeStyle);   /* v2.3.2643: THEIR style */
             display._headBehindGear = (pose === 'jog' && dir === 'east' && !!_fsR); /* v2.3.1553 */
-            spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx));
+            spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, undefined, other.eyeStyle));   /* v2.3.2643 */
             /* v2.3.1123: lift the angler's head above the fishing chest plate.
                v2.3.2278: above their LEG armour too.  This was chest-only, so
                a peer fishing in greaves lost the same hand the local player
@@ -11277,8 +11277,8 @@ export class EntityRenderer {
       const _bodyArt = localBodyArt(mirror);
       let tex = pose === 'fish'
         ? getFrame('fish', 'south', frameIdx)
-        : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey, getEyeColor(), _bodyArt);
-      if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey, getEyeColor(), _bodyArt);
+        : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle());   /* v2.3.2643 */
+      if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle());   /* v2.3.2643 */
       /* v2.3.291: mannequin swap removed -- user wants helmet stickered
          to the NORMAL character body as a rigid assembly.  Trait + body
          share frame-coords so they move together pixel-perfect. */
@@ -11390,9 +11390,9 @@ export class EntityRenderer {
              time they took a hit, for no benefit -- with no gear there is
              nothing that could cover the head in the first place. */
           const _needHead = (pose !== 'hit' && pose !== 'mine') || _worn.length > 0;
-          if ((pose !== 'jog' || _fsT) && _needHead) _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase);
+          if ((pose !== 'jog' || _fsT) && _needHead) _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase, getEyeStyle());   /* v2.3.2643 */
           display._headBehindGear = (pose === 'jog' && dir === 'east' && !!_fsT); /* v2.3.1553 */
-          spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx));
+          spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, undefined, getEyeStyle()));   /* v2.3.2643 */
           /* v2.3.1123: lift the angler's head above the fishing chest plate.
              v2.3.1914 (owner: "When fishing that hand needs to be over the
              shirt during the reel animation instead of under it"): ...and above
@@ -11434,6 +11434,7 @@ export class EntityRenderer {
             active: true, standTex: spriteBody.texture, dir, jogFrame: _jFrame,
             skin: getSkin(), pants: getPants(), shoes: getShoes(),
             shirtT: _shirtT, shirtKey: _shirtKey, eyeId: getEyeColor(),   /* v2.3.1930 */
+            eyeStyleId: getEyeStyle(),   /* v2.3.2643: the erase rides the same object as the recolour */
             bodyArt: _bodyArt,   /* v2.3.1940 */
           });
           /* The greaves stride with the legs they are worn over — otherwise a

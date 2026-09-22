@@ -3764,11 +3764,22 @@ it, and a piece on the forehead overlaps nothing. **If an assertion needs to
 know where a feature is, find a control that moves only that feature and diff
 it.** A percentage of a bounding box is only ever a measurement of the box.
 
-**Related:** §67 (a scenario that was green throughout the defect it existed to
-catch). Same file also learned that the creator **re-frames its preview per
-tab** (`pickPreviewCat`), so two captures taken on different tabs differ by
-74,801px of crop movement and nothing else — compare captures from the same
-tab, and assert their dimensions match before believing the diff.
+**And a third shape failed the same way.** Asked to prove the *erase* under a
+style rather than the placement of it, the next two attempts both tried to find
+"the old eye" on the face: a padded rectangle round the irises swept in the
+nose, the nose-bridge shading and the ear notches — all legitimately not-skin,
+all legitimately unchanged — and reported ~1000 remnants per style; a flood
+outward from the irises leaked through that same bridge shading into the nose
+and called 2888px "eye" on a face whose eyes are about 300. What finally worked
+measured the **art** instead of the face: a style drawn with no dark pixel in it
+turns any dark pixel left in the eye window into proof (§91).
+
+**Related:** §91 (the same probe, and the resolution it has to hold at); §67 (a
+scenario that was green throughout the defect it existed to catch). Same file
+also learned that the creator **re-frames its preview per tab**
+(`pickPreviewCat`), so two captures taken on different tabs differ by 74,801px
+of crop movement and nothing else — compare captures from the same tab, and
+assert their dimensions match before believing the diff.
 
 ## 90. A sheet drawn on the real mannequin cannot go straight into the importer (v2.3.2643)
 
@@ -3802,3 +3813,32 @@ the tolerance stay tight enough to keep the Sleepy style's near-black navy (63
 off the ink→skin segment, against under 12 for the widest blend).
 
 **Receipt:** `docs/specs/eyes.md` §2; the four import logs.
+
+## 91. A probe style has to be clear at BOTH resolutions (v2.3.2643)
+
+**Tempting:** you need to prove an eye style really erases the eye under it, and
+no measurement of "which pixels are the old eye" survives contact with the face
+(see §89). So use a style whose own art contains no dark pixel: while it is
+worn, any hard-dark pixel in the eye window can only be the remnant. Measure the
+art, pick the styles that qualify, assert zero.
+
+**Why it looks right:** it is right, and it is the shape that finally worked.
+Demon Eyes reads a minimum luminance of 106 against a near-black threshold of
+90, and One Eye reads **167** — brighter still, so an even better probe.
+
+**Wrong, for One Eye.** That 167 is its **128px** frame. Traits ship two copies
+— the 128 the world renders and the 256 `hi/` original the portrait prefers
+(`loadTraitBest`) — and the cyclops pupil survives the downscale as mid-grey
+while sitting at luminance **83** in the 256 art. The assertion failed with 52
+dark pixels on a face that was clean, because the surface under test was the one
+that loads the *other* file.
+
+**The rule:** **a sprite's measurable properties are per RESOLUTION, not per
+piece.** `downscale_traits.py` stashes the original in `hi/`, different surfaces
+load different ones, and any claim about a piece's pixels has to be checked
+against every frame that can reach a screen. Demon Eyes qualifies at both (106
+and 102) and is the probe `mp-eyestyle.mjs` uses; the file says so, and says why
+One Eye is not.
+
+**Related:** §89 (two earlier shapes of the same assertion, both measuring the
+face instead of the art).

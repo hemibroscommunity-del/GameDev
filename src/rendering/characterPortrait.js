@@ -17,6 +17,7 @@
 
 import { skinTarget, pantsTarget, shoesTarget, recolorBodyToCanvas } from './playerSkins.js';
 import EYE_MASK from './eyeMask.json';                              /* v2.3.1928 */
+import EYE_BLANK from './eyeBlankMask.json';                        /* v2.3.2643 */
 import { eyeColorTarget } from './traits/eyeColorCatalog.js';
 /* v2.3.2193: the colour-id -> target maps, for portraitOptsFromPeer below. */
 import { hairColorTarget } from './traits/hairColorCatalog.js';
@@ -689,8 +690,14 @@ export async function drawCharacterPortrait(canvas, opts) {
          touch on the body can be run backwards into a cell.  Nothing else
          passes it, and without it not a byte of this changes. */
       report: !!(opts && opts.reportGrids) } : null;
+  /* v2.3.2643: with a style worn, ERASE the real eyes under it and fill with
+     this figure's own skin (playerSkins._blankEyes).  It goes through the same
+     one function the world body does, so the creator preview, the character
+     sheet, the inspect card and the friends list cannot disagree with the
+     sprite about whether a remnant shows. */
   const _bodyCv = recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME,
-    eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`], _bodyArt);
+    eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`], _bodyArt, undefined, undefined,
+    wantEs ? EYE_BLANK[`stand-${DIR}`] : null);
   ctx.drawImage(_bodyCv, 0, 0);
   /* Stamped on the OUTPUT canvas, beside __btDir, because that is where the
      caller can reach it.  The grids are in the BODY SHEET's own 256-space.
