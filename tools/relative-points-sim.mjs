@@ -616,4 +616,146 @@ console.log('\n8e. ANTICHEAT with nothing capped — the check that decides whet
   ps._buffs = null; ps.rangedWeapon = null; ps.staffWeapon = null;
 }
 applyTables(TODAY);
+
+/* ═══ 9. THE FIRST HOUR — character level 3 to 10 ═══
+ *
+ * Owner: "as a level 10 player, show me how when they allocate stats they feel
+ * a difference in power through their leveling.  This is probably the steepest
+ * drop off for the game where people just try it and quit."
+ *
+ * So this section is not about balance, it is about whether the climb reads.
+ * Three things a new player actually judges, in the order they meet them:
+ *   9a  the climb — every level from 3 to 10, with the points a real player
+ *       has banked by then, against BOTH the monsters the shipped world spawns
+ *       (level 1-2, pinned by the v2.3.1160 directive) and the at-level ones
+ *       the depth zones will spawn.
+ *   9b  the spend moment — at level 10, what ONE point, one level-up's three,
+ *       and the whole banked pool do, in HITS and in the NUMBER ON SCREEN.
+ *   9c  what is boring at level 10 regardless of the stat curve.
+ *
+ * THE NUMBER ON SCREEN is the half that matters most here and the half a
+ * hits-to-kill table cannot show.  Damage is displayed at 1/5 scale
+ * (DISPLAY_SCALE_K, the owner's display-only decision), so a change that does
+ * not move the printed integer is a change the player does not see.  Every
+ * "shows" column below is sampled from the REAL roll and put through the real
+ * rounding: Math.max(1, Math.round(dmg / 5)). */
+const DISPLAY_K = 5;
+function shownRange(n) {
+  let lo = Infinity, hi = 0;
+  for (let i = 0; i < n; i++) {
+    const d = Math.max(1, Math.round(room._computeAttackDamage(ps, 'melee', false).dmg / DISPLAY_K));
+    if (d < lo) lo = d; if (d > hi) hi = d;
+  }
+  return lo === hi ? String(lo) : `${lo}-${hi}`;
+}
+/* The build a real player at character level L is holding: 3 lane + 3 shared
+   points per level-up since level 3, spent striker-first, and every stat still
+   bound by the §6-C double cap min(cap, charLevel) — which is the ONLY limit
+   that binds this early, under either shape. */
+function earlyBuild(charLevel, tables) {
+  const lanePts = 3 * (charLevel - 3), sharedPts = 3 * (charLevel - 3);
+  const atkT = { ...PROG3.ATK, ...tables.ATK }, bodyT = { ...PROG3.BODY, ...tables.BODY };
+  return {
+    lane: spend(lanePts, ['dmg', 'luck', 'special'], atkT, charLevel, 1).out,
+    shared: spend(sharedPts, ['hp', 'def', 'dodge'], bodyT, charLevel, 1).out,
+    lanePts, sharedPts,
+  };
+}
+
+console.log('\n9a. THE CLIMB — every level from 3 to 10, with the points a player has banked by then');
+console.log('    melee specialist, greatsword at the tier their Melee level unlocks, no armour.');
+console.log('    "shows" = the damage number the popup prints (the roll ÷5, the live display scale).');
+console.log('    fodder Lv1 = what the SHIPPED world spawns everywhere today.  brute = an AT-LEVEL one (depth zones).');
+console.log('');
+console.log('    char | Melee | tier |        TODAY: shows / fodder / brute     |     PROPOSED: shows / fodder / brute');
+for (const L of [3, 4, 5, 6, 7, 8, 9, 10]) {
+  const cells = [];
+  for (const tables of [TODAY, PROPOSED]) {
+    applyTables(tables);
+    const b = earlyBuild(L, tables);
+    setBuild({ sword: L - 2, bow: 1, staff: 1 }, b.lane, b.shared);
+    const fod1 = monster('fodder', 1), bru = monster('brute', L);
+    cells.push(`${pad(shownRange(600), 6)} / ${pad(f1(hitsToKill(fod1)), 4)} / ${pad(f1(hitsToKill(bru)), 4)}`);
+  }
+  applyTables(TODAY);
+  const b0 = earlyBuild(L, TODAY);
+  setBuild({ sword: L - 2, bow: 1, staff: 1 }, {}, {});
+  console.log(`    ${pad(L, 4)} |   ${pad(L - 2, 3)} | ${f2(tierMultFor(L - 2))} |  ${cells[0]}                    |  ${cells[1]}`);
+}
+applyTables(TODAY);
+
+console.log('\n9b. THE SPEND MOMENT — a character level 10 (Melee 8, copper greatsword), points going in one at a time');
+console.log('    Every stat is double-capped at 10 here, so 10 Power is the most this character can hold.');
+console.log('    A level-10 player has banked 21 lane + 21 shared points (7 level-ups × 3).');
+console.log('');
+console.log('    spend                        |       TODAY: shows / fodder Lv1 / brute Lv10 |   PROPOSED: shows / fodder / brute');
+for (const [label, lane, shared] of [
+  ['nothing spent               ', {}, {}],
+  ['+1 Power                    ', { dmg: 1 }, {}],
+  ['+3 Power (one level-up)     ', { dmg: 3 }, {}],
+  ['+10 Power (the double cap)  ', { dmg: 10 }, {}],
+  ['+10 Power +10 Luck          ', { dmg: 10, luck: 10 }, {}],
+  ['...and 10 HP + 10 Defense   ', { dmg: 10, luck: 10 }, { hp: 10, def: 10 }],
+]) {
+  const cells = [];
+  for (const tables of [TODAY, PROPOSED]) {
+    applyTables(tables);
+    setBuild({ sword: 8, bow: 1, staff: 1 }, lane, shared);
+    const fod1 = monster('fodder', 1), bru = monster('brute', 10);
+    cells.push(`${pad(shownRange(600), 6)} / ${pad(f1(hitsToKill(fod1)), 4)} / ${pad(f1(hitsToKill(bru)), 4)}`);
+  }
+  applyTables(TODAY);
+  console.log(`    ${label} |       ${cells[0]}                 |   ${cells[1]}`);
+}
+applyTables(TODAY);
+
+console.log('\n9c. AND WHAT A LEVEL-10 PLAYER IS ACTUALLY FIGHTING');
+{
+  applyTables(PROPOSED);
+  const b = earlyBuild(10, PROPOSED);
+  setBuild({ sword: 8, bow: 1, staff: 1 }, b.lane, b.shared);
+  const rows = [['fodder', 1], ['fodder', 2], ['snowman', 2], ['brute', 2], ['brute', 10], ['brute', 12], ['brute', 15]];
+  console.log('    a fully-spent level-10 character (proposed), against each monster the game can spawn:');
+  console.log('    monster        | hp  | hits to kill | swings it needs to kill YOU');
+  for (const [arch, lvl] of rows) {
+    const m = monster(arch, lvl);
+    const where = lvl <= 2 ? '  <- the SHIPPED world spawns these, everywhere' : '';
+    console.log(`    ${(arch + ' Lv' + lvl).padEnd(14)} | ${pad(m.hp, 3)} | ${pad(f1(hitsToKill(m)), 12)} | ${pad(f1(hitsToDie(m)), 4)}${where}`);
+  }
+  applyTables(TODAY);
+}
+console.log('\n9d. THE FELT UNIT IS A WHOLE HIT, NOT A PERCENT');
+console.log('    A player does not read "+14 % damage".  They read "this used to take three hits".');
+console.log('    Rounded kill count on the fodder the shipped world spawns, and on an at-level brute:');
+console.log('    char |  fodder Lv1: today -> proposed |  at-level brute: today -> proposed');
+for (const L of [3, 4, 5, 6, 7, 8, 9, 10]) {
+  const cells = [];
+  for (const tables of [TODAY, PROPOSED]) {
+    applyTables(tables);
+    const b = earlyBuild(L, tables);
+    setBuild({ sword: L - 2, bow: 1, staff: 1 }, b.lane, b.shared);
+    cells.push([Math.round(hitsToKill(monster('fodder', 1))), Math.round(hitsToKill(monster('brute', L)))]);
+  }
+  applyTables(TODAY);
+  const mark = (a, b2) => (a === b2 ? '   ' : ' <-');
+  console.log(`    ${pad(L, 4)} |      ${cells[0][0]} -> ${cells[1][0]}${mark(cells[0][0], cells[1][0])}                    |        ${cells[0][1]} -> ${cells[1][1]}${mark(cells[0][1], cells[1][1])}`);
+}
+applyTables(TODAY);
+
+console.log('\n9e. THE DIAL THAT MAKES A LEVEL-10 SPEND LOUD — the §6-C double cap');
+console.log('    min(cap, charLevel) is what stops a level-10 character holding more than 10 in any stat,');
+console.log('    while they have 21 lane points banked.  It is a pacing rule, not a balance one — so what');
+console.log('    does the early game feel like if it loosens?  Same character, same 21 points, three rules:');
+console.log('    rule                          | Power held | shows  | fodder Lv1 | brute Lv10');
+for (const [label, capRule] of [
+  ['min(cap, charLevel)  — today ', 10],
+  ['min(cap, 2 × charLevel)      ', 20],
+  ['no level cap (21 banked)     ', 21],
+]) {
+  applyTables(PROPOSED);
+  setBuild({ sword: 8, bow: 1, staff: 1 }, { dmg: capRule }, {});
+  console.log(`    ${label} |     ${pad(capRule, 6)} | ${pad(shownRange(600), 6)} | ${pad(f1(hitsToKill(monster('fodder', 1))), 10)} | ${pad(f1(hitsToKill(monster('brute', 10))), 6)}`);
+}
+applyTables(TODAY);
+
 console.log('\n(done — see docs/specs/relative-points.md for what these tables decide)');

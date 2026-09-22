@@ -67,6 +67,13 @@ fighting a monster close in level to them."*
   no level-40 cliff where the relative game finishes; both of those were
   artefacts of capping, and §4.6c–d record them as the cost of choosing 5-A
   instead. (§4.6)
+- **The first hour reads, and the measurements are in §4.7.** From level 3 to
+  10 the biggest number on screen goes 6 → 21 (today 6 → 15), and **seven of
+  the eight level-ups drop a whole hit** off an at-level kill. One POINT stays
+  invisible under either shape, so the level-up is the unit the celebration has
+  to sell. The thing that actually makes level 10 boring is not the curve: with
+  the world pinned at level 1–2, a level-10 character two-shots everything and
+  needs 27 monster swings to die (§4.7d). That is a content fix, not a stat one.
 - **The catch you need to know before saying go.** Every world zone is
   pinned to level 1–2 monsters by your own directive (v2.3.1160, "I have not
   made more depth zones yet since the game is still a demo"). So today the
@@ -566,6 +573,116 @@ relative arc should run longer, the dial is MORE relative stats or higher caps
 with the per-point value held (which re-slows the points, undoing the ask) —
 not a change to the edge.
 
+### 4.7 The first hour — levels 3 to 10, where players decide to stay
+
+Owner, 2026-09-22: *"As a level 10 player, show me how when they allocate stats
+they feel a difference in power through their leveling. This is probably the
+steepest drop off for the game where people just try it and quit."*
+
+Three answers, in the order they matter. All from the sim's §9.
+
+#### 4.7a The climb reads, and reads harder
+
+Every character level from 3 to 10, with the points a real player has banked by
+then. **"shows"** is the number the damage popup prints, sampled from the real
+roll through the real rounding (`max(1, round(dmg / 5))`) — a change that does
+not move that integer is a change the player does not see.
+
+| char | Melee | tier | today: shows / at-level brute | proposed: shows / brute |
+|---|---|---|---|---|
+| 3 | 1 | 1.00 | 2–6 / 10.9 hits | 2–6 / 10.8 |
+| 4 | 2 | 1.00 | 2–7 / 8.8 | **3–9 / 7.4** |
+| 5 | 3 | 1.00 | 3–9 / 7.7 | 3–11 / 6.0 |
+| 6 | 4 | 1.00 | 3–10 / 7.0 | 4–13 / 5.3 |
+| 7 | 5 | 1.12 | 4–12 / 5.7 | 5–16 / 4.2 |
+| 8 | 6 | 1.12 | 4–13 / 5.2 | 5–17 / 3.8 |
+| 9 | 7 | 1.12 | 4–14 / 4.9 | 6–19 / 3.5 |
+| 10 | 8 | 1.12 | 5–15 / 4.6 | **6–21 / 3.3** |
+
+Over the seven level-ups the biggest number on screen goes **6 → 15 today and
+6 → 21 proposed**, and the at-level kill goes 11 hits → 4.6 today, 11 → 3.3
+proposed.
+
+#### 4.7b The felt unit is a whole hit, not a percent
+
+Nobody reads "+14 % damage". They read *"this used to take three hits."* Rounded
+kill counts, and the arrow marks a level where the proposal drops a whole hit
+the current values do not:
+
+| char | fodder Lv1 (what ships today) | at-level brute |
+|---|---|---|
+| 3 | 5 → 5 | 11 → 11 |
+| 4 | 4 → 4 | 9 → **7** |
+| 5 | 4 → **3** | 8 → **6** |
+| 6 | 3 → 3 | 7 → **5** |
+| 7 | 3 → **2** | 6 → **4** |
+| 8 | 3 → **2** | 5 → **4** |
+| 9 | 3 → **2** | 5 → **4** |
+| 10 | 2 → 2 | 5 → **3** |
+
+**Seven of the eight levels produce a visible drop** against at-level content
+under the proposal. That is the answer to the ask, and it is the table to keep.
+
+#### 4.7c But a single POINT is invisible, and that is worth knowing
+
+At character level 10, points going in one at a time:
+
+| spend | today: shows / brute Lv10 | proposed: shows / brute |
+|---|---|---|
+| nothing | 4–12 / 5.7 hits | 4–12 / 5.7 |
+| +1 Power | 4–13 / 5.6 | 4–13 / 5.4 |
+| +3 Power (one level-up) | 4–13 / 5.3 | **4–15 / 4.9** |
+| +10 Power (the double cap) | 5–15 / 4.8 | **6–21 / 3.6** |
+| +10 Power +10 Luck | 5–15 / 4.6 | 6–21 / 3.3 |
+
+One point moves the printed number by 1 at the top of the range and nothing at
+the bottom, under either shape. **The level-up is the unit that has to land, not
+the point** — and one level-up is −14 % kill time proposed against −7 % today.
+Design the celebration around the level-up, and let the Points screen's confirm
+window (which already prints a now → after pair) carry the per-point feedback.
+
+#### 4.7d The thing that actually makes level 10 boring is not the stat curve
+
+A fully-spent level-10 character, proposed values, against every monster the
+game can currently spawn:
+
+| monster | HP | hits to kill | its swings to kill you |
+|---|---|---|---|
+| fodder Lv1 | 58 | **1.9** | **27.0** |
+| fodder Lv2 | 59 | 1.9 | 24.2 |
+| snowman Lv2 | 69 | 1.9 | 17.3 |
+| brute Lv2 | 71 | 2.0 | 16.1 |
+| *brute Lv10 (a depth zone would spawn this)* | 130 | 3.3 | 11.0 |
+
+Every wilderness zone is pinned to level 1–2 (v2.3.1160). So a level-10 player
+two-shots everything in the world and needs to stand still for **27 monster
+swings** to die. There is no stat curve that makes that interesting, and it is
+the likeliest reason a new player stops: not that levelling is unrewarding, but
+that there is nothing left to point the reward at. **Restoring the per-zone
+bands (decision 10) is the retention fix; this note is the thing that makes the
+reward legible once there is something to fight.**
+
+#### 4.7e The one dial that would make a level-10 spend loud
+
+`min(cap, character level)` — the §6-C double cap — is what holds a level-10
+character to 10 points in any stat while they have 21 lane points banked. Same
+character, same 21 points, three rules:
+
+| rule | Power held | shows | brute Lv10 |
+|---|---|---|---|
+| `min(cap, charLevel)` — today | 10 | 6–21 | 3.7 hits |
+| `min(cap, 2 × charLevel)` | 20 | **9–29** | **2.8** |
+| no level cap | 21 | 9–30 | 2.7 |
+
+Loosening it is the difference between a level-10 build that is spread thin and
+one that has committed. **And the rule is narrower than it looks:** §6-C was
+introduced to stop a fresh character dumping into Defense and wearing endgame
+armour at level 20, because armour tiers gate on allocated defense points. That
+reasoning applies to `def` and to nothing else. Decision 13 is whether to keep
+the cap on `def` alone and loosen the rest — the early game gets its spike, the
+gear gate keeps its guard, and the edge still means a concentrated build only
+dominates at its own level.
+
 ---
 
 ## 5. Where it plugs into the code
@@ -802,6 +919,7 @@ Recommended default in bold; the rest of the note explains each row.
 | 8 | PvP | **A: unchanged (edge 1), own PR later** · B: both players' character levels wired through now | **A** | |
 | 9 | Rollout | **A: server+mirrors PR, then the migration PR** · B: one PR | **A** | |
 | 10 | Depth zones | **A: restore the commented bands as the next content PR** · B: keep the world at 1–2 (the fade is dungeon-only) | **A** | |
+| 13 | The §6-C double cap in the early game (§4.7e) | **A: keep `min(cap, charLevel)` on `def` only (it guards the armour-tier gate) and loosen the other six to `min(cap, 2 × charLevel)`** · B: keep it on all seven as today · C: drop it entirely | **A** | |
 | 12 | The endgame avoidance extreme, given 5-B | **A: accept it (the BALANCE-PLAN §4c precedent: "near-unkillable max tank builds", PvE-focused)** · B: raise the `K`s so a maxed avoidance build lands nearer 20 % damage through · C: floor the combined damage-through (a cap on the product, never on a stat) | **A** | |
 | 11 | The nameplate border, given decision 2-B | **A: the plate follows the same yardstick (the active lane's level) so its colour predicts your point strength** · B: the plate keeps the character level from the 2026-09-14 mock and the colour means difficulty only | **A** (client-only) | |
 
