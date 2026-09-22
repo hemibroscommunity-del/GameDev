@@ -208,7 +208,7 @@ const novas = () => room.eventBuffer.filter((e) => e.type === 'element_nova');
 
 // Baseline: eligible.
 const setEligible = () => {
-  ps.prog3.sk.sword.level = PROG3.BURST_MIN_CHAR_LEVEL - 2; // Σ = 6 with bow/staff at 1
+  ps.prog3.sk.sword.level = 4; // Σ = 6 with bow/staff at 1 (v2.3.2646: no longer a gate, just a level)
   room._prog3Recompute(ps);
   ps.weapon = { type: 'sword', tierMult: 1, element1: 'flame' };
   ps.activeSlot = 'melee';
@@ -219,8 +219,7 @@ const setEligible = () => {
 
 {
   setEligible();
-  check('level gate: Σ trained level is exactly the unlock level',
-    room._prog3CharLevel(ps) === PROG3.BURST_MIN_CHAR_LEVEL, room._prog3CharLevel(ps));
+  check('setup: Σ trained level is 6', room._prog3CharLevel(ps) === 6, room._prog3CharLevel(ps));
   cast();
   check('an eligible cast fires a nova', novas().length === 1, room.eventBuffer.map((e) => e.type));
 }
@@ -229,8 +228,12 @@ const setEligible = () => {
   ps.prog3.sk.sword.level = 1;          // Σ = 3, a fresh character
   room._prog3Recompute(ps);
   cast();
-  check('GATE level: below the unlock level, refused with reason "level"',
-    novas().length === 0 && lastReject() && lastReject().reason === 'level', lastReject());
+  /* v2.3.2646: was 'GATE level' -- a level-3 cast refused with "level".  The
+     level-6 gate was the milestone ladder's rung 6, and the owner removed the
+     ladder ("I did not make those").  Inverted, not deleted, so the gate
+     cannot quietly come back. */
+  check('NO level gate: a fresh level-3 character casts (the milestone ladder is gone)',
+    novas().length === 1 && !lastReject(), { novas: novas().length, reject: lastReject() });
 }
 {
   setEligible();

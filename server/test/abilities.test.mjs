@@ -23,20 +23,18 @@
  * needs (TRAPS #18).
  */
 import { GameRoom } from '../src/index.js';
-import { STAM_ABILITIES, MILESTONES, LUNGE, staminaMilestoneMult, milestonePointsThrough,
-  milestoneAbilityLevels } from '../src/abilities.js';
+import * as SRV_ABIL from '../src/abilities.js';
+const { STAM_ABILITIES, LUNGE } = SRV_ABIL;
 /* v2.3.2361: the contextual lunge's weight is a CLIENT design constant the
    worker now has to honour, so the suite imports the client's own copy rather
    than restating 0.6 (a test that copies a value out of the game stops testing
    the game -- TRAPS #35).  Plain-node importable, like the ability mirror. */
 import { LUNGE_DAMAGE_MULT } from '../../src/data/gameSystems.js';
-import { STAM_ABILITIES as CLIENT_ABILITIES, MILESTONES as CLIENT_MILESTONES,
-  staminaMilestoneMult as clientStamMult } from '../../src/data/abilities.js';
-/* v2.3.1734: the ladder's rung 6 and the burst's actual level gate live in
-   two files that CANNOT import each other (abilities.js ⇄ prog3.js would be
-   a module cycle — see abilities.js's header).  This suite is the only
-   place they can be pinned together. */
-import { PROG3 } from '../src/prog3.js';
+import * as CLIENT_ABIL from '../../src/data/abilities.js';
+const CLIENT_ABILITIES = CLIENT_ABIL.STAM_ABILITIES;
+import { PROG3, prog3XpRequired } from '../src/prog3.js';
+import { PROG3 as CLIENT_PROG3, setMilestonesRetired, legacyStaminaMult,
+  LEGACY_BURST_MIN_CHAR_LEVEL } from '../../src/data/prog3.js';
 
 const mockState = {
   storage: {
@@ -69,40 +67,32 @@ function check(name, cond, detail) {
   check('STAM_ABILITIES server === client (a drifted cost is a lying button)',
     JSON.stringify(STAM_ABILITIES) === JSON.stringify(CLIENT_ABILITIES),
     { server: STAM_ABILITIES, client: CLIENT_ABILITIES });
-  check('MILESTONES server === client',
-    JSON.stringify(MILESTONES) === JSON.stringify(CLIENT_MILESTONES),
-    { server: MILESTONES, client: CLIENT_MILESTONES });
-  const bad = Object.entries(milestoneAbilityLevels())
-    .filter(([kind, lvl]) => !STAM_ABILITIES[kind] || STAM_ABILITIES[kind].minLevel !== lvl);
-  check('every ability the ladder names exists and agrees on its level', bad.length === 0, bad);
-  check('staminaMilestoneMult mirrors (3 -> 1, 10 -> 1.25)',
-    staminaMilestoneMult(3) === clientStamMult(3) && staminaMilestoneMult(10) === clientStamMult(10)
-      && staminaMilestoneMult(3) === 1 && staminaMilestoneMult(10) === 1.25,
-    { s3: staminaMilestoneMult(3), s10: staminaMilestoneMult(10) });
-  /* ═══ v2.3.1734: THE HAND-OFF TRIPWIRE, FIRED AND RE-ARMED ═══
-     v2.3.1733 left rung 6 empty and asserted the GAP, so that PR 6 filling
-     it would fail this line and force a deliberate update rather than the
-     two sessions silently disagreeing about who owned level 6.  PR 6 has
-     landed; the assertion is flipped rather than deleted, because the thing
-     worth pinning was never "the rung is empty" — it is "exactly one thing
-     owns level 6, and everyone agrees what". */
-  check('level 6 is Element Burst (PR 6 landed — was asserted EMPTY at v2.3.1733)',
-    !!MILESTONES[6] && MILESTONES[6].burst === true && MILESTONES[6].label === 'Element Burst',
-    MILESTONES[6]);
-  /* Element Burst is a MANA ability with its own handler (server/src/burst.js),
-     so it must NOT name a `kind`: `kind` means "look me up in
-     STAM_ABILITIES", and the ladder-consistency check above would (rightly)
-     reject a kind that table does not have. */
-  check('...and does not claim to be a stamina ability', !MILESTONES[6].kind, MILESTONES[6]);
-  /* THE TWO SOURCES OF "6" AGREE.  burst.js gates on
-     PROG3.BURST_MIN_CHAR_LEVEL (mirrored to the client, drives the button);
-     the ladder carries the rung the level-up celebration announces.
-     abilities.js cannot import prog3.js — the module cycle its header
-     documents — so this suite is the only place the two can be pinned
-     together, and without it they can drift into a level whose unlock
-     message and unlock gate disagree. */
-  check('the ladder rung and PROG3.BURST_MIN_CHAR_LEVEL name the SAME level',
-    PROG3.BURST_MIN_CHAR_LEVEL === 6, PROG3.BURST_MIN_CHAR_LEVEL);
+  /* ═══ v2.3.2646: THE MILESTONE LADDER IS GONE ═══
+     Owner: "Just remove the milestones from the game I did not make those."
+     v2.3.1733-1734 pinned the ladder's mirror here (MILESTONES server ===
+     client, rung 6 === Element Burst === PROG3.BURST_MIN_CHAR_LEVEL).  The
+     pins are inverted rather than deleted: the thing worth guarding now is
+     that the ladder does not quietly come BACK -- a re-added export on either
+     side, or a burst level gate reappearing in the PROG3 table. */
+  const gone = ['MILESTONES', 'staminaMilestoneMult', 'milestonePointsThrough', 'milestoneAbilityLevels'];
+  check('the ladder is gone from the server module',
+    gone.every((k) => !(k in SRV_ABIL)), gone.filter((k) => k in SRV_ABIL));
+  check('...and from the client mirror',
+    gone.every((k) => !(k in CLIENT_ABIL)), gone.filter((k) => k in CLIENT_ABIL));
+  check('Element Burst has no character-level gate on either side',
+    !('BURST_MIN_CHAR_LEVEL' in PROG3) && !('BURST_MIN_CHAR_LEVEL' in CLIENT_PROG3),
+    { server: PROG3.BURST_MIN_CHAR_LEVEL, client: CLIENT_PROG3.BURST_MIN_CHAR_LEVEL });
+  /* The client still PREDICTS an old worker's ladder until caps.milestonesRetired
+     arrives (rule 19) -- and must stop the moment it does. */
+  setMilestonesRetired(false);
+  const oldW = [legacyStaminaMult(9), legacyStaminaMult(10)];
+  setMilestonesRetired(true);
+  const newW = [legacyStaminaMult(9), legacyStaminaMult(10)];
+  setMilestonesRetired(false);
+  check('client stamina prediction: x1.25 at 10 against an OLD worker, x1 against a new one',
+    oldW[0] === 1 && oldW[1] === 1.25 && newW[0] === 1 && newW[1] === 1, { oldW, newW });
+  check('the old worker\'s Burst level is frozen at 6 (never a live mirror)',
+    LEGACY_BURST_MIN_CHAR_LEVEL === 6, LEGACY_BURST_MIN_CHAR_LEVEL);
 }
 
 const room = new GameRoom(mockState, mockEnv);
@@ -114,6 +104,13 @@ await room.webSocketMessage(wsA, JSON.stringify({
   data: { x: -100000, y: -100000, z: 'meadow' },
 }));
 const psA = room.playerState.pa;
+{
+  /* v2.3.2646: the worker tells clients the ladder is gone. */
+  const sync = msgsOfType(wsA, 'state_sync')[0];
+  const caps = sync && (sync.caps || (sync.payload && sync.payload.caps));
+  check('join advertises caps.milestonesRetired', !!(caps && caps.milestonesRetired === true),
+    caps ? Object.keys(caps).length : sync);
+}
 
 const meadow = room._ensureZoneMonsters('meadow');
 /* Deterministic layout: park every monster far away and out of the fight,
@@ -515,40 +512,45 @@ const setCharLevel = (lvl) => {
     STAM_ABILITIES.bash.dmgMult < 1 && plain.dmg > 0, STAM_ABILITIES.bash.dmgMult);
 }
 
-// ── 7. The ladder's non-ability rungs ──
+// ── 7. The ladder's old rungs pay nothing (v2.3.2646) ──
 {
-  /* +1 bonus point at char 5, paid once. */
-  psA.prog3.ms = 0;
-  psA.prog3.pool = 0;
-  setCharLevel(5);
-  const paid = room._prog3GrantMilestones('pa', psA);
-  check('char 5 pays the bonus allocation point',
-    paid === milestonePointsThrough(5) && psA.prog3.pool === 1, { paid, pool: psA.prog3.pool });
-  const again = room._prog3GrantMilestones('pa', psA);
-  check('...exactly once (a re-run pays nothing)', again === 0 && psA.prog3.pool === 1,
-    { again, pool: psA.prog3.pool });
+  check('the milestone payout method is gone', typeof room._prog3GrantMilestones === 'undefined',
+    typeof room._prog3GrantMilestones);
 
-  /* The stamina rung. */
+  /* No +25% at 10: max stamina is the flat base plus allocated points, the
+     same at 9 as at 10. */
   setCharLevel(9);
-  room._prog3GrantMilestones('pa', psA);
   const stam9 = psA.maxStamina;
   setCharLevel(10);
-  room._prog3GrantMilestones('pa', psA);
-  check('char 10 grants +25% max stamina',
-    psA.maxStamina === Math.floor(stam9 * 1.25), { at9: stam9, at10: psA.maxStamina });
-  check('...and the sanitizer keeps the paid-through marker (or the bonus point loops)',
-    room._sanitizeProg3(psA.prog3).ms === psA.prog3.ms,
-    { stored: psA.prog3.ms, sanitized: room._sanitizeProg3(psA.prog3).ms });
+  check('char 10 no longer multiplies max stamina',
+    psA.maxStamina === stam9, { at9: stam9, at10: psA.maxStamina });
 
-  /* A veteran who levelled past the rungs before this shipped is settled
-     on their next join/level-up, not left behind. */
-  const vet = { prog3: { sk: { sword: { level: 20, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 1, xp: 0 } },
-    alloc: { def: 0, hp: 0, dodge: 0, stam: 0 }, atk: {}, pool: 0, ms: 0 } };
-  room._prog3Recompute(vet);
-  const owed = room._prog3GrantMilestones('vet', vet);
-  check('a pre-existing high-level character is paid retroactively, once',
-    owed === 1 && vet.prog3.pool === 1 && room._prog3GrantMilestones('vet', vet) === 0,
-    { owed, pool: vet.prog3.pool });
+  /* ROLLBACK SAFETY: the `ms` high-water still survives the sanitizer, so a
+     worker rolled back to v2.3.2645 does not re-pay the level-5 point. */
+  psA.prog3.ms = 10;
+  check('...and the sanitizer still keeps the old paid-through marker (rollback safety)',
+    room._sanitizeProg3(psA.prog3).ms === 10,
+    { sanitized: room._sanitizeProg3(psA.prog3).ms });
+
+  /* A real level-up from char 4 to char 5 -- the old bonus-point rung.
+     No milestone on the wire, and the pool grows by the per-level mint
+     only. */
+  setCharLevel(4);
+  psA.prog3.ms = 0;
+  const poolBefore = psA.prog3.pool;
+  const sk = psA.prog3.sk.sword;
+  sk.xp = 0;
+  wsA.sent.length = 0;
+  room._prog3AwardXp('pa', psA, 'sword', prog3XpRequired(sk.level), { flat: true });
+  const lvlMsg = msgsOfType(wsA, 'prog3_level')[0];
+  check('a level-up still reaches the client (guard)', !!lvlMsg && psA.level === 5,
+    { level: psA.level, sent: !!lvlMsg });
+  check('prog3_level carries no milestone and no bonus point',
+    !!lvlMsg && !('milestone' in lvlMsg.payload) && !('bonusPoints' in lvlMsg.payload),
+    lvlMsg && lvlMsg.payload);
+  check('...and crossing char 5 mints the per-level points only (no +1 bonus point)',
+    psA.prog3.pool - poolBefore === PROG3.POINTS_PER_LEVEL && !psA.prog3.ms,
+    { before: poolBefore, after: psA.prog3.pool, ms: psA.prog3.ms });
 }
 
 /* ═══ v2.3.2266: SWORDDASH REACHES AS FAR AS IT CAN CLOSE, AND THE WORKER

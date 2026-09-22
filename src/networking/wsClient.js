@@ -25,7 +25,7 @@ import { peerCosmeticsFromWire, peerPassthroughFromWire, applyPeerCosmetics } fr
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale */
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled, isProg3SharedEnabled /* v2.3.2592 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled /* v2.3.2592 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, setMilestonesRetired /* v2.3.2646 */, PROG3_SKILL_META } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -46,7 +46,6 @@ import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js'
 import { getPattern } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 import { getEquip, syncArmorLayers, migrateTier1Armor } from '@/rendering/gearCatalog.js'; /* v2.3.1761 */
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
-import { pushMilestone } from '@/ui/milestoneUnlock.js'; /* v2.3.2645: a milestone rung gets its own card, after the burst */
 /* v2.3.1982: the "the world is full" screen — plain DOM, see its header
    for why it is not a React boot phase. */
 import { showRoomFull, hideRoomFull, roomFullOpen } from '@/ui/RoomFullScreen.js';
@@ -1204,6 +1203,11 @@ export function setupWebSocket(ctx) {
                    worker's grid and pools (see the flag's note in
                    data/prog3.js). */
                 setProg3SharedEnabled(!!(S._serverCaps && S._serverCaps.prog3shared));
+                /* v2.3.2646: the milestone ladder is gone on a worker that
+                   says so.  Display only: against an older worker the client
+                   keeps predicting its level-6 Burst gate and its x1.25
+                   stamina at level 10 (data/prog3.js setMilestonesRetired). */
+                setMilestonesRetired(!!(S._serverCaps && S._serverCaps.milestonesRetired));
                 /* v2.3.1733: stamina-abilities deploy-order gate.  The two
                    ability BUTTONS render and the `ability` message is sent
                    only while THIS worker claims caps.abil — an old worker
@@ -2330,49 +2334,10 @@ export function setupWebSocket(ctx) {
                  it rides along in bt_rpg so a reload keeps the attribution,
                  and _saveRpg's fixed field list ignores it server-side. */
               if (typeof p3l.skill === 'string') S.rpg._p3PoolFrom = p3l.skill;
-              /* ═══ v2.3.1727: SAY WHAT THE LEVEL BOUGHT ═══
-                 Owner, after judging: "I DO want leveling to feel more
-                 powerful."  Half of that is the retune (server prog3.js);
-                 the other half is telling the player what they just got.
-                 The banner said "You got stronger!" and left them to infer
-                 it from a health bar, which is exactly how ten levels can
-                 pass without feeling like anything.  Built here rather than
-                 in the banner because the constants already live on this
-                 side of the import graph.
-
-                 ═══ v2.3.2644: NOTHING RENDERS THIS TODAY ═══
-                 Owner: "Don't include the specific stat increases, just the
-                 name of the skill and level.  It's way too tiny to read
-                 anyway."  So the burst's caption dropped the line
-                 (LevelUpBurst.jsx) and `gains` rides the message unread.
-                 It is still BUILT, for one reason: this is the only place a
-                 prog3 MILESTONE unlock is named, and a milestone is a new
-                 ability button appearing on the HUD with no explanation --
-                 the exact problem v2.3.1733 added the line to solve.  That
-                 deserves its own notification rather than disappearing inside
-                 a stat list nobody reads; it is flagged to the owner.
-                 If they decide against one, delete this block and the `gains`
-                 field with it rather than leaving a string computed forever. */
-              var _dmgPer = (PROG3.DMG_PER_LEVEL && PROG3.DMG_PER_LEVEL[p3l.skill]) || 0;
-              var _gains = [];
-              if (_dmgPer > 0) _gains.push('+' + _dmgPer + ' damage');
-              if (PROG3.HP_PER_LEVEL > 0) _gains.push('+' + PROG3.HP_PER_LEVEL + ' max HP');
-              /* v2.3.2199: 3 points per level on a prog3x worker; an old
-                 worker still mints 1, so the banner must promise what THAT
-                 worker paid (rule 19). */
-              var _pts = isProg3XEnabled() ? PROG3.POINTS_PER_LEVEL : 1;
-              /* v2.3.2592: a level-up mints lane points AND shared points on
-                 a worker carrying the shared pool, and the banner says both
-                 by name so the player knows there are two columns to visit
-                 — "+3 Melee points · +3 shared points".  An old worker mints
-                 only the lane points, and the banner says only that. */
-              if (isProg3SharedEnabled()) {
-                var _sh = PROG3.SHARED_POINTS_PER_LEVEL;
-                _gains.push('+' + _pts + ' ' + (p3meta ? p3meta.label : 'combat') + (_pts === 1 ? ' point' : ' points'));
-                _gains.push('+' + _sh + ' shared' + (_sh === 1 ? ' point' : ' points'));
-              } else {
-                _gains.push('+' + _pts + (_pts === 1 ? ' point' : ' points') + ' to spend');
-              }
+              /* v2.3.2646: the v2.3.1727 "what the level bought" line
+                 (`gains`) was built here and, since v2.3.2644, rendered
+                 nowhere.  It stayed only to carry the milestone name; the
+                 milestones are gone, so the line is too. */
               /* v2.3.2592: the shared pool rides the level event; stamp it so
                  the Shared column moves with the lane header, not a
                  player_state round-trip later. */
@@ -2390,14 +2355,6 @@ export function setupWebSocket(ctx) {
                  before (rule 19). */
               if (S.rpg.prog3 && typeof p3l.pool === 'number') S.rpg.prog3.pool = p3l.pool;
               if (S.rpg.prog3 && p3l.poolBy && typeof p3l.poolBy === 'object') S.rpg.prog3.poolBy = p3l.poolBy;
-              /* v2.3.1733: ...and name the MILESTONE, when this level crossed
-                 one.  A new button appearing on the HUD with no explanation
-                 is the same "level 13 doesn't feel different" problem in a
-                 new costume — the unlock is the loudest thing a level can
-                 buy, so it goes first in the line.  The fields are optional:
-                 an old worker sends neither and the banner reads as before. */
-              if (p3l.bonusPoints > 0) _gains.push('+' + p3l.bonusPoints + ' bonus point');
-              if (p3l.milestone) _gains.unshift(p3l.milestone + ' unlocked!');
               /* ═══ v2.3.2643: ONE PROG3 LEVEL-UP, ONE NOTIFICATION ═══
                  Owner: "for leveling up don't show both the character and the
                  skill level up anymore, just show the skill level up."
@@ -2420,18 +2377,8 @@ export function setupWebSocket(ctx) {
                  needs them; what is gone is this handler raising a pair by
                  itself.
 
-                 AND ONE LIST OF GAINS.  v2.3.2615 split the line in two along
-                 the same seam ("sending the whole list twice would tell the
-                 player they got it twice"): damage and the lane's own points
-                 to the skill, max HP and the shared point to the character.
-                 With one burst that split has nothing left to prevent, and
-                 keeping it would silently drop what the character half
-                 carried — the max HP, the shared point, and the MILESTONE
-                 unlock, which is the loudest thing a level can buy.  So the
-                 one burst carries the whole line again, as it did before the
-                 split.  It has the room: LevelUpBurst picks its caption type
-                 scale and column width off the live burst COUNT (nCols), and
-                 a lone burst gets the wide column and the larger step. */
+                 (v2.3.2646: the list of gains that used to ride this burst is
+                 gone -- see the note above the pool stamps.) */
               var _p3ts = Date.now();
               setLevelUpMsg({
                 kind: 'combat',
@@ -2444,7 +2391,6 @@ export function setupWebSocket(ctx) {
                 skill: p3l.skill || null,
                 skillLabel: p3meta ? p3meta.label : null,
                 skillLevel: p3l.level,
-                gains: _gains.join(' \xB7 '),
                 ts: _p3ts,
               });
               /* ═══ v2.3.2643: THE CHARACTER LEVEL STOPS ANNOUNCING ITSELF ═══
@@ -2478,41 +2424,6 @@ export function setupWebSocket(ctx) {
               if (_newChar > 0 && S.rpg) {
                 if ((S.rpg._lastCharLvlShown || 0) > _newChar) S.rpg._lastCharLvlShown = _newChar;
                 S.rpg._lastCharLvlShown = _newChar;
-              }
-              /* ═══ v2.3.2645: THE MILESTONE, WITH ITS OWN NOTIFICATION ═══
-                 Owner: "Yes give milestone unlocks their own notification."
-                 This is where the gains line's "Element Burst unlocked!" clause
-                 went when v2.3.2644 removed that line.  Pushed onto its OWN bus,
-                 not through setLevelUpMsg: that cell already carries the skill
-                 level from this same tick, and two writes in one tick keep only
-                 the second -- the v2.3.2615 overwrite, which is the bug that
-                 created the burst stack in the first place.
-                 The card opens as the burst FINISHES (milestoneUnlock.js), so a
-                 level that crosses a rung reads as two beats in a row rather
-                 than two overlays at once -- the thing the owner had removed at
-                 v2.3.2643.
-                 Rungs the ladder says give nothing (4 and 8) are dropped by
-                 pushMilestone itself, so this call site does not have to know
-                 which rungs are real.
-
-                 GATED ON THE WORKER'S OWN WORD, not on our mirror of the
-                 ladder.  `p3l.milestone` is the server saying it crossed a
-                 rung AND granted what the rung owes (_prog3GrantMilestones
-                 runs immediately before the send).  Announcing off
-                 MILESTONES[charLevel] instead would have a new client tell a
-                 player on an OLD worker that they just earned a bonus point
-                 that worker never minted -- rule 19 in its display costume,
-                 and the same class of untruth as a celebration for a level
-                 nobody earned. */
-              if (p3l.milestone) {
-                try {
-                  pushMilestone({
-                    level: _newChar,
-                    label: p3l.milestone || null,
-                    bonusPoints: p3l.bonusPoints,
-                    ts: _p3ts,
-                  });
-                } catch (e) { /* a celebration must never break the level-up */ }
               }
               /* v2.3.2615: no BT_AUDIO.levelUp() — see the combat_credit note
                  above.  v2.3.2643: and now one burst, so the sting's 450ms

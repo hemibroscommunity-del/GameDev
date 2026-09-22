@@ -700,7 +700,8 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
        live; with the blob adopted the level is prog3CharLevel -- the SUM of the
        three skill levels, each floored at 1.  So setting `prog3.lvl` does
        nothing (there is no such field) and the honest seed is a skill level:
-       sword 6 puts the character at 6+1+1 = 8, clear of BURST_MIN_CHAR_LEVEL.
+       sword 6 puts the character at 6+1+1 = 8 (v2.3.2646: no level gate remains;
+       kept so the row also holds against a pre-v2.3.2646 worker's level 6).
        Both paths are seeded so the row does not depend on which is live. */
     S.rpg.level = 20;
     if (!S.rpg.prog3) S.rpg.prog3 = {};

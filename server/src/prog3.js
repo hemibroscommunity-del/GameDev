@@ -413,23 +413,22 @@ export const PROG3 = {
   SPECIAL_MANA_COST: 25,     // flat, was floor(maxMana/5)
   /* ═══ v2.3.1734: ELEMENT BURST (COMBAT-OVERHAUL-PLAN PR 6) ═══
    * Short-range elemental nova off your weapon's own element.  Gated on
-   * character level AND on the weapon carrying element1, which makes it
-   * Enchant-gated by construction (only enchanted weapons have one).
-   * Server validates all four gates — level, element, mana, cooldown —
-   * from ITS copy of the weapon; the client's button is a display gate. */
-  BURST_MIN_CHAR_LEVEL: 6,
+   * the weapon carrying element1, which makes it Enchant-gated by
+   * construction (only enchanted weapons have one).
+   * Server validates the gates — element, mana, cooldown — from ITS copy
+   * of the weapon; the client's button is a display gate.
+   * v2.3.2646: the character-level gate (BURST_MIN_CHAR_LEVEL: 6, the
+   * milestone ladder's rung 6) is gone with the ladder -- the owner never
+   * made it.  Burst is open from level 1. */
   BURST_MANA_COST: 25,
   BURST_CD_MS: 3000,
   BURST_RADIUS: 70,
   BURST_DMG_MULT: 1.5,
 };
 
-/* v2.3.1733: the milestone ladder's stamina rung.  The TABLE lives in
-   abilities.js (with the ability kits it unlocks); this import is here
-   because _prog3Recompute below is the one place max stamina is computed
-   for a prog3 player, and the client mirror (recalcDerived) carries the
-   same multiplier.  Move one, move both. */
-import { staminaMilestoneMult, MILESTONES, blocksAt, blockSize } from './abilities.js';
+/* v2.3.2646: the milestone ladder (staminaMilestoneMult, MILESTONES) that
+   used to be imported here is gone -- see the tombstone in abilities.js. */
+import { blocksAt, blockSize } from './abilities.js';
 
 /* XP to go from trained level L to L+1.  The legacy weaponXpRequired
  * curve (280 × 1.16^L, gameSystems.js) reused verbatim (§3-A), shifted
@@ -506,9 +505,9 @@ export function prog3FromLegacy(src) {
      bonus-points pick, spendable anywhere) — it is not per-level minting
      and does not triple. */
   pool += clampLvl(src && src.defenseSkill && src.defenseSkill.level);
-  /* v2.3.1733: `ms` starts at 0 so a respecced veteran is paid every
-     milestone bonus point they have already earned, once, on their next
-     level-up or join (see _prog3GrantMilestones). */
+  /* v2.3.1733: `ms` = the milestone high-water.  v2.3.2646: the ladder is
+     gone and nothing pays against this any more; it is still stamped 0 so a
+     worker ROLLED BACK past v2.3.2646 finds the shape it expects. */
   return { sk, alloc: prog3FreshAlloc(), atk: prog3FreshAtk(), pool, poolBy, ms: 0, ppl: PROG3.POINTS_PER_LEVEL,
     shared, spl: PROG3.SHARED_POINTS_PER_LEVEL /* v2.3.2592 */ };
 }
@@ -524,7 +523,7 @@ export function prog3FromLegacy(src) {
  * Idempotent via the `ppl` rate stamp; pure and blob-shaped, shared by
  * migration v14 (stored blobs) AND the _sanitizeProg3 boundary heal
  * (fail-open blobs), the prog3SplitAtk pattern.  Max legitimate unspent
- * pool is now ~992 (3×297 + defense carry ≤100 + the milestone point) —
+ * pool is now ~992 (3×297 + defense carry ≤100 + the old milestone point) —
  * still under the sanitizer's 999 clamp, barely; that clamp is load-
  * bearing headroom now, don't repurpose it. */
 export function prog3GrantRetroPoints(p3) {
@@ -759,10 +758,12 @@ export const prog3Methods = {
       }
     }
     /* v2.3.1733: `ms` = the highest character level whose MILESTONE rewards
-       have already been paid (abilities.js _prog3GrantMilestones).  It has
-       to survive this sanitizer or every join would re-pay the bonus point
-       — a sanitizer that drops a field is how a one-off grant becomes an
-       infinite one.  Bounded by the char-level cap. */
+       have already been paid.  It has to survive this sanitizer or every join
+       would re-pay the bonus point — a sanitizer that drops a field is how a
+       one-off grant becomes an infinite one.  Bounded by the char-level cap.
+       v2.3.2646: the ladder is gone and THIS worker never pays against `ms`,
+       but it is kept for ROLLBACK: a worker rolled back to v2.3.2645 reads it,
+       and without it would re-pay every player the level-5 point. */
     const ms = Number(src.ms);
     if (Number.isFinite(ms) && ms > 0) out.ms = Math.min(PROG3.CHAR_LEVEL_CAP, Math.floor(ms));
     /* v2.3.2199 BOUNDARY HEAL (the prog3SplitAtk pattern above).  `ppl` is
@@ -885,15 +886,13 @@ export const prog3Methods = {
     ps.level = this._prog3CharLevel(ps);
     ps.maxHp = Math.floor(100 + ps.level * PROG3.HP_PER_LEVEL
       + this._prog3Pts(ps, 'hp') * PROG3.BODY.hp.per);
-    /* v2.3.1733: the char-10 "Second Wind" milestone multiplies the whole
-       pool (+25%), AFTER the allocated stam points — a milestone that only
-       scaled the flat 100 would shrink in value the more you invested,
-       which is the opposite of what a level-10 reward should feel like.
-       Mirrored by recalcDerived's prog3 branch (src/data/gameSystems.js);
-       both read staminaMilestoneMult so the number has one home. */
+    /* v2.3.2646: no level multiplier.  v2.3.1733's char-10 "Second Wind"
+       milestone (x1.25 on the whole pool) went with the ladder -- the owner
+       never made it.  Mirrored by recalcDerived's prog3 branch
+       (src/data/gameSystems.js), which keeps the x1.25 only against an older
+       worker that does not advertise caps.milestonesRetired (rule 19). */
     const stamPts = this._prog3Pts(ps, 'stam');
-    ps.maxStamina = Math.floor((100 + stamPts * PROG3.BODY.stam.per)
-      * staminaMilestoneMult(ps.level));
+    ps.maxStamina = Math.floor(100 + stamPts * PROG3.BODY.stam.per);
     /* v2.3.2302: clamped, which it was NOT before -- the client mirror has
        always clamped, and the block ladder turns that latent asymmetry into a
        visible one (an out-of-range level would buy a block the client never
@@ -1020,12 +1019,8 @@ export const prog3Methods = {
       // the celebration moves server-side (§8): recompute + full
       // resource restore (the v2.3.1414 rule), persist, notify.
       this._prog3Recompute(ps);
-      /* v2.3.1733: ...and a character level-up is the ONLY moment a
-         milestone rung can be crossed, so this is where the ladder pays
-         out (bonus points at 5, the +25% stamina at 10).  It runs BEFORE
-         the full-restore below on purpose: crossing 10 raises maxStamina,
-         and the restore should hand over the NEW, bigger bar. */
-      const _msPts = this._prog3GrantMilestones(playerId, ps);
+      /* v2.3.2646: the milestone payout that ran here (v2.3.1733) is gone
+         with the ladder -- see the tombstone in abilities.js. */
       if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
       if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
       if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
@@ -1053,13 +1048,11 @@ export const prog3Methods = {
                  A copy, not the live object: prog3_allocated already sends
                  `{ ...p3.poolBy }` for the same reason. */
               poolBy: { ...(p3.poolBy || {}) },
-              /* v2.3.1733: what THIS level unlocked, if anything, so the
-                 level-up celebration can name it ("Shield Bash unlocked!")
-                 instead of the player discovering a new button by accident.
-                 Extra fields on an existing PRIVILEGED event — an old
-                 client ignores them, so no caps flag is needed. */
-              milestone: (MILESTONES[ps.level] && MILESTONES[ps.level].label) || undefined,
-              bonusPoints: _msPts || undefined,
+              /* v2.3.1733: the ability list rides the level-up.
+                 v2.3.2646: `milestone` and `bonusPoints` no longer do -- the
+                 ladder that filled them is gone.  An older client reading a
+                 missing field sees `undefined`, which it already handled as
+                 "this level crossed no rung". */
               abilities: this._abilityUnlockList(ps),
             },
           }));

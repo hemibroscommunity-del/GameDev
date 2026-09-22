@@ -93,8 +93,10 @@ export const PROG3 = {
   SPECIAL_MANA_COST: 25,
   /* v2.3.1734: Element Burst (COMBAT-OVERHAUL-PLAN PR 6).  Display
      gates only — the server validates every one of these from its own
-     copy of the weapon and pools. */
-  BURST_MIN_CHAR_LEVEL: 6,
+     copy of the weapon and pools.
+     v2.3.2646: BURST_MIN_CHAR_LEVEL left this table with the milestone
+     ladder (the server dropped it in the same version); the old-worker
+     copy is LEGACY_BURST_MIN_CHAR_LEVEL below. */
   BURST_MANA_COST: 25,
   BURST_CD_MS: 3000,
   BURST_RADIUS: 70,
@@ -389,6 +391,24 @@ var _burstCaps = false;
 export function setElemBurstEnabled(on) { _burstCaps = !!on; }
 export function isElemBurstEnabled() { return _burstCaps; }
 
+/* ═══ v2.3.2646: THE MILESTONE LADDER IS GONE (caps.milestonesRetired) ═══
+   Owner: "Just remove the milestones from the game I did not make those."
+   The worker dropped the ladder (server/src/abilities.js tombstone): no
+   level-6 gate on Element Burst, no x1.25 max stamina at level 10.  A worker
+   older than v2.3.2646 still settles both, so until this flag arrives the
+   client keeps PREDICTING them -- display only, nothing is ever sent on it
+   (rule 19).  The two numbers below are that old worker's, frozen: they are
+   not a mirror of anything live and must never be retuned. */
+export const LEGACY_BURST_MIN_CHAR_LEVEL = 6;
+var _milestonesRetired = false;
+export function setMilestonesRetired(on) { _milestonesRetired = !!on; }
+export function isMilestonesRetired() { return _milestonesRetired; }
+/* The old worker's level-10 "Second Wind" x1.25 on max stamina; 1 against a
+   worker that has retired it. */
+export function legacyStaminaMult(charLevel) {
+  return (!_milestonesRetired && charLevel >= 10) ? 1.25 : 1;
+}
+
 /* The special's mana cost, client-side.  ONE definition — playerActions
    (the spend) and SpecialChargePie (the readout) must never disagree
    about it, which is precisely how the 5-segment contract rotted into a
@@ -436,8 +456,12 @@ export function burstWeapon(rpg) {
 export function burstRefusal(rpg, weapon, lastCastAt) {
   if (!_burstCaps) return 'caps';
   if (!rpg) return 'no_player';
-  var lvl = prog3Live(rpg) ? prog3CharLevel(rpg) : (rpg.level || 0);
-  if (lvl < PROG3.BURST_MIN_CHAR_LEVEL) return 'level';
+  /* v2.3.2646: the level gate applies only against an old worker -- see
+     setMilestonesRetired above. */
+  if (!_milestonesRetired) {
+    var lvl = prog3Live(rpg) ? prog3CharLevel(rpg) : (rpg.level || 0);
+    if (lvl < LEGACY_BURST_MIN_CHAR_LEVEL) return 'level';
+  }
   if (!weapon) return 'no_weapon';
   if (!weapon.element1) return 'no_element';
   if ((rpg.mana || 0) < burstManaCost(rpg)) return 'mana';

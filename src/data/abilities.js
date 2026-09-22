@@ -145,48 +145,16 @@ export const STAM_ABILITIES = {
   },
 };
 
-/* MIRROR OF server/src/abilities.js MILESTONES — pinned by strict
-   JSON.stringify equality in abilities.test.mjs, so entries must match
-   exactly, field for field.
-   v2.3.1734: rung 6 is Element Burst, which spends MANA and so carries
-   `burst: true` rather than a `kind` (there is no stamina-table entry to
-   look up).  See the server copy for the full reasoning. */
-export const MILESTONES = {
-  /* v2.3.2252: rung 4 no longer UNLOCKS anything -- Shield Bash is ungated,
-     and leaving `kind: 'bash'` here would have the level-up celebration
-     announce "Shield Bash unlocked!" for a move the player has had since
-     level 1 (prog3.js reads MILESTONES[level].label for exactly that). */
-  4:  { label: 'Sturdy Arm' },
-  5:  { points: 1,     label: 'Bonus stat point' },
-  6:  { burst: true,   label: 'Element Burst' },
-  /* v2.3.2327: rung 8 stops naming an ability, for the reason rung 4 did at
-     v2.3.2252 -- Whirlwind is ungated now, and leaving `kind: 'whirl'` here
-     would have the level-up celebration announce "Whirlwind unlocked!" for a
-     move the player has had since level 1 (prog3.js reads
-     MILESTONES[level].label for exactly that).  It also has to go for a
-     harder reason: milestoneAbilityLevels() asserts every kind the ladder
-     names agrees with its minLevel, and 8 !== 0. */
-  8:  { label: 'Storm Footing' },
-  10: { stamMult: 1.25, label: 'Second Wind' },
-};
+/* v2.3.2646: the MILESTONES mirror that lived here is gone with the server's
+   ladder (server/src/abilities.js tombstone).  The one piece an old worker
+   still settles -- the level-10 stamina multiplier -- is predicted by
+   legacyStaminaMult in data/prog3.js, gated on caps.milestonesRetired. */
 
 /* Presentation only (never mirrored): what the button says and looks like. */
 export const ABILITY_META = {
   bash:  { label: 'Bash',  glyph: '🛡️', hint: 'Stun + knock back the closest enemy', key: 'E' },
   whirl: { label: 'Whirl', glyph: '🌀', hint: 'Hit everything around you', key: 'R' },
 };
-
-/* Mirror of the server's staminaMilestoneMult — recalcDerived multiplies
-   max stamina by this, exactly as _prog3Recompute does, or the bar the
-   player watches disagrees with the pool the server spends from. */
-export function staminaMilestoneMult(charLevel) {
-  var mult = 1;
-  for (var lvl in MILESTONES) {
-    if (!Object.prototype.hasOwnProperty.call(MILESTONES, lvl)) continue;
-    if (MILESTONES[lvl].stamMult && charLevel >= Number(lvl)) mult *= MILESTONES[lvl].stamMult;
-  }
-  return mult;
-}
 
 export function abilityCfg(kind) {
   return Object.prototype.hasOwnProperty.call(STAM_ABILITIES, kind) ? STAM_ABILITIES[kind] : null;

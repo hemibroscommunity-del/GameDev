@@ -117,12 +117,10 @@ export const burstMethods = {
   _burstRefusal(ps, now) {
     if (!ps) return 'no_player';
     if (ps.dying || ps.dead || ps.disconnected) return 'dead';
-    /* Character level.  prog3 players carry the server-owned Σ-trained
-       level; a legacy blob's ps.level is the old stat-sum, which is the
-       number that player's own UI shows, so gate on the same one either
-       way rather than locking legacy players out of the ability entirely. */
-    const lvl = ps.prog3 ? this._prog3CharLevel(ps) : (ps.level || 0);
-    if (lvl < PROG3.BURST_MIN_CHAR_LEVEL) return 'level';
+    /* v2.3.2646: no character-level gate.  The level-6 gate was the
+       milestone ladder's rung 6, and the ladder is gone (abilities.js
+       tombstone) -- the owner never made it.  The weapon's element is the
+       gate now, and it always was the one that mattered. */
     const { w } = this._burstActiveWeapon(ps);
     if (!w) return 'no_weapon';
     /* THE ENCHANT GATE.  element1 is written by the enchant/forge path and

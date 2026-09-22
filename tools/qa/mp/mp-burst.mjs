@@ -168,8 +168,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     (wire.element_burst || 0) >= 1, wire);
 
   /* The worker heard it and REFUSED it: a level-3 character with a plain
-     starter sword fails both the level gate and the enchant gate, so its
-     mana must be untouched.  A worker that had accepted this would have
+     starter sword fails the enchant gate (v2.3.2646: there is no level gate
+     any more -- the milestone ladder is gone), so its mana must be untouched.  A worker that had accepted this would have
      spent BURST_MANA_COST. */
   const manaPostBurst = await srvMana(wsPort, myId);
   rec.ok('...and the worker refuses an ineligible cast without spending mana',
@@ -177,9 +177,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { pre: manaPreBurst, post: manaPostBurst });
 
   /* ═══ 3. THE BUTTON HIDES ITSELF ═══ */
-  /* It renders nothing until the character is level 6 with an enchanted
-     weapon in hand, which is the whole reason it can be mounted
-     unconditionally in GameApp. */
+  /* It renders nothing until the character has an enchanted weapon in hand,
+     which is the whole reason it can be mounted unconditionally in GameApp.
+     (v2.3.2646: "level 6 with an enchanted weapon" until the milestone
+     ladder was removed; the enchant is the gate now.) */
   const gate = await P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
     return {
@@ -187,8 +188,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       btn: !!document.querySelector('.bt-burst-btn'),
     };
   });
-  rec.ok('a level-3 character sees no Element Burst button',
-    gate.level < PROG3.BURST_MIN_CHAR_LEVEL && gate.btn === false, gate);
+  rec.ok('a character with an unenchanted starter sword sees no Element Burst button',
+    gate.btn === false, gate);
 
   await P.ctx.close().catch(() => {});
 }
