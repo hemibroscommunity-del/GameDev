@@ -1444,6 +1444,16 @@ const NODE_SPRITE_TEX = {};
    ore-break animation derives from these too (_spawnOreBreak). */
 const NODE_SPRITE_HEIGHT_BASE = { tree: 168, fishSpot: 132, oreVein: 132 };
 const NODE_SPRITE_ANCHOR_Y = { tree: 1.0, fishSpot: 0.5, oreVein: 1.0 };
+/* ═══ v2.3.2748: WHERE THE ART MEETS THE GROUND, as a fraction of the frame ═══
+   The sprites are anchored at their FRAME's bottom (node.y), and the frames
+   have transparent margin below the art: the pine's lowest solid row is at
+   0.839 of its frame, the ore's at 0.737 (measured off the webp's alpha, and
+   the same numbers BroTown's NODE_ART collision boxes were cut from).  So the
+   trunk a player walks up to is ~27 world px NORTH of node.y on a tier-1
+   tree, and sorting on node.y put the canopy over anyone standing in the
+   gap -- in front of the trunk, drawn behind it.  The depth pass reads
+   `_groundDy` to lift the tree's line up to its drawn base. */
+const NODE_ART_BASE = { tree: 0.839, oreVein: 0.737 };
 Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
   _fxLoad(path).then((tex) => { NODE_SPRITE_TEX[k] = tex; })
 )).catch((err) => console.warn('[node-sprites] load failed', err));
@@ -8197,8 +8207,12 @@ export class EffectsRenderer {
         }
         /* The ground line. The shared pass re-reads this every frame, but
            setting it here means a node is never sorted on a stale key in the
-           frame it first appears. */
-        node._pixiSprite.zIndex = Math.round(node.y || 0);
+           frame it first appears.  v2.3.2748: at the DRAWN base, not the
+           frame's bottom (NODE_ART_BASE). */
+        const _artBase = NODE_ART_BASE[node.nodeType];
+        node._pixiSprite._groundDy = _artBase != null
+          ? -(NODE_SPRITE_ANCHOR_Y[node.nodeType] - _artBase) * node._pixiSprite.height : 0;
+        node._pixiSprite.zIndex = Math.round((node.y || 0) + node._pixiSprite._groundDy);
       } else if (node.nodeType === 'tree') {
         /* v2.3.1275: procedural fallbacks get the same +50% as the
            sprites so nodes don't visibly shrink once textures resolve. */
