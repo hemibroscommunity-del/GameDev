@@ -85,7 +85,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('warped to verdant (guard)', z === 'verdant', { z });
   if (z === 'verdant') {
     await H.closeDest(P).catch(() => {});
+    /* the spawn point is slime country: a hit or a flinch between the on and
+       off shots changes the pose under the measure (the head read darker
+       than the legs once, from exactly that), so the field is cleared first */
+    await P.page.evaluate(() => { const S = window._gameState.current; S.monsters = []; });
     await P.page.waitForTimeout(1500);
+    await P.page.evaluate(() => { const S = window._gameState.current; S.monsters = []; });
     await onOff(P, 'verdant', rec, { props: false });
   }
   await P.ctx.close().catch(() => {});
