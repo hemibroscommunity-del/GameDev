@@ -151,6 +151,11 @@ a grade key is relayed.
 
 ## Tests
 
+`node tools/qa/mp/run.mjs worldshadow` (v2.3.2719) checks that props, trees
+and every monster on screen cast in each sunlit zone. It also checks that the
+auction house's shadow darkens its shaded side and not its sunlit one, and it
+takes off/on pictures to `/tmp/qa-worldshadow/`.
+
 `node tools/qa/mp/run.mjs lightfx` (off the PR path; 19 assertions):
 
 - **Default:** it is on by default, and switched off it draws nothing.
@@ -178,6 +183,43 @@ a grade key is relayed.
 
 It also writes the before/after pictures above to `/tmp/qa-lightfx/`.
 
+## The world casts too (v2.3.2719)
+
+Owner, having seen the figures' shadows: *"Add shadows to props and
+monsters."*
+
+**Monsters already cast**, in every sunlit zone, and now it is proven zone by
+zone rather than assumed. `mp-worldshadow` warps to Frost Ridge, the Wind
+Dunes and the Verdant Wilds and checks that every monster on screen is in the
+shadow pass. A zone with no sun (the Flame Fields, lit by lava) still casts
+nothing, by design.
+
+**Props, trees and ore now cast.** There are two kinds, because a building is
+not a billboard:
+
+- **Thin things** (a lamp, a bench, the anvil, the fountain, the market stall,
+  frost's pines and rocks, trees and ore) are projected the way a figure is.
+  The pivot sits a little behind the base, at the middle of the footprint, so
+  the top falls away from the sun. Trees and ore pivot on their *drawn* base,
+  because their frames have empty margin below the art.
+- **Buildings** (footprint 120 px deep or more: the bank, the forge, the
+  mayor's house, the auction house) are projected **column by column**. A
+  building's picture is a front wall with roofs, towers and signs above it,
+  standing over ground further back. One pivot for all of it put the auction
+  house's back-left tower's shadow on the cobble in front of its *sunlit*
+  left wall. So in each column, a pixel on the base row stands on the base
+  the art shows there (the diamond's V, read off the art, see
+  `docs/specs/prop-depth.md`). The column's top stands on the footprint's
+  back edge, and the rows between move back in step. Nothing is lifted by
+  less than zero, so no shadow can fall toward the sun. It is a two-row mesh
+  per column (`MeshSimple`) sharing the building's own texture, in the same
+  filtered layer as everything else, so overlaps never darken twice.
+
+The fountain and the stall were tried as buildings first and lost their
+shadows: their tall part stands in the middle, not at the back, so the
+building model sent it behind the prop, where the prop hid it. As billboards
+they picture right.
+
 ## Not done, and the natural next steps
 
 - **An in-game toggle.** Today the only off switch is `?lightfx=0` in the
@@ -185,8 +227,9 @@ It also writes the before/after pictures above to `/tmp/qa-lightfx/`.
   friendly version.
 - **Other players' grades** need one relay key (a `wq` beside `wpnMat`) and
   its server gate.
-- **Props and gather nodes** (trees, rocks, buildings) are painted with
-  their own shading, and none cast a shadow here. The props could join
-  (roadmap item 1's ground line is the pivot) if the owner wants the world
-  to match the figures.
+- **Props and gather nodes**: done at v2.3.2719 (above).
+- **A figure standing in a building's shadow is not darkened.** The shadow
+  lies on the ground, under everything standing on it. Darkening a figure
+  that stands inside one would need the shadow as a mask over the figures
+  too.
 - **Rim light**, option 3 of the original offer, was not built.

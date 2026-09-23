@@ -138,6 +138,25 @@ export function settleProfile(g, texture, frameNo) {
   g.bottoms = readArtBottoms(texture);
 }
 
+/**
+ * v2.3.2719: the art's base at texture column fraction u (0-1), in world y --
+ * the raw profile, with no footprint rule; the prop's own base where the
+ * column is empty or the profile is not read yet.  For the shadow mesh.
+ */
+export function profileAtU(g, u) {
+  const b = g && g.bottoms;
+  if (!b) return g ? g.base : NaN;
+  const W = b.length;
+  const c = Math.max(0, Math.min(W - 1, Math.floor(u * W)));
+  let best = NaN;
+  for (let k = c - 1; k <= c + 1; k++) {
+    if (k < 0 || k >= W) continue;
+    const y = colBase(g, k);
+    if (y === y && !(y <= best)) best = y;
+  }
+  return best === best ? Math.min(best, g.base) : g.base;
+}
+
 /* The world y of the art's base in column `col`, or NaN for an empty one. */
 function colBase(g, col) {
   const v = g.bottoms[col];

@@ -33,7 +33,8 @@
  * default), so on a 3x iPhone it touches a ninth of the pixels a full-res
  * pass would.  No shadows on screen -> no filter -> no pass at all.
  */
-import { Filter, Matrix, Sprite, Texture } from 'pixi.js';
+import { Filter, Matrix, MeshSimple, Sprite, Texture } from 'pixi.js';
+import { profileAtU } from '../propGround.js';
 
 const FRAG = `
 in vec2 vTextureCoord;
@@ -139,12 +140,18 @@ export class ShadowSystem {
     this.root = root;
     this.pool = [];
     this.used = 0;
+    this.meshPool = [];          /* v2.3.2719: the buildings' depth-aware shadows (placeDepth) */
+    this.meshUsed = 0;
     this.filter = null;
     this._held = new Map();      /* caster key -> { t, items: [{tex, ax, ay, m}] } */
     this._m = new Matrix();
     this._p = new Matrix();
     this._f = new Matrix();
-    this.stats = { casters: 0, pieces: 0, held: 0, self: null, list: [] };
+    /* v2.3.2719: `keys` -- EVERY caster drawn this frame, by key, so a test
+       can ask "does each monster on screen cast" without the 16-entry cap on
+       `list`.  One array, cleared and refilled in place: the keys are strings
+       the casters already carry, so this allocates nothing per frame. */
+    this.stats = { casters: 0, pieces: 0, held: 0, self: null, list: [], keys: [] };
   }
 
   _piece() {
@@ -169,6 +176,73 @@ export class ShadowSystem {
     if (!s.visible) s.visible = true;
   }
 
+  /* ═══ v2.3.2719: A BUILDING'S SHADOW, COLUMN BY COLUMN ═══
+     A figure is a billboard: every pixel of it stands on the same spot, so
+     one projection pivoted on its feet is right.  A building is not.  Its
+     picture is a front wall at the bottom and a roof, towers and signs
+     higher up that stand over ground up to 220 px further BACK -- and the
+     picture cannot say how far back any one pixel is.  One pivot for all of
+     it put the auction house's back-left tower's shadow on the cobble in
+     front of its sunlit left wall: pushed forward by the depth it was
+     wrongly assumed not to have.
+
+     So each column of the picture gets its own ground, and it moves up the
+     column: a pixel on the column's base row stands on the base the art
+     shows there (propGround.profileAtU -- the diamond's V), and the column's
+     top stands on the footprint's BACK edge, with the rows between moving
+     back in step.  Front walls cast from the front, roofs and towers from
+     further back, and nothing is ever lifted less than zero, so no shadow
+     can fall toward the sun.  Linear in y within a column, so a two-row mesh
+     is exact: (cols + 1) x 2 vertices, recomputed per frame from the sprite
+     (it only moves when its zone does).  The pieces are MeshSimple sharing
+     the building's own texture, in the same filtered layer as the figures,
+     so a figure standing in a building's shadow darkens nothing twice. */
+  placeDepth(spr, g, back, lx, ly) {
+    const tex = spr.texture;
+    if (!usableTexture(tex) || !g) return false;
+    const COLS = 16;
+    let m = this.meshPool[this.meshUsed];
+    if (!m) {
+      const n = (COLS + 1) * 2;
+      const uvs = new Float32Array(n * 2);
+      const idx = new Uint32Array(COLS * 6);
+      for (let i = 0; i <= COLS; i++) {
+        uvs[i * 4] = i / COLS; uvs[i * 4 + 1] = 0;        /* top of the column */
+        uvs[i * 4 + 2] = i / COLS; uvs[i * 4 + 3] = 1;    /* bottom */
+        if (i < COLS) {
+          const a = i * 2;
+          idx.set([a, a + 1, a + 2, a + 1, a + 3, a + 2], i * 6);
+        }
+      }
+      m = new MeshSimple({ texture: tex, vertices: new Float32Array(n * 2), uvs, indices: idx });
+      this.layer.addChild(m);
+      this.meshPool.push(m);
+    }
+    this.meshUsed++;
+    if (m.texture !== tex) m.texture = tex;
+    const v = m.vertices;
+    const fw = tex.frame.width, fh = tex.frame.height;
+    const sx = spr.scale.x, sy = spr.scale.y;
+    const yB = spr.y;                                  /* anchor (0.5, 1): the frame's bottom */
+    const yT = spr.y - fh * sy;                        /* ...and its top */
+    for (let i = 0; i <= COLS; i++) {
+      const u = i / COLS;
+      const x = spr.x + (u - 0.5) * fw * sx;           /* a mirrored prop maps mirrored */
+      const f = profileAtU(g, u);                      /* this TEXTURE column's base, off the art */
+      const b = Math.min(back, f);
+      /* the ground under a pixel at y moves from f (base row) to b (frame
+         top), linearly; its height is ground - y; its shadow is ground +
+         (lx, ly) * height */
+      const r = (f - yT) > 1 ? (f - b) / (f - yT) : 0;
+      const zT = b, hT = zT - yT;
+      const zB = f + (yB - f) * r, hB = zB - yB;       /* below the base row: empty art, extrapolated */
+      v[i * 4] = x + lx * hT;     v[i * 4 + 1] = zT + ly * hT;
+      v[i * 4 + 2] = x + lx * hB; v[i * 4 + 3] = zB + ly * hB;
+    }
+    if (!m.visible) m.visible = true;
+    return true;
+  }
+
   clear() {
     /* Hidden is not enough: drop the texture too.  clear() runs on every zone
        change, and a zone's monster art is FREED on exit (preloadZoneAssets /
@@ -181,9 +255,15 @@ export class ShadowSystem {
       if (s.texture !== Texture.EMPTY) s.texture = Texture.EMPTY;
     }
     this.used = 0;
+    for (let i = 0; i < this.meshPool.length; i++) {
+      const m = this.meshPool[i];
+      m.visible = false;
+      if (m.texture !== Texture.EMPTY) m.texture = Texture.EMPTY;
+    }
+    this.meshUsed = 0;
     if (this.layer.filters) this.layer.filters = null;
     this._held.clear();
-    this.stats.casters = 0; this.stats.pieces = 0; this.stats.held = 0; this.stats.self = null; this.stats.list.length = 0;
+    this.stats.casters = 0; this.stats.pieces = 0; this.stats.held = 0; this.stats.self = null; this.stats.list.length = 0; this.stats.keys.length = 0;
   }
 
   /**
@@ -194,8 +274,9 @@ export class ShadowSystem {
    */
   update(casters, light, fade, now) {
     this.used = 0;
+    this.meshUsed = 0;
     const st = this.stats;
-    st.casters = 0; st.pieces = 0; st.held = 0; st.self = null; st.list.length = 0;
+    st.casters = 0; st.pieces = 0; st.held = 0; st.self = null; st.list.length = 0; st.keys.length = 0;
     if (!light || !(fade > 0.02) || !casters || !casters.length) {
       this.clear();
       return;
@@ -204,6 +285,14 @@ export class ShadowSystem {
     const P = this._p, M = this._m;
     for (let c = 0; c < casters.length; c++) {
       const cs = casters[c];
+      if (cs.depth) {
+        /* v2.3.2719: a building -- see placeDepth */
+        if (this.placeDepth(cs.depth.spr, cs.depth.g, cs.depth.back, lx, ly)) {
+          st.casters++; st.pieces++; st.keys.push(cs.key);
+          if (st.list.length < 16) st.list.push({ key: cs.key, px: cs.depth.spr.x, py: cs.depth.back, pieces: 1 });
+        }
+        continue;
+      }
       const px = cs.px, py = cs.py;
       if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
       /* the ground projection about this figure's feet (see header) */
@@ -230,7 +319,7 @@ export class ShadowSystem {
       }
       if (placed) {
         this._held.set(cs.key, { t: now, items });
-        st.casters++; st.pieces += placed;
+        st.casters++; st.pieces += placed; st.keys.push(cs.key);
         if (cs.key === 'self') st.self = { px, py, pieces: placed, held: false, standIns: cs.standIns || 0 };
         if (st.list.length < 16) st.list.push({ key: cs.key, px, py, pieces: placed });
         continue;
@@ -246,7 +335,7 @@ export class ShadowSystem {
           this._place(it.tex, it.ax, it.ay, M, P);
           st.pieces++;
         }
-        st.casters++; st.held++;
+        st.casters++; st.held++; st.keys.push(cs.key);
         if (cs.key === 'self') st.self = { px, py, pieces: h.items.length, held: true };
       } else if (h) {
         this._held.delete(cs.key);
@@ -255,7 +344,10 @@ export class ShadowSystem {
     for (let i = this.used; i < this.pool.length; i++) {
       if (this.pool[i].visible) this.pool[i].visible = false;
     }
-    if (!this.used) {
+    for (let i = this.meshUsed; i < this.meshPool.length; i++) {
+      if (this.meshPool[i].visible) this.meshPool[i].visible = false;
+    }
+    if (!this.used && !this.meshUsed) {
       if (this.layer.filters) this.layer.filters = null;
       return;
     }

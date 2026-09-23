@@ -124,6 +124,19 @@ the auction house changes sides when the player walks around it. The old
 "every prop draws before every NPC" assertion was the static rule this item
 removes, and it was rewritten rather than deleted.
 
+**v2.3.2718: the two numbers it was fed.** The owner, with four screenshots:
+"really bad at detecting contact and when the player should appropriately
+show in front or behind the layer." The rule was right; its inputs were not.
+The player's "ground line" was `S.player.y`, which is the body's centre, ~52
+px above the drawn feet, so any prop whose base fell between waist and boots
+was drawn over a player standing in front of it. And a building's base was one
+flat line at its front step, while the town's art is isometric: beside a
+building the base is the receding wall next to you. The pass now pivots on
+the feet, reads each prop's base off its art column by column
+(`propGround.js`), and raises a figure over a building whose wall it stands in
+front of. Props, townsfolk and tree trunks also stop the FEET now, not just
+the waist. See `docs/specs/prop-depth.md`.
+
 **What this item did NOT do.** Monsters and trees still sort by bucket, not
 against each other: a tree is in front of the player or behind them, and the
 monsters sort among themselves in the entity layer. Full tree-vs-monster
@@ -233,8 +246,9 @@ zones players spend real time in. Explicitly **not** a rebuild of all twelve.
 >    pictures (`docs/specs/img/light-and-shine/`). That verdict is the owner's.
 >
 > It covers every figure, not just the player and bosses (NPCs, monsters,
-> peers), and it follows the swing and gather stand-ins. What follows is
-> the reasoning as it stood before it was built.
+> peers), and it follows the swing and gather stand-ins. From v2.3.2719 the
+> world casts too: props, trees and ore (owner: "Add shadows to props and
+> monsters"). What follows is the reasoning as it stood before it was built.
 
 **Cost** medium · **Perf risk** medium · **Payoff** low-medium · **Scope** player and bosses only
 
