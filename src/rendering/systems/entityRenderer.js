@@ -77,7 +77,7 @@ import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
+import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
 import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
 import { getPattern, parsePattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.1941 */
 import { hatHairFit } from '../traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
@@ -2058,7 +2058,10 @@ function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
          assuming 256 -- gearSheets now stores display-sized (exact-texel)
          sheets when the art ships at 128 on disk, and this factor is what
          keeps both generations rendering at the identical world size. */
-      const _gnorm = 256 / ((tex.frame && tex.frame.width) || 256);
+      /* v2.3.2733: ORIG, not frame -- a cropped gear frame's `frame` is just
+         the crop; `orig` is the whole frame it was cut from (gearSheets
+         packTrimmed).  For an uncropped texture the two are equal. */
+      const _gnorm = 256 / ((tex.orig && tex.orig.width) || (tex.frame && tex.frame.width) || 256);
       spr.scale.x = sb.scale.x * _gnorm / DISPLAY_DS; spr.scale.y = sb.scale.y * _gnorm / DISPLAY_DS;
       if (_GEAR_SLOTS[s][0] === 'shirt') {
         /* v2.3.1941: a dressed bake already HAS the colour in its pixels. */
@@ -2339,9 +2342,9 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
     dilCtx.imageSmoothingEnabled = false;
     for (const w of worn) {
       const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
-      const gf = gt.frame;
+      /* v2.3.2733: drawGearFrame places a cropped frame at its own offset. */
       for (let dx = -dilate; dx <= dilate; dx++)
-        dilCtx.drawImage(gr, gf.x, gf.y, gf.width, gf.height, dx, 0, 256, 256);
+        drawGearFrame(dilCtx, gt, dx, 0, 256, 256);
     }
     ctx.globalCompositeOperation = 'destination-out';   // erase body under the armour
     /* v2.3.1073: only dilate the erase DOWNWARD when a leg plate is also worn to
@@ -2589,8 +2592,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
       let wornChest = false, wornLegs = false;
       for (const w of worn) {
         const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
-        const gf = gt.frame;
-        sctx.drawImage(gr, gf.x, gf.y, gf.width, gf.height, 0, 0, 256, 256);
+        drawGearFrame(sctx, gt, 0, 0, 256, 256);   /* v2.3.2733: cropped frames */
         if (w.k && w.k.indexOf('chest:') === 0) wornChest = true;
         if (w.k && w.k.indexOf('legs:') === 0) wornLegs = true;
       }
@@ -2788,8 +2790,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
                  waist band below (d2[o] = bd[o]), so a bilinear belt sheet
                  painted bilinear chain straight into the finished frame. */
               bctx.imageSmoothingEnabled = false;
-              const bfr = bt.frame;
-              bctx.drawImage(br, bfr.x, bfr.y, bfr.width, bfr.height, 0, 0, 256, 256);
+              drawGearFrame(bctx, bt, 0, 0, 256, 256);   /* v2.3.2733: cropped frames */
               const bd = bctx.getImageData(0, 0, 256, 256).data;
               const _score = (R, G, B, T) => { const nn = T[0] * T[0] + T[1] * T[1] + T[2] * T[2] || 1; const dt = R * T[0] + G * T[1] + B * T[2]; return dt * dt / nn; };
               const { skinRef, pantsRef, shoesRef } = _bakeRefs;

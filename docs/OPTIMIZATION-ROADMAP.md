@@ -235,7 +235,7 @@ nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
 ---
 
 ## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
-### Items 1, 3, 4, 5, 6 and 9 SHIPPED (v2.3.2337-2355); the rest is the ranked backlog
+### Items 1, 3, 4, 5, 6, 9 and 10 SHIPPED (v2.3.2337-2355, v2.3.2733); the rest is the ranked backlog
 
 What this is, in plain language: the game keeps a lot of decoded artwork in
 the phone's graphics memory, and iPhone Safari kills the tab somewhere north
@@ -442,6 +442,22 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
 9. ~~**Popup heart at 1254×1254 — 5.75 MB**~~ **SHIPPED, v2.3.2337.** Paired with item 3: a
    256 twin via `POPUP_ICON_SRC.heart` (the v2.3.2211 override map). Drawn at
    ≤ 44 world px.
+10. ~~**Walking-layer gear frames are 81-90% transparent — ~56 MB**~~
+   **SHIPPED, v2.3.2733** (measured, `mp-geartrim`, armoured in town: 394.9 →
+   334.9 MB, same 670 sources; mips on top of that). Owner: "would it be an
+   improvement to the memory constraints ... equipping armor while running on
+   mobile?" Every chest / legs / shirt / belt frame is the body's whole 128 or
+   256 frame with the plate in a corner of it. `gearSheets.packTrimmed` crops
+   each frame to its art (4-texel pad, snapped to 8) and packs the crops into
+   one strip; the Texture keeps `orig` = whole frame and `trim` = where the
+   crop sits, which Pixi's Sprite already honours, so nothing moves.
+   Sheets: 73.1 → 16.9 MB over the 60 preloaded ones. Byte-identical on every
+   frame through the canvas path (747/747, at 1x and 2x); on the GPU,
+   identical at native scale and within the rasteriser's sub-pixel vertex
+   snap (≤0.04 px) when minified. NOT cropped: the fullset figure (it becomes
+   the body sprite's texture) and the combat poses (sub-rects cut by frame
+   offset). The same move would reach the gear swing/fire/cook sheets named
+   below. Rule for consumers: TRAPS §106.
 
 Checked and found LAW-REQUIRED (or already correct), so they are not items:
 fire-goblin (30.5 MB in ember, 0 in town) is per-zone already and freed by
