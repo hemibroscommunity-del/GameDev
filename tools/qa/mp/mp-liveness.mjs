@@ -190,10 +190,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.grant(wsPort, pid, 'item', { invKey: 'fish_minnow', count: 1 }).catch(() => {});
   rec.ok('bag: a stack that grows bumps its count', await bump, {});
 
-  /* the tile's own box never moves while its art does */
+  /* the tile's own box never moves while its art does -- asked once the bump
+     above has finished, or its hop is the animation on the art */
   const box = await P.page.evaluate(async () => {
     const t = document.querySelector('[data-bag-key="i-fish_minnow"]');
     if (!t) return null;
+    for (let i = 0; i < 40 && (t.getAttribute('data-life-bump') != null || t.getAttribute('data-life-now') != null); i++) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
     const r0 = t.getBoundingClientRect();
     window.__btBagLife.poke('i-fish_minnow', 'flop');
     await new Promise((r) => setTimeout(r, 180));
