@@ -132,6 +132,60 @@ const TRAIL_NEAR_TILES = 1.4;   /* no motes under your own feet */
  * about the shape drawn on it. */
 const TRAIL_STEP_ARROW = 1.3;   /* tiles between chevrons */
 const TRAIL_STEP_RIBBON = 0.28; /* sampling step, not a gap */
+/* v2.3.2737: one footstep to the next -- a stride is two of these, left and
+   right, so this is how far apart consecutive prints land along the road. */
+const TRAIL_STEP_FOOT = 0.62;
+/* ═══ v2.3.2737: THE FOOTPRINT, PAINTED ONCE ═══
+   A left bare foot pointing +x, big toe toward +y.  Drawn at 2x the size it
+   lands on a phone so it stays crisp when the camera zooms.  Ink halo from
+   the canvas shadow (the dark backing every road style needs on town's gold
+   cobble), a gold sole lit brighter at the ball, a near-white hot spot. */
+const FOOT_TEX_LEN = 56;          /* heel to toe tip, texture px */
+let _footTex = null;
+function footprintTexture() {
+  if (_footTex) return _footTex;
+  const W = 80, H = 48, cx = 40, cy = 24;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const c = cv.getContext('2d');
+  const hex = (n) => '#' + n.toString(16).padStart(6, '0');
+  /* the sole: heel at -26, ball at +8, arch pinched on the outer (-y) side */
+  const sole = () => {
+    c.beginPath();
+    c.moveTo(cx - 28, cy);
+    c.bezierCurveTo(cx - 28, cy - 8, cx - 16, cy - 8, cx - 8, cy - 5);    /* outer heel -> arch */
+    c.bezierCurveTo(cx + 2, cy - 3, cx + 12, cy - 11, cx + 17, cy - 5);  /* arch -> outer ball */
+    c.bezierCurveTo(cx + 21, cy, cx + 18, cy + 11, cx + 9, cy + 11);     /* ball, round the front */
+    c.bezierCurveTo(cx, cy + 11, cx - 8, cy + 7, cx - 16, cy + 7);      /* inner edge */
+    c.bezierCurveTo(cx - 24, cy + 8, cx - 28, cy + 6, cx - 28, cy);     /* inner heel */
+    c.closePath();
+  };
+  /* toes, big toe on the inner (+y) side, stepping back and shrinking outward */
+  const TOES = [[24, 7.5, 4.2], [26, 1.5, 3.0], [25.2, -3.2, 2.6], [23.4, -7.0, 2.2], [20.8, -10.2, 1.9]];
+  const toes = () => {
+    for (const [x, y, r] of TOES) { c.moveTo(cx + x + r, cy + y); c.arc(cx + x, cy + y, r, 0, Math.PI * 2); }
+  };
+  /* ink halo: the shapes filled in ink with a soft shadow of the same ink */
+  c.save();
+  c.shadowColor = 'rgba(13,21,26,0.95)'; c.shadowBlur = 6;
+  c.fillStyle = hex(TRAIL_INK);
+  c.lineJoin = 'round'; c.lineWidth = 5; c.strokeStyle = hex(TRAIL_INK);
+  sole(); c.fill(); c.stroke();
+  c.beginPath(); toes(); c.fill(); c.stroke();
+  c.restore();
+  /* gold face, brighter toward the ball and toes */
+  const grd = c.createLinearGradient(cx - 28, 0, cx + 26, 0);
+  grd.addColorStop(0, '#c9962e'); grd.addColorStop(0.55, hex(TRAIL_GOLD)); grd.addColorStop(1, '#ffe08a');
+  c.fillStyle = grd;
+  sole(); c.fill();
+  c.beginPath(); toes(); c.fill();
+  /* hot spot on the ball */
+  c.fillStyle = 'rgba(255,243,196,0.9)';
+  c.beginPath(); c.ellipse(cx + 9, cy + 3, 5, 3.2, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.arc(cx + 24, cy + 7.5, 1.6, 0, Math.PI * 2); c.fill();
+  _footTex = Texture.from(cv);
+  return _footTex;
+}
 
 /* ═══ v2.3.2070: QA HANDLE ON THE BEAMS ═══
  * The beam is ADDITIVE light over a painted map, so the only honest way to
@@ -197,6 +251,12 @@ export class TileRenderer {
        disc or a disc plus a line to the corner" is one number. */
     this.lensGfx = new Graphics();
     this.layer.addChild(this.overlayGfx);
+    /* v2.3.2737: the footprint road's sprites, just above the overlay it
+       replaces the chevrons on (see _trailSteps) */
+    this._footLayer = new Container();
+    this._footLayer.label = 'questFootprints';
+    this._footPool = [];
+    this.layer.addChild(this._footLayer);
     this.layer.addChild(this.lensGfx);
     /* v2.3.2070: the portal beams.  A Container of Sprites rather than more
        Graphics, and ABOVE overlayGfx so the shaft reads as light over the
@@ -976,6 +1036,9 @@ export class TileRenderer {
        the painted artwork.  Other zones use a tighter rectangle since
        the procedural ground tiles already provide visual contrast. */
     this.overlayGfx.clear();
+    /* v2.3.2737: the footprints are sprites, not overlay paths, so "clear"
+       for them is hiding the pool; _trailSteps shows what it uses. */
+    for (const sp of this._footPool) sp.visible = false;
     /* ═══ v2.3.2121: THE ROUTE IS READ ONCE, FOR BOTH USERS ═══
        The gold beam (inside the exits loop) and the road on the ground both
        want it, and it is hoisted OUT of `if (this._exitTiles.length)` on
@@ -1341,7 +1404,8 @@ export class TileRenderer {
        can point. */
     const samples = [];
     const step = style === 'arrows' ? TRAIL_STEP_ARROW
-      : style === 'ribbon' ? TRAIL_STEP_RIBBON : TRAIL_STEP;
+      : style === 'ribbon' ? TRAIL_STEP_RIBBON
+      : style === 'steps' ? TRAIL_STEP_FOOT : TRAIL_STEP;
     let si = 0;
     let acc = 0;                                     /* arc length at path[si] */
     for (let t = TRAIL_NEAR_TILES; t * TILE <= limit; t += step) {
@@ -1361,7 +1425,10 @@ export class TileRenderer {
          between visible and not, so each keeps most of its brightness:
          distance costs 45%, the shimmer swings 20%. */
       const falloff = 1 - 0.45 * (d / (TRAIL_TILES * TILE));
-      const wave = 0.8 + 0.2 * Math.sin((t / TRAIL_TILES - phase) * Math.PI * 2);
+      /* v2.3.2737: footprints carry their own motion (the walk, in
+         _trailSteps), so they skip the shimmer rather than stack two
+         animations on one mark. */
+      const wave = style === 'steps' ? 1 : 0.8 + 0.2 * Math.sin((t / TRAIL_TILES - phase) * Math.PI * 2);
       const a = Math.max(0, falloff * wave);
       if (a <= 0.02) continue;
       samples.push({ x, y, ux: dx / L, uy: dy / L, a });
@@ -1371,7 +1438,82 @@ export class TileRenderer {
 
     if (style === 'ribbon') { this._trailRibbon(samples); return; }
     if (style === 'arrows') { this._trailArrows(samples); return; }
+    if (style === 'steps') { this._trailSteps(samples, now); return; }
     this._trailBeads(samples);
+  }
+
+  /* ═══ v2.3.2737: FOOTPRINTS ═══
+     Owner: "Instead of the chevron arrows can you make it look like indicator
+     footprints that fade towards the path you need to go?"
+
+     Each sample is one footstep, alternating left and right of the road's
+     centre line, turned to the leg it sits on (so the prints walk round the
+     town hall with the road, exactly as the chevrons turned) and toed out a
+     few degrees the way feet are.  A print is two filled ovals, the ball of
+     the foot and the heel, so it POINTS: a toe and a heel are a direction
+     without any animation.
+
+     THE WALK.  On top of that, the prints light up in order, nearest first,
+     as if someone were walking the road ahead of you: a step flares when the
+     walker reaches it and then settles back to its resting glow.  So the
+     direction reads twice -- from each print's shape, and from the motion
+     along the row.  The resting glow is most of the brightness (the same
+     lesson the beads and chevrons learned on town's gold cobble: an
+     animation must be texture on a visible thing, never the difference
+     between visible and not), and the distance falloff the samples already
+     carry makes the far prints fainter, so the road fades away toward where
+     it is going.
+
+     Same ink / gold / core sandwich as every other style, for the same
+     reason: gold on gold cobble is invisible without the dark backing. */
+  _trailSteps(samples, now) {
+    /* ═══ SPRITES OF ONE MINTED PRINT, NOT GRAPHICS PATHS ═══
+       The first cut drew each print as two filled ovals on overlayGfx, and
+       the shot of town's gold cobble showed a row of pebbles: at that size a
+       pair of ovals IS a pebble, and Graphics cannot union shapes, so a halo
+       round a sole-plus-toes stacks its alpha wherever the pieces overlap.
+       So the print is painted ONCE on a canvas (canvas paths union, and its
+       shadow gives the dark halo in one stroke), and each step is a Sprite of
+       it -- rotated to the road, mirrored for the right foot.  Minted from a
+       canvas, so nothing downloads and there is nothing for the preload
+       manifest to wait on. */
+    const tex = footprintTexture();
+    const LEN = TILE * 0.78;             /* heel to toe tip, world px */
+    const SIDE = TILE * 0.2;             /* each foot's offset from the centre line */
+    const TOE_OUT = 0.14;                /* radians, outward */
+    const sc = LEN / FOOT_TEX_LEN;
+    const N = samples.length;
+    /* The walker: one step every 190ms, a short breath at the end of the
+       road, then round again. */
+    const STEP_MS = 190, REST = 3;
+    const walker = (now % (STEP_MS * (N + REST))) / STEP_MS;
+    for (let i = 0; i < N; i++) {
+      const s = samples[i];
+      let sp = this._footPool[i];
+      if (!sp) {
+        sp = new Sprite(tex);
+        sp.anchor.set(0.5, 0.5);
+        this._footPool.push(sp);
+        this._footLayer.addChild(sp);
+      }
+      const left = (i & 1) === 0, side = left ? 1 : -1;
+      const px = -s.uy, py = s.ux;       /* the road's left normal */
+      sp.x = s.x + px * SIDE * side;
+      sp.y = s.y + py * SIDE * side;
+      /* (px, py) is u turned +90 degrees, and so is the texture's +y once the
+         sprite is rotated onto u -- so a foot on the +p side toes OUT by
+         turning further toward +p, and its big toe (the texture's +y) must be
+         mirrored to face -p, the centre line.  Checked on a shot: the first
+         cut had these the wrong way round, a pigeon-toed walk with the big
+         toes outside. */
+      sp.rotation = Math.atan2(s.uy, s.ux) + side * TOE_OUT;
+      sp.scale.set(sc, left ? -sc : sc);
+      const since = walker - i;
+      /* flare as the walker lands on it, then settle over ~1s */
+      const flare = since >= 0 ? Math.exp(-since / 2.2) : 0;
+      sp.alpha = Math.min(1, s.a * (0.66 + 0.34 * flare));
+      sp.visible = true;
+    }
   }
 
   /* ═══ THREE RINGS, AND THE DARK ONE IS THE REASON THIS IS VISIBLE ═══
