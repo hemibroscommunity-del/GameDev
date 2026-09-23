@@ -70,7 +70,7 @@ def skin_target(arg, tone):
     return None if m.group(1) == 'null' else tuple(int(v) for v in m.group(2).split(','))
 
 
-def composite(pose, d, f, meta, tops, tex, tone, strips, skin=None, fur=({}, {}), tan=None):
+def composite(pose, d, f, meta, tops, tex, tone, strips, skin=None, fur=({}, {})):
     """skin: the player's skin target (None = 'default', the art's own tan);
     the body is retinted to it and the piece's fur layer tinted with it, as the
     game does -- the muzzle and ears are never recoloured.  fur = load_fur()'s
@@ -79,8 +79,6 @@ def composite(pose, d, f, meta, tops, tex, tone, strips, skin=None, fur=({}, {})
     raw = SF.body_frame(pose, d, f)
     body = SF.retint(raw, skin) if skin else raw
     layer = SF.layer_for(pose, d, f, meta, tops, tex, tone, strips)
-    if tan is not None:
-        layer = SF.draw_tan(layer, SF.layer_for(pose, d, f, meta, tops, tan[0], tone, tan[1]), skin)
     layer = SF.draw_fur(layer, SF.layer_for(pose, d, f, meta, tops, fur[0], tone, fur[1]), skin)
     m = layer[:, :, 3] > 0
     body[m, :3] = layer[m, :3]
@@ -139,7 +137,6 @@ def main():
     tone = SF.TONES[args.id]
     skin = skin_target(args.skin, tone) if args.skin else 'species'
     fur = SF.load_fur(tdir, meta)
-    tan = SF.load_fur(tdir, meta, 'tan')
     strips = {}
     for key in meta.get('frameOverlays', {}):
         strips[key] = np.array(Image.open(f'{tdir}/frames/{key}.png').convert('RGBA')).astype(int)
@@ -153,7 +150,7 @@ def main():
             m = re.fullmatch(r'(\d+)(?:-(\d+))?', rng)
             for f in range(int(m.group(1)), int(m.group(2) or m.group(1)) + 1):
                 top = SF.crown_of(pose, d, f, tops, fixes)
-                img = composite(pose, d, f, meta, tops, tex, tone, strips, skin, fur, tan)
+                img = composite(pose, d, f, meta, tops, tex, tone, strips, skin, fur)
                 tiles.append((f'{pose}-{d} #{f}' + (' *' if fixed(pose, d, f) else ''), tile(img, top, 6, True)))
         path = os.path.join(args.out, 'zoom.png')
         grid_sheet(tiles, CROP * 6, path)
@@ -165,7 +162,7 @@ def main():
             n = sum(1 for k in tops if k.startswith(f'{pose}-{d}-')) or 1
             for f in range(n):
                 top = SF.crown_of(pose, d, f, tops, fixes)
-                img = composite(pose, d, f, meta, tops, tex, tone, strips, skin, fur, tan)
+                img = composite(pose, d, f, meta, tops, tex, tone, strips, skin, fur)
                 tiles.append((f'{pose}-{d} #{f}' + (' *' if fixed(pose, d, f) else ''), tile(img, top, Z)))
         name = f'{args.id}-{pose}' + ('' if len(dirs) > 1 else f'-{dirs[0]}')
         path = os.path.join(args.out, name + '.png')

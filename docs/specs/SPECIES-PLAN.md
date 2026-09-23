@@ -339,37 +339,26 @@ its own reviewed job.
    `spriteBody.x + (x - 128) * s * m`, `spriteBody.y + (y - 128) * s`, scale
    `(s * m, s)` where `s = |bodyScale|` and `m` the mirror sign. No anchor,
    nudge or pose scale: it is already in body space, and mirrors with the body.
-3. **Recolouring (v2.3.2655 fur, v2.3.2656 tan) — the monkey follows the
-   player's skin.** Each facing / strip ships up to two TWINS, same size, same
-   placement, same rects as the piece, both stored as BARE SKIN so the
-   existing per-pixel skin recolour (`playerSkins` `_isSkin` / `_retint`) does
-   the work:
-   - `.fur.png` — every fur pixel the pipeline painted (old-ear patches, teeth
-     covers), in the art's own skin colour around each patch in that frame.
-     Recolour with the player's skin target T (draw as stored for `default`).
-   - `.tan.png` — the muzzle and ear tan. Recolour with
-     `T + lighten * (toward - T)` per channel, clipped to 255 (`meta.tan`:
-     lighten 0.35, toward [268,227,212]; T = DEFAULT_SKIN (205,134,75) for
-     `default`). The constants are solved so Monkey Brown gives exactly the
-     art's tan (149,116,89): the brown monkey is unchanged, and every other
-     skin gets a muzzle that is a lighter version of its own fur (owner:
-     "if it can be recolored do it"). The outline's two darkest tan steps
-     are not in the twin; they stay as drawn.
-   Draw order: piece, tan, fur. A missing twin degrades to the Monkey Brown
-   look, never a hole.
-4. **Build per skin on the CPU, not as 3 GPU layers.** All 39 images uploaded
-   would be ~6.2MB of GPU. Decode the twins as images, composite one
-   recoloured copy of the piece + strips per skin actually on screen (the way
-   `getColoredHatTextures` builds hat colours), upload that, drop the twins.
-   ~156KB on disk. Preload per the CLAUDE.md animation-preloading law
-   (`preloadWorldAnimations`), including the build for the local player's
-   skin.
+3. **The fur layer (v2.3.2655) — this is what makes the monkey recolourable.**
+   Every fur pixel the pipeline painted (the old-ear patches, the teeth
+   covers) is SKIN. Each facing / strip that has any also ships a `.fur.png`
+   twin — `<dir>.fur.png`, `frames/<pose>-<dir>.fur.png` — same size, same
+   placement, same rects, holding only those pixels as BARE SKIN (the art's
+   own skin colour around each patch, in that frame). Run it through the SAME
+   per-pixel skin recolour as the body sheets (`playerSkins` `_isSkin` /
+   `_retint`, keyed by the player's skin) and draw it directly over the piece;
+   for the `default` skin draw it as stored. `meta.fur` lists the files. The
+   muzzle and ears are never recoloured — they stay the art's tan on every
+   skin, by design (owner, v2.3.2655). If a fur file is missing the piece
+   still carries the patches in Monkey Brown underneath, so the failure is a
+   brown smudge, not a hole.
+4. Preload the strips and fur twins with the piece (CLAUDE.md
+   animation-preloading law: register them in `preloadWorldAnimations`).
+   They are ~90KB on disk, ~3.1MB of GPU as 22 textures (the recoloured fur
+   builds are per skin, like the hair colour builds).
 5. So the species does NOT pin a skin tone: any `SKIN_CATALOG` entry works
    (`python3 tools/species_contact_sheet.py --id monkey --skin ebony` shows
-   any of them). Monkey Brown is the preset, not a requirement. On the
-   palest skins (alabaster, alien cyan) the muzzle comes out nearly the fur's
-   own brightness -- there is no lighter left to go -- and reads by its outline
-   only; revisit if the creator offers those to monkeys.
+   any of them). Monkey Brown is the preset, not a requirement.
 
 ### Stage 2's three plumbing traps
 
