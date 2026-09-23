@@ -46,6 +46,14 @@ const _peerBuild = (o) => buildScale(o && o.buildHeight, o && o.buildFrame);
 const BLOCK_POSE_FRAME = 1;
 const _fxLoad = (url) => { const p = Assets.load(url); _fxPreload.push(p); return p; };
 export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload); }
+/* v2.3.2774: QA probe -- what cropping the combat stand-in strips saved, per
+   sheet (decoded bytes, no mips).  See _gearStripFrame. */
+const _combatTrimStats = [];
+const _combatTrimFrames = new Map();   /* key -> the cropped frames, for the identity check */
+if (typeof window !== 'undefined') {
+  window.__btCombatGearTrim = () => _combatTrimStats.slice();
+  window.__btCombatGearFrames = (key) => _combatTrimFrames.get(key) || null;
+}
 
 /* ═══ v2.3.2500: THE SKIN-TONE PROBE, FOR THE STAND-INS THAT HAD NONE ═══
  *
@@ -130,7 +138,7 @@ import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings */
 import { onArtChange, artHasInk, artIsSymmetric } from '../traits/playerArt.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { onPatternChange, parsePattern } from '../traits/patternCatalog.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
-import { getGearFrame } from '../gearSheets.js';
+import { getGearFrame, packTrimmed, registerGearSource } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips */
 import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
@@ -1866,7 +1874,7 @@ const RARE_KINDS = { weapon: true, gem: true, armor: true };
  * already lying still.  Visual only -- the pickup test reads l.x / l.y. */
 const LAND_S = 1.0;
 const HOP_KEYS = { remnant: 0, coin: 1, shard: 2, weapon: 3, gem: 4, armor: 5 };
-const _NO_HOP = { dy: 0, sq: 0 };
+const _NO_HOP = { dy: 0, sq: 0, rot: 0, out: 1 };
 const _hash = (x) => { const v = Math.sin(x) * 43758.5453; return v - Math.floor(v); };
 function lootHop(l, key, age, n = 0) {
   if (!(age < LAND_S) || age < 0) return _NO_HOP;
@@ -1876,15 +1884,65 @@ function lootHop(l, key, age, n = 0) {
   const delay = 0.16 * _hash(l._landSeed * 71 + k * 3.1);           /* one after another */
   const P = 0.15 * (0.85 + 0.3 * _hash(l._landSeed * 53 + k * 5.3)); /* fall time = first quarter */
   const t = age - delay;
-  if (t < 0) return { dy: A, sq: 0 };
+  /* ═══ v2.3.2772: AND IT TUMBLES A LITTLE ═══
+     Owner: "When it bounces did you allow it to rotate a little bit so it
+     looks more realistic?"  It did not -- straight up and down.  Now each
+     item leans while it is in the air (its own side and amount from the
+     same seed) and comes back level at every contact: sin over the hop is
+     zero exactly when |cos| is, i.e. on the ground.  So it lands flat, is
+     knocked a little crooked by each hop, and is level again by the time it
+     settles -- where the resting pile has always been. */
+  const lean = (_hash(l._landSeed * 29 + k * 7.9) < 0.5 ? -1 : 1) * (0.22 + 0.28 * _hash(l._landSeed * 17 + k * 2.3));
+  if (t < 0) return { dy: A, sq: 0, rot: lean * 0.5, out: 0 };
   const env = Math.exp(-3.2 * t);
   const c = Math.abs(Math.cos((Math.PI * t) / (2 * P)));
   /* a little squash at each contact, gone by the second hop */
   const sq = 0.22 * env * Math.max(0, 1 - c / 0.25);
-  return { dy: A * env * c, sq };
+  /* the fall eases from its starting lean to level at first contact; each
+     hop after tips it the same way and brings it back (sin*cos: zero on the
+     ground and at the top, most crooked in between) -- continuous throughout */
+  const rot = t < P ? lean * 0.5 * c : lean * 1.6 * env * Math.abs(Math.sin((Math.PI * t) / (2 * P))) * c;
+  /* v2.3.2773: how far out toward its spot in the circle (pileLayout) the
+     item has travelled -- thrown from the middle, there by its second hop */
+  const u = Math.min(1, t / (2.2 * P));
+  const out = 1 - (1 - u) * (1 - u);
+  return { dy: A * env * c, sq, rot, out };
 }
-function applySquash(sp, sq) {
-  if (!sq || !sp) return;
+/* v2.3.2771 squash; v2.3.2772 and tilt.  Rotation is WRITTEN every call
+   (0 once settled) so a pile never keeps a stale lean. */
+/* ═══ v2.3.2773: A PILE SPREADS OUT, IT DOES NOT STACK ═══
+   Owner: "Instead of a vertical line can you make the loot spread out a bit
+   within a proximal circle."  The coin, shard and rare items used to sit in a
+   column over the remains (coin 10 px up, shard 24, rare icons 30).  Each now
+   has its own spot in a small circle around the pile's middle -- a sunflower
+   (golden-angle) spiral from a per-pile starting angle, so two piles never
+   look stamped from one template and no two items land on the same spot.  The
+   rarest go nearest the middle (they are what you are walking over for); the
+   circle is squashed vertically (x 0.55) because the ground is seen at an
+   angle.  A lone item stays in the middle.  Keys are the items present, so
+   the layout is rebuilt only when the pile's contents change (a claim). */
+const PILE_R = 26;
+function pileLayout(l, keys) {
+  const sig = keys.join(',');
+  if (l._layoutSig === sig && l._layout) return l._layout;
+  if (l._landSeed == null) l._landSeed = Math.random();
+  const out = Object.create(null);
+  const n = keys.length;
+  const a0 = l._landSeed * Math.PI * 2;
+  for (let i = 0; i < n; i++) {
+    if (n === 1) { out[keys[i]] = { ox: 0, oy: 0 }; continue; }
+    const a = a0 + i * 2.39996;   /* the golden angle */
+    const r = PILE_R * (0.4 + 0.6 * Math.sqrt((i + 0.5) / n)) * (0.85 + 0.3 * _hash(l._landSeed * 37 + i * 4.1));
+    out[keys[i]] = { ox: Math.cos(a) * r, oy: Math.sin(a) * r * 0.55 };
+  }
+  l._layout = out; l._layoutSig = sig;
+  return out;
+}
+const _AT_MIDDLE = { ox: 0, oy: 0 };
+function applySquash(sp, sq, rot = 0) {
+  if (!sp) return;
+  sp.rotation = rot || 0;
+  if (!sq) return;
   sp.scale.set(sp.scale.x * (1 + 0.6 * sq), sp.scale.y * (1 - sq));
 }
 
@@ -6922,7 +6980,7 @@ export class EffectsRenderer {
    *  Uses _pixiShardSprite so it doesn't collide with the other pooled
    *  sprites.  Falls back silently while the PNG is still loading -- a
    *  missing icon is preferable to a glyph that pops in mid-frame. */
-  _renderShardOverlay(l, anchorY, alpha, sq = 0) {
+  _renderShardOverlay(l, anchorY, alpha, sq = 0, rot = 0, ox = 0) {
     const tex = SHARD_ICONS[l.shard];
     if (!tex) return;
     if (!l._pixiShardSprite || l._pixiShardSprite.destroyed) {
@@ -6933,11 +6991,11 @@ export class EffectsRenderer {
       l._pixiShardSprite = sp;
     }
     if (l._pixiShardSprite.texture !== tex) l._pixiShardSprite.texture = tex;
-    l._pixiShardSprite.x = l.x;
+    l._pixiShardSprite.x = l.x + ox;   /* v2.3.2773: its spot in the pile's circle */
     l._pixiShardSprite.y = anchorY;
     l._pixiShardSprite.alpha = alpha;
     l._pixiShardSprite.scale.set(16 / (l._pixiShardSprite.texture.width || 16));
-    applySquash(l._pixiShardSprite, sq);   /* v2.3.2771 */
+    applySquash(l._pixiShardSprite, sq, rot);   /* v2.3.2771; v2.3.2772 tilt */
     l._pixiShardSprite.visible = true;
   }
 
@@ -6945,7 +7003,7 @@ export class EffectsRenderer {
    *  layered ABOVE any remnants/wreck sprite already added for this loot
    *  entry.  Uses dedicated _pixiCoinSprite / _pixiCoinLabel slots so it
    *  doesn't collide with the remnants' _pixiSprite. */
-  _renderCoinOverlay(l, anchorY, alpha, ownsThis, sq = 0) {
+  _renderCoinOverlay(l, anchorY, alpha, ownsThis, sq = 0, rot = 0, ox = 0) {
     /* ownsThis === false signals MP loot the local player can't claim
        (someone else's contribution-weighted drop).  Render the icon in
        gray + lower alpha and skip the "+Xg" label since the watcher
@@ -6960,12 +7018,12 @@ export class EffectsRenderer {
         this.lootLayer.addChild(sp);
         l._pixiCoinSprite = sp;
       }
-      l._pixiCoinSprite.x = l.x;
+      l._pixiCoinSprite.x = l.x + ox;   /* v2.3.2773: its spot in the pile's circle */
       l._pixiCoinSprite.y = anchorY;
       l._pixiCoinSprite.alpha = (owned ? 1 : 0.4) * alpha;
       l._pixiCoinSprite.tint = owned ? 0xffffff : 0x555555;
       l._pixiCoinSprite.scale.set((12 * LOOT_SCALE) / (l._pixiCoinSprite.texture.width || 12));
-      applySquash(l._pixiCoinSprite, sq);   /* v2.3.2771 */
+      applySquash(l._pixiCoinSprite, sq, rot);   /* v2.3.2771; v2.3.2772 tilt */
       l._pixiCoinSprite.visible = true;
     }
     if (owned) {
@@ -6977,7 +7035,7 @@ export class EffectsRenderer {
       }
       const cStr = l.coins + 'G';
       if (l._pixiCoinLabel.text !== cStr) l._pixiCoinLabel.text = cStr;
-      l._pixiCoinLabel.x = l.x;
+      l._pixiCoinLabel.x = l.x + ox;
       l._pixiCoinLabel.y = anchorY + 7;
       l._pixiCoinLabel.alpha = alpha;
       l._pixiCoinLabel.visible = true;
@@ -6996,10 +7054,10 @@ export class EffectsRenderer {
      of an old pile) calls "RARE DROP!" above itself, once. */
   _renderRareItems(l, age, bob, alpha, now) {
     const items = [];
-    if (l.hasWeapon && !l.weaponClaimed) items.push({ kind: 'weapon', tex: LOOT_ICONS[weaponIconKey(l.weaponType, l.weaponName)] });
-    if (l.gem && !l.inventoryClaimed) items.push({ kind: 'gem', tex: LOOT_ICONS.gem });
+    if (l.hasWeapon && !l.weaponClaimed) items.push({ kind: 'weapon', key: 'weapon', tex: LOOT_ICONS[weaponIconKey(l.weaponType, l.weaponName)] });
+    if (l.gem && !l.inventoryClaimed) items.push({ kind: 'gem', key: 'gem', tex: LOOT_ICONS.gem });
     if (Array.isArray(l.armor) && !l.armorClaimed) {
-      for (const a of l.armor) if (a) items.push({ kind: 'armor', tex: LOOT_ICONS[armorIconKey(a)] });
+      l.armor.forEach((a, ai) => { if (a) items.push({ kind: 'armor', key: 'armor' + ai, tex: LOOT_ICONS[armorIconKey(a)] }); });
     }
     const n = items.length;
     const pool = l._pixiRare || (n ? (l._pixiRare = []) : null);
@@ -7025,14 +7083,16 @@ export class EffectsRenderer {
         const h = lootHop(l, it.kind, age, i);
         /* side by side when a pile carries more than one; they overlap a
            little, and the rarer draws on top (zIndex) */
-        const x = l.x + (i - (n - 1) / 2) * 22;
-        const y = l.y + bob - 30 - h.dy;
+        /* v2.3.2773: its spot in the pile's circle (the loop's pileLayout) */
+        const o = (l._layout && l._layout[it.key]) || _AT_MIDDLE;
+        const x = l.x + o.ox * h.out;
+        const y = l.y + bob - 16 + o.oy * h.out - h.dy;
         if (it.tex && r.icon.texture !== it.tex) r.icon.texture = it.tex;
         r.icon.visible = !!it.tex;
         r.icon.zIndex = LOOT_Z[it.kind] + i * 0.01;
         r.icon.x = x; r.icon.y = y;
         r.icon.scale.set(ICON / ((r.icon.texture && r.icon.texture.width) || 64));
-        applySquash(r.icon, h.sq);
+        applySquash(r.icon, h.sq, h.rot);
         r.icon.alpha = alpha;
         /* the shine rises from the item, following it through its bounce */
         const flash = Math.exp(-Math.max(0, age - 0.25) * 1.6);
@@ -7087,7 +7147,7 @@ export class EffectsRenderer {
         for (const e of (_selfR._knownLoot || [])) {
           if (!e) continue;
           const parts = [];
-          const add = (sp, kind) => { if (sp && !sp.destroyed && sp.visible) parts.push({ kind, z: sp.zIndex, y: +sp.y.toFixed(1) }); };
+          const add = (sp, kind) => { if (sp && !sp.destroyed && sp.visible) parts.push({ kind, z: sp.zIndex, x: +sp.x.toFixed(1), y: +sp.y.toFixed(1), rot: +(sp.rotation || 0).toFixed(3) }); };
           add(e._pixiSprite, 'remnantOrCoin'); add(e._pixiCoinSprite, 'coin'); add(e._pixiShardSprite, 'shard');
           for (const r of (e._pixiRare || [])) { add(r.icon, 'rareIcon'); add(r.beam, 'beam'); }
           add(e._pixiRareDrop, 'rareText');
@@ -7195,6 +7255,18 @@ export class EffectsRenderer {
       /* v2.3.2771: each item's own landing (lootHop above) -- zero once the
          pile has settled, so every line below reads as before */
       const hR = lootHop(l, 'remnant', age), hC = lootHop(l, 'coin', age), hS = lootHop(l, 'shard', age);
+      /* v2.3.2773: each item's spot in the pile's circle (pileLayout), rarest
+         nearest the middle; the remains are the middle */
+      const _pk = [];
+      if (Array.isArray(l.armor) && !l.armorClaimed) l.armor.forEach((a, i) => { if (a) _pk.push('armor' + i); });
+      if (l.gem && !l.inventoryClaimed) _pk.push('gem');
+      if (l.hasWeapon && !l.weaponClaimed) _pk.push('weapon');
+      if (l.shard) _pk.push('shard');
+      if (l.coins || l.recipients) _pk.push('coin');
+      const lay = pileLayout(l, _pk);
+      const oC = lay.coin || _AT_MIDDLE, oS = lay.shard || _AT_MIDDLE;
+      /* the circle's middle, a little above the remains' centre */
+      const midY = l.y + bob - 10;
       /* ═══ v2.3.2318: A LAST CALL, NOT A QUIET FADE ═══
          Owner: "monster loot that's almost timing out and disappearing make it
          fade then show full opacity for about the last 10 seconds before it
@@ -7445,7 +7517,7 @@ export class EffectsRenderer {
              use their own remnantsScalePx (default 48). */
           const targetPx = (variantRemnTex ? (variant.remnantsScalePx || 48) : 48) * LOOT_SCALE;
           l._pixiSprite.scale.set(targetPx / (l._pixiSprite.texture.width || targetPx));
-          applySquash(l._pixiSprite, hR.sq);   /* v2.3.2771 */
+          applySquash(l._pixiSprite, hR.sq, hR.rot * 0.5);   /* v2.3.2771; v2.3.2772: a puddle tilts less */
           l._pixiSprite.visible = true;
           /* Coin sits ON TOP of the remnants when gold rides on this drop.
              10 px above center so the player can see there's gold to grab
@@ -7453,11 +7525,11 @@ export class EffectsRenderer {
              grayed-out coin icon (no label) so they can see the pile
              exists but read it as "not yours". */
           const ownsThis = !l.recipients || !S.myId || l.recipients.includes(S.myId);
-          if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 10 + bob - hC.dy, alpha, ownsThis, hC.sq);
+          if (l.coins || l.recipients) this._renderCoinOverlay(l, midY + oC.oy * hC.out - hC.dy, alpha, ownsThis, hC.sq, hC.rot, oC.ox * hC.out);
           /* Shard floats just above the coin (or above the remnants if
              there's no coin) so the player can read the zone-affiliation
              at a glance without picking up. */
-          if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 24 : 12) + bob - hS.dy, alpha, hS.sq);
+          if (l.shard) this._renderShardOverlay(l, midY + oS.oy * hS.out - hS.dy, alpha, hS.sq, hS.rot, oS.ox * hS.out);
           this._renderOwnerLabel(l, ownsThis, alpha);
           continue;
         }
@@ -7494,12 +7566,12 @@ export class EffectsRenderer {
         l._pixiSprite.zIndex = LOOT_Z.remnant;
         l._pixiSprite.alpha = alpha;
         l._pixiSprite.scale.set((48 * LOOT_SCALE) / (l._pixiSprite.texture.width || 128));
-        applySquash(l._pixiSprite, hR.sq);
+        applySquash(l._pixiSprite, hR.sq, hR.rot * 0.5);
         l._pixiSprite.visible = true;
         /* Coin sits on top of the wreck when gold rides on this drop. */
         const snOwn = !l.recipients || !S.myId || l.recipients.includes(S.myId);
-        if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 14 + bob - hC.dy, alpha, snOwn, hC.sq);
-        if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 28 : 14) + bob - hS.dy, alpha, hS.sq);
+        if (l.coins || l.recipients) this._renderCoinOverlay(l, midY - 4 + oC.oy * hC.out - hC.dy, alpha, snOwn, hC.sq, hC.rot, oC.ox * hC.out);
+        if (l.shard) this._renderShardOverlay(l, midY - 4 + oS.oy * hS.out - hS.dy, alpha, hS.sq, hS.rot, oS.ox * hS.out);
         this._renderOwnerLabel(l, snOwn, alpha);
         continue;
       }
@@ -7531,13 +7603,13 @@ export class EffectsRenderer {
             this.lootLayer.addChild(sp);
             l._pixiSprite = sp;
           }
-          l._pixiSprite.x = l.x;
-          l._pixiSprite.y = l.y + 3 + bob - hC.dy;   /* v2.3.2771: its landing */
+          l._pixiSprite.x = l.x + oC.ox * hC.out;   /* v2.3.2773: its spot in the circle */
+          l._pixiSprite.y = l.y + 3 + bob + oC.oy * hC.out - hC.dy;   /* v2.3.2771: its landing */
           l._pixiSprite.zIndex = LOOT_Z.coin;
           l._pixiSprite.alpha = (ownsThis ? 1 : 0.5) * alpha;
           l._pixiSprite.tint = ownsThis ? 0xffffff : 0x555555;
           l._pixiSprite.scale.set((14 * LOOT_SCALE) / (l._pixiSprite.texture.width || 14));
-          applySquash(l._pixiSprite, hC.sq);
+          applySquash(l._pixiSprite, hC.sq, hC.rot);
           l._pixiSprite.visible = true;
         } else {
           gfx.circle(l.x - 3, l.y + 2 + bob, 4);
@@ -7557,8 +7629,8 @@ export class EffectsRenderer {
           }
           const cStr = l.coins + 'G';
           if (l._pixiLabel.text !== cStr) l._pixiLabel.text = cStr;
-          l._pixiLabel.x = l.x;
-          l._pixiLabel.y = l.y + 14 + bob - hC.dy;
+          l._pixiLabel.x = l.x + oC.ox * hC.out;
+          l._pixiLabel.y = l.y + 14 + bob + oC.oy * hC.out - hC.dy;
           l._pixiLabel.zIndex = LOOT_Z.coinLabel;   /* v2.3.2771 */
           l._pixiLabel.alpha = alpha;
           l._pixiLabel.visible = true;
@@ -7573,7 +7645,7 @@ export class EffectsRenderer {
          in the loot, but be invisible until pickup.  Sits above the
          coin sprite so the player can read both the gold count and
          the zone shard at a glance. */
-      if (l.shard) this._renderShardOverlay(l, l.y - 15 + bob - hS.dy, alpha, hS.sq);
+      if (l.shard) this._renderShardOverlay(l, l.y - 2 + bob + oS.oy * hS.out - hS.dy, alpha, hS.sq, hS.rot, oS.ox * hS.out);
       if (l.xp) {
         gfx.circle(l.x + 6, l.y + bob, 3);
         gfx.fill({ color: 0x5b52ff, alpha });
@@ -9871,13 +9943,57 @@ export class EffectsRenderer {
          caller's `fw` verbatim, so their slices are byte-identical. */
       const _twin = GEAR_STRIP_TWIN[pose];
       const _file = pose + '-' + dir + (_twin ? _twin.suffix : '');
-      _fxLoad('/sprites/gear/' + slot + '/' + item + '/' + _file + '.png?v=' + GEARLAYER_VER).then((tex) => {
-        const n = _twin ? _twin.frames : Math.max(1, Math.round(tex.width / fw));
-        const w = _twin ? Math.round(tex.width / n) : fw;
+      /* ═══ v2.3.2774: CROPPED, AND NOT HELD TWICE ═══
+         Owner: "How much can cropping the combat poses save?" -- then "Begin
+         more cropping".  Measured (__btTex, armoured in town): these 33 sheets
+         (shirt / chest / legs x swing, bowshot, chop, cook, fire) were 81.4 MB
+         resident, and 83-98% of every frame is transparent.  The walking
+         layers got the same treatment in v2.3.2750 (gearSheets packTrimmed,
+         TRAPS §106); this is that cropper, applied here.
+         The sheet is decoded as a plain Image of the SAME .png Assets.load
+         fetched -- not loadWebpOrPng.  The .webp twins are fine (measured:
+         identical alpha, colour within 2/255 premultiplied, on faint edge
+         texels only -- browser decode rounding), but this loader has always
+         drawn the PNG, and keeping it means the cropped frames can be proven
+         byte-identical to what shipped before.  Not through Assets.load,
+         because Assets would keep
+         the FULL sheet in its cache for the whole session beside the cropped
+         copy -- the saving would be spent twice over.  The load promise still
+         joins _fxPreload, so effectsAnimationsReady() (the loading-screen
+         gate) waits for the crop exactly as it waited for the slice.
+         Every reader of these frames places a Sprite by anchor and scale and
+         sizes it from texture.width / .height, which a cropped Texture reports
+         from `orig` -- so the frame box, and where the armour lands, are the
+         ones the uncropped strip had.  mp-geartrim holds that. */
+      const _url = '/sprites/gear/' + slot + '/' + item + '/' + _file + '.png?v=' + GEARLAYER_VER;
+      const _p = new Promise((res, rej) => {
+        const im = new Image();
+        im.onload = () => res(im); im.onerror = rej; im.src = _url;
+      }).then((img) => {
+        const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+        const n = _twin ? _twin.frames : Math.max(1, Math.round(W / fw));
+        const w = _twin ? Math.round(W / n) : fw;
+        const packed = packTrimmed(img, w, H, n);
+        const src = Texture.from(packed ? packed.canvas : img).source;
+        src.scaleMode = 'linear';
         const arr = [];
-        for (let i = 0; i < n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * w, 0, w, tex.height) }));
+        for (let i = 0; i < n; i++) {
+          if (packed) {
+            const c = packed.cells[i];
+            arr.push(new Texture({ source: src, frame: new Rectangle(c.ax, 0, c.w, c.h),
+              orig: new Rectangle(0, 0, w, H), trim: new Rectangle(c.tx, c.ty, c.w, c.h) }));
+          } else {
+            arr.push(new Texture({ source: src, frame: new Rectangle(i * w, 0, w, H) }));
+          }
+        }
+        if (packed) {
+          _combatTrimStats.push({ key, url: _url, fullBytes: W * H * 4, packedBytes: packed.canvas.width * packed.canvas.height * 4 });
+          _combatTrimFrames.set(key, arr);
+        }
+        registerGearSource(src);
         this._gearStrips[key] = arr;
       }).catch(() => { this._gearStrips[key] = []; });
+      _fxPreload.push(_p);
       return null;
     }
     if (e === 'loading' || !e.length) return null;
