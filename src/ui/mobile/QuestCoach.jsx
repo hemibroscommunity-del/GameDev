@@ -1,5 +1,5 @@
-import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js'; /* v2.3.2753 */
-import { coachMayShow, noteCoach } from '@/ui/onboardingPace.js'; /* v2.3.2754 */
+import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js'; /* v2.3.2765 */
+import { coachMayShow, noteCoach } from '@/ui/onboardingPace.js'; /* v2.3.2766 */
 import React from 'react';
 import { combatBandTopPx } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2564: how high the combat band reaches, from the same arithmetic the controls place themselves with */
 /* v2.3.1797: the special lesson has to know whether the ACTIVE slot holds a
@@ -105,7 +105,7 @@ function loadDone() {
        (CLAUDE.md rule 4). */
     const out = Object.create(null);
     if (o && typeof o === 'object') for (const k of Object.keys(o)) out[k] = !!o[k];
-    /* v2.3.2753: plus whatever this player finished on another build's
+    /* v2.3.2765: plus whatever this player finished on another build's
        origin -- the per-deploy hostname gap (rosterCookie.js) used to re-teach
        every lesson on each fresh preview link */
     for (const k of sharedDone()) out[k] = true;
@@ -869,7 +869,7 @@ export function QuestCoach(props) {
       if (stop) return;
       raf = requestAnimationFrame(step);
       const S = stateRef && stateRef.current;
-      /* v2.3.2753: no character until the worker has sent it.  Before the
+      /* v2.3.2765: no character until the worker has sent it.  Before the
          first player_state S.rpg is a cache or a blank level-1 default, and
          the blank passes preTutorial -- which folded a returning player's
          dashboard and re-taught them to walk (wsClient _rpgFromServer). */
@@ -1076,7 +1076,7 @@ export function QuestCoach(props) {
         return;
       }
       let next = null;
-      /* ═══ v2.3.2754: PACED, NOT STACKED ═══
+      /* ═══ v2.3.2766: PACED, NOT STACKED ═══
          Owner: "The tutorial onboarding is too heavy on window pop ups right
          after you join the game."  A NEW card waits for the referee
          (onboardingPace.js): not over the welcome / quest plate, and not
@@ -1137,7 +1137,7 @@ export function QuestCoach(props) {
            world-anchored lesson (chatTap) brings its own rect. */
         const rect = measure(L.anchors, L, stateRef && stateRef.current);
         if (!rect) continue;          /* off screen / covered / desktop — skip, don't block */
-        if (holdNew) break;           /* v2.3.2754: its turn, but not yet */
+        if (holdNew) break;           /* v2.3.2766: its turn, but not yet */
         next = { id: L.id, label: L.label, body: rect.body, shape: L.shape, rect: rect };
         /* Arm the cycle counter the first time its mark is chosen, seeded with
            the slot the player is on so that one does not count as a swap. */
@@ -1164,7 +1164,7 @@ export function QuestCoach(props) {
         discHoldRef.current = { id: null, sides: wantSides };
       }
       const cur = viewRef.current;
-      /* v2.3.2754: one card ending and the next beginning are two events with
+      /* v2.3.2766: one card ending and the next beginning are two events with
          a breath between them, never a swap in place -- the swap is what made
          the lessons after the gear one land as a single rapid volley. */
       if (cur && next && next.id !== cur.id) next = null;

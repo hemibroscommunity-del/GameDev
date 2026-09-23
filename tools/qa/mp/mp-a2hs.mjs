@@ -40,13 +40,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── the iPhone player ── */
   const P = await H.newPlayer(browser, {
     name: 'RealIphone', wsPort, webPort, touch: true, viewport: { width: 390, height: 844 },
-    /* v2.3.2754: the card now waits for a quiet screen, 75s into play; the
+    /* v2.3.2766: the card now waits for a quiet screen, 75s into play; the
        QA hook shortens only the 75s, not the quiet-screen rule */
     init: SPOOF + ';window.__btInstallAfterMs=3000;',
   });
   await H.enterWorld(P);
   await P.page.waitForTimeout(9500);
-  /* ═══ v2.3.2754: NOT ON TOP OF A COACH CARD ═══
+  /* ═══ v2.3.2766: NOT ON TOP OF A COACH CARD ═══
      Owner: "The tutorial onboarding is too heavy on window pop ups right
      after you join the game."  A brand-new player has the first coach card
      up now, and the install card used to land beside it in the same spot. */

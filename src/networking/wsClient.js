@@ -2157,7 +2157,7 @@ export function setupWebSocket(ctx) {
                  running on the most frequent message in the protocol.  bt_rpg is
                  a warm-start cache; the worker blob is authoritative. */
               saveRpgSoon();
-              /* ═══ v2.3.2753: FROM HERE ON, S.rpg IS THIS CHARACTER ═══
+              /* ═══ v2.3.2765: FROM HERE ON, S.rpg IS THIS CHARACTER ═══
                  Owner: "Sometimes when you rejoin a game from a saved character
                  it brings up the tutorial again as if starting a new
                  character."  Until the first player_state lands, S.rpg is

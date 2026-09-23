@@ -1,4 +1,4 @@
-/* ═══ v2.3.2757: THE TEE HUGS THE BODY'S OUTER SILHOUETTE ═══
+/* ═══ v2.3.2769: THE TEE HUGS THE BODY'S OUTER SILHOUETTE ═══
  *
  * Owner: "The characters shoulder outline on idle south is very thick and I
  * think it's the result of keyed changes on the shirt, not the original art."

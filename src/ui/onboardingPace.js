@@ -1,4 +1,4 @@
-/* ═══ v2.3.2754: ONE ONBOARDING VOICE AT A TIME ═══
+/* ═══ v2.3.2766: ONE ONBOARDING VOICE AT A TIME ═══
  *
  * Owner: "The tutorial onboarding is too heavy on window pop ups right after
  * you join the game.  I don't know how to pace that better."

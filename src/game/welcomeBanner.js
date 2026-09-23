@@ -34,7 +34,7 @@ import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js'
 
 const SEEN_KEY = 'bt_welcome_seen';
 
-/* v2.3.2753: also on the shared-domain cookie, so a new preview-deploy
+/* v2.3.2765: also on the shared-domain cookie, so a new preview-deploy
    origin knows too (rosterCookie readSharedValue). */
 const SHARED_KEY = 'bt_welcomed';
 export const welcomeSeen = () => {
@@ -46,7 +46,7 @@ const markSeen = () => {
   writeSharedValue(SHARED_KEY, '1');
 };
 
-/* v2.3.2753: who the welcome is for.  The same test QuestCoach's preTutorial
+/* v2.3.2765: who the welcome is for.  The same test QuestCoach's preTutorial
    makes -- no tutorial quest on record and level 3 or under -- asked of the
    WORKER's copy of the character (see maybeShowWelcome). */
 const TUT_IDS = ['tut_1', 'tut_2', 'tut_3', 'tut_4'];
@@ -65,7 +65,7 @@ function looksBrandNew(rpg) {
  *  when this fires, and a banner that starts under a lifting curtain has
  *  spent part of its life unseen.  1.2s puts it on a settled screen.
  *
- *  ═══ v2.3.2753: AND ONLY FOR A PLAYER WHO IS ACTUALLY NEW ═══
+ *  ═══ v2.3.2765: AND ONLY FOR A PLAYER WHO IS ACTUALLY NEW ═══
  *  Owner: "Sometimes when you rejoin a game from a saved character it brings
  *  up the tutorial again as if starting a new character."  The only gate used
  *  to be this browser's once-flag, and the flag is per ORIGIN: every Pages
@@ -108,7 +108,7 @@ export function maybeShowWelcome(getS) {
       try {
         if (welcomeSeen()) return;
         const S = typeof getS === 'function' ? getS() : null;
-        /* no getter (an old caller): the pre-v2.3.2753 behaviour */
+        /* no getter (an old caller): the pre-v2.3.2765 behaviour */
         const synced = !getS || (S && S._rpgFromServer);
         if (!synced) {
           if (Date.now() - t0 < 20000) setTimeout(check, 250);

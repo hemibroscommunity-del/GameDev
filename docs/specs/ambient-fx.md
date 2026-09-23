@@ -1,4 +1,4 @@
-# Ambient life on the maps (v2.3.2750)
+# Ambient life on the maps (v2.3.2762)
 
 > Owner: "make subtle effects that appear as animations on the worldview? Lava
 > smoke on the fire mountain maybe shimmering a bit on the lava, winds on the
@@ -37,7 +37,7 @@ in the `glows` layer (above the night's light map), so lava shines after dark.
   `foreground`.
 * **Tuning** lives in `ZONE_FX` at the top of that file (per-map `k` scales
   every size and speed — the worldview is a vista, so its effects are smaller).
-* **Nothing shines against the dashboard (v2.3.2751).** The canvas runs ~14
+* **Nothing shines against the dashboard (v2.3.2763).** The canvas runs ~14
   CSS px under the bottom dashboard (the tray's top corners are rounded, so the
   world shows through them). The far-south sea's ripples and glints are bright
   horizontal streaks, and one sliding along just above the tray read as the

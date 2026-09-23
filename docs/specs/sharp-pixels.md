@@ -1,4 +1,4 @@
-# Sharp character pixels and the tee's shoulder line (v2.3.2756–2743)
+# Sharp character pixels and the tee's shoulder line (v2.3.2768–2743)
 
 > Owner: "The characters shoulder outline on idle south is very thick and I
 > think it's the result of keyed changes on the shirt, not the original art.
@@ -6,7 +6,7 @@
 > shirt. That's probably a result of lower res textures to save memory, but is
 > there an enhancement you can do for that?"
 
-## The shoulder line (v2.3.2757)
+## The shoulder line (v2.3.2769)
 
 * **Cause:** measured on stand-south, the tee is drawn one texel inside the
   body's silhouette along the shoulder tops and sides. The body's black outline
@@ -26,9 +26,9 @@
 * 352 texels changed across 8 stand and jog sheets. `GEAR_VERSION` and the
   preview's `SHIRT_ART_VER` were bumped.
 
-## Sharp pixels (v2.3.2758)
+## Sharp pixels (v2.3.2770)
 
-* **Cause, measured with `window.__btSelfSprites()` (v2.3.2756):** the body and
+* **Cause, measured with `window.__btSelfSprites()` (v2.3.2768):** the body and
   clothes are 128px textures (`DISPLAY_DS = 2`, the v2.3.1408 iPhone memory
   fix), drawn at about 2.6 device pixels per texel on a 3x phone. The GPU's
   linear filter blends each texel across all of that. The sword is a 256px
@@ -45,7 +45,7 @@
   * Maps, props, monsters, UI and text keep smooth filtering. Painted art
     would look blocky under this sampler.
 * **Limits and switches:**
-  * WebGL2 only. The shader is compiled as GLSL ES 3.00 (TRAPS §109).
+  * WebGL2 only. The shader is compiled as GLSL ES 3.00 (TRAPS §110).
   * `?sharp=0` turns it off for that load, `window.__btSharpOff = true` turns
     it off live, and `window.__btSharp()` reports its state.
 * **QA:** `tools/qa/mp/mp-sharppixels.mjs` checks that the shader compiles, the

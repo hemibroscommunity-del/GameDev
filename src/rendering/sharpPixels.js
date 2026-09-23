@@ -1,4 +1,4 @@
-/* ═══ v2.3.2758: SHARP PIXELS ON THE CHARACTERS, AT NO MEMORY COST ═══
+/* ═══ v2.3.2770: SHARP PIXELS ON THE CHARACTERS, AT NO MEMORY COST ═══
  *
  * Owner: "The character also looks soft compared to the art he's wearing like
  * sword or shirt.  That's probably a result of lower res textures to save

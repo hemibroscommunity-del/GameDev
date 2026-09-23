@@ -283,7 +283,7 @@ export function questRoutePoint(currentZone, rpg, S) {
   let wantNpc = null;
 
   if (!quests || !Object.keys(quests).length) {
-    /* v2.3.2753: "no quests" only means brand new once the worker has said
+    /* v2.3.2765: "no quests" only means brand new once the worker has said
        so -- before its first player_state this is a blank default, and a
        returning player was shown the road to the Mayor (wsClient
        _rpgFromServer).  Absent S (a caller without one) keeps the old rule. */

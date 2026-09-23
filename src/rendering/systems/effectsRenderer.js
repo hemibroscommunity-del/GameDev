@@ -291,8 +291,8 @@ import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
-import { recolorToolKeyCanvas, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2749: the magenta tool key becomes copper / pine / bark */
-import { SHADE } from '../formShade.js';   /* v2.3.2755: light from above on trees and rocks */
+import { recolorToolKeyCanvas, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark */
+import { SHADE } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks */
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
@@ -1014,7 +1014,7 @@ for (const cfg of Object.values(EFFECT_BURSTS)) {
 }
 const FX_BURST_MS = 600;
 
-/* ═══ v2.3.2748: DID A LOOPING ANIMATION PASS FRAME `target` SINCE LAST FRAME? ═══
+/* ═══ v2.3.2760: DID A LOOPING ANIMATION PASS FRAME `target` SINCE LAST FRAME? ═══
    The harvest strike effects (the chop's bite, the pick's clink and debris)
    used to test `cur === target && last !== target`.  That was fine while the
    loops ran on a clock; since the swing follows the HAND, a quick stroke can
@@ -1464,6 +1464,16 @@ const NODE_SPRITE_TEX = {};
    ore-break animation derives from these too (_spawnOreBreak). */
 const NODE_SPRITE_HEIGHT_BASE = { tree: 168, fishSpot: 132, oreVein: 132 };
 const NODE_SPRITE_ANCHOR_Y = { tree: 1.0, fishSpot: 0.5, oreVein: 1.0 };
+/* ═══ v2.3.2748: WHERE THE ART MEETS THE GROUND, as a fraction of the frame ═══
+   The sprites are anchored at their FRAME's bottom (node.y), and the frames
+   have transparent margin below the art: the pine's lowest solid row is at
+   0.839 of its frame, the ore's at 0.737 (measured off the webp's alpha, and
+   the same numbers BroTown's NODE_ART collision boxes were cut from).  So the
+   trunk a player walks up to is ~27 world px NORTH of node.y on a tier-1
+   tree, and sorting on node.y put the canopy over anyone standing in the
+   gap -- in front of the trunk, drawn behind it.  The depth pass reads
+   `_groundDy` to lift the tree's line up to its drawn base. */
+const NODE_ART_BASE = { tree: 0.839, oreVein: 0.737 };
 Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
   _fxLoad(path).then((tex) => { NODE_SPRITE_TEX[k] = tex; })
 )).catch((err) => console.warn('[node-sprites] load failed', err));
@@ -2148,7 +2158,7 @@ export class EffectsRenderer {
     /* v2.3.1469: ?v= added — the strip itself changed (transparent eye
        holes filled white, owner report) and it had no cache-bust, so
        returning players would have kept the stale copy forever. */
-    /* ═══ v2.3.2749: THE AXE IS COPPER ON A PINE HAFT, NOT THE MAGENTA KEY ═══
+    /* ═══ v2.3.2761: THE AXE IS COPPER ON A PINE HAFT, NOT THE MAGENTA KEY ═══
        Owner: "recolor the tools in the animations (they're still magenta from
        the creation phase) so maybe copper for the axe."  See toolRecolor.js.
        Two copies come out of each strip, both cropped to the TWELVE frames
@@ -2187,7 +2197,7 @@ export class EffectsRenderer {
     };
     const _CHOP_URL = '/sprites/skills/chop-strip.webp?v=2.3.1469';
     const _chopBody = _fxLoad(_CHOP_URL).then((tex) => {
-      _cropChop(tex, _CHOP_URL, 'body', this._chopFrames);   /* v2.3.2500 / v2.3.2749 */
+      _cropChop(tex, _CHOP_URL, 'body', this._chopFrames);   /* v2.3.2500 / v2.3.2761 */
     }).catch((err) => console.warn('[chop-strip] load failed', err));
     /* v2.3.1468: legs-erased lumberjack, swapped in while leg armour is
        equipped — the cook-strip-legless pattern (v2.3.1114).  The
@@ -2198,7 +2208,7 @@ export class EffectsRenderer {
     this._chopLeglessFrames = [];
     const _CHOP_LL_URL = '/sprites/skills/chop-strip-legless.webp?v=2.3.1469';
     const _chopLegless = _fxLoad(_CHOP_LL_URL).then((tex) => {
-      _cropChop(tex, _CHOP_LL_URL, 'legless', this._chopLeglessFrames);   /* v2.3.2500 / v2.3.2749 */
+      _cropChop(tex, _CHOP_LL_URL, 'legless', this._chopLeglessFrames);   /* v2.3.2500 / v2.3.2761 */
     }).catch((err) => console.warn('[chop-strip-legless] load failed', err));
     /* v2.3.2500: the two arrays above stay RAW on purpose -- they are what a
        PEER's lumberjack is drawn from (the SPEC table in
@@ -3093,7 +3103,7 @@ export class EffectsRenderer {
       /* Crop to the played frames FIRST, then recolour: the classifier labels
          connected blobs, and the cut lands on a frame boundary, so cropping
          changes no blob and costs half the canvas. */
-      /* v2.3.2749: _chopSrc holds the played frames ALREADY cropped (see the
+      /* v2.3.2761: _chopSrc holds the played frames ALREADY cropped (see the
          loader), so this copies it whole -- recolorStandInSkin must not write
          into the source a later skin change rebakes from. */
       const src = document.createElement('canvas');
@@ -3102,7 +3112,7 @@ export class EffectsRenderer {
       sctx.imageSmoothingEnabled = false;
       sctx.drawImage(img, 0, 0, FW * COUNT, FH, 0, 0, FW * COUNT, FH);
       const cv = recolorStandInSkin(src, skinT, FH);
-      /* v2.3.2749: the axe's copper and pine, AFTER the skin (the key is what
+      /* v2.3.2761: the axe's copper and pine, AFTER the skin (the key is what
          keeps the skin classifier off the axe). */
       recolorToolKeyCanvas(cv, TOOL_SPECS.axe);
       const source = Texture.from(cv).source;
@@ -3341,7 +3351,7 @@ export class EffectsRenderer {
     this._updateDamageNumbers(S, now);
     this._updateCatchFlights(S, viewW, viewH, now);
     this._updateFxBursts(S, now);   /* v2.3.1443 */
-    this._updateCookSmoke(now);     /* v2.3.2748 */
+    this._updateCookSmoke(now);     /* v2.3.2760 */
     /* v2.3.1735: guards internally on the strip being loaded. */
     try { this._updateWhirlVortex(S, now); } catch (e) { /* ditto */ }
     this._updateScreenFlash(S, viewW, viewH, now);
@@ -8181,7 +8191,7 @@ export class EffectsRenderer {
         if (!node._pixiSprite || node._pixiSprite.destroyed) {
           node._pixiSprite = new Sprite(spriteTex);
           node._pixiSprite.anchor.set(0.5, NODE_SPRITE_ANCHOR_Y[node.nodeType] ?? 0.5);
-          /* v2.3.2755: formShade.js -- trees, rocks and ore stand lit from
+          /* v2.3.2767: formShade.js -- trees, rocks and ore stand lit from
              above; a fishing spot is water, not a form, and is left alone */
           if (!/fish/i.test(String(node.nodeType))) node._pixiSprite._vShade = SHADE.prop;
           /* Add at bottom of nodeLayer so the tier badge, emoji, and
@@ -8256,8 +8266,12 @@ export class EffectsRenderer {
         }
         /* The ground line. The shared pass re-reads this every frame, but
            setting it here means a node is never sorted on a stale key in the
-           frame it first appears. */
-        node._pixiSprite.zIndex = Math.round(node.y || 0);
+           frame it first appears.  v2.3.2748: at the DRAWN base, not the
+           frame's bottom (NODE_ART_BASE). */
+        const _artBase = NODE_ART_BASE[node.nodeType];
+        node._pixiSprite._groundDy = _artBase != null
+          ? -(NODE_SPRITE_ANCHOR_Y[node.nodeType] - _artBase) * node._pixiSprite.height : 0;
+        node._pixiSprite.zIndex = Math.round((node.y || 0) + node._pixiSprite._groundDy);
       } else if (node.nodeType === 'tree') {
         /* v2.3.1275: procedural fallbacks get the same +50% as the
            sprites so nodes don't visibly shrink once textures resolve. */
@@ -8643,7 +8657,7 @@ export class EffectsRenderer {
    * Plays each queued S._fxBursts entry as a one-shot 8-frame strip at its
    * world point, then reaps it (sprite destroyed, entry spliced).  flip:-1
    * mirrors horizontally (wood chips fly away from the trunk). */
-  /* ═══ v2.3.2748: SMOKE OFF THE PAN WHILE YOU FLIP ═══
+  /* ═══ v2.3.2760: SMOKE OFF THE PAN WHILE YOU FLIP ═══
    * Owner: "As you perform the gesture on the right joystick you should add
    * resource or action specific effects (maybe wood chips for axe, rock debris
    * for mining, smoke for cooking, etc)."  Chips, debris and the splash are the
@@ -9792,7 +9806,7 @@ export class EffectsRenderer {
          explicit {fw:256, fh:256} against 128px art until P7 item 5),
          so the branch above carries the identical term, derived the
          same way — off the texture, never off a literal. */
-      const _gn = 256 / ((gearFrame.frame && gearFrame.frame.width) || 256);
+      const _gn = 256 / ((gearFrame.orig && gearFrame.orig.width) || (gearFrame.frame && gearFrame.frame.width) || 256);   /* v2.3.2750: orig -- the frame may be cropped (gearSheets packTrimmed) */
       /* v2.3.1772: ...and it keeps its METAL.  This layer draws real art (the
          jog sheets resolve their own variant inside getGearFrame), so unlike
          the strips above it was never invisible — it was hard-coded to white
@@ -11072,7 +11086,7 @@ export class EffectsRenderer {
        loop) — one splash roughly every 800ms so it reads as agitation,
        not a strobe.  v2.3.1445 (owner): reeling is the ONLY splash moment
        — the catch burst that applyFishingReward used to add is gone. */
-    /* v2.3.2748: 800 -> 480ms -- the reel is now ~3s of quick cranking, and
+    /* v2.3.2760: 800 -> 480ms -- the reel is now ~3s of quick cranking, and
        the splash is the fishing gesture's own effect (owner: "resource or
        action specific effects" as you perform the gesture). */
     if (ex.skill === 'fishing' && ex.status === 'ready'
@@ -11087,7 +11101,7 @@ export class EffectsRenderer {
        whole-attempt contract as the sizzle loop).  Anchored to the live
        marker pan when the flip cue is up, else to the baked pan the cook
        figure holds over the flames. */
-    /* ═══ v2.3.2748: AT `ready` THE PAN IS STILL UNTIL YOU FLIP IT ═══
+    /* ═══ v2.3.2760: AT `ready` THE PAN IS STILL UNTIL YOU FLIP IT ═══
        The grease stays constant through the wind-up (v2.3.1445, owner), but
        once the window opens the cook FREEZES until the first flick (owner:
        "stop animating until you perform the correct gesture"), and grease
@@ -11147,7 +11161,7 @@ export class EffectsRenderer {
       /* v2.3.2245: the chop follows the thumb once the window is open --
          one stroke on the button is one downswing, capped at one per 700ms
          (a leisurely chop); the wind-up before `ready` keeps the clock. */
-      const _gpC = gesturePose01(ex, now);   /* v2.3.2748: hand-paced; holds the raised axe until the first stroke */
+      const _gpC = gesturePose01(ex, now);   /* v2.3.2760: hand-paced; holds the raised axe until the first stroke */
       const k = (_gpC != null) ? Math.max(0, Math.min(CHOP_COUNT - 1, Math.floor(_gpC * CHOP_COUNT)))
         : Math.floor(now / CHOP_FRAME_MS) % CHOP_COUNT;
       const fi = Math.min(this._chopFrames.length - 1, CHOP_BASE + k);
@@ -11230,13 +11244,13 @@ export class EffectsRenderer {
          none).  Fires once per loop — only on the transition INTO the strike
          frame.  v2.3.848: reuse the melee 'sword-hit3' sample, delayed ~0.2s so
          it lands with the visible bite. */
-      /* v2.3.2748: CROSSING the strike frame, not landing on it.  At the pace
+      /* v2.3.2760: CROSSING the strike frame, not landing on it.  At the pace
          of a quick hand the chase can step over k=9 in one frame (8 -> 10),
          and an equality test would drop that chop's bite and chips. */
       const _chopL = (this._chopLastStatus === ex.status) ? this._chopLastFrame : -2;
       this._chopLastStatus = ex.status;
       if (_crossedFrame(_chopL, k, CHOP_STRIKE_K)) {
-        /* ═══ v2.3.2749: THE AXE SOUNDS LIKE AN AXE IN BARK ═══
+        /* ═══ v2.3.2761: THE AXE SOUNDS LIKE AN AXE IN BARK ═══
            Owner: "Play sound effect while specific actions occur like ...
            axe hitting tree bark."  The owner's own hatchet sample (axe-chop,
            two strikes at ~0.08s / ~1.10s, v2.3.1427) was wired to the
@@ -11308,7 +11322,7 @@ export class EffectsRenderer {
        first frame with the pick down (frames 0-3/11-13 hold it raised). */
     if (ex.skill === 'mining') {
       const _mfc = jogFrameCount('mine', 'south') || 14;
-      /* v2.3.2748: the frame the body is ACTUALLY showing.  This read the
+      /* v2.3.2760: the frame the body is ACTUALLY showing.  This read the
          clock loop even after the window opened, so once the swing followed
          the hand (v2.3.2245) the clink and the debris kept their own beat --
          and with the body now frozen at `ready` until the first stroke, they
@@ -11322,7 +11336,7 @@ export class EffectsRenderer {
       this._mineLastStatus = ex.status;
       /* Crossing frame 4, not landing on it -- a quick pump can step over it. */
       if (_crossedFrame(_mL, _mk, 4)) {
-        /* v2.3.2748: the slam's sparks, moved here from ExtractionSwipeLayer's
+        /* v2.3.2760: the slam's sparks, moved here from ExtractionSwipeLayer's
            onSlam (which fired on the recognizer's 40px threshold, not on the
            frame the pick lands) -- so they sit on the visible blow. */
         if (S.hitParticles && ex.status === 'ready') {
@@ -11385,7 +11399,7 @@ export class EffectsRenderer {
       /* v2.3.2245: the flip follows the thumb once the window is open (one
          up-flick on the button is one flip, capped at one per 1600ms -- the
          pan marker's own v2.3.1442 rate); the wind-up keeps the clock loop. */
-      const _gpK = gesturePose01(ex, now);   /* v2.3.2748: hand-paced; holds until the first flick */
+      const _gpK = gesturePose01(ex, now);   /* v2.3.2760: hand-paced; holds until the first flick */
       const cookFi = (_gpK != null) ? Math.max(0, Math.min(this._cookFrames.length - 1, Math.floor(_gpK * this._cookFrames.length)))
         : Math.floor(now / COOK_FRAME_MS) % this._cookFrames.length;
       /* v2.3.1114: when leg armour is equipped, use the legs-erased body so the
@@ -11502,7 +11516,7 @@ export class EffectsRenderer {
    * button can stand there indefinitely believing the game has stopped.
    *
    * v2.3.2514 stalled the bar at 95% and left the last sliver to the reps.
-   * v2.3.2748 (owner: "once it reaches the limit, the character is supposed
+   * v2.3.2760 (owner: "once it reaches the limit, the character is supposed
    * to stop animating until you perform the correct gesture") makes it two
    * full bars instead -- the wind-up fills to the top, the full bar FLASHES
    * while it waits for you, and the gesture's ~3s fill green over it.  The
@@ -11554,10 +11568,10 @@ export class EffectsRenderer {
        container units (entityRenderer), so this reads as the same family of
        object at a glance -- same width, slimmer, because it is a secondary
        meter and it must not be mistaken for health. */
-    const W = 50 * pscale, H = 9 * pscale;   /* v2.3.2748: 46x8 -> 50x9, see the contrast note below */
+    const W = 50 * pscale, H = 9 * pscale;   /* v2.3.2760: 46x8 -> 50x9, see the contrast note below */
     const x0 = cx - W / 2;
     let y0 = topY - 12 * pscale;
-    /* v2.3.2748: over the REAL body (mining, fishing) your name plate or HP
+    /* v2.3.2760: over the REAL body (mining, fishing) your name plate or HP
        bar is already on the band above the head -- lift the harvest bar
        clear of it (entityRenderer publishes the band's top).  The stand-ins
        stand elsewhere and wear no plate, so they keep their own anchor. */
@@ -11568,14 +11582,14 @@ export class EffectsRenderer {
     const r = Math.min(H / 2, 3 * pscale);
     /* track: the Lantern Slate `well` over a hairline border, the same trough
        every other meter in the game sits in (docs/LANTERN-SLATE-SPEC.md).
-       v2.3.2748: with a DARK outer edge as well.  On a phone capture in Frost
+       v2.3.2760: with a DARK outer edge as well.  On a phone capture in Frost
        Ridge a pale bar over white snow was simply not there, and a gold one
        over the town's sand barely was -- the well alone cannot separate a
        light fill from a light ground. */
     gfx.roundRect(x0, y0, W, H, r).fill({ color: 0x121B20, alpha: 0.85 });
     gfx.roundRect(x0, y0, W, H, r).stroke({ width: Math.max(1.5, 1.6 * pscale), color: 0x05080A, alpha: 0.85 });
     gfx.roundRect(x0, y0, W, H, r).stroke({ width: Math.max(1, pscale * 0.8), color: 0xEEF2EB, alpha: 0.22 });
-    /* ═══ v2.3.2748: TWO FULL BARS, NOT ONE THAT STALLS AT 95% ═══
+    /* ═══ v2.3.2760: TWO FULL BARS, NOT ONE THAT STALLS AT 95% ═══
        Owner: "a loading bar above their head indicating the progress of the
        animation.  Then, once it reaches the limit, the character is supposed
        to stop animating until you perform the correct gesture."  So:
@@ -11636,7 +11650,7 @@ export class EffectsRenderer {
       }
       this._debrisFx = [];
     }
-    /* v2.3.2748: and the cook's smoke puffs. */
+    /* v2.3.2760: and the cook's smoke puffs. */
     if (this._cookSmoke) {
       for (const p of this._cookSmoke) {
         if (p.sp && !p.sp.destroyed) { if (p.sp.parent) p.sp.parent.removeChild(p.sp); p.sp.destroy(); }

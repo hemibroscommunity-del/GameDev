@@ -236,7 +236,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     fire('pointerdown', cx, cy);
     const AMP = 95;
     let strokes = 0;
-    /* v2.3.2749: 40 -> 90 strokes -- the meter now wants ~6s of work
+    /* v2.3.2761: 40 -> 90 strokes -- the meter now wants ~6s of work
        (gesturePose GESTURE_TARGET_MS), ~29 strokes at the least. */
     for (let s = 0; s < 90; s++) {
       const dir = s % 2 === 0 ? 1 : -1;

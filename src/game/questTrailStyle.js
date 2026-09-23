@@ -33,7 +33,7 @@ const KEY = 'brotown_quest_path';
  * it names what you will SEE, because "Ribbon" and "Beads" mean nothing to
  * someone who has not yet turned them on. */
 export const TRAIL_STYLES = [
-  /* v2.3.2752: first, and the default -- see DEFAULT_TRAIL_STYLE */
+  /* v2.3.2764: first, and the default -- see DEFAULT_TRAIL_STYLE */
   { id: 'steps',  label: 'Footprints', hint: 'Glowing footsteps walking the way you should go' },
   { id: 'arrows', label: 'Arrows', hint: 'Chevrons pointing the way you should go' },
   { id: 'ribbon', label: 'Ribbon', hint: 'One flowing line, like a lit road' },
@@ -52,7 +52,7 @@ export const TRAIL_STYLES = [
  * Beads are still one tap away, and the owner's own word for them is why they
  * are not the default any more.
  */
-/* ═══ v2.3.2752: FOOTPRINTS, AND WHY THEY TAKE THE DEFAULT FROM ARROWS ═══
+/* ═══ v2.3.2764: FOOTPRINTS, AND WHY THEY TAKE THE DEFAULT FROM ARROWS ═══
  * Owner: "Instead of the chevron arrows can you make it look like indicator
  * footprints that fade towards the path you need to go?"
  * The argument above still holds -- the default must carry a DIRECTION at a

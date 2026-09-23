@@ -5,6 +5,7 @@
 import { Assets, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCount } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs; v2.3.2061: animated props */
 import { propsForZone, propFootprint, foregroundForZone } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
+import { propGroundFor, settleProfile, groundLineAt } from '../propGround.js'; /* v2.3.2748: a building's base, read off its art */
 import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale, zoneDepthScale } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
@@ -77,7 +78,7 @@ import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
+import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
 import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
 import { getPattern, parsePattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.1941 */
 import { hatHairFit } from '../traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
@@ -91,8 +92,8 @@ import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-shee
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
-import { SHADE } from '../formShade.js'; /* v2.3.2755: light from above on every figure and prop */
-import { fishRodAt, hasFishRodMask } from '../toolRecolor.js'; /* v2.3.2749: the rod is found by its recorded shape now that it is pine */
+import { SHADE } from '../formShade.js'; /* v2.3.2767: light from above on every figure and prop */
+import { fishRodAt, hasFishRodMask } from '../toolRecolor.js'; /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -340,7 +341,7 @@ if (typeof window !== 'undefined') window.__btForeground = () => _fgDrawn.slice(
    only; the rest are unnamed graphics. */
 let _entityLayerRef = null;
 let _frontLayerRef = null;
-/* ═══ v2.3.2756: WHAT THE LOCAL FIGURE IS MADE OF, AND HOW SHARP EACH PIECE IS ═══
+/* ═══ v2.3.2768: WHAT THE LOCAL FIGURE IS MADE OF, AND HOW SHARP EACH PIECE IS ═══
    Owner: "The character also looks soft compared to the art he's wearing like
    sword or shirt."  Softness is a number: how many DEVICE pixels each texel
    of a piece is stretched over.  1 is crisp; 2 is every texel smeared over
@@ -402,11 +403,43 @@ if (typeof window !== 'undefined') {
     take(_frontLayerRef);
     return out;
   };
+  /* v2.3.2748: `y` is the GROUND line now -- a peer's is their feet, not
+     their display.y (see depthSort groundOf) -- and `raised` marks a figure
+     lifted over a building it stands in front of (depthSort raiseOverProps),
+     whose key is deliberately NOT its own ground line. */
   window.__btEntityDepth = () => (_entityLayerRef
     ? _entityLayerRef.children
       .filter((c) => c && c.label)
-      .map((c) => ({ label: c.label, y: Math.round(c.y), z: c.zIndex, visible: !!c.visible }))
+      .map((c) => ({ label: c.label, y: Math.round(c.y + (c._groundDy || 0)), z: c.zIndex,
+        visible: !!c.visible, raised: c._raiseTo != null }))
     : null);
+  /* v2.3.2748: the whole draw order of the two sorted layers -- the entity
+     layer under the player, then the front layer over him -- so a test can
+     ask "is A drawn after B" without knowing which side of the player each
+     one is on this frame. */
+  window.__btDepthOrder = () => {
+    const out = [];
+    const take = (layer, rank) => { if (!layer) return;
+      layer.children.forEach((c, i) => { if (c && c.label) out.push({ label: c.label, layer: layer.label, rank, index: i, z: c.zIndex }); }); };
+    take(_entityLayerRef, 0);
+    take(_frontLayerRef, 1);
+    return out;
+  };
+  /* v2.3.2748: a prop's base where a figure at world x would stand, and
+     whether its column profile has been read off the art yet (propGround.js). */
+  window.__btPropGround = (id, x) => {
+    const layers = [_entityLayerRef, _frontLayerRef];
+    for (const l of layers) {
+      if (!l) continue;
+      for (const c of l.children) {
+        const g = c && c._propGround;
+        if (!g || g.id !== id) continue;
+        return { id, base: g.base, profiled: !!g.bottoms, line: Number.isFinite(x) ? groundLineAt(g, x) : null,
+          halfW: g.halfW, footprint: g.fp, layer: c.parent && c.parent.label };
+      }
+    }
+    return null;
+  };
 }
 if (typeof window !== 'undefined') window.__btNpcSprites = () => Object.values(_npcDrawn);
 /* v2.3.2083: the peer half of __btPlayerDrawn — see the note at the peer draw
@@ -2094,7 +2127,10 @@ function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
          assuming 256 -- gearSheets now stores display-sized (exact-texel)
          sheets when the art ships at 128 on disk, and this factor is what
          keeps both generations rendering at the identical world size. */
-      const _gnorm = 256 / ((tex.frame && tex.frame.width) || 256);
+      /* v2.3.2750: ORIG, not frame -- a cropped gear frame's `frame` is just
+         the crop; `orig` is the whole frame it was cut from (gearSheets
+         packTrimmed).  For an uncropped texture the two are equal. */
+      const _gnorm = 256 / ((tex.orig && tex.orig.width) || (tex.frame && tex.frame.width) || 256);
       spr.scale.x = sb.scale.x * _gnorm / DISPLAY_DS; spr.scale.y = sb.scale.y * _gnorm / DISPLAY_DS;
       if (_GEAR_SLOTS[s][0] === 'shirt') {
         /* v2.3.1941: a dressed bake already HAS the colour in its pixels. */
@@ -2375,9 +2411,9 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
     dilCtx.imageSmoothingEnabled = false;
     for (const w of worn) {
       const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
-      const gf = gt.frame;
+      /* v2.3.2750: drawGearFrame places a cropped frame at its own offset. */
       for (let dx = -dilate; dx <= dilate; dx++)
-        dilCtx.drawImage(gr, gf.x, gf.y, gf.width, gf.height, dx, 0, 256, 256);
+        drawGearFrame(dilCtx, gt, dx, 0, 256, 256);
     }
     ctx.globalCompositeOperation = 'destination-out';   // erase body under the armour
     /* v2.3.1073: only dilate the erase DOWNWARD when a leg plate is also worn to
@@ -2407,7 +2443,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
        (natural), but the halo-cut section beyond the plate reappears. */
     if (origBody) {
       try {
-        /* v2.3.2749: the rod is PINE now (toolRecolor.js -- the owner asked
+        /* v2.3.2761: the rod is PINE now (toolRecolor.js -- the owner asked
            for the magenta key to become a real material), so it can no longer
            be found by colour: its shape was recorded from the key as the
            sheet loaded, and this asks that.  The magenta test stays as the
@@ -2635,8 +2671,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
       let wornChest = false, wornLegs = false;
       for (const w of worn) {
         const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
-        const gf = gt.frame;
-        sctx.drawImage(gr, gf.x, gf.y, gf.width, gf.height, 0, 0, 256, 256);
+        drawGearFrame(sctx, gt, 0, 0, 256, 256);   /* v2.3.2750: cropped frames */
         if (w.k && w.k.indexOf('chest:') === 0) wornChest = true;
         if (w.k && w.k.indexOf('legs:') === 0) wornLegs = true;
       }
@@ -2834,8 +2869,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
                  waist band below (d2[o] = bd[o]), so a bilinear belt sheet
                  painted bilinear chain straight into the finished frame. */
               bctx.imageSmoothingEnabled = false;
-              const bfr = bt.frame;
-              bctx.drawImage(br, bfr.x, bfr.y, bfr.width, bfr.height, 0, 0, 256, 256);
+              drawGearFrame(bctx, bt, 0, 0, 256, 256);   /* v2.3.2750: cropped frames */
               const bd = bctx.getImageData(0, 0, 256, 256).data;
               const _score = (R, G, B, T) => { const nn = T[0] * T[0] + T[1] * T[1] + T[2] * T[2] || 1; const dt = R * T[0] + G * T[1] + B * T[2]; return dt * dt / nn; };
               const { skinRef, pantsRef, shoesRef } = _bakeRefs;
@@ -3518,7 +3552,7 @@ function _fishTopFrame(bodyTex) {
        test would work for one skin tone and quietly fail for the rest. */
     const GRIP_R = Math.max(4, Math.round(H * 0.055));
     const rodXs = [], rodYs = [];
-    /* v2.3.2749: by the recorded shape, not the colour -- see the same note in
+    /* v2.3.2761: by the recorded shape, not the colour -- see the same note in
        _maskedBodyFrameInner.  The frame index is where this frame sits in its
        strip (every body sheet lays frames out at i * width). */
     const _rodF = hasFishRodMask() ? Math.round(bf.x / Math.max(1, bf.width)) : null;
@@ -4802,7 +4836,7 @@ function createMonsterDisplay(monster) {
 
   container._body = body;
   container._spriteBody = spriteBody;
-  if (spriteBody) { spriteBody._vShade = SHADE.figure; spriteBody._noSharp = true; }   /* v2.3.2755: formShade.js, across its own quad; v2.3.2758: not sharpened (sharpPixels.js is for the pixel-art figures) */
+  if (spriteBody) { spriteBody._vShade = SHADE.figure; spriteBody._noSharp = true; }   /* v2.3.2767: formShade.js, across its own quad; v2.3.2770: not sharpened (sharpPixels.js is for the pixel-art figures) */
   container._isFodder = isFodder;
   container._variantKey = variantKey;
   container._isSnowman = isSnowman;
@@ -4923,6 +4957,22 @@ function _feetOffsetUnits(display) {
    display.y would hang in the air at the figure's waist (lightfx/casters.js). */
 export function figureFeetY(display) {
   return display.y + _feetOffsetUnits(display) * display.scale.y;
+}
+/* ═══ v2.3.2748: THE SAME DROP, FOR CODE THAT HAS NO FIGURE IN HAND ═══
+   How far below a player's POSITION (S.player.y, a peer's y) their boots are
+   drawn, in world px: ~52 at the scale of every zone that has props.  The
+   position is the body's CENTRE -- v2.3.822 measured the same thing from the
+   other side ("its body extends ~57 world-px BELOW P.y") -- so anything that
+   asks where a player TOUCHES THE GROUND has to add this.  Movement asks it
+   (a prop stops your feet, not your waist) and so does the depth sort.
+
+   A standing, south-facing, medium-build figure: the build lift cancels out
+   (_applyBuildScale pins the boots, so a tall bro's feet are where a medium
+   one's are), the per-facing spread is under a world px, and a collision
+   edge that moved with the walk cycle would jitter against every wall. */
+const _STAND_SOUTH = { _animPose: 'stand', _animDir: 'south' };
+export function playerGroundDy(zoneId, x, y) {
+  return _feetOffsetUnits(_STAND_SOUTH) * zonePlayerScale(zoneId, x, y, TILE) * PLAYER_SIZE_MULT;
 }
 function _applyBuildScale(display, pscale, heightId, frameId) {
   const b = buildScale(heightId, frameId);
@@ -6780,7 +6830,7 @@ function createPlayerDisplay() {
 
   container._body = body;
   container._spriteBody = spriteBody;
-  /* v2.3.2755: formShade.js -- every sprite in this figure takes the same
+  /* v2.3.2767: formShade.js -- every sprite in this figure takes the same
      gradient, measured over the body frame's head-to-feet span */
   container._vShadeRef = spriteBody;
   container._vShadeKids = SHADE.figure;
@@ -7060,7 +7110,7 @@ function createOtherPlayerDisplay() {
 
   container._body = body;
   container._spriteBody = spriteBody;
-  /* v2.3.2755: formShade.js -- every sprite in this figure takes the same
+  /* v2.3.2767: formShade.js -- every sprite in this figure takes the same
      gradient, measured over the body frame's head-to-feet span */
   container._vShadeRef = spriteBody;
   container._vShadeKids = SHADE.figure;
@@ -9739,6 +9789,10 @@ export class EntityRenderer {
            UNLIFTED y above, because _zonePscale reads the position to work out
            how far up a vista map he is standing; the lift is applied after. */
         display.y += _applyBuildScale(display, pscale, other.buildHeight, other.buildFrame);
+        /* v2.3.2748: a peer is drawn centred on display.y like you are, so the
+           depth pass is told how far below it their boots are -- sorted on
+           display.y, a peer standing in front of a bench drew behind it. */
+        display._groundDy = _feetOffsetUnits(display) * display.scale.y;
       }
 
       /* v2.3.1917: health bar for a peer in a fight — see _drawPeerHpBar.
@@ -10619,7 +10673,7 @@ export class EntityRenderer {
       ? this.gestureLayer : this.playerLayer;
     if (!this.playerDisplay || this.playerDisplay.destroyed) {
       this.playerDisplay = createPlayerDisplay();
-      _selfDisplayRef = this.playerDisplay;   /* v2.3.2756: __btSelfSprites */
+      _selfDisplayRef = this.playerDisplay;   /* v2.3.2768: __btSelfSprites */
       _bodyLayer.addChild(this.playerDisplay);
     } else if (this.playerDisplay.parent !== _bodyLayer) {
       /* Defensive re-attach.  Something on zone change was detaching
@@ -11442,7 +11496,7 @@ export class EntityRenderer {
            leisurely pace and a still thumb holds the pose.  The wind-up
            before the window opens keeps the clock loop -- a frozen figure
            for up to ten seconds reads as a hang (control-redesign.md §5.11). */
-        /* v2.3.2748: no leisurely cap any more -- the swing plays at the
+        /* v2.3.2760: no leisurely cap any more -- the swing plays at the
            speed of the hand, and at `ready` with no stroke yet it HOLDS the
            raised pose (phase 0) instead of looping: the owner's "stop
            animating until you perform the correct gesture". */
@@ -11457,7 +11511,7 @@ export class EntityRenderer {
         /* v2.3.2245: the reel drives the sway -- one finger-circle on the
            button is one turn of the sway loop, capped at ~one turn per 450ms
            (the same cap the reel marker has had since v2.3.1435). */
-        const _gpF = gesturePose01(S._extraction, now);   /* v2.3.2748: hand-paced, holds when still */
+        const _gpF = gesturePose01(S._extraction, now);   /* v2.3.2760: hand-paced, holds when still */
         frameIdx = (_gpF != null) ? Math.max(0, Math.min(fc - 1, Math.floor(_gpF * fc)))
           : Math.floor((now / cycle) * fc) % fc;
       } else if (pose === 'dodge') {
@@ -13304,7 +13358,7 @@ export class EntityRenderer {
          -- a plate that waited for a true 0 would never come back. */
       if (_barA > 0.01) display._namePill.visible = false;
     }
-    /* ═══ v2.3.2748: WHERE THE BAND LINE'S TOP IS, FOR THE HARVEST BAR ═══
+    /* ═══ v2.3.2760: WHERE THE BAND LINE'S TOP IS, FOR THE HARVEST BAR ═══
        The harvest wind-up bar (effectsRenderer _drawWindupBar) goes "above the
        head" -- and over YOUR head there is always something on this band: the
        name plate at rest, the HP bar in a fight.  Measured on a real capture
@@ -13461,6 +13515,7 @@ export class EntityRenderer {
   _updateProps(S) {
     if (typeof window !== 'undefined') _entityLayerRef = this.entityLayer;
     const props = propsForZone(S.currentZone);
+    this._propFrameNo = (this._propFrameNo || 0) + 1;   /* v2.3.2748: settleProfile's one-per-frame budget */
 
     /* id -> prop, so the probe below can ask for a footprint by the same id
        the display map is keyed on. */
@@ -13477,7 +13532,7 @@ export class EntityRenderer {
            convention the NPC figures' feet use. */
         spr.anchor.set(0.5, 1);
         spr.label = `prop_${p.id}`;
-        spr._vShade = SHADE.prop;   /* v2.3.2755: formShade.js */
+        spr._vShade = SHADE.prop;   /* v2.3.2767: formShade.js */
         this.entityLayer.addChild(spr);
         this.propDisplays.set(p.id, spr);
       }
@@ -13519,6 +13574,14 @@ export class EntityRenderer {
       spr.x = p.x;
       spr.y = p.y;
       spr.visible = spr.texture !== Texture.EMPTY;
+      /* v2.3.2748: where this prop's art meets the ground, column by column,
+         for the depth pass -- the town's buildings are drawn isometric, so
+         beside one the base is the wall next to you, not the front step
+         (propGround.js).  Measured once, one prop per frame. */
+      if (spr.visible) {
+        const _g = propGroundFor(spr, p, propFootprint(p));
+        if (!_g.tried) settleProfile(_g, spr.texture, this._propFrameNo);
+      }
       /* v2.3.2635: the front/back choice that lived here now happens for
          EVERY ground-standing object at once, in the frame loop's single
          depth pass (rendering/depthSort.js) -- props were the only things
@@ -13837,7 +13900,7 @@ export class EntityRenderer {
           fig.anchor.set(0.5, NPC_FRAME_FEET_Y / 256);
           fig.scale.set(npcSpriteScale(npc.sprite));
           display.addChildAt(fig, 0);      // behind the bars and labels
-          fig._vShade = SHADE.figure;      /* v2.3.2755: formShade.js */
+          fig._vShade = SHADE.figure;      /* v2.3.2767: formShade.js */
           display._fig = fig;
           display._figSrc = npc.sprite;
         }

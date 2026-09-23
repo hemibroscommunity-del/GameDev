@@ -132,10 +132,10 @@ const TRAIL_NEAR_TILES = 1.4;   /* no motes under your own feet */
  * about the shape drawn on it. */
 const TRAIL_STEP_ARROW = 1.3;   /* tiles between chevrons */
 const TRAIL_STEP_RIBBON = 0.28; /* sampling step, not a gap */
-/* v2.3.2752: one footstep to the next -- a stride is two of these, left and
+/* v2.3.2764: one footstep to the next -- a stride is two of these, left and
    right, so this is how far apart consecutive prints land along the road. */
 const TRAIL_STEP_FOOT = 0.62;
-/* ═══ v2.3.2752: THE FOOTPRINT, PAINTED ONCE ═══
+/* ═══ v2.3.2764: THE FOOTPRINT, PAINTED ONCE ═══
    A left bare foot pointing +x, big toe toward +y.  Drawn at 2x the size it
    lands on a phone so it stays crisp when the camera zooms.  Ink halo from
    the canvas shadow (the dark backing every road style needs on town's gold
@@ -167,7 +167,7 @@ function footprintTexture() {
   };
   /* ink halo: the shapes filled in ink with a soft shadow of the same ink */
   c.save();
-  /* v2.3.2755: a notch heavier -- the first shot of these on town's cobble
+  /* v2.3.2767: a notch heavier -- the first shot of these on town's cobble
      read a little washed out at the far end of the fade */
   c.shadowColor = 'rgba(13,21,26,1)'; c.shadowBlur = 7;
   c.fillStyle = hex(TRAIL_INK);
@@ -253,7 +253,7 @@ export class TileRenderer {
        disc or a disc plus a line to the corner" is one number. */
     this.lensGfx = new Graphics();
     this.layer.addChild(this.overlayGfx);
-    /* v2.3.2752: the footprint road's sprites, just above the overlay it
+    /* v2.3.2764: the footprint road's sprites, just above the overlay it
        replaces the chevrons on (see _trailSteps) */
     this._footLayer = new Container();
     this._footLayer.label = 'questFootprints';
@@ -1038,7 +1038,7 @@ export class TileRenderer {
        the painted artwork.  Other zones use a tighter rectangle since
        the procedural ground tiles already provide visual contrast. */
     this.overlayGfx.clear();
-    /* v2.3.2752: the footprints are sprites, not overlay paths, so "clear"
+    /* v2.3.2764: the footprints are sprites, not overlay paths, so "clear"
        for them is hiding the pool; _trailSteps shows what it uses. */
     for (const sp of this._footPool) sp.visible = false;
     /* ═══ v2.3.2121: THE ROUTE IS READ ONCE, FOR BOTH USERS ═══
@@ -1427,7 +1427,7 @@ export class TileRenderer {
          between visible and not, so each keeps most of its brightness:
          distance costs 45%, the shimmer swings 20%. */
       const falloff = 1 - 0.45 * (d / (TRAIL_TILES * TILE));
-      /* v2.3.2752: footprints carry their own motion (the walk, in
+      /* v2.3.2764: footprints carry their own motion (the walk, in
          _trailSteps), so they skip the shimmer rather than stack two
          animations on one mark. */
       const wave = style === 'steps' ? 1 : 0.8 + 0.2 * Math.sin((t / TRAIL_TILES - phase) * Math.PI * 2);
@@ -1444,7 +1444,7 @@ export class TileRenderer {
     this._trailBeads(samples);
   }
 
-  /* ═══ v2.3.2752: FOOTPRINTS ═══
+  /* ═══ v2.3.2764: FOOTPRINTS ═══
      Owner: "Instead of the chevron arrows can you make it look like indicator
      footprints that fade towards the path you need to go?"
 

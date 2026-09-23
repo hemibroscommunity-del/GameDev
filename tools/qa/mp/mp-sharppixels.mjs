@@ -1,4 +1,4 @@
-/* ═══ SHARP PIXELS ON THE CHARACTERS (v2.3.2758) ═══
+/* ═══ SHARP PIXELS ON THE CHARACTERS (v2.3.2770) ═══
  *
  * Owner: "The character also looks soft compared to the art he's wearing like
  * sword or shirt ... is there an enhancement you can do for that?"
