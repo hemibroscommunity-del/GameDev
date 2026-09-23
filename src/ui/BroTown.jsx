@@ -54,7 +54,7 @@ import { TouchControls, RBTN_BODY_BG, RBTN_BODY_BG_HOT, RKNOB_BG, RKNOB_BG_HOT }
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
-import { GESTURE_TOOL_URLS, gestureDemo01, gestureCue01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245: the tool strips the button face plays; gestureDemo01 v2.3.2384; extractionMeter01 v2.3.2514 (shared with the bar above the head) */
+import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the bar above the head) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 
@@ -152,6 +152,7 @@ import { MayorGreeting } from './MayorGreeting.jsx';
    NOT the greeting video above — see welcomeBanner.js for why those are
    different asks. */
 import { maybeShowWelcome } from '@/game/welcomeBanner.js';
+import { markWorldIn } from '@/ui/onboardingPace.js'; /* v2.3.2766: one onboarding voice at a time */
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
 
@@ -443,7 +444,8 @@ import { resolveDashSide, screenAngle } from '../game/dashSidePref.js'; /* v2.3.
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
 import { stampSheetH } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h joins --dash-h under resize() + the watchdog */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
-import { buildingPropNear } from '@/data/worldProps.js'; /* v2.3.1778: building doors */
+import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2748: + the footprints your feet stop at */
+import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
  * The server holds the surge as a flat amount PER REGEN TICK (660 ms); this
@@ -1924,6 +1926,15 @@ export var BroTown = function BroTown(_ref0) {
        numbers rather than a copy of them that drifts. */
     window.__QUEST_MSG_LONG_MS = QUEST_MSG_LONG_MS;
     window.__questMsgMs = questMsgMs;
+    /* v2.3.2766: when the plate on screen (or the last one queued behind it)
+       will be gone -- onboardingPace.js keeps the coach and the install card
+       off the screen until then, so a new player gets one voice at a time. */
+    window.__btQuestMsgUntil = function () {
+      var c = questMsgRef.current;
+      var until = c ? c.ts + questMsgMs(c.kind) : 0;
+      if (questQueueRef.current.length) until = Math.max(until, Date.now() + 1000);
+      return until;
+    };
   }
   var _useState185 = useState(1),
     _useState186 = _slicedToArray(_useState185, 2),
@@ -4114,10 +4125,18 @@ export var BroTown = function BroTown(_ref0) {
       var _npcs = S.npcs;
       if (_npcs && _npcs.length) {
         var _pp = S.player;
+        /* ═══ v2.3.2748: HIS FEET AGAINST YOURS ═══
+           An NPC's position is his feet; yours is your body's CENTRE, ~52 px
+           above your boots (playerGroundDy).  Measured centre-to-feet, walking
+           up behind the blacksmith stopped your waist at his feet -- your boots
+           ended up past his, in front of him -- and the depth pass, which now
+           reads your feet, would draw you over a man you walked into from
+           behind.  Feet to feet, the radius means what it says. */
+        var _nfdy = playerGroundDy(S.currentZone, px, py);
         for (var _ni = 0; _ni < _npcs.length; _ni++) {
           var _n = _npcs[_ni];
           if (!_n || _n.alive === false || _n.x == null || _n.y == null) continue;
-          var _ndx = px - _n.x, _ndy = py - _n.y;
+          var _ndx = px - _n.x, _ndy = py + _nfdy - _n.y;
           if (_ndx * _ndx + _ndy * _ndy >= NPC_BLOCK_R2) continue;
           /* NEVER TRAP SOMEONE ALREADY INSIDE.  A pure position test would seal
              a player who ends up within the radius by any route that skips
@@ -4129,7 +4148,7 @@ export var BroTown = function BroTown(_ref0) {
              So the block only applies from OUTSIDE: if you are already inside,
              every step is allowed and you simply walk free. */
           if (_pp) {
-            var _cdx = _pp.x - _n.x, _cdy = _pp.y - _n.y;
+            var _cdx = _pp.x - _n.x, _cdy = _pp.y + _nfdy - _n.y;
             if (_cdx * _cdx + _cdy * _cdy < NPC_BLOCK_R2) continue;
           }
           return true;
@@ -4202,6 +4221,48 @@ export var BroTown = function BroTown(_ref0) {
        Attached once per mount (this is the game-loop SETUP effect, not the
        tick), so it costs one property write. */
     if (typeof window !== 'undefined') window.__btIsSolid = (px, py) => isSolid(px, py);
+    /* ═══ v2.3.2748: A PROP STOPS YOUR FEET, NOT JUST YOUR WAIST ═══
+       Owner: "really bad at detecting contact ... Jogging against a prop seems
+       to be some of the most problematic."
+
+       isSolid tests a box round S.player -- your body's CENTRE -- against the
+       footprints stamped into the walk grid.  Your boots are ~52 px below it
+       (playerGroundDy), so walking into a prop from BEHIND stopped your waist
+       at its back edge with your feet 52 px further on: straight through a
+       bench (34 px deep), out the front of it, and standing on the cobbles
+       south of it while the bench was drawn over your chest.  That is
+       screenshot two.
+
+       So a step is also refused if it would put your FEET inside a
+       footprint.  The waist test stays exactly as it was, and deliberately:
+       a prop's cover against attacks reads the same point
+       (worldProps.attackBlocked, and the worker's copy in server/src/props.js
+       -- "an endpoint inside a box never counts"), so letting the body centre
+       into a footprint from the SOUTH would open a hole in the cover of every
+       rock a player hugs.  The price is the gap that was always there when
+       you walk up to a building's FRONT: your waist still stops at its base.
+
+       Only a step that goes DEEPER into a footprint is refused -- the rule
+       _nodeBlock and _monBlock keep -- so a player a knockback or a spawn left
+       standing in one can always walk back out. */
+    var _boxDepth = function (x, y, b, h) {
+      return Math.min(x + h - b.x0, b.x1 - (x - h), y + h - b.y0, b.y1 - (y - h));
+    };
+    var propFeetBlocked = function (curX, curY, px, py, h) {
+      var bx = zoneBlockers(S.currentZone);
+      if (!bx || !bx.length) return false;
+      var fdy = playerGroundDy(S.currentZone, px, py);
+      var fy = py + fdy, cfy = curY + fdy;
+      for (var i = 0; i < bx.length; i++) {
+        var b = bx[i];
+        if (px + h <= b.x0 || px - h >= b.x1 || fy + h <= b.y0 || fy - h >= b.y1) continue;
+        var inNow = !(curX + h <= b.x0 || curX - h >= b.x1 || cfy + h <= b.y0 || cfy - h >= b.y1);
+        if (!inNow) return true;
+        if (_boxDepth(px, fy, b, h) > _boxDepth(curX, cfy, b, h)) return true;
+      }
+      return false;
+    };
+    if (typeof window !== 'undefined') window.__btPropFeetBlocked = (cx, cy, px, py) => propFeetBlocked(cx, cy, px, py, 10);
     var _gameLoop = function gameLoop() {
       frameRef.current = requestAnimationFrame(_gameLoop);
       try {
@@ -4597,8 +4658,10 @@ export var BroTown = function BroTown(_ref0) {
                  post the player through a cliff to reach something. */
               var _bhs = 12;
               var _moved = false;
-              if (!isSolid(_bnx - _bhs, S.player.y - _bhs) && !isSolid(_bnx + _bhs, S.player.y + _bhs)) { S.player.x = _bnx; _moved = true; }
-              if (!isSolid(S.player.x - _bhs, _bny - _bhs) && !isSolid(S.player.x + _bhs, _bny + _bhs)) { S.player.y = _bny; _moved = true; }
+              if (!isSolid(_bnx - _bhs, S.player.y - _bhs) && !isSolid(_bnx + _bhs, S.player.y + _bhs)
+                && !propFeetBlocked(S.player.x, S.player.y, _bnx, S.player.y, _bhs)) { S.player.x = _bnx; _moved = true; }   /* v2.3.2748: + the feet */
+              if (!isSolid(S.player.x - _bhs, _bny - _bhs) && !isSolid(S.player.x + _bhs, _bny + _bhs)
+                && !propFeetBlocked(S.player.x, S.player.y, S.player.x, _bny, _bhs)) { S.player.y = _bny; _moved = true; }
               /* Blocked on BOTH axes: a wall is between you and the target and
                  no amount of window will get you there.  Strike from here
                  rather than grinding against the geometry for the rest of the
@@ -4908,21 +4971,25 @@ export var BroTown = function BroTown(_ref0) {
         var _nodeBlock = function (curX, curY, px, py) {
           var ns = S.gatherNodes;
           if (!ns) return false;
+          /* v2.3.2748: the trunk against your FEET, not your waist -- the same
+             fault and the same fix as the NPC radius (isSolid): from behind a
+             tree your boots used to walk ~52 px past the trunk's base. */
+          var _tfdy = playerGroundDy(S.currentZone, px, py);
           for (var _ni = 0; _ni < ns.length; _ni++) {
             var _e = nodeBlockEllipse(S, ns[_ni]);
             if (!_e) continue;
             var _rx = _e.rx + hs, _ry = _e.ry + hs;
-            var _ex = (px - _e.x) / _rx, _ey = (py - _e.y) / _ry;
+            var _ex = (px - _e.x) / _rx, _ey = (py + _tfdy - _e.y) / _ry;
             var _d2 = _ex * _ex + _ey * _ey;
             if (_d2 < 1) {
-              var _cx = (curX - _e.x) / _rx, _cy = (curY - _e.y) / _ry;
+              var _cx = (curX - _e.x) / _rx, _cy = (curY + _tfdy - _e.y) / _ry;
               if (_d2 < _cx * _cx + _cy * _cy) return true;
             }
           }
           return false;
         };
-        if (!isSolid(nx - hs, P.y - hs) && !isSolid(nx + hs, P.y - hs) && !isSolid(nx - hs, P.y + hs) && !isSolid(nx + hs, P.y + hs) && !_monBlock(P.x, P.y, nx, P.y) && !_nodeBlock(P.x, P.y, nx, P.y)) P.x = nx;
-        if (!isSolid(P.x - hs, ny - hs) && !isSolid(P.x + hs, ny - hs) && !isSolid(P.x - hs, ny + hs) && !isSolid(P.x + hs, ny + hs) && !_monBlock(P.x, P.y, P.x, ny) && !_nodeBlock(P.x, P.y, P.x, ny)) P.y = ny;
+        if (!isSolid(nx - hs, P.y - hs) && !isSolid(nx + hs, P.y - hs) && !isSolid(nx - hs, P.y + hs) && !isSolid(nx + hs, P.y + hs) && !_monBlock(P.x, P.y, nx, P.y) && !_nodeBlock(P.x, P.y, nx, P.y) && !propFeetBlocked(P.x, P.y, nx, P.y, hs)) P.x = nx;   /* v2.3.2748: + the feet */
+        if (!isSolid(P.x - hs, ny - hs) && !isSolid(P.x + hs, ny - hs) && !isSolid(P.x - hs, ny + hs) && !isSolid(P.x + hs, ny + hs) && !_monBlock(P.x, P.y, P.x, ny) && !_nodeBlock(P.x, P.y, P.x, ny) && !propFeetBlocked(P.x, P.y, P.x, ny, hs)) P.y = ny;
         /* Apply ice slide */
         if (S._slideVx || S._slideVy) {
           /* v2.3.1769: _slideVx is a velocity in px per 60fps-frame (it is
@@ -4931,8 +4998,8 @@ export var BroTown = function BroTown(_ref0) {
           var _slideDt = S._dtScale || 1;
           var sx = P.x + (S._slideVx || 0) * _slideDt,
             sy = P.y + (S._slideVy || 0) * _slideDt;
-          if (!isSolid(sx - hs, P.y - hs) && !isSolid(sx + hs, P.y + hs) && !_monBlock(P.x, P.y, sx, P.y) && !_nodeBlock(P.x, P.y, sx, P.y)) P.x = sx;
-          if (!isSolid(P.x - hs, sy - hs) && !isSolid(P.x + hs, sy + hs) && !_monBlock(P.x, P.y, P.x, sy) && !_nodeBlock(P.x, P.y, P.x, sy)) P.y = sy;
+          if (!isSolid(sx - hs, P.y - hs) && !isSolid(sx + hs, P.y + hs) && !_monBlock(P.x, P.y, sx, P.y) && !_nodeBlock(P.x, P.y, sx, P.y) && !propFeetBlocked(P.x, P.y, sx, P.y, hs)) P.x = sx;
+          if (!isSolid(P.x - hs, sy - hs) && !isSolid(P.x + hs, sy + hs) && !_monBlock(P.x, P.y, P.x, sy) && !_nodeBlock(P.x, P.y, P.x, sy) && !propFeetBlocked(P.x, P.y, P.x, sy, hs)) P.y = sy;
         }
         /* v2.3.1110: PUSH-OUT -- _monBlock only stops the player moving
            deeper; a server-driven monster can still walk INTO the player
@@ -5162,7 +5229,7 @@ export var BroTown = function BroTown(_ref0) {
            filling with reps.  Imperative DOM writes rather than React state
            because these change every frame while the loop already runs. */
         {
-          var _lbl = rLabelRef.current, _cue = rCueRef.current, _ring = rRingRef.current;
+          var _lbl = rLabelRef.current, _ring = rRingRef.current;
           var _hint = rHintRef.current;   /* v2.3.2384 */
           var _ex = S._extraction;
           var _cands = S._targetCands || [];
@@ -5225,78 +5292,83 @@ export var BroTown = function BroTown(_ref0) {
             else _want = 'ATTACK';
             if (_lbl.textContent !== _want) _lbl.textContent = _want;
           }
-          /* v2.3.2384: ONE phase for the tool strip AND the finger cue below,
-             read from the CHASED value (_posF) that gesturePose01 has already
-             written this frame from either the thumb or the new idle demo.
-             Three things follow.  The strip now plays on its own while nobody
-             is swiping, which is the whole request -- it was frozen on cell 0
-             until the player already made the gesture.  It shows the same
-             frame of the same swing as the BODY, which reads _posF too (before
-             this the strip read the raw phase and the body the chased one, so
-             the two drifted apart by up to one cycle).  And the finger and the
-             tool cannot disagree, because there is only one number.
-
-             Hoisted OUT of `if (_cue)` because the finger needs it too, and a
-             second gestureDemo01 call would be a second read of the same
-             clock a fraction of a millisecond later. */
+          /* ═══ v2.3.2760: THE CUE -- A MINI TOOL, STILL AND FLASHING UNTIL YOU MOVE ═══
+             Owner: "before the player performs the gesture the starting spot of
+             the cue should be static but flash.  An effect should show you
+             which way the cue should move ... the cue was a mini sprite of the
+             tool being used."
+             gestureCueFace (gesturePose.js) owns every number; this only stamps
+             them.  The phase is the CHASED value (_posF) the renderer has
+             already written this frame -- the same number the character's
+             frames come from -- so the tool under the thumb and the body move
+             as one.  Until the first stroke it is 0 and the tool waits at the
+             start of its track (idle: flashing, chevrons, a comet running the
+             motion).  Every attribute write is guarded against its own last
+             value: this runs every frame of every harvest, and a setAttribute
+             on an SVG is a style invalidation even when the string is the same
+             (the v2.3.2330 reason the ring caches its radius). */
           var _gPhase = null;
           if (_ex && _ex.status === 'ready') {
-            var _demo01 = gestureDemo01(_ex, Date.now());
             _gPhase = Math.max(0, Math.min(0.9999,
-              (_ex._posF != null) ? _ex._posF
-                : (_demo01 != null ? _demo01 : (_ex.cueFrame01 || 0))));
+              (_ex._posF != null) ? _ex._posF : (_ex.cueFrame01 || 0)));
           }
-          if (_cue) {
-            if (_gPhase != null && GESTURE_TOOL_URLS[_ex.skill]) {
-              var _url = 'url(' + GESTURE_TOOL_URLS[_ex.skill] + ')';
-              if (_cue.style.backgroundImage !== _url) _cue.style.backgroundImage = _url;
-              /* The strip is 8 cells across; background-size 800% puts one
-                 cell in the box and position N*100/7 % selects cell N. */
-              var _f01 = _gPhase;
-              /* v2.3.2384: all EIGHT cells, for every skill.  The old
-                 `Math.min(3, Math.floor(_f01 * 4))` arrived uncommented in
-                 2deb56a and capped mining and woodcutting at cell 3 of 8 --
-                 and cells 4-7 are the DESCENT.  Measured on the strips
-                 (pickaxe/axe, 8 cells of 256): the opaque bbox marches
-                 continuously from cell 0 at x 20..131 y 37..133 to cell 7 at
-                 x 82..199 y 126..244, so the second half is the tool coming
-                 down.  Those two skills could never show the strike land. */
-              var _cell = Math.floor(_f01 * 8);
-              var _pos = (_cell * 100 / 7).toFixed(2) + '% 0%';
-              if (_cue.style.backgroundPosition !== _pos) _cue.style.backgroundPosition = _pos;
-              if (_cue.style.display !== 'block') _cue.style.display = 'block';
-            } else if (_cue.style.display !== 'none') _cue.style.display = 'none';
-          }
-          /* ═══ v2.3.2384: THE FINGER, DEMONSTRATING ═══
-             Owner: "Add the old gesture cues on top of the right joystick when
-             it's time to extract the resource."
-
-             gestureCue01 owns the geometry (the owner's own v2.3.843/853/1442
-             curves, in the button's 0..100 viewBox); this only stamps it, on
-             the same phase the tool strip above just used.  Attribute writes
-             are guarded against their own last value, because this runs every
-             frame of every harvest and setAttribute on an SVG is a style
-             invalidation even when the string is identical -- the same reason
-             the ring below caches its radius (v2.3.2330). */
           if (_hint) {
-            var _cueG = _gPhase != null ? gestureCue01(_ex.skill, _gPhase) : null;
-            if (_cueG) {
-              /* Addressed by data-cue, not by child index: the track is drawn
-                 TWICE (a dark under-stroke and the light one over it, so the
-                 cue reads over both the near-black knob and the bright rim),
-                 and an index walk broke silently the moment that second path
-                 was added. */
-              if (_hint._btD !== _cueG.track) {
+            var _face = _gPhase != null ? gestureCueFace(_ex.skill, _gPhase, gestureIdle(_ex), Date.now()) : null;
+            if (_face) {
+              /* Addressed by data-cue, not by child index (v2.3.2384: the
+                 track is drawn twice, dark under light). */
+              if (_hint._btD !== _face.track) {
                 var _trks = _hint.querySelectorAll('[data-cue="track"]');
-                for (var _ti = 0; _ti < _trks.length; _ti++) _trks[_ti].setAttribute('d', _cueG.track);
-                _hint._btD = _cueG.track;
+                for (var _ti = 0; _ti < _trks.length; _ti++) _trks[_ti].setAttribute('d', _face.track);
+                var _arws = _hint.querySelectorAll('[data-cue="arrows"]');
+                for (var _ai = 0; _ai < _arws.length; _ai++) _arws[_ai].setAttribute('d', _face.arrows);
+                _hint._btD = _face.track;
               }
-              var _grp = _hint.querySelector('[data-cue="finger"]');
-              if (_grp) {
-                var _tf = 'translate(' + _cueG.x.toFixed(1) + ' ' + _cueG.y.toFixed(1) + ') rotate(' + _cueG.deg.toFixed(0) + ')';
-                if (_grp._btTf !== _tf) { _grp.setAttribute('transform', _tf); _grp._btTf = _tf; }
-                var _stk = _grp.firstChild;
-                if (_stk && _stk._btOp !== _cueG.streak) { _stk.setAttribute('opacity', String(_cueG.streak)); _stk._btOp = _cueG.streak; }
+              /* The sprite: which image, and which window of it, per skill. */
+              var _spr = GESTURE_CUE_SPRITES[_ex.skill];
+              if (_spr && _hint._btSkill !== _ex.skill) {
+                var _sv = _hint.querySelector('[data-cue="sprite"]');
+                var _im = _sv && _sv.firstChild;
+                if (_sv && _im) {
+                  _sv.setAttribute('viewBox', _spr.vb);
+                  _im.setAttribute('href', _spr.url);
+                  /* ...and the xlink spelling too: older iOS WebKit honours only
+                     xlink:href on an SVG <image>, and iPhone Safari is the
+                     primary platform (CLAUDE.md). */
+                  try { _im.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', _spr.url); } catch (e) { /* ignore */ }
+                  _im.setAttribute('width', String(_spr.w));
+                  _im.setAttribute('height', String(_spr.h));
+                }
+                _hint._btSkill = _ex.skill;
+              }
+              var _tool = _hint.querySelector('[data-cue="tool"]');
+              if (_tool) {
+                var _tf = 'translate(' + _face.tool.x.toFixed(1) + ' ' + _face.tool.y.toFixed(1) + ') rotate(' + _face.tool.deg.toFixed(0) + ')';
+                if (_tool._btTf !== _tf) { _tool.setAttribute('transform', _tf); _tool._btTf = _tf; }
+                var _top = _face.tool.op.toFixed(2);
+                if (_tool._btOp !== _top) { _tool.setAttribute('opacity', _top); _tool._btOp = _top; }
+                var _glw = _tool.firstChild;
+                var _gop = _face.glow.toFixed(2);
+                if (_glw && _glw._btOp !== _gop) { _glw.setAttribute('opacity', _gop); _glw._btOp = _gop; }
+              }
+              /* The chevrons: bright while teaching, a faint guide once you go. */
+              var _aop = _face.idle ? '0.95' : '0.35';
+              if (_hint._btAop !== _aop) {
+                var _arws2 = _hint.querySelectorAll('[data-cue="arrows"]');
+                for (var _aj = 0; _aj < _arws2.length; _aj++) _arws2[_aj].setAttribute('opacity', _aop);
+                _hint._btAop = _aop;
+              }
+              var _cmt = _hint.querySelector('[data-cue="comet"]');
+              if (_cmt) {
+                for (var _ci = 0; _ci < _cmt.childNodes.length; _ci++) {
+                  var _dot = _cmt.childNodes[_ci];
+                  var _cd = _face.comet && _face.comet[_ci];
+                  if (_cd) {
+                    _dot.setAttribute('cx', _cd.x.toFixed(1));
+                    _dot.setAttribute('cy', _cd.y.toFixed(1));
+                    _dot.setAttribute('opacity', _cd.op.toFixed(2));
+                  } else if (_dot.getAttribute('opacity') !== '0') _dot.setAttribute('opacity', '0');
+                }
               }
               if (_hint.style.display !== 'block') _hint.style.display = 'block';
             } else if (_hint.style.display !== 'none') _hint.style.display = 'none';
@@ -5764,6 +5836,9 @@ export var BroTown = function BroTown(_ref0) {
             } else if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt) {
               _ex.status = 'ready';
               try { BT_AUDIO.beep(820, 0.04, 0.05, 'sine'); } catch (e) {}
+              /* v2.3.2761 (owner: sounds for the specific actions): for fishing
+                 the window opening IS the bite -- a fish on the hook, now reel. */
+              if (_ex.skill === 'fishing') { try { if (BT_AUDIO.play) BT_AUDIO.play('fish-on-hook', { vol: 0.65 }); } catch (e) {} }
             }
             /* v2.3.1416 (owner: "all resources NOT have a time out window
                — it'll just stay on the phase where the resource can be
@@ -8204,8 +8279,7 @@ export var BroTown = function BroTown(_ref0) {
   var rBodyRef = useRef(null);   /* v2.3.2263: the right disc's painted metal, faded on its own */
   var rWrapRef = useRef(null);
   var rLabelRef = useRef(null);   /* v2.3.2242: the button's contextual label */
-  var rCueRef = useRef(null);     /* v2.3.2245: the harvest tool frame on the button */
-  var rHintRef = useRef(null);    /* v2.3.2384: the finger demonstrating the gesture */
+  var rHintRef = useRef(null);    /* v2.3.2384: the gesture cue; v2.3.2760: a mini tool (the strip's rCueRef is gone) */
   var rRingRef = useRef(null);    /* v2.3.2245: the wind-up / reps ring */
   var rJoyActive = useRef(false);
   var rTouchId = useRef(null);
@@ -9801,6 +9875,9 @@ export var BroTown = function BroTown(_ref0) {
       }
     } catch (e) {}
     S.rpg = (_cachedRpg && _cachedRpg.power !== undefined) ? _cachedRpg : createDefaultRpg();
+    /* v2.3.2765: a guess until the worker's player_state says otherwise --
+       nothing may decide "new player" from it (wsClient player_state) */
+    S._rpgFromServer = false;
     if (!S.rpg.inventory) S.rpg.inventory = {};
     if (!S.rpg.lifeSkills) S.rpg.lifeSkills = createDefaultLifeSkills();
     S.rpg.lifeSkills = migrateLifeSkills(S.rpg.lifeSkills);
@@ -9986,6 +10063,7 @@ export var BroTown = function BroTown(_ref0) {
     kickSfxAtGate(introWaitRef.current);
     holdZoneMusicAtGate(introWaitRef.current);   /* v2.3.2334 */
     setShowWelcome(false); /* straight in -- no intro video on a resume */
+    markWorldIn();   /* v2.3.2766: no intro on this road, so the world is in now */
     /* v2.3.833: a resume skips the intro loading screen and drops straight
        into the world while the avatar's gear sheets are still baking, which
        tanks the frame rate with no on-screen explanation (owner asked for
@@ -10198,7 +10276,8 @@ export var BroTown = function BroTown(_ref0) {
          the instant the world becomes visible — the same beat the v2.3.1593
          greeting used to take.  It is a MESSAGE, not that removed video; see
          welcomeBanner.js.  Once per browser, and it never throws. */
-      maybeShowWelcome();
+      maybeShowWelcome(function () { return stateRef.current; });
+      markWorldIn();   /* v2.3.2766: the onboarding referee's clock starts here */
       setShowIntro(false);
     }
   }), showMayorGreeting && /*#__PURE__*/React.createElement(MayorGreeting, {
@@ -13017,7 +13096,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until the worker advertises caps.abil (AbilityButtons.jsx; v2.3.2662: no level gate -- the milestone ladder is gone). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2542: ...and the Special button orbits the ATTACK disc, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until the worker advertises caps.abil (AbilityButtons.jsx; v2.3.2662: no level gate -- the milestone ladder is gone). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2542: ...and the Special button orbits the ATTACK disc, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one

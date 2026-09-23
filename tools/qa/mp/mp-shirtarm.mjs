@@ -264,6 +264,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
          the defect is worse than no assertion. */
       let sheetSum = 0;
       if (S) { for (let i = 0; i < S.d.length; i++) sheetSum = (Math.imul(sheetSum, 31) + S.d[i]) >>> 0; }
+      /* v2.3.2747: and a checksum of its COVERAGE alone -- each pixel's alpha
+         as empty (<= 24, this file's own isShirt cut), faint, or solid (> 127).
+         Both bakes this sheet had reverted put tee where there was none, and
+         both move it; a colour-only edit (the keyline, v2.3.2747) cannot. */
+      let coverSum = 0;
+      if (S) { for (let i = 3; i < S.d.length; i += 4) coverSum = (Math.imul(coverSum, 31) + (S.d[i] > 127 ? 2 : S.d[i] > 24 ? 1 : 0)) >>> 0; }
       if (!B || !S) { out[dir] = { error: 'sheet did not load', body: !!B, shirt: !!S }; continue; }
       if (B.w !== S.w || B.h !== S.h) { out[dir] = { error: `size ${B.w}x${B.h} vs ${S.w}x${S.h}` }; continue; }
       const W = B.w, F = B.h, nF = Math.round(W / F);
@@ -320,7 +326,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       const cyc = per.slice(0, 14);
       out[dir] = { per: cyc, total: cyc.reduce((a, b) => a + b, 0), worst: Math.max(...cyc),
-        shirtInBand, overhang, sum: sheetSum };
+        shirtInBand, overhang, sum: sheetSum, cover: coverSum };
     }
     return out;
   }, { gearVer: (armed && armed.gearVer) || '2.3.2066', dirs: { east: -1, northeast: -1, southwest: 1, north: -1, south: -1 } });
@@ -369,11 +375,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
      If the artist ever legitimately redraws jog-east, this fails and the
      number is updated deliberately -- which on a sheet with this history is
-     the behaviour worth having. */
-  const ARTIST_SHEET_SUM = 340001760;
-  rec.ok('the tee served to the client is the ARTIST\'s jog-east art, unbaked '
-    + '(v2.3.2140 reverted the v2.3.2066/2078 bakes)',
-    east.sum === ARTIST_SHEET_SUM, { got: east.sum, want: ARTIST_SHEET_SUM });
+     the behaviour worth having.
+
+     ═══ v2.3.2747: UPDATED DELIBERATELY, AND SPLIT IN TWO ═══
+     Owner: "running while wearing the shirt produces a static-like effect
+     where it pops from frame to frame.  I think it's because the black
+     outline from the shirt was removed at some point during the recolor
+     tooling."  jog-east was one of the sheets doing it: the share of the
+     tee's edge that is keyline swung 0.65-0.87 from frame to frame on the
+     c20c6ec5 sheet, because the v2.3.1995 seal left the keyline buried
+     under a white rim on some frames and not others.
+     tools/gear/reoutline-shirt.mjs re-draws the keyline on the edge as it
+     is: a COLOUR-ONLY edit, and the tool refuses to write if one pixel's
+     coverage moves.  So the old number now asks two questions:
+       - is this still the artist's SHAPE?  ARTIST_COVER_SUM is the coverage
+         checksum of c20c6ec5's sheet, and the re-outlined sheet has the same
+         one.  This is the half that defends against a bake, and it is still
+         pinned to c20c6ec5.  Checked the same way as the number above: the
+         v2.3.2066 sleeve bake's coverage hashes to 3710954212 and the
+         v2.3.2078 reseal's to 2040751120, so it fails on both.
+       - is this the keyline sheet, byte for byte?  SHEET_SUM, moved from
+         340001760 (c20c6ec5) to the re-outlined sheet.  Move it again only
+         deliberately, as this note asks. */
+  const ARTIST_COVER_SUM = 1909528212;
+  rec.ok('the tee served to the client has the ARTIST\'s jog-east shape, unbaked '
+    + '(v2.3.2140 reverted the v2.3.2066/2078 bakes; c20c6ec5\'s coverage, pixel for pixel)',
+    east.cover === ARTIST_COVER_SUM, { got: east.cover, want: ARTIST_COVER_SUM });
+  const SHEET_SUM = 3750654208;
+  rec.ok('...and it is the re-outlined jog-east sheet, byte for byte after decode '
+    + '(v2.3.2747: the keyline drawn along the tee\'s whole edge)',
+    east.sum === SHEET_SUM, { got: east.sum, want: SHEET_SUM });
 
   /* Control 1: there IS a shirt on the wire.  Without this both gates above
      also pass on a sheet that failed to load — nothing to be uncovered by. */

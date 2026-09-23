@@ -1550,7 +1550,7 @@ export function updateArrows(S, deps) {
                    * a._renderX/_renderY for the same reason; this block was the
                    * one that did not. */
                   /* ═══ v2.3.2743: ...AND NOW THE ORB IS IN THE BODY WHEN IT DOES ═══
-                     The two rings and the staff cast's burst (v2.3.2714) are
+                     The two rings and the staff cast's burst (v2.3.2771) are
                      spawned by _projImpactFx, at the orb, once the landing flight
                      has carried it into the body.  v2.3.2505's rule is unchanged
                      -- the crash continues the flight, where the eye has the orb
@@ -1575,7 +1575,7 @@ export function updateArrows(S, deps) {
                 /* Knockback recovery -- see melee path; pauses
                    client-side AI so the bump is visible. */
                 m._kbUntil = Date.now() + 200;
-                /* v2.3.2740: a staff bolt's hit is drawn once, by its crash above --
+                /* v2.3.2771: a staff bolt's hit is drawn once, by its crash above --
                    at the orb, which is v2.3.2505's whole point.  The generic
                    'staff' burst this used to add was a second spray of flat
                    purple dots at the monster's FEET, the exact spot that fix
@@ -1587,7 +1587,7 @@ export function updateArrows(S, deps) {
                    contact point) is the arrow's hit now. */
                 /* Staff projectiles are magic — no physical shaft to
                    leave embedded in the body.  Their visual residue is the
-                   crash above (v2.3.2740), and the material reaction (v2.3.2742). */
+                   crash above (v2.3.2771), and the material reaction (v2.3.2742). */
                 /* ═══ v2.3.2511: ONE ARROW, NOT TWO ═══
                    Owner (backlog §2.5): "two stuck arrows on a special".  Both
                    halves were doing their job and neither knew about the
@@ -2049,7 +2049,7 @@ export function updateArrows(S, deps) {
                    there, through the same orbCrashFx a monster hit uses, in the
                    element's colour, with the spell-landing voice on top. */
                 orbCrashFx(S, _impX, _impY, projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#a78bfa',
-                  { elem: projElem || null, vdx: a._fxResX, vdy: a._fxResY });   /* v2.3.2740: the staff cast's crash, where the orb was seen */
+                  { elem: projElem || null, vdx: a._fxResX, vdy: a._fxResY });   /* v2.3.2771: the staff cast's crash, where the orb was seen */
                 try { BT_AUDIO.magicHit({ vol: 0.3 }); } catch (e) { /* audio is best-effort */ }
                 return false;
               }

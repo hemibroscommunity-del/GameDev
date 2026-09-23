@@ -106,31 +106,29 @@ const REGION_NAME = {
   arms: 'the arm tattoo', pants: 'the trouser print',
 };
 
+/* ═══ v2.3.2746: INKED BEFORE THE CHARACTER EXISTS ═══
+   v2.3.2690 (#706) made a character's look its STORED RECORD, written once at
+   the creator's join.  This scenario used to create a character, write the
+   four drawings into storage and reload -- which now, correctly, reloads an
+   un-inked character.  So the drawings are in storage before the page's first
+   script runs, with the grid probe up before anything bakes, and the
+   creator's join carries them into the record. */
+const SEED = `try {
+  localStorage.setItem('bt-tattooart', ${JSON.stringify(INK)});
+  localStorage.setItem('bt-facetattoo', ${JSON.stringify(INK)});
+  localStorage.setItem('bt-armtattoo', ${JSON.stringify(INK)});
+  localStorage.setItem('bt-pantsart', ${JSON.stringify(INK)});
+} catch (e) {}
+window.__btGridProbe = 1;`;
+
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Inked', wsPort, webPort, viewport: { width: 390, height: 844 } });
+  const P = await H.newPlayer(browser, { name: 'Inked', wsPort, webPort, viewport: { width: 390, height: 844 }, init: SEED });
   await H.enterWorld(P);
-  await P.page.waitForTimeout(1600);
-
-  const set = await P.page.evaluate((ink) => {
-    try {
-      localStorage.setItem('bt-tattooart', ink);
-      localStorage.setItem('bt-facetattoo', ink);
-      localStorage.setItem('bt-armtattoo', ink);
-      localStorage.setItem('bt-pantsart', ink);
-    } catch (e) { return { ok: false }; }
-    return { ok: true, len: ink.length };
-  }, INK);
-  rec.ok('all four drawings are set (guard)', !!(set && set.ok), set);
-
-  /* The probe must be up BEFORE the page bakes anything, or the sheets the
-     preload builds report nothing — mp-facetat learned this the hard way. */
-  await P.page.addInitScript(() => { window.__btGridProbe = 1; });
-  await P.page.reload({ waitUntil: 'domcontentloaded' });
-  await P.page.waitForTimeout(1200);
-  const created = await P.page.$('[data-tut="login-create"]');
-  if (created) await created.click();
-  await H.enterWorld(P).catch(() => {});
   await P.page.waitForTimeout(2600);
+  const set = await P.page.evaluate((ink) => ({
+    ok: ['bt-tattooart', 'bt-facetattoo', 'bt-armtattoo', 'bt-pantsart'].every((k) => localStorage.getItem(k) === ink),
+  }), INK);
+  rec.ok('all four drawings are this character\'s own (guard)', !!(set && set.ok), set);
 
   /* ── DRIVE THE ANIMATIONS THAT DO NOT PRELOAD ──
      Each of these exists to make one more sheet bake.  Failures here are not

@@ -367,7 +367,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      frames after it is loosed whatever this box's frame rate (a slow frame is a
      long step, and the first one can carry it straight into the body) -- which
      is why this runs LAST.  The dark-screen watchdog is told the screen is lit
-     (TRAPS §108). */
+     (TRAPS §111). */
   await P.page.evaluate(() => { const S = window._gameState.current; S.__wdEverLit = true; S.__wdNext = 1e15; S.__wdDark = 0; });
   await P.page.clock.install();
   await P.page.clock.pauseAt((await P.page.evaluate(() => Date.now())) + 1000);

@@ -33,6 +33,8 @@ const KEY = 'brotown_quest_path';
  * it names what you will SEE, because "Ribbon" and "Beads" mean nothing to
  * someone who has not yet turned them on. */
 export const TRAIL_STYLES = [
+  /* v2.3.2764: first, and the default -- see DEFAULT_TRAIL_STYLE */
+  { id: 'steps',  label: 'Footprints', hint: 'Glowing footsteps walking the way you should go' },
   { id: 'arrows', label: 'Arrows', hint: 'Chevrons pointing the way you should go' },
   { id: 'ribbon', label: 'Ribbon', hint: 'One flowing line, like a lit road' },
   { id: 'beads',  label: 'Beads',  hint: 'The original row of gold dots' },
@@ -50,7 +52,18 @@ export const TRAIL_STYLES = [
  * Beads are still one tap away, and the owner's own word for them is why they
  * are not the default any more.
  */
-export const DEFAULT_TRAIL_STYLE = 'arrows';
+/* ═══ v2.3.2764: FOOTPRINTS, AND WHY THEY TAKE THE DEFAULT FROM ARROWS ═══
+ * Owner: "Instead of the chevron arrows can you make it look like indicator
+ * footprints that fade towards the path you need to go?"
+ * The argument above still holds -- the default must carry a DIRECTION at a
+ * glance -- and a footprint does: a sole has a toe and a heel, so every print
+ * points, and the row alternates left/right the way a walk does.  On top of
+ * that the prints light up one after another, walking away from you along
+ * the road (tileRenderer _trailSteps), so the direction also reads from the
+ * motion for anyone who watches for a second.  Arrows stay one tap away in
+ * Settings.  A player who had TAPPED Arrows keeps them: only the default
+ * moved, and a stored choice is never rewritten. */
+export const DEFAULT_TRAIL_STYLE = 'steps';
 
 const _valid = (id) => TRAIL_STYLES.some((s) => s.id === id);
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { EXTRACT_REPS_TARGET, EXTRACT_REPS_DEFAULT, BT_AUDIO } from '@/data/gameSystems.js';
+import { GESTURE_STROKE, STROKE_SPAN_PX, GESTURE_FLOOR_MS, GESTURE_TARGET_MS, gestureTargetCycles } from '@/game/gesturePose.js'; /* v2.3.2760; GESTURE_TARGET_MS v2.3.2761 (the grade scales with it) */
 
 /* v2.3.229 / v2.4 — ExtractionSwipeLayer
  *
@@ -44,10 +44,22 @@ import { EXTRACT_REPS_TARGET, EXTRACT_REPS_DEFAULT, BT_AUDIO } from '@/data/game
  *   - the reel is a circle around the button centre, which is what a thumb
  *     on a round button draws naturally.
  * Moves and ups stay at the window so a stroke may run off the disc.
+ *
+ * ═══ v2.3.2760: THE REP METER ABOVE IS NOW ~3s OF WORK ═══
+ * The per-skill rep rules described at the top (1 rep per pump / stroke /
+ * turn, one flip = cooked) are gone: the meter counts CYCLES of the motion
+ * against gestureTargetCycles (3s at a quick pace, floored at 2.4s of real
+ * motion), and one stroke tracker drives both the meter and the pose -- see
+ * stepStroke, docs/specs/gesture-cue.md and TRAPS §107.
  */
 
 const MIN_SWIPE_LEN = 30; /* px — ignore micro-jitters before any motion counts */
-const STROKE_AMP = 40;    /* px — travel past the last turning point to count a half-stroke */
+/* px — travel past the last turning point to count a half-stroke.
+   v2.3.2760: 40 -> 28.  The disc is 96px (108 landscape); a thumb pumping on
+   it naturally travels ~50px peak to peak, and with the first stroke measured
+   from the press point (below) a 40px threshold asked for most of the button
+   in ONE direction before anything counted. */
+const STROKE_AMP = 28;
 const TWO_PI = Math.PI * 2;
 /* v2.3.2245: a press counts as "on the button" inside its radius plus this
    much slack -- the disc is 96/108px, a thumb pad is ~40px wide, and a start
@@ -132,25 +144,42 @@ function pathHash(samples) {
   return (h >>> 0).toString(36);
 }
 
-/* Reps required to complete each skill's phase-2 gesture. */
+/* ═══ v2.3.2760: THE METER IS ABOUT THREE SECONDS AT A QUICK PACE ═══
+   Owner: "require about 3 seconds of performing the gesture at a quick pace
+   before the gesture is successfully extracted."  The meter used to fill on a
+   handful of reps (3 pumps, 1.5 turns, a single flip), which a quick thumb
+   finished in about a second.  It now counts CYCLES of the motion -- a pump
+   down and back, a chop across and back, a flip up and down, a turn of the
+   reel -- against gestureTargetCycles (3s at a quick pace, gesturePose.js),
+   continuously, so the bar moves with the hand rather than in steps. */
 function repsTargetFor(skill) {
-  return EXTRACT_REPS_TARGET[skill] || EXTRACT_REPS_DEFAULT;
+  return gestureTargetCycles(skill);
 }
 
-/* Convert the live accumulator into a rep count for the skill. */
-function repsFromGesture(skill, g) {
+/* Cycles of the motion made so far.  A stroke skill counts the half-strokes
+   it has COMPLETED (each one that travelled STROKE_AMP) plus how far into the
+   current one the thumb is; fishing counts turns.  The caller keeps the max, so
+   a short wobble that never becomes a stroke can hold the meter but never
+   push it back. */
+function cyclesFromGesture(skill, g) {
   if (skill === 'fishing') return Math.max(0, g.totalAngle) / TWO_PI;
-  if (skill === 'woodcutting') return g.treewardStrokes;
-  if (skill === 'cooking') return g.cookStrokes || 0;   /* one up-flip = cooked */
-  /* mining: a full up+down pump is two half-strokes */
-  return g.halfStrokes / 2;
+  const cur = g.dir ? Math.min(1, (g.segTravel || 0) / STROKE_SPAN_PX) : 0;
+  return ((g.halfStrokes || 0) + cur) / 2;
 }
 
-/* Map fill speed (within the open window) to a reward grade. */
-function gradeGesture(fillFrac, ent) {
+/* The reward grade.  It used to be how early in a 3.5s window a 3-rep meter
+   filled; with the meter now a set amount of work by design, it is how
+   QUICKLY and how STEADILY the player kept the motion going -- measured
+   against GESTURE_TARGET_MS, so a retune of the meter carries the grade with
+   it (v2.3.2761: the owner doubled the target and these moved with it):
+     perfect  a quick pace held through (<= 1.2x the target of motion, 1.5x
+              overall) by a hand that looks human (the v2.3.229 entropy floor);
+     good     a steady pace (<= 2.33x overall);
+     ok       anything slower. */
+function gradeGesture(activeMs, wallMs, ent) {
   const human = ent >= 0.04;            /* near-zero entropy => suspiciously straight */
-  if (fillFrac <= 0.45 && human) return 'perfect';
-  if (fillFrac <= 0.8) return 'good';
+  if (human && activeMs <= GESTURE_TARGET_MS * 1.2 && wallMs <= GESTURE_TARGET_MS * 1.5) return 'perfect';
+  if (wallMs <= GESTURE_TARGET_MS * 2.33) return 'good';
   return 'ok';
 }
 
@@ -231,18 +260,30 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       /* Resume the accumulator if this is a re-press within the same window,
          otherwise start fresh. Lives on the extraction record so progress and
          the cue meter persist across lifts. */
+      const axisV = (GESTURE_STROKE[ex.skill] && GESTURE_STROKE[ex.skill].axis === 'x') ? x : y;
       if (!ex._gesture) {
         ex._gesture = {
-          axisRef: (ex.skill === 'mining' || ex.skill === 'cooking') ? y : x, /* value at last turning point */
           dir: 0,
           halfStrokes: 0,
-          treewardStrokes: 0,
           treeward,
           cueX: cue.x, cueY: cue.y,
           nodeX: node ? node.x : null, nodeY: node ? node.y : null,
           lastAngle: Math.atan2(y - cue.y, x - cue.x),
           totalAngle: 0,
           startT: performance.now(),
+          /* v2.3.2760: ONE stroke tracker drives both the pose phase and
+             the three-second meter (stepStroke):
+             from/ext   where the stroke under way turned, and how far it has
+                        got; segTravel is the distance between them;
+             dir        its direction (0 before the first one);
+             segPower   whether it is the skill's power stroke;
+             didPower   whether a power stroke has been made -- a return
+                        stroke before any blow holds the ready pose;
+             cycles     the meter's reading, kept monotonic;
+             activeMs   time the thumb has actually been MOVING (the floor);
+             firstMoveT / lastMoveT  for the grade and the active clock. */
+          from: axisV, ext: axisV, segTravel: 0, segPower: false, didPower: false,
+          cycles: 0, activeMs: 0, firstMoveT: 0, lastMoveT: 0,
         };
         ex.progress = 0;
         ex.reps = 0;
@@ -252,12 +293,17 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
         /* re-seed the per-press anchors so a resumed stroke measures cleanly */
         ex._gesture.cueX = cue.x; ex._gesture.cueY = cue.y;
         ex._gesture.lastAngle = Math.atan2(y - cue.y, x - cue.x);
-        ex._gesture.axisRef = (ex.skill === 'mining' || ex.skill === 'cooking') ? y : x;
+        /* the stroke the lift interrupted still counts if it got far enough */
+        if (ex._gesture.dir) endStroke(ex._gesture);
         ex._gesture.dir = 0;
+        ex._gesture.from = axisV; ex._gesture.ext = axisV; ex._gesture.segTravel = 0;
+        ex._gesture.lastMoveT = 0;
       }
       ex._gestureDownAt = performance.now();   /* v2.3.2245: the button face reads this */
       /* v2.3.2384: A THUMB THAT IS DOWN OWNS THE PHASE, FULL STOP.
-         The idle demo (gestureDemo01) stands down for HOLD_MS after the last
+         (v2.3.2760: the demo is gone from the body -- the flag now keeps the
+         button's teaching cue (gestureIdle) off while a thumb is down.)
+         The idle demo (gestureDemo01) stood down for HOLD_MS after the last
          movement, and on its own that is a TIMER -- so one frame longer than
          HOLD_MS between two pointermoves (a GC pause, a zone load, a slow
          first frame after a texture upload) and the demo blinks in on top of
@@ -295,70 +341,66 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       beginGesture(ex, x, y, cue, e.pointerId);
     };
 
-    /* Oscillation counter with hysteresis: counts a half-stroke each time the
-       finger reverses past STROKE_AMP from the running extreme on the axis. */
-    const stepOscillation = (g, v, skill) => {
-      if (g.dir === 0) {
-        /* establish the first direction once moved STROKE_AMP from the anchor */
-        if (v - g.axisRef >= STROKE_AMP) { g.dir = 1; g.axisRef = v; countHalf(g, 1, skill); }
-        else if (g.axisRef - v >= STROKE_AMP) { g.dir = -1; g.axisRef = v; countHalf(g, -1, skill); }
-      } else if (g.dir === 1) {
-        if (v > g.axisRef) g.axisRef = v;                          /* still moving +, extend */
-        else if (g.axisRef - v >= STROKE_AMP) { g.dir = -1; g.axisRef = v; countHalf(g, -1, skill); }
-      } else { /* dir === -1 */
-        if (v < g.axisRef) g.axisRef = v;
-        else if (v - g.axisRef >= STROKE_AMP) { g.dir = 1; g.axisRef = v; countHalf(g, 1, skill); }
-      }
+    /* ═══ v2.3.2760: THE STROKE TRACKER ═══
+       Replaces the v2.3.229 oscillation counter, which did two jobs with one
+       40px hysteresis: counting reps AND (since v2.3.1417) driving the pose.
+       For the pose that threshold is far too coarse -- nothing moved until the
+       thumb was 40px into a stroke, then the swing jumped -- and a thumb that
+       landed mid-button and pumped +-26px never got 40px from where it landed,
+       so it counted nothing at all (both caught by mp-gcue).  Now:
+         - a stroke TURNS after PHASE_HYST_PX of travel back from its extreme
+           (small enough to follow the hand, big enough to ignore a wobble),
+           and the pose phase follows the travel continuously from there;
+         - a stroke COUNTS toward the meter when it ends having travelled
+           STROKE_AMP -- the anti-jitter rule the meter has always had. */
+    const PHASE_HYST_PX = 12;
+    const startStroke = (g, d, from, v, skill) => {
+      const st = GESTURE_STROKE[skill];
+      g.dir = d; g.from = from; g.ext = v;
+      g.segTravel = Math.abs(v - from);
+      g.segPower = !!(st && d === st.power);
+      if (g.segPower) g.didPower = true;
     };
-    const countHalf = (g, d, skill) => {
-      g.halfStrokes += 1;
-      /* woodcutting: only the tree-ward swing scores a rep (return swing is free).
-         treeward 0 (tree directly above/below, or -- v2.3.2245 -- the button)
-         -> accept either horizontal stroke. */
-      if (skill === 'woodcutting' && (g.treeward === 0 || d === g.treeward)) g.treewardStrokes += 1;
-      /* mining: the DOWN half-stroke (d===1, screen y increasing) is the slam --
-         spark + clink at the ore so the hit reads. */
-      if (skill === 'mining' && d === 1) onSlam(g);
-      /* v2.3.853: cooking — an UP stroke (d===-1, screen y decreasing) flips
-         the fish; one flip = cooked. */
-      if (skill === 'cooking' && d === -1) g.cookStrokes = (g.cookStrokes || 0) + 1;
+    const endStroke = (g) => {
+      if ((g.segTravel || 0) >= STROKE_AMP) g.halfStrokes += 1;
+    };
+    const stepStroke = (g, v, skill) => {
+      if (!g.dir) {
+        if (Math.abs(v - g.from) >= PHASE_HYST_PX) startStroke(g, v > g.from ? 1 : -1, g.from, v, skill);
+        return;
+      }
+      if ((v - g.ext) * g.dir >= 0) { g.ext = v; g.segTravel = Math.abs(v - g.from); return; }
+      if (Math.abs(v - g.ext) >= PHASE_HYST_PX) {
+        endStroke(g);
+        startStroke(g, -g.dir, g.ext, v, skill);
+      }
     };
 
-    /* Spark burst + clink at the ore on a pickaxe slam. */
-    const onSlam = (g) => {
-      const S = stateRef && stateRef.current;
-      if (!S || g.nodeX == null) return;
-      /* v2.3.1445: the painted rock burst moved to the character's swing
-         loop (effectsRenderer, constant — owner request); slams keep the
-         procedural sparks + clink only. */
-      if (S.hitParticles) {
-        for (let i = 0; i < 7; i++) {
-          S.hitParticles.push({
-            x: g.nodeX, y: g.nodeY,
-            vx: (Math.random() - 0.5) * 5,
-            vy: -Math.random() * 3 - 1,        /* mostly upward chips */
-            life: 0.45,
-            color: i % 2 ? '#ffd27a' : '#fff2c0',
-            size: 1.6,
-          });
-        }
+    /* THE POSE PHASE FOR A STROKE SKILL.  The power stroke plays the loop from
+       0 up to the blow (split); the return stroke plays split..1.  A return
+       stroke before any power stroke holds the ready pose.  A stroke that
+       resumes the region the phase is already in (a re-press mid-swing) never
+       winds it back -- it continues from where it is. */
+    const strokePhase = (g, skill, cur) => {
+      const st = GESTURE_STROKE[skill];
+      if (!st || !g.dir) return cur;
+      const f = Math.min(1, (g.segTravel || 0) / STROKE_SPAN_PX);
+      if (g.segPower) {
+        const t = st.split * f;
+        return cur < st.split ? Math.max(cur, t) : t;
       }
-      /* v2.3.1423 (owner: the sample must play when the MARKER hits the
-         rock): the slam fires on every down-pump reversal — the moment the
-         marker visually bottoms out — so the pickaxe-on-stone sample lives
-         HERE (alternating its two strikes).  The 0.9-phase burst in
-         effectsRenderer is particles-only now (sounding both doubled the
-         hit on full drags). */
-      try {
-        if (BT_AUDIO && BT_AUDIO.play) {
-          g._slamSndAlt = !g._slamSndAlt;
-          BT_AUDIO.play('mine-strike', { offset: g._slamSndAlt ? 0.08 : 0.6, duration: 0.45, vol: 0.6 });
-        }
-      } catch (e) {}
+      if (!g.didPower) return cur;
+      const t = st.split + (1 - st.split) * f;
+      return cur >= st.split ? Math.max(cur, t) : t;
     };
 
     const onPointerMove = (e) => {
       const x = e.clientX, y = e.clientY;
+      /* v2.3.2760: where the finger WAS, read before this move overwrites it
+         -- the adoption below promises to start the stroke from there, and
+         since v2.3.2514 it had been handed this move's own position instead
+         (the map was updated first), so the travel already made was lost. */
+      const wasAt = downPointers.get(e.pointerId);
       if (downPointers.has(e.pointerId)) downPointers.set(e.pointerId, { x, y });
       let sw = swipeRef.current;
       /* v2.3.2514: ADOPT A FINGER THAT WAS DOWN BEFORE THE WINDOW OPENED.
@@ -372,7 +414,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
         const exNow = readyExtraction();
         const cueNow = exNow ? cueScreenPos() : null;
         if (exNow && cueNow && Math.hypot(x - cueNow.x, y - cueNow.y) <= cueNow.r + BUTTON_SLACK_PX) {
-          const d = downPointers.get(e.pointerId) || { x, y };
+          const d = wasAt || { x, y };
           /* Start the stroke from where the finger WAS, not from where this
              move landed, so the travel already made counts toward the first
              half-stroke instead of being swallowed by the anchor. */
@@ -390,58 +432,58 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       if (e.cancelable) e.preventDefault();
 
       const g = ex._gesture;
+      const tNow = performance.now();
+      const axisV = (GESTURE_STROKE[ex.skill] && GESTURE_STROKE[ex.skill].axis === 'x') ? x : y;
       if (ex.skill === 'fishing') {
         const ang = Math.atan2(y - g.cueY, x - g.cueX);
         const _dAng = wrapPi(ang - g.lastAngle);
-        g.totalAngle += _dAng;   /* clockwise (screen y-down) = + */
+        /* v2.3.2760: floored at 0 -- a player who winds the wrong way first
+           does not build a debt of turns to unwind before the right way
+           counts.  Wiggling back and forth still nets nothing. */
+        g.totalAngle = Math.max(0, g.totalAngle + _dAng);   /* clockwise (screen y-down) = + */
         g.lastAngle = ang;
         /* v2.3.1422: stamp active cranking so the reel-loop SFX
            (effectsRenderer) plays only while the handle is turning. */
-        if (Math.abs(_dAng) > 0.02) ex._reelSpinAt = performance.now();
+        if (Math.abs(_dAng) > 0.02) ex._reelSpinAt = tNow;
       } else {
-        stepOscillation(g, (ex.skill === 'mining' || ex.skill === 'cooking') ? y : x, ex.skill);
+        stepStroke(g, axisV, ex.skill);
       }
 
-      /* v2.3.1417: GESTURE-TOOL FRAME DRIVER — the painted tool sprite (on
-         the right button since v2.3.2245, see BroTown's harvest face) plays
-         its 8-frame sheet from this phase, so the tool physically follows the
-         finger.  Fishing maps the accumulated circle angle straight to the
-         crank rotation (one finger-circle = one crank turn); the stroke
-         skills scrub the swing with signed finger deltas — mining swings on
-         the DOWN stroke, cooking flips on the UP flick, the axe chops on
-         either stroke now — and rewind on the return stroke.
-         v2.3.2245: the CHARACTER's own harvest frames follow this same phase
-         (entityRenderer / effectsRenderer), which is the owner's "animation
-         frames will play at the speed the user is performing the gesture". */
+      /* ═══ v2.3.2760: THE PHASE THE BODY AND THE MINI TOOL PLAY ═══
+         Fishing: one finger-circle is one turn of the loop (v2.3.1417's crank
+         mapping, unchanged).  The stroke skills: strokePhase -- the power
+         stroke plays up to the blow, the return stroke plays the rest, always
+         FORWARD.  (It used to scrub with signed deltas, so every return stroke
+         played the swing backwards; see gesturePose.js.)  gesturePose01 chases
+         this at up to ~4 swings a second, which is the speed of the hand. */
+      const prevPhase = ex.cueFrame01 || 0;
       if (ex.skill === 'fishing') {
-        ex.cueFrame01 = ((g.totalAngle / (Math.PI * 2)) % 1 + 1) % 1;
+        ex.cueFrame01 = ((g.totalAngle / TWO_PI) % 1 + 1) % 1;
       } else {
-        const _n = sw.samples.length;
-        const _prev = _n > 1 ? sw.samples[_n - 2] : null;
-        if (_prev) {
-          const SPAN = ex.skill === 'cooking' ? 130 : 110; /* px of travel for a full swing */
-          let _d;
-          if (ex.skill === 'mining') _d = (y - _prev.y) / SPAN;
-          else if (ex.skill === 'cooking') _d = (_prev.y - y) / SPAN;
-          else _d = Math.abs(x - _prev.x) / SPAN * (g.dir < 0 ? -1 : 1);
-          /* v2.3.2245: with no tree-ward, the axe advances on whichever
-             stroke is under way and rewinds on the reversal, so the swing
-             still reads as a chop and a return rather than a shimmy. */
-          if (ex.skill === 'woodcutting') _d = Math.abs(x - _prev.x) / SPAN * (g.dir === 0 ? 1 : (g.dir > 0 ? 1 : -1));
-          ex.cueFrame01 = Math.max(0, Math.min(1, (ex.cueFrame01 || 0) + _d));
-        }
+        /* a finished return stroke is 1.0, which IS the ready pose (0) */
+        const _sp = strokePhase(g, ex.skill, prevPhase);
+        ex.cueFrame01 = _sp >= 1 ? 0 : _sp;
       }
-      ex._gestureMovedAt = performance.now();   /* v2.3.2245 */
+      /* The effects (chips, debris, splash, smoke) play while the motion is
+         actually going -- stamped only when the phase moved on. */
+      if (ex.cueFrame01 !== prevPhase) ex._gestureActiveAt = tNow;
+      ex._gestureMovedAt = tNow;   /* v2.3.2245 */
 
-      const reps = repsFromGesture(ex.skill, g);
+      /* The active clock: time between consecutive moves counts only while the
+         moves keep coming -- a thumb that rests on the glass is not working. */
+      if (!g.firstMoveT) g.firstMoveT = tNow;
+      if (g.lastMoveT && (tNow - g.lastMoveT) < 200) g.activeMs += tNow - g.lastMoveT;
+      g.lastMoveT = tNow;
+
+      g.cycles = Math.max(g.cycles || 0, cyclesFromGesture(ex.skill, g));
       const target = ex.repsTarget || repsTargetFor(ex.skill);
-      ex.reps = reps;
-      ex.progress = Math.max(0, Math.min(1, reps / target));
+      ex.reps = g.cycles;
+      /* The work, held to the floor: however fast the hand, the meter cannot
+         run ahead of GESTURE_FLOOR_MS of real motion. */
+      ex.progress = Math.max(0, Math.min(1, g.cycles / target, g.activeMs / GESTURE_FLOOR_MS));
 
       if (ex.progress >= 1) {
         /* Meter full — grade, fingerprint, and fire success once. */
-        const windowDur = Math.max(1, ex.windowClosesAt - ex.windowOpensAt);
-        const fillFrac = (performance.now() - g.startT) / windowDur;
         let pathLen = 0;
         for (let i = 1; i < sw.samples.length; i++) {
           pathLen += Math.hypot(sw.samples[i].x - sw.samples[i - 1].x,
@@ -460,7 +502,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
           vc: velocityCurvature(sw.samples),
           h: pathHash(sw.samples),
         };
-        const accuracy = gradeGesture(fillFrac, ent);
+        const accuracy = gradeGesture(g.activeMs, tNow - (g.firstMoveT || tNow), ent);
         swipeRef.current = null;
         if (typeof onSuccess === 'function') onSuccess(accuracy);
       }
@@ -511,6 +553,11 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
           progress: ex ? +(ex.progress || 0).toFixed(2) : null,
           frame01: ex ? +(ex.cueFrame01 || 0).toFixed(3) : null,
           cue: buttonCueScreenPos(S),
+          /* v2.3.2760: the three-second meter's parts -- cycles of motion
+             against the target, and the active clock the floor reads. */
+          cycles: ex && ex._gesture ? +(ex._gesture.cycles || 0).toFixed(2) : null,
+          target: ex ? +(ex.repsTarget || 0).toFixed(2) : null,
+          activeMs: ex && ex._gesture ? Math.round(ex._gesture.activeMs || 0) : null,
         };
       };
     } catch (e) { /* non-browser */ }

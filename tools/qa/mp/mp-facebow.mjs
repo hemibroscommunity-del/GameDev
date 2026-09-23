@@ -127,39 +127,26 @@ async function sample(P, tag, rec) {
   return res;
 }
 
+/* ═══ v2.3.2746: INKED BEFORE THE CHARACTER EXISTS ═══
+   v2.3.2690 (#706) made a character's look its STORED RECORD, written once at
+   the creator's join.  This scenario used to create a character, write the
+   face tattoo into storage and reload to make it "take" -- which now, and
+   correctly, reloads an un-inked character, because the record says so.  So
+   the tattoo (and the bald head that keeps hair off the forehead) are in
+   storage before the page's first script runs, and the creator's join carries
+   them into the record, the way a player who drew in the creator arrives. */
+const SEED = `try {
+  localStorage.setItem('bt-facetattoo', ${JSON.stringify(FACE_ART)});
+  localStorage.setItem('bt-hair', 'none');
+} catch (e) {}`;
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Inked', wsPort, webPort,
-    viewport: { width: 390, height: 844 } });
+    viewport: { width: 390, height: 844 }, init: SEED });
   await H.enterWorld(P);
-  await P.page.waitForTimeout(1800);
-  const set = await P.page.evaluate((face) => {
-    try {
-      localStorage.setItem('bt-facetattoo', face);
-      /* BALD, and it is not a detail: hair covers the forehead, which is the
-         half that already worked, and would hide the control. */
-      if (window.__btSetHair) window.__btSetHair('none');
-    } catch (e) { return { ok: false }; }
-    return { ok: true, len: face.length };
-  }, FACE_ART);
-  rec.ok('a full-coverage face tattoo is set (guard)', !!(set && set.ok), set);
-  /* THE RELOAD IS WHAT MAKES THE INK TAKE.  playerArt reads its canvases from
-     localStorage once at module init and exposes no window-side setter, so a
-     write without a reload changes the store and not the character.
-     Straight back through enterWorld and nothing else: this device now HAS a
-     character, so it is a RETURNING device, and enterWorld has walked that road
-     since v2.3.2447 (Continue, then its own row).  Clicking Create first -- what
-     the first cut of this file did, copying an older scenario -- puts the creator
-     on screen instead and the run reads as "the player never joined". */
-  await P.page.reload({ waitUntil: 'domcontentloaded' });
-  await P.page.waitForTimeout(1500);
-  await H.enterWorld(P).catch((e) => { rec.ok('re-entry after the reload threw', false, String(e)); });
   await P.page.waitForTimeout(2500);
-  /* THE RE-ENTRY IS ASSERTED, not assumed.  The reload above is what makes the
-     ink take (playerArt reads localStorage once at module init and has no
-     window-side setter), and a reload that lands back on the login screen
-     leaves a page with `_gameState.current` present and `rpg` null -- which
-     reads downstream as "the character has no tattoo" rather than as "there is
-     no character". */
+  const set = await P.page.evaluate((face) => ({ ok: localStorage.getItem('bt-facetattoo') === face }), FACE_ART);
+  rec.ok('a full-coverage face tattoo is this character\'s own (guard)', !!(set && set.ok), set);
   let inWorld = null;
   for (let i = 0; i < 12; i++) {
     inWorld = await P.page.evaluate(() => {
@@ -170,9 +157,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (inWorld && inWorld.has) break;
     await P.page.waitForTimeout(800);
   }
-  rec.ok('the character is back in the world after the reload that applied the '
-    + 'ink (guard)', !!(inWorld && inWorld.has), inWorld);
+  rec.ok('the character is in the world (guard)', !!(inWorld && inWorld.has), inWorld);
   if (!inWorld || !inWorld.has) { await P.ctx.close().catch(() => {}); return; }
+  /* BALD, and it is not a detail: hair covers the forehead, which is the
+     half that already worked, and would hide the control. */
   await P.page.evaluate(() => { try { if (window.__btSetHair) window.__btSetHair('none'); } catch (e) {} });
   await P.page.waitForTimeout(600);
 
