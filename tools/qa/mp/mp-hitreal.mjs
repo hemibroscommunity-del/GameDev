@@ -412,6 +412,41 @@ async function placeAt(P, id, reach) {
   return g;
 }
 
+/* v2.3.2701: step OFF a line a prop stands on -- see the covered void in the
+   row loop.  placeAt only walks along the line to the target, so without this
+   a monster behind a rock is walked back to behind the same rock every time.
+   The side is chosen with the game's own probes: clear of every footprint
+   (with the player's collision pad and a little), and with nothing between
+   that spot and the target. */
+async function sidestep(P, g) {
+  const goal = await P.page.evaluate((q) => {
+    const S = window._gameState.current, z = S.currentZone;
+    const boxes = (window.__btBlockers && window.__btBlockers(z)) || [];
+    const inBox = (x, y) => boxes.some((b) => x >= b.x0 - 14 && x <= b.x1 + 14 && y >= b.y0 - 14 && y <= b.y1 + 14);
+    const dx = q.x - q.px, dy = q.y - q.py, L = Math.hypot(dx, dy) || 1;
+    const nx = -dy / L, ny = dx / L;
+    for (const k of [90, -90, 170, -170, 250, -250]) {
+      const sx = q.px + nx * k, sy = q.py + ny * k;
+      if (!inBox(sx, sy) && !window.__btAttackBlocked(z, sx, sy, q.x, q.y)) return { x: Math.round(sx), y: Math.round(sy) };
+    }
+    return null;
+  }, g);
+  if (!goal) return false;
+  for (let i = 0; i < PLACE_TRIES; i++) {
+    const done = await P.page.evaluate(({ gx, gy, step }) => {
+      const S = window._gameState.current;
+      const ddx = gx - S.player.x, ddy = gy - S.player.y, dd = Math.hypot(ddx, ddy);
+      if (dd < 6) return true;
+      const k = Math.min(step, dd);
+      S.player.x += (ddx / dd) * k; S.player.y += (ddy / dd) * k;
+      return false;
+    }, { gx: goal.x, gy: goal.y, step: STEP_PX });
+    if (done) return true;
+    await P.page.waitForTimeout(STEP_MS);
+  }
+  return false;
+}
+
 /* ═══ DID THE WORKER COME WITH US? ═══
    Read after every walk, because a refused step is invisible from the browser:
    the client draws the player exactly where it put them and the game feels
@@ -652,7 +687,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          nothing, and reports it as six rows of a broken weapon. */
       const link = await H.readState(P, (S) => S._realtimeStatus || 'unknown');
       const row = { zone: stop.zone, key: atk.key, slot: atk.slot, eq: !!(eq && eq.ok), link, body: stop.body,
-        fired: 0, fairs: 0, landed: 0, sent: 0, blast: 0, void: 0, neverFired: 0, dug: 0,
+        fired: 0, fairs: 0, landed: 0, sent: 0, blast: 0, void: 0, neverFired: 0, dug: 0, covered: 0,
         gaps: [], skipGaps: [], missed: [], desync: [], kills: 0, arch: null };
       const reach = REACH[atk.slot];
       /* Attempts that could not be PLACED (out of the weapon's reach, nothing
@@ -688,6 +723,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
              nothing about hit detection, so it is not scored as one. */
           row.void++;
           row.skipGaps.push(g ? g.gap : null);
+          continue;
+        }
+        /* ═══ v2.3.2701: BEHIND A ROCK IS NOT A MISS ═══
+           Since v2.3.2699 a prop really stops an arrow or a bolt (frost has the
+           rock ridge and its neighbours), so a ranged shot with one between us
+           and the target is SUPPOSED to fall short.  The placer walks to the
+           weapon's reach without looking at cover, and the first run after the
+           change scored those as misses: every one of the frost bow, bow-special
+           and magic-special misses had a rock on the line, by the game's own
+           probe.  Void, like a burrow, and counted beside the row -- then step
+           off that line so the next attempt is not walked back behind the same
+           rock.  The game's question, not this file's arithmetic (TRAPS #35).
+           Ranged rows only: the sword does not ask about props yet, so its
+           attempts still count. */
+        if (atk.slot !== 'melee' && await P.page.evaluate(
+          (q) => !!(window.__btAttackBlocked && window.__btAttackBlocked(window._gameState.current.currentZone, q.px, q.py, q.x, q.y)), g)) {
+          row.void++; row.covered++;
+          await sidestep(P, g);
           continue;
         }
         row.arch = row.arch || g.arch;
@@ -759,7 +812,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       + `${(Math.round((r.landed / Math.max(1, r.fairs)) * 100) + '%').padStart(5)}  `
       + `${String(r.kills).padStart(6)}  ${gaps}  ${r.secs}s`
       + `${r.blast ? `   (+${r.blast} blast)` : ''}`
-      + `${r.void ? `   (${r.void} void: ${r.dug} burrowed, ${r.neverFired} never fired, gaps ${JSON.stringify(r.skipGaps)})` : ''}`);
+      + `${r.void ? `   (${r.void} void: ${r.dug} burrowed, ${r.covered} behind a prop, ${r.neverFired} never fired, gaps ${JSON.stringify(r.skipGaps)})` : ''}`);
     if (r.missed.length) console.log(`      missed: ${JSON.stringify(r.missed)}`);
     if (r.desync.length) console.log(`      the worker did not follow the walk ${r.desync.length}x: ${JSON.stringify(r.desync)}`);
   }
