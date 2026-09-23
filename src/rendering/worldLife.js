@@ -284,7 +284,9 @@ FALLS['mayor-house'] = [
   { pts: [[466, 351], [473, 355], [476, 364], [477, 376], [478, 388]], w: 6 },   /* the fish */
 ];
 const SMOKE = Object.create(null);
-SMOKE.forge = [{ x: 156, y: 66, rate: 3.4, size: [16, 54], rise: 21, life: 4.6 }];
+/* sized off the chimney mouth (~60 texels across): a puff leaves it about
+   half as wide and has spread past it by the time it thins out */
+SMOKE.forge = [{ x: 156, y: 66, rate: 3.8, size: [30, 88], rise: 20, life: 5.0 }];
 const SPARKS_EXTRA = Object.create(null);
 SPARKS_EXTRA.forge = [{ x: 156, y: 70, rate: 1.1, spread: 9, up: 1 }];
 const GLINT_RATE = { bank: 2.2, 'mayor-house': 0.45, 'auction-house': 0.6 };
@@ -759,7 +761,7 @@ export class WorldLife {
           r.spawn[key] -= 1;
           let s = null;
           for (let i = 0; i < r.smoke.length; i++) if (!r.smoke[i]._life) { s = r.smoke[i]; break; }
-          if (!s && r.smoke.length < 22) {
+          if (!s && r.smoke.length < 24) {
             s = new Sprite(FX.puff || Texture.EMPTY);
             s.anchor.set(0.5);
             r.smokeL.addChild(s);

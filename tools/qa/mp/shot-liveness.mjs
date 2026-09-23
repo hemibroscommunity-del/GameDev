@@ -17,7 +17,7 @@
  *   mayor         the flags and the waterfalls
  *   bag           a new item popping in, then items coming alive one by one
  *
- * Run: node tools/qa/mp/shot-liveness.mjs
+ * Run: node tools/qa/mp/shot-liveness.mjs [bag] [frost] [town]   (default: all)
  */
 import { mkdirSync } from 'node:fs';
 import * as H from './harness.mjs';
@@ -63,11 +63,27 @@ async function film(P, name, box, { frames = 48, dt = 1 / 15, before = null } = 
   await P.page.evaluate(() => { delete window.__btLifeFrames; delete window.__btLifeStep; });
 }
 
+/* Walking past Mayor Bro opens his dialogue over the whole screen, and it
+   re-opens on its own while you are near him -- so close it, and keep closing
+   it, until the band can be unfolded and the bag is actually on screen. */
+async function bagOnScreen(P) {
+  for (let i = 0; i < 4; i++) {
+    await H.closeNpcDialogue(P).catch(() => {});
+    await H.unfoldBand(P).catch(() => {});
+    await P.page.waitForTimeout(700);
+    if (await P.page.evaluate(() => !!document.querySelector('[data-bag-key]'))) return true;
+  }
+  return false;
+}
+
 /* a texture-px box on a building -> a world box */
 const onProp = (p, tw, th, r) => {
   const k = p.width / tw;
   return { x0: p.x + (r[0] - tw / 2) * k, y0: p.y - (th - r[1]) * k, x1: p.x + (r[2] - tw / 2) * k, y1: p.y - (th - r[3]) * k };
 };
+
+const WANT = process.argv.slice(2);
+const want = (k) => !WANT.length || WANT.includes(k);
 
 async function main() {
   mkdirSync(OUT, { recursive: true });
@@ -86,25 +102,11 @@ async function main() {
     const B = {}; for (const p of props) B[p.id] = p;
     const stand = async (id, dy) => { await H.hopTo(P, B[id].x, B[id].y + dy); await H.closeNpcDialogue(P).catch(() => {}); await P.page.waitForTimeout(2500); };
 
-    /* ── town ── */
-    await stand('forge', -260); await hideUi(P, true);
-    await film(P, 'forge', onProp(B.forge, 512, 465, [60, 0, 512, 300]), { frames: 60 });
-    await hideUi(P, false);
-    await stand('auction-house', -280); await hideUi(P, true);
-    await film(P, 'auction', onProp(B['auction-house'], 514, 512, [0, 0, 514, 360]), { frames: 60 });
-    await hideUi(P, false);
-    await stand('bank', -230); await hideUi(P, true);
-    await film(P, 'bank', onProp(B.bank, 510, 512, [100, 0, 510, 300]), { frames: 60 });
-    await hideUi(P, false);
-    await stand('mayor-house', -260); await hideUi(P, true);
-    await film(P, 'mayor', onProp(B['mayor-house'], 512, 512, [50, 0, 512, 410]), { frames: 60 });
-    await hideUi(P, false);
-
-    /* ── the bag: the CSS clock slowed 5x, a new item, then idle life ── */
-    await H.closeNpcDialogue(P).catch(() => {});
-    await H.hopTo(P, H.TOWN_CLEAN_SPOT.x, H.TOWN_CLEAN_SPOT.y);
-    await H.closeNpcDialogue(P).catch(() => {});
-    await H.unfoldBand(P).catch(() => {});
+    /* ── the bag first, at the spawn: Mayor Bro's tutorial dialogue opens
+       whenever you pass near him and covers the whole band, so this is shot
+       before any walking.  The CSS clock is slowed 5x through DevTools. ── */
+    if (want('bag')) {
+    if (!await bagOnScreen(P)) console.log('bag: could not get the bag on screen');
     for (const k of ['fish_minnow', 'rare_gem', 'swiftDraught', 'wood_oak', 'cooked_fish_minnow']) {
       await H.grant(wsPort, pid, 'item', { invKey: k, count: 2 }).catch(() => {});
     }
@@ -126,8 +128,10 @@ async function main() {
       }
     }
     await cdp.send('Animation.setPlaybackRate', { playbackRate: 1 });
+    }
 
     /* ── frost ── */
+    if (want('frost')) {
     for (const tool of ['woodcutting_axe']) await H.grant(wsPort, pid, 'item', { invKey: tool, count: 1 }).catch(() => {});
     await H.warpToZone(P, { wsPort, label: 'Frost Ridge', zoneId: 'frost' });
     await H.devOp(wsPort, 'vitals', pid, { heal: true, god: true, godMinutes: 30 }).catch(() => null);
@@ -148,6 +152,26 @@ async function main() {
         }, tree.id) : null),
       });
       await hideUi(P, false);
+    }
+    }
+
+    /* ── back to town for the buildings (the interface is hidden while each
+       one films, so a dialogue opening behind it does not matter) ── */
+    if (want('town')) {
+    if (want('frost')) await H.warpToZone(P, { wsPort, label: 'Town', zoneId: 'town' });
+    await P.page.evaluate(() => { window.__btAmbienceOff = false; });
+    await stand('forge', -260); await hideUi(P, true);
+    await film(P, 'forge', onProp(B.forge, 512, 465, [40, -150, 512, 300]), { frames: 60 });
+    await hideUi(P, false);
+    await stand('auction-house', -280); await hideUi(P, true);
+    await film(P, 'auction', onProp(B['auction-house'], 514, 512, [0, 0, 514, 360]), { frames: 60 });
+    await hideUi(P, false);
+    await stand('bank', -230); await hideUi(P, true);
+    await film(P, 'bank', onProp(B.bank, 510, 512, [100, 0, 510, 300]), { frames: 60 });
+    await hideUi(P, false);
+    await stand('mayor-house', -260); await hideUi(P, true);
+    await film(P, 'mayor', onProp(B['mayor-house'], 512, 512, [50, 0, 512, 410]), { frames: 60 });
+    await hideUi(P, false);
     }
     await P.ctx.close().catch(() => {});
   } finally {
