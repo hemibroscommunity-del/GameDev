@@ -4442,7 +4442,7 @@ gearSheets leaves the combat poses and the fullset figure uncropped. Add a pose
 to `TRIM_POSES` only after checking every reader of it. mp-geartrim holds every
 armour layer's box to the body's box, own screen and peer's.
 
-**v2.3.2771: the same rule, a second loader.** The combat stand-in strips
+**v2.3.2774: the same rule, a second loader.** The combat stand-in strips
 (swing, bowshot, chop, cook, fire -- effectsRenderer `_gearStripFrame`) are now
 cropped with the same `packTrimmed`, 81.4 → 14.1 MB. Their readers place a
 Sprite by anchor and scale and size it from `texture.width/height` (= `orig`),

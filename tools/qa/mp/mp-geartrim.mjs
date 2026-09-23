@@ -21,7 +21,7 @@
  *   64px frame would be scaled 2x and its box would be twice the body's.
  *   It is asserted in every facing while jogging and standing, local and peer.
  *
- *   v2.3.2771, THE COMBAT STRIPS -- the 33 stand-in gear strips (swing,
+ *   v2.3.2774, THE COMBAT STRIPS -- the 33 stand-in gear strips (swing,
  *   bowshot, chop, cook, fire) are cropped by effectsRenderer._gearStripFrame:
  *   all of them built cropped, under a third of their bytes, and every frame
  *   byte-identical to its frame in the served PNG.
@@ -85,7 +85,7 @@ const displays = (P) => P.page.evaluate(() => {
 const tex = (P) => P.page.evaluate(() => (window.__btTex ? window.__btTex() : null));
 const trimStats = (P) => P.page.evaluate(() => (window.__btGearTrim ? window.__btGearTrim() : null));
 
-/* v2.3.2771: the COMBAT stand-in strips (swing, bowshot, chop, cook, fire),
+/* v2.3.2774: the COMBAT stand-in strips (swing, bowshot, chop, cook, fire),
    cropped by effectsRenderer._gearStripFrame.  For every cropped sheet: decode
    the served file again, cut it into the same frames the uncropped loader cut
    (frame count and width from the cropped frames' own `orig`), and compare

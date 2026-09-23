@@ -235,7 +235,7 @@ nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
 ---
 
 ## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
-### Items 1, 3, 4, 5, 6, 9, 10 and 11 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2771); the rest is the ranked backlog
+### Items 1, 3, 4, 5, 6, 9, 10 and 11 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774); the rest is the ranked backlog
 
 What this is, in plain language: the game keeps a lot of decoded artwork in
 the phone's graphics memory, and iPhone Safari kills the tab somewhere north
@@ -459,7 +459,7 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    offset). The same move would reach the gear swing/fire/cook sheets named
    below. Rule for consumers: TRAPS §106.
 11. ~~**Combat stand-in gear strips — 83-98% transparent, 81.4 MB**~~
-   **SHIPPED, v2.3.2771** (measured, `mp-geartrim`, armoured in town: 334.9 →
+   **SHIPPED, v2.3.2774** (measured, `mp-geartrim`, armoured in town: 334.9 →
    262.4 MB). The "gear swing/fire/cook sheets ... PADDING (7-17% opaque), a
    crop-with-offset renderer change" named in the paragraph below. 33 strips
    (shirt / chest / legs × swing 3, bowshot 5, chop, cook, fire) 81.4 → 14.1 MB,

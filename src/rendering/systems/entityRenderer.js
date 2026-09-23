@@ -3225,7 +3225,7 @@ export async function uploadGearTextures(renderer) {
   for (const source of getLoadedGearSources()) {
     if (up(source) && ++n % 24 === 0) await new Promise((r) => setTimeout(r, 0));
   }
-  /* v2.3.2771: the combat stand-in strips are no longer in the Assets cache
+  /* v2.3.2774: the combat stand-in strips are no longer in the Assets cache
      (they are cropped canvases now -- effectsRenderer _gearStripFrame); they
      reach this upload through getLoadedGearSources above, which they register
      with.  The old loop over combatGearUrls() found nothing to upload. */

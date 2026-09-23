@@ -53,7 +53,7 @@ export function combatGearUrls() {
 /** Warm the combat-gear sheets into the Pixi Assets cache.  Network-only, so it
  *  parallelizes with the other intro-gate loaders; always resolves.
  *
- *  v2.3.2771: NO LONGER LOADS ANYTHING, on purpose.  effectsRenderer's
+ *  v2.3.2774: NO LONGER LOADS ANYTHING, on purpose.  effectsRenderer's
  *  _gearStripFrame now decodes these sheets itself, crops them and keeps only
  *  the cropped copy (see the note there).  An Assets.load here would park the
  *  FULL sheet in the Assets cache for the whole session beside it -- 81 MB of

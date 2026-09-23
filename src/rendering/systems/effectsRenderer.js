@@ -46,7 +46,7 @@ const _peerBuild = (o) => buildScale(o && o.buildHeight, o && o.buildFrame);
 const BLOCK_POSE_FRAME = 1;
 const _fxLoad = (url) => { const p = Assets.load(url); _fxPreload.push(p); return p; };
 export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload); }
-/* v2.3.2771: QA probe -- what cropping the combat stand-in strips saved, per
+/* v2.3.2774: QA probe -- what cropping the combat stand-in strips saved, per
    sheet (decoded bytes, no mips).  See _gearStripFrame. */
 const _combatTrimStats = [];
 const _combatTrimFrames = new Map();   /* key -> the cropped frames, for the identity check */
@@ -138,7 +138,7 @@ import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings */
 import { onArtChange, artHasInk, artIsSymmetric } from '../traits/playerArt.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { onPatternChange, parsePattern } from '../traits/patternCatalog.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
-import { getGearFrame, packTrimmed, registerGearSource } from '../gearSheets.js';   /* v2.3.2771: + the cropper and the upload hook for the combat strips */
+import { getGearFrame, packTrimmed, registerGearSource } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips */
 import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
@@ -9851,7 +9851,7 @@ export class EffectsRenderer {
          caller's `fw` verbatim, so their slices are byte-identical. */
       const _twin = GEAR_STRIP_TWIN[pose];
       const _file = pose + '-' + dir + (_twin ? _twin.suffix : '');
-      /* ═══ v2.3.2771: CROPPED, AND NOT HELD TWICE ═══
+      /* ═══ v2.3.2774: CROPPED, AND NOT HELD TWICE ═══
          Owner: "How much can cropping the combat poses save?" -- then "Begin
          more cropping".  Measured (__btTex, armoured in town): these 33 sheets
          (shirt / chest / legs x swing, bowshot, chop, cook, fire) were 81.4 MB

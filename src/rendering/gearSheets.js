@@ -115,7 +115,7 @@ const _GEAR_RETRY_MS = [2000, 6000];
  * not worth that risk), and the combat poses (bowshot/swing/chop/cook/fire)
  * when they come through THIS loader -- the only one that does is the blockArm
  * sleeve, which cuts a sub-rectangle out of a bowshot frame by frame offset.
- * v2.3.2771: the combat poses' real, resident copies are the stand-in strips
+ * v2.3.2774: the combat poses' real, resident copies are the stand-in strips
  * effectsRenderer._gearStripFrame loads, and those ARE cropped, with this
  * same packTrimmed.  Only the slots and poses below are cropped here. */
 const TRIM_SLOTS = new Set(['chest', 'legs', 'shirt', 'belt']);
@@ -146,7 +146,7 @@ if (typeof window !== 'undefined') {
    snapped out to ALIGN) and pack the crops left to right.  Returns
    { canvas, cells: [{ ax, tx, ty, w, h }] } or null if the pixels could not
    be read, in which case the caller uploads the plain strip as before.
-   v2.3.2771: exported for the COMBAT stand-in strips (effectsRenderer
+   v2.3.2774: exported for the COMBAT stand-in strips (effectsRenderer
    _gearStripFrame), whose frames are 130-402px wide rather than 128/256.
    `n` is the caller's frame count when it has its own (the strips round it).
    A frame size that is not a multiple of ALIGN is fine: the snap is taken in
@@ -511,7 +511,7 @@ export function preloadFullsetFigures() {
  *  Lets the renderer force-GPU-upload them during the loading screen (mirrors
  *  the masked-body uploadBakedTextures) so a first armored turn doesn't pay a
  *  lazy first-draw upload.  All frames of a sheet share one source. */
-/* v2.3.2771: TextureSources gear code OUTSIDE this module built -- the cropped
+/* v2.3.2774: TextureSources gear code OUTSIDE this module built -- the cropped
    combat stand-in strips (effectsRenderer _gearStripFrame) -- so the
    loading-screen GPU upload below covers them.  They used to be reached
    through the Assets cache by URL (uploadGearTextures' combatGearUrls loop);
