@@ -23,7 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  staffcast: () => import('./mp-staffcast.mjs'), /* v2.3.2714: the staff cast -- the crystal charges on the cooldown, the bolt leaves it and rejoins its real line, the staff stands head-up and kicks, a peer sees it */
+  staffcast: () => import('./mp-staffcast.mjs'), /* v2.3.2740: the staff cast -- the crystal charges on the cooldown, the bolt leaves it and rejoins its real line, the staff stands head-up and kicks, a peer sees it */
   arrowsnap: () => import('./mp-arrowsnap.mjs'), /* v2.3.2731: one arrow in eight snaps on what it hits -- same damage, a different picture */
   monstershots: () => import('./mp-monstershots.mjs'), /* v2.3.2732: slime goo in the thrower's colour, goblin fire, drawn in code */
   propfx: () => import('./mp-propfx.mjs'), /* v2.3.2730: a hit on a prop -- the arrow stands in the rock, the bolt crashes on it, the sword cuts it, and a peer sees all three */
