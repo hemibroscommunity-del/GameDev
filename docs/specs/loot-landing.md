@@ -15,8 +15,25 @@ shrinking hops, with a small squash at each contact. The items are the
 remains, the coins, the zone shard, and each rare item.
 * Each item has its own height, delay and rhythm, so they land one after
   another rather than as one block.
+* **Tilt (v2.3.2772):** each item also leans a little while it is in the air,
+  left or right at random with its own amount. The lean comes back to level at
+  every contact, so an item lands flat, gets knocked slightly crooked by each
+  hop, and lies level once it settles. The remains puddle tilts at half the
+  angle.
 * A pile you arrive at later, including one synced on zone entry, is
   already lying still.
+
+## Spread in a small circle (v2.3.2773)
+The coin, shard and rare items used to stand in a column over the remains. Now
+each has its own spot in a small circle around the pile's middle
+(`pileLayout`, radius about 26 world px).
+* The spots follow a golden-angle spiral from a random starting angle, so no
+  two piles look the same and no two items share a spot.
+* The circle is squashed vertically, since the ground is seen at an angle.
+* The rarest items sit nearest the middle.
+* A lone item stays in the middle.
+* Items are thrown out from the middle as they land, reaching their spot by
+  the second hop.
 
 ## Draw order is drop rate
 The loot layer sorts by `LOOT_Z` (`effectsRenderer.js`). Rarer items draw over
