@@ -29,12 +29,12 @@
  *     depth-sorted entity layer (depthSort.js), so walking behind the fire puts
  *     it in front of you and walking in front of it puts you in front.  The
  *     record's (x, y) is the fire's GROUND point -- where the old vector fire
- *     drew its base and where the cook figure plants its feet beside it -- but
- *     the sort compares against YOUR position, which is your hips, not your
- *     boots (standFootDy).  So the Container stands one foot-drop above the
- *     ground point and draws the fire that far below its origin: the fire
- *     comes in front of you exactly when its base is nearer the camera than
- *     your boots.  The ground glow lives on the ground layer, under everything.
+ *     drew its base and where the cook figure plants its feet beside it.  The
+ *     depth pass sorts on ground lines (v2.3.2748: depthSort.groundOf, your
+ *     boots against the fire's base), and the Container, which stands one
+ *     foot-drop above that point, says so in `_groundDy`: the fire comes in
+ *     front of you exactly when its base is nearer the camera than your boots.
+ *     The ground glow lives on the ground layer, under everything.
  *
  * Nothing about what a campfire IS changed: S._campfire and S._peerCampfires
  * (the cooking station, its fuse, the peer broadcast) are read exactly as the
@@ -249,10 +249,15 @@ class Fire {
 
     /* ── placement ── */
     const R = this.root;
-    /* sort key in the characters' convention (their y is their hips): the
-       fire's ground point, less the drop from a character's hips to its boots */
+    /* the Container's origin sits one foot-drop above the fire's ground point
+       (the flame and logs are drawn that far below it).  v2.3.2776: since
+       #717 (v2.3.2748) the depth pass sorts everything by where it TOUCHES THE
+       GROUND -- your feet, a peer's feet, a monster's -- as depthSort.groundOf
+       = y + _groundDy, so the Container says its ground is `foot` below its
+       origin: it sorts on the fire's own base. */
     const foot = standFootDy(zoneScale || 1);
     R.x = this.x; R.y = this.y - foot;
+    R._groundDy = foot;
     const fade = dying ? (dyingK < 0.55 ? 1 : dyingK < 0.72 ? 0.66 : dyingK < 0.88 ? 0.33 : 0) : 1;
     const crossX = 0, crossY = foot - CROSS_LIFT * u;
     const lx = crossX - ART.LOG_CROSS.x * u, ly = crossY - ART.LOG_CROSS.y * u;

@@ -4549,8 +4549,14 @@ bottom-anchored at your `y` sits at your HIPS:
 
 **The rule.** For your boots use `S.player.y + standFootDy(zoneScale)`
 (entityRenderer exports it) or the per-frame `S._bodyFootY`. When a thing must
-SORT against characters (the depth pass compares everything with your `y`,
-i.e. your hips), give it a sort key in that convention -- the campfire's
-Container stands `standFootDy()` above its ground point and draws the fire that
-far below its origin. **Receipt:** mp-campfire checks the fire-lighter's boots
-against `_bodyFootY` (within 3 px) and that the fire is lit at the boots.
+SORT against characters, it sorts on its ground line: since v2.3.2748 (#717)
+the depth pass compares where things touch the ground (depthSort `groundOf` =
+`y + _groundDy`, your feet against theirs), so anything whose origin is not its
+ground point says how far below its origin that is in `_groundDy` -- the
+campfire's Container stands `standFootDy()` above the fire's base and carries
+`_groundDy` = that drop. (Before #717 the pass compared everything with your
+hips, and the campfire kept to that convention instead; merging #717 made the
+fire draw over you only once you stood a foot-drop behind it, which
+mp-campfire's "stand behind the fire" check caught.) **Receipt:** mp-campfire
+checks the fire-lighter's boots against `_bodyFootY` (within 3 px), that the
+fire is lit at the boots, and both sides of the fire's depth.
