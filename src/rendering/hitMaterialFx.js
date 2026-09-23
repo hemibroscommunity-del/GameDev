@@ -676,6 +676,35 @@ export class HitMaterialFx {
         p.x += px * k; p.y += py * k; p.z += gauss() * h * 0.25;
       }
     }
+    /* ═══ v2.3.2717: A BOLT BLASTS ALL ROUND -- IN EVERY BURST ═══
+       sprayAng throws 45% of a bolt's pieces all round, each at random, so
+       about one piece in six lands back toward the caster ON AVERAGE -- and a
+       burst of 9-20 pieces now and then sent none that way at all (3 bursts
+       in 20 on slime and rock, measured on the merged v2.3.2716 build).  A
+       one-sided bolt reads as an arrow's jet, the difference this system
+       exists to show, and it failed mp-hitmat's "a bolt blasts both ways"
+       about one run in three.  So when the dice came up short, turn one or two
+       of the burst's pieces round: same speed and lift, aimed back past the
+       contact point.  Bursts that already threw enough are left exactly as
+       drawn. */
+    if (P.w === 'bolt' || P.w === 'splash') {
+      const cd = Math.cos(dir), sd = Math.sin(dir);
+      const mine = [];
+      let back = 0;
+      for (const p of this.P) {
+        if (!p.on || p.b !== rec || p.t0 !== now || (p.kind !== K_CHUNK && p.kind !== K_DROP)) continue;
+        const gx = p.vx, gyv = p.vy / DEPTH, sp = Math.hypot(gx, gyv);
+        if (sp > 0 && (gx * cd + gyv * sd) < -0.35 * sp) back++;
+        else mine.push(p);
+      }
+      const need = (mine.length + back) >= 3 ? Math.max(1, Math.floor((mine.length + back) * 0.12)) : 0;
+      for (let k = 0; back < need && k < mine.length; k++, back++) {
+        const p = mine[mine.length - 1 - k];
+        const sp = Math.hypot(p.vx, p.vy / DEPTH);
+        const a = towardCamera(dir + Math.PI + gauss() * 0.6);
+        p.vx = Math.cos(a) * sp; p.vy = Math.sin(a) * sp * DEPTH;
+      }
+    }
     this._bursts.push(rec);
     if (this._bursts.length > 32) this._bursts.shift();
     this._stats.byFx[rec.fx] = (this._stats.byFx[rec.fx] || 0) + 1;
