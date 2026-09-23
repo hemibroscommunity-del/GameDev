@@ -58,7 +58,18 @@ Everything here is display only. Nothing is sent to the server, and nothing in c
 - **Fallback:** if it cannot draw, `death-v1.png` plays exactly as before.
 - **QA:** `window.__btDeathSlow = 8` plays it in slow motion.
 
+## Or you explode (v2.3.2705) — pick with `?death=explode`
+
+This is the owner's alternative, and both styles ship behind one switch until the owner picks one.
+
+- **Swell:** for 170 ms the body strains outward and shivers.
+- **BOOM:** flesh flakes, all 13 bones and 12 spare bones blast outward and up in high arcs, spinning.
+- **Screen shake:** the camera kicks (shake 26), and kicks again (5–9) as big pieces land, at most every 90 ms.
+- **Landing:** bones bounce, skid, grip and lie strewn across the screen. They are tuned to land on screen, not three screens away.
+- **Other players:** a friend exploding nearby shakes your screen a little (9).
+- **Switch:** `window.__btDeathStyle` or `?death=explode|crumble`. The default is `crumble`. Making either one permanent is a one-line change to the default in `deathStyle()`.
+
 ## QA
 
-- **`mp-worldfx`:** covers all of the above against a real worker (19 checks).
+- **`mp-worldfx`:** covers all of the above against a real worker (22 checks, including the explode style).
 - **Harness defaults:** the harness pins every scenario to plain daytime with the drifting air off (`window.__btTod = 'day'`, `window.__btAmbienceOff = true`), so pixel tests don't depend on the clock. mp-worldfx turns the air back on itself.

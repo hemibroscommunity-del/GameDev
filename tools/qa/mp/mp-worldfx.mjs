@@ -14,6 +14,8 @@
  *  4. The corpse is the crumble, not the old strip: it photographed the body,
  *     the flakes leave, and the bones end up FALLEN (low) and SPREAD (a pile),
  *     not standing where the skeleton stood.
+ *  4b. The other death (v2.3.2705, ?death=explode): it booms, the spare bones
+ *     come too, the screen kicks, and the pile is strewn, not heaped.
  *  5. No renderer throws, and the real-damage path still does nothing on a
  *     blocked hit (covered by the gameEvents guard; asserted here via tiers).
  */
@@ -147,6 +149,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(700);
   const gone = await crumble();
   rec.ok('...and it is gone the moment you are alive again', !gone, gone);
+
+  /* ── 5. or you explode (v2.3.2705, ?death=explode) ── */
+  await P.page.waitForTimeout(600);
+  await P.page.evaluate(() => {
+    window.__btDeathStyle = 'explode';
+    const S = window._gameState.current;
+    const t = Date.now();
+    S._dying = true; S.rpg.hp = 0; S._deathStart = t; S.screenShake = 0;
+    window.__wfxShake = 0;
+    window.__wfxHold = setInterval(() => {
+      S.rpg.hp = 0; S._deathStart = t;
+      window.__wfxShake = Math.max(window.__wfxShake, S.screenShake || 0);
+    }, 16);
+  });
+  /* wait for the bones to come down rather than for a fixed time: a slow
+     software-GL frame rate stretches the physics clock (dt is capped per
+     frame), and a fixed wait measured bones still in the air */
+  let ex = null;
+  for (let i = 0; i < 40; i++) {
+    await P.page.waitForTimeout(300);
+    ex = await crumble();
+    if (ex && ex.boomed && ex.resting >= ex.bones - 2) break;
+  }
+  const kick = await P.page.evaluate(() => window.__wfxShake);
+  await closeUp('explode-pile');
+  rec.ok('the exploding death BOOMS: every bone flies, plus the spares', !!ex && ex.style === 'explode' && ex.boomed && ex.bones > 13 && ex.free === ex.bones, ex);
+  rec.ok('...the screen kicks with it', kick >= 20, { maxShake: kick });
+  rec.ok('...and the bones end up strewn far wider than a crumbled pile', !!ex && ex.spread > 150 && ex.maxZ < ex.standingZ * 0.35, ex && { spread: ex.spread, maxZ: ex.maxZ });
+  await P.page.evaluate(() => {
+    clearInterval(window.__wfxHold);
+    window.__btDeathStyle = undefined;
+    const S = window._gameState.current;
+    S.rpg.hp = S.rpg.maxHp || 100; S._deathStart = 0; S._dying = false;
+  });
 
   const throws = H.takeRenderThrows();
   rec.ok('no renderer threw', throws.length === 0, throws.slice(0, 3));

@@ -9685,6 +9685,9 @@ export class EntityRenderer {
            own look breaks into flakes and their bones fall.  The strip below
            is the fallback if it cannot draw. */
         const _crumble = deathCrumble.corpse('o:' + (other.id || id), display, other._deathTs || 0, now);
+        /* v2.3.2705: a friend exploding nearby shakes your screen too, less */
+        const _pBoom = deathCrumble.takeShake();
+        if (_pBoom > 0) S.screenShake = Math.max(S.screenShake || 0, _pBoom);
         if (_crumble) {
           if (_spriteBody) _spriteBody.visible = false;
           if (_body) _body.visible = false;
@@ -10724,6 +10727,9 @@ export class EntityRenderer {
          deathCrumble.js.  Photographed on this first dead frame, before the
          hide pass below takes the worn layers away. */
       const _selfCrumble = deathCrumble.corpse('self', display, S._deathStart || 0, now);
+      /* v2.3.2705: the exploding death kicks the camera (deathCrumble.js) */
+      const _boom = deathCrumble.takeShake();
+      if (_boom > 0) S.screenShake = Math.max(S.screenShake || 0, _boom);
       if (_selfCrumble) {
         if (_selfSpriteBody) _selfSpriteBody.visible = false;
         if (_selfBody) _selfBody.visible = false;
