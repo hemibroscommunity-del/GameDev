@@ -27,6 +27,7 @@ import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is 
 import { ELEMENTS } from '@/data/elements.js';
 import { STATUS_DEFS, applyStatus, STAFF_LIFE /* v2.3.2387 */ } from '@/data/gameSystems.js';
 import { rollMonsterShard } from '@/data/shards.js';
+import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2699: a snowball stops where the worker's own line meets a prop */
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armoured-hit SFX check */
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
    its own module scope — the barrel export is the canonical copy. */
@@ -1689,12 +1690,51 @@ export function processGameEvent(type, payload, S, deps) {
                    the server retunes travelMs. ~60fps assumed, matching
                    the rest of this simulator's frame-based life/speed. */
                 var _sbFrames = Math.max(1, Math.round((_sbMs / 1000) * 60));
+                /* ═══ v2.3.2699: THE BALL STOPS WHERE THE WORKER SAYS IT DOES ═══
+                   Owner: "The client side isn't showing snowballs bursting upon
+                   hitting props but is successfully mitigating damage server
+                   side."
+
+                   The worker decides a ball's fate on ONE line: where it left
+                   his hand (m._projFromX/Y) to where it was aimed
+                   (m._projTx/Ty), both frozen at release (index.js, the
+                   impact-tick check).  This event carries exactly those four
+                   numbers -- payload.x/y and tx/ty are written from m.x/m.y and
+                   ps.x/ps.y in the same breath the worker freezes them
+                   (telegraph.js) -- so asking attackBlockPoint the same question
+                   here gives the same answer BY CONSTRUCTION: the same slab test,
+                   the same prop table, and mirror-audit pins both sides of each.
+                   No per-frame geometry, and nothing for it to disagree about.
+
+                   v2.3.2657 tried a per-frame test in the simulator instead, and
+                   it never fired at all: attackBlockPoint skips a box whenever an
+                   endpoint is inside it, and one frame's step always has an end
+                   inside the rock it is crossing (worldProps.js, sweepBlockPoint).
+
+                   ACTING ON IT: cut `life` to the fraction of the flight that
+                   reaches the face.  The simulator's life<=0 branch then bursts
+                   it (queueSnowballBurst) wherever it has got to, which is the
+                   drawn path at that same fraction.  The drawn path starts at the
+                   hand, not the feet, so the burst sits a few px above the ground
+                   point the worker hit -- on the rock's face, which is where a
+                   ball in the air would strike it.  life is in frames at ~60fps,
+                   the same unit it was already derived in above. */
+                var _sbLife = _sbFrames;
+                var _sbStop = attackBlockPoint(S.currentZone,
+                  Number(payload.x) || 0, Number(payload.y) || 0,
+                  Number(payload.tx) || 0, Number(payload.ty) || 0);
+                if (_sbStop) _sbLife = Math.max(1, Math.round(_sbStop.t * _sbFrames));
                 S.slimeProjectiles.push({
                   x: _sbX,
                   y: _sbY,
                   ang: Math.atan2(_sbDy, _sbDx),
                   speed: _sbDist / _sbFrames,
-                  life: _sbFrames,
+                  life: _sbLife,
+                  /* v2.3.2699: where along its flight a prop stops it (0..1), or
+                     null for a clear line.  Read by nothing in the game; it is
+                     what lets mp-propshots say WHY a ball ended early rather than
+                     inferring it from where it happened to vanish. */
+                  propStopT: _sbStop ? _sbStop.t : null,
                   displayOnly: true,
                   ownerId: payload.monsterId,
                   rawDmg: 0,

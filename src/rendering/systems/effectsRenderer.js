@@ -1912,6 +1912,13 @@ export class EffectsRenderer {
           srcPx: (e.sprite.texture && (e.sprite.texture.frame
             ? e.sprite.texture.frame.width : e.sprite.texture.width)) || 0,
           visible: !!e.sprite.visible,
+          /* v2.3.2699: WHERE it is drawn, and whose it is.  The v2.3.2657 prop
+             stop was never visible and nothing could say so: every probe
+             answered a size, and "did the ball get drawn past the rock" is a
+             position.  mp-propshots reads these. */
+          x: +e.sprite.x.toFixed(1),
+          y: +e.sprite.y.toFixed(1),
+          ownerId: (e.proj && e.proj.ownerId) || null,
         }));
     }
 

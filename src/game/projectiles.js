@@ -381,7 +381,7 @@ import {
 import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
-import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot */
+import { sweepBlockPoint } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form */
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */ } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
@@ -864,8 +864,17 @@ export function updateArrows(S, deps) {
                bow special can keep chipping while you kite) -- so refusing to
                claim the hit IS the block, and the worker needs no matching
                test to agree with it. */
+            /* v2.3.2699: sweepBlockPoint, NOT attackBlockPoint.  This asks about
+               one frame's STEP, and attackBlockPoint skips a box whenever either
+               end is inside it -- so the step that reaches a rock (leading end
+               inside) and every step after (trailing end inside) were all
+               skipped, and no arrow ever stopped.  With no test on the worker
+               for a player's ranged hit (above), that meant arrows and staff
+               bolts sailed through props and hit monsters behind them from the
+               day this shipped.  The sweep counts the leading end; see its
+               header in worldProps.js. */
             if (_released && !a.planting) {
-              var _gp = attackBlockPoint(S.currentZone,
+              var _gp = sweepBlockPoint(S.currentZone,
                 a._prevX - _ox, a._prevY - _oy,
                 a._renderX - _ox, a._renderY - _oy);
               if (_gp) {
@@ -1752,29 +1761,33 @@ export function updateSlimeProjectiles(S) {
             var _ppx = proj.x, _ppy = proj.y;
             proj.x += Math.cos(proj.ang) * proj.speed * _sdt;
             proj.y += Math.sin(proj.ang) * proj.speed * _sdt;
-            /* v2.3.2657: burst against a prop instead of flying through it.
-               Owner: "snowmen are still throwing snowballs through the props."
-               The server half of that (the damage) is fixed at the impact tick;
-               this is the half you can SEE, and without it the fix reads as
-               broken -- a ball that visibly passes through a rock and then does
-               nothing looks like a missing hit, not like cover.
+            /* v2.3.2657 put a prop test here and it never fired -- see
+               v2.3.2699 below for why, and the owner's report that caught it:
+               "The client side isn't showing snowballs bursting upon hitting
+               props but is successfully mitigating damage server side."
 
-               Tested on the STEP segment (previous point -> new point), not on
-               the new point alone: at 6-11px per frame a point test walks
-               straight over a thin blocker some frames and not others, which is
-               the frame-rate-dependent flicker the arrow path already avoids
-               the same way (v2.3.2650).
-
-               Placed before the player-contact test below so a ball that hits
-               cover 10px short of the player bursts on the rock rather than on
-               the bro.  Applies to the display-only server ball and the legacy
-               local slime alike: neither should cross solid scenery, and the
-               server agrees about the damage for the one that carries any. */
-            var _propHit = attackBlockPoint(S.currentZone, _ppx, _ppy, proj.x, proj.y);
-            if (_propHit) {
-              proj.x = _propHit.x; proj.y = _propHit.y;
-              queueSnowballBurst(S, proj);
-              return false;
+               v2.3.2699: TWO KINDS OF BALL, TWO QUESTIONS.
+               A SERVER ball (displayOnly -- the snowman's) already knows where
+               it stops: gameEvents asked the worker's exact question when it
+               spawned (release point -> aim point, the same four numbers the
+               worker tested) and cut its `life` to end on the rock face, so the
+               life<=0 branch above bursts it there.  It must NOT be re-tested
+               here.  This ball is drawn from the snowman's HAND, not his feet,
+               so its drawn line is not the worker's line, and a second test on
+               it could burst a ball the worker lets through -- the player would
+               take a hit from a ball they watched pop on a rock.
+               A LOCAL ball (the legacy client-side slime orb, which rolls its
+               own damage) has no worker line to agree with.  It is launched
+               from the monster's feet in ground space, so the per-step sweep is
+               the exact test for it -- and sweep, not attackBlockPoint, whose
+               endpoint rule skips every step of a moving projectile. */
+            if (!proj.displayOnly) {
+              var _propHit = sweepBlockPoint(S.currentZone, _ppx, _ppy, proj.x, proj.y);
+              if (_propHit) {
+                proj.x = _propHit.x; proj.y = _propHit.y;
+                queueSnowballBurst(S, proj);
+                return false;
+              }
             }
             var pdx = P.x - proj.x, pdy = P.y - proj.y;
             if (pdx * pdx + pdy * pdy > 16 * 16) return true;

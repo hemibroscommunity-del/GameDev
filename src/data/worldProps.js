@@ -860,6 +860,48 @@ export function attackBlocked(zoneId, x0, y0, x1, y1) {
   return !!attackBlockPoint(zoneId, x0, y0, x1, y1);
 }
 
+/* ═══ v2.3.2699: A MOVING PROJECTILE NEEDS A DIFFERENT QUESTION ═══
+   Owner: "The client side isn't showing snowballs bursting upon hitting props
+   but is successfully mitigating damage server side."
+
+   attackBlockPoint above answers "is there a prop BETWEEN these two points?",
+   and its endpoint rule is right for that: a shooter or target standing inside
+   a footprint is AT the prop, not behind it.  v2.3.2652 then asked it a
+   different question -- one frame's STEP of a projectile in flight -- and
+   there the rule is exactly wrong.  The frame a ball reaches a rock, the
+   step's leading end is INSIDE the rock: skipped.  Every frame after, the step
+   starts inside: skipped.  So no step is ever "behind" the prop, and a
+   projectile moving in steps shorter than the prop's whole depth passes
+   through it every time.  Measured against the frost ridge (42px deep) at
+   4, 6, 8, 11, 20, 40 and 60 px/frame: through, every one.  The whole-line
+   question the WORKER asks (release -> aim) says blocked, which is why the
+   damage was stopped and the ball never was.  The player's own arrows took
+   the same call per frame, so they flew through rocks too -- and since the
+   client alone decides a ranged hit, that half never worked at all.
+
+   So this is the step version.  Two differences, both from what a step IS:
+     - the LEADING end inside a box counts.  That is precisely the frame the
+       projectile hits it, and returns the entry point on the near face.
+     - a step that STARTS inside a box ignores that box.  A ball launched from
+       inside a footprint (a monster spawned in one) flies out of it, which is
+       the shooter-inside rule, still correct for the launch point.  It cannot
+       fire for a box the projectile has already entered, because entering one
+       is the end of its flight.
+   Returns { x, y, t } for the nearest entry along the step, or null. */
+export function sweepBlockPoint(zoneId, x0, y0, x1, y1) {
+  if (!Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(x1) || !Number.isFinite(y1)) return null;
+  const boxes = zoneBlockers(zoneId);
+  let best = -1;
+  for (let i = 0; i < boxes.length; i++) {
+    const b = boxes[i];
+    if (pointInBox(x0, y0, b)) continue;   /* launched from inside it: fly out */
+    const t = segEnterT(x0, y0, x1, y1, b);
+    if (t >= 0 && (best < 0 || t < best)) best = t;
+  }
+  if (best < 0) return null;
+  return { x: x0 + (x1 - x0) * best, y: y0 + (y1 - y0) * best, t: best };
+}
+
 /* Dev probe, house style: the blocker set a scenario is reasoning about, and
    a direct answer for one line. A test that recomputed the geometry itself
    would be asserting its own arithmetic rather than the game's. */
@@ -867,4 +909,5 @@ if (typeof window !== 'undefined') {
   window.__btBlockers = (z) => zoneBlockers(z);
   window.__btAttackBlocked = (z, x0, y0, x1, y1) => attackBlocked(z, x0, y0, x1, y1);
   window.__btBlockPoint = (z, x0, y0, x1, y1) => attackBlockPoint(z, x0, y0, x1, y1);
+  window.__btSweepBlockPoint = (z, x0, y0, x1, y1) => sweepBlockPoint(z, x0, y0, x1, y1); /* v2.3.2699 */
 }

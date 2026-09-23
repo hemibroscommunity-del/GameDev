@@ -227,6 +227,7 @@ const SCENARIOS = {
   blacksmith: () => import('./mp-blacksmith.mjs'), /* v2.3.1773: the smith at the fountain */
   townprops: () => import('./mp-townprops.mjs'), /* v2.3.1775: anvil, stall, the man at it */
   zonedecor: () => import('./mp-zonedecor.mjs'), /* v2.3.2651: frost's decor loads per-zone, draws, sorts, and is freed on the way out */
+  propshots: () => import('./mp-propshots.mjs'), /* v2.3.2699: a snowball and an arrow visibly STOP at a prop, watched on the real frame clock */
   uisfx: () => import('./mp-uisfx.mjs'), /* v2.3.2637: the owner's three sounds decode */
   uisfx2: () => import('./mp-uisfx2.mjs'), /* v2.3.2638: the sound actually FIRES */
   uisfx3: () => import('./mp-uisfx3.mjs'), /* v2.3.2658: click vs close routing, and no doubles */
