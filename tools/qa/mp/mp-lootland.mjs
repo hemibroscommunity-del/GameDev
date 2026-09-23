@@ -91,6 +91,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const items = (p) => (p ? p.parts.filter((x) => !/beam|rareText/.test(x.kind)) : []);
     const tilted = samples.slice(0, 3).some((p) => items(p).some((x) => Math.abs(x.rot) > 0.05));
     const signs = new Set(samples.slice(0, 3).flatMap((p) => items(p).filter((x) => Math.abs(x.rot) > 0.05).map((x) => Math.sign(x.rot))));
+    /* v2.3.2773: spread in a small circle, not stacked in a column */
+    const pts = items(settled).filter((x) => x.kind !== 'remnantOrCoin');
+    const xs = pts.map((x) => x.x), yv = pts.map((x) => x.y);
+    const xSpan = xs.length ? Math.max(...xs) - Math.min(...xs) : 0;
+    const ySpan = yv.length ? Math.max(...yv) - Math.min(...yv) : 0;
+    const dists = pts.map((x) => Math.hypot(x.x - settled.parts[0].x, (x.y - settled.parts[0].y) / 0.55));
+    rec.ok('the items spread out around the pile, not in a vertical line', xSpan > 20 && ySpan > 6, { xSpan, ySpan, pts });
+    rec.ok('...within a small circle of it', dists.every((d) => d < 70), { dists });
+    const firstPts = items(first).filter((x) => x.kind !== 'remnantOrCoin');
+    const firstSpan = firstPts.length ? Math.max(...firstPts.map((x) => x.x)) - Math.min(...firstPts.map((x) => x.x)) : 0;
+    rec.ok('...thrown out from the middle as they land (tighter at first)', firstSpan < xSpan, { firstSpan, xSpan });
     rec.ok('the items tilt while they bounce', tilted, samples.slice(0, 3).map((p) => items(p).map((x) => x.rot)));
     rec.ok('...and lie level once settled', items(settled).every((x) => x.rot === 0), items(settled).map((x) => x.rot));
     rec.ok('...not all leaning the same way', signs.size === 2 || items(samples[1]).length < 3, [...signs]);

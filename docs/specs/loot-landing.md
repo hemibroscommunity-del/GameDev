@@ -23,6 +23,18 @@ remains, the coins, the zone shard, and each rare item.
 * A pile you arrive at later, including one synced on zone entry, is
   already lying still.
 
+## Spread in a small circle (v2.3.2773)
+The coin, shard and rare items used to stand in a column over the remains. Now
+each has its own spot in a small circle around the pile's middle
+(`pileLayout`, radius about 26 world px).
+* The spots follow a golden-angle spiral from a random starting angle, so no
+  two piles look the same and no two items share a spot.
+* The circle is squashed vertically, since the ground is seen at an angle.
+* The rarest items sit nearest the middle.
+* A lone item stays in the middle.
+* Items are thrown out from the middle as they land, reaching their spot by
+  the second hop.
+
 ## Draw order is drop rate
 The loot layer sorts by `LOOT_Z` (`effectsRenderer.js`). Rarer items draw over
 commoner ones, whether on one pile or where two piles overlap. The rates come
