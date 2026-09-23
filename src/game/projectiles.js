@@ -442,8 +442,8 @@ import {
 import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
-import { sweepBlockPoint, boxExitPoint, attackBlocked } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form; v2.3.2701: and the far face of a rock a monster stands in */
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */ } from '@/game/combatHelpers.js';
+import { sweepBlockPoint, boxExitPoint, attackBlocked, boxFace } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form; v2.3.2701: and the far face of a rock a monster stands in */
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2702 */ } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -1340,38 +1340,11 @@ export function updateArrows(S, deps) {
                   var _orbFxY = (typeof a._renderY === 'number') ? a._renderY
                     : (((typeof m.renderY === 'number') ? m.renderY : m.y)
                        - monsterBodyOffsetY(m.archetype || m.type));
-                  if (!S._impactRings) S._impactRings = [];
-                  /* Outer expanding ring — the "crash" flash. */
-                  S._impactRings.push({
-                    x: _orbFxX, y: _orbFxY, ts: Date.now(),
-                    color: _orbColor, maxR: 26, duration: 320,
-                  });
-                  /* Inner brighter ring 40 ms later for double-pulse
-                     intensity. Use a startDelay field rather than
-                     setting ts in the future — future-ts caused the
-                     render to compute negative ages and weird radii on
-                     the first frame after spawn (same family of bug
-                     as the swingTimer +300 player-flicker on cast). */
-                  S._impactRings.push({
-                    x: _orbFxX, y: _orbFxY, ts: Date.now(), startDelay: 40,
-                    color: _orbColor, maxR: 14, duration: 220,
-                  });
-                  /* Dissipation — radial particle spray outward, with a
-                     small upward bias so embers drift like sparks. */
-                  if (!S.hitParticles) S.hitParticles = [];
-                  for (var _op = 0; _op < 22; _op++) {
-                    var _oa = (_op / 22) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
-                    var _osp = 2 + Math.random() * 4;
-                    S.hitParticles.push({
-                      x: _orbFxX + Math.cos(_oa) * 4,
-                      y: _orbFxY + Math.sin(_oa) * 4,
-                      vx: Math.cos(_oa) * _osp,
-                      vy: Math.sin(_oa) * _osp - 0.7,
-                      life: 0.45 + Math.random() * 0.4,
-                      color: _orbColor,
-                      size: 1 + Math.random() * 2.2,
-                    });
-                  }
+                  /* v2.3.2702: the rings and the spray moved into combatHelpers'
+                     orbCrashFx, unchanged, so a bolt that lands on a PROP crashes
+                     through the same code as one that lands on a monster (the
+                     owner: bolts "explode even if they hit props"). */
+                  orbCrashFx(S, _orbFxX, _orbFxY, _orbColor);
                   /* Burn marks removed per user request — the orb-crash
                      ring + dissipation particles already convey the hit
                      without a residue overlay on the body. */
@@ -1829,17 +1802,47 @@ export function updateArrows(S, deps) {
               var _impX = _propStop.x + _ox, _impY = _propStop.y + _oy;
               a._renderX = _impX; a._renderY = _impY;
               a._inBox = null;
+              /* ═══ v2.3.2702: AND THE PROP FEELS IT ═══
+                 Owner: "subtle debris comes off the props once they're hit by a
+                 player projectile ... the bolt projectiles to explode even if
+                 they hit props with debris, arrow stuck in (with debris)".
+                 Until now a shot that met a rock simply ended: the bolt winked
+                 out, the arrow dropped at the foot of the face.  The debris comes
+                 BACK off the face (the heading reversed), is keyed to the prop so
+                 the renderer's dedup treats the rock as one target, and sounds
+                 like the material through the same mixer a monster hit uses. */
+              var _pBox = _propStop.box || null;
+              var _pId = _pBox ? _pBox.id : null;
+              var _pGy = _propStop.y;   /* the ground line at the contact point */
+              if (_pId) {
+                spawnPropDebris(S, { id: _pId, x: _impX, y: _impY, gy: _pGy,
+                  ang: a.ang + Math.PI, weapon: a.isStaff ? 'bolt' : 'arrow' });
+                propImpactSound(_pId, a.isStaff ? 0.18 : 0.32);   /* under a monster hit's 0.6: a rock is hit far more often than it is news */
+              }
               if (a.isStaff) {
                 /* Magic has no plant animation -- it is spent on contact,
-                   the same as reaching its range. */
+                   the same as reaching its range.  v2.3.2702: and it CRASHES
+                   there, through the same orbCrashFx a monster hit uses, in the
+                   element's colour, with the spell-landing voice on top. */
+                orbCrashFx(S, _impX, _impY, projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#a78bfa');
+                try { BT_AUDIO.magicHit({ vol: 0.3 }); } catch (e) { /* audio is best-effort */ }
                 return false;
               }
-              a.planting = true;
+              /* v2.3.2702: an arrow that met a prop STICKS IN IT -- no spent
+                 drop to the ground.  It keeps its flight angle and is planted
+                 where it hit, so the existing planted life applies unchanged
+                 (2 s; a bow special's 4 s of ground ticks and its send-off
+                 blast, centred on the stuck point).  `_inProp` tells the
+                 renderer to draw it ON the prop -- sorted with the rock, not in
+                 the ground layer under everything -- and headless, which
+                 `planted` already means: the head is in the rock. */
+              a.planted = true;
+              a.plantedAt = Date.now();
               a._plantX = _impX;
-              a._plantStartY = _impY;
               a._plantY = _impY;
-              a._fallVy = 2;
+              a._plantStartY = _impY;
               a.life = 999;        // plantedAt governs removal now, not life
+              a._inProp = _pId ? { id: _pId, gy: _pGy, face: boxFace(_pBox, _propStop.x, _propStop.y) } : null;
             }
             return true;
           });

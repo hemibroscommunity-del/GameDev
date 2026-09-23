@@ -98,6 +98,7 @@ import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { footprintFrames } from '@/rendering/footprintSprites.js'; /* v2.3.2654: prints in the snow */
+import { propsForZone } from '@/data/worldProps.js'; /* v2.3.2702: marks drawn ON props -- slash marks, arrows standing in the rock */
 
 /* v2.3.2654: how a print reads and how long it lasts.  PRINT_TTL_MS is
    mirrored by stateCleanup's filter -- the array and the drawer must expire on
@@ -1189,6 +1190,51 @@ function debrisDotTex() {
   _DEBRIS_DOT_TEX = Texture.from(c);
   return _DEBRIS_DOT_TEX;
 }
+
+/* ═══ v2.3.2702: THE SLASH MARK A BLADE LEAVES ON A PROP ═══
+   Owner: "sword slash marks on the props (with debris)".  There is no art for
+   a cut, so it is minted once, here, and drawn as a SPRITE (the owner's rule
+   that code-drawn effects read as placeholder is about live Graphics, and it
+   is why every mark in this file is a sprite over a minted texture).  The
+   shape is a gouge: a narrow lens, pointed at both ends, bright where the
+   blade bit and dark where the lip throws its shadow -- the same two-tone
+   recipe every other mark here uses so it reads on grey rock, white snow and
+   brown wood alike (TRAPS §21: a mark the colour of what it is on shows
+   nothing).  Hard-edged, drawn on whole pixels, to sit with the crisp pixel
+   pieces the material work gives the chips. */
+let _PROP_SLASH_TEX = null;
+function propSlashTex() {
+  if (_PROP_SLASH_TEX) return _PROP_SLASH_TEX;
+  const W = 48, H = 12;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  /* half-thickness of the lens at column x: 0 at the tips, `peak` at 40% --
+     a cut is deepest where the swing was fastest, a little ahead of centre */
+  const lens = (x, peak) => {
+    const u = x / (W - 1);
+    const k = u < 0.4 ? u / 0.4 : (1 - u) / 0.6;
+    return Math.max(0, Math.round(peak * Math.sqrt(k)));
+  };
+  const cy = 5;
+  for (let x = 1; x < W - 1; x++) {
+    const h = lens(x, 3);
+    if (h <= 0) continue;
+    /* the shadow lip under the cut */
+    ctx.fillStyle = 'rgba(20,18,16,0.72)';
+    ctx.fillRect(x, cy + 1, 1, h + 1);
+    /* the bite itself */
+    ctx.fillStyle = 'rgba(255,251,240,0.95)';
+    ctx.fillRect(x, cy - h + 1, 1, h);
+    /* and the bright edge the blade left on top */
+    if (h >= 2) { ctx.fillStyle = 'rgba(255,255,255,1)'; ctx.fillRect(x, cy - h + 1, 1, 1); }
+  }
+  _PROP_SLASH_TEX = Texture.from(c);
+  return _PROP_SLASH_TEX;
+}
+const PROP_SLASH_LEN = 30;       /* drawn world px along the cut */
+const PROP_SLASHES_PER_PROP = 5;  /* a rock that has been hacked at shows the last five */
 
 /* ═══ v2.3.2331: PARTICLES ARE SPRITES, NOT POLYGONS ═══
  * _updateParticles used to draw every hit particle, death-explosion particle
@@ -3212,6 +3258,7 @@ export class EffectsRenderer {
     this._updateGatherNodes(S, now);
     this._updateMonsterImpacts(S, now);
     this._updateDebrisBursts(S, now);   /* v2.3.2200: material hit debris */
+    this._updatePropMarks(S, now);      /* v2.3.2702: slashes and arrows standing in props */
     this._updateCampfire(S, now);
     this._updateFiremaking(S, now);
     this._updateSwordSwing(S, now);
@@ -3987,6 +4034,7 @@ export class EffectsRenderer {
 
     // Local arrows
     const arrows = S.arrows || [];
+    this._pmTick = (this._pmTick || 0) + 1;   /* v2.3.2702: see _reapPropArrows */
     for (const a of arrows) {
       if (!a._renderX) continue;
       /* v2.3.2287: the vista's perspective curve, at the arrow's OWN drawn
@@ -3994,6 +4042,9 @@ export class EffectsRenderer {
          on every zone but worldview. See _placeMagicBolt for why the `|| 1`
          guards matter more than the multiply does. */
       const _pk = zonePlayerScale(S.currentZone, a._renderX, a._renderY, TILE) || 1;
+      /* v2.3.2702: an arrow standing in a prop is drawn ON the prop, sorted
+         with it, not in the ground layer -- see _placePropArrow. */
+      if (a._inProp && a.planted) { this._placePropArrow(S, a, now, _pk); continue; }
       const elemColor = a._projElem && ELEMENTS[a._projElem] ? cssToHex(ELEMENTS[a._projElem].color) : 0xc8c8d0;
       const fadeA = Math.min(1, a.life / 20);
       /* v2.3.1095: a planted/falling arrow is stuck in the world -- no motion
@@ -4201,6 +4252,7 @@ export class EffectsRenderer {
       }
     }
 
+    this._reapPropArrows();   /* v2.3.2702 */
     /* v2.3.1334: reap magic-bolt sprites whose projectile is gone
        (expired, hit, or zone-reset) — same pattern as the slime-orb
        reaper below. */
@@ -7302,6 +7354,256 @@ export class EffectsRenderer {
    * angle (the snowman-plume recipe).  Without: six tinted copies of
    * the minted soft particle on parametric arcs — dt-safe because
    * position is computed from age, not integrated per frame. */
+  /* ═══ v2.3.2702: MARKS ON PROPS -- SLASHES AND ARROWS IN THE ROCK ═══
+   * Owner: "arrow stuck in (with debris), and sword slash marks on the props
+   * (with debris)".
+   *
+   * WHERE THEY ARE DRAWN IS THE WHOLE PROBLEM.  A mark lives ON a prop, so it
+   * must be in front of the player exactly when the prop is, and behind him
+   * exactly when the prop is -- and since v2.3.2633 that is decided per frame by
+   * the depth pass (rendering/depthSort.js), which buckets every child of the
+   * entity layer by its `y` and sorts by it.  A sprite added straight to that
+   * layer would be sorted by its OWN y, which for a cut 30px up a rock face is
+   * north of the rock's ground line: behind the rock, invisible.  So each prop
+   * that carries a mark gets an OVERLAY container standing on the prop's own
+   * ground line (+1, so it always sorts just after the rock), and the marks are
+   * drawn inside it at their offsets.  The depth pass then moves the overlay
+   * with the rock, and nothing about depth has to be special-cased.
+   * A hit on the BACK face (an arrow from the north) gets an overlay on the
+   * footprint's north line (-1) instead: behind the rock, so the rock covers
+   * it and only what sticks out past the art shows -- which is what you would
+   * see of an arrow in the far side of a boulder.
+   *
+   * Two sources.  Slashes and a PEER's stuck arrows arrive as records on
+   * S._propMarks (combatHelpers.markProp) and live here for their `ttl`.  YOUR
+   * stuck arrows are still real projectiles in S.arrows (planted, `_inProp`),
+   * because a bow special's ground ticks and its send-off blast hang off that
+   * object -- so the arrow pass hands them to _placePropArrow instead of
+   * drawing them in the ground layer, and they go when the arrow does. */
+  _propById(S, id) {
+    const zone = S && S.currentZone;
+    if (this._pmIdxZone !== zone) {
+      this._pmIdx = Object.create(null);
+      for (const p of propsForZone(zone)) this._pmIdx[p.id] = p;
+      this._pmIdxZone = zone;
+    }
+    return (id && this._pmIdx && this._pmIdx[id]) || null;
+  }
+
+  _propOverlay(p, back) {
+    if (!this._propOv) this._propOv = new Map();
+    const key = p.id + (back ? ':back' : ':front');
+    let ov = this._propOv.get(key);
+    if (!ov || ov.destroyed) {
+      ov = new Container();
+      ov.label = 'propmarks_' + key;
+      this.entityLayer.addChild(ov);
+      this._propOv.set(key, ov);
+    }
+    ov.x = p.x;
+    ov.y = back ? (p.y - (p.blockD || 0)) - 1 : p.y + 1;
+    ov.visible = true;
+    return ov;
+  }
+
+  _clearPropMarks() {
+    for (const fx of (this._pmFx || [])) this._killPropMark(fx);
+    this._pmFx = [];
+    if (this._propArrowSprs) {
+      for (const spr of this._propArrowSprs) if (spr && !spr.destroyed) spr.destroy();
+      this._propArrowSprs.clear();
+    }
+    if (this._propOv) {
+      for (const ov of this._propOv.values()) if (ov && !ov.destroyed) ov.destroy({ children: true });
+      this._propOv.clear();
+    }
+  }
+
+  _killPropMark(fx) {
+    if (fx && fx.sprite && !fx.sprite.destroyed) fx.sprite.destroy();
+  }
+
+  _spawnPropMark(S, rec, now) {
+    const p = this._propById(S, rec.id);
+    if (!p) return;
+    const back = rec.face === 'n';
+    const ov = this._propOverlay(p, back);
+    const pk = zonePlayerScale(S.currentZone, rec.x, rec.y, TILE) || 1;
+    let sp = null;
+    if (rec.kind === 'slash') {
+      /* the newest five on any one prop */
+      let n = 0;
+      for (let i = this._pmFx.length - 1; i >= 0; i--) {
+        const f = this._pmFx[i];
+        if (f.kind === 'slash' && f.propId === rec.id && ++n >= PROP_SLASHES_PER_PROP) {
+          this._killPropMark(f); this._pmFx.splice(i, 1);
+        }
+      }
+      const tex = propSlashTex();
+      sp = new Sprite(tex);
+      sp.anchor.set(0.5, 0.45);
+      sp.scale.set((PROP_SLASH_LEN * pk) / (tex.width || 48));
+      sp.rotation = rec.ang || 0;
+    } else if (rec.kind === 'arrow') {
+      const tex = this._stuckArrowTex(!!rec.special, now);
+      if (!tex) return;
+      sp = new Sprite(tex);
+      this._poseStuckArrow(sp, !!rec.special, pk);
+      sp.rotation = rec.ang || 0;
+    }
+    if (!sp) return;
+    sp.x = rec.x - ov.x;
+    sp.y = rec.y - ov.y;
+    ov.addChild(sp);
+    this._pmFx.push({ kind: rec.kind, propId: rec.id, sprite: sp, t0: rec.t0 || now,
+      ttl: rec.ttl > 0 ? rec.ttl : 3000, special: !!rec.special });
+  }
+
+  /* The headless texture an arrow stands in a prop with: the pine arrow's
+     cropped shaft, or the charged special's current headless frame. */
+  _stuckArrowTex(special, now) {
+    if (special && ARROW_SPECIAL.noHead.length && ARROW_SPECIAL.noHead.length === ARROW_SPECIAL.frames.length) {
+      return ARROW_SPECIAL.noHead[Math.floor(now / ARROW_SPECIAL.frameMs) % ARROW_SPECIAL.noHead.length];
+    }
+    return ARROW_PINE.noHead || null;
+  }
+
+  /* Pinned by its CUT end, the way a stuck arrow in a monster is (v2.3.1765):
+     the anchor is the right edge of the headless texture, so the shaft runs
+     back out of the face instead of the middle of the arrow sitting on it. */
+  _poseStuckArrow(sp, special, pk) {
+    if (special && ARROW_SPECIAL.noHead.length) {
+      sp.anchor.set(1, ARROW_SPECIAL.anchor.y);
+      sp.scale.set(ARROW_SPECIAL.scale * pk);
+    } else {
+      sp.anchor.set(1, 0.5);
+      sp.scale.set((ARROW_PINE.lenPx * pk) / ((ARROW_PINE.full && ARROW_PINE.full.width) || 1));
+    }
+  }
+
+  /* YOUR arrow, planted in a prop (projectiles.js `_inProp`). */
+  _placePropArrow(S, a, now, pk) {
+    const ip = a._inProp;
+    const p = this._propById(S, ip && ip.id);
+    if (!p) return;
+    const ov = this._propOverlay(p, ip.face === 'n');
+    const special = !!(a.isSpecial && !a._isStaffProj);
+    const tex = this._stuckArrowTex(special, now);
+    if (!tex) return;
+    let spr = a._propArrowSpr;
+    if (!spr || spr.destroyed) {
+      spr = new Sprite(tex);
+      a._propArrowSpr = spr;
+      if (!this._propArrowSprs) this._propArrowSprs = new Set();
+      this._propArrowSprs.add(spr);
+    }
+    if (spr.texture !== tex) spr.texture = tex;
+    this._poseStuckArrow(spr, special, pk);
+    if (spr.parent !== ov) ov.addChild(spr);
+    const px = (a._plantX != null) ? a._plantX : a._renderX;
+    const py = (a._plantY != null) ? a._plantY : a._renderY;
+    spr.x = px - ov.x;
+    spr.y = py - ov.y;
+    spr.rotation = a.ang || 0;
+    /* the planted life in projectiles.js: 2 s, a bow special's 4 s */
+    const life = special ? 4000 : 2000;
+    const left = life - (now - (a.plantedAt || now));
+    spr.alpha = Math.max(0, Math.min(1, left / 300));
+    spr.visible = true;
+    spr._pmSeen = this._pmTick;
+  }
+
+  /* After the arrow pass: an arrow that was not drawn this frame has left
+     S.arrows, and its sprite goes with it. */
+  _reapPropArrows() {
+    if (!this._propArrowSprs) return;
+    for (const spr of this._propArrowSprs) {
+      if (!spr || spr.destroyed || spr._pmSeen !== this._pmTick) {
+        if (spr && !spr.destroyed) spr.destroy();
+        this._propArrowSprs.delete(spr);
+      }
+    }
+  }
+
+  _updatePropMarks(S, now) {
+    const zone = S && S.currentZone;
+    if (this._pmZone !== zone) { this._clearPropMarks(); this._pmZone = zone; }
+    if (!this._pmFx) this._pmFx = [];
+    const q = S && S._propMarks;
+    if (q && q.length) {
+      for (let i = 0; i < q.length; i++) {
+        const rec = q[i];
+        if (rec && rec.zone === zone) this._spawnPropMark(S, rec, now);
+      }
+      q.length = 0;
+    }
+    for (let i = this._pmFx.length - 1; i >= 0; i--) {
+      const fx = this._pmFx[i];
+      const age = now - fx.t0;
+      if (!fx.sprite || fx.sprite.destroyed || age >= fx.ttl) {
+        this._killPropMark(fx); this._pmFx.splice(i, 1); continue;
+      }
+      /* a cut is there at once and weathers away over its last 1.2 s; an
+         arrow stands until its last 300 ms, like yours does */
+      const out = fx.kind === 'slash' ? 1200 : 300;
+      fx.sprite.alpha = Math.max(0, Math.min(1, (fx.ttl - age) / out));
+      if (fx.kind === 'arrow' && fx.special) {
+        const t = this._stuckArrowTex(true, now);
+        if (t && fx.sprite.texture !== t) fx.sprite.texture = t;
+      }
+    }
+    /* an overlay with nothing in it costs a sort slot and nothing else, but
+       there is no reason to keep it visible */
+    if (this._propOv) {
+      for (const ov of this._propOv.values()) {
+        if (ov && !ov.destroyed) ov.visible = ov.children.length > 0;
+      }
+    }
+    if (typeof window !== 'undefined' && !window.__btPropMarks) {
+      window.__btPropMarks = () => this.propMarksProbe();
+      window.__btPropDepth = (id) => this.propDepthProbe(id);
+    }
+  }
+
+  /* Where a prop's front overlay sits against the prop's own sprite: same
+     parent layer, drawn after it, with a sort key at or past the rock's. */
+  propDepthProbe(id) {
+    const ov = this._propOv && this._propOv.get(id + ':front');
+    if (!ov || ov.destroyed || !ov.parent) return { ov: false };
+    const kids = ov.parent.children;
+    const rock = kids.find((c) => c && c.label === 'prop_' + id) || null;
+    return { ov: true, rock: !!rock, sameParent: !!rock,
+      rockIdx: rock ? kids.indexOf(rock) : -1, ovIdx: kids.indexOf(ov),
+      rockZ: rock ? rock.zIndex : null, ovZ: ov.zIndex, ovY: ov.y, rockY: rock ? rock.y : null,
+      layer: ov.parent === this.entityLayer ? 'entities' : (ov.parent === this.nodeFrontLayer ? 'front' : 'other') };
+  }
+
+  /* House-style probe: what is drawn on props right now, and WHERE in the
+     scene graph -- the depth claim is the one a screenshot cannot make. */
+  propMarksProbe() {
+    const out = [];
+    const layerName = (c) => {
+      const par = c && c.parent;
+      if (!par) return null;
+      if (par === this.entityLayer) return 'entities';
+      if (par === this.nodeFrontLayer) return 'front';
+      return par.label || 'other';
+    };
+    if (this._propOv) {
+      for (const [key, ov] of this._propOv) {
+        if (!ov || ov.destroyed) continue;
+        for (const c of ov.children) {
+          const isArrow = c.texture === ARROW_PINE.noHead || ARROW_SPECIAL.noHead.indexOf(c.texture) >= 0;
+          out.push({ key, kind: c.texture === _PROP_SLASH_TEX ? 'slash' : (isArrow ? 'arrow' : 'other'),
+            x: +(ov.x + c.x).toFixed(1), y: +(ov.y + c.y).toFixed(1), ovY: ov.y,
+            rot: +c.rotation.toFixed(3), alpha: +c.alpha.toFixed(2), visible: !!(c.visible && ov.visible),
+            layer: layerName(ov), headless: isArrow });
+        }
+      }
+    }
+    return out;
+  }
+
   _updateDebrisBursts(S, now) {
     const q = S && S._debrisBursts;
     if (q && q.length) {
@@ -7356,7 +7658,12 @@ export class EffectsRenderer {
     } else {
       const parts = [];
       const tint = b.tint || 0xffffff;
-      for (let i = 0; i < DEBRIS_PARTS; i++) {
+      /* v2.3.2702: a PROP's burst (combatHelpers.spawnPropDebris) asks for
+         fewer, smaller chunks -- "subtle", the owner's word -- and says where
+         its ground is, so they land at the foot of the face they came off. */
+      const _nParts = (b.parts > 0) ? Math.min(DEBRIS_PARTS, b.parts) : DEBRIS_PARTS;
+      const _pScale = (b.scale > 0) ? b.scale : 1;
+      for (let i = 0; i < _nParts; i++) {
         /* TWO SPRITES A CHUNK, and the second one is not decoration.  This
            mark lands on town cobble, desert sand, grass and snow, and a
            material tint on the ground that matches it is invisible -- goo
@@ -7376,7 +7683,7 @@ export class EffectsRenderer {
         /* 0.55..1.15, up from 0.3..0.7: the dot texture is a 32px soft
            particle, so the old range drew chunks 10-22px across at world
            scale -- under a fingertip on the phone this is played on. */
-        const sc = 0.55 + Math.random() * 0.6;
+        const sc = (0.55 + Math.random() * 0.6) * _pScale;
         sp.scale.set(sc);
         rim.scale.set(sc * 1.32);
         const a = ang + (Math.random() - 0.5) * 1.2;
@@ -7395,7 +7702,9 @@ export class EffectsRenderer {
            rest pose is one sqrt at spawn instead of a per-frame integration
            that would drift with the frame rate (the same dt-safety the
            parametric flight was written for). */
-        const gy = 16 + Math.random() * 24;
+        const gy = (b.prop && Number.isFinite(b.gy) && b.gy > b.y)
+          ? (b.gy - b.y) + Math.random() * 6
+          : 16 + Math.random() * 24;
         const tLand = (-vy + Math.sqrt(vy * vy + 4 * DEBRIS_GRAV * gy)) / (2 * DEBRIS_GRAV);
         parts.push({ sp, rim, x0: b.x, y0: b.y, vx, vy, sc, gy, tLand,
           xLand: b.x + vx * tLand, yLand: b.y + gy,

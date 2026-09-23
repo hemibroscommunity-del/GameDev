@@ -19,7 +19,7 @@ import { capeStatusBus } from '../ui/mobile/capeStatusBus.js'; /* v2.3.2118 */
 import { storeToastBus } from '../ui/mobile/storeToastBus.js'; /* v2.3.2476 */
 import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
-import { toDisplayDamage, toDisplayHitDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale (§5.8 D1) */
+import { toDisplayDamage, toDisplayHitDamage, GS_OUTER_RADIUS, GS_FORWARD_ARC } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale (§5.8 D1); v2.3.2702: + a peer's swing reach */
 import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is a legacy number under prog3 */
 /* v2.3.1734: Element Burst paints the element's status onto the local
    monster objects (the server owns statuses and never syncs them) — see
@@ -33,7 +33,7 @@ import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armou
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
-import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */ } from '@/game/combatHelpers.js';
+import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, propSwingHit /* v2.3.2702 */ } from '@/game/combatHelpers.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield */
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes */
 import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
@@ -1558,6 +1558,23 @@ export function processGameEvent(type, payload, S, deps) {
                 if (typeof payload.ang === 'number') S.others[payload.id]._swingAng = payload.ang;
                 /* v2.3.1107: point the body the same way as the swing. */
                 _reconcileFacing(S.others[payload.id], payload.ang);
+                /* v2.3.2702: a peer's blade marks a prop on YOUR screen too, or
+                   the slash the owner asked for is something only the swinger
+                   ever sees.  Same helper and same fan as the local swing, from
+                   where the peer is drawn, at the base reach (their Range stat
+                   is not on the wire, and a mark a few px short of theirs is
+                   invisible).  Not for Shield Bash -- a shove leaves no cut.
+                   Purely visual; the angle is only ever used to draw. */
+                if (!payload.bash && typeof payload.ang === 'number' && isFinite(payload.ang)) {
+                  var _so = S.others[payload.id];
+                  var _sox = (typeof _so.renderX === 'number') ? _so.renderX : _so.x;
+                  var _soy = (typeof _so.renderY === 'number') ? _so.renderY : _so.y;
+                  if (typeof _sox === 'number' && typeof _soy === 'number') {
+                    propSwingHit(S, _sox, _soy, payload.ang,
+                      payload.special ? GS_OUTER_RADIUS * 1.5 : GS_OUTER_RADIUS,
+                      payload.special ? Math.PI : GS_FORWARD_ARC / 2);
+                  }
+                }
               }
               break;
             }

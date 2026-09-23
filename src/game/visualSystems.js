@@ -9,6 +9,11 @@
    and the block reads S.player directly. */
 import { BT_AUDIO } from '@/data/index.js';
 import { zoneLeavesPrints } from '@/rendering/footprintSprites.js'; /* v2.3.2654 */
+import { sweepBlockPoint, boxFace } from '@/data/worldProps.js';   /* v2.3.2702: a peer's shot stops at a prop on your screen too */
+import { spawnPropDebris, propImpactSound, orbCrashFx, markProp } from '@/game/combatHelpers.js';   /* v2.3.2702 */
+/* v2.3.2702: how far up a prop's face a PEER's shot marks it -- see the remote
+   projectile sweep below. */
+var REMOTE_SHOT_H = 26;
 
 /* World px between footprint PAIRS, and the live cap.  PRINT_TTL_MS lives in
    the renderer with the fade it drives; stateCleanup filters on the same
@@ -206,14 +211,53 @@ export function updateVisualSystems(S) {
               rp._renderY = _hY + Math.sin(rp.ang) * rp.dist;
               return true;
             }
-            rp.dist += (rp.speedPx != null ? rp.speedPx : (rp.isStaff ? 5 : 8));
+            var _rpStep = (rp.speedPx != null ? rp.speedPx : (rp.isStaff ? 5 : 8));
+            rp.dist += _rpStep;
             rp.life--;
             if (rp.life <= 0) return false;
             var owner = S.others[rp.ownerId];
             var originX = owner ? (owner.renderX || owner.x) : rp.x;
             var originY = owner ? (owner.renderY || owner.y) : rp.y;
+            /* v2.3.2702: where it was last frame, for the prop sweep below.  The
+               first step has no last frame, so it starts one step back along the
+               same line -- the shape v2.3.2473 gave the local first frame. */
+            var _rpX0 = (typeof rp._renderX === 'number') ? rp._renderX : originX + Math.cos(rp.ang) * (rp.dist - _rpStep);
+            var _rpY0 = (typeof rp._renderY === 'number') ? rp._renderY : originY + Math.sin(rp.ang) * (rp.dist - _rpStep);
             rp._renderX = originX + Math.cos(rp.ang) * rp.dist;
             rp._renderY = originY + Math.sin(rp.ang) * rp.dist;
+            /* ═══ v2.3.2702: A PEER'S SHOT MEETS THE PROP ON YOUR SCREEN TOO ═══
+               This simulation is cosmetic -- the worker settles a peer's hits
+               and this copy touches no monster -- and it never asked about
+               props, so another player's arrow sailed through the ridge on your
+               screen while it stuck in it on theirs.  Same sweep as the local
+               arrow, and the same impact: the bolt crashes, the arrow stands in
+               the rock (a mark, since there is no planted object here to hold
+               it), and the prop throws its chips.  A remote projectile is drawn
+               from its owner's FEET, so its drawn point is a ground point and
+               needs no conversion. */
+            var _rpHit = sweepBlockPoint(S.currentZone, _rpX0, _rpY0, rp._renderX, rp._renderY);
+            if (_rpHit) {
+              var _rpId = _rpHit.box ? _rpHit.box.id : null;
+              if (_rpId) {
+                /* ...and the mark goes up the face to where YOUR arrows stick.
+                   A peer's shot is drawn at its owner's feet (above), so taken
+                   literally it would stand in the dirt at the foot of the rock,
+                   which reads as a miss that planted.  Yours hit at the bow
+                   grip, ~30px up; this is that height, give or take a hand. */
+                var _rpY = _rpHit.y - REMOTE_SHOT_H;
+                spawnPropDebris(S, { id: _rpId, x: _rpHit.x, y: _rpY, gy: _rpHit.y,
+                  ang: rp.ang + Math.PI, weapon: rp.isStaff ? 'bolt' : 'arrow' });
+                propImpactSound(_rpId, 0.22);   /* someone else's shot: quieter than your own */
+                if (rp.isStaff) {
+                  orbCrashFx(S, _rpHit.x, _rpY, rp.isSpecial ? '#f5c542' : '#a78bfa');
+                } else {
+                  markProp(S, { kind: 'arrow', id: _rpId, x: _rpHit.x, y: _rpY, gy: _rpHit.y,
+                    face: boxFace(_rpHit.box, _rpHit.x, _rpHit.y), ang: rp.ang,
+                    ttl: rp.isSpecial ? 4000 : 2000, special: !!rp.isSpecial });
+                }
+              }
+              return false;
+            }
             return true;
           });
         }

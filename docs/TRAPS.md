@@ -4358,3 +4358,31 @@ hit pass the worker's own ground-line rule (`attackBlocked`, step start to
 feet) -- which refuses the thin-rock touch and, by the same endpoint rule,
 keeps the monster inside a rock hittable. mp-propshots section 0 shoots all
 four in town; with v2.3.2699's code back, all four fail.
+
+## 104. A mark ON a prop cannot be a sprite in the prop's layer (v2.3.2702)
+
+**Tempting:** to draw a slash mark or a stuck arrow on a rock, add a sprite to
+the entity layer at the point on the face where it hit. The rock is in that
+layer; so is the mark; done.
+
+**Wrong, and invisibly so** (worked out from the sort key before it was built,
+which is why it never shipped). Since v2.3.2633 the entity layer is
+depth-sorted every frame by each child's `y`, which is its ground-contact line
+(depthSort.js). A sprite positioned where a cut is DRAWN -- 30px up the face --
+has a `y` 30px north of the rock's ground line, so the sort would put it
+BEHIND the rock and the rock would paint over it. Every probe asking "is the
+mark there and visible" would say yes, and nobody could see it.
+
+**The rule:** anything drawn on a prop goes in an OVERLAY container that stands
+on the prop's own ground line (`y = p.y + 1`, so it always sorts just after the
+rock and buckets with it in front of or behind the player), with the marks
+inside it at their offsets (effectsRenderer `_propOverlay`). A hit on the back
+face gets an overlay on the footprint's north line (`y0 - 1`) instead, so the
+rock covers it. mp-propfx asserts the overlay shares the rock's parent and is
+drawn after it -- the claim a screenshot cannot make.
+
+**And the debris is not a second system.** A prop's chips go into
+S._debrisBursts under a `prop:<id>` key with the full field set the
+hit-materials rewrite reads (gy/h/weapon/hitX/hitY), so a prop is drawn by
+whichever renderer draws a monster's material -- do not write a prop-only
+particle path.

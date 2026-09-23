@@ -827,10 +827,95 @@ export function zoneBlockers(zoneId) {
   const out = [];
   for (const p of propsForZone(zoneId)) {
     const f = propFootprint(p);
-    if (f) out.push(f);
+    /* v2.3.2702: the footprint says whose it is, so a hit on it can ask what
+       the prop is made of (propMaterial) and where to draw on it. */
+    if (f) { f.id = p.id; out.push(f); }
   }
   _blockerCache[zoneId] = out;
   return out;
+}
+
+/* ═══ v2.3.2702: WHAT A PROP IS MADE OF ═══
+   Owner: "make it so that subtle debris comes off the props once they're hit
+   by a player projectile ... arrow stuck in (with debris), and sword slash
+   marks on the props (with debris)."
+
+   Monsters have answered this question since v2.3.2200 with HIT_MATERIALS
+   (monsterVariants.js): a `kind` that decides how the debris behaves and a
+   `tint` that colours it.  A prop answers it here, in the SAME two fields, so
+   the debris queue (S._debrisBursts) takes a rock exactly the way it takes a
+   rock monster -- and whatever draws that queue, today's chunks or the crisp
+   material pieces of the hit-materials work in flight as #710, draws a rock
+   the way it draws a rock.  `sound` is the BT_AUDIO.swordHit material ('bone'
+   is its dry crack, which is what wood sounds like), or 'snow' for the
+   snowball thud the snowman already owns.
+
+   Read off the art: the frost rocks are grey stone under snow; the pines are
+   laden, so a hit knocks SNOW off them; the ice mound is grey rock with
+   crystals, hard enough to bounce; the town's buildings are stone at the
+   height anything hits them; the stall and the bench are wood; the lamp and
+   the anvil are iron.  Wood and iron take stone's physics (hard pieces that
+   bounce) and their own colour.  Anything missing falls back to plain stone,
+   the commonest thing a blocker is.  Keyed by prop id, which is a table key,
+   hence Object.create(null) (CLAUDE.md rule 4). */
+const PROP_MATERIALS = Object.assign(Object.create(null), {
+  'frost-rock-ridge':  { kind: 'stone', tint: 0x8d97a3, sound: 'stone' },
+  'frost-rock-mound':  { kind: 'stone', tint: 0x8d97a3, sound: 'stone' },
+  'frost-ice-mound':   { kind: 'stone', tint: 0xa9c6da, sound: 'stone' },
+  'frost-pine-pair':   { kind: 'snow',  tint: 0xeef6ff, sound: 'snow' },
+  'frost-pine-ridge':  { kind: 'snow',  tint: 0xeef6ff, sound: 'snow' },
+  'frost-snow-shrubs': { kind: 'snow',  tint: 0xeef6ff, sound: 'snow' },
+  'mayor-house':       { kind: 'stone', tint: 0x948c80, sound: 'stone' },
+  'forge':             { kind: 'stone', tint: 0x7a7670, sound: 'stone' },
+  'auction-house':     { kind: 'stone', tint: 0x8f8a82, sound: 'stone' },
+  'bank':              { kind: 'stone', tint: 0x9d978c, sound: 'stone' },
+  'fountain':          { kind: 'stone', tint: 0xb3b0a8, sound: 'stone' },
+  'market-stall':      { kind: 'stone', tint: 0x8b5e3c, sound: 'bone' },
+  'bench-w':           { kind: 'stone', tint: 0x8b5e3c, sound: 'bone' },
+  'lamp-plaza-w':      { kind: 'stone', tint: 0x40464d, sound: 'stone' },
+  'anvil':             { kind: 'stone', tint: 0x40464d, sound: 'stone' },
+});
+const PROP_MATERIAL_DEFAULT = { kind: 'stone', tint: 0x9a9a9a, sound: 'stone' };
+
+/** What the prop with this id is made of: { kind, tint, sound }. */
+export function propMaterial(propId) {
+  return (propId && PROP_MATERIALS[propId]) || PROP_MATERIAL_DEFAULT;
+}
+
+/** v2.3.2702: which face of box `b` the point (x, y) lies on -- 's' (the
+ *  south face, the one the camera sees), 'e', 'w', or 'n' (the back). */
+export function boxFace(b, x, y) {
+  const e = 0.75;
+  if (Math.abs(y - b.y1) <= e) return 's';
+  if (Math.abs(y - b.y0) <= e) return 'n';
+  if (Math.abs(x - b.x0) <= e) return 'w';
+  if (Math.abs(x - b.x1) <= e) return 'e';
+  return 's';
+}
+
+/* ═══ v2.3.2702: WHERE A SWORD SWING MEETS A PROP ═══
+   A projectile meets a prop on its flight line (sweepBlockPoint above); a
+   swing has no line, it has a fan -- `halfArc` either side of `ang`, out to
+   `reach` from the swinger's feet.  So the fan is sampled as rays and each is
+   swept against the footprints exactly as a projectile step is, launch-inside
+   rule included.  Of every entry point, the one CLOSEST TO THE MIDDLE OF THE
+   SWING wins, not the nearest: a rock at the edge of the arc is grazed, a rock
+   in front of you is what the blade lands in.
+   Ground points in, ground point out: { id, x, y, face, box }, or null. */
+export function propSwingContact(zoneId, px, py, ang, reach, halfArc) {
+  if (!Number.isFinite(px) || !Number.isFinite(py) || !Number.isFinite(ang) || !(reach > 0)) return null;
+  const boxes = zoneBlockers(zoneId);
+  if (!boxes.length) return null;
+  const n = 6;
+  let best = null, bestOff = Infinity;
+  for (let k = -n; k <= n; k++) {
+    const off = (k / n) * (halfArc > 0 ? halfArc : 0);
+    const a = ang + off;
+    const hit = sweepBlockPoint(zoneId, px, py, px + Math.cos(a) * reach, py + Math.sin(a) * reach);
+    if (hit && Math.abs(off) < bestOff) { best = hit; bestOff = Math.abs(off); }
+  }
+  if (!best || !best.box) return null;
+  return { id: best.box.id, x: best.x, y: best.y, face: boxFace(best.box, best.x, best.y), box: best.box };
 }
 
 /** Where a shot along (x0,y0)->(x1,y1) MEETS the first prop in its way, or
@@ -914,7 +999,9 @@ export function boxExitPoint(b, x0, y0, x1, y1) {
   if (pointInBox(x1, y1, b)) return null;
   const u = segEnterT(x1, y1, x0, y0, b);
   if (u < 0) return null;
-  return { x: x1 + (x0 - x1) * u, y: y1 + (y0 - y1) * u, t: 1 - u };
+  /* v2.3.2702: + the box, as sweepBlockPoint returns it -- the far face is
+     still a face of THIS prop, and the hit effects need to know whose. */
+  return { x: x1 + (x0 - x1) * u, y: y1 + (y0 - y1) * u, t: 1 - u, box: b };
 }
 
 /* Dev probe, house style: the blocker set a scenario is reasoning about, and
@@ -925,4 +1012,5 @@ if (typeof window !== 'undefined') {
   window.__btAttackBlocked = (z, x0, y0, x1, y1) => attackBlocked(z, x0, y0, x1, y1);
   window.__btBlockPoint = (z, x0, y0, x1, y1) => attackBlockPoint(z, x0, y0, x1, y1);
   window.__btSweepBlockPoint = (z, x0, y0, x1, y1) => sweepBlockPoint(z, x0, y0, x1, y1); /* v2.3.2699 */
+  window.__btPropSwingContact = (z, x, y, ang, reach, half) => propSwingContact(z, x, y, ang, reach, half); /* v2.3.2702 */
 }

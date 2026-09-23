@@ -25,7 +25,7 @@ import { attackBlocked, slideMove, ZONE_PROPS } from '../src/props.js';
 /* v2.3.2699: the CLIENT's step test, imported the way mirror-audit imports the
    client's tables -- the worker has no moving projectiles, so this is the only
    place a player's arrow and a local slime orb meet a prop. */
-import { sweepBlockPoint as cliSweep, attackBlockPoint as cliBlockPoint, zoneBlockers as cliBlockers, boxExitPoint as cliExit } from '../../src/data/worldProps.js';
+import { sweepBlockPoint as cliSweep, attackBlockPoint as cliBlockPoint, zoneBlockers as cliBlockers, boxExitPoint as cliExit, propSwingContact as cliSwing, propMaterial as cliMaterial, boxFace as cliFace, WORLD_PROPS as CLI_PROPS } from '../../src/data/worldProps.js';
 
 const mockState = {
   storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
@@ -400,6 +400,61 @@ check('on open ground nothing is blocked', openGround > 0, { openGround });
     attackBlocked('frost', 430, R.y0 - 40, 430, R.y1 + 10) === true && !!cliBlockPoint('frost', 430, R.y0 - 40, 430, R.y1 + 10), {});
   check('ridge: ...and feet standing IN it are not behind it, on either side',
     attackBlocked('frost', 430, R.y0 - 40, 430, mid) === false && cliBlockPoint('frost', 430, R.y1 + 40, 430, mid) === null, {});
+}
+
+/* ── 7. WHERE A BLADE MEETS A PROP, AND WHAT IT IS MADE OF (v2.3.2702) ──
+   The slash mark and the debris a hit knocks off a prop are drawn by the
+   client, but they stand on three pieces of geometry that can be pinned here:
+   the footprint knows whose it is, a swing's fan finds the face in front of the
+   swinger (and nothing it is not pointed at), and every blocking prop has a
+   material the debris and the sound can use. */
+{
+  const boxes = cliBlockers('frost');
+  check('every frost footprint says which prop it is', boxes.length > 0 && boxes.every((b) => typeof b.id === 'string' && b.id.length), boxes.map((b) => b.id));
+  const R = boxes.find((b) => b.id === 'frost-rock-ridge');
+  check('fixture: the rock ridge footprint by name', !!R, {});
+  const mx = (R.x0 + R.x1) / 2;
+  /* standing south of the ridge by the player's collision pad and a little,
+     swinging north: the blade lands on the SOUTH face, the one the camera sees */
+  const n = cliSwing('frost', mx, R.y1 + 18, -Math.PI / 2, 72, Math.PI / 2);
+  check('a swing north at the ridge lands on its south face, square in front', !!n && n.id === 'frost-rock-ridge'
+    && n.face === 's' && Math.abs(n.y - R.y1) < 0.01 && Math.abs(n.x - mx) < 0.01, n && { id: n.id, face: n.face, x: n.x, y: n.y });
+  /* the same spot, swinging SOUTH -- away from the ridge -- finds nothing of it */
+  const away = cliSwing('frost', mx, R.y1 + 18, Math.PI / 2, 72, Math.PI / 2);
+  check('...and the same swing pointed away from it does not touch it', !away || away.id !== 'frost-rock-ridge', away && away.id);
+  /* out of reach.  Asked about the RIDGE, not about anything: 120px south of
+     its middle is 10px off the pine pair's east face, and the fan finds the
+     pines there -- which is correct, and is what the first cut of this check
+     tripped over. */
+  const far = cliSwing('frost', mx, R.y1 + 120, -Math.PI / 2, 72, Math.PI / 2);
+  check('...nor does one from beyond the blade\'s reach', !far || far.id !== 'frost-rock-ridge', far && far.id);
+  /* from the north the contact is the BACK face -- which the client uses to
+     decide not to paint a slash where the camera cannot see */
+  const back = cliSwing('frost', mx, R.y0 - 18, Math.PI / 2, 72, Math.PI / 2);
+  check('from behind, the contact is the back face (n)', !!back && back.id === 'frost-rock-ridge' && back.face === 'n', back && back.face);
+  /* level with the ridge's east end, swinging west: the side face.  (From
+     below the corner instead, the ray nearest the middle of the swing enters
+     the SOUTH face first -- the fan prefers the middle, which is right, and
+     is what the first cut of this check got wrong.) */
+  const edge = cliSwing('frost', R.x1 + 30, (R.y0 + R.y1) / 2, Math.PI, 72, Math.PI / 2);
+  check('a swing at the ridge from beside its east end meets the east face', !!edge && edge.id === 'frost-rock-ridge' && edge.face === 'e', edge && { face: edge.face, x: edge.x, y: edge.y });
+  const corner = cliSwing('frost', R.x1 + 30, R.y1 + 14, Math.PI, 72, Math.PI / 2);
+  check('...and from below that corner, the ray nearest the middle of the swing wins (the south face)', !!corner && corner.face === 's', corner && corner.face);
+  check('boxFace names all four faces', cliFace(R, mx, R.y1) === 's' && cliFace(R, mx, R.y0) === 'n'
+    && cliFace(R, R.x0, (R.y0 + R.y1) / 2) === 'w' && cliFace(R, R.x1, (R.y0 + R.y1) / 2) === 'e', {});
+
+  /* Every blocking prop in the game has a material, and it is one the debris
+     knows (stone or snow here), with a real tint and a sound. */
+  const blocking = CLI_PROPS.filter((p) => p.blockW && p.blockD);
+  const bad = blocking.filter((p) => {
+    const m = cliMaterial(p.id);
+    return !m || !['stone', 'snow'].includes(m.kind) || !(m.tint > 0) || !m.sound;
+  }).map((p) => p.id);
+  check(`every blocking prop has a material (${blocking.length})`, blocking.length > 0 && bad.length === 0, bad);
+  check('the rocks are stone and the laden pines shed snow', cliMaterial('frost-rock-ridge').kind === 'stone'
+    && cliMaterial('frost-pine-pair').kind === 'snow', {});
+  check('an unknown id -- and a hostile one -- falls back to stone, never throws', cliMaterial('no-such-prop').kind === 'stone'
+    && cliMaterial('__proto__').kind === 'stone' && cliMaterial(null).kind === 'stone', {});
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
