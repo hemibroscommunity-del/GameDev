@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* ═══ v2.3.2690: SLICE THE OWNER'S BADGE + NUMERAL SHEET ═══
+/* ═══ v2.3.2694: SLICE THE OWNER'S BADGE + NUMERAL SHEET ═══
  * One sheet: a round badge and a pill badge on the top row, then the numerals
  * 0-9 and a "+" on the bottom row.  Cut into transparent PNGs for the Points
  * grid's remaining-points badges (owner: "Use this sprite sheet for the tiny

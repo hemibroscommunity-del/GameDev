@@ -72,8 +72,12 @@ function luckDmgBonus(pts) {
 
 /** Preview one more point in `stat`.  `cat` is the weapon category an offense
  *  stat belongs to ('sword' | 'bow' | 'staff'); ignored for body stats.
- *  Returns null when the character has no prog3 block to spend into. */
-export function previewStatPoint(R, stat, cat) {
+ *  Returns null when the character has no prog3 block to spend into.
+ *  v2.3.2695: `n` previews that many points at once -- the confirm window's
+ *  +/- stepper shows what the WHOLE batch buys, not the first point of it.
+ *  Omitted, it is the single point every older caller asked for. */
+export function previewStatPoint(R, stat, cat, n) {
+  const step = Math.max(1, Math.floor(Number(n) || 1));
   if (!R || !R.prog3 || !stat) return null;
   const isAtk = prog3IsAtkStat(stat);
   const cfg = isAtk ? (PROG3.ATK[stat] || PROG3_LEGACY_ATK[stat]) : PROG3.BODY[stat]; /* v2.3.2592: the retired pair still previews against an old worker */
@@ -93,10 +97,10 @@ export function previewStatPoint(R, stat, cat) {
     if (isAtk) {
       if (!copy.prog3.atk) copy.prog3.atk = {};
       if (!copy.prog3.atk[cat]) copy.prog3.atk[cat] = {};
-      copy.prog3.atk[cat][stat] = pts + 1;
+      copy.prog3.atk[cat][stat] = pts + step;
     } else {
       if (!copy.prog3.alloc) copy.prog3.alloc = {};
-      copy.prog3.alloc[stat] = pts + 1;
+      copy.prog3.alloc[stat] = pts + step;
     }
     after = copy;
   } catch (e) { return null; }
@@ -123,13 +127,13 @@ export function previewStatPoint(R, stat, cat) {
   return {
     capped,
     statNow: statTotal(pts, cfg, stat),
-    statAfter: statTotal(pts + 1, cfg, stat),
+    statAfter: statTotal(pts + step, cfg, stat),
     /* v2.3.2592: LUCK buys two things per point, and a rate cannot answer
        "what will my crit damage BE" any more than it could for the chance —
        so the second half rides along as its own now/after pair, and the ℹ️
        window prints two rows for it.  Absent for every single-rate stat. */
     statNow2: stat === 'luck' ? luckDmgBonus(pts) : null,       /* v2.3.2680: the curve */
-    statAfter2: stat === 'luck' ? luckDmgBonus(pts + 1) : null,
+    statAfter2: stat === 'luck' ? luckDmgBonus(pts + step) : null,
     dpsNow, dpsAfter,
     dpsDelta: (typeof dpsNow === 'number' && typeof dpsAfter === 'number') ? (dpsAfter - dpsNow) : null,
     weaponName: wpn ? (wpn.name || wpn.type || 'weapon') : null,

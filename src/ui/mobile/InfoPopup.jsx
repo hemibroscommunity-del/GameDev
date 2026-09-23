@@ -37,10 +37,57 @@ const COL = {
   goldBg: 'linear-gradient(180deg,#E2B765,#D2A14D)',
 };
 
+/* ═══ v2.3.2695: THE +/- STEPPER ═══
+ * Owner: "Instead of one button for 'spend point' make it so you can add
+ * points more quickly using +/- buttons then confirm spend button to the
+ * right of it."
+ * "More quickly" is the point, so a held button keeps stepping: one step on
+ * press (a tap is exactly one), then a repeat after a beat.  The timers stop
+ * on every way a finger can leave -- up, cancel, and sliding off -- because a
+ * repeat that outlives its press counts on by itself. */
+const StepBtn = ({ label, glyph, disabled, onStep }) => {
+  const timers = React.useRef({ hold: 0, rep: 0 });
+  const stop = () => {
+    clearTimeout(timers.current.hold); clearInterval(timers.current.rep);
+    timers.current = { hold: 0, rep: 0 };
+  };
+  React.useEffect(() => stop, []);
+  return (
+    <button type="button" aria-label={label}
+      data-infopopup-step={glyph === '+' ? 'up' : 'down'}
+      aria-disabled={disabled}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        if (disabled) return;
+        stop();
+        onStep();
+        timers.current.hold = setTimeout(() => {
+          timers.current.rep = setInterval(onStep, 70);
+        }, 380);
+      }}
+      onPointerUp={(e) => { e.stopPropagation(); stop(); }}
+      onPointerCancel={stop} onPointerLeave={stop}
+      onContextMenu={(e) => e.preventDefault()}
+      style={{
+        flex: 'none', width: 44, height: 40, padding: 0,
+        background: 'rgba(9,14,17,.42)',
+        color: disabled ? 'rgba(141,155,152,.45)' : COL.text,
+        border: `1px solid ${COL.border}`, borderRadius: 9,
+        fontSize: 20, fontWeight: 900, lineHeight: '38px',
+        cursor: disabled ? 'default' : 'pointer',
+        touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
+      }}>{glyph}</button>
+  );
+};
+
 export const InfoPopup = () => {
   const [, bump] = React.useState(0);
   React.useEffect(() => infoPopupBus.subscribe(() => bump((v) => v + 1)), []);
   const cur = infoPopupBus.current();
+  /* v2.3.2695: the stepper's count belongs to the window it was set in -- a
+     new window (another stat, or a lane tab, which reopens) starts at 1. */
+  const [stepState, setStepState] = React.useState({ of: null, n: 1 });
 
   /* Escape closes.  Bound only while open, so this adds no always-on key
      listener to a game whose own controls are keyboard-driven on desktop. */
@@ -53,6 +100,21 @@ export const InfoPopup = () => {
 
   if (!cur) return null;
   const close = () => infoPopupBus.close();
+  const stepMax = (cur.action && !cur.action.blocked && cur.action.stepMax > 0) ? cur.action.stepMax : 0;
+  const stepN = stepMax ? Math.min(stepMax, Math.max(1, stepState.of === cur ? stepState.n : 1)) : 1;
+  const stepBy = (d) => setStepState((prev) => {
+    const base = prev.of === cur ? prev.n : 1;
+    return { of: cur, n: Math.min(stepMax, Math.max(1, base + d)) };
+  });
+  /* the rows show what the WHOLE batch buys (rowsFor, HeroExpanded) */
+  let rows = cur.rows;
+  if (stepN > 1 && cur.rowsFor) { try { rows = cur.rowsFor(stepN) || rows; } catch (_e) {} }
+  const spend = () => {
+    if (!cur.action || cur.action.blocked) return;
+    const run = cur.action.run;
+    infoPopupBus.close();
+    try { if (run) run(stepN); } catch (_e) {}
+  };
 
   return (
     <div data-infopopup={cur.title || ''}
@@ -93,7 +155,7 @@ export const InfoPopup = () => {
           maxHeight: '100%',
           display: 'flex', flexDirection: 'column', minHeight: 0,
         }}>
-        <button type="button" aria-label="Close" onPointerUp={close}
+        <button type="button" aria-label="Close" onPointerUp={close} data-infopopup-x
           style={{
             position: 'absolute', top: 6, right: 6,
             width: 30, height: 30, lineHeight: '30px',
@@ -228,14 +290,14 @@ export const InfoPopup = () => {
         {cur.demo && (
           <div data-infopopup-demo style={{ marginTop: 10 }}>{cur.demo}</div>
         )}
-        {cur.rows && cur.rows.length > 0 && (
+        {rows && rows.length > 0 && (
           <div data-infopopup-rows style={{
             marginTop: 10, padding: '7px 10px',
             background: 'rgba(9,14,17,.42)',
             border: '1px solid rgba(255,255,255,.06)',
             borderRadius: 9, fontVariantNumeric: 'tabular-nums',
           }}>
-            {cur.rows.map((r, i) => (
+            {rows.map((r, i) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
                 /* wrap, never overflow: a value the label leaves no room for
@@ -277,16 +339,9 @@ export const InfoPopup = () => {
           }}>{cur.stat}</div>
         )}
 
-        {/* v2.3.2684: "Melee points available: 2" -- the owner's own line, and
-            the reason the grid no longer carries a count anywhere.  Drawn even
-            at zero, because "0 available" is the answer to the question the
-            disabled button raises. */}
-        {cur.availText && (
-          <div data-infopopup-avail style={{
-            marginTop: 9, fontSize: 12.5, fontWeight: 800, color: COL.accent,
-          }}>{cur.availText}</div>
-        )}
-
+        {/* v2.3.2695: the "Melee points available: 2" line is retired (owner:
+            "Remove the redundant 'shared points available'") -- the
+            highlighted lane tab carries the same number. */}
         {cur.action && cur.action.blocked && (
           <div data-infopopup-blocked style={{
             marginTop: 9, fontSize: 11.5, fontWeight: 700, color: COL.accent, lineHeight: 1.3,
@@ -295,6 +350,31 @@ export const InfoPopup = () => {
 
         </div>{/* data-infopopup-scroll */}
 
+        {stepMax > 0 ? (
+          /* v2.3.2695: [-] n [+] [Spend n points].  "Got it" steps aside for
+             the width -- the x, the scrim and Escape still close it, which
+             keeps three of v2.3.2131's four ways out on a spend window. */
+          <div data-infopopup-stepper style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 6, marginTop: 12 }}>
+            <StepBtn label="One fewer point" glyph="−" disabled={stepN <= 1} onStep={() => stepBy(-1)} />
+            <span data-infopopup-count={stepN} aria-live="polite"
+              style={{
+                flex: 'none', minWidth: 30, textAlign: 'center',
+                fontSize: 18, fontWeight: 900, color: COL.text,
+                fontVariantNumeric: 'tabular-nums',
+              }}>{stepN}</span>
+            <StepBtn label="One more point" glyph="+" disabled={stepN >= stepMax} onStep={() => stepBy(1)} />
+            <button type="button"
+              data-infopopup-action
+              onPointerUp={(e) => { e.stopPropagation(); spend(); }}
+              style={{
+                flex: '1 1 auto', minWidth: 0, height: 40, padding: '0 10px',
+                background: COL.goldBg, color: COL.goldText,
+                border: 0, borderRadius: 9,
+                fontSize: 12.5, fontWeight: 900, whiteSpace: 'nowrap',
+                cursor: 'pointer', touchAction: 'manipulation',
+              }}>{`Spend ${stepN} point${stepN === 1 ? '' : 's'}`}</button>
+          </div>
+        ) : (
         <div style={{ flex: 'none', display: 'flex', gap: 8, marginTop: 12 }}>
           {cur.action && (
             <button type="button"
@@ -309,13 +389,7 @@ export const InfoPopup = () => {
                  look right and be unreachable, which is the failure mode
                  TRAPS §67 is about. */
               aria-disabled={!!cur.action.blocked}
-              onPointerUp={(e) => {
-                e.stopPropagation();
-                if (cur.action.blocked) return;
-                const run = cur.action.run;
-                infoPopupBus.close();
-                try { if (run) run(); } catch (_e) {}
-              }}
+              onPointerUp={(e) => { e.stopPropagation(); spend(); }}
               style={{
                 flex: '1 1 auto', padding: '9px 10px',
                 background: cur.action.blocked ? 'transparent' : COL.goldBg,
@@ -338,6 +412,7 @@ export const InfoPopup = () => {
               touchAction: 'manipulation',
             }}>Got it</button>
         </div>
+        )}
       </div>
     </div>
   );

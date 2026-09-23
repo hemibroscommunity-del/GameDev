@@ -78,6 +78,30 @@ async function finger(P, sel) {
 }
 
 const has = (P, sel) => P.page.evaluate((s) => !!document.querySelector(s), sel);
+
+/* v2.3.2695: HOLD a finger on a selector for `ms` -- the stepper's "add
+   points more quickly" is a held +, and touchscreen.tap can only tap.  Raw
+   CDP touch events, so it is the same pointer stream a thumb makes. */
+async function hold(P, sel, ms) {
+  const box = await P.page.evaluate((s) => {
+    const el = document.querySelector(s);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  }, sel);
+  if (!box) return false;
+  const cdp = await P.page.context().newCDPSession(P.page);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [box] });
+  await P.page.waitForTimeout(ms);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach().catch(() => {});
+  await P.page.waitForTimeout(120);
+  return true;
+}
+const stepCount = (P) => P.page.evaluate(() => {
+  const c = document.querySelector('[data-infopopup-count]');
+  return c ? Number(c.getAttribute('data-infopopup-count')) : null;
+});
 const pools = (P) => P.page.evaluate(() => {
   const R = window._gameState && window._gameState.current && window._gameState.current.rpg;
   const p = (R && R.prog3) || {};
@@ -92,8 +116,9 @@ const pools = (P) => P.page.evaluate(() => {
 async function answerConfirm(P, which, settle) {
   /* v2.3.2597: the spend lives at the bottom of the INFORMATION window now —
      one window that explains and confirms, the owner's own arrangement — so
-     'confirm' is its gold action and 'cancel' is its close. */
-  const ok = await finger(P, which === 'confirm' ? '[data-infopopup-action]' : '[data-infopopup-close]');
+     'confirm' is its gold action and 'cancel' is its close.  v2.3.2695: a
+     spend window's close is the x -- "Got it" stepped aside for the stepper. */
+  const ok = await finger(P, which === 'confirm' ? '[data-infopopup-action]' : '[data-infopopup-x]');
   if (!ok) return { err: 'no ' + which };
   for (let i = 0; i < 40; i++) {
     await P.page.waitForTimeout(100);
@@ -340,10 +365,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const r = (e) => e.getBoundingClientRect();
       const act = tabs.find((t) => t.getAttribute('aria-pressed') === 'true');
       const av = document.querySelector('[data-infopopup-avail]');
+      const title = document.querySelector('[data-infopopup-title]');
+      const rows = document.querySelector('[data-infopopup-rows]');
+      const btn = document.querySelector('[data-infopopup-action]');
       return {
         text: (root && root.textContent || '').slice(0, 400),
+        title: title ? (title.textContent || '').trim() : null,
+        titleImgs: title ? title.querySelectorAll('img').length : 0,
+        rows: rows ? (rows.innerText || '') : '',
+        btn: btn ? (btn.textContent || '').trim() : null,
+        stepper: !!document.querySelector('[data-infopopup-stepper]'),
+        gotIt: !!document.querySelector('[data-infopopup-close]'),
         keys: tabs.map((t) => t.getAttribute('data-infopopup-lane')),
         active: act ? act.getAttribute('data-infopopup-lane') : null,
+        activeText: act ? (act.textContent || '').trim() : null,
         minH: tabs.length ? Math.min(...tabs.map((t) => +r(t).height.toFixed(1))) : 0,
         right: tabs.length ? Math.max(...tabs.map((t) => +r(t).right.toFixed(1))) : 0,
         avail: av ? (av.textContent || '') : null,
@@ -362,8 +397,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!win0 && win0.minH >= 43.5, win0 && { minH: win0.minH });
     rec.ok(`${label}: ...and the tab row does not hang off the viewport`,
       !!win0 && win0.right <= win0.vw + 0.5, win0 && { right: win0.right, vw: win0.vw });
-    rec.ok(`${label}: the window says how many points that pool has (the owner's "points remaining", moved here)`,
-      !!win0 && /points available:\s*\d+/i.test(win0.avail || ''), win0 && { avail: win0.avail });
+    /* v2.3.2695: owner -- "Remove the redundant 'shared points available'",
+       and the same for the weapons.  The count lives on the highlighted tab. */
+    rec.ok(`${label}: the "points available" line is gone — the highlighted tab carries the count (v2.3.2695)`,
+      !!win0 && win0.avail === null && /\d/.test(win0.activeText || ''), win0 && { avail: win0.avail, tab: win0.activeText });
+    /* v2.3.2695: the title is the stat and its icon, nothing after it */
+    const statName = win0 && win0.title;
+    rec.ok(`${label}: the title names the stat and draws ONE icon — no lane word, no second picture (v2.3.2695)`,
+      !!win0 && win0.titleImgs === 1 && !!statName && !/·|melee|magic|bow|shared/i.test(statName),
+      win0 && { title: statName, imgs: win0.titleImgs });
+    rec.ok(`${label}: ...a WEAPON stat keeps its DPS line`,
+      !!win0 && /\bDPS\b/.test(win0.rows), win0 && win0.rows.slice(0, 160));
+    rec.ok(`${label}: the spend is a [-] n [+] stepper with the confirm to its right`,
+      !!win0 && win0.stepper && /^Spend 1 point$/.test(win0.btn || ''), win0 && { stepper: win0.stepper, btn: win0.btn });
 
     /* Aim it somewhere else: the whole reason the tabs exist. */
     const want = (win0 && win0.keys.find((k) => k !== lane0)) || null;
@@ -377,14 +423,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const laneNow = want || lane0;
     const laneLabel = { sword: 'Melee', bow: 'Bow', staff: 'Magic' }[laneNow] || laneNow;
     rec.ok(`${label}: the window NAMES THE WEAPON — the owner's stated reason the confirm exists`,
-      !!win1 && new RegExp(laneLabel, 'i').test(win1.text), { want: laneLabel, got: win1 && win1.text.slice(0, 120) });
+      !!win1 && new RegExp(laneLabel, 'i').test(win1.activeText || ''), { want: laneLabel, got: win1 && win1.activeText });
 
-    const spent = await answerConfirm(P, 'confirm', (n) => n.pool !== before.pool || JSON.stringify(n.poolBy) !== JSON.stringify(before.poolBy));
-    rec.ok(`${label}: answering the window actually buys the point`, !!spent.ok, spent.now && { pool: spent.now.pool });
+    /* ── THE STEPPER (v2.3.2695) ── two taps on + make three, one on -
+       makes two, and the numbers above follow the count. */
+    const rows1 = win1 && win1.rows;
+    await finger(P, '[data-infopopup-step="up"]');
+    await finger(P, '[data-infopopup-step="up"]');
+    const c3 = await stepCount(P);
+    const win3 = await readWin();
+    rec.ok(`${label}: two taps on + make it three, and the button says so`,
+      c3 === 3 && /^Spend 3 points$/.test((win3 && win3.btn) || ''), { count: c3, btn: win3 && win3.btn });
+    rec.ok(`${label}: ...and the preview rows now show what THREE points buy`,
+      !!win3 && !!rows1 && win3.rows !== rows1, { one: rows1 && rows1.slice(0, 90), three: win3 && win3.rows.slice(0, 90) });
+    await finger(P, '[data-infopopup-step="down"]');
+    const c2 = await stepCount(P);
+    rec.ok(`${label}: ...one tap on - takes it back to two`, c2 === 2, { count: c2 });
+    rec.ok(`${label}: ...and still nothing has been spent`,
+      JSON.stringify(await pools(P)) === JSON.stringify(before));
+    /* HELD, it keeps counting -- the "more quickly" -- and stops when the
+       finger lifts rather than running on by itself. */
+    await finger(P, '[data-infopopup-step="down"]');
+    await hold(P, '[data-infopopup-step="up"]', 900);
+    const cHeld = await stepCount(P);
+    await P.page.waitForTimeout(400);
+    const cAfter = await stepCount(P);
+    const lanePts = (before.poolBy || {})[laneNow];
+    rec.ok(`${label}: holding + keeps adding (well past the one a tap gives)`,
+      typeof cHeld === 'number' && cHeld >= Math.min(4, lanePts), { held: cHeld, lanePts });
+    rec.ok(`${label}: ...and stops the moment the finger lifts`, cHeld === cAfter, { held: cHeld, after: cAfter });
+    /* back down to a known count for the spend */
+    for (let i = 0; i < 40 && (await stepCount(P)) > 2; i++) await finger(P, '[data-infopopup-step="down"]');
+    const K = await stepCount(P);
+
+    const spent = await answerConfirm(P, 'confirm', (n) => (n.poolBy || {})[laneNow] === (before.poolBy || {})[laneNow] - K);
+    rec.ok(`${label}: answering the window actually buys the points`, !!spent.ok && K === 2, spent.now && { pool: spent.now.pool, K });
     if (spent.ok) {
       const n = spent.now || {};
-      rec.ok(`${label}: ...and the WORKER charged the lane THE TAB named, not the shared pool`,
-        n.shared === before.shared && (n.poolBy || {})[laneNow] === (before.poolBy || {})[laneNow] - 1,
+      rec.ok(`${label}: ...and the WORKER charged the lane THE TAB named ${K} points, not the shared pool`,
+        n.shared === before.shared && (n.poolBy || {})[laneNow] === (before.poolBy || {})[laneNow] - K,
         { lane: laneNow, before: before.poolBy, after: n.poolBy, sharedBefore: before.shared, sharedAfter: n.shared });
       const otherMoved = Object.keys(before.poolBy || {}).filter((k) => k !== laneNow
         && (before.poolBy[k] !== (n.poolBy || {})[k]));
@@ -402,9 +479,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
          the weapon that paid for it, and only there */
       await P.page.waitForTimeout(300);
       const b1 = await badges();
-      rec.ok(`${label}: ...and THAT weapon's badge went down by one, live`,
+      rec.ok(`${label}: ...and THAT weapon's badge went down by ${K}, live`,
         !!b1.out[laneNow] && b1.out[laneNow].text === badgeText(b1.spend[laneNow])
-          && Number(b1.out[laneNow].text) === Number(b0.out[laneNow].text) - 1,
+          && Number(b1.out[laneNow].text) === Number(b0.out[laneNow].text) - K,
         { lane: laneNow, before: b0.out[laneNow] && b0.out[laneNow].text, after: b1.out[laneNow] && b1.out[laneNow].text });
     }
 
@@ -428,13 +505,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const sharedWin = await P.page.evaluate(() => {
       const tabs = [...document.querySelectorAll('[data-infopopup-lanes] [data-infopopup-lane]')];
       const av = document.querySelector('[data-infopopup-avail]');
-      return { keys: tabs.map((t) => t.getAttribute('data-infopopup-lane')), avail: av ? av.textContent : null };
+      const title = document.querySelector('[data-infopopup-title]');
+      const rows = document.querySelector('[data-infopopup-rows]');
+      return { keys: tabs.map((t) => t.getAttribute('data-infopopup-lane')),
+        tab: tabs[0] ? (tabs[0].textContent || '').trim() : null,
+        avail: av ? av.textContent : null,
+        title: title ? (title.textContent || '').trim() : null,
+        titleImgs: title ? title.querySelectorAll('img').length : 0,
+        rows: rows ? (rows.innerText || '') : '' };
     });
     rec.ok(`${label}: a SHARED stat's window carries one tab — the shared pool, which is the only thing that can pay`,
       !!sharedWin && sharedWin.keys.length === 1 && sharedWin.keys[0] === 'shared', sharedWin);
-    rec.ok(`${label}: ...and it says what that pool holds`,
-      !!sharedWin && /shared points available:\s*\d+/i.test(sharedWin.avail || ''), sharedWin);
-    await finger(P, '[data-infopopup-close]');
+    /* v2.3.2695: the owner's wording, and the three removals */
+    rec.ok(`${label}: ...that tab says "Unspent Points" and its count`,
+      !!sharedWin && /^unspent points\s*\d+$/i.test(sharedWin.tab || ''), sharedWin && sharedWin.tab);
+    rec.ok(`${label}: ...no "points available" line under it`,
+      !!sharedWin && sharedWin.avail === null, sharedWin && sharedWin.avail);
+    rec.ok(`${label}: ...no "Shared" and no portrait after the stat's name`,
+      !!sharedWin && sharedWin.titleImgs === 1 && !/·|shared/i.test(sharedWin.title || ''),
+      sharedWin && { title: sharedWin.title, imgs: sharedWin.titleImgs });
+    rec.ok(`${label}: ...and no DPS line — a shared point is not bought for one weapon`,
+      !!sharedWin && !!sharedWin.rows && !/\bDPS\b/.test(sharedWin.rows), sharedWin && sharedWin.rows);
+    await finger(P, '[data-infopopup-x]');
 
     /* ═══ WHAT "NO PAGE ERRORS" CAN HONESTLY MEAN IN THIS SANDBOX ═══
        Two requests can never succeed here and neither belongs to this change:

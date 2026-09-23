@@ -242,11 +242,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the Bow column\'s ℹ️ could be tapped while the sword is still equipped', laneOpened && stillHoldingSword,
     { laneOpened, stillHoldingSword });
   await P.page.waitForTimeout(900);
+  /* v2.3.2695: the drawn title is the stat alone now (owner) -- the lane is
+     named by the highlighted tab under it, so that is what is read here. */
   const bowTitle = await P.page.evaluate(() => {
-    const el = document.querySelector('[data-infopopup-title]');
+    const el = document.querySelector('[data-infopopup-lane][aria-pressed="true"]');
     return el ? (el.textContent || '').trim() : null;
   });
-  rec.ok('...and its ℹ️ window is captioned for the BOW (guard)',
+  rec.ok('...and its ℹ️ window is aimed at the BOW (guard)',
     !!(bowTitle && /bow/i.test(bowTitle)), bowTitle);
   const bowFace = await heroFacing(P, '.bt-sd-hero');
   /* THE REPORT.  Not "is it a bow" alone -- "is it NOT the sword", because

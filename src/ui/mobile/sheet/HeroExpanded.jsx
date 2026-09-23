@@ -1441,16 +1441,33 @@ export const HeroExpanded = () => {
               const avail = st.atk ? laneAvail(cat) : sharedAvail;
               return {
                 blocked: avail <= 0
-                  ? `No ${st.atk ? ((PROG3_SKILL_META.find((k) => k.key === cat) || {}).label || 'lane') : 'shared'} points to spend.`
+                  ? `No ${st.atk ? ((PROG3_SKILL_META.find((k) => k.key === cat) || {}).label || 'lane') : 'unspent'} points to spend.`
                   : pts >= cap ? `${st.label} is already at its cap.` : null,
-                run: () => {
+                /* ═══ v2.3.2695: SPEND SEVERAL AT ONCE ═══
+                   Owner: "Instead of one button for 'spend point' make it so
+                   you can add points more quickly using +/- buttons then
+                   confirm spend button to the right of it."
+                   The ceiling is whichever runs out first -- the points you
+                   have, or the room left under the stat's cap -- so the
+                   stepper can never offer a point the worker would refuse.
+                   The worker still spends ONE point per prog3_allocate
+                   (prog3.js _handleProg3Allocate) and still judges each one,
+                   so a batch is n ordinary spends sent back to back: no new
+                   wire type, nothing an older worker would not settle
+                   (rule 19), and a pool that drained mid-batch simply has
+                   its extra spends refused, exactly as a double tap was. */
+                max: Math.max(0, Math.min(avail, cap - pts)),
+                run: (n) => {
                   const S2 = getState();
                   const R2 = S2 && S2.rpg;
                   if (!S2 || !S2.channel) return;
-                  S2.channel.send({
-                    type: 'prog3_allocate',
-                    payload: { stat: st.key, cat: st.atk ? cat : prog3SharedSpendCat(R2) },
-                  });
+                  const count = Math.max(1, Math.floor(Number(n) || 1));
+                  for (let i = 0; i < count; i++) {
+                    S2.channel.send({
+                      type: 'prog3_allocate',
+                      payload: { stat: st.key, cat: st.atk ? cat : prog3SharedSpendCat(R2) },
+                    });
+                  }
                 },
               };
             };
@@ -1463,65 +1480,78 @@ export const HeroExpanded = () => {
                 /* v2.3.2597: infoKey first — a shortened label may collide with
                    another stat's glossary entry (see prog3.js). */
                 const info = statInfo(st.infoKey || st.label) || { title: st.label, body: st.perText + ' per point.' };
-                const pv = R ? previewStatPoint(R, st.key, laneCat) : null;
-                /* The row carries the NUMBER and, for a percentage, its sign
-                   ("0.8% -> 1.2%", "40.0 -> 48.0"): the row's full unit is
-                   prose ("% less damage", " power") and it ran the Defense
-                   and Elemental rows off the card's right edge (390px
-                   captures).  The label names the stat and the rate line
-                   above the scene says the words, so the row need not. */
-                const fmt = (v) => (st.pct ? n1(v * 100) + '%' : n1(v));
-                const rows = [];
-                if (pv) {
-                  rows.push({ label: st.key === 'luck' ? 'Crit chance' : info.title, now: fmt(pv.statNow), after: pv.capped ? null : fmt(pv.statAfter) });
-                  /* v2.3.2592: LUCK buys two things per point; the second half
-                     gets its own row so "what will my crit damage BE" is
-                     answered beside "what will my crit chance BE". */
-                  if (typeof pv.statNow2 === 'number') {
-                    rows.push({ label: 'Crit damage', now: '+' + n1(pv.statNow2 * 100) + '%',
-                      after: pv.capped ? null : '+' + n1(pv.statAfter2 * 100) + '%' });
+                /* v2.3.2695: the numbers follow the stepper -- rowsFor(n) is
+                   what n points buy, and the window asks again each time the
+                   count changes.  One point is what it opens on. */
+                const rowsFor = (n) => {
+                  const pv = R ? previewStatPoint(R, st.key, laneCat, n) : null;
+                  /* The row carries the NUMBER and, for a percentage, its sign
+                     ("0.8% -> 1.2%", "40.0 -> 48.0"): the row's full unit is
+                     prose ("% less damage", " power") and it ran the Defense
+                     and Elemental rows off the card's right edge (390px
+                     captures).  The label names the stat and the rate line
+                     above the scene says the words, so the row need not. */
+                  const fmt = (v) => (st.pct ? n1(v * 100) + '%' : n1(v));
+                  const rows = [];
+                  if (pv) {
+                    rows.push({ label: st.key === 'luck' ? 'Crit chance' : info.title, now: fmt(pv.statNow), after: pv.capped ? null : fmt(pv.statAfter) });
+                    /* v2.3.2592: LUCK buys two things per point; the second half
+                       gets its own row so "what will my crit damage BE" is
+                       answered beside "what will my crit chance BE". */
+                    if (typeof pv.statNow2 === 'number') {
+                      rows.push({ label: 'Crit damage', now: '+' + n1(pv.statNow2 * 100) + '%',
+                        after: pv.capped ? null : '+' + n1(pv.statAfter2 * 100) + '%' });
+                    }
+                    /* v2.3.2695: a SHARED stat drops the DPS line (owner: "Remove
+                       the line about DPS on this window for all shared
+                       points") -- its point is not bought for any one weapon,
+                       so a DPS figure read off whatever you happen to hold was
+                       answering a question the window is not asking.  The
+                       three weapon lanes keep it; there it is the point. */
+                    if (!st.atk) { /* no DPS row */ } else if (typeof pv.dpsDelta === 'number') {
+                      /* ═══ v2.3.2521: TEST THE REAL FIGURE, NOT THE SHRUNK ONE ═══
+                         This 0.049 asks "is the gain smaller than the +0.1 this
+                         row would print" — a question about the UNSCALED DPS.
+                         v2.3.2520 divided calcDisplayDps by DISPLAY_SCALE_K and
+                         left the cut-off where it was, so it silently became
+                         "smaller than +0.5 real DPS" and four measured gains
+                         (sword/bow/staff Crit, bow Attack Speed: +0.07..+0.15)
+                         started reading "does not change damage" — the sheet
+                         telling the player a stat is worthless when it is not,
+                         about points they cannot take back.  Multiply back out
+                         so the threshold keeps its meaning at any k; the printed
+                         numbers stay scaled. */
+                      /* v2.3.2592: a stat whose JOB is not sustained damage
+                         (Range, Special, Move Speed) says what it does instead
+                         of "does not change damage" — beside RANGE that line is
+                         a bug report, not an answer.  The note rides the row's
+                         own metadata (dpsNote). */
+                      rows.push(pv.dpsDelta * DISPLAY_SCALE_K > 0.049
+                        ? { label: 'DPS', now: n2(pv.dpsNow), after: n2(pv.dpsAfter), delta: '+' + n2(pv.dpsDelta) }
+                        : { label: 'DPS', now: n2(pv.dpsNow), after: null, delta: st.dpsNote || 'does not change damage' });
+                    } else {
+                      rows.push({ label: 'DPS', now: '—', after: null, delta: 'equip a weapon to see' });
+                    }
                   }
-                  if (typeof pv.dpsDelta === 'number') {
-                    /* ═══ v2.3.2521: TEST THE REAL FIGURE, NOT THE SHRUNK ONE ═══
-                       This 0.049 asks "is the gain smaller than the +0.1 this
-                       row would print" — a question about the UNSCALED DPS.
-                       v2.3.2520 divided calcDisplayDps by DISPLAY_SCALE_K and
-                       left the cut-off where it was, so it silently became
-                       "smaller than +0.5 real DPS" and four measured gains
-                       (sword/bow/staff Crit, bow Attack Speed: +0.07..+0.15)
-                       started reading "does not change damage" — the sheet
-                       telling the player a stat is worthless when it is not,
-                       about points they cannot take back.  Multiply back out
-                       so the threshold keeps its meaning at any k; the printed
-                       numbers stay scaled. */
-                    /* v2.3.2592: a stat whose JOB is not sustained damage
-                       (Range, Special, Move Speed) says what it does instead
-                       of "does not change damage" — beside RANGE that line is
-                       a bug report, not an answer.  The note rides the row's
-                       own metadata (dpsNote). */
-                    rows.push(pv.dpsDelta * DISPLAY_SCALE_K > 0.049
-                      ? { label: 'DPS', now: n2(pv.dpsNow), after: n2(pv.dpsAfter), delta: '+' + n2(pv.dpsDelta) }
-                      : { label: 'DPS', now: n2(pv.dpsNow), after: null, delta: st.dpsNote || 'does not change damage' });
-                  } else {
-                    rows.push({ label: 'DPS', now: '—', after: null, delta: 'equip a weapon to see' });
-                  }
-                }
+                  return { rows, capped: !!(pv && pv.capped) };
+                };
+                const first = rowsFor(1);
                 /* v2.3.2685: the same two words the title has always said, as
                    parts, so each can be followed by its own icon (owner).
-                   The lane's icon is the weapon's, the shared row's is your
-                   portrait -- the same two pictures the grid's head cells
-                   use, so the window and the screen behind it agree. */
+                   v2.3.2695: ...and now only the FIRST of them.  Owner: "You
+                   can remove the 'shared' and profile picture after the name
+                   and icon of the stat" -- and the same for the three
+                   weapons.  The highlighted tab directly beneath already
+                   names the pool and draws its picture, so the title was
+                   saying it twice.  The plain `title` keeps the lane: it is
+                   the data-infopopup key three QA scenarios match on, and
+                   it is never drawn while titleParts is set. */
                 const laneMeta = st.atk ? (PROG3_SKILL_META.find((k) => k.key === laneCat) || {}) : null;
                 infoPopupBus.open({
                   title: info.title + (st.atk
                     ? ' · ' + (laneMeta.label || '')
                     : ' · Shared'),
-                  titleParts: [
-                    { label: info.title, icon: st.iconSrc },
-                    st.atk
-                      ? { label: laneMeta.label || '', icon: laneMeta.iconSrc }
-                      : { label: 'Shared', icon: sharedIcon, round: true },
-                  ],
+                  titleParts: [{ label: info.title, icon: st.iconSrc }],
                   /* v2.3.2680: a stat that fades against stronger monsters says
                      so, once, under its explainer. */
                   body: info.body, note: st.fades ? (info.note ? info.note + ' ' : '') + PROG3_FADE_NOTE : info.note,
@@ -1558,15 +1588,19 @@ export const HeroExpanded = () => {
                         weapon={R ? (st.atk ? weaponForCat(R, laneCat) : getActiveWeapon(R)) : null}
                         shield={!!(R && R.shield)} />
                     : null,
-                  rows, capped: !!(pv && pv.capped),
+                  rows: first.rows, capped: first.capped,
+                  rowsFor: (n) => rowsFor(n).rows,
                   /* The spend lives at the bottom of the explainer now.  When
                      there is nothing to buy the button STAYS and refuses with
                      the reason — the owner's "grayed out with that
                      explanation" — because explaining is this window's first
                      job and it must open on a capped stat too. */
+                  /* v2.3.2695: `stepMax` turns the button into the owner's
+                     [-] n [+] [Spend] row (InfoPopup); run(n) sends n. */
                   action: spend ? {
                     label: 'Spend point',
                     blocked: spend.blocked,
+                    stepMax: spend.max,
                     run: spend.run,
                   } : undefined,
                   /* ═══ v2.3.2684: THE LANE IS CHOSEN HERE NOW ═══
@@ -1592,7 +1626,9 @@ export const HeroExpanded = () => {
                       ? POINT_LANES.filter((c) => !c.shared).map((c) => ({
                           key: c.key, label: c.label, icon: c.iconSrc, pts: laneAvail(c.key),
                         }))
-                      : [{ key: 'shared', label: 'Shared', icon: sharedIcon, pts: sharedAvail }],
+                      /* v2.3.2695: owner -- "on the highlighted button instead
+                         of 'shared' just say 'Unspent Points'". */
+                      : [{ key: 'shared', label: 'Unspent Points', icon: sharedIcon, pts: sharedAvail }],
                     onPick: st.atk ? ((k) => {
                       /* the grid behind the window follows the tab, so closing
                          it does not drop you back onto a different lane than
@@ -1601,15 +1637,9 @@ export const HeroExpanded = () => {
                       openStatInfo(st, k, spend ? spendFor(st, k) : null);
                     }) : null,
                   },
-                  /* The owner's "Melee points available: 2" -- the number the
-                     tabs are about, spelled out for the lane in front of you. */
-                  availText: (() => {
-                    const n = st.atk ? laneAvail(laneCat) : sharedAvail;
-                    const who = st.atk
-                      ? ((PROG3_SKILL_META.find((k) => k.key === laneCat) || {}).label || 'Lane')
-                      : 'Shared';
-                    return `${who} points available: ${n}`;
-                  })(),
+                  /* v2.3.2695: the "Melee points available: 2" line is gone
+                     (owner: "Remove the redundant 'shared points available'")
+                     -- the highlighted tab above carries the same number. */
                 });
               } catch (e) { /* an explainer must never block a spend */ }
             };
