@@ -671,11 +671,15 @@ export function hurtPlayerLocal(S, R, amount) {
  * HIT_MATERIALS).  Additive: every existing field keeps its meaning. */
 export function spawnHitDebris(S, m, angle, opts) {
   if (!S || !m) return;
-  var arch = m.archetype || m.type;
+  var o = opts || {};
+  /* v2.3.2743: `arch` -- what the monster WAS when the hit landed on it.  A shot
+     now flies on into the body before its burst (projectiles.js), and a mummy's
+     first hit turns it into a skeleton in between: the wrappings that hit tore
+     are ash and linen, not bone. */
+  var arch = o.arch || m.archetype || m.type;
   var mat = hitMaterialOf(arch);
   if (!S._debrisBursts) S._debrisBursts = [];
   if (S._debrisBursts.length >= 24) return;
-  var o = opts || {};
   var gy = (typeof m.renderY === 'number') ? m.renderY : m.y;
   var h = monsterBodyOffsetY(arch);
   S._debrisBursts.push({

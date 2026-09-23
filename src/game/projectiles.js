@@ -309,7 +309,7 @@ function _pickLanding(S, a, m, tipX, tipY) {
    Called once per hit: from the landing flight, from the stuckIn branch for a
    bow special, or straight away for a shot that does not stop (it pierces). */
 function _projImpactFx(S, a, m, fx, tx, ty) {
-  var arch = m.archetype || m.type;
+  var arch = fx.arch || m.archetype || m.type;   /* what it was when the hit landed (a mummy unwraps in between) */
   var now = Date.now();
   /* v2.3.2200: every archetype recoils (squash fallback covers sheet-less
      monsters) and flashes -- mirrors the melee path */
@@ -326,7 +326,7 @@ function _projImpactFx(S, a, m, fx, tx, ty) {
   /* v2.3.2742: AN ARROW PUNCHES, A BOLT BLASTS -- the material leaves from
      where the shot landed; the pieces that come down are the ground mark */
   spawnHitDebris(S, m, a.ang, {
-    weapon: fx.bolt ? 'bolt' : 'arrow', big: fx.big, elem: fx.elem,
+    weapon: fx.bolt ? 'bolt' : 'arrow', big: fx.big, elem: fx.elem, arch: arch,
     hitX: tx + vdx, hitY: ty + vdy,
   });
   if (arch === 'snowman' && m.curHp > 0) {
@@ -1605,6 +1605,7 @@ export function updateArrows(S, deps) {
                    and shown where the arrow LANDS (_projImpactFx). */
                 var _snapHere = !a.isStaff && !a.isSpecial && !a.pierce && arrowSnaps(S.myId, a._shotTs);
                 var _lfx = {
+                  arch: m.archetype || m.type,   /* what it is NOW, for the burst at the landing */
                   snap: _snapHere,
                   bolt: !!(a.isStaff || isStaffProj), staff: !!a.isStaff, big: !!a.isSpecial,
                   elem: projElem || null,
