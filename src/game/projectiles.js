@@ -334,7 +334,7 @@ function _projCentreLift(S, a, m) {
 }
 /* A hit, on screen, at the point (tx, ty) where the shot landed: the monster's
    recoil and flash (v2.3.2200), its material (v2.3.2773), the sound of what was
-   hit (v2.3.2511), a bolt's crash (v2.3.2505 / v2.3.2771) and a plain arrow's
+   hit (v2.3.2511), a bolt's crash (v2.3.2505 / v2.3.2782) and a plain arrow's
    stuck shaft (v2.3.2511).  Every one of these used to run inline on the frame
    the hit registered, at the hit circle; `fx` carries what that frame knew.
    Called once per hit: from the landing flight, from the stuckIn branch for a
@@ -349,7 +349,7 @@ function _projImpactFx(S, a, m, fx, tx, ty) {
     m._hitAnimEnd = now + (arch === 'snowman' ? 600 : 400);
   }
   m._hitFlash = now;
-  /* v2.3.2771: the staff cast draws a bolt eased off the crystal over its first
+  /* v2.3.2782: the staff cast draws a bolt eased off the crystal over its first
      40 px; a crash inside that stretch is drawn where the orb was SEEN, which
      is the real point plus the drawing offset still left */
   var vdx = (fx.staff && Number.isFinite(a._fxResX)) ? a._fxResX : 0;
@@ -374,7 +374,7 @@ function _projImpactFx(S, a, m, fx, tx, ty) {
   }
   if (fx.staff) {
     /* v2.3.2505: the crash where the orb is.  v2.3.2730: through combatHelpers'
-       orbCrashFx, the one a bolt stopped by a prop uses too; v2.3.2771: which
+       orbCrashFx, the one a bolt stopped by a prop uses too; v2.3.2782: which
        carries the staff cast's restyle -- pixel rings, and the hot-to-cool
        burst in place of the 22 flat dots. */
     orbCrashFx(S, tx, ty, fx.orbColor, { elem: fx.elem, vdx: vdx, vdy: vdy });
@@ -1501,7 +1501,7 @@ export function updateArrows(S, deps) {
                 /* v2.3.2774: the "blood spray on bow hits" is retired -- seven flat
                    red dots at the monster's FEET on every arrow hit, the same for
                    a slime, a snowman and a skeleton.  It was the last of the flat
-                   generic sprays (v2.3.2773 retired the splinters, v2.3.2771 the
+                   generic sprays (v2.3.2773 retired the splinters, v2.3.2782 the
                    staff's purple ones): the material burst is the arrow's hit,
                    and it already brings blood where there is blood (the fire
                    goblin, hitMaterialFx). */
@@ -1550,7 +1550,7 @@ export function updateArrows(S, deps) {
                    * a._renderX/_renderY for the same reason; this block was the
                    * one that did not. */
                   /* ═══ v2.3.2774: ...AND NOW THE ORB IS IN THE BODY WHEN IT DOES ═══
-                     The two rings and the staff cast's burst (v2.3.2771) are
+                     The two rings and the staff cast's burst (v2.3.2782) are
                      spawned by _projImpactFx, at the orb, once the landing flight
                      has carried it into the body.  v2.3.2505's rule is unchanged
                      -- the crash continues the flight, where the eye has the orb
@@ -1587,7 +1587,7 @@ export function updateArrows(S, deps) {
                    contact point) is the arrow's hit now. */
                 /* Staff projectiles are magic — no physical shaft to
                    leave embedded in the body.  Their visual residue is the
-                   crash above (v2.3.2771), and the material reaction (v2.3.2773). */
+                   crash above (v2.3.2782), and the material reaction (v2.3.2773). */
                 /* ═══ v2.3.2511: ONE ARROW, NOT TWO ═══
                    Owner (backlog §2.5): "two stuck arrows on a special".  Both
                    halves were doing their job and neither knew about the

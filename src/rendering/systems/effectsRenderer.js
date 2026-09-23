@@ -140,7 +140,7 @@ import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShi
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon */
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js'; /* v2.3.1864 */
 import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
-import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2771: the staff cast's charge, release, trail and crash */
+import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2782: the staff cast's charge, release, trail and crash */
 import { HitMaterialFx } from '../hitMaterialFx.js';              /* v2.3.2773: what a monster is made of, when it is hit */
 
 /* v2.3.1784: the 8-way compass, module scope.  An identical list already
