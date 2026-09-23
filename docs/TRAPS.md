@@ -3940,3 +3940,328 @@ is not; a percentage small enough to dismiss as anti-aliasing deserves a look at
 **Receipt:** `eyeStyleColorCatalog.EYE_STYLE_PAINTS`; the "spares the white"
 assertions in `mp-eyestyle.mjs` point 8; the two pins removed from
 `MAIN_MATERIAL`, with the reason left in their place.
+
+## 95. A colour measured off the reference art is not the catalog target (v2.3.2665)
+
+**Tempting:** the owner supplies reference art for a new skin tone, you
+measure its lit skin — the alien reference reads (207,250,250) at its p90 —
+and that measurement goes in `SKIN_CATALOG.target`. It is the owner's own
+art, sampled rather than invented, so it cannot be wrong.
+
+**Wrong:** `target` is not a colour the renderer paints, it is a colour the
+renderer *scales*. `_retint` (playerSkins.js) multiplies it by every pixel's
+own luminance over `SKIN_REF`, so `target` only lands as-measured on the
+pixels where k = 1.0, and every brighter pixel gets `target * k` clamped at
+255. At 250 that clamps wherever k > 1.02. Scored across all 72 recoloured
+sheets, the raw reference value clips **13.40%** of skin pixels — which would
+make it the worst-clipping tone in the list, past Alabaster's 11.81%. The
+value that shipped, (191,231,231), is the same hue scaled to a 231 max
+channel and clips **0.38%**, next to `fair` (0.33%). The measurement was
+right; using it directly was not.
+
+### The second half: a ceiling measured on one pose
+
+`playerSkins.js`'s header said, and had said for a long time, "the sheets'
+brightest skin pixel runs k=1.10, so any channel above 231 clips". Believing
+that number is the trap's other door — it is the **stand** sheets. Measured
+across all 82:
+
+```
+jog-south-head   k=1.552      <- global max
+jog-south/-legs  k=1.552
+attack-south     k=1.546
+fish-south       k=1.540
+pickup-south     k=1.538
+dodge-south      k=1.531
+stand-south      k=1.102      <- what the comment measured
+```
+
+So the TRUE zero-clip ceiling is 255/1.552 = **164**, which would forbid the
+whole light half of the shipping catalog — Ivory, Pale, Porcelain and
+Alabaster included. Neither 231 nor 164 is the usable number, and this is why
+"make it not clip" is the wrong goal: the k>1.10 pixels are 0.10% of
+jog-south's skin and 1.48% of hit-south's, a specular rim a few pixels wide.
+At p99 the ceiling is ~228-245, which is where 231 actually came from.
+
+**The rule:** the bar for a new light tone is **its clip share against a tone
+that already ships**, not against zero. Alabaster is the reference because it
+is the brightest shipping tone, and it has blown its highlight rim in every
+build for a long time without anyone filing it.
+
+**Receipt:** `node tools/skin_clip.mjs` scores the whole catalog and prints
+the global kmax; `node tools/skin_clip.mjs r,g,b` scores one candidate against
+Alabaster. `node tools/qa/qa-skin-tone.mjs` then shoots the real client
+wearing each tone, because a clip share is not a judgement about how a colour
+looks. Both were written for this entry. The header paragraph in
+`playerSkins.js` carries the correction inline, since that is where the next
+person will read 231 and believe it.
+
+**Note on the orphan:** `skin_clip.mjs` excludes `welcome-bro.png`. Nothing in
+the repo references it, so the recolour never bakes it, and it is bright enough
+that leaving it in moved Alabaster's aggregate from 1.4% to 35% and drowned
+every real sheet. Excluded because it is not recoloured — not because the
+number was inconvenient.
+
+## 96. Three head anchors that look load-bearing and are not (v2.3.2666)
+
+**Tempting:** you need to place something on the player's head per frame — an
+ear, a marking, anything anatomical — and the repo appears to offer three ready
+answers. Use one.
+
+**Wrong:** all three fail, in different ways, and none of them fails loudly.
+Measured:
+
+### `TRAIT_CATEGORIES` / `resolveBodyAnchor` (`traitCategories.js`)
+
+It reads exactly like the intended extension point — `attachAt: 'head.eyes'`,
+`spriteAnchor`, `widthRatio`, and a comment that says *"Adding a new trait
+category? Add a row here."* **It has no consumers.** `grep -rn
+"TRAIT_CATEGORIES\|resolveBodyAnchor" src/` returns only the file itself. Hair,
+hats, beards and eyewear are placed by `entityRenderer.js` and
+`characterPortrait.js` off `body-tops.json`. A row added here places nothing,
+and nothing errors — you get an invisible feature and a plausible-looking diff.
+
+### `body-anchors.json`'s head box
+
+306 per-frame head boxes, derived by `tools/derive_body_anchors.py`. Reliable on
+`stand`, `mine` and `fish`; **wrong on the moving poses**, because the neck
+detector merges into the shoulders:
+
+```
+stand-south   head 64 x 61     <- plausible
+jog-south     head 95 x 85     <- the same head, 50% wider
+hit-south     head 108 x 84    <- shoulders
+```
+
+Anything pinned to those edges on a jog frame sits ~15px off the head.
+
+### `_headBoxInFrame` (`playerDecal.js`, v2.3.2516)
+
+The face-tattoo walker, and the most convincing of the three because it is
+live, recent, and carefully written. It breaks out of its walk as soon as the
+crown's first skin run is narrow relative to the next row, which on real sheets
+means: **1px head for `stand-east` and `stand-north`, 6px for `hit-south`.**
+
+This is **not a bug to fix**, and that is the trap's sharpest edge. Its own
+header says so: *"a sheet where the walk fails, or ends above the collar,
+renders exactly as it does today; the worst case is the bug that is already
+shipped, not a new one."* For a face REGION that is sound — the clause can only
+ever add pixels. Borrow it for something that must be positioned and the same
+silence becomes a missing or floating feature.
+
+### The rule
+
+**A head anchor is only as good as the frames it covers, so measure its
+coverage before you build on it — and prefer a landmark a human has reviewed.**
+The one anchor that survived is the reviewed iris in `eyeMask.json`: scan
+outward from it to the silhouette edge and you get the head's edge from local
+information only. Its receipt is self-agreement across sheets — `stand-south`
+51px and `jog-south` 54px in the same 256-space, from sheets stored at
+different disk resolutions. None of the three above agree with themselves that
+closely.
+
+And even that one is only **297 of 823 frames**, with gaps *inside* cycles
+(`jog-east`: 12 of 28), so ears driven off it would strobe as the player runs.
+Coverage, not correctness, is what stopped Stage 2 of the species work from
+shipping.
+
+### And the obvious fix, also measured and also dead
+
+"Just combine them" is the natural next thought: `_headBoxInFrame`'s
+run-overlap walk refuses a *detached* raised fist, and
+`derive_body_anchors.py`'s peak-then-neck logic knows the narrow crown is not
+the neck, so together neither weakness applies. Built and measured: 573/823
+frames covered, **65.5%** agreement with the eye-anchored placement where both
+fire.
+
+The residue is not tuning. Every disagreement is a pose where a raised arm
+**touches** the head — `bow-east` 25-51px out, `attack-east` 26px, `bow-south`
+108px — and once the arm is contiguous with the skull the overlap test joins
+them, because they genuinely are one run. Nothing separates them without
+knowing which pixels are an arm, which is semantic, not geometric. That is why
+`tools/eyes/extract-eye-mask.mjs` shipped human-reviewed data rather than a
+cleverer predicate, and it is the same answer here.
+
+**Receipt:** `node tools/ears/derive-ear-anchors.mjs --report` prints the
+per-sheet coverage and the head-width range; its header records all four dead
+ends. `docs/specs/SPECIES-PLAN.md` Stage 2 costs the reviewed landmark pass
+that closing the gap actually needs.
+
+**Related:** §53 (a canvas round-trip destroys the rim pixels any of this is
+measured from — which is why the tooling here reads PNGs through `tools/png.mjs`
+and never a 2D canvas).
+
+## 97. Coverage that came from the tier you were about to delete (v2.3.2667)
+
+**Tempting:** you have a per-frame placement in confidence tiers — some
+measured, some guessed — and the headline number looks good. 703 of 823 frames.
+Ship it, or at worst spot-check the measured ones.
+
+**Wrong, twice over, and only looking at it shows either.**
+
+### The guessed tier was not slightly off, it was somewhere else
+
+The species ears were placed in three tiers: `eye` (scan out from a
+human-reviewed iris), `interp` (lerp between two `eye` frames), and `walk` (a
+silhouette walker, used only on strips with no iris — north/northeast, where
+you are looking at the back of the head). The walker agreed with the measured
+placement 65.5% of the time where both fired, which sounds like a tuning
+problem.
+
+Rendered onto the actual frames, it put **the ears on the shoulders**. Its
+"widest row" is the deltoid line, not the ear line. Not a constant away from
+right — a different body part. It was 192 of those 703 frames, so deleting it
+cost 27% of the headline coverage and *gained* correctness.
+
+### The other 27% was load-bearing, and is fine
+
+`interp` sounds like the weaker idea and is the strong one, because it is
+bounded on both sides by a measurement rather than by a search. A head moves a
+couple of pixels per animation frame and does not teleport, so across
+`jog-east`'s 28 frames the interpolated ears are indistinguishable from the
+measured ones. It is what turns "297 sparse frames" into "every sheet with any
+iris data is 100% covered", which is what removed the strobing that blocked
+v2.3.2666.
+
+**So confidence tiers are not a ranking you can trust by name.** One guess was
+worthless and one was as good as a measurement; which was which came from the
+contact sheet, not from how they were derived.
+
+### And the rule being placed was wrong independently of where
+
+Same review, separate bug: painting an ear on *both* sides of the head put one
+of them **on the character's nose and mouth** in every profile frame. The
+geometry was right and the anatomy was wrong. Fixed in
+`src/rendering/earSides.js` — profile paints the rear ear only, and since the
+renderer draws `west` from the flipped `east` sheet, authoring it once for east
+covers both.
+
+**The rule:** before shipping a per-frame placement, **render the proposal onto
+the frames and look at it**, tier by tier. `tools/eyes/extract-eye-mask.mjs`
+said this first — *"the runtime only ever applies a list someone has looked
+at"* — and every one of the three findings here was invisible to measurement.
+
+**Receipt:** `node tools/ears/ear-anchors.mjs --report` for the tiers,
+`node tools/ears/ear-contact-sheet.mjs --cell 224 --only stand-east` for the
+profile bug. §96 has the four anchors that never worked at all.
+
+## 98. A review can be too lenient to catch a 4-pixel bug (v2.3.2668)
+
+**Tempting:** you built the review harness (§97), rendered the proposal onto
+every frame, looked at the sheets, found three real bugs and fixed them. The
+placement is reviewed. Ship it.
+
+**Wrong:** it shipped with the ear line **four pixels low on every frame that
+had one**, and the review passed it.
+
+### The bug
+
+`eyeMask.json` stores an iris as a **stack of 1-row rects** — `stand-south` is
+fourteen of them, rows 53..59. The anchor took the ear line as
+`max(ry + rh/2)`, reading like "the middle of the iris". Over a stack of 1-row
+rects that is the middle of the *last row*: 59.5, rounded to 60, when the iris
+centre is 56.
+
+Four pixels put the ear on the jaw. Worse, the head's sides were then measured
+by scanning outward *at that row* — and on this art the shoulders begin at row
+55, so the scan left the head and stopped at the deltoid. `stand-south` recorded
+a **51px** head where the art says **43**.
+
+### Why looking at it did not catch it
+
+The review cells were 96px for a ~45px head, so roughly 2x. A 4px error is 8
+screen pixels in a cell where the ear itself is ~12 — it reads as "about right",
+and it was accepted as such. **The review was lower-resolution than the bug.**
+
+What caught it was dumping the frame as ASCII in 256-space, one character per
+pixel with column numbers, and counting: eyes at rows 51..59, head edges at
+x=106 and x=148, shoulders starting at row 55. Against that, `[102, 152, 60]` is
+obviously three separate errors.
+
+### The rule
+
+**Review at the precision of the thing being reviewed.** A rendered overlay
+answers "is this roughly on the head" and will happily pass a systematic
+few-pixel bias; a numeric read of the pixels answers "is this the right row and
+column". Pixel-art placement needs the second, at least once per pose family,
+and the first for everything else.
+
+Corollary, from the same session: **a plausibility bound is a review finding,
+not a guess.** The head-width cap was a loose 110 and let `bow-east` through
+with a 100px "head" — the detector had swallowed the bow. The measured range
+across everything that verifies against a reviewed iris is 41–54, dodge 73. The
+cap is 78 now, and it rejects that frame instead of placing an ear on a weapon.
+
+**Receipt:** the fix decoupled the ear line (iris *centre*) from the head sides
+(the width *plateau* below the crown, which needs no iris and so also reached
+the back-facing sheets — coverage 417 → 660 of 712). The plateau matches a hand
+read exactly on `stand-north` and within 1px on `stand-south`.
+`node tools/ears/ear-anchors.mjs --report`; §97 has the harness, §96 the five
+anchors that never worked.
+
+## 99. The frame is not square, and the count is only half the problem (v2.3.2668)
+
+**Tempting:** you are walking a sprite strip offline and need the frame width.
+The sheets are 256×256 logical frames, and every strip in
+`public/sprites/player` is a horizontal row of them, so `frameW = height` and
+`frames = round(width / height)`. It is right on the first dozen sheets you
+test.
+
+**Wrong on thirty of them**, and the repo has already paid for this once.
+`playerSkins.js` v2.3.2431 — *"THE FRAME WIDTH IS AN ARGUMENT, NOT A
+CONSTANT"* — records the same mistake reaching production: a per-frame ink probe
+showed the bow strips at 3 frames where `floor(w/256)` had claimed otherwise, and
+*"on three of the five bow facings the block pose showed NO tattoo at all"*. The
+authoritative frame table is the stand-in block in `effectsRenderer.js`; the
+widths are 122, 128, 130, 154, 160, 214, 320, 340 and 402.
+
+Measured again in the ear work: the square guess had **`sword-east` at 18 frames
+when it has 11** (its strip is stored half-res on disk and upscaled in the
+loader) and **`bow-north` at 1 when it has 3**. An anchor computed across those
+boundaries is not slightly off — it is measuring a window straddling two
+figures.
+
+### The half nobody warns you about
+
+Fixing the count is not enough. Offline tooling here normalises to "256-space"
+by dividing coordinates by `h/256`, which is only meaningful for a frame that is
+**square and some scale of 256×256**. `sword-east`'s native frame is 402×246, so
+that division lands it in a space whose frame is 418 wide — a *different
+coordinate system* from every other sheet in the same output file.
+
+The failure is invisible in aggregate and obvious in a picture: the ear rendered
+alone in empty black with the head off-frame. Coverage percentages said 94%.
+
+### The rule
+
+**Before walking a strip offline, assert that `width / height` is a whole
+number, and refuse the sheet if it is not.** A sheet whose frame is not
+256-square does not belong in a 256-space data file at all; it needs its own
+pass in its own space. Emitting nothing for it is correct — a mixed-space file
+places most things right and is silently, unfixably wrong on the rest, which is
+worse than a gap you can see.
+
+**Receipt:** `node tools/ears/ear-anchors.mjs --report` now prints the excluded
+sheets by name (40 of them) and reaches 547/548 on the ones it can speak about.
+The exclusion list is written out rather than pattern-matched so it is
+auditable. §98 has the 4px bias in the same data; §97 the harness.
+
+## 100. body-tops is the topmost pixel, and on a flinch that is a fist (v2.3.2675)
+
+**Tempting:** `body-tops.json` is "the crown" -- every hat, hair, beard and
+eyewear piece is pinned to it -- so when a trait lands wrong on one frame, the
+fix is in the trait's meta.
+
+**Wrong on five frames.** `body-tops` is measured as the TOPMOST opaque pixel of
+the frame, not the head. On `hit-north` 3-4 and `hit-northeast` 3-5 the flinch
+raises an arm above the head, and the recorded crown is the fist:
+`hit-north-3` says `[172, 47]`, the head's top is at `[95, 52]`. Every trait
+already in the game rides the fist for those frames (the flinch lasts 250ms,
+which is why nobody has reported it). A per-trait nudge cannot fix it: the
+error is 77px on one frame and 3px on the next.
+
+**The species pieces work around it** with a per-frame `crown` in
+`tools/species-fixes/<id>.json` (`tools/species_frames.py`). The real fix, for
+every trait at once, is correcting those five `body-tops` entries -- but hats,
+hair and the hair-clip masks were all dialled in against the current values,
+so it needs its own before/after pass over every trait, not a drive-by edit.

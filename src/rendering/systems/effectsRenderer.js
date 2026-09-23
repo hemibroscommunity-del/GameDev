@@ -426,7 +426,7 @@ function _isGatheringStandIn(skillKey) {
    too (_orderSwingWeapon), and the index it wants moves as sprites are shown
    and hidden, so reading the body's live index is the only thing that stays
    correct through that. */
-const _STAND_IN_TRAIT_KEYS = ['capeBack', 'hair', 'beard', 'capeHood', 'capeHoodMask', 'eyestyle', 'eyewear', 'hat', 'hairMask'];   /* v2.3.2361: + eyewear, over the hood and under the hat -- this order IS the z-order when the set changes layer; v2.3.2643: + eyestyle, just under the eyewear */
+const _STAND_IN_TRAIT_KEYS = ['capeBack', 'hair', 'beard', 'capeHood', 'capeHoodMask', 'species', 'eyestyle', 'eyewear', 'hat', 'hairMask'];   /* v2.3.2361: + eyewear, over the hood and under the hat -- this order IS the z-order when the set changes layer; v2.3.2643: + eyestyle, just under the eyewear; v2.3.2682: + species, just under the eye style */
 /* v2.3.2190: QA probe.  A headless run cannot read the WebGL canvas, and the
    two facts that matter here are not visible in a screenshot anyway: whether
    the panels are UNDER the stand-in body, and whether the hood is the split's
@@ -2761,7 +2761,7 @@ export class EffectsRenderer {
        its own -- the panels have to go under the stand-in BODY, which is not a
        member of this set, so _placeSkillTraitsOn re-seats it each frame. */
     this.skillTraits = { capeBack: new Sprite(), hair: new Sprite(), beard: new Sprite(),
-      capeHood: new Sprite(), capeHoodMask: new Sprite(), eyestyle: new Sprite(), eyewear: new Sprite(), hat: new Sprite(), hairMask: new Sprite() };   /* v2.3.2361: + eyewear; v2.3.2643: + eyestyle */
+      capeHood: new Sprite(), capeHoodMask: new Sprite(), species: new Sprite(), eyestyle: new Sprite(), eyewear: new Sprite(), hat: new Sprite(), hairMask: new Sprite() };   /* v2.3.2361: + eyewear; v2.3.2643: + eyestyle; v2.3.2682: + species */
     for (const k of _STAND_IN_TRAIT_KEYS) {
       this.skillTraits[k].visible = false;
       this.nodeLayer.addChild(this.skillTraits[k]);
@@ -8847,13 +8847,14 @@ export class EffectsRenderer {
            stand-ins own their own), so unlike the local shared set it needs
            no per-frame reparenting. */
         const mk = () => { const t = new Sprite(); t.visible = false; this.gestureLayer.addChild(t); return t; };
-        ent.traits = { hair: mk(), beard: mk(), eyestyle: mk(), eyewear: mk(), hat: mk() };   /* v2.3.2361: + eyewear, under the hat; v2.3.2643: + eyestyle, under the eyewear */
+        ent.traits = { hair: mk(), beard: mk(), species: mk(), eyestyle: mk(), eyewear: mk(), hat: mk() };   /* v2.3.2682: + species, under the eye style */   /* v2.3.2361: + eyewear, under the hat; v2.3.2643: + eyestyle, under the eyewear */
       }
       const looks = {
         hair: o.hair, hairColor: o.hairColor,
         facialhair: o.facialhair, facialHairColor: o.facialHairColor,
         eyewear: o.eyewear,                                  /* v2.3.2361 */
         eyeStyle: o.eyeStyle,                                /* v2.3.2643 */
+        species: o.species, skin: o.skin,                    /* v2.3.2682: the species' fur follows THEIR skin */
         headwear: o.headwear, hatColor: o.hatColor,
         cape: o.cape,                                        /* v2.3.2190 */
       };
@@ -9197,7 +9198,7 @@ export class EffectsRenderer {
          the mk() call order, which is the addChild order, which is the z-order,
          so this line alone puts a peer's shirt in front of their greaves the way
          the owner asked for the local character. */
-      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { capeBack: mk(), hair: mk(), beard: mk(), capeHood: mk(), capeHoodMask: mk(), eyestyle: mk(), eyewear: mk(), hat: mk(), hairMask: mk() } };   /* v2.3.2361: + eyewear; v2.3.2643: + eyestyle */ /* v2.3.1776: + the clip mask; v2.3.2190: + the cape's two halves and its hood clip */
+      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { capeBack: mk(), hair: mk(), beard: mk(), capeHood: mk(), capeHoodMask: mk(), species: mk(), eyestyle: mk(), eyewear: mk(), hat: mk(), hairMask: mk() } };   /* v2.3.2361: + eyewear; v2.3.2643: + eyestyle; v2.3.2682: + species */ /* v2.3.1776: + the clip mask; v2.3.2190: + the cape's two halves and its hood clip */
       this._remoteSwordSprites.set(id, set);
     }
     return set;
@@ -9380,6 +9381,7 @@ export class EffectsRenderer {
         facialhair: o.facialhair, facialHairColor: o.facialHairColor,
         eyewear: o.eyewear,                                  /* v2.3.2361 */
         eyeStyle: o.eyeStyle,                                /* v2.3.2643 */
+        species: o.species, skin: o.skin,                    /* v2.3.2682: the species' fur follows THEIR skin */
         headwear: o.headwear, hatColor: o.hatColor,
         cape: o.cape,                                        /* v2.3.2190 */
       };
@@ -9413,7 +9415,7 @@ export class EffectsRenderer {
       set.jogLegs.visible = set.jogLegsGear.visible = false;
       hideSkillTraits(set.traits);
       if (!others[id]) {
-        for (const s of [set.jogLegs, set.jogLegsGear, set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.eyestyle, set.traits.eyewear, set.traits.hat]) {   /* v2.3.2361; v2.3.2643: + eyestyle */
+        for (const s of [set.jogLegs, set.jogLegsGear, set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.species, set.traits.eyestyle, set.traits.eyewear, set.traits.hat]) {   /* v2.3.2361; v2.3.2643: + eyestyle; v2.3.2682: + species */
           try { s.destroy(); } catch (e) {}
         }
         this._remoteSwordSprites.delete(id);
@@ -9440,7 +9442,7 @@ export class EffectsRenderer {
          v2.3.1710: `legs` before `shirt`, in step with the local bow stand-in
          and _ensureRemoteSwordSet — see the note there on why key order is
          z-order. */
-      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { capeBack: mk(), hair: mk(), beard: mk(), capeHood: mk(), capeHoodMask: mk(), eyestyle: mk(), eyewear: mk(), hat: mk(), hairMask: mk() } };   /* v2.3.2361: + eyewear; v2.3.2643: + eyestyle */ /* v2.3.1776: + the clip mask; v2.3.2190: + the cape's two halves and its hood clip */
+      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { capeBack: mk(), hair: mk(), beard: mk(), capeHood: mk(), capeHoodMask: mk(), species: mk(), eyestyle: mk(), eyewear: mk(), hat: mk(), hairMask: mk() } };   /* v2.3.2361: + eyewear; v2.3.2643: + eyestyle; v2.3.2682: + species */ /* v2.3.1776: + the clip mask; v2.3.2190: + the cape's two halves and its hood clip */
       this._remoteBowSprites.set(id, set);
     }
     return set;
@@ -9536,6 +9538,7 @@ export class EffectsRenderer {
         facialhair: o.facialhair, facialHairColor: o.facialHairColor,
         eyewear: o.eyewear,                                  /* v2.3.2361 */
         eyeStyle: o.eyeStyle,                                /* v2.3.2643 */
+        species: o.species, skin: o.skin,                    /* v2.3.2682: the species' fur follows THEIR skin */
         headwear: o.headwear, hatColor: o.hatColor,
         cape: o.cape,                                        /* v2.3.2190 */
       };
@@ -9563,7 +9566,7 @@ export class EffectsRenderer {
       set.jogLegs.visible = set.jogLegsGear.visible = false;
       hideSkillTraits(set.traits);
       if (!others[id]) {
-        for (const s of [set.jogLegs, set.jogLegsGear, set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.eyestyle, set.traits.eyewear, set.traits.hat]) {   /* v2.3.2361; v2.3.2643: + eyestyle */
+        for (const s of [set.jogLegs, set.jogLegsGear, set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.species, set.traits.eyestyle, set.traits.eyewear, set.traits.hat]) {   /* v2.3.2361; v2.3.2643: + eyestyle; v2.3.2682: + species */
           try { s.destroy(); } catch (e) {}
         }
         this._remoteBowSprites.delete(id);

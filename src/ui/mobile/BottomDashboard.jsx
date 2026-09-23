@@ -16,6 +16,7 @@ import { getFacialHairColor, facialHairColorTarget, onFacialHairColorChange } fr
 import { getHeadwear, onHeadwearChange } from '../../rendering/traits/headwearCatalog.js';
 import { getEyewear, onEyewearChange } from '../../rendering/traits/eyewearCatalog.js';   /* v2.3.2361 */
 import { getEyeStyle, onEyeStyleChange } from '../../rendering/traits/eyeStyleCatalog.js';   /* v2.3.2643 */
+import { getSpecies, onSpeciesChange } from '../../rendering/traits/speciesCatalog.js';   /* v2.3.2682 */
 import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js';
 import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rendering/traits/shirtColorCatalog.js';
 import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
@@ -811,6 +812,7 @@ export const BottomDashboard = () => {
         eyeColor: getEyeColor(),
         eyewear: getEyewear(),   /* v2.3.2361 */
         eyeStyle: getEyeStyle(),   /* v2.3.2643 */
+        species: getSpecies(),   /* v2.3.2682 */
         shirt: getShirt(), shirtColor: shirtColorTarget(getShirtColor()),
       }, true).then(url => { if (alive && url && mine === seq) setProfilePortrait(url); });
     };
@@ -821,6 +823,7 @@ export const BottomDashboard = () => {
       onShirtChange(regen), onShirtColorChange(regen), onEyeColorChange(regen), /* v2.3.1928 */
       onEyewearChange(regen), /* v2.3.2361: subscribed in the same change that added the read -- the v2.3.1835 lesson */
       onEyeStyleChange(regen), /* v2.3.2643: same rule, same change */
+      onSpeciesChange(regen), /* v2.3.2682: same rule, same change */
       onPantsChange(regen), onShoesChange(regen)];
     return () => { alive = false; unsubs.forEach(u => u && u()); };
   }, []);

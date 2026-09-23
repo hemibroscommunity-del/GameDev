@@ -647,6 +647,12 @@ export const TRACK_COSMETIC_KEYS = new Set([
      one and not the other is the v2.3.1939 shape, which here would be eyes
      that arrive on join and revert on the first two-second relay. */
   'es',
+  /* v2.3.2682: 'sc' is the SPECIES id (none / monkey) -- a short catalog id
+     exactly like 'es'.  Display-only on the same terms: the receiving client
+     asks its own SPECIES_CATALOG folder for the art, so a forged id loads no
+     texture and paints nothing.  Both gates in one change (JOIN_COSMETIC_KEYS
+     in join.js), the v2.3.1939 lesson. */
+  'sc',
   /* v2.3.1939: the drawn shirt, front and back.  Display-only like every
      cosmetic here: the receiving client rejects anything that is not exactly
      256 hex characters, so a forged value paints nothing rather than something

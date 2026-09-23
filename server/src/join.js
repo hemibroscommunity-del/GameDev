@@ -74,6 +74,10 @@ export const JOIN_COSMETIC_KEYS = [
              different thing from 'ec' above, which is the colour of the eyes the
              body sheets paint.  Both gates in the same change, for the reason the
              'ewc' note gives. */
+  'sc',   /* v2.3.2682: the SPECIES -- a short catalog id like es (none or
+             monkey; docs/specs/SPECIES-PLAN.md).  Both gates in the same
+             change, for the reason the 'ewc' note gives: a monkey that joined as
+             one and turned human on the first two-second relay. */
   /* v2.3.1939: the player's drawn shirt, front and back.  Exactly 256 hex
      characters each (16x16, one char per cell) -- see the cap below, which has
      to admit them: the flat 64 would truncate a drawing into an invalid string
