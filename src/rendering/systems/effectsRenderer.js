@@ -1039,6 +1039,25 @@ function _crossedFrame(last, cur, target) {
    five DEBRIS_BURSTS sheets this table loaded were never made, so all five
    requests 404ed on every page load and every hit drew the soft placeholder
    below them; both are retired with it. */
+/* ...but not the soft dot that placeholder was drawn on.  The cook's smoke
+   (v2.3.2760, _spawnCookSmoke) draws its puffs on it -- smoke IS soft -- so the
+   minted texture stays: one canvas radial gradient, minted once, tinted per
+   use (the entityRenderer _shadowTex recipe; batches). */
+let _DEBRIS_DOT_TEX = null;
+function debrisDotTex() {
+  if (_DEBRIS_DOT_TEX) return _DEBRIS_DOT_TEX;
+  const c = document.createElement('canvas');
+  c.width = 32; c.height = 32;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(16, 16, 2, 16, 16, 15);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.6, 'rgba(255,255,255,0.85)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 32, 32);
+  _DEBRIS_DOT_TEX = Texture.from(c);
+  return _DEBRIS_DOT_TEX;
+}
 /* ═══ v2.3.2217: the thrown snowball's IMPACT ═══
    Owner-supplied art (a 4x2 grid, normalised to the repo's 8-frame strip
    with ONE shared centre and scale so the burst's expansion survives —
