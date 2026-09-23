@@ -9,10 +9,10 @@
    and the block reads S.player directly. */
 import { BT_AUDIO } from '@/data/index.js';
 import { zoneLeavesPrints } from '@/rendering/footprintSprites.js'; /* v2.3.2654 */
-import { sweepBlockPoint, boxFace } from '@/data/worldProps.js';   /* v2.3.2702: a peer's shot stops at a prop on your screen too */
-import { spawnPropDebris, propImpactSound, orbCrashFx, markProp, queueArrowSnap } from '@/game/combatHelpers.js';   /* v2.3.2702; v2.3.2704 the snap */
-import { arrowSnaps } from '@/data/arrowSnap.js';   /* v2.3.2704 */
-/* v2.3.2702: how far up a prop's face a PEER's shot marks it -- see the remote
+import { sweepBlockPoint, boxFace } from '@/data/worldProps.js';   /* v2.3.2730: a peer's shot stops at a prop on your screen too */
+import { spawnPropDebris, propImpactSound, orbCrashFx, markProp, queueArrowSnap } from '@/game/combatHelpers.js';   /* v2.3.2730; v2.3.2731 the snap */
+import { arrowSnaps } from '@/data/arrowSnap.js';   /* v2.3.2731 */
+/* v2.3.2730: how far up a prop's face a PEER's shot marks it -- see the remote
    projectile sweep below. */
 var REMOTE_SHOT_H = 26;
 
@@ -219,14 +219,14 @@ export function updateVisualSystems(S) {
             var owner = S.others[rp.ownerId];
             var originX = owner ? (owner.renderX || owner.x) : rp.x;
             var originY = owner ? (owner.renderY || owner.y) : rp.y;
-            /* v2.3.2702: where it was last frame, for the prop sweep below.  The
+            /* v2.3.2730: where it was last frame, for the prop sweep below.  The
                first step has no last frame, so it starts one step back along the
                same line -- the shape v2.3.2473 gave the local first frame. */
             var _rpX0 = (typeof rp._renderX === 'number') ? rp._renderX : originX + Math.cos(rp.ang) * (rp.dist - _rpStep);
             var _rpY0 = (typeof rp._renderY === 'number') ? rp._renderY : originY + Math.sin(rp.ang) * (rp.dist - _rpStep);
             rp._renderX = originX + Math.cos(rp.ang) * rp.dist;
             rp._renderY = originY + Math.sin(rp.ang) * rp.dist;
-            /* ═══ v2.3.2702: A PEER'S SHOT MEETS THE PROP ON YOUR SCREEN TOO ═══
+            /* ═══ v2.3.2730: A PEER'S SHOT MEETS THE PROP ON YOUR SCREEN TOO ═══
                This simulation is cosmetic -- the worker settles a peer's hits
                and this copy touches no monster -- and it never asked about
                props, so another player's arrow sailed through the ridge on your
@@ -252,7 +252,7 @@ export function updateVisualSystems(S) {
                 if (rp.isStaff) {
                   orbCrashFx(S, _rpHit.x, _rpY, rp.isSpecial ? '#f5c542' : '#a78bfa');
                 } else if (!rp.isSpecial && arrowSnaps(rp.ownerId, rp.shotTs)) {
-                  /* v2.3.2704: the same one-in-eight snap the shooter rolled --
+                  /* v2.3.2731: the same one-in-eight snap the shooter rolled --
                      same id, same shot timestamp, same answer (arrowSnap.js) */
                   queueArrowSnap(S, _rpHit.x, _rpY, _rpHit.y, rp.ang, 0.18);
                 } else {

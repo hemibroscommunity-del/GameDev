@@ -1,4 +1,4 @@
-/* ═══ ONE ARROW IN EIGHT SNAPS  (v2.3.2704) ═══
+/* ═══ ONE ARROW IN EIGHT SNAPS  (v2.3.2731) ═══
  *
  * Owner: "I think it would be cool if some arrows snapped on hitting the target
  * (still causing the same amount of damage) in maybe every 1 out of every 8
@@ -156,7 +156,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 2. ON A PROP ── */
   const pw = await shootProp(P, { tag: 'whole', ts: wholeTs });
-  rec.ok('fountain, whole arrow: it stands in the face (v2.3.2702), no snap', pw.planted && !!pw.inProp && pw.inProp.id === FOUNT.id && pw.snaps === 0, pw);
+  rec.ok('fountain, whole arrow: it stands in the face (v2.3.2730), no snap', pw.planted && !!pw.inProp && pw.inProp.id === FOUNT.id && pw.snaps === 0, pw);
   await P.page.waitForTimeout(300);
   const ps = await shootProp(P, { tag: 'broke', ts: snapTs });
   rec.ok('fountain, SNAPPED arrow: gone from the face -- nothing left standing in it -- and snapped there',

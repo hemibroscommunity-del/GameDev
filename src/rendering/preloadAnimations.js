@@ -52,7 +52,7 @@ import { preloadLevelUpBurst } from './levelUpBurstPreload.js';
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
 import { preloadAuctionInterior } from './auctionInteriorPreload.js'; /* v2.3.2627: the auction house's room + clerk */
 import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
-import { preloadMonsterShots } from './monsterShotFx.js'; /* v2.3.2705: the monsters' goo and fire, minted in code */
+import { preloadMonsterShots } from './monsterShotFx.js'; /* v2.3.2732: the monsters' goo and fire, minted in code */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
    screen"): ZONE-SPECIFIC textures moved OFF the blocking pre-game gate —
@@ -264,7 +264,7 @@ export async function preloadWorldAnimations() {
        because a still image in a module named "strips" is exactly the kind
        of thing a later reader assumes was forgotten. */
     fxStrips: fxStripsReady(),
-    /* ═══ v2.3.2705: the monsters' thrown goo and fire ═══
+    /* ═══ v2.3.2732: the monsters' thrown goo and fire ═══
        MINTED, not fetched -- rendering/monsterShotArt.js draws every frame in
        code and monsterShotFx.js packs them into one atlas -- but an animation
        all the same, so it is registered HERE per the preloading LAW rather

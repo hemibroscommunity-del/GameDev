@@ -827,7 +827,7 @@ export function zoneBlockers(zoneId) {
   const out = [];
   for (const p of propsForZone(zoneId)) {
     const f = propFootprint(p);
-    /* v2.3.2702: the footprint says whose it is, so a hit on it can ask what
+    /* v2.3.2730: the footprint says whose it is, so a hit on it can ask what
        the prop is made of (propMaterial) and where to draw on it. */
     if (f) { f.id = p.id; out.push(f); }
   }
@@ -835,7 +835,7 @@ export function zoneBlockers(zoneId) {
   return out;
 }
 
-/* ═══ v2.3.2702: WHAT A PROP IS MADE OF ═══
+/* ═══ v2.3.2730: WHAT A PROP IS MADE OF ═══
    Owner: "make it so that subtle debris comes off the props once they're hit
    by a player projectile ... arrow stuck in (with debris), and sword slash
    marks on the props (with debris)."
@@ -882,7 +882,7 @@ export function propMaterial(propId) {
   return (propId && PROP_MATERIALS[propId]) || PROP_MATERIAL_DEFAULT;
 }
 
-/** v2.3.2702: which face of box `b` the point (x, y) lies on -- 's' (the
+/** v2.3.2730: which face of box `b` the point (x, y) lies on -- 's' (the
  *  south face, the one the camera sees), 'e', 'w', or 'n' (the back). */
 export function boxFace(b, x, y) {
   const e = 0.75;
@@ -893,7 +893,7 @@ export function boxFace(b, x, y) {
   return 's';
 }
 
-/* ═══ v2.3.2702: WHERE A SWORD SWING MEETS A PROP ═══
+/* ═══ v2.3.2730: WHERE A SWORD SWING MEETS A PROP ═══
    A projectile meets a prop on its flight line (sweepBlockPoint above); a
    swing has no line, it has a fan -- `halfArc` either side of `ang`, out to
    `reach` from the swinger's feet.  So the fan is sampled as rays and each is
@@ -999,7 +999,7 @@ export function boxExitPoint(b, x0, y0, x1, y1) {
   if (pointInBox(x1, y1, b)) return null;
   const u = segEnterT(x1, y1, x0, y0, b);
   if (u < 0) return null;
-  /* v2.3.2702: + the box, as sweepBlockPoint returns it -- the far face is
+  /* v2.3.2730: + the box, as sweepBlockPoint returns it -- the far face is
      still a face of THIS prop, and the hit effects need to know whose. */
   return { x: x1 + (x0 - x1) * u, y: y1 + (y0 - y1) * u, t: 1 - u, box: b };
 }
@@ -1012,5 +1012,5 @@ if (typeof window !== 'undefined') {
   window.__btAttackBlocked = (z, x0, y0, x1, y1) => attackBlocked(z, x0, y0, x1, y1);
   window.__btBlockPoint = (z, x0, y0, x1, y1) => attackBlockPoint(z, x0, y0, x1, y1);
   window.__btSweepBlockPoint = (z, x0, y0, x1, y1) => sweepBlockPoint(z, x0, y0, x1, y1); /* v2.3.2699 */
-  window.__btPropSwingContact = (z, x, y, ang, reach, half) => propSwingContact(z, x, y, ang, reach, half); /* v2.3.2702 */
+  window.__btPropSwingContact = (z, x, y, ang, reach, half) => propSwingContact(z, x, y, ang, reach, half); /* v2.3.2730 */
 }

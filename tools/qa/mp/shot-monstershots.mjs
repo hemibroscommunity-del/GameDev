@@ -1,4 +1,4 @@
-/* v2.3.2705: photograph the monsters' goo and fire in the running game.
+/* v2.3.2732: photograph the monsters' goo and fire in the running game.
  *
  * mp-monstershots asserts what is drawn; this is for LOOKING at it.  Each
  * throw is filmed frame by frame with the DOM interface hidden (the buttons

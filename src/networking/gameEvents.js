@@ -19,7 +19,7 @@ import { capeStatusBus } from '../ui/mobile/capeStatusBus.js'; /* v2.3.2118 */
 import { storeToastBus } from '../ui/mobile/storeToastBus.js'; /* v2.3.2476 */
 import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
-import { toDisplayDamage, toDisplayHitDamage, GS_OUTER_RADIUS, GS_FORWARD_ARC } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale (§5.8 D1); v2.3.2702: + a peer's swing reach */
+import { toDisplayDamage, toDisplayHitDamage, GS_OUTER_RADIUS, GS_FORWARD_ARC } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale (§5.8 D1); v2.3.2730: + a peer's swing reach */
 import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is a legacy number under prog3 */
 /* v2.3.1734: Element Burst paints the element's status onto the local
    monster objects (the server owns statuses and never syncs them) — see
@@ -34,7 +34,7 @@ import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown 
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
-import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, propSwingHit /* v2.3.2702 */ } from '@/game/combatHelpers.js';
+import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, propSwingHit /* v2.3.2730 */ } from '@/game/combatHelpers.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield */
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes */
 import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
@@ -1559,7 +1559,7 @@ export function processGameEvent(type, payload, S, deps) {
                 if (typeof payload.ang === 'number') S.others[payload.id]._swingAng = payload.ang;
                 /* v2.3.1107: point the body the same way as the swing. */
                 _reconcileFacing(S.others[payload.id], payload.ang);
-                /* v2.3.2702: a peer's blade marks a prop on YOUR screen too, or
+                /* v2.3.2730: a peer's blade marks a prop on YOUR screen too, or
                    the slash the owner asked for is something only the swinger
                    ever sees.  Same helper and same fan as the local swing, from
                    where the peer is drawn, at the base reach (their Range stat
@@ -1616,7 +1616,7 @@ export function processGameEvent(type, payload, S, deps) {
                    own speed, exactly as before. */
                 speedPx: (Number(payload.speedPx) > 0 ? Math.min(20, Number(payload.speedPx)) : null),
                 ts: Date.now(), ownerId: payload.id,
-                /* v2.3.2704: the SHOOTER's timestamp, which `ts` above is not (it
+                /* v2.3.2731: the SHOOTER's timestamp, which `ts` above is not (it
                    is when this screen heard about it) -- the snap roll hashes
                    this, so an arrow that breaks on their screen breaks on yours */
                 shotTs: Number.isFinite(Number(payload.ts)) ? Number(payload.ts) : null
@@ -1813,7 +1813,7 @@ export function processGameEvent(type, payload, S, deps) {
                      that matters: you cannot tell it is coming at you. */
                   kind: payload.kind || 'slime',
                   ts: Date.now(),
-                  /* v2.3.2705: WHO threw it, so the ball is drawn in the
+                  /* v2.3.2732: WHO threw it, so the ball is drawn in the
                      thrower's own colour (data/monsterShots.js) -- a green
                      slime's goo is green beside a blue one's -- and how long
                      the whole flight is, which is how the renderer knows how far

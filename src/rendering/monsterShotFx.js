@@ -1,4 +1,4 @@
-/* ═══ v2.3.2705: THE MONSTERS' SHOTS, IN FLIGHT AND WHEN THEY LAND ═══
+/* ═══ v2.3.2732: THE MONSTERS' SHOTS, IN FLIGHT AND WHEN THEY LAND ═══
  *
  * Owner: "take another look at the procedurally drawn projectiles from slimes
  * and fire goblins ... I bet you could make better ones.  Just make sure it's

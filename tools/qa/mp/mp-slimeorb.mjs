@@ -125,7 +125,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!blue && blue.px >= 28 && blue.px <= 40, blue);
   /* It must come off the SAME art as the green one. If a future change swapped
      in a different source, the px above could be right for the wrong reason.
-     v2.3.2705: that art is now the goo glob minted in code (monsterShotFx.js,
+     v2.3.2732: that art is now the goo glob minted in code (monsterShotFx.js,
      srcPx null, style 'goo') rather than the 128px sheet -- the same frames for
      both, tinted per thrower, so the size is still the only difference.  A
      build whose atlas failed falls back to the sheet, and still has to agree. */
@@ -133,7 +133,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!blue && !!green && blue.srcPx === green.srcPx
       && (blue.srcPx === 128 || (blue.srcPx == null && blue.style === 'goo' && green.style === 'goo')),
     { blue: blue && [blue.srcPx, blue.style], green: green && [green.srcPx, green.style] });
-  /* v2.3.2705: ...and in its own colour.  The green orb is the slime sheet's
+  /* v2.3.2732: ...and in its own colour.  The green orb is the slime sheet's
      green; the Verdant Wilds' is the blue its slimes are recoloured to. */
   rec.ok('...and each in its thrower\'s colour: green in town, blue in the Verdant Wilds',
     !!blue && !!green && (blue.srcPx === 128 || (green.tint === 0x5ca84c && blue.tint === 0x3a7ad0)),

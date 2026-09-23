@@ -403,7 +403,7 @@ check('on open ground nothing is blocked', openGround > 0, { openGround });
     attackBlocked('frost', 430, R.y0 - 40, 430, mid) === false && cliBlockPoint('frost', 430, R.y1 + 40, 430, mid) === null, {});
 }
 
-/* ── 7. WHERE A BLADE MEETS A PROP, AND WHAT IT IS MADE OF (v2.3.2702) ──
+/* ── 7. WHERE A BLADE MEETS A PROP, AND WHAT IT IS MADE OF (v2.3.2730) ──
    The slash mark and the debris a hit knocks off a prop are drawn by the
    client, but they stand on three pieces of geometry that can be pinned here:
    the footprint knows whose it is, a swing's fan finds the face in front of the
@@ -458,7 +458,7 @@ check('on open ground nothing is blocked', openGround > 0, { openGround });
     && cliMaterial('__proto__').kind === 'stone' && cliMaterial(null).kind === 'stone', {});
 }
 
-/* ── 8. ONE ARROW IN EIGHT SNAPS, AND BOTH SCREENS AGREE WHICH (v2.3.2704) ──
+/* ── 8. ONE ARROW IN EIGHT SNAPS, AND BOTH SCREENS AGREE WHICH (v2.3.2731) ──
    Owner: "some arrows snapped on hitting the target (still causing the same
    amount of damage) in maybe every 1 out of every 8 hits".  The snap is only a
    picture, so the two things worth pinning are the ROLL: that it comes out at

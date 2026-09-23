@@ -1,4 +1,4 @@
-/* ═══ v2.3.2704: SOME ARROWS SNAP ═══
+/* ═══ v2.3.2731: SOME ARROWS SNAP ═══
  *
  * Owner: "I think it would be cool if some arrows snapped on hitting the
  * target (still causing the same amount of damage) in maybe every 1 out of

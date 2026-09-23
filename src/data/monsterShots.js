@@ -1,4 +1,4 @@
-/* ═══ v2.3.2705: WHAT A MONSTER'S SHOT LOOKS LIKE, AND WHAT COLOUR ═══
+/* ═══ v2.3.2732: WHAT A MONSTER'S SHOT LOOKS LIKE, AND WHAT COLOUR ═══
  *
  * Owner: "take another look at the procedurally drawn projectiles from slimes
  * and fire goblins ... Just make sure it's colored correctly (green slimes are

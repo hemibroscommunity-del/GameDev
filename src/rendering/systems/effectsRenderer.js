@@ -98,7 +98,7 @@ import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { footprintFrames } from '@/rendering/footprintSprites.js'; /* v2.3.2654: prints in the snow */
-import { propsForZone } from '@/data/worldProps.js'; /* v2.3.2702: marks drawn ON props -- slash marks, arrows standing in the rock */
+import { propsForZone } from '@/data/worldProps.js'; /* v2.3.2730: marks drawn ON props -- slash marks, arrows standing in the rock */
 
 /* v2.3.2654: how a print reads and how long it lasts.  PRINT_TTL_MS is
    mirrored by stateCleanup's filter -- the array and the drawer must expire on
@@ -291,7 +291,7 @@ import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
-import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2705: slime goo + goblin fire, drawn in code */
+import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
    gear layers, the trait crowns and the remote stand-in — they all slice the
@@ -845,7 +845,7 @@ const ARROW_PINE = {
      DPR-3 phone, so the old 64px sheet would have been upscaled 1.6x and gone
      soft exactly as it finally got big enough to look at. */
   lenPx: 52.5,
-  /* v2.3.2704: where a SNAPPED arrow breaks, as a fraction of its length from
+  /* v2.3.2731: where a SNAPPED arrow breaks, as a fraction of its length from
      the tail -- mid-shaft, just behind the pivot -- and the two halves it
      breaks into.  Framed out of the same download, like noHead: no new art,
      nothing for the preload manifest. */
@@ -1202,7 +1202,7 @@ function debrisDotTex() {
   return _DEBRIS_DOT_TEX;
 }
 
-/* ═══ v2.3.2702: THE SLASH MARK A BLADE LEAVES ON A PROP ═══
+/* ═══ v2.3.2730: THE SLASH MARK A BLADE LEAVES ON A PROP ═══
    Owner: "sword slash marks on the props (with debris)".  There is no art for
    a cut, so it is minted once, here, and drawn as a SPRITE (the owner's rule
    that code-drawn effects read as placeholder is about live Graphics, and it
@@ -1244,7 +1244,7 @@ function propSlashTex() {
   _PROP_SLASH_TEX = Texture.from(c);
   return _PROP_SLASH_TEX;
 }
-/* v2.3.2704: a wood SPLINTER off a snapped arrow -- a pale sliver with a dark
+/* v2.3.2731: a wood SPLINTER off a snapped arrow -- a pale sliver with a dark
    underside, minted once, same two-tone rule as the slash above. */
 let _SPLINTER_TEX = null;
 function splinterTex() {
@@ -1965,7 +1965,7 @@ export class EffectsRenderer {
        entries here so we can destroy orphans after the simulator
        drops a projectile from S.slimeProjectiles. */
     this.slimeProjSprites = [];
-    /* v2.3.2705: the slimes' goo and the goblins' fire are drawn by their own
+    /* v2.3.2732: the slimes' goo and the goblins' fire are drawn by their own
        module now (rendering/monsterShotFx.js) -- in the thrower's colour, with
        a throw, a trail and a landing.  Snowballs stay on the sprite path
        below; the old per-zone pictures stay too, as the fallback while (or if)
@@ -2001,7 +2001,7 @@ export class EffectsRenderer {
           y: +e.sprite.y.toFixed(1),
           ownerId: (e.proj && e.proj.ownerId) || null,
         }))
-        /* v2.3.2705: ...and the goo and fire drawn by monsterShotFx, in the
+        /* v2.3.2732: ...and the goo and fire drawn by monsterShotFx, in the
            same shape (px = the head's drawn width, srcPx null: no sheet) */
         .concat(_shotFxRef ? _shotFxRef.probeShots() : []);
     }
@@ -3296,9 +3296,9 @@ export class EffectsRenderer {
     this._updateGatherNodes(S, now);
     this._updateMonsterImpacts(S, now);
     this._updateDebrisBursts(S, now);   /* v2.3.2200: material hit debris */
-    this._updatePropMarks(S, now);      /* v2.3.2702: slashes and arrows standing in props */
-    this._updateArrowSnaps(S, now);     /* v2.3.2704: one arrow in eight breaks on what it hits */
-    try { this._shotFx.tick(S, now); } catch (e) { /* v2.3.2705: monster shots are drawing only */ }
+    this._updatePropMarks(S, now);      /* v2.3.2730: slashes and arrows standing in props */
+    this._updateArrowSnaps(S, now);     /* v2.3.2731: one arrow in eight breaks on what it hits */
+    try { this._shotFx.tick(S, now); } catch (e) { /* v2.3.2732: monster shots are drawing only */ }
     this._updateCampfire(S, now);
     this._updateFiremaking(S, now);
     this._updateSwordSwing(S, now);
@@ -4074,7 +4074,7 @@ export class EffectsRenderer {
 
     // Local arrows
     const arrows = S.arrows || [];
-    this._pmTick = (this._pmTick || 0) + 1;   /* v2.3.2702: see _reapPropArrows */
+    this._pmTick = (this._pmTick || 0) + 1;   /* v2.3.2730: see _reapPropArrows */
     for (const a of arrows) {
       if (!a._renderX) continue;
       /* v2.3.2287: the vista's perspective curve, at the arrow's OWN drawn
@@ -4082,7 +4082,7 @@ export class EffectsRenderer {
          on every zone but worldview. See _placeMagicBolt for why the `|| 1`
          guards matter more than the multiply does. */
       const _pk = zonePlayerScale(S.currentZone, a._renderX, a._renderY, TILE) || 1;
-      /* v2.3.2702: an arrow standing in a prop is drawn ON the prop, sorted
+      /* v2.3.2730: an arrow standing in a prop is drawn ON the prop, sorted
          with it, not in the ground layer -- see _placePropArrow. */
       if (a._inProp && a.planted) { this._placePropArrow(S, a, now, _pk); continue; }
       const elemColor = a._projElem && ELEMENTS[a._projElem] ? cssToHex(ELEMENTS[a._projElem].color) : 0xc8c8d0;
@@ -4292,7 +4292,7 @@ export class EffectsRenderer {
       }
     }
 
-    this._reapPropArrows();   /* v2.3.2702 */
+    this._reapPropArrows();   /* v2.3.2730 */
     /* v2.3.1334: reap magic-bolt sprites whose projectile is gone
        (expired, hit, or zone-reset) — same pattern as the slime-orb
        reaper below. */
@@ -4458,7 +4458,7 @@ export class EffectsRenderer {
         gfx.fill({ color: 0xffffff, alpha: 1 });      /* highlight, reads as round */
       }
     }
-    /* v2.3.2705: goo and fire are monsterShotFx's once its atlas exists; the
+    /* v2.3.2732: goo and fire are monsterShotFx's once its atlas exists; the
        loop below is the fallback it replaces, kept for a failed mint. */
     const _shotFxOn = !!(this._shotFx && this._shotFx.ready);
     if (_shotFxOn) {
@@ -7400,7 +7400,7 @@ export class EffectsRenderer {
    * angle (the snowman-plume recipe).  Without: six tinted copies of
    * the minted soft particle on parametric arcs — dt-safe because
    * position is computed from age, not integrated per frame. */
-  /* ═══ v2.3.2704: A SNAPPED ARROW ═══
+  /* ═══ v2.3.2731: A SNAPPED ARROW ═══
    * Owner: "some arrows snapped on hitting the target (still causing the same
    * amount of damage) in maybe every 1 out of every 8 hits".
    *
@@ -7538,7 +7538,7 @@ export class EffectsRenderer {
     }));
   }
 
-  /* ═══ v2.3.2702: MARKS ON PROPS -- SLASHES AND ARROWS IN THE ROCK ═══
+  /* ═══ v2.3.2730: MARKS ON PROPS -- SLASHES AND ARROWS IN THE ROCK ═══
    * Owner: "arrow stuck in (with debris), and sword slash marks on the props
    * (with debris)".
    *
@@ -7842,7 +7842,7 @@ export class EffectsRenderer {
     } else {
       const parts = [];
       const tint = b.tint || 0xffffff;
-      /* v2.3.2702: a PROP's burst (combatHelpers.spawnPropDebris) asks for
+      /* v2.3.2730: a PROP's burst (combatHelpers.spawnPropDebris) asks for
          fewer, smaller chunks -- "subtle", the owner's word -- and says where
          its ground is, so they land at the foot of the face they came off. */
       const _nParts = (b.parts > 0) ? Math.min(DEBRIS_PARTS, b.parts) : DEBRIS_PARTS;

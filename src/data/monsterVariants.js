@@ -234,7 +234,7 @@ export const MONSTER_VARIANTS = {
        widen what it hits -- it is honest about its own reach only in the sense
        that it never had one to be honest about. */
     projectileScalePx: 40,
-    /* v2.3.2705: ...and it is FIRE, drawn in code (rendering/monsterShotArt.js)
+    /* v2.3.2732: ...and it is FIRE, drawn in code (rendering/monsterShotArt.js)
        rather than the one still fireball.png.  Every other thrower in the game
        is a slime and throws goo in its own colour; this is the field that says
        otherwise (data/monsterShots.js shotStyleOf). */

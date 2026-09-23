@@ -10,7 +10,7 @@
    by design (they are wired up inside the BroTown component each render). */
 import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY } from '@/data/index.js';
 import { hitMaterialOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard */
-import { propMaterial, propSwingContact } from '@/data/worldProps.js';   /* v2.3.2702: what a prop is made of, and where a swing meets one */
+import { propMaterial, propSwingContact } from '@/data/worldProps.js';   /* v2.3.2730: what a prop is made of, and where a swing meets one */
 import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
 import { prog3Live } from '@/data/prog3.js';          /* v2.3.2615: is the T1 track still load-bearing for this character? */
 
@@ -672,7 +672,7 @@ export function spawnHitDebris(S, m, angle) {
   });
 }
 
-/* ═══ v2.3.2702: A HIT ON A PROP ═══
+/* ═══ v2.3.2730: A HIT ON A PROP ═══
    Owner: "make it so that subtle debris comes off the props once they're hit
    by a player projectile ... I still want the bolt projectiles to explode even
    if they hit props with debris, arrow stuck in (with debris), and sword slash
@@ -710,7 +710,7 @@ export function spawnPropDebris(S, hit) {
   });
 }
 
-/* v2.3.2702: and what it SOUNDS like -- the same material mixer a monster hit
+/* v2.3.2730: and what it SOUNDS like -- the same material mixer a monster hit
    goes through (BT_AUDIO.swordHit, v2.3.2452), so a rock rings like a rock
    monster and a bench cracks like wood.  Snow takes the snowball thud, which
    swordHit deliberately does not carry.  Best-effort, like every sound here. */
@@ -722,7 +722,7 @@ export function propImpactSound(propId, vol) {
   } catch (e) { /* audio is best-effort */ }
 }
 
-/* ═══ v2.3.2702: THE BOLT'S CRASH, IN ONE PLACE ═══
+/* ═══ v2.3.2730: THE BOLT'S CRASH, IN ONE PLACE ═══
    Lifted verbatim out of the monster-hit block in projectiles.js (v2.3.2505's
    rings and v2.3.1356's dissipation spray), because a bolt that lands on a
    rock has to explode exactly the way one that lands on a monster does -- the
@@ -769,7 +769,7 @@ export function orbCrashFx(S, x, y, color) {
   }
 }
 
-/* ═══ v2.3.2702: A MARK LEFT ON A PROP ═══
+/* ═══ v2.3.2730: A MARK LEFT ON A PROP ═══
    A slash from a sword, or an arrow standing in the rock -- anything that is
    drawn ON the prop and has to sort with it (behind you when the rock is, in
    front when it is).  Queued as a fact; effectsRenderer owns the drawing and
@@ -787,7 +787,7 @@ export function markProp(S, rec) {
   if (S._propMarks.length > 32) S._propMarks.splice(0, S._propMarks.length - 32);
 }
 
-/* ═══ v2.3.2702: A SWORD SWING THAT LANDS ON A PROP ═══
+/* ═══ v2.3.2730: A SWORD SWING THAT LANDS ON A PROP ═══
    The swing's own hit test only ever asks about monsters, so a blade that met
    a rock went through it without a mark.  This asks the rock: the swing's fan
    (propSwingContact) from the swinger's feet, and on a contact -- chips off the
@@ -821,7 +821,7 @@ export function propSwingHit(S, px, py, ang, reach, halfArc) {
   return c;
 }
 
-/* ═══ v2.3.2704: AN ARROW THAT BROKE ON WHAT IT HIT ═══
+/* ═══ v2.3.2731: AN ARROW THAT BROKE ON WHAT IT HIT ═══
    Queued as a fact -- where it hit (x/y as drawn), the ground under that
    (gy), the heading -- and drawn by effectsRenderer: the head drops, the
    fletched half kicks back toward the shooter end over end, a few splinters.

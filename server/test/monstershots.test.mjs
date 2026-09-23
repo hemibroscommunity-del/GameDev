@@ -1,4 +1,4 @@
-/* The monsters' thrown goo and fire (v2.3.2705).
+/* The monsters' thrown goo and fire (v2.3.2732).
  *
  * Owner: "take another look at the procedurally drawn projectiles from slimes
  * and fire goblins ... Just make sure it's colored correctly (green slimes are

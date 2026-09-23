@@ -141,7 +141,7 @@ const fireArrow = (P, o) => P.page.evaluate((o) => new Promise((resolve) => {
   const tick = () => {
     if (a._renderX != null) track.push([a._renderX, a._renderY, a._pathX, a._pathY, a.ang]);
     const alive = (S.arrows || []).indexOf(a) >= 0;
-    /* v2.3.2702: an arrow that meets a prop is PLANTED in it at once (no spent
+    /* v2.3.2730: an arrow that meets a prop is PLANTED in it at once (no spent
        `planting` drop any more -- it stands in the rock), so either state ends
        the flight; `planting` reports "it stopped and stuck", as it always has. */
     const _stopped = a.planting || a.planted;
@@ -211,7 +211,7 @@ const shootLocal = (P, o) => P.page.evaluate((o) => new Promise((resolve) => {
       S.monsters = (S.monsters || []).filter((x) => x !== m);
     }
     const alive = (S.arrows || []).indexOf(a) >= 0;
-    const _stopped = a.planting || a.planted;   /* v2.3.2702: see fireArrow */
+    const _stopped = a.planting || a.planted;   /* v2.3.2730: see fireArrow */
     if (_stopped || !alive || ++n >= o.frames) {
       resolve({ hit: a.hitIds.has(m.id), planting: !!_stopped,
         plant: _stopped ? [a._plantX, a._plantStartY != null ? a._plantStartY : a._plantY] : null, alive, letIn, vanished,

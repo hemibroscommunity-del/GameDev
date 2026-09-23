@@ -41,7 +41,7 @@ import { BOW_RANGE_PX, toDisplayDamage, staffOrbLife, meleeRangeMult } from '@/d
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2702 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2730 */ } from '@/game/combatHelpers.js';
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
 import { firstSightHit } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii */
 import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
@@ -860,7 +860,7 @@ export function updateMonsterCombat(S, deps) {
                       srcLevel: m.level || null,
                       life: 35,
                       ts: Date.now(),
-                      /* v2.3.2705: the thrower, for the goo's colour, and the
+                      /* v2.3.2732: the thrower, for the goo's colour, and the
                          flight's length, for the throw's arc (monsterShotFx) */
                       shooterArch: arch || null,
                       _fxLife0: 35,
@@ -1666,7 +1666,7 @@ export function updateMonsterCombat(S, deps) {
                 }
                 if (_mayLoose) {
                 if (!S.arrows) S.arrows = [];
-                /* v2.3.2704: ONE timestamp for the arrow and its broadcast, so
+                /* v2.3.2731: ONE timestamp for the arrow and its broadcast, so
                    the 1-in-8 snap (data/arrowSnap.js) rolls the same on the
                    shooter's screen and every peer's. */
                 var _shotTs = Date.now();
@@ -1856,7 +1856,7 @@ export function updateMonsterCombat(S, deps) {
               BT_AUDIO.swordSwing(S._swingSfxKey, { vol: 0.55 });
             }
             var _contactOpen = Date.now() - S.swingTimer >= MELEE_CONTACT_MS;
-            /* ═══ v2.3.2702: THE BLADE MARKS THE PROP IT LANDS ON ═══
+            /* ═══ v2.3.2730: THE BLADE MARKS THE PROP IT LANDS ON ═══
                Owner: "sword slash marks on the props (with debris)".  Once per
                swing, on the same contact frame the monster test waits for, and
                over the same fan (reach and arc) it tests: a prop in it takes a

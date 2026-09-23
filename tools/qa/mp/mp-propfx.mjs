@@ -1,4 +1,4 @@
-/* ═══ A HIT ON A PROP LOOKS LIKE ONE  (v2.3.2702) ═══
+/* ═══ A HIT ON A PROP LOOKS LIKE ONE  (v2.3.2730) ═══
  *
  * Owner: "Can you also make it so that subtle debris comes off the props once
  * they're hit by a player projectile and still make sure the snowballs explode
@@ -241,7 +241,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { qid, sight, lastSeen, qSelf });
   if (seen) {
     await resetQueues(P);
-    /* v2.3.2704: a shot the snap roll says STICKS -- one arrow in eight breaks
+    /* v2.3.2731: a shot the snap roll says STICKS -- one arrow in eight breaks
        instead (data/arrowSnap.js), and a timestamp picked by the clock would
        make this a one-in-eight flake */
     await P.page.evaluate((qid) => {
@@ -283,15 +283,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
       pr.filter((r) => r.y < FOUNT.y1 - 15 && r.y > FOUNT.y1 - 40).length === 2
         && q5.debris.some((b) => b.monsterId === 'prop:' + FOUNT.id && b.weapon === 'bolt'), { pr, ringsBefore, debris: q5.debris });
 
-    /* v2.3.2704: and one the roll says BREAKS -- it snaps on the fountain on
+    /* v2.3.2731: and one the roll says BREAKS -- it snaps on the fountain on
        my screen, as it did on theirs, and leaves no arrow standing */
     const arrowsBefore = ((await marks(P)) || []).filter((m) => m.kind === 'arrow').length;
-    await P.page.evaluate((qid) => {
+    /* Watched every frame for up to 2 s rather than read once: the peer's
+       arrow has to FLY to the face first, and at a headless page's ~8 fps (less
+       since the time-of-day world effects) a single read at 450 ms caught it still
+       in the air.  Every snap drawn on the face in that window is kept. */
+    const ps = await P.page.evaluate((qid) => new Promise((resolve) => {
       let ts = Date.now() + 5000; while (!window.__btArrowSnapRoll(qid, ts)) ts++;
+      const seen = [];
+      const t0 = performance.now();
       window.__btDispatch({ type: 'player_projectile', payload: { id: qid, x: 0, y: 0, ang: -Math.PI / 2, isStaff: false, ts } });
-    }, qid);
-    await P.page.waitForTimeout(450);
-    const ps = await P.page.evaluate(() => (window.__btArrowSnapFx ? window.__btArrowSnapFx() : null));
+      const tick = () => {
+        for (const z of ((window.__btArrowSnapFx && window.__btArrowSnapFx()) || [])) {
+          if (!seen.some((q) => q.x === z.x && q.y === z.y)) seen.push(z);
+        }
+        if (performance.now() - t0 < 2000) requestAnimationFrame(tick); else resolve(seen);
+      };
+      requestAnimationFrame(tick);
+    }), qid);
     const arrowsAfter = ((await marks(P)) || []).filter((m) => m.kind === 'arrow').length;
     const psHere = (ps || []).filter((z) => Math.abs(z.y - (FOUNT.y1 - 26)) < 3 && z.x > FOUNT.x0 && z.x < FOUNT.x1);
     rec.ok('peer: their arrow that the roll breaks SNAPS on the fountain on my screen -- two halves and splinters, nothing left standing',
