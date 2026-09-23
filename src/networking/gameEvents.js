@@ -29,7 +29,7 @@ import { STATUS_DEFS, applyStatus, STAFF_LIFE /* v2.3.2387 */ } from '@/data/gam
 import { rollMonsterShard } from '@/data/shards.js';
 import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2699: a snowball stops where the worker's own line meets a prop */
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armoured-hit SFX check */
-import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2703: blood thrown away from the blow */
+import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown away from the blow */
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
@@ -2295,7 +2295,7 @@ export function processGameEvent(type, payload, S, deps) {
                 var rOther = S.others && S.others[payload.targetId];
                 if (rOther && !rOther._isDead) {
                   rOther._hitFlash = Date.now();
-                  /* v2.3.2703: a friend being hit bleeds too, the same way
+                  /* v2.3.2712: a friend being hit bleeds too, the same way
                      (see the local branch below).  Their max HP is the one
                      their health bar reads (rpgMaxHp). */
                   var _bdmg = typeof payload.dmgTaken === 'number' ? payload.dmgTaken : 0;
@@ -2589,7 +2589,7 @@ export function processGameEvent(type, payload, S, deps) {
                    don't shove. */
                 var _cpAng2 = Math.atan2(S.player.y - _atkY, S.player.x - _atkX);
                 S._camPunch = { dx: Math.cos(_cpAng2) * 6, dy: Math.sin(_cpAng2) * 6, ts: Date.now() };
-                /* ═══ v2.3.2703: BLOOD, THROWN AWAY FROM THE BLOW ═══
+                /* ═══ v2.3.2712: BLOOD, THROWN AWAY FROM THE BLOW ═══
                    Owner: "directionally aware blood effects ... tiny per every
                    hit that the monster takes 10% hp or less, moderate between
                    11% and 32%, and high if 33% or more."  The share is the

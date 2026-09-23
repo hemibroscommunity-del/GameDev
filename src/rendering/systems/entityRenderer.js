@@ -53,7 +53,7 @@ import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount 
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
-import { deathCrumble } from '../deathCrumble.js';   /* v2.3.2703: the crumbling corpse */
+import { deathCrumble } from '../deathCrumble.js';   /* v2.3.2712: the crumbling corpse */
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
 import { getNftTextures } from '../nftAvatars.js';
@@ -4861,6 +4861,13 @@ function _feetOffsetUnits(display) {
   const dir = (display && display._animDir) || 'south';
   const rows = bodyRows(pose, dir);
   return (rows.feet - BODY_CELL_MID) * bodyDirScale(pose, dir) * LOCAL_BODY_SCALE;
+}
+/* v2.3.2710: where a player figure (yours or a peer's) actually touches the
+   ground, in its layer's space.  The body is centred on its frame, so the
+   feet are this offset BELOW display.y, not at it -- a cast shadow pivoted on
+   display.y would hang in the air at the figure's waist (lightfx/casters.js). */
+export function figureFeetY(display) {
+  return display.y + _feetOffsetUnits(display) * display.scale.y;
 }
 function _applyBuildScale(display, pscale, heightId, frameId) {
   const b = buildScale(heightId, frameId);
@@ -9681,11 +9688,11 @@ export class EntityRenderer {
         const _elapsed = Date.now() - (other._deathTs || Date.now());
         const _spriteBody = display._spriteBody;
         const _body = display._body;
-        /* v2.3.2703: the crumbling skeleton (deathCrumble.js) -- this peer's
+        /* v2.3.2712: the crumbling skeleton (deathCrumble.js) -- this peer's
            own look breaks into flakes and their bones fall.  The strip below
            is the fallback if it cannot draw. */
         const _crumble = deathCrumble.corpse('o:' + (other.id || id), display, other._deathTs || 0, now);
-        /* v2.3.2705: a friend exploding nearby shakes your screen too, less */
+        /* v2.3.2713: a friend exploding nearby shakes your screen too, less */
         const _pBoom = deathCrumble.takeShake();
         if (_pBoom > 0) S.screenShake = Math.max(S.screenShake || 0, _pBoom);
         if (_crumble) {
@@ -10723,11 +10730,11 @@ export class EntityRenderer {
       if (display.rotation !== 0) display.rotation = 0;
       const _selfSpriteBody = display._spriteBody;
       const _selfBody = display._body;
-      /* v2.3.2703: the crumbling skeleton -- see the peer branch above and
+      /* v2.3.2712: the crumbling skeleton -- see the peer branch above and
          deathCrumble.js.  Photographed on this first dead frame, before the
          hide pass below takes the worn layers away. */
       const _selfCrumble = deathCrumble.corpse('self', display, S._deathStart || 0, now);
-      /* v2.3.2705: the exploding death kicks the camera (deathCrumble.js) */
+      /* v2.3.2713: the exploding death kicks the camera (deathCrumble.js) */
       const _boom = deathCrumble.takeShake();
       if (_boom > 0) S.screenShake = Math.max(S.screenShake || 0, _boom);
       if (_selfCrumble) {

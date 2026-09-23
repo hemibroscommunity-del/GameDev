@@ -1,4 +1,4 @@
-/* ═══ v2.3.2703: YOU CRUMBLE, AND THEN YOUR BONES FALL ═══
+/* ═══ v2.3.2712: YOU CRUMBLE, AND THEN YOUR BONES FALL ═══
  *
  * Owner: "I also wonder if you can make a better death animation (the
  * character turning into a crumbling skeleton) with simple physics after
@@ -17,7 +17,7 @@
  *      same wind the dust and motes blow on).
  *   2. The skeleton is what they uncover: thirteen bones, each its own
  *      sprite, standing in your place.
- *   3. It shivers, and EXPLODES (v2.3.2706, the owner's pick -- see below).
+ *   3. It shivers, and EXPLODES (v2.3.2714, the owner's pick -- see below).
  *      Every bone is a small body with gravity, a bounce, spin, and ground
  *      friction; long bones tip over to lie flat, the skull rolls.  Each
  *      impact kicks a little dust.  Where they come to rest is decided by the
@@ -66,8 +66,8 @@ const MAX_FLAKES = 150;
 const G_BONE = 900, G_FLAKE = 340;
 const ASH = [0x7c, 0x6a, 0x5c];
 
-/* ═══ v2.3.2705-2706: ...AND THEN IT EXPLODES ═══
-   v2.3.2705 shipped two deaths behind a switch because the owner asked to see
+/* ═══ v2.3.2713-2714: ...AND THEN IT EXPLODES ═══
+   v2.3.2713 shipped two deaths behind a switch because the owner asked to see
    both: this crumble, and an absurd one where the body BOOMS and its bones fly
    across the screen with a screen shake.  The owner's verdict on the two:
    "I like what the skin crumbles off the body in the first animation but I

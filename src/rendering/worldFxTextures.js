@@ -1,4 +1,4 @@
-/* ═══ v2.3.2703: THE TEXTURES THE WORLD EFFECTS ARE DRAWN FROM ═══
+/* ═══ v2.3.2712: THE TEXTURES THE WORLD EFFECTS ARE DRAWN FROM ═══
  *
  * Time of day, dust prints, blood and the crumbling skeleton (worldFx.js,
  * deathCrumble.js) all draw pooled SPRITES off the textures minted here --
@@ -50,7 +50,7 @@ function mintGlow() {
   return toTex(c);
 }
 
-/* ═══ v2.3.2707-2708: THE LIGHT ON A NAME PLATE, AND ON A MONSTER ═══
+/* ═══ v2.3.2715-2716: THE LIGHT ON A NAME PLATE, AND ON A MONSTER ═══
    Owner, on the first cut: "the light needs to be a little tighter around
    whatever it's lighting and a soft dispersion of the light after that.  It's
    a bit too 'cut out' looking right now."
@@ -61,7 +61,7 @@ function mintGlow() {
        a(t) = 0.82 e^(-t/0.07) + 0.18 (1-t)^2,   t = distance past the edge / reach
    so the plate or body is lit exactly, the ground right beside it only a
    little, and there is no line anywhere where the light stops. */
-/* v2.3.2709: softer still (owner: "can you soften the light dispersion even
+/* v2.3.2717: softer still (owner: "can you soften the light dispersion even
    more?") -- the drop past the edge is gentler (0.12, was 0.07), the faint
    tail carries more of the light (0.38, was 0.18) and reaches further
    (SOFTBOX_EDGE 14, was 10). */
@@ -177,7 +177,7 @@ function mintMote() {
   return toTex(c);
 }
 
-/* ═══ v2.3.2709: A FIREFLY ═══
+/* ═══ v2.3.2717: A FIREFLY ═══
    Owner: "Add little code drawn fireflies in the center of the balls of
    light."  Pixel art, one character per art pixel, two frames of wingbeat:
      o dark body   h head   g glowing tail   G its hot core   w wing   . clear

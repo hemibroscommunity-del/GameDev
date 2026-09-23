@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  lightfx: () => import('./mp-lightfx.mjs'), /* v2.3.2710: map-lit shadows + metal glint behind ?lightfx=1 -- off costs nothing, the shadow hangs off the feet along the map's light and survives a swing; before/after pictures for the owner */
   rosterink: () => import('./mp-rosterink.mjs'), /* v2.3.2690: one character's face tattoo on every saved character -- the picker's faces, a switch seen by a peer, and a new character's blank face */
   species: () => import('./mp-species.mjs'), /* v2.3.2682: the monkey in the Skin tab, tan muzzle on any fur, and a peer sees it */
   eyestyle: () => import('./mp-eyestyle.mjs'), /* v2.3.2643: the Eyes tab picks a shape AND a colour, the styles land on the eye line, and glasses go over them */
@@ -37,7 +38,7 @@ const SCENARIOS = {
   sellcue: () => import('./mp-sellcue.mjs'), /* v2.3.2606: a server-settled sale rings the coin sound, a refused one does not, and the sound setting silences it */
   sellsheet: () => import('./mp-sellsheet.mjs'), /* v2.3.2612: why tapping Sell reads as nothing happening -- disabled variant, covered button, or a price sheet below the fold */
   zonebanner: () => import('./mp-zonebanner.mjs'), /* v2.3.2596: the zone-entry banner plays its nine beats, docks into the top bar, frees its strip on the way out -- and stays silent in the ten zones with no art */
-  worldfx: () => import('./mp-worldfx.mjs'), /* v2.3.2703: time of day, dust, blood, the crumbling corpse; v2.3.2705: the exploding one */
+  worldfx: () => import('./mp-worldfx.mjs'), /* v2.3.2712: time of day, dust, blood, the crumbling corpse; v2.3.2713: the exploding one */
   catgrid: () => import('./mp-catgrid.mjs'), /* v2.3.2597: the Points screen is four category buttons; drill into one at a time */
   zoneflip: () => import('./mp-zoneflip.mjs'), /* v2.3.2541: the front/back switch is in front of the zone frames AND keeps its own taps */
   bowgate: () => import('./mp-bowgate.mjs'), /* v2.3.2543: the bow's fire gate tests the ray the player is SHOWN -- measured after the player walks, which is when the two used to drift apart */

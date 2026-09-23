@@ -1,4 +1,4 @@
-/* TIME OF DAY, DUST, BLOOD AND THE CRUMBLING CORPSE (v2.3.2703)
+/* TIME OF DAY, DUST, BLOOD AND THE CRUMBLING CORPSE (v2.3.2712)
  *
  * Owner: time-of-day effects and subtle atmosphere; soft dust footprints the
  * breeze blows away; blood thrown AWAY from the blow, sized by how much of
@@ -14,7 +14,7 @@
  *  4. The corpse is the crumble, not the old strip: it photographed the body,
  *     the flakes leave, and the bones end up FALLEN (low) and SPREAD (a pile),
  *     not standing where the skeleton stood.
- *  4b. ...and then it EXPLODES (v2.3.2706, the owner's pick): the spare
+ *  4b. ...and then it EXPLODES (v2.3.2714, the owner's pick): the spare
  *     bones come too, the screen kicks, and the bones land strewn.
  *  5. No renderer throws, and the real-damage path still does nothing on a
  *     blocked hit (covered by the gameEvents guard; asserted here via tiers).
@@ -57,11 +57,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await shot('night');
   rec.ok('at night the light map is on, and your own lantern is one of its lights',
     !!night && night.tod && night.tod.name === 'night' && night.lights >= 1, night && { tod: night.tod, lights: night.lights });
-  /* v2.3.2707: owner -- "I still need the name plates to be legible".  Your
+  /* v2.3.2715: owner -- "I still need the name plates to be legible".  Your
      own plate and the town NPCs' each get a softbox of light at night. */
   rec.ok('...and every name plate on screen gets its own light, so it reads as it does by day',
     !!night && night.night && night.night.plates >= 2, night && night.night);
-  /* v2.3.2709: owner -- "light up the props that are in town and in zone
+  /* v2.3.2717: owner -- "light up the props that are in town and in zone
      areas" and "add little code drawn fireflies in the center of the balls
      of light". */
   rec.ok('...every prop in view is lit (a moonlit wash, and its own lamps and flames)',
@@ -76,13 +76,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await setTod('day'); await P.page.waitForTimeout(400);
 
   /* ── 2. dust ── */
+  const pos0 = await P.page.evaluate(() => { const p = window._gameState.current.player; return { x: p.x, y: p.y }; });
   await P.page.keyboard.down('d');
   await P.page.waitForTimeout(1300);
   const walking = await fx();
+  const pos1 = await P.page.evaluate(() => { const p = window._gameState.current.player; return { x: p.x, y: p.y }; });
   await closeUp('dust');
   await P.page.keyboard.up('d');
-  rec.ok('walking leaves dust prints (and kicks up puffs)', !!walking && walking.prints >= 3 && walking.puffs >= 1,
-    walking && { prints: walking.prints, puffs: walking.puffs });
+  /* Prints are laid by DISTANCE (one per 17px), so the count is judged
+     against how far the walk actually went -- a walk that a prop or the
+     plaza edge cut short is a shorter trail, not a missing one. */
+  const walked = Math.hypot(pos1.x - pos0.x, pos1.y - pos0.y);
+  rec.ok('the walk actually moved the bro (guard)', walked > 30, { walked: +walked.toFixed(1), pos0, pos1 });
+  rec.ok('walking leaves dust prints (one per stride) and kicks up puffs',
+    !!walking && walking.prints >= Math.min(3, Math.floor(walked / 17) - 1) && walking.puffs >= 1,
+    walking && { prints: walking.prints, puffs: walking.puffs, walked: +walked.toFixed(1) });
   await P.page.waitForTimeout(2200);
   const after = await fx();
   rec.ok('...which the breeze has taken two seconds later', !!after && after.prints === 0, after && { prints: after.prints });
@@ -145,7 +153,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const c2 = await crumble();
   await closeUp('death-2-skeleton');
   rec.ok('...the flakes leave as the skeleton comes up under them', !!c2 && c2.flakesLeft < c1.flakes && c2.skeletonAlpha > 0.6, c2);
-  /* v2.3.2706: then it SHIVERS and EXPLODES (the owner's pick of the two
+  /* v2.3.2714: then it SHIVERS and EXPLODES (the owner's pick of the two
      deaths).  Waited for by the bones landing, not a fixed time: a slow
      software-GL frame rate stretches the physics clock (dt is capped per
      frame), and a fixed wait measured bones still in the air. */

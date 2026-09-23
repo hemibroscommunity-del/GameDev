@@ -1,4 +1,4 @@
-/* ═══ v2.3.2703: THE WORLD'S WEATHER -- LIGHT, AIR, DUST AND BLOOD ═══
+/* ═══ v2.3.2712: THE WORLD'S WEATHER -- LIGHT, AIR, DUST AND BLOOD ═══
  *
  * Owner: "Can you make time of day by adding certain effects for that?
  * Maybe also subtle atmospheric effects.  I think soft footprints (as if you
@@ -67,7 +67,7 @@ ZONE_AIR.hollows   = { dust: 0xb6ab9c };
 ZONE_AIR.shadow    = { dust: 0x8a8196 };
 const airOf = (z) => (z && Object.prototype.hasOwnProperty.call(ZONE_AIR, z) ? ZONE_AIR[z] : null);
 
-/* ═══ v2.3.2709: THE PROPS' OWN LIGHTS ═══
+/* ═══ v2.3.2717: THE PROPS' OWN LIGHTS ═══
    Owner: "light up the props that are in town and in zone areas."  At night
    the lamps, torches, forge fire and lit windows PAINTED into the prop art
    become real lights in the light map, and every prop takes a soft moonlit
@@ -161,7 +161,7 @@ export class WorldFx {
     this.groundLayer = layers.groundSplatter;
     this.partLayer = layers.particles;
     this.airLayer = layers.foreground;
-    this.glowLayer = layers.glows || layers.foreground;   /* v2.3.2709: emissive, above the night */
+    this.glowLayer = layers.glows || layers.foreground;   /* v2.3.2717: emissive, above the night */
     this._last = 0;
 
     /* night */
@@ -231,7 +231,7 @@ export class WorldFx {
 
   setEntityRenderer(er) { this._er = er; }
 
-  /* ═══ v2.3.2707: WHAT THE NIGHT MUST NOT HIDE ═══
+  /* ═══ v2.3.2715: WHAT THE NIGHT MUST NOT HIDE ═══
      Owner, on the first night: "I still need the name plates to be legible
      (maybe it's a soft flashlight effect on name plates or just default
      visibility).  It's also more difficult to see monsters at night ... like
@@ -385,7 +385,7 @@ export class WorldFx {
 
     /* the lights: you, everyone near you, and the fireflies */
     const list = [];
-    /* v2.3.2708: lanterns shrink with the figure carrying them -- the world
+    /* v2.3.2716: lanterns shrink with the figure carrying them -- the world
        map draws its people as specks (zonePlayerScale), and a full-size pool
        of light round a speck would light half the map */
     const ps = (x, y) => zonePlayerScale(S.currentZone, x, y, 32) || 1;
@@ -450,7 +450,7 @@ export class WorldFx {
       let b; try { b = bodies[i].getBounds(); } catch (e) { continue; }
       if (!b || b.width < 2) continue;
       /* moonlight: cool, and not full -- lit enough to see, still at night.
-         v2.3.2708: the tight-core light, its full part (the inner 40%)
+         v2.3.2716: the tight-core light, its full part (the inner 40%)
          sized to the body, the tail dispersing well past it */
       const r = (Math.max(b.width, b.height) * 0.55 / 0.4) * gk;
       lights.push({ tex: 'glowTight', x: (b.x + b.width / 2) * gk, y: (b.y + b.height * 0.55) * gk, w: r * 2, h: r * 2, c: 0xc4d4ff, a: 0.6 * lampK });
@@ -548,7 +548,7 @@ export class WorldFx {
         m.anchor.set(0.5);
         this.airLayer.addChild(m); this._motes.push(m);
       }
-      /* v2.3.2709: a firefly GIVES light, so it lives above the night; every
+      /* v2.3.2717: a firefly GIVES light, so it lives above the night; every
          other mote is lit by it like the rest of the world */
       const want = style.firefly ? this.glowLayer : this.airLayer;
       if (m.parent !== want) want.addChild(m);
@@ -576,7 +576,7 @@ export class WorldFx {
       m.width = m.height = m._sz * (style.firefly ? 4.2 : 1.4);
       m.visible = true;
     }
-    /* ═══ v2.3.2709: THE FIREFLY IN THE LIGHT ═══
+    /* ═══ v2.3.2717: THE FIREFLY IN THE LIGHT ═══
        Owner: "Add little code drawn fireflies in the center of the balls of
        light."  A 7px pixel-art bug (worldFxTextures FLY_ART) rides on every
        firefly's glow, beating its wings and turning to face the way it drifts.

@@ -6,7 +6,7 @@
 import * as H from './harness.mjs';
 
 /* What a corpse is allowed to keep. */
-/* v2.3.2703: + _deathCrumble, the crumbling corpse itself (deathCrumble.js) --
+/* v2.3.2712: + _deathCrumble, the crumbling corpse itself (deathCrumble.js) --
    it IS the death animation now; the strip on _spriteBody is its fallback. */
 const KEEP = ['_deathCrumble', '_spriteBody', '_namePill', '_comboText', '_handCapMask', '_handArmMask',
     '_hudHpBarFrame', '_hudHpBarFill', '_hudHpRing', '_hudHpText', '_hudHpMaxText',

@@ -1,4 +1,4 @@
-# World effects: time of day, air, dust, blood, and death (v2.3.2703–2706)
+# World effects: time of day, air, dust, blood, and death (v2.3.2712–2717)
 
 Everything here is display only. Nothing is sent to the server, and nothing in combat reads it.
 
@@ -10,14 +10,23 @@ Everything here is display only. Nothing is sent to the server, and nothing in c
   - Lights are your lantern (radius 165), other players' lanterns (radius 125) and fireflies.
   - By day the light map is skipped completely.
   - At golden hour it is a flat tint.
-- **Plates and monsters stay readable (v2.3.2707):**
+- **Plates and monsters stay readable (v2.3.2715):**
   - Every visible name plate and monster health bar gets a nine-slice softbox of light in the light map. Its bright middle covers the plate exactly, so the plate reads at its daytime colour.
   - Every monster gets a cool moonlight glow, with its full part sized to the body, so a snowman on night snow stands out.
-  - Both share one falloff (v2.3.2708, owner: "tighter … and a soft dispersion … too cut out"). It is full over the object, drops steeply just past its edge, then a faint tail fades to nothing over about 40 CSS px: `0.82·e^(-t/0.07) + 0.18·(1-t)²`.
+  - Both share one falloff (v2.3.2716, owner: "tighter … and a soft dispersion … too cut out"). It is full over the object, drops steeply just past its edge, then a faint tail fades to nothing over about 40 CSS px: `0.82·e^(-t/0.07) + 0.18·(1-t)²`.
   - Both are found through the entity renderer's display maps and measured with getBounds.
-- **Where it applies:** outdoor zones only (`zoneHasSky`): town, the world map (v2.3.2708), meadow, ember, mist, verdant, frost, sky, radiant, farm. Caves, the foundry, the sanctum and dungeons keep their own light. On the world map, lanterns shrink with the figures (`zonePlayerScale`).
+- **Where it applies:** outdoor zones only (`zoneHasSky`): town, the world map (v2.3.2716), meadow, ember, mist, verdant, frost, sky, radiant, farm. Caves, the foundry, the sanctum and dungeons keep their own light. On the world map, lanterns shrink with the figures (`zonePlayerScale`).
 - **Layer:** the new `lighting` world layer (pixiApp.js). It sits above everything in the world and below the damage numbers and the world overlay, so night never makes a number harder to read.
 - **Preview:** add `?tod=night` (or `dawn`, `day`, `golden`, `dusk`, or a number from 0 to 1) to the URL, or set `window.__btTod = 'night'` in the console. `window.__btTimeOfDay()` shows the current hour.
+
+## Props at night (v2.3.2717)
+
+- **Painted lights become real lights.** The lamps, torches, forge fire and lit windows painted into the town props now light the night. Each is placed where the art draws it, as a fraction of the sprite (`PROP_LIGHTS` in worldFx.js), so it follows a scaled or flipped prop.
+  - Flames flicker, lamps barely, windows not at all.
+  - Flames and lamps also get a small halo at the source itself, drawn in the `glows` layer above the night, so the source shines rather than just being lit.
+- **Moonlit wash:** every prop, including frost's pines and rocks, gets a soft moonlit wash so it doesn't sink into the dark.
+- **Fireflies:** each is a soft ball of light with a 7 px pixel-art bug at its heart (`FLY_ART`). It beats its wings and faces the way it drifts. Fireflies live in the `glows` layer, above the night.
+- **Sun shadows (light-and-shine):** the sun shadows from light-and-shine fade out through dusk and back in at dawn under an open sky (`lightFx.js`). A sun shadow at midnight would be a shadow of nothing.
 
 ## Air
 
@@ -53,7 +62,7 @@ Everything here is display only. Nothing is sent to the server, and nothing in c
 
 ## Death: crumble, then explode — `src/rendering/deathCrumble.js`
 
-The owner looked at both v2.3.2705 styles and picked "the skin crumbles off … then explode" (v2.3.2706). There is one death, in four beats:
+The owner looked at both v2.3.2713 styles and picked "the skin crumbles off … then explode" (v2.3.2714). There is one death, in four beats:
 
 1. **Crumble:** on the first dead frame, the player's own display is rendered to a texture, so every worn layer is in it. It is read back once to find the body's real pixels and cut into flakes. The flakes let go from the head down, fall, and the breeze carries them off.
 2. **Stand:** a 13-bone pixel-art skeleton (minted in `worldFxTextures.js`), scaled to that body, fades in underneath.

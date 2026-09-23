@@ -311,7 +311,7 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
 
      Use it ONLY for platform APIs. Stubbing our own code here would let a
      scenario pass by replacing the thing it claims to test. */
-  /* ═══ v2.3.2703: EVERY SCENARIO PLAYS AT NOON ═══
+  /* ═══ v2.3.2712: EVERY SCENARIO PLAYS AT NOON ═══
      Time of day (src/game/timeOfDay.js) follows the wall clock, so without
      this the same scenario would read different pixels at 3pm and at dusk --
      firetrail's "is the fire painted on the ground" colour test failed the

@@ -31,14 +31,14 @@ import * as H from './harness.mjs';
 /* What may legitimately still be drawn on a corpse: the death sheet itself,
    and the world it is lying on.  Everything else near the body is a worn
    layer that outlived it. */
-/* v2.3.2703: the corpse is the crumble now (deathCrumble.js): the body's own
+/* v2.3.2712: the corpse is the crumble now (deathCrumble.js): the body's own
    photograph cut into flakes, then minted bones.  Both are the death
    animation, not a worn layer left on it; the strip stays as its fallback.
    The corpse finders below run INSIDE the page, so they carry the pattern
    inline: /death-v1|^worldfx\/bone_|^death-flake/. */
 const ALLOWED = [
   /death-v1/,                      /* the corpse animation -- the point */
-  /^worldfx\/(bone_|puff)/, /^death-flake/,   /* v2.3.2703: the crumble */
+  /^worldfx\/(bone_|puff)/, /^death-flake/,   /* v2.3.2712: the crumble */
   /\/maps\//, /tiles/, /tileset/,  /* the ground */
   /grass|dirt|stone|water|road|path/i,
   /* The floating vitals are a DELIBERATE keep (v2.3.1887's keep set names

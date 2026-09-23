@@ -1,4 +1,4 @@
-/* ═══ v2.3.2703: TIME OF DAY ═══
+/* ═══ v2.3.2712: TIME OF DAY ═══
  *
  * Owner: "Can you make time of day by adding certain effects for that?
  * Maybe also subtle atmospheric effects."
@@ -30,7 +30,7 @@ export const DAY_CYCLE_MS = 40 * 60 * 1000;
    dungeon have their own light and keep it: a dungeon that goes dark because
    it is night on the surface is a dungeon that got harder for no reason the
    player can see.
-   v2.3.2708: + worldview.  The first cut left the world map out as "a map",
+   v2.3.2716: + worldview.  The first cut left the world map out as "a map",
    and the owner walked out of a night-time town into broad daylight and back
    into night at Frost Ridge -- the one screen between every two outdoor zones
    is the one place a sun that jumps is impossible to miss.  It is outdoors;
