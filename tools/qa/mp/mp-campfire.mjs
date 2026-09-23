@@ -48,7 +48,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* A 45 s fire, watched in seconds: Playwright's clock keeps time FLOWING
      after install (it is never paused here -- a paused clock starves the
      dark-screen watchdog's canvas sample and it rebuilds the renderer), and
-     fastForward jumps it. */
+     fastForward jumps it.
+     v2.3.2776: flowing is not enough.  Under the installed clock the
+     watchdog's sample runs on Playwright's timer-driven animation frame,
+     not the page's real one, so it can read the canvas after the frame was
+     presented and cleared -- "0% lit" -- and each fastForward below makes a
+     sample due at once.  Two dark reads rebuild the renderer, which mints a
+     new, empty campfire drawer (the probe then sees no fire), and 20 s of
+     them reload the page.  Seen after the #726 merge: 2 of 4 runs failed an
+     end-of-fire check this way, with "[bt-crash] gl-rebuild watchdog:
+     screen dark 10s" in the page log.  The screen is lit (every picture this
+     test takes shows it), so the watchdog is told so and its next sample is
+     pushed out of reach, the same as mp-shotland's page-clock block. */
+  await P.page.evaluate(() => { const S = window._gameState.current; S.__wdEverLit = true; S.__wdNext = 1e15; S.__wdDark = 0; });
   await P.page.clock.install();
   await P.page.evaluate(() => { const S = window._gameState.current; S.monsters = []; S.lockedTarget = null; S.autoAttack = false; S._facing = 'down'; });
   await P.page.waitForTimeout(300);
