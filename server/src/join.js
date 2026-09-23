@@ -122,6 +122,45 @@ export const JOIN_COSMETIC_KEYS = [
 export const DRAWING_KEYS = new Set(['sa', 'sb', 'pa', 'pb', 'ta', 'tf', 'tm', 'tb', 'tr']);   /* v2.3.2043: +tb; v2.3.2148: +tr, the back of the body; v2.3.2428: +pb, the back of the trousers */
 /** Cap for one cosmetic key: drawings and avatars get the large bound. */
 export function cosmeticCap(k) { return (k === 'avatar' || DRAWING_KEYS.has(k)) ? 512 : 64; }
+/* ═══ v2.3.2690: THE STORED RECORD IS THE WHOLE LOOK, BLANKS INCLUDED ═══
+   Owner: "every saved character has same face tattoo as one."  A device holds
+   up to ten characters and ONE set of look stores (the drawing canvases, the
+   patterns, the species, the eye style...), so a client can carry the last
+   character's look into the next one's join frame and relay.  "Stored look
+   wins" (_handleJoin) only overrode the keys a record HAS, and a record can
+   lack a key two ways, both of which mean "blank":
+     - a DRAWING or PATTERN the character does not have.  The join frame
+       omits a blank drawing, so a plain character has no `tf` at all, and a
+       leaked face tattoo walked straight through on to every player's screen.
+     - a TRAIT newer than the character.  A record is written once, at
+       creation, from the keys the join carried then -- so a character made
+       before eye colour (v2.3.1930), eyewear (2361), its colour (2424), eye
+       styles (2643) or species (2682) has no such key.  On a device that has
+       since made a monkey, every older character walked in as a monkey.
+   Either way the device is describing some OTHER character, and nothing is
+   lost by ignoring it: the look is made only in the creator, the creator
+   only makes new characters, and the creator's join is exactly what writes
+   the record -- so a record holds everything its character has.
+
+   RECORD_LOOK_KEYS is that look: a key in it that the record lacks is DROPPED
+   from the join frame and from every relay (_stampRecordLook).  Must equal
+   LOOK_SETTERS in src/game/characterRecord.js, the client half of the same
+   rule; precheck's look-blank check holds the two lists together.  Not in it,
+   deliberately: identity and body colours (name, color, avatar, bt, bl) and
+   the keys that are live rather than the record's (armour layers, body size,
+   weapon metal, the retired hg/fr) -- see LOOK_UNRESTORED beside
+   LOOK_SETTERS.
+
+   RECORD_OWNED_KEYS -- the drawings and patterns -- are also FORCED to the
+   record's value on the relay.  The traits are not: the shirt (`st`) can be
+   taken off and put back mid-session (ItemDetailPopup), so a trait the record
+   HAS rides the relay as the client sends it, exactly as before.  Nothing can
+   change a drawing after creation. */
+export const RECORD_OWNED_KEYS = new Set([...DRAWING_KEYS, 'sp', 'pp', 'fp']);
+export const RECORD_LOOK_KEYS = new Set([
+  'hw', 'fh', 'hr', 'sk', 'hc', 'htc', 'fhc', 'ec', 'ew', 'ewc', 'es', 'sc', 'st', 'stc', 'pt', 'sh',
+  'sa', 'sb', 'pa', 'pb', 'ta', 'tf', 'tm', 'tb', 'tr', 'sp', 'pp', 'fp',
+]);
 /* ═══ v2.3.1970: THE TOP-LEVEL `name` WAS THE ONE THAT GOT AWAY ═══
  *
  * A join carries the display name TWICE: `msg.data.name`, which goes
@@ -431,6 +470,26 @@ export const joinMethods = {
     return false;
   },
 
+  /* v2.3.2690: stamp the stored record's look onto an outbound cosmetic set
+     -- the join's sanitized copy and every `track` relay.  A look key the
+     record LACKS is dropped, because absence is how a record says "blank"
+     (see RECORD_LOOK_KEYS).  A drawing or pattern the record HAS is forced to
+     the record's value, when the set carries it at all: the relay is a delta,
+     and adding keys would make every relay a full resend.  A session with no
+     record (a guest, a nameless join) is left exactly as it was. */
+  _stampRecordLook(session, data) {
+    const look = session && session.char && session.char.look;
+    if (!look || !data || typeof data !== 'object') return;
+    for (const k of RECORD_LOOK_KEYS) {
+      const v = look[k];
+      if (v === undefined || v === null) {
+        delete data[k];
+      } else if (RECORD_OWNED_KEYS.has(k) && Object.prototype.hasOwnProperty.call(data, k)) {
+        data[k] = v;
+      }
+    }
+  },
+
   /* v2.3.1814: read the character record, or write it on first join.
      Split out as the test seam (the join handler is not callable in
      isolation), and deliberately tiny: this is the only place that decides
@@ -588,6 +647,9 @@ export const joinMethods = {
         for (const k of JOIN_COSMETIC_KEYS) {
           if (session.char.look[k] !== undefined) cleanJoinData[k] = session.char.look[k];
         }
+        /* v2.3.2690: ...and the record's ABSENCE wins too -- a look key it
+           does not have is blank, whatever this device says (RECORD_LOOK_KEYS). */
+        this._stampRecordLook(session, cleanJoinData);
         if (session.char.name) {
           cleanJoinData.name = session.char.name;
           /* v2.3.1970: and the SESSION name follows the record too.  The

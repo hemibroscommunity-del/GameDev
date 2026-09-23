@@ -1122,6 +1122,17 @@ export function portraitOptsFromPeer(o) {
     shirtArt: c.shirtArtFront || null,                         /* v2.3.1939 */
     pantsArt: c.pantsArt || null,                              /* v2.3.1940 */
     tattooArt: c.tattooArt || null,                            /* v2.3.1940 */
+    /* ═══ v2.3.2690: THE FACE AND ARM TATTOOS, EXPLICITLY ═══
+       Owner: "every saved character has same face tattoo as one."  These two
+       were missing from this list since v2.3.1949 added the canvases, and
+       drawCharacterPortrait reads an ABSENT drawing as "this device's own"
+       (its caller contract) -- so every portrait of somebody else wore
+       whatever face and arm tattoo THIS device held: all ten rows of the
+       character picker alike, and the inspect card, the trade window, Ace's
+       table and the profile icon with them.  Null, not undefined, when the
+       character has none: null means "no drawing", undefined means "mine". */
+    faceTattooArt: c.faceTattooArt || null,
+    armTattooArt: c.armTattooArt || null,
     shirtPattern: c.shirtPattern || '',                        /* v2.3.1941 */
     pantsPattern: c.pantsPattern || '',
     shoesPattern: c.shoesPattern || '',

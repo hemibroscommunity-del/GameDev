@@ -230,7 +230,119 @@ character on top? People will probably have a bunch of them."*
   door buttons, so a bare `click('[data-tut="login-create"]')` clicks
   into the overlay.
 
+## One device, many characters, one set of looks (v2.3.2690)
+
+Owner: *"Looks like there's a bug where every saved character has same
+face tattoo as one."*
+
+A device holds up to ten characters (the roster, v2.3.1923), but every
+look store is ONE per device in `localStorage`: the drawing canvases
+(`playerArt.js`, `bt-facetattoo` and friends), the garment patterns
+(`patternCatalog.js`), and every trait (`bt-species`, the eye style, the
+hair...). Three roads let one character's look show up on the others,
+each with its own cause:
+
+1. **The picker's faces.** A saved character's portrait is drawn from its
+   stored look (`portraitOptsFromPeer`). `drawCharacterPortrait` reads a
+   drawing the caller leaves out as "use this device's own". The recipe
+   never listed the face or arm tattoo, which have existed since v2.3.1949.
+   So every row showed whatever face tattoo the device held. The same was
+   true of the inspect card, the trade window, Ace's table and the profile
+   icon. The friends list had its own hand-written copy of the recipe with
+   the same gap, and now uses the shared one. Its cache key is the
+   recipe's output, so a field added to the recipe is in the key the same
+   day.
+2. **Switching characters.** Applying a stored record
+   (`characterRecord.js`) only set the keys the record HAS, and left every
+   other store as the device had it. A record lacks a key in two ways,
+   and both mean "blank":
+   - **A drawing or pattern the character doesn't have.** The join frame
+     and the relay omit a blank drawing, so a plain character has no `tf`
+     at all. Switching from a tattooed character to a plain one kept the
+     tattoo.
+   - **A trait newer than the character.** A record is written once, at
+     creation, from the keys the join carried then. A character made
+     before eye colour (v2.3.1930), eyewear (2361), its colour (2424), eye
+     styles (2643) or species (2682) has no such key. On a device that has
+     since made a monkey, every older character walked in as a monkey.
+
+   Either way the leak showed on the player's own screen and, through the
+   join frame and the 2-second `track` relay, on everyone else's.
+3. **A new character.** Create opened the creator on the previous
+   character's canvases. The creator's join is what writes the permanent
+   record, so the new character was saved wearing the old one's drawings.
+   (Its traits are left as they were. The creator shows them on its
+   pickers and they are the player's to change. A drawing sits hidden
+   behind the designer.)
+
+**The rule:** the stored record is the whole look. If it has a key, that's
+the value. If it lacks one, the value is blank.
+
+This is safe because the look is made only in the creator (`PlayerPaint` /
+`BodyInk` inside `NameModal` for the drawings), the creator only makes new
+characters, and the creator's join is exactly what writes the record. So a
+record holds everything its character has.
+
+- **Client, apply:** `applyCharacterRecord` sets a key the record lacks to
+  its `LOOK_BLANK`. That is the value the creator's own Reset writes:
+  'none' for a thing you wear, 'default' for a colour, an empty canvas or
+  no pattern for a drawing. Blanking is not counted in the apply's return
+  value, which callers use to tell a real record from an empty one.
+- **Client, leaving:** playing another row from the picker (`onPlay`) and
+  Create (`onCreateNew`) both clear the canvases and patterns before the
+  reload. The next join then carries no drawing it should not, and a new
+  character's drawings start blank. The design slots are untouched, the
+  same as the creator's own Reset.
+- **Worker:** `RECORD_LOOK_KEYS` (join.js) is the creator's look.
+  `_stampRecordLook` runs on the join's sanitized copy and on every `track`
+  relay:
+  - A look key the record lacks is dropped.
+  - A drawing or pattern the record has (`RECORD_OWNED_KEYS`) is forced to
+    the record's value, only when the frame carries it (the relay is a
+    delta).
+  - A trait the record has is NOT forced on the relay. The shirt (`st`)
+    can be taken off and put back mid-session (`ItemDetailPopup`), and the
+    relay is how other players see that.
+  - A session with no record (a guest) is left as it was.
+- **The lists agree:** precheck's `look-blank` check holds `LOOK_BLANK`,
+  `LOOK_SETTERS` and the worker's `RECORD_LOOK_KEYS` to the same keys. A
+  new trait added to one and not the others fails the push. If it didn't,
+  the character would look right on one screen and wrong on the rest.
+- **Deploy order:**
+  - Old client, new worker: other players never see the leak, because the
+    worker strips it from the join and the relay. The old client still
+    shows it on its own screen until it updates.
+  - New client, old worker: a switch made on the new client sends no
+    leaked drawing. A leaked trait rides the first join and is corrected
+    by the first relay, two seconds later.
+- **What it does not undo:** a character created while another character's
+  drawings were on the device has those drawings genuinely in its record.
+  As far as the worker can tell, that is its look, and a permanent look is
+  not rewritten by this change.
+- **What it costs:** the back tattoo (`tr`, v2.3.2148) was not on the join
+  frame until v2.3.2431, before mid-September (wsClient's "third sender"
+  note). The trouser back (`pb`, v2.3.2428) was briefly the same. So a
+  character created in that window who drew one has it on the device but
+  not in the record. The rule reads that as blank and clears it: locally on
+  the next join, and on the relay for everyone else. It was never saved and
+  never reached a second device, and nothing can tell it apart from another
+  character's drawing. Keeping it would mean keeping the leak, so it goes.
+
 ## Tests
+
+`tools/qa/mp/run.mjs rosterink` (off the PR path) runs the three roads
+through a real client, a real worker and a second player's screen. Plainy
+stands in for a character made before species: its creation join goes out
+without eyewear, eye style or species, the way an older client sent it.
+Inky is a tattooed monkey on the device under test.
+
+- A row's portrait does not change when the device's own drawing does.
+- Plainy, played after Inky, wears neither the tattoo nor the monkey,
+  locally and on the onlooker's screen.
+- Switching back brings both back.
+- A new character's creator opens with no drawing.
+
+Unfixed, it fails seven checks. Fixed, all 21 pass.
 
 `server/test/identity.test.mjs` (in `npm test`):
 registration, wrong-phrase reject without eviction, bare-id replay
@@ -239,4 +351,9 @@ magic-id gate (v2.3.1202: `__proto__`/`constructor`/`prototype` each
 rejected with reason `auth`, no auth record, no playerState key, no
 `Object.prototype` pollution; a normal join still works after),
 lockout + expiry, town gate, forged-accept rejection, duel handshake,
-lawless zone, death-clears-consent.
+lawless zone, death-clears-consent, and the record as the whole look
+(v2.3.2690): a plain character's leaked face tattoo and a monkey newer than
+the character are dropped at join and on the relay, a shirt put on
+mid-session still reaches peers, a tattooed character's own drawing is
+stamped back over a different one, a character that IS a monkey stays one,
+and a guest keeps its look.

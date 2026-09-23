@@ -1096,6 +1096,55 @@ if (changedServer.length) {
   }
 }
 
+/* ---- look-blank: the record is the whole look, on both sides (v2.3.2690) ----
+   Owner: "every saved character has same face tattoo as one."  A device holds
+   up to ten characters and ONE set of look stores, and a key a character's
+   record lacks used to mean "keep whatever this device has" -- which was the
+   last character's face tattoo, or, for anyone made before species existed,
+   the last character's monkey.  Absence means BLANK now, on two sides that
+   must agree key for key:
+     - the client's LOOK_BLANK (characterRecord.js) says what each LOOK_SETTERS
+       key is set to when the record lacks it.  A setter with no blank would
+       quietly go back to "keep whatever the device has";
+     - the worker's RECORD_LOOK_KEYS (join.js) drops those same keys from the
+       join frame and the relay when the record lacks them.  A key on one side
+       only is a character that looks right on its own screen and wrong on
+       everyone else's, or the other way round. */
+{
+  let setters = null, blank = null, worker = null;
+  try {
+    const c = read('src/game/characterRecord.js');
+    const m = c.match(/const LOOK_SETTERS = \{([\s\S]*?)\n\};/);
+    if (m) setters = [...m[1].matchAll(/^\s{2}([A-Za-z0-9_]+):/gm)].map((x) => x[1]);
+    const b = c.match(/const LOOK_BLANK = \{([\s\S]*?)\n\};/);
+    if (b) blank = [...b[1].matchAll(/([A-Za-z0-9_]+):\s*(?:'[^']*'|null)/g)].map((x) => x[1]);
+  } catch { /* handled below */ }
+  try {
+    const j = read('server/src/join.js').match(/RECORD_LOOK_KEYS\s*=\s*new Set\(\[([\s\S]*?)\]\);/);
+    if (j) worker = [...j[1].matchAll(/'([A-Za-z0-9_]+)'/g)].map((x) => x[1]);
+  } catch { /* handled below */ }
+  if (!setters || !blank || !worker) {
+    add('WARN', 'look-blank',
+      'could not parse LOOK_SETTERS / LOOK_BLANK (characterRecord.js) or RECORD_LOOK_KEYS (join.js) — check skipped');
+  } else {
+    const want = new Set(setters);
+    const diff = (have, name) => {
+      const h = new Set(have);
+      const missing = setters.filter((k) => !h.has(k));
+      const extra = [...h].filter((k) => !want.has(k));
+      return (missing.length ? `    ${name} is missing: ${missing.join(' ')}\n` : '')
+        + (extra.length ? `    ${name} has keys LOOK_SETTERS does not: ${extra.join(' ')}\n` : '');
+    };
+    const out = diff(blank, 'LOOK_BLANK (characterRecord.js)') + diff(worker, 'RECORD_LOOK_KEYS (server/src/join.js)');
+    if (!out) {
+      add('PASS', 'look-blank', `all ${setters.length} look key(s) have a client blank and are on the worker's list`);
+    } else {
+      add('FAIL', 'look-blank',
+        'a look key must mean the same thing on both sides when a record lacks it:\n' + out.replace(/\n$/, ''));
+    }
+  }
+}
+
 /* ---- report -------------------------------------------------------- */
 console.log(`precheck vs ${baseRef} (merge-base ${mergeBase.slice(0, 8)}) — ${changed.length} changed file(s)\n`);
 for (const r of results) console.log(`${r.level.padEnd(4)} [${r.check}] ${r.msg}`);

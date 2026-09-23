@@ -18,7 +18,8 @@
  *      lawless wilderness zone -> hit lands with no consent.
  *   8. Death clears the consent pair.
  */
-import { GameRoom } from '../src/index.js';
+import { GameRoom, TRACK_COSMETIC_KEYS } from '../src/index.js';
+import { JOIN_COSMETIC_KEYS, RECORD_OWNED_KEYS, RECORD_LOOK_KEYS } from '../src/join.js';   /* v2.3.2690 */
 
 function makeState() {
   const store = new Map();
@@ -351,6 +352,125 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
     data: { x: 10, y: 10, z: 'town', name: 'Guest', hr: 'long' },
   }));
   check('a guest id gets no character record', !state._store.get('char:guest_xyz'));
+}
+
+/* ═══ v2.3.2690: THE RECORD IS THE WHOLE LOOK, BLANKS INCLUDED ═══
+   Owner: "Looks like there's a bug where every saved character has same face
+   tattoo as one."  A device holds up to ten characters and ONE set of look
+   stores, so a client can carry the last character's look into the next one's
+   join frame and relay.  "Stored look wins" only overrode the keys a record
+   HAS, and a record lacks a key two ways that both mean blank: a drawing the
+   character does not have (the join frame omits a blank one), and a trait
+   newer than the character (a record made before species has no `sc`).  So
+   a look key the record lacks is dropped, and a drawing it has is forced.
+   Asserted on the three roads a look travels -- the join's copy, the live
+   player state, and the relay a watching player receives. */
+{
+  const T = 'a'.repeat(256);   /* another character's face tattoo, left on a shared device */
+  check('the record-owned keys are all on BOTH gates (a key off a gate never arrives to be stamped)',
+    [...RECORD_OWNED_KEYS].every((k) => JOIN_COSMETIC_KEYS.includes(k) && TRACK_COSMETIC_KEYS.has(k)),
+    [...RECORD_OWNED_KEYS].filter((k) => !JOIN_COSMETIC_KEYS.includes(k) || !TRACK_COSMETIC_KEYS.has(k)));
+  check('every drawing and pattern is on the look list (forced implies owned)',
+    [...RECORD_OWNED_KEYS].every((k) => RECORD_LOOK_KEYS.has(k)),
+    [...RECORD_OWNED_KEYS].filter((k) => !RECORD_LOOK_KEYS.has(k)));
+  check('every look key is on the join gate (the record can only hold what the join carries)',
+    [...RECORD_LOOK_KEYS].every((k) => JOIN_COSMETIC_KEYS.includes(k)),
+    [...RECORD_LOOK_KEYS].filter((k) => !JOIN_COSMETIC_KEYS.includes(k)));
+  /* The other direction matters more: a LIVE key on this list would be
+     dropped for every character whose record predates it, forever. */
+  const LIVE = ['name', 'color', 'avatar', 'bt', 'bl', 'bs', 'wpnMat', 'eqc', 'eql', 'eqs', 'eqst', 'hg', 'fr'];
+  check('no live or identity key is on the look list (it would be dropped for every older character)',
+    LIVE.every((k) => !RECORD_LOOK_KEYS.has(k)), LIVE.filter((k) => RECORD_LOOK_KEYS.has(k)));
+
+  /* Pat: a plain character -- no drawings, no patterns. */
+  const wsP = fakeWs('pat-1');
+  room.sessions.set(wsP, baseSession());
+  await room.webSocketMessage(wsP, JSON.stringify({
+    type: 'join', id: 'bp_pat', phrase: 'plain-pine-moss-lark-2', name: 'Pat',
+    data: { x: 10, y: 10, z: 'town', name: 'Pat', hr: 'short', sk: 'tan', st: 'none' },
+  }));
+  const recP = state._store.get('char:bp_pat');
+  check('Pat is recorded with no face tattoo (guard)', !!(recP && recP.look && recP.look.tf === undefined), recP && recP.look);
+
+  /* Somebody watching, to receive the relay. */
+  const wsO = fakeWs('onlooker-1');
+  await join(wsO, 'bp_onlooker', 'owl-onyx-lake-reed-4', 'town', 'Onlooker');
+
+  /* Pat comes back on a device still holding another character's drawings. */
+  const wsP2 = fakeWs('pat-2');
+  room.sessions.set(wsP2, baseSession());
+  await room.webSocketMessage(wsP2, JSON.stringify({
+    type: 'join', id: 'bp_pat', phrase: 'plain-pine-moss-lark-2', name: 'Pat',
+    data: { x: 10, y: 10, z: 'town', name: 'Pat', tf: T, tm: T, sa: T, sp: 'check:7', sc: 'monkey', es: 'round' },
+  }));
+  const dP = room.sessions.get(wsP2) && room.sessions.get(wsP2).data;
+  check('a leaked face tattoo in the JOIN is dropped for a character whose record has none',
+    !!dP && dP.tf === undefined && dP.tm === undefined && dP.sa === undefined && dP.sp === undefined,
+    dP && { tf: !!dP.tf, tm: !!dP.tm, sa: !!dP.sa, sp: dP.sp });
+  check('...and is not in the live player state', !!room.playerState['bp_pat'] && room.playerState['bp_pat'].tf === undefined);
+  check('...and the record is untouched by the attempt', state._store.get('char:bp_pat').look.tf === undefined);
+  check('a species NEWER than the character (a monkey left on the device) is dropped from the join',
+    !!dP && dP.sc === undefined && dP.es === undefined, dP && { sc: dP.sc, es: dP.es });
+  check('...while the rest of the join still arrives (guard: the stamp is not a wipe)',
+    !!dP && dP.hr === 'short' && dP.name === 'Pat', dP && { hr: dP.hr, name: dP.name });
+
+  /* The two-second relay carrying it anyway. */
+  wsO.sent.length = 0;
+  await room.webSocketMessage(wsP2, JSON.stringify({ type: 'track', data: { name: 'Pat', tf: T, sa: T, pp: 'dots:2', bs: 'broad', sc: 'monkey', st: 'tshirt' } }));
+  const upP = msgsOfType(wsO, 'player_update').filter((m) => m.id === 'bp_pat').slice(-1)[0];
+  check('a RELAY carrying it reaches nobody', !!upP && upP.data.tf === undefined && upP.data.sa === undefined && upP.data.pp === undefined,
+    upP && { tf: !!upP.data.tf, sa: !!upP.data.sa, pp: upP.data.pp });
+  check('...nor does the monkey', !!upP && upP.data.sc === undefined, upP && upP.data.sc);
+  check('...and the rest of that relay still goes out (a live cosmetic the record does not own)',
+    !!upP && upP.data.bs === 'broad', upP && upP.data);
+  /* The shirt can be taken off and put back mid-session (ItemDetailPopup), so
+     a trait the record HAS is not forced on the relay -- only the drawings. */
+  check('...including a shirt put on mid-session, though the record says none (traits are not forced)',
+    !!upP && upP.data.st === 'tshirt', upP && upP.data.st);
+  check('...and the session never takes it', room.sessions.get(wsP2).data.tf === undefined);
+
+  /* Finn's record HAS a face tattoo ('e' x 256, above): a relay claiming a
+     different one is stamped back to his own. */
+  const wsF3 = fakeWs('finn-3');
+  room.sessions.set(wsF3, baseSession());
+  await room.webSocketMessage(wsF3, JSON.stringify({
+    type: 'join', id: 'bp_finn', phrase: 'frost-tundra-amber-vigil-5', name: 'Finn',
+    data: { x: 10, y: 10, z: 'town', name: 'Finn' },
+  }));
+  check('a character WITH a face tattoo joins wearing its own, sent or not',
+    room.sessions.get(wsF3).data.tf === 'e'.repeat(256), (room.sessions.get(wsF3).data.tf || '').length);
+  wsO.sent.length = 0;
+  await room.webSocketMessage(wsF3, JSON.stringify({ type: 'track', data: { name: 'Finn', tf: T } }));
+  const upF = msgsOfType(wsO, 'player_update').filter((m) => m.id === 'bp_finn').slice(-1)[0];
+  check('...and a relay claiming a different one is stamped back to it',
+    !!upF && upF.data.tf === 'e'.repeat(256), upF && (upF.data.tf || '').slice(0, 4));
+
+  /* Mo IS a monkey: a record that has the key keeps it, whatever the device says. */
+  const wsM = fakeWs('mo-1');
+  room.sessions.set(wsM, baseSession());
+  await room.webSocketMessage(wsM, JSON.stringify({
+    type: 'join', id: 'bp_mo', phrase: 'mango-vine-canopy-howl-6', name: 'Mo',
+    data: { x: 10, y: 10, z: 'town', name: 'Mo', sc: 'monkey', sk: 'brown' },
+  }));
+  const wsM2 = fakeWs('mo-2');
+  room.sessions.set(wsM2, baseSession());
+  await room.webSocketMessage(wsM2, JSON.stringify({
+    type: 'join', id: 'bp_mo', phrase: 'mango-vine-canopy-howl-6', name: 'Mo',
+    data: { x: 10, y: 10, z: 'town', name: 'Mo', sc: 'none', sk: 'brown' },
+  }));
+  check('a character whose record HAS a species joins as it, whatever the device sends',
+    room.sessions.get(wsM2).data.sc === 'monkey', room.sessions.get(wsM2).data.sc);
+
+  /* A guest has no record, so nothing owns its drawings but the guest. */
+  const wsQ = fakeWs('guest-2');
+  room.sessions.set(wsQ, baseSession());
+  await room.webSocketMessage(wsQ, JSON.stringify({
+    type: 'join', id: 'guest_ink', name: 'Guest',
+    data: { x: 10, y: 10, z: 'town', name: 'Guest', tf: T, sc: 'monkey' },
+  }));
+  check('a GUEST keeps the drawing and species it joined with (no record, nothing to stamp)',
+    room.sessions.get(wsQ).data.tf === T && room.sessions.get(wsQ).data.sc === 'monkey',
+    { tf: (room.sessions.get(wsQ).data.tf || '').length, sc: room.sessions.get(wsQ).data.sc });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

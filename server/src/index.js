@@ -4657,6 +4657,11 @@ export class GameRoom {
              registry owns the clan tag -- a blind merge of a client-supplied
              cosmetic is a forgery hole, and this cosmetic is a contest prize. */
           this._capeStamp(session.id, clean);
+          /* v2.3.2690: and the stored character record is the whole look
+             (join.js RECORD_LOOK_KEYS) -- a relay carrying another character's
+             face tattoo or species, from a device that holds several, is
+             stamped back to this character's own, or to none. */
+          this._stampRecordLook(session, clean);
           session.data = { ...session.data, ...clean };
           const _trackPs = this.playerState[session.id];
           if (_trackPs) {
