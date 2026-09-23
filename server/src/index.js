@@ -163,6 +163,7 @@ import { arrowBlastMethods } from './arrowblast.js'; /* v2.3.2279: the bow speci
 // v2.3.1983: population-scaled spawns -- monsters and gather nodes sized to
 // how many players are standing in THAT zone -- see spawnscale.js.
 import { spawnScaleMethods } from './spawnscale.js';
+import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 
 /* ═══ v2.3.2113: AN ERROR IN HERE MUST NOT LOOK LIKE AN OUTAGE ═══
  * Owner, of tools/draw: "This tool says can't reach the game server anymore."
@@ -637,6 +638,21 @@ export const TRACK_COSMETIC_KEYS = new Set([
      does not recognise, so a forged value can only select a colour that
      catalog already holds -- it cannot paint an arbitrary RGB. */
   'ewc',
+  /* v2.3.2643: 'es' is the eye STYLE id -- a short catalog id exactly like 'ew'
+     above it, and NOT the same thing as 'ec', which is the colour of the eyes
+     painted into the body sheets.  Display-only on the same terms: the
+     receiving client asks its own EYE_STYLE_CATALOG folder for the art, so a
+     forged id loads no texture and paints nothing.  On BOTH gates in one
+     change -- this list and JOIN_COSMETIC_KEYS in join.js -- because a key on
+     one and not the other is the v2.3.1939 shape, which here would be eyes
+     that arrive on join and revert on the first two-second relay. */
+  'es',
+  /* v2.3.2682: 'sc' is the SPECIES id (none / monkey) -- a short catalog id
+     exactly like 'es'.  Display-only on the same terms: the receiving client
+     asks its own SPECIES_CATALOG folder for the art, so a forged id loads no
+     texture and paints nothing.  Both gates in one change (JOIN_COSMETIC_KEYS
+     in join.js), the v2.3.1939 lesson. */
+  'sc',
   /* v2.3.1939: the drawn shirt, front and back.  Display-only like every
      cosmetic here: the receiving client rejects anything that is not exactly
      256 hex characters, so a forged value paints nothing rather than something
@@ -1571,6 +1587,46 @@ export class GameRoom {
        fixed.  Silent, like a dodge: no monster_attack event, so the client
        draws nothing rather than a "0" it would have to explain. */
     if (this._extractionShielded(targetId, now)) return;
+    /* ═══ v2.3.2652: A ROCK IN THE WAY STOPS IT ═══
+       Owner: "I would like it if these props could block my and enemy
+       attacks."
+
+       HERE for the same reason the harvester shield above is here: this is the
+       ONE choke point every monster->player hit funnels through, so one test
+       covers the swing, the thrown snowball, the burrow surface and every
+       telegraphed ability at once.  Gating each caller instead would be four
+       places to keep in step and a fifth that gets forgotten.
+
+       `atkX/atkY` is where the attack came FROM for the CONTACT attacks --
+       telegraph.js passes m.x/m.y for both the swing and the burrow surface --
+       which is exactly the endpoint the line has to be measured from, and it is
+       already computed for the block arc below.
+
+       v2.3.2657 -- READ THIS BEFORE TRUSTING THE LINE ABOVE.  The original
+       version of this comment claimed atkX/atkY was "the thrower for a ball,
+       the monster for a swing", and that the snowball case measured from the
+       RELEASE point.  That was wrong, and wrong in the direction that hides
+       itself: the ranged caller (the in-flight snowball at the top of the
+       monster loop) passes the PLAYER's position, because the event's
+       attackerX/attackerY must be the impact point to clear the client's 160px
+       guard -- as the header above this method says in as many words.  So for
+       a thrown ball this test measured a zero-length segment from the player to
+       themselves and blocked nothing, while the comment asserted otherwise.
+       Snowballs sailed through rocks for four commits.
+
+       So this is NOT the one choke point for line-of-sight, whatever it is for
+       damage: the ranged path tests its own flight line (release -> aim point)
+       at the impact tick, where both ends are actually known.  Two tests,
+       because there are genuinely two geometries -- a contact attack comes from
+       the attacker, a thrown one comes from wherever it was released, and no
+       single pair of coordinates is honestly both.  If you add a third attack
+       shape, ask which of those it is before assuming this line covers it.
+
+       SILENT, like the dodge and the harvester shield: no monster_attack
+       event, so the client draws nothing rather than a "0" it would have to
+       explain.  The player sees the swing animation stop at the rock, which is
+       the feedback -- the number would be noise. */
+    if (targetPs && attackBlocked(zoneId, atkX, atkY, targetPs.x, targetPs.y)) return;
     /* ═══ v2.3.1686: THE BLOCK IS RESOLVED HERE, AT IMPACT ═══
        Owner: "it seems like snowman don't launch projectiles while the
        character is blocking, which isn't the correct behavior. It should
@@ -1592,7 +1648,7 @@ export class GameRoom {
        FROM (the thrower for a snowball, the monster for a swing), which is
        exactly what the arc has to be measured against. */
     const _blocking = this._blockArcCovers(targetPs, atkX, atkY);
-    const dmgResult = this._applyDamage(targetPs, m.dmg, _blocking);
+    const dmgResult = this._applyDamage(targetPs, m.dmg, _blocking, { attackerLevel: m.level });  /* v2.3.2680: the edge on Dodge/Defense */
     const dmgTaken = dmgResult.dmgTaken;
     /* Same block cost the melee branch charges (15 × Bulwark efficiency),
        so blocking a snowball and blocking a swing cost the same stamina. */
@@ -1903,8 +1959,48 @@ export class GameRoom {
              believed they took. */
           const _hit = _tps && (typeof _ptx !== 'number' ||
             Math.hypot((_tps.x || 0) - _ptx, (_tps.y || 0) - _pty) <= this.SNOWBALL_HIT_RADIUS);
+          /* ═══ v2.3.2657: A ROCK IN THE WAY STOPS THE BALL TOO ═══
+             Owner: "snowmen are still throwing snowballs through the props."
+             They were, and the reason is a bad assumption in v2.3.2652.
+
+             That change put one line-of-sight test in _monsterStrikePlayer
+             because it is the ONE choke point every monster->player hit funnels
+             through, and asserted in its own comment that the atkX/atkY it
+             measures from is "the thrower for a ball, the monster for a swing".
+             That is true of the two MELEE callers (telegraph.js passes m.x/m.y
+             for the swing and the burrow, and those really are blocked).  It is
+             false here: this call site passes _tps.x/_tps.y -- the PLAYER's own
+             position -- because the event's attackerX/attackerY must be the
+             IMPACT point or the client's 160px attacker-distance guard drops
+             the hit (see the header on _monsterStrikePlayer).  So the test it
+             ran for a snowball was a zero-length segment from the player to
+             themselves, which cannot cross anything.  It never blocked a ball.
+
+             The honest fix is not to bend atkX/atkY -- that field has a real
+             job -- but to test the line the ball actually flew, here, where
+             both of its ends are known: release point (frozen at throw,
+             telegraph.js) to aim point (frozen in the same breath).  Neither
+             end is the player's current position, and that is deliberate: the
+             ball is committed to the line it was thrown on, so walking sideways
+             into cover after the throw does not retroactively save you, and the
+             thrower wandering behind a rock does not retroactively stop it.
+
+             AHEAD of the shield-arc branch below, because a ball that hit a
+             rock never reached the shield -- crediting a block there would draw
+             a BLOCK popup for an attack that died 200px away.  Silent, like the
+             dodge and the harvester shield: the client already draws the ball
+             bursting against the prop (projectiles.js), which is the feedback.
+
+             Pre-v2.3.2657 balls already in the air across a deploy carry no
+             _projFrom*, so fall back to the thrower's position: slightly wrong
+             for one flight, rather than throwing on a missing field. */
+          const _pfx = typeof m._projFromX === 'number' ? m._projFromX : m.x;
+          const _pfy = typeof m._projFromY === 'number' ? m._projFromY : m.y;
+          const _lineBlocked = _tps && attackBlocked(zoneId, _pfx, _pfy,
+            typeof _ptx === 'number' ? _ptx : (_tps.x || 0),
+            typeof _pty === 'number' ? _pty : (_tps.y || 0));
           /* Still in the same zone, alive, and not mid-respawn. */
-          if (_hit && _tps.z === zoneId && !_tps.dying && (_tps.hp || 0) > 0) {
+          if (!_lineBlocked && _hit && _tps.z === zoneId && !_tps.dying && (_tps.hp || 0) > 0) {
             /* v2.3.1705: …and facing it.  The direction is taken from the
                THROWER (m), not from the ball's landing point: the ball lands on
                the player, so its own position carries no direction, and a
@@ -2082,8 +2178,14 @@ export class GameRoom {
                 m._kbDebt -= repay;
                 if (m._kbDebt < 0.01) m._kbDebt = 0;
               }
-              m.x += (dx / dist) * step;
-              m.y += (dy / dist) * step;
+              /* v2.3.2653: props stop the chase too -- see slideMove. The
+                 three movement sites (chase, leash, wander) all route through
+                 it rather than each growing its own test, because a monster
+                 that respects a rock while chasing and glides through it while
+                 wandering is worse than one that ignores it consistently. */
+              const _mv = slideMove(zoneId, m.x, m.y, m.x + (dx / dist) * step, m.y + (dy / dist) * step);
+              m.x = _mv.x;
+              m.y = _mv.y;
               this._markMonsterDirty(zoneId, m.id);
             }
           }
@@ -2231,8 +2333,12 @@ export class GameRoom {
           } else if (distSpawn > WANDER_LEASH) {
             const dxL = m.spawnX - m.x;
             const dyL = m.spawnY - m.y;
-            m.x += (dxL / distSpawn) * m.spd * ccMoveMult;
-            m.y += (dyL / distSpawn) * m.spd * ccMoveMult;
+            /* v2.3.2653: the walk home respects props as well. */
+            const _mvL = slideMove(zoneId, m.x, m.y,
+              m.x + (dxL / distSpawn) * m.spd * ccMoveMult,
+              m.y + (dyL / distSpawn) * m.spd * ccMoveMult);
+            m.x = _mvL.x;
+            m.y = _mvL.y;
             this._markMonsterDirty(zoneId, m.id);
             m._wanderTx = null;
             m._wanderTy = null;
@@ -2268,8 +2374,12 @@ export class GameRoom {
               m._wanderPausedUntil = now + WANDER_PAUSE_MIN_MS
                 + Math.random() * (WANDER_PAUSE_MAX_MS - WANDER_PAUSE_MIN_MS);
             } else {
-              m.x += (dxw / distw) * m.spd * ccMoveMult;
-              m.y += (dyw / distw) * m.spd * ccMoveMult;
+              /* v2.3.2653: ...and so does the idle wander. */
+              const _mvW = slideMove(zoneId, m.x, m.y,
+                m.x + (dxw / distw) * m.spd * ccMoveMult,
+                m.y + (dyw / distw) * m.spd * ccMoveMult);
+              m.x = _mvW.x;
+              m.y = _mvW.y;
               this._markMonsterDirty(zoneId, m.id);
             }
           }

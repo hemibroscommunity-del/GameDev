@@ -13,7 +13,7 @@ import { getState } from './common.js';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2638: the equip tick */
 import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: one gate, every sender */
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
-import { recalcDerived, WEAPON_STASH_MAX } from '../../../data/gameSystems.js';
+import { recalcDerived, WEAPON_STASH_MAX, canEquipItem, getEquipReqLabel } from '../../../data/gameSystems.js'; /* v2.3.2664: + the armour Defense gate */
 import { pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.2123: say why a refusal happened */
 
 function persist(R) {
@@ -56,7 +56,7 @@ function gearName(slot, gearId) {
    NOT in syncArmorChange -- that is an internal helper the others call, so
    the sound would fire twice for one gesture. */
 function _equipTick() {
-  BT_AUDIO.uiTick('ui-equip', 0.55);   /* v2.3.2639: deduped -- see uiTick */
+  BT_AUDIO.uiEquip();   /* v2.3.2639: deduped -- see uiTick.  v2.3.2659: gain + offset live in uiEquip */
 }
 
 export function unequipWeaponSlot(slot /* 'weapon' | 'ranged' | 'staff' */) {
@@ -238,11 +238,31 @@ export function unequipLegsDirect() {
    own target, so the picker could not reuse it.  Both halves live here now and
    both callers share them — the alternative is a second copy of "wear a piece"
    that drifts from this one the first time either is touched. */
+/* ═══ v2.3.2664: THE ARMOUR LADDER'S DEFENSE REQUIREMENT, ASKED FIRST ═══
+   Owner: "Yeah I'll go with your defense requirements for next tiers" —
+   5 Defense for tier 3, 10 for tier 4, 15 for tier 5 (gameSystems.js
+   armorDefReq, the worker's own number).  Asked HERE, before the piece
+   leaves the bag, because the worker's refusal is silent: without this the
+   piece would go on, come straight back off on the next echo and land in the
+   bag with a bare "BAG:" popup (wsClient.js v2.3.2122) — the "nothing
+   happens" report again.  Said out loud instead, in the WEAPON BAG FULL
+   posture, and no equip tick for an equip that did not happen. */
+function _armorBlocked(S, R, piece) {
+  if (canEquipItem(R, piece, 'armor')) return false;
+  try {
+    const req = getEquipReqLabel(piece, 'armor', R);
+    const P = S.player;
+    if (P) pushDmgPopup(S, P.x, P.y - 40, 'NEEDS ' + ((req && req.req) || '') + ' DEFENSE', '#D8A94D');
+  } catch (e) { /* the refusal matters, the popup does not */ }
+  return true;
+}
+
 export function equipArmorFromStash(piece) {
-  _equipTick();
   const S = getState();
   if (!S || !S.rpg || !piece) return false;
   const R = S.rpg;
+  if (_armorBlocked(S, R, piece)) return false;
+  _equipTick();
   if (!R.armorStash) R.armorStash = [];
   const idx = R.armorStash.indexOf(piece);
   if (idx >= 0) R.armorStash.splice(idx, 1);
@@ -257,10 +277,11 @@ export function equipArmorFromStash(piece) {
 }
 
 export function equipLegsFromStash(piece) {
-  _equipTick();
   const S = getState();
   if (!S || !S.rpg || !piece) return false;
   const R = S.rpg;
+  if (_armorBlocked(S, R, piece)) return false;  /* v2.3.2664: same gate, same slot key */
+  _equipTick();
   if (!R.legsStash) R.legsStash = [];
   const idx = R.legsStash.indexOf(piece);
   if (idx >= 0) R.legsStash.splice(idx, 1);

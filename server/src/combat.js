@@ -69,7 +69,8 @@ import {
   ELEMENT_STATUS, applyElementStatus, resolveElementCollision, fractureDmgMult,
   elemAttackStat, // v2.3.2199: prog3 `elem` stat resolver for the DoT power snapshot
 } from './elemental.js';
-import { AMULET_TIER_POWER, t2CounterRate, QUALITY_GRADES /* v2.3.1925 */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+import { AMULET_TIER_POWER, t2CounterRate, QUALITY_GRADES /* v2.3.1925 */, weaponTierFactor, weaponQualityMult /* v2.3.2664 */ } from './data.js';
+import { PROV_MINTED } from './gearprov.js'; /* v2.3.2664: godly armour needs a ledger row */ // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 import { BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST } from './data.js'; // v2.3.1919: a blocked PvP hit costs stamina too
 import { LIVEOPS } from './liveops.js';
 import { PROG3 } from './prog3.js'; // v2.3.1659: the trained-skill combat rebuild config
@@ -142,7 +143,7 @@ export const combatMethods = {
     if (!m || !attackerPs || !(m.hp > 0)) return false;
     if (typeof element !== 'string') return false;
     if (!Object.prototype.hasOwnProperty.call(ELEMENT_STATUS, element)) return false;
-    return applyElementStatus(m, element, sourceId, elemAttackStat(attackerPs, 'power', cat || 'sword'),
+    return applyElementStatus(m, element, sourceId, elemAttackStat(attackerPs, 'power', cat || 'sword', m.level),  /* v2.3.2680: the edge */
       now || Date.now(), this._attuneMult(attackerPs));
   },
 
@@ -178,9 +179,61 @@ export const combatMethods = {
      reaches 65% / 44.5%, i.e. 0.806 combined, which the cap then holds at
      0.75.  Cap is the LAST word: no combination of tiers makes a player
      immune. */
+  /* ═══ v2.3.2664: A FIVE-TIER ARMOUR LADDER, AND THE GRADE RAISES THE CEILING ═══
+     Owner: "I also want armor ... tier to really matter - especially
+     differences between normal, rare, elite, and godly", then, on copper and
+     iron: "Im planning for the next tier up to require a certain defense
+     points ... Everything in the game is still flexible at this point,
+     including the tier names and the number of them."
+
+     ARMOUR TIERS ARE WHOLE STEPS (v2.3.1925b, docs/specs/monster-drops.md
+     "Two ladders, one metal"): copper is tierMult 1.0, iron 2.0, and the next
+     tier is 3.0 — NOT the blacksmith table's 1.12 / 1.25 / 1.40, which is the
+     weapon ladder.  (This change was first written on the weapon scale by
+     mistake and doubled the steps to +10 % / +7 %; on the real scale that
+     pinned every normal set from the FOURTH tier up to the same 75 %.)
+
+     +7.5 % chest / +5 % legs per tier makes a five-tier ladder, each tier
+     about a fifth more survival than the last:
+         tier      1 copper   2 iron   3        4        5
+         chest       30 %     37.5 %   45 %     52.5 %   60 %
+         legs        20 %     25 %     30 %     35 %     40 %
+         set         44.0 %   53.1 %   61.5 %   69.1 %   75 % (the cap)
+     Iron moves from 50.3 % to 53.1 %; copper is unchanged.
+
+     THE GRADE RAISES THE CEILING.  The grade still multiplies the TIER
+     (v2.3.1925 below), so a rare iron set is 58 %, elite 65 %.  But one flat
+     75 % cap would make rare, elite and normal read the same at the top of
+     the ladder, so each piece's grade lifts it (QUALITY_GRADES.armorLift):
+     a full set's ceiling is 75 % normal, 80 % rare, 85 % elite, 95 % godly.
+     A piece alone stops at the ceiling it would give on its own (75 % +
+     its lift), so an item card and the wearer's total never disagree.
+     Godly (1 in 2,000,000 per piece) is "basically game breaking good": a
+     godly iron set is 92 % — a sixth of the damage a normal iron set lets
+     through.  Nothing reaches immunity. */
   _armorDrMult(ps) {
     if (!ps) return 1;
-    const MAX_DR = 0.75;
+    /* hasOwnProperty, not a bare lookup: a stored grade of '__proto__' would
+       otherwise read Object.prototype and turn the whole product into NaN.
+       ═══ GODLY NEEDS PROOF ═══
+       The legacy lane (grids.js stats_update, gear-provenance.md) still
+       wears a piece the client merely DESCRIBES, grade included — usable,
+       not sellable, by the owner's v2.3.2534 decision — and iron carries no
+       Defense requirement.  Before this change a described "godly iron"
+       set bought 72 %; with the grade on the tier ×5 and its +10-point lift
+       it would buy 92 % at level 1.  So the godly grade counts only on a
+       piece the server minted and can prove (`prov` is derived server-side
+       from the ledger and stripped from every claim); an unproven godly
+       claim reads as ELITE.  A real godly piece is 1 in 2,000,000 and has
+       been ledger-minted since v2.3.2534, so this costs no honest player
+       anything real. */
+    const grade = (a) => {
+      if (!a || !Object.prototype.hasOwnProperty.call(QUALITY_GRADES, a.quality)) return QUALITY_GRADES.normal;
+      if (a.quality === 'godly' && a.prov !== PROV_MINTED) return QUALITY_GRADES.elite;
+      return QUALITY_GRADES[a.quality];
+    };
+    const MAX_DR = 0.75 + (ps.armor ? grade(ps.armor).armorLift : 0)
+      + (ps.legsArmor ? grade(ps.legsArmor).armorLift : 0);
     const piece = (a, base, perTier) => {
       if (!a) return 0;
       /* ═══ v2.3.1925: QUALITY MULTIPLIES THE TIER, NOT THE REDUCTION ═══
@@ -194,12 +247,12 @@ export const combatMethods = {
          built for, and it keeps quality meaning the same thing it means on a
          weapon: the ITEM is exceptional, your character is unchanged.
          Clamped by the same [0,8] as before, so no grade can escape it. */
-      const q = QUALITY_GRADES[a && a.quality] ? QUALITY_GRADES[a.quality].mult : 1;
-      const tm = Math.max(0, Math.min(8, (Number(a.tierMult) || 1) * q));
-      return base + perTier * (tm - 1);
+      const g = grade(a);
+      const tm = Math.max(0, Math.min(8, (Number(a.tierMult) || 1) * g.mult));
+      return Math.min(0.75 + g.armorLift, base + perTier * (tm - 1));   /* v2.3.2664: a piece stops at its own ceiling */
     };
-    const chest = piece(ps.armor, 0.30, 0.05);
-    const legs = piece(ps.legsArmor, 0.20, 0.035);
+    const chest = piece(ps.armor, 0.30, 0.075);   /* v2.3.2664: +7.5 % per tier (was 5 %) */
+    const legs = piece(ps.legsArmor, 0.20, 0.05); /* v2.3.2664: +5 % (was 3.5 %) */
     if (chest <= 0 && legs <= 0) return 1;
     const combined = 1 - (1 - chest) * (1 - legs);
     return 1 - Math.min(MAX_DR, combined);
@@ -253,7 +306,20 @@ export const combatMethods = {
     // REDESIGN §4); agility dies with T1 and the evasion accumulator
     // dies with the channel grid.
     const _p3 = ps.prog3;
-    const dodgePct = _p3 ? this._prog3DodgePct(ps)
+    /* ═══ v2.3.2680: TWO CATEGORIES, AND THE EDGE ═══
+       `opts.attackerLevel` is the hitting monster's level: Dodge, Defense and
+       Resist read the curve + edge against it (prog3.js), full strength at or
+       below your level and gone five levels above.  Omitted, the edge is 1.
+       Owner, 2026-09-22: "there will be two categories of damage.  Base
+       damage and elemental damage ... Monsters will apply both."  So each
+       category has its own guard: Dodge and Defense stop BASE damage (and
+       never multiply below PROG3.FLOOR, below); Resist stops ELEMENTAL
+       damage, whose curve heads for 90 % and so always lets 10 % through on
+       its own.  An elemental hit therefore cannot be dodged and is not cut
+       by Defense — on the prog3 path only; a legacy blob keeps its rolls. */
+    const _mlvl = opts && opts.attackerLevel;
+    const _elemental = !!(opts && opts.elemental);
+    const dodgePct = _p3 ? (_elemental ? 0 : this._prog3DodgePct(ps, _mlvl))
       : Math.min((ps.agility || 0) * 0.0008, 0.50);
     let dodged = Math.random() < dodgePct;
     if (!_p3) {
@@ -280,17 +346,26 @@ export const combatMethods = {
     // damage (this is the ONE place player hp goes down); floor 1 so
     // a maxed tank still takes chip damage.
     if (_p3) {
-      const _defMult = this._prog3DefMult(ps);
-      if (_defMult < 1) dmgTaken = Math.max(1, Math.round(dmgTaken * _defMult));
-      /* v2.3.2512: ELEM RESIST, immediately after the general one and on the
-         same terms — a percentage cut with the floor-1 clamp preserved, so a
-         fully-resistant player still takes chip damage from a fire patch.
-         Multiplicative with `def` rather than additive: two 30% cuts that
-         add reach 60%, two that multiply reach 51%, and only the second
-         shape is safe against a future third layer. */
-      if (opts && opts.elemental) {
-        const _eMult = this._prog3ElemResistMult(ps);
+      if (_elemental) {
+        /* v2.3.2512: ELEM RESIST — a percentage cut with the floor-1 clamp
+           preserved, so a fully-resistant player still takes chip damage
+           from a fire patch.  v2.3.2680: it is the ONLY stat an elemental hit
+           meets (see the header above), and its own 90 % asymptote is the
+           category's floor. */
+        const _eMult = this._prog3ElemResistMult(ps, _mlvl);
         if (_eMult < 1) dmgTaken = Math.max(1, Math.round(dmgTaken * _eMult));
+      } else {
+        /* v2.3.2680: THE COMBINED FLOOR (owner: "Yes do combined floor").
+           Dodge rolled above at full value; the Defense cut is held so the
+           two together never let less than PROG3.FLOOR of a base hit
+           through: expected through = (1 − dodge) × cut ≥ FLOOR.  Each stat
+           still reaches for its own 90 % — ridiculous at ONE thing.  It reads
+           the edge-scaled Dodge, so against a stronger monster the Defense
+           it was holding back counts again.  Armour, the resist buff and the
+           soaks sit outside it. */
+        const _defMult = this._prog3DefMult(ps, _mlvl);
+        const _cut = Math.max(_defMult, PROG3.FLOOR / Math.max(0.01, 1 - dodgePct));
+        if (_cut < 1) dmgTaken = Math.max(1, Math.round(dmgTaken * _cut));
       }
     }
     /* ═══ v2.3.1679: WORN ARMOR IS REAL MITIGATION ═══
@@ -489,12 +564,19 @@ export const combatMethods = {
         const _skLvl = (_p3.sk[_cat] && _p3.sk[_cat].level) || 1;
         /* v2.3.2199: + the allocated flat-damage stat, per candidate's own
            lane — the exact term _computeAttackDamage adds, lockstep by
-           construction (server-owned allocation, same as the skill term). */
-        bonus = _skLvl * PROG3.DMG_PER_LEVEL[_cat]
-          + this._prog3AtkPts(ps, _cat, 'dmg') * PROG3.ATK.dmg.per;
+           construction (server-owned allocation, same as the skill term).
+           v2.3.2680: Power is a MULTIPLIER now (below), not a term here. */
+        bonus = _skLvl * PROG3.DMG_PER_LEVEL[_cat];
       }
       const channelFlat = isSpecial ? 0 : this._wpnDmgFlat(ps, w.type); // reads 0 under prog3 (_t2Flat gate)
-      const base = (this._weaponEffBase(w.type, w) + bonus) * (w.tierMult || 1) + channelFlat;
+      /* v2.3.2680: × the Power multiplier at EDGE 1 — the largest any monster
+         level can grant (prog3Edge is ≤ 1 and the curve rises with its count),
+         so this covers every legitimate roll by construction.  Same place in
+         the sum as the roll puts it: pre-tierMult, on (base + skill).
+         v2.3.2664: then the tier FACTOR (tierMult^1.5) and the weapon's grade,
+         exactly where the roll applies them — lockstep by construction. */
+      const _pw = (_p3 && _p3.sk) ? this._prog3PowerMult(ps, this._prog3CatFor(w.type)) : 1;
+      const base = (this._weaponEffBase(w.type, w) + bonus) * _pw * weaponTierFactor(w.tierMult || 1) * weaponQualityMult(w) + channelFlat;
       if (base > max) max = base;
     }
     return max;
@@ -546,8 +628,10 @@ export const combatMethods = {
        is `dmgPer`, read off the largest lane for the over-cover reason
        above.  _prog3CritMult is the roll's own reader; the ceiling takes
        the max across lanes because the candidate loop is lane-blind. */
+    /* v2.3.2680: the curve's multiplier at EDGE 1 (no monster level passed),
+       largest lane — the most any hit on any monster can use. */
     const critMult = ps.prog3
-      ? 1.5 + Math.max(...PROG3.SKILLS.map((c) => this._prog3AtkPts(ps, c, 'luck'))) * PROG3.ATK.luck.dmgPer
+      ? Math.max(...PROG3.SKILLS.map((c) => this._prog3CritMult(ps, c)))
       : 1.5 + (ps.power || 0) * 0.001;
     // v2.3.1451: the attacker's ACTUAL banked crit-dmg flat, max
     // across the three categories (the candidate loop in
@@ -575,7 +659,7 @@ export const combatMethods = {
        headroom, so the 5× stays what it says it covers. */
     const specialMult = isSpecial
       ? 3.0 * (ps.prog3
-        ? 1 + Math.max(...PROG3.SKILLS.map((c) => this._prog3AtkPts(ps, c, 'special'))) * PROG3.ATK.special.per
+        ? Math.max(...PROG3.SKILLS.map((c) => this._prog3SpecialMult(ps, c)))  /* v2.3.2680: the curve at edge 1 */
         : 1)
       : 1.0;
     // Floor baseline-10 rescaled (100 ÷ 4.8 ≈ 21) so it doesn't sit ~10x
@@ -598,8 +682,13 @@ export const combatMethods = {
   // combo damage -- those stay client-side for now and are a follow-up
   // slice (the server has no elemental-status model).  So an elemental
   // combo build's authoritative damage is weapon-only until then.
-  _computeAttackDamage(ps, slot, isSpecial) {
+  /* v2.3.2680: `opts.targetLevel` — the level of the monster being hit, for
+     the EDGE on Power, Luck and Special (prog3.js).  Every site that has the
+     target in hand passes it; omitted, the edge is 1 (full value), which is
+     also what the anticheat ceilings assume. */
+  _computeAttackDamage(ps, slot, isSpecial, opts) {
     if (!ps) return { dmg: 1, isCrit: false };
+    const _mlvl = opts && opts.targetLevel;
     // Trust the wire slot when it's a known value, else fall back to the
     // server's tracked activeSlot (mirrors the lifesteal slot resolution).
     const eff = (slot === 'melee' || slot === 'ranged' || slot === 'staff')
@@ -654,10 +743,16 @@ export const combatMethods = {
          as the skill term grows (the balance shape that keeps it from
          dominating; see progression-v3.md).  _maxWeaponDmg carries the
          identical term — the lockstep rule. */
-      statTerm = _skLvl * PROG3.DMG_PER_LEVEL[_cat]
-        + this._prog3AtkPts(ps, _cat, 'dmg') * PROG3.ATK.dmg.per;
+      statTerm = _skLvl * PROG3.DMG_PER_LEVEL[_cat];
     }
-    let base = (this._weaponEffBase(type, w) + statTerm) * tierMult;
+    /* v2.3.2680: POWER multiplies (weapon base + skill term), pre-tierMult —
+       it was a flat +0.5/pt inside that sum.  The curve + the edge against
+       this target; _maxWeaponDmg carries the same factor at edge 1.
+       v2.3.2664: × the tier FACTOR (tierMult^1.5 — each forge tier ~+18 %) and
+       × the weapon's GRADE on the whole hit (normal 1 / rare 1.3 / elite 1.75
+       / godly 5), both from data.js; _maxWeaponDmg carries the same two. */
+    const _powerMult = (_p3 && _p3.sk) ? this._prog3PowerMult(ps, this._prog3CatFor(type), _mlvl) : 1;
+    let base = (this._weaponEffBase(type, w) + statTerm) * _powerMult * weaponTierFactor(tierMult) * weaponQualityMult(w);
     /* Per-type variance -- same rolls as the client.
        v2.3.2212: the band is a TABLE now, read twice: once to roll, and
        once for the crit anchor below.  Two literals would have drifted the
@@ -733,7 +828,7 @@ export const combatMethods = {
        same way it anchored off the ×3/×2 — _maxDmgForAttacker's specialMult
        carries the same term (lockstep).  Mirrored by the client's
        specialAtkMultFor(type, rpg). */
-    if (isSpecial && _p3) base *= this._prog3SpecialMult(ps, this._prog3CatFor(type));
+    if (isSpecial && _p3) base *= this._prog3SpecialMult(ps, this._prog3CatFor(type), _mlvl);  /* v2.3.2680: + edge */
     if (w && w.isVolatile) base *= 1.30;               // §4.7 volatile weapon
     /* v2.3.2058: 1.20 is the COOKED-FOOD magnitude and stays the default;
        _buffs.damageMul is set by anything that buffs damage by its own amount
@@ -774,8 +869,8 @@ export const combatMethods = {
          the-multiplier reasoning is unchanged; see the constant's note.
          Ceiling lockstep: _maxDmgForAttacker's critMult carries the same
          dmgPer term and its critFlatCeil stays 0. */
-      isCrit = Math.random() < this._prog3CritChance(ps, _atkCat);
-      if (isCrit) base = this._critAnchor(base * this._prog3CritMult(ps, _atkCat), rangeTop);
+      isCrit = Math.random() < this._prog3CritChance(ps, _atkCat, _mlvl);  /* v2.3.2680: + edge */
+      if (isCrit) base = this._critAnchor(base * this._prog3CritMult(ps, _atkCat, _mlvl), rangeTop);
     } else {
       const P = ps.power || 0;
       /* v2.3.2210: the legacy branch gets the same 1% floor, so "every
@@ -955,7 +1050,7 @@ export const combatMethods = {
     // weapon + the client's intent (slot/special).  _maxDmgForAttacker
     // stays as a cheap sanity clamp on our OWN roll (weapon-aware, slice
     // 16 / T1-T2): special hits get the 2x cap headroom.
-    const rolled = this._computeAttackDamage(attackerPs, slot, isSpecial);
+    const rolled = this._computeAttackDamage(attackerPs, slot, isSpecial, { targetLevel: m.level });  /* v2.3.2680: the edge */
     const dmgCap = this._maxDmgForAttacker(attackerPs, isSpecial);
     /* v2.3.1734: FRACTURE applies here, AFTER the attacker ceiling and
        before the overkill clamp.  The order is the point: dmgCap bounds
@@ -1026,7 +1121,7 @@ export const combatMethods = {
          priced off the CATEGORY the server itself resolved (_effSlot), never
          the client's raw slot claim. */
       const _elCat = this._prog3CatFor(_effSlot === 'ranged' ? 'bow' : _effSlot);
-      applyElementStatus(m, element, session.id, elemAttackStat(attackerPs, 'power', _elCat), _now,
+      applyElementStatus(m, element, session.id, elemAttackStat(attackerPs, 'power', _elCat, m.level), _now,  /* v2.3.2680: the edge */
         this._attuneMult(attackerPs));
       // Volatile mirrors _computeAttackDamage's slot resolution.
       const _eff = (slot === 'melee' || slot === 'ranged' || slot === 'staff')
@@ -1763,6 +1858,10 @@ export const combatMethods = {
       const effDef = Math.min(this.PVP_TUNING.DEF_CAP, Math.max(0, targetPs.def || 0));
       const defMit = 100 / (100 + effDef);
       const rawDmg = dmgBase * (isCrit ? 1.5 : 1) * this.PVP_TUNING.DMG_SCALE * defMit;
+      /* v2.3.2680: no attackerLevel on purpose — PvP stays at edge 1 (the
+         defender's points at full strength whoever swings).  Pricing it by
+         the attacker's level would strip a lower player's Dodge and Defense
+         outright; that is a PvP design call of its own, not this change. */
       const dmgResult = this._applyDamage(targetPs, rawDmg, blocked);
       const dmgTaken = dmgResult.dmgTaken;
       /* v2.3.1701: the attacker is in combat too (see the twin stamp in

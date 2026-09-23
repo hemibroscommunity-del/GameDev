@@ -30,7 +30,10 @@ import { HAIR_CATALOG, setHair } from '@/rendering/traits/hairCatalog.js';
 import { HAIR_COLOR_CATALOG, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, hatColorsFor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { eyewearColorsFor, eyewearPaints, setEyewearColor } from '@/rendering/traits/eyewearColorCatalog.js';   /* v2.3.2424 */
+import { eyeStylePaints } from '@/rendering/traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { EYE_COLOR_CATALOG, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
+import { EYE_STYLE_CATALOG, setEyeStyle, eyeStyleHasOptions } from '@/rendering/traits/eyeStyleCatalog.js';   /* v2.3.2643 */
+import { SPECIES_CATALOG, setSpecies, speciesHasOptions, speciesDefaultSkin } from '@/rendering/traits/speciesCatalog.js';   /* v2.3.2682 */
 import { HEADWEAR_CATALOG, headwearIsSolid, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
@@ -172,6 +175,8 @@ export function NameModal(props) {
     eyeColorSel = props.eyeColorSel,
     setEyeColorSel = props.setEyeColorSel,
     headwearSel = props.headwearSel,
+    eyeStyleSel = props.eyeStyleSel,        /* v2.3.2643 */
+    speciesSel = props.speciesSel,          /* v2.3.2682 */
     eyewearSel = props.eyewearSel,          /* v2.3.2361 */
     eyewearColorSel = props.eyewearColorSel,   /* v2.3.2424 */
     joinTown = props.joinTown,
@@ -190,6 +195,8 @@ export function NameModal(props) {
     setHairSel = props.setHairSel,
     setHatColorSel = props.setHatColorSel,
     setHeadwearSel = props.setHeadwearSel,
+    setEyeStyleSel = props.setEyeStyleSel,   /* v2.3.2643 */
+    setSpeciesSel = props.setSpeciesSel,   /* v2.3.2682 */
     setEyewearSel = props.setEyewearSel,   /* v2.3.2361 */
     setEyewearColorSel = props.setEyewearColorSel,   /* v2.3.2424 */
     setNameInput = props.setNameInput,
@@ -257,12 +264,68 @@ export function NameModal(props) {
        never added to _TABS either.  Two halves of one wrong shape, and because
        the second half hid the first, nothing threw and it looked shipped.
        Now the same shape as skin: catalog + sel + set, no colors row. */
-    eyes: { label: 'Eyes', kind: 'swatch', spriteCat: null, catalog: EYE_COLOR_CATALOG, sel: eyeColorSel,
-      set: function (id) { setEyeColor(id); setEyeColorSel(id); }, colors: null },
+    /* ═══ v2.3.2643: THE EYES TAB PICKS A SHAPE **AND** A COLOUR ═══
+       Owner, with four mannequin sheets: "I want these as 'eyes' choices --
+       Sleepy eyes, one eye, demon eyes, wtf eyes."
+
+       It was a swatch-only category (the shape above, from v2.3.1929) because
+       eye colour was the only thing there was to pick.  There is a sprite to
+       pick now, so it takes the standard two-step shape every trait tab has:
+       the STYLE in the option strip, the eye COLOUR in the row below it.  No
+       new tab -- a second eye tab beside this one would have split one feature
+       across two places, and this tab is already called Eyes.
+
+       `colorsWhenNone` is the one thing it needs that no other tab does.  The
+       strip's normal rule blanks the colour row when the pick is 'none', which
+       is right everywhere else (there is no hat to paint) and exactly backwards
+       here: 'none' IS the real eyes, so it is the pick where the colour row
+       matters most.
+
+       v2.3.2645: AND IT NOW PAINTS THE STYLE TOO.  Owner: "None of the eyes are
+       recolorable (don't know if they can be)."  They are -- the same swatch,
+       the same saved value, applied to the worn style's own art instead of to
+       an iris the style has erased (eyeStyleColorCatalog.js).  A second colour
+       row would have asked the player to choose their eye colour twice.
+       `colorLabel` names the part the swatch lands on, the eyewear rule from
+       v2.3.2424: it is the pupil on One Eye and WTF, the lids on Sleepy and the
+       flames on Demon, and a row that does not say so is lying about what it
+       does.  It is null on 'none', where the row means the eyes themselves and
+       the label would be answering a question nobody asked. */
+    eyes: { label: 'Eyes', kind: 'thumb', spriteCat: 'eyestyle', catalog: EYE_STYLE_CATALOG, sel: eyeStyleSel,
+      set: function (id) { setEyeStyle(id); setEyeStyleSel(id); },
+      colors: recolorEnabled('eyes') ? EYE_COLOR_CATALOG : null, colorsWhenNone: true,
+      colorLabel: eyeStylePaints(eyeStyleSel),   /* v2.3.2645 */
+      colorSel: eyeColorSel, setColor: function (id) { setEyeColor(id); setEyeColorSel(id); } },
     /* v2.3.1308 (round-7): 'Skin' → 'Skin Tone' — it recolors the whole
        body, and the plain label read as head-only inside the Head group. */
     skin: { label: 'Skin Tone', kind: 'swatch', spriteCat: null, catalog: SKIN_CATALOG, sel: skinSel,
       set: function (id) { setSkin(id); setSkinSel(id); }, colors: null },
+    /* ═══ v2.3.2682: THE SKIN TAB PICKS A SPECIES **AND** A COLOUR ═══
+       Owner: "Make sure it's available in trait picker."  The Eyes tab's
+       two-step shape (v2.3.2643), for the same reason: the SPECIES in the
+       option strip (Human, Monkey), the skin colour in the row below it --
+       which is the monkey's fur colour, fur colours included (v2.3.2681).
+       `colorsWhenNone` because 'none' is the human, and the human's skin tone
+       is the pick this row has always been for.  The def replaces the
+       swatch-only one just above (defined first so the switch-off path below
+       still has it) only while there is a species to pick.
+       Picking a species moves a HUMAN skin tone to that species' preset
+       (Monkey Brown), and picking the human back moves a species/fur tone to
+       the default tan -- both only when the current skin belongs to the other
+       side, so a player who chose a purple monkey and then a human keeps
+       nothing surprising, and a player who picked a fur colour first keeps it
+       when they choose the monkey. */
+    species: { label: 'Species & Skin', kind: 'thumb', spriteCat: 'species', catalog: SPECIES_CATALOG, sel: speciesSel,
+      set: function (id) {
+        setSpecies(id); setSpeciesSel(id);
+        var cur = SKIN_CATALOG.find(function (c) { return c.id === skinSel; });
+        var isFur = !!(cur && cur.species);
+        var preset = speciesDefaultSkin(id);
+        if (id !== 'none' && preset && !isFur) { setSkin(preset); setSkinSel(preset); }
+        else if (id === 'none' && isFur) { setSkin('default'); setSkinSel('default'); }
+      },
+      colors: recolorEnabled('skin') ? SKIN_CATALOG : null, colorsWhenNone: true,
+      colorSel: skinSel, setColor: function (id) { setSkin(id); setSkinSel(id); } },
     beard: { label: 'Beard', kind: 'thumb', spriteCat: 'facialhair', catalog: FACIALHAIR_CATALOG, sel: facialHairSel,
       set: function (id) { setFacialHair(id); setFacialHairSel(id); },
       colors: recolorEnabled('beard') ? FACIALHAIR_COLOR_CATALOG : null, colorSel: beardColorSel, setColor: function (id) { setFacialHairColor(id); setBeardColorSel(id); } },
@@ -310,9 +373,23 @@ export function NameModal(props) {
   /* v2.3.1494: drop disabled recolor-only types from the defs -- activeCat is
      remembered across sessions, so a stale 'skin' would otherwise select a tab
      that is no longer offered. */
-  ['skin', 'pants', 'shoes', 'eyes'].forEach(function (t) {
+  /* v2.3.2643: 'eyes' is OFF this list.  It was a recolour-only category when
+     the list was written, so switching eye colour off left it with nothing to
+     do; it has a sprite picker now, and dropping the whole tab would take the
+     four eye styles with it.  The colour row alone goes (`colors:` above reads
+     recolorEnabled), and the tab survives on its styles -- unless there are no
+     styles either, which is the line below. */
+  ['skin', 'pants', 'shoes'].forEach(function (t) {
     if (!recolorEnabled(t)) delete _typeDefs[t];
   });
+  /* v2.3.2682: while there is a species to pick, the Skin tab IS the species
+     tab (its colour row carries the skin tones, or nothing if skin recolour is
+     off -- the species strip alone is still a real pick). */
+  if (speciesHasOptions()) { _typeDefs.skin = _typeDefs.species; }
+  delete _typeDefs.species;
+  /* ...and then there really is nothing left to pick: no styles AND no colour.
+     Same gate as the Eyewear one below, for the same v2.3.2268 reason. */
+  if (!eyeStyleHasOptions() && !recolorEnabled('eyes')) delete _typeDefs.eyes;
   /* v2.3.2361: no Eyewear tab until there is eyewear to pick.  A tab whose
      only option is the one already selected is worse than no tab (the
      v2.3.2268 reasoning that removed Build), so the def goes the same way the
@@ -486,7 +563,7 @@ export function NameModal(props) {
     /* Both build rows are up in the grid (see _items).  The block still
        renders — ghosted — because every tab must reserve the same height. */
     ? null
-    : (_colorList && _colorList.length > 0 && _def.sel !== 'none')
+    : (_colorList && _colorList.length > 0 && (_def.colorsWhenNone || _def.sel !== 'none'))   /* v2.3.2643: the Eyes tab's colour row means the REAL eyes, so 'none' is the pick it matters most on */
     /* v2.3.2035: the 'default' entry is FILTERED OUT of the swatch row -- the
        text button above is what picks it now.
        This is the owner's actual complaint, not tidiness.  Every catalog's
@@ -555,6 +632,8 @@ export function NameModal(props) {
       hairSel: hairSel, hairColorSel: hairColorSel,
       facialHairSel: facialHairSel, beardColorSel: beardColorSel,
       headwearSel: headwearSel, hatColorSel: hatColorSel, eyeColor: eyeColorSel,
+      eyeStyleSel: eyeStyleSel,   /* v2.3.2643 */
+      speciesSel: speciesSel,   /* v2.3.2682 */
       eyewearSel: eyewearSel,   /* v2.3.2361 */
       /* v2.3.2424: `eyewearColor`, NOT `eyewearColorSel` -- portraitLook reads
          the former, and a near-miss key here is silent: the designer would
@@ -565,7 +644,7 @@ export function NameModal(props) {
       buildHeight: heightSel, buildFrame: frameSel   /* v2.3.1953 */
     });
   }, [skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel,
-    headwearSel, hatColorSel, eyeColorSel, eyewearSel, eyewearColorSel /* v2.3.2424 */,
+    headwearSel, hatColorSel, eyeColorSel, eyeStyleSel /* v2.3.2643 */, speciesSel /* v2.3.2682 */, eyewearSel, eyewearColorSel /* v2.3.2424 */,
     shirtSel, shirtColorSel, heightSel, frameSel, inkRev]);
   var _stripRef = React.useRef(null);
   var _colorRowRef = React.useRef(null);
@@ -935,14 +1014,30 @@ export function NameModal(props) {
   }, /*#__PURE__*/React.createElement("div", {
     /* v2.3.801: painted gold BRO TOWN lettering.  v2.3.806: gem sword
        flanks the lettering.  v2.3.1251: ~22% smaller (handoff) — size
-       lives in .bt-cc-logo; the sword tracks it via wrap-relative %. */
+       lives in .bt-cc-logo; the sword tracks it via wrap-relative %.
+       ═══ v2.3.2642: ONE LOCKUP, THE OWNER'S OWN FILE ═══
+       Owner, with the art: "The first image shows the BroTown logo I want on
+       the trait picker instead of the current one."  The sword is drawn INTO
+       the wordmark in it, so the pair of <img>s that used to be composed here
+       (logo-brotown.webp under an absolutely-positioned sword.webp) collapses
+       to one — the same move the splash made at v2.3.2458, for the same
+       reason: the two had to be held in proportion by hand (left:63.5%,
+       top:19%, height:115%, plus a gem-in-the-O alignment solved in
+       wrap-relative % at v2.3.808), and one image cannot drift from itself.
+       IT ALSO RETIRES AN OVERHANG.  The old sword hung BELOW its wrapper —
+       tip at ~134% of the wordmark's height — over the stage the character
+       stands on, which is the collision the owner reported at v2.3.2201 and
+       what .bt-cc-title's padding-bottom was reserving room for.  The new
+       lockup's blade ends inside its own box (the art is alpha-trimmed by
+       tools/ui/fit-title-lockups.mjs), so the title's box is now the whole
+       ceiling — see that padding in game.css and the guards in mp-ccstand. */
     className: "bt-cc-logo-wrap"
   }, /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/sword.webp', alt: '', className: "bt-cc-logo-sword"
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "bt-cc-sword-shine", "aria-hidden": true
-  }), /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-logo"
+    /* No ?v= cache-bust on purpose: this is a NEW path, so there is no stale
+       edge copy to defeat — and the <link rel=preload> in index.html has to
+       match this URL exactly or it adds a request instead of saving one
+       (docs/TRAPS.md §52). */
+    src: '/ui/welcome/title/brotown-lockup.png', alt: 'BRO TOWN', className: "bt-cc-logo"
   }), /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-logo-shine", "aria-hidden": true
   }))), /*#__PURE__*/React.createElement("section", {
@@ -1701,13 +1796,14 @@ export function NameModal(props) {
       onClick: function () { if (_colors) _def.setColor('default'); }
     }, "Default"),
     /* ═══ v2.3.2424: THE ROW SAYS WHICH PART IT PAINTS ═══
-       Only eyewear sets colorLabel, and only because eyewear is the one
-       category where the answer VARIES between items: the recolour paints the
-       biggest material, which is the FRAME on the golden pair, the monocle and
-       the Thug Lifes, and the LENS on the goggles, the lasers and the white
-       glass (measured -- see eyewearColorCatalog.js).  Without this the same
-       swatch does two different things on two tabs of the same picker and
-       never says so.
+       Eyewear and, since v2.3.2645, eye styles set colorLabel, and both for
+       the same reason: they are the categories where the answer VARIES between
+       items.  The recolour paints one measured material, which is the FRAME on
+       the golden pair, the monocle and the Thug Lifes and the LENS on the
+       goggles, the lasers and the white glass (eyewearColorCatalog.js) -- and
+       the PUPIL on One Eye and WTF, the LIDS on Sleepy, the FLAMES on Demon
+       (eyeStyleColorCatalog.js).  Without this the same swatch does two
+       different things on two tabs of the same picker and never says so.
 
        In the EXISTING head row beside Default, deliberately: that row is
        always rendered on every tab, so this costs no height and the

@@ -325,6 +325,20 @@ capped mechanic in §4c are untouched.
   (noticeability band, never-smaller, the vigor/ironskin anchors,
   crit-pair parity, decay monotonicity).
 
+## 4e. Relative point value — **SHIPPED v2.3.2680** (owner ask 2026-09-22)
+
+The §4d ask, made again of the prog3 allocation grid: *"points carry a lot
+of weight at or under the current level monster with a pretty steep decay
+as the combat levels go up"*, then *"I want each point to matter during the
+early level up phases of the game."*  Every stat that changes a hit or a
+stride reads a front-loaded curve, `max × q/(q+k)`, instead of `pts × per`
+(5 Dodge points: 2 % → 37.5 %), uncapped; the seven that change a hit fade
+against a monster above your trained level (−20 %/level, gone at +5); Power
+multiplies instead of adding; Dodge × Defense never let less than 10 % of a
+base hit through; an elemental hit meets Resist alone.  No migration.  The
+shipped spec and the before/after tables are `docs/specs/relative-points.md`;
+`tools/relative-points-sim.mjs` re-measures them through the real roll.
+
 ## 5. Hardening v1 (rare chase) — adopted spec
 
 GDD §4.6c verbatim, flagged for a future server-side PR:

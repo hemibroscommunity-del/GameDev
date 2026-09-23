@@ -783,13 +783,51 @@ export const GUILD_QUESTS = [
 /* v2.3.1131: quality grades (BALANCE-PLAN §4.6b, adopted from GDD --
  * the CANONICAL table).  Multiplies EFFECTIVE WEAPON BASE only
  * (pre-stat, pre-tierMult); rolled ONCE at server mint, immutable.
- *   QUALITY_GRADES <-> src/data/gameSystems.js QUALITY_MULTS  */
+ *   QUALITY_GRADES <-> src/data/gameSystems.js QUALITY_MULTS
+ *
+ * ═══ v2.3.2664: QUALITY MULTIPLIES THE WHOLE HIT, AND GODLY BREAKS THE GAME ═══
+ * Owner, 2026-09-22: "I also want armor, weapon, etc tier to really matter -
+ * especially differences between normal, rare, elite, and godly (literally one
+ * in millions so make it basically game breaking good)."
+ *
+ * Multiplying only the 10-point weapon BASE is what made quality vanish: the
+ * skill term is 1.5/level, so by skill 100 a godly ×3.0 blade hit +12.5 %
+ * harder than a normal one.  So a weapon's grade now multiplies its WHOLE hit,
+ * after tierMult (weaponQualityMult, combat.js), at every level:
+ *   normal ×1.0 · rare ×1.3 · elite ×1.75 · godly ×5.0
+ * ×5 is "basically game breaking" on purpose — a godly weapon one-shots what
+ * a normal one needs four or five swings for — and it is priced by the odds:
+ * 1 in 2,000,000 (hardening.js Q_GODLY), "literally one in millions".
+ * Armour reads the same `mult` on its TIER (combat.js _armorDrMult), and
+ * `armorLift` is how far one piece of that grade RAISES the 75 % reduction
+ * ceiling — a full set's ceiling is 75 % normal, 80 % rare, 85 % elite, 95 %
+ * godly — so the grades still differ at the top of the armour ladder, where
+ * the tier alone would pin every grade to the same 75 %.  Rare/elite odds
+ * unchanged.  armorLift <-> src/data/gameSystems.js ARMOR_DR.LIFT. */
 export const QUALITY_GRADES = {
-  normal: { mult: 1.00 },
-  rare:   { mult: 1.20 },
-  elite:  { mult: 1.50 },
-  godly:  { mult: 3.00 },
+  normal: { mult: 1.00, armorLift: 0 },
+  rare:   { mult: 1.30, armorLift: 0.025 },
+  elite:  { mult: 1.75, armorLift: 0.05 },
+  godly:  { mult: 5.00, armorLift: 0.10 },
 };
+/* v2.3.2664: a weapon's grade multiplier, one reader (roll + ceiling). */
+export function weaponQualityMult(w) {
+  return (w && QUALITY_GRADES[w.quality]) ? QUALITY_GRADES[w.quality].mult : 1;
+}
+/* ═══ v2.3.2664: A WEAPON TIER MATTERS — tierMult ^ 1.5 in the damage roll ═══
+ * Each forge tier was ~+11 % damage (copper 1.12 → iron 1.25 → steel 1.40…),
+ * which a player cannot feel.  The roll now reads tierMult^1.5, so each step
+ * is ~+18 % (copper ×1.19, iron ×1.40, steel ×1.66, abyssal ×3.72,
+ * worldbreaker ×21.9).  The TABLE is untouched — tierMult still drives the
+ * tier gate's fallback index, armour, prices and every other reader — only
+ * the damage factor bends.  ANTICHEAT LOCKSTEP: _maxWeaponDmg multiplies by
+ * the same weaponTierFactor, and the client's readouts
+ * (src/data/gameSystems.js) mirror both helpers. */
+export const WEAPON_TIER_EXP = 1.5;
+export function weaponTierFactor(tierMult) {
+  const tm = Number(tierMult) || 1;
+  return tm > 0 ? Math.pow(tm, WEAPON_TIER_EXP) : 1;
+}
 
 /* v2.3.1139 (item I): amulet elemDmg mirror for _computeAttackDamage.
  *   AMULET_TIER_POWER <-> src/data/items.js AMULET_TIERS basePower
@@ -903,6 +941,40 @@ export const MONSTER_ARMOR_DROPS = [
   { slot: 'armor',     chance: 1 / 500, name: 'Iron Torso',   mat: 'iron', tierMult: 2.0 },
   { slot: 'legsArmor', chance: 1 / 500, name: 'Iron Greaves', mat: 'iron', tierMult: 2.0 },
 ];
+
+/* ═══ v2.3.2664: THE ARMOUR LADDER'S DEFENSE REQUIREMENT ═══
+ * Owner, 2026-09-23: "Yeah I'll go with your defense requirements for next
+ * tiers."  Tiers 1 and 2 (copper, iron) ask nothing; each tier above asks
+ * 5 allocated Defense points more — tier 3 needs 5, tier 4 needs 10, tier 5
+ * needs 15.  Defense can never exceed character level, so 5 also means
+ * "level 5 and committed to Defense": a first-session goal for a player who
+ * puts their first points there, where 10 would have put the first new tier
+ * past where most players stop.
+ *
+ * THE TIER IS READ ON ARMOUR'S OWN SCALE: round(tierMult), whole steps
+ * (v2.3.1925b).  Before this, a piece minted like the drops above — no
+ * `gearBase` — fell through _prog3EquipOk to the WEAPON table's fallback,
+ * round((tierMult − 1) × 6) × 5, which asked 30 Defense for iron (v2.3.2124
+ * exempted iron rather than fix the road) and would have asked 60 for a
+ * tier-3 piece.  The base tierMult, never × quality: a rare iron torso is
+ * still iron.
+ *   <-> src/data/gameSystems.js armorDefReq / isArmourLadderPiece
+ *       (mirror-audit sweeps both against the worker's gate). */
+export const ARMOR_FREE_TIERS = 2;
+export const ARMOR_DEF_REQ_PER_TIER = 5;
+/* A piece on the armour ladder: body armour as the game mints it — no forge
+   `gearBase` and no weapon `type`.  A weapon or a forged piece that somehow
+   reaches the armour slot keeps the gate it always had. */
+export function isArmourLadderPiece(item) {
+  return !!item && typeof item === 'object'
+    && typeof item.gearBase !== 'string' && typeof item.type !== 'string';
+}
+export function armorDefReq(item) {
+  if (!item || typeof item !== 'object') return 0;
+  const tm = Number(item.tierMult);
+  const rung = Math.round(Math.max(1, Math.min(8, (Number.isFinite(tm) && tm > 0) ? tm : 1)));
+  return Math.max(0, rung - ARMOR_FREE_TIERS) * ARMOR_DEF_REQ_PER_TIER;
+}
 
 /* The gem is a plain stackable, not the elemental raw_<element> the Gem
  * Cutter consumes (GEM_RAW_MONSTER_DROP above).  Deliberately a different

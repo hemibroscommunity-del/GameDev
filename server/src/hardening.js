@@ -50,7 +50,9 @@ export const HARDEN = {
 };
 
 // §4.6b drop table, cumulative from the rare end.
-const Q_GODLY = 1 / 400000;
+/* v2.3.2664: godly 1 in 400,000 → 1 in 2,000,000 (owner: "literally one in
+   millions"), paid for by what godly now does (data.js QUALITY_GRADES). */
+const Q_GODLY = 1 / 2000000;
 const Q_ELITE = 0.009;
 const Q_RARE = 0.09;
 
@@ -65,11 +67,14 @@ export const hardeningMethods = {
 
   // The §4.4 effective base: what the damage sites feed in place of
   // the raw _weaponBase.  Missing fields = legacy weapon = identity.
+  /* v2.3.2664: HARDNESS only.  Quality moved OUT of the base to multiply the
+     whole hit (data.js weaponQualityMult, applied by _computeAttackDamage and
+     _maxWeaponDmg after tierMult) — on the base alone it faded to nothing as
+     the skill term grew. */
   _weaponEffBase(type, w) {
     const raw = this._weaponBase(type);
     const h = (w && typeof w.hardness === 'number') ? Math.max(0, Math.min(HARDEN.MAX, w.hardness)) : 0;
-    const q = (w && QUALITY_GRADES[w.quality]) ? QUALITY_GRADES[w.quality].mult : 1;
-    return (raw + h * HARDEN.BASE_BONUS) * q;
+    return raw + h * HARDEN.BASE_BONUS;
   },
 
   // Material-tier index for the Blacksmith access gate.  gearBase

@@ -4,11 +4,12 @@
  */
 import { Assets, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCount } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs; v2.3.2061: animated props */
-import { propsForZone, propFootprint } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
+import { propsForZone, propFootprint, foregroundForZone } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
 import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { rpgBlocks } from '@/data/abilities.js'; /* v2.3.2302: the block ladder */
+import { isProg3RelEnabled, prog3Live, prog3SkillLevel, prog3ActiveCat } from '@/data/prog3.js'; /* v2.3.2680: the plate's yardstick */
 /* v2.3.1183: status-id -> element lookup, built once at import time.
    _updateMonsters used to run Object.values(ELEMENTS).find(...) per
    status per monster per FRAME -- an array + closure allocation and a
@@ -59,6 +60,10 @@ import { getHeadwear, HEADWEAR_CATALOG, headwearUnderHair, headwearBehindBeard }
 import { getFacialHair, FACIALHAIR_CATALOG } from '../traits/facialHairCatalog.js';
 import { getEyewear, EYEWEAR_CATALOG } from '../traits/eyewearCatalog.js';   /* v2.3.2361: the eyewear slot */
 import { getEyewearColor, getColoredEyewearTextures } from '../traits/eyewearColorCatalog.js';   /* v2.3.2424 */
+import { getEyeStyle, EYE_STYLE_CATALOG } from '../traits/eyeStyleCatalog.js';   /* v2.3.2643: the eye-style slot */
+import { getSpecies } from '../traits/speciesCatalog.js';   /* v2.3.2682: the species slot */
+import { getSpeciesBuild, preloadSpeciesArt } from '../traits/speciesArt.js';   /* v2.3.2682 */
+import { getColoredEyeStyleTextures } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
@@ -319,6 +324,12 @@ const _npcDrawn = Object.create(null);
 /* v2.3.1775: what scenery is on screen and how big it is drawn. */
 const _propsDrawn = [];
 if (typeof window !== 'undefined') window.__btWorldProps = () => _propsDrawn.slice();
+/* v2.3.2655: the same probe for the foreground pieces.  Published separately
+   rather than folded into __btWorldProps because they are a different kind of
+   object -- no ground line, no footprint, never sorted -- and a test that had
+   to filter them back out of the prop list would be asserting the filter. */
+const _fgDrawn = [];
+if (typeof window !== 'undefined') window.__btForeground = () => _fgDrawn.slice();
 /* v2.3.1775: the entity layer's child order — Pixi paints in this order, so it
    is what decides whether a stall covers the vendor standing at it or the
    other way round (Diego at the market stall since v2.3.2080; the example
@@ -632,6 +643,7 @@ function _loadTraitDir(e, category, id, dir, attempt) {
 function _ensureHeadwearLoaded(id) { return _ensureTraitLoaded('headwear', id); }
 function _ensureFacialHairLoaded(id) { return _ensureTraitLoaded('facialhair', id); }
 function _ensureEyewearLoaded(id) { return _ensureTraitLoaded('eyewear', id); }   /* v2.3.2361 */
+function _ensureEyeStyleLoaded(id) { return _ensureTraitLoaded('eyestyle', id); }   /* v2.3.2643 */
 function _ensureHairLoaded(id) { return _ensureTraitLoaded('hair', id); }
 
 /* Body anchor schemas, loaded once and shared by every player + hat.
@@ -1285,6 +1297,72 @@ function _placeEyewear(display, ewId, ewColorId, pose, dir, mirror, frameIdx, bo
   if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta, fallbackTex: baseEntry.tex };
   const tune = (entry && entry.meta && entry.meta.poseFit) ? null : hairPoseTune(pose, dir);
   _placeTrait(display._eyewearSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale, tune);
+}
+/* ═══ v2.3.2643: EYE STYLES ═══
+   The fifth head trait, and eyewear's twin: same crown-anchored _placeTrait,
+   same eye-line drop from the positive crownNudge Y the importer measured off
+   the mannequin, same v2.3.1487 pose rule (a piece carrying `poseFit` had its
+   scaleByPose measured per pose, so it must NOT also take the by-eye jog-east
+   correction on top).
+   The slot's draw order (above hair, BELOW the eyewear) is the sprites' child
+   order in createPlayerDisplay / the remote display -- see eyeStyleCatalog.js
+   for why glasses go over your eyes whatever your eyes are.
+   v2.3.2645: and it takes a colour.  "No recolour -- an eye style is the
+   colours it was drawn in" is what this comment said for two days, until the
+   owner asked: "None of the eyes are recolorable (don't know if they can be)."
+   The colour is the EYE colour -- the same 'ec' the painted-in iris has used
+   since v2.3.1930, which is why nothing had to be added to the wire for a peer
+   to arrive wearing green Demon Eyes.  Retinted exactly as _placeEyewear does
+   it: the recoloured textures reuse the BASE meta (a retint moves no pixel, so
+   the anchors and scaleByPose are unchanged) and fallbackTex keeps the native
+   art on screen while the bake is in flight, so a colour change never blanks
+   the face. */
+function _placeEyeStyle(display, esId, esColorId, pose, dir, mirror, frameIdx, bodyScale) {
+  const baseEntry = _ensureEyeStyleLoaded(esId);
+  let entry = baseEntry;
+  const colored = getColoredEyeStyleTextures(esId, esColorId);
+  if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta, fallbackTex: baseEntry.tex };
+  const tune = (entry && entry.meta && entry.meta.poseFit) ? null : hairPoseTune(pose, dir);
+  _placeTrait(display._eyeStyleSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale, tune);
+}
+/* ═══ v2.3.2682: SPECIES (the monkey) ═══
+   Eyewear's twin with two additions, both data (speciesArt.js,
+   docs/specs/SPECIES-PLAN.md Stage 2d):
+   - the build is per SKIN: the piece's fur patches are recoloured with the
+     wearer's skin exactly like the body, so `skinId` is the wearer's, never
+     the local player's for a remote bro;
+   - a frame in meta.frameOverlays draws its own baked overlay instead of the
+     piece, already in BODY space: its top-left pixel sits on body pixel (x, y)
+     of the 256-space frame, at the body's own scale and mirror, no anchor, no
+     nudge, no pose scale.  spriteBody is centred on the 256 frame (the same
+     `(bodyTop - W/2) * scale` _placeTrait uses), so that corner is
+     spriteBody + (x - 128, y - 128) * scale, with x flipped by the mirror.
+   Not while the fullset figure swaps the crown (_crownOverride): the overlays
+   were baked against body-tops, and that head is drawn somewhere else -- the
+   plain crown-anchored piece follows the override like every other trait.
+   meta.poseFit is set (measured scaleByPose), so no pose tune, the v2.3.1487
+   rule _placeEyewear applies. */
+function _placeSpecies(display, spId, skinId, pose, dir, mirror, frameIdx, bodyScale) {
+  const sprite = display._speciesSprite;
+  if (!sprite) return;
+  const b = (spId && spId !== 'none' && pose !== 'dodge') ? getSpeciesBuild(spId, skinId) : null;
+  if (!b) { sprite.visible = false; return; }
+  const key = pose + '-' + dir;
+  const rect = !_crownOverride && b.meta.frameOverlays && b.meta.frameOverlays[key] && b.meta.frameOverlays[key][frameIdx];
+  const ftex = rect && b.frames[key] && b.frames[key][frameIdx];
+  const spriteBody = display._spriteBody;
+  if (ftex && spriteBody) {
+    const s = Math.abs(bodyScale), m = mirror ? -1 : 1;
+    if (sprite.texture !== ftex) sprite.texture = ftex;
+    sprite.anchor.set(0, 0);
+    sprite.x = spriteBody.x + (rect[4] - 128) * s * m;
+    sprite.y = spriteBody.y + (rect[5] - 128) * s;
+    sprite.scale.set(s * m, s);
+    sprite.alpha = 1;
+    sprite.visible = true;
+    return;
+  }
+  _placeTrait(sprite, { tex: b.tex, meta: b.meta }, display, pose, dir, mirror, frameIdx, bodyScale, null);
 }
 /* v2.3.497: the shirt is no longer an overlay sprite -- it's baked into the
    body (torso skin retinted to the shirt color in playerSkins.getBodyFrame),
@@ -2123,7 +2201,7 @@ function _placeSouthBlockLegs(display, sb, o) {
   if (!o || !o.active || !sb || !o.standTex) return park();
   const cut = jogWaistRow(o.dir, o.jogFrame);
   if (!cut || cut <= 0 || cut >= 256) return park();
-  const jogRaw = getBodyFrame(o.skin, o.pants, o.shoes, 'jog', o.dir, o.jogFrame, o.shirtT, o.shirtKey, o.eyeId, o.bodyArt);
+  const jogRaw = getBodyFrame(o.skin, o.pants, o.shoes, 'jog', o.dir, o.jogFrame, o.shirtT, o.shirtKey, o.eyeId, o.bodyArt, o.eyeStyleId);   /* v2.3.2643 */
   if (!jogRaw) return park();
   /* The jog half's mask needs the jog frame's OWN gear silhouettes; reusing
      the standing frame's would erase the body along last frame's plate edge. */
@@ -3103,7 +3181,7 @@ export async function prewarmMaskedBodyFrames(opts) {
         prewarmProgress.done++;
         /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks. */
         const tex = (pose === 'fish') ? getFrame('fish', 'south', f)
-          : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor(), localBodyArt(false));
+          : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor(), localBodyArt(false), getEyeStyle());   /* v2.3.2643 */
         if (!tex) continue;
         const worn = [];
         for (const sl of slots) {
@@ -3197,7 +3275,7 @@ export async function prewarmAltWornSets(opts) {
           if (fast) prewarmProgress.done++;
           /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks. */
           const tex = (pose === 'fish') ? getFrame('fish', 'south', f)
-            : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor(), localBodyArt(false));
+            : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor(), localBodyArt(false), getEyeStyle());   /* v2.3.2643 */
           if (!tex) continue;
           const worn = [];
           for (const [sl, id] of set.worn) {
@@ -3302,7 +3380,7 @@ function _hideBodyRegions(display) {
 /* Place the pickup head overlay on the (reused) _bodyHead sprite at the body
    sprite's exact transform.  No-op (leaves _bodyHead as the caller left it --
    hidden) outside the pickup pose or before the sheet loads. */
-function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, frameIdx, phase) {
+function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, frameIdx, phase, eyeStyleId) {
   const hd = display._bodyHead;
   if (!hd || !sb) return;
   /* v2.3.1389: `phase` (jog cycle 0..1) picks the head frame on the SAME
@@ -3310,7 +3388,7 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
      is now 25 frames matching the armor, so head and armor bob as one.
      Dirs whose head count equals the body count resolve to the same
      frame either way; non-jog callers omit it. */
-  const t = getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, phase);
+  const t = getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, phase, eyeStyleId);   /* v2.3.2643 */
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
   hd.x = sb.x; hd.y = sb.y;
@@ -3896,9 +3974,10 @@ function _clipStandInHair(sprites, hatId, dir, mirror, cwx, cwy, scaleVal, fit) 
   _rec();
 }
 
-/** Place hat + beard + eyewear + hair (the player's current selection) on a
- *  stand-in skill sprite.  sprites = { hat, beard, eyewear, hair } owned by
- *  the caller (v2.3.2361: + eyewear). */
+/** Place hat + beard + eyewear + eye style + hair (the player's current
+ *  selection) on a stand-in skill sprite.  sprites = { hat, beard, eyewear,
+ *  eyestyle, hair } owned by the caller (v2.3.2361: + eyewear;
+ *  v2.3.2643: + eyestyle). */
 export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
   if (!sprites) return;
   /* hair first (renders behind the hat in the caller's child order), then
@@ -3912,6 +3991,16 @@ export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
   const fhCol = getColoredFacialHairTextures(getFacialHair(), getFacialHairColor());
   if (fhCol && fhEntry) fhEntry = { tex: fhCol, meta: fhEntry.meta, fallbackTex: fhEntry.tex }; /* v2.3.1305 */
   _placeStandaloneTrait(sprites.beard, fhEntry, dir, mirror, cwx, cwy, scaleVal);
+
+  /* v2.3.2643: the eye style, just under the eyewear.  Same argument as the
+     line below it -- a face that loses its eyes for the quarter-second of every
+     swing is exactly the failure TRAPS #15 records. */
+  /* v2.3.2682: the species, under the eye style -- a monkey must not turn
+     human for the quarter-second of every swing (TRAPS #15).  The plain piece:
+     the stand-in poses have no baked frames. */
+  { const _sb = getSpeciesBuild(getSpecies(), getSkin());
+    _placeStandaloneTrait(sprites.species, _sb ? { tex: _sb.tex, meta: _sb.meta } : null, dir, mirror, cwx, cwy, scaleVal); }
+  _placeStandaloneTrait(sprites.eyestyle, _ensureEyeStyleLoaded(getEyeStyle()), dir, mirror, cwx, cwy, scaleVal);
 
   /* v2.3.2361: eyewear, between the beard and the hat in the caller's child
      order.  Through the same standalone path as the other three, so a pair of
@@ -3934,7 +4023,8 @@ export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
    (passed in `looks`) instead of the local getHair()/getHeadwear() globals --
    used to composite a REMOTE player's hair/beard/hat onto their attack stand-in
    (MP parity).  looks = { hair, hairColor, facialhair, facialHairColor,
-   eyewear, headwear, hatColor } (v2.3.2361: + eyewear). */
+   eyewear, eyeStyle, headwear, hatColor } (v2.3.2361: + eyewear;
+   v2.3.2643: + eyeStyle). */
 export function placeSkillTraitsFor(sprites, looks, cwx, cwy, dir, mirror, scaleVal) {
   if (!sprites || !looks) return;
   let hairEntry = _ensureHairLoaded(looks.hair);
@@ -3947,6 +4037,9 @@ export function placeSkillTraitsFor(sprites, looks, cwx, cwy, dir, mirror, scale
   if (fhCol && fhEntry) fhEntry = { tex: fhCol, meta: fhEntry.meta, fallbackTex: fhEntry.tex }; /* v2.3.1305 */
   _placeStandaloneTrait(sprites.beard, fhEntry, dir, mirror, cwx, cwy, scaleVal);
 
+  { const _sb = getSpeciesBuild(looks.species, looks.skin);   /* v2.3.2682: THEIR species, on THEIR skin */
+    _placeStandaloneTrait(sprites.species, _sb ? { tex: _sb.tex, meta: _sb.meta } : null, dir, mirror, cwx, cwy, scaleVal); }
+  _placeStandaloneTrait(sprites.eyestyle, _ensureEyeStyleLoaded(looks.eyeStyle), dir, mirror, cwx, cwy, scaleVal);   /* v2.3.2643 */
   _placeStandaloneTrait(sprites.eyewear, _ensureEyewearLoaded(looks.eyewear), dir, mirror, cwx, cwy, scaleVal);   /* v2.3.2361 */
 
   let hwEntry2 = _ensureHeadwearLoaded(looks.headwear);
@@ -3966,6 +4059,8 @@ export function hideSkillTraits(sprites) {
   if (sprites.hat) sprites.hat.visible = false;
   if (sprites.beard) sprites.beard.visible = false;
   if (sprites.eyewear) sprites.eyewear.visible = false;   /* v2.3.2361 */
+  if (sprites.eyestyle) sprites.eyestyle.visible = false;   /* v2.3.2643 */
+  if (sprites.species) sprites.species.visible = false;   /* v2.3.2682 */
   if (sprites.hair) sprites.hair.visible = false;
   /* v2.3.1776: drop the clip with them.  A hair sprite that is hidden while
      still holding a mask keeps Pixi doing the stencil work for something
@@ -4095,7 +4190,7 @@ function _orderTraitsAndWeapon(display, facingIdx, hatId) {
     const wc = display._weaponContainer;
     if (wc && wc.visible) {
       let ref = -1;
-      for (const s of [display._headwearSprite, display._facialHairSprite, display._eyewearSprite, display._hairSprite, display._shirtSprite]) {   /* v2.3.2361: + eyewear */
+      for (const s of [display._headwearSprite, display._facialHairSprite, display._eyewearSprite, display._eyeStyleSprite, display._speciesSprite, display._hairSprite, display._shirtSprite]) {   /* v2.3.2361: + eyewear; v2.3.2643: + the eye style; v2.3.2682: + the species */
         if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
       }
       if (ref >= 0) {
@@ -4203,6 +4298,7 @@ export function preloadTraits() {
     ['hair', HAIR_CATALOG],
     ['facialhair', FACIALHAIR_CATALOG],
     ['eyewear', EYEWEAR_CATALOG],   /* v2.3.2361: on the gate from day one (CLAUDE.md: preloading is LAW); costs nothing while the catalog is only 'none' */
+    ['eyestyle', EYE_STYLE_CATALOG],   /* v2.3.2643: the same law -- every style loads on the gate, not on first sighting */
   ];
   for (const [category, catalog] of cats) {
     for (const entry of catalog) {
@@ -4230,6 +4326,11 @@ export function preloadTraits() {
   return Promise.allSettled([
     _ensureBodyData(),
     ...urls.map((u) => Assets.load(u).catch(() => {})),
+    /* v2.3.2682: every species' art (piece, fur twins, per-frame strips) on
+       the gate, and the local player's skin build made from it before the
+       intro lifts -- the build is a canvas pass, not a load, but it is the
+       first-use cost the law is about. */
+    preloadSpeciesArt().then(() => { try { getSpeciesBuild(getSpecies(), getSkin()); } catch (e) { /* best-effort */ } }),
   ]);
 }
 
@@ -6230,6 +6331,22 @@ function createPlayerDisplay() {
   capeHoodMask.visible = false;
   container.addChild(capeHoodMask);
 
+  /* v2.3.2643: the eye style.  ABOVE the hair and the hood, BELOW the eyewear:
+     glasses go over your eyes whatever your eyes are, so this is the first of
+     the two face layers.  Crown-anchored like the beard -- see _placeEyeStyle
+     and eyeStyleCatalog.js. */
+  /* v2.3.2682: the species (the monkey's ears and muzzle).  ABOVE the hair
+     and the hood, BELOW the eye style, the eyewear and the hat -- a monkey
+     still wears Demon Eyes and a top hat over its own face.  See
+     _placeSpecies and speciesCatalog.js. */
+  const speciesSprite = new Sprite();
+  speciesSprite.visible = false;
+  container.addChild(speciesSprite);
+
+  const eyeStyleSprite = new Sprite();
+  eyeStyleSprite.visible = false;
+  container.addChild(eyeStyleSprite);
+
   /* v2.3.2361: eyewear.  ABOVE the hair and the hood, BELOW the hat: frames
      sit on the face in front of a fringe and in front of a hood's edge, and a
      brim or a helmet's guard crosses the top of them (the 3D-glasses Bro wears
@@ -6592,6 +6709,8 @@ function createPlayerDisplay() {
   container._capeHoodMask = capeHoodMask;             /* v2.3.2186 */
   container._headwearSprite = headwearSprite;
   container._eyewearSprite = eyewearSprite;            /* v2.3.2361 */
+  container._eyeStyleSprite = eyeStyleSprite;          /* v2.3.2643 */
+  container._speciesSprite = speciesSprite;            /* v2.3.2682 */
   container._nftFront = nftFront;
   container._nftBack = nftBack;
   container._weaponContainer = weaponContainer;
@@ -6761,6 +6880,22 @@ function createOtherPlayerDisplay() {
   capeHoodMask.visible = false;
   container.addChild(capeHoodMask);
 
+  /* v2.3.2643: the eye style.  ABOVE the hair and the hood, BELOW the eyewear:
+     glasses go over your eyes whatever your eyes are, so this is the first of
+     the two face layers.  Crown-anchored like the beard -- see _placeEyeStyle
+     and eyeStyleCatalog.js. */
+  /* v2.3.2682: the species (the monkey's ears and muzzle).  ABOVE the hair
+     and the hood, BELOW the eye style, the eyewear and the hat -- a monkey
+     still wears Demon Eyes and a top hat over its own face.  See
+     _placeSpecies and speciesCatalog.js. */
+  const speciesSprite = new Sprite();
+  speciesSprite.visible = false;
+  container.addChild(speciesSprite);
+
+  const eyeStyleSprite = new Sprite();
+  eyeStyleSprite.visible = false;
+  container.addChild(eyeStyleSprite);
+
   /* v2.3.2361: eyewear.  ABOVE the hair and the hood, BELOW the hat: frames
      sit on the face in front of a fringe and in front of a hood's edge, and a
      brim or a helmet's guard crosses the top of them (the 3D-glasses Bro wears
@@ -6850,6 +6985,8 @@ function createOtherPlayerDisplay() {
   container._capeHoodMask = capeHoodMask;             /* v2.3.2186 */
   container._headwearSprite = headwearSprite;
   container._eyewearSprite = eyewearSprite;            /* v2.3.2361 */
+  container._eyeStyleSprite = eyeStyleSprite;          /* v2.3.2643 */
+  container._speciesSprite = speciesSprite;            /* v2.3.2682 */
   container._nftFront = nftFront;
   container._nftBack = nftBack;
   container._weaponContainer = weaponContainer;
@@ -7263,8 +7400,12 @@ function _drawResourceSpent(label, gfx, kind, y, alpha) {
 }
 
 export class EntityRenderer {
-  constructor(entityLayer, playerLayer, monsterUiLayer, gestureLayer, propFrontLayer) {
+  constructor(entityLayer, playerLayer, monsterUiLayer, gestureLayer, propFrontLayer, foregroundLayer) {
     this.entityLayer = entityLayer;
+    /* v2.3.2655: the near-camera layer (pixiApp WORLD_LAYER_NAMES). null on an
+       older scene graph, which simply draws no foreground rather than
+       throwing -- the same posture propFrontLayer and gestureLayer take. */
+    this.foregroundLayer = foregroundLayer || null;
     this.playerLayer = playerLayer;
     /* v2.3.2633: the sorted layer ABOVE `player`.  A prop whose ground line
        is south of the player's moves here for the frame, which is how a
@@ -7295,6 +7436,7 @@ export class EntityRenderer {
     this._updateOtherPlayers(S, now);
     this._updatePlayer(S, now);
     this._updateProps(S);
+    this._updateForeground(S);   /* v2.3.2655: near-camera framing art */
     this._updateNPCs(S, now);
     this._updatePet(S, now);
     this._updatePlayerHud(S, now);
@@ -8752,8 +8894,17 @@ export class EntityRenderer {
            `_bandBar` block above, where the value is now made. */
         const _plateShow = !_bandBar;
         /* The band is the monster's level RELATIVE TO YOURS (D16), so it moves
-           when either side levels.  plateBandFor owns the four thresholds. */
-        const _plateBand = plateBandFor(m.level, (S.rpg && S.rpg.level) || 1);
+           when either side levels.  plateBandFor owns the four thresholds.
+           v2.3.2680: "yours" is the trained skill of the weapon in your hand
+           on a relative worker — the level your points' EDGE is measured
+           against (prog3.js) — so the colour tells you how much of your
+           points still count: near = all of them, high = most, danger = few
+           to none.  The character level is a SUM of three skills and would
+           paint a monster "near" that already strips a pure build's points. */
+        const _plateYou = (isProg3RelEnabled() && S.rpg && prog3Live(S.rpg))
+          ? prog3SkillLevel(S.rpg, prog3ActiveCat(S.rpg))
+          : ((S.rpg && S.rpg.level) || 1);
+        const _plateBand = plateBandFor(m.level, _plateYou);
         _updateNamePill(_plateUi, monsterDisplayName(m.archetype || m.type),
           m.level == null ? 1 : m.level, _plateShow, null, _plateAlarm, _plateBand);
         /* ═══ v2.3.2571: THE PLATE SITS WHERE THE BAR SITS ═══
@@ -9754,8 +9905,8 @@ export class EntityRenderer {
            The durable fix is re-cut fish art with the rod on its own layer. */
         let tex = pose === 'fish'
           ? getFrame('fish', 'south', frameIdx)
-          : getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt);
-        if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt);
+          : getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle);   /* v2.3.2643: THEIR style */
+        if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle);   /* v2.3.2643 */
         if (tex) {
           /* Reassign texture whenever it differs — same self-heal as
              the local player path, fixes invisible-after-zone-change. */
@@ -9843,9 +9994,9 @@ export class EntityRenderer {
           try {
             /* v2.3.1394: jog overlay only over the fullset figure (see local path). */
             /* v2.3.1479: same armour gate as the local path. */
-            if ((pose !== 'jog' || _fsR) && ((pose !== 'hit' && pose !== 'mine') || _rworn.length > 0)) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase);
+            if ((pose !== 'jog' || _fsR) && ((pose !== 'hit' && pose !== 'mine') || _rworn.length > 0)) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase, other.eyeStyle);   /* v2.3.2643: THEIR style */
             display._headBehindGear = (pose === 'jog' && dir === 'east' && !!_fsR); /* v2.3.1553 */
-            spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx));
+            spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, undefined, other.eyeStyle));   /* v2.3.2643 */
             /* v2.3.1123: lift the angler's head above the fishing chest plate.
                v2.3.2278: above their LEG armour too.  This was chest-only, so
                a peer fishing in greaves lost the same hand the local player
@@ -9876,6 +10027,8 @@ export class EntityRenderer {
           _placeCape(display, other.cape, pose, dir, mirror, frameIdx);   /* v2.3.2023 */
           _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul, other.hair); /* v2.3.1561: hair id for the floating halo */
           _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
+          _placeSpecies(display, other.species, other.skin, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2682: under the eye style, on THEIR skin */
+          _placeEyeStyle(display, other.eyeStyle, other.eyeColor, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2643: under the eyewear; v2.3.2645: + THEIR eye colour */
           _placeEyewear(display, other.eyewear, other.eyewearColor, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2361; v2.3.2424 + colour */
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
           _crownOverride = null;
@@ -9885,6 +10038,8 @@ export class EntityRenderer {
           if (display._headwearSprite) display._headwearSprite.visible = false;
           if (display._facialHairSprite) display._facialHairSprite.visible = false;
         if (display._eyewearSprite) display._eyewearSprite.visible = false;   /* v2.3.2361 */
+        if (display._eyeStyleSprite) display._eyeStyleSprite.visible = false;   /* v2.3.2643 */
+        if (display._speciesSprite) display._speciesSprite.visible = false;   /* v2.3.2682 */
         if (display._shirtSprite) display._shirtSprite.visible = false;
           if (display._hairSprite) display._hairSprite.visible = false;
         }
@@ -9894,6 +10049,8 @@ export class EntityRenderer {
         if (display._headwearSprite) display._headwearSprite.visible = false;
         if (display._facialHairSprite) display._facialHairSprite.visible = false;
         if (display._eyewearSprite) display._eyewearSprite.visible = false;   /* v2.3.2361 */
+        if (display._eyeStyleSprite) display._eyeStyleSprite.visible = false;   /* v2.3.2643 */
+        if (display._speciesSprite) display._speciesSprite.visible = false;   /* v2.3.2682 */
         if (display._shirtSprite) display._shirtSprite.visible = false;
         if (display._hairSprite) display._hairSprite.visible = false;
       }
@@ -10177,7 +10334,7 @@ export class EntityRenderer {
           if (display._spriteBody) display._spriteBody.visible = false;
           if (body) body.visible = false;
           _hideBodyRegions(display);
-          for (const _k of ['_headwearSprite', '_facialHairSprite', '_eyewearSprite', '_hairSprite', '_shirtSprite',   /* v2.3.2361: + eyewear */
+          for (const _k of ['_headwearSprite', '_facialHairSprite', '_eyewearSprite', '_eyeStyleSprite', '_speciesSprite', '_hairSprite', '_shirtSprite',   /* v2.3.2361: + eyewear; v2.3.2643: + the eye style; v2.3.2682: + the species */
             '_gearShirt', '_gearLegs', '_gearChest', '_gearShoulders', '_gearHead']) {
             if (display[_k]) display[_k].visible = false;
           }
@@ -11229,8 +11386,8 @@ export class EntityRenderer {
       const _bodyArt = localBodyArt(mirror);
       let tex = pose === 'fish'
         ? getFrame('fish', 'south', frameIdx)
-        : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey, getEyeColor(), _bodyArt);
-      if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey, getEyeColor(), _bodyArt);
+        : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle());   /* v2.3.2643 */
+      if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle());   /* v2.3.2643 */
       /* v2.3.291: mannequin swap removed -- user wants helmet stickered
          to the NORMAL character body as a rigid assembly.  Trait + body
          share frame-coords so they move together pixel-perfect. */
@@ -11342,9 +11499,9 @@ export class EntityRenderer {
              time they took a hit, for no benefit -- with no gear there is
              nothing that could cover the head in the first place. */
           const _needHead = (pose !== 'hit' && pose !== 'mine') || _worn.length > 0;
-          if ((pose !== 'jog' || _fsT) && _needHead) _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase);
+          if ((pose !== 'jog' || _fsT) && _needHead) _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase, getEyeStyle());   /* v2.3.2643 */
           display._headBehindGear = (pose === 'jog' && dir === 'east' && !!_fsT); /* v2.3.1553 */
-          spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx));
+          spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, undefined, getEyeStyle()));   /* v2.3.2643 */
           /* v2.3.1123: lift the angler's head above the fishing chest plate.
              v2.3.1914 (owner: "When fishing that hand needs to be over the
              shirt during the reel animation instead of under it"): ...and above
@@ -11386,6 +11543,7 @@ export class EntityRenderer {
             active: true, standTex: spriteBody.texture, dir, jogFrame: _jFrame,
             skin: getSkin(), pants: getPants(), shoes: getShoes(),
             shirtT: _shirtT, shirtKey: _shirtKey, eyeId: getEyeColor(),   /* v2.3.1930 */
+            eyeStyleId: getEyeStyle(),   /* v2.3.2643: the erase rides the same object as the recolour */
             bodyArt: _bodyArt,   /* v2.3.1940 */
           });
           /* The greaves stride with the legs they are worn over — otherwise a
@@ -11444,6 +11602,8 @@ export class EntityRenderer {
         _placeCape(display, getCape(), pose, dir, mirror, frameIdx);   /* v2.3.2023 */
         _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale, getHair()); /* v2.3.1561: hair id for the floating halo */
         _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
+        _placeSpecies(display, getSpecies(), getSkin(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2682: under the eye style */
+        _placeEyeStyle(display, getEyeStyle(), getEyeColor(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2643: under the eyewear; v2.3.2645: + the eye colour */
         _placeEyewear(display, getEyewear(), getEyewearColor(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2361; v2.3.2424 + colour */
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
         _crownOverride = null;
@@ -11492,6 +11652,8 @@ export class EntityRenderer {
         if (display._headwearSprite) display._headwearSprite.visible = false;
         if (display._facialHairSprite) display._facialHairSprite.visible = false;
         if (display._eyewearSprite) display._eyewearSprite.visible = false;   /* v2.3.2361 */
+        if (display._eyeStyleSprite) display._eyeStyleSprite.visible = false;   /* v2.3.2643 */
+        if (display._speciesSprite) display._speciesSprite.visible = false;   /* v2.3.2682 */
         if (display._shirtSprite) display._shirtSprite.visible = false;
         if (display._hairSprite) display._hairSprite.visible = false;
       }
@@ -11514,6 +11676,8 @@ export class EntityRenderer {
       if (display._headwearSprite) display._headwearSprite.visible = false;
       if (display._facialHairSprite) display._facialHairSprite.visible = false;
       if (display._eyewearSprite) display._eyewearSprite.visible = false;   /* v2.3.2361 */
+      if (display._eyeStyleSprite) display._eyeStyleSprite.visible = false;   /* v2.3.2643 */
+      if (display._speciesSprite) display._speciesSprite.visible = false;   /* v2.3.2682 */
       if (display._hairSprite) display._hairSprite.visible = false;
       if (display._shirtSprite) display._shirtSprite.visible = false;
       /* Hide the worn gear too -- otherwise the equipped armour stands in
@@ -13184,7 +13348,28 @@ export class EntityRenderer {
     }
     /* A zone change leaves the previous zone's props behind otherwise. */
     for (const [id, spr] of this.propDisplays) {
-      if (!live.has(id)) spr.visible = false;
+      if (!live.has(id)) {
+        spr.visible = false;
+        /* ═══ v2.3.2651: AND IT MUST DROP THE TEXTURE, NOT JUST HIDE ═══
+           Hiding alone was correct while every prop was a town prop, because
+           town art is global and never freed.  Zone decor IS freed on the way
+           out (freeZoneDecor), and this sprite is the last thing holding a
+           reference to the destroyed source.  Two ways that bites, and the
+           second one is the one that actually threw:
+
+             - The assignment below is guarded on `texture === Texture.EMPTY`,
+               so a sprite still holding the OLD texture never re-assigns. Walk
+               back into frost and it keeps the destroyed one...
+             - ...and `visible` is set from that same test, so it is turned
+               back ON. Pixi then renders a texture whose source is null:
+               "Cannot read properties of null (reading 'alphaMode')", which is
+               what mp-zonechurn caught on its second lap through frost.
+
+           Resetting to EMPTY closes both: an invisible sprite is skipped by the
+           renderer, and the next entry re-assigns from the freshly loaded
+           texture. Free for town props, whose art is still in the registry. */
+        spr.texture = Texture.EMPTY;
+      }
     }
     if (typeof window !== 'undefined') {
       _propsDrawn.length = 0;
@@ -13230,6 +13415,70 @@ export class EntityRenderer {
           frameX: _fr ? Math.round(_fr.x) : null,
           frameW: _fr ? Math.round(_fr.width) : null,
           layer: _layer });
+      }
+    }
+  }
+
+  /* ═══ v2.3.2655: THE NEAR-CAMERA FOREGROUND ═══
+     Edge-cropped framing art -- a canopy, a mountain shoulder -- drawn between
+     the camera and everything else.  See ZONE_FOREGROUND (worldProps.js) for
+     why these are a separate table from props rather than a flag on one.
+
+     DELIBERATELY NOT DEPTH-SORTED and deliberately not occluding anything for
+     gameplay: a branch in front of the lens is nearer than the whole world by
+     construction, so there is nothing to sort it against, and you cannot take
+     cover behind it.  The layer sits above `projectiles` and below
+     `damageNumbers` for exactly that reason (pixiApp).
+
+     Scaled to `worldH` like a prop, for the same reason a prop is: re-exporting
+     the source at a different resolution must not silently resize the object.
+     Anchored CENTRE, unlike a prop -- these have no ground line, so the bottom
+     edge means nothing. */
+  _updateForeground(S) {
+    if (!this.foregroundLayer) return;
+    const list = foregroundForZone(S.currentZone);
+    if (!this.fgDisplays) this.fgDisplays = new Map();
+    const live = new Set();
+    for (const f of list) {
+      live.add(f.id);
+      let spr = this.fgDisplays.get(f.id);
+      if (!spr) {
+        spr = new Sprite(Texture.EMPTY);
+        spr.anchor.set(0.5, 0.5);
+        spr.label = `fg_${f.id}`;
+        this.foregroundLayer.addChild(spr);
+        this.fgDisplays.set(f.id, spr);
+      }
+      if (spr.texture === Texture.EMPTY) {
+        const t = getNpcTexture(f.sprite);
+        if (t) {
+          spr.texture = t;
+          const h = t.height || 1;
+          const k = (f.worldH || h) / h;
+          spr.scale.set(f.flipX ? -k : k, k);
+        }
+      }
+      spr.x = f.x;
+      spr.y = f.y;
+      spr.alpha = f.alpha != null ? f.alpha : 1;
+      spr.visible = spr.texture !== Texture.EMPTY;
+    }
+    /* Same lesson as v2.3.2651's props: a display that outlives its texture
+       must DROP the reference, not merely hide.  This art is per-zone and IS
+       freed on the way out, so a sprite still holding it would come back
+       visible on re-entry pointing at a destroyed source. */
+    for (const [id, spr] of this.fgDisplays) {
+      if (!live.has(id)) { spr.visible = false; spr.texture = Texture.EMPTY; }
+    }
+    if (typeof window !== 'undefined') {
+      _fgDrawn.length = 0;
+      for (const [id, spr] of this.fgDisplays) {
+        if (!spr.visible) continue;
+        _fgDrawn.push({ id, x: spr.x, y: spr.y,
+          width: Math.abs(spr.texture.width * spr.scale.x),
+          height: Math.abs(spr.texture.height * spr.scale.y),
+          flipX: spr.scale.x < 0,
+          layer: spr.parent && spr.parent.label ? spr.parent.label : null });
       }
     }
   }

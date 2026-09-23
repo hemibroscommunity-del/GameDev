@@ -30,9 +30,30 @@ other.
 | Grade | Mult | Rate |
 |---|---|---|
 | Normal | ×1.00 | 90.1% |
-| Rare | ×1.20 | 9% |
-| Elite | ×1.50 | 0.9% |
-| Godly | ×3.00 | 1 in 400,000 |
+| Rare | ×1.30 | 9% |
+| Elite | ×1.75 | 0.9% |
+| Godly | ×5.00 | 1 in 2,000,000 |
+
+**v2.3.2664 (owner: "especially differences between normal, rare, elite, and
+godly (literally one in millions so make it basically game breaking good)"):**
+the grade now multiplies a weapon's **whole hit**, after the tier factor,
+instead of only its 10-point base — on the base it faded to +12.5 % for a
+godly blade by skill 100 (`data.js weaponQualityMult`, applied by
+`_computeAttackDamage` and `_maxWeaponDmg`). `_weaponEffBase` carries hardness
+alone. The weapon's tier enters the roll as `tierMult^1.5`
+(`weaponTierFactor`, each forge tier ~+18 % instead of ~+11 %). Armour, on its
+own whole-step scale (copper 1.0, iron 2.0 — `monster-drops.md` "Two ladders,
+one metal"): +7.5 % chest / +5 % legs per tier, a five-tier ladder whose sets
+read 44 / 53.1 / 61.5 / 69.1 / 75 %; the grade still multiplies the tier, and
+each piece's grade also raises the 75 % ceiling (`QUALITY_GRADES.armorLift`:
+rare +2.5, elite +5, godly +10 points — a full set's ceiling is 75 / 80 / 85 /
+95 %), so the grades stay apart at the top of the ladder. A godly iron set is
+92 %, and the godly grade counts only on a server-minted armour piece (an
+unproven godly claim on the legacy lane counts as elite — `monster-drops.md`).
+Armour tiers above iron need 5 Defense each (`monster-drops.md`, "The Defense
+requirement"). The client mirrors all of it behind `caps.gearq`, predicting the
+old math against an older worker. Measured at Melee 8 with an iron greatsword against an
+at-level brute: normal 4.6 hits, rare 3.7, elite 2.9, godly 1.15.
 
 Rolled ONCE at server mint, immutable. **v1 rolls at the forge only**
 (the sole server-side weapon mint). Monster weapon drops are still

@@ -97,6 +97,19 @@ function _probeStandInSkin(key, cv, opts) {
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
+import { footprintFrames } from '@/rendering/footprintSprites.js'; /* v2.3.2654: prints in the snow */
+
+/* v2.3.2654: how a print reads and how long it lasts.  PRINT_TTL_MS is
+   mirrored by stateCleanup's filter -- the array and the drawer must expire on
+   the same number or the pool draws entries the cleaner has already dropped
+   (or worse, keeps sprites for entries that will never be cleaned). */
+export const PRINT_TTL_MS = 9000;
+const PRINT_W = 32;        /* world px across a PAIR -- a stride, not a boot.
+                              40 first, which rendered at 54% of the visible
+                              body height (~74 world px) and read as clown
+                              feet; 32 is ~43% and still reads at phone size. */
+const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
+
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
 import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the wind-up bar reads the button ring's own numbers) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
@@ -413,7 +426,7 @@ function _isGatheringStandIn(skillKey) {
    too (_orderSwingWeapon), and the index it wants moves as sprites are shown
    and hidden, so reading the body's live index is the only thing that stays
    correct through that. */
-const _STAND_IN_TRAIT_KEYS = ['capeBack', 'hair', 'beard', 'capeHood', 'capeHoodMask', 'eyewear', 'hat', 'hairMask'];   /* v2.3.2361: + eyewear, over the hood and under the hat -- this order IS the z-order when the set changes layer */
+const _STAND_IN_TRAIT_KEYS = ['capeBack', 'hair', 'beard', 'capeHood', 'capeHoodMask', 'species', 'eyestyle', 'eyewear', 'hat', 'hairMask'];   /* v2.3.2361: + eyewear, over the hood and under the hat -- this order IS the z-order when the set changes layer; v2.3.2643: + eyestyle, just under the eyewear; v2.3.2682: + species, just under the eye style */
 /* v2.3.2190: QA probe.  A headless run cannot read the WebGL canvas, and the
    two facts that matter here are not visible in a screenshot anyway: whether
    the panels are UNDER the stand-in body, and whether the hood is the split's
@@ -2748,8 +2761,8 @@ export class EffectsRenderer {
        its own -- the panels have to go under the stand-in BODY, which is not a
        member of this set, so _placeSkillTraitsOn re-seats it each frame. */
     this.skillTraits = { capeBack: new Sprite(), hair: new Sprite(), beard: new Sprite(),
-      capeHood: new Sprite(), capeHoodMask: new Sprite(), eyewear: new Sprite(), hat: new Sprite(), hairMask: new Sprite() };   /* v2.3.2361: + eyewear */
-    for (const k of ['capeBack', 'hair', 'beard', 'capeHood', 'capeHoodMask', 'eyewear', 'hat', 'hairMask']) {
+      capeHood: new Sprite(), capeHoodMask: new Sprite(), species: new Sprite(), eyestyle: new Sprite(), eyewear: new Sprite(), hat: new Sprite(), hairMask: new Sprite() };   /* v2.3.2361: + eyewear; v2.3.2643: + eyestyle; v2.3.2682: + species */
+    for (const k of _STAND_IN_TRAIT_KEYS) {
       this.skillTraits[k].visible = false;
       this.nodeLayer.addChild(this.skillTraits[k]);
     }
@@ -3178,6 +3191,7 @@ export class EffectsRenderer {
     this._updateAtmosphere(S, viewW, viewH, now);
     this._updateGroundLoot(S, now);
     this._updateGroundSplatter(S);
+    this._updateFootprints(S, now);   /* v2.3.2654: prints in the snow */
     this._updateGatherNodes(S, now);
     this._updateMonsterImpacts(S, now);
     this._updateDebrisBursts(S, now);   /* v2.3.2200: material hit debris */
@@ -7118,6 +7132,63 @@ export class EffectsRenderer {
     }
   }
 
+  /* ── Footprints (v2.3.2654) ── */
+  /* The four source frames are a FADE, not a loop: the pair disperses as it
+     ages, which is what a print in snow actually does.  So the frame is picked
+     from AGE rather than from a clock -- a print spawned this second and one
+     spawned four seconds ago must not be showing the same frame, which is
+     exactly what a shared wall clock would do (the fountain wants that, a
+     decal never does).
+     Drawn on the splat layer, which sits UNDER the player: a print is in the
+     ground, and one drawn over your boots would read as a sticker. */
+  _updateFootprints(S, now) {
+    const prints = S.footprints || [];
+    const frames = footprintFrames(S.currentZone);
+    if (!this._printPool) this._printPool = [];
+    const pool = this._printPool;
+    if (!frames || !frames.length) {
+      /* No art for this zone (or it has been freed on the way out): hide the
+         pool rather than destroying it.  Hiding costs nothing and keeps a
+         zone re-entry from re-allocating the whole pool. */
+      for (let i = 0; i < pool.length; i++) if (pool[i]) pool[i].visible = false;
+      return;
+    }
+    for (let i = 0; i < prints.length; i++) {
+      const d = prints[i];
+      const age = now - (d.ts || 0);
+      let sp = pool[i];
+      if (!sp || sp.destroyed) {
+        sp = new Sprite(frames[0]);
+        sp.anchor.set(0.5, 0.5);
+        this.splatLayer.addChild(sp);
+        pool[i] = sp;
+      }
+      if (age >= PRINT_TTL_MS) { sp.visible = false; continue; }
+      /* ROTATION HAS A +PI/2, AND IT IS NOT OPTIONAL.
+         The art is drawn with the TOES POINTING NORTH (-y) -- measured, not
+         assumed: split frame 0 in half and the top is 87px of ink against the
+         bottom's 83, and a print is wider at the toe pad than at the heel.
+         `ang` is atan2(dy,dx), measured from +x. So pointing the print along
+         the walk needs a quarter turn.
+         The first cut of this line asserted the art pointed EAST and used the
+         angle bare -- while the comment beside it said a stray +PI/2 here
+         would be "invisible in code review and obvious in play". It was both.
+         A screenshot of the trail caught it; nothing else would have. */
+      const fi = Math.min(frames.length - 1, Math.floor((age / PRINT_TTL_MS) * frames.length));
+      if (sp.texture !== frames[fi]) sp.texture = frames[fi];
+      sp.x = d.x; sp.y = d.y;
+      sp.rotation = (d.ang || 0) + Math.PI / 2;
+      sp.width = PRINT_W;
+      sp.height = PRINT_W * (frames[fi].height / (frames[fi].width || 1));
+      /* Alpha rides the last third on top of the frame fade, so the final
+         frame leaves rather than popping out. */
+      const t = age / PRINT_TTL_MS;
+      sp.alpha = PRINT_ALPHA * (t < 0.66 ? 1 : 1 - (t - 0.66) / 0.34);
+      sp.visible = true;
+    }
+    for (let i = prints.length; i < pool.length; i++) if (pool[i]) pool[i].visible = false;
+  }
+
   /* ── Ground Splatter ── */
   /* v2.3.2200: pooled SPRITES off one minted decal texture, replacing the
      shared-Graphics circles (owner: code-drawn effects look bad).  The
@@ -8776,12 +8847,14 @@ export class EffectsRenderer {
            stand-ins own their own), so unlike the local shared set it needs
            no per-frame reparenting. */
         const mk = () => { const t = new Sprite(); t.visible = false; this.gestureLayer.addChild(t); return t; };
-        ent.traits = { hair: mk(), beard: mk(), eyewear: mk(), hat: mk() };   /* v2.3.2361: + eyewear, under the hat */
+        ent.traits = { hair: mk(), beard: mk(), species: mk(), eyestyle: mk(), eyewear: mk(), hat: mk() };   /* v2.3.2682: + species, under the eye style */   /* v2.3.2361: + eyewear, under the hat; v2.3.2643: + eyestyle, under the eyewear */
       }
       const looks = {
         hair: o.hair, hairColor: o.hairColor,
         facialhair: o.facialhair, facialHairColor: o.facialHairColor,
         eyewear: o.eyewear,                                  /* v2.3.2361 */
+        eyeStyle: o.eyeStyle,                                /* v2.3.2643 */
+        species: o.species, skin: o.skin,                    /* v2.3.2682: the species' fur follows THEIR skin */
         headwear: o.headwear, hatColor: o.hatColor,
         cape: o.cape,                                        /* v2.3.2190 */
       };
@@ -9125,7 +9198,7 @@ export class EffectsRenderer {
          the mk() call order, which is the addChild order, which is the z-order,
          so this line alone puts a peer's shirt in front of their greaves the way
          the owner asked for the local character. */
-      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { capeBack: mk(), hair: mk(), beard: mk(), capeHood: mk(), capeHoodMask: mk(), eyewear: mk(), hat: mk(), hairMask: mk() } };   /* v2.3.2361: + eyewear */ /* v2.3.1776: + the clip mask; v2.3.2190: + the cape's two halves and its hood clip */
+      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { capeBack: mk(), hair: mk(), beard: mk(), capeHood: mk(), capeHoodMask: mk(), species: mk(), eyestyle: mk(), eyewear: mk(), hat: mk(), hairMask: mk() } };   /* v2.3.2361: + eyewear; v2.3.2643: + eyestyle; v2.3.2682: + species */ /* v2.3.1776: + the clip mask; v2.3.2190: + the cape's two halves and its hood clip */
       this._remoteSwordSprites.set(id, set);
     }
     return set;
@@ -9307,6 +9380,8 @@ export class EffectsRenderer {
         hair: o.hair, hairColor: o.hairColor,
         facialhair: o.facialhair, facialHairColor: o.facialHairColor,
         eyewear: o.eyewear,                                  /* v2.3.2361 */
+        eyeStyle: o.eyeStyle,                                /* v2.3.2643 */
+        species: o.species, skin: o.skin,                    /* v2.3.2682: the species' fur follows THEIR skin */
         headwear: o.headwear, hatColor: o.hatColor,
         cape: o.cape,                                        /* v2.3.2190 */
       };
@@ -9340,7 +9415,7 @@ export class EffectsRenderer {
       set.jogLegs.visible = set.jogLegsGear.visible = false;
       hideSkillTraits(set.traits);
       if (!others[id]) {
-        for (const s of [set.jogLegs, set.jogLegsGear, set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.eyewear, set.traits.hat]) {   /* v2.3.2361 */
+        for (const s of [set.jogLegs, set.jogLegsGear, set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.species, set.traits.eyestyle, set.traits.eyewear, set.traits.hat]) {   /* v2.3.2361; v2.3.2643: + eyestyle; v2.3.2682: + species */
           try { s.destroy(); } catch (e) {}
         }
         this._remoteSwordSprites.delete(id);
@@ -9367,7 +9442,7 @@ export class EffectsRenderer {
          v2.3.1710: `legs` before `shirt`, in step with the local bow stand-in
          and _ensureRemoteSwordSet — see the note there on why key order is
          z-order. */
-      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { capeBack: mk(), hair: mk(), beard: mk(), capeHood: mk(), capeHoodMask: mk(), eyewear: mk(), hat: mk(), hairMask: mk() } };   /* v2.3.2361: + eyewear */ /* v2.3.1776: + the clip mask; v2.3.2190: + the cape's two halves and its hood clip */
+      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { capeBack: mk(), hair: mk(), beard: mk(), capeHood: mk(), capeHoodMask: mk(), species: mk(), eyestyle: mk(), eyewear: mk(), hat: mk(), hairMask: mk() } };   /* v2.3.2361: + eyewear; v2.3.2643: + eyestyle; v2.3.2682: + species */ /* v2.3.1776: + the clip mask; v2.3.2190: + the cape's two halves and its hood clip */
       this._remoteBowSprites.set(id, set);
     }
     return set;
@@ -9462,6 +9537,8 @@ export class EffectsRenderer {
         hair: o.hair, hairColor: o.hairColor,
         facialhair: o.facialhair, facialHairColor: o.facialHairColor,
         eyewear: o.eyewear,                                  /* v2.3.2361 */
+        eyeStyle: o.eyeStyle,                                /* v2.3.2643 */
+        species: o.species, skin: o.skin,                    /* v2.3.2682: the species' fur follows THEIR skin */
         headwear: o.headwear, hatColor: o.hatColor,
         cape: o.cape,                                        /* v2.3.2190 */
       };
@@ -9489,7 +9566,7 @@ export class EffectsRenderer {
       set.jogLegs.visible = set.jogLegsGear.visible = false;
       hideSkillTraits(set.traits);
       if (!others[id]) {
-        for (const s of [set.jogLegs, set.jogLegsGear, set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.eyewear, set.traits.hat]) {   /* v2.3.2361 */
+        for (const s of [set.jogLegs, set.jogLegsGear, set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.species, set.traits.eyestyle, set.traits.eyewear, set.traits.hat]) {   /* v2.3.2361; v2.3.2643: + eyestyle; v2.3.2682: + species */
           try { s.destroy(); } catch (e) {}
         }
         this._remoteBowSprites.delete(id);

@@ -45,7 +45,7 @@ import { MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY, MONSTER_IRON_
    compared directly.  mirror-audit.test.mjs already reaches across the same
    boundary for the constant tables; this reaches for the function, because
    what has to agree here is the arithmetic, not a number. */
-import { getArmorPieceDr } from '../../src/data/gameSystems.js';
+import { getArmorPieceDr, setGearQEnabled /* v2.3.2664 */ } from '../../src/data/gameSystems.js';
 
 function makeState() {
   const store = new Map();
@@ -402,7 +402,16 @@ const DR_CASES = [
      implementations, so this case is really asking whether BOTH of them
      clamp — one that forgot would diverge here and nowhere else. */
   { tierMult: 8, quality: 'godly' },
+  /* v2.3.2664: the grades' own ceilings — a rare or elite piece high on the
+     ladder stops at 77.5 % / 80 %, and both sides must stop it there. */
+  { tierMult: 5, quality: 'rare' },
+  { tierMult: 8, quality: 'rare' },
+  { tierMult: 5, quality: 'elite' },
+  { tierMult: 8, quality: 'normal' },
 ];
+/* v2.3.2664: the client predicts the gear-quality worker's math only when
+   that worker advertises caps.gearq — which this worker does. */
+setGearQEnabled(true);
 const drBad = [];
 for (const c of DR_CASES) {
   const srv = room._armorDrMult({ armor: { ...c }, legsArmor: null });
@@ -414,14 +423,39 @@ check('server and client compute the SAME armour reduction at every grade',
 /* And it actually moves — a grade that changed nothing would pass the parity
    check above by both sides ignoring it. */
 const drNormal = 1 - room._armorDrMult({ armor: { tierMult: 2.0, quality: 'normal' }, legsArmor: null });
-const drGodly = 1 - room._armorDrMult({ armor: { tierMult: 2.0, quality: 'godly' }, legsArmor: null });
+/* v2.3.2664: godly counts only on a piece the server minted (`prov`), so the
+   honest fixture carries the mark every real godly piece carries. */
+const drGodly = 1 - room._armorDrMult({ armor: { tierMult: 2.0, quality: 'godly', prov: 'minted' }, legsArmor: null });
 check('a godly chest mitigates measurably more than a normal one',
   drGodly > drNormal + 0.05, { normal: drNormal, godly: drGodly });
-/* ...and cannot escape the ladder the formula was built for.  Multiplying the
-   REDUCTION instead of the tier would put this at 0.90 and leave the 0.75
-   clamp doing all the work. */
-check('...without running straight into the 0.75 clamp',
-  drGodly < 0.70, drGodly);
+/* ...v2.3.2664: and GODLY is now allowed past the 0.75 ceiling — on purpose
+   (owner: "literally one in millions so make it basically game breaking
+   good").  Each piece's grade lifts the ceiling (rare 2.5, elite 5, godly 10
+   points) and a piece alone stops at the ceiling it gives on its own, so
+   nothing reaches immunity. */
+const drElite = 1 - room._armorDrMult({ armor: { tierMult: 2.0, quality: 'elite' }, legsArmor: null });
+check('...a godly iron chest breaks the 75 % ceiling by design, and stays under its lifted 85 %',
+  drGodly > 0.75 && drGodly <= 0.85 + 1e-9, drGodly);
+check('...while an elite iron chest stays inside the ordinary ladder', drElite <= 0.75, drElite);
+/* v2.3.2664: GODLY NEEDS PROOF.  The legacy lane wears a piece the client
+   merely describes, grade included, and iron asks no Defense -- so a described
+   "godly iron" set would have bought 92 % at level 1.  Unproven, it reads as
+   elite, on both sides of the wire. */
+{
+  const forged = { tierMult: 2.0, quality: 'godly', prov: 'legacy' };
+  const bare = { tierMult: 2.0, quality: 'godly' };
+  const asElite = 1 - room._armorDrMult({ armor: { tierMult: 2.0, quality: 'elite' }, legsArmor: null });
+  check('an UNPROVEN godly chest counts as elite (legacy mark or none at all)',
+    Math.abs((1 - room._armorDrMult({ armor: forged, legsArmor: null })) - asElite) < 1e-12
+      && Math.abs((1 - room._armorDrMult({ armor: bare, legsArmor: null })) - asElite) < 1e-12,
+    { forged: 1 - room._armorDrMult({ armor: forged, legsArmor: null }), asElite });
+  const forgedSet = 1 - room._armorDrMult({ armor: forged, legsArmor: { ...forged } });
+  check('...so a described godly iron set stays under the ordinary 85 % elite ceiling, nowhere near 92 %',
+    forgedSet <= 0.85 + 1e-12 && forgedSet < 0.70, forgedSet);
+  check('...and the client card says the same number for it',
+    Math.abs(getArmorPieceDr(forged, 'chest') - asElite) < 1e-12, getArmorPieceDr(forged, 'chest'));
+}
+setGearQEnabled(false);
 
 /* ═══ 8. THE IRON PIECES CAN ACTUALLY BE WORN (v2.3.2124) ═══
  * Owner: "There should not be a 30 defense requirement on iron chest plate.
@@ -461,6 +495,41 @@ check('...and an iron WEAPON, at trained level 1',
    above and quietly retire progression, so something has to still be refused. */
 check('the defense gate still refuses a far higher tier (it was not just switched off)',
   room._prog3EquipOk(ironPs, 'armor', { gearBase: 'mythril', tierMult: 1.94 }) === false);
+
+/* ═══ 8b. THE ARMOUR LADDER'S DEFENSE REQUIREMENT (v2.3.2664) ═══
+ * Owner: "Yeah I'll go with your defense requirements for next tiers" --
+ * copper and iron free, then 5 Defense per tier: 5, 10, 15.  The tier is read
+ * on armour's own whole-step scale (round(tierMult)), not the weapon table's
+ * fallback that asked 30 for iron and would have asked 60 for tier 3.
+ * Each boundary is asserted on BOTH sides of it -- a gate that is off by one
+ * point passes a test that only checks one side. */
+{
+  const withDef = (d) => ({ ...ironPs, prog3: { ...ironPs.prog3, alloc: { def: d } } });
+  const piece = (tm, extra) => ({ name: 'Tier ' + tm, tierMult: tm, slot: 'armor', mat: 'steel', ...(extra || {}) });
+  const need = (item) => { for (let d = 0; d <= 60; d++) if (room._prog3EquipOk(withDef(d), 'armor', item)) return d; return '>60'; };
+  check('the armour ladder asks copper 0, iron 0, then 5 / 10 / 15 / 20 / 25 / 30 Defense',
+    JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8].map((tm) => need(piece(tm))))
+      === JSON.stringify([0, 0, 5, 10, 15, 20, 25, 30]),
+    [1, 2, 3, 4, 5, 6, 7, 8].map((tm) => need(piece(tm))));
+  check('...tier 3 refused at 4 Defense and worn at 5',
+    room._prog3EquipOk(withDef(4), 'armor', piece(3)) === false && room._prog3EquipOk(withDef(5), 'armor', piece(3)) === true);
+  check('...the LEGS slot rides the same gate (grids.js passes both body pieces as "armor")',
+    room._prog3EquipOk(withDef(9), 'armor', { ...piece(4), slot: 'legsArmor' }) === false
+      && room._prog3EquipOk(withDef(10), 'armor', { ...piece(4), slot: 'legsArmor' }) === true);
+  check('...the grade does not move the requirement (a godly tier-3 piece still asks 5)',
+    need(piece(3, { quality: 'godly' })) === 5 && need(piece(3, { quality: 'rare' })) === 5);
+  check('...the real iron pieces stay free, including a v2.3.1924 torso at tierMult 1.25',
+    need(chestItem) === 0 && need(legsItem) === 0 && need({ name: 'Iron Torso', mat: 'iron', tierMult: 1.25 }) === 0);
+  /* The legacy lane (grids.js) wears a piece the client DESCRIBES, and iron is
+     exempt by its label -- so "iron" at tierMult 8 walked past every gate.  It
+     is priced as the tier-8 piece it claims to be now. */
+  check('...a described "iron" piece at tierMult 8 is priced as tier 8, not waved through on its label',
+    need({ name: 'Iron Torso', mat: 'iron', tierMult: 8 }) === 30);
+  check('...a WEAPON in the armour slot keeps the gate it always had (not an armour-ladder piece)',
+    need({ type: 'greatsword', tierMult: 4 }) === '>60');
+  check('...and a legacy (non-prog3) character still passes, as before',
+    room._prog3EquipOk({ level: 1 }, 'armor', piece(5)) === true);
+}
 
 /* ═══ v2.3.2613: TWO KILLS AT ONE SPAWN SLOT ARE TWO PILES ═══
  *

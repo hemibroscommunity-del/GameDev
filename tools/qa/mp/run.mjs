@@ -23,6 +23,8 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  species: () => import('./mp-species.mjs'), /* v2.3.2682: the monkey in the Skin tab, tan muzzle on any fur, and a peer sees it */
+  eyestyle: () => import('./mp-eyestyle.mjs'), /* v2.3.2643: the Eyes tab picks a shape AND a colour, the styles land on the eye line, and glasses go over them */
   ahshot: () => import('./mp-ahshot.mjs'), /* v2.3.2626: pictures of the Auction House art on the plaza, four viewports */
   listingoffer: () => import('./mp-listingoffer.mjs'), /* v2.3.2623: a real gold offer between two players -- escrowed on offer, settled on accept */
   listingdm: () => import('./mp-listingdm.mjs'), /* v2.3.2621: the chat icon on a listing, and a line typed by one player arriving on the other player's screen */
@@ -223,8 +225,10 @@ const SCENARIOS = {
   coppergear: () => import('./mp-coppergear.mjs'), /* v2.3.1772: every worn copper combo, in every pose */
   blacksmith: () => import('./mp-blacksmith.mjs'), /* v2.3.1773: the smith at the fountain */
   townprops: () => import('./mp-townprops.mjs'), /* v2.3.1775: anvil, stall, the man at it */
+  zonedecor: () => import('./mp-zonedecor.mjs'), /* v2.3.2651: frost's decor loads per-zone, draws, sorts, and is freed on the way out */
   uisfx: () => import('./mp-uisfx.mjs'), /* v2.3.2637: the owner's three sounds decode */
   uisfx2: () => import('./mp-uisfx2.mjs'), /* v2.3.2638: the sound actually FIRES */
+  uisfx3: () => import('./mp-uisfx3.mjs'), /* v2.3.2658: click vs close routing, and no doubles */
   logout: () => import('./mp-logout.mjs'), /* v2.3.1840: log out lands on the login door */
   southsword: () => import('./mp-southsword.mjs'), /* v2.3.1839: the south idle blade off his face */
   tutspecial: () => import('./mp-tutspecial.mjs'), /* v2.3.1838: a REAL special, shield slung not held */
@@ -304,7 +308,7 @@ const SCENARIOS = {
   questwall: () => import('./mp-questwall.mjs'), /* v2.3.1972: what he offers after the last quest he can be paid for */
   questkill: () => import('./mp-questkill.mjs'), /* v2.3.1972: the objective EARNED — kill it, and see the drop land */
   harvest: () => import('./mp-harvest.mjs'), /* v2.3.1704: extraction_start reaches the worker + the shield ends */
-  ability: () => import('./mp-ability.mjs'), /* v2.3.1733: the stamina abilities reach the worker, and stay locked until their milestone */
+  ability: () => import('./mp-ability.mjs'), /* v2.3.1733: the stamina abilities reach the worker (v2.3.2662: no milestone gate -- the ladder is gone) */
   joyfade: () => import('./mp-joyfade.mjs'), /* v2.3.2260: both sticks appear on input and fade after 2s; the right one stays while contextual */
   dashhit: () => import('./mp-dashhit.mjs'), /* v2.3.2261: does the lunge hurt a SERVER-driven monster? */
   dashreal: () => import('./mp-dashreal.mjs'), /* v2.3.2418: a REAL finger on the disc, with the lock left to the game itself */

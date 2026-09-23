@@ -117,12 +117,10 @@ export const burstMethods = {
   _burstRefusal(ps, now) {
     if (!ps) return 'no_player';
     if (ps.dying || ps.dead || ps.disconnected) return 'dead';
-    /* Character level.  prog3 players carry the server-owned Σ-trained
-       level; a legacy blob's ps.level is the old stat-sum, which is the
-       number that player's own UI shows, so gate on the same one either
-       way rather than locking legacy players out of the ability entirely. */
-    const lvl = ps.prog3 ? this._prog3CharLevel(ps) : (ps.level || 0);
-    if (lvl < PROG3.BURST_MIN_CHAR_LEVEL) return 'level';
+    /* v2.3.2662: no character-level gate.  The level-6 gate was the
+       milestone ladder's rung 6, and the ladder is gone (abilities.js
+       tombstone) -- the owner never made it.  The weapon's element is the
+       gate now, and it always was the one that mattered. */
     const { w } = this._burstActiveWeapon(ps);
     if (!w) return 'no_weapon';
     /* THE ENCHANT GATE.  element1 is written by the enchant/forge path and
@@ -195,7 +193,7 @@ export const burstMethods = {
       /* The ordinary auto-attack roll, then the burst multiplier, then the
          ordinary auto-attack ceiling.  See the header for why 1.5x fits
          inside that ceiling by arithmetic rather than by luck. */
-      const rolled = this._computeAttackDamage(ps, slot, false);
+      const rolled = this._computeAttackDamage(ps, slot, false, { targetLevel: m.level });  /* v2.3.2680: the edge */
       const cap = this._maxDmgForAttacker(ps, false);
       let dmg = Math.max(1, Math.min(cap, Math.round(rolled.dmg * PROG3.BURST_DMG_MULT)));
       /* v2.3.1734: FRACTURE finally does something (see elemental.js
@@ -214,7 +212,7 @@ export const burstMethods = {
       /* v2.3.2512: elemental power is per weapon — price the snapshot off the
          category the burst is firing from, the same `slot` its damage roll
          and its trained XP already use. */
-      applyElementStatus(m, element, session.id, elemAttackStat(ps, 'power', this._prog3CatFor(slot === 'ranged' ? 'bow' : slot)), now, this._attuneMult(ps)); // v2.3.2199: prog3 snapshots `elem`
+      applyElementStatus(m, element, session.id, elemAttackStat(ps, 'power', this._prog3CatFor(slot === 'ranged' ? 'bow' : slot), m.level), now, this._attuneMult(ps)); // v2.3.2199: prog3 snapshots `elem`; v2.3.2680: + edge
       targets.push(m.id);
 
       /* Damage through the shared pipeline: overkill clamp, contribution

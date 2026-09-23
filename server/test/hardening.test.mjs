@@ -20,7 +20,7 @@
  */
 import { GameRoom } from '../src/index.js';
 import { HARDEN } from '../src/hardening.js';
-import { QUALITY_GRADES } from '../src/data.js';
+import { QUALITY_GRADES, weaponQualityMult, weaponTierFactor } from '../src/data.js'; /* v2.3.2664: + the gear helpers */
 
 function makeState() {
   const store = new Map();
@@ -97,8 +97,42 @@ check('forge mints quality per the §4.6b thresholds + H0/T0', true);
 // ── 3. effective_base formula ──
 const raw = room._weaponBase('sword');
 check('H0/Normal is EXACTLY the legacy base (equivalence)', room._weaponEffBase('sword', { quality: 'normal', hardness: 0 }) === raw && room._weaponEffBase('sword', null) === raw, { raw });
-check('godly H5 multiplies per the formula', Math.abs(room._weaponEffBase('sword', { quality: 'godly', hardness: 5 }) - (raw + 5 * HARDEN.BASE_BONUS) * 3.0) < 1e-9);
-check('rare mult matches the table', Math.abs(room._weaponEffBase('sword', { quality: 'rare', hardness: 0 }) - raw * QUALITY_GRADES.rare.mult) < 1e-9);
+/* v2.3.2664: quality left the BASE to multiply the WHOLE hit (data.js
+   weaponQualityMult), so the effective base carries hardness alone. */
+check('godly H5: the base carries hardness only (quality multiplies the whole hit now)',
+  Math.abs(room._weaponEffBase('sword', { quality: 'godly', hardness: 5 }) - (raw + 5 * HARDEN.BASE_BONUS)) < 1e-9);
+check('rare: quality no longer touches the base', room._weaponEffBase('sword', { quality: 'rare', hardness: 0 }) === raw);
+/* The grades, pinned as literals (owner: "especially differences between
+   normal, rare, elite, and godly ... make it basically game breaking good"). */
+check('grades: normal 1 / rare 1.3 / elite 1.75 / godly 5',
+  QUALITY_GRADES.normal.mult === 1 && QUALITY_GRADES.rare.mult === 1.3
+    && QUALITY_GRADES.elite.mult === 1.75 && QUALITY_GRADES.godly.mult === 5, QUALITY_GRADES);
+check('weaponQualityMult reads the grade, and 1 for an ungraded weapon',
+  weaponQualityMult({ quality: 'godly' }) === 5 && weaponQualityMult({}) === 1 && weaponQualityMult(null) === 1);
+check('weaponTierFactor is tierMult^1.5 (each forge tier ~+18 %)',
+  Math.abs(weaponTierFactor(1.25) - Math.pow(1.25, 1.5)) < 1e-12 && weaponTierFactor(1) === 1);
+{
+  /* Godly is 1 in 2,000,000: a roll just under that line is godly, one just
+     over it is not. */
+  const roll = (r) => { Math.random = () => r; const q = room._rollWeaponQuality(); Math.random = realRandom; return q; };
+  check('godly odds: 1 in 2,000,000 ("literally one in millions")',
+    roll(4.9e-7) === 'godly' && roll(5.1e-7) === 'elite', { under: roll(4.9e-7), over: roll(5.1e-7) });
+  /* The grade multiplies the WHOLE hit: same character, same roll, a godly
+     blade lands exactly 5 × a normal one. */
+  const hitWith = (quality) => {
+    const w = ps.weapon;
+    ps.weapon = { type: 'sword', tierMult: 1.4, quality, hardness: 0 };
+    ps._buffs = null; ps._cursedUntil = 0; ps.amulet = null;
+    Math.random = () => 0.999999;   /* band top, and above any crit chance */
+    const d = room._computeAttackDamage(ps, 'melee', false).dmg;
+    Math.random = realRandom;
+    ps.weapon = w;
+    return d;
+  };
+  const n = hitWith('normal'), g = hitWith('godly'), r = hitWith('rare');
+  check('a godly weapon hits 5 × a normal one, at any level', Math.abs(g / n - 5) < 0.02, { normal: n, godly: g });
+  check('...and a rare one 1.3 ×', Math.abs(r / n - 1.3) < 0.02, { normal: n, rare: r });
+}
 
 // ── 4. anti-cheat ceiling honors the layers ──
 ps.weapon = { type: 'sword', tierMult: 1, quality: 'normal', hardness: 0, temper: 0, gearBase: 'wood' };

@@ -71,9 +71,13 @@
 <link rel="preload" as="image" href="/ui/welcome/platform.webp">
 <link rel="preload" as="image" href="/ui/welcome/void.webp">
 <!-- v2.3.801: the gold lettering is the header again (the v2.3.790
-     tavern-banner art is retired). -->
-<link rel="preload" as="image" href="/ui/welcome/logo-brotown.webp">
-<link rel="preload" as="image" href="/ui/welcome/sword.webp">
+     tavern-banner art is retired).
+     v2.3.2642: one file, because the owner's new BRO TOWN art draws the sword
+     into the wordmark — the separate sword.webp preload goes with the <img>
+     it was warming.  The URL is bare (no ?v=) so it MATCHES what NameModal
+     asks for: a preload that misses its consumer adds a request instead of
+     saving one (docs/TRAPS.md §52). -->
+<link rel="preload" as="image" href="/ui/welcome/title/brotown-lockup.png">
 <link rel="preload" as="image" href="/ui/welcome/scroll2.webp">
 <!-- v2.3.804: trait-menu chrome (gem frame + gold divider, restored from
      the owner's v2.3.725 asset pack) -->

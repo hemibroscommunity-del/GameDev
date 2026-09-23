@@ -2899,8 +2899,68 @@ BT_AUDIO.SFX_MANIFEST = {
      0.42s, with the measured peaks unchanged, so nothing audible was lost.
      mp-uisfx asserts the length now: a sample longer than the gesture is
      what lets rapid taps pile up. */
+  /* ═══ v2.3.2659: THE OWNER'S NEW EQUIP SOUND ═══
+     Owner: "Use this new sound for item equip."  It REPLACES the v2.3.2637
+     file at the same key and path, so every call site is untouched and there
+     is no second key to keep straight.
+
+     It is a different KIND of sound from the one it replaces -- a soft
+     leather/buckle rustle that swells to its peak at 0.30s, where the old one
+     was a bright metallic tick.  Two measured consequences, both handled at
+     the play site (BT_AUDIO.uiEquip) rather than left to each caller:
+
+     0.100s OF LEADING SILENCE.  A tenth of a second is not a rounding error
+     on a UI response -- it is the difference between the sound belonging to
+     your tap and trailing it.  Skipped with start(offset), the footstep /
+     armor-hit pattern.
+
+     IT IS QUIET.  Peak 0.167 against the old file's 0.815, and RMS 0.036
+     against 0.248 -- a five- to sevenfold difference, so the vol:0.55 the old
+     sample was tuned at would have shipped a sound most players would report
+     as missing.  uiEquip plays it at 3.0, which puts its peak at 0.50 (the old
+     one landed at 0.448) with no clipping risk, since gain is a multiplier and
+     0.167 * 3.0 is what reaches the bus.  This is the v2.3.1798 swing-table
+     pattern: there is no encoder in this sandbox to normalise the file, so the
+     correction lives at the gain node and the measurement lives here.
+
+     TRIMMED 0.816s -> 0.480s (15.9KB -> 9.4KB), losslessly, at frame
+     boundaries -- everything after 0.44s is below 0.003 RMS.  Doing that
+     needed a TOOL FIX: this upload is MPEG-2 Layer III at 24kHz and
+     tools/trim_mp3_tail.mjs parsed MPEG-1 only, silently reporting a trim it
+     had not performed (see its header).  mp3 either way, per v2.3.1610. */
   'ui-equip':      '/sfx/ui/equip.mp3',
   'ui-close':      '/sfx/ui/close.mp3',
+  /* ═══ v2.3.2658: THE CLICK, AND WHAT IT TAKES BACK FROM ui-close ═══
+     Owner: "Use the click sound for navigating through the menus (tapping
+     the dashboard buttons or any of the buttons in any of those menus).
+     Use the close sound for closing the dialog window that appear in game
+     (like for quests and tutorials pop ups and stuff like that)."
+
+     That is a SPLIT, not an addition.  v2.3.2637 had one owner sound doing
+     both jobs -- NavRail played 'ui-close' for a dashboard tab tap, because
+     a close sound was the only UI sound there was.  Navigation now has its
+     own voice and ui-close goes back to meaning what its name says.
+
+     THE CLOSE HALF NEEDED NO NEW FILE.  The owner re-uploaded the close
+     sound alongside the click, and it is BIT-IDENTICAL to what already
+     ships here: trimming the new upload to 0.42s with tools/trim_mp3_tail.mjs
+     reproduces public/sfx/ui/close.mp3 byte for byte (md5 46ea5b89...).  So
+     'ui-close' is untouched on purpose -- it is already the owner's file --
+     and the work of this version is the click plus the re-routing.
+
+     THE CLICK IS A REAL MOUSE CLICK, press AND release: two transients at
+     0.042-0.085s and 0.130-0.175s with a quiet gap between them.  Both are
+     kept.  A click you only hear half of does not read as a click, and the
+     pair is what a physical button sounds like under a finger.
+     Trimmed 0.366s -> 0.209s (11.4KB -> 6.5KB) by tools/trim_mp3_tail.mjs --
+     a LOSSLESS frame-boundary cut, not a re-encode (there is still no mp3
+     encoder in this sandbox); the measured peak is 0.540 before and after,
+     so nothing audible was lost, only 0.17s of digital silence.
+     The 0.042s of LEADING silence is not in the file -- it is skipped at the
+     play site with offset, the footstep/armor-hit pattern -- so the press
+     transient lands on the frame the finger lifts instead of 42ms later.
+     mp3, per the v2.3.1610 rule above. */
+  'ui-click':      '/sfx/ui/click.mp3',
   /* v2.3.2637: the owner's NEW quest-completion sound, superseding the
      v2.3.1746 fanfare above. Supplied under the filename "level up" but
      assigned by its instruction -- "actually a sound that should play the
@@ -3587,7 +3647,7 @@ BT_AUDIO._rebuildSources = function () {
    is for UI chrome only, which is why it is its own entry point. */
 BT_AUDIO._uiTickAt = Object.create(null);    /* CLAUDE.md rule 4 */
 BT_AUDIO._uiVoice = Object.create(null);
-BT_AUDIO.uiTick = function (key, vol) {
+BT_AUDIO.uiTick = function (key, vol, opts) {
   /* ═══ v2.3.2641: ONE VOICE PER UI KEY ═══
      Owner asked whether the files were too large. They are not -- 25-30KB --
      but MEASURING them answered the real question. ui-equip decodes to 0.94s
@@ -3609,11 +3669,32 @@ BT_AUDIO.uiTick = function (key, vol) {
      right for: collapsing the several calls a single gesture makes (a
      handler plus the server's echo of the same action) so one gesture is one
      RESTART, not a restart that cuts off its own first 30ms. */
-  var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  var now = this._now();
   var WINDOW_MS = 260;
   var last = this._uiTickAt[key];
   if (last != null && (now - last) < WINDOW_MS) return null;
   this._uiTickAt[key] = now;
+  /* ═══ v2.3.2658: A NAMED SOUND OUTRANKS THE GENERIC CLICK ═══
+     The delegated listener (src/ui/uiSfxDelegate.js) offers a 'ui-click' for
+     EVERY button in the menus, which is what the owner asked for -- but some
+     of those buttons already have a sound of their own (equip, close).  Two
+     sounds for one tap is the v2.3.2639 complaint again, from a new
+     direction, so the rule is decided HERE, once, rather than by the
+     listener trying to recognise every special control by its markup.
+     Any key that is NOT the generic click stamps this clock, and cancels a
+     click already waiting to play.  Between them the two lines cover both
+     orders a real tap produces: a handler that ticks on POINTERDOWN, before
+     the listener ever sees the gesture, is caught by the stamp (uiClick
+     compares it against the moment its gesture began); one that ticks on the
+     CLICK, after the listener has already scheduled, is caught by the
+     cancel. */
+  if (key !== 'ui-click') {
+    this._uiSpecificAt = now;
+    if (this._uiClickPending) {
+      try { clearTimeout(this._uiClickPending); } catch (e) { /* ignore */ }
+      this._uiClickPending = null;
+    }
+  }
   /* Stop the voice still sounding from the last tap of this same control. */
   var prev = this._uiVoice[key];
   if (prev && prev.src) {
@@ -3622,9 +3703,110 @@ BT_AUDIO.uiTick = function (key, vol) {
   }
   this._uiVoice[key] = null;
   var v = null;
-  try { v = this.play(key, { vol: vol == null ? 0.55 : vol }); } catch (e) { v = null; }
+  var _o = { vol: vol == null ? 0.55 : vol };
+  /* v2.3.2658: offset/duration passthrough, so a UI sample can be isolated to
+     its useful slice at the call the way footstep and mine-strike are. */
+  if (opts && opts.offset) _o.offset = opts.offset;
+  if (opts && opts.duration != null) _o.duration = opts.duration;
+  if (opts && opts.pitchVar != null) _o.pitchVar = opts.pitchVar;
+  try { v = this.play(key, _o); } catch (e) { v = null; }
   this._uiVoice[key] = v;
   return v;
+};
+
+/* ═══ v2.3.2658: THE GENERIC NAVIGATION CLICK ═══
+   Owner: "Use the click sound for navigating through the menus (tapping the
+   dashboard buttons or any of the buttons in any of those menus)."
+
+   WHY IT IS DEFERRED.  This is offered by a delegated listener that cannot
+   know whether the button it just saw ALSO runs a handler with a sound of
+   its own -- the equip controls and the close crosses do, and those handlers
+   run after the pointerup the listener watches.  So the click waits one
+   short beat and stands down if a named sound spoke for the same tap.
+   Suppressing the click is the right way round: the owner named a sound per
+   job, and 'equip' and 'close' are the more specific jobs.
+
+   60ms is the whole cost, and it is spent from the moment the finger LIFTS,
+   after which the browser still has a click event to dispatch -- so the
+   sound arrives inside the window where feedback still reads as instant, and
+   well inside the ~100ms where a delay becomes audible as lag.  It buys
+   correct ordering against every handler in the codebase instead of against
+   the ones we happened to check.
+
+   WHY `since` AND NOT A WIDER WINDOW.  A handler can also tick BEFORE the
+   listener sees the pointerup (anything on pointerdown does), so the click
+   has to yield backwards as well -- and the obvious way to do that, "was
+   there a named sound in the last N ms", is wrong at every value of N.  Too
+   short and a slow press-and-hold slips past it; long enough to cover one
+   (a 300ms press plus the defer) and it starts SWALLOWING the next tap,
+   because 350ms after closing a window is well inside the time a person
+   takes to reach the next button.  A window cannot tell "the same gesture"
+   from "the following one" -- it only knows how long ago.
+   So the caller passes the timestamp its GESTURE began (the delegate has it:
+   it is the pointerdown it already records for the drag check), and the test
+   becomes exact -- did a named sound happen at any point during THIS tap.
+   The time window survives only as the fallback for a caller with no gesture
+   to name, where the ambiguity it carries is the best available answer.
+
+   OFFSET 0.042: the sample's press transient starts there (the leading
+   silence is in the upload; see SFX_MANIFEST).  Skipping it at the call
+   means the 60ms above is the ONLY latency, not 102ms.
+
+   VOL 0.85, measured not guessed.  ui-close peaks at 0.975 and plays at 0.5,
+   so it lands at 0.49; this sample peaks at 0.540, so 0.85 puts it at 0.459 --
+   just under the close sound, which is the right order for a sound you hear
+   on every single tap versus one you hear when a window shuts.  (Its RMS is
+   lower still, 0.134 against ui-close's 0.327, which is what a short dry
+   click IS -- matching RMS instead would need a gain above 1.0 and would make
+   the menus the loudest thing in the game.) */
+BT_AUDIO._uiSpecificAt = -1e9;
+BT_AUDIO._uiClickPending = null;
+BT_AUDIO.UI_CLICK_DEFER_MS = 60;
+BT_AUDIO.UI_CLICK_YIELD_MS = 350;
+BT_AUDIO.UI_CLICK_VOL = 0.85;
+BT_AUDIO.UI_CLICK_OFFSET = 0.042;
+/* The sound itself, with no deferral -- for a call site that KNOWS its gesture
+   has no other sound and wants the click on the frame the finger lifts.
+   NavRail uses it; see the note there. */
+BT_AUDIO.uiClickNow = function (vol) {
+  return this.uiTick('ui-click', vol == null ? this.UI_CLICK_VOL : vol,
+    { offset: this.UI_CLICK_OFFSET });
+};
+/* The one clock, so a caller's `since` and uiTick's stamp are comparable.
+   performance.now() and Date.now() have different ORIGINS, and mixing them
+   here would not be a rounding error, it would be a 50-year one. */
+BT_AUDIO._now = function () {
+  return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+};
+/* v2.3.2659: the equip sound's offset and its unusual gain, in ONE place.
+   Five call sites play this key (BroTown, InventoryPanel, equipActions and
+   ItemDetailPopup twice) and all five used to carry a hand-written 0.55.  A
+   sample swap that changes the right number by a factor of five is exactly
+   the change that leaves one of five behind, and the one left behind is
+   inaudible rather than broken -- so nothing reports it.  See SFX_MANIFEST
+   for what was measured. */
+BT_AUDIO.UI_EQUIP_VOL = 3.0;
+BT_AUDIO.UI_EQUIP_OFFSET = 0.095;
+BT_AUDIO.uiEquip = function (vol) {
+  return this.uiTick('ui-equip', vol == null ? this.UI_EQUIP_VOL : vol,
+    { offset: this.UI_EQUIP_OFFSET });
+};
+BT_AUDIO.uiClick = function (vol, since) {
+  var self = this;
+  /* One offer per gesture: a pointerup that reaches this twice (a control
+     nested in a control) is still one click. */
+  if (this._uiClickPending) return;
+  var schedule = (typeof setTimeout === 'function') ? setTimeout : null;
+  var fire = function () {
+    self._uiClickPending = null;
+    /* Did a named sound speak for THIS tap?  (See the note above for why the
+       gesture's own start beats any fixed window.) */
+    if (since != null) { if (self._uiSpecificAt >= since) return; }
+    else if ((self._now() - self._uiSpecificAt) < self.UI_CLICK_YIELD_MS) return;
+    self.uiClickNow(vol);
+  };
+  if (!schedule) { fire(); return; }
+  this._uiClickPending = schedule(fire, this.UI_CLICK_DEFER_MS);
 };
 
 BT_AUDIO.play = function (key, opts) {

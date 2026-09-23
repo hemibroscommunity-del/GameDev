@@ -19,7 +19,7 @@
  * BLACKSMITH_TIERS / WOODWORKING_TIERS / QUALITY_GRADES mirrors move
  * with their only consumers (mirror-audit still pins them). */
 
-import { BLACKSMITH_TIERS, WOODWORKING_TIERS, QUALITY_GRADES, AMULET_TIER_POWER, AMULET_GEMS } from './data.js';
+import { BLACKSMITH_TIERS, WOODWORKING_TIERS, QUALITY_GRADES, AMULET_TIER_POWER, AMULET_GEMS, armorDefReq, isArmourLadderPiece /* v2.3.2664 */ } from './data.js';
 
 export const gearMethods = {
   // ═══ Equipment store (opaque blobs + equip_request) ═══
@@ -291,6 +291,20 @@ export const gearMethods = {
        The ladder itself is untouched above iron: steel and everything past it
        still gate, which drops.test.mjs and prog3.test.mjs both pin so that
        "make iron work" cannot quietly become "delete the gate". */
+    /* ═══ v2.3.2664: BODY ARMOUR IS PRICED ON ITS OWN LADDER ═══
+       Owner: "Yeah I'll go with your defense requirements for next tiers" —
+       nothing for copper and iron, then 5 Defense per tier: 5, 10, 15
+       (data.js armorDefReq).  Asked BEFORE the iron exemption below, and on
+       purpose: real iron (tierMult 2.0, or 1.25 on a v2.3.1924 piece) is
+       tier 2 and asks nothing either way, so the owner's "no requirement on
+       any iron" still holds — but a DESCRIBED piece (the legacy lane in
+       grids.js, gear-provenance.md) that merely calls itself iron at
+       tierMult 8 used to walk past every gate on its label, and is now
+       priced as the tier-8 piece it claims to be.  Weapons and forged
+       pieces are not armour-ladder pieces and keep the gate below. */
+    if (slot === 'armor' && isArmourLadderPiece(item)) {
+      return this._prog3GearOk(ps, 'defense', armorDefReq(item));
+    }
     if (this._isIronGear(item)) return true;
     let tierIdx = -1;
     let baseIdx = 0;
