@@ -4359,7 +4359,7 @@ feet) -- which refuses the thin-rock touch and, by the same endpoint rule,
 keeps the monster inside a rock hittable. mp-propshots section 0 shoots all
 four in town; with v2.3.2699's code back, all four fail.
 
-## 105. A paused page clock trips the dark-screen watchdog (v2.3.2711)
+## 105. A paused page clock trips the dark-screen watchdog (v2.3.2716)
 
 **Tempting:** to record an effect frame by frame, install Playwright's fake
 clock, `pauseAt`, and step it with `runFor` between screenshots -- the game only
@@ -4369,7 +4369,7 @@ advances when you say so, so every frame is exact.
 canvas lit-percentage on its own schedule. With the page clock paused between
 steps it reads a black buffer, records `watchdog-dark ... strike N`, and on the
 second strike calls `window._rebuildRenderer` -- which drops per-zone art. Seen
-while capturing the v2.3.2711 hit reactions: the first snowman rendered, every
+while capturing the v2.3.2716 hit reactions: the first snowman rendered, every
 later one fell back to the emoji circle, and one "resting" frame was the
 recovery overlay. It looks like a rendering bug in the feature under test.
 

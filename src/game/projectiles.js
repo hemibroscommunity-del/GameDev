@@ -443,7 +443,7 @@ import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound l
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
 import { sweepBlockPoint, boxExitPoint, attackBlocked } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form; v2.3.2701: and the far face of a rock a monster stands in */
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2699: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2716: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */ } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -1113,7 +1113,7 @@ export function updateArrows(S, deps) {
                   m._hitFlash = Date.now(); /* v2.3.2200: see the melee site */
                   /* v2.3.2200: material debris + ground mark along the
                      projectile's travel direction — mirrors the melee path.
-                     ═══ v2.3.2699: AN ARROW PUNCHES, A BOLT BLASTS ═══
+                     ═══ v2.3.2716: AN ARROW PUNCHES, A BOLT BLASTS ═══
                      The reaction now knows which (hitMaterialFx): an arrow
                      throws a narrow jet out of the far side and a puff back
                      at you; a bolt blows material all round and brings its
@@ -1139,7 +1139,7 @@ export function updateArrows(S, deps) {
                   }
                   if (_hitArchR === 'snowman' && m.curHp > 0) {
                     try { BT_AUDIO.play('snowman-hit', { vol: 0.7 }); } catch (e) {}
-                    /* v2.3.2700: the ice-burst plume stamp (_impactAt, v2.3.1124)
+                    /* v2.3.2717: the ice-burst plume stamp (_impactAt, v2.3.1124)
                        is gone with the plume -- the snow the hit throws is the
                        reaction now (hitMaterialFx).  The sound stays. */
                   }
@@ -1419,14 +1419,14 @@ export function updateArrows(S, deps) {
                    'staff' burst this used to add was a second spray of flat
                    purple dots at the monster's FEET, the exact spot that fix
                    moved the crash away from.
-                   v2.3.2699: and the arrow's generic splinter-and-dust spray
+                   v2.3.2716: and the arrow's generic splinter-and-dust spray
                    goes the same way -- brown dots and tan dust at the feet of
                    every monster alike.  The material reaction above (a jet of
                    the monster's own snow / slime / blood / dust / bone from the
                    contact point) is the arrow's hit now. */
                 /* Staff projectiles are magic — no physical shaft to
                    leave embedded in the body.  Their visual residue is the
-                   crash above (v2.3.2697), and the material reaction (v2.3.2699). */
+                   crash above (v2.3.2697), and the material reaction (v2.3.2716). */
                 /* ═══ v2.3.2511: ONE ARROW, NOT TWO ═══
                    Owner (backlog §2.5): "two stuck arrows on a special".  Both
                    halves were doing their job and neither knew about the

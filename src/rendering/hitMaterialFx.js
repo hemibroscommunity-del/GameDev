@@ -1,4 +1,4 @@
-/* ═══ v2.3.2699: A MONSTER REACTS LIKE WHAT IT IS MADE OF ═══
+/* ═══ v2.3.2716: A MONSTER REACTS LIKE WHAT IT IS MADE OF ═══
  *
  * Owner: "take a fresh look at monster hit reaction material effects.  Right
  * now they're low resolution and don't look great but I do like that they've
@@ -161,7 +161,7 @@ const ART = {
    shaded underside, and a checkerboard edge -- the pixel-art way to draw
    something soft without drawing something blurred.  The shading is what
    keeps a pale cloud readable on pale ground (grey ash on desert sand read
-   as nothing when the disc was flat -- measured on the v2.3.2699 captures). */
+   as nothing when the disc was flat -- measured on the v2.3.2716 captures). */
 const PUFF = { L: 0xffffff, M: 0xd6d6d6, D: 0xa2a2a2 };
 function puffRows(r) {
   const n = r * 2 + 1, out = [];
@@ -923,7 +923,7 @@ export class HitMaterialFx {
         if (p.y >= b.gy) front++; else back++;
       }
       out.push({
-        /* v2.3.2700: + tint, the colour the burst was handed (a blue slime's
+        /* v2.3.2717: + tint, the colour the burst was handed (a blue slime's
            goo must be the blue the slime is drawn in -- mp-hitmat) */
         id: b.id, fx: b.fx, weapon: b.weapon, tint: b.tint, age, ms: BURST_MS, sheet: false,
         parts, landed, dust, flakes, sparks, embers, glints, bubbles, front, back,

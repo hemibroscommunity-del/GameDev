@@ -16,7 +16,7 @@
  *    a single screenshot.
  *
  * 3. GROUND MARKS.  Hits leave marks that stay about 5-10 seconds (owner).
- *    v2.3.2699: the marks are the material's own landed pieces
+ *    v2.3.2716: the marks are the material's own landed pieces
  *    (hitMaterialFx) -- the soft decal that used to sit beside them is
  *    retired.
  */
@@ -114,7 +114,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!(peer && peer.tint === 0xff8080), peer && { tint: peer.tint, flash: peer.flash });
 
   /* ── 3. ground marks ──
-     v2.3.2699: the mark is the material's own pieces now.  A hit used to add a
+     v2.3.2716: the mark is the material's own pieces now.  A hit used to add a
      soft tinted decal (S.groundSplatter) beside its debris; the material
      reaction (rendering/hitMaterialFx.js) retired it, because the pieces that
      come down and LIE there are the mark -- crisp slime puddles, snow lumps,
@@ -140,7 +140,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     decals: (window._gameState.current.groundSplatter || []).length,
   }));
   const mark = marks.db && marks.db[marks.db.length - 1];
-  rec.ok('a hit leaves marks on the ground: its pieces land and lie there (v2.3.2699)',
+  rec.ok('a hit leaves marks on the ground: its pieces land and lie there (v2.3.2716)',
     !!(mark && mark.landed > 0 && mark.age > 1000), marks);
   rec.ok('...lasting within the owner\'s 5-10 s', !!(mark && mark.ms >= 5000 && mark.ms <= 10000), mark);
   rec.ok('...a peer\'s blade reads as a blade (the worker\'s slot names the weapon)', !!(mark && mark.weapon === 'sword'), mark);
