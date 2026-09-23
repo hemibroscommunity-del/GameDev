@@ -67,6 +67,44 @@ ZONE_AIR.hollows   = { dust: 0xb6ab9c };
 ZONE_AIR.shadow    = { dust: 0x8a8196 };
 const airOf = (z) => (z && Object.prototype.hasOwnProperty.call(ZONE_AIR, z) ? ZONE_AIR[z] : null);
 
+/* ═══ v2.3.2709: THE PROPS' OWN LIGHTS ═══
+   Owner: "light up the props that are in town and in zone areas."  At night
+   the lamps, torches, forge fire and lit windows PAINTED into the prop art
+   become real lights in the light map, and every prop takes a soft moonlit
+   wash so a house or a pine does not sink into the dark.
+   Each light is placed where the art draws it, as a fraction of the sprite
+   (u across, v down, read off the 512px source images) -- so it follows the
+   sprite's real drawn rectangle, flips with a flipped prop, and survives a
+   re-scaled prop.  `r` is the reach as a fraction of the prop's height;
+   `k` is the kind: a flame flickers, a lamp barely, a window not at all. */
+const PROP_LIGHTS = Object.create(null);
+PROP_LIGHTS['lamp-plaza-w'] = [{ u: 0.48, v: 0.24, k: 'lamp', r: 0.55 }];
+PROP_LIGHTS['mayor-house'] = [
+  { u: 0.583, v: 0.668, k: 'flame', r: 0.13 }, { u: 0.70, v: 0.668, k: 'flame', r: 0.13 },
+  { u: 0.635, v: 0.72, k: 'window', r: 0.12 },
+  { u: 0.426, v: 0.845, k: 'lamp', r: 0.1 }, { u: 0.688, v: 0.875, k: 'lamp', r: 0.1 }, { u: 0.86, v: 0.84, k: 'lamp', r: 0.1 },
+  { u: 0.195, v: 0.40, k: 'flame', r: 0.1 },
+];
+PROP_LIGHTS.forge = [
+  { u: 0.29, v: 0.62, k: 'flame', r: 0.24 }, { u: 0.30, v: 0.17, k: 'flame', r: 0.1 },
+  { u: 0.66, v: 0.40, k: 'window', r: 0.1 }, { u: 0.415, v: 0.43, k: 'window', r: 0.08 },
+  { u: 0.55, v: 0.62, k: 'lamp', r: 0.1 }, { u: 0.78, v: 0.55, k: 'lamp', r: 0.1 },
+  { u: 0.645, v: 0.645, k: 'window', r: 0.1 },
+];
+PROP_LIGHTS.bank = [
+  { u: 0.08, v: 0.48, k: 'lamp', r: 0.1 }, { u: 0.615, v: 0.595, k: 'lamp', r: 0.1 }, { u: 0.73, v: 0.78, k: 'lamp', r: 0.09 },
+  { u: 0.163, v: 0.765, k: 'flame', r: 0.1 },
+  { u: 0.23, v: 0.35, k: 'window', r: 0.07 }, { u: 0.785, v: 0.73, k: 'window', r: 0.07 },
+];
+PROP_LIGHTS['auction-house'] = [
+  { u: 0.375, v: 0.595, k: 'flame', r: 0.1 }, { u: 0.51, v: 0.74, k: 'flame', r: 0.1 },
+  { u: 0.685, v: 0.48, k: 'flame', r: 0.1 }, { u: 0.31, v: 0.69, k: 'flame', r: 0.1 },
+  { u: 0.263, v: 0.45, k: 'window', r: 0.07 }, { u: 0.30, v: 0.52, k: 'window', r: 0.07 },
+  { u: 0.17, v: 0.645, k: 'lamp', r: 0.08 }, { u: 0.81, v: 0.48, k: 'lamp', r: 0.08 },
+];
+PROP_LIGHTS['market-stall'] = [{ u: 0.92, v: 0.38, k: 'lamp', r: 0.22 }, { u: 0.59, v: 0.62, k: 'flame', r: 0.14 }];
+const PROP_LIGHT_TINT = { flame: 0xffa65a, lamp: 0xffd27a, window: 0xffd890 };
+
 const MOTE_STYLE = {
   pollen: { n: 16, tint: 0xfff4c8, size: [2.2, 3.6], alpha: [0.25, 0.6], drift: 0.55, rise: -3, add: false },
   spores: { n: 16, tint: 0xc8f08c, size: [2.4, 4.0], alpha: [0.25, 0.55], drift: 0.35, rise: -6, add: false },
@@ -123,6 +161,7 @@ export class WorldFx {
     this.groundLayer = layers.groundSplatter;
     this.partLayer = layers.particles;
     this.airLayer = layers.foreground;
+    this.glowLayer = layers.glows || layers.foreground;   /* v2.3.2709: emissive, above the night */
     this._last = 0;
 
     /* night */
@@ -171,6 +210,8 @@ export class WorldFx {
     this._mists = []; this._mistI = 0;
 
     if (typeof window !== 'undefined') {
+      /* where the fireflies are, for a close-up */
+      window.__btWorldFxFlies = () => this._motes.filter((m) => m.visible && m._firefly).map((m) => ({ x: m.x, y: m.y }));
       window.__btWorldFx = () => ({
         tod: this._probeTod || null,
         prints: this._prints.filter((p) => p.visible).length,
@@ -182,6 +223,7 @@ export class WorldFx {
         moteKind: this._moteKind,
         lights: this._lights.filter((l) => l.visible).length,
         night: this._probeNight || null,
+        bugs: (this._flies || []).filter((f) => f.visible).length,
         corpses: deathCrumble.count(),
       });
     }
@@ -204,7 +246,7 @@ export class WorldFx {
   _nightTargets() {
     const er = this._er;
     const plates = [], bodies = [];
-    if (!er) return { plates, bodies };
+    if (!er) return { plates, bodies, props: [] };
     const shown = (o) => {
       for (let n = o, d = 0; n && d < 8; n = n.parent, d++) {
         if (n.visible === false || (typeof n.alpha === 'number' && n.alpha <= 0.02)) return false;
@@ -225,7 +267,15 @@ export class WorldFx {
         }
       }
     } catch (e) { /* a missing light is a dark plate, never a crash */ }
-    return { plates, bodies };
+    const props = [];
+    try {
+      if (er.propDisplays) {
+        for (const [id, spr] of er.propDisplays) {
+          if (spr && spr.texture && spr.texture !== Texture.EMPTY && shown(spr)) props.push({ id, spr });
+        }
+      }
+    } catch (e) { /* no props, no prop light */ }
+    return { plates, bodies, props };
   }
 
   update(S, cam, now) {
@@ -261,7 +311,9 @@ export class WorldFx {
       ov.visible = false;
       for (let i = 0; i < this._lights.length; i++) this._lights[i].visible = false;
       if (this._plateLights) for (let i = 0; i < this._plateLights.length; i++) this._plateLights[i].visible = false;
+      this._drawHalos([]);
     } else if (L.lamp < 0.01) {
+      this._drawHalos([]);
       /* golden hour: a tint, no lights to place -- no render target needed */
       for (let i = 0; i < this._lights.length; i++) this._lights[i].visible = false;
       ov.texture = Texture.WHITE;
@@ -350,7 +402,7 @@ export class WorldFx {
     }
     for (let i = 0; i < this._motes.length; i++) {
       const m = this._motes[i];
-      if (m.visible && m._firefly) list.push({ x: m.x, y: m.y, r: 26, c: 0xd8ff8a, a: m.alpha * 0.9 });
+      if (m.visible && m._firefly) list.push({ x: m.x, y: m.y, r: 36, c: 0xd8ff8a, a: m.alpha * 0.9 });
     }
     /* world-space lights (lanterns, fireflies) into light-map space */
     const lights = [];
@@ -361,7 +413,39 @@ export class WorldFx {
     }
     /* screen-space ones: plates and monsters, measured where they are drawn */
     const gk = w / Math.max(1, cam.cssW || viewW);
-    const { plates, bodies } = this._nightTargets();
+    const { plates, bodies, props } = this._nightTargets();
+    const halos = [];
+    const sk = viewW / Math.max(1, cam.cssW || viewW);   /* screen px -> world px */
+    /* props: a soft moonlit wash over each, then its own painted lights */
+    for (let i = 0; i < props.length; i++) {
+      const { id, spr } = props[i];
+      let b; try { b = spr.getBounds(); } catch (e) { continue; }
+      if (!b || b.width < 2) continue;
+      const rr = (Math.max(b.width, b.height) * 0.5 / 0.4) * gk;
+      lights.push({ tex: 'glowTight', x: (b.x + b.width / 2) * gk, y: (b.y + b.height * 0.55) * gk, w: rr * 2, h: rr * 2, c: 0xc4d4ff, a: 0.24 * lampK });
+      const pls = Object.prototype.hasOwnProperty.call(PROP_LIGHTS, id) ? PROP_LIGHTS[id] : null;
+      if (!pls) continue;
+      const flipped = spr.scale && spr.scale.x < 0;
+      for (let j = 0; j < pls.length; j++) {
+        const pl = pls[j];
+        const u = flipped ? 1 - pl.u : pl.u;
+        const r = pl.r * b.height * gk;
+        /* a flame breathes; a lamp barely; a window holds still */
+        const fl = pl.k === 'flame' ? 0.82 + 0.18 * Math.sin(now / 90 + j * 1.7) * Math.sin(now / 37 + j)
+          : pl.k === 'lamp' ? 0.95 + 0.05 * Math.sin(now / 400 + j) : 1;
+        lights.push({ tex: 'glow', x: (b.x + u * b.width) * gk, y: (b.y + pl.v * b.height) * gk, w: r * 2, h: r * 2,
+          c: PROP_LIGHT_TINT[pl.k] || 0xffd27a, a: Math.min(1, 0.95 * fl * lampK) });
+        /* ...and a small halo AT the flame or the lamp glass, drawn above the
+           night (the `glows` layer), so the source itself shines rather than
+           merely being lit.  Windows light the room behind them, not the air,
+           so they get none. */
+        if (pl.k !== 'window') {
+          halos.push({ x: cam.cx + (b.x + u * b.width) * sk, y: cam.cy + (b.y + pl.v * b.height) * sk,
+            r: pl.r * b.height * sk * 0.32, c: PROP_LIGHT_TINT[pl.k], a: 0.42 * fl * L.lamp });
+        }
+      }
+    }
+    this._drawHalos(halos);
     for (let i = 0; i < bodies.length; i++) {
       let b; try { b = bodies[i].getBounds(); } catch (e) { continue; }
       if (!b || b.width < 2) continue;
@@ -391,7 +475,7 @@ export class WorldFx {
       pn++;
     }
     for (let i = pn; i < pl.length; i++) pl[i].visible = false;
-    this._probeNight = { plates: pn, monsters: bodies.length };
+    this._probeNight = { plates: pn, monsters: bodies.length, props: props.length };
     for (let i = 0; i < lights.length; i++) {
       const l = lights[i];
       let s = this._lights[i];
@@ -416,6 +500,24 @@ export class WorldFx {
     ov.tint = 0xffffff;
     ov.x = cx; ov.y = cy; ov.width = viewW; ov.height = viewH;
     ov.visible = true;
+  }
+
+  _drawHalos(list) {
+    const pool = this._halos || (this._halos = []);
+    const tex = fxTex('mote');
+    for (let i = 0; i < list.length && tex && this.glowLayer; i++) {
+      let h = pool[i];
+      if (!h) {
+        h = new Sprite(tex);
+        h.anchor.set(0.5); h.blendMode = 'add';
+        this.glowLayer.addChild(h); pool.push(h);
+      }
+      const l = list[i];
+      h.x = l.x; h.y = l.y; h.width = h.height = Math.max(6, l.r * 2);
+      h.tint = l.c; h.alpha = Math.min(1, l.a);
+      h.visible = true;
+    }
+    for (let i = list.length; i < pool.length; i++) pool[i].visible = false;
   }
 
   /* ─────────────────────────── the air ─────────────────────────── */
@@ -446,6 +548,10 @@ export class WorldFx {
         m.anchor.set(0.5);
         this.airLayer.addChild(m); this._motes.push(m);
       }
+      /* v2.3.2709: a firefly GIVES light, so it lives above the night; every
+         other mote is lit by it like the rest of the world */
+      const want = style.firefly ? this.glowLayer : this.airLayer;
+      if (m.parent !== want) want.addChild(m);
       if (!m._seeded) {
         m._seeded = true;
         m.x = cx + Math.random() * viewW; m.y = cy + Math.random() * viewH;
@@ -466,9 +572,42 @@ export class WorldFx {
       const tw = 0.5 + 0.5 * Math.sin(now / (style.firefly ? 520 : 1400) * m._sp + m._ph);
       m.alpha = style.alpha[0] + (style.alpha[1] - style.alpha[0]) * (style.firefly ? tw * tw : tw);
       if (style.firefly) m.alpha *= Math.min(1, (L.lamp - 0.4) / 0.3);
-      m.width = m.height = m._sz * (style.firefly ? 1.6 : 1.4);
+      /* a firefly is a soft ball of light with the bug at its heart */
+      m.width = m.height = m._sz * (style.firefly ? 4.2 : 1.4);
       m.visible = true;
     }
+    /* ═══ v2.3.2709: THE FIREFLY IN THE LIGHT ═══
+       Owner: "Add little code drawn fireflies in the center of the balls of
+       light."  A 7px pixel-art bug (worldFxTextures FLY_ART) rides on every
+       firefly's glow, beating its wings and turning to face the way it drifts.
+       Drawn over the glow, in the same layer, so its light map pool lights it. */
+    const flies = this._flies || (this._flies = []);
+    let fn = 0;
+    if (kind === 'fireflies' && fxTex('fly0')) {
+      for (let i = 0; i < this._motes.length; i++) {
+        const m = this._motes[i];
+        if (!m.visible || !m._firefly) continue;
+        let f = flies[fn];
+        if (!f) {
+          f = new Sprite(fxTex('fly0'));
+          f.anchor.set(0.5);
+          this.glowLayer.addChild(f); flies.push(f);
+        }
+        const beat = Math.floor(now / 45 + m._ph * 10) % 2;
+        const tex = fxTex(beat ? 'fly1' : 'fly0');
+        if (f.texture !== tex) f.texture = tex;
+        const dx = m.x - (m._px != null ? m._px : m.x), dy = m.y - (m._py != null ? m._py : m.y);
+        if (dx * dx + dy * dy > 0.0004) m._ang = Math.atan2(dy, dx) + Math.PI / 2;
+        m._px = m.x; m._py = m.y;
+        f.x = m.x; f.y = m.y;
+        f.rotation = m._ang || 0;
+        f.scale.set(1.15);
+        f.alpha = 1;
+        f.visible = true;
+        fn++;
+      }
+    }
+    for (let i = fn; i < flies.length; i++) flies[i].visible = false;
   }
 
   /* ─────────────────────────── dust ─────────────────────────── */

@@ -61,16 +61,20 @@ function mintGlow() {
        a(t) = 0.82 e^(-t/0.07) + 0.18 (1-t)^2,   t = distance past the edge / reach
    so the plate or body is lit exactly, the ground right beside it only a
    little, and there is no line anywhere where the light stops. */
-const lightFalloff = (t) => (t <= 0 ? 1 : t >= 1 ? 0 : 0.82 * Math.exp(-t / 0.07) + 0.18 * (1 - t) * (1 - t));
+/* v2.3.2709: softer still (owner: "can you soften the light dispersion even
+   more?") -- the drop past the edge is gentler (0.12, was 0.07), the faint
+   tail carries more of the light (0.38, was 0.18) and reaches further
+   (SOFTBOX_EDGE 14, was 10). */
+const lightFalloff = (t) => (t <= 0 ? 1 : t >= 1 ? 0 : 0.62 * Math.exp(-t / 0.12) + 0.38 * Math.pow(1 - t, 2.4));
 
 /* The name-plate light: a NINE-SLICE.  Its 4px bright middle stretches to
    cover the plate exactly in the night's light map; the border carries the
-   falloff and stays SOFTBOX_EDGE light-map px (40 CSS px) wide whatever the
+   falloff and stays SOFTBOX_EDGE light-map px (56 CSS px) wide whatever the
    plate's size -- one stretched rectangle would have scaled its tail with
    the plate.  Rounded corners (distance to the middle, not a product of
    the two axes).  Built per pixel rather than with ctx.filter blur, which
    Safari's canvas does not have. */
-export const SOFTBOX_EDGE = 10;
+export const SOFTBOX_EDGE = 14;
 function mintSoftbox() {
   const E = SOFTBOX_EDGE, M = 4, W = E * 2 + M, H = E * 2 + M, c = canvas(W, H), g = c.getContext('2d');
   const img = g.createImageData(W, H);
@@ -171,6 +175,45 @@ function mintMote() {
   grd.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = grd; g.fillRect(0, 0, S, S);
   return toTex(c);
+}
+
+/* ═══ v2.3.2709: A FIREFLY ═══
+   Owner: "Add little code drawn fireflies in the center of the balls of
+   light."  Pixel art, one character per art pixel, two frames of wingbeat:
+     o dark body   h head   g glowing tail   G its hot core   w wing   . clear
+   Drawn facing north (-y); the drawer turns it to face the way it drifts. */
+const FLY_PAL = { o: '#2b2418', h: '#3d3222', g: '#b8f24a', G: '#f4ffb0', w: 'rgba(225,240,255,0.75)' };
+const FLY_ART = [
+  [
+    '.w...w.',
+    'ww.h.ww',
+    'www.www',
+    '..ooo..',
+    '..ogo..',
+    '..gGg..',
+    '...g...',
+  ],
+  [
+    '.......',
+    '...h...',
+    '.wwowww',
+    'wwwooww',
+    '..ogo..',
+    '..gGg..',
+    '...g...',
+  ],
+];
+function mintFly(rows) {
+  const W = rows[0].length, H = rows.length, c = canvas(W, H), g = c.getContext('2d');
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const ch = rows[y][x];
+      if (!FLY_PAL[ch]) continue;
+      g.fillStyle = FLY_PAL[ch];
+      g.fillRect(x, y, 1, 1);
+    }
+  }
+  return toTex(c, true);
 }
 
 /* ── blood ──
@@ -327,6 +370,7 @@ export function mintWorldFxTextures() {
     _tex.print = mintPrint();
     _tex.puff = mintPuff();
     _tex.mote = mintMote();
+    _tex.fly0 = mintFly(FLY_ART[0]); _tex.fly1 = mintFly(FLY_ART[1]);
     _tex.drop = mintDrop();
     _tex.splat0 = mintSplat(5); _tex.splat1 = mintSplat(13); _tex.splat2 = mintSplat(29);
     _tex.mist = mintMist();

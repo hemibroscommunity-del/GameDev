@@ -104,6 +104,11 @@ const WORLD_LAYER_NAMES = [
      the world overlay, because the night must never make a number you need to
      read harder to read.  Not depth-sorted: light covers, it does not stand. */
   'lighting',
+  /* v2.3.2709: things that GIVE light, drawn after the night multiplies the
+     world so the night cannot darken them: a firefly and its glow.  Still
+     under the damage numbers and the world overlay, like everything in the
+     world. */
+  'glows',
   'damageNumbers', 'overlayWorld',
 ];
 const SCREEN_LAYER_NAMES = ['atmosphere', 'screenFX', 'hud'];

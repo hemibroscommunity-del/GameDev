@@ -61,6 +61,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
      own plate and the town NPCs' each get a softbox of light at night. */
   rec.ok('...and every name plate on screen gets its own light, so it reads as it does by day',
     !!night && night.night && night.night.plates >= 2, night && night.night);
+  /* v2.3.2709: owner -- "light up the props that are in town and in zone
+     areas" and "add little code drawn fireflies in the center of the balls
+     of light". */
+  rec.ok('...every prop in view is lit (a moonlit wash, and its own lamps and flames)',
+    !!night && night.night && night.night.props >= 1, night && night.night);
+  const flies = await P.page.evaluate(() => (window.__btWorldFxFlies ? window.__btWorldFxFlies().length : 0));
+  rec.ok('...and every firefly carries its little drawn bug', flies > 0 && !!night && night.bugs === flies, { fireflies: flies, bugs: night && night.bugs });
   rec.ok('...and the green zones trade their pollen for fireflies',
     !!night && night.moteKind === 'fireflies' && night.motes > 0, night && { kind: night.moteKind, motes: night.motes });
   for (const h of ['dawn', 'golden', 'dusk']) { await setTod(h); await P.page.waitForTimeout(600); await shot(h); }
