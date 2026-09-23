@@ -42,6 +42,60 @@ whole time.
 - A weapon multiplies its base damage by `tierMult` straight off
   `BLACKSMITH_TIERS`, where iron genuinely is 1.25.
 
+**The armour ladder (v2.3.2664).** The steps are +7.5 % chest / +5 % legs per
+whole tier, so the ladder is five tiers long and each is about a fifth more
+survival than the last:
+
+| tier | chest | legs | set |
+|---|---|---|---|
+| 1 copper | 30 % | 20 % | 44.0 % |
+| 2 iron | 37.5 % | 25 % | **53.1 %** (was 50.3 %) |
+| 3 | 45 % | 30 % | 61.5 % |
+| 4 | 52.5 % | 35 % | 69.1 % |
+| 5 | 60 % | 40 % | 75 % (the normal ceiling) |
+
+A grade multiplies the tier (rare iron set 58 %, elite 65 %, godly 92 %), and
+each piece's grade also raises the ceiling — a full set's is 75 % normal, 80 %
+rare, 85 % elite, 95 % godly — so rare and elite still differ at tiers 4 and 5.
+
+**The Defense requirement (v2.3.2664).** Owner: *"Yeah I'll go with your
+defense requirements for next tiers."* Copper and iron ask nothing; each tier
+above asks 5 allocated Defense points more:
+
+| tier | 1 copper | 2 iron | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Defense needed | 0 | 0 | 5 | 10 | 15 | 20 | 25 | 30 |
+
+`data.js armorDefReq` reads the tier on armour's own scale, `round(tierMult)`,
+never × quality (a rare iron torso is still iron). Defense can't exceed
+character level, so 5 also means "level 5 and committed to Defense".
+
+- **The worker** (`gear.js _prog3EquipOk`) prices body armour — no
+  `gearBase`, no weapon `type` — on this ladder, and asks it *before* the iron
+  exemption. Real iron is tier 2 and free either way; a piece described on the
+  legacy lane that merely calls itself iron at tierMult 8 used to walk past
+  every gate on its label and is now priced as tier 8. Before this, a piece
+  with no `gearBase` fell through to the weapon table's fallback,
+  `round((tierMult − 1) × 6) × 5` — 30 for iron (why v2.3.2124 exempted iron)
+  and 60 for a tier-3 piece.
+- **The client** (`gameSystems.js armorDefReq`, `canEquipItem`,
+  `getEquipReqLabel`) reads the same number. `equipArmorFromStash` /
+  `equipLegsFromStash` refuse an under-requirement piece before it leaves the
+  bag, with a "NEEDS 5 DEFENSE" popup, instead of letting the worker's silent
+  refusal bag it again. The bag card says "Needs 5 Defense (you have 3)".
+  Copper and iron cards are unchanged.
+- **Pinned by** `drops.test.mjs` §8b (every boundary on both sides of it) and
+  `mirror-audit.test.mjs` §14 (worker vs client gate, tiers 0–9 × Defense
+  0–35).
+
+**Godly needs proof (v2.3.2664).** The legacy lane still wears a piece the
+client merely describes, grade included (gear-provenance.md: usable, not
+sellable). A described "godly iron" set bought 72 % before this PR and would
+have bought 92 % at level 1 after it, so `_armorDrMult` (and the client card)
+counts the godly grade only on a piece the server minted (`prov: 'minted'`);
+an unproven godly claim counts as elite. Real godly pieces have been
+ledger-minted since v2.3.2534.
+
 The gem is a plain stackable. `prettyName('rare_gem')` already renders
 "Rare Gem"; the only client addition is one `thumbFor` row pointing at
 `/icons/ui/cur-gem.webp`, the gem picture the bag panel already uses for its

@@ -263,6 +263,14 @@ damage maths, traded, everything it does today — and carries
 `prov: 'legacy'` so the client can say *why* it cannot be listed instead
 of failing silently.
 
+**One exception, v2.3.2664: a legacy piece cannot be godly in the damage
+maths.** Once #705 made a godly armour set 92 %, a described "godly iron"
+claim (iron asks no Defense) would have bought it at level 1. So
+`_armorDrMult` counts the godly grade only when `prov` is `minted`, and an
+unproven godly claim counts as elite (72 % was the pre-#705 price of the same
+forgery; elite iron is 65 %). A real godly piece has been ledger-minted since
+v2.3.2534, so no honest player loses anything real. See `monster-drops.md`.
+
 ## Equipping by name (v2.3.2535)
 
 `stats_update` can now say what you are wearing in two ways:
