@@ -5,12 +5,13 @@
 import { createPixiApp } from './pixiApp.js';
 import { applyDepthBuckets } from './depthSort.js'; /* v2.3.2635: one depth pass per frame */
 import { TileRenderer } from './systems/tileRenderer.js';
-import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out */
+import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom, figureFeetY, playerGroundDy } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out; v2.3.2748: + the player's feet for the depth pass */
 import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { LightFx, setLightFx } from './lightfx/lightFx.js'; /* v2.3.2710: map-lit shadows + metal glint, behind ?lightfx=1 */
 import { setSheen } from './lightfx/glint.js'; /* v2.3.2750: the permanent soft metal shine, behind ?sheen=1 */
+import { setWorldCasts } from './lightfx/casters.js'; /* v2.3.2749: QA before/after of the world's shadows */
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { MinimapRenderer } from './systems/minimapRenderer.js'; /* v2.3.1781 */
 import { loadPlayerSprites } from './playerSprites.js';
@@ -131,6 +132,16 @@ export function prewarmBaseSheets() {
  */
 let _appRef = null;   /* v2.3.701: handle for uploadBakedTextures behind the intro */
 
+/* v2.3.2748: the ground line the depth pass pivoted on this frame -- the
+   player's FEET -- published for mp-propdepth, which has to compare it with
+   each prop's base.  Mutated in place: no allocation per frame. */
+const _playerGround = { x: NaN, y: NaN };
+const _depthProbe = { legacy: false };
+if (typeof window !== 'undefined') {
+  window.__btPlayerGround = () => ({ x: _playerGround.x, y: _playerGround.y });
+  window.__btDepthLegacy = (on) => { _depthProbe.legacy = !!on; };
+}
+
 export async function initPixiRenderer(canvas) {
   const { app, layers, worldContainer, screenContainer } = await createPixiApp(canvas);
   _appRef = app;
@@ -167,6 +178,9 @@ export async function initPixiRenderer(canvas) {
       sheen: (on) => setSheen(on),
       sheenScale: (k) => { lightFx.glint.sheenScale = (k == null ? null : Math.max(0, +k)); },
       sheenSun: (v) => { lightFx.sheenSun = (Array.isArray(v) && v.length === 2) ? [+v[0], +v[1]] : null; },
+      /* v2.3.2749: props and trees stop casting (figures still do) -- the
+         look before they did, for before/after pictures of one frame */
+      world: (on) => setWorldCasts(on),
     };
   }
   /* v2.3.221: FPS counter only mounts with ?dev=1. */
@@ -392,7 +406,22 @@ export async function initPixiRenderer(canvas) {
        frame's positions -- a frame of lag that shows up as a flicker exactly
        when the player crosses something, which is the one moment this
        feature exists for. */
-    try { applyDepthBuckets(layers.entities, layers.gatherNodesFront, S.player && S.player.y); }
+    /* v2.3.2748: ...pivoting on the player's FEET, not S.player.y.  The
+       position is the body's centre and the boots are drawn ~52 px lower, so
+       a prop whose base fell between the two was drawn over a player standing
+       visibly in front of it (owner: "really bad at detecting contact").  The
+       x says where along a building's base to read it (propGround.js). */
+    try {
+      const _pd = entityRenderer.playerDisplay;
+      let _pgy = _pd && !_pd.destroyed ? figureFeetY(_pd)
+        : (S.player ? S.player.y + playerGroundDy(S.currentZone, S.player.x, S.player.y) : NaN);
+      let _pgx = _pd && !_pd.destroyed ? _pd.x : (S.player ? S.player.x : NaN);
+      _playerGround.x = _pgx; _playerGround.y = _pgy;
+      /* QA only (mp-propdepth's before/after pictures): the v2.3.2711 rule --
+         the body centre, and every prop on one flat line -- on the same frame */
+      if (_depthProbe.legacy && S.player) { _pgy = S.player.y; _pgx = NaN; }
+      applyDepthBuckets(layers.entities, layers.gatherNodesFront, _pgy, _pgx);
+    }
     catch (e) { if (!update._depthErr) { update._depthErr = true; console.error('[pixi-render] depth sort threw', e && e.message); } }
     /* v2.3.2710: light and shine, LAST of the world passes: a shadow copies
        each figure's pieces where they are THIS frame, so it runs after

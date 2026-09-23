@@ -120,7 +120,7 @@ export class LightFx {
       on: lightFxOn(),
       zone: this.zone,
       light: zoneLight(this.zone),
-      shadows: sh ? { ...sh.stats, filtered: !!(layer && layer.filters && layer.filters.length), pool: sh.pool.length } : null,
+      shadows: sh ? { ...sh.stats, keys: sh.stats.keys.slice(), filtered: !!(layer && layer.filters && layer.filters.length), pool: sh.pool.length } : null,
       glint: { ...this.glint.probeStats(), force: this.glint.force, sheenOn: sheenOn() },
       ms: +this.lastMs.toFixed(3),
       /* the stand-in names casters.js reads off the effects renderer that are
