@@ -442,8 +442,9 @@ import {
 import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
-import { sweepBlockPoint, boxExitPoint, attackBlocked } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form; v2.3.2701: and the far face of a rock a monster stands in */
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */ } from '@/game/combatHelpers.js';
+import { sweepBlockPoint, boxExitPoint, attackBlocked, boxFace } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form; v2.3.2701: and the far face of a rock a monster stands in */
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2730 */, queueArrowSnap /* v2.3.2731 */ } from '@/game/combatHelpers.js';
+import { arrowSnaps } from '@/data/arrowSnap.js'; /* v2.3.2731: one arrow in eight breaks on what it hits */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -462,7 +463,29 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
    Both endings burst, deliberately: the ball is aimed at a frozen point and
    lands there whether you moved or not, so bursting only on damage would
    make a successful dodge look like the ball evaporated. */
+/* ═══ v2.3.2732: A SLIME'S GOO AND A GOBLIN'S FIRE LAND TOO ═══
+   Everything but a snowball used to simply vanish where it ended -- on the
+   ground, on a rock, on you.  Queued here on the SAME end paths the snowball
+   burst uses (the simulator is the one place that knows a ball ended and
+   why), drained by rendering/monsterShotFx.js, which splats the goo and
+   bursts the fire.  Drawing only: where the ball stops and what it does to
+   you are untouched.  `lift` is how high the renderer was drawing it at that
+   moment, so a glob that hit a rock face splats ON the face and its splat
+   forms on the ground below. */
+function queueShotImpact(S, proj, why) {
+  if (!proj || proj.kind === 'snowball') return;
+  if (!S._shotImpacts) S._shotImpacts = [];
+  if (S._shotImpacts.length >= 16) return;   /* nothing drains it if FX are off */
+  S._shotImpacts.push({
+    x: proj.x, y: proj.y, lift: typeof proj._fxLift === 'number' ? proj._fxLift : null,
+    look: proj._fxLook || null, shooterArch: proj.shooterArch || null, ownerId: proj.ownerId,
+    kind: proj.kind || 'slime', ang: proj.ang || 0, ts: proj.ts,
+    zone: S.currentZone, why: why || 'land',
+  });
+}
+
 function queueSnowballBurst(S, proj) {
+  queueShotImpact(S, proj, (proj && proj._fxWhy) || (proj && proj.propStopT != null ? 'prop' : 'land'));
   if (!proj || proj.kind !== 'snowball') return;
   if (!S.snowballBursts) S.snowballBursts = [];
   if (S.snowballBursts.length >= 12) return;   /* nothing drains it if FX are off */
@@ -1340,38 +1363,11 @@ export function updateArrows(S, deps) {
                   var _orbFxY = (typeof a._renderY === 'number') ? a._renderY
                     : (((typeof m.renderY === 'number') ? m.renderY : m.y)
                        - monsterBodyOffsetY(m.archetype || m.type));
-                  if (!S._impactRings) S._impactRings = [];
-                  /* Outer expanding ring — the "crash" flash. */
-                  S._impactRings.push({
-                    x: _orbFxX, y: _orbFxY, ts: Date.now(),
-                    color: _orbColor, maxR: 26, duration: 320,
-                  });
-                  /* Inner brighter ring 40 ms later for double-pulse
-                     intensity. Use a startDelay field rather than
-                     setting ts in the future — future-ts caused the
-                     render to compute negative ages and weird radii on
-                     the first frame after spawn (same family of bug
-                     as the swingTimer +300 player-flicker on cast). */
-                  S._impactRings.push({
-                    x: _orbFxX, y: _orbFxY, ts: Date.now(), startDelay: 40,
-                    color: _orbColor, maxR: 14, duration: 220,
-                  });
-                  /* Dissipation — radial particle spray outward, with a
-                     small upward bias so embers drift like sparks. */
-                  if (!S.hitParticles) S.hitParticles = [];
-                  for (var _op = 0; _op < 22; _op++) {
-                    var _oa = (_op / 22) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
-                    var _osp = 2 + Math.random() * 4;
-                    S.hitParticles.push({
-                      x: _orbFxX + Math.cos(_oa) * 4,
-                      y: _orbFxY + Math.sin(_oa) * 4,
-                      vx: Math.cos(_oa) * _osp,
-                      vy: Math.sin(_oa) * _osp - 0.7,
-                      life: 0.45 + Math.random() * 0.4,
-                      color: _orbColor,
-                      size: 1 + Math.random() * 2.2,
-                    });
-                  }
+                  /* v2.3.2730: the rings and the spray moved into combatHelpers'
+                     orbCrashFx, unchanged, so a bolt that lands on a PROP crashes
+                     through the same code as one that lands on a monster (the
+                     owner: bolts "explode even if they hit props"). */
+                  orbCrashFx(S, _orbFxX, _orbFxY, _orbColor);
                   /* Burn marks removed per user request — the orb-crash
                      ring + dissipation particles already convey the hit
                      without a residue overlay on the body. */
@@ -1410,7 +1406,21 @@ export function updateArrows(S, deps) {
                    The special's own art is the one to keep: it is the shot
                    that was fired, it carries the chip tick, and it is what
                    tells the player their heavy shot landed. */
-                if (!a.isStaff && !a.isSpecial) {
+                /* ═══ v2.3.2731: ...OR IT SNAPS ═══
+                   Owner: "some arrows snapped on hitting the target (still
+                   causing the same amount of damage) in maybe every 1 out of
+                   every 8 hits".  The damage above has already been dealt and
+                   claimed; this only chooses the PICTURE -- a shaft left in the
+                   body, or the arrow breaking on it (data/arrowSnap.js decides,
+                   on a roll the other screens make the same way).  Not a
+                   piercing arrow: it carries on to its next target, and a
+                   broken one could not. */
+                var _snapHere = !a.isStaff && !a.isSpecial && !a.pierce && arrowSnaps(S.myId, a._shotTs);
+                if (_snapHere) {
+                  queueArrowSnap(S, a._renderX, a._renderY,
+                    (typeof m.renderY === 'number') ? m.renderY : m.y, a.ang);
+                }
+                if (!a.isStaff && !a.isSpecial && !_snapHere) {
                   if (!m._stuckArrows) m._stuckArrows = [];
                   if (m._stuckArrows.length < 12) {
                     /* Place the impact on the side of the monster the
@@ -1829,17 +1839,55 @@ export function updateArrows(S, deps) {
               var _impX = _propStop.x + _ox, _impY = _propStop.y + _oy;
               a._renderX = _impX; a._renderY = _impY;
               a._inBox = null;
+              /* ═══ v2.3.2730: AND THE PROP FEELS IT ═══
+                 Owner: "subtle debris comes off the props once they're hit by a
+                 player projectile ... the bolt projectiles to explode even if
+                 they hit props with debris, arrow stuck in (with debris)".
+                 Until now a shot that met a rock simply ended: the bolt winked
+                 out, the arrow dropped at the foot of the face.  The debris comes
+                 BACK off the face (the heading reversed), is keyed to the prop so
+                 the renderer's dedup treats the rock as one target, and sounds
+                 like the material through the same mixer a monster hit uses. */
+              var _pBox = _propStop.box || null;
+              var _pId = _pBox ? _pBox.id : null;
+              var _pGy = _propStop.y;   /* the ground line at the contact point */
+              if (_pId) {
+                spawnPropDebris(S, { id: _pId, x: _impX, y: _impY, gy: _pGy,
+                  ang: a.ang + Math.PI, weapon: a.isStaff ? 'bolt' : 'arrow' });
+                propImpactSound(_pId, a.isStaff ? 0.18 : 0.32);   /* under a monster hit's 0.6: a rock is hit far more often than it is news */
+              }
               if (a.isStaff) {
                 /* Magic has no plant animation -- it is spent on contact,
-                   the same as reaching its range. */
+                   the same as reaching its range.  v2.3.2730: and it CRASHES
+                   there, through the same orbCrashFx a monster hit uses, in the
+                   element's colour, with the spell-landing voice on top. */
+                orbCrashFx(S, _impX, _impY, projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#a78bfa');
+                try { BT_AUDIO.magicHit({ vol: 0.3 }); } catch (e) { /* audio is best-effort */ }
                 return false;
               }
-              a.planting = true;
+              /* v2.3.2731: ...unless it is one of the one-in-eight that SNAP,
+                 which on a rock is the likelier thing an arrow does anyway.
+                 Nothing hangs off a plain arrow's planted life (the send-off
+                 is the special's), so it can simply go. */
+              if (!a.isSpecial && arrowSnaps(S.myId, a._shotTs)) {
+                queueArrowSnap(S, _impX, _impY, _pGy, a.ang);
+                return false;
+              }
+              /* v2.3.2730: an arrow that met a prop STICKS IN IT -- no spent
+                 drop to the ground.  It keeps its flight angle and is planted
+                 where it hit, so the existing planted life applies unchanged
+                 (2 s; a bow special's 4 s of ground ticks and its send-off
+                 blast, centred on the stuck point).  `_inProp` tells the
+                 renderer to draw it ON the prop -- sorted with the rock, not in
+                 the ground layer under everything -- and headless, which
+                 `planted` already means: the head is in the rock. */
+              a.planted = true;
+              a.plantedAt = Date.now();
               a._plantX = _impX;
-              a._plantStartY = _impY;
               a._plantY = _impY;
-              a._fallVy = 2;
+              a._plantStartY = _impY;
               a.life = 999;        // plantedAt governs removal now, not life
+              a._inProp = _pId ? { id: _pId, gy: _pGy, face: boxFace(_pBox, _propStop.x, _propStop.y) } : null;
             }
             return true;
           });
@@ -1896,12 +1944,18 @@ export function updateSlimeProjectiles(S) {
               var _propHit = sweepBlockPoint(S.currentZone, _ppx, _ppy, proj.x, proj.y);
               if (_propHit) {
                 proj.x = _propHit.x; proj.y = _propHit.y;
+                proj._fxWhy = 'prop';   /* v2.3.2732 */
                 queueSnowballBurst(S, proj);
                 return false;
               }
             }
             var pdx = P.x - proj.x, pdy = P.y - proj.y;
             if (pdx * pdx + pdy * pdy > 16 * 16) return true;
+            /* v2.3.2732: it reached you -- every path below consumes it, and a
+               glob that hits you splats on you (a snowball's burst is queued by
+               its own displayOnly line, as before) */
+            proj._fxWhy = 'player';
+            if (!proj.displayOnly) queueShotImpact(S, proj, 'player');
             /* v2.3.1640: a server-thrown projectile (the snowman's
                snowball) is a VISUAL ONLY — the worker scheduled its
                impact when it threw and delivers the damage itself as a
