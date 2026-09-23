@@ -1,5 +1,23 @@
 # Stamina abilities + the milestone unlock ladder (v2.3.1733)
 
+> **v2.3.2662 — THE MILESTONE LADDER IS REMOVED.** Owner: *"Just remove the
+> milestones from the game I did not make those."* Every rung below was a
+> session's invention, not an owner design. What was still live and is now
+> gone: the **+1 bonus point at level 5**, the **level-6 gate on Element
+> Burst** (it is open from level 1; the enchanted-weapon gate remains), and
+> the **×1.25 max stamina at level 10**. `MILESTONES`,
+> `staminaMilestoneMult`, `milestonePointsThrough`, `milestoneAbilityLevels`,
+> `_prog3GrantMilestones` and `PROG3.BURST_MIN_CHAR_LEVEL` are deleted on
+> both sides; `prog3_level` no longer carries `milestone` / `bonusPoints`;
+> the v2.3.2661 milestone card is deleted. Points already paid stay paid.
+> `prog3.ms` still survives `_sanitizeProg3` purely for **rollback** (a
+> v2.3.2661 worker would otherwise re-pay the level-5 point). The worker
+> advertises `caps.milestonesRetired`; until a client sees it, it keeps
+> predicting the old worker's ×1.25 stamina and level-6 Burst gate
+> (`legacyStaminaMult`, `LEGACY_BURST_MIN_CHAR_LEVEL` in `src/data/prog3.js`)
+> — rule 19. `server/test/abilities.test.mjs` pins that the ladder stays
+> gone. The rest of this document is history.
+
 PR 5 of `docs/COMBAT-OVERHAUL-PLAN.md`. Two server-refereed abilities that
 spend stamina, and the character-level ladder that unlocks them.
 

@@ -120,6 +120,64 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
      clock between them. */
   React.useEffect(() => { playLevelUpSting(); }, [msg.ts]);
 
+  /* ═══ v2.3.2659: THE CAPTION'S REAL HEIGHT, NOT AN ASSUMED LINE COUNT ═══
+     The fit below reserves room for the caption plate so it cannot run under
+     the dashboard tray.  That reservation used to be a constant picked per
+     COLUMN COUNT -- 58px for one column, 1.75x for two -- which was true for
+     as long as the caption's contents were fixed.  v2.3.2659 changed them:
+     with the character burst gone, the one remaining burst carries the whole
+     gains line ("+1.5 damage · +6 max HP · +3 Bow points · +3 shared
+     points"), which wraps to two lines in one wide column and put the plate
+     13px under the tray at 360 and 390 portrait.  The rig caught it
+     (shot-levelup's captionBelowTray row), which is what that row is for.
+     (v2.3.2660 then removed the gains line entirely on the owner's word, so
+     that particular overflow is history -- but the lesson is not, and it is
+     why this stays measured: the caption's contents have now changed twice in
+     two versions, and a constant was wrong within hours both times.)
+
+     Estimating the wrap from string length and a guessed glyph width would
+     be the same mistake with a longer fuse -- it would be right for today's
+     four gains and wrong for the fifth.  So the plate is MEASURED, once, on
+     the commit that mounts it, and the fit uses the real number from the next
+     frame on.  The caption's text does not change during a burst, so this
+     settles immediately and never thrashes.
+
+     Frame 0 still uses the constant, for the one frame before the measurement
+     lands.  That is invisible on purpose: at frame 0 the medallion is 24px of
+     a 65px peak and still growing, so a scale correction there is inside the
+     growth the art is already doing.
+
+     ONCE, not every frame.  This component re-renders on every rAF tick, and
+     a getBoundingClientRect after a render that has just changed
+     backgroundSize forces a synchronous layout -- ~150 of them over one 2.6s
+     burst, on a phone, for an answer that cannot change: the caption's text is
+     fixed for the life of a burst.  So the read happens only while `capH` is
+     0, and the 0 is re-armed only by something that could genuinely re-wrap
+     the plate -- a new message, or a resize / rotation. */
+  const capRef = React.useRef(null);
+  /* No reset on msg.ts: the stack keys each burst by its slot seq
+     (LevelUpBurstStack), so a new message is a new component instance and this
+     already starts at 0.  Adding the reset anyway would make every mount
+     measure, blank itself, and measure again. */
+  const [capH, setCapH] = React.useState(0);
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const reArm = () => setCapH(0);
+    window.addEventListener('resize', reArm);
+    window.addEventListener('orientationchange', reArm);
+    return () => {
+      window.removeEventListener('resize', reArm);
+      window.removeEventListener('orientationchange', reArm);
+    };
+  }, []);
+  React.useLayoutEffect(() => {
+    if (capH > 0) return;                    /* already measured for this layout */
+    const el = capRef.current;
+    if (!el) return;
+    const h = Math.ceil(el.getBoundingClientRect().height);
+    if (h > 0) setCapH(h);
+  });
+
   /* Gone, not merely transparent, once it is over.  BroTown's own render
      guard would also drop it, but only on the next time something else
      re-renders that tree — and an invisible overlay that is still IN THE DOM
@@ -174,7 +232,19 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
      360 with a column 180px wide; measured, not guessed — see
      tools/qa/mp/shot-levelup.mjs, which fails the run if any caption plate
      crosses the tray. */
-  const capBoxH = nCols === 1 ? LEVELUP_CAPTION_BOX_H : Math.round(LEVELUP_CAPTION_BOX_H * 1.75);
+  /* v2.3.2659: the measured plate wins as soon as it exists; the constants
+     are the frame-0 fallback, for the one frame before the measurement lands.
+     v2.3.2660: and it REPLACES them rather than flooring them.  The floor was
+     harmless while the caption was two lines and the constant was the honest
+     size of two lines.  With the gains line gone (see the caption below) the
+     plate is ONE line -- about 36px against the constant's 58 -- and a floor
+     would hold 22px of reserved space the caption no longer needs, shrinking
+     the art on exactly the short screens the reservation exists to protect.
+     Taking the measurement straight is safe because it is a settled layout
+     read, not a mid-animation one: opacity does not affect layout, and the
+     caption's text cannot change during a burst. */
+  const _capGuess = nCols === 1 ? LEVELUP_CAPTION_BOX_H : Math.round(LEVELUP_CAPTION_BOX_H * 1.75);
+  const capBoxH = capH > 0 ? capH : _capGuess;
   const kCaption = (worldBottom - 8 - capBoxH - LEVELUP_CAPTION_GAP - pinY) / _belowCircle;
   /* ...but not to the point of a medallion nobody can see: below this the
      caption is allowed to sit a little higher against the art instead. */
@@ -256,6 +326,7 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
       </div>
       <div
         data-levelup-caption=""
+        ref={capRef}                 /* v2.3.2659: measured, see the fit above */
         style={{
           /* ═══ v2.3.2615: THE CAPTION SPANS ITS COLUMN, NOT THE SCREEN ═══
              This was `left: 0; right: 0` with the plate centred inside it, and
@@ -329,15 +400,29 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
                 ? `Character · Level ${msg.level}`
                 : (label ? `${label} · Level ${lvl}` : `Level ${lvl}`)}
           </div>
-          {/* v2.3.1727's gains line, kept: "you got stronger" is a claim and
-              "+1.5 damage · +8 max HP" is the reason the owner asked for the
-              retune.  The art says LEVEL UP and the icon says which skill;
-              this is the only part that says what it BOUGHT. */}
-          {(msg.kind === 'combat' || msg.kind === 'char') && msg.gains ? (
-            <div style={{ fontSize: nCols === 1 ? 12.5 : 11, color: '#B9C1BF', marginTop: 3, lineHeight: 1.25 }}>
-              {msg.gains}
-            </div>
-          ) : null}
+          {/* ═══ v2.3.2660: THE GAINS LINE IS GONE ═══
+              Owner: "Don't include the specific stat increases, just the name
+              of the skill and level.  It's way too tiny to read anyway."
+
+              v2.3.1727 added it to answer "I DO want leveling to feel more
+              powerful" -- the theory being that "+1.5 damage · +6 max HP"
+              earns the claim the art is making.  The owner has now watched it
+              in play and the theory does not survive contact: at 11-12.5px
+              under a burst that is itself moving, and on screen for about two
+              seconds, it is not read.  A line nobody reads does not make a
+              level feel powerful -- it makes the caption longer, and it was
+              long enough to push the plate under the dashboard tray
+              (v2.3.2659).  The art carries the moment, the medallion says
+              which skill, and the caption above says which level.  That is
+              the whole notification now.
+
+              REMOVED HERE, AT THE RENDER, not at each sender: this is a
+              presentation decision, and one deletion covers every kind and
+              every trigger site.  wsClient still BUILDS `gains` (see the
+              v2.3.1727 note there) -- it is the only place a prog3 milestone
+              unlock is named, and that wants its own notification rather than
+              a silent deletion.  Flagged to the owner; until they decide, the
+              string is computed and not shown. */}
         </div>
       </div>
     </div>

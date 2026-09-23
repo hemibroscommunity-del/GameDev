@@ -19,12 +19,8 @@
  *          60 px.  The swarm-breaker; the only thing in the kit that scales
  *          with how badly you are surrounded.
  *
- *   2. THE MILESTONE LADDER.  A trained level currently pays stats only.
- *      MILESTONES below is the "you unlocked a thing" half.  Char level 3
- *      (a fresh character) is the FLOOR and is deliberately NOT gated —
- *      owner decision: the existing kit (dodge / lunge / retreat / swipe)
- *      stays available to everyone, because taking abilities away from
- *      current players to sell them back is a regression, not progression.
+ *   2. THE MILESTONE LADDER -- REMOVED at v2.3.2662 (see the tombstone
+ *      below).  The owner never designed it; a level pays stats only.
  *
  * SERVER IS THE ONLY REFEREE (constraint 4 of the PR brief).  Every cast is
  * validated here against: the character level the SERVER computes, the
@@ -46,9 +42,10 @@
  * keeps the rpg blob's fixed field list untouched (TRAPS #2).
  */
 
-/* NO IMPORT FROM prog3.js, deliberately.  prog3.js imports
-   staminaMilestoneMult FROM here (its _prog3Recompute owns the max-stamina
-   line), so pulling PROG3 back the other way would make a module cycle whose
+/* NO IMPORT FROM prog3.js, deliberately.  prog3.js imports the block
+   ladder (blocksAt / blockSize) FROM here -- it imported staminaMilestoneMult
+   too until v2.3.2662 retired the milestones -- so pulling PROG3 back the
+   other way would make a module cycle whose
    failure mode is a TDZ ReferenceError at worker boot — green in every unit
    test that imports the pair in the lucky order.  The dependency runs one
    way: prog3 -> abilities. */
@@ -428,44 +425,26 @@ export const LUNGE = {
   pullTo: 0,
 };
 
-/* ═══ THE MILESTONE LADDER — char level -> what it unlocks ═══
-   `kind` names an ability in STAM_ABILITIES; `points` is a one-off bonus
-   allocation point; `stamMult` multiplies max stamina from here on.
+/* ═══ v2.3.2662: THE MILESTONE LADDER IS GONE ═══
+   Owner: "Just remove the milestones from the game I did not make those."
 
-   v2.3.1734: rung 6 is FILLED.  It was left empty by v2.3.1733 as a
-   hand-off marker for PR 6, with an assertion in abilities.test.mjs
-   pinning the GAP so the two sessions could not silently disagree about
-   who owned the level — that assertion is now flipped to pin the entry.
-
-   Element Burst carries `burst: true` and NOT a `kind`, deliberately: it
-   spends MANA, not stamina, so it is not in STAM_ABILITIES and it has its
-   own handler (server/src/burst.js).  `kind` means "look me up in
-   STAM_ABILITIES", and milestoneAbilityLevels() enforces exactly that —
-   naming a kind here that the stamina table does not have would fail the
-   ladder-consistency check, correctly.  The rung still earns its keep: the
-   `label` is what the level-up celebration announces, which is the whole
-   reason a player finds out the ability exists.
-
-   THE LEVEL ITSELF lives in PROG3.BURST_MIN_CHAR_LEVEL, which is what
-   burst.js actually gates on, because that constant is mirrored to the
-   client and drives the button.  This file cannot import prog3.js (the
-   module cycle noted at the top), so abilities.test.mjs imports both and
-   asserts the two agree — one gate, one ladder entry, pinned together. */
-export const MILESTONES = {
-  /* v2.3.2252: see the client mirror -- rung 4 stops naming an ability. */
-  4:  { label: 'Sturdy Arm' },
-  5:  { points: 1,     label: 'Bonus stat point' },
-  6:  { burst: true,   label: 'Element Burst' },
-  /* v2.3.2327: rung 8 stops naming an ability, for the reason rung 4 did at
-     v2.3.2252 -- Whirlwind is ungated now, and leaving `kind: 'whirl'` here
-     would have the level-up celebration announce "Whirlwind unlocked!" for a
-     move the player has had since level 1 (prog3.js reads
-     MILESTONES[level].label for exactly that).  It also has to go for a
-     harder reason: milestoneAbilityLevels() asserts every kind the ladder
-     names agrees with its minLevel, and 8 !== 0. */
-  8:  { label: 'Storm Footing' },
-  10: { stamMult: 1.25, label: 'Second Wind' },
-};
+   v2.3.1733 built a character-level ladder here -- 4 'Sturdy Arm',
+   5 'Bonus stat point', 6 'Element Burst', 8 'Storm Footing', 10 'Second
+   Wind' -- out of one owner sentence ("chunky stats AND milestone unlocks").
+   Every name, level and reward was the session's own invention, and by the
+   time the owner saw the table two of the five rungs had already been
+   hollowed out (v2.3.2252 and v2.3.2327 ungated the abilities they named).
+   What was still live when it was removed:
+     - level 5:  +1 allocation point      (_prog3GrantMilestones, deleted)
+     - level 6:  the Element Burst gate   (burst.js _burstRefusal, deleted)
+     - level 10: x1.25 max stamina        (staminaMilestoneMult, deleted)
+   Points ALREADY paid stay paid -- they are in the pool or spent, and a
+   claw-back could leave spent allocations with nothing funding them.  The
+   `ms` high-water that recorded the payments still survives _sanitizeProg3
+   (prog3.js) for one reason: rollback.  A worker rolled back to v2.3.2661
+   would otherwise re-pay every player the level-5 point on their next join.
+   Clients learn of the change through caps.milestonesRetired (join.js) and
+   keep the old stamina/burst predictions against an older worker (rule 19). */
 
 /* ═══ v2.3.2302: THE BLOCK COUNT IS A LADDER, NOT A CONSTANT ═══
    v2.3.2298 made a block a FIFTH of the pool so "one special = one block" was
@@ -485,8 +464,10 @@ export const MILESTONES = {
    pool path folds amulet and gear bonuses into those, so a gear-derived count
    would make one block stop being one cast the moment you swapped a necklace.
 
-   Its own ladder rather than MILESTONES: that one is keyed on CHARACTER level,
-   tops out at rung 10, and already carries stamMult pinned by the suite. */
+   Its own ladder, and NOT one of the milestones v2.3.2662 removed: this one
+   is keyed on the progression INPUT (Magic level / stam points), not on
+   character level, and it was never a reward rung -- it is how a block keeps
+   meaning one special as the pool grows. */
 export const BLOCKS = {
   base:  5,
   max:   10,
@@ -519,30 +500,6 @@ export function poolBlocks(ps, pool) {
 export function blockSize(ps, pool) {
   const max = (pool === 'mana' ? ps && ps.maxMana : ps && ps.maxStamina) || 100;
   return Math.max(1, Math.floor(max / poolBlocks(ps, pool)));
-}
-
-/* Max-stamina multiplier earned by character level.  Read by
- * _prog3Recompute (server) and recalcDerived (client) — both, or the bar
- * the player sees disagrees with the pool the abilities spend from.
- * NAME COLLISION, on purpose: "Second Wind" is also a retired defenseSpec
- * channel (a post-hit heal, combat.js).  The owner named this milestone;
- * the two never coexist on one character (the channel is inert for every
- * prog3 player), so the label is reused rather than invented. */
-export function staminaMilestoneMult(charLevel) {
-  let mult = 1;
-  for (const [lvl, m] of Object.entries(MILESTONES)) {
-    if (m.stamMult && charLevel >= Number(lvl)) mult *= m.stamMult;
-  }
-  return mult;
-}
-
-/* Bonus allocation points owed at a character level (cumulative). */
-export function milestonePointsThrough(charLevel) {
-  let pts = 0;
-  for (const [lvl, m] of Object.entries(MILESTONES)) {
-    if (m.points && charLevel >= Number(lvl)) pts += m.points;
-  }
-  return pts;
 }
 
 export const abilityMethods = {
@@ -1065,28 +1022,6 @@ export const abilityMethods = {
     return hit;
   },
 
-  /* ═══ MILESTONE GRANTS (the non-ability rungs) ═══
-     Called on every trained level-up AND once at join adoption, so a
-     character who levelled past a milestone while this code did not exist
-     still receives it (retroactive by design — the alternative is telling
-     an existing level-40 player their level 5 reward is not for them).
-     `ms` is the highest level already paid; it lives INSIDE ps.prog3, which
-     _saveRpg persists wholesale, so this adds no field to the rpg blob's
-     fixed list (handoff rule 1 / TRAPS #2) and no new storage key. */
-  _prog3GrantMilestones(playerId, ps) {
-    const p3 = ps && ps.prog3;
-    if (!p3) return 0;
-    const level = this._prog3CharLevel(ps);
-    const paidThrough = Math.max(0, Math.floor(Number(p3.ms) || 0));
-    if (level <= paidThrough) return 0;
-    const owed = milestonePointsThrough(level) - milestonePointsThrough(paidThrough);
-    p3.ms = level;
-    if (owed > 0) p3.pool = Math.max(0, Math.floor(Number(p3.pool) || 0)) + owed;
-    /* Crossing 10 changes max stamina, so re-derive the pools either way. */
-    this._prog3Recompute(ps);
-    return owed;
-  },
-
   /* What the client needs to draw the ladder: which abilities are live for
      this player right now.  Rides on player_state (persistence.js) so the
      buttons appear the moment the level-up lands, with no extra event and
@@ -1111,10 +1046,3 @@ export function abilityStaminaCost(ps, kind) {
   return cfg.blocks > 0 ? cfg.blocks * blockSize(ps, 'stamina') : 0;
 }
 
-/* Kept honest by server/test/abilities.test.mjs: the ladder must never name
-   an ability that does not exist in the table. */
-export function milestoneAbilityLevels() {
-  const out = {};
-  for (const [lvl, m] of Object.entries(MILESTONES)) if (m.kind) out[m.kind] = Number(lvl);
-  return out;
-}

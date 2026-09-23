@@ -118,8 +118,26 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                  cannot be reached by the programmatic open() calls that would
                  have made open() itself a noisy place to put it.
                  Deduped by uiTick, so the pointer event firing twice on a
-                 slow tap still makes one sound. */
-              BT_AUDIO.uiTick('ui-close', 0.5);
+                 slow tap still makes one sound.
+
+                 ═══ v2.3.2658: THE CLICK, NOT THE CLOSE ═══
+                 Owner: "Use the click sound for navigating through the menus
+                 (tapping the dashboard buttons ...)".  These ARE the dashboard
+                 buttons.  v2.3.2639 played 'ui-close' here because a close
+                 sound was the only UI sound the game had; navigation has its
+                 own voice now, and ui-close goes back to meaning a window
+                 shutting.
+
+                 KEPT EXPLICIT even though src/ui/uiSfxDelegate.js would now
+                 catch this tap on its own (these are role="button"): this is
+                 the ONE control the owner has already reported silent once,
+                 and uiClickNow fires on the frame the finger lifts instead of
+                 the delegate's 60ms.  The delegate's offer for the same tap
+                 lands inside uiTick's same-key window and collapses into this
+                 one, so belt-and-braces costs a duplicate CALL, never a
+                 duplicate SOUND -- and if the delegate ever regresses, the
+                 rail is the one thing that does not go quiet with it. */
+              BT_AUDIO.uiClickNow();
               /* ═══ v2.3.2158: SIDEWAYS, THE DASHBOARD BUTTON IS THE BAG ═══
                  Owner, on a real iPhone in landscape: "The one thing I don't
                  understand is where my bag went.  I see the thin bar at the

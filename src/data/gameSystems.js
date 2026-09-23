@@ -37,11 +37,11 @@ import {
   prog3RangeMult, prog3SpecialMult, /* v2.3.2592: reach + special, client-consumed */
   prog3DmgTerm,
   prog3ElemPower, isProg3ElemEnabled, /* v2.3.2512: elem per weapon; max mana as a stat */
+  legacyStaminaMult, /* v2.3.2662: the retired level-10 stamina rung, old workers only */
 } from './prog3.js';
-/* v2.3.1733: the char-10 milestone's max-stamina multiplier (mirror of the
-   server's staminaMilestoneMult) — recalcDerived's prog3 branch is the
-   client twin of _prog3Recompute, so the term has to appear in both. */
-import { staminaMilestoneMult, blocksAt } from './abilities.js';
+/* v2.3.2662: staminaMilestoneMult left this import with the milestone
+   ladder; the old-worker prediction is legacyStaminaMult (imported above). */
+import { blocksAt } from './abilities.js';
 
 /* v2.3.1186: pure-display exports (BT_AUDIO, BT_ACHIEVEMENTS, MASKS,
    tile colors, generateZoneMap, emote/NPC tables) moved to
@@ -5659,9 +5659,12 @@ export function recalcDerived(rpg) {
     /* v2.3.1733: × the milestone multiplier (Second Wind, char 10, +25%) —
        exact mirror of the server's _prog3Recompute line.  Without it the
        bar would read 100 while the worker spent from 125 and every echo
-       would snap it, which is the drift the mirror rule exists to stop. */
+       would snap it, which is the drift the mirror rule exists to stop.
+       v2.3.2662: the ladder is gone; legacyStaminaMult is 1 against a worker
+       advertising caps.milestonesRetired and x1.25 at 10+ against an older
+       one, because that is what each of them actually settles. */
     rpg.maxStamina = Math.floor((100 + prog3Pts(rpg, 'stam') * PROG3.BODY.stam.per)
-      * staminaMilestoneMult(p3lvl));
+      * legacyStaminaMult(p3lvl));
     /* v2.3.2512: max mana is a stat now, ADDED to the Magic-level derivation
        (exact mirror of _prog3Recompute).  Gated on the caps flag so an old
        worker's pure-derivation pool is still what this predicts — its echo
