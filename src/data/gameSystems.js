@@ -7247,6 +7247,37 @@ export function monsterBodyOffsetY(archOrType) {
   if (v && v.liveScalePx) return Math.round(v.liveScalePx / 2);
   return 0;
 }
+/* ═══ v2.3.2747: WHERE A SHOT GOES IN -- THE DRAWN TORSO ═══
+   Owner, on v2.3.2743's shots that land in the body: "The arrows are grouping
+   around the skeleton's knee. Center it on the torso."  They were landing
+   round monsterBodyOffsetY, and for the tall figures that is not the torso.
+   MEASURED on the drawn figures (the live game at phone size, one monster
+   pinned beside the player, the frame diffed against the same frame without
+   it; world px above m.y, i.e. above the feet):
+     skeleton   knees ~42, pelvis 70-82, ribcage 95-118, skull to 147
+     mummy      waist ~58, chest 60-88, head to 115
+     fishman    shorts 28-50, chest 50-88, fin to 115    (bogLurker is its recolour)
+     rock egg   0 to 128, eyes ~84                        (thornShambler is its recolour)
+   The figures stand ~1.5x taller than the "liveScalePx / 2" rule above
+   assumes -- the container is scaled by MONSTER_SIZE_MULT (entityRenderer),
+   which that rule leaves out -- so its 60 is the skeleton's knees and its 48
+   the mummy's and the fishman's thighs.  The slime (23), snowman (19) and fire
+   goblin (28) are already centred on their bodies and keep that table's value.
+   THAT TABLE STAYS.  It is the centre of the projectile HIT circle, the
+   tap-to-lock circle and the melee reach, and moving it moves which shots
+   hit.  This one is where a ranged shot is AIMED under a lock (combatHelpers
+   lockShotPoint), the centre it LANDS round (projectiles _pickLanding), and
+   -- for the one monster the shot was aimed at -- where that monster's hit
+   circle is centred for it (projectiles _projCentreLift): same radius, so a
+   torso shot has exactly the room to hit that a shot at the old centre had.
+   Every value lies on the body the old circle covers (skeleton 100 vs 60 +/-
+   50, mummy 74 vs 48 +/- 40, the 96px brutes vs 48 +/- 40).  mp-shotland. */
+const MONSTER_TORSO_Y = { skeleton: 100, mummy: 74, fishman: 66, bogLurker: 66, rockmonster: 64, thornShambler: 64 };
+export function monsterTorsoY(archOrType) {
+  const shape = hitShapeOf(archOrType);
+  const t = MONSTER_TORSO_Y[shape];
+  return (typeof t === 'number') ? t : monsterBodyOffsetY(shape);
+}
 /* v2.3.1536: the on-screen RADIUS of a monster that has no sprite sheet and
  * renders as a bare Graphics circle -- brute / swarm / sentinel / volatile /
  * stalker / hexer, which is everything the dungeons spawn and nothing the

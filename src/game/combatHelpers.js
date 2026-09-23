@@ -8,7 +8,7 @@
    globalThis assignments run. The defensive typeof guards in the code are kept
    verbatim. window._gameState / window._setLevelUpMsg stay as runtime lookups
    by design (they are wired up inside the BroTown component each render). */
-import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY } from '@/data/index.js';
+import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY, monsterTorsoY, zonePlayerScale, TILE } from '@/data/index.js';   /* v2.3.2747: + the torso a shot is aimed at, and the size it is drawn */
 import { hitMaterialOf, hitFxTintOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard; v2.3.2743: goo in the drawn colour */
 import { propMaterial, propSwingContact } from '@/data/worldProps.js';   /* v2.3.2730: what a prop is made of, and where a swing meets one */
 import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
@@ -120,7 +120,8 @@ export function bowGripPoint(S) {
 }
 
 export function rangedAimAngle(S, originX, originY) {
-  var lockPt = lockAimPoint(S && S.lockedTarget && S.lockedTarget.ref);
+  /* v2.3.2747: at the torso, not the hitbox centre -- see lockShotPoint */
+  var lockPt = lockShotPoint(S && S.lockedTarget && S.lockedTarget.ref, S && S.currentZone);
   if (lockPt) {
     return { ang: Math.atan2(lockPt.y - originY, lockPt.x - originX), src: 'lock' };
   }
@@ -157,6 +158,49 @@ export function lockAimPoint(t) {
   /* Same body-centre offset the projectile hit-test applies (0 for NPCs and
      anything without an archetype, i.e. aim at the feet as before). */
   return { x: x, y: y - (monsterBodyOffsetY(t.archetype || t.type) || 0) };
+}
+
+/* ═══ v2.3.2747: A RANGED SHOT IS AIMED AT THE TORSO ═══
+ * Owner: "The arrows are grouping around the skeleton's knee. Center it on the
+ * torso."  Shots land round where they are aimed (projectiles _pickLanding keeps
+ * a landing within a few degrees of the shot's own line), and a locked shot was
+ * aimed at lockAimPoint -- the centre of the HIT circle, which on the tall
+ * figures is their knees or thighs (monsterTorsoY has the measurements).  So
+ * the shot now flies at the drawn torso and lands round it, and the monster it
+ * was aimed at tests a circle of the same radius centred there
+ * (projectiles _projCentreLift): the room a shot has to hit is what it was,
+ * round the point it is aimed at.  Everything else still tests the circle
+ * where it always was.
+ *
+ * FOR RANGED SHOTS ONLY.  lockAimPoint keeps its other readers -- the body
+ * facing a lock drives (monsterCombat), the dodge and the shield arc -- on the
+ * hitbox centre: pointing those at a skeleton's chest would turn a player to
+ * face UP at one standing beside them.  The readers here are the three that
+ * must agree with each other: the bow's sight gate and drawn sight line
+ * (rangedAimAngle), the flight line of every locked arrow and bolt
+ * (projectiles), and the specials (playerActions).
+ *
+ * The torso is scaled by the size the figure is drawn at, zonePlayerScale at
+ * its feet: 1 everywhere except where a zone draws things smaller (the World
+ * View, and v2.3.2745's Wind Dunes depth preview, where a skeleton on the
+ * horizon is drawn at 0.42 and its chest is 42 px up, not 100). */
+export function monsterDrawScale(m, zoneId) {
+  if (!m || !zoneId) return 1;
+  var x = (typeof m.renderX === 'number' && isFinite(m.renderX)) ? m.renderX : m.x;
+  var y = (typeof m.renderY === 'number' && isFinite(m.renderY)) ? m.renderY : m.y;
+  var k = zonePlayerScale(zoneId, x, y, TILE);
+  return (typeof k === 'number' && isFinite(k) && k > 0) ? k : 1;
+}
+export function torsoLift(m, zoneId) {
+  if (!m) return 0;
+  var lift = monsterTorsoY(m.archetype || m.type) || 0;
+  return lift ? lift * monsterDrawScale(m, zoneId) : 0;
+}
+export function lockShotPoint(t, zoneId) {
+  var p = lockAimPoint(t);   /* the same checks: a usable, rendered position */
+  if (!p) return null;
+  var feetY = p.y + (monsterBodyOffsetY(t.archetype || t.type) || 0);
+  return { x: p.x, y: feetY - torsoLift(t, zoneId) };
 }
 
 /* Use-trained Tier-1 stat progression (GDD §1.1, §1.2, §1.4).

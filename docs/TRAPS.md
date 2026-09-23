@@ -4460,3 +4460,25 @@ shafts on the far side) -- and a point-blank bolt already past its point
 bursts where the orb IS (v2.3.2505). The one-in-eight arrow snap (v2.3.2731)
 is rolled on the hit, where every screen rolls it, and drawn at the landing.
 **Receipt:** mp-shotland.
+
+**...and the circle's centre is not the torso (v2.3.2747).** The owner, on
+the shots above: "The arrows are grouping around the skeleton's knee."
+`monsterBodyOffsetY` -- the hit circle's centre -- was derived as
+`liveScalePx / 2`, which leaves out the monster container's MONSTER_SIZE_MULT
+1.5: the skeleton is drawn ~147 px tall and its 60 is its knees; the mummy's
+and the 96 px brutes' 48 is their thighs. The plausible-but-wrong fix is to
+correct `monsterBodyOffsetY` itself -- it is also the tap-to-lock circle and
+the melee reach, so that changes which shots and taps connect. The rule: a
+separate, measured `monsterTorsoY` is where a LOCKED ranged shot is aimed
+(`lockShotPoint`: `rangedAimAngle`'s sight gate and sight line, the flight
+line in projectiles, the specials) and the centre it lands round. **And the
+aimed-at monster's circle moves with the aim** (`_projCentreLift`, the gate's
+`opts.aimAt`): a shot aimed 40 px above a circle's centre has 40 px less room
+on that side, and mp-hitreal caught a mummy drifting 20 px across a torso shot
+that then passed through its chest without a hit. Same radius, centred where
+the shot was aimed: the room it had before. `lockAimPoint` keeps its other
+readers -- the facing a lock drives, the dodge, the shield arc -- on the
+circle's centre: pointed at a skeleton's chest, the facing turns a player to
+face UP at one standing beside them. **Receipt:** mp-shotland (every flight
+line through the torso, the skeleton's landings in its ribcage, a skeleton
+that steps 40 px either way mid-flight still hit, 75 px missed).

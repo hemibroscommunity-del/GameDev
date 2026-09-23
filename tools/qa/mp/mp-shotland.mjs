@@ -13,7 +13,17 @@
  *
  * Real shots -- the auto-attack a lock drives, the path a player's shots take --
  * at a pinned slime, snowman, fire goblin and skeleton, N bolts and N arrows at
- * each.  For every shot it records where the shot was on the frame the hit
+ * each.
+ *
+ * v2.3.2747 -- AT THE TORSO.  Owner: "The arrows are grouping around the
+ * skeleton's knee. Center it on the torso."  The centre they landed round was
+ * the hit circle's (monsterBodyOffsetY), which on the tall figures is the
+ * knees or thighs.  A locked shot is now AIMED at the drawn torso
+ * (gameSystems monsterTorsoY, combatHelpers lockShotPoint) and lands round it;
+ * the circle the shot has to touch is centred where it was aimed, the same
+ * size, so it has exactly the room to hit it had before.  So this also shoots a
+ * mummy, a fishman and a rock monster, checks each flight line passes through
+ * the torso, and moves a skeleton while an arrow flies at it.  For every shot it records where the shot was on the frame the hit
  * REGISTERED and where and when the hit is DRAWN.  Plus a bow special, injected
  * the way mp-stuckarrow does, which must fly the rest of the way in rather than
  * jump there.  One picture per monster and weapon: out/shotland/<key>-<weapon>.png.
@@ -26,13 +36,20 @@ const OUT = `${H.REPO}/tools/qa/mp/out/shotland`;
 const N = 5;
 const DIST = 150;
 /* LAND_CORE (projectiles.js): the half-width and half-height of the region a
-   shot lands in, round monsterBodyOffsetY's centre.  Mirrored here so a change
-   to one without the other shows up as a failure, not a silent drift. */
+   shot lands in, round the torso (v2.3.2747; the body centre before).  `r` is
+   the hit circle's radius (monsterProjRadius, projectiles.js).  Both mirrored
+   here so a change to one without the other shows up as a failure, not a
+   silent drift.  `torso` is the drawn figure's torso height above its feet --
+   what the owner asked for, read off the art (see monsterTorsoY) -- and `ribs`
+   the band the skeleton's arrows must land in: its ribcage, not its knees. */
 const MONS = [
-  { key: 'slime',    arch: 'fodder',  variant: null,         zone: null,    core: [10, 7] },
-  { key: 'snowman',  arch: 'snowman', variant: null,         zone: 'frost', core: [10, 9] },
-  { key: 'goblin',   arch: 'fodder',  variant: 'fireGoblin', zone: 'ember', core: [8, 12] },
-  { key: 'skeleton', arch: 'fodder',  variant: 'skeleton',   zone: 'sky',   core: [7, 17] },
+  { key: 'slime',    arch: 'fodder',  variant: null,          zone: null,      core: [10, 7],  r: 25, torso: 23 },
+  { key: 'snowman',  arch: 'snowman', variant: null,          zone: 'frost',   core: [10, 9],  r: 32, torso: 19 },
+  { key: 'goblin',   arch: 'fodder',  variant: 'fireGoblin',  zone: 'ember',   core: [8, 12],  r: 26, torso: 28 },
+  { key: 'skeleton', arch: 'fodder',  variant: 'skeleton',    zone: 'sky',     core: [8, 11],  r: 50, torso: 100, band: [88, 114] },
+  { key: 'mummy',    arch: 'fodder',  variant: 'mummy',       zone: 'sky',     core: [8, 11],  r: 40, torso: 74,  band: [60, 88] },
+  { key: 'fishman',  arch: 'brute',   variant: 'fishman',     zone: 'tidal',   core: [8, 12],  r: 40, torso: 66,  band: [50, 88] },
+  { key: 'rock',     arch: 'brute',   variant: 'rockmonster', zone: 'hollows', core: [12, 14], r: 40, torso: 64,  band: [46, 84] },
 ];
 const WEAPONS = ['bolt', 'arrow'];
 const LAND_MAX_MS = 700;   /* projectiles.js: a safety cap on the landing flight */
@@ -58,7 +75,8 @@ const arm = (P, mon, wpn) => P.page.evaluate(({ mon, wpn, dist }) => {
   S.autoAttack = false; S.isSwinging = false; S.swingTimer = 0;
   const ang = Math.atan2(2, dist);
   S._facingAngle = ang; S._aimAngle = ang; S._lastAimAngle = ang; S._facing = 'right';
-  return { id: m.id, bo: F.monsterBodyOffsetY ? F.monsterBodyOffsetY(m.archetype) : null };
+  return { id: m.id, bo: F.monsterBodyOffsetY ? F.monsterBodyOffsetY(m.archetype) : null,
+    torso: F.monsterTorsoY ? F.monsterTorsoY(m.archetype) : null };
 }, { mon, wpn, dist: DIST });
 
 /* Fire ONE shot at the armed monster and watch it frame by frame until its hit
@@ -76,7 +94,8 @@ const shootOnce = (P, wpn) => P.page.evaluate((wpn) => new Promise((resolve) => 
   /* v2.3.2743: one arrow in eight SNAPS (v2.3.2731) instead of leaving a
      shaft -- it lands just the same, and breaks where it lands */
   const t00 = performance.now();
-  const bo = F.monsterBodyOffsetY ? F.monsterBodyOffsetY(m.archetype) : 0;
+  /* v2.3.2747: the centre a shot lands round is the torso now */
+  const bo = F.monsterTorsoY ? F.monsterTorsoY(m.archetype) : (F.monsterBodyOffsetY ? F.monsterBodyOffsetY(m.archetype) : 0);
   /* the damage send -- the frame the hit registered, unchanged by the landing */
   let sendT = null;
   const ch = S.channel;
@@ -87,7 +106,7 @@ const shootOnce = (P, wpn) => P.page.evaluate((wpn) => new Promise((resolve) => 
       return origSend.apply(this, arguments);
     };
   }
-  const out = { contact: null, land: null, burst: null, crashes: 0, stubs: 0, bursts: 0, flashAtContact: null, flashAtLand: null, blood: 0, transit: 0, frames: 0 };
+  const out = { lineAt: null, contact: null, land: null, burst: null, crashes: 0, stubs: 0, bursts: 0, flashAtContact: null, flashAtLand: null, blood: 0, transit: 0, frames: 0 };
   let shot = null;
   const t0 = performance.now();
   S.autoAttack = true;
@@ -99,6 +118,13 @@ const shootOnce = (P, wpn) => P.page.evaluate((wpn) => new Promise((resolve) => 
     for (const a of arrows) {
       if (!shot) shot = a;
       if (a !== shot) continue;
+      /* v2.3.2747: the height its flight line crosses the monster's x at, read
+         on its last frame in free flight -- an arrow often registers its hit
+         and lands on one frame, so the contact frame is not always seen */
+      if (!a._land && !a.stuckIn && !(a.hitIds && a.hitIds.has(m.id)) && typeof a._renderX === 'number' && Math.abs(Math.cos(a.ang)) > 0.2) {
+        const _fx = (typeof m.renderX === 'number' ? m.renderX : m.x), _fy = (typeof m.renderY === 'number' ? m.renderY : m.y);
+        out.lineAt = _fy - (a._renderY + Math.tan(a.ang) * (_fx - a._renderX));
+      }
       if (!out.contact && a.hitIds && a.hitIds.has(m.id)) {
         const front = a.isStaff ? 0 : 28.5;   /* PROJ_BODY.arrow.front: its tip */
         out.ang = a.ang;
@@ -218,6 +244,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const wpn of WEAPONS) {
       const armed = await arm(P, mon, wpn);
       if (armed.err) { rec.ok(`${mon.key} ${wpn}: armed (guard)`, false, armed); continue; }
+      if (wpn === WEAPONS[0]) {
+        /* v2.3.2747: the torso is where the owner asked for it, and inside the
+           hit circle -- so a shot aimed at it still crosses the circle */
+        rec.ok(`${mon.key}: shots are aimed at and land round its torso, ${armed.torso}px above its feet (measured on the art: ${mon.torso})`,
+          armed.torso === mon.torso, armed);
+        rec.ok(`${mon.key}: ...which is on the body its hit circle covers (${armed.torso} vs ${armed.bo} +/- ${mon.r})`,
+          typeof armed.bo === 'number' && Math.abs(armed.torso - armed.bo) < mon.r, armed);
+      }
       await P.page.waitForTimeout(400);
       const shots = [];
       for (let i = 0; i < N; i++) {
@@ -243,6 +277,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const tag = `${mon.key} ${wpn}`;
       rec.ok(`${tag}: every shot hit and was drawn landing (${ok.length}/${N}) (guard)`, ok.length === N, shots.map((s) => ({ contact: !!s.contact, land: !!s.land, left: s.leftFlying })));
       if (!ok.length) continue;
+      /* v2.3.2747: the flight line goes through the torso, and the landings sit on it */
+      const lines = shots.filter((s) => s.lineAt != null).map((s) => r1(s.lineAt));
+      rec.ok(`${tag}: each shot flew at the torso -- its line crosses the monster ${lines.join(', ')}px above the feet (torso ${mon.torso})`,
+        lines.length === shots.length && lines.every((v) => Math.abs(v - mon.torso) <= 4), lines);
+      if (mon.band) {
+        const heights = ok.map((s) => r1(mon.torso - (s.land.y - s.land.cy)));
+        rec.ok(`${tag}: ...and landed on it, ${Math.min(...heights)}-${Math.max(...heights)}px above the feet (the torso is ${mon.band[0]}-${mon.band[1]}; the old centre was ${armed.bo})`,
+          heights.every((h) => h >= mon.band[0] && h <= mon.band[1]), heights);
+      }
       rec.ok(`${tag}: every hit is drawn in the body's core, round its centre (worst ${Math.max(...rows.map((r) => r.landAt))}px out, core ${mon.core[0]}x${mon.core[1]})`,
         ok.every((s) => inCore(s.land, mon.core, 1.25)), rows);
       const spread = Math.max(0, ...ok.flatMap((s, i) => ok.slice(i + 1).map((o) => Math.hypot(s.land.x - o.land.x - (s.land.cx - o.land.cx), s.land.y - o.land.y - (s.land.cy - o.land.cy)))));
@@ -312,5 +355,56 @@ export async function run({ browser, wsPort, webPort, rec }) {
       && Math.hypot(sp.burst.x - sp.land.cx, sp.burst.y - sp.land.cy) <= 27, { burst: sp.burst, land: sp.land });
   }
   await P.page.evaluate(() => { const S = window._gameState.current; S.monsters = []; S.arrows = []; S.lockedTarget = null; });
+
+  /* ── v2.3.2747: the room a torso shot has to hit is the room it always had ──
+     The skeleton's hit circle (radius 50, plus the arrow's 6.6) used to be
+     centred where a locked shot was aimed.  Aimed at the torso 40 px higher, a
+     shot would have had 16.6 px of room above instead of 56.6.  So the monster a
+     shot is aimed at is tested round the point it was aimed at: a skeleton that
+     steps 40 px either way while the arrow flies is still hit, as it was when
+     shots went at its knees, and one that steps 75 px is missed, as it was then.
+     On the page clock at 16 ms a frame, so the arrow is in the air for several
+     frames after it is loosed whatever this box's frame rate (a slow frame is a
+     long step, and the first one can carry it straight into the body) -- which
+     is why this runs LAST.  The dark-screen watchdog is told the screen is lit
+     (TRAPS §108). */
+  await P.page.evaluate(() => { const S = window._gameState.current; S.__wdEverLit = true; S.__wdNext = 1e15; S.__wdDark = 0; });
+  await P.page.clock.install();
+  await P.page.clock.pauseAt((await P.page.evaluate(() => Date.now())) + 1000);
+  await P.page.clock.runFor(200);
+  const sk = MONS.find((mm) => mm.key === 'skeleton');
+  const moves = [];
+  for (const dy of [40, -40, 75, -75]) {
+    await arm(P, sk, 'arrow');
+    await P.page.clock.runFor(400);
+    await P.page.evaluate(() => { const S = window._gameState.current; S.swingTimer = 0; S.autoAttack = true; S.__qaShift = { shot: null, moved: false }; });
+    let res = null;
+    for (let f = 0; f < 150 && !res; f++) {
+      await P.page.clock.runFor(16);
+      res = await P.page.evaluate((dy) => {
+        const S = window._gameState.current, m = (S.monsters || [])[0], st = S.__qaShift;
+        if (!m || !st) return { err: 'no monster' };
+        const arrows = S.arrows || [];
+        if (arrows.length) { S.autoAttack = false; if (!st.shot) st.shot = arrows[0]; }
+        const a = st.shot;
+        if (a && !st.moved && a._pathX != null) { m.y += dy; if (typeof m.renderY === 'number') m.renderY += dy; st.moved = true; }
+        const hit = !!(a && a.hitIds && a.hitIds.has(m.id));
+        if (hit || (a && st.moved && (!arrows.includes(a) || a.planting || a.planted))) return { hit, moved: st.moved, aimAt: a._aimAt === m.id };
+        return null;
+      }, dy);
+    }
+    moves.push({ dy, ...(res || { hit: null }) });
+    await P.page.evaluate(() => { const S = window._gameState.current; S.autoAttack = false; S.monsters = []; S.arrows = []; S.lockedTarget = null; });
+    await P.page.clock.runFor(700);
+  }
+  console.log('    shifted: ' + JSON.stringify(moves));
+  rec.ok('a locked arrow is stamped with the monster it was aimed at, and every shifted shot was loosed (guard)',
+    moves.every((mv) => mv.moved === true && mv.aimAt === true), moves);
+  const mv = (dy) => moves.find((m2) => m2.dy === dy) || {};
+  rec.ok('a skeleton that steps 40 px down while the arrow flies is still hit (aimed at the torso, with the room a shot at its centre had)',
+    mv(40).hit === true, moves);
+  rec.ok('...and one that steps 40 px up', mv(-40).hit === true, moves);
+  rec.ok('...but not one that steps 75 px either way: the room is the same size it was, not bigger',
+    mv(75).hit === false && mv(-75).hit === false, moves);
   await P.ctx.close().catch(() => {});
 }

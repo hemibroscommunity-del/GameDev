@@ -254,19 +254,34 @@ function _projCapsule(a) {
    shot lands in, round the body centre monsterBodyOffsetY publishes (world px,
    read off the same sprite measurements as the stuck-arrow table this replaced:
    the slime's blob is 27 x 23 half-axes, the mummy and skeleton are tall and
-   thin).  A landing point is drawn from it with a triangular spread -- mostly
+   thin).
+   v2.3.2747: ...round the TORSO (gameSystems monsterTorsoY), which is where a
+   locked shot is aimed now too.  On the tall figures the body centre is the
+   skeleton's knees (owner: "The arrows are grouping around the skeleton's
+   knee.  Center it on the torso"); the slime, snowman and fire goblin were
+   already centred and are unchanged.  The tall figures' regions are their
+   measured torsos: the skeleton's ribcage 95-118 round 100 (its thin lumbar
+   spine below is no place to hang a shaft), the mummy's chest 60-88, the
+   fishman's 50-88, the rock egg's middle.  Both the centre and the region are
+   scaled by the size the figure is drawn at (combatHelpers monsterDrawScale:
+   1 except on the World View and v2.3.2745's dunes depth preview).
+   A landing point is drawn from it with a triangular spread -- mostly
    near the middle, now and then out toward the edge of the core -- and then
    kept within LAND_TURN of the shot's own line, so a shot arrives at it rather
    than visibly steering: a few degrees for a bolt, fewer for an arrow, whose
    shaft is drawn at its flight angle when it sticks. */
-var LAND_CORE = { fodder: [10, 7], fireGoblin: [8, 12], snowman: [10, 9], mummy: [7, 14], skeleton: [7, 17] };
+var LAND_CORE = { fodder: [10, 7], fireGoblin: [8, 12], snowman: [10, 9], mummy: [8, 11], skeleton: [8, 11],
+  fishman: [8, 12], bogLurker: [8, 12], rockmonster: [12, 14], thornShambler: [12, 14] };   /* v2.3.2747: + the tall figures' torsos */
 var LAND_TURN_BOLT = 0.25;    /* tan(14 deg) */
 var LAND_TURN_ARROW = 0.14;   /* tan(8 deg) */
 var LAND_MAX_MS = 700;        /* a safety cap, not a pace: at 60 fps the longest landing (a skeleton, ~60 px) takes ~200 ms */
 function _tri() { return Math.random() + Math.random() - 1; }
 function _landCore(m, S) {
   var core = LAND_CORE[hitShapeOf(m.archetype || m.type)];
-  if (core) return core;
+  if (core) {
+    var k = monsterDrawScale(m, S && S.currentZone);   /* v2.3.2747 */
+    return k === 1 ? core : [core[0] * k, core[1] * k];
+  }
   /* sprite-less dungeon shapes and the other sprite variants: a share of the
      body circle across, and of the centre height up */
   var r = monsterProjRadius(m, S, null);
@@ -291,7 +306,7 @@ function _pickLanding(S, a, m, tipX, tipY) {
   var my = (typeof m.renderY === 'number') ? m.renderY : m.y;
   var core = _landCore(m, S);
   var lx = mx + _tri() * core[0];
-  var ly = my - (monsterBodyOffsetY(m.archetype || m.type) || 0) + _tri() * core[1];
+  var ly = my - torsoLift(m, S && S.currentZone) + _tri() * core[1];   /* v2.3.2747: round the torso */
   var ux = Math.cos(a.ang), uy = Math.sin(a.ang);
   var s = (lx - tipX) * ux + (ly - tipY) * uy;     /* ahead, along the line */
   var l = (ly - tipY) * ux - (lx - tipX) * uy;     /* across it */
@@ -300,6 +315,22 @@ function _pickLanding(S, a, m, tipX, tipY) {
     : Math.max(Math.max(0, s) * LAND_TURN_ARROW, 0.7 * Math.sqrt(core[0] * uy * core[0] * uy + core[1] * ux * core[1] * ux));
   if (l > lim) l = lim; else if (l < -lim) l = -lim;
   return { x: tipX + ux * s - uy * l, y: tipY + uy * s + ux * l, mx: mx, my: my, ahead: s > 2 };
+}
+/* ═══ v2.3.2747: THE CIRCLE A SHOT MUST TOUCH SITS WHERE IT WAS AIMED ═══
+   A locked shot is aimed at the torso now (combatHelpers lockShotPoint), and
+   the hit circle was centred on the hitbox centre below it -- 40 px lower on
+   a skeleton.  A shot aimed 40 px above a circle's centre has 40 px less room
+   on one side: measured in mp-hitreal, a mummy that drifted 20 px across a
+   torso shot let it through its chest without a hit, where the old aim at the
+   centre had room to spare.  So the monster a shot was AIMED AT tests a circle
+   of the same radius centred on the point it was aimed at: exactly the room
+   the old aim had, round the new point.  Every other monster the shot meets,
+   and every shot the player aims by hand, tests the circle where it always
+   was.  `a._aimAt` is stamped wherever the flight line is resolved from the
+   lock (updateArrows); the sight gate passes the same thing as opts.aimAt. */
+function _projCentreLift(S, a, m) {
+  if (a && a._aimAt != null && a._aimAt === m.id) return torsoLift(m, S && S.currentZone);
+  return monsterBodyOffsetY(hitShapeOf(m.archetype || m.type)) || 0;
 }
 /* A hit, on screen, at the point (tx, ty) where the shot landed: the monster's
    recoil and flash (v2.3.2200), its material (v2.3.2742), the sound of what was
@@ -399,7 +430,7 @@ function _quarryInBox(S, a, b) {
     var fy = (typeof m.renderY === 'number') ? m.renderY : m.y;
     if (!(fx >= b.x0 && fx <= b.x1 && fy >= b.y0 && fy <= b.y1)) continue;
     var r = monsterProjRadius(m, S, a) + half;
-    var vx = fx - px, vy = (fy - monsterBodyOffsetY(hitShapeOf(m.archetype || m.type))) - py;
+    var vx = fx - px, vy = (fy - _projCentreLift(S, a, m)) - py;   /* v2.3.2747: the hit test's own centre */
     if (vx * c + vy * s2 < -r) continue;              /* behind the arrow */
     if (Math.abs(vx * s2 - vy * c) < r) return true;  /* the line crosses its circle */
   }
@@ -489,7 +520,8 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
       var mx = (typeof m.renderX === 'number' && isFinite(m.renderX)) ? m.renderX : m.x;
       var my = (typeof m.renderY === 'number' && isFinite(m.renderY)) ? m.renderY : m.y;
       var mArch = hitShapeOf(m.archetype || m.type);
-      consider(mx, my - monsterBodyOffsetY(mArch),
+      /* v2.3.2747: the monster the shot is aimed at, round its torso -- as the hit test will */
+      consider(mx, my - ((opts && opts.aimAt != null && opts.aimAt === m.id) ? torsoLift(m, S.currentZone) : monsterBodyOffsetY(mArch)),
         monsterProjRadius(m, S, opts) + half, m.id, m);
     }
   }
@@ -562,7 +594,7 @@ import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound l
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
 import { sweepBlockPoint, boxExitPoint, attackBlocked, boxFace } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form; v2.3.2701: and the far face of a rock a monster stands in */
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2742: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2730 */, queueArrowSnap /* v2.3.2731 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockShotPoint, torsoLift, monsterDrawScale /* v2.3.2747: aimed at, and landing round, the torso */, spawnHitDebris /* v2.3.2200; v2.3.2742: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2730 */, queueArrowSnap /* v2.3.2731 */ } from '@/game/combatHelpers.js';
 import { arrowSnaps } from '@/data/arrowSnap.js'; /* v2.3.2731: one arrow in eight breaks on what it hits */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
@@ -679,7 +711,9 @@ export function updateArrows(S, deps) {
              share of the grip offset, measured at 9-32px against a 27px
              slime.  The angle is therefore per-ARROW now, resolved once the
              arrow's own origin is known.  See lockAimPoint in combatHelpers. */
-          var lockPt = lockAimPoint(S.lockedTarget && S.lockedTarget.ref);
+          /* v2.3.2747: ...at the TORSO (lockShotPoint), and the target's hit circle is centred there for this shot (_projCentreLift) */
+          var lockPt = lockShotPoint(S.lockedTarget && S.lockedTarget.ref, S.currentZone);
+          var lockId = (lockPt && S.lockedTarget.ref.id != null) ? S.lockedTarget.ref.id : null;   /* v2.3.2747: see _projCentreLift */
           var freeAim = S._aiming ? (S._aimAngle || 0) : null;
           S.arrows = S.arrows.filter(function (a) {
             var _S$rpg15;
@@ -711,7 +745,7 @@ export function updateArrows(S, deps) {
                 return false;
               }
               var _smx = (typeof _sm.renderX === 'number') ? _sm.renderX : _sm.x;
-              var _smy = ((typeof _sm.renderY === 'number') ? _sm.renderY : _sm.y) - monsterBodyOffsetY(_sm.archetype || _sm.type);
+              var _smy = ((typeof _sm.renderY === 'number') ? _sm.renderY : _sm.y) - torsoLift(_sm, S.currentZone);   /* v2.3.2747: the torso */
               var _stX = _smx + (a._stickOx || 0), _stY = _smy + (a._stickOy || 0);
               if (a._landFx) {
                 /* ═══ v2.3.2743: THE SPECIAL FLIES IN, THEN LANDS ═══
@@ -1029,14 +1063,14 @@ export function updateArrows(S, deps) {
                  world coords, the grip offset included, and keep whatever angle
                  the aim resolved to on this frame -- that is the line the shot
                  was actually taken along. */
-              if (lockPt) a.ang = Math.atan2(lockPt.y - (P.y + _oy), lockPt.x - (P.x + _ox));
-              else if (freeAim !== null) a.ang = freeAim;
+              if (lockPt) { a.ang = Math.atan2(lockPt.y - (P.y + _oy), lockPt.x - (P.x + _ox)); a._aimAt = lockId; }
+              else if (freeAim !== null) { a.ang = freeAim; a._aimAt = null; }
               a._pathX = P.x + _ox;
               a._pathY = P.y + _oy;
             }
             if (!_straight) {
-              if (lockPt) a.ang = Math.atan2(lockPt.y - (P.y + _oy), lockPt.x - (P.x + _ox));
-              else if (freeAim !== null) a.ang = freeAim;
+              if (lockPt) { a.ang = Math.atan2(lockPt.y - (P.y + _oy), lockPt.x - (P.x + _ox)); a._aimAt = lockId; }
+              else if (freeAim !== null) { a.ang = freeAim; a._aimAt = null; }
             }
             var _bx = a._pathX != null ? a._pathX : P.x + _ox;
             var _by = a._pathY != null ? a._pathY : P.y + _oy;
@@ -1248,7 +1282,7 @@ export function updateArrows(S, deps) {
                  in the travel direction because the hitbox led the sprite. */
               var _hitX = (typeof m.renderX === 'number') ? m.renderX : m.x;
               var _hitBaseY = (typeof m.renderY === 'number') ? m.renderY : m.y;
-              var _mProjY = _hitBaseY - monsterBodyOffsetY(_archProj);
+              var _mProjY = _hitBaseY - _projCentreLift(S, a, m);   /* v2.3.2747: round the torso, for the monster it was aimed at */
               /* v2.3.2426: the SEGMENT this frame, not the endpoint — see the
                  header.  a._prevX is undefined on the first flight frame and
                  _segGap falls back to the point test there.

@@ -1052,6 +1052,7 @@ export var BroTown = function BroTown(_ref0) {
        screenshot -- arrows pass through a body they visibly hit. */
     MONSTER_VARIANTS: MONSTER_VARIANTS,
     monsterBodyOffsetY: DATA.monsterBodyOffsetY,
+    monsterTorsoY: DATA.monsterTorsoY,   /* v2.3.2747: where a locked shot is aimed and lands (mp-shotland) */
     DEPTH_CONFIG: DEPTH_CONFIG,
     ZONE_RESOURCES: ZONE_RESOURCES,
     COOKING_RECIPES: COOKING_RECIPES,

@@ -1475,11 +1475,15 @@ export function updateMonsterCombat(S, deps) {
             var _bsG = bowGripPoint(S);
             var _bsX = _bsG ? _bsG.x : P.x;
             var _bsY = _bsG ? _bsG.y : P.y;
-            var _bsA = rangedAimAngle(S, _bsX, _bsY).ang;
+            var _bsAim = rangedAimAngle(S, _bsX, _bsY);
+            var _bsA = _bsAim.ang;
+            /* v2.3.2747: a locked shot is aimed at the torso, and its target's hit
+               circle is centred there (projectiles _projCentreLift) -- so is the gate's */
+            var _bsAimAt = (_bsAim.src === 'lock' && S.lockedTarget && S.lockedTarget.ref) ? S.lockedTarget.ref.id : null;
             var _bsHit = null;
             try {
               _bsHit = firstSightHit(S, _bsX, _bsY, _bsA,
-                BOW_RANGE_PX * (bowRangeMult(S.rpg) || 1), { isStaff: false, isSpecial: false });
+                BOW_RANGE_PX * (bowRangeMult(S.rpg) || 1), { isStaff: false, isSpecial: false, aimAt: _bsAimAt });
             } catch (e) { _bsHit = null; }
             S._bowSight = { ang: _bsA, d: _bsHit ? _bsHit.dist : null,
               id: _bsHit ? _bsHit.id : null, at: Date.now(),
