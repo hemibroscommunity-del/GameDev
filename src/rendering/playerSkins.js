@@ -1442,6 +1442,37 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
 
+/* ═══ v2.3.2751: FISHING KEEPS YOUR DRAWINGS ═══
+   Owner: "yes make tattoos stay on while harvesting resources."
+   Fishing draws the RAW fish sheet, on purpose (entityRenderer v2.3.2304):
+   the pink rod and line are baked into that art and the body-region RECOLOUR
+   mis-paints them, so no skin tone, trousers, shoes or eyes go on it.  The
+   drawings rode that same bake and were lost with it -- which nobody chose.
+   They do not need the recolour.  The rod is magenta, and _isSkin refuses it
+   (skin wants g >= b; the rod is b > g), so a bake with NO retint targets and
+   only `art` stamps the tattoos, prints and patterns into the regions they
+   always use and leaves every other pixel as drawn, the rod included.  A
+   player with no drawings gets the raw frame, exactly as before.
+   South only and never mirrored: the fish art is authored south and never
+   flips, so the drawing is always the unflipped one. */
+function _fishArt(art) {
+  return art && art.mirror ? { ...art, mirror: false } : art;
+}
+export function getFishFrame(art, frameIdx) {
+  return getBodyFrame(null, null, null, 'fish', 'south', frameIdx, null, 'none', undefined, _fishArt(art), undefined);
+}
+/** Bake the inked fish sheet NOW, so a cast shows the drawings from its first
+ *  frame instead of popping them in when a lazy bake lands (animation-preload
+ *  law, CLAUDE.md).  Resolves at once when there is nothing drawn to put on it
+ *  or it is already baked or baking.  Same key getFishFrame asks for. */
+export function prewarmFishInk(art) {
+  const a = artForFacing(_fishArt(art), 'south');
+  if (!a || !bodyArtSeg(a)) return Promise.resolve();
+  const key = bodySheetKey(null, null, null, null, 'none', null, 'fish', 'south', a, null);
+  if (_bodySheets[key] !== undefined) return Promise.resolve();
+  return buildBodySheet(key, 'fish', 'south', null, null, null, null, null, a, null);
+}
+
 /* v2.3.1116: loot-pickup HEAD overlay, RECOLORED.  pickup-<dir>-head.png holds
    the head pixels per frame (transparent elsewhere); entityRenderer draws it
    ABOVE the gear so an armoured player's deep-crouch head isn't clipped to a
@@ -1601,6 +1632,10 @@ export function prewarmBody(skinId, pantsId, shoesId, shirtT, shirtKey) {
     const key = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, 'stand', dir, art, blank && blank.id);
     if (_bodySheets[key] === undefined) buildBodySheet(key, 'stand', dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, art, blank && blank.rects);
   }
+  /* v2.3.2751: a drawing edit drops every inked sheet (_dropArtSheets) and
+     lands here; the inked fish sheet is rebuilt with the stand ones, so the
+     next cast is not the one that pays for it. */
+  if (art) prewarmFishInk(art);
 }
 /** Preload the recolored body for the current combo across all base dirs for
  *  stand + jog, so an UNARMOURED player (or any moment the body shows) never
@@ -1680,6 +1715,10 @@ export function preloadBodyAll() {
      moment the player starts a gather.  The sheet is 1792x128 on disk, so at
      DISPLAY_DS=2 this is a few hundred KB. */
   prewarm('mine', 'south');
+  /* v2.3.2751: and the FISH sheet with the drawings on it (getFishFrame) --
+     only a drawn player has one; everyone else fishes on the raw sheet, which
+     loadPlayerSprites already holds. */
+  if (art) tasks.push(prewarmFishInk(art));
   const headKey = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|pickup-south';
   if (_pickupHeadSheets[headKey] === undefined) tasks.push(_buildPickupHeadSheet(headKey, 'pickup', 'south', skinT, pantsT, shoesT));
   return Promise.all(tasks);

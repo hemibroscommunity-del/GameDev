@@ -724,6 +724,9 @@ export async function initPixiRenderer(canvas) {
        its children.  Read-only use only — this hands out the live container,
        so a scenario that mutated it would be testing its own edit. */
     playerDisplayRaw: () => entityRenderer.playerDisplay || null,
+    /* v2.3.2751: the same, for ANOTHER player's figure -- mp-harvestink reads
+       which frame a peer is drawn from while they fish.  Read-only, same rule. */
+    peerDisplayRaw: (id) => (entityRenderer.otherPlayerDisplays && entityRenderer.otherPlayerDisplays.get(id)) || null,
     /* v2.3.2078: what the pet display is doing — the pet was invisible
        for its whole life and nothing could see that. */
     petDrawn: () => entityRenderer.petDrawn(),

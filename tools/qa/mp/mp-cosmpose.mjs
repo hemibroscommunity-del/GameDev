@@ -433,14 +433,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`the character was drawn in more than one pose during the run (${poses.join(', ')})`,
     poses.length >= 2, seen);
 
-  /* v2.3.2746: "fish" FAILS THE TATTOO CHECK, AND THAT IS THE GAME, NOT THIS
-     TEST.  The fishing pose draws the RAW fishing sheet on purpose
-     (entityRenderer, "Fishing uses the RAW sheet"): no skin tone, no trouser or
-     shoe colour, so the region recolour cannot mis-paint the pink rod -- and
-     the drawings ride that same body bake, so they go too, on both screens.
-     The shirt's pattern still passes: the shirt is its own layer over the
-     body, and fishing keeps it.  Left as a live check rather than skipped:
-     whether tattoos should survive fishing is the owner's call. */
+  /* v2.3.2746: "fish" failed the tattoo check here, and that was the game, not
+     this test: fishing drew the RAW fishing sheet (no recolour, so the pink rod
+     survives) and the drawings rode that same bake.  Left live on purpose, as
+     the owner's call -- and the owner's answer was "yes make tattoos stay on
+     while harvesting resources".  v2.3.2751: getFishFrame stamps the drawings
+     onto the raw sheet (playerSkins), so "fish" passes here now;
+     mp-harvestink checks it frame by frame on both screens. */
   for (const p of poses) {
     const e = seen[p];
     rec.ok(`the tattoos are on him while the game draws "${p}" `

@@ -67,7 +67,7 @@ import { getSpecies } from '../traits/speciesCatalog.js';   /* v2.3.2682: the sp
 import { getSpeciesBuild, preloadSpeciesArt } from '../traits/speciesArt.js';   /* v2.3.2682 */
 import { getColoredEyeStyleTextures } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
-import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo */
+import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2751: + the inked fish frame */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
 import { DISPLAY_DS, bakeDisplayCanvas } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation; v2.3.2325: bakeDisplayCanvas, because the masked bake needs the EXACT-TEXEL 2x inverse, not the smooth one */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
@@ -3213,8 +3213,10 @@ export async function prewarmMaskedBodyFrames(opts) {
       const fc = playerFrameCount(pose, dir) || 1;
       for (let f = 0; f < fc; f++) {
         prewarmProgress.done++;
-        /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks. */
-        const tex = (pose === 'fish') ? getFrame('fish', 'south', f)
+        /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks.
+           v2.3.2751: ...with the drawings on it (getFishFrame), the frame the
+           renderer now asks for; baked by preloadBodyAll, which this runs after. */
+        const tex = (pose === 'fish') ? getFishFrame(localBodyArt(false), f)
           : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor(), localBodyArt(false), getEyeStyle());   /* v2.3.2643 */
         if (!tex) continue;
         const worn = [];
@@ -3307,8 +3309,9 @@ export async function prewarmAltWornSets(opts) {
         for (let f = 0; f < fc; f++) {
           if (seq !== _altPrewarmSeq) return;
           if (fast) prewarmProgress.done++;
-          /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks. */
-          const tex = (pose === 'fish') ? getFrame('fish', 'south', f)
+          /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks.
+             v2.3.2751: with the drawings on it, as the pass above. */
+          const tex = (pose === 'fish') ? getFishFrame(localBodyArt(false), f)
             : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor(), localBodyArt(false), getEyeStyle());   /* v2.3.2643 */
           if (!tex) continue;
           const worn = [];
@@ -3471,11 +3474,22 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
    rod's magenta pixels are kept -- the bare torso/arms stay erased so the plate shows
    through.  Cached per body frame (uid). */
 const _fishTopCache = new Map();
-function _fishTopFrame(bodyTex) {
+/* ═══ v2.3.2751: THE ROD IS FOUND ON THE RAW FRAME ═══
+   `rodTex` is the undrawn fish frame at the same index.  Since fishing keeps the
+   drawings (getFishFrame), `bodyTex` can carry a player's tattoo -- and a pink
+   or magenta one passes isRodAt below exactly as the rod does.  Detected on the
+   inked frame, a chest tattoo would count as rod, and it and the skin within
+   GRIP_R of it would ride this overlay ABOVE the shirt: ink showing through a
+   tee.  So the rod is looked for where no ink can be (the raw frame) and the
+   pixels are copied from the inked one, which is what puts the face tattoo in
+   the head band.  Same geometry -- one sheet, one frame index -- and without a
+   rodTex (or with the raw frame itself) this is the old single-frame path. */
+function _fishTopFrame(bodyTex, rodTex) {
   if (!bodyTex) return null;
   let bres; try { bres = bodyTex.source && bodyTex.source.resource; } catch (e) { return null; }
   if (!bres) return null;
-  const key = (bodyTex.uid != null ? bodyTex.uid : '') + '|fishtop';
+  const _rod = (rodTex && rodTex !== bodyTex) ? rodTex : null;
+  const key = (bodyTex.uid != null ? bodyTex.uid : '') + (_rod ? '/' + _rod.uid : '') + '|fishtop';
   const hit = _fishTopCache.get(key);
   if (hit) { _fishTopCache.delete(key); _fishTopCache.set(key, hit); return hit; }
   try {
@@ -3485,6 +3499,20 @@ function _fishTopFrame(bodyTex) {
     const ctx = cv.getContext('2d');
     ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, W, H);
     const img = ctx.getImageData(0, 0, W, H); const d = img.data;
+    /* v2.3.2751: the pixels the rod is LOOKED FOR in -- the raw frame's, scaled
+       onto this one's grid without smoothing (a blended edge would move the
+       rod's colour test), or this frame's own when there is no raw one. */
+    let rd = d;
+    if (_rod) {
+      const rres = _rod.source && _rod.source.resource, rf = _rod.frame;
+      if (rres && rf) {
+        const rc = document.createElement('canvas'); rc.width = W; rc.height = H;
+        const rctx = rc.getContext('2d');
+        rctx.imageSmoothingEnabled = false;
+        rctx.drawImage(rres, rf.x, rf.y, rf.width, rf.height, 0, 0, W, H);
+        rd = rctx.getImageData(0, 0, W, H).data;
+      }
+    }
     const headBot = Math.round(H * 0.35);   // keep the whole head band as-is
     /* ═══ v2.3.1914: THE HAND COMES UP WITH THE ROD ═══
        Owner: "When fishing that hand needs to be over the shirt during the reel
@@ -3506,7 +3534,7 @@ function _fishTopFrame(bodyTex) {
     const GRIP_R = Math.max(4, Math.round(H * 0.055));
     const rodXs = [], rodYs = [];
     const isRodAt = (o) => {
-      const r = d[o], g = d[o + 1], b = d[o + 2], a = d[o + 3];
+      const r = rd[o], g = rd[o + 1], b = rd[o + 2], a = rd[o + 3];   /* v2.3.2751: the raw frame's */
       return a > 60 && r > 140 && g < 115 && b > 60 && b < 195 && (r - g) > 60 && b > g + 22;
     };
     for (let y = headBot + 1; y < H; y++) {
@@ -3557,10 +3585,10 @@ function _fishTopFrame(bodyTex) {
 /* Place the head+rod overlay on the (reused) _bodyHead sprite at the body's exact
    transform (full-frame, anchor 0.5/0.5 -- same as _placePickupHead).  Lifted above
    the gear by _orderTraitsAndWeapon.  Only called when a chest plate is worn. */
-function _placeFishHead(display, sb, bodyTex) {
+function _placeFishHead(display, sb, bodyTex, rodTex) {
   const hd = display._bodyHead;
   if (!hd || !sb || !bodyTex) return;
-  const t = _fishTopFrame(bodyTex);
+  const t = _fishTopFrame(bodyTex, rodTex);   /* v2.3.2751: rod found on the raw frame */
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
   hd.x = sb.x; hd.y = sb.y;
@@ -10043,8 +10071,17 @@ export class EntityRenderer {
            their skin tone, trousers, shoes, eye colour and any drawings. That
            is already what you see of YOURSELF today; this makes peers match.
            The durable fix is re-cut fish art with the rod on its own layer. */
+        /* ═══ v2.3.2751: ...BUT NOT THEIR DRAWINGS ═══
+           Owner: "yes make tattoos stay on while harvesting resources."  The
+           drawings never needed the recolour this note is about: getFishFrame
+           stamps them onto the raw sheet and leaves every other pixel as drawn,
+           the rod included (see playerSkins).  A peer who drew nothing gets the
+           raw frame, exactly as before.  Baked the first time they cast, like
+           every other pose of a peer's -- their drawings cannot be known at
+           load -- and only for peers who have any, so the iPhone VRAM point
+           above still holds for everyone else. */
         let tex = pose === 'fish'
-          ? getFrame('fish', 'south', frameIdx)
+          ? getFishFrame(_oBodyArt, frameIdx)
           : getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle);   /* v2.3.2643: THEIR style */
         if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle);   /* v2.3.2643 */
         if (tex) {
@@ -10153,7 +10190,7 @@ export class EntityRenderer {
                while the LOCAL path, which tests chest OR shirt OR legs, kept
                it.  Matching the local test. */
             const _fishWorn = _rworn.length > 0 || (_oShirtEquip && _oShirtEquip !== 'none');
-            if (pose === 'fish' && _fishWorn) _placeFishHead(display, spriteBody, tex);
+            if (pose === 'fish' && _fishWorn) _placeFishHead(display, spriteBody, tex, getFrame('fish', 'south', frameIdx));   /* v2.3.2751: + the raw frame, for the rod */
           } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
           /* v2.3.2304: the shirt is drawn by _placeGear as an equip layer, not
              baked into the body -- this sprite is the RETIRED baked-shirt node
@@ -11535,8 +11572,11 @@ export class EntityRenderer {
       /* v2.3.1940: my own drawn pants print / tattoo, pre-flipped for the three
          mirrored facings (the sheet is drawn with scale.x -1 there). */
       const _bodyArt = localBodyArt(mirror);
+      /* v2.3.2751: fishing keeps the drawings -- getFishFrame stamps them onto
+         the raw sheet without the recolour above (playerSkins), baked behind
+         the loading screen by preloadBodyAll. */
       let tex = pose === 'fish'
-        ? getFrame('fish', 'south', frameIdx)
+        ? getFishFrame(_bodyArt, frameIdx)
         : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle());   /* v2.3.2643 */
       if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle());   /* v2.3.2643 */
       /* v2.3.291: mannequin swap removed -- user wants helmet stickered
@@ -11671,7 +11711,7 @@ export class EntityRenderer {
              greaves drew over the reeling fist and there was nothing to lift.
              Still gated on the three rather than made unconditional: a bare
              player needs no canvas bake to look right. */
-          if (pose === 'fish' && (_chestW || _shirtW || _legsW)) _placeFishHead(display, spriteBody, tex);
+          if (pose === 'fish' && (_chestW || _shirtW || _legsW)) _placeFishHead(display, spriteBody, tex, getFrame('fish', 'south', frameIdx));   /* v2.3.2751: + the raw frame, for the rod */
         } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
         /* ═══ v2.3.1872: THE SOUTH BLOCK'S JOGGING LEGS ═══
            Placed HERE, after the masked/fullset body has been resolved, because
