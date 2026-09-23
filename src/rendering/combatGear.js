@@ -15,7 +15,6 @@
  * Only chest + legs layer during combat.  Missing slot×item×dir combos 404 by
  * design (.catch keeps them from stalling the gate). */
 
-import { Assets } from 'pixi.js';
 import { gearArt } from './gearVariants.js'; /* v2.3.1761 */
 import { GEAR_CATALOG, getEquip } from './gearCatalog.js';
 import { GEARLAYER_VER } from './gearVersion.js';
@@ -52,7 +51,19 @@ export function combatGearUrls() {
 }
 
 /** Warm the combat-gear sheets into the Pixi Assets cache.  Network-only, so it
- *  parallelizes with the other intro-gate loaders; always resolves. */
+ *  parallelizes with the other intro-gate loaders; always resolves.
+ *
+ *  v2.3.2774: NO LONGER LOADS ANYTHING, on purpose.  effectsRenderer's
+ *  _gearStripFrame now decodes these sheets itself, crops them and keeps only
+ *  the cropped copy (see the note there).  An Assets.load here would park the
+ *  FULL sheet in the Assets cache for the whole session beside it -- 81 MB of
+ *  exactly the memory the crop exists to give back.  Nothing is lost by it:
+ *  the EffectsRenderer constructor already warms every one of these strips
+ *  (shirt, chest and legs, every swing and bow facing) and registers them with
+ *  effectsAnimationsReady(), which preloadWorldAnimations awaits on the same
+ *  loading screen -- the v2.3.2303 / v2.3.2500 notes there say why that warm
+ *  was the one that mattered all along.  Kept as a function so the gate's
+ *  shape (pixiRenderer.preloadPlayerAssets) does not change. */
 export function preloadCombatGear() {
-  return Promise.allSettled(combatGearUrls().map((u) => Assets.load(u).catch(() => {})));
+  return Promise.resolve([]);
 }
