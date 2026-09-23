@@ -1444,7 +1444,7 @@ const NODE_SPRITE_TEX = {};
    ore-break animation derives from these too (_spawnOreBreak). */
 const NODE_SPRITE_HEIGHT_BASE = { tree: 168, fishSpot: 132, oreVein: 132 };
 const NODE_SPRITE_ANCHOR_Y = { tree: 1.0, fishSpot: 0.5, oreVein: 1.0 };
-/* ═══ v2.3.2734: WHERE THE ART MEETS THE GROUND, as a fraction of the frame ═══
+/* ═══ v2.3.2748: WHERE THE ART MEETS THE GROUND, as a fraction of the frame ═══
    The sprites are anchored at their FRAME's bottom (node.y), and the frames
    have transparent margin below the art: the pine's lowest solid row is at
    0.839 of its frame, the ore's at 0.737 (measured off the webp's alpha, and
@@ -8207,7 +8207,7 @@ export class EffectsRenderer {
         }
         /* The ground line. The shared pass re-reads this every frame, but
            setting it here means a node is never sorted on a stale key in the
-           frame it first appears.  v2.3.2734: at the DRAWN base, not the
+           frame it first appears.  v2.3.2748: at the DRAWN base, not the
            frame's bottom (NODE_ART_BASE). */
         const _artBase = NODE_ART_BASE[node.nodeType];
         node._pixiSprite._groundDy = _artBase != null

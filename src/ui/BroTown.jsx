@@ -443,8 +443,8 @@ import { resolveDashSide, screenAngle } from '../game/dashSidePref.js'; /* v2.3.
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
 import { stampSheetH } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h joins --dash-h under resize() + the watchdog */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
-import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2734: + the footprints your feet stop at */
-import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2734: how far below your position your boots are */
+import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2748: + the footprints your feet stop at */
+import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
  * The server holds the surge as a flat amount PER REGEN TICK (660 ms); this
@@ -4106,7 +4106,7 @@ export var BroTown = function BroTown(_ref0) {
       var _npcs = S.npcs;
       if (_npcs && _npcs.length) {
         var _pp = S.player;
-        /* ═══ v2.3.2734: HIS FEET AGAINST YOURS ═══
+        /* ═══ v2.3.2748: HIS FEET AGAINST YOURS ═══
            An NPC's position is his feet; yours is your body's CENTRE, ~52 px
            above your boots (playerGroundDy).  Measured centre-to-feet, walking
            up behind the blacksmith stopped your waist at his feet -- your boots
@@ -4202,7 +4202,7 @@ export var BroTown = function BroTown(_ref0) {
        Attached once per mount (this is the game-loop SETUP effect, not the
        tick), so it costs one property write. */
     if (typeof window !== 'undefined') window.__btIsSolid = (px, py) => isSolid(px, py);
-    /* ═══ v2.3.2734: A PROP STOPS YOUR FEET, NOT JUST YOUR WAIST ═══
+    /* ═══ v2.3.2748: A PROP STOPS YOUR FEET, NOT JUST YOUR WAIST ═══
        Owner: "really bad at detecting contact ... Jogging against a prop seems
        to be some of the most problematic."
 
@@ -4640,7 +4640,7 @@ export var BroTown = function BroTown(_ref0) {
               var _bhs = 12;
               var _moved = false;
               if (!isSolid(_bnx - _bhs, S.player.y - _bhs) && !isSolid(_bnx + _bhs, S.player.y + _bhs)
-                && !propFeetBlocked(S.player.x, S.player.y, _bnx, S.player.y, _bhs)) { S.player.x = _bnx; _moved = true; }   /* v2.3.2734: + the feet */
+                && !propFeetBlocked(S.player.x, S.player.y, _bnx, S.player.y, _bhs)) { S.player.x = _bnx; _moved = true; }   /* v2.3.2748: + the feet */
               if (!isSolid(S.player.x - _bhs, _bny - _bhs) && !isSolid(S.player.x + _bhs, _bny + _bhs)
                 && !propFeetBlocked(S.player.x, S.player.y, S.player.x, _bny, _bhs)) { S.player.y = _bny; _moved = true; }
               /* Blocked on BOTH axes: a wall is between you and the target and
@@ -4948,7 +4948,7 @@ export var BroTown = function BroTown(_ref0) {
         var _nodeBlock = function (curX, curY, px, py) {
           var ns = S.gatherNodes;
           if (!ns) return false;
-          /* v2.3.2734: the trunk against your FEET, not your waist -- the same
+          /* v2.3.2748: the trunk against your FEET, not your waist -- the same
              fault and the same fix as the NPC radius (isSolid): from behind a
              tree your boots used to walk ~52 px past the trunk's base. */
           var _tfdy = playerGroundDy(S.currentZone, px, py);
@@ -4965,7 +4965,7 @@ export var BroTown = function BroTown(_ref0) {
           }
           return false;
         };
-        if (!isSolid(nx - hs, P.y - hs) && !isSolid(nx + hs, P.y - hs) && !isSolid(nx - hs, P.y + hs) && !isSolid(nx + hs, P.y + hs) && !_monBlock(P.x, P.y, nx, P.y) && !_nodeBlock(P.x, P.y, nx, P.y) && !propFeetBlocked(P.x, P.y, nx, P.y, hs)) P.x = nx;   /* v2.3.2734: + the feet */
+        if (!isSolid(nx - hs, P.y - hs) && !isSolid(nx + hs, P.y - hs) && !isSolid(nx - hs, P.y + hs) && !isSolid(nx + hs, P.y + hs) && !_monBlock(P.x, P.y, nx, P.y) && !_nodeBlock(P.x, P.y, nx, P.y) && !propFeetBlocked(P.x, P.y, nx, P.y, hs)) P.x = nx;   /* v2.3.2748: + the feet */
         if (!isSolid(P.x - hs, ny - hs) && !isSolid(P.x + hs, ny - hs) && !isSolid(P.x - hs, ny + hs) && !isSolid(P.x + hs, ny + hs) && !_monBlock(P.x, P.y, P.x, ny) && !_nodeBlock(P.x, P.y, P.x, ny) && !propFeetBlocked(P.x, P.y, P.x, ny, hs)) P.y = ny;
         /* Apply ice slide */
         if (S._slideVx || S._slideVy) {

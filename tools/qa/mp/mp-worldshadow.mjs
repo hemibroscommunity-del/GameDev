@@ -1,4 +1,4 @@
-/* ═══ mp-worldshadow — the world casts shadows too (v2.3.2735) ═══
+/* ═══ mp-worldshadow — the world casts shadows too (v2.3.2749) ═══
  *
  * Owner: "Add shadows to props and monsters."
  *
@@ -204,7 +204,7 @@ async function nearMonsters(P) {
   return null;
 }
 
-/* v2.3.2735: every page this scenario opens is closed when it ends, pass or
+/* v2.3.2749: every page this scenario opens is closed when it ends, pass or
    throw.  A page left open keeps running the game at full frame rate on the
    shared software GPU, and every later scenario in the run pays for it. */
 export async function run(ctx) {

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   v2.3.2734: WHERE A BUILDING'S ART ACTUALLY MEETS THE GROUND
+   v2.3.2748: WHERE A BUILDING'S ART ACTUALLY MEETS THE GROUND
 
    Owner, with four screenshots of the town: "Fix layer detection for props.
    Right now it's really bad at detecting contact and when the player should
@@ -139,7 +139,7 @@ export function settleProfile(g, texture, frameNo) {
 }
 
 /**
- * v2.3.2735: the art's base at texture column fraction u (0-1), in world y --
+ * v2.3.2749: the art's base at texture column fraction u (0-1), in world y --
  * the raw profile, with no footprint rule; the prop's own base where the
  * column is empty or the profile is not read yet.  For the shadow mesh.
  */

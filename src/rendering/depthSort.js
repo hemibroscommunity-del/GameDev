@@ -78,7 +78,7 @@ export function wantsFront(groundY, playerGroundY, isFrontNow) {
     : groundY > playerGroundY + HYST;  // already back: needs to clear it to come front
 }
 
-/* ═══ v2.3.2734: EVERYTHING SORTS BY WHERE IT TOUCHES THE GROUND ═══
+/* ═══ v2.3.2748: EVERYTHING SORTS BY WHERE IT TOUCHES THE GROUND ═══
    Owner: "Fix layer detection for props. Right now it's really bad at
    detecting contact and when the player should appropriately show in front or
    behind the layer. Jogging against a prop seems to be some of the most
@@ -139,7 +139,7 @@ export function applyGroundSort(layer) {
     if (!c) continue;
     const y = groundOf(c);
     const k = Number.isFinite(y) ? Math.round(y) : 0;
-    /* v2.3.2734: a figure standing in front of a building's real base is
+    /* v2.3.2748: a figure standing in front of a building's real base is
        lifted just over it (see raiseOverProps) */
     c.zIndex = c._raiseTo != null ? c._raiseTo : k;
   }
@@ -151,7 +151,7 @@ function isFigure(c) {
 }
 
 /**
- * v2.3.2734: the raise.  For every figure whose body can overlap a prop's art
+ * v2.3.2748: the raise.  For every figure whose body can overlap a prop's art
  * and whose feet are SOUTH of that prop's base at the figure's own x, make
  * sure it draws after the prop.  Returns nothing; sets `_raiseTo` and may
  * move a figure into the front layer.
@@ -218,7 +218,7 @@ function raiseOverProps(kids, frontLayer, playerX) {
  * @param {import('pixi.js').Container} backLayer   drawn UNDER the player
  * @param {import('pixi.js').Container} frontLayer  drawn OVER the player
  * @param {number} playerGroundY  the player's ground-contact line: their FEET
- *                                (v2.3.2734 -- see the note above groundOf)
+ *                                (v2.3.2748 -- see the note above groundOf)
  * @param {number} [playerX]      where along a prop's base to read it
  */
 export function applyDepthBuckets(backLayer, frontLayer, playerGroundY, playerX) {

@@ -140,14 +140,14 @@ export class ShadowSystem {
     this.root = root;
     this.pool = [];
     this.used = 0;
-    this.meshPool = [];          /* v2.3.2735: the buildings' depth-aware shadows (placeDepth) */
+    this.meshPool = [];          /* v2.3.2749: the buildings' depth-aware shadows (placeDepth) */
     this.meshUsed = 0;
     this.filter = null;
     this._held = new Map();      /* caster key -> { t, items: [{tex, ax, ay, m}] } */
     this._m = new Matrix();
     this._p = new Matrix();
     this._f = new Matrix();
-    /* v2.3.2735: `keys` -- EVERY caster drawn this frame, by key, so a test
+    /* v2.3.2749: `keys` -- EVERY caster drawn this frame, by key, so a test
        can ask "does each monster on screen cast" without the 16-entry cap on
        `list`.  One array, cleared and refilled in place: the keys are strings
        the casters already carry, so this allocates nothing per frame. */
@@ -176,7 +176,7 @@ export class ShadowSystem {
     if (!s.visible) s.visible = true;
   }
 
-  /* ═══ v2.3.2735: A BUILDING'S SHADOW, COLUMN BY COLUMN ═══
+  /* ═══ v2.3.2749: A BUILDING'S SHADOW, COLUMN BY COLUMN ═══
      A figure is a billboard: every pixel of it stands on the same spot, so
      one projection pivoted on its feet is right.  A building is not.  Its
      picture is a front wall at the bottom and a roof, towers and signs
@@ -286,7 +286,7 @@ export class ShadowSystem {
     for (let c = 0; c < casters.length; c++) {
       const cs = casters[c];
       if (cs.depth) {
-        /* v2.3.2735: a building -- see placeDepth */
+        /* v2.3.2749: a building -- see placeDepth */
         if (this.placeDepth(cs.depth.spr, cs.depth.g, cs.depth.back, lx, ly)) {
           st.casters++; st.pieces++; st.keys.push(cs.key);
           if (st.list.length < 16) st.list.push({ key: cs.key, px: cs.depth.spr.x, py: cs.depth.back, pieces: 1 });

@@ -1,4 +1,4 @@
-# In front of a prop or behind it, and where you stop (v2.3.2734)
+# In front of a prop or behind it, and where you stop (v2.3.2748)
 
 The owner sent four iPhone screenshots of the town and wrote: *"Fix layer
 detection for props. Right now it's really bad at detecting contact and when

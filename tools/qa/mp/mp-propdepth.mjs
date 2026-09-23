@@ -1,4 +1,4 @@
-/* ═══ mp-propdepth — in front of a prop or behind it, and where you stop (v2.3.2734) ═══
+/* ═══ mp-propdepth — in front of a prop or behind it, and where you stop (v2.3.2748) ═══
  *
  * Owner, with four iPhone screenshots of the town: "Fix layer detection for
  * props. Right now it's really bad at detecting contact and when the player
@@ -111,7 +111,7 @@ async function shot(P, tag) {
   await P.page.screenshot({ path: `${DIR}/${tag}.png` });
 }
 
-/* v2.3.2735: every page this scenario opens is closed when it ends, pass or
+/* v2.3.2749: every page this scenario opens is closed when it ends, pass or
    throw.  A page left open keeps running the game at full frame rate on the
    shared software GPU, and every later scenario in the run pays for it. */
 export async function run(ctx) {

@@ -164,11 +164,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     notBlocking.length === 0, { notBlocking });
 
   /* ── 3. THEY JOINED THE DEPTH SORT ── */
-  /* v2.3.2734: the rule is read the way the depth pass reads it -- the
+  /* v2.3.2748: the rule is read the way the depth pass reads it -- the
      player's FEET (__btPlayerGround; S.player.y is the body's centre, ~52 px
      higher) against the prop's base WHERE THE PLAYER STANDS (__btPropGround,
      read off the art beside its footprint).  Checking it against S.player.y
-     would assert the very fault v2.3.2734 fixed. */
+     would assert the very fault v2.3.2748 fixed. */
   const pg = await P.page.evaluate(() => (window.__btPlayerGround ? window.__btPlayerGround() : null));
   const lines = await P.page.evaluate(([ids, x]) => ids.map((id) => {
     const g = window.__btPropGround && window.__btPropGround(id, x);
