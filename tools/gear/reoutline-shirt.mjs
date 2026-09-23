@@ -1,4 +1,4 @@
-/* ═══ v2.3.2720: THE TEE'S OUTLINE, PUT BACK WHERE ITS EDGE NOW IS ═══
+/* ═══ v2.3.2733: THE TEE'S OUTLINE, PUT BACK WHERE ITS EDGE NOW IS ═══
  *
  * Owner: "running while wearing the shirt produces a static-like effect where
  * it pops from frame to frame.  I think it's because the black outline from
