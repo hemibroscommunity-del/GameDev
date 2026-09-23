@@ -256,7 +256,7 @@ export function clearZoneLocalFx(S) {
   S._firemaking = null;
   S._extraction = null;
   S._remoteProjectiles = [];
-  /* v2.3.2714: a staff crash queued on the frame you left would flash at the
+  /* v2.3.2740: a staff crash queued on the frame you left would flash at the
      old zone's coordinates on the new map. */
   S._staffCrashes = [];
   S._whirlFx = null;

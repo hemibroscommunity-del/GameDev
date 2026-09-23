@@ -10,6 +10,7 @@
    by design (they are wired up inside the BroTown component each render). */
 import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY } from '@/data/index.js';
 import { hitMaterialOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard */
+import { propMaterial, propSwingContact } from '@/data/worldProps.js';   /* v2.3.2730: what a prop is made of, and where a swing meets one */
 import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
 import { prog3Live } from '@/data/prog3.js';          /* v2.3.2615: is the T1 track still load-bearing for this character? */
 
@@ -669,6 +670,180 @@ export function spawnHitDebris(S, m, angle) {
     ang: (typeof angle === 'number') ? angle : -Math.PI / 2,
     t0: Date.now(),
   });
+}
+
+/* ═══ v2.3.2730: A HIT ON A PROP ═══
+   Owner: "make it so that subtle debris comes off the props once they're hit
+   by a player projectile ... I still want the bolt projectiles to explode even
+   if they hit props with debris, arrow stuck in (with debris), and sword slash
+   marks on the props (with debris)."
+
+   ONE QUEUE, NOT A SECOND ONE.  A prop's debris goes into S._debrisBursts, the
+   queue the four monster hit sites have fed since v2.3.2200, under a key of its
+   own ('prop:<id>') so the renderer's per-target 150ms dedup treats each prop
+   as one target.  The record carries every field the hit-materials rewrite
+   reads (gy/h for where pieces land, `weapon` for the shape of the spray,
+   hitX/hitY for the contact point), so when that lands the props get its
+   crisp material pieces with no second change; today's renderer reads x/y,
+   kind and tint, and draws its chunks.  `prop`/`scale`/`parts` are what make
+   those chunks SUBTLE -- a rock is hit far more often than it is interesting.
+
+   `hit` is { id, x, y, gy, ang, weapon }: the prop's id, the contact point as
+   drawn (x/y -- where the arrow or bolt is on screen, or the blade's height for
+   a swing), the ground line under it (gy), and the direction the pieces should
+   leave in.  A projectile's pieces come BACK off the face (ang = its heading
+   + PI); a sword's go the way the blade was travelling. */
+export function spawnPropDebris(S, hit) {
+  if (!S || !hit) return;
+  if (!Number.isFinite(hit.x) || !Number.isFinite(hit.y) || !Number.isFinite(hit.gy)) return;
+  var mat = propMaterial(hit.id);
+  if (!S._debrisBursts) S._debrisBursts = [];
+  if (S._debrisBursts.length >= 24) return;
+  S._debrisBursts.push({
+    monsterId: 'prop:' + (hit.id || '?'), kind: mat.kind, tint: mat.tint,
+    x: hit.x, y: hit.y, gy: hit.gy, h: Math.max(4, hit.gy - hit.y),
+    ang: Number.isFinite(hit.ang) ? hit.ang : -Math.PI / 2,
+    t0: Date.now(),
+    weapon: hit.weapon || null,
+    hitX: hit.x, hitY: hit.y,
+    prop: true, scale: 0.6, parts: 4,
+  });
+}
+
+/* v2.3.2730: and what it SOUNDS like -- the same material mixer a monster hit
+   goes through (BT_AUDIO.swordHit, v2.3.2452), so a rock rings like a rock
+   monster and a bench cracks like wood.  Snow takes the snowball thud, which
+   swordHit deliberately does not carry.  Best-effort, like every sound here. */
+export function propImpactSound(propId, vol) {
+  var mat = propMaterial(propId);
+  try {
+    if (mat.sound === 'snow') BT_AUDIO.play('snowman-hit', { vol: vol * 0.8 });
+    else BT_AUDIO.swordHit({ vol: vol }, mat.sound);
+  } catch (e) { /* audio is best-effort */ }
+}
+
+/* ═══ v2.3.2730: THE BOLT'S CRASH, IN ONE PLACE ═══
+   Lifted verbatim out of the monster-hit block in projectiles.js (v2.3.2505's
+   rings and v2.3.1356's dissipation spray), because a bolt that lands on a
+   rock has to explode exactly the way one that lands on a monster does -- the
+   owner's words -- and two copies of an effect drift the day one is restyled.
+   The monster hit, a bolt stopped by a prop, and a peer's bolt stopped by a
+   prop all call this.
+   v2.3.2740 (the staff-cast work, #707): its restyle of this crash lives
+   HERE, as this note asked when it was lifted, so props get it too --
+   `style: 'staff'` on both rings hands them to the staff cast's pixel rings in
+   the element's heat ramp, and an S._staffCrashes record (the white flash,
+   sparks that cool white -> element -> dark, slow embers; staffCastFx) takes
+   the place of the 22 flat dots.
+   `color` is a CSS colour (the element's, or the default violet).  `opts`:
+   `elem` (the element, for the crash's heat ramp; absent -> the default) and
+   `vdx`/`vdy` -- the bolt is DRAWN easing off the staff's crystal for its first
+   40 px, and a crash inside that stretch is drawn where the orb was SEEN, the
+   real point plus that leftover offset (v2.3.2740).  v2.3.2715: `big` -- the
+   one-bolt staff special's crash: its rings run 1.6x wider and its outer one
+   a little longer, and staffCastFx draws its burst bigger. */
+export function orbCrashFx(S, x, y, color, opts) {
+  if (!S || !Number.isFinite(x) || !Number.isFinite(y)) return;
+  var o = opts || {};
+  var ringK = o.big ? 1.6 : 1;
+  var elem = o.elem || null;
+  var vdx = Number.isFinite(o.vdx) ? o.vdx : 0;
+  var vdy = Number.isFinite(o.vdy) ? o.vdy : 0;
+  if (!S._impactRings) S._impactRings = [];
+  /* Outer expanding ring — the "crash" flash.  The records keep their
+     positions and lifetimes: they are also the crash's record (mp-orbrange
+     asserts where they land). */
+  S._impactRings.push({
+    x: x, y: y, ts: Date.now(),
+    color: color, maxR: 26 * ringK, duration: o.big ? 420 : 320,
+    style: 'staff', elem: elem, vdx: vdx, vdy: vdy,
+  });
+  /* Inner brighter ring 40 ms later for double-pulse
+     intensity. Use a startDelay field rather than
+     setting ts in the future — future-ts caused the
+     render to compute negative ages and weird radii on
+     the first frame after spawn (same family of bug
+     as the swingTimer +300 player-flicker on cast). */
+  S._impactRings.push({
+    x: x, y: y, ts: Date.now(), startDelay: 40,
+    color: color, maxR: 14 * ringK, duration: 220,
+    style: 'staff', elem: elem, vdx: vdx, vdy: vdy,
+  });
+  /* ═══ v2.3.2740: THE CRASH BURNS HOT AND COOLS ═══
+     Queued as a FACT (where, which element) rather than as particles, so how
+     it looks lives in the renderer.  Bounded, because a hidden tab stops the
+     consumer. */
+  if (!S._staffCrashes) S._staffCrashes = [];
+  S._staffCrashes.push({ x: x, y: y, vdx: vdx, vdy: vdy, elem: elem, big: !!o.big });
+  if (S._staffCrashes.length > 24) S._staffCrashes.splice(0, S._staffCrashes.length - 24);
+}
+
+/* ═══ v2.3.2730: A MARK LEFT ON A PROP ═══
+   A slash from a sword, or an arrow standing in the rock -- anything that is
+   drawn ON the prop and has to sort with it (behind you when the rock is, in
+   front when it is).  Queued as a fact; effectsRenderer owns the drawing and
+   the lifetime.  `rec` is { kind: 'slash'|'arrow', id, x, y, gy, face, ang,
+   ttl, ...extra }: the prop, where on it as drawn (x/y), the ground line
+   under that point (gy), which face, and the angle to draw at.  Bounded, and
+   tagged with the zone so a mark cannot follow you through a door. */
+export function markProp(S, rec) {
+  if (!S || !rec || !rec.id) return;
+  if (!Number.isFinite(rec.x) || !Number.isFinite(rec.y)) return;
+  if (!S._propMarks) S._propMarks = [];
+  rec.zone = S.currentZone;
+  rec.t0 = rec.t0 || Date.now();
+  S._propMarks.push(rec);
+  if (S._propMarks.length > 32) S._propMarks.splice(0, S._propMarks.length - 32);
+}
+
+/* ═══ v2.3.2730: A SWORD SWING THAT LANDS ON A PROP ═══
+   The swing's own hit test only ever asks about monsters, so a blade that met
+   a rock went through it without a mark.  This asks the rock: the swing's fan
+   (propSwingContact) from the swinger's feet, and on a contact -- chips off the
+   face the way the blade was travelling, the material's sound, and a SLASH
+   MARK drawn on the prop.  No mark on a back face ('n'): the camera cannot see
+   it, and a gash painted over the front of the art for a cut on the far side
+   is a mark in the wrong place.  The chips still fly -- those you would see
+   over the top.
+   Purely visual.  It changes nothing about what the swing hits.
+   BLADE_H is the height the edge is drawn at through the contact frame, so the
+   mark sits where the blade was seen to land rather than on the ground line. */
+var PROP_BLADE_H = 30;
+var _propSlashFlip = 0;
+export function propSwingHit(S, px, py, ang, reach, halfArc) {
+  if (!S) return null;
+  var c = propSwingContact(S.currentZone, px, py, ang, reach, halfArc);
+  if (!c) return null;
+  var dir = Math.atan2(c.y - py, c.x - px);
+  var y = c.y - PROP_BLADE_H;
+  spawnPropDebris(S, { id: c.id, x: c.x, y: y, gy: c.y, ang: dir, weapon: 'sword' });
+  propImpactSound(c.id, 0.35);
+  if (c.face !== 'n') {
+    /* Across the swing, not along it: the edge travels tangentially, so the
+       cut runs perpendicular to the line from the swinger to the contact --
+       level on a face you are standing in front of, upright on a side face --
+       tipped either way in turn so a flurry reads as separate cuts. */
+    var tilt = ((_propSlashFlip++ & 1) ? 1 : -1) * (0.38 + Math.random() * 0.14);
+    markProp(S, { kind: 'slash', id: c.id, x: c.x, y: y, gy: c.y, face: c.face,
+      ang: dir + Math.PI / 2 + tilt, ttl: 4500 });
+  }
+  return c;
+}
+
+/* ═══ v2.3.2731: AN ARROW THAT BROKE ON WHAT IT HIT ═══
+   Queued as a fact -- where it hit (x/y as drawn), the ground under that
+   (gy), the heading -- and drawn by effectsRenderer: the head drops, the
+   fletched half kicks back toward the shooter end over end, a few splinters.
+   The dry crack is the material mixer's bone sample, which is the one sound in
+   the library that is a snap.  Whether an arrow breaks is data/arrowSnap.js;
+   what it did to its target was already done by the time this is called. */
+export function queueArrowSnap(S, x, y, gy, ang, vol) {
+  if (!S || !Number.isFinite(x) || !Number.isFinite(y)) return;
+  if (!S._arrowSnaps) S._arrowSnaps = [];
+  S._arrowSnaps.push({ x: x, y: y, gy: Number.isFinite(gy) ? gy : y + 20,
+    ang: Number.isFinite(ang) ? ang : 0, t0: Date.now(), zone: S.currentZone });
+  if (S._arrowSnaps.length > 12) S._arrowSnaps.splice(0, S._arrowSnaps.length - 12);
+  try { BT_AUDIO.swordHit({ vol: vol != null ? vol : 0.26 }, 'bone'); } catch (e) { /* audio is best-effort */ }
 }
 
 /* spawnGroundDecal: one persistent mark at the monster's feet.  Rides
