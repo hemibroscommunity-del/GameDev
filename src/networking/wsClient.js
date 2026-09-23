@@ -38,6 +38,7 @@ import { getHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { getHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { getEyewearColor } from '@/rendering/traits/eyewearColorCatalog.js';   /* v2.3.2424 */
 import { getEyeStyle } from '@/rendering/traits/eyeStyleCatalog.js';   /* v2.3.2643 */
+import { getSpecies } from '@/rendering/traits/speciesCatalog.js';   /* v2.3.2681 */
 import { getFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
 import { getShirt } from '@/rendering/traits/shirtCatalog.js';
 import { getShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
@@ -428,6 +429,7 @@ export function setupWebSocket(ctx) {
             fhc: getFacialHairColor(),
             ew: getEyewear(),   /* v2.3.2361: eyewear.  An old worker drops the key at its join gate, which is the intended degrade: peers just see no glasses until the worker carries it */
             es: getEyeStyle(),   /* v2.3.2643: the eye style, and the same degrade -- an old worker drops it and peers see the default eyes */
+            sc: getSpecies(),   /* v2.3.2681: the species, and the same degrade -- an old worker drops it and peers see a human with a fur-coloured skin */
             st: getShirt(),
             stc: getShirtColor(),
             ec: getEyeColor(),   /* v2.3.1930: eye colour, so peers draw your eyes */

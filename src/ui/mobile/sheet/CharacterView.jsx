@@ -8,6 +8,7 @@ import { getFacialHairColor, onFacialHairColorChange, facialHairColorTarget } fr
 import { getHeadwear, onHeadwearChange } from '@/rendering/traits/headwearCatalog.js';
 import { getEyewear, onEyewearChange } from '@/rendering/traits/eyewearCatalog.js';   /* v2.3.2361 */
 import { getEyeStyle, onEyeStyleChange } from '@/rendering/traits/eyeStyleCatalog.js';   /* v2.3.2643 */
+import { getSpecies, onSpeciesChange } from '@/rendering/traits/speciesCatalog.js';   /* v2.3.2681 */
 import { getHatColor, onHatColorChange, hatColorTarget } from '@/rendering/traits/hatColorCatalog.js';
 import { getShirtColor, onShirtColorChange, shirtColorTarget } from '@/rendering/traits/shirtColorCatalog.js';
 import { getEyeColor, onEyeColorChange } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
@@ -88,6 +89,7 @@ export const CharacterView = ({ size, weapon, shield, crop, dir }) => {
       onShirtColorChange, onEyeColorChange,   /* v2.3.1928 */
       onEyewearChange,   /* v2.3.2361 */
       onEyeStyleChange,   /* v2.3.2643: subscribed in the same change that added the read (the v2.3.1835 lesson) */
+      onSpeciesChange,   /* v2.3.2681: same lesson */
     ].map((sub) => { try { return sub(bump); } catch (e) { return null; } });
     for (const slot of ['chest', 'legs', 'shoulders', 'shirt']) {
       try { offs.push(onEquipChange(slot, bump)); } catch (e) { /* slot may not exist */ }
@@ -115,6 +117,7 @@ export const CharacterView = ({ size, weapon, shield, crop, dir }) => {
         eyeColor: getEyeColor(),
       eyewear: getEyewear(),   /* v2.3.2361 */
       eyeStyle: getEyeStyle(),   /* v2.3.2643 */
+      species: getSpecies(),   /* v2.3.2681 */
       /* The shirt is a GEAR SLOT, not a trait — getShirt() is a different
          wardrobe with the same word on it, and reading the trait one here
          drew a bare-chested figure while the world sprite wore a tee.

@@ -59,6 +59,7 @@ export function portraitLook(sel) {
        the recolour of the real ones underneath.  Both ride here because the
        Eyes tab now offers both. */
     eyeStyle: sel.eyeStyleSel,
+    species: sel.speciesSel,   /* v2.3.2681: the monkey; its fur follows the skin above */
     shirt: sel.shirtSel, shirtColor: shirtColorTarget(sel.shirtColorSel),
     eyeColor: sel.eyeColor,   /* v2.3.1930: the creator's own live selection */
     /* v2.3.1953: height + frame.  Passed EXPLICITLY rather than left to the
@@ -259,7 +260,8 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
      else the draw wants goes through portraitLook(sel). */
   var hairSel = sel.hairSel, facialHairSel = sel.facialHairSel,
     headwearSel = sel.headwearSel, eyewearSel = sel.eyewearSel,   /* v2.3.2361: + eyewear */
-    eyeStyleSel = sel.eyeStyleSel;   /* v2.3.2643: + the eye style */
+    eyeStyleSel = sel.eyeStyleSel,   /* v2.3.2643: + the eye style */
+    speciesSel = sel.speciesSel;   /* v2.3.2681: + the species */
   if (!previewCanvasRef.current) return;
   var visible = previewCanvasRef.current;
   /* v2.3.1951: the figure is composited HERE and blitted, cropped, into the
@@ -286,7 +288,7 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
   })).then(function () {
     /* v2.3.715: warm the other 7 angles for whatever is selected NOW, so
        rotating never waits on the network. */
-    prewarmPortraitDirs({ hair: hairSel, facialHair: facialHairSel, headwear: headwearSel, eyewear: eyewearSel, eyeStyle: eyeStyleSel });   /* v2.3.2643: + the eye style */
+    prewarmPortraitDirs({ hair: hairSel, facialHair: facialHairSel, headwear: headwearSel, eyewear: eyewearSel, eyeStyle: eyeStyleSel, species: speciesSel });   /* v2.3.2643: + the eye style; v2.3.2681: + the species */
     _figBounds = measureFigure(off);
     blit();
   });

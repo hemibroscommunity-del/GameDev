@@ -301,6 +301,19 @@ function _retint(d, i, target, ref) {
    regardless of the chosen skin or shirt color. */
 function _isSkin(r, g, b, a) { return a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25; }
 
+/* v2.3.2681: the same recolour on pixels that are not a body sheet -- the
+   monkey's fur layer (speciesArt.js), shipped as bare skin so it can follow the
+   player's skin exactly as the body does.  Same test, same maths, same ref: a
+   patch recoloured here lands on the colour the head around it lands on.
+   `target` null (the 'default' skin, or skin recolour switched off) leaves the
+   pixels as drawn, which is also what the body does. */
+export function retintSkinPixels(d, target) {
+  if (!target) return;
+  for (let i = 0; i < d.length; i += 4) {
+    if (_isSkin(d[i], d[i + 1], d[i + 2], d[i + 3])) _retint(d, i, target, SKIN_REF);
+  }
+}
+
 /* v2.3.1928: paint the iris.  The rectangles come from EYE_MASK, which
    tools/eyes/extract-eye-mask.mjs derived offline and a human reviewed — the
    runtime never searches for an eye, because "a short white run with a dark run

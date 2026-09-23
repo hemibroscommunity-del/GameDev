@@ -264,6 +264,7 @@ import { HAIR_COLOR_CATALOG, getHairColor, setHairColor } from '@/rendering/trai
 import { HAT_COLOR_CATALOG, hatColorsFor, getHatColor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { eyewearColorsFor, getEyewearColor, setEyewearColor } from '@/rendering/traits/eyewearColorCatalog.js';   /* v2.3.2424 */
 import { EYE_STYLE_CATALOG, getEyeStyle, setEyeStyle } from '@/rendering/traits/eyeStyleCatalog.js';   /* v2.3.2643 */
+import { SPECIES_CATALOG, getSpecies, setSpecies, speciesDefaultSkin } from '@/rendering/traits/speciesCatalog.js';   /* v2.3.2681 */
 import { EYE_COLOR_CATALOG, getEyeColor, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { HEIGHT_CATALOG, DEFAULT_HEIGHT, getBuildHeight, setBuildHeight, getBuildFrame, wireHeight, wireFrame } from '@/rendering/traits/buildCatalog.js'; /* v2.3.1953; v2.3.1996: frame locked to medium — no FRAME_CATALOG/setBuildFrame here */
 import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js'; /* v2.3.1939; v2.3.1940 + pants/tattoo */
@@ -1005,10 +1006,12 @@ export var BroTown = function BroTown(_ref0) {
     setFacialHair: setFacialHair,
     setEyewear: setEyewear,   /* v2.3.2361 */
     setEyeStyle: setEyeStyle,   /* v2.3.2643 */
+    setSpecies: setSpecies,   /* v2.3.2681 */
     HEADWEAR_CATALOG: HEADWEAR_CATALOG,
     FACIALHAIR_CATALOG: FACIALHAIR_CATALOG,
     EYEWEAR_CATALOG: EYEWEAR_CATALOG,   /* v2.3.2361 */
     EYE_STYLE_CATALOG: EYE_STYLE_CATALOG,   /* v2.3.2643 */
+    SPECIES_CATALOG: SPECIES_CATALOG,   /* v2.3.2681 */
     addLifeSkillXp: addLifeSkillXp,
     awardSkillXp: awardSkillXp,
     createMonster: createMonster,
@@ -2039,6 +2042,10 @@ export var BroTown = function BroTown(_ref0) {
   var _esSelState = useState(getEyeStyle()),
     eyeStyleSel = _esSelState[0],
     setEyeStyleSel = _esSelState[1];
+  /* v2.3.2681: the species, the same store-mirror pair. */
+  var _spSelState = useState(getSpecies()),
+    speciesSel = _spSelState[0],
+    setSpeciesSel = _spSelState[1];
   var _ewSelState = useState(getEyewear()),
     eyewearSel = _ewSelState[0],
     setEyewearSel = _ewSelState[1];
@@ -2168,6 +2175,7 @@ export var BroTown = function BroTown(_ref0) {
       eyewearColor: eyewearColorSel,   /* v2.3.2424 */
       eyewearSel: eyewearSel,   /* v2.3.2361 */
       eyeStyleSel: eyeStyleSel,   /* v2.3.2643 */
+      speciesSel: speciesSel,   /* v2.3.2681 */
       shirtSel: shirtSel, shirtColorSel: shirtColorSel,
       buildHeight: heightSel, buildFrame: frameSel,   /* v2.3.1953 */
       /* v2.3.1951: which tab is open drives where the preview camera looks,
@@ -2195,7 +2203,7 @@ export var BroTown = function BroTown(_ref0) {
 
        Listing the mount flag is the whole fix: the effect re-runs when the
        creator appears, the ref is attached by then, and the portrait draws. */
-  }, [showNameModal, previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel, eyeColorSel, eyeStyleSel /* v2.3.2643 */, eyewearSel, eyewearColorSel /* v2.3.2424 */, heightSel, frameSel, activeCat, previewZoom]);
+  }, [showNameModal, previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel, eyeColorSel, eyeStyleSel /* v2.3.2643 */, speciesSel /* v2.3.2681 */, eyewearSel, eyewearColorSel /* v2.3.2424 */, heightSel, frameSel, activeCat, previewZoom]);
   /* v2.3.715: the welcome modal is dead network time -- start pulling the
      heavy in-game sheets (network/decode only; the CPU bakes still run
      behind the intro overlay via preloadPlayerAssets in joinTown) and warm
@@ -2405,7 +2413,7 @@ export var BroTown = function BroTown(_ref0) {
          tiny None caption replaces it. */
       ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' } },
           /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/cc/cc-no-hair.webp?v=' + BUILD_INFO.version, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain' } }),
-          /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, "None"))
+          /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, cat === 'species' ? opt.name : "None"))   /* v2.3.2681: on the species strip 'none' is the Human */
       : /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',
           onError: function (e) { _thumbFallback(e, cat, opt.id); },
           style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
@@ -2555,6 +2563,7 @@ export var BroTown = function BroTown(_ref0) {
     setEyeColor('default'); setEyeColorSel('default');
     setEyewear('none'); setEyewearSel('none');   /* v2.3.2361 */
     setEyeStyle('none'); setEyeStyleSel('none');   /* v2.3.2643 */
+    setSpecies('none'); setSpeciesSel('none');   /* v2.3.2681: reset is the plain bro */
     setEyewearColor('default'); setEyewearColorSel('default');   /* v2.3.2424 */
   };
 
@@ -6834,6 +6843,7 @@ export var BroTown = function BroTown(_ref0) {
                 fhc: getFacialHairColor(),
                 ew: getEyewear(),   /* v2.3.2361: eyewear, on the relay road as well as the join road (the v2.3.1939 lesson) */
                 es: getEyeStyle(),   /* v2.3.2643: same road, same lesson */
+                sc: getSpecies(),   /* v2.3.2681: same road, same lesson */
                 st: getShirt(),
                 stc: getShirtColor(),
                 ec: getEyeColor(),   /* v2.3.1930 */
@@ -7257,6 +7267,7 @@ export var BroTown = function BroTown(_ref0) {
                 eyewear: getEyewear(),   /* v2.3.2361 */
                 eyewearColor: getEyewearColor(),   /* v2.3.2424 */
                 eyeStyle: getEyeStyle(),   /* v2.3.2643 */
+                species: getSpecies(),   /* v2.3.2681 */
                 shirt: getShirt(),
                 shirtColor: getShirtColor()
               };
@@ -9853,6 +9864,7 @@ export var BroTown = function BroTown(_ref0) {
           eyewear: getEyewear(),   /* v2.3.2361 */
           eyewearColor: getEyewearColor(),   /* v2.3.2424 */
           eyeStyle: getEyeStyle(),   /* v2.3.2643 */
+          species: getSpecies(),   /* v2.3.2681 */
           shirt: getShirt(),
           shirtColor: getShirtColor()
         }
@@ -9936,6 +9948,7 @@ export var BroTown = function BroTown(_ref0) {
       if (tr.facialHair != null) setFacialHair(tr.facialHair);
       if (tr.eyewear != null) setEyewear(tr.eyewear);   /* v2.3.2361 */
       if (tr.eyeStyle != null) setEyeStyle(tr.eyeStyle);   /* v2.3.2643 */
+      if (tr.species != null) setSpecies(tr.species);   /* v2.3.2681 */
       if (tr.skin != null) setSkin(tr.skin);
       if (tr.pants != null) setPants(tr.pants);
       if (tr.shoes != null) setShoes(tr.shoes);
@@ -10128,7 +10141,7 @@ export var BroTown = function BroTown(_ref0) {
     });
   }
   if (showNameModal) {
-    return /*#__PURE__*/React.createElement(NameModal, { onBack: backToMenu, /* v2.3.2219 */ _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, _buildTile: _buildTile, activeCat: activeCat, heightSel: heightSel, setHeightSel: setHeightSel, frameSel: frameSel, setFrameSel: setFrameSel, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, eyeColorSel: eyeColorSel, setEyeColorSel: setEyeColorSel, headwearSel: headwearSel, eyewearSel: eyewearSel, setEyewearSel: setEyewearSel, /* v2.3.2361 */ eyeStyleSel: eyeStyleSel, setEyeStyleSel: setEyeStyleSel, /* v2.3.2643 */ eyewearColorSel: eyewearColorSel, setEyewearColorSel: setEyewearColorSel, /* v2.3.2424 */ joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, previewZoom: previewZoom, setPreviewZoom: setPreviewZoom, randomizeWithFlair: randomizeWithFlair, resetLook: resetLook, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: pickPreviewCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
+    return /*#__PURE__*/React.createElement(NameModal, { onBack: backToMenu, /* v2.3.2219 */ _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, _buildTile: _buildTile, activeCat: activeCat, heightSel: heightSel, setHeightSel: setHeightSel, frameSel: frameSel, setFrameSel: setFrameSel, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, eyeColorSel: eyeColorSel, setEyeColorSel: setEyeColorSel, headwearSel: headwearSel, eyewearSel: eyewearSel, setEyewearSel: setEyewearSel, /* v2.3.2361 */ eyeStyleSel: eyeStyleSel, setEyeStyleSel: setEyeStyleSel, /* v2.3.2643 */ speciesSel: speciesSel, setSpeciesSel: setSpeciesSel, /* v2.3.2681 */ eyewearColorSel: eyewearColorSel, setEyewearColorSel: setEyewearColorSel, /* v2.3.2424 */ joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, previewZoom: previewZoom, setPreviewZoom: setPreviewZoom, randomizeWithFlair: randomizeWithFlair, resetLook: resetLook, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: pickPreviewCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
   }
   return /*#__PURE__*/React.createElement(React.Fragment, null, /* v2.3.1925: the mystery-reveal ceremony.  Mounted at the top of the in-world fragment and ALWAYS mounted — it renders null until a hidden grade arrives on the loot credit, and mounting it conditionally would mean the queue it subscribes to could fill before anyone was listening. */ /*#__PURE__*/React.createElement(RevealOverlay, null), showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,
