@@ -1,4 +1,4 @@
-/* ═══ v2.3.2718: THE CAMPFIRE'S PIXEL ART, MINTED IN CODE ═══
+/* ═══ v2.3.2744: THE CAMPFIRE'S PIXEL ART, MINTED IN CODE ═══
  *
  * Owner: "I saw you can create good looking pixel flames.  Instead of the
  * current generated fire (after lighting logs for firewood) ... I want you

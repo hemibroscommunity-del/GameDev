@@ -120,11 +120,11 @@ import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from 
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2718: where a character's boots are */
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2744: where a character's boots are */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
-import { CampfireFx } from '../campfireFx.js'; /* v2.3.2718: the lit-log campfire, in pixel art */
+import { CampfireFx } from '../campfireFx.js'; /* v2.3.2744: the lit-log campfire, in pixel art */
 import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
@@ -310,7 +310,7 @@ import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo +
    the same 2.327 (it multiplies sp.scale.y, which fell 0.7 -> 0.3008, to size
    the player's hat), and _updateRemoteExtraction divided by a hardcoded 220. */
 const FIRE_FW = 384, FIRE_FH = 512;
-/* ═══ v2.3.2718: THE FIRE-LIGHTER STOOD 77 PX IN THE AIR ═══
+/* ═══ v2.3.2744: THE FIRE-LIGHTER STOOD 77 PX IN THE AIR ═══
    Found filming the new campfire: the moment you tap "Light fire" your figure
    jumps up by about its own height's worth of ground and drops back when the
    strip ends.  The strip was planted with its FRAME BOTTOM at your position +6
@@ -1851,7 +1851,7 @@ export class EffectsRenderer {
        gatherNodesFront, added after the trees' addChildAt(0), still puts it in
        front of them). */
     this.gestureLayer = layers.gestureFront || layers.gatherNodesFront || layers.gatherNodes;
-    /* v2.3.2718: the campfire draws itself -- logs, flame, sparks and smoke as
+    /* v2.3.2744: the campfire draws itself -- logs, flame, sparks and smoke as
        one depth-sorted Container among the entities, its light on the ground
        under everything.  Minted here, with the renderer, so the first fire
        ever lit never waits on its art. */
@@ -8894,7 +8894,7 @@ export class EffectsRenderer {
    * expiresAt}); a cooking station that burns out after ~45s.
    * v2.3.1753: other players' fires (S._peerCampfires) draw through the same
    * code as your own.
-   * v2.3.2718: that code is CampfireFx (rendering/campfireFx.js) now.  The
+   * v2.3.2744: that code is CampfireFx (rendering/campfireFx.js) now.  The
    * vector fire that lived here -- a flat glow ellipse, a rounded-rectangle
    * log, three curved tongues and a circle, redrawn on nodeGfx every frame --
    * is retired for pixel art that catches, burns, chars its logs, throws
@@ -8952,7 +8952,7 @@ export class EffectsRenderer {
     const _b = _localBuild();
     sp.scale.set(s * _b.sx, s * _b.sy);
     sp.x = S.player.x;
-    /* v2.3.2718: boots on your boots (see FIRE_FEET_ROW); was
+    /* v2.3.2744: boots on your boots (see FIRE_FEET_ROW); was
        `S.player.y + 6 * pscale`, which planted the frame's bottom at your hips */
     sp.y = S.player.y + standFootDy(pscale) + (FIRE_FH - FIRE_FEET_ROW) * sp.scale.y;
     /* v2.3.2287 QA probe -- the sibling of __btChopFigure, which the fire
@@ -8963,7 +8963,7 @@ export class EffectsRenderer {
         visible: !!sp.visible, scaleY: sp.scale.y,
         drawnH: +(Math.abs(sp.scale.y) * FIRE_FH).toFixed(2),
         x: sp.x, y: sp.y, gearScaleY: _fc ? _fc.scale.y : null,
-        /* v2.3.2718: where the figure's boots land (FIRE_FEET_ROW) */
+        /* v2.3.2744: where the figure's boots land (FIRE_FEET_ROW) */
         bootsY: +(sp.y - (FIRE_FH - FIRE_FEET_ROW) * sp.scale.y).toFixed(2),
       });
     }
@@ -9225,7 +9225,7 @@ export class EffectsRenderer {
       const _sxR = s * _bR.sx, _syR = s * _bR.sy;   /* v2.3.2500 */
       sp.scale.set(_sign < 0 ? -_sxR : _sxR, _syR);
       sp.x = ox;
-      /* v2.3.2718: the fire-lighter plants its boots on the peer's boots (see
+      /* v2.3.2744: the fire-lighter plants its boots on the peer's boots (see
          FIRE_FEET_ROW) -- the same fix as your own figure.  chop and cook keep
          the old +6: their strips are not measured here and nothing about them
          was asked. */
@@ -11396,7 +11396,7 @@ export class EffectsRenderer {
   }
 
   clear() {
-    if (this._campfireFx) this._campfireFx.clear();   /* v2.3.2718 */
+    if (this._campfireFx) this._campfireFx.clear();   /* v2.3.2744 */
     this.particleGfx.clear();
     this.cueGfx.clear();   /* v2.3.1765 */
     this.projectileGfx.clear();

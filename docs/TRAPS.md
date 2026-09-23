@@ -4415,7 +4415,7 @@ point: every hit test, prop stop (v2.3.2699) and player-contact check reads
 that, unchanged. Its shadow is drawn there -- which is where the worker will
 settle the hit.
 
-## 110. A character's position is its hips, not its feet (v2.3.2718)
+## 110. A character's position is its hips, not its feet (v2.3.2744)
 
 **Tempting:** anything that has to stand where a character stands -- a
 stand-in animation, a prop dropped at their feet, a campfire -- is placed at

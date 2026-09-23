@@ -4862,7 +4862,7 @@ function _feetOffsetUnits(display) {
   const rows = bodyRows(pose, dir);
   return (rows.feet - BODY_CELL_MID) * bodyDirScale(pose, dir) * LOCAL_BODY_SCALE;
 }
-/* ═══ v2.3.2718: WHERE A CHARACTER'S BOOTS ARE, FOR THINGS THAT ARE NOT ONE ═══
+/* ═══ v2.3.2744: WHERE A CHARACTER'S BOOTS ARE, FOR THINGS THAT ARE NOT ONE ═══
  * A character's position (S.player.y, a peer's y) is NOT its feet: the body is
  * frame-centred, so the boots are drawn this far below it -- (221-128) x 1.061
  * x 0.421875 x PLAYER_SIZE_MULT = 52 world px on a flat zone, times the zone's
@@ -10707,7 +10707,7 @@ export class EntityRenderer {
          right answer on every zone that has no curve at all. */
       S._figureScaleY = display.scale && typeof display.scale.y === 'number'
         ? display.scale.y : 1;
-      /* v2.3.2718: and where your boots are drawn this frame, measured off the
+      /* v2.3.2744: and where your boots are drawn this frame, measured off the
          display itself (the drawn facing's own foot row, the live scale).  Read
          by mp-campfire against the fire-lighting figure, which plants its boots
          through standFootDy() -- two routes to the same line, so a test can
