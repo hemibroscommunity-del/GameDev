@@ -4327,3 +4327,34 @@ compositor makes them, stamped with when. mp-shieldbonk does all three.
 showed the star ring wedged under the snowman's HP bar with his nameplate over
 its lower stars -- drawn, `visible: true` to every probe, nearly invisible to a
 person. A probe answers what it was written to answer. `visible` is not "seen".
+
+## 103. A prop that stops arrows can make a monster unshootable (v2.3.2701)
+
+**Tempting:** once a step-sweep can see rocks (§101), stop every arrow at the
+first footprint face it reaches, BEFORE the monster loop, and return. That is
+what v2.3.2699 did, and it reads as the whole feature.
+
+**Wrong three ways, and the first is the one the worker already warned about.**
+The worker spawns and leashes monsters without looking at geometry, so one WILL
+stand inside a footprint -- and its own rule (`server/src/props.js`) is that an
+endpoint inside a box never blocks, precisely so that monster cannot become
+"an invincible turret". Its throws still fly out. v2.3.2699 built the turret
+for bows and staffs: mp-lockaim's due-west shot from the town plaza puts its
+slime 153px inside the building west of spawn, and the arrow planted on the
+wall. Second: returning before the loop skipped the monster standing right IN
+FRONT of the face whenever one step covered its circle and the face (a 48px
+step at 30fps; 300px under the headless 3x clock). Third: the hit is a circle
+round the monster's DRAWN body tested against the arrow's DRAWN body, both up
+in the air, and across a thin rock they meet -- the head leads by 28.5px, and a
+monster pressed to a rock's far side is drawn up over it, toward the arrow.
+mp-propshots' southward shot at a slime behind a 27px town rock landed through
+it on the old code.
+
+**The rule:** decide the stop before the loop, apply it after. Cut the step at
+the face so the loop tests what is in front of it. Let the arrow INTO a box that
+holds what it is flying at (feet in the box, its circle on the arrow's line),
+and end the flight at that box's far face if it comes out unspent. And make a
+hit pass the worker's own ground-line rule (`attackBlocked`, step start to
+feet) -- which refuses the thin-rock touch and, by the same endpoint rule,
+keeps the monster inside a rock hittable. mp-propshots section 0 shoots all
+four in town; with v2.3.2699's code back, all four fail.

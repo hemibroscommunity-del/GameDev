@@ -25,7 +25,7 @@ import { attackBlocked, slideMove, ZONE_PROPS } from '../src/props.js';
 /* v2.3.2699: the CLIENT's step test, imported the way mirror-audit imports the
    client's tables -- the worker has no moving projectiles, so this is the only
    place a player's arrow and a local slime orb meet a prop. */
-import { sweepBlockPoint as cliSweep, attackBlockPoint as cliBlockPoint, zoneBlockers as cliBlockers } from '../../src/data/worldProps.js';
+import { sweepBlockPoint as cliSweep, attackBlockPoint as cliBlockPoint, zoneBlockers as cliBlockers, boxExitPoint as cliExit } from '../../src/data/worldProps.js';
 
 const mockState = {
   storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
@@ -351,6 +351,55 @@ check('on open ground nothing is blocked', openGround > 0, { openGround });
     for (let i = 0; i < 60 && !falsePos; i++) { falsePos = cliSweep('frost', cx, cy, cx, cy + sp); cy += sp; }
   }
   check('a projectile on a clear line is never stopped', falsePos === null, { falsePos });
+}
+
+/* ── 6. THE ARROW'S OTHER TWO QUESTIONS (v2.3.2701) ──
+   v2.3.2699's arrow stop built the turret the worker's own rule exists to
+   prevent: a monster standing inside a footprint could not be shot, and could
+   still throw (mp-lockaim caught it).  projectiles.js now lets an arrow INTO a
+   box that holds what it is flying at and ends the flight at the box's FAR
+   face, and refuses any hit with a rock between the arrow and the monster's
+   feet.  The simulator is browser code (mp-propshots flies it); what it leans
+   on here is two pieces of geometry, and they are pinned in the same shape as
+   section 5 -- every frost prop, several headings. */
+{
+  const boxes = cliBlockers('frost');
+  const onEdge = (h, b) => (Math.abs(h.x - b.x0) < 0.01 || Math.abs(h.x - b.x1) < 0.01
+    || Math.abs(h.y - b.y0) < 0.01 || Math.abs(h.y - b.y1) < 0.01)
+    && h.x >= b.x0 - 0.01 && h.x <= b.x1 + 0.01 && h.y >= b.y0 - 0.01 && h.y <= b.y1 + 0.01;
+  const angles = [Math.PI / 2, -Math.PI / 2, 0, Math.PI, Math.PI / 4, 2.2, -0.7];
+  let noBox = [], exitBad = [], n = 0;
+  for (const b of boxes) for (const a of angles) {
+    const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, L = 300;
+    const x0 = cx - Math.cos(a) * L, y0 = cy - Math.sin(a) * L;
+    const x1 = cx + Math.cos(a) * L, y1 = cy + Math.sin(a) * L;
+    const h = cliSweep('frost', x0, y0, x1, y1);
+    if (!h) continue;
+    n++;
+    /* The box it names is a real blocker, and the hit is on its edge. */
+    if (!h.box || boxes.indexOf(h.box) < 0 || !onEdge(h, h.box)) { noBox.push({ h: [h.x, h.y], box: !!h.box }); continue; }
+    /* Out the far side: on that box's edge, further along than the way in,
+       and no further than the box is across. */
+    const e = cliExit(h.box, h.x, h.y, x1, y1);
+    const diag = Math.hypot(h.box.x1 - h.box.x0, h.box.y1 - h.box.y0);
+    const ok = e && onEdge(e, h.box) && Math.hypot(e.x - h.x, e.y - h.y) <= diag + 0.01
+      && ((e.x - h.x) * Math.cos(a) + (e.y - h.y) * Math.sin(a)) > 0;
+    if (!ok) exitBad.push({ box: [h.box.x0, h.box.y0, h.box.x1, h.box.y1], a: +a.toFixed(2), e });
+  }
+  check(`the sweep names the prop it met (${n} flights)`, n > 20 && noBox.length === 0, noBox.slice(0, 3));
+  check('...and the way OUT of that prop is on its far side, one box-width on at most',
+    exitBad.length === 0, exitBad.slice(0, 3));
+  const R = boxes.find((b) => b.x0 < 430 && b.x1 > 430 && b.y0 > 500 && b.y1 < 600);
+  check('a step that ends inside the prop has no way out yet',
+    cliExit(R, 430, R.y1 + 30, 430, (R.y0 + R.y1) / 2) === null, {});
+  /* The guard's own question, on the ridge: from one side of it to feet on the
+     other is blocked on BOTH sides -- worker and client -- and to feet INSIDE
+     it is not, which is the turret rule. */
+  const mid = (R.y0 + R.y1) / 2;
+  check('ridge: arrow north of it, feet south of it -- a rock between (worker and client agree)',
+    attackBlocked('frost', 430, R.y0 - 40, 430, R.y1 + 10) === true && !!cliBlockPoint('frost', 430, R.y0 - 40, 430, R.y1 + 10), {});
+  check('ridge: ...and feet standing IN it are not behind it, on either side',
+    attackBlocked('frost', 430, R.y0 - 40, 430, mid) === false && cliBlockPoint('frost', 430, R.y1 + 40, 430, mid) === null, {});
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

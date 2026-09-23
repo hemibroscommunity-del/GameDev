@@ -887,19 +887,34 @@ export function attackBlocked(zoneId, x0, y0, x1, y1) {
        the shooter-inside rule, still correct for the launch point.  It cannot
        fire for a box the projectile has already entered, because entering one
        is the end of its flight.
-   Returns { x, y, t } for the nearest entry along the step, or null. */
+   Returns { x, y, t, box } for the nearest entry along the step, or null.
+   v2.3.2701: `box` is the footprint it entered (the shared object from
+   zoneBlockers -- read it, never write it), so the arrow sim can ask who is
+   standing in it. */
 export function sweepBlockPoint(zoneId, x0, y0, x1, y1) {
   if (!Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(x1) || !Number.isFinite(y1)) return null;
   const boxes = zoneBlockers(zoneId);
-  let best = -1;
+  let best = -1, bestBox = null;
   for (let i = 0; i < boxes.length; i++) {
     const b = boxes[i];
     if (pointInBox(x0, y0, b)) continue;   /* launched from inside it: fly out */
     const t = segEnterT(x0, y0, x1, y1, b);
-    if (t >= 0 && (best < 0 || t < best)) best = t;
+    if (t >= 0 && (best < 0 || t < best)) { best = t; bestBox = b; }
   }
   if (best < 0) return null;
-  return { x: x0 + (x1 - x0) * best, y: y0 + (y1 - y0) * best, t: best };
+  return { x: x0 + (x1 - x0) * best, y: y0 + (y1 - y0) * best, t: best, box: bestBox };
+}
+
+/** v2.3.2701: where a step that starts INSIDE box `b` comes out of it, as
+ *  { x, y, t } along (x0,y0)->(x1,y1), or null if it never leaves.
+ *  The step run backwards enters the box exactly where the step leaves it, so
+ *  this is segEnterT on the reversed segment rather than a second slab test. */
+export function boxExitPoint(b, x0, y0, x1, y1) {
+  if (!b || !Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(x1) || !Number.isFinite(y1)) return null;
+  if (pointInBox(x1, y1, b)) return null;
+  const u = segEnterT(x1, y1, x0, y0, b);
+  if (u < 0) return null;
+  return { x: x1 + (x0 - x1) * u, y: y1 + (y0 - y1) * u, t: 1 - u };
 }
 
 /* Dev probe, house style: the blocker set a scenario is reasoning about, and

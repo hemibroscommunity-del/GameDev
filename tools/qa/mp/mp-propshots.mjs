@@ -28,6 +28,17 @@
  *
  * Each has a CONTROL on a line the client itself reports clear, because "the
  * ball ended early" is also what a broken simulator does.
+ *
+ * v2.3.2701 -- AND AN ARROW STILL HITS WHAT IT SHOULD.  v2.3.2699's stop built
+ * the turret the worker's endpoint rule exists to prevent: a monster standing
+ * INSIDE a footprint could not be shot (mp-lockaim's due-west shot put its
+ * slime 153px into the building west of spawn, and the arrow planted on the
+ * wall), while its own throws still flew out.  Section 0 shoots LOCAL monsters
+ * in town, where the client's hit is the whole answer: one standing in a
+ * footprint, one standing right in front of a face with a step long enough to
+ * jump its circle, an arrow let in whose quarry vanishes, one off to the side
+ * of the line that must not open the box, and one pressed to the far side of a
+ * thin rock whose drawn body reaches back over it.
  */
 import * as H from './harness.mjs';
 
@@ -155,10 +166,151 @@ const maxStep = (track) => {
   return m;
 };
 
+/* v2.3.2701: shoot ONE local monster with one real arrow and report whether
+   the arrow touched it.  Town is client-local (`_serverMonsters` false), so the
+   client's hit test is the whole answer -- no worker in the loop to hide an
+   error.  The monster is the mp-lockaim fixture (spd 0 so it stays put, a deep
+   hp pool); the answer is read off the ARROW's own hitIds rather than the
+   monster's hp, so the player's own auto-attack cannot score for it.  `vanish`
+   takes the monster away the first frame the arrow is let into its box, which
+   is the one way to watch an arrow that has been let in and then missed. */
+const shootLocal = (P, o) => P.page.evaluate((o) => new Promise((resolve) => {
+  const S = window._gameState.current;
+  S._serverMonsters = false;
+  S.autoAttack = false;
+  S.lockedTarget = null;
+  const m = {
+    id: 'qa-ps-' + o.tag, arch: 'fodder', archetype: 'fodder', type: 'fodder',
+    x: o.mx, y: o.my, renderX: o.mx, renderY: o.my, spawnX: o.mx, spawnY: o.my, targetX: o.mx, targetY: o.my,
+    hp: 99999, curHp: 99999, maxHp: 99999, dmg: 0, level: 1, gold: 0, xp: 1, spd: 0,
+    alive: true, statuses: {}, _hitThisSwing: false, _atkCd: 0, _stunUntil: 0,
+    respawnAt: 0, moveTimer: 0, _stuckArrows: [],
+  };
+  S.monsters = [m];
+  const a = {
+    ang: o.ang, dist: 0, fromGrip: false, dmg: 1, life: 400, maxLife: 400,
+    hitIds: new Set(), isStaff: false, speedPx: o.speed,
+    _bornTs: Date.now() - 500, _released: true, _qaId: 'qa-' + o.tag,
+    _pathX: o.x, _pathY: o.y,
+  };
+  S.arrows = (S.arrows || []).filter((x) => x._qaId == null);
+  S.arrows.push(a);
+  const track = []; let n = 0, letIn = false, vanished = false;
+  const tick = () => {
+    if (a._renderX != null) track.push([a._renderX, a._renderY]);
+    if (a._inBox) letIn = true;
+    /* Taken out of the list, not merely marked dead: the local sim revives a
+       dead fixture on its next tick (respawnAt 0), and the first run of this
+       case watched the arrow hit the revived one. */
+    if (o.vanish && a._inBox && !vanished) {
+      m.alive = false; vanished = true;
+      S.monsters = (S.monsters || []).filter((x) => x !== m);
+    }
+    const alive = (S.arrows || []).indexOf(a) >= 0;
+    if (a.planting || !alive || ++n >= o.frames) {
+      resolve({ hit: a.hitIds.has(m.id), planting: !!a.planting,
+        plant: a.planting ? [a._plantX, a._plantStartY] : null, alive, letIn, vanished,
+        track, dtScale: +(S._dtScale || 1).toFixed(2) });
+      return;
+    }
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}), o);
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Shots', wsPort, webPort, viewport: PHONE, touch: true });
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
+
+  /* ── 0. (v2.3.2701) TOWN: WHAT AN ARROW STILL HAS TO HIT ──
+     Boxes are read from the game (__btBlockers), picked by shape rather than
+     hard-coded: a deep one for the monster standing inside, a thin one for the
+     monster pressed to its far side. */
+  const town = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const bs = (window.__btBlockers && window.__btBlockers('town')) || [];
+    const at = { x: S.player.x, y: S.player.y };
+    const deep = bs.filter((b) => b.x1 - b.x0 >= 200 && b.y1 - b.y0 >= 80)
+      .sort((p, q) => Math.hypot((p.x0 + p.x1) / 2 - at.x, (p.y0 + p.y1) / 2 - at.y)
+        - Math.hypot((q.x0 + q.x1) / 2 - at.x, (q.y0 + q.y1) / 2 - at.y))[0] || null;
+    const thin = bs.filter((b) => b.y1 - b.y0 <= 40 && b.x1 - b.x0 >= 40)
+      .sort((p, q) => (p.y1 - p.y0) - (q.y1 - q.y0))[0] || null;
+    return { zone: S.currentZone, at, deep, thin, n: bs.length };
+  });
+  rec.ok('town: in town, with a deep and a thin footprint to shoot at (guard)',
+    town.zone === 'town' && !!town.deep && !!town.thin, town);
+  if (town.zone === 'town' && town.deep && town.thin) {
+    const D = town.deep, cy = (D.y0 + D.y1) / 2;
+    /* Stand over the middle of it, so both of its faces are ON SCREEN: an arrow
+       nearing the screen edge plants there (projectiles.js v2.3.1095), which
+       would end a flight for a reason that has nothing to do with props.  North
+       first, then along, so the hop never crosses the footprint itself. */
+    await H.hopTo(P, town.at.x, D.y0 - 30);
+    await H.hopTo(P, (D.x0 + D.x1) / 2, D.y0 - 30);
+    await P.page.waitForTimeout(700);
+    const view = await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      return { x0: S.camera.x + 24, x1: S.camera.x + S._viewW - 24, px: S.player.x, py: S.player.y };
+    });
+    /* Every arrow below starts inside the view, as far east of the face as it allows. */
+    const startX = Math.min(D.x1 + 150, view.x1 - 8);
+    rec.ok('town: the deep footprint\'s far face and the arrows\' start are both on screen (guard)',
+      view.x0 < D.x0 - 1 && startX > D.x1 + 60, { view, startX, box: [D.x0, D.y0, D.x1, D.y1] });
+    /* 0a. Standing IN the footprint, shot along the line from its east face. */
+    const inside = await shootLocal(P, { tag: 'inside', mx: (D.x0 + D.x1) / 2, my: cy,
+      x: startX, y: cy, ang: Math.PI, speed: 20, frames: 150 });
+    rec.ok('town: a monster standing INSIDE a footprint is still hit by an arrow shot at it',
+      inside.hit && inside.letIn, { hit: inside.hit, letIn: inside.letIn, plant: inside.plant });
+    /* 0b. Right in front of the face, and a step (100px x the frame scale)
+       long enough to jump from outside its circle to past the face in one go.
+       v2.3.2699 planted on the face without testing that step. */
+    const front = await shootLocal(P, { tag: 'front', mx: D.x1 + 12, my: cy,
+      x: startX, y: cy, ang: Math.PI, speed: 100, frames: 60 });
+    rec.ok('town: a monster right in front of a face is hit, even by a step that jumps its circle',
+      front.hit, { hit: front.hit, plant: front.plant, steps: front.track.length, dtScale: front.dtScale,
+        maxStep: +maxStep(front.track).toFixed(1) });
+    /* 0c. Let in, and the quarry gone: it must end on the FAR face. */
+    const gone = await shootLocal(P, { tag: 'gone', mx: (D.x0 + D.x1) / 2, my: cy,
+      x: startX, y: cy, ang: Math.PI, speed: 8, frames: 400, vanish: true });
+    const goneMinX = gone.track.length ? Math.min(...gone.track.map((t) => t[0])) : null;
+    rec.ok('town: an arrow let into a footprint whose monster is gone ends on its FAR face',
+      gone.vanished && !gone.hit && gone.planting && !!gone.plant && Math.abs(gone.plant[0] - D.x0) < 0.5,
+      { vanished: gone.vanished, hit: gone.hit, plant: gone.plant, farFace: D.x0 });
+    rec.ok('town: ...and was never drawn past it', goneMinX !== null && goneMinX >= D.x0 - 0.5,
+      { minX: goneMinX, farFace: D.x0 });
+    /* 0d. In the box but well off the line: it must NOT open the box. */
+    const side = await shootLocal(P, { tag: 'side', mx: (D.x0 + D.x1) / 2, my: D.y0 + 4,
+      x: startX, y: D.y1 - 4, ang: Math.PI, speed: 20, frames: 150 });
+    rec.ok('town: a monster in the footprint but off the line does not let the arrow in -- it plants on the near face',
+      !side.hit && !side.letIn && side.planting && !!side.plant && Math.abs(side.plant[0] - D.x1) < 0.5,
+      { hit: side.hit, letIn: side.letIn, plant: side.plant, nearFace: D.x1 });
+
+    /* 0e. A THIN rock, with a monster pressed to its far (south) side, shot
+       from the north.  Its body is drawn 23px above its feet, so its hit
+       circle reaches back over the rock to the arrow's side: before v2.3.2701
+       this landed every time, through the rock.  Then the same monster shot
+       along a clear line beside the rock, which must still land. */
+    const T = town.thin, tx = (T.x0 + T.x1) / 2;
+    await H.hopTo(P, tx + 80, T.y0 - 60);
+    await P.page.waitForTimeout(700);
+    /* 80px short of the face, and that number is chosen: the circle reaches
+       the arrowhead from about 46px before the face, and from here the FIRST
+       step lands inside that window at every frame scale from 1x (20px) to
+       the 3x clamp (60px).  The first cut started 60px short, and under the
+       headless 3x clock its one step landed exactly ON the face -- so the old
+       code stopped it before the loop and passed this for the wrong reason. */
+    const through = await shootLocal(P, { tag: 'through', mx: tx, my: T.y1 + 10,
+      x: tx, y: T.y0 - 80, ang: Math.PI / 2, speed: 20, frames: 150 });
+    rec.ok('town: a monster pressed to the far side of a thin rock is NOT hit through it',
+      !through.hit && through.planting && !!through.plant && Math.abs(through.plant[1] - T.y0) < 0.5,
+      { hit: through.hit, plant: through.plant, nearFace: T.y0, rock: [T.x0, T.y0, T.x1, T.y1] });
+    const beside = await shootLocal(P, { tag: 'beside', mx: tx, my: T.y1 + 10,
+      x: T.x1 + 120, y: T.y1 + 14, ang: Math.PI, speed: 20, frames: 150 });
+    rec.ok('town: ...but the same monster shot along a clear line beside the rock is hit (control)',
+      beside.hit, { hit: beside.hit, plant: beside.plant });
+    await P.page.evaluate(() => { const S = window._gameState.current; S.monsters = []; S.arrows = []; });
+  }
 
   /* ── setup: open every zone, warp to frost, stand south of the ridge ── */
   const seeded = await H.warpToZone(P, { wsPort, label: 'Frost Ridge', zoneId: 'frost' });
