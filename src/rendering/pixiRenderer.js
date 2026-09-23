@@ -7,6 +7,9 @@ import { applyDepthBuckets } from './depthSort.js'; /* v2.3.2635: one depth pass
 import { TileRenderer } from './systems/tileRenderer.js';
 import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out */
 import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
+import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
+import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
+import { LightFx, setLightFx } from './lightfx/lightFx.js'; /* v2.3.2710: map-lit shadows + metal glint, behind ?lightfx=1 */
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { MinimapRenderer } from './systems/minimapRenderer.js'; /* v2.3.1781 */
 import { loadPlayerSprites } from './playerSprites.js';
@@ -144,6 +147,22 @@ export async function initPixiRenderer(canvas) {
      rather than the body simply joining the sorted layer. */
   const entityRenderer = new EntityRenderer(layers.entities, layers.player, layers.monsterUi, layers.gestureFront, layers.gatherNodesFront, layers.foreground); /* v2.3.2655: + the near-camera layer */
   const effectsRenderer = new EffectsRenderer(layers);
+  /* v2.3.2712: time of day, the air, dust prints and blood (worldFx.js); the
+     crumbling corpse needs the renderer to photograph the body it replaces. */
+  const worldFx = new WorldFx(layers, app);
+  worldFx.setEntityRenderer(entityRenderer);   /* v2.3.2715: night lights the plates and the monsters */
+  deathCrumble.setRenderer(app.renderer);
+  /* v2.3.2710: shadows cast by each map's own sun, and metal that catches the
+     light (rendering/lightfx).  Off unless the switch is on -- see lightFx.js. */
+  const lightFx = new LightFx(layers, worldContainer);
+  if (typeof window !== 'undefined') {
+    window.__btLightFx = {
+      probe: () => lightFx.probe(),
+      set: (on) => setLightFx(on),
+      /* pin every glint at one point of its sweep, for pictures; null frees it */
+      glint: (p) => { lightFx.glint.force = (p == null ? null : Math.max(0, Math.min(1, +p))); },
+    };
+  }
   /* v2.3.221: FPS counter only mounts with ?dev=1. */
   const _devUI = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search);
   /* v2.3.1781: minimap lives in the screen-space `hud` layer so it never
@@ -208,6 +227,7 @@ export async function initPixiRenderer(canvas) {
     tileRenderer.rebuild(app, map, zoneId);
     entityRenderer.clear();
     effectsRenderer.clear();
+    lightFx.clear();   /* v2.3.2710: last zone's shadows and glints go with its figures */
     /* ═══ v2.3.2596: THE ZONE-ENTRY BANNER'S ONE TRIGGER ═══
        This function is the single place in the client that observes every zone
        change, whatever set it -- the hub walk-in, a respawn, the dev warp, a
@@ -350,6 +370,11 @@ export async function initPixiRenderer(canvas) {
     update._lastStages.entityMs = _t2 - _t1;
     try { effectsRenderer.update(S, cssW, cssH, now); }
     catch (e) { if (!update._effectsErr) { update._effectsErr = true; console.error('[pixi-render] effectsRenderer threw', e && e.message, e && e.stack); } }
+    /* v2.3.2712: after both renderers, so the lights sit on this frame's
+       positions and every corpse has been asked for (the sweep drops the
+       ones that were not -- the respawned). */
+    try { worldFx.update(S, { cx, cy, viewW, viewH, cssW, cssH }, now); }
+    catch (e) { if (!update._worldFxErr) { update._worldFxErr = true; console.error('[pixi-render] worldFx threw', e && e.message, e && e.stack); } }
     const _t3 = performance.now();
     update._lastStages.effectsMs = _t3 - _t2;
     /* ═══ v2.3.2635: DEPTH, AFTER EVERYTHING HAS MOVED ═══
@@ -363,6 +388,13 @@ export async function initPixiRenderer(canvas) {
        feature exists for. */
     try { applyDepthBuckets(layers.entities, layers.gatherNodesFront, S.player && S.player.y); }
     catch (e) { if (!update._depthErr) { update._depthErr = true; console.error('[pixi-render] depth sort threw', e && e.message); } }
+    /* v2.3.2710: light and shine, LAST of the world passes: a shadow copies
+       each figure's pieces where they are THIS frame, so it runs after
+       everything that moves them -- the entity pass, the stand-ins placed by
+       the effects pass, and the depth pass that re-parents occluders.  One
+       boolean read when the switch is off (lightFx.js). */
+    try { lightFx.update(S, now, entityRenderer, effectsRenderer); }
+    catch (e) { if (!update._lightErr) { update._lightErr = true; console.error('[pixi-render] lightFx threw', e && e.message, e && e.stack); } }
     try { minimap.update(S, cssW, cssH, canvas); }
     catch (e) { if (!update._miniErr) { update._miniErr = true; console.error('[pixi-render] minimap threw', e && e.message, e && e.stack); } }
 
@@ -409,6 +441,7 @@ export async function initPixiRenderer(canvas) {
     tileRenderer.destroy();
     entityRenderer.clear();
     effectsRenderer.clear();
+    lightFx.clear();   /* v2.3.2710 */
     try { minimap.destroy(); } catch (e) {}
     if (fpsOverlay) fpsOverlay.destroy();
     app.destroy(false, { children: true });
