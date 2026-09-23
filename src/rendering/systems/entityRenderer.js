@@ -90,6 +90,9 @@ import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-shee
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
+import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /* v2.3.2697: the staff kick + where its crystal is */
+/* v2.3.2697: scratch for staffTipWorld, reused every frame (no allocation). */
+const _staffTipOut = { x: 0, y: 0 };
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -10183,12 +10186,24 @@ export class EntityRenderer {
             oWeaponSprite.rotation = oSwingAng;
             oWeaponSprite.scale.x = fitScale;
           } else {
-            oWeaponSprite.rotation = 0;
             const weaponMirror = facingIdx >= 3 && facingIdx <= 6;
+            /* v2.3.2697: a peer's staff kicks on THEIR cast (gameEvents stamps
+               _staffCastAt from their bolt).  Their cooldown is not on the
+               wire, so a peer gets the kick without the charge-up dip. */
+            oWeaponSprite.rotation = (oWpnType === 'staff')
+              ? staffCastPose(now, other._staffCastAt, other._staffCastAng, 0, 0, weaponMirror)
+              : 0;
             oWeaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
-            _oBladeUp = true;
+            _oBladeUp = oWpnType !== 'staff';   /* v2.3.2697: a staff stands head-up -- see the local path */
           }
           oWeaponSprite.scale.y = _oBladeUp ? -fitScale : fitScale;   /* v2.3.1786 — see the local path */
+          /* v2.3.2697: their crystal, for their release flash and bolts. */
+          if (oWpnType === 'staff' && display.parent
+              && staffTipWorld(oWeaponSprite, display.parent, _staffTipOut)) {
+            other._staffTipX = _staffTipOut.x;
+            other._staffTipY = _staffTipOut.y;
+            other._staffTipAt = now;
+          }
           /* v2.3.1760: the gap v2.3.1757 recorded here is closed — the peer
              snapshot carries `wpnMat` beside `wpnType` now, so the other
              player's sword is the metal they are actually holding.  The value
@@ -10278,6 +10293,7 @@ export class EntityRenderer {
         const inFront = oIsShielding
           ? (facingIdx >= 0 && facingIdx <= 3)
           : (_oHeldInHand ? heldWeaponInFront(oWpnType, facingIdx, _oInFrontBase) : _oInFrontBase);
+        if (oWpnType === 'staff') other._staffTipBehind = !inFront;   /* v2.3.2697: see the local path */
         const bodyIdx = display.getChildIndex(oSpriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
         /* "In front" is measured against the topmost VISIBLE worn layer, not
@@ -12098,6 +12114,18 @@ export class EntityRenderer {
               ? (mirror || _gsDir === 'south')
               : (facingIdx >= 3 && facingIdx <= 6);
             weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
+            /* ═══ v2.3.2697: THE STAFF KICKS WHEN IT CASTS ═══
+               The staff used to hang motionless through every cast.  Now it
+               dips back while the cooldown refills and kicks its crystal
+               toward the target on release, then settles (staffCastPose: 12
+               fps steps, the direction worked out from the geometry rather
+               than per facing).  A rotation about the GRIP, like the south
+               tilt above, so the staff never leaves the hand. */
+            if (wpn.type === 'staff') {
+              const _sc = staffCharge(S, now);
+              weaponSprite.rotation = staffCastPose(now, S._staffCastAt, S._staffCastAng,
+                _sc.charge, _sc.rhythm, weaponMirror);
+            }
             /* v2.3.1786 (owner: "invert the sword held angle so instead of
                running around with it facing downward it points upward").
 
@@ -12115,7 +12143,15 @@ export class EntityRenderer {
                swingAng and the sheathed branch angles the blade across the
                back; neither wants this, and both are separate branches above
                so neither can pick it up by accident. */
-            _weaponBladeUp = true;
+            /* ═══ v2.3.2697: BUT NOT THE STAFF ═══
+               The flip was asked for about the SWORD, whose icon hangs its
+               blade down.  The staff's icon already stands head-up, so the
+               same flip turned it head-down: the crystal hung by the knee and
+               the bro carried a broom.  This file already says a staff "stands
+               head-up out of the fist ... head-down is a broom" (the south
+               block's off-hand), and the cast now lights that crystal, so it
+               has to be where a wizard holds it. */
+            _weaponBladeUp = wpn.type !== 'staff';
           }
           /* v2.3.1786 (owner: "invert the sword held angle so instead of
              running around with it facing downward it points upward" — then,
@@ -12140,6 +12176,18 @@ export class EntityRenderer {
              own branch above and the sheathed pose angles the blade across the
              back in another, so neither can pick this up. */
           weaponSprite.scale.y = _weaponBladeUp ? -fitScale : fitScale;
+          /* v2.3.2697: publish where the crystal is, in world px -- the staff
+             cast's charge glows there and the bolt is drawn leaving it.  Same
+             idea as the bow publishing its grip (S._bowGripX), but read back
+             through Pixi's own transform chain, so the mirror, the kick and the
+             bob above are already in it.  Stamped with `now` so a reader can
+             tell a live crystal from one left behind by a weapon swap. */
+          if (wpn.type === 'staff' && display.parent
+              && staffTipWorld(weaponSprite, display.parent, _staffTipOut)) {
+            S._staffTipX = _staffTipOut.x;
+            S._staffTipY = _staffTipOut.y;
+            S._staffTipAt = now;
+          }
           /* v2.3.1760: the weapon's METAL is its blacksmith tier (gearBase), so
              a copper sword is copper everywhere without a new field.  Melee
              only — owner: "only for metals though not staff or bow". */
@@ -12566,6 +12614,10 @@ export class EntityRenderer {
            for why the v2.3.1787 exception does not transfer to it. */
         const inFrontHeld = heldWeaponInFront(wpn && wpn.type, facingIdx, inFrontInHand);
         const inFront = _heldInHand ? inFrontHeld : (sheathed ? !inFrontInHand : inFrontInHand);
+        /* v2.3.2697: the staff cast glows at the crystal from a layer above
+           the body; when the staff is carried BEHIND him (SW/W/NW/N) it dims
+           that light instead of painting it over his back. */
+        if (wpn && wpn.type === 'staff') S._staffTipBehind = !inFront;
         const bodyIdx = display.getChildIndex(display._spriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
         /* v2.3.1787 (owner: "SW SE and E need the sword layered in front of"

@@ -1242,10 +1242,23 @@ export function updateArrows(S, deps) {
                     : (((typeof m.renderY === 'number') ? m.renderY : m.y)
                        - monsterBodyOffsetY(m.archetype || m.type));
                   if (!S._impactRings) S._impactRings = [];
-                  /* Outer expanding ring — the "crash" flash. */
+                  /* v2.3.2697: the bolt is DRAWN leaving the staff's crystal and
+                     eased onto this line over its first 40 px (staffCastFx); a
+                     hit inside that stretch carries the leftover drawing offset
+                     so the crash is DRAWN where the orb was seen.  The records'
+                     x/y stay on the real line: that is where the orb is. */
+                  var _vdx = Number.isFinite(a._fxResX) ? a._fxResX : 0;
+                  var _vdy = Number.isFinite(a._fxResY) ? a._fxResY : 0;
+                  /* Outer expanding ring — the "crash" flash.
+                     v2.3.2697: `style: 'staff'` hands the drawing of both rings
+                     to the staff cast system (pixel rings in the element's heat
+                     ramp); the records, their positions and their lifetimes are
+                     unchanged, because they are also the crash's record
+                     (mp-orbrange asserts where they land). */
                   S._impactRings.push({
                     x: _orbFxX, y: _orbFxY, ts: Date.now(),
                     color: _orbColor, maxR: 26, duration: 320,
+                    style: 'staff', elem: projElem || null, vdx: _vdx, vdy: _vdy,
                   });
                   /* Inner brighter ring 40 ms later for double-pulse
                      intensity. Use a startDelay field rather than
@@ -1256,23 +1269,19 @@ export function updateArrows(S, deps) {
                   S._impactRings.push({
                     x: _orbFxX, y: _orbFxY, ts: Date.now(), startDelay: 40,
                     color: _orbColor, maxR: 14, duration: 220,
+                    style: 'staff', elem: projElem || null, vdx: _vdx, vdy: _vdy,
                   });
-                  /* Dissipation — radial particle spray outward, with a
-                     small upward bias so embers drift like sparks. */
-                  if (!S.hitParticles) S.hitParticles = [];
-                  for (var _op = 0; _op < 22; _op++) {
-                    var _oa = (_op / 22) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
-                    var _osp = 2 + Math.random() * 4;
-                    S.hitParticles.push({
-                      x: _orbFxX + Math.cos(_oa) * 4,
-                      y: _orbFxY + Math.sin(_oa) * 4,
-                      vx: Math.cos(_oa) * _osp,
-                      vy: Math.sin(_oa) * _osp - 0.7,
-                      life: 0.45 + Math.random() * 0.4,
-                      color: _orbColor,
-                      size: 1 + Math.random() * 2.2,
-                    });
-                  }
+                  /* ═══ v2.3.2697: THE CRASH BURNS HOT AND COOLS ═══
+                     The 22 flat-coloured dots that were pushed here are
+                     replaced by the staff cast's crash (staffCastFx): a white
+                     flash, sparks that step white -> element colour -> dark, and
+                     a few slow embers.  Queued as a FACT (where, which element)
+                     rather than as particles, so how it looks lives in the
+                     renderer.  Same point as the rings: where the orb was.
+                     Bounded, because a hidden tab stops the consumer. */
+                  if (!S._staffCrashes) S._staffCrashes = [];
+                  S._staffCrashes.push({ x: _orbFxX, y: _orbFxY, vdx: _vdx, vdy: _vdy, elem: projElem || null });
+                  if (S._staffCrashes.length > 24) S._staffCrashes.splice(0, S._staffCrashes.length - 24);
                   /* Burn marks removed per user request — the orb-crash
                      ring + dissipation particles already convey the hit
                      without a residue overlay on the body. */
@@ -1293,12 +1302,18 @@ export function updateArrows(S, deps) {
                 /* Knockback recovery -- see melee path; pauses
                    client-side AI so the bump is visible. */
                 m._kbUntil = Date.now() + 200;
-                var rangedWpnType = a.isStaff ? 'staff' : 'bow';
-                var rangedHitFX = spawnWeaponHitFX(m.x, m.y, kba, rangedWpnType, false);
-                rangedHitFX.forEach(function (p) { return S.hitParticles.push(p); });
+                /* v2.3.2697: a staff bolt's hit is drawn once, by its crash above --
+                   at the orb, which is v2.3.2505's whole point.  The generic
+                   'staff' burst this used to add was a second spray of flat
+                   purple dots at the monster's FEET, the exact spot that fix
+                   moved the crash away from.  Arrows keep theirs. */
+                if (!a.isStaff) {
+                  var rangedHitFX = spawnWeaponHitFX(m.x, m.y, kba, 'bow', false);
+                  rangedHitFX.forEach(function (p) { return S.hitParticles.push(p); });
+                }
                 /* Staff projectiles are magic — no physical shaft to
-                   leave embedded in the body.  Particle FX from
-                   spawnWeaponHitFX above is the visual residue. */
+                   leave embedded in the body.  Their visual residue is the
+                   crash above (v2.3.2697; spawnWeaponHitFX is arrows-only now). */
                 /* ═══ v2.3.2511: ONE ARROW, NOT TWO ═══
                    Owner (backlog §2.5): "two stuck arrows on a special".  Both
                    halves were doing their job and neither knew about the
