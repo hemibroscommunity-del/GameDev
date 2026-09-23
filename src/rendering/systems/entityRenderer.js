@@ -4861,6 +4861,13 @@ function _feetOffsetUnits(display) {
   const rows = bodyRows(pose, dir);
   return (rows.feet - BODY_CELL_MID) * bodyDirScale(pose, dir) * LOCAL_BODY_SCALE;
 }
+/* v2.3.2710: where a player figure (yours or a peer's) actually touches the
+   ground, in its layer's space.  The body is centred on its frame, so the
+   feet are this offset BELOW display.y, not at it -- a cast shadow pivoted on
+   display.y would hang in the air at the figure's waist (lightfx/casters.js). */
+export function figureFeetY(display) {
+  return display.y + _feetOffsetUnits(display) * display.scale.y;
+}
 function _applyBuildScale(display, pscale, heightId, frameId) {
   const b = buildScale(heightId, frameId);
   const sx = pscale * b.sx, sy = pscale * b.sy;

@@ -215,6 +215,23 @@ zones players spend real time in. Explicitly **not** a rebuild of all twelve.
 
 ## Polish, later: the silhouette shadow
 
+> **BUILT BEHIND A SWITCH, v2.3.2710**: `?lightfx=1`, off by default until
+> the owner has seen it on a phone. See `docs/specs/light-and-shine.md`.
+> All three reasons below were answered rather than waived:
+> 1. **Light direction:** every zone now has one, read off its painting
+>    (`lightfx/zoneLight.js`). The sunless zones have none and cast nothing.
+> 2. **Batching:** the shadow pieces share the figures' own textures, so they
+>    batch with each other. One filter pass for the whole `shadows` layer
+>    turns them translucent, which also keeps overlaps from darkening.
+> 3. **"Reads as a person lying down":** the projection is a shear along the
+>    light, not a flip. Low alpha, in the zone's own shade colour, with the
+>    soft edge the CSS-resolution pass gives, reads as a shadow in the
+>    pictures (`docs/specs/img/light-and-shine/`). That verdict is the owner's.
+>
+> It covers every figure, not just the player and bosses (NPCs, monsters,
+> peers), and it follows the swing and gather stand-ins. What follows is
+> the reasoning as it stood before it was built.
+
 **Cost** medium · **Perf risk** medium · **Payoff** low-medium · **Scope** player and bosses only
 
 Tint the character's own frame black, squash and skew it along the zone's

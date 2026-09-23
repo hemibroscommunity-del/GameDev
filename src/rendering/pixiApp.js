@@ -52,7 +52,17 @@ import { Application, Cache, Container } from 'pixi.js';
  * the figure.
  */
 const WORLD_LAYER_NAMES = [
-  'tiles', 'groundDetails', 'groundSplatter', 'groundLoot',
+  'tiles', 'groundDetails', 'groundSplatter',
+  /* ═══ v2.3.2710: CAST SHADOWS LIE ON THE GROUND ═══
+     lightfx/shadows.js.  Above the painted map, its footprints and the
+     splatter, because a shadow falls ON them.  Below `groundLoot` and
+     `telegraphs` on purpose: a dropped item and the red ring of an incoming
+     attack are things the player has to read, so a passing shadow may dim
+     the floor but never the warning.  And below every layer that stands on
+     the ground, so a building in front of a shadow hides it the way it hides
+     the figure casting it. */
+  'shadows',
+  'groundLoot',
   'telegraphs', 'gatherNodesBack', 'entities', 'gatherNodes',
   /* ═══ v2.3.2636: HIT EFFECTS GO UNDER THE PLAYER ═══
      Owner: "make the character layer in front of the effects (after monsters
