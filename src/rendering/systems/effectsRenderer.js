@@ -1864,7 +1864,7 @@ const RARE_KINDS = { weapon: true, gem: true, armor: true };
  * already lying still.  Visual only -- the pickup test reads l.x / l.y. */
 const LAND_S = 1.0;
 const HOP_KEYS = { remnant: 0, coin: 1, shard: 2, weapon: 3, gem: 4, armor: 5 };
-const _NO_HOP = { dy: 0, sq: 0 };
+const _NO_HOP = { dy: 0, sq: 0, rot: 0 };
 const _hash = (x) => { const v = Math.sin(x) * 43758.5453; return v - Math.floor(v); };
 function lootHop(l, key, age, n = 0) {
   if (!(age < LAND_S) || age < 0) return _NO_HOP;
@@ -1874,15 +1874,32 @@ function lootHop(l, key, age, n = 0) {
   const delay = 0.16 * _hash(l._landSeed * 71 + k * 3.1);           /* one after another */
   const P = 0.15 * (0.85 + 0.3 * _hash(l._landSeed * 53 + k * 5.3)); /* fall time = first quarter */
   const t = age - delay;
-  if (t < 0) return { dy: A, sq: 0 };
+  /* ═══ v2.3.2772: AND IT TUMBLES A LITTLE ═══
+     Owner: "When it bounces did you allow it to rotate a little bit so it
+     looks more realistic?"  It did not -- straight up and down.  Now each
+     item leans while it is in the air (its own side and amount from the
+     same seed) and comes back level at every contact: sin over the hop is
+     zero exactly when |cos| is, i.e. on the ground.  So it lands flat, is
+     knocked a little crooked by each hop, and is level again by the time it
+     settles -- where the resting pile has always been. */
+  const lean = (_hash(l._landSeed * 29 + k * 7.9) < 0.5 ? -1 : 1) * (0.22 + 0.28 * _hash(l._landSeed * 17 + k * 2.3));
+  if (t < 0) return { dy: A, sq: 0, rot: lean * 0.5 };
   const env = Math.exp(-3.2 * t);
   const c = Math.abs(Math.cos((Math.PI * t) / (2 * P)));
   /* a little squash at each contact, gone by the second hop */
   const sq = 0.22 * env * Math.max(0, 1 - c / 0.25);
-  return { dy: A * env * c, sq };
+  /* the fall eases from its starting lean to level at first contact; each
+     hop after tips it the same way and brings it back (sin*cos: zero on the
+     ground and at the top, most crooked in between) -- continuous throughout */
+  const rot = t < P ? lean * 0.5 * c : lean * 1.6 * env * Math.abs(Math.sin((Math.PI * t) / (2 * P))) * c;
+  return { dy: A * env * c, sq, rot };
 }
-function applySquash(sp, sq) {
-  if (!sq || !sp) return;
+/* v2.3.2771 squash; v2.3.2772 and tilt.  Rotation is WRITTEN every call
+   (0 once settled) so a pile never keeps a stale lean. */
+function applySquash(sp, sq, rot = 0) {
+  if (!sp) return;
+  sp.rotation = rot || 0;
+  if (!sq) return;
   sp.scale.set(sp.scale.x * (1 + 0.6 * sq), sp.scale.y * (1 - sq));
 }
 
@@ -6830,7 +6847,7 @@ export class EffectsRenderer {
    *  Uses _pixiShardSprite so it doesn't collide with the other pooled
    *  sprites.  Falls back silently while the PNG is still loading -- a
    *  missing icon is preferable to a glyph that pops in mid-frame. */
-  _renderShardOverlay(l, anchorY, alpha, sq = 0) {
+  _renderShardOverlay(l, anchorY, alpha, sq = 0, rot = 0) {
     const tex = SHARD_ICONS[l.shard];
     if (!tex) return;
     if (!l._pixiShardSprite || l._pixiShardSprite.destroyed) {
@@ -6845,7 +6862,7 @@ export class EffectsRenderer {
     l._pixiShardSprite.y = anchorY;
     l._pixiShardSprite.alpha = alpha;
     l._pixiShardSprite.scale.set(16 / (l._pixiShardSprite.texture.width || 16));
-    applySquash(l._pixiShardSprite, sq);   /* v2.3.2771 */
+    applySquash(l._pixiShardSprite, sq, rot);   /* v2.3.2771; v2.3.2772 tilt */
     l._pixiShardSprite.visible = true;
   }
 
@@ -6853,7 +6870,7 @@ export class EffectsRenderer {
    *  layered ABOVE any remnants/wreck sprite already added for this loot
    *  entry.  Uses dedicated _pixiCoinSprite / _pixiCoinLabel slots so it
    *  doesn't collide with the remnants' _pixiSprite. */
-  _renderCoinOverlay(l, anchorY, alpha, ownsThis, sq = 0) {
+  _renderCoinOverlay(l, anchorY, alpha, ownsThis, sq = 0, rot = 0) {
     /* ownsThis === false signals MP loot the local player can't claim
        (someone else's contribution-weighted drop).  Render the icon in
        gray + lower alpha and skip the "+Xg" label since the watcher
@@ -6873,7 +6890,7 @@ export class EffectsRenderer {
       l._pixiCoinSprite.alpha = (owned ? 1 : 0.4) * alpha;
       l._pixiCoinSprite.tint = owned ? 0xffffff : 0x555555;
       l._pixiCoinSprite.scale.set((12 * LOOT_SCALE) / (l._pixiCoinSprite.texture.width || 12));
-      applySquash(l._pixiCoinSprite, sq);   /* v2.3.2771 */
+      applySquash(l._pixiCoinSprite, sq, rot);   /* v2.3.2771; v2.3.2772 tilt */
       l._pixiCoinSprite.visible = true;
     }
     if (owned) {
@@ -6940,7 +6957,7 @@ export class EffectsRenderer {
         r.icon.zIndex = LOOT_Z[it.kind] + i * 0.01;
         r.icon.x = x; r.icon.y = y;
         r.icon.scale.set(ICON / ((r.icon.texture && r.icon.texture.width) || 64));
-        applySquash(r.icon, h.sq);
+        applySquash(r.icon, h.sq, h.rot);
         r.icon.alpha = alpha;
         /* the shine rises from the item, following it through its bounce */
         const flash = Math.exp(-Math.max(0, age - 0.25) * 1.6);
@@ -6995,7 +7012,7 @@ export class EffectsRenderer {
         for (const e of (_selfR._knownLoot || [])) {
           if (!e) continue;
           const parts = [];
-          const add = (sp, kind) => { if (sp && !sp.destroyed && sp.visible) parts.push({ kind, z: sp.zIndex, y: +sp.y.toFixed(1) }); };
+          const add = (sp, kind) => { if (sp && !sp.destroyed && sp.visible) parts.push({ kind, z: sp.zIndex, y: +sp.y.toFixed(1), rot: +(sp.rotation || 0).toFixed(3) }); };
           add(e._pixiSprite, 'remnantOrCoin'); add(e._pixiCoinSprite, 'coin'); add(e._pixiShardSprite, 'shard');
           for (const r of (e._pixiRare || [])) { add(r.icon, 'rareIcon'); add(r.beam, 'beam'); }
           add(e._pixiRareDrop, 'rareText');
@@ -7353,7 +7370,7 @@ export class EffectsRenderer {
              use their own remnantsScalePx (default 48). */
           const targetPx = (variantRemnTex ? (variant.remnantsScalePx || 48) : 48) * LOOT_SCALE;
           l._pixiSprite.scale.set(targetPx / (l._pixiSprite.texture.width || targetPx));
-          applySquash(l._pixiSprite, hR.sq);   /* v2.3.2771 */
+          applySquash(l._pixiSprite, hR.sq, hR.rot * 0.5);   /* v2.3.2771; v2.3.2772: a puddle tilts less */
           l._pixiSprite.visible = true;
           /* Coin sits ON TOP of the remnants when gold rides on this drop.
              10 px above center so the player can see there's gold to grab
@@ -7361,11 +7378,11 @@ export class EffectsRenderer {
              grayed-out coin icon (no label) so they can see the pile
              exists but read it as "not yours". */
           const ownsThis = !l.recipients || !S.myId || l.recipients.includes(S.myId);
-          if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 10 + bob - hC.dy, alpha, ownsThis, hC.sq);
+          if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 10 + bob - hC.dy, alpha, ownsThis, hC.sq, hC.rot);
           /* Shard floats just above the coin (or above the remnants if
              there's no coin) so the player can read the zone-affiliation
              at a glance without picking up. */
-          if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 24 : 12) + bob - hS.dy, alpha, hS.sq);
+          if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 24 : 12) + bob - hS.dy, alpha, hS.sq, hS.rot);
           this._renderOwnerLabel(l, ownsThis, alpha);
           continue;
         }
@@ -7402,12 +7419,12 @@ export class EffectsRenderer {
         l._pixiSprite.zIndex = LOOT_Z.remnant;
         l._pixiSprite.alpha = alpha;
         l._pixiSprite.scale.set((48 * LOOT_SCALE) / (l._pixiSprite.texture.width || 128));
-        applySquash(l._pixiSprite, hR.sq);
+        applySquash(l._pixiSprite, hR.sq, hR.rot * 0.5);
         l._pixiSprite.visible = true;
         /* Coin sits on top of the wreck when gold rides on this drop. */
         const snOwn = !l.recipients || !S.myId || l.recipients.includes(S.myId);
-        if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 14 + bob - hC.dy, alpha, snOwn, hC.sq);
-        if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 28 : 14) + bob - hS.dy, alpha, hS.sq);
+        if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 14 + bob - hC.dy, alpha, snOwn, hC.sq, hC.rot);
+        if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 28 : 14) + bob - hS.dy, alpha, hS.sq, hS.rot);
         this._renderOwnerLabel(l, snOwn, alpha);
         continue;
       }
@@ -7445,7 +7462,7 @@ export class EffectsRenderer {
           l._pixiSprite.alpha = (ownsThis ? 1 : 0.5) * alpha;
           l._pixiSprite.tint = ownsThis ? 0xffffff : 0x555555;
           l._pixiSprite.scale.set((14 * LOOT_SCALE) / (l._pixiSprite.texture.width || 14));
-          applySquash(l._pixiSprite, hC.sq);
+          applySquash(l._pixiSprite, hC.sq, hC.rot);
           l._pixiSprite.visible = true;
         } else {
           gfx.circle(l.x - 3, l.y + 2 + bob, 4);
@@ -7481,7 +7498,7 @@ export class EffectsRenderer {
          in the loot, but be invisible until pickup.  Sits above the
          coin sprite so the player can read both the gold count and
          the zone shard at a glance. */
-      if (l.shard) this._renderShardOverlay(l, l.y - 15 + bob - hS.dy, alpha, hS.sq);
+      if (l.shard) this._renderShardOverlay(l, l.y - 15 + bob - hS.dy, alpha, hS.sq, hS.rot);
       if (l.xp) {
         gfx.circle(l.x + 6, l.y + bob, 3);
         gfx.fill({ color: 0x5b52ff, alpha });

@@ -87,6 +87,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }).filter((v) => v != null) : [];
     const spread = lifts.length ? Math.max(...lifts) - Math.min(...lifts) : 0;
     rec.ok('...each on its own bounce, not as one block (their heights differ mid-landing)', spread > 2, { lifts, spread });
+    /* v2.3.2772: they tumble a little in the air and lie level once settled */
+    const items = (p) => (p ? p.parts.filter((x) => !/beam|rareText/.test(x.kind)) : []);
+    const tilted = samples.slice(0, 3).some((p) => items(p).some((x) => Math.abs(x.rot) > 0.05));
+    const signs = new Set(samples.slice(0, 3).flatMap((p) => items(p).filter((x) => Math.abs(x.rot) > 0.05).map((x) => Math.sign(x.rot))));
+    rec.ok('the items tilt while they bounce', tilted, samples.slice(0, 3).map((p) => items(p).map((x) => x.rot)));
+    rec.ok('...and lie level once settled', items(settled).every((x) => x.rot === 0), items(settled).map((x) => x.rot));
+    rec.ok('...not all leaning the same way', signs.size === 2 || items(samples[1]).length < 3, [...signs]);
     /* draw order is drop rate */
     const z = (kind) => (settled.parts.filter((x) => x.kind === kind).map((x) => x.z));
     const rem = z('remnantOrCoin'), coin = z('coin'), shard = z('shard'), icons = z('rareIcon');

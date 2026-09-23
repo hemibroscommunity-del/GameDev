@@ -15,6 +15,11 @@ shrinking hops, with a small squash at each contact. The items are the
 remains, the coins, the zone shard, and each rare item.
 * Each item has its own height, delay and rhythm, so they land one after
   another rather than as one block.
+* **Tilt (v2.3.2772):** each item also leans a little while it is in the air,
+  left or right at random with its own amount. The lean comes back to level at
+  every contact, so an item lands flat, gets knocked slightly crooked by each
+  hop, and lies level once it settles. The remains puddle tilts at half the
+  angle.
 * A pile you arrive at later, including one synced on zone entry, is
   already lying still.
 
