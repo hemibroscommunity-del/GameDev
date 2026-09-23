@@ -4457,3 +4457,25 @@ rod's shape is recorded from the key first (`recordFishRodMask`) and the
 armour bakes ask that (`fishRodAt`) instead of looking for a colour. A new
 magenta-keyed sheet gets a `TOOL_SPECS` entry and one call at the end of its
 bake -- not a repaint.
+
+## 108. "This is a brand-new player" decided from S.rpg before the worker has sent it (v2.3.2738)
+
+**Tempting:** gate a first-join surface (a coach card, the welcome plate, the
+gold road to the Mayor) on the character in `S.rpg`: level 1, no quest
+records, so this is somebody new.
+
+**Wrong until the first `player_state` lands.** `joinTown` fills `S.rpg` from
+the `bt_rpg` warm-start cache, and on exactly the roads a RETURNING player
+takes -- picking a saved character (`activateChar` wipes the cache), typing a
+Login Key, opening a fresh Pages preview link (a new origin, so an empty
+localStorage) -- it falls back to `createDefaultRpg()`: level 1, no quests. A
+blank that passes every "new player" test. QuestCoach folded the veteran's
+dashboard on its first frame, the welcome plate greeted them, and the road
+pointed at the Mayor. Owner: "Sometimes when you rejoin a game from a saved
+character it brings up the tutorial again as if starting a new character."
+
+**Right:** wait for `S._rpgFromServer` (set by wsClient's `player_state`,
+cleared by `joinTown`). And a "seen" flag that must survive a new build link
+goes on the shared-domain cookie too (`rosterCookie.readSharedValue` /
+`writeSharedValue`), not only in localStorage -- see the roster cookie's
+header for why every deploy is a different origin.

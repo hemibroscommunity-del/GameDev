@@ -40,11 +40,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── the iPhone player ── */
   const P = await H.newPlayer(browser, {
     name: 'RealIphone', wsPort, webPort, touch: true, viewport: { width: 390, height: 844 },
-    init: SPOOF,
+    /* v2.3.2739: the card now waits for a quiet screen, 75s into play; the
+       QA hook shortens only the 75s, not the quiet-screen rule */
+    init: SPOOF + ';window.__btInstallAfterMs=3000;',
   });
   await H.enterWorld(P);
-  await P.page.waitForTimeout(9500);   /* the 8s delay, plus settle */
-  const c1 = await card(P);
+  await P.page.waitForTimeout(9500);
+  /* ═══ v2.3.2739: NOT ON TOP OF A COACH CARD ═══
+     Owner: "The tutorial onboarding is too heavy on window pop ups right
+     after you join the game."  A brand-new player has the first coach card
+     up now, and the install card used to land beside it in the same spot. */
+  const coachUp = await P.page.evaluate(() => !!document.querySelector('[data-coach-dismiss]'));
+  const early = await card(P);
+  rec.ok('the install card waits while a coach card is on screen (one voice at a time)',
+    !coachUp || early === null, { coachUp, early, pace: await P.page.evaluate(() => window.__btPace && window.__btPace()) });
+  /* dismiss the coach until it is quiet, then give the screen its quiet gap */
+  for (let i = 0; i < 12; i++) {
+    const had = await P.page.evaluate(() => {
+      const x = document.querySelector('[data-coach-dismiss]');
+      if (!x) return false;
+      x.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+      return true;
+    });
+    if (!had) break;
+    await P.page.waitForTimeout(3200);
+  }
+  let c1 = null;
+  for (let i = 0; i < 12 && !c1; i++) { await P.page.waitForTimeout(1000); c1 = await card(P); }
   console.log('    card: ' + JSON.stringify(c1));
   rec.ok('an iPhone-Safari player gets the card after the welcome has had its say', !!c1, c1);
   rec.ok('...it DRAWS the share glyph (the owner could not find it from words alone)',

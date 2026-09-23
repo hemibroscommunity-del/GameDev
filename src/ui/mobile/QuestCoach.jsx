@@ -1,3 +1,5 @@
+import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js'; /* v2.3.2738 */
+import { coachMayShow, noteCoach } from '@/ui/onboardingPace.js'; /* v2.3.2739 */
 import React from 'react';
 import { combatBandTopPx } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2564: how high the combat band reaches, from the same arithmetic the controls place themselves with */
 /* v2.3.1797: the special lesson has to know whether the ACTIVE slot holds a
@@ -103,11 +105,24 @@ function loadDone() {
        (CLAUDE.md rule 4). */
     const out = Object.create(null);
     if (o && typeof o === 'object') for (const k of Object.keys(o)) out[k] = !!o[k];
+    /* v2.3.2738: plus whatever this player finished on another build's
+       origin -- the per-deploy hostname gap (rosterCookie.js) used to re-teach
+       every lesson on each fresh preview link */
+    for (const k of sharedDone()) out[k] = true;
     return out;
   } catch (_e) { return Object.create(null); }
 }
+/* The shared copy is a comma list of lesson ids: ids are short words, so the
+   whole list is ~150 bytes, and nothing but a-z/A-Z/0-9 is ever read back. */
+const SHARED_KEY = 'bt_coach';
+function sharedDone() {
+  const v = readSharedValue(SHARED_KEY);
+  if (!v) return [];
+  return v.split(',').filter((k) => /^[A-Za-z0-9]{1,24}$/.test(k) && k !== '__proto__');
+}
 function saveDone(done) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(Object.assign({}, done))); } catch (_e) {}
+  try { writeSharedValue(SHARED_KEY, Object.keys(done).filter((k) => done[k] && /^[A-Za-z0-9]{1,24}$/.test(k)).join(',')); } catch (_e) {}
 }
 
 /* ═══ v2.3.2495: NO MARK IS EVER BIGGER THAN A PLAUSIBLE CONTROL ═══
@@ -854,7 +869,11 @@ export function QuestCoach(props) {
       if (stop) return;
       raf = requestAnimationFrame(step);
       const S = stateRef && stateRef.current;
-      const rpg = (S && S.rpg) || null;
+      /* v2.3.2738: no character until the worker has sent it.  Before the
+         first player_state S.rpg is a cache or a blank level-1 default, and
+         the blank passes preTutorial -- which folded a returning player's
+         dashboard and re-taught them to walk (wsClient _rpgFromServer). */
+      const rpg = (S && S._rpgFromServer && S.rpg) || null;
       const now = Date.now();
       const done = doneRef.current;
 
@@ -1057,6 +1076,14 @@ export function QuestCoach(props) {
         return;
       }
       let next = null;
+      /* ═══ v2.3.2739: PACED, NOT STACKED ═══
+         Owner: "The tutorial onboarding is too heavy on window pop ups right
+         after you join the game."  A NEW card waits for the referee
+         (onboardingPace.js): not over the welcome / quest plate, and not
+         straight after the previous card.  Checked here, BEFORE the walk
+         arms anything, so a held card is not also a card the tracker thinks
+         was shown.  A card already up is never pulled. */
+      const holdNew = !viewRef.current && !coachMayShow(now);
       /* ═══ v2.3.2246: THE HOLD HAS TO COME BEFORE THE MEASURE ═══
          v2.3.2246 hides the right button unless a press would do something
          (owner: "Just show the right contextual button when there's input
@@ -1110,6 +1137,7 @@ export function QuestCoach(props) {
            world-anchored lesson (chatTap) brings its own rect. */
         const rect = measure(L.anchors, L, stateRef && stateRef.current);
         if (!rect) continue;          /* off screen / covered / desktop — skip, don't block */
+        if (holdNew) break;           /* v2.3.2739: its turn, but not yet */
         next = { id: L.id, label: L.label, body: rect.body, shape: L.shape, rect: rect };
         /* Arm the cycle counter the first time its mark is chosen, seeded with
            the slot the player is on so that one does not count as a swap. */
@@ -1136,6 +1164,11 @@ export function QuestCoach(props) {
         discHoldRef.current = { id: null, sides: wantSides };
       }
       const cur = viewRef.current;
+      /* v2.3.2739: one card ending and the next beginning are two events with
+         a breath between them, never a swap in place -- the swap is what made
+         the lessons after the gear one land as a single rapid volley. */
+      if (cur && next && next.id !== cur.id) next = null;
+      noteCoach(!!next, now);
       const same = (!next && !cur) || (next && cur && next.id === cur.id
         && next.body === cur.body
         && Math.abs(next.rect.left - cur.rect.left) < 2

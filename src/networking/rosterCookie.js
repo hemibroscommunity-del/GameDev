@@ -178,6 +178,23 @@ export function writeShared(list, tomb) {
   }
 }
 
+/* ═══ v2.3.2738: SMALL FLAGS THAT MUST CROSS THE SAME GAP ═══
+   Owner: "Sometimes when you rejoin a game from a saved character it brings
+   up the tutorial again as if starting a new character."  The roster crossed
+   the per-deploy origin gap (above) and the onboarding's "you have seen
+   this" flags did not -- bt_welcome_seen and QuestCoach's finished lessons
+   were localStorage only, so every fresh build link greeted and re-taught a
+   veteran.  These two helpers put a short value on the same shared domain.
+   Values are URI-encoded; callers keep them small (a flag, a list of ids). */
+export function readSharedValue(name) {
+  const raw = _readRaw(name);
+  if (raw == null || raw === '') return null;
+  try { return decodeURIComponent(raw); } catch (e) { return null; }
+}
+export function writeSharedValue(name, value) {
+  try { _set(name, encodeURIComponent(String(value)), _domainFor(), TWO_YEARS); } catch (e) {}
+}
+
 /* QA/debug handle, same pattern as window.__btRoster. */
 try {
   if (typeof window !== 'undefined') {

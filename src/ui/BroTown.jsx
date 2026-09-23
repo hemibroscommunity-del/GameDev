@@ -152,6 +152,7 @@ import { MayorGreeting } from './MayorGreeting.jsx';
    NOT the greeting video above — see welcomeBanner.js for why those are
    different asks. */
 import { maybeShowWelcome } from '@/game/welcomeBanner.js';
+import { markWorldIn } from '@/ui/onboardingPace.js'; /* v2.3.2739: one onboarding voice at a time */
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
 
@@ -1915,6 +1916,15 @@ export var BroTown = function BroTown(_ref0) {
        numbers rather than a copy of them that drifts. */
     window.__QUEST_MSG_LONG_MS = QUEST_MSG_LONG_MS;
     window.__questMsgMs = questMsgMs;
+    /* v2.3.2739: when the plate on screen (or the last one queued behind it)
+       will be gone -- onboardingPace.js keeps the coach and the install card
+       off the screen until then, so a new player gets one voice at a time. */
+    window.__btQuestMsgUntil = function () {
+      var c = questMsgRef.current;
+      var until = c ? c.ts + questMsgMs(c.kind) : 0;
+      if (questQueueRef.current.length) until = Math.max(until, Date.now() + 1000);
+      return until;
+    };
   }
   var _useState185 = useState(1),
     _useState186 = _slicedToArray(_useState185, 2),
@@ -9795,6 +9805,9 @@ export var BroTown = function BroTown(_ref0) {
       }
     } catch (e) {}
     S.rpg = (_cachedRpg && _cachedRpg.power !== undefined) ? _cachedRpg : createDefaultRpg();
+    /* v2.3.2738: a guess until the worker's player_state says otherwise --
+       nothing may decide "new player" from it (wsClient player_state) */
+    S._rpgFromServer = false;
     if (!S.rpg.inventory) S.rpg.inventory = {};
     if (!S.rpg.lifeSkills) S.rpg.lifeSkills = createDefaultLifeSkills();
     S.rpg.lifeSkills = migrateLifeSkills(S.rpg.lifeSkills);
@@ -9980,6 +9993,7 @@ export var BroTown = function BroTown(_ref0) {
     kickSfxAtGate(introWaitRef.current);
     holdZoneMusicAtGate(introWaitRef.current);   /* v2.3.2334 */
     setShowWelcome(false); /* straight in -- no intro video on a resume */
+    markWorldIn();   /* v2.3.2739: no intro on this road, so the world is in now */
     /* v2.3.833: a resume skips the intro loading screen and drops straight
        into the world while the avatar's gear sheets are still baking, which
        tanks the frame rate with no on-screen explanation (owner asked for
@@ -10192,7 +10206,8 @@ export var BroTown = function BroTown(_ref0) {
          the instant the world becomes visible — the same beat the v2.3.1593
          greeting used to take.  It is a MESSAGE, not that removed video; see
          welcomeBanner.js.  Once per browser, and it never throws. */
-      maybeShowWelcome();
+      maybeShowWelcome(function () { return stateRef.current; });
+      markWorldIn();   /* v2.3.2739: the onboarding referee's clock starts here */
       setShowIntro(false);
     }
   }), showMayorGreeting && /*#__PURE__*/React.createElement(MayorGreeting, {
