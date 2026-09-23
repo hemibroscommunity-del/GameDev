@@ -124,6 +124,26 @@ export const SKIN_CATALOG = [
      not here: one skin target cannot paint two tones, and the muzzle is a face-
      region layer.  docs/specs/SPECIES-PLAN.md costs it. */
   { id: 'monkeybrown', name: 'Monkey Brown', swatch: '#553817', target: [85, 56, 23], species: true },
+  /* v2.3.2657: FUR COLOURS (owner: "add other colors like purple and yellow"
+     for the monkey).  The one group here NOT ordered by luminance -- it is a
+     palette, not a skin ramp, so it sits after the ramp as a block.  Flagged
+     `species: true` like the two base tones above, so the creator's dice never
+     roll a bro purple; the ids are colours, not species, for the same
+     permanence reason.  The monkey's muzzle and ears stay their fixed tan on
+     every one of these (owner, v2.3.2657): only the fur recolours.
+     Clip share on the highlight rim, `node tools/skin_clip.mjs r,g,b`, against
+     Alabaster's shipping 11.81%: snow 0.33%, yellow/pink 0.08%, orange 0.07%,
+     blue 0.04%, purple 0.02%, red 0.01%, green/gray/charcoal 0. */
+  { id: 'purple',   name: 'Purple',   swatch: '#7848b4', target: [120, 72, 180], species: true },
+  { id: 'yellow',   name: 'Yellow',   swatch: '#d6b43c', target: [214, 180, 60],  species: true },
+  { id: 'red',      name: 'Red',      swatch: '#aa322a', target: [170, 50, 42],   species: true },
+  { id: 'orange',   name: 'Orange',   swatch: '#d47628', target: [212, 118, 40],  species: true },
+  { id: 'green',    name: 'Green',    swatch: '#469646', target: [70, 150, 70],   species: true },
+  { id: 'blue',     name: 'Blue',     swatch: '#4664c8', target: [70, 100, 200],  species: true },
+  { id: 'pink',     name: 'Pink',     swatch: '#d670a8', target: [214, 112, 168], species: true },
+  { id: 'gray',     name: 'Gray',     swatch: '#82828a', target: [130, 130, 138], species: true },
+  { id: 'charcoal', name: 'Charcoal', swatch: '#302e32', target: [48, 46, 50],    species: true },
+  { id: 'snow',     name: 'Snow',     swatch: '#e1e1e6', target: [225, 225, 230], species: true },
 ];
 
 /* v2.3.2642: what the creator's dice may roll.  `species: true` tones are
