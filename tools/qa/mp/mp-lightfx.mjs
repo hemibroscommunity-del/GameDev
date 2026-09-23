@@ -7,9 +7,10 @@
  *   1. shadows cast by each map's own sun (rendering/lightfx/shadows.js), and
  *   2. metal that catches the light, by grade (rendering/lightfx/glint.js).
  *
- * Behind a switch (?lightfx=1), because the last shadow this game shipped was
- * removed as "worse than nothing" -- so the first claims are about the switch:
- * off draws nothing and costs nothing.  Then the claims that make it a shadow
+ * Behind a switch (?lightfx=0 turns it off on a device), on for everyone from
+ * v2.3.2711 -- the owner saw it and said "Push it to main with the switch on".
+ * The first claims are about the switch: on by default, and off draws nothing
+ * and costs nothing.  Then the claims that make it a shadow
  * rather than a blob: it hangs off the FEET (the slime's was "way beneath the
  * monster", v2.3.1704), it falls the way the town painting's shadows fall, it
  * lies under everything that stands on the ground, and it survives a sword
@@ -168,9 +169,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 0. the switch ── */
   const p0 = await probe(A);
   rec.ok('the light-and-shine probe is present (guard)', !!p0, p0);
-  rec.ok('the switch is OFF by default', !!p0 && p0.on === false, p0 && p0.on);
-  rec.ok('...and off draws nothing: no shadow pieces, no filter pass, no glint',
-    !!p0 && p0.shadows && p0.shadows.pieces === 0 && !p0.shadows.filtered && p0.glint.lit === 0, p0);
+  /* v2.3.2711: owner, having seen it -- "Push it to main with the switch on". */
+  rec.ok('the switch is ON by default: a fresh device gets light and shine', !!p0 && p0.on === true, p0 && p0.on);
+  await setFx(A, false);
+  await A.page.waitForTimeout(300);
+  const pOff = await probe(A);
+  rec.ok('...and switched off it draws nothing: no shadow pieces, no filter pass, no glint',
+    !!pOff && !pOff.on && pOff.shadows && pOff.shadows.pieces === 0 && !pOff.shadows.filtered && pOff.glint.lit === 0, pOff);
 
   const order = await A.page.evaluate(() => window.__btLayerOrder || []);
   const iS = order.indexOf('shadows');

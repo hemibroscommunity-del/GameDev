@@ -42,6 +42,9 @@ precisely, because "done" would be wrong in all three cases:
   always broader than shadows — footprints, terrain reaction, displaced
   grass, partial burial, water response are all still open, and the game now
   has *no* grounding cue at all. This foundation went backwards on purpose.
+  *(Since then: footprints in the snow, v2.3.2647; and from v2.3.2711 every
+  figure casts a shadow along its map's own light. See "the silhouette
+  shadow" below.)*
 - **Atmosphere (§13/§15)** — every zone declares `atmosphere: { tint,
   vignette }`. That is a zone *mood*, not atmospheric **depth**: distant
   terrain losing contrast and detail, and particles passing both in front of
@@ -215,8 +218,9 @@ zones players spend real time in. Explicitly **not** a rebuild of all twelve.
 
 ## Polish, later: the silhouette shadow
 
-> **BUILT BEHIND A SWITCH, v2.3.2710**: `?lightfx=1`, off by default until
-> the owner has seen it on a phone. See `docs/specs/light-and-shine.md`.
+> **BUILT, v2.3.2710, and ON FOR EVERYONE from v2.3.2711** (owner, having
+> seen it: "Push it to main with the switch on"). `?lightfx=0` turns it off on
+> a device. See `docs/specs/light-and-shine.md`.
 > All three reasons below were answered rather than waived:
 > 1. **Light direction:** every zone now has one, read off its painting
 >    (`lightfx/zoneLight.js`). The sunless zones have none and cast nothing.

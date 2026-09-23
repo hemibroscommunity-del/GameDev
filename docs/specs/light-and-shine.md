@@ -12,13 +12,14 @@ material-specific textures or shine, etc."* Then, of the options offered:
    and armour now and then. It comes more often, and brighter, the better
    the item's grade.
 
-**Both are behind a switch and OFF by default.** Nothing is drawn,
-allocated or filtered until it is turned on:
+**On for everyone from v2.3.2711.** It shipped behind a switch that was off
+(v2.3.2710) so the owner could see it first. They did, and said: *"Push it to
+main with the switch on."* The switch stays, per device:
 
 | | |
 |---|---|
-| `?lightfx=1` | turn it on (remembered on this device) |
-| `?lightfx=0` | turn it off again |
+| `?lightfx=0` | turn it off on this device (remembered). Nothing is drawn, allocated or filtered while it is off |
+| `?lightfx=1` | turn it back on |
 
 ![Town, before and after](img/light-and-shine/town.jpg)
 
@@ -152,7 +153,7 @@ a grade key is relayed.
 
 `node tools/qa/mp/run.mjs lightfx` (off the PR path; 19 assertions):
 
-- **Off:** it is off by default, and off draws nothing.
+- **Default:** it is on by default, and switched off it draws nothing.
 - **Layer order:** the shadow layer sits on the ground and under everything
   that stands on it.
 - **On in town:** the player and the townsfolk cast shadows through one
@@ -179,8 +180,9 @@ It also writes the before/after pictures above to `/tmp/qa-lightfx/`.
 
 ## Not done, and the natural next steps
 
-- **Turning it on for everyone** is one line (`lightFxOn` defaults to
-  false). That is the owner's call, after seeing it on a phone.
+- **An in-game toggle.** Today the only off switch is `?lightfx=0` in the
+  address. If a phone turns out to struggle, a Settings toggle is the
+  friendly version.
 - **Other players' grades** need one relay key (a `wq` beside `wpnMat`) and
   its server gate.
 - **Props and gather nodes** (trees, rocks, buildings) are painted with

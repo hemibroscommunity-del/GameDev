@@ -4,13 +4,14 @@
  * textures or shine" -- then "go ahead, build 1 and 2": shadows cast by each
  * map's own sun (shadows.js) and metal that catches the light (glint.js).
  *
- * OFF BY DEFAULT.  The owner asked to see it before players do, and the last
- * shadow this game shipped was the one they had removed as "worse than
- * nothing" -- so nothing here draws, allocates or filters anything until the
- * switch is on:
+ * ON FOR EVERYONE (v2.3.2711).  It shipped behind a switch that was off,
+ * because the last shadow this game had was removed as "worse than nothing"
+ * and the owner wanted to see it first; they did, and said "Push it to main
+ * with the switch on".  The switch stays, per device, for anyone who wants it
+ * off (and for a phone that turns out not to cope):
  *
- *     ?lightfx=1   turn it on (remembered on this device)
- *     ?lightfx=0   turn it off again
+ *     ?lightfx=0   turn it off on this device (remembered)
+ *     ?lightfx=1   turn it back on
  *
  * When it is off, update() is one boolean read per frame.  Turning it on at
  * runtime (window.__btLightFx.set(true)) takes effect on the next frame, which
@@ -25,7 +26,9 @@ import { zoneLight, sunLeft } from './zoneLight.js';
 const KEY = 'bt-lightfx';
 let _on = null;
 
-/** Is the light-and-shine switch on?  Read once, then cached. */
+/** Is the light-and-shine switch on?  Read once, then cached.  ON unless
+ *  this device has turned it off (v2.3.2711) -- so a storage that cannot be
+ *  read (private mode) gets the game as it ships, not the old flat look. */
 export function lightFxOn() {
   if (_on !== null) return _on;
   let v = null;
@@ -38,7 +41,7 @@ export function lightFxOn() {
       v = localStorage.getItem(KEY);
     }
   } catch (e) { v = null; }
-  _on = v === '1';
+  _on = v !== '0';
   return _on;
 }
 
