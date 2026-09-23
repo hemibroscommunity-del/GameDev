@@ -368,6 +368,30 @@ export function isIronGear(item) {
   return item.mat === 'iron' || item.material === 'iron' || item.gearBase === 'iron';
 }
 
+/* ═══ v2.3.2664: THE ARMOUR LADDER'S DEFENSE REQUIREMENT ═══
+   Owner: "Yeah I'll go with your defense requirements for next tiers."
+   Copper and iron ask nothing; each tier above asks 5 allocated Defense
+   points more (tier 3: 5, tier 4: 10, tier 5: 15), the tier read on
+   armour's own whole-step scale — round(tierMult), never × quality.
+   EXACT mirror of server/src/data.js armorDefReq / isArmourLadderPiece,
+   swept against the worker's own gate by mirror-audit.test.mjs.  Before
+   this, canEquipItem waved every piece without a gearBase through while the
+   worker priced it off the weapon table, which is how an iron torso was
+   refused and eaten (v2.3.2122) — the gate and the card must read ONE
+   number. */
+export var ARMOR_FREE_TIERS = 2;
+export var ARMOR_DEF_REQ_PER_TIER = 5;
+export function isArmourLadderPiece(item) {
+  return !!item && typeof item === 'object'
+    && typeof item.gearBase !== 'string' && typeof item.type !== 'string';
+}
+export function armorDefReq(item) {
+  if (!item || typeof item !== 'object') return 0;
+  var tm = Number(item.tierMult);
+  var rung = Math.round(Math.max(1, Math.min(8, (Number.isFinite(tm) && tm > 0) ? tm : 1)));
+  return Math.max(0, rung - ARMOR_FREE_TIERS) * ARMOR_DEF_REQ_PER_TIER;
+}
+
 /* ═══ v2.3.2132: THE GATE AND THE BADGE NOW READ THE SAME NUMBER ═══
  *
  * Excalibur, on the demo: "select a weapon and nothing happens."
@@ -412,6 +436,13 @@ export function prog3EquipReq(tier, slotType, isWood) {
 
 export function canEquipItem(rpg, item, slotType) {
   var _item$gearBase2;
+  /* v2.3.2664: body armour is priced on its own ladder (armorDefReq), asked
+     before the iron exemption exactly as the worker asks it — real iron is
+     tier 2 and free either way.  Legacy (non-prog3) characters pass, as they
+     do on the worker (_prog3GearOk). */
+  if (slotType === 'armor' && isArmourLadderPiece(item)) {
+    return !prog3Live(rpg) || prog3Pts(rpg, 'def') >= armorDefReq(item);
+  }
   /* v2.3.2125: every slot — see the note on isIronGear.  v2.3.2124 exempted
      the defence-gated slots only; the owner then asked for the weapons too
      ("Allow iron weapons to be equipped at any level"). */
@@ -469,6 +500,14 @@ export function canEquipItem(rpg, item, slotType) {
 }
 export function getEquipReqLabel(item, slotType, rpg) {
   var _item$gearBase3;
+  /* v2.3.2664: an armour-ladder piece's badge reads the gate's own number
+     (armorDefReq) — and says nothing at all for copper and iron. */
+  if (slotType === 'armor' && isArmourLadderPiece(item)) {
+    var areq = armorDefReq(item);
+    if (!(areq > 0)) return null;
+    var ahave = rpg && prog3Live(rpg) ? prog3Pts(rpg, 'def') : 0;
+    return { stat: 'defensePts', req: areq, label: 'Defense', have: ahave, met: !(rpg && prog3Live(rpg)) || ahave >= areq, prog3: true };
+  }
   if (!item || !item.gearBase) return null;
   /* v2.3.2132: iron is free in every slot (v2.3.2124/2125, owner) and
      canEquipItem returns true for it before looking at anything else.  A
@@ -4961,7 +5000,7 @@ export function getArmorPieceDr(item, slot) {
      the server's number is what damage is actually computed with, and this
      one is what the item card promises. */
   var qm = _gearQ ? QUALITY_MULTS : QUALITY_MULTS_LEGACY;
-  var q = Object.prototype.hasOwnProperty.call(qm, item.quality) ? qm[item.quality] : 1;
+  var q = Object.prototype.hasOwnProperty.call(qm, _armorGrade(item)) ? qm[_armorGrade(item)] : 1;
   var tm = Math.max(0, Math.min(8, (Number(item.tierMult) || 1) * q));
   var v = cfg.base + cfg.perTier * (tm - 1);
   return _gearQ ? Math.min(ARMOR_DR.MAX + _armorLift(item), v) : v;
@@ -4969,8 +5008,18 @@ export function getArmorPieceDr(item, slot) {
 /* v2.3.2664: how far one piece's grade raises the ceiling (server mirror:
    QUALITY_GRADES[*].armorLift).  hasOwnProperty so '__proto__' reads 0. */
 function _armorLift(item) {
-  var q = item && item.quality;
+  var q = _armorGrade(item);
   return Object.prototype.hasOwnProperty.call(ARMOR_DR.LIFT, q) ? ARMOR_DR.LIFT[q] : 0;
+}
+/* v2.3.2664: the grade an armour piece is COUNTED at.  Godly needs proof on a
+   caps.gearq worker: a piece the server did not mint (`prov` !== 'minted',
+   the legacy lane — gear-provenance.md) counts as elite, exactly as
+   combat.js _armorDrMult counts it.  Against an older worker the grade is
+   read as-is, because that worker does too. */
+function _armorGrade(item) {
+  var q = item && item.quality;
+  if (_gearQ && q === 'godly' && item.prov !== 'minted') return 'elite';
+  return q;
 }
 
 /* Total incoming-damage reduction from worn armor, 0..0.75 (v2.3.2664: the

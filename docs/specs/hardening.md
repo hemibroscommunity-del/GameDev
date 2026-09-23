@@ -48,8 +48,11 @@ read 44 / 53.1 / 61.5 / 69.1 / 75 %; the grade still multiplies the tier, and
 each piece's grade also raises the 75 % ceiling (`QUALITY_GRADES.armorLift`:
 rare +2.5, elite +5, godly +10 points — a full set's ceiling is 75 / 80 / 85 /
 95 %), so the grades stay apart at the top of the ladder. A godly iron set is
-92 %. The client mirrors all of it behind `caps.gearq`, predicting the old math
-against an older worker. Measured at Melee 8 with an iron greatsword against an
+92 %, and the godly grade counts only on a server-minted armour piece (an
+unproven godly claim on the legacy lane counts as elite — `monster-drops.md`).
+Armour tiers above iron need 5 Defense each (`monster-drops.md`, "The Defense
+requirement"). The client mirrors all of it behind `caps.gearq`, predicting the
+old math against an older worker. Measured at Melee 8 with an iron greatsword against an
 at-level brute: normal 4.6 hits, rare 3.7, elite 2.9, godly 1.15.
 
 Rolled ONCE at server mint, immutable. **v1 rolls at the forge only**

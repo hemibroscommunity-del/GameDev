@@ -313,8 +313,11 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
     ['a client that never learned legsArmor', { armor: { tierMult: 4 } }],
     /* v2.3.2664: the grades on armour, and each grade's lift on the ceiling. */
     ['rare chest, elite legs, iron', { armor: { tierMult: 2, quality: 'rare' }, legsArmor: { tierMult: 2, quality: 'elite' } }],
-    ['one godly piece lifts the ceiling to 85 %', { armor: { tierMult: 8, quality: 'godly' }, legsArmor: { tierMult: 8 } }],
-    ['a godly set from the first tier', { armor: { tierMult: 1, quality: 'godly' }, legsArmor: { tierMult: 1, quality: 'godly' } }],
+    /* v2.3.2664: godly counts only on a MINTED piece (prov), so the godly
+       fixtures carry the mark every real one carries — and one does not. */
+    ['one godly piece lifts the ceiling to 85 %', { armor: { tierMult: 8, quality: 'godly', prov: 'minted' }, legsArmor: { tierMult: 8 } }],
+    ['a godly set from the first tier', { armor: { tierMult: 1, quality: 'godly', prov: 'minted' }, legsArmor: { tierMult: 1, quality: 'godly', prov: 'minted' } }],
+    ['an unproven godly set counts as elite', { armor: { tierMult: 2, quality: 'godly', prov: 'legacy' }, legsArmor: { tierMult: 2, quality: 'godly' } }],
     ['a rare set at the top tier stops at its 80 %', { armor: { tierMult: 5, quality: 'rare' }, legsArmor: { tierMult: 5, quality: 'rare' } }],
     ['an elite set at the top tier stops at its 85 %', { armor: { tierMult: 5, quality: 'elite' }, legsArmor: { tierMult: 5, quality: 'elite' } }],
     ['an unknown grade reads as normal', { armor: { tierMult: 3, quality: '__proto__' }, legsArmor: { tierMult: 3, quality: 'mythic' } }],
@@ -329,7 +332,7 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   }
   /* v2.3.2664: armour tiers are WHOLE steps (copper 1, iron 2, ...), and the
      ladder is five of them: set 44 / 53.1 / 61.5 / 69.1 / 75 %. */
-  const setDr = (tm, q) => getArmorDrPct({ armor: { tierMult: tm, quality: q }, legsArmor: { tierMult: tm, quality: q } });
+  const setDr = (tm, q) => getArmorDrPct({ armor: { tierMult: tm, quality: q, prov: 'minted' }, legsArmor: { tierMult: tm, quality: q, prov: 'minted' } });
   check('armour DR (v2.3.2664): +7.5 % chest / +5 % legs per tier — iron is 37.5 % and 25 %',
     Math.abs(getArmorPieceDr({ tierMult: 2 }, 'chest') - 0.375) < 1e-12
       && Math.abs(getArmorPieceDr({ tierMult: 2 }, 'legs') - 0.25) < 1e-12);
@@ -343,6 +346,8 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
     Math.abs(setDr(2, 'godly') - (1 - 0.175 * 0.45)) < 1e-12
       && setDr(8, 'godly') < 0.95 && (1 - setDr(2)) / (1 - setDr(2, 'godly')) > 5.9,
     { godlyIron: setDr(2, 'godly'), normalIron: setDr(2) });
+  check('armour DR (v2.3.2664): an unproven godly set reads exactly as an elite one (godly needs a minted piece)',
+    Math.abs(getArmorDrPct({ armor: { tierMult: 2, quality: 'godly' }, legsArmor: { tierMult: 2, quality: 'godly', prov: 'legacy' } }) - setDr(2, 'elite')) < 1e-12);
   check('armour DR (v2.3.2664): a piece alone never reads past the ceiling it gives on its own',
     getArmorPieceDr({ tierMult: 8 }, 'chest') === 0.75
       && Math.abs(getArmorPieceDr({ tierMult: 8, quality: 'elite' }, 'chest') - 0.80) < 1e-12

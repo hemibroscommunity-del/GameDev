@@ -69,7 +69,8 @@ import {
   ELEMENT_STATUS, applyElementStatus, resolveElementCollision, fractureDmgMult,
   elemAttackStat, // v2.3.2199: prog3 `elem` stat resolver for the DoT power snapshot
 } from './elemental.js';
-import { AMULET_TIER_POWER, t2CounterRate, QUALITY_GRADES /* v2.3.1925 */, weaponTierFactor, weaponQualityMult /* v2.3.2664 */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+import { AMULET_TIER_POWER, t2CounterRate, QUALITY_GRADES /* v2.3.1925 */, weaponTierFactor, weaponQualityMult /* v2.3.2664 */ } from './data.js';
+import { PROV_MINTED } from './gearprov.js'; /* v2.3.2664: godly armour needs a ledger row */ // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 import { BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST } from './data.js'; // v2.3.1919: a blocked PvP hit costs stamina too
 import { LIVEOPS } from './liveops.js';
 import { PROG3 } from './prog3.js'; // v2.3.1659: the trained-skill combat rebuild config
@@ -213,9 +214,24 @@ export const combatMethods = {
   _armorDrMult(ps) {
     if (!ps) return 1;
     /* hasOwnProperty, not a bare lookup: a stored grade of '__proto__' would
-       otherwise read Object.prototype and turn the whole product into NaN. */
-    const grade = (a) => ((a && Object.prototype.hasOwnProperty.call(QUALITY_GRADES, a.quality))
-      ? QUALITY_GRADES[a.quality] : QUALITY_GRADES.normal);
+       otherwise read Object.prototype and turn the whole product into NaN.
+       ═══ GODLY NEEDS PROOF ═══
+       The legacy lane (grids.js stats_update, gear-provenance.md) still
+       wears a piece the client merely DESCRIBES, grade included — usable,
+       not sellable, by the owner's v2.3.2534 decision — and iron carries no
+       Defense requirement.  Before this change a described "godly iron"
+       set bought 72 %; with the grade on the tier ×5 and its +10-point lift
+       it would buy 92 % at level 1.  So the godly grade counts only on a
+       piece the server minted and can prove (`prov` is derived server-side
+       from the ledger and stripped from every claim); an unproven godly
+       claim reads as ELITE.  A real godly piece is 1 in 2,000,000 and has
+       been ledger-minted since v2.3.2534, so this costs no honest player
+       anything real. */
+    const grade = (a) => {
+      if (!a || !Object.prototype.hasOwnProperty.call(QUALITY_GRADES, a.quality)) return QUALITY_GRADES.normal;
+      if (a.quality === 'godly' && a.prov !== PROV_MINTED) return QUALITY_GRADES.elite;
+      return QUALITY_GRADES[a.quality];
+    };
     const MAX_DR = 0.75 + (ps.armor ? grade(ps.armor).armorLift : 0)
       + (ps.legsArmor ? grade(ps.legsArmor).armorLift : 0);
     const piece = (a, base, perTier) => {

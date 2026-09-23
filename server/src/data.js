@@ -942,6 +942,40 @@ export const MONSTER_ARMOR_DROPS = [
   { slot: 'legsArmor', chance: 1 / 500, name: 'Iron Greaves', mat: 'iron', tierMult: 2.0 },
 ];
 
+/* ═══ v2.3.2664: THE ARMOUR LADDER'S DEFENSE REQUIREMENT ═══
+ * Owner, 2026-09-23: "Yeah I'll go with your defense requirements for next
+ * tiers."  Tiers 1 and 2 (copper, iron) ask nothing; each tier above asks
+ * 5 allocated Defense points more — tier 3 needs 5, tier 4 needs 10, tier 5
+ * needs 15.  Defense can never exceed character level, so 5 also means
+ * "level 5 and committed to Defense": a first-session goal for a player who
+ * puts their first points there, where 10 would have put the first new tier
+ * past where most players stop.
+ *
+ * THE TIER IS READ ON ARMOUR'S OWN SCALE: round(tierMult), whole steps
+ * (v2.3.1925b).  Before this, a piece minted like the drops above — no
+ * `gearBase` — fell through _prog3EquipOk to the WEAPON table's fallback,
+ * round((tierMult − 1) × 6) × 5, which asked 30 Defense for iron (v2.3.2124
+ * exempted iron rather than fix the road) and would have asked 60 for a
+ * tier-3 piece.  The base tierMult, never × quality: a rare iron torso is
+ * still iron.
+ *   <-> src/data/gameSystems.js armorDefReq / isArmourLadderPiece
+ *       (mirror-audit sweeps both against the worker's gate). */
+export const ARMOR_FREE_TIERS = 2;
+export const ARMOR_DEF_REQ_PER_TIER = 5;
+/* A piece on the armour ladder: body armour as the game mints it — no forge
+   `gearBase` and no weapon `type`.  A weapon or a forged piece that somehow
+   reaches the armour slot keeps the gate it always had. */
+export function isArmourLadderPiece(item) {
+  return !!item && typeof item === 'object'
+    && typeof item.gearBase !== 'string' && typeof item.type !== 'string';
+}
+export function armorDefReq(item) {
+  if (!item || typeof item !== 'object') return 0;
+  const tm = Number(item.tierMult);
+  const rung = Math.round(Math.max(1, Math.min(8, (Number.isFinite(tm) && tm > 0) ? tm : 1)));
+  return Math.max(0, rung - ARMOR_FREE_TIERS) * ARMOR_DEF_REQ_PER_TIER;
+}
+
 /* The gem is a plain stackable, not the elemental raw_<element> the Gem
  * Cutter consumes (GEM_RAW_MONSTER_DROP above).  Deliberately a different
  * thing: those are a crafting currency gated on the zone's element and held

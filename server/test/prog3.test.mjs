@@ -524,11 +524,14 @@ const psA = room.playerState.pa;
 
   // stats_update armor ingest: gates on defense POINTS; rejection
   // keeps the old armor (echo snaps the client back).
+  // v2.3.2664: armour is priced on its OWN ladder now (data.js armorDefReq;
+  // owner: "I'll go with your defense requirements for next tiers") — a
+  // tier-4 plate asks 10 Defense, where the weapon table's fallback asked 90.
   psA.armor = null;
-  p3.alloc.def = 10;
-  room._handleStatsUpdate(sess, { armor: { name: 'Test Plate', tierMult: 4 } }); // est tier 18 → req 90
+  p3.alloc.def = 9;
+  room._handleStatsUpdate(sess, { armor: { name: 'Test Plate', tierMult: 4 } }); // tier 4 → req 10
   check('armor ingest: over-tier swap rejected (defense points too low)', psA.armor === null, psA.armor);
-  p3.alloc.def = 90;
+  p3.alloc.def = 10;
   room._handleStatsUpdate(sess, { armor: { name: 'Test Plate', tierMult: 4 } });
   check('armor ingest: defense allocation unlocks the tier',
     !!psA.armor && psA.armor.name === 'Test Plate', psA.armor);

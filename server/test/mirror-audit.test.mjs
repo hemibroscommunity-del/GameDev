@@ -51,6 +51,9 @@ import {
      DIFFERENT roads — the worker by tier index, the client by statReq/2 — so
      they can drift without either looking wrong on its own. */
   canEquipItem as clientCanEquip,
+  /* v2.3.2664: the armour ladder's Defense requirement, both halves. */
+  armorDefReq as clientArmorDefReq, isArmourLadderPiece as clientIsArmourLadderPiece,
+  ARMOR_FREE_TIERS as CLIENT_ARMOR_FREE_TIERS, ARMOR_DEF_REQ_PER_TIER as CLIENT_ARMOR_DEF_REQ_PER_TIER,
 } from '../../src/data/gameSystems.js';
 /* The client's prog3 gate is DORMANT until the worker advertises caps.prog3
    (deploy-order safety, prog3.js `_enabled`) — without this the comparison
@@ -594,6 +597,50 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const lvl1 = { prog3: { sk: { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } }, alloc: {}, atk: {}, pool: {}, ms: {} } };
   check('copper is rung zero on the CLIENT too (owner\'s call, both sides)',
     clientCanEquip({ prog3: lvl1.prog3 }, { type: 'greatsword', gearBase: 'copper', tierMult: 1 }, 'greatsword') === true);
+
+  /* ═══ v2.3.2664: THE ARMOUR LADDER, SWEPT THE SAME WAY ═══
+     Owner: "Yeah I'll go with your defense requirements for next tiers" --
+     copper and iron free, then 5 Defense per tier.  The client never gated a
+     piece without a gearBase at all until this version, which is how an iron
+     torso was equipped, refused and eaten (v2.3.2122); so the two gates are
+     compared across every tier, grade and Defense level that matters. */
+  check('armour requirement constants mirror (free tiers, Defense per tier)',
+    SRV.ARMOR_FREE_TIERS === CLIENT_ARMOR_FREE_TIERS && SRV.ARMOR_DEF_REQ_PER_TIER === CLIENT_ARMOR_DEF_REQ_PER_TIER,
+    { srv: [SRV.ARMOR_FREE_TIERS, SRV.ARMOR_DEF_REQ_PER_TIER], cli: [CLIENT_ARMOR_FREE_TIERS, CLIENT_ARMOR_DEF_REQ_PER_TIER] });
+  const armourItems = [];
+  for (let tm = 0; tm <= 9; tm += 0.25) armourItems.push({ name: 'x', tierMult: tm, mat: 'steel' });
+  armourItems.push({ name: 'Iron Torso', tierMult: 2, mat: 'iron', slot: 'armor' });
+  armourItems.push({ name: 'Iron Torso', tierMult: 1.25, mat: 'iron' });
+  armourItems.push({ name: 'forged iron', tierMult: 8, mat: 'iron' });
+  armourItems.push({ name: 'Copper Torso', tierMult: 1, mat: 'copper', kind: 'armor' });
+  armourItems.push({ name: 'godly', tierMult: 3, mat: 'steel', quality: 'godly' });
+  armourItems.push({ name: 'no tier' });
+  armourItems.push({ name: 'nan', tierMult: 'x' });
+  armourItems.push({ gearBase: 'mythril', tierMult: 1.94 });
+  armourItems.push({ gearBase: 'iron', tierMult: 1.25 });
+  /* A WEAPON shape is checked for the ladder test only, not swept through
+     the gate below: no client screen offers a weapon for the armour slot
+     (only a hand-built equip_request can), the worker keeps its old
+     tier-table gate for it, and drops.test.mjs §8b pins that server-side. */
+  const weaponShape = { type: 'greatsword', tierMult: 4 };
+  const reqBad = [...armourItems, weaponShape].filter((it) => SRV.armorDefReq(it) !== clientArmorDefReq(it)
+    || SRV.isArmourLadderPiece(it) !== clientIsArmourLadderPiece(it));
+  check('armorDefReq / isArmourLadderPiece agree server<->client on every shape', reqBad.length === 0, reqBad.slice(0, 6));
+  const armBad = [];
+  let armRefused = 0;
+  for (let def = 0; def <= 35; def += 1) {
+    const ps = { prog3: { sk: { sword: { level: 40 }, bow: { level: 1 }, staff: { level: 1 } },
+      alloc: { def }, atk: {}, pool: {}, ms: {} } };
+    for (const item of armourItems) {
+      const srvOk = room._prog3EquipOk(ps, 'armor', item);
+      const cliOk = clientCanEquip({ prog3: ps.prog3 }, item, 'armor');
+      if (!srvOk) armRefused++;
+      if (srvOk !== cliOk) armBad.push({ def, item, server: srvOk, client: cliOk });
+    }
+  }
+  check('armour equip gate agrees server<->client across tiers 0-9 and Defense 0-35',
+    armBad.length === 0, armBad.slice(0, 6));
+  check('...and it does refuse something (guard: an always-yes gate agrees trivially)', armRefused > 0, armRefused);
 }
 
 /* ═══ 13. v2.3.1812: TELEGRAPH KINDS vs THE CLIENT'S RENDER WHITELIST ═══
