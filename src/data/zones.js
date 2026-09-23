@@ -284,7 +284,25 @@ export const ZONES = {
        zones.test.mjs now asserts the two tables stay in lockstep. */
     spawns: [{ arch: 'stalker', count: 2 }, { arch: 'hexer', count: 2 }, { arch: 'volatile', count: 2 }],   /* v2.3.2244: six per zone (mirror of server/src/data.js) */
     atmosphere: { tint: 'rgba(210,165,90,0.05)', vignette: 'rgba(150,100,40,0.08)' },
-    enemyEmoji: { fodder: '🌬️', brute: '🦅', swarm: '🕊️', volatile: '🌪️', stalker: '🦉', hexer: '☁️', sentinel: '🗼' }
+    enemyEmoji: { fodder: '🌬️', brute: '🦅', swarm: '🕊️', volatile: '🌪️', stalker: '🦉', hexer: '☁️', sentinel: '🗼' },
+    /* ═══ v2.3.2745: THE DUNES RUN AWAY FROM YOU ═══
+       Owner: "some maps show distance. So the north part of the image shows
+       the background getting smaller. I'm wondering if the objects in the
+       game, player, monsters, etc can follow a similar perspective changing
+       pattern the more north on the map they get and also slow the movement
+       speed the further north they get to emulate travel distance."
+       The sky_v5 art is painted that way: the rock stacks on the horizon are
+       drawn at roughly two fifths the size of the ones at your feet.  So
+       everything standing on it follows the same ramp -- full size on the
+       south edge, `far` at the north -- and walking north slows by the same
+       ratio (BroTown's vistaSpeedMult), so the horizon is a JOURNEY.
+       STEP 1 OF 3, and a PREVIEW: `preview: 'depth'` keeps the curve off
+       unless the page asks for it (?depth=1), because step 2 -- the server
+       scaling monster speed and reach by the same curve -- is not built, and
+       until it is a far-off monster moves and hits at full size.
+       Its own key (`depth`), not `playerScale`: that one is the world map's
+       radial vista, and mp-wvscale holds it to exactly one zone. */
+    depth: { axis: 'y', near: 1, far: 0.42, curve: 1, preview: 'depth' },
   },
   tidal: {
     id: 'tidal', name: 'Water Caves' /* v2.3.1438 */, w: 32, h: 32,
@@ -345,8 +363,35 @@ export const ZONES = {
  * A shrink curve that only some of a character's parts obey is not a curve,
  * so it lives here now and every site calls it.
  */
+/* v2.3.2745: is a preview curve switched on for this page?  `?depth=1` in the
+   URL, or window.__btDepth = true from the console.  Read from the URL once. */
+function _previewOn(name) {
+  if (typeof window === 'undefined') return false;
+  if (name === 'depth' && typeof window.__btDepth === 'boolean') return window.__btDepth;
+  if (_previewOn._url === undefined) {
+    try { _previewOn._url = /[?&]depth=1\b/.test(window.location.search); } catch (e) { _previewOn._url = false; }
+  }
+  return name === 'depth' ? !!_previewOn._url : false;
+}
+
+/* v2.3.2745: the dunes' NORTH-SOUTH depth ramp -- 1 on the south edge down
+   to `far` on the north, eased by `curve`.  Null when the zone has none or
+   its preview is off, so the caller falls through to the old answer. */
+export function zoneDepthScale(zoneId, y, TILE) {
+  const z = ZONES[zoneId];
+  const d = z && z.depth;
+  if (!d || d.axis !== 'y') return null;
+  if (d.preview && !_previewOn(d.preview)) return null;
+  const H = (z.h || 32) * (TILE || 32);
+  const t = Math.max(0, Math.min(1, 1 - (Number(y) || 0) / H));   /* 0 south .. 1 north */
+  const near = d.near != null ? d.near : 1, far = d.far != null ? d.far : 0.5;
+  return near + (far - near) * Math.pow(t, d.curve != null ? d.curve : 1);
+}
+
 export function zonePlayerScale(zoneId, x, y, TILE) {
   const z = ZONES[zoneId];
+  const dz = zoneDepthScale(zoneId, y, TILE);
+  if (dz != null) return dz;
   const ps = z && z.playerScale;
   if (typeof ps === 'number') return ps;
   if (ps && typeof ps === 'object') {
