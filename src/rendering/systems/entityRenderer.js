@@ -340,6 +340,40 @@ if (typeof window !== 'undefined') window.__btForeground = () => _fgDrawn.slice(
    only; the rest are unnamed graphics. */
 let _entityLayerRef = null;
 let _frontLayerRef = null;
+/* ═══ v2.3.2741: WHAT THE LOCAL FIGURE IS MADE OF, AND HOW SHARP EACH PIECE IS ═══
+   Owner: "The character also looks soft compared to the art he's wearing like
+   sword or shirt."  Softness is a number: how many DEVICE pixels each texel
+   of a piece is stretched over.  1 is crisp; 2 is every texel smeared over
+   two pixels by the linear filter.  This lists every visible sprite of the
+   local display with its field name, texture size and that ratio, so a test
+   (or a person) can see which pieces are the soft ones. */
+let _selfDisplayRef = null;
+if (typeof window !== 'undefined') {
+  window.__btSelfSprites = () => {
+    const d = _selfDisplayRef;
+    if (!d || d.destroyed) return null;
+    const names = new Map();
+    for (const k of Object.keys(d)) { const v = d[k]; if (v && typeof v === 'object' && v.texture !== undefined) names.set(v, k); }
+    const dpr = window.devicePixelRatio || 1;
+    const out = [];
+    const walk = (node) => {
+      for (const c of node.children) {
+        if (!c.visible || c === d._uiLayer) continue;
+        if (c.texture && c.texture.source && c.texture !== Texture.EMPTY) {
+          const src = c.texture.source, fr = c.texture.frame;
+          const wt = c.worldTransform;
+          out.push({ name: names.get(c) || c.label || '?', src: [src.width, src.height], srcRes: src.resolution || 1,
+            frame: [Math.round(fr.width), Math.round(fr.height)],
+            devPxPerTexel: +(Math.hypot(wt.a, wt.b) * dpr / (src.resolution || 1)).toFixed(2),
+            url: String((src.resource && (src.resource.src || src.resource.currentSrc)) || src.label || '').slice(-60) });
+        }
+        if (c.children && c.children.length) walk(c);
+      }
+    };
+    walk(d);
+    return out;
+  };
+}
 if (typeof window !== 'undefined') {
   window.__btEntityOrder = () => (_entityLayerRef
     ? _entityLayerRef.children.map((c) => c.label).filter(Boolean) : null);
@@ -4768,7 +4802,7 @@ function createMonsterDisplay(monster) {
 
   container._body = body;
   container._spriteBody = spriteBody;
-  if (spriteBody) spriteBody._vShade = SHADE.figure;   /* v2.3.2740: formShade.js, across its own quad */
+  if (spriteBody) { spriteBody._vShade = SHADE.figure; spriteBody._noSharp = true; }   /* v2.3.2740: formShade.js, across its own quad; v2.3.2743: not sharpened (sharpPixels.js is for the pixel-art figures) */
   container._isFodder = isFodder;
   container._variantKey = variantKey;
   container._isSnowman = isSnowman;
@@ -10561,6 +10595,7 @@ export class EntityRenderer {
       ? this.gestureLayer : this.playerLayer;
     if (!this.playerDisplay || this.playerDisplay.destroyed) {
       this.playerDisplay = createPlayerDisplay();
+      _selfDisplayRef = this.playerDisplay;   /* v2.3.2741: __btSelfSprites */
       _bodyLayer.addChild(this.playerDisplay);
     } else if (this.playerDisplay.parent !== _bodyLayer) {
       /* Defensive re-attach.  Something on zone change was detaching

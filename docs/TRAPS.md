@@ -4479,3 +4479,23 @@ cleared by `joinTown`). And a "seen" flag that must survive a new build link
 goes on the shared-domain cookie too (`rosterCookie.readSharedValue` /
 `writeSharedValue`), not only in localStorage -- see the roster cookie's
 header for why every deploy is a different origin.
+
+## 109. "WebGL2, so the batch shader can use textureSize / textureGrad" (v2.3.2743)
+
+**Tempting:** the app runs on a WebGL2 context (`preference: 'webgl'`,
+`renderer.context.webGLVersion === 2`), so a custom batch shader built with
+`compileHighShaderGlProgram` can call the GLSL ES 3.00 built-ins.
+
+**Wrong.** Pixi's high-shader GL templates have no `#version` line, so
+`GlProgram` compiles them as GLSL ES **1.00** on any context and adds its
+WebGL1 compatibility defines (`#define texture texture2D` and friends, behind an
+`#ifdef GL_ES` that is true on ES3 as well). The first build of
+`sharpPixels.js` failed to compile exactly this way ("'textureSize' : no
+matching overloaded function found").
+
+**Right:** put `#version 300 es` at the top of both templates and build the
+program yourself: `compileHighShaderGl({ template: { vertex: '#version 300
+es\n' + vertexGlTemplate, fragment: ... }, bits: [globalUniformsBitGl, ...] })`
+then `new GlProgram({ name, ...src })`. GlProgram's `isES300` check keeps the
+version and skips the ES1 defines. The templates are already ES3 syntax. Gate
+the feature on `webGLVersion === 2`.
