@@ -119,7 +119,7 @@ const GEAR_ART_VER = '2.3.1656';
    preview, which is the surface the owner reviews the shirt on.  Bump this
    with any shirt-sheet regen; it is separate from GEAR_ART_VER so re-baking
    the tee does not make every player re-download the armour art too. */
-const SHIRT_ART_VER = '2.3.1995';
+const SHIRT_ART_VER = '2.3.2742';   /* v2.3.2742: tee hugs the body's silhouette (hug-shirt-silhouette.mjs) */
 /* ═══ v2.3.2516: THE CAPE'S OWN CACHE-BUST ═══
    Separate from the two above for the reason SHIRT_ART_VER is separate from
    GEAR_ART_VER: the cape is five stills that nothing else re-bakes, so a cape
