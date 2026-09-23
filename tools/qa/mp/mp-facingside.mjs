@@ -115,47 +115,59 @@ async function read(P, tag) {
   };
 }
 
-export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'TwoSided', wsPort, webPort, dpr: 2 });
+/* ═══ v2.3.2746: DRAWN BEFORE THE CHARACTER EXISTS ═══
+   v2.3.2690 (#706) made a character's look its STORED RECORD, written once at
+   the creator's join: a drawing a returning client has in localStorage but the
+   record lacks is blank, on the relay and on the client alike.  This scenario
+   used to draw a plain character, then seed the four drawings into storage and
+   reload -- which is now, correctly, the look of a DIFFERENT, undrawn
+   character, and every "is the tattoo on him" check measured a blank bro.
+   So the drawings are in storage before the page's first script runs (an init
+   script), and the creator's join carries them into the record, the way a
+   player who drew in the creator arrives.  The control is a separate, plain
+   character, because this one is never plain. */
+const SEED = `try {
+  localStorage.setItem('bt-facetattoo', ${JSON.stringify(PINK)});
+  localStorage.setItem('bt-shirtart', ${JSON.stringify(GREEN)});
+  localStorage.setItem('bt-shirtart-back', ${JSON.stringify(BLUE)});
+  localStorage.setItem('bt-headbackart', ${JSON.stringify(RED)});
+} catch (e) {}`;
 
+export async function run({ browser, wsPort, webPort, rec }) {
   /* ── THE CONTROL, FIRST ──
-     A plain character, before any drawing exists. If these are not ~0 then the
-     three colours are being found in the scenery and every assertion below is
+     A plain character, with no drawing anywhere. If these are not ~0 then the
+     four colours are being found in the scenery and every assertion below is
      measuring the ground. This is also what stops the "gone when turned away"
      check passing vacuously -- which is exactly how the first version of this
      scenario reported a green run while its crop sat on bare cobblestones. */
-  await H.enterWorld(P);
-  await P.page.waitForTimeout(2500);
-  await H.hopTo(P, H.TOWN_CLEAN_SPOT.x, H.TOWN_CLEAN_SPOT.y);
-  await face(P, 's');
-  const plain = await read(P, '00-control');
+  const C = await H.newPlayer(browser, { name: 'Plain', wsPort, webPort, dpr: 2 });
+  await H.enterWorld(C);
+  await C.page.waitForTimeout(2500);
+  await H.hopTo(C, H.TOWN_CLEAN_SPOT.x, H.TOWN_CLEAN_SPOT.y);
+  await face(C, 's');
+  const plain = await read(C, '00-control');
   rec.ok('a plain character can be located (guard)', !!plain, plain);
   rec.ok('with no drawings at all, none of the four colours appears on him — '
        + 'so the measure reads art, not scenery',
     !!plain && plain.pink < 10 && plain.green < 10 && plain.blue < 10
     && plain.red < 10, plain);
+  await C.ctx.close();
 
-  /* Seeded before the world, the way a returning player arrives: the art store
-     reads once at module load and the creator sends it in the join frame. */
-  await P.page.evaluate(([f, g, b, h]) => {
-    localStorage.setItem('bt-facetattoo', f);
-    localStorage.setItem('bt-shirtart', g);
-    localStorage.setItem('bt-shirtart-back', b);
-    localStorage.setItem('bt-headbackart', h);   /* v2.3.2043 */
-  }, [PINK, GREEN, BLUE, RED]);
-  await P.page.reload({ waitUntil: 'domcontentloaded' });
+  const P = await H.newPlayer(browser, { name: 'TwoSided', wsPort, webPort, dpr: 2, init: SEED });
   await H.enterWorld(P);
   await P.page.waitForTimeout(3000);
+  await H.hopTo(P, H.TOWN_CLEAN_SPOT.x, H.TOWN_CLEAN_SPOT.y);
 
-  const seeded = await P.page.evaluate(() => ({
-    face: (localStorage.getItem('bt-facetattoo') || '').length,
-    front: (localStorage.getItem('bt-shirtart') || '').length,
-    back: (localStorage.getItem('bt-shirtart-back') || '').length,
-    head: (localStorage.getItem('bt-headbackart') || '').length,
-  }));
-  rec.ok('all four drawings survived the reload (guard)',
-    seeded.face === 256 && seeded.front === 256 && seeded.back === 256
-    && seeded.head === 256, seeded);
+  /* the drawings the game holds for him -- the exact strings, because a blank
+     canvas is 256 characters too and a length check passed on one */
+  const seeded = await P.page.evaluate(([f, g, b, h]) => ({
+    face: localStorage.getItem('bt-facetattoo') === f,
+    front: localStorage.getItem('bt-shirtart') === g,
+    back: localStorage.getItem('bt-shirtart-back') === b,
+    head: localStorage.getItem('bt-headbackart') === h,
+  }), [PINK, GREEN, BLUE, RED]);
+  rec.ok('all four drawings are this character\'s own (guard)',
+    seeded.face && seeded.front && seeded.back && seeded.head, seeded);
 
   /* ── FACING THE CAMERA ── */
   await face(P, 's');
@@ -227,17 +239,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.waitMutualSight(P, B).catch(() => {});
   await B.page.waitForTimeout(5000);   /* past the two-second relay */
   const pid = await H.readState(P, (S) => S.myId);
-  const peer = await B.page.evaluate((id) => {
+  const peer = await B.page.evaluate(([id, f, g, b, h]) => {
     const o = ((window._gameState.current || {}).others || {})[id];
     if (!o) return null;
-    const len = (v) => (typeof v === 'string' ? v.length : null);
-    return { face: len(o.faceTattooArt), front: len(o.shirtArtFront),
-             back: len(o.shirtArtBack), head: len(o.headBackTattooArt) };
-  }, pid);
-  rec.ok('another player receives all four drawings, at full length, AFTER the '
+    return { face: o.faceTattooArt === f, front: o.shirtArtFront === g,
+             back: o.shirtArtBack === b, head: o.headBackTattooArt === h };
+  }, [pid, PINK, GREEN, BLUE, RED]);
+  rec.ok('another player receives all four drawings, exactly, AFTER the '
        + 'relay has run — both server gates pass the new key',
-    !!peer && peer.face === 256 && peer.front === 256
-    && peer.back === 256 && peer.head === 256, peer);
+    !!peer && peer.face && peer.front && peer.back && peer.head, peer);
 
   for (const C of [P, B]) {
     const errs = C.logs.filter((l) => String(l).startsWith('pageerror'));

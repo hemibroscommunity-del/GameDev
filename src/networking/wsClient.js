@@ -2157,6 +2157,18 @@ export function setupWebSocket(ctx) {
                  running on the most frequent message in the protocol.  bt_rpg is
                  a warm-start cache; the worker blob is authoritative. */
               saveRpgSoon();
+              /* ═══ v2.3.2765: FROM HERE ON, S.rpg IS THIS CHARACTER ═══
+                 Owner: "Sometimes when you rejoin a game from a saved character
+                 it brings up the tutorial again as if starting a new
+                 character."  Until the first player_state lands, S.rpg is
+                 either the bt_rpg warm-start cache or -- on exactly the roads a
+                 returning player takes (picking a saved character, typing a
+                 Login Key, a new preview-deploy origin) -- createDefaultRpg():
+                 level 1, no quests.  Everything that asks "is this a brand-new
+                 player?" (QuestCoach, the welcome banner, the gold road to the
+                 Mayor) read that blank and answered yes.  They now wait for
+                 this flag; joinTown clears it. */
+              S._rpgFromServer = true;
               break;
             }
           case 'player_died':

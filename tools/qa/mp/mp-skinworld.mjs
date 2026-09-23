@@ -58,14 +58,42 @@ const ALL_PINK = 'b'.repeat(256);
    this scenario nothing and takes the water to zero. */
 const isInk = (r, g, b) => b > g + 24 && r > 110 && r >= b;
 
+/* ═══ v2.3.2746: DRESSED -- AND INKED -- BEFORE THE CHARACTER EXISTS ═══
+   v2.3.2690 (#706) made a character's look its STORED RECORD, written once at
+   the creator's join.  The shirt already had to be chosen before creation
+   (below); the tattoos now do too.  This scenario used to measure a bare
+   character, then write the tattoos into storage and reload -- which now,
+   correctly, reloads an un-inked character.  So there are two characters: the
+   CONTROL, created bare-chested with no ink, and the inked one, created with
+   both in storage before the page's first script runs. */
+/* The coach's tip cards sit over the lower half of a phone screen -- one run
+   of this found a card over the runner in every south-facing sample. */
+const SHIRTLESS = `try {
+  const l = ['openDash', 'move', 'equip', 'dashAfterTurnIn', 'equipAll', 'cycle',
+    'blockRanged', 'attack', 'special', 'chatTap', 'passkey'];
+  const d = {}; for (const k of l) d[k] = true;
+  localStorage.setItem('bt_coach_v1', JSON.stringify(d));
+} catch (e) {}
+try {
+  localStorage.setItem('bt-shirt', 'none');
+  localStorage.setItem('bt-gear-v3-shirt', 'none');
+} catch (e) {}`;
+const INKED = SHIRTLESS + `
+try {
+  localStorage.setItem('bt-tattooart', ${JSON.stringify(ALL_PINK)});
+  localStorage.setItem('bt-facetattoo', ${JSON.stringify(ALL_PINK)});
+  localStorage.setItem('bt-armtattoo', ${JSON.stringify(ALL_PINK)});
+  localStorage.removeItem('bt-artops');
+} catch (e) {}`;
+
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, {
-    name: 'Inked', wsPort, webPort,
+  const OPTS = {
+    wsPort, webPort,
     viewport: { width: 390, height: 844 }, touch: true,
     /* v2.3.1906's option: the player is ~40 CSS px tall on a phone, and an arm
        is a handful of pixels of that. */
     dpr: 3,
-  });
+  };
   /* BARE-CHESTED FROM BIRTH.  A look is permanent (v2.3.1814), so the shirt has
      to be chosen before the character is created — setting it later changes the
      creator's store and nothing the world draws.  A tee covers the chest tattoo
@@ -77,15 +105,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      'none' never strips the new-player default tshirt").  Setting only the
      first changes nothing visible — measured, on the first run of this
      scenario, as a white tee over a pink chest. */
-  await P.page.evaluate(() => {
-    try {
-      localStorage.setItem('bt-shirt', 'none');
-      localStorage.setItem('bt-gear-v3-shirt', 'none');
-    } catch (e) { /* ignore */ }
-  });
-  await P.page.reload({ waitUntil: 'domcontentloaded' });
-  await H.enterWorld(P);
-  await P.page.waitForTimeout(2500);
+  const C = await H.newPlayer(browser, { ...OPTS, name: 'Bare', init: SHIRTLESS });
+  await H.enterWorld(C);
+  await C.page.waitForTimeout(2500);
+  let Q = C;   /* the character being measured: the control first, then the inked one */
 
   /* Where the figure is on the glass, so the crop follows him rather than a
      guessed fraction of the screen (the same aim-with-a-probe rule the editor
@@ -105,7 +128,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      fewer than 12 ink pixels ANYWHERE in the box with no tattoo on, so a
      larger box cannot manufacture a pass -- the town has no pink in it. */
   const RUN_PAD = 26;
-  const clip = (pad = 0) => H.figureBox(P, { pad });
+  const clip = (pad = 0) => H.figureBox(Q, { pad });
   /* v2.3.2249: the crop itself, for its scale factor k (see the normalisation
      below).  Same call inkCount makes, so it reports the box actually used. */
   const clipBox = async () => clip(0).catch(() => null);
@@ -115,14 +138,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
        Counting a FULL-PAGE screenshot instead (what screenshotPixels does
        with no clip) would report the whole town's ink as the character's. */
     if (!box) return null;
-    const px = await H.screenshotPixels(P, box);
-    if (tag) await P.page.screenshot({ path: SHOTS + '/skinworld-' + tag + '.png', clip: box });
+    const px = await H.screenshotPixels(Q, box);
+    if (tag) await Q.page.screenshot({ path: SHOTS + '/skinworld-' + tag + '.png', clip: box });
     return px.count(isInk);
   };
 
   /* Say out loud what he is wearing: a tee over the chest would silently turn
      the chest half of this scenario into a measurement of a shirt. */
-  const worn = await P.page.evaluate(() => {
+  const wornBy = (X) => X.page.evaluate(() => {
     const S = window._gameState.current;
     let store = null;
     try { store = localStorage.getItem('bt-shirt'); } catch (e) { /* ignore */ }
@@ -130,8 +153,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     try { layer = localStorage.getItem('bt-gear-v3-shirt'); } catch (e) { /* ignore */ }
     return { store, layer, equipped: (S.rpg && (S.rpg.chest || S.rpg.armor || (S.rpg.equipment && S.rpg.equipment.chest))) || null };
   });
-  rec.ok('he is bare-chested, so the chest and upper arm are actually visible',
-    worn.store === 'none' && worn.layer === 'none' && !worn.equipped, worn);
+  const bareChested = (w) => w.store === 'none' && w.layer === 'none' && !w.equipped;
+  const wornC = await wornBy(C);
+  rec.ok('the control is bare-chested, so the chest and upper arm are actually visible',
+    bareChested(wornC), wornC);
 
   /* ── THE CONTROL: no tattoo, nothing light on the figure ── */
   const bare = await inkCount('bare');
@@ -142,18 +167,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
     bare !== null && bare < 12, { inkPixels: bare });
 
   /* ── INK EVERYTHING ──
-     Through the store and a reload, the way a returning player arrives (the
-     same path mp-tattoos takes): this scenario is about the BAKE, not about
-     pointer events, which mp-skinink already drives. */
-  await P.page.evaluate((w) => {
-    localStorage.setItem('bt-tattooart', w);
-    localStorage.setItem('bt-facetattoo', w);
-    localStorage.setItem('bt-armtattoo', w);
-    try { localStorage.removeItem('bt-artops'); } catch (e) { /* ignore */ }
-  }, ALL_PINK);
-  await P.page.reload({ waitUntil: 'domcontentloaded' });
+     Through storage and the creator's join, the way a player who drew in the
+     creator arrives: this scenario is about the BAKE, not about pointer
+     events, which mp-skinink already drives. */
+  await C.ctx.close();
+  const P = await H.newPlayer(browser, { ...OPTS, name: 'Inked', init: INKED });
   await H.enterWorld(P);
   await P.page.waitForTimeout(3500);
+  Q = P;
+  const wornP = await wornBy(P);
+  rec.ok('the inked character is bare-chested too', bareChested(wornP), wornP);
+  const inked = await P.page.evaluate((ink) => ({
+    chest: localStorage.getItem('bt-tattooart') === ink,
+    face: localStorage.getItem('bt-facetattoo') === ink,
+    arm: localStorage.getItem('bt-armtattoo') === ink,
+  }), ALL_PINK);
+  rec.ok('the three drawings are this character\'s own (guard)', inked.chest && inked.face && inked.arm, inked);
 
   /* ── STANDING, IN FIVE FACINGS ──
      Walk a step and stop: the idle keeps the last facing (v2.3.1837), which is
@@ -235,4 +264,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      game's. */
   const errs = P.logs.filter((l) => !/net::|Failed to load resource|auto-rejoin/i.test(l));
   rec.ok('no client errors while all of that happened', errs.length === 0, errs.slice(0, 4));
+  /* v2.3.2746: closed, like every scenario should be -- a page left open keeps
+     rendering on the shared software GPU and slows every scenario after it */
+  await P.ctx.close();
 }

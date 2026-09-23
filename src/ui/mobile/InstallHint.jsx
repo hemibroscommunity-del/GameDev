@@ -1,3 +1,4 @@
+import { installMayShow } from '@/ui/onboardingPace.js'; /* v2.3.2766 */
 import React, { useEffect, useState } from 'react';
 import { tapDismiss, TAP_DISMISS_STYLE } from '../tapDismiss.js'; /* v2.3.2284 */
 import { installHintBus } from './installHintBus.js';
@@ -78,8 +79,18 @@ export function InstallHint() {
     /* the Settings row reopens it regardless of the dismissal memory */
     const unsub = installHintBus.subscribe(() => setShow(true));
     if (!isIOS() || isStandalone() || dismissed()) return unsub;
-    const t = setTimeout(() => setShow(true), 8000);
-    return () => { clearTimeout(t); unsub(); };
+    /* ═══ v2.3.2766: WHEN THE SCREEN IS QUIET, NOT 8s AFTER PAGE LOAD ═══
+       Owner: "The tutorial onboarding is too heavy on window pop ups right
+       after you join the game."  The old 8s timer started at MOUNT -- the
+       login door -- so anyone who spent 8s at the door or in the creator got
+       this card the instant the intro lifted, on top of the first coach card
+       in the same bottom-centre spot.  Adding to the home screen is a
+       "when you have a moment" message, so it now waits for the onboarding
+       referee: a while into play, and a screen with nothing else on it. */
+    const t = setInterval(() => {
+      if (installMayShow()) { clearInterval(t); setShow(true); }
+    }, 1000);
+    return () => { clearInterval(t); unsub(); };
   }, []);
 
   if (!show) return null;

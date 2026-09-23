@@ -5,11 +5,13 @@
 import { createPixiApp } from './pixiApp.js';
 import { applyDepthBuckets } from './depthSort.js'; /* v2.3.2635: one depth pass per frame */
 import { TileRenderer } from './systems/tileRenderer.js';
-import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out */
+import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom, figureFeetY, playerGroundDy } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out; v2.3.2748: + the player's feet for the depth pass */
 import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { LightFx, setLightFx } from './lightfx/lightFx.js'; /* v2.3.2710: map-lit shadows + metal glint, behind ?lightfx=1 */
+import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2762 */
+import { setWorldCasts } from './lightfx/casters.js'; /* v2.3.2749: QA before/after of the world's shadows */
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { MinimapRenderer } from './systems/minimapRenderer.js'; /* v2.3.1781 */
 import { loadPlayerSprites } from './playerSprites.js';
@@ -25,6 +27,8 @@ import { preloadCombatGear } from './combatGear.js';
 import { preloadBodyAll } from './playerSkins.js';
 import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
 import { Assets } from 'pixi.js';
+import { markStandIns } from './formShade.js'; /* v2.3.2767: light from above (the batcher patch itself installs on import) */
+import { SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS } from './lightfx/casters.js';
 
 /* v2.3.778: decode ALL textures to <img>-backed sources, never ImageBitmap.
    On iOS, ImageBitmaps are GPU-backed: the memory purge that kills the WebGL
@@ -130,6 +134,16 @@ export function prewarmBaseSheets() {
  */
 let _appRef = null;   /* v2.3.701: handle for uploadBakedTextures behind the intro */
 
+/* v2.3.2748: the ground line the depth pass pivoted on this frame -- the
+   player's FEET -- published for mp-propdepth, which has to compare it with
+   each prop's base.  Mutated in place: no allocation per frame. */
+const _playerGround = { x: NaN, y: NaN };
+const _depthProbe = { legacy: false };
+if (typeof window !== 'undefined') {
+  window.__btPlayerGround = () => ({ x: _playerGround.x, y: _playerGround.y });
+  window.__btDepthLegacy = (on) => { _depthProbe.legacy = !!on; };
+}
+
 export async function initPixiRenderer(canvas) {
   const { app, layers, worldContainer, screenContainer } = await createPixiApp(canvas);
   _appRef = app;
@@ -161,8 +175,14 @@ export async function initPixiRenderer(canvas) {
       set: (on) => setLightFx(on),
       /* pin every glint at one point of its sweep, for pictures; null frees it */
       glint: (p) => { lightFx.glint.force = (p == null ? null : Math.max(0, Math.min(1, +p))); },
+      /* v2.3.2749: props and trees stop casting (figures still do) -- the
+         look before they did, for before/after pictures of one frame */
+      world: (on) => setWorldCasts(on),
     };
   }
+  /* v2.3.2762: the maps' ambient life -- lava breathing, smoke, water light,
+     wind, snow, motes (systems/ambientFx.js). */
+  const ambientFx = new AmbientFx(layers);
   /* v2.3.221: FPS counter only mounts with ?dev=1. */
   const _devUI = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search);
   /* v2.3.1781: minimap lives in the screen-space `hud` layer so it never
@@ -228,6 +248,7 @@ export async function initPixiRenderer(canvas) {
     entityRenderer.clear();
     effectsRenderer.clear();
     lightFx.clear();   /* v2.3.2710: last zone's shadows and glints go with its figures */
+    ambientFx.setZone(zoneId);   /* v2.3.2762 */
     /* ═══ v2.3.2596: THE ZONE-ENTRY BANNER'S ONE TRIGGER ═══
        This function is the single place in the client that observes every zone
        change, whatever set it -- the hub walk-in, a respawn, the dev warp, a
@@ -375,6 +396,9 @@ export async function initPixiRenderer(canvas) {
        ones that were not -- the respawned). */
     try { worldFx.update(S, { cx, cy, viewW, viewH, cssW, cssH }, now); }
     catch (e) { if (!update._worldFxErr) { update._worldFxErr = true; console.error('[pixi-render] worldFx threw', e && e.message, e && e.stack); } }
+    /* v2.3.2762: after the effects, in the camera's world rect. */
+    try { ambientFx.update(S, cx, cy, viewW, viewH, now, canvas); }
+    catch (e) { if (!update._ambientErr) { update._ambientErr = true; console.error('[pixi-render] ambientFx threw', e && e.message, e && e.stack); } }
     const _t3 = performance.now();
     update._lastStages.effectsMs = _t3 - _t2;
     /* ═══ v2.3.2635: DEPTH, AFTER EVERYTHING HAS MOVED ═══
@@ -386,13 +410,30 @@ export async function initPixiRenderer(canvas) {
        frame's positions -- a frame of lag that shows up as a flicker exactly
        when the player crosses something, which is the one moment this
        feature exists for. */
-    try { applyDepthBuckets(layers.entities, layers.gatherNodesFront, S.player && S.player.y); }
+    /* v2.3.2748: ...pivoting on the player's FEET, not S.player.y.  The
+       position is the body's centre and the boots are drawn ~52 px lower, so
+       a prop whose base fell between the two was drawn over a player standing
+       visibly in front of it (owner: "really bad at detecting contact").  The
+       x says where along a building's base to read it (propGround.js). */
+    try {
+      const _pd = entityRenderer.playerDisplay;
+      let _pgy = _pd && !_pd.destroyed ? figureFeetY(_pd)
+        : (S.player ? S.player.y + playerGroundDy(S.currentZone, S.player.x, S.player.y) : NaN);
+      let _pgx = _pd && !_pd.destroyed ? _pd.x : (S.player ? S.player.x : NaN);
+      _playerGround.x = _pgx; _playerGround.y = _pgy;
+      /* QA only (mp-propdepth's before/after pictures): the v2.3.2711 rule --
+         the body centre, and every prop on one flat line -- on the same frame */
+      if (_depthProbe.legacy && S.player) { _pgy = S.player.y; _pgx = NaN; }
+      applyDepthBuckets(layers.entities, layers.gatherNodesFront, _pgy, _pgx);
+    }
     catch (e) { if (!update._depthErr) { update._depthErr = true; console.error('[pixi-render] depth sort threw', e && e.message); } }
     /* v2.3.2710: light and shine, LAST of the world passes: a shadow copies
        each figure's pieces where they are THIS frame, so it runs after
        everything that moves them -- the entity pass, the stand-ins placed by
        the effects pass, and the depth pass that re-parents occluders.  One
        boolean read when the switch is off (lightFx.js). */
+    /* v2.3.2767: the combat / gathering stand-ins take the figure shade too */
+    try { markStandIns(effectsRenderer, SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS); } catch (e) { /* never break a frame */ }
     try { lightFx.update(S, now, entityRenderer, effectsRenderer); }
     catch (e) { if (!update._lightErr) { update._lightErr = true; console.error('[pixi-render] lightFx threw', e && e.message, e && e.stack); } }
     try { minimap.update(S, cssW, cssH, canvas); }
