@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  geartrim: () => import('./mp-geartrim.mjs'), /* v2.3.2750: gear frames cropped to their art -- under a third of the bytes, and every layer still lands exactly on the body, own screen and peer's */
   shirtjog: () => import('./mp-shirtjog.mjs'), /* v2.3.2747: the tee's keyline holds on every frame the game draws while running, all eight directions -- the owner's "static" */
   arrowsnap: () => import('./mp-arrowsnap.mjs'), /* v2.3.2731: one arrow in eight snaps on what it hits -- same damage, a different picture */
   monstershots: () => import('./mp-monstershots.mjs'), /* v2.3.2732: slime goo in the thrower's colour, goblin fire, drawn in code */
@@ -95,7 +96,11 @@ const SCENARIOS = {
   goldrail: () => import('./mp-goldrail.mjs'), /* v2.3.2320: the purse moves to the zone rail and the nav buttons take its room */
   arrowblast: () => import('./mp-arrowblast.mjs'), /* v2.3.2279: the bow special's blast finale, end to end */
   chatlayer: () => import('./mp-chatlayer.mjs'), /* v2.3.2276: chat paints under the menus, and its composer stands down for them */
-  gcue: () => import('./mp-gcue.mjs'), /* v2.3.2384: the gesture cue moves with no thumb on the glass, and stands down for a real one */
+  ambient: () => import('./mp-ambient.mjs'), /* v2.3.2762: the maps' ambient life -- the worldview's five features and the four spokes, counted and photographed */
+  formshade: () => import('./mp-formshade.mjs'), /* v2.3.2767: light from above on figures and props -- on/off diff, darker not brighter, stills for a human */
+  sharppixels: () => import('./mp-sharppixels.mjs'), /* v2.3.2770: character sprites sampled sharp -- shader compiles, sprites routed, edge contrast rises */
+  cueshow: () => import('./mp-cueshow.mjs'), /* v2.3.2760: mining, chopping and fishing through the new cue gesture in a real zone -- wind-up, frozen at ready, gesture + effects, resource -- with screenshots */
+  gcue: () => import('./mp-gcue.mjs'), /* v2.3.2384; v2.3.2760: the character freezes at `ready`, the mini-tool cue sits still and flashes, the gesture drives the swing forward and fills in ~3s */
   cooktap: () => import('./mp-cooktap.mjs'), /* v2.3.2274: a REAL tap on your own fire cooks, and does not open chat */
   chopyield: () => import('./mp-chopyield.mjs'), /* v2.3.2273: a finished harvest actually pays -- the one step mp-harvest stops short of */
   texdrift: () => import('./mp-texdrift.mjs'), /* v2.3.2272: does zone art come back when you leave the zone */

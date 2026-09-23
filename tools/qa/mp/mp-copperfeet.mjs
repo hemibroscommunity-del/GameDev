@@ -63,11 +63,17 @@ const figureCanvas = (P) => P.page.evaluate(() => {
     const res = t.source && (t.source.resource || t.source._resource);
     if (!res) return false;
     const f = t.frame || { x: 0, y: 0, width: t.width, height: t.height };
+    /* v2.3.2750: gear frames are CROPPED (gearSheets packTrimmed) -- `frame` is
+       only the crop, `orig` the whole frame and `trim` where the crop sits in
+       it.  Place the crop in the box by those, or it stretches over it. */
+    const o = t.orig || f, tr = t.trim;
+    const dx = tr ? tr.x * N / o.width : 0, dy = tr ? tr.y * N / o.height : 0;
+    const dw = tr ? f.width * N / o.width : N, dh = tr ? f.height * N / o.height : N;
     const tmp = document.createElement('canvas');
     tmp.width = N; tmp.height = N;
     const tg = tmp.getContext('2d', { willReadFrequently: true });
     tg.imageSmoothingEnabled = false;
-    try { tg.drawImage(res, f.x, f.y, f.width, f.height, 0, 0, N, N); } catch (e) { return false; }
+    try { tg.drawImage(res, f.x, f.y, f.width, f.height, dx, dy, dw, dh); } catch (e) { return false; }
     const tint = (spr.tint === undefined || spr.tint === null) ? 0xffffff : spr.tint;
     if (tint !== 0xffffff) {
       /* the same multiply Pixi's batcher applies, done here so a copper piece
@@ -76,7 +82,7 @@ const figureCanvas = (P) => P.page.evaluate(() => {
       tg.fillStyle = `rgb(${(tint >> 16) & 255},${(tint >> 8) & 255},${tint & 255})`;
       tg.fillRect(0, 0, N, N);
       tg.globalCompositeOperation = 'destination-in';
-      tg.drawImage(res, f.x, f.y, f.width, f.height, 0, 0, N, N);
+      tg.drawImage(res, f.x, f.y, f.width, f.height, dx, dy, dw, dh);
     }
     g.drawImage(tmp, 0, 0);
     return true;
@@ -270,17 +276,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const res = t.source && (t.source.resource || t.source._resource);
       if (!res) return null;
       const f = t.frame || { x: 0, y: 0, width: t.width, height: t.height };
+      /* v2.3.2750: gear frames are CROPPED (gearSheets packTrimmed) -- `frame` is
+         only the crop, `orig` the whole frame and `trim` where the crop sits in
+         it.  Place the crop in the box by those, or it stretches over it. */
+      const o = t.orig || f, tr = t.trim;
+      const dx = tr ? tr.x * N / o.width : 0, dy = tr ? tr.y * N / o.height : 0;
+      const dw = tr ? f.width * N / o.width : N, dh = tr ? f.height * N / o.height : N;
       const c = document.createElement('canvas'); c.width = N; c.height = N;
       const g = c.getContext('2d', { willReadFrequently: true });
       g.imageSmoothingEnabled = false;
-      try { g.drawImage(res, f.x, f.y, f.width, f.height, 0, 0, N, N); } catch (e) { return null; }
+      try { g.drawImage(res, f.x, f.y, f.width, f.height, dx, dy, dw, dh); } catch (e) { return null; }
       const tint = (applyTint && spr.tint != null) ? spr.tint : 0xffffff;
       if (tint !== 0xffffff) {
         g.globalCompositeOperation = 'multiply';
         g.fillStyle = `rgb(${(tint >> 16) & 255},${(tint >> 8) & 255},${tint & 255})`;
         g.fillRect(0, 0, N, N);
         g.globalCompositeOperation = 'destination-in';
-        g.drawImage(res, f.x, f.y, f.width, f.height, 0, 0, N, N);
+        g.drawImage(res, f.x, f.y, f.width, f.height, dx, dy, dw, dh);
       }
       const d = g.getImageData(0, 0, N, N).data;
       let fy0 = N, fy1 = -1;
