@@ -1040,11 +1040,9 @@ export function updateArrows(S, deps) {
                   }
                   if (_hitArchR === 'snowman' && m.curHp > 0) {
                     try { BT_AUDIO.play('snowman-hit', { vol: 0.7 }); } catch (e) {}
-                    /* v2.3.1124: stamp an ice-burst impact flash -- full size for
-                       staff/magic, 50% for arrows (effectsRenderer reads these).
-                       v2.3.1127: + _impactAngle (projectile travel dir) so the
-                       eruption plume points along the attack direction. */
-                    m._impactAt = Date.now(); m._impactScale = isStaffProj ? 1 : 0.5; m._impactAngle = a.ang;
+                    /* v2.3.2700: the ice-burst plume stamp (_impactAt, v2.3.1124)
+                       is gone with the plume -- the snow the hit throws is the
+                       reaction now (hitMaterialFx).  The sound stays. */
                   }
                 }
                 /* Count-based weight: 1 per landed projectile.  Bow hits

@@ -1865,8 +1865,8 @@ export function processGameEvent(type, payload, S, deps) {
                     /* Material debris + ground mark for hits with no local
                        spawn site.  Peer weapon/angle unknown: infer the
                        direction from the attacker's position when we can
-                       see them, else default "up" (the _impactAngle
-                       precedent below). */
+                       see them, else default "up" (what the retired snowman
+                       plume did too). */
                     var _dbAng = -Math.PI / 2;
                     var _dbAtk = payload.attackerId && S.others && S.others[payload.attackerId];
                     if (_dbAtk && typeof _dbAtk.x === 'number') {
@@ -1887,19 +1887,10 @@ export function processGameEvent(type, payload, S, deps) {
                       : payload.slot === 'staff' ? 'bolt' : null;
                     spawnHitDebris(S, hitM, _dbAng, { weapon: _dbW, crit: !!payload.isCrit });
                   }
-                  /* v2.3.1124: ice-burst impact flash on snowmen for PEER hits
-                     only -- our own hits stamp _impactAt at the local melee/
-                     projectile site (with the real weapon size), so stamping
-                     here too would double-flash.  Peer weapon is unknown, so
-                     default to full size. */
-                  if (payload.attackerId !== S.myId && (hitM.archetype || hitM.type) === 'snowman') {
-                    hitM._impactAt = Date.now();
-                    hitM._impactScale = 1;
-                    /* v2.3.1127: peer weapon/facing unknown -> default the eruption
-                       plume to "up". Set explicitly so a stale angle from an earlier
-                       OWN hit on this snowman doesn't carry over. */
-                    hitM._impactAngle = -Math.PI / 2;
-                  }
+                  /* v2.3.2700: the peer half of the snowman's ice-burst plume
+                     (v2.3.1124) is retired with the plume -- a teammate's hit on
+                     a snowman throws snow through spawnHitDebris above, the same
+                     as yours. */
                   /* Show damage number (skip our own — we already show it
                      locally).  Peer numbers go through the smoothing queue so
                      a coalesced burst drips out at a live cadence instead of
@@ -2004,22 +1995,12 @@ export function processGameEvent(type, payload, S, deps) {
                        OTHER player in the zone saw the numbers. */
                     pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + _popDmg, '#c084fc');   /* v2.3.2481 */
                   }
-                  /* Hit particles — v2.3.2200b: same gate as the flash
-                     above.  "For everyone" meant bystanders; for the
-                     ATTACKER it was a duplicate puff arriving a network
-                     round-trip after their contact-time debris, which
-                     contributed to the same "feedback trails the hit"
-                     read the double flash did. */
-                  if (payload.attackerId !== S.myId || payload.ability || payload.thorns || payload.burst
-                      || payload.splash /* v2.3.2481: a splashed neighbour has no local hit site of its own */) {
-                    for (var hp2 = 0; hp2 < 3; hp2++) {
-                      S.hitParticles.push({
-                        x: hitM.x || hitM.renderX, y: hitM.y || hitM.renderY,
-                        vx: (Math.random() - 0.5) * 3, vy: -1 - Math.random() * 2,
-                        life: 0.5, color: hitM.color || '#ff5e6c', size: 2
-                      });
-                    }
-                  }
+                  /* v2.3.2700: the three flat dots that used to follow here
+                     (v2.3.2200b, same gate as the flash above) are gone.  Every
+                     hit that passed that gate already throws its material
+                     through spawnHitDebris, so they were a second, older puff
+                     on top of it, in the monster's flat body colour -- one of
+                     the "old ... hit effects" the owner asked to remove. */
                 }
               }
               break;

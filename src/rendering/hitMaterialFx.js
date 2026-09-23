@@ -923,7 +923,9 @@ export class HitMaterialFx {
         if (p.y >= b.gy) front++; else back++;
       }
       out.push({
-        id: b.id, fx: b.fx, weapon: b.weapon, age, ms: BURST_MS, sheet: false,
+        /* v2.3.2700: + tint, the colour the burst was handed (a blue slime's
+           goo must be the blue the slime is drawn in -- mp-hitmat) */
+        id: b.id, fx: b.fx, weapon: b.weapon, tint: b.tint, age, ms: BURST_MS, sheet: false,
         parts, landed, dust, flakes, sparks, embers, glints, bubbles, front, back,
         meanDx: parts ? +(sx / parts).toFixed(1) : null, meanDy: parts ? +(sy / parts).toFixed(1) : null,
         minDx: parts ? +minDx.toFixed(1) : null, maxDx: parts ? +maxDx.toFixed(1) : null, dir: +b.ang.toFixed(3),

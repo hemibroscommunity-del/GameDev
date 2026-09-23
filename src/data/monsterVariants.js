@@ -481,6 +481,42 @@ export function hitMaterialOf(archOrVariant) {
     || HIT_MATERIAL_DEFAULT;
 }
 
+/* ═══ v2.3.2700: A SLIME SHEDS THE COLOUR IT IS DRAWN IN ═══
+ * Owner: "I have the slimes recolored to blue in the actual game runtime.
+ * Will this apply to its remnants too?"  Roughly: a hit's goo took the table's
+ * `tint` above, a hand-picked value from v2.3.2200 that nobody measured against
+ * the sprite (fodder's was minty teal on a grass-green sheet until v2.3.2699
+ * sampled the real one).  blueSlime's 0x4c9fdc is a paler sky blue than the
+ * slime you actually see.
+ * Every slime variant draws the SAME sheets (useSlimeSheets) through one of
+ * two colour paths, so its goo is DERIVED from that path rather than written
+ * down a second time:
+ *   - `recolor` [r,g,b] (monsterRecolor.js, a brightness-ratio retint).
+ *     Measured on slime-idle-v5 (reference luminance 132.55), the retint lands
+ *     the goo's base green on the target within 2% (k = 1.017), so the
+ *     recolour IS the goo colour.
+ *   - `tint`, Pixi's multiplicative tint: the drawn pixel is sheet x tint, so
+ *     the goo is the sampled green times the same tint (moss 0x1f8614, the mire
+ *     wisp a murky 0x2c3f32 -- what those two really look like on screen).
+ * Recolour a slime in MONSTER_VARIANTS and what its hits throw follows, with no
+ * second number to forget.  Anything that is not a slime-sheet variant keeps
+ * its table entry: `fxTint` when one was sampled, else `tint`. */
+const SLIME_GOO_BASE = 0x5ca84c;   /* = HIT_MATERIALS.fodder.fxTint, sampled from slime-idle-v5 */
+function _mulRgb(a, b) {
+  const ch = (s) => Math.round((((a >> s) & 255) * ((b >> s) & 255)) / 255);
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+}
+export function hitFxTintOf(archOrVariant) {
+  const v = MONSTER_VARIANTS[archOrVariant];
+  if (v && v.useSlimeSheets) {
+    const rc = v.recolor;
+    if (Array.isArray(rc) && rc.length === 3) return ((rc[0] & 255) << 16) | ((rc[1] & 255) << 8) | (rc[2] & 255);
+    if (typeof v.tint === 'number') return _mulRgb(SLIME_GOO_BASE, v.tint);
+  }
+  const mat = hitMaterialOf(archOrVariant);
+  return mat.fxTint != null ? mat.fxTint : mat.tint;
+}
+
 /* v2.3.1535: every variant key a zone can put on screen.
  *
  * Two sources, because there are two ways to assign a variant: the

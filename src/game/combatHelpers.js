@@ -9,7 +9,7 @@
    verbatim. window._gameState / window._setLevelUpMsg stay as runtime lookups
    by design (they are wired up inside the BroTown component each render). */
 import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY } from '@/data/index.js';
-import { hitMaterialOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard */
+import { hitMaterialOf, hitFxTintOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard; v2.3.2700: goo in the drawn colour */
 import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
 import { prog3Live } from '@/data/prog3.js';          /* v2.3.2615: is the T1 track still load-bearing for this character? */
 
@@ -678,7 +678,9 @@ export function spawnHitDebris(S, m, angle, opts) {
   var gy = (typeof m.renderY === 'number') ? m.renderY : m.y;
   var h = monsterBodyOffsetY(arch);
   S._debrisBursts.push({
-    monsterId: m.id, kind: mat.fx || mat.kind, tint: mat.fxTint || mat.tint,
+    /* v2.3.2700: the tint is the colour the monster is DRAWN in -- a blue
+       slime's goo is its recolour's blue (hitFxTintOf, monsterVariants.js). */
+    monsterId: m.id, kind: mat.fx || mat.kind, tint: hitFxTintOf(arch),
     x: (typeof m.renderX === 'number') ? m.renderX : m.x,
     y: gy - h,
     gy: gy, h: h,
