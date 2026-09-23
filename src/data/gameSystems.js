@@ -7247,8 +7247,8 @@ export function monsterBodyOffsetY(archOrType) {
   if (v && v.liveScalePx) return Math.round(v.liveScalePx / 2);
   return 0;
 }
-/* ═══ v2.3.2775: WHERE A SHOT GOES IN -- THE DRAWN TORSO ═══
-   Owner, on v2.3.2774's shots that land in the body: "The arrows are grouping
+/* ═══ v2.3.2786: WHERE A SHOT GOES IN -- THE DRAWN TORSO ═══
+   Owner, on v2.3.2785's shots that land in the body: "The arrows are grouping
    around the skeleton's knee. Center it on the torso."  They were landing
    round monsterBodyOffsetY, and for the tall figures that is not the torso.
    MEASURED on the drawn figures (the live game at phone size, one monster
