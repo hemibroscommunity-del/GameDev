@@ -73,6 +73,9 @@ const shootOnce = (P, wpn) => P.page.evaluate((wpn) => new Promise((resolve) => 
   const db0 = window.__btDebris ? window.__btDebris().map((b) => b.id) : [];
   const flash0 = m._hitFlash || 0;
   const hp0 = m.curHp;
+  /* v2.3.2743: one arrow in eight SNAPS (v2.3.2731) instead of leaving a
+     shaft -- it lands just the same, and breaks where it lands */
+  const t00 = performance.now();
   const bo = F.monsterBodyOffsetY ? F.monsterBodyOffsetY(m.archetype) : 0;
   /* the damage send -- the frame the hit registered, unchanged by the landing */
   let sendT = null;
@@ -98,6 +101,7 @@ const shootOnce = (P, wpn) => P.page.evaluate((wpn) => new Promise((resolve) => 
       if (a !== shot) continue;
       if (!out.contact && a.hitIds && a.hitIds.has(m.id)) {
         const front = a.isStaff ? 0 : 28.5;   /* PROJ_BODY.arrow.front: its tip */
+        out.ang = a.ang;
         out.contact = { t: now, x: a._renderX + Math.cos(a.ang) * front, y: a._renderY + Math.sin(a.ang) * front,
           landing: !!a._land, cx: (typeof m.renderX === 'number' ? m.renderX : m.x), cy: (typeof m.renderY === 'number' ? m.renderY : m.y) - bo };
         out.flashAtContact = (m._hitFlash || 0) !== flash0;
@@ -120,6 +124,14 @@ const shootOnce = (P, wpn) => P.page.evaluate((wpn) => new Promise((resolve) => 
       const sa = m._stuckArrows[m._stuckArrows.length - 1];
       out.land = { t: now, x: m.x + sa.ox, y: m.y + sa.oy, cx, cy };
     }
+    /* a snap is drawn at the arrow's pivot, a head-length (PROJ_BODY.arrow
+       front, 28.5) behind the tip that landed */
+    const snaps = (window.__btArrowSnapFx ? window.__btArrowSnapFx() : []).filter((sn) => sn.age <= now - t00 + 20);
+    if (!out.land && wpn === 'arrow' && snaps.length) {
+      const sn = snaps[snaps.length - 1], ang = out.ang != null ? out.ang : (shot ? shot.ang : 0);
+      out.land = { t: now, x: sn.x + Math.cos(ang) * 28.5, y: sn.y + Math.sin(ang) * 28.5, cx, cy, snap: true };
+    }
+    out.snaps = snaps.length;
     if (!out.burst && fresh.length) out.burst = { t: now, x: fresh[0].atX, y: fresh[0].atY, weapon: fresh[0].weapon };
     if (out.land && out.flashAtLand === null) { out.flashAtLand = (m._hitFlash || 0) !== flash0; out.hpAtLand = m.curHp; }
     out.crashes = crashes; out.stubs = stubs; out.bursts = fresh.length;
@@ -225,7 +237,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         landAt: r1(d(s.land)), dx: r1(s.land.x - s.land.cx), dy: r1(s.land.y - s.land.cy),
         ms: s.contact ? Math.round(s.land.t - s.contact.t) : null, transit: s.transit, crashes: s.crashes, stubs: s.stubs, bursts: s.bursts,
         burstAt: s.burst ? r1(Math.hypot(s.burst.x - s.land.x, s.burst.y - s.land.y)) : null,
-        send: s.sendT != null && s.contact ? Math.round(s.sendT - s.contact.t) : null,
+        send: s.sendT != null && s.contact ? Math.round(s.sendT - s.contact.t) : null, snap: !!s.land.snap,
         hp: [s.hp0, s.hpAtContact, s.hpAtLand] }));
       console.log(`    ${mon.key.padEnd(8)} ${wpn.padEnd(5)} ` + rows.map((r) => `${r.hitAt != null ? 'hit@' + r.hitAt + ' ' : ''}land@${r.landAt}(${r.dx},${r.dy})${r.ms != null ? ' ' + r.ms + 'ms' : ''}`).join(' | '));
       const tag = `${mon.key} ${wpn}`;
@@ -257,8 +269,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
           Math.abs(meanDx) <= mon.core[0] * 0.6, rows);
         rec.ok(`${tag}: the monster flashes when the arrow lands`, ok.every((s) => s.flashAtLand === true), ok.map((s) => s.flashAtLand));
       }
-      rec.ok(`${tag}: one ${wpn === 'bolt' ? 'crash' : 'stuck shaft'} and one material burst per shot`,
-        ok.every((s) => (wpn === 'bolt' ? s.crashes === 1 && s.stubs === 0 : s.stubs === 1 && s.crashes === 0) && s.bursts === 1), rows);
+      rec.ok(`${tag}: one ${wpn === 'bolt' ? 'crash' : 'stuck shaft (or, one in eight, a snap)'} and one material burst per shot${wpn === 'arrow' ? ` (${ok.filter((s) => s.land.snap).length} snapped)` : ''}`,
+        ok.every((s) => (wpn === 'bolt' ? s.crashes === 1 && s.stubs === 0
+          : ((s.stubs === 1 && !s.land.snap) || (s.stubs === 0 && s.land.snap && s.snaps === 1)) && s.crashes === 0) && s.bursts === 1), rows);
       rec.ok(`${tag}: ...and the burst leaves from where the shot landed (worst ${Math.max(...rows.map((r) => r.burstAt || 0))}px off)`,
         rows.every((r) => r.burstAt !== null && r.burstAt <= 3), rows);
       /* the picture: the last landing still on screen, the shafts all still in */
