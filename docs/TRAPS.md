@@ -4265,3 +4265,31 @@ error is 77px on one frame and 3px on the next.
 every trait at once, is correcting those five `body-tops` entries -- but hats,
 hair and the hair-clip masks were all dialled in against the current values,
 so it needs its own before/after pass over every trait, not a drive-by edit.
+
+## 102. A character's position is its hips, not its feet (v2.3.2701)
+
+**Tempting:** anything that has to stand where a character stands -- a
+stand-in animation, a prop dropped at their feet, a campfire -- is placed at
+`S.player.y` (or a peer's `y`), with an anchor at its bottom edge, because
+`__btPlayerDrawn()` calls `display.y` the `footY` and depthSort.js calls it the
+ground-contact line.
+
+**Wrong by 52 px.** The walking body is FRAME-CENTRED: its container sits at
+your position and the boots are drawn `(221 - 128) x 1.061 x 0.421875 x
+PLAYER_SIZE_MULT` = 52 world px lower on a flat zone (times the zone's
+perspective scale; the build lift keeps it independent of height). So a thing
+bottom-anchored at your `y` sits at your HIPS:
+- the fire-lighting figure floated ~77 px in the air for the whole strike
+  (planted at `y + 6`, with 104 px of log and shadow under its boots in the
+  frame) -- the sword and bow stand-ins had the same bug years earlier and were
+  fixed with the published `S._swordFootY`;
+- the campfire was lit at your hips, behind your own body, so you could not see
+  it until you walked off.
+
+**The rule.** For your boots use `S.player.y + standFootDy(zoneScale)`
+(entityRenderer exports it) or the per-frame `S._bodyFootY`. When a thing must
+SORT against characters (the depth pass compares everything with your `y`,
+i.e. your hips), give it a sort key in that convention -- the campfire's
+Container stands `standFootDy()` above its ground point and draws the fire that
+far below its origin. **Receipt:** mp-campfire checks the fire-lighter's boots
+against `_bodyFootY` (within 3 px) and that the fire is lit at the boots.

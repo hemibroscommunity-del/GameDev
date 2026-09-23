@@ -4861,6 +4861,19 @@ function _feetOffsetUnits(display) {
   const rows = bodyRows(pose, dir);
   return (rows.feet - BODY_CELL_MID) * bodyDirScale(pose, dir) * LOCAL_BODY_SCALE;
 }
+/* ═══ v2.3.2701: WHERE A CHARACTER'S BOOTS ARE, FOR THINGS THAT ARE NOT ONE ═══
+ * A character's position (S.player.y, a peer's y) is NOT its feet: the body is
+ * frame-centred, so the boots are drawn this far below it -- (221-128) x 1.061
+ * x 0.421875 x PLAYER_SIZE_MULT = 52 world px on a flat zone, times the zone's
+ * perspective scale.  The build lift above keeps it independent of height.
+ * Exported for what has to stand on the same ground as a character without
+ * being one: the campfire (which sorts against you by YOUR convention) and the
+ * fire-lighting figure (which must plant its boots where yours are). */
+export function standFootDy(zoneScale) {
+  const rows = bodyRows('stand', 'south');
+  return (rows.feet - BODY_CELL_MID) * bodyDirScale('stand', 'south') * LOCAL_BODY_SCALE
+    * PLAYER_SIZE_MULT * (zoneScale || 1);
+}
 function _applyBuildScale(display, pscale, heightId, frameId) {
   const b = buildScale(heightId, frameId);
   const sx = pscale * b.sx, sy = pscale * b.sy;
@@ -10628,6 +10641,12 @@ export class EntityRenderer {
          right answer on every zone that has no curve at all. */
       S._figureScaleY = display.scale && typeof display.scale.y === 'number'
         ? display.scale.y : 1;
+      /* v2.3.2701: and where your boots are drawn this frame, measured off the
+         display itself (the drawn facing's own foot row, the live scale).  Read
+         by mp-campfire against the fire-lighting figure, which plants its boots
+         through standFootDy() -- two routes to the same line, so a test can
+         catch them drifting apart. */
+      S._bodyFootY = display.y + _feetOffsetUnits(display) * (display.scale ? display.scale.y : 1);
     }
 
     /* Self death visual — play the death sprite animation (player ->

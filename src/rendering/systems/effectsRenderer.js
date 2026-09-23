@@ -119,10 +119,11 @@ import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from 
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up */
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2701: where a character's boots are */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
+import { CampfireFx } from '../campfireFx.js'; /* v2.3.2701: the lit-log campfire, in pixel art */
 import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
@@ -307,6 +308,21 @@ import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string
    the same 2.327 (it multiplies sp.scale.y, which fell 0.7 -> 0.3008, to size
    the player's hat), and _updateRemoteExtraction divided by a hardcoded 220. */
 const FIRE_FW = 384, FIRE_FH = 512;
+/* ═══ v2.3.2701: THE FIRE-LIGHTER STOOD 77 PX IN THE AIR ═══
+   Found filming the new campfire: the moment you tap "Light fire" your figure
+   jumps up by about its own height's worth of ground and drops back when the
+   strip ends.  The strip was planted with its FRAME BOTTOM at your position +6
+   ("the foot offset"), on the belief that your position is your feet.  It is
+   your hips: the walking body is frame-centred and its boots are drawn
+   standFootDy() below it (52 px on a flat zone).  And the strip's own boots are
+   not at its frame bottom either -- the owner's 384x512 cells carry the log and
+   its shadow beneath them.  The sword and bow stand-ins had this exact bug and
+   were fixed by planting on the body's measured feet (S._swordFootY,
+   entityRenderer); the fire-lighter, local and remote, never was.
+   FIRE_FEET_ROW is the boots' soles in the standing frame 0, measured on
+   firemaking-strip.webp (row 408 of 512).  The figure is planted so that row
+   lands on your boots. */
+const FIRE_FEET_ROW = 408;
 /* v2.3.1749: ONE firemaking cadence.  Owner: "for firemaking speed up the
    animation by about 3x so it doesn't look as choppy" — 200ms/frame is a 5fps
    slideshow; 67 is ~15fps.  Module-level because the local figure
@@ -1761,6 +1777,15 @@ export class EffectsRenderer {
        gatherNodesFront, added after the trees' addChildAt(0), still puts it in
        front of them). */
     this.gestureLayer = layers.gestureFront || layers.gatherNodesFront || layers.gatherNodes;
+    /* v2.3.2701: the campfire draws itself -- logs, flame, sparks and smoke as
+       one depth-sorted Container among the entities, its light on the ground
+       under everything.  Minted here, with the renderer, so the first fire
+       ever lit never waits on its art. */
+    this._campfireFx = new CampfireFx(this.entityLayer, layers.groundSplatter || layers.groundDetails || this.entityLayer);
+    if (typeof window !== 'undefined') {
+      const _cfx = this._campfireFx;
+      window.__btCampfire = () => (_cfx ? _cfx.probe() : null);
+    }
     this.projectileLayer = layers.projectiles;
     /* ═══ v2.3.1915: A SPENT ARROW IS SCENERY, NOT A PROJECTILE ═══
        Owner: "For arrows on the ground make the character in the layer in
@@ -8353,64 +8378,18 @@ export class EffectsRenderer {
 
   /* ── Campfire (v2.3.853) ──
    * A client-local campfire lit by firemaking (S._campfire = {x,y,litAt,
-   * expiresAt}); a cooking station that burns out after ~45s.  Procedural:
-   * a charred-log base, a flickering flame, and a warm ground glow, drawn on
-   * nodeGfx (camera-transformed).  Fades out over the last 4s. */
-  /* v2.3.1753: one fire, drawn.  Split out of _updateCampfire so the OTHER
-     players' fires (S._peerCampfires) render through exactly the same code as
-     your own — a second copy of the drawing is how two fires end up looking
-     like different objects. */
-  _drawOneCampfire(S, now, cf) {
-    if (!cf || (cf.expiresAt && now > cf.expiresAt)) return;
-    /* v2.3.1748: a fire belongs to the zone it was lit in.  Belt and braces
-       with the zone-change clear in zoneTransitions.js — that removes it, this
-       refuses to draw one that somehow survives (an older save, a path that
-       gains a zone change later). */
-    if (cf.zone && S.currentZone && cf.zone !== S.currentZone) return;
-    const gfx = this.nodeGfx;
-    const x = cf.x, y = cf.y;
-    const remain = cf.expiresAt ? cf.expiresAt - now : 99999;
-    const a = remain < 4000 ? Math.max(0, remain / 4000) : 1;  // fade in last 4s
-    /* warm ground glow */
-    gfx.ellipse(x, y, 26, 9);
-    gfx.fill({ color: 0xff8a3c, alpha: 0.16 * a });
-    /* charred log base */
-    gfx.roundRect(x - 16, y - 3, 32, 7, 3);
-    gfx.fill({ color: 0x3a2a1c, alpha: 0.95 * a });
-    /* flames — three flickering tongues */
-    const fl = Math.sin(now / 90) * 0.5 + Math.sin(now / 47) * 0.5;
-    for (let i = 0; i < 3; i++) {
-      const fx = x + (i - 1) * 7;
-      const h = (14 + (i === 1 ? 7 : 0)) * (0.85 + 0.15 * Math.sin(now / 70 + i * 2));
-      gfx.moveTo(fx - 5, y - 1);
-      gfx.quadraticCurveTo(fx + fl * 3, y - h, fx + 5, y - 1);
-      gfx.fill({ color: i === 1 ? 0xffd24a : 0xff7a1e, alpha: 0.9 * a });
-    }
-    /* hot core */
-    gfx.circle(x, y - 4, 4 + Math.sin(now / 60) * 1);
-    gfx.fill({ color: 0xfff0b0, alpha: 0.85 * a });
-    /* embers */
-    if (S.hitParticles && Math.random() < 0.25 && a > 0.3) {
-      S.hitParticles.push({ x: x + (Math.random() - 0.5) * 10, y: y - 6, vx: (Math.random() - 0.5) * 1.2, vy: -1 - Math.random() * 1.5, life: 0.6, color: '#ffb050', size: 1.2 });
-    }
-  }
-
-  /* ── Firemaking animation (v2.3.853) ──
-   * One-shot character animation at the player while S._firemaking is active
-   * (set when a log is lit from the Bag); hidden otherwise. */
+   * expiresAt}); a cooking station that burns out after ~45s.
+   * v2.3.1753: other players' fires (S._peerCampfires) draw through the same
+   * code as your own.
+   * v2.3.2701: that code is CampfireFx (rendering/campfireFx.js) now.  The
+   * vector fire that lived here -- a flat glow ellipse, a rounded-rectangle
+   * log, three curved tongues and a circle, redrawn on nodeGfx every frame --
+   * is retired for pixel art that catches, burns, chars its logs, throws
+   * sparks and smoke, lights the ground, dies down to embers, and stands in
+   * the depth sort so you can walk behind it.  Pruning of expired peer fires
+   * moved with it (CampfireFx._records). */
   _updateCampfire(S, now) {
-    /* your own fire */
-    this._drawOneCampfire(S, now, S && S._campfire);
-    /* ...and every peer's (v2.3.1753).  Expired entries are dropped here
-       rather than left to grow: this Map is keyed by player id so it is
-       bounded by the room, but a player who lights, leaves and never comes
-       back would otherwise sit in it for the life of the tab. */
-    const peers = S && S._peerCampfires;
-    if (!peers || !peers.size) return;
-    for (const [id, cf] of peers) {
-      if (!cf || (cf.expiresAt && now > cf.expiresAt)) { peers.delete(id); continue; }
-      this._drawOneCampfire(S, now, cf);
-    }
+    if (this._campfireFx) this._campfireFx.update(S, now);
   }
 
   _updateFiremaking(S, now) {
@@ -8460,7 +8439,9 @@ export class EffectsRenderer {
     const _b = _localBuild();
     sp.scale.set(s * _b.sx, s * _b.sy);
     sp.x = S.player.x;
-    sp.y = S.player.y + 6 * pscale;   /* the foot offset shrinks with the figure */
+    /* v2.3.2701: boots on your boots (see FIRE_FEET_ROW); was
+       `S.player.y + 6 * pscale`, which planted the frame's bottom at your hips */
+    sp.y = S.player.y + standFootDy(pscale) + (FIRE_FH - FIRE_FEET_ROW) * sp.scale.y;
     /* v2.3.2287 QA probe -- the sibling of __btChopFigure, which the fire
        figure never had. */
     if (typeof window !== 'undefined') {
@@ -8469,6 +8450,8 @@ export class EffectsRenderer {
         visible: !!sp.visible, scaleY: sp.scale.y,
         drawnH: +(Math.abs(sp.scale.y) * FIRE_FH).toFixed(2),
         x: sp.x, y: sp.y, gearScaleY: _fc ? _fc.scale.y : null,
+        /* v2.3.2701: where the figure's boots land (FIRE_FEET_ROW) */
+        bootsY: +(sp.y - (FIRE_FH - FIRE_FEET_ROW) * sp.scale.y).toFixed(2),
       });
     }
     sp.visible = true;
@@ -8729,7 +8712,13 @@ export class EffectsRenderer {
       const _sxR = s * _bR.sx, _syR = s * _bR.sy;   /* v2.3.2500 */
       sp.scale.set(_sign < 0 ? -_sxR : _sxR, _syR);
       sp.x = ox;
-      sp.y = oy + 6 * pscale;                 /* foot offset shrinks with the figure */
+      /* v2.3.2701: the fire-lighter plants its boots on the peer's boots (see
+         FIRE_FEET_ROW) -- the same fix as your own figure.  chop and cook keep
+         the old +6: their strips are not measured here and nothing about them
+         was asked. */
+      sp.y = code === 'fire'
+        ? oy + standFootDy(pscale) + (FIRE_FH - FIRE_FEET_ROW) * _syR
+        : oy + 6 * pscale;                    /* foot offset shrinks with the figure */
       sp.visible = true;
       /* ═══ v2.3.2146: AND THEIR CLOTHES ═══
          Owner: "the remote player fire starting needs to be fixed."
@@ -10894,6 +10883,7 @@ export class EffectsRenderer {
   }
 
   clear() {
+    if (this._campfireFx) this._campfireFx.clear();   /* v2.3.2701 */
     this.particleGfx.clear();
     this.cueGfx.clear();   /* v2.3.1765 */
     this.projectileGfx.clear();
