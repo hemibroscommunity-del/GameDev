@@ -844,11 +844,21 @@ const ARROW_PINE = {
      DPR-3 phone, so the old 64px sheet would have been upscaled 1.6x and gone
      soft exactly as it finally got big enough to look at. */
   lenPx: 52.5,
+  /* v2.3.2704: where a SNAPPED arrow breaks, as a fraction of its length from
+     the tail -- mid-shaft, just behind the pivot -- and the two halves it
+     breaks into.  Framed out of the same download, like noHead: no new art,
+     nothing for the preload manifest. */
+  snapFrac: 0.5, back: null, front: null,
 };
 _fxLoad('/sprites/projectiles/arrow-pine.png?v=2.3.1881').then((tex) => {
   if (!tex || !tex.source) return;
   const w = tex.source.width, h = tex.source.height;
   ARROW_PINE.full = new Texture({ source: tex.source, frame: new Rectangle(0, 0, w, h) });
+  {
+    const cut = Math.max(1, Math.min(w - 1, Math.round(w * ARROW_PINE.snapFrac)));
+    ARROW_PINE.back = new Texture({ source: tex.source, frame: new Rectangle(0, 0, cut, h) });
+    ARROW_PINE.front = new Texture({ source: tex.source, frame: new Rectangle(cut, 0, w - cut, h) });
+  }
   ARROW_PINE.noHead = new Texture({
     source: tex.source,
     frame: new Rectangle(0, 0, Math.max(1, Math.round(w * ARROW_PINE.headFrac)), h),
@@ -1233,6 +1243,23 @@ function propSlashTex() {
   _PROP_SLASH_TEX = Texture.from(c);
   return _PROP_SLASH_TEX;
 }
+/* v2.3.2704: a wood SPLINTER off a snapped arrow -- a pale sliver with a dark
+   underside, minted once, same two-tone rule as the slash above. */
+let _SPLINTER_TEX = null;
+function splinterTex() {
+  if (_SPLINTER_TEX) return _SPLINTER_TEX;
+  const c = document.createElement('canvas');
+  c.width = 8; c.height = 3;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = 'rgba(226,190,130,1)'; ctx.fillRect(0, 0, 7, 2);
+  ctx.fillStyle = 'rgba(70,44,22,0.9)'; ctx.fillRect(1, 2, 7, 1);
+  _SPLINTER_TEX = Texture.from(c);
+  return _SPLINTER_TEX;
+}
+const SNAP_G = 0.13;          /* the 1/2-g term, 60Hz frame units (DEBRIS_GRAV's posture) */
+const SNAP_REST_MS = 420;     /* lying there... */
+const SNAP_FADE_MS = 380;     /* ...then gone */
+const SNAP_MAX = 10;
 const PROP_SLASH_LEN = 30;       /* drawn world px along the cut */
 const PROP_SLASHES_PER_PROP = 5;  /* a rock that has been hacked at shows the last five */
 
@@ -3259,6 +3286,7 @@ export class EffectsRenderer {
     this._updateMonsterImpacts(S, now);
     this._updateDebrisBursts(S, now);   /* v2.3.2200: material hit debris */
     this._updatePropMarks(S, now);      /* v2.3.2702: slashes and arrows standing in props */
+    this._updateArrowSnaps(S, now);     /* v2.3.2704: one arrow in eight breaks on what it hits */
     this._updateCampfire(S, now);
     this._updateFiremaking(S, now);
     this._updateSwordSwing(S, now);
@@ -7354,6 +7382,144 @@ export class EffectsRenderer {
    * angle (the snowman-plume recipe).  Without: six tinted copies of
    * the minted soft particle on parametric arcs — dt-safe because
    * position is computed from age, not integrated per frame. */
+  /* ═══ v2.3.2704: A SNAPPED ARROW ═══
+   * Owner: "some arrows snapped on hitting the target (still causing the same
+   * amount of damage) in maybe every 1 out of every 8 hits".
+   *
+   * Consumes S._arrowSnaps (combatHelpers.queueArrowSnap).  The arrow breaks
+   * just behind its pivot: the HEAD half drops off what it hit with a small
+   * bounce back, the FLETCHED half kicks back toward the shooter end over end,
+   * and five splinters spray back the same way.  Every piece flies on a
+   * parabola solved from its age (the debris chunks' dt-safe recipe, not a
+   * per-frame integration), lands on the ground line under the hit, turns
+   * flat -- a stick lying on the ground lies along it -- rests, and fades.
+   * Particle layer: over the monster it broke on, under the player (v2.3.2636). */
+  _updateArrowSnaps(S, now) {
+    const zone = S && S.currentZone;
+    if (this._snapZone !== zone) { this._clearArrowSnaps(); this._snapZone = zone; }
+    if (!this._snaps) this._snaps = [];
+    const q = S && S._arrowSnaps;
+    if (q && q.length) {
+      for (let i = 0; i < q.length; i++) {
+        const r = q[i];
+        if (r && r.zone === zone) this._spawnArrowSnap(S, r, now);
+      }
+      q.length = 0;
+    }
+    for (let i = this._snaps.length - 1; i >= 0; i--) {
+      const sn = this._snaps[i];
+      let alive = false;
+      for (const pc of sn.pieces) if (this._stepSnapPiece(pc, now)) alive = true;
+      if (!alive) { this._killArrowSnap(sn); this._snaps.splice(i, 1); }
+    }
+    if (typeof window !== 'undefined' && !window.__btArrowSnapFx) {
+      window.__btArrowSnapFx = () => this.arrowSnapProbe();
+    }
+  }
+
+  _spawnArrowSnap(S, r, now) {
+    if (!ARROW_PINE.front || !ARROW_PINE.back || !ARROW_PINE.full) return;
+    while (this._snaps.length >= SNAP_MAX) this._killArrowSnap(this._snaps.shift());
+    const pk = zonePlayerScale(S.currentZone, r.x, r.y, TILE) || 1;
+    const k = (ARROW_PINE.lenPx * pk) / (ARROW_PINE.full.width || 1);
+    const L = ARROW_PINE.lenPx * pk;
+    const c = Math.cos(r.ang), sn = Math.sin(r.ang);
+    const px = -sn, py = c;   /* across the flight */
+    const rnd = Math.random;
+    const f = ARROW_PINE.snapFrac, ax = ARROW_PINE.anchor.x;
+    /* the pivot is where the arrow is drawn; the halves' centres sit either
+       side of the break, measured along the shaft from there */
+    const backOff = (f / 2 - ax) * L, frontOff = ((1 + f) / 2 - ax) * L;
+    const mk = (tex, ox, vx, vy, spin, kind, sc) => {
+      const sp = new Sprite(tex);
+      sp.anchor.set(0.5, 0.5);
+      sp.scale.set(sc);
+      sp.rotation = r.ang;
+      this.particleLayer.addChild(sp);
+      const x0 = r.x + c * ox, y0 = r.y + sn * ox;
+      /* Lands on the ground line under the hit -- or, for a piece that starts
+         at or below it (a hit at the very foot of a face), back at its own
+         height after the hop: with drop 0 the same root is -vy/G, the time to
+         go up and come down again, where a flat "already landed" would leave
+         the pieces lying there from the first frame with no break to see. */
+      const gy = Math.max(y0, r.gy + rnd() * 4);
+      const drop = gy - y0;
+      const tLand = Math.max(0, (-vy + Math.sqrt(vy * vy + 4 * SNAP_G * drop)) / (2 * SNAP_G));
+      return { sp, kind, x0, y0, vx, vy, spin, rot0: r.ang, tLand, t0: now,
+        tilt: (rnd() - 0.5) * 0.5, landedRot: null, done: false };
+    };
+    const back = 1.6 + rnd() * 0.8, side = (rnd() - 0.5);
+    const pieces = [
+      /* the head: a short hop back off the face, a lazy turn */
+      mk(ARROW_PINE.front, frontOff * 0.5, -c * (0.5 + rnd() * 0.5) + px * side * 0.8,
+        -sn * (0.5 + rnd() * 0.5) + py * side * 0.8 - (1.1 + rnd() * 0.7),
+        (rnd() < 0.5 ? -1 : 1) * (0.10 + rnd() * 0.08), 'front', k),
+      /* the fletched half: kicked back toward the shooter, end over end */
+      mk(ARROW_PINE.back, backOff, -c * back - px * side, -sn * back - py * side - (1.8 + rnd() * 0.9),
+        (rnd() < 0.5 ? -1 : 1) * (0.22 + rnd() * 0.12), 'back', k),
+    ];
+    const stex = splinterTex();
+    for (let i = 0; i < 5; i++) {
+      const a = r.ang + Math.PI + (rnd() - 0.5) * 2.4;
+      const v = 1.4 + rnd() * 1.8;
+      pieces.push(mk(stex, 0, Math.cos(a) * v, Math.sin(a) * v - (0.8 + rnd() * 1.2),
+        (rnd() - 0.5) * 0.6, 'splinter', (0.7 + rnd() * 0.5) * pk));
+    }
+    this._snaps.push({ pieces, t0: now, x: r.x, y: r.y });
+  }
+
+  /* One piece, from its age.  Returns whether it is still on screen. */
+  _stepSnapPiece(pc, now) {
+    if (pc.done || !pc.sp || pc.sp.destroyed) return false;
+    const t = (now - pc.t0) / 16.667;
+    const sp = pc.sp;
+    if (t < pc.tLand) {
+      sp.x = pc.x0 + pc.vx * t;
+      sp.y = pc.y0 + pc.vy * t + SNAP_G * t * t;
+      sp.rotation = pc.rot0 + pc.spin * t;
+      sp.alpha = 1;
+      return true;
+    }
+    /* on the ground: where it landed, turned to lie flat */
+    const tl = pc.tLand;
+    sp.x = pc.x0 + pc.vx * tl;
+    sp.y = pc.y0 + pc.vy * tl + SNAP_G * tl * tl;
+    if (pc.landedRot == null) {
+      const r0 = pc.rot0 + pc.spin * tl;
+      pc.landRot0 = r0;
+      pc.landedRot = Math.round(r0 / Math.PI) * Math.PI + pc.tilt;
+    }
+    const since = (t - tl) * 16.667;
+    const u = Math.min(1, since / 120);
+    sp.rotation = pc.landRot0 + (pc.landedRot - pc.landRot0) * u;
+    const rest = pc.kind === 'splinter' ? 180 : SNAP_REST_MS;
+    const fade = pc.kind === 'splinter' ? 260 : SNAP_FADE_MS;
+    if (since >= rest + fade) { pc.done = true; sp.visible = false; return false; }
+    sp.alpha = since <= rest ? 1 : 1 - (since - rest) / fade;
+    return true;
+  }
+
+  _killArrowSnap(sn) {
+    if (!sn) return;
+    for (const pc of sn.pieces) if (pc.sp && !pc.sp.destroyed) pc.sp.destroy();
+  }
+
+  _clearArrowSnaps() {
+    for (const sn of (this._snaps || [])) this._killArrowSnap(sn);
+    this._snaps = [];
+  }
+
+  /* House-style probe: every live snap, and where each of its pieces is. */
+  arrowSnapProbe() {
+    return (this._snaps || []).map((sn) => ({
+      x: +sn.x.toFixed(1), y: +sn.y.toFixed(1), age: Math.round(Date.now() - sn.t0),
+      pieces: sn.pieces.filter((pc) => pc.sp && !pc.sp.destroyed).map((pc) => ({
+        kind: pc.kind, x: +pc.sp.x.toFixed(1), y: +pc.sp.y.toFixed(1), rot: +pc.sp.rotation.toFixed(2),
+        alpha: +pc.sp.alpha.toFixed(2), visible: !!pc.sp.visible, landed: pc.landedRot != null,
+        layer: pc.sp.parent === this.particleLayer ? 'particles' : 'other' })),
+    }));
+  }
+
   /* ═══ v2.3.2702: MARKS ON PROPS -- SLASHES AND ARROWS IN THE ROCK ═══
    * Owner: "arrow stuck in (with debris), and sword slash marks on the props
    * (with debris)".

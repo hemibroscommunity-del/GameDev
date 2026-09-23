@@ -243,7 +243,8 @@ export var doRetreatShot = function (S, R, ang) {
         ang: a, dist: 14, dmg: shotDmg, life: isStaff ? staffOrbLife(R) : 90,
         maxLife: isStaff ? staffOrbLife(R) : 90, hitIds: new Set(), isStaff: isStaff,
         _rangeMult: isStaff ? 1 : bowRangeMult(R), /* v2.3.2592: the retreat shot reaches as far as an ordinary arrow */
-        element: activeWpn.element1 || null, retreatShot: true
+        element: activeWpn.element1 || null, retreatShot: true,
+        _shotTs: Date.now()   /* v2.3.2704: the snap roll's timestamp (data/arrowSnap.js) */
       });
     };
     if (isStaff) {

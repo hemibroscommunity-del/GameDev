@@ -1661,8 +1661,13 @@ export function updateMonsterCombat(S, deps) {
                 }
                 if (_mayLoose) {
                 if (!S.arrows) S.arrows = [];
+                /* v2.3.2704: ONE timestamp for the arrow and its broadcast, so
+                   the 1-in-8 snap (data/arrowSnap.js) rolls the same on the
+                   shooter's screen and every peer's. */
+                var _shotTs = Date.now();
                 S.arrows.push({
                   ang: arrAngle,
+                  _shotTs: _shotTs,
                   /* v2.3.937: bow shots nock at the teal grip and launch at the
                      (early) release -- start near the player and let projectiles.js
                      hold them at the grip until BOW_RELEASE_MS.  Staff bolts keep
@@ -1699,7 +1704,7 @@ export function updateMonsterCombat(S, deps) {
                 });
                 /* Broadcast projectile to other players */
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
-                  id: S.myId, x: Math.round(P.x), y: Math.round(P.y), ang: arrAngle, isStaff: isStaff, ts: Date.now(),
+                  id: S.myId, x: Math.round(P.x), y: Math.round(P.y), ang: arrAngle, isStaff: isStaff, ts: _shotTs,
                   /* v2.3.2592: the RANGE stat lengthens the flight, so the peer
                      mirror needs the life too or a remote orb dies at 675 px
                      while it flew 1012 on the caster's screen (the v2.3.2387

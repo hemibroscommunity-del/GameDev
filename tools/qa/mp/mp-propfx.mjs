@@ -241,8 +241,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { qid, sight, lastSeen, qSelf });
   if (seen) {
     await resetQueues(P);
+    /* v2.3.2704: a shot the snap roll says STICKS -- one arrow in eight breaks
+       instead (data/arrowSnap.js), and a timestamp picked by the clock would
+       make this a one-in-eight flake */
     await P.page.evaluate((qid) => {
-      window.__btDispatch({ type: 'player_projectile', payload: { id: qid, x: 0, y: 0, ang: -Math.PI / 2, isStaff: false, ts: Date.now() } });
+      let ts = Date.now(); while (window.__btArrowSnapRoll(qid, ts)) ts++;
+      window.__btDispatch({ type: 'player_projectile', payload: { id: qid, x: 0, y: 0, ang: -Math.PI / 2, isStaff: false, ts } });
     }, qid);
     await P.page.waitForTimeout(700);
     const m4 = await marks(P);
@@ -278,6 +282,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('peer: their bolt CRASHES on the fountain on my screen -- the rings and the chips',
       pr.filter((r) => r.y < FOUNT.y1 - 15 && r.y > FOUNT.y1 - 40).length === 2
         && q5.debris.some((b) => b.monsterId === 'prop:' + FOUNT.id && b.weapon === 'bolt'), { pr, ringsBefore, debris: q5.debris });
+
+    /* v2.3.2704: and one the roll says BREAKS -- it snaps on the fountain on
+       my screen, as it did on theirs, and leaves no arrow standing */
+    const arrowsBefore = ((await marks(P)) || []).filter((m) => m.kind === 'arrow').length;
+    await P.page.evaluate((qid) => {
+      let ts = Date.now() + 5000; while (!window.__btArrowSnapRoll(qid, ts)) ts++;
+      window.__btDispatch({ type: 'player_projectile', payload: { id: qid, x: 0, y: 0, ang: -Math.PI / 2, isStaff: false, ts } });
+    }, qid);
+    await P.page.waitForTimeout(450);
+    const ps = await P.page.evaluate(() => (window.__btArrowSnapFx ? window.__btArrowSnapFx() : null));
+    const arrowsAfter = ((await marks(P)) || []).filter((m) => m.kind === 'arrow').length;
+    const psHere = (ps || []).filter((z) => Math.abs(z.y - (FOUNT.y1 - 26)) < 3 && z.x > FOUNT.x0 && z.x < FOUNT.x1);
+    rec.ok('peer: their arrow that the roll breaks SNAPS on the fountain on my screen -- two halves and splinters, nothing left standing',
+      psHere.length === 1 && psHere[0].pieces.filter((pc) => pc.kind !== 'splinter').length === 2
+        && arrowsAfter <= arrowsBefore, { ps, arrowsBefore, arrowsAfter });
 
     await P.page.waitForTimeout(300);
     const n0 = slashesOn(await marks(P), FOUNT.id).length;

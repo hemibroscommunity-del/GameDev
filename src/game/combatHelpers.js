@@ -821,6 +821,22 @@ export function propSwingHit(S, px, py, ang, reach, halfArc) {
   return c;
 }
 
+/* ═══ v2.3.2704: AN ARROW THAT BROKE ON WHAT IT HIT ═══
+   Queued as a fact -- where it hit (x/y as drawn), the ground under that
+   (gy), the heading -- and drawn by effectsRenderer: the head drops, the
+   fletched half kicks back toward the shooter end over end, a few splinters.
+   The dry crack is the material mixer's bone sample, which is the one sound in
+   the library that is a snap.  Whether an arrow breaks is data/arrowSnap.js;
+   what it did to its target was already done by the time this is called. */
+export function queueArrowSnap(S, x, y, gy, ang, vol) {
+  if (!S || !Number.isFinite(x) || !Number.isFinite(y)) return;
+  if (!S._arrowSnaps) S._arrowSnaps = [];
+  S._arrowSnaps.push({ x: x, y: y, gy: Number.isFinite(gy) ? gy : y + 20,
+    ang: Number.isFinite(ang) ? ang : 0, t0: Date.now(), zone: S.currentZone });
+  if (S._arrowSnaps.length > 12) S._arrowSnaps.splice(0, S._arrowSnaps.length - 12);
+  try { BT_AUDIO.swordHit({ vol: vol != null ? vol : 0.26 }, 'bone'); } catch (e) { /* audio is best-effort */ }
+}
+
 /* spawnGroundDecal: one persistent mark at the monster's feet.  Rides
    the EXISTING S.groundSplatter array (cap 80, TTL/fade in
    effectsRenderer + stateCleanup) — on-hit marks are small and

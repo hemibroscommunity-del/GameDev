@@ -25,6 +25,7 @@ import { attackBlocked, slideMove, ZONE_PROPS } from '../src/props.js';
 /* v2.3.2699: the CLIENT's step test, imported the way mirror-audit imports the
    client's tables -- the worker has no moving projectiles, so this is the only
    place a player's arrow and a local slime orb meet a prop. */
+import { arrowSnaps, arrowSnapRoll, ARROW_SNAP_CHANCE } from '../../src/data/arrowSnap.js';
 import { sweepBlockPoint as cliSweep, attackBlockPoint as cliBlockPoint, zoneBlockers as cliBlockers, boxExitPoint as cliExit, propSwingContact as cliSwing, propMaterial as cliMaterial, boxFace as cliFace, WORLD_PROPS as CLI_PROPS } from '../../src/data/worldProps.js';
 
 const mockState = {
@@ -455,6 +456,33 @@ check('on open ground nothing is blocked', openGround > 0, { openGround });
     && cliMaterial('frost-pine-pair').kind === 'snow', {});
   check('an unknown id -- and a hostile one -- falls back to stone, never throws', cliMaterial('no-such-prop').kind === 'stone'
     && cliMaterial('__proto__').kind === 'stone' && cliMaterial(null).kind === 'stone', {});
+}
+
+/* ── 8. ONE ARROW IN EIGHT SNAPS, AND BOTH SCREENS AGREE WHICH (v2.3.2704) ──
+   Owner: "some arrows snapped on hitting the target (still causing the same
+   amount of damage) in maybe every 1 out of every 8 hits".  The snap is only a
+   picture, so the two things worth pinning are the ROLL: that it comes out at
+   the owner's rate over any run of shots, and that it is a pure function of the
+   shooter's id and the shot's timestamp -- the two numbers the peer's copy of
+   the arrow carries -- so a snap on your screen is a snap on theirs. */
+{
+  check('the snap chance is the owner\'s one in eight', ARROW_SNAP_CHANCE === 1 / 8, ARROW_SNAP_CHANCE);
+  const t0 = 1790000000000;
+  let byTs = 0, byId = 0; const N = 16000;
+  for (let i = 0; i < N; i++) if (arrowSnaps('bp_k1kiw1_ghostfrost', t0 + i * 495)) byTs++;
+  for (let i = 0; i < N; i++) if (arrowSnaps('bp_' + i.toString(36) + '_x', t0)) byId++;
+  check(`...over a run of one player's shots it comes out at 1 in 8 (${(byTs / N).toFixed(4)})`, Math.abs(byTs / N - 0.125) < 0.01, byTs);
+  check(`...and across players firing at the same moment (${(byId / N).toFixed(4)})`, Math.abs(byId / N - 0.125) < 0.01, byId);
+  /* no long droughts or streaks from a hash that clumps */
+  let run = 0, worst = 0;
+  for (let i = 0; i < N; i++) { if (arrowSnaps('bp_k1kiw1_ghostfrost', t0 + i * 495)) run = 0; else worst = Math.max(worst, ++run); }
+  check(`...without long droughts (longest run of whole arrows: ${worst})`, worst < 120, worst);
+  check('the same shot rolls the same on every screen', arrowSnapRoll('bp_a', t0) === arrowSnapRoll('bp_a', t0)
+    && arrowSnapRoll('bp_a', String(t0)) === arrowSnapRoll('bp_a', t0), {});
+  check('...and a different shooter or a different shot rolls afresh', arrowSnapRoll('bp_a', t0) !== arrowSnapRoll('bp_b', t0)
+    && arrowSnapRoll('bp_a', t0) !== arrowSnapRoll('bp_a', t0 + 1), {});
+  check('a shot with no timestamp never snaps (only QA injects those, and they expect an arrow to stick)',
+    !arrowSnaps('bp_a', undefined) && !arrowSnaps('bp_a', null) && !arrowSnaps(null, t0) && !arrowSnaps('bp_a', 'x'), {});
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

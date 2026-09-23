@@ -10,7 +10,8 @@
 import { BT_AUDIO } from '@/data/index.js';
 import { zoneLeavesPrints } from '@/rendering/footprintSprites.js'; /* v2.3.2654 */
 import { sweepBlockPoint, boxFace } from '@/data/worldProps.js';   /* v2.3.2702: a peer's shot stops at a prop on your screen too */
-import { spawnPropDebris, propImpactSound, orbCrashFx, markProp } from '@/game/combatHelpers.js';   /* v2.3.2702 */
+import { spawnPropDebris, propImpactSound, orbCrashFx, markProp, queueArrowSnap } from '@/game/combatHelpers.js';   /* v2.3.2702; v2.3.2704 the snap */
+import { arrowSnaps } from '@/data/arrowSnap.js';   /* v2.3.2704 */
 /* v2.3.2702: how far up a prop's face a PEER's shot marks it -- see the remote
    projectile sweep below. */
 var REMOTE_SHOT_H = 26;
@@ -250,6 +251,10 @@ export function updateVisualSystems(S) {
                 propImpactSound(_rpId, 0.22);   /* someone else's shot: quieter than your own */
                 if (rp.isStaff) {
                   orbCrashFx(S, _rpHit.x, _rpY, rp.isSpecial ? '#f5c542' : '#a78bfa');
+                } else if (!rp.isSpecial && arrowSnaps(rp.ownerId, rp.shotTs)) {
+                  /* v2.3.2704: the same one-in-eight snap the shooter rolled --
+                     same id, same shot timestamp, same answer (arrowSnap.js) */
+                  queueArrowSnap(S, _rpHit.x, _rpY, _rpHit.y, rp.ang, 0.18);
                 } else {
                   markProp(S, { kind: 'arrow', id: _rpId, x: _rpHit.x, y: _rpY, gy: _rpHit.y,
                     face: boxFace(_rpHit.box, _rpHit.x, _rpHit.y), ang: rp.ang,

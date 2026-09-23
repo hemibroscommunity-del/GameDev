@@ -443,7 +443,8 @@ import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound l
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
 import { sweepBlockPoint, boxExitPoint, attackBlocked, boxFace } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form; v2.3.2701: and the far face of a rock a monster stands in */
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2702 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2702 */, queueArrowSnap /* v2.3.2704 */ } from '@/game/combatHelpers.js';
+import { arrowSnaps } from '@/data/arrowSnap.js'; /* v2.3.2704: one arrow in eight breaks on what it hits */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -1383,7 +1384,21 @@ export function updateArrows(S, deps) {
                    The special's own art is the one to keep: it is the shot
                    that was fired, it carries the chip tick, and it is what
                    tells the player their heavy shot landed. */
-                if (!a.isStaff && !a.isSpecial) {
+                /* ═══ v2.3.2704: ...OR IT SNAPS ═══
+                   Owner: "some arrows snapped on hitting the target (still
+                   causing the same amount of damage) in maybe every 1 out of
+                   every 8 hits".  The damage above has already been dealt and
+                   claimed; this only chooses the PICTURE -- a shaft left in the
+                   body, or the arrow breaking on it (data/arrowSnap.js decides,
+                   on a roll the other screens make the same way).  Not a
+                   piercing arrow: it carries on to its next target, and a
+                   broken one could not. */
+                var _snapHere = !a.isStaff && !a.isSpecial && !a.pierce && arrowSnaps(S.myId, a._shotTs);
+                if (_snapHere) {
+                  queueArrowSnap(S, a._renderX, a._renderY,
+                    (typeof m.renderY === 'number') ? m.renderY : m.y, a.ang);
+                }
+                if (!a.isStaff && !a.isSpecial && !_snapHere) {
                   if (!m._stuckArrows) m._stuckArrows = [];
                   if (m._stuckArrows.length < 12) {
                     /* Place the impact on the side of the monster the
@@ -1826,6 +1841,14 @@ export function updateArrows(S, deps) {
                    element's colour, with the spell-landing voice on top. */
                 orbCrashFx(S, _impX, _impY, projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#a78bfa');
                 try { BT_AUDIO.magicHit({ vol: 0.3 }); } catch (e) { /* audio is best-effort */ }
+                return false;
+              }
+              /* v2.3.2704: ...unless it is one of the one-in-eight that SNAP,
+                 which on a rock is the likelier thing an arrow does anyway.
+                 Nothing hangs off a plain arrow's planted life (the send-off
+                 is the special's), so it can simply go. */
+              if (!a.isSpecial && arrowSnaps(S.myId, a._shotTs)) {
+                queueArrowSnap(S, _impX, _impY, _pGy, a.ang);
                 return false;
               }
               /* v2.3.2702: an arrow that met a prop STICKS IN IT -- no spent

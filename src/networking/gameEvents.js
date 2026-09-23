@@ -1614,7 +1614,11 @@ export function processGameEvent(type, payload, S, deps) {
                    Clamped, and absent on every other projectile -> the type's
                    own speed, exactly as before. */
                 speedPx: (Number(payload.speedPx) > 0 ? Math.min(20, Number(payload.speedPx)) : null),
-                ts: Date.now(), ownerId: payload.id
+                ts: Date.now(), ownerId: payload.id,
+                /* v2.3.2704: the SHOOTER's timestamp, which `ts` above is not (it
+                   is when this screen heard about it) -- the snap roll hashes
+                   this, so an arrow that breaks on their screen breaks on yours */
+                shotTs: Number.isFinite(Number(payload.ts)) ? Number(payload.ts) : null
               });
               /* v2.3.1011: a bow shot (non-staff) drives the remote bow-draw
                  stand-in (Phase 4 reads _bowShotAt/_bowShotAng). */
