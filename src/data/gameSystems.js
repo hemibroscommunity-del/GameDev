@@ -37,11 +37,11 @@ import {
   prog3RangeMult, prog3SpecialMult, /* v2.3.2592: reach + special, client-consumed */
   prog3DmgTerm,
   prog3ElemPower, isProg3ElemEnabled, /* v2.3.2512: elem per weapon; max mana as a stat */
+  legacyStaminaMult, /* v2.3.2662: the retired level-10 stamina rung, old workers only */
 } from './prog3.js';
-/* v2.3.1733: the char-10 milestone's max-stamina multiplier (mirror of the
-   server's staminaMilestoneMult) — recalcDerived's prog3 branch is the
-   client twin of _prog3Recompute, so the term has to appear in both. */
-import { staminaMilestoneMult, blocksAt } from './abilities.js';
+/* v2.3.2662: staminaMilestoneMult left this import with the milestone
+   ladder; the old-worker prediction is legacyStaminaMult (imported above). */
+import { blocksAt } from './abilities.js';
 
 /* v2.3.1186: pure-display exports (BT_AUDIO, BT_ACHIEVEMENTS, MASKS,
    tile colors, generateZoneMap, emote/NPC tables) moved to
@@ -368,6 +368,30 @@ export function isIronGear(item) {
   return item.mat === 'iron' || item.material === 'iron' || item.gearBase === 'iron';
 }
 
+/* ═══ v2.3.2664: THE ARMOUR LADDER'S DEFENSE REQUIREMENT ═══
+   Owner: "Yeah I'll go with your defense requirements for next tiers."
+   Copper and iron ask nothing; each tier above asks 5 allocated Defense
+   points more (tier 3: 5, tier 4: 10, tier 5: 15), the tier read on
+   armour's own whole-step scale — round(tierMult), never × quality.
+   EXACT mirror of server/src/data.js armorDefReq / isArmourLadderPiece,
+   swept against the worker's own gate by mirror-audit.test.mjs.  Before
+   this, canEquipItem waved every piece without a gearBase through while the
+   worker priced it off the weapon table, which is how an iron torso was
+   refused and eaten (v2.3.2122) — the gate and the card must read ONE
+   number. */
+export var ARMOR_FREE_TIERS = 2;
+export var ARMOR_DEF_REQ_PER_TIER = 5;
+export function isArmourLadderPiece(item) {
+  return !!item && typeof item === 'object'
+    && typeof item.gearBase !== 'string' && typeof item.type !== 'string';
+}
+export function armorDefReq(item) {
+  if (!item || typeof item !== 'object') return 0;
+  var tm = Number(item.tierMult);
+  var rung = Math.round(Math.max(1, Math.min(8, (Number.isFinite(tm) && tm > 0) ? tm : 1)));
+  return Math.max(0, rung - ARMOR_FREE_TIERS) * ARMOR_DEF_REQ_PER_TIER;
+}
+
 /* ═══ v2.3.2132: THE GATE AND THE BADGE NOW READ THE SAME NUMBER ═══
  *
  * Excalibur, on the demo: "select a weapon and nothing happens."
@@ -412,6 +436,13 @@ export function prog3EquipReq(tier, slotType, isWood) {
 
 export function canEquipItem(rpg, item, slotType) {
   var _item$gearBase2;
+  /* v2.3.2664: body armour is priced on its own ladder (armorDefReq), asked
+     before the iron exemption exactly as the worker asks it — real iron is
+     tier 2 and free either way.  Legacy (non-prog3) characters pass, as they
+     do on the worker (_prog3GearOk). */
+  if (slotType === 'armor' && isArmourLadderPiece(item)) {
+    return !prog3Live(rpg) || prog3Pts(rpg, 'def') >= armorDefReq(item);
+  }
   /* v2.3.2125: every slot — see the note on isIronGear.  v2.3.2124 exempted
      the defence-gated slots only; the owner then asked for the weapons too
      ("Allow iron weapons to be equipped at any level"). */
@@ -469,6 +500,14 @@ export function canEquipItem(rpg, item, slotType) {
 }
 export function getEquipReqLabel(item, slotType, rpg) {
   var _item$gearBase3;
+  /* v2.3.2664: an armour-ladder piece's badge reads the gate's own number
+     (armorDefReq) — and says nothing at all for copper and iron. */
+  if (slotType === 'armor' && isArmourLadderPiece(item)) {
+    var areq = armorDefReq(item);
+    if (!(areq > 0)) return null;
+    var ahave = rpg && prog3Live(rpg) ? prog3Pts(rpg, 'def') : 0;
+    return { stat: 'defensePts', req: areq, label: 'Defense', have: ahave, met: !(rpg && prog3Live(rpg)) || ahave >= areq, prog3: true };
+  }
   if (!item || !item.gearBase) return null;
   /* v2.3.2132: iron is free in every slot (v2.3.2124/2125, owner) and
      canEquipItem returns true for it before looking at anything else.  A
@@ -4934,31 +4973,67 @@ export function getArmorHp(armor, vitality) {
    Display-only: the server settles every hit. */
 export const ARMOR_DR = {
   MAX: 0.75,
+  /* v2.3.2664: a five-tier ladder on armour's own whole-step scale (copper
+     1.0, iron 2.0, ...): +7.5 % chest / +5 % legs per tier — set 44 / 53.1 /
+     61.5 / 69.1 / 75 %.  Each piece's grade RAISES the ceiling by LIFT (a
+     full set: 75 % normal, 80 % rare, 85 % elite, 95 % godly) and a piece
+     alone stops at MAX + its own lift.  Server: combat.js _armorDrMult;
+     LIFT <-> data.js QUALITY_GRADES[*].armorLift (mirror-audit). */
+  chest: { base: 0.30, perTier: 0.075 },
+  legs: { base: 0.20, perTier: 0.05 },
+  LIFT: { normal: 0, rare: 0.025, elite: 0.05, godly: 0.10 },
+};
+/* The retired steps, for a worker without caps.gearq (rule 19). */
+export const ARMOR_DR_LEGACY = {
+  MAX: 0.75,
   chest: { base: 0.30, perTier: 0.05 },
   legs: { base: 0.20, perTier: 0.035 },
 };
 
 /* One worn piece's own reduction, before stacking (for per-item cards). */
 export function getArmorPieceDr(item, slot) {
-  var cfg = ARMOR_DR[slot];
+  var cfg = (_gearQ ? ARMOR_DR : ARMOR_DR_LEGACY)[slot];
   if (!item || !cfg) return 0;
   /* v2.3.1925: quality multiplies the TIER, mirroring the server's
      _armorDrMult exactly — see the long note there for why it cannot
      multiply the reduction instead.  This pair has to agree to the digit:
      the server's number is what damage is actually computed with, and this
      one is what the item card promises. */
-  var q = QUALITY_MULTS[item.quality] || 1;
+  var qm = _gearQ ? QUALITY_MULTS : QUALITY_MULTS_LEGACY;
+  var q = Object.prototype.hasOwnProperty.call(qm, _armorGrade(item)) ? qm[_armorGrade(item)] : 1;
   var tm = Math.max(0, Math.min(8, (Number(item.tierMult) || 1) * q));
-  return cfg.base + cfg.perTier * (tm - 1);
+  var v = cfg.base + cfg.perTier * (tm - 1);
+  return _gearQ ? Math.min(ARMOR_DR.MAX + _armorLift(item), v) : v;
+}
+/* v2.3.2664: how far one piece's grade raises the ceiling (server mirror:
+   QUALITY_GRADES[*].armorLift).  hasOwnProperty so '__proto__' reads 0. */
+function _armorLift(item) {
+  var q = _armorGrade(item);
+  return Object.prototype.hasOwnProperty.call(ARMOR_DR.LIFT, q) ? ARMOR_DR.LIFT[q] : 0;
+}
+/* v2.3.2664: the grade an armour piece is COUNTED at.  Godly needs proof on a
+   caps.gearq worker: a piece the server did not mint (`prov` !== 'minted',
+   the legacy lane — gear-provenance.md) counts as elite, exactly as
+   combat.js _armorDrMult counts it.  Against an older worker the grade is
+   read as-is, because that worker does too. */
+function _armorGrade(item) {
+  var q = item && item.quality;
+  if (_gearQ && q === 'godly' && item.prov !== 'minted') return 'elite';
+  return q;
 }
 
-/* Total incoming-damage reduction from worn armor, 0..0.75. */
+/* Total incoming-damage reduction from worn armor, 0..0.75 (v2.3.2664: the
+   grade of each worn piece raises that ceiling, up to 0.95 for a godly set,
+   on a caps.gearq worker). */
 export function getArmorDrPct(rpg) {
   if (!rpg) return 0;
   var chest = getArmorPieceDr(rpg.armor, 'chest');
   var legs = getArmorPieceDr(rpg.legsArmor, 'legs');
   if (chest <= 0 && legs <= 0) return 0;
-  return Math.min(ARMOR_DR.MAX, 1 - (1 - chest) * (1 - legs));
+  var max = _gearQ
+    ? ARMOR_DR.MAX + (rpg.armor ? _armorLift(rpg.armor) : 0) + (rpg.legsArmor ? _armorLift(rpg.legsArmor) : 0)
+    : ARMOR_DR_LEGACY.MAX;
+  return Math.min(max, 1 - (1 - chest) * (1 - legs));
 }
 
 /* §4.4 Weapon Damage.  Second arg accepts either:
@@ -4995,7 +5070,7 @@ export function calcWeaponDmg(weaponType, statValOrRpg, tierMult, wpn) {
      callers keep legacy math (they are legacy-path readouts). */
   var _p3 = (statValOrRpg && typeof statValOrRpg === 'object' && prog3Live(statValOrRpg)) ? statValOrRpg : null;
   var statTerm = _p3 ? prog3DmgTerm(_p3, weaponType) : statVal * 0.1667;
-  var base = (weaponEffBase(w.base, wpn) + statTerm) * tierMult; // baseline-10: 0.8 ÷ 4.8
+  var base = (weaponEffBase(w.base, wpn) + statTerm) * weaponTierFactor(tierMult) * weaponQualityMult(wpn); // baseline-10: 0.8 ÷ 4.8; v2.3.2664: tier factor + grade
   /* v2.3.1451: bench-locked banked flat when live (rpg object passed
      + worker capability); legacy accelerating flat otherwise. */
   var flat = _p3 ? 0
@@ -5017,11 +5092,38 @@ export function calcWeaponDmg(weaponType, statValOrRpg, tierMult, wpn) {
    doesn't pass the weapon computes exactly what it did before.
    NOTE: `hardness` (numeric 0-5) is NOT the legacy `hardenBonus`
    reforge affix — distinct systems, distinct fields. */
-export var QUALITY_MULTS = { normal: 1.00, rare: 1.20, elite: 1.50, godly: 3.00 };
+/* ═══ v2.3.2664: GEAR THAT MATTERS — caps.gearq ═══
+   The server (data.js QUALITY_GRADES / weaponTierFactor, combat.js) now
+   multiplies a weapon's WHOLE hit by its grade (normal 1 / rare 1.3 / elite
+   1.75 / godly 5) and its tier factor (tierMult^1.5), and makes armour a
+   five-tier ladder (+7.5 % / +5 % per whole tier) whose ceiling each piece's
+   grade raises (ARMOR_DR.LIFT).  These are the mirrors.  Against a worker without caps.gearq every reader below predicts
+   that worker's math instead — quality on the base at the old ×1.2/1.5/3,
+   tierMult straight, the old armour steps — so a readout never promises a hit
+   the connected worker will not roll (rule 19). */
+var _gearQ = false;
+export function setGearQEnabled(on) { _gearQ = !!on; }
+export function isGearQEnabled() { return _gearQ; }
+export var QUALITY_MULTS = { normal: 1.00, rare: 1.30, elite: 1.75, godly: 5.00 };
+export var QUALITY_MULTS_LEGACY = { normal: 1.00, rare: 1.20, elite: 1.50, godly: 3.00 };
+export var WEAPON_TIER_EXP = 1.5;
+/* The damage factor a weapon's tier contributes (the server's weaponTierFactor). */
+export function weaponTierFactor(tierMult) {
+  var tm = Number(tierMult) || 1;
+  if (!_gearQ) return tm;
+  return tm > 0 ? Math.pow(tm, WEAPON_TIER_EXP) : 1;
+}
+/* The grade multiplier on a weapon's whole hit (the server's weaponQualityMult). */
+export function weaponQualityMult(wpn) {
+  if (!_gearQ || !wpn) return 1;
+  return QUALITY_MULTS[wpn.quality] || 1;
+}
 export function weaponEffBase(rawBase, wpn) {
   if (!wpn) return rawBase;
   var h = typeof wpn.hardness === 'number' ? Math.max(0, Math.min(5, wpn.hardness)) : 0;
-  var q = QUALITY_MULTS[wpn.quality] || 1;
+  /* v2.3.2664: on a gear-quality worker the grade rides the whole hit
+     (weaponQualityMult), not the base; an old worker still puts it here. */
+  var q = _gearQ ? 1 : (QUALITY_MULTS_LEGACY[wpn.quality] || 1);
   return (rawBase + h * 1.0417) * q;
 }
 
@@ -5264,7 +5366,8 @@ export function calcCombatDmgRange(rpg, wpn) {
   /* v2.3.1660 (prog3): trained level × K replaces the stat term —
      the readout mirrors the server roll it predicts. */
   var base = (weaponEffBase(w.base, wpn)
-    + (prog3Live(rpg) ? prog3DmgTerm(rpg, wpn.type) : statVal * 0.1667)) * (wpn.tierMult || 1);
+    + (prog3Live(rpg) ? prog3DmgTerm(rpg, wpn.type) : statVal * 0.1667))
+    * weaponTierFactor(wpn.tierMult || 1) * weaponQualityMult(wpn); /* v2.3.2664: tier factor + grade, the roll's order */
   /* v2.3.1207: Tempo folds into the period (see header); the staff's
      +300ms cast penalty is added AFTER the mult, unscaled, matching
      the auto-attack gate. */
@@ -5421,7 +5524,7 @@ export function calcSpecialDmg(weaponType, rpg, tierMult, wpn) {
   var mind = (rpg && rpg.mind) || 0;
   var _p3s = (rpg && prog3Live(rpg)) ? rpg : null;
   var _term = _p3s ? prog3DmgTerm(_p3s, weaponType) : mind * 0.1667;
-  var base = (weaponEffBase(w.base, wpn) + _term) * (tierMult || 1); // baseline-10: 0.8 ÷ 4.8
+  var base = (weaponEffBase(w.base, wpn) + _term) * weaponTierFactor(tierMult || 1) * weaponQualityMult(wpn); // baseline-10: 0.8 ÷ 4.8; v2.3.2664
   if (weaponType === 'staff') return base * (0.5 + Math.random() * 1.15);
   if (weaponType === 'bow')   return base * (0.6 + Math.random() * 0.2);
   return base * (0.75 + Math.random() * 0.5);
@@ -5605,9 +5708,12 @@ export function recalcDerived(rpg) {
     /* v2.3.1733: × the milestone multiplier (Second Wind, char 10, +25%) —
        exact mirror of the server's _prog3Recompute line.  Without it the
        bar would read 100 while the worker spent from 125 and every echo
-       would snap it, which is the drift the mirror rule exists to stop. */
+       would snap it, which is the drift the mirror rule exists to stop.
+       v2.3.2662: the ladder is gone; legacyStaminaMult is 1 against a worker
+       advertising caps.milestonesRetired and x1.25 at 10+ against an older
+       one, because that is what each of them actually settles. */
     rpg.maxStamina = Math.floor((100 + prog3Pts(rpg, 'stam') * PROG3.BODY.stam.per)
-      * staminaMilestoneMult(p3lvl));
+      * legacyStaminaMult(p3lvl));
     /* v2.3.2512: max mana is a stat now, ADDED to the Magic-level derivation
        (exact mirror of _prog3Recompute).  Gated on the caps flag so an old
        worker's pure-derivation pool is still what this predicts — its echo

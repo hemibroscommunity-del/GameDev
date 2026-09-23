@@ -22,7 +22,7 @@
  * have an anchor (docs/specs/SPECIES-PLAN.md). That is stated because an
  * exported placement rule with no runtime consumer is EXACTLY the shape of
  * traitCategories.js, which advertises 'attachAt: head.eyes' to nobody and
- * cost this project a wrong cost estimate (TRAPS §90). The difference is that
+ * cost this project a wrong cost estimate (TRAPS §96). The difference is that
  * this file has a consumer that runs, and the review sheets in the PR were
  * drawn through it. If you are reading it and the painter still does not
  * import it, treat that as the work being unfinished, not as a registry to

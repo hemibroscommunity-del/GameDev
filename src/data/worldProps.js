@@ -430,7 +430,198 @@ export const WORLD_PROPS = [
     action: 'bank', label: 'BANK',
   },
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     v2.3.2651: FROST RIDGE DECOR — the first props outside town
+     ═══════════════════════════════════════════════════════════════════════
+     Six free-standing masses, commissioned and measured under
+     docs/ART-ASSET-PHASES.md.  They exist to be WALKED BEHIND: dynamic
+     occlusion shipped at v2.3.2633 (depthSort.js) and until now the only
+     things in the world that could occlude anybody were nine town buildings,
+     so nine-tenths of the game got nothing out of it.
+
+     ── WHY THESE SIZES LOOK SMALL ──
+     A pine here is 160 world px against a 120 world px person, and that is
+     not a mistake.  frost_v5.webp's OWN near-field pines measure 95-115 world
+     px with a world-pixel ruler on the art, so in this game's paintings a
+     tree is about as tall as a person.  The first pass sized these 280-320 --
+     physically right for a pine -- and rendered at ~3x the scale of every
+     baked tree in the same frame.  Verified by LOOKING (the props drawn onto
+     the live art at world scale beside a player figure), which is the method
+     the town respread used at v2.3.2628 and the only one that catches this.
+
+     ── POSITIONS ──
+     Chosen off the walk mask and the painting together, in world px, with
+     three fixed points kept clear: the nw-entry arrival at (864, 768), the
+     return portal on the bottom-edge row below it, and the painted dirt path
+     that runs roughly x 540-660 through the y 500-800 band.  Each prop sits
+     BESIDE that path rather than on it -- the point is to walk past and
+     behind them, and a prop in the road is just a wall.
+
+     EVERY ONE OF THESE BLOCKS, because blockW/blockD is what makes a prop
+     solid (v2.3.2073, and stampPropFootprints stamps them onto frost's real
+     mask exactly as it does town's).  Footprints were checked against each
+     other and against the two portal points; none overlaps. */
+  {
+    id: 'frost-pine-pair', zone: 'frost', sprite: '/sprites/props/frost-pine-pair.png',
+    x: 360, y: 700, worldH: 160, blockW: 119, blockD: 56,
+  },
+  {
+    /* The west snow/grass edge, mirroring the pine pair across the field. */
+    id: 'frost-pine-ridge', zone: 'frost', sprite: '/sprites/props/frost-pine-ridge.png',
+    x: 270, y: 380, worldH: 150, blockW: 118, blockD: 53,
+  },
+  {
+    /* Wide and low, laid across the snow/grass transition. 253 across, so it
+       is the one piece here big enough to hide a walking figure outright --
+       which is why it sits mid-map where the player crosses rather than in a
+       corner. Its east edge stops at x 531, just short of the path. */
+    id: 'frost-rock-ridge', zone: 'frost', sprite: '/sprites/props/frost-rock-ridge.png',
+    x: 430, y: 570, worldH: 120, blockW: 202, blockD: 42,
+  },
+  {
+    id: 'frost-rock-mound', zone: 'frost', sprite: '/sprites/props/frost-rock-mound.png',
+    x: 800, y: 470, worldH: 130, blockW: 119, blockD: 46,
+  },
+  {
+    /* Up on the ice flat, where the ice crystals in the art belong. */
+    id: 'frost-ice-mound', zone: 'frost', sprite: '/sprites/props/frost-ice-mound.png',
+    x: 600, y: 260, worldH: 100, blockW: 114, blockD: 35,
+  },
+  {
+    /* Small, on the south grass the player crosses on arrival -- near enough
+       to read on the first screen, far enough (170px) not to crowd the
+       arrival point. */
+    id: 'frost-snow-shrubs', zone: 'frost', sprite: '/sprites/props/frost-snow-shrubs.png',
+    x: 700, y: 830, worldH: 80, blockW: 75, blockD: 28,
+  },
+
 ];
+
+/* ═══ v2.3.2651: WHICH PROPS RIDE THE STARTUP GATE, AND WHICH DO NOT ═══
+ *
+ * Until frost got decor, every prop was a town prop and `propSpriteSources()`
+ * could hand the whole table to the intro gate without anybody noticing. That
+ * stops being true the moment a second zone has art: twelve zones' worth of
+ * decor on the pre-game gate is ~2.4MB of fetch and, far worse, tens of MB of
+ * decoded RGBA resident for the life of the page for art you can only see in
+ * one zone. That is precisely the iPhone RAM regression the ZONE-ASSET
+ * EXCEPTION in CLAUDE.md was written for (v2.3.1405), and the leak half of it
+ * that v2.3.2272 had to go back and fix.
+ *
+ * So the split is DERIVED rather than flagged per prop. A flag is a thing to
+ * forget; residency is a property of the ZONE, and these two are the same
+ * hubs `freeZoneMap` already refuses to unload (tiledMaps.js) -- town because
+ * you are always one step from it, worldview because it is the junction every
+ * spoke hangs off. Anything else is somewhere you visit.
+ */
+const RESIDENT_ZONES = new Set(['town', 'worldview']);
+
+/** Is this prop's art global (rides the intro gate) or per-zone? */
+function propIsResident(p) {
+  return !!p && RESIDENT_ZONES.has(p.zone);
+}
+
+/** The decor sprites for ONE zone — loaded by `preloadZoneAssets` behind the
+ *  per-zone overlay and released by `freeZoneAssets` on the way out.
+ *  Empty for the resident hubs, whose props are on the global manifest. */
+export function zoneDecorSources(zoneId) {
+  if (!zoneId || RESIDENT_ZONES.has(zoneId)) return [];
+  return [...new Set([
+    ...WORLD_PROPS.filter((p) => p.zone === zoneId && propIsPlaced(p) && !propIsResident(p))
+      .map((p) => p.sprite),
+    /* v2.3.2655: the foreground pieces ride the SAME per-zone list.  They are
+       the same kind of thing -- a transparent PNG that means nothing outside
+       one zone -- so giving them a second loader and a second free path would
+       be two things to keep in step for no gain, and the day one of them is
+       forgotten is the day a zone leaks a texture. */
+    ...foregroundForZone(zoneId).map((f) => f.sprite),
+  ].filter(Boolean))];
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v2.3.2655: THE NEAR-CAMERA FOREGROUND
+   ═══════════════════════════════════════════════════════════════════════════
+   DEPTH-ROADMAP item 5.  Until now an EDGE-CROPPED asset -- a canopy whose
+   branches run off its own canvas, a mountain shoulder cut at the bottom --
+   could not be drawn by anything in this game.  `depthSort.js` places every
+   world object by its ground-contact line, and a cropped piece has none;
+   three of the first four assets ever commissioned for BroTown were held for
+   want of this table (docs/ART-ASSET-PHASES.md §3).
+
+   ── WHY THESE ARE NOT PROPS ──
+   A prop is a thing standing IN the world: it sorts by where it touches the
+   ground, it blocks your feet, and since v2.3.2652 it stops a shot.  A
+   foreground piece is none of those.  It is between the camera and the world,
+   it touches nothing, and it must never block or occlude for gameplay
+   purposes -- you cannot take cover behind a branch that is hanging in front
+   of the lens.  Sharing the WORLD_PROPS table would mean a `foreground: true`
+   flag that half the prop code then has to remember to skip, which is how a
+   canopy ends up with a collision box.  A separate table cannot make that
+   mistake.
+
+   ── ANCHORED AT THE CENTRE, ON PURPOSE ──
+   Props anchor bottom-centre because their bottom edge IS their ground line.
+   These have no ground line, so the centre is the only honest anchor: the
+   piece is placed where its mass should sit and the crop falls where it
+   falls.
+
+   ── THE PLACEMENT RULE, LEARNED THE HARD WAY ──
+   EVERY PRE-CUT EDGE OF THE ART MUST LIE OUTSIDE THE MAP.  These assets are
+   already cropped in the source, so a cut that lands inside the playfield
+   draws as a hard straight seam -- the pasted-rectangle look this table
+   exists to avoid.  It is not enough to be "near an edge": a piece cut across
+   its bottom needs its bottom edge past y = mapH, not merely low down.
+
+   In a 32x32 zone the camera NEVER SCROLLS VERTICALLY -- the view is 1024
+   world px tall against a 1024px map (worldViewport's per-zone floor,
+   v2.3.2247) -- so the top and bottom of the view are always the top and
+   bottom of the map.  A bottom-cut piece therefore has exactly one home: a
+   bottom corner.  Horizontally the camera does scroll, so a side cut only
+   has to clear the map edge.
+
+   `flipX` earns its keep here more than anywhere: a piece cropped on its LEFT
+   becomes a piece cropped on its RIGHT for free, so one canopy frames both
+   sides of a map.  ART-ASSET-PHASES §4 says to ask for one good asset rather
+   than a handed pair; this is where that pays.
+*/
+export const ZONE_FOREGROUND = {
+  frost: [
+    {
+      /* Cropped on its LEFT only (22% of that edge is ink); the other three
+         edges are the art's own foliage, so only that one has to hide.
+         MIRRORED, which turns the left cut into a right cut and lets the east
+         edge carry it -- the flip earning its keep exactly as advertised. */
+      id: 'fg-canopy-e', sprite: '/sprites/props/frost-pine-canopy-a.png',
+      x: 990, y: 620, worldH: 260, flipX: true,
+    },
+    {
+      /* Cropped bottom AND left (67% / 43%).  The south-west corner is the
+         only placement that puts both cuts off the map at once. */
+      id: 'fg-canopy-sw', sprite: '/sprites/props/frost-pine-canopy-b.png',
+      x: 90, y: 980, worldH: 260,
+    },
+    {
+      /* Cut clean across its whole bottom edge (100%) and up its left (73%),
+         so it needs a BOTTOM corner -- mirrored, the south-east one: a crag
+         mass rising into frame from the lower right.
+         The first placement put it in the NORTH-east, where the content
+         matched frost's own ice cliffs beautifully and the bottom cut landed
+         at y 370 -- a hard horizontal seam straight across the map, which is
+         precisely the pasted-rectangle look this table exists to prevent.
+         A screenshot caught it. All four assertions covering this piece
+         passed while it was broken, because "is it drawn, on the right layer,
+         at the right size" cannot see a seam. */
+      id: 'fg-peak-se', sprite: '/sprites/props/frost-peak-corner.png',
+      x: 950, y: 960, worldH: 260, flipX: true,
+    },
+  ],
+};
+
+/** The near-camera pieces for a zone, or an empty list. */
+export function foregroundForZone(zoneId) {
+  if (!zoneId) return [];
+  return (Object.prototype.hasOwnProperty.call(ZONE_FOREGROUND, zoneId) && ZONE_FOREGROUND[zoneId]) || [];
+}
 
 /** The footprint a prop blocks, or null when it is scenery you walk past.
  *  Returned as world-pixel bounds from the prop's bottom-centre anchor. */
@@ -499,21 +690,34 @@ export function propsForZone(zoneId) {
   return WORLD_PROPS.filter((p) => p.zone === zoneId && propIsPlaced(p));
 }
 
-/** Every distinct prop sprite — the preload manifest's source list. */
+/** Every distinct GLOBAL prop sprite — the preload manifest's source list. */
 export function propSpriteSources() {
   /* v2.3.2061: only the props that can actually be DRAWN. The four v16
      buildings are held back until someone re-measures them (propIsPlaced), and
      preloading ~1MB of art for objects no zone will ask for is a cost paid on
      the startup gate -- the one place in this game where bytes are most
      expensive. They come back with their positions, in the same change. */
-  return [...new Set(WORLD_PROPS.filter(propIsPlaced).map((p) => p.sprite).filter(Boolean))];
+  /* v2.3.2651: ...and for the same reason, only the RESIDENT zones' props.
+     Zone decor loads per-zone through zoneDecorSources() -- see the note above
+     RESIDENT_ZONES. Filtering here rather than at the call site because this
+     function IS the gate's definition of "prop art", and a second caller that
+     forgot the filter would put the whole world back on the startup peak. */
+  return [...new Set(
+    WORLD_PROPS.filter((p) => propIsPlaced(p) && propIsResident(p))
+      .map((p) => p.sprite).filter(Boolean),
+  )];
 }
 
 /** Props that are ANIMATED — `{id, sprite, frames}` — for the strip slicer.
  *  Separate from propSpriteSources because the loader needs the frame count
  *  to cut the strip, and the manifest only needs the url. */
+/* v2.3.2651: resident-only, matching propSpriteSources. This slicer runs once,
+   behind the intro gate, off textures the gate loaded -- so an ANIMATED prop in
+   a per-zone table would find nothing in the registry and silently render as a
+   still. No such prop exists today (frost's six are all stills). Adding one
+   means slicing it in the per-zone loader, not relaxing this filter. */
 export function propAnimStrips() {
-  return WORLD_PROPS.filter((p) => propIsPlaced(p) && p.anim && p.anim.frames > 1)
+  return WORLD_PROPS.filter((p) => propIsPlaced(p) && propIsResident(p) && p.anim && p.anim.frames > 1)
     .map((p) => ({ id: p.id, sprite: p.sprite, frames: p.anim.frames }));
 }
 
@@ -523,3 +727,144 @@ export function propAnimStrips() {
    outside, and a scenario that treated the two the same would either fail
    every run while they are off or pass silently once they come back. */
 if (typeof window !== 'undefined') window.__btTownPropsEnabled = () => TOWN_PROPS_ENABLED;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v2.3.2652: A PROP STOPS AN ATTACK, NOT JUST A FOOT
+   ═══════════════════════════════════════════════════════════════════════════
+   Owner: "I would like it if these props could block my and enemy attacks."
+
+   Props have blocked MOVEMENT since v2.3.2073 and blocked SIGHT since
+   v2.3.2633 (you pass behind them).  The one thing they did not do is stop a
+   shot, so a rock you were visibly hiding behind was cover in every sense
+   except the one that matters in a fight.
+
+   ── THE BLOCKER IS THE FOOTPRINT, NOT THE PAINTING ──
+   `propFootprint` is the same box that stops you walking, and reusing it is
+   the whole design rather than a shortcut.  A second, taller "attack box"
+   would mean the rock you cannot walk through and the rock arrows cannot
+   cross are different rocks, and no player would be able to tell where either
+   one ends.  One box, one rule: **if you could not walk that line, a shot
+   cannot fly it.**
+
+   It also means a prop with no footprint -- the anvil, the market stall,
+   scenery you stroll past -- blocks nothing, which is correct: you can
+   already walk through it.
+
+   ── WHY AN ENDPOINT INSIDE A BLOCKER DOES NOT BLOCK ──
+   Monsters do not collide with props (the worker has no walkability of any
+   kind), so a snowman can and does stand inside the rock ridge.  If "inside"
+   counted as blocked he would be permanently unable to attack and the player
+   permanently unable to answer -- a monster in a rock would be an invincible
+   turret.  Standing in it is treated as standing next to it.
+
+   ── BOTH SIDES RUN THIS, AND THAT IS DELIBERATE ──
+   The client gates the shots it CLAIMS (projectiles.js: a ranged hit is
+   decided entirely client-side and the worker only clamps range/arc) and the
+   worker gates the damage it APPLIES (monster->player, and the player's claim
+   against a monster).  Either half alone is safe to deploy: an old worker
+   with a new client just takes the client's word as before, and a new worker
+   with an old client simply refuses a hit the client predicted -- which is
+   the ordinary prediction miss `monster_hit` already exists to correct.  No
+   caps gate needed, and that is worth saying out loud because the reflex in
+   this repo is to add one.
+
+   The worker's copy is server/src/props.js; server/test/mirror-audit.test.mjs
+   asserts the two tables agree, so this cannot drift silently. */
+
+/** Where the segment (x0,y0)->(x1,y1) ENTERS the axis-aligned box `b`, as the
+ *  parameter t in [0,1], or -1 if it never does.  Slab method.
+ *  The entry parameter rather than a bare boolean because a projectile has to
+ *  stop AT the rock: planting it at the frame's end point would bury it inside
+ *  (an arrow steps up to 48px a frame), and planting at the frame's start
+ *  would leave it hanging short. */
+function segEnterT(x0, y0, x1, y1, b) {
+  const dx = x1 - x0, dy = y1 - y0;
+  let t0 = 0, t1 = 1;
+  /* Each axis narrows the surviving span of t. A zero component means the
+     segment is parallel to that pair of edges: it can only cross if it
+     already lies between them. */
+  const axes = [[dx, x0, b.x0, b.x1], [dy, y0, b.y0, b.y1]];
+  for (let i = 0; i < 2; i++) {
+    const d = axes[i][0], p = axes[i][1], lo = axes[i][2], hi = axes[i][3];
+    if (d === 0) { if (p < lo || p > hi) return -1; continue; }
+    let a = (lo - p) / d, c = (hi - p) / d;
+    if (a > c) { const s = a; a = c; c = s; }
+    if (a > t0) t0 = a;
+    if (c < t1) t1 = c;
+    if (t0 > t1) return -1;
+  }
+  return t0;
+}
+
+/** Is a point inside a blocker box? */
+function pointInBox(x, y, b) {
+  return x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1;
+}
+
+/* ═══ v2.3.2652: THE BLOCKER SET IS BUILT ONCE PER ZONE, NOT PER CALL ═══
+   attackBlockPoint runs PER ARROW PER FRAME (projectiles.js), and the first
+   cut of this rebuilt the list on every one of those calls -- a fresh array
+   plus one object per prop, ten arrows in flight, sixty times a second.  That
+   is precisely the per-frame garbage projectiles.js's own header warns about
+   ("an allocation here is the kind of per-frame garbage v2.3.2331 spent a
+   version removing"), and it showed up exactly where you would expect: in
+   mp-hitsweep, whose losses are a FRAME-CLOCK race at the 48px step, the
+   registered count fell from ~149/150 to 142-148 with no shot anywhere near a
+   prop.  Longer frames -> bigger steps -> more shots sampled either side of
+   the hitbox.
+
+   WORLD_PROPS is a static table, so one build per zone is all that is ever
+   needed.  Object.create(null) because the key is a zone id (CLAUDE.md
+   rule 4). */
+const _blockerCache = Object.create(null);
+
+/** Every blocking footprint in a zone — the LOS obstacle set.
+ *  The returned array is SHARED and must not be mutated by callers. */
+export function zoneBlockers(zoneId) {
+  if (!zoneId) return [];
+  const hit = Object.prototype.hasOwnProperty.call(_blockerCache, zoneId) ? _blockerCache[zoneId] : null;
+  if (hit) return hit;
+  const out = [];
+  for (const p of propsForZone(zoneId)) {
+    const f = propFootprint(p);
+    if (f) out.push(f);
+  }
+  _blockerCache[zoneId] = out;
+  return out;
+}
+
+/** Where a shot along (x0,y0)->(x1,y1) MEETS the first prop in its way, or
+ *  null if the line is clear.  Both points are GROUND points — a character's
+ *  feet, a monster's base — the same coordinates movement and depth sorting
+ *  already use, so a projectile drawn at bow-grip height has to be converted
+ *  down before it is asked (see projectiles.js).
+ *  The NEAREST blocker wins: with two props on one line an arrow must stop at
+ *  the first, not the furthest. */
+export function attackBlockPoint(zoneId, x0, y0, x1, y1) {
+  if (!Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(x1) || !Number.isFinite(y1)) return null;
+  const boxes = zoneBlockers(zoneId);
+  let best = -1;
+  for (let i = 0; i < boxes.length; i++) {
+    const b = boxes[i];
+    /* An endpoint inside the box is "at" the prop, not behind it. */
+    if (pointInBox(x0, y0, b) || pointInBox(x1, y1, b)) continue;
+    const t = segEnterT(x0, y0, x1, y1, b);
+    if (t >= 0 && (best < 0 || t < best)) best = t;
+  }
+  if (best < 0) return null;
+  return { x: x0 + (x1 - x0) * best, y: y0 + (y1 - y0) * best, t: best };
+}
+
+/** Does a prop stand between these two ground points? */
+export function attackBlocked(zoneId, x0, y0, x1, y1) {
+  return !!attackBlockPoint(zoneId, x0, y0, x1, y1);
+}
+
+/* Dev probe, house style: the blocker set a scenario is reasoning about, and
+   a direct answer for one line. A test that recomputed the geometry itself
+   would be asserting its own arithmetic rather than the game's. */
+if (typeof window !== 'undefined') {
+  window.__btBlockers = (z) => zoneBlockers(z);
+  window.__btAttackBlocked = (z, x0, y0, x1, y1) => attackBlocked(z, x0, y0, x1, y1);
+  window.__btBlockPoint = (z, x0, y0, x1, y1) => attackBlockPoint(z, x0, y0, x1, y1);
+}

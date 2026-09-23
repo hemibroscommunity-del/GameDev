@@ -49,7 +49,7 @@ inspect card and every remote player — it is keyed
 
 - `node tools/skin_clip.mjs` — Alien Cyan clips 0.38% of skin pixels against
   Alabaster's shipping 11.81%. The raw reference value would have clipped
-  13.40%, i.e. worse than anything in the list; see TRAPS §89 for why the
+  13.40%, i.e. worse than anything in the list; see TRAPS §95 for why the
   measurement off the art is not the catalog target.
 - `QA_WS=ws://127.0.0.1:8787 node tools/qa/qa-skin-tone.mjs` — real client,
   real worker, creator + town for each tone.
@@ -177,7 +177,7 @@ measured 51px wide where the art says 43.
 
 **The contact sheet did not catch it.** 4px on a 96px review cell reads as
 "about right", and it was accepted. What caught it was hand-reading the sheet as
-ASCII in 256-space and counting columns. That is the second lesson of TRAPS §92:
+ASCII in 256-space and counting columns. That is the second lesson of TRAPS §98:
 a review has to be as precise as the thing being reviewed.
 
 **The fix decoupled the two measurements**, because they need different
@@ -307,7 +307,7 @@ so the outline stays one clean pixel); hit-southwest 0-1 — the bowed head's
 human ear covered, 2-5 and every jog-southwest frame — ears set to stand's
 overlap (far ear 1px, near ear 15px incl. its fur patch); hit-north/-northeast — the turned head shows
 the human ear mid-head (covered), and on north 3-4 / northeast 3-5 body-tops is
-the raised FIST (see TRAPS §94) so those frames carry a `crown` override;
+the raised FIST (see TRAPS §100) so those frames carry a `crown` override;
 pickup and jog-south — the eyes sit 2-13px lower against the crown than at
 stand, so the muzzle drops per frame by the eyeMask measurement; every south,
 north and northeast jog/pickup/fish/mine frame — each ear is moved so it

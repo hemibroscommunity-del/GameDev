@@ -103,12 +103,12 @@ def body_frame(pose, d, f):
     """the raw body frame, upscaled to 256-space the way the game draws it"""
     sheet = Image.open(BODY.format(pose=pose, dir=d)).convert('RGBA')
     fw = sheet.height
-    # TRAPS §93: a strip is not always a row of SQUARE frames (sword-east is
+    # TRAPS §99: a strip is not always a row of SQUARE frames (sword-east is
     # 402x246).  Every sheet a species piece rides is; refuse one that is not
     # rather than silently measure a window straddling two figures.
     if sheet.width % fw or f >= sheet.width // fw:
         raise SystemExit(f'{pose}-{d}: {sheet.width}x{fw} is not a row of square frames '
-                         f'(or frame {f} is past its end) -- see docs/TRAPS.md §93')
+                         f'(or frame {f} is past its end) -- see docs/TRAPS.md §99')
     return np.array(sheet.crop((f * fw, 0, (f + 1) * fw, fw))
                     .resize((FRAME, FRAME), Image.NEAREST)).astype(int)
 

@@ -83,7 +83,7 @@ for (const base of Object.keys(A).sort()) {
   const { width: w, height: h, data } = decode(fs.readFileSync(file));
   /* v2.3.2646: the record carries its own frame size, so the cell sampler works
      in the sheet's native space instead of assuming 256-square. That assumption
-     is what put the sword-east ear alone in empty black (TRAPS §93). */
+     is what put the sword-east ear alone in empty black (TRAPS §99). */
   const rec = A[base];
   const tuples = rec.frames || rec;
   const fw = rec.fw || 256, fh = rec.fh || 256;

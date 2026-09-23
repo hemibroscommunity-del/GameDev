@@ -34,6 +34,7 @@ import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
   BLACKSMITH_TIERS, WOODWORKING_TIERS, SKILL_GUILDS, GUILD_QUESTS,
   QUALITY_MULTS, RARITY_TIERS,
+  ARMOR_DR, /* v2.3.2664: the armour grades' ceiling lifts */
   DAMAGE_CHANNEL_FLAT, WEAPON_CHANNELS, T2_UNITS as CLIENT_T2_UNITS,
   GEM_CUT_TIERS, WEAPON_TYPES,
   /* v2.3.1451: bench-locked T2 mirrors */
@@ -50,6 +51,9 @@ import {
      DIFFERENT roads — the worker by tier index, the client by statReq/2 — so
      they can drift without either looking wrong on its own. */
   canEquipItem as clientCanEquip,
+  /* v2.3.2664: the armour ladder's Defense requirement, both halves. */
+  armorDefReq as clientArmorDefReq, isArmourLadderPiece as clientIsArmourLadderPiece,
+  ARMOR_FREE_TIERS as CLIENT_ARMOR_FREE_TIERS, ARMOR_DEF_REQ_PER_TIER as CLIENT_ARMOR_DEF_REQ_PER_TIER,
 } from '../../src/data/gameSystems.js';
 /* The client's prog3 gate is DORMANT until the worker advertises caps.prog3
    (deploy-order safety, prog3.js `_enabled`) — without this the comparison
@@ -58,6 +62,12 @@ import {
    were. */
 import { setProg3Enabled, setProg3XEnabled, setProg3SharedEnabled, prog3CritPct, prog3CritMult, prog3CritFlat, PROG3_LEGACY_ATK } from '../../src/data/prog3.js'; /* v2.3.2218; v2.3.2592 */
 import { createGatherNode as clientGatherNode, WOODCUTTING_TIERS as CLIENT_WOOD_TIERS } from '../../src/data/lifeSkills.js';
+/* v2.3.2652: prop blockers — the worker's first piece of world geometry. */
+import { ZONE_PROPS as SRV_ZONE_PROPS, attackBlocked as srvAttackBlocked } from '../src/props.js';
+import {
+  WORLD_PROPS as CLIENT_WORLD_PROPS, propsForZone as clientPropsForZone,
+  propFootprint as clientPropFootprint, attackBlocked as clientAttackBlocked,
+} from '../../src/data/worldProps.js';
 import { FISHING_TIERS } from '../../src/data/lifeSkills.js';
 import { AMULET_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP, GEM_DROP_RATES, GEM_EXTRACT_BASE_COST } from '../../src/data/items.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../src/data/monsterVariants.js';
@@ -218,6 +228,15 @@ tierMirror('WOODWORKING', SRV.WOODWORKING_TIERS, WOODWORKING_TIERS);
 {
   const bad = Object.entries(SRV.QUALITY_GRADES).filter(([k, v]) => QUALITY_MULTS[k] !== v.mult).map(([k]) => k);
   check('QUALITY_GRADES <-> QUALITY_MULTS', bad.length === 0, bad);
+}
+{
+  /* v2.3.2664: how far one piece of each grade raises armour's 75 % ceiling.
+     combat.js _armorDrMult reads it off QUALITY_GRADES; the item cards and the
+     Hero pane read ARMOR_DR.LIFT.  Checked both ways, so a grade added on one
+     side only fails here. */
+  const keys = new Set([...Object.keys(SRV.QUALITY_GRADES), ...Object.keys(ARMOR_DR.LIFT)]);
+  const bad = [...keys].filter((k) => !SRV.QUALITY_GRADES[k] || SRV.QUALITY_GRADES[k].armorLift !== ARMOR_DR.LIFT[k]);
+  check('QUALITY_GRADES armorLift <-> ARMOR_DR.LIFT', bad.length === 0, bad);
 }
 {
   const bad = Object.entries(SRV.AMULET_TIER_POWER).filter(([k, v]) => !AMULET_TIERS[k] || AMULET_TIERS[k].basePower !== v).map(([k]) => k);
@@ -432,7 +451,10 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     bad.length === 0, bad);
   /* The four v2.3.1734 additions by name, so a mirror that silently
      LOSES one fails here rather than quietly passing the subset check. */
-  const required = ['SPECIAL_MANA_COST', 'MANA_PER_MAGIC_LEVEL', 'BURST_MANA_COST', 'BURST_MIN_CHAR_LEVEL', 'BURST_CD_MS', 'BURST_RADIUS', 'BURST_DMG_MULT'];
+  /* v2.3.2662: BURST_MIN_CHAR_LEVEL left the list -- it was the milestone
+     ladder's rung 6 and is deleted on both sides (abilities.test.mjs pins
+     that it stays deleted). */
+  const required = ['SPECIAL_MANA_COST', 'MANA_PER_MAGIC_LEVEL', 'BURST_MANA_COST', 'BURST_CD_MS', 'BURST_RADIUS', 'BURST_DMG_MULT'];
   const missing = required.filter((k) => !(k in cli) || !(k in srv));
   check('the mana-rework / Element Burst constants exist on BOTH sides', missing.length === 0, missing);
 
@@ -575,6 +597,50 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const lvl1 = { prog3: { sk: { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } }, alloc: {}, atk: {}, pool: {}, ms: {} } };
   check('copper is rung zero on the CLIENT too (owner\'s call, both sides)',
     clientCanEquip({ prog3: lvl1.prog3 }, { type: 'greatsword', gearBase: 'copper', tierMult: 1 }, 'greatsword') === true);
+
+  /* ═══ v2.3.2664: THE ARMOUR LADDER, SWEPT THE SAME WAY ═══
+     Owner: "Yeah I'll go with your defense requirements for next tiers" --
+     copper and iron free, then 5 Defense per tier.  The client never gated a
+     piece without a gearBase at all until this version, which is how an iron
+     torso was equipped, refused and eaten (v2.3.2122); so the two gates are
+     compared across every tier, grade and Defense level that matters. */
+  check('armour requirement constants mirror (free tiers, Defense per tier)',
+    SRV.ARMOR_FREE_TIERS === CLIENT_ARMOR_FREE_TIERS && SRV.ARMOR_DEF_REQ_PER_TIER === CLIENT_ARMOR_DEF_REQ_PER_TIER,
+    { srv: [SRV.ARMOR_FREE_TIERS, SRV.ARMOR_DEF_REQ_PER_TIER], cli: [CLIENT_ARMOR_FREE_TIERS, CLIENT_ARMOR_DEF_REQ_PER_TIER] });
+  const armourItems = [];
+  for (let tm = 0; tm <= 9; tm += 0.25) armourItems.push({ name: 'x', tierMult: tm, mat: 'steel' });
+  armourItems.push({ name: 'Iron Torso', tierMult: 2, mat: 'iron', slot: 'armor' });
+  armourItems.push({ name: 'Iron Torso', tierMult: 1.25, mat: 'iron' });
+  armourItems.push({ name: 'forged iron', tierMult: 8, mat: 'iron' });
+  armourItems.push({ name: 'Copper Torso', tierMult: 1, mat: 'copper', kind: 'armor' });
+  armourItems.push({ name: 'godly', tierMult: 3, mat: 'steel', quality: 'godly' });
+  armourItems.push({ name: 'no tier' });
+  armourItems.push({ name: 'nan', tierMult: 'x' });
+  armourItems.push({ gearBase: 'mythril', tierMult: 1.94 });
+  armourItems.push({ gearBase: 'iron', tierMult: 1.25 });
+  /* A WEAPON shape is checked for the ladder test only, not swept through
+     the gate below: no client screen offers a weapon for the armour slot
+     (only a hand-built equip_request can), the worker keeps its old
+     tier-table gate for it, and drops.test.mjs §8b pins that server-side. */
+  const weaponShape = { type: 'greatsword', tierMult: 4 };
+  const reqBad = [...armourItems, weaponShape].filter((it) => SRV.armorDefReq(it) !== clientArmorDefReq(it)
+    || SRV.isArmourLadderPiece(it) !== clientIsArmourLadderPiece(it));
+  check('armorDefReq / isArmourLadderPiece agree server<->client on every shape', reqBad.length === 0, reqBad.slice(0, 6));
+  const armBad = [];
+  let armRefused = 0;
+  for (let def = 0; def <= 35; def += 1) {
+    const ps = { prog3: { sk: { sword: { level: 40 }, bow: { level: 1 }, staff: { level: 1 } },
+      alloc: { def }, atk: {}, pool: {}, ms: {} } };
+    for (const item of armourItems) {
+      const srvOk = room._prog3EquipOk(ps, 'armor', item);
+      const cliOk = clientCanEquip({ prog3: ps.prog3 }, item, 'armor');
+      if (!srvOk) armRefused++;
+      if (srvOk !== cliOk) armBad.push({ def, item, server: srvOk, client: cliOk });
+    }
+  }
+  check('armour equip gate agrees server<->client across tiers 0-9 and Defense 0-35',
+    armBad.length === 0, armBad.slice(0, 6));
+  check('...and it does refuse something (guard: an always-yes gate agrees trivially)', armRefused > 0, armRefused);
 }
 
 /* ═══ 13. v2.3.1812: TELEGRAPH KINDS vs THE CLIENT'S RENDER WHITELIST ═══
@@ -1067,6 +1133,66 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     /bt-zone-header__title/.test(header) && /onPointerDown=\{holdStart\}/.test(header), {});
   check('devkit: ...and the panel is still what it opens',
     /DevPanel\.jsx/.test(header), {});
+}
+
+// ── PROP BLOCKERS: the worker's copy must match the client's ──
+/* v2.3.2652: props block attacks, which is the first rule the worker has ever
+   had that needs to know where the scenery is.  server/src/props.js is a
+   hand-copied mirror of worldProps.js for the usual reason (the worker bundle
+   imports nothing from src/), and this is the guard that stops it drifting --
+   the same treatment the spawn tables got after v2.3.1147.
+   A drifted footprint does not crash: it silently blocks a shot the client
+   claimed, or lets one through the client refused, which is invisible in play
+   and infuriating to debug. */
+{
+  const cliZones = [...new Set(CLIENT_WORLD_PROPS.map((p) => p.zone))];
+  const srvZones = Object.keys(SRV_ZONE_PROPS);
+  check('props: the worker knows about the same zones the client places props in',
+    cliZones.length === srvZones.length && cliZones.every((z) => srvZones.includes(z)),
+    { cliZones, srvZones });
+
+  for (const z of cliZones) {
+    /* The client's own filter decides what is real: propsForZone applies the
+       town mapV gate, and only props WITH a footprint block anything. Deriving
+       the expectation from the same functions the game calls is the point --
+       a list rebuilt by hand here would be a third copy to keep in sync. */
+    const want = clientPropsForZone(z).filter((p) => clientPropFootprint(p))
+      .map((p) => ({ id: p.id, x: p.x, y: p.y, blockW: p.blockW, blockD: p.blockD }))
+      .sort((a, b) => (a.id < b.id ? -1 : 1));
+    const got = (SRV_ZONE_PROPS[z] || [])
+      .map((p) => ({ id: p.id, x: p.x, y: p.y, blockW: p.blockW, blockD: p.blockD }))
+      .sort((a, b) => (a.id < b.id ? -1 : 1));
+    check(`props: ${z} blockers match the client exactly`,
+      JSON.stringify(want) === JSON.stringify(got), { want, got });
+  }
+
+  /* And the GEOMETRY agrees, not just the table. Two identical tables read by
+     two different slab tests would still disagree, and the failure mode is the
+     same invisible one. Sampled across the frost blockers rather than
+     re-deriving the maths, which would only assert the test's own arithmetic. */
+  {
+    const probes = [
+      ['frost', 430, 480, 430, 660, true],    /* straight through the rock ridge */
+      ['frost', 430, 480, 430, 520, false],   /* stops short of it */
+      ['frost', 100, 100, 200, 200, false],   /* open ice */
+      ['frost', 600, 200, 600, 320, true],    /* through the ice mound */
+      ['frost', 430, 550, 430, 700, false],   /* starts INSIDE the ridge: never blocks */
+      /* Clean through the mayor's house: its box is x 774..1228, y 416..622,
+         so both endpoints must sit OUTSIDE it or the inside-endpoint rule
+         (correctly) declines to block. */
+      ['town', 1001, 300, 1001, 700, true],
+      ['town', 1001, 500, 1001, 700, false],  /* starts inside it: never blocks */
+    ];
+    let agree = true; const disagreements = [];
+    for (const [z, x0, y0, x1, y1, expect] of probes) {
+      const srv = srvAttackBlocked(z, x0, y0, x1, y1);
+      const cli = clientAttackBlocked(z, x0, y0, x1, y1);
+      if (srv !== cli || srv !== expect) {
+        agree = false; disagreements.push({ z, x0, y0, x1, y1, expect, srv, cli });
+      }
+    }
+    check('props: client and worker resolve the same lines the same way', agree, disagreements);
+  }
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

@@ -54,6 +54,11 @@ export function portraitLook(sel) {
        draws the native art -- the picker and the preview cannot disagree
        about what is offered, because they ask the same function. */
     eyewearColor: eyewearColorTarget(sel.eyewearColor, sel.eyewearSel),
+    /* v2.3.2643: the eye STYLE, which is a different thing from eyeColor two
+       lines down -- the style is a sprite drawn over the eyes, the colour is
+       the recolour of the real ones underneath.  Both ride here because the
+       Eyes tab now offers both. */
+    eyeStyle: sel.eyeStyleSel,
     shirt: sel.shirtSel, shirtColor: shirtColorTarget(sel.shirtColorSel),
     eyeColor: sel.eyeColor,   /* v2.3.1930: the creator's own live selection */
     /* v2.3.1953: height + frame.  Passed EXPLICITLY rather than left to the
@@ -253,7 +258,8 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
   /* v2.3.1947: only the three the PREWARM needs are unpacked now; everything
      else the draw wants goes through portraitLook(sel). */
   var hairSel = sel.hairSel, facialHairSel = sel.facialHairSel,
-    headwearSel = sel.headwearSel, eyewearSel = sel.eyewearSel;   /* v2.3.2361: + eyewear */
+    headwearSel = sel.headwearSel, eyewearSel = sel.eyewearSel,   /* v2.3.2361: + eyewear */
+    eyeStyleSel = sel.eyeStyleSel;   /* v2.3.2643: + the eye style */
   if (!previewCanvasRef.current) return;
   var visible = previewCanvasRef.current;
   /* v2.3.1951: the figure is composited HERE and blitted, cropped, into the
@@ -280,7 +286,7 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
   })).then(function () {
     /* v2.3.715: warm the other 7 angles for whatever is selected NOW, so
        rotating never waits on the network. */
-    prewarmPortraitDirs({ hair: hairSel, facialHair: facialHairSel, headwear: headwearSel, eyewear: eyewearSel });
+    prewarmPortraitDirs({ hair: hairSel, facialHair: facialHairSel, headwear: headwearSel, eyewear: eyewearSel, eyeStyle: eyeStyleSel });   /* v2.3.2643: + the eye style */
     _figBounds = measureFigure(off);
     blit();
   });

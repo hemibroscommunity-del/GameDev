@@ -1,4 +1,4 @@
-# TRAPS — plausible-but-wrong moves (v2.3.2615)
+# TRAPS — plausible-but-wrong moves (v2.3.2646)
 
 A registry of changes that look obviously right and are known to be
 wrong. Each was attempted, or nearly attempted, by a competent session.
@@ -2147,6 +2147,14 @@ beside the art (white RGB, the source's alpha copied exactly, lossy WebP:
 fetched once, each silhouette once, 0.38 MB less in the `/ui/welcome` family,
 and the shimmer photographed on the lettering with the mask swapped.
 
+**The three files in the table are gone (v2.3.2458, v2.3.2642), the rule is
+not.** The splash and the trait picker each collapsed to ONE owner-supplied
+lockup with its sword drawn in, so the pairs above are now
+`title/logo-full.png` + `title/logo-full-mask.webp` and
+`title/brotown-lockup.png` + `title/brotown-lockup-mask.webp`, both cut by
+`tools/ui/fit-title-lockups.mjs` — which emits the silhouette in the same run
+as the art precisely so the next lockup cannot arrive without one.
+
 **Rule to apply next time:** when the same URL appears twice in a load, do not
 assume the browser will collapse it — check whether the two consumers are the
 same KIND of resource. `<img>` and CSS `background-image` share; a mask does
@@ -3728,7 +3736,212 @@ was green throughout and could not have seen any of this. `mp-vendorprompt.mjs`
 taps with `page.touchscreen.tap` at measured coordinates and asks
 `document.elementFromPoint` what is on the glass.
 
-## 89. A colour measured off the reference art is not the catalog target (v2.3.2642)
+## 89. A fraction of a bounding box is a guess dressed as a measurement (v2.3.2643)
+
+**Tempting:** you need to assert that a face-worn piece landed on the eye line,
+and the numbers are right there — a head is "the top 28% of the figure", the
+eyes are "40% down the head" (`resolveBodyAnchor` says so, `mp-ccshades` uses
+the same head band). So derive the window from the captured figure's bounding
+box and assert the piece's changed rows fall inside it.
+
+**Why it looks right:** both fractions are real, both are written down in the
+repo, and the check reads like a measurement rather than an eyeball.
+
+**Wrong:** those fractions describe the **256 sprite frame**. The creator's
+preview is a composite — a different crop, a devicePixelRatio scale, a baked
+ground shadow that extends the figure's bounding box below its feet — so the
+same feature sits at a different fraction of *that* box. `mp-eyestyle.mjs`
+shipped this in its first cut and failed all four eye styles against art that
+was correctly placed: it computed a window of rows 39-98 for pieces that
+correctly occupy rows 94-145. Four red assertions, nothing wrong with the
+thing under test.
+
+**The fix, and the rule:** ask the game where the eyes are instead of deriving
+it. Picking an eye **colour** repaints the iris pixels and nothing else
+(`eyeMask.json`), so the diff between two eye colours **is** the eye row — on
+that canvas, at that scale, for that character. Each style then has to cover
+it, and a piece on the forehead overlaps nothing. **If an assertion needs to
+know where a feature is, find a control that moves only that feature and diff
+it.** A percentage of a bounding box is only ever a measurement of the box.
+
+**And a third shape failed the same way.** Asked to prove the *erase* under a
+style rather than the placement of it, the next two attempts both tried to find
+"the old eye" on the face: a padded rectangle round the irises swept in the
+nose, the nose-bridge shading and the ear notches — all legitimately not-skin,
+all legitimately unchanged — and reported ~1000 remnants per style; a flood
+outward from the irises leaked through that same bridge shading into the nose
+and called 2888px "eye" on a face whose eyes are about 300. What finally worked
+measured the **art** instead of the face: a style drawn with no dark pixel in it
+turns any dark pixel left in the eye window into proof (§91).
+
+**Related:** §91 (the same probe, and the resolution it has to hold at); §67 (a
+scenario that was green throughout the defect it existed to catch). Same file
+also learned that the creator **re-frames its preview per tab**
+(`pickPreviewCat`), so two captures taken on different tabs differ by 74,801px
+of crop movement and nothing else — compare captures from the same tab, and
+assert their dimensions match before believing the diff.
+
+## 90. A sheet drawn on the real mannequin cannot go straight into the importer (v2.3.2643)
+
+**Tempting:** `import_headwear_green.py` already handles a person who is not
+green (`person_key`, v2.3.2367, from the cyan sheet) and already strips a
+figure that was drawn with an outline (`strip_figure_outline`, v2.3.2362). An
+eye-style sheet is drawn on the mannequin as generated — tan skin, black
+outline, nose and mouth present — so it has both of those properties and should
+just import.
+
+**Wrong, twice over.** `person_key` takes the modal non-backdrop colour, and on
+a sheet the generator letterboxed, the white page margin is 23% of the image
+against the skin's smaller share: the import keys on `rgb(254,254,253)` and
+dies with `could not register ANY cell`. And even keyed on the skin, the face's
+own nose, mouth and ear marks are near-black ink nowhere near the silhouette's
+edge, so `strip_figure_outline` correctly leaves them alone — and they land in
+the piece. An "eyes" sprite with a mouth baked into it draws a second mouth
+over the real one.
+
+**Why the sheet is like that, and why that is not the artist's mistake:** you
+cannot draw an eye onto a head that has no face. Every other trait can be drawn
+on a flat green silhouette because it sits *on* the figure; a facial feature
+has to be drawn *in place of* one.
+
+**The fix:** `tools/flatkey_drawn_mannequin.py` re-keys such a sheet into the
+flat-green form the importer was promised, and nothing downstream changes. Its
+test is that a pixel off **all three** base-colour segments (magenta-skin,
+magenta-ink, ink-skin) was painted by hand — segments rather than endpoints,
+because the resampling blend band lies *on* those segments, which is what lets
+the tolerance stay tight enough to keep the Sleepy style's near-black navy (63
+off the ink→skin segment, against under 12 for the widest blend).
+
+**Receipt:** `docs/specs/eyes.md` §2; the four import logs.
+
+## 91. A probe style has to be clear at BOTH resolutions (v2.3.2643)
+
+**Tempting:** you need to prove an eye style really erases the eye under it, and
+no measurement of "which pixels are the old eye" survives contact with the face
+(see §89). So use a style whose own art contains no dark pixel: while it is
+worn, any hard-dark pixel in the eye window can only be the remnant. Measure the
+art, pick the styles that qualify, assert zero.
+
+**Why it looks right:** it is right, and it is the shape that finally worked.
+Demon Eyes reads a minimum luminance of 106 against a near-black threshold of
+90, and One Eye reads **167** — brighter still, so an even better probe.
+
+**Wrong, for One Eye.** That 167 is its **128px** frame. Traits ship two copies
+— the 128 the world renders and the 256 `hi/` original the portrait prefers
+(`loadTraitBest`) — and the cyclops pupil survives the downscale as mid-grey
+while sitting at luminance **83** in the 256 art. The assertion failed with 52
+dark pixels on a face that was clean, because the surface under test was the one
+that loads the *other* file.
+
+**The rule:** **a sprite's measurable properties are per RESOLUTION, not per
+piece.** `downscale_traits.py` stashes the original in `hi/`, different surfaces
+load different ones, and any claim about a piece's pixels has to be checked
+against every frame that can reach a screen. Demon Eyes qualifies at both (106
+and 102) and is the probe `mp-eyestyle.mjs` uses; the file says so, and says why
+One Eye is not.
+
+**Related:** §89 (two earlier shapes of the same assertion, both measuring the
+face instead of the art).
+
+## 92. A landmark found in the base art does not bound a layer drawn over it (v2.3.2645)
+
+**Tempting:** you have located the character's eyes honestly — by diffing two
+eye colours, which repaints the irises and nothing else, so the changed pixels
+**are** the eyes on this canvas at this scale (that is §89's fix). Pad it a
+little and you have an "eye window". Now assert that a worn eye style's
+recolour only moves pixels inside it.
+
+**Why it looks right:** the window is measured, not guessed, and it came from
+the game's own answer rather than a fraction of a bounding box. It is the
+reference every other check in `mp-eyestyle.mjs` is built on, and those all
+pass.
+
+**Wrong, because the window describes the BODY SHEET and the thing under test
+is a sprite drawn over it.** Nothing obliges a drawn eye to sit where a painted
+one does: WTF Eyes is two *wide* eyes with the pupils out at the corners, so its
+left pupil lands 10px outside a window derived from the real irises. The
+assertion failed against a face that was perfectly clean — the same family of
+error as §89, one level up: a landmark that is exact for one layer is only a
+guess about another.
+
+**The rule:** bound a layer by **its own** footprint. The style's diff against
+the bare face is, by construction, every pixel that style can legitimately move,
+so "the recolour moved nothing the style did not draw" is both stronger than the
+window version and correct. Ask each layer about itself.
+
+**Receipt:** `tools/qa/mp/mp-eyestyle.mjs` point 4(b); `docs/specs/eyes.md` §5.
+
+## 93. A ratio retint cannot colour a near-black material, and a better reference does not save it (v2.3.2646)
+
+**Tempting:** you want a new trait to take a colour swatch. Every recolour in
+the game goes through `recolorHairToCanvas`, which divides each pixel's
+luminance by a reference and multiplies the chosen colour by the result, and
+every caller passes the sprite's own mean luminance (pooled across facings, per
+v2.3.1109). Point the new trait at it and pin which material the swatch paints,
+exactly as eyewear does.
+
+**Why it looks right:** it is the shape seven traits already use, the pooling
+bug it guards against is real, and the pinning question (frame or lens, lids or
+pupils) is the one that usually needs thought.
+
+**Wrong when the painted material is near-black,** which a pupil, an iris or a
+keyline always is. The reference decides what the swatch means — pixels *at* the
+reference come out *as* the swatch — and One Eye is 86% white, so referenced to
+the sprite (~276) its pupil (~34) renders at k = 0.12: black in every colour.
+
+**And the obvious fix is not enough.** Referencing the material's own mean
+instead (`matRef`) looks like it solves it, and this session shipped that. It
+does not: the mean is dragged up by the anti-aliased rim, so the *core* is still
+pushed below it and the *rim* is pushed above. WTF's pupil (luminance 1–8 about
+a mean of 18) stayed black; One Eye's (10–104 about a mean of 14) came out dark
+red in the middle with a rim that multiplied past 255 on all three channels and
+blew out **white**. The owner's report was "only getting recolored around a
+jagged edge not the whole pupil. Also the wtf eye pupil area isn't getting
+recolored."
+
+**The rule:** a near-black material is **replaced**, not scaled — which is the
+conclusion `eyeColorCatalog` already reached about the painted-in iris in
+v2.3.1928, and which this session quoted in a comment while doing the other
+thing. Keep the ratio pass for materials that carry real shading (Sleepy's lid,
+Demon's flame); use `flat` where the art has no luminance headroom to carry a
+colour. `matRef` still earns its place for the retinting half.
+
+**Related:** §94 (the other half of the same report — the pupil was not one
+material either).
+
+**Receipt:** `src/rendering/traits/eyeStyleColorCatalog.js`; `docs/specs/eyes.md`
+§6; the `flat` assertions in `mp-eyestyle.mjs` point 8.
+
+## 94. A part that spans two materials cannot be named by a pin (v2.3.2646)
+
+**Tempting:** `traitMaterials.MAIN_MATERIAL` pins which material a swatch
+paints, and it has answered every case since v2.3.1926 — the gold rim, the lens,
+the straw. An eye style whose art is a white eye with a pupil in it is the
+easiest call on the list: the pupil is the only non-white thing, so pin `dark`.
+
+**Why it looks right:** the decomposition agrees. One Eye reads light 86% /
+dark 10% / hue13 5%, and the 5% is small enough to look like anti-aliasing.
+
+**Wrong: the 5% is part of the pupil.** Those pixels are a dark *red*, and on
+One Eye's southwest cell **six of the nine** pupil pixels are that red rather
+than the near-black band. Pinning `dark` painted a fraction of the pupil and
+left the rest — and because a pin can only ever name one material, no choice of
+pin was going to be right.
+
+**The rule:** when the part you mean is "everything except X", say that. These
+two pieces are *the white, and everything that is not the white*, so they carry
+`spare: 'light'` and no positive pin — the negative of `main`, added to the
+shared pass for exactly this. Reach for it whenever a part is defined by what it
+is not; a percentage small enough to dismiss as anti-aliasing deserves a look at
+*which pixels* before it is dismissed.
+
+**Related:** §93 (the other half of the same report).
+
+**Receipt:** `eyeStyleColorCatalog.EYE_STYLE_PAINTS`; the "spares the white"
+assertions in `mp-eyestyle.mjs` point 8; the two pins removed from
+`MAIN_MATERIAL`, with the reason left in their place.
+
+## 95. A colour measured off the reference art is not the catalog target (v2.3.2642)
 
 **Tempting:** the owner supplies reference art for a new skin tone, you
 measure its lit skin — the alien reference reads (207,250,250) at its p90 —
@@ -3789,7 +4002,7 @@ that leaving it in moved Alabaster's aggregate from 1.4% to 35% and drowned
 every real sheet. Excluded because it is not recoloured — not because the
 number was inconvenient.
 
-## 90. Three head anchors that look load-bearing and are not (v2.3.2643)
+## 96. Three head anchors that look load-bearing and are not (v2.3.2643)
 
 **Tempting:** you need to place something on the player's head per frame — an
 ear, a marking, anything anatomical — and the repo appears to offer three ready
@@ -3878,7 +4091,7 @@ that closing the gap actually needs.
 measured from — which is why the tooling here reads PNGs through `tools/png.mjs`
 and never a 2D canvas).
 
-## 91. Coverage that came from the tier you were about to delete (v2.3.2644)
+## 97. Coverage that came from the tier you were about to delete (v2.3.2644)
 
 **Tempting:** you have a per-frame placement in confidence tiers — some
 measured, some guessed — and the headline number looks good. 703 of 823 frames.
@@ -3930,11 +4143,11 @@ at"* — and every one of the three findings here was invisible to measurement.
 
 **Receipt:** `node tools/ears/ear-anchors.mjs --report` for the tiers,
 `node tools/ears/ear-contact-sheet.mjs --cell 224 --only stand-east` for the
-profile bug. §90 has the four anchors that never worked at all.
+profile bug. §96 has the four anchors that never worked at all.
 
-## 92. A review can be too lenient to catch a 4-pixel bug (v2.3.2645)
+## 98. A review can be too lenient to catch a 4-pixel bug (v2.3.2645)
 
-**Tempting:** you built the review harness (§91), rendered the proposal onto
+**Tempting:** you built the review harness (§97), rendered the proposal onto
 every frame, looked at the sheets, found three real bugs and fixed them. The
 placement is reviewed. Ship it.
 
@@ -3983,10 +4196,10 @@ cap is 78 now, and it rejects that frame instead of placing an ear on a weapon.
 (the width *plateau* below the crown, which needs no iris and so also reached
 the back-facing sheets — coverage 417 → 660 of 712). The plateau matches a hand
 read exactly on `stand-north` and within 1px on `stand-south`.
-`node tools/ears/ear-anchors.mjs --report`; §91 has the harness, §90 the five
+`node tools/ears/ear-anchors.mjs --report`; §97 has the harness, §96 the five
 anchors that never worked.
 
-## 93. The frame is not square, and the count is only half the problem (v2.3.2645)
+## 99. The frame is not square, and the count is only half the problem (v2.3.2645)
 
 **Tempting:** you are walking a sprite strip offline and need the frame width.
 The sheets are 256×256 logical frames, and every strip in
@@ -4031,9 +4244,9 @@ worse than a gap you can see.
 **Receipt:** `node tools/ears/ear-anchors.mjs --report` now prints the excluded
 sheets by name (40 of them) and reaches 547/548 on the ones it can speak about.
 The exclusion list is written out rather than pattern-matched so it is
-auditable. §92 has the 4px bias in the same data; §91 the harness.
+auditable. §98 has the 4px bias in the same data; §97 the harness.
 
-## 94. body-tops is the topmost pixel, and on a flinch that is a fist (v2.3.2652)
+## 100. body-tops is the topmost pixel, and on a flinch that is a fist (v2.3.2652)
 
 **Tempting:** `body-tops.json` is "the crown" -- every hat, hair, beard and
 eyewear piece is pinned to it -- so when a trait lands wrong on one frame, the

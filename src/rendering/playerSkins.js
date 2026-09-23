@@ -24,7 +24,9 @@ import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteSca
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 import { recolorEnabled } from './traits/recolorOptions.js';
 import EYE_MASK from './eyeMask.json';                      /* v2.3.1928 */
+import EYE_BLANK from './eyeBlankMask.json';                /* v2.3.2643 */
 import { getEyeColor, eyeColorTarget } from './traits/eyeColorCatalog.js';
+import { getEyeStyle, onEyeStyleChange } from './traits/eyeStyleCatalog.js';   /* v2.3.2643 */
 /* v2.3.1940: drawn pants prints + skin tattoos.  Unlike the shirt (its own
    sprite, stamped in gearSheets) these live INSIDE the body sheet, because
    that is where the pants pixels and the bare skin actually are. */
@@ -67,7 +69,7 @@ import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/
    and expect a light tone to clip a fraction of a percent -- Alabaster clips
    13.74% of hit-south and has shipped that way for a long time.  The number
    worth checking for a NEW light tone is its clip share against Alabaster's,
-   not against zero.  Receipt: docs/TRAPS.md §89. */
+   not against zero.  Receipt: docs/TRAPS.md §95. */
 export const SKIN_CATALOG = [
   { id: 'default',   name: 'Default',   swatch: '#cd864b', target: null },
   { id: 'alabaster', name: 'Alabaster', swatch: '#f9ece2', target: [249, 236, 226] },
@@ -98,7 +100,7 @@ export const SKIN_CATALOG = [
      (240), rosy (242), ivory (242), porcelain (245) and alabaster (249) too.
      Hue is identical to the reference; only the level moved.
 
-     Do not "restore" the raw reference value: see docs/TRAPS.md §89, which
+     Do not "restore" the raw reference value: see docs/TRAPS.md §95, which
      also corrects this file's own k=1.10 / 231-ceiling claim above.  1.10 is
      the STAND sheets' brightest pixel; jog-south-head runs k=1.552. */
   { id: 'aliencyan',   name: 'Alien Cyan',   swatch: '#bfe7e7', target: [191, 231, 231], species: true },
@@ -325,6 +327,85 @@ function _paintEyes(d, w, h, rects, frameW) {
   }
 }
 let _eyeT = null;
+
+/* ═══ v2.3.2643: ERASE THE EYE, AND FILL IT WITH THIS PLAYER'S OWN SKIN ═══
+ *
+ * Owner, on the eye styles: "I still see some remnants around the eyes where
+ * you stickered over the old ones, can that be cleaned up with whatever skin
+ * color it is (the ones that gets changed with custom skin color choice)?"
+ *
+ * An eye style is a sprite drawn OVER the eyes painted into the body sheets,
+ * and no drawn shape covers another drawn shape exactly.  What shows round the
+ * edges is the base eye's hard black top edge and a sliver of white sclera,
+ * which reads as a second eye behind the first.  So when a style is worn the
+ * real eye is painted out first.
+ *
+ * THE FILL IS SAMPLED, NOT CHOSEN.  It is the per-channel MEDIAN of a ring of
+ * cheek and brow pixels round the box, read from THIS canvas AFTER the retint
+ * above has run -- so it is whatever the player's skin has become, including a
+ * tone added years from now, with no table to keep in step.  If too little of
+ * the ring is opaque the eye is LEFT ALONE, because a wrong fill is worse than
+ * a remnant.
+ *
+ * TWO PIXELS OUT, NOT ONE, and this is the whole difference between a clean
+ * face and a visible rectangle.  The box is tight on the eye, so the pixels
+ * immediately beside it are the eye's own ANTI-ALIASING -- black blended into
+ * skin.  Measured on stand-south: the one-pixel ring reads rgb(183,120,66) and
+ * rgb(200,136,83) with no colour appearing more than twice, while the ring two
+ * and three pixels out is flat rgb(198-199,128-131,71-73).  The first cut
+ * sampled at one pixel and filled the socket with rgb(173,114,70) against a
+ * face of rgb(199,129,72) -- which is exactly the faint darker rectangle the
+ * erase existed to remove, in a different colour.
+ *
+ * MEDIAN, not mode and not mean.  The sheets are dithered by a pixel or two, so
+ * no single triple dominates (the best count in a three-pixel ring is 8 of ~50)
+ * and a mode picks noise; a mean would be dragged dark by the head outline the
+ * ring catches on the side views, where the eye sits near the edge of the face.
+ * A median is unmoved by a minority of dark pixels and averages the dither out.
+ *
+ * The boxes come from src/rendering/eyeBlankMask.json, derived offline and
+ * reviewed as a contact sheet (tools/eyes/extract-eye-blank.mjs).  Same rule as
+ * eyeMask.json beside it: the frame loop never searches for an eye.  That file
+ * holds the WHOLE eye where eyeMask holds only the iris -- an erase and a
+ * recolour want opposite answers about the white and the brow.
+ *
+ * ALPHA IS NOT TOUCHED.  The eye's outer pixels are anti-aliased into the
+ * cheek; hardening them to opaque would draw a crisp rectangle of skin on a
+ * face that has none anywhere else. */
+function _blankEyes(d, w, h, boxes, frameW) {
+  if (!boxes) return;
+  for (let f = 0; f * frameW < w; f++) {
+    const per = boxes[f];
+    if (!per) continue;
+    const fx0 = f * frameW, fx1 = Math.min(w, (f + 1) * frameW);
+    for (const [bx, by, bw, bh] of per) {
+      const x0 = fx0 + bx, x1 = Math.min(fx1, fx0 + bx + bw);
+      const y0 = by, y1 = Math.min(h, by + bh);
+      if (x1 <= x0 || y1 <= y0) continue;
+      const R = [], G = [], B = [];
+      const sample = (x, y) => {
+        if (x < fx0 || x >= fx1 || y < 0 || y >= h) return;
+        const i = (y * w + x) * 4;
+        if (d[i + 3] < 200) return;          /* only fully opaque skin votes */
+        R.push(d[i]); G.push(d[i + 1]); B.push(d[i + 2]);
+      };
+      for (let ring = 2; ring <= 3; ring++) {
+        for (let x = x0 - ring; x < x1 + ring; x++) { sample(x, y0 - ring); sample(x, y1 + ring - 1); }
+        for (let y = y0 - ring; y < y1 + ring; y++) { sample(x0 - ring, y); sample(x1 + ring - 1, y); }
+      }
+      if (R.length < 8) continue;            /* too little face round it to be sure */
+      const mid = (a) => { a.sort((p, q) => p - q); return a[a.length >> 1]; };
+      const r = mid(R), g = mid(G), b = mid(B);
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const i = (y * w + x) * 4;
+          if (d[i + 3] < 40) continue;       /* never paint into transparency */
+          d[i] = r; d[i + 1] = g; d[i + 2] = b;
+        }
+      }
+    }
+  }
+}
 function _isPants(r, g, b, a) { return a > 180 && g >= r - 10 && g > b + 8 && r < 150; }
 
 /* Fraction of the crown->waist span at which the shirt collar sits.  Anchored
@@ -688,7 +769,7 @@ let _bakeTag = '';
    a sword swing throws the torso around far more than a jog bob, so its frames
    are all honest outliers of each other and correcting them against a median
    costs ink rather than steadying it -- measured, on sword-south-torso. */
-export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH, eyeT, eyeRects, art, frameW, steadyArt) {
+export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH, eyeT, eyeRects, art, frameW, steadyArt, eyeBlankRects) {
   const FW = (typeof frameW === 'number' && frameW > 0) ? Math.round(frameW) : FRAME_W;
   /* v2.3.1108: when the caller knows this sheet's logical frame height, restore
      a downscaled-on-disk sheet to it (nearest-neighbour, exact palette) so the
@@ -908,7 +989,16 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
   /* v2.3.1928: the iris last, so it overwrites rather than being classified.
      Its pixels are near-black and would otherwise fall through every branch
      above untouched, which is exactly why the eye needed its own mask. */
-  if (eyeT && eyeRects) { _eyeT = eyeT; _paintEyes(d, cv.width, cv.height, eyeRects, FW); }
+  if (eyeT && eyeRects && !eyeBlankRects) { _eyeT = eyeT; _paintEyes(d, cv.width, cv.height, eyeRects, FW); }
+  /* v2.3.2643: ...or erase it instead.  The two are exclusive by the `&&` above
+     rather than by draw order: recolouring an iris and then painting over it
+     is work nobody sees.
+     v2.3.2645: and the eye-colour pick is NOT lost when that happens, which is
+     what this comment used to say.  It moves: the same swatch retints the worn
+     style's own art in the trait layer above this bake (eyeStyleColorCatalog.js).
+     So the exclusion here says only that the body sheet stops carrying the
+     colour -- not that the player stopped choosing one. */
+  if (eyeBlankRects) _blankEyes(d, cv.width, cv.height, eyeBlankRects, FW);
   ctx.putImageData(imgData, 0, 0);
   /* v2.3.1962: hand the grids back on the canvas rather than through a second
      return value — `canvas.__btDir` (v2.3.1815) set the precedent, and every
@@ -1041,7 +1131,7 @@ function loadImg(url) { return loadWebpOrPng(url); }
    'loading' persists across the backoff so the base-sheet fallback
    keeps the player visible; &r=N bypasses a poisoned cache entry. */
 const _BODY_RETRY_MS = [2000, 6000];
-function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, attempt = 0) {
+function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, eyeBlank, attempt = 0) {
   art = artForFacing(art, dir);   /* v2.3.2042: the bake must match the key above */
   _bodySheets[sheetKey] = 'loading';
   /* Returns an always-resolving promise so a full preload can await it. */
@@ -1065,7 +1155,8 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
          So the line is the pose, and it is drawn here rather than inside
          stampRegion because this is the only place that knows which pose is
          being baked. */
-      eyeT, EYE_MASK[`${pose}-${dir}`], art, undefined, pose === 'jog');
+      eyeT, EYE_MASK[`${pose}-${dir}`], art, undefined, pose === 'jog',
+      eyeBlank || null);   /* v2.3.2643 */
     /* v2.3.1120: count frames at full 256-space width, then downscale the DISPLAY
        texture to 256/DISPLAY_DS px (the figure shows ~100px on a phone).  Mipmaps
        off -- renders ~1:1 post-downscale, so the mip chain is wasted VRAM. */
@@ -1120,7 +1211,7 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
     _bodySheets[sheetKey] = out;
   }).catch(() => {
     if (attempt < _BODY_RETRY_MS.length) {
-      setTimeout(() => buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, attempt + 1), _BODY_RETRY_MS[attempt]);
+      setTimeout(() => buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, eyeBlank, attempt + 1), _BODY_RETRY_MS[attempt]);
       return; /* stays 'loading' during the backoff */
     }
     _bodySheets[sheetKey] = []; /* missing -> caller falls back */
@@ -1136,10 +1227,17 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
    segment and there are five prewarm sites besides getBodyFrame; a key built by
    hand in six places is a bug waiting for the sixth to be missed, and a
    prewarmed sheet under a key nobody asks for is silently wasted work. */
-export function bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eyeKey, pose, dir, art) {
+export function bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eyeKey, pose, dir, art, eyeBlankKey) {
   art = artForFacing(art, dir);   /* v2.3.2042: see artForFacing -- key and bake must agree */
   return (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default')
     + '/' + (shirtT ? (shirtKey || 'shirt') : 'none') + '/' + (eyeKey || 'none')
+    /* v2.3.2643: the eye STYLE, and DELIBERATELY EMPTY when none is worn -- the
+       v2.3.1940 rule for the drawings: a player who wears no style keeps the
+       exact key they had before this version, so their sheets stay shared and
+       prewarmed.  It has to be in the key at all because the bake differs: a
+       blanked sheet handed to a player with no style would leave them with no
+       eyes at all. */
+    + (eyeBlankKey ? '/es:' + eyeBlankKey : '')
     + bodyArtSeg(art)
     + '|' + pose + '/' + dir;
 }
@@ -1277,6 +1375,25 @@ function eyeFor(pose, dir, eyeId) {
   const t = eyeColorTarget(eyeId);
   return t ? { id: eyeId, t } : null;
 }
+/** v2.3.2643: the whole-eye boxes to ERASE on a sheet, or null.
+ *
+ *  Its twin above, and passed in for the same v2.3.1930 reason: this bakes
+ *  REMOTE players too, so reading the style from the local store would put your
+ *  eyes on a stranger's face.  Sheets the table does not name -- the mine, fish
+ *  and hit faces, which are drawn squinting and have no white in them -- return
+ *  null and bake unchanged, which is the same set the eye COLOUR already skips
+ *  and for the same reason: there is no eye there to erase. */
+function eyeBlankFor(pose, dir, eyeStyleId) {
+  return eyeBlankForSheet(`${pose}-${dir}`, eyeStyleId);
+}
+/** The same answer, asked by SHEET NAME.  The head overlays are `jog-south-head`
+ *  rather than a (pose, dir) pair, and the blank table is keyed by sheet, so
+ *  they ask directly instead of the caller inventing a fake direction. */
+function eyeBlankForSheet(sheet, eyeStyleId) {
+  if (!eyeStyleId || eyeStyleId === 'none') return null;
+  const rects = EYE_BLANK[sheet];
+  return rects ? { id: eyeStyleId, rects } : null;
+}
 
 /* v2.3.1930: `eyeId` IS AN ARGUMENT, and v2.3.1928 was wrong to make it a
    store read.  That version reasoned that every caller would otherwise have to
@@ -1289,9 +1406,13 @@ function eyeFor(pose, dir, eyeId) {
    local player: a call site that has not been updated then loses the effect,
    which is invisible, instead of putting your eyes on a stranger's face, which
    is a bug someone would have to reproduce to understand. */
-export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shirtT, shirtKey, eyeId, art) {
+export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shirtT, shirtKey, eyeId, art, eyeStyleId) {
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   const eye = eyeFor(pose, dir, eyeId);
+  /* v2.3.2643: LAST in the list, so the two dev harnesses that call this
+     positionally with eight arguments are untouched, and PASSED IN for the
+     v2.3.1930 reason the paragraph above gives for `eyeId`. */
+  const blank = eyeBlankFor(pose, dir, eyeStyleId);
   /* v2.3.1940: `art` is the ninth thing that can make this player's body differ
      from the shipped sheet, and like the rest of them it is PASSED IN, not read
      from a store — this function draws remote players too (v2.3.1930). */
@@ -1300,10 +1421,10 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
      away rather than baking a copy identical to it. */
   const _dirArt = artForFacing(art, dir);
   const _art = bodyArtSeg(_dirArt) ? _dirArt : null;
-  if (!skinT && !pantsT && !shoesT && !shirtT && !eye && !_art) return getFrame(pose, dir, frameIdx);
-  const sheetKey = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir, _art);
+  if (!skinT && !pantsT && !shoesT && !shirtT && !eye && !_art && !blank) return getFrame(pose, dir, frameIdx);
+  const sheetKey = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir, _art, blank && blank.id);
   const entry = _bodySheets[sheetKey];
-  if (entry === undefined) { buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, _art); return getFrame(pose, dir, frameIdx); }
+  if (entry === undefined) { buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, _art, blank && blank.rects); return getFrame(pose, dir, frameIdx); }
   if (entry === 'loading' || !entry.length) return getFrame(pose, dir, frameIdx);
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
@@ -1361,7 +1482,7 @@ function _pickupHeadCap() {
     break;
   }
 }
-function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, attempt = 0) {
+function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, attempt = 0) {
   _pickupHeadSheets[key] = 'loading';
   /* v2.3.1381: bounded retry (v2.3.1305 pattern) — a flaked head-sheet
      fetch used to cache [] permanently, leaving the fullset knight
@@ -1369,7 +1490,13 @@ function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, attempt = 
      after the retries (pickup ships south-only by design). */
   const _bust = attempt > 0 ? `&r=${attempt}` : '';
   return loadImg(`/sprites/player/${pose}-${dir}-head.png?v=${SPRITE_VERSION}${_bust}`).then(img => {
-    const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, FRAME_H);
+    /* v2.3.2643: the head overlay is a FACE, so it carries the eyes too -- and
+       it is the face an ARMOURED player actually shows while jogging, because
+       the fullset figure draws its head from here rather than from the body
+       sheet.  Missing it would have left the erase working everywhere except
+       on a knight, which is the v2.3.1788 shape of omission exactly. */
+    const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, FRAME_H,
+      undefined, undefined, undefined, undefined, undefined, eyeBlank || null);
     const cv = document.createElement('canvas');
     cv.width = Math.max(1, Math.round(full.width / HEAD_DS));
     cv.height = Math.max(1, Math.round(full.height / HEAD_DS));
@@ -1394,7 +1521,7 @@ function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, attempt = 
          backoff instead of passing while a flaked sheet is still
          re-fetching (owner: assets missing right after a deploy). */
       return new Promise((res) => setTimeout(res, [2000, 6000][attempt]))
-        .then(() => _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, attempt + 1));
+        .then(() => _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, attempt + 1));
     }
     _pickupHeadSheets[key] = []; /* missing dir -> caller hides the overlay */
   });
@@ -1403,7 +1530,7 @@ function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, attempt = 
  *  frameIdx).  Returns null outside the pickup pose, while the sheet bakes, or
  *  when no head sheet exists for that dir (only -south ships) -- the caller then
  *  leaves the body's own head showing. */
-export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, phase) {
+export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, phase, eyeStyleId) {
   /* v2.3.1368: + jog — the fullset armored figure (helmet erased from the
      sheet) gets the player's real head drawn above it, exactly like the
      pickup pose.  Only the fullset base dirs ship jog-<dir>-head.png;
@@ -1417,9 +1544,11 @@ export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx
      pickup crouch got in v2.3.1055. */
   if (pose !== 'pickup' && pose !== 'jog' && pose !== 'hit' && pose !== 'mine') return null;
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
-  const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|' + pose + '-' + dir;
+  const blank = eyeBlankForSheet(`${pose}-${dir}-head`, eyeStyleId);   /* v2.3.2643 */
+  const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default')
+    + (blank ? '/es:' + blank.id : '') + '|' + pose + '-' + dir;
   const entry = _pickupHeadSheets[key];
-  if (entry === undefined) { _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT); return null; }
+  if (entry === undefined) { _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, blank && blank.rects); return null; }
   if (entry === 'loading' || !entry.length) return null;
   /* v2.3.1389: jog callers pass the cycle `phase` (0..1) — the SAME clock
      getGearFramePhased plays the fullset armor with, so a head sheet whose
@@ -1445,12 +1574,19 @@ export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx
 export function prewarmBody(skinId, pantsId, shoesId, shirtT, shirtKey) {
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   const anyEye = !!eyeColorTarget(getEyeColor());
+  /* v2.3.2643: the eye style is read from the store HERE, unlike in
+     getBodyFrame, and that is not an inconsistency: this function prewarms the
+     LOCAL player by definition (its own header), which is the same licence the
+     eyeFor calls below already take for the eye colour. */
+  const styleId = getEyeStyle();
+  const anyStyle = !!styleId && styleId !== 'none';
   const art = localBodyArt(false);   /* v2.3.1940 */
-  if (!skinT && !pantsT && !shoesT && !shirtT && !anyEye && !art) return; /* default combo: nothing to bake */
+  if (!skinT && !pantsT && !shoesT && !shirtT && !anyEye && !anyStyle && !art) return; /* default combo: nothing to bake */
   for (const dir of SOURCE_DIRS) {
     const eye = eyeFor('stand', dir, getEyeColor());   /* local player */
-    const key = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, 'stand', dir, art);
-    if (_bodySheets[key] === undefined) buildBodySheet(key, 'stand', dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, art);
+    const blank = eyeBlankFor('stand', dir, styleId);   /* v2.3.2643 */
+    const key = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, 'stand', dir, art, blank && blank.id);
+    if (_bodySheets[key] === undefined) buildBodySheet(key, 'stand', dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, art, blank && blank.rects);
   }
 }
 /** Preload the recolored body for the current combo across all base dirs for
@@ -1467,13 +1603,16 @@ export function preloadBodyAll() {
   const skinId = _skinStore.get(), pantsId = _pantsStore.get(), shoesId = _shoesStore.get();
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   const anyEye = !!eyeColorTarget(getEyeColor());
+  const styleId = getEyeStyle();   /* v2.3.2643: local player, as prewarmBody */
+  const anyStyle = !!styleId && styleId !== 'none';
   const art = localBodyArt(false), artM = localBodyArt(true);   /* v2.3.1940 */
-  if (!skinT && !pantsT && !shoesT && !anyEye && !art) return Promise.resolve(); /* default combo */
+  if (!skinT && !pantsT && !shoesT && !anyEye && !anyStyle && !art) return Promise.resolve(); /* default combo */
   const tasks = [];
   const bake = (pose, dir, a) => {
     const eye = eyeFor(pose, dir, getEyeColor());   /* local player */
-    const key = bodySheetKey(skinId, pantsId, shoesId, null, null, eye && eye.id, pose, dir, a);
-    if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, null, eye && eye.t, a));
+    const blank = eyeBlankFor(pose, dir, styleId);   /* v2.3.2643 */
+    const key = bodySheetKey(skinId, pantsId, shoesId, null, null, eye && eye.id, pose, dir, a, blank && blank.id);
+    if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, null, eye && eye.t, a, blank && blank.rects));
   };
   /* v2.3.1940: a drawn player needs the MIRRORED bake of the three flippable
      facings too (west/northwest/southeast are drawn by flipping east/northeast/
@@ -1543,6 +1682,7 @@ export function preloadJogHeadOverlays() {
   const skinId = _skinStore.get(), pantsId = _pantsStore.get(), shoesId = _shoesStore.get();
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   const tasks = [];
+  const styleId = getEyeStyle();   /* v2.3.2643: local player, as prewarmBody */
   const want = [['jog', 'south'], ['jog', 'southwest'], ['jog', 'north'], ['jog', 'east']];
   /* v2.3.1479: the hit-react (all five base dirs) and mining (south only)
      overlays ride the same gate — a lazy first build would drop the head for
@@ -1550,8 +1690,10 @@ export function preloadJogHeadOverlays() {
   for (const dir of ['south', 'southwest', 'east', 'northeast', 'north']) want.push(['hit', dir]);
   want.push(['mine', 'south']);
   for (const [pose, dir] of want) {
-    const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|' + pose + '-' + dir;
-    if (_pickupHeadSheets[key] === undefined) tasks.push(_buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT));
+    const blank = eyeBlankForSheet(`${pose}-${dir}-head`, styleId);   /* v2.3.2643 */
+    const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default')
+      + (blank ? '/es:' + blank.id : '') + '|' + pose + '-' + dir;
+    if (_pickupHeadSheets[key] === undefined) tasks.push(_buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, blank && blank.rects));
   }
   return Promise.all(tasks);
 }
@@ -1566,14 +1708,17 @@ export function preloadBodyVariant(shirtT, shirtKey) {
   const skinId = _skinStore.get(), pantsId = _pantsStore.get(), shoesId = _shoesStore.get();
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   const art = localBodyArt(false), artM = localBodyArt(true);   /* v2.3.1940 */
-  if (!skinT && !pantsT && !shoesT && !shirtT && !art) return Promise.resolve();
+  const styleId = getEyeStyle();   /* v2.3.2643: local player, as prewarmBody */
+  const anyStyle = !!styleId && styleId !== 'none';
+  if (!skinT && !pantsT && !shoesT && !shirtT && !anyStyle && !art) return Promise.resolve();
   const tasks = [];
   for (const pose of ['stand', 'jog', 'hit']) {   /* v2.3.1477: hit ships gear now */
     for (const dir of SOURCE_DIRS) {
       const eye = eyeFor(pose, dir, getEyeColor());   /* local player */
+      const blank = eyeBlankFor(pose, dir, styleId);   /* v2.3.2643 */
       for (const a of (artM && MIRRORED_SOURCE_DIRS.indexOf(dir) !== -1) ? [art, artM] : [art]) {
-        const key = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir, a);
-        if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, a));
+        const key = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir, a, blank && blank.id);
+        if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, a, blank && blank.rects));
       }
     }
   }
@@ -1592,6 +1737,13 @@ function _prewarmCurrent() {
 _skinStore.on(_prewarmCurrent);
 _pantsStore.on(_prewarmCurrent);
 _shoesStore.on(_prewarmCurrent);
+/* v2.3.2643: and the eye STYLE, which changes the sheet key exactly as a skin
+   does (bodySheetKey's `es:` segment) and so needs the same prewarm -- without
+   it the first frame after picking a style shows the old bake, which is the
+   default-skin-flash this block exists to prevent, wearing the wrong face.
+   Bounded like skin and unlike a drawing: four style ids, so the sheets
+   accumulate to a small set and there is nothing to free. */
+onEyeStyleChange(_prewarmCurrent);
 
 /* ═══ v2.3.1940: A DRAWING CHANGES THE SHEET KEY, SO IT MUST ALSO FREE THE OLD
    ONE ═══

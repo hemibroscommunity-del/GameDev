@@ -157,6 +157,7 @@ const STORE_BUST_KEYS = [
   'fh', 'fhc',               // facial hair + colour
   'hw', 'htc',               // headwear + colour
   'ew', 'ewc',               // eyewear + colour
+  'es',                      // eye style (v2.3.2643)
   'ec',                      // eye colour
   'st', 'stc',               // shirt + colour (the shoulders)
   'bs', 'hg', 'fr',          // build size / height / frame -- the fit math

@@ -9,7 +9,7 @@
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
 import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat */
-import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS } from '@/data/index.js';
+import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
 import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockAimPoint } from '@/game/combatHelpers.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
 
@@ -530,7 +530,7 @@ export function elementBurst(S) {
   if (refusal) {
     var msg = {
       caps: null,   /* old worker: the ability doesn't exist there — stay silent */
-      level: 'Element Burst unlocks at level ' + PROG3.BURST_MIN_CHAR_LEVEL,
+      level: 'Element Burst unlocks at level ' + LEGACY_BURST_MIN_CHAR_LEVEL,   /* v2.3.2662: old workers only */
       no_weapon: 'No weapon equipped!',
       no_element: 'Element Burst needs an enchanted weapon',
       mana: 'Not enough mana!',

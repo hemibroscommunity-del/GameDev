@@ -5,13 +5,13 @@
  * silhouette edge -- and then refused to ship ears on it, because that rule
  * only fires on 297 of 823 frames and the gaps fall INSIDE animation cycles
  * (jog-east: 12 of 28). Ears that strobe as the player runs are worse than no
- * ears. TRAPS §90 records that, and the four anchors that do not work at all.
+ * ears. TRAPS §96 records that, and the four anchors that do not work at all.
  *
  * (This file supersedes tools/ears/derive-ear-anchors.mjs, the v2.3.2643 probe
  * that established the rule. The four anchors that do NOT work -- the unwired
  * TRAIT_CATEGORIES registry, body-anchors.json's shoulder-swallowing head box,
  * _headBoxInFrame's 1px heads, and the combination of the last two -- are
- * recorded with their measurements in TRAPS §90, so they are not re-walked.)
+ * recorded with their measurements in TRAPS §96, so they are not re-walked.)
  *
  * This closes the gap the only way that does not involve a cleverer per-frame
  * predicate -- because the thing that defeats every predicate is a raised arm
@@ -136,7 +136,7 @@ const MIN_HEAD = 20, MAX_HEAD = 78;
    protects the copy: with the right (fw, fh) the frame count comes out whole,
    and a drifted number almost never will -- so a stale table becomes a loud
    refusal instead of a wrong window. Anything not listed is 256-square and is
-   asserted to be so. TRAPS §93. */
+   asserted to be so. TRAPS §99. */
 const STRIP_GEOM = {
   'bow-east': [214, 241], 'bow-southwest': [154, 233], 'bow-south': [130, 234],
   'bow-northwest': [160, 248], 'bow-north': [122, 260],
@@ -242,7 +242,7 @@ function headPlateau(sh, f, irisY) {
    scan from there ran into the SHOULDER -- which is why that head measured
    51px wide when the art says 43. The contact sheet did NOT catch it, because
    4px on a 96px review cell reads as "about right"; hand-reading the sheet as
-   ASCII did. Tightening the review is TRAPS §92's second lesson. */
+   ASCII did. Tightening the review is TRAPS §98's second lesson. */
 function irisCentre(rects, f) {
   const per = rects && rects[f];
   if (!per || !per.length) return null;

@@ -29,11 +29,24 @@ import {
   calcDisplayHeal,
   toDisplayDamage, /* v2.3.2520: the display damage scale */
   getArmorPieceDr, /* v2.3.1697: replaced calcDisplayArmorHp — armor buys mitigation, not HP */
+  getEquipReqLabel, /* v2.3.2664: the armour ladder's Defense requirement, on the card */
   calcBlockReduction,
   /* v2.3.1845: the two tier tables left with tierLabel — weaponTierLabel
      (equipModel) owns that lookup now. */
   recalcDerived,
 } from '../../../data/gameSystems.js';
+
+/* ═══ v2.3.2664: THE CARD SAYS WHAT THE GATE WILL ASK ═══
+   Owner: "Yeah I'll go with your defense requirements for next tiers" — 5
+   Defense for tier 3, 10 for tier 4, 15 for tier 5.  Nothing for copper and
+   iron (getEquipReqLabel returns null), so today's cards are unchanged; a
+   tier-3 piece reads "Needs 5 Defense", plus what you have when it is short,
+   because equipArmorFromStash will refuse it with the same number. */
+function armorReqText(ar, S) {
+  const req = getEquipReqLabel(ar, 'armor', S && S.rpg);
+  if (!req) return '';
+  return ' · Needs ' + req.req + ' Defense' + (req.met ? '' : ' (you have ' + req.have + ')');
+}
 
 /* v2.3.1313 (ChatGPT round-8 §8): comparison line for stash cards —
    the delta vs the currently equipped counterpart ("+2.4 DPS vs
@@ -320,6 +333,7 @@ function resolveTarget(target) {
   if (target.kind === 'stashArmor') {
     const ar = target.armor;
     if (!ar) return null;
+    const reqText = armorReqText(ar, getState());   /* v2.3.2664 */
     /* v2.3.1697: damage reduction, same as the equipped-armor card above. */
     const S = getState();
     const dr = getArmorPieceDr(ar, 'chest');
@@ -342,7 +356,7 @@ function resolveTarget(target) {
       name: ar.name || 'Armor',
       info: Math.round(dr * 100) + '% damage reduced',
       delta,
-      desc: (ar.gearBase === 'wood' ? 'Leather' : tierLabel(ar)) + ' · Chest',
+      desc: (ar.gearBase === 'wood' ? 'Leather' : tierLabel(ar)) + ' · Chest' + reqText,
       /* v2.3.2531: Sell -- the store can take gear now (store phase 3,
          server/src/storegear.js).  Its OWN cap, not the store's: an older
          worker refuses `kind: 'gear'`, so an ungated button would take the
@@ -364,6 +378,7 @@ function resolveTarget(target) {
   if (target.kind === 'stashLegs') {
     const ar = target.armor;
     if (!ar) return null;
+    const reqText = armorReqText(ar, getState());   /* v2.3.2664 */
     const S = getState();
     const dr = getArmorPieceDr(ar, 'legs');
     const eqLegs = S && S.rpg && S.rpg.legsArmor;
@@ -379,7 +394,7 @@ function resolveTarget(target) {
       delta,
       /* Quest armour carries no gearBase, so tierLabel is empty for it —
          don't render a leading separator for a tier it does not have. */
-      desc: (tierLabel(ar) ? tierLabel(ar) + ' · ' : '') + 'Armor · Legs',
+      desc: (tierLabel(ar) ? tierLabel(ar) + ' · ' : '') + 'Armor · Legs' + reqText,
       /* v2.3.2531: Sell -- the store can take gear now (store phase 3,
          server/src/storegear.js).  Its OWN cap, not the store's: an older
          worker refuses `kind: 'gear'`, so an ungated button would take the
@@ -838,7 +853,7 @@ export const ItemDetailPopup = () => {
           /* v2.3.2637: the dashboard's own equip/unequip -- the same one
              sample as the inventory toggle, because to the player it is the
              same gesture whichever screen it happens on. */
-          BT_AUDIO.uiTick('ui-equip', 0.55);   /* v2.3.2639: deduped */
+          BT_AUDIO.uiEquip();   /* v2.3.2639: deduped.  v2.3.2659: gain + offset in uiEquip */
           if (on) {
             R2.gearStash.push({ slot, gearId, name: gearName(slot, gearId) });
             setEquip(slot, 'none');
@@ -1798,7 +1813,7 @@ function syncWeaponSlot(msg) {
      uiTick's window would collapse that anyway; the gate means the sound is
      also not simply WRONG on a slot switch. */
   if (msg && (msg.type === 'equip_request' || msg.type === 'unequip_request')) {
-    BT_AUDIO.uiTick('ui-equip', 0.55);
+    BT_AUDIO.uiEquip();   /* v2.3.2659: gain + offset live in uiEquip, not here */
   }
   const S = getState();
   if (S && S.channel) {
