@@ -463,7 +463,29 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
    Both endings burst, deliberately: the ball is aimed at a frozen point and
    lands there whether you moved or not, so bursting only on damage would
    make a successful dodge look like the ball evaporated. */
+/* ═══ v2.3.2705: A SLIME'S GOO AND A GOBLIN'S FIRE LAND TOO ═══
+   Everything but a snowball used to simply vanish where it ended -- on the
+   ground, on a rock, on you.  Queued here on the SAME end paths the snowball
+   burst uses (the simulator is the one place that knows a ball ended and
+   why), drained by rendering/monsterShotFx.js, which splats the goo and
+   bursts the fire.  Drawing only: where the ball stops and what it does to
+   you are untouched.  `lift` is how high the renderer was drawing it at that
+   moment, so a glob that hit a rock face splats ON the face and its splat
+   forms on the ground below. */
+function queueShotImpact(S, proj, why) {
+  if (!proj || proj.kind === 'snowball') return;
+  if (!S._shotImpacts) S._shotImpacts = [];
+  if (S._shotImpacts.length >= 16) return;   /* nothing drains it if FX are off */
+  S._shotImpacts.push({
+    x: proj.x, y: proj.y, lift: typeof proj._fxLift === 'number' ? proj._fxLift : null,
+    look: proj._fxLook || null, shooterArch: proj.shooterArch || null, ownerId: proj.ownerId,
+    kind: proj.kind || 'slime', ang: proj.ang || 0, ts: proj.ts,
+    zone: S.currentZone, why: why || 'land',
+  });
+}
+
 function queueSnowballBurst(S, proj) {
+  queueShotImpact(S, proj, (proj && proj._fxWhy) || (proj && proj.propStopT != null ? 'prop' : 'land'));
   if (!proj || proj.kind !== 'snowball') return;
   if (!S.snowballBursts) S.snowballBursts = [];
   if (S.snowballBursts.length >= 12) return;   /* nothing drains it if FX are off */
@@ -1922,12 +1944,18 @@ export function updateSlimeProjectiles(S) {
               var _propHit = sweepBlockPoint(S.currentZone, _ppx, _ppy, proj.x, proj.y);
               if (_propHit) {
                 proj.x = _propHit.x; proj.y = _propHit.y;
+                proj._fxWhy = 'prop';   /* v2.3.2705 */
                 queueSnowballBurst(S, proj);
                 return false;
               }
             }
             var pdx = P.x - proj.x, pdy = P.y - proj.y;
             if (pdx * pdx + pdy * pdy > 16 * 16) return true;
+            /* v2.3.2705: it reached you -- every path below consumes it, and a
+               glob that hits you splats on you (a snowball's burst is queued by
+               its own displayOnly line, as before) */
+            proj._fxWhy = 'player';
+            if (!proj.displayOnly) queueShotImpact(S, proj, 'player');
             /* v2.3.1640: a server-thrown projectile (the snowman's
                snowball) is a VISUAL ONLY — the worker scheduled its
                impact when it threw and delivers the damage itself as a

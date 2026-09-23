@@ -1812,6 +1812,14 @@ export function processGameEvent(type, payload, S, deps) {
                      that matters: you cannot tell it is coming at you. */
                   kind: payload.kind || 'slime',
                   ts: Date.now(),
+                  /* v2.3.2705: WHO threw it, so the ball is drawn in the
+                     thrower's own colour (data/monsterShots.js) -- a green
+                     slime's goo is green beside a blue one's -- and how long
+                     the whole flight is, which is how the renderer knows how far
+                     along its throw the ball is when a prop cut `life` short. */
+                  shooterArch: _pmM ? (_pmM.archetype || _pmM.type || null) : null,
+                  _fxLife0: _sbLife,
+                  _fxFrames: _sbFrames,
                 });
               }
               break;

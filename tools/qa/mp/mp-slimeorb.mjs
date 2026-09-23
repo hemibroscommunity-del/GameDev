@@ -123,12 +123,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
      that the old 8 -- or a half-fixed 16 -- fails it. */
   rec.ok('the blue slime orb is about 4x the eight pixels it used to be',
     !!blue && blue.px >= 28 && blue.px <= 40, blue);
-  /* It must come off the SAME 128px sheet as the green one. If a future
-     change swapped in a different source, the px above could be right for the
-     wrong reason. */
-  rec.ok('...off the same 128px sheet the green orb uses, so the size is the scale',
-    !!blue && !!green && blue.srcPx === green.srcPx && blue.srcPx === 128,
-    { blue: blue && blue.srcPx, green: green && green.srcPx });
+  /* It must come off the SAME art as the green one. If a future change swapped
+     in a different source, the px above could be right for the wrong reason.
+     v2.3.2705: that art is now the goo glob minted in code (monsterShotFx.js,
+     srcPx null, style 'goo') rather than the 128px sheet -- the same frames for
+     both, tinted per thrower, so the size is still the only difference.  A
+     build whose atlas failed falls back to the sheet, and still has to agree. */
+  rec.ok('...off the same art the green orb uses, so the size is the scale',
+    !!blue && !!green && blue.srcPx === green.srcPx
+      && (blue.srcPx === 128 || (blue.srcPx == null && blue.style === 'goo' && green.style === 'goo')),
+    { blue: blue && [blue.srcPx, blue.style], green: green && [green.srcPx, green.style] });
+  /* v2.3.2705: ...and in its own colour.  The green orb is the slime sheet's
+     green; the Verdant Wilds' is the blue its slimes are recoloured to. */
+  rec.ok('...and each in its thrower\'s colour: green in town, blue in the Verdant Wilds',
+    !!blue && !!green && (blue.srcPx === 128 || (green.tint === 0x5ca84c && blue.tint === 0x3a7ad0)),
+    { blue: blue && blue.tint, green: green && green.tint });
   /* And the recolour branch really was taken: the fallback would have handed
      back the green orb's exact size. */
   rec.ok('...and it is bigger than the plain slime orb, so the recolour branch ran',

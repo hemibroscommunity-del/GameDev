@@ -860,6 +860,11 @@ export function updateMonsterCombat(S, deps) {
                       srcLevel: m.level || null,
                       life: 35,
                       ts: Date.now(),
+                      /* v2.3.2705: the thrower, for the goo's colour, and the
+                         flight's length, for the throw's arc (monsterShotFx) */
+                      shooterArch: arch || null,
+                      _fxLife0: 35,
+                      _fxFrames: 35,
                     });
                     return;
                   }

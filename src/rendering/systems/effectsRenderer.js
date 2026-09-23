@@ -291,6 +291,7 @@ import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
+import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2705: slime goo + goblin fire, drawn in code */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
    gear layers, the trait crowns and the remote stand-in — they all slice the
@@ -1964,6 +1965,12 @@ export class EffectsRenderer {
        entries here so we can destroy orphans after the simulator
        drops a projectile from S.slimeProjectiles. */
     this.slimeProjSprites = [];
+    /* v2.3.2705: the slimes' goo and the goblins' fire are drawn by their own
+       module now (rendering/monsterShotFx.js) -- in the thrower's colour, with
+       a throw, a trail and a landing.  Snowballs stay on the sprite path
+       below; the old per-zone pictures stay too, as the fallback while (or if)
+       the minted atlas is not there. */
+    this._shotFx = new MonsterShotFx({ entities: this.entityLayer, particles: this.particleLayer, ground: this.splatLayer });
     /* Dev probe, house style (cf. window.__btBundles): how big is each ball
        ACTUALLY drawn, and from which art.  The reported bug was a size, and a
        size is the one thing no existing probe could answer -- the scale is
@@ -1972,6 +1979,7 @@ export class EffectsRenderer {
        reads this.  v2.3.2310. */
     if (typeof window !== 'undefined') {
       const _spsRef = this.slimeProjSprites;
+      const _shotFxRef = this._shotFx;
       window.__btSlimeProj = () => _spsRef
         .filter((e) => e && e.sprite && !e.sprite.destroyed)
         .map((e) => ({
@@ -1992,7 +2000,10 @@ export class EffectsRenderer {
           x: +e.sprite.x.toFixed(1),
           y: +e.sprite.y.toFixed(1),
           ownerId: (e.proj && e.proj.ownerId) || null,
-        }));
+        }))
+        /* v2.3.2705: ...and the goo and fire drawn by monsterShotFx, in the
+           same shape (px = the head's drawn width, srcPx null: no sheet) */
+        .concat(_shotFxRef ? _shotFxRef.probeShots() : []);
     }
 
     /* v2.3.2700: the snow bursts being DRAWN right now, with their drawn
@@ -3287,6 +3298,7 @@ export class EffectsRenderer {
     this._updateDebrisBursts(S, now);   /* v2.3.2200: material hit debris */
     this._updatePropMarks(S, now);      /* v2.3.2702: slashes and arrows standing in props */
     this._updateArrowSnaps(S, now);     /* v2.3.2704: one arrow in eight breaks on what it hits */
+    try { this._shotFx.tick(S, now); } catch (e) { /* v2.3.2705: monster shots are drawing only */ }
     this._updateCampfire(S, now);
     this._updateFiremaking(S, now);
     this._updateSwordSwing(S, now);
@@ -4446,7 +4458,13 @@ export class EffectsRenderer {
         gfx.fill({ color: 0xffffff, alpha: 1 });      /* highlight, reads as round */
       }
     }
-    if (projTex) {
+    /* v2.3.2705: goo and fire are monsterShotFx's once its atlas exists; the
+       loop below is the fallback it replaces, kept for a failed mint. */
+    const _shotFxOn = !!(this._shotFx && this._shotFx.ready);
+    if (_shotFxOn) {
+      try { this._shotFx.drawShots(S, now, slimeProjs); } catch (e) { /* drawing only */ }
+    }
+    if (projTex && !_shotFxOn) {
       for (const sp of slimeProjs) {
         if (sp.kind === 'snowball') continue;   /* drawn above */
         let sprite = sp._pixiSprite;
