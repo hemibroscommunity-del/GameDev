@@ -17,7 +17,7 @@ needs that switch on, which it is by default.
 Each picture is one frozen frame, so the columns differ only by the sheen
 (zoomed 2x from a phone screenshot):
 
-![Each metal: off, the soft sheen, a stronger cut](img/metal-sheen/metals.jpg)
+![Each metal: off, the first softer cut, and the strong sheen it is now](img/metal-sheen/metals.jpg)
 
 ![Godly steel off and on, and the full copper set while running](img/metal-sheen/godly-jog.jpg)
 
@@ -41,8 +41,11 @@ that never switches off:
   (`lightfx/zoneLight.js`). A zone with no sun (Flame Fields, the caves)
   gets it evenly. It dims at night and in a zone's deep levels, but never
   goes out: metal still catches the moon.
-- **It climbs with the grade**, like the glint: normal 0.55, rare 0.62,
-  elite 0.70, godly 0.80 at its brightest.
+- **It climbs with the grade**, like the glint: normal 0.83, rare 0.93,
+  elite 1.05, godly 1.2 at its brightest. These are the **strong cut**: the
+  preview first showed a soft sheen (0.55 for a normal piece) beside one
+  1.5x stronger, and the owner chose it: *"I do like the strong polish
+  previews."*
 - **The glint still sweeps over it** as before.
 
 **What it covers:** swords and greatswords in a metal, plate, greaves, and

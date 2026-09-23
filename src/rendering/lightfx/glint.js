@@ -158,12 +158,17 @@ export const METAL_SHINE = Object.assign(Object.create(null), {
    pictures a normal copper blade's glint could not be seen at phone size. */
 /* v2.3.2736: `sheen` is the permanent shine's strength at its brightest
    (the art's highlights, on the sun side) -- it climbs with the grade too, so
-   a better piece is shinier all the time, not only more often. */
+   a better piece is shinier all the time, not only more often.
+   THE STRONG CUT.  The preview's pictures showed three columns -- off, a soft
+   sheen (0.55 for a normal piece) and a stronger one at 1.5x -- and the
+   owner's answer was "I do like the strong polish previews", so the strong
+   cut is the sheen.  Above 1 is fine: the shader caps each pixel at white, so
+   a higher number widens the highlight rather than blowing the piece out. */
 export const GRADE_SHINE = Object.assign(Object.create(null), {
-  normal: { period: 6500, dur: 560, strength: 0.85, sheen: 0.55 },
-  rare: { period: 4600, dur: 560, strength: 1.0, sheen: 0.62 },
-  elite: { period: 3300, dur: 600, strength: 1.15, sheen: 0.70 },
-  godly: { period: 1900, dur: 680, strength: 1.4, sheen: 0.80, color: [1.0, 0.92, 0.6] },
+  normal: { period: 6500, dur: 560, strength: 0.85, sheen: 0.83 },
+  rare: { period: 4600, dur: 560, strength: 1.0, sheen: 0.93 },
+  elite: { period: 3300, dur: 600, strength: 1.15, sheen: 1.05 },
+  godly: { period: 1900, dur: 680, strength: 1.4, sheen: 1.2, color: [1.0, 0.92, 0.6] },
 });
 
 /* ═══ v2.3.2736: THE SHEEN'S SWITCH -- OFF UNLESS THIS DEVICE ASKED ═══ */

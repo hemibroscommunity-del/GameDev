@@ -248,16 +248,16 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
     await setArmourGrade(A, 'normal');
     await A.page.waitForTimeout(500);
     shots[metal] = await measureSheen(A, box);
-    /* the pictures, one frozen frame: off, the soft sheen, a stronger cut */
+    /* the pictures, one frozen frame: off, the first (softer) cut the owner
+       was shown, and the strong one they chose, which is now the sheen */
     await freeze(A);
     await A.page.waitForTimeout(120);
     await setSheen(A, false); await drawFrozen(A);
     await A.page.screenshot({ path: `${DIR}/${metal}-off.png`, clip: box });
-    await setSheen(A, true); await setScale(A, 1); await drawFrozen(A);
+    await setSheen(A, true); await setScale(A, 1 / 1.5); await drawFrozen(A);
     await A.page.screenshot({ path: `${DIR}/${metal}-soft.png`, clip: box });
-    await setScale(A, 1.5); await drawFrozen(A);
+    await setScale(A, null); await drawFrozen(A);
     await A.page.screenshot({ path: `${DIR}/${metal}-strong.png`, clip: box });
-    await setScale(A, null);
     await thaw(A);
   }
   console.log('    light the shine adds to the figure, one frame: '
