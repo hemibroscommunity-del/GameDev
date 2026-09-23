@@ -86,7 +86,6 @@ import { AIM_CARET, AIM_CARET_EDGE, AIM_CARET_HOT } from '../aimCaret.js'; /* v2
 import { BLOCK_ARM_ENABLED, BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, blockArmSleeveTexture } from '../blockArm.js'; /* v2.3.1785, sleeve v2.3.1789, ENABLED v2.3.1798 */
 import { gearTint, gearArt, gearMaterial } from '../gearVariants.js'; /* v2.3.1757: material recolor */
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
-import { combatGearUrls } from '../combatGear.js';
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
@@ -3226,10 +3225,10 @@ export async function uploadGearTextures(renderer) {
   for (const source of getLoadedGearSources()) {
     if (up(source) && ++n % 24 === 0) await new Promise((r) => setTimeout(r, 0));
   }
-  for (const url of combatGearUrls()) {
-    const tex = Assets.cache.get(url);
-    if (tex && tex.source && up(tex.source) && ++n % 24 === 0) await new Promise((r) => setTimeout(r, 0));
-  }
+  /* v2.3.2774: the combat stand-in strips are no longer in the Assets cache
+     (they are cropped canvases now -- effectsRenderer _gearStripFrame); they
+     reach this upload through getLoadedGearSources above, which they register
+     with.  The old loop over combatGearUrls() found nothing to upload. */
 }
 
 /* v2.3.704: renderer handle for the equip-change re-prewarm's GPU upload.
