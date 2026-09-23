@@ -26,12 +26,17 @@
    sees the whole cycle. */
 export const DAY_CYCLE_MS = 40 * 60 * 1000;
 
-/* Zones under the open sky.  The caves, the foundry, the sanctum, the world
-   map and every dungeon have their own light and keep it: a dungeon that goes
-   dark because it is night on the surface is a dungeon that got harder for
-   no reason the player can see. */
+/* Zones under the open sky.  The caves, the foundry, the sanctum and every
+   dungeon have their own light and keep it: a dungeon that goes dark because
+   it is night on the surface is a dungeon that got harder for no reason the
+   player can see.
+   v2.3.2708: + worldview.  The first cut left the world map out as "a map",
+   and the owner walked out of a night-time town into broad daylight and back
+   into night at Frost Ridge -- the one screen between every two outdoor zones
+   is the one place a sun that jumps is impossible to miss.  It is outdoors;
+   it takes the hour. */
 const OUTDOOR = Object.create(null);
-for (const z of ['town', 'meadow', 'ember', 'mist', 'verdant', 'frost', 'sky', 'radiant', 'farm_home']) OUTDOOR[z] = true;
+for (const z of ['town', 'worldview', 'meadow', 'ember', 'mist', 'verdant', 'frost', 'sky', 'radiant', 'farm_home']) OUTDOOR[z] = true;
 
 export function zoneHasSky(zoneId, S) {
   if (S && S._inDungeon) return false;

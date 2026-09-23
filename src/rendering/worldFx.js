@@ -333,14 +333,18 @@ export class WorldFx {
 
     /* the lights: you, everyone near you, and the fireflies */
     const list = [];
-    if (S.player && !(S.rpg && S.rpg.hp <= 0)) list.push({ x: S.player.x, y: S.player.y - 18, r: 165, c: 0xffd9a0, a: 1 });
+    /* v2.3.2708: lanterns shrink with the figure carrying them -- the world
+       map draws its people as specks (zonePlayerScale), and a full-size pool
+       of light round a speck would light half the map */
+    const ps = (x, y) => zonePlayerScale(S.currentZone, x, y, 32) || 1;
+    if (S.player && !(S.rpg && S.rpg.hp <= 0)) list.push({ x: S.player.x, y: S.player.y - 18 * ps(S.player.x, S.player.y), r: 165 * ps(S.player.x, S.player.y), c: 0xffd9a0, a: 1 });
     if (S.others) {
       for (const id in S.others) {
         const o = S.others[id];
         if (!o || o._isDead) continue;
         const ox = o.renderX != null ? o.renderX : o.x, oy = o.renderY != null ? o.renderY : o.y;
         if (ox < cx - 200 || ox > cx + viewW + 200 || oy < cy - 200 || oy > cy + viewH + 200) continue;
-        list.push({ x: ox, y: oy - 18, r: 125, c: 0xffd29a, a: 0.85 });
+        list.push({ x: ox, y: oy - 18 * ps(ox, oy), r: 125 * ps(ox, oy), c: 0xffd29a, a: 0.85 });
         if (list.length > 14) break;
       }
     }
@@ -361,9 +365,11 @@ export class WorldFx {
     for (let i = 0; i < bodies.length; i++) {
       let b; try { b = bodies[i].getBounds(); } catch (e) { continue; }
       if (!b || b.width < 2) continue;
-      const r = Math.max(b.width, b.height) * 0.8 * gk;
-      /* moonlight: cool, and not full -- lit enough to see, still at night */
-      lights.push({ tex: 'glow', x: (b.x + b.width / 2) * gk, y: (b.y + b.height * 0.55) * gk, w: r * 2, h: r * 2, c: 0xc4d4ff, a: 0.6 * lampK });
+      /* moonlight: cool, and not full -- lit enough to see, still at night.
+         v2.3.2708: the tight-core light, its full part (the inner 40%)
+         sized to the body, the tail dispersing well past it */
+      const r = (Math.max(b.width, b.height) * 0.55 / 0.4) * gk;
+      lights.push({ tex: 'glowTight', x: (b.x + b.width / 2) * gk, y: (b.y + b.height * 0.55) * gk, w: r * 2, h: r * 2, c: 0xc4d4ff, a: 0.6 * lampK });
     }
     /* plates: nine-slice softboxes, their bright middle exactly over the
        plate, full white -- the plate reads as it does by day */

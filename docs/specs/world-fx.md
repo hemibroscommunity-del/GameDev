@@ -11,10 +11,11 @@ Everything here is display only. Nothing is sent to the server, and nothing in c
   - By day the light map is skipped completely.
   - At golden hour it is a flat tint.
 - **Plates and monsters stay readable (v2.3.2707):**
-  - Every visible name plate and monster health bar gets a nine-slice softbox of light in the light map. Its bright middle covers the plate exactly, and it has a 16 CSS px soft rim. The plate reads at its daytime colour.
-  - Every monster gets a cool moonlight glow the size of its body, so a snowman on night snow stands out.
+  - Every visible name plate and monster health bar gets a nine-slice softbox of light in the light map. Its bright middle covers the plate exactly, so the plate reads at its daytime colour.
+  - Every monster gets a cool moonlight glow, with its full part sized to the body, so a snowman on night snow stands out.
+  - Both share one falloff (v2.3.2708, owner: "tighter … and a soft dispersion … too cut out"). It is full over the object, drops steeply just past its edge, then a faint tail fades to nothing over about 40 CSS px: `0.82·e^(-t/0.07) + 0.18·(1-t)²`.
   - Both are found through the entity renderer's display maps and measured with getBounds.
-- **Where it applies:** outdoor zones only (`zoneHasSky`): town, meadow, ember, mist, verdant, frost, sky, radiant, farm. Caves, the foundry, the sanctum, the world map and dungeons keep their own light.
+- **Where it applies:** outdoor zones only (`zoneHasSky`): town, the world map (v2.3.2708), meadow, ember, mist, verdant, frost, sky, radiant, farm. Caves, the foundry, the sanctum and dungeons keep their own light. On the world map, lanterns shrink with the figures (`zonePlayerScale`).
 - **Layer:** the new `lighting` world layer (pixiApp.js). It sits above everything in the world and below the damage numbers and the world overlay, so night never makes a number harder to read.
 - **Preview:** add `?tod=night` (or `dawn`, `day`, `golden`, `dusk`, or a number from 0 to 1) to the URL, or set `window.__btTod = 'night'` in the console. `window.__btTimeOfDay()` shows the current hour.
 

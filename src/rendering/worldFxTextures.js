@@ -50,24 +50,55 @@ function mintGlow() {
   return toTex(c);
 }
 
-/* ═══ v2.3.2707: A SOFTBOX, FOR NAME PLATES ═══
-   A small square of light with a 4px soft border, drawn as a NINE-SLICE: the
-   bright middle stretches to exactly cover a name plate or a monster's health
-   bar in the night's light map, and the soft border stays 4 light-map px (16
-   CSS px) wide whatever the plate's size.  The first cut stretched one soft
-   rectangle over the plate, and because its fully-bright middle was a fixed
-   share of it, a long plate needed a huge one -- town at night grew glowing
-   yellow boxes round every name.  Built per pixel (smoothstep) rather than
-   with ctx.filter blur, which Safari's canvas does not have. */
-export const SOFTBOX_EDGE = 4;
+/* ═══ v2.3.2707-2708: THE LIGHT ON A NAME PLATE, AND ON A MONSTER ═══
+   Owner, on the first cut: "the light needs to be a little tighter around
+   whatever it's lighting and a soft dispersion of the light after that.  It's
+   a bit too 'cut out' looking right now."
+   It was: a full-strength box with a short even rim, so the lit patch had an
+   edge.  Both lights now share one falloff -- FULL over the thing itself, a
+   steep drop just past its edge (tight), then a long faint tail that fades to
+   nothing (the dispersion):
+       a(t) = 0.82 e^(-t/0.07) + 0.18 (1-t)^2,   t = distance past the edge / reach
+   so the plate or body is lit exactly, the ground right beside it only a
+   little, and there is no line anywhere where the light stops. */
+const lightFalloff = (t) => (t <= 0 ? 1 : t >= 1 ? 0 : 0.82 * Math.exp(-t / 0.07) + 0.18 * (1 - t) * (1 - t));
+
+/* The name-plate light: a NINE-SLICE.  Its 4px bright middle stretches to
+   cover the plate exactly in the night's light map; the border carries the
+   falloff and stays SOFTBOX_EDGE light-map px (40 CSS px) wide whatever the
+   plate's size -- one stretched rectangle would have scaled its tail with
+   the plate.  Rounded corners (distance to the middle, not a product of
+   the two axes).  Built per pixel rather than with ctx.filter blur, which
+   Safari's canvas does not have. */
+export const SOFTBOX_EDGE = 10;
 function mintSoftbox() {
-  const E = SOFTBOX_EDGE, W = E * 2 + 4, H = E * 2 + 4, c = canvas(W, H), g = c.getContext('2d');
+  const E = SOFTBOX_EDGE, M = 4, W = E * 2 + M, H = E * 2 + M, c = canvas(W, H), g = c.getContext('2d');
   const img = g.createImageData(W, H);
-  const edge = (u) => { const t = Math.min(1, u / E); return t * t * (3 - 2 * t); };
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
-      const a = edge(Math.min(x + 0.5, W - x - 0.5)) * edge(Math.min(y + 0.5, H - y - 0.5));
+      const dx = Math.max(0, E - (x + 0.5), (x + 0.5) - (E + M));
+      const dy = Math.max(0, E - (y + 0.5), (y + 0.5) - (E + M));
+      const a = lightFalloff(Math.sqrt(dx * dx + dy * dy) / E);
       const i = (y * W + x) * 4;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = 255;
+      img.data[i + 3] = Math.round(255 * a);
+    }
+  }
+  g.putImageData(img, 0, 0);
+  return toTex(c);
+}
+
+/* The monster light: the same falloff, round.  Full over the inner 40% of
+   its radius (sized so that covers the body), then the drop and the tail. */
+function mintGlowTight() {
+  const S = 128, c = canvas(S, S), g = c.getContext('2d');
+  const img = g.createImageData(S, S);
+  const R = S / 2, CORE = 0.4;
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const r = Math.hypot(x + 0.5 - R, y + 0.5 - R) / R;
+      const a = lightFalloff((r - CORE) / (1 - CORE));
+      const i = (y * S + x) * 4;
       img.data[i] = img.data[i + 1] = img.data[i + 2] = 255;
       img.data[i + 3] = Math.round(255 * a);
     }
@@ -291,6 +322,7 @@ export function mintWorldFxTextures() {
   try {
     _tex.glow = mintGlow();
     _tex.softbox = mintSoftbox();
+    _tex.glowTight = mintGlowTight();
     _tex.cloud0 = mintCloud(3); _tex.cloud1 = mintCloud(9); _tex.cloud2 = mintCloud(17);
     _tex.print = mintPrint();
     _tex.puff = mintPuff();
