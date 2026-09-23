@@ -82,7 +82,7 @@ with screenshots of each stage). Regression: `mp-harvest`, `mp-chopyield`,
   clips that sat unregistered in `public/sfx/fishing`: `lure-drop` when the
   cast goes out, `fish-on-hook` when the wind-up ends and the reel window
   opens.
-* **Tools:** copper axe head on a pine haft, a pine rod, a bark log —
+* **Tools:** copper axe head on a pine haft and a pine rod (the fire-lighter's log was done too, then taken back out: firemaking is being rebuilt as code-drawn fire in another session) —
   `src/rendering/toolRecolor.js`, applied at load after the skin pass (the
   magenta is the pipeline's key and code still reads it: TRAPS §105).
 

@@ -4385,9 +4385,9 @@ mp-gcue (73 assertions), mp-cueshow (34, all three skills in a real zone).
 
 ## 105. "Just repaint the pink axe in the PNG" (v2.3.2703)
 
-**Tempting:** the axe, the fishing rod and the fire-lighter's log are flat
-magenta in `chop-strip`, `fish-south` and `firemaking-strip`; open the files
-and paint them copper / pine.
+**Tempting:** the axe and the fishing rod (and the fire-lighter's log) are
+flat magenta in `chop-strip`, `fish-south` and `firemaking-strip`; open the
+files and paint them copper / pine.
 
 **Wrong twice over.** The magenta is the animation pipeline's KEY
 (docs/skill-animation-pipeline.md, "Recolor mask"), and code still reads it:

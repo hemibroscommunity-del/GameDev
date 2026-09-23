@@ -7,6 +7,7 @@ import { applyDepthBuckets } from './depthSort.js'; /* v2.3.2635: one depth pass
 import { TileRenderer } from './systems/tileRenderer.js';
 import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out */
 import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
+import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2704 */
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { MinimapRenderer } from './systems/minimapRenderer.js'; /* v2.3.1781 */
 import { loadPlayerSprites } from './playerSprites.js';
@@ -144,6 +145,9 @@ export async function initPixiRenderer(canvas) {
      rather than the body simply joining the sorted layer. */
   const entityRenderer = new EntityRenderer(layers.entities, layers.player, layers.monsterUi, layers.gestureFront, layers.gatherNodesFront, layers.foreground); /* v2.3.2655: + the near-camera layer */
   const effectsRenderer = new EffectsRenderer(layers);
+  /* v2.3.2704: the maps' ambient life -- lava breathing, smoke, water light,
+     wind, snow, motes (systems/ambientFx.js). */
+  const ambientFx = new AmbientFx(layers);
   /* v2.3.221: FPS counter only mounts with ?dev=1. */
   const _devUI = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search);
   /* v2.3.1781: minimap lives in the screen-space `hud` layer so it never
@@ -208,6 +212,7 @@ export async function initPixiRenderer(canvas) {
     tileRenderer.rebuild(app, map, zoneId);
     entityRenderer.clear();
     effectsRenderer.clear();
+    ambientFx.setZone(zoneId);   /* v2.3.2704 */
     /* ═══ v2.3.2596: THE ZONE-ENTRY BANNER'S ONE TRIGGER ═══
        This function is the single place in the client that observes every zone
        change, whatever set it -- the hub walk-in, a respawn, the dev warp, a
@@ -350,6 +355,9 @@ export async function initPixiRenderer(canvas) {
     update._lastStages.entityMs = _t2 - _t1;
     try { effectsRenderer.update(S, cssW, cssH, now); }
     catch (e) { if (!update._effectsErr) { update._effectsErr = true; console.error('[pixi-render] effectsRenderer threw', e && e.message, e && e.stack); } }
+    /* v2.3.2704: after the effects, in the camera's world rect. */
+    try { ambientFx.update(S, cx, cy, viewW, viewH, now); }
+    catch (e) { if (!update._ambientErr) { update._ambientErr = true; console.error('[pixi-render] ambientFx threw', e && e.message, e && e.stack); } }
     const _t3 = performance.now();
     update._lastStages.effectsMs = _t3 - _t2;
     /* ═══ v2.3.2635: DEPTH, AFTER EVERYTHING HAS MOVED ═══

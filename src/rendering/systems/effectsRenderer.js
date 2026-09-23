@@ -3170,9 +3170,6 @@ export class EffectsRenderer {
          point of the fix for anyone who never opened the skin picker. */
       const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
       const cv = recolorStandInSkin(img, skinT, FIRE_FH, FIRE_SKIN_OPTS);
-      /* v2.3.2703: the log is pine bark, not the pipeline's magenta key --
-         after the skin pass, which the key keeps off it.  See toolRecolor.js. */
-      recolorToolKeyCanvas(cv, TOOL_SPECS.log);
       const source = Texture.from(cv).source;
       source.scaleMode = 'linear';
       const n = Math.max(1, Math.round(cv.width / FIRE_FW));

@@ -14,7 +14,9 @@
  *
  *   chop-strip (+legless)   axe HEAD -> copper, HAFT -> pine
  *   fish-south              rod -> pine
- *   firemaking-strip        log -> pine (a shade darker: bark)
+ * (firemaking-strip's log is keyed too, but firemaking is being rebuilt as
+ * code-drawn fire in another session -- owner, v2.3.2703 -- so it is left
+ * alone here; TOOL_SPECS.log is ready if that work wants it.)
  *
  * WHY AT LOAD AND NOT IN THE FILES.  Code downstream still reads the key: the
  * fishing rod is FOUND by its magenta when an armoured angler's body is baked
