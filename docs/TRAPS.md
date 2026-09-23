@@ -4414,3 +4414,30 @@ to its aim point, but the ball's x/y in S.slimeProjectiles stays the GROUND
 point: every hit test, prop stop (v2.3.2699) and player-contact check reads
 that, unchanged. Its shadow is drawn there -- which is where the worker will
 settle the hit.
+
+## 106. A gear frame's `frame` is the crop, not the frame (v2.3.2750)
+
+**Tempting:** size or copy a gear texture by `tex.frame` -- `256 /
+tex.frame.width` to normalise its scale, or `drawImage(res, f.x, f.y,
+f.width, f.height, 0, 0, 256, 256)` to paint it into a bake. Every gear
+consumer did exactly that until v2.3.2750, and it was right while every frame
+was a whole 128 or 256 cell.
+
+**Wrong** since v2.3.2750: gearSheets crops the walking-layer sheets
+(chest / legs / shirt / belt; stand, jog, hit, mine, dodge, pickup, fish) to
+their art, because 81-90% of every frame was transparent and that empty space
+was ~56 MB on the phone. A cropped Texture's `frame` is only the crop -- a
+64x48 box, different on every frame. Normalising by it scales the plate up
+2-3x; stretching it over the full box smears the plate across the whole
+figure. `orig` is the whole frame and `trim` is where the crop sits in it.
+
+**The rule:** read a gear texture's SIZE from `tex.orig` (equal to `frame` for
+an uncropped texture, so it is always safe), and copy its PIXELS through
+`drawGearFrame(ctx, tex, dx, dy, dw, dh)` (gearSheets), which places the crop
+at its offset and is a plain `drawImage` for anything uncropped. A Sprite needs
+nothing -- Pixi builds the quad from `trim` and reports bounds from `orig`.
+Cutting a sub-rectangle out of a cropped frame by `frame.x + offset` (the
+blockArm sleeve does this to bowshot frames) is not supported -- which is why
+the combat poses and the fullset figure are left uncropped. Add a pose to
+`TRIM_POSES` only after checking every reader of it. mp-geartrim holds every
+armour layer's box to the body's box, own screen and peer's.

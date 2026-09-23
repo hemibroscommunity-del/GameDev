@@ -67,6 +67,155 @@ function loadImg(url) { return loadWebpOrPng(url); }
    failure is only distinguishable from expected-missing art by eye —
    flip window.__spriteLog = true to see them. */
 const _GEAR_RETRY_MS = [2000, 6000];
+
+/* ═══ v2.3.2750: CROPPED GEAR FRAMES ═══
+ *
+ * Owner: "would it be an improvement to the memory constraints that currently
+ * exist equipping armor while running on mobile?"
+ *
+ * Every gear frame is the body's whole frame -- 128 or 256 square -- and the
+ * armour only fills a corner of it.  Measured over every walking-layer sheet
+ * (stand/jog/hit/mine/dodge/pickup/fish for chest, legs and shirt, plus the
+ * jog belt): 81-90% of those pixels are fully transparent, and they were
+ * decoded, uploaded and mipmapped anyway.  ~81 MB of resident texture for
+ * those four sets, before mips.  The phone kills the tab around 250 MB
+ * (OPTIMIZATION-ROADMAP P7), so that empty space was the single largest thing
+ * the armour cost.
+ *
+ * So each frame is cropped to its own art and the crops are packed side by
+ * side into one smaller strip.  The Texture keeps the FULL frame as `orig` and
+ * where the crop sat inside it as `trim` -- Pixi's own spritesheet contract,
+ * which Sprite honours when it builds the quad (updateQuadBounds), so a
+ * cropped frame lands on exactly the pixels the uncropped one did and
+ * `texture.width` / sprite bounds still report the full frame.  Nothing about
+ * where the armour draws changes.
+ *
+ * What DOES change is `texture.frame`: it is now the crop, not the whole
+ * frame.  Every reader of a gear frame's size or pixels was moved to `orig` /
+ * drawGearFrame in the same change (entityRenderer _placeGear + the three
+ * masked-bake draws, effectsRenderer's stand-in jog legs, belt-harness).  A
+ * new consumer that copies gear pixels onto a canvas must go through
+ * drawGearFrame -- `drawImage(res, f.x, f.y, f.width, f.height, 0, 0, 256,
+ * 256)` on a cropped frame would stretch the crop over the whole frame.
+ *
+ * Why the numbers are what they are:
+ *   - PAD: the crop keeps 4 transparent texels of margin, so linear filtering
+ *     at the quad's edge blends toward transparent exactly as it did when the
+ *     neighbour texel was the frame's own empty space.
+ *   - ALIGN 8: crop origins, crop sizes and strip positions are multiples of
+ *     8, and so were the old frame origins (i*128, i*256).  Every 2x2 / 4x4 /
+ *     8x8 block the GPU averages for mip levels 1-3 therefore covers the same
+ *     texels it did before, so those levels come out identical too -- the
+ *     v2.3.1385 lesson was that the phone really does sample them.
+ *   - GAP 8: transparent columns between crops, so no mip block reaches from
+ *     one frame into its neighbour.
+ *
+ * NOT cropped: the fullset knight figure (it becomes the BODY sprite's
+ * texture, and a great deal of body code reads that frame's size -- ~4 MB is
+ * not worth that risk), and the combat poses (bowshot/swing/chop/cook/fire)
+ * whose consumers cut sub-rectangles by frame offset (blockArm sleeve).
+ * Only the slots and poses below are cropped. */
+const TRIM_SLOTS = new Set(['chest', 'legs', 'shirt', 'belt']);
+const TRIM_POSES = new Set(['stand', 'jog', 'hit', 'mine', 'dodge', 'pickup', 'fish']);
+const TRIM_PAD = 4;
+const TRIM_ALIGN = 8;
+const TRIM_GAP = 8;
+/* QA probe: what cropping has saved so far, in decoded bytes (mips excluded).
+   A drawn-shirt re-bake counts again -- it is a real second upload. */
+const _trimStats = { sheets: 0, uncropped: 0, fullBytes: 0, packedBytes: 0 };
+if (typeof window !== 'undefined') window.__btGearTrim = () => ({ ..._trimStats });
+/* v2.3.2750: every frame of the sheet a gear texture belongs to.  A cropped
+   frame no longer sits on a grid of equal cells in its source, so a scenario
+   that walks "the whole sheet" (mp-shirtjog) cannot slice the resource by
+   frame width any more -- it asks for the frames and draws each at its trim. */
+if (typeof window !== 'undefined') {
+  window.__btGearSheetOf = (tex) => {
+    if (!tex || !tex.source) return null;
+    for (const k of Object.keys(_sheets)) {
+      const e = _sheets[k];
+      if (Array.isArray(e) && e.length && e[0].source === tex.source) return e;
+    }
+    return null;
+  };
+}
+
+/* Crop each fw x fh frame of `img` to its non-transparent box (plus PAD,
+   snapped out to ALIGN) and pack the crops left to right.  Returns
+   { canvas, cells: [{ ax, tx, ty, w, h }] } or null if the pixels could not
+   be read, in which case the caller uploads the plain strip as before. */
+function packTrimmed(img, fw, fh) {
+  const W = img.width | 0, H = img.height | 0;
+  const n = Math.max(1, Math.floor(W / fw));
+  if (!W || !H || H < fh || fw % TRIM_ALIGN || fh % TRIM_ALIGN) return null;
+  let rd = null, data;
+  try {
+    rd = document.createElement('canvas'); rd.width = W; rd.height = fh;
+    const rctx = rd.getContext('2d', { willReadFrequently: true });
+    rctx.drawImage(img, 0, 0);
+    data = rctx.getImageData(0, 0, W, fh).data;
+  } catch (e) {
+    if (rd) { rd.width = 0; rd.height = 0; }
+    return null;
+  }
+  const snapDn = (v) => Math.max(0, Math.floor(v / TRIM_ALIGN) * TRIM_ALIGN);
+  const cells = [];
+  let ax = 0, maxH = TRIM_ALIGN;
+  for (let i = 0; i < n; i++) {
+    const ox = i * fw;
+    let x0 = fw, y0 = fh, x1 = -1, y1 = -1;
+    for (let y = 0; y < fh; y++) {
+      const row = y * W;
+      for (let x = 0; x < fw; x++) {
+        if (data[(row + ox + x) * 4 + 3] !== 0) {
+          if (x < x0) x0 = x; if (x > x1) x1 = x;
+          if (y < y0) y0 = y; if (y > y1) y1 = y;
+        }
+      }
+    }
+    let tx, ty, w, h;
+    if (x1 < 0) {
+      /* an empty frame still needs a texture: one blank ALIGN cell */
+      tx = 0; ty = 0; w = TRIM_ALIGN; h = TRIM_ALIGN;
+    } else {
+      tx = snapDn(x0 - TRIM_PAD); ty = snapDn(y0 - TRIM_PAD);
+      w = Math.min(fw, Math.ceil((x1 + 1 + TRIM_PAD) / TRIM_ALIGN) * TRIM_ALIGN) - tx;
+      h = Math.min(fh, Math.ceil((y1 + 1 + TRIM_PAD) / TRIM_ALIGN) * TRIM_ALIGN) - ty;
+    }
+    cells.push({ ax, tx, ty, w, h, blank: x1 < 0 });
+    ax += w + TRIM_GAP;
+    if (h > maxH) maxH = h;
+  }
+  const cv = document.createElement('canvas');
+  cv.width = Math.max(TRIM_ALIGN, ax - TRIM_GAP); cv.height = maxH;
+  const ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;   /* 1:1 copies; never resample */
+  for (let i = 0; i < n; i++) {
+    const c = cells[i];
+    if (!c.blank) ctx.drawImage(rd, i * fw + c.tx, c.ty, c.w, c.h, c.ax, 0, c.w, c.h);
+  }
+  /* Safari holds canvas backing stores against a hard total until GC gets to
+     them; zeroing hands the full-size scratch copy back now. */
+  rd.width = 0; rd.height = 0;
+  return { canvas: cv, cells };
+}
+
+/** Draw a gear frame onto a 2D canvas as if it were the WHOLE frame, scaled
+ *  to (dw x dh) at (dx, dy).  Handles cropped frames (v2.3.2750) and plain
+ *  ones alike: for an uncropped texture this is exactly
+ *  `drawImage(res, f.x, f.y, f.w, f.h, dx, dy, dw, dh)`.  Any code that copies
+ *  gear pixels onto a canvas must use this rather than reading `tex.frame`. */
+export function drawGearFrame(ctx, tex, dx, dy, dw, dh) {
+  const res = tex && tex.source && tex.source.resource;
+  if (!res) return false;
+  const f = tex.frame, t = tex.trim, o = tex.orig;
+  if (!t || !o) {
+    ctx.drawImage(res, f.x, f.y, f.width, f.height, dx, dy, dw, dh);
+    return true;
+  }
+  const sx = dw / o.width, sy = dh / o.height;
+  ctx.drawImage(res, f.x, f.y, f.width, f.height, dx + t.x * sx, dy + t.y * sy, f.width * sx, f.height * sy);
+  return true;
+}
 function buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
   _sheets[key] = 'loading';
   /* Returns a promise that ALWAYS resolves (missing sheet -> []), so callers
@@ -144,7 +293,13 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
        shirt is nothing.  composeShirt does tint -> pattern -> print in that
        order and the draw site uses no tint on the result. */
     if (stampArt) img = composeShirt(img, fh, stampArt);
-    const src = Texture.from(img).source;
+    /* v2.3.2750: crop the empty space off every frame before upload -- see
+       packTrimmed below.  Falls through to the plain strip for the sheets it
+       does not cover, or if the pixels cannot be read. */
+    const packed = TRIM_SLOTS.has(slot) && TRIM_POSES.has(pose) ? packTrimmed(img, fw, fh) : null;
+    if (packed) { _trimStats.sheets++; _trimStats.fullBytes += img.width * fh * 4; _trimStats.packedBytes += packed.canvas.width * packed.canvas.height * 4; }
+    else { _trimStats.uncropped++; }
+    const src = Texture.from(packed ? packed.canvas : img).source;
     src.scaleMode = 'linear';
     /* v2.3.1385: the v2.3.1384 fullset mips-off (invisible-knight memory
        guess) came RIGHT BACK as "lines are blurry and wobbly behind the
@@ -153,9 +308,23 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
        Restored; the invisible-knight hunt rides on the v2.3.1384 telemetry
        (gear-sheet-failed / body-sheet-failed + GL caps) instead. */
     src.autoGenerateMipmaps = true;
-    const frames = Math.max(1, Math.floor(img.width / fw));
+    /* v2.3.2750: a cropped sheet's resource is our packed canvas, which has no
+       URL -- keep the one the art was decoded from, so a QA probe can still ask
+       which file (and which ?v= bust) the phone is drawing. */
+    if (packed) { try { src.label = String(rawImg.currentSrc || rawImg.src || ''); } catch (e) { /* label is QA-only */ } }
+    const frames = packed ? packed.cells.length : Math.max(1, Math.floor(img.width / fw));
     const out = [];
     for (let i = 0; i < frames; i++) {
+      if (packed) {
+        const c = packed.cells[i];
+        out.push(new Texture({
+          source: src,
+          frame: new Rectangle(c.ax, 0, c.w, c.h),
+          orig: new Rectangle(0, 0, fw, fh),
+          trim: new Rectangle(c.tx, c.ty, c.w, c.h),
+        }));
+        continue;
+      }
       out.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) }));
     }
     _sheets[key] = out;
