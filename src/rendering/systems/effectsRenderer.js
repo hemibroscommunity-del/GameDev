@@ -293,6 +293,7 @@ import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
 import { recolorToolKeyCanvas, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark */
+import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
 import { SHADE } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks */
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 
@@ -1833,6 +1834,59 @@ function _trimBakeCache(cache) {
  * as the old size did. */
 const LOOT_SCALE = 2;
 
+/* ═══ v2.3.2771: A PILE LANDS, ITS RAREST THING ON TOP ═══
+ * Owner: "Make it so loot from monster drops kind of bounces when it first
+ * lands (each item independently).  Show rarer items in top in terms of drop
+ * rate if overlap.  Show 'RARE DROP!' message if there's a rare item in the
+ * pile and have it just give a faint white shine upward from its position."
+ *
+ * DRAW ORDER IS DROP RATE.  The loot layer sorts by zIndex, and each kind of
+ * thing on a pile takes the slot its rarity earns (server rates, index.js /
+ * data.js): the remains and the coins come with nearly every kill, a zone
+ * shard with 10%, a weapon with 0.05-3% (by monster level), the rare gem with
+ * 0.5%, an iron armour piece with 0.2%.  Rarer draws over commoner, on one
+ * pile or where two piles overlap; labels over all items, names over labels.
+ * The ground rings stay underneath everything, as the glow they are. */
+const LOOT_Z = {
+  ring: -10, remnant: 0, coin: 10, coinLabel: 11, shard: 20,
+  weapon: 30, gem: 40, armor: 50, beam: 55, label: 60, owner: 70, rareText: 80,
+};
+/* A rare item is anything rarer than 1 in 100 -- the weapon, gem and armour
+   lanes.  What earns the RARE DROP! call and the shine. */
+const RARE_KINDS = { weapon: true, gem: true, armor: true };
+
+/* ═══ THE LANDING ═══
+ * Each item falls from its own height, lands, and takes two shrinking hops --
+ * a decaying |cos|, so the first quarter-cycle IS the fall.  Every item on
+ * the pile gets its own height, delay and rhythm from a per-pile seed, so the
+ * coin, the shard and the gem land one after another rather than as one
+ * block.  Only in the pile's first LAND_S seconds, measured from the SERVER'S
+ * drop time (l.ts): a pile you walk up to, or one synced on zone entry, is
+ * already lying still.  Visual only -- the pickup test reads l.x / l.y. */
+const LAND_S = 1.0;
+const HOP_KEYS = { remnant: 0, coin: 1, shard: 2, weapon: 3, gem: 4, armor: 5 };
+const _NO_HOP = { dy: 0, sq: 0 };
+const _hash = (x) => { const v = Math.sin(x) * 43758.5453; return v - Math.floor(v); };
+function lootHop(l, key, age, n = 0) {
+  if (!(age < LAND_S) || age < 0) return _NO_HOP;
+  if (l._landSeed == null) l._landSeed = Math.random();
+  const k = (HOP_KEYS[key] || 0) + n * 7 + 1;
+  const A = 14 + 10 * _hash(l._landSeed * 131 + k * 1.7);           /* drop height, world px */
+  const delay = 0.16 * _hash(l._landSeed * 71 + k * 3.1);           /* one after another */
+  const P = 0.15 * (0.85 + 0.3 * _hash(l._landSeed * 53 + k * 5.3)); /* fall time = first quarter */
+  const t = age - delay;
+  if (t < 0) return { dy: A, sq: 0 };
+  const env = Math.exp(-3.2 * t);
+  const c = Math.abs(Math.cos((Math.PI * t) / (2 * P)));
+  /* a little squash at each contact, gone by the second hop */
+  const sq = 0.22 * env * Math.max(0, 1 - c / 0.25);
+  return { dy: A * env * c, sq };
+}
+function applySquash(sp, sq) {
+  if (!sq || !sp) return;
+  sp.scale.set(sp.scale.x * (1 + 0.6 * sq), sp.scale.y * (1 - sq));
+}
+
 export class EffectsRenderer {
   constructor(layers) {
     this.particleLayer = layers.particles;
@@ -2088,6 +2142,10 @@ export class EffectsRenderer {
     // Loot graphics
     this.lootGfx = new Graphics();
     this.lootLayer.addChild(this.lootGfx);
+    /* v2.3.2771: the loot layer draws by rarity (LOOT_Z); the rings are the
+       ground glow under everything */
+    this.lootGfx.zIndex = LOOT_Z.ring;
+    this.lootLayer.sortableChildren = true;
 
     // Splatter graphics
     this.splatGfx = new Graphics();
@@ -6797,6 +6855,9 @@ export class EffectsRenderer {
     kill(l._pixiShardSprite);
     kill(l._pixiOwnerLabel);
     kill(l._pixiWpnLabel);
+    /* v2.3.2771: the rare icons, their shines, and the RARE DROP! call */
+    if (l._pixiRare) { for (const r of l._pixiRare) { kill(r.icon); kill(r.beam); } l._pixiRare = null; }
+    kill(l._pixiRareDrop); l._pixiRareDrop = null;
     kill(l._pixiRareLabel);   /* v2.3.1924: the iron/gem label — a Text left
                                  on lootLayer after its pile despawns is a
                                  leak AND a name floating over empty ground. */
@@ -6830,6 +6891,7 @@ export class EffectsRenderer {
         },
       });
       l._pixiOwnerLabel.anchor.set(0.5, 1);
+      l._pixiOwnerLabel.zIndex = LOOT_Z.owner;   /* v2.3.2771 */
       this.lootLayer.addChild(l._pixiOwnerLabel);
     }
     const txt = l.killerName + "'s loot";
@@ -6846,12 +6908,13 @@ export class EffectsRenderer {
    *  Uses _pixiShardSprite so it doesn't collide with the other pooled
    *  sprites.  Falls back silently while the PNG is still loading -- a
    *  missing icon is preferable to a glyph that pops in mid-frame. */
-  _renderShardOverlay(l, anchorY, alpha) {
+  _renderShardOverlay(l, anchorY, alpha, sq = 0) {
     const tex = SHARD_ICONS[l.shard];
     if (!tex) return;
     if (!l._pixiShardSprite || l._pixiShardSprite.destroyed) {
       const sp = new Sprite(tex);
       sp.anchor.set(0.5, 0.5);
+      sp.zIndex = LOOT_Z.shard;   /* v2.3.2771 */
       this.lootLayer.addChild(sp);
       l._pixiShardSprite = sp;
     }
@@ -6860,6 +6923,7 @@ export class EffectsRenderer {
     l._pixiShardSprite.y = anchorY;
     l._pixiShardSprite.alpha = alpha;
     l._pixiShardSprite.scale.set(16 / (l._pixiShardSprite.texture.width || 16));
+    applySquash(l._pixiShardSprite, sq);   /* v2.3.2771 */
     l._pixiShardSprite.visible = true;
   }
 
@@ -6867,7 +6931,7 @@ export class EffectsRenderer {
    *  layered ABOVE any remnants/wreck sprite already added for this loot
    *  entry.  Uses dedicated _pixiCoinSprite / _pixiCoinLabel slots so it
    *  doesn't collide with the remnants' _pixiSprite. */
-  _renderCoinOverlay(l, anchorY, alpha, ownsThis) {
+  _renderCoinOverlay(l, anchorY, alpha, ownsThis, sq = 0) {
     /* ownsThis === false signals MP loot the local player can't claim
        (someone else's contribution-weighted drop).  Render the icon in
        gray + lower alpha and skip the "+Xg" label since the watcher
@@ -6878,6 +6942,7 @@ export class EffectsRenderer {
       if (!l._pixiCoinSprite || l._pixiCoinSprite.destroyed) {
         const sp = new Sprite(goldTex);
         sp.anchor.set(0.5, 0.5);
+        sp.zIndex = LOOT_Z.coin;   /* v2.3.2771 */
         this.lootLayer.addChild(sp);
         l._pixiCoinSprite = sp;
       }
@@ -6886,12 +6951,14 @@ export class EffectsRenderer {
       l._pixiCoinSprite.alpha = (owned ? 1 : 0.4) * alpha;
       l._pixiCoinSprite.tint = owned ? 0xffffff : 0x555555;
       l._pixiCoinSprite.scale.set((12 * LOOT_SCALE) / (l._pixiCoinSprite.texture.width || 12));
+      applySquash(l._pixiCoinSprite, sq);   /* v2.3.2771 */
       l._pixiCoinSprite.visible = true;
     }
     if (owned) {
       if (!l._pixiCoinLabel || l._pixiCoinLabel.destroyed) {
         l._pixiCoinLabel = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700', fill: '#f5c542' } });
         l._pixiCoinLabel.anchor.set(0.5, 0);
+        l._pixiCoinLabel.zIndex = LOOT_Z.coinLabel;   /* v2.3.2771 */
         this.lootLayer.addChild(l._pixiCoinLabel);
       }
       const cStr = l.coins + 'G';
@@ -6905,8 +6972,119 @@ export class EffectsRenderer {
     }
   }
 
+  /* ═══ v2.3.2771: THE RARE THINGS ON A PILE ═══
+     Until now a weapon, gem or armour drop was a ring on the ground and a
+     line of text; there was no item.  Each one now lies on the pile as its
+     bag icon (lootIcons.js), lands with its own bounce, draws above every
+     commoner thing (LOOT_Z), and sends up a faint white shine -- brighter for
+     the first moments after it lands, then a slow breath for as long as it is
+     there.  A pile that ARRIVES with one (a fresh kill, not a zone-entry sync
+     of an old pile) calls "RARE DROP!" above itself, once. */
+  _renderRareItems(l, age, bob, alpha, now) {
+    const items = [];
+    if (l.hasWeapon && !l.weaponClaimed) items.push({ kind: 'weapon', tex: LOOT_ICONS[weaponIconKey(l.weaponType, l.weaponName)] });
+    if (l.gem && !l.inventoryClaimed) items.push({ kind: 'gem', tex: LOOT_ICONS.gem });
+    if (Array.isArray(l.armor) && !l.armorClaimed) {
+      for (const a of l.armor) if (a) items.push({ kind: 'armor', tex: LOOT_ICONS[armorIconKey(a)] });
+    }
+    const n = items.length;
+    const pool = l._pixiRare || (n ? (l._pixiRare = []) : null);
+    if (pool) {
+      /* sized and placed on a real shot: at 14 the three rare icons read as
+         clutter sitting ON the coin; they are the reason to walk over, so
+         they are a little bigger than the coin and ride just above it */
+      const ICON = 17 * LOOT_SCALE;
+      for (let i = 0; i < Math.max(n, pool.length); i++) {
+        let r = pool[i];
+        if (i >= n) { if (r) { r.icon.visible = false; r.beam.visible = false; } continue; }
+        const it = items[i];
+        if (!r) {
+          const icon = new Sprite(it.tex || Texture.EMPTY);
+          icon.anchor.set(0.5, 0.5);
+          const beam = new Sprite(lootBeamTexture());
+          beam.anchor.set(0.5, 1);
+          beam.blendMode = 'add';
+          this.lootLayer.addChild(beam);
+          this.lootLayer.addChild(icon);
+          r = pool[i] = { icon, beam };
+        }
+        const h = lootHop(l, it.kind, age, i);
+        /* side by side when a pile carries more than one; they overlap a
+           little, and the rarer draws on top (zIndex) */
+        const x = l.x + (i - (n - 1) / 2) * 22;
+        const y = l.y + bob - 30 - h.dy;
+        if (it.tex && r.icon.texture !== it.tex) r.icon.texture = it.tex;
+        r.icon.visible = !!it.tex;
+        r.icon.zIndex = LOOT_Z[it.kind] + i * 0.01;
+        r.icon.x = x; r.icon.y = y;
+        r.icon.scale.set(ICON / ((r.icon.texture && r.icon.texture.width) || 64));
+        applySquash(r.icon, h.sq);
+        r.icon.alpha = alpha;
+        /* the shine rises from the item, following it through its bounce */
+        const flash = Math.exp(-Math.max(0, age - 0.25) * 1.6);
+        const breath = 0.5 + 0.5 * Math.sin(age * 2.2 + i * 1.7);
+        r.beam.visible = true;
+        r.beam.zIndex = LOOT_Z.beam;
+        r.beam.x = x; r.beam.y = y + ICON * 0.3;
+        r.beam.alpha = Math.min(1, 0.22 + 0.1 * breath + 0.5 * flash) * alpha;
+        r.beam.scale.set((11 * LOOT_SCALE) / 24, ((40 + 24 * flash) * LOOT_SCALE) / 128);
+      }
+    }
+    /* RARE DROP!, once, and only for a pile that has just come down */
+    if (n && !l._rareShown) {
+      l._rareShown = true;
+      if (age < 2.5) l._rareT0 = now;
+    }
+    if (l._rareT0) {
+      const t = (now - l._rareT0) / 1000;
+      const DUR = 2.4;
+      if (t >= DUR) {
+        l._rareT0 = 0;
+        if (l._pixiRareDrop && !l._pixiRareDrop.destroyed) l._pixiRareDrop.visible = false;
+      } else {
+        if (!l._pixiRareDrop || l._pixiRareDrop.destroyed) {
+          l._pixiRareDrop = new Text({ text: 'RARE DROP!', style: {
+            fontFamily: 'Source Sans 3, sans-serif', fontSize: 13, fontWeight: '900',
+            fill: '#FFE27A', stroke: { color: '#1A1206', width: 3 }, letterSpacing: 1, align: 'center' } });
+          l._pixiRareDrop.anchor.set(0.5, 1);
+          l._pixiRareDrop.zIndex = LOOT_Z.rareText;
+          this.lootLayer.addChild(l._pixiRareDrop);
+        }
+        const pop = t < 0.18 ? 0.5 + 0.7 * (t / 0.18) : (t < 0.32 ? 1.2 - 0.2 * ((t - 0.18) / 0.14) : 1);
+        const rise = 24 * (1 - Math.exp(-t * 2.2));
+        l._pixiRareDrop.visible = true;
+        l._pixiRareDrop.x = l.x;
+        l._pixiRareDrop.y = l.y + bob - 58 - rise;
+        l._pixiRareDrop.scale.set(pop);
+        l._pixiRareDrop.alpha = t > DUR - 0.7 ? Math.max(0, (DUR - t) / 0.7) : 1;
+      }
+    }
+  }
+
   _updateGroundLoot(S, now) {
     const gfx = this.lootGfx;
+    /* v2.3.2771 QA probe: each pile's rare items, the draw order of everything
+       on it (lowest first), and where its landing is -- a bounce is a number
+       over time, which a screenshot cannot hold. */
+    if (typeof window !== 'undefined' && !window.__btLootRare) {
+      const _selfR = this;
+      window.__btLootRare = function () {
+        const out = [];
+        for (const e of (_selfR._knownLoot || [])) {
+          if (!e) continue;
+          const parts = [];
+          const add = (sp, kind) => { if (sp && !sp.destroyed && sp.visible) parts.push({ kind, z: sp.zIndex, y: +sp.y.toFixed(1) }); };
+          add(e._pixiSprite, 'remnantOrCoin'); add(e._pixiCoinSprite, 'coin'); add(e._pixiShardSprite, 'shard');
+          for (const r of (e._pixiRare || [])) { add(r.icon, 'rareIcon'); add(r.beam, 'beam'); }
+          add(e._pixiRareDrop, 'rareText');
+          parts.sort((a, b) => a.z - b.z);
+          out.push({ lootId: e.lootId || null, ageS: +(((Date.now() - (e.ts || 0)) / 1000)).toFixed(2),
+            rareShown: !!e._rareShown, rareTextVisible: !!(e._pixiRareDrop && !e._pixiRareDrop.destroyed && e._pixiRareDrop.visible),
+            parts });
+        }
+        return out;
+      };
+    }
     gfx.clear();
 
     /* ═══ v2.3.2316: GROUND LOOT AT TWICE THE SIZE ═══
@@ -7000,6 +7178,9 @@ export class EffectsRenderer {
          this is purely a visual offset. */
       const PILE_Y_OFFSET = 38;
       const bob = Math.sin(age * 3) * 2.5 + PILE_Y_OFFSET;
+      /* v2.3.2771: each item's own landing (lootHop above) -- zero once the
+         pile has settled, so every line below reads as before */
+      const hR = lootHop(l, 'remnant', age), hC = lootHop(l, 'coin', age), hS = lootHop(l, 'shard', age);
       /* ═══ v2.3.2318: A LAST CALL, NOT A QUIET FADE ═══
          Owner: "monster loot that's almost timing out and disappearing make it
          fade then show full opacity for about the last 10 seconds before it
@@ -7093,6 +7274,7 @@ export class EffectsRenderer {
         if (!l._pixiWpnLabel || l._pixiWpnLabel.destroyed) {
           l._pixiWpnLabel = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700' } });
           l._pixiWpnLabel.anchor.set(0.5, 0);
+          l._pixiWpnLabel.zIndex = LOOT_Z.label;   /* v2.3.2771 */
           this.lootLayer.addChild(l._pixiWpnLabel);
         }
         /* v2.3.1925: the "?" is earned now.  It used to sit on EVERY weapon
@@ -7150,6 +7332,7 @@ export class EffectsRenderer {
         if (!l._pixiRareLabel || l._pixiRareLabel.destroyed) {
           l._pixiRareLabel = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700' } });
           l._pixiRareLabel.anchor.set(0.5, 0);
+          l._pixiRareLabel.zIndex = LOOT_Z.label;   /* v2.3.2771 */
           this.lootLayer.addChild(l._pixiRareLabel);
         }
         if (l._pixiRareLabel.text !== _rareStr) l._pixiRareLabel.text = _rareStr;
@@ -7161,6 +7344,8 @@ export class EffectsRenderer {
       } else if (l._pixiRareLabel && !l._pixiRareLabel.destroyed) {
         l._pixiRareLabel.visible = false;
       }
+      /* v2.3.2771: the rare things themselves -- icon, shine, RARE DROP! */
+      this._renderRareItems(l, age, bob, alpha, now);
 
       if (l.isWeapon && l.weapon) {
         /* Tier-colored aura + ring + emoji + name label. */
@@ -7237,14 +7422,16 @@ export class EffectsRenderer {
             this.lootLayer.addChild(sp);
             l._pixiSprite = sp;
           }
+          l._pixiSprite.zIndex = LOOT_Z.remnant;   /* v2.3.2771 */
           if (l._pixiSprite.texture !== remnTex) l._pixiSprite.texture = remnTex;
           l._pixiSprite.x = l.x;
-          l._pixiSprite.y = l.y + bob;
+          l._pixiSprite.y = l.y + bob - hR.dy;
           l._pixiSprite.alpha = alpha;
           /* Slime splat renders at 48 px on-screen; variant remnants
              use their own remnantsScalePx (default 48). */
           const targetPx = (variantRemnTex ? (variant.remnantsScalePx || 48) : 48) * LOOT_SCALE;
           l._pixiSprite.scale.set(targetPx / (l._pixiSprite.texture.width || targetPx));
+          applySquash(l._pixiSprite, hR.sq);   /* v2.3.2771 */
           l._pixiSprite.visible = true;
           /* Coin sits ON TOP of the remnants when gold rides on this drop.
              10 px above center so the player can see there's gold to grab
@@ -7252,11 +7439,11 @@ export class EffectsRenderer {
              grayed-out coin icon (no label) so they can see the pile
              exists but read it as "not yours". */
           const ownsThis = !l.recipients || !S.myId || l.recipients.includes(S.myId);
-          if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 10 + bob, alpha, ownsThis);
+          if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 10 + bob - hC.dy, alpha, ownsThis, hC.sq);
           /* Shard floats just above the coin (or above the remnants if
              there's no coin) so the player can read the zone-affiliation
              at a glance without picking up. */
-          if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 24 : 12) + bob, alpha);
+          if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 24 : 12) + bob - hS.dy, alpha, hS.sq);
           this._renderOwnerLabel(l, ownsThis, alpha);
           continue;
         }
@@ -7289,14 +7476,16 @@ export class EffectsRenderer {
           l._pixiSprite = sp;
         }
         l._pixiSprite.x = l.x;
-        l._pixiSprite.y = l.y + bob;   /* bob already carries PILE_Y_OFFSET */
+        l._pixiSprite.y = l.y + bob - hR.dy;   /* bob already carries PILE_Y_OFFSET; v2.3.2771: its landing */
+        l._pixiSprite.zIndex = LOOT_Z.remnant;
         l._pixiSprite.alpha = alpha;
         l._pixiSprite.scale.set((48 * LOOT_SCALE) / (l._pixiSprite.texture.width || 128));
+        applySquash(l._pixiSprite, hR.sq);
         l._pixiSprite.visible = true;
         /* Coin sits on top of the wreck when gold rides on this drop. */
         const snOwn = !l.recipients || !S.myId || l.recipients.includes(S.myId);
-        if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 14 + bob, alpha, snOwn);
-        if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 28 : 14) + bob, alpha);
+        if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 14 + bob - hC.dy, alpha, snOwn, hC.sq);
+        if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 28 : 14) + bob - hS.dy, alpha, hS.sq);
         this._renderOwnerLabel(l, snOwn, alpha);
         continue;
       }
@@ -7329,10 +7518,12 @@ export class EffectsRenderer {
             l._pixiSprite = sp;
           }
           l._pixiSprite.x = l.x;
-          l._pixiSprite.y = l.y + 3 + bob;
+          l._pixiSprite.y = l.y + 3 + bob - hC.dy;   /* v2.3.2771: its landing */
+          l._pixiSprite.zIndex = LOOT_Z.coin;
           l._pixiSprite.alpha = (ownsThis ? 1 : 0.5) * alpha;
           l._pixiSprite.tint = ownsThis ? 0xffffff : 0x555555;
           l._pixiSprite.scale.set((14 * LOOT_SCALE) / (l._pixiSprite.texture.width || 14));
+          applySquash(l._pixiSprite, hC.sq);
           l._pixiSprite.visible = true;
         } else {
           gfx.circle(l.x - 3, l.y + 2 + bob, 4);
@@ -7353,7 +7544,8 @@ export class EffectsRenderer {
           const cStr = l.coins + 'G';
           if (l._pixiLabel.text !== cStr) l._pixiLabel.text = cStr;
           l._pixiLabel.x = l.x;
-          l._pixiLabel.y = l.y + 14 + bob;
+          l._pixiLabel.y = l.y + 14 + bob - hC.dy;
+          l._pixiLabel.zIndex = LOOT_Z.coinLabel;   /* v2.3.2771 */
           l._pixiLabel.alpha = alpha;
           l._pixiLabel.visible = true;
         } else if (l._pixiLabel && !l._pixiLabel.destroyed) {
@@ -7367,7 +7559,7 @@ export class EffectsRenderer {
          in the loot, but be invisible until pickup.  Sits above the
          coin sprite so the player can read both the gold count and
          the zone shard at a glance. */
-      if (l.shard) this._renderShardOverlay(l, l.y - 15 + bob, alpha);
+      if (l.shard) this._renderShardOverlay(l, l.y - 15 + bob - hS.dy, alpha, hS.sq);
       if (l.xp) {
         gfx.circle(l.x + 6, l.y + bob, 3);
         gfx.fill({ color: 0x5b52ff, alpha });
