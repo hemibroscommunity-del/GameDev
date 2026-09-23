@@ -411,6 +411,21 @@ export function zoneDepthScale(zoneId, y, TILE) {
   return near + (far - near) * Math.pow(t, d.curve != null ? d.curve : 1);
 }
 
+/* ═══ v2.3.2775: YOUR REACH SHRINKS WITH YOU ═══
+   Owner: "Yes fix my reach."  Step 2 made a far monster measure its reach in
+   the curve (server depth.js), and left yours flat -- on Wind Dunes' north
+   edge you swung a 72px sword with a body drawn at 0.42, so you hit from well
+   outside the blade on screen and out-ranged every monster there.  This is
+   the ONE factor every one of your reaches multiplies by: the swing and the
+   engage test, the bow's range and sight line, the staff orb's life, the dash's
+   stop and step, the reach rings drawn under you (monsterCombat, projectiles'
+   callers, effectsRenderer, abilities, BroTown).  1 wherever the curve is off,
+   exactly -- a multiply by 1, so every other zone is untouched. */
+export function depthK(zoneId, y) {
+  const k = zoneDepthScale(zoneId, y, 32);
+  return k == null ? 1 : k;
+}
+
 export function zonePlayerScale(zoneId, x, y, TILE) {
   const z = ZONES[zoneId];
   const dz = zoneDepthScale(zoneId, y, TILE);

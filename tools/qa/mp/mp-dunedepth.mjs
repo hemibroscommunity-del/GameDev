@@ -252,5 +252,49 @@ export async function run({ browser, wsPort, webPort, rec }) {
       flat.vx > 0 && Math.abs(flat.vx - s.vx / (s.k || 1)) < 0.05 * flat.vx, { flat: flat.vx, south: s.vx, sk: s.k });
   }
 
+  /* ═══ 5. v2.3.2775: YOUR REACH SHRINKS WITH YOU ═══
+     Owner: "Yes fix my reach."  The reach ring (effectsRenderer, the same
+     GS_OUTER_RADIUS x meleeRangeMult x depthK product monsterCombat's hit
+     test uses) is read beside a far monster with the curve off and on, from
+     the SAME spot -- so the ratio is the curve and nothing else, whatever
+     this character's RANGE stat is. */
+  const target = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const ms = Object.values(S.monsters || {}).filter((m) => m && m.alive !== false);
+    ms.sort((a, b) => (a.renderY != null ? a.renderY : a.y) - (b.renderY != null ? b.renderY : b.y));
+    const m = ms[0];
+    return m ? { id: m.id, x: m.renderX != null ? m.renderX : m.x, y: m.renderY != null ? m.renderY : m.y } : null;
+  });
+  if (!target || target.y > 16 * TILE) {
+    rec.skip('your reach shrinks with you', 'no monster in the north half to stand beside', target);
+  } else {
+    await H.hopTo(P, target.x + 60, target.y);
+    await P.page.evaluate((id) => {
+      const S = window._gameState.current;
+      const m = Object.values(S.monsters || {}).find((q) => q && q.id === id);
+      if (m) S.lockedTarget = { type: 'monster', ref: m };
+    }, target.id);
+    const ringAt = async (on) => {
+      await P.page.evaluate((v) => { window.__btDepth = v; }, on);
+      await P.page.waitForTimeout(250);
+      return P.page.evaluate(() => {
+        const S = window._gameState.current;
+        const r = window.__btReachRing ? window.__btReachRing() : null;
+        return r ? { outer: r.outer, hitR: r.hitR, r: r.r, py: S.player.y,
+          k: window.__btZoneDepth ? window.__btZoneDepth('sky', S.player.y) : null } : null;
+      });
+    };
+    const flatR = await ringAt(false);
+    const deepR = await ringAt(true);
+    if (!flatR || !deepR) {
+      rec.skip('your reach shrinks with you', 'the reach ring did not draw (no lock/aggro this frame)', { flatR, deepR });
+    } else {
+      rec.ok('your reach: beside a far monster, your sword\'s reach is the flat reach x the curve at your feet',
+        Math.abs(deepR.outer / flatR.outer - deepR.k) < 0.02, { flat: flatR.outer, deep: deepR.outer, k: deepR.k });
+      rec.ok('your reach: ...and the ring is still reach + the (smaller) body -- what is drawn is what hits',
+        Math.abs(deepR.r - (deepR.outer + deepR.hitR)) < 0.01 && deepR.hitR < flatR.hitR, { flatR, deepR });
+    }
+  }
+
   await P.ctx.close().catch(() => {});
 }

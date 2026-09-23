@@ -607,12 +607,23 @@ export const abilityMethods = {
     const zone = ps.z;
     const monsters = (zone && this.monsters[zone]) || [];
     const inRange = [];
+    /* ═══ v2.3.2775: THE CIRCLE SHRINKS WITH THE CASTER ═══
+       Owner: "Yes fix my reach."  On Wind Dunes' north edge the caster is
+       drawn at 0.42 (depth.js), so the whirlwind's 240px vacuum and the
+       bash's 70px shove were circles two and a half times the size of the
+       player who cast them.  x the caster's depth, 1 on every other zone.
+       The CLOSING reach below (`cfg.reach`, a declared target) is left flat on
+       purpose: it bounds how far the client's dash may carry you, which is a
+       travel cap, not a hit circle -- and a cap tighter than the client's
+       own DASH_MAX_REACH_PX would refuse a dash the client already flew. */
+    const _castK = this._depthK(zone, ps.y);
+    const _castR = cfg.radius * _castK;
     for (const m of monsters) {
       if (!this._monsterDamageable(m)) continue;   /* v2.3.2221 */
       const dx = (m.x || 0) - (ps.x || 0);
       const dy = (m.y || 0) - (ps.y || 0);
       const d2 = dx * dx + dy * dy;
-      if (d2 <= cfg.radius * cfg.radius) inRange.push({ m, d2 });
+      if (d2 <= _castR * _castR) inRange.push({ m, d2 });
     }
     inRange.sort((a, b) => a.d2 - b.d2);
     /* Bash is a single shove; whirlwind is the whole circle (bounded). */
@@ -764,10 +775,14 @@ export const abilityMethods = {
        from a shove that exiled it from its attack ring (v2.3.1639); a
        vortex leaves it closer than it started, so charging debt would make
        it drift outward afterwards and undo the gather. */
+    /* v2.3.2775: the gather ring and the shove are x the caster's depth, so
+       on Wind Dunes' north edge the pack lands inside a sword that now
+       reaches 0.42 (and a bash shoves as far as it looks).  1 elsewhere. */
+    const _strK = this._depthK(zoneId, ps.y);
     if (cfg.pullTo > 0 && m.hp > 0) {
       const ang = Math.atan2((m.y || 0) - (ps.y || 0), (m.x || 0) - (ps.x || 0));
-      m.x = (ps.x || 0) + Math.cos(ang) * cfg.pullTo;
-      m.y = (ps.y || 0) + Math.sin(ang) * cfg.pullTo;
+      m.x = (ps.x || 0) + Math.cos(ang) * cfg.pullTo * _strK;
+      m.y = (ps.y || 0) + Math.sin(ang) * cfg.pullTo * _strK;
       const zoneCfg = this._getZoneConfig(zoneId);
       if (zoneCfg) {
         const W = zoneCfg.w * this.TILE;
@@ -778,9 +793,9 @@ export const abilityMethods = {
       }
     } else if (cfg.knockback > 0 && m.hp > 0) {
       const ang = Math.atan2((m.y || 0) - (ps.y || 0), (m.x || 0) - (ps.x || 0));
-      m.x += Math.cos(ang) * cfg.knockback;
-      m.y += Math.sin(ang) * cfg.knockback;
-      m._kbDebt = Math.min((m._kbDebt || 0) + cfg.knockback, 60);
+      m.x += Math.cos(ang) * cfg.knockback * _strK;
+      m.y += Math.sin(ang) * cfg.knockback * _strK;
+      m._kbDebt = Math.min((m._kbDebt || 0) + cfg.knockback * _strK, 60 * _strK);
       const zoneCfg = this._getZoneConfig(zoneId);
       if (zoneCfg) {
         const W = zoneCfg.w * this.TILE;

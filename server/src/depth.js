@@ -32,8 +32,10 @@
  *
  * DELIBERATELY NOT SCALED: player-to-player anything (PvP reach, duels),
  * the anti-teleport movement cap (it bounds speed from ABOVE, and depth only
- * ever slows), damage, and the player's own weapon reach -- see
- * docs/specs/dune-depth.md "What step 2 does not do". */
+ * ever slows), and damage.  The player's OWN reach followed in the same PR
+ * (owner: "Yes fix my reach") -- the client's swing/arrow/orb/dash via
+ * zones.js depthK, and on this side the ability circles in abilities.js; see
+ * docs/specs/dune-depth.md "Your reach shrinks with you". */
 import { ZONES } from './data.js';
 
 /* The curve itself.  1 for every zone without a `depth` row, for any y that

@@ -26,6 +26,7 @@
 import { BT_AUDIO, abilityCfg, abilityStaminaCost, abilityUnlocked, isAbilitiesEnabled,
   prog3CharLevel, getActiveWeapon,
   meleeSwingSfx /* v2.3.2260: the lunge borrows the swing's own per-weapon sound */ } from '@/data/index.js';
+import { depthK } from '@/data/zones.js';   /* v2.3.2775 */
 import { isPlayerDead, pushDmgPopup } from '@/game/combatHelpers.js';
 import { prog3ActiveCat } from '@/data/prog3.js';   /* v2.3.2327: whirlwind is the sword's */
 import { monsterLock } from '@/game/targeting.js';  /* v2.3.2542: whirlwind wants a fight under way */
@@ -594,7 +595,8 @@ export function applyAbilityStrike(S, kind, targetId) {
      otherwise keep its sweep and bill the same press twice. */
   var aim = resolveCastAngle(S);
   S._abilitySwingUntil = now + 460;
-  S._abilityFx = { kind: kind, at: now, ang: aim, radius: cfg.radius };
+  var _abDk = depthK(S.currentZone, S.player ? S.player.y : 0);   /* v2.3.2775: the rings are as wide as the (depth-scaled) move */
+  S._abilityFx = { kind: kind, at: now, ang: aim, radius: cfg.radius * _abDk };
   S.swingTimer = now;
   S._swingAng = aim;
   S.screenShake = kind === 'whirl' ? 5 : 3;
@@ -650,14 +652,14 @@ export function applyAbilityStrike(S, kind, targetId) {
      as an ARC for bash because the ability itself is directional (the worker
      picks the nearest monster within cfg.radius), so a full ring would
      promise a 360° hit the server never rolls. */
-  pushAbilityRings(S, S.player.x, S.player.y - 10, kind, aim, cfg.radius);
+  pushAbilityRings(S, S.player.x, S.player.y - 10, kind, aim, cfg.radius * _abDk);
 
   /* v2.3.1735: the whirlwind's vortex (owner art), centred on the caster
      because that is where the gather pulls everything TO.  Read by
      effectsRenderer._updateWhirlVortex, which no-ops until the sheet is
      committed. */
   if (kind === 'whirl') {
-    S._whirlFx = { t0: now, x: S.player.x, y: S.player.y - 10, radius: cfg.radius };
+    S._whirlFx = { t0: now, x: S.player.x, y: S.player.y - 10, radius: cfg.radius * _abDk };
   }
 
   if (kind === 'bash') {

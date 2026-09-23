@@ -95,7 +95,7 @@ function _probeStandInSkin(key, cv, opts) {
   } catch (e) { /* a probe never breaks a bake */ }
 }
 import { ELEMENTS } from '@/data/elements.js';
-import { ZONES, zonePlayerScale } from '@/data/zones.js';
+import { ZONES, zonePlayerScale, depthK /* v2.3.2775 */ } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { footprintFrames } from '@/rendering/footprintSprites.js'; /* v2.3.2654: prints in the snow */
 import { propsForZone } from '@/data/worldProps.js'; /* v2.3.2730: marks drawn ON props -- slash marks, arrows standing in the rock */
@@ -5408,9 +5408,13 @@ export class EffectsRenderer {
              monsterCombat applies to its hit test.  `outer` below publishes
              the scaled figure so mp-engage's composition rule (r === outer +
              hitR) keeps meaning "what is drawn is what hits". */
-          const _rrOuter = GS_OUTER_RADIUS * meleeRangeMult(S.rpg);
-          const _rrR = _rrOuter + (monsterMeleeHitRadius(_rrArch) || 24);
-          const _rrY = _rrFy - (monsterBodyOffsetY(_rrArch) || 23);
+          /* v2.3.2775: your reach x YOUR depth, the body x ITS depth -- the
+             same two factors monsterCombat's hit test now applies, so the
+             ring keeps meaning "what is drawn is what hits" on Wind Dunes. */
+          const _rrMk = depthK(S.currentZone, _rrFy);
+          const _rrOuter = GS_OUTER_RADIUS * meleeRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);
+          const _rrR = _rrOuter + (monsterMeleeHitRadius(_rrArch) || 24) * _rrMk;
+          const _rrY = _rrFy - (monsterBodyOffsetY(_rrArch) || 23) * _rrMk;
           const _rrD = Math.hypot(_rrX - S.player.x, _rrY - S.player.y);
           const _rrIn = _rrD <= _rrR;
           /* The line weight is a SCREEN measurement, v2.3.2255's correction:
@@ -5441,7 +5445,7 @@ export class EffectsRenderer {
              one day fails the harness instead of quietly drawing a ring the
              swing does not honour. */
           this._reachRing = { id: _rrM.id, x: _rrX, y: _rrY, r: _rrR,
-            outer: _rrOuter, hitR: monsterMeleeHitRadius(_rrArch) || 24,
+            outer: _rrOuter, hitR: (monsterMeleeHitRadius(_rrArch) || 24) * _rrMk,   /* v2.3.2775: x its depth, so r === outer + hitR still holds */
             arch: _rrArch, inReach: _rrIn, dist: Math.round(_rrD),
             src: (S.lockedTarget && S.lockedTarget.ref === _rrM) ? 'lock' : 'aggro' };
         }
@@ -6123,7 +6127,7 @@ export class EffectsRenderer {
          Unclipped when the line is empty, deliberately: the stream is then
          doing its other job, which is showing the player where they are
          pointing so they can bring it onto something. */
-      const _fullLen = BOW_RANGE_PX * bowRangeMult(S.rpg);
+      const _fullLen = BOW_RANGE_PX * bowRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);   /* v2.3.2775: x depth, as the arrow is */
       const _sightD = (isBow && S._bowSight && typeof S._bowSight.d === 'number')
         ? S._bowSight.d : null;
       const _beamLen = isRanged
@@ -6191,7 +6195,7 @@ export class EffectsRenderer {
              per the charge-pie drop-shadow incident).  Arrow stays below. */
           /* v2.3.2592: the preview and the direction chip sit at the reach
              the RANGE stat gives this swing (monsterCombat's _mRm). */
-          const _mRm = meleeRangeMult(S.rpg);
+          const _mRm = meleeRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);   /* v2.3.2775: x depth, as monsterCombat's _mRm is */
           if (meleeSwinging) {
             const p = Math.max(0, Math.min(1, (now - (S.swingTimer || now)) / SWORD_SWING_MS));
             const a = 0.07 * Math.sin(p * Math.PI);   // swell-in then fade-out -- very subtle (owner: almost unnoticeable)

@@ -61,26 +61,45 @@ The worker's monster AI now multiplies every flat distance by the same curve, re
   - An old client with a new worker draws full size while the monsters measure small. They reach a little shorter than they look, never further.
 - **Kill switch:** put `zoneDepth: false` in the `liveflags` storage key. That turns the server scaling off (`_depthK` returns 1) and removes the cap from the next join, so clients stop drawing the curve. No deploy is needed.
 
-## What steps 1–2 do not do
+## Your reach shrinks with you (v2.3.2775)
 
-- **Your own weapon reach:** your sword swing (72 px) and bow range stay flat. On the north edge you can hit a monster from a little further than it can hit you. It walks in and closes the gap, so nothing stalls, but it is an edge in your favour. Scaling your own reach touches about six client sites (`monsterCombat.js` and the reach ring in effectsRenderer), so it is left for its own change.
-- **Step 3:** an exit at the north edge into zone 2.
+The owner said: "Yes fix my reach." Every one of your own reaches now multiplies by the curve at your feet (`depthK(zoneId, y)` in `src/data/zones.js`, which returns exactly 1 off the dunes). A monster's body offset and radius use the curve at its feet.
+
+| What | Where |
+|---|---|
+| Sword swing reach and the engage test | `monsterCombat.js` `_mRm`, `_engSwing` |
+| Monster body offset and radius in your hit test | `monsterCombat.js` `_hitMk`, `_eMk` |
+| Arrow range (`_rangeMult`), the sight line, staff orb life, and the special's orb range | `monsterCombat.js`, `dodge.js`, `playerActions.js` |
+| Swinging at NPCs and players, and the PvP range you claim (the worker honours `min(claim, 250)`, so claiming less is always safe) | `monsterCombat.js` |
+| Dash stop distance and step size | `BroTown.jsx` (`_bdk`) |
+| Reach ring, aim preview and bow sight stream | `effectsRenderer.js` |
+| Ability FX rings | `abilities.js` |
+| Server: the whirlwind and bash scan circle, the gather ring (`pullTo`), and ability knockback | `server/src/abilities.js` |
+
+- **Left flat on purpose:** the server's closing `reach` for a declared dash or bash target. It caps how far the client's dash may carry you (`DASH_MAX_REACH_PX`), which is a travel limit, not a hit circle.
+- **Left flat on purpose:** the server's generous 400 px melee sanity bound.
+
+## Not built yet
+
+- **Step 3:** an exit at the north edge into zone 2. The owner said to hold it.
 
 ## QA
 
-- **Server:** `server/test/zonedepth.test.mjs` (25 checks) covers:
+- **Server:** `server/test/zonedepth.test.mjs` (28 checks) covers:
   - the curve, and lockstep with the client row;
   - the paired rings;
   - on the north edge: a 45 px gap is a chase, a chase settles at the scaled ring, a swing from inside the scaled ring lands, and 90 px is not noticed;
   - the south edge behaving like a flat zone;
-  - the caps advertisement and the kill switch.
-- **Browser:** `node tools/qa/mp/run.mjs dunedepth` (13 checks) covers:
+  - the caps advertisement and the kill switch;
+  - your whirlwind's circle and gather ring scaling on the north edge but not the south (v2.3.2775).
+- **Browser:** `node tools/qa/mp/run.mjs dunedepth` (15 checks) covers:
   - with the curve forced off, nothing changes;
   - the curve drawing with no override because the worker advertises `caps.zoneDepth`;
   - your drawn scale at the south and north edges;
   - every monster's scale against the curve;
   - a far plate staying at least about 12 CSS px;
   - walking speed in the north against the south, read from the speed the movement step computed rather than the distance covered (v2.3.2775). Distance readings were fooled by a walk that crossed the zone exit, and by monsters blocking the row;
-  - the World View still being the only zone with `playerScale`.
+  - the World View still being the only zone with `playerScale`;
+  - your reach ring beside a far monster being the flat reach times the curve, with ring = reach + the smaller body (v2.3.2775).
 
 The screenshots are `tools/qa/mp/out/dunedepth-{south-on,north-on,north-off}.png`.

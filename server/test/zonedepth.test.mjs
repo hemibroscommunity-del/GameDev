@@ -105,6 +105,7 @@ const FAR_K = SERVER_ZONES.sky.depth.far;
 // ── 4/5. Behaviour ──
 const ws = fakeWs('d');
 await join(ws, 'bp_depth_a');
+const firstSync = ws.sent.find((m) => m.type === 'state_sync' && m.caps);   /* read before later sections clear ws.sent */
 const ps = room.playerState['bp_depth_a'];
 delete ps.prog3;
 room._recomputeMaxes(ps);
@@ -144,9 +145,9 @@ const land = () => {
   if (A._bwUntil) { A._bwUntil = Date.now() - 1; room._tickMonsters(); }
   return room.eventBuffer.find((e) => e.type === 'monster_attack' && e.payload.monsterId === A.id);
 };
-const NORTH = 16;                               /* k ~ 0.43 */
+const NORTH = 40;                               /* k ~ 0.44; inside the 32px edge pad the pulls clamp to */
 const kN = zoneDepthK('sky', NORTH);
-const SOUTH = 1020;                             /* k ~ 1 */
+const SOUTH = 980;                              /* k ~ 0.97 */
 
 {
   /* 45px: inside the flat 72 ring (a hold anywhere flat), outside the north
@@ -204,9 +205,36 @@ const SOUTH = 1020;                             /* k ~ 1 */
     A.targetId === 'bp_depth_a', { targetId: A.targetId });
 }
 
+// ── 5b. v2.3.2775: YOUR reach -- the whirlwind circle and its gather ring ──
+{
+  const castWhirl = async (y, gap) => {
+    park(y, 0);                                   /* player at (500, y), A reset */
+    A.x = 500 + gap; A.y = y; A.spawnX = A.x; A.spawnY = y;
+    A._stunUntil = 0; A.hp = A.maxHp = 100000;
+    ps.weapon = { type: 'sword', tierMult: 1 };
+    ps.stamina = ps.maxStamina = 1000;
+    ps._abilCd = null; ps.dying = false; ps.disconnected = false;
+    ws.sent.length = 0;
+    room.eventBuffer.length = 0;
+    await room.webSocketMessage(ws, JSON.stringify({ type: 'ability', payload: { kind: 'whirl' } }));
+    const rej = ws.sent.filter((m) => m.type === 'ability_rejected').map((m) => m.payload.reason);
+    return { rej, dist: Math.hypot(A.x - ps.x, A.y - ps.y) };
+  };
+  /* 150px: inside the flat 240 vacuum, outside the north one (~103). */
+  const farN = await castWhirl(NORTH, 150);
+  check('your reach: on the north edge a whirlwind does NOT pull a monster 150px away (its circle is 240 x depth)',
+    farN.rej.includes('whiff') && Math.abs(farN.dist - 150) < 1, farN);
+  const farS = await castWhirl(SOUTH, 150);
+  check('your reach: ...the same cast on the south edge pulls it in, exactly like a flat zone',
+    !farS.rej.length && Math.abs(farS.dist - 34 * zoneDepthK('sky', SOUTH)) < 1.5, farS);
+  const nearN = await castWhirl(NORTH, 80);
+  check('your reach: a north-edge monster inside the scaled circle is gathered to the SCALED ring (34 x depth)',
+    !nearN.rej.length && Math.abs(nearN.dist - 34 * kN) < 1.5, { ...nearN, want: 34 * kN });
+}
+
 // ── 6. caps + the kill switch ──
 {
-  const sync = ws.sent.find((m) => m.type === 'state_sync' && m.caps);
+  const sync = firstSync;
   check('caps: state_sync advertises zoneDepth', !!sync && sync.caps.zoneDepth === true, sync && sync.caps && sync.caps.zoneDepth);
 
   room._liveFlags = { ...(room._liveFlags || {}), zoneDepth: false };
