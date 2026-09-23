@@ -21,7 +21,7 @@
 import { Assets, Rectangle, Texture } from 'pixi.js';
 import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: upscale downscaled-on-disk sheets back to the 256px logical frame; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
-import { recolorToolKeyCanvas, recordFishRodMask, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2734: the fishing rod's pine */
+import { recolorToolKeyCanvas, recordFishRodMask, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2749: the fishing rod's pine */
 
 /* v2.3.166: bumped from 128 to 256 per user request.  256 source +
    plain Lanczos (no outline overlay) gives a more naturally-rendered
@@ -301,7 +301,7 @@ async function loadSheet(pose, dir, attempt = 0) {
        the head crown) that reads as a trailing outline; NW mirrors this sheet
        so the one clean fixes both.  See stripDetachedComponents above. */
     if (pose === 'jog' && dir === 'northeast') small = stripDetachedComponents(small, frames);
-    /* ═══ v2.3.2734: THE ROD IS PINE, NOT THE PIPELINE'S MAGENTA KEY ═══
+    /* ═══ v2.3.2749: THE ROD IS PINE, NOT THE PIPELINE'S MAGENTA KEY ═══
        Owner: "recolor the tools in the animations (they're still magenta from
        the creation phase) ... pine wood for the pole."  The rod's SHAPE is
        recorded from the key first (the armour bakes find the rod by it --

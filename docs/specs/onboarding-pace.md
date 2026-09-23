@@ -1,11 +1,11 @@
-# Onboarding pacing and the returning-player fix (v2.3.2738–2739)
+# Onboarding pacing and the returning-player fix (v2.3.2753–2739)
 
 > Owner: "Sometimes when you rejoin a game from a saved character it brings up
 > the tutorial again as if starting a new character." / "The tutorial
 > onboarding is too heavy on window pop ups right after you join the game. I
 > don't know how to pace that better."
 
-## Returning players are not treated as new (v2.3.2738)
+## Returning players are not treated as new (v2.3.2753)
 
 * The coach (`QuestCoach.jsx`), the welcome plate (`welcomeBanner.js`) and the
   gold road to the Mayor (`questRoute.js`) now wait for the worker's first
@@ -17,7 +17,7 @@
   shared domain (`rosterCookie.js`), so a fresh preview-build link, which is a
   new origin with empty localStorage, remembers them.
 
-## One onboarding voice at a time (v2.3.2739)
+## One onboarding voice at a time (v2.3.2754)
 
 `src/ui/onboardingPace.js` is a small referee that three surfaces ask before
 appearing:

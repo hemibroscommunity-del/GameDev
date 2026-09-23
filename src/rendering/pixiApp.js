@@ -3,7 +3,7 @@
  * Creates the layered scene graph used by all render systems.
  */
 import { watchContextLoss } from '../debug/crashTrap.js';
-import { installSharpPixels } from './sharpPixels.js'; /* v2.3.2743 */
+import { installSharpPixels } from './sharpPixels.js'; /* v2.3.2758 */
 import { SHADE } from './formShade.js';
 import { Application, Cache, Container } from 'pixi.js';
 
@@ -425,7 +425,7 @@ export async function createPixiApp(canvas) {
     /* v2.3.763: record WebGL context loss -- prime suspect for the reported
        mid-fight black canvas on iPhone. */
     watchContextLoss(canvas);
-    /* v2.3.2743: crisp character pixels without spending texture memory */
+    /* v2.3.2758: crisp character pixels without spending texture memory */
     try { installSharpPixels(app, SHADE.figure); } catch (e) { /* the default look */ }
     console.log('PixiJS using WebGL renderer');
     return buildScene(app);

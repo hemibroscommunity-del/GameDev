@@ -4415,7 +4415,7 @@ point: every hit test, prop stop (v2.3.2699) and player-contact check reads
 that, unchanged. Its shadow is drawn there -- which is where the worker will
 settle the hit.
 
-## 106. The harvest "demo" that animates the body contradicts the owner's freeze (v2.3.2733)
+## 106. The harvest "demo" that animates the body contradicts the owner's freeze (v2.3.2748)
 
 **Tempting:** at `ready`, with no thumb down, loop a generated phase through
 `gesturePose01` so the character keeps swinging and "shows" the gesture --
@@ -4439,7 +4439,7 @@ hysteresis (12px) separate from the meter's anti-jitter one (28px), or the
 swing sits still for most of each stroke and then jumps. **Receipt:**
 mp-gcue (73 assertions), mp-cueshow (34, all three skills in a real zone).
 
-## 107. "Just repaint the pink axe in the PNG" (v2.3.2734)
+## 107. "Just repaint the pink axe in the PNG" (v2.3.2749)
 
 **Tempting:** the axe and the fishing rod (and the fire-lighter's log) are
 flat magenta in `chop-strip`, `fish-south` and `firemaking-strip`; open the
@@ -4458,7 +4458,7 @@ armour bakes ask that (`fishRodAt`) instead of looking for a colour. A new
 magenta-keyed sheet gets a `TOOL_SPECS` entry and one call at the end of its
 bake -- not a repaint.
 
-## 108. "This is a brand-new player" decided from S.rpg before the worker has sent it (v2.3.2738)
+## 108. "This is a brand-new player" decided from S.rpg before the worker has sent it (v2.3.2753)
 
 **Tempting:** gate a first-join surface (a coach card, the welcome plate, the
 gold road to the Mayor) on the character in `S.rpg`: level 1, no quest
@@ -4480,7 +4480,7 @@ goes on the shared-domain cookie too (`rosterCookie.readSharedValue` /
 `writeSharedValue`), not only in localStorage -- see the roster cookie's
 header for why every deploy is a different origin.
 
-## 109. "WebGL2, so the batch shader can use textureSize / textureGrad" (v2.3.2743)
+## 109. "WebGL2, so the batch shader can use textureSize / textureGrad" (v2.3.2758)
 
 **Tempting:** the app runs on a WebGL2 context (`preference: 'webgl'`,
 `renderer.context.webGLVersion === 2`), so a custom batch shader built with

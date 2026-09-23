@@ -1,4 +1,4 @@
-/* ═══ THE MAPS' AMBIENT LIFE, ON EVERY PLAYABLE MAP (v2.3.2735) ═══
+/* ═══ THE MAPS' AMBIENT LIFE, ON EVERY PLAYABLE MAP (v2.3.2750) ═══
  *
  * Owner: "make subtle effects that appear as animations on the worldview?
  * Lava smoke on the fire mountain maybe shimmering a bit on the lava, winds on
@@ -102,7 +102,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shotAt('worldview-sea', 0.52, 0.86, { glows: 4, glint: 1 });
     await shotAt('worldview-snow', 0.2, 0.18, { snow: 2 });
     await shotAt('worldview-blossom', 0.12, 0.38, { petal: 1 });
-    /* v2.3.2736: the far-south sea, camera pinned to the map's bottom, where
+    /* v2.3.2751: the far-south sea, camera pinned to the map's bottom, where
        ripples and glints ran right along the dashboard's top edge and read as
        the tray's own contour flickering (owner).  The tray must be found (its
        top above the view's bottom) and nothing may shine within the fade. */

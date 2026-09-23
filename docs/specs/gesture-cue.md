@@ -1,6 +1,6 @@
-# The gesture cue on the right button (v2.3.2384; reworked v2.3.2733)
+# The gesture cue on the right button (v2.3.2384; reworked v2.3.2748)
 
-## v2.3.2733 — the cue gesture as the owner described it
+## v2.3.2748 — the cue gesture as the owner described it
 
 > Owner: "the character harvests a resource or performs an action for a
 > certain amount of time (determined by your skill level) ... I wanted the
@@ -64,7 +64,7 @@ with screenshots of each stage). Regression: `mp-harvest`, `mp-chopyield`,
 
 ---
 
-## v2.3.2734 — the owner's second pass
+## v2.3.2749 — the owner's second pass
 
 > "Double the amount of time it takes to complete the gesture. Play sound
 > effect while specific actions occur like pickaxe hitting rocks, axe hitting

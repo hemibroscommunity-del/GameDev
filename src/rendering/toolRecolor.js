@@ -1,4 +1,4 @@
-/* ═══ v2.3.2734: THE MAGENTA TOOLS GET THEIR MATERIALS ═══
+/* ═══ v2.3.2749: THE MAGENTA TOOLS GET THEIR MATERIALS ═══
  *
  * Owner: "recolor the tools in the animations (they're still magenta from the
  * creation phase) so maybe copper for the axe, pine wood for the pole, might
@@ -15,7 +15,7 @@
  *   chop-strip (+legless)   axe HEAD -> copper, HAFT -> pine
  *   fish-south              rod -> pine
  * (firemaking-strip's log is keyed too, but firemaking is being rebuilt as
- * code-drawn fire in another session -- owner, v2.3.2734 -- so it is left
+ * code-drawn fire in another session -- owner, v2.3.2749 -- so it is left
  * alone here; TOOL_SPECS.log is ready if that work wants it.)
  *
  * WHY AT LOAD AND NOT IN THE FILES.  Code downstream still reads the key: the

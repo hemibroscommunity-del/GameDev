@@ -1,4 +1,4 @@
-/* ═══ THE CUE GESTURE, ALL THREE GATHERING SKILLS, IN A REAL ZONE (v2.3.2733) ═══
+/* ═══ THE CUE GESTURE, ALL THREE GATHERING SKILLS, IN A REAL ZONE (v2.3.2748) ═══
  *
  * Owner: "I wanted the character to perform each animation with a loading bar
  * above their head ... once it reaches the limit, the character is supposed
@@ -294,7 +294,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(800);
     return { cancelled: !!(g && g.cancelled) };
   };
-  /* THE DRIVER.  A harvest is ~6s of gesture now (v2.3.2734), which in this
+  /* THE DRIVER.  A harvest is ~6s of gesture now (v2.3.2749), which in this
      harness is ~25s of wall clock, and Frost Ridge's snowmen are the WORKER's:
      the client-side stash above cannot stop one walking up and knocking the
      player off the node, which is a walk-away cancel.  That is the game working

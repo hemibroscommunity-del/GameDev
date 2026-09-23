@@ -3,7 +3,7 @@ import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3
 import { shopBus } from './mobile/shopBus.js';   /* v2.3.2050: Shopkeeper Bro's window */
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js'; /* v2.3.2618 */
 import { uiBusyBus } from './mobile/uiBusyBus.js'; /* v2.3.2085: tell chrome outside this tree to stand aside */
-import { zonePlayerScale } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve */
+import { zonePlayerScale, zoneDepthScale } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve; v2.3.2745: + the dunes' depth */
 import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
 /* v2.3.855: first UI-panel extraction — the info/online-count popup. */
 import { InfoPanel } from './panels/InfoPanel.jsx';
@@ -54,7 +54,7 @@ import { TouchControls, RBTN_BODY_BG, RBTN_BODY_BG_HOT, RKNOB_BG, RKNOB_BG_HOT }
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
-import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2733: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the bar above the head) */
+import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2748: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the bar above the head) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 
@@ -152,7 +152,7 @@ import { MayorGreeting } from './MayorGreeting.jsx';
    NOT the greeting video above — see welcomeBanner.js for why those are
    different asks. */
 import { maybeShowWelcome } from '@/game/welcomeBanner.js';
-import { markWorldIn } from '@/ui/onboardingPace.js'; /* v2.3.2739: one onboarding voice at a time */
+import { markWorldIn } from '@/ui/onboardingPace.js'; /* v2.3.2754: one onboarding voice at a time */
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
 
@@ -1916,7 +1916,7 @@ export var BroTown = function BroTown(_ref0) {
        numbers rather than a copy of them that drifts. */
     window.__QUEST_MSG_LONG_MS = QUEST_MSG_LONG_MS;
     window.__questMsgMs = questMsgMs;
-    /* v2.3.2739: when the plate on screen (or the last one queued behind it)
+    /* v2.3.2754: when the plate on screen (or the last one queued behind it)
        will be gone -- onboardingPace.js keeps the coach and the install card
        off the screen until then, so a new player gets one voice at a time. */
     window.__btQuestMsgUntil = function () {
@@ -4719,6 +4719,10 @@ export var BroTown = function BroTown(_ref0) {
           var _vsc = zonePlayerScale(S.currentZone, S.player.x, S.player.y, TILE);
           vistaSpeedMult = VISTA_SPEED_BOOST * Math.max(0.2, _vsc / _vnear);
         }
+        /* v2.3.2745: the dunes' north-south depth (zones.js `depth`): you slow
+           by the same ratio you shrink, so the horizon takes walking to. */
+        var _dsc = zoneDepthScale(S.currentZone, S.player.y, TILE);
+        if (_dsc != null) vistaSpeedMult = Math.max(0.2, _dsc / ((_vz.depth && _vz.depth.near) || 1));
         var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult * shieldMult * vistaSpeedMult; /* sled overrides movement */
         /* v2.3.1405: per-zone loading gate — while a zone's assets warm
            behind the loading overlay (zoneTransitions.js), freeze the
@@ -5222,7 +5226,7 @@ export var BroTown = function BroTown(_ref0) {
             else _want = 'ATTACK';
             if (_lbl.textContent !== _want) _lbl.textContent = _want;
           }
-          /* ═══ v2.3.2733: THE CUE -- A MINI TOOL, STILL AND FLASHING UNTIL YOU MOVE ═══
+          /* ═══ v2.3.2748: THE CUE -- A MINI TOOL, STILL AND FLASHING UNTIL YOU MOVE ═══
              Owner: "before the player performs the gesture the starting spot of
              the cue should be static but flash.  An effect should show you
              which way the cue should move ... the cue was a mini sprite of the
@@ -5766,7 +5770,7 @@ export var BroTown = function BroTown(_ref0) {
             } else if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt) {
               _ex.status = 'ready';
               try { BT_AUDIO.beep(820, 0.04, 0.05, 'sine'); } catch (e) {}
-              /* v2.3.2734 (owner: sounds for the specific actions): for fishing
+              /* v2.3.2749 (owner: sounds for the specific actions): for fishing
                  the window opening IS the bite -- a fish on the hook, now reel. */
               if (_ex.skill === 'fishing') { try { if (BT_AUDIO.play) BT_AUDIO.play('fish-on-hook', { vol: 0.65 }); } catch (e) {} }
             }
@@ -8209,7 +8213,7 @@ export var BroTown = function BroTown(_ref0) {
   var rBodyRef = useRef(null);   /* v2.3.2263: the right disc's painted metal, faded on its own */
   var rWrapRef = useRef(null);
   var rLabelRef = useRef(null);   /* v2.3.2242: the button's contextual label */
-  var rHintRef = useRef(null);    /* v2.3.2384: the gesture cue; v2.3.2733: a mini tool (the strip's rCueRef is gone) */
+  var rHintRef = useRef(null);    /* v2.3.2384: the gesture cue; v2.3.2748: a mini tool (the strip's rCueRef is gone) */
   var rRingRef = useRef(null);    /* v2.3.2245: the wind-up / reps ring */
   var rJoyActive = useRef(false);
   var rTouchId = useRef(null);
@@ -9805,7 +9809,7 @@ export var BroTown = function BroTown(_ref0) {
       }
     } catch (e) {}
     S.rpg = (_cachedRpg && _cachedRpg.power !== undefined) ? _cachedRpg : createDefaultRpg();
-    /* v2.3.2738: a guess until the worker's player_state says otherwise --
+    /* v2.3.2753: a guess until the worker's player_state says otherwise --
        nothing may decide "new player" from it (wsClient player_state) */
     S._rpgFromServer = false;
     if (!S.rpg.inventory) S.rpg.inventory = {};
@@ -9993,7 +9997,7 @@ export var BroTown = function BroTown(_ref0) {
     kickSfxAtGate(introWaitRef.current);
     holdZoneMusicAtGate(introWaitRef.current);   /* v2.3.2334 */
     setShowWelcome(false); /* straight in -- no intro video on a resume */
-    markWorldIn();   /* v2.3.2739: no intro on this road, so the world is in now */
+    markWorldIn();   /* v2.3.2754: no intro on this road, so the world is in now */
     /* v2.3.833: a resume skips the intro loading screen and drops straight
        into the world while the avatar's gear sheets are still baking, which
        tanks the frame rate with no on-screen explanation (owner asked for
@@ -10207,7 +10211,7 @@ export var BroTown = function BroTown(_ref0) {
          greeting used to take.  It is a MESSAGE, not that removed video; see
          welcomeBanner.js.  Once per browser, and it never throws. */
       maybeShowWelcome(function () { return stateRef.current; });
-      markWorldIn();   /* v2.3.2739: the onboarding referee's clock starts here */
+      markWorldIn();   /* v2.3.2754: the onboarding referee's clock starts here */
       setShowIntro(false);
     }
   }), showMayorGreeting && /*#__PURE__*/React.createElement(MayorGreeting, {

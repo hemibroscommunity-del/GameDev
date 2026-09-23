@@ -178,7 +178,7 @@ export function writeShared(list, tomb) {
   }
 }
 
-/* ═══ v2.3.2738: SMALL FLAGS THAT MUST CROSS THE SAME GAP ═══
+/* ═══ v2.3.2753: SMALL FLAGS THAT MUST CROSS THE SAME GAP ═══
    Owner: "Sometimes when you rejoin a game from a saved character it brings
    up the tutorial again as if starting a new character."  The roster crossed
    the per-deploy origin gap (above) and the onboarding's "you have seen

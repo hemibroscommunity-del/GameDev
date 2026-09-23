@@ -1,4 +1,4 @@
-import { installMayShow } from '@/ui/onboardingPace.js'; /* v2.3.2739 */
+import { installMayShow } from '@/ui/onboardingPace.js'; /* v2.3.2754 */
 import React, { useEffect, useState } from 'react';
 import { tapDismiss, TAP_DISMISS_STYLE } from '../tapDismiss.js'; /* v2.3.2284 */
 import { installHintBus } from './installHintBus.js';
@@ -79,7 +79,7 @@ export function InstallHint() {
     /* the Settings row reopens it regardless of the dismissal memory */
     const unsub = installHintBus.subscribe(() => setShow(true));
     if (!isIOS() || isStandalone() || dismissed()) return unsub;
-    /* ═══ v2.3.2739: WHEN THE SCREEN IS QUIET, NOT 8s AFTER PAGE LOAD ═══
+    /* ═══ v2.3.2754: WHEN THE SCREEN IS QUIET, NOT 8s AFTER PAGE LOAD ═══
        Owner: "The tutorial onboarding is too heavy on window pop ups right
        after you join the game."  The old 8s timer started at MOUNT -- the
        login door -- so anyone who spent 8s at the door or in the creator got

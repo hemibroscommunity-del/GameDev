@@ -1,4 +1,4 @@
-/* ═══ v2.3.2742: THE TEE HUGS THE BODY'S OUTER SILHOUETTE ═══
+/* ═══ v2.3.2757: THE TEE HUGS THE BODY'S OUTER SILHOUETTE ═══
  *
  * Owner: "The characters shoulder outline on idle south is very thick and I
  * think it's the result of keyed changes on the shirt, not the original art."
@@ -28,6 +28,9 @@
  *     tee never overhangs the figure (mp-shirtarm's measure);
  *   - the hem: not hugged downward -- below it are trousers, not outline.
  *
+ * (Scope: the five STAND sheets -- see SHEETS below for why the jog sheets are
+ * reoutline-shirt.mjs's.)
+ *
  * WHY A SEPARATE PASS OVER THE SHIPPED SHEETS.  seal-shirt-edges.mjs rebuilds
  * from the pre-seal art at da249882^, and later tools (draw-crossing-sleeve,
  * draw-trailing-sleeve, raise-east-collar) have edited a few jog frames since,
@@ -53,14 +56,14 @@ const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DRY = process.argv.includes('--dry');
 const DIRS = ['south', 'southwest', 'east', 'northeast', 'north'];
 const SHEETS = [];
-for (const pose of ['stand', 'jog']) for (const dir of DIRS) {
-  /* jog-east is PINNED to the artist's pixels by checksum (mp-shirtarm
-     ARTIST_SHEET_SUM, after four reverted bakes of that sheet); the profile
-     view is not where the doubled shoulder line shows, so it is left alone
-     rather than re-opening that argument */
-  if (pose === 'jog' && dir === 'east') continue;
-  SHEETS.push({ pose, dir });
-}
+/* STAND SHEETS ONLY.  The jog sheets belong to tools/gear/reoutline-shirt.mjs
+   (v2.3.2747, landed on main alongside this): it re-draws the keyline on the
+   tee's edge in every run frame WITHOUT moving coverage, pins jog-east's bytes
+   to its own output, and measured the shoulder band there as one pixel on
+   more columns than before.  Hugging on top of it would move the coverage it
+   promises not to move.  The stand sheets it deliberately left as they were
+   -- and the idle-south shoulder is exactly what the owner reported. */
+for (const dir of DIRS) SHEETS.push({ pose: 'stand', dir });
 
 const pinned = process.env.BT_CHROMIUM || '/opt/pw-browsers/chromium';
 const browser = await chromium.launch(existsSync(pinned) ? { executablePath: pinned } : {});

@@ -1,4 +1,4 @@
-/* ═══ THE CUE GESTURE, AS THE OWNER DESCRIBED IT (v2.3.2733) ═══
+/* ═══ THE CUE GESTURE, AS THE OWNER DESCRIBED IT (v2.3.2748) ═══
  *
  * Owner: "... the character is supposed to stop animating until you perform
  * the correct gesture on the right joystick ... before the player performs the
@@ -21,7 +21,7 @@
  *         runs FORWARD with the strokes, the tool rides it, a resting thumb
  *         holds the pose, a second finger lifting cannot end the stroke, and
  *         the meter wants ~6s of quick work -- never under the 4.8s floor
- *         (v2.3.2734: doubled from 3s / 2.4s at the owner's word).
+ *         (v2.3.2749: doubled from 3s / 2.4s at the owner's word).
  *
  * The fixture is a cook on a campfire at the player's own feet in town
  * (mp-cooktap's route): no zone travel, no tools, no monsters.  The per-skill
@@ -102,7 +102,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(600);
   await H.clickText(P, 'Light fire').catch(() => {});
-  /* v2.3.2734: a look at the fire-lighter mid-animation -- the log was the
+  /* v2.3.2749: a look at the fire-lighter mid-animation -- the log was the
      pipeline's magenta key and is pine bark now (toolRecolor.js). */
   await P.page.waitForTimeout(1200);
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/gcue-firemaking.png` }).catch(() => {});

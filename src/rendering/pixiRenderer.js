@@ -10,7 +10,7 @@ import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/ef
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { LightFx, setLightFx } from './lightfx/lightFx.js'; /* v2.3.2710: map-lit shadows + metal glint, behind ?lightfx=1 */
-import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2735 */
+import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2750 */
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { MinimapRenderer } from './systems/minimapRenderer.js'; /* v2.3.1781 */
 import { loadPlayerSprites } from './playerSprites.js';
@@ -26,7 +26,7 @@ import { preloadCombatGear } from './combatGear.js';
 import { preloadBodyAll } from './playerSkins.js';
 import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
 import { Assets } from 'pixi.js';
-import { markStandIns } from './formShade.js'; /* v2.3.2740: light from above (the batcher patch itself installs on import) */
+import { markStandIns } from './formShade.js'; /* v2.3.2755: light from above (the batcher patch itself installs on import) */
 import { SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS } from './lightfx/casters.js';
 
 /* v2.3.778: decode ALL textures to <img>-backed sources, never ImageBitmap.
@@ -166,7 +166,7 @@ export async function initPixiRenderer(canvas) {
       glint: (p) => { lightFx.glint.force = (p == null ? null : Math.max(0, Math.min(1, +p))); },
     };
   }
-  /* v2.3.2735: the maps' ambient life -- lava breathing, smoke, water light,
+  /* v2.3.2750: the maps' ambient life -- lava breathing, smoke, water light,
      wind, snow, motes (systems/ambientFx.js). */
   const ambientFx = new AmbientFx(layers);
   /* v2.3.221: FPS counter only mounts with ?dev=1. */
@@ -234,7 +234,7 @@ export async function initPixiRenderer(canvas) {
     entityRenderer.clear();
     effectsRenderer.clear();
     lightFx.clear();   /* v2.3.2710: last zone's shadows and glints go with its figures */
-    ambientFx.setZone(zoneId);   /* v2.3.2735 */
+    ambientFx.setZone(zoneId);   /* v2.3.2750 */
     /* ═══ v2.3.2596: THE ZONE-ENTRY BANNER'S ONE TRIGGER ═══
        This function is the single place in the client that observes every zone
        change, whatever set it -- the hub walk-in, a respawn, the dev warp, a
@@ -382,7 +382,7 @@ export async function initPixiRenderer(canvas) {
        ones that were not -- the respawned). */
     try { worldFx.update(S, { cx, cy, viewW, viewH, cssW, cssH }, now); }
     catch (e) { if (!update._worldFxErr) { update._worldFxErr = true; console.error('[pixi-render] worldFx threw', e && e.message, e && e.stack); } }
-    /* v2.3.2735: after the effects, in the camera's world rect. */
+    /* v2.3.2750: after the effects, in the camera's world rect. */
     try { ambientFx.update(S, cx, cy, viewW, viewH, now, canvas); }
     catch (e) { if (!update._ambientErr) { update._ambientErr = true; console.error('[pixi-render] ambientFx threw', e && e.message, e && e.stack); } }
     const _t3 = performance.now();
@@ -403,7 +403,7 @@ export async function initPixiRenderer(canvas) {
        everything that moves them -- the entity pass, the stand-ins placed by
        the effects pass, and the depth pass that re-parents occluders.  One
        boolean read when the switch is off (lightFx.js). */
-    /* v2.3.2740: the combat / gathering stand-ins take the figure shade too */
+    /* v2.3.2755: the combat / gathering stand-ins take the figure shade too */
     try { markStandIns(effectsRenderer, SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS); } catch (e) { /* never break a frame */ }
     try { lightFx.update(S, now, entityRenderer, effectsRenderer); }
     catch (e) { if (!update._lightErr) { update._lightErr = true; console.error('[pixi-render] lightFx threw', e && e.message, e && e.stack); } }

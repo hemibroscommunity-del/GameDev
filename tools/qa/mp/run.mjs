@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  shirtjog: () => import('./mp-shirtjog.mjs'), /* v2.3.2747: the tee's keyline holds on every frame the game draws while running, all eight directions -- the owner's "static" */
   arrowsnap: () => import('./mp-arrowsnap.mjs'), /* v2.3.2731: one arrow in eight snaps on what it hits -- same damage, a different picture */
   monstershots: () => import('./mp-monstershots.mjs'), /* v2.3.2732: slime goo in the thrower's colour, goblin fire, drawn in code */
   propfx: () => import('./mp-propfx.mjs'), /* v2.3.2730: a hit on a prop -- the arrow stands in the rock, the bolt crashes on it, the sword cuts it, and a peer sees all three */
@@ -92,11 +93,11 @@ const SCENARIOS = {
   goldrail: () => import('./mp-goldrail.mjs'), /* v2.3.2320: the purse moves to the zone rail and the nav buttons take its room */
   arrowblast: () => import('./mp-arrowblast.mjs'), /* v2.3.2279: the bow special's blast finale, end to end */
   chatlayer: () => import('./mp-chatlayer.mjs'), /* v2.3.2276: chat paints under the menus, and its composer stands down for them */
-  ambient: () => import('./mp-ambient.mjs'), /* v2.3.2735: the maps' ambient life -- the worldview's five features and the four spokes, counted and photographed */
-  formshade: () => import('./mp-formshade.mjs'), /* v2.3.2740: light from above on figures and props -- on/off diff, darker not brighter, stills for a human */
-  sharppixels: () => import('./mp-sharppixels.mjs'), /* v2.3.2743: character sprites sampled sharp -- shader compiles, sprites routed, edge contrast rises */
-  cueshow: () => import('./mp-cueshow.mjs'), /* v2.3.2733: mining, chopping and fishing through the new cue gesture in a real zone -- wind-up, frozen at ready, gesture + effects, resource -- with screenshots */
-  gcue: () => import('./mp-gcue.mjs'), /* v2.3.2384; v2.3.2733: the character freezes at `ready`, the mini-tool cue sits still and flashes, the gesture drives the swing forward and fills in ~3s */
+  ambient: () => import('./mp-ambient.mjs'), /* v2.3.2750: the maps' ambient life -- the worldview's five features and the four spokes, counted and photographed */
+  formshade: () => import('./mp-formshade.mjs'), /* v2.3.2755: light from above on figures and props -- on/off diff, darker not brighter, stills for a human */
+  sharppixels: () => import('./mp-sharppixels.mjs'), /* v2.3.2758: character sprites sampled sharp -- shader compiles, sprites routed, edge contrast rises */
+  cueshow: () => import('./mp-cueshow.mjs'), /* v2.3.2748: mining, chopping and fishing through the new cue gesture in a real zone -- wind-up, frozen at ready, gesture + effects, resource -- with screenshots */
+  gcue: () => import('./mp-gcue.mjs'), /* v2.3.2384; v2.3.2748: the character freezes at `ready`, the mini-tool cue sits still and flashes, the gesture drives the swing forward and fills in ~3s */
   cooktap: () => import('./mp-cooktap.mjs'), /* v2.3.2274: a REAL tap on your own fire cooks, and does not open chat */
   chopyield: () => import('./mp-chopyield.mjs'), /* v2.3.2273: a finished harvest actually pays -- the one step mp-harvest stops short of */
   texdrift: () => import('./mp-texdrift.mjs'), /* v2.3.2272: does zone art come back when you leave the zone */
@@ -307,6 +308,7 @@ const SCENARIOS = {
   questclaim: () => import('./mp-questclaim.mjs'), /* v2.3.1884: the claim opens when it becomes claimable under your feet */
   freshquest: () => import('./mp-freshquest.mjs'),
   deathshield: () => import('./mp-deathshield.mjs'),
+  dunedepth: () => import('./mp-dunedepth.mjs'), /* v2.3.2745: Wind Dunes perspective depth preview — smaller and slower going north */
   wvscale: () => import('./mp-wvscale.mjs'), /* v2.3.2287: your own art shrinks on the vista, and nothing changes off it */
   tapswing: () => import('./mp-tapswing.mjs'), /* v2.3.2285: tap a monster, walk there -- does the swing ever start? */
   deathgold: () => import('./mp-deathgold.mjs'), /* v2.3.2343: dying charges no gold, and the HUD agrees with the worker */

@@ -52,7 +52,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    default: ' + JSON.stringify(first));
   rec.ok('the road probe is live and pointing somewhere (guard)',
     !!first && !!first.to, first);
-  /* v2.3.2737: the default moved from Arrows to Footprints (owner: "Instead
+  /* v2.3.2752: the default moved from Arrows to Footprints (owner: "Instead
      of the chevron arrows can you make it look like indicator footprints") */
   rec.ok('the default style is Footprints, not the chevrons or the bead snake',
     !!first && first.style === 'steps', first);

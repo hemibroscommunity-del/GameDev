@@ -1,4 +1,4 @@
-/* ═══ v2.3.2740: FORM SHADING -- LIGHT FROM ABOVE, ON EVERY FIGURE AND PROP ═══
+/* ═══ v2.3.2755: FORM SHADING -- LIGHT FROM ABOVE, ON EVERY FIGURE AND PROP ═══
  *
  * Owner: "I love gradient colors to make things 'pop' more.  I'm wondering if
  * there's a way you can add that kind of subtle shadowing on the game's
@@ -10,7 +10,7 @@
  * already has inside each object, restated across the WHOLE object so it
  * reads as one lit form standing on the ground rather than a cut-out.
  *
- * HOW, AND WHY NOT A FILTER OR A BAKE.  The research for this (v2.3.2740) went
+ * HOW, AND WHY NOT A FILTER OR A BAKE.  The research for this (v2.3.2755) went
  * through the three obvious routes and each fails somewhere:
  *   - a Pixi Filter per figure: one render-target switch and an extra pass
  *     per figure per frame, 20-40 figures in town, on iPhone Safari;
