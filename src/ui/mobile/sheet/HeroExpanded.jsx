@@ -18,7 +18,9 @@ import {
   prog3ActiveCat, prog3AtkMeta, prog3BodyMeta, PROG3_SKILL_META, prog3PoolFor,
   prog3CritMult, prog3CritPct /* v2.3.2441 */,
   PROG3, prog3ElemPower /* v2.3.2512: elem per weapon, elem resist, max mana */,
-  prog3CharLevel, prog3PoolShared, prog3SharedSpendCat, isProg3SharedEnabled /* v2.3.2592: the shared pool */ } from '../../../data/prog3.js';
+  prog3CharLevel, prog3PoolShared, prog3SharedSpendCat, isProg3SharedEnabled /* v2.3.2592: the shared pool */,
+  prog3PowerMult, prog3RangeMult, prog3SpecialMult, prog3MoveMult, prog3EresPct, isProg3RelEnabled, PROG3_LINEAR,
+  PROG3_FADE_NOTE /* v2.3.2680: the curve readers + the fade line */ } from '../../../data/prog3.js';
 import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
@@ -1481,7 +1483,9 @@ export const HeroExpanded = () => {
                   title: info.title + (st.atk
                     ? ' · ' + ((PROG3_SKILL_META.find((k) => k.key === laneCat) || {}).label || '')
                     : ' · Shared'),
-                  body: info.body, note: info.note,
+                  /* v2.3.2680: a stat that fades against stronger monsters says
+                     so, once, under its explainer. */
+                  body: info.body, note: st.fades ? (info.note ? info.note + ' ' : '') + PROG3_FADE_NOTE : info.note,
                   perText: 'Each point: ' + st.perText,
                   /* ═══ v2.3.2231: THE FIGURE HOLDS THE LANE'S WEAPON ═══
                      Owner: "Maybe the combat primary skill they are viewing
@@ -1629,11 +1633,16 @@ export const HeroExpanded = () => {
                     const w = R ? weaponForCat(R, cat) : null;
                     const r = w ? calcDisplayDmgRange(R, w) : null;
                     if (r && r.text) return String(r.text);
-                    return '+' + toDisplayDamage(prog3AtkPts(R, cat, 'dmg') * PROG3.ATK.dmg.per);
+                    /* v2.3.2680: Power multiplies on a relative worker, so the
+                       no-weapon fallback prints the percent it adds. */
+                    if (isProg3RelEnabled()) return '+' + Math.round((prog3PowerMult(R, cat) - 1) * 100) + '%';
+                    return '+' + toDisplayDamage(prog3AtkPts(R, cat, 'dmg') * PROG3_LINEAR.dmg.per);
                   }
                   if (st.key === 'luck') return pct1(prog3CritPct(R, cat)) + '%';
-                  if (st.key === 'range') return '+' + Math.round(prog3AtkPts(R, cat, 'range') * PROG3.ATK.range.per * 100) + '%';
-                  if (st.key === 'special') return '+' + Math.round(prog3AtkPts(R, cat, 'special') * PROG3.ATK.special.per * 100) + '%';
+                  /* v2.3.2680: through the readers, which know the curve AND the
+                     linear worker — no inline `pts × per` left to drift. */
+                  if (st.key === 'range') return '+' + Math.round((prog3RangeMult(R, cat) - 1) * 100) + '%';
+                  if (st.key === 'special') return '+' + Math.round((prog3SpecialMult(R, cat) - 1) * 100) + '%';
                   if (st.key === 'crit') return pct1(prog3CritPct(R, cat)) + '%';
                   if (st.key === 'critDmg') return Math.round(prog3CritMult(R, cat) * 100) + '%';
                   /* v2.3.2512: elemental power, per weapon — the effective
@@ -1651,7 +1660,7 @@ export const HeroExpanded = () => {
                     return n2(mult > 0 ? 1 / mult : 1);
                   }
                 }
-                if (st.key === 'move') return '+' + Math.round(prog3Pts(R, 'move') * PROG3.BODY.move.per * 100) + '%'; /* v2.3.2592 */
+                if (st.key === 'move') return '+' + Math.round((prog3MoveMult(R) - 1) * 100) + '%'; /* v2.3.2592; v2.3.2680: the reader */
                 if (st.key === 'hp') return String(toDisplayHp((R && R.maxHp) || 0));   /* v2.3.2520: display scale */
                 if (st.key === 'stam') return String(Math.round((R && R.maxStamina) || 0));
                 if (st.key === 'def') return pct1(d ? d.defPct : 0) + '%';
@@ -1662,7 +1671,7 @@ export const HeroExpanded = () => {
                    same field the mana bar draws from, so the two screens
                    cannot disagree); ELEM RESIST reads its own percentage. */
                 if (st.key === 'mana') return String(Math.round((R && R.maxMana) || 0));
-                if (st.key === 'eres') return pct1(prog3Pts(R, 'eres') * (PROG3.BODY.eres ? PROG3.BODY.eres.per : 0)) + '%';
+                if (st.key === 'eres') return pct1(prog3EresPct(R)) + '%'; /* v2.3.2680: the reader */
               } catch (e) { /* a readout must never take the screen down */ }
               return '—';
             };
@@ -2142,7 +2151,7 @@ export const HeroExpanded = () => {
                     role="button"
                     data-prog3-plus={lk}
                     data-stat-info={st.key}
-                    aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${pts} of ${cap}. ${st.perText} per point.`}
+                    aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${pts} of ${cap}. ${st.perText}${st.curve ? '' : ' per point'}.`}
                     aria-disabled={!canSpend}
                     /* v2.3.2620: ...and the long-press says what the stat READS
                        right now, which is the other half of what v2.3.2597 took
@@ -2151,7 +2160,7 @@ export const HeroExpanded = () => {
                        row's own line prints the POINTS and this prints what they
                        bought ("31.0%", "1-2"), so the pair is back without
                        either of them costing the cell a pixel. */
-                    title={`${st.label} — ${pts} of ${cap} points — now ${statValueText(st, cat)} — ${st.perText} per point`}
+                    title={`${st.label} — ${pts} of ${cap} points — now ${statValueText(st, cat)} — ${st.perText}${st.curve ? '' : ' per point'}`}
                     {...scrollTap(() => openStatInfo(st, cat, {
                       blocked: (st.atk ? laneAvail(cat) : sharedAvail) <= 0
                         ? `No ${st.atk ? ((PROG3_SKILL_META.find((k) => k.key === cat) || {}).label || 'lane') : 'shared'} points to spend.`

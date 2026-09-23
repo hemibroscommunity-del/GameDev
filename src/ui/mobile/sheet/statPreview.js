@@ -24,7 +24,8 @@
  * real answer to "should I put it here" rather than a gap in the tooltip.
  */
 import { calcDisplayDps, getActiveWeapon, weaponForCat } from '../../../data/gameSystems.js';
-import { PROG3, PROG3_LEGACY_ATK, prog3Pts, prog3AtkPts, prog3IsAtkStat, isProg3XEnabled } from '../../../data/prog3.js';
+import { PROG3, PROG3_LEGACY_ATK, PROG3_LINEAR, prog3Pts, prog3AtkPts, prog3IsAtkStat, isProg3XEnabled,
+  isProg3RelEnabled, prog3StatAmount, prog3Curve /* v2.3.2680: the curve */ } from '../../../data/prog3.js';
 
 /* The weapon a DPS readout should speak for.
  *
@@ -55,7 +56,18 @@ function statTotal(pts, cfg, stat) {
      (prog3CritPct), and a window that said 6.0% under a cell that said 7.0%
      was the two screens disagreeing about one number — mp-statpeek caught
      it against the character's real chance. */
+  /* v2.3.2680: every CURRENT stat totals through prog3StatAmount, which knows
+     both the curve (a relative worker) and the linear worker — so the window's
+     now → after pair shows what the next point is really worth, first points
+     biggest.  Only the retired crit pair (PROG3_LEGACY_ATK) reads its own per. */
+  if (PROG3.ATK[stat] || PROG3.BODY[stat]) return prog3StatAmount(stat, pts);
   return pts * (cfg ? cfg.per : 0) + ((cfg && cfg.base) || 0);
+}
+/* v2.3.2680: Luck's crit-DAMAGE half, the bonus on the ×1.5 multiplier. */
+function luckDmgBonus(pts) {
+  return isProg3RelEnabled()
+    ? PROG3.ATK.luck.dmgMax * prog3Curve(pts, PROG3.ATK.luck.k)
+    : Math.min(PROG3_LINEAR.luck.cap, pts) * PROG3_LINEAR.luck.dmgPer;
 }
 
 /** Preview one more point in `stat`.  `cat` is the weapon category an offense
@@ -68,7 +80,9 @@ export function previewStatPoint(R, stat, cat) {
   if (!cfg) return null;
 
   const pts = isAtk ? prog3AtkPts(R, cat, stat) : prog3Pts(R, stat);
-  const capped = pts >= cfg.cap;
+  /* v2.3.2680: a linear worker still caps at the retired numbers. */
+  const capOf = (!isProg3RelEnabled() && PROG3_LINEAR[stat]) ? PROG3_LINEAR[stat].cap : cfg.cap;
+  const capped = pts >= capOf;
 
   /* Deep copy: the allocation lives two or three levels down (prog3.atk[cat]
      [stat]), so a shallow clone would write the point straight into the real
@@ -114,8 +128,8 @@ export function previewStatPoint(R, stat, cat) {
        "what will my crit damage BE" any more than it could for the chance —
        so the second half rides along as its own now/after pair, and the ℹ️
        window prints two rows for it.  Absent for every single-rate stat. */
-    statNow2: cfg.dmgPer ? pts * cfg.dmgPer : null,
-    statAfter2: cfg.dmgPer ? (pts + 1) * cfg.dmgPer : null,
+    statNow2: stat === 'luck' ? luckDmgBonus(pts) : null,       /* v2.3.2680: the curve */
+    statAfter2: stat === 'luck' ? luckDmgBonus(pts + 1) : null,
     dpsNow, dpsAfter,
     dpsDelta: (typeof dpsNow === 'number' && typeof dpsAfter === 'number') ? (dpsAfter - dpsNow) : null,
     weaponName: wpn ? (wpn.name || wpn.type || 'weapon') : null,

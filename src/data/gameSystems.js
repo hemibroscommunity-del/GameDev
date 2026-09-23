@@ -36,6 +36,7 @@ import {
   prog3CritMult, /* v2.3.2199: percent critDmg */
   prog3RangeMult, prog3SpecialMult, /* v2.3.2592: reach + special, client-consumed */
   prog3DmgTerm,
+  prog3PowerMult, prog3AspdCut, /* v2.3.2680: Power is a multiplier; Speed reads the curve */
   prog3ElemPower, isProg3ElemEnabled, /* v2.3.2512: elem per weapon; max mana as a stat */
   legacyStaminaMult, /* v2.3.2662: the retired level-10 stamina rung, old workers only */
 } from './prog3.js';
@@ -3368,7 +3369,7 @@ export function swingCooldownMultFor(rpg, weaponType) {
      reads that type's block.  A stash bow's readout shows the Bow
      investment even while a sword is in hand, which is the same
      behaviour the legacy per-weapon Tempo channel had. */
-  if (prog3Live(rpg)) return Math.max(0.50, 1 - prog3AtkPts(rpg, prog3CatFor(weaponType), 'aspd') * PROG3.ATK.aspd.per);
+  if (prog3Live(rpg)) return Math.max(0.50, 1 - prog3AspdCut(rpg, prog3CatFor(weaponType)));  /* v2.3.2680: the curve on a relative worker */
   /* v2.3.1343 (kid-simple reprice): -0.5%/pt, floor 0.50 — swing twice
      as fast at the 100-pt cap.  SERVER LOCKSTEP: the worker's
      monster_damage hit-cadence floor is sized to THIS cap (600 × 0.50
@@ -5070,7 +5071,10 @@ export function calcWeaponDmg(weaponType, statValOrRpg, tierMult, wpn) {
      callers keep legacy math (they are legacy-path readouts). */
   var _p3 = (statValOrRpg && typeof statValOrRpg === 'object' && prog3Live(statValOrRpg)) ? statValOrRpg : null;
   var statTerm = _p3 ? prog3DmgTerm(_p3, weaponType) : statVal * 0.1667;
-  var base = (weaponEffBase(w.base, wpn) + statTerm) * weaponTierFactor(tierMult) * weaponQualityMult(wpn); // baseline-10: 0.8 ÷ 4.8; v2.3.2664: tier factor + grade
+  /* v2.3.2680: × the Power multiplier, pre-tier — the server roll's order
+     (prog3PowerMult is 1 against a linear worker, which adds flat Power in
+     prog3DmgTerm instead). */
+  var base = (weaponEffBase(w.base, wpn) + statTerm) * (_p3 ? prog3PowerMult(_p3, prog3CatFor(weaponType)) : 1) * weaponTierFactor(tierMult) * weaponQualityMult(wpn); // baseline-10: 0.8 ÷ 4.8; v2.3.2664: tier factor + grade
   /* v2.3.1451: bench-locked banked flat when live (rpg object passed
      + worker capability); legacy accelerating flat otherwise. */
   var flat = _p3 ? 0
@@ -5367,6 +5371,7 @@ export function calcCombatDmgRange(rpg, wpn) {
      the readout mirrors the server roll it predicts. */
   var base = (weaponEffBase(w.base, wpn)
     + (prog3Live(rpg) ? prog3DmgTerm(rpg, wpn.type) : statVal * 0.1667))
+    * (prog3Live(rpg) ? prog3PowerMult(rpg, prog3CatFor(wpn.type)) : 1) /* v2.3.2680: Power multiplies, pre-tier */
     * weaponTierFactor(wpn.tierMult || 1) * weaponQualityMult(wpn); /* v2.3.2664: tier factor + grade, the roll's order */
   /* v2.3.1207: Tempo folds into the period (see header); the staff's
      +300ms cast penalty is added AFTER the mult, unscaled, matching
@@ -5524,7 +5529,7 @@ export function calcSpecialDmg(weaponType, rpg, tierMult, wpn) {
   var mind = (rpg && rpg.mind) || 0;
   var _p3s = (rpg && prog3Live(rpg)) ? rpg : null;
   var _term = _p3s ? prog3DmgTerm(_p3s, weaponType) : mind * 0.1667;
-  var base = (weaponEffBase(w.base, wpn) + _term) * weaponTierFactor(tierMult || 1) * weaponQualityMult(wpn); // baseline-10: 0.8 ÷ 4.8; v2.3.2664
+  var base = (weaponEffBase(w.base, wpn) + _term) * (_p3s ? prog3PowerMult(_p3s, prog3CatFor(weaponType)) : 1) * weaponTierFactor(tierMult || 1) * weaponQualityMult(wpn); // baseline-10: 0.8 ÷ 4.8; v2.3.2680: × Power; v2.3.2664: tier factor + grade
   if (weaponType === 'staff') return base * (0.5 + Math.random() * 1.15);
   if (weaponType === 'bow')   return base * (0.6 + Math.random() * 0.2);
   return base * (0.75 + Math.random() * 0.5);

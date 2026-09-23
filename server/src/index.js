@@ -1642,7 +1642,7 @@ export class GameRoom {
        FROM (the thrower for a snowball, the monster for a swing), which is
        exactly what the arc has to be measured against. */
     const _blocking = this._blockArcCovers(targetPs, atkX, atkY);
-    const dmgResult = this._applyDamage(targetPs, m.dmg, _blocking);
+    const dmgResult = this._applyDamage(targetPs, m.dmg, _blocking, { attackerLevel: m.level });  /* v2.3.2680: the edge on Dodge/Defense */
     const dmgTaken = dmgResult.dmgTaken;
     /* Same block cost the melee branch charges (15 × Bulwark efficiency),
        so blocking a snowball and blocking a swing cost the same stamina. */
