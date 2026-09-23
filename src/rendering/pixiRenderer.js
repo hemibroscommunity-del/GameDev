@@ -149,6 +149,7 @@ export async function initPixiRenderer(canvas) {
   /* v2.3.2703: time of day, the air, dust prints and blood (worldFx.js); the
      crumbling corpse needs the renderer to photograph the body it replaces. */
   const worldFx = new WorldFx(layers, app);
+  worldFx.setEntityRenderer(entityRenderer);   /* v2.3.2707: night lights the plates and the monsters */
   deathCrumble.setRenderer(app.renderer);
   /* v2.3.221: FPS counter only mounts with ?dev=1. */
   const _devUI = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search);

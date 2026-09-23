@@ -50,6 +50,32 @@ function mintGlow() {
   return toTex(c);
 }
 
+/* ═══ v2.3.2707: A SOFTBOX, FOR NAME PLATES ═══
+   A small square of light with a 4px soft border, drawn as a NINE-SLICE: the
+   bright middle stretches to exactly cover a name plate or a monster's health
+   bar in the night's light map, and the soft border stays 4 light-map px (16
+   CSS px) wide whatever the plate's size.  The first cut stretched one soft
+   rectangle over the plate, and because its fully-bright middle was a fixed
+   share of it, a long plate needed a huge one -- town at night grew glowing
+   yellow boxes round every name.  Built per pixel (smoothstep) rather than
+   with ctx.filter blur, which Safari's canvas does not have. */
+export const SOFTBOX_EDGE = 4;
+function mintSoftbox() {
+  const E = SOFTBOX_EDGE, W = E * 2 + 4, H = E * 2 + 4, c = canvas(W, H), g = c.getContext('2d');
+  const img = g.createImageData(W, H);
+  const edge = (u) => { const t = Math.min(1, u / E); return t * t * (3 - 2 * t); };
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const a = edge(Math.min(x + 0.5, W - x - 0.5)) * edge(Math.min(y + 0.5, H - y - 0.5));
+      const i = (y * W + x) * 4;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = 255;
+      img.data[i + 3] = Math.round(255 * a);
+    }
+  }
+  g.putImageData(img, 0, 0);
+  return toTex(c);
+}
+
 /* A cloud: a dozen overlapping soft discs, so the edge is ragged the way a
    cloud's shadow is and not the perfect ellipse that gives a blob away. */
 function mintCloud(seed) {
@@ -264,6 +290,7 @@ export function mintWorldFxTextures() {
   if (typeof document === 'undefined') return 0;
   try {
     _tex.glow = mintGlow();
+    _tex.softbox = mintSoftbox();
     _tex.cloud0 = mintCloud(3); _tex.cloud1 = mintCloud(9); _tex.cloud2 = mintCloud(17);
     _tex.print = mintPrint();
     _tex.puff = mintPuff();

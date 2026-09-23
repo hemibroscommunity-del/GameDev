@@ -38,9 +38,9 @@
  * target and one extra pass, only while the sun is down.  All of it is
  * display only -- no state here is read by combat, and nothing is sent.
  */
-import { Container, Sprite, Texture, RenderTexture } from 'pixi.js';
+import { Container, Sprite, Texture, RenderTexture, NineSliceSprite } from 'pixi.js';
 import { dayPhase, lightingAt, windAt, zoneHasSky } from '@/game/timeOfDay.js';
-import { fxTex } from './worldFxTextures.js';
+import { fxTex, SOFTBOX_EDGE } from './worldFxTextures.js';
 import { zonePlayerScale } from '@/data/zones.js';
 import { deathCrumble } from './deathCrumble.js';
 
@@ -181,9 +181,51 @@ export class WorldFx {
         motes: this._motes.filter((m) => m.visible).length,
         moteKind: this._moteKind,
         lights: this._lights.filter((l) => l.visible).length,
+        night: this._probeNight || null,
         corpses: deathCrumble.count(),
       });
     }
+  }
+
+  setEntityRenderer(er) { this._er = er; }
+
+  /* ═══ v2.3.2707: WHAT THE NIGHT MUST NOT HIDE ═══
+     Owner, on the first night: "I still need the name plates to be legible
+     (maybe it's a soft flashlight effect on name plates or just default
+     visibility).  It's also more difficult to see monsters at night ... like
+     the snowmen preview showed them dark on the dark snow."
+     Both are answered IN the light map rather than by pulling things out of
+     the night: every visible name plate and monster health bar gets a softbox
+     of light the size of it (full daytime colour, a gentle halo round it),
+     and every monster gets a cool moonlight glow the size of its body -- so a
+     snowman on night snow is lit, but still reads as standing in the dark.
+     Found through the entity renderer's own display maps, measured with
+     getBounds (screen space, so the zoom and the camera are already in it). */
+  _nightTargets() {
+    const er = this._er;
+    const plates = [], bodies = [];
+    if (!er) return { plates, bodies };
+    const shown = (o) => {
+      for (let n = o, d = 0; n && d < 8; n = n.parent, d++) {
+        if (n.visible === false || (typeof n.alpha === 'number' && n.alpha <= 0.02)) return false;
+      }
+      return true;
+    };
+    const plate = (o) => { if (o && shown(o)) plates.push(o); };
+    try {
+      if (er.playerDisplay) plate(er.playerDisplay._namePill);
+      if (er.otherPlayerDisplays) for (const d of er.otherPlayerDisplays.values()) plate(d && d._namePill);
+      if (er.npcDisplays) for (const d of er.npcDisplays.values()) plate(d && d._namePill);
+      if (er.monsterDisplays) {
+        for (const d of er.monsterDisplays.values()) {
+          if (!d) continue;
+          /* the monster's whole UI block: plate, level, health bar */
+          plate(d._hpUi);
+          if (d._spriteBody && shown(d._spriteBody)) bodies.push(d._spriteBody);
+        }
+      }
+    } catch (e) { /* a missing light is a dark plate, never a crash */ }
+    return { plates, bodies };
   }
 
   update(S, cam, now) {
@@ -218,6 +260,7 @@ export class WorldFx {
     if (!sky || plainDay || !this.lightLayer) {
       ov.visible = false;
       for (let i = 0; i < this._lights.length; i++) this._lights[i].visible = false;
+      if (this._plateLights) for (let i = 0; i < this._plateLights.length; i++) this._plateLights[i].visible = false;
     } else if (L.lamp < 0.01) {
       /* golden hour: a tint, no lights to place -- no render target needed */
       for (let i = 0; i < this._lights.length; i++) this._lights[i].visible = false;
@@ -305,22 +348,61 @@ export class WorldFx {
       const m = this._motes[i];
       if (m.visible && m._firefly) list.push({ x: m.x, y: m.y, r: 26, c: 0xd8ff8a, a: m.alpha * 0.9 });
     }
-    const tex = fxTex('glow');
+    /* world-space lights (lanterns, fireflies) into light-map space */
+    const lights = [];
+    const lampK = 0.35 + 0.65 * L.lamp;
     for (let i = 0; i < list.length; i++) {
+      const l = list[i];
+      lights.push({ tex: 'glow', x: (l.x - cx) * k, y: (l.y - cy) * k, w: l.r * 2 * k, h: l.r * 2 * k, c: l.c, a: Math.min(1, l.a * lampK) });
+    }
+    /* screen-space ones: plates and monsters, measured where they are drawn */
+    const gk = w / Math.max(1, cam.cssW || viewW);
+    const { plates, bodies } = this._nightTargets();
+    for (let i = 0; i < bodies.length; i++) {
+      let b; try { b = bodies[i].getBounds(); } catch (e) { continue; }
+      if (!b || b.width < 2) continue;
+      const r = Math.max(b.width, b.height) * 0.8 * gk;
+      /* moonlight: cool, and not full -- lit enough to see, still at night */
+      lights.push({ tex: 'glow', x: (b.x + b.width / 2) * gk, y: (b.y + b.height * 0.55) * gk, w: r * 2, h: r * 2, c: 0xc4d4ff, a: 0.6 * lampK });
+    }
+    /* plates: nine-slice softboxes, their bright middle exactly over the
+       plate, full white -- the plate reads as it does by day */
+    const pl = this._plateLights || (this._plateLights = []);
+    let pn = 0;
+    const sb = fxTex('softbox');
+    for (let i = 0; i < plates.length && sb; i++) {
+      let b; try { b = plates[i].getBounds(); } catch (e) { continue; }
+      if (!b || b.width < 2) continue;
+      let s = pl[pn];
+      if (!s) {
+        s = new NineSliceSprite({ texture: sb, leftWidth: SOFTBOX_EDGE, rightWidth: SOFTBOX_EDGE, topHeight: SOFTBOX_EDGE, bottomHeight: SOFTBOX_EDGE });
+        s.blendMode = 'add';
+        this._lightScene.addChild(s); pl.push(s);
+      }
+      s.x = b.x * gk - SOFTBOX_EDGE; s.y = b.y * gk - SOFTBOX_EDGE;
+      s.width = b.width * gk + SOFTBOX_EDGE * 2; s.height = b.height * gk + SOFTBOX_EDGE * 2;
+      s.visible = true;
+      pn++;
+    }
+    for (let i = pn; i < pl.length; i++) pl[i].visible = false;
+    this._probeNight = { plates: pn, monsters: bodies.length };
+    for (let i = 0; i < lights.length; i++) {
+      const l = lights[i];
       let s = this._lights[i];
       if (!s) {
-        s = new Sprite(tex || Texture.WHITE);
+        s = new Sprite(fxTex('glow') || Texture.WHITE);
         s.anchor.set(0.5); s.blendMode = 'add';
         this._lightScene.addChild(s); this._lights.push(s);
       }
-      const l = list[i];
-      s.x = (l.x - cx) * k; s.y = (l.y - cy) * k;
-      s.width = s.height = l.r * 2 * k;
+      const t = fxTex(l.tex) || fxTex('glow');
+      if (t && s.texture !== t) s.texture = t;
+      s.x = l.x; s.y = l.y;
+      s.width = l.w; s.height = l.h;
       s.tint = l.c;
-      s.alpha = Math.min(1, l.a * (0.35 + 0.65 * L.lamp));
+      s.alpha = l.a;
       s.visible = true;
     }
-    for (let i = list.length; i < this._lights.length; i++) this._lights[i].visible = false;
+    for (let i = lights.length; i < this._lights.length; i++) this._lights[i].visible = false;
 
     renderer.render({ container: this._lightScene, target: this._rt, clear: true });
     const ov = this._overlay;

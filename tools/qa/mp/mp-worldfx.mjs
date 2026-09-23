@@ -57,6 +57,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await shot('night');
   rec.ok('at night the light map is on, and your own lantern is one of its lights',
     !!night && night.tod && night.tod.name === 'night' && night.lights >= 1, night && { tod: night.tod, lights: night.lights });
+  /* v2.3.2707: owner -- "I still need the name plates to be legible".  Your
+     own plate and the town NPCs' each get a softbox of light at night. */
+  rec.ok('...and every name plate on screen gets its own light, so it reads as it does by day',
+    !!night && night.night && night.night.plates >= 2, night && night.night);
   rec.ok('...and the green zones trade their pollen for fireflies',
     !!night && night.moteKind === 'fireflies' && night.motes > 0, night && { kind: night.moteKind, motes: night.motes });
   for (const h of ['dawn', 'golden', 'dusk']) { await setTod(h); await P.page.waitForTimeout(600); await shot(h); }

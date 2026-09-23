@@ -10,6 +10,10 @@ Everything here is display only. Nothing is sent to the server, and nothing in c
   - Lights are your lantern (radius 165), other players' lanterns (radius 125) and fireflies.
   - By day the light map is skipped completely.
   - At golden hour it is a flat tint.
+- **Plates and monsters stay readable (v2.3.2707):**
+  - Every visible name plate and monster health bar gets a nine-slice softbox of light in the light map. Its bright middle covers the plate exactly, and it has a 16 CSS px soft rim. The plate reads at its daytime colour.
+  - Every monster gets a cool moonlight glow the size of its body, so a snowman on night snow stands out.
+  - Both are found through the entity renderer's display maps and measured with getBounds.
 - **Where it applies:** outdoor zones only (`zoneHasSky`): town, meadow, ember, mist, verdant, frost, sky, radiant, farm. Caves, the foundry, the sanctum, the world map and dungeons keep their own light.
 - **Layer:** the new `lighting` world layer (pixiApp.js). It sits above everything in the world and below the damage numbers and the world overlay, so night never makes a number harder to read.
 - **Preview:** add `?tod=night` (or `dawn`, `day`, `golden`, `dusk`, or a number from 0 to 1) to the URL, or set `window.__btTod = 'night'` in the console. `window.__btTimeOfDay()` shows the current hour.
