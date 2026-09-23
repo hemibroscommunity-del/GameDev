@@ -7,7 +7,7 @@
  * `ready`).  Shared by entityRenderer (the mine/fish body poses) and
  * effectsRenderer (the chop/cook stand-ins) so the two cannot drift apart.
  */
-/* ═══ v2.3.2702: THE CUE GESTURE, THE WAY THE OWNER DESCRIBED IT ═══
+/* ═══ v2.3.2718: THE CUE GESTURE, THE WAY THE OWNER DESCRIBED IT ═══
  *
  * Owner: "the character harvests a resource ... for a certain amount of time
  * (determined by your skill level) ... I wanted the character to perform each
@@ -53,7 +53,7 @@
  *    work at a quick pace (GESTURE_QUICK_CYCLE_MS a cycle), so a quick hand
  *    finishes in ~3s and a slow one takes longer -- with a floor
  *    (GESTURE_FLOOR_MS of actual motion), so no amount of scribbling finishes
- *    in under ~2.4s.  (v2.3.2703: DOUBLED at the owner's word -- ~6s, floor
+ *    in under ~2.4s.  (v2.3.2719: DOUBLED at the owner's word -- ~6s, floor
  *    ~4.8s.  The numbers below are the live ones.)
  */
 
@@ -85,7 +85,7 @@ export const STROKE_SPAN_PX = 38;
    back, a flip up and down, one turn of the reel).  The meter wants
    GESTURE_TARGET_MS of work at this pace, i.e. TARGET / QUICK cycles. */
 export const GESTURE_QUICK_CYCLE_MS = { mining: 420, woodcutting: 420, fishing: 480, cooking: 500 };
-/* v2.3.2703 (owner, after playing it: "Double the amount of time it takes to
+/* v2.3.2719 (owner, after playing it: "Double the amount of time it takes to
    complete the gesture"): 3000 -> 6000, and the floor with it, 2400 -> 4800. */
 export const GESTURE_TARGET_MS = 6000;
 /* The floor: the meter can never run ahead of GESTURE_FLOOR_MS of real motion,
@@ -119,7 +119,7 @@ export function gestureIdle(ex) {
 /* ═══ ONE READING OF HOW FAR ALONG A HARVEST IS (v2.3.2514) ═══
  * Both meters -- the ring on the button and the bar over the head -- read
  * this, so the two cannot drift.
- * v2.3.2702: the bar no longer stalls at 95%.  The owner's description is two
+ * v2.3.2718: the bar no longer stalls at 95%.  The owner's description is two
  * phases, each a full bar: the wind-up fills while the character works, and
  * "once it reaches the limit" the character stops and the gesture takes over
  * -- so `bar01` is the wind-up (0..1) and then, at `ready`, the gesture's own
@@ -166,7 +166,7 @@ export function gesturePose01(ex, now, fullCycleMs) {
 /* v2.3.2245: the owner's painted gesture strips.  A MIRROR of GESTURE_TOOLS in
    effectsRenderer.js (which slices the same files into Pixi textures); the URLs
    are the only thing shared, and mirror-audit pins the two lists equal.
-   v2.3.2702: the button no longer plays these whole (the mini tool below is
+   v2.3.2718: the button no longer plays these whole (the mini tool below is
    the cue now); the cooking cue takes its pan from cell 0 of the pan strip,
    because there is no pan item icon. */
 export const GESTURE_TOOL_URLS = {
@@ -176,7 +176,7 @@ export const GESTURE_TOOL_URLS = {
   cooking:     '/sprites/tools/pan-gesture-v2.webp?v=2.3.1433',
 };
 
-/* ═══ v2.3.2702: THE MINI TOOL -- "a mini sprite of the tool being used" ═══
+/* ═══ v2.3.2718: THE MINI TOOL -- "a mini sprite of the tool being used" ═══
  * The item icons the bag already shows (a pickaxe, an axe, a rod), so the cue
  * is the same object the player owns -- at the bag's own ?v= (ITEMS_V in
  * InventoryPanel.jsx), because a query string is part of the cache key and a

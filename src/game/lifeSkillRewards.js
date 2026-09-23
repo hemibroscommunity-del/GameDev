@@ -152,7 +152,7 @@ export function startExtraction(S, node, skill, extra) {
       } catch (e) {}
     }
     try { BT_AUDIO.beep(440, 0.03, 0.04, 'sine'); } catch (e) {}
-    /* v2.3.2703 (owner: sounds for the specific actions): the cast lands --
+    /* v2.3.2719 (owner: sounds for the specific actions): the cast lands --
        the lure's plop, the moment the rod goes out. */
     if (skill === 'fishing') { try { if (BT_AUDIO.play) BT_AUDIO.play('lure-drop', { vol: 0.6 }); } catch (e) {} }
 }

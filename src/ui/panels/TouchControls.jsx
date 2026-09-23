@@ -93,7 +93,7 @@ export function TouchControls(props) {
     rBodyRef = props.rBodyRef,   /* v2.3.2263: the disc's painted metal, faded on its own */
     rLabelRef = props.rLabelRef,
     rRingRef = props.rRingRef,   /* v2.3.2245: the wind-up / reps ring around the rim */
-    rHintRef = props.rHintRef,   /* v2.3.2384: the gesture cue; v2.3.2702: the mini tool */
+    rHintRef = props.rHintRef,   /* v2.3.2384: the gesture cue; v2.3.2718: the mini tool */
     /* v2.3.2258: the rod and knob are BACK -- the right control is a joystick
        again (see the aim block in BroTown's bM). */
     rStickRef = props.rStickRef,
@@ -474,7 +474,7 @@ export function TouchControls(props) {
     cx: '50%', cy: '50%', r: '40%', fill: 'none',
     stroke: 'rgba(216,168,95,.85)', strokeWidth: 4, strokeLinecap: 'round',
     strokeDasharray: '0 999',
-  })), /* v2.3.2702: the painted tool STRIP that played on the button face since
+  })), /* v2.3.2718: the painted tool STRIP that played on the button face since
      v2.3.2245 (rCueRef) is gone -- the cue below is a mini tool now, and a
      second, bigger tool animating behind it was the same object twice. */
   /*#__PURE__*/React.createElement("div", {
@@ -507,7 +507,7 @@ export function TouchControls(props) {
       textTransform: 'uppercase',
     }
   }, 'Attack'), /*#__PURE__*/React.createElement("svg", {
-    /* ═══ v2.3.2702: THE CUE IS A MINI TOOL ═══
+    /* ═══ v2.3.2718: THE CUE IS A MINI TOOL ═══
        Owner: "before the player performs the gesture the starting spot of the
        cue should be static but flash.  An effect should show you which way the
        cue should move (clockwise rotation for fishing, up and down for mining,

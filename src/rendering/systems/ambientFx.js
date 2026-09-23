@@ -1,4 +1,4 @@
-/* ═══ v2.3.2704: AMBIENT LIFE ON THE MAPS ═══
+/* ═══ v2.3.2720: AMBIENT LIFE ON THE MAPS ═══
  *
  * Owner: "make subtle effects that appear as animations on the worldview?
  * Lava smoke on the fire mountain maybe shimmering a bit on the lava, winds on
@@ -17,12 +17,12 @@
  *              western river glint and ripple; wind streaks and blown sand run
  *              across the desert; a few flakes drift over the snowy peaks;
  *              petals fall through the cherry grove.
- *   ember      every lava channel shimmers, embers rise off it, the hottest
- *              vents smoke, and a little ash drifts through the air.
- *   sky        wind streaks and blowing sand across the whole view, and sand
- *              lifting off the dune crests along the top.
- *   verdant    pollen / firefly motes wander and glow; the pools ripple.
- *   frost      soft snow falls; the sea glints; the ice twinkles now and then.
+ *   ember      every lava channel shimmers and the hottest vents smoke.
+ *   sky        wind streaks you can see, and dust lifting off the dune crests.
+ *   verdant    the pools ripple and glint.
+ *   frost      the sea's edge ripples and glints; the ice twinkles.
+ * (The spokes' pollen, fireflies, embers, sand and snow are v2.3.2712's
+ * worldFx air -- see ZONE_FX below for why this does not repeat them.)
  *
  * SUBTLE, by the owner's word: every effect is low-alpha, slow, and sparse --
  * the point is that the world is alive, not that it is busy.
@@ -107,7 +107,7 @@ const pick = (arr) => arr[(Math.random() * arr.length) | 0];
  * The air emitters are { kind, rate (per second, over the whole map area it
  * covers), cap (alive at once), where }. */
 const ZONE_FX = {
-  /* v2.3.2704: k 0.55 -> 0.75 after an on/off diff of the real render showed
+  /* v2.3.2720: k 0.55 -> 0.75 after an on/off diff of the real render showed
      the vista's effects under two screen px -- too far for 'subtle' to read */
   worldview: { k: 0.75, glow: 'lava', ripples: true, air: [
     { kind: 'smoke', where: 'vents', rate: 1.6, cap: 12 },
@@ -118,24 +118,26 @@ const ZONE_FX = {
     { kind: 'snow', where: 'snow', rate: 4, cap: 22 },
     { kind: 'petal', where: 'blossom', rate: 1.2, cap: 8 },
   ] },
+  /* ═══ v2.3.2720: WITH worldFx's AIR, NOT ON TOP OF IT ═══
+     v2.3.2712 (worldFx.js ZONE_AIR, merged while this was being built) already
+     fills the spokes' AIR: pollen and fireflies in verdant, embers in ember,
+     blowing sand in the dunes, snow in frost, on one shared breeze.  Doubling
+     those would make the air busy, which is the one thing the owner's
+     "subtle" rules out -- so in the spokes this file adds only what that one
+     does not draw: the lava's shimmer and the vents' smoke, wind you can SEE,
+     dust off the dune crests, and the water's light and the ice's twinkle.
+     The worldview has no ZONE_AIR entry, so it keeps its whole set above. */
   ember: { k: 1, glow: 'lava', air: [
-    { kind: 'ember', where: 'lava', rate: 9, cap: 34 },
     { kind: 'smoke', where: 'vents', rate: 2.2, cap: 16 },
-    { kind: 'ash', where: 'view', rate: 3, cap: 18 },
   ] },
   sky: { k: 1, air: [
-    /* the on/off diff showed two streaks and a few specks at the first rates;
-       the whole zone is named for the wind, so it gets a steady breeze */
     { kind: 'wind', where: 'view', rate: 5, cap: 14 },
-    { kind: 'sand', where: 'view', rate: 24, cap: 50 },
     { kind: 'dust', where: 'dunes', rate: 1.2, cap: 6 },
   ] },
   verdant: { k: 1, ripples: true, air: [
-    { kind: 'mote', where: 'view', rate: 3, cap: 22 },
     { kind: 'glint', where: 'water', rate: 2, cap: 6 },
   ] },
   frost: { k: 1, ripples: true, air: [
-    { kind: 'snow', where: 'view', rate: 14, cap: 60 },
     { kind: 'glint', where: 'water', rate: 4, cap: 10 },
     { kind: 'twinkle', where: 'ice', rate: 1.5, cap: 5 },
   ] },
@@ -152,8 +154,14 @@ export class AmbientFx {
     this.ground.label = 'ambientGround';
     this.air = new Container();
     this.air.label = 'ambientAir';
+    /* things that GIVE light -- the lava, its embers -- go in `glows`, drawn
+       after v2.3.2712's night multiplies the world, so lava still shines in
+       the dark (worldFx puts its fireflies there for the same reason) */
+    this.glow = new Container();
+    this.glow.label = 'ambientGlow';
     if (layers.groundDetails) layers.groundDetails.addChild(this.ground);
     if (layers.foreground) layers.foreground.addChild(this.air);
+    (layers.glows || layers.groundDetails || layers.foreground).addChild(this.glow);
     this.zone = null;
     this.cfg = null;
     this.glows = [];      /* persistent ground glows / ripples */
@@ -201,9 +209,9 @@ export class AmbientFx {
     if (this.cfg.glow && spots[this.cfg.glow]) {
       for (const [u, v] of spots[this.cfg.glow]) {
         const x = u * W, y = v * H;
-        const halo = this._sprite(t.dot, this.ground);
+        const halo = this._sprite(t.dot, this.glow);
         halo.blendMode = 'add'; halo.tint = 0xff6a1a;
-        const core = this._sprite(t.dot, this.ground);
+        const core = this._sprite(t.dot, this.glow);
         core.blendMode = 'add'; core.tint = 0xffc450;
         this.glows.push({ sp: halo, x, y, s: rnd(2.2, 3.2) * k, ph: rnd(0, 6.28), w: rnd(0.6, 1.2), a0: 0.08, a1: 0.32 });
         this.glows.push({ sp: core, x: x + rnd(-3, 3), y: y + rnd(-2, 2), s: rnd(0.7, 1.1) * k, ph: rnd(0, 6.28), w: rnd(2.2, 3.6), a0: 0.05, a1: 0.42 });
@@ -237,7 +245,7 @@ export class AmbientFx {
     /* only where someone can see it (with a margin, so things drift IN) */
     const M = 80;
     if (x < view.x - M || x > view.x + view.w + M || y < view.y - M || y > view.y + view.h + M) return;
-    const parent = GROUND[kind] ? this.ground : this.air;
+    const parent = GROUND[kind] ? this.ground : (kind === 'ember' ? this.glow : this.air);
     const p = { kind, x, y, vx: 0, vy: 0, t: 0, life: 1, s0: 1, s1: 1, a: 0.3, sw: 0, ph: rnd(0, 6.28), rot: 0, vr: 0, sx: 1, sy: 1 };
     let sp;
     switch (kind) {
@@ -313,7 +321,7 @@ export class AmbientFx {
     this.lastT = now;
     /* QA / comparison switch: window.__btAmbientOff hides the whole layer. */
     const off = typeof window !== 'undefined' && !!window.__btAmbientOff;
-    this.ground.visible = this.air.visible = !off;
+    this.ground.visible = this.air.visible = this.glow.visible = !off;
     if (!this.cfg) return;
     const view = { x: cx, y: cy, w: viewW, h: viewH };
     const tsec = now / 1000;
@@ -355,7 +363,7 @@ export class AmbientFx {
       /* in and out softly, with a full-strength middle: the first cut faded
          over the WHOLE life, so a particle spent most of it at a fraction of
          its alpha and the lot read as nothing on a phone (mp-ambient's
-         captures, v2.3.2704). */
+         captures, v2.3.2720). */
       const env = f < 0.15 ? f / 0.15 : (f > 0.7 ? (1 - f) / 0.3 : 1);
       if (p.kind === 'mote' || p.kind === 'twinkle') {
         sp.alpha = p.a * env * (0.55 + 0.45 * Math.sin(tsec * 3 + p.ph));

@@ -52,7 +52,17 @@ import { Application, Cache, Container } from 'pixi.js';
  * the figure.
  */
 const WORLD_LAYER_NAMES = [
-  'tiles', 'groundDetails', 'groundSplatter', 'groundLoot',
+  'tiles', 'groundDetails', 'groundSplatter',
+  /* ═══ v2.3.2710: CAST SHADOWS LIE ON THE GROUND ═══
+     lightfx/shadows.js.  Above the painted map, its footprints and the
+     splatter, because a shadow falls ON them.  Below `groundLoot` and
+     `telegraphs` on purpose: a dropped item and the red ring of an incoming
+     attack are things the player has to read, so a passing shadow may dim
+     the floor but never the warning.  And below every layer that stands on
+     the ground, so a building in front of a shadow hides it the way it hides
+     the figure casting it. */
+  'shadows',
+  'groundLoot',
   'telegraphs', 'gatherNodesBack', 'entities', 'gatherNodes',
   /* ═══ v2.3.2636: HIT EFFECTS GO UNDER THE PLAYER ═══
      Owner: "make the character layer in front of the effects (after monsters
@@ -96,6 +106,19 @@ const WORLD_LAYER_NAMES = [
      foreground piece is nearer the camera than everything by construction, so
      there is no ground line to sort it by. */
   'foreground',
+  /* ═══ v2.3.2712: THE LIGHT ═══
+     Time of day (rendering/worldFx.js): the night's light map, multiplied
+     over the world, plus the day's cloud shadows and the dawn fog.  ABOVE
+     everything that is IN the world -- the ground, the bodies, the canopy in
+     `foreground` all take the hour's light -- and BELOW the damage numbers and
+     the world overlay, because the night must never make a number you need to
+     read harder to read.  Not depth-sorted: light covers, it does not stand. */
+  'lighting',
+  /* v2.3.2717: things that GIVE light, drawn after the night multiplies the
+     world so the night cannot darken them: a firefly and its glow.  Still
+     under the damage numbers and the world overlay, like everything in the
+     world. */
+  'glows',
   'damageNumbers', 'overlayWorld',
 ];
 const SCREEN_LAYER_NAMES = ['atmosphere', 'screenFX', 'hud'];

@@ -1,4 +1,4 @@
-/* ═══ THE MAPS' AMBIENT LIFE, ON EVERY PLAYABLE MAP (v2.3.2704) ═══
+/* ═══ THE MAPS' AMBIENT LIFE, ON EVERY PLAYABLE MAP (v2.3.2720) ═══
  *
  * Owner: "make subtle effects that appear as animations on the worldview?
  * Lava smoke on the fire mountain maybe shimmering a bit on the lava, winds on
@@ -106,10 +106,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── the four spokes, by the dev warp ── */
   const spokes = [
-    { label: 'Flame Fields', zoneId: 'ember', u: 0.62, v: 0.38, want: { glows: 8, ember: 2 } },
-    { label: 'Wind Dunes', zoneId: 'sky', u: 0.5, v: 0.3, want: { wind: 1, sand: 4 } },
-    { label: 'Verdant Wilds', zoneId: 'verdant', u: 0.7, v: 0.45, want: { mote: 3, glows: 3 } },
-    { label: 'Frost Ridge', zoneId: 'frost', u: 0.5, v: 0.35, want: { snow: 8 } },
+    /* the spokes' pollen / embers / sand / snow are worldFx's (v2.3.2712), so
+       these ask only for what ambientFx adds there */
+    { label: 'Flame Fields', zoneId: 'ember', u: 0.62, v: 0.38, want: { glows: 8, smoke: 1 } },
+    { label: 'Wind Dunes', zoneId: 'sky', u: 0.5, v: 0.3, want: { wind: 1 } },
+    { label: 'Verdant Wilds', zoneId: 'verdant', u: 0.7, v: 0.45, want: { glows: 3 } },
+    { label: 'Frost Ridge', zoneId: 'frost', u: 0.3, v: 0.55, want: { glows: 1 } },
   ];
   for (const sp of spokes) {
     await H.warpToZone(P, { wsPort, label: sp.label, zoneId: sp.zoneId }).catch(() => null);

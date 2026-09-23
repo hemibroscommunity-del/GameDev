@@ -53,6 +53,7 @@ import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount 
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
+import { deathCrumble } from '../deathCrumble.js';   /* v2.3.2712: the crumbling corpse */
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
 import { getNftTextures } from '../nftAvatars.js';
@@ -90,7 +91,7 @@ import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-shee
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
-import { fishRodAt, hasFishRodMask } from '../toolRecolor.js'; /* v2.3.2703: the rod is found by its recorded shape now that it is pine */
+import { fishRodAt, hasFishRodMask } from '../toolRecolor.js'; /* v2.3.2719: the rod is found by its recorded shape now that it is pine */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -2371,7 +2372,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
        (natural), but the halo-cut section beyond the plate reappears. */
     if (origBody) {
       try {
-        /* v2.3.2703: the rod is PINE now (toolRecolor.js -- the owner asked
+        /* v2.3.2719: the rod is PINE now (toolRecolor.js -- the owner asked
            for the magenta key to become a real material), so it can no longer
            be found by colour: its shape was recorded from the key as the
            sheet loaded, and this asks that.  The magenta test stays as the
@@ -3482,7 +3483,7 @@ function _fishTopFrame(bodyTex) {
        test would work for one skin tone and quietly fail for the rest. */
     const GRIP_R = Math.max(4, Math.round(H * 0.055));
     const rodXs = [], rodYs = [];
-    /* v2.3.2703: by the recorded shape, not the colour -- see the same note in
+    /* v2.3.2719: by the recorded shape, not the colour -- see the same note in
        _maskedBodyFrameInner.  The frame index is where this frame sits in its
        strip (every body sheet lays frames out at i * width). */
     const _rodF = hasFishRodMask() ? Math.round(bf.x / Math.max(1, bf.width)) : null;
@@ -4879,6 +4880,13 @@ function _feetOffsetUnits(display) {
   const dir = (display && display._animDir) || 'south';
   const rows = bodyRows(pose, dir);
   return (rows.feet - BODY_CELL_MID) * bodyDirScale(pose, dir) * LOCAL_BODY_SCALE;
+}
+/* v2.3.2710: where a player figure (yours or a peer's) actually touches the
+   ground, in its layer's space.  The body is centred on its frame, so the
+   feet are this offset BELOW display.y, not at it -- a cast shadow pivoted on
+   display.y would hang in the air at the figure's waist (lightfx/casters.js). */
+export function figureFeetY(display) {
+  return display.y + _feetOffsetUnits(display) * display.scale.y;
 }
 function _applyBuildScale(display, pscale, heightId, frameId) {
   const b = buildScale(heightId, frameId);
@@ -9699,7 +9707,17 @@ export class EntityRenderer {
         const _elapsed = Date.now() - (other._deathTs || Date.now());
         const _spriteBody = display._spriteBody;
         const _body = display._body;
-        if (hasPlayerDeathSprites() && _spriteBody) {
+        /* v2.3.2712: the crumbling skeleton (deathCrumble.js) -- this peer's
+           own look breaks into flakes and their bones fall.  The strip below
+           is the fallback if it cannot draw. */
+        const _crumble = deathCrumble.corpse('o:' + (other.id || id), display, other._deathTs || 0, now);
+        /* v2.3.2713: a friend exploding nearby shakes your screen too, less */
+        const _pBoom = deathCrumble.takeShake();
+        if (_pBoom > 0) S.screenShake = Math.max(S.screenShake || 0, _pBoom);
+        if (_crumble) {
+          if (_spriteBody) _spriteBody.visible = false;
+          if (_body) _body.visible = false;
+        } else if (hasPlayerDeathSprites() && _spriteBody) {
           const _tex = getPlayerDeathFrame(playerDeathFrameForElapsed(_elapsed));
           if (_tex && _spriteBody.texture !== _tex) _spriteBody.texture = _tex;
           _spriteBody.tint = 0xffffff;
@@ -9720,7 +9738,7 @@ export class EntityRenderer {
            for the same reason: this was a hand-written list of what to hide,
            and the back shield was added long after it. */
         const _rKeep = [
-          _spriteBody, display._namePill, display._comboText,
+          _crumble, _spriteBody, display._namePill, display._comboText,
           display._handCapMask, display._handArmMask,
         ];
         _hideExceptDeep(display, _rKeep);
@@ -10731,7 +10749,17 @@ export class EntityRenderer {
       if (display.rotation !== 0) display.rotation = 0;
       const _selfSpriteBody = display._spriteBody;
       const _selfBody = display._body;
-      if (hasPlayerDeathSprites() && _selfSpriteBody) {
+      /* v2.3.2712: the crumbling skeleton -- see the peer branch above and
+         deathCrumble.js.  Photographed on this first dead frame, before the
+         hide pass below takes the worn layers away. */
+      const _selfCrumble = deathCrumble.corpse('self', display, S._deathStart || 0, now);
+      /* v2.3.2713: the exploding death kicks the camera (deathCrumble.js) */
+      const _boom = deathCrumble.takeShake();
+      if (_boom > 0) S.screenShake = Math.max(S.screenShake || 0, _boom);
+      if (_selfCrumble) {
+        if (_selfSpriteBody) _selfSpriteBody.visible = false;
+        if (_selfBody) _selfBody.visible = false;
+      } else if (hasPlayerDeathSprites() && _selfSpriteBody) {
         const _selfTex = getPlayerDeathFrame(playerDeathFrameForElapsed(_selfElapsed));
         if (_selfTex && _selfSpriteBody.texture !== _selfTex) _selfSpriteBody.texture = _selfTex;
         _selfSpriteBody.tint = 0xffffff;
@@ -10776,7 +10804,7 @@ export class EntityRenderer {
          hidden on death by default, which is the safe direction and the one
          the owner's rule asks for.  mp-deathshield pins it. */
       const _deathKeep = [
-        _selfSpriteBody, display._namePill, display._comboText,
+        _selfCrumble, _selfSpriteBody, display._namePill, display._comboText,
         display._handCapMask, display._handArmMask,
         display._hudHpBarFrame, display._hudHpBarFill, display._hudHpRing,
         display._hudHpText, display._hudHpMaxText,
@@ -11344,7 +11372,7 @@ export class EntityRenderer {
            leisurely pace and a still thumb holds the pose.  The wind-up
            before the window opens keeps the clock loop -- a frozen figure
            for up to ten seconds reads as a hang (control-redesign.md §5.11). */
-        /* v2.3.2702: no leisurely cap any more -- the swing plays at the
+        /* v2.3.2718: no leisurely cap any more -- the swing plays at the
            speed of the hand, and at `ready` with no stroke yet it HOLDS the
            raised pose (phase 0) instead of looping: the owner's "stop
            animating until you perform the correct gesture". */
@@ -11359,7 +11387,7 @@ export class EntityRenderer {
         /* v2.3.2245: the reel drives the sway -- one finger-circle on the
            button is one turn of the sway loop, capped at ~one turn per 450ms
            (the same cap the reel marker has had since v2.3.1435). */
-        const _gpF = gesturePose01(S._extraction, now);   /* v2.3.2702: hand-paced, holds when still */
+        const _gpF = gesturePose01(S._extraction, now);   /* v2.3.2718: hand-paced, holds when still */
         frameIdx = (_gpF != null) ? Math.max(0, Math.min(fc - 1, Math.floor(_gpF * fc)))
           : Math.floor((now / cycle) * fc) % fc;
       } else if (pose === 'dodge') {
@@ -13206,7 +13234,7 @@ export class EntityRenderer {
          -- a plate that waited for a true 0 would never come back. */
       if (_barA > 0.01) display._namePill.visible = false;
     }
-    /* ═══ v2.3.2702: WHERE THE BAND LINE'S TOP IS, FOR THE HARVEST BAR ═══
+    /* ═══ v2.3.2718: WHERE THE BAND LINE'S TOP IS, FOR THE HARVEST BAR ═══
        The harvest wind-up bar (effectsRenderer _drawWindupBar) goes "above the
        head" -- and over YOUR head there is always something on this band: the
        name plate at rest, the HP bar in a fight.  Measured on a real capture

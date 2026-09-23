@@ -4359,7 +4359,7 @@ feet) -- which refuses the thin-rock touch and, by the same endpoint rule,
 keeps the monster inside a rock hittable. mp-propshots section 0 shoots all
 four in town; with v2.3.2699's code back, all four fail.
 
-## 104. The harvest "demo" that animates the body contradicts the owner's freeze (v2.3.2702)
+## 104. The harvest "demo" that animates the body contradicts the owner's freeze (v2.3.2718)
 
 **Tempting:** at `ready`, with no thumb down, loop a generated phase through
 `gesturePose01` so the character keeps swinging and "shows" the gesture --
@@ -4383,7 +4383,7 @@ hysteresis (12px) separate from the meter's anti-jitter one (28px), or the
 swing sits still for most of each stroke and then jumps. **Receipt:**
 mp-gcue (73 assertions), mp-cueshow (34, all three skills in a real zone).
 
-## 105. "Just repaint the pink axe in the PNG" (v2.3.2703)
+## 105. "Just repaint the pink axe in the PNG" (v2.3.2719)
 
 **Tempting:** the axe and the fishing rod (and the fire-lighter's log) are
 flat magenta in `chop-strip`, `fish-south` and `firemaking-strip`; open the

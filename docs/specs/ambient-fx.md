@@ -1,4 +1,4 @@
-# Ambient life on the maps (v2.3.2704)
+# Ambient life on the maps (v2.3.2720)
 
 > Owner: "make subtle effects that appear as animations on the worldview? Lava
 > smoke on the fire mountain maybe shimmering a bit on the lava, winds on the
@@ -11,10 +11,16 @@
 | Map | Ground (under characters) | Air (in front) |
 | --- | --- | --- |
 | **World View** | the volcano's lava flows breathe (slow additive glow + flickering hot core); the sea and the western river carry faint moving light lines | smoke rising from the crater; embers off the lava; glints on the water; wind streaks and blown sand across the desert; snowflakes over the snowy peaks; petals through the cherry grove |
-| **Flame Fields** | every lava channel shimmers | embers rising off the lava, smoke from the hottest vents, drifting ash |
-| **Wind Dunes** | — | a steady breeze of wind streaks and blowing sand, dust lifting off the dune crests |
-| **Verdant Wilds** | the pools ripple | pollen / firefly motes wander and glow; glints on the pools |
-| **Frost Ridge** | the sea's edge ripples | soft falling snow, glints on the sea, ice twinkles |
+| **Flame Fields** | every lava channel shimmers (and still shines at night) | smoke from the hottest vents |
+| **Wind Dunes** | — | wind streaks you can see, dust lifting off the dune crests |
+| **Verdant Wilds** | the pools ripple | glints on the pools |
+| **Frost Ridge** | the sea's edge ripples | glints on the sea, ice twinkles |
+
+The spokes' pollen and fireflies, embers, blowing sand and snow come from
+v2.3.2712's `worldFx` air (`ZONE_AIR`, docs/specs/world-fx.md), which landed on
+main while this was built — this layer does not repeat them. The worldview has
+no `ZONE_AIR`, so every effect on it is this layer's. Lava glow and embers draw
+in the `glows` layer (above the night's light map), so lava shines after dark.
 
 ## How
 

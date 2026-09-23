@@ -36,6 +36,7 @@ import { variantSpritesFor, unloadVariantSprites } from './monsterVariantSprites
 import { loadSlimeSprites } from './slimeSprites.js';
 import { loadSnowmanSprites, unloadSnowmanSprites } from './snowmanSprites.js';
 import { loadPlayerDeathSprites } from './playerDeathSprites.js';
+import { mintWorldFxTextures } from './worldFxTextures.js';   /* v2.3.2712 */
 import { preloadStartZoneMap, loadWalkabilityMaps } from './tiledMaps.js';
 import { effectsAnimationsReady, ensureImpactTex, ensureSnowballBurstTex, freeFrostImpactTex, ensureArrowBlastTex } from './systems/effectsRenderer.js'; /* v2.3.2272: the frost-only sheets get an exit */
 import { fxStripsReady } from './fxStrips.js'; /* v2.3.1735: stun ring + whirl vortex (preloading is law) */
@@ -50,7 +51,7 @@ import { loadNpcSprites, loadZoneDecor, freeZoneDecor } from './npcSprites.js'; 
 import { preloadLevelUpBurst } from './levelUpBurstPreload.js';
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
 import { preloadAuctionInterior } from './auctionInteriorPreload.js'; /* v2.3.2627: the auction house's room + clerk */
-import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2702: the harvest cue's mini tools */
+import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2718: the harvest cue's mini tools */
 import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
@@ -237,6 +238,11 @@ export async function preloadWorldAnimations() {
   const groups = {
     slime: loadSlimeSprites(),
     playerDeath: loadPlayerDeathSprites(),
+    /* v2.3.2712: the textures time of day, dust, blood and the crumbling
+       corpse draw from -- minted in a canvas, not downloaded, but a first-use
+       GPU upload is still the hitch the law forbids, and it would land on
+       the first hit you take or the first time you die. */
+    worldFx: Promise.resolve().then(() => mintWorldFxTextures()),
     walkability: loadWalkabilityMaps(),
     /* v2.3.2398: the bow's jet stream (jet-stream-v1.png) rides THIS group.
        It is loaded through effectsRenderer's _fxLoad, which is a drop-in for
@@ -315,7 +321,7 @@ export async function preloadWorldAnimations() {
        See statDemoPreload.js — it names both. */
     statDemo: preloadStatDemo(),
     auctionInterior: preloadAuctionInterior(),
-    /* ═══ v2.3.2702: the harvest cue's mini tools ═══
+    /* ═══ v2.3.2718: the harvest cue's mini tools ═══
        DOM images on the right button (the bag's pickaxe / axe / rod icons and
        the pan strip), GLOBAL: every gathering zone and the town campfire use
        them.  See gestureCuePreload.js for why none of them was already warm. */

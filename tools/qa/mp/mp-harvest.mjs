@@ -311,7 +311,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const faceReady = await P.page.evaluate(() => {
     const base = document.querySelector('.bt-rjoy-base');
     const S = window._gameState.current;
-    /* v2.3.2702: the cue is a mini sprite of the tool (the bag's axe icon)
+    /* v2.3.2718: the cue is a mini sprite of the tool (the bag's axe icon)
        in the button's cue <svg>; the painted strip that played here since
        v2.3.2245 is gone. */
     const hint = base && base.querySelector('svg[viewBox="0 0 100 100"]');

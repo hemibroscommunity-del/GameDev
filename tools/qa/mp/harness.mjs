@@ -311,6 +311,15 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
 
      Use it ONLY for platform APIs. Stubbing our own code here would let a
      scenario pass by replacing the thing it claims to test. */
+  /* ═══ v2.3.2712: EVERY SCENARIO PLAYS AT NOON ═══
+     Time of day (src/game/timeOfDay.js) follows the wall clock, so without
+     this the same scenario would read different pixels at 3pm and at dusk --
+     firetrail's "is the fire painted on the ground" colour test failed the
+     first time it ran at golden hour.  So the harness pins the hour to plain
+     day and turns the drifting air (cloud shadows, fog, motes) off: they are
+     decoration, and a pixel test must not depend on where a cloud happened to
+     be.  mp-worldfx, the scenario ABOUT the weather, sets both back itself. */
+  await page.addInitScript(() => { window.__btTod = 'day'; window.__btAmbienceOff = true; });
   if (init) await page.addInitScript(init);
   await page.goto(`http://localhost:${webPort}/${guest ? '?guest=1' : ''}`, { waitUntil: 'domcontentloaded' });
   return { ctx, page, logs, name, seeded: !!phrase };
