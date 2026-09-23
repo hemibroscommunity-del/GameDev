@@ -27,6 +27,7 @@ import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is 
 import { ELEMENTS } from '@/data/elements.js';
 import { STATUS_DEFS, applyStatus, STAFF_LIFE /* v2.3.2387 */ } from '@/data/gameSystems.js';
 import { rollMonsterShard } from '@/data/shards.js';
+import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2699: a snowball stops where the worker's own line meets a prop */
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armoured-hit SFX check */
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
    its own module scope — the barrel export is the canonical copy. */
@@ -1075,6 +1076,50 @@ export function processGameEvent(type, payload, S, deps) {
                   _buM._invulnerable = payload.phase === 'pile';
                   /* A body mid-collapse has no swing to finish. */
                   _buM._shootAnimEnd = 0; _buM._tgUntil = 0;
+                  /* v2.3.2700: a shield bonk dazes him -- start the stars NOW.
+                     The worker's stun also arrives as `st` on the next monster
+                     tick (tick.js), and that alone would draw them; this closes
+                     the gap before it, so the stars come up WITH him rather than
+                     a tick late.  A RELATIVE duration (dazeMs), not an epoch, so
+                     it carries no clock skew -- and MAX, the same rule the `st`
+                     merge uses, so neither can cut the other short. */
+                  if (payload.bonk && payload.phase === 'emerge') {
+                    var _bkDaze = Math.max(0, Math.min(5000, Number(payload.dazeMs) || 0));
+                    if (_bkDaze > 0) _buM._stunUntil = Math.max(_buM._stunUntil || 0, Date.now() + _bkDaze);
+                  }
+                }
+                /* ═══ v2.3.2700: ...AND THE SNOW FLIES OFF THE SHIELD ═══
+                   Owner: "pop up early with a little powder ... like it just
+                   slammed into your shield."  The powder is the snowball's own
+                   burst strip, smaller -- snow off a shield, drawn in the art the
+                   game already uses for snow hitting something, and small
+                   because the owner said LITTLE.  Above px/py, which the worker
+                   puts halfway between him and the shield he hit.
+                   Outside the monster lookup on purpose: the powder belongs to
+                   the place, and a client that has not got this monster in its
+                   list yet should still see the snow where the shield is.  The
+                   "Blocked!" popup and the shield clang are NOT added here --
+                   they arrive on the blocked monster_attack the worker sends
+                   for the same slam, the one every block already draws. */
+                if (payload.bonk && payload.phase === 'emerge'
+                    && typeof payload.px === 'number' && typeof payload.py === 'number') {
+                  if (!S.snowballBursts) S.snowballBursts = [];
+                  /* LIFTED to shield height.  px/py is a GROUND point (between
+                     his feet and the player's), and a burst drawn there is white
+                     snow on white snow -- the first screenshots of this showed
+                     nothing at all.  34 world px up puts it against the shield
+                     and his body, where the slam actually is, and where it has
+                     something darker behind it to read against.  0.75x: still
+                     smaller than a thrown ball's burst ("a little powder"), but
+                     0.6x vanished against the snow even at chest height. */
+                  if (S.snowballBursts.length < 12) {
+                    S.snowballBursts.push({ x: payload.px, y: payload.py - 34, at: Date.now(), scale: 0.75 });
+                  }
+                  /* A small kick for the one whose shield it hit, not for
+                     everyone watching. */
+                  if (payload.targetId && payload.targetId === S.myId) {
+                    S.screenShake = Math.max(S.screenShake || 0, 4);
+                  }
                 }
                 break;
               }
@@ -1567,7 +1612,7 @@ export function processGameEvent(type, payload, S, deps) {
                 /* v2.3.1107: point the body the same way as the bow shot. */
                 _reconcileFacing(S.others[payload.id], payload.ang);
               }
-              /* v2.3.2697: a peer's basic staff bolt drives THEIR staff kick and
+              /* v2.3.2714: a peer's basic staff bolt drives THEIR staff kick and
                  release flash (entityRenderer + staffCastFx), mirroring the bow
                  stamp above.  The special keeps its own art and gets neither.
                  `ang` is a peer's number, so only a finite one is kept -- it
@@ -1708,12 +1753,51 @@ export function processGameEvent(type, payload, S, deps) {
                    the server retunes travelMs. ~60fps assumed, matching
                    the rest of this simulator's frame-based life/speed. */
                 var _sbFrames = Math.max(1, Math.round((_sbMs / 1000) * 60));
+                /* ═══ v2.3.2699: THE BALL STOPS WHERE THE WORKER SAYS IT DOES ═══
+                   Owner: "The client side isn't showing snowballs bursting upon
+                   hitting props but is successfully mitigating damage server
+                   side."
+
+                   The worker decides a ball's fate on ONE line: where it left
+                   his hand (m._projFromX/Y) to where it was aimed
+                   (m._projTx/Ty), both frozen at release (index.js, the
+                   impact-tick check).  This event carries exactly those four
+                   numbers -- payload.x/y and tx/ty are written from m.x/m.y and
+                   ps.x/ps.y in the same breath the worker freezes them
+                   (telegraph.js) -- so asking attackBlockPoint the same question
+                   here gives the same answer BY CONSTRUCTION: the same slab test,
+                   the same prop table, and mirror-audit pins both sides of each.
+                   No per-frame geometry, and nothing for it to disagree about.
+
+                   v2.3.2657 tried a per-frame test in the simulator instead, and
+                   it never fired at all: attackBlockPoint skips a box whenever an
+                   endpoint is inside it, and one frame's step always has an end
+                   inside the rock it is crossing (worldProps.js, sweepBlockPoint).
+
+                   ACTING ON IT: cut `life` to the fraction of the flight that
+                   reaches the face.  The simulator's life<=0 branch then bursts
+                   it (queueSnowballBurst) wherever it has got to, which is the
+                   drawn path at that same fraction.  The drawn path starts at the
+                   hand, not the feet, so the burst sits a few px above the ground
+                   point the worker hit -- on the rock's face, which is where a
+                   ball in the air would strike it.  life is in frames at ~60fps,
+                   the same unit it was already derived in above. */
+                var _sbLife = _sbFrames;
+                var _sbStop = attackBlockPoint(S.currentZone,
+                  Number(payload.x) || 0, Number(payload.y) || 0,
+                  Number(payload.tx) || 0, Number(payload.ty) || 0);
+                if (_sbStop) _sbLife = Math.max(1, Math.round(_sbStop.t * _sbFrames));
                 S.slimeProjectiles.push({
                   x: _sbX,
                   y: _sbY,
                   ang: Math.atan2(_sbDy, _sbDx),
                   speed: _sbDist / _sbFrames,
-                  life: _sbFrames,
+                  life: _sbLife,
+                  /* v2.3.2699: where along its flight a prop stops it (0..1), or
+                     null for a clear line.  Read by nothing in the game; it is
+                     what lets mp-propshots say WHY a ball ended early rather than
+                     inferring it from where it happened to vanish. */
+                  propStopT: _sbStop ? _sbStop.t : null,
                   displayOnly: true,
                   ownerId: payload.monsterId,
                   rawDmg: 0,

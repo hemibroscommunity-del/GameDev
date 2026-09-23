@@ -263,6 +263,67 @@ function _projCapsule(a) {
   _capBx = a._renderX + c * bd.front;  _capBy = a._renderY + s2 * bd.front;
   return bd.half;
 }
+/* ═══ v2.3.2701: A MONSTER STANDING IN A ROCK IS STILL A TARGET ═══
+   v2.3.2699 stopped an arrow at the first footprint its step entered.  Right
+   for an empty rock, wrong for one with a monster in it.  The worker spawns
+   and leashes monsters without looking at geometry -- server/src/props.js:
+   "one WILL end up inside a footprint" -- and its own rule for that case is
+   that an endpoint inside a box never blocks, because otherwise the monster
+   becomes "an invincible turret -- unable to be answered and still able to
+   swing".  Its snowballs still fly out (the launch-inside rule), so v2.3.2699
+   had built exactly that turret for anyone holding a bow or a staff.
+   mp-lockaim found it: its due-west shot from the town plaza puts the slime
+   153px inside the footprint west of spawn, and the arrow planted on the wall.
+
+   So a footprint lets an arrow in when it holds what the arrow is flying AT:
+   a live monster whose feet are in the box and whose hit circle the arrow's
+   line crosses, ahead of it.  Same centre and radius as the hit test, so "on
+   the line" here means what "hit" means there.  A monster off to one side of
+   the line does not open the box, and an empty box stops the arrow at its
+   face as before.  Asked only on a frame the arrow reaches a face. */
+function _quarryInBox(S, a, b) {
+  var list = S.monsters;
+  if (!b || !list || !list.length) return false;
+  var c = Math.cos(a.ang), s2 = Math.sin(a.ang);
+  var px = (a._prevX != null ? a._prevX : a._renderX);
+  var py = (a._prevY != null ? a._prevY : a._renderY);
+  var half = _projBody(a).half;
+  for (var i = 0; i < list.length; i++) {
+    var m = list[i];
+    if (!m || !m.alive || isIntangible(m) || (a.hitIds && a.hitIds.has(m.id))) continue;
+    var fx = (typeof m.renderX === 'number') ? m.renderX : m.x;
+    var fy = (typeof m.renderY === 'number') ? m.renderY : m.y;
+    if (!(fx >= b.x0 && fx <= b.x1 && fy >= b.y0 && fy <= b.y1)) continue;
+    var r = monsterProjRadius(m, S, a) + half;
+    var vx = fx - px, vy = (fy - monsterBodyOffsetY(hitShapeOf(m.archetype || m.type))) - py;
+    if (vx * c + vy * s2 < -r) continue;              /* behind the arrow */
+    if (Math.abs(vx * s2 - vy * c) < r) return true;  /* the line crosses its circle */
+  }
+  return false;
+}
+/* ═══ v2.3.2701: TOUCHING IS NOT ENOUGH IF A ROCK STANDS BETWEEN ═══
+   The hit test sweeps the arrow's drawn body against a circle round the
+   monster's drawn body -- both up in the air, where the sprites are.  A prop is
+   a box on the floor, and across a thin one the two can meet.  The arrowhead
+   leads the anchor by 28.5px, so on the frames just before the anchor reaches
+   a rock the head is already inside it; and a monster's circle is centred on
+   its drawn body, up to 23px above its feet, so one pressed to the far side
+   of a rock is drawn up over it, toward the arrow.  How often either lands
+   depends on the step length and on how high the bow's grip sits, but neither
+   needs luck: mp-propshots' southward shot at a slime behind a 27px town rock
+   landed through it on the pre-v2.3.2701 code.  The snowman's own snowballs,
+   meanwhile, were refused by the worker in both directions.
+
+   So a hit also has to pass the rule the worker applies to every monster hit
+   on a player (server/src/props.js attackBlocked): no prop between the two
+   GROUND points, an endpoint inside a box never counting -- which is also what
+   keeps a monster standing IN a rock hittable here.  The arrow's point is the
+   start of this frame's step: never on a face, and always somewhere the arrow
+   actually was.  Asked only when a hit is about to land. */
+function _rockBetween(S, a, ox, oy, fx, fy) {
+  if (a._prevX == null || a._prevY == null) return false;
+  return attackBlocked(S.currentZone, a._prevX - ox, a._prevY - oy, fx, fy);
+}
 /* ═══ v2.3.2473: WHAT IS THE BOW ACTUALLY POINTED AT? ═══
  *
  * Owner (backlog §2.5): the bow should fire only when the line of sight is ON
@@ -397,7 +458,7 @@ import {
 import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
-import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot */
+import { sweepBlockPoint, boxExitPoint, attackBlocked } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form; v2.3.2701: and the far face of a rock a monster stands in */
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */ } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
@@ -880,29 +941,65 @@ export function updateArrows(S, deps) {
                bow special can keep chipping while you kite) -- so refusing to
                claim the hit IS the block, and the worker needs no matching
                test to agree with it. */
+            /* v2.3.2699: sweepBlockPoint, NOT attackBlockPoint.  This asks about
+               one frame's STEP, and attackBlockPoint skips a box whenever either
+               end is inside it -- so the step that reaches a rock (leading end
+               inside) and every step after (trailing end inside) were all
+               skipped, and no arrow ever stopped.  With no test on the worker
+               for a player's ranged hit (above), that meant arrows and staff
+               bolts sailed through props and hit monsters behind them from the
+               day this shipped.  The sweep counts the leading end; see its
+               header in worldProps.js. */
+            /* ═══ v2.3.2701: DECIDED HERE, APPLIED AFTER THE MONSTER LOOP ═══
+               v2.3.2699 stopped the arrow right here and returned, so the
+               monster loop never saw the step that reached a rock.  Three
+               things were wrong around that, found by mp-lockaim and by
+               working the geometry through afterwards:
+
+               1. A MONSTER STANDING IN THE ROCK -- see _quarryInBox.  An empty
+                  footprint still stops the arrow at its face; one holding
+                  what the arrow is flying at lets it in, and its flight ends
+                  at that box's FAR face if it comes out unspent, so a missed
+                  shot still cannot fly on behind the rock.
+
+               2. A MONSTER RIGHT IN FRONT OF THE ROCK.  When one step covered
+                  both its circle and the rock face -- a 48px step at 30fps,
+                  more under a slow clock -- the arrow planted on the rock and
+                  the monster in front of it was never tested: the frame-clock
+                  miss v2.3.2426 fixed for hits, back again.  Now the step is
+                  cut at the face and the loop tests what is left of it.
+
+               3. HITS THROUGH A THIN ROCK -- see _rockBetween, in the loop.
+
+               The stop itself is the v2.3.2652 code, moved below the loop
+               unchanged: plant on the face, or for magic, be spent on it. */
+            var _propStop = null;
             if (_released && !a.planting) {
-              var _gp = attackBlockPoint(S.currentZone,
-                a._prevX - _ox, a._prevY - _oy,
-                a._renderX - _ox, a._renderY - _oy);
-              if (_gp) {
-                /* Put it back into flight space to draw, so the arrow stops
-                   against the face of the rock it is drawn against. */
-                var _impX = _gp.x + _ox, _impY = _gp.y + _oy;
-                if (a.isStaff) {
-                  /* Magic has no plant animation -- it is spent on contact,
-                     the same as reaching its range. */
-                  a._renderX = _impX; a._renderY = _impY;
-                  return false;
-                }
-                a._renderX = _impX; a._renderY = _impY;
-                a.planting = true;
-                a._plantX = _impX;
-                a._plantStartY = _impY;
-                a._plantY = _impY;
-                a._fallVy = 2;
-                a.life = 999;        // plantedAt governs removal now, not life
-                return true;
+              var _gx0 = a._prevX - _ox, _gy0 = a._prevY - _oy;
+              var _gx1 = a._renderX - _ox, _gy1 = a._renderY - _oy;
+              /* Out the far side of a rock it was let into: that face ends it. */
+              var _ib = a._inBox;
+              if (_ib && !(_gx1 >= _ib.x0 && _gx1 <= _ib.x1 && _gy1 >= _ib.y0 && _gy1 <= _ib.y1)) {
+                _propStop = boxExitPoint(_ib, _gx0, _gy0, _gx1, _gy1);
+                a._inBox = _ib = null;
               }
+              var _gp = sweepBlockPoint(S.currentZone, _gx0, _gy0, _gx1, _gy1);
+              if (_gp && !(_propStop && _propStop.t <= _gp.t)) {
+                if (!_propStop && !_ib && _quarryInBox(S, a, _gp.box)) {
+                  /* Let in.  If this same step already comes out the far side
+                     (a thin rock, a long step) it ends there, after the loop
+                     has had its chance at the monster inside. */
+                  a._inBox = _gp.box;
+                  _propStop = boxExitPoint(_gp.box, _gx0, _gy0, _gx1, _gy1);
+                  if (_propStop) a._inBox = null;
+                } else {
+                  _propStop = _gp;
+                }
+              }
+              /* Put it back into flight space to draw, so the arrow stops
+                 against the face of the rock it is drawn against -- and so
+                 the loop below sweeps only the part of the step before it. */
+              if (_propStop) { a._renderX = _propStop.x + _ox; a._renderY = _propStop.y + _oy; }
             }
             var hit = false;
             if (S.monsters) S.monsters.forEach(function (m) {
@@ -972,6 +1069,8 @@ export function updateArrows(S, deps) {
               var _hitHalf = _projCapsule(a);
               var _segD = _segGap(_hitX, _mProjY, _capAx, _capAy, _capBx, _capBy);
               var _hitRE = _hitR + _hitHalf;
+              /* v2.3.2701: touching is not enough if a rock stands between. */
+              if (_segD < _hitRE && _rockBetween(S, a, _ox, _oy, _hitX, _hitBaseY)) return;
               if (_segD < _hitRE) {
                 /* ═══ PUT THE IMPACT WHERE IT HAPPENED ═══
                    Only in the case the old test would have MISSED, which keeps
@@ -1264,7 +1363,7 @@ export function updateArrows(S, deps) {
                     : (((typeof m.renderY === 'number') ? m.renderY : m.y)
                        - monsterBodyOffsetY(m.archetype || m.type));
                   if (!S._impactRings) S._impactRings = [];
-                  /* v2.3.2697: the bolt is DRAWN leaving the staff's crystal and
+                  /* v2.3.2714: the bolt is DRAWN leaving the staff's crystal and
                      eased onto this line over its first 40 px (staffCastFx); a
                      hit inside that stretch carries the leftover drawing offset
                      so the crash is DRAWN where the orb was seen.  The records'
@@ -1272,7 +1371,7 @@ export function updateArrows(S, deps) {
                   var _vdx = Number.isFinite(a._fxResX) ? a._fxResX : 0;
                   var _vdy = Number.isFinite(a._fxResY) ? a._fxResY : 0;
                   /* Outer expanding ring — the "crash" flash.
-                     v2.3.2697: `style: 'staff'` hands the drawing of both rings
+                     v2.3.2714: `style: 'staff'` hands the drawing of both rings
                      to the staff cast system (pixel rings in the element's heat
                      ramp); the records, their positions and their lifetimes are
                      unchanged, because they are also the crash's record
@@ -1295,7 +1394,7 @@ export function updateArrows(S, deps) {
                     color: _orbColor, maxR: 14 * _ringK, duration: 220,
                     style: 'staff', elem: projElem || null, vdx: _vdx, vdy: _vdy,
                   });
-                  /* ═══ v2.3.2697: THE CRASH BURNS HOT AND COOLS ═══
+                  /* ═══ v2.3.2714: THE CRASH BURNS HOT AND COOLS ═══
                      The 22 flat-coloured dots that were pushed here are
                      replaced by the staff cast's crash (staffCastFx): a white
                      flash, sparks that step white -> element colour -> dark, and
@@ -1326,7 +1425,7 @@ export function updateArrows(S, deps) {
                 /* Knockback recovery -- see melee path; pauses
                    client-side AI so the bump is visible. */
                 m._kbUntil = Date.now() + 200;
-                /* v2.3.2697: a staff bolt's hit is drawn once, by its crash above --
+                /* v2.3.2714: a staff bolt's hit is drawn once, by its crash above --
                    at the orb, which is v2.3.2505's whole point.  The generic
                    'staff' burst this used to add was a second spray of flat
                    purple dots at the monster's FEET, the exact spot that fix
@@ -1337,7 +1436,7 @@ export function updateArrows(S, deps) {
                 }
                 /* Staff projectiles are magic — no physical shaft to
                    leave embedded in the body.  Their visual residue is the
-                   crash above (v2.3.2697; spawnWeaponHitFX is arrows-only now). */
+                   crash above (v2.3.2714; spawnWeaponHitFX is arrows-only now). */
                 /* ═══ v2.3.2511: ONE ARROW, NOT TWO ═══
                    Owner (backlog §2.5): "two stuck arrows on a special".  Both
                    halves were doing their job and neither knew about the
@@ -1674,6 +1773,8 @@ export function updateArrows(S, deps) {
                 _pvpHitR = Math.max(_pvpHitR, PVP_BODY_R + _pvpHalf);
                 var _pvpPointGap = Math.sqrt(Math.pow(_pvpX - a._renderX, 2) + Math.pow(_pvpY - 24 - a._renderY, 2));
                 var _pvpGap = _segGap(_pvpX, _pvpY - 24, _capAx, _capAy, _capBx, _capBy);
+                /* v2.3.2701: and not through a rock, exactly as for a monster. */
+                if (_pvpGap < _pvpHitR && _rockBetween(S, a, _ox, _oy, _pvpX, _pvpY)) _pvpGap = Infinity;
                 /* Impact FX go where the path crossed, and only for a shot the
                    old point test would have missed — see the monster branch. */
                 if (_pvpGap < _pvpHitR && _pvpPointGap >= _pvpHitR) { a._renderX = _segHitX; a._renderY = _segHitY; }
@@ -1760,6 +1861,25 @@ export function updateArrows(S, deps) {
             /* Store render-ready element info */
             a._projElem = projElem;
             a._isStaffProj = isStaffProj;
+            /* v2.3.2701: the prop stop decided above the loop.  Not for a
+               special that has just embedded in a survivor -- the stuckIn
+               branch at the top owns that arrow now. */
+            if (_propStop && !a.stuckIn) {
+              var _impX = _propStop.x + _ox, _impY = _propStop.y + _oy;
+              a._renderX = _impX; a._renderY = _impY;
+              a._inBox = null;
+              if (a.isStaff) {
+                /* Magic has no plant animation -- it is spent on contact,
+                   the same as reaching its range. */
+                return false;
+              }
+              a.planting = true;
+              a._plantX = _impX;
+              a._plantStartY = _impY;
+              a._plantY = _impY;
+              a._fallVy = 2;
+              a.life = 999;        // plantedAt governs removal now, not life
+            }
             return true;
           });
         }
@@ -1791,29 +1911,33 @@ export function updateSlimeProjectiles(S) {
             var _ppx = proj.x, _ppy = proj.y;
             proj.x += Math.cos(proj.ang) * proj.speed * _sdt;
             proj.y += Math.sin(proj.ang) * proj.speed * _sdt;
-            /* v2.3.2657: burst against a prop instead of flying through it.
-               Owner: "snowmen are still throwing snowballs through the props."
-               The server half of that (the damage) is fixed at the impact tick;
-               this is the half you can SEE, and without it the fix reads as
-               broken -- a ball that visibly passes through a rock and then does
-               nothing looks like a missing hit, not like cover.
+            /* v2.3.2657 put a prop test here and it never fired -- see
+               v2.3.2699 below for why, and the owner's report that caught it:
+               "The client side isn't showing snowballs bursting upon hitting
+               props but is successfully mitigating damage server side."
 
-               Tested on the STEP segment (previous point -> new point), not on
-               the new point alone: at 6-11px per frame a point test walks
-               straight over a thin blocker some frames and not others, which is
-               the frame-rate-dependent flicker the arrow path already avoids
-               the same way (v2.3.2650).
-
-               Placed before the player-contact test below so a ball that hits
-               cover 10px short of the player bursts on the rock rather than on
-               the bro.  Applies to the display-only server ball and the legacy
-               local slime alike: neither should cross solid scenery, and the
-               server agrees about the damage for the one that carries any. */
-            var _propHit = attackBlockPoint(S.currentZone, _ppx, _ppy, proj.x, proj.y);
-            if (_propHit) {
-              proj.x = _propHit.x; proj.y = _propHit.y;
-              queueSnowballBurst(S, proj);
-              return false;
+               v2.3.2699: TWO KINDS OF BALL, TWO QUESTIONS.
+               A SERVER ball (displayOnly -- the snowman's) already knows where
+               it stops: gameEvents asked the worker's exact question when it
+               spawned (release point -> aim point, the same four numbers the
+               worker tested) and cut its `life` to end on the rock face, so the
+               life<=0 branch above bursts it there.  It must NOT be re-tested
+               here.  This ball is drawn from the snowman's HAND, not his feet,
+               so its drawn line is not the worker's line, and a second test on
+               it could burst a ball the worker lets through -- the player would
+               take a hit from a ball they watched pop on a rock.
+               A LOCAL ball (the legacy client-side slime orb, which rolls its
+               own damage) has no worker line to agree with.  It is launched
+               from the monster's feet in ground space, so the per-step sweep is
+               the exact test for it -- and sweep, not attackBlockPoint, whose
+               endpoint rule skips every step of a moving projectile. */
+            if (!proj.displayOnly) {
+              var _propHit = sweepBlockPoint(S.currentZone, _ppx, _ppy, proj.x, proj.y);
+              if (_propHit) {
+                proj.x = _propHit.x; proj.y = _propHit.y;
+                queueSnowballBurst(S, proj);
+                return false;
+              }
             }
             var pdx = P.x - proj.x, pdy = P.y - proj.y;
             if (pdx * pdx + pdy * pdy > 16 * 16) return true;

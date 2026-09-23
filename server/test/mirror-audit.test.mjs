@@ -1248,6 +1248,47 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     }
     check('props: client and worker resolve the same lines the same way', agree, disagreements);
   }
+
+  /* ═══ v2.3.2699: ...AND EVERY LINE, NOT SEVEN ═══
+     The snowball's visual now stops where the CLIENT's attackBlockPoint says
+     the worker's release->aim line meets a prop (gameEvents.js), on the claim
+     that the two sides give the same answer by construction.  That claim is
+     only as good as this audit, and seven hand-picked probes are seven places
+     the two could agree while differing everywhere else -- an off-by-one on a
+     box edge, an inclusive/exclusive slip on the inside-endpoint rule.  If they
+     ever disagree, a player takes a hit from a ball they watched burst on a
+     rock (or the reverse), which is the exact bug being fixed.
+
+     So: thousands of seeded random lines per zone, over the props' own extent
+     plus a margin so lines start and end on every side of every box.  Seeded
+     (mulberry32) so a failure reproduces, and the guard below makes sure the
+     sample actually contains blocked lines -- a sweep that only ever drew clear
+     lines would agree perfectly and prove nothing. */
+  {
+    let seed = 0x2699;
+    const rnd = () => { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const N = 4000;
+    let blocked = 0, clear = 0; const bad = [];
+    for (const z of Object.keys(SRV_ZONE_PROPS)) {
+      const ps = SRV_ZONE_PROPS[z] || [];
+      if (!ps.length) continue;
+      const xs = ps.map((p) => p.x), ys = ps.map((p) => p.y);
+      const x0 = Math.min(...xs) - 300, x1 = Math.max(...xs) + 300;
+      const y0 = Math.min(...ys) - 300, y1 = Math.max(...ys) + 300;
+      for (let i = 0; i < N; i++) {
+        const a = [x0 + rnd() * (x1 - x0), y0 + rnd() * (y1 - y0)];
+        const b = [x0 + rnd() * (x1 - x0), y0 + rnd() * (y1 - y0)];
+        const srv = srvAttackBlocked(z, a[0], a[1], b[0], b[1]);
+        const cli = clientAttackBlocked(z, a[0], a[1], b[0], b[1]);
+        if (srv) blocked++; else clear++;
+        if (srv !== cli && bad.length < 5) bad.push({ z, a, b, srv, cli });
+      }
+    }
+    check('props: client and worker agree on every one of thousands of random lines', bad.length === 0, bad);
+    check('props: ...and the sample holds both outcomes, so the agreement means something (guard)',
+      blocked > 100 && clear > 100, { blocked, clear });
+  }
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

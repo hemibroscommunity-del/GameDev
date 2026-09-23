@@ -90,8 +90,8 @@ import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-shee
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
-import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /* v2.3.2697: the staff kick + where its crystal is */
-/* v2.3.2697: scratch for staffTipWorld, reused every frame (no allocation). */
+import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /* v2.3.2714: the staff kick + where its crystal is */
+/* v2.3.2714: scratch for staffTipWorld, reused every frame (no allocation). */
 const _staffTipOut = { x: 0, y: 0 };
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -7598,6 +7598,11 @@ export class EntityRenderer {
                   h: Math.round(b.height) };
               } catch (e) { return null; }
             })(),
+            /* v2.3.2700: is the painted stun star ring drawn over him?  The
+               shield bonk's "second of confusion" IS this ring (the Shield Bash
+               stun, reused), so mp-shieldbonk asserts on what is drawn rather
+               than on the _stunUntil field that should cause it. */
+            stunStars: !!(d._stunStarSprite && !d._stunStarSprite.destroyed && d._stunStarSprite.visible),
           };
         };
       }
@@ -9319,7 +9324,47 @@ export class EntityRenderer {
              centre its lower stars sit on the monster's own level label.
              Measured against the slime (the tallest common early monster, a
              96px body) rather than nudged. */
-          ss.y = -size - 56;
+          /* ═══ v2.3.2700: ...AND NOW IT CIRCLES THE HEAD ═══
+             -size - 56 was measured when a monster carried only a level label.
+             Monsters have since grown a nameplate and an HP bar, and on a
+             snowman that fixed offset lands the ring exactly between the two:
+             screenshots of the shield bonk's "second of confusion" showed the
+             ring wedged under the HP bar with the plate covering its lower
+             stars -- drawn, "visible" to every probe, and nearly invisible to
+             a person.  So the ring is anchored on the body's own DRAWN top and
+             sits around the head, the cartoon convention for dizzy, which is
+             clear of the whole UI stack above it.  Measured each frame from
+             the sprite's bounds because the body's height is per-monster and
+             per-animation (a snowman rising out of his pile is shorter on the
+             first emerge frames than standing).  Only while stunned, so the
+             getBounds cost is paid by one monster for a second, not by the
+             zone.  No sprite body (the procedural fallback): the old anchor. */
+          let _ringY = -size - 56;
+          const _sb = display._spriteBody;
+          if (_sb && _sb.visible && !_sb.destroyed) {
+            try {
+              const gb = _sb.getBounds();
+              const lp = display.toLocal({ x: gb.x + gb.width / 2, y: gb.y });
+              if (lp && Number.isFinite(lp.y)) _ringY = lp.y + 13;   /* the ring's top ~4px above the head */
+            } catch (e) { /* keep the old anchor */ }
+          }
+          ss.y = _ringY;
+          /* ...and kept IN FRONT of him.  DEFENSIVE, not a fix for an observed
+             failure -- say so, because the first version of this comment
+             claimed one.  The ring is added to the container the first time
+             he is stunned, so anything appended to it later would draw over
+             the ring, and now that the ring circles the head rather than
+             floating above it, that would cover it.  What looked like exactly
+             that in the bonk screenshots (stars in the first frame, gone in
+             the rest) was the CAMERA: page.screenshot takes ~2s a frame on the
+             QA box, so the "150/260/900ms" frames were really taken at ~2, 4
+             and 6s, after the 1.6s daze.  In-page samples showed the ring
+             drawn, on top of the body (child 4 of the container, body child
+             1), the whole time.  Re-appending an existing child only moves it
+             to the end, so this costs one comparison a frame while stunned. */
+          if (ss.parent === display && display.children[display.children.length - 1] !== ss) {
+            display.addChild(ss);
+          }
           ss.visible = true;
         } else if (display._stunStarSprite && !display._stunStarSprite.destroyed) {
           display._stunStarSprite.visible = false;
@@ -10187,7 +10232,7 @@ export class EntityRenderer {
             oWeaponSprite.scale.x = fitScale;
           } else {
             const weaponMirror = facingIdx >= 3 && facingIdx <= 6;
-            /* v2.3.2697: a peer's staff kicks on THEIR cast (gameEvents stamps
+            /* v2.3.2714: a peer's staff kicks on THEIR cast (gameEvents stamps
                _staffCastAt from their bolt).  Their cooldown is not on the
                wire, so a peer gets the kick without the charge-up dip. */
             oWeaponSprite.rotation = (oWpnType === 'staff')
@@ -10195,10 +10240,10 @@ export class EntityRenderer {
                 !!other._staffCastBig && other._staffCastBig === other._staffCastAt)   /* v2.3.2698: their one-bolt special kicks harder */
               : 0;
             oWeaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
-            _oBladeUp = oWpnType !== 'staff';   /* v2.3.2697: a staff stands head-up -- see the local path */
+            _oBladeUp = oWpnType !== 'staff';   /* v2.3.2714: a staff stands head-up -- see the local path */
           }
           oWeaponSprite.scale.y = _oBladeUp ? -fitScale : fitScale;   /* v2.3.1786 — see the local path */
-          /* v2.3.2697: their crystal, for their release flash and bolts. */
+          /* v2.3.2714: their crystal, for their release flash and bolts. */
           if (oWpnType === 'staff' && display.parent
               && staffTipWorld(oWeaponSprite, display.parent, _staffTipOut)) {
             other._staffTipX = _staffTipOut.x;
@@ -10294,7 +10339,7 @@ export class EntityRenderer {
         const inFront = oIsShielding
           ? (facingIdx >= 0 && facingIdx <= 3)
           : (_oHeldInHand ? heldWeaponInFront(oWpnType, facingIdx, _oInFrontBase) : _oInFrontBase);
-        if (oWpnType === 'staff') other._staffTipBehind = !inFront;   /* v2.3.2697: see the local path */
+        if (oWpnType === 'staff') other._staffTipBehind = !inFront;   /* v2.3.2714: see the local path */
         const bodyIdx = display.getChildIndex(oSpriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
         /* "In front" is measured against the topmost VISIBLE worn layer, not
@@ -12115,7 +12160,7 @@ export class EntityRenderer {
               ? (mirror || _gsDir === 'south')
               : (facingIdx >= 3 && facingIdx <= 6);
             weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
-            /* ═══ v2.3.2697: THE STAFF KICKS WHEN IT CASTS ═══
+            /* ═══ v2.3.2714: THE STAFF KICKS WHEN IT CASTS ═══
                The staff used to hang motionless through every cast.  Now it
                dips back while the cooldown refills and kicks its crystal
                toward the target on release, then settles (staffCastPose: 12
@@ -12145,7 +12190,7 @@ export class EntityRenderer {
                swingAng and the sheathed branch angles the blade across the
                back; neither wants this, and both are separate branches above
                so neither can pick it up by accident. */
-            /* ═══ v2.3.2697: BUT NOT THE STAFF ═══
+            /* ═══ v2.3.2714: BUT NOT THE STAFF ═══
                The flip was asked for about the SWORD, whose icon hangs its
                blade down.  The staff's icon already stands head-up, so the
                same flip turned it head-down: the crystal hung by the knee and
@@ -12178,7 +12223,7 @@ export class EntityRenderer {
              own branch above and the sheathed pose angles the blade across the
              back in another, so neither can pick this up. */
           weaponSprite.scale.y = _weaponBladeUp ? -fitScale : fitScale;
-          /* v2.3.2697: publish where the crystal is, in world px -- the staff
+          /* v2.3.2714: publish where the crystal is, in world px -- the staff
              cast's charge glows there and the bolt is drawn leaving it.  Same
              idea as the bow publishing its grip (S._bowGripX), but read back
              through Pixi's own transform chain, so the mirror, the kick and the
@@ -12616,7 +12661,7 @@ export class EntityRenderer {
            for why the v2.3.1787 exception does not transfer to it. */
         const inFrontHeld = heldWeaponInFront(wpn && wpn.type, facingIdx, inFrontInHand);
         const inFront = _heldInHand ? inFrontHeld : (sheathed ? !inFrontInHand : inFrontInHand);
-        /* v2.3.2697: the staff cast glows at the crystal from a layer above
+        /* v2.3.2714: the staff cast glows at the crystal from a layer above
            the body; when the staff is carried BEHIND him (SW/W/NW/N) it dims
            that light instead of painting it over his back. */
         if (wpn && wpn.type === 'staff') S._staffTipBehind = !inFront;

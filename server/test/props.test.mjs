@@ -22,6 +22,10 @@
  */
 import { GameRoom } from '../src/index.js';
 import { attackBlocked, slideMove, ZONE_PROPS } from '../src/props.js';
+/* v2.3.2699: the CLIENT's step test, imported the way mirror-audit imports the
+   client's tables -- the worker has no moving projectiles, so this is the only
+   place a player's arrow and a local slime orb meet a prop. */
+import { sweepBlockPoint as cliSweep, attackBlockPoint as cliBlockPoint, zoneBlockers as cliBlockers, boxExitPoint as cliExit } from '../../src/data/worldProps.js';
 
 const mockState = {
   storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
@@ -268,6 +272,134 @@ check('on open ground nothing is blocked', openGround > 0, { openGround });
   const legacyBlocked = throwBall(null, null, 430, 640, { mx: 430, my: 480 });
   check('...and is blocked when THAT line crosses the ridge',
     legacyBlocked === 0, { legacyBlocked });
+}
+
+/* ── 5. A MOVING PROJECTILE MEETS A PROP (v2.3.2699) ──
+   Owner: "The client side isn't showing snowballs bursting upon hitting props
+   but is successfully mitigating damage server side."
+
+   Sections 1-4 ask about a WHOLE line, the worker's question, and they were
+   right all along -- which is why the damage was stopped.  The client asked a
+   different one: each frame's STEP of a projectile in flight, and it asked it
+   with the whole-line function, whose endpoint rule skips a box whenever an end
+   is inside it.  One frame's step always has an end inside the rock it is
+   crossing, so nothing was ever caught.  This section flies a projectile the
+   way the simulator does -- in steps, at real speeds -- through every frost
+   blocker, which is the shape of use the old tests never exercised. */
+{
+  const boxes = cliBlockers('frost');
+  check('fixture: frost has blockers to fly through', boxes.length >= 5, { n: boxes.length });
+
+  /* Step from well outside a box, through its centre, to well past it. */
+  function fly(fn, box, ang, step) {
+    const cx = (box.x0 + box.x1) / 2, cy = (box.y0 + box.y1) / 2;
+    const L = 300;
+    let x = cx - Math.cos(ang) * L, y = cy - Math.sin(ang) * L;
+    for (let i = 0; i < (2 * L) / step + 2; i++) {
+      const nx = x + Math.cos(ang) * step, ny = y + Math.sin(ang) * step;
+      const hit = fn('frost', x, y, nx, ny);
+      if (hit) return hit;
+      x = nx; y = ny;
+    }
+    return null;
+  }
+  /* ON A FACE OF WHICHEVER PROP IT HIT, and strictly inside none.  Not "on the
+     box it was aimed at": a flight aimed at a box behind the ridge meets the
+     ridge first and must stop THERE -- the nearest blocker wins, the same rule
+     the whole-line test has.  The first cut of this check compared against the
+     aimed box only and failed three flights that were stopping correctly. */
+  const onEdge = (h, b) => (Math.abs(h.x - b.x0) < 0.01 || Math.abs(h.x - b.x1) < 0.01
+    || Math.abs(h.y - b.y0) < 0.01 || Math.abs(h.y - b.y1) < 0.01)
+    && h.x >= b.x0 - 0.01 && h.x <= b.x1 + 0.01 && h.y >= b.y0 - 0.01 && h.y <= b.y1 + 0.01;
+  const strictlyIn = (h, b) => h.x > b.x0 + 0.01 && h.x < b.x1 - 0.01 && h.y > b.y0 + 0.01 && h.y < b.y1 - 0.01;
+  const onFace = (h) => h && boxes.some((b) => onEdge(h, b)) && !boxes.some((b) => strictlyIn(h, b));
+
+  /* Speeds from a lobbed snowball (~6px/frame) to the bow's fastest step (48),
+     angles on and off the axes -- the probe that found the bug used 4..60. */
+  const speeds = [4, 6, 8, 11, 20, 33, 48];
+  const angles = [Math.PI / 2, -Math.PI / 2, 0, Math.PI, Math.PI / 4, 2.2, -0.7];
+  let sweepMiss = [], oldCaught = 0, total = 0, offFace = [];
+  for (const b of boxes) for (const sp of speeds) for (const a of angles) {
+    total++;
+    const h = cliSweep ? fly(cliSweep, b, a, sp) : null;
+    if (!h) sweepMiss.push({ box: [b.x0, b.y0, b.x1, b.y1], sp, a: +a.toFixed(2) });
+    else if (!onFace(h)) offFace.push({ h, box: [b.x0, b.y0, b.x1, b.y1] });
+    if (fly(cliBlockPoint, b, a, sp)) oldCaught++;
+  }
+  check(`a projectile flown in steps through every frost prop is caught (${total} flights)`,
+    sweepMiss.length === 0, sweepMiss.slice(0, 5));
+  check('...and it stops ON the face of the prop it hit, never inside one',
+    offFace.length === 0, offFace.slice(0, 3));
+  /* THE BUG, pinned so the reason for a second function cannot be lost: the
+     whole-line test used per step lets almost every flight through.  If a later
+     cleanup "simplifies" the two into one, this is what it has to answer to. */
+  check('the WHOLE-LINE test asked per step lets them through -- the v2.3.2652 bug',
+    oldCaught < total * 0.2, { oldCaught, total });
+
+  /* A projectile LAUNCHED inside a box (a monster spawned in one) flies out of
+     it -- the shooter-inside rule, which is still right for the launch point. */
+  const R = boxes.find((b) => b.x0 < 430 && b.x1 > 430 && b.y0 > 500 && b.y1 < 600);
+  check('fixture: the rock ridge is among them', !!R, {});
+  let esc = null, x = 430, y = (R.y0 + R.y1) / 2;
+  for (let i = 0; i < 40 && !esc; i++) { esc = cliSweep('frost', x, y, x, y + 8); y += 8; }
+  check('a projectile launched from INSIDE a prop flies out of it', esc === null, { esc });
+
+  /* A clear line is never caught, at any step. */
+  let falsePos = null;
+  for (const sp of speeds) {
+    let cx = 300, cy = 470;
+    for (let i = 0; i < 60 && !falsePos; i++) { falsePos = cliSweep('frost', cx, cy, cx, cy + sp); cy += sp; }
+  }
+  check('a projectile on a clear line is never stopped', falsePos === null, { falsePos });
+}
+
+/* ── 6. THE ARROW'S OTHER TWO QUESTIONS (v2.3.2701) ──
+   v2.3.2699's arrow stop built the turret the worker's own rule exists to
+   prevent: a monster standing inside a footprint could not be shot, and could
+   still throw (mp-lockaim caught it).  projectiles.js now lets an arrow INTO a
+   box that holds what it is flying at and ends the flight at the box's FAR
+   face, and refuses any hit with a rock between the arrow and the monster's
+   feet.  The simulator is browser code (mp-propshots flies it); what it leans
+   on here is two pieces of geometry, and they are pinned in the same shape as
+   section 5 -- every frost prop, several headings. */
+{
+  const boxes = cliBlockers('frost');
+  const onEdge = (h, b) => (Math.abs(h.x - b.x0) < 0.01 || Math.abs(h.x - b.x1) < 0.01
+    || Math.abs(h.y - b.y0) < 0.01 || Math.abs(h.y - b.y1) < 0.01)
+    && h.x >= b.x0 - 0.01 && h.x <= b.x1 + 0.01 && h.y >= b.y0 - 0.01 && h.y <= b.y1 + 0.01;
+  const angles = [Math.PI / 2, -Math.PI / 2, 0, Math.PI, Math.PI / 4, 2.2, -0.7];
+  let noBox = [], exitBad = [], n = 0;
+  for (const b of boxes) for (const a of angles) {
+    const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, L = 300;
+    const x0 = cx - Math.cos(a) * L, y0 = cy - Math.sin(a) * L;
+    const x1 = cx + Math.cos(a) * L, y1 = cy + Math.sin(a) * L;
+    const h = cliSweep('frost', x0, y0, x1, y1);
+    if (!h) continue;
+    n++;
+    /* The box it names is a real blocker, and the hit is on its edge. */
+    if (!h.box || boxes.indexOf(h.box) < 0 || !onEdge(h, h.box)) { noBox.push({ h: [h.x, h.y], box: !!h.box }); continue; }
+    /* Out the far side: on that box's edge, further along than the way in,
+       and no further than the box is across. */
+    const e = cliExit(h.box, h.x, h.y, x1, y1);
+    const diag = Math.hypot(h.box.x1 - h.box.x0, h.box.y1 - h.box.y0);
+    const ok = e && onEdge(e, h.box) && Math.hypot(e.x - h.x, e.y - h.y) <= diag + 0.01
+      && ((e.x - h.x) * Math.cos(a) + (e.y - h.y) * Math.sin(a)) > 0;
+    if (!ok) exitBad.push({ box: [h.box.x0, h.box.y0, h.box.x1, h.box.y1], a: +a.toFixed(2), e });
+  }
+  check(`the sweep names the prop it met (${n} flights)`, n > 20 && noBox.length === 0, noBox.slice(0, 3));
+  check('...and the way OUT of that prop is on its far side, one box-width on at most',
+    exitBad.length === 0, exitBad.slice(0, 3));
+  const R = boxes.find((b) => b.x0 < 430 && b.x1 > 430 && b.y0 > 500 && b.y1 < 600);
+  check('a step that ends inside the prop has no way out yet',
+    cliExit(R, 430, R.y1 + 30, 430, (R.y0 + R.y1) / 2) === null, {});
+  /* The guard's own question, on the ridge: from one side of it to feet on the
+     other is blocked on BOTH sides -- worker and client -- and to feet INSIDE
+     it is not, which is the turret rule. */
+  const mid = (R.y0 + R.y1) / 2;
+  check('ridge: arrow north of it, feet south of it -- a rock between (worker and client agree)',
+    attackBlocked('frost', 430, R.y0 - 40, 430, R.y1 + 10) === true && !!cliBlockPoint('frost', 430, R.y0 - 40, 430, R.y1 + 10), {});
+  check('ridge: ...and feet standing IN it are not behind it, on either side',
+    attackBlocked('frost', 430, R.y0 - 40, 430, mid) === false && cliBlockPoint('frost', 430, R.y1 + 40, 430, mid) === null, {});
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

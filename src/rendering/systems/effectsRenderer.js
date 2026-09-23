@@ -139,7 +139,7 @@ import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShi
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon */
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js'; /* v2.3.1864 */
 import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
-import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2697: the staff cast's charge, release, trail and crash */
+import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2714: the staff cast's charge, release, trail and crash */
 import { STAFF_BIG_BOLT_SCALE } from '@/data/gameSystems.js';     /* v2.3.2698: the one-bolt special's drawn size */
 
 /* v2.3.1784: the 8-way compass, module scope.  An identical list already
@@ -1848,7 +1848,7 @@ export class EffectsRenderer {
 
     this.projectileGfx = new Graphics();
     this.projectileLayer.addChild(this.projectileGfx);
-    /* ═══ v2.3.2697: THE STAFF CAST'S TWO SURFACES, BUILT AT CONSTRUCTION ═══
+    /* ═══ v2.3.2714: THE STAFF CAST'S TWO SURFACES, BUILT AT CONSTRUCTION ═══
        See src/rendering/staffCastFx.js.  Created HERE for the reason the jet
        stream's container is (v2.3.2398): Pixi depth is child order, and a pool
        built lazily on whichever frame first needs it would stack differently
@@ -1923,7 +1923,24 @@ export class EffectsRenderer {
           srcPx: (e.sprite.texture && (e.sprite.texture.frame
             ? e.sprite.texture.frame.width : e.sprite.texture.width)) || 0,
           visible: !!e.sprite.visible,
+          /* v2.3.2699: WHERE it is drawn, and whose it is.  The v2.3.2657 prop
+             stop was never visible and nothing could say so: every probe
+             answered a size, and "did the ball get drawn past the rock" is a
+             position.  mp-propshots reads these. */
+          x: +e.sprite.x.toFixed(1),
+          y: +e.sprite.y.toFixed(1),
+          ownerId: (e.proj && e.proj.ownerId) || null,
         }));
+    }
+
+    /* v2.3.2700: the snow bursts being DRAWN right now, with their drawn
+       height -- the shield bonk's "little powder" is a size claim (0.6x a
+       thrown ball's burst), and a size is only checkable on the sprite. */
+    if (typeof window !== 'undefined') {
+      const _fxSelf = this;
+      window.__btSnowballBursts = () => (_fxSelf._snowballBursts || [])
+        .filter((fx) => fx && fx.sp && !fx.sp.destroyed)
+        .map((fx) => ({ x: +fx.sp.x.toFixed(1), y: +fx.sp.y.toFixed(1), h: +Math.abs(fx.sp.height).toFixed(1) }));
     }
 
     /* v2.3.1334: tracked Sprite instances for the painted magic bolt
@@ -3191,7 +3208,7 @@ export class EffectsRenderer {
        mp-deathstrip, which asks the SCREEN what is on the corpse rather than
        checking a list. */
     this._selfCorpse = selfCorpseUp(S);
-    /* v2.3.2697: the staff cast's sprite pools refill from zero each frame;
+    /* v2.3.2714: the staff cast's sprite pools refill from zero each frame;
        open them before anything this frame draws into them (the crash rings
        in _updateParticles, the bolts in _updateProjectiles). */
     this._staffFx.begin();
@@ -3225,7 +3242,7 @@ export class EffectsRenderer {
        (chop/cook/fire). Guarded like the remote attack stand-ins. */
     try { this._updateRemoteExtraction(S, now); } catch (e) { /* skip remote skill stand-in */ }
     this._updateProjectiles(S, now);
-    /* v2.3.2697: after the projectiles, so a bolt fired this frame has
+    /* v2.3.2714: after the projectiles, so a bolt fired this frame has
        already been drawn leaving the crystal when its release flash lands. */
     /* Cosmetic, so it must never take the frame down -- but a throw is still
        logged ONCE in the house format, which is what the QA harness listens
@@ -3379,7 +3396,7 @@ export class EffectsRenderer {
            pushes two more every cast.  Every other transient list in this
            file (dust, ambient, dodge trail) splices — this one now matches. */
         if (age >= 1) { S._impactRings.splice(i, 1); continue; }
-        /* v2.3.2697: a staff bolt's crash ring is drawn by the staff cast
+        /* v2.3.2714: a staff bolt's crash ring is drawn by the staff cast
            system as a stepped pixel ring in the element's heat ramp.  Same
            record, same position, same lifetime (mp-orbrange reads all three);
            only the drawing differs. */
@@ -4140,7 +4157,7 @@ export class EffectsRenderer {
            travel angle, art noses right.  Falls back to the old
            two-circle draw until the strip loads. */
         if (MAGIC_BOLT_FRAMES.length) {
-          this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk, S);   /* v2.3.2697: + S, for the caster's crystal */
+          this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk, S);   /* v2.3.2714: + S, for the caster's crystal */
         } else {
           gfx.circle(a._renderX, a._renderY, 5 * _pk);
           gfx.fill({ color: elemColor, alpha: fadeA * 0.8 });
@@ -4210,7 +4227,7 @@ export class EffectsRenderer {
         if (_remoteMagicSpec) {
           this._placeSpecialFx(MAGIC_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk);
         } else if (_remoteBasicBolt) {
-          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk, S);   /* v2.3.2697: + S */
+          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk, S);   /* v2.3.2714: + S */
         } else {
           /* v2.3.840: special staff bolts read bigger + golden with a halo. */
           gfx.circle(rp._renderX, rp._renderY, (rp.isSpecial ? 7 : 4) * _pk);
@@ -4228,7 +4245,7 @@ export class EffectsRenderer {
     /* v2.3.1334: reap magic-bolt sprites whose projectile is gone
        (expired, hit, or zone-reset) — same pattern as the slime-orb
        reaper below. */
-    /* v2.3.2697: the breathing overlay (_boltGlow) is pooled in this same
+    /* v2.3.2714: the breathing overlay (_boltGlow) is pooled in this same
        list, and clears its OWN back-reference -- the v2.3.2511 rule for the
        special's pulse, for the same reason. */
     for (let i = this.magicBoltSprites.length - 1; i >= 0; i--) {
@@ -4493,7 +4510,7 @@ export class EffectsRenderer {
       (Math.floor(now / MAGIC_BOLT_FRAME_MS) + (p._boltPhase || 0)) % MAGIC_BOLT_FRAMES.length
     ];
     if (sprite.texture !== frame) sprite.texture = frame;
-    /* ═══ v2.3.2697: WHERE IT IS DRAWN IS ASKED OF THE STAFF CAST ═══
+    /* ═══ v2.3.2714: WHERE IT IS DRAWN IS ASKED OF THE STAFF CAST ═══
        The bolt leaves the caster's crystal and eases onto its own line, grows
        in over 90 ms, and lays its halo and spark trail (staffCastFx.bolt).
        (x, y) stays the projectile's real position: the hit test never sees any
@@ -4514,7 +4531,7 @@ export class EffectsRenderer {
     sprite.y = dy;
     sprite.rotation = rot;
     sprite.alpha = alpha;
-    /* ═══ v2.3.2697: THE BOLT BREATHES ═══
+    /* ═══ v2.3.2714: THE BOLT BREATHES ═══
        The four painted frames are nearly identical, so on its own the bolt
        reads as a still ball.  A SECOND, ADDITIVE copy of the same frame swells
        and fades over it -- the v2.3.2511 special-arrow pulse, for the same two
@@ -7939,7 +7956,10 @@ export class EffectsRenderer {
           const sp = new Sprite(SNOWBALL_BURST.frames[0]);
           sp.anchor.set(0.5, 0.5);
           const f0 = SNOWBALL_BURST.frames[0];
-          sp.scale.set(SNOWBALL_BURST_H / (f0.height || 128));
+          /* v2.3.2700: an optional per-burst size -- the shield bonk's powder
+             is this strip at 0.6x.  Absent on every thrown ball, so those
+             draw exactly as before. */
+          sp.scale.set((SNOWBALL_BURST_H / (f0.height || 128)) * (b.scale > 0 ? b.scale : 1));
           sp.x = b.x; sp.y = b.y;
           this.particleLayer.addChild(sp);
           this._snowballBursts.push({ sp, startedAt: b.at || now });
@@ -10987,7 +11007,7 @@ export class EffectsRenderer {
 
   clear() {
     this.particleGfx.clear();
-    if (this._staffFx) this._staffFx.clear();   /* v2.3.2697: no sparks carried across a zone change */
+    if (this._staffFx) this._staffFx.clear();   /* v2.3.2714: no sparks carried across a zone change */
     this.cueGfx.clear();   /* v2.3.1765 */
     this.projectileGfx.clear();
     this.telegraphGfx.clear();
