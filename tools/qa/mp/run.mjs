@@ -24,6 +24,7 @@ const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
   harvestink: () => import('./mp-harvestink.mjs'), /* v2.3.2780: tattoos stay on while fishing -- on both screens, the rod untouched, and a pink chest tattoo never lifted over the shirt */
+  chopink: () => import('./mp-chopink.mjs'), /* v2.3.2783: ...and while chopping -- your lumberjack and a watcher's view of it, both sides of the tree, the axe untouched, the whole figure in your skin */
   geartrim: () => import('./mp-geartrim.mjs'), /* v2.3.2750: gear frames cropped to their art -- under a third of the bytes, and every layer still lands exactly on the body, own screen and peer's */
   shirtjog: () => import('./mp-shirtjog.mjs'), /* v2.3.2747: the tee's keyline holds on every frame the game draws while running, all eight directions -- the owner's "static" */
   arrowsnap: () => import('./mp-arrowsnap.mjs'), /* v2.3.2731: one arrow in eight snaps on what it hits -- same damage, a different picture */

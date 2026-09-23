@@ -1,6 +1,7 @@
-# Tattoos stay on while you harvest (v2.3.2780)
+# Tattoos stay on while you harvest (v2.3.2780, v2.3.2783)
 
-Owner: *"yes make tattoos stay on while harvesting resources."*
+Owner: *"yes make tattoos stay on while harvesting resources"*, then *"Yea do
+woodcutting"*.
 
 The game has three gathering skills. Where each one stood:
 
@@ -8,7 +9,7 @@ The game has three gathering skills. Where each one stood:
 |---|---|---|---|
 | mining | the `mine` body sheet, baked like walking | on | on (unchanged) |
 | fishing | the **raw** `fish` sheet | **gone**, on every screen | **on**, on every screen |
-| woodcutting | a separate lumberjack figure (`chop-strip`) | gone | still gone, see below |
+| woodcutting | a separate lumberjack figure (`chop-strip`) | **gone**, on every screen | **on**, on every screen (v2.3.2783) |
 
 ## Fishing
 
@@ -70,27 +71,118 @@ still do:
 
 ![the overlay with and without the raw-frame rod](img/harvest-ink/overlay-guard.jpg)
 
-## Woodcutting: not in this change
+## Woodcutting (v2.3.2783)
 
 Woodcutting swaps your whole body for a pre-drawn lumberjack
-(`sprites/skills/chop-strip.webp`, twelve 240×220 swing frames). Stamping
-drawings on it with the body pipeline was tried: the axe is safe (the skin test
-refuses its magenta), but the **placement** is wrong. The face/chest/arm split
-is tuned to the walking body's proportions, and on this figure it moves from
-frame to frame. The face tattoo runs down onto the chest and shoulders on some
-swing frames, and the chest tattoo lands on an arm:
+(`sprites/skills/chop-strip.webp`, twelve 240×220 swing frames). It was baked
+with your skin tone and nothing else, so the tattoos were gone while you
+chopped, and on other players' screens the figure was the shared raw art.
+
+The same character (blue face drawn on its left half only, pink arms and chest)
+chopping, on main and on this change, with the tree on each side. The shirt
+covers the chest tattoo, as it does when walking:
+
+![before and after, tree on the right and on the left](img/harvest-ink/chopping.jpg)
+
+**Where the drawings go.** The body's face/chest/arm split cannot be pointed at
+this figure. It is tuned to the walking body's proportions, and on the
+lumberjack it put the face tattoo on the raised hands and the chest tattoo on
+the arm crossing the chest:
 
 ![raw frames, what the skin test finds (red), and the drawings stamped as the body stamps them](img/harvest-ink/chop-trial.png)
 
-Doing it properly means fitting the face, chest and arm regions to these twelve
-frames. Other players' choppers are a second limit. They are drawn from one
-shared figure, because a per-player chopper bake was refused on phone-memory
-grounds (effectsRenderer, v2.3.1713 / v2.3.2303). That is why another player's
-lumberjack already shows the artist's skin tone rather than theirs.
+So the regions are fitted to these twelve frames by hand, in
+`src/rendering/standInInk.js`. Each frame gives a few points on the head, the
+torso and the arms, and `splitSkinBySeeds` (playerDecal) floods out from them
+over the skin, all at once. The art's own dark outlines are not skin, so they
+stop the flood. An arm drawn with an outline along both edges is claimed right
+up to that outline, however roughly its seed was placed. Where the painter drew
+no outline (a shoulder, a neck), the floods meet halfway. Face in blue, chest in
+green, arms in yellow:
+
+![the fitted regions on all twelve frames](img/harvest-ink/chop-regions.jpg)
+
+The chest drawing is fitted to the **whole** torso's box on each frame,
+including the part the arm hides, so it holds still while the arm sweeps across
+it. The paint still only lands on skin you can see. The face drawing is fitted
+to the head's box, as on the body. Each arm is measured as the body measures
+its arms.
+
+**The flipped figure.** The art faces right and is drawn mirrored when the tree
+is on your left, which reads a drawing backwards. The sword and bow stand-ins
+had the same problem and solved it the same way (v2.3.2429 / v2.3.2431): a
+second, pre-flipped bake, made **only** when a drawing is not its own mirror
+image. That is 2.5 MB per strip. A player whose drawings are symmetric (the
+designer's Mirror tool) or blank pays nothing. In the picture above, the blue
+half of the face is on the same side with the tree on either side.
+
+**The axe** keeps its copper and pine: the recolour only touches pixels that
+were the tool key in the file, read before anything is painted, which is the
+fishing rod's lesson again (the drawing palette's pink sits inside the key's hue
+window).
+
+**The head was never recoloured on half the swing.** This was already broken,
+and it would have shown under a face tattoo. The skin recolour skips skin islands
+smaller than a floor that was set for the cook's frying fish (1500 px), and on
+frames 6 to 11 this figure's head is an island of its own (about 1240 px, cut
+off by the chin's outline). So the lumberjack's head kept the artist's orange
+for half of every swing while the rest of him wore your skin. With the default
+skin that is subtle, because the painted orange is close to it. With a dark or
+pale skin it is glaring. Some fingers and the far arm on frames 10 and 11 had
+the same problem:
+
+![the head keeping the painted orange on frames 6-11, and fixed](img/harvest-ink/chop-head-skin.jpg)
+
+Every skin-coloured pixel in these frames belongs to the lumberjack (the axe is
+the tool key, which the skin test refuses). So the floor for this strip is 1:
+all of him. Measured by `mp-standinskin`, the figure's mean skin colour moved
+from 19 units off the walking palette to 9.
+
+**Loading.** Your own inked lumberjack is baked behind the loading screen, as
+the plain one was. After you edit a face, chest or arm drawing it is re-baked
+once the strokes stop (0.4 s), not after every stroke. The strips it replaces
+are released straight away rather than left for Pixi's idle collector.
+
+**Other players.** A peer's lumberjack is drawn from one shared figure, because
+a per-player bake was turned down for phone memory (effectsRenderer, v2.3.1713 /
+v2.3.2303). This adds one only where it is needed:
+
+- only for a peer who **has** a face, chest or arm drawing;
+- only while they are chopping;
+- at most **two** at once;
+- each released 15 s after nobody has drawn it.
+
+A peer with no drawings, or one past the cap, keeps the shared figure exactly as
+before. The bake carries their skin tone too, because the ink is shaded by the
+skin under it. Their look cannot be known at load, which is the preload law's
+named exception, so the shared figure draws until the bake lands: 0.6 s on the
+test machine, which renders several times slower than a phone.
 
 ## How it is checked
 
-`mp-harvestink` (new) reads the frame the renderer actually draws and compares
+### Woodcutting
+
+`mp-chopink` (new) checks woodcutting the same way `mp-harvestink` checks
+fishing. It reads the lumberjack frame the renderer draws and compares it with
+the same frame of the shipped strip. With the tree on his right, then on his
+left, and a second player watching, it checks:
+
+- his own screen: ink on every swing frame, pink included;
+- the axe: every key pixel is still copper or pine, on every frame;
+- no skin pixel is left in the artist's paint on any frame (the head bug above);
+- the face drawing's blue half sits on the head's left with the tree on his
+  right, **and** with the tree on his left, where the figure is flipped;
+- the watcher: ink once the bake lands, on every frame after it, flipped the
+  right way round too; no more than two held, and none 15 s after he stops;
+- no page errors on either client.
+
+Run against main's lumberjack code, 10 of its 18 checks fail. The 8 that still
+pass are the guards and the ones that cannot tell the difference, such as
+"no page errors".
+
+### Fishing
+
+`mp-harvestink` reads the frame the renderer actually draws and compares
 it pixel by pixel with the same frame of the sheet the game loads (the `.webp`
 twin), so colour that is in the drawn frame and not in the art is ink, whatever
 else is that colour. The face is drawn blue, the arms and chest pink:

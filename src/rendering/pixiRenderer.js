@@ -1091,8 +1091,22 @@ export async function initPixiRenderer(canvas) {
         gearIx: typeof ent._gearIx === 'number' ? ent._gearIx : null,
         signX: (ent[ent._exCode] && ent[ent._exCode].scale)
           ? (ent[ent._exCode].scale.x < 0 ? -1 : 1) : null,
+        /* v2.3.2783: is this peer's lumberjack drawn from a bake that carries
+           their drawings (true), or from the shared figure (false)? */
+        chopInk: !!ent._chopInk,
       };
     },
+    /* v2.3.2783: the lumberjack SPRITES -- yours (no id) or a peer's -- for
+       mp-harvestink, which reads the frame the renderer actually draws, the same
+       way it reads the fishing body through peerDisplayRaw. */
+    chopSpriteRaw: (id) => {
+      const e = effectsRenderer;
+      if (id == null) return e.chopSprite || null;
+      const ent = e._remoteSkillSprites && e._remoteSkillSprites.get(id);
+      return (ent && ent.chop) || null;
+    },
+    /* v2.3.2783: how many drawn peers' lumberjacks are baked right now. */
+    peerChopBakes: () => (effectsRenderer._peerChopBakes ? effectsRenderer._peerChopBakes.size : 0),
     /* v2.3.138: dispose a single loot pile by direct object reference.
        Local SP pickups don't always set lootId (legacy melee/bow/DoT
        push paths) so disposeLootById can't reach them. The pickup

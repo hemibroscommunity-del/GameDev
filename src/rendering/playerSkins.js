@@ -31,7 +31,7 @@ import { getEyeStyle, onEyeStyleChange } from './traits/eyeStyleCatalog.js';   /
    sprite, stamped in gearSheets) these live INSIDE the body sheet, because
    that is where the pants pixels and the bare skin actually are. */
 import { getArt, artHasInk, artHash, onArtChange, sideForDir, emptyArt } from './traits/playerArt.js';   /* v2.3.2042: sideForDir/emptyArt -- a face tattoo does not revolve to the back of a head */
-import { stampRegion, stampPattern, litFabricMask, regionFromFeet, splitSkinRegions, PANTS_LIT_MIN, SHOES_LIT_MIN, PANTS_MAX_UP, SHOES_MAX_UP, PANTS_BOX, TATTOO_BOX, FACE_BOX, ARM_BOX } from './playerDecal.js';
+import { stampRegion, stampPattern, litFabricMask, regionFromFeet, splitSkinRegions, splitSkinBySeeds, PANTS_LIT_MIN, SHOES_LIT_MIN, PANTS_MAX_UP, SHOES_MAX_UP, PANTS_BOX, TATTOO_BOX, FACE_BOX, ARM_BOX } from './playerDecal.js';
 import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/patternCatalog.js';   /* v2.3.1941 */
 import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2761: the fishing rod's pine; v2.3.2780: + the file's key mask */
 
@@ -1088,7 +1088,14 @@ export function recolorStandInSkin(img, skinT, targetH, opts) {
   cv.height = img.naturalHeight || img.height;
   const ctx = cv.getContext('2d');
   ctx.drawImage(img, 0, 0);
-  if (!skinT) return cv;
+  /* v2.3.2783: `opts.art` + `opts.regions` -- the player's drawings, on a
+     stand-in whose face/torso/arms were fitted by hand (standInInk.js).  Only
+     the three SKIN canvases: these figures keep their painted trousers (the
+     recolour here is skin-only for the reasons above), so a trouser print would
+     have no garment of the player's to sit on. */
+  const ink = (o.art && o.regions && (artHasInk(o.art.tattooFace) || artHasInk(o.art.tattoo)
+    || artHasInk(o.art.tattooArm))) ? o.art : null;
+  if (!skinT && !ink) return cv;
   const w = cv.width, h = cv.height;
   const imgData = ctx.getImageData(0, 0, w, h);
   const d = imgData.data;
@@ -1124,11 +1131,39 @@ export function recolorStandInSkin(img, skinT, targetH, opts) {
     size.push(n);
   }
   /* pass 3: retint the CHARACTER's skin; leave the small islands (props) */
+  const body = ink ? new Uint8Array(w * h) : null;   /* v2.3.2783: the same pixels, for the stamp */
   for (let p = 0, i = 0; p < w * h; p++, i += 4) {
-    if (label[p] && size[label[p]] >= minBlob) _retint(d, i, skinT, SKIN_REF);
+    if (!label[p] || size[label[p]] < minBlob) continue;
+    if (skinT) _retint(d, i, skinT, SKIN_REF);
+    if (body) body[p] = 1;
   }
+  /* v2.3.2783: the drawings, AFTER the retint (so the ink is shaded by the skin
+     it lands on, exactly as the body's stamp is) and confined to the pixels the
+     retint just called the character's skin. */
+  if (ink) _stampStandInInk(d, w, h, body, ink, o.regions);
   ctx.putImageData(imgData, 0, 0);
   return cv;
+}
+
+/* v2.3.2783: face, torso and arm drawings on a stand-in, from its hand-fitted
+   regions -- see standInInk.js for the table and splitSkinBySeeds for the split.
+   `art.mirror` is honoured as the body honours it: the drawing is read flipped,
+   for a figure the renderer will flip back. */
+function _stampStandInInk(d, w, h, body, art, R) {
+  /* A table fitted to another size of art would put the ink somewhere else on
+     the figure; no ink is the better failure (see standInInk.js). */
+  if (!R || R.fh !== h || !R.fw || w % R.fw !== 0) return;
+  const reg = splitSkinBySeeds(body, w, h, R.fw, R.seeds);
+  const m = !!art.mirror;
+  if (artHasInk(art.tattooFace)) {
+    stampRegion(d, w, h, R.fw, reg.face, art.tattooFace, m, FACE_BOX, { underSkin: true, boxes: R.face });
+  }
+  if (artHasInk(art.tattoo)) {
+    stampRegion(d, w, h, R.fw, reg.torso, art.tattoo, m, TATTOO_BOX, { underSkin: true, boxes: R.torso });
+  }
+  if (artHasInk(art.tattooArm)) {
+    stampRegion(d, w, h, R.fw, reg.arms, art.tattooArm, m, ARM_BOX, { eachPiece: true, underSkin: true });
+  }
 }
 
 /* v2.3.1122: load through the WebP-preferring helper (PNG fallback).  Used by
