@@ -657,21 +657,44 @@ export function hurtPlayerLocal(S, R, amount) {
  * Renderer-side dedup (per-monster 150ms gap) lives with the sprites,
  * but the queue is still hard-capped here so a hit storm can't grow an
  * unbounded array between frames (the hitParticles-400 posture). */
-export function spawnHitDebris(S, m, angle) {
+/* ═══ v2.3.2699: ...AND WHAT HIT IT, AND WHERE ═══
+ * Owner: the materials should react "upon getting hit by the impacts from
+ * different weapon type (arrow, bolt, sword)".  So the record now carries the
+ * WEAPON (`opts.weapon`: 'arrow' | 'bolt' | 'sword' | 'splash', absent when a
+ * peer's hit gives us nothing to go on), whether it was a crit, a heavy blade
+ * (greatsword) or a special (`big`), the element, and -- for a projectile --
+ * the contact point, so a shot's spray leaves from where the shot went in.
+ * `gy`/`h` are the monster's ground line and body height: the pieces fly in
+ * three dimensions and need to know where the ground is (hitMaterialFx).
+ * `kind` is now the LOOK (`fx`, falling back to the sound's `kind` -- see
+ * HIT_MATERIALS).  Additive: every existing field keeps its meaning. */
+export function spawnHitDebris(S, m, angle, opts) {
   if (!S || !m) return;
-  var mat = hitMaterialOf(m.archetype || m.type);
+  var arch = m.archetype || m.type;
+  var mat = hitMaterialOf(arch);
   if (!S._debrisBursts) S._debrisBursts = [];
   if (S._debrisBursts.length >= 24) return;
+  var o = opts || {};
+  var gy = (typeof m.renderY === 'number') ? m.renderY : m.y;
+  var h = monsterBodyOffsetY(arch);
   S._debrisBursts.push({
-    monsterId: m.id, kind: mat.kind, tint: mat.tint,
+    monsterId: m.id, kind: mat.fx || mat.kind, tint: mat.fxTint || mat.tint,
     x: (typeof m.renderX === 'number') ? m.renderX : m.x,
-    y: ((typeof m.renderY === 'number') ? m.renderY : m.y) - monsterBodyOffsetY(m.archetype || m.type),
+    y: gy - h,
+    gy: gy, h: h,
     ang: (typeof angle === 'number') ? angle : -Math.PI / 2,
     t0: Date.now(),
+    weapon: o.weapon || null, crit: !!o.crit, big: !!o.big, heavy: !!o.heavy, elem: o.elem || null,
+    hitX: (typeof o.hitX === 'number' && isFinite(o.hitX)) ? o.hitX : undefined,
+    hitY: (typeof o.hitY === 'number' && isFinite(o.hitY)) ? o.hitY : undefined,
   });
 }
 
-/* spawnGroundDecal: one persistent mark at the monster's feet.  Rides
+/* v2.3.2699: no HIT site calls this any more -- the material reaction's
+   landed pieces are the on-hit mark (rendering/hitMaterialFx.js).  Kept, and
+   exported, for a mark that is not a hit (the groundSplatter pool it feeds
+   still carries the kill splatter).
+   spawnGroundDecal: one persistent mark at the monster's feet.  Rides
    the EXISTING S.groundSplatter array (cap 80, TTL/fade in
    effectsRenderer + stateCleanup) — on-hit marks are small and
    probabilistic (50%) so a fight doesn't flush the cap; kills keep

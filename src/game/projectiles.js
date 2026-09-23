@@ -373,7 +373,7 @@ import {
   PVP_THREAT_DURATION,
   WEAPON_TYPES, WELL_RESTED_XP_MULT, ZONES, applyStatus, awardWeaponXp, calcWeaponDmg,
   discoverCollision, getActiveWeapon, getCollisionDeathFX, getElementDeathFX, recalcDerived,
-  getEvasionPts, resolveCollision, rollPassiveDodge, spawnWeaponHitFX, staffAoeMult,
+  getEvasionPts, resolveCollision, rollPassiveDodge, staffAoeMult,
   monsterBodyOffsetY, monsterProceduralRadius, trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
   BOW_RANGE_PX, /* v2.3.2448: the arrow's plant cap, shared with the sight stream */
   toDisplayDamage, /* v2.3.2520: the display damage scale */
@@ -382,7 +382,7 @@ import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound l
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
 import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot */
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2699: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */ } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -1013,9 +1013,24 @@ export function updateArrows(S, deps) {
                   }
                   m._hitFlash = Date.now(); /* v2.3.2200: see the melee site */
                   /* v2.3.2200: material debris + ground mark along the
-                     projectile's travel direction — mirrors the melee path. */
-                  spawnHitDebris(S, m, a.ang);
-                  spawnGroundDecal(S, m.x, m.y, _hitArchR, { chance: 0.5, size: 5 });
+                     projectile's travel direction — mirrors the melee path.
+                     ═══ v2.3.2699: AN ARROW PUNCHES, A BOLT BLASTS ═══
+                     The reaction now knows which (hitMaterialFx): an arrow
+                     throws a narrow jet out of the far side and a puff back
+                     at you; a bolt blows material all round and brings its
+                     heat (snow steams, slime sizzles, the goblin chars).  It
+                     leaves from where the shot went in: an arrow's contact is
+                     partway up its head, a bolt's is its drawn orb (the
+                     v2.3.2697 drawing offset, so it bursts where it was seen).
+                     The soft ground decal that sat beside it is retired: the
+                     pieces that land ARE the mark now. */
+                  var _dbBolt = !!(a.isStaff || isStaffProj);
+                  var _dbReach = _dbBolt ? 0 : _projBody(a).front * 0.45;
+                  spawnHitDebris(S, m, a.ang, {
+                    weapon: _dbBolt ? 'bolt' : 'arrow', big: !!a.isSpecial, elem: projElem || null,
+                    hitX: a._renderX + Math.cos(a.ang) * _dbReach + (_dbBolt && Number.isFinite(a._fxResX) ? a._fxResX : 0),
+                    hitY: a._renderY + Math.sin(a.ang) * _dbReach + (_dbBolt && Number.isFinite(a._fxResY) ? a._fxResY : 0),
+                  });
                   /* Retaliation — mirrors the melee path so arrow/staff
                      hits also force fireGoblin to chase the player for 5s. */
                   if (_hitBaseR === 'fodder' && m.curHp > 0) {
@@ -1306,14 +1321,15 @@ export function updateArrows(S, deps) {
                    at the orb, which is v2.3.2505's whole point.  The generic
                    'staff' burst this used to add was a second spray of flat
                    purple dots at the monster's FEET, the exact spot that fix
-                   moved the crash away from.  Arrows keep theirs. */
-                if (!a.isStaff) {
-                  var rangedHitFX = spawnWeaponHitFX(m.x, m.y, kba, 'bow', false);
-                  rangedHitFX.forEach(function (p) { return S.hitParticles.push(p); });
-                }
+                   moved the crash away from.
+                   v2.3.2699: and the arrow's generic splinter-and-dust spray
+                   goes the same way -- brown dots and tan dust at the feet of
+                   every monster alike.  The material reaction above (a jet of
+                   the monster's own snow / slime / blood / dust / bone from the
+                   contact point) is the arrow's hit now. */
                 /* Staff projectiles are magic — no physical shaft to
                    leave embedded in the body.  Their visual residue is the
-                   crash above (v2.3.2697; spawnWeaponHitFX is arrows-only now). */
+                   crash above (v2.3.2697), and the material reaction (v2.3.2699). */
                 /* ═══ v2.3.2511: ONE ARROW, NOT TWO ═══
                    Owner (backlog §2.5): "two stuck arrows on a special".  Both
                    halves were doing their job and neither knew about the

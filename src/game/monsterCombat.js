@@ -32,7 +32,7 @@ import {
   createMonster, discoverCollision, discoverMonster, generateZoneMap, getActiveWeapon,
   getAttunementPts, getCollisionDeathFX, getDefenseBlockBonus, getEffectiveness, getElementDeathFX,
   getShieldStats, getWeaponCritDmgStat, getWeaponCritStat, meleeSwingSfx, recalcDerived, resolveCollision,
-  getEvasionPts, poiseStunFlatMs, rollPassiveDodge, getWeaponCritFlat, spawnElementStatusFX, spawnWeaponHitFX, swingCooldownMult, tickStatuses, updateZoneDimensions,
+  getEvasionPts, poiseStunFlatMs, rollPassiveDodge, getWeaponCritFlat, spawnElementStatusFX, swingCooldownMult, tickStatuses, updateZoneDimensions,
   trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
   monsterBodyOffsetY, monsterMeleeHitRadius, monsterProceduralRadius, TOWN_SPAWN /* v2.3.1777 */
 } from '@/data/index.js';
@@ -41,7 +41,7 @@ import { BOW_RANGE_PX, toDisplayDamage, staffOrbLife, meleeRangeMult } from '@/d
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2699: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */ } from '@/game/combatHelpers.js';
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
 import { firstSightHit } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii */
 import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
@@ -2151,7 +2151,14 @@ export function updateMonsterCombat(S, deps) {
                    code-drawn circles read as placeholder).  One queue,
                    rendered by effectsRenderer._updateDebrisBursts. */
                 if (!S.hitParticles) S.hitParticles = [];
-                spawnHitDebris(S, m, baseAngle);
+                /* v2.3.2699: ...and it knows it was a BLADE -- a flat sheet
+                   flung off the edge of the swing (hitMaterialFx), heavier off
+                   a greatsword, bigger on a crit or a special. */
+                spawnHitDebris(S, m, baseAngle, {
+                  weapon: 'sword', crit: !!isCrit, big: !!S._specialAttack,
+                  heavy: (_activeWpn && _activeWpn.type) === 'greatsword',
+                  elem: (_activeWpn && _activeWpn.element1) || null,
+                });
 
                 /* Report attack INTENT to server for authoritative
                    resolution.  The worker now ROLLS the damage itself
@@ -2322,23 +2329,15 @@ export function updateMonsterCombat(S, deps) {
                    Suspends AI movement for ~200 ms so the player sees
                    the hit register. */
                 m._kbUntil = Date.now() + 200;
-                /* §Creative Vision — Weapon-specific hit particles */
-                var wpnHitType = _activeWpn.type || 'sword';
-                var weaponFX = spawnWeaponHitFX(m.x, m.y, kbAngle, wpnHitType, isCrit);
-                weaponFX.forEach(function (p) {
-                  return S.hitParticles.push(p);
-                });
-                /* v2.3.2200: the 1.5s zero-velocity "blood splatter"
-                   particles were the intended ground mark all along —
-                   they just expired as circles.  Now a real persistent
-                   decal (owner: "snow on the ground that stays 5-10s"):
-                   material-tinted, 50% per hit so a fight doesn't flush
-                   the 80-mark cap, biased along the knockback direction. */
-                spawnGroundDecal(S,
-                  m.x + Math.cos(kbAngle) * (8 + Math.random() * 15),
-                  m.y + Math.sin(kbAngle) * (8 + Math.random() * 15),
-                  m.archetype || m.type,
-                  { chance: 0.5, size: isCrit ? 7 : 5 });
+                /* ═══ v2.3.2699: THE MATERIAL IS THE HIT EFFECT ═══
+                   Two things used to be drawn here beside the debris burst:
+                   spawnWeaponHitFX's flat grey dots (the "slash"/"slice"
+                   spray, at the monster's FEET) and a soft ground decal.  The
+                   material reaction above now does both jobs -- the blade's
+                   sheet of snow / slime / blood / dust / bone, and the pieces
+                   that land and lie there for ~5 s (the owner's "stays 5-10s"
+                   mark, crisp instead of blurred) -- so both are retired
+                   rather than drawn over it. */
                 /* Screen shake */
                 S.screenShake = isCrit ? 6 : 3;
                 /* Camera punch — directional kick toward the hit */

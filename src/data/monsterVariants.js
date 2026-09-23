@@ -444,16 +444,26 @@ export function isFodderLike(arch) {
  * base (skeleton is bone even though its base brute would be stone).
  * Unknown anything falls through to goo — the least wrong default in a
  * game whose default monster is a slime. */
+/* ═══ v2.3.2699: `fx`, WHAT THE HIT LOOKS LIKE, APART FROM `kind` ═══
+ * Owner: "snow effects for snowman, slime for slime, little blood and char
+ * from fire goblin, ashy dust from mummy and bone fragments from skeleton".
+ * `kind` stays exactly what it was because it also picks the HIT SOUND
+ * (gameDisplay HIT_KEY_BY_MATERIAL, owner-chosen: "Bony is mummy", the goblin
+ * "fleshy"), and the owner's new look for those two disagrees with their
+ * sound on purpose -- a mummy SOUNDS dry and bony and LOOKS like dust.  So
+ * the look reads `fx` (rendering/hitMaterialFx.js) and falls back to `kind`:
+ * snow, goo, bone, stone, ember, plus the two new ones, 'ash' (mummy) and
+ * 'goblin' (a little blood, char and embers). */
 const HIT_MATERIALS = {
   snowman:       { kind: 'snow',  tint: 0xe8f4ff, decal: '#dbeafe' },
   skeleton:      { kind: 'bone',  tint: 0xe6ddc8, decal: '#c9bfa5' },
-  mummy:         { kind: 'bone',  tint: 0xd8cdb4, decal: '#b8ad90' },
-  fireGoblin:    { kind: 'ember', tint: 0xea580c, decal: '#7c2d12' },
+  mummy:         { kind: 'bone',  fx: 'ash', tint: 0xd8cdb4, decal: '#b8ad90' },
+  fireGoblin:    { kind: 'ember', fx: 'goblin', tint: 0xea580c, decal: '#7c2d12' },
   rockmonster:   { kind: 'stone', tint: 0x8a8a8a, decal: '#5b5b5b' },
   thornShambler: { kind: 'stone', tint: 0x6b8f4e, decal: '#3f5e2c' },
   brute:         { kind: 'stone', tint: 0x8a8a8a, decal: '#5b5b5b' },
   sentinel:      { kind: 'stone', tint: 0x9aa4b0, decal: '#565e68' },
-  fodder:        { kind: 'goo',   tint: 0x3dd497, decal: '#1f7a55' },
+  fodder:        { kind: 'goo',   tint: 0x3dd497, fxTint: 0x5ca84c /* v2.3.2699: the slime sheet's own green, sampled */, decal: '#1f7a55' },
   mossSlime:     { kind: 'goo',   tint: 0x4cbf6b, decal: '#2a6e3e' },
   blueSlime:     { kind: 'goo',   tint: 0x4c9fdc, decal: '#28567e' },
   mireWisp:      { kind: 'goo',   tint: 0x7fd0c9, decal: '#3d6f6a' },

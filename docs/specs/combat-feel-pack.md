@@ -48,6 +48,17 @@ Style boilerplate to prepend to every prompt:
 Debris sheets are neutral-toned where possible — the renderer tints goo
 variants (moss/blue/mire) from the same sheet.
 
+> **v2.3.2699 — the five `debris-*-burst-v1.webp` sheets are RETIRED; do not
+> commission them.**  None was ever made, so every hit drew the soft-dot
+> placeholder (the owner's "low resolution").  The hit reaction is now drawn
+> in code by `src/rendering/hitMaterialFx.js`: crisp per-material pixel art
+> (snow, slime, a little blood + char for the fire goblin, ashy dust for the
+> mummy, bone for the skeleton, stone, embers) with real physics, shaped by
+> the weapon (arrow jet / bolt blast / sword sheet), and its landed pieces are
+> the on-hit ground mark (the 50% on-hit decal is retired with it; kill
+> splatter still uses `groundSplatter`).  `HIT_MATERIALS` gained `fx` (the
+> look) beside `kind` (the sound).  QA: `tools/qa/mp/mp-hitmat.mjs`.
+
 Future (PR v2.3.2201+, monster attack sheets, `public/sprites/monsters/…`,
 128px frames, per-zone preload): slime `attack-{south,east}` (rears back
 compressing, snaps forward in a headbutt lunge, ~6 frames); snowman

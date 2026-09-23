@@ -140,6 +140,7 @@ import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js'; /* v2.3.1864 */
 import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
 import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2697: the staff cast's charge, release, trail and crash */
+import { HitMaterialFx } from '../hitMaterialFx.js';              /* v2.3.2699: what a monster is made of, when it is hit */
 
 /* v2.3.1784: the 8-way compass, module scope.  An identical list already
    existed as a local inside _updateRemoteBowShots; the slung shield needs it
@@ -1001,33 +1002,11 @@ for (const cfg of Object.values(EFFECT_BURSTS)) {
 }
 const FX_BURST_MS = 600;
 
-/* ═══ v2.3.2200: PER-MATERIAL HIT DEBRIS (owner: "snow that flies off the
-   monster").  Same 8x256 one-shot strip contract as EFFECT_BURSTS above;
-   queued via S._debrisBursts { monsterId, kind, tint, x, y, ang, t0 } by
-   combatHelpers.spawnHitDebris (melee sweep, both projectile impact
-   sites, and the monster_hit handler for peer/server-rolled hits).
-   Sheets are OWNER-GENERATED (the art manifest in
-   docs/specs/combat-feel-pack.md carries the exact prompts); until a
-   sheet lands, _spawnDebrisBurst falls back to a burst of tinted copies
-   of one minted soft-particle texture — sprites, never live Graphics
-   circles (owner: code-drawn effects read as placeholder).  The load
-   failures are EXPECTED while art is pending, hence the silent catch. */
-const DEBRIS_BURSTS = {
-  snow:  { frames: [], h: 72, url: '/sprites/effects/debris-snow-burst-v1.webp?v=2.3.2200' },
-  goo:   { frames: [], h: 72, url: '/sprites/effects/debris-goo-burst-v1.webp?v=2.3.2200' },
-  stone: { frames: [], h: 72, url: '/sprites/effects/debris-stone-burst-v1.webp?v=2.3.2200' },
-  bone:  { frames: [], h: 72, url: '/sprites/effects/debris-bone-burst-v1.webp?v=2.3.2200' },
-  ember: { frames: [], h: 72, url: '/sprites/effects/debris-ember-burst-v1.webp?v=2.3.2200' },
-};
-for (const cfg of Object.values(DEBRIS_BURSTS)) {
-  _fxLoad(cfg.url).then((tex) => {
-    if (!tex || !tex.source) return;
-    const fw = Math.floor(tex.source.width / 8);
-    for (let i = 0; i < 8; i++) {
-      cfg.frames.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.source.height) }));
-    }
-  }).catch(() => {}); /* art pending — placeholder branch covers it */
-}
+/* v2.3.2200 -> v2.3.2699: the per-material hit debris (owner: "snow that
+   flies off the monster") is drawn by rendering/hitMaterialFx.js now.  The
+   five DEBRIS_BURSTS sheets this table loaded were never made, so all five
+   requests 404ed on every page load and every hit drew the soft placeholder
+   below them; both are retired with it. */
 /* ═══ v2.3.2217: the thrown snowball's IMPACT ═══
    Owner-supplied art (a 4x2 grid, normalised to the repo's 8-frame strip
    with ONE shared centre and scale so the burst's expansion survives —
@@ -1140,56 +1119,11 @@ function _mixHex(a, b, t) {
     | ((ab + (bb - ab) * k) | 0);
 }
 
-/* ═══ v2.3.2504: THE FALLBACK IS THE SHIPPING EFFECT, SO MAKE IT ONE ═══
- *
- * Owner (§5.8): "Debris → use the fallback art for now.  Lane F1 makes the
- * fallback burst and decals last about 5 s and read clearly; no sheets needed."
- *
- * WHAT WAS ACTUALLY WRONG.  Not the hit path -- that has worked since
- * v2.3.2200 and fires from all three sites (melee sweep, projectile impact,
- * and the monster_hit handler for peer/server-rolled hits).  It is that NONE
- * of the five DEBRIS_BURSTS sheets above exist under public/sprites/effects/,
- * so every hit in the game has always taken the placeholder branch: six tinted
- * 32px dots, gone in 450ms.  The owner was not failing to see a broken effect,
- * he was seeing a placeholder that was never meant to be the product.
- *
- * TWO CLOCKS, NOT ONE.  The sheet path keeps 450ms, because that number is not
- * a taste call there -- it is the frame pacing of an 8-frame one-shot strip
- * (~56ms a frame), and stretching it to 5s would play a future owner-generated
- * burst at 625ms a frame, which is a slideshow.  The placeholder gets its own
- * 5s, and the two cannot be confused for each other.
- *
- * THE PLACEHOLDER GREW A GROUND PHASE, because 5s of parametric flight is not
- * a longer effect, it is chunks in low orbit: at the old 16.7ms frame units a
- * particle would be ~5400px below the monster by the end.  So a chunk now
- * flies for its own computed arc, LANDS, squashes flat and lies there for the
- * rest of the 5s before fading -- which is what "debris" means and what makes
- * the effect readable as a thing that happened rather than a flicker. */
-const DEBRIS_STRIP_MS = 450;     /* the SHEET path: 8 frames at ~56ms */
-const DEBRIS_FALLBACK_MS = 5000; /* the placeholder: fly, land, lie there */
-const DEBRIS_FADE_MS = 1400;     /* ...fading over its last stretch */
-const DEBRIS_GRAV = 0.11;        /* the 1/2-g term, in 60Hz frame units */
-const DEBRIS_PARTS = 7;
-const DEBRIS_MIN_GAP_MS = 150;   /* per-monster dedup, the _impactSpawned posture */
-const DEBRIS_MAX_BURSTS = 24;    /* hard cap, hitParticles posture */
-
-/* Minted soft-particle texture (the entityRenderer _shadowTex recipe:
-   one canvas radial gradient, minted once, tinted per use — batches). */
-let _DEBRIS_DOT_TEX = null;
-function debrisDotTex() {
-  if (_DEBRIS_DOT_TEX) return _DEBRIS_DOT_TEX;
-  const c = document.createElement('canvas');
-  c.width = 32; c.height = 32;
-  const ctx = c.getContext('2d');
-  const g = ctx.createRadialGradient(16, 16, 2, 16, 16, 15);
-  g.addColorStop(0, 'rgba(255,255,255,1)');
-  g.addColorStop(0.6, 'rgba(255,255,255,0.85)');
-  g.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 32, 32);
-  _DEBRIS_DOT_TEX = Texture.from(c);
-  return _DEBRIS_DOT_TEX;
-}
+/* v2.3.2504 -> v2.3.2699: the placeholder debris (owner §5.8: "the fallback
+   burst and decals last about 5 s and read clearly") is replaced by
+   rendering/hitMaterialFx.js, which keeps both halves of that ask -- a ~5 s
+   burst whose pieces LAND and lie there -- in crisp per-material pixel art
+   with physics, instead of seven tinted soft dots. */
 
 /* ═══ v2.3.2331: PARTICLES ARE SPRITES, NOT POLYGONS ═══
  * _updateParticles used to draw every hit particle, death-explosion particle
@@ -1856,6 +1790,11 @@ export class EffectsRenderer {
        under whatever stands in front of him (v2.3.2633).  Back (particles,
        under the player since v2.3.2636): the crash, above the pooled dots. */
     this._staffFx = new StaffCastFx(layers.player || this.projectileLayer, this.particleLayer);
+    /* v2.3.2699: the material hit reaction.  In front of a monster = the
+       particles layer (over the entities, under the player, v2.3.2636); behind
+       it = the telegraphs layer, under the entities, so a piece thrown behind
+       a monster goes behind its body. */
+    this._hitFx = new HitMaterialFx(this.particleLayer, layers.telegraphs || this.particleLayer);
 
     this.telegraphGfx = new Graphics();
     this.telegraphLayer.addChild(this.telegraphGfx);
@@ -7358,224 +7297,19 @@ export class EffectsRenderer {
   }
 
   /* ── v2.3.2200: material hit-debris bursts ──
-   * Consumes S._debrisBursts (combatHelpers.spawnHitDebris).  With a
-   * loaded sheet: one directional strip sprite rotated along the hit
-   * angle (the snowman-plume recipe).  Without: six tinted copies of
-   * the minted soft particle on parametric arcs — dt-safe because
-   * position is computed from age, not integrated per frame. */
+   * Consumes S._debrisBursts (combatHelpers.spawnHitDebris).
+   * v2.3.2699: drawn by HitMaterialFx (rendering/hitMaterialFx.js) -- crisp
+   * per-material pieces with physics, shaped by the weapon that landed the
+   * hit.  `window.__btDebris` keeps the report shape mp-feel reads (age, ms,
+   * sheet, parts, landed, alpha), plus what each burst was made of. */
   _updateDebrisBursts(S, now) {
-    const q = S && S._debrisBursts;
-    if (q && q.length) {
-      if (!this._debrisLast) { this._debrisLast = Object.create(null); this._debrisSweep = 0; }
-      for (let i = 0; i < q.length; i++) {
-        const b = q[i];
-        const last = this._debrisLast[b.monsterId || ''] || 0;
-        if (now - last < DEBRIS_MIN_GAP_MS) continue;
-        this._debrisLast[b.monsterId || ''] = now;
-        /* v2.3.2272: and forget the ones that can no longer gate anything.
-           This is a monster-id-keyed map of last-burst stamps with no prune,
-           and monster ids are never reused (spawnscale's 'sm-<zone>-x<seq>'
-           counter never resets), so it grew for the life of the page.  Tiny
-           per entry, which is exactly why it would never have been found by
-           looking -- swept here, at the only site that writes it, against the
-           same gap that is the only thing the stamps are read for. */
-        if (++this._debrisSweep > 200) {
-          this._debrisSweep = 0;
-          for (const k in this._debrisLast) {
-            if (now - this._debrisLast[k] > DEBRIS_MIN_GAP_MS * 20) delete this._debrisLast[k];
-          }
-        }
-        this._spawnDebrisBurst(b, now);
-      }
-      q.length = 0;
-    }
-    this._advanceDebrisBursts(now);
-  }
-
-  _spawnDebrisBurst(b, now) {
-    if (!this._debrisFx) this._debrisFx = [];
-    /* v2.3.2504: EVICT THE OLDEST, don't drop the newest.  At 450ms the cap
-       was nearly unreachable and returning early was free; at 5s a busy fight
-       sits on it permanently, and "return" there means the hit you just landed
-       is the one with no feedback -- the cap would silently reproduce the
-       complaint this change exists to fix.  A settled chunk from four seconds
-       ago disappearing is not something anyone can see. */
-    while (this._debrisFx.length >= DEBRIS_MAX_BURSTS) {
-      const _old = this._debrisFx.shift();
-      this._killDebrisFx(_old);
-    }
-    const cfg = DEBRIS_BURSTS[b.kind];
-    const ang = (typeof b.ang === 'number') ? b.ang : -Math.PI / 2;
-    if (cfg && cfg.frames.length) {
-      const sp = new Sprite(cfg.frames[0]);
-      sp.anchor.set(0.5, 0.85);
-      sp.rotation = ang + Math.PI / 2;   /* base art points up */
-      sp.x = b.x; sp.y = b.y;
-      sp.scale.set(cfg.h / 256);
-      this.particleLayer.addChild(sp);
-      this._debrisFx.push({ strip: sp, cfg, t0: now, ms: DEBRIS_STRIP_MS });
-    } else {
-      const parts = [];
-      const tint = b.tint || 0xffffff;
-      for (let i = 0; i < DEBRIS_PARTS; i++) {
-        /* TWO SPRITES A CHUNK, and the second one is not decoration.  This
-           mark lands on town cobble, desert sand, grass and snow, and a
-           material tint on the ground that matches it is invisible -- goo
-           green on grass is the owner's exact case, and TRAPS §21 names this
-           family of false negative.  Every other mark in this renderer carries
-           a dark keyline for the same reason; a chunk gets one as an
-           under-sprite because a tinted Sprite has only one colour to give.
-           Same texture as the chunk, so both still batch. */
-        const rim = new Sprite(debrisDotTex());
-        rim.anchor.set(0.5, 0.5);
-        rim.tint = 0x14181A;
-        rim.x = b.x; rim.y = b.y;
-        const sp = new Sprite(debrisDotTex());
-        sp.anchor.set(0.5, 0.5);
-        sp.tint = tint;
-        sp.x = b.x; sp.y = b.y;
-        /* 0.55..1.15, up from 0.3..0.7: the dot texture is a 32px soft
-           particle, so the old range drew chunks 10-22px across at world
-           scale -- under a fingertip on the phone this is played on. */
-        const sc = 0.55 + Math.random() * 0.6;
-        sp.scale.set(sc);
-        rim.scale.set(sc * 1.32);
-        const a = ang + (Math.random() - 0.5) * 1.2;
-        const spd = 1.6 + Math.random() * 2.6;
-        const vx = Math.cos(a) * spd;
-        const vy = Math.sin(a) * spd - 1.9;
-        /* WHERE THE GROUND IS.  The burst is queued at the monster's BODY
-           CENTRE (spawnHitDebris subtracts monsterBodyOffsetY), and the feet
-           are that offset below -- 23 world px on a slime, 60 on a skeleton.
-           The renderer is not handed the archetype, so rather than guess at a
-           table it cannot see, each chunk falls a fixed 16..40px: far enough to
-           read as landing, never so far that it lands behind the monster on
-           the tallest shape.  The chunks scatter over the base of the body,
-           which is where a chip off a monster belongs.
-           Landing time is SOLVED, not stepped: 0.11t^2 + vy*t = gy, so the
-           rest pose is one sqrt at spawn instead of a per-frame integration
-           that would drift with the frame rate (the same dt-safety the
-           parametric flight was written for). */
-        const gy = 16 + Math.random() * 24;
-        const tLand = (-vy + Math.sqrt(vy * vy + 4 * DEBRIS_GRAV * gy)) / (2 * DEBRIS_GRAV);
-        parts.push({ sp, rim, x0: b.x, y0: b.y, vx, vy, sc, gy, tLand,
-          xLand: b.x + vx * tLand, yLand: b.y + gy,
-          /* A chunk that has landed lies FLAT -- squashed on y, a touch wider
-             on x -- which is the same "this is on the ground" cue the splatter
-             sprites use.  Deterministic per chunk so it does not shimmer. */
-          spin: (Math.random() - 0.5) * 0.9 });
-      }
-      /* EVERY RIM UNDER EVERY CHUNK, not each rim under its own chunk.  Added
-         one pair at a time, chunk 1's rim lands on top of chunk 0's body and
-         the burst muddies itself; Pixi draws in child order and there is no
-         z within a layer to lean on. */
-      for (const p of parts) this.particleLayer.addChild(p.rim);
-      for (const p of parts) this.particleLayer.addChild(p.sp);
-      this._debrisFx.push({ parts, t0: now, ms: DEBRIS_FALLBACK_MS });
-    }
-  }
-
-  /* v2.3.2504: one disposer, because the cap eviction above and the expiry
-     sweep below both need it and a second copy would be the one that forgets
-     the rim sprite. */
-  _killDebrisFx(fx) {
-    if (!fx) return;
-    const kill = (sp) => {
-      if (!sp || sp.destroyed) return;
-      if (sp.parent) sp.parent.removeChild(sp);   /* Pixi v8 zombie defence */
-      sp.destroy();
-    };
-    if (fx.strip) kill(fx.strip);
-    if (fx.parts) for (const p of fx.parts) { kill(p.sp); kill(p.rim); }
-  }
-
-  /* v2.3.2504: what debris is on screen right now.  The bursts are pooled
-     sprites with no DOM and no stable pixels -- a screenshot can say "there is
-     something green near the slime" and nothing at all about how long it
-     lasts, which is the entire ask (§5.8: "about 5 s ... read clearly").  So
-     the renderer reports its own queue and mp-feel asserts the lifetime and
-     the landing off that, the same posture as __btAtkMark and
-     __btMonsterHitReact. */
-  _debrisReport(now) {
-    const list = this._debrisFx || [];
-    return list.map((fx) => ({
-      age: now - fx.t0,
-      ms: fx.ms || DEBRIS_STRIP_MS,
-      sheet: !!fx.strip,
-      parts: fx.parts ? fx.parts.length : 0,
-      /* How many chunks have finished their arc and are lying on the ground.
-         "Landed" is the half of the effect that makes 5s legible rather than
-         absurd, and it is invisible to every other measure. */
-      landed: fx.parts
-        ? fx.parts.filter((p) => (now - fx.t0) / 16.7 >= p.tLand).length : 0,
-      alpha: fx.parts && fx.parts[0] && fx.parts[0].sp && !fx.parts[0].sp.destroyed
-        ? +fx.parts[0].sp.alpha.toFixed(3) : null,
-    }));
-  }
-
-  _advanceDebrisBursts(now) {
+    if (!this._hitFx) return;
     if (typeof window !== 'undefined' && !window.__btDebris) {
       const _selfD = this;
-      window.__btDebris = function () { return _selfD._debrisReport(Date.now()); };
+      window.__btDebris = function () { return _selfD._hitFx ? _selfD._hitFx.report(Date.now()) : []; };
+      window.__btHitFx = function () { return _selfD._hitFx ? _selfD._hitFx.probe() : null; };
     }
-    const list = this._debrisFx;
-    if (!list || !list.length) return;
-    for (let i = list.length - 1; i >= 0; i--) {
-      const fx = list[i];
-      const age = now - fx.t0;
-      /* v2.3.2504: the burst carries its OWN lifetime.  A sheet burst is the
-         pacing of its 8 frames; a placeholder burst is 5s of flight and
-         settle.  One shared constant could only ever be right for one of them.
-         `|| DEBRIS_STRIP_MS` covers a burst queued by an older frame across a
-         hot reload rather than leaving it immortal. */
-      const ms = fx.ms || DEBRIS_STRIP_MS;
-      if (age >= ms) {
-        this._killDebrisFx(fx);
-        list.splice(i, 1);
-        continue;
-      }
-      const t01 = age / ms;
-      if (fx.strip && !fx.strip.destroyed) {
-        const fi = Math.min(7, Math.floor(t01 * 8));
-        fx.strip.texture = fx.cfg.frames[fi];
-        fx.strip.alpha = t01 > 0.8 ? (1 - t01) / 0.2 : 1;
-      } else if (fx.parts) {
-        /* Parametric flight: x = x0 + v·t, y adds gravity's ½g·t² -- computed
-           from AGE, never integrated, so it is identical at 30fps and 120. */
-        const tf = age / 16.7;   /* 60Hz-frame units */
-        /* One fade for the whole burst, over its last stretch.  Holding full
-           alpha until then is the point: the owner's complaint was that the
-           mark was gone before he looked at it, and a chunk that starts fading
-           immediately is a 5s effect that reads as a 1s one. */
-        const fade = age > (ms - DEBRIS_FADE_MS)
-          ? Math.max(0, (ms - age) / DEBRIS_FADE_MS) : 1;
-        for (const p of fx.parts) {
-          if (!p.sp || p.sp.destroyed) continue;
-          let px, py, sx, sy;
-          if (tf < p.tLand) {
-            px = p.x0 + p.vx * tf;
-            py = p.y0 + p.vy * tf + DEBRIS_GRAV * tf * tf;
-            sx = p.sc; sy = p.sc;
-          } else {
-            /* LANDED.  Frozen where the arc put it, squashed flat so it reads
-               as lying on the ground rather than hanging in the air, and given
-               its own small rotation so seven identical dots do not look like
-               a pattern. */
-            px = p.xLand; py = p.yLand;
-            sx = p.sc * 1.15; sy = p.sc * 0.46;
-            if (p.sp.rotation !== p.spin) { p.sp.rotation = p.spin; p.rim.rotation = p.spin; }
-          }
-          p.sp.x = px; p.sp.y = py;
-          p.sp.alpha = fade;
-          p.sp.scale.set(sx, sy);
-          if (p.rim && !p.rim.destroyed) {
-            p.rim.x = px; p.rim.y = py;
-            p.rim.alpha = fade * 0.55;
-            p.rim.scale.set(sx * 1.32, sy * 1.32);
-          }
-        }
-      }
-    }
+    this._hitFx.update(S, now);
   }
 
   /* ── Gather Nodes ──
@@ -10989,14 +10723,8 @@ export class EffectsRenderer {
       }
       this._splatPool = [];
     }
-    if (this._debrisFx) {
-      for (const fx of this._debrisFx) {
-        const kill = (sp) => { if (sp && !sp.destroyed) { if (sp.parent) sp.parent.removeChild(sp); sp.destroy(); } };
-        if (fx.strip) kill(fx.strip);
-        if (fx.parts) for (const p of fx.parts) kill(p.sp);
-      }
-      this._debrisFx = [];
-    }
+    /* v2.3.2699: the material hit reaction's pieces (pooled; hidden, not destroyed) */
+    if (this._hitFx) this._hitFx.clear();
     /* v2.3.2217: and the snowball bursts. */
     if (this._snowballBursts) {
       for (const fx of this._snowballBursts) {

@@ -1015,6 +1015,14 @@ export var BroTown = function BroTown(_ref0) {
     addLifeSkillXp: addLifeSkillXp,
     awardSkillXp: awardSkillXp,
     createMonster: createMonster,
+    /* v2.3.2699: warm a zone's monster art from wherever the player stands,
+       so a scenario can put a snowman, a fire goblin or a mummy beside a
+       client-local test target in town and look at how it takes a hit
+       (mp-hitmat).  The same loader zone entry awaits (preloadZoneAssets); a
+       hook that mutates the world, same posture as createMonster above. */
+    preloadZoneArt: function preloadZoneArt(zoneId) {
+      return import('@/rendering/preloadAnimations.js').then(function (m) { return m.preloadZoneAssets(zoneId); });
+    },
     createDefaultLifeSkills: createDefaultLifeSkills,
     migrateLifeSkills: migrateLifeSkills,
     spawnMonstersForZone: spawnMonstersForZone,

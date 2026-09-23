@@ -4265,3 +4265,22 @@ error is 77px on one frame and 3px on the next.
 every trait at once, is correcting those five `body-tops` entries -- but hats,
 hair and the hair-clip masks were all dialled in against the current values,
 so it needs its own before/after pass over every trait, not a drive-by edit.
+
+## 101. A paused page clock trips the dark-screen watchdog (v2.3.2699)
+
+**Tempting:** to record an effect frame by frame, install Playwright's fake
+clock, `pauseAt`, and step it with `runFor` between screenshots -- the game only
+advances when you say so, so every frame is exact.
+
+**Wrong without one more line.** BroTown.jsx's dark-screen watchdog samples the
+canvas lit-percentage on its own schedule. With the page clock paused between
+steps it reads a black buffer, records `watchdog-dark ... strike N`, and on the
+second strike calls `window._rebuildRenderer` -- which drops per-zone art. Seen
+while capturing the v2.3.2699 hit reactions: the first snowman rendered, every
+later one fell back to the emoji circle, and one "resting" frame was the
+recovery overlay. It looks like a rendering bug in the feature under test.
+
+**The rule:** before `page.clock.install()`, switch the watchdog off for that
+page -- `S.__wdEverLit = true; S.__wdNext = 1e15; S.__wdDark = 0;` -- and use
+`page.clock.fastForward(ms)` (not `runFor`) to skip long idle stretches, since
+`runFor` renders every intermediate frame in software GL (minutes per clip).

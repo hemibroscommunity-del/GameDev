@@ -32,7 +32,7 @@ import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armou
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
-import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */ } from '@/game/combatHelpers.js';
+import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc, spawnHitDebris /* v2.3.2200; v2.3.2699: its decal twin is retired here */ } from '@/game/combatHelpers.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield */
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes */
 import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
@@ -1872,9 +1872,20 @@ export function processGameEvent(type, payload, S, deps) {
                     if (_dbAtk && typeof _dbAtk.x === 'number') {
                       _dbAng = Math.atan2((hitM.y || 0) - _dbAtk.y, (hitM.x || 0) - _dbAtk.x);
                     }
-                    spawnHitDebris(S, hitM, _dbAng);
-                    spawnGroundDecal(S, hitM.x || hitM.renderX || 0, hitM.y || hitM.renderY || 0,
-                      hitM.archetype || hitM.type, { chance: 0.35, size: 5 });
+                    /* v2.3.2699: the worker names the slot that dealt it
+                       (v2.3.2232), which is the weapon the reaction needs:
+                       a teammate's arrow punches, their bolt blasts, their
+                       blade slices (hitMaterialFx).  A splash is a bolt's
+                       lighter echo.  Abilities, bursts and thorns carry no
+                       weapon of their own and take the generic spray.  The
+                       soft decal is retired: the pieces that land are the
+                       mark now. */
+                    var _dbW = payload.splash ? 'splash'
+                      : (payload.ability || payload.burst || payload.thorns) ? null
+                      : payload.slot === 'melee' ? 'sword'
+                      : payload.slot === 'ranged' ? 'arrow'
+                      : payload.slot === 'staff' ? 'bolt' : null;
+                    spawnHitDebris(S, hitM, _dbAng, { weapon: _dbW, crit: !!payload.isCrit });
                   }
                   /* v2.3.1124: ice-burst impact flash on snowmen for PEER hits
                      only -- our own hits stamp _impactAt at the local melee/
