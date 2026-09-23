@@ -23,7 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  sheen: () => import('./mp-sheen.mjs'), /* v2.3.2736: a permanent soft shine on metal behind ?sheen=1 -- off by default, on every frame when on, copper stays copper, the jogging full-set knight too; pictures and its cost */
+  sheen: () => import('./mp-sheen.mjs'), /* v2.3.2750: a permanent soft shine on metal behind ?sheen=1 -- off by default, on every frame when on, copper stays copper, the jogging full-set knight too; pictures and its cost */
   arrowsnap: () => import('./mp-arrowsnap.mjs'), /* v2.3.2731: one arrow in eight snaps on what it hits -- same damage, a different picture */
   monstershots: () => import('./mp-monstershots.mjs'), /* v2.3.2732: slime goo in the thrower's colour, goblin fire, drawn in code */
   propfx: () => import('./mp-propfx.mjs'), /* v2.3.2730: a hit on a prop -- the arrow stands in the rock, the bolt crashes on it, the sword cuts it, and a peer sees all three */

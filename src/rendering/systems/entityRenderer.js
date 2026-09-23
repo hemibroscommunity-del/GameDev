@@ -10052,7 +10052,7 @@ export class EntityRenderer {
             const _fsTintR = _fsR ? _fullsetTint(other.equip && other.equip.chest) : 0xffffff;
             if (spriteBody.tint !== _fsTintR) spriteBody.tint = _fsTintR;
           }
-          display._fullsetOn = !!_fsR;   /* v2.3.2736: see the local path */
+          display._fullsetOn = !!_fsR;   /* v2.3.2750: see the local path */
           /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
              v2.3.1116: guarded (see local path) -- a throw here must not freeze the loop. */
           try {
@@ -11553,7 +11553,7 @@ export class EntityRenderer {
              remote path above for why it is cleared rather than left set). */
           const _fsTint = _fsT ? _fullsetTint(getEquip('chest')) : 0xffffff;
           if (spriteBody.tint !== _fsTint) spriteBody.tint = _fsTint;
-          display._fullsetOn = !!_fsT;   /* v2.3.2736: the metal shine finds the armour on the body sprite */
+          display._fullsetOn = !!_fsT;   /* v2.3.2750: the metal shine finds the armour on the body sprite */
         } catch (e) { _bodyTex = tex; display._fullsetOn = false; }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).

@@ -58,7 +58,7 @@ export class LightFx {
     this._wasOn = false;
     this.lastMs = 0;
     this.zone = null;
-    this.sheenSun = null;   /* v2.3.2736: QA override of the sheen's sun direction */
+    this.sheenSun = null;   /* v2.3.2750: QA override of the sheen's sun direction */
   }
 
   clear() {
@@ -93,7 +93,7 @@ export class LightFx {
     this.lastMs = performance.now() - t0;
   }
 
-  /* v2.3.2736: the light the permanent sheen is lit by -- from the side the
+  /* v2.3.2750: the light the permanent sheen is lit by -- from the side the
      zone's sun is on (the opposite of where its shadows fall), dimmer at
      night and in a zone's deep gloom but never gone: metal still catches the
      moon.  A zone with no sun gets a sheen with no direction. */
