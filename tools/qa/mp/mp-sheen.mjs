@@ -152,14 +152,30 @@ async function measureSheen(P, box) {
   const off = await shot();
   await setSheen(P, true);
   const now = await shot();
+  /* ═══ v2.3.2781: THE SUN SHOTS ARE TAKEN WITH FORM SHADING OFF ═══
+     v2.3.2767 (form shading, #715) darkens every figure toward its feet in the
+     vertex colours, BEFORE the sheen filter reads the pixels -- so on the lower
+     body less of the steel passes the sheen's highlight test, both suns add
+     less, and the left/right difference there shrinks toward the rounding of
+     one luma step.  Measured on this same frame: the left third's share went
+     0.78 -> 0.62 with shading on, the right third stayed 1.0.  This check is
+     about the SHEEN following the sun; form shading has its own suite
+     (mp-formshade).  So the three sun shots isolate the sheen, and every
+     other number here -- brighter than off, copper stays warm -- is still
+     read with shading on, as a player sees it. */
+  await P.page.evaluate(() => { window.__btShadeOff = true; });
+  await setSheen(P, false);
+  const flatOff = await shot();
+  await setSheen(P, true);
   await setSun(P, [-1, 0]);
   const fromLeft = await shot();
   await setSun(P, [1, 0]);
   const fromRight = await shot();
   await setSun(P, null);
+  await P.page.evaluate(() => { window.__btShadeOff = false; });
   await thaw(P);
-  return { now: added(off, now), fromLeft: added(off, fromLeft), fromRight: added(off, fromRight),
-    swing: sunSwing(off, fromLeft, fromRight) };
+  return { now: added(off, now), fromLeft: added(flatOff, fromLeft), fromRight: added(flatOff, fromRight),
+    swing: sunSwing(flatOff, fromLeft, fromRight) };
 }
 
 /* Per pixel, which sun lit it more.  On the figure's left third most of its
