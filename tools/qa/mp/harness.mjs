@@ -1016,6 +1016,59 @@ export function equipWeapon(P, wantType, stashSlot, activeSlot) {
  * required'}` with a 400, which is easy to skim past as a transport failure.
  * They exist so a scenario does not have to play the tutorial to reach a
  * gated zone, and they are the same buttons the owner taps in the test panel. */
+/* ═══ v2.3.2700: OPEN EVERY ZONE AND WARP, THROUGH THE REAL TEST PANEL ═══
+ * mp-zonedecor carries its own copy of this dance; mp-propshots and
+ * mp-shieldbonk share this one rather than make it three.  Long-press the zone
+ * title for the test panel, save the admin key, "Finish all quests" (which
+ * opens every zone on the worker), then tap the destination.  Returns the
+ * worker's view of the zones so a caller can assert the unlock landed. */
+export async function warpToZone(P, { wsPort, label, zoneId, settleMs = 3500 }) {
+  const holdTitle = (ms) => P.page.evaluate(async (hold) => {
+    const el = document.querySelector('.bt-zone-header__title');
+    if (!el) return 'no title element';
+    const r = el.getBoundingClientRect();
+    const opts = { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1, pointerType: 'touch' };
+    el.dispatchEvent(new PointerEvent('pointerdown', opts));
+    await new Promise((res) => setTimeout(res, hold));
+    el.dispatchEvent(new PointerEvent('pointerup', opts));
+    return 'ok';
+  }, ms);
+  const panelUp = () => P.page.evaluate(() =>
+    !!Array.from(document.querySelectorAll('strong')).find((n) => n.textContent === 'Test panel'));
+  const tap = (text) => P.page.evaluate((t) => {
+    const b = Array.from(document.querySelectorAll('button')).find((n) => (n.textContent || '').indexOf(t) >= 0);
+    if (!b) return false;
+    b.click();
+    return true;
+  }, text);
+  const openPanel = async () => {
+    if (await panelUp()) return true;
+    await holdTitle(1500);
+    await P.page.waitForTimeout(900);
+    return panelUp();
+  };
+  await openPanel();
+  await P.page.evaluate((k) => {
+    const inp = document.querySelector('input[type="password"]');
+    if (!inp) return;
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    set.call(inp, k);
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+  }, ADMIN_KEY);
+  await tap('Save key on this device');
+  await P.page.waitForTimeout(1500);
+  await tap('Finish all quests');
+  await P.page.waitForTimeout(2000);
+  const myId = await readState(P, (S) => S.myId);
+  const seeded = await (await fetch('http://127.0.0.1:' + wsPort + '/api/admin/dev/state?id=' + encodeURIComponent(myId),
+    { headers: { Authorization: 'Bearer ' + ADMIN_KEY } })).json();
+  await openPanel();
+  await tap(label);
+  await waitFor(P, (S) => S.currentZone, (z) => z === zoneId, { timeout: 90000, label: 'arrive in ' + zoneId });
+  await P.page.waitForTimeout(settleMs);
+  return seeded;
+}
+
 export async function devOp(wsPort, op, playerId, body) {
   const res = await fetch(`http://127.0.0.1:${wsPort}/api/admin/dev/${op}`, {
     method: 'POST',

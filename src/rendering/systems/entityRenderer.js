@@ -7598,6 +7598,11 @@ export class EntityRenderer {
                   h: Math.round(b.height) };
               } catch (e) { return null; }
             })(),
+            /* v2.3.2700: is the painted stun star ring drawn over him?  The
+               shield bonk's "second of confusion" IS this ring (the Shield Bash
+               stun, reused), so mp-shieldbonk asserts on what is drawn rather
+               than on the _stunUntil field that should cause it. */
+            stunStars: !!(d._stunStarSprite && !d._stunStarSprite.destroyed && d._stunStarSprite.visible),
           };
         };
       }
@@ -9319,7 +9324,47 @@ export class EntityRenderer {
              centre its lower stars sit on the monster's own level label.
              Measured against the slime (the tallest common early monster, a
              96px body) rather than nudged. */
-          ss.y = -size - 56;
+          /* ═══ v2.3.2700: ...AND NOW IT CIRCLES THE HEAD ═══
+             -size - 56 was measured when a monster carried only a level label.
+             Monsters have since grown a nameplate and an HP bar, and on a
+             snowman that fixed offset lands the ring exactly between the two:
+             screenshots of the shield bonk's "second of confusion" showed the
+             ring wedged under the HP bar with the plate covering its lower
+             stars -- drawn, "visible" to every probe, and nearly invisible to
+             a person.  So the ring is anchored on the body's own DRAWN top and
+             sits around the head, the cartoon convention for dizzy, which is
+             clear of the whole UI stack above it.  Measured each frame from
+             the sprite's bounds because the body's height is per-monster and
+             per-animation (a snowman rising out of his pile is shorter on the
+             first emerge frames than standing).  Only while stunned, so the
+             getBounds cost is paid by one monster for a second, not by the
+             zone.  No sprite body (the procedural fallback): the old anchor. */
+          let _ringY = -size - 56;
+          const _sb = display._spriteBody;
+          if (_sb && _sb.visible && !_sb.destroyed) {
+            try {
+              const gb = _sb.getBounds();
+              const lp = display.toLocal({ x: gb.x + gb.width / 2, y: gb.y });
+              if (lp && Number.isFinite(lp.y)) _ringY = lp.y + 13;   /* the ring's top ~4px above the head */
+            } catch (e) { /* keep the old anchor */ }
+          }
+          ss.y = _ringY;
+          /* ...and kept IN FRONT of him.  DEFENSIVE, not a fix for an observed
+             failure -- say so, because the first version of this comment
+             claimed one.  The ring is added to the container the first time
+             he is stunned, so anything appended to it later would draw over
+             the ring, and now that the ring circles the head rather than
+             floating above it, that would cover it.  What looked like exactly
+             that in the bonk screenshots (stars in the first frame, gone in
+             the rest) was the CAMERA: page.screenshot takes ~2s a frame on the
+             QA box, so the "150/260/900ms" frames were really taken at ~2, 4
+             and 6s, after the 1.6s daze.  In-page samples showed the ring
+             drawn, on top of the body (child 4 of the container, body child
+             1), the whole time.  Re-appending an existing child only moves it
+             to the end, so this costs one comparison a frame while stunned. */
+          if (ss.parent === display && display.children[display.children.length - 1] !== ss) {
+            display.addChild(ss);
+          }
           ss.visible = true;
         } else if (display._stunStarSprite && !display._stunStarSprite.destroyed) {
           display._stunStarSprite.visible = false;

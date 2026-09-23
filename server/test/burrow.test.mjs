@@ -14,6 +14,7 @@
  */
 import { GameRoom } from '../src/index.js';
 import { BURROW, BURROW_ARCH, SLIME_BURST, TELEGRAPH } from '../src/telegraph.js';
+import { BLOCK_COSTS_STAMINA } from '../src/data.js'; /* v2.3.2700: whether the bonk's blocked slam should cost stamina */
 
 const mockState = {
   storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
@@ -50,6 +51,11 @@ function arm(distance) {
   snowman.spawnX = snowman.x; snowman.spawnY = snowman.y;
   snowman._burPhase = null; snowman._burUntil = 0; snowman._burCd = 0; snowman._burFloor = 0;
   snowman._invulnUntil = 0; snowman._bwUntil = 0; snowman.atkCd = 0;
+  /* v2.3.2700: and the daze.  A shield bonk (section 4's facing-shield touch is
+     one) stuns him for EMERGE + BONK_DAZE_MS, and a stunned snowman correctly
+     cannot start a burrow -- so without this every section after 4 began with
+     a dazed snowman and failed at "dig" for a reason none of them is about. */
+  snowman._stunUntil = 0;
   ps.dead = false; ps.dying = false; ps.z = 'frost'; ps.hp = ps.maxHp;
   room.eventBuffer.length = 0;
 }
@@ -435,6 +441,116 @@ const burstPhases = () => room.eventBuffer
   slime.alive = false; slime.respawnAt = Date.now() - 1;
   room._tickMonsters();
   check('burst: respawn clears the fuse', !slime._burstUntil, slime._burstUntil);
+}
+
+// ── v2.3.2700: A SHIELD BONKS HIM UP ──
+// Owner: "if shield is up during snowman burrow ... it makes the snowman pop up
+// early with a little powder and a second of confusion for the enemy like it
+// just slammed into your shield."
+// Driven through the REAL tick every time, never by calling _resolveBurrow by
+// hand: v2.3.2656's snowball bug hid for four commits behind a test that
+// re-typed a call site's arguments instead of running it.
+{
+  const burrowEvents = () => room.eventBuffer
+    .filter((e) => e.type === 'monster_ability' && e.payload.ability === 'burrow' && e.payload.monsterId === snowman.id);
+  const attacks = () => room.eventBuffer
+    .filter((e) => e.type === 'monster_attack' && e.payload.monsterId === snowman.id);
+
+  arm(); room._tickMonsters(); toPile();
+  const floor = snowman._burFloor;
+  check('bonk fixture: in the pile, with the floor still ahead',
+    snowman._burPhase === 'pile' && floor > Date.now(), { phase: snowman._burPhase, floor, now: Date.now() });
+
+  /* Shield up and facing him, and he reaches it.  His own touch clock is NOT
+     due, on purpose: raising the shield while he is already grinding into you
+     must bonk him at once, not a second later. */
+  ps.hp = ps.maxHp; ps.blocking = true; ps.ba = Math.PI;      /* shield faces west */
+  snowman.x = ps.x - 10; snowman.y = ps.y;                    /* he is 10px west */
+  snowman._burContactNextAt = Date.now() + 99999;
+  if (typeof ps.stamina === 'number') ps.stamina = ps.maxStamina || 100;
+  const stamBefore = ps.stamina;
+  room.eventBuffer.length = 0;
+  const t0 = Date.now();
+  room._tickMonsters();
+  const em = burrowEvents().find((e) => e.payload.phase === 'emerge');
+  const blk = attacks();
+
+  check('bonk: touching a facing shield surfaces him AT ONCE', snowman._burPhase === 'emerge', snowman._burPhase);
+  check('bonk: ...ahead of the pile floor, which a bonk overrides', Date.now() < floor, { now: Date.now(), floor });
+  check('bonk: ...and he is hittable again -- the pile immunity ended with it',
+    room._monsterDamageable(snowman) === true, { invulnUntil: snowman._invulnUntil });
+  check('bonk: the player takes no damage', ps.hp === ps.maxHp, { hp: ps.hp, max: ps.maxHp });
+  check('bonk: the slam lands as an ordinary BLOCKED touch (the game\'s own "Blocked!")',
+    blk.length === 1 && blk[0].payload.blocked === true && blk[0].payload.dmgTaken === 0,
+    blk.map((e) => e.payload));
+  check('bonk: ...costing exactly what a blocked touch always cost, no more',
+    BLOCK_COSTS_STAMINA
+      ? (ps.stamina < stamBefore && blk[0] && blk[0].payload.staminaDrain === stamBefore - ps.stamina)
+      : ps.stamina === stamBefore,
+    { stamBefore, stamina: ps.stamina, drain: blk[0] && blk[0].payload.staminaDrain, BLOCK_COSTS_STAMINA });
+  check('bonk: the emerge event says so, for the target, with the daze length',
+    !!em && em.payload.bonk === true && em.payload.targetId === 'p1'
+      && em.payload.dazeMs === BURROW.EMERGE_MS + BURROW.BONK_DAZE_MS && em.payload.ms === BURROW.EMERGE_MS,
+    em && em.payload);
+  check('bonk: ...and puts the powder BETWEEN him and the shield',
+    !!em && em.payload.px > snowman.x && em.payload.px < ps.x && Math.abs(em.payload.py - ps.y) <= 1,
+    { px: em && em.payload.px, py: em && em.payload.py, him: snowman.x, player: ps.x });
+  check('bonk: exactly one emerge -- the bonk IS the surface, not a second one after it',
+    burrowEvents().filter((e) => e.payload.phase === 'emerge').length === 1,
+    burrowEvents().map((e) => e.payload.phase));
+  check('bonk: he is stunned from the bonk through the emerge AND the daze',
+    snowman._stunUntil >= t0 + BURROW.EMERGE_MS + BURROW.BONK_DAZE_MS
+      && snowman._stunUntil <= Date.now() + BURROW.EMERGE_MS + BURROW.BONK_DAZE_MS,
+    { stunUntil: snowman._stunUntil, t0, want: BURROW.EMERGE_MS + BURROW.BONK_DAZE_MS });
+
+  /* The emerge plays out; the daze must still hold him afterwards. */
+  snowman._burUntil = Date.now() - 1;
+  room._tickMonsters();
+  check('daze: the move is over once the emerge finishes', snowman._burPhase === null, snowman._burPhase);
+  ps.blocking = false; ps.ba = null;
+  const x0 = snowman.x, y0 = snowman.y;
+  room.eventBuffer.length = 0;
+  for (let i = 0; i < 10; i++) room._tickMonsters();
+  check('daze: while dazed he neither moves nor starts a swing, right beside the player',
+    snowman.x === x0 && snowman.y === y0 && !snowman._bwUntil && attacks().length === 0,
+    { moved: [snowman.x - x0, snowman.y - y0], bwUntil: snowman._bwUntil, attacks: attacks().length });
+  /* ...and the daze is not permanent: when it lapses he fights again. */
+  snowman._stunUntil = Date.now() - 1; snowman.atkCd = 0;
+  for (let i = 0; i < 5; i++) room._tickMonsters();
+  check('daze: when it ends he fights again', !!snowman._bwUntil || attacks().length > 0,
+    { bwUntil: snowman._bwUntil, attacks: attacks().length });
+
+  /* CONTROL: the same touch with the shield facing AWAY.  No bonk, and the
+     touch hurts as it always has -- "shield up" means facing it, the same as
+     for every other block. */
+  arm(); room._tickMonsters(); toPile();
+  ps.hp = ps.maxHp; ps.blocking = true; ps.ba = 0;           /* shield faces EAST; he is west */
+  snowman.x = ps.x - 10; snowman.y = ps.y;
+  snowman._burContactNextAt = 0;
+  room.eventBuffer.length = 0;
+  room._tickMonsters();
+  check('control: a shield facing AWAY does not bonk him', snowman._burPhase === 'pile', snowman._burPhase);
+  check('control: ...and his touch lands', ps.hp < ps.maxHp, { hp: ps.hp, max: ps.maxHp });
+  check('control: ...and no daze', !(snowman._stunUntil > Date.now()), snowman._stunUntil);
+
+  /* CONTROL: shield up and facing him, but he has not reached it yet.  The
+     bonk is a SLAM -- nothing happens until he touches the shield. */
+  arm(); room._tickMonsters(); toPile();
+  ps.hp = ps.maxHp; ps.blocking = true; ps.ba = Math.PI;
+  snowman.x = ps.x - (BURROW.CONTACT_PX + 40); snowman.y = ps.y;
+  room.eventBuffer.length = 0;
+  room._tickMonsters();
+  check('control: a raised shield does nothing until he actually reaches it',
+    snowman._burPhase === 'pile' && !burrowEvents().some((e) => e.payload.bonk), snowman._burPhase);
+
+  /* CONTROL: no shield at all -- the pile runs on and hurts, as before. */
+  ps.blocking = false; ps.ba = null;
+  snowman.x = ps.x - 10; snowman.y = ps.y; snowman._burContactNextAt = 0;
+  ps.hp = ps.maxHp;
+  room._tickMonsters();
+  check('control: with no shield the pile keeps grinding and hurts', snowman._burPhase === 'pile' && ps.hp < ps.maxHp,
+    { phase: snowman._burPhase, hp: ps.hp });
+  ps.blocking = false; ps.ba = null;
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
