@@ -85,7 +85,7 @@
     "northeast": 1,
     "north": 1
   },
-  "earCover": "v2.3.2650: southwest/northeast carry fur painted over the bro's own ear by tools/species-cover-ears.mjs, baked in Monkey Brown (85,56,23) -- the species must pin that skin. Re-run the tool after any re-import.",
+  "earCover": "v2.3.2650: southwest/northeast carry fur painted over the bro's own ear by tools/species-cover-ears.mjs, baked in Monkey Brown; v2.3.2655: the same pixels ship as bare skin in <dir>.fur.png, recoloured with the player's skin (see meta.fur). Re-run both tools after any re-import.",
   "poseNudge": {
     "jog": {
       "east": [
@@ -1701,5 +1701,22 @@
       "south": 1.05
     }
   },
-  "poseFitNote": "v2.3.2652: poseFit -- scaleByPose is the MEASURED head-width ratio against stand (median over the strip, 8-20px below the crown), so _placeTrait skips its legacy by-eye multipliers (mine 1.21, fish 0.88, jog-east 0.67 x 1.40 tune). Mine 50/44.5 = 1.12, fish 46/44 = 1.05, jog-east 42/45 = 0.93; jog-south and pickup measure 1.05 but that is one 2px step of the 128px sheet, left at 1."
+  "poseFitNote": "v2.3.2652: poseFit -- scaleByPose is the MEASURED head-width ratio against stand (median over the strip, 8-20px below the crown), so _placeTrait skips its legacy by-eye multipliers (mine 1.21, fish 0.88, jog-east 0.67 x 1.40 tune). Mine 50/44.5 = 1.12, fish 46/44 = 1.05, jog-east 42/45 = 0.93; jog-south and pickup measure 1.05 but that is one 2px step of the 128px sheet, left at 1.",
+  "fur": {
+    "base": [
+      "southwest",
+      "northeast"
+    ],
+    "frames": [
+      "hit-east",
+      "hit-north",
+      "hit-northeast",
+      "jog-northeast",
+      "fish-south",
+      "hit-south",
+      "jog-southwest",
+      "hit-southwest"
+    ],
+    "note": "v2.3.2655: <dir>.fur.png / frames/<key>.fur.png = the fur as BARE SKIN (default tan). Recolour like the body (playerSkins _isSkin/_retint) and draw over the piece; the muzzle and ears are never recoloured."
+  }
 }

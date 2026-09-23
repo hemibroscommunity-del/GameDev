@@ -339,11 +339,26 @@ its own reviewed job.
    `spriteBody.x + (x - 128) * s * m`, `spriteBody.y + (y - 128) * s`, scale
    `(s * m, s)` where `s = |bodyScale|` and `m` the mirror sign. No anchor,
    nudge or pose scale: it is already in body space, and mirrors with the body.
-3. Preload the strips with the piece (CLAUDE.md animation-preloading law:
-   register them in `preloadWorldAnimations`). They are 40KB on disk,
-   ~1.4MB of GPU as 10 textures.
-4. The fur is baked in Monkey Brown (85,56,23): the species must pin that
-   skin tone.
+3. **The fur layer (v2.3.2655) — this is what makes the monkey recolourable.**
+   Every fur pixel the pipeline painted (the old-ear patches, the teeth
+   covers) is SKIN. Each facing / strip that has any also ships a `.fur.png`
+   twin — `<dir>.fur.png`, `frames/<pose>-<dir>.fur.png` — same size, same
+   placement, same rects, holding only those pixels as BARE SKIN (the art's
+   own skin colour around each patch, in that frame). Run it through the SAME
+   per-pixel skin recolour as the body sheets (`playerSkins` `_isSkin` /
+   `_retint`, keyed by the player's skin) and draw it directly over the piece;
+   for the `default` skin draw it as stored. `meta.fur` lists the files. The
+   muzzle and ears are never recoloured — they stay the art's tan on every
+   skin, by design (owner, v2.3.2655). If a fur file is missing the piece
+   still carries the patches in Monkey Brown underneath, so the failure is a
+   brown smudge, not a hole.
+4. Preload the strips and fur twins with the piece (CLAUDE.md
+   animation-preloading law: register them in `preloadWorldAnimations`).
+   They are ~90KB on disk, ~3.1MB of GPU as 22 textures (the recoloured fur
+   builds are per skin, like the hair colour builds).
+5. So the species does NOT pin a skin tone: any `SKIN_CATALOG` entry works
+   (`python3 tools/species_contact_sheet.py --id monkey --skin ebony` shows
+   any of them). Monkey Brown is the preset, not a requirement.
 
 ### Stage 2's three plumbing traps
 

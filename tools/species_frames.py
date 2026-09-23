@@ -51,6 +51,24 @@ top-left pixel sits on BODY pixel (x, y) of that frame (256-space).  It is
 drawn with the body's own scale and mirror and replaces the piece for that
 frame -- no anchor, nudge or pose scale applies, it is already in body space.
 
+FUR (v2.3.2655).  Every fur pixel this pipeline paints -- the old-ear patches
+in the SW/NE art (tools/species-cover-ears.mjs) and the "fur" covers here -- is
+the species tone scaled by the head's luminance, i.e. it is SKIN, baked in one
+skin colour.  So that the piece follows whatever skin the player picks (the
+muzzle and ears stay their own tan: the piece itself is never recoloured), the
+bake also writes each image's fur as a separate layer, same size and placement,
+stored as BARE SKIN -- the art's own skin colour right around each patch, in
+that frame (so the 'default' skin, drawn unrecoloured, matches the art):
+    <dir>.fur.png                 beside each base facing that has fur
+    frames/<pose>-<dir>.fur.png   beside each strip that has fur (same rects)
+The renderer runs that layer through the SAME per-pixel skin recolour the body
+sheets get (playerSkins _isSkin/_retint, target * lum/SKIN_REF) and draws it
+over the piece; for the 'default' skin it draws it as stored.  Bare skin rather
+than a grey for a Pixi tint because a tint is 0-255 and the fur runs up to 1.07x
+SKIN_REF on the brighter hit heads -- a grey clipped those (measured: 6 levels
+off); skin-coloured art has the same headroom the body has.  meta.fur lists
+which files exist.
+
 Run from the repo root:
     python3 tools/species_frames.py bake --id monkey
 """
@@ -158,7 +176,9 @@ def place(pose, d, f, meta, tops, tex, ops=None):
     pn = meta.get('poseNudge', {}).get(pose, {}).get(d, [0, 0])
     top = ops.get('crown') or tops.get(f'{pose}-{d}-{f}') or tops[f'stand-{d}-0']
     layer = np.zeros((FRAME, FRAME, 4), int)
-    for nm, pt in parts(tex, d).items():
+    part_ops = any(k in ops for k in ('muzzle', 'earL', 'earR', 'ear'))
+    pieces = parts(tex, d) if part_ops else {'all': tex}   # no part ops: one piece, same offset
+    for nm, pt in pieces.items():
         op = ops.get(nm) or {}
         if op.get('hide'):
             continue
@@ -284,6 +304,59 @@ def apply_eyes(layer, body_raw, boxes):
     return layer
 
 
+DEFAULT_SKIN = (205, 134, 75)  # SKIN_CATALOG 'default' swatch: lum 148.5, the art's own tan
+
+
+def fur_mask(a, tone):
+    """the pixels that are skin baked in `tone` (fur): tone * k for some k.
+    The tan muzzle/ears, outline and eye white never match (checked: 0 hits
+    on the S/E/N art, which has no patches)."""
+    r, g, b, al = [a[..., i].astype(int) for i in range(4)]
+    return ((al > 16) & (r >= 40) & (r <= 140)
+            & (np.abs(g - r * tone[1] / tone[0]) <= 3) & (np.abs(b - r * tone[2] / tone[0]) <= 3))
+
+
+def fur_layer(layer, body_raw, tone):
+    """the fur of a body-space `layer` as bare skin: each fur patch takes the
+    MEDIAN colour of the art's own skin in a 3px ring around it, in this very
+    frame -- so on the 'default' skin (drawn unrecoloured) the patch matches
+    the surrounding art exactly, and recoloured like the body it matches the
+    body.  A patch with no skin around it falls back to DEFAULT_SKIN at the
+    fur's own luminance."""
+    m = fur_mask(layer, tone)
+    out = np.zeros(layer.shape[:2] + (4,), np.uint8)
+    if not m.any():
+        return out
+    skin = is_skin(body_raw)
+    lab, n = ndimage.label(m, np.ones((3, 3)))
+    for i in range(1, n + 1):
+        c = lab == i
+        ring = ndimage.binary_dilation(c, np.ones((3, 3)), iterations=3) & ~m & skin
+        if ring.sum() >= 4:
+            col = np.median(body_raw[ring][:, :3], axis=0)
+        else:
+            k = lum(layer[c][:, :3].astype(float)).mean() / lum(np.array(tone, float))
+            col = np.array(DEFAULT_SKIN) * k
+        for j in range(3):
+            out[..., j] = np.where(c, int(round(min(255, col[j]))), out[..., j])
+        out[..., 3] = np.where(c, 255, out[..., 3])
+    return out
+
+
+def draw_fur(layer, fur, skin):
+    """what the game draws: the piece, then its fur layer on top -- recoloured
+    exactly like the body for skin target `skin`, or as stored for None
+    ('default')"""
+    f = fur.astype(int)
+    if skin is not None:
+        f = retint(f, skin)
+    m = f[..., 3] > 0
+    out = layer.copy()
+    out[m, :3] = f[m, :3]
+    out[m, 3] = 255
+    return out
+
+
 def expand(spec):
     """{"1-3": x, "5": y} -> {1: x, 2: x, 3: x, 5: y}"""
     out = {}
@@ -324,18 +397,33 @@ def load(sid):
     return tdir, meta, tops, tex, fixes
 
 
+def load_fur(tdir, meta):
+    """the shipped fur layers: {dir: tex} for the facings, {key: strip} for the strips"""
+    fb = meta.get('fur', {})
+    ftex = {d: np.array(Image.open(f'{tdir}/{d}.fur.png').convert('RGBA')).astype(int) for d in fb.get('base', [])}
+    fstrips = {k: np.array(Image.open(f'{tdir}/frames/{k}.fur.png').convert('RGBA')).astype(int)
+               for k in fb.get('frames', [])}
+    return ftex, fstrips
+
+
 def layer_for(pose, d, f, meta, tops, tex, tone, strips=None):
     """what the game will draw for this frame: the baked overlay if meta has
     one (read back from the strip, so the preview proves the shipped data),
-    else the normal placement"""
+    else the normal placement.  Pass the fur textures/strips (load_fur) as
+    tex/strips to get the fur layer the same way; a facing or strip with no fur
+    file gives an empty layer."""
     fo = meta.get('frameOverlays', {}).get(f'{pose}-{d}', {}).get(str(f))
     if fo and strips is not None:
         sx, sy, w, h, x, y = fo
-        st = strips[f'{pose}-{d}']
+        st = strips.get(f'{pose}-{d}')
+        if st is None:
+            return np.zeros((FRAME, FRAME, 4), int)
         layer = np.zeros((FRAME, FRAME, 4), int)
         crop = st[sy:sy + h, sx:sx + w]
         layer[y:y + h, x:x + w] = crop
         return layer
+    if d not in tex:
+        return np.zeros((FRAME, FRAME, 4), int)
     return place(pose, d, f, meta, tops, tex[d])
 
 
@@ -347,6 +435,7 @@ def bake(sid):
     for old in os.listdir(fdir):
         os.remove(os.path.join(fdir, old))
     overlays = {}
+    fur_frames = []
     for key, spec in fixes.items():
         if key.startswith('_'):
             continue
@@ -357,26 +446,56 @@ def bake(sid):
             ys, xs = np.nonzero(layer[:, :, 3] > 0)
             if not len(xs):
                 continue
+            fl = fur_layer(layer, body_frame(pose, d, f), tone)
             x0, x1, y0, y1 = xs.min(), xs.max(), ys.min(), ys.max()
-            tiles.append((f, int(x0), int(y0), layer[y0:y1 + 1, x0:x1 + 1]))
+            tiles.append((f, int(x0), int(y0), layer[y0:y1 + 1, x0:x1 + 1], fl[y0:y1 + 1, x0:x1 + 1]))
         if not tiles:
             continue
         W = sum(t[3].shape[1] for t in tiles) + 2 * (len(tiles) - 1)
         H = max(t[3].shape[0] for t in tiles)
         strip = np.zeros((H, W, 4), np.uint8)
+        fstrip = np.zeros((H, W, 4), np.uint8)
         cur, ent = 0, {}
-        for f, x0, y0, im in tiles:
+        for f, x0, y0, im, fim in tiles:
             h, w = im.shape[:2]
             strip[:h, cur:cur + w] = im
+            fstrip[:h, cur:cur + w] = fim
             ent[str(f)] = [cur, 0, w, h, x0, y0]
             cur += w + 2               # 2px gutter: no bleed under linear filtering
         Image.fromarray(strip, 'RGBA').save(f'{fdir}/{key}.png', optimize=True)
         overlays[key] = ent
+        if fstrip[..., 3].any():
+            Image.fromarray(fstrip, 'RGBA').save(f'{fdir}/{key}.fur.png', optimize=True)
+            fur_frames.append(key)
         print(f'{key:18s} {len(tiles):2d} frames baked  -> frames/{key}.png  {W}x{H}')
     if overlays:
         meta['frameOverlays'] = overlays
     else:
         meta.pop('frameOverlays', None)
+    fur_base = []
+    for d in meta['anchors']:
+        path = f'{tdir}/{d}.fur.png'
+        # the facing's fur, measured against the frame it was painted for
+        # (stand, where _placeTrait's scale is 1 and the offset is a whole pixel)
+        layer = place('stand', d, 0, meta, tops, tex[d])
+        fl = fur_layer(layer, body_frame('stand', d, 0), tone)
+        if fl[..., 3].any():
+            top = tops[f'stand-{d}-0']
+            a_, n_ = meta['anchors'][d], meta.get('crownNudge', {}).get(d, [0, 0])
+            ox, oy = int(round(top[0] + n_[0] - a_[0])), int(round(top[1] + n_[1] - a_[1]))
+            g = np.zeros((FRAME, FRAME, 4), np.uint8)
+            ys, xs = np.nonzero(fl[..., 3] > 0)
+            ok = (xs - ox >= 0) & (ys - oy >= 0) & (xs - ox < FRAME) & (ys - oy < FRAME)
+            g[ys[ok] - oy, xs[ok] - ox] = fl[ys[ok], xs[ok]]
+            Image.fromarray(g, 'RGBA').save(path, optimize=True)
+            fur_base.append(d)
+        elif os.path.exists(path):
+            os.remove(path)
+    meta['fur'] = {'base': fur_base, 'frames': fur_frames,
+                   'note': 'v2.3.2655: <dir>.fur.png / frames/<key>.fur.png = the fur as BARE SKIN '
+                           '(default tan). Recolour like the body (playerSkins _isSkin/_retint) and '
+                           'draw over the piece; the muzzle and ears are never recoloured.'}
+    print(f'fur layers: {len(fur_base)} facings, {len(fur_frames)} strips')
     json.dump(meta, open(tdir + '/meta.json', 'w'), indent=2)
     open(tdir + '/meta.json', 'a').write('\n')
 

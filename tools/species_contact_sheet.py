@@ -57,9 +57,29 @@ ANIMS = [('stand', ['south', 'southwest', 'east', 'northeast', 'north']),
          ('pickup', ['south']), ('mine', ['south']), ('fish', ['south'])]
 
 
-def composite(pose, d, f, meta, tops, tex, tone, strips):
-    body = SF.retint(SF.body_frame(pose, d, f), tone)
+def skin_target(arg, tone):
+    """--skin: a SKIN_CATALOG id (read from playerSkins.js) or r,g,b; None = the species tone"""
+    if not arg:
+        return tone
+    if ',' in arg:
+        return tuple(int(v) for v in arg.split(','))
+    src = open('src/rendering/playerSkins.js').read()
+    m = re.search(r"id:\s*'" + re.escape(arg) + r"'[^}]*?target:\s*(null|\[([^\]]+)\])", src)
+    if not m:
+        raise SystemExit(f'no skin {arg!r} in SKIN_CATALOG')
+    return None if m.group(1) == 'null' else tuple(int(v) for v in m.group(2).split(','))
+
+
+def composite(pose, d, f, meta, tops, tex, tone, strips, skin=None, fur=({}, {})):
+    """skin: the player's skin target (None = 'default', the art's own tan);
+    the body is retinted to it and the piece's fur layer tinted with it, as the
+    game does -- the muzzle and ears are never recoloured.  fur = load_fur()'s
+    (textures, strips)."""
+    skin = tone if skin == 'species' else skin
+    raw = SF.body_frame(pose, d, f)
+    body = SF.retint(raw, skin) if skin else raw
     layer = SF.layer_for(pose, d, f, meta, tops, tex, tone, strips)
+    layer = SF.draw_fur(layer, SF.layer_for(pose, d, f, meta, tops, fur[0], tone, fur[1]), skin)
     m = layer[:, :, 3] > 0
     body[m, :3] = layer[m, :3]
     body[m, 3] = 255
@@ -110,10 +130,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--id', default='monkey')
     ap.add_argument('--out', required=True)
+    ap.add_argument('--skin', default=None, help="skin catalog id or r,g,b (default: the species tone)")
     ap.add_argument('--zoom', default=None, help='pose-dir:a-b[,pose-dir:c] -- big frames with a coordinate grid')
     args = ap.parse_args()
     tdir, meta, tops, tex, fixes = SF.load(args.id)
     tone = SF.TONES[args.id]
+    skin = skin_target(args.skin, tone) if args.skin else 'species'
+    fur = SF.load_fur(tdir, meta)
     strips = {}
     for key in meta.get('frameOverlays', {}):
         strips[key] = np.array(Image.open(f'{tdir}/frames/{key}.png').convert('RGBA')).astype(int)
@@ -127,7 +150,7 @@ def main():
             m = re.fullmatch(r'(\d+)(?:-(\d+))?', rng)
             for f in range(int(m.group(1)), int(m.group(2) or m.group(1)) + 1):
                 top = SF.crown_of(pose, d, f, tops, fixes)
-                img = composite(pose, d, f, meta, tops, tex, tone, strips)
+                img = composite(pose, d, f, meta, tops, tex, tone, strips, skin, fur)
                 tiles.append((f'{pose}-{d} #{f}' + (' *' if fixed(pose, d, f) else ''), tile(img, top, 6, True)))
         path = os.path.join(args.out, 'zoom.png')
         grid_sheet(tiles, CROP * 6, path)
@@ -139,7 +162,7 @@ def main():
             n = sum(1 for k in tops if k.startswith(f'{pose}-{d}-')) or 1
             for f in range(n):
                 top = SF.crown_of(pose, d, f, tops, fixes)
-                img = composite(pose, d, f, meta, tops, tex, tone, strips)
+                img = composite(pose, d, f, meta, tops, tex, tone, strips, skin, fur)
                 tiles.append((f'{pose}-{d} #{f}' + (' *' if fixed(pose, d, f) else ''), tile(img, top, Z)))
         name = f'{args.id}-{pose}' + ('' if len(dirs) > 1 else f'-{dirs[0]}')
         path = os.path.join(args.out, name + '.png')
