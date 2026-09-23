@@ -6,7 +6,7 @@ import { Assets, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text
 import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCount } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs; v2.3.2061: animated props */
 import { propsForZone, propFootprint, foregroundForZone } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
 import { TILE } from '@/data/constants.js';
-import { ZONES, zonePlayerScale } from '@/data/zones.js';
+import { ZONES, zonePlayerScale, zoneDepthScale } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { rpgBlocks } from '@/data/abilities.js'; /* v2.3.2302: the block ladder */
 import { isProg3RelEnabled, prog3Live, prog3SkillLevel, prog3ActiveCat } from '@/data/prog3.js'; /* v2.3.2680: the plate's yardstick */
@@ -5560,11 +5560,28 @@ export function setPlateZoom(worldScale) {
   _cueZoom = Math.min(CUE_ZOOM_MAX, Math.max(1, Math.sqrt(1 / w)));
 }
 
+/* ═══ v2.3.2745: A FAR PLATE STAYS READABLE ═══
+   Wind Dunes' north-south depth (zones.js `depth`) takes a body down to 0.42
+   at the horizon, and a plate riding that all the way measured ~6 CSS px --
+   an unreadable label, the thing the owner already asked to have fixed once
+   (v2.3.2715: "name plates to be legible").  So on a depth zone the plate
+   still shrinks with distance, which is what sells the distance, but never
+   below this share of its designed size.  `_plateLift` is stamped per frame
+   by whoever sets the figure's depth scale (monsters in _updateMonsters, bros
+   where pscale is computed); on every other zone, the World View included, it
+   is 1 and this is the v2.3.2513 rule unchanged. */
+const PLATE_DEPTH_FLOOR = 0.8;
+function _plateLiftAt(zoneId, y) {
+  const d = zoneDepthScale(zoneId, y, TILE);
+  return d == null || d <= 0 ? 1 : Math.max(1, PLATE_DEPTH_FLOOR / d);
+}
+
 function _fitPlateToZoom(display) {
   const pill = display && display._namePill;
   if (!pill) return;
   const chain = display._pillChain || 1;
-  const s = Math.min(PLATE_SCALE_MAX, Math.max(PLATE_SCALE_MIN, 1 / (chain * _plateWorldScale)));
+  const s = Math.min(PLATE_SCALE_MAX, Math.max(PLATE_SCALE_MIN,
+    (display._plateLift || 1) / (chain * _plateWorldScale)));
   if (display._pillZoom === s) return;
   display._pillZoom = s;
   pill.scale.set(s);
@@ -7834,7 +7851,12 @@ export class EntityRenderer {
       if (display.visible !== m.alive) display.visible = m.alive;
       /* v2.3.1274: monster size experiment (persists through the death
          animation since the container keeps its scale). */
-      if (display.scale.x !== MONSTER_SIZE_MULT) display.scale.set(MONSTER_SIZE_MULT);
+      /* v2.3.2745: ...times the zone's depth curve at the monster's own feet
+         (the dunes' north-south ramp, zones.js `depth`) -- a mummy on the
+         horizon is drawn as far away as the rocks beside it.  1 on every zone
+         without one, so this is the old constant everywhere else. */
+      const _mk = MONSTER_SIZE_MULT * (this._zonePscale(S, rx, ry) || 1);
+      if (display.scale.x !== _mk) display.scale.set(_mk);
       /* v2.3.1472: mirror the transform onto the above-head UI, which
          lives in a sibling layer (same world container, so the values
          carry over 1:1).  Guarded writes for the same batch-rebuild
@@ -7844,7 +7866,8 @@ export class EntityRenderer {
         if (_ui.x !== rx) _ui.x = rx;
         if (_ui.y !== ry) _ui.y = ry;
         if (_ui.visible !== m.alive) _ui.visible = m.alive;
-        if (_ui.scale.x !== MONSTER_SIZE_MULT) _ui.scale.set(MONSTER_SIZE_MULT);
+        if (_ui.scale.x !== _mk) _ui.scale.set(_mk);
+        _ui._plateLift = _plateLiftAt(S.currentZone, ry);   /* v2.3.2745 */
       }
 
       /* ═══ v2.3.1765: A MONSTER ARRIVES AS A GROWING WHITE SILHOUETTE ═══
@@ -7884,7 +7907,7 @@ export class EntityRenderer {
         /* Ease-out growth: quick off the mark, settling into full size, so it
            reads as arriving rather than as inflating at a constant rate. */
         const e = 1 - Math.pow(1 - t, 2);
-        const k = MONSTER_SIZE_MULT * (0.12 + 0.88 * e);
+        const k = _mk * (0.12 + 0.88 * e);
         display.scale.set(k);
         /* The white leaves over the last third — before that it is a
            silhouette, after it the real monster. */
@@ -7917,7 +7940,7 @@ export class EntityRenderer {
         if (!until) return;
         if (now >= until) {
           m._tgUntil = 0; m._tgFrom = 0;
-          if (display.scale.x !== MONSTER_SIZE_MULT) display.scale.set(MONSTER_SIZE_MULT);
+          if (display.scale.x !== _mk) display.scale.set(_mk);
           return;
         }
         const from = m._tgFrom || (until - 800);
@@ -7925,7 +7948,7 @@ export class EntityRenderer {
         /* Throb faster and wider as it winds up — the last beat before the
            hit is the loudest, which is the one worth reading. */
         const beat = 0.5 + 0.5 * Math.sin(now / (52 - 26 * t));
-        display.scale.set(MONSTER_SIZE_MULT * (1 + (0.05 + 0.09 * t) * beat));
+        display.scale.set(_mk * (1 + (0.05 + 0.09 * t) * beat));
       };
       try { _windupFx(); } catch (e) { /* an FX must never take the frame down */ }
       /* QA probe (mp-windup): a throb cannot be read off one screenshot, so
@@ -9648,6 +9671,7 @@ export class EntityRenderer {
          here doesn't disturb facing. */
       {
         const pscale = this._zonePscale(S, display.x, display.y) * PLAYER_SIZE_MULT; /* v2.3.1274 */
+        display._plateLift = _plateLiftAt(S.currentZone, display.y);   /* v2.3.2745 */
         /* v2.3.1953: ...times this bro's own build.  Computed from the
            UNLIFTED y above, because _zonePscale reads the position to work out
            how far up a vista map he is standing; the lift is applied after. */
@@ -10672,6 +10696,7 @@ export class EntityRenderer {
          else.  `playerLens` is now purely a DRAWING instruction, which is why
          the zone entry lost its `scale` key rather than this reading a 1. */
       const pscale = this._zonePscale(S, P.x, P.y) * PLAYER_SIZE_MULT; /* v2.3.1274 */
+      display._plateLift = _plateLiftAt(S.currentZone, P.y);   /* v2.3.2745 */
       /* v2.3.1953: your own build.  Read from the store rather than from S,
          the same way this path reads your skin, shirt art and patterns — the
          creator writes it there and the store is the one copy. */
