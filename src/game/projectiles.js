@@ -1120,7 +1120,7 @@ export function updateArrows(S, deps) {
                      heat (snow steams, slime sizzles, the goblin chars).  It
                      leaves from where the shot went in: an arrow's contact is
                      partway up its head, a bolt's is its drawn orb (the
-                     v2.3.2697 drawing offset, so it bursts where it was seen).
+                     v2.3.2714 drawing offset, so it bursts where it was seen).
                      The soft ground decal that sat beside it is retired: the
                      pieces that land ARE the mark now. */
                   var _dbBolt = !!(a.isStaff || isStaffProj);
@@ -1354,7 +1354,7 @@ export function updateArrows(S, deps) {
                     : (((typeof m.renderY === 'number') ? m.renderY : m.y)
                        - monsterBodyOffsetY(m.archetype || m.type));
                   if (!S._impactRings) S._impactRings = [];
-                  /* v2.3.2697: the bolt is DRAWN leaving the staff's crystal and
+                  /* v2.3.2714: the bolt is DRAWN leaving the staff's crystal and
                      eased onto this line over its first 40 px (staffCastFx); a
                      hit inside that stretch carries the leftover drawing offset
                      so the crash is DRAWN where the orb was seen.  The records'
@@ -1362,7 +1362,7 @@ export function updateArrows(S, deps) {
                   var _vdx = Number.isFinite(a._fxResX) ? a._fxResX : 0;
                   var _vdy = Number.isFinite(a._fxResY) ? a._fxResY : 0;
                   /* Outer expanding ring — the "crash" flash.
-                     v2.3.2697: `style: 'staff'` hands the drawing of both rings
+                     v2.3.2714: `style: 'staff'` hands the drawing of both rings
                      to the staff cast system (pixel rings in the element's heat
                      ramp); the records, their positions and their lifetimes are
                      unchanged, because they are also the crash's record
@@ -1383,7 +1383,7 @@ export function updateArrows(S, deps) {
                     color: _orbColor, maxR: 14, duration: 220,
                     style: 'staff', elem: projElem || null, vdx: _vdx, vdy: _vdy,
                   });
-                  /* ═══ v2.3.2697: THE CRASH BURNS HOT AND COOLS ═══
+                  /* ═══ v2.3.2714: THE CRASH BURNS HOT AND COOLS ═══
                      The 22 flat-coloured dots that were pushed here are
                      replaced by the staff cast's crash (staffCastFx): a white
                      flash, sparks that step white -> element colour -> dark, and
@@ -1414,7 +1414,7 @@ export function updateArrows(S, deps) {
                 /* Knockback recovery -- see melee path; pauses
                    client-side AI so the bump is visible. */
                 m._kbUntil = Date.now() + 200;
-                /* v2.3.2697: a staff bolt's hit is drawn once, by its crash above --
+                /* v2.3.2714: a staff bolt's hit is drawn once, by its crash above --
                    at the orb, which is v2.3.2505's whole point.  The generic
                    'staff' burst this used to add was a second spray of flat
                    purple dots at the monster's FEET, the exact spot that fix
@@ -1426,7 +1426,7 @@ export function updateArrows(S, deps) {
                    contact point) is the arrow's hit now. */
                 /* Staff projectiles are magic — no physical shaft to
                    leave embedded in the body.  Their visual residue is the
-                   crash above (v2.3.2697), and the material reaction (v2.3.2716). */
+                   crash above (v2.3.2714), and the material reaction (v2.3.2716). */
                 /* ═══ v2.3.2511: ONE ARROW, NOT TWO ═══
                    Owner (backlog §2.5): "two stuck arrows on a special".  Both
                    halves were doing their job and neither knew about the
