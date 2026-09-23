@@ -4265,3 +4265,65 @@ error is 77px on one frame and 3px on the next.
 every trait at once, is correcting those five `body-tops` entries -- but hats,
 hair and the hair-clip masks were all dialled in against the current values,
 so it needs its own before/after pass over every trait, not a drive-by edit.
+
+## 101. A whole-line block test asked about one frame's step blocks nothing (v2.3.2699)
+
+**Tempting:** `attackBlockPoint(zone, x0, y0, x1, y1)` answers "is a prop in the
+way?", so a projectile in flight can ask it about each frame's step
+(previous point -> new point) and stop when it says yes.
+
+**Wrong, every time.** That function skips a box whenever EITHER endpoint is
+inside it -- correct for a whole shot line, where a shooter or target standing
+in a footprint is at the prop, not behind it. But the frame a projectile
+reaches a rock, its step ENDS inside the rock: skipped. Every frame after, the
+step STARTS inside: skipped. So no step is ever "behind" anything, and a
+projectile moving in steps shorter than the prop's depth passes straight
+through. Measured on the frost ridge (42px deep) at 4, 6, 8, 11, 20, 40 and
+60 px/frame: through, at every speed. v2.3.2652 wired it into the player's
+arrows and v2.3.2657 into the snowball, and both shipped with the geometry
+tested and the flight not: every test asked about whole lines, which were
+never the problem. The owner saw it in one look ("the client side isn't
+showing snowballs bursting upon hitting props"). The damage half had been
+right all along, because the WORKER asks the whole-line question.
+
+**The rule: a moving projectile's step needs the sweep form** --
+`sweepBlockPoint`, where the leading end inside a box COUNTS (that is the hit)
+and only a step that starts inside ignores that box (launched from inside it).
+And when the worker has already decided a projectile's fate on a known line
+(the snowball: release -> aim), do not re-derive it per frame at all: ask the
+worker's exact question once, at spawn, from the same four numbers the event
+carries, and end the flight there. Same function, same inputs, same answer by
+construction -- and `mirror-audit` now pins client/worker agreement on 4000
+random lines per zone, not seven hand-picked ones (seven let a 2px drift in the
+inside rule straight through).
+
+**Receipt:** `tools/qa/mp/mp-propshots.mjs` watches a real snowball and a real
+arrow fly at the ridge and reads what the RENDERER drew. With the old calls
+restored it fails exactly as reported: the ball drawn to y 645 (the player's
+side), the arrow to y 8 (the map's top edge).
+
+## 102. A timed screenshot sequence on the QA box is not timed (v2.3.2700)
+
+**Tempting:** take `page.screenshot` at 60, 150, 260 and 900ms after an event
+to see how an effect evolves -- the stars of a 1.6s daze, say.
+
+**Wrong by seconds.** On this box `page.screenshot` of the WebGL canvas takes
+~2s a frame (software GL readback). The first shot lands roughly on time;
+every shot after it lands ~2s later than asked. The "150/260/900ms" frames of
+the shield bonk were really taken at ~2, 4 and 6s -- after the daze -- and
+showed exactly what a rendering bug would: stars in frame one, gone in the
+rest. It was chased for an hour (z-order, texture frames, the display tree)
+while in-page samples showed the ring drawn the whole time. A code comment
+blaming the body for hiding the stars was written and had to be retracted.
+
+**The rule: never read time off a screenshot's filename.** Take ONE shot per
+fresh event and record when it actually finished; stretch the effect for the
+camera when it must be caught mid-life (the bonk honours `dazeMs` up to 5s);
+and for anything shorter than a second, use Chromium's screencast
+(`Page.startScreencast` over a CDP session), which hands over frames as the
+compositor makes them, stamped with when. mp-shieldbonk does all three.
+
+**And the half the camera DID get right:** the first, on-time frame is what
+showed the star ring wedged under the snowman's HP bar with his nameplate over
+its lower stars -- drawn, `visible: true` to every probe, nearly invisible to a
+person. A probe answers what it was written to answer. `visible` is not "seen".

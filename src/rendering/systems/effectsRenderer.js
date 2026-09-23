@@ -1922,6 +1922,16 @@ export class EffectsRenderer {
         }));
     }
 
+    /* v2.3.2700: the snow bursts being DRAWN right now, with their drawn
+       height -- the shield bonk's "little powder" is a size claim (0.6x a
+       thrown ball's burst), and a size is only checkable on the sprite. */
+    if (typeof window !== 'undefined') {
+      const _fxSelf = this;
+      window.__btSnowballBursts = () => (_fxSelf._snowballBursts || [])
+        .filter((fx) => fx && fx.sp && !fx.sp.destroyed)
+        .map((fx) => ({ x: +fx.sp.x.toFixed(1), y: +fx.sp.y.toFixed(1), h: +Math.abs(fx.sp.height).toFixed(1) }));
+    }
+
     /* v2.3.1334: tracked Sprite instances for the painted magic bolt
        (basic staff projectiles, local + remote) — same reap pattern
        as slimeProjSprites. */
@@ -7854,7 +7864,10 @@ export class EffectsRenderer {
           const sp = new Sprite(SNOWBALL_BURST.frames[0]);
           sp.anchor.set(0.5, 0.5);
           const f0 = SNOWBALL_BURST.frames[0];
-          sp.scale.set(SNOWBALL_BURST_H / (f0.height || 128));
+          /* v2.3.2700: an optional per-burst size -- the shield bonk's powder
+             is this strip at 0.6x.  Absent on every thrown ball, so those
+             draw exactly as before. */
+          sp.scale.set((SNOWBALL_BURST_H / (f0.height || 128)) * (b.scale > 0 ? b.scale : 1));
           sp.x = b.x; sp.y = b.y;
           this.particleLayer.addChild(sp);
           this._snowballBursts.push({ sp, startedAt: b.at || now });

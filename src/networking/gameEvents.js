@@ -1076,6 +1076,50 @@ export function processGameEvent(type, payload, S, deps) {
                   _buM._invulnerable = payload.phase === 'pile';
                   /* A body mid-collapse has no swing to finish. */
                   _buM._shootAnimEnd = 0; _buM._tgUntil = 0;
+                  /* v2.3.2700: a shield bonk dazes him -- start the stars NOW.
+                     The worker's stun also arrives as `st` on the next monster
+                     tick (tick.js), and that alone would draw them; this closes
+                     the gap before it, so the stars come up WITH him rather than
+                     a tick late.  A RELATIVE duration (dazeMs), not an epoch, so
+                     it carries no clock skew -- and MAX, the same rule the `st`
+                     merge uses, so neither can cut the other short. */
+                  if (payload.bonk && payload.phase === 'emerge') {
+                    var _bkDaze = Math.max(0, Math.min(5000, Number(payload.dazeMs) || 0));
+                    if (_bkDaze > 0) _buM._stunUntil = Math.max(_buM._stunUntil || 0, Date.now() + _bkDaze);
+                  }
+                }
+                /* ═══ v2.3.2700: ...AND THE SNOW FLIES OFF THE SHIELD ═══
+                   Owner: "pop up early with a little powder ... like it just
+                   slammed into your shield."  The powder is the snowball's own
+                   burst strip, smaller -- snow off a shield, drawn in the art the
+                   game already uses for snow hitting something, and small
+                   because the owner said LITTLE.  Above px/py, which the worker
+                   puts halfway between him and the shield he hit.
+                   Outside the monster lookup on purpose: the powder belongs to
+                   the place, and a client that has not got this monster in its
+                   list yet should still see the snow where the shield is.  The
+                   "Blocked!" popup and the shield clang are NOT added here --
+                   they arrive on the blocked monster_attack the worker sends
+                   for the same slam, the one every block already draws. */
+                if (payload.bonk && payload.phase === 'emerge'
+                    && typeof payload.px === 'number' && typeof payload.py === 'number') {
+                  if (!S.snowballBursts) S.snowballBursts = [];
+                  /* LIFTED to shield height.  px/py is a GROUND point (between
+                     his feet and the player's), and a burst drawn there is white
+                     snow on white snow -- the first screenshots of this showed
+                     nothing at all.  34 world px up puts it against the shield
+                     and his body, where the slam actually is, and where it has
+                     something darker behind it to read against.  0.75x: still
+                     smaller than a thrown ball's burst ("a little powder"), but
+                     0.6x vanished against the snow even at chest height. */
+                  if (S.snowballBursts.length < 12) {
+                    S.snowballBursts.push({ x: payload.px, y: payload.py - 34, at: Date.now(), scale: 0.75 });
+                  }
+                  /* A small kick for the one whose shield it hit, not for
+                     everyone watching. */
+                  if (payload.targetId && payload.targetId === S.myId) {
+                    S.screenShake = Math.max(S.screenShake || 0, 4);
+                  }
                 }
                 break;
               }
