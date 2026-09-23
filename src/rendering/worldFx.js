@@ -1,0 +1,616 @@
+/* ═══ v2.3.2703: THE WORLD'S WEATHER -- LIGHT, AIR, DUST AND BLOOD ═══
+ *
+ * Owner: "Can you make time of day by adding certain effects for that?
+ * Maybe also subtle atmospheric effects.  I think soft footprints (as if you
+ * were running through light dust) that quickly disappear (as if blown away
+ * by a soft breeze) would also look nice.  Additionally, when the character
+ * gets hit by a monster, I think directionally aware blood effects would be
+ * a good feature."
+ *
+ * One module for the four, because three of them share a wind and two share
+ * the night: the dust your feet kick up blows the same way as the motes in
+ * the sun and the shadows of the clouds, and a firefly is both a speck you
+ * see and a light the night is lit by.  Split into four files they would
+ * each need their own copy of both.
+ *
+ * ── HOW NIGHT IS DRAWN ──
+ * Not as a dark rectangle.  A flat fill makes a DIM screen, and nothing
+ * about a dim screen says night -- what says night is that the light is
+ * somewhere: round the lantern you carry, round your friend's, on a
+ * firefly.  So each frame renders a small LIGHT MAP (a quarter of the screen's
+ * CSS size; light is smooth, it does not need the resolution) -- the hour's
+ * ambient colour with every light added into it -- and MULTIPLIES the world by
+ * it.  Where there is no light the world takes the ambient tint; under a
+ * lantern it comes back to full colour.  By day the map is skipped entirely:
+ * a multiply by white is a whole-screen pass that changes nothing.
+ *
+ * ── WHERE IT DRAWS ──
+ * The light lives on the `lighting` world layer, directly under the damage
+ * numbers and the world overlay (pixiApp.js): it darkens everything that is
+ * IN the world -- ground, bodies, trees, the foreground canopy -- and nothing
+ * you read.  A number you cannot read at night is a number that cost you the
+ * fight.  Dust and blood sit on the ground and particle layers with the rest
+ * of the hit effects (under the player, v2.3.2636).
+ *
+ * ── COST ──
+ * Every effect here is a fixed POOL of sprites that hides what it is not
+ * using; nothing is allocated per frame.  The light map is one tiny render
+ * target and one extra pass, only while the sun is down.  All of it is
+ * display only -- no state here is read by combat, and nothing is sent.
+ */
+import { Container, Sprite, Texture, RenderTexture } from 'pixi.js';
+import { dayPhase, lightingAt, windAt, zoneHasSky } from '@/game/timeOfDay.js';
+import { fxTex } from './worldFxTextures.js';
+import { zonePlayerScale } from '@/data/zones.js';
+import { deathCrumble } from './deathCrumble.js';
+
+const rgbHex = (r, g, b) => ((Math.max(0, Math.min(255, Math.round(r * 255))) << 16)
+  | (Math.max(0, Math.min(255, Math.round(g * 255))) << 8)
+  | Math.max(0, Math.min(255, Math.round(b * 255))));
+
+/* ── per-zone character ──
+   `dust`: the colour your feet kick up (null = no prints; frost has its own
+   snow prints, and the water caves are wet).  `motes`: what hangs in the air.
+   `fireflies`: whether the night has them. */
+const ZONE_AIR = Object.create(null);
+ZONE_AIR.town      = { dust: 0xd8c7a0, motes: 'pollen', fireflies: true };
+ZONE_AIR.meadow    = { dust: 0xcdb98a, motes: 'pollen', fireflies: true };
+ZONE_AIR.farm_home = { dust: 0xc9a878, motes: 'pollen', fireflies: true };
+ZONE_AIR.verdant   = { dust: 0xc4b488, motes: 'pollen', fireflies: true };
+ZONE_AIR.mist      = { dust: 0xa6b388, motes: 'spores', fireflies: true };
+ZONE_AIR.ember     = { dust: 0x8c817a, motes: 'embers' };
+ZONE_AIR.sky       = { dust: 0xe6cf9c, motes: 'sand' };
+ZONE_AIR.radiant   = { dust: 0xeee3c4, motes: 'glints' };
+ZONE_AIR.frost     = { dust: null,     motes: 'snow' };
+ZONE_AIR.thunder   = { dust: 0xaea89e };
+ZONE_AIR.hollows   = { dust: 0xb6ab9c };
+ZONE_AIR.shadow    = { dust: 0x8a8196 };
+const airOf = (z) => (z && Object.prototype.hasOwnProperty.call(ZONE_AIR, z) ? ZONE_AIR[z] : null);
+
+const MOTE_STYLE = {
+  pollen: { n: 16, tint: 0xfff4c8, size: [2.2, 3.6], alpha: [0.25, 0.6], drift: 0.55, rise: -3, add: false },
+  spores: { n: 16, tint: 0xc8f08c, size: [2.4, 4.0], alpha: [0.25, 0.55], drift: 0.35, rise: -6, add: false },
+  embers: { n: 18, tint: 0xff8a3a, size: [2.0, 3.4], alpha: [0.45, 0.9], drift: 0.45, rise: -22, add: true },
+  sand:   { n: 22, tint: 0xf2dcae, size: [1.6, 2.6], alpha: [0.25, 0.5], drift: 2.2, rise: 0, add: false },
+  glints: { n: 14, tint: 0xffffff, size: [2.0, 3.2], alpha: [0.2, 0.7], drift: 0.3, rise: -4, add: true },
+  snow:   { n: 22, tint: 0xffffff, size: [2.2, 4.2], alpha: [0.45, 0.85], drift: 0.6, rise: 16, add: false },
+};
+
+/* Dust prints: a print every STEP px of travel, alternating feet. */
+const STEP = 17;
+const PRINT_MS = 1300;
+const PUFF_MS = 700;
+const PRINT_POOL = 56;
+const PUFF_POOL = 28;
+
+/* Blood.  Tiers by the share of max HP one hit took (owner: "tiny ... 10%
+   hp or less, moderate between 11% and 32%, and high if 33% or more"). */
+export function bloodTier(frac) {
+  const pct = (frac || 0) * 100;
+  if (pct <= 10) return 'tiny';
+  if (pct < 33) return 'moderate';
+  return 'heavy';
+}
+const BLOOD = {
+  tiny:     { drops: 4,  speed: [55, 110],  spread: 0.45, splats: 0.55, pool: false, mist: false },
+  moderate: { drops: 11, speed: [80, 175],  spread: 0.6,  splats: 0.5,  pool: false, mist: true },
+  heavy:    { drops: 24, speed: [110, 270], spread: 0.85, splats: 0.5,  pool: true,  mist: true },
+};
+const DROP_POOL = 90;
+const SPLAT_POOL = 70;
+const SPLAT_MS = 6500;
+const GRAV = 900;   /* drops leave from the chest now (~44px up), so they fall faster to land close */
+
+/* ═══ WHERE THE FEET ARE ═══
+   A character's position (S.player.y, a peer's renderY -- the display's
+   origin) is the middle of the BODY, not the ground under it: the feet stand
+   42 world px below it.  Measured, not guessed -- the crumbling corpse reads
+   the body's opaque pixels back on death, and in town the lowest opaque row
+   sits at +41.7.  The first cut of this file put the dust and the blood's
+   landing marks on the origin, and the prints came out at the character's
+   waist.  Scaled by the zone's player scale for the one map (worldview) that
+   shrinks its figures. */
+export const FEET_DY = 42;
+const feetDy = (S, x, y) => FEET_DY * (zonePlayerScale(S.currentZone, x, y, 32) || 1);
+
+const rand = (a, b) => a + Math.random() * (b - a);
+const shade = (hex, k) => (Math.round(((hex >> 16) & 255) * k) << 16) | (Math.round(((hex >> 8) & 255) * k) << 8) | Math.round((hex & 255) * k);
+
+export class WorldFx {
+  constructor(layers, app) {
+    this.app = app;
+    this.lightLayer = layers.lighting;
+    this.groundLayer = layers.groundSplatter;
+    this.partLayer = layers.particles;
+    this.airLayer = layers.foreground;
+    this._last = 0;
+
+    /* night */
+    this._rt = null;
+    this._rtW = 0; this._rtH = 0;
+    this._lightScene = new Container();
+    this._lightBg = new Sprite(Texture.WHITE);
+    this._lightScene.addChild(this._lightBg);
+    this._lights = [];
+    this._overlay = new Sprite(Texture.WHITE);
+    this._overlay.blendMode = 'multiply';
+    this._overlay.visible = false;
+    this._overlay.label = 'tod-overlay';
+
+    /* sky: cloud shadows by day, fog at dawn */
+    this._clouds = [];
+    this._fog = [];
+    if (this.lightLayer) {
+      for (let i = 0; i < 3; i++) {
+        const c = new Sprite(Texture.EMPTY);
+        c.anchor.set(0.5); c.blendMode = 'multiply'; c.visible = false;
+        c._ox = Math.random(); c._oy = Math.random();
+        this.lightLayer.addChild(c); this._clouds.push(c);
+      }
+      this.lightLayer.addChild(this._overlay);
+      for (let i = 0; i < 3; i++) {
+        const f = new Sprite(Texture.EMPTY);
+        f.anchor.set(0.5); f.visible = false;
+        f._ox = Math.random(); f._oy = Math.random();
+        this.lightLayer.addChild(f); this._fog.push(f);
+      }
+    }
+
+    /* air */
+    this._motes = [];
+    this._moteKind = null;
+
+    /* dust */
+    this._prints = []; this._printI = 0;
+    this._puffs = []; this._puffI = 0;
+    this._walkers = new Map();
+
+    /* blood */
+    this._drops = []; this._dropI = 0;
+    this._splats = []; this._splatI = 0;
+    this._mists = []; this._mistI = 0;
+
+    if (typeof window !== 'undefined') {
+      window.__btWorldFx = () => ({
+        tod: this._probeTod || null,
+        prints: this._prints.filter((p) => p.visible).length,
+        puffs: this._puffs.filter((p) => p.visible).length,
+        drops: this._drops.filter((p) => p.visible).length,
+        splats: this._splats.filter((p) => p.visible).length,
+        lastBlood: this._lastBlood || null,
+        motes: this._motes.filter((m) => m.visible).length,
+        moteKind: this._moteKind,
+        lights: this._lights.filter((l) => l.visible).length,
+        corpses: deathCrumble.count(),
+      });
+    }
+  }
+
+  update(S, cam, now) {
+    const dt = this._last ? Math.min(0.05, Math.max(0, (now - this._last) / 1000)) : 0.016;
+    this._last = now;
+    if (!S || !cam) return;
+    const wind = windAt(now);
+    /* QA: the harness turns the drifting air off so pixel tests do not depend
+       on where a cloud or a mote happened to be (tools/qa/mp/harness.mjs). */
+    this._calm = typeof window !== 'undefined' && window.__btAmbienceOff === true;
+    try { this._updateSky(S, cam, now, dt, wind); } catch (e) { this._err('sky', e); }
+    try { this._updateAir(S, cam, now, dt, wind); } catch (e) { this._err('air', e); }
+    try { this._updateDust(S, now, dt, wind); } catch (e) { this._err('dust', e); }
+    try { this._updateBlood(S, now, dt); } catch (e) { this._err('blood', e); }
+    try { deathCrumble.sweep(now); } catch (e) { this._err('death', e); }
+  }
+
+  _err(what, e) {
+    if (!this['_e' + what]) { this['_e' + what] = true; console.error('[worldFx] ' + what + ' threw', e && e.message); }
+  }
+
+  /* ─────────────────────────── the sky ─────────────────────────── */
+  _updateSky(S, cam, now, dt, wind) {
+    const sky = zoneHasSky(S.currentZone, S);
+    const L = lightingAt(dayPhase(now));
+    this._L = L;
+    this._probeTod = { name: L.name, phase: +L.phase.toFixed(3), sky, lamp: +L.lamp.toFixed(2) };
+    const ov = this._overlay;
+    const { cx, cy, viewW, viewH } = cam;
+
+    const plainDay = L.mul[0] > 0.985 && L.mul[1] > 0.985 && L.mul[2] > 0.985 && L.lamp < 0.01;
+    if (!sky || plainDay || !this.lightLayer) {
+      ov.visible = false;
+      for (let i = 0; i < this._lights.length; i++) this._lights[i].visible = false;
+    } else if (L.lamp < 0.01) {
+      /* golden hour: a tint, no lights to place -- no render target needed */
+      for (let i = 0; i < this._lights.length; i++) this._lights[i].visible = false;
+      ov.texture = Texture.WHITE;
+      ov.tint = rgbHex(L.mul[0], L.mul[1], L.mul[2]);
+      ov.x = cx; ov.y = cy; ov.width = viewW; ov.height = viewH;
+      ov.visible = true;
+    } else {
+      this._renderLightMap(S, cam, now, L);
+    }
+
+    /* cloud shadows: sky zones, by day, sliding with the wind */
+    const glow = this._L;
+    const dayK = (sky && !this._calm) ? Math.max(0, 1 - glow.lamp * 1.6) * Math.min(1, (glow.mul[0] + glow.mul[1] + glow.mul[2]) / 3 / 0.9) : 0;
+    const air = airOf(S.currentZone);
+    for (let i = 0; i < this._clouds.length; i++) {
+      const c = this._clouds[i];
+      if (dayK < 0.02 || !fxTex('cloud' + i)) { c.visible = false; continue; }
+      if (c.texture !== fxTex('cloud' + i)) c.texture = fxTex('cloud' + i);
+      const W = viewW * 1.9, H = viewH * 1.9;
+      c._ox = (((c._ox + (wind.x * 1.8 * dt) / W) % 1) + 1) % 1;
+      c._oy = (((c._oy + (wind.y * 1.8 * dt) / H) % 1) + 1) % 1;
+      /* anchored in WORLD space (it slides as you walk under it), wrapped
+         round a box centred on the camera so one is always nearby */
+      const bx = cx - viewW * 0.45, by = cy - viewH * 0.45;
+      c.x = bx + (((c._ox * W + i * W / 3) - (cx % W) + 2 * W) % W);
+      c.y = by + (((c._oy * H + i * H / 3) - (cy % H) + 2 * H) % H);
+      c.width = viewW * 0.95; c.height = viewW * 0.6;
+      c.tint = 0xb8bfcc;
+      c.alpha = 0.5 * dayK;
+      c.visible = true;
+    }
+    /* dawn fog: low white drifts, only in the green zones */
+    const ph = glow.phase;
+    const fogK = (sky && air && air.fireflies && !this._calm)
+      ? (ph < 0.14 ? (ph < 0.04 ? 1 : 1 - (ph - 0.04) / 0.10) : (ph > 0.96 ? (ph - 0.96) / 0.04 : 0))
+      : 0;
+    for (let i = 0; i < this._fog.length; i++) {
+      const f = this._fog[i];
+      if (fogK < 0.02 || !fxTex('cloud' + ((i + 1) % 3))) { f.visible = false; continue; }
+      if (f.texture !== fxTex('cloud' + ((i + 1) % 3))) f.texture = fxTex('cloud' + ((i + 1) % 3));
+      const W = viewW * 1.6, H = viewH * 1.6;
+      f._ox = (((f._ox + (wind.x * 0.6 * dt) / W) % 1) + 1) % 1;
+      const bx = cx - viewW * 0.3, by = cy - viewH * 0.3;
+      f.x = bx + (((f._ox * W + i * W / 3) - (cx % W) + 2 * W) % W);
+      f.y = by + (((f._oy * H + i * H / 3) - (cy % H) + 2 * H) % H);
+      f.width = viewW * 1.1; f.height = viewW * 0.45;
+      f.tint = 0xe8eef4;
+      f.alpha = 0.22 * fogK;
+      f.visible = true;
+    }
+  }
+
+  _renderLightMap(S, cam, now, L) {
+    const renderer = this.app && this.app.renderer;
+    if (!renderer) return;
+    const { cx, cy, viewW, viewH } = cam;
+    /* a quarter of the CSS size: light is smooth, so resolution buys nothing */
+    const w = Math.max(16, Math.ceil((cam.cssW || viewW) / 4));
+    const h = Math.max(16, Math.ceil((cam.cssH || viewH) / 4));
+    if (!this._rt || this._rtW !== w || this._rtH !== h) {
+      if (this._rt) { try { this._rt.destroy(true); } catch (e) { /* gone */ } }
+      this._rt = RenderTexture.create({ width: w, height: h, resolution: 1 });
+      this._rtW = w; this._rtH = h;
+    }
+    const k = w / viewW;
+    const bg = this._lightBg;
+    bg.width = w; bg.height = h;
+    bg.tint = rgbHex(L.mul[0], L.mul[1], L.mul[2]);
+
+    /* the lights: you, everyone near you, and the fireflies */
+    const list = [];
+    if (S.player && !(S.rpg && S.rpg.hp <= 0)) list.push({ x: S.player.x, y: S.player.y - 18, r: 165, c: 0xffd9a0, a: 1 });
+    if (S.others) {
+      for (const id in S.others) {
+        const o = S.others[id];
+        if (!o || o._isDead) continue;
+        const ox = o.renderX != null ? o.renderX : o.x, oy = o.renderY != null ? o.renderY : o.y;
+        if (ox < cx - 200 || ox > cx + viewW + 200 || oy < cy - 200 || oy > cy + viewH + 200) continue;
+        list.push({ x: ox, y: oy - 18, r: 125, c: 0xffd29a, a: 0.85 });
+        if (list.length > 14) break;
+      }
+    }
+    for (let i = 0; i < this._motes.length; i++) {
+      const m = this._motes[i];
+      if (m.visible && m._firefly) list.push({ x: m.x, y: m.y, r: 26, c: 0xd8ff8a, a: m.alpha * 0.9 });
+    }
+    const tex = fxTex('glow');
+    for (let i = 0; i < list.length; i++) {
+      let s = this._lights[i];
+      if (!s) {
+        s = new Sprite(tex || Texture.WHITE);
+        s.anchor.set(0.5); s.blendMode = 'add';
+        this._lightScene.addChild(s); this._lights.push(s);
+      }
+      const l = list[i];
+      s.x = (l.x - cx) * k; s.y = (l.y - cy) * k;
+      s.width = s.height = l.r * 2 * k;
+      s.tint = l.c;
+      s.alpha = Math.min(1, l.a * (0.35 + 0.65 * L.lamp));
+      s.visible = true;
+    }
+    for (let i = list.length; i < this._lights.length; i++) this._lights[i].visible = false;
+
+    renderer.render({ container: this._lightScene, target: this._rt, clear: true });
+    const ov = this._overlay;
+    if (ov.texture !== this._rt) ov.texture = this._rt;
+    ov.tint = 0xffffff;
+    ov.x = cx; ov.y = cy; ov.width = viewW; ov.height = viewH;
+    ov.visible = true;
+  }
+
+  /* ─────────────────────────── the air ─────────────────────────── */
+  _updateAir(S, cam, now, dt, wind) {
+    const air = airOf(S.currentZone);
+    const L = this._L || { lamp: 0 };
+    const sky = zoneHasSky(S.currentZone, S);
+    const night = sky && L.lamp > 0.4;
+    let kind = air && air.motes ? air.motes : null;
+    /* at night the green zones trade pollen for fireflies */
+    if (night && air && air.fireflies) kind = 'fireflies';
+    if (!this.airLayer || !fxTex('mote') || this._calm) kind = null;
+    const style = kind === 'fireflies'
+      ? { n: 14, tint: 0xe6ff9a, size: [2.6, 3.6], alpha: [0.0, 1.0], drift: 0.15, rise: 0, add: true, firefly: true }
+      : (kind ? MOTE_STYLE[kind] : null);
+    const { cx, cy, viewW, viewH } = cam;
+    const n = style ? style.n : 0;
+    if (kind !== this._moteKind) {
+      /* re-seed across the view so a new zone starts full, not empty */
+      this._moteKind = kind;
+      for (let i = 0; i < this._motes.length; i++) this._motes[i]._seeded = false;
+    }
+    for (let i = 0; i < Math.max(n, this._motes.length); i++) {
+      let m = this._motes[i];
+      if (i >= n) { if (m) m.visible = false; continue; }
+      if (!m) {
+        m = new Sprite(fxTex('mote'));
+        m.anchor.set(0.5);
+        this.airLayer.addChild(m); this._motes.push(m);
+      }
+      if (!m._seeded) {
+        m._seeded = true;
+        m.x = cx + Math.random() * viewW; m.y = cy + Math.random() * viewH;
+        m._ph = Math.random() * Math.PI * 2;
+        m._sz = rand(style.size[0], style.size[1]);
+        m._sp = 0.6 + Math.random() * 0.8;
+        m.tint = style.tint;
+        m.blendMode = style.add ? 'add' : 'normal';
+        m._firefly = !!style.firefly;
+      }
+      /* drift with the wind, bob on its own phase */
+      m.x += (wind.x * style.drift * m._sp + Math.sin(now / 900 + m._ph) * 6) * dt;
+      m.y += (wind.y * style.drift * m._sp + style.rise * m._sp + Math.cos(now / 1100 + m._ph) * 4) * dt;
+      /* wrap round the view with a margin, so the field never empties */
+      const mx = 40;
+      if (m.x < cx - mx) m.x += viewW + mx * 2; else if (m.x > cx + viewW + mx) m.x -= viewW + mx * 2;
+      if (m.y < cy - mx) m.y += viewH + mx * 2; else if (m.y > cy + viewH + mx) m.y -= viewH + mx * 2;
+      const tw = 0.5 + 0.5 * Math.sin(now / (style.firefly ? 520 : 1400) * m._sp + m._ph);
+      m.alpha = style.alpha[0] + (style.alpha[1] - style.alpha[0]) * (style.firefly ? tw * tw : tw);
+      if (style.firefly) m.alpha *= Math.min(1, (L.lamp - 0.4) / 0.3);
+      m.width = m.height = m._sz * (style.firefly ? 1.6 : 1.4);
+      m.visible = true;
+    }
+  }
+
+  /* ─────────────────────────── dust ─────────────────────────── */
+  _updateDust(S, now, dt, wind) {
+    const air = airOf(S.currentZone);
+    const color = air && air.dust;
+    if (color != null && fxTex('print') && this.groundLayer) {
+      const seen = this._seenWalkers || (this._seenWalkers = new Set());
+      seen.clear();
+      if (S.player && !(S.rpg && S.rpg.hp <= 0)) {
+        this._walk('me', S.player.x, S.player.y + feetDy(S, S.player.x, S.player.y), color, now);
+        seen.add('me');
+      }
+      if (S.others) {
+        for (const id in S.others) {
+          const o = S.others[id];
+          if (!o || o._isDead) continue;
+          const ox = o.renderX != null ? o.renderX : o.x, oy = o.renderY != null ? o.renderY : o.y;
+          this._walk(id, ox, oy + feetDy(S, ox, oy), color, now);
+          seen.add(id);
+        }
+      }
+      for (const k of this._walkers.keys()) if (!seen.has(k)) this._walkers.delete(k);
+    } else {
+      this._walkers.clear();
+    }
+
+    for (let i = 0; i < this._prints.length; i++) {
+      const p = this._prints[i];
+      if (!p.visible) continue;
+      const t = (now - p._ts) / PRINT_MS;
+      if (t >= 1) { p.visible = false; continue; }
+      /* pressed in, holds a beat, then the breeze takes it: it slides
+         downwind, spreads and thins -- blown away, not faded out */
+      const blow = t < 0.3 ? 0 : (t - 0.3) / 0.7;
+      p.x += wind.x * 0.9 * blow * dt;
+      p.y += wind.y * 0.9 * blow * dt;
+      p.scale.set(p._s * (1 + blow * 0.35), p._s * (1 + blow * 0.2));
+      p.alpha = (t < 0.08 ? t / 0.08 : 1) * 0.62 * (1 - blow * blow);
+    }
+    for (let i = 0; i < this._puffs.length; i++) {
+      const p = this._puffs[i];
+      if (!p.visible) continue;
+      const t = (now - p._ts) / PUFF_MS;
+      if (t >= 1) { p.visible = false; continue; }
+      p.x += wind.x * 1.3 * dt;
+      p.y += (wind.y * 1.3 - 10) * dt;
+      p.scale.set(p._s * (0.55 + t * 0.7));
+      p.alpha = 0.32 * (1 - t);
+    }
+  }
+
+  _walk(key, x, y, color, now) {
+    let w = this._walkers.get(key);
+    if (!w) { this._walkers.set(key, { x, y, side: 1 }); return; }
+    const dx = x - w.x, dy = y - w.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 > 90 * 90) { w.x = x; w.y = y; return; }   /* a teleport, not a stride */
+    if (d2 < STEP * STEP) return;
+    const d = Math.sqrt(d2), ux = dx / d, uy = dy / d;
+    w.side = -w.side;
+    /* one foot's print, beside the line of travel, toes the way you went */
+    const px = w.x - uy * 3.2 * w.side, py = w.y + ux * 3.2 * w.side;
+    /* The PRINT is darker than the dust, the PUFF lighter: a foot in light
+       dust pushes it aside and shows the ground under it, and what it kicks
+       up is the dust itself.  The first cut tinted both with the dust colour
+       and on town's warm cobble the prints simply were not there. */
+    this._spawnPrint(px, py, Math.atan2(dy, dx) + Math.PI / 2, shade(color, 0.58), now);
+    if (w.side > 0) this._spawnPuff(w.x, w.y, color, now);
+    w.x = x; w.y = y;
+  }
+
+  _spawnPrint(x, y, rot, color, now) {
+    let p = this._prints[this._printI];
+    if (!p) {
+      p = new Sprite(fxTex('print'));
+      p.anchor.set(0.5);
+      this.groundLayer.addChild(p);
+      this._prints[this._printI] = p;
+    }
+    this._printI = (this._printI + 1) % PRINT_POOL;
+    p.x = x; p.y = y; p.rotation = rot; p.tint = color;
+    p._s = 0.8; p.scale.set(p._s);   /* ~13x19 world px: a foot, beside a ~100px body */
+    p._ts = now; p.alpha = 0; p.visible = true;
+  }
+
+  _spawnPuff(x, y, color, now) {
+    if (!this.partLayer || !fxTex('puff')) return;
+    let p = this._puffs[this._puffI];
+    if (!p) {
+      p = new Sprite(fxTex('puff'));
+      p.anchor.set(0.5);
+      this.partLayer.addChild(p);
+      this._puffs[this._puffI] = p;
+    }
+    this._puffI = (this._puffI + 1) % PUFF_POOL;
+    p.x = x; p.y = y - 2; p.tint = color;
+    p._s = 0.7; p.scale.set(p._s * 0.55);
+    p._ts = now; p.alpha = 0.32; p.visible = true;
+  }
+
+  /* ─────────────────────────── blood ─────────────────────────── */
+  /* Bursts arrive on S._bloodBursts from the hit handler (gameEvents.js,
+     monster_attack): where the victim stood, where the blow came FROM, and
+     what share of their max HP it took. */
+  _updateBlood(S, now, dt) {
+    const q = S._bloodBursts;
+    if (q && q.length) {
+      for (let i = 0; i < q.length; i++) this._burst(q[i], now);
+      q.length = 0;
+    }
+    for (let i = 0; i < this._drops.length; i++) {
+      const d = this._drops[i];
+      if (!d.visible) continue;
+      d._vz -= GRAV * dt;
+      d._gx += d._vx * dt; d._gy += d._vy * dt; d._z += d._vz * dt;
+      if (d._z <= 0) {
+        d.visible = false;
+        if (Math.random() < d._splatP) this._spawnSplat(d._gx, d._gy, rand(0.16, 0.3), now);
+        continue;
+      }
+      d.x = d._gx; d.y = d._gy - d._z;
+      /* stretch along the flight, the way a flung drop reads */
+      const sp = Math.hypot(d._vx, d._vy - d._vz);
+      d.rotation = Math.atan2(d._vy - d._vz, d._vx);
+      d.scale.set(d._s * (1 + Math.min(0.9, sp / 300)), d._s * 0.85);
+    }
+    for (let i = 0; i < this._splats.length; i++) {
+      const s = this._splats[i];
+      if (!s.visible) continue;
+      const age = now - s._ts;
+      if (age >= SPLAT_MS) { s.visible = false; continue; }
+      /* soaks in: full for the first two thirds, then gone over the rest */
+      const t = age / SPLAT_MS;
+      s.alpha = s._a * (t < 0.66 ? 1 : 1 - (t - 0.66) / 0.34);
+      if (age < 120) { const g = s._s * (0.6 + 0.4 * (age / 120)); s.scale.set(g, g * 0.72); }
+      else if (s.scale.x !== s._s) s.scale.set(s._s, s._s * 0.72);
+    }
+    for (let i = 0; i < this._mists.length; i++) {
+      const m = this._mists[i];
+      if (!m.visible) continue;
+      const t = (now - m._ts) / 380;
+      if (t >= 1) { m.visible = false; continue; }
+      m.x += m._vx * dt; m.y += m._vy * dt;
+      m.scale.set(m._s * (0.6 + t * 0.7));
+      m.alpha = 0.75 * (1 - t);
+    }
+  }
+
+  _burst(b, now) {
+    if (!this.partLayer || !fxTex('drop')) return;
+    const tier = bloodTier(b.frac);
+    const cfg = BLOOD[tier];
+    /* AWAY FROM THE BLOW.  The spray leaves the side of the body the hit
+       came out of -- a monster to your west throws your blood east.  With no
+       attacker (or one standing on you) it falls back to a loose ring. */
+    let ax = b.x - (b.fromX != null ? b.fromX : b.x), ay = b.y - (b.fromY != null ? b.fromY : b.y);
+    const al = Math.hypot(ax, ay);
+    const aimed = al > 2;
+    const base = aimed ? Math.atan2(ay, ax) : Math.random() * Math.PI * 2;
+    const spread = aimed ? cfg.spread : Math.PI;
+    const z0 = b.h || 20;
+    this._lastBlood = { tier, frac: +(b.frac || 0).toFixed(3), dir: +base.toFixed(2), aimed, ts: now };
+    for (let i = 0; i < cfg.drops; i++) {
+      let d = this._drops[this._dropI];
+      if (!d) {
+        d = new Sprite(fxTex('drop'));
+        d.anchor.set(0.5);
+        this.partLayer.addChild(d);
+        this._drops[this._dropI] = d;
+      }
+      this._dropI = (this._dropI + 1) % DROP_POOL;
+      const a = base + (Math.random() - 0.5) * 2 * spread * (0.4 + Math.random() * 0.6);
+      const sp = rand(cfg.speed[0], cfg.speed[1]);
+      d._gx = b.x + Math.cos(a) * 4; d._gy = b.y + Math.sin(a) * 2;
+      d._vx = Math.cos(a) * sp; d._vy = Math.sin(a) * sp * 0.7;
+      d._z = z0 + rand(-5, 5); d._vz = rand(20, 110);
+      d._s = rand(0.42, 0.8);
+      d._splatP = cfg.splats;
+      d.x = d._gx; d.y = d._gy - d._z;
+      d.alpha = 1; d.visible = true;
+    }
+    if (cfg.mist && fxTex('mist')) {
+      let m = this._mists[this._mistI];
+      if (!m) {
+        m = new Sprite(fxTex('mist'));
+        m.anchor.set(0.5);
+        this.partLayer.addChild(m);
+        this._mists[this._mistI] = m;
+      }
+      this._mistI = (this._mistI + 1) % 8;
+      m.x = b.x + Math.cos(base) * 6; m.y = b.y - z0;
+      m._vx = Math.cos(base) * 40; m._vy = Math.sin(base) * 25;
+      m._s = tier === 'heavy' ? 0.9 : 0.55;
+      m._ts = now; m.alpha = 0.75; m.visible = true;
+    }
+    if (cfg.pool) {
+      /* a heavy blow leaves a mark where you stood, just downrange */
+      this._spawnSplat(b.x + Math.cos(base) * 8, b.y + Math.sin(base) * 5, rand(0.55, 0.75), now, base);
+    }
+  }
+
+  _spawnSplat(x, y, s, now, rot) {
+    if (!this.groundLayer) return;
+    const k = 'splat' + (this._splatI % 3);
+    let p = this._splats[this._splatI];
+    if (!p) {
+      p = new Sprite(fxTex(k) || Texture.EMPTY);
+      p.anchor.set(0.5);
+      this.groundLayer.addChild(p);
+      this._splats[this._splatI] = p;
+    }
+    this._splatI = (this._splatI + 1) % SPLAT_POOL;
+    p.x = x; p.y = y;
+    p.rotation = rot != null ? rot : Math.random() * Math.PI * 2;
+    p._s = s; p.scale.set(s * 0.6, s * 0.6 * 0.72);   /* lying on the ground: flattened toward the camera */
+    p._a = 0.85; p.alpha = 0.85;
+    p._ts = now; p.visible = true;
+  }
+}
+
+/* The hit handler's side of blood: queue a burst for the next frame.  Kept
+   here, beside the drawer, so the one rule for what a burst carries lives in
+   one file; gameEvents only says where, from where, and how much. */
+export function queueBlood(S, x, y, fromX, fromY, frac) {
+  if (!S || !(frac > 0)) return;
+  if (!S._bloodBursts) S._bloodBursts = [];
+  if (S._bloodBursts.length > 24) return;   /* a flood of hits in one frame is one frame of blood */
+  /* `y` is the body's middle; the drops leave from there (h above the
+     ground) and land on the ground under the feet */
+  const fd = feetDy(S, x, y);
+  S._bloodBursts.push({ x, y: y + fd, fromX, fromY: fromY != null ? fromY + fd : fromY, frac, h: fd + 2 });
+}

@@ -29,6 +29,7 @@ import { STATUS_DEFS, applyStatus, STAFF_LIFE /* v2.3.2387 */ } from '@/data/gam
 import { rollMonsterShard } from '@/data/shards.js';
 import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2699: a snowball stops where the worker's own line meets a prop */
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armoured-hit SFX check */
+import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2703: blood thrown away from the blow */
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
@@ -2294,6 +2295,17 @@ export function processGameEvent(type, payload, S, deps) {
                 var rOther = S.others && S.others[payload.targetId];
                 if (rOther && !rOther._isDead) {
                   rOther._hitFlash = Date.now();
+                  /* v2.3.2703: a friend being hit bleeds too, the same way
+                     (see the local branch below).  Their max HP is the one
+                     their health bar reads (rpgMaxHp). */
+                  var _bdmg = typeof payload.dmgTaken === 'number' ? payload.dmgTaken : 0;
+                  if (_bdmg > 0 && !payload.blocked && !payload.dodged) {
+                    var _bSrc = (payload.monsterId && S.monsters) ? S.monsters.find(function (mm) { return mm.id === payload.monsterId; }) : null;
+                    var _bx = (typeof payload.attackerX === 'number') ? payload.attackerX : (_bSrc ? _bSrc.x : null);
+                    var _by = (typeof payload.attackerY === 'number') ? payload.attackerY : (_bSrc ? _bSrc.y : null);
+                    var _rx = rOther.renderX != null ? rOther.renderX : rOther.x, _ry = rOther.renderY != null ? rOther.renderY : rOther.y;
+                    queueBlood(S, _rx || 0, _ry || 0, _bx, _by, _bdmg / Math.max(1, rOther.rpgMaxHp || 100));
+                  }
                   pushDmgPopup(S, rOther.x || 0, (rOther.y || 0) - 20, '-' + toDisplayDamage(payload.dmg || 0), '#ff5e6c');   /* v2.3.2520: display scale */
                 }
                 break;
@@ -2577,6 +2589,15 @@ export function processGameEvent(type, payload, S, deps) {
                    don't shove. */
                 var _cpAng2 = Math.atan2(S.player.y - _atkY, S.player.x - _atkX);
                 S._camPunch = { dx: Math.cos(_cpAng2) * 6, dy: Math.sin(_cpAng2) * 6, ts: Date.now() };
+                /* ═══ v2.3.2703: BLOOD, THROWN AWAY FROM THE BLOW ═══
+                   Owner: "directionally aware blood effects ... tiny per every
+                   hit that the monster takes 10% hp or less, moderate between
+                   11% and 32%, and high if 33% or more."  The share is the
+                   hit's own damage over YOUR max HP -- how hard it landed on
+                   you -- and the direction is the same attacker position the
+                   camera kick above already points away from.  Same guard:
+                   blocks and dodges bleed nothing. */
+                queueBlood(S, S.player.x, S.player.y, _atkX, _atkY, dmgTaken2 / Math.max(1, R2.maxHp || 100));
               }
               /* v2.3.110: heart glyph alongside "-N" popup so the
                  loss-of-HP intent reads instantly. */

@@ -96,6 +96,14 @@ const WORLD_LAYER_NAMES = [
      foreground piece is nearer the camera than everything by construction, so
      there is no ground line to sort it by. */
   'foreground',
+  /* ═══ v2.3.2703: THE LIGHT ═══
+     Time of day (rendering/worldFx.js): the night's light map, multiplied
+     over the world, plus the day's cloud shadows and the dawn fog.  ABOVE
+     everything that is IN the world -- the ground, the bodies, the canopy in
+     `foreground` all take the hour's light -- and BELOW the damage numbers and
+     the world overlay, because the night must never make a number you need to
+     read harder to read.  Not depth-sorted: light covers, it does not stand. */
+  'lighting',
   'damageNumbers', 'overlayWorld',
 ];
 const SCREEN_LAYER_NAMES = ['atmosphere', 'screenFX', 'hud'];

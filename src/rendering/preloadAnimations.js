@@ -36,6 +36,7 @@ import { variantSpritesFor, unloadVariantSprites } from './monsterVariantSprites
 import { loadSlimeSprites } from './slimeSprites.js';
 import { loadSnowmanSprites, unloadSnowmanSprites } from './snowmanSprites.js';
 import { loadPlayerDeathSprites } from './playerDeathSprites.js';
+import { mintWorldFxTextures } from './worldFxTextures.js';   /* v2.3.2703 */
 import { preloadStartZoneMap, loadWalkabilityMaps } from './tiledMaps.js';
 import { effectsAnimationsReady, ensureImpactTex, ensureSnowballBurstTex, freeFrostImpactTex, ensureArrowBlastTex } from './systems/effectsRenderer.js'; /* v2.3.2272: the frost-only sheets get an exit */
 import { fxStripsReady } from './fxStrips.js'; /* v2.3.1735: stun ring + whirl vortex (preloading is law) */
@@ -236,6 +237,11 @@ export async function preloadWorldAnimations() {
   const groups = {
     slime: loadSlimeSprites(),
     playerDeath: loadPlayerDeathSprites(),
+    /* v2.3.2703: the textures time of day, dust, blood and the crumbling
+       corpse draw from -- minted in a canvas, not downloaded, but a first-use
+       GPU upload is still the hitch the law forbids, and it would land on
+       the first hit you take or the first time you die. */
+    worldFx: Promise.resolve().then(() => mintWorldFxTextures()),
     walkability: loadWalkabilityMaps(),
     /* v2.3.2398: the bow's jet stream (jet-stream-v1.png) rides THIS group.
        It is loaded through effectsRenderer's _fxLoad, which is a drop-in for

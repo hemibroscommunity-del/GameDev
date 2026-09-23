@@ -53,6 +53,7 @@ import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount 
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
+import { deathCrumble } from '../deathCrumble.js';   /* v2.3.2703: the crumbling corpse */
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
 import { getNftTextures } from '../nftAvatars.js';
@@ -9680,7 +9681,14 @@ export class EntityRenderer {
         const _elapsed = Date.now() - (other._deathTs || Date.now());
         const _spriteBody = display._spriteBody;
         const _body = display._body;
-        if (hasPlayerDeathSprites() && _spriteBody) {
+        /* v2.3.2703: the crumbling skeleton (deathCrumble.js) -- this peer's
+           own look breaks into flakes and their bones fall.  The strip below
+           is the fallback if it cannot draw. */
+        const _crumble = deathCrumble.corpse('o:' + (other.id || id), display, other._deathTs || 0, now);
+        if (_crumble) {
+          if (_spriteBody) _spriteBody.visible = false;
+          if (_body) _body.visible = false;
+        } else if (hasPlayerDeathSprites() && _spriteBody) {
           const _tex = getPlayerDeathFrame(playerDeathFrameForElapsed(_elapsed));
           if (_tex && _spriteBody.texture !== _tex) _spriteBody.texture = _tex;
           _spriteBody.tint = 0xffffff;
@@ -9701,7 +9709,7 @@ export class EntityRenderer {
            for the same reason: this was a hand-written list of what to hide,
            and the back shield was added long after it. */
         const _rKeep = [
-          _spriteBody, display._namePill, display._comboText,
+          _crumble, _spriteBody, display._namePill, display._comboText,
           display._handCapMask, display._handArmMask,
         ];
         _hideExceptDeep(display, _rKeep);
@@ -10712,7 +10720,14 @@ export class EntityRenderer {
       if (display.rotation !== 0) display.rotation = 0;
       const _selfSpriteBody = display._spriteBody;
       const _selfBody = display._body;
-      if (hasPlayerDeathSprites() && _selfSpriteBody) {
+      /* v2.3.2703: the crumbling skeleton -- see the peer branch above and
+         deathCrumble.js.  Photographed on this first dead frame, before the
+         hide pass below takes the worn layers away. */
+      const _selfCrumble = deathCrumble.corpse('self', display, S._deathStart || 0, now);
+      if (_selfCrumble) {
+        if (_selfSpriteBody) _selfSpriteBody.visible = false;
+        if (_selfBody) _selfBody.visible = false;
+      } else if (hasPlayerDeathSprites() && _selfSpriteBody) {
         const _selfTex = getPlayerDeathFrame(playerDeathFrameForElapsed(_selfElapsed));
         if (_selfTex && _selfSpriteBody.texture !== _selfTex) _selfSpriteBody.texture = _selfTex;
         _selfSpriteBody.tint = 0xffffff;
@@ -10757,7 +10772,7 @@ export class EntityRenderer {
          hidden on death by default, which is the safe direction and the one
          the owner's rule asks for.  mp-deathshield pins it. */
       const _deathKeep = [
-        _selfSpriteBody, display._namePill, display._comboText,
+        _selfCrumble, _selfSpriteBody, display._namePill, display._comboText,
         display._handCapMask, display._handArmMask,
         display._hudHpBarFrame, display._hudHpBarFill, display._hudHpRing,
         display._hudHpText, display._hudHpMaxText,
