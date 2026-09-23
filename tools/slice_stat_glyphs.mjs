@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* ═══ v2.3.2642: SLICE THE OWNER'S STAT GLYPH SHEET ═══
+/* ═══ v2.3.2683: SLICE THE OWNER'S STAT GLYPH SHEET ═══
  * The owner supplied one 1448x1086 sheet holding all thirteen stat glyphs in
  * two rows (six lane stats, seven body stats) with a caption under each.
  * This cuts it into thirteen transparent PNGs.

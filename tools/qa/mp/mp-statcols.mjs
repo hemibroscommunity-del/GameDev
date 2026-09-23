@@ -60,7 +60,7 @@ const SIZES = [
    The owner replaced it with a 2x2 category grid you drill into, so a weapon's
    card carries its own six and Shared carries seven, and thirteen at once is a
    state the screen can no longer reach.  openPointCols drills into `sword`. */
-/* v2.3.2642: THIRTEEN, not six.  The old screen showed one lane's six stats
+/* v2.3.2683: THIRTEEN, not six.  The old screen showed one lane's six stats
    at a time; the owner's grid shows all of them -- six lane stats and seven
    body stats -- on one screen, which is the whole point of the redesign. */
 const CELLS = 13;
@@ -119,7 +119,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           ? Math.min(...leaves.filter((l) => l.fs && l.t !== 'IMG').map((l) => l.fs)) : null,
       };
     });
-    /* ═══ v2.3.2642: THIRTEEN CELLS, NOT FOUR COLUMNS ═══
+    /* ═══ v2.3.2683: THIRTEEN CELLS, NOT FOUR COLUMNS ═══
        The owner replaced the category columns with one grid, so "all four are
        shut and share the width" describes a screen that is gone.  What this
        scenario is actually FOR survives untouched and matters more on a grid
@@ -158,7 +158,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* THE EXACT STATE THE OWNER SCREENSHOTTED, at the three widths: one
        weapon open, three strips beside it.  This is where a 64px strip has
        to hold "SHARED" and "+12" and where 58 did not. */
-    /* v2.3.2642: there is no open/shut any more -- every stat is on screen at
+    /* v2.3.2683: there is no open/shut any more -- every stat is on screen at
        once, which is the redesign.  The clipping check that rode on the "open"
        state is kept below, where it now runs against all thirteen cells. */
     const m = await P.page.evaluate(() => {
@@ -172,12 +172,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
          row is how this read "rowW: 44" on a 163px row. */
       const rows = [...b.querySelectorAll('[data-prog3-row]')];
       const clipped = [];
-      /* ═══ v2.3.2656: MEASURE THE TEXT, NOT THE BOX ═══
+      /* ═══ v2.3.2686: MEASURE THE TEXT, NOT THE BOX ═══
          scrollWidth > clientWidth catches a clip only when the element is
          WIDER than its content box.  These captions are shrink-to-fit flex
          items with maxWidth:100%, so when the word does not fit the SPAN
          shrinks with it and scrollWidth shrinks too -- the ellipsis appears
-         and the two numbers stay equal.  v2.3.2656's tray narrowed every
+         and the two numbers stay equal.  v2.3.2686's tray narrowed every
          column by 1.4px, SPECIAL and DODGE ellipsised at 390, and this loop
          reported nothing; the capture is what showed it.
          So the natural width is measured directly: a clone of the same text
@@ -248,7 +248,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* The BAND SHAPE, per width -- 4 across above 375, and the narrow fallback
        below it.  Asserted from the measured x/width of the cells rather than
        from a constant, so a change to the gap or the padding is visible here. */
-    /* v2.3.2642: the first row is the SIX lane stats behind the weapons head,
+    /* v2.3.2683: the first row is the SIX lane stats behind the weapons head,
        and the second the seven body stats behind the portrait -- the owner's
        two bands.  Asserted as the band COUNT below rather than as "two
        across", which was the card's shape. */

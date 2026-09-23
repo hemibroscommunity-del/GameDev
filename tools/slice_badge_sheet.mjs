@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* ═══ v2.3.2668: SLICE THE OWNER'S BADGE + NUMERAL SHEET ═══
+/* ═══ v2.3.2690: SLICE THE OWNER'S BADGE + NUMERAL SHEET ═══
  * One sheet: a round badge and a pill badge on the top row, then the numerals
  * 0-9 and a "+" on the bottom row.  Cut into transparent PNGs for the Points
  * grid's remaining-points badges (owner: "Use this sprite sheet for the tiny
@@ -95,7 +95,7 @@ put('pill', shapes[1], SHAPE_H);
 const tall = Math.max(...glyphs.map((g) => g.h));
 glyphs.forEach((g, i) => put(i < 10 ? `d${i}` : 'plus', g, Math.max(1, Math.round(GLYPH_H * g.h / tall))));
 
-/* ═══ v2.3.2670: TWO BAKED VARIANTS, FROM THE SAME PIXELS ═══
+/* ═══ v2.3.2692: TWO BAKED VARIANTS, FROM THE SAME PIXELS ═══
    Owner, off the mockups: "I like the normal blue with the yellow/gold
    outline" (the badges) and "try making the outline of all the number stats
    white" (the numerals in the thirteen stat cells).

@@ -1425,7 +1425,7 @@ export const HeroExpanded = () => {
                Merging in the owner's own direction keeps all of it: InfoPopup
                already had an `action` slot rendering a gold button beside "Got
                it", which is precisely "asks you to confirm at the bottom". */
-            /* ═══ v2.3.2645: ONE DEFINITION OF "SPEND THIS POINT" ═══
+            /* ═══ v2.3.2684: ONE DEFINITION OF "SPEND THIS POINT" ═══
                The confirm window can now CHANGE which weapon the point goes
                to (the tab row the owner drew), which means the window has to
                be able to rebuild its own spend for the lane you picked --
@@ -1504,7 +1504,7 @@ export const HeroExpanded = () => {
                     rows.push({ label: 'DPS', now: '—', after: null, delta: 'equip a weapon to see' });
                   }
                 }
-                /* v2.3.2648: the same two words the title has always said, as
+                /* v2.3.2685: the same two words the title has always said, as
                    parts, so each can be followed by its own icon (owner).
                    The lane's icon is the weapon's, the shared row's is your
                    portrait -- the same two pictures the grid's head cells
@@ -1565,7 +1565,7 @@ export const HeroExpanded = () => {
                     blocked: spend.blocked,
                     run: spend.run,
                   } : undefined,
-                  /* ═══ v2.3.2645: THE LANE IS CHOSEN HERE NOW ═══
+                  /* ═══ v2.3.2684: THE LANE IS CHOSEN HERE NOW ═══
                      Owner: "The button to change which of the 3 combat skills
                      it's applied to ... is a tab in the confirm window.  This
                      should be for every allocable stat."
@@ -2005,7 +2005,7 @@ export const HeroExpanded = () => {
             );
 
             /* ═══════════════════════════════════════════════════════════
-               v2.3.2642: THE OWNER'S POINTS GRID
+               v2.3.2683: THE OWNER'S POINTS GRID
                Owner, with a mockup: "I want the menu under the points tab to
                look like this and use these color glyphs instead.  The points
                remaining can just exist in the points confirmation window."
@@ -2040,7 +2040,7 @@ export const HeroExpanded = () => {
                Defaults to the weapon you are holding (prog3ActiveCat), which
                is the reading this file has used for buildCat since v2.3.1668.
                ═══════════════════════════════════════════════════════════ */
-            /* ═══ v2.3.2645: BIGGER TYPE, SMALLER GLYPH, TALLER CELL ═══
+            /* ═══ v2.3.2684: BIGGER TYPE, SMALLER GLYPH, TALLER CELL ═══
                Owner: "There is some room at the bottom of the screen to expand
                a little bit.  The numbers and font need to be larger and the
                icons can shrink a bit."
@@ -2068,21 +2068,21 @@ export const HeroExpanded = () => {
                weight 800, so a cell of width W holds it at W/4.63 and the
                divisor keeps a hair of slack. */
             /* 56 was the panel's chrome around the grid when a row WAS the
-               grid; v2.3.2656's tray adds its own 1px border and 4px padding
+               grid; v2.3.2686's tray adds its own 1px border and 4px padding
                on each side, so a column lost 10/7.15 = 1.4px of width and the
                caption -- which fits with under a pixel of slack by design --
                tipped SPECIAL and DODGE into an ellipsis at 390.  Caught in a
                capture, not by arithmetic: the number is measured against the
                real screen either way, so the tray belongs IN it. */
             const CELL_W = Math.max(22, (panelVw() - 66) / 7.15);
-            /* v2.3.2648: a quarter off every glyph (owner: "shrink each icon
+            /* v2.3.2685: a quarter off every glyph (owner: "shrink each icon
                25%.  Too large").  The cell keeps its height, so what the
                glyph gives up goes to the caption and the number -- which is
-               the same direction as v2.3.2645's ask and this is the rest of
+               the same direction as v2.3.2684's ask and this is the rest of
                it.  Still derived from the cell's width, so the shrink holds
                at every screen: 0.60 -> 0.45, and the clamp with it. */
             const GLYPH = Math.round(Math.max(15, Math.min(22, CELL_W * 0.45)));
-            /* ═══ v2.3.2648: THE HEAD CELLS HAVE THEIR OWN SIZE ═══
+            /* ═══ v2.3.2685: THE HEAD CELLS HAVE THEIR OWN SIZE ═══
                They used to size off GLYPH, so shrinking the stat glyphs would
                have shrunk the weapons and the portrait with them -- and the
                weapons were the thing the owner called "super tiny and look
@@ -2092,10 +2092,10 @@ export const HeroExpanded = () => {
             const HEAD_W = CELL_W * 1.15;
             /* Height stays capped sideways: the landscape pane is short and a
                tall cell there costs the second row its place on screen. */
-            /* v2.3.2656: the tray each row now sits in costs 10px a row (its
+            /* v2.3.2686: the tray each row now sits in costs 10px a row (its
                border and padding, top and bottom), so the cell gives that
                back -- the grid has to keep ending at the bottom of the
-               screen, which is what v2.3.2645 was for.  Measured, not
+               screen, which is what v2.3.2684 was for.  Measured, not
                guessed: 75 -> 65 at 390 puts the grid's foot back on 842 of
                844, and 60 -> 52 at 320 on 562 of 568. */
             const CELL_H = landPane ? 52 : Math.round(Math.max(52, Math.min(68, CELL_W * 1.40)));
@@ -2103,7 +2103,7 @@ export const HeroExpanded = () => {
                its height, whichever binds first.  The portrait has no stack
                to make room for, so it takes the cell short of its padding. */
             const LANE_ICON = Math.round(Math.max(18, Math.min(34, Math.min(CELL_H * 0.42, HEAD_W * 0.60))));
-            /* v2.3.2667: HEAD_W - 14, not - 10.  The portrait now carries a
+            /* v2.3.2689: HEAD_W - 14, not - 10.  The portrait now carries a
                badge pinned 3px past its top-right corner, and in the narrow
                landscape pane the portrait filled the head so exactly that
                the badge poked a pixel past the header's edge -- mp-catgrid
@@ -2112,7 +2112,7 @@ export const HeroExpanded = () => {
             const HEAD_ICON = Math.round(Math.max(22, Math.min(40, Math.min(CELL_H - 14, HEAD_W - 14))));
             const CAP_FS = Math.max(7.5, Math.min(10.5, CELL_W / 4.7));
             const NUM_FS = Math.max(12.5, Math.min(18, CELL_W * 0.38));
-            /* v2.3.2670: the owner's numeral art -- shared by the header
+            /* v2.3.2692: the owner's numeral art -- shared by the header
                badges and the stat cells, so declared above both. */
             const BADGE = '/icons/ui/badge/';
             const BADGE_V = '?v=2.3.2670';
@@ -2135,7 +2135,7 @@ export const HeroExpanded = () => {
                   style={{
                     height: CELL_H, minWidth: 0, boxSizing: 'border-box',
                     display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    /* v2.3.2656: caption to the top, number to the floor, glyph
+                    /* v2.3.2686: caption to the top, number to the floor, glyph
                        in the space between (owner: "numbers are good size but
                        have room to move down a bit within the cells").  The
                        cell used to centre the three as one block, which left
@@ -2148,7 +2148,7 @@ export const HeroExpanded = () => {
                        carrying a label; on a 44px cell whose content is a
                        COLOURED GLYPH, thirteen full-bleed fills fight the
                        artwork they are framing. */
-                    /* ═══ v2.3.2665: THE OUTLINE IS THE GLYPH'S OWN COLOUR ═══
+                    /* ═══ v2.3.2687: THE OUTLINE IS THE GLYPH'S OWN COLOUR ═══
                        Owner: "I'd rather have the cell outline be whatever the
                        main icon color is."  `tint` is the v2.3.2598 palette,
                        picked for the old pastel FILLS before these glyphs
@@ -2165,7 +2165,7 @@ export const HeroExpanded = () => {
                     background: COL.wellSoft,
                     cursor: 'pointer', touchAction: 'manipulation', overflow: 'hidden',
                   }}>
-                  {/* v2.3.2642: 8px and NO letter-spacing, measured against the
+                  {/* v2.3.2683: 8px and NO letter-spacing, measured against the
                       longest caption.  "ELEMENT" is 7 characters into a cell
                       that is (panel - head cell - 6 gaps) / 6 wide -- about
                       44px on a 390pt phone -- and at 8.5px with .04em it
@@ -2183,7 +2183,7 @@ export const HeroExpanded = () => {
                     width: GLYPH, height: GLYPH, flex: 'none', objectFit: 'contain',
                     pointerEvents: 'none',
                   }} />
-                  {/* ═══ v2.3.2670: THE STAT COUNTS IN THE OWNER'S NUMERALS ═══
+                  {/* ═══ v2.3.2692: THE STAT COUNTS IN THE OWNER'S NUMERALS ═══
                       Owner, off the mockups: "try making the outline of all
                       the number stats (the stats you allocate points in)
                       white".  The same numeral art as the header badges, with
@@ -2212,7 +2212,7 @@ export const HeroExpanded = () => {
 
             /* The head of each row: the weapons cell picks which lane the six
                stats above belong to, the portrait just names the shared row. */
-            /* ═══ v2.3.2645: THE WEAPON ROW IS A LABEL, NOT A CONTROL ═══
+            /* ═══ v2.3.2684: THE WEAPON ROW IS A LABEL, NOT A CONTROL ═══
                Owner: "The weapon icon row is not meant to be button.  The
                button to change which of the 3 combat skills it's applied to is
                shown in the second attached image.  It's a tab in the confirm
@@ -2222,12 +2222,12 @@ export const HeroExpanded = () => {
                the owner drew it -- next to the points it would spend, at the
                moment you are deciding to spend one.  That is a better place
                for it than a cell you had to know was a control. */
-            /* ═══ v2.3.2667: WHAT EACH POOL STILL HAS, ON ITS OWN HEADER ═══
+            /* ═══ v2.3.2689: WHAT EACH POOL STILL HAS, ON ITS OWN HEADER ═══
                Owner: "I want a badge on a fill background on each row header
                showing how many allocable points there still are.  One number
                on each combat type icon (melee, bow, staff) then just one for
                the character on the second row header."
-               This partly reverses v2.3.2642's "no points-remaining anywhere
+               This partly reverses v2.3.2683's "no points-remaining anywhere
                in the grid", by the same owner and deliberately: the STAT
                cells still carry no remaining count (a cell shows what it has
                bought), and the count moves to the one place a pool has a
@@ -2250,7 +2250,7 @@ export const HeroExpanded = () => {
                portrait's, because in a 21px header the portrait is wider than
                the room it has. */
             const HEAD_COMPACT = HEAD_W < 34;
-            /* ═══ v2.3.2669: THE OWNER'S OWN BADGE ART ═══
+            /* ═══ v2.3.2691: THE OWNER'S OWN BADGE ART ═══
                Owner, with a sheet of a round badge, a pill badge and the
                numerals 0-9 and "+": "Use this sprite sheet for the tiny
                numbers.  I want to see if it looks good."
@@ -2267,13 +2267,13 @@ export const HeroExpanded = () => {
             const headBadge = (n, key, pin) => {
               const live = n > 0;
               const c = HEAD_COMPACT;
-              /* ═══ v2.3.2669: THE SIDEWAYS PANE KEEPS THE PLAIN PILL ═══
+              /* ═══ v2.3.2691: THE SIDEWAYS PANE KEEPS THE PLAIN PILL ═══
                  A landscape header is ~18px wide inside, and the sprite pill
                  for "64" is 22px at the smallest size its numerals still read
                  at -- mp-catgrid measured it clipped off the header's left
                  edge.  The art cannot shrink further without the numerals
                  turning to mush, so there (and only there) the badge is the
-                 v2.3.2667 brass pill in 7px type, which fits.  Portrait, the
+                 v2.3.2689 brass pill in 7px type, which fits.  Portrait, the
                  layout the owner approved from a capture, is all sprite. */
               if (c) {
                 return (
@@ -2302,7 +2302,7 @@ export const HeroExpanded = () => {
                      sword, staff and bow are all drawn pointing up-right, so
                      the top-right corner is the part that says which weapon
                      it is.  7px out, the badge clips the corner instead. */
-                  /* v2.3.2669: the owner chose this top-right placement off
+                  /* v2.3.2691: the owner chose this top-right placement off
                      the capture ("this image nearly has it") -- the badges
                      stay put and the WEAPONS move out from under them; see
                      LANE_NUDGE on the icons below. */
@@ -2310,7 +2310,7 @@ export const HeroExpanded = () => {
                   height: bh, minWidth: bh, boxSizing: 'border-box',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   ...(round
-                    /* v2.3.2670: the owner's pick off the mockups -- the
+                    /* v2.3.2692: the owner's pick off the mockups -- the
                        normal blue, with the numerals left gold.  Baked
                        (slice_badge_sheet.mjs) rather than a CSS filter, so the
                        gold numerals on top are not dragged blue with it. */
@@ -2353,7 +2353,7 @@ export const HeroExpanded = () => {
                     height: CELL_H, minWidth: 0, boxSizing: 'border-box',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     padding: 3,
-                    /* ═══ v2.3.2656: THE HEAD BELONGS TO ITS ROW ═══
+                    /* ═══ v2.3.2686: THE HEAD BELONGS TO ITS ROW ═══
                        Owner: "is there a way to visually connect the row
                        headers to the rows?  Right now they're floating
                        distinct cells."  They were: same border, same fill,
@@ -2373,7 +2373,7 @@ export const HeroExpanded = () => {
                     cursor: 'default', overflow: 'hidden',
                   }}>
                   {isLane
-                    /* ═══ v2.3.2648: THREE WEAPONS DOWN THE DIAGONAL ═══
+                    /* ═══ v2.3.2685: THREE WEAPONS DOWN THE DIAGONAL ═══
                        Owner: "try making the first row (with all 3 combat
                        icons) diagonally aligned so they fit better.  Right now
                        those icons are super tiny and look silly."
@@ -2391,7 +2391,7 @@ export const HeroExpanded = () => {
                        percentages are the cell's own box, so it re-fits at
                        every width without a second breakpoint. */
                     ? (
-                      /* v2.3.2667: the stack gives up 4px on the right and
+                      /* v2.3.2689: the stack gives up 4px on the right and
                          2px on top, so the LAST weapon's badge and the FIRST
                          one's can overhang their icons by the same amount as
                          the middle one's without being cut off by the
@@ -2400,7 +2400,7 @@ export const HeroExpanded = () => {
                         {POINT_LANES.filter((c) => !c.shared).map((c, i, a) => {
                           const on = c.key === buildCat;
                           const t = a.length > 1 ? i / (a.length - 1) : 0;
-                          /* v2.3.2667: the icon and its badge move as one box,
+                          /* v2.3.2689: the icon and its badge move as one box,
                              so the count stays pinned to ITS weapon's corner
                              wherever the diagonal puts it. */
                           return (
@@ -2413,7 +2413,7 @@ export const HeroExpanded = () => {
                             }}>
                             <img src={c.iconSrc} alt="" draggable={false} style={{
                               width: '100%', height: '100%', objectFit: 'contain', display: 'block',
-                              /* ═══ v2.3.2669: THE WEAPON STEPS OUT FROM UNDER ITS BADGE ═══
+                              /* ═══ v2.3.2691: THE WEAPON STEPS OUT FROM UNDER ITS BADGE ═══
                                  Owner, on the top-right capture: "you just need
                                  to nudge all weapon icons diagonally
                                  (southwest)".  The badge is pinned to the BOX
@@ -2424,7 +2424,7 @@ export const HeroExpanded = () => {
                                  A fraction of the icon, not a pixel count, so
                                  the nudge scales with the icon at every width. */
                               transform: `translate(${-LANE_NUDGE}px, ${LANE_NUDGE}px)`,
-                              /* v2.3.2666: all three at full strength (owner:
+                              /* v2.3.2688: all three at full strength (owner:
                                  "have all of the icons in the first row not
                                  dimmed").  The dimming was the head's way of
                                  saying WHICH weapon's numbers the six cells
@@ -2464,7 +2464,7 @@ export const HeroExpanded = () => {
               );
             };
 
-            /* ═══ v2.3.2656: A ROW IS A TRAY, NOT SEVEN LOOSE TILES ═══
+            /* ═══ v2.3.2686: A ROW IS A TRAY, NOT SEVEN LOOSE TILES ═══
                The header connects to its row by being INSIDE the same
                surface as it: one bordered, filled band per row, with the
                cells as chips on it and the head as a label at its left, cut
@@ -2926,7 +2926,7 @@ export const HeroExpanded = () => {
                   cue that there is more, which this screen has instead of a
                   scroll-edge fade (the fade was removed at v2.3.2288 because
                   the owner said "the last row is faded at the bottom"). */}
-              {/* ═══ v2.3.2645: THE DPS STRIP IS GONE ═══
+              {/* ═══ v2.3.2684: THE DPS STRIP IS GONE ═══
                   Owner: "remove the top row explainer about DPS."  It carried
                   two things and both have somewhere better to be: the resting
                   DPS is on the Equipment screen beside the weapon that earns
@@ -3009,7 +3009,7 @@ export const HeroExpanded = () => {
                   both orientations render this.  That deletes the landscape
                   branch, statRow, and the lane-header accordion with it. */}
               <div data-prog3-points style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                {/* ═══ v2.3.2642: ONE SCREEN, NO CAPTION ═══
+                {/* ═══ v2.3.2683: ONE SCREEN, NO CAPTION ═══
                     The instruction line said "Tap a category, then spend its
                     points here" -- it existed to explain the TWO-STEP shape,
                     and there is no second step now.  A caption describing a

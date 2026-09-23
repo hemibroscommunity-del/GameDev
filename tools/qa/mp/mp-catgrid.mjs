@@ -1,4 +1,4 @@
-/* THE POINTS SCREEN AS ONE GRID OF THIRTEEN STATS (v2.3.2642).
+/* THE POINTS SCREEN AS ONE GRID OF THIRTEEN STATS (v2.3.2683).
  *
  * REWRITTEN, NOT REPAIRED.  This scenario used to drive the two-step screen of
  * v2.3.2597: a 2x2 of MELEE / BOW / MAGIC / SHARED, then a drilled-in card of
@@ -119,7 +119,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     ['360-landscape', { width: 800, height: 360 }, true, 'Catgridd'],
   ]) {
     /* ═══ ENTER IN PORTRAIT, THEN ROTATE ═══
-       Restored verbatim from the pre-v2.3.2642 file after the rewrite dropped
+       Restored verbatim from the pre-v2.3.2683 file after the rewrite dropped
        it and spent a run finding out why.  The character creator cannot be
        completed sideways -- entering straight into 844x390 leaves the Enter
        button un-clickable and `H.enterWorld` times out 30s later, before a
@@ -143,7 +143,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        (which goes through it) times out waiting for it -- the rewrite hit
        this after the rotate fix and it is the second half of the same
        pre-existing knowledge.  Landscape opens the panel through the bus
-       directly, exactly as the pre-v2.3.2642 file did. */
+       directly, exactly as the pre-v2.3.2683 file did. */
     if (land) {
       await P.page.evaluate(() => window.__broDashPanelBus && window.__broDashPanelBus.open('hero'));
       await P.page.waitForTimeout(900);
@@ -202,7 +202,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       grid && grid.imgs.map((i) => i && i.src));
 
     /* ── THE INSTRUCTION: NO COUNTS IN THE STAT CELLS ── */
-    /* v2.3.2667: the owner has since put a remaining-points badge on each ROW
+    /* v2.3.2689: the owner has since put a remaining-points badge on each ROW
        HEADER (below), so "no counts in the grid" narrows to what it always
        meant for the cells: a stat cell shows what it has BOUGHT, never what is
        left.  The word check still holds grid-wide -- the badges are bare
@@ -210,7 +210,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${label}: the stat cells show NO points-remaining words — that lives on the header badges and in the confirm window`,
       !!grid && !/\bPTS?\b|AVAILABLE|SPENT/i.test(grid.gridText), grid && { text: grid.gridText.slice(0, 160) });
 
-    /* ═══ v2.3.2667: ONE BADGE PER POOL, AND IT IS THE WORKER'S NUMBER ═══
+    /* ═══ v2.3.2689: ONE BADGE PER POOL, AND IT IS THE WORKER'S NUMBER ═══
        Owner: "a badge on a fill background on each row header showing how many
        allocable points there still are.  One number on each combat type icon
        (melee, bow, staff) then just one for the character."
@@ -225,7 +225,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const r = b.getBoundingClientRect();
         const head = b.closest('[data-prog3-lane]');
         const hr = head ? head.getBoundingClientRect() : null;
-        /* v2.3.2669: the count is drawn in the owner's numeral SPRITES, so
+        /* v2.3.2691: the count is drawn in the owner's numeral SPRITES, so
            it has no text -- it is read back off the images actually on
            screen (d6.png d4.png -> "64"), which is a stronger check than
            text was: a wrong or missing file shows up as a wrong number.
@@ -234,13 +234,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const cs = getComputedStyle(b);
         out[b.getAttribute('data-prog3-head-badge')] = {
           /* sideways the header is too narrow for the sprite pill and the
-             badge is the plain brass one (v2.3.2669) -- its text IS the count */
+             badge is the plain brass one (v2.3.2691) -- its text IS the count */
           sprite: imgs.length > 0,
           text: imgs.length
             ? imgs.map((i) => { const m = /\/(d(\d)|plus)\.png/.exec(i.getAttribute('src') || ''); return !m ? '?' : m[2] != null ? m[2] : '+'; }).join('')
             : (b.textContent || '').trim(),
           decoded: imgs.every((i) => i.naturalWidth > 0),
-          /* v2.3.2670: the owner's blue, baked into its own files */
+          /* v2.3.2692: the owner's blue, baked into its own files */
           bg: /circle-blue\.png/.test(cs.backgroundImage) ? 'circle' : /pill-blue\.png/.test(cs.borderImageSource) ? 'pill'
             : (cs.backgroundColor && !/rgba\(0, 0, 0, 0\)|transparent/.test(cs.backgroundColor) ? 'plain' : null),
           inHead: !!hr && r.left >= hr.left - 0.5 && r.right <= hr.right + 0.5 && r.top >= hr.top - 0.5 && r.bottom <= hr.bottom + 0.5,
@@ -263,7 +263,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     const b0 = await badges();
     const badgeText = (n) => (n > 99 ? '99+' : String(n || 0));
-    /* ═══ v2.3.2670: EVERY CELL'S DRAWN NUMBER IS ITS REAL COUNT ═══
+    /* ═══ v2.3.2692: EVERY CELL'S DRAWN NUMBER IS ITS REAL COUNT ═══
        The thirteen counts are the owner's white-outline numeral SPRITES now,
        so the number on screen is a row of image files.  Read it back off
        those files (w1.png w2.png -> "12") and compare it with the count the
@@ -276,18 +276,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const m = /,\s*(\d+) of \d+/.exec(c.getAttribute('aria-label') || '');
       return { k: c.getAttribute('data-prog3-row'), drawn, want: m ? m[1] : null, decoded: imgs.length > 0 && imgs.every((i) => i.naturalWidth > 0) };
     }));
-    rec.ok(`${label}: every stat cell DRAWS its real count in the owner's numerals (v2.3.2670)`,
+    rec.ok(`${label}: every stat cell DRAWS its real count in the owner's numerals (v2.3.2692)`,
       cellNums.length === 13 && cellNums.every((c) => c.want !== null && c.drawn === c.want && c.decoded),
       cellNums.filter((c) => !(c.want !== null && c.drawn === c.want && c.decoded)));
 
-    rec.ok(`${label}: FOUR badges — one on each weapon, one on the character (v2.3.2667)`,
+    rec.ok(`${label}: FOUR badges — one on each weapon, one on the character (v2.3.2689)`,
       ['sword', 'bow', 'staff', 'shared'].every((k) => b0.out[k]) && Object.keys(b0.out).length === 4, Object.keys(b0.out));
     rec.ok(`${label}: ...each weapon's badge is what that weapon can spend, as the worker holds it`,
       ['sword', 'bow', 'staff'].every((k) => b0.out[k] && b0.out[k].text === badgeText(b0.spend[k])),
       { badges: Object.fromEntries(Object.entries(b0.out).map(([k, v]) => [k, v.text])), spend: b0.spend, poolBy: b0.poolBy, free: b0.free });
     rec.ok(`${label}: ...and the character's badge is what the shared pool can spend`,
       !!b0.out.shared && b0.out.shared.text === badgeText(b0.spend.shared), { badge: b0.out.shared && b0.out.shared.text, spend: b0.spend.shared });
-    rec.ok(`${label}: ...on the owner's badge art — round for one digit, the pill for two or more (v2.3.2669; plain brass sideways, where the art cannot fit)`,
+    rec.ok(`${label}: ...on the owner's badge art — round for one digit, the pill for two or more (v2.3.2691; plain brass sideways, where the art cannot fit)`,
       Object.values(b0.out).every((v) => (land ? v.bg === 'plain' : v.sprite && v.bg === (v.text.length === 1 ? 'circle' : 'pill'))),
       Object.fromEntries(Object.entries(b0.out).map(([k, v]) => [k, { text: v.text, bg: v.bg }])));
     rec.ok(`${label}: ...and every numeral sprite actually decoded (a wrong path is an invisible box)`,
@@ -301,7 +301,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${label}: ...and no caption is clipped (every cell prints a label)`,
       !!grid && grid.labels.every((t) => t && t.trim().length > 1), grid && grid.labels);
 
-    /* ═══ THE HEAD IS A LABEL; THE CONFIRM WINDOW PICKS THE LANE (v2.3.2645) ═══
+    /* ═══ THE HEAD IS A LABEL; THE CONFIRM WINDOW PICKS THE LANE (v2.3.2684) ═══
        Owner: "The weapon icon row is not meant to be button.  The button to
        change which of the 3 combat skills it's applied to ... is a tab in the
        confirm window."  So the old "tapping the head switches the lane"
@@ -354,7 +354,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${label}: ...which opens the spend window`, !!win0, win0);
     rec.ok(`${label}: ...and NOTHING was spent by opening it (a mis-tap costs a window, not a point)`,
       JSON.stringify(await pools(P)) === JSON.stringify(before));
-    rec.ok(`${label}: the window carries the THREE weapon tabs (v2.3.2645)`,
+    rec.ok(`${label}: the window carries the THREE weapon tabs (v2.3.2684)`,
       !!win0 && win0.keys.length === 3, win0 && win0.keys);
     rec.ok(`${label}: ...opened on the lane the cell belonged to`,
       !!win0 && win0.active === lane0, { want: lane0, got: win0 && win0.active });
@@ -398,7 +398,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       });
       rec.ok(`${label}: ...and the grid is now showing the lane you aimed at`,
         headNow === laneNow, { want: laneNow, got: headNow });
-      /* v2.3.2667: the badge is live -- the spend just made must show up on
+      /* v2.3.2689: the badge is live -- the spend just made must show up on
          the weapon that paid for it, and only there */
       await P.page.waitForTimeout(300);
       const b1 = await badges();

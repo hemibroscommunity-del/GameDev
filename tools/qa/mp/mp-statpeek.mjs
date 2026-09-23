@@ -82,7 +82,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return el ? (el.innerText || '') : '';
   });
 
-  /* ═══ v2.3.2645: THE STRIP IS GONE BY INSTRUCTION ═══
+  /* ═══ v2.3.2684: THE STRIP IS GONE BY INSTRUCTION ═══
      Owner: "remove the top row explainer about DPS."  So "at rest the strip
      carries the overall DPS" is now asserting a row the owner asked to have
      taken out, and the honest form of it is the ABSENCE -- the kind of thing
@@ -106,7 +106,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState && window._gameState.current;
     return S && S.rpg && S.rpg.prog3 && S.rpg.prog3.pool ? S.rpg.prog3.pool.unspent : null;
   });
-  /* ═══ v2.3.2642: SAY WHICH LANE, DO NOT ASSUME IT ═══
+  /* ═══ v2.3.2683: SAY WHICH LANE, DO NOT ASSUME IT ═══
      The old screen made this explicit for free: the scenario tapped the SWORD
      card, so the Luck row it then pressed could only be sword's. The owner's
      grid shows ONE lane's six stats at a time and defaults to the weapon in
@@ -117,7 +117,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      wrong cell rather than the cell answering wrongly.
      So the lane is now SELECTED, by tapping the weapons head until it reads
      sword -- the grid's own control, the way a player would. */
-  /* ═══ v2.3.2645: THE LANE IS PICKED IN THE WINDOW NOW ═══
+  /* ═══ v2.3.2684: THE LANE IS PICKED IN THE WINDOW NOW ═══
      The head cell stopped being a control in the same change that moved the
      lane choice into the confirm window's tab row, so cycling it selects
      nothing.  The requirement above is unchanged and is the reason this block
@@ -127,7 +127,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      press, just below, because the tabs only exist once the window is up. */
 
   const pressed = await P.page.evaluate(() => {
-    /* v2.3.2642: the Luck CELL of the owner's grid.  There is no card to
+    /* v2.3.2683: the Luck CELL of the owner's grid.  There is no card to
        scope by any more -- all thirteen stats are on one screen, and the
        lane's six belong to whichever weapon the head cell is showing.  The
        seed above puts the luck points on SWORD, and sword is the lane a fresh
@@ -174,7 +174,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     return act() === 'sword';
   });
-  rec.ok('...and the window\'s tabs could aim it at the SWORD lane (v2.3.2645 — the head no longer selects)', aimed);
+  rec.ok('...and the window\'s tabs could aim it at the SWORD lane (v2.3.2684 — the head no longer selects)', aimed);
   await P.page.waitForTimeout(400);
   const popup = await P.page.evaluate(() => {
     const card = document.querySelector('[data-infopopup-card]');

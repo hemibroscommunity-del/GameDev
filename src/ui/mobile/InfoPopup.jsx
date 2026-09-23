@@ -102,7 +102,7 @@ export const InfoPopup = () => {
             cursor: 'pointer', touchAction: 'manipulation',
           }}>×</button>
 
-        {/* ═══ v2.3.2648: THE TITLE CAN CARRY ITS OWN PICTURES ═══
+        {/* ═══ v2.3.2685: THE TITLE CAN CARRY ITS OWN PICTURES ═══
             Owner: "on the confirmation window where it names the stat and
             combat type ('power - melee') also include its icon after each
             label.  So power icon after power and the melee icon after
@@ -167,7 +167,7 @@ export const InfoPopup = () => {
             letterSpacing: '.02em',
           }}>{cur.perText}</div>
         )}
-        {/* ═══ v2.3.2645: WHICH WEAPON THIS POINT GOES INTO ═══
+        {/* ═══ v2.3.2684: WHICH WEAPON THIS POINT GOES INTO ═══
             Owner, with a mockup: "The button to change which of the 3 combat
             skills it's applied to ... It's a tab in the confirm window.  This
             should be for every allocable stat."
@@ -277,7 +277,7 @@ export const InfoPopup = () => {
           }}>{cur.stat}</div>
         )}
 
-        {/* v2.3.2645: "Melee points available: 2" -- the owner's own line, and
+        {/* v2.3.2684: "Melee points available: 2" -- the owner's own line, and
             the reason the grid no longer carries a count anywhere.  Drawn even
             at zero, because "0 available" is the answer to the question the
             disabled button raises. */}

@@ -157,7 +157,7 @@ export const PROG3_LEGACY_ATK = {
    damage" is an answer, "does not change damage" beside RANGE is a bug
    report.  `capsProg3Shared` rows exist only on a worker carrying the
    folded grid; `legacyOnly` rows exist only on one that does not. */
-/* ═══ v2.3.2642: `short` — THE GRID'S LABEL ═══
+/* ═══ v2.3.2683: `short` — THE GRID'S LABEL ═══
    The owner's points grid puts thirteen stats across two rows, so a cell is
    ~44px wide and `label` does not fit: "Defense" rendered "DEFE…", "Max Mana"
    "MAX …", and the two Speeds (swing speed and move speed) were BOTH "SPEED"
@@ -174,7 +174,7 @@ export const PROG3_LEGACY_ATK = {
    second spelling of every stat into the codebase.  The row already reads
    MP, STAM, DEF and RESIST, so an abbreviation here is in keeping rather than
    an exception. */
-/* v2.3.2665: `edge` is each glyph's main colour, measured off the PNG by
+/* v2.3.2687: `edge` is each glyph's main colour, measured off the PNG by
    tools/glyph_edge_colors.mjs -- the Points grid outlines every cell in it so
    the frame matches the picture (owner).  Re-run the tool when a glyph is
    re-exported; do not hand-pick. */

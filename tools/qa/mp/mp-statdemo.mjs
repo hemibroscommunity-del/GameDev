@@ -44,8 +44,8 @@ const tapSel = (P, sel) => P.page.evaluate((s) => {
   return true;
 }, sel);
 
-/* ═══ v2.3.2645: REACHING A LANE'S STAT, NOW THAT THE HEAD IS A LABEL ═══
-   v2.3.2642 reached one by cycling the weapons head until it read the lane it
+/* ═══ v2.3.2684: REACHING A LANE'S STAT, NOW THAT THE HEAD IS A LABEL ═══
+   v2.3.2683 reached one by cycling the weapons head until it read the lane it
    wanted.  The owner has since taken the head OUT of the control set ("the
    weapon icon row is not meant to be button") and put the lane choice in the
    confirm window as a tab row, so that route no longer exists and this file's
