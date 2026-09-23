@@ -119,7 +119,7 @@ const GEAR_ART_VER = '2.3.1656';
    preview, which is the surface the owner reviews the shirt on.  Bump this
    with any shirt-sheet regen; it is separate from GEAR_ART_VER so re-baking
    the tee does not make every player re-download the armour art too. */
-const SHIRT_ART_VER = '2.3.1995';
+const SHIRT_ART_VER = '2.3.2769';   /* v2.3.2769: tee hugs the body's silhouette (hug-shirt-silhouette.mjs) */
 /* ═══ v2.3.2516: THE CAPE'S OWN CACHE-BUST ═══
    Separate from the two above for the reason SHIRT_ART_VER is separate from
    GEAR_ART_VER: the cape is five stills that nothing else re-bakes, so a cape
@@ -904,7 +904,7 @@ export async function drawCharacterPortrait(canvas, opts) {
       /* v2.3.1786's blade-up flip, in the same terms: reflect about the grip
          so the crossguard lands just above the hand.  A rotation would mirror
          left-right too and point the tip back over the shoulder.
-         v2.3.2740: not for a staff -- its icon already stands head-up, and
+         v2.3.2771: not for a staff -- its icon already stands head-up, and
          the world now carries it that way (entityRenderer); flipping it here
          would show the Hero sheet a broom the world no longer draws. */
       if (_wpnType !== 'staff') ctx.scale(1, -1);

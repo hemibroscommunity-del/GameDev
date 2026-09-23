@@ -1385,7 +1385,7 @@ export function updateArrows(S, deps) {
                   var _orbFxY = (typeof a._renderY === 'number') ? a._renderY
                     : (((typeof m.renderY === 'number') ? m.renderY : m.y)
                        - monsterBodyOffsetY(m.archetype || m.type));
-                  /* v2.3.2740: the bolt is DRAWN leaving the staff's crystal and
+                  /* v2.3.2771: the bolt is DRAWN leaving the staff's crystal and
                      eased onto this line over its first 40 px (staffCastFx); a
                      hit inside that stretch carries the leftover drawing offset
                      so the crash is DRAWN where the orb was seen.  The records'
@@ -1395,7 +1395,7 @@ export function updateArrows(S, deps) {
                   /* v2.3.2730: the rings and the spray moved into combatHelpers'
                      orbCrashFx, so a bolt that lands on a PROP crashes through
                      the same code as one that lands on a monster (the owner:
-                     bolts "explode even if they hit props").  v2.3.2740: and the
+                     bolts "explode even if they hit props").  v2.3.2771: and the
                      staff cast's restyle of that crash -- pixel rings, and the
                      hot-to-cool burst in place of the 22 flat dots -- lives there
                      too, so props get it as well.  v2.3.2741: the one-bolt special's
@@ -1421,7 +1421,7 @@ export function updateArrows(S, deps) {
                 /* Knockback recovery -- see melee path; pauses
                    client-side AI so the bump is visible. */
                 m._kbUntil = Date.now() + 200;
-                /* v2.3.2740: a staff bolt's hit is drawn once, by its crash above --
+                /* v2.3.2771: a staff bolt's hit is drawn once, by its crash above --
                    at the orb, which is v2.3.2505's whole point.  The generic
                    'staff' burst this used to add was a second spray of flat
                    purple dots at the monster's FEET, the exact spot that fix
@@ -1432,7 +1432,7 @@ export function updateArrows(S, deps) {
                 }
                 /* Staff projectiles are magic — no physical shaft to
                    leave embedded in the body.  Their visual residue is the
-                   crash above (v2.3.2740; spawnWeaponHitFX is arrows-only now). */
+                   crash above (v2.3.2771; spawnWeaponHitFX is arrows-only now). */
                 /* ═══ v2.3.2511: ONE ARROW, NOT TWO ═══
                    Owner (backlog §2.5): "two stuck arrows on a special".  Both
                    halves were doing their job and neither knew about the
@@ -1901,7 +1901,7 @@ export function updateArrows(S, deps) {
                    there, through the same orbCrashFx a monster hit uses, in the
                    element's colour, with the spell-landing voice on top. */
                 orbCrashFx(S, _impX, _impY, projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#a78bfa',
-                  { elem: projElem || null, vdx: a._fxResX, vdy: a._fxResY });   /* v2.3.2740: the staff cast's crash, where the orb was seen */
+                  { elem: projElem || null, vdx: a._fxResX, vdy: a._fxResY });   /* v2.3.2771: the staff cast's crash, where the orb was seen */
                 try { BT_AUDIO.magicHit({ vol: 0.3 }); } catch (e) { /* audio is best-effort */ }
                 return false;
               }

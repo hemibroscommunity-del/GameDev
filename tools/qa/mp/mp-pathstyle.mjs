@@ -52,10 +52,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    default: ' + JSON.stringify(first));
   rec.ok('the road probe is live and pointing somewhere (guard)',
     !!first && !!first.to, first);
-  rec.ok('the default style is Arrows, not the bead snake',
-    !!first && first.style === 'arrows', first);
+  /* v2.3.2764: the default moved from Arrows to Footprints (owner: "Instead
+     of the chevron arrows can you make it look like indicator footprints") */
+  rec.ok('the default style is Footprints, not the chevrons or the bead snake',
+    !!first && first.style === 'steps', first);
   rec.ok('...and the road is drawn in it', !!first && first.motes > 0, first);
-  const arrows = first ? first.motes : 0;
+  const steps = first ? first.motes : 0;
+  await setStyle(P, 'arrows');
+  const arrowsRoad = await road(P);
+  rec.ok('Arrows are still there, one tap away', !!arrowsRoad && arrowsRoad.style === 'arrows' && arrowsRoad.motes > 0, arrowsRoad);
+  const arrows = arrowsRoad ? arrowsRoad.motes : 0;
 
   /* ── OFF ── */
   rec.ok('the trail-style handle accepts Off', (await setStyle(P, 'off')) === 'off');
@@ -93,15 +99,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (x) x.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
   });
   await P.page.waitForTimeout(600);
-  for (const id of ['arrows', 'ribbon', 'beads']) {
+  for (const id of ['steps', 'arrows', 'ribbon', 'beads']) {
     await setStyle(P, id);
     await P.page.screenshot({ path: `/home/user/GameDev/tools/qa/mp/out/pathstyle-${id}.png` });
   }
 
-  const counts = { arrows, beads: beads ? beads.motes : 0, ribbon: ribbon ? ribbon.motes : 0 };
+  const counts = { steps, arrows, beads: beads ? beads.motes : 0, ribbon: ribbon ? ribbon.motes : 0 };
   console.log('    marks per style: ' + JSON.stringify(counts));
   rec.ok('each style really draws a different road, not the same one renamed',
-    counts.ribbon > counts.beads && counts.beads > counts.arrows, counts);
+    counts.ribbon > counts.steps && counts.steps > counts.beads && counts.beads > counts.arrows, counts);
 
   /* ── IT SURVIVES A RELOAD ──
      A preference that resets on the next visit is one the player has to set
@@ -135,8 +141,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       .map((b) => ({ id: b.getAttribute('data-trailstyle'), on: b.getAttribute('aria-pressed') === 'true',
         h: Math.round(b.getBoundingClientRect().height) })));
   console.log('    chips: ' + JSON.stringify(chips));
-  rec.ok('Settings offers all four values of the quest path',
-    chips.length === 4 && ['arrows', 'ribbon', 'beads', 'off'].every((id) => chips.some((c) => c.id === id)),
+  rec.ok('Settings offers all five values of the quest path',
+    chips.length === 5 && ['steps', 'arrows', 'ribbon', 'beads', 'off'].every((id) => chips.some((c) => c.id === id)),
     chips);
   /* It shows what is actually set, rather than defaulting its own display —
      a picker that opens on the wrong value is how a player turns a setting

@@ -729,7 +729,7 @@ export function propImpactSound(propId, vol) {
    owner's words -- and two copies of an effect drift the day one is restyled.
    The monster hit, a bolt stopped by a prop, and a peer's bolt stopped by a
    prop all call this.
-   v2.3.2740 (the staff-cast work, #707): its restyle of this crash lives
+   v2.3.2771 (the staff-cast work, #707): its restyle of this crash lives
    HERE, as this note asked when it was lifted, so props get it too --
    `style: 'staff'` on both rings hands them to the staff cast's pixel rings in
    the element's heat ramp, and an S._staffCrashes record (the white flash,
@@ -739,7 +739,7 @@ export function propImpactSound(propId, vol) {
    `elem` (the element, for the crash's heat ramp; absent -> the default) and
    `vdx`/`vdy` -- the bolt is DRAWN easing off the staff's crystal for its first
    40 px, and a crash inside that stretch is drawn where the orb was SEEN, the
-   real point plus that leftover offset (v2.3.2740).  v2.3.2741: `big` -- the
+   real point plus that leftover offset (v2.3.2771).  v2.3.2741: `big` -- the
    one-bolt staff special's crash: its rings run 1.6x wider and its outer one
    a little longer, and staffCastFx draws its burst bigger. */
 export function orbCrashFx(S, x, y, color, opts) {
@@ -769,7 +769,7 @@ export function orbCrashFx(S, x, y, color, opts) {
     color: color, maxR: 14 * ringK, duration: 220,
     style: 'staff', elem: elem, vdx: vdx, vdy: vdy,
   });
-  /* ═══ v2.3.2740: THE CRASH BURNS HOT AND COOLS ═══
+  /* ═══ v2.3.2771: THE CRASH BURNS HOT AND COOLS ═══
      Queued as a FACT (where, which element) rather than as particles, so how
      it looks lives in the renderer.  Bounded, because a hidden tab stops the
      consumer. */
