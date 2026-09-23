@@ -269,6 +269,14 @@ export const BURROW = {
   CONTACT_PX: 40,
   CONTACT_Y_SCALE: 1.5,
   CONTACT_CD_MS: 1000,
+  /* ═══ v2.3.2700: A SHIELD IN THE WAY BONKS HIM UP ═══
+     Owner: "if shield is up during snowman burrow ... it makes the snowman pop
+     up early with a little powder and a second of confusion for the enemy like
+     it just slammed into your shield."
+     The confusion is AFTER he is up: the emerge (600ms, already his punish
+     window) plays, then this.  Carried to the client as one duration on the
+     emerge event, so the client never needs the constant. */
+  BONK_DAZE_MS: 1000,
 };
 
 /* ═══ v2.3.2224: THE BLUE SLIME GOES OFF ═══
@@ -749,6 +757,56 @@ export const telegraphMethods = {
            the 160px guard. */
         const _cdx = dx, _cdy = dy * BURROW.CONTACT_Y_SCALE;
         const touching = Math.sqrt(_cdx * _cdx + _cdy * _cdy) <= BURROW.CONTACT_PX;
+        /* ═══ v2.3.2700: THE BONK ═══
+           Touching a raised shield that FACES him ends the pile on the spot:
+           the slam lands on the shield, he pops up early, and he is dazed.
+
+           WHICH SHIELD.  _blockArcCovers, the same 120-degree test every other
+           block in the game uses, measured from the pile -- so "shield up"
+           means one thing whether it is a swing, a thrown ball or this.  A
+           shield facing away does not bonk, and the pile's touch lands as it
+           always has.
+
+           THE SLAM IS AN ORDINARY BLOCKED TOUCH, routed through the one choke
+           point.  Before this, a shield facing the pile already blocked its
+           touch there (burrow.test.mjs section 4): 0 damage, the block's
+           stamina cost, and a `blocked` monster_attack that draws "Blocked!"
+           and the shield clang.  The bonk keeps all of that by calling the
+           same thing, and ADDS the early surface -- so the feedback is the
+           game's existing block, not a second copy of it.  Called before the
+           surface on purpose: while he is still a pile he is invulnerable, so
+           thorns or anything else that answers an attack meets exactly the
+           body it always met.  Not gated on _burContactNextAt either: raising
+           the shield while he is already grinding into you bonks him at once,
+           rather than waiting out the touch's one-second clock.
+
+           THE FLOOR DOES NOT APPLY.  PILE_MIN_MS exists so the pile is visible
+           when the geometry would end it at once (v2.3.2223); a shield is a
+           player's answer to it, and ending it early is the whole point. */
+        if (touching && this._blockArcCovers(ps, m.x, m.y)) {
+          this._monsterStrikePlayer(zoneId, m, m._burTarget, m.x, m.y);
+          const daze = BURROW.EMERGE_MS + BURROW.BONK_DAZE_MS;
+          this._burrowSurface(zoneId, m, now, {
+            bonk: true, targetId: m._burTarget, dazeMs: daze,
+            /* Where the snow flies: between him and the shield he hit. */
+            px: Math.round(m.x + ((ps.x || 0) - m.x) * 0.5),
+            py: Math.round(m.y + ((ps.y || 0) - m.y) * 0.5),
+          });
+          /* THE CONFUSION IS A STUN, the one Shield Bash already stamps
+             (abilities.js).  _tickMonsters folds _stunUntil into ccMoveMult, so
+             it inherits every gate that owns: no chase, no swing, no snowball,
+             no telegraph start.  And tick.js already puts it on the wire as
+             `st`, which the client draws as the painted star ring -- so every
+             client, including one from before this change, shows him dazed.
+             Stamped from NOW over the emerge as well, so the stars come up with
+             him rather than appearing 600ms later.  atkCd moves with it, the
+             bash rule: a stun must not bank a swing that lands the instant it
+             ends. */
+          m._stunUntil = Math.max(m._stunUntil || 0, now + daze);
+          m.atkCd = Math.max(m.atkCd || 0, now + daze);
+          m._attackingUntil = 0;
+          return true;
+        }
         if (touching && now >= (m._burContactNextAt || 0)) {
           m._burContactNextAt = now + BURROW.CONTACT_CD_MS;
           this._monsterStrikePlayer(zoneId, m, m._burTarget, m.x, m.y);
@@ -776,15 +834,7 @@ export const telegraphMethods = {
       }
       /* v2.3.2244: neither arrival nor escape ends the pile (see BURROW). */
       if ((gone && _canEnd) || now >= m._burUntil) {
-        m._burPhase = 'emerge';
-        m._burUntil = now + BURROW.EMERGE_MS;
-        m._invulnUntil = 0;            /* surfacing ends the immunity immediately */
-        this.eventBuffer.push({
-          type: 'monster_ability',
-          payload: { monsterId: m.id, zone: zoneId, ability: 'burrow',
-                     phase: 'emerge', ms: BURROW.EMERGE_MS },
-        });
-        this._markMonsterDirty(zoneId, m.id);
+        this._burrowSurface(zoneId, m, now, null);
       }
       return true;
     }
@@ -823,6 +873,24 @@ export const telegraphMethods = {
     m._invulnUntil = 0;
     this._markMonsterDirty(zoneId, m.id);
     return false;
+  },
+
+  /* ═══ v2.3.2700: THE ONE WAY HE COMES UP ═══
+     Shared by the pile running out and by a shield bonk, so the phase, the
+     immunity and the event cannot drift between the two -- the bonk is the
+     ordinary emerge with extra fields, and a client that has never heard of
+     it plays the ordinary emerge animation from the same event.  `extra`
+     rides on the payload (the bonk's position, duration and target). */
+  _burrowSurface(zoneId, m, now, extra) {
+    m._burPhase = 'emerge';
+    m._burUntil = now + BURROW.EMERGE_MS;
+    m._invulnUntil = 0;            /* surfacing ends the immunity immediately */
+    this.eventBuffer.push({
+      type: 'monster_ability',
+      payload: Object.assign({ monsterId: m.id, zone: zoneId, ability: 'burrow',
+        phase: 'emerge', ms: BURROW.EMERGE_MS }, extra || null),
+    });
+    this._markMonsterDirty(zoneId, m.id);
   },
 
   /* One basic swing vs one player, at IMPACT time.

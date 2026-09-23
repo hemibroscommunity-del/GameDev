@@ -4266,7 +4266,100 @@ every trait at once, is correcting those five `body-tops` entries -- but hats,
 hair and the hair-clip masks were all dialled in against the current values,
 so it needs its own before/after pass over every trait, not a drive-by edit.
 
-## 102. A character's position is its hips, not its feet (v2.3.2701)
+## 101. A whole-line block test asked about one frame's step blocks nothing (v2.3.2699)
+
+**Tempting:** `attackBlockPoint(zone, x0, y0, x1, y1)` answers "is a prop in the
+way?", so a projectile in flight can ask it about each frame's step
+(previous point -> new point) and stop when it says yes.
+
+**Wrong, every time.** That function skips a box whenever EITHER endpoint is
+inside it -- correct for a whole shot line, where a shooter or target standing
+in a footprint is at the prop, not behind it. But the frame a projectile
+reaches a rock, its step ENDS inside the rock: skipped. Every frame after, the
+step STARTS inside: skipped. So no step is ever "behind" anything, and a
+projectile moving in steps shorter than the prop's depth passes straight
+through. Measured on the frost ridge (42px deep) at 4, 6, 8, 11, 20, 40 and
+60 px/frame: through, at every speed. v2.3.2652 wired it into the player's
+arrows and v2.3.2657 into the snowball, and both shipped with the geometry
+tested and the flight not: every test asked about whole lines, which were
+never the problem. The owner saw it in one look ("the client side isn't
+showing snowballs bursting upon hitting props"). The damage half had been
+right all along, because the WORKER asks the whole-line question.
+
+**The rule: a moving projectile's step needs the sweep form** --
+`sweepBlockPoint`, where the leading end inside a box COUNTS (that is the hit)
+and only a step that starts inside ignores that box (launched from inside it).
+And when the worker has already decided a projectile's fate on a known line
+(the snowball: release -> aim), do not re-derive it per frame at all: ask the
+worker's exact question once, at spawn, from the same four numbers the event
+carries, and end the flight there. Same function, same inputs, same answer by
+construction -- and `mirror-audit` now pins client/worker agreement on 4000
+random lines per zone, not seven hand-picked ones (seven let a 2px drift in the
+inside rule straight through).
+
+**Receipt:** `tools/qa/mp/mp-propshots.mjs` watches a real snowball and a real
+arrow fly at the ridge and reads what the RENDERER drew. With the old calls
+restored it fails exactly as reported: the ball drawn to y 645 (the player's
+side), the arrow to y 8 (the map's top edge).
+
+## 102. A timed screenshot sequence on the QA box is not timed (v2.3.2700)
+
+**Tempting:** take `page.screenshot` at 60, 150, 260 and 900ms after an event
+to see how an effect evolves -- the stars of a 1.6s daze, say.
+
+**Wrong by seconds.** On this box `page.screenshot` of the WebGL canvas takes
+~2s a frame (software GL readback). The first shot lands roughly on time;
+every shot after it lands ~2s later than asked. The "150/260/900ms" frames of
+the shield bonk were really taken at ~2, 4 and 6s -- after the daze -- and
+showed exactly what a rendering bug would: stars in frame one, gone in the
+rest. It was chased for an hour (z-order, texture frames, the display tree)
+while in-page samples showed the ring drawn the whole time. A code comment
+blaming the body for hiding the stars was written and had to be retracted.
+
+**The rule: never read time off a screenshot's filename.** Take ONE shot per
+fresh event and record when it actually finished; stretch the effect for the
+camera when it must be caught mid-life (the bonk honours `dazeMs` up to 5s);
+and for anything shorter than a second, use Chromium's screencast
+(`Page.startScreencast` over a CDP session), which hands over frames as the
+compositor makes them, stamped with when. mp-shieldbonk does all three.
+
+**And the half the camera DID get right:** the first, on-time frame is what
+showed the star ring wedged under the snowman's HP bar with his nameplate over
+its lower stars -- drawn, `visible: true` to every probe, nearly invisible to a
+person. A probe answers what it was written to answer. `visible` is not "seen".
+
+## 103. A prop that stops arrows can make a monster unshootable (v2.3.2701)
+
+**Tempting:** once a step-sweep can see rocks (§101), stop every arrow at the
+first footprint face it reaches, BEFORE the monster loop, and return. That is
+what v2.3.2699 did, and it reads as the whole feature.
+
+**Wrong three ways, and the first is the one the worker already warned about.**
+The worker spawns and leashes monsters without looking at geometry, so one WILL
+stand inside a footprint -- and its own rule (`server/src/props.js`) is that an
+endpoint inside a box never blocks, precisely so that monster cannot become
+"an invincible turret". Its throws still fly out. v2.3.2699 built the turret
+for bows and staffs: mp-lockaim's due-west shot from the town plaza puts its
+slime 153px inside the building west of spawn, and the arrow planted on the
+wall. Second: returning before the loop skipped the monster standing right IN
+FRONT of the face whenever one step covered its circle and the face (a 48px
+step at 30fps; 300px under the headless 3x clock). Third: the hit is a circle
+round the monster's DRAWN body tested against the arrow's DRAWN body, both up
+in the air, and across a thin rock they meet -- the head leads by 28.5px, and a
+monster pressed to a rock's far side is drawn up over it, toward the arrow.
+mp-propshots' southward shot at a slime behind a 27px town rock landed through
+it on the old code.
+
+**The rule:** decide the stop before the loop, apply it after. Cut the step at
+the face so the loop tests what is in front of it. Let the arrow INTO a box that
+holds what it is flying at (feet in the box, its circle on the arrow's line),
+and end the flight at that box's far face if it comes out unspent. And make a
+hit pass the worker's own ground-line rule (`attackBlocked`, step start to
+feet) -- which refuses the thin-rock touch and, by the same endpoint rule,
+keeps the monster inside a rock hittable. mp-propshots section 0 shoots all
+four in town; with v2.3.2699's code back, all four fail.
+
+## 106. A character's position is its hips, not its feet (v2.3.2718)
 
 **Tempting:** anything that has to stand where a character stands -- a
 stand-in animation, a prop dropped at their feet, a campfire -- is placed at
