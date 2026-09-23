@@ -235,7 +235,7 @@ nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
 ---
 
 ## P7 — Resident texture memory on a phone, measured 2026-09-07 (v2.3.2335)
-### Items 1, 3, 4, 5, 6, 9, 10 and 11 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774); the rest is the ranked backlog
+### Items 1, 3, 4, 5, 6, 9, 10, 11 and 12 SHIPPED (v2.3.2337-2355, v2.3.2750, v2.3.2774, v2.3.2775); the rest is the ranked backlog
 
 What this is, in plain language: the game keeps a lot of decoded artwork in
 the phone's graphics memory, and iPhone Safari kills the tab somewhere north
@@ -470,6 +470,26 @@ Ranked by megabytes saved × (1 / risk), effort as tiebreak:
    where it would have sat beside the crop for the whole session. The
    constructor's warm (v2.3.2303 / v2.3.2500) already covered every strip on
    the loading screen, so nothing now loads on first use.
+12. ~~**Recoloured stand-in bodies, the swung blade, the head overlays —
+   3-29% painted, ~64 MB, plus one set per peer skin combo**~~ **SHIPPED,
+   v2.3.2775** (measured, `mp-geartrim`, armoured in town: 262.6 → 221.6 MB).
+   Also through `_sliceStandIn`: the sword WEAPON layer (the only strip still
+   upscaled at load, 3% painted) -- so item 8 below is answered by the crop
+   rather than by un-upscaling. And the head overlay sheets (playerSkins
+   `_buildPickupHeadSheet`, whole-body frames with only a head drawn):
+   8.63 → 1.17 MB, `_placePickupHead` scaling by `orig`. The sword / bow bodies and torsos and
+   the jog legs (`_bakeBodyStrip`), the chop figures and their peer copies,
+   and every other player's sword / bow / jog-leg bakes
+   (`_remoteBodyFramesFor` / `_remoteSheetFramesFor`) go through one slicer,
+   `_sliceStandIn`, which crops each frame with `packTrimmed` and releases the
+   full-size bake: 55.7 → 23.9 MB locally with the blade, all 292 frames
+   byte-identical to the bake they came from. The two readers that cut a sub-rectangle out of
+   these frames by position — the jog legs' torso trim and blockArm's raised
+   arm — now go through `gearSheets.subTexture`. The cook and fire figures are
+   left whole: their art fills the frame (a crop comes back 99-101%), so
+   `packTrimmed` declines them. The packer also learned to lay crops out on
+   shelves when that is smaller than one row, which took another ~1.5 MB off
+   the gear sheets of items 10 and 11.
 
 Checked and found LAW-REQUIRED (or already correct), so they are not items:
 fire-goblin (30.5 MB in ember, 0 in town) is per-zone already and freed by
