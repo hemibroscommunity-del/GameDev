@@ -1,4 +1,4 @@
-/* ═══ v2.3.2718: THE GESTURE CUE'S MINI TOOLS, ON THE GATE ═══
+/* ═══ v2.3.2733: THE GESTURE CUE'S MINI TOOLS, ON THE GATE ═══
  *
  * CLAUDE.md's preloading LAW applied to the harvest cue.  The cue on the right
  * button is a mini sprite of the tool (gesturePose.js GESTURE_CUE_SPRITES): the

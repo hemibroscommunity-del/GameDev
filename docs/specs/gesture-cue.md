@@ -1,6 +1,6 @@
-# The gesture cue on the right button (v2.3.2384; reworked v2.3.2718)
+# The gesture cue on the right button (v2.3.2384; reworked v2.3.2733)
 
-## v2.3.2718 — the cue gesture as the owner described it
+## v2.3.2733 — the cue gesture as the owner described it
 
 > Owner: "the character harvests a resource or performs an action for a
 > certain amount of time (determined by your skill level) ... I wanted the
@@ -60,11 +60,11 @@ What changed, file by file:
 Coverage: `mp-gcue` (73, the town campfire) and `mp-cueshow` (34 — mining,
 woodcutting and fishing through the real tap and pointer path in Frost Ridge,
 with screenshots of each stage). Regression: `mp-harvest`, `mp-chopyield`,
-`mp-cooktap`, `mp-cookpeer`, `mp-fishhand` green. See TRAPS §104.
+`mp-cooktap`, `mp-cookpeer`, `mp-fishhand` green. See TRAPS §106.
 
 ---
 
-## v2.3.2719 — the owner's second pass
+## v2.3.2734 — the owner's second pass
 
 > "Double the amount of time it takes to complete the gesture. Play sound
 > effect while specific actions occur like pickaxe hitting rocks, axe hitting
@@ -84,7 +84,7 @@ with screenshots of each stage). Regression: `mp-harvest`, `mp-chopyield`,
   opens.
 * **Tools:** copper axe head on a pine haft and a pine rod (the fire-lighter's log was done too, then taken back out: firemaking is being rebuilt as code-drawn fire in another session) —
   `src/rendering/toolRecolor.js`, applied at load after the skin pass (the
-  magenta is the pipeline's key and code still reads it: TRAPS §105).
+  magenta is the pipeline's key and code still reads it: TRAPS §107).
 
 ---
 

@@ -2740,7 +2740,7 @@ BT_AUDIO.SFX_MANIFEST = {
        with the breach-and-fly bag animation).
      cook-success: 0.7s sizzle sting when the cook completes. */
   'catch-splash':     '/sfx/fishing/catch-splash.mp3',
-  /* v2.3.2719 (owner: "play sound effect while specific actions occur"):
+  /* v2.3.2734 (owner: "play sound effect while specific actions occur"):
      two fishing clips that have sat in public/sfx/fishing unregistered --
      the plop of the lure as the cast lands (a fishing harvest starts), and
      the bite when the wind-up ends and the reel window opens. */

@@ -33,7 +33,7 @@ import { getEyeStyle, onEyeStyleChange } from './traits/eyeStyleCatalog.js';   /
 import { getArt, artHasInk, artHash, onArtChange, sideForDir, emptyArt } from './traits/playerArt.js';   /* v2.3.2042: sideForDir/emptyArt -- a face tattoo does not revolve to the back of a head */
 import { stampRegion, stampPattern, litFabricMask, regionFromFeet, splitSkinRegions, PANTS_LIT_MIN, SHOES_LIT_MIN, PANTS_MAX_UP, SHOES_MAX_UP, PANTS_BOX, TATTOO_BOX, FACE_BOX, ARM_BOX } from './playerDecal.js';
 import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/patternCatalog.js';   /* v2.3.1941 */
-import { recolorToolKeyCanvas, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2719: the fishing rod's pine */
+import { recolorToolKeyCanvas, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2734: the fishing rod's pine */
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
 /* v2.3.1513: seven more tones at the light end (owner: "more white tan and
@@ -1171,7 +1171,7 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
          being baked. */
       eyeT, EYE_MASK[`${pose}-${dir}`], art, undefined, pose === 'jog',
       eyeBlank || null);   /* v2.3.2643 */
-    /* v2.3.2719: the fishing rod's pine, AFTER the skin pass -- pine is the
+    /* v2.3.2734: the fishing rod's pine, AFTER the skin pass -- pine is the
        skin's hue family, so recolouring before it would hand the rod to the
        skin retint.  See toolRecolor.js. */
     if (pose === 'fish') recolorToolKeyCanvas(full, TOOL_SPECS.rod);

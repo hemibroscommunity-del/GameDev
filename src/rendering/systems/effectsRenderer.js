@@ -98,6 +98,7 @@ import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { footprintFrames } from '@/rendering/footprintSprites.js'; /* v2.3.2654: prints in the snow */
+import { propsForZone } from '@/data/worldProps.js'; /* v2.3.2730: marks drawn ON props -- slash marks, arrows standing in the rock */
 
 /* v2.3.2654: how a print reads and how long it lasts.  PRINT_TTL_MS is
    mirrored by stateCleanup's filter -- the array and the drawer must expire on
@@ -290,7 +291,8 @@ import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
-import { recolorToolKeyCanvas, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2719: the magenta tool key becomes copper / pine / bark */
+import { recolorToolKeyCanvas, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2734: the magenta tool key becomes copper / pine / bark */
+import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
    gear layers, the trait crowns and the remote stand-in — they all slice the
@@ -844,11 +846,21 @@ const ARROW_PINE = {
      DPR-3 phone, so the old 64px sheet would have been upscaled 1.6x and gone
      soft exactly as it finally got big enough to look at. */
   lenPx: 52.5,
+  /* v2.3.2731: where a SNAPPED arrow breaks, as a fraction of its length from
+     the tail -- mid-shaft, just behind the pivot -- and the two halves it
+     breaks into.  Framed out of the same download, like noHead: no new art,
+     nothing for the preload manifest. */
+  snapFrac: 0.5, back: null, front: null,
 };
 _fxLoad('/sprites/projectiles/arrow-pine.png?v=2.3.1881').then((tex) => {
   if (!tex || !tex.source) return;
   const w = tex.source.width, h = tex.source.height;
   ARROW_PINE.full = new Texture({ source: tex.source, frame: new Rectangle(0, 0, w, h) });
+  {
+    const cut = Math.max(1, Math.min(w - 1, Math.round(w * ARROW_PINE.snapFrac)));
+    ARROW_PINE.back = new Texture({ source: tex.source, frame: new Rectangle(0, 0, cut, h) });
+    ARROW_PINE.front = new Texture({ source: tex.source, frame: new Rectangle(cut, 0, w - cut, h) });
+  }
   ARROW_PINE.noHead = new Texture({
     source: tex.source,
     frame: new Rectangle(0, 0, Math.max(1, Math.round(w * ARROW_PINE.headFrac)), h),
@@ -1001,7 +1013,7 @@ for (const cfg of Object.values(EFFECT_BURSTS)) {
 }
 const FX_BURST_MS = 600;
 
-/* ═══ v2.3.2718: DID A LOOPING ANIMATION PASS FRAME `target` SINCE LAST FRAME? ═══
+/* ═══ v2.3.2733: DID A LOOPING ANIMATION PASS FRAME `target` SINCE LAST FRAME? ═══
    The harvest strike effects (the chop's bite, the pick's clink and debris)
    used to test `cur === target && last !== target`.  That was fine while the
    loops ran on a clock; since the swing follows the HAND, a quick stroke can
@@ -1208,6 +1220,68 @@ function debrisDotTex() {
   _DEBRIS_DOT_TEX = Texture.from(c);
   return _DEBRIS_DOT_TEX;
 }
+
+/* ═══ v2.3.2730: THE SLASH MARK A BLADE LEAVES ON A PROP ═══
+   Owner: "sword slash marks on the props (with debris)".  There is no art for
+   a cut, so it is minted once, here, and drawn as a SPRITE (the owner's rule
+   that code-drawn effects read as placeholder is about live Graphics, and it
+   is why every mark in this file is a sprite over a minted texture).  The
+   shape is a gouge: a narrow lens, pointed at both ends, bright where the
+   blade bit and dark where the lip throws its shadow -- the same two-tone
+   recipe every other mark here uses so it reads on grey rock, white snow and
+   brown wood alike (TRAPS §21: a mark the colour of what it is on shows
+   nothing).  Hard-edged, drawn on whole pixels, to sit with the crisp pixel
+   pieces the material work gives the chips. */
+let _PROP_SLASH_TEX = null;
+function propSlashTex() {
+  if (_PROP_SLASH_TEX) return _PROP_SLASH_TEX;
+  const W = 48, H = 12;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  /* half-thickness of the lens at column x: 0 at the tips, `peak` at 40% --
+     a cut is deepest where the swing was fastest, a little ahead of centre */
+  const lens = (x, peak) => {
+    const u = x / (W - 1);
+    const k = u < 0.4 ? u / 0.4 : (1 - u) / 0.6;
+    return Math.max(0, Math.round(peak * Math.sqrt(k)));
+  };
+  const cy = 5;
+  for (let x = 1; x < W - 1; x++) {
+    const h = lens(x, 3);
+    if (h <= 0) continue;
+    /* the shadow lip under the cut */
+    ctx.fillStyle = 'rgba(20,18,16,0.72)';
+    ctx.fillRect(x, cy + 1, 1, h + 1);
+    /* the bite itself */
+    ctx.fillStyle = 'rgba(255,251,240,0.95)';
+    ctx.fillRect(x, cy - h + 1, 1, h);
+    /* and the bright edge the blade left on top */
+    if (h >= 2) { ctx.fillStyle = 'rgba(255,255,255,1)'; ctx.fillRect(x, cy - h + 1, 1, 1); }
+  }
+  _PROP_SLASH_TEX = Texture.from(c);
+  return _PROP_SLASH_TEX;
+}
+/* v2.3.2731: a wood SPLINTER off a snapped arrow -- a pale sliver with a dark
+   underside, minted once, same two-tone rule as the slash above. */
+let _SPLINTER_TEX = null;
+function splinterTex() {
+  if (_SPLINTER_TEX) return _SPLINTER_TEX;
+  const c = document.createElement('canvas');
+  c.width = 8; c.height = 3;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = 'rgba(226,190,130,1)'; ctx.fillRect(0, 0, 7, 2);
+  ctx.fillStyle = 'rgba(70,44,22,0.9)'; ctx.fillRect(1, 2, 7, 1);
+  _SPLINTER_TEX = Texture.from(c);
+  return _SPLINTER_TEX;
+}
+const SNAP_G = 0.13;          /* the 1/2-g term, 60Hz frame units (DEBRIS_GRAV's posture) */
+const SNAP_REST_MS = 420;     /* lying there... */
+const SNAP_FADE_MS = 380;     /* ...then gone */
+const SNAP_MAX = 10;
+const PROP_SLASH_LEN = 30;       /* drawn world px along the cut */
+const PROP_SLASHES_PER_PROP = 5;  /* a rock that has been hacked at shows the last five */
 
 /* ═══ v2.3.2331: PARTICLES ARE SPRITES, NOT POLYGONS ═══
  * _updateParticles used to draw every hit particle, death-explosion particle
@@ -1910,6 +1984,12 @@ export class EffectsRenderer {
        entries here so we can destroy orphans after the simulator
        drops a projectile from S.slimeProjectiles. */
     this.slimeProjSprites = [];
+    /* v2.3.2732: the slimes' goo and the goblins' fire are drawn by their own
+       module now (rendering/monsterShotFx.js) -- in the thrower's colour, with
+       a throw, a trail and a landing.  Snowballs stay on the sprite path
+       below; the old per-zone pictures stay too, as the fallback while (or if)
+       the minted atlas is not there. */
+    this._shotFx = new MonsterShotFx({ entities: this.entityLayer, particles: this.particleLayer, ground: this.splatLayer });
     /* Dev probe, house style (cf. window.__btBundles): how big is each ball
        ACTUALLY drawn, and from which art.  The reported bug was a size, and a
        size is the one thing no existing probe could answer -- the scale is
@@ -1918,6 +1998,7 @@ export class EffectsRenderer {
        reads this.  v2.3.2310. */
     if (typeof window !== 'undefined') {
       const _spsRef = this.slimeProjSprites;
+      const _shotFxRef = this._shotFx;
       window.__btSlimeProj = () => _spsRef
         .filter((e) => e && e.sprite && !e.sprite.destroyed)
         .map((e) => ({
@@ -1938,7 +2019,10 @@ export class EffectsRenderer {
           x: +e.sprite.x.toFixed(1),
           y: +e.sprite.y.toFixed(1),
           ownerId: (e.proj && e.proj.ownerId) || null,
-        }));
+        }))
+        /* v2.3.2732: ...and the goo and fire drawn by monsterShotFx, in the
+           same shape (px = the head's drawn width, srcPx null: no sheet) */
+        .concat(_shotFxRef ? _shotFxRef.probeShots() : []);
     }
 
     /* v2.3.2700: the snow bursts being DRAWN right now, with their drawn
@@ -2063,7 +2147,7 @@ export class EffectsRenderer {
     /* v2.3.1469: ?v= added — the strip itself changed (transparent eye
        holes filled white, owner report) and it had no cache-bust, so
        returning players would have kept the stale copy forever. */
-    /* ═══ v2.3.2719: THE AXE IS COPPER ON A PINE HAFT, NOT THE MAGENTA KEY ═══
+    /* ═══ v2.3.2734: THE AXE IS COPPER ON A PINE HAFT, NOT THE MAGENTA KEY ═══
        Owner: "recolor the tools in the animations (they're still magenta from
        the creation phase) so maybe copper for the axe."  See toolRecolor.js.
        Two copies come out of each strip, both cropped to the TWELVE frames
@@ -2102,7 +2186,7 @@ export class EffectsRenderer {
     };
     const _CHOP_URL = '/sprites/skills/chop-strip.webp?v=2.3.1469';
     const _chopBody = _fxLoad(_CHOP_URL).then((tex) => {
-      _cropChop(tex, _CHOP_URL, 'body', this._chopFrames);   /* v2.3.2500 / v2.3.2719 */
+      _cropChop(tex, _CHOP_URL, 'body', this._chopFrames);   /* v2.3.2500 / v2.3.2734 */
     }).catch((err) => console.warn('[chop-strip] load failed', err));
     /* v2.3.1468: legs-erased lumberjack, swapped in while leg armour is
        equipped — the cook-strip-legless pattern (v2.3.1114).  The
@@ -2113,7 +2197,7 @@ export class EffectsRenderer {
     this._chopLeglessFrames = [];
     const _CHOP_LL_URL = '/sprites/skills/chop-strip-legless.webp?v=2.3.1469';
     const _chopLegless = _fxLoad(_CHOP_LL_URL).then((tex) => {
-      _cropChop(tex, _CHOP_LL_URL, 'legless', this._chopLeglessFrames);   /* v2.3.2500 / v2.3.2719 */
+      _cropChop(tex, _CHOP_LL_URL, 'legless', this._chopLeglessFrames);   /* v2.3.2500 / v2.3.2734 */
     }).catch((err) => console.warn('[chop-strip-legless] load failed', err));
     /* v2.3.2500: the two arrays above stay RAW on purpose -- they are what a
        PEER's lumberjack is drawn from (the SPEC table in
@@ -3008,7 +3092,7 @@ export class EffectsRenderer {
       /* Crop to the played frames FIRST, then recolour: the classifier labels
          connected blobs, and the cut lands on a frame boundary, so cropping
          changes no blob and costs half the canvas. */
-      /* v2.3.2719: _chopSrc holds the played frames ALREADY cropped (see the
+      /* v2.3.2734: _chopSrc holds the played frames ALREADY cropped (see the
          loader), so this copies it whole -- recolorStandInSkin must not write
          into the source a later skin change rebakes from. */
       const src = document.createElement('canvas');
@@ -3017,7 +3101,7 @@ export class EffectsRenderer {
       sctx.imageSmoothingEnabled = false;
       sctx.drawImage(img, 0, 0, FW * COUNT, FH, 0, 0, FW * COUNT, FH);
       const cv = recolorStandInSkin(src, skinT, FH);
-      /* v2.3.2719: the axe's copper and pine, AFTER the skin (the key is what
+      /* v2.3.2734: the axe's copper and pine, AFTER the skin (the key is what
          keeps the skin classifier off the axe). */
       recolorToolKeyCanvas(cv, TOOL_SPECS.axe);
       const source = Texture.from(cv).source;
@@ -3256,7 +3340,7 @@ export class EffectsRenderer {
     this._updateDamageNumbers(S, now);
     this._updateCatchFlights(S, viewW, viewH, now);
     this._updateFxBursts(S, now);   /* v2.3.1443 */
-    this._updateCookSmoke(now);     /* v2.3.2718 */
+    this._updateCookSmoke(now);     /* v2.3.2733 */
     /* v2.3.1735: guards internally on the strip being loaded. */
     try { this._updateWhirlVortex(S, now); } catch (e) { /* ditto */ }
     this._updateScreenFlash(S, viewW, viewH, now);
@@ -3267,6 +3351,9 @@ export class EffectsRenderer {
     this._updateGatherNodes(S, now);
     this._updateMonsterImpacts(S, now);
     this._updateDebrisBursts(S, now);   /* v2.3.2200: material hit debris */
+    this._updatePropMarks(S, now);      /* v2.3.2730: slashes and arrows standing in props */
+    this._updateArrowSnaps(S, now);     /* v2.3.2731: one arrow in eight breaks on what it hits */
+    try { this._shotFx.tick(S, now); } catch (e) { /* v2.3.2732: monster shots are drawing only */ }
     this._updateCampfire(S, now);
     this._updateFiremaking(S, now);
     this._updateSwordSwing(S, now);
@@ -4042,6 +4129,7 @@ export class EffectsRenderer {
 
     // Local arrows
     const arrows = S.arrows || [];
+    this._pmTick = (this._pmTick || 0) + 1;   /* v2.3.2730: see _reapPropArrows */
     for (const a of arrows) {
       if (!a._renderX) continue;
       /* v2.3.2287: the vista's perspective curve, at the arrow's OWN drawn
@@ -4049,6 +4137,9 @@ export class EffectsRenderer {
          on every zone but worldview. See _placeMagicBolt for why the `|| 1`
          guards matter more than the multiply does. */
       const _pk = zonePlayerScale(S.currentZone, a._renderX, a._renderY, TILE) || 1;
+      /* v2.3.2730: an arrow standing in a prop is drawn ON the prop, sorted
+         with it, not in the ground layer -- see _placePropArrow. */
+      if (a._inProp && a.planted) { this._placePropArrow(S, a, now, _pk); continue; }
       const elemColor = a._projElem && ELEMENTS[a._projElem] ? cssToHex(ELEMENTS[a._projElem].color) : 0xc8c8d0;
       const fadeA = Math.min(1, a.life / 20);
       /* v2.3.1095: a planted/falling arrow is stuck in the world -- no motion
@@ -4256,6 +4347,7 @@ export class EffectsRenderer {
       }
     }
 
+    this._reapPropArrows();   /* v2.3.2730 */
     /* v2.3.1334: reap magic-bolt sprites whose projectile is gone
        (expired, hit, or zone-reset) — same pattern as the slime-orb
        reaper below. */
@@ -4421,7 +4513,13 @@ export class EffectsRenderer {
         gfx.fill({ color: 0xffffff, alpha: 1 });      /* highlight, reads as round */
       }
     }
-    if (projTex) {
+    /* v2.3.2732: goo and fire are monsterShotFx's once its atlas exists; the
+       loop below is the fallback it replaces, kept for a failed mint. */
+    const _shotFxOn = !!(this._shotFx && this._shotFx.ready);
+    if (_shotFxOn) {
+      try { this._shotFx.drawShots(S, now, slimeProjs); } catch (e) { /* drawing only */ }
+    }
+    if (projTex && !_shotFxOn) {
       for (const sp of slimeProjs) {
         if (sp.kind === 'snowball') continue;   /* drawn above */
         let sprite = sp._pixiSprite;
@@ -7357,6 +7455,394 @@ export class EffectsRenderer {
    * angle (the snowman-plume recipe).  Without: six tinted copies of
    * the minted soft particle on parametric arcs — dt-safe because
    * position is computed from age, not integrated per frame. */
+  /* ═══ v2.3.2731: A SNAPPED ARROW ═══
+   * Owner: "some arrows snapped on hitting the target (still causing the same
+   * amount of damage) in maybe every 1 out of every 8 hits".
+   *
+   * Consumes S._arrowSnaps (combatHelpers.queueArrowSnap).  The arrow breaks
+   * just behind its pivot: the HEAD half drops off what it hit with a small
+   * bounce back, the FLETCHED half kicks back toward the shooter end over end,
+   * and five splinters spray back the same way.  Every piece flies on a
+   * parabola solved from its age (the debris chunks' dt-safe recipe, not a
+   * per-frame integration), lands on the ground line under the hit, turns
+   * flat -- a stick lying on the ground lies along it -- rests, and fades.
+   * Particle layer: over the monster it broke on, under the player (v2.3.2636). */
+  _updateArrowSnaps(S, now) {
+    const zone = S && S.currentZone;
+    if (this._snapZone !== zone) { this._clearArrowSnaps(); this._snapZone = zone; }
+    if (!this._snaps) this._snaps = [];
+    const q = S && S._arrowSnaps;
+    if (q && q.length) {
+      for (let i = 0; i < q.length; i++) {
+        const r = q[i];
+        if (r && r.zone === zone) this._spawnArrowSnap(S, r, now);
+      }
+      q.length = 0;
+    }
+    for (let i = this._snaps.length - 1; i >= 0; i--) {
+      const sn = this._snaps[i];
+      let alive = false;
+      for (const pc of sn.pieces) if (this._stepSnapPiece(pc, now)) alive = true;
+      if (!alive) { this._killArrowSnap(sn); this._snaps.splice(i, 1); }
+    }
+    if (typeof window !== 'undefined' && !window.__btArrowSnapFx) {
+      window.__btArrowSnapFx = () => this.arrowSnapProbe();
+    }
+  }
+
+  _spawnArrowSnap(S, r, now) {
+    if (!ARROW_PINE.front || !ARROW_PINE.back || !ARROW_PINE.full) return;
+    while (this._snaps.length >= SNAP_MAX) this._killArrowSnap(this._snaps.shift());
+    const pk = zonePlayerScale(S.currentZone, r.x, r.y, TILE) || 1;
+    const k = (ARROW_PINE.lenPx * pk) / (ARROW_PINE.full.width || 1);
+    const L = ARROW_PINE.lenPx * pk;
+    const c = Math.cos(r.ang), sn = Math.sin(r.ang);
+    const px = -sn, py = c;   /* across the flight */
+    const rnd = Math.random;
+    const f = ARROW_PINE.snapFrac, ax = ARROW_PINE.anchor.x;
+    /* the pivot is where the arrow is drawn; the halves' centres sit either
+       side of the break, measured along the shaft from there */
+    const backOff = (f / 2 - ax) * L, frontOff = ((1 + f) / 2 - ax) * L;
+    const mk = (tex, ox, vx, vy, spin, kind, sc) => {
+      const sp = new Sprite(tex);
+      sp.anchor.set(0.5, 0.5);
+      sp.scale.set(sc);
+      sp.rotation = r.ang;
+      this.particleLayer.addChild(sp);
+      const x0 = r.x + c * ox, y0 = r.y + sn * ox;
+      /* Lands on the ground line under the hit -- or, for a piece that starts
+         at or below it (a hit at the very foot of a face), back at its own
+         height after the hop: with drop 0 the same root is -vy/G, the time to
+         go up and come down again, where a flat "already landed" would leave
+         the pieces lying there from the first frame with no break to see. */
+      const gy = Math.max(y0, r.gy + rnd() * 4);
+      const drop = gy - y0;
+      const tLand = Math.max(0, (-vy + Math.sqrt(vy * vy + 4 * SNAP_G * drop)) / (2 * SNAP_G));
+      return { sp, kind, x0, y0, vx, vy, spin, rot0: r.ang, tLand, t0: now,
+        tilt: (rnd() - 0.5) * 0.5, landedRot: null, done: false };
+    };
+    const back = 1.6 + rnd() * 0.8, side = (rnd() - 0.5);
+    const pieces = [
+      /* the head: a short hop back off the face, a lazy turn */
+      mk(ARROW_PINE.front, frontOff * 0.5, -c * (0.5 + rnd() * 0.5) + px * side * 0.8,
+        -sn * (0.5 + rnd() * 0.5) + py * side * 0.8 - (1.1 + rnd() * 0.7),
+        (rnd() < 0.5 ? -1 : 1) * (0.10 + rnd() * 0.08), 'front', k),
+      /* the fletched half: kicked back toward the shooter, end over end */
+      mk(ARROW_PINE.back, backOff, -c * back - px * side, -sn * back - py * side - (1.8 + rnd() * 0.9),
+        (rnd() < 0.5 ? -1 : 1) * (0.22 + rnd() * 0.12), 'back', k),
+    ];
+    const stex = splinterTex();
+    for (let i = 0; i < 5; i++) {
+      const a = r.ang + Math.PI + (rnd() - 0.5) * 2.4;
+      const v = 1.4 + rnd() * 1.8;
+      pieces.push(mk(stex, 0, Math.cos(a) * v, Math.sin(a) * v - (0.8 + rnd() * 1.2),
+        (rnd() - 0.5) * 0.6, 'splinter', (0.7 + rnd() * 0.5) * pk));
+    }
+    this._snaps.push({ pieces, t0: now, x: r.x, y: r.y });
+  }
+
+  /* One piece, from its age.  Returns whether it is still on screen. */
+  _stepSnapPiece(pc, now) {
+    if (pc.done || !pc.sp || pc.sp.destroyed) return false;
+    const t = (now - pc.t0) / 16.667;
+    const sp = pc.sp;
+    if (t < pc.tLand) {
+      sp.x = pc.x0 + pc.vx * t;
+      sp.y = pc.y0 + pc.vy * t + SNAP_G * t * t;
+      sp.rotation = pc.rot0 + pc.spin * t;
+      sp.alpha = 1;
+      return true;
+    }
+    /* on the ground: where it landed, turned to lie flat */
+    const tl = pc.tLand;
+    sp.x = pc.x0 + pc.vx * tl;
+    sp.y = pc.y0 + pc.vy * tl + SNAP_G * tl * tl;
+    if (pc.landedRot == null) {
+      const r0 = pc.rot0 + pc.spin * tl;
+      pc.landRot0 = r0;
+      pc.landedRot = Math.round(r0 / Math.PI) * Math.PI + pc.tilt;
+    }
+    const since = (t - tl) * 16.667;
+    const u = Math.min(1, since / 120);
+    sp.rotation = pc.landRot0 + (pc.landedRot - pc.landRot0) * u;
+    const rest = pc.kind === 'splinter' ? 180 : SNAP_REST_MS;
+    const fade = pc.kind === 'splinter' ? 260 : SNAP_FADE_MS;
+    if (since >= rest + fade) { pc.done = true; sp.visible = false; return false; }
+    sp.alpha = since <= rest ? 1 : 1 - (since - rest) / fade;
+    return true;
+  }
+
+  _killArrowSnap(sn) {
+    if (!sn) return;
+    for (const pc of sn.pieces) if (pc.sp && !pc.sp.destroyed) pc.sp.destroy();
+  }
+
+  _clearArrowSnaps() {
+    for (const sn of (this._snaps || [])) this._killArrowSnap(sn);
+    this._snaps = [];
+  }
+
+  /* House-style probe: every live snap, and where each of its pieces is. */
+  arrowSnapProbe() {
+    return (this._snaps || []).map((sn) => ({
+      x: +sn.x.toFixed(1), y: +sn.y.toFixed(1), age: Math.round(Date.now() - sn.t0),
+      pieces: sn.pieces.filter((pc) => pc.sp && !pc.sp.destroyed).map((pc) => ({
+        kind: pc.kind, x: +pc.sp.x.toFixed(1), y: +pc.sp.y.toFixed(1), rot: +pc.sp.rotation.toFixed(2),
+        alpha: +pc.sp.alpha.toFixed(2), visible: !!pc.sp.visible, landed: pc.landedRot != null,
+        layer: pc.sp.parent === this.particleLayer ? 'particles' : 'other' })),
+    }));
+  }
+
+  /* ═══ v2.3.2730: MARKS ON PROPS -- SLASHES AND ARROWS IN THE ROCK ═══
+   * Owner: "arrow stuck in (with debris), and sword slash marks on the props
+   * (with debris)".
+   *
+   * WHERE THEY ARE DRAWN IS THE WHOLE PROBLEM.  A mark lives ON a prop, so it
+   * must be in front of the player exactly when the prop is, and behind him
+   * exactly when the prop is -- and since v2.3.2633 that is decided per frame by
+   * the depth pass (rendering/depthSort.js), which buckets every child of the
+   * entity layer by its `y` and sorts by it.  A sprite added straight to that
+   * layer would be sorted by its OWN y, which for a cut 30px up a rock face is
+   * north of the rock's ground line: behind the rock, invisible.  So each prop
+   * that carries a mark gets an OVERLAY container standing on the prop's own
+   * ground line (+1, so it always sorts just after the rock), and the marks are
+   * drawn inside it at their offsets.  The depth pass then moves the overlay
+   * with the rock, and nothing about depth has to be special-cased.
+   * A hit on the BACK face (an arrow from the north) gets an overlay on the
+   * footprint's north line (-1) instead: behind the rock, so the rock covers
+   * it and only what sticks out past the art shows -- which is what you would
+   * see of an arrow in the far side of a boulder.
+   *
+   * Two sources.  Slashes and a PEER's stuck arrows arrive as records on
+   * S._propMarks (combatHelpers.markProp) and live here for their `ttl`.  YOUR
+   * stuck arrows are still real projectiles in S.arrows (planted, `_inProp`),
+   * because a bow special's ground ticks and its send-off blast hang off that
+   * object -- so the arrow pass hands them to _placePropArrow instead of
+   * drawing them in the ground layer, and they go when the arrow does. */
+  _propById(S, id) {
+    const zone = S && S.currentZone;
+    if (this._pmIdxZone !== zone) {
+      this._pmIdx = Object.create(null);
+      for (const p of propsForZone(zone)) this._pmIdx[p.id] = p;
+      this._pmIdxZone = zone;
+    }
+    return (id && this._pmIdx && this._pmIdx[id]) || null;
+  }
+
+  _propOverlay(p, back) {
+    if (!this._propOv) this._propOv = new Map();
+    const key = p.id + (back ? ':back' : ':front');
+    let ov = this._propOv.get(key);
+    if (!ov || ov.destroyed) {
+      ov = new Container();
+      ov.label = 'propmarks_' + key;
+      this.entityLayer.addChild(ov);
+      this._propOv.set(key, ov);
+    }
+    ov.x = p.x;
+    ov.y = back ? (p.y - (p.blockD || 0)) - 1 : p.y + 1;
+    ov.visible = true;
+    return ov;
+  }
+
+  _clearPropMarks() {
+    for (const fx of (this._pmFx || [])) this._killPropMark(fx);
+    this._pmFx = [];
+    if (this._propArrowSprs) {
+      for (const spr of this._propArrowSprs) if (spr && !spr.destroyed) spr.destroy();
+      this._propArrowSprs.clear();
+    }
+    if (this._propOv) {
+      for (const ov of this._propOv.values()) if (ov && !ov.destroyed) ov.destroy({ children: true });
+      this._propOv.clear();
+    }
+  }
+
+  _killPropMark(fx) {
+    if (fx && fx.sprite && !fx.sprite.destroyed) fx.sprite.destroy();
+  }
+
+  _spawnPropMark(S, rec, now) {
+    const p = this._propById(S, rec.id);
+    if (!p) return;
+    const back = rec.face === 'n';
+    const ov = this._propOverlay(p, back);
+    const pk = zonePlayerScale(S.currentZone, rec.x, rec.y, TILE) || 1;
+    let sp = null;
+    if (rec.kind === 'slash') {
+      /* the newest five on any one prop */
+      let n = 0;
+      for (let i = this._pmFx.length - 1; i >= 0; i--) {
+        const f = this._pmFx[i];
+        if (f.kind === 'slash' && f.propId === rec.id && ++n >= PROP_SLASHES_PER_PROP) {
+          this._killPropMark(f); this._pmFx.splice(i, 1);
+        }
+      }
+      const tex = propSlashTex();
+      sp = new Sprite(tex);
+      sp.anchor.set(0.5, 0.45);
+      sp.scale.set((PROP_SLASH_LEN * pk) / (tex.width || 48));
+      sp.rotation = rec.ang || 0;
+    } else if (rec.kind === 'arrow') {
+      const tex = this._stuckArrowTex(!!rec.special, now);
+      if (!tex) return;
+      sp = new Sprite(tex);
+      this._poseStuckArrow(sp, !!rec.special, pk);
+      sp.rotation = rec.ang || 0;
+    }
+    if (!sp) return;
+    sp.x = rec.x - ov.x;
+    sp.y = rec.y - ov.y;
+    ov.addChild(sp);
+    this._pmFx.push({ kind: rec.kind, propId: rec.id, sprite: sp, t0: rec.t0 || now,
+      ttl: rec.ttl > 0 ? rec.ttl : 3000, special: !!rec.special });
+  }
+
+  /* The headless texture an arrow stands in a prop with: the pine arrow's
+     cropped shaft, or the charged special's current headless frame. */
+  _stuckArrowTex(special, now) {
+    if (special && ARROW_SPECIAL.noHead.length && ARROW_SPECIAL.noHead.length === ARROW_SPECIAL.frames.length) {
+      return ARROW_SPECIAL.noHead[Math.floor(now / ARROW_SPECIAL.frameMs) % ARROW_SPECIAL.noHead.length];
+    }
+    return ARROW_PINE.noHead || null;
+  }
+
+  /* Pinned by its CUT end, the way a stuck arrow in a monster is (v2.3.1765):
+     the anchor is the right edge of the headless texture, so the shaft runs
+     back out of the face instead of the middle of the arrow sitting on it. */
+  _poseStuckArrow(sp, special, pk) {
+    if (special && ARROW_SPECIAL.noHead.length) {
+      sp.anchor.set(1, ARROW_SPECIAL.anchor.y);
+      sp.scale.set(ARROW_SPECIAL.scale * pk);
+    } else {
+      sp.anchor.set(1, 0.5);
+      sp.scale.set((ARROW_PINE.lenPx * pk) / ((ARROW_PINE.full && ARROW_PINE.full.width) || 1));
+    }
+  }
+
+  /* YOUR arrow, planted in a prop (projectiles.js `_inProp`). */
+  _placePropArrow(S, a, now, pk) {
+    const ip = a._inProp;
+    const p = this._propById(S, ip && ip.id);
+    if (!p) return;
+    const ov = this._propOverlay(p, ip.face === 'n');
+    const special = !!(a.isSpecial && !a._isStaffProj);
+    const tex = this._stuckArrowTex(special, now);
+    if (!tex) return;
+    let spr = a._propArrowSpr;
+    if (!spr || spr.destroyed) {
+      spr = new Sprite(tex);
+      a._propArrowSpr = spr;
+      if (!this._propArrowSprs) this._propArrowSprs = new Set();
+      this._propArrowSprs.add(spr);
+    }
+    if (spr.texture !== tex) spr.texture = tex;
+    this._poseStuckArrow(spr, special, pk);
+    if (spr.parent !== ov) ov.addChild(spr);
+    const px = (a._plantX != null) ? a._plantX : a._renderX;
+    const py = (a._plantY != null) ? a._plantY : a._renderY;
+    spr.x = px - ov.x;
+    spr.y = py - ov.y;
+    spr.rotation = a.ang || 0;
+    /* the planted life in projectiles.js: 2 s, a bow special's 4 s */
+    const life = special ? 4000 : 2000;
+    const left = life - (now - (a.plantedAt || now));
+    spr.alpha = Math.max(0, Math.min(1, left / 300));
+    spr.visible = true;
+    spr._pmSeen = this._pmTick;
+  }
+
+  /* After the arrow pass: an arrow that was not drawn this frame has left
+     S.arrows, and its sprite goes with it. */
+  _reapPropArrows() {
+    if (!this._propArrowSprs) return;
+    for (const spr of this._propArrowSprs) {
+      if (!spr || spr.destroyed || spr._pmSeen !== this._pmTick) {
+        if (spr && !spr.destroyed) spr.destroy();
+        this._propArrowSprs.delete(spr);
+      }
+    }
+  }
+
+  _updatePropMarks(S, now) {
+    const zone = S && S.currentZone;
+    if (this._pmZone !== zone) { this._clearPropMarks(); this._pmZone = zone; }
+    if (!this._pmFx) this._pmFx = [];
+    const q = S && S._propMarks;
+    if (q && q.length) {
+      for (let i = 0; i < q.length; i++) {
+        const rec = q[i];
+        if (rec && rec.zone === zone) this._spawnPropMark(S, rec, now);
+      }
+      q.length = 0;
+    }
+    for (let i = this._pmFx.length - 1; i >= 0; i--) {
+      const fx = this._pmFx[i];
+      const age = now - fx.t0;
+      if (!fx.sprite || fx.sprite.destroyed || age >= fx.ttl) {
+        this._killPropMark(fx); this._pmFx.splice(i, 1); continue;
+      }
+      /* a cut is there at once and weathers away over its last 1.2 s; an
+         arrow stands until its last 300 ms, like yours does */
+      const out = fx.kind === 'slash' ? 1200 : 300;
+      fx.sprite.alpha = Math.max(0, Math.min(1, (fx.ttl - age) / out));
+      if (fx.kind === 'arrow' && fx.special) {
+        const t = this._stuckArrowTex(true, now);
+        if (t && fx.sprite.texture !== t) fx.sprite.texture = t;
+      }
+    }
+    /* an overlay with nothing in it costs a sort slot and nothing else, but
+       there is no reason to keep it visible */
+    if (this._propOv) {
+      for (const ov of this._propOv.values()) {
+        if (ov && !ov.destroyed) ov.visible = ov.children.length > 0;
+      }
+    }
+    if (typeof window !== 'undefined' && !window.__btPropMarks) {
+      window.__btPropMarks = () => this.propMarksProbe();
+      window.__btPropDepth = (id) => this.propDepthProbe(id);
+    }
+  }
+
+  /* Where a prop's front overlay sits against the prop's own sprite: same
+     parent layer, drawn after it, with a sort key at or past the rock's. */
+  propDepthProbe(id) {
+    const ov = this._propOv && this._propOv.get(id + ':front');
+    if (!ov || ov.destroyed || !ov.parent) return { ov: false };
+    const kids = ov.parent.children;
+    const rock = kids.find((c) => c && c.label === 'prop_' + id) || null;
+    return { ov: true, rock: !!rock, sameParent: !!rock,
+      rockIdx: rock ? kids.indexOf(rock) : -1, ovIdx: kids.indexOf(ov),
+      rockZ: rock ? rock.zIndex : null, ovZ: ov.zIndex, ovY: ov.y, rockY: rock ? rock.y : null,
+      layer: ov.parent === this.entityLayer ? 'entities' : (ov.parent === this.nodeFrontLayer ? 'front' : 'other') };
+  }
+
+  /* House-style probe: what is drawn on props right now, and WHERE in the
+     scene graph -- the depth claim is the one a screenshot cannot make. */
+  propMarksProbe() {
+    const out = [];
+    const layerName = (c) => {
+      const par = c && c.parent;
+      if (!par) return null;
+      if (par === this.entityLayer) return 'entities';
+      if (par === this.nodeFrontLayer) return 'front';
+      return par.label || 'other';
+    };
+    if (this._propOv) {
+      for (const [key, ov] of this._propOv) {
+        if (!ov || ov.destroyed) continue;
+        for (const c of ov.children) {
+          const isArrow = c.texture === ARROW_PINE.noHead || ARROW_SPECIAL.noHead.indexOf(c.texture) >= 0;
+          out.push({ key, kind: c.texture === _PROP_SLASH_TEX ? 'slash' : (isArrow ? 'arrow' : 'other'),
+            x: +(ov.x + c.x).toFixed(1), y: +(ov.y + c.y).toFixed(1), ovY: ov.y,
+            rot: +c.rotation.toFixed(3), alpha: +c.alpha.toFixed(2), visible: !!(c.visible && ov.visible),
+            layer: layerName(ov), headless: isArrow });
+        }
+      }
+    }
+    return out;
+  }
+
   _updateDebrisBursts(S, now) {
     const q = S && S._debrisBursts;
     if (q && q.length) {
@@ -7411,7 +7897,12 @@ export class EffectsRenderer {
     } else {
       const parts = [];
       const tint = b.tint || 0xffffff;
-      for (let i = 0; i < DEBRIS_PARTS; i++) {
+      /* v2.3.2730: a PROP's burst (combatHelpers.spawnPropDebris) asks for
+         fewer, smaller chunks -- "subtle", the owner's word -- and says where
+         its ground is, so they land at the foot of the face they came off. */
+      const _nParts = (b.parts > 0) ? Math.min(DEBRIS_PARTS, b.parts) : DEBRIS_PARTS;
+      const _pScale = (b.scale > 0) ? b.scale : 1;
+      for (let i = 0; i < _nParts; i++) {
         /* TWO SPRITES A CHUNK, and the second one is not decoration.  This
            mark lands on town cobble, desert sand, grass and snow, and a
            material tint on the ground that matches it is invisible -- goo
@@ -7431,7 +7922,7 @@ export class EffectsRenderer {
         /* 0.55..1.15, up from 0.3..0.7: the dot texture is a 32px soft
            particle, so the old range drew chunks 10-22px across at world
            scale -- under a fingertip on the phone this is played on. */
-        const sc = 0.55 + Math.random() * 0.6;
+        const sc = (0.55 + Math.random() * 0.6) * _pScale;
         sp.scale.set(sc);
         rim.scale.set(sc * 1.32);
         const a = ang + (Math.random() - 0.5) * 1.2;
@@ -7450,7 +7941,9 @@ export class EffectsRenderer {
            rest pose is one sqrt at spawn instead of a per-frame integration
            that would drift with the frame rate (the same dt-safety the
            parametric flight was written for). */
-        const gy = 16 + Math.random() * 24;
+        const gy = (b.prop && Number.isFinite(b.gy) && b.gy > b.y)
+          ? (b.gy - b.y) + Math.random() * 6
+          : 16 + Math.random() * 24;
         const tLand = (-vy + Math.sqrt(vy * vy + 4 * DEBRIS_GRAV * gy)) / (2 * DEBRIS_GRAV);
         parts.push({ sp, rim, x0: b.x, y0: b.y, vx, vy, sc, gy, tLand,
           xLand: b.x + vx * tLand, yLand: b.y + gy,
@@ -8146,7 +8639,7 @@ export class EffectsRenderer {
    * Plays each queued S._fxBursts entry as a one-shot 8-frame strip at its
    * world point, then reaps it (sprite destroyed, entry spliced).  flip:-1
    * mirrors horizontally (wood chips fly away from the trunk). */
-  /* ═══ v2.3.2718: SMOKE OFF THE PAN WHILE YOU FLIP ═══
+  /* ═══ v2.3.2733: SMOKE OFF THE PAN WHILE YOU FLIP ═══
    * Owner: "As you perform the gesture on the right joystick you should add
    * resource or action specific effects (maybe wood chips for axe, rock debris
    * for mining, smoke for cooking, etc)."  Chips, debris and the splash are the
@@ -10575,7 +11068,7 @@ export class EffectsRenderer {
        loop) — one splash roughly every 800ms so it reads as agitation,
        not a strobe.  v2.3.1445 (owner): reeling is the ONLY splash moment
        — the catch burst that applyFishingReward used to add is gone. */
-    /* v2.3.2718: 800 -> 480ms -- the reel is now ~3s of quick cranking, and
+    /* v2.3.2733: 800 -> 480ms -- the reel is now ~3s of quick cranking, and
        the splash is the fishing gesture's own effect (owner: "resource or
        action specific effects" as you perform the gesture). */
     if (ex.skill === 'fishing' && ex.status === 'ready'
@@ -10590,7 +11083,7 @@ export class EffectsRenderer {
        whole-attempt contract as the sizzle loop).  Anchored to the live
        marker pan when the flip cue is up, else to the baked pan the cook
        figure holds over the flames. */
-    /* ═══ v2.3.2718: AT `ready` THE PAN IS STILL UNTIL YOU FLIP IT ═══
+    /* ═══ v2.3.2733: AT `ready` THE PAN IS STILL UNTIL YOU FLIP IT ═══
        The grease stays constant through the wind-up (v2.3.1445, owner), but
        once the window opens the cook FREEZES until the first flick (owner:
        "stop animating until you perform the correct gesture"), and grease
@@ -10650,7 +11143,7 @@ export class EffectsRenderer {
       /* v2.3.2245: the chop follows the thumb once the window is open --
          one stroke on the button is one downswing, capped at one per 700ms
          (a leisurely chop); the wind-up before `ready` keeps the clock. */
-      const _gpC = gesturePose01(ex, now);   /* v2.3.2718: hand-paced; holds the raised axe until the first stroke */
+      const _gpC = gesturePose01(ex, now);   /* v2.3.2733: hand-paced; holds the raised axe until the first stroke */
       const k = (_gpC != null) ? Math.max(0, Math.min(CHOP_COUNT - 1, Math.floor(_gpC * CHOP_COUNT)))
         : Math.floor(now / CHOP_FRAME_MS) % CHOP_COUNT;
       const fi = Math.min(this._chopFrames.length - 1, CHOP_BASE + k);
@@ -10733,13 +11226,13 @@ export class EffectsRenderer {
          none).  Fires once per loop — only on the transition INTO the strike
          frame.  v2.3.848: reuse the melee 'sword-hit3' sample, delayed ~0.2s so
          it lands with the visible bite. */
-      /* v2.3.2718: CROSSING the strike frame, not landing on it.  At the pace
+      /* v2.3.2733: CROSSING the strike frame, not landing on it.  At the pace
          of a quick hand the chase can step over k=9 in one frame (8 -> 10),
          and an equality test would drop that chop's bite and chips. */
       const _chopL = (this._chopLastStatus === ex.status) ? this._chopLastFrame : -2;
       this._chopLastStatus = ex.status;
       if (_crossedFrame(_chopL, k, CHOP_STRIKE_K)) {
-        /* ═══ v2.3.2719: THE AXE SOUNDS LIKE AN AXE IN BARK ═══
+        /* ═══ v2.3.2734: THE AXE SOUNDS LIKE AN AXE IN BARK ═══
            Owner: "Play sound effect while specific actions occur like ...
            axe hitting tree bark."  The owner's own hatchet sample (axe-chop,
            two strikes at ~0.08s / ~1.10s, v2.3.1427) was wired to the
@@ -10811,7 +11304,7 @@ export class EffectsRenderer {
        first frame with the pick down (frames 0-3/11-13 hold it raised). */
     if (ex.skill === 'mining') {
       const _mfc = jogFrameCount('mine', 'south') || 14;
-      /* v2.3.2718: the frame the body is ACTUALLY showing.  This read the
+      /* v2.3.2733: the frame the body is ACTUALLY showing.  This read the
          clock loop even after the window opened, so once the swing followed
          the hand (v2.3.2245) the clink and the debris kept their own beat --
          and with the body now frozen at `ready` until the first stroke, they
@@ -10825,7 +11318,7 @@ export class EffectsRenderer {
       this._mineLastStatus = ex.status;
       /* Crossing frame 4, not landing on it -- a quick pump can step over it. */
       if (_crossedFrame(_mL, _mk, 4)) {
-        /* v2.3.2718: the slam's sparks, moved here from ExtractionSwipeLayer's
+        /* v2.3.2733: the slam's sparks, moved here from ExtractionSwipeLayer's
            onSlam (which fired on the recognizer's 40px threshold, not on the
            frame the pick lands) -- so they sit on the visible blow. */
         if (S.hitParticles && ex.status === 'ready') {
@@ -10888,7 +11381,7 @@ export class EffectsRenderer {
       /* v2.3.2245: the flip follows the thumb once the window is open (one
          up-flick on the button is one flip, capped at one per 1600ms -- the
          pan marker's own v2.3.1442 rate); the wind-up keeps the clock loop. */
-      const _gpK = gesturePose01(ex, now);   /* v2.3.2718: hand-paced; holds until the first flick */
+      const _gpK = gesturePose01(ex, now);   /* v2.3.2733: hand-paced; holds until the first flick */
       const cookFi = (_gpK != null) ? Math.max(0, Math.min(this._cookFrames.length - 1, Math.floor(_gpK * this._cookFrames.length)))
         : Math.floor(now / COOK_FRAME_MS) % this._cookFrames.length;
       /* v2.3.1114: when leg armour is equipped, use the legs-erased body so the
@@ -11005,7 +11498,7 @@ export class EffectsRenderer {
    * button can stand there indefinitely believing the game has stopped.
    *
    * v2.3.2514 stalled the bar at 95% and left the last sliver to the reps.
-   * v2.3.2718 (owner: "once it reaches the limit, the character is supposed
+   * v2.3.2733 (owner: "once it reaches the limit, the character is supposed
    * to stop animating until you perform the correct gesture") makes it two
    * full bars instead -- the wind-up fills to the top, the full bar FLASHES
    * while it waits for you, and the gesture's ~3s fill green over it.  The
@@ -11057,10 +11550,10 @@ export class EffectsRenderer {
        container units (entityRenderer), so this reads as the same family of
        object at a glance -- same width, slimmer, because it is a secondary
        meter and it must not be mistaken for health. */
-    const W = 50 * pscale, H = 9 * pscale;   /* v2.3.2718: 46x8 -> 50x9, see the contrast note below */
+    const W = 50 * pscale, H = 9 * pscale;   /* v2.3.2733: 46x8 -> 50x9, see the contrast note below */
     const x0 = cx - W / 2;
     let y0 = topY - 12 * pscale;
-    /* v2.3.2718: over the REAL body (mining, fishing) your name plate or HP
+    /* v2.3.2733: over the REAL body (mining, fishing) your name plate or HP
        bar is already on the band above the head -- lift the harvest bar
        clear of it (entityRenderer publishes the band's top).  The stand-ins
        stand elsewhere and wear no plate, so they keep their own anchor. */
@@ -11071,14 +11564,14 @@ export class EffectsRenderer {
     const r = Math.min(H / 2, 3 * pscale);
     /* track: the Lantern Slate `well` over a hairline border, the same trough
        every other meter in the game sits in (docs/LANTERN-SLATE-SPEC.md).
-       v2.3.2718: with a DARK outer edge as well.  On a phone capture in Frost
+       v2.3.2733: with a DARK outer edge as well.  On a phone capture in Frost
        Ridge a pale bar over white snow was simply not there, and a gold one
        over the town's sand barely was -- the well alone cannot separate a
        light fill from a light ground. */
     gfx.roundRect(x0, y0, W, H, r).fill({ color: 0x121B20, alpha: 0.85 });
     gfx.roundRect(x0, y0, W, H, r).stroke({ width: Math.max(1.5, 1.6 * pscale), color: 0x05080A, alpha: 0.85 });
     gfx.roundRect(x0, y0, W, H, r).stroke({ width: Math.max(1, pscale * 0.8), color: 0xEEF2EB, alpha: 0.22 });
-    /* ═══ v2.3.2718: TWO FULL BARS, NOT ONE THAT STALLS AT 95% ═══
+    /* ═══ v2.3.2733: TWO FULL BARS, NOT ONE THAT STALLS AT 95% ═══
        Owner: "a loading bar above their head indicating the progress of the
        animation.  Then, once it reaches the limit, the character is supposed
        to stop animating until you perform the correct gesture."  So:
@@ -11139,7 +11632,7 @@ export class EffectsRenderer {
       }
       this._debrisFx = [];
     }
-    /* v2.3.2718: and the cook's smoke puffs. */
+    /* v2.3.2733: and the cook's smoke puffs. */
     if (this._cookSmoke) {
       for (const p of this._cookSmoke) {
         if (p.sp && !p.sp.destroyed) { if (p.sp.parent) p.sp.parent.removeChild(p.sp); p.sp.destroy(); }

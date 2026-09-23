@@ -1,4 +1,4 @@
-/* ═══ v2.3.2720: AMBIENT LIFE ON THE MAPS ═══
+/* ═══ v2.3.2735: AMBIENT LIFE ON THE MAPS ═══
  *
  * Owner: "make subtle effects that appear as animations on the worldview?
  * Lava smoke on the fire mountain maybe shimmering a bit on the lava, winds on
@@ -107,7 +107,7 @@ const pick = (arr) => arr[(Math.random() * arr.length) | 0];
  * The air emitters are { kind, rate (per second, over the whole map area it
  * covers), cap (alive at once), where }. */
 const ZONE_FX = {
-  /* v2.3.2720: k 0.55 -> 0.75 after an on/off diff of the real render showed
+  /* v2.3.2735: k 0.55 -> 0.75 after an on/off diff of the real render showed
      the vista's effects under two screen px -- too far for 'subtle' to read */
   worldview: { k: 0.75, glow: 'lava', ripples: true, air: [
     { kind: 'smoke', where: 'vents', rate: 1.6, cap: 12 },
@@ -118,7 +118,7 @@ const ZONE_FX = {
     { kind: 'snow', where: 'snow', rate: 4, cap: 22 },
     { kind: 'petal', where: 'blossom', rate: 1.2, cap: 8 },
   ] },
-  /* ═══ v2.3.2720: WITH worldFx's AIR, NOT ON TOP OF IT ═══
+  /* ═══ v2.3.2735: WITH worldFx's AIR, NOT ON TOP OF IT ═══
      v2.3.2712 (worldFx.js ZONE_AIR, merged while this was being built) already
      fills the spokes' AIR: pollen and fireflies in verdant, embers in ember,
      blowing sand in the dunes, snow in frost, on one shared breeze.  Doubling
@@ -313,7 +313,7 @@ export class AmbientFx {
     this.parts.push(p);
   }
 
-  /* ═══ v2.3.2721: NOTHING SHINES AGAINST THE DASHBOARD ═══
+  /* ═══ v2.3.2736: NOTHING SHINES AGAINST THE DASHBOARD ═══
    * Owner: "the bottom dashboard (the gray dashboard) might unintentionally
    * be affected by these effects from looking at the water zone at the far
    * south end."  Measured (on/off pixel diff, dashboard open AND collapsed):
@@ -359,7 +359,7 @@ export class AmbientFx {
     const view = { x: cx, y: cy, w: viewW, h: viewH };
     const tsec = now / 1000;
     const M = 60;
-    /* v2.3.2721: the dashboard's top edge, in world px, and the fade above it */
+    /* v2.3.2736: the dashboard's top edge, in world px, and the fade above it */
     const seamY = view.y + this._seamFrac(canvas) * view.h;
     const FADE = 40;
     const seam = (bottom) => { const a = (seamY - 6 - bottom) / FADE; return a <= 0 ? 0 : (a >= 1 ? 1 : a); };
@@ -401,7 +401,7 @@ export class AmbientFx {
       /* in and out softly, with a full-strength middle: the first cut faded
          over the WHOLE life, so a particle spent most of it at a fraction of
          its alpha and the lot read as nothing on a phone (mp-ambient's
-         captures, v2.3.2720). */
+         captures, v2.3.2735). */
       const env = f < 0.15 ? f / 0.15 : (f > 0.7 ? (1 - f) / 0.3 : 1);
       if (p.kind === 'mote' || p.kind === 'twinkle') {
         sp.alpha = p.a * env * (0.55 + 0.45 * Math.sin(tsec * 3 + p.ph));
@@ -422,7 +422,7 @@ export class AmbientFx {
       if ((this._probeAt & 15) === 0) {
         window.__btAmbient = { zone: this.zone, glows: this.glows.filter((g) => g.sp.visible).length, alive: Object.assign({}, alive),
           seamY: Math.round(seamY),
-          /* v2.3.2721: the brightest sprite within FADE of the dashboard (0 = the seam is clean) */
+          /* v2.3.2736: the brightest sprite within FADE of the dashboard (0 = the seam is clean) */
           atSeam: Math.max(0, ...this.glows.concat(this.parts).map((o) => (o.sp.visible && o.sp.y + o.sp.height / 2 > seamY - 6) ? o.sp.alpha : 0)),
           view: { x: Math.round(view.x), y: Math.round(view.y), w: Math.round(view.w), h: Math.round(view.h) } };
       }

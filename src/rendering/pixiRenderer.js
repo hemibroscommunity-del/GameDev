@@ -10,7 +10,7 @@ import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/ef
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { LightFx, setLightFx } from './lightfx/lightFx.js'; /* v2.3.2710: map-lit shadows + metal glint, behind ?lightfx=1 */
-import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2720 */
+import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2735 */
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { MinimapRenderer } from './systems/minimapRenderer.js'; /* v2.3.1781 */
 import { loadPlayerSprites } from './playerSprites.js';
@@ -164,7 +164,7 @@ export async function initPixiRenderer(canvas) {
       glint: (p) => { lightFx.glint.force = (p == null ? null : Math.max(0, Math.min(1, +p))); },
     };
   }
-  /* v2.3.2720: the maps' ambient life -- lava breathing, smoke, water light,
+  /* v2.3.2735: the maps' ambient life -- lava breathing, smoke, water light,
      wind, snow, motes (systems/ambientFx.js). */
   const ambientFx = new AmbientFx(layers);
   /* v2.3.221: FPS counter only mounts with ?dev=1. */
@@ -232,7 +232,7 @@ export async function initPixiRenderer(canvas) {
     entityRenderer.clear();
     effectsRenderer.clear();
     lightFx.clear();   /* v2.3.2710: last zone's shadows and glints go with its figures */
-    ambientFx.setZone(zoneId);   /* v2.3.2720 */
+    ambientFx.setZone(zoneId);   /* v2.3.2735 */
     /* ═══ v2.3.2596: THE ZONE-ENTRY BANNER'S ONE TRIGGER ═══
        This function is the single place in the client that observes every zone
        change, whatever set it -- the hub walk-in, a respawn, the dev warp, a
@@ -380,7 +380,7 @@ export async function initPixiRenderer(canvas) {
        ones that were not -- the respawned). */
     try { worldFx.update(S, { cx, cy, viewW, viewH, cssW, cssH }, now); }
     catch (e) { if (!update._worldFxErr) { update._worldFxErr = true; console.error('[pixi-render] worldFx threw', e && e.message, e && e.stack); } }
-    /* v2.3.2720: after the effects, in the camera's world rect. */
+    /* v2.3.2735: after the effects, in the camera's world rect. */
     try { ambientFx.update(S, cx, cy, viewW, viewH, now, canvas); }
     catch (e) { if (!update._ambientErr) { update._ambientErr = true; console.error('[pixi-render] ambientFx threw', e && e.message, e && e.stack); } }
     const _t3 = performance.now();

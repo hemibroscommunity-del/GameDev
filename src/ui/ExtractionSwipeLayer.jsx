@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { GESTURE_STROKE, STROKE_SPAN_PX, GESTURE_FLOOR_MS, GESTURE_TARGET_MS, gestureTargetCycles } from '@/game/gesturePose.js'; /* v2.3.2718; GESTURE_TARGET_MS v2.3.2719 (the grade scales with it) */
+import { GESTURE_STROKE, STROKE_SPAN_PX, GESTURE_FLOOR_MS, GESTURE_TARGET_MS, gestureTargetCycles } from '@/game/gesturePose.js'; /* v2.3.2733; GESTURE_TARGET_MS v2.3.2734 (the grade scales with it) */
 
 /* v2.3.229 / v2.4 — ExtractionSwipeLayer
  *
@@ -45,17 +45,17 @@ import { GESTURE_STROKE, STROKE_SPAN_PX, GESTURE_FLOOR_MS, GESTURE_TARGET_MS, ge
  *     on a round button draws naturally.
  * Moves and ups stay at the window so a stroke may run off the disc.
  *
- * ═══ v2.3.2718: THE REP METER ABOVE IS NOW ~3s OF WORK ═══
+ * ═══ v2.3.2733: THE REP METER ABOVE IS NOW ~3s OF WORK ═══
  * The per-skill rep rules described at the top (1 rep per pump / stroke /
  * turn, one flip = cooked) are gone: the meter counts CYCLES of the motion
  * against gestureTargetCycles (3s at a quick pace, floored at 2.4s of real
  * motion), and one stroke tracker drives both the meter and the pose -- see
- * stepStroke, docs/specs/gesture-cue.md and TRAPS §104.
+ * stepStroke, docs/specs/gesture-cue.md and TRAPS §106.
  */
 
 const MIN_SWIPE_LEN = 30; /* px — ignore micro-jitters before any motion counts */
 /* px — travel past the last turning point to count a half-stroke.
-   v2.3.2718: 40 -> 28.  The disc is 96px (108 landscape); a thumb pumping on
+   v2.3.2733: 40 -> 28.  The disc is 96px (108 landscape); a thumb pumping on
    it naturally travels ~50px peak to peak, and with the first stroke measured
    from the press point (below) a 40px threshold asked for most of the button
    in ONE direction before anything counted. */
@@ -144,7 +144,7 @@ function pathHash(samples) {
   return (h >>> 0).toString(36);
 }
 
-/* ═══ v2.3.2718: THE METER IS ABOUT THREE SECONDS AT A QUICK PACE ═══
+/* ═══ v2.3.2733: THE METER IS ABOUT THREE SECONDS AT A QUICK PACE ═══
    Owner: "require about 3 seconds of performing the gesture at a quick pace
    before the gesture is successfully extracted."  The meter used to fill on a
    handful of reps (3 pumps, 1.5 turns, a single flip), which a quick thumb
@@ -171,7 +171,7 @@ function cyclesFromGesture(skill, g) {
    filled; with the meter now a set amount of work by design, it is how
    QUICKLY and how STEADILY the player kept the motion going -- measured
    against GESTURE_TARGET_MS, so a retune of the meter carries the grade with
-   it (v2.3.2719: the owner doubled the target and these moved with it):
+   it (v2.3.2734: the owner doubled the target and these moved with it):
      perfect  a quick pace held through (<= 1.2x the target of motion, 1.5x
               overall) by a hand that looks human (the v2.3.229 entropy floor);
      good     a steady pace (<= 2.33x overall);
@@ -271,7 +271,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
           lastAngle: Math.atan2(y - cue.y, x - cue.x),
           totalAngle: 0,
           startT: performance.now(),
-          /* v2.3.2718: ONE stroke tracker drives both the pose phase and
+          /* v2.3.2733: ONE stroke tracker drives both the pose phase and
              the three-second meter (stepStroke):
              from/ext   where the stroke under way turned, and how far it has
                         got; segTravel is the distance between them;
@@ -301,7 +301,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       }
       ex._gestureDownAt = performance.now();   /* v2.3.2245: the button face reads this */
       /* v2.3.2384: A THUMB THAT IS DOWN OWNS THE PHASE, FULL STOP.
-         (v2.3.2718: the demo is gone from the body -- the flag now keeps the
+         (v2.3.2733: the demo is gone from the body -- the flag now keeps the
          button's teaching cue (gestureIdle) off while a thumb is down.)
          The idle demo (gestureDemo01) stood down for HOLD_MS after the last
          movement, and on its own that is a TIMER -- so one frame longer than
@@ -341,7 +341,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       beginGesture(ex, x, y, cue, e.pointerId);
     };
 
-    /* ═══ v2.3.2718: THE STROKE TRACKER ═══
+    /* ═══ v2.3.2733: THE STROKE TRACKER ═══
        Replaces the v2.3.229 oscillation counter, which did two jobs with one
        40px hysteresis: counting reps AND (since v2.3.1417) driving the pose.
        For the pose that threshold is far too coarse -- nothing moved until the
@@ -396,7 +396,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
 
     const onPointerMove = (e) => {
       const x = e.clientX, y = e.clientY;
-      /* v2.3.2718: where the finger WAS, read before this move overwrites it
+      /* v2.3.2733: where the finger WAS, read before this move overwrites it
          -- the adoption below promises to start the stroke from there, and
          since v2.3.2514 it had been handed this move's own position instead
          (the map was updated first), so the travel already made was lost. */
@@ -437,7 +437,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       if (ex.skill === 'fishing') {
         const ang = Math.atan2(y - g.cueY, x - g.cueX);
         const _dAng = wrapPi(ang - g.lastAngle);
-        /* v2.3.2718: floored at 0 -- a player who winds the wrong way first
+        /* v2.3.2733: floored at 0 -- a player who winds the wrong way first
            does not build a debt of turns to unwind before the right way
            counts.  Wiggling back and forth still nets nothing. */
         g.totalAngle = Math.max(0, g.totalAngle + _dAng);   /* clockwise (screen y-down) = + */
@@ -449,7 +449,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
         stepStroke(g, axisV, ex.skill);
       }
 
-      /* ═══ v2.3.2718: THE PHASE THE BODY AND THE MINI TOOL PLAY ═══
+      /* ═══ v2.3.2733: THE PHASE THE BODY AND THE MINI TOOL PLAY ═══
          Fishing: one finger-circle is one turn of the loop (v2.3.1417's crank
          mapping, unchanged).  The stroke skills: strokePhase -- the power
          stroke plays up to the blow, the return stroke plays the rest, always
@@ -553,7 +553,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
           progress: ex ? +(ex.progress || 0).toFixed(2) : null,
           frame01: ex ? +(ex.cueFrame01 || 0).toFixed(3) : null,
           cue: buttonCueScreenPos(S),
-          /* v2.3.2718: the three-second meter's parts -- cycles of motion
+          /* v2.3.2733: the three-second meter's parts -- cycles of motion
              against the target, and the active clock the floor reads. */
           cycles: ex && ex._gesture ? +(ex._gesture.cycles || 0).toFixed(2) : null,
           target: ex ? +(ex.repsTarget || 0).toFixed(2) : null,

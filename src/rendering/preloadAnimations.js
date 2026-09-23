@@ -51,8 +51,9 @@ import { loadNpcSprites, loadZoneDecor, freeZoneDecor } from './npcSprites.js'; 
 import { preloadLevelUpBurst } from './levelUpBurstPreload.js';
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
 import { preloadAuctionInterior } from './auctionInteriorPreload.js'; /* v2.3.2627: the auction house's room + clerk */
-import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2718: the harvest cue's mini tools */
+import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2733: the harvest cue's mini tools */
 import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
+import { preloadMonsterShots } from './monsterShotFx.js'; /* v2.3.2732: the monsters' goo and fire, minted in code */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
    screen"): ZONE-SPECIFIC textures moved OFF the blocking pre-game gate —
@@ -264,6 +265,15 @@ export async function preloadWorldAnimations() {
        because a still image in a module named "strips" is exactly the kind
        of thing a later reader assumes was forgotten. */
     fxStrips: fxStripsReady(),
+    /* ═══ v2.3.2732: the monsters' thrown goo and fire ═══
+       MINTED, not fetched -- rendering/monsterShotArt.js draws every frame in
+       code and monsterShotFx.js packs them into one atlas -- but an animation
+       all the same, so it is registered HERE per the preloading LAW rather
+       than minted on the first ball anyone throws.  GLOBAL rather than
+       per-zone: it is one small atlas (the goo serves every slime colour by
+       tint), and a slime can throw in more zones than not.  The mint yields
+       between slices, so the loading bar keeps moving while it runs. */
+    monsterShots: preloadMonsterShots(),
     /* v2.3.2279: the bow special's blast.  GLOBAL rather than per-zone -- a
        bow goes everywhere its owner does, so there is no zone to scope it to,
        and the ZONE-ASSET EXCEPTION only covers art a single zone uses.  2MB
@@ -321,7 +331,7 @@ export async function preloadWorldAnimations() {
        See statDemoPreload.js — it names both. */
     statDemo: preloadStatDemo(),
     auctionInterior: preloadAuctionInterior(),
-    /* ═══ v2.3.2718: the harvest cue's mini tools ═══
+    /* ═══ v2.3.2733: the harvest cue's mini tools ═══
        DOM images on the right button (the bag's pickaxe / axe / rod icons and
        the pan strip), GLOBAL: every gathering zone and the town campfire use
        them.  See gestureCuePreload.js for why none of them was already warm. */

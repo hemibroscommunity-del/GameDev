@@ -91,7 +91,7 @@ import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-shee
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
-import { fishRodAt, hasFishRodMask } from '../toolRecolor.js'; /* v2.3.2719: the rod is found by its recorded shape now that it is pine */
+import { fishRodAt, hasFishRodMask } from '../toolRecolor.js'; /* v2.3.2734: the rod is found by its recorded shape now that it is pine */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -2372,7 +2372,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
        (natural), but the halo-cut section beyond the plate reappears. */
     if (origBody) {
       try {
-        /* v2.3.2719: the rod is PINE now (toolRecolor.js -- the owner asked
+        /* v2.3.2734: the rod is PINE now (toolRecolor.js -- the owner asked
            for the magenta key to become a real material), so it can no longer
            be found by colour: its shape was recorded from the key as the
            sheet loaded, and this asks that.  The magenta test stays as the
@@ -3483,7 +3483,7 @@ function _fishTopFrame(bodyTex) {
        test would work for one skin tone and quietly fail for the rest. */
     const GRIP_R = Math.max(4, Math.round(H * 0.055));
     const rodXs = [], rodYs = [];
-    /* v2.3.2719: by the recorded shape, not the colour -- see the same note in
+    /* v2.3.2734: by the recorded shape, not the colour -- see the same note in
        _maskedBodyFrameInner.  The frame index is where this frame sits in its
        strip (every body sheet lays frames out at i * width). */
     const _rodF = hasFishRodMask() ? Math.round(bf.x / Math.max(1, bf.width)) : null;
@@ -11372,7 +11372,7 @@ export class EntityRenderer {
            leisurely pace and a still thumb holds the pose.  The wind-up
            before the window opens keeps the clock loop -- a frozen figure
            for up to ten seconds reads as a hang (control-redesign.md §5.11). */
-        /* v2.3.2718: no leisurely cap any more -- the swing plays at the
+        /* v2.3.2733: no leisurely cap any more -- the swing plays at the
            speed of the hand, and at `ready` with no stroke yet it HOLDS the
            raised pose (phase 0) instead of looping: the owner's "stop
            animating until you perform the correct gesture". */
@@ -11387,7 +11387,7 @@ export class EntityRenderer {
         /* v2.3.2245: the reel drives the sway -- one finger-circle on the
            button is one turn of the sway loop, capped at ~one turn per 450ms
            (the same cap the reel marker has had since v2.3.1435). */
-        const _gpF = gesturePose01(S._extraction, now);   /* v2.3.2718: hand-paced, holds when still */
+        const _gpF = gesturePose01(S._extraction, now);   /* v2.3.2733: hand-paced, holds when still */
         frameIdx = (_gpF != null) ? Math.max(0, Math.min(fc - 1, Math.floor(_gpF * fc)))
           : Math.floor((now / cycle) * fc) % fc;
       } else if (pose === 'dodge') {
@@ -13234,7 +13234,7 @@ export class EntityRenderer {
          -- a plate that waited for a true 0 would never come back. */
       if (_barA > 0.01) display._namePill.visible = false;
     }
-    /* ═══ v2.3.2718: WHERE THE BAND LINE'S TOP IS, FOR THE HARVEST BAR ═══
+    /* ═══ v2.3.2733: WHERE THE BAND LINE'S TOP IS, FOR THE HARVEST BAR ═══
        The harvest wind-up bar (effectsRenderer _drawWindupBar) goes "above the
        head" -- and over YOUR head there is always something on this band: the
        name plate at rest, the HP bar in a fight.  Measured on a real capture

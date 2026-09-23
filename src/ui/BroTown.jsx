@@ -54,7 +54,7 @@ import { TouchControls, RBTN_BODY_BG, RBTN_BODY_BG_HOT, RKNOB_BG, RKNOB_BG_HOT }
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
-import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2718: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the bar above the head) */
+import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2733: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the bar above the head) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 
@@ -5212,7 +5212,7 @@ export var BroTown = function BroTown(_ref0) {
             else _want = 'ATTACK';
             if (_lbl.textContent !== _want) _lbl.textContent = _want;
           }
-          /* ═══ v2.3.2718: THE CUE -- A MINI TOOL, STILL AND FLASHING UNTIL YOU MOVE ═══
+          /* ═══ v2.3.2733: THE CUE -- A MINI TOOL, STILL AND FLASHING UNTIL YOU MOVE ═══
              Owner: "before the player performs the gesture the starting spot of
              the cue should be static but flash.  An effect should show you
              which way the cue should move ... the cue was a mini sprite of the
@@ -5756,7 +5756,7 @@ export var BroTown = function BroTown(_ref0) {
             } else if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt) {
               _ex.status = 'ready';
               try { BT_AUDIO.beep(820, 0.04, 0.05, 'sine'); } catch (e) {}
-              /* v2.3.2719 (owner: sounds for the specific actions): for fishing
+              /* v2.3.2734 (owner: sounds for the specific actions): for fishing
                  the window opening IS the bite -- a fish on the hook, now reel. */
               if (_ex.skill === 'fishing') { try { if (BT_AUDIO.play) BT_AUDIO.play('fish-on-hook', { vol: 0.65 }); } catch (e) {} }
             }
@@ -8199,7 +8199,7 @@ export var BroTown = function BroTown(_ref0) {
   var rBodyRef = useRef(null);   /* v2.3.2263: the right disc's painted metal, faded on its own */
   var rWrapRef = useRef(null);
   var rLabelRef = useRef(null);   /* v2.3.2242: the button's contextual label */
-  var rHintRef = useRef(null);    /* v2.3.2384: the gesture cue; v2.3.2718: a mini tool (the strip's rCueRef is gone) */
+  var rHintRef = useRef(null);    /* v2.3.2384: the gesture cue; v2.3.2733: a mini tool (the strip's rCueRef is gone) */
   var rRingRef = useRef(null);    /* v2.3.2245: the wind-up / reps ring */
   var rJoyActive = useRef(false);
   var rTouchId = useRef(null);

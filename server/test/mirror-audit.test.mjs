@@ -816,7 +816,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
      plays (gesturePose.js GESTURE_TOOL_URLS) are the SAME files the world
      renderer slices (effectsRenderer GESTURE_TOOLS) -- a hand-copied mirror,
      which is exactly the kind this suite exists to hold in lockstep.
-     v2.3.2718: the button no longer plays the strips whole -- its cue is a
+     v2.3.2733: the button no longer plays the strips whole -- its cue is a
      mini tool (gesturePose GESTURE_CUE_SPRITES), and only the pan is cut from
      a strip (cell 0, there is no pan icon) -- but GESTURE_TOOL_URLS is still
      where that pan URL comes from, so the pin still guards a real mirror. */
