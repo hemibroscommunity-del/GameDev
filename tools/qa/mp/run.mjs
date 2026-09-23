@@ -23,7 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  staffcast: () => import('./mp-staffcast.mjs'), /* v2.3.2740: the staff cast -- the crystal charges on the cooldown, the bolt leaves it and rejoins its real line, the staff stands head-up and kicks, a peer sees it */
+  staffcast: () => import('./mp-staffcast.mjs'), /* v2.3.2771: the staff cast -- the crystal charges on the cooldown, the bolt leaves it and rejoins its real line, the staff stands head-up and kicks, a peer sees it */
   geartrim: () => import('./mp-geartrim.mjs'), /* v2.3.2750: gear frames cropped to their art -- under a third of the bytes, and every layer still lands exactly on the body, own screen and peer's */
   shirtjog: () => import('./mp-shirtjog.mjs'), /* v2.3.2747: the tee's keyline holds on every frame the game draws while running, all eight directions -- the owner's "static" */
   arrowsnap: () => import('./mp-arrowsnap.mjs'), /* v2.3.2731: one arrow in eight snaps on what it hits -- same damage, a different picture */
