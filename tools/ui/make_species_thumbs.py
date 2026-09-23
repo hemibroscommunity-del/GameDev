@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.2681: cut the picker tiles for the SPECIES slot -- the monkey's FACE.
+"""v2.3.2682: cut the picker tiles for the SPECIES slot -- the monkey's FACE.
 
 The importer's thumb is the piece cropped on its own (two ears and a muzzle
 floating on transparency), which does not read as "monkey" at tile size.  Same

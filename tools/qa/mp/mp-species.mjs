@@ -1,4 +1,4 @@
-/* ═══ THE MONKEY, END TO END (v2.3.2681) ═══
+/* ═══ THE MONKEY, END TO END (v2.3.2682) ═══
  *
  * Owner: "Push to main!  Make sure it's available in trait picker."
  *
@@ -6,7 +6,7 @@
  *
  * 1. THE SKIN TAB OFFERS THE SPECIES.  Human first, then Monkey, in the option
  *    strip; the colour row live on Human (the pick it has always served) and on
- *    Monkey, carrying the v2.3.2680 fur colours.
+ *    Monkey, carrying the v2.3.2681 fur colours.
  * 2. PICKING THE MONKEY CHANGES THE FIGURE AND PRESETS MONKEY BROWN.  Read off
  *    the creator canvas (a diff against the human) and the skin store.
  * 3. THE MUZZLE AND EARS STAY TAN ON A PURPLE MONKEY.  Owner: "I want that and

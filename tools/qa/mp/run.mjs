@@ -23,7 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  species: () => import('./mp-species.mjs'), /* v2.3.2681: the monkey in the Skin tab, tan muzzle on any fur, and a peer sees it */
+  species: () => import('./mp-species.mjs'), /* v2.3.2682: the monkey in the Skin tab, tan muzzle on any fur, and a peer sees it */
   eyestyle: () => import('./mp-eyestyle.mjs'), /* v2.3.2643: the Eyes tab picks a shape AND a colour, the styles land on the eye line, and glasses go over them */
   ahshot: () => import('./mp-ahshot.mjs'), /* v2.3.2626: pictures of the Auction House art on the plaza, four viewports */
   listingoffer: () => import('./mp-listingoffer.mjs'), /* v2.3.2623: a real gold offer between two players -- escrowed on offer, settled on accept */

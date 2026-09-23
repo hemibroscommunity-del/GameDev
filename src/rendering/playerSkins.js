@@ -126,13 +126,13 @@ export const SKIN_CATALOG = [
      not here: one skin target cannot paint two tones, and the muzzle is a face-
      region layer.  docs/specs/SPECIES-PLAN.md costs it. */
   { id: 'monkeybrown', name: 'Monkey Brown', swatch: '#553817', target: [85, 56, 23], species: true },
-  /* v2.3.2680: FUR COLOURS (owner: "add other colors like purple and yellow"
+  /* v2.3.2681: FUR COLOURS (owner: "add other colors like purple and yellow"
      for the monkey).  The one group here NOT ordered by luminance -- it is a
      palette, not a skin ramp, so it sits after the ramp as a block.  Flagged
      `species: true` like the two base tones above, so the creator's dice never
      roll a bro purple; the ids are colours, not species, for the same
      permanence reason.  The monkey's muzzle and ears stay their fixed tan on
-     every one of these (owner, v2.3.2680): only the fur recolours.
+     every one of these (owner, v2.3.2681): only the fur recolours.
      Clip share on the highlight rim, `node tools/skin_clip.mjs r,g,b`, against
      Alabaster's shipping 11.81%: snow 0.33%, yellow/pink 0.08%, orange 0.07%,
      blue 0.04%, purple 0.02%, red 0.01%, green/gray/charcoal 0. */
@@ -301,7 +301,7 @@ function _retint(d, i, target, ref) {
    regardless of the chosen skin or shirt color. */
 function _isSkin(r, g, b, a) { return a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25; }
 
-/* v2.3.2681: the same recolour on pixels that are not a body sheet -- the
+/* v2.3.2682: the same recolour on pixels that are not a body sheet -- the
    monkey's fur layer (speciesArt.js), shipped as bare skin so it can follow the
    player's skin exactly as the body does.  Same test, same maths, same ref: a
    patch recoloured here lands on the colour the head around it lands on.

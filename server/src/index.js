@@ -647,7 +647,7 @@ export const TRACK_COSMETIC_KEYS = new Set([
      one and not the other is the v2.3.1939 shape, which here would be eyes
      that arrive on join and revert on the first two-second relay. */
   'es',
-  /* v2.3.2681: 'sc' is the SPECIES id (none / monkey) -- a short catalog id
+  /* v2.3.2682: 'sc' is the SPECIES id (none / monkey) -- a short catalog id
      exactly like 'es'.  Display-only on the same terms: the receiving client
      asks its own SPECIES_CATALOG folder for the art, so a forged id loads no
      texture and paints nothing.  Both gates in one change (JOIN_COSMETIC_KEYS

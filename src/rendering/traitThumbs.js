@@ -11,7 +11,7 @@ import { FACIALHAIR_CATALOG } from './traits/facialHairCatalog.js';
 import { SHIRT_CATALOG } from './traits/shirtCatalog.js';
 import { EYEWEAR_CATALOG } from './traits/eyewearCatalog.js';   /* v2.3.2361 */
 import { EYE_STYLE_CATALOG } from './traits/eyeStyleCatalog.js';   /* v2.3.2643 */
-import { SPECIES_CATALOG } from './traits/speciesCatalog.js';   /* v2.3.2681 */
+import { SPECIES_CATALOG } from './traits/speciesCatalog.js';   /* v2.3.2682 */
 import { BUILD_INFO } from '../ui/BuildBadge.jsx';
 
 /* sprite folder -> catalog (matches the grid's spriteCat keys). */
@@ -22,7 +22,7 @@ const THUMB_CATS = [
   ['shirt', SHIRT_CATALOG],
   ['eyewear', EYEWEAR_CATALOG],   /* v2.3.2361: nothing to warm until the first pair lands; 'none' is skipped below */
   ['eyestyle', EYE_STYLE_CATALOG],   /* v2.3.2643: the tiles are faces wearing the style (tools/ui/make_eyestyle_thumbs.py) */
-  ['species', SPECIES_CATALOG],   /* v2.3.2681: the monkey tile is the monkey's face (tools/ui/make_species_thumbs.py) */
+  ['species', SPECIES_CATALOG],   /* v2.3.2682: the monkey tile is the monkey's face (tools/ui/make_species_thumbs.py) */
 ];
 
 let _warmed = false;

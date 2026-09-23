@@ -50,7 +50,7 @@ import { materialRgb, weaponMaterial } from './traits/materialTints.js'; /* v2.3
 import { weaponArtUrl } from './weaponSprites.js';        /* v2.3.1841 */
 import { getShieldArt } from './shieldSprites.js';        /* v2.3.1841 */
 import { getCape } from './traits/capeCatalog.js';        /* v2.3.2516: the worn cape, in the preview */
-import { speciesCanvases, loadSpeciesArt } from './traits/speciesArt.js';   /* v2.3.2681: the monkey, fur on the portrait's own skin */
+import { speciesCanvases, loadSpeciesArt } from './traits/speciesArt.js';   /* v2.3.2682: the monkey, fur on the portrait's own skin */
 import { getWeaponHandle, getAnchor } from './playerAnchors.js'; /* v2.3.1841 */
 
 const FRAME = 256;
@@ -365,7 +365,7 @@ function renderTraitCanvas(traitImg, meta, crown, dir, liftY, mulX) {
 
 /** Composite the portrait into `canvas` (sized to FRAME).  Layers, in
  *  order: skin-recolored body, hair (recolored), facial hair, species
- *  (v2.3.2681), eye style (v2.3.2643), eyewear (v2.3.2361), headwear.
+ *  (v2.3.2682), eye style (v2.3.2643), eyewear (v2.3.2361), headwear.
  *  Unknown / 'none' / 'default' selections are skipped.  Resolves when the
  *  draw completes (after async asset loads).  Safe to call repeatedly. */
 export async function drawCharacterPortrait(canvas, opts) {
@@ -425,7 +425,7 @@ export async function drawCharacterPortrait(canvas, opts) {
   const wantHw = headwear && headwear !== 'none';
   const wantEw = eyewear && eyewear !== 'none';   /* v2.3.2361 */
   const wantEs = eyeStyle && eyeStyle !== 'none';   /* v2.3.2643 */
-  const wantSp = species && species !== 'none';   /* v2.3.2681 */
+  const wantSp = species && species !== 'none';   /* v2.3.2682 */
   /* v2.3.2645: hoisted above the batch below, which now needs it -- the eye
      colour drives the STYLE's recolour as well as the painted-in iris (see
      eyeStyleColorCatalog.js: one control, not two).  Still read again at its
@@ -499,7 +499,7 @@ export async function drawCharacterPortrait(canvas, opts) {
     wantEs ? loadTraitBest('eyestyle', eyeStyle, DIR) : null,
     wantEs ? loadMeta('eyestyle', eyeStyle) : null,
     _esColor ? getEyeStyleRef(eyeStyle).catch(() => 0) : 0,
-    /* v2.3.2681: the species, in the same batch for the eye style's reason --
+    /* v2.3.2682: the species, in the same batch for the eye style's reason --
        a sequential await would show the portrait as a human for a frame.  Its
        fur patches come back recoloured with THIS portrait's skin, exactly as
        the world recolours them (speciesArt.js). */
@@ -975,7 +975,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      as the painted-in iris now, through the same recolorHairToCanvas pass the
      glasses below take -- see eyeStyleColorCatalog.js for what a swatch paints
      on each style and why the reference is the material's own. */
-  /* v2.3.2681: the species -- above the hair and the cape's hood, UNDER the
+  /* v2.3.2682: the species -- above the hair and the cape's hood, UNDER the
      eye style, the eyewear and the hat: the fourth place the one decision is
      spelled out (the two child orders in entityRenderer, the stand-in key
      order in effectsRenderer, and this).  The stand pose has no baked
@@ -1020,8 +1020,8 @@ export async function drawCharacterPortrait(canvas, opts) {
  *  wait on the network.  The promise caches above make the subsequent draws
  *  hit memory; expected misses (e.g. hairmask 404s) are harmless. */
 export function prewarmPortraitDirs(opts) {
-  const { hair, facialHair, headwear, eyewear, eyeStyle, species } = opts || {};   /* v2.3.2361: + eyewear; v2.3.2643: + eyeStyle; v2.3.2681: + species */
-  if (species && species !== 'none') loadSpeciesArt(species);   /* v2.3.2681: every facing's art in one go */
+  const { hair, facialHair, headwear, eyewear, eyeStyle, species } = opts || {};   /* v2.3.2361: + eyewear; v2.3.2643: + eyeStyle; v2.3.2682: + species */
+  if (species && species !== 'none') loadSpeciesArt(species);   /* v2.3.2682: every facing's art in one go */
   /* v2.3.2516: the cape too.  ANIMATION PRELOADING IS LAW (CLAUDE.md): a cape
      that fetched on the first rotate would pop in over a figure the player is
      already looking at, which is the first-use hitch the law exists to stop.
@@ -1114,7 +1114,7 @@ export function portraitOptsFromPeer(o) {
     eyewear: c.eyewear,                                        /* v2.3.2361 */
     eyewearColor: eyewearColorTarget(c.eyewearColor, c.eyewear),   /* v2.3.2424 */
     eyeStyle: c.eyeStyle,                                      /* v2.3.2643 */
-    species: c.species,                                        /* v2.3.2681 */
+    species: c.species,                                        /* v2.3.2682 */
     shirt: c.shirt,
     shirtColor: shirtColorTarget(c.shirtColor),
     eyeColor: c.eyeColor,                                      /* v2.3.1930 */

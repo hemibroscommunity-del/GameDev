@@ -349,7 +349,7 @@ its own reviewed job.
    `_retint`, keyed by the player's skin) and draw it directly over the piece;
    for the `default` skin draw it as stored. `meta.fur` lists the files. The
    muzzle and ears are never recoloured — they stay the art's exact tan on
-   every skin, by design (owner, v2.3.2678; reaffirmed v2.3.2680 after
+   every skin, by design (owner, v2.3.2678; reaffirmed v2.3.2681 after
    v2.3.2679 tried lightening them with the fur and was reverted: "I want that
    and the muzzle to stay"). If a fur file is missing the piece
    still carries the patches in Monkey Brown underneath, so the failure is a
@@ -360,7 +360,7 @@ its own reviewed job.
    builds are per skin, like the hair colour builds).
 5. So the species does NOT pin a skin tone: any `SKIN_CATALOG` entry works
    (`python3 tools/species_contact_sheet.py --id monkey --skin ebony` shows
-   any of them). Monkey Brown is the preset, not a requirement. v2.3.2680
+   any of them). Monkey Brown is the preset, not a requirement. v2.3.2681
    added ten fur colours to `SKIN_CATALOG` for it — purple, yellow, red,
    orange, green, blue, pink, gray, charcoal, snow — all `species: true` (never
    rolled by the dice) and all under 0.4% highlight clip.

@@ -1,11 +1,11 @@
-/* ═══ v2.3.2681: SPECIES — THE MONKEY, AS A HEAD TRAIT ═══
+/* ═══ v2.3.2682: SPECIES — THE MONKEY, AS A HEAD TRAIT ═══
  *
  * Owner: "What's the feasibility of adding new species to play as?  I'm
  * wanting to add alien and monkey" ... "Push to main!  Make sure it's
  * available in trait picker."
  *
  * WHAT A SPECIES IS, MECHANICALLY.  Not a new body rig -- the same bro, with
- * (a) a skin colour from SKIN_CATALOG (Monkey Brown and the v2.3.2680 fur
+ * (a) a skin colour from SKIN_CATALOG (Monkey Brown and the v2.3.2681 fur
  * colours) and (b) a piece drawn over the head: the monkey's ears and muzzle.
  * The piece is eyewear's twin: public/sprites/traits/species/<id>/, five base
  * facings + meta.json, placed by the shared crown-anchored _placeTrait.  Two
@@ -17,7 +17,7 @@
  *   - FUR THAT FOLLOWS THE SKIN (meta.fur): the patches painted over the bro's
  *     own ear and teeth are skin, shipped as bare-skin twins and recoloured with
  *     the player's skin exactly like the body.  The muzzle and ears never
- *     recolour -- they stay the art's tan on every skin (owner, v2.3.2680).
+ *     recolour -- they stay the art's tan on every skin (owner, v2.3.2681).
  * docs/specs/SPECIES-PLAN.md has the whole story and the renderer contract.
  *
  * WHERE IT DRAWS.  Above the hair and the hood, BELOW the eye style, the

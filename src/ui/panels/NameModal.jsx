@@ -33,7 +33,7 @@ import { eyewearColorsFor, eyewearPaints, setEyewearColor } from '@/rendering/tr
 import { eyeStylePaints } from '@/rendering/traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { EYE_COLOR_CATALOG, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { EYE_STYLE_CATALOG, setEyeStyle, eyeStyleHasOptions } from '@/rendering/traits/eyeStyleCatalog.js';   /* v2.3.2643 */
-import { SPECIES_CATALOG, setSpecies, speciesHasOptions, speciesDefaultSkin } from '@/rendering/traits/speciesCatalog.js';   /* v2.3.2681 */
+import { SPECIES_CATALOG, setSpecies, speciesHasOptions, speciesDefaultSkin } from '@/rendering/traits/speciesCatalog.js';   /* v2.3.2682 */
 import { HEADWEAR_CATALOG, headwearIsSolid, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
@@ -176,7 +176,7 @@ export function NameModal(props) {
     setEyeColorSel = props.setEyeColorSel,
     headwearSel = props.headwearSel,
     eyeStyleSel = props.eyeStyleSel,        /* v2.3.2643 */
-    speciesSel = props.speciesSel,          /* v2.3.2681 */
+    speciesSel = props.speciesSel,          /* v2.3.2682 */
     eyewearSel = props.eyewearSel,          /* v2.3.2361 */
     eyewearColorSel = props.eyewearColorSel,   /* v2.3.2424 */
     joinTown = props.joinTown,
@@ -196,7 +196,7 @@ export function NameModal(props) {
     setHatColorSel = props.setHatColorSel,
     setHeadwearSel = props.setHeadwearSel,
     setEyeStyleSel = props.setEyeStyleSel,   /* v2.3.2643 */
-    setSpeciesSel = props.setSpeciesSel,   /* v2.3.2681 */
+    setSpeciesSel = props.setSpeciesSel,   /* v2.3.2682 */
     setEyewearSel = props.setEyewearSel,   /* v2.3.2361 */
     setEyewearColorSel = props.setEyewearColorSel,   /* v2.3.2424 */
     setNameInput = props.setNameInput,
@@ -300,11 +300,11 @@ export function NameModal(props) {
        body, and the plain label read as head-only inside the Head group. */
     skin: { label: 'Skin Tone', kind: 'swatch', spriteCat: null, catalog: SKIN_CATALOG, sel: skinSel,
       set: function (id) { setSkin(id); setSkinSel(id); }, colors: null },
-    /* ═══ v2.3.2681: THE SKIN TAB PICKS A SPECIES **AND** A COLOUR ═══
+    /* ═══ v2.3.2682: THE SKIN TAB PICKS A SPECIES **AND** A COLOUR ═══
        Owner: "Make sure it's available in trait picker."  The Eyes tab's
        two-step shape (v2.3.2643), for the same reason: the SPECIES in the
        option strip (Human, Monkey), the skin colour in the row below it --
-       which is the monkey's fur colour, fur colours included (v2.3.2680).
+       which is the monkey's fur colour, fur colours included (v2.3.2681).
        `colorsWhenNone` because 'none' is the human, and the human's skin tone
        is the pick this row has always been for.  The def replaces the
        swatch-only one just above (defined first so the switch-off path below
@@ -382,7 +382,7 @@ export function NameModal(props) {
   ['skin', 'pants', 'shoes'].forEach(function (t) {
     if (!recolorEnabled(t)) delete _typeDefs[t];
   });
-  /* v2.3.2681: while there is a species to pick, the Skin tab IS the species
+  /* v2.3.2682: while there is a species to pick, the Skin tab IS the species
      tab (its colour row carries the skin tones, or nothing if skin recolour is
      off -- the species strip alone is still a real pick). */
   if (speciesHasOptions()) { _typeDefs.skin = _typeDefs.species; }
@@ -633,7 +633,7 @@ export function NameModal(props) {
       facialHairSel: facialHairSel, beardColorSel: beardColorSel,
       headwearSel: headwearSel, hatColorSel: hatColorSel, eyeColor: eyeColorSel,
       eyeStyleSel: eyeStyleSel,   /* v2.3.2643 */
-      speciesSel: speciesSel,   /* v2.3.2681 */
+      speciesSel: speciesSel,   /* v2.3.2682 */
       eyewearSel: eyewearSel,   /* v2.3.2361 */
       /* v2.3.2424: `eyewearColor`, NOT `eyewearColorSel` -- portraitLook reads
          the former, and a near-miss key here is silent: the designer would
@@ -644,7 +644,7 @@ export function NameModal(props) {
       buildHeight: heightSel, buildFrame: frameSel   /* v2.3.1953 */
     });
   }, [skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel,
-    headwearSel, hatColorSel, eyeColorSel, eyeStyleSel /* v2.3.2643 */, speciesSel /* v2.3.2681 */, eyewearSel, eyewearColorSel /* v2.3.2424 */,
+    headwearSel, hatColorSel, eyeColorSel, eyeStyleSel /* v2.3.2643 */, speciesSel /* v2.3.2682 */, eyewearSel, eyewearColorSel /* v2.3.2424 */,
     shirtSel, shirtColorSel, heightSel, frameSel, inkRev]);
   var _stripRef = React.useRef(null);
   var _colorRowRef = React.useRef(null);

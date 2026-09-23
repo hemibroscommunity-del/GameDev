@@ -74,7 +74,7 @@ export const JOIN_COSMETIC_KEYS = [
              different thing from 'ec' above, which is the colour of the eyes the
              body sheets paint.  Both gates in the same change, for the reason the
              'ewc' note gives. */
-  'sc',   /* v2.3.2681: the SPECIES -- a short catalog id like es (none or
+  'sc',   /* v2.3.2682: the SPECIES -- a short catalog id like es (none or
              monkey; docs/specs/SPECIES-PLAN.md).  Both gates in the same
              change, for the reason the 'ewc' note gives: a monkey that joined as
              one and turned human on the first two-second relay. */

@@ -61,8 +61,8 @@ import { getFacialHair, FACIALHAIR_CATALOG } from '../traits/facialHairCatalog.j
 import { getEyewear, EYEWEAR_CATALOG } from '../traits/eyewearCatalog.js';   /* v2.3.2361: the eyewear slot */
 import { getEyewearColor, getColoredEyewearTextures } from '../traits/eyewearColorCatalog.js';   /* v2.3.2424 */
 import { getEyeStyle, EYE_STYLE_CATALOG } from '../traits/eyeStyleCatalog.js';   /* v2.3.2643: the eye-style slot */
-import { getSpecies } from '../traits/speciesCatalog.js';   /* v2.3.2681: the species slot */
-import { getSpeciesBuild, preloadSpeciesArt } from '../traits/speciesArt.js';   /* v2.3.2681 */
+import { getSpecies } from '../traits/speciesCatalog.js';   /* v2.3.2682: the species slot */
+import { getSpeciesBuild, preloadSpeciesArt } from '../traits/speciesArt.js';   /* v2.3.2682 */
 import { getColoredEyeStyleTextures } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo */
@@ -1325,7 +1325,7 @@ function _placeEyeStyle(display, esId, esColorId, pose, dir, mirror, frameIdx, b
   const tune = (entry && entry.meta && entry.meta.poseFit) ? null : hairPoseTune(pose, dir);
   _placeTrait(display._eyeStyleSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale, tune);
 }
-/* ═══ v2.3.2681: SPECIES (the monkey) ═══
+/* ═══ v2.3.2682: SPECIES (the monkey) ═══
    Eyewear's twin with two additions, both data (speciesArt.js,
    docs/specs/SPECIES-PLAN.md Stage 2d):
    - the build is per SKIN: the piece's fur patches are recoloured with the
@@ -3995,7 +3995,7 @@ export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
   /* v2.3.2643: the eye style, just under the eyewear.  Same argument as the
      line below it -- a face that loses its eyes for the quarter-second of every
      swing is exactly the failure TRAPS #15 records. */
-  /* v2.3.2681: the species, under the eye style -- a monkey must not turn
+  /* v2.3.2682: the species, under the eye style -- a monkey must not turn
      human for the quarter-second of every swing (TRAPS #15).  The plain piece:
      the stand-in poses have no baked frames. */
   { const _sb = getSpeciesBuild(getSpecies(), getSkin());
@@ -4037,7 +4037,7 @@ export function placeSkillTraitsFor(sprites, looks, cwx, cwy, dir, mirror, scale
   if (fhCol && fhEntry) fhEntry = { tex: fhCol, meta: fhEntry.meta, fallbackTex: fhEntry.tex }; /* v2.3.1305 */
   _placeStandaloneTrait(sprites.beard, fhEntry, dir, mirror, cwx, cwy, scaleVal);
 
-  { const _sb = getSpeciesBuild(looks.species, looks.skin);   /* v2.3.2681: THEIR species, on THEIR skin */
+  { const _sb = getSpeciesBuild(looks.species, looks.skin);   /* v2.3.2682: THEIR species, on THEIR skin */
     _placeStandaloneTrait(sprites.species, _sb ? { tex: _sb.tex, meta: _sb.meta } : null, dir, mirror, cwx, cwy, scaleVal); }
   _placeStandaloneTrait(sprites.eyestyle, _ensureEyeStyleLoaded(looks.eyeStyle), dir, mirror, cwx, cwy, scaleVal);   /* v2.3.2643 */
   _placeStandaloneTrait(sprites.eyewear, _ensureEyewearLoaded(looks.eyewear), dir, mirror, cwx, cwy, scaleVal);   /* v2.3.2361 */
@@ -4060,7 +4060,7 @@ export function hideSkillTraits(sprites) {
   if (sprites.beard) sprites.beard.visible = false;
   if (sprites.eyewear) sprites.eyewear.visible = false;   /* v2.3.2361 */
   if (sprites.eyestyle) sprites.eyestyle.visible = false;   /* v2.3.2643 */
-  if (sprites.species) sprites.species.visible = false;   /* v2.3.2681 */
+  if (sprites.species) sprites.species.visible = false;   /* v2.3.2682 */
   if (sprites.hair) sprites.hair.visible = false;
   /* v2.3.1776: drop the clip with them.  A hair sprite that is hidden while
      still holding a mask keeps Pixi doing the stencil work for something
@@ -4190,7 +4190,7 @@ function _orderTraitsAndWeapon(display, facingIdx, hatId) {
     const wc = display._weaponContainer;
     if (wc && wc.visible) {
       let ref = -1;
-      for (const s of [display._headwearSprite, display._facialHairSprite, display._eyewearSprite, display._eyeStyleSprite, display._speciesSprite, display._hairSprite, display._shirtSprite]) {   /* v2.3.2361: + eyewear; v2.3.2643: + the eye style; v2.3.2681: + the species */
+      for (const s of [display._headwearSprite, display._facialHairSprite, display._eyewearSprite, display._eyeStyleSprite, display._speciesSprite, display._hairSprite, display._shirtSprite]) {   /* v2.3.2361: + eyewear; v2.3.2643: + the eye style; v2.3.2682: + the species */
         if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
       }
       if (ref >= 0) {
@@ -4326,7 +4326,7 @@ export function preloadTraits() {
   return Promise.allSettled([
     _ensureBodyData(),
     ...urls.map((u) => Assets.load(u).catch(() => {})),
-    /* v2.3.2681: every species' art (piece, fur twins, per-frame strips) on
+    /* v2.3.2682: every species' art (piece, fur twins, per-frame strips) on
        the gate, and the local player's skin build made from it before the
        intro lifts -- the build is a canvas pass, not a load, but it is the
        first-use cost the law is about. */
@@ -6335,7 +6335,7 @@ function createPlayerDisplay() {
      glasses go over your eyes whatever your eyes are, so this is the first of
      the two face layers.  Crown-anchored like the beard -- see _placeEyeStyle
      and eyeStyleCatalog.js. */
-  /* v2.3.2681: the species (the monkey's ears and muzzle).  ABOVE the hair
+  /* v2.3.2682: the species (the monkey's ears and muzzle).  ABOVE the hair
      and the hood, BELOW the eye style, the eyewear and the hat -- a monkey
      still wears Demon Eyes and a top hat over its own face.  See
      _placeSpecies and speciesCatalog.js. */
@@ -6710,7 +6710,7 @@ function createPlayerDisplay() {
   container._headwearSprite = headwearSprite;
   container._eyewearSprite = eyewearSprite;            /* v2.3.2361 */
   container._eyeStyleSprite = eyeStyleSprite;          /* v2.3.2643 */
-  container._speciesSprite = speciesSprite;            /* v2.3.2681 */
+  container._speciesSprite = speciesSprite;            /* v2.3.2682 */
   container._nftFront = nftFront;
   container._nftBack = nftBack;
   container._weaponContainer = weaponContainer;
@@ -6884,7 +6884,7 @@ function createOtherPlayerDisplay() {
      glasses go over your eyes whatever your eyes are, so this is the first of
      the two face layers.  Crown-anchored like the beard -- see _placeEyeStyle
      and eyeStyleCatalog.js. */
-  /* v2.3.2681: the species (the monkey's ears and muzzle).  ABOVE the hair
+  /* v2.3.2682: the species (the monkey's ears and muzzle).  ABOVE the hair
      and the hood, BELOW the eye style, the eyewear and the hat -- a monkey
      still wears Demon Eyes and a top hat over its own face.  See
      _placeSpecies and speciesCatalog.js. */
@@ -6986,7 +6986,7 @@ function createOtherPlayerDisplay() {
   container._headwearSprite = headwearSprite;
   container._eyewearSprite = eyewearSprite;            /* v2.3.2361 */
   container._eyeStyleSprite = eyeStyleSprite;          /* v2.3.2643 */
-  container._speciesSprite = speciesSprite;            /* v2.3.2681 */
+  container._speciesSprite = speciesSprite;            /* v2.3.2682 */
   container._nftFront = nftFront;
   container._nftBack = nftBack;
   container._weaponContainer = weaponContainer;
@@ -10027,7 +10027,7 @@ export class EntityRenderer {
           _placeCape(display, other.cape, pose, dir, mirror, frameIdx);   /* v2.3.2023 */
           _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul, other.hair); /* v2.3.1561: hair id for the floating halo */
           _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
-          _placeSpecies(display, other.species, other.skin, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2681: under the eye style, on THEIR skin */
+          _placeSpecies(display, other.species, other.skin, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2682: under the eye style, on THEIR skin */
           _placeEyeStyle(display, other.eyeStyle, other.eyeColor, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2643: under the eyewear; v2.3.2645: + THEIR eye colour */
           _placeEyewear(display, other.eyewear, other.eyewearColor, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2361; v2.3.2424 + colour */
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
@@ -10039,7 +10039,7 @@ export class EntityRenderer {
           if (display._facialHairSprite) display._facialHairSprite.visible = false;
         if (display._eyewearSprite) display._eyewearSprite.visible = false;   /* v2.3.2361 */
         if (display._eyeStyleSprite) display._eyeStyleSprite.visible = false;   /* v2.3.2643 */
-        if (display._speciesSprite) display._speciesSprite.visible = false;   /* v2.3.2681 */
+        if (display._speciesSprite) display._speciesSprite.visible = false;   /* v2.3.2682 */
         if (display._shirtSprite) display._shirtSprite.visible = false;
           if (display._hairSprite) display._hairSprite.visible = false;
         }
@@ -10050,7 +10050,7 @@ export class EntityRenderer {
         if (display._facialHairSprite) display._facialHairSprite.visible = false;
         if (display._eyewearSprite) display._eyewearSprite.visible = false;   /* v2.3.2361 */
         if (display._eyeStyleSprite) display._eyeStyleSprite.visible = false;   /* v2.3.2643 */
-        if (display._speciesSprite) display._speciesSprite.visible = false;   /* v2.3.2681 */
+        if (display._speciesSprite) display._speciesSprite.visible = false;   /* v2.3.2682 */
         if (display._shirtSprite) display._shirtSprite.visible = false;
         if (display._hairSprite) display._hairSprite.visible = false;
       }
@@ -10334,7 +10334,7 @@ export class EntityRenderer {
           if (display._spriteBody) display._spriteBody.visible = false;
           if (body) body.visible = false;
           _hideBodyRegions(display);
-          for (const _k of ['_headwearSprite', '_facialHairSprite', '_eyewearSprite', '_eyeStyleSprite', '_speciesSprite', '_hairSprite', '_shirtSprite',   /* v2.3.2361: + eyewear; v2.3.2643: + the eye style; v2.3.2681: + the species */
+          for (const _k of ['_headwearSprite', '_facialHairSprite', '_eyewearSprite', '_eyeStyleSprite', '_speciesSprite', '_hairSprite', '_shirtSprite',   /* v2.3.2361: + eyewear; v2.3.2643: + the eye style; v2.3.2682: + the species */
             '_gearShirt', '_gearLegs', '_gearChest', '_gearShoulders', '_gearHead']) {
             if (display[_k]) display[_k].visible = false;
           }
@@ -11602,7 +11602,7 @@ export class EntityRenderer {
         _placeCape(display, getCape(), pose, dir, mirror, frameIdx);   /* v2.3.2023 */
         _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale, getHair()); /* v2.3.1561: hair id for the floating halo */
         _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
-        _placeSpecies(display, getSpecies(), getSkin(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2681: under the eye style */
+        _placeSpecies(display, getSpecies(), getSkin(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2682: under the eye style */
         _placeEyeStyle(display, getEyeStyle(), getEyeColor(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2643: under the eyewear; v2.3.2645: + the eye colour */
         _placeEyewear(display, getEyewear(), getEyewearColor(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2361; v2.3.2424 + colour */
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
@@ -11653,7 +11653,7 @@ export class EntityRenderer {
         if (display._facialHairSprite) display._facialHairSprite.visible = false;
         if (display._eyewearSprite) display._eyewearSprite.visible = false;   /* v2.3.2361 */
         if (display._eyeStyleSprite) display._eyeStyleSprite.visible = false;   /* v2.3.2643 */
-        if (display._speciesSprite) display._speciesSprite.visible = false;   /* v2.3.2681 */
+        if (display._speciesSprite) display._speciesSprite.visible = false;   /* v2.3.2682 */
         if (display._shirtSprite) display._shirtSprite.visible = false;
         if (display._hairSprite) display._hairSprite.visible = false;
       }
@@ -11677,7 +11677,7 @@ export class EntityRenderer {
       if (display._facialHairSprite) display._facialHairSprite.visible = false;
       if (display._eyewearSprite) display._eyewearSprite.visible = false;   /* v2.3.2361 */
       if (display._eyeStyleSprite) display._eyeStyleSprite.visible = false;   /* v2.3.2643 */
-      if (display._speciesSprite) display._speciesSprite.visible = false;   /* v2.3.2681 */
+      if (display._speciesSprite) display._speciesSprite.visible = false;   /* v2.3.2682 */
       if (display._hairSprite) display._hairSprite.visible = false;
       if (display._shirtSprite) display._shirtSprite.visible = false;
       /* Hide the worn gear too -- otherwise the equipped armour stands in

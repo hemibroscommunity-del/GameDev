@@ -213,7 +213,7 @@ FACE_WORN = ('eyewear', 'eyestyle', 'species')
 # it is also what a leftover eye white looks like, since a generator asked to
 # paint the person green tends to forget the eyes (v2.3.2671 did; the cleanup
 # pass merges them, and this is the net under it).
-EYE_SEATED = ('eyewear', 'eyestyle')   # v2.3.2681: eyestyle (main, v2.3.2643) seats on the eyes like a lens
+EYE_SEATED = ('eyewear', 'eyestyle')   # v2.3.2682: eyestyle (main, v2.3.2643) seats on the eyes like a lens
 SPECIES_EYE_MAX = 0.25   # v2.3.2671: above this share of an eye covered, a species piece is misplaced
 EYE_MASK = 'src/rendering/eyeMask.json'
 

@@ -1,4 +1,4 @@
-/* ═══ v2.3.2681: SPECIES ART — load once, build one recoloured copy per skin ═══
+/* ═══ v2.3.2682: SPECIES ART — load once, build one recoloured copy per skin ═══
  *
  * What the renderer contract in docs/specs/SPECIES-PLAN.md (Stage 2d) asks for,
  * in one place so the world renderer and the portrait cannot disagree:
@@ -15,7 +15,7 @@
  * A BUILD is the piece for one skin: every image with its fur twin recoloured
  * by playerSkins' own retintSkinPixels (the maths the body gets) and drawn over
  * it.  The muzzle and ears are never touched, so they keep the art's tan on
- * every skin (owner, v2.3.2680).  Builds are cached per skin TARGET (two skin
+ * every skin (owner, v2.3.2681).  Builds are cached per skin TARGET (two skin
  * ids with one target share a build) and capped, like every recolour cache.
  *
  * PRELOADING IS LAW (CLAUDE.md).  preloadSpeciesArt() loads every image of
@@ -28,7 +28,7 @@ import { SPECIES_CATALOG } from './speciesCatalog.js';
 
 /* This folder's own cache-buster -- bump it when the species art changes.
    Not the shared TRAIT_VER: that one moves for sweeps of the other trait art. */
-const SPECIES_ART_VER = '2.3.2681';
+const SPECIES_ART_VER = '2.3.2682';
 const DIRS = ['south', 'southwest', 'east', 'northeast', 'north'];
 
 const _art = Object.create(null);      /* id -> Promise<art|null>; rule 4: keyed by an id off a saved look */
