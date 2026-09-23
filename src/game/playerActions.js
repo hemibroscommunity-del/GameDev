@@ -8,7 +8,7 @@
    `stateRef.current._tutorialStep` read became `S._tutorialStep` (same
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
-import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat */
+import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult, STAFF_BIG_BOLT_ORBS } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat; v2.3.2698: the one-bolt special */
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
 import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockAimPoint } from '@/game/combatHelpers.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
@@ -417,45 +417,97 @@ export function specialAttack(S) {
       var _ORB_RANGE_PX = STAFF_RANGE_PX * staffRangeMult(R || {}); /* v2.3.2592: × the Magic lane's RANGE stat */
       var _ORB_SPEED = 5;              /* the staff's own bolt speed */
       var _ORB_SPEEDS = [_ORB_SPEED, _ORB_SPEED, _ORB_SPEED];
-      for (var si = 0; si < 3; si++) {
-        var _spd = _ORB_SPEEDS[si];
-        var _life = Math.round(_ORB_RANGE_PX / _spd);
+      /* ═══ v2.3.2698: ONE BIG BOLT (gameSystems STAFF_BIG_BOLT_*) ═══
+         Owner: "Instead of the current special attack with 3 orbs I want to
+         see what just one moderately larger bolt attack would look like."
+         The basic bolt's own art and flight, drawn STAFF_BIG_BOLT_SCALE
+         bigger, leaving the crystal with a heavier kick and release
+         (staffCastFx).  Same speed and reach as the orbs it replaces, so
+         nothing about where the special can land moves.
+         Its damage is the three orbs' damage: `dmg` here is the local number
+         (client-only zones and a duel's dmgBase), `orbs` tells the worker how
+         many special rolls to sum.  ONLY against a worker that says it can
+         (caps.bigOrb): an older one would roll this as one orb, a third of the
+         special, so there the volley below still fires. */
+      if (S._serverCaps && S._serverCaps.bigOrb) {
+        var _bigLife = Math.round(_ORB_RANGE_PX / _ORB_SPEED);
         S.arrows.push({
           ang: aimAng,
           dist: 14,
-          launchDelayMs: si * _ORB_GAP_MS,
-          speedPx: _spd,
-          dmg: Math.round(_wpnDmg * specialAtkMultFor('staff', R || {})), /* v2.3.1397: 2x per orb, 0.6 haircut dropped (owner); v2.3.2592: × the SPECIAL stat */
-          life: _life,      /* v2.3.1335's 560px reach, solved per speed */
-          maxLife: _life,
+          speedPx: _ORB_SPEED,
+          dmg: Math.round(_wpnDmg * specialAtkMultFor('staff', R || {})) * STAFF_BIG_BOLT_ORBS,
+          life: _bigLife,
+          maxLife: _bigLife,
           hitIds: new Set(),
           isSpecial: true,
           isStaff: true,
-          element: hasElement || null,
-          ice: true
+          big: true,
+          orbs: STAFF_BIG_BOLT_ORBS,
+          element: hasElement || null
         });
-      }
-      /* v2.3.840: broadcast the staff special so peers see it.
-         v2.3.2259: same ray, same stagger — `delayMs` rides the payload so a
-         peer's three orbs arrive in the same order yours do.  Additive field:
-         an older client ignores it and draws all three at once, which is what
-         it drew before. */
-      if (S.channel) {
-        for (var _bcj = 0; _bcj < 3; _bcj++) {
+        /* The staff kicks and the crystal flashes (entityRenderer, staffCastFx),
+           the basic cast's stamps -- plus _staffCastBig, which makes it the
+           heavy version.  NOT S.swingTimer's job: that clock is the special's
+           own spend (v2.3.2464, above) and already stamped. */
+        S._staffCastAt = now;
+        S._staffCastAng = aimAng;
+        S._staffCastBig = now;
+        if (S.channel) {
           S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
             id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: true, isSpecial: true,
-            delayMs: _bcj * _ORB_GAP_MS,
-            speedPx: _ORB_SPEEDS[_bcj],   /* v2.3.2262: peers see the same fast/medium/slow spread */
-            life: Math.round(_ORB_RANGE_PX / _ORB_SPEEDS[_bcj]), /* v2.3.2592: ...and the same reach */
+            big: true,   /* additive: an older peer draws one charged orb, which is what one bolt is */
+            speedPx: _ORB_SPEED,
+            life: _bigLife,
             ts: now
           }});
         }
+        BT_AUDIO.beep(420, 0.18, 0.2, 'square');
+        setTimeout(function () {
+          return BT_AUDIO.beep(620, 0.12, 0.14, 'square');
+        }, 60);
+        S.screenShake = 4;
+      } else {
+        /* The three-orb volley: an older worker, which has no caps.bigOrb. */
+        for (var si = 0; si < 3; si++) {
+          var _spd = _ORB_SPEEDS[si];
+          var _life = Math.round(_ORB_RANGE_PX / _spd);
+          S.arrows.push({
+            ang: aimAng,
+            dist: 14,
+            launchDelayMs: si * _ORB_GAP_MS,
+            speedPx: _spd,
+            dmg: Math.round(_wpnDmg * specialAtkMultFor('staff', R || {})), /* v2.3.1397: 2x per orb, 0.6 haircut dropped (owner); v2.3.2592: × the SPECIAL stat */
+            life: _life,      /* v2.3.1335's 560px reach, solved per speed */
+            maxLife: _life,
+            hitIds: new Set(),
+            isSpecial: true,
+            isStaff: true,
+            element: hasElement || null,
+            ice: true
+          });
+        }
+        /* v2.3.840: broadcast the staff special so peers see it.
+           v2.3.2259: same ray, same stagger — `delayMs` rides the payload so a
+           peer's three orbs arrive in the same order yours do.  Additive field:
+           an older client ignores it and draws all three at once, which is what
+           it drew before. */
+        if (S.channel) {
+          for (var _bcj = 0; _bcj < 3; _bcj++) {
+            S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
+              id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: true, isSpecial: true,
+              delayMs: _bcj * _ORB_GAP_MS,
+              speedPx: _ORB_SPEEDS[_bcj],   /* v2.3.2262: peers see the same fast/medium/slow spread */
+              life: Math.round(_ORB_RANGE_PX / _ORB_SPEEDS[_bcj]), /* v2.3.2592: ...and the same reach */
+              ts: now
+            }});
+          }
+        }
+        BT_AUDIO.beep(500, 0.15, 0.18, 'square');
+        setTimeout(function () {
+          return BT_AUDIO.beep(700, 0.1, 0.12, 'square');
+        }, 50);
+        S.screenShake = 3;
       }
-      BT_AUDIO.beep(500, 0.15, 0.18, 'square');
-      setTimeout(function () {
-        return BT_AUDIO.beep(700, 0.1, 0.12, 'square');
-      }, 50);
-      S.screenShake = 3;
     } else {
       /* SWORD/GREATSWORD heavy — melee elemental swing */
       S.swingTimer = now;

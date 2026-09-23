@@ -139,9 +139,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       { ratio: +ratio.toFixed(3), [label]: r, melee: dps.melee });
   }
 
-  /* ════════════════ 2. ONE RAY, THREE ORBS ════════════════ */
+  /* ════════════════ 2. ONE RAY, THREE ORBS ════════════════
+     v2.3.2698: the three-orb volley is now the LEGACY special -- what a new
+     client fires against a worker without caps.bigOrb (the one-bolt special
+     is pinned by mp-solospecial and mp-staffcast).  This scenario keeps
+     measuring the volley, so it switches the flag off for itself. */
   const fired = await P.page.evaluate(() => {
     const S = window._gameState.current, R = S.rpg, F = window._gameFns || {};
+    if (!S._serverCaps) S._serverCaps = {};
+    S._serverCaps.bigOrb = false;
     R.activeSlot = 'staff';
     R.mana = R.maxMana = 500;
     S._lastSwipe = 0;

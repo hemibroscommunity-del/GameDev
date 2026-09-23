@@ -62,6 +62,12 @@ const FLASH_STEP_MS = 55;           /* flash frames */
    flash, most of its life in colour, a brief cool-down at the end. */
 const HEAT_AT = [0.14, 0.34, 0.6, 0.86];
 const KICK_DEG = 14, RAISE_DEG = 6, KICK_IN_MS = 60, KICK_OUT_MS = 280;
+/* v2.3.2698: the one-bolt special (gameSystems STAFF_BIG_BOLT_*) is the same
+   cast, heavier: a bigger kick that takes longer to settle, a longer release,
+   a denser trail and a bigger crash.  Every "big" knob is in this block. */
+const BIG_KICK_DEG = 24, BIG_KICK_OUT_MS = 430;
+const BIG_HALO = 1.75;      /* the bolt's element halo, x the basic bolt's */
+const BIG_TRAIL_PX = 3.5;   /* one trail spark per this many px (basic: 6) */
 /* The glow shows while you are casting: from a cast until one cooldown plus
    this grace has passed, then it fades out.  Stop attacking and the crystal
    goes quiet rather than sitting lit forever. */
@@ -148,7 +154,7 @@ export function staffCharge(S, now) {
  *  on screen whichever way the sprite is flipped.  Written this way because
  *  reasoning about the flip per facing is how the south sword's tilt got its
  *  sign wrong once (v2.3.1821b). */
-export function staffCastPose(now, castAt, castAng, charge, rhythm, mirror, pixelSteps) {
+export function staffCastPose(now, castAt, castAng, charge, rhythm, mirror, pixelSteps, big) {
   if (!castAt || typeof castAng !== 'number' || !isFinite(castAng)) return 0;
   const hx = (STAFF_GEM.x - 28) * (mirror ? -1 : 1), hy = STAFF_GEM.y - 40;
   const cross = hx * Math.sin(castAng) - hy * Math.cos(castAng);
@@ -158,9 +164,11 @@ export function staffCastPose(now, castAt, castAng, charge, rhythm, mirror, pixe
   /* 12 fps poses, sampled late in each step so the kick lands WITH the flash
      rather than one step after it. */
   if (pixelSteps !== false) since = (Math.floor(since / STEP_MS) + 0.72) * STEP_MS;
+  /* v2.3.2698: the one-bolt special kicks harder and settles slower. */
+  const kd = big ? BIG_KICK_DEG : KICK_DEG, ko = big ? BIG_KICK_OUT_MS : KICK_OUT_MS;
   let kick = 0;
-  if (since < KICK_IN_MS) kick = KICK_DEG * easeOut(since / KICK_IN_MS);
-  else if (since < KICK_IN_MS + KICK_OUT_MS) kick = KICK_DEG * (1 - easeInOut((since - KICK_IN_MS) / KICK_OUT_MS));
+  if (since < KICK_IN_MS) kick = kd * easeOut(since / KICK_IN_MS);
+  else if (since < KICK_IN_MS + ko) kick = kd * (1 - easeInOut((since - KICK_IN_MS) / ko));
   const raise = -RAISE_DEG * smoothstep(0.35, 1, charge || 0) * (rhythm || 0);
   return sign * (kick + raise) * Math.PI / 180;
 }
@@ -384,20 +392,21 @@ export class StaffCastFx {
     return !!(o && o._staffTipBehind);
   }
 
-  _onCast(owner, tip, ang, ramp, isSelf, pk, now) {
+  _onCast(owner, tip, ang, ramp, isSelf, pk, now, big) {
     this._stats.castN++;
-    this._stats.lastCast = { at: now, x: +tip.x.toFixed(1), y: +tip.y.toFixed(1), owner: isSelf ? 'self' : 'peer' };
-    this.flashes.push({ kind: 0, t0: now, x: tip.x, y: tip.y, owner, ramp, pk });
+    this._stats.lastCast = { at: now, x: +tip.x.toFixed(1), y: +tip.y.toFixed(1), owner: isSelf ? 'self' : 'peer', big: !!big };
+    this.flashes.push({ kind: big ? 2 : 0, t0: now, x: tip.x, y: tip.y, owner, ramp, pk });
     if (isSelf) {
       /* the gathered sparks are spent into the bolt */
       for (const p of this.sparks) if (p.on && p.kind === K_ORBIT) p.on = false;
       this._orbitAcc = 0;
     }
-    for (let i = 0; i < 7; i++) {
+    const nRel = big ? 16 : 7;
+    for (let i = 0; i < nRel; i++) {
       const p = this._spawn();
       if (!p) break;
-      const a = ang + (Math.random() - 0.5) * 1.8;
-      const sp = (1.2 + Math.random() * 2.4) * pk;
+      const a = ang + (Math.random() - 0.5) * (big ? 2.2 : 1.8);
+      const sp = (1.2 + Math.random() * 2.4) * pk * (big ? 1.35 : 1);
       p.kind = K_SPARK; p.back = false; p.rev = false; p.ramp = ramp; p.pk = pk;
       p.x = tip.x; p.y = tip.y;
       p.vx = Math.cos(a) * sp; p.vy = Math.sin(a) * sp - 0.2 * pk;
@@ -406,15 +415,18 @@ export class StaffCastFx {
     }
   }
 
-  _onCrash(x, y, ramp, pk, now) {
+  _onCrash(x, y, ramp, pk, now, big) {
     this._stats.crashN++;
-    this._stats.lastCrash = { at: now, x: +x.toFixed(1), y: +y.toFixed(1) };
-    this.flashes.push({ kind: 1, t0: now, x, y, owner: null, ramp, pk });
-    for (let i = 0; i < 20; i++) {
+    this._stats.lastCrash = { at: now, x: +x.toFixed(1), y: +y.toFixed(1), big: !!big };
+    this.flashes.push({ kind: big ? 3 : 1, t0: now, x, y, owner: null, ramp, pk });
+    /* v2.3.2698: the one-bolt special lands like three orbs at once -- more
+       sparks, thrown harder, and a longer tail of embers. */
+    const nSp = big ? 38 : 20;
+    for (let i = 0; i < nSp; i++) {
       const p = this._spawn();
       if (!p) break;
-      const a = (i / 20) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
-      const sp = (1.6 + Math.random() * 3.6) * pk;
+      const a = (i / nSp) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+      const sp = (1.6 + Math.random() * 3.6) * pk * (big ? 1.45 : 1);
       p.kind = K_SPARK; p.back = true; p.rev = false; p.ramp = ramp; p.pk = pk;
       p.x = x + Math.cos(a) * 3 * pk; p.y = y + Math.sin(a) * 3 * pk;
       p.vx = Math.cos(a) * sp; p.vy = Math.sin(a) * sp - 0.8 * pk;
@@ -425,7 +437,7 @@ export class StaffCastFx {
        up, cool slowly.  The tail of the hit, so it reads as heat and not a
        spray. */
     const ember = [ramp[1], ramp[2], ramp[3], ramp[3], ramp[4]];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < (big ? 12 : 5); i++) {
       const p = this._spawn();
       if (!p) break;
       const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4;
@@ -481,32 +493,41 @@ export class StaffCastFx {
     }
     const ramp = rampFor(p._fxElem);
     /* Trail: one spark per ~6 px of flight, laid along the segment, so the
-       spacing is the same at 30 fps as at 60. */
+       spacing is the same at 30 fps as at 60.  v2.3.2698: the big bolt lays a
+       denser, wider trail of bigger sparks. */
+    const big = !!p.big;
+    const jw = big ? 10 : 5;
     if (p._fxPx != null && moved > 0 && moved < 200) {
-      p._fxTrail = (p._fxTrail || 0) + moved / (6 * k1);
+      p._fxTrail = (p._fxTrail || 0) + moved / ((big ? BIG_TRAIL_PX : 6) * k1);
       const vx = Math.cos(rot), vy = Math.sin(rot);
       while (p._fxTrail >= 1) {
         p._fxTrail -= 1;
         const s = this._spawn();
         if (!s) break;
         const f = Math.random();
-        const j = (Math.random() - 0.5) * 5 * k1;
+        const j = (Math.random() - 0.5) * jw * k1;
         const sx = p._fxPx + (dx - p._fxPx) * f, sy = p._fxPy + (dy - p._fxPy) * f;
         const back = 0.2 + Math.random() * 0.6;
         s.kind = K_SPARK; s.back = false; s.rev = false; s.ramp = ramp; s.pk = k1;
         s.x = sx - vx * 7 * k1 - vy * j; s.y = sy - vy * 7 * k1 + vx * j;
         s.vx = (-vx * back + (Math.random() - 0.5) * 0.5) * k1;
         s.vy = (-vy * back + (Math.random() - 0.5) * 0.5 - 0.1) * k1;
-        s.drag = 0.92; s.grav = -0.008 * k1; s.life = 180 + Math.random() * 220;
-        s.size = Math.random() < 0.25 ? 2 : 1;
+        s.drag = 0.92; s.grav = -0.008 * k1; s.life = (180 + Math.random() * 220) * (big ? 1.35 : 1);
+        s.size = Math.random() < (big ? 0.5 : 0.25) ? 2 : 1;
       }
     }
     p._fxPx = dx; p._fxPy = dy; p._fxRot = rot;
     /* the real position this frame was drawn from, beside the drawn one, so a
        probe compares like with like (the sim may step again before it reads) */
     p._fxRx = x; p._fxRy = y;
-    /* the element halo, under the art */
-    this._glow(true, dx, dy, 15 * k1, ramp[2], 0.3);
+    /* the element halo, under the art (v2.3.2698: wider and brighter round
+       the big bolt, with a hot core so it reads as more than a bigger ball) */
+    if (big) {
+      this._glow(true, dx, dy, 15 * BIG_HALO * k1, ramp[2], 0.3);
+      this._glow(true, dx, dy, 8 * k1, ramp[1], 0.16);
+    } else {
+      this._glow(true, dx, dy, 15 * k1, ramp[2], 0.3);
+    }
     _boltOut.x = dx; _boltOut.y = dy; _boltOut.rot = rot; _boltOut.ramp = ramp;
     _boltOut.grow = 0.45 + 0.55 * easeOut(clamp((now - p._fxSeen) / 90, 0, 1));
     return _boltOut;
@@ -547,7 +568,7 @@ export class StaffCastFx {
       const castAt = S._staffCastAt || 0;
       if (castAt && castAt !== this._lastCastAt) {
         this._lastCastAt = castAt;
-        if (now - castAt < 300) this._onCast('self', tip, S._staffCastAng || 0, ramp, true, pk, now);
+        if (now - castAt < 300) this._onCast('self', tip, S._staffCastAng || 0, ramp, true, pk, now, S._staffCastBig === castAt);
       }
       const { charge: c, rhythm } = staffCharge(S, now);
       this._charge = c; this._rhythm = rhythm;
@@ -592,7 +613,8 @@ export class StaffCastFx {
         const tip = this._tipOf(id, S, _tipA);
         if (!tip) continue;
         const pk = zonePlayerScale(S.currentZone, tip.x, tip.y, TILE) || 1;
-        this._onCast(id, tip, typeof o._staffCastAng === 'number' ? o._staffCastAng : 0, RAMPS.none, false, pk, now);
+        this._onCast(id, tip, typeof o._staffCastAng === 'number' ? o._staffCastAng : 0, RAMPS.none, false, pk, now,
+          o._staffCastBig === o._staffCastAt);
       }
       if (this._peerCastSeen.size > 64) {
         for (const id of this._peerCastSeen.keys()) {
@@ -610,7 +632,7 @@ export class StaffCastFx {
         const cx = c.x + (Number.isFinite(c.vdx) ? c.vdx : 0);
         const cy = c.y + (Number.isFinite(c.vdy) ? c.vdy : 0);
         const pk = zonePlayerScale(S.currentZone, cx, cy, TILE) || 1;
-        this._onCrash(cx, cy, rampFor(c.elem), pk, now);
+        this._onCrash(cx, cy, rampFor(c.elem), pk, now, !!c.big);
       }
       q.length = 0;
     }
@@ -650,6 +672,40 @@ export class StaffCastFx {
       const fl = this.flashes[i];
       const fr = Math.floor(Math.max(0, now - fl.t0) / FLASH_STEP_MS);
       const r = fl.ramp, pk = fl.pk || 1;
+      if (fl.kind === 2) {
+        /* v2.3.2698: the one-bolt special's release -- a bigger flash that
+           holds a frame longer, then a pixel shockwave off the crystal. */
+        if (fr >= 5) { this.flashes.splice(i, 1); continue; }
+        const tip = this._tipOf(fl.owner, S, _tipA) || fl;
+        const behind = this._behind(fl.owner, S);
+        const vis = behind ? 0.35 : 1;
+        if (fr <= 1) {
+          this._glow(true, tip.x, tip.y, (fr === 0 ? 24 : 19) * pk, r[1], 0.95 * vis);
+          this._glow(true, tip.x, tip.y, (fr === 0 ? 9 : 6) * pk, 0xffffff, vis);
+          if (!behind) this._cross(true, tip.x, tip.y, fr === 0 ? 8 : 6, fr === 0 ? 5 : 4, fr === 0 ? 0xffffff : r[1], pk);
+        } else {
+          this._glow(true, tip.x, tip.y, (16 - 3 * fr) * pk, r[2], 0.5 * vis);
+          if (!behind) this._pixRing(true, tip.x, tip.y, (4 + 5 * fr) * pk, 8 + 4 * fr, r[Math.min(4, fr)], pk);
+        }
+        continue;
+      }
+      if (fl.kind === 3) {
+        /* v2.3.2698: the one-bolt special's crash -- a bigger white-out and a
+           pixel shockwave that runs out along the ground. */
+        if (fr >= 6) { this.flashes.splice(i, 1); continue; }
+        if (fr === 0) {
+          this._glow(false, fl.x, fl.y, 36 * pk, r[1], 0.95);
+          this._glow(false, fl.x, fl.y, 13 * pk, 0xffffff, 1);
+          this._cross(false, fl.x, fl.y, 10, 8, 0xffffff, pk);
+        } else if (fr === 1) {
+          this._glow(false, fl.x, fl.y, 26 * pk, r[1], 0.7);
+          this._cross(false, fl.x, fl.y, 6, 5, r[1], pk);
+        } else {
+          this._glow(false, fl.x, fl.y, (22 - 3 * fr) * pk, r[2], 0.35);
+        }
+        if (fr >= 1) this._pixRing(false, fl.x, fl.y, (6 + 7 * fr) * pk, 10 + 5 * fr, r[Math.min(4, fr)], pk);
+        continue;
+      }
       if (fl.kind === 0) {
         if (fr >= 3) { this.flashes.splice(i, 1); continue; }
         /* the release rides the crystal as the staff kicks */

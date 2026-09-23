@@ -996,6 +996,24 @@ export const combatMethods = {
        client/server position lag on iPhone Safari over cellular, and
        the 250 px PvP figure left only ~46 px of slack, which is ~105 ms
        of movement at the legit max speed. */
+    /* ═══ v2.3.2698: ONE BIG STAFF BOLT, THREE ORBS' WORTH ═══
+       Owner: "Instead of the current special attack with 3 orbs I want to see
+       what just one moderately larger bolt attack would look like."  So the
+       staff special is one bolt now (client playerActions.js, behind
+       caps.bigOrb), and it declares how many of the old orbs it stands for:
+       `orbs`.  The worker rolls that many special hits -- each its own
+       variance, its own crit, its own cap -- and sums them into ONE
+       monster_hit, so the player sees one big number where there used to be
+       three.  Expected damage is exactly the three orbs'.
+       BOUNDED BY THE LANE THAT BOUNDED THE ORBS.  Honoured only on a staff
+       special, clamped to 1..3, and each orb spends a slot in the special
+       lane below (3 per 1200 ms per monster) -- so a forged `orbs` can buy
+       nothing that three separate special sends could not already buy.
+       Absent (every older client, and every other hit) -> 1, which is the
+       ordinary one-roll path, byte-identical. */
+    const _orbsWire = Math.floor(Number(payload.orbs));
+    let _orbs = (isSpecial && _effSlot === 'staff' && _orbsWire > 1)
+      ? Math.min(3, _orbsWire) : 1;
     if (_effSlot === 'melee'
         && typeof attackerPs.x === 'number' && typeof attackerPs.y === 'number'
         && typeof m.x === 'number' && typeof m.y === 'number') {
@@ -1032,7 +1050,10 @@ export const combatMethods = {
       if (isSpecial) {
         cad.s = cad.s.filter(t => nowTs - t < 1200);
         if (cad.s.length >= 3) return;
-        cad.s.push(nowTs);
+        /* v2.3.2698: a big bolt spends one slot per orb it carries, and never
+           more than the lane has left. */
+        _orbs = Math.min(_orbs, 3 - cad.s.length);
+        for (let k = 0; k < _orbs; k++) cad.s.push(nowTs);
       } else {
         if (nowTs - cad.n < 210) return; // v2.3.1343: 335 -> 210 (Tempo cap -50%)
         cad.n = nowTs;
@@ -1060,8 +1081,15 @@ export const combatMethods = {
        posture as collision damage, which has bypassed dmgCap since
        v2.3.1114 and carries COLLISION_BURST_CAP instead.  ×1.00 on every
        monster that is not fractured, which is every monster today. */
-    const rawDmg = Math.max(1, Math.round(
-      Math.max(1, Math.min(dmgCap, rolled.dmg)) * this._fractureDmgMult(m)));
+    /* v2.3.2698: a big staff bolt's other orbs (see `_orbs` above) -- each its
+       own roll under its own cap, summed; any crit makes the hit a crit. */
+    let _cappedDmg = Math.max(1, Math.min(dmgCap, rolled.dmg));
+    for (let k = 1; k < _orbs; k++) {
+      const _r = this._computeAttackDamage(attackerPs, slot, isSpecial, { targetLevel: m.level });
+      _cappedDmg += Math.max(1, Math.min(dmgCap, _r.dmg));
+      if (_r.isCrit) rolled.isCrit = true;
+    }
+    const rawDmg = Math.max(1, Math.round(_cappedDmg * this._fractureDmgMult(m)));
     const actualDmg = Math.min(rawDmg, Math.max(0, m.hp));
     // Subtract actualDmg (capped at remaining hp) so m.hp doesn't go
     // negative on overkill -- otherwise the broadcast hpPct goes < 0

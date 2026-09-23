@@ -148,7 +148,7 @@ const label = { color: COL.muted, font: '600 11px system-ui, sans-serif', letter
  * the very system the owner is chasing was switched off.
  */
 const CAP_GATES = [
-  'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'blockScale', 'botfp', 'broVerify',
+  'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigOrb' /* v2.3.2698 */, 'blockScale', 'botfp', 'broVerify',
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
   'laststand', 'milestonesRetired' /* v2.3.2662 */, 'party', 'partyChat', 'petLoot', 'pets', 'potionBag', 'prog3',
@@ -177,6 +177,7 @@ const CAP_NOTES = {
   storeGearRef: 'naming a piece for sale by its receipt number instead of its description',
   storeOffer: 'making a gold offer on a listing, with the gold held until the seller answers',
   storeChat: 'messaging the seller about one listing, in a thread attached to it',
+  bigOrb: 'the staff special as one big bolt (without it: the three-orb volley)',
   blockScale: 'the shield block count',
 };
 

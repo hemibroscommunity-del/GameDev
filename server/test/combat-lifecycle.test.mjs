@@ -737,6 +737,102 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   Math.random = origRandom;
 }
 
+// ── 6i. v2.3.2698: ONE BIG STAFF BOLT, THREE ORBS' WORTH ──
+// Owner: "Instead of the current special attack with 3 orbs I want to see what
+// just one moderately larger bolt attack would look like."  The client fires
+// one bolt (behind caps.bigOrb) whose monster_damage carries `orbs: 3`; the
+// worker rolls three special hits and sums them into ONE monster_hit.  Pins:
+//   (a) one send -> one monster_hit worth three special rolls;
+//   (b) it spends all three slots of the special lane, so a second special on
+//       the same monster inside 1200ms is dropped -- a big bolt can never be
+//       worth more than the three orbs it replaced;
+//   (c) `orbs` is clamped (99 -> 3) and needs lane room (one slot left -> one
+//       orb's worth);
+//   (d) it is ignored off the staff (a bow special) and off specials (a basic
+//       bolt), and junk values fall back to one roll;
+//   (e) caps.bigOrb is advertised, and the old client's three separate orbs
+//       still land exactly as 6h pins.
+{
+  psA.z = 'meadow'; psA.dead = false; psA.dying = false;
+  psA.weapon = null;
+  psA.staffWeapon = { type: 'staff', tierMult: 1 };
+  psA.rangedWeapon = { type: 'bow', tierMult: 1 };
+  psA.power = 0; psA.mind = 200; psA.agility = 0; psA.weaponSpecs = {};
+  const bb = meadowMonsters[7];
+  const reset = () => {
+    if (psA._monHitCad) psA._monHitCad.clear();
+    bb.alive = true; bb.hp = bb.maxHp = 1000000; bb.dmgByPlayer = {}; bb.statuses = undefined;
+    room.eventBuffer.length = 0;
+  };
+  const hitsOn = () => room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.monsterId === bb.id && !e.payload.collision);
+  const send = (payload) => room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: bb.id, zone: 'meadow', ...payload } }));
+  const origRandom = Math.random;
+  Math.random = () => 0.5;   // fixed variance, no crit: every roll is the same number
+  try {
+    const one = room._computeAttackDamage(psA, 'staff', true, { targetLevel: bb.level }).dmg;
+    const bow = room._computeAttackDamage(psA, 'ranged', true, { targetLevel: bb.level }).dmg;
+
+    // (a) one send, one number, three orbs' worth.
+    reset();
+    await send({ slot: 'staff', special: true, orbs: 3 });
+    const a = hitsOn();
+    check('big bolt: one orbs:3 send lands as ONE monster_hit',
+      a.length === 1, a.length);
+    check('big bolt: that hit is three special rolls summed',
+      a.length === 1 && a[0].payload.dmg === one * 3, { got: a[0] && a[0].payload.dmg, one });
+    check('big bolt: the credited contribution matches the hit',
+      bb.dmgByPlayer[psA.id || Object.keys(bb.dmgByPlayer)[0]] === one * 3, bb.dmgByPlayer);
+
+    // (b) it filled the special lane: the next special on this monster is dropped.
+    await send({ slot: 'staff', special: true });
+    check('big bolt: spends all three special-lane slots (a 4th special is dropped)',
+      hitsOn().length === 1, hitsOn().length);
+
+    // (c) clamp: orbs 99 is three orbs, never more.
+    reset();
+    await send({ slot: 'staff', special: true, orbs: 99 });
+    check('big bolt: orbs is clamped to 3',
+      hitsOn().length === 1 && hitsOn()[0].payload.dmg === one * 3, hitsOn().map((e) => e.payload.dmg));
+    // ...and with only one lane slot left it is worth one orb.
+    reset();
+    await send({ slot: 'staff', special: true });
+    await send({ slot: 'staff', special: true });
+    room.eventBuffer.length = 0;
+    await send({ slot: 'staff', special: true, orbs: 3 });
+    check('big bolt: with one lane slot left it rolls one orb, not three',
+      hitsOn().length === 1 && hitsOn()[0].payload.dmg === one, { got: hitsOn().map((e) => e.payload.dmg), one });
+
+    // (d) ignored off the staff and off specials; junk -> one roll.
+    reset();
+    await send({ slot: 'ranged', special: true, orbs: 3 });
+    check('big bolt: orbs is ignored on a bow special',
+      hitsOn().length === 1 && hitsOn()[0].payload.dmg === bow, { got: hitsOn().map((e) => e.payload.dmg), bow });
+    reset();
+    const basic = room._computeAttackDamage(psA, 'staff', false, { targetLevel: bb.level }).dmg;
+    await send({ slot: 'staff', special: false, orbs: 3 });
+    check('big bolt: orbs is ignored on a basic (non-special) bolt',
+      hitsOn().length === 1 && hitsOn()[0].payload.dmg === basic, { got: hitsOn().map((e) => e.payload.dmg), basic });
+    for (const junk of ['3', 'x', -5, null, 2.9, { n: 3 }]) {
+      reset();
+      await send({ slot: 'staff', special: true, orbs: junk });
+      const d = hitsOn().map((e) => e.payload.dmg);
+      const want = junk === '3' ? one * 3 : (junk === 2.9 ? one * 2 : one);
+      check('big bolt: junk orbs ' + JSON.stringify(junk) + ' is read safely',
+        d.length === 1 && d[0] === want, { got: d, want });
+    }
+
+    // (e) the flag the client gates on, and the old three-orb shape.
+    const _joinSrc = await import('node:fs').then((fs) => fs.readFileSync(new URL('../src/join.js', import.meta.url), 'utf8'));
+    check('big bolt: caps.bigOrb is advertised', /bigOrb: true/.test(_joinSrc));
+    reset();
+    for (let i = 0; i < 3; i++) await send({ slot: 'staff', special: true });
+    check('big bolt: an old client\'s three separate orbs still land as three hits of one orb each',
+      hitsOn().length === 3 && hitsOn().every((e) => e.payload.dmg === one), hitsOn().map((e) => e.payload.dmg));
+  } finally {
+    Math.random = origRandom;
+  }
+}
+
 // ── 6d. v2.3.1133: crit-DMG channel reaches the authoritative crit roll ──
 // Executioner/Headshot/Arcane Focus feed the crit MULTIPLIER at +0.008/pt
 // (mirror of client calcCritMult); the anti-cheat ceiling assumes the

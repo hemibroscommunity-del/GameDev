@@ -140,6 +140,7 @@ import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js'; /* v2.3.1864 */
 import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
 import { StaffCastFx } from '../staffCastFx.js';                  /* v2.3.2697: the staff cast's charge, release, trail and crash */
+import { STAFF_BIG_BOLT_SCALE } from '@/data/gameSystems.js';     /* v2.3.2698: the one-bolt special's drawn size */
 
 /* v2.3.1784: the 8-way compass, module scope.  An identical list already
    existed as a local inside _updateRemoteBowShots; the slung shield needs it
@@ -4057,7 +4058,10 @@ export class EffectsRenderer {
          comment in playerActions.js), so it must NOT exclude the painted
          orb.  All staff specials share the charged-orb art regardless of
          element. */
-      const _isStaffSpecial = a._isStaffProj && a.isSpecial;
+      /* v2.3.2698: ...except the one-bolt special (caps.bigOrb), which is
+         the basic bolt's art drawn bigger, not the charged orb. */
+      const _isStaffSpecial = a._isStaffProj && a.isSpecial && !a.big;
+      const _isBigBolt = !!a.big && MAGIC_BOLT_FRAMES.length > 0;
       /* v2.3.1396: painted special art carries its own flame/wisp tail —
          skip the line trail exactly like the basic bolt's art does. */
       const _paintedSpecial = (isBowHeavy && ARROW_SPECIAL.frames.length)
@@ -4077,7 +4081,7 @@ export class EffectsRenderer {
          moves — staff bolts, ice, the charged shots and every remote
          projectile keep _updateProjectileTrail exactly as it was. */
       const _jetOn = this._noteJetStream(a, now, _pk, S.currentZone);
-      if (!_stuckPose && !_jetOn && !(_isBasicStaffBolt && MAGIC_BOLT_FRAMES.length) && !_paintedSpecial) {
+      if (!_stuckPose && !_jetOn && !(_isBasicStaffBolt && MAGIC_BOLT_FRAMES.length) && !_paintedSpecial && !_isBigBolt) {
         this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.ice, _pk);
       }
 
@@ -4110,6 +4114,10 @@ export class EffectsRenderer {
            halo baked into the art; the ring draw below stays as the
            pre-load fallback (and for non-staff ice projectiles). */
         this._placeSpecialFx(MAGIC_SPECIAL, a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk);
+      } else if (_isBigBolt) {
+        /* v2.3.2698: the one-bolt special -- the basic bolt, bigger, leaving
+           the crystal with the heavy release (staffCastFx reads a.big). */
+        this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk, S);
       } else if (a.isSpecial || a.ice) {
         /* Staff special / ice — bigger yellow glow ring so specials
            read as distinct from regular projectiles. Three concentric
@@ -4193,8 +4201,9 @@ export class EffectsRenderer {
       /* v2.3.1334: basic remote staff bolts share the painted sprite
          (and skip the line trail — the art carries its own tail).
          v2.3.1396: remote SPECIALS share the painted special art too. */
-      const _remoteBasicBolt = rp.isStaff && !rp.isSpecial && MAGIC_BOLT_FRAMES.length;
-      const _remoteMagicSpec = rp.isStaff && rp.isSpecial && MAGIC_SPECIAL.frames.length;
+      /* v2.3.2698: a peer's one-bolt special (rp.big) draws as their bolt. */
+      const _remoteBasicBolt = rp.isStaff && (!rp.isSpecial || rp.big) && MAGIC_BOLT_FRAMES.length;
+      const _remoteMagicSpec = rp.isStaff && rp.isSpecial && !rp.big && MAGIC_SPECIAL.frames.length;
       const _remoteArrowSpec = !rp.isStaff && rp.isSpecial && ARROW_SPECIAL.frames.length;
       if (!_remoteBasicBolt && !_remoteMagicSpec && !_remoteArrowSpec) this._updateProjectileTrail(rp, gfx, 1.0, !!rp.isStaff, _pk);
       if (rp.isStaff) {
@@ -4497,7 +4506,10 @@ export class EffectsRenderer {
        at ~18 px, matching the old 9 px-radius glow.
        v2.3.2287: set PER FRAME rather than once at construction, because the
        vista curve changes as the bolt travels. */
-    sprite.scale.set(0.18 * (pk || 1) * grow);
+    /* v2.3.2698: the one-bolt special is this art drawn bigger -- the same
+       factor its hit body takes (projectiles.js PROJ_BODY.magicBig). */
+    const _bigK = p.big ? STAFF_BIG_BOLT_SCALE : 1;
+    sprite.scale.set(0.18 * (pk || 1) * grow * _bigK);
     sprite.x = dx;
     sprite.y = dy;
     sprite.rotation = rot;
@@ -4524,12 +4536,14 @@ export class EffectsRenderer {
       if (glow.texture !== frame) glow.texture = frame;
       const _tq = Math.floor(now / (1000 / 12)) * (1000 / 12);
       const _sw = 0.5 + 0.5 * Math.sin(((_tq - (p._fxSeen || 0)) / 260) * Math.PI * 2);
-      glow.scale.set(0.18 * (pk || 1) * grow * (1 + 0.1 * _sw));
+      glow.scale.set(0.18 * (pk || 1) * grow * _bigK * (1 + 0.1 * _sw));
       glow.x = dx;
       glow.y = dy;
       glow.rotation = rot;
       if (glow.tint !== fx.ramp[1]) glow.tint = fx.ramp[1];
-      glow.alpha = alpha * (0.15 + 0.35 * _sw);
+      /* v2.3.2698: softer on the big bolt -- at 1.7x the same additive copy
+         washed the painted bolt out to a white blob on light ground. */
+      glow.alpha = alpha * (p.big ? 0.08 + 0.2 * _sw : 0.15 + 0.35 * _sw);
       glow.visible = true;
     }
     liveSet.add(p);

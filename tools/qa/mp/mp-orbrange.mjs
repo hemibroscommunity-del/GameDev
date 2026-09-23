@@ -157,10 +157,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!F.specialAttack || !R.staffWeapon) return null;
     F.specialAttack();
     return (S.arrows || []).filter((a) => a.isSpecial && a.isStaff)
-      .map((a) => ({ life: a.life, speedPx: a.speedPx, reach: Math.round(a.life * a.speedPx) }));
+      .map((a) => ({ life: a.life, speedPx: a.speedPx, reach: Math.round(a.life * a.speedPx), big: !!a.big }));
   });
   console.log('    special orbs: ' + JSON.stringify(orbs));
-  if (orbs && orbs.length === 3) {
+  /* v2.3.2698: against a worker with caps.bigOrb the special is ONE big bolt,
+     and it must reach exactly as far as the orbs it replaced. */
+  if (orbs && orbs.length === 1 && orbs[0].big) {
+    rec.ok('the one-bolt special reaches the same 675px the orbs did',
+      Math.abs(orbs[0].reach - STAFF_RANGE_PX) <= 3, orbs);
+  } else if (orbs && orbs.length === 3) {
     rec.ok('all three special orbs reach the same 675px',
       orbs.every((o) => Math.abs(o.reach - STAFF_RANGE_PX) <= 3), orbs);
     rec.ok('...and all three fly at ONE speed, so the volley stays evenly spaced',
