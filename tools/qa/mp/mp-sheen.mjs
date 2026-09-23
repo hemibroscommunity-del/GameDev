@@ -1,4 +1,4 @@
-/* ═══ v2.3.2750: A PERMANENT SOFT SHINE ON METAL (PREVIEW, ?sheen=1) ═══
+/* ═══ v2.3.2781: A PERMANENT SOFT SHINE ON METAL (PREVIEW, ?sheen=1) ═══
  *
  * Owner: "aside from the glint can you see what adding a permanent soft shine
  * to armor and sword (and other metals) would look like?"

@@ -1,4 +1,4 @@
-# Metal sheen, a preview (v2.3.2750)
+# Metal sheen, a preview (v2.3.2781)
 
 Owner: *"aside from the glint can you see what adding a permanent soft shine
 to armor and sword (and other metals) would look like?"*

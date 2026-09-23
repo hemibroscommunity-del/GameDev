@@ -30,14 +30,34 @@
  * built together and one without the other is half the feature — this says
  * who, the road says where.
  */
+import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js';
+
 const SEEN_KEY = 'bt_welcome_seen';
 
+/* v2.3.2765: also on the shared-domain cookie, so a new preview-deploy
+   origin knows too (rosterCookie readSharedValue). */
+const SHARED_KEY = 'bt_welcomed';
 export const welcomeSeen = () => {
-  try { return localStorage.getItem(SEEN_KEY) === '1'; } catch (e) { return false; }
+  try { if (localStorage.getItem(SEEN_KEY) === '1') return true; } catch (e) { /* fall through */ }
+  return readSharedValue(SHARED_KEY) === '1';
 };
 const markSeen = () => {
   try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) { /* private window */ }
+  writeSharedValue(SHARED_KEY, '1');
 };
+
+/* v2.3.2765: who the welcome is for.  The same test QuestCoach's preTutorial
+   makes -- no tutorial quest on record and level 3 or under -- asked of the
+   WORKER's copy of the character (see maybeShowWelcome). */
+const TUT_IDS = ['tut_1', 'tut_2', 'tut_3', 'tut_4'];
+function looksBrandNew(rpg) {
+  if (!rpg) return false;
+  if ((rpg.level || 1) > 3) return false;
+  const q = rpg._quests || null;
+  if (!q) return true;
+  for (const id of TUT_IDS) if (q[id]) return false;
+  return true;
+}
 
 /** Show the first-join welcome, once ever.  Safe to call on every intro lift.
  *
@@ -45,13 +65,24 @@ const markSeen = () => {
  *  when this fires, and a banner that starts under a lifting curtain has
  *  spent part of its life unseen.  1.2s puts it on a settled screen.
  *
+ *  ═══ v2.3.2765: AND ONLY FOR A PLAYER WHO IS ACTUALLY NEW ═══
+ *  Owner: "Sometimes when you rejoin a game from a saved character it brings
+ *  up the tutorial again as if starting a new character."  The only gate used
+ *  to be this browser's once-flag, and the flag is per ORIGIN: every Pages
+ *  preview deploy is a new hostname, so a veteran opening a fresh build link
+ *  was welcomed and sent to find the Mayor again.  Now the greeting waits for
+ *  the worker's player_state (S._rpgFromServer) and asks the character: a
+ *  returning one is never greeted, and the flag is set so it is not asked
+ *  again.  `getS` returns the live game state; no worker answer within 20s
+ *  means no greeting and no flag (it can try again next join).
+ *
  *  Never throws — the caller is the intro's onComplete, and the world
  *  becoming visible must not depend on a greeting. */
-export function maybeShowWelcome() {
+export function maybeShowWelcome(getS) {
   try {
     if (welcomeSeen()) return false;
-    markSeen();   /* before the timer: a reload inside the delay must not re-arm it */
-    setTimeout(function () {
+    const t0 = Date.now();
+    const show = function () {
       try {
         if (typeof window !== 'undefined' && window._setQuestMsg) {
           window._setQuestMsg({
@@ -72,7 +103,23 @@ export function maybeShowWelcome() {
           });
         }
       } catch (e) { /* a missing bridge must not break the join */ }
-    }, 1200);
+    };
+    const check = function () {
+      try {
+        if (welcomeSeen()) return;
+        const S = typeof getS === 'function' ? getS() : null;
+        /* no getter (an old caller): the pre-v2.3.2765 behaviour */
+        const synced = !getS || (S && S._rpgFromServer);
+        if (!synced) {
+          if (Date.now() - t0 < 20000) setTimeout(check, 250);
+          return;
+        }
+        markSeen();   /* before the timer: a reload inside the delay must not re-arm it */
+        if (getS && !looksBrandNew(S && S.rpg)) return;
+        setTimeout(show, Math.max(0, 1200 - (Date.now() - t0)));
+      } catch (e) { /* never break the join */ }
+    };
+    check();
     return true;
   } catch (e) { return false; }
 }
