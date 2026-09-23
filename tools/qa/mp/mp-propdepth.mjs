@@ -1,4 +1,4 @@
-/* ═══ mp-propdepth — in front of a prop or behind it, and where you stop (v2.3.2718) ═══
+/* ═══ mp-propdepth — in front of a prop or behind it, and where you stop (v2.3.2734) ═══
  *
  * Owner, with four iPhone screenshots of the town: "Fix layer detection for
  * props. Right now it's really bad at detecting contact and when the player
@@ -111,9 +111,20 @@ async function shot(P, tag) {
   await P.page.screenshot({ path: `${DIR}/${tag}.png` });
 }
 
-export async function run({ browser, wsPort, webPort, rec }) {
+/* v2.3.2735: every page this scenario opens is closed when it ends, pass or
+   throw.  A page left open keeps running the game at full frame rate on the
+   shared software GPU, and every later scenario in the run pays for it. */
+export async function run(ctx) {
+  const opened = [];
+  try { await scenario(ctx, opened); } finally {
+    for (const P of opened) await P.ctx.close().catch(() => {});
+  }
+}
+
+async function scenario({ browser, wsPort, webPort, rec }, opened) {
   mkdirSync(DIR, { recursive: true });
   const A = await H.newPlayer(browser, { name: 'Walker', wsPort, webPort, viewport: PHONE, dpr: 2, init: COACH_OFF });
+  opened.push(A);
   await H.enterWorld(A);
   await A.page.waitForTimeout(2000);
   await H.clickText(A, 'CLOSE').catch(() => {});
@@ -271,6 +282,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── a peer sorts on their feet too ── */
   const B = await H.newPlayer(browser, { name: 'Bystander', wsPort, webPort, guest: true, viewport: PHONE, dpr: 2, init: COACH_OFF });
+  opened.push(B);
   await H.enterWorld(B);
   await H.clickText(B, 'CLOSE').catch(() => {});
   await H.waitMutualSight(A, B).catch(() => {});

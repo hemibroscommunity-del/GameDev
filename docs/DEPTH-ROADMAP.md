@@ -124,7 +124,7 @@ the auction house changes sides when the player walks around it. The old
 "every prop draws before every NPC" assertion was the static rule this item
 removes, and it was rewritten rather than deleted.
 
-**v2.3.2718: the two numbers it was fed.** The owner, with four screenshots:
+**v2.3.2734: the two numbers it was fed.** The owner, with four screenshots:
 "really bad at detecting contact and when the player should appropriately
 show in front or behind the layer." The rule was right; its inputs were not.
 The player's "ground line" was `S.player.y`, which is the body's centre, ~52
@@ -246,7 +246,7 @@ zones players spend real time in. Explicitly **not** a rebuild of all twelve.
 >    pictures (`docs/specs/img/light-and-shine/`). That verdict is the owner's.
 >
 > It covers every figure, not just the player and bosses (NPCs, monsters,
-> peers), and it follows the swing and gather stand-ins. From v2.3.2719 the
+> peers), and it follows the swing and gather stand-ins. From v2.3.2735 the
 > world casts too: props, trees and ore (owner: "Add shadows to props and
 > monsters"). What follows is the reasoning as it stood before it was built.
 

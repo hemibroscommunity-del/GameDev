@@ -5,11 +5,12 @@
 import { createPixiApp } from './pixiApp.js';
 import { applyDepthBuckets } from './depthSort.js'; /* v2.3.2635: one depth pass per frame */
 import { TileRenderer } from './systems/tileRenderer.js';
-import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom, figureFeetY, playerGroundDy } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out; v2.3.2718: + the player's feet for the depth pass */
+import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom, figureFeetY, playerGroundDy } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out; v2.3.2734: + the player's feet for the depth pass */
 import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { LightFx, setLightFx } from './lightfx/lightFx.js'; /* v2.3.2710: map-lit shadows + metal glint, behind ?lightfx=1 */
+import { setWorldCasts } from './lightfx/casters.js'; /* v2.3.2735: QA before/after of the world's shadows */
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { MinimapRenderer } from './systems/minimapRenderer.js'; /* v2.3.1781 */
 import { loadPlayerSprites } from './playerSprites.js';
@@ -130,7 +131,7 @@ export function prewarmBaseSheets() {
  */
 let _appRef = null;   /* v2.3.701: handle for uploadBakedTextures behind the intro */
 
-/* v2.3.2718: the ground line the depth pass pivoted on this frame -- the
+/* v2.3.2734: the ground line the depth pass pivoted on this frame -- the
    player's FEET -- published for mp-propdepth, which has to compare it with
    each prop's base.  Mutated in place: no allocation per frame. */
 const _playerGround = { x: NaN, y: NaN };
@@ -171,6 +172,9 @@ export async function initPixiRenderer(canvas) {
       set: (on) => setLightFx(on),
       /* pin every glint at one point of its sweep, for pictures; null frees it */
       glint: (p) => { lightFx.glint.force = (p == null ? null : Math.max(0, Math.min(1, +p))); },
+      /* v2.3.2735: props and trees stop casting (figures still do) -- the
+         look before they did, for before/after pictures of one frame */
+      world: (on) => setWorldCasts(on),
     };
   }
   /* v2.3.221: FPS counter only mounts with ?dev=1. */
@@ -396,7 +400,7 @@ export async function initPixiRenderer(canvas) {
        frame's positions -- a frame of lag that shows up as a flicker exactly
        when the player crosses something, which is the one moment this
        feature exists for. */
-    /* v2.3.2718: ...pivoting on the player's FEET, not S.player.y.  The
+    /* v2.3.2734: ...pivoting on the player's FEET, not S.player.y.  The
        position is the body's centre and the boots are drawn ~52 px lower, so
        a prop whose base fell between the two was drawn over a player standing
        visibly in front of it (owner: "really bad at detecting contact").  The

@@ -44,7 +44,7 @@ export const SELF_STAND_IN_FIELDS = [
    per-peer stand-in pools, which are id -> nested objects of sprites. */
 export const SELF_STAND_IN_SETS = ['skillTraits'];
 export const PEER_STAND_IN_MAPS = ['_remoteSwordSprites', '_remoteBowSprites', '_remoteSkillSprites'];
-/* v2.3.2719: a prop whose footprint is at least this deep (world px) is a
+/* v2.3.2735: a prop whose footprint is at least this deep (world px) is a
    BUILDING, and casts column by column (see the props block below): its tall
    parts -- roofs, towers, signs -- stand at the back.  Measured on the town,
    not assumed: the fountain (95) and the market stall (74) were tried that way
@@ -108,6 +108,11 @@ function anchoredFeet(display, spr) {
  * The figures that cast a shadow this frame.
  * @returns {Array<{key, px, py, sprites, alive}>}
  */
+/* QA/pictures (v2.3.2735): props and nodes off, figures on -- how the game
+   looked before the world cast, on the same frame, for a fair before/after. */
+let _worldCasts = true;
+export function setWorldCasts(on) { _worldCasts = !!on; }
+
 export function collectCasters(S, er, fx, zone) {
   const out = [];
   if (!er) return out;
@@ -158,7 +163,7 @@ export function collectCasters(S, er, fx, zone) {
     }
   }
 
-  /* ═══ v2.3.2719: THE WORLD CASTS TOO ═══
+  /* ═══ v2.3.2735: THE WORLD CASTS TOO ═══
      Owner: "Add shadows to props and monsters."  Listed LAST so the figures
      keep the probe's first slots (stats.list is capped).
 
@@ -170,13 +175,14 @@ export function collectCasters(S, er, fx, zone) {
      and towers above that stand over ground up to 220 px further back, and
      one pivot for all of it put the auction house's back-left tower's shadow
      on the cobble in front of its SUNLIT left wall (seen in the first
-     pictures, v2.3.2719).  Anything with a footprint deeper than DEEP gets
+     pictures, v2.3.2735).  Anything with a footprint deeper than DEEP gets
      the column-by-column projection instead (shadows.js placeDepth), once
      its base has been read off its art -- a frame or two after the zone
      loads, and until then it casts nothing rather than cast wrong.
 
      Gather nodes (trees, ore) pivot on their DRAWN base: their frames carry
      a transparent margin below the art (effectsRenderer NODE_ART_BASE). */
+  if (!_worldCasts) return out;
   if (er.propDisplays) {
     for (const [id, spr] of er.propDisplays) {
       if (!spr || spr.destroyed || !spr.visible) continue;

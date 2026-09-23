@@ -163,7 +163,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* NPC collision is a live radius, not the grid — so this one real piece of
        town collision survives the props being switched off, and is worth
        keeping honest. */
-    /* v2.3.2718: measured at your FEET.  The radius is feet-to-feet now
+    /* v2.3.2734: measured at your FEET.  The radius is feet-to-feet now
        (BroTown isSolid) -- S.player.y is your body's CENTRE, ~52 px above your
        boots, and the old centre-to-feet test let a player walking up behind
        him end up with their boots past his.  So "inside him" is a question

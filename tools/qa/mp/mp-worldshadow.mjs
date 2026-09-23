@@ -1,4 +1,4 @@
-/* ═══ mp-worldshadow — the world casts shadows too (v2.3.2719) ═══
+/* ═══ mp-worldshadow — the world casts shadows too (v2.3.2735) ═══
  *
  * Owner: "Add shadows to props and monsters."
  *
@@ -34,7 +34,6 @@ const COACH_OFF = () => {
 };
 
 const probe = (P) => P.page.evaluate(() => (window.__btLightFx ? window.__btLightFx.probe() : null));
-const setFx = (P, on) => P.page.evaluate((v) => { if (window.__btLightFx) window.__btLightFx.set(v); }, on);
 const frames = (P, n = 3) => P.page.evaluate((k) => new Promise((res) => {
   let i = 0; const f = () => { if (++i >= k) res(); else requestAnimationFrame(f); }; requestAnimationFrame(f);
 }), n);
@@ -82,10 +81,14 @@ const keepAlive = (P) => P.page.keyboard.press('Shift').catch(() => {});
 
 const keyOf = (f) => (f.kind === 'm' ? 'm:' + f.id : f.kind === 'prop' ? 'prop:' + f.id : 'node:' + f.id);
 
+/* Before and after, one frame apart: "before" is the game as it was -- the
+   figures casting, the props and trees not -- so the difference between the
+   two pictures is exactly the world's shadows. */
+const setWorld = (P, on) => P.page.evaluate((v) => { if (window.__btLightFx && window.__btLightFx.world) window.__btLightFx.world(v); }, on);
 async function pictures(P, tag) {
-  await setFx(P, false); await frames(P, 4);
+  await setWorld(P, false); await frames(P, 4);
   const off = await P.page.screenshot({ path: `${DIR}/${tag}-off.png` });
-  await setFx(P, true); await frames(P, 4);
+  await setWorld(P, true); await frames(P, 4);
   const on = await P.page.screenshot({ path: `${DIR}/${tag}-on.png` });
   return { off: H.decodePng(off), on: H.decodePng(on) };
 }
@@ -126,31 +129,106 @@ async function everyoneCasts(P, rec, zone) {
   return { want, miss, mons, types, p };
 }
 
-/* Stand where some monsters are: the nearest one, from the south. */
-async function nearMonsters(P) {
-  await keepAlive(P);
-  const m = await P.page.evaluate(() => {
+/* ═══ A HOP THAT DOES NOT WALK OUT OF THE ZONE ═══
+   In a combat zone, coming within two tiles of a return marker (map tile 9)
+   sends you back to the hub (zoneTransitions, v2.3.823) -- and hopTo moves
+   in a straight line, so a hop to a monster beyond the entry could cross the
+   exit on the way: one run's Frost Ridge checks all read the World View.
+   So the route is searched on the zone's tile grid (8-way, breadth first)
+   around every tile within three of a marker -- the trigger's two plus one
+   of margin -- and hopped waypoint by waypoint.  The start tile is exempt:
+   the player is standing there and was not sent out.  Null if there is no
+   such route (the target itself is by an exit). */
+async function safeHop(P, tx, ty) {
+  const route = await P.page.evaluate(([x, y]) => {
     const S = window._gameState.current;
-    let best = null, bd = Infinity;
-    for (const q of (S.monsters || [])) {
-      if (!q || !q.alive) continue;
-      const d = Math.hypot(q.x - S.player.x, q.y - S.player.y);
-      if (d < bd) { bd = d; best = { x: q.x, y: q.y }; }
+    const T = 32;
+    const map = S.map || [];
+    const Hh = map.length, W = map[0] ? map[0].length : 0;
+    if (!W) return [];
+    const marks = [];
+    for (let r = 0; r < Hh; r++) for (let c = 0; c < W; c++) if (map[r] && map[r][c] === 9) marks.push([c, r]);
+    const bad = (c, r) => marks.some(([mc, mr]) => Math.abs(mc - c) + Math.abs(mr - r) <= 3);
+    const clampT = (v, n) => Math.max(0, Math.min(n - 1, v));
+    const sc = clampT(Math.floor(S.player.x / T), W), sr = clampT(Math.floor(S.player.y / T), Hh);
+    const tc = clampT(Math.floor(x / T), W), tr = clampT(Math.floor(y / T), Hh);
+    window.__wsHopWhy = { from: [sc, sr], to: [tc, tr], marks: marks.length, grid: [W, Hh] };
+    if (bad(tc, tr)) return null;
+    const prev = new Int32Array(W * Hh).fill(-2);
+    const q = [sr * W + sc];
+    prev[sr * W + sc] = -1;
+    while (q.length) {
+      const i = q.shift();
+      if (i === tr * W + tc) break;
+      const c = i % W, r = (i - c) / W;
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+        const nc = c + dc, nr = r + dr;
+        if ((!dc && !dr) || nc < 0 || nr < 0 || nc >= W || nr >= Hh) continue;
+        const j = nr * W + nc;
+        if (prev[j] !== -2 || bad(nc, nr)) continue;
+        prev[j] = i;
+        q.push(j);
+      }
     }
-    return best;
-  });
-  if (m) await H.hopTo(P, m.x, m.y + 170);
-  await P.page.waitForTimeout(1200);
-  return m;
+    if (prev[tr * W + tc] === -2) return null;
+    const path = [];
+    for (let i = tr * W + tc; i !== -1; i = prev[i]) path.push(i);
+    path.reverse();
+    const pts = [];
+    for (let k = 3; k < path.length - 1; k += 3) {
+      const c = path[k] % W, r = (path[k] - c) / W;
+      pts.push([c * T + T / 2, r * T + T / 2]);
+    }
+    return pts;
+  }, [tx, ty]);
+  if (!route) return false;
+  for (const [x, y] of route) await H.hopTo(P, x, y);
+  await H.hopTo(P, tx, ty);
+  return true;
 }
 
-export async function run({ browser, wsPort, webPort, rec }) {
+/* Stand where some monsters are: the nearest one that can be reached
+   without passing an exit, from the south. */
+async function nearMonsters(P) {
+  await keepAlive(P);
+  const ms = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return (S.monsters || []).filter((q) => q && q.alive)
+      .map((q) => ({ x: q.x, y: q.y, d: Math.hypot(q.x - S.player.x, q.y - S.player.y) }))
+      .sort((a, b) => a.d - b.d);
+  });
+  for (const m of ms) {
+    if (await safeHop(P, m.x, m.y + 170)) { await P.page.waitForTimeout(1200); return m; }
+  }
+  await P.page.waitForTimeout(1200);
+  return null;
+}
+
+/* v2.3.2735: every page this scenario opens is closed when it ends, pass or
+   throw.  A page left open keeps running the game at full frame rate on the
+   shared software GPU, and every later scenario in the run pays for it. */
+export async function run(ctx) {
+  const opened = [];
+  try { await scenario(ctx, opened); } finally {
+    for (const P of opened) await P.ctx.close().catch(() => {});
+  }
+}
+
+async function scenario({ browser, wsPort, webPort, rec }, opened) {
   mkdirSync(DIR, { recursive: true });
   const A = await H.newPlayer(browser, { name: 'Sundial', wsPort, webPort, viewport: PHONE, dpr: 2, init: COACH_OFF });
+  opened.push(A);
   await H.enterWorld(A);
   await A.page.waitForTimeout(2000);
   await H.clickText(A, 'CLOSE').catch(() => {});
   const myId = await H.readState(A, (S) => S.myId);
+  /* A tree or an ore rock is only DRAWN for a player carrying the tool that
+     gathers it (effectsRenderer: hasGatherTool) -- a fresh character sees
+     neither, so the node checks below need an axe and a pickaxe first. */
+  for (const invKey of ['woodcutting_axe', 'mining_pickaxe']) {
+    await H.grant(wsPort, myId, 'item', { invKey, count: 1 }).catch(() => {});
+  }
+  await A.page.waitForTimeout(800);
 
   /* ── town: the buildings ── */
   const ah = ((await A.page.evaluate(() => (window.__btWorldProps ? window.__btWorldProps() : []))) || [])
@@ -239,7 +317,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       .map((n) => ({ id: String(n.id), x: n.x, y: n.y, type: n.nodeType })));
     for (const n of nodes) {
       await keepAlive(A);
-      await H.hopTo(A, n.x - 40, n.y + 140);
+      const went = await safeHop(A, n.x - 40, n.y + 140);
+      if (!went) {
+        const why = await A.page.evaluate(() => window.__wsHopWhy || null);
+        rec.ok(`${z.label}: the ${n.type === 'tree' ? 'tree' : 'ore rock'} can be reached without passing an exit (guard)`, false, { node: n, why });
+        continue;
+      }
       await frames(A, 6);
       const p = await probe(A);
       const keys = new Set((p && p.shadows && p.shadows.keys) || []);

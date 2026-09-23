@@ -151,7 +151,7 @@ a grade key is relayed.
 
 ## Tests
 
-`node tools/qa/mp/run.mjs worldshadow` (v2.3.2719) checks that props, trees
+`node tools/qa/mp/run.mjs worldshadow` (v2.3.2735) checks that props, trees
 and every monster on screen cast in each sunlit zone. It also checks that the
 auction house's shadow darkens its shaded side and not its sunlit one, and it
 takes off/on pictures to `/tmp/qa-worldshadow/`.
@@ -183,7 +183,7 @@ takes off/on pictures to `/tmp/qa-worldshadow/`.
 
 It also writes the before/after pictures above to `/tmp/qa-lightfx/`.
 
-## The world casts too (v2.3.2719)
+## The world casts too (v2.3.2735)
 
 Owner, having seen the figures' shadows: *"Add shadows to props and
 monsters."*
@@ -220,6 +220,16 @@ shadows: their tall part stands in the middle, not at the back, so the
 building model sent it behind the prop, where the prop hid it. As billboards
 they picture right.
 
+Each picture is one frame, before and after: on the left the game as it was
+(figures cast, the world does not), on the right the world casting too. The
+QA switch that makes the left one is `window.__btLightFx.world(false)`.
+
+![Town: the lamp, the bench, the anvil and the stall](img/light-and-shine/props-town.jpg)
+
+![Wind Dunes: a tree and an ore rock](img/light-and-shine/props-dunes.jpg)
+
+![Frost Ridge: pines, the rock ridge, a tree and an ore rock, in blue snow shadow](img/light-and-shine/props-frost.jpg)
+
 ## Not done, and the natural next steps
 
 - **An in-game toggle.** Today the only off switch is `?lightfx=0` in the
@@ -227,7 +237,7 @@ they picture right.
   friendly version.
 - **Other players' grades** need one relay key (a `wq` beside `wpnMat`) and
   its server gate.
-- **Props and gather nodes**: done at v2.3.2719 (above).
+- **Props and gather nodes**: done at v2.3.2735 (above).
 - **A figure standing in a building's shadow is not darkened.** The shadow
   lies on the ground, under everything standing on it. Darkening a figure
   that stands inside one would need the shadow as a mask over the figures

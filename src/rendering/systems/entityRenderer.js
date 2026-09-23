@@ -5,7 +5,7 @@
 import { Assets, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCount } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs; v2.3.2061: animated props */
 import { propsForZone, propFootprint, foregroundForZone } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
-import { propGroundFor, settleProfile, groundLineAt } from '../propGround.js'; /* v2.3.2718: a building's base, read off its art */
+import { propGroundFor, settleProfile, groundLineAt } from '../propGround.js'; /* v2.3.2734: a building's base, read off its art */
 import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
@@ -367,7 +367,7 @@ if (typeof window !== 'undefined') {
     take(_frontLayerRef);
     return out;
   };
-  /* v2.3.2718: `y` is the GROUND line now -- a peer's is their feet, not
+  /* v2.3.2734: `y` is the GROUND line now -- a peer's is their feet, not
      their display.y (see depthSort groundOf) -- and `raised` marks a figure
      lifted over a building it stands in front of (depthSort raiseOverProps),
      whose key is deliberately NOT its own ground line. */
@@ -377,7 +377,7 @@ if (typeof window !== 'undefined') {
       .map((c) => ({ label: c.label, y: Math.round(c.y + (c._groundDy || 0)), z: c.zIndex,
         visible: !!c.visible, raised: c._raiseTo != null }))
     : null);
-  /* v2.3.2718: the whole draw order of the two sorted layers -- the entity
+  /* v2.3.2734: the whole draw order of the two sorted layers -- the entity
      layer under the player, then the front layer over him -- so a test can
      ask "is A drawn after B" without knowing which side of the player each
      one is on this frame. */
@@ -389,7 +389,7 @@ if (typeof window !== 'undefined') {
     take(_frontLayerRef, 1);
     return out;
   };
-  /* v2.3.2718: a prop's base where a figure at world x would stand, and
+  /* v2.3.2734: a prop's base where a figure at world x would stand, and
      whether its column profile has been read off the art yet (propGround.js). */
   window.__btPropGround = (id, x) => {
     const layers = [_entityLayerRef, _frontLayerRef];
@@ -4902,7 +4902,7 @@ function _feetOffsetUnits(display) {
 export function figureFeetY(display) {
   return display.y + _feetOffsetUnits(display) * display.scale.y;
 }
-/* ═══ v2.3.2718: THE SAME DROP, FOR CODE THAT HAS NO FIGURE IN HAND ═══
+/* ═══ v2.3.2734: THE SAME DROP, FOR CODE THAT HAS NO FIGURE IN HAND ═══
    How far below a player's POSITION (S.player.y, a peer's y) their boots are
    drawn, in world px: ~52 at the scale of every zone that has props.  The
    position is the body's CENTRE -- v2.3.822 measured the same thing from the
@@ -9701,7 +9701,7 @@ export class EntityRenderer {
            UNLIFTED y above, because _zonePscale reads the position to work out
            how far up a vista map he is standing; the lift is applied after. */
         display.y += _applyBuildScale(display, pscale, other.buildHeight, other.buildFrame);
-        /* v2.3.2718: a peer is drawn centred on display.y like you are, so the
+        /* v2.3.2734: a peer is drawn centred on display.y like you are, so the
            depth pass is told how far below it their boots are -- sorted on
            display.y, a peer standing in front of a bench drew behind it. */
         display._groundDy = _feetOffsetUnits(display) * display.scale.y;
@@ -13407,7 +13407,7 @@ export class EntityRenderer {
   _updateProps(S) {
     if (typeof window !== 'undefined') _entityLayerRef = this.entityLayer;
     const props = propsForZone(S.currentZone);
-    this._propFrameNo = (this._propFrameNo || 0) + 1;   /* v2.3.2718: settleProfile's one-per-frame budget */
+    this._propFrameNo = (this._propFrameNo || 0) + 1;   /* v2.3.2734: settleProfile's one-per-frame budget */
 
     /* id -> prop, so the probe below can ask for a footprint by the same id
        the display map is keyed on. */
@@ -13465,7 +13465,7 @@ export class EntityRenderer {
       spr.x = p.x;
       spr.y = p.y;
       spr.visible = spr.texture !== Texture.EMPTY;
-      /* v2.3.2718: where this prop's art meets the ground, column by column,
+      /* v2.3.2734: where this prop's art meets the ground, column by column,
          for the depth pass -- the town's buildings are drawn isometric, so
          beside one the base is the wall next to you, not the front step
          (propGround.js).  Measured once, one prop per frame. */
