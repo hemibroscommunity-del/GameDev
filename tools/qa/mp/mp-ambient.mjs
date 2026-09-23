@@ -102,6 +102,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shotAt('worldview-sea', 0.52, 0.86, { glows: 4, glint: 1 });
     await shotAt('worldview-snow', 0.2, 0.18, { snow: 2 });
     await shotAt('worldview-blossom', 0.12, 0.38, { petal: 1 });
+    /* v2.3.2721: the far-south sea, camera pinned to the map's bottom, where
+       ripples and glints ran right along the dashboard's top edge and read as
+       the tray's own contour flickering (owner).  The tray must be found (its
+       top above the view's bottom) and nothing may shine within the fade. */
+    await shotAt('worldview-south', 0.45, 0.99, { glows: 2 });
+    const south = await probe(P);
+    const viewBottom = south && south.view ? south.view.y + south.view.h : 0;
+    rec.ok('worldview-south: the dashboard edge is found in the view', !!south && south.seamY < viewBottom, south);
+    rec.ok('worldview-south: nothing shines against the dashboard', !!south && south.atSeam === 0, south);
   }
 
   /* ── the four spokes, by the dev warp ── */

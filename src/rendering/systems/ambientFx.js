@@ -313,8 +313,41 @@ export class AmbientFx {
     this.parts.push(p);
   }
 
-  /** Per frame.  (cx, cy, viewW, viewH): the camera's world rect. */
-  update(S, cx, cy, viewW, viewH, now) {
+  /* ═══ v2.3.2721: NOTHING SHINES AGAINST THE DASHBOARD ═══
+   * Owner: "the bottom dashboard (the gray dashboard) might unintentionally
+   * be affected by these effects from looking at the water zone at the far
+   * south end."  Measured (on/off pixel diff, dashboard open AND collapsed):
+   * nothing is ever drawn ON the dashboard -- it is an opaque DOM tray over
+   * the canvas.  What the owner saw is the seam: the canvas runs ~14px UNDER
+   * the tray (its top corners are rounded, the world shows through them),
+   * and the south sea's ripples and glints are bright HORIZONTAL streaks.
+   * One sliding along just above the tray, or cut in half by it, reads as the
+   * tray's own top contour flickering -- the same "a line on the chrome"
+   * illusion as the v2.3.1238 phantom bar.  So every ambient sprite fades out
+   * over the last FADE world px above the tray's top edge, by its BOTTOM
+   * edge (a big smoke puff must not poke under either), and none is drawn
+   * below it.  The tray's top is read from the DOM a few times a second (the
+   * sheet slides 220ms when it opens), as a fraction of the canvas, so it is
+   * right at any zoom, sheet state or phone; no tray (landscape hides it) is
+   * a fraction of 1 -- the canvas bottom, where nothing needs hiding. */
+  _seamFrac(canvas) {
+    this._seamAt = (this._seamAt || 0) + 1;
+    if (this._seamFrac01 != null && (this._seamAt % 12) !== 1) return this._seamFrac01;
+    let f = 1;
+    try {
+      const d = typeof document !== 'undefined' && document.querySelector('.bt-dashboard');
+      if (d && canvas && canvas.getBoundingClientRect) {
+        const dr = d.getBoundingClientRect(), cr = canvas.getBoundingClientRect();
+        if (dr.height > 0 && cr.height > 0) f = Math.max(0, Math.min(1, (dr.top - cr.top) / cr.height));
+      }
+    } catch (e) { /* no DOM: the canvas bottom */ }
+    this._seamFrac01 = f;
+    return f;
+  }
+
+  /** Per frame.  (cx, cy, viewW, viewH): the camera's world rect; `canvas`
+   *  the stage's element, to find where the dashboard covers it. */
+  update(S, cx, cy, viewW, viewH, now, canvas) {
     const zoneId = S && S.currentZone;
     if (zoneId !== this.zone) this.setZone(zoneId);
     const dt = Math.max(0, Math.min(0.1, ((now - (this.lastT || now)) / 1000)));
@@ -326,6 +359,10 @@ export class AmbientFx {
     const view = { x: cx, y: cy, w: viewW, h: viewH };
     const tsec = now / 1000;
     const M = 60;
+    /* v2.3.2721: the dashboard's top edge, in world px, and the fade above it */
+    const seamY = view.y + this._seamFrac(canvas) * view.h;
+    const FADE = 40;
+    const seam = (bottom) => { const a = (seamY - 6 - bottom) / FADE; return a <= 0 ? 0 : (a >= 1 ? 1 : a); };
     /* the persistent glows and ripples: breathe, sway, hide off-screen */
     for (const g of this.glows) {
       const on = g.x > view.x - M && g.x < view.x + view.w + M && g.y > view.y - M && g.y < view.y + view.h + M;
@@ -336,6 +373,7 @@ export class AmbientFx {
       g.sp.x = g.x + (g.sway ? Math.sin(tsec * g.w * 0.7 + g.ph) * g.sway : 0);
       g.sp.y = g.y;
       g.sp.scale.set(g.s, g.sy ? g.s * g.sy : g.s);
+      g.sp.alpha *= seam(g.y + g.sp.height / 2);
     }
     /* spawn, by rate, while under the cap */
     const alive = Object.create(null);
@@ -375,6 +413,7 @@ export class AmbientFx {
         sp.scale.set(s, s);
       }
       if (p.vr) sp.rotation += p.vr * dt;
+      sp.alpha *= seam(p.y + sp.height / 2);
     }
     /* QA probe, house style: what is alive, by kind -- a 2px ember cannot be
        counted off a screenshot. */
@@ -382,6 +421,9 @@ export class AmbientFx {
       this._probeAt = (this._probeAt || 0) + 1;
       if ((this._probeAt & 15) === 0) {
         window.__btAmbient = { zone: this.zone, glows: this.glows.filter((g) => g.sp.visible).length, alive: Object.assign({}, alive),
+          seamY: Math.round(seamY),
+          /* v2.3.2721: the brightest sprite within FADE of the dashboard (0 = the seam is clean) */
+          atSeam: Math.max(0, ...this.glows.concat(this.parts).map((o) => (o.sp.visible && o.sp.y + o.sp.height / 2 > seamY - 6) ? o.sp.alpha : 0)),
           view: { x: Math.round(view.x), y: Math.round(view.y), w: Math.round(view.w), h: Math.round(view.h) } };
       }
     }

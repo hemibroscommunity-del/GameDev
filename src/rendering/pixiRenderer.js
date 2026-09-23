@@ -381,7 +381,7 @@ export async function initPixiRenderer(canvas) {
     try { worldFx.update(S, { cx, cy, viewW, viewH, cssW, cssH }, now); }
     catch (e) { if (!update._worldFxErr) { update._worldFxErr = true; console.error('[pixi-render] worldFx threw', e && e.message, e && e.stack); } }
     /* v2.3.2720: after the effects, in the camera's world rect. */
-    try { ambientFx.update(S, cx, cy, viewW, viewH, now); }
+    try { ambientFx.update(S, cx, cy, viewW, viewH, now, canvas); }
     catch (e) { if (!update._ambientErr) { update._ambientErr = true; console.error('[pixi-render] ambientFx threw', e && e.message, e && e.stack); } }
     const _t3 = performance.now();
     update._lastStages.effectsMs = _t3 - _t2;

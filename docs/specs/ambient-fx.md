@@ -37,6 +37,16 @@ in the `glows` layer (above the night's light map), so lava shines after dark.
   `foreground`.
 * **Tuning** lives in `ZONE_FX` at the top of that file (per-map `k` scales
   every size and speed — the worldview is a vista, so its effects are smaller).
+* **Nothing shines against the dashboard (v2.3.2721).** The canvas runs ~14
+  CSS px under the bottom dashboard (the tray's top corners are rounded, so the
+  world shows through them). The far-south sea's ripples and glints are bright
+  horizontal streaks, and one sliding along just above the tray read as the
+  tray's own top edge flickering (owner report). Every ambient sprite now fades
+  out over the last 40 world px above the tray's top edge, measured by the
+  sprite's bottom, and is invisible below it. The edge is read from the DOM
+  (`.bt-dashboard`) a few times a second, so it follows the sheet open or
+  closed. Nothing was ever drawn on the tray itself: the on/off diff is clean
+  inside it.
 
 ## Verified
 
@@ -47,4 +57,6 @@ records 5 s of the compositor's own frames per stop (for a human to watch —
 a single frame of a low-alpha ripple cannot show it). `window.__btAmbientOff =
 true` hides the layer, which is how the effects' real contribution was
 measured (an on/off pixel diff): the first cut was too faint to see on a phone
-and was scaled up from that measurement.
+and was scaled up from that measurement. The far-south stop (`worldview-south`)
+checks that the dashboard edge is found and that nothing within the fade is
+lit (`__btAmbient.atSeam === 0`).
