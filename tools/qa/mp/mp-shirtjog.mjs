@@ -61,7 +61,9 @@ const liveFrames = (P, ms) => P.page.evaluate((dur) => new Promise((res) => {
       if (!t.__qaId) t.__qaId = ++window.__qaTexN;
       seen.add(t.__qaId + '@' + t.frame.x + ',' + t.frame.y);
       const r = t.source.resource;
-      src = String((r && (r.currentSrc || r.src)) || '').split('/').slice(-2).join('/');
+      /* v2.3.2750: a cropped sheet's resource is a packed canvas; gearSheets
+         keeps the decoded file's URL on the source's label */
+      src = String((r && (r.currentSrc || r.src)) || t.source.label || '').split('/').slice(-2).join('/');
     }
     if (performance.now() - t0 < dur) requestAnimationFrame(tick); else res({ n: seen.size, src });
   };
@@ -79,39 +81,60 @@ const sheetOutline = (P) => P.page.evaluate(() => {
   const t = s && s.texture;
   const img = t && t.source && t.source.resource;
   if (!img || !(img.naturalWidth || img.width)) return null;
-  const k = (t.source.pixelWidth && t.source.width) ? t.source.pixelWidth / t.source.width : 1;
-  const fw = Math.round(t.frame.width * k), fh = Math.round(t.frame.height * k);
-  const W = img.naturalWidth || img.width, Hh = img.naturalHeight || img.height;
-  const c = document.createElement('canvas');
-  c.width = W; c.height = Hh;
-  const g = c.getContext('2d', { willReadFrequently: true });
-  g.drawImage(img, 0, 0);
-  const px = g.getImageData(0, 0, W, Hh).data;
-  const frames = [];
-  for (let fy = 0; fy + fh <= Hh; fy += fh) {
-    for (let fx = 0; fx + fw <= W; fx += fw) {
-      const solid = (x, y) => x >= 0 && y >= 0 && x < fw && y < fh && px[((fy + y) * W + fx + x) * 4 + 3] >= 128;
-      const hem = new Uint8Array(fw * fh);
-      let any = false;
-      for (let x = 0; x < fw; x++) {
-        let n = 0;
-        for (let y = fh - 1; y >= 0 && n < 2; y--) if (solid(x, y)) { hem[y * fw + x] = 1; n++; any = true; }
-      }
-      if (!any) continue;                       /* an empty cell past the last frame */
-      let edge = 0, dark = 0;
-      for (let y = 0; y < fh; y++) {
-        for (let x = 0; x < fw; x++) {
-          if (!solid(x, y) || hem[y * fw + x]) continue;
-          if (solid(x - 1, y) && solid(x + 1, y) && solid(x, y - 1) && solid(x, y + 1)) continue;
-          edge++;
-          const i = ((fy + y) * W + fx + x) * 4;
-          if (0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2] < 90) dark++;
-        }
-      }
-      if (edge) frames.push(dark / edge);
+  /* One cell per frame, each as fw x fh RGBA.  v2.3.2750: gear frames are
+     CROPPED (gearSheets packTrimmed), so the source is no longer a grid of
+     equal cells -- the sheet's frames come from __btGearSheetOf and each is
+     drawn back into its whole frame at its trim, which is byte-identical to
+     the uncropped cell.  An uncropped sheet keeps the grid walk. */
+  const cells = [];
+  let fw, fh;
+  const sheet = window.__btGearSheetOf ? window.__btGearSheetOf(t) : null;
+  if (sheet && sheet[0] && sheet[0].trim) {
+    fw = Math.round(sheet[0].orig.width); fh = Math.round(sheet[0].orig.height);
+    for (const f of sheet) {
+      const c = document.createElement('canvas'); c.width = fw; c.height = fh;
+      const g = c.getContext('2d', { willReadFrequently: true });
+      g.imageSmoothingEnabled = false;
+      g.drawImage(f.source.resource, f.frame.x, f.frame.y, f.frame.width, f.frame.height,
+        f.trim.x, f.trim.y, f.frame.width, f.frame.height);
+      cells.push(g.getImageData(0, 0, fw, fh).data);
+    }
+  } else {
+    const k = (t.source.pixelWidth && t.source.width) ? t.source.pixelWidth / t.source.width : 1;
+    fw = Math.round(t.frame.width * k); fh = Math.round(t.frame.height * k);
+    const W = img.naturalWidth || img.width, Hh = img.naturalHeight || img.height;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = Hh;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(img, 0, 0);
+    for (let fy = 0; fy + fh <= Hh; fy += fh) {
+      for (let fx = 0; fx + fw <= W; fx += fw) cells.push(g.getImageData(fx, fy, fw, fh).data);
     }
   }
-  return { src: String(img.currentSrc || img.src || '').split('/').slice(-2).join('/'), frames };
+  const frames = [];
+  for (const px of cells) {
+    const solid = (x, y) => x >= 0 && y >= 0 && x < fw && y < fh && px[(y * fw + x) * 4 + 3] >= 128;
+    const hem = new Uint8Array(fw * fh);
+    let any = false;
+    for (let x = 0; x < fw; x++) {
+      let n = 0;
+      for (let y = fh - 1; y >= 0 && n < 2; y--) if (solid(x, y)) { hem[y * fw + x] = 1; n++; any = true; }
+    }
+    if (!any) continue;                       /* an empty cell past the last frame */
+    let edge = 0, dark = 0;
+    for (let y = 0; y < fh; y++) {
+      for (let x = 0; x < fw; x++) {
+        if (!solid(x, y) || hem[y * fw + x]) continue;
+        if (solid(x - 1, y) && solid(x + 1, y) && solid(x, y - 1) && solid(x, y + 1)) continue;
+        edge++;
+        const i = (y * fw + x) * 4;
+        if (0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2] < 90) dark++;
+      }
+    }
+    if (edge) frames.push(dark / edge);
+  }
+  const url = String(img.currentSrc || img.src || t.source.label || '');
+  return { src: url.split('/').slice(-2).join('/'), frames };
 });
 
 export async function run(ctx) {

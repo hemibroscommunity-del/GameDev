@@ -51,6 +51,7 @@ import { loadNpcSprites, loadZoneDecor, freeZoneDecor } from './npcSprites.js'; 
 import { preloadLevelUpBurst } from './levelUpBurstPreload.js';
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
 import { preloadAuctionInterior } from './auctionInteriorPreload.js'; /* v2.3.2627: the auction house's room + clerk */
+import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2760: the harvest cue's mini tools */
 import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
 import { preloadMonsterShots } from './monsterShotFx.js'; /* v2.3.2732: the monsters' goo and fire, minted in code */
 
@@ -330,6 +331,11 @@ export async function preloadWorldAnimations() {
        See statDemoPreload.js — it names both. */
     statDemo: preloadStatDemo(),
     auctionInterior: preloadAuctionInterior(),
+    /* ═══ v2.3.2760: the harvest cue's mini tools ═══
+       DOM images on the right button (the bag's pickaxe / axe / rod icons and
+       the pan strip), GLOBAL: every gathering zone and the town campfire use
+       them.  See gestureCuePreload.js for why none of them was already warm. */
+    gestureCue: preloadGestureCue(),
   };
 
   const names = Object.keys(groups);

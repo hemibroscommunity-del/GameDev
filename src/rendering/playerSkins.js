@@ -33,6 +33,7 @@ import { getEyeStyle, onEyeStyleChange } from './traits/eyeStyleCatalog.js';   /
 import { getArt, artHasInk, artHash, onArtChange, sideForDir, emptyArt } from './traits/playerArt.js';   /* v2.3.2042: sideForDir/emptyArt -- a face tattoo does not revolve to the back of a head */
 import { stampRegion, stampPattern, litFabricMask, regionFromFeet, splitSkinRegions, PANTS_LIT_MIN, SHOES_LIT_MIN, PANTS_MAX_UP, SHOES_MAX_UP, PANTS_BOX, TATTOO_BOX, FACE_BOX, ARM_BOX } from './playerDecal.js';
 import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/patternCatalog.js';   /* v2.3.1941 */
+import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2761: the fishing rod's pine; v2.3.2780: + the file's key mask */
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
 /* v2.3.1513: seven more tones at the light end (owner: "more white tan and
@@ -1144,6 +1145,18 @@ function loadImg(url) { return loadWebpOrPng(url); }
    'loading' persists across the backoff so the base-sheet fallback
    keeps the player visible; &r=N bypasses a poisoned cache entry. */
 const _BODY_RETRY_MS = [2000, 6000];
+/* v2.3.2780: the tool key as the SHEET FILE has it, at the bake's own size --
+   read before anything is painted, so a drawing in the key's hue cannot pass
+   for the tool (see the fish recolour in buildBodySheet). */
+function _fileKeyMask(img, w, h) {
+  const src = upscaleToFrameHeight(img, FRAME_H);
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.imageSmoothingEnabled = false;
+  g.drawImage(src, 0, 0);
+  return toolKeyMask(g.getImageData(0, 0, w, h).data, w, h);
+}
 function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, eyeBlank, attempt = 0) {
   art = artForFacing(art, dir);   /* v2.3.2042: the bake must match the key above */
   _bodySheets[sheetKey] = 'loading';
@@ -1170,6 +1183,15 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
          being baked. */
       eyeT, EYE_MASK[`${pose}-${dir}`], art, undefined, pose === 'jog',
       eyeBlank || null);   /* v2.3.2643 */
+    /* v2.3.2761: the fishing rod's pine, AFTER the skin pass -- pine is the
+       skin's hue family, so recolouring before it would hand the rod to the
+       skin retint.  See toolRecolor.js.
+       v2.3.2780: ...and only where the FILE has the key.  Fishing bakes carry
+       the drawings now (getFishFrame), and the key test is a hue window a pink
+       tattoo sits inside (#d76ba8 is hue 326): recoloured by that test alone,
+       a player's pink ink turned to pine wood for as long as he fished --
+       caught by mp-cosmpose's pink "fish" check the moment the two met. */
+    if (pose === 'fish') recolorToolKeyCanvas(full, TOOL_SPECS.rod, 1, _fileKeyMask(img, full.width, full.height));
     /* v2.3.1120: count frames at full 256-space width, then downscale the DISPLAY
        texture to 256/DISPLAY_DS px (the figure shows ~100px on a phone).  Mipmaps
        off -- renders ~1:1 post-downscale, so the mip chain is wasted VRAM. */
@@ -1442,17 +1464,19 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
 
-/* ═══ v2.3.2751: FISHING KEEPS YOUR DRAWINGS ═══
+/* ═══ v2.3.2780: FISHING KEEPS YOUR DRAWINGS ═══
    Owner: "yes make tattoos stay on while harvesting resources."
    Fishing draws the RAW fish sheet, on purpose (entityRenderer v2.3.2304):
    the pink rod and line are baked into that art and the body-region RECOLOUR
    mis-paints them, so no skin tone, trousers, shoes or eyes go on it.  The
    drawings rode that same bake and were lost with it -- which nobody chose.
-   They do not need the recolour.  The rod is magenta, and _isSkin refuses it
-   (skin wants g >= b; the rod is b > g), so a bake with NO retint targets and
-   only `art` stamps the tattoos, prints and patterns into the regions they
-   always use and leaves every other pixel as drawn, the rod included.  A
-   player with no drawings gets the raw frame, exactly as before.
+   They do not need the recolour.  In the file the rod is the magenta tool key,
+   and _isSkin refuses it (skin wants g >= b; the key is b > g), so a bake with
+   NO retint targets and only `art` stamps the tattoos, prints and patterns into
+   the regions they always use and leaves every other pixel as drawn, the rod
+   included -- and buildBodySheet turns the key to pine AFTER the stamp
+   (v2.3.2761), so the rod is pine here as on the plain sheet.  A player with
+   no drawings gets the raw frame, exactly as before.
    South only and never mirrored: the fish art is authored south and never
    flips, so the drawing is always the unflipped one. */
 function _fishArt(art) {
@@ -1632,7 +1656,7 @@ export function prewarmBody(skinId, pantsId, shoesId, shirtT, shirtKey) {
     const key = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, 'stand', dir, art, blank && blank.id);
     if (_bodySheets[key] === undefined) buildBodySheet(key, 'stand', dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, art, blank && blank.rects);
   }
-  /* v2.3.2751: a drawing edit drops every inked sheet (_dropArtSheets) and
+  /* v2.3.2780: a drawing edit drops every inked sheet (_dropArtSheets) and
      lands here; the inked fish sheet is rebuilt with the stand ones, so the
      next cast is not the one that pays for it. */
   if (art) prewarmFishInk(art);
@@ -1715,7 +1739,7 @@ export function preloadBodyAll() {
      moment the player starts a gather.  The sheet is 1792x128 on disk, so at
      DISPLAY_DS=2 this is a few hundred KB. */
   prewarm('mine', 'south');
-  /* v2.3.2751: and the FISH sheet with the drawings on it (getFishFrame) --
+  /* v2.3.2780: and the FISH sheet with the drawings on it (getFishFrame) --
      only a drawn player has one; everyone else fishes on the raw sheet, which
      loadPlayerSprites already holds. */
   if (art) tasks.push(prewarmFishInk(art));

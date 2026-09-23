@@ -1,4 +1,4 @@
-/* ═══ v2.3.2751: YOUR TATTOOS STAY ON WHILE YOU FISH ═══
+/* ═══ v2.3.2780: YOUR TATTOOS STAY ON WHILE YOU FISH ═══
  *
  * Owner: "yes make tattoos stay on while harvesting resources."
  *
@@ -10,12 +10,14 @@
  * from the frames the renderer actually draws, and that the two things the old
  * choice protected are still protected:
  *
- *   - THE ROD'S OWN PIXELS: not one of them is repainted by the ink;
+ *   - THE ROD'S OWN PIXELS: not one of them is repainted by the ink (it is
+ *     pine since v2.3.2761; the check is "still wood");
  *   - THE HAND-OVER-SHIRT OVERLAY (v2.3.1914): it lifts the rod and the hand
- *     around it above the shirt, finding the rod by its magenta.  A PINK tattoo
- *     passes that same colour test, so found on the inked frame a chest tattoo
- *     would ride over the shirt.  It is found on the raw frame now; the
- *     measure is the overlay's rod size against a plain angler's.
+ *     around it above the shirt.  It finds the rod by its recorded shape
+ *     (v2.3.2761), falling back to its old magenta, and a PINK tattoo passes
+ *     that colour test -- found on the inked frame, a chest tattoo would ride
+ *     over the shirt.  The measure is the overlay's rod size against a plain
+ *     angler's.
  *
  * WHY THE FRAME AND NOT ONLY THE SCREEN.  A screenshot of a figure at a
  * fishing spot also photographs the water, and ink blue is water blue.  The
@@ -24,11 +26,14 @@
  * frame and NOT at the same spot in the art is ink, whatever else is blue.
  * The crops are saved as pictures, not gated.
  *
- * Face and arm are drawn BLUE (palette 8) because nothing on the fish art is;
- * the chest is drawn PINK (palette 11) because that is the colour that trips
- * the rod detector.  All three go into storage before the character exists, so
- * the creator's join carries them into the saved record (v2.3.2746 -- a look
- * seeded after creation is, correctly, blank).
+ * The face is drawn BLUE (palette 8), which nothing on the fish art is.  The
+ * arms and chest are drawn PINK (palette 11), which is the colour that trips
+ * both rod tests: the overlay's magenta fallback, and the pine recolour's key
+ * hue window (315-350; #d76ba8 is 326) -- the first cut of this change passed
+ * with blue arms while pink ink was being turned to pine wood, and only
+ * mp-cosmpose's pink check saw it.  All three go into storage before the
+ * character exists, so the creator's join carries them into the saved record
+ * (v2.3.2746 -- a look seeded after creation is, correctly, blank).
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -46,7 +51,7 @@ const COACH_OFF = `try {
 const SEED = COACH_OFF + `
 try {
   localStorage.setItem('bt-facetattoo', ${JSON.stringify(ALL_BLUE)});
-  localStorage.setItem('bt-armtattoo', ${JSON.stringify(ALL_BLUE)});
+  localStorage.setItem('bt-armtattoo', ${JSON.stringify(ALL_PINK)});
   localStorage.setItem('bt-tattooart', ${JSON.stringify(ALL_PINK)});
 } catch (e) {}`;
 
@@ -74,10 +79,27 @@ const sampleFrames = (P, peerId, ms) => P.page.evaluate(async ({ pid, dur }) => 
   }
   const sheet = window.__qaFishSheet;
   const isBlue = (d, o) => d[o + 3] > 60 && d[o + 2] > d[o] + 40 && d[o + 2] > d[o + 1] + 20;
-  const isRod = (d, o) => {
+  /* mp-cosmpose's pink test.  The file's rod key passes it too, which is why
+     ink is counted only where the FILE is not pink. */
+  const isPink = (d, o) => d[o + 3] > 60 && d[o + 2] > d[o + 1] + 24 && d[o] > 110 && d[o] >= d[o + 2];
+  /* The rod, found where the FILE has it: the magenta tool key (toolRecolor
+     isToolKey's hue window).  In the game it is pine (v2.3.2761), and pine is
+     warm -- r >= g >= b on every step of its ramp -- while both inks are not
+     (blue: b above r; pink: b above g).  So a rod pixel still reading warm is
+     a rod pixel no ink landed on. */
+  const isKey = (d, o) => {
     const r = d[o], g = d[o + 1], b = d[o + 2], a = d[o + 3];
-    return a > 60 && r > 140 && g < 115 && b > 60 && b < 195 && (r - g) > 60 && b > g + 22;
+    if (a < 77) return false;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    if (mx < 46 || mx - mn < mx * 0.4) return false;
+    let h;
+    if (mx === r) h = 60 * (((g - b) / (mx - mn)) % 6);
+    else if (mx === g) h = 60 * ((b - r) / (mx - mn) + 2);
+    else h = 60 * ((r - g) / (mx - mn) + 4);
+    if (h < 0) h += 360;
+    return h >= 315 && h <= 350;
   };
+  const isWood = (d, o) => d[o + 3] > 60 && d[o] >= d[o + 1] && d[o + 1] >= d[o + 2];
   const measure = (pd) => {
     const sb = pd && pd._spriteBody;
     const tex = sb && sb.texture;
@@ -99,12 +121,13 @@ const sampleFrames = (P, peerId, ms) => P.page.evaluate(async ({ pid, dur }) => 
     const idx = Math.round(f.x / f.width);
     const sfw = sheet.naturalHeight;   /* square frames, one row */
     const raw = draw(sheet, idx * sfw, 0, sfw, sfw);
-    let ink = 0, rodRaw = 0, rodKept = 0;
+    let ink = 0, pink = 0, rodRaw = 0, rodKept = 0;
     for (let o = 0; o < got.length; o += 4) {
       if (isBlue(got, o) && !isBlue(raw, o)) ink++;
-      if (isRod(raw, o)) { rodRaw++; if (isRod(got, o)) rodKept++; }
+      if (isPink(got, o) && !isPink(raw, o)) pink++;
+      if (isKey(raw, o)) { rodRaw++; if (isWood(got, o)) rodKept++; }
     }
-    return { pose, idx, ink, rodRaw, rodKept };
+    return { pose, idx, ink, pink, rodRaw, rodKept };
   };
   const out = [];
   const seen = new Set();
@@ -249,15 +272,15 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
 
   const own = await A.page.evaluate(([blue, pink]) => ({
     face: localStorage.getItem('bt-facetattoo') === blue,
-    arm: localStorage.getItem('bt-armtattoo') === blue,
+    arm: localStorage.getItem('bt-armtattoo') === pink,
     chest: localStorage.getItem('bt-tattooart') === pink,
   }), [ALL_BLUE, ALL_PINK]);
   rec.ok('the character\'s face, arm and chest drawings are his own (guard: exact strings)',
     own.face && own.arm && own.chest, own);
-  const relayed = await B.page.evaluate(([id, blue]) => {
+  const relayed = await B.page.evaluate(([id, blue, pink]) => {
     const o = ((window._gameState.current || {}).others || {})[id];
-    return o ? { face: o.faceTattooArt === blue, arm: o.armTattooArt === blue } : null;
-  }, [aId, ALL_BLUE]);
+    return o ? { face: o.faceTattooArt === blue, arm: o.armTattooArt === pink } : null;
+  }, [aId, ALL_BLUE, ALL_PINK]);
   rec.ok('the watcher has his drawings off the wire (guard)', !!relayed && relayed.face && relayed.arm, relayed);
 
   await crop(A, null, 'inked-standing');
@@ -286,8 +309,12 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
   console.log(`    overlay rod px -- plain angler max ${cRodMax}; tattooed: ${aTops.map((t) => t.rod).join(' ')}`);
   rec.ok('he is drawn in the fish pose on his own screen (guard)', selfF.length >= 5, selfS.map((s) => s.pose + (s.err ? ':' + s.err : '')).slice(0, 12));
   rec.ok('...and on the watcher\'s (guard)', peerF.length >= 5, peerS.map((s) => s.pose + (s.err ? ':' + s.err : '')).slice(0, 12));
+  console.log(`    own screen, PINK ink per fish frame: ${selfF.map((s) => s.pink).join(' ')}`);
+  console.log(`    watcher's screen, PINK ink per fish frame: ${peerF.map((s) => s.pink).join(' ')}`);
   rec.ok('ON HIS OWN SCREEN the tattoos are on every fishing frame, from the first one (baked behind the loading screen)',
     selfF.length > 0 && selfF.every((s) => s.ink >= 20), selfF.map((s) => s.ink));
+  rec.ok('...the PINK ones too -- not turned to pine wood by the rod\'s recolour (every frame)',
+    selfF.length > 0 && selfF.every((s) => s.pink >= 12), selfF.map((s) => s.pink));
   const firstInked = peerF.findIndex((s) => s.ink >= 20);
   const bareMs = firstInked >= 0 ? peerF[firstInked].t - peerF[0].t : null;
   console.log(`    watcher: first fishing frame at ${peerF[0] ? peerF[0].t : '-'} ms, first with the tattoos at ${firstInked >= 0 ? peerF[firstInked].t : '-'} ms`);
@@ -303,14 +330,15 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
      guarded is "during the first cast", not a particular machine's speed. */
   rec.ok(`ON THE WATCHER'S SCREEN they are on too, from his first cast (bare for ${bareMs} ms here while it bakes; a cast is 1333 ms)`,
     firstInked >= 0 && bareMs <= 2 * 1333, { firstInked, frames: peerF.map((s) => [s.t, s.ink]) });
-  rec.ok('...and stay on for every frame after that',
-    firstInked >= 0 && peerF.slice(firstInked).every((s) => s.ink >= 20), peerF.slice(Math.max(0, firstInked)).map((s) => s.ink));
+  rec.ok('...and stay on for every frame after that, pink ones included',
+    firstInked >= 0 && peerF.slice(firstInked).every((s) => s.ink >= 20 && s.pink >= 12),
+    peerF.slice(Math.max(0, firstInked)).map((s) => [s.ink, s.pink]));
   /* on the INKED frames: the claim is that the ink never lands on the rod.  A
      bare frame is the loader's copy of the sheet, not the bake, and says
      nothing either way. */
   const inkedF = [...selfF, ...peerF].filter((s) => s.ink >= 20);
   const rodHit = inkedF.filter((s) => !(s.rodRaw > 0 && s.rodKept === s.rodRaw));
-  rec.ok(`the rod is untouched: every rod pixel of the art is still rod, on every inked frame on both screens (${inkedF.length} frames)`,
+  rec.ok(`the rod is untouched: every rod pixel is still wood, not ink, on every inked frame on both screens (${inkedF.length} frames)`,
     inkedF.length > 0 && rodHit.length === 0,
     rodHit.slice(0, 8).map((s) => ({ idx: s.idx, rodRaw: s.rodRaw, kept: s.rodKept, ink: s.ink })));
   rec.ok('the hand-over-shirt overlay lifts the ROD, not the pink chest tattoo: its rod is no bigger than a plain angler\'s',

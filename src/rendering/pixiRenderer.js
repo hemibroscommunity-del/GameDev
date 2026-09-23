@@ -10,6 +10,7 @@ import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/ef
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { LightFx, setLightFx } from './lightfx/lightFx.js'; /* v2.3.2710: map-lit shadows + metal glint, behind ?lightfx=1 */
+import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2762 */
 import { setWorldCasts } from './lightfx/casters.js'; /* v2.3.2749: QA before/after of the world's shadows */
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { MinimapRenderer } from './systems/minimapRenderer.js'; /* v2.3.1781 */
@@ -26,6 +27,8 @@ import { preloadCombatGear } from './combatGear.js';
 import { preloadBodyAll } from './playerSkins.js';
 import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
 import { Assets } from 'pixi.js';
+import { markStandIns } from './formShade.js'; /* v2.3.2767: light from above (the batcher patch itself installs on import) */
+import { SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS } from './lightfx/casters.js';
 
 /* v2.3.778: decode ALL textures to <img>-backed sources, never ImageBitmap.
    On iOS, ImageBitmaps are GPU-backed: the memory purge that kills the WebGL
@@ -177,6 +180,9 @@ export async function initPixiRenderer(canvas) {
       world: (on) => setWorldCasts(on),
     };
   }
+  /* v2.3.2762: the maps' ambient life -- lava breathing, smoke, water light,
+     wind, snow, motes (systems/ambientFx.js). */
+  const ambientFx = new AmbientFx(layers);
   /* v2.3.221: FPS counter only mounts with ?dev=1. */
   const _devUI = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search);
   /* v2.3.1781: minimap lives in the screen-space `hud` layer so it never
@@ -242,6 +248,7 @@ export async function initPixiRenderer(canvas) {
     entityRenderer.clear();
     effectsRenderer.clear();
     lightFx.clear();   /* v2.3.2710: last zone's shadows and glints go with its figures */
+    ambientFx.setZone(zoneId);   /* v2.3.2762 */
     /* ═══ v2.3.2596: THE ZONE-ENTRY BANNER'S ONE TRIGGER ═══
        This function is the single place in the client that observes every zone
        change, whatever set it -- the hub walk-in, a respawn, the dev warp, a
@@ -389,6 +396,9 @@ export async function initPixiRenderer(canvas) {
        ones that were not -- the respawned). */
     try { worldFx.update(S, { cx, cy, viewW, viewH, cssW, cssH }, now); }
     catch (e) { if (!update._worldFxErr) { update._worldFxErr = true; console.error('[pixi-render] worldFx threw', e && e.message, e && e.stack); } }
+    /* v2.3.2762: after the effects, in the camera's world rect. */
+    try { ambientFx.update(S, cx, cy, viewW, viewH, now, canvas); }
+    catch (e) { if (!update._ambientErr) { update._ambientErr = true; console.error('[pixi-render] ambientFx threw', e && e.message, e && e.stack); } }
     const _t3 = performance.now();
     update._lastStages.effectsMs = _t3 - _t2;
     /* ═══ v2.3.2635: DEPTH, AFTER EVERYTHING HAS MOVED ═══
@@ -422,6 +432,8 @@ export async function initPixiRenderer(canvas) {
        everything that moves them -- the entity pass, the stand-ins placed by
        the effects pass, and the depth pass that re-parents occluders.  One
        boolean read when the switch is off (lightFx.js). */
+    /* v2.3.2767: the combat / gathering stand-ins take the figure shade too */
+    try { markStandIns(effectsRenderer, SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS); } catch (e) { /* never break a frame */ }
     try { lightFx.update(S, now, entityRenderer, effectsRenderer); }
     catch (e) { if (!update._lightErr) { update._lightErr = true; console.error('[pixi-render] lightFx threw', e && e.message, e && e.stack); } }
     try { minimap.update(S, cssW, cssH, canvas); }
@@ -724,7 +736,7 @@ export async function initPixiRenderer(canvas) {
        its children.  Read-only use only — this hands out the live container,
        so a scenario that mutated it would be testing its own edit. */
     playerDisplayRaw: () => entityRenderer.playerDisplay || null,
-    /* v2.3.2751: the same, for ANOTHER player's figure -- mp-harvestink reads
+    /* v2.3.2780: the same, for ANOTHER player's figure -- mp-harvestink reads
        which frame a peer is drawn from while they fish.  Read-only, same rule. */
     peerDisplayRaw: (id) => (entityRenderer.otherPlayerDisplays && entityRenderer.otherPlayerDisplays.get(id)) || null,
     /* v2.3.2078: what the pet display is doing — the pet was invisible

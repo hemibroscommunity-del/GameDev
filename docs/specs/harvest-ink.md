@@ -1,4 +1,4 @@
-# Tattoos stay on while you harvest (v2.3.2751)
+# Tattoos stay on while you harvest (v2.3.2780)
 
 Owner: *"yes make tattoos stay on while harvesting resources."*
 
@@ -12,7 +12,7 @@ The game has three gathering skills. Where each one stood:
 
 ## Fishing
 
-The same tattooed character (blue face and hands, pink chest) fishing on main
+The same tattooed character (blue face, pink arms and chest) fishing on main
 and on this change, on his own screen and on another player's:
 
 ![before and after, both screens](img/harvest-ink/fishing.jpg)
@@ -22,10 +22,18 @@ rod and line are baked into that art, and the body-region **recolour** (skin
 tone, trousers, shoes) mis-paints them. The drawings were stamped in the same
 bake, so they were lost with it. Nobody chose that; it came along.
 
-The drawings do not need the recolour. The rod is magenta, and `_isSkin` refuses
-it (skin wants `g >= b`; the rod is `b > g`), so a bake with no retint targets and
-only the drawings stamps the tattoos, prints and patterns into the regions they
-always use and leaves every other pixel as drawn, rod included.
+The drawings do not need the recolour. In the file the rod is the magenta tool
+key, and `_isSkin` refuses it (skin wants `g >= b`; the key is `b > g`), so a bake
+with no retint targets and only the drawings stamps the tattoos, prints and
+patterns into the regions they always use and leaves every other pixel as drawn,
+rod included. The bake then turns the key to pine after the stamp (v2.3.2761), so
+the rod is pine on the inked sheet exactly as on the plain one.
+
+**The pine recolour only touches the rod.** It finds the key by a hue window
+(315 to 350), and the drawing palette's pink (`#d76ba8`) is hue 326, inside it.
+On the first build that combined the two, a player's pink tattoos turned to pine
+wood for as long as he fished. The recolour now only touches pixels that were key
+in the sheet file (`_fileKeyMask`), read before anything is painted.
 `getFishFrame(art, frameIdx)` (playerSkins) is that bake. A player with no
 drawings gets the raw frame back, exactly as before. Skin tone, trouser and shoe
 colours still do not apply while fishing; that is the trade v2.3.2304 made, and
@@ -39,23 +47,26 @@ armour-masked fishing frames are prewarmed from the inked frame too.
 **Another player's** inked fish sheet bakes the first time they cast. Their
 drawings cannot be known at load, which is the exception CLAUDE.md's preload law
 names, and it is how every other pose of a custom-looking peer already works. So
-on their first cast they fish bare until the bake lands: 0.9 to 1.5 s across
+on their first cast they fish bare until the bake lands: 0.9 to 1.8 s across
 runs on the test machine, which renders several times slower than a phone. The alternative,
 baking every tattooed player's fish sheet on sight, holds about 2.7 MB of GPU
 memory per tattooed player whether they ever fish or not.
 
 ### The hand-over-shirt overlay
 
-v2.3.1914 lifts the rod and the gripping hand **above** the shirt while fishing,
-finding the rod by its magenta. A pink tattoo passes that same colour test. On an
-inked frame, a pink chest tattoo would have counted as rod, and it and the skin
-around it would ride above the tee: ink showing through a shirt. The rod is now
-looked for on the **raw** frame, where no ink can be, and the pixels are copied
-from the inked one. That is also what puts the face tattoo in the lifted head
-band.
+v2.3.1914 lifts the rod and the gripping hand **above** the shirt while fishing.
+Since v2.3.2761 it finds the rod by its recorded shape, which no colour can pass.
+When that shape was not recorded, it falls back to the rod's old magenta, and a
+pink tattoo passes that colour test. On an inked frame, a pink chest tattoo would
+count as rod, and it and the skin around it would ride above the tee: ink
+showing through a shirt. So the rod is looked for on the **raw** frame, where
+no ink can be, and the pixels are copied from the inked one. That is also what
+puts the face tattoo in the lifted head band.
 
-This was not hypothetical. With the rod looked for on the inked frame, the
-test's pink chest tattoo covered the whole tee:
+This was not hypothetical. With the rod looked for on the inked frame by colour,
+the test's pink chest tattoo covered the whole tee. The picture was taken before
+v2.3.2761, while the rod was still magenta; it is what the colour fallback would
+still do:
 
 ![the overlay with and without the raw-frame rod](img/harvest-ink/overlay-guard.jpg)
 
@@ -81,11 +92,12 @@ lumberjack already shows the artist's skin tone rather than theirs.
 
 `mp-harvestink` (new) reads the frame the renderer actually draws and compares
 it pixel by pixel with the same frame of the sheet the game loads (the `.webp`
-twin), so blue that is in the drawn frame and not in the art is ink, whatever
-else is blue:
+twin), so colour that is in the drawn frame and not in the art is ink, whatever
+else is that colour. The face is drawn blue, the arms and chest pink:
 
 - a plain angler still draws the raw sheet, with no ink on any frame (control);
-- your own screen: ink on every fishing frame, from the first;
+- your own screen: ink on every fishing frame, from the first, the pink too
+  (the colour the rod's recolour could take);
 - a watcher's screen: ink from the first cast, and on every frame after it;
 - every rod pixel of the art is still rod on every inked frame;
 - the overlay's rod is no bigger than a plain angler's, with a pink chest tattoo

@@ -67,7 +67,7 @@ import { getSpecies } from '../traits/speciesCatalog.js';   /* v2.3.2682: the sp
 import { getSpeciesBuild, preloadSpeciesArt } from '../traits/speciesArt.js';   /* v2.3.2682 */
 import { getColoredEyeStyleTextures } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
-import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2751: + the inked fish frame */
+import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2780: + the inked fish frame */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
 import { DISPLAY_DS, bakeDisplayCanvas } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation; v2.3.2325: bakeDisplayCanvas, because the masked bake needs the EXACT-TEXEL 2x inverse, not the smooth one */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
@@ -78,7 +78,7 @@ import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
+import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
 import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
 import { getPattern, parsePattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.1941 */
 import { hatHairFit } from '../traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
@@ -92,6 +92,8 @@ import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-shee
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
+import { SHADE } from '../formShade.js'; /* v2.3.2767: light from above on every figure and prop */
+import { fishRodAt, hasFishRodMask } from '../toolRecolor.js'; /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -339,6 +341,40 @@ if (typeof window !== 'undefined') window.__btForeground = () => _fgDrawn.slice(
    only; the rest are unnamed graphics. */
 let _entityLayerRef = null;
 let _frontLayerRef = null;
+/* ═══ v2.3.2768: WHAT THE LOCAL FIGURE IS MADE OF, AND HOW SHARP EACH PIECE IS ═══
+   Owner: "The character also looks soft compared to the art he's wearing like
+   sword or shirt."  Softness is a number: how many DEVICE pixels each texel
+   of a piece is stretched over.  1 is crisp; 2 is every texel smeared over
+   two pixels by the linear filter.  This lists every visible sprite of the
+   local display with its field name, texture size and that ratio, so a test
+   (or a person) can see which pieces are the soft ones. */
+let _selfDisplayRef = null;
+if (typeof window !== 'undefined') {
+  window.__btSelfSprites = () => {
+    const d = _selfDisplayRef;
+    if (!d || d.destroyed) return null;
+    const names = new Map();
+    for (const k of Object.keys(d)) { const v = d[k]; if (v && typeof v === 'object' && v.texture !== undefined) names.set(v, k); }
+    const dpr = window.devicePixelRatio || 1;
+    const out = [];
+    const walk = (node) => {
+      for (const c of node.children) {
+        if (!c.visible || c === d._uiLayer) continue;
+        if (c.texture && c.texture.source && c.texture !== Texture.EMPTY) {
+          const src = c.texture.source, fr = c.texture.frame;
+          const wt = c.worldTransform;
+          out.push({ name: names.get(c) || c.label || '?', src: [src.width, src.height], srcRes: src.resolution || 1,
+            frame: [Math.round(fr.width), Math.round(fr.height)],
+            devPxPerTexel: +(Math.hypot(wt.a, wt.b) * dpr / (src.resolution || 1)).toFixed(2),
+            url: String((src.resource && (src.resource.src || src.resource.currentSrc)) || src.label || '').slice(-60) });
+        }
+        if (c.children && c.children.length) walk(c);
+      }
+    };
+    walk(d);
+    return out;
+  };
+}
 if (typeof window !== 'undefined') {
   window.__btEntityOrder = () => (_entityLayerRef
     ? _entityLayerRef.children.map((c) => c.label).filter(Boolean) : null);
@@ -2091,7 +2127,10 @@ function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
          assuming 256 -- gearSheets now stores display-sized (exact-texel)
          sheets when the art ships at 128 on disk, and this factor is what
          keeps both generations rendering at the identical world size. */
-      const _gnorm = 256 / ((tex.frame && tex.frame.width) || 256);
+      /* v2.3.2750: ORIG, not frame -- a cropped gear frame's `frame` is just
+         the crop; `orig` is the whole frame it was cut from (gearSheets
+         packTrimmed).  For an uncropped texture the two are equal. */
+      const _gnorm = 256 / ((tex.orig && tex.orig.width) || (tex.frame && tex.frame.width) || 256);
       spr.scale.x = sb.scale.x * _gnorm / DISPLAY_DS; spr.scale.y = sb.scale.y * _gnorm / DISPLAY_DS;
       if (_GEAR_SLOTS[s][0] === 'shirt') {
         /* v2.3.1941: a dressed bake already HAS the colour in its pixels. */
@@ -2372,9 +2411,9 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
     dilCtx.imageSmoothingEnabled = false;
     for (const w of worn) {
       const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
-      const gf = gt.frame;
+      /* v2.3.2750: drawGearFrame places a cropped frame at its own offset. */
       for (let dx = -dilate; dx <= dilate; dx++)
-        dilCtx.drawImage(gr, gf.x, gf.y, gf.width, gf.height, dx, 0, 256, 256);
+        drawGearFrame(dilCtx, gt, dx, 0, 256, 256);
     }
     ctx.globalCompositeOperation = 'destination-out';   // erase body under the armour
     /* v2.3.1073: only dilate the erase DOWNWARD when a leg plate is also worn to
@@ -2404,8 +2443,18 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
        (natural), but the halo-cut section beyond the plate reappears. */
     if (origBody) {
       try {
+        /* v2.3.2761: the rod is PINE now (toolRecolor.js -- the owner asked
+           for the magenta key to become a real material), so it can no longer
+           be found by colour: its shape was recorded from the key as the
+           sheet loaded, and this asks that.  The magenta test stays as the
+           fallback for a sheet that loaded before the mask existed. */
+        const _rodF = (poseInfo && poseInfo.pose === 'fish' && hasFishRodMask()) ? (poseInfo.frameIdx | 0) : null;
         const isRod = (o) => {
           const r = origBody[o], g = origBody[o + 1], b = origBody[o + 2], a = origBody[o + 3];
+          if (_rodF != null) {
+            const p = o >> 2;
+            return a > 60 && fishRodAt(_rodF, (p % 256) / 256, Math.floor(p / 256) / 256) === true;
+          }
           return a > 60 && r > 140 && g < 115 && b > 60 && b < 195 && (r - g) > 60 && b > g + 22;
         };
         const rimg = ctx.getImageData(0, 0, 256, 256);
@@ -2622,8 +2671,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
       let wornChest = false, wornLegs = false;
       for (const w of worn) {
         const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
-        const gf = gt.frame;
-        sctx.drawImage(gr, gf.x, gf.y, gf.width, gf.height, 0, 0, 256, 256);
+        drawGearFrame(sctx, gt, 0, 0, 256, 256);   /* v2.3.2750: cropped frames */
         if (w.k && w.k.indexOf('chest:') === 0) wornChest = true;
         if (w.k && w.k.indexOf('legs:') === 0) wornLegs = true;
       }
@@ -2821,8 +2869,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
                  waist band below (d2[o] = bd[o]), so a bilinear belt sheet
                  painted bilinear chain straight into the finished frame. */
               bctx.imageSmoothingEnabled = false;
-              const bfr = bt.frame;
-              bctx.drawImage(br, bfr.x, bfr.y, bfr.width, bfr.height, 0, 0, 256, 256);
+              drawGearFrame(bctx, bt, 0, 0, 256, 256);   /* v2.3.2750: cropped frames */
               const bd = bctx.getImageData(0, 0, 256, 256).data;
               const _score = (R, G, B, T) => { const nn = T[0] * T[0] + T[1] * T[1] + T[2] * T[2] || 1; const dt = R * T[0] + G * T[1] + B * T[2]; return dt * dt / nn; };
               const { skinRef, pantsRef, shoesRef } = _bakeRefs;
@@ -3214,7 +3261,7 @@ export async function prewarmMaskedBodyFrames(opts) {
       for (let f = 0; f < fc; f++) {
         prewarmProgress.done++;
         /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks.
-           v2.3.2751: ...with the drawings on it (getFishFrame), the frame the
+           v2.3.2780: ...with the drawings on it (getFishFrame), the frame the
            renderer now asks for; baked by preloadBodyAll, which this runs after. */
         const tex = (pose === 'fish') ? getFishFrame(localBodyArt(false), f)
           : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor(), localBodyArt(false), getEyeStyle());   /* v2.3.2643 */
@@ -3310,7 +3357,7 @@ export async function prewarmAltWornSets(opts) {
           if (seq !== _altPrewarmSeq) return;
           if (fast) prewarmProgress.done++;
           /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks.
-             v2.3.2751: with the drawings on it, as the pass above. */
+             v2.3.2780: with the drawings on it, as the pass above. */
           const tex = (pose === 'fish') ? getFishFrame(localBodyArt(false), f)
             : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor(), localBodyArt(false), getEyeStyle());   /* v2.3.2643 */
           if (!tex) continue;
@@ -3474,16 +3521,19 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
    rod's magenta pixels are kept -- the bare torso/arms stay erased so the plate shows
    through.  Cached per body frame (uid). */
 const _fishTopCache = new Map();
-/* ═══ v2.3.2751: THE ROD IS FOUND ON THE RAW FRAME ═══
+/* ═══ v2.3.2780: THE ROD IS LOOKED FOR ON THE RAW FRAME ═══
    `rodTex` is the undrawn fish frame at the same index.  Since fishing keeps the
-   drawings (getFishFrame), `bodyTex` can carry a player's tattoo -- and a pink
-   or magenta one passes isRodAt below exactly as the rod does.  Detected on the
-   inked frame, a chest tattoo would count as rod, and it and the skin within
-   GRIP_R of it would ride this overlay ABOVE the shirt: ink showing through a
-   tee.  So the rod is looked for where no ink can be (the raw frame) and the
-   pixels are copied from the inked one, which is what puts the face tattoo in
-   the head band.  Same geometry -- one sheet, one frame index -- and without a
-   rodTex (or with the raw frame itself) this is the old single-frame path. */
+   drawings (getFishFrame), `bodyTex` can carry a player's tattoo.  v2.3.2761
+   finds the rod by its RECORDED SHAPE (fishRodAt), which no colour can pass --
+   but when that shape was not recorded, isRodAt falls back to the rod's old
+   magenta, and a pink tattoo passes that test exactly as the rod did.  On the
+   inked frame a chest tattoo would then count as rod, and it and the skin
+   within GRIP_R of it would ride this overlay ABOVE the shirt: measured, the
+   test's pink chest covered the whole tee (mp-harvestink).  So the rod is
+   looked for where no ink can be (the raw frame) and the pixels are copied
+   from the inked one, which is also what puts the face tattoo in the head band.
+   Same geometry -- one sheet, one frame index -- and without a rodTex (or with
+   the raw frame itself) this is the old single-frame path. */
 function _fishTopFrame(bodyTex, rodTex) {
   if (!bodyTex) return null;
   let bres; try { bres = bodyTex.source && bodyTex.source.resource; } catch (e) { return null; }
@@ -3499,7 +3549,7 @@ function _fishTopFrame(bodyTex, rodTex) {
     const ctx = cv.getContext('2d');
     ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, W, H);
     const img = ctx.getImageData(0, 0, W, H); const d = img.data;
-    /* v2.3.2751: the pixels the rod is LOOKED FOR in -- the raw frame's, scaled
+    /* v2.3.2780: the pixels the rod is LOOKED FOR in -- the raw frame's, scaled
        onto this one's grid without smoothing (a blended edge would move the
        rod's colour test), or this frame's own when there is no raw one. */
     let rd = d;
@@ -3533,8 +3583,16 @@ function _fishTopFrame(bodyTex, rodTex) {
        test would work for one skin tone and quietly fail for the rest. */
     const GRIP_R = Math.max(4, Math.round(H * 0.055));
     const rodXs = [], rodYs = [];
+    /* v2.3.2761: by the recorded shape, not the colour -- see the same note in
+       _maskedBodyFrameInner.  The frame index is where this frame sits in its
+       strip (every body sheet lays frames out at i * width). */
+    const _rodF = hasFishRodMask() ? Math.round(bf.x / Math.max(1, bf.width)) : null;
     const isRodAt = (o) => {
-      const r = rd[o], g = rd[o + 1], b = rd[o + 2], a = rd[o + 3];   /* v2.3.2751: the raw frame's */
+      const r = rd[o], g = rd[o + 1], b = rd[o + 2], a = rd[o + 3];   /* v2.3.2780: the raw frame's -- see the note above this function */
+      if (_rodF != null) {
+        const p = o >> 2;
+        return a > 60 && fishRodAt(_rodF, (p % W) / W, Math.floor(p / W) / H) === true;
+      }
       return a > 60 && r > 140 && g < 115 && b > 60 && b < 195 && (r - g) > 60 && b > g + 22;
     };
     for (let y = headBot + 1; y < H; y++) {
@@ -3588,7 +3646,7 @@ function _fishTopFrame(bodyTex, rodTex) {
 function _placeFishHead(display, sb, bodyTex, rodTex) {
   const hd = display._bodyHead;
   if (!hd || !sb || !bodyTex) return;
-  const t = _fishTopFrame(bodyTex, rodTex);   /* v2.3.2751: rod found on the raw frame */
+  const t = _fishTopFrame(bodyTex, rodTex);   /* v2.3.2780: rod found on the raw frame */
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
   hd.x = sb.x; hd.y = sb.y;
@@ -4809,6 +4867,7 @@ function createMonsterDisplay(monster) {
 
   container._body = body;
   container._spriteBody = spriteBody;
+  if (spriteBody) { spriteBody._vShade = SHADE.figure; spriteBody._noSharp = true; }   /* v2.3.2767: formShade.js, across its own quad; v2.3.2770: not sharpened (sharpPixels.js is for the pixel-art figures) */
   container._isFodder = isFodder;
   container._variantKey = variantKey;
   container._isSnowman = isSnowman;
@@ -6802,6 +6861,10 @@ function createPlayerDisplay() {
 
   container._body = body;
   container._spriteBody = spriteBody;
+  /* v2.3.2767: formShade.js -- every sprite in this figure takes the same
+     gradient, measured over the body frame's head-to-feet span */
+  container._vShadeRef = spriteBody;
+  container._vShadeKids = SHADE.figure;
   container._shirtSprite = shirtSprite;
   container._facialHairSprite = facialHairSprite;
   container._hairSprite = hairSprite;
@@ -7078,6 +7141,10 @@ function createOtherPlayerDisplay() {
 
   container._body = body;
   container._spriteBody = spriteBody;
+  /* v2.3.2767: formShade.js -- every sprite in this figure takes the same
+     gradient, measured over the body frame's head-to-feet span */
+  container._vShadeRef = spriteBody;
+  container._vShadeKids = SHADE.figure;
   container._shirtSprite = shirtSprite;
   container._facialHairSprite = facialHairSprite;
   container._hairSprite = hairSprite;
@@ -10071,7 +10138,7 @@ export class EntityRenderer {
            their skin tone, trousers, shoes, eye colour and any drawings. That
            is already what you see of YOURSELF today; this makes peers match.
            The durable fix is re-cut fish art with the rod on its own layer. */
-        /* ═══ v2.3.2751: ...BUT NOT THEIR DRAWINGS ═══
+        /* ═══ v2.3.2780: ...BUT NOT THEIR DRAWINGS ═══
            Owner: "yes make tattoos stay on while harvesting resources."  The
            drawings never needed the recolour this note is about: getFishFrame
            stamps them onto the raw sheet and leaves every other pixel as drawn,
@@ -10190,7 +10257,7 @@ export class EntityRenderer {
                while the LOCAL path, which tests chest OR shirt OR legs, kept
                it.  Matching the local test. */
             const _fishWorn = _rworn.length > 0 || (_oShirtEquip && _oShirtEquip !== 'none');
-            if (pose === 'fish' && _fishWorn) _placeFishHead(display, spriteBody, tex, getFrame('fish', 'south', frameIdx));   /* v2.3.2751: + the raw frame, for the rod */
+            if (pose === 'fish' && _fishWorn) _placeFishHead(display, spriteBody, tex, getFrame('fish', 'south', frameIdx));   /* v2.3.2780: + the raw frame, for the rod */
           } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
           /* v2.3.2304: the shirt is drawn by _placeGear as an equip layer, not
              baked into the body -- this sprite is the RETIRED baked-shirt node
@@ -10646,6 +10713,7 @@ export class EntityRenderer {
       ? this.gestureLayer : this.playerLayer;
     if (!this.playerDisplay || this.playerDisplay.destroyed) {
       this.playerDisplay = createPlayerDisplay();
+      _selfDisplayRef = this.playerDisplay;   /* v2.3.2768: __btSelfSprites */
       _bodyLayer.addChild(this.playerDisplay);
     } else if (this.playerDisplay.parent !== _bodyLayer) {
       /* Defensive re-attach.  Something on zone change was detaching
@@ -11468,7 +11536,11 @@ export class EntityRenderer {
            leisurely pace and a still thumb holds the pose.  The wind-up
            before the window opens keeps the clock loop -- a frozen figure
            for up to ten seconds reads as a hang (control-redesign.md §5.11). */
-        const _gp = gesturePose01(S._extraction, now, 700);
+        /* v2.3.2760: no leisurely cap any more -- the swing plays at the
+           speed of the hand, and at `ready` with no stroke yet it HOLDS the
+           raised pose (phase 0) instead of looping: the owner's "stop
+           animating until you perform the correct gesture". */
+        const _gp = gesturePose01(S._extraction, now);
         frameIdx = (_gp != null) ? Math.max(0, Math.min(fc - 1, Math.floor(_gp * fc)))
           : Math.floor((now / cycle) * fc) % fc;
       } else if (pose === 'fish') {
@@ -11479,7 +11551,7 @@ export class EntityRenderer {
         /* v2.3.2245: the reel drives the sway -- one finger-circle on the
            button is one turn of the sway loop, capped at ~one turn per 450ms
            (the same cap the reel marker has had since v2.3.1435). */
-        const _gpF = gesturePose01(S._extraction, now, 450, true);
+        const _gpF = gesturePose01(S._extraction, now);   /* v2.3.2760: hand-paced, holds when still */
         frameIdx = (_gpF != null) ? Math.max(0, Math.min(fc - 1, Math.floor(_gpF * fc)))
           : Math.floor((now / cycle) * fc) % fc;
       } else if (pose === 'dodge') {
@@ -11572,7 +11644,7 @@ export class EntityRenderer {
       /* v2.3.1940: my own drawn pants print / tattoo, pre-flipped for the three
          mirrored facings (the sheet is drawn with scale.x -1 there). */
       const _bodyArt = localBodyArt(mirror);
-      /* v2.3.2751: fishing keeps the drawings -- getFishFrame stamps them onto
+      /* v2.3.2780: fishing keeps the drawings -- getFishFrame stamps them onto
          the raw sheet without the recolour above (playerSkins), baked behind
          the loading screen by preloadBodyAll. */
       let tex = pose === 'fish'
@@ -11711,7 +11783,7 @@ export class EntityRenderer {
              greaves drew over the reeling fist and there was nothing to lift.
              Still gated on the three rather than made unconditional: a bare
              player needs no canvas bake to look right. */
-          if (pose === 'fish' && (_chestW || _shirtW || _legsW)) _placeFishHead(display, spriteBody, tex, getFrame('fish', 'south', frameIdx));   /* v2.3.2751: + the raw frame, for the rod */
+          if (pose === 'fish' && (_chestW || _shirtW || _legsW)) _placeFishHead(display, spriteBody, tex, getFrame('fish', 'south', frameIdx));   /* v2.3.2780: + the raw frame, for the rod */
         } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
         /* ═══ v2.3.1872: THE SOUTH BLOCK'S JOGGING LEGS ═══
            Placed HERE, after the masked/fullset body has been resolved, because
@@ -13329,6 +13401,20 @@ export class EntityRenderer {
          -- a plate that waited for a true 0 would never come back. */
       if (_barA > 0.01) display._namePill.visible = false;
     }
+    /* ═══ v2.3.2760: WHERE THE BAND LINE'S TOP IS, FOR THE HARVEST BAR ═══
+       The harvest wind-up bar (effectsRenderer _drawWindupBar) goes "above the
+       head" -- and over YOUR head there is always something on this band: the
+       name plate at rest, the HP bar in a fight.  Measured on a real capture
+       (mp-cueshow): mining with a scratch of damage drew the HP bar exactly on
+       top of the wind-up bar, hiding it.  So the band publishes its top, in
+       the same world px the effects layer draws in, and the harvest bar sits
+       above it.  Half-height is the plate's (the HP bar frame is no taller). */
+    {
+      const _bandHalf = Math.max(8, display._namePill
+        ? ((display._pillCss || 15) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
+      S._selfBandTopY = display.visible
+        ? display.y + (PLAYER_BAND_Y - _bandHalf) * Math.abs(display.scale.y || 1) : null;
+    }
 
     /* v2.3.1193: my own threat skull — reads the formerly ORPHANED
        S._pvpSkullType / S._pvpSkullUntil anchors (InspectPlayerPanel
@@ -13489,6 +13575,7 @@ export class EntityRenderer {
            convention the NPC figures' feet use. */
         spr.anchor.set(0.5, 1);
         spr.label = `prop_${p.id}`;
+        spr._vShade = SHADE.prop;   /* v2.3.2767: formShade.js */
         this.entityLayer.addChild(spr);
         this.propDisplays.set(p.id, spr);
       }
@@ -13856,6 +13943,7 @@ export class EntityRenderer {
           fig.anchor.set(0.5, NPC_FRAME_FEET_Y / 256);
           fig.scale.set(npcSpriteScale(npc.sprite));
           display.addChildAt(fig, 0);      // behind the bars and labels
+          fig._vShade = SHADE.figure;      /* v2.3.2767: formShade.js */
           display._fig = fig;
           display._figSrc = npc.sprite;
         }
