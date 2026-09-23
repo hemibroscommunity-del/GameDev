@@ -22,6 +22,7 @@ import { GlintSystem } from './glint.js';
 import { collectCasters, SELF_STAND_IN_FIELDS, SELF_STAND_IN_SETS } from './casters.js';
 import { Sprite } from 'pixi.js';
 import { zoneLight, sunLeft } from './zoneLight.js';
+import { dayPhase, lightingAt, zoneHasSky } from '@/game/timeOfDay.js';   /* v2.3.2717: the sun sets */
 
 const KEY = 'bt-lightfx';
 let _on = null;
@@ -76,7 +77,15 @@ export class LightFx {
     const zone = S.currentZone || 'town';
     this.zone = zone;
     if (this.shadows) {
-      const light = zoneLight(zone);
+      let light = zoneLight(zone);
+      /* v2.3.2717: the sun these shadows are cast by sets with the time of
+         day (game/timeOfDay.js).  Under an open sky the shadow fades out
+         through dusk and back in at dawn -- a sun shadow at midnight, under a
+         lantern, is a shadow of something that is not there. */
+      if (light && zoneHasSky(zone, S)) {
+        const sun = 1 - lightingAt(dayPhase(now)).lamp;
+        light = sun < 0.02 ? null : Object.assign({}, light, { alpha: light.alpha * sun });
+      }
       this.shadows.update(light ? collectCasters(S, er, fx, zone) : null, light, sunLeft(S), now);
     }
     this.glint.update(S, now, er, fx, zone);

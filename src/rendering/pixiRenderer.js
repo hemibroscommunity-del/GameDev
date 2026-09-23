@@ -7,6 +7,8 @@ import { applyDepthBuckets } from './depthSort.js'; /* v2.3.2635: one depth pass
 import { TileRenderer } from './systems/tileRenderer.js';
 import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out */
 import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
+import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
+import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { LightFx, setLightFx } from './lightfx/lightFx.js'; /* v2.3.2710: map-lit shadows + metal glint, behind ?lightfx=1 */
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { MinimapRenderer } from './systems/minimapRenderer.js'; /* v2.3.1781 */
@@ -145,6 +147,11 @@ export async function initPixiRenderer(canvas) {
      rather than the body simply joining the sorted layer. */
   const entityRenderer = new EntityRenderer(layers.entities, layers.player, layers.monsterUi, layers.gestureFront, layers.gatherNodesFront, layers.foreground); /* v2.3.2655: + the near-camera layer */
   const effectsRenderer = new EffectsRenderer(layers);
+  /* v2.3.2712: time of day, the air, dust prints and blood (worldFx.js); the
+     crumbling corpse needs the renderer to photograph the body it replaces. */
+  const worldFx = new WorldFx(layers, app);
+  worldFx.setEntityRenderer(entityRenderer);   /* v2.3.2715: night lights the plates and the monsters */
+  deathCrumble.setRenderer(app.renderer);
   /* v2.3.2710: shadows cast by each map's own sun, and metal that catches the
      light (rendering/lightfx).  Off unless the switch is on -- see lightFx.js. */
   const lightFx = new LightFx(layers, worldContainer);
@@ -363,6 +370,11 @@ export async function initPixiRenderer(canvas) {
     update._lastStages.entityMs = _t2 - _t1;
     try { effectsRenderer.update(S, cssW, cssH, now); }
     catch (e) { if (!update._effectsErr) { update._effectsErr = true; console.error('[pixi-render] effectsRenderer threw', e && e.message, e && e.stack); } }
+    /* v2.3.2712: after both renderers, so the lights sit on this frame's
+       positions and every corpse has been asked for (the sweep drops the
+       ones that were not -- the respawned). */
+    try { worldFx.update(S, { cx, cy, viewW, viewH, cssW, cssH }, now); }
+    catch (e) { if (!update._worldFxErr) { update._worldFxErr = true; console.error('[pixi-render] worldFx threw', e && e.message, e && e.stack); } }
     const _t3 = performance.now();
     update._lastStages.effectsMs = _t3 - _t2;
     /* ═══ v2.3.2635: DEPTH, AFTER EVERYTHING HAS MOVED ═══

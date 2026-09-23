@@ -31,8 +31,14 @@ import * as H from './harness.mjs';
 /* What may legitimately still be drawn on a corpse: the death sheet itself,
    and the world it is lying on.  Everything else near the body is a worn
    layer that outlived it. */
+/* v2.3.2712: the corpse is the crumble now (deathCrumble.js): the body's own
+   photograph cut into flakes, then minted bones.  Both are the death
+   animation, not a worn layer left on it; the strip stays as its fallback.
+   The corpse finders below run INSIDE the page, so they carry the pattern
+   inline: /death-v1|^worldfx\/bone_|^death-flake/. */
 const ALLOWED = [
   /death-v1/,                      /* the corpse animation -- the point */
+  /^worldfx\/(bone_|puff)/, /^death-flake/,   /* v2.3.2712: the crumble */
   /\/maps\//, /tiles/, /tileset/,  /* the ground */
   /grass|dirt|stone|water|road|path/i,
   /* The floating vitals are a DELIBERATE keep (v2.3.1887's keep set names
@@ -84,7 +90,7 @@ const nearBody = (P) => P.page.evaluate(() => {
   let ox = null, oy = null;
   if (sb) { const b = sb.getBounds(); ox = b.x + b.width / 2; oy = b.y + b.height / 2; }
   const all = window.__btCorpse(0, 0, 1e9);
-  const corpse = all.find((n) => /death-v1/.test(n.label));
+  const corpse = all.find((n) => /death-v1|^worldfx\/bone_|^death-flake/.test(n.label));
   /* Fall back to the corpse frame's own centre when the body sprite is not
      reachable, so a probe failure cannot masquerade as a clean corpse. */
   if (ox == null && corpse) { ox = corpse.dx; oy = corpse.dy; }
@@ -282,7 +288,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       window.__dsFrames++;
       if (window.__btCorpse) {
         const all = window.__btCorpse(0, 0, 1e9);
-        const corpse = all.find((n) => /death-v1/.test(n.label));
+        const corpse = all.find((n) => /death-v1|^worldfx\/bone_|^death-flake/.test(n.label));
         if (corpse) {
           window.__dsCorpseFrames++;
           const near = all.filter((n) => n !== corpse
