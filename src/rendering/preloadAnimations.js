@@ -32,6 +32,7 @@
  * A settle report lands on window.__btPreloadReport so rigs (and
  * anyone debugging a first-use hitch) can verify coverage. */
 
+import { preloadLootIcons } from './lootIcons.js'; /* v2.3.2771 */
 import { variantSpritesFor, unloadVariantSprites } from './monsterVariantSprites.js';
 import { loadSlimeSprites } from './slimeSprites.js';
 import { loadSnowmanSprites, unloadSnowmanSprites } from './snowmanSprites.js';
@@ -336,6 +337,9 @@ export async function preloadWorldAnimations() {
        the pan strip), GLOBAL: every gathering zone and the town campfire use
        them.  See gestureCuePreload.js for why none of them was already warm. */
     gestureCue: preloadGestureCue(),
+    /* v2.3.2771: the rare-drop icons on a monster's loot pile (lootIcons.js)
+       -- a rare drop is the moment a blank first frame would be seen */
+    lootIcons: preloadLootIcons(),
   };
 
   const names = Object.keys(groups);
