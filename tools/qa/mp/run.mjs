@@ -93,6 +93,7 @@ const SCENARIOS = {
   arrowblast: () => import('./mp-arrowblast.mjs'), /* v2.3.2279: the bow special's blast finale, end to end */
   chatlayer: () => import('./mp-chatlayer.mjs'), /* v2.3.2276: chat paints under the menus, and its composer stands down for them */
   ambient: () => import('./mp-ambient.mjs'), /* v2.3.2735: the maps' ambient life -- the worldview's five features and the four spokes, counted and photographed */
+  formshade: () => import('./mp-formshade.mjs'), /* v2.3.2740: light from above on figures and props -- on/off diff, darker not brighter, stills for a human */
   cueshow: () => import('./mp-cueshow.mjs'), /* v2.3.2733: mining, chopping and fishing through the new cue gesture in a real zone -- wind-up, frozen at ready, gesture + effects, resource -- with screenshots */
   gcue: () => import('./mp-gcue.mjs'), /* v2.3.2384; v2.3.2733: the character freezes at `ready`, the mini-tool cue sits still and flashes, the gesture drives the swing forward and fills in ~3s */
   cooktap: () => import('./mp-cooktap.mjs'), /* v2.3.2274: a REAL tap on your own fire cooks, and does not open chat */

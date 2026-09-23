@@ -91,6 +91,7 @@ import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-shee
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
+import { SHADE } from '../formShade.js'; /* v2.3.2740: light from above on every figure and prop */
 import { fishRodAt, hasFishRodMask } from '../toolRecolor.js'; /* v2.3.2734: the rod is found by its recorded shape now that it is pine */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -4767,6 +4768,7 @@ function createMonsterDisplay(monster) {
 
   container._body = body;
   container._spriteBody = spriteBody;
+  if (spriteBody) spriteBody._vShade = SHADE.figure;   /* v2.3.2740: formShade.js, across its own quad */
   container._isFodder = isFodder;
   container._variantKey = variantKey;
   container._isSnowman = isSnowman;
@@ -6727,6 +6729,10 @@ function createPlayerDisplay() {
 
   container._body = body;
   container._spriteBody = spriteBody;
+  /* v2.3.2740: formShade.js -- every sprite in this figure takes the same
+     gradient, measured over the body frame's head-to-feet span */
+  container._vShadeRef = spriteBody;
+  container._vShadeKids = SHADE.figure;
   container._shirtSprite = shirtSprite;
   container._facialHairSprite = facialHairSprite;
   container._hairSprite = hairSprite;
@@ -7003,6 +7009,10 @@ function createOtherPlayerDisplay() {
 
   container._body = body;
   container._spriteBody = spriteBody;
+  /* v2.3.2740: formShade.js -- every sprite in this figure takes the same
+     gradient, measured over the body frame's head-to-feet span */
+  container._vShadeRef = spriteBody;
+  container._vShadeKids = SHADE.figure;
   container._shirtSprite = shirtSprite;
   container._facialHairSprite = facialHairSprite;
   container._hairSprite = hairSprite;
@@ -13407,6 +13417,7 @@ export class EntityRenderer {
            convention the NPC figures' feet use. */
         spr.anchor.set(0.5, 1);
         spr.label = `prop_${p.id}`;
+        spr._vShade = SHADE.prop;   /* v2.3.2740: formShade.js */
         this.entityLayer.addChild(spr);
         this.propDisplays.set(p.id, spr);
       }
@@ -13766,6 +13777,7 @@ export class EntityRenderer {
           fig.anchor.set(0.5, NPC_FRAME_FEET_Y / 256);
           fig.scale.set(npcSpriteScale(npc.sprite));
           display.addChildAt(fig, 0);      // behind the bars and labels
+          fig._vShade = SHADE.figure;      /* v2.3.2740: formShade.js */
           display._fig = fig;
           display._figSrc = npc.sprite;
         }

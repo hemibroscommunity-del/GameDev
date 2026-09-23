@@ -26,6 +26,8 @@ import { preloadCombatGear } from './combatGear.js';
 import { preloadBodyAll } from './playerSkins.js';
 import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
 import { Assets } from 'pixi.js';
+import { markStandIns } from './formShade.js'; /* v2.3.2740: light from above (the batcher patch itself installs on import) */
+import { SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS } from './lightfx/casters.js';
 
 /* v2.3.778: decode ALL textures to <img>-backed sources, never ImageBitmap.
    On iOS, ImageBitmaps are GPU-backed: the memory purge that kills the WebGL
@@ -401,6 +403,8 @@ export async function initPixiRenderer(canvas) {
        everything that moves them -- the entity pass, the stand-ins placed by
        the effects pass, and the depth pass that re-parents occluders.  One
        boolean read when the switch is off (lightFx.js). */
+    /* v2.3.2740: the combat / gathering stand-ins take the figure shade too */
+    try { markStandIns(effectsRenderer, SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS); } catch (e) { /* never break a frame */ }
     try { lightFx.update(S, now, entityRenderer, effectsRenderer); }
     catch (e) { if (!update._lightErr) { update._lightErr = true; console.error('[pixi-render] lightFx threw', e && e.message, e && e.stack); } }
     try { minimap.update(S, cssW, cssH, canvas); }

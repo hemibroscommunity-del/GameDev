@@ -167,9 +167,11 @@ function footprintTexture() {
   };
   /* ink halo: the shapes filled in ink with a soft shadow of the same ink */
   c.save();
-  c.shadowColor = 'rgba(13,21,26,0.95)'; c.shadowBlur = 6;
+  /* v2.3.2740: a notch heavier -- the first shot of these on town's cobble
+     read a little washed out at the far end of the fade */
+  c.shadowColor = 'rgba(13,21,26,1)'; c.shadowBlur = 7;
   c.fillStyle = hex(TRAIL_INK);
-  c.lineJoin = 'round'; c.lineWidth = 5; c.strokeStyle = hex(TRAIL_INK);
+  c.lineJoin = 'round'; c.lineWidth = 6.5; c.strokeStyle = hex(TRAIL_INK);
   sole(); c.fill(); c.stroke();
   c.beginPath(); toes(); c.fill(); c.stroke();
   c.restore();
@@ -1511,7 +1513,7 @@ export class TileRenderer {
       const since = walker - i;
       /* flare as the walker lands on it, then settle over ~1s */
       const flare = since >= 0 ? Math.exp(-since / 2.2) : 0;
-      sp.alpha = Math.min(1, s.a * (0.66 + 0.34 * flare));
+      sp.alpha = Math.min(1, s.a * (0.78 + 0.22 * flare));
       sp.visible = true;
     }
   }

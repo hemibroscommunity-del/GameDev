@@ -292,6 +292,7 @@ import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
 import { recolorToolKeyCanvas, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2734: the magenta tool key becomes copper / pine / bark */
+import { SHADE } from '../formShade.js';   /* v2.3.2740: light from above on trees and rocks */
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
@@ -8180,6 +8181,9 @@ export class EffectsRenderer {
         if (!node._pixiSprite || node._pixiSprite.destroyed) {
           node._pixiSprite = new Sprite(spriteTex);
           node._pixiSprite.anchor.set(0.5, NODE_SPRITE_ANCHOR_Y[node.nodeType] ?? 0.5);
+          /* v2.3.2740: formShade.js -- trees, rocks and ore stand lit from
+             above; a fishing spot is water, not a form, and is left alone */
+          if (!/fish/i.test(String(node.nodeType))) node._pixiSprite._vShade = SHADE.prop;
           /* Add at bottom of nodeLayer so the tier badge, emoji, and
              proximity tips (added with plain addChild elsewhere) stack
              above every sprite. */
