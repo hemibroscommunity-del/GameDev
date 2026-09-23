@@ -36,6 +36,7 @@ import { variantSpritesFor, unloadVariantSprites } from './monsterVariantSprites
 import { loadSlimeSprites } from './slimeSprites.js';
 import { loadSnowmanSprites, unloadSnowmanSprites } from './snowmanSprites.js';
 import { loadPlayerDeathSprites } from './playerDeathSprites.js';
+import { mintWorldFxTextures } from './worldFxTextures.js';   /* v2.3.2712 */
 import { preloadStartZoneMap, loadWalkabilityMaps } from './tiledMaps.js';
 import { effectsAnimationsReady, ensureSnowballBurstTex, freeFrostImpactTex, ensureArrowBlastTex } from './systems/effectsRenderer.js'; /* v2.3.2272: the frost-only sheets get an exit; v2.3.2717: minus the retired snowman plume */
 import { fxStripsReady } from './fxStrips.js'; /* v2.3.1735: stun ring + whirl vortex (preloading is law) */
@@ -51,6 +52,7 @@ import { preloadLevelUpBurst } from './levelUpBurstPreload.js';
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
 import { preloadAuctionInterior } from './auctionInteriorPreload.js'; /* v2.3.2627: the auction house's room + clerk */
 import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
+import { preloadMonsterShots } from './monsterShotFx.js'; /* v2.3.2732: the monsters' goo and fire, minted in code */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
    screen"): ZONE-SPECIFIC textures moved OFF the blocking pre-game gate —
@@ -236,6 +238,11 @@ export async function preloadWorldAnimations() {
   const groups = {
     slime: loadSlimeSprites(),
     playerDeath: loadPlayerDeathSprites(),
+    /* v2.3.2712: the textures time of day, dust, blood and the crumbling
+       corpse draw from -- minted in a canvas, not downloaded, but a first-use
+       GPU upload is still the hitch the law forbids, and it would land on
+       the first hit you take or the first time you die. */
+    worldFx: Promise.resolve().then(() => mintWorldFxTextures()),
     walkability: loadWalkabilityMaps(),
     /* v2.3.2398: the bow's jet stream (jet-stream-v1.png) rides THIS group.
        It is loaded through effectsRenderer's _fxLoad, which is a drop-in for
@@ -257,6 +264,15 @@ export async function preloadWorldAnimations() {
        because a still image in a module named "strips" is exactly the kind
        of thing a later reader assumes was forgotten. */
     fxStrips: fxStripsReady(),
+    /* ═══ v2.3.2732: the monsters' thrown goo and fire ═══
+       MINTED, not fetched -- rendering/monsterShotArt.js draws every frame in
+       code and monsterShotFx.js packs them into one atlas -- but an animation
+       all the same, so it is registered HERE per the preloading LAW rather
+       than minted on the first ball anyone throws.  GLOBAL rather than
+       per-zone: it is one small atlas (the goo serves every slime colour by
+       tint), and a slime can throw in more zones than not.  The mint yields
+       between slices, so the loading bar keeps moving while it runs. */
+    monsterShots: preloadMonsterShots(),
     /* v2.3.2279: the bow special's blast.  GLOBAL rather than per-zone -- a
        bow goes everywhere its owner does, so there is no zone to scope it to,
        and the ZONE-ASSET EXCEPTION only covers art a single zone uses.  2MB

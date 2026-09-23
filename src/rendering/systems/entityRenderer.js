@@ -53,6 +53,7 @@ import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount 
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
+import { deathCrumble } from '../deathCrumble.js';   /* v2.3.2712: the crumbling corpse */
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
 import { getNftTextures } from '../nftAvatars.js';
@@ -90,8 +91,8 @@ import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-shee
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
-import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /* v2.3.2714: the staff kick + where its crystal is */
-/* v2.3.2714: scratch for staffTipWorld, reused every frame (no allocation). */
+import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /* v2.3.2740: the staff kick + where its crystal is */
+/* v2.3.2740: scratch for staffTipWorld, reused every frame (no allocation). */
 const _staffTipOut = { x: 0, y: 0 };
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -4863,6 +4864,13 @@ function _feetOffsetUnits(display) {
   const dir = (display && display._animDir) || 'south';
   const rows = bodyRows(pose, dir);
   return (rows.feet - BODY_CELL_MID) * bodyDirScale(pose, dir) * LOCAL_BODY_SCALE;
+}
+/* v2.3.2710: where a player figure (yours or a peer's) actually touches the
+   ground, in its layer's space.  The body is centred on its frame, so the
+   feet are this offset BELOW display.y, not at it -- a cast shadow pivoted on
+   display.y would hang in the air at the figure's waist (lightfx/casters.js). */
+export function figureFeetY(display) {
+  return display.y + _feetOffsetUnits(display) * display.scale.y;
 }
 function _applyBuildScale(display, pscale, heightId, frameId) {
   const b = buildScale(heightId, frameId);
@@ -9683,7 +9691,17 @@ export class EntityRenderer {
         const _elapsed = Date.now() - (other._deathTs || Date.now());
         const _spriteBody = display._spriteBody;
         const _body = display._body;
-        if (hasPlayerDeathSprites() && _spriteBody) {
+        /* v2.3.2712: the crumbling skeleton (deathCrumble.js) -- this peer's
+           own look breaks into flakes and their bones fall.  The strip below
+           is the fallback if it cannot draw. */
+        const _crumble = deathCrumble.corpse('o:' + (other.id || id), display, other._deathTs || 0, now);
+        /* v2.3.2713: a friend exploding nearby shakes your screen too, less */
+        const _pBoom = deathCrumble.takeShake();
+        if (_pBoom > 0) S.screenShake = Math.max(S.screenShake || 0, _pBoom);
+        if (_crumble) {
+          if (_spriteBody) _spriteBody.visible = false;
+          if (_body) _body.visible = false;
+        } else if (hasPlayerDeathSprites() && _spriteBody) {
           const _tex = getPlayerDeathFrame(playerDeathFrameForElapsed(_elapsed));
           if (_tex && _spriteBody.texture !== _tex) _spriteBody.texture = _tex;
           _spriteBody.tint = 0xffffff;
@@ -9704,7 +9722,7 @@ export class EntityRenderer {
            for the same reason: this was a hand-written list of what to hide,
            and the back shield was added long after it. */
         const _rKeep = [
-          _spriteBody, display._namePill, display._comboText,
+          _crumble, _spriteBody, display._namePill, display._comboText,
           display._handCapMask, display._handArmMask,
         ];
         _hideExceptDeep(display, _rKeep);
@@ -10232,17 +10250,17 @@ export class EntityRenderer {
             oWeaponSprite.scale.x = fitScale;
           } else {
             const weaponMirror = facingIdx >= 3 && facingIdx <= 6;
-            /* v2.3.2714: a peer's staff kicks on THEIR cast (gameEvents stamps
+            /* v2.3.2740: a peer's staff kicks on THEIR cast (gameEvents stamps
                _staffCastAt from their bolt).  Their cooldown is not on the
                wire, so a peer gets the kick without the charge-up dip. */
             oWeaponSprite.rotation = (oWpnType === 'staff')
               ? staffCastPose(now, other._staffCastAt, other._staffCastAng, 0, 0, weaponMirror)
               : 0;
             oWeaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
-            _oBladeUp = oWpnType !== 'staff';   /* v2.3.2714: a staff stands head-up -- see the local path */
+            _oBladeUp = oWpnType !== 'staff';   /* v2.3.2740: a staff stands head-up -- see the local path */
           }
           oWeaponSprite.scale.y = _oBladeUp ? -fitScale : fitScale;   /* v2.3.1786 — see the local path */
-          /* v2.3.2714: their crystal, for their release flash and bolts. */
+          /* v2.3.2740: their crystal, for their release flash and bolts. */
           if (oWpnType === 'staff' && display.parent
               && staffTipWorld(oWeaponSprite, display.parent, _staffTipOut)) {
             other._staffTipX = _staffTipOut.x;
@@ -10338,7 +10356,7 @@ export class EntityRenderer {
         const inFront = oIsShielding
           ? (facingIdx >= 0 && facingIdx <= 3)
           : (_oHeldInHand ? heldWeaponInFront(oWpnType, facingIdx, _oInFrontBase) : _oInFrontBase);
-        if (oWpnType === 'staff') other._staffTipBehind = !inFront;   /* v2.3.2714: see the local path */
+        if (oWpnType === 'staff') other._staffTipBehind = !inFront;   /* v2.3.2740: see the local path */
         const bodyIdx = display.getChildIndex(oSpriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
         /* "In front" is measured against the topmost VISIBLE worn layer, not
@@ -10728,7 +10746,17 @@ export class EntityRenderer {
       if (display.rotation !== 0) display.rotation = 0;
       const _selfSpriteBody = display._spriteBody;
       const _selfBody = display._body;
-      if (hasPlayerDeathSprites() && _selfSpriteBody) {
+      /* v2.3.2712: the crumbling skeleton -- see the peer branch above and
+         deathCrumble.js.  Photographed on this first dead frame, before the
+         hide pass below takes the worn layers away. */
+      const _selfCrumble = deathCrumble.corpse('self', display, S._deathStart || 0, now);
+      /* v2.3.2713: the exploding death kicks the camera (deathCrumble.js) */
+      const _boom = deathCrumble.takeShake();
+      if (_boom > 0) S.screenShake = Math.max(S.screenShake || 0, _boom);
+      if (_selfCrumble) {
+        if (_selfSpriteBody) _selfSpriteBody.visible = false;
+        if (_selfBody) _selfBody.visible = false;
+      } else if (hasPlayerDeathSprites() && _selfSpriteBody) {
         const _selfTex = getPlayerDeathFrame(playerDeathFrameForElapsed(_selfElapsed));
         if (_selfTex && _selfSpriteBody.texture !== _selfTex) _selfSpriteBody.texture = _selfTex;
         _selfSpriteBody.tint = 0xffffff;
@@ -10773,7 +10801,7 @@ export class EntityRenderer {
          hidden on death by default, which is the safe direction and the one
          the owner's rule asks for.  mp-deathshield pins it. */
       const _deathKeep = [
-        _selfSpriteBody, display._namePill, display._comboText,
+        _selfCrumble, _selfSpriteBody, display._namePill, display._comboText,
         display._handCapMask, display._handArmMask,
         display._hudHpBarFrame, display._hudHpBarFill, display._hudHpRing,
         display._hudHpText, display._hudHpMaxText,
@@ -12159,7 +12187,7 @@ export class EntityRenderer {
               ? (mirror || _gsDir === 'south')
               : (facingIdx >= 3 && facingIdx <= 6);
             weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
-            /* ═══ v2.3.2714: THE STAFF KICKS WHEN IT CASTS ═══
+            /* ═══ v2.3.2740: THE STAFF KICKS WHEN IT CASTS ═══
                The staff used to hang motionless through every cast.  Now it
                dips back while the cooldown refills and kicks its crystal
                toward the target on release, then settles (staffCastPose: 12
@@ -12188,7 +12216,7 @@ export class EntityRenderer {
                swingAng and the sheathed branch angles the blade across the
                back; neither wants this, and both are separate branches above
                so neither can pick it up by accident. */
-            /* ═══ v2.3.2714: BUT NOT THE STAFF ═══
+            /* ═══ v2.3.2740: BUT NOT THE STAFF ═══
                The flip was asked for about the SWORD, whose icon hangs its
                blade down.  The staff's icon already stands head-up, so the
                same flip turned it head-down: the crystal hung by the knee and
@@ -12221,7 +12249,7 @@ export class EntityRenderer {
              own branch above and the sheathed pose angles the blade across the
              back in another, so neither can pick this up. */
           weaponSprite.scale.y = _weaponBladeUp ? -fitScale : fitScale;
-          /* v2.3.2714: publish where the crystal is, in world px -- the staff
+          /* v2.3.2740: publish where the crystal is, in world px -- the staff
              cast's charge glows there and the bolt is drawn leaving it.  Same
              idea as the bow publishing its grip (S._bowGripX), but read back
              through Pixi's own transform chain, so the mirror, the kick and the
@@ -12659,7 +12687,7 @@ export class EntityRenderer {
            for why the v2.3.1787 exception does not transfer to it. */
         const inFrontHeld = heldWeaponInFront(wpn && wpn.type, facingIdx, inFrontInHand);
         const inFront = _heldInHand ? inFrontHeld : (sheathed ? !inFrontInHand : inFrontInHand);
-        /* v2.3.2714: the staff cast glows at the crystal from a layer above
+        /* v2.3.2740: the staff cast glows at the crystal from a layer above
            the body; when the staff is carried BEHIND him (SW/W/NW/N) it dims
            that light instead of painting it over his back. */
         if (wpn && wpn.type === 'staff') S._staffTipBehind = !inFront;

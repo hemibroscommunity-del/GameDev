@@ -4359,7 +4359,63 @@ feet) -- which refuses the thin-rock touch and, by the same endpoint rule,
 keeps the monster inside a rock hittable. mp-propshots section 0 shoots all
 four in town; with v2.3.2699's code back, all four fail.
 
-## 105. A paused page clock trips the dark-screen watchdog (v2.3.2716)
+## 104. A mark ON a prop cannot be a sprite in the prop's layer (v2.3.2730)
+
+**Tempting:** to draw a slash mark or a stuck arrow on a rock, add a sprite to
+the entity layer at the point on the face where it hit. The rock is in that
+layer; so is the mark; done.
+
+**Wrong, and invisibly so** (worked out from the sort key before it was built,
+which is why it never shipped). Since v2.3.2633 the entity layer is
+depth-sorted every frame by each child's `y`, which is its ground-contact line
+(depthSort.js). A sprite positioned where a cut is DRAWN -- 30px up the face --
+has a `y` 30px north of the rock's ground line, so the sort would put it
+BEHIND the rock and the rock would paint over it. Every probe asking "is the
+mark there and visible" would say yes, and nobody could see it.
+
+**The rule:** anything drawn on a prop goes in an OVERLAY container that stands
+on the prop's own ground line (`y = p.y + 1`, so it always sorts just after the
+rock and buckets with it in front of or behind the player), with the marks
+inside it at their offsets (effectsRenderer `_propOverlay`). A hit on the back
+face gets an overlay on the footprint's north line (`y0 - 1`) instead, so the
+rock covers it. mp-propfx asserts the overlay shares the rock's parent and is
+drawn after it -- the claim a screenshot cannot make.
+
+**And the debris is not a second system.** A prop's chips go into
+S._debrisBursts under a `prop:<id>` key with the full field set the
+hit-materials rewrite reads (gy/h/weapon/hitX/hitY), so a prop is drawn by
+whichever renderer draws a monster's material -- do not write a prop-only
+particle path.
+
+## 105. A monster's ball takes its colour from the thrower, not the zone (v2.3.2732)
+
+**Tempting:** pick the thrown ball's look once per zone from
+ZONE_VARIANT_MAP -- the zone's fodder is a blue slime, so the zone's balls are
+blue. It is what the renderer did from v2.3.1691 to v2.3.2731, and it is one
+lookup instead of one per ball.
+
+**Wrong.** A zone can hold slimes of more than one colour (the owner: "green
+slimes are recolored to blue during game but I might add green ones later"),
+and the zone map only names the DEFAULT -- a spawn can pin its own variant
+(server data.js `variant`). The per-zone pick also only knew about recolours,
+so the Poison Forest's violet-tinted mire wisps threw the plain green ball for
+as long as they existed. Nothing failed; every probe read "a ball is drawn".
+
+**The rule:** the ball asks who threw it. gameEvents / monsterCombat stamp
+`shooterArch` from the thrower at release (it can die mid-flight), and
+data/monsterShots.js turns that into a look and a colour by the SAME rule the
+body is drawn with -- recolour target, green under the tint, or the sheet's
+green -- so the two cannot disagree. The zone default is only the last
+fallback, for a ball whose thrower is unknown. mp-monstershots throws a green
+and a blue ball in the Verdant Wilds at the same moment and wants both.
+
+**And the lift is drawing only.** The glob flies from the thrower's body down
+to its aim point, but the ball's x/y in S.slimeProjectiles stays the GROUND
+point: every hit test, prop stop (v2.3.2699) and player-contact check reads
+that, unchanged. Its shadow is drawn there -- which is where the worker will
+settle the hit.
+
+## 108. A paused page clock trips the dark-screen watchdog (v2.3.2716)
 
 **Tempting:** to record an effect frame by frame, install Playwright's fake
 clock, `pauseAt`, and step it with `runFor` between screenshots -- the game only
@@ -4378,7 +4434,7 @@ page -- `S.__wdEverLit = true; S.__wdNext = 1e15; S.__wdDark = 0;` -- and use
 `page.clock.fastForward(ms)` (not `runFor`) to skip long idle stretches, since
 `runFor` renders every intermediate frame in software GL (minutes per clip).
 
-## 107. The hit circle is not the body: draw a hit where the shot lands (v2.3.2717)
+## 109. The hit circle is not the body: draw a hit where the shot lands (v2.3.2717)
 
 A projectile's hit test (`monsterProjRadius`, projectiles.js) is a capsule
 against a CIRCLE round the body -- slime 25, snowman 32, mummy 40, skeleton 50,
@@ -4401,4 +4457,6 @@ material burst, sound and stuck shaft go off there (`_projImpactFx`). Two
 cases to keep: an arrow's 24 px step often carries it to or past its point on
 the frame it hits -- land it ON the point, not at the overshot tip (that pinned
 shafts on the far side) -- and a point-blank bolt already past its point
-bursts where the orb IS (v2.3.2505). **Receipt:** mp-shotland.
+bursts where the orb IS (v2.3.2505). The one-in-eight arrow snap (v2.3.2731)
+is rolled on the hit, where every screen rolls it, and drawn at the landing.
+**Receipt:** mp-shotland.

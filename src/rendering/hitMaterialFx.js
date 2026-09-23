@@ -657,6 +657,12 @@ export class HitMaterialFx {
     }
     rec.u = PIX * ((S && zonePlayerScale(S.currentZone, rec.ex, gy, TILE)) || 1);
     const P = profileFor(rec);
+    /* v2.3.2742: a PROP's burst (combatHelpers.spawnPropDebris, v2.3.2730) is
+       the same material thrown SUBTLY -- a rock is hit far more often than it
+       is news: under half the pieces, flung lower and slower.  It rides this
+       queue marked `prop` (its `scale`/`parts` were written for the renderer
+       this replaced; this is what they meant). */
+    if (b.prop) { P.n *= 0.45; P.spd *= 0.85; P.lift *= 0.8; }
     switch (rec.fx) {
       case 'snow': this._snow(rec, P, now); break;
       case 'goblin': this._goblin(rec, P, now); break;
