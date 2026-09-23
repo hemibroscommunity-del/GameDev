@@ -1,4 +1,71 @@
-# The gesture cue on the right button (v2.3.2384)
+# The gesture cue on the right button (v2.3.2384; reworked v2.3.2702)
+
+## v2.3.2702 — the cue gesture as the owner described it
+
+> Owner: "the character harvests a resource or performs an action for a
+> certain amount of time (determined by your skill level) ... I wanted the
+> character to perform each animation with a loading bar above their head
+> indicating the progress of the animation. Then, once it reaches the limit,
+> the character is supposed to stop animating until you perform the correct
+> gesture on the right joystick ... the starting spot of the cue should be
+> static but flash. An effect should show you which way the cue should move
+> ... the character's frames should animate at the speed you perform the
+> gesture, but require about 3 seconds of performing the gesture at a quick
+> pace ... resource or action specific effects ... the cue was a mini sprite
+> of the tool being used."
+
+The flow, end to end:
+
+| Phase | Character | Bar over the head | Right button |
+| --- | --- | --- | --- |
+| **Wind-up** (2–10 s, `computeOpenDelay` by skill level vs node tier) | plays its harvest loop on the clock, with its effects | brass, fills 0 → full | `WAIT`, amber ring fills |
+| **Ready, untouched** | **frozen** on the ready pose (phase 0) — no demo | full, **flashing** with a gold halo | the **mini tool** sits still at the start of its track and flashes; chevrons point the way; a comet of light runs the motion |
+| **Gesturing** | frames follow the thumb, forward only, at the hand's speed | green fills with the gesture's progress | the mini tool rides the phase; green ring fills |
+| **Paused** (thumb stops or lifts) | holds where it is | holds; flashes again after 600 ms | the teaching cue returns after 600 ms |
+
+What changed, file by file:
+
+* **`src/game/gesturePose.js`** — `gesturePose01` no longer feeds a demo to
+  the body and no longer caps at a leisurely pace (the cap is now a smoother,
+  `GESTURE_MAX_CYCLE_MS`, ~4 swings a second); it chases forward only and
+  holds when still. `gestureDemo01`/`gestureCue01` are replaced by
+  `gestureIdle` (is the cue teaching?) and `gestureCueFace` (every number the
+  button draws). The strokes are described once in `GESTURE_STROKE`: the
+  power stroke (down for the pick, up for the pan, rightward for the axe)
+  plays the loop up to the blow (`split`, measured on each sheet), the return
+  stroke plays the rest. The meter wants `GESTURE_TARGET_MS` (3000) of work
+  at `GESTURE_QUICK_CYCLE_MS` a cycle, floored at `GESTURE_FLOOR_MS` (2400)
+  of real motion. `extractionMeter01.bar01` is now two full bars (wind-up,
+  then gesture), not one that stalls at 95%.
+* **`src/ui/ExtractionSwipeLayer.jsx`** — one stroke tracker drives both the
+  pose (12 px turn hysteresis, continuous) and the meter (a stroke counts once
+  it has travelled 28 px; the first stroke is measured from the span of the
+  motion, not the press point). Fishing's turns are floored at 0. The grade
+  is now pace-based (≤3.6 s of motion → perfect for a human hand). The mining
+  slam's sparks moved to the frame the pick lands on.
+* **`src/ui/panels/TouchControls.jsx` / `BroTown.jsx`** — the painted strip
+  (`rCueRef`) and the white finger are gone; one `<svg>` carries the track,
+  the chevrons, the comet and the mini tool (the bag's pickaxe / axe / rod
+  icons, and cell 0 of the pan strip) on a dark badge with a pulsing glow.
+  Preloaded on the gate (`gestureCuePreload.js`).
+* **`src/rendering/systems/effectsRenderer.js`** — the bar is restyled for
+  contrast (a pale bar vanished on snow), lifted above your own name plate /
+  HP bar (entityRenderer publishes `S._selfBandTopY`), and the effects follow
+  the frame actually shown: debris + clink on the pick's strike, chips on the
+  axe's bite (crossing the frame, not landing on it — a quick hand steps over
+  it), a splash every 480 ms while reeling, and for cooking grease pops plus
+  **smoke** (new, sprites over the minted soft dot) while you flip — nothing
+  off a still pan.
+
+Coverage: `mp-gcue` (73, the town campfire) and `mp-cueshow` (34 — mining,
+woodcutting and fishing through the real tap and pointer path in Frost Ridge,
+with screenshots of each stage). Regression: `mp-harvest`, `mp-chopyield`,
+`mp-cooktap`, `mp-cookpeer`, `mp-fishhand` green. See TRAPS §104.
+
+---
+
+## v2.3.2384 (superseded above — kept for the history)
+
 
 > Owner: "Add the old gesture cues on top of the right joystick when it's
 > time to extract the resource."

@@ -1,70 +1,75 @@
-/* ═══ THE GESTURE CUE TEACHES, WITH NO THUMB ON THE GLASS (v2.3.2384) ═══
+/* ═══ THE CUE GESTURE, AS THE OWNER DESCRIBED IT (v2.3.2702) ═══
  *
- * Owner: "Add the old gesture cues on top of the right joystick when it's
- * time to extract the resource."
+ * Owner: "... the character is supposed to stop animating until you perform
+ * the correct gesture on the right joystick ... before the player performs the
+ * gesture the starting spot of the cue should be static but flash.  An effect
+ * should show you which way the cue should move ... As you perform the gesture
+ * the character's frames should animate at the speed you perform the gesture,
+ * but require about 3 seconds of performing the gesture at a quick pace ...
+ * the cue was a mini sprite of the tool being used."
  *
- * ── WHAT WAS ACTUALLY BROKEN, AND WHY NOTHING CAUGHT IT ──
- * mp-harvest already asserts that the window opens, that the button reads
- * CHOP, and that the painted axe strip is on the button face.  All three were
- * green the whole time this was broken, because every one of them reads a
- * SINGLE FRAME.  The defect is not in any frame; it is that there is only
- * ever one:
+ * This file used to pin the OPPOSITE of the first half of that (v2.3.2384: a
+ * demo loop that animated the character with no thumb down).  Every assertion
+ * that matters is still a DIFFERENCE BETWEEN FRAMES, sampled with the page
+ * untouched -- a single-frame check could not tell a frozen cue from a
+ * flashing one, or a held pose from a looping one:
  *
- *   ex.cueFrame01 is written in exactly one place -- ExtractionSwipeLayer's
- *   onPointerMove.  So with no thumb down, the phase is 0 forever: the tool
- *   strip sits on cell 0, the character freezes mid-swing, and the button
- *   teaches nothing at the one moment it is supposed to.  You had to already
- *   know the gesture for anything to move.
+ *   IDLE  the character's pose does NOT move; the mini tool does NOT move;
+ *         the tool's opacity DOES (the flash); the comet DOES (the direction);
+ *         the bar over the head is full and flashing.
+ *   LIVE  real PointerEvents through the real listeners on window: the phase
+ *         runs FORWARD with the strokes, the tool rides it, a resting thumb
+ *         holds the pose, a second finger lifting cannot end the stroke, and
+ *         the meter wants ~3s of quick work -- never under the 2.4s floor.
  *
- * So every assertion here is a DIFFERENCE BETWEEN FRAMES, sampled over time
- * with the page untouched.  A still-frame check cannot see this bug and a
- * still-frame check is what let it ship.
- *
- * ── AND THE OTHER HALF: IT HAS TO STAND DOWN ──
- * A demo that kept looping under a live gesture would fight the thing it is
- * teaching -- the player's own motion is supposed to own the phase while they
- * are making it.  That is what ex._gestureMovedAt was always for (stamped
- * since v2.3.2245, read by nothing until now), so the second half of this
- * file holds a thumb "down" and proves the loop stops.
- *
- * ── THE FIXTURE ──
- * Cooking, on a campfire at the player's own feet in town (mp-cooktap's
- * route), because it needs no zone travel, no tools and no monsters -- the
- * cheapest way to a real `ready` window this repo has.  The demo is
- * skill-agnostic (one function, one phase, four cadences), so proving it on
- * cooking proves the mechanism; the per-skill CURVES are pure arithmetic and
- * are checked directly against gestureCue01 at the end, with no browser
- * needed for them.
- *
- * The 3500ms window (EXTRACT_WINDOW_MS) is pushed out before sampling, and
- * that is a deliberate fixture decision rather than a dodge: the thing under
- * test is the phase animation, `windowClosesAt` is a client-side deadline that
- * has nothing to do with it, and 3500ms is two cook cycles -- too few samples
- * to tell a moving cue from a jittery one.
+ * The fixture is a cook on a campfire at the player's own feet in town
+ * (mp-cooktap's route): no zone travel, no tools, no monsters.  The per-skill
+ * geometry (four tracks, four sprites) is pure arithmetic and is checked
+ * directly against gestureCueFace at the end.
  */
 import * as H from './harness.mjs';
-import { gestureCue01, gestureDemo01, CUE_REACH } from '../../../src/game/gesturePose.js';
+import {
+  gestureCueFace, gestureIdle, gesturePose01, GESTURE_STROKE, CUE_TOOL_SIZE,
+  GESTURE_TARGET_MS, GESTURE_QUICK_CYCLE_MS, gestureTargetCycles, GESTURE_CUE_SPRITES,
+} from '../../../src/game/gesturePose.js';
 
 const PHONE = { width: 390, height: 844 };
 
-/* One reading of everything the harvest face paints. */
+/* One reading of everything the harvest face paints, and the pose. */
 const face = (P) => P.page.evaluate(() => {
   const S = window._gameState.current;
   const ex = S._extraction;
   const base = document.querySelector('.bt-rjoy-base');
-  const tool = base && Array.from(base.querySelectorAll('div'))
+  const strip = base && Array.from(base.querySelectorAll('div'))
     .find((d) => /gesture/.test(d.style.backgroundImage || ''));
   const hint = base && base.querySelector('svg[viewBox="0 0 100 100"]');
-  const grp = hint && hint.querySelector('[data-cue="finger"]');
+  const tool = hint && hint.querySelector('[data-cue="tool"]');
+  const glow = hint && hint.querySelector('[data-cue="glow"]');
+  const sprite = hint && hint.querySelector('[data-cue="sprite"]');
+  const img = sprite && sprite.firstChild;
+  const comet = hint && hint.querySelector('[data-cue="comet"]');
+  const head = comet && comet.firstChild;
+  const arrows = hint && hint.querySelector('[data-cue="arrows"]');
   const trk = hint && hint.querySelector('[data-cue="track"]');
+  const bar = window.__btWindupBar || null;
   return {
     status: ex ? ex.status : null,
     posF: ex && ex._posF != null ? +ex._posF.toFixed(4) : null,
     cueFrame01: ex ? +(ex.cueFrame01 || 0).toFixed(4) : null,
-    toolPos: tool ? tool.style.backgroundPosition : null,
+    stripShown: !!(strip && strip.style.display !== 'none'),
     hintShown: !!(hint && hint.style.display === 'block'),
-    hintTf: grp ? grp.getAttribute('transform') : null,
-    hintTrack: trk ? trk.getAttribute('d') : null,
+    toolTf: tool ? tool.getAttribute('transform') : null,
+    toolOp: tool ? tool.getAttribute('opacity') : null,
+    glowOp: glow ? glow.getAttribute('opacity') : null,
+    spriteHref: img ? img.getAttribute('href') : null,
+    spriteVb: sprite ? sprite.getAttribute('viewBox') : null,
+    comet: head ? (head.getAttribute('cx') + ',' + head.getAttribute('cy')) : null,
+    cometOp: head ? head.getAttribute('opacity') : null,
+    arrows: arrows ? arrows.getAttribute('d') : null,
+    track: trk ? trk.getAttribute('d') : null,
+    bar: bar ? { bar01: bar.bar01, ready: bar.ready, idle: bar.idle, skill: bar.skill } : null,
+    fx: (S._fxBursts || []).map((b) => b.kind).join(','),
+    smoke: window.__btCookSmoke ? window.__btCookSmoke().live : 0,
   };
 });
 
@@ -152,103 +157,59 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (ex) ex.windowClosesAt = Date.now() + 60000;
   });
 
-  /* ═══ THE MEASUREMENT: NOTHING IS TOUCHING THE SCREEN ═══
-     14 samples 120ms apart spans ~1.7s -- a full cooking cycle (1600ms) and
-     then some, so a working demo has to visit most of the strip. */
+  /* ═══ IDLE: NOTHING IS TOUCHING THE SCREEN ═══
+     14 samples 120ms apart (~1.7s): long enough for a flash cycle (~0.9s) and
+     a full comet run (1.2s for cooking) to show up as distinct values. */
   const idle = await sample(P, 14, 120);
-  console.log('    idle tool positions: ' + JSON.stringify(idle.map((r) => r.toolPos)));
-
-  rec.ok('with NO thumb on the glass the tool strip animates (this was frozen on cell 0)',
-    distinct(idle, 'toolPos') >= 3, { seen: idle.map((r) => r.toolPos) });
-  rec.ok('...and the CHARACTER\'s harvest pose moves with it, not just the button',
-    distinct(idle, 'posF') >= 3, { seen: idle.map((r) => r.posF) });
-  rec.ok('...while the RAW gesture phase stays 0 -- nothing faked a thumb',
-    idle.every((r) => r.cueFrame01 === 0), { seen: idle.map((r) => r.cueFrame01) });
-  /* THE SECOND HALF OF THE SHEET.  A separate assertion from "it animates",
-     because the two failed separately: `Math.min(3, Math.floor(f * 4))`
-     arrived uncommented in 2deb56a and capped the strip at cell 3 of 8, and
-     cells 4-7 are the tool coming DOWN -- so mining and woodcutting could
-     never show the strike land.  Distinctness alone passes on a strip that
-     only ever plays its first four cells; the cell INDEX is what catches it. */
-  const cells = idle.map((r) => Math.round(parseFloat(r.toolPos) / (100 / 7)));
-  rec.ok('...and the strip plays its second half too -- the tool coming DOWN',
-    Math.max.apply(null, cells) >= 5, { cells, seen: idle.map((r) => r.toolPos) });
-
-  /* ═══ THE FINGER ITSELF ═══ */
-  rec.ok('the finger cue is on the button face', idle.every((r) => r.hintShown), idle[0]);
-  rec.ok('...and it is MOVING, not parked', distinct(idle, 'hintTf') >= 3,
-    { seen: idle.map((r) => r.hintTf) });
-  rec.ok('...on the cook flip\'s own track', idle[0].hintTrack === 'M 50 30 L 50 60', idle[0]);
-  /* The owner asked for a LOOK, so leave one behind: the button, cropped, at
-     the moment the window is open with nothing touching the screen. */
-  await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/gcue-button.png`,
-    clip: { x: PHONE.width - 170, y: PHONE.height - 260, width: 170, height: 190 } })
+  console.log('    idle: ' + JSON.stringify(idle.map((r) => [r.posF, r.toolOp, r.comet])));
+  rec.ok('with no thumb down the CHARACTER holds still (owner: stop animating until the gesture)',
+    distinct(idle, 'posF') === 1, { seen: idle.map((r) => r.posF) });
+  rec.ok('...on the ready pose, phase 0 -- nothing faked a thumb',
+    idle.every((r) => (r.posF || 0) === 0 && r.cueFrame01 === 0), { seen: idle.map((r) => [r.posF, r.cueFrame01]) });
+  rec.ok('the cue is on the button face', idle.every((r) => r.hintShown), idle[0]);
+  rec.ok('...and it is a mini sprite of the TOOL -- the pan, cut from its strip',
+    /pan-gesture/.test(idle[0].spriteHref || '') && idle[0].spriteVb === GESTURE_CUE_SPRITES.cooking.vb, idle[0]);
+  rec.ok('...the old painted strip is no longer played on the button', idle.every((r) => !r.stripShown), idle[0]);
+  rec.ok('...sitting STILL at the start of its track (the "static" half)',
+    distinct(idle, 'toolTf') === 1, { seen: idle.map((r) => r.toolTf) });
+  rec.ok('...and FLASHING (the tool\'s opacity pulses)',
+    distinct(idle, 'toolOp') >= 3, { seen: idle.map((r) => r.toolOp) });
+  rec.ok('...with a glow behind it that pulses too', distinct(idle, 'glowOp') >= 3, { seen: idle.map((r) => r.glowOp) });
+  rec.ok('a comet of light runs the motion along the track (the "which way" effect)',
+    distinct(idle, 'comet') >= 3 && idle.every((r) => parseFloat(r.cometOp) > 0), { seen: idle.map((r) => r.comet) });
+  rec.ok('...on the cook flip\'s own track, with chevrons on it',
+    idle[0].track === gestureCueFace('cooking', 0, true, 0).track && !!idle[0].arrows, idle[0]);
+  /* The pan is still, so nothing comes off it: no grease pops (they are
+     constant through the WIND-UP only) and no smoke.  The last samples only --
+     a burst from the wind-up can outlive `ready` by its 600ms. */
+  const late = idle.slice(-6);
+  rec.ok('...and nothing comes off the still pan -- no grease, no smoke',
+    late.every((r) => !/grease/.test(r.fx) && r.smoke === 0), { seen: late.map((r) => [r.fx, r.smoke]) });
+  rec.ok('the bar over the head is FULL and flashing while it waits',
+    !!idle[0].bar && idle[0].bar.ready === true && idle[0].bar.idle === true && idle[0].bar.skill === 'cooking',
+    idle[0].bar);
+  /* The owner asked for a LOOK, so leave one behind. */
+  /* Clipped to the button's OWN rect (it moved; a fixed clip had been
+     photographing the bag sheet under it). */
+  const btnRect = await P.page.evaluate(() => {
+    const b = document.querySelector('.bt-rjoy-base');
+    if (!b) return null;
+    const r = b.getBoundingClientRect();
+    return { x: Math.max(0, r.left - 14), y: Math.max(0, r.top - 14), width: r.width + 28, height: r.height + 28 };
+  });
+  if (btnRect) await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/gcue-button.png`, clip: btnRect })
     .catch((e) => console.log('    (no shot: ' + e.message + ')'));
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/gcue-screen.png` }).catch(() => {});
 
-  /* ═══ AND IT STANDS DOWN FOR A LIVE GESTURE ═══
-     Stamp _gestureMovedAt the way ExtractionSwipeLayer's onPointerMove does
-     (performance.now(), its own clock -- the two epochs are not the same and
-     mixing them is what would let the demo run straight through a real swipe),
-     pin the raw phase, and watch the display settle onto it and STOP. */
-  const thumb = await P.page.evaluate(() => {
-    const ex = window._gameState.current._extraction;
-    /* Exactly what ExtractionSwipeLayer's onPointerDown/onPointerMove leave
-       behind: the thumb is on the button and the raw phase is where it put
-       it.  Both fields, because the demo checks both. */
-    ex._gestureDown = true;
-    ex._gestureMovedAt = performance.now();
-    ex.cueFrame01 = 0.5;
-    return true;
-  });
-  rec.ok('a live gesture could be simulated (guard)', thumb === true, { thumb });
-  /* WAIT FOR IT TO ARRIVE, do not sleep a fixed amount.  The display chases
-     the thumb at a capped rate (one full cycle per 1600ms for cooking) and
-     that cap is charged per FRAME with dt clamped at 100ms -- so in this
-     harness, where the main thread stalls for over a second at a stretch, the
-     chase runs at a fraction of wall-clock speed.  A fixed 2600ms sleep passed
-     on a fast run and failed on a slow one for reasons that had nothing to do
-     with the code under test. */
-  const settled = await H.waitFor(P, (S) => {
-    const e = S._extraction;
-    return e && e._posF != null ? Math.abs(e._posF - 0.5) : 1;
-  }, (d) => d < 0.02, { timeout: 25000, label: 'the display reaches the thumb' }).catch(() => null);
-  rec.ok('the display walks to where the thumb is holding', settled != null && settled < 0.02, { settled });
-  const live = await sample(P, 6, 90);
-  await P.page.evaluate(() => {
-    const ex = window._gameState.current._extraction;
-    if (ex) ex._gestureDown = false;
-  });
-  console.log('    under a live gesture: ' + JSON.stringify(live.map((r) => r.posF)));
-  rec.ok('under a live gesture the display follows the THUMB, not the demo loop',
-    live.every((r) => Math.abs((r.posF ?? 0) - 0.5) < 0.02), { seen: live.map((r) => r.posF) });
-  rec.ok('...so the demo is not fighting the player\'s own motion',
-    distinct(live, 'posF') <= 2, { seen: live.map((r) => r.posF) });
-
-  /* ═══ v2.3.2514: THE REAL POINTER PATH, WHICH NOTHING EVER EXERCISED ═══
+  /* ═══ LIVE: THE REAL POINTER PATH ═══
+   * Real PointerEvents through ExtractionSwipeLayer's listeners on window, two
+   * independent pointer ids, and a press that straddles a state change -- so
+   * they are dispatched rather than driven through Playwright's touchscreen.
    *
-   * Everything above sets `ex._gestureDown` and `ex.cueFrame01` BY HAND, and
-   * that is honest about what it tests -- the demo's stand-down rule -- but it
-   * means the path that actually writes those fields, ExtractionSwipeLayer's
-   * three window listeners, has never been run by a test at all.  Both of the
-   * defects this pass fixes live in exactly that gap:
-   *
-   *   1. A harvest starts on the right button's TOUCHSTART, and a touch fires
-   *      `pointerdown` FIRST -- so the finger that started the harvest pressed
-   *      while there was no ready extraction, the layer bailed, and that
-   *      thumb's pumping was ignored for the whole window.  Reproduced below
-   *      by putting the record back into 'waiting' (the game loop flips it to
-   *      'ready' again on the next frame, since the wind-up is long past) and
-   *      pressing during it.
-   *   2. `onPointerUp` took no argument and ended the stroke for ANY pointer,
-   *      so the left thumb lifting off the movement stick killed the right
-   *      thumb's chop.  Reproduced by lifting a second pointer id.
-   *
-   * The events are constructed and dispatched rather than driven through
-   * Playwright's touchscreen because this needs TWO independent pointer ids
-   * with a press that straddles a state change; they are real PointerEvents
-   * going through the real listeners on window, which is the half that was
-   * missing. */
+   * v2.3.2514's two regressions stay pinned: the finger that started the cook
+   * is down BEFORE the window opens (its pointerdown fires while there is no
+   * ready extraction) and must be adopted on its first move; and a second
+   * finger lifting must not end the stroke. */
   const RP_MAIN = 41, RP_OTHER = 42;
   const rpProbe = () => P.page.evaluate(() => (window.__btHarvest ? window.__btHarvest() : null));
   const rpDispatch = (type, id, x, y) => P.page.evaluate(([t, pid, cx, cy]) => {
@@ -259,159 +220,186 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const cue = await P.page.evaluate(() => (window.__btHarvest ? window.__btHarvest().cue : null));
   rec.ok('the layer can say where the button is (guard)', !!(cue && cue.r), cue);
   if (cue && cue.r) {
-    /* Back to 'waiting' AND press, in ONE evaluate.  Two round-trips would
-       let the game loop run in between -- the wind-up is long past, so it
-       flips the record straight back to 'ready' and the press then takes the
-       ordinary path, which is the opposite of the ordering under test.  (It
-       did exactly that on the first run of this block.) */
     const pressedEarly = await P.page.evaluate(([pid, cx, cy]) => {
       const ex = window._gameState.current._extraction;
-      if (ex) { ex.status = 'waiting'; ex._gesture = null; ex._gestureDown = false; ex.cueFrame01 = 0; ex.progress = 0; ex.reps = 0; }
+      if (ex) { ex.status = 'waiting'; ex._gesture = null; ex._gestureDown = false; ex.cueFrame01 = 0; ex.progress = 0; ex.reps = 0; ex._posF = null; }
       window.dispatchEvent(new PointerEvent('pointerdown', { pointerId: pid, clientX: cx, clientY: cy,
         pointerType: 'touch', bubbles: true, cancelable: true, isPrimary: true }));
       return window.__btHarvest ? window.__btHarvest() : null;
     }, [RP_MAIN, cue.x, cue.y]);
     rec.ok('pressing before the window opens starts no gesture (as designed)',
       !!pressedEarly && pressedEarly.pressed === false, pressedEarly);
-    /* The loop re-opens the window on its own -- windowOpensAt is long past. */
     const reopened = await H.waitFor(P, (S) => (S._extraction ? S._extraction.status : null),
       (v) => v === 'ready', { timeout: 8000, label: 'the window opens again' }).catch(() => null);
     rec.ok('the window opens again with the finger still down (guard)', reopened === 'ready', { reopened });
-    /* A small move first: under STROKE_AMP (40px), so it adopts the finger
-       without counting a stroke and completing the cook (one flip does it). */
     await rpDispatch('pointermove', RP_MAIN, cue.x, cue.y - 12);
     const adopted = await rpProbe();
     rec.ok('the thumb held through the wind-up is adopted when the window opens',
       !!adopted && adopted.pressed === true && adopted.gestureDown === true, adopted);
     rec.ok('...and the layer knows which finger owns it', !!adopted && adopted.pointerId === RP_MAIN, adopted);
-    /* Now make the window survive a real pump, and prove the phase moves. */
-    await P.page.evaluate(() => {
-      const ex = window._gameState.current._extraction;
-      if (ex) ex.repsTarget = 99;
-    });
-    const pumpSeen = [];
-    for (let i = 0; i < 4; i++) {
-      await rpDispatch('pointermove', RP_MAIN, cue.x, cue.y + (i % 2 ? 55 : -55));
-      await P.page.waitForTimeout(40);
-      pumpSeen.push(await rpProbe());
-    }
-    /* Sampled after EVERY move, not once at the end: the cook's phase advances
-       on the up-flick and rewinds on the settle, clamped at 0 -- so a pump that
-       ends on a down-stroke legitimately reads 0, and a single reading at the
-       end tells you nothing.  (It read 0 on the first run of this block for
-       exactly that reason.) */
-    const pumpMax = Math.max.apply(null, pumpSeen.map((r) => (r && r.frame01) || 0));
-    const pumped = pumpSeen[pumpSeen.length - 1];
-    rec.ok('...so a pump from that same finger drives the gesture phase',
-      pumpMax > 0, { pumpMax, seen: pumpSeen.map((r) => r && r.frame01) });
-    /* And the half-strokes were COUNTED -- the whole point of the adoption is
-       that this finger's work reaches the meter. */
-    rec.ok('...and its strokes count toward the harvest', !!pumped && pumped.reps > 0, pumped);
 
-    /* ── AND A SECOND FINGER LIFTING MUST NOT END IT ── */
-    await rpDispatch('pointerdown', RP_OTHER, 40, PHONE.height - 120);   /* the movement stick */
+    /* A few quick flips (up is the cook's power stroke), sampled after every
+       move: the raw phase must only ever go FORWARD round the loop. */
+    const flips = [];
+    /* sampled MID-stroke too: at the ends of strokes the phase is always the
+       blow (0.5) or the ready pose (0), which says nothing about the frames
+       in between */
+    const PATH = [-13, -26, -13, 0, 13, 26, 13, 0, -13, -26, -13, 0, 13, 26];
+    for (let i = 0; i < PATH.length; i++) {
+      await rpDispatch('pointermove', RP_MAIN, cue.x, cue.y + PATH[i]);
+      await P.page.waitForTimeout(50);
+      flips.push(await rpProbe());
+    }
+    const phases = flips.map((r) => (r && r.frame01) || 0);
+    let backwards = 0;
+    for (let i = 1; i < phases.length; i++) {
+      const d = ((phases[i] - phases[i - 1]) % 1 + 1) % 1;
+      if (d > 0.5) backwards++;   /* a step "forward" of more than half a loop is a rewind */
+    }
+    console.log('    flip phases: ' + JSON.stringify(phases) + ' reps ' + JSON.stringify(flips.map((r) => r && r.cycles)));
+    rec.ok('the strokes drive the phase', new Set(phases).size >= 3, { phases });
+    rec.ok('...and only FORWARD -- the return stroke no longer plays the flip backwards',
+      backwards === 0, { phases });
+    const mid = flips[flips.length - 1];
+    rec.ok('...and they count toward the meter', !!mid && mid.cycles > 0, mid);
+    rec.ok('...which a few flips come nowhere near filling (it wants ~3s of work)',
+      !!mid && mid.progress < 0.6, mid);
+    const liveFace = await face(P);
+    rec.ok('while the thumb is down the cue stops teaching: no comet, the tool solid',
+      liveFace.cometOp === '0' && liveFace.toolOp === '1.00', liveFace);
+
+    /* A resting thumb holds the pose: finger still on the glass, no moves. */
+    await P.page.waitForTimeout(700);
+    const rest = await sample(P, 5, 120);
+    rec.ok('a thumb resting on the button HOLDS the pose (no drift, no loop)',
+      distinct(rest, 'posF') === 1, { seen: rest.map((r) => r.posF) });
+
+    /* ── A SECOND FINGER LIFTING MUST NOT END IT ── */
+    await rpDispatch('pointerdown', RP_OTHER, 40, PHONE.height - 120);
     await rpDispatch('pointerup', RP_OTHER, 40, PHONE.height - 120);
     const survived = await rpProbe();
     rec.ok('another finger lifting does not end the stroke in progress',
-      !!survived && survived.pressed === true && survived.gestureDown === true, survived);
-    rec.ok('...and it is still the same finger that owns it',
-      !!survived && survived.pointerId === RP_MAIN, survived);
+      !!survived && survived.pressed === true && survived.gestureDown === true && survived.pointerId === RP_MAIN, survived);
 
-    /* ── THE RIGHT FINGER LIFTING DOES ── */
+    /* ── ABOUT THREE SECONDS AT A QUICK PACE ──
+       From an EMPTY meter: lift, clear the attempt's gesture, press again and
+       flip continuously from inside the page (a round-trip per move would put
+       >200ms gaps in the motion, which the active clock rightly ignores).
+       Wall time in this harness is not a phone's -- the main thread stalls
+       and a setTimeout(18) can take several times that -- so the assertion is
+       about the PACING, not a stopwatch: the stroke rate the page actually
+       achieved is measured, and the meter must have filled when that rate
+       says ~target cycles were done (or the floor was reached), not after a
+       handful of flips and not long after. */
     await rpDispatch('pointerup', RP_MAIN, cue.x, cue.y);
-    const lifted = await rpProbe();
-    rec.ok('the gesturing finger lifting ends the press', !!lifted && lifted.pressed === false, lifted);
-    rec.ok('...and the demo is allowed back (the thumb is off the glass)',
-      !!lifted && lifted.gestureDown === false, lifted);
+    /* A picture of the flip in progress -- smoke and grease off the pan --
+       taken from outside while the in-page loop below is running. */
+    const midShot = P.page.waitForTimeout(1600).then(() => P.page.screenshot({
+      path: `${H.REPO}/tools/qa/mp/out/gcue-flipping.png` }).catch(() => {}));
+    const quick = await P.page.evaluate(async ([pid, cx, cy]) => {
+      const S = window._gameState.current;
+      const ex0 = S._extraction;
+      if (ex0) { ex0._gesture = null; ex0.progress = 0; ex0.reps = 0; }
+      const ev = (t, x, y) => window.dispatchEvent(new PointerEvent(t, { pointerId: pid,
+        clientX: x, clientY: y, pointerType: 'touch', bubbles: true, cancelable: true, isPrimary: true }));
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      ev('pointerdown', cx, cy);
+      const t0 = performance.now();
+      let halves = 0, lastEx = null, smokeMax = 0;
+      const kinds = new Set();
+      for (let s = 0; s < 400; s++) {
+        const up = s % 2 === 0;
+        for (let k = 1; k <= 6; k++) {
+          const y = cy + (up ? 26 - 52 * k / 6 : -26 + 52 * k / 6);
+          ev('pointermove', cx + Math.sin(s * 1.3 + k) * 5, y);
+          await sleep(18);
+        }
+        halves++;
+        smokeMax = Math.max(smokeMax, window.__btCookSmoke ? window.__btCookSmoke().live : 0);
+        for (const b of (S._fxBursts || [])) kinds.add(b.kind);
+        const ex = S._extraction;
+        if (ex && ex._gesture) lastEx = { cycles: ex._gesture.cycles, activeMs: ex._gesture.activeMs, progress: ex.progress, target: ex.repsTarget };
+        if (!ex || ex.status !== 'ready') break;
+        if (performance.now() - t0 > 30000) break;
+      }
+      ev('pointerup', cx, cy);
+      return { ms: Math.round(performance.now() - t0), halves, done: !S._extraction, last: lastEx, smokeMax, fx: [...kinds] };
+    }, [RP_MAIN, cue.x, cue.y]);
+    const cyclesDone = quick.halves / 2;
+    const target = gestureTargetCycles('cooking');
+    console.log('    quick flipping: ' + JSON.stringify(quick) + ' -> ' + cyclesDone + ' cycles for a target of ' + target.toFixed(2));
+    await midShot;
+    rec.ok('quick flipping finishes the cook', quick.done === true, quick);
+    /* Owner: "smoke for cooking" -- and the grease pops with the flick. */
+    rec.ok('...with SMOKE rising off the pan while you flip', quick.smokeMax > 0, quick);
+    rec.ok('...and grease popping with the flicks', quick.fx.includes('grease'), quick);
+    rec.ok(`...after about the target's worth of flips (${cyclesDone} cycles vs ${target.toFixed(2)}), not a handful`,
+      cyclesDone >= target - 1.5 && cyclesDone <= target + 1.5, { quick, target });
+    rec.ok('...and never before the floor of real motion (2.4s)', quick.ms >= 2300, quick);
   }
 
-  /* ═══ AND THE WIND-UP BAR OVER THE HEAD (v2.3.2514) ═══
-     The bar is 46 world px of anti-aliased Graphics over a character's head;
-     a screenshot cannot say what fraction it is at, so the renderer publishes
-     the reading it drew.  The STALL is the assertion that matters: `ready` has
-     had no timeout since v2.3.1416, so the bar has to sit at 95% and say "your
-     turn" rather than complete and look like a hang. */
-  const bar = await P.page.evaluate(() => window.__btWindupBar || null);
-  rec.ok('the wind-up bar is drawn over the harvesting figure', !!bar, bar);
-  if (bar) {
-    rec.ok('...and it stalls at 95% once the window is open', Math.abs(bar.bar01 - 0.95) < 0.06, bar);
-    rec.ok('...on the skill actually being harvested', bar.skill === 'cooking', bar);
-  }
-
-  /* ═══ AND THE TIMER HALF, EXACTLY ═══
-     The thumb-down flag covers a finger ON the glass; the HOLD covers the
-     beat after it lifts.  That second branch cannot be measured in this
-     harness -- the main thread stalls for over a second at a stretch here, so
-     "600ms since the last move" is not a condition a scenario can hold still.
-     It is arithmetic, so it is checked as arithmetic, against the same
-     function the game calls. */
+  /* ═══ THE RULES, AS ARITHMETIC ═══
+     No browser needed: the same functions the game calls. */
   const ready = (extra) => Object.assign({ status: 'ready', skill: 'mining' }, extra || {});
   const pnow = performance.now();
-  rec.ok('an idle ready window gets a demo phase',
-    typeof gestureDemo01(ready(), Date.now()) === 'number', {});
-  rec.ok('...a thumb on the glass suppresses it however long the frame took',
-    gestureDemo01(ready({ _gestureDown: true, _gestureMovedAt: pnow - 99999 }), Date.now()) === null, {});
-  rec.ok('...a thumb that JUST lifted still holds the pose (the HOLD)',
-    gestureDemo01(ready({ _gestureMovedAt: pnow }), Date.now()) === null, {});
-  rec.ok('...and after a pause of stillness the demonstration comes back',
-    typeof gestureDemo01(ready({ _gestureMovedAt: pnow - 5000 }), Date.now()) === 'number', {});
-  rec.ok('...but never before the window opens (the wind-up keeps its own loop)',
-    gestureDemo01(ready({ status: 'waiting' }), Date.now()) === null, {});
-  /* The cadences are the caps already in the tree, so demo and result cannot
-     disagree: one full cycle per 700 / 450 / 1600 ms. */
-  const cyc = (skill, ms) => {
-    const a = gestureDemo01(ready({ skill }), 0);
-    const b = gestureDemo01(ready({ skill }), ms / 2);
-    return Math.abs(a) < 1e-9 && Math.abs(b - 0.5) < 1e-9;
-  };
-  rec.ok('mining and chopping demo one swing per 700ms', cyc('mining', 700) && cyc('woodcutting', 700), {});
-  rec.ok('fishing cranks one turn per 450ms', cyc('fishing', 450), {});
-  rec.ok('cooking flips once per 1600ms', cyc('cooking', 1600), {});
+  rec.ok('an untouched ready window is idle (the cue teaches)', gestureIdle(ready()) === true, {});
+  rec.ok('...a thumb on the glass is not, however long the frame took',
+    gestureIdle(ready({ _gestureDown: true, _gestureMovedAt: pnow - 99999 })) === false, {});
+  rec.ok('...a thumb that JUST lifted holds for a beat', gestureIdle(ready({ _gestureMovedAt: pnow })) === false, {});
+  rec.ok('...after a pause the cue comes back', gestureIdle(ready({ _gestureMovedAt: pnow - 5000 })) === true, {});
+  rec.ok('...and never during the wind-up', gestureIdle(ready({ status: 'waiting' })) === false, {});
 
-  /* ═══ THE CURVES, DIRECTLY ═══
-     Pure arithmetic, no browser: the four motions are the owner's own and each
-     has to actually travel on its own axis.  A cue that renders but does not
-     move on the axis the recogniser reads (ExtractionSwipeLayer: mining and
-     cooking on y, woodcutting on x, fishing on the angle about the centre)
-     would teach the wrong gesture. */
-  const spanOf = (skill, key) => {
-    let lo = Infinity, hi = -Infinity;
-    for (let i = 0; i < 64; i++) {
-      const c = gestureCue01(skill, i / 64);
-      lo = Math.min(lo, c[key]); hi = Math.max(hi, c[key]);
-    }
-    return +(hi - lo).toFixed(2);
-  };
-  const axes = {
-    miningY: spanOf('mining', 'y'), miningX: spanOf('mining', 'x'),
-    cookingY: spanOf('cooking', 'y'), cookingX: spanOf('cooking', 'x'),
-    choppingX: spanOf('woodcutting', 'x'), choppingY: spanOf('woodcutting', 'y'),
-    fishingX: spanOf('fishing', 'x'), fishingY: spanOf('fishing', 'y'),
-  };
-  console.log('    cue travel: ' + JSON.stringify(axes));
-  rec.ok('the mine pump travels on the VERTICAL axis only', axes.miningY > 25 && axes.miningX === 0, axes);
-  rec.ok('the cook flip travels on the VERTICAL axis only', axes.cookingY > 22 && axes.cookingX === 0, axes);
-  rec.ok('the chop travels on the HORIZONTAL axis only', axes.choppingX > 22 && axes.choppingY === 0, axes);
-  rec.ok('the reel travels on BOTH -- it is a circle', axes.fishingX > 30 && axes.fishingY > 30, axes);
-  /* Every skill has to stay inside the disc, or the cue is drawn off the
-     button it is meant to be on: r=40 is where the wind-up ring is drawn and
-     r=50 is the rim itself. */
-  /* THE WHOLE GLYPH, not its origin.  The first cut of this measured the
-     fingertip alone and passed while a real capture showed a third of the
-     finger hanging off the rim at ten o'clock -- the body runs back from the
-     origin and the knuckle further back still.  CUE_REACH is that overhang,
-     and r=40 is where the wind-up ring is drawn. */
-  let worst = 0, worstAt = null;
+  /* The body's phase: holds at 0 untouched, holds when still, never rewinds. */
+  const ex = ready();
+  const p0 = gesturePose01(ex, 1000);
+  ex.cueFrame01 = 0.5; gesturePose01(ex, 1100); gesturePose01(ex, 1200); gesturePose01(ex, 1300);
+  const pHeld = gesturePose01(ex, 1400);
+  ex.cueFrame01 = 0.45;
+  const pBack = gesturePose01(ex, 1500);
+  rec.ok('the body shows the ready pose until the first stroke', p0 === 0, { p0 });
+  rec.ok('...reaches the thumb\'s phase, and holds there', Math.abs(pHeld - 0.5) < 1e-6, { pHeld });
+  rec.ok('...and a small step back is jitter, not a rewind', Math.abs(pBack - 0.5) < 1e-6, { pBack });
+  rec.ok('...and no leisurely cap: a whole swing can play in a quarter second',
+    (() => {
+      /* the thumb sweeps a whole swing in 240ms; the display keeps up */
+      const e = ready(); gesturePose01(e, 1000); let v = 0;
+      for (let t = 1016; t <= 1272; t += 16) { e.cueFrame01 = Math.min(0.99, (t - 1000) / 240); v = gesturePose01(e, t); }
+      return v > 0.93;
+    })(), {});
+
+  /* About three seconds at a quick pace, per skill. */
   for (const skill of ['mining', 'woodcutting', 'fishing', 'cooking']) {
-    for (let i = 0; i < 64; i++) {
-      const c = gestureCue01(skill, i / 64);
-      const r = Math.hypot(c.x - 50, c.y - 50) + CUE_REACH;
-      if (r > worst) { worst = r; worstAt = { skill, p: +(i / 64).toFixed(3), x: +c.x.toFixed(1), y: +c.y.toFixed(1) }; }
-    }
+    const ms = gestureTargetCycles(skill) * GESTURE_QUICK_CYCLE_MS[skill];
+    rec.ok(`${skill}: the meter is ${GESTURE_TARGET_MS}ms of quick ${skill}`, Math.abs(ms - GESTURE_TARGET_MS) < 1, { ms });
   }
-  rec.ok('...and no part of the finger leaves the disc', worst <= 40,
-    { worst: +worst.toFixed(2), reach: CUE_REACH, worstAt });
-  rec.ok('a skill with no gesture draws nothing', gestureCue01('smithing', 0.5) === null, {});
+
+  /* The cue geometry: the idle tool sits at the START of its track whatever
+     the time, the live tool rides the phase on the right axis, the power
+     stroke's far end is the blow, and nothing leaves the disc. */
+  const inDisc = (x, y) => Math.hypot(x - 50, y - 50) + (CUE_TOOL_SIZE / 2) * Math.SQRT2 <= 47;
+  for (const skill of ['mining', 'woodcutting', 'fishing', 'cooking']) {
+    const a = gestureCueFace(skill, 0, true, 0), b = gestureCueFace(skill, 0, true, 777);
+    rec.ok(`${skill}: idle tool is static at the start`, a.tool.x === b.tool.x && a.tool.y === b.tool.y, { a: a.tool, b: b.tool });
+    rec.ok(`${skill}: ...flashes`, a.tool.op !== b.tool.op || a.glow !== b.glow, { a: a.tool.op, b: b.tool.op });
+    rec.ok(`${skill}: ...and the comet moves`, a.comet[0].x !== b.comet[0].x || a.comet[0].y !== b.comet[0].y, {});
+    rec.ok(`${skill}: chevrons say which way`, typeof a.arrows === 'string' && a.arrows.length > 10, {});
+    let xs = new Set(), ys = new Set(), out = null;
+    for (let i = 0; i < 64; i++) {
+      const f = gestureCueFace(skill, i / 64, false, 0);
+      xs.add(f.tool.x.toFixed(2)); ys.add(f.tool.y.toFixed(2));
+      if (!inDisc(f.tool.x, f.tool.y)) out = { p: i / 64, x: f.tool.x, y: f.tool.y };
+    }
+    const vert = skill === 'mining' || skill === 'cooking';
+    rec.ok(`${skill}: the tool travels on the gesture's axis`,
+      skill === 'fishing' ? (xs.size > 10 && ys.size > 10) : vert ? (xs.size === 1 && ys.size > 10) : (ys.size === 1 && xs.size > 10),
+      { xs: xs.size, ys: ys.size });
+    rec.ok(`${skill}: ...and never leaves the disc`, out === null, out || {});
+  }
+  const mTop = gestureCueFace('mining', 0, false, 0).tool, mHit = gestureCueFace('mining', GESTURE_STROKE.mining.split, false, 0).tool;
+  rec.ok('mining: the pick starts raised (top) and the blow lands at the bottom of the down-stroke', mTop.y < mHit.y, { mTop, mHit });
+  const kLow = gestureCueFace('cooking', 0, false, 0).tool, kUp = gestureCueFace('cooking', GESTURE_STROKE.cooking.split, false, 0).tool;
+  rec.ok('cooking: the pan starts low and the flick ends high', kLow.y > kUp.y, { kLow, kUp });
+  rec.ok('a skill with no gesture draws nothing', gestureCueFace('smithing', 0.5, true, 0) === null, {});
 
   await P.ctx.close().catch(() => {});
 }

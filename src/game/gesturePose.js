@@ -1,94 +1,126 @@
-/* ═══ v2.3.2245: GESTURE PHASE -> POSE PHASE, AT A LEISURELY CAP ═══
+/* ═══ v2.3.2245: GESTURE PHASE -> POSE PHASE ═══
  *
  * Owner: "the animation frames will play at the speed the user is performing
- * the gesture (capped at a maximum speed not faster than a leisurely gesture
- * pace)."
- *
- * Returns the 0..1 phase a harvest animation should show, or null when the
- * clock loop should run instead (no extraction, or its window not open yet
- * -- control-redesign.md §5.11: a frozen figure for a ten-second wind-up
- * reads as a hang, so the wind-up keeps its slow loop and the gesture takes
- * over at `ready`).
- *
- * The DISPLAY phase chases the RAW gesture phase (ex.cueFrame01, written by
- * ExtractionSwipeLayer as the thumb moves on the right button) at most one
- * full cycle per `fullCycleMs` -- the v2.3.1435 chase the reel and pan
- * markers already used, moved onto the extraction record (ex._posF/_posT)
- * so it dies with the attempt.  `wraps` treats the phase as circular (the
- * reel, the cook flip), so a crank never unwinds backwards across the seam.
- * A still thumb holds the pose: no drift, no idle loop.
- *
- * Shared by entityRenderer (the mine/fish body poses) and effectsRenderer
- * (the chop/cook stand-ins) so the two cannot drift apart. */
-/* ═══ v2.3.2384: AND A DEMO PHASE WHILE NOBODY IS SWIPING ═══
- *
- * Owner: "Add the old gesture cues on top of the right joystick when it's
- * time to extract the resource."
- *
- * The old cue was a procedural white finger drawn in the world, deleted whole
- * at v2.3.2245 when the harvest moved onto the right button (commit 2deb56a).
- * What replaced it teaches nothing at the moment it matters, and the reason is
- * one number: `ex.cueFrame01` is written ONLY inside ExtractionSwipeLayer's
- * onPointerMove.  So the instant the window opens with no thumb down, the
- * button shows the word CHOP, a ring at 0%, and a tool strip FROZEN on cell 0
- * -- and the character freezes with it, because gesturePose01 below chases the
- * same number.  Nothing moves until you already know what to do.
- *
- * This is the fix, and it is deliberately ONE function feeding ONE place: give
- * `cueFrame01` a demo value while no thumb is down, and four things start
- * teaching at once -- the tool strip on the button, the player's own body, the
- * chop/cook stand-ins, and anything else drawn off the phase.  Fixing only the
- * button would have left the frozen character behind it.
- *
- * IT YIELDS THE MOMENT A THUMB MOVES, which is what `ex._gestureMovedAt` was
- * always for.  ExtractionSwipeLayer has stamped it since v2.3.2245 with the
- * comment "the button face reads this" -- and nothing ever read it.  Now it
- * does: the demo returns null for HOLD_MS after the last movement, so the
- * player's own gesture owns the phase while they are performing it and the
- * demo returns after a pause of stillness.  A demo that kept looping under a
- * live gesture would fight the thing it is trying to teach.
- *
- * The cadences are the caps already in the tree, not new numbers, so the demo
- * and the result cannot disagree: 700ms a swing for mining and woodcutting,
- * 450ms a crank for fishing, 1600ms a flip for cooking.
- *
- * A SAWTOOTH, not an oscillation, for all four.  The painted strips march one
- * way: measured on the pickaxe and axe sheets, the opaque bbox walks
- * continuously from cell 0 (x 20..131, y 37..133) to cell 7 (x 82..199,
- * y 126..244) -- wind-up through strike, then back to ready.  0 -> 1 repeating
- * is that motion; a triangle would play the strike backwards on the way down.
+ * the gesture".  Returns the 0..1 phase a harvest animation should show, or
+ * null when the clock loop should run instead (no extraction, or its window
+ * not open yet -- the wind-up keeps its loop and the gesture takes over at
+ * `ready`).  Shared by entityRenderer (the mine/fish body poses) and
+ * effectsRenderer (the chop/cook stand-ins) so the two cannot drift apart.
  */
-const DEMO_CYCLE_MS = { mining: 700, woodcutting: 700, fishing: 450, cooking: 1600 };
-/* Long enough that the gaps between samples inside one continuous swipe do not
-   flicker the demo back on, short enough that a player who stops to look gets
-   the demonstration back while the window is still open. */
-const DEMO_HOLD_MS = 600;
+/* ═══ v2.3.2702: THE CUE GESTURE, THE WAY THE OWNER DESCRIBED IT ═══
+ *
+ * Owner: "the character harvests a resource ... for a certain amount of time
+ * (determined by your skill level) ... I wanted the character to perform each
+ * animation with a loading bar above their head indicating the progress of
+ * the animation.  Then, once it reaches the limit, the character is supposed
+ * to STOP animating until you perform the correct gesture on the right
+ * joystick ... before the player performs the gesture the starting spot of the
+ * cue should be static but flash.  An effect should show you which way the
+ * cue should move ... As you perform the gesture the character's frames
+ * should animate at the speed you perform the gesture, but require about 3
+ * seconds of performing the gesture at a quick pace ... It also might look
+ * good if the cue was a mini sprite of the tool being used."
+ *
+ * What that changed here, against what shipped before it:
+ *
+ * 1. NO DEMO ON THE BODY.  v2.3.2384 looped a generated phase (gestureDemo01)
+ *    whenever no thumb was down, and fed it to the character too -- so the
+ *    figure kept swinging on its own at `ready`, which is the opposite of
+ *    "stop animating until you perform the gesture".  The body now HOLDS: its
+ *    phase comes only from the thumb (ex.cueFrame01), which is 0 -- the
+ *    raised, ready pose -- until the first stroke, and stays wherever the last
+ *    stroke left it while the thumb rests.  The teaching moved to the button,
+ *    where it belongs: a still tool at the start of its track, flashing, and a
+ *    light running along the track in the direction to move (gestureCueFace).
+ *
+ * 2. THE PHASE IS A SAWTOOTH DRIVEN BY THE HAND, AND ONLY FORWARD.  It used to
+ *    be scrubbed by signed thumb deltas, so every up-stroke of a pickaxe pump
+ *    played the swing BACKWARDS.  Now each skill has a power stroke (down for
+ *    the pick, up for the pan flip, rightward for the axe) that plays the loop
+ *    up to the blow landing (GESTURE_STROKE.split), and a return stroke that
+ *    plays the rest -- one there-and-back is one swing, and the swing always
+ *    runs forward, at the pace of the hand.  Fishing was already a forward
+ *    loop (one finger-circle = one sway).
+ *
+ * 3. NO LEISURELY CAP.  The chase below used to hold a swing to one per 700ms
+ *    (v2.3.2245's "not faster than a leisurely pace"); the owner now asks for
+ *    "the speed you perform the gesture".  The cap is kept only as a smoother
+ *    for a jittery thumb and set well past a quick pace (GESTURE_MAX_CYCLE_MS),
+ *    so it is not what sets the speed any more.
+ *
+ * 4. ABOUT THREE SECONDS AT A QUICK PACE.  The meter used to fill on a handful
+ *    of reps (3 pumps, 1.5 turns, ONE flip).  It now wants GESTURE_TARGET_MS of
+ *    work at a quick pace (GESTURE_QUICK_CYCLE_MS a cycle), so a quick hand
+ *    finishes in ~3s and a slow one takes longer -- with a floor
+ *    (GESTURE_FLOOR_MS of actual motion), so no amount of scribbling finishes
+ *    in under ~2.4s.
+ */
 
-/* ═══ v2.3.2514: ONE READING OF HOW FAR ALONG A HARVEST IS ═══
- *
- * Owner: a bar above the character's head that fills through the wind-up,
- * waits at the top for the window, and finishes as the strokes land.
- *
- * The button's ring already computes exactly this (BroTown's harvest face),
- * and the rule for a second meter showing the same thing is that it must not
- * own a second timer: two clocks for one event drift, and the drift is what a
- * player sees.  So the arithmetic moves HERE, both meters read it, and the
- * button's behaviour is unchanged -- it still shows the wind-up and then the
- * strokes as two separate sweeps of the ring.
- *
- * `bar01` is the world bar's single continuous reading:
- *   waiting  0 -> 0.95  over startedAt -> windowOpensAt
- *   ready     0.95      until the first stroke registers
- *   reps      0.95 -> 1 as ex.progress runs to full
- * The 95% stall is the point: the bar says "nearly" and then waits for YOU,
- * rather than completing and leaving nothing to explain the pause.  `ready`
- * has had NO timeout since v2.3.1416, so that wait is unbounded and a still
- * bar would read as a hang -- which is why the drawing side pulses it (see
- * effectsRenderer's _drawWindupBar) instead of leaving it frozen.
- *
- * Returns null when there is nothing to show. */
-export const WINDUP_STALL_01 = 0.95;
+/* ═══ THE STROKES ═══
+ * `axis`: the thumb axis the stroke is read on.  `power`: the direction of the
+ * stroke that lands the blow (+1 = down / right on screen).  `split`: where in
+ * the 0..1 animation loop the power stroke ENDS -- the blow -- measured on the
+ * art, not chosen:
+ *   mining       mine-south, 14 frames: 0-3 hold the pick raised, 4-5 are the
+ *                strike (floor(p*14) = 5 at p = 0.36) -- the down-stroke ends
+ *                on the bite, the up-stroke plays the debris and the raise.
+ *   woodcutting  the 12 played chop frames: the axe bites on k = 9
+ *                (p 0.75..0.83), so the rightward stroke ends at 0.8.
+ *   cooking      the 24-frame cook loop has no single apex; the flick up plays
+ *                the first half, the settle back the second.
+ * Fishing is not here: it is a circle, read as an angle (one turn = one loop). */
+export const GESTURE_STROKE = {
+  mining:      { axis: 'y', power: 1,  split: 0.36 },
+  woodcutting: { axis: 'x', power: 1,  split: 0.80 },
+  cooking:     { axis: 'y', power: -1, split: 0.50 },
+};
+/* Thumb travel for one full half-stroke.  The disc is 96px (108 landscape) and
+   the recognizer's own hysteresis is 28px (ExtractionSwipeLayer STROKE_AMP), so
+   a comfortable pump across the middle of the button plays a whole half of the
+   loop. */
+export const STROKE_SPAN_PX = 38;
 
+/* A QUICK pace, per full cycle (a pump down and back up, a chop across and
+   back, a flip up and down, one turn of the reel).  The meter wants
+   GESTURE_TARGET_MS of work at this pace, i.e. TARGET / QUICK cycles. */
+export const GESTURE_QUICK_CYCLE_MS = { mining: 420, woodcutting: 420, fishing: 480, cooking: 500 };
+export const GESTURE_TARGET_MS = 3000;
+/* The floor: the meter can never run ahead of GESTURE_FLOOR_MS of real motion,
+   so a frantic (or synthetic) scribble still takes ~2.4s. */
+export const GESTURE_FLOOR_MS = 2400;
+/* The display chase's cap -- a smoother, not a speed limit (see 3. above). */
+export const GESTURE_MAX_CYCLE_MS = { mining: 240, woodcutting: 240, fishing: 220, cooking: 260 };
+
+export function gestureTargetCycles(skill) {
+  return GESTURE_TARGET_MS / (GESTURE_QUICK_CYCLE_MS[skill] || 450);
+}
+
+/* How long after the thumb leaves the button (or stops) before the cue comes
+   back to teach.  Long enough that the gaps inside one continuous swipe never
+   flash it on, short enough that a player who stops to look gets it back. */
+const IDLE_HOLD_MS = 600;
+
+/* TRUE while the window is open and nobody is gesturing -- the cue's teaching
+   state.  Two clocks, and they are NOT the same epoch: `_gestureMovedAt` is a
+   performance.now() stamp (ExtractionSwipeLayer), so the hold is measured on
+   performance.now() here, never against a Date.now() the caller passes. */
+export function gestureIdle(ex) {
+  if (!ex || ex.status !== 'ready') return false;
+  if (ex._gestureDown) return false;
+  const moved = ex._gestureMovedAt || 0;
+  if (!moved) return true;
+  const pnow = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
+  return (pnow - moved) >= IDLE_HOLD_MS;
+}
+
+/* ═══ ONE READING OF HOW FAR ALONG A HARVEST IS (v2.3.2514) ═══
+ * Both meters -- the ring on the button and the bar over the head -- read
+ * this, so the two cannot drift.
+ * v2.3.2702: the bar no longer stalls at 95%.  The owner's description is two
+ * phases, each a full bar: the wind-up fills while the character works, and
+ * "once it reaches the limit" the character stops and the gesture takes over
+ * -- so `bar01` is the wind-up (0..1) and then, at `ready`, the gesture's own
+ * progress (0..1).  `idle` says the bar should flash: full, waiting for you. */
 export function extractionMeter01(ex, now) {
   if (!ex) return null;
   const t = (typeof now === 'number') ? now : Date.now();
@@ -100,79 +132,40 @@ export function extractionMeter01(ex, now) {
     ready,
     windup,
     reps,
-    bar01: ready ? (WINDUP_STALL_01 + (1 - WINDUP_STALL_01) * reps) : (WINDUP_STALL_01 * windup),
+    idle: ready && gestureIdle(ex),
+    bar01: ready ? reps : windup,
   };
 }
 
-export function gestureDemo01(ex, now) {
+/* ═══ THE POSE PHASE ═══
+ * The DISPLAY phase chases the thumb's phase (ex.cueFrame01) FORWARD ONLY: a
+ * small step back is thumb jitter and is held, never played as the swing
+ * rewinding.  A still thumb holds the pose -- no drift, no idle loop -- and a
+ * window nobody has touched yet shows phase 0, the ready pose.  _posF/_posT
+ * live on the extraction record so they die with the attempt.  Only ONE
+ * renderer calls this per skill per frame (the body for mine/fish, the stand-in
+ * for chop/cook), which matters because it advances the chase. */
+export function gesturePose01(ex, now, fullCycleMs) {
   if (!ex || ex.status !== 'ready') return null;
-  /* TWO CLOCKS, AND THEY ARE NOT THE SAME EPOCH.  `_gestureMovedAt` is stamped
-     with performance.now() (ExtractionSwipeLayer), which counts from page load;
-     every caller of this module passes Date.now(), which counts from 1970.
-     Subtracting one from the other gives ~1.7e12 -- always past any hold, so
-     the demo would have run straight through a live gesture and fought the
-     thing it exists to teach.  So the HOLD is measured on performance.now()
-     here, against the stamp's own clock, and the `now` argument is used only
-     for the cycle phase, where any steady millisecond clock does. */
-  /* THE THUMB IS DOWN: no demo, no timer involved.  ExtractionSwipeLayer
-     stamps this on pointerdown and clears it on pointerup/pointercancel and
-     on unmount (v2.3.2384), so while a finger is on the button the player's
-     own motion owns the phase however long a frame takes.  The HOLD below is
-     a timer and a timer alone was not enough: measured in the headless
-     harness, the main thread stalls for over a second at a stretch, and every
-     stall longer than HOLD_MS let the demo cut in on a gesture in progress. */
-  if (ex._gestureDown) return null;
-  const moved = ex._gestureMovedAt || 0;
-  if (moved) {
-    const pnow = (typeof performance !== 'undefined' && performance.now)
-      ? performance.now() : now;
-    if ((pnow - moved) < DEMO_HOLD_MS) return null;
-  }
-  const cycle = DEMO_CYCLE_MS[ex.skill] || 700;
-  return ((now % cycle) / cycle);
-}
-
-export function gesturePose01(ex, now, fullCycleMs, wraps) {
-  if (!ex || ex.status !== 'ready') return null;
-  /* v2.3.2384: the demo is fed in HERE rather than at each of the four call
-     sites, because this function mutates ex._posF/_posT and a second call in
-     one frame would double-advance the chase.  Every existing caller unfreezes
-     for free, and the mirror-audit pin that both renderers go through this
-     function keeps holding.
-
-     AND IT BYPASSES THE CHASE, which is not a shortcut -- the chase would
-     fight it.  The rate limiter below moves at most one full cycle per
-     `fullCycleMs`, which is the SAME rate the demo advances at, so the chase
-     could only ever just barely keep up and would lag a little further behind
-     every frame it was starved.  Worse at the seam: `wraps` is false for
-     mining and chopping, so when the demo rolls 0.999 -> 0 the non-wrapping
-     chase cannot jump the gap and instead walks the pose all the way back
-     down, turning a repeating swing into a saw that winds up and then
-     un-winds.  The chase exists to smooth a jittery THUMB; a generated phase
-     is already smooth and is authored at the pace it should play, so it wants
-     no smoothing at all.  _posF and _posT are still written, so the frame the
-     player's thumb takes over starts from exactly where the demo left off. */
-  const demo = gestureDemo01(ex, now);
-  if (demo != null) { ex._posT = now; ex._posF = demo; return demo; }
-  const raw = Math.max(0, Math.min(0.9999, ex.cueFrame01 || 0));
-  const lastT = ex._posT || now;
+  const raw = (((ex.cueFrame01 || 0) % 1) + 1) % 1;
+  const lastT = (ex._posT != null) ? ex._posT : now;
   const dt = Math.max(0, Math.min(100, now - lastT));
   ex._posT = now;
   let cur = (ex._posF != null) ? ex._posF : raw;
-  const rate = dt / Math.max(1, fullCycleMs);
-  let d = raw - cur;
-  if (wraps) { if (d > 0.5) d -= 1; else if (d < -0.5) d += 1; }
-  cur = cur + Math.max(-rate, Math.min(rate, d));
-  if (wraps) cur = ((cur % 1) + 1) % 1;
-  else cur = Math.max(0, Math.min(0.9999, cur));
+  let d = ((raw - cur) % 1 + 1) % 1;   /* forward distance, 0..1 */
+  if (d > 0.85) d = 0;                  /* a small step BACK: jitter, hold */
+  const cap = fullCycleMs || GESTURE_MAX_CYCLE_MS[ex.skill] || 240;
+  cur = (cur + Math.min(d, dt / Math.max(1, cap))) % 1;
   ex._posF = cur;
   return cur;
 }
 
-/* v2.3.2245: the owner's painted gesture strips, for the button face.  A
-   MIRROR of GESTURE_TOOLS in effectsRenderer.js (which slices the same files
-   into Pixi textures for the chop-strike burst anchors); the URLs are the
-   only thing shared, and mirror-audit pins the two lists equal. */
+/* v2.3.2245: the owner's painted gesture strips.  A MIRROR of GESTURE_TOOLS in
+   effectsRenderer.js (which slices the same files into Pixi textures); the URLs
+   are the only thing shared, and mirror-audit pins the two lists equal.
+   v2.3.2702: the button no longer plays these whole (the mini tool below is
+   the cue now); the cooking cue takes its pan from cell 0 of the pan strip,
+   because there is no pan item icon. */
 export const GESTURE_TOOL_URLS = {
   mining:      '/sprites/tools/pickaxe-gesture-v1.webp?v=2.3.1417',
   woodcutting: '/sprites/tools/axe-gesture-v1.webp?v=2.3.1417',
@@ -180,121 +173,112 @@ export const GESTURE_TOOL_URLS = {
   cooking:     '/sprites/tools/pan-gesture-v2.webp?v=2.3.1433',
 };
 
-/* ═══ v2.3.2384: THE OLD FINGER CUE'S GEOMETRY, ON THE BUTTON ═══
- *
- * Owner: "Add the old gesture cues on top of the right joystick when it's
- * time to extract the resource."
- *
- * The cue that was deleted at v2.3.2245 (commit 2deb56a) was a white finger
- * drawn in the WORLD over the node, with per-skill motion curves the owner
- * tuned across five versions: v2.3.843 the chop (wind back, snap forward,
- * recover), v2.3.853 the cook flip (dip, flick up, recover), v2.3.1442 the
- * mine pump and the reel orbit, v2.3.1667 "point where it is going".  Those
- * curves are RESTORED here rather than reinvented -- the shapes are the
- * owner's, only the frame changed, from the node to the right button.
- *
- * TWO THINGS CHANGED IN THE MOVE, both forced by the new frame:
- *
- * 1. THE CLOCK.  The old cue ran on its own `now % 1100` loop, independent of
- *    everything.  This one is driven by the SAME phase as the tool strip and
- *    the character (gesturePose01 above), so the finger, the painted tool and
- *    the body are one motion.  A cue on its own timer next to a tool on the
- *    gesture's timer would teach a rhythm the game does not keep.
- *
- * 2. THE COORDINATES.  Everything below is in the button's own 0..100 viewBox,
- *    so it scales with the disc (96px portrait, 108 landscape) and cannot go
- *    stale if the button is resized again.  The tracks sit OFF-CENTRE, which
- *    the world cue never had to worry about: the painted tool strip owns the
- *    middle of the disc and the label owns the bottom, so the vertical motions
- *    run down the left, the horizontal one across the top, and the reel orbits
- *    between the tool and the wind-up ring (drawn at r=40).
- *
- * Returns null when there is nothing to draw.
- */
-/* ═══ THE CUE IS CENTRED, AND ITS BODY IS PART OF IT ═══
- *
- * Two measurements, from a real capture of the button mid-cook, decide every
- * number below.
- *
- * ONE: the finger is not a point.  The first cut of this put the tracks in the
- * annulus outside the tool strip and sized the travel by where the FINGERTIP
- * went -- and the screenshot showed a white blob hanging off the rim at ten
- * o'clock, because the glyph's body runs BACK from the tip and its knuckle
- * sits further back still.  CUE_REACH is that overhang; the tracks are sized
- * so the whole glyph stays inside, not just its tip, and the pin measures the
- * same way.
- *
- * TWO: the middle of the disc is the only room there is.  The joystick knob
- * (v2.3.2258) sits over the centre and the painted tool strip behind it, so
- * the annulus plan had the cue fighting the rim while the middle went unused.
- * Drawing over the knob is right rather than merely expedient: the cue is only
- * on screen while NO thumb is down (gestureDemo01), and the knob only matters
- * once one is -- the two can never be wanted at the same moment.
- *
- * The centre is (50, 45), a touch high, to keep the glyph clear of the label
- * that sits along the bottom of the well. */
-export const CUE_REACH = 13.7;   /* how far the glyph reaches from its origin:
-                                    knuckle centre 10.5 + its radius 3.2 */
-const CX = 50, CY = 45;
-const CUE_TRACKS = {
-  mining:      'M 50 30 L 50 60',
-  cooking:     'M 50 30 L 50 60',
-  woodcutting: 'M 33 45 L 67 45',
-  fishing:     'M 50 28 A 17 17 0 1 0 50 62 A 17 17 0 1 0 50 28',
+/* ═══ v2.3.2702: THE MINI TOOL -- "a mini sprite of the tool being used" ═══
+ * The item icons the bag already shows (a pickaxe, an axe, a rod), so the cue
+ * is the same object the player owns -- at the bag's own ?v= (ITEMS_V in
+ * InventoryPanel.jsx), because a query string is part of the cache key and a
+ * different one would be a second download.  There is no pan icon, so the pan
+ * is cell 0 of the pan strip.  `w`/`h` are the image's size; `vb` is the
+ * window of it the button shows (the whole icon, or the pan's opaque box in
+ * cell 0, measured: x 26..254, y 104..215).
+ * Preloaded on the loading screen (gestureCuePreload.js) -- the LAW. */
+const ITEMS_V = '?v=2.3.1774';
+export const GESTURE_CUE_SPRITES = {
+  mining:      { url: '/icons/items/mining-pickaxe.webp' + ITEMS_V, w: 192, h: 192, vb: '0 0 192 192' },
+  woodcutting: { url: '/icons/items/woodcutting-axe.webp' + ITEMS_V, w: 192, h: 192, vb: '0 0 192 192' },
+  fishing:     { url: '/icons/items/fishing-pole.webp' + ITEMS_V, w: 256, h: 256, vb: '0 0 256 256' },
+  cooking:     { url: GESTURE_TOOL_URLS.cooking, w: 2048, h: 256, vb: '25 44 232 232' },
 };
-const smooth = (t) => t * t * (3 - 2 * t);
 
-export function gestureCue01(skill, p) {
-  if (p == null) return null;
-  const track = CUE_TRACKS[skill];
-  if (!track) return null;
+/* ═══ THE CUE'S GEOMETRY, IN THE BUTTON'S 0..100 VIEWBOX ═══
+ * The viewBox IS the disc (96px portrait, 108 landscape), so the cue scales
+ * with it.  Centre (50, 45), a touch high, to keep clear of the label along
+ * the bottom of the well (v2.3.2384 measured this on a real capture). */
+const CX = 50, CY = 45;
+const V_TOP = 27, V_BOT = 63, H_L = 30, H_R = 70, REEL_R = 18;
+/* How big the mini tool is drawn, in viewBox units (~a third of the disc).
+   26 read as a thin sliver on the phone capture (the pickaxe and rod icons are
+   line-thin), so it is 30 and sits on a dark badge (TouchControls). */
+export const CUE_TOOL_SIZE = 30;
+const TRACKS = {
+  mining:      `M ${CX} ${V_TOP} L ${CX} ${V_BOT}`,
+  cooking:     `M ${CX} ${V_TOP} L ${CX} ${V_BOT}`,
+  woodcutting: `M ${H_L} ${CY} L ${H_R} ${CY}`,
+  fishing:     `M ${CX} ${CY - REEL_R} A ${REEL_R} ${REEL_R} 0 1 1 ${CX} ${CY + REEL_R} A ${REEL_R} ${REEL_R} 0 1 1 ${CX} ${CY - REEL_R}`,
+};
+/* Chevrons on the track pointing the way to move: both ends of a back-and-
+   forth stroke, and three clockwise chevrons round the reel. */
+function chevron(x, y, ang, s) {
+  /* ang: the direction of travel, radians, screen (y down). */
+  const bx = Math.cos(ang), by = Math.sin(ang), nx = -by, ny = bx;
+  const p = (u, v) => `${(x + bx * u + nx * v).toFixed(1)} ${(y + by * u + ny * v).toFixed(1)}`;
+  return `M ${p(-s, -s)} L ${p(0, 0)} L ${p(-s, s)}`;
+}
+const ARROWS = {
+  mining:      chevron(CX, V_TOP - 4, -Math.PI / 2, 4.5) + ' ' + chevron(CX, V_BOT + 4, Math.PI / 2, 4.5),
+  cooking:     chevron(CX, V_TOP - 4, -Math.PI / 2, 4.5) + ' ' + chevron(CX, V_BOT + 4, Math.PI / 2, 4.5),
+  woodcutting: chevron(H_L - 4, CY, Math.PI, 4.5) + ' ' + chevron(H_R + 4, CY, 0, 4.5),
+  fishing: [0, 1, 2].map((i) => {
+    const a = -Math.PI / 2 + Math.PI / 3 + i * (2 * Math.PI / 3);   /* 1, 5 and 9 o'clock */
+    return chevron(CX + Math.cos(a) * REEL_R, CY + Math.sin(a) * REEL_R, a + Math.PI / 2, 4);
+  }).join(' '),
+};
+
+/* Where the tool is at loop phase p, and how it is turned.  The motion is the
+   THUMB's, not the art's: the power stroke carries the tool from the start of
+   the track to its far end, the return stroke carries it back -- so the mini
+   tool under the thumb goes where the thumb goes. */
+function toolAt(skill, p) {
   const ph = ((p % 1) + 1) % 1;
-  let x, y, deg, streak = 0;
   if (skill === 'fishing') {
-    /* v2.3.1442/1449: the finger orbits the reel, pointing along the
-       clockwise tangent (screen y-down, so +angle is clockwise -- the
-       direction ExtractionSwipeLayer counts as a positive crank). */
-    const a = ph * Math.PI * 2 - Math.PI / 2;
-    x = CX + Math.cos(a) * 17;
-    y = CY + Math.sin(a) * 17;
-    deg = (a + Math.PI / 2) * 180 / Math.PI;
-    streak = 0.5;   /* a crank never stops, so the streak never drops out */
-  } else if (skill === 'woodcutting') {
-    /* v2.3.843: wind back, snap forward, ease home.  `dir` was "toward the
-       tree" in the world; on a button there is no tree, so it is simply
-       rightward -- which is also the direction the axe strip swings. */
-    const WIND = 15, REACH = 14;
-    let off;
-    if (ph < 0.5) off = -WIND * smooth(ph / 0.5);
-    else if (ph < 0.68) off = -WIND + (WIND + REACH) * ((ph - 0.5) / 0.18);
-    else off = REACH * (1 - smooth((ph - 0.68) / 0.32));
-    x = CX + off + 1; y = CY;
-    const fwd = ph >= 0.5 && ph < 0.68;
-    deg = fwd ? 0 : 180;
-    streak = fwd ? 0.5 : 0;
-  } else if (skill === 'cooking') {
-    /* v2.3.853: settle down, flick UP, recover -- the flip. */
-    const DOWN = 13, UP = 15;
-    let off;
-    if (ph < 0.5) off = DOWN * smooth(ph / 0.5);
-    else if (ph < 0.68) off = DOWN - (DOWN + UP) * ((ph - 0.5) / 0.18);
-    else off = -UP * (1 - smooth((ph - 0.68) / 0.32));
-    x = CX; y = CY + off + 1;
-    const flick = ph >= 0.5 && ph < 0.68;
-    deg = flick ? -90 : 90;
-    streak = flick ? 0.5 : 0;
-  } else {
-    /* v2.3.1442: mining pumps on its axis and points along its own velocity
-       -- down on the down-stroke, up on the up-stroke.  ExtractionSwipeLayer
-       advances the mine swing on the DOWN stroke, so the phase is offset a
-       quarter turn to put the fingertip at the TOP at phase 0, which is where
-       the pickaxe strip's cell 0 has the tool raised. */
-    const AMP = 15;
-    const a = ph * Math.PI * 2;
-    x = CX; y = CY - Math.cos(a) * AMP;
-    const vel = Math.sin(a);
-    deg = vel > 0 ? 90 : -90;
-    streak = Math.abs(vel) > 0.35 ? 0.5 : 0;
+    const a = -Math.PI / 2 + ph * Math.PI * 2;   /* clockwise from 12 o'clock */
+    return { x: CX + Math.cos(a) * REEL_R, y: CY + Math.sin(a) * REEL_R, deg: 0 };
   }
-  return { x, y, deg, streak, track };
+  const st = GESTURE_STROKE[skill];
+  if (!st) return null;
+  /* 0 at the start of the track, 1 at the far end. */
+  const u = ph < st.split ? ph / st.split : 1 - (ph - st.split) / (1 - st.split);
+  if (skill === 'woodcutting') {
+    /* the axe icon sits blade-up; it tips forward across the chop */
+    return { x: H_L + (H_R - H_L) * u, y: CY, deg: -30 + 75 * u };
+  }
+  if (skill === 'cooking') {
+    /* starts low (the pan on the fire) and flicks up, tilting as it goes */
+    return { x: CX, y: V_BOT - (V_BOT - V_TOP) * u, deg: -22 * u };
+  }
+  /* mining: raised at the top, struck at the bottom */
+  return { x: CX, y: V_TOP + (V_BOT - V_TOP) * u, deg: -35 + 80 * u };
+}
+
+/* The demonstration's pace on the button: a little slower than a quick hand,
+   so the eye can follow which way it goes. */
+const DEMO_CYCLE_MS = { mining: 1100, woodcutting: 1100, fishing: 1000, cooking: 1200 };
+
+/* Everything the button face draws for the cue, for one frame.
+ *   idle:  the tool sits STILL at the start of its track and flashes (`op`
+ *          pulses, `glow` pulses behind it), and a comet of light runs the
+ *          motion along the track -- the "which way" effect.
+ *   live:  the tool rides the gesture's own phase (the same phase as the
+ *          body), solid, and the comet is gone.
+ * Returns null for a skill with no cue. */
+export function gestureCueFace(skill, phase01, idle, now) {
+  const track = TRACKS[skill];
+  if (!track) return null;
+  const t = (typeof now === 'number') ? now : 0;
+  if (idle) {
+    const start = toolAt(skill, 0);
+    const pulse = 0.5 + 0.5 * Math.sin(t / 140);   /* ~1.1Hz flash */
+    const cyc = DEMO_CYCLE_MS[skill] || 1100;
+    const dp = (t % cyc) / cyc;
+    const comet = [0, 0.035, 0.07].map((lag, i) => {
+      const c = toolAt(skill, dp - lag);
+      return { x: c.x, y: c.y, r: 3.2 - i * 0.8, op: 0.95 - i * 0.3 };
+    });
+    return { track, arrows: ARROWS[skill], idle: true,
+      tool: { x: start.x, y: start.y, deg: start.deg, op: 0.45 + 0.55 * pulse },
+      glow: 0.25 + 0.55 * pulse, comet };
+  }
+  const at = toolAt(skill, phase01 || 0);
+  return { track, arrows: ARROWS[skill], idle: false,
+    tool: { x: at.x, y: at.y, deg: at.deg, op: 1 }, glow: 0, comet: null };
 }

@@ -92,9 +92,8 @@ export function TouchControls(props) {
     rJoyRef = props.rJoyRef,
     rBodyRef = props.rBodyRef,   /* v2.3.2263: the disc's painted metal, faded on its own */
     rLabelRef = props.rLabelRef,
-    rCueRef = props.rCueRef,     /* v2.3.2245: the harvest tool frame on the button face */
     rRingRef = props.rRingRef,   /* v2.3.2245: the wind-up / reps ring around the rim */
-    rHintRef = props.rHintRef,   /* v2.3.2384: the finger demonstrating the gesture */
+    rHintRef = props.rHintRef,   /* v2.3.2384: the gesture cue; v2.3.2702: the mini tool */
     /* v2.3.2258: the rod and knob are BACK -- the right control is a joystick
        again (see the aim block in BroTown's bM). */
     rStickRef = props.rStickRef,
@@ -475,24 +474,10 @@ export function TouchControls(props) {
     cx: '50%', cy: '50%', r: '40%', fill: 'none',
     stroke: 'rgba(216,168,95,.85)', strokeWidth: 4, strokeLinecap: 'round',
     strokeDasharray: '0 999',
-  })), /*#__PURE__*/React.createElement("div", {
-    /* ═══ v2.3.2245: THE TOOL ON THE BUTTON ═══
-       The owner's painted gesture strips (GESTURE_TOOLS in effectsRenderer:
-       pickaxe / axe / reel / pan, 8 cells across) used to float over the
-       node in the world; they now play on the button face, one cell at a
-       time via background-position, at the frame the thumb's gesture is on
-       (ex.cueFrame01).  BroTown's loop stamps backgroundImage / position /
-       display; hidden when no harvest is live. */
-    ref: rCueRef,
-    style: {
-      position: 'absolute', left: '50%', top: '50%',
-      width: isLandscape ? 64 : 58, height: isLandscape ? 64 : 58,
-      transform: 'translate(-50%,-56%)',
-      backgroundRepeat: 'no-repeat', backgroundSize: '800% 100%', backgroundPosition: '0% 0%',
-      pointerEvents: 'none', zIndex: 2, display: 'none',
-      imageRendering: 'auto',
-    },
-  }), /*#__PURE__*/React.createElement("div", {
+  })), /* v2.3.2702: the painted tool STRIP that played on the button face since
+     v2.3.2245 (rCueRef) is gone -- the cue below is a mini tool now, and a
+     second, bigger tool animating behind it was the same object twice. */
+  /*#__PURE__*/React.createElement("div", {
     /* v2.3.2242: THE LABEL.  Centred in the well; BroTown's loop stamps
        the text so it can change with context without a React render.
        Lantern Slate caption type: 10/700 uppercase, warm-white on the
@@ -522,35 +507,28 @@ export function TouchControls(props) {
       textTransform: 'uppercase',
     }
   }, 'Attack'), /*#__PURE__*/React.createElement("svg", {
-    /* ═══ v2.3.2384: THE OLD FINGER CUE, BACK, ON THE BUTTON ═══
-       Owner: "Add the old gesture cues on top of the right joystick when it's
-       time to extract the resource."
+    /* ═══ v2.3.2702: THE CUE IS A MINI TOOL ═══
+       Owner: "before the player performs the gesture the starting spot of the
+       cue should be static but flash.  An effect should show you which way the
+       cue should move (clockwise rotation for fishing, up and down for mining,
+       etc) ... It also might look good if the cue was a mini sprite of the
+       tool being used (pickaxe for mining, etc)."
 
-       This is the cue that was deleted whole at v2.3.2245 (commit 2deb56a)
-       when the harvest moved off the world and onto this button -- a white
-       finger tracing the motion the player has to make, with a streak behind
-       it while it is moving fast.  The four motions are the SAME curves the
-       world cue used (v2.3.843 chop, v2.3.853 cook flip, v2.3.1442 mine
-       pump, v2.3.1442/1449 reel orbit); only the frame changed, from the
-       node to the disc.
+       So the white finger v2.3.2384 restored (and the painted strip that
+       played behind it) is replaced by ONE object: the tool itself, small.
+         - waiting for you: it sits STILL at the start of its track and
+           flashes (a pulsing glow behind it), chevrons on the track point the
+           way, and a comet of light runs the motion along it;
+         - while you gesture: it rides the gesture's own phase -- the same
+           phase the character plays -- and the comet is gone.
+       gestureCueFace (gesturePose.js) owns every number; BroTown's loop only
+       stamps them.  Hidden when no gesture window is open.
 
-       It is an <svg>, not a div, and that is load-bearing twice over: a
-       Graphics draw is impossible here (this is DOM, not the Pixi stage), and
-       mp-harvest.mjs scans this button's DIVs for a /gesture/ background to
-       find the tool strip -- a div here would be a second match and break
-       that assertion.
-
+       Still an <svg>, not a div: this is DOM, not the Pixi stage, and the
        viewBox 0..100 IS the disc (96px portrait, 108 landscape), so every
-       length below is a percentage of the button and the cue scales with it.
-       The tracks deliberately sit OFF-CENTRE -- vertical down the left,
-       horizontal across the top, the reel orbit ringing the middle -- because
-       the painted tool strip owns the centre and the label owns the bottom.
-       Inside r=40 everywhere, which is where the wind-up ring is drawn.
-
-       BroTown's harvest face stamps the transform per frame off the SAME
-       phase as the tool strip and the character (gesturePose01), so finger,
-       tool and body are all on one clock; hidden when no gesture window is
-       open. */
+       length is a percentage of the button and the cue scales with it.  The
+       tool is a nested <svg> so one element can show either a whole item icon
+       or one 256px cell of a strip (the pan) -- the viewBox does the crop. */
     ref: rHintRef,
     viewBox: '0 0 100 100',
     style: {
@@ -558,12 +536,13 @@ export function TouchControls(props) {
       pointerEvents: 'none', zIndex: 4, display: 'none', overflow: 'visible',
     },
   },
-    /* THE TRACK, TWICE: a dark under-stroke and the light one over it.  The
-       cue crosses both the near-black joystick knob and the bright brass rim
-       within one cycle, so a single white line disappears against the rim and
-       a single dark line disappears against the knob.  Painting both is the
-       same trick the button's label uses (a dark halo under warm-white ink,
-       v2.3.2251) rather than a new idea. */
+    React.createElement('defs', null,
+      React.createElement('radialGradient', { id: 'btCueGlow' },
+        React.createElement('stop', { offset: '0%', stopColor: '#FFE7A8', stopOpacity: 0.95 }),
+        React.createElement('stop', { offset: '55%', stopColor: '#F0C878', stopOpacity: 0.45 }),
+        React.createElement('stop', { offset: '100%', stopColor: '#F0C878', stopOpacity: 0 }))),
+    /* THE TRACK, TWICE: a dark under-stroke and the light one over it, because
+       it crosses both the near-black knob and the bright brass rim (v2.3.2384). */
     React.createElement('path', {
       'data-cue': 'track',
       fill: 'none', stroke: 'rgba(12,16,26,.55)', strokeWidth: 4.5,
@@ -573,26 +552,34 @@ export function TouchControls(props) {
       'data-cue': 'track',
       fill: 'none', stroke: '#FFFFFF', strokeWidth: 1.8, strokeLinecap: 'round',
       opacity: 0.3, d: '',
-    }), React.createElement('g', { 'data-cue': 'finger' },
-    /* The motion streak, trailing the finger.  Opacity stamped. */
-    React.createElement('line', {
-      x1: -19, y1: 0, x2: 4, y2: 0, stroke: '#FFFFFF', strokeWidth: 4.5,
-      strokeLinecap: 'round', opacity: 0,
     }),
-    /* The finger: a round-capped stroke with a knuckle dot behind it --
-       drawFingerCue's construction, in SVG, over its own dark halo.  CENTRED
-       on the origin, not tip-anchored: gestureCue01's tracks are sized against
-       CUE_REACH, the glyph's own overhang, and a tip-anchored glyph put a
-       third of itself outside the disc (measured on a real capture). */
-    React.createElement('line', {
-      x1: -7, y1: 0, x2: 7, y2: 0, stroke: 'rgba(12,16,26,.6)', strokeWidth: 12,
-      strokeLinecap: 'round',
+    /* The chevrons: which way to move.  Dark under light, as the track. */
+    React.createElement('path', {
+      'data-cue': 'arrows',
+      fill: 'none', stroke: 'rgba(12,16,26,.6)', strokeWidth: 4.2,
+      strokeLinecap: 'round', strokeLinejoin: 'round', d: '',
     }),
-    React.createElement('line', {
-      x1: -7, y1: 0, x2: 7, y2: 0, stroke: '#FFFFFF', strokeWidth: 8,
-      strokeLinecap: 'round',
+    React.createElement('path', {
+      'data-cue': 'arrows',
+      fill: 'none', stroke: '#FFE7A8', strokeWidth: 2, strokeLinecap: 'round',
+      strokeLinejoin: 'round', d: '',
     }),
-    React.createElement('circle', { cx: -10.5, cy: 0, r: 3.2, fill: '#E6E6EE',
-      stroke: 'rgba(12,16,26,.6)', strokeWidth: 1.6 })
-  )))));
+    /* The comet: three dots, head first, running the motion (idle only). */
+    React.createElement('g', { 'data-cue': 'comet' },
+      React.createElement('circle', { r: 3, fill: '#FFF4D6', opacity: 0 }),
+      React.createElement('circle', { r: 2.4, fill: '#FFF4D6', opacity: 0 }),
+      React.createElement('circle', { r: 1.6, fill: '#FFF4D6', opacity: 0 })),
+    /* The tool.  The group carries translate + rotate; the glow flashes behind
+       it while it waits. */
+    React.createElement('g', { 'data-cue': 'tool' },
+      React.createElement('circle', { 'data-cue': 'glow', r: 22, fill: 'url(#btCueGlow)', opacity: 0 }),
+      /* A dark badge under the tool: the icons are line-thin (a pickaxe, a
+         rod) and on their own they vanished into the knob on a phone capture. */
+      React.createElement('circle', { r: 15.5, fill: 'rgba(12,16,26,.62)',
+        stroke: 'rgba(255,231,168,.55)', strokeWidth: 1.2 }),
+      React.createElement('svg', {
+        /* CUE_TOOL_SIZE (gesturePose.js), centred on the group's origin */
+        'data-cue': 'sprite', x: -15, y: -15, width: 30, height: 30,
+        viewBox: '0 0 256 256', overflow: 'hidden',
+      }, React.createElement('image', { href: '', x: 0, y: 0, width: 256, height: 256 })))))));
 }

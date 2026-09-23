@@ -4358,3 +4358,27 @@ hit pass the worker's own ground-line rule (`attackBlocked`, step start to
 feet) -- which refuses the thin-rock touch and, by the same endpoint rule,
 keeps the monster inside a rock hittable. mp-propshots section 0 shoots all
 four in town; with v2.3.2699's code back, all four fail.
+
+## 104. The harvest "demo" that animates the body contradicts the owner's freeze (v2.3.2702)
+
+**Tempting:** at `ready`, with no thumb down, loop a generated phase through
+`gesturePose01` so the character keeps swinging and "shows" the gesture --
+that is exactly what v2.3.2384 shipped, and it looks helpful.
+
+**Wrong by the owner's own words.** "Once it reaches the limit, the character
+is supposed to STOP animating until you perform the correct gesture." A body
+that loops by itself at `ready` reads as the game still working on its own,
+and the player's gesture then has nothing visible to take over from. The
+teaching belongs on the BUTTON: the mini tool sits still at the start of its
+track and flashes, chevrons point the way, and a comet runs the motion
+(`gestureCueFace`, gesturePose.js). The body's phase comes ONLY from the thumb
+(`ex.cueFrame01`), holds wherever the last stroke left it, and never rewinds.
+
+**And two numbers that look like tuning and are not:** the stroke recognizer
+must count a stroke from the SPAN of the motion, not from the press point
+(a thumb that lands mid-button and pumps +-26px never got 40px from where it
+landed, so on main mining and chopping never completed at all -- mp-cueshow
+run against the old build), and the pose must follow the hand at a small
+hysteresis (12px) separate from the meter's anti-jitter one (28px), or the
+swing sits still for most of each stroke and then jumps. **Receipt:**
+mp-gcue (73 assertions), mp-cueshow (34, all three skills in a real zone).

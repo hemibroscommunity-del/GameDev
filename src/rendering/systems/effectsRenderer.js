@@ -1000,6 +1000,24 @@ for (const cfg of Object.values(EFFECT_BURSTS)) {
 }
 const FX_BURST_MS = 600;
 
+/* ═══ v2.3.2702: DID A LOOPING ANIMATION PASS FRAME `target` SINCE LAST FRAME? ═══
+   The harvest strike effects (the chop's bite, the pick's clink and debris)
+   used to test `cur === target && last !== target`.  That was fine while the
+   loops ran on a clock; since the swing follows the HAND, a quick stroke can
+   step straight over the strike frame (8 -> 10), and the blow would land in
+   silence.  Loops only run forward (gesturePose01 never rewinds), so a smaller
+   `cur` means it wrapped past the end.
+   last === -1: first frame of a harvest -- fire only if we start ON it.
+   last === -2: the loop was re-seeded (the wind-up's clock handed over to the
+   gesture at `ready`, which snaps to the ready pose) -- never a blow. */
+function _crossedFrame(last, cur, target) {
+  if (last === -2) return false;
+  if (last < 0) return cur === target;
+  if (cur === last) return false;
+  if (cur > last) return last < target && cur >= target;
+  return last < target || cur >= target;
+}
+
 /* ═══ v2.3.2200: PER-MATERIAL HIT DEBRIS (owner: "snow that flies off the
    monster").  Same 8x256 one-shot strip contract as EFFECT_BURSTS above;
    queued via S._debrisBursts { monsterId, kind, tint, x, y, ang, t0 } by
@@ -3202,6 +3220,7 @@ export class EffectsRenderer {
     this._updateDamageNumbers(S, now);
     this._updateCatchFlights(S, viewW, viewH, now);
     this._updateFxBursts(S, now);   /* v2.3.1443 */
+    this._updateCookSmoke(now);     /* v2.3.2702 */
     /* v2.3.1735: guards internally on the strip being loaded. */
     try { this._updateWhirlVortex(S, now); } catch (e) { /* ditto */ }
     this._updateScreenFlash(S, viewW, viewH, now);
@@ -8091,6 +8110,61 @@ export class EffectsRenderer {
    * Plays each queued S._fxBursts entry as a one-shot 8-frame strip at its
    * world point, then reaps it (sprite destroyed, entry spliced).  flip:-1
    * mirrors horizontally (wood chips fly away from the trunk). */
+  /* ═══ v2.3.2702: SMOKE OFF THE PAN WHILE YOU FLIP ═══
+   * Owner: "As you perform the gesture on the right joystick you should add
+   * resource or action specific effects (maybe wood chips for axe, rock debris
+   * for mining, smoke for cooking, etc)."  Chips, debris and the splash are the
+   * owner's painted bursts (EFFECT_BURSTS); there is no painted smoke, so this
+   * is the one effect built here -- and it is SPRITES over the minted soft dot
+   * (debrisDotTex), not Graphics circles, the v2.3.2200/2331 rule: a pool of
+   * sprites on one texture batches, and code-drawn shapes read as placeholder.
+   * Each puff rises, spreads and fades over ~1.1s, drifting a little; position
+   * is computed from age, not integrated, so a slow frame cannot fling one.
+   * Capped, oldest evicted, and removed-then-destroyed (the v8 zombie rule). */
+  _spawnCookSmoke(x, y, now) {
+    if (!this._cookSmoke) this._cookSmoke = [];
+    if (this._cookSmoke.length >= 18) {
+      const old = this._cookSmoke.shift();
+      if (old && old.sp && !old.sp.destroyed) { if (old.sp.parent) old.sp.parent.removeChild(old.sp); old.sp.destroy(); }
+    }
+    const sp = new Sprite(debrisDotTex());
+    sp.anchor.set(0.5, 0.5);
+    /* warm grey, a touch different per puff so the column is not one flat tone */
+    const g = 120 + Math.floor(Math.random() * 40);   /* mid grey: reads on sand AND on snow */
+    sp.tint = (g << 16) | (g << 8) | g;
+    sp.alpha = 0;
+    this.overlayLayer.addChild(sp);
+    this._cookSmoke.push({ sp, x: x + (Math.random() - 0.5) * 10, y, t0: now,
+      drift: (Math.random() - 0.5) * 14, ms: 1000 + Math.random() * 300 });
+    /* QA probe, house style: how many puffs are up and have ever gone up --
+       a soft grey dot over a fire is not something a screenshot can count. */
+    this._cookSmokeSpawned = (this._cookSmokeSpawned || 0) + 1;
+    if (typeof window !== 'undefined') {
+      const self = this;
+      window.__btCookSmoke = () => ({ live: (self._cookSmoke || []).length, spawned: self._cookSmokeSpawned || 0 });
+    }
+  }
+
+  _updateCookSmoke(now) {
+    const q = this._cookSmoke;
+    if (!q || !q.length) return;
+    for (let i = q.length - 1; i >= 0; i--) {
+      const p = q[i];
+      const k = (now - p.t0) / p.ms;
+      if (k >= 1 || !p.sp || p.sp.destroyed) {
+        if (p.sp && !p.sp.destroyed) { if (p.sp.parent) p.sp.parent.removeChild(p.sp); p.sp.destroy(); }
+        q.splice(i, 1);
+        continue;
+      }
+      const e = 1 - (1 - k) * (1 - k);          /* ease-out rise */
+      p.sp.x = p.x + p.drift * e;
+      p.sp.y = p.y - 42 * e;
+      const sc = 0.5 + 1.0 * e;                 /* 32px dot -> ~16..48px puff */
+      p.sp.scale.set(sc, sc);
+      p.sp.alpha = 0.58 * Math.min(1, k * 6) * (1 - k);
+    }
+  }
+
   _updateFxBursts(S, now) {
     const q = S && S._fxBursts;
     if (!q || !q.length) return;
@@ -10465,9 +10539,12 @@ export class EffectsRenderer {
        loop) — one splash roughly every 800ms so it reads as agitation,
        not a strobe.  v2.3.1445 (owner): reeling is the ONLY splash moment
        — the catch burst that applyFishingReward used to add is gone. */
+    /* v2.3.2702: 800 -> 480ms -- the reel is now ~3s of quick cranking, and
+       the splash is the fishing gesture's own effect (owner: "resource or
+       action specific effects" as you perform the gesture). */
     if (ex.skill === 'fishing' && ex.status === 'ready'
         && ex._reelSpinAt && (performance.now() - ex._reelSpinAt) < 250
-        && now - (ex._splashAt || 0) > 800) {
+        && now - (ex._splashAt || 0) > 480) {
       ex._splashAt = now;
       if (!S._fxBursts) S._fxBursts = [];
       if (S._fxBursts.length < 6) S._fxBursts.push({ kind: 'splash', t0: now, x: node.x, y: node.y + 2 });
@@ -10477,7 +10554,23 @@ export class EffectsRenderer {
        whole-attempt contract as the sizzle loop).  Anchored to the live
        marker pan when the flip cue is up, else to the baked pan the cook
        figure holds over the flames. */
-    if (ex.skill === 'cooking' && now - (ex._greaseAt || 0) > 650) {
+    /* ═══ v2.3.2702: AT `ready` THE PAN IS STILL UNTIL YOU FLIP IT ═══
+       The grease stays constant through the wind-up (v2.3.1445, owner), but
+       once the window opens the cook FREEZES until the first flick (owner:
+       "stop animating until you perform the correct gesture"), and grease
+       popping off a motionless pan would say otherwise.  So at `ready` it
+       pops only while the flick is under way -- faster, because that is the
+       effect of the gesture -- and SMOKE rises off the pan with it (owner:
+       "smoke for cooking"). */
+    const _cookActive = ex.skill === 'cooking' && ex.status === 'ready'
+      && ex._gestureActiveAt && (performance.now() - ex._gestureActiveAt) < 250;
+    if (_cookActive && now - (ex._smokeAt || 0) > 120) {
+      ex._smokeAt = now;
+      this._spawnCookSmoke(node.x + 8, node.y - 24, now);
+    }
+    const _greaseGap = ex.status === 'ready' ? 380 : 650;
+    if (ex.skill === 'cooking' && (ex.status !== 'ready' || _cookActive)
+        && now - (ex._greaseAt || 0) > _greaseGap) {
       ex._greaseAt = now;
       /* The tool sprite is force-hidden at the top of every frame and
          re-shown by the marker block AFTER this emitter, so visibility
@@ -10521,7 +10614,7 @@ export class EffectsRenderer {
       /* v2.3.2245: the chop follows the thumb once the window is open --
          one stroke on the button is one downswing, capped at one per 700ms
          (a leisurely chop); the wind-up before `ready` keeps the clock. */
-      const _gpC = gesturePose01(ex, now, 700);
+      const _gpC = gesturePose01(ex, now);   /* v2.3.2702: hand-paced; holds the raised axe until the first stroke */
       const k = (_gpC != null) ? Math.max(0, Math.min(CHOP_COUNT - 1, Math.floor(_gpC * CHOP_COUNT)))
         : Math.floor(now / CHOP_FRAME_MS) % CHOP_COUNT;
       const fi = Math.min(this._chopFrames.length - 1, CHOP_BASE + k);
@@ -10604,7 +10697,12 @@ export class EffectsRenderer {
          none).  Fires once per loop — only on the transition INTO the strike
          frame.  v2.3.848: reuse the melee 'sword-hit3' sample, delayed ~0.2s so
          it lands with the visible bite. */
-      if (k === CHOP_STRIKE_K && this._chopLastFrame !== CHOP_STRIKE_K) {
+      /* v2.3.2702: CROSSING the strike frame, not landing on it.  At the pace
+         of a quick hand the chase can step over k=9 in one frame (8 -> 10),
+         and an equality test would drop that chop's bite and chips. */
+      const _chopL = (this._chopLastStatus === ex.status) ? this._chopLastFrame : -2;
+      this._chopLastStatus = ex.status;
+      if (_crossedFrame(_chopL, k, CHOP_STRIKE_K)) {
         try {
           setTimeout(function () {
             var _a = (typeof window !== 'undefined') && window.BT_AUDIO;
@@ -10663,8 +10761,35 @@ export class EffectsRenderer {
        first frame with the pick down (frames 0-3/11-13 hold it raised). */
     if (ex.skill === 'mining') {
       const _mfc = jogFrameCount('mine', 'south') || 14;
-      const _mk = Math.floor((now / jogCycleMs('mine', 'south')) * _mfc) % _mfc;
-      if (_mk === 4 && this._mineLastFrame !== 4) {
+      /* v2.3.2702: the frame the body is ACTUALLY showing.  This read the
+         clock loop even after the window opened, so once the swing followed
+         the hand (v2.3.2245) the clink and the debris kept their own beat --
+         and with the body now frozen at `ready` until the first stroke, they
+         would have gone on striking a rock nobody was hitting.  At `ready`
+         the frame comes from the chased gesture phase entityRenderer wrote
+         (_posF, this frame or the last -- close enough for an edge). */
+      const _mk = (ex.status === 'ready')
+        ? Math.max(0, Math.min(_mfc - 1, Math.floor((ex._posF || 0) * _mfc)))
+        : Math.floor((now / jogCycleMs('mine', 'south')) * _mfc) % _mfc;
+      const _mL = (this._mineLastStatus === ex.status) ? this._mineLastFrame : -2;
+      this._mineLastStatus = ex.status;
+      /* Crossing frame 4, not landing on it -- a quick pump can step over it. */
+      if (_crossedFrame(_mL, _mk, 4)) {
+        /* v2.3.2702: the slam's sparks, moved here from ExtractionSwipeLayer's
+           onSlam (which fired on the recognizer's 40px threshold, not on the
+           frame the pick lands) -- so they sit on the visible blow. */
+        if (S.hitParticles && ex.status === 'ready') {
+          for (let _si = 0; _si < 7; _si++) {
+            S.hitParticles.push({
+              x: node.x, y: node.y - 60,
+              vx: (Math.random() - 0.5) * 5,
+              vy: -Math.random() * 3 - 1,
+              life: 0.45,
+              color: _si % 2 ? '#ffd27a' : '#fff2c0',
+              size: 1.6,
+            });
+          }
+        }
         try {
           const _au = (typeof window !== 'undefined') && window.BT_AUDIO;
           if (_au && _au.play) {
@@ -10713,7 +10838,7 @@ export class EffectsRenderer {
       /* v2.3.2245: the flip follows the thumb once the window is open (one
          up-flick on the button is one flip, capped at one per 1600ms -- the
          pan marker's own v2.3.1442 rate); the wind-up keeps the clock loop. */
-      const _gpK = gesturePose01(ex, now, 1600, true);
+      const _gpK = gesturePose01(ex, now);   /* v2.3.2702: hand-paced; holds until the first flick */
       const cookFi = (_gpK != null) ? Math.max(0, Math.min(this._cookFrames.length - 1, Math.floor(_gpK * this._cookFrames.length)))
         : Math.floor(now / COOK_FRAME_MS) % this._cookFrames.length;
       /* v2.3.1114: when leg armour is equipped, use the legs-erased body so the
@@ -10829,12 +10954,13 @@ export class EffectsRenderer {
    * timeout at all since v2.3.1416, so a player who does not notice the
    * button can stand there indefinitely believing the game has stopped.
    *
-   * THE 95% STALL IS THE WHOLE POINT, and it is why the bar does not simply
-   * fill to the top: at 95% it says "nearly, now do your part", and the last
-   * sliver is the reps.  A bar that completed and then sat there would be
-   * indistinguishable from the hang it is supposed to rule out -- which is
-   * also why the head of the bar BREATHES while it waits.  A still bar at a
-   * stall is a frozen bar to anyone looking at it.
+   * v2.3.2514 stalled the bar at 95% and left the last sliver to the reps.
+   * v2.3.2702 (owner: "once it reaches the limit, the character is supposed
+   * to stop animating until you perform the correct gesture") makes it two
+   * full bars instead -- the wind-up fills to the top, the full bar FLASHES
+   * while it waits for you, and the gesture's ~3s fill green over it.  The
+   * rule 2514 was protecting survives unchanged: a still bar at a wait is a
+   * frozen bar to anyone looking at it, so the waiting bar is never still.
    *
    * ONE TIMER, NOT TWO: the fractions come from extractionMeter01
    * (gesturePose.js), the same function the button's ring reads.  Two meters
@@ -10881,34 +11007,59 @@ export class EffectsRenderer {
        container units (entityRenderer), so this reads as the same family of
        object at a glance -- same width, slimmer, because it is a secondary
        meter and it must not be mistaken for health. */
-    const W = 46 * pscale, H = 8 * pscale;
-    const x0 = cx - W / 2, y0 = topY - 12 * pscale;
+    const W = 50 * pscale, H = 9 * pscale;   /* v2.3.2702: 46x8 -> 50x9, see the contrast note below */
+    const x0 = cx - W / 2;
+    let y0 = topY - 12 * pscale;
+    /* v2.3.2702: over the REAL body (mining, fishing) your name plate or HP
+       bar is already on the band above the head -- lift the harvest bar
+       clear of it (entityRenderer publishes the band's top).  The stand-ins
+       stand elsewhere and wear no plate, so they keep their own anchor. */
+    if (!(standIn && standIn.visible) && typeof S._selfBandTopY === 'number') {
+      y0 = Math.min(y0, S._selfBandTopY - H - 3 * pscale);
+    }
     if (!(W > 1 && H > 0.5)) return;   /* a speck on a vista rim: draw nothing */
     const r = Math.min(H / 2, 3 * pscale);
     /* track: the Lantern Slate `well` over a hairline border, the same trough
-       every other meter in the game sits in (docs/LANTERN-SLATE-SPEC.md). */
-    gfx.roundRect(x0, y0, W, H, r).fill({ color: 0x121B20, alpha: 0.72 });
-    gfx.roundRect(x0, y0, W, H, r).stroke({ width: Math.max(1, pscale), color: 0xEEF2EB, alpha: 0.24 });
+       every other meter in the game sits in (docs/LANTERN-SLATE-SPEC.md).
+       v2.3.2702: with a DARK outer edge as well.  On a phone capture in Frost
+       Ridge a pale bar over white snow was simply not there, and a gold one
+       over the town's sand barely was -- the well alone cannot separate a
+       light fill from a light ground. */
+    gfx.roundRect(x0, y0, W, H, r).fill({ color: 0x121B20, alpha: 0.85 });
+    gfx.roundRect(x0, y0, W, H, r).stroke({ width: Math.max(1.5, 1.6 * pscale), color: 0x05080A, alpha: 0.85 });
+    gfx.roundRect(x0, y0, W, H, r).stroke({ width: Math.max(1, pscale * 0.8), color: 0xEEF2EB, alpha: 0.22 });
+    /* ═══ v2.3.2702: TWO FULL BARS, NOT ONE THAT STALLS AT 95% ═══
+       Owner: "a loading bar above their head indicating the progress of the
+       animation.  Then, once it reaches the limit, the character is supposed
+       to stop animating until you perform the correct gesture."  So:
+         wind-up  brass fills 0 -> full while the character works;
+         ready    the bar is FULL and FLASHES while it waits for you (the
+                  character is frozen now, so the bar is what says the game has
+                  not stopped -- the reason v2.3.2514 made its head breathe);
+         gesture  green fills over the dark well with the ~3s of the gesture.
+       Brass then green are the colours the button's ring has always used for
+       the same two phases, so the two meters still read as one thing. */
     const fillW = Math.max(0, Math.min(1, m.bar01)) * W;
-    if (fillW > 0.5) {
-      /* brass while it winds up (the accent), green once it is YOUR turn --
-         the same two colours the button's ring has always used for these two
-         phases, so the two meters read as one thing. */
-      gfx.roundRect(x0, y0, fillW, H, r).fill({ color: m.ready ? 0x59BF91 : 0xD8A85F, alpha: 0.95 });
-    }
-    /* THE BREATHING HEAD.  Only while the bar is stalled -- ready, with no
-       stroke counted yet.  Once the reps start moving the bar moves, and a
-       moving bar needs no help proving it is alive. */
-    if (m.ready && m.reps <= 0.0001) {
-      const pulse = 0.35 + 0.45 * (0.5 + 0.5 * Math.sin(now / 260));
-      const capW = Math.max(2 * pscale, H);
-      gfx.roundRect(x0 + fillW - capW, y0, capW, H, r).fill({ color: 0xF0C878, alpha: pulse });
+    if (!m.ready) {
+      if (fillW > 0.5) gfx.roundRect(x0, y0, fillW, H, r).fill({ color: 0xD8A85F, alpha: 0.97 });
+    } else if (m.idle) {
+      /* THE FLASH: full brass, brightening toward pale gold and back, inside a
+         gold halo that pulses with it -- saturated at its dimmest, so it
+         never washes into snow or sand. */
+      const pulse = 0.5 + 0.5 * Math.sin(now / 140);
+      gfx.roundRect(x0, y0, W, H, r).fill({ color: 0xD8A85F, alpha: 0.97 });
+      gfx.roundRect(x0, y0, W, H, r).fill({ color: 0xFFF1C8, alpha: 0.5 * pulse });
+      const halo = Math.max(1.5, 2.2 * pscale);
+      gfx.roundRect(x0 - halo, y0 - halo, W + 2 * halo, H + 2 * halo, r + halo)
+        .stroke({ width: Math.max(1.5, 1.8 * pscale), color: 0xF0C878, alpha: 0.35 + 0.6 * pulse });
+    } else if (fillW > 0.5) {
+      gfx.roundRect(x0, y0, fillW, H, r).fill({ color: 0x59BF91, alpha: 0.97 });
     }
     /* v2.3.2514 QA probe: the fill fraction and phase, neither of which a
        screenshot can read off an anti-aliased 46px bar. */
     if (typeof window !== 'undefined') {
       window.__btWindupBar = { bar01: +m.bar01.toFixed(3), windup: +m.windup.toFixed(3),
-        reps: +m.reps.toFixed(3), ready: m.ready, skill: ex.skill,
+        reps: +m.reps.toFixed(3), ready: m.ready, idle: m.idle, skill: ex.skill,
         x: +cx.toFixed(1), y: +y0.toFixed(1), w: +W.toFixed(1) };
     }
   }
@@ -10937,6 +11088,13 @@ export class EffectsRenderer {
         if (fx.parts) for (const p of fx.parts) kill(p.sp);
       }
       this._debrisFx = [];
+    }
+    /* v2.3.2702: and the cook's smoke puffs. */
+    if (this._cookSmoke) {
+      for (const p of this._cookSmoke) {
+        if (p.sp && !p.sp.destroyed) { if (p.sp.parent) p.sp.parent.removeChild(p.sp); p.sp.destroy(); }
+      }
+      this._cookSmoke = [];
     }
     /* v2.3.2217: and the snowball bursts. */
     if (this._snowballBursts) {

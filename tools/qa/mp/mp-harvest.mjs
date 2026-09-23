@@ -311,13 +311,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const faceReady = await P.page.evaluate(() => {
     const base = document.querySelector('.bt-rjoy-base');
     const S = window._gameState.current;
-    const tool = base && Array.from(base.querySelectorAll('div')).find((d) => /gesture/.test(d.style.backgroundImage || ''));
+    /* v2.3.2702: the cue is a mini sprite of the tool (the bag's axe icon)
+       in the button's cue <svg>; the painted strip that played here since
+       v2.3.2245 is gone. */
+    const hint = base && base.querySelector('svg[viewBox="0 0 100 100"]');
+    const img = hint && hint.querySelector('[data-cue="sprite"] image');
     return { label: (base && base.textContent || '').trim(), status: S._extraction ? S._extraction.status : null,
-      tool: tool ? { display: tool.style.display, img: tool.style.backgroundImage } : null,
+      tool: img ? { display: hint.style.display, img: img.getAttribute('href') } : null,
       probe: window.__btHarvest ? window.__btHarvest() : null };
   });
   rec.ok('once the window opens the button reads CHOP', /chop/i.test(faceReady.label) && faceReady.status === 'ready', faceReady);
-  rec.ok('...and the painted AXE strip is on the button face', !!(faceReady.tool && faceReady.tool.display === 'block' && /axe-gesture/.test(faceReady.tool.img)), faceReady);
+  rec.ok('...and the mini AXE is the cue on the button face', !!(faceReady.tool && faceReady.tool.display === 'block' && /woodcutting-axe/.test(faceReady.tool.img)), faceReady);
   /* This scenario runs on a DESKTOP pointer, where the touch controls are
      hidden -- so the anchor falls back to the character (on: 'player'); on a
      phone (mp-rbutton, mp-target) it is the button.  Either way it has a

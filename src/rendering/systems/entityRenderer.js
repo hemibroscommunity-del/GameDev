@@ -11325,7 +11325,11 @@ export class EntityRenderer {
            leisurely pace and a still thumb holds the pose.  The wind-up
            before the window opens keeps the clock loop -- a frozen figure
            for up to ten seconds reads as a hang (control-redesign.md §5.11). */
-        const _gp = gesturePose01(S._extraction, now, 700);
+        /* v2.3.2702: no leisurely cap any more -- the swing plays at the
+           speed of the hand, and at `ready` with no stroke yet it HOLDS the
+           raised pose (phase 0) instead of looping: the owner's "stop
+           animating until you perform the correct gesture". */
+        const _gp = gesturePose01(S._extraction, now);
         frameIdx = (_gp != null) ? Math.max(0, Math.min(fc - 1, Math.floor(_gp * fc)))
           : Math.floor((now / cycle) * fc) % fc;
       } else if (pose === 'fish') {
@@ -11336,7 +11340,7 @@ export class EntityRenderer {
         /* v2.3.2245: the reel drives the sway -- one finger-circle on the
            button is one turn of the sway loop, capped at ~one turn per 450ms
            (the same cap the reel marker has had since v2.3.1435). */
-        const _gpF = gesturePose01(S._extraction, now, 450, true);
+        const _gpF = gesturePose01(S._extraction, now);   /* v2.3.2702: hand-paced, holds when still */
         frameIdx = (_gpF != null) ? Math.max(0, Math.min(fc - 1, Math.floor(_gpF * fc)))
           : Math.floor((now / cycle) * fc) % fc;
       } else if (pose === 'dodge') {
@@ -13182,6 +13186,20 @@ export class EntityRenderer {
          because that fade lands on a tiny residual rather than exactly zero
          -- a plate that waited for a true 0 would never come back. */
       if (_barA > 0.01) display._namePill.visible = false;
+    }
+    /* ═══ v2.3.2702: WHERE THE BAND LINE'S TOP IS, FOR THE HARVEST BAR ═══
+       The harvest wind-up bar (effectsRenderer _drawWindupBar) goes "above the
+       head" -- and over YOUR head there is always something on this band: the
+       name plate at rest, the HP bar in a fight.  Measured on a real capture
+       (mp-cueshow): mining with a scratch of damage drew the HP bar exactly on
+       top of the wind-up bar, hiding it.  So the band publishes its top, in
+       the same world px the effects layer draws in, and the harvest bar sits
+       above it.  Half-height is the plate's (the HP bar frame is no taller). */
+    {
+      const _bandHalf = Math.max(8, display._namePill
+        ? ((display._pillCss || 15) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
+      S._selfBandTopY = display.visible
+        ? display.y + (PLAYER_BAND_Y - _bandHalf) * Math.abs(display.scale.y || 1) : null;
     }
 
     /* v2.3.1193: my own threat skull — reads the formerly ORPHANED

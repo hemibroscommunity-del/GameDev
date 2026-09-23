@@ -54,7 +54,7 @@ import { TouchControls, RBTN_BODY_BG, RBTN_BODY_BG_HOT, RKNOB_BG, RKNOB_BG_HOT }
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
-import { GESTURE_TOOL_URLS, gestureDemo01, gestureCue01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245: the tool strips the button face plays; gestureDemo01 v2.3.2384; extractionMeter01 v2.3.2514 (shared with the bar above the head) */
+import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2702: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the bar above the head) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 
@@ -5149,7 +5149,7 @@ export var BroTown = function BroTown(_ref0) {
            filling with reps.  Imperative DOM writes rather than React state
            because these change every frame while the loop already runs. */
         {
-          var _lbl = rLabelRef.current, _cue = rCueRef.current, _ring = rRingRef.current;
+          var _lbl = rLabelRef.current, _ring = rRingRef.current;
           var _hint = rHintRef.current;   /* v2.3.2384 */
           var _ex = S._extraction;
           var _cands = S._targetCands || [];
@@ -5212,78 +5212,83 @@ export var BroTown = function BroTown(_ref0) {
             else _want = 'ATTACK';
             if (_lbl.textContent !== _want) _lbl.textContent = _want;
           }
-          /* v2.3.2384: ONE phase for the tool strip AND the finger cue below,
-             read from the CHASED value (_posF) that gesturePose01 has already
-             written this frame from either the thumb or the new idle demo.
-             Three things follow.  The strip now plays on its own while nobody
-             is swiping, which is the whole request -- it was frozen on cell 0
-             until the player already made the gesture.  It shows the same
-             frame of the same swing as the BODY, which reads _posF too (before
-             this the strip read the raw phase and the body the chased one, so
-             the two drifted apart by up to one cycle).  And the finger and the
-             tool cannot disagree, because there is only one number.
-
-             Hoisted OUT of `if (_cue)` because the finger needs it too, and a
-             second gestureDemo01 call would be a second read of the same
-             clock a fraction of a millisecond later. */
+          /* ═══ v2.3.2702: THE CUE -- A MINI TOOL, STILL AND FLASHING UNTIL YOU MOVE ═══
+             Owner: "before the player performs the gesture the starting spot of
+             the cue should be static but flash.  An effect should show you
+             which way the cue should move ... the cue was a mini sprite of the
+             tool being used."
+             gestureCueFace (gesturePose.js) owns every number; this only stamps
+             them.  The phase is the CHASED value (_posF) the renderer has
+             already written this frame -- the same number the character's
+             frames come from -- so the tool under the thumb and the body move
+             as one.  Until the first stroke it is 0 and the tool waits at the
+             start of its track (idle: flashing, chevrons, a comet running the
+             motion).  Every attribute write is guarded against its own last
+             value: this runs every frame of every harvest, and a setAttribute
+             on an SVG is a style invalidation even when the string is the same
+             (the v2.3.2330 reason the ring caches its radius). */
           var _gPhase = null;
           if (_ex && _ex.status === 'ready') {
-            var _demo01 = gestureDemo01(_ex, Date.now());
             _gPhase = Math.max(0, Math.min(0.9999,
-              (_ex._posF != null) ? _ex._posF
-                : (_demo01 != null ? _demo01 : (_ex.cueFrame01 || 0))));
+              (_ex._posF != null) ? _ex._posF : (_ex.cueFrame01 || 0)));
           }
-          if (_cue) {
-            if (_gPhase != null && GESTURE_TOOL_URLS[_ex.skill]) {
-              var _url = 'url(' + GESTURE_TOOL_URLS[_ex.skill] + ')';
-              if (_cue.style.backgroundImage !== _url) _cue.style.backgroundImage = _url;
-              /* The strip is 8 cells across; background-size 800% puts one
-                 cell in the box and position N*100/7 % selects cell N. */
-              var _f01 = _gPhase;
-              /* v2.3.2384: all EIGHT cells, for every skill.  The old
-                 `Math.min(3, Math.floor(_f01 * 4))` arrived uncommented in
-                 2deb56a and capped mining and woodcutting at cell 3 of 8 --
-                 and cells 4-7 are the DESCENT.  Measured on the strips
-                 (pickaxe/axe, 8 cells of 256): the opaque bbox marches
-                 continuously from cell 0 at x 20..131 y 37..133 to cell 7 at
-                 x 82..199 y 126..244, so the second half is the tool coming
-                 down.  Those two skills could never show the strike land. */
-              var _cell = Math.floor(_f01 * 8);
-              var _pos = (_cell * 100 / 7).toFixed(2) + '% 0%';
-              if (_cue.style.backgroundPosition !== _pos) _cue.style.backgroundPosition = _pos;
-              if (_cue.style.display !== 'block') _cue.style.display = 'block';
-            } else if (_cue.style.display !== 'none') _cue.style.display = 'none';
-          }
-          /* ═══ v2.3.2384: THE FINGER, DEMONSTRATING ═══
-             Owner: "Add the old gesture cues on top of the right joystick when
-             it's time to extract the resource."
-
-             gestureCue01 owns the geometry (the owner's own v2.3.843/853/1442
-             curves, in the button's 0..100 viewBox); this only stamps it, on
-             the same phase the tool strip above just used.  Attribute writes
-             are guarded against their own last value, because this runs every
-             frame of every harvest and setAttribute on an SVG is a style
-             invalidation even when the string is identical -- the same reason
-             the ring below caches its radius (v2.3.2330). */
           if (_hint) {
-            var _cueG = _gPhase != null ? gestureCue01(_ex.skill, _gPhase) : null;
-            if (_cueG) {
-              /* Addressed by data-cue, not by child index: the track is drawn
-                 TWICE (a dark under-stroke and the light one over it, so the
-                 cue reads over both the near-black knob and the bright rim),
-                 and an index walk broke silently the moment that second path
-                 was added. */
-              if (_hint._btD !== _cueG.track) {
+            var _face = _gPhase != null ? gestureCueFace(_ex.skill, _gPhase, gestureIdle(_ex), Date.now()) : null;
+            if (_face) {
+              /* Addressed by data-cue, not by child index (v2.3.2384: the
+                 track is drawn twice, dark under light). */
+              if (_hint._btD !== _face.track) {
                 var _trks = _hint.querySelectorAll('[data-cue="track"]');
-                for (var _ti = 0; _ti < _trks.length; _ti++) _trks[_ti].setAttribute('d', _cueG.track);
-                _hint._btD = _cueG.track;
+                for (var _ti = 0; _ti < _trks.length; _ti++) _trks[_ti].setAttribute('d', _face.track);
+                var _arws = _hint.querySelectorAll('[data-cue="arrows"]');
+                for (var _ai = 0; _ai < _arws.length; _ai++) _arws[_ai].setAttribute('d', _face.arrows);
+                _hint._btD = _face.track;
               }
-              var _grp = _hint.querySelector('[data-cue="finger"]');
-              if (_grp) {
-                var _tf = 'translate(' + _cueG.x.toFixed(1) + ' ' + _cueG.y.toFixed(1) + ') rotate(' + _cueG.deg.toFixed(0) + ')';
-                if (_grp._btTf !== _tf) { _grp.setAttribute('transform', _tf); _grp._btTf = _tf; }
-                var _stk = _grp.firstChild;
-                if (_stk && _stk._btOp !== _cueG.streak) { _stk.setAttribute('opacity', String(_cueG.streak)); _stk._btOp = _cueG.streak; }
+              /* The sprite: which image, and which window of it, per skill. */
+              var _spr = GESTURE_CUE_SPRITES[_ex.skill];
+              if (_spr && _hint._btSkill !== _ex.skill) {
+                var _sv = _hint.querySelector('[data-cue="sprite"]');
+                var _im = _sv && _sv.firstChild;
+                if (_sv && _im) {
+                  _sv.setAttribute('viewBox', _spr.vb);
+                  _im.setAttribute('href', _spr.url);
+                  /* ...and the xlink spelling too: older iOS WebKit honours only
+                     xlink:href on an SVG <image>, and iPhone Safari is the
+                     primary platform (CLAUDE.md). */
+                  try { _im.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', _spr.url); } catch (e) { /* ignore */ }
+                  _im.setAttribute('width', String(_spr.w));
+                  _im.setAttribute('height', String(_spr.h));
+                }
+                _hint._btSkill = _ex.skill;
+              }
+              var _tool = _hint.querySelector('[data-cue="tool"]');
+              if (_tool) {
+                var _tf = 'translate(' + _face.tool.x.toFixed(1) + ' ' + _face.tool.y.toFixed(1) + ') rotate(' + _face.tool.deg.toFixed(0) + ')';
+                if (_tool._btTf !== _tf) { _tool.setAttribute('transform', _tf); _tool._btTf = _tf; }
+                var _top = _face.tool.op.toFixed(2);
+                if (_tool._btOp !== _top) { _tool.setAttribute('opacity', _top); _tool._btOp = _top; }
+                var _glw = _tool.firstChild;
+                var _gop = _face.glow.toFixed(2);
+                if (_glw && _glw._btOp !== _gop) { _glw.setAttribute('opacity', _gop); _glw._btOp = _gop; }
+              }
+              /* The chevrons: bright while teaching, a faint guide once you go. */
+              var _aop = _face.idle ? '0.95' : '0.35';
+              if (_hint._btAop !== _aop) {
+                var _arws2 = _hint.querySelectorAll('[data-cue="arrows"]');
+                for (var _aj = 0; _aj < _arws2.length; _aj++) _arws2[_aj].setAttribute('opacity', _aop);
+                _hint._btAop = _aop;
+              }
+              var _cmt = _hint.querySelector('[data-cue="comet"]');
+              if (_cmt) {
+                for (var _ci = 0; _ci < _cmt.childNodes.length; _ci++) {
+                  var _dot = _cmt.childNodes[_ci];
+                  var _cd = _face.comet && _face.comet[_ci];
+                  if (_cd) {
+                    _dot.setAttribute('cx', _cd.x.toFixed(1));
+                    _dot.setAttribute('cy', _cd.y.toFixed(1));
+                    _dot.setAttribute('opacity', _cd.op.toFixed(2));
+                  } else if (_dot.getAttribute('opacity') !== '0') _dot.setAttribute('opacity', '0');
+                }
               }
               if (_hint.style.display !== 'block') _hint.style.display = 'block';
             } else if (_hint.style.display !== 'none') _hint.style.display = 'none';
@@ -8191,8 +8196,7 @@ export var BroTown = function BroTown(_ref0) {
   var rBodyRef = useRef(null);   /* v2.3.2263: the right disc's painted metal, faded on its own */
   var rWrapRef = useRef(null);
   var rLabelRef = useRef(null);   /* v2.3.2242: the button's contextual label */
-  var rCueRef = useRef(null);     /* v2.3.2245: the harvest tool frame on the button */
-  var rHintRef = useRef(null);    /* v2.3.2384: the finger demonstrating the gesture */
+  var rHintRef = useRef(null);    /* v2.3.2384: the gesture cue; v2.3.2702: a mini tool (the strip's rCueRef is gone) */
   var rRingRef = useRef(null);    /* v2.3.2245: the wind-up / reps ring */
   var rJoyActive = useRef(false);
   var rTouchId = useRef(null);
@@ -13004,7 +13008,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until the worker advertises caps.abil (AbilityButtons.jsx; v2.3.2662: no level gate -- the milestone ladder is gone). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2542: ...and the Special button orbits the ATTACK disc, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until the worker advertises caps.abil (AbilityButtons.jsx; v2.3.2662: no level gate -- the milestone ladder is gone). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2542: ...and the Special button orbits the ATTACK disc, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one

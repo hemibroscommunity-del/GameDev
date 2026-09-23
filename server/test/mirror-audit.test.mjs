@@ -815,7 +815,11 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
      gesture layer anchors on the button; and the strip URLs the button face
      plays (gesturePose.js GESTURE_TOOL_URLS) are the SAME files the world
      renderer slices (effectsRenderer GESTURE_TOOLS) -- a hand-copied mirror,
-     which is exactly the kind this suite exists to hold in lockstep. */
+     which is exactly the kind this suite exists to hold in lockstep.
+     v2.3.2702: the button no longer plays the strips whole -- its cue is a
+     mini tool (gesturePose GESTURE_CUE_SPRITES), and only the pan is cut from
+     a strip (cell 0, there is no pan icon) -- but GESTURE_TOOL_URLS is still
+     where that pan URL comes from, so the pin still guards a real mirror. */
   const _bro = readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
   const _esl = readFileSync(new URL('../../src/ui/ExtractionSwipeLayer.jsx', import.meta.url), 'utf8');
   const _gp = readFileSync(new URL('../../src/game/gesturePose.js', import.meta.url), 'utf8');
@@ -825,7 +829,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     /querySelector\('\.bt-rjoy-base'\)/.test(_esl) && !/FISH_CUE_DY/.test(_esl), {});
   const _urlsA = [...fx.matchAll(/url:\s*'([^']+gesture[^']+)'/g)].map((m) => m[1]).sort();
   const _urlsB = [...(_gp.match(/'\/sprites\/tools\/[^']+'/g) || [])].map((u) => u.slice(1, -1)).sort();
-  check('harvest on the button: the button face plays the same tool strips the world renderer slices',
+  check('harvest on the button: the gesture strips gesturePose names are the ones the world renderer slices',
     _urlsA.length === 4 && JSON.stringify(_urlsA) === JSON.stringify(_urlsB), { world: _urlsA, button: _urlsB });
   check('harvest on the button: the character frames follow the hand (both renderers read gesturePose01)',
     /gesturePose01\(/.test(rend) && /gesturePose01\(/.test(fx), {});
