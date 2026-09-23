@@ -9,6 +9,7 @@ import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { rpgBlocks } from '@/data/abilities.js'; /* v2.3.2302: the block ladder */
+import { isProg3RelEnabled, prog3Live, prog3SkillLevel, prog3ActiveCat } from '@/data/prog3.js'; /* v2.3.2680: the plate's yardstick */
 /* v2.3.1183: status-id -> element lookup, built once at import time.
    _updateMonsters used to run Object.values(ELEMENTS).find(...) per
    status per monster per FRAME -- an array + closure allocation and a
@@ -8893,8 +8894,17 @@ export class EntityRenderer {
            `_bandBar` block above, where the value is now made. */
         const _plateShow = !_bandBar;
         /* The band is the monster's level RELATIVE TO YOURS (D16), so it moves
-           when either side levels.  plateBandFor owns the four thresholds. */
-        const _plateBand = plateBandFor(m.level, (S.rpg && S.rpg.level) || 1);
+           when either side levels.  plateBandFor owns the four thresholds.
+           v2.3.2680: "yours" is the trained skill of the weapon in your hand
+           on a relative worker — the level your points' EDGE is measured
+           against (prog3.js) — so the colour tells you how much of your
+           points still count: near = all of them, high = most, danger = few
+           to none.  The character level is a SUM of three skills and would
+           paint a monster "near" that already strips a pure build's points. */
+        const _plateYou = (isProg3RelEnabled() && S.rpg && prog3Live(S.rpg))
+          ? prog3SkillLevel(S.rpg, prog3ActiveCat(S.rpg))
+          : ((S.rpg && S.rpg.level) || 1);
+        const _plateBand = plateBandFor(m.level, _plateYou);
         _updateNamePill(_plateUi, monsterDisplayName(m.archetype || m.type),
           m.level == null ? 1 : m.level, _plateShow, null, _plateAlarm, _plateBand);
         /* ═══ v2.3.2571: THE PLATE SITS WHERE THE BAR SITS ═══

@@ -309,13 +309,19 @@ const psA = room.playerState.pa;
   const forgedSum = forged.poolBy.sword + forged.poolBy.bow + forged.poolBy.staff;
   check('the channel breakdown can never exceed the pool it splits',
     forgedSum <= forged.pool, { pool: forged.pool, poolBy: forged.poolBy });
-  // Dodge's own hard cap (75) binds even with level headroom.
+  /* v2.3.2680: Dodge has NO design cap any more (the curve heads for 90 %
+     and never reaches it); the only limit is the per-level bound, which stays
+     1 × character level on Dodge (owner: "keep per level limit on those 3"). */
   psA.prog3.sk.sword.level = 100; psA.prog3.sk.bow.level = 100; psA.prog3.sk.staff.level = 100;
   room._prog3Recompute(psA);
   check('char level caps at 300', psA.level === 300, psA.level);
   p3.shared = 200; p3.alloc.dodge = 75;
   room._handleProg3Allocate(sess, { stat: 'dodge' });
-  check('dodge hard cap 75 binds', p3.alloc.dodge === 75 && p3.shared === 200, p3.alloc.dodge);
+  check('v2.3.2680: the old 75-point Dodge cap is gone', p3.alloc.dodge === 76 && p3.shared === 199, p3.alloc.dodge);
+  p3.alloc.dodge = 300;
+  room._handleProg3Allocate(sess, { stat: 'dodge' });
+  check('...and the per-level bound (300 at character 300) is what binds', p3.alloc.dodge === 300 && p3.shared === 199, p3.alloc.dodge);
+  p3.alloc.dodge = 0;
 }
 
 // ── 5. Combat math: defense, dodge, dropped channels ──
@@ -323,14 +329,56 @@ const psA = room.playerState.pa;
   const p3 = psA.prog3;
   psA._zoneEntryGraceUntil = 0; psA._buffs = {};
   psA.maxHp = 1000; psA.hp = 1000;
+  /* v2.3.2680: Defense and Dodge read the CURVE, 0.9 × p/(p + 7) at edge 1.
+     Literals, not the constants — a fixture that imports what it checks
+     agrees with production by construction. */
   p3.alloc.dodge = 0; p3.alloc.def = 50;
   const r = room._applyDamage(psA, 100, false);
-  check('defense: −0.4%/pt (50 pts → ×0.8)', r.dmgTaken === 80, r);
+  check('defense on the curve: 50 pts → 0.9 × 50/57 = 78.9 % off', r.dmgTaken === Math.round(100 * (1 - 0.9 * 50 / 57)), r);
   p3.alloc.def = 100;
   const r2 = room._applyDamage(psA, 100, false);
-  check('defense caps at −40%', r2.dmgTaken === 60, r2);
+  check('...100 pts → 84 %, heading for 90 % and never reaching it', r2.dmgTaken === Math.round(100 * (1 - 0.9 * 100 / 107)), r2);
+  p3.alloc.def = 5;
+  check('...and the FIRST points are the big ones: 5 pts → 37.5 % off', Math.abs((1 - room._prog3DefMult(psA)) - 0.9 * 5 / 12) < 1e-9, room._prog3DefMult(psA));
+  p3.alloc.def = 100;
   p3.alloc.dodge = 75;
-  check('dodge pct = 0.4%/pt (75 → 30%)', Math.abs(room._prog3DodgePct(psA) - 0.30) < 1e-9, room._prog3DodgePct(psA));
+  check('dodge on the curve: 75 pts → 0.9 × 75/82', Math.abs(room._prog3DodgePct(psA) - 0.9 * 75 / 82) < 1e-9, room._prog3DodgePct(psA));
+  {
+    /* THE COMBINED FLOOR (owner: "Yes do combined floor", base damage only):
+       Dodge × Defense never lets less than 10 % of a BASE hit through.  With
+       Dodge 82 % and Defense 84 %, the cut is held at 0.10 / (1 − dodge). */
+    const _r = Math.random;
+    Math.random = () => 0.999;   /* the dodge roll misses, so the cut is visible */
+    const fl = room._applyDamage(psA, 1000, false);
+    Math.random = _r;
+    const dodge = 0.9 * 75 / 82;
+    check('the combined floor holds a base hit at 10 % through (expected, over the dodge roll)',
+      fl.dmgTaken === Math.round(1000 * 0.10 / (1 - dodge)), { got: fl.dmgTaken, want: Math.round(1000 * 0.10 / (1 - dodge)) });
+    /* An ELEMENTAL hit meets Resist alone: never dodged, never cut by
+       Defense, and not floored (its own 90 % asymptote is its floor). */
+    Math.random = () => 0;       /* would dodge anything dodgeable */
+    const el0 = room._applyDamage(psA, 100, false, { elemental: true });
+    p3.alloc.eres = 20;
+    const el1 = room._applyDamage(psA, 100, false, { elemental: true });
+    Math.random = _r;
+    p3.alloc.eres = 0;
+    check('an elemental hit cannot be dodged and Defense does not cut it', el0.dodged === false && el0.dmgTaken === 100, el0);
+    check('...Resist is what cuts it, on the curve: 20 pts → 0.9 × 20/27', el1.dmgTaken === Math.round(100 * (1 - 0.9 * 20 / 27)), el1);
+    /* THE EDGE: against a monster above the yardstick (the highest trained
+       skill for a shared stat) the points fade 20 %/level and are gone at +5. */
+    const sk = psA.prog3.sk;
+    const saved = [sk.sword.level, sk.bow.level, sk.staff.level];
+    sk.sword.level = 10; sk.bow.level = 1; sk.staff.level = 1;
+    p3.alloc.dodge = 0; p3.alloc.def = 50;
+    const atLvl = room._applyDamage(psA, 100, false, { attackerLevel: 10 });
+    const plus3 = room._applyDamage(psA, 100, false, { attackerLevel: 13 });
+    const plus5 = room._applyDamage(psA, 100, false, { attackerLevel: 15 });
+    [sk.sword.level, sk.bow.level, sk.staff.level] = saved;
+    check('the edge: full Defense against a monster at your level', atLvl.dmgTaken === Math.round(100 * (1 - 0.9 * 50 / 57)), atLvl);
+    check('...40 % of the points at +3 (0.9 × 20/27)', plus3.dmgTaken === Math.round(100 * (1 - 0.9 * 20 / 27)), plus3);
+    check('...and none at +5', plus5.dmgTaken === 100, plus5);
+    p3.alloc.dodge = 75; p3.alloc.def = 100;   /* the state the dodge-roll check below expects */
+  }
   const origRandom = Math.random;
   Math.random = () => 0.29;
   const rd = room._applyDamage(psA, 100, false);
@@ -407,13 +455,16 @@ const psA = room.playerState.pa;
   {
     const skLvl = psA.prog3.sk.sword.level;
     const effBase = room._weaponEffBase('sword', psA.weapon);
-    /* v2.3.2664: the tier FACTOR is tierMult^1.5 (data.js weaponTierFactor);
-       a literal here, for the reason above. */
-    const preVar = (effBase + skLvl * PROG3.DMG_PER_LEVEL.sword + 75 * PROG3.ATK.dmg.per) * Math.pow(6, 1.5);
-    const multiplied = preVar * 0.75 * 1.3 * (1.5 + 100 * PROG3.ATK.luck.dmgPer);
+    /* v2.3.2680: Power is a MULTIPLIER on (base + skill) — × (1 + 75/82) at
+       edge 1 (no target passed) — and Luck's crit multiplier is on the
+       curve: 1.5 + 2.0 × 100/107.  v2.3.2664: the tier FACTOR is
+       tierMult^1.5 (data.js weaponTierFactor).  Literals, for the reason
+       above.  On this fixture the multiplied crit now beats the anchor. */
+    const preVar = (effBase + skLvl * 1.5) * (1 + 75 / 82) * Math.pow(6, 1.5);
+    const multiplied = preVar * 0.75 * 1.3 * (1.5 + 2.0 * 100 / 107);
     const anchored = preVar * 1.25 * 2;
     const expected = Math.round(Math.max(multiplied, anchored));
-    check('crit damage = max(base × (1.5 + pts×0.01), 2 × range top) — the v2.3.2212 anchor', critRoll.dmg === expected,
+    check('crit damage = max(base × critMult, 2 × range top) — the v2.3.2212 anchor, on the curve', critRoll.dmg === expected,
       { got: critRoll.dmg, expected });
   }
   /* And the dmg stat feeds the NON-crit roll too: +75×0.5 pre-tier. */
@@ -425,10 +476,12 @@ const psA = room.playerState.pa;
     const bare = room._computeAttackDamage(psA, 'melee', false);
     psA.prog3.atk.sword.dmg = pts;
     Math.random = origRandom;
-    const gap = invested.dmg - bare.dmg;
-    const expectedGap = Math.round(75 * PROG3.ATK.dmg.per * Math.pow(6, 1.5) * (0.75 + 0.999999 * 0.5) * 1.3);  /* v2.3.2664: tier factor */
-    check('the dmg stat adds pts×0.5 inside the pre-tier sum',
-      Math.abs(gap - expectedGap) <= 1 && invested.isCrit === false, { gap, expectedGap });
+    /* v2.3.2680: Power MULTIPLIES the pre-tier sum now: 75 points at edge 1
+       is × (1 + 75/82), so the ratio of the two rolls is that factor. */
+    const ratio = invested.dmg / bare.dmg;
+    const want = 1 + 75 / 82;
+    check('Power multiplies the pre-tier sum: 75 pts → × (1 + 75/82)',
+      Math.abs(ratio - want) < 0.01 && invested.isCrit === false, { invested: invested.dmg, bare: bare.dmg, ratio, want });
   }
   /* ═══ v2.3.2592: THE SPECIAL STAT SCALES THE SPECIAL, AND ONLY THE SPECIAL ═══
      Deterministic: same variance draw, no crit, with and without the 75
@@ -445,8 +498,8 @@ const psA = room.playerState.pa;
     const specOn = roll(75, true), specOff = roll(0, true);
     const normOn = roll(75, false), normOff = roll(0, false);
     psA.prog3.atk.sword.special = 75;
-    const want = 1 + 75 * PROG3.ATK.special.per;
-    check('the special stat multiplies the SPECIAL roll by (1 + pts × per)',
+    const want = 1 + 1.5 * 75 / 82;   /* v2.3.2680: the curve, max +150 %, k 7 */
+    check('the special stat multiplies the SPECIAL roll by (1 + 1.5 × p/(p+7))',
       !specOn.isCrit && !specOff.isCrit && Math.abs(specOn.dmg / specOff.dmg - want) < 0.02,
       { on: specOn.dmg, off: specOff.dmg, ratio: specOn.dmg / specOff.dmg, want });
     check('...and leaves the ORDINARY roll alone', normOn.dmg === normOff.dmg, { on: normOn.dmg, off: normOff.dmg });
@@ -459,16 +512,19 @@ const psA = room.playerState.pa;
 {
   const dirty = room._sanitizeProg3({
     sk: { sword: { level: 999, xp: -5 }, bow: 'nope' },
-    alloc: { hp: 5000, dodge: 999, bogus: 9 },
-    atk: { sword: { luck: 999, range: -3, bogus: 4 }, nosuchcat: { luck: 50 } },
+    alloc: { hp: 5000, dodge: 5000, bogus: 9 },
+    atk: { sword: { luck: 5000, range: -3, bogus: 4 }, nosuchcat: { luck: 50 } },
     pool: 1e9,
   });
   check('sanitize clamps sk levels to [1,100]', dirty.sk.sword.level === 100 && dirty.sk.bow.level === 1, dirty.sk);
   check('sanitize floors xp at 0', dirty.sk.sword.xp === 0, dirty.sk.sword);
+  /* v2.3.2680: a curve stat's `cap` is the 999 STORAGE bound (the curve has
+     no design cap; the per-level bound binds at spend time), and a pool
+     keeps its real cap — so HP clamps to 100 and Dodge / Luck to 999. */
   check('sanitize clamps body alloc to caps, drops unknown keys',
-    dirty.alloc.hp === 100 && dirty.alloc.dodge === 75 && !('bogus' in dirty.alloc), dirty.alloc);
+    dirty.alloc.hp === 100 && dirty.alloc.dodge === 999 && !('bogus' in dirty.alloc), dirty.alloc);
   check('sanitize clamps per-type offense and drops unknown cats/keys',
-    dirty.atk.sword.luck === 100 && dirty.atk.sword.range === 0
+    dirty.atk.sword.luck === 999 && dirty.atk.sword.range === 0
       && !('bogus' in dirty.atk.sword) && !('nosuchcat' in dirty.atk), dirty.atk);
   check('sanitize bounds pool', dirty.pool === 999, dirty.pool);
 }
@@ -745,8 +801,9 @@ const psA = room.playerState.pa;
      reader that names no category falls back to 'sword'. */
   const p3ps = { prog3: { atk: { sword: { elem: 75 }, bow: { elem: 0 }, staff: { elem: 0 } } }, power: 500 };
   const legacyPs = { power: 40, agility: 15 };
-  check('elemAttackStat: prog3 reads the WEAPON\'s elem × per, never the fossil T1 stat',
-    elemAttackStat(p3ps, 'power', 'sword') === 75 * PROG3.ATK.elem.per,
+  /* v2.3.2680: on the curve — 120 × 75/(75+10) at edge 1 (no monster). */
+  check('elemAttackStat: prog3 reads the WEAPON\'s elem on the curve, never the fossil T1 stat',
+    Math.abs(elemAttackStat(p3ps, 'power', 'sword') - 120 * 75 / 85) < 1e-9,
     elemAttackStat(p3ps, 'power', 'sword'));
   check('elemAttackStat: a different weapon reads its OWN elem, not the sword\'s',
     elemAttackStat(p3ps, 'power', 'bow') === 0 && elemAttackStat(p3ps, 'power', 'staff') === 0,
@@ -759,8 +816,8 @@ const psA = room.playerState.pa;
   applyElementStatus(burnM, 'flame', 'src1', elemAttackStat(p3ps, 'power', 'sword'), 1000, 1);
   burnM.statuses.burn.lastTick = 0;
   const ticks = tickElementStatuses(burnM, 0.1, 1000);
-  check('burn DoT prices off the elem snapshot (5 + 75×0.3)',
-    ticks.length === 1 && ticks[0].dmg === Math.round(5 + 75 * PROG3.ATK.elem.per * 0.3), ticks);
+  check('burn DoT prices off the elem snapshot (5 + power×0.3, power on the curve)',
+    ticks.length === 1 && ticks[0].dmg === Math.round(5 + (120 * 75 / 85) * 0.3), ticks);
   const colM = { hp: 1000, statuses: null, element: null };
   applyElementStatus(colM, 'flame', 'src1', 0, 1000, 1);
   const col = resolveElementCollision(colM, 'frost', p3ps, false, 2000, 'sword');
@@ -782,8 +839,12 @@ const psA = room.playerState.pa;
   /* ── the grid ── */
   check('elem is an ATK stat now, and no longer a BODY one',
     !!PROG3.ATK.elem && !PROG3.BODY.elem, { atk: PROG3.ATK.elem, body: PROG3.BODY.elem });
-  check('...at the same cap and per-point value it always had (a point buys what it bought)',
-    PROG3.ATK.elem.cap === 75 && PROG3.ATK.elem.per === 1, PROG3.ATK.elem);
+  /* v2.3.2680: elem moved onto the curve with every other hit-changing stat:
+     max 120 power, k 10, the edge, no design cap (999 is storage), and the
+     loosened per-level bound of the damage stats. */
+  check('...on the curve: max 120, k 10, relative, 999 storage, 2 × level bound',
+    PROG3.ATK.elem.max === 120 && PROG3.ATK.elem.k === 10 && PROG3.ATK.elem.rel === true
+      && PROG3.ATK.elem.cap === 999 && PROG3.ATK.elem.lvlBound === 2, PROG3.ATK.elem);
   check('eres and mana are BODY stats (global: they describe the character)',
     !!PROG3.BODY.eres && !!PROG3.BODY.mana && !PROG3.ATK.eres && !PROG3.ATK.mana);
   check('the allocate whitelist accepts all three through the same door',
@@ -862,8 +923,8 @@ const psA = room.playerState.pa;
   const plain = room._applyDamage(plainV, 100, false).dmgTaken;
   const elemV = victim(75);
   const elem = room._applyDamage(elemV, 100, false, { elemental: true }).dmgTaken;
-  check('elem resist cuts ELEMENTAL damage at the capped rate (−30% at 75 pts)',
-    elem === Math.round(100 * (1 - 75 * PROG3.BODY.eres.per)), { elem, plain });
+  check('elem resist cuts ELEMENTAL damage on the curve (75 pts → 0.9 × 75/82)',
+    elem === Math.round(100 * (1 - 0.9 * 75 / 82)), { elem, plain });
   check('...and leaves ordinary untyped damage completely alone',
     plain === 100, plain);
   const zeroV = victim(0);
@@ -1032,7 +1093,7 @@ const psA = room.playerState.pa;
    stats' server bounds. */
 {
   const { prog3FoldLuck, prog3GrantSharedPoints } = await import('../src/prog3.js');
-  const { setProg3Enabled, setProg3SharedEnabled, prog3MoveMult } = await import('../../src/data/prog3.js');
+  const { setProg3Enabled, setProg3SharedEnabled, setProg3RelEnabled, prog3MoveMult } = await import('../../src/data/prog3.js'); /* v2.3.2680: + the relative flag */
   const { SPEED, calcMoveSpeed } = await import('../../src/data/gameSystems.js');
 
   /* ── the grid ── */
@@ -1040,12 +1101,22 @@ const psA = room.playerState.pa;
     Object.keys(PROG3.ATK).sort().join(',') === 'aspd,dmg,elem,luck,range,special', Object.keys(PROG3.ATK));
   check('the seven shared stats are exactly def/dodge/eres/hp/mana/move/stam',
     Object.keys(PROG3.BODY).sort().join(',') === 'def,dodge,eres,hp,mana,move,stam', Object.keys(PROG3.BODY));
-  check('luck carries BOTH halves of a crit: a chance rate, a damage rate and the 1% base',
-    PROG3.ATK.luck.per === 0.003 && PROG3.ATK.luck.dmgPer === 0.01 && PROG3.ATK.luck.base === 0.01 && PROG3.ATK.luck.cap === 100,
+  /* v2.3.2680: both halves on the curve — chance 1 % + 60 % × p/(p+7),
+     multiplier 1.5 + 2.0 × p/(p+7). */
+  check('luck carries BOTH halves of a crit: a chance curve, a damage curve and the 1% base',
+    PROG3.ATK.luck.max === 0.60 && PROG3.ATK.luck.dmgMax === 2.0 && PROG3.ATK.luck.base === 0.01
+      && PROG3.ATK.luck.k === 7 && PROG3.ATK.luck.rel === true,
     PROG3.ATK.luck);
-  check('...landing on the SAME endpoints the old pair had: 31% chance and ×2.5 at cap',
-    Math.abs(PROG3.ATK.luck.base + PROG3.ATK.luck.cap * PROG3.ATK.luck.per - 0.31) < 1e-9
-      && Math.abs(1.5 + PROG3.ATK.luck.cap * PROG3.ATK.luck.dmgPer - 2.5) < 1e-9);
+  {
+    const lk = (pts) => ({ prog3: { sk: { sword: { level: 50 }, bow: { level: 1 }, staff: { level: 1 } },
+      atk: { sword: { luck: pts }, bow: {}, staff: {} }, alloc: {} } });
+    check('...5 points already read 26 % crit and ×2.33 — the first points count most',
+      Math.abs(room._prog3CritChance(lk(5), 'sword') - (0.01 + 0.60 * 5 / 12)) < 1e-9
+        && Math.abs(room._prog3CritMult(lk(5), 'sword') - (1.5 + 2.0 * 5 / 12)) < 1e-9);
+    check('...and 100 points read past the old pair\'s endpoints (31 % / ×2.5): nobody\'s Luck weakens',
+      room._prog3CritChance(lk(100), 'sword') > 0.31 && room._prog3CritMult(lk(100), 'sword') > 2.5,
+      { chance: room._prog3CritChance(lk(100), 'sword'), mult: room._prog3CritMult(lk(100), 'sword') });
+  }
   check('the whitelist takes the new names through the same door and refuses the retired ones',
     prog3StatDef('luck').scope === 'atk' && prog3StatDef('range').scope === 'atk'
       && prog3StatDef('special').scope === 'atk' && prog3StatDef('move').scope === 'body'
@@ -1131,18 +1202,20 @@ const psA = room.playerState.pa;
 
   /* ── MOVE SPEED: the anti-teleport bound widens by the server's OWN copy of the stat ── */
   {
-    check('move mult reads the allocation (+30% at the 75-pt cap)',
-      Math.abs(room._prog3MoveMult({ prog3: { alloc: { move: 75 } } }) - 1.30) < 1e-9
+    /* v2.3.2680: the curve, max +35 %, k 10 — no edge (movement is not
+       evaluated against a monster). */
+    check('move mult reads the allocation on the curve (75 pts → +35 % × 75/85)',
+      Math.abs(room._prog3MoveMult({ prog3: { alloc: { move: 75 } } }) - (1 + 0.35 * 75 / 85)) < 1e-9
         && room._prog3MoveMult({ prog3: { alloc: {} } }) === 1);
     /* The fastest legitimate stack the client can run, in px/s, against the
        bound the worker actually applies to a prog3 player — read off the
        CLIENT's constants, so a client-side speed retune fails here.  The
        potion (×1.5) widens the bound too (movement.js _spdCap), so both
        sides carry it. */
-    setProg3Enabled(true); setProg3SharedEnabled(true);
+    setProg3Enabled(true); setProg3SharedEnabled(true); setProg3RelEnabled(true);
     const capRpg = { prog3: { sk: { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } }, alloc: { move: PROG3.BODY.move.cap }, atk: {}, pool: 0 } };
     const clientMult = prog3MoveMult(capRpg);
-    setProg3Enabled(false); setProg3SharedEnabled(false);
+    setProg3Enabled(false); setProg3SharedEnabled(false); setProg3RelEnabled(false);
     const worstPxPerSec = calcMoveSpeed(0, 0) / 5.0 * SPEED * 60 * clientMult * 1.15 * 1.065 * 1.5;
     const bound = 500 * 1.5 * room._prog3MoveMult({ prog3: { alloc: { move: PROG3.BODY.move.cap } } });
     check('client and server agree on the move multiplier at cap', Math.abs(clientMult - room._prog3MoveMult({ prog3: { alloc: { move: PROG3.BODY.move.cap } } })) < 1e-9, { clientMult });
@@ -1165,6 +1238,64 @@ const psA = room.playerState.pa;
       room.playerState.mvB.x === 0, { x: room.playerState.mvB.x });
     delete room.playerState.mvA; delete room.playerState.mvB;
   }
+}
+
+// ── v2.3.2680: RELATIVE POINT VALUE — the owner's case, the bound, the edge ──
+{
+  /* Owner, 2026-09-22: "If a character is putting his first 5 points into
+     dodge I want them to experience a high rate of dodging RELATIVE to the
+     same or lesser monster level they're playing.  It can decay quickly for
+     higher level monsters."  A character-5 (Melee 3) with 5 Dodge points: */
+  const five = { prog3: { sk: { sword: { level: 3 }, bow: { level: 1 }, staff: { level: 1 } },
+    alloc: { dodge: 5 }, atk: { sword: {}, bow: {}, staff: {} } } };
+  check('the owner\'s case: 5 Dodge points = 37.5 % dodge against a same-or-lower-level monster',
+    Math.abs(room._prog3DodgePct(five, 3) - 0.375) < 1e-9 && Math.abs(room._prog3DodgePct(five, 1) - 0.375) < 1e-9,
+    { atLevel: room._prog3DodgePct(five, 3), lower: room._prog3DodgePct(five, 1) });
+  check('...fading quickly above: 27 % at +2, 13.8 % at +4, nothing at +5',
+    Math.abs(room._prog3DodgePct(five, 5) - 0.9 * 3 / 10) < 1e-9
+      && Math.abs(room._prog3DodgePct(five, 7) - 0.9 * 1 / 8) < 1e-9
+      && room._prog3DodgePct(five, 8) === 0,
+    { p2: room._prog3DodgePct(five, 5), p4: room._prog3DodgePct(five, 7), p5: room._prog3DodgePct(five, 8) });
+
+  /* The per-level bound, per stat (owner: "keep per level limit on those
+     3"): 1 × character level on Defense/Dodge/Resist, 2 × on the four damage
+     stats.  Character 10 here. */
+  const sess = { id: 'rb' };
+  room.playerState.rb = { prog3: { sk: { sword: { level: 8 }, bow: { level: 1 }, staff: { level: 1 } },
+    alloc: { dodge: 10 }, atk: prog3FreshAtk(), pool: 50, poolBy: { sword: 50, bow: 0, staff: 0 }, shared: 50, ppl: 3, spl: 3 } };
+  const rb = room.playerState.rb;
+  room._prog3Recompute(rb);
+  room._handleProg3Allocate(sess, { stat: 'dodge' });
+  check('the bound: an 11th Dodge point at character 10 is refused (1 × level)', rb.prog3.alloc.dodge === 10, rb.prog3.alloc.dodge);
+  rb.prog3.atk.sword.dmg = 10;
+  room._handleProg3Allocate(sess, { stat: 'dmg', cat: 'sword' });
+  check('...while an 11th Power point is taken (2 × level on the damage stats)', rb.prog3.atk.sword.dmg === 11, rb.prog3.atk.sword.dmg);
+  rb.prog3.atk.sword.dmg = 20;
+  room._handleProg3Allocate(sess, { stat: 'dmg', cat: 'sword' });
+  check('...up to 20, and no further', rb.prog3.atk.sword.dmg === 20, rb.prog3.atk.sword.dmg);
+  delete room.playerState.rb;
+
+  /* The edge on YOUR hits: Power's multiplier fades against a target above
+     the lane's own trained level, and is whole at or below it. */
+  const hitter = { prog3: { sk: { sword: { level: 10 }, bow: { level: 1 }, staff: { level: 1 } },
+    alloc: {}, atk: { sword: { dmg: 20 }, bow: {}, staff: {} } } };
+  check('Power: × (1 + 20/27) at or below the lane\'s level',
+    Math.abs(room._prog3PowerMult(hitter, 'sword', 10) - (1 + 20 / 27)) < 1e-9
+      && Math.abs(room._prog3PowerMult(hitter, 'sword', 2) - (1 + 20 / 27)) < 1e-9);
+  check('...× (1 + 8/15) at +3 (40 % of the points) and × 1 at +5',
+    Math.abs(room._prog3PowerMult(hitter, 'sword', 13) - (1 + 8 / 15)) < 1e-9
+      && room._prog3PowerMult(hitter, 'sword', 15) === 1);
+  check('the yardstick is the LANE: the same points on a Bow 1 lane fade against a level-3 target',
+    room._prog3PowerMult({ prog3: { sk: { sword: { level: 10 }, bow: { level: 1 }, staff: { level: 1 } },
+      alloc: {}, atk: { sword: {}, bow: { dmg: 20 }, staff: {} } } }, 'bow', 3) < 1 + 20 / 27);
+  /* ANTICHEAT LOCKSTEP: the ceiling takes the curve at edge 1, the most any
+     monster can grant, so a roll against any target stays under it. */
+  const cap = room._maxDmgForAttacker(psA, false);
+  let over = 0;
+  for (const lvl of [1, 5, 50, 100, undefined]) for (let i = 0; i < 200; i++) {
+    if (room._computeAttackDamage(psA, 'melee', false, { targetLevel: lvl }).dmg > cap) over++;
+  }
+  check('rolls against every target level stay under the edge-1 ceiling', over === 0, { over, cap });
 }
 
 console.log(failures === 0 ? '\nprog3: ALL PASS' : `\nprog3: ${failures} FAILURE(S)`);

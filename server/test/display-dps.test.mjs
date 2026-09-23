@@ -399,7 +399,7 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
 // critDmg fold, and the rule-19 fallback (prog3x off = the flat +2 math an
 // old worker actually rolls).
 {
-  const { setProg3Enabled, setProg3XEnabled, setProg3SharedEnabled, PROG3, PROG3_LEGACY_ATK } = await import('../../src/data/prog3.js');
+  const { setProg3Enabled, setProg3XEnabled, setProg3SharedEnabled, setProg3RelEnabled, PROG3, PROG3_LEGACY_ATK, PROG3_LINEAR } = await import('../../src/data/prog3.js');
   /* v2.3.2592: crit + critDmg are ONE stat (LUCK) on a worker that folded
      them; the fixture carries 50 luck points -> chance 1% + 50 × 0.3% =
      16%, multiplier 1.5 + 50 × 1% = 2.0. */
@@ -425,8 +425,12 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
      is the one thing a fixture must not do.  If the base is ever retuned,
      these three lines are supposed to fail and be changed deliberately. */
   // period 600 × (1 − 20×0.0035), crit EV = 1 + 0.16 × (2.0 − 1), no flat.
-  const baseX = (6.67 + 40 * PROG3.DMG_PER_LEVEL.sword + 30 * PROG3.ATK.dmg.per) * 2.0;
-  const cdX = 600 * (1 - 20 * PROG3.ATK.aspd.per);
+  /* v2.3.2680: this fixture is the LINEAR worker now (prog3shared, no
+     prog3rel) — the math a worker without the curve still rolls, read off
+     PROG3_LINEAR; the relative worker's fixture follows it. */
+  setProg3RelEnabled(false);
+  const baseX = (6.67 + 40 * PROG3.DMG_PER_LEVEL.sword + 30 * PROG3_LINEAR.dmg.per) * 2.0;
+  const cdX = 600 * (1 - 20 * PROG3_LINEAR.aspd.per);
   const expMinX = Math.round(baseX * 0.75), expMaxX = Math.round(baseX * 1.25);
   /* v2.3.2212: crits are floored at 2x the top of the range (the anchor), so
      the fold is avg + chance x (critHit - avg), not a multiplier on avg.
@@ -434,7 +438,7 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
      imports the constant agrees with production by construction. */
   const avgX = (expMinX + expMaxX) / 2;
   const critHitX = Math.max(avgX * 2.0, expMaxX * 2);
-  const expDpsX = (avgX + (0.01 + 50 * PROG3.ATK.luck.per) * (critHitX - avgX)) / (cdX / 1000);
+  const expDpsX = (avgX + (0.01 + 50 * PROG3_LINEAR.luck.per) * (critHitX - avgX)) / (cdX / 1000);
   const rX = calcCombatDmgRange(p3rpg, SWORD);           /* v2.3.2520: raw half */
   const dX = calcDisplayDps(p3rpg, SWORD);
   check('prog3x fixture: range carries the dmg stat pre-tier',
@@ -442,6 +446,32 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
     { got: rX, expMinX, expMaxX, cdX });
   check('prog3x fixture: DPS folds LUCK\'s percent crit damage, no flat (v2.3.2592)',
     Math.abs(dX - expDpsX / DISPLAY_SCALE_K) < 1e-9, { got: dX, exp: expDpsX / DISPLAY_SCALE_K });
+
+  /* ═══ v2.3.2680: the RELATIVE worker (caps.prog3rel) ═══
+     Same character, same points, the curve.  By hand, with LITERALS for the
+     same reason as above (a fixture that imports the constants agrees with
+     production by construction):
+       Power   × (1 + 1.0 × 30/(30+7))           — a multiplier, pre-tier
+       Speed   period × (1 − 0.39 × 20/(20+10))
+       Luck    chance 0.01 + 0.60 × 50/(50+7), multiplier 1.5 + 2.0 × 50/57
+     A readout has no monster in hand, so the edge is 1. */
+  setProg3RelEnabled(true);
+  const baseR = (6.67 + 40 * 1.5) * (1 + 30 / 37) * 2.0;
+  const cdR = 600 * (1 - 0.39 * 20 / 30);
+  const expMinR = Math.round(baseR * 0.75), expMaxR = Math.round(baseR * 1.25);
+  const avgR = (expMinR + expMaxR) / 2;
+  const critHitR = Math.max(avgR * (1.5 + 2.0 * 50 / 57), expMaxR * 2);
+  const expDpsR = (avgR + (0.01 + 0.60 * 50 / 57) * (critHitR - avgR)) / (cdR / 1000);
+  const rR = calcCombatDmgRange(p3rpg, SWORD);
+  const dR = calcDisplayDps(p3rpg, SWORD);
+  check('relative worker: Power multiplies the pre-tier sum and Speed reads the curve',
+    !!rR && rR.min === expMinR && rR.max === expMaxR && Math.abs(rR.cdMs - cdR) < 1e-9,
+    { got: rR, expMinR, expMaxR, cdR });
+  check('relative worker: DPS folds Luck on the curve (both halves)',
+    Math.abs(dR - expDpsR / DISPLAY_SCALE_K) < 1e-9, { got: dR, exp: expDpsR / DISPLAY_SCALE_K });
+  check('relative worker: 30 Power reads more than the linear worker\'s +15 flat did',
+    rR.max > rX.max, { rel: rR.max, linear: rX.max });
+  setProg3RelEnabled(false);
 
   // The same character against an OLD worker (prog3x off, no shared grid):
   // that worker's blob carries the retired crit/critDmg pair, the dmg stat
