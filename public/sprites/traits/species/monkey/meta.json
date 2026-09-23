@@ -1718,5 +1718,40 @@
       "hit-southwest"
     ],
     "note": "v2.3.2655: <dir>.fur.png / frames/<key>.fur.png = the fur as BARE SKIN (default tan). Recolour like the body (playerSkins _isSkin/_retint) and draw over the piece; the muzzle and ears are never recoloured."
+  },
+  "tan": {
+    "base": [
+      "south",
+      "southwest",
+      "east",
+      "northeast",
+      "north"
+    ],
+    "frames": [
+      "hit-east",
+      "hit-north",
+      "hit-northeast",
+      "jog-south",
+      "pickup-south",
+      "jog-northeast",
+      "fish-south",
+      "jog-north",
+      "mine-south",
+      "hit-south",
+      "jog-southwest",
+      "hit-southwest"
+    ],
+    "lighten": 0.35,
+    "toward": [
+      268,
+      227,
+      212
+    ],
+    "ref": [
+      149,
+      116,
+      89
+    ],
+    "note": "v2.3.2656: <dir>.tan.png / frames/<key>.tan.png = the muzzle+ear tan as bare skin. Recolour with _retint using target T + lighten*(toward - T) (clip 255; T = the skin target, DEFAULT_SKIN for default) and draw over the piece."
   }
 }

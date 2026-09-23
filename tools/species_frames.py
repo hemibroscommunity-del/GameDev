@@ -69,6 +69,17 @@ SKIN_REF on the brighter hit heads -- a grey clipped those (measured: 6 levels
 off); skin-coloured art has the same headroom the body has.  meta.fur lists
 which files exist.
 
+TAN (v2.3.2656).  The muzzle and ears are one tan, TAN_REF (149,116,89), plus
+darker steps of it where it meets the outline.  Owner: they recolour with the
+skin too, staying a LIGHTER version of the fur: the tan for skin target T is
+    tanTarget(T) = T + TAN_LIGHTEN * (TAN_TOWARD - T)      (clipped to 255)
+with TAN_LIGHTEN / TAN_TOWARD solved so Monkey Brown gives exactly TAN_REF --
+the designed monkey is unchanged.  Each image's tan pixels ship as a twin like
+the fur -- <dir>.tan.png, frames/<pose>-<dir>.tan.png -- stored as bare skin
+at the tan's own luminance, so the renderer recolours it with the SAME
+_retint, just with tanTarget(T) as the target (T = DEFAULT_SKIN for the
+'default' skin).  meta.tan carries the files and the two constants.
+
 Run from the repo root:
     python3 tools/species_frames.py bake --id monkey
 """
@@ -343,6 +354,49 @@ def fur_layer(layer, body_raw, tone):
     return out
 
 
+TAN_REF = (149, 116, 89)
+TAN_LIGHTEN = 0.35
+TAN_TOWARD = (268, 227, 212)    # solved: 85 + .35*(268-85) = 149, 56 + .35*(227-56) = 116, 23 + .35*(212-23) = 89
+
+
+def tan_target(skin):
+    t = skin if skin is not None else DEFAULT_SKIN
+    return tuple(min(255, round(c + TAN_LIGHTEN * (w - c))) for c, w in zip(t, TAN_TOWARD))
+
+
+def tan_mask(a, tone):
+    """the muzzle/ear tan and its lighter steps into the outline: TAN_REF's
+    hue, not fur, not the eye white.  The two darkest steps (lum 25 and 49)
+    stay out: they are the outline's anti-aliasing, and stored as bare skin
+    they would sit under _isSkin's r > 90 floor and never be recoloured."""
+    r, g, b, al = [a[..., i].astype(float) for i in range(4)]
+    rr = np.maximum(r, 1)
+    return ((al > 16) & ~fur_mask(a, tone) & (lum(a) >= 60) & (r >= 20)
+            & (np.abs(g / rr - TAN_REF[1] / TAN_REF[0]) < 0.06)
+            & (np.abs(b / rr - TAN_REF[2] / TAN_REF[0]) < 0.08))
+
+
+def tan_twin(a, tone):
+    """the tan as bare skin at the tan's own luminance (DEFAULT_SKIN * k,
+    k = lum / lum(TAN_REF)), so _retint(twin, tan_target(T)) = tan_target(T) * k"""
+    m = tan_mask(a, tone)
+    k = lum(a.astype(float)) / lum(np.array(TAN_REF, float))
+    out = np.zeros(a.shape[:2] + (4,), np.uint8)
+    for i in range(3):
+        out[..., i] = np.where(m, np.clip(np.round(DEFAULT_SKIN[i] * k), 0, 255), 0)
+    out[..., 3] = np.where(m, 255, 0)
+    return out
+
+
+def draw_tan(layer, tan, skin):
+    """the piece's tan recoloured for skin target `skin` (None = 'default')"""
+    f = retint(tan.astype(int), tan_target(skin))
+    m = tan[..., 3] > 0
+    out = layer.copy()
+    out[m, :3] = f[m, :3]
+    return out
+
+
 def draw_fur(layer, fur, skin):
     """what the game draws: the piece, then its fur layer on top -- recoloured
     exactly like the body for skin target `skin`, or as stored for None
@@ -397,11 +451,13 @@ def load(sid):
     return tdir, meta, tops, tex, fixes
 
 
-def load_fur(tdir, meta):
-    """the shipped fur layers: {dir: tex} for the facings, {key: strip} for the strips"""
-    fb = meta.get('fur', {})
-    ftex = {d: np.array(Image.open(f'{tdir}/{d}.fur.png').convert('RGBA')).astype(int) for d in fb.get('base', [])}
-    fstrips = {k: np.array(Image.open(f'{tdir}/frames/{k}.fur.png').convert('RGBA')).astype(int)
+def load_fur(tdir, meta, kind='fur'):
+    """the shipped fur (or kind='tan') layers: {dir: tex} for the facings,
+    {key: strip} for the strips"""
+    fb = meta.get(kind, {})
+    ftex = {d: np.array(Image.open(f'{tdir}/{d}.{kind}.png').convert('RGBA').resize((FRAME, FRAME), Image.NEAREST)).astype(int)
+            for d in fb.get('base', [])}
+    fstrips = {k: np.array(Image.open(f'{tdir}/frames/{k}.{kind}.png').convert('RGBA')).astype(int)
                for k in fb.get('frames', [])}
     return ftex, fstrips
 
@@ -436,6 +492,7 @@ def bake(sid):
         os.remove(os.path.join(fdir, old))
     overlays = {}
     fur_frames = []
+    tan_frames = []
     for key, spec in fixes.items():
         if key.startswith('_'):
             continue
@@ -467,6 +524,10 @@ def bake(sid):
         if fstrip[..., 3].any():
             Image.fromarray(fstrip, 'RGBA').save(f'{fdir}/{key}.fur.png', optimize=True)
             fur_frames.append(key)
+        tstrip = tan_twin(strip, tone)
+        if tstrip[..., 3].any():
+            Image.fromarray(tstrip, 'RGBA').save(f'{fdir}/{key}.tan.png', optimize=True)
+            tan_frames.append(key)
         print(f'{key:18s} {len(tiles):2d} frames baked  -> frames/{key}.png  {W}x{H}')
     if overlays:
         meta['frameOverlays'] = overlays
@@ -496,6 +557,19 @@ def bake(sid):
                            '(default tan). Recolour like the body (playerSkins _isSkin/_retint) and '
                            'draw over the piece; the muzzle and ears are never recoloured.'}
     print(f'fur layers: {len(fur_base)} facings, {len(fur_frames)} strips')
+    tan_base = []
+    for d in meta['anchors']:
+        a = np.array(Image.open(f'{tdir}/{d}.png').convert('RGBA'))
+        t = tan_twin(a, tone)
+        if t[..., 3].any():
+            Image.fromarray(t, 'RGBA').save(f'{tdir}/{d}.tan.png', optimize=True)
+            tan_base.append(d)
+    meta['tan'] = {'base': tan_base, 'frames': tan_frames,
+                   'lighten': TAN_LIGHTEN, 'toward': list(TAN_TOWARD), 'ref': list(TAN_REF),
+                   'note': 'v2.3.2656: <dir>.tan.png / frames/<key>.tan.png = the muzzle+ear tan as bare '
+                           'skin. Recolour with _retint using target T + lighten*(toward - T) (clip 255; '
+                           'T = the skin target, DEFAULT_SKIN for default) and draw over the piece.'}
+    print(f'tan layers: {len(tan_base)} facings, {len(tan_frames)} strips')
     json.dump(meta, open(tdir + '/meta.json', 'w'), indent=2)
     open(tdir + '/meta.json', 'a').write('\n')
 
