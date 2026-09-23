@@ -457,9 +457,10 @@ const psA = room.playerState.pa;
     const effBase = room._weaponEffBase('sword', psA.weapon);
     /* v2.3.2670: Power is a MULTIPLIER on (base + skill) — × (1 + 75/82) at
        edge 1 (no target passed) — and Luck's crit multiplier is on the
-       curve: 1.5 + 2.0 × 100/107.  Literals, for the reason above.  On this
-       fixture the multiplied crit now beats the anchor. */
-    const preVar = (effBase + skLvl * 1.5) * (1 + 75 / 82) * 6;
+       curve: 1.5 + 2.0 × 100/107.  v2.3.2664: the tier FACTOR is
+       tierMult^1.5 (data.js weaponTierFactor).  Literals, for the reason
+       above.  On this fixture the multiplied crit now beats the anchor. */
+    const preVar = (effBase + skLvl * 1.5) * (1 + 75 / 82) * Math.pow(6, 1.5);
     const multiplied = preVar * 0.75 * 1.3 * (1.5 + 2.0 * 100 / 107);
     const anchored = preVar * 1.25 * 2;
     const expected = Math.round(Math.max(multiplied, anchored));
@@ -579,11 +580,14 @@ const psA = room.playerState.pa;
 
   // stats_update armor ingest: gates on defense POINTS; rejection
   // keeps the old armor (echo snaps the client back).
+  // v2.3.2664: armour is priced on its OWN ladder now (data.js armorDefReq;
+  // owner: "I'll go with your defense requirements for next tiers") — a
+  // tier-4 plate asks 10 Defense, where the weapon table's fallback asked 90.
   psA.armor = null;
-  p3.alloc.def = 10;
-  room._handleStatsUpdate(sess, { armor: { name: 'Test Plate', tierMult: 4 } }); // est tier 18 → req 90
+  p3.alloc.def = 9;
+  room._handleStatsUpdate(sess, { armor: { name: 'Test Plate', tierMult: 4 } }); // tier 4 → req 10
   check('armor ingest: over-tier swap rejected (defense points too low)', psA.armor === null, psA.armor);
-  p3.alloc.def = 90;
+  p3.alloc.def = 10;
   room._handleStatsUpdate(sess, { armor: { name: 'Test Plate', tierMult: 4 } });
   check('armor ingest: defense allocation unlocks the tier',
     !!psA.armor && psA.armor.name === 'Test Plate', psA.armor);
@@ -1013,7 +1017,7 @@ const psA = room.playerState.pa;
   const TYPE = { melee: 'sword', ranged: 'bow', staff: 'staff' };
   for (const slot of ['melee', 'ranged', 'staff']) {
     const w = slot === 'melee' ? ps.weapon : slot === 'ranged' ? ps.rangedWeapon : ps.staffWeapon;
-    const preVar = (room._weaponEffBase(TYPE[slot], w) + PROG3.DMG_PER_LEVEL[TYPE[slot]]) * 2;
+    const preVar = (room._weaponEffBase(TYPE[slot], w) + PROG3.DMG_PER_LEVEL[TYPE[slot]]) * Math.pow(2, 1.5);  /* v2.3.2664: tier factor */
     const rangeTop = preVar * BAND_TOP[slot];
     /* A SEQUENCE, not one value.  _computeAttackDamage draws variance first
        and the crit roll second, so a single stub cannot ask for "best roll
@@ -1050,7 +1054,7 @@ const psA = room.playerState.pa;
      recovers the multiplier the code actually used. */
   {
     const w = ps.staffWeapon;
-    const preVar = (room._weaponEffBase('staff', w) + PROG3.DMG_PER_LEVEL.staff) * 2;
+    const preVar = (room._weaponEffBase('staff', w) + PROG3.DMG_PER_LEVEL.staff) * Math.pow(2, 1.5);  /* v2.3.2664: tier factor */
     /* crit would multiply on top and hide the band, so the second draw is
        forced to 1 -- above any crit chance -- exactly as the loop above
        forces 0.0 to guarantee one. */
