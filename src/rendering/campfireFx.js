@@ -1,4 +1,4 @@
-/* ═══ v2.3.2744: A CAMPFIRE THAT BURNS ═══
+/* ═══ v2.3.2776: A CAMPFIRE THAT BURNS ═══
  *
  * Owner: "I saw you can create good looking pixel flames.  Instead of the
  * current generated fire (after lighting logs for firewood) ... I want you

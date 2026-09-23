@@ -1,4 +1,4 @@
-/* A CAMPFIRE THAT BURNS (v2.3.2744).
+/* A CAMPFIRE THAT BURNS (v2.3.2776).
  *
  * Owner: "I saw you can create good looking pixel flames.  Instead of the
  * current generated fire (after lighting logs for firewood) ... I want you
@@ -178,7 +178,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState.current; S._campfire = null;
     window.__btDispatch({ type: 'campfire_lit', payload: { id: 'qa-peer', x: S.player.x + 60, y: S.player.y + 50, zone: S.currentZone, expiresAt: Date.now() + 45000 } });
   });
-  /* v2.3.2744: polled, not read once at 500 ms -- in a long batch on the QA
+  /* v2.3.2776: polled, not read once at 500 ms -- in a long batch on the QA
      box a frame can take longer than that, and one read caught the page with
      no probe to answer (null), which is the harness, not the fire */
   let peer = null, pf = null;

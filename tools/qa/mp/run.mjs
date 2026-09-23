@@ -23,7 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  campfire: () => import('./mp-campfire.mjs'), /* v2.3.2744: the lit-log campfire in pixel art -- the strike stands on the ground, the fire is lit at your boots, burns (sparks, smoke, charring logs), sorts around you, still cooks on a tap, dies down to embers */
+  campfire: () => import('./mp-campfire.mjs'), /* v2.3.2776: the lit-log campfire in pixel art -- the strike stands on the ground, the fire is lit at your boots, burns (sparks, smoke, charring logs), sorts around you, still cooks on a tap, dies down to embers */
   geartrim: () => import('./mp-geartrim.mjs'), /* v2.3.2750: gear frames cropped to their art -- under a third of the bytes, and every layer still lands exactly on the body, own screen and peer's */
   shirtjog: () => import('./mp-shirtjog.mjs'), /* v2.3.2747: the tee's keyline holds on every frame the game draws while running, all eight directions -- the owner's "static" */
   arrowsnap: () => import('./mp-arrowsnap.mjs'), /* v2.3.2731: one arrow in eight snaps on what it hits -- same damage, a different picture */
