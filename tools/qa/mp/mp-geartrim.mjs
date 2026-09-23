@@ -21,6 +21,11 @@
  *   64px frame would be scaled 2x and its box would be twice the body's.
  *   It is asserted in every facing while jogging and standing, local and peer.
  *
+ *   v2.3.2774, THE COMBAT STRIPS -- the 33 stand-in gear strips (swing,
+ *   bowshot, chop, cook, fire) are cropped by effectsRenderer._gearStripFrame:
+ *   all of them built cropped, under a third of their bytes, and every frame
+ *   byte-identical to its frame in the served PNG.
+ *
  * Pictures of the armoured figure (both screens, four facings) land in
  * GEARTRIM_SHOTS (default /tmp/qa-geartrim) for a by-eye comparison against
  * the previous build.
@@ -80,6 +85,44 @@ const displays = (P) => P.page.evaluate(() => {
 const tex = (P) => P.page.evaluate(() => (window.__btTex ? window.__btTex() : null));
 const trimStats = (P) => P.page.evaluate(() => (window.__btGearTrim ? window.__btGearTrim() : null));
 
+/* v2.3.2774: the COMBAT stand-in strips (swing, bowshot, chop, cook, fire),
+   cropped by effectsRenderer._gearStripFrame.  For every cropped sheet: decode
+   the served file again, cut it into the same frames the uncropped loader cut
+   (frame count and width from the cropped frames' own `orig`), and compare
+   each against the cropped frame drawn back into its whole frame at its trim.
+   Byte-for-byte, or it is reported. */
+const combatIdentity = (P) => P.page.evaluate(async () => {
+  const stats = window.__btCombatGearTrim ? window.__btCombatGearTrim() : null;
+  if (!stats) return null;
+  const load = (u) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = u; });
+  const out = { sheets: stats.length, frames: 0, mismatched: [], fullBytes: 0, packedBytes: 0 };
+  for (const st of stats) {
+    out.fullBytes += st.fullBytes; out.packedBytes += st.packedBytes;
+    const frames = window.__btCombatGearFrames(st.key);
+    if (!frames || !frames.length) { out.mismatched.push(st.key + ' no frames'); continue; }
+    /* the PNG the loader asked for; its .webp twin is lossless by the
+       optimize-sprites contract, so either decodes to the same pixels */
+    let img;
+    try { img = await load(st.url); }
+    catch (e) { out.mismatched.push(st.key + ' reload failed'); continue; }
+    const w = frames[0].orig.width, h = frames[0].orig.height;
+    for (let i = 0; i < frames.length; i++) {
+      const a = document.createElement('canvas'); a.width = w; a.height = h;
+      const ag = a.getContext('2d', { willReadFrequently: true }); ag.imageSmoothingEnabled = false;
+      ag.drawImage(img, i * w, 0, w, h, 0, 0, w, h);
+      const f = frames[i];
+      const b = document.createElement('canvas'); b.width = w; b.height = h;
+      const bg = b.getContext('2d', { willReadFrequently: true }); bg.imageSmoothingEnabled = false;
+      bg.drawImage(f.source.resource, f.frame.x, f.frame.y, f.frame.width, f.frame.height, f.trim.x, f.trim.y, f.frame.width, f.frame.height);
+      const da = ag.getImageData(0, 0, w, h).data, db = bg.getImageData(0, 0, w, h).data;
+      let d = 0; for (let k = 0; k < da.length; k++) if (da[k] !== db[k]) d++;
+      out.frames++;
+      if (d) out.mismatched.push(`${st.key}#${i} ${d} bytes`);
+    }
+  }
+  return out;
+});
+
 /* A drawn layer's box must be the body's box, to the pixel.  Only layers drawn
    on the plain walking path are held to it -- a pose with its own per-slot
    nudge (pickup) is not reached here. */
@@ -110,6 +153,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const t0 = await tex(A);
   if (t0) console.log(`INFO  geartrim :: resident texture total ${t0.mb} MB (${t0.sources} sources), armoured, town`);
+
+  const cid = await combatIdentity(A);
+  if (cid && cid.fullBytes) {
+    console.log(`INFO  geartrim :: combat stand-in strips ${(cid.packedBytes / 1048576).toFixed(1)} MB vs ${(cid.fullBytes / 1048576).toFixed(1)} MB uncropped over ${cid.sheets} sheets, ${cid.frames} frames compared`);
+  }
+  rec.ok('every combat stand-in strip (3 layers x swing 3, bowshot 5, chop, cook, fire) is built cropped',
+    !!cid && cid.sheets === 33, cid && { sheets: cid.sheets });
+  rec.ok('...and holds under a third of its uncropped bytes',
+    !!cid && cid.fullBytes > 0 && cid.packedBytes / cid.fullBytes < 1 / 3, cid && { packed: cid.packedBytes, full: cid.fullBytes });
+  rec.ok('...and every cropped combat frame is byte-identical to its frame in the served sheet',
+    !!cid && cid.frames > 0 && cid.mismatched.length === 0, cid && [...new Set(cid.mismatched.map((m) => m.split("#")[0]))]);
 
   const pics = [];
   for (const [key, name] of [['s', 'south'], ['d', 'east'], ['w', 'north'], ['a', 'west']]) {
