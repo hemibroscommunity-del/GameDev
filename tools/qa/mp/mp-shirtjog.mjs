@@ -1,4 +1,4 @@
-/* ═══ v2.3.2733: THE TEE'S OUTLINE HOLDS ON EVERY FRAME OF THE RUN, IN GAME ═══
+/* ═══ v2.3.2747: THE TEE'S OUTLINE HOLDS ON EVERY FRAME OF THE RUN, IN GAME ═══
  *
  * Owner: "running while wearing the shirt produces a static-like effect where
  * it pops from frame to frame. I think it's because the black outline from the
@@ -167,8 +167,15 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
 
   rec.ok('every run direction animates: several different tee frames drawn in 3 s (guard)',
     all.every((a) => a.live >= 3), all);
-  rec.ok('...and the tee is drawn from the NEW art: the .webp the phone loads carries this build\'s gear version',
-    all.every((a) => /\.webp\?v=2\.3\.2733$/.test(a.src || '')), all.map((a) => a.src));
+  /* v2.3.2747: at least the version that shipped this art, not exactly it --
+     so the next gear bump, for any sheet, does not fail a test about the tee.
+     A missed bump in this change still fails: the old value was 2.3.2174. */
+  const bumped = (src) => {
+    const m = /\.webp\?v=2\.3\.(\d+)$/.exec(src || '');
+    return !!m && Number(m[1]) >= 2747;
+  };
+  rec.ok('...and the tee is drawn from the NEW art: the .webp the phone loads carries a gear version of v2.3.2747 or later',
+    all.every((a) => bumped(a.src)), all.map((a) => a.src));
   rec.ok('on EVERY frame of every run sheet the tee\'s edge is keyline -- at least 85% of it (hem excluded)',
     all.every((a) => a.frames >= 20 && a.lo >= 0.85), all);
   rec.ok('...and it does not jump from frame to frame: within 12 points across each sheet',

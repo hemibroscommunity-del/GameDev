@@ -1,14 +1,16 @@
-/* ═══ v2.3.2733: THE TEE'S OUTLINE, PUT BACK WHERE ITS EDGE NOW IS ═══
+/* ═══ v2.3.2747: THE TEE'S OUTLINE, PUT BACK WHERE ITS EDGE NOW IS ═══
  *
  * Owner: "running while wearing the shirt produces a static-like effect where
  * it pops from frame to frame.  I think it's because the black outline from
  * the shirt was removed at some point during the recolor tooling.  You should
  * have the original shirt sprites if you need to overlay a fresh bake."
  *
- * They were right, and git has the originals (447c3d7f, the artist's 256 px
- * sheets; e6228feb, the same art at 128).  Every frame of that art is a white
- * tee inside an unbroken 1 px black keyline.  Three later passes on the stand
- * and jog sheets each took some of it away:
+ * They were right about the line, and git has the originals (447c3d7f, the
+ * artist's 256 px sheets; e6228feb, the same art at 128): a white tee with a
+ * dark keyline down its sides, under the arms and along the hem.  Not along
+ * ALL of its edge -- measured on the jog sheets, 64-84% of each frame's edge
+ * has keyline on it or a pixel inside it, the shoulder tops mostly light.
+ * Later passes on the jog sheets each took more of it away:
  *
  *   v2.3.1559  replaced the HEM's keyline with shirt colour -- on purpose: with
  *              greaves on it floated across the belly as a black bar.  That
@@ -21,12 +23,20 @@
  *              different places on every frame.
  *
  * So a running tee showed its keyline on some frames and a white rim on
- * others, at the same spot -- the static the owner sees.
+ * others, at the same spot -- the static the owner sees.  Measured on what
+ * shipped: the share of the edge that is keyline swings 18-32 points from
+ * frame to frame on every one of the five jog sheets.
  *
  * WHAT THIS DOES, per frame, keeping the silhouette EXACTLY as it is (the seal
  * stays sealed; not one pixel's coverage changes):
  *   1. every pixel on the tee's outer edge becomes keyline black -- except the
- *      hem;
+ *      hem.  That lines the whole edge, the shoulder tops included, where the
+ *      artist left the edge mostly light: the same line on every frame is what
+ *      stops the flicker.  It does not thicken the shoulders -- where the
+ *      tee's top meets the figure's outer top, the dark band is ONE pixel on
+ *      more columns than before, not fewer (jog-north 31% -> 56%, jog-south
+ *      56% -> 63%, jog-southwest 37% -> 50%), because a buried line and the
+ *      body's outline no longer stack there;
  *   2. every keyline pixel the seal BURIED -- black now, no longer on the edge,
  *      but on the edge of the pre-seal sheet -- becomes shirt colour again, the
  *      average of its white neighbours, so the edge is one pixel, not two;
@@ -36,11 +46,22 @@
  * HEM: the bottom-facing edge in the lowest two rows of the tee.  Left as the
  * shirt colour, per v2.3.1559.
  *
+ * JOG SHEETS ONLY.  The first cut of this tool also re-lined the five stand
+ * sheets.  They never flickered -- one frame each, their edge already 98-100%
+ * keyline -- and the handful of pixels it darkened put three of them over
+ * mp-shirtkeyline's near-black budget: the gate written after the owner's
+ * "too large of a black outline" on the creator preview (v2.3.1995), which
+ * draws the stand sheets magnified.  So they ship exactly as they were.
+ *
+ * jog-east is the sheet mp-shirtarm pins.  Its SHAPE stays pinned to the
+ * artist's c20c6ec5 (this tool cannot move coverage, and checks), and its
+ * bytes are pinned to this tool's output.
+ *
  * The black is the artist's own keyline colour, read off the sheet.  The tee
  * is a tint base (entityRenderer multiplies it by the player's colour), and
  * black multiplied is black, so the line is the same on every colour.
  *
- * Run:   node tools/gear/reoutline-shirt.mjs          (writes the 10 sheets)
+ * Run:   node tools/gear/reoutline-shirt.mjs          (writes the 5 jog sheets)
  *        node tools/gear/reoutline-shirt.mjs --dry    (reports only)
  * Reads the pre-seal sheets from git (da249882^, the seal commit's parent), so it needs a
  * checkout that has that commit.  Commit the PNGs only: CI mints the .webp
@@ -56,9 +77,7 @@ const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const DIR = 'public/sprites/gear/shirt/tshirt';
 const PRE_SEAL = 'da249882^';   /* the seal's own parent: the sheets exactly as the seal found them */
 const SHEETS = [];
-for (const pose of ['stand', 'jog']) {
-  for (const dir of ['south', 'north', 'east', 'northeast', 'southwest']) SHEETS.push(`${pose}-${dir}.png`);
-}
+for (const dir of ['south', 'north', 'east', 'northeast', 'southwest']) SHEETS.push(`jog-${dir}.png`);   /* jog only: see JOG SHEETS ONLY above */
 const DRY = process.argv.includes('--dry');
 const DARK = 90;          /* mean channel below this is keyline */
 const HEM_ROWS = 2;
