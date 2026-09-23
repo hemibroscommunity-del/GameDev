@@ -10037,6 +10037,17 @@ export var BroTown = function BroTown(_ref0) {
         var switched = false;
         try { switched = activateChar(phrase); } catch (e) { switched = false; }
         if (!switched) { setBootPhase(null); return; }
+        /* ═══ v2.3.2690: THE DRAWINGS BELONG TO THE CHARACTER BEING LEFT ═══
+           Owner: "every saved character has same face tattoo as one."  The
+           drawing canvases and garment patterns are one set per DEVICE, and a
+           device holds up to ten characters -- so without this the next
+           character's join frame carried the last one's face tattoo to every
+           player in the room.  Cleared here, before the reload, so the join
+           that follows says nothing it should not; that character's own
+           drawings come back from its stored record on state_sync
+           (characterRecord.js), which now treats the record as the whole
+           look.  The design SLOTS are untouched (clearAllArt's note). */
+        try { clearAllArt(); clearPatterns(); } catch (e) { /* the record apply still clears them on join */ }
         try {
           /* Plain '/' deliberately: this door is most often reached BY
              LOGGING OUT, which navigates to '/?noresume=1&login=1'
@@ -10124,6 +10135,13 @@ export var BroTown = function BroTown(_ref0) {
             ['bt_rpg', 'bt_stats', 'bt_codex', 'bt_bestiary', 'bt_materials', 'bt_zones', 'bt_resume'].forEach(function (k) {
               localStorage.removeItem(k);
             });
+            /* v2.3.2690: ...and so are its DRAWINGS.  The creator opens on the
+               device's canvases, so a new character started out wearing the
+               last one's face tattoo -- and was saved wearing it, because the
+               creator's join is what writes the permanent record.  Same
+               per-character reason as the caches above; same clear as the
+               creator's own Reset (the design slots survive it). */
+            try { clearAllArt(); clearPatterns(); } catch (e3) { /* never block the create road */ }
             try { sessionStorage.removeItem('bt_resume'); sessionStorage.removeItem('bt_resume_now'); } catch (e2) {}
           } catch (e) {}
           /* Reload rather than setBootPhase('create'): S.myId was derived

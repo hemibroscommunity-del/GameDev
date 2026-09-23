@@ -36,7 +36,7 @@ import { setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
 /* v2.3.2444: the drawings, the garment patterns and the eye colour.  All
    three stores are localStorage-backed and seed themselves at module boot, so
    on a new device they start blank -- which is the whole bug this adds. */
-import { setArt, sanitizeArt } from '@/rendering/traits/playerArt.js';
+import { setArt, sanitizeArt, emptyArt } from '@/rendering/traits/playerArt.js';   /* v2.3.2690: + emptyArt, to clear a canvas the record does not have */
 import { setPattern, sanitizePattern } from '@/rendering/traits/patternCatalog.js';
 import { setEyeColor } from '@/rendering/traits/eyeColorCatalog.js';
 import { setEyeStyle } from '@/rendering/traits/eyeStyleCatalog.js';   /* v2.3.2643 */
@@ -100,17 +100,60 @@ const LOOK_SETTERS = {
   ec: setEyeColor,
 };
 
-/* Restore one drawing, or leave the canvas alone.  Never CLEARS on a missing
-   or invalid value: an absent key means "this character has no such drawing",
-   and the canvas is already blank on the device this runs on. */
+/* ═══ v2.3.2690: THE RECORD IS THE WHOLE LOOK, BLANKS INCLUDED ═══
+   Owner: "Looks like there's a bug where every saved character has same face
+   tattoo as one."
+
+   These used to restore a drawing when the record had one and otherwise
+   LEAVE THE CANVAS ALONE, on the reasoning that "an absent key means this
+   character has no such drawing, and the canvas is already blank on the
+   device this runs on."  The first half is right and is why this change is
+   safe.  The second half stopped being true at v2.3.1923: a device holds up
+   to ten characters now, and the canvases are ONE set in localStorage, so
+   switching from a tattooed character to a plain one kept the tattoo -- on
+   the owner's screen, in the join frame and on the relay, and so on everyone
+   else's.
+
+   The join frame omits a blank drawing (wsClient: "only sent when something
+   is actually drawn"), so a character without one has NO key in its record
+   rather than an empty one, and "absent" is the only way the record can say
+   "blank".  So a missing or invalid value now CLEARS the canvas.  Drawings
+   are made only in the creator, which is exactly where the record is written
+   (join.js _loadOrCreateCharacter), so the record holds every drawing its
+   character has -- with one known exception, a back tattoo or trouser back
+   drawn before v2.3.2431 put them on the join frame, which was never saved
+   and is cleared too (docs/specs/identity.md, "What it costs").  The worker
+   enforces the same rule on what it relays (join.js _stampRecordLook). */
 function _art(canvasId, v) {
-  const a = sanitizeArt(v);
-  if (a) setArt(canvasId, a);
+  setArt(canvasId, sanitizeArt(v) || emptyArt());
 }
 function _pat(slot, v) {
-  const p = sanitizePattern(v, slot);
-  if (p) setPattern(slot, p);
+  setPattern(slot, sanitizePattern(v, slot) || '');
 }
+/* ═══ v2.3.2690: WHAT A KEY THE RECORD DOES NOT HAVE MEANS ═══
+   The same bug has a second door.  A record is written ONCE, at creation,
+   from the keys the join frame carried THEN -- so a character made before eye
+   colour (v2.3.1930), eyewear (2361), its colour (2424), eye styles (2643) or
+   species (2682) has no such key at all, and "nothing to apply" left whatever
+   this device held: on a device that has made a monkey, every older character
+   walked in as a monkey.  None of
+   those can have been picked for that character since (the creator only makes
+   new characters), so the answer is the blank the creator's own Reset writes
+   (BroTown resetLook): 'none' for a thing you wear, 'default' for a colour.
+   The drawings and patterns take null, which their setters above turn into an
+   empty canvas and no pattern.
+
+   Every LOOK_SETTERS key has an entry -- precheck's look-blank check fails a
+   push that adds a setter without one, and holds this table's keys equal to
+   the worker's RECORD_LOOK_KEYS (join.js), which applies the same rule to
+   what other players are sent. */
+const LOOK_BLANK = {
+  hw: 'none', fh: 'none', hr: 'none', ew: 'none', sc: 'none', es: 'none', st: 'none',
+  sk: 'default', hc: 'default', htc: 'default', fhc: 'default', ewc: 'default',
+  stc: 'default', pt: 'default', sh: 'default', ec: 'default',
+  sa: null, sb: null, pa: null, pb: null, ta: null, tr: null, tf: null, tm: null, tb: null,
+  sp: null, pp: null, fp: null,
+};
 
 /* ═══ v2.3.2444: THE KEYS THAT ARE STORED AND DELIBERATELY NOT RESTORED ═══
    The gap above was invisible because "not in LOOK_SETTERS" and "decided not
@@ -179,7 +222,16 @@ export function applyCharacterRecord(rec, S) {
   let n = 0;
   for (const key of Object.keys(LOOK_SETTERS)) {
     const v = rec.look[key];
-    if (v === undefined || v === null) continue;
+    /* v2.3.2690: a look key the record lacks is set to its BLANK, not left
+       as this device had it -- see LOOK_BLANK.  Not counted in `n`: blanking
+       is not applying, and `n` is how a caller tells a real record from an
+       empty one. */
+    if (v === undefined || v === null) {
+      if (Object.prototype.hasOwnProperty.call(LOOK_BLANK, key)) {
+        try { LOOK_SETTERS[key](LOOK_BLANK[key]); } catch (e) { /* a store that cannot write keeps what it has */ }
+      }
+      continue;
+    }
     /* Each setter is tried on its own.  A catalog that has since dropped an
        id (art retired between versions) throws for THAT trait only — the
        rest of the character still arrives, which is a far better failure
