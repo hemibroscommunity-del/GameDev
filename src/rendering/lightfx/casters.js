@@ -44,6 +44,15 @@ export const SELF_STAND_IN_FIELDS = [
    per-peer stand-in pools, which are id -> nested objects of sprites. */
 export const SELF_STAND_IN_SETS = ['skillTraits'];
 export const PEER_STAND_IN_MAPS = ['_remoteSwordSprites', '_remoteBowSprites', '_remoteSkillSprites'];
+/* v2.3.2749: a prop whose footprint is at least this deep (world px) is a
+   BUILDING, and casts column by column (see the props block below): its tall
+   parts -- roofs, towers, signs -- stand at the back.  Measured on the town,
+   not assumed: the fountain (95) and the market stall (74) were tried that way
+   too and lost their shadows, because their tall part stands in the MIDDLE
+   (the fountain's spout) and the column model sent it to the back, where the
+   prop itself hid it.  They cast as billboards, which pictured right.  The
+   shallowest real building is the bank, at 154. */
+const DEEP = 120;
 
 /* Every visible Sprite under `node`, skipping the UI layer.  Invisible
    branches are skipped whole -- a hidden stand-in set costs one check. */
@@ -99,6 +108,11 @@ function anchoredFeet(display, spr) {
  * The figures that cast a shadow this frame.
  * @returns {Array<{key, px, py, sprites, alive}>}
  */
+/* QA/pictures (v2.3.2749): props and nodes off, figures on -- how the game
+   looked before the world cast, on the same frame, for a fair before/after. */
+let _worldCasts = true;
+export function setWorldCasts(on) { _worldCasts = !!on; }
+
 export function collectCasters(S, er, fx, zone) {
   const out = [];
   if (!er) return out;
@@ -146,6 +160,48 @@ export function collectCasters(S, er, fx, zone) {
       if (!b || !b.visible) continue;
       const g = anchoredFeet(d, b);
       out.push({ key: 'm:' + id, px: g.x, py: g.y, sprites: [b], alive: true });
+    }
+  }
+
+  /* ═══ v2.3.2749: THE WORLD CASTS TOO ═══
+     Owner: "Add shadows to props and monsters."  Listed LAST so the figures
+     keep the probe's first slots (stats.list is capped).
+
+     A thin prop -- a lamp, a bench, a rock, a pine -- is a billboard like a
+     figure: one projection, pivoted a little behind its base (the middle of
+     its shallow footprint), so the top of it falls away from the sun.
+
+     A BUILDING IS NOT A BILLBOARD.  Its picture is a front wall with roofs
+     and towers above that stand over ground up to 220 px further back, and
+     one pivot for all of it put the auction house's back-left tower's shadow
+     on the cobble in front of its SUNLIT left wall (seen in the first
+     pictures, v2.3.2749).  Anything with a footprint deeper than DEEP gets
+     the column-by-column projection instead (shadows.js placeDepth), once
+     its base has been read off its art -- a frame or two after the zone
+     loads, and until then it casts nothing rather than cast wrong.
+
+     Gather nodes (trees, ore) pivot on their DRAWN base: their frames carry
+     a transparent margin below the art (effectsRenderer NODE_ART_BASE). */
+  if (!_worldCasts) return out;
+  if (er.propDisplays) {
+    for (const [id, spr] of er.propDisplays) {
+      if (!spr || spr.destroyed || !spr.visible) continue;
+      const g = spr._propGround;
+      const fp = g && g.fp;
+      if (fp && fp.y1 - fp.y0 >= DEEP) {
+        if (g.bottoms) out.push({ key: 'prop:' + id, depth: { spr, g, back: fp.y0 }, alive: true });
+        continue;
+      }
+      out.push({ key: 'prop:' + id, px: spr.x, py: fp ? (fp.y0 + fp.y1) / 2 : spr.y, sprites: [spr], alive: true });
+    }
+  }
+  const nodes = S && S.gatherNodes;
+  if (nodes && nodes.length) {
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      const s = n && n._pixiSprite;
+      if (!s || s.destroyed || !s.visible || !s._groundDy) continue;   /* a fishing hole lies flat: no base, no shadow */
+      out.push({ key: 'node:' + (n.id != null ? n.id : i), px: s.x, py: s.y + s._groundDy, sprites: [s], alive: true });
     }
   }
   return out;
