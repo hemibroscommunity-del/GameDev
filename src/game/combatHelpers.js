@@ -9,7 +9,7 @@
    verbatim. window._gameState / window._setLevelUpMsg stay as runtime lookups
    by design (they are wired up inside the BroTown component each render). */
 import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY } from '@/data/index.js';
-import { hitMaterialOf, hitFxTintOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard; v2.3.2717: goo in the drawn colour */
+import { hitMaterialOf, hitFxTintOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard; v2.3.2743: goo in the drawn colour */
 import { propMaterial, propSwingContact } from '@/data/worldProps.js';   /* v2.3.2730: what a prop is made of, and where a swing meets one */
 import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
 import { prog3Live } from '@/data/prog3.js';          /* v2.3.2615: is the T1 track still load-bearing for this character? */
@@ -658,7 +658,7 @@ export function hurtPlayerLocal(S, R, amount) {
  * Renderer-side dedup (per-monster 150ms gap) lives with the sprites,
  * but the queue is still hard-capped here so a hit storm can't grow an
  * unbounded array between frames (the hitParticles-400 posture). */
-/* ═══ v2.3.2716: ...AND WHAT HIT IT, AND WHERE ═══
+/* ═══ v2.3.2742: ...AND WHAT HIT IT, AND WHERE ═══
  * Owner: the materials should react "upon getting hit by the impacts from
  * different weapon type (arrow, bolt, sword)".  So the record now carries the
  * WEAPON (`opts.weapon`: 'arrow' | 'bolt' | 'sword' | 'splash', absent when a
@@ -679,7 +679,7 @@ export function spawnHitDebris(S, m, angle, opts) {
   var gy = (typeof m.renderY === 'number') ? m.renderY : m.y;
   var h = monsterBodyOffsetY(arch);
   S._debrisBursts.push({
-    /* v2.3.2717: the tint is the colour the monster is DRAWN in -- a blue
+    /* v2.3.2743: the tint is the colour the monster is DRAWN in -- a blue
        slime's goo is its recolour's blue (hitFxTintOf, monsterVariants.js). */
     monsterId: m.id, kind: mat.fx || mat.kind, tint: hitFxTintOf(arch),
     x: (typeof m.renderX === 'number') ? m.renderX : m.x,
@@ -864,7 +864,7 @@ export function queueArrowSnap(S, x, y, gy, ang, vol) {
   try { BT_AUDIO.swordHit({ vol: vol != null ? vol : 0.26 }, 'bone'); } catch (e) { /* audio is best-effort */ }
 }
 
-/* v2.3.2716: no HIT site calls this any more -- the material reaction's
+/* v2.3.2742: no HIT site calls this any more -- the material reaction's
    landed pieces are the on-hit mark (rendering/hitMaterialFx.js).  Kept, and
    exported, for a mark that is not a hit (the groundSplatter pool it feeds
    still carries the kill splatter).

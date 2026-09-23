@@ -23,8 +23,8 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  hitmat: () => import('./mp-hitmat.mjs'), /* v2.3.2716: every monster throws its own material (snow, slime, blood + char, ashy dust, bone, stone), shaped by the weapon -- an arrow's jet, a bolt's blast, a blade's sheet -- and the pieces land */
-  shotland: () => import('./mp-shotland.mjs'), /* v2.3.2717: a bolt or an arrow is drawn landing IN the body -- round its centre, spread over its core -- not on the ring its hit test registers on; the hit itself still registers there */
+  hitmat: () => import('./mp-hitmat.mjs'), /* v2.3.2742: every monster throws its own material (snow, slime, blood + char, ashy dust, bone, stone), shaped by the weapon -- an arrow's jet, a bolt's blast, a blade's sheet -- and the pieces land */
+  shotland: () => import('./mp-shotland.mjs'), /* v2.3.2743: a bolt or an arrow is drawn landing IN the body -- round its centre, spread over its core -- not on the ring its hit test registers on; the hit itself still registers there */
   staffcast: () => import('./mp-staffcast.mjs'), /* v2.3.2740: the staff cast -- the crystal charges on the cooldown, the bolt leaves it and rejoins its real line, the staff stands head-up and kicks, a peer sees it */
   arrowsnap: () => import('./mp-arrowsnap.mjs'), /* v2.3.2731: one arrow in eight snaps on what it hits -- same damage, a different picture */
   monstershots: () => import('./mp-monstershots.mjs'), /* v2.3.2732: slime goo in the thrower's colour, goblin fire, drawn in code */

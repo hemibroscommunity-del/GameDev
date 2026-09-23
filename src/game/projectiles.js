@@ -248,7 +248,7 @@ function _projCapsule(a) {
   _capBx = a._renderX + c * bd.front;  _capBy = a._renderY + s2 * bd.front;
   return bd.half;
 }
-/* ═══ v2.3.2717: WHERE A SHOT LANDS IN THE BODY IT HIT ═══
+/* ═══ v2.3.2743: WHERE A SHOT LANDS IN THE BODY IT HIT ═══
    The hit test is a circle round the body (monsterProjRadius); the landing is
    a point IN it.  LAND_CORE is the half-width and half-height of the region a
    shot lands in, round the body centre monsterBodyOffsetY publishes (world px,
@@ -302,7 +302,7 @@ function _pickLanding(S, a, m, tipX, tipY) {
   return { x: tipX + ux * s - uy * l, y: tipY + uy * s + ux * l, mx: mx, my: my, ahead: s > 2 };
 }
 /* A hit, on screen, at the point (tx, ty) where the shot landed: the monster's
-   recoil and flash (v2.3.2200), its material (v2.3.2716), the sound of what was
+   recoil and flash (v2.3.2200), its material (v2.3.2742), the sound of what was
    hit (v2.3.2511), a bolt's crash (v2.3.2505 / v2.3.2714) and a plain arrow's
    stuck shaft (v2.3.2511).  Every one of these used to run inline on the frame
    the hit registered, at the hit circle; `fx` carries what that frame knew.
@@ -323,7 +323,7 @@ function _projImpactFx(S, a, m, fx, tx, ty) {
      is the real point plus the drawing offset still left */
   var vdx = (fx.staff && Number.isFinite(a._fxResX)) ? a._fxResX : 0;
   var vdy = (fx.staff && Number.isFinite(a._fxResY)) ? a._fxResY : 0;
-  /* v2.3.2716: AN ARROW PUNCHES, A BOLT BLASTS -- the material leaves from
+  /* v2.3.2742: AN ARROW PUNCHES, A BOLT BLASTS -- the material leaves from
      where the shot landed; the pieces that come down are the ground mark */
   spawnHitDebris(S, m, a.ang, {
     weapon: fx.bolt ? 'bolt' : 'arrow', big: fx.big, elem: fx.elem,
@@ -562,7 +562,7 @@ import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound l
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
 import { sweepBlockPoint, boxExitPoint, attackBlocked, boxFace } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form; v2.3.2701: and the far face of a rock a monster stands in */
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2716: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2730 */, queueArrowSnap /* v2.3.2731 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2742: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2730 */, queueArrowSnap /* v2.3.2731 */ } from '@/game/combatHelpers.js';
 import { arrowSnaps } from '@/data/arrowSnap.js'; /* v2.3.2731: one arrow in eight breaks on what it hits */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
@@ -698,7 +698,7 @@ export function updateArrows(S, deps) {
               var _sm = a.stuckIn;
               var _sAge = Date.now() - a.stuckAt;
               if (_sAge >= 4000 || !_sm || !_sm.alive || _sm.curHp <= 0) {
-                /* v2.3.2717: a monster that died while the arrow was still
+                /* v2.3.2743: a monster that died while the arrow was still
                    flying in still shows it landing, where the arrow is */
                 if (a._landFx && _sm) {
                   var _sdF = _projBody(a).front * 0.45;
@@ -714,12 +714,12 @@ export function updateArrows(S, deps) {
               var _smy = ((typeof _sm.renderY === 'number') ? _sm.renderY : _sm.y) - monsterBodyOffsetY(_sm.archetype || _sm.type);
               var _stX = _smx + (a._stickOx || 0), _stY = _smy + (a._stickOy || 0);
               if (a._landFx) {
-                /* ═══ v2.3.2717: THE SPECIAL FLIES IN, THEN LANDS ═══
+                /* ═══ v2.3.2743: THE SPECIAL FLIES IN, THEN LANDS ═══
                    It used to take its stuck pose on the frame it touched the
                    hit circle -- a jump of ~95 px into the body.  It now covers
                    the rest of the way at its own speed and lands on arrival:
                    the burst leaves from partway up its head, as a plain
-                   arrow's did (v2.3.2716).  Its chip ticks were already
+                   arrow's did (v2.3.2742).  Its chip ticks were already
                    counted from the hit (stuckAt), so none of that moves. */
                 var _sdx = _stX - a._renderX, _sdy = _stY - a._renderY;
                 var _sdd = Math.sqrt(_sdx * _sdx + _sdy * _sdy);
@@ -771,7 +771,7 @@ export function updateArrows(S, deps) {
               }
               return true;
             }
-            /* ═══ v2.3.2717: LANDING -- the shot has hit, and flies on in ═══
+            /* ═══ v2.3.2743: LANDING -- the shot has hit, and flies on in ═══
                Set by the hit block (see "THE SHOT FLIES ON INTO THE BODY"): the
                hit is already decided and sent, so this only carries the drawn
                shot, at its own speed, to its landing point in the body -- which
@@ -1307,8 +1307,8 @@ export function updateArrows(S, deps) {
                 /* Client-local zones only -- server zones use monster_hit (Fix B). */
                 if (!S._serverMonsters && S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: _arrowDmg, isCrit: false } });
                 /* Hit-reaction (ranged variant) — mirrors the melee path.
-                   ═══ v2.3.2717: THE PICTURE WAITS FOR THE SHOT TO LAND ═══
-                   The recoil, the white flash, the material burst (v2.3.2716)
+                   ═══ v2.3.2743: THE PICTURE WAITS FOR THE SHOT TO LAND ═══
+                   The recoil, the white flash, the material burst (v2.3.2742)
                    and the snowman's grunt used to fire HERE, on the frame the
                    shot's capsule first touched the monster's hit CIRCLE -- a
                    ring round the body, 18-50 px out from its centre, so every
@@ -1461,19 +1461,19 @@ export function updateArrows(S, deps) {
                    so the material sound is layered UNDER it at a lower level
                    rather than replacing it: the player still hears magic, and
                    still hears what the magic hit.
-                   v2.3.2717: played by _projImpactFx now, when the shot LANDS in
+                   v2.3.2743: played by _projImpactFx now, when the shot LANDS in
                    the body, so the sound and the burst are one event. */
                 var _hitMat = hitMaterialOf(m.archetype || m.type);
-                /* v2.3.2717: the "blood spray on bow hits" is retired -- seven flat
+                /* v2.3.2743: the "blood spray on bow hits" is retired -- seven flat
                    red dots at the monster's FEET on every arrow hit, the same for
                    a slime, a snowman and a skeleton.  It was the last of the flat
-                   generic sprays (v2.3.2716 retired the splinters, v2.3.2714 the
+                   generic sprays (v2.3.2742 retired the splinters, v2.3.2714 the
                    staff's purple ones): the material burst is the arrow's hit,
                    and it already brings blood where there is blood (the fire
                    goblin, hitMaterialFx). */
                 /* Magic orb crash & dissipate — element-tinted impact ring
                    plus radial particle burst when a staff bolt collides.
-                   v2.3.2717: drawn by _projImpactFx where the orb LANDS; the
+                   v2.3.2743: drawn by _projImpactFx where the orb LANDS; the
                    notes below are the history of where it is drawn. */
                 if (a.isStaff) {
                   /* ═══ v2.3.2505: THE CRASH HAPPENS WHERE THE ORB DID ═══
@@ -1515,7 +1515,7 @@ export function updateArrows(S, deps) {
                    * The knockback angle three lines below already reads
                    * a._renderX/_renderY for the same reason; this block was the
                    * one that did not. */
-                  /* ═══ v2.3.2717: ...AND NOW THE ORB IS IN THE BODY WHEN IT DOES ═══
+                  /* ═══ v2.3.2743: ...AND NOW THE ORB IS IN THE BODY WHEN IT DOES ═══
                      The two rings and the staff cast's burst (v2.3.2714) are
                      spawned by _projImpactFx, at the orb, once the landing flight
                      has carried it into the body.  v2.3.2505's rule is unchanged
@@ -1546,14 +1546,14 @@ export function updateArrows(S, deps) {
                    'staff' burst this used to add was a second spray of flat
                    purple dots at the monster's FEET, the exact spot that fix
                    moved the crash away from.
-                   v2.3.2716: and the arrow's generic splinter-and-dust spray
+                   v2.3.2742: and the arrow's generic splinter-and-dust spray
                    goes the same way -- brown dots and tan dust at the feet of
                    every monster alike.  The material reaction above (a jet of
                    the monster's own snow / slime / blood / dust / bone from the
                    contact point) is the arrow's hit now. */
                 /* Staff projectiles are magic — no physical shaft to
                    leave embedded in the body.  Their visual residue is the
-                   crash above (v2.3.2740), and the material reaction (v2.3.2716). */
+                   crash above (v2.3.2740), and the material reaction (v2.3.2742). */
                 /* ═══ v2.3.2511: ONE ARROW, NOT TWO ═══
                    Owner (backlog §2.5): "two stuck arrows on a special".  Both
                    halves were doing their job and neither knew about the
@@ -1566,7 +1566,7 @@ export function updateArrows(S, deps) {
                    The special's own art is the one to keep: it is the shot
                    that was fired, it carries the chip tick, and it is what
                    tells the player their heavy shot landed. */
-                /* ═══ v2.3.2717: THE SHOT FLIES ON INTO THE BODY, AND LANDS THERE ═══
+                /* ═══ v2.3.2743: THE SHOT FLIES ON INTO THE BODY, AND LANDS THERE ═══
                    Owner: "make sure the bolts land somewhere in the center of the
                    target before exploding (with some variation from center for
                    variety) and same with arrows.  Right now it looks like it hits
@@ -1601,7 +1601,7 @@ export function updateArrows(S, deps) {
                    body, or the arrow breaking on it (data/arrowSnap.js decides,
                    on a roll the other screens make the same way).  Not a
                    piercing arrow: it carries on to its next target, and a
-                   broken one could not.  v2.3.2717: rolled here, on the hit,
+                   broken one could not.  v2.3.2743: rolled here, on the hit,
                    and shown where the arrow LANDS (_projImpactFx). */
                 var _snapHere = !a.isStaff && !a.isSpecial && !a.pierce && arrowSnaps(S.myId, a._shotTs);
                 var _lfx = {
@@ -1813,7 +1813,7 @@ export function updateArrows(S, deps) {
                   a.stuckIn = m;
                   a.stuckAt = Date.now();
                   a.life = 999;      /* stuckAt governs removal now, not life */
-                  /* v2.3.2717: ...give or take the body's core, so two specials
+                  /* v2.3.2743: ...give or take the body's core, so two specials
                      do not stick in the same hole.  It used to JUMP here from
                      the hit circle -- ~95 px in one frame on a slime; the
                      stuckIn branch now flies it the rest of the way in and
@@ -1977,13 +1977,13 @@ export function updateArrows(S, deps) {
                along the line. */
             /* v2.3.1425: a freshly-stuck orb survives its hit -- the
                stuckIn branch at the top owns its lifetime from here. */
-            /* v2.3.2717: ...and a shot flying on into the body it hit survives
+            /* v2.3.2743: ...and a shot flying on into the body it hit survives
                too, until it lands (the `_land` branch at the top). */
             if (hit && !a.pierce && !a.stuckIn && !a._land) return false;
             /* Store render-ready element info */
             a._projElem = projElem;
             a._isStaffProj = isStaffProj;
-            if (a._land) return true;   /* v2.3.2717: no prop stop for a shot that has already hit */
+            if (a._land) return true;   /* v2.3.2743: no prop stop for a shot that has already hit */
             /* v2.3.2701: the prop stop decided above the loop.  Not for a
                special that has just embedded in a survivor -- the stuckIn
                branch at the top owns that arrow now. */

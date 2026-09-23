@@ -4415,7 +4415,7 @@ point: every hit test, prop stop (v2.3.2699) and player-contact check reads
 that, unchanged. Its shadow is drawn there -- which is where the worker will
 settle the hit.
 
-## 108. A paused page clock trips the dark-screen watchdog (v2.3.2716)
+## 108. A paused page clock trips the dark-screen watchdog (v2.3.2742)
 
 **Tempting:** to record an effect frame by frame, install Playwright's fake
 clock, `pauseAt`, and step it with `runFor` between screenshots -- the game only
@@ -4425,7 +4425,7 @@ advances when you say so, so every frame is exact.
 canvas lit-percentage on its own schedule. With the page clock paused between
 steps it reads a black buffer, records `watchdog-dark ... strike N`, and on the
 second strike calls `window._rebuildRenderer` -- which drops per-zone art. Seen
-while capturing the v2.3.2716 hit reactions: the first snowman rendered, every
+while capturing the v2.3.2742 hit reactions: the first snowman rendered, every
 later one fell back to the emoji circle, and one "resting" frame was the
 recovery overlay. It looks like a rendering bug in the feature under test.
 
@@ -4434,7 +4434,7 @@ page -- `S.__wdEverLit = true; S.__wdNext = 1e15; S.__wdDark = 0;` -- and use
 `page.clock.fastForward(ms)` (not `runFor`) to skip long idle stretches, since
 `runFor` renders every intermediate frame in software GL (minutes per clip).
 
-## 109. The hit circle is not the body: draw a hit where the shot lands (v2.3.2717)
+## 109. The hit circle is not the body: draw a hit where the shot lands (v2.3.2743)
 
 A projectile's hit test (`monsterProjRadius`, projectiles.js) is a capsule
 against a CIRCLE round the body -- slime 25, snowman 32, mummy 40, skeleton 50,
@@ -4450,7 +4450,7 @@ deeper". That changes the GAME: more misses on moving targets, the damage
 claim sent frames later, and every hitreal / hitmatrix expectation moves.
 
 **The rule:** keep the hit where it registers, and move the PICTURE. Since
-v2.3.2717 the hit frame still sends and applies everything, then keeps the
+v2.3.2743 the hit frame still sends and applies everything, then keeps the
 shot alive (`a._land`) to fly on at its own speed to a point in the body's
 core (`LAND_CORE` round `monsterBodyOffsetY`), and the flash, recoil, crash,
 material burst, sound and stuck shaft go off there (`_projImpactFx`). Two

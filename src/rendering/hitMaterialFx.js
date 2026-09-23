@@ -1,4 +1,4 @@
-/* ═══ v2.3.2716: A MONSTER REACTS LIKE WHAT IT IS MADE OF ═══
+/* ═══ v2.3.2742: A MONSTER REACTS LIKE WHAT IT IS MADE OF ═══
  *
  * Owner: "take a fresh look at monster hit reaction material effects.  Right
  * now they're low resolution and don't look great but I do like that they've
@@ -161,7 +161,7 @@ const ART = {
    shaded underside, and a checkerboard edge -- the pixel-art way to draw
    something soft without drawing something blurred.  The shading is what
    keeps a pale cloud readable on pale ground (grey ash on desert sand read
-   as nothing when the disc was flat -- measured on the v2.3.2716 captures). */
+   as nothing when the disc was flat -- measured on the v2.3.2742 captures). */
 const PUFF = { L: 0xffffff, M: 0xd6d6d6, D: 0xa2a2a2 };
 function puffRows(r) {
   const n = r * 2 + 1, out = [];
@@ -682,11 +682,11 @@ export class HitMaterialFx {
         p.x += px * k; p.y += py * k; p.z += gauss() * h * 0.25;
       }
     }
-    /* ═══ v2.3.2717: A BOLT BLASTS ALL ROUND -- IN EVERY BURST ═══
+    /* ═══ v2.3.2743: A BOLT BLASTS ALL ROUND -- IN EVERY BURST ═══
        sprayAng throws 45% of a bolt's pieces all round, each at random, so
        about one piece in six lands back toward the caster ON AVERAGE -- and a
        burst of 9-20 pieces now and then sent none that way at all (3 bursts
-       in 20 on slime and rock, measured on the merged v2.3.2716 build).  A
+       in 20 on slime and rock, measured on the merged v2.3.2742 build).  A
        one-sided bolt reads as an arrow's jet, the difference this system
        exists to show, and it failed mp-hitmat's "a bolt blasts both ways"
        about one run in three.  So when the dice came up short, turn one or two
@@ -961,7 +961,7 @@ export class HitMaterialFx {
         if (p.y >= b.gy) front++; else back++;
       }
       out.push({
-        /* v2.3.2717: + tint, the colour the burst was handed (a blue slime's
+        /* v2.3.2743: + tint, the colour the burst was handed (a blue slime's
            goo must be the blue the slime is drawn in -- mp-hitmat); + atX/atY,
            where on screen the blow landed (ey is its GROUND line and ez its
            height above it) -- inside the body now (mp-shotland) */
