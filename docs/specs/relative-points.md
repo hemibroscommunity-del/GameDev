@@ -1,6 +1,6 @@
-# Relative point value — every point felt early (v2.3.2670, shipped)
+# Relative point value — every point felt early (v2.3.2680, shipped)
 
-**Status: SHIPPED in v2.3.2670.** Server authority `server/src/prog3.js`
+**Status: SHIPPED in v2.3.2680.** Server authority `server/src/prog3.js`
 (the `BODY`/`ATK` rows, `prog3Curve`, `prog3Edge`, `prog3StatValue`) and
 `server/src/combat.js` (`_computeAttackDamage`, `_applyDamage`); client mirror
 `src/data/prog3.js`; referee `tools/relative-points-sim.mjs`.
@@ -218,4 +218,4 @@ owner then picked no caps, a 90 % ceiling, the combined floor for base damage
 only, and the per-level bound kept on Defense, Dodge and Resist, and
 finally set the bar the curve is built to: *"each point to matter during the
 early level up phases."* The full argument is in this file's git history
-(v2.3.2642 → v2.3.2670).
+(v2.3.2642 → v2.3.2680).

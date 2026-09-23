@@ -450,7 +450,7 @@ export const dungeonMethods = {
       Math.ceil(m.dmg * dmgMult),
       Math.max(1, Math.floor((ps.maxHp || 100) * BOSS_ABILITIES.MAX_HIT_PCT))
     );
-    const res = this._applyDamage(ps, raw, false, { attackerLevel: m.level });  /* v2.3.2670: the edge */
+    const res = this._applyDamage(ps, raw, false, { attackerLevel: m.level });  /* v2.3.2680: the edge */
     if (!res.dodged) {
       const trackAmt = res.graced ? (res.dmgIntent || 0) : res.dmgTaken;
       this._trackMonsterDamage(ps, m.id, trackAmt);

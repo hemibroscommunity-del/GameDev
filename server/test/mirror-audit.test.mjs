@@ -61,9 +61,9 @@ import {
    prog3 path on the server, which are not mirrors of each other and never
    were. */
 import { setProg3Enabled, setProg3XEnabled, setProg3SharedEnabled, setProg3RelEnabled, setProg3ElemEnabled, prog3CritPct, prog3CritMult, prog3CritFlat, PROG3_LEGACY_ATK, PROG3_LINEAR,
-  prog3Curve as cliCurve, prog3Edge as cliEdge, prog3DodgePct, prog3DefPct, prog3PowerMult, prog3SpecialMult, prog3MoveMult, prog3ElemPower } from '../../src/data/prog3.js'; /* v2.3.2218; v2.3.2592; v2.3.2670 */
-import { prog3Curve as srvCurve, prog3Edge as srvEdge } from '../src/prog3.js'; /* v2.3.2670 */
-import { elemAttackStat as srvElem } from '../src/elemental.js'; /* v2.3.2670 */
+  prog3Curve as cliCurve, prog3Edge as cliEdge, prog3DodgePct, prog3DefPct, prog3PowerMult, prog3SpecialMult, prog3MoveMult, prog3ElemPower } from '../../src/data/prog3.js'; /* v2.3.2218; v2.3.2592; v2.3.2680 */
+import { prog3Curve as srvCurve, prog3Edge as srvEdge } from '../src/prog3.js'; /* v2.3.2680 */
+import { elemAttackStat as srvElem } from '../src/elemental.js'; /* v2.3.2680 */
 import { createGatherNode as clientGatherNode, WOODCUTTING_TIERS as CLIENT_WOOD_TIERS } from '../../src/data/lifeSkills.js';
 /* v2.3.2652: prop blockers — the worker's first piece of world geometry. */
 import { ZONE_PROPS as SRV_ZONE_PROPS, attackBlocked as srvAttackBlocked } from '../src/props.js';
@@ -869,7 +869,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   /* v2.3.2592: ONE stat, LUCK, carries both halves — the client's helpers
      must equal the server's _prog3CritChance / _prog3CritMult for every
      allocation, on a worker that advertises the folded grid. */
-  setProg3XEnabled(true); setProg3SharedEnabled(true); setProg3RelEnabled(true); /* v2.3.2670: a relative worker */
+  setProg3XEnabled(true); setProg3SharedEnabled(true); setProg3RelEnabled(true); /* v2.3.2680: a relative worker */
   const mkP3 = (luck) => ({
     prog3: { v: 3, sk: { sword: { level: 40 }, bow: { level: 1 }, staff: { level: 1 } },
       atk: { sword: { luck, dmg: 0 }, bow: {}, staff: {} }, alloc: {}, poolBy: {} },
@@ -888,7 +888,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('crit parity: the client crit helpers equal the server roll across the allocation range',
     critDrift === null, critDrift);
 
-  /* ═══ v2.3.2670: EVERY CURVE READER, BOTH SIDES, WITH AND WITHOUT A MONSTER ═══
+  /* ═══ v2.3.2680: EVERY CURVE READER, BOTH SIDES, WITH AND WITHOUT A MONSTER ═══
      The curve and the edge are stated once per side (prog3Curve / prog3Edge);
      these pin the two sides' functions to each other and every reader built
      on them, at edge 1 (a readout) and against monsters above the yardstick

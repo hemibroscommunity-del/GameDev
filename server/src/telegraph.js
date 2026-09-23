@@ -462,7 +462,7 @@ export const telegraphMethods = {
        new ELEM RESIST stat reads it; a brute's slam and a fodder's lunge are
        ordinary untyped hits and are not resisted (PROG3.BODY.eres carries
        the closed list and why it is closed). */
-    const res = this._applyDamage(ps, raw, false, { elemental: kit.kind === 'burst', attackerLevel: m.level });  /* v2.3.2670: + the edge */
+    const res = this._applyDamage(ps, raw, false, { elemental: kit.kind === 'burst', attackerLevel: m.level });  /* v2.3.2680: + the edge */
     if (!res.dodged) {
       this._trackMonsterDamage(ps, m.id, res.graced ? (res.dmgIntent || 0) : res.dmgTaken);
     }

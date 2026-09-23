@@ -193,7 +193,7 @@ export const burstMethods = {
       /* The ordinary auto-attack roll, then the burst multiplier, then the
          ordinary auto-attack ceiling.  See the header for why 1.5x fits
          inside that ceiling by arithmetic rather than by luck. */
-      const rolled = this._computeAttackDamage(ps, slot, false, { targetLevel: m.level });  /* v2.3.2670: the edge */
+      const rolled = this._computeAttackDamage(ps, slot, false, { targetLevel: m.level });  /* v2.3.2680: the edge */
       const cap = this._maxDmgForAttacker(ps, false);
       let dmg = Math.max(1, Math.min(cap, Math.round(rolled.dmg * PROG3.BURST_DMG_MULT)));
       /* v2.3.1734: FRACTURE finally does something (see elemental.js
@@ -212,7 +212,7 @@ export const burstMethods = {
       /* v2.3.2512: elemental power is per weapon — price the snapshot off the
          category the burst is firing from, the same `slot` its damage roll
          and its trained XP already use. */
-      applyElementStatus(m, element, session.id, elemAttackStat(ps, 'power', this._prog3CatFor(slot === 'ranged' ? 'bow' : slot), m.level), now, this._attuneMult(ps)); // v2.3.2199: prog3 snapshots `elem`; v2.3.2670: + edge
+      applyElementStatus(m, element, session.id, elemAttackStat(ps, 'power', this._prog3CatFor(slot === 'ranged' ? 'bow' : slot), m.level), now, this._attuneMult(ps)); // v2.3.2199: prog3 snapshots `elem`; v2.3.2680: + edge
       targets.push(m.id);
 
       /* Damage through the shared pipeline: overkill clamp, contribution

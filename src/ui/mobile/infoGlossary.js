@@ -92,7 +92,7 @@ export const STAT_INFO = _mk({
   'Elem Resist': {
     title: 'Elemental resistance',
     body: 'Cuts the damage you take from elemental sources — burning ground and the blue slime’s blast.',
-    /* v2.3.2670: an elemental hit meets Resist alone now (combat.js). */
+    /* v2.3.2680: an elemental hit meets Resist alone now (combat.js). */
     note: 'The only thing that stops elemental damage — Dodge and Defense guard against ordinary hits, and burning ground can’t be dodged.',
   },
   /* ═══ v2.3.2592: THE FOUR-COLUMN POINTS SCREEN ═══
@@ -109,7 +109,7 @@ export const STAT_INFO = _mk({
   },
   Power: {
     title: 'Power',
-    /* v2.3.2670: Power multiplies (weapon base + skill) instead of adding. */
+    /* v2.3.2680: Power multiplies (weapon base + skill) instead of adding. */
     body: 'Makes every hit with this weapon type bigger — a percentage on top of your weapon and your skill.',
     note: 'The strong, simple buy early on. Shown as a range because every swing rolls somewhere inside it.',
   },

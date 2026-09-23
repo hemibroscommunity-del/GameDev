@@ -168,7 +168,7 @@ export const PROG3 = {
    * nobody's earned points get stranded behind a rule that did not exist
    * when they earned them.
    */
-  /* ═══ v2.3.2670: RELATIVE POINT VALUE — every point felt, early ═══
+  /* ═══ v2.3.2680: RELATIVE POINT VALUE — every point felt, early ═══
    * Owner, 2026-09-22: "I want each point to matter during the early level
    * up phases of the game.  If a character is putting his first 5 points
    * into dodge I want them to experience a high rate of dodging RELATIVE to
@@ -213,9 +213,9 @@ export const PROG3 = {
    * (src/data/prog3.js) all read these rows through prog3Curve/prog3Edge.
    * mirror-audit §12 pins the rows' values AND key sets. */
   BODY: {
-    def:     { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2670: damage-taken cut, 5 pts 37.5 % → 20 pts 67 %
+    def:     { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2680: damage-taken cut, 5 pts 37.5 % → 20 pts 67 %
     hp:      { cap: 100, per: 8 },      // +8 max HP/pt → +800
-    dodge:   { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2670: 5 pts 37.5 % → 20 pts 67 % (owner's "first 5 points into dodge")
+    dodge:   { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2680: 5 pts 37.5 % → 20 pts 67 % (owner's "first 5 points into dodge")
     stam:    { cap: 100, per: 3 },      // +3 max stamina/pt → +300
     /* ═══ v2.3.2512: ELEMENTAL RESISTANCE (owner ask, backlog D12) ═══
        The defensive half of the elemental system, which until now had none:
@@ -236,7 +236,7 @@ export const PROG3 = {
        swing is NOT typed today, so it is not resisted; the day one is, its
        call site passes `{ elemental: true }` to _applyDamage and it joins
        the list with no change here. */
-    eres:    { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2670: elemental-damage cut, same curve as def/dodge
+    eres:    { cap: 999, max: 0.90, k: 7, rel: true },  // v2.3.2680: elemental-damage cut, same curve as def/dodge
     /* ═══ v2.3.2512: MAX MANA becomes a stat (owner ask) ═══
        It was never allocatable: maxMana was `100 + magicLvl × 2.5`, derived
        wholly from the Magic SKILL, so the only way to grow the pool was to
@@ -267,10 +267,10 @@ export const PROG3 = {
        bound by the same 1.30 regardless, so the headroom the bound was sized
        with is preserved rather than spent.  Same shape as dodge/eres
        (+0.4%/pt, cap 75 → +30%): one scale to learn.
-       v2.3.2670: the curve, max +35 % (5 pts +11.7 %, 75 pts +31 %); the
+       v2.3.2680: the curve, max +35 % (5 pts +11.7 %, 75 pts +31 %); the
        bound math above holds at the asymptote (150 × 1.35 × … ≈ 372 < 500),
        and _prog3MoveMult widens the bound by the same number. */
-    move:    { cap: 999, max: 0.35, k: 10 },  // v2.3.2670: move speed, 5 pts +11.7 %
+    move:    { cap: 999, max: 0.35, k: 10 },  // v2.3.2680: move speed, 5 pts +11.7 %
   },
   ATK: {
     /* ═══ v2.3.2592: RANGE — "max distance attacks can be effective" ═══
@@ -285,11 +285,11 @@ export const PROG3 = {
        client's claim and 675 × 1.5 = 1012 > 950 is clamped, not rejected.
        It replaces the legacy per-weapon Longshot channel (+1%/pt to ×2.0),
        which prog3 characters never had. */
-    /* v2.3.2670: the curve, max +55 % (5 pts +18 %, 100 pts +50 % — today's
+    /* v2.3.2680: the curve, max +55 % (5 pts +18 %, 100 pts +50 % — today's
        cap).  At the asymptote 675 × 1.55 = 1046 is still CLAMPED by PvP's
        950, and melee's 108 × 1.55 = 167 px stays far inside the 400 px PvE
        proximity gate, so neither bound moves. */
-    range:   { cap: 999, max: 0.55, k: 10 },  // v2.3.2670: reach, 5 pts +18 %, PER TYPE
+    range:   { cap: 999, max: 0.55, k: 10 },  // v2.3.2680: reach, 5 pts +18 %, PER TYPE
     /* ═══ v2.3.2210: EVERY CHARACTER STARTS AT 1% ═══
        Owner: "I want crit chance to start at a flat 1% per damage type by
        default for each character."
@@ -322,16 +322,16 @@ export const PROG3 = {
        survives gear scaling, and compounding is bounded by the ×2.5
        ceiling.  Roll + anticheat ceiling (combat.js) + client display all
        move in this commit (the v2.3.1451 lockstep rule). */
-    /* v2.3.2670: both halves on the curve — chance 1 % + 60 % × curve,
+    /* v2.3.2680: both halves on the curve — chance 1 % + 60 % × curve,
        multiplier 1.5 + 2.0 × curve (5 pts: 26 % / ×2.33).  `dmgMax` replaces
        `dmgPer`; the anticheat ceiling takes the multiplier at edge 1. */
-    luck:    { cap: 999, max: 0.60, dmgMax: 2.0, base: 0.01, k: 7, rel: true, lvlBound: 2 },  // v2.3.2670: crit, PER TYPE
-    aspd:    { cap: 999, max: 0.39, k: 10 },  // v2.3.2670: swing period cut, 5 pts −13 %, PER TYPE
+    luck:    { cap: 999, max: 0.60, dmgMax: 2.0, base: 0.01, k: 7, rel: true, lvlBound: 2 },  // v2.3.2680: crit, PER TYPE
+    aspd:    { cap: 999, max: 0.39, k: 10 },  // v2.3.2680: swing period cut, 5 pts −13 %, PER TYPE
     // aspd note: 600ms base × 0.65 × the 0.7 lag headroom = 273ms >
     // the 210ms server cadence floor (combat.js), so the existing
     // floor already covers a maxed prog3 build.  If the per-point
     // value ever grows past −50%, the floor must move in lockstep.
-    // v2.3.2670: the curve's asymptote is −39 % (600 × 0.61 × 0.7 =
+    // v2.3.2680: the curve's asymptote is −39 % (600 × 0.61 × 0.7 =
     // 256ms > 210ms), so the floor still covers it.
     /* v2.3.2199: FLAT DAMAGE — the stat players asked for ("levels don't
        feel strong" has a spend-side answer now).  +0.5/pt INSIDE the
@@ -343,13 +343,13 @@ export const PROG3 = {
        level's HP/mana/milestone side benefits.  Cap 75 (not 100): +37.5
        max, ~¼ of a maxed skill term.  ANTICHEAT LOCKSTEP: _maxWeaponDmg
        carries the same term, same commit. */
-    /* v2.3.2670: POWER IS A MULTIPLIER on (weapon base + skill term), still
+    /* v2.3.2680: POWER IS A MULTIPLIER on (weapon base + skill term), still
        pre-tierMult so gear scales it: × (1 + 1.0 × curve).  +0.5 flat was
        invisible early (5 pts +2.5 on a 15-damage hit) and a rounding error
        late; the multiplier is +42 % at 5 points and keeps its worth as the
        skill term grows.  ANTICHEAT LOCKSTEP: _maxWeaponDmg multiplies by the
        same _prog3PowerMult at edge 1, same commit. */
-    dmg:     { cap: 999, max: 1.0, k: 7, rel: true, lvlBound: 2 },  // v2.3.2670: Power, 5 pts +42 %, PER TYPE
+    dmg:     { cap: 999, max: 1.0, k: 7, rel: true, lvlBound: 2 },  // v2.3.2680: Power, 5 pts +42 %, PER TYPE
     /* ═══ v2.3.2512: ELEMENTAL POWER MOVES BODY → ATK (owner ask) ═══
        Was a single GLOBAL channel (v2.3.2199).  The owner's own split says
        attack power belongs to the combat type that produces it, and a staff
@@ -369,7 +369,7 @@ export const PROG3 = {
        copying them into all three types (which would triple the investment)
        or picking one (which would be guessing) — the v11 precedent, for the
        identical reason. */
-    elem:    { cap: 999, max: 120, k: 10, rel: true, lvlBound: 2 },  // v2.3.2670: elemental power, 5 pts 40, PER TYPE
+    elem:    { cap: 999, max: 120, k: 10, rel: true, lvlBound: 2 },  // v2.3.2680: elemental power, 5 pts 40, PER TYPE
     /* ═══ v2.3.2592: SPECIAL — "special attack damage" ═══
        +1% special-attack damage per point, +75% at the 75-pt cap, PER TYPE.
        Multiplies the per-weapon special multiplier (melee/bow 3×, each
@@ -380,7 +380,7 @@ export const PROG3 = {
        specialMult carries the same term off the LARGEST lane (the candidate
        loop does not say which weapon won; loose rejects nothing, tight
        rejects legit maxed specials), in the same commit. */
-    special: { cap: 999, max: 1.5, k: 7, rel: true, lvlBound: 2 },  // v2.3.2670: special damage, 5 pts +62.5 %, PER TYPE
+    special: { cap: 999, max: 1.5, k: 7, rel: true, lvlBound: 2 },  // v2.3.2680: special damage, 5 pts +62.5 %, PER TYPE
   },
   /* ═══ v2.3.1727: THE RETUNE PROGRESSION-REDESIGN #13 DEFERRED ═══
    * Owner, after judging: "The players who are level 13 do not feel
@@ -486,7 +486,7 @@ export const PROG3 = {
   BURST_CD_MS: 3000,
   BURST_RADIUS: 70,
   BURST_DMG_MULT: 1.5,
-  /* ═══ v2.3.2670: the RELATIVE half of a point (see the BODY/ATK header) ═══
+  /* ═══ v2.3.2680: the RELATIVE half of a point (see the BODY/ATK header) ═══
      EDGE_FADE: the share of a point's count lost per level a monster stands
      above you — 100 % at or below your level, 0 at +5 (the owner's first
      ask: "benefit nearly gone after 5 combat levels").
@@ -499,7 +499,7 @@ export const PROG3 = {
   FLOOR: 0.10,
 };
 
-/* ═══ v2.3.2670: THE CURVE AND THE EDGE — one definition each ═══
+/* ═══ v2.3.2680: THE CURVE AND THE EDGE — one definition each ═══
    Pure and exported so the class methods below, elemental.js (which is not
    a GameRoom method) and tools/relative-points-sim.mjs all state the
    arithmetic ONCE; the client mirror (src/data/prog3.js) carries the same
@@ -955,7 +955,7 @@ export const prog3Methods = {
      bound) and the client mirror (src/data/prog3.js) all state the same
      arithmetic; keeping the server's copy behind four names is what lets a
      retune of one constant land everywhere it must (the v2.3.1451 rule). */
-  /* v2.3.2670: every one of these reads the CURVE (prog3StatValue) instead
+  /* v2.3.2680: every one of these reads the CURVE (prog3StatValue) instead
      of `pts × per`, and the ones that change a hit take the monster's level
      (`mlvl`) for the edge.  Omit it — the readouts, and the anticheat
      ceilings on purpose — and the edge is 1: the largest value any monster
@@ -969,7 +969,7 @@ export const prog3Methods = {
   _prog3SpecialMult(ps, cat, mlvl) {
     return 1 + PROG3.ATK.special.max * prog3StatValue(ps, 'special', cat, mlvl);
   },
-  /* v2.3.2670: Power is a multiplier on (weapon base + skill term), applied
+  /* v2.3.2680: Power is a multiplier on (weapon base + skill term), applied
      pre-tierMult by _computeAttackDamage and, at edge 1, by _maxWeaponDmg. */
   _prog3PowerMult(ps, cat, mlvl) {
     return 1 + PROG3.ATK.dmg.max * prog3StatValue(ps, 'dmg', cat, mlvl);
@@ -1078,7 +1078,7 @@ export const prog3Methods = {
   // Per-hit dodge chance (§4: replaces agility×0.0008 + the evasion
   // accumulator; cap 30% at the 75-pt stat cap).
   _prog3DodgePct(ps, mlvl) {
-    return PROG3.BODY.dodge.max * prog3StatValue(ps, 'dodge', null, mlvl);  /* v2.3.2670: the curve + edge */
+    return PROG3.BODY.dodge.max * prog3StatValue(ps, 'dodge', null, mlvl);  /* v2.3.2680: the curve + edge */
   },
 
   /* v2.3.2512: the ELEMENTAL-damage multiplier — the defensive half of the
@@ -1088,14 +1088,14 @@ export const prog3Methods = {
      means the fire trail and the slime burst; the closed list and the
      reasoning live on PROG3.BODY.eres. */
   _prog3ElemResistMult(ps, mlvl) {
-    return 1 - PROG3.BODY.eres.max * prog3StatValue(ps, 'eres', null, mlvl);  /* v2.3.2670: the curve + edge */
+    return 1 - PROG3.BODY.eres.max * prog3StatValue(ps, 'eres', null, mlvl);  /* v2.3.2680: the curve + edge */
   },
 
   // Incoming-damage multiplier (§4 decision 9-B: % reduction, the
   // game's first real mitigation stat; cap −40%).  Consumed in
   // _applyDamage AFTER the resist buff, floor 1 preserved there.
   _prog3DefMult(ps, mlvl) {
-    return 1 - PROG3.BODY.def.max * prog3StatValue(ps, 'def', null, mlvl);  /* v2.3.2670: the curve + edge */
+    return 1 - PROG3.BODY.def.max * prog3StatValue(ps, 'def', null, mlvl);  /* v2.3.2680: the curve + edge */
   },
 
   // ═══ Trained XP accrual (§9-A: server-authoritative) ═══
@@ -1240,7 +1240,7 @@ export const prog3Methods = {
     const sharedN = Math.max(0, Math.floor(Number(p3.shared) || 0));
 
     const levelCap = ps.level || this._prog3CharLevel(ps);
-    /* v2.3.2670: the §6-C bound is per stat now — 2 × character level on the
+    /* v2.3.2680: the §6-C bound is per stat now — 2 × character level on the
        four damage stats (`lvlBound`), 1 × on Defense, Dodge, Resist and the
        rest (owner, 2026-09-22: "keep per level limit on those 3"). */
     const cap = Math.min(sd.def.cap, levelCap * (sd.def.lvlBound || 1));

@@ -725,7 +725,7 @@ export const abilityMethods = {
      Returns true when the monster took damage. */
   _abilityStrikeMonster(zoneId, m, pid, ps, kind, cfg) {
     if (!this._monsterDamageable(m)) return false;   /* v2.3.2221 */
-    const rolled = this._computeAttackDamage(ps, 'melee', false, { targetLevel: m.level });  /* v2.3.2670: the edge */
+    const rolled = this._computeAttackDamage(ps, 'melee', false, { targetLevel: m.level });  /* v2.3.2680: the edge */
     /* ANTICHEAT LOCKSTEP: the ordinary melee ceiling, applied to a roll
        that is a FRACTION of an ordinary melee roll.  Scaling down can
        never breach a ceiling that covers the un-scaled hit, so this clamp

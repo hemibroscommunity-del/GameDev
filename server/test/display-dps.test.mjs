@@ -425,7 +425,7 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
      is the one thing a fixture must not do.  If the base is ever retuned,
      these three lines are supposed to fail and be changed deliberately. */
   // period 600 × (1 − 20×0.0035), crit EV = 1 + 0.16 × (2.0 − 1), no flat.
-  /* v2.3.2670: this fixture is the LINEAR worker now (prog3shared, no
+  /* v2.3.2680: this fixture is the LINEAR worker now (prog3shared, no
      prog3rel) — the math a worker without the curve still rolls, read off
      PROG3_LINEAR; the relative worker's fixture follows it. */
   setProg3RelEnabled(false);
@@ -447,7 +447,7 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   check('prog3x fixture: DPS folds LUCK\'s percent crit damage, no flat (v2.3.2592)',
     Math.abs(dX - expDpsX / DISPLAY_SCALE_K) < 1e-9, { got: dX, exp: expDpsX / DISPLAY_SCALE_K });
 
-  /* ═══ v2.3.2670: the RELATIVE worker (caps.prog3rel) ═══
+  /* ═══ v2.3.2680: the RELATIVE worker (caps.prog3rel) ═══
      Same character, same points, the curve.  By hand, with LITERALS for the
      same reason as above (a fixture that imports the constants agrees with
      production by construction):

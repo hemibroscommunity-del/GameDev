@@ -156,7 +156,7 @@ export const fireTrailMethods = {
 
     const patch = {
       mid: m.id,
-      lvl: m.level, /* v2.3.2670: the goblin's level, so Resist's edge is priced against whoever lit it */
+      lvl: m.level, /* v2.3.2680: the goblin's level, so Resist's edge is priced against whoever lit it */
       x: m.x, y: m.y,
       armAt: now + FIRE_TRAIL.ARM_MS,
       dieAt: now + FIRE_TRAIL.LIFE_MS,
@@ -226,7 +226,7 @@ export const fireTrailMethods = {
       Math.max(1, Math.floor((ps.maxHp || 100) * 0.5)));
     /* v2.3.2512: burning ground is elemental damage by definition, so the
        ELEM RESIST stat reads it (PROG3.BODY.eres names the closed list). */
-    const res = this._applyDamage(ps, raw, false, { elemental: true, attackerLevel: patch.lvl });  /* v2.3.2670: + the edge */
+    const res = this._applyDamage(ps, raw, false, { elemental: true, attackerLevel: patch.lvl });  /* v2.3.2680: + the edge */
     /* Credit still goes to the goblin who lit it, so a player finished off
        by fire counts as his kill and the death message names a real
        monster.  The monster may already be dead -- _trackMonsterDamage only

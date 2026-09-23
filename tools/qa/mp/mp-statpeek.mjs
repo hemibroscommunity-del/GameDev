@@ -213,7 +213,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const R = S && S.rpg;
     const f = window._gameFns;
     if (!R || !f) return null;
-    /* v2.3.2670: Luck is on the CURVE against a relative worker (the local
+    /* v2.3.2680: Luck is on the CURVE against a relative worker (the local
        worker this runs against advertises caps.prog3rel): 1 % base + 60 % ×
        p/(p + 7), as a display percentage.  Literals, so a production retune
        that forgets this scenario fails here instead of agreeing with itself. */

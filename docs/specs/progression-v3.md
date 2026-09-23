@@ -392,7 +392,7 @@ Points screen.
   persistence) opt their fixtures out of prog3 with a tagged comment —
   that coverage guards the fail-open path until the cleanup PR deletes
   it.
-- **Superseded for the curve stats (v2.3.2670, shipped):** relative point
+- **Superseded for the curve stats (v2.3.2680, shipped):** relative point
   value — the ten stats that change a hit or a stride read `max × q/(q+k)`
   instead of the linear per-point values above (no design caps; HP, Stamina
   and Mana keep theirs), the seven per-hit ones fade against a monster above
