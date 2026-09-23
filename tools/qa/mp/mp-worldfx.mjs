@@ -14,8 +14,8 @@
  *  4. The corpse is the crumble, not the old strip: it photographed the body,
  *     the flakes leave, and the bones end up FALLEN (low) and SPREAD (a pile),
  *     not standing where the skeleton stood.
- *  4b. The other death (v2.3.2705, ?death=explode): it booms, the spare bones
- *     come too, the screen kicks, and the pile is strewn, not heaped.
+ *  4b. ...and then it EXPLODES (v2.3.2706, the owner's pick): the spare
+ *     bones come too, the screen kicks, and the bones land strewn.
  *  5. No renderer throws, and the real-damage path still does nothing on a
  *     blocked hit (covered by the gameEvents guard; asserted here via tiers).
  */
@@ -117,29 +117,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     const t = Date.now();
-    S._dying = true; S.rpg.hp = 0; S._deathStart = t;
-    window.__wfxHold = setInterval(() => { S.rpg.hp = 0; S._deathStart = t; }, 30);
+    S._dying = true; S.rpg.hp = 0; S._deathStart = t; S.screenShake = 0;
+    window.__wfxShake = 0;
+    window.__wfxHold = setInterval(() => {
+      S.rpg.hp = 0; S._deathStart = t;
+      window.__wfxShake = Math.max(window.__wfxShake, S.screenShake || 0);
+    }, 16);
   });
   const crumble = async () => (await P.page.evaluate(() => (window.__btDeathCrumble ? window.__btDeathCrumble() : [])))
     .find((c) => c.key === 'self') || null;
   await P.page.waitForTimeout(300);
   const c1 = await crumble();
   await closeUp('death-1-crumbling');
-  rec.ok('death draws the crumble, photographed from YOUR body', !!c1 && c1.shot && c1.flakes > 20 && c1.bones === 13, c1);
+  rec.ok('death draws the crumble, photographed from YOUR body', !!c1 && c1.shot && c1.flakes > 20 && c1.bones >= 13, c1);
   await P.page.waitForTimeout(500);
   const c2 = await crumble();
   await closeUp('death-2-skeleton');
   rec.ok('...the flakes leave as the skeleton comes up under them', !!c2 && c2.flakesLeft < c1.flakes && c2.skeletonAlpha > 0.6, c2);
-  await P.page.waitForTimeout(700);
-  await closeUp('death-3-falling');
-  await P.page.waitForTimeout(1500);
-  const c3 = await crumble();
-  await closeUp('death-4-pile');
-  rec.ok('...and the bones FALL: every one lets go, and they end low, not standing',
-    !!c3 && c3.free === 13 && c3.maxZ < c3.standingZ * 0.35, { standingZ: c3 && c3.standingZ, pile: c3 });
-  rec.ok('...into a PILE, spread wider than the skeleton stood', !!c3 && c3.spread > c3.standingSpread * 1.1,
-    { standing: c3 && c3.standingSpread, pile: c3 && c3.spread });
-  rec.ok('...and most of them have come to rest', !!c3 && c3.resting >= 9, c3);
+  /* v2.3.2706: then it SHIVERS and EXPLODES (the owner's pick of the two
+     deaths).  Waited for by the bones landing, not a fixed time: a slow
+     software-GL frame rate stretches the physics clock (dt is capped per
+     frame), and a fixed wait measured bones still in the air. */
+  await closeUp('death-3-boom');
+  let c3 = null;
+  for (let i = 0; i < 40; i++) {
+    await P.page.waitForTimeout(300);
+    c3 = await crumble();
+    if (c3 && c3.boomed && c3.resting >= c3.bones - 2) break;
+  }
+  const kick = await P.page.evaluate(() => window.__wfxShake);
+  await closeUp('death-4-strewn');
+  rec.ok('...then the skeleton EXPLODES: every bone flies, plus the spares',
+    !!c3 && c3.boomed && c3.bones > 13 && c3.free === c3.bones, c3);
+  /* The corpse says what it asked for; the sampled S.screenShake proves it
+     reached the camera (it decays per frame, and the bang lands during a
+     ~2s screenshot, so the sampler catches the tail, not the peak). */
+  rec.ok('...the screen kicks with it', !!c3 && c3.kick >= 20 && kick >= 5, { asked: c3 && c3.kick, sampledPeak: kick });
+  rec.ok('...and the bones come down (low, not standing) strewn wide',
+    !!c3 && c3.maxZ < c3.standingZ * 0.35 && c3.spread > 150, c3 && { maxZ: c3.maxZ, standingZ: c3.standingZ, spread: c3.spread });
+  rec.ok('...and most of them have come to rest', !!c3 && c3.resting >= c3.bones - 3, c3);
   /* respawn: the corpse must go the moment you are alive */
   await P.page.evaluate(() => {
     clearInterval(window.__wfxHold);
@@ -149,40 +165,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(700);
   const gone = await crumble();
   rec.ok('...and it is gone the moment you are alive again', !gone, gone);
-
-  /* ── 5. or you explode (v2.3.2705, ?death=explode) ── */
-  await P.page.waitForTimeout(600);
-  await P.page.evaluate(() => {
-    window.__btDeathStyle = 'explode';
-    const S = window._gameState.current;
-    const t = Date.now();
-    S._dying = true; S.rpg.hp = 0; S._deathStart = t; S.screenShake = 0;
-    window.__wfxShake = 0;
-    window.__wfxHold = setInterval(() => {
-      S.rpg.hp = 0; S._deathStart = t;
-      window.__wfxShake = Math.max(window.__wfxShake, S.screenShake || 0);
-    }, 16);
-  });
-  /* wait for the bones to come down rather than for a fixed time: a slow
-     software-GL frame rate stretches the physics clock (dt is capped per
-     frame), and a fixed wait measured bones still in the air */
-  let ex = null;
-  for (let i = 0; i < 40; i++) {
-    await P.page.waitForTimeout(300);
-    ex = await crumble();
-    if (ex && ex.boomed && ex.resting >= ex.bones - 2) break;
-  }
-  const kick = await P.page.evaluate(() => window.__wfxShake);
-  await closeUp('explode-pile');
-  rec.ok('the exploding death BOOMS: every bone flies, plus the spares', !!ex && ex.style === 'explode' && ex.boomed && ex.bones > 13 && ex.free === ex.bones, ex);
-  rec.ok('...the screen kicks with it', kick >= 20, { maxShake: kick });
-  rec.ok('...and the bones end up strewn far wider than a crumbled pile', !!ex && ex.spread > 150 && ex.maxZ < ex.standingZ * 0.35, ex && { spread: ex.spread, maxZ: ex.maxZ });
-  await P.page.evaluate(() => {
-    clearInterval(window.__wfxHold);
-    window.__btDeathStyle = undefined;
-    const S = window._gameState.current;
-    S.rpg.hp = S.rpg.maxHp || 100; S._deathStart = 0; S._dying = false;
-  });
 
   const throws = H.takeRenderThrows();
   rec.ok('no renderer threw', throws.length === 0, throws.slice(0, 3));

@@ -1,4 +1,4 @@
-# World effects: time of day, air, dust, blood, the crumbling corpse (v2.3.2703)
+# World effects: time of day, air, dust, blood, and death (v2.3.2703–2706)
 
 Everything here is display only. Nothing is sent to the server, and nothing in combat reads it.
 
@@ -46,30 +46,23 @@ Everything here is display only. Nothing is sent to the server, and nothing in c
 - **Flight:** drops leave from the chest, fall with gravity, and some leave marks on the ground that fade over 6.5 s.
 - **Who:** your own hits and hits on other players you can see. Blocked and dodged hits don't bleed.
 
-## The crumbling corpse — `src/rendering/deathCrumble.js`
+## Death: crumble, then explode — `src/rendering/deathCrumble.js`
 
-- **Crumble:** on the first dead frame, the player's own display is rendered to a texture, so every worn layer is in it. It is read back once to find the body's real pixels and cut into flakes. The flakes let go from the head down, fall, and the breeze carries them off.
-- **Skeleton:** 13 pixel-art bones (minted in `worldFxTextures.js`), scaled to that body, fade in underneath.
-- **Collapse:** at about 1 s each bone becomes a small physics body with gravity, bounce, spin and ground friction.
-  - Legs go first and the skull last.
-  - Long bones tip over to lie flat and the skull rolls.
-  - Hard landings kick up dust.
-- **Removal:** the pile is removed on the first frame nobody asks for it, which is the respawn.
+The owner looked at both v2.3.2705 styles and picked "the skin crumbles off … then explode" (v2.3.2706). There is one death, in four beats:
+
+1. **Crumble:** on the first dead frame, the player's own display is rendered to a texture, so every worn layer is in it. It is read back once to find the body's real pixels and cut into flakes. The flakes let go from the head down, fall, and the breeze carries them off.
+2. **Stand:** a 13-bone pixel-art skeleton (minted in `worldFxTextures.js`), scaled to that body, fades in underneath.
+3. **Shiver:** from 0.86 s the skeleton rattles harder and harder.
+4. **BOOM:** at 1.08 s, every bone and 12 spares (hidden in the ribcage until then) fly up and out in high arcs, spinning. Any flakes still clinging go too.
+   - The camera kicks (shake 26), and kicks again (5–9) as big pieces land, at most every 90 ms. A friend's explosion nearby shakes your screen a little (9).
+   - The bones bounce, skid, grip and lie strewn across the screen. They are tuned to land on screen.
+   - Long bones lie flat and the skull rolls.
+
+- **Removal:** the bones are removed on the first frame nobody asks for them, which is the respawn.
 - **Fallback:** if it cannot draw, `death-v1.png` plays exactly as before.
 - **QA:** `window.__btDeathSlow = 8` plays it in slow motion.
 
-## Or you explode (v2.3.2705) — pick with `?death=explode`
-
-This is the owner's alternative, and both styles ship behind one switch until the owner picks one.
-
-- **Swell:** for 170 ms the body strains outward and shivers.
-- **BOOM:** flesh flakes, all 13 bones and 12 spare bones blast outward and up in high arcs, spinning.
-- **Screen shake:** the camera kicks (shake 26), and kicks again (5–9) as big pieces land, at most every 90 ms.
-- **Landing:** bones bounce, skid, grip and lie strewn across the screen. They are tuned to land on screen, not three screens away.
-- **Other players:** a friend exploding nearby shakes your screen a little (9).
-- **Switch:** `window.__btDeathStyle` or `?death=explode|crumble`. The default is `crumble`. Making either one permanent is a one-line change to the default in `deathStyle()`.
-
 ## QA
 
-- **`mp-worldfx`:** covers all of the above against a real worker (22 checks, including the explode style).
+- **`mp-worldfx`:** covers all of the above against a real worker (22 checks).
 - **Harness defaults:** the harness pins every scenario to plain daytime with the drifting air off (`window.__btTod = 'day'`, `window.__btAmbienceOff = true`), so pixel tests don't depend on the clock. mp-worldfx turns the air back on itself.

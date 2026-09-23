@@ -17,11 +17,11 @@
  *      same wind the dust and motes blow on).
  *   2. The skeleton is what they uncover: thirteen bones, each its own
  *      sprite, standing in your place.
- *   3. It falls.  Knees first, skull last.  Every bone is a small body with
- *      gravity, a bounce, spin, and ground friction; long bones tip over to
- *      lie flat, the skull rolls.  Each impact kicks a little dust.  Where
- *      they come to rest is decided by the physics, not by a frame -- no two
- *      deaths leave the same pile.
+ *   3. It shivers, and EXPLODES (v2.3.2706, the owner's pick -- see below).
+ *      Every bone is a small body with gravity, a bounce, spin, and ground
+ *      friction; long bones tip over to lie flat, the skull rolls.  Each
+ *      impact kicks a little dust.  Where they come to rest is decided by the
+ *      physics, not by a frame -- no two deaths leave the same scatter.
  *
  * The pixel-art bones are minted in worldFxTextures.js in the death sheet's
  * own palette.  If anything here is unavailable (no renderer, no bone art)
@@ -41,56 +41,48 @@ import { windAt } from '@/game/timeOfDay.js';
 /* The standing skeleton, in art pixels, feet at (0,0), +y down.  52 art px
    tall; scaled to the body it replaces. */
 const POSE = [
-  /* key,   art,     x,     y,    rot,  delay (ms after the collapse starts) */
-  ['shinL',  'shin',  -3,   -5.5,  0,    0],
-  ['shinR',  'shin',   3,   -5.5,  0,    10],
-  ['femL',   'femur', -3,  -18,    0,    40],
-  ['femR',   'femur',  3,  -18,    0,    55],
-  ['pelvis', 'pelvis', 0,  -27,    0,    90],
-  ['handL',  'hand',  -9.5,-18,    0,    60],
-  ['handR',  'hand',   9.5,-18,    0,    70],
-  ['forL',   'arm',   -9,  -25,    0.12, 80],
-  ['forR',   'arm',    9,  -25,   -0.12, 95],
-  ['armL',   'arm',   -8,  -35,    0.18, 120],
-  ['armR',   'arm',    8,  -35,   -0.18, 130],
-  ['ribs',   'ribs',   0,  -35,    0,    150],
-  ['skull',  'skull',  0,  -46.5,  0,    260],
+  /* key,   art,     x,     y,    rot */
+  ['shinL',  'shin',  -3,   -5.5,  0],
+  ['shinR',  'shin',   3,   -5.5,  0],
+  ['femL',   'femur', -3,  -18,    0],
+  ['femR',   'femur',  3,  -18,    0],
+  ['pelvis', 'pelvis', 0,  -27,    0],
+  ['handL',  'hand',  -9.5,-18,    0],
+  ['handR',  'hand',   9.5,-18,    0],
+  ['forL',   'arm',   -9,  -25,    0.12],
+  ['forR',   'arm',    9,  -25,   -0.12],
+  ['armL',   'arm',   -8,  -35,    0.18],
+  ['armR',   'arm',    8,  -35,   -0.18],
+  ['ribs',   'ribs',   0,  -35,    0],
+  ['skull',  'skull',  0,  -46.5,  0],
 ];
 const SKELETON_H = 52;
 
 const CRUMBLE_AT = 90;      /* the first flakes let go */
 const CRUMBLE_SPAN = 700;   /* crown to heel */
 const REVEAL_SPAN = 420;    /* the skeleton fades up under them */
-const COLLAPSE_AT = 980;    /* the bones let go */
 const FLAKE = 4;            /* flake size, display px */
 const MAX_FLAKES = 150;
 const G_BONE = 900, G_FLAKE = 340;
 const ASH = [0x7c, 0x6a, 0x5c];
 
-/* ═══ v2.3.2705: OR YOU EXPLODE ═══
-   Owner: "I think it would be comical if when the character died he was
-   exploded bones across the screen with maybe a screen shake effect.  Just
-   making it absurd and dramatic.  I'm not totally sure though so show me both
-   ways."
-   So both ship, behind one switch, until the owner picks:
-     crumble  -- the flesh flakes away, the skeleton stands, then folds
-     explode  -- the body swells for a beat, then BOOM: flesh, every bone and a
-                 handful of spares fly across the screen, spinning, bouncing
-                 and skidding; the screen kicks, and kicks again as the big
-                 pieces land.
-   Chosen by `?death=explode` in the URL or window.__btDeathStyle; crumble is
-   the default.  Same bones, same physics, same pile at the end -- only the
-   launch differs, so either can become the only one by changing a default. */
-export function deathStyle() {
-  if (typeof window === 'undefined') return 'crumble';
-  if (window.__btDeathStyle === 'explode' || window.__btDeathStyle === 'crumble') return window.__btDeathStyle;
-  if (deathStyle._url === undefined) {
-    deathStyle._url = null;
-    try { const m = /[?&]death=(explode|crumble)\b/.exec(window.location.search); if (m) deathStyle._url = m[1]; } catch (e) { /* no location */ }
-  }
-  return deathStyle._url || 'crumble';
-}
-const BOOM_AT = 170;        /* explode: the swell before the bang */
+/* ═══ v2.3.2705-2706: ...AND THEN IT EXPLODES ═══
+   v2.3.2705 shipped two deaths behind a switch because the owner asked to see
+   both: this crumble, and an absurd one where the body BOOMS and its bones fly
+   across the screen with a screen shake.  The owner's verdict on the two:
+   "I like what the skin crumbles off the body in the first animation but I
+   like the explosion effect in the second animation.  So after the skin
+   crumbles off I want it to explode."
+   So there is one death again, in four beats:
+     1. the skin crumbles off, crown to heel, and the breeze takes it
+     2. the skeleton it uncovers stands for a moment...
+     3. ...and SHIVERS, harder and harder
+     4. BOOM: every bone and a dozen spares fly up and out across the screen,
+        spinning; the camera kicks, and kicks again as the big pieces land;
+        they bounce, skid, grip, and lie strewn where they fell.
+   The switch is gone with the choice -- one death is one thing to keep right. */
+const SHIVER_AT = 860;      /* the standing skeleton starts to shake */
+const BOOM_AT = 1080;       /* ...and goes */
 const SPARES = ['arm', 'shin', 'femur', 'hand', 'arm', 'ribs', 'hand', 'shin', 'femur', 'arm', 'hand', 'shin'];
 let _shake = 0;             /* screen kick owed to the local camera, taken by entityRenderer */
 
@@ -159,7 +151,6 @@ class DeathCrumble {
   }
 
   _create(display, startTs, now, key) {
-    const style = deathStyle();
     const box = this._bodyBox(display);
     const root = new Container();
     root.label = 'death-crumble';
@@ -267,12 +258,12 @@ class DeathCrumble {
     const k = Math.max(0.6, Math.min(1.6, (body.h * 0.95) / SKELETON_H));
     const bones = [];
     for (let i = 0; i < POSE.length; i++) {
-      const [key, art, ax, ay, rot, delay] = POSE[i];
+      const [key, art, ax, ay, rot] = POSE[i];
       const tex = fxTex('bone_' + art);
       if (!tex) continue;
       const s = new Sprite(tex);
       s.anchor.set(0.5);
-      s.scale.set(k * (style === 'explode' ? 1.25 : 1));
+      s.scale.set(k);
       /* the left arm is the right arm mirrored */
       if (key.endsWith('L') && (art === 'arm' || art === 'hand')) s.scale.x = -s.scale.y;
       bonesC.addChild(s);
@@ -284,19 +275,20 @@ class DeathCrumble {
         r: (long ? w : Math.min(w, h)) / 2 * 0.9,
         gx: cxm + ax * k, gy: 0, z: -ay * k, rot,
         vx: 0, vy: 0, vz: 0, vrot: 0,
-        delay: COLLAPSE_AT + delay, free: false, rest: false, order: i,
+        free: false, rest: false, order: i,
       });
     }
 
     /* explode: a handful of spare bones -- nobody counts them mid-air, and
        thirteen is not "bones across the screen" */
-    if (style === 'explode') {
+    {
       for (let i = 0; i < SPARES.length; i++) {
         const art = SPARES[i];
         const tex = fxTex('bone_' + art);
         if (!tex) continue;
         const sp = new Sprite(tex);
-        sp.anchor.set(0.5); sp.scale.set(k * rand(1.0, 1.3));
+        sp.anchor.set(0.5); sp.scale.set(k * rand(0.9, 1.15));
+        sp.visible = false;   /* hidden inside the ribcage until the bang */
         bonesC.addChild(sp);
         const rows = BONE_ART[art];
         const w = rows[0].length * k, h = rows.length * k;
@@ -316,15 +308,16 @@ class DeathCrumble {
     const gxs = bones.map((b) => b.gx);
     const spread0 = gxs.length ? Math.max(...gxs) - Math.min(...gxs) : 0;
     const height0 = bones.length ? Math.max(...bones.map((b) => b.z)) : 0;
-    const c = { display, root, bonesC, flakesC, fx, shot, flakes, bones, feetY, cxm, spread0, height0, style, key, midY: feetY - body.h * 0.5, start: startTs || now, last: now, touched: now, puffs: [], landedN: 0 };
+    const c = { display, root, bonesC, flakesC, fx, shot, flakes, bones, feetY, cxm, spread0, height0, key, midY: feetY - body.h * 0.5, start: startTs || now, last: now, touched: now, puffs: [], landedN: 0 };
     /* Arriving at a death already over (you walked up to a corpse, or the tab
        woke): skip to the pile rather than replaying the fall for a stranger. */
     const age = now - c.start;
-    if (age > COLLAPSE_AT + 2200) {
+    if (age > BOOM_AT + 2400) {
       for (const f of flakes) { f.s.visible = false; }
       bonesC.alpha = 1;
-      let t = c.start + COLLAPSE_AT;
-      while (t < now && t < c.start + COLLAPSE_AT + 4000) { t += 16; this._stepBones(c, t, 0.016, true); }
+      c.boomed = true;   /* no camera kick for a death that happened before we looked */
+      let t = c.start + BOOM_AT;
+      while (t < now && t < c.start + BOOM_AT + 4000) { t += 16; this._stepBones(c, t, 0.016, true); }
       c.last = now;
     }
     return c;
@@ -344,17 +337,14 @@ class DeathCrumble {
     const dt = Math.min(0.05, Math.max(0, (now - c.last) / 1000));
     c.last = now;
     const t = now - c.start;
-    if (c.style === 'explode') {
-      /* nothing to reveal: the skeleton is never seen standing, only flying */
-      c.bonesC.alpha = t >= BOOM_AT ? 1 : 0;
-      if (!c.boomed && t >= BOOM_AT) {
-        c.boomed = true;
-        _shake = Math.max(_shake, c.key === 'self' ? 26 : 9);
-        for (let i = 0; i < 6; i++) this._puff(c, c.cxm + rand(-6, 6), rand(-4, 4), 420, rand(-1, 1) * 160, rand(-1, 1) * 90);
-      }
-    } else {
-      c.bonesC.alpha = Math.max(0, Math.min(1, (t - CRUMBLE_AT - 60) / REVEAL_SPAN));
-      if (!c.flakes.length) c.bonesC.alpha = Math.max(c.bonesC.alpha, t > 60 ? 1 : 0);
+    c.bonesC.alpha = Math.max(0, Math.min(1, (t - CRUMBLE_AT - 60) / REVEAL_SPAN));
+    if (!c.flakes.length) c.bonesC.alpha = Math.max(c.bonesC.alpha, t > 60 ? 1 : 0);
+    if (!c.boomed && t >= BOOM_AT) {
+      c.boomed = true;
+      c.bonesC.alpha = 1;
+      c.kick = c.key === 'self' ? 26 : 9;
+      _shake = Math.max(_shake, c.kick);
+      for (let i = 0; i < 6; i++) this._puff(c, c.cxm + rand(-6, 6), rand(-4, 4), 420, rand(-1, 1) * 160, rand(-1, 1) * 90);
     }
     this._stepFlakes(c, now, t, dt);
     this._stepBones(c, now, dt, false);
@@ -367,15 +357,9 @@ class DeathCrumble {
       const f = c.flakes[i];
       if (!f.s.visible) continue;
       if (!f.free) {
-        if (c.style === 'explode') {
-          if (t < BOOM_AT) {
-            /* the swell: the whole body strains outward and shivers */
-            const sw = Math.pow(t / BOOM_AT, 2) * 0.16;
-            f.s.x = f.x0 + (f.x0 - c.cxm) * sw + rand(-0.8, 0.8) * sw * 8;
-            f.s.y = f.y0 + (f.y0 - c.midY) * sw + rand(-0.8, 0.8) * sw * 8;
-            continue;
-          }
-          f.free = true;
+        if (t >= BOOM_AT) {
+          /* a flake still clinging when the skeleton goes goes with it */
+          f.free = true; f.blown = true;
           const a = Math.atan2(f.y0 - c.midY, f.x0 - c.cxm) + rand(-0.5, 0.5);
           const sp = rand(80, 300);
           f.vx = Math.cos(a) * sp; f.vy = Math.sin(a) * sp * 0.5;
@@ -390,7 +374,7 @@ class DeathCrumble {
         }
       }
       if (!f.landed) {
-        f.vz -= (c.style === 'explode' ? G_BONE : G_FLAKE) * dt;
+        f.vz -= (f.blown ? G_BONE : G_FLAKE) * dt;
         f.gx += f.vx * dt; f.gy += f.vy * dt; f.z += f.vz * dt;
         if (f.z <= 0) { f.z = 0; f.landed = now; }
       } else {
@@ -399,7 +383,7 @@ class DeathCrumble {
       }
       f.s.x = f.gx; f.s.y = f.gy - f.z;
       f.s.rotation += f.spin * dt * (f.landed ? 0.2 : 1);
-      const since = t - (c.style === 'explode' ? BOOM_AT : f.delay);
+      const since = t - f.delay;
       f.s.tint = lerpTint(since / 500);
       if (f.landed) {
         const g = (now - f.landed) / 520;
@@ -412,11 +396,11 @@ class DeathCrumble {
 
   _stepBones(c, now, dt, silent) {
     const t = now - c.start;
-    const wind = windAt(now);
     for (let i = 0; i < c.bones.length; i++) {
       const b = c.bones[i];
-      if (!b.free && c.style === 'explode' && t >= BOOM_AT) {
+      if (!b.free && t >= BOOM_AT) {
         b.free = true;
+        b.s.visible = true;
         /* BOOM: out from the middle of the body, hard, spinning; the skull
            goes furthest because of course it does */
         const a = (Math.abs(b.gx - c.cxm) > 1 ? Math.atan2(rand(-1, 1), b.gx - c.cxm) : rand(0, Math.PI * 2)) + rand(-0.9, 0.9);
@@ -427,18 +411,6 @@ class DeathCrumble {
         b.vx = Math.cos(a) * sp; b.vy = Math.sin(a) * sp * 0.55;
         b.vz = b.skull ? rand(520, 640) : rand(300, 560);
         b.vrot = rand(-24, 24);
-      } else if (!b.free && c.style !== 'explode' && t >= b.delay) {
-        b.free = true;
-        /* the legs fold out, the rest drops onto them; a breath of the
-           breeze in it so the pile leans the way the dust blew */
-        /* outward from the spine: a skeleton folds out over its own feet,
-           it does not drop straight down its own length */
-        const out = b.gx - (c.cxm != null ? c.cxm : b.gx);
-        b.vx = rand(-36, 36) + Math.sign(out) * rand(12, 40) + wind.x * 0.6;
-        b.vy = rand(-22, 22);
-        b.vz = rand(-10, 40);
-        b.vrot = rand(-6, 6);
-        if (b.skull) { b.vx = rand(-60, 60); b.vz = rand(20, 70); }
       }
       if (b.free && !b.rest) {
         b.vz -= G_BONE * dt;
@@ -450,14 +422,14 @@ class DeathCrumble {
             /* a bounce: most of the energy goes into the ground */
             const impact = -b.vz;
             b.vz = impact * (b.skull ? 0.42 : 0.3);
-            const keep = c.style === 'explode' ? 0.42 : 0.7;
+            const keep = 0.42;
             b.vx *= keep; b.vy *= keep;
             b.vrot = b.vrot * 0.6 + rand(-3, 3);
             if (!silent && impact > 140) this._puff(c, b.gx, b.gy, impact);
             /* explode: every big piece that lands kicks the camera again --
                a little, and not more than every 90ms, so it rumbles rather
                than blurs */
-            if (!silent && c.style === 'explode' && impact > 300 && c.key === 'self'
+            if (!silent && impact > 300 && c.key === 'self'
                 && now - (c.lastKick || 0) > 90) {
               c.lastKick = now;
               _shake = Math.max(_shake, b.skull ? 9 : 5);
@@ -469,7 +441,7 @@ class DeathCrumble {
             /* exploded bones skid, then GRIP -- without it they slid off the
                edge of the screen after landing, which is where the first
                cut's pile ended up */
-            const f = Math.min(1, (b.skull ? 2.2 : 6) * (c.style === 'explode' ? 1.8 : 1) * dt);
+            const f = Math.min(1, (b.skull ? 2.2 : 6) * 1.8 * dt);
             b.vx -= b.vx * f; b.vy -= b.vy * f;
             if (b.skull) b.vrot = b.vx / Math.max(2, b.r);   /* rolls */
             else b.vrot -= b.vrot * Math.min(1, 7 * dt);
@@ -483,8 +455,10 @@ class DeathCrumble {
           }
         }
       }
-      b.s.x = b.gx;
-      b.s.y = c.feetY + b.gy - b.z;
+      /* the shiver: the standing skeleton rattles, harder as the bang nears */
+      const shiv = (!b.free && t >= SHIVER_AT) ? Math.pow((t - SHIVER_AT) / (BOOM_AT - SHIVER_AT), 1.5) * 2.4 : 0;
+      b.s.x = b.gx + (shiv ? rand(-shiv, shiv) : 0);
+      b.s.y = c.feetY + b.gy - b.z + (shiv ? rand(-shiv, shiv) * 0.6 : 0);
       b.s.rotation = b.rot;
       /* nearer the camera draws in front; among bones on the same line, the
          one that landed later lies on top */
@@ -545,8 +519,8 @@ if (typeof window !== 'undefined') {
         standingSpread: +c.spread0.toFixed(1),
         standingZ: +c.height0.toFixed(1),
         feetY: +c.feetY.toFixed(1),
-        style: c.style,
         boomed: !!c.boomed,
+        kick: c.kick || 0,
         shot: !!c.shot,
       });
     }
