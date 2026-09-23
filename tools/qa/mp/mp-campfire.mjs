@@ -178,9 +178,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState.current; S._campfire = null;
     window.__btDispatch({ type: 'campfire_lit', payload: { id: 'qa-peer', x: S.player.x + 60, y: S.player.y + 50, zone: S.currentZone, expiresAt: Date.now() + 45000 } });
   });
-  await P.page.waitForTimeout(500);
-  const peer = await probe(P);
-  const pf = (peer && peer.fires || []).find((f) => f.key === 'p:qa-peer');
+  /* v2.3.2744: polled, not read once at 500 ms -- in a long batch on the QA
+     box a frame can take longer than that, and one read caught the page with
+     no probe to answer (null), which is the harness, not the fire */
+  let peer = null, pf = null;
+  for (let i = 0; i < 20 && !(pf && pf.flameOn); i++) {
+    await P.page.waitForTimeout(100);
+    peer = await probe(P);
+    pf = (peer && peer.fires || []).find((f) => f.key === 'p:qa-peer') || null;
+  }
   rec.ok('a teammate\'s fire burns through the same code', !!(pf && pf.flameOn), peer);
   const errs = P.logs.filter((l) => /pageerror|TypeError|ReferenceError/.test(l));
   rec.ok('no page errors', errs.length === 0, errs.slice(0, 3));
