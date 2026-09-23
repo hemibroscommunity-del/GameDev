@@ -62,7 +62,7 @@ const FLASH_STEP_MS = 55;           /* flash frames */
    flash, most of its life in colour, a brief cool-down at the end. */
 const HEAT_AT = [0.14, 0.34, 0.6, 0.86];
 const KICK_DEG = 14, RAISE_DEG = 6, KICK_IN_MS = 60, KICK_OUT_MS = 280;
-/* v2.3.2715: the one-bolt special (gameSystems STAFF_BIG_BOLT_*) is the same
+/* v2.3.2741: the one-bolt special (gameSystems STAFF_BIG_BOLT_*) is the same
    cast, heavier: a bigger kick that takes longer to settle, a longer release,
    a denser trail and a bigger crash.  Every "big" knob is in this block. */
 const BIG_KICK_DEG = 24, BIG_KICK_OUT_MS = 430;
@@ -164,7 +164,7 @@ export function staffCastPose(now, castAt, castAng, charge, rhythm, mirror, pixe
   /* 12 fps poses, sampled late in each step so the kick lands WITH the flash
      rather than one step after it. */
   if (pixelSteps !== false) since = (Math.floor(since / STEP_MS) + 0.72) * STEP_MS;
-  /* v2.3.2715: the one-bolt special kicks harder and settles slower. */
+  /* v2.3.2741: the one-bolt special kicks harder and settles slower. */
   const kd = big ? BIG_KICK_DEG : KICK_DEG, ko = big ? BIG_KICK_OUT_MS : KICK_OUT_MS;
   let kick = 0;
   if (since < KICK_IN_MS) kick = kd * easeOut(since / KICK_IN_MS);
@@ -419,7 +419,7 @@ export class StaffCastFx {
     this._stats.crashN++;
     this._stats.lastCrash = { at: now, x: +x.toFixed(1), y: +y.toFixed(1), big: !!big };
     this.flashes.push({ kind: big ? 3 : 1, t0: now, x, y, owner: null, ramp, pk });
-    /* v2.3.2715: the one-bolt special lands like three orbs at once -- more
+    /* v2.3.2741: the one-bolt special lands like three orbs at once -- more
        sparks, thrown harder, and a longer tail of embers. */
     const nSp = big ? 38 : 20;
     for (let i = 0; i < nSp; i++) {
@@ -493,7 +493,7 @@ export class StaffCastFx {
     }
     const ramp = rampFor(p._fxElem);
     /* Trail: one spark per ~6 px of flight, laid along the segment, so the
-       spacing is the same at 30 fps as at 60.  v2.3.2715: the big bolt lays a
+       spacing is the same at 30 fps as at 60.  v2.3.2741: the big bolt lays a
        denser, wider trail of bigger sparks. */
     const big = !!p.big;
     const jw = big ? 10 : 5;
@@ -520,7 +520,7 @@ export class StaffCastFx {
     /* the real position this frame was drawn from, beside the drawn one, so a
        probe compares like with like (the sim may step again before it reads) */
     p._fxRx = x; p._fxRy = y;
-    /* the element halo, under the art (v2.3.2715: wider and brighter round
+    /* the element halo, under the art (v2.3.2741: wider and brighter round
        the big bolt, with a hot core so it reads as more than a bigger ball) */
     if (big) {
       this._glow(true, dx, dy, 15 * BIG_HALO * k1, ramp[2], 0.3);
@@ -673,7 +673,7 @@ export class StaffCastFx {
       const fr = Math.floor(Math.max(0, now - fl.t0) / FLASH_STEP_MS);
       const r = fl.ramp, pk = fl.pk || 1;
       if (fl.kind === 2) {
-        /* v2.3.2715: the one-bolt special's release -- a bigger flash that
+        /* v2.3.2741: the one-bolt special's release -- a bigger flash that
            holds a frame longer, then a pixel shockwave off the crystal. */
         if (fr >= 5) { this.flashes.splice(i, 1); continue; }
         const tip = this._tipOf(fl.owner, S, _tipA) || fl;
@@ -690,7 +690,7 @@ export class StaffCastFx {
         continue;
       }
       if (fl.kind === 3) {
-        /* v2.3.2715: the one-bolt special's crash -- a bigger white-out and a
+        /* v2.3.2741: the one-bolt special's crash -- a bigger white-out and a
            pixel shockwave that runs out along the ground. */
         if (fr >= 6) { this.flashes.splice(i, 1); continue; }
         if (fr === 0) {

@@ -160,7 +160,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       .map((a) => ({ life: a.life, speedPx: a.speedPx, reach: Math.round(a.life * a.speedPx), big: !!a.big }));
   });
   console.log('    special orbs: ' + JSON.stringify(orbs));
-  /* v2.3.2715: against a worker with caps.bigOrb the special is ONE big bolt,
+  /* v2.3.2741: against a worker with caps.bigOrb the special is ONE big bolt,
      and it must reach exactly as far as the orbs it replaced. */
   if (orbs && orbs.length === 1 && orbs[0].big) {
     rec.ok('the one-bolt special reaches the same 675px the orbs did',
