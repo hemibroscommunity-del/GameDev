@@ -24,6 +24,7 @@ const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
   lightfx: () => import('./mp-lightfx.mjs'), /* v2.3.2710: map-lit shadows + metal glint behind ?lightfx=1 -- off costs nothing, the shadow hangs off the feet along the map's light and survives a swing; before/after pictures for the owner */
+  propdepth: () => import('./mp-propdepth.mjs'), /* v2.3.2718: in front of a prop or behind it by where your FEET are and where its art meets the ground; props stop your feet from behind; the owner's four screenshots as cases, each checked against the old rule */
   rosterink: () => import('./mp-rosterink.mjs'), /* v2.3.2690: one character's face tattoo on every saved character -- the picker's faces, a switch seen by a peer, and a new character's blank face */
   species: () => import('./mp-species.mjs'), /* v2.3.2682: the monkey in the Skin tab, tan muzzle on any fur, and a peer sees it */
   eyestyle: () => import('./mp-eyestyle.mjs'), /* v2.3.2643: the Eyes tab picks a shape AND a colour, the styles land on the eye line, and glasses go over them */

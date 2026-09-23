@@ -443,7 +443,8 @@ import { resolveDashSide, screenAngle } from '../game/dashSidePref.js'; /* v2.3.
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
 import { stampSheetH } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h joins --dash-h under resize() + the watchdog */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
-import { buildingPropNear } from '@/data/worldProps.js'; /* v2.3.1778: building doors */
+import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2718: + the footprints your feet stop at */
+import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2718: how far below your position your boots are */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
  * The server holds the surge as a flat amount PER REGEN TICK (660 ms); this
@@ -4105,10 +4106,18 @@ export var BroTown = function BroTown(_ref0) {
       var _npcs = S.npcs;
       if (_npcs && _npcs.length) {
         var _pp = S.player;
+        /* ═══ v2.3.2718: HIS FEET AGAINST YOURS ═══
+           An NPC's position is his feet; yours is your body's CENTRE, ~52 px
+           above your boots (playerGroundDy).  Measured centre-to-feet, walking
+           up behind the blacksmith stopped your waist at his feet -- your boots
+           ended up past his, in front of him -- and the depth pass, which now
+           reads your feet, would draw you over a man you walked into from
+           behind.  Feet to feet, the radius means what it says. */
+        var _nfdy = playerGroundDy(S.currentZone, px, py);
         for (var _ni = 0; _ni < _npcs.length; _ni++) {
           var _n = _npcs[_ni];
           if (!_n || _n.alive === false || _n.x == null || _n.y == null) continue;
-          var _ndx = px - _n.x, _ndy = py - _n.y;
+          var _ndx = px - _n.x, _ndy = py + _nfdy - _n.y;
           if (_ndx * _ndx + _ndy * _ndy >= NPC_BLOCK_R2) continue;
           /* NEVER TRAP SOMEONE ALREADY INSIDE.  A pure position test would seal
              a player who ends up within the radius by any route that skips
@@ -4120,7 +4129,7 @@ export var BroTown = function BroTown(_ref0) {
              So the block only applies from OUTSIDE: if you are already inside,
              every step is allowed and you simply walk free. */
           if (_pp) {
-            var _cdx = _pp.x - _n.x, _cdy = _pp.y - _n.y;
+            var _cdx = _pp.x - _n.x, _cdy = _pp.y + _nfdy - _n.y;
             if (_cdx * _cdx + _cdy * _cdy < NPC_BLOCK_R2) continue;
           }
           return true;
@@ -4193,6 +4202,48 @@ export var BroTown = function BroTown(_ref0) {
        Attached once per mount (this is the game-loop SETUP effect, not the
        tick), so it costs one property write. */
     if (typeof window !== 'undefined') window.__btIsSolid = (px, py) => isSolid(px, py);
+    /* ═══ v2.3.2718: A PROP STOPS YOUR FEET, NOT JUST YOUR WAIST ═══
+       Owner: "really bad at detecting contact ... Jogging against a prop seems
+       to be some of the most problematic."
+
+       isSolid tests a box round S.player -- your body's CENTRE -- against the
+       footprints stamped into the walk grid.  Your boots are ~52 px below it
+       (playerGroundDy), so walking into a prop from BEHIND stopped your waist
+       at its back edge with your feet 52 px further on: straight through a
+       bench (34 px deep), out the front of it, and standing on the cobbles
+       south of it while the bench was drawn over your chest.  That is
+       screenshot two.
+
+       So a step is also refused if it would put your FEET inside a
+       footprint.  The waist test stays exactly as it was, and deliberately:
+       a prop's cover against attacks reads the same point
+       (worldProps.attackBlocked, and the worker's copy in server/src/props.js
+       -- "an endpoint inside a box never counts"), so letting the body centre
+       into a footprint from the SOUTH would open a hole in the cover of every
+       rock a player hugs.  The price is the gap that was always there when
+       you walk up to a building's FRONT: your waist still stops at its base.
+
+       Only a step that goes DEEPER into a footprint is refused -- the rule
+       _nodeBlock and _monBlock keep -- so a player a knockback or a spawn left
+       standing in one can always walk back out. */
+    var _boxDepth = function (x, y, b, h) {
+      return Math.min(x + h - b.x0, b.x1 - (x - h), y + h - b.y0, b.y1 - (y - h));
+    };
+    var propFeetBlocked = function (curX, curY, px, py, h) {
+      var bx = zoneBlockers(S.currentZone);
+      if (!bx || !bx.length) return false;
+      var fdy = playerGroundDy(S.currentZone, px, py);
+      var fy = py + fdy, cfy = curY + fdy;
+      for (var i = 0; i < bx.length; i++) {
+        var b = bx[i];
+        if (px + h <= b.x0 || px - h >= b.x1 || fy + h <= b.y0 || fy - h >= b.y1) continue;
+        var inNow = !(curX + h <= b.x0 || curX - h >= b.x1 || cfy + h <= b.y0 || cfy - h >= b.y1);
+        if (!inNow) return true;
+        if (_boxDepth(px, fy, b, h) > _boxDepth(curX, cfy, b, h)) return true;
+      }
+      return false;
+    };
+    if (typeof window !== 'undefined') window.__btPropFeetBlocked = (cx, cy, px, py) => propFeetBlocked(cx, cy, px, py, 10);
     var _gameLoop = function gameLoop() {
       frameRef.current = requestAnimationFrame(_gameLoop);
       try {
@@ -4588,8 +4639,10 @@ export var BroTown = function BroTown(_ref0) {
                  post the player through a cliff to reach something. */
               var _bhs = 12;
               var _moved = false;
-              if (!isSolid(_bnx - _bhs, S.player.y - _bhs) && !isSolid(_bnx + _bhs, S.player.y + _bhs)) { S.player.x = _bnx; _moved = true; }
-              if (!isSolid(S.player.x - _bhs, _bny - _bhs) && !isSolid(S.player.x + _bhs, _bny + _bhs)) { S.player.y = _bny; _moved = true; }
+              if (!isSolid(_bnx - _bhs, S.player.y - _bhs) && !isSolid(_bnx + _bhs, S.player.y + _bhs)
+                && !propFeetBlocked(S.player.x, S.player.y, _bnx, S.player.y, _bhs)) { S.player.x = _bnx; _moved = true; }   /* v2.3.2718: + the feet */
+              if (!isSolid(S.player.x - _bhs, _bny - _bhs) && !isSolid(S.player.x + _bhs, _bny + _bhs)
+                && !propFeetBlocked(S.player.x, S.player.y, S.player.x, _bny, _bhs)) { S.player.y = _bny; _moved = true; }
               /* Blocked on BOTH axes: a wall is between you and the target and
                  no amount of window will get you there.  Strike from here
                  rather than grinding against the geometry for the rest of the
@@ -4895,21 +4948,25 @@ export var BroTown = function BroTown(_ref0) {
         var _nodeBlock = function (curX, curY, px, py) {
           var ns = S.gatherNodes;
           if (!ns) return false;
+          /* v2.3.2718: the trunk against your FEET, not your waist -- the same
+             fault and the same fix as the NPC radius (isSolid): from behind a
+             tree your boots used to walk ~52 px past the trunk's base. */
+          var _tfdy = playerGroundDy(S.currentZone, px, py);
           for (var _ni = 0; _ni < ns.length; _ni++) {
             var _e = nodeBlockEllipse(S, ns[_ni]);
             if (!_e) continue;
             var _rx = _e.rx + hs, _ry = _e.ry + hs;
-            var _ex = (px - _e.x) / _rx, _ey = (py - _e.y) / _ry;
+            var _ex = (px - _e.x) / _rx, _ey = (py + _tfdy - _e.y) / _ry;
             var _d2 = _ex * _ex + _ey * _ey;
             if (_d2 < 1) {
-              var _cx = (curX - _e.x) / _rx, _cy = (curY - _e.y) / _ry;
+              var _cx = (curX - _e.x) / _rx, _cy = (curY + _tfdy - _e.y) / _ry;
               if (_d2 < _cx * _cx + _cy * _cy) return true;
             }
           }
           return false;
         };
-        if (!isSolid(nx - hs, P.y - hs) && !isSolid(nx + hs, P.y - hs) && !isSolid(nx - hs, P.y + hs) && !isSolid(nx + hs, P.y + hs) && !_monBlock(P.x, P.y, nx, P.y) && !_nodeBlock(P.x, P.y, nx, P.y)) P.x = nx;
-        if (!isSolid(P.x - hs, ny - hs) && !isSolid(P.x + hs, ny - hs) && !isSolid(P.x - hs, ny + hs) && !isSolid(P.x + hs, ny + hs) && !_monBlock(P.x, P.y, P.x, ny) && !_nodeBlock(P.x, P.y, P.x, ny)) P.y = ny;
+        if (!isSolid(nx - hs, P.y - hs) && !isSolid(nx + hs, P.y - hs) && !isSolid(nx - hs, P.y + hs) && !isSolid(nx + hs, P.y + hs) && !_monBlock(P.x, P.y, nx, P.y) && !_nodeBlock(P.x, P.y, nx, P.y) && !propFeetBlocked(P.x, P.y, nx, P.y, hs)) P.x = nx;   /* v2.3.2718: + the feet */
+        if (!isSolid(P.x - hs, ny - hs) && !isSolid(P.x + hs, ny - hs) && !isSolid(P.x - hs, ny + hs) && !isSolid(P.x + hs, ny + hs) && !_monBlock(P.x, P.y, P.x, ny) && !_nodeBlock(P.x, P.y, P.x, ny) && !propFeetBlocked(P.x, P.y, P.x, ny, hs)) P.y = ny;
         /* Apply ice slide */
         if (S._slideVx || S._slideVy) {
           /* v2.3.1769: _slideVx is a velocity in px per 60fps-frame (it is
@@ -4918,8 +4975,8 @@ export var BroTown = function BroTown(_ref0) {
           var _slideDt = S._dtScale || 1;
           var sx = P.x + (S._slideVx || 0) * _slideDt,
             sy = P.y + (S._slideVy || 0) * _slideDt;
-          if (!isSolid(sx - hs, P.y - hs) && !isSolid(sx + hs, P.y + hs) && !_monBlock(P.x, P.y, sx, P.y) && !_nodeBlock(P.x, P.y, sx, P.y)) P.x = sx;
-          if (!isSolid(P.x - hs, sy - hs) && !isSolid(P.x + hs, sy + hs) && !_monBlock(P.x, P.y, P.x, sy) && !_nodeBlock(P.x, P.y, P.x, sy)) P.y = sy;
+          if (!isSolid(sx - hs, P.y - hs) && !isSolid(sx + hs, P.y + hs) && !_monBlock(P.x, P.y, sx, P.y) && !_nodeBlock(P.x, P.y, sx, P.y) && !propFeetBlocked(P.x, P.y, sx, P.y, hs)) P.x = sx;
+          if (!isSolid(P.x - hs, sy - hs) && !isSolid(P.x + hs, sy + hs) && !_monBlock(P.x, P.y, P.x, sy) && !_nodeBlock(P.x, P.y, P.x, sy) && !propFeetBlocked(P.x, P.y, P.x, sy, hs)) P.y = sy;
         }
         /* v2.3.1110: PUSH-OUT -- _monBlock only stops the player moving
            deeper; a server-driven monster can still walk INTO the player

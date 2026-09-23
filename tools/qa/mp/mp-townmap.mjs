@@ -163,12 +163,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* NPC collision is a live radius, not the grid — so this one real piece of
        town collision survives the props being switched off, and is worth
        keeping honest. */
-    await put(P, npc.x, npc.y + 70);
+    /* v2.3.2718: measured at your FEET.  The radius is feet-to-feet now
+       (BroTown isSolid) -- S.player.y is your body's CENTRE, ~52 px above your
+       boots, and the old centre-to-feet test let a player walking up behind
+       him end up with their boots past his.  So "inside him" is a question
+       about where your feet are, and the start point moves down to keep the
+       same 70 px between the two pairs of feet. */
+    const drop = await P.page.evaluate(() => {
+      const g = window.__btPlayerGround && window.__btPlayerGround();
+      const S = window._gameState.current;
+      return g && Number.isFinite(g.y) ? g.y - S.player.y : 52;
+    });
+    await put(P, npc.x, npc.y + 70 - drop);
     await P.page.waitForTimeout(300);
     await hold(P, 'w', 2500);
     const atN = await pos(P);
-    rec.ok(`${npc.id} still blocks you — you cannot stand inside him`,
-      atN.y > npc.y + 8, { npc, stoppedAt: atN });
+    const feetN = atN.y + drop;
+    rec.ok(`${npc.id} still blocks you — you cannot stand inside him (feet to feet)`,
+      feetN > npc.y + 8, { npc, stoppedAt: atN, feetY: Math.round(feetN), drop: +drop.toFixed(1) });
   }
 
   /* ── 5. the buildings are off, and cannot come back half-done ──

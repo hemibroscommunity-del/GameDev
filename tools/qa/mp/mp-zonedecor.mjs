@@ -164,12 +164,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
     notBlocking.length === 0, { notBlocking });
 
   /* ── 3. THEY JOINED THE DEPTH SORT ── */
-  const py = await H.readState(P, (S) => S.player && S.player.y);
+  /* v2.3.2718: the rule is read the way the depth pass reads it -- the
+     player's FEET (__btPlayerGround; S.player.y is the body's centre, ~52 px
+     higher) against the prop's base WHERE THE PLAYER STANDS (__btPropGround,
+     read off the art beside its footprint).  Checking it against S.player.y
+     would assert the very fault v2.3.2718 fixed. */
+  const pg = await P.page.evaluate(() => (window.__btPlayerGround ? window.__btPlayerGround() : null));
+  const lines = await P.page.evaluate(([ids, x]) => ids.map((id) => {
+    const g = window.__btPropGround && window.__btPropGround(id, x);
+    return { id, line: g ? g.line : null };
+  }), [drawn.map((p) => p.id), pg ? pg.x : 0]);
+  const lineOf = Object.create(null);
+  for (const l of lines) lineOf[l.id] = l.line;
   const sides = drawn.filter((p) => byId[p.id] && String(p.id).indexOf('frost-') === 0)
-    .map((p) => ({ id: p.id, y: p.y, layer: p.layer, wantFront: p.y > py }));
-  const misSorted = sides.filter((s) => s.layer !== (s.wantFront ? 'gatherNodesFront' : 'entities'));
+    .map((p) => {
+      const line = Number.isFinite(lineOf[p.id]) ? lineOf[p.id] : p.y;
+      return { id: p.id, line: Math.round(line), layer: p.layer, wantFront: !!pg && line > pg.y };
+    });
+  /* a prop within 3 px of the feet sits inside the pass's 2 px hysteresis
+     band and may legitimately be on either side */
+  const misSorted = sides.filter((s) => Math.abs(s.line - (pg ? pg.y : 0)) > 3
+    && s.layer !== (s.wantFront ? 'gatherNodesFront' : 'entities'));
   rec.ok('every decor prop is on the correct side of the player for its ground line',
-    misSorted.length === 0, { playerY: Math.round(py), misSorted });
+    !!pg && misSorted.length === 0, { feetY: pg && Math.round(pg.y), misSorted });
 
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/zonedecor-frost.png` })
     .catch(() => { /* a screenshot is evidence, not an assertion */ });
