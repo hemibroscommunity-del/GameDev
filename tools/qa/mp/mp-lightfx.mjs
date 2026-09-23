@@ -236,11 +236,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S.lockedTarget = null;
     if (S.player) { S.player.vx = 0; S.player.vy = 0; }
     S.isSwinging = true; S.swingTimer = Date.now(); S._swingAng = 0;
-    setTimeout(() => {
-      const R = window._pixiRenderer;
-      const d = R && R.playerDisplayRaw && R.playerDisplayRaw();
-      res({ bodyHidden: !!(d && !d.visible), p: window.__btLightFx.probe() });
-    }, 120);
+    /* Sampled on every drawn frame, with the swing held at its middle, not
+       read once at a fixed 120 ms: on a loaded QA box (software WebGL,
+       several scenarios in a row) a frame can take longer than that, and a
+       single timed read then sees the stats of the frame BEFORE the swing --
+       which failed this check once with the idle figure's numbers.  First
+       frame showing the stand-in wins; two seconds without one is a fail. */
+    const t0 = performance.now();
+    let last = null;
+    const tick = () => {
+      const p = window.__btLightFx.probe();
+      last = p;
+      const self = p && p.shadows && p.shadows.self;
+      S.isSwinging = true; S.swingTimer = Date.now() - 100;
+      if ((self && self.standIns > 0) || performance.now() - t0 > 2000) {
+        const R = window._pixiRenderer;
+        const d = R && R.playerDisplayRaw && R.playerDisplayRaw();
+        res({ bodyHidden: !!(d && !d.visible), p: last });
+        return;
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
   }));
   console.log('    mid-swing: ' + JSON.stringify({ bodyHidden: swing.bodyHidden, self: swing.p.shadows.self }));
   rec.ok('mid-swing the shadow is still there, cast by the swing figure itself (not a held copy)',
