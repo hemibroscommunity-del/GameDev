@@ -141,9 +141,13 @@ const fireArrow = (P, o) => P.page.evaluate((o) => new Promise((resolve) => {
   const tick = () => {
     if (a._renderX != null) track.push([a._renderX, a._renderY, a._pathX, a._pathY, a.ang]);
     const alive = (S.arrows || []).indexOf(a) >= 0;
-    if (a.planting || !alive || ++n >= o.frames) {
-      const plant = a.planting ? [a._plantX, a._plantStartY] : null;
-      resolve({ ang, angEnd: a.ang, start, track, planting: !!a.planting, plant, alive,
+    /* v2.3.2730: an arrow that meets a prop is PLANTED in it at once (no spent
+       `planting` drop any more -- it stands in the rock), so either state ends
+       the flight; `planting` reports "it stopped and stuck", as it always has. */
+    const _stopped = a.planting || a.planted;
+    if (_stopped || !alive || ++n >= o.frames) {
+      const plant = _stopped ? [a._plantX, a._plantStartY != null ? a._plantStartY : a._plantY] : null;
+      resolve({ ang, angEnd: a.ang, start, track, planting: !!_stopped, plant, alive,
         plantOnBlocker: plant ? onFace(plant[0], plant[1]) : null,
         dtScale: +(S._dtScale || 1).toFixed(2) });
       return;
@@ -207,9 +211,10 @@ const shootLocal = (P, o) => P.page.evaluate((o) => new Promise((resolve) => {
       S.monsters = (S.monsters || []).filter((x) => x !== m);
     }
     const alive = (S.arrows || []).indexOf(a) >= 0;
-    if (a.planting || !alive || ++n >= o.frames) {
-      resolve({ hit: a.hitIds.has(m.id), planting: !!a.planting,
-        plant: a.planting ? [a._plantX, a._plantStartY] : null, alive, letIn, vanished,
+    const _stopped = a.planting || a.planted;   /* v2.3.2730: see fireArrow */
+    if (_stopped || !alive || ++n >= o.frames) {
+      resolve({ hit: a.hitIds.has(m.id), planting: !!_stopped,
+        plant: _stopped ? [a._plantX, a._plantStartY != null ? a._plantStartY : a._plantY] : null, alive, letIn, vanished,
         track, dtScale: +(S._dtScale || 1).toFixed(2) });
       return;
     }

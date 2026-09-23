@@ -19,7 +19,7 @@ import { capeStatusBus } from '../ui/mobile/capeStatusBus.js'; /* v2.3.2118 */
 import { storeToastBus } from '../ui/mobile/storeToastBus.js'; /* v2.3.2476 */
 import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
-import { toDisplayDamage, toDisplayHitDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale (§5.8 D1) */
+import { toDisplayDamage, toDisplayHitDamage, GS_OUTER_RADIUS, GS_FORWARD_ARC } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale (§5.8 D1); v2.3.2730: + a peer's swing reach */
 import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is a legacy number under prog3 */
 /* v2.3.1734: Element Burst paints the element's status onto the local
    monster objects (the server owns statuses and never syncs them) — see
@@ -29,11 +29,12 @@ import { STATUS_DEFS, applyStatus, STAFF_LIFE /* v2.3.2387 */ } from '@/data/gam
 import { rollMonsterShard } from '@/data/shards.js';
 import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2699: a snowball stops where the worker's own line meets a prop */
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armoured-hit SFX check */
+import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown away from the blow */
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
-import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */ } from '@/game/combatHelpers.js';
+import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, propSwingHit /* v2.3.2730 */ } from '@/game/combatHelpers.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield */
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes */
 import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
@@ -1558,6 +1559,23 @@ export function processGameEvent(type, payload, S, deps) {
                 if (typeof payload.ang === 'number') S.others[payload.id]._swingAng = payload.ang;
                 /* v2.3.1107: point the body the same way as the swing. */
                 _reconcileFacing(S.others[payload.id], payload.ang);
+                /* v2.3.2730: a peer's blade marks a prop on YOUR screen too, or
+                   the slash the owner asked for is something only the swinger
+                   ever sees.  Same helper and same fan as the local swing, from
+                   where the peer is drawn, at the base reach (their Range stat
+                   is not on the wire, and a mark a few px short of theirs is
+                   invisible).  Not for Shield Bash -- a shove leaves no cut.
+                   Purely visual; the angle is only ever used to draw. */
+                if (!payload.bash && typeof payload.ang === 'number' && isFinite(payload.ang)) {
+                  var _so = S.others[payload.id];
+                  var _sox = (typeof _so.renderX === 'number') ? _so.renderX : _so.x;
+                  var _soy = (typeof _so.renderY === 'number') ? _so.renderY : _so.y;
+                  if (typeof _sox === 'number' && typeof _soy === 'number') {
+                    propSwingHit(S, _sox, _soy, payload.ang,
+                      payload.special ? GS_OUTER_RADIUS * 1.5 : GS_OUTER_RADIUS,
+                      payload.special ? Math.PI : GS_FORWARD_ARC / 2);
+                  }
+                }
               }
               break;
             }
@@ -1597,7 +1615,11 @@ export function processGameEvent(type, payload, S, deps) {
                    Clamped, and absent on every other projectile -> the type's
                    own speed, exactly as before. */
                 speedPx: (Number(payload.speedPx) > 0 ? Math.min(20, Number(payload.speedPx)) : null),
-                ts: Date.now(), ownerId: payload.id
+                ts: Date.now(), ownerId: payload.id,
+                /* v2.3.2731: the SHOOTER's timestamp, which `ts` above is not (it
+                   is when this screen heard about it) -- the snap roll hashes
+                   this, so an arrow that breaks on their screen breaks on yours */
+                shotTs: Number.isFinite(Number(payload.ts)) ? Number(payload.ts) : null
               });
               /* v2.3.1011: a bow shot (non-staff) drives the remote bow-draw
                  stand-in (Phase 4 reads _bowShotAt/_bowShotAng). */
@@ -1791,6 +1813,14 @@ export function processGameEvent(type, payload, S, deps) {
                      that matters: you cannot tell it is coming at you. */
                   kind: payload.kind || 'slime',
                   ts: Date.now(),
+                  /* v2.3.2732: WHO threw it, so the ball is drawn in the
+                     thrower's own colour (data/monsterShots.js) -- a green
+                     slime's goo is green beside a blue one's -- and how long
+                     the whole flight is, which is how the renderer knows how far
+                     along its throw the ball is when a prop cut `life` short. */
+                  shooterArch: _pmM ? (_pmM.archetype || _pmM.type || null) : null,
+                  _fxLife0: _sbLife,
+                  _fxFrames: _sbFrames,
                 });
               }
               break;
@@ -2294,6 +2324,17 @@ export function processGameEvent(type, payload, S, deps) {
                 var rOther = S.others && S.others[payload.targetId];
                 if (rOther && !rOther._isDead) {
                   rOther._hitFlash = Date.now();
+                  /* v2.3.2712: a friend being hit bleeds too, the same way
+                     (see the local branch below).  Their max HP is the one
+                     their health bar reads (rpgMaxHp). */
+                  var _bdmg = typeof payload.dmgTaken === 'number' ? payload.dmgTaken : 0;
+                  if (_bdmg > 0 && !payload.blocked && !payload.dodged) {
+                    var _bSrc = (payload.monsterId && S.monsters) ? S.monsters.find(function (mm) { return mm.id === payload.monsterId; }) : null;
+                    var _bx = (typeof payload.attackerX === 'number') ? payload.attackerX : (_bSrc ? _bSrc.x : null);
+                    var _by = (typeof payload.attackerY === 'number') ? payload.attackerY : (_bSrc ? _bSrc.y : null);
+                    var _rx = rOther.renderX != null ? rOther.renderX : rOther.x, _ry = rOther.renderY != null ? rOther.renderY : rOther.y;
+                    queueBlood(S, _rx || 0, _ry || 0, _bx, _by, _bdmg / Math.max(1, rOther.rpgMaxHp || 100));
+                  }
                   pushDmgPopup(S, rOther.x || 0, (rOther.y || 0) - 20, '-' + toDisplayDamage(payload.dmg || 0), '#ff5e6c');   /* v2.3.2520: display scale */
                 }
                 break;
@@ -2577,6 +2618,15 @@ export function processGameEvent(type, payload, S, deps) {
                    don't shove. */
                 var _cpAng2 = Math.atan2(S.player.y - _atkY, S.player.x - _atkX);
                 S._camPunch = { dx: Math.cos(_cpAng2) * 6, dy: Math.sin(_cpAng2) * 6, ts: Date.now() };
+                /* ═══ v2.3.2712: BLOOD, THROWN AWAY FROM THE BLOW ═══
+                   Owner: "directionally aware blood effects ... tiny per every
+                   hit that the monster takes 10% hp or less, moderate between
+                   11% and 32%, and high if 33% or more."  The share is the
+                   hit's own damage over YOUR max HP -- how hard it landed on
+                   you -- and the direction is the same attacker position the
+                   camera kick above already points away from.  Same guard:
+                   blocks and dodges bleed nothing. */
+                queueBlood(S, S.player.x, S.player.y, _atkX, _atkY, dmgTaken2 / Math.max(1, R2.maxHp || 100));
               }
               /* v2.3.110: heart glyph alongside "-N" popup so the
                  loss-of-HP intent reads instantly. */
