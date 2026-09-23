@@ -86,20 +86,27 @@ const sampleChop = (P, pid, ms) => P.page.evaluate(async ({ pid, dur, faceBoxes 
     const tex = sp && sp.texture;
     if (!sp || !sp.visible) return { err: 'not drawn' };
     if (!tex || !tex.source || !tex.source.resource) return { err: 'no texture' };
-    const f = tex.frame;
-    if (Math.round(f.width) !== FW || Math.round(f.height) !== FH) return { err: `frame ${f.width}x${f.height}` };
+    /* The frames are cropped to their art (v2.3.2775, _sliceStandIn): `frame`
+       is the crop inside the packed sheet, `orig` the whole 240x220 frame and
+       `trim` where the crop sits in it.  So the swing frame's index comes from
+       the sprite (_chopK), and the whole frame is rebuilt from the crop. */
+    const f = tex.frame, orig = tex.orig || f, trim = tex.trim || null;
+    if (Math.round(orig.width) !== FW || Math.round(orig.height) !== FH) return { err: `frame ${orig.width}x${orig.height}` };
     if (!sheet) return { err: 'the shipped strip did not load' };
-    const k = Math.round(f.x / FW);
-    const draw = (res, sx, sy) => {
+    const k = sp._chopK;
+    if (typeof k !== 'number' || k < 0 || k > 11) return { err: 'no swing frame index' };
+    const draw = (res, sx, sy, sw, sh, dx, dy) => {
       const c = document.createElement('canvas'); c.width = FW; c.height = FH;
       const g = c.getContext('2d', { willReadFrequently: true });
       g.imageSmoothingEnabled = false;
-      g.drawImage(res, sx, sy, FW, FH, 0, 0, FW, FH);
+      g.drawImage(res, sx, sy, sw, sh, dx, dy, sw, sh);
       return g.getImageData(0, 0, FW, FH).data;
     };
     let got;
-    try { got = draw(tex.source.resource, f.x, f.y); } catch (e) { return { err: 'unreadable: ' + e.message }; }
-    const raw = draw(sheet, (12 + k) * FW, 0);
+    try {
+      got = draw(tex.source.resource, f.x, f.y, f.width, f.height, trim ? trim.x : 0, trim ? trim.y : 0);
+    } catch (e) { return { err: 'unreadable: ' + e.message }; }
+    const raw = draw(sheet, (12 + k) * FW, 0, FW, FH, 0, 0);
     const fb = faceBoxes[k];
     const fcx = (fb[0] + fb[1]) / 2, fhw = (fb[1] - fb[0]) / 2;
     let ink = 0, pink = 0, axeRaw = 0, axeKept = 0, sameSkin = 0, faceInk = 0, sx = 0;

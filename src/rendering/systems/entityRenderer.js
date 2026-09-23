@@ -3503,8 +3503,10 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
      smaller than the body's 256px frame.  Scale up by 256/frame so the overlay
      still lands exactly on the body (both anchored 0.5/0.5); reads the size off
      the texture so it tracks whatever downscale playerSkins uses. */
-  const _fw = (t.frame && t.frame.width) || 256;
-  const _fh = (t.frame && t.frame.height) || 256;
+  /* v2.3.2775: ORIG -- the head sheets are cropped to the head now
+     (playerSkins._buildPickupHeadSheet), so `frame` is the crop, not the frame. */
+  const _fw = (t.orig && t.orig.width) || (t.frame && t.frame.width) || 256;
+  const _fh = (t.orig && t.orig.height) || (t.frame && t.frame.height) || 256;
   /* v2.3.1120: head sheet is HEAD_DS-downscaled; the 256/_fw ratio brings it up
      to a 256-space figure, then /DISPLAY_DS undoes the DISPLAY_DS factor sb.scale
      now carries (so head matches the body whatever the two downscales are). */

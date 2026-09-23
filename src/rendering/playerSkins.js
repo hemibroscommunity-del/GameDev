@@ -22,6 +22,7 @@ import { Rectangle, Texture } from 'pixi.js';
 import { getFrame, SPRITE_VERSION, stripDetachedComponents } from './playerSprites.js';
 import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
+import { packTrimmed } from './gearSheets.js';   /* v2.3.2775: the head sheets are cropped */
 import { recolorEnabled } from './traits/recolorOptions.js';
 import EYE_MASK from './eyeMask.json';                      /* v2.3.1928 */
 import EYE_BLANK from './eyeBlankMask.json';                /* v2.3.2643 */
@@ -1585,6 +1586,13 @@ function _pickupHeadCap() {
     break;
   }
 }
+/* v2.3.2775: QA probe -- what cropping the head sheets saved, per sheet key */
+const _headTrimStats = Object.create(null);
+const _headTrimFrames = Object.create(null);
+if (typeof window !== 'undefined') {
+  window.__btHeadTrim = () => ({ ..._headTrimStats });
+  window.__btHeadFrames = (key) => _headTrimFrames[key] || null;
+}
 function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, attempt = 0) {
   _pickupHeadSheets[key] = 'loading';
   /* v2.3.1381: bounded retry (v2.3.1305 pattern) — a flaked head-sheet
@@ -1606,14 +1614,42 @@ function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, 
     const ctx = cv.getContext('2d');
     ctx.imageSmoothingEnabled = true;   // bilinear downscale -> clean small head
     ctx.drawImage(full, 0, 0, cv.width, cv.height);
-    const src = Texture.from(cv).source;
-    src.scaleMode = 'linear';
-    src.autoGenerateMipmaps = false;    // single render scale -> mipmaps are wasted VRAM
     const fw = Math.max(1, Math.round(FRAME_W / HEAD_DS)), fh = Math.max(1, Math.round(FRAME_H / HEAD_DS));
     const frames = Math.max(1, Math.floor(cv.width / fw));
+    /* ═══ v2.3.2775: CROPPED ═══
+       Owner: "Is there any other memory savings that can be cropped?" -- then
+       "Do all of it".  These are whole-body frames with only the HEAD drawn:
+       measured 3% of their texels painted, 8.7 MB for the local combo's ten
+       sheets and the same again for every armoured peer combo cached.  Each
+       frame is cropped to the head (gearSheets.packTrimmed) and the Texture
+       keeps the whole frame as `orig`, so _placePickupHead -- which scales by
+       the frame's size -- reads `orig` and lands the head exactly where it
+       did (TRAPS §106). */
+    let verify = null;   /* QA only: see effectsRenderer _sliceStandIn's __btTrimVerify */
+    try {
+      if (typeof window !== 'undefined' && window.__btTrimVerify) {
+        verify = document.createElement('canvas'); verify.width = cv.width; verify.height = cv.height;
+        verify.getContext('2d').drawImage(cv, 0, 0);
+      }
+    } catch (e) { verify = null; }
+    const packed = packTrimmed(cv, fw, fh, frames);
+    const src = Texture.from(packed ? packed.canvas : cv).source;
+    src.scaleMode = 'linear';
+    src.autoGenerateMipmaps = false;    // single render scale -> mipmaps are wasted VRAM
     const out = [];
     for (let i = 0; i < frames; i++) {
-      out.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) }));
+      if (packed) {
+        const c = packed.cells[i];
+        out.push(new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h),
+          orig: new Rectangle(0, 0, fw, fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) }));
+      } else {
+        out.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) }));
+      }
+    }
+    if (packed) {
+      _headTrimStats[key] = { fullBytes: cv.width * cv.height * 4, packedBytes: packed.canvas.width * packed.canvas.height * 4 };
+      if (verify) _headTrimFrames[key] = { frames: out, full: verify, fw, fh };
+      cv.width = 0; cv.height = 0;
     }
     _pickupHeadSheets[key] = out;
     _pickupHeadCap();
