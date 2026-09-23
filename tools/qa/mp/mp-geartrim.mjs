@@ -1,4 +1,4 @@
-/* Cropped gear frames (v2.3.2733).
+/* Cropped gear frames (v2.3.2746).
  *
  * Owner: "would it be an improvement to the memory constraints that currently
  * exist equipping armor while running on mobile?" -- then "yes, build the

@@ -68,7 +68,7 @@ function loadImg(url) { return loadWebpOrPng(url); }
    flip window.__spriteLog = true to see them. */
 const _GEAR_RETRY_MS = [2000, 6000];
 
-/* ═══ v2.3.2733: CROPPED GEAR FRAMES ═══
+/* ═══ v2.3.2746: CROPPED GEAR FRAMES ═══
  *
  * Owner: "would it be an improvement to the memory constraints that currently
  * exist equipping armor while running on mobile?"
@@ -186,7 +186,7 @@ function packTrimmed(img, fw, fh) {
 }
 
 /** Draw a gear frame onto a 2D canvas as if it were the WHOLE frame, scaled
- *  to (dw x dh) at (dx, dy).  Handles cropped frames (v2.3.2733) and plain
+ *  to (dw x dh) at (dx, dy).  Handles cropped frames (v2.3.2746) and plain
  *  ones alike: for an uncropped texture this is exactly
  *  `drawImage(res, f.x, f.y, f.w, f.h, dx, dy, dw, dh)`.  Any code that copies
  *  gear pixels onto a canvas must use this rather than reading `tex.frame`. */
@@ -279,7 +279,7 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
        shirt is nothing.  composeShirt does tint -> pattern -> print in that
        order and the draw site uses no tint on the result. */
     if (stampArt) img = composeShirt(img, fh, stampArt);
-    /* v2.3.2733: crop the empty space off every frame before upload -- see
+    /* v2.3.2746: crop the empty space off every frame before upload -- see
        packTrimmed below.  Falls through to the plain strip for the sheets it
        does not cover, or if the pixels cannot be read. */
     const packed = TRIM_SLOTS.has(slot) && TRIM_POSES.has(pose) ? packTrimmed(img, fw, fh) : null;

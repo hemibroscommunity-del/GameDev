@@ -63,7 +63,7 @@ const figureCanvas = (P) => P.page.evaluate(() => {
     const res = t.source && (t.source.resource || t.source._resource);
     if (!res) return false;
     const f = t.frame || { x: 0, y: 0, width: t.width, height: t.height };
-    /* v2.3.2733: gear frames are CROPPED (gearSheets packTrimmed) -- `frame` is
+    /* v2.3.2746: gear frames are CROPPED (gearSheets packTrimmed) -- `frame` is
        only the crop, `orig` the whole frame and `trim` where the crop sits in
        it.  Place the crop in the box by those, or it stretches over it. */
     const o = t.orig || f, tr = t.trim;
@@ -276,7 +276,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const res = t.source && (t.source.resource || t.source._resource);
       if (!res) return null;
       const f = t.frame || { x: 0, y: 0, width: t.width, height: t.height };
-      /* v2.3.2733: gear frames are CROPPED (gearSheets packTrimmed) -- `frame` is
+      /* v2.3.2746: gear frames are CROPPED (gearSheets packTrimmed) -- `frame` is
          only the crop, `orig` the whole frame and `trim` where the crop sits in
          it.  Place the crop in the box by those, or it stretches over it. */
       const o = t.orig || f, tr = t.trim;

@@ -42,7 +42,7 @@ async function ready(fn, tries = 200) {
 function drawTex(ctx, tex, dx, dy, scale = 1, flip = false) {
   const src = tex && tex.source && tex.source.resource;
   if (!src) return;
-  /* v2.3.2733: drawGearFrame -- gear frames may be cropped (gearSheets
+  /* v2.3.2746: drawGearFrame -- gear frames may be cropped (gearSheets
      packTrimmed); for any other texture it is the same drawImage as before. */
   if (!flip) {
     drawGearFrame(ctx, tex, dx, dy, 256 * scale, 256 * scale);
