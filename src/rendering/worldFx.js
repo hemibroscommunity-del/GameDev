@@ -77,7 +77,8 @@ const airOf = (z) => (z && Object.prototype.hasOwnProperty.call(ZONE_AIR, z) ? Z
    sprite's real drawn rectangle, flips with a flipped prop, and survives a
    re-scaled prop.  `r` is the reach as a fraction of the prop's height;
    `k` is the kind: a flame flickers, a lamp barely, a window not at all. */
-const PROP_LIGHTS = Object.create(null);
+/* v2.3.2751: exported -- worldLife flickers the same flames and lamps by day. */
+export const PROP_LIGHTS = Object.create(null);
 PROP_LIGHTS['lamp-plaza-w'] = [{ u: 0.48, v: 0.24, k: 'lamp', r: 0.55 }];
 PROP_LIGHTS['mayor-house'] = [
   { u: 0.583, v: 0.668, k: 'flame', r: 0.13 }, { u: 0.70, v: 0.668, k: 'flame', r: 0.13 },

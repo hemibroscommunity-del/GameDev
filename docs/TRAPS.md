@@ -4414,3 +4414,30 @@ to its aim point, but the ball's x/y in S.slimeProjectiles stays the GROUND
 point: every hit test, prop stop (v2.3.2699) and player-contact check reads
 that, unchanged. Its shadow is drawn there -- which is where the worker will
 settle the hit.
+
+## 109. A piece cut out of a sprite must OVERLAP the place it was cut (v2.3.2752)
+
+**Tempting:** to make a building's hanging sign swing, erase the sign from the
+building's art and draw it back as its own sprite in exactly the rectangle it
+came from. At rest the two line up to the pixel, so the join cannot show.
+
+**Wrong, and only sometimes.** The renderer is created with `roundPixels`
+(every sprite's quad snapped to whole screen pixels) and it rounds EACH sprite
+on its own. The building and the piece land on fractional screen positions
+that round in different directions as the camera glides, so a one-pixel line
+of whatever is behind -- ground, foliage -- opens along the cut and flickers.
+It was a dark hairline across the top of the auction house's banner in some
+frames and not others, which is the shape that survives a single screenshot
+(§61) and a pixel test that reads one frame.
+
+**The rule:** along the edge a piece HANGS from, the piece also takes the
+building's own pixels for a couple of texels back across the cut, drawn twice
+at rest (tools/cut_prop_parts.py, OVERLAP).  At the hang point a swing moves
+almost nothing, so the doubled pixels never separate visibly. A cut that only
+PARTS a piece from something it touches (the forge sign from its brace, a
+flag's corner from a roof) is marked `'sep'` and gets no overlap -- there the
+piece swings away, and a copied sliver of the neighbour would swing with it.
+
+**And the art tool is the source.** The cut pieces and the `-still` buildings
+are generated from the untouched originals; a repaint is a re-run of the
+tool, never a hand edit of either output.

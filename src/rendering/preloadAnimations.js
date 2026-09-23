@@ -53,6 +53,7 @@ import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-
 import { preloadAuctionInterior } from './auctionInteriorPreload.js'; /* v2.3.2627: the auction house's room + clerk */
 import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
 import { preloadMonsterShots } from './monsterShotFx.js'; /* v2.3.2732: the monsters' goo and fire, minted in code */
+import { preloadWorldLife } from './worldLife.js';        /* v2.3.2751: the buildings' swinging and waving pieces */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
    screen"): ZONE-SPECIFIC textures moved OFF the blocking pre-game gate —
@@ -273,6 +274,15 @@ export async function preloadWorldAnimations() {
        tint), and a slime can throw in more zones than not.  The mint yields
        between slices, so the loading bar keeps moving while it runs. */
     monsterShots: preloadMonsterShots(),
+    /* ═══ v2.3.2751: the world's small motions ═══
+       The town buildings' cut-out pieces (the hanging signs and crates on one
+       sheet, the flags on another -- tools/cut_prop_parts.py) and the smoke,
+       spark, glint and water-streak textures minted in code.  GLOBAL: the
+       pieces belong to town, a resident hub, and the buildings are drawn
+       WITHOUT them now (the *-still art), so a building would stand there
+       missing its sign until this had loaded -- exactly the first-sight load
+       the law forbids.  ~1.1MB decoded. */
+    worldLife: preloadWorldLife(),
     /* v2.3.2279: the bow special's blast.  GLOBAL rather than per-zone -- a
        bow goes everywhere its owner does, so there is no zone to scope it to,
        and the ZONE-ASSET EXCEPTION only covers art a single zone uses.  2MB
