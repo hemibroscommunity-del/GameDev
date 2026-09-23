@@ -3942,7 +3942,10 @@ export class EffectsRenderer {
          (v2.3.1426) — both are things it is actually in.  A falling arrow
          keeps its head until it lands, which is what the owner is describing
          and also just what an arrow does. */
-      const _headless = a.planted || a.stuckIn;
+      /* v2.3.2717: ...and a bow special is not in the body until it has flown
+         the rest of the way in (projectiles.js keeps `_landFx` until it lands),
+         so it keeps its head for those few frames, by the same rule. */
+      const _headless = a.planted || (a.stuckIn && !a._landFx);
       const _angB = a.ang + (_stuckPose ? 0 : bend);
 
       /* Motion-blur trail — push the current position into a small

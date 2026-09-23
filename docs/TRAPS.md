@@ -4377,3 +4377,28 @@ recovery overlay. It looks like a rendering bug in the feature under test.
 page -- `S.__wdEverLit = true; S.__wdNext = 1e15; S.__wdDark = 0;` -- and use
 `page.clock.fastForward(ms)` (not `runFor`) to skip long idle stretches, since
 `runFor` renders every intermediate frame in software GL (minutes per clip).
+
+## 107. The hit circle is not the body: draw a hit where the shot lands (v2.3.2717)
+
+A projectile's hit test (`monsterProjRadius`, projectiles.js) is a capsule
+against a CIRCLE round the body -- slime 25, snowman 32, mummy 40, skeleton 50,
+plus the shot's own half-thickness -- deliberately generous, so a shot the
+player sees touch the sprite counts. Anything drawn at the shot's position on
+the frame that test fires is therefore drawn on that ring, not on the body: a
+staff bolt at a slime registered with its orb ~36-49 px out and burst in the
+air in front of a 27 px blob, on every monster alike. The owner's word for it
+was "the same invisible edge".
+
+**The plausible-but-wrong fix** is to shrink the circle so shots "go in
+deeper". That changes the GAME: more misses on moving targets, the damage
+claim sent frames later, and every hitreal / hitmatrix expectation moves.
+
+**The rule:** keep the hit where it registers, and move the PICTURE. Since
+v2.3.2717 the hit frame still sends and applies everything, then keeps the
+shot alive (`a._land`) to fly on at its own speed to a point in the body's
+core (`LAND_CORE` round `monsterBodyOffsetY`), and the flash, recoil, crash,
+material burst, sound and stuck shaft go off there (`_projImpactFx`). Two
+cases to keep: an arrow's 24 px step often carries it to or past its point on
+the frame it hits -- land it ON the point, not at the overshot tip (that pinned
+shafts on the far side) -- and a point-blank bolt already past its point
+bursts where the orb IS (v2.3.2505). **Receipt:** mp-shotland.

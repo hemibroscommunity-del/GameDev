@@ -686,7 +686,10 @@ export class HitMaterialFx {
        about one run in three.  So when the dice came up short, turn one or two
        of the burst's pieces round: same speed and lift, aimed back past the
        contact point.  Bursts that already threw enough are left exactly as
-       drawn. */
+       drawn.  From TWO pieces up: a fire goblin's bolt sheds only one or two
+       drops of blood (the burn seals), and a fat drop that splats throws a
+       droplet on from where it landed -- two drops forward made three pieces
+       all on the far side (mp-hitmat caught one: all three 20-38 px out). */
     if (P.w === 'bolt' || P.w === 'splash') {
       const cd = Math.cos(dir), sd = Math.sin(dir);
       const mine = [];
@@ -697,7 +700,7 @@ export class HitMaterialFx {
         if (sp > 0 && (gx * cd + gyv * sd) < -0.35 * sp) back++;
         else mine.push(p);
       }
-      const need = (mine.length + back) >= 3 ? Math.max(1, Math.floor((mine.length + back) * 0.12)) : 0;
+      const need = (mine.length + back) >= 2 ? Math.max(1, Math.floor((mine.length + back) * 0.12)) : 0;
       for (let k = 0; back < need && k < mine.length; k++, back++) {
         const p = mine[mine.length - 1 - k];
         const sp = Math.hypot(p.vx, p.vy / DEPTH);
@@ -953,8 +956,11 @@ export class HitMaterialFx {
       }
       out.push({
         /* v2.3.2717: + tint, the colour the burst was handed (a blue slime's
-           goo must be the blue the slime is drawn in -- mp-hitmat) */
+           goo must be the blue the slime is drawn in -- mp-hitmat); + atX/atY,
+           where on screen the blow landed (ey is its GROUND line and ez its
+           height above it) -- inside the body now (mp-shotland) */
         id: b.id, fx: b.fx, weapon: b.weapon, tint: b.tint, age, ms: BURST_MS, sheet: false,
+        atX: +b.ex.toFixed(1), atY: +(b.ey - b.ez).toFixed(1),
         parts, landed, dust, flakes, sparks, embers, glints, bubbles, front, back,
         meanDx: parts ? +(sx / parts).toFixed(1) : null, meanDy: parts ? +(sy / parts).toFixed(1) : null,
         minDx: parts ? +minDx.toFixed(1) : null, maxDx: parts ? +maxDx.toFixed(1) : null, dir: +b.ang.toFixed(3),
