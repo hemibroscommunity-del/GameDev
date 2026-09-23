@@ -269,26 +269,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.skip('your reach shrinks with you', 'no monster in the north half to stand beside', target);
   } else {
     await H.hopTo(P, target.x + 60, target.y);
-    await P.page.evaluate((id) => {
+    /* The ring draws only with the SWORD active and a live target (the lock
+       wins; effectsRenderer), and targeting may re-pick between frames -- so
+       the slot, the lock and the curve are set and the ring read inside one
+       evaluate, a few animation frames apart.  The first cut set the lock
+       once and read it later, and skipped about one run in three. */
+    const ringAt = (on) => P.page.evaluate(async ({ v, id }) => {
       const S = window._gameState.current;
-      const m = Object.values(S.monsters || {}).find((q) => q && q.id === id);
-      if (m) S.lockedTarget = { type: 'monster', ref: m };
-    }, target.id);
-    const ringAt = async (on) => {
-      await P.page.evaluate((v) => { window.__btDepth = v; }, on);
-      await P.page.waitForTimeout(250);
-      return P.page.evaluate(() => {
-        const S = window._gameState.current;
-        const r = window.__btReachRing ? window.__btReachRing() : null;
-        return r ? { outer: r.outer, hitR: r.hitR, r: r.r, py: S.player.y,
-          k: window.__btZoneDepth ? window.__btZoneDepth('sky', S.player.y) : null } : null;
-      });
-    };
+      window.__btDepth = v;
+      const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+      let r = null;
+      for (let i = 0; i < 12 && !r; i++) {
+        const m = Object.values(S.monsters || {}).find((q) => q && q.id === id && q.alive !== false);
+        if (!m) return null;
+        if (S.rpg) S.rpg.activeSlot = 'melee';
+        S.lockedTarget = { type: 'monster', ref: m };
+        await frame(); await frame();
+        const got = window.__btReachRing ? window.__btReachRing() : null;
+        if (got && got.id === id) r = got;
+      }
+      return r ? { outer: r.outer, hitR: r.hitR, r: r.r, py: S.player.y,
+        k: window.__btZoneDepth ? window.__btZoneDepth('sky', S.player.y) : null } : null;
+    }, { v: on, id: target.id });
     const flatR = await ringAt(false);
     const deepR = await ringAt(true);
-    if (!flatR || !deepR) {
-      rec.skip('your reach shrinks with you', 'the reach ring did not draw (no lock/aggro this frame)', { flatR, deepR });
-    } else {
+    rec.ok('your reach: the reach ring drew beside the locked far monster, both ways (guard)',
+      !!flatR && !!deepR, { flatR, deepR });
+    if (flatR && deepR) {
       rec.ok('your reach: beside a far monster, your sword\'s reach is the flat reach x the curve at your feet',
         Math.abs(deepR.outer / flatR.outer - deepR.k) < 0.02, { flat: flatR.outer, deep: deepR.outer, k: deepR.k });
       rec.ok('your reach: ...and the ring is still reach + the (smaller) body -- what is drawn is what hits',

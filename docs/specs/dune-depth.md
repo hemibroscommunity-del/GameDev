@@ -92,7 +92,7 @@ The owner said: "Yes fix my reach." Every one of your own reaches now multiplies
   - the south edge behaving like a flat zone;
   - the caps advertisement and the kill switch;
   - your whirlwind's circle and gather ring scaling on the north edge but not the south (v2.3.2775).
-- **Browser:** `node tools/qa/mp/run.mjs dunedepth` (15 checks) covers:
+- **Browser:** `node tools/qa/mp/run.mjs dunedepth` (16 checks) covers:
   - with the curve forced off, nothing changes;
   - the curve drawing with no override because the worker advertises `caps.zoneDepth`;
   - your drawn scale at the south and north edges;
