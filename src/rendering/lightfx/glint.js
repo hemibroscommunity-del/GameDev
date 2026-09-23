@@ -29,6 +29,35 @@
  * starts at its own offset (a hash of who and which slot), so a room of
  * players does not flash in unison -- which is also what keeps the number of
  * filtered sprites in any one frame small.
+ *
+ * ═══ v2.3.2736: A SOFT SHINE THAT STAYS (PREVIEW, OFF UNLESS ASKED FOR) ═══
+ *
+ * Owner: "aside from the glint can you see what adding a permanent soft shine
+ * to armor and sword (and other metals) would look like?"
+ *
+ * The same filter, with a second term that never switches off: the art's own
+ * highlights lifted toward the metal's shine colour, a little more on the side
+ * of the piece that faces the zone's sun.  It fixes the thing the tint cannot
+ * (materialTints.js, v2.3.1761: "a tint MULTIPLIES, so the ceiling is the art
+ * itself"): a copper plate's brightest pixel is copper-coloured, never bright.
+ * The shader divides the tint back out to find where the steel art was bright,
+ * then adds light there, so copper gets real highlights and stays copper.
+ *
+ *     ?sheen=1   turn it on on this device (remembered)
+ *     ?sheen=0   off again
+ *
+ * THE COST IS WHY IT IS A PREVIEW.  A filter is an extra render pass for the
+ * sprite it is on; the glint pays it for half a second every few seconds, the
+ * sheen pays it every frame, for every metal piece on screen -- three for a
+ * player in plate, greaves and a sword, so a busy plaza of armoured players is
+ * dozens of passes a frame.  If the look is wanted, the shipping version
+ * should not be a filter: bake one highlight mask per gear sheet (shared by
+ * all three metals) and draw it as an additive sprite over the piece, which
+ * batches like any other sprite.
+ *
+ * It also reaches the one piece the glint never did: jogging in a full set of
+ * one metal, the armour is drawn as a single knight figure ON THE BODY sprite
+ * (entityRenderer _fullsetFrame), and the chest and leg layers are empty.
  */
 import { Filter } from 'pixi.js';
 import { weaponMaterial } from '../traits/materialTints.js';
@@ -46,6 +75,9 @@ uniform highp vec4 uOutputFrame;
 uniform float uProgress;
 uniform float uStrength;
 uniform vec3 uColor;
+uniform float uSheen;
+uniform vec2 uSun;
+uniform vec3 uTint;
 
 void main()
 {
@@ -56,7 +88,17 @@ void main()
     float band = exp(-(d * d) / 0.006);
     float lum = c.a > 0.0 ? dot(c.rgb / c.a, vec3(0.299, 0.587, 0.114)) : 0.0;
     float k = band * uStrength * (0.3 + 0.7 * lum);
-    vec3 rgb = min(c.rgb + uColor * (k * c.a), vec3(c.a));
+    /* v2.3.2736: the sheen.  How bright the ART was here, before the metal's
+       tint multiplied it down: the drawn colour divided by the tint. */
+    vec3 art = c.a > 0.0 ? clamp(c.rgb / c.a / max(uTint, vec3(0.05)), 0.0, 1.0) : vec3(0.0);
+    /* only the art's real highlights: a broad mask lifted the midtones too,
+       and the metal read as lighter rather than shinier */
+    float hi = smoothstep(0.55, 0.96, dot(art, vec3(0.299, 0.587, 0.114)));
+    /* the sprite's frame is mostly empty margin around the figure, so the
+       gradient is steep enough to swing across the metal itself */
+    float side = clamp(0.5 + dot(p - 0.5, uSun) * 3.0, 0.0, 1.0);
+    float s = uSheen * hi * (0.35 + 0.65 * side);
+    vec3 rgb = min(c.rgb + uColor * ((k + s) * c.a), vec3(c.a));
     finalColor = vec4(rgb, c.a);
 }
 `;
@@ -91,6 +133,9 @@ function makeGlintFilter() {
         uProgress: { value: 0, type: 'f32' },
         uStrength: { value: 0.6, type: 'f32' },
         uColor: { value: new Float32Array([1, 1, 1]), type: 'vec3<f32>' },
+        uSheen: { value: 0, type: 'f32' },                                   /* v2.3.2736 */
+        uSun: { value: new Float32Array([0, 0]), type: 'vec2<f32>' },
+        uTint: { value: new Float32Array([1, 1, 1]), type: 'vec3<f32>' },
       },
     },
     /* at the SCREEN's resolution: the default (1 texel per CSS px) would
@@ -111,12 +156,38 @@ export const METAL_SHINE = Object.assign(Object.create(null), {
    high strength widens the part of the band that reaches white rather than
    blowing the whole blade out.  First cut had normal at 0.55 and in the
    pictures a normal copper blade's glint could not be seen at phone size. */
+/* v2.3.2736: `sheen` is the permanent shine's strength at its brightest
+   (the art's highlights, on the sun side) -- it climbs with the grade too, so
+   a better piece is shinier all the time, not only more often. */
 export const GRADE_SHINE = Object.assign(Object.create(null), {
-  normal: { period: 6500, dur: 560, strength: 0.85 },
-  rare: { period: 4600, dur: 560, strength: 1.0 },
-  elite: { period: 3300, dur: 600, strength: 1.15 },
-  godly: { period: 1900, dur: 680, strength: 1.4, color: [1.0, 0.92, 0.6] },
+  normal: { period: 6500, dur: 560, strength: 0.85, sheen: 0.55 },
+  rare: { period: 4600, dur: 560, strength: 1.0, sheen: 0.62 },
+  elite: { period: 3300, dur: 600, strength: 1.15, sheen: 0.70 },
+  godly: { period: 1900, dur: 680, strength: 1.4, sheen: 0.80, color: [1.0, 0.92, 0.6] },
 });
+
+/* ═══ v2.3.2736: THE SHEEN'S SWITCH -- OFF UNLESS THIS DEVICE ASKED ═══ */
+const SHEEN_KEY = 'bt-sheen';
+let _sheen = null;
+export function sheenOn() {
+  if (_sheen !== null) return _sheen;
+  let v = null;
+  try {
+    const m = /[?&]sheen=(1|0|on|off)\b/.exec(window.location.search);
+    if (m) {
+      v = (m[1] === '1' || m[1] === 'on') ? '1' : '0';
+      localStorage.setItem(SHEEN_KEY, v);
+    } else {
+      v = localStorage.getItem(SHEEN_KEY);
+    }
+  } catch (e) { v = null; }
+  _sheen = v === '1';
+  return _sheen;
+}
+export function setSheen(on) {
+  _sheen = !!on;
+  try { localStorage.setItem(SHEEN_KEY, _sheen ? '1' : '0'); } catch (e) { /* the switch still flips for this page */ }
+}
 
 const METAL_ART = { steelplate: 1, steelgreaves: 1 };
 /** The metal an armour item is, or null if it is not metal. */
@@ -145,8 +216,11 @@ export class GlintSystem {
   constructor() {
     this._on = new Map();        /* sprite -> filter currently attached */
     this._pool = [];
-    this.force = null;           /* QA/pictures: a fixed sweep progress, 0-1 */
-    this.stats = { targets: 0, lit: 0 };
+    this.force = null;           /* QA/pictures: a fixed sweep progress, 0-1; -1 = no sweep anywhere (v2.3.2736) */
+    this.stats = { targets: 0, lit: 0, sheen: 0 };
+    this._lastTargets = null;
+    this.sheenScale = null;      /* QA/pictures: multiply the sheen, to show a softer or stronger cut */
+    this._bodies = new Set();    /* this frame's full-set body sprites, for the probe */
   }
 
   _filter() { return this._pool.pop() || makeGlintFilter(); }
@@ -161,7 +235,9 @@ export class GlintSystem {
   clear() {
     for (const [spr, f] of this._on) this._release(spr, f);
     this._on.clear();
-    this.stats.targets = 0; this.stats.lit = 0;
+    this.stats.targets = 0; this.stats.lit = 0; this.stats.sheen = 0;
+    this._lastTargets = null;
+    this._bodies.clear();
   }
 
   /* One figure-slot: which sprites show it, what metal, what grade. */
@@ -173,6 +249,7 @@ export class GlintSystem {
 
   _targets(S, er, fx, zone) {
     const out = [];
+    this._bodies.clear();
     const pd = er && er.playerDisplay;
     const rpg = S && S.rpg;
     if (pd && !pd.destroyed && rpg) {
@@ -189,6 +266,11 @@ export class GlintSystem {
       if (cm) {
         const s = [];
         if (pd.visible) pushVisible(s, pd._gearChest);
+        /* v2.3.2736: jogging in a full set, the armour IS the body sprite */
+        if (pd.visible && pd._fullsetOn && pd._spriteBody && pd._spriteBody.visible) {
+          pushVisible(s, pd._spriteBody);
+          this._bodies.add(pd._spriteBody);
+        }
         if (fx) for (const k of SELF_CHEST_STAND_INS) pushVisible(s, fx[k]);
         this._slot(out, 'self:c', s, cm, rpg.armor && rpg.armor.quality);
       }
@@ -217,6 +299,7 @@ export class GlintSystem {
         if (cm) {
           const s = [];
           if (d.visible) pushVisible(s, d._gearChest);
+          if (d.visible && d._fullsetOn) pushVisible(s, d._spriteBody);   /* v2.3.2736 */
           if (sw) pushVisible(s, sw.chest);
           this._slot(out, id + ':c', s, cm, 'normal');
         }
@@ -232,20 +315,25 @@ export class GlintSystem {
     return out;
   }
 
-  update(S, now, er, fx, zone) {
+  /* `sheen` (v2.3.2736): null when the permanent shine is off, else
+     { k, sx, sy } -- how much of it the light allows (0-1) and the direction
+     of the sun on screen (a unit vector, or 0,0 in a zone with no sun). */
+  update(S, now, er, fx, zone, sheen) {
     const targets = this._targets(S, er, fx, zone);
-    const want = new Map();       /* sprite -> { p, strength, color } */
+    const want = new Map();       /* sprite -> { p, strength, color, sheen } */
+    const sk = sheen ? (this.sheenScale == null ? 1 : this.sheenScale) * sheen.k : 0;
     for (let i = 0; i < targets.length; i++) {
       const t = targets[i];
-      let p;
-      if (this.force != null) p = this.force;
+      let p = -1;                 /* no sweep crossing it: the band term is off */
+      if (this.force != null) p = this.force;   /* QA: pinned; -1 pins "between sweeps" */
       else {
         const phase = hashPhase(t.key, t.g.period);
         const into = (now + phase) % t.g.period;
-        if (into >= t.g.dur) continue;
-        p = into / t.g.dur;
+        if (into < t.g.dur) p = into / t.g.dur;
       }
-      for (let j = 0; j < t.sprites.length; j++) want.set(t.sprites[j], { p, strength: t.g.strength, color: t.color });
+      if (p < 0 && !(sk > 0)) continue;
+      const w = { p, strength: p >= 0 ? t.g.strength : 0, color: t.color, sheen: sk * (t.g.sheen || 0) };
+      for (let j = 0; j < t.sprites.length; j++) want.set(t.sprites[j], w);
     }
     /* take the filter off anything whose sweep has passed */
     for (const [spr, f] of this._on) {
@@ -261,11 +349,35 @@ export class GlintSystem {
         this._on.set(spr, f);
       }
       const u = f.resources.glintUniforms.uniforms;
-      u.uProgress = w.p;
+      u.uProgress = w.p < 0 ? 0 : w.p;
       u.uStrength = w.strength;
       u.uColor[0] = w.color[0]; u.uColor[1] = w.color[1]; u.uColor[2] = w.color[2];
+      u.uSheen = w.sheen;
+      if (w.sheen > 0) {
+        u.uSun[0] = sheen.sx; u.uSun[1] = sheen.sy;
+        /* the tint this sprite is drawn with, read off the sprite itself, so
+           the shader can find where the art was bright under any metal */
+        const tn = typeof spr.tint === 'number' ? spr.tint : 0xffffff;
+        u.uTint[0] = ((tn >> 16) & 255) / 255; u.uTint[1] = ((tn >> 8) & 255) / 255; u.uTint[2] = (tn & 255) / 255;
+      }
     }
     this.stats.targets = targets.length;
     this.stats.lit = this._on.size;
+    this.stats.sheen = sk > 0 ? this._on.size : 0;
+    this._lastTargets = targets;
+  }
+
+  /* QA probe (v2.3.2736): which slots are lit right now, and whether that
+     includes a full-set figure on a body sprite.  Worked out here, when asked,
+     rather than every frame. */
+  probeStats() {
+    const t = this._lastTargets || [];
+    let body = 0;
+    for (const b of this._bodies) if (this._on.has(b)) body++;
+    return {
+      ...this.stats,
+      keys: t.filter((x) => x.sprites.some((q) => this._on.has(q))).map((x) => x.key),
+      body,
+    };
   }
 }

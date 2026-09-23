@@ -18,7 +18,7 @@
  * is how the QA pictures take a before and an after of the same moment.
  */
 import { ShadowSystem } from './shadows.js';
-import { GlintSystem } from './glint.js';
+import { GlintSystem, sheenOn } from './glint.js';
 import { collectCasters, SELF_STAND_IN_FIELDS, SELF_STAND_IN_SETS } from './casters.js';
 import { Sprite } from 'pixi.js';
 import { zoneLight, sunLeft } from './zoneLight.js';
@@ -58,6 +58,7 @@ export class LightFx {
     this._wasOn = false;
     this.lastMs = 0;
     this.zone = null;
+    this.sheenSun = null;   /* v2.3.2736: QA override of the sheen's sun direction */
   }
 
   clear() {
@@ -88,8 +89,27 @@ export class LightFx {
       }
       this.shadows.update(light ? collectCasters(S, er, fx, zone) : null, light, sunLeft(S), now);
     }
-    this.glint.update(S, now, er, fx, zone);
+    this.glint.update(S, now, er, fx, zone, sheenOn() ? this._sheenLight(S, zone, now) : null);
     this.lastMs = performance.now() - t0;
+  }
+
+  /* v2.3.2736: the light the permanent sheen is lit by -- from the side the
+     zone's sun is on (the opposite of where its shadows fall), dimmer at
+     night and in a zone's deep gloom but never gone: metal still catches the
+     moon.  A zone with no sun gets a sheen with no direction. */
+  _sheenLight(S, zone, now) {
+    const o = this._sheenOut || (this._sheenOut = { k: 0, sx: 0, sy: 0 });   /* one object, every frame */
+    const L = zoneLight(zone);
+    let k = 0.6 + 0.4 * sunLeft(S);
+    if (L && zoneHasSky(zone, S)) k *= 0.5 + 0.5 * (1 - lightingAt(dayPhase(now)).lamp);
+    o.k = k;
+    if (this.sheenSun) {                /* QA: a sun from a fixed side, to prove the shine follows it */
+      o.sx = this.sheenSun[0]; o.sy = this.sheenSun[1];
+    } else {
+      const n = L ? Math.hypot(L.lx, L.ly) : 0;
+      o.sx = n ? -L.lx / n : 0; o.sy = n ? -L.ly / n : 0;
+    }
+    return o;
   }
 
   /* QA probe, house style (__btLayerOrder, __btCharRecord). */
@@ -101,7 +121,7 @@ export class LightFx {
       zone: this.zone,
       light: zoneLight(this.zone),
       shadows: sh ? { ...sh.stats, filtered: !!(layer && layer.filters && layer.filters.length), pool: sh.pool.length } : null,
-      glint: { ...this.glint.stats, force: this.glint.force },
+      glint: { ...this.glint.probeStats(), force: this.glint.force, sheenOn: sheenOn() },
       ms: +this.lastMs.toFixed(3),
       /* the stand-in names casters.js reads off the effects renderer that are
          no longer there -- a rename over there would otherwise turn a swing's
