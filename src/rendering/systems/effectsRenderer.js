@@ -46,6 +46,14 @@ const _peerBuild = (o) => buildScale(o && o.buildHeight, o && o.buildFrame);
 const BLOCK_POSE_FRAME = 1;
 const _fxLoad = (url) => { const p = Assets.load(url); _fxPreload.push(p); return p; };
 export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload); }
+/* v2.3.2771: QA probe -- what cropping the combat stand-in strips saved, per
+   sheet (decoded bytes, no mips).  See _gearStripFrame. */
+const _combatTrimStats = [];
+const _combatTrimFrames = new Map();   /* key -> the cropped frames, for the identity check */
+if (typeof window !== 'undefined') {
+  window.__btCombatGearTrim = () => _combatTrimStats.slice();
+  window.__btCombatGearFrames = (key) => _combatTrimFrames.get(key) || null;
+}
 
 /* ═══ v2.3.2500: THE SKIN-TONE PROBE, FOR THE STAND-INS THAT HAD NONE ═══
  *
@@ -130,7 +138,7 @@ import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings */
 import { onArtChange, artHasInk, artIsSymmetric } from '../traits/playerArt.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { onPatternChange, parsePattern } from '../traits/patternCatalog.js';   /* v2.3.2429; v2.3.2431 the symmetry gate */
-import { getGearFrame } from '../gearSheets.js';
+import { getGearFrame, packTrimmed, registerGearSource } from '../gearSheets.js';   /* v2.3.2771: + the cropper and the upload hook for the combat strips */
 import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
@@ -9587,13 +9595,57 @@ export class EffectsRenderer {
          caller's `fw` verbatim, so their slices are byte-identical. */
       const _twin = GEAR_STRIP_TWIN[pose];
       const _file = pose + '-' + dir + (_twin ? _twin.suffix : '');
-      _fxLoad('/sprites/gear/' + slot + '/' + item + '/' + _file + '.png?v=' + GEARLAYER_VER).then((tex) => {
-        const n = _twin ? _twin.frames : Math.max(1, Math.round(tex.width / fw));
-        const w = _twin ? Math.round(tex.width / n) : fw;
+      /* ═══ v2.3.2771: CROPPED, AND NOT HELD TWICE ═══
+         Owner: "How much can cropping the combat poses save?" -- then "Begin
+         more cropping".  Measured (__btTex, armoured in town): these 33 sheets
+         (shirt / chest / legs x swing, bowshot, chop, cook, fire) were 81.4 MB
+         resident, and 83-98% of every frame is transparent.  The walking
+         layers got the same treatment in v2.3.2750 (gearSheets packTrimmed,
+         TRAPS §106); this is that cropper, applied here.
+         The sheet is decoded as a plain Image of the SAME .png Assets.load
+         fetched -- not loadWebpOrPng.  The .webp twins are fine (measured:
+         identical alpha, colour within 2/255 premultiplied, on faint edge
+         texels only -- browser decode rounding), but this loader has always
+         drawn the PNG, and keeping it means the cropped frames can be proven
+         byte-identical to what shipped before.  Not through Assets.load,
+         because Assets would keep
+         the FULL sheet in its cache for the whole session beside the cropped
+         copy -- the saving would be spent twice over.  The load promise still
+         joins _fxPreload, so effectsAnimationsReady() (the loading-screen
+         gate) waits for the crop exactly as it waited for the slice.
+         Every reader of these frames places a Sprite by anchor and scale and
+         sizes it from texture.width / .height, which a cropped Texture reports
+         from `orig` -- so the frame box, and where the armour lands, are the
+         ones the uncropped strip had.  mp-geartrim holds that. */
+      const _url = '/sprites/gear/' + slot + '/' + item + '/' + _file + '.png?v=' + GEARLAYER_VER;
+      const _p = new Promise((res, rej) => {
+        const im = new Image();
+        im.onload = () => res(im); im.onerror = rej; im.src = _url;
+      }).then((img) => {
+        const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+        const n = _twin ? _twin.frames : Math.max(1, Math.round(W / fw));
+        const w = _twin ? Math.round(W / n) : fw;
+        const packed = packTrimmed(img, w, H, n);
+        const src = Texture.from(packed ? packed.canvas : img).source;
+        src.scaleMode = 'linear';
         const arr = [];
-        for (let i = 0; i < n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * w, 0, w, tex.height) }));
+        for (let i = 0; i < n; i++) {
+          if (packed) {
+            const c = packed.cells[i];
+            arr.push(new Texture({ source: src, frame: new Rectangle(c.ax, 0, c.w, c.h),
+              orig: new Rectangle(0, 0, w, H), trim: new Rectangle(c.tx, c.ty, c.w, c.h) }));
+          } else {
+            arr.push(new Texture({ source: src, frame: new Rectangle(i * w, 0, w, H) }));
+          }
+        }
+        if (packed) {
+          _combatTrimStats.push({ key, url: _url, fullBytes: W * H * 4, packedBytes: packed.canvas.width * packed.canvas.height * 4 });
+          _combatTrimFrames.set(key, arr);
+        }
+        registerGearSource(src);
         this._gearStrips[key] = arr;
       }).catch(() => { this._gearStrips[key] = []; });
+      _fxPreload.push(_p);
       return null;
     }
     if (e === 'loading' || !e.length) return null;

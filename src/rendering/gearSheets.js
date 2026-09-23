@@ -110,11 +110,14 @@ const _GEAR_RETRY_MS = [2000, 6000];
  *   - GAP 8: transparent columns between crops, so no mip block reaches from
  *     one frame into its neighbour.
  *
- * NOT cropped: the fullset knight figure (it becomes the BODY sprite's
+ * NOT cropped HERE: the fullset knight figure (it becomes the BODY sprite's
  * texture, and a great deal of body code reads that frame's size -- ~4 MB is
  * not worth that risk), and the combat poses (bowshot/swing/chop/cook/fire)
- * whose consumers cut sub-rectangles by frame offset (blockArm sleeve).
- * Only the slots and poses below are cropped. */
+ * when they come through THIS loader -- the only one that does is the blockArm
+ * sleeve, which cuts a sub-rectangle out of a bowshot frame by frame offset.
+ * v2.3.2771: the combat poses' real, resident copies are the stand-in strips
+ * effectsRenderer._gearStripFrame loads, and those ARE cropped, with this
+ * same packTrimmed.  Only the slots and poses below are cropped here. */
 const TRIM_SLOTS = new Set(['chest', 'legs', 'shirt', 'belt']);
 const TRIM_POSES = new Set(['stand', 'jog', 'hit', 'mine', 'dodge', 'pickup', 'fish']);
 const TRIM_PAD = 4;
@@ -142,11 +145,18 @@ if (typeof window !== 'undefined') {
 /* Crop each fw x fh frame of `img` to its non-transparent box (plus PAD,
    snapped out to ALIGN) and pack the crops left to right.  Returns
    { canvas, cells: [{ ax, tx, ty, w, h }] } or null if the pixels could not
-   be read, in which case the caller uploads the plain strip as before. */
-function packTrimmed(img, fw, fh) {
+   be read, in which case the caller uploads the plain strip as before.
+   v2.3.2771: exported for the COMBAT stand-in strips (effectsRenderer
+   _gearStripFrame), whose frames are 130-402px wide rather than 128/256.
+   `n` is the caller's frame count when it has its own (the strips round it).
+   A frame size that is not a multiple of ALIGN is fine: the snap is taken in
+   the frame's own coordinates and capped at its edge.  What such a sheet
+   gives up is only the mip-alignment argument above, and those strips upload
+   without mipmaps. */
+export function packTrimmed(img, fw, fh, n) {
   const W = img.width | 0, H = img.height | 0;
-  const n = Math.max(1, Math.floor(W / fw));
-  if (!W || !H || H < fh || fw % TRIM_ALIGN || fh % TRIM_ALIGN) return null;
+  if (!n) n = Math.max(1, Math.floor(W / fw));
+  if (!W || !H || H < fh || fw !== Math.round(fw) || fh !== Math.round(fh) || n * fw > W) return null;
   let rd = null, data;
   try {
     rd = document.createElement('canvas'); rd.width = W; rd.height = fh;
@@ -501,8 +511,17 @@ export function preloadFullsetFigures() {
  *  Lets the renderer force-GPU-upload them during the loading screen (mirrors
  *  the masked-body uploadBakedTextures) so a first armored turn doesn't pay a
  *  lazy first-draw upload.  All frames of a sheet share one source. */
+/* v2.3.2771: TextureSources gear code OUTSIDE this module built -- the cropped
+   combat stand-in strips (effectsRenderer _gearStripFrame) -- so the
+   loading-screen GPU upload below covers them.  They used to be reached
+   through the Assets cache by URL (uploadGearTextures' combatGearUrls loop);
+   a cropped strip is a canvas with no URL, and the full sheet it came from is
+   gone. */
+const _extraSources = new Set();
+export function registerGearSource(source) { if (source) _extraSources.add(source); }
+
 export function getLoadedGearSources() {
-  const sources = new Set();
+  const sources = new Set(_extraSources);
   for (const entry of Object.values(_sheets)) {
     if (Array.isArray(entry) && entry.length && entry[0] && entry[0].source) {
       sources.add(entry[0].source);

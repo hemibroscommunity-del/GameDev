@@ -4438,9 +4438,18 @@ at its offset and is a plain `drawImage` for anything uncropped. A Sprite needs
 nothing -- Pixi builds the quad from `trim` and reports bounds from `orig`.
 Cutting a sub-rectangle out of a cropped frame by `frame.x + offset` (the
 blockArm sleeve does this to bowshot frames) is not supported -- which is why
-the combat poses and the fullset figure are left uncropped. Add a pose to
-`TRIM_POSES` only after checking every reader of it. mp-geartrim holds every
+gearSheets leaves the combat poses and the fullset figure uncropped. Add a pose
+to `TRIM_POSES` only after checking every reader of it. mp-geartrim holds every
 armour layer's box to the body's box, own screen and peer's.
+
+**v2.3.2771: the same rule, a second loader.** The combat stand-in strips
+(swing, bowshot, chop, cook, fire -- effectsRenderer `_gearStripFrame`) are now
+cropped with the same `packTrimmed`, 81.4 → 14.1 MB. Their readers place a
+Sprite by anchor and scale and size it from `texture.width/height` (= `orig`),
+so none needed changing -- but a new one that reads `frame` has the same bug.
+And those strips must NOT be `Assets.load`ed anywhere (combatGear.js
+`preloadCombatGear` used to): Assets keeps the full sheet for the session
+beside the crop, and the saving is spent twice over.
 
 ## 107. The harvest "demo" that animates the body contradicts the owner's freeze (v2.3.2760)
 
