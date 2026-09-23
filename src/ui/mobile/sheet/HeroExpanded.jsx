@@ -20,7 +20,7 @@ import {
   PROG3, prog3ElemPower /* v2.3.2512: elem per weapon, elem resist, max mana */,
   prog3CharLevel, prog3PoolShared, prog3SharedSpendCat, isProg3SharedEnabled /* v2.3.2592: the shared pool */,
   prog3PowerMult, prog3RangeMult, prog3SpecialMult, prog3MoveMult, prog3EresPct, isProg3RelEnabled, PROG3_LINEAR,
-  PROG3_FADE_NOTE /* v2.3.2680: the curve readers + the fade line */ } from '../../../data/prog3.js';
+  PROG3_FADE_NOTE /* v2.3.2680: the curve readers + the fade line */, prog3StatFrac /* v2.3.2696: the confirm window's bar */ } from '../../../data/prog3.js';
 import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
@@ -1556,6 +1556,31 @@ export const HeroExpanded = () => {
                      so, once, under its explainer. */
                   body: info.body, note: st.fades ? (info.note ? info.note + ' ' : '') + PROG3_FADE_NOTE : info.note,
                   perText: 'Each point: ' + st.perText,
+                  /* ═══ v2.3.2696: LESS TO READ ═══
+                     Owner: "It's a lot of words but good information.  What's
+                     a better solution to make the user understand without
+                     reading a manual?"  A `hook` switches InfoPopup to the
+                     short layout: this six-word line where the paragraph was,
+                     the numbers big under it, a bar for the curve, and the
+                     paragraph + the fade rule folded into two chips.  Nothing
+                     is deleted -- body/note above are what the chips open. */
+                  hook: st.hook || info.body,
+                  chips: [
+                    ...(st.fades ? [{ key: 'fade', icon: '⚠\uFE0E', warn: true,
+                      label: 'Weaker vs. higher levels', text: PROG3_FADE_NOTE }] : []),
+                    { key: 'how', icon: 'ⓘ', label: 'Details',
+                      text: info.body + (info.note ? ' ' + info.note : '') },
+                  ],
+                  /* the curve, drawn: how far along its maximum the stat is now,
+                     and where n more points take it.  Each + fills a smaller
+                     slice than the last, which is "the first points count
+                     most" without the sentence.  Null (no bar) for a linear
+                     stat, which has no maximum to be a fraction of. */
+                  meterFor: (n) => {
+                    const p0 = st.atk ? prog3AtkPts(R, laneCat, st.key) : prog3Pts(R, st.key);
+                    const f0 = prog3StatFrac(st.key, p0);
+                    return f0 == null ? null : { now: f0, after: prog3StatFrac(st.key, p0 + Math.max(1, n || 1)) };
+                  },
                   /* ═══ v2.3.2231: THE FIGURE HOLDS THE LANE'S WEAPON ═══
                      Owner: "Maybe the combat primary skill they are viewing
                      the stat demo through?"

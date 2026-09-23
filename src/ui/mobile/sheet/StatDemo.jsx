@@ -469,7 +469,11 @@ const reducedMotion = () => {
 /** The scene for one spendable stat.  Unknown keys render nothing rather
  *  than a broken stage, so a new stat gets its description and its numbers
  *  on day one and its scene when somebody writes it. */
-export const StatDemo = ({ stat, iconSrc, weapon, shield }) => {
+/* v2.3.2696: `n` is the confirm window's stepper count -- the brass badge that
+   lands between the two passes says "+3" when three points are about to go
+   in.  Only the badge follows it: the scene is an exaggeration by design
+   (above), so scaling its numbers by n would dress it up as arithmetic. */
+export const StatDemo = ({ stat, iconSrc, weapon, shield, n }) => {
   const make = SCENES[stat];
   /* v2.3.2231: the attack this scene plays, read off the weapon in the
      figure's hands.  prog3CatFor is the game's own mapping (greatsword
@@ -513,7 +517,7 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield }) => {
       {s.pops.map((p) => <Pop key={p.id} p={p} />)}
       {s.point > 0 && (
         <span key={'p' + s.point} className="bt-sd-point">
-          <img src={iconSrc} alt="" draggable={false} /><b>+1</b>
+          <img src={iconSrc} alt="" draggable={false} /><b>+{Math.max(1, n || 1)}</b>
         </span>
       )}
       </div>

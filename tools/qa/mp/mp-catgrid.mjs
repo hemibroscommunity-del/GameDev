@@ -375,6 +375,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
         rows: rows ? (rows.innerText || '') : '',
         btn: btn ? (btn.textContent || '').trim() : null,
         stepper: !!document.querySelector('[data-infopopup-stepper]'),
+        hook: (() => { const h = document.querySelector('[data-infopopup-hook]'); return h ? (h.textContent || '').trim() : null; })(),
+        hookAboveRows: (() => {
+          const h = document.querySelector('[data-infopopup-hook]');
+          const rr = document.querySelector('[data-infopopup-rows]');
+          return !!(h && rr && h.getBoundingClientRect().bottom <= rr.getBoundingClientRect().top + 1);
+        })(),
+        prose: !!document.querySelector('[data-infopopup-body], [data-infopopup-rate], [data-infopopup-note]'),
+        meter: (() => { const m = document.querySelector('[data-infopopup-meter]'); return m ? { now: +m.dataset.now, after: +m.dataset.after } : null; })(),
+        chips: [...document.querySelectorAll('[data-infopopup-chip]')].map((c) => c.getAttribute('data-infopopup-chip')),
+        chipText: (() => { const t = document.querySelector('[data-infopopup-chip-text]'); return t ? (t.textContent || '').trim() : null; })(),
         gotIt: !!document.querySelector('[data-infopopup-close]'),
         keys: tabs.map((t) => t.getAttribute('data-infopopup-lane')),
         active: act ? act.getAttribute('data-infopopup-lane') : null,
@@ -408,6 +418,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
       win0 && { title: statName, imgs: win0.titleImgs });
     rec.ok(`${label}: ...a WEAPON stat keeps its DPS line`,
       !!win0 && /\bDPS\b/.test(win0.rows), win0 && win0.rows.slice(0, 160));
+    /* ═══ v2.3.2696: A WINDOW YOU DO NOT HAVE TO READ ═══
+       Owner: "It's a lot of words ... make the user understand without
+       reading a manual".  One short line, then the numbers; the paragraphs
+       are folded behind chips, not deleted. */
+    rec.ok(`${label}: the window opens on ONE short line of what the stat does (v2.3.2696)`,
+      !!win0 && !!win0.hook && win0.hook.length <= 42, win0 && win0.hook);
+    rec.ok(`${label}: ...with the before → after numbers right under it`,
+      !!win0 && win0.hookAboveRows, win0 && { hookAboveRows: win0.hookAboveRows });
+    rec.ok(`${label}: ...and no paragraph on screen until you ask for one`,
+      !!win0 && !win0.prose && win0.chipText === null, win0 && { prose: win0.prose, chipText: win0.chipText });
+    rec.ok(`${label}: ...which a "Details" chip is there to open`,
+      !!win0 && win0.chips.includes('how'), win0 && win0.chips);
+    await finger(P, '[data-infopopup-chip="how"]');
+    const winHow = await readWin();
+    rec.ok(`${label}: ...and tapping it shows the full explainer (nothing was deleted, only folded)`,
+      !!winHow && !!winHow.chipText && winHow.chipText.length > 30, winHow && winHow.chipText);
+    rec.ok(`${label}: ...without spending anything`,
+      JSON.stringify(await pools(P)) === JSON.stringify(before));
+    /* the bar: a curve stat's progress toward its maximum, and what the
+       stepper's points add to it */
+    rec.ok(`${label}: a curve stat draws its bar, and one point moves it`,
+      !!win0 && !!win0.meter && win0.meter.after > win0.meter.now, win0 && win0.meter);
     rec.ok(`${label}: the spend is a [-] n [+] stepper with the confirm to its right`,
       !!win0 && win0.stepper && /^Spend 1 point$/.test(win0.btn || ''), win0 && { stepper: win0.stepper, btn: win0.btn });
 
@@ -436,9 +468,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
       c3 === 3 && /^Spend 3 points$/.test((win3 && win3.btn) || ''), { count: c3, btn: win3 && win3.btn });
     rec.ok(`${label}: ...and the preview rows now show what THREE points buy`,
       !!win3 && !!rows1 && win3.rows !== rows1, { one: rows1 && rows1.slice(0, 90), three: win3 && win3.rows.slice(0, 90) });
+    /* "the first points count most", drawn: each point adds a SMALLER slice
+       of the bar than the one before it.  The three readings are the same
+       window at n = 1, 3 and (after the - below) 2. */
+    const m1 = win1 && win1.meter, m3 = win3 && win3.meter;
+    rec.ok(`${label}: ...and the bar grows with them — three points reach further than one`,
+      !!m1 && !!m3 && m3.after > m1.after && m3.now === m1.now, { one: m1, three: m3 });
     await finger(P, '[data-infopopup-step="down"]');
     const c2 = await stepCount(P);
     rec.ok(`${label}: ...one tap on - takes it back to two`, c2 === 2, { count: c2 });
+    const m2 = (await readWin() || {}).meter;
+    rec.ok(`${label}: ...and each point fills LESS of the bar than the one before (the curve, without the sentence)`,
+      !!m1 && !!m2 && !!m3 && (m2.after - m1.after) < (m1.after - m1.now) && (m3.after - m2.after) < (m2.after - m1.after),
+      { first: m1 && +(m1.after - m1.now).toFixed(4), second: m1 && m2 && +(m2.after - m1.after).toFixed(4), third: m2 && m3 && +(m3.after - m2.after).toFixed(4) });
     rec.ok(`${label}: ...and still nothing has been spent`,
       JSON.stringify(await pools(P)) === JSON.stringify(before));
     /* HELD, it keeps counting -- the "more quickly" -- and stops when the
